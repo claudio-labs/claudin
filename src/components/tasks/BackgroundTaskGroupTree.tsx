@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react';
 import { Box, Text } from '../../ink.js';
 import { type BackgroundTaskState, isBackgroundTask, type TaskState } from '../../tasks/types.js';
 import { useAppState, useSetAppState } from '../../state/AppState.js';
+import type { AppState } from '../../state/AppStateStore.js';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { truncate } from '../../utils/format.js';
 import { footerTreeBaseIndex } from './footerTaskGeometry.js';
@@ -109,21 +110,21 @@ export function buildFooterTaskRows(
 }
 
 export function BackgroundTaskGroupTree(): React.ReactNode {
-  const tasks = useAppState(s => s.tasks);
-  const foregroundedTaskId = useAppState(s => s.foregroundedTaskId);
-  const collapsedTaskGroups = useAppState(s => s.collapsedTaskGroups);
+  const tasks = useAppState((s: AppState) => s.tasks);
+  const foregroundedTaskId = useAppState((s: AppState) => s.foregroundedTaskId);
+  const collapsedTaskGroups = useAppState((s: AppState) => s.collapsedTaskGroups);
   // Auto-collapse seed memory lives in AppState (not a useRef) so a tree
   // unmount/remount — e.g. when a fullscreen dialog opens then closes — does
   // not re-collapse a group the user has since expanded.
-  const seededTaskGroups = useAppState(s => s.seededTaskGroups);
+  const seededTaskGroups = useAppState((s: AppState) => s.seededTaskGroups);
   // The footer cursor lives in coordinatorTaskIndex (shared with the agent
   // panel). A tree row i is highlighted when the cursor lands on its global
   // index — treeBase (after main + agents) + i — and the tasks pill is focused.
-  const coordinatorTaskIndex = useAppState(s => s.coordinatorTaskIndex);
-  const tasksFocused = useAppState(s => s.footerSelection === 'tasks');
+  const coordinatorTaskIndex = useAppState((s: AppState) => s.coordinatorTaskIndex);
+  const tasksFocused = useAppState((s: AppState) => s.footerSelection === 'tasks');
   // treeBase = the agent partition size (main + agent rows) the cursor must
   // skip before it lands on the first tree row.
-  const treeBase = useAppState(s => footerTreeBaseIndex(s.tasks));
+  const treeBase = useAppState((s: AppState) => footerTreeBaseIndex(s.tasks));
   const setAppState = useSetAppState();
   const { columns } = useTerminalSize();
 

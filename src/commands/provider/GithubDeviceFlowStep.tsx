@@ -269,7 +269,7 @@ export function GithubDeviceFlowStep({
     ]
     return (
       <Box flexDirection="column" gap={1}>
-        <Text color="red">{errorMsg}</Text>
+        <Text color="error">{errorMsg}</Text>
         <Select
           options={options}
           onChange={(v: string) => {

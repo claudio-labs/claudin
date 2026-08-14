@@ -10,6 +10,7 @@ function validQuestion(over: Record<string, unknown> = {}) {
       { label: 'A', description: 'a' },
       { label: 'B', description: 'b' },
     ],
+    multiSelect: false,
     ...over,
   }
 }
@@ -17,11 +18,9 @@ function validQuestion(over: Record<string, unknown> = {}) {
 describe('AskUserQuestionTool', () => {
   test('flags: shouldDefer, read-only, concurrency-safe, requires user', () => {
     expect(AskUserQuestionTool.shouldDefer).toBe(true)
-    expect(AskUserQuestionTool.isReadOnly?.()).toBe(true)
-    expect(AskUserQuestionTool.isConcurrencySafe?.()).toBe(true)
-    expect(AskUserQuestionTool.requiresUserInteraction?.({} as never)).toBe(
-      true,
-    )
+    expect(AskUserQuestionTool.isReadOnly?.({} as never)).toBe(true)
+    expect(AskUserQuestionTool.isConcurrencySafe?.({} as never)).toBe(true)
+    expect(AskUserQuestionTool.requiresUserInteraction?.()).toBe(true)
   })
 
   test('isEnabled() is true in the open build', () => {
@@ -29,7 +28,7 @@ describe('AskUserQuestionTool', () => {
   })
 
   test('userFacingName is empty (rendered by UI helpers)', () => {
-    expect(AskUserQuestionTool.userFacingName()).toBe('')
+    expect(AskUserQuestionTool.userFacingName(undefined)).toBe('')
   })
 
   test('input schema requires 1-4 questions with 2-4 options', () => {
@@ -112,6 +111,8 @@ describe('AskUserQuestionTool', () => {
         answers: { 'Pick one?': 'A' },
         annotations: { 'Pick one?': { notes: 'preferred' } },
       } as never,
+      {} as never,
+      {} as never,
       {} as never,
     )
     expect(data.questions).toEqual(questions)

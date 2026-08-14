@@ -43,7 +43,7 @@ export function WorkflowMultiselectDialog(t0: Props) {
   const [showError, setShowError] = useState(false);
   let t1;
   if ($[0] !== onSubmit) {
-    t1 = selectedValues => {
+    t1 = (selectedValues: Workflow[]) => {
       if (selectedValues.length === 0) {
         setShowError(true);
         return;
@@ -119,7 +119,7 @@ export function WorkflowMultiselectDialog(t0: Props) {
   }
   return t8;
 }
-function _temp(workflow) {
+function _temp(workflow: WorkflowOption) {
   return {
     label: workflow.label,
     value: workflow.value

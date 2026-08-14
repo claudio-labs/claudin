@@ -25,7 +25,7 @@ export function useIDEIntegration(t0: UseIDEIntegrationProps) {
   let t2;
   if ($[0] !== autoConnectIdeFlag || $[1] !== ideToInstallExtension || $[2] !== setDynamicMcpConfig || $[3] !== setIDEInstallationState || $[4] !== setShowIdeOnboarding) {
     t1 = () => {
-      const addIde = function addIde(ide) {
+      const addIde = function addIde(ide: DetectedIDEInfo | null) {
         if (!ide) {
           return;
         }

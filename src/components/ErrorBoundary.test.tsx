@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it, mock } from 'bun:test'
 import * as React from 'react'
 
 const realLog = { ...(await import('../utils/log.js')) }
-const logErrorSpy = mock(() => {})
+const logErrorSpy = mock((_error: unknown) => {})
 mock.module('../utils/log.js', () => ({ ...realLog, logError: logErrorSpy }))
 afterAll(() => {
   mock.module('../utils/log.js', () => realLog)

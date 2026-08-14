@@ -195,7 +195,17 @@ function stripThinkingBlocks(messages: NormalizedMessage[]): NormalizedMessage[]
       (block: { type?: string }) => block.type !== 'thinking' && block.type !== 'redacted_thinking',
     )
     if (filtered.length === 0) return acc
-    acc.push({ ...msg, message: { ...msg.message, content: filtered } })
+    // `NormalizedAssistantMessage` declares `content` as a 1-tuple, but the
+    // transcripts this runs over legitimately carry several blocks per
+    // assistant message (thinking + text), so the filtered array is kept
+    // whole rather than truncated to the declared arity.
+    acc.push({
+      ...msg,
+      message: {
+        ...msg.message,
+        content: filtered as typeof msg.message.content,
+      },
+    })
     return acc
   }, [])
 }
@@ -563,7 +573,10 @@ export async function loadConversationForResume(
       if (feature('BG_SESSIONS')) {
         try {
           const { listAllLiveSessions } = await import('./udsClient.js')
-          const live = await listAllLiveSessions()
+          // udsClient is a stub module (`any`-typed exports) — annotate the
+          // shape actually used here rather than importing `any`.
+          const live: Array<{ kind?: string; sessionId?: string }> =
+            await listAllLiveSessions()
           skip = new Set(
             live.flatMap(s =>
               s.kind && s.kind !== 'interactive' && s.sessionId

@@ -57,7 +57,10 @@ async function createBedrockClient() {
 
   const skipAuth = isEnvTruthy(process.env.CLAUDE_CODE_SKIP_BEDROCK_AUTH)
 
-  const clientConfig: ConstructorParameters<typeof BedrockClient>[0] = {
+  // BedrockClient comes from a package this fork stubs, so
+  // ConstructorParameters<typeof BedrockClient>[0] resolves to `unknown` and
+  // the credentials assignment below cannot be typed against it.
+  const clientConfig: Record<string, unknown> = {
     region,
     ...(process.env.ANTHROPIC_BEDROCK_BASE_URL && {
       endpoint: process.env.ANTHROPIC_BEDROCK_BASE_URL,
@@ -94,13 +97,22 @@ async function createBedrockClient() {
 }
 
 export async function createBedrockRuntimeClient() {
-  const { BedrockRuntimeClient } = await import(
+  // BedrockRuntimeClient comes from a package this fork stubs, and (unlike
+  // '@aws-sdk/client-bedrock', a bodyless ambient module that falls back to
+  // `any` for every export) the client-bedrock-runtime stub in
+  // stubbed-modules.d.ts only declares CountTokensCommand — so the real
+  // constructor has to be cast in locally rather than destructured as-is.
+  const { BedrockRuntimeClient } = (await import(
     '@aws-sdk/client-bedrock-runtime'
-  )
+  )) as unknown as {
+    BedrockRuntimeClient: new (config: Record<string, unknown>) => {
+      send: (command: unknown) => Promise<{ inputTokens?: number }>
+    }
+  }
   const region = getAWSRegion()
   const skipAuth = isEnvTruthy(process.env.CLAUDE_CODE_SKIP_BEDROCK_AUTH)
 
-  const clientConfig: ConstructorParameters<typeof BedrockRuntimeClient>[0] = {
+  const clientConfig: Record<string, unknown> = {
     region,
     ...(process.env.ANTHROPIC_BEDROCK_BASE_URL && {
       endpoint: process.env.ANTHROPIC_BEDROCK_BASE_URL,

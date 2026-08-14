@@ -3,12 +3,12 @@ import { useEffect, useRef } from 'react';
 import { useNotifications } from 'src/context/notifications.js';
 import { getModelDeprecationWarning } from 'src/utils/model/deprecation.js';
 import { getIsRemoteMode } from '../../bootstrap/state.js';
-export function useDeprecationWarningNotification(model) {
+export function useDeprecationWarningNotification(model: string | null) {
   const $ = _c(4);
   const {
     addNotification
   } = useNotifications();
-  const lastWarningRef = useRef(null);
+  const lastWarningRef = useRef<string | null>(null);
   let t0;
   let t1;
   if ($[0] !== addNotification || $[1] !== model) {

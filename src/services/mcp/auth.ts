@@ -2115,10 +2115,8 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
       return {
         authorizationServerUrl: cached.authorizationServerUrl,
         resourceMetadataUrl: cached.resourceMetadataUrl,
-        resourceMetadata:
-          cached.resourceMetadata as OAuthDiscoveryState['resourceMetadata'],
-        authorizationServerMetadata:
-          cached.authorizationServerMetadata as OAuthDiscoveryState['authorizationServerMetadata'],
+        // Only the URLs are ever persisted (see saveDiscoveryState) — the SDK
+        // re-fetches the metadata blobs with one HTTP GET on the next auth.
       }
     }
 

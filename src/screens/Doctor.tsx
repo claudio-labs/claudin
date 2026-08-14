@@ -20,16 +20,20 @@ import { Box, Text } from '../ink.js';
 import { useKeybindings } from '../keybindings/useKeybinding.js';
 import { useAppState } from '../state/AppState.js';
 import { getPluginErrorMessage } from '../types/plugin.js';
+import type { PluginError } from '../types/plugin.js';
 import { getGcsDistTags, getNpmDistTags, type NpmDistTags } from '../utils/autoUpdater.js';
 import { type ContextWarnings, checkContextWarnings } from '../utils/doctorContextWarnings.js';
 import { type DiagnosticInfo, getDoctorDiagnostic } from '../utils/doctorDiagnostic.js';
-import { validateBoundedIntEnvVar } from '../utils/envValidation.js';
+import { validateBoundedIntEnvVar, type EnvVarValidationResult } from '../utils/envValidation.js';
 import { pathExists } from '../utils/file.js';
 import { cleanupStaleLocks, getAllLockInfo, isPidBasedLockingEnabled, type LockInfo } from '../utils/nativeInstaller/pidLock.js';
 import { getInitialSettings } from '../utils/settings/settings.js';
 import { BASH_MAX_OUTPUT_DEFAULT, BASH_MAX_OUTPUT_UPPER_LIMIT } from '../utils/shell/outputLimits.js';
 import { TASK_MAX_OUTPUT_DEFAULT, TASK_MAX_OUTPUT_UPPER_LIMIT } from '../utils/task/outputFormatting.js';
 import { getXDGStateHome } from '../utils/xdg.js';
+import type { AgentDefinition } from '../tools/AgentTool/loadAgentsDir.js';
+import type { AppState } from '../state/AppStateStore.js';
+import type { ValidationError } from '../utils/settings/validation.js';
 type Props = {
   onDone: (result?: string, options?: {
     display?: CommandResultDisplay;
@@ -55,7 +59,7 @@ type VersionLockInfo = {
   locksDir: string;
   staleLocksCleaned: number;
 };
-function DistTagsDisplay(t0) {
+function DistTagsDisplay(t0: { promise: Promise<NpmDistTags> }) {
   const $ = _c(8);
   const {
     promise
@@ -117,10 +121,10 @@ export function Doctor(t0: Props) {
     t1 = $[1];
   }
   const tools = t1;
-  const [diagnostic, setDiagnostic] = useState(null);
-  const [agentInfo, setAgentInfo] = useState(null);
+  const [diagnostic, setDiagnostic] = useState<DiagnosticInfo | null>(null);
+  const [agentInfo, setAgentInfo] = useState<AgentInfo | null>(null);
   const [contextWarnings, setContextWarnings] = useState<ContextWarnings | null>(null);
-  const [versionLockInfo, setVersionLockInfo] = useState(null);
+  const [versionLockInfo, setVersionLockInfo] = useState<VersionLockInfo | null>(null);
   const validationErrors = useSettingsErrors();
   let t2;
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
@@ -506,46 +510,46 @@ export function Doctor(t0: Props) {
 function _temp19(detail_3: string, i_9: number) {
   return <Text key={i_9} dimColor={true}>{"    "}└ {detail_3}</Text>;
 }
-function _temp18(detail_2, i_8) {
+function _temp18(detail_2: string, i_8: number) {
   return <Text key={i_8} dimColor={true}>{"    "}└ {detail_2}</Text>;
 }
-function _temp17(detail_1, i_7) {
+function _temp17(detail_1: string, i_7: number) {
   return <Text key={i_7} dimColor={true}>{"    "}└ {detail_1}</Text>;
 }
-function _temp16(detail_0, i_6) {
+function _temp16(detail_0: string, i_6: number) {
   return <Text key={i_6} dimColor={true}>{"    "}└ {detail_0}</Text>;
 }
-function _temp15(detail, i_5) {
+function _temp15(detail: string, i_5: number) {
   return <Text key={i_5} dimColor={true}>{"  "}└ {detail}</Text>;
 }
-function _temp14(error_0, i_4) {
+function _temp14(error_0: PluginError, i_4: number) {
   return <Text key={i_4} dimColor={true}>{"  "}└ {error_0.source || "unknown"}{"plugin" in error_0 && error_0.plugin ? ` [${error_0.plugin}]` : ""}:{" "}{getPluginErrorMessage(error_0)}</Text>;
 }
-function _temp13(file, i_3) {
+function _temp13(file: { path: string; error: string }, i_3: number) {
   return <Text key={i_3} dimColor={true}>{"  "}└ {file.path}: {file.error}</Text>;
 }
-function _temp12(lock, i_2) {
+function _temp12(lock: LockInfo, i_2: number) {
   return <Text key={i_2}>└ {lock.version}: PID {lock.pid}{" "}{lock.isProcessRunning ? <Text>(running)</Text> : <Text color="warning">(stale)</Text>}</Text>;
 }
-function _temp11(validation, i_1) {
+function _temp11(validation: EnvVarValidationResult & { name: string }, i_1: number) {
   return <Text key={i_1}>└ {validation.name}:{" "}<Text color={validation.status === "capped" ? "warning" : "error"}>{validation.message}</Text></Text>;
 }
-function _temp10(warning, i_0) {
+function _temp10(warning: { issue: string; fix: string }, i_0: number) {
   return <Box key={i_0} flexDirection="column"><Text color="warning">Warning: {warning.issue}</Text><Text>Fix: {warning.fix}</Text></Box>;
 }
-function _temp1(install, i) {
+function _temp1(install: { type: string; path: string }, i: number) {
   return <Text key={i}>└ {install.type} at {install.path}</Text>;
 }
-function _temp0(a) {
+function _temp0(a: AgentDefinition) {
   return {
     agentType: a.agentType,
     source: a.source
   };
 }
-function _temp9(v_0) {
+function _temp9(v_0: EnvVarValidationResult & { name: string }) {
   return v_0.status !== "valid";
 }
-function _temp8(v) {
+function _temp8(v: { name: string; default: number; upperLimit: number }) {
   const value = process.env[v.name];
   const result = validateBoundedIntEnvVar(v.name, value, v.default, v.upperLimit);
   return {
@@ -553,28 +557,28 @@ function _temp8(v) {
     ...result
   };
 }
-function _temp7(error) {
+function _temp7(error: ValidationError) {
   return error.mcpErrorMetadata === undefined;
 }
-function _temp6(diag) {
+function _temp6(diag: DiagnosticInfo) {
   const fetchDistTags = diag.installationType === "native" ? getGcsDistTags : getNpmDistTags;
   return fetchDistTags().catch(_temp5);
 }
-function _temp5() {
+function _temp5(): NpmDistTags {
   return {
     latest: null,
     stable: null
   };
 }
-function _temp4(s_2) {
+function _temp4(s_2: AppState) {
   return s_2.plugins.errors;
 }
-function _temp3(s_1) {
+function _temp3(s_1: AppState) {
   return s_1.toolPermissionContext;
 }
-function _temp2(s_0) {
+function _temp2(s_0: AppState) {
   return s_0.mcp.tools;
 }
-function _temp(s) {
+function _temp(s: AppState) {
   return s.agentDefinitions;
 }

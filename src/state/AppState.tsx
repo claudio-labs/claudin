@@ -74,7 +74,7 @@ export function AppStateProvider(t0: Props) {
   }
   let t3;
   if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
-    t3 = [];
+    t3 = [] as React.DependencyList;
     $[5] = t3;
   } else {
     t3 = $[5];
@@ -82,7 +82,7 @@ export function AppStateProvider(t0: Props) {
   useEffect(t2, t3);
   let t4;
   if ($[6] !== store.setState) {
-    t4 = source => applySettingsChange(source, store.setState);
+    t4 = (source: SettingSource) => applySettingsChange(source, store.setState);
     $[6] = store.setState;
     $[7] = t4;
   } else {
@@ -109,7 +109,7 @@ export function AppStateProvider(t0: Props) {
   }
   return t6;
 }
-function _temp(prev) {
+function _temp(prev: AppState) {
   return {
     ...prev,
     toolPermissionContext: createDisabledBypassPermissionsContext(prev.toolPermissionContext)
@@ -140,7 +140,7 @@ function useAppStore(): AppStateStore {
  * const { text, promptId } = useAppState(s => s.promptSuggestion) // good
  * ```
  */
-export function useAppState(selector) {
+export function useAppState<T>(selector: (state: AppState) => T): T {
   const store = useAppStore();
   const selectorRef = React.useRef(selector);
   const storeRef = React.useRef(store);
@@ -176,7 +176,9 @@ const NOOP_SUBSCRIBE = () => () => {};
  * Safe version of useAppState that returns undefined if called outside of AppStateProvider.
  * Useful for components that may be rendered in contexts where AppStateProvider isn't available.
  */
-export function useAppStateMaybeOutsideOfProvider(selector) {
+export function useAppStateMaybeOutsideOfProvider<T>(
+  selector: (state: AppState) => T,
+): T | undefined {
   const store = useContext(AppStoreContext);
   const selectorRef = React.useRef(selector);
   const storeRef = React.useRef(store);

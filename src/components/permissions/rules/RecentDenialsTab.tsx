@@ -3,6 +3,7 @@ import * as React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- 'r' is a view-specific key, not a global keybinding
 import { Box, Text, useInput } from '../../../ink.js';
+import type { Key } from '../../../ink/events/input-event.js';
 import { type AutoModeDenial, getAutoModeDenials } from '../../../utils/autoModeDenials.js';
 import { Select } from '../../CustomSelect/select.js';
 import { StatusIcon } from '../../design-system/StatusIcon.js';
@@ -16,7 +17,7 @@ type Props = {
     denials: readonly AutoModeDenial[];
   }) => void;
 };
-export function RecentDenialsTab(t0) {
+export function RecentDenialsTab(t0: Props) {
   const $ = _c(30);
   const {
     onHeaderFocusChange,
@@ -70,7 +71,7 @@ export function RecentDenialsTab(t0) {
   useEffect(t3, t4);
   let t5;
   if ($[10] === Symbol.for("react.memo_cache_sentinel")) {
-    t5 = value => {
+    t5 = (value: string) => {
       const idx = Number(value);
       setApproved(prev => {
         const next = new Set(prev);
@@ -89,7 +90,7 @@ export function RecentDenialsTab(t0) {
   const handleSelect = t5;
   let t6;
   if ($[11] === Symbol.for("react.memo_cache_sentinel")) {
-    t6 = value_0 => {
+    t6 = (value_0: string) => {
       setFocusedIdx(Number(value_0));
     };
     $[11] = t6;
@@ -99,7 +100,7 @@ export function RecentDenialsTab(t0) {
   const handleFocus = t6;
   let t7;
   if ($[12] !== focusedIdx) {
-    t7 = (input, _key) => {
+    t7 = (input: string, _key: Key) => {
       if (input === "r") {
         setRetry(prev_0 => {
           const next_0 = new Set(prev_0);
@@ -151,7 +152,7 @@ export function RecentDenialsTab(t0) {
   if ($[17] !== approved || $[18] !== denials || $[19] !== retry) {
     let t11;
     if ($[21] !== approved || $[22] !== retry) {
-      t11 = (d, idx_0) => {
+      t11 = (d: AutoModeDenial, idx_0: number) => {
         const isApproved = approved.has(idx_0);
         const suffix = retry.has(idx_0) ? " (retry)" : "";
         return {
@@ -195,10 +196,10 @@ export function RecentDenialsTab(t0) {
   }
   return t13;
 }
-function _temp3() {
+function _temp3(): Set<number> {
   return new Set();
 }
-function _temp2() {
+function _temp2(): Set<number> {
   return new Set();
 }
 function _temp() {

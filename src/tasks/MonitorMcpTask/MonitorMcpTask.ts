@@ -52,6 +52,16 @@ export const MonitorMcpTask: Task = {
 }
 
 /**
+ * Kill one monitor_mcp task by id — the shape `BackgroundTasksDialog` binds its
+ * "kill" affordance to (`monitorMcpModule?.killMonitorMcp`). A thin named alias
+ * for `MonitorMcpTask.kill` so the dialog does not reach through the registry
+ * entry.
+ */
+export function killMonitorMcp(taskId: string, setAppState: SetAppState): void {
+  void MonitorMcpTask.kill(taskId, setAppState)
+}
+
+/**
  * Kill all monitor tasks owned by a given agent.
  *
  * MonitorTool spawns tasks as local_bash with kind='monitor'. When an agent

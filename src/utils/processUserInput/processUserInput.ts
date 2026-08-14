@@ -240,25 +240,28 @@ export async function processUserInput({
     }
 
     // TODO: Clean this up
-    if (hookResult.message) {
-      switch (hookResult.message.attachment.type) {
+    const hookMessage = hookResult.message
+    if (hookMessage && hookMessage.type === 'attachment') {
+      switch (hookMessage.attachment.type) {
         case 'hook_success':
-          if (!hookResult.message.attachment.content) {
+          if (!hookMessage.attachment.content) {
             // Skip if there is no content
             break
           }
           result.messages.push({
-            ...hookResult.message,
+            ...hookMessage,
             attachment: {
-              ...hookResult.message.attachment,
-              content: applyTruncation(hookResult.message.attachment.content),
+              ...hookMessage.attachment,
+              content: applyTruncation(hookMessage.attachment.content),
             },
           })
           break
         default:
-          result.messages.push(hookResult.message)
+          result.messages.push(hookMessage)
           break
       }
+    } else if (hookMessage) {
+      result.messages.push(hookMessage)
     }
   }
   queryCheckpoint('query_hooks_end')
@@ -555,7 +558,7 @@ async function processUserInputBase(
     const trimmedInput = inputString.trim()
 
     const agentMention = attachmentMessages.find(
-      (m): m is AttachmentMessage<AgentMentionAttachment> =>
+      (m): m is AttachmentMessage & { attachment: AgentMentionAttachment } =>
         m.attachment.type === 'agent_mention',
     )
 

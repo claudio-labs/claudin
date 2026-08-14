@@ -10,6 +10,23 @@ type Props = {
   width: number;
 };
 
+// 'ink-raw-ansi' is a real host element recognized by the renderer
+// (src/ink/dom.ts, render-node-to-output.ts). tsconfig uses jsx:"react-jsx"
+// (automatic runtime), which resolves the JSX namespace from the "react"
+// module's own exported JSX (react/jsx-runtime.d.ts re-exports React.JSX) —
+// NOT the true global JSX namespace, so a `declare global { namespace JSX
+// {...} }` augmentation is a silent no-op here (the shared
+// src/ink/global.d.ts's 'ink-box'/'ink-text'/etc entries have the same
+// latent bug, visible as the same error on other ink components). The
+// augmentation has to target "react"'s own JSX namespace instead.
+declare module 'react' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'ink-raw-ansi': { rawText: string; rawWidth: number; rawHeight: number };
+    }
+  }
+}
+
 /**
  * Bypass the <Ansi> → React tree → Yoga → squash → re-serialize roundtrip for
  * content that is already terminal-ready.

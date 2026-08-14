@@ -105,10 +105,10 @@ function getToolSummaryText(counts: ToolCounts): string | undefined {
  * Count tool uses in an assistant message and add to existing counts.
  */
 function accumulateToolUses(
-  message: SDKAssistantMessage,
+  message: { message: unknown },
   counts: ToolCounts,
 ): void {
-  const content = message.message.content
+  const content = (message.message as { content?: unknown } | null)?.content
   if (!Array.isArray(content)) {
     return
   }
@@ -135,7 +135,8 @@ export function createStreamlinedTransformer(): (
   ): StdoutMessage | null {
     switch (message.type) {
       case 'assistant': {
-        const content = message.message.content
+        const content = (message.message as { content?: unknown } | null)
+          ?.content
         const text = Array.isArray(content)
           ? extractTextContent(content, '\n').trim()
           : ''
@@ -189,5 +190,4 @@ export function createStreamlinedTransformer(): (
     }
   }
 }
-
 

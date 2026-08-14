@@ -7,6 +7,9 @@ import { getAllBaseTools } from '../tools.js';
 import type { LogOption } from '../types/logs.js';
 import { formatRelativeTimeAgo } from '../utils/format.js';
 import { getSessionIdFromLog, isLiteLog, loadFullLog } from '../utils/sessionStorage.js';
+import type { Command } from '../commands.js';
+import type { StreamingToolUse } from '../utils/messages.js';
+import type { ToolUseConfirm } from './permissions/PermissionRequest.js';
 import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
 import { Byline } from './design-system/Byline.js';
 import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
@@ -24,7 +27,7 @@ export function SessionPreview(t0: Props) {
     onExit,
     onSelect
   } = t0;
-  const [fullLog, setFullLog] = React.useState(null);
+  const [fullLog, setFullLog] = React.useState<LogOption | null>(null);
   let t1;
   let t2;
   if ($[0] !== log) {
@@ -114,7 +117,7 @@ export function SessionPreview(t0: Props) {
   }
   let t8;
   if ($[14] === Symbol.for("react.memo_cache_sentinel")) {
-    t8 = [];
+    t8 = [] as Command[];
     $[14] = t8;
   } else {
     t8 = $[14];
@@ -122,7 +125,7 @@ export function SessionPreview(t0: Props) {
   let t10;
   let t9;
   if ($[15] === Symbol.for("react.memo_cache_sentinel")) {
-    t9 = [];
+    t9 = [] as ToolUseConfirm[];
     t10 = new Set();
     $[15] = t10;
     $[16] = t9;
@@ -132,7 +135,7 @@ export function SessionPreview(t0: Props) {
   }
   let t11;
   if ($[17] === Symbol.for("react.memo_cache_sentinel")) {
-    t11 = [];
+    t11 = [] as StreamingToolUse[];
     $[17] = t11;
   } else {
     t11 = $[17];

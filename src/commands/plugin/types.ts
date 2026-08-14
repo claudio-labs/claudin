@@ -16,6 +16,7 @@ export type ViewState =
       type: 'manage-plugins'
       targetPlugin?: string
       action?: 'enable' | 'disable' | 'uninstall'
+      targetMarketplace?: string
     }
   | { type: 'plugin-options'; plugin?: string; pluginId?: string }
   | { type: 'marketplace-menu' }

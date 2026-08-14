@@ -109,15 +109,15 @@ export function FileEditToolUpdatedMessage(t0: Props) {
   }
   return t8;
 }
-function _temp4(acc_0, hunk_0) {
+function _temp4(acc_0: number, hunk_0: StructuredPatchHunk) {
   return acc_0 + count(hunk_0.lines, _temp3);
 }
-function _temp3(__0) {
+function _temp3(__0: string) {
   return __0.startsWith("-");
 }
-function _temp2(acc, hunk) {
+function _temp2(acc: number, hunk: StructuredPatchHunk) {
   return acc + count(hunk.lines, _temp);
 }
-function _temp(_) {
+function _temp(_: string) {
   return _.startsWith("+");
 }

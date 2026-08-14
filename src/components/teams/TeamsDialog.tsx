@@ -384,7 +384,7 @@ function TeammateDetailView(t0: TeammateDetailViewProps) {
   const [promptExpanded, setPromptExpanded] = useState(false);
   const cycleModeShortcut = useShortcutDisplay("confirm:cycleMode", "Confirmation", "shift+tab");
   const themeColor = teammate.color ? AGENT_COLOR_TO_THEME_COLOR[teammate.color as keyof typeof AGENT_COLOR_TO_THEME_COLOR] : undefined;
-  let t1;
+  let t1: Task[];
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = [];
     $[0] = t1;
@@ -420,7 +420,7 @@ function TeammateDetailView(t0: TeammateDetailViewProps) {
   useEffect(t2, t3);
   let t4;
   if ($[6] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = input => {
+    t4 = (input: string) => {
       if (input === "p") {
         setPromptExpanded(_temp);
       }
@@ -538,10 +538,10 @@ function TeammateDetailView(t0: TeammateDetailViewProps) {
   }
   return t13;
 }
-function _temp2(task_0) {
+function _temp2(task_0: Task) {
   return <Text key={task_0.id} color={task_0.status === "completed" ? "success" : undefined}>{task_0.status === "completed" ? figures.tick : "\u25FC"}{" "}{task_0.subject}</Text>;
 }
-function _temp(prev) {
+function _temp(prev: boolean) {
   return !prev;
 }
 async function killTeammate(paneId: string, backendType: PaneBackendType | undefined, teamName: string, teammateId: string, teammateName: string, setAppState: (f: (prev: AppState) => AppState) => void): Promise<void> {

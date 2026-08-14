@@ -510,7 +510,11 @@ export async function uninstallPluginOp(
   }
   newEnabledPlugins[pluginId] = undefined
   updateSettingsForSource(settingSource, {
-    enabledPlugins: newEnabledPlugins,
+    // The zod schema (src/utils/settings/types.ts) types enabledPlugins'
+    // values as `boolean | string[]` — it doesn't model the `undefined`
+    // deletion sentinel this function's own doc comment above describes
+    // (mergeWith-detected key removal), so this boundary needs a cast.
+    enabledPlugins: newEnabledPlugins as Record<string, boolean | string[]>,
   })
 
   clearAllCaches()

@@ -85,6 +85,7 @@ import { reregisterChannelHandlerAfterReconnect } from 'src/cli/print/controlHan
 import { canBatchWith, joinPromptValues } from 'src/cli/print/promptBatching.js'
 import { proactiveModule } from 'src/cli/print/headlessOptionalModules.js'
 import type { HeadlessStreamingContext } from 'src/cli/print/streamingContext.js'
+import type { StdoutMessage } from 'src/entrypoints/sdk/controlTypes.js'
 
 const SHUTDOWN_TEAM_PROMPT = `<system-reminder>
 You are running in non-interactive mode and cannot return a response to the user until your team is shut down.
@@ -455,7 +456,7 @@ export async function runTurnLoop(
               usage: src.message.usage,
               stop_reason: src.message.stop_reason ?? held.message.stop_reason,
             },
-          })
+          } as unknown as StdoutMessage)
         }
 
         for await (const message of ask({
@@ -600,7 +601,11 @@ export async function runTurnLoop(
               output.enqueue({
                 type: 'system' as const,
                 subtype: 'files_persisted' as const,
-                files: result.files,
+                // Every entry in `result.files` came from a successful
+                // upload (see executeBYOCPersistence), where fileId is
+                // always set — PersistedFile's `file_id?` is just looser
+                // than that guarantee.
+                files: result.files as { filename: string; file_id: string }[],
                 failed: result.failed,
                 processed_at: new Date().toISOString(),
                 uuid: randomUUID(),

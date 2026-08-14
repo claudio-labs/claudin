@@ -6,8 +6,15 @@ import { getSecureStorageServiceName, CREDENTIALS_SERVICE_SUFFIX } from "./macOs
 
 const realExeca = await import("execa");
 
-// Mock execaSync
-const mockExecaSync = mock(() => ({ exitCode: 0, stdout: "" }));
+// Mock execaSync. The parameter list mirrors how every caller in
+// src/utils/secureStorage/ invokes it — `execaSync(file, args, options)` — so
+// `mockExecaSync.mock.calls[n]` is a real tuple instead of `[]`.
+type ExecaSyncCall = [
+  file: string,
+  args: readonly string[],
+  options: { input?: string },
+];
+const mockExecaSync = mock((..._args: ExecaSyncCall) => ({ exitCode: 0, stdout: "" }));
 mock.module("execa", () => ({
   execaSync: mockExecaSync,
 }));

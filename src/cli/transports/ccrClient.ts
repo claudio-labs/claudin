@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto'
+import type { BetaRawMessageStreamEvent } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import type {
   SDKPartialAssistantMessage,
   StdoutMessage,
@@ -148,9 +149,13 @@ export function accumulateStreamEvents(
   // rewrite the same entry instead of emitting one event per delta.
   const touched = new Map<string[], CoalescedStreamEvent>()
   for (const msg of buffer) {
-    switch (msg.event.type) {
+    // SDKPartialAssistantMessage['event'] is a schema placeholder typed
+    // `unknown` (src/entrypoints/sdk/coreSchemas.ts RawMessageStreamEventPlaceholder);
+    // it is really the SDK's own raw stream event union.
+    const event = msg.event as BetaRawMessageStreamEvent
+    switch (event.type) {
       case 'message_start': {
-        const id = msg.event.message.id
+        const id = event.message.id
         const prevId = state.scopeToMessage.get(scopeKey(msg))
         if (prevId) state.byMessage.delete(prevId)
         state.scopeToMessage.set(scopeKey(msg), id)
@@ -159,7 +164,7 @@ export function accumulateStreamEvents(
         break
       }
       case 'content_block_delta': {
-        if (msg.event.delta.type !== 'text_delta') {
+        if (event.delta.type !== 'text_delta') {
           out.push(msg)
           break
         }
@@ -173,8 +178,8 @@ export function accumulateStreamEvents(
           out.push(msg)
           break
         }
-        const chunks = (blocks[msg.event.index] ??= [])
-        chunks.push(msg.event.delta.text)
+        const chunks = (blocks[event.index] ??= [])
+        chunks.push(event.delta.text)
         const existing = touched.get(chunks)
         if (existing) {
           existing.event.delta.text = chunks.join('')
@@ -187,7 +192,7 @@ export function accumulateStreamEvents(
           parent_tool_use_id: msg.parent_tool_use_id,
           event: {
             type: 'content_block_delta',
-            index: msg.event.index,
+            index: event.index,
             delta: { type: 'text_delta', text: chunks.join('') },
           },
         }
@@ -745,7 +750,16 @@ export class CCRClient {
     }
     await this.flushStreamEventBuffer()
     if (message.type === 'assistant') {
-      clearStreamAccumulatorForMessage(this.streamTextAccumulator, message)
+      // SDKMessage's assistant `.message` is a schema placeholder typed
+      // `unknown` — the real value always carries `.id` per the SDK shape.
+      clearStreamAccumulatorForMessage(
+        this.streamTextAccumulator,
+        message as unknown as {
+          session_id: string
+          parent_tool_use_id: string | null
+          message: { id: string }
+        },
+      )
     }
     await this.eventUploader.enqueue(this.toClientEvent(message))
   }

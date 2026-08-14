@@ -15,7 +15,7 @@ import { PermissionPrompt, type PermissionPromptOption, type ToolAnalyticsContex
 import type { PermissionRequestProps } from '../PermissionRequest.js';
 import { PermissionRuleExplanation } from '../PermissionRuleExplanation.js';
 type SkillOptionValue = 'yes' | 'yes-exact' | 'yes-prefix' | 'no';
-export function SkillPermissionRequest(props) {
+export function SkillPermissionRequest(props: PermissionRequestProps) {
   const $ = _c(51);
   const {
     toolUseConfirm,
@@ -78,7 +78,7 @@ export function SkillPermissionRequest(props) {
   const baseOptions = t4;
   let alwaysAllowOptions;
   if ($[6] !== skill) {
-    alwaysAllowOptions = [];
+    alwaysAllowOptions = [] as PermissionPromptOption<SkillOptionValue>[];
     if (showAlwaysAllowOptions) {
       const t5 = <Text bold={true}>{skill}</Text>;
       let t6;
@@ -185,7 +185,7 @@ export function SkillPermissionRequest(props) {
   const toolAnalyticsContext = t9;
   let t10;
   if ($[24] !== onDone || $[25] !== onReject || $[26] !== skill || $[27] !== toolUseConfirm) {
-    t10 = (value, feedback) => {
+    t10 = (value: SkillOptionValue, feedback?: string) => {
       bb33: switch (value) {
         case "yes":
           {
@@ -358,7 +358,7 @@ export function SkillPermissionRequest(props) {
   }
   return t19;
 }
-function _temp(input) {
+function _temp(input: unknown): string {
   const result = SkillTool.inputSchema.safeParse(input);
   if (!result.success) {
     logError(new Error(`Failed to parse skill tool input: ${result.error.message}`));

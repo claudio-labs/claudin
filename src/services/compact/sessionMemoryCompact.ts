@@ -440,7 +440,15 @@ function createCompactionResultFromSessionMemory(
   )
   const preCompactDiscovered = extractDiscoveredToolNames(messages)
   if (preCompactDiscovered.size > 0) {
-    boundaryMarker.compactMetadata.preCompactDiscoveredTools = [
+    // preCompactDiscoveredTools is a real, actively-used field (also
+    // written in compact.ts and read in utils/toolSearch.ts) that
+    // types/message.ts's CompactMetadata is simply missing — not owned by
+    // this file, widen locally rather than touch the shared type.
+    ;(
+      boundaryMarker.compactMetadata as typeof boundaryMarker.compactMetadata & {
+        preCompactDiscoveredTools?: string[]
+      }
+    ).preCompactDiscoveredTools = [
       ...preCompactDiscovered,
     ].sort()
   }

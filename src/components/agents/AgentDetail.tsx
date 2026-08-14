@@ -56,7 +56,7 @@ export function AgentDetail(t0: Props) {
   useKeybinding("confirm:no", onBack, t3);
   let t4;
   if ($[5] !== onBack) {
-    t4 = e => {
+    t4 = (e: KeyboardEvent) => {
       if (e.key === "return") {
         e.preventDefault();
         onBack();

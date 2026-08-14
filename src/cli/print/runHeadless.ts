@@ -537,10 +537,19 @@ export async function runHeadless(
       message.type !== 'streamlined_tool_use_summary' &&
       message.type !== 'prompt_suggestion'
     ) {
+      // `message` here is `StdoutMessage` (controlTypes.ts) — a direct
+      // z.infer of the schema union, so its assistant/user arms carry
+      // `message: unknown` (APIAssistantMessagePlaceholder in
+      // coreSchemas.ts). `SDKMessage` (coreTypes.generated.ts) is the same
+      // set of arms but hand-patched to the real API message shape. The
+      // narrowing above already proves `message` isn't one of the
+      // StdoutMessage-only variants (control/stream/keep_alive/streamlined/
+      // prompt_suggestion), so this is a type-shape gap, not a real mismatch.
+      const sdkMessage = message as unknown as SDKMessage
       if (needsFullArray) {
-        messages.push(message)
+        messages.push(sdkMessage)
       }
-      lastMessage = message
+      lastMessage = sdkMessage
     }
   }
 

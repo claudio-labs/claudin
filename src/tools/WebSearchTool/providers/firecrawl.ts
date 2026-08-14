@@ -23,8 +23,17 @@ export const firecrawlProvider: SearchProvider = {
 
     const data = await app.search(query, { limit: 15 })
 
+    // The SDK's `web` array is typed as `(SearchResultWeb | Document)[]` —
+    // `Document` (scrape-endpoint reuse) has no `url` field, but a /search
+    // call's `web` results are always the `SearchResultWeb` shape in
+    // practice.
+    const webResults = (data.web ?? []) as {
+      url: string
+      title?: string
+      description?: string
+    }[]
     const hits = applyDomainFilters(
-      (data.web ?? []).map((r: { url: string; title?: string; description?: string }) => ({
+      webResults.map(r => ({
         title: r.title ?? r.url,
         url: r.url,
         description: r.description,

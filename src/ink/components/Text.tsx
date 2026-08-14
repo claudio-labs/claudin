@@ -2,6 +2,21 @@ import { c as _c } from "react-compiler-runtime";
 import type { ReactNode } from 'react';
 import React from 'react';
 import type { Color, Styles, TextStyles } from '../styles.js';
+
+// 'ink-text' is a real host element recognized by the renderer. tsconfig
+// uses jsx:"react-jsx" (automatic runtime), which resolves the JSX namespace
+// from the "react" module's own exported JSX — NOT the true global JSX
+// namespace, so the shared src/ink/global.d.ts's
+// `declare global { namespace JSX {...} }` augmentation is a silent no-op
+// here (same latent bug documented in RawAnsi.tsx). The augmentation has to
+// target "react"'s own JSX namespace.
+declare module 'react' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'ink-text': Record<string, unknown>;
+    }
+  }
+}
 type BaseProps = {
   /**
    * Change text color. Accepts a raw color value (rgb, hex, ansi).

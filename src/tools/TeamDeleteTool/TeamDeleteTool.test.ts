@@ -29,7 +29,7 @@ function ctxWithNoTeam(): {
 describe('TeamDeleteTool', () => {
   test('shouldDefer is true and userFacingName is empty', () => {
     expect(TeamDeleteTool.shouldDefer).toBe(true)
-    expect(TeamDeleteTool.userFacingName()).toBe('')
+    expect(TeamDeleteTool.userFacingName(undefined)).toBe('')
   })
 
   test('isEnabled() requires the agent-teams opt-in env or flag', () => {
@@ -49,7 +49,7 @@ describe('TeamDeleteTool', () => {
 
   test('call() is a no-op when no team context exists', async () => {
     const { ctx, state } = ctxWithNoTeam()
-    const { data } = await TeamDeleteTool.call({} as never, ctx)
+    const { data } = await TeamDeleteTool.call({} as never, ctx, {} as never, {} as never)
     expect(data.success).toBe(true)
     expect(data.message).toBe('No team name found, nothing to clean up')
     expect(data.team_name).toBeUndefined()

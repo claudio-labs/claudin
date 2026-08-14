@@ -32,7 +32,12 @@ import {
 import type { SessionId } from '../../types/ids.js'
 
 type Block = Record<string, unknown>
-type Msg = { role?: string; message?: { role?: string; content?: unknown }; content?: unknown }
+type Msg = {
+  type?: string
+  role?: string
+  message?: { role?: string; content?: unknown }
+  content?: unknown
+}
 
 beforeEach(() => {
   _resetAllClippedIdsForTesting()

@@ -80,7 +80,6 @@ describe('CronCreateTool', () => {
   test('validateInput rejects malformed cron expression', async () => {
     const result = await CronCreateTool.validateInput?.(
       { cron: 'not a cron', prompt: 'p' } as never,
-      {} as never,
     )
     expect(result?.result).toBe(false)
     if (result && result.result === false) {
@@ -92,7 +91,6 @@ describe('CronCreateTool', () => {
     // Feb 30 never exists
     const result = await CronCreateTool.validateInput?.(
       { cron: '0 0 30 2 *', prompt: 'p' } as never,
-      {} as never,
     )
     expect(result?.result).toBe(false)
     if (result && result.result === false) {
@@ -103,7 +101,6 @@ describe('CronCreateTool', () => {
   test('validateInput passes for a sound cron expression', async () => {
     const result = await CronCreateTool.validateInput?.(
       { cron: '*/5 * * * *', prompt: 'p' } as never,
-      {} as never,
     )
     expect(result?.result).toBe(true)
   })
@@ -117,7 +114,6 @@ describe('CronCreateTool', () => {
         recurring: true,
         durable: false,
       } as never,
-      {} as never,
     )
     expect(typeof data.id).toBe('string')
     expect(data.id.length).toBeGreaterThan(0)

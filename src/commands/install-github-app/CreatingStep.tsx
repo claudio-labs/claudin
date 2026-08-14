@@ -21,7 +21,7 @@ export function CreatingStep(t0: CreatingStepProps) {
     selectedWorkflows
   } = t0;
   const skipWorkflow = t1 === undefined ? false : t1;
-  let t2;
+  let t2: string[];
   if ($[0] !== secretExists || $[1] !== secretName || $[2] !== selectedWorkflows || $[3] !== skipWorkflow || $[4] !== useExistingSecret) {
     t2 = skipWorkflow ? ["Getting repository information", secretExists && useExistingSecret ? "Using existing API key secret" : `Setting up ${secretName} secret`] : ["Getting repository information", "Creating branch", selectedWorkflows.length > 1 ? "Creating workflow files" : "Creating workflow file", secretExists && useExistingSecret ? "Using existing API key secret" : `Setting up ${secretName} secret`, "Opening pull request page"];
     $[0] = secretExists;

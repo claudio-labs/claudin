@@ -6,6 +6,7 @@ import { isCoordinatorMode } from 'src/coordinator/coordinatorMode.js';
 import { useEffectEventCompat } from 'src/hooks/useEffectEventCompat.js';
 import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
 import { useAppState, useSetAppState } from 'src/state/AppState.js';
+import type { AppState } from 'src/state/AppStateStore.js';
 import { enterTeammateView, exitTeammateView } from 'src/state/teammateViewHelpers.js';
 import type { ToolUseContext } from 'src/Tool.js';
 import { DreamTask, type DreamTaskState } from 'src/tasks/DreamTask/DreamTask.js';
@@ -101,6 +102,9 @@ type ListItem = {
   type: 'leader';
   label: string;
   status: 'running';
+  // The compiled Item memo reads item.task unconditionally as a cache key;
+  // for the leader row there is no task behind it.
+  task?: undefined;
 };
 
 // WORKFLOW_SCRIPTS is internal-only (build_flags.yaml). Static imports would leak
@@ -130,9 +134,9 @@ export function BackgroundTasksDialog({
   toolUseContext,
   initialDetailTaskId
 }: Props): React.ReactNode {
-  const tasks = useAppState(s => s.tasks);
-  const foregroundedTaskId = useAppState(s_0 => s_0.foregroundedTaskId);
-  const showSpinnerTree = useAppState(s_1 => s_1.expandedView) === 'teammates';
+  const tasks = useAppState((s: AppState) => s.tasks);
+  const foregroundedTaskId = useAppState((s_0: AppState) => s_0.foregroundedTaskId);
+  const showSpinnerTree = useAppState((s_1: AppState) => s_1.expandedView) === 'teammates';
   const setAppState = useSetAppState();
   const killAgentsShortcut = useShortcutDisplay('chat:killAgents', 'Chat', 'ctrl+x ctrl+k');
   const typedTasks = tasks as Record<string, TaskState> | undefined;
@@ -389,7 +393,7 @@ export function BackgroundTasksDialog({
         } : undefined} key={`teammate-${task_0.id}`} />;
       case 'local_workflow':
         if (!WorkflowDetailDialog) return null;
-        return <WorkflowDetailDialog workflow={task_0} onDone={onDone} onKill={task_0.status === 'running' && killWorkflowTask ? () => killWorkflowTask(task_0.id, setAppState) : undefined} onSkipAgent={task_0.status === 'running' && skipWorkflowAgent ? agentId => skipWorkflowAgent(task_0.id, agentId, setAppState) : undefined} onRetryAgent={task_0.status === 'running' && retryWorkflowAgent ? agentId_0 => retryWorkflowAgent(task_0.id, agentId_0, setAppState) : undefined} onBack={goBackToList} key={`workflow-${task_0.id}`} />;
+        return <WorkflowDetailDialog workflow={task_0} onDone={onDone} onKill={task_0.status === 'running' && killWorkflowTask ? () => killWorkflowTask(task_0.id, setAppState) : undefined} onSkipAgent={task_0.status === 'running' && skipWorkflowAgent ? (agentId: string) => skipWorkflowAgent(task_0.id, agentId, setAppState) : undefined} onRetryAgent={task_0.status === 'running' && retryWorkflowAgent ? (agentId_0: string) => retryWorkflowAgent(task_0.id, agentId_0, setAppState) : undefined} onBack={goBackToList} key={`workflow-${task_0.id}`} />;
       case 'monitor_mcp':
         if (!MonitorMcpDetailDialog) return null;
         return <MonitorMcpDetailDialog task={task_0} onKill={task_0.status === 'running' && killMonitorMcp ? () => killMonitorMcp(task_0.id, setAppState) : undefined} onBack={goBackToList} key={`monitor-mcp-${task_0.id}`} />;
@@ -548,9 +552,19 @@ function toListItem(task: BackgroundTaskState): ListItem {
         status: task.status,
         task
       };
+    default:
+      // LocalWorkflowTaskState resolves to `any` via the LocalWorkflowTask
+      // stub module (feature('AGENT_WORKFLOWS') source not mirrored in this
+      // fork), which defeats switch exhaustiveness on task.type even though
+      // every real BackgroundTaskState variant is handled above.
+      throw new Error(`toListItem: unhandled task type ${String((task as { type?: unknown }).type)}`);
   }
 }
-function Item(t0) {
+type ItemProps = {
+  item: ListItem;
+  isSelected: boolean;
+};
+function Item(t0: ItemProps) {
   const $ = _c(14);
   const {
     item,
@@ -610,7 +624,11 @@ function Item(t0) {
   }
   return t8;
 }
-function TeammateTaskGroups(t0) {
+type TeammateTaskGroupsProps = {
+  teammateTasks: ListItem[];
+  currentSelectionId?: string;
+};
+function TeammateTaskGroups(t0: TeammateTaskGroupsProps) {
   const $ = _c(3);
   const {
     teammateTasks,
@@ -620,7 +638,9 @@ function TeammateTaskGroups(t0) {
   if ($[0] !== currentSelectionId || $[1] !== teammateTasks) {
     const leaderItems = teammateTasks.filter(_temp);
     const teammateItems = teammateTasks.filter(_temp2);
-    const teams = new Map();
+    const teams = new Map<string, Extract<ListItem, {
+      type: 'in_process_teammate';
+    }>[]>();
     for (const item of teammateItems) {
       const teamName = item.task.identity.teamName;
       const group = teams.get(teamName);
@@ -644,9 +664,13 @@ function TeammateTaskGroups(t0) {
   }
   return t1;
 }
-function _temp2(i_0) {
+function _temp2(i_0: ListItem): i_0 is Extract<ListItem, {
+  type: 'in_process_teammate';
+}> {
   return i_0.type === "in_process_teammate";
 }
-function _temp(i) {
+function _temp(i: ListItem): i is Extract<ListItem, {
+  type: 'leader';
+}> {
   return i.type === "leader";
 }

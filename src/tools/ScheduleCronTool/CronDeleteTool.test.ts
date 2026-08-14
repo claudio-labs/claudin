@@ -55,7 +55,6 @@ describe('CronDeleteTool', () => {
   test('validateInput rejects unknown id', async () => {
     const result = await CronDeleteTool.validateInput?.(
       { id: 'nope' } as never,
-      {} as never,
     )
     expect(result?.result).toBe(false)
     if (result && result.result === false) {
@@ -72,7 +71,6 @@ describe('CronDeleteTool', () => {
     })
     const result = await CronDeleteTool.validateInput?.(
       { id: 'sess-1' } as never,
-      {} as never,
     )
     expect(result?.result).toBe(true)
   })
@@ -88,7 +86,6 @@ describe('CronDeleteTool', () => {
 
     const { data } = await CronDeleteTool.call(
       { id: 'sess-2' } as never,
-      {} as never,
     )
     expect(data.id).toBe('sess-2')
     expect(getSessionCronTasks().some(t => t.id === 'sess-2')).toBe(false)

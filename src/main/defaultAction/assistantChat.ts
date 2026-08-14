@@ -11,10 +11,14 @@ import { exitWithError, exitWithMessage, renderAndRun } from '../../interactiveH
 import { createRemoteSessionConfig } from '../../remote/RemoteSessionManager.js';
 import { launchRepl } from '../../replLauncher.js';
 import { type AppState } from '../../state/AppStateStore.js';
+import type { AgentDefinition } from '../../tools/AgentTool/loadAgentsDir.js';
 import { gracefulShutdown } from '../../utils/gracefulShutdown.js';
+import type { FpsMetrics } from '../../utils/fpsTracker.js';
 import { createSystemMessage } from '../../utils/messages.js';
 import { prepareApiRequest } from '../../utils/teleport/api.js';
+import type { ThinkingConfig } from '../../utils/thinking.js';
 import type { BootContext } from '../bootContext.js';
+import type { StatsStore } from '../../context/stats.js';
 
 export type AssistantChatBranchDeps = {
   root: Root;
@@ -22,9 +26,9 @@ export type AssistantChatBranchDeps = {
   debug: boolean;
   debugToStderr: boolean;
   commands: Parameters<typeof filterCommandsForRemoteMode>[0];
-  ide: unknown;
-  mainThreadAgentDefinition: unknown;
-  thinkingConfig: unknown;
+  ide: boolean | undefined;
+  mainThreadAgentDefinition: AgentDefinition | undefined;
+  thinkingConfig: ThinkingConfig;
   getFpsMetrics: () => FpsMetrics | undefined;
   stats: StatsStore | undefined;
   initialState: AppState;

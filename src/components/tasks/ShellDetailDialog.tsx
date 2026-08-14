@@ -3,6 +3,7 @@ import React, { Suspense, use, useDeferredValue, useEffect, useState } from 'rea
 import type { DeepImmutable } from 'src/types/utils.js';
 import type { CommandResultDisplay } from '../../commands.js';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
+import type { ExitState } from '../../hooks/useExitOnCtrlCDWithKeybindings.js';
 import type { KeyboardEvent } from '../../ink/events/keyboard-event.js';
 import { Box, Text } from '../../ink.js';
 import { useKeybindings } from '../../keybindings/useKeybinding.js';
@@ -124,7 +125,7 @@ export function ShellDetailDialog(t0: Props) {
   useKeybindings(t5, t6);
   let t7;
   if ($[12] !== onBack || $[13] !== onDone || $[14] !== onKillShell || $[15] !== shell.status) {
-    t7 = e => {
+    t7 = (e: KeyboardEvent) => {
       if (e.key === " ") {
         e.preventDefault();
         onDone("Shell details dismissed", {
@@ -164,7 +165,7 @@ export function ShellDetailDialog(t0: Props) {
   const t9 = isMonitor ? "Monitor details" : "Shell details";
   let t10;
   if ($[19] !== onBack || $[20] !== onKillShell || $[21] !== shell.status) {
-    t10 = exitState => exitState.pending ? <Text>Press {exitState.keyName} again to exit</Text> : <Byline>{onBack && <KeyboardShortcutHint shortcut={"\u2190"} action="go back" />}<KeyboardShortcutHint shortcut="Esc/Enter/Space" action="close" />{shell.status === "running" && onKillShell && <KeyboardShortcutHint shortcut="x" action="stop" />}</Byline>;
+    t10 = (exitState: ExitState) => exitState.pending ? <Text>Press {exitState.keyName} again to exit</Text> : <Byline>{onBack && <KeyboardShortcutHint shortcut={"\u2190"} action="go back" />}<KeyboardShortcutHint shortcut="Esc/Enter/Space" action="close" />{shell.status === "running" && onKillShell && <KeyboardShortcutHint shortcut="x" action="stop" />}</Byline>;
     $[19] = onBack;
     $[20] = onKillShell;
     $[21] = shell.status;
@@ -294,7 +295,7 @@ export function ShellDetailDialog(t0: Props) {
   }
   return t26;
 }
-function _temp(setOutputPromise_0, shell_0) {
+function _temp(setOutputPromise_0: React.Dispatch<React.SetStateAction<Promise<TaskOutputResult>>>, shell_0: DeepImmutable<LocalShellTaskState>) {
   return setOutputPromise_0(getTaskOutput(shell_0));
 }
 type ShellOutputContentProps = {
@@ -398,6 +399,6 @@ function ShellOutputContent(t0: ShellOutputContentProps) {
   }
   return t7;
 }
-function _temp2(line_0, i_1) {
+function _temp2(line_0: string, i_1: number) {
   return <Text key={i_1} wrap="truncate-end">{line_0}</Text>;
 }

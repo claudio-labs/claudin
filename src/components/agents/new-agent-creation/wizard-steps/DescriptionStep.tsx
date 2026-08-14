@@ -17,10 +17,10 @@ export function DescriptionStep() {
     goBack,
     updateWizardData,
     wizardData
-  } = useWizard();
+  } = useWizard<AgentWizardData>();
   const [whenToUse, setWhenToUse] = useState(wizardData.whenToUse || "");
   const [cursorOffset, setCursorOffset] = useState(whenToUse.length);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = {
@@ -58,7 +58,7 @@ export function DescriptionStep() {
   useKeybinding("chat:externalEditor", handleExternalEditor, t2);
   let t3;
   if ($[4] !== goNext || $[5] !== updateWizardData) {
-    t3 = value => {
+    t3 = (value: string) => {
       const trimmedValue = value.trim();
       if (!trimmedValue) {
         setError("Description is required");

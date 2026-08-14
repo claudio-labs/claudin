@@ -39,7 +39,7 @@ export function SelectMatcherMode(t0: Props) {
   if ($[0] !== hooksByEventAndMatcher || $[1] !== matchersForSelectedEvent || $[2] !== selectedEvent) {
     let t2;
     if ($[4] !== hooksByEventAndMatcher || $[5] !== selectedEvent) {
-      t2 = matcher => {
+      t2 = (matcher: string): MatcherWithSource => {
         const hooks = hooksByEventAndMatcher[selectedEvent]?.[matcher] || [];
         const sources = Array.from(new Set(hooks.map(_temp)));
         return {
@@ -95,7 +95,7 @@ export function SelectMatcherMode(t0: Props) {
   }
   let t4;
   if ($[14] !== onSelect) {
-    t4 = value => {
+    t4 = (value: string) => {
       onSelect(value);
     };
     $[14] = onSelect;
@@ -126,7 +126,7 @@ export function SelectMatcherMode(t0: Props) {
   }
   return t6;
 }
-function _temp3(item) {
+function _temp3(item: MatcherWithSource) {
   const sourceText = item.sources.map(hookSourceInlineDisplayString).join(", ");
   const matcherLabel = item.matcher || "(all)";
   return {
@@ -138,6 +138,6 @@ function _temp3(item) {
 function _temp2() {
   return <Text>Esc to go back</Text>;
 }
-function _temp(h) {
+function _temp(h: IndividualHookConfig) {
   return h.source;
 }

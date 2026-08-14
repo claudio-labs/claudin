@@ -2,6 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import React, { useCallback, useState } from 'react';
 import { Dialog } from '../../components/design-system/Dialog.js';
+import type { Key } from '../../ink/events/input-event.js';
 import { stringWidth } from '../../ink/stringWidth.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- raw text input for config dialog
 import { Box, Text, useInput } from '../../ink.js';
@@ -73,7 +74,7 @@ export function PluginOptionsDialog(t0: Props) {
   const fields = t1;
   let t2;
   if ($[2] !== configSchema || $[3] !== initialValues) {
-    t2 = key => {
+    t2 = (key: string) => {
       if (configSchema[key]?.sensitive === true) {
         return "";
       }
@@ -88,7 +89,7 @@ export function PluginOptionsDialog(t0: Props) {
   }
   const initialFor = t2;
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0);
-  let t3;
+  let t3: Record<string, string>;
   if ($[5] === Symbol.for("react.memo_cache_sentinel")) {
     t3 = {};
     $[5] = t3;
@@ -96,7 +97,7 @@ export function PluginOptionsDialog(t0: Props) {
     t3 = $[5];
   }
   const [values, setValues] = useState(t3);
-  let t4;
+  let t4: () => string;
   if ($[6] !== fields[0] || $[7] !== initialFor) {
     t4 = () => fields[0] ? initialFor(fields[0]) : "";
     $[6] = fields[0];
@@ -198,7 +199,7 @@ export function PluginOptionsDialog(t0: Props) {
   useKeybindings(t8, t9);
   let t10;
   if ($[30] === Symbol.for("react.memo_cache_sentinel")) {
-    t10 = (char, key_0) => {
+    t10 = (char: string, key_0: Key) => {
       if (key_0.backspace || key_0.delete) {
         setCurrentInput(_temp3);
         return;
@@ -345,12 +346,12 @@ export function PluginOptionsDialog(t0: Props) {
   }
   return t26;
 }
-function _temp3(prev_2) {
+function _temp3(prev_2: string) {
   return prev_2.slice(0, -1);
 }
-function _temp2(prev_1) {
+function _temp2(prev_1: number) {
   return prev_1 + 1;
 }
-function _temp(prev_0) {
+function _temp(prev_0: number) {
   return prev_0 + 1;
 }

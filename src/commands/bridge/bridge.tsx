@@ -14,7 +14,7 @@ import { useRegisterOverlay } from '../../context/overlayContext.js';
 import { Box, Text } from '../../ink.js';
 import { useKeybindings } from '../../keybindings/useKeybinding.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
-import { useAppState, useSetAppState } from '../../state/AppState.js';
+import { type AppState, useAppState, useSetAppState } from '../../state/AppState.js';
 import type { ToolUseContext } from '../../Tool.js';
 import type { LocalJSXCommandContext, LocalJSXCommandOnDone } from '../../types/command.js';
 import { logForDebugging } from '../../utils/debug.js';
@@ -35,7 +35,7 @@ type Props = {
  * Running /remote-control when already connected shows a dialog with the session
  * URL and options to disconnect or continue.
  */
-function BridgeToggle(t0) {
+function BridgeToggle(t0: Props) {
   const $ = _c(10);
   const {
     onDone,
@@ -117,7 +117,7 @@ function BridgeToggle(t0) {
   } else {
     t1 = $[6];
   }
-  let t2;
+  let t2: React.DependencyList;
   if ($[7] === Symbol.for("react.memo_cache_sentinel")) {
     t2 = [];
     $[7] = t2;
@@ -143,16 +143,16 @@ function BridgeToggle(t0) {
  * Dialog shown when /remote-control is used while the bridge is already connected.
  * Shows the session URL and lets the user disconnect or continue.
  */
-function _temp3(s_1) {
+function _temp3(s_1: AppState) {
   return s_1.replBridgeOutboundOnly;
 }
-function _temp2(s_0) {
+function _temp2(s_0: AppState) {
   return s_0.replBridgeEnabled;
 }
-function _temp(s) {
+function _temp(s: AppState) {
   return s.replBridgeConnected;
 }
-function BridgeDisconnectDialog(t0) {
+function BridgeDisconnectDialog(t0: Pick<Props, 'onDone'>) {
   const $ = _c(61);
   const {
     onDone
@@ -176,8 +176,7 @@ function BridgeDisconnectDialog(t0) {
       }
       qrToString(displayUrl, {
         type: "utf8",
-        errorCorrectionLevel: "L",
-        small: true
+        errorCorrectionLevel: "L"
       }).then(setQrText).catch(() => setQrText(""));
     };
     t2 = [showQR, displayUrl];
@@ -429,22 +428,22 @@ function BridgeDisconnectDialog(t0) {
  * cache is stale, so a user who just became entitled (e.g. upgraded to Max,
  * or the flag just launched) gets an accurate result on the first try.
  */
-function _temp10(line, i_1) {
+function _temp10(line: string, i_1: number) {
   return <Text key={i_1}>{line}</Text>;
 }
-function _temp1(l) {
+function _temp1(l: string) {
   return l.length > 0;
 }
-function _temp0(i_0) {
+function _temp0(i_0: number) {
   return (i_0 - 1 + 3) % 3;
 }
-function _temp9(i) {
+function _temp9(i: number) {
   return (i + 1) % 3;
 }
-function _temp8(prev_0) {
+function _temp8(prev_0: boolean) {
   return !prev_0;
 }
-function _temp7(prev) {
+function _temp7(prev: AppState): AppState {
   if (!prev.replBridgeEnabled) {
     return prev;
   }
@@ -455,13 +454,13 @@ function _temp7(prev) {
     replBridgeOutboundOnly: false
   };
 }
-function _temp6(s_1) {
+function _temp6(s_1: AppState) {
   return s_1.replBridgeSessionActive;
 }
-function _temp5(s_0) {
+function _temp5(s_0: AppState) {
   return s_0.replBridgeConnectUrl;
 }
-function _temp4(s) {
+function _temp4(s: AppState) {
   return s.replBridgeSessionUrl;
 }
 async function checkBridgePrerequisites(): Promise<string | null> {

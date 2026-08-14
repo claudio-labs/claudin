@@ -1,6 +1,12 @@
 import type { RGBColor as RGBColorString } from '../../ink/styles.js'
 import type { Theme } from '../../utils/theme.js'
-import type { RGBColor as RGBColorType } from './types.js'
+
+/**
+ * The spinner's working colour representation: 8 bits per channel, kept
+ * separate from ink's `RGBColor` string so the interpolation math below can
+ * operate on numbers and only serialise once, in `toRGBColor`.
+ */
+export type RGBColorType = { r: number; g: number; b: number }
 
 export function getDefaultCharacters(): string[] {
   // Claudin's spinner: a dense braille orbit that reads as a solid orb turning

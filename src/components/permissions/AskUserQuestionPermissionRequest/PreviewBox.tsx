@@ -36,7 +36,7 @@ const BOX_CHARS = {
  * Truncates content that exceeds maxLines with an indicator.
  * The parent component should pass maxLines based on its available height budget.
  */
-export function PreviewBox(props) {
+export function PreviewBox(props: PreviewBoxProps) {
   const $ = _c(4);
   const settings = useSettings();
   if (settings.syntaxHighlightingDisabled) {
@@ -60,9 +60,9 @@ export function PreviewBox(props) {
   }
   return t0;
 }
-function PreviewBoxWithHighlight(props) {
+function PreviewBoxWithHighlight(props: PreviewBoxProps) {
   const $ = _c(4);
-  let t0;
+  let t0: Promise<CliHighlight | null>;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = getCliHighlightPromise();
     $[0] = t0;
@@ -81,7 +81,10 @@ function PreviewBoxWithHighlight(props) {
   }
   return t1;
 }
-function PreviewBoxBody(t0: PreviewBoxProps) {
+type PreviewBoxBodyProps = PreviewBoxProps & {
+  highlight: CliHighlight | null;
+};
+function PreviewBoxBody(t0: PreviewBoxBodyProps) {
   const $ = _c(34);
   const {
     content,
@@ -161,7 +164,7 @@ function PreviewBoxBody(t0: PreviewBoxProps) {
     }
     let t8;
     if ($[21] !== innerWidth) {
-      t8 = (line_0, index) => {
+      t8 = (line_0: string, index: number) => {
         const lineWidth = stringWidth(line_0);
         const displayLine = lineWidth > innerWidth ? sliceAnsi(line_0, 0, innerWidth) : line_0;
         const padding = " ".repeat(Math.max(0, innerWidth - stringWidth(displayLine)));
@@ -223,6 +226,6 @@ function PreviewBoxBody(t0: PreviewBoxProps) {
   }
   return t8;
 }
-function _temp(line) {
+function _temp(line: string) {
   return stringWidth(line);
 }

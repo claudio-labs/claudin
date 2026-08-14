@@ -21,7 +21,8 @@ describe('getProjectTotals', () => {
     // leaks into totalDuration and flakes the exact `toBe(26_000)` assertion.
     nowSpy = spyOn(Date, 'now').mockReturnValue(1_700_000_000_000)
     resetCostState()
-    saveCurrentProjectConfig(() => ({
+    saveCurrentProjectConfig(current => ({
+      ...current,
       cumulativeCost: 0,
       cumulativeAPIDuration: 0,
       cumulativeDuration: 0,
@@ -51,7 +52,8 @@ describe('getProjectTotals', () => {
   test('folds `last*` from a different session into totals on read', () => {
     // Simulate state on disk from a previous session that exited but never
     // got its last* folded into cumulative*.
-    saveCurrentProjectConfig(() => ({
+    saveCurrentProjectConfig(current => ({
+      ...current,
       cumulativeCost: 0.5,
       cumulativeAPIDuration: 10_000,
       cumulativeDuration: 20_000,
@@ -86,7 +88,7 @@ describe('getProjectTotals', () => {
     }))
 
     switchSession(asSessionId('current-session'), null)
-    expect(getSessionId()).toBe('current-session')
+    expect(getSessionId()).toBe(asSessionId('current-session'))
 
     const totals = getProjectTotals()
     expect(totals.totalCost).toBeCloseTo(0.75, 5)
@@ -106,7 +108,8 @@ describe('getProjectTotals', () => {
 
   test('does NOT double-count `last*` when it belongs to the current session', () => {
     switchSession(asSessionId('session-A'), null)
-    saveCurrentProjectConfig(() => ({
+    saveCurrentProjectConfig(current => ({
+      ...current,
       cumulativeCost: 0.5,
       lastCost: 0.25,
       lastSessionId: 'session-A',

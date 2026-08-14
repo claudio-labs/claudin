@@ -10,6 +10,9 @@ type TaskStatusTextProps = {
   label?: string;
   suffix?: string;
 };
+type ShellProgressProps = {
+  shell: DeepImmutable<LocalShellTaskState>;
+};
 export function TaskStatusText(t0: TaskStatusTextProps) {
   const $ = _c(4);
   const {
@@ -31,7 +34,7 @@ export function TaskStatusText(t0: TaskStatusTextProps) {
   }
   return t1;
 }
-export function ShellProgress(t0: TaskStatusTextProps) {
+export function ShellProgress(t0: ShellProgressProps) {
   const $ = _c(4);
   const {
     shell

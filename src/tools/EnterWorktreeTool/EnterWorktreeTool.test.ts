@@ -5,7 +5,7 @@ import { EnterWorktreeTool } from './EnterWorktreeTool.js'
 describe('EnterWorktreeTool', () => {
   test('shouldDefer is true and the user-facing name is human-friendly', () => {
     expect(EnterWorktreeTool.shouldDefer).toBe(true)
-    expect(EnterWorktreeTool.userFacingName()).toBe('Creating worktree')
+    expect(EnterWorktreeTool.userFacingName(undefined)).toBe('Creating worktree')
   })
 
   test('input schema accepts empty body and valid slug', () => {

@@ -78,7 +78,7 @@ async function checkOllamaProfile(baseUrl: string, model: string): Promise<Check
   const out: CheckResult[] = []
   const readiness: OllamaGenerationReadiness = await probeOllamaGenerationReadiness({
     baseUrl,
-    probeModel: model,
+    model,
   })
   if (readiness.state === 'unreachable') {
     out.push(fail('Ollama reachability', `Could not reach ${redactUrlForDisplay(baseUrl)}.`))

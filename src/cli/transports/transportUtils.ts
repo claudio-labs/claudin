@@ -2,7 +2,6 @@ import { URL } from 'url'
 import { isEnvTruthy } from '../../utils/envUtils.js'
 import { HybridTransport } from './HybridTransport.js'
 import { SSETransport } from './SSETransport.js'
-import type { Transport } from './Transport.js'
 import { WebSocketTransport } from './WebSocketTransport.js'
 
 /**
@@ -18,7 +17,12 @@ export function getTransportForUrl(
   headers: Record<string, string> = {},
   sessionId?: string,
   refreshHeaders?: () => Record<string, string>,
-): Transport {
+// Transport.ts (the named `Transport` interface these classes implement)
+// was never received by this fork (build-time missing-module stub,
+// src/cli/transports/Transport.d.ts, default-export-only) — return the
+// real union of what this function actually constructs instead of
+// touching the shared stub declaration.
+): SSETransport | HybridTransport | WebSocketTransport {
   if (isEnvTruthy(process.env.CLAUDE_CODE_USE_CCR_V2)) {
     // v2: SSE for reads, HTTP POST for writes
     // --sdk-url is the session URL (.../sessions/{id});

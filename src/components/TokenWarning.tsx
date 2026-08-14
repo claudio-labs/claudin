@@ -11,6 +11,9 @@ type Props = {
   tokenUsage: number;
   model: string;
 };
+type CollapseLabelProps = {
+  upgradeMessage: ReturnType<typeof getUpgradeMessage>;
+};
 
 /**
  * Live collapse progress: "x / y summarized". Sub-component so
@@ -18,7 +21,7 @@ type Props = {
  * (hooks-in-conditionals would violate React rules). The parent only
  * renders this when feature('CONTEXT_COLLAPSE') + isContextCollapseEnabled().
  */
-function CollapseLabel(t0) {
+function CollapseLabel(t0: CollapseLabelProps) {
   const $ = _c(8);
   const {
     upgradeMessage
@@ -34,7 +37,7 @@ function CollapseLabel(t0) {
     getStats,
     subscribe
   } = t1 as typeof import('../services/contextCollapse/index.js');
-  let t2;
+  let t2: () => string;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
     t2 = () => {
       const s = getStats();

@@ -1681,7 +1681,11 @@ export function hasOpusAccess(): boolean {
 export function getSubscriptionType(): SubscriptionType | null {
   // Check for mock subscription type first (ANT-only testing)
   if (shouldUseMockSubscription()) {
-    return getMockSubscriptionType()
+    // getMockSubscriptionType is the internal-only ANT scenario simulator;
+    // the OSS build keeps it as an always-`null` stub (see mockRateLimits.ts)
+    // whose local SubscriptionType alias is just `string`, wider than the
+    // real oauth SubscriptionType literal union.
+    return getMockSubscriptionType() as SubscriptionType | null
   }
 
   if (!isAnthropicAuthEnabled()) {
@@ -1973,7 +1977,7 @@ export async function validateForceLoginOrg(): Promise<OrgValidationResult> {
     source === 'CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR'
 
   const profile = await getOauthProfileFromOauthToken(tokens.accessToken)
-  if (!profile) {
+  if (!profile?.organization) {
     // Fail closed — we can't verify the org
     return {
       valid: false,

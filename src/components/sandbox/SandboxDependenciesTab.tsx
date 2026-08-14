@@ -102,18 +102,18 @@ export function SandboxDependenciesTab(t0: Props) {
   }
   return t5;
 }
-function _temp5(err) {
+function _temp5(err: string) {
   return <Text key={err} color="error">{err}</Text>;
 }
-function _temp4(e_2) {
+function _temp4(e_2: string) {
   return !e_2.includes("ripgrep") && !e_2.includes("bwrap") && !e_2.includes("socat");
 }
-function _temp3(e_1) {
+function _temp3(e_1: string) {
   return e_1.includes("socat");
 }
-function _temp2(e_0) {
+function _temp2(e_0: string) {
   return e_0.includes("bwrap");
 }
-function _temp(e) {
+function _temp(e: string) {
   return e.includes("ripgrep");
 }

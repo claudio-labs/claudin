@@ -6,6 +6,7 @@ import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { stringWidth } from '../../ink/stringWidth.js';
 import { Box, Text } from '../../ink.js';
 import { useAppState } from '../../state/AppState.js';
+import type { AppState } from '../../state/AppStateStore.js';
 import { getEffortSuffix } from '../../utils/effort.js';
 import { truncate } from '../../utils/format.js';
 import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js';
@@ -153,9 +154,9 @@ export function CondensedLogo() {
   }
   return t12;
 }
-function _temp2(s_0) {
+function _temp2(s_0: AppState) {
   return s_0.effortValue;
 }
-function _temp(s) {
+function _temp(s: AppState) {
   return s.agent;
 }

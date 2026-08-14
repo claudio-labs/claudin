@@ -1,5 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
+import type { ExitState } from '../../hooks/useExitOnCtrlCDWithKeybindings.js';
 import { Box, Text } from '../../ink.js';
 import { extractMcpToolDisplayName, getMcpDisplayName } from '../../services/mcp/mcpStringUtils.js';
 import type { Tool } from '../../Tool.js';
@@ -206,6 +207,6 @@ export function MCPToolDetailView(t0: Props) {
   }
   return t18;
 }
-function _temp(exitState) {
+function _temp(exitState: ExitState) {
   return exitState.pending ? <Text>Press {exitState.keyName} again to exit</Text> : <ConfigurableShortcutHint action="confirm:no" context="Confirmation" fallback="Esc" description="go back" />;
 }

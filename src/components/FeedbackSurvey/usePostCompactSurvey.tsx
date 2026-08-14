@@ -29,7 +29,9 @@ function hasMessageAfterBoundary(messages: Message[], boundaryUuid: string): boo
   }
   return false;
 }
-export function usePostCompactSurvey(messages, isLoading, t0, t1) {
+export function usePostCompactSurvey(messages: Message[], isLoading: boolean, t0?: boolean, t1?: {
+  enabled?: boolean;
+}) {
   const $ = _c(23);
   const hasActivePrompt = t0 === undefined ? false : t0;
   let t2;
@@ -44,16 +46,16 @@ export function usePostCompactSurvey(messages, isLoading, t0, t1) {
     enabled: t3
   } = t2;
   const enabled = t3 === undefined ? true : t3;
-  const [gateEnabled, setGateEnabled] = useState(null);
-  let t4;
+  const [gateEnabled, setGateEnabled] = useState<boolean | null>(null);
+  let t4: Set<string>;
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = new Set();
+    t4 = new Set<string>();
     $[2] = t4;
   } else {
     t4 = $[2];
   }
   const seenCompactBoundaries = useRef(t4);
-  const pendingCompactBoundaryUuid = useRef(null);
+  const pendingCompactBoundaryUuid = useRef<string | null>(null);
   const onOpen = _temp;
   const onSelect = _temp2;
   let t5;
@@ -91,7 +93,7 @@ export function usePostCompactSurvey(messages, isLoading, t0, t1) {
     t7 = $[6];
   }
   useEffect(t6, t7);
-  let t8;
+  let t8: Set<string>;
   if ($[7] !== messages) {
     t8 = new Set(messages.filter(_temp3).map(_temp4));
     $[7] = messages;
@@ -134,7 +136,7 @@ export function usePostCompactSurvey(messages, isLoading, t0, t1) {
       const newBoundaries = Array.from(currentCompactBoundaries).filter(uuid => !seenCompactBoundaries.current.has(uuid));
       if (newBoundaries.length > 0) {
         seenCompactBoundaries.current = new Set(currentCompactBoundaries);
-        pendingCompactBoundaryUuid.current = newBoundaries[newBoundaries.length - 1];
+        pendingCompactBoundaryUuid.current = newBoundaries[newBoundaries.length - 1] ?? null;
       }
     };
     t10 = [enabled, currentCompactBoundaries, state, isLoading, hasActivePrompt, gateEnabled, messages, open];
@@ -169,13 +171,13 @@ export function usePostCompactSurvey(messages, isLoading, t0, t1) {
   }
   return t11;
 }
-function _temp4(msg_0) {
+function _temp4(msg_0: Message) {
   return msg_0.uuid;
 }
-function _temp3(msg) {
+function _temp3(msg: Message) {
   return isCompactBoundaryMessage(msg);
 }
-function _temp2(appearanceId_0, selected) {
+function _temp2(appearanceId_0: string, selected: FeedbackSurveyResponse) {
   const smCompactionEnabled_0 = shouldUseSessionMemoryCompaction();
   logEvent("tengu_post_compact_survey_event", {
     event_type: "responded" as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -190,7 +192,7 @@ function _temp2(appearanceId_0, selected) {
     survey_type: "post_compact"
   });
 }
-function _temp(appearanceId) {
+function _temp(appearanceId: string) {
   const smCompactionEnabled = shouldUseSessionMemoryCompaction();
   logEvent("tengu_post_compact_survey_event", {
     event_type: "appeared" as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,

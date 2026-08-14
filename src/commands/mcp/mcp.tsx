@@ -3,12 +3,17 @@ import React, { useEffect, useRef } from 'react';
 import { MCPSettings } from '../../components/mcp/index.js';
 import { MCPReconnect } from '../../components/mcp/MCPReconnect.js';
 import { useMcpToggleEnabled } from '../../services/mcp/MCPConnectionManager.js';
-import { useAppState } from '../../state/AppState.js';
+import type { MCPServerConnection } from '../../services/mcp/types.js';
+import { type AppState, useAppState } from '../../state/AppState.js';
 import type { LocalJSXCommandOnDone } from '../../types/command.js';
 
 // TODO: This is a hack to get the context value from toggleMcpServer (useContext only works in a component)
 // Ideally, all MCP state and functions would be in global state.
-function MCPToggle(t0) {
+function MCPToggle(t0: {
+  action: 'enable' | 'disable';
+  target: string;
+  onComplete: LocalJSXCommandOnDone;
+}) {
   const $ = _c(7);
   const {
     action,
@@ -53,10 +58,10 @@ function MCPToggle(t0) {
   useEffect(t1, t2);
   return null;
 }
-function _temp2(c) {
+function _temp2(c: MCPServerConnection) {
   return c.name !== "ide";
 }
-function _temp(s) {
+function _temp(s: AppState) {
   return s.mcp.clients;
 }
 export async function call(onDone: LocalJSXCommandOnDone, _context: unknown, args?: string): Promise<React.ReactNode> {

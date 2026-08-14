@@ -144,6 +144,6 @@ export function ShellProgressMessage(t0: Props) {
   }
   return t10;
 }
-function _temp(line) {
+function _temp(line: string) {
   return line;
 }

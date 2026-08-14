@@ -21,8 +21,11 @@ type DeprecationInfo = DeprecatedModelInfo | NotDeprecatedInfo
 type DeprecationEntry = {
   /** Human-readable model name */
   modelName: string
-  /** Retirement dates by provider (null = not deprecated for that provider) */
-  retirementDates: Record<APIProvider, string | null>
+  /**
+   * Retirement dates by provider (null = not deprecated for that provider,
+   * absent = the model was never offered there).
+   */
+  retirementDates: Partial<Record<APIProvider, string | null>>
 }
 
 /**

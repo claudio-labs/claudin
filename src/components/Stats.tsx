@@ -11,7 +11,7 @@ import { applyColor } from '../ink/colorize.js';
 import { stringWidth as getStringWidth } from '../ink/stringWidth.js';
 import type { Color } from '../ink/styles.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- raw j/k/arrow stats navigation
-import { Ansi, Box, Text, useInput } from '../ink.js';
+import { Ansi, Box, type Key, Text, useInput } from '../ink.js';
 import { useKeybinding } from '../keybindings/useKeybinding.js';
 import { getGlobalConfig } from '../utils/config.js';
 import { formatDuration, formatNumber } from '../utils/format.js';
@@ -19,6 +19,7 @@ import { generateHeatmap } from '../utils/heatmap.js';
 import { renderModelName } from '../utils/model/model.js';
 import { copyAnsiToClipboard } from '../utils/screenshotClipboard.js';
 import { aggregateClaudeCodeStatsForRange, type ClaudeCodeStats, type DailyModelTokens, type StatsDateRange } from '../utils/stats.js';
+import type { ModelUsage } from 'src/entrypoints/agentSdkTypes.js';
 import { resolveThemeSetting } from '../utils/systemTheme.js';
 import { getTheme, themeColorToAnsi } from '../utils/theme.js';
 import { Pane } from './design-system/Pane.js';
@@ -51,6 +52,18 @@ const DATE_RANGE_LABELS: Record<StatsDateRange, string> = {
   all: 'All time'
 };
 const DATE_RANGE_ORDER: StatsDateRange[] = ['all', '7d', '30d'];
+type StatsTab = 'Overview' | 'Models';
+/** One `[modelName, usage]` pair out of `Object.entries(stats.modelUsage)`. */
+type ModelEntryPair = [string, ModelUsage];
+type DateRangeSelectorProps = {
+  dateRange: StatsDateRange;
+  isLoading: boolean;
+};
+type ModelsTabProps = {
+  stats: ClaudeCodeStats;
+  dateRange: StatsDateRange;
+  isLoading: boolean;
+};
 function getNextDateRange(current: StatsDateRange): StatsDateRange {
   const currentIndex = DATE_RANGE_ORDER.indexOf(current);
   return DATE_RANGE_ORDER[(currentIndex + 1) % DATE_RANGE_ORDER.length]!;
@@ -125,8 +138,8 @@ function StatsContent(t0: StatsContentProps) {
     onClose
   } = t0;
   const allTimeResult = use(allTimePromise);
-  const [dateRange, setDateRange] = useState("all");
-  let t1;
+  const [dateRange, setDateRange] = useState<StatsDateRange>("all");
+  let t1: Partial<Record<StatsDateRange, ClaudeCodeStats>>;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = {};
     $[0] = t1;
@@ -135,8 +148,8 @@ function StatsContent(t0: StatsContentProps) {
   }
   const [statsCache, setStatsCache] = useState(t1);
   const [isLoadingFiltered, setIsLoadingFiltered] = useState(false);
-  const [activeTab, setActiveTab] = useState("Overview");
-  const [copyStatus, setCopyStatus] = useState(null);
+  const [activeTab, setActiveTab] = useState<StatsTab>("Overview");
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
   let t2;
   let t3;
   if ($[1] !== dateRange || $[2] !== statsCache) {
@@ -203,7 +216,7 @@ function StatsContent(t0: StatsContentProps) {
   useKeybinding("confirm:no", handleClose, t5);
   let t6;
   if ($[8] !== activeTab || $[9] !== dateRange || $[10] !== displayStats || $[11] !== onClose) {
-    t6 = (input, key) => {
+    t6 = (input: string, key: Key) => {
       if (key.ctrl && (input === "c" || input === "d")) {
         onClose("Stats dialog dismissed", {
           display: "system"
@@ -309,10 +322,10 @@ function StatsContent(t0: StatsContentProps) {
   }
   return t12;
 }
-function _temp(prev_0) {
+function _temp(prev_0: StatsTab): StatsTab {
   return prev_0 === "Overview" ? "Models" : "Overview";
 }
-function DateRangeSelector(t0) {
+function DateRangeSelector(t0: DateRangeSelectorProps) {
   const $ = _c(9);
   const {
     dateRange,
@@ -701,7 +714,7 @@ function generateFunFactoid(stats: ClaudeCodeStats, totalTokens: number): string
   const randomIndex = Math.floor(Math.random() * factoids.length);
   return factoids[randomIndex]!;
 }
-function ModelsTab(t0) {
+function ModelsTab(t0: ModelsTabProps) {
   const $ = _c(15);
   const {
     stats,
@@ -801,21 +814,21 @@ function ModelsTab(t0) {
           return <ModelEntry key={model_0} model={model_0} usage={usage_0} totalTokens={totalTokens} />;
         })}</Box>{t9}</Box>{t10}</Box>;
 }
-function _temp1(item, i) {
+function _temp1(item: ChartLegend, i: number) {
   return <Text key={item.model}>{i > 0 ? " \xB7 " : ""}<Ansi>{item.coloredBullet}</Ansi> {item.model}</Text>;
 }
-function _temp0(t0) {
+function _temp0(t0: ModelEntryPair) {
   const [model] = t0;
   return model;
 }
-function _temp9(sum, t0) {
+function _temp9(sum: number, t0: ModelEntryPair) {
   const [, usage] = t0;
   return sum + usage.inputTokens + usage.outputTokens;
 }
-function _temp8(prev_0) {
+function _temp8(prev_0: number) {
   return Math.max(prev_0 - 2, 0);
 }
-function _temp7(t0, t1) {
+function _temp7(t0: ModelEntryPair, t1: ModelEntryPair) {
   const [, a] = t0;
   const [, b] = t1;
   return b.inputTokens + b.outputTokens - (a.inputTokens + a.outputTokens);

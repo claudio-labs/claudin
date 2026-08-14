@@ -24,7 +24,7 @@ export function UltrareviewOverageDialog(t0: Props) {
   const abortControllerRef = useRef(t1);
   let t2;
   if ($[1] !== onCancel || $[2] !== onProceed) {
-    t2 = value => {
+    t2 = (value: string) => {
       if (value === "proceed") {
         setIsLaunching(true);
         onProceed(abortControllerRef.current.signal).catch(() => setIsLaunching(false));

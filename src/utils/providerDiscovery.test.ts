@@ -34,7 +34,7 @@ test('lists models from a local openai-compatible /models endpoint', async () =>
         { status: 200 },
       ),
     )
-  }) as typeof globalThis.fetch
+  }) as unknown as typeof globalThis.fetch
 
   await expect(
     listOpenAICompatibleModels({
@@ -52,7 +52,7 @@ test('returns null when a local openai-compatible /models request fails', async 
 
   globalThis.fetch = mock(() =>
     Promise.resolve(new Response('not available', { status: 503 })),
-  ) as typeof globalThis.fetch
+  ) as unknown as typeof globalThis.fetch
 
   await expect(
     listOpenAICompatibleModels({ baseUrl: 'http://localhost:1234/v1' }),
@@ -156,7 +156,7 @@ test('ollama generation readiness reports unreachable when tags endpoint is down
     const url = typeof input === 'string' ? input : input.url
     calledUrls.push(url)
     return Promise.resolve(new Response('not available', { status: 503 }))
-  }) as typeof globalThis.fetch
+  }) as unknown as typeof globalThis.fetch
 
   await expect(
     probeOllamaGenerationReadiness({
@@ -185,7 +185,7 @@ test('ollama generation readiness reports no models when server is reachable', a
         headers: { 'Content-Type': 'application/json' },
       }),
     )
-  }) as typeof globalThis.fetch
+  }) as unknown as typeof globalThis.fetch
 
   await expect(
     probeOllamaGenerationReadiness({
@@ -219,7 +219,7 @@ test('ollama generation readiness reports generation_failed when requested model
         },
       ),
     )
-  }) as typeof globalThis.fetch
+  }) as unknown as typeof globalThis.fetch
 
   await expect(
     probeOllamaGenerationReadiness({
@@ -255,7 +255,7 @@ test('ollama generation readiness reports generation failures when chat probe fa
     }
 
     return Promise.resolve(new Response('model not found', { status: 404 }))
-  }) as typeof globalThis.fetch
+  }) as unknown as typeof globalThis.fetch
 
   await expect(
     probeOllamaGenerationReadiness({
@@ -293,7 +293,7 @@ test('ollama generation readiness reports generation_failed when chat probe retu
         headers: { 'Content-Type': 'text/html' },
       }),
     )
-  }) as typeof globalThis.fetch
+  }) as unknown as typeof globalThis.fetch
 
   await expect(
     probeOllamaGenerationReadiness({
@@ -337,7 +337,7 @@ test('ollama generation readiness reports ready when chat probe succeeds', async
         },
       ),
     )
-  }) as typeof globalThis.fetch
+  }) as unknown as typeof globalThis.fetch
 
   await expect(
     probeOllamaGenerationReadiness({
@@ -357,7 +357,7 @@ test('atomic chat readiness reports unreachable when /v1/models is down', async 
     const url = typeof input === 'string' ? input : input.url
     calledUrls.push(url)
     return Promise.resolve(new Response('unavailable', { status: 503 }))
-  }) as typeof globalThis.fetch
+  }) as unknown as typeof globalThis.fetch
 
   await expect(
     probeAtomicChatReadiness({ baseUrl: 'http://127.0.0.1:1337' }),
@@ -376,7 +376,7 @@ test('atomic chat readiness reports no_models when server is reachable but empty
         headers: { 'Content-Type': 'application/json' },
       }),
     ),
-  ) as typeof globalThis.fetch
+  ) as unknown as typeof globalThis.fetch
 
   await expect(
     probeAtomicChatReadiness({ baseUrl: 'http://127.0.0.1:1337' }),
@@ -401,7 +401,7 @@ test('atomic chat readiness returns loaded model ids when ready', async () => {
         },
       ),
     ),
-  ) as typeof globalThis.fetch
+  ) as unknown as typeof globalThis.fetch
 
   await expect(
     probeAtomicChatReadiness({ baseUrl: 'http://127.0.0.1:1337' }),

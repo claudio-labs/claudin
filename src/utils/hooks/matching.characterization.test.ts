@@ -218,7 +218,7 @@ describe('getMatchingHooks — matchQuery derivation per event', () => {
         transcript_path: '/tmp/t.jsonl',
         cwd: '/tmp',
         file_path: '/some/long/path/to/config.json',
-        change_type: 'modified',
+        event: 'change',
       } as HookInput,
     )
     expect(result).toHaveLength(1)

@@ -118,7 +118,7 @@ export function ExitPlanModePermissionRequest({
   workerBadge,
   setStickyFooter
 }: PermissionRequestProps): React.ReactNode {
-  const toolPermissionContext = useAppState(s => s.toolPermissionContext);
+  const toolPermissionContext = useAppState((s: AppState) => s.toolPermissionContext);
   const setAppState = useSetAppState();
   const store = useAppStateStore();
   const {
@@ -130,9 +130,9 @@ export function ExitPlanModePermissionRequest({
   const [planFeedback, setPlanFeedback] = useState('');
   const [pastedContents, setPastedContents] = useState<Record<number, PastedContent>>({});
   const nextPasteIdRef = useRef(0);
-  const showClearContext = useAppState(s => s.settings.showClearContextOnPlanAccept) ?? false;
-  const ultraplanSessionUrl = useAppState(s => s.ultraplanSessionUrl);
-  const ultraplanLaunching = useAppState(s => s.ultraplanLaunching);
+  const showClearContext = useAppState((s: AppState) => s.settings.showClearContextOnPlanAccept) ?? false;
+  const ultraplanSessionUrl = useAppState((s: AppState) => s.ultraplanSessionUrl);
+  const ultraplanLaunching = useAppState((s: AppState) => s.ultraplanLaunching);
   // Hide the Ultraplan button while a session is active or launching —
   // selecting it would dismiss the dialog and reject locally before
   // launchUltraplan can notice the session exists and return "already polling".

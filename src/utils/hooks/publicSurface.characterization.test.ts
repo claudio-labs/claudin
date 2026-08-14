@@ -99,7 +99,7 @@ const FUNCTION_EXPORTS = [
   'hasWorktreeCreateHook',
   'executeWorktreeCreateHook',
   'executeWorktreeRemoveHook',
-] as const
+]
 
 describe('hooks.ts public surface — runtime exports', () => {
   test.each(FUNCTION_EXPORTS)('exports %s as a function', name => {
@@ -133,7 +133,7 @@ describe('hooks.ts public surface — async-generator vs async fn shape', () => 
     'executeSessionStartHooks',
     'executeSetupHooks',
     'executeSubagentStartHooks',
-  ] as const
+  ]
 
   test.each(ASYNC_GENERATORS)('%s is an AsyncGenerator function', name => {
     const fn = (hooks as Record<string, unknown>)[name] as Function
@@ -155,7 +155,7 @@ describe('hooks.ts public surface — async-generator vs async fn shape', () => 
     'executeWorktreeCreateHook',
     'executeWorktreeRemoveHook',
     'getMatchingHooks',
-  ] as const
+  ]
 
   test.each(ASYNC_FUNCTIONS)('%s is an AsyncFunction', name => {
     const fn = (hooks as Record<string, unknown>)[name] as Function
@@ -177,7 +177,7 @@ describe('hooks.ts public surface — async-generator vs async fn shape', () => 
     'executeFileChangedHooks',
     'hasInstructionsLoadedHook',
     'hasWorktreeCreateHook',
-  ] as const
+  ]
 
   test.each(SYNC_FUNCTIONS)('%s is a synchronous Function', name => {
     const fn = (hooks as Record<string, unknown>)[name] as Function

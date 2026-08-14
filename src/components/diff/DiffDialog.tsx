@@ -13,8 +13,7 @@ import { type TurnDiff, useTurnDiffs } from '../../hooks/useTurnDiffs.js'
 import { useWorkspaceDiff } from '../../hooks/useWorkspaceDiff.js'
 import { Box, Text, useInput, useTheme } from '../../ink.js'
 import { useKeybindings } from '../../keybindings/useKeybinding.js'
-import { useAppState } from '../../state/AppState.js'
-import type { ToolPermissionContext } from '../../types/permissions.js'
+import { type AppState, useAppState } from '../../state/AppState.js'
 import {
   getAheadBehind,
   getBranch,
@@ -140,8 +139,7 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
   // ── scope ───────────────────────────────────────────────────────────────
   // Resolve the repos in scope from app state (cwd repo + /add-dir roots).
   const additionalWorkingDirectories = useAppState(
-    (s: { toolPermissionContext: ToolPermissionContext }) =>
-      s.toolPermissionContext.additionalWorkingDirectories,
+    (s: AppState) => s.toolPermissionContext.additionalWorkingDirectories,
   )
   const roots = useMemo(
     () =>

@@ -23,7 +23,9 @@ function duration(ms: number): string {
   return `${m}m ${s % 60}s`
 }
 
-function statusColor(status: RunState['status']): string {
+function statusColor(
+  status: RunState['status'],
+): 'success' | 'error' | 'warning' | 'permission' {
   if (status === 'done') return 'success'
   if (status === 'stalled' || status === 'failed') return 'error'
   if (status === 'cancelled') return 'warning'

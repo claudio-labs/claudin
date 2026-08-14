@@ -56,7 +56,7 @@ type Props = {
  * Display keybinding warnings to the user via notifications.
  * Shows a brief message pointing to /doctor for details.
  */
-function useKeybindingWarnings(warnings, isReload) {
+function useKeybindingWarnings(warnings: KeybindingWarning[], isReload: boolean) {
   const $ = _c(9);
   const {
     addNotification,
@@ -110,10 +110,10 @@ function useKeybindingWarnings(warnings, isReload) {
   }
   useEffect(t0, t1);
 }
-function _temp2(w_0) {
+function _temp2(w_0: KeybindingWarning) {
   return w_0.severity === "warning";
 }
-function _temp(w) {
+function _temp(w: KeybindingWarning) {
   return w.severity === "error";
 }
 export function KeybindingSetup({
@@ -223,7 +223,14 @@ type HandlerRegistration = {
   context: KeybindingContextName;
   handler: () => void;
 };
-function ChordInterceptor(t0) {
+type ChordInterceptorProps = {
+  bindings: ParsedBinding[];
+  pendingChordRef: React.RefObject<ParsedKeystroke[] | null>;
+  setPendingChord: (pending: ParsedKeystroke[] | null) => void;
+  activeContexts: Set<KeybindingContextName>;
+  handlerRegistryRef: React.RefObject<Map<string, Set<HandlerRegistration>>>;
+};
+function ChordInterceptor(t0: ChordInterceptorProps) {
   const $ = _c(6);
   const {
     bindings,
@@ -234,12 +241,12 @@ function ChordInterceptor(t0) {
   } = t0;
   let t1;
   if ($[0] !== activeContexts || $[1] !== bindings || $[2] !== handlerRegistryRef || $[3] !== pendingChordRef || $[4] !== setPendingChord) {
-    t1 = (input, key, event) => {
+    t1 = (input: string, key: Key, event: InputEvent) => {
       if ((key.wheelUp || key.wheelDown) && pendingChordRef.current === null) {
         return;
       }
       const registry = handlerRegistryRef.current;
-      const handlerContexts = new Set();
+      const handlerContexts = new Set<KeybindingContextName>();
       if (registry) {
         for (const handlers of registry.values()) {
           for (const registration of handlers) {
@@ -247,7 +254,7 @@ function ChordInterceptor(t0) {
           }
         }
       }
-      const contexts = [...handlerContexts, ...activeContexts, "Global"];
+      const contexts: KeybindingContextName[] = [...handlerContexts, ...activeContexts, "Global"];
       const wasInChord = pendingChordRef.current !== null;
       const result = resolveKeyWithChordState(input, key, contexts, bindings, pendingChordRef.current);
       bb23: switch (result.type) {

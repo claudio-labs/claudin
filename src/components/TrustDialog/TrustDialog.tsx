@@ -9,7 +9,7 @@ import { Box, Link, Text } from '../../ink.js';
 import { useKeybinding } from '../../keybindings/useKeybinding.js';
 import { getMcpConfigsByScope } from '../../services/mcp/config.js';
 import { BASH_TOOL_NAME } from '../../tools/BashTool/toolName.js';
-import { checkHasTrustDialogAccepted, saveCurrentProjectConfig } from '../../utils/config.js';
+import { checkHasTrustDialogAccepted, type ProjectConfig, saveCurrentProjectConfig } from '../../utils/config.js';
 import { getCwd } from '../../utils/cwd.js';
 import { getFsImplementation } from '../../utils/fsOperations.js';
 import { gracefulShutdownSync } from '../../utils/gracefulShutdown.js';
@@ -154,7 +154,7 @@ export function TrustDialog(t0: Props) {
   React.useEffect(t12, t13);
   let t14;
   if ($[16] !== hasAnyBashExecution || $[17] !== onDone) {
-    t14 = function onChange(value) {
+    t14 = function onChange(value: 'enable_all' | 'exit') {
       if (value === "exit") {
         gracefulShutdownSync(1);
         return;
@@ -269,21 +269,21 @@ function _temp7() {
 function _temp6() {
   return gracefulShutdownSync(1);
 }
-function _temp5(current) {
+function _temp5(current: ProjectConfig) {
   return {
     ...current,
     hasTrustDialogAccepted: true
   };
 }
-function _temp4(command_0) {
+function _temp4(command_0: Command) {
   return command_0.type === "prompt" && (command_0.loadedFrom === "skills" || command_0.loadedFrom === "plugin") && (command_0.source === "projectSettings" || command_0.source === "localSettings" || command_0.source === "plugin") && command_0.allowedTools?.some(_temp3);
 }
-function _temp3(tool_0) {
+function _temp3(tool_0: string) {
   return tool_0 === BASH_TOOL_NAME || tool_0.startsWith(BASH_TOOL_NAME + "(");
 }
-function _temp2(command) {
+function _temp2(command: Command) {
   return command.type === "prompt" && command.loadedFrom === "commands_DEPRECATED" && (command.source === "projectSettings" || command.source === "localSettings") && command.allowedTools?.some(_temp);
 }
-function _temp(tool) {
+function _temp(tool: string) {
   return tool === BASH_TOOL_NAME || tool.startsWith(BASH_TOOL_NAME + "(");
 }

@@ -39,6 +39,6 @@ export function SandboxConfigTab() {
   }
   return t1;
 }
-function _temp(w, i) {
+function _temp(w: string, i: number) {
   return <Text key={i} dimColor={true}>{w}</Text>;
 }

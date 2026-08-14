@@ -40,8 +40,12 @@ const NULL_RENDERING_TYPES = [
   'auto_mode',
   'auto_mode_exit',
   'output_token_usage',
-  'pen_mode_enter',
-  'pen_mode_exit',
+  // No 'pen_mode_enter' / 'pen_mode_exit' here: this fork's Attachment union has
+  // no pen-mode attachment, so listing them broke the `satisfies` invariant and
+  // widened the Set past ReadonlySet<Attachment['type']>.
+  // 'bagel_console' has no case in AttachmentMessage's switch and no pre-switch
+  // block, so it reaches `default:` and renders null like the rest of this list.
+  'bagel_console',
   'verify_plan_reminder',
   'current_session_memory',
   'compaction_reminder',

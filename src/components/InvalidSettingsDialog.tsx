@@ -24,7 +24,7 @@ export function InvalidSettingsDialog(t0: Props) {
   } = t0;
   let t1;
   if ($[0] !== onContinue || $[1] !== onExit) {
-    t1 = function handleSelect(value) {
+    t1 = function handleSelect(value: string) {
       if (value === "exit") {
         onExit();
       } else {

@@ -165,6 +165,24 @@ export async function handleInitializeRequest(
   if (request.jsonSchema) {
     setInitJsonSchema(request.jsonSchema)
   }
+  // The SDK wire schema only understands the 4 first-party/cloud variants
+  // (see coreSchemas.ts); Claudin's wider APIProvider union
+  // (openai/gemini/github/codex/…) isn't part of that contract, so those
+  // report as absent, per the schema's own documented semantics ("for 3P
+  // providers the other fields are absent").
+  const rawApiProvider = getAPIProvider()
+  const sdkApiProvider:
+    | 'bedrock'
+    | 'firstParty'
+    | 'foundry'
+    | 'vertex'
+    | undefined =
+    rawApiProvider === 'firstParty' ||
+    rawApiProvider === 'bedrock' ||
+    rawApiProvider === 'vertex' ||
+    rawApiProvider === 'foundry'
+      ? rawApiProvider
+      : undefined
   const initResponse: SDKControlInitializeResponse = {
     commands: commands
       .filter(cmd => cmd.userInvocable !== false)
@@ -191,7 +209,7 @@ export async function handleInitializeRequest(
       // getAccountInformation() returns undefined under 3P providers, so the
       // other fields are all absent. apiProvider disambiguates "not logged
       // in" (firstParty + tokenSource:none) from "3P, login not applicable".
-      apiProvider: getAPIProvider(),
+      apiProvider: sdkApiProvider,
     },
     pid: process.pid,
   }

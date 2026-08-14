@@ -35,6 +35,7 @@ function setGithubProfile(): void {
     transport: 'github_copilot',
     baseUrl: 'https://api.githubcopilot.com',
     model: 'github:copilot',
+    name: 'GitHub Copilot',
   }
 }
 

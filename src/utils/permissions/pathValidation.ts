@@ -118,7 +118,9 @@ export function isPathInSandboxWriteAllowlist(resolvedPath: string): boolean {
     for (const denyPath of resolvedDeny) {
       if (pathInWorkingPath(p, denyPath)) return false
     }
-    return resolvedAllow.some(allowPath => pathInWorkingPath(p, allowPath))
+    return resolvedAllow.some((allowPath: string) =>
+      pathInWorkingPath(p, allowPath),
+    )
   })
 }
 

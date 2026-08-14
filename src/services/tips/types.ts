@@ -3,11 +3,13 @@
 // `tipRegistry.ts` sets; `TipContext` is the object REPL.tsx passes to
 // `getTipToShowOnSpinner`.
 import type { FileStateCache } from '../../utils/fileStateCache.js'
-import type { Theme } from '../../utils/theme.js'
+import type { ThemeName } from '../../utils/theme.js'
 
 /** What the registry gets to decide whether a tip is worth showing right now. */
 export type TipContext = {
-  theme: Theme
+  /** The active theme's NAME — `useTheme()` yields a `ThemeName`, and that is
+   * what `color()` and `getTheme()` take. */
+  theme: ThemeName
   /** Files read so far this session, used for file-type-relevant tips. */
   readFileState: FileStateCache
   /** Base commands seen in Bash tool calls this session. */
@@ -18,7 +20,7 @@ export type Tip = {
   /** Stable key used by `tipHistory` to track when this tip was last shown. */
   id: string
   /** Rendered lazily so a tip can format shortcuts against the live theme. */
-  content: (args: { theme: Theme }) => Promise<string>
+  content: (args: { theme: ThemeName }) => Promise<string>
   /** Sessions that must pass before this tip may be shown again. */
   cooldownSessions: number
   /**

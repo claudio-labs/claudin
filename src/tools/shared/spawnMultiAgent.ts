@@ -374,7 +374,7 @@ async function handleSpawnSplitPane(
   const { name, prompt, agent_type, cwd, plan_mode_required } = input
 
   // Resolve model: 'inherit' → leader's model; undefined → default Opus
-  const model = resolveTeammateModel(input.model, getAppState().mainLoopModel ?? getUserSpecifiedModelSetting())
+  const model = resolveTeammateModel(input.model, getAppState().mainLoopModel ?? getUserSpecifiedModelSetting() ?? null)
 
   if (!name || !prompt) {
     throw new Error('name and prompt are required for spawn operation')
@@ -609,7 +609,7 @@ async function handleSpawnSeparateWindow(
   const { name, prompt, agent_type, cwd, plan_mode_required } = input
 
   // Resolve model: 'inherit' → leader's model; undefined → default Opus
-  const model = resolveTeammateModel(input.model, getAppState().mainLoopModel ?? getUserSpecifiedModelSetting())
+  const model = resolveTeammateModel(input.model, getAppState().mainLoopModel ?? getUserSpecifiedModelSetting() ?? null)
 
   if (!name || !prompt) {
     throw new Error('name and prompt are required for spawn operation')
@@ -899,7 +899,7 @@ async function handleSpawnInProcess(
   const { name, prompt, agent_type, plan_mode_required } = input
 
   // Resolve model: 'inherit' → leader's model; undefined → default Opus
-  const model = resolveTeammateModel(input.model, getAppState().mainLoopModel ?? getUserSpecifiedModelSetting())
+  const model = resolveTeammateModel(input.model, getAppState().mainLoopModel ?? getUserSpecifiedModelSetting() ?? null)
 
   if (!name || !prompt) {
     throw new Error('name and prompt are required for spawn operation')

@@ -60,7 +60,7 @@ export function SelectEventMode(t0: Props) {
   }
   let t4;
   if ($[5] !== onSelectEvent) {
-    t4 = value => {
+    t4 = (value: string) => {
       onSelectEvent(value as HookEvent);
     };
     $[5] = onSelectEvent;
@@ -68,7 +68,7 @@ export function SelectEventMode(t0: Props) {
   } else {
     t4 = $[6];
   }
-  let t5;
+  let t5: [string, HookEventMetadata][];
   if ($[7] !== hookEventMetadata) {
     t5 = Object.entries(hookEventMetadata);
     $[7] = hookEventMetadata;

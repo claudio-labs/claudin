@@ -402,25 +402,11 @@ const reconciler = createReconciler<
   ): boolean {
     return props['autoFocus'] === true
   },
-  prepareUpdate(
-    _node: DOMElement,
-    _type: ElementNames,
-    oldProps: Props,
-    newProps: Props,
-  ): UpdatePayload | null {
-    const props = diff(oldProps, newProps)
-    const style = diff(oldProps['style'] as Styles, newProps['style'] as Styles)
-
-    if (!props && !style) {
-      return null
-    }
-
-    return {
-      props,
-      style,
-      nextStyle: newProps['style'] as Styles | undefined,
-    }
-  },
+  // prepareUpdate + its UpdatePayload return no longer exist on this
+  // react-reconciler version's HostConfig (@types/react-reconciler removed
+  // the two-phase prepareUpdate/commitUpdate flow — commitUpdate below
+  // receives oldProps/newProps directly and recomputes the diff itself, see
+  // the comment there).
   commitMount(node: DOMElement): void {
     getFocusManager(node).handleAutoFocus(node)
   },

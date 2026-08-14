@@ -28,7 +28,7 @@ function OrderedListComponent(t0: OrderedListProps) {
   if ($[0] !== children || $[1] !== maxMarkerWidth || $[2] !== parentMarker) {
     let t2;
     if ($[4] !== maxMarkerWidth || $[5] !== parentMarker) {
-      t2 = (child_0, index) => {
+      t2 = (child_0: ReactNode, index: number) => {
         if (!isValidElement(child_0) || child_0.type !== OrderedListItem) {
           return child_0;
         }

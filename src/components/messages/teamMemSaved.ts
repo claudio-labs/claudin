@@ -8,7 +8,10 @@ import type { SystemMemorySavedMessage } from '../../types/message.js'
  * when feature('TEAMMEM') is true.
  */
 export function teamMemSavedPart(
-  message: SystemMemorySavedMessage,
+  // teamCount is set ad-hoc on the message when feature('TEAMMEM') is on
+  // (see extractMemories.ts), but SystemMemorySavedMessage doesn't declare
+  // it — widen locally rather than editing the shared message type.
+  message: SystemMemorySavedMessage & { teamCount?: number },
 ): { segment: string; count: number } | null {
   const count = message.teamCount ?? 0
   if (count === 0) return null

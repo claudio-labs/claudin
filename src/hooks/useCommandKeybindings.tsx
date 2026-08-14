@@ -48,7 +48,7 @@ export function CommandKeybindingHandlers(t0: Props) {
     if (!keybindingContext) {
       let t3;
       if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-        t3 = new Set();
+        t3 = new Set<string>();
         $[0] = t3;
       } else {
         t3 = $[0];
@@ -58,7 +58,7 @@ export function CommandKeybindingHandlers(t0: Props) {
     }
     let actions;
     if ($[1] !== keybindingContext.bindings) {
-      actions = new Set();
+      actions = new Set<string>();
       for (const binding of keybindingContext.bindings) {
         if (binding.action?.startsWith("command:")) {
           actions.add(binding.action);
@@ -72,7 +72,7 @@ export function CommandKeybindingHandlers(t0: Props) {
     t2 = actions;
   }
   const commandActions = t2;
-  let map;
+  let map: Record<string, () => void>;
   if ($[3] !== commandActions || $[4] !== onSubmit) {
     map = {};
     for (const action of commandActions) {

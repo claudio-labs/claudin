@@ -7,7 +7,7 @@ import type { Command } from '../../commands.js';
 import { BLACK_CIRCLE } from '../../constants/figures.js';
 import { stringWidth } from '../../ink/stringWidth.js';
 import { Box, Text, useTheme } from '../../ink.js';
-import { useAppStateMaybeOutsideOfProvider } from '../../state/AppState.js';
+import { type AppState, useAppStateMaybeOutsideOfProvider } from '../../state/AppState.js';
 import { findToolByName, type Tool, type ToolProgressData, type Tools } from '../../Tool.js';
 import type { ProgressMessage } from '../../types/message.js';
 import { useIsClassifierChecking } from '../../utils/classifierApprovalsHook.js';
@@ -300,13 +300,13 @@ export function AssistantToolUseMessage(t0: Props) {
   }
   return t16;
 }
-function _temp3(state_1) {
+function _temp3(state_1: AppState) {
   return !!state_1.toolPermissionContext.strippedDangerousRules;
 }
-function _temp2(state_0) {
+function _temp2(state_0: AppState) {
   return state_0.toolPermissionContext.mode;
 }
-function _temp(state) {
+function _temp(state: AppState) {
   return state.pendingWorkerRequest;
 }
 function renderToolUseMessage(tool: Tool, input: unknown, {

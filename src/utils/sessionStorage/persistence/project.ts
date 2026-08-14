@@ -754,7 +754,9 @@ export class Project {
 
         const transcriptMessage: TranscriptMessage = {
           parentUuid: isCompactBoundary ? null : effectiveParentUuid,
-          logicalParentUuid: isCompactBoundary ? parentUuid : undefined,
+          logicalParentUuid: isCompactBoundary
+            ? (parentUuid ?? undefined)
+            : undefined,
           isSidechain,
           teamName: teamInfo?.teamName,
           agentName: teamInfo?.agentName,

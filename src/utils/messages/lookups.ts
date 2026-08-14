@@ -52,7 +52,7 @@ function getResolvedHookCount(
   const uniqueHookNames = new Set(
     messages
       .filter(
-        (_): _ is AttachmentMessage<HookAttachmentWithName> =>
+        (_): _ is AttachmentMessage & { attachment: HookAttachmentWithName } =>
           isHookAttachmentMessage(_) &&
           _.attachment.toolUseID === toolUseID &&
           _.attachment.hookEvent === hookEvent,
@@ -455,7 +455,11 @@ export function getToolUseIDs(
   return new Set(
     normalizedMessages
       .filter(
-        (_): _ is NormalizedAssistantMessage<BetaToolUseBlock> =>
+        (
+          _,
+        ): _ is NormalizedAssistantMessage & {
+          message: { content: [BetaToolUseBlock] }
+        } =>
           _.type === 'assistant' &&
           Array.isArray(_.message.content) &&
           _.message.content[0]?.type === 'tool_use',

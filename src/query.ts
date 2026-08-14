@@ -72,6 +72,7 @@ import {
   clearArmedFiles,
 } from './services/lsp/diagnosticsForToolResult.js'
 import { markDiagnosticsAsDelivered } from './services/lsp/LSPDiagnosticRegistry.js'
+import { getGlobalConfig } from './utils/config.js'
 /* eslint-disable @typescript-eslint/no-require-imports */
 const skillPrefetch = feature('EXPERIMENTAL_SKILL_SEARCH')
   ? (require('./services/skillSearch/prefetch.js') as typeof import('./services/skillSearch/prefetch.js'))
@@ -188,7 +189,7 @@ const MAX_CONTINUATION_NUDGES = 3
 function isWithheldMaxOutputTokens(
   msg: Message | StreamEvent | undefined,
 ): msg is AssistantMessage {
-  return msg?.type === 'assistant' && msg.apiError === 'max_output_tokens'
+  return msg?.type === 'assistant' && msg.error === 'max_output_tokens'
 }
 
 export type QueryParams = {
@@ -897,6 +898,7 @@ async function* queryLoop(
             let withheld = false
             if (feature('CONTEXT_COLLAPSE')) {
               if (
+                message.type === 'assistant' &&
                 contextCollapse?.isWithheldPromptTooLong(
                   message,
                   isPromptTooLongMessage,
@@ -1184,7 +1186,7 @@ async function* queryLoop(
           }
         }
       }
-      if ((isWithheld413 || isWithheldMedia) && reactiveCompact) {
+      if ((isWithheld413 || isWithheldMedia) && reactiveCompact && lastMessage) {
         const compacted = await reactiveCompact.tryReactiveCompact({
           hasAttempted: hasAttemptedReactiveCompact,
           querySource,
@@ -1443,7 +1445,7 @@ async function* queryLoop(
         const lastAssistant = assistantMessages.at(-1)
         if (lastAssistant?.type === 'assistant') {
           const lastText = lastAssistant.message.content
-            .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
+            .filter((b): b is Extract<typeof b, { type: 'text' }> => b.type === 'text')
             .map(b => b.text)
             .join(' ')
 
@@ -1537,7 +1539,7 @@ async function* queryLoop(
         const phantomCandidate = assistantMessages.at(-1)
         if (phantomCandidate?.type === 'assistant') {
           const phantomText = phantomCandidate.message.content
-            .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
+            .filter((b): b is Extract<typeof b, { type: 'text' }> => b.type === 'text')
             .map(b => b.text)
             .join(' ')
           if (claimsAgentLaunch(phantomText)) {
@@ -1622,17 +1624,20 @@ async function* queryLoop(
       feature('MULTI_TURN_CONTEXT') &&
       getGlobalConfig().knowledgeGraphEnabled
     ) {
-      const { addMessageToTurn, addToolCallToTurn } = await import(
-        './utils/multiTurnContext.js'
-      )
-      addMessageToTurn(assistantMessage)
-      for (const toolUse of toolUseBlocks) {
-        addToolCallToTurn({
-          id: toolUse.id,
-          name: toolUse.name,
-          input: toolUse.input as Record<string, unknown>,
-          timestamp: Date.now(),
-        })
+      const lastTurnAssistantMessage = assistantMessages.at(-1)
+      if (lastTurnAssistantMessage) {
+        const { addMessageToTurn, addToolCallToTurn } = await import(
+          './utils/multiTurnContext.js'
+        )
+        addMessageToTurn(lastTurnAssistantMessage)
+        for (const toolUse of toolUseBlocks) {
+          addToolCallToTurn({
+            id: toolUse.id,
+            name: toolUse.name,
+            input: toolUse.input as Record<string, unknown>,
+            timestamp: Date.now(),
+          })
+        }
       }
     }
 
@@ -1642,7 +1647,7 @@ async function* queryLoop(
       getGlobalConfig().knowledgeGraphEnabled
     ) {
       const { updateArcPhase } = await import('./utils/conversationArc.js')
-      updateArcPhase([assistantMessage])
+      updateArcPhase(assistantMessages)
     }
 
     // Generate tool use summary after tool batch completes — passed to next recursive call

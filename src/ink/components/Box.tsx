@@ -8,6 +8,20 @@ import type { FocusEvent } from '../events/focus-event.js';
 import type { KeyboardEvent } from '../events/keyboard-event.js';
 import type { Styles } from '../styles.js';
 import * as warn from '../warn.js';
+
+// 'ink-box' is a real host element recognized by the renderer. tsconfig uses
+// jsx:"react-jsx" (automatic runtime), which resolves the JSX namespace from
+// the "react" module's own exported JSX — NOT the true global JSX namespace,
+// so the shared src/ink/global.d.ts's `declare global { namespace JSX {...} }`
+// augmentation is a silent no-op here (same latent bug documented in
+// RawAnsi.tsx). The augmentation has to target "react"'s own JSX namespace.
+declare module 'react' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'ink-box': Record<string, unknown>;
+    }
+  }
+}
 export type Props = Except<Styles, 'textWrap'> & {
   /**
    * Tab order index. Nodes with `tabIndex >= 0` participate in
@@ -47,7 +61,7 @@ export type Props = Except<Styles, 'textWrap'> & {
 /**
  * `<Box>` is an essential Ink component to build your layout. It's like `<div style="display: flex">` in the browser.
  */
-function BoxInner(t0, ref: React.ForwardedRef<DOMElement>) {
+function BoxInner(t0: PropsWithChildren<Props>, ref: React.ForwardedRef<DOMElement>) {
   const $ = _c(42);
   let autoFocus;
   let children;

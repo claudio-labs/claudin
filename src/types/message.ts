@@ -87,6 +87,13 @@ export type CompactMetadata = {
     anchorUuid: UUID
     tailUuid: UUID
   }
+  /**
+   * Names of tools discovered (via `tool_reference` blocks) before this
+   * compact ran. The summary doesn't preserve those blocks, so the
+   * post-compact schema filter needs this carried set to keep sending their
+   * schemas. Internal-only — not part of the SDK's `compact_metadata` shape.
+   */
+  preCompactDiscoveredTools?: string[]
 }
 
 /** One hook execution, as summarized in a stop-hook / collapsed group line.

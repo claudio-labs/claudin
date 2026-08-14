@@ -107,7 +107,7 @@ export type TreeSelectProps<T> = {
  * It handles expand/collapse state, keyboard navigation, and renders the tree as a flat list
  * using the Select component.
  */
-export function TreeSelect(t0: TreeSelectProps) {
+export function TreeSelect<T>(t0: TreeSelectProps<T>) {
   const $ = _c(48);
   const {
     nodes,
@@ -129,19 +129,19 @@ export function TreeSelect(t0: TreeSelectProps) {
   const layout = t1 === undefined ? "expanded" : t1;
   const isDisabled = t2 === undefined ? false : t2;
   const hideIndexes = t3 === undefined ? false : t3;
-  let t4;
+  let t4: Set<string | number>;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = new Set();
+    t4 = new Set<string | number>();
     $[0] = t4;
   } else {
     t4 = $[0];
   }
   const [internalExpandedIds, setInternalExpandedIds] = React.useState(t4);
   const isProgrammaticFocusRef = React.useRef(false);
-  const lastFocusedIdRef = React.useRef(null);
+  const lastFocusedIdRef = React.useRef<string | number | null>(null);
   let t5;
   if ($[1] !== internalExpandedIds || $[2] !== isNodeExpanded) {
-    t5 = nodeId => {
+    t5 = (nodeId: string | number) => {
       if (isNodeExpanded) {
         return isNodeExpanded(nodeId);
       }
@@ -154,10 +154,10 @@ export function TreeSelect(t0: TreeSelectProps) {
     t5 = $[3];
   }
   const isExpanded = t5;
-  let result;
+  let result: FlattenedNode<T>[];
   if ($[4] !== isExpanded || $[5] !== nodes) {
     result = [];
-    function traverse(node, depth, parentId) {
+    function traverse(node: TreeNode<T>, depth: number, parentId?: string | number) {
       const hasChildren = !!node.children && node.children.length > 0;
       const nodeIsExpanded = isExpanded(node.id);
       result.push({
@@ -189,7 +189,7 @@ export function TreeSelect(t0: TreeSelectProps) {
   const childPrefixFn = getChildPrefix ?? defaultGetChildPrefix;
   let t6;
   if ($[7] !== childPrefixFn || $[8] !== parentPrefixFn) {
-    t6 = flatNode => {
+    t6 = (flatNode: FlattenedNode<T>) => {
       let prefix = "";
       if (flatNode.hasChildren) {
         prefix = parentPrefixFn(flatNode.isExpanded);
@@ -222,9 +222,9 @@ export function TreeSelect(t0: TreeSelectProps) {
     t7 = $[12];
   }
   const options = t7;
-  let map;
+  let map: Map<string | number, TreeNode<T>>;
   if ($[13] !== flattenedNodes) {
-    map = new Map();
+    map = new Map<string | number, TreeNode<T>>();
     flattenedNodes.forEach(fn => map.set(fn.node.id, fn.node));
     $[13] = flattenedNodes;
     $[14] = map;
@@ -234,7 +234,7 @@ export function TreeSelect(t0: TreeSelectProps) {
   const nodeMap = map;
   let t8;
   if ($[15] !== flattenedNodes) {
-    t8 = nodeId_0 => flattenedNodes.find(fn_0 => fn_0.node.id === nodeId_0);
+    t8 = (nodeId_0: string | number) => flattenedNodes.find(fn_0 => fn_0.node.id === nodeId_0);
     $[15] = flattenedNodes;
     $[16] = t8;
   } else {
@@ -243,7 +243,7 @@ export function TreeSelect(t0: TreeSelectProps) {
   const findFlattenedNode = t8;
   let t9;
   if ($[17] !== findFlattenedNode || $[18] !== onCollapse || $[19] !== onExpand) {
-    t9 = (nodeId_1, shouldExpand) => {
+    t9 = (nodeId_1: string | number, shouldExpand: boolean) => {
       const flatNode_1 = findFlattenedNode(nodeId_1);
       if (!flatNode_1 || !flatNode_1.hasChildren) {
         return;
@@ -276,7 +276,7 @@ export function TreeSelect(t0: TreeSelectProps) {
   const toggleExpand = t9;
   let t10;
   if ($[21] !== findFlattenedNode || $[22] !== focusNodeId || $[23] !== isDisabled || $[24] !== nodeMap || $[25] !== onFocus || $[26] !== toggleExpand) {
-    t10 = e => {
+    t10 = (e: KeyboardEvent) => {
       if (!focusNodeId || isDisabled) {
         return;
       }
@@ -321,7 +321,7 @@ export function TreeSelect(t0: TreeSelectProps) {
   const handleKeyDown = t10;
   let t11;
   if ($[28] !== nodeMap || $[29] !== onSelect) {
-    t11 = nodeId_2 => {
+    t11 = (nodeId_2: string | number) => {
       const node_1 = nodeMap.get(nodeId_2);
       if (!node_1) {
         return;
@@ -337,7 +337,7 @@ export function TreeSelect(t0: TreeSelectProps) {
   const handleChange = t11;
   let t12;
   if ($[31] !== nodeMap || $[32] !== onFocus) {
-    t12 = nodeId_3 => {
+    t12 = (nodeId_3: string | number) => {
       if (isProgrammaticFocusRef.current) {
         isProgrammaticFocusRef.current = false;
         return;
@@ -388,9 +388,9 @@ export function TreeSelect(t0: TreeSelectProps) {
   }
   return t14;
 }
-function _temp2(_depth) {
+function _temp2(_depth: number) {
   return "  \u25B8 ";
 }
-function _temp(isExpanded_0) {
+function _temp(isExpanded_0: boolean) {
   return isExpanded_0 ? "\u25BC " : "\u25B6 ";
 }

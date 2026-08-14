@@ -541,7 +541,10 @@ export function initExtractMemories(): void {
       if (memoryPaths.length > 0 && getGlobalConfig().notifyMemorySaved === true) {
         const msg = createMemorySavedMessage(memoryPaths)
         if (feature('TEAMMEM')) {
-          msg.teamCount = teamCount
+          // teamCount is set ad-hoc here and read back in teamMemSaved.ts;
+          // SystemMemorySavedMessage doesn't declare it — widen locally
+          // rather than editing the shared message type.
+          ;(msg as typeof msg & { teamCount?: number }).teamCount = teamCount
         }
         appendSystemMessage?.(msg)
       }

@@ -183,7 +183,7 @@ test('fetchWithProxyRetry does not retry non-network errors', async () => {
   globalThis.fetch = (async () => {
     attempts += 1
     throw new Error('400 bad request')
-  }) as FetchType
+  }) as unknown as FetchType
 
   await expect(fetchWithProxyRetry('https://example.com')).rejects.toThrow(
     '400 bad request',

@@ -13,7 +13,7 @@ import { PermissionPrompt, type PermissionPromptOption, type ToolAnalyticsContex
 import type { PermissionRequestProps } from './PermissionRequest.js';
 import { PermissionRuleExplanation } from './PermissionRuleExplanation.js';
 type FallbackOptionValue = 'yes' | 'yes-dont-ask-again' | 'no';
-export function FallbackPermissionRequest(t0) {
+export function FallbackPermissionRequest(t0: PermissionRequestProps) {
   const $ = _c(58);
   const {
     toolUseConfirm,
@@ -50,7 +50,7 @@ export function FallbackPermissionRequest(t0) {
   usePermissionRequestLogging(toolUseConfirm, unaryEvent);
   let t3;
   if ($[5] !== onDone || $[6] !== onReject || $[7] !== toolUseConfirm) {
-    t3 = (value, feedback) => {
+    t3 = (value: FallbackOptionValue, feedback?: string) => {
       bb8: switch (value) {
         case "yes":
           {
@@ -167,7 +167,7 @@ export function FallbackPermissionRequest(t0) {
   } else {
     t7 = $[15];
   }
-  let result;
+  let result: PermissionPromptOption<FallbackOptionValue>[];
   if ($[16] !== userFacingName) {
     result = [t7];
     if (showAlwaysAllowOptions) {

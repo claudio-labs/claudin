@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { memo, useCallback, useEffect, useRef } from 'react';
 import { logEvent } from 'src/services/analytics/index.js';
-import { useAppState, useSetAppState } from 'src/state/AppState.js';
+import { type AppState, useAppState, useSetAppState } from 'src/state/AppState.js';
 import type { PermissionMode } from 'src/utils/permissions/PermissionMode.js';
 import { getIsRemoteMode, getKairosActive, getMainThreadAgentType, getOriginalCwd, getSdkBetas, getSessionId } from '../bootstrap/state.js';
 import { DEFAULT_OUTPUT_STYLE_NAME } from '../constants/outputStyles.js';
@@ -141,9 +141,13 @@ function StatusLineInner({
   vimMode
 }: Props): React.ReactNode {
   const abortControllerRef = useRef<AbortController | undefined>(undefined);
-  const permissionMode = useAppState(s => s.toolPermissionContext.mode);
-  const additionalWorkingDirectories = useAppState(s => s.toolPermissionContext.additionalWorkingDirectories);
-  const statusLineText = useAppState(s => s.statusLineText);
+  const permissionMode = useAppState(
+    (s: AppState) => s.toolPermissionContext.mode,
+  );
+  const additionalWorkingDirectories = useAppState(
+    (s: AppState) => s.toolPermissionContext.additionalWorkingDirectories,
+  );
+  const statusLineText = useAppState((s: AppState) => s.statusLineText);
   const setAppState = useSetAppState();
   const settings = useSettings();
   const {

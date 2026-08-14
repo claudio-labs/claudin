@@ -5,7 +5,18 @@ import type { ConfigScope } from 'src/services/mcp/types.js';
 import { describeMcpConfigFilePath, getScopeLabel } from 'src/services/mcp/utils.js';
 import type { ValidationError } from 'src/utils/settings/validation.js';
 import { Box, Link, Text } from '../../ink.js';
-function McpConfigErrorSection(t0) {
+/** One MCP config scope plus the parsed config it produced. */
+type McpScopeConfig = {
+  scope: ConfigScope;
+  config: {
+    errors: ValidationError[];
+  };
+};
+function McpConfigErrorSection(t0: {
+  scope: ConfigScope;
+  parsingErrors: ValidationError[];
+  warnings: ValidationError[];
+}) {
   const $ = _c(26);
   const {
     scope,
@@ -111,11 +122,11 @@ function McpConfigErrorSection(t0) {
   }
   return t11;
 }
-function _temp2(warning, i_0) {
+function _temp2(warning: ValidationError, i_0: number) {
   const serverName_0 = warning.mcpErrorMetadata?.serverName;
   return <Box key={`warning-${i_0}`}><Text><Text dimColor={true}>└ </Text><Text color="warning">[Warning]</Text><Text dimColor={true}>{" "}{serverName_0 && `[${serverName_0}] `}{warning.path && warning.path !== "" ? `${warning.path}: ` : ""}{warning.message}</Text></Text></Box>;
 }
-function _temp(error, i) {
+function _temp(error: ValidationError, i: number) {
   const serverName = error.mcpErrorMetadata?.serverName;
   return <Box key={`error-${i}`}><Text><Text dimColor={true}>└ </Text><Text color="error">[Error]</Text><Text dimColor={true}>{" "}{serverName && `[${serverName}] `}{error.path && error.path !== "" ? `${error.path}: ` : ""}{error.message}</Text></Text></Box>;
 }
@@ -188,20 +199,20 @@ export function McpParsingWarnings() {
   }
   return t5;
 }
-function _temp5(t0) {
+function _temp5(t0: McpScopeConfig) {
   const {
     scope,
     config: config_1
   } = t0;
   return <McpConfigErrorSection key={scope} scope={scope} parsingErrors={filterErrors(config_1.errors, "fatal")} warnings={filterErrors(config_1.errors, "warning")} />;
 }
-function _temp4(t0) {
+function _temp4(t0: McpScopeConfig) {
   const {
     config: config_0
   } = t0;
   return filterErrors(config_0.errors, "warning").length > 0;
 }
-function _temp3(t0) {
+function _temp3(t0: McpScopeConfig) {
   const {
     config
   } = t0;

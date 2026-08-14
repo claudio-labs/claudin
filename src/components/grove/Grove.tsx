@@ -1,7 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useEffect, useState } from 'react';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import { Box, Link, Text, useInput } from '../../ink.js';
+import { type ExitState } from '../../hooks/useExitOnCtrlCDWithKeybindings.js';
+import { Box, type Key, Link, Text, useInput } from '../../ink.js';
 import { type AccountSettings, calculateShouldShowGrove, type GroveConfig, getGroveNoticeConfig, getGroveSettings, markGroveNoticeViewed, updateGroveSettings } from '../../services/api/grove.js';
 import { Select } from '../CustomSelect/index.js';
 import { Byline } from '../design-system/Byline.js';
@@ -148,8 +149,8 @@ export function GroveDialog(t0: Props) {
     location,
     onDone
   } = t0;
-  const [shouldShowDialog, setShouldShowDialog] = useState(null);
-  const [groveConfig, setGroveConfig] = useState(null);
+  const [shouldShowDialog, setShouldShowDialog] = useState<boolean | null>(null);
+  const [groveConfig, setGroveConfig] = useState<GroveConfig | null>(null);
   let t1;
   let t2;
   if ($[0] !== location || $[1] !== onDone || $[2] !== showIfAlreadyViewed) {
@@ -191,7 +192,7 @@ export function GroveDialog(t0: Props) {
   }
   let t3;
   if ($[5] !== groveConfig?.notice_is_grace_period || $[6] !== onDone) {
-    t3 = async function onChange(value) {
+    t3 = async function onChange(value: GroveDecision) {
       bb21: switch (value) {
         case "accept_opt_in":
           {
@@ -318,7 +319,7 @@ export function GroveDialog(t0: Props) {
   }
   let t12;
   if ($[24] !== onChange) {
-    t12 = value_0 => onChange(value_0 as 'accept_opt_in' | 'accept_opt_out' | 'defer');
+    t12 = (value_0: string) => onChange(value_0 as 'accept_opt_in' | 'accept_opt_out' | 'defer');
     $[24] = onChange;
     $[25] = t12;
   } else {
@@ -346,7 +347,7 @@ export function GroveDialog(t0: Props) {
   }
   return t14;
 }
-function _temp(exitState) {
+function _temp(exitState: ExitState) {
   return exitState.pending ? <Text>Press {exitState.keyName} again to exit</Text> : <Byline><KeyboardShortcutHint shortcut="Enter" action="confirm" /><KeyboardShortcutHint shortcut="Esc" action="cancel" /></Byline>;
 }
 type PrivacySettingsDialogProps = {
@@ -362,7 +363,7 @@ export function PrivacySettingsDialog(t0: PrivacySettingsDialogProps) {
     onDone
   } = t0;
   const [groveEnabled, setGroveEnabled] = useState(settings.grove_enabled);
-  let t1;
+  let t1: unknown[];
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = [];
     $[0] = t1;
@@ -372,7 +373,7 @@ export function PrivacySettingsDialog(t0: PrivacySettingsDialogProps) {
   React.useEffect(_temp2, t1);
   let t2;
   if ($[1] !== domainExcluded || $[2] !== groveEnabled) {
-    t2 = async (input, key) => {
+    t2 = async (input: string, key: Key) => {
       if (!domainExcluded && (key.tab || key.return || input === " ")) {
         const newValue = !groveEnabled;
         setGroveEnabled(newValue);
@@ -417,7 +418,7 @@ export function PrivacySettingsDialog(t0: PrivacySettingsDialogProps) {
   }
   let t4;
   if ($[7] !== domainExcluded) {
-    t4 = exitState => exitState.pending ? <Text>Press {exitState.keyName} again to exit</Text> : domainExcluded ? <KeyboardShortcutHint shortcut="Esc" action="cancel" /> : <Byline><KeyboardShortcutHint shortcut="Enter/Tab/Space" action="toggle" /><KeyboardShortcutHint shortcut="Esc" action="cancel" /></Byline>;
+    t4 = (exitState: ExitState) => exitState.pending ? <Text>Press {exitState.keyName} again to exit</Text> : domainExcluded ? <KeyboardShortcutHint shortcut="Esc" action="cancel" /> : <Byline><KeyboardShortcutHint shortcut="Enter/Tab/Space" action="toggle" /><KeyboardShortcutHint shortcut="Esc" action="cancel" /></Byline>;
     $[7] = domainExcluded;
     $[8] = t4;
   } else {

@@ -150,6 +150,7 @@ function makeStatusResponse(status: number, body = ''): Response {
 
 function profile(overrides: Partial<ResolvedProvider>): ResolvedProvider {
   return {
+    name: overrides.name ?? 'test-profile',
     transport: overrides.transport ?? 'openai_compat',
     baseUrl: overrides.baseUrl ?? 'https://api.example.com/v1',
     model: overrides.model ?? 'gpt-5.4',

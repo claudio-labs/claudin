@@ -10,6 +10,11 @@ import {
   findingsFromValidationErrors,
   type McpDoctorDependencies,
 } from './doctor.js'
+import type {
+  ConnectedMCPServer,
+  FailedMCPServer,
+  NeedsAuthMCPServer,
+} from './types.js'
 
 function stdioConfig(scope: 'local' | 'project' | 'user' | 'enterprise', command: string) {
   return {
@@ -20,7 +25,47 @@ function stdioConfig(scope: 'local' | 'project' | 'user' | 'enterprise', command
   }
 }
 
-function makeDependencies(overrides: Partial<McpDoctorDependencies> = {}): McpDoctorDependencies {
+/** What `getMcpConfigsByScope` has to return. Annotating the test doubles with
+ * it keeps each ternary branch checked against the target instead of unioned
+ * first — an unannotated `{ servers: {} }` branch widens to
+ * `{ filesystem?: undefined }`, which no `Record<string, ScopedMcpServerConfig>`
+ * accepts. */
+type ScopeConfigs = ReturnType<McpDoctorDependencies['getMcpConfigsByScope']>
+
+type ConnectToServer = McpDoctorDependencies['connectToServer']
+
+/**
+ * What a `connectToServer` double may return. It is a real `MCPServerConnection`
+ * minus the live MCP SDK `client` handle, which only a genuine connection can
+ * produce and which the doctor never reads — it dispatches on `type` alone.
+ */
+type ConnectionDouble =
+  | Omit<ConnectedMCPServer, 'client'>
+  | FailedMCPServer
+  | NeedsAuthMCPServer
+
+type ConnectToServerDouble = (
+  ...args: Parameters<ConnectToServer>
+) => Promise<ConnectionDouble>
+
+/**
+ * `connectToServer` is memoized in production, so its type carries lodash's
+ * `MemoizedFunction` — a double has to expose the same `cache` property. The
+ * cast is for the missing `client` described on `ConnectionDouble`; everything
+ * else is checked structurally by `ConnectToServerDouble`.
+ */
+function fakeConnectToServer(impl: ConnectToServerDouble): ConnectToServer {
+  return Object.assign(impl, { cache: new Map() }) as unknown as ConnectToServer
+}
+
+type DependencyOverrides = Partial<
+  Omit<McpDoctorDependencies, 'connectToServer'> & {
+    connectToServer: ConnectToServerDouble
+  }
+>
+
+function makeDependencies(overrides: DependencyOverrides = {}): McpDoctorDependencies {
+  const { connectToServer, ...rest } = overrides
   return {
     getAllMcpConfigs: async () => ({ servers: {}, errors: [] }),
     getMcpConfigsByScope: () => ({ servers: {}, errors: [] }),
@@ -28,14 +73,17 @@ function makeDependencies(overrides: Partial<McpDoctorDependencies> = {}): McpDo
     isMcpServerDisabled: () => false,
     describeMcpConfigFilePath: scope => `scope://${scope}`,
     clearServerCache: async () => {},
-    connectToServer: async (name, config) => ({
-      name,
-      type: 'connected',
-      capabilities: {},
-      config,
-      cleanup: async () => {},
-    }),
-    ...overrides,
+    ...rest,
+    connectToServer: fakeConnectToServer(
+      connectToServer ??
+        (async (name, config) => ({
+          name,
+          type: 'connected',
+          capabilities: {},
+          config,
+          cleanup: async () => {},
+        })),
+    ),
   }
 }
 
@@ -143,7 +191,7 @@ test('doctorAllServers reports global validation findings once without duplicati
       servers: { filesystem: localConfig },
       errors: [],
     }),
-    getMcpConfigsByScope: scope =>
+    getMcpConfigsByScope: (scope): ScopeConfigs =>
       scope === 'project'
         ? {
             servers: {},
@@ -184,7 +232,7 @@ test('doctorServer explains same-name shadowing across scopes', async () => {
       },
       errors: [],
     }),
-    getMcpConfigsByScope: scope => {
+    getMcpConfigsByScope: (scope): ScopeConfigs => {
       switch (scope) {
         case 'local':
           return { servers: { filesystem: localConfig }, errors: [] }
@@ -210,7 +258,7 @@ test('doctorServer explains same-name shadowing across scopes', async () => {
 test('doctorServer reports project servers pending approval', async () => {
   const projectConfig = stdioConfig('project', 'node-project')
   const deps = makeDependencies({
-    getMcpConfigsByScope: scope =>
+    getMcpConfigsByScope: (scope): ScopeConfigs =>
       scope === 'project'
         ? { servers: { sentry: projectConfig }, errors: [] }
         : { servers: {}, errors: [] },
@@ -236,7 +284,7 @@ test('doctorServer does not treat disabled servers as runtime-active or live-che
       servers: { github: localConfig },
       errors: [],
     }),
-    getMcpConfigsByScope: scope =>
+    getMcpConfigsByScope: (scope): ScopeConfigs =>
       scope === 'local'
         ? { servers: { github: localConfig }, errors: [] }
         : { servers: {}, errors: [] },
@@ -275,7 +323,7 @@ test('doctorAllServers skips live checks in config-only mode', async () => {
       servers: { linear: localConfig },
       errors: [],
     }),
-    getMcpConfigsByScope: scope =>
+    getMcpConfigsByScope: (scope): ScopeConfigs =>
       scope === 'local'
         ? { servers: { linear: localConfig }, errors: [] }
         : { servers: {}, errors: [] },
@@ -324,7 +372,7 @@ test('doctorAllServers honors scopeFilter when collecting validation errors', as
       servers: { filesystem: userConfig },
       errors: [],
     }),
-    getMcpConfigsByScope: scope => {
+    getMcpConfigsByScope: (scope): ScopeConfigs => {
       switch (scope) {
         case 'project':
           return {
@@ -421,7 +469,7 @@ test('doctorServer converts failed live checks into blocking findings', async ()
       servers: { github: localConfig },
       errors: [],
     }),
-    getMcpConfigsByScope: scope =>
+    getMcpConfigsByScope: (scope): ScopeConfigs =>
       scope === 'local'
         ? { servers: { github: localConfig }, errors: [] }
         : { servers: {}, errors: [] },
@@ -452,7 +500,7 @@ test('doctorServer converts needs-auth live checks into warning findings', async
       servers: { sentry: localConfig },
       errors: [],
     }),
-    getMcpConfigsByScope: scope =>
+    getMcpConfigsByScope: (scope): ScopeConfigs =>
       scope === 'local'
         ? { servers: { sentry: localConfig }, errors: [] }
         : { servers: {}, errors: [] },
@@ -503,7 +551,7 @@ test('doctorServer with scopeFilter does not leak runtime definition from anothe
       servers: { github: localConfig },
       errors: [],
     }),
-    getMcpConfigsByScope: scope =>
+    getMcpConfigsByScope: (scope): ScopeConfigs =>
       scope === 'local'
         ? { servers: { github: localConfig }, errors: [] }
         : { servers: {}, errors: [] },

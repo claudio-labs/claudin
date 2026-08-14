@@ -4,7 +4,7 @@ import { useTerminalSize } from '../../../hooks/useTerminalSize.js';
 import type { KeyboardEvent } from '../../../ink/events/keyboard-event.js';
 import { Box, Text } from '../../../ink.js';
 import { useKeybinding, useKeybindings } from '../../../keybindings/useKeybinding.js';
-import { useAppState } from '../../../state/AppState.js';
+import { type AppState, useAppState } from '../../../state/AppState.js';
 import type { Question } from '../../../tools/AskUserQuestionTool/AskUserQuestionTool.js';
 import { getExternalEditor } from '../../../utils/editor.js';
 import { toIDEDisplayName } from '../../../utils/ide.js';
@@ -56,7 +56,8 @@ export function PreviewQuestionView({
   onRespondToClaude,
   onFinishPlanInterview
 }: Props): React.ReactNode {
-  const isInPlanMode = useAppState(s => s.toolPermissionContext.mode) === 'plan';
+  const isInPlanMode =
+    useAppState((s: AppState) => s.toolPermissionContext.mode) === 'plan';
   const [isFooterFocused, setIsFooterFocused] = useState(false);
   const [footerIndex, setFooterIndex] = useState(0);
   const [isInNotesInput, setIsInNotesInput] = useState(false);

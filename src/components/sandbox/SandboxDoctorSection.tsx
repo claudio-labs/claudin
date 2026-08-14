@@ -37,9 +37,9 @@ export function SandboxDoctorSection() {
   }
   return t0;
 }
-function _temp2(w, i_0) {
+function _temp2(w: string, i_0: number) {
   return <Text key={i_0} color="warning">└ {w}</Text>;
 }
-function _temp(e, i) {
+function _temp(e: string, i: number) {
   return <Text key={i} color="error">└ {e}</Text>;
 }

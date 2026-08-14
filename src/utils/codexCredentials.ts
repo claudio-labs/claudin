@@ -287,7 +287,8 @@ export async function refreshCodexAccessTokenIfNeeded(options?: {
     return { refreshed: false }
   }
 
-  if (!current.refreshToken) {
+  const refreshToken = current.refreshToken
+  if (!refreshToken) {
     return { refreshed: false, credentials: current }
   }
 
@@ -315,7 +316,7 @@ export async function refreshCodexAccessTokenIfNeeded(options?: {
       const body = new URLSearchParams({
         client_id: getCodexOAuthClientId(),
         grant_type: 'refresh_token',
-        refresh_token: current.refreshToken,
+        refresh_token: refreshToken,
       })
 
       const response = await fetch(CODEX_REFRESH_URL, {

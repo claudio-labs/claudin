@@ -14,8 +14,12 @@ export function getToolUseID(message: NormalizedMessage): string | null {
       }
       return message.message.content[0].id
     case 'user':
-      if (message.sourceToolUseID) {
-        return message.sourceToolUseID
+      {
+        const sourceToolUseID = (message as typeof message & { sourceToolUseID?: string })
+          .sourceToolUseID
+        if (sourceToolUseID) {
+          return sourceToolUseID
+        }
       }
 
       if (message.message.content[0]?.type !== 'tool_result') {

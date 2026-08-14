@@ -17,6 +17,7 @@ import { MCPConnectionManager } from '../../services/mcp/MCPConnectionManager.js
 import { AppStateProvider } from '../../state/AppState.js';
 import { onChangeAppState } from '../../state/onChangeAppState.js';
 import { isAnthropicAuthEnabled } from '../../utils/auth.js';
+import type { CommandResultDisplay } from '../../types/command.js';
 export async function setupTokenHandler(root: Root): Promise<void> {
   logEvent('tengu_setup_token_command', {});
   const showAuthWarning = !isAnthropicAuthEnabled();
@@ -53,7 +54,12 @@ export async function setupTokenHandler(root: Root): Promise<void> {
 const DoctorLazy = React.lazy(() => import('../../screens/Doctor.js').then(m => ({
   default: m.Doctor
 })));
-function DoctorWithPlugins(t0) {
+type DoctorWithPluginsProps = {
+  onDone: (result?: string, options?: {
+    display?: CommandResultDisplay;
+  }) => void;
+};
+function DoctorWithPlugins(t0: DoctorWithPluginsProps) {
   const $ = _c(2);
   const {
     onDone

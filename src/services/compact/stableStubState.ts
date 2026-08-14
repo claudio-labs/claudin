@@ -727,6 +727,13 @@ export type AnyMessage = {
   role?: string
   message?: { role?: string; content?: unknown }
   content?: unknown
+  // Every declared member is optional, which would make this a "weak type":
+  // TypeScript then rejects any argument that shares none of these three keys,
+  // so `Message` (a union whose `AttachmentMessage` arm has none of them) is
+  // not assignable and `applyStableStubs(messages)` fails to infer `T`. The
+  // index signature is what makes the structural check pass — the same shape
+  // `AnyContentBlock` above already uses.
+  [k: string]: unknown
 }
 
 function getInner(msg: AnyMessage): { role?: string; content?: unknown } {

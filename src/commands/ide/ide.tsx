@@ -44,7 +44,7 @@ function IDEScreen(t0: IDEScreenProps) {
   const [showDisableAutoConnectDialog, setShowDisableAutoConnectDialog] = useState(false);
   let t2;
   if ($[2] !== availableIDEs || $[3] !== onSelect) {
-    t2 = value => {
+    t2 = (value: string) => {
       if (value !== "None" && shouldShowAutoConnectDialog()) {
         setShowAutoConnectDialog(true);
       } else {
@@ -75,7 +75,7 @@ function IDEScreen(t0: IDEScreenProps) {
   if ($[7] !== availableIDEs || $[8] !== ideCounts) {
     let t5;
     if ($[10] !== ideCounts) {
-      t5 = ide_1 => {
+      t5 = (ide_1: DetectedIDEInfo) => {
         const hasMultipleInstances = (ideCounts[ide_1.name] || 0) > 1;
         const showWorkspace = hasMultipleInstances && ide_1.workspaceFolders.length > 0;
         return {
@@ -195,13 +195,13 @@ function IDEScreen(t0: IDEScreenProps) {
   }
   return t11;
 }
-function _temp3(ide_3, index) {
+function _temp3(ide_3: DetectedIDEInfo, index: number) {
   return <Box key={index} paddingLeft={3}><Text dimColor={true}>• {ide_3.name}: {formatWorkspaceFolders(ide_3.workspaceFolders)}</Text></Box>;
 }
-function _temp2(ide_2) {
+function _temp2(ide_2: DetectedIDEInfo) {
   return ide_2.name === "VS Code" || ide_2.name === "Visual Studio Code";
 }
-function _temp(acc, ide_0) {
+function _temp(acc: Record<string, number>, ide_0: DetectedIDEInfo) {
   acc[ide_0.name] = (acc[ide_0.name] || 0) + 1;
   return acc;
 }
@@ -242,7 +242,7 @@ function IDEOpenSelection(t0: IDEOpenSelectionProps) {
   const [selectedValue, setSelectedValue] = useState(t1);
   let t2;
   if ($[2] !== availableIDEs || $[3] !== onSelectIDE) {
-    t2 = value => {
+    t2 = (value: string) => {
       const selectedIDE = availableIDEs.find(ide => ide.port === parseInt(value));
       onSelectIDE(selectedIDE);
     };
@@ -277,7 +277,7 @@ function IDEOpenSelection(t0: IDEOpenSelectionProps) {
   const handleCancel = t4;
   let t5;
   if ($[9] !== handleSelectIDE) {
-    t5 = value_0 => {
+    t5 = (value_0: string) => {
       setSelectedValue(value_0);
       handleSelectIDE(value_0);
     };
@@ -307,23 +307,30 @@ function IDEOpenSelection(t0: IDEOpenSelectionProps) {
   }
   return t7;
 }
-function _temp4(ide_0) {
+function _temp4(ide_0: DetectedIDEInfo) {
   return {
     label: ide_0.name,
     value: ide_0.port.toString()
   };
 }
-function RunningIDESelector(t0) {
+type RunningIDESelectorProps = {
+  runningIDEs: IdeType[];
+  onSelectIDE: (ide: IdeType) => void;
+  onDone: (result?: string, options?: {
+    display?: CommandResultDisplay;
+  }) => void;
+};
+function RunningIDESelector(t0: RunningIDESelectorProps) {
   const $ = _c(15);
   const {
     runningIDEs,
     onSelectIDE,
     onDone
   } = t0;
-  const [selectedValue, setSelectedValue] = useState(runningIDEs[0] ?? "");
+  const [selectedValue, setSelectedValue] = useState<IdeType | "">(runningIDEs[0] ?? "");
   let t1;
   if ($[0] !== onSelectIDE) {
-    t1 = value => {
+    t1 = (value: IdeType | "") => {
       onSelectIDE(value as IdeType);
     };
     $[0] = onSelectIDE;
@@ -356,7 +363,7 @@ function RunningIDESelector(t0) {
   const handleCancel = t3;
   let t4;
   if ($[6] !== handleSelectIDE) {
-    t4 = value_0 => {
+    t4 = (value_0: IdeType | "") => {
       setSelectedValue(value_0);
       handleSelectIDE(value_0);
     };
@@ -386,13 +393,17 @@ function RunningIDESelector(t0) {
   }
   return t6;
 }
-function _temp5(ide) {
+function _temp5(ide: IdeType) {
   return {
     label: toIDEDisplayName(ide),
     value: ide
   };
 }
-function InstallOnMount(t0) {
+type InstallOnMountProps = {
+  ide: IdeType;
+  onInstall: (ide: IdeType) => void;
+};
+function InstallOnMount(t0: InstallOnMountProps) {
   const $ = _c(4);
   const {
     ide,

@@ -21,7 +21,7 @@ const PROCESSING_BRIGHT = {
 };
 const PULSE_PERIOD_S = 2; // 2 second period for all pulsing animations
 
-export function VoiceIndicator(props) {
+export function VoiceIndicator(props: Props) {
   const $ = _c(2);
   if (!feature("VOICE_MODE")) {
     return null;

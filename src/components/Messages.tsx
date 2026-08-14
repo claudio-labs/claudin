@@ -46,6 +46,11 @@ import type { ToolUseConfirm } from './permissions/PermissionRequest.js';
 import { StatusNotices } from './StatusNotices.js';
 import type { JumpHandle } from './VirtualMessageList.js';
 
+/** LogoHeader only consumes the agent definitions, not the full Messages props. */
+type LogoHeaderProps = {
+  agentDefinitions?: AgentDefinitionsResult;
+};
+
 // Memoed logo header: this box is the FIRST sibling before all MessageRows
 // in main-screen mode. If it becomes dirty on every Messages re-render,
 // renderChildren's seenDirtyChild cascade disables prevScreen (blit) for
@@ -54,7 +59,7 @@ import type { JumpHandle } from './VirtualMessageList.js';
 // and pegs CPU at 100%. Memo on agentDefinitions so a new messages array
 // doesn't invalidate the logo subtree. LogoV2/StatusNotices internally
 // subscribe to useAppState/useSettings for their own updates.
-const LogoHeader = React.memo(function LogoHeader(t0: Props) {
+const LogoHeader = React.memo(function LogoHeader(t0: LogoHeaderProps) {
   const $ = _c(3);
   const {
     agentDefinitions
@@ -649,6 +654,12 @@ const MessagesImpl = ({
   }, [progress]);
   const messageKey = useCallback((msg_7: RenderableMessage) => `${msg_7.uuid}-${conversationId}`, [conversationId]);
   const renderMessageRow = (msg_8: RenderableMessage, index: number) => {
+    // Progress messages are filtered out of compactAwareMessages before the
+    // grouping/collapse chain runs (see the `msg_2.type !== 'progress'` filter
+    // above) and none of those steps reintroduce one, but that invariant isn't
+    // visible to the type of collapsed_0 four call levels up — narrow here so
+    // MessageRow's Props (which excludes ProgressMessage) type-checks.
+    if (msg_8.type === 'progress') return null;
     const prevType = index > 0 ? renderableMessages[index - 1]?.type : undefined;
     const isUserContinuation = msg_8.type === 'user' && prevType === 'user';
     // hasContentAfter is only consumed for collapsed_read_search groups;
@@ -879,4 +890,7 @@ export function shouldRenderStatically(message: RenderableMessage, streamingTool
         return false;
       }
   }
+  // RenderableMessage carries types this switch does not enumerate; they were
+  // already falling out as `undefined`, i.e. "render dynamically".
+  return false;
 }

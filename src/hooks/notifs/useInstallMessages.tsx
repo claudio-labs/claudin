@@ -1,14 +1,19 @@
+import type { Notification } from 'src/context/notifications.js';
 import { checkInstall } from 'src/utils/nativeInstaller/index.js';
 import { useStartupNotification } from './useStartupNotification.js';
+// The barrel (src/utils/nativeInstaller/index.js) deliberately re-exports
+// only the functions external modules use, not the SetupMessage type —
+// derive the element type from checkInstall's own return type instead.
+type SetupMessage = Awaited<ReturnType<typeof checkInstall>>[number];
 export function useInstallMessages() {
   useStartupNotification(_temp2);
 }
-async function _temp2() {
+async function _temp2(): Promise<Notification[]> {
   const messages = await checkInstall();
   return messages.map(_temp);
 }
-function _temp(message, index) {
-  let priority = "low";
+function _temp(message: SetupMessage, index: number): Notification {
+  let priority: Notification['priority'] = "low";
   if (message.type === "error" || message.userActionRequired) {
     priority = "high";
   } else {

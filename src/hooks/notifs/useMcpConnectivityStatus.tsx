@@ -78,15 +78,15 @@ export function useMcpConnectivityStatus(t0: Props) {
   }
   useEffect(t2, t3);
 }
-function _temp4(client_2) {
+function _temp4(client_2: MCPServerConnection) {
   return client_2.type === "needs-auth" && client_2.config.type === "claudeai-proxy" && hasClaudeAiMcpEverConnected(client_2.name);
 }
-function _temp3(client_1) {
+function _temp3(client_1: MCPServerConnection) {
   return client_1.type === "needs-auth" && client_1.config.type !== "claudeai-proxy";
 }
-function _temp2(client_0) {
+function _temp2(client_0: MCPServerConnection) {
   return client_0.type === "failed" && client_0.config.type === "claudeai-proxy" && hasClaudeAiMcpEverConnected(client_0.name);
 }
-function _temp(client) {
+function _temp(client: MCPServerConnection) {
   return client.type === "failed" && client.config.type !== "sse-ide" && client.config.type !== "ws-ide" && client.config.type !== "claudeai-proxy";
 }

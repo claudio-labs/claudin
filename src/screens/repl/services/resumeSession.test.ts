@@ -284,7 +284,7 @@ describe('resumeSession', () => {
     calls.length = 0
     const deps = makeDeps()
 
-    await resumeSession(SESSION_ID, makeLog(), 'resume', deps)
+    await resumeSession(SESSION_ID, makeLog(), 'cli_flag', deps)
 
     // Spot-check the key ordered milestones — these are the load-bearing
     // side effects from the original inline callback.
@@ -351,7 +351,7 @@ describe('resumeSession', () => {
       },
     })
 
-    await expect(resumeSession(SESSION_ID, makeLog(), 'resume', deps)).rejects.toThrow('boom')
+    await expect(resumeSession(SESSION_ID, makeLog(), 'cli_flag', deps)).rejects.toThrow('boom')
     expect(calls).toContain('logEvent:tengu_session_resumed:false')
   })
 })

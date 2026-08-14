@@ -175,7 +175,10 @@ const realCodexCredentialsForPm = { ...(await import('../utils/codexCredentials.
 const realUseCodexOAuthFlowForPm = { ...(await import('./useCodexOAuthFlow.js')) }
 
 function mockProviderProfilesModule(options?: {
-  addProviderProfile?: (...args: unknown[]) => unknown
+  // `never[]` rather than `unknown[]`: callers pass a stand-in that declares
+  // its own payload shape, and an `unknown` parameter is not assignable to one
+  // under strictFunctionTypes.
+  addProviderProfile?: (...args: never[]) => unknown
   getActiveProviderProfile?: () => unknown
   getProviderProfiles?: () => unknown[]
   updateProviderProfile?: (...args: unknown[]) => unknown
@@ -248,7 +251,10 @@ function mockProviderProfilesModule(options?: {
 
 function mockProviderManagerDependencies(
   options?: {
-    addProviderProfile?: (...args: unknown[]) => unknown
+    // `never[]` rather than `unknown[]`: callers pass a stand-in that declares
+    // its own payload shape, and an `unknown` parameter is not assignable to
+    // one under strictFunctionTypes.
+    addProviderProfile?: (...args: never[]) => unknown
     applySavedProfileToCurrentSession?: (...args: unknown[]) => Promise<string | null>
     clearCodexCredentials?: () => { success: boolean; warning?: string }
     getActiveProviderProfile?: () => unknown

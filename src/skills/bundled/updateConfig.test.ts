@@ -13,8 +13,9 @@ test('update-config skill can generate its prompt without JSON Schema conversion
   const skill = getBundledSkills().find(command => command.name === 'update-config')
   expect(skill).toBeDefined()
   expect(skill?.type).toBe('prompt')
+  if (skill?.type !== 'prompt') throw new Error('unreachable')
 
-  const blocks = await skill!.getPromptForCommand('', {} as never)
+  const blocks = await skill.getPromptForCommand('', {} as never)
   expect(blocks.length).toBeGreaterThan(0)
   expect(blocks[0]).toMatchObject({ type: 'text' })
   expect((blocks[0] as { text: string }).text).toContain(

@@ -24,7 +24,7 @@ export function ThinkingToggle(t0: Props) {
     isMidConversation
   } = t0;
   const exitState = useExitOnCtrlCDWithKeybindings();
-  const [confirmationPending, setConfirmationPending] = useState(null);
+  const [confirmationPending, setConfirmationPending] = useState<boolean | null>(null);
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = [{
@@ -94,7 +94,7 @@ export function ThinkingToggle(t0: Props) {
   useKeybinding("confirm:yes", t4, t6);
   let t7;
   if ($[10] !== currentValue || $[11] !== isMidConversation || $[12] !== onSelect) {
-    t7 = function handleSelectChange(value) {
+    t7 = function handleSelectChange(value: string) {
       const selected = value === "true";
       if (isMidConversation && selected !== currentValue) {
         setConfirmationPending(selected);

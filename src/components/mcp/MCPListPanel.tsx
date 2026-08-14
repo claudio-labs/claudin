@@ -98,7 +98,7 @@ export function MCPListPanel(t0: Props) {
     onSelectAgentServer,
     onComplete
   } = t0;
-  let t2;
+  let t2: AgentMcpServerInfo[];
   if ($[0] !== t1) {
     t2 = t1 === undefined ? [] : t1;
     $[0] = t1;
@@ -109,7 +109,7 @@ export function MCPListPanel(t0: Props) {
   const agentServers = t2;
   const [theme] = useTheme();
   const [selectedIndex, setSelectedIndex] = useState(0);
-  let t3;
+  let t3: Map<ConfigScope, ServerInfo[]>;
   if ($[2] !== servers) {
     const regularServers = servers.filter(_temp);
     t3 = groupServersByScope(regularServers);
@@ -119,7 +119,7 @@ export function MCPListPanel(t0: Props) {
     t3 = $[3];
   }
   const serversByScope = t3;
-  let t4;
+  let t4: ServerInfo[];
   if ($[4] !== servers) {
     t4 = servers.filter(_temp2).sort(_temp3);
     $[4] = servers;
@@ -128,7 +128,7 @@ export function MCPListPanel(t0: Props) {
     t4 = $[5];
   }
   const claudeAiServers = t4;
-  let t5;
+  let t5: ServerInfo[];
   if ($[6] !== serversByScope) {
     t5 = (serversByScope.get("dynamic") ?? []).sort(_temp4);
     $[6] = serversByScope;
@@ -145,7 +145,7 @@ export function MCPListPanel(t0: Props) {
     t6 = $[8];
   }
   const dynamicHeading = t6;
-  let items;
+  let items: SelectableItem[];
   if ($[9] !== agentServers || $[10] !== claudeAiServers || $[11] !== dynamicServers || $[12] !== serversByScope) {
     items = [];
     for (const scope of SCOPE_ORDER) {
@@ -261,7 +261,7 @@ export function MCPListPanel(t0: Props) {
   useKeybindings(t11, t12);
   let t13;
   if ($[30] !== selectableItems) {
-    t13 = server_2 => selectableItems.findIndex(item_0 => item_0.type === "server" && item_0.server === server_2);
+    t13 = (server_2: ServerInfo) => selectableItems.findIndex(item_0 => item_0.type === "server" && item_0.server === server_2);
     $[30] = selectableItems;
     $[31] = t13;
   } else {
@@ -270,7 +270,7 @@ export function MCPListPanel(t0: Props) {
   const getServerIndex = t13;
   let t14;
   if ($[32] !== selectableItems) {
-    t14 = agentServer_0 => selectableItems.findIndex(item_1 => item_1.type === "agent-server" && item_1.agentServer === agentServer_0);
+    t14 = (agentServer_0: AgentMcpServerInfo) => selectableItems.findIndex(item_1 => item_1.type === "agent-server" && item_1.agentServer === agentServer_0);
     $[32] = selectableItems;
     $[33] = t14;
   } else {
@@ -299,7 +299,7 @@ export function MCPListPanel(t0: Props) {
   }
   let t17;
   if ($[37] !== getServerIndex || $[38] !== selectedIndex || $[39] !== theme) {
-    t17 = server_3 => {
+    t17 = (server_3: ServerInfo) => {
       const index = getServerIndex(server_3);
       const isSelected = selectedIndex === index;
       let statusIcon;
@@ -346,7 +346,7 @@ export function MCPListPanel(t0: Props) {
   const renderServerItem = t17;
   let t18;
   if ($[41] !== getAgentServerIndex || $[42] !== selectedIndex || $[43] !== theme) {
-    t18 = agentServer_1 => {
+    t18 = (agentServer_1: AgentMcpServerInfo) => {
       const index_0 = getAgentServerIndex(agentServer_1);
       const isSelected_0 = selectedIndex === index_0;
       const statusIcon_0 = agentServer_1.needsAuth ? color("warning", theme)(figures.triangleUpOutline) : color("inactive", theme)(figures.radioOff);
@@ -483,21 +483,21 @@ export function MCPListPanel(t0: Props) {
   }
   return t32;
 }
-function _temp6(s_2) {
+function _temp6(s_2: AgentMcpServerInfo) {
   return s_2.sourceAgents;
 }
-function _temp5(s_1) {
+function _temp5(s_1: ServerInfo) {
   return s_1.client.type === "failed";
 }
-function _temp4(a_0, b_0) {
+function _temp4(a_0: ServerInfo, b_0: ServerInfo) {
   return a_0.name.localeCompare(b_0.name);
 }
-function _temp3(a, b) {
+function _temp3(a: ServerInfo, b: ServerInfo) {
   return a.name.localeCompare(b.name);
 }
-function _temp2(s_0) {
+function _temp2(s_0: ServerInfo) {
   return s_0.client.config.type === "claudeai-proxy";
 }
-function _temp(s) {
+function _temp(s: ServerInfo) {
   return s.client.config.type !== "claudeai-proxy";
 }

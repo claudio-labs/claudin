@@ -220,7 +220,7 @@ export const TaskOutputTool: Tool<InputSchema, TaskOutputToolOutput> = buildTool
       // Non-blocking: return current state
       if (task.status !== 'running' && task.status !== 'pending') {
         // Mark as notified
-        updateTaskState(task_id, toolUseContext.setAppState, t => ({
+        updateTaskState<TaskState>(task_id, toolUseContext.setAppState, t => ({
           ...t,
           notified: true
         }));
@@ -269,7 +269,7 @@ export const TaskOutputTool: Tool<InputSchema, TaskOutputToolOutput> = buildTool
     }
 
     // Mark as notified
-    updateTaskState(task_id, toolUseContext.setAppState, t => ({
+    updateTaskState<TaskState>(task_id, toolUseContext.setAppState, t => ({
       ...t,
       notified: true
     }));
@@ -350,7 +350,11 @@ export const TaskOutputTool: Tool<InputSchema, TaskOutputToolOutput> = buildTool
     return <FallbackToolUseErrorMessage result={result} verbose={verbose} />;
   }
 } satisfies ToolDef<InputSchema, TaskOutputToolOutput>);
-function TaskOutputResultDisplay(t0) {
+function TaskOutputResultDisplay(t0: {
+  content: TaskOutputToolOutput | string;
+  verbose?: boolean;
+  theme: ThemeName;
+}) {
   const $ = _c(54);
   const {
     content,

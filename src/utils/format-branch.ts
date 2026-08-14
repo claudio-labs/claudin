@@ -36,9 +36,10 @@ export function resolvePrBg(theme: Theme): string {
 function applyColor(c: ChalkInstance, raw: string, type: 'fg' | 'bg'): ChalkInstance {
   if (raw.startsWith('ansi:')) {
     const name = raw.slice(5)
-    if (type === 'fg') return (c as Record<string, ChalkInstance>)[name] ?? c
+    const styles = c as unknown as Record<string, ChalkInstance | undefined>
+    if (type === 'fg') return styles[name] ?? c
     const bgName = `bg${name[0]!.toUpperCase()}${name.slice(1)}`
-    return (c as Record<string, ChalkInstance>)[bgName] ?? c
+    return styles[bgName] ?? c
   }
   if (raw.startsWith('#')) {
     return type === 'fg' ? c.hex(raw) : c.bgHex(raw)

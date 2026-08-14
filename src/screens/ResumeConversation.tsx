@@ -313,7 +313,7 @@ export function ResumeConversation({
       </Box>;
   }
   const resumeErrorBanner = resumeError ? <Box flexDirection="column" marginBottom={1}>
-      <Text color="red">Failed to resume conversation.</Text>
+      <Text color="error">Failed to resume conversation.</Text>
       <Text>{resumeError}</Text>
       <Text dimColor={true}>Choose a different conversation to continue.</Text>
     </Box> : null;
@@ -349,12 +349,14 @@ function NoConversationsMessage() {
 function _temp() {
   process.exit(1);
 }
-function CrossProjectMessage(t0) {
+function CrossProjectMessage(t0: {
+  command: string;
+}) {
   const $ = _c(8);
   const {
     command
   } = t0;
-  let t1;
+  let t1: never[];
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = [];
     $[0] = t1;

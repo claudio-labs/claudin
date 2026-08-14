@@ -45,7 +45,7 @@ type ToolOutput = Tool['outputSchema']
 const MCP_COMMANDS: Command[] = [review]
 
 export function getCombinedTools(
-  builtins: InternalTool[],
+  builtins: readonly InternalTool[],
   mcpTools: InternalTool[],
 ): InternalTool[] {
   const mcpToolNames = new Set(mcpTools.map(t => t.name))

@@ -38,10 +38,11 @@ test('applyToolResultReplacementsToMessages replaces matching tool results and p
   expect(next).not.toBe(messages)
   expect(next[0]).toBe(unrelated)
   expect(next[1]).not.toBe(oversizedResult)
-  expect((next[1]!.message.content as Array<{ content: string }>)[0]!.content).toBe(
-    replacement,
-  )
-  expect(next[1]!.toolUseResult).toBeUndefined()
+  const replaced = next[1] as typeof oversizedResult
+  expect(
+    (replaced.message.content as Array<{ content: string }>)[0]!.content,
+  ).toBe(replacement)
+  expect(replaced.toolUseResult).toBeUndefined()
 })
 
 test('applyToolResultReplacementsToMessages is idempotent when messages are already hydrated', () => {

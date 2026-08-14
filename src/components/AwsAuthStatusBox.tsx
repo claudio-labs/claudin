@@ -14,7 +14,7 @@ export function AwsAuthStatusBox() {
   }
   const [status, setStatus] = useState(t0);
   let t1;
-  let t2;
+  let t2: React.DependencyList;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = () => {
       const unsubscribe = AwsAuthStatusManager.getInstance().subscribe(setStatus);
@@ -68,7 +68,7 @@ export function AwsAuthStatusBox() {
   }
   return t6;
 }
-function _temp(line, index) {
+function _temp(line: string, index: number) {
   const m = line.match(URL_RE);
   if (!m) {
     return <Text key={index} dimColor={true}>{line}</Text>;

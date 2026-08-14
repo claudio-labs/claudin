@@ -7,7 +7,7 @@ import { useKeybinding } from '../../../keybindings/useKeybinding.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from '../../../services/analytics/growthbook.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../../services/analytics/index.js';
 import { sanitizeToolNameForAnalytics } from '../../../services/analytics/metadata.js';
-import { useAppState } from '../../../state/AppState.js';
+import { type AppState, useAppState } from '../../../state/AppState.js';
 import { BashTool } from '../../../tools/BashTool/BashTool.js';
 import { getFirstWordPrefix, getSimpleCommandPrefix } from '../../../tools/BashTool/bashPermissions.js';
 import { getDestructiveCommandWarning } from '../../../tools/BashTool/destructiveCommandWarning.js';
@@ -42,7 +42,7 @@ const CHECKING_TEXT = 'Attempting to auto-approve\u2026';
 function ClassifierCheckingSubtitle() {
   const $ = _c(6);
   const [ref, glimmerIndex] = useShimmerAnimation("requesting", CHECKING_TEXT, false);
-  let t0;
+  let t0: string[];
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = [...CHECKING_TEXT];
     $[0] = t0;
@@ -68,7 +68,7 @@ function ClassifierCheckingSubtitle() {
   }
   return t2;
 }
-export function BashPermissionRequest(props) {
+export function BashPermissionRequest(props: PermissionRequestProps) {
   const $ = _c(21);
   const {
     toolUseConfirm,
@@ -147,7 +147,7 @@ function BashPermissionRequestInner({
   description?: string;
 }): React.ReactNode {
   const [theme] = useTheme();
-  const toolPermissionContext = useAppState(s => s.toolPermissionContext);
+  const toolPermissionContext = useAppState((s: AppState) => s.toolPermissionContext);
   const explainerState = usePermissionExplainerUI({
     toolName: toolUseConfirm.tool.name,
     toolInput: toolUseConfirm.input,

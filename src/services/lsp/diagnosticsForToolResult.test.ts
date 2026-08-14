@@ -423,13 +423,13 @@ describe('armFileForLateDiagnostics + awaitLateDiagnosticsForTurn', () => {
     // Now LSP publishes both A and B (latest pending entry replaces the old).
     const diagB = {
       message: 'Different error',
-      severity: 'error' as const,
+      severity: 'Error' as const,
       range: {
         start: { line: 5, character: 0 },
         end: { line: 5, character: 10 },
       },
       source: 'ts',
-      code: 9999,
+      code: '9999',
     }
     registerPendingLSPDiagnostic({
       serverName: 'tsserver',

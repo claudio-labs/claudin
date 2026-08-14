@@ -54,7 +54,7 @@ export function EffortCallout(t0: Props) {
   const handleCancel = t3;
   let t4;
   if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
-    t4 = [];
+    t4 = [] as React.DependencyList;
     $[4] = t4;
   } else {
     t4 = $[4];
@@ -87,7 +87,7 @@ export function EffortCallout(t0: Props) {
   const defaultLevel = t7;
   let t8;
   if ($[9] !== defaultLevel) {
-    t8 = value => {
+    t8 = (value: EffortLevel) => {
       const effortLevel = value === defaultLevel ? undefined : value;
       // Picking the model's own default pins 'auto' for this project: same
       // effective level, and it still beats a globally pinned effortLevel.
@@ -162,7 +162,7 @@ export function EffortCallout(t0: Props) {
 function _temp() {
   markV2Dismissed();
 }
-function EffortIndicatorSymbol(t0) {
+function EffortIndicatorSymbol(t0: { level: EffortLevel }) {
   const $ = _c(4);
   const {
     level
@@ -185,7 +185,7 @@ function EffortIndicatorSymbol(t0) {
   }
   return t2;
 }
-function EffortOptionLabel(t0) {
+function EffortOptionLabel(t0: { level: EffortLevel; text: string }) {
   const $ = _c(5);
   const {
     level,

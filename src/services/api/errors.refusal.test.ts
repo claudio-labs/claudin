@@ -35,6 +35,9 @@ test('appends explanation on its own line when provided', () => {
     type: 'refusal',
     category: 'cyber',
     explanation: 'Request matched cyberweapons classifier.',
+    fallback_credit_token: null,
+    fallback_has_prefill_claim: null,
+    recommended_model: null,
   })
   const text = getText(message)
 
@@ -47,6 +50,9 @@ test('omits explanation line when explanation is null', () => {
     type: 'refusal',
     category: 'bio',
     explanation: null,
+    fallback_credit_token: null,
+    fallback_has_prefill_claim: null,
+    recommended_model: null,
   })
   const text = getText(message)
 
@@ -59,6 +65,9 @@ test('appends model switch suggestion for non-sonnet models', () => {
     type: 'refusal',
     category: 'cyber',
     explanation: 'blocked',
+    fallback_credit_token: null,
+    fallback_has_prefill_claim: null,
+    recommended_model: null,
   })
   const text = getText(message)
 

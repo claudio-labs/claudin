@@ -16,6 +16,7 @@ import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { stringWidth } from '../ink/stringWidth.js';
 import { Box, Text, wrapText } from '../ink.js';
 import { useAppState, useSetAppState } from '../state/AppState.js';
+import type { AppState } from '../state/AppStateStore.js';
 import { enterTeammateView, exitTeammateView } from '../state/teammateViewHelpers.js';
 import { isPanelAgentTask, type LocalAgentTaskState } from '../tasks/LocalAgentTask/LocalAgentTask.js';
 import { getAgentColor } from '../tools/AgentTool/agentColorManager.js';
@@ -25,11 +26,11 @@ import { isTerminalStatus } from './tasks/taskStatusUtils.js';
 import { countFooterTaskRows } from './tasks/footerSelection.js';
 import { countVisibleAgentTasks, getAgentPanelRows } from './tasks/footerTaskGeometry.js';
 export function CoordinatorTaskPanel(): React.ReactNode {
-  const tasks = useAppState(s => s.tasks);
-  const viewingAgentTaskId = useAppState(s_0 => s_0.viewingAgentTaskId);
-  const agentNameRegistry = useAppState(s_1 => s_1.agentNameRegistry);
-  const coordinatorTaskIndex = useAppState(s_2 => s_2.coordinatorTaskIndex);
-  const tasksSelected = useAppState(s_3 => s_3.footerSelection === 'tasks');
+  const tasks: AppState['tasks'] = useAppState((s: AppState) => s.tasks);
+  const viewingAgentTaskId: AppState['viewingAgentTaskId'] = useAppState((s_0: AppState) => s_0.viewingAgentTaskId);
+  const agentNameRegistry: AppState['agentNameRegistry'] = useAppState((s_1: AppState) => s_1.agentNameRegistry);
+  const coordinatorTaskIndex: AppState['coordinatorTaskIndex'] = useAppState((s_2: AppState) => s_2.coordinatorTaskIndex);
+  const tasksSelected: boolean = useAppState((s_3: AppState) => s_3.footerSelection === 'tasks');
   const selectedIndex = tasksSelected ? coordinatorTaskIndex : undefined;
   const setAppState = useSetAppState();
   const rows = getAgentPanelRows(tasks);
@@ -97,7 +98,7 @@ export function useCoordinatorTaskCount() {
   // nothing). Tree portion: the grouped shells/monitors/etc. rows sit right
   // after agents, so they're folded into the same count — this is what lets ↓
   // walk the cursor into the tree (and keeps x/enter acting on tree rows).
-  return useAppState(s => {
+  return useAppState((s: AppState) => {
     const n = countVisibleAgentTasks(s.tasks);
     const agentPart = n === 0 ? 0 : n + 1;
     // countFooterTaskRows is a cheap counter — no row-list allocation. Hot path:

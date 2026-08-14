@@ -342,9 +342,13 @@ export const NotebookEditTool = buildTool({
       // notebook in place below (cells.splice, targetCell.source = ...).
       // Using the memoized version poisons the cache for validateInput() and
       // any subsequent call() with the same file content.
-      let notebook: NotebookContent
+      // NotebookContent (types/notebook.ts) intentionally omits nbformat/
+      // nbformat_minor — reconstructed from use sites, not the full nbformat
+      // spec — but the raw parsed JSON always carries them (real .ipynb
+      // files always have a top-level nbformat/nbformat_minor pair).
+      let notebook: NotebookContent & { nbformat?: number; nbformat_minor?: number }
       try {
-        notebook = jsonParse(content) as NotebookContent
+        notebook = jsonParse(content) as NotebookContent & { nbformat?: number; nbformat_minor?: number }
       } catch {
         return {
           data: {
@@ -393,8 +397,8 @@ export const NotebookEditTool = buildTool({
       const language = notebook.metadata.language_info?.name ?? 'python'
       let new_cell_id = undefined
       if (
-        notebook.nbformat > 4 ||
-        (notebook.nbformat === 4 && notebook.nbformat_minor >= 5)
+        (notebook.nbformat ?? 4) > 4 ||
+        ((notebook.nbformat ?? 4) === 4 && (notebook.nbformat_minor ?? 0) >= 5)
       ) {
         if (edit_mode === 'insert') {
           new_cell_id = Math.random().toString(36).substring(2, 15)

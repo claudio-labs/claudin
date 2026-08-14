@@ -451,11 +451,16 @@ export function BrowseMarketplace({
         const plugin_3 = availablePlugins[selectedIndex];
         if (plugin_3) {
           if (plugin_3.isInstalled) {
+            // ViewState's 'manage-plugins' arm (src/commands/plugin/types.ts,
+            // reconstructed from use sites) is missing `targetMarketplace`,
+            // even though PluginSettings.tsx reads it back
+            // (viewState.targetMarketplace at ~line 1007). Cast until that
+            // shared type is corrected.
             setParentViewState({
               type: 'manage-plugins',
               targetPlugin: plugin_3.entry.name,
               targetMarketplace: plugin_3.marketplaceName
-            });
+            } as ParentViewState);
           } else {
             setSelectedPlugin(plugin_3);
             setViewState('plugin-details');

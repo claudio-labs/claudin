@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import React, { useState } from 'react';
 import { Box, Text, useInput } from '../../../ink.js';
-import { useAppState } from '../../../state/AppState.js';
+import { type AppState, useAppState } from '../../../state/AppState.js';
 import type { Question, QuestionOption } from '../../../tools/AskUserQuestionTool/AskUserQuestionTool.js';
 import type { PastedContent } from '../../../utils/config.js';
 import { getExternalEditor } from '../../../utils/editor.js';
@@ -80,7 +80,7 @@ export function QuestionView(t0: Props) {
   const editorName = t2;
   let t3;
   if ($[1] !== onTextInputFocus) {
-    t3 = value => {
+    t3 = (value: string) => {
       const isOther = value === "__other__";
       setIsOtherFocused(isOther);
       onTextInputFocus(isOther);
@@ -156,7 +156,7 @@ export function QuestionView(t0: Props) {
   );
 
   let handleOpenEditor;
-  let questionText;
+  let questionText: string;
   let t7;
   if ($[12] !== onUpdateQuestionState || $[13] !== question || $[14] !== questionStates) {
     const textOptions = question.options.map(_temp2);
@@ -164,7 +164,7 @@ export function QuestionView(t0: Props) {
     const questionState = questionStates[questionText];
     let t8;
     if ($[18] !== onUpdateQuestionState || $[19] !== question.multiSelect || $[20] !== questionText) {
-      t8 = async (currentValue, setValue) => {
+      t8 = async (currentValue: string, setValue: (value: string) => void) => {
         const result = await editPromptInEditor(currentValue);
         if (result.content !== null && result.content !== currentValue) {
           setValue(result.content);
@@ -185,7 +185,7 @@ export function QuestionView(t0: Props) {
     const t10 = questionState?.textInputValue ?? "";
     let t11;
     if ($[22] !== onUpdateQuestionState || $[23] !== question.multiSelect || $[24] !== questionText) {
-      t11 = value_0 => {
+      t11 = (value_0: string) => {
         onUpdateQuestionState(questionText, {
           textInputValue: value_0
         }, question.multiSelect ?? false);
@@ -440,13 +440,13 @@ export function QuestionView(t0: Props) {
   }
   return t26;
 }
-function _temp4(v) {
+function _temp4(v: string) {
   return v !== "__other__";
 }
-function _temp3(opt_0) {
+function _temp3(opt_0: QuestionOption) {
   return opt_0.preview;
 }
-function _temp2(opt) {
+function _temp2(opt: QuestionOption) {
   return {
     type: "text" as const,
     value: opt.label,
@@ -454,6 +454,6 @@ function _temp2(opt) {
     description: opt.description
   };
 }
-function _temp(s) {
+function _temp(s: AppState) {
   return s.toolPermissionContext.mode;
 }

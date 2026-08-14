@@ -33,6 +33,7 @@ afterEach(() => {
 
 function setupOpenAIMode(baseUrl: string, model: string): void {
   resolvedOverride = {
+    name: 'OpenAI-compatible',
     transport: 'openai_compat',
     baseUrl,
     model,
@@ -42,6 +43,7 @@ function setupOpenAIMode(baseUrl: string, model: string): void {
 
 function setupGemini(model = 'gemini-2.0-flash'): void {
   resolvedOverride = {
+    name: 'Gemini',
     transport: 'gemini',
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
     model,
@@ -50,6 +52,7 @@ function setupGemini(model = 'gemini-2.0-flash'): void {
 
 function setupMistral(model = 'mistral-large-latest'): void {
   resolvedOverride = {
+    name: 'Mistral',
     transport: 'mistral',
     baseUrl: 'https://api.mistral.ai/v1',
     model,
@@ -58,6 +61,7 @@ function setupMistral(model = 'mistral-large-latest'): void {
 
 function setupGithub(model = 'github:copilot'): void {
   resolvedOverride = {
+    name: 'GitHub Copilot',
     transport: 'github_copilot',
     baseUrl: 'https://api.githubcopilot.com',
     model,

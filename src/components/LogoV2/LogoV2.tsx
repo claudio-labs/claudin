@@ -9,7 +9,7 @@ import { truncate } from '../../utils/format.js';
 import { Clawd } from './Clawd.js';
 import { FeedColumn } from './FeedColumn.js';
 import { createRecentActivityFeed, createWhatsNewFeed, createProjectOnboardingFeed, createGuestPassesFeed } from './feedConfigs.js';
-import { getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
+import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from 'src/utils/config.js';
 import { resolveThemeSetting } from 'src/utils/systemTheme.js';
 import { getInitialSettings } from 'src/utils/settings/settings.js';
 import { isDebugMode, isDebugToStdErr, getDebugLogPath } from 'src/utils/debug.js';
@@ -37,6 +37,7 @@ import { useShowGuestPassesUpsell, incrementGuestPassesSeenCount } from './Guest
 import { useShowOverageCreditUpsell, incrementOverageCreditUpsellSeenCount, createOverageCreditFeed } from './OverageCreditUpsell.js';
 import { plural } from '../../utils/stringUtils.js';
 import { useAppState } from '../../state/AppState.js';
+import type { AppState } from '../../state/AppStateStore.js';
 import { getEffortSuffix } from '../../utils/effort.js';
 import { getAPIProvider } from '../../utils/model/providers.js';
 import { useMainLoopModel } from '../../hooks/useMainLoopModel.js';
@@ -71,7 +72,7 @@ export function LogoV2() {
   const agent = useAppState(_temp);
   const effortValue = useAppState(_temp2);
   const config = getGlobalConfig();
-  let changelog;
+  let changelog: string[];
   try {
     changelog = getRecentReleaseNotesSync(3);
   } catch {
@@ -223,8 +224,11 @@ export function LogoV2() {
     if ($[25] === Symbol.for("react.memo_cache_sentinel")) {
       t19 = false && !process.env.DEMO_VERSION && <Box paddingLeft={2} flexDirection="column"><Text dimColor={true}>Use /issue to report model behavior issues</Text></Box>;
       t20 = null;
-      t21 = false && <GateOverridesWarning />;
-      t22 = false && <ExperimentEnrollmentNotice />;
+      // Upstream rendered <GateOverridesWarning /> and
+      // <ExperimentEnrollmentNotice /> here. Neither component was carried into
+      // this fork, and the folded `false` guard already made the JSX dead.
+      t21 = false;
+      t22 = false;
       $[25] = t19;
       $[26] = t20;
       $[27] = t21;
@@ -317,8 +321,9 @@ export function LogoV2() {
     let t18;
     let t19;
     if ($[42] === Symbol.for("react.memo_cache_sentinel")) {
-      t18 = false && <GateOverridesWarning />;
-      t19 = false && <ExperimentEnrollmentNotice />;
+      // Upstream-only notices, already dead — see the note above.
+      t18 = false;
+      t19 = false;
       $[42] = t18;
       $[43] = t19;
     } else {
@@ -500,8 +505,9 @@ export function LogoV2() {
   if ($[86] === Symbol.for("react.memo_cache_sentinel")) {
     t37 = false && !process.env.DEMO_VERSION && <Box paddingLeft={2} flexDirection="column"><Text dimColor={true}>Use /issue to report model behavior issues</Text></Box>;
     t38 = null;
-    t39 = false && <GateOverridesWarning />;
-    t40 = false && <ExperimentEnrollmentNotice />;
+    // Upstream-only notices, already dead — see the note above.
+    t39 = false;
+    t40 = false;
     $[86] = t37;
     $[87] = t38;
     $[88] = t39;
@@ -524,7 +530,7 @@ export function LogoV2() {
   }
   return t41;
 }
-function _temp3(current) {
+function _temp3(current: GlobalConfig) {
   if (current.lastReleaseNotesSeen === MACRO.VERSION) {
     return current;
   }
@@ -533,9 +539,9 @@ function _temp3(current) {
     lastReleaseNotesSeen: MACRO.VERSION
   };
 }
-function _temp2(s_0) {
+function _temp2(s_0: AppState) {
   return s_0.effortValue;
 }
-function _temp(s) {
+function _temp(s: AppState) {
   return s.agent;
 }

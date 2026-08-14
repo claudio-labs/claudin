@@ -61,6 +61,9 @@ export function isNavigableMessage(msg: NavigableMessage): boolean {
       }
       return false;
   }
+  // RenderableMessage carries types this blocklist does not enumerate; they were
+  // already falling out of the switch as `undefined` (falsy = not navigable).
+  return false;
 }
 type PrimaryInput = {
   label: string;
@@ -205,6 +208,13 @@ export type MessageActionsNav = {
   navigateBottom: () => void;
   getSelected: () => NavigableMessage | null;
 };
+type MessageActionsKeybindingsProps = {
+  handlers: Record<string, () => void>;
+  isActive: boolean;
+};
+type MessageActionsBarProps = {
+  cursor: MessageActionsState;
+};
 export const MessageActionsSelectedContext = React.createContext(false);
 export const InVirtualListContext = React.createContext(false);
 
@@ -271,7 +281,7 @@ export function useMessageActions(cursor: MessageActionsState | null, setCursor:
 }
 
 // Must mount inside <KeybindingSetup>.
-export function MessageActionsKeybindings(t0) {
+export function MessageActionsKeybindings(t0: MessageActionsKeybindingsProps) {
   const $ = _c(2);
   const {
     handlers,
@@ -293,7 +303,7 @@ export function MessageActionsKeybindings(t0) {
 }
 
 // borderTop-only Box matches PromptInput's ─── line for stable footer height.
-export function MessageActionsBar(t0) {
+export function MessageActionsBar(t0: MessageActionsBarProps) {
   const $ = _c(28);
   const {
     cursor
@@ -425,7 +435,7 @@ export function copyTextOf(msg: NavigableMessage): string {
     case 'collapsed_read_search':
       return msg.messages.flatMap(m => m.type === 'user' ? [toolResultText(m)] : m.type === 'grouped_tool_use' ? m.results.map(toolResultText) : []).filter(Boolean).join('\n\n');
     case 'system':
-      if ('content' in msg) return msg.content;
+      if ('content' in msg) return msg.content ?? '';
       if ('error' in msg) return String(msg.error);
       return msg.subtype;
     case 'attachment':
@@ -438,6 +448,9 @@ export function copyTextOf(msg: NavigableMessage): string {
         return `[${a.type}]`;
       }
   }
+  // Same non-enumerated RenderableMessage types as isNavigableMessage: they
+  // previously fell out as `undefined`, which every caller treated as empty.
+  return '';
 }
 function toolResultText(r: NormalizedUserMessage): string {
   const b = r.message.content[0];

@@ -31,7 +31,7 @@ export function ColorPicker(t0: Props) {
   const [selectedIndex, setSelectedIndex] = useState(Math.max(0, t2));
   let t3;
   if ($[2] !== onConfirm || $[3] !== selectedIndex) {
-    t3 = e => {
+    t3 = (e: KeyboardEvent) => {
       if (e.key === "up") {
         e.preventDefault();
         setSelectedIndex(_temp);
@@ -103,9 +103,9 @@ export function ColorPicker(t0: Props) {
   }
   return t8;
 }
-function _temp2(prev_0) {
+function _temp2(prev_0: number) {
   return prev_0 < COLOR_OPTIONS.length - 1 ? prev_0 + 1 : 0;
 }
-function _temp(prev) {
+function _temp(prev: number) {
   return prev > 0 ? prev - 1 : COLOR_OPTIONS.length - 1;
 }

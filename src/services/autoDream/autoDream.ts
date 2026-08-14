@@ -245,8 +245,11 @@ ${sessionIds.map(id => `- ${id}`).join('\n')}`
       ) {
         appendSystemMessage({
           ...createMemorySavedMessage(dreamState.filesTouched),
+          // SystemMemorySavedMessage doesn't declare `verb` (same gap as
+          // teamMemSaved.ts's `teamCount` extension) — not yet consumed by
+          // the renderer (SystemTextMessage.tsx hardcodes "Saved").
           verb: 'Improved',
-        })
+        } as ReturnType<typeof createMemorySavedMessage> & { verb?: string })
       }
       logForDebugging(
         `[autoDream] completed — cache: read=${result.totalUsage.cache_read_input_tokens} created=${result.totalUsage.cache_creation_input_tokens}`,

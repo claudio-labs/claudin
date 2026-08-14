@@ -108,7 +108,7 @@ export class DirectConnectSessionManager {
           parsed.type !== 'streamlined_tool_use_summary' &&
           !(parsed.type === 'system' && parsed.subtype === 'post_turn_summary')
         ) {
-          this.callbacks.onMessage(parsed)
+          this.callbacks.onMessage(parsed as SDKMessage)
         }
       }
     })

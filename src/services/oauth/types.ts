@@ -70,9 +70,10 @@ export type OAuthTokenExchangeResponse = {
 /** Normalized OAuth credentials as they are persisted and consumed. */
 export type OAuthTokens = {
   accessToken: string
-  refreshToken: string
+  /** `null` for inference-only tokens sourced from an env var / fd — refresh is unknown. */
+  refreshToken: string | null
   /** Epoch milliseconds. */
-  expiresAt: number
+  expiresAt: number | null
   scopes: string[]
   subscriptionType: SubscriptionType | null
   rateLimitTier: RateLimitTier | null
@@ -108,6 +109,7 @@ export type ReferralEligibilityResponse = {
   remaining_passes?: number | null
   referral_code_details?: {
     campaign?: ReferralCampaign
+    referral_link?: string
   } | null
 }
 

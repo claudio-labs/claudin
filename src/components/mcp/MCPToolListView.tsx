@@ -1,8 +1,10 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
+import { type ExitState } from '../../hooks/useExitOnCtrlCDWithKeybindings.js';
 import { Text } from '../../ink.js';
 import { extractMcpToolDisplayName, getMcpDisplayName } from '../../services/mcp/mcpStringUtils.js';
 import { filterToolsByServer } from '../../services/mcp/utils.js';
+import type { AppState } from '../../state/AppState.js';
 import { useAppState } from '../../state/AppState.js';
 import type { Tool } from '../../Tool.js';
 import { plural } from '../../utils/stringUtils.js';
@@ -25,10 +27,10 @@ export function MCPToolListView(t0: Props) {
     onBack
   } = t0;
   const mcpTools = useAppState(_temp);
-  let t1;
+  let t1: Tool[];
   bb0: {
     if (server.client.type !== "connected") {
-      let t2;
+      let t2: Tool[];
       if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
         t2 = [];
         $[0] = t2;
@@ -38,7 +40,7 @@ export function MCPToolListView(t0: Props) {
       t1 = t2;
       break bb0;
     }
-    let t2;
+    let t2: Tool[];
     if ($[1] !== mcpTools || $[2] !== server.name) {
       t2 = filterToolsByServer(mcpTools, server.name);
       $[1] = mcpTools;
@@ -52,9 +54,14 @@ export function MCPToolListView(t0: Props) {
   const serverTools = t1;
   let t2;
   if ($[4] !== server.name || $[5] !== serverTools) {
-    let t3;
+    let t3: (tool: Tool, index: number) => {
+      label: string;
+      value: string;
+      description: string | undefined;
+      descriptionColor: string | undefined;
+    };
     if ($[7] !== server.name) {
-      t3 = (tool, index) => {
+      t3 = (tool: Tool, index: number) => {
         const toolName = getMcpDisplayName(tool.name, server.name);
         const fullDisplayName = tool.userFacingName ? tool.userFacingName({}) : toolName;
         const displayName = extractMcpToolDisplayName(fullDisplayName);
@@ -132,9 +139,9 @@ export function MCPToolListView(t0: Props) {
   }
   return t8;
 }
-function _temp2(exitState) {
+function _temp2(exitState: ExitState) {
   return exitState.pending ? <Text>Press {exitState.keyName} again to exit</Text> : <Byline><KeyboardShortcutHint shortcut={"\u2191\u2193"} action="navigate" /><KeyboardShortcutHint shortcut="Enter" action="select" /><ConfigurableShortcutHint action="confirm:no" context="Confirmation" fallback="Esc" description="back" /></Byline>;
 }
-function _temp(s) {
+function _temp(s: AppState) {
   return s.mcp.tools;
 }

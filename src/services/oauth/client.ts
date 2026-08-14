@@ -489,7 +489,12 @@ export async function populateOAuthAccountInfoIfNeeded(): Promise<boolean> {
   const tokens = getClaudeAIOAuthTokens()
   if (tokens?.accessToken) {
     const profile = await getOauthProfileFromOauthToken(tokens.accessToken)
-    if (profile) {
+    // `account` and `organization` are both optional on the profile payload,
+    // and the account uuid is what identifies the stored record — without one
+    // there is nothing to persist.
+    const account = profile?.account
+    const organization = profile?.organization
+    if (account) {
       if (hasEnvVars) {
         logForDebugging(
           'OAuth profile fetch succeeded, overriding env var account info',
@@ -497,16 +502,15 @@ export async function populateOAuthAccountInfoIfNeeded(): Promise<boolean> {
         )
       }
       storeOAuthAccountInfo({
-        accountUuid: profile.account.uuid,
-        emailAddress: profile.account.email,
-        organizationUuid: profile.organization.uuid,
-        displayName: profile.account.display_name || undefined,
-        hasExtraUsageEnabled:
-          profile.organization.has_extra_usage_enabled ?? false,
-        billingType: profile.organization.billing_type ?? undefined,
-        accountCreatedAt: profile.account.created_at,
+        accountUuid: account.uuid,
+        emailAddress: account.email ?? '',
+        organizationUuid: organization?.uuid,
+        displayName: account.display_name || undefined,
+        hasExtraUsageEnabled: organization?.has_extra_usage_enabled ?? false,
+        billingType: organization?.billing_type ?? undefined,
+        accountCreatedAt: account.created_at,
         subscriptionCreatedAt:
-          profile.organization.subscription_created_at ?? undefined,
+          organization?.subscription_created_at ?? undefined,
       })
       return true
     }

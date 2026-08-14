@@ -40,10 +40,10 @@ function BtwSideQuestion(t0: BtwComponentProps) {
     context,
     onDone
   } = t0;
-  const [response, setResponse] = useState(null);
-  const [error, setError] = useState(null);
+  const [response, setResponse] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [frame, setFrame] = useState(0);
-  const scrollRef = useRef(null);
+  const scrollRef = useRef<ScrollBoxHandle | null>(null);
   const {
     rows
   } = useModalOrTerminalSize(useTerminalSize());
@@ -57,7 +57,7 @@ function BtwSideQuestion(t0: BtwComponentProps) {
   useInterval(t1, response || error ? null : 80);
   let t2;
   if ($[1] !== onDone) {
-    t2 = function handleKeyDown(e) {
+    t2 = function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "escape" || e.key === "return" || e.key === " " || e.ctrl && (e.key === "c" || e.key === "d")) {
         e.preventDefault();
         onDone(undefined, {
@@ -195,7 +195,7 @@ function BtwSideQuestion(t0: BtwComponentProps) {
  * applied buildEffectiveSystemPrompt extras (--agent, --system-prompt,
  * --append-system-prompt, coordinator mode).
  */
-function _temp(f) {
+function _temp(f: number) {
   return f + 1;
 }
 function stripInProgressAssistantMessage(messages: Message[]): Message[] {

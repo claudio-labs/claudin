@@ -2,6 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import React, { useMemo } from 'react';
 import type { DeepImmutable } from 'src/types/utils.js';
 import { useElapsedTime } from '../../hooks/useElapsedTime.js';
+import type { ExitState } from '../../hooks/useExitOnCtrlCDWithKeybindings.js';
 import type { KeyboardEvent } from '../../ink/events/keyboard-event.js';
 import { Box, Text, useTheme } from '../../ink.js';
 import { useKeybindings } from '../../keybindings/useKeybinding.js';
@@ -22,7 +23,7 @@ type Props = {
   onKillAgent?: () => void;
   onBack?: () => void;
 };
-export function AsyncAgentDetailDialog(t0) {
+export function AsyncAgentDetailDialog(t0: Props) {
   const $ = _c(54);
   const {
     agent,
@@ -62,7 +63,7 @@ export function AsyncAgentDetailDialog(t0) {
   useKeybindings(t2, t3);
   let t4;
   if ($[4] !== agent.status || $[5] !== onBack || $[6] !== onDone || $[7] !== onKillAgent) {
-    t4 = e => {
+    t4 = (e: KeyboardEvent) => {
       if (e.key === " ") {
         e.preventDefault();
         onDone();
@@ -157,7 +158,7 @@ export function AsyncAgentDetailDialog(t0) {
   const subtitle = t13;
   let t14;
   if ($[27] !== agent.status || $[28] !== onBack || $[29] !== onKillAgent) {
-    t14 = exitState => exitState.pending ? <Text>Press {exitState.keyName} again to exit</Text> : <Byline>{onBack && <KeyboardShortcutHint shortcut={"\u2190"} action="go back" />}<KeyboardShortcutHint shortcut="Esc/Enter/Space" action="close" />{agent.status === "running" && onKillAgent && <KeyboardShortcutHint shortcut="x" action="stop" />}</Byline>;
+    t14 = (exitState: ExitState) => exitState.pending ? <Text>Press {exitState.keyName} again to exit</Text> : <Byline>{onBack && <KeyboardShortcutHint shortcut={"\u2190"} action="go back" />}<KeyboardShortcutHint shortcut="Esc/Enter/Space" action="close" />{agent.status === "running" && onKillAgent && <KeyboardShortcutHint shortcut="x" action="stop" />}</Byline>;
     $[27] = agent.status;
     $[28] = onBack;
     $[29] = onKillAgent;
@@ -167,7 +168,7 @@ export function AsyncAgentDetailDialog(t0) {
   }
   let t15;
   if ($[31] !== agent.progress || $[32] !== agent.status || $[33] !== theme) {
-    t15 = agent.status === "running" && agent.progress?.recentActivities && agent.progress.recentActivities.length > 0 && <Box flexDirection="column"><Text bold={true} dimColor={true}>Progress</Text>{agent.progress.recentActivities.map((activity, i) => <Text key={i} dimColor={i < agent.progress.recentActivities.length - 1} wrap="truncate-end">{i === agent.progress.recentActivities.length - 1 ? "\u203A " : "  "}{renderToolActivity(activity, tools, theme)}</Text>)}</Box>;
+    t15 = agent.status === "running" && agent.progress?.recentActivities && agent.progress.recentActivities.length > 0 && <Box flexDirection="column"><Text bold={true} dimColor={true}>Progress</Text>{agent.progress.recentActivities.map((activity, i) => <Text key={i} dimColor={i < agent.progress!.recentActivities!.length - 1} wrap="truncate-end">{i === agent.progress!.recentActivities!.length - 1 ? "\u203A " : "  "}{renderToolActivity(activity, tools, theme)}</Text>)}</Box>;
     $[31] = agent.progress;
     $[32] = agent.status;
     $[33] = theme;

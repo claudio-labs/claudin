@@ -10,10 +10,34 @@ import { jsonParse } from '../slowOperations.js'
  * schemas.js and schemas-loose.js). Deferring the import keeps ~700KB of bound
  * closures out of the startup heap for sessions that never touch .dxt/.mcpb.
  */
+// @anthropic-ai/mcpb is one of scripts/build.ts's build-time-stubbed missing
+// modules (src/stubbed-modules.d.ts only declares its TYPES, not
+// McpbManifestSchema) — this codepath only runs where the real package is
+// actually installed, which this fork's stub never is. Shape the dynamic
+// import through `unknown` to match the runtime zod-like schema contract
+// without pretending the stub declares it.
+type ManifestSchemaModule = {
+  McpbManifestSchema: {
+    safeParse: (input: unknown) =>
+      | { success: true; data: McpbManifest }
+      | {
+          success: false
+          error: {
+            flatten: () => {
+              fieldErrors: Record<string, string[] | undefined>
+              formErrors: string[]
+            }
+          }
+        }
+  }
+}
+
 export async function validateManifest(
   manifestJson: unknown,
 ): Promise<McpbManifest> {
-  const { McpbManifestSchema } = await import('@anthropic-ai/mcpb')
+  const { McpbManifestSchema } = (await import(
+    '@anthropic-ai/mcpb'
+  )) as unknown as ManifestSchemaModule
   const parseResult = McpbManifestSchema.safeParse(manifestJson)
 
   if (!parseResult.success) {

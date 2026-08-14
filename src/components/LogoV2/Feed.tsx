@@ -106,6 +106,6 @@ export function Feed(t0: FeedProps) {
   }
   return t4;
 }
-function _temp(line) {
+function _temp(line: FeedLine) {
   return line.timestamp ? stringWidth(line.timestamp) : 0;
 }

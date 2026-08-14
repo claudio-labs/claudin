@@ -21,7 +21,7 @@ export function ExitFlow(t0: Props) {
   } = t0;
   let t1;
   if ($[0] !== onDone) {
-    t1 = async function onExit(resultMessage) {
+    t1 = async function onExit(resultMessage?: string) {
       onDone(resultMessage ?? getRandomGoodbyeMessage());
       await gracefulShutdown(0, "prompt_input_exit");
     };

@@ -26,7 +26,7 @@ export function TranscriptSharePrompt(t0: Props) {
   } = t0;
   let t1;
   if ($[0] !== onSelect) {
-    t1 = digit => onSelect(inputToResponse[digit]);
+    t1 = (digit: ResponseInput) => onSelect(inputToResponse[digit]);
     $[0] = onSelect;
     $[1] = t1;
   } else {

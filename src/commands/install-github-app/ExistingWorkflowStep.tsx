@@ -31,7 +31,7 @@ export function ExistingWorkflowStep(t0: ExistingWorkflowStepProps) {
   const options = t1;
   let t2;
   if ($[1] !== onSelectAction) {
-    t2 = value => {
+    t2 = (value: string) => {
       onSelectAction(value as 'update' | 'skip' | 'exit');
     };
     $[1] = onSelectAction;

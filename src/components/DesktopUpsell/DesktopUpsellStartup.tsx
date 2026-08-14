@@ -8,6 +8,7 @@ import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js';
 import { Select } from '../CustomSelect/select.js';
 import { DesktopHandoff } from '../DesktopHandoff.js';
 import { PermissionDialog } from '../permissions/PermissionDialog.js';
+import type { GlobalConfig } from '../../utils/config.js';
 type DesktopUpsellConfig = {
   enable_shortcut_tip: boolean;
   enable_startup_dialog: boolean;
@@ -40,7 +41,7 @@ export function DesktopUpsellStartup(t0: Props) {
     onDone
   } = t0;
   const [showHandoff, setShowHandoff] = useState(false);
-  let t1;
+  let t1: never[];
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = [];
     $[0] = t1;
@@ -61,7 +62,7 @@ export function DesktopUpsellStartup(t0: Props) {
   }
   let t2;
   if ($[3] !== onDone) {
-    t2 = function handleSelect(value) {
+    t2 = function handleSelect(value: DesktopUpsellSelection) {
       switch (value) {
         case "try":
           {
@@ -144,7 +145,7 @@ export function DesktopUpsellStartup(t0: Props) {
   }
   return t8;
 }
-function _temp2(prev_0) {
+function _temp2(prev_0: GlobalConfig) {
   if (prev_0.desktopUpsellDismissed) {
     return prev_0;
   }

@@ -55,7 +55,7 @@ export type SelectMultiProps<T> = {
   readonly pastedContents?: Record<number, PastedContent>;
   readonly onRemoveImage?: (id: number) => void;
 };
-export function SelectMulti(t0: SelectMultiProps) {
+export function SelectMulti<T = string>(t0: SelectMultiProps<T>) {
   const $ = _c(44);
   const {
     isDisabled: t1,
@@ -79,7 +79,7 @@ export function SelectMulti(t0: SelectMultiProps) {
   } = t0;
   const isDisabled = t1 === undefined ? false : t1;
   const visibleOptionCount = t2 === undefined ? 5 : t2;
-  let t5;
+  let t5: T[];
   if ($[0] !== t3) {
     t5 = t3 === undefined ? [] : t3;
     $[0] = t3;
@@ -125,7 +125,7 @@ export function SelectMulti(t0: SelectMultiProps) {
   } else {
     t6 = $[16];
   }
-  const state = useMultiSelectState(t6);
+  const state = useMultiSelectState<T>(t6);
   let T0;
   let T1;
   let t7;

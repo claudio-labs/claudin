@@ -21,13 +21,13 @@ type PluginData = NonNullable<Awaited<ReturnType<typeof getPluginById>>>;
  * becomes the recommendation. Include tryResolve in effect deps — its
  * identity tracks recommendation, so clearing re-triggers resolution.
  */
-export function usePluginRecommendationBase() {
+export function usePluginRecommendationBase<T>() {
   const $ = _c(6);
-  const [recommendation, setRecommendation] = React.useState(null);
+  const [recommendation, setRecommendation] = React.useState<T | null>(null);
   const isCheckingRef = React.useRef(false);
   let t0;
   if ($[0] !== recommendation) {
-    t0 = resolve => {
+    t0 = (resolve: () => Promise<T | null | undefined>) => {
       if (getIsRemoteMode()) {
         return;
       }

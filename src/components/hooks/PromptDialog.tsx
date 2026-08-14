@@ -50,7 +50,7 @@ export function PromptDialog(t0: Props) {
   }
   let t4;
   if ($[5] !== onRespond) {
-    t4 = value => {
+    t4 = (value: string) => {
       onRespond(value);
     };
     $[5] = onRespond;
@@ -80,7 +80,7 @@ export function PromptDialog(t0: Props) {
   }
   return t6;
 }
-function _temp(opt) {
+function _temp(opt: PromptRequest['options'][number]) {
   return {
     label: opt.label,
     value: opt.key,

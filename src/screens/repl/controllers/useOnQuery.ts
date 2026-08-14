@@ -274,7 +274,7 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
         // mid-turn memory spikes. Full content is preserved in
         // QueryEngine.mutableMessages (API-facing) and transcript.
         const displayProfile = getCacheProfile()
-        const displayMessage = stubToolResultForDisplay(newMessage, messagesRef.current as AnyMessage[], displayProfile.immediateStubTokens, displayProfile.stubKeepHeadChars)
+        const displayMessage = stubToolResultForDisplay(newMessage, messagesRef.current, displayProfile.immediateStubTokens, displayProfile.stubKeepHeadChars)
         setMessages(oldMessages => [...oldMessages, displayMessage]);
       }
       // Block ticks on API errors to prevent tick → error → tick
@@ -499,7 +499,11 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     // per turn. Without this, seenIds and replacements grow monotonically
     // — evicted messages' preview strings (~2KB each) are never looked up
     // again but never freed.
-    pruneContentReplacementState(after, contentReplacementStateRef.current)
+    // provisionContentReplacementState returns undefined when the
+    // content-replacement feature flag is off — nothing to prune then.
+    if (contentReplacementStateRef.current) {
+      pruneContentReplacementState(after, contentReplacementStateRef.current)
+    }
     if (isBuddyEnabled()) {
       void fireCompanionObserver(messagesRef.current, reaction => setAppState(prev => prev.companionReaction === reaction ? prev : {
         ...prev,

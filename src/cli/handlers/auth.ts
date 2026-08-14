@@ -115,18 +115,18 @@ export async function installOAuthTokens(tokens: OAuthTokens): Promise<void> {
   // Reuse pre-fetched profile if available, otherwise fetch fresh
   const profile =
     tokens.profile ?? (await getOauthProfileFromOauthToken(tokens.accessToken))
-  if (profile) {
+  const account = profile?.account
+  const organization = profile?.organization
+  if (account) {
     storeOAuthAccountInfo({
-      accountUuid: profile.account.uuid,
-      emailAddress: profile.account.email,
-      organizationUuid: profile.organization.uuid,
-      displayName: profile.account.display_name || undefined,
-      hasExtraUsageEnabled:
-        profile.organization.has_extra_usage_enabled ?? undefined,
-      billingType: profile.organization.billing_type ?? undefined,
-      subscriptionCreatedAt:
-        profile.organization.subscription_created_at ?? undefined,
-      accountCreatedAt: profile.account.created_at,
+      accountUuid: account.uuid,
+      emailAddress: account.email ?? account.email_address ?? '',
+      organizationUuid: organization?.uuid,
+      displayName: account.display_name || undefined,
+      hasExtraUsageEnabled: organization?.has_extra_usage_enabled ?? undefined,
+      billingType: organization?.billing_type ?? undefined,
+      subscriptionCreatedAt: organization?.subscription_created_at ?? undefined,
+      accountCreatedAt: account.created_at,
     })
   } else if (tokens.tokenAccount) {
     // Fallback to token exchange account data when profile endpoint fails

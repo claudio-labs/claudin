@@ -5,6 +5,7 @@ import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { stringWidth } from '../ink/stringWidth.js';
 import { Box, Text } from '../ink.js';
 import { useAppState } from '../state/AppState.js';
+import type { AppState } from '../state/AppStateStore.js';
 import { isInProcessTeammateTask } from '../tasks/InProcessTeammateTask/types.js';
 import { AGENT_COLOR_TO_THEME_COLOR, type AgentColorName } from '../tools/AgentTool/agentColorManager.js';
 import { isAgentSwarmsEnabled } from '../utils/agentSwarmsEnabled.js';
@@ -33,8 +34,8 @@ export function TaskListV2({
   tasks,
   isStandalone = false
 }: Props): React.ReactNode {
-  const teamContext = useAppState(s => s.teamContext);
-  const appStateTasks = useAppState(s_0 => s_0.tasks);
+  const teamContext: AppState['teamContext'] = useAppState((s: AppState) => s.teamContext);
+  const appStateTasks = useAppState((s_0: AppState) => s_0.tasks);
   const [, forceUpdate] = React.useState(0);
   const {
     rows,
@@ -374,9 +375,9 @@ function TaskItem(t0: TaskItemProps) {
   }
   return t12;
 }
-function _temp2(id) {
+function _temp2(id: string) {
   return `#${id}`;
 }
-function _temp(a, b) {
+function _temp(a: string, b: string) {
   return parseInt(a, 10) - parseInt(b, 10);
 }

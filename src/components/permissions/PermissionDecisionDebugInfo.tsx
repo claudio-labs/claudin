@@ -5,13 +5,15 @@ import figures from 'figures';
 import React, { useMemo } from 'react';
 import { Ansi, Box, color, Text, useTheme } from '../../ink.js';
 import { useAppState } from '../../state/AppState.js';
+import type { AppState } from '../../state/AppState.js';
 import type { PermissionMode } from '../../utils/permissions/PermissionMode.js';
 import { permissionModeTitle } from '../../utils/permissions/PermissionMode.js';
 import type { PermissionDecision, PermissionDecisionReason } from '../../utils/permissions/PermissionResult.js';
 import { extractRules } from '../../utils/permissions/PermissionUpdate.js';
+import type { PermissionRuleValue } from '../../utils/permissions/PermissionRule.js';
 import type { PermissionUpdate } from '../../utils/permissions/PermissionUpdateSchema.js';
 import { permissionRuleValueToString } from '../../utils/permissions/permissionRuleParser.js';
-import { detectUnreachableRules } from '../../utils/permissions/shadowedRuleDetection.js';
+import { detectUnreachableRules, type UnreachableRule } from '../../utils/permissions/shadowedRuleDetection.js';
 import { SandboxManager } from '../../utils/sandbox/sandbox-adapter.js';
 import { getSettingSourceDisplayNameLowercase } from '../../utils/settings/constants.js';
 type PermissionDecisionInfoItemProps = {
@@ -105,7 +107,10 @@ function PermissionDecisionInfoItem(t0: PermissionDecisionInfoItemProps) {
   }
   return t4;
 }
-function SuggestedRules(t0) {
+type SuggestedRulesProps = {
+  suggestions: PermissionUpdate[] | undefined;
+};
+function SuggestedRules(t0: SuggestedRulesProps) {
   const $ = _c(18);
   const {
     suggestions
@@ -180,11 +185,18 @@ function SuggestedRules(t0) {
   }
   return t7;
 }
-function _temp(rule) {
+function _temp(rule: PermissionRuleValue) {
   return chalk.bold(permissionRuleValueToString(rule));
 }
 type Props = {
-  permissionResult: PermissionDecision;
+  /**
+   * `message` is read directly for the debug row (and for the memo dependency
+   * that guards it); an `allow` decision simply has none, hence the optional
+   * widening over the union.
+   */
+  permissionResult: PermissionDecision & {
+    message?: string;
+  };
   toolName?: string; // Filter unreachable rules to this tool
 };
 
@@ -207,7 +219,11 @@ function extractMode(updates: PermissionUpdate[] | undefined): PermissionMode | 
   const update = updates.findLast(u => u.type === 'setMode');
   return update?.type === 'setMode' ? update.mode : undefined;
 }
-function SuggestionDisplay(t0) {
+type SuggestionDisplayProps = {
+  suggestions: PermissionUpdate[] | undefined;
+  width: number;
+};
+function SuggestionDisplay(t0: SuggestionDisplayProps) {
   const $ = _c(22);
   const {
     suggestions,
@@ -333,13 +349,13 @@ function SuggestionDisplay(t0) {
   }
   return t1;
 }
-function _temp3(dir, index_0) {
+function _temp3(dir: string, index_0: number) {
   return <Text key={index_0}>{figures.bullet} {dir}</Text>;
 }
-function _temp2(rule, index) {
+function _temp2(rule: PermissionRuleValue, index: number) {
   return <Text key={index}>{figures.bullet} {permissionRuleValueToString(rule)}</Text>;
 }
-export function PermissionDecisionDebugInfo(t0) {
+export function PermissionDecisionDebugInfo(t0: Props) {
   const $ = _c(25);
   const {
     permissionResult,
@@ -363,7 +379,7 @@ export function PermissionDecisionDebugInfo(t0) {
       if (toolName) {
         let t2;
         if ($[4] !== toolName) {
-          t2 = u_0 => u_0.rule.ruleValue.toolName === toolName;
+          t2 = (u_0: UnreachableRule) => u_0.rule.ruleValue.toolName === toolName;
           $[4] = toolName;
           $[5] = t2;
         } else {
@@ -451,9 +467,9 @@ export function PermissionDecisionDebugInfo(t0) {
   }
   return t9;
 }
-function _temp5(u_1, i) {
+function _temp5(u_1: UnreachableRule, i: number) {
   return <Box key={i} flexDirection="column" marginLeft={2}><Text color="warning">{permissionRuleValueToString(u_1.rule.ruleValue)}</Text><Text dimColor={true}>{"  "}{u_1.reason}</Text><Text dimColor={true}>{"  "}Fix: {u_1.fix}</Text></Box>;
 }
-function _temp4(s) {
+function _temp4(s: AppState) {
   return s.toolPermissionContext;
 }

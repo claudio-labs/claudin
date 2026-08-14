@@ -4,7 +4,8 @@ import type { Command } from '../commands.js';
 import { Box } from '../ink.js';
 import type { Screen } from '../screens/REPL.js';
 import type { Tools } from '../Tool.js';
-import type { RenderableMessage } from '../types/message.js';
+import type { BetaContentBlock } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs';
+import type { NormalizedAssistantMessage, ProgressMessage, RenderableMessage } from '../types/message.js';
 import { getDisplayMessageFromCollapsed, getToolSearchOrReadInfo, getToolUseIdsFromCollapsedGroup, hasAnyToolInProgress } from '../utils/collapseReadSearch.js';
 import { type buildMessageLookups, EMPTY_STRING_SET, getProgressMessagesFromLookup, getSiblingToolUseIDsFromLookup, getToolUseID } from '../utils/messages.js';
 import { hasThinkingContent, Message } from './Message.js';
@@ -13,7 +14,9 @@ import { shouldRenderStatically } from './Messages.js';
 import { MessageTimestamp } from './MessageTimestamp.js';
 import { OffscreenFreeze } from './OffscreenFreeze.js';
 export type Props = {
-  message: RenderableMessage;
+  // Messages.tsx filters progress messages out of renderableMessages before
+  // ever constructing a MessageRow, so this is narrower than RenderableMessage.
+  message: Exclude<RenderableMessage, ProgressMessage>;
   /** Whether the previous message in renderableMessages is also a user message. */
   isUserContinuation: boolean;
   /**
@@ -81,7 +84,8 @@ export function hasContentAfterIndex(messages: RenderableMessage[], index: numbe
     // Collapsible grouped_tool_use messages arrive transiently before being
     // merged into the current collapsed group on the next render cycle
     if (msg?.type === 'grouped_tool_use') {
-      const firstInput = msg.messages[0]?.message.content[0]?.input;
+      const firstBlock = msg.messages[0]?.message.content[0];
+      const firstInput = firstBlock?.type === 'tool_use' ? firstBlock.input : undefined;
       if (getToolSearchOrReadInfo(msg.toolName, firstInput, tools).isCollapsible) {
         continue;
       }
@@ -172,7 +176,7 @@ function MessageRowImpl(t0: Props) {
       if ($[23] !== inProgressToolUseIDs || $[24] !== msg.messages) {
         let t6;
         if ($[26] !== inProgressToolUseIDs) {
-          t6 = m => {
+          t6 = (m: NormalizedAssistantMessage) => {
             const content = m.message.content[0];
             return content?.type === "tool_use" && inProgressToolUseIDs.has(content.id);
           };
@@ -290,7 +294,7 @@ function MessageRowImpl(t0: Props) {
  * Checks if a message is "streaming" - i.e., its content may still be changing.
  * Exported for testing.
  */
-function _temp(c) {
+function _temp(c: BetaContentBlock) {
   return c.type === "text";
 }
 export function isMessageStreaming(msg: RenderableMessage, streamingToolUseIDs: Set<string>): boolean {

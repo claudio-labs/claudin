@@ -24,7 +24,12 @@ import { resolveFooterTreeRow } from '../tasks/footerSelection.js';
 import { isAgentSwarmsEnabled } from '../../utils/agentSwarmsEnabled.js';
 import { TeamStatus } from '../teams/TeamStatus.js';
 import { isInProcessEnabled } from '../../utils/swarm/backends/registry.js';
-import { useAppState, useAppStateStore } from 'src/state/AppState.js';
+import { type AppState, useAppState, useAppStateStore } from 'src/state/AppState.js';
+
+/** One entry of AppState.teamContext.teammates. */
+type Teammate = NonNullable<AppState['teamContext']>['teammates'][string];
+/** One entry of AppState.tasks. */
+type AppTask = AppState['tasks'][string];
 import { getIsRemoteMode } from '../../bootstrap/state.js';
 import HistorySearchInput from './HistorySearchInput.js';
 import { usePrStatus } from '../../hooks/usePrStatus.js';
@@ -35,7 +40,7 @@ import { useTasksV2 } from '../../hooks/useTasksV2.js';
 import { formatDuration } from '../../utils/format.js';
 import { VoiceWarmupHint } from './VoiceIndicator.js';
 import { useVoiceEnabled } from '../../hooks/useVoiceEnabled.js';
-import { useVoiceState } from '../../context/voice.js';
+import { type VoiceState, useVoiceState } from '../../context/voice.js';
 import { isFullscreenEnvEnabled } from '../../utils/fullscreen.js';
 import { isXtermJs } from '../../ink/terminal.js';
 import { useHasSelection, useSelection } from '../../ink/hooks/use-selection.js';
@@ -75,7 +80,7 @@ type Props = {
 function ProactiveCountdown() {
   const $ = _c(7);
   const nextTickAt = useSyncExternalStore(proactiveModule?.subscribeToProactiveChanges ?? NO_OP_SUBSCRIBE, proactiveModule?.getNextTickAt ?? NULL, NULL);
-  const [remainingSeconds, setRemainingSeconds] = useState(null);
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   let t0;
   let t1;
   if ($[0] !== nextTickAt) {
@@ -250,21 +255,21 @@ function ModeIndicator({
     columns
   } = useTerminalSize();
   const modeCycleShortcut = useShortcutDisplay('chat:cycleMode', 'Chat', 'shift+tab');
-  const tasks = useAppState(s => s.tasks);
-  const teamContext = useAppState(s_0 => s_0.teamContext);
+  const tasks = useAppState((s: AppState) => s.tasks);
+  const teamContext = useAppState((s_0: AppState) => s_0.teamContext);
   // Set once in initialState (main.tsx --remote mode) and never mutated — lazy
   // init captures the immutable value without a subscription.
   const store = useAppStateStore();
   const [remoteSessionUrl] = useState(() => store.getState().remoteSessionUrl);
-  const viewSelectionMode = useAppState(s_1 => s_1.viewSelectionMode);
-  const viewingAgentTaskId = useAppState(s_2 => s_2.viewingAgentTaskId);
-  const expandedView = useAppState(s_3 => s_3.expandedView);
+  const viewSelectionMode = useAppState((s_1: AppState) => s_1.viewSelectionMode);
+  const viewingAgentTaskId = useAppState((s_2: AppState) => s_2.viewingAgentTaskId);
+  const expandedView = useAppState((s_3: AppState) => s_3.expandedView);
   // Cursor row kind drives the byline hint verbs. Without this, the hint
   // shows "enter/x expand/stop" on every engaged row, but: headers only
   // expand (no stop target), items only stop (no expand target), and the
   // `● main` / agent rows have their own verbs ("enter view" / "x dismiss").
   // Reading the cursor + resolving its row here keeps the byline truthful.
-  const cursorRowKind = useAppState(s_curkind => {
+  const cursorRowKind = useAppState((s_curkind: AppState) => {
     if (s_curkind.footerSelection !== 'tasks') return 'none' as const;
     const i = s_curkind.coordinatorTaskIndex;
     if (i < 0) return 'pill' as const;
@@ -283,10 +288,10 @@ function ModeIndicator({
   const voiceEnabled = feature('VOICE_MODE') ? useVoiceEnabled() : false;
   const voiceState = feature('VOICE_MODE') ?
   // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useVoiceState(s_5 => s_5.voiceState) : 'idle' as const;
+  useVoiceState((s_5: VoiceState) => s_5.voiceState) : 'idle' as const;
   const voiceWarmingUp = feature('VOICE_MODE') ?
   // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useVoiceState(s_6 => s_6.voiceWarmingUp) : false;
+  useVoiceState((s_6: VoiceState) => s_6.voiceWarmingUp) : false;
   const hasSelection = useHasSelection();
   const selGetState = useSelection().getState;
   const hasNextTick = nextTickAt !== null;
@@ -328,12 +333,12 @@ function ModeIndicator({
       });
     }
   }, [voiceEnabled, voiceHintUnderCap]);
-  const isKillAgentsConfirmShowing = useAppState(s_7 => s_7.notifications.current?.key === 'kill-agents-confirm');
+  const isKillAgentsConfirmShowing = useAppState((s_7: AppState) => s_7.notifications.current?.key === 'kill-agents-confirm');
 
   // Derive team info from teamContext (no filesystem I/O needed)
   // Match the same logic as TeamStatus to avoid trailing separator
   // In-process mode uses Shift+Down/Up navigation, not footer teams menu
-  const hasTeams = isAgentSwarmsEnabled() && !isInProcessEnabled() && teamContext !== undefined && count(Object.values(teamContext.teammates), t_0 => t_0.name !== 'team-lead') > 0;
+  const hasTeams = isAgentSwarmsEnabled() && !isInProcessEnabled() && teamContext !== undefined && count(Object.values<Teammate>(teamContext.teammates), t_0 => t_0.name !== 'team-lead') > 0;
   if (mode === 'bash') {
     // No hint: the tinted prompt rules and the `!` char already say we're in
     // bash mode, and the byline's other items don't apply here.
@@ -360,7 +365,7 @@ function ModeIndicator({
 
   // Check if we have in-process teammates (showing pills)
   // In spinner-tree mode, pills are disabled - teammates appear in the spinner tree instead
-  const hasInProcessTeammates = !showSpinnerTree && hasBackgroundTasks && Object.values(tasks).some(t_1 => t_1.type === 'in_process_teammate');
+  const hasInProcessTeammates = !showSpinnerTree && hasBackgroundTasks && Object.values<AppTask>(tasks).some(t_1 => t_1.type === 'in_process_teammate');
   const hasTeammatePills = hasInProcessTeammates || !showSpinnerTree && isViewingTeammate;
 
   // In remote mode (`claude assistant`, --teleport) the agent runs elsewhere;
@@ -393,8 +398,8 @@ function ModeIndicator({
   void shouldShowPrStatus;
 
   // Check if any in-process teammates exist (for hint text cycling)
-  const hasAnyInProcessTeammates = Object.values(tasks).some(t_2 => t_2.type === 'in_process_teammate' && t_2.status === 'running');
-  const hasRunningAgentTasks = Object.values(tasks).some(t_3 => t_3.type === 'local_agent' && t_3.status === 'running');
+  const hasAnyInProcessTeammates = Object.values<AppTask>(tasks).some(t_2 => t_2.type === 'in_process_teammate' && t_2.status === 'running');
+  const hasRunningAgentTasks = Object.values<AppTask>(tasks).some(t_3 => t_3.type === 'local_agent' && t_3.status === 'running');
 
   // Get hint parts separately for potential second-line rendering
   const hintParts = showHint ? getSpinnerHintParts(isLoading, escShortcut, todosShortcut, killAgentsShortcut, hasTaskItems, expandedView, hasAnyInProcessTeammates, hasRunningAgentTasks, isKillAgentsConfirmShowing) : [];

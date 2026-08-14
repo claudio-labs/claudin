@@ -74,13 +74,11 @@ describe('ConfigTool', () => {
   test('checkPermissions auto-allows reads and asks for writes', async () => {
     const read = await ConfigTool.checkPermissions?.(
       { setting: 'theme' } as never,
-      {} as never,
     )
     expect(read?.behavior).toBe('allow')
 
     const write = await ConfigTool.checkPermissions?.(
       { setting: 'theme', value: 'dark' } as never,
-      {} as never,
     )
     expect(write?.behavior).toBe('ask')
     if (write?.behavior === 'ask') {

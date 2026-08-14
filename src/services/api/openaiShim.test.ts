@@ -1,3 +1,4 @@
+import type Anthropic from '@anthropic-ai/sdk'
 import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 
 ;(globalThis as Record<string, unknown>).MACRO = {
@@ -356,7 +357,12 @@ test('strips Anthropic-specific headers on GitHub Codex transport requests', asy
 
 test('preserves usage from final OpenAI stream chunk with empty choices', async () => {
   globalThis.fetch = (async (_input, init) => {
-    const url = typeof _input === 'string' ? _input : _input.url
+    const url =
+      typeof _input === 'string'
+        ? _input
+        : _input instanceof URL
+          ? _input.href
+          : _input.url
     expect(url).toBe('http://example.test/v1/chat/completions')
 
     const body = JSON.parse(String(init?.body))
@@ -2494,7 +2500,7 @@ test('non-streaming: strips <think> tag block from assistant content', async () 
       }),
       { headers: { 'Content-Type': 'application/json' } },
     )
-  }) as FetchType
+  }) as unknown as FetchType
 
   const client = createOpenAIShimClient({}) as OpenAIShimClient
   const result = (await client.beta.messages.create({
@@ -2725,7 +2731,7 @@ test('streaming: strips <think> tag block from assistant content deltas', async 
     ])
 
     return makeSseResponse(chunks)
-  }) as FetchType
+  }) as unknown as FetchType
 
   const client = createOpenAIShimClient({}) as OpenAIShimClient
   const result = await client.beta.messages
@@ -2810,7 +2816,7 @@ test('streaming: strips <think> tag split across multiple content chunks', async
     ])
 
     return makeSseResponse(chunks)
-  }) as FetchType
+  }) as unknown as FetchType
 
   const client = createOpenAIShimClient({}) as OpenAIShimClient
 
@@ -2871,7 +2877,7 @@ test('streaming: preserves prose without tags (no phrase-based false positive)',
     ])
 
     return makeSseResponse(chunks)
-  }) as FetchType
+  }) as unknown as FetchType
 
   const client = createOpenAIShimClient({}) as OpenAIShimClient
   const result = await client.beta.messages
@@ -2906,7 +2912,7 @@ test('classifies localhost transport failures with actionable category marker', 
 
   globalThis.fetch = (async () => {
     throw transportError
-  }) as FetchType
+  }) as unknown as FetchType
 
   const client = createOpenAIShimClient({}) as OpenAIShimClient
 
@@ -2935,7 +2941,7 @@ test('propagates AbortError without wrapping it as transport failure', async () 
   const abortError = new DOMException('The operation was aborted.', 'AbortError')
   globalThis.fetch = (async () => {
     throw abortError
-  }) as FetchType
+  }) as unknown as FetchType
 
   const controller = new AbortController()
   controller.abort()
@@ -2964,7 +2970,7 @@ test('classifies chat-completions endpoint 404 failures with endpoint_not_found 
       headers: {
         'Content-Type': 'text/plain',
       },
-    })) as FetchType
+    })) as unknown as FetchType
 
   const client = createOpenAIShimClient({}) as OpenAIShimClient
 
@@ -2982,7 +2988,12 @@ test('self-heals localhost resolution failures by retrying local loopback base U
 
   const requestUrls: string[] = []
   globalThis.fetch = (async (input, _init) => {
-    const url = typeof input === 'string' ? input : input.url
+    const url =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url
     requestUrls.push(url)
 
     if (url.includes('localhost')) {
@@ -3040,7 +3051,12 @@ test('self-heals local endpoint_not_found by retrying with /v1 base URL', async 
 
   const requestUrls: string[] = []
   globalThis.fetch = (async (input, _init) => {
-    const url = typeof input === 'string' ? input : input.url
+    const url =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url
     requestUrls.push(url)
 
     if (url === 'http://localhost:11434/chat/completions') {

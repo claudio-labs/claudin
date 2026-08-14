@@ -111,11 +111,19 @@ const useVoiceIntegration: typeof import('../hooks/useVoiceIntegration.js').useV
   resetAnchor: () => { }
 });
 const VoiceKeybindingHandler: typeof import('../hooks/useVoiceIntegration.js').VoiceKeybindingHandler = feature('VOICE_MODE') ? require('../hooks/useVoiceIntegration.js').VoiceKeybindingHandler : () => null;
-const useFrustrationDetection: typeof import('../components/FeedbackSurvey/useFrustrationDetection.js').useFrustrationDetection = () => ({
+// The real modules behind these two imports were never carried into this
+// fork (see the .d.ts stub comments in their directories); `typeof
+// import(...)` can't type them since the stub exports a placeholder name,
+// not the real one, so the shape is written out by hand instead, matching
+// the always-used dummy fallback below.
+const useFrustrationDetection: (messages: MessageType[], isLoading: boolean, hasActivePrompt: boolean, surveyActive: boolean) => {
+  state: 'closed' | 'open' | 'thanks' | 'transcript_prompt' | 'submitting' | 'submitted';
+  handleTranscriptSelect: (selected: TranscriptShareResponse) => void;
+} = () => ({
   state: 'closed',
   handleTranscriptSelect: () => { }
 });
-const useAntOrgWarningNotification: typeof import('../hooks/notifs/useAntOrgWarningNotification.js').useAntOrgWarningNotification = () => { };
+const useAntOrgWarningNotification: () => void = () => { };
 // Dead code elimination: conditional import for coordinator mode
 const getCoordinatorUserContext: (mcpClients: ReadonlyArray<{
   name: string;
@@ -219,6 +227,7 @@ import { useFeedbackSurvey } from 'src/components/FeedbackSurvey/useFeedbackSurv
 import { useMemorySurvey } from 'src/components/FeedbackSurvey/useMemorySurvey.js';
 import { usePostCompactSurvey } from 'src/components/FeedbackSurvey/usePostCompactSurvey.js';
 import { FeedbackSurvey } from 'src/components/FeedbackSurvey/FeedbackSurvey.js';
+import type { TranscriptShareResponse } from 'src/components/FeedbackSurvey/TranscriptSharePrompt.js';
 import { useInstallMessages } from 'src/hooks/notifs/useInstallMessages.js';
 import { useAwaySummary } from 'src/hooks/useAwaySummary.js';
 import { useOfficialMarketplaceNotification } from 'src/hooks/useOfficialMarketplaceNotification.js';
@@ -905,7 +914,7 @@ export function REPL({
   const haikuTitleAttemptedRef = useRef((initialMessages?.length ?? 0) > 0);
   const agentTitle = mainThreadAgentDefinition?.agentType;
   const terminalTitle = sessionTitle ?? agentTitle ?? haikuTitle ?? 'Claudin';
-  const isWaitingForApproval = toolUseConfirmQueue.length > 0 || promptQueue.length > 0 || pendingWorkerRequest || pendingSandboxRequest;
+  const isWaitingForApproval = toolUseConfirmQueue.length > 0 || promptQueue.length > 0 || pendingWorkerRequest !== null || pendingSandboxRequest !== null;
   // Local-jsx commands (like /plugin, /config) show user-facing dialogs that
   // wait for input. Require jsx != null — if the flag is stuck true but jsx
   // is null, treat as not-showing so TextInput focus and queue processor
@@ -926,8 +935,8 @@ export function REPL({
     isWaitingForApproval,
     isShowingLocalJSXCommand,
     toolUseConfirmQueue,
-    pendingWorkerRequest,
-    pendingSandboxRequest,
+    pendingWorkerRequest: pendingWorkerRequest !== null,
+    pendingSandboxRequest: pendingSandboxRequest !== null,
   });
 
   // 3P default: off — OSC 21337 is internal-only while the spec stabilizes.
@@ -1476,7 +1485,7 @@ export function REPL({
   const showSpinner = (!toolJSX || toolJSX.showSpinner === true) && toolUseConfirmQueue.length === 0 && promptQueue.length === 0 && (
     // Show spinner during input processing, API call, while teammates are running,
     // or while pending task notifications are queued (prevents spinner bounce between consecutive notifications)
-    isLoading || userInputOnProcessing || hasRunningTeammates ||
+    isLoading || !!userInputOnProcessing || hasRunningTeammates ||
     // Keep spinner visible while task notifications are queued for processing.
     // Without this, the spinner briefly disappears between consecutive notifications
     // (e.g., multiple background agents completing in rapid succession) because
@@ -1985,11 +1994,15 @@ export function REPL({
     // Mark as processing to prevent re-entry
     initialMessageRef.current = true;
     async function processInitialMessage(initialMsg: NonNullable<typeof pending>) {
+      // `initialMsg.message` is typed as plain UserMessage in AppStateStore,
+      // but ExitPlanModePermissionRequest bolts on `planContent` when exiting
+      // plan mode — same intersection Message.tsx uses for the same reason.
+      const initialMsgMessage = initialMsg.message as UserMessage & { planContent?: string };
       // Clear context if requested (plan mode exit)
       if (initialMsg.clearContext) {
         // Preserve the plan slug before clearing context, so the new session
         // can access the same plan file after regenerateSessionId()
-        const oldPlanSlug = initialMsg.message.planContent ? getPlanSlug() : undefined;
+        const oldPlanSlug = initialMsgMessage.planContent ? getPlanSlug() : undefined;
         const {
           clearConversation
         } = await import('../commands/clear/conversation.js');
@@ -2056,7 +2069,7 @@ export function REPL({
       // Route all string content through onSubmit to ensure hooks fire
       // For complex content (images, etc.), fall back to direct onQuery
       // Plan messages bypass onSubmit to preserve planContent metadata for rendering
-      if (typeof content === 'string' && !initialMsg.message.planContent) {
+      if (typeof content === 'string' && !initialMsgMessage.planContent) {
         // Route through onSubmit for proper processing including UserPromptSubmit hooks
         void onSubmit(content, {
           setCursorOffset: () => { },
@@ -2808,7 +2821,7 @@ export function REPL({
       disableVirtualScroll={disableVirtualScroll}
       dumpMode={dumpMode}
       transcriptMessages={transcriptMessages}
-      tools={tools}
+      tools={tools as unknown as unknown[]}
       renderCommands={renderCommands}
       inProgressToolUseIDs={inProgressToolUseIDs}
       conversationId={conversationId}
@@ -2988,7 +3001,9 @@ export function REPL({
             discoveredSkillNamesRef,
             loadedNestedMemoryPathsRef,
             store,
-            setConversationId,
+            // renderREPLDialogs wants a plain `(id: string) => void`; the
+            // local state setter is narrowed to the crypto UUID template type.
+            setConversationId: (id: string) => setConversationId(id as UUID),
             haikuTitleAttemptedRef,
             setHaikuTitle,
             bashTools: bashTools as unknown as React.RefObject<{ clear: () => void }>,
@@ -3003,8 +3018,8 @@ export function REPL({
             hintRecommendation,
             handleHintResponse,
             setShowDesktopUpsellStartup,
-            ultraplanPendingChoice,
-            ultraplanLaunchPending,
+            ultraplanPendingChoice: ultraplanPendingChoice ?? null,
+            ultraplanLaunchPending: ultraplanLaunchPending ?? null,
             queryGuard,
             createAbortController,
             createCommandInputMessage,
@@ -3019,8 +3034,8 @@ export function REPL({
             launchUltraplan: (() => Promise.resolve('')) as unknown as Parameters<typeof renderREPLDialogs>[0]['launchUltraplan'],
           }, {
             SandboxPermissionRequest,
-            IdeOnboardingDialog,
-            EffortCallout,
+            IdeOnboardingDialog: IdeOnboardingDialog as unknown as Parameters<typeof renderREPLDialogs>[1]['IdeOnboardingDialog'],
+            EffortCallout: EffortCallout as unknown as Parameters<typeof renderREPLDialogs>[1]['EffortCallout'],
             RemoteCallout,
             PluginHintMenu,
             DesktopUpsellStartup,

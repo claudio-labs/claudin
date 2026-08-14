@@ -19,7 +19,7 @@ import { TaskListV2 } from './TaskListV2.js';
 import { useTasksV2 } from '../hooks/useTasksV2.js';
 import { useRampedNumber } from '../hooks/useRampedNumber.js';
 import type { Task } from '../utils/tasks.js';
-import { useAppState } from '../state/AppState.js';
+import { type AppState, useAppState } from '../state/AppState.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { stringWidth } from '../ink/stringWidth.js';
 import { getDefaultCharacters, isBoldSpinnerFrame, SPINNER_FRAME_MS, type SpinnerMode } from './Spinner/index.js';
@@ -64,12 +64,14 @@ type Props = {
 // hook call chains. Without this split, toggling /brief mid-render would
 // violate Rules of Hooks (the inner variant calls ~10 more hooks).
 export function SpinnerWithVerb(props: Props): React.ReactNode {
-  const isBriefOnly = useAppState(s => s.isBriefOnly);
+  const isBriefOnly = useAppState((s: AppState) => s.isBriefOnly);
   // REPL overrides isBriefOnly→false when viewing a teammate transcript
   // (see isBriefOnly={viewedTeammateTask ? false : isBriefOnly}). That
   // prop isn't threaded here, so replicate the gate from the store —
   // teammate view needs the real spinner (which shows teammate status).
-  const viewingAgentTaskId = useAppState(s_0 => s_0.viewingAgentTaskId);
+  const viewingAgentTaskId = useAppState(
+    (s_0: AppState) => s_0.viewingAgentTaskId,
+  );
   // Hoisted to mount-time — this component re-renders at animation framerate.
   const briefEnvEnabled = feature('KAIROS') || feature('KAIROS_BRIEF') ?
   // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
@@ -107,13 +109,19 @@ function SpinnerWithVerbInner({
   // (frame, glimmer, stalled intensity, token counter, thinking shimmer,
   // elapsed-time timer) are computed inside the child.
 
-  const tasks = useAppState(s => s.tasks);
-  const viewingAgentTaskId = useAppState(s_0 => s_0.viewingAgentTaskId);
-  const expandedView = useAppState(s_1 => s_1.expandedView);
+  const tasks = useAppState((s: AppState) => s.tasks);
+  const viewingAgentTaskId = useAppState(
+    (s_0: AppState) => s_0.viewingAgentTaskId,
+  );
+  const expandedView = useAppState((s_1: AppState) => s_1.expandedView);
   const showExpandedTodos = expandedView === 'tasks';
   const showSpinnerTree = expandedView === 'teammates';
-  const selectedIPAgentIndex = useAppState(s_2 => s_2.selectedIPAgentIndex);
-  const viewSelectionMode = useAppState(s_3 => s_3.viewSelectionMode);
+  const selectedIPAgentIndex = useAppState(
+    (s_2: AppState) => s_2.selectedIPAgentIndex,
+  );
+  const viewSelectionMode = useAppState(
+    (s_3: AppState) => s_3.viewSelectionMode,
+  );
   // Get foregrounded teammate (if viewing a teammate's transcript)
   const foregroundedTeammate = viewingAgentTaskId ? getViewedTeammateTask({
     viewingAgentTaskId,
@@ -182,7 +190,7 @@ function SpinnerWithVerbInner({
       activityManager.endCLIActivity(operationId);
     };
   }, [mode]);
-  const effortValue = useAppState(s_4 => s_4.effortValue);
+  const effortValue = useAppState((s_4: AppState) => s_4.effortValue);
   // Adaptive effort is no longer surfaced in the UI but legacy settings may
   // still hold the value; treat it as unset so the pinned-level suffix path
   // applies once the user picks a level.
@@ -445,10 +453,10 @@ function BriefSpinner(t0: BriefSpinnerProps) {
 // as BriefSpinner so the input bar never jumps when toggling between
 // working/idle/disconnected. See BriefSpinner's comment for the
 // Notifications overlay coupling.
-function _temp6(s_0) {
+function _temp6(s_0: AppState) {
   return count(Object.values(s_0.tasks), isBackgroundTask) + s_0.remoteBackgroundTaskCount;
 }
-function _temp5(s) {
+function _temp5(s: AppState) {
   return s.remoteConnectionStatus;
 }
 function _temp4() {
@@ -504,10 +512,10 @@ export function BriefIdleStatus() {
   }
   return t2;
 }
-function _temp8(s_0) {
+function _temp8(s_0: AppState) {
   return count(Object.values(s_0.tasks), isBackgroundTask) + s_0.remoteBackgroundTaskCount;
 }
-function _temp7(s) {
+function _temp7(s: AppState) {
   return s.remoteConnectionStatus;
 }
 export function Spinner() {
@@ -556,7 +564,7 @@ export function Spinner() {
   }
   return t2;
 }
-function _tempBgTokens(s) {
+function _tempBgTokens(s: AppState) {
   let sum = 0;
   for (const t of Object.values(s.tasks)) {
     if (isInProcessTeammateTask(t) && t.status === 'running') {
@@ -565,7 +573,7 @@ function _tempBgTokens(s) {
   }
   return sum;
 }
-function _tempBgActivity(s) {
+function _tempBgActivity(s: AppState) {
   for (const t of Object.values(s.tasks)) {
     if (isInProcessTeammateTask(t) && t.status === 'running' && !t.isIdle) {
       return describeTeammateActivity(t);
@@ -573,7 +581,7 @@ function _tempBgActivity(s) {
   }
   return '';
 }
-function _tempBgIsRequesting(s) {
+function _tempBgIsRequesting(s: AppState) {
   for (const t of Object.values(s.tasks)) {
     if (isInProcessTeammateTask(t) && t.status === 'running' && !t.isIdle) {
       return t.progress?.isRequesting ?? true;

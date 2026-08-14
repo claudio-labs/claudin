@@ -12,6 +12,7 @@ import { FallbackToolUseErrorMessage } from '../../components/FallbackToolUseErr
 import { FallbackToolUseRejectedMessage } from '../../components/FallbackToolUseRejectedMessage.js';
 import { Markdown } from '../../components/Markdown.js';
 import { Message as MessageComponent } from '../../components/Message.js';
+import type { Props as MessageComponentProps } from '../../components/Message.js';
 import { MessageResponse } from '../../components/MessageResponse.js';
 import { ToolUseLoader } from '../../components/ToolUseLoader.js';
 import { Box, Text, useAnimationFrame } from '../../ink.js';
@@ -136,7 +137,12 @@ function processProgressMessages(messages: ProgressMessage<Progress>[], _tools: 
 const ESTIMATED_LINES_PER_TOOL = 9;
 const TERMINAL_BUFFER_LINES = 7;
 type Output = z.input<ReturnType<typeof outputSchema>>;
-export function AgentPromptDisplay(t0) {
+type AgentPromptDisplayProps = {
+  prompt: string;
+  theme?: ThemeName;
+  dim?: boolean;
+};
+export function AgentPromptDisplay(t0: AgentPromptDisplayProps) {
   const $ = _c(3);
   const {
     prompt,
@@ -160,7 +166,14 @@ export function AgentPromptDisplay(t0) {
   }
   return t3;
 }
-export function AgentResponseDisplay(t0) {
+type AgentResponseDisplayProps = {
+  content: {
+    type: 'text';
+    text: string;
+  }[];
+  theme?: ThemeName;
+};
+export function AgentResponseDisplay(t0: AgentResponseDisplayProps) {
   const $ = _c(5);
   const {
     content
@@ -190,7 +203,10 @@ export function AgentResponseDisplay(t0) {
   }
   return t3;
 }
-function _temp(block, index) {
+function _temp(block: {
+  type: 'text';
+  text: string;
+}, index: number) {
   return <Box key={index} paddingLeft={2} marginTop={index === 0 ? 0 : 1}><Markdown>{block.text}</Markdown></Box>;
 }
 type VerboseAgentTranscriptProps = {
@@ -207,7 +223,7 @@ function VerboseAgentTranscript(t0: VerboseAgentTranscriptProps) {
   } = t0;
   let t1;
   if ($[0] !== progressMessages) {
-    t1 = buildSubagentLookups(progressMessages.filter(_temp2).map(_temp3));
+    t1 = buildSubagentLookups(progressMessages.filter(_temp2).map(_temp3) as Parameters<typeof buildSubagentLookups>[0]);
     $[0] = progressMessages;
     $[1] = t1;
   } else {
@@ -222,7 +238,7 @@ function VerboseAgentTranscript(t0: VerboseAgentTranscriptProps) {
     const filteredMessages = progressMessages.filter(_temp4);
     let t3;
     if ($[8] !== agentLookups || $[9] !== inProgressToolUseIDs || $[10] !== tools || $[11] !== verbose) {
-      t3 = progressMessage => <MessageResponse key={progressMessage.uuid} height={1}><MessageComponent message={progressMessage.data.message} lookups={agentLookups} addMargin={false} tools={tools} commands={[]} verbose={verbose} inProgressToolUseIDs={inProgressToolUseIDs} progressMessagesForMessage={[]} shouldAnimate={false} shouldShowDot={false} isTranscriptMode={false} isStatic={true} /></MessageResponse>;
+      t3 = (progressMessage: ProgressMessage<AgentToolProgress>) => <MessageResponse key={progressMessage.uuid} height={1}><MessageComponent message={progressMessage.data.message as MessageComponentProps['message']} lookups={agentLookups} addMargin={false} tools={tools} commands={[]} verbose={verbose} inProgressToolUseIDs={inProgressToolUseIDs} progressMessagesForMessage={[]} shouldAnimate={false} shouldShowDot={false} isTranscriptMode={false} isStatic={true} /></MessageResponse>;
       $[8] = agentLookups;
       $[9] = inProgressToolUseIDs;
       $[10] = tools;
@@ -251,7 +267,7 @@ function VerboseAgentTranscript(t0: VerboseAgentTranscriptProps) {
   }
   return t3;
 }
-function _temp4(pm_1) {
+function _temp4(pm_1: ProgressMessage<Progress>): pm_1 is ProgressMessage<AgentToolProgress> {
   if (!hasProgressMessage(pm_1.data)) {
     return false;
   }
@@ -261,10 +277,10 @@ function _temp4(pm_1) {
   }
   return true;
 }
-function _temp3(pm_0) {
+function _temp3(pm_0: ProgressMessage<AgentToolProgress>) {
   return pm_0.data;
 }
-function _temp2(pm) {
+function _temp2(pm: ProgressMessage<Progress>): pm is ProgressMessage<AgentToolProgress> {
   return hasProgressMessage(pm.data);
 }
 function BackgroundedAgentResult({ agentId, prompt, isTranscriptMode, theme }: {
@@ -406,7 +422,8 @@ export function renderToolResultMessage(data: Output, progressMessagesForMessage
       output_tokens_details: null,
       inference_geo: null,
       iterations: null,
-      speed: null
+      speed: null,
+      fallback_credit: null
     }
   });
   return <Box flexDirection="column">
@@ -498,7 +515,7 @@ export function renderToolUseProgressMessage(progressMessages: ProgressMessage<P
         return false;
       }
       const message = msg.data.message;
-      return message.message.content.some(content => content.type === 'tool_use');
+      return message.type === 'assistant' && message.message.content.some(content => content.type === 'tool_use');
     });
     const latestAssistant = progressMessages.findLast((msg): msg is ProgressMessage<AgentToolProgress> => hasProgressMessage(msg.data) && msg.data.message.type === 'assistant');
     let tokens = null;
@@ -552,7 +569,7 @@ export function renderToolUseProgressMessage(progressMessages: ProgressMessage<P
     if (!hasProgressMessage(data)) {
       return false;
     }
-    return data.message.message.content.some(content => content.type === 'tool_use');
+    return data.message.type === 'assistant' && data.message.message.content.some(content => content.type === 'tool_use');
   });
   const firstData = progressMessages[0]?.data;
   const prompt = firstData && hasProgressMessage(firstData) ? firstData.prompt : undefined;
@@ -569,7 +586,7 @@ export function renderToolUseProgressMessage(progressMessages: ProgressMessage<P
   const {
     lookups: subagentLookups,
     inProgressToolUseIDs: collapsedInProgressIDs
-  } = buildSubagentLookups(progressMessages.filter((pm): pm is ProgressMessage<AgentToolProgress> => hasProgressMessage(pm.data)).map(pm => pm.data));
+  } = buildSubagentLookups(progressMessages.filter((pm): pm is ProgressMessage<AgentToolProgress> => hasProgressMessage(pm.data)).map(pm => pm.data) as Parameters<typeof buildSubagentLookups>[0]);
   return <MessageResponse>
       <Box flexDirection="column">
         <SubAgentProvider>
@@ -588,7 +605,7 @@ export function renderToolUseProgressMessage(progressMessages: ProgressMessage<P
           // content (tool not found, renderToolUseMessage returns null)
           // doesn't leave a blank line. Tool call headers are single-line
           // anyway so truncation isn't needed.
-          return <MessageComponent key={processed.message.uuid} message={processed.message.data.message} lookups={subagentLookups} addMargin={false} tools={tools} commands={[]} verbose={verbose} inProgressToolUseIDs={collapsedInProgressIDs} progressMessagesForMessage={[]} shouldAnimate={false} shouldShowDot={false} style="condensed" isTranscriptMode={false} isStatic={true} />;
+          return <MessageComponent key={processed.message.uuid} message={processed.message.data.message as MessageComponentProps['message']} lookups={subagentLookups} addMargin={false} tools={tools} commands={[]} verbose={verbose} inProgressToolUseIDs={collapsedInProgressIDs} progressMessagesForMessage={[]} shouldAnimate={false} shouldShowDot={false} style="condensed" isTranscriptMode={false} isStatic={true} />;
         })}
         </SubAgentProvider>
         {hiddenToolUseCount > 0 && <Text dimColor>

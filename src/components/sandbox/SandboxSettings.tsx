@@ -107,7 +107,7 @@ export function SandboxSettings(t0: Props) {
   const options = t9;
   let t10;
   if ($[13] !== onComplete) {
-    t10 = async function handleSelect(value) {
+    t10 = async function handleSelect(value: string) {
       const mode = value as SandboxMode;
       bb33: switch (mode) {
         case "auto-allow":
@@ -219,7 +219,15 @@ export function SandboxSettings(t0: Props) {
   }
   return t17;
 }
-function SandboxModeTab(t0) {
+function SandboxModeTab(t0: {
+  showSocketWarning: boolean;
+  options: {
+    label: string;
+    value: string;
+  }[];
+  onSelect: (value: string) => void;
+  onComplete: Props['onComplete'];
+}) {
   const $ = _c(16);
   const {
     showSocketWarning,

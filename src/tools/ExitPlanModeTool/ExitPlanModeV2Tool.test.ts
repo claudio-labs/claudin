@@ -17,8 +17,8 @@ function makeCtx(mode: string): ToolUseContext {
 describe('ExitPlanModeV2Tool', () => {
   test('flags: shouldDefer, not read-only, concurrency-safe', () => {
     expect(ExitPlanModeV2Tool.shouldDefer).toBe(true)
-    expect(ExitPlanModeV2Tool.isReadOnly?.()).toBe(false)
-    expect(ExitPlanModeV2Tool.isConcurrencySafe?.()).toBe(true)
+    expect(ExitPlanModeV2Tool.isReadOnly?.({} as never)).toBe(false)
+    expect(ExitPlanModeV2Tool.isConcurrencySafe?.({} as never)).toBe(true)
   })
 
   test('isEnabled() is true when channels are not restricted', () => {
@@ -69,7 +69,7 @@ describe('ExitPlanModeV2Tool', () => {
   })
 
   test('requiresUserInteraction is true for non-teammate', () => {
-    expect(ExitPlanModeV2Tool.requiresUserInteraction?.({} as never)).toBe(true)
+    expect(ExitPlanModeV2Tool.requiresUserInteraction?.()).toBe(true)
   })
 
   test('checkPermissions asks user for non-teammate', async () => {

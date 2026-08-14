@@ -95,6 +95,6 @@ export function AttachmentList(t0: AttachmentListProps) {
   }
   return t2;
 }
-function _temp(att) {
+function _temp(att: NonNullable<Output['attachments']>[number]) {
   return <Box key={att.path} flexDirection="row"><Text dimColor={true}>{figures.pointerSmall} {att.isImage ? "[image]" : "[file]"}{" "}</Text><Text>{getDisplayPath(att.path)}</Text><Text dimColor={true}> ({formatFileSize(att.size)})</Text></Box>;
 }

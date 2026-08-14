@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
 import type { BetaContentBlock } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs';
-import type { ImageBlockParam, TextBlockParam, ThinkingBlockParam, ToolResultBlockParam, ToolUseBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
+import type { ContentBlockParam, ImageBlockParam, TextBlockParam, ThinkingBlockParam, ToolResultBlockParam, ToolUseBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import * as React from 'react';
 import type { Command } from '../commands.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
@@ -55,7 +55,7 @@ export type Props = {
   /** UUID of the latest user bash output message (for auto-expanding) */
   latestBashOutputUUID?: string | null;
 };
-function MessageImpl(t0) {
+function MessageImpl(t0: Props) {
   const $ = _c(94);
   const {
     message,
@@ -102,7 +102,7 @@ function MessageImpl(t0) {
         if ($[5] !== addMargin || $[6] !== commands || $[7] !== inProgressToolUseIDs || $[8] !== isTranscriptMode || $[9] !== lastThinkingBlockId || $[10] !== lookups || $[11] !== message.advisorModel || $[12] !== message.message.content || $[13] !== message.uuid || $[14] !== onOpenRateLimitOptions || $[15] !== progressMessagesForMessage || $[16] !== shouldAnimate || $[17] !== shouldShowDot || $[18] !== tools || $[19] !== verbose || $[20] !== width) {
           let t4;
           if ($[22] !== addMargin || $[23] !== commands || $[24] !== inProgressToolUseIDs || $[25] !== isTranscriptMode || $[26] !== lastThinkingBlockId || $[27] !== lookups || $[28] !== message.advisorModel || $[29] !== message.uuid || $[30] !== onOpenRateLimitOptions || $[31] !== progressMessagesForMessage || $[32] !== shouldAnimate || $[33] !== shouldShowDot || $[34] !== tools || $[35] !== verbose || $[36] !== width) {
-            t4 = (_, index_0) => <AssistantMessageBlock key={index_0} param={_} addMargin={addMargin} tools={tools} commands={commands} verbose={verbose} inProgressToolUseIDs={inProgressToolUseIDs} progressMessagesForMessage={progressMessagesForMessage} shouldAnimate={shouldAnimate} shouldShowDot={shouldShowDot} width={width} inProgressToolCallCount={inProgressToolUseIDs.size} isTranscriptMode={isTranscriptMode} lookups={lookups} onOpenRateLimitOptions={onOpenRateLimitOptions} thinkingBlockId={`${message.uuid}:${index_0}`} lastThinkingBlockId={lastThinkingBlockId} advisorModel={message.advisorModel} />;
+            t4 = (_: BetaContentBlock | ConnectorTextBlock, index_0: number) => <AssistantMessageBlock key={index_0} param={_} addMargin={addMargin} tools={tools} commands={commands} verbose={verbose} inProgressToolUseIDs={inProgressToolUseIDs} progressMessagesForMessage={progressMessagesForMessage} shouldAnimate={shouldAnimate} shouldShowDot={shouldShowDot} width={width} inProgressToolCallCount={inProgressToolUseIDs.size} isTranscriptMode={isTranscriptMode} lookups={lookups} onOpenRateLimitOptions={onOpenRateLimitOptions} thinkingBlockId={`${message.uuid}:${index_0}`} lastThinkingBlockId={lastThinkingBlockId} advisorModel={message.advisorModel} />;
             $[22] = addMargin;
             $[23] = commands;
             $[24] = inProgressToolUseIDs;
@@ -353,7 +353,20 @@ function MessageImpl(t0) {
       }
   }
 }
-function UserMessage(t0) {
+type UserMessageProps = {
+  message: NormalizedUserMessage & { planContent?: string };
+  addMargin: boolean;
+  tools: Tools;
+  progressMessagesForMessage: ProgressMessage[];
+  param: ContentBlockParam;
+  style?: 'condensed';
+  verbose: boolean;
+  imageIndex: number;
+  isUserContinuation?: boolean;
+  lookups: ReturnType<typeof buildMessageLookups>;
+  isTranscriptMode: boolean;
+};
+function UserMessage(t0: UserMessageProps) {
   const $ = _c(20);
   const {
     message,
@@ -430,7 +443,26 @@ function UserMessage(t0) {
       }
   }
 }
-function AssistantMessageBlock(t0) {
+type AssistantMessageBlockProps = {
+  param: BetaContentBlock | ConnectorTextBlock;
+  addMargin: boolean;
+  tools: Tools;
+  commands: Command[];
+  verbose: boolean;
+  inProgressToolUseIDs: Set<string>;
+  progressMessagesForMessage: ProgressMessage[];
+  shouldAnimate: boolean;
+  shouldShowDot: boolean;
+  width?: number | string;
+  inProgressToolCallCount: number;
+  isTranscriptMode: boolean;
+  lookups: ReturnType<typeof buildMessageLookups>;
+  onOpenRateLimitOptions?: () => void;
+  thinkingBlockId: string;
+  lastThinkingBlockId?: string | null;
+  advisorModel?: string;
+};
+function AssistantMessageBlock(t0: AssistantMessageBlockProps) {
   const $ = _c(45);
   const {
     param,

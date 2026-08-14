@@ -30,7 +30,7 @@ export function FeedbackSurveyView(t0: Props) {
   const message = t1 === undefined ? DEFAULT_MESSAGE : t1;
   let t2;
   if ($[0] !== onSelect) {
-    t2 = digit => onSelect(inputToResponse[digit]);
+    t2 = (digit: ResponseInput) => onSelect(inputToResponse[digit]);
     $[0] = onSelect;
     $[1] = t2;
   } else {

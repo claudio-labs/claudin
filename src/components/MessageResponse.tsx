@@ -60,7 +60,7 @@ export function MessageResponse(t0: Props) {
 // is rendered as a descendant of another MessageResponse. We use it
 // to avoid rendering nested ⎿ characters.
 const MessageResponseContext = React.createContext(false);
-function MessageResponseProvider(t0) {
+function MessageResponseProvider(t0: { children: React.ReactNode }) {
   const $ = _c(2);
   const {
     children

@@ -42,7 +42,7 @@ export function PermissionRuleInput(t0: PermissionRuleInputProps) {
   const textInputColumns = columns - 6;
   let t2;
   if ($[1] !== onSubmit || $[2] !== ruleBehavior) {
-    t2 = value => {
+    t2 = (value: string) => {
       const trimmedValue = value.trim();
       if (trimmedValue.length === 0) {
         return;

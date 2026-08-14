@@ -712,7 +712,7 @@ export const BashTool = buildTool({
               fullOutput: progress.fullOutput,
               elapsedTimeSeconds: progress.elapsedTimeSeconds,
               totalLines: progress.totalLines,
-              totalBytes: progress.totalBytes,
+              totalBytes: progress.totalBytes ?? 0,
               taskId: progress.taskId,
               timeoutMs: progress.timeoutMs
             }

@@ -654,8 +654,11 @@ export async function performCodexRequest(options: {
 }
 
 async function* readSseEvents(response: Response, signal?: AbortSignal): AsyncGenerator<CodexSseEvent> {
-  const reader = response.body?.getReader()
-  if (!reader) return
+  const maybeReader = response.body?.getReader()
+  if (!maybeReader) return
+  // Re-bind after the guard: the narrowing does not reach inside the hoisted
+  // readWithTimeout declaration below.
+  const reader = maybeReader
 
   const decoder = new TextDecoder()
   let buffer = ''
@@ -667,7 +670,9 @@ async function* readSseEvents(response: Response, signal?: AbortSignal): AsyncGe
    * AbortSignal — clears the idle timer on abort so the AbortError
    * surfaces cleanly instead of a spurious idle timeout.
    */
-  async function readWithTimeout(): Promise<ReadableStreamReadResult<Uint8Array>> {
+  async function readWithTimeout(): Promise<
+    Awaited<ReturnType<typeof reader.read>>
+  > {
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         const elapsed = Math.round((Date.now() - lastDataTime) / 1000)

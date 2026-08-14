@@ -10,6 +10,9 @@ import { useSessionDiffStat } from 'src/hooks/useSessionDiffStat.js';
 import { useGitDiffStat } from 'src/hooks/useGitDiffStat.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import { type AppState, useAppState, useAppStateStore, useSetAppState } from 'src/state/AppState.js';
+
+/** One entry of AppState.teamContext.teammates. */
+type Teammate = NonNullable<AppState['teamContext']>['teammates'][string];
 import type { FooterItem } from 'src/state/AppStateStore.js';
 import { getCwd } from 'src/utils/cwd.js';
 import { isQueuedCommandEditable, popAllEditable } from 'src/utils/messageQueueManager.js';
@@ -311,30 +314,30 @@ function PromptInput({
   }
   const store = useAppStateStore();
   const setAppState = useSetAppState();
-  const tasks = useAppState(s => s.tasks);
+  const tasks = useAppState((s: AppState) => s.tasks);
   // Footer task-tree geometry: the unified footer cursor (coordinatorTaskIndex)
   // can land on grouped tree rows past the agent rows; these feed the open/stop
   // handlers so x/enter act on tree rows instead of typing into the prompt.
-  const foregroundedTaskId = useAppState(s => s.foregroundedTaskId);
-  const collapsedTaskGroups = useAppState(s => s.collapsedTaskGroups);
-  const replBridgeConnected = useAppState(s => s.replBridgeConnected);
-  const replBridgeExplicit = useAppState(s => s.replBridgeExplicit);
-  const replBridgeReconnecting = useAppState(s => s.replBridgeReconnecting);
+  const foregroundedTaskId = useAppState((s: AppState) => s.foregroundedTaskId);
+  const collapsedTaskGroups = useAppState((s: AppState) => s.collapsedTaskGroups);
+  const replBridgeConnected = useAppState((s: AppState) => s.replBridgeConnected);
+  const replBridgeExplicit = useAppState((s: AppState) => s.replBridgeExplicit);
+  const replBridgeReconnecting = useAppState((s: AppState) => s.replBridgeReconnecting);
   // Must match BridgeStatusIndicator's render condition (PromptInputFooter.tsx) —
   // the pill returns null for implicit-and-not-reconnecting, so nav must too,
   // otherwise bridge becomes an invisible selection stop.
   const bridgeFooterVisible = replBridgeConnected && (replBridgeExplicit || replBridgeReconnecting);
   const tmuxFooterVisible = false;
   // WebBrowser pill — visible when a browser is open
-  const bagelFooterVisible = useAppState(s => false);
-  const teamContext = useAppState(s => s.teamContext);
+  const bagelFooterVisible = useAppState((s: AppState) => false);
+  const teamContext = useAppState((s: AppState) => s.teamContext);
   const queuedCommands = useCommandQueue();
-  const promptSuggestionState = useAppState(s => s.promptSuggestion);
-  const speculation = useAppState(s => s.speculation);
-  const speculationSessionTimeSavedMs = useAppState(s => s.speculationSessionTimeSavedMs);
-  const viewingAgentTaskId = useAppState(s => s.viewingAgentTaskId);
-  const viewSelectionMode = useAppState(s => s.viewSelectionMode);
-  const showSpinnerTree = useAppState(s => s.expandedView) === 'teammates';
+  const promptSuggestionState = useAppState((s: AppState) => s.promptSuggestion);
+  const speculation = useAppState((s: AppState) => s.speculation);
+  const speculationSessionTimeSavedMs = useAppState((s: AppState) => s.speculationSessionTimeSavedMs);
+  const viewingAgentTaskId = useAppState((s: AppState) => s.viewingAgentTaskId);
+  const viewSelectionMode = useAppState((s: AppState) => s.viewSelectionMode);
+  const showSpinnerTree = useAppState((s: AppState) => s.expandedView) === 'teammates';
   const {
     companion: _companion,
     companionMuted
@@ -350,12 +353,12 @@ function PromptInput({
   // its own marginTop, so the gap stays even without ours.
   const briefOwnsGap = feature('KAIROS') || feature('KAIROS_BRIEF') ?
   // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useAppState(s => s.isBriefOnly) && !viewingAgentTaskId : false;
-  const mainLoopModel_ = useAppState(s => s.mainLoopModel);
-  const mainLoopModelForSession = useAppState(s => s.mainLoopModelForSession);
-  const thinkingEnabled = useAppState(s => s.thinkingEnabled);
-  const isFastMode = useAppState(s => isFastModeEnabled() ? s.fastMode : false);
-  const effortValue = useAppState(s => s.effortValue);
+  useAppState((s: AppState) => s.isBriefOnly) && !viewingAgentTaskId : false;
+  const mainLoopModel_ = useAppState((s: AppState) => s.mainLoopModel);
+  const mainLoopModelForSession = useAppState((s: AppState) => s.mainLoopModelForSession);
+  const thinkingEnabled = useAppState((s: AppState) => s.thinkingEnabled);
+  const isFastMode = useAppState((s: AppState) => isFastModeEnabled() ? s.fastMode : false);
+  const effortValue = useAppState((s: AppState) => s.effortValue);
   const viewedTeammate = getViewedTeammateTask(store.getState());
   const viewingAgentName = viewedTeammate?.identity.agentName;
   // identity.color is typed as `string | undefined` (not AgentColorName) because
@@ -406,7 +409,7 @@ function PromptInput({
   // -1 sentinel: tasks pill is selected but no specific agent row is selected yet.
   // First ↓ selects the pill, second ↓ moves to row 0. Prevents double-select
   // of pill + row when both bg tasks (pill) and forked agents (rows) are visible.
-  const coordinatorTaskIndex = useAppState(s => s.coordinatorTaskIndex);
+  const coordinatorTaskIndex = useAppState((s: AppState) => s.coordinatorTaskIndex);
   const setCoordinatorTaskIndex = useCallback((v: number | ((prev: number) => number)) => setAppState(prev => {
     const next = typeof v === 'function' ? v(prev.coordinatorTaskIndex) : v;
     if (next === prev.coordinatorTaskIndex) return prev;
@@ -469,7 +472,7 @@ function PromptInput({
     if (!teamContext) {
       return [];
     }
-    const teammateCount = count(Object.values(teamContext.teammates), t => t.name !== 'team-lead');
+    const teammateCount = count(Object.values<Teammate>(teamContext.teammates), t => t.name !== 'team-lead');
     return [{
       name: teamContext.teamName,
       memberCount: teammateCount,
@@ -482,7 +485,7 @@ function PromptInput({
   // Which pills render below the input box. Order here IS the nav order
   // (down/right = forward, up/left = back). Selection lives in AppState so
   // pills rendered outside PromptInput (CompanionSprite) can read focus.
-  const runningTaskCount = useMemo(() => count(Object.values(tasks), t => t.status === 'running'), [tasks]);
+  const runningTaskCount = useMemo(() => count(Object.values<AppState['tasks'][string]>(tasks), t => t.status === 'running'), [tasks]);
   // Panel shows retained-completed agents too (getVisibleAgentTasks), so the
   // pill must stay navigable whenever the panel has rows — not just when
   // something is running.
@@ -495,7 +498,7 @@ function PromptInput({
   // disconnected, task finished). The derivation makes the UI correct
   // immediately; the useEffect below clears the raw state so it doesn't
   // resurrect when the same pill reappears (new task starts → focus stolen).
-  const rawFooterSelection = useAppState(s => s.footerSelection);
+  const rawFooterSelection = useAppState((s: AppState) => s.footerSelection);
   const footerItemSelected = rawFooterSelection && footerItems.includes(rawFooterSelection) ? rawFooterSelection : null;
   useEffect(() => {
     if (rawFooterSelection && !footerItemSelected) {
@@ -551,8 +554,8 @@ function PromptInput({
   });
   const displayedValue = useMemo(() => isSearchingHistory && historyMatch ? getValueFromInput(typeof historyMatch === 'string' ? historyMatch : historyMatch.display) : input, [isSearchingHistory, historyMatch, input]);
   const thinkTriggers = useMemo(() => findThinkingTriggerPositions(displayedValue), [displayedValue]);
-  const ultraplanSessionUrl = useAppState(s => s.ultraplanSessionUrl);
-  const ultraplanLaunching = useAppState(s => s.ultraplanLaunching);
+  const ultraplanSessionUrl = useAppState((s: AppState) => s.ultraplanSessionUrl);
+  const ultraplanLaunching = useAppState((s: AppState) => s.ultraplanLaunching);
   const ultraplanTriggers = useMemo(() => feature('ULTRAPLAN') && !ultraplanSessionUrl && !ultraplanLaunching ? findUltraplanTriggerPositions(displayedValue) : [], [displayedValue, ultraplanSessionUrl, ultraplanLaunching]);
   const ultrareviewTriggers = useMemo(() => isUltrareviewEnabled() ? findUltrareviewTriggerPositions(displayedValue) : [], [displayedValue]);
   const btwTriggers = useMemo(() => findBtwTriggerPositions(displayedValue), [displayedValue]);
@@ -589,7 +592,7 @@ function PromptInput({
 
     // Find all @name patterns in the input
     const regex = /(^|\s)@([\w-]+)/g;
-    const memberValues = Object.values(members);
+    const memberValues = Object.values<Teammate>(members);
     let match;
     while ((match = regex.exec(displayedValue)) !== null) {
       const leadingSpace = match[1] ?? '';
@@ -2141,7 +2144,7 @@ function PromptInput({
   const gitDiff = useGitDiffStat();
   useBuddyNotification();
   const companionSpeaking = isBuddyEnabled() ?
-  useAppState(s => s.companionReaction !== undefined) : false;
+  useAppState((s: AppState) => s.companionReaction !== undefined) : false;
   const {
     columns,
     rows

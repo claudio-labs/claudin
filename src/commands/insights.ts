@@ -1,5 +1,6 @@
 import { execFileSync } from 'child_process'
 import { diffLines } from 'diff'
+import type { Dirent } from 'fs'
 import {
   mkdir,
   readdir,
@@ -2464,7 +2465,7 @@ type LiteSessionInfo = {
 async function scanAllSessions(): Promise<LiteSessionInfo[]> {
   const projectsDir = getProjectsDir()
 
-  let dirents: Awaited<ReturnType<typeof readdir>>
+  let dirents: Dirent[]
   try {
     dirents = await readdir(projectsDir, { withFileTypes: true })
   } catch {

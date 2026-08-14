@@ -2,9 +2,11 @@ import { c as _c } from "react-compiler-runtime";
 import React, { useEffect, useMemo } from 'react';
 import type { CommandResultDisplay } from '../../commands.js';
 import { ClaudeAuthProvider } from '../../services/mcp/auth.js';
-import type { McpClaudeAIProxyServerConfig, McpHTTPServerConfig, McpSSEServerConfig, McpStdioServerConfig } from '../../services/mcp/types.js';
+import type { MCPServerConnection, McpClaudeAIProxyServerConfig, McpHTTPServerConfig, McpSSEServerConfig, McpStdioServerConfig } from '../../services/mcp/types.js';
 import { extractAgentMcpServers, filterToolsByServer } from '../../services/mcp/utils.js';
+import type { AppState } from '../../state/AppState.js';
 import { useAppState } from '../../state/AppState.js';
+import type { Tool } from '../../Tool.js';
 import { getSessionIngressAuthToken } from '../../utils/sessionIngressAuth.js';
 import { MCPAgentServerMenu } from './MCPAgentServerMenu.js';
 import { MCPListPanel } from './MCPListPanel.js';
@@ -26,7 +28,7 @@ export function MCPSettings(t0: Props) {
   const mcp = useAppState(_temp);
   const agentDefinitions = useAppState(_temp2);
   const mcpClients = mcp.clients;
-  let t1;
+  let t1: MCPViewState;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = {
       type: "list"
@@ -35,15 +37,15 @@ export function MCPSettings(t0: Props) {
   } else {
     t1 = $[0];
   }
-  const [viewState, setViewState] = React.useState(t1);
-  let t2;
+  const [viewState, setViewState] = React.useState<MCPViewState>(t1);
+  let t2: ServerInfo[];
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
     t2 = [];
     $[1] = t2;
   } else {
     t2 = $[1];
   }
-  const [servers, setServers] = React.useState(t2);
+  const [servers, setServers] = React.useState<ServerInfo[]>(t2);
   let t3;
   if ($[2] !== agentDefinitions.allAgents) {
     t3 = extractAgentMcpServers(agentDefinitions.allAgents);
@@ -53,7 +55,7 @@ export function MCPSettings(t0: Props) {
     t3 = $[3];
   }
   const agentMcpServers = t3;
-  let t4;
+  let t4: MCPServerConnection[];
   if ($[4] !== mcpClients) {
     t4 = mcpClients.filter(_temp3).sort(_temp4);
     $[4] = mcpClients;
@@ -165,14 +167,14 @@ export function MCPSettings(t0: Props) {
   switch (viewState.type) {
     case "list":
       {
-        let t10;
-        let t9;
+        let t10: (agentServer: AgentMcpServerInfo) => void;
+        let t9: (server: ServerInfo) => void;
         if ($[16] === Symbol.for("react.memo_cache_sentinel")) {
-          t9 = server => setViewState({
+          t9 = (server: ServerInfo) => setViewState({
             type: "server-menu",
             server
           });
-          t10 = agentServer => setViewState({
+          t10 = (agentServer: AgentMcpServerInfo) => setViewState({
             type: "agent-server-menu",
             agentServer
           });
@@ -284,10 +286,10 @@ export function MCPSettings(t0: Props) {
       }
     case "server-tools":
       {
-        let t10;
-        let t9;
+        let t10: () => void;
+        let t9: (tool: Tool, index: number) => void;
         if ($[46] !== viewState.server) {
-          t9 = (_, index) => setViewState({
+          t9 = (_: Tool, index: number) => setViewState({
             type: "server-tool-detail",
             server: viewState.server,
             toolIndex: index
@@ -383,15 +385,15 @@ export function MCPSettings(t0: Props) {
       }
   }
 }
-function _temp4(a, b) {
+function _temp4(a: MCPServerConnection, b: MCPServerConnection) {
   return a.name.localeCompare(b.name);
 }
-function _temp3(client) {
+function _temp3(client: MCPServerConnection) {
   return client.name !== "ide";
 }
-function _temp2(s_0) {
+function _temp2(s_0: AppState) {
   return s_0.agentDefinitions;
 }
-function _temp(s) {
+function _temp(s: AppState) {
   return s.mcp;
 }
