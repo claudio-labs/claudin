@@ -1,32 +1,64 @@
-import { afterEach, beforeEach, expect, mock, test } from 'bun:test'
-import { mkdtempSync } from 'fs'
-import { tmpdir } from 'os'
-import { join } from 'path'
+import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 
-import {
+// This file used to run against whatever backend getSecureStorage() picked for
+// the machine, which left it a hostage to both the environment and the rest of
+// the run. With libsecret present it went to the keyring; without it (CI) it
+// fell through to plainTextStorage, which WRITES through slowOperations but
+// READS through getFsImplementation() — so any earlier file leaving a partial fs
+// implementation behind turns a successful write into an unreadable read, and
+// every assertion here fails with `undefined` while `update` still reports
+// success. The subject is the cache/refresh/JWT logic, not the platform vault,
+// so pin an in-memory backend the way every sibling credential test does.
+const realSecureStorage = {
+  ...(await import('src/services/secureStorage/index.js')),
+}
+
+let storageState: Record<string, unknown> = {}
+
+mock.module('src/services/secureStorage/index.js', () => ({
+  ...realSecureStorage,
+  getSecureStorage: () => ({
+    name: 'in-memory-secure-storage',
+    read: () => storageState,
+    readAsync: async () => storageState,
+    update: (next: Record<string, unknown>) => {
+      storageState = next
+      return { success: true }
+    },
+    delete: () => {
+      storageState = {}
+      return true
+    },
+  }),
+}))
+
+// Imported AFTER the mock so the module under test closes over the fake.
+const {
   clearKimiCredentials,
   invalidateKimiCredentialCache,
   readKimiCredentials,
   readKimiCredentialsAsync,
   refreshKimiAccessTokenIfNeeded,
   saveKimiCredentials,
-} from './kimiCredentials.js'
-import { getSecureStorage } from 'src/services/secureStorage/index.js'
+} = await import('./kimiCredentials.js')
 
-const originalConfigDir = process.env.CLAUDIN_CONFIG_DIR
 const originalFetch = globalThis.fetch
 
 beforeEach(() => {
-  process.env.CLAUDIN_CONFIG_DIR = mkdtempSync(join(tmpdir(), 'kimi-cred-'))
-  // The credential cache is module-level; reset it so a throwaway config dir
-  // isn't shadowed by a blob cached in a previous test (TTL is 30s).
+  storageState = {}
+  // The credential cache is module-level; reset it so a fresh store isn't
+  // shadowed by a blob cached in a previous test (TTL is 30s).
   invalidateKimiCredentialCache()
 })
 
 afterEach(() => {
   globalThis.fetch = originalFetch
-  if (originalConfigDir === undefined) delete process.env.CLAUDIN_CONFIG_DIR
-  else process.env.CLAUDIN_CONFIG_DIR = originalConfigDir
+})
+
+// mock.restore() does not revert mock.module(), and Bun applies the override for
+// the whole run — hand the real module back so no later file inherits this fake.
+afterAll(() => {
+  mock.module('src/services/secureStorage/index.js', () => realSecureStorage)
 })
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -110,16 +142,14 @@ test('readAsync caches within the TTL and re-reads after invalidation', async ()
 
   // Mutate storage out-of-band (bypassing saveKimiCredentials, so the cache is
   // NOT invalidated). A cached read must not observe it within the TTL.
-  const storage = getSecureStorage({ allowPlainTextFallback: true })
-  const prev = storage.read() ?? {}
-  storage.update({
-    ...prev,
+  storageState = {
+    ...storageState,
     kimiCode: {
       accessToken: 'acc-2',
       refreshToken: 'ref-2',
       expiresAt: Date.now() + 900_000,
     },
-  })
+  }
   expect((await readKimiCredentialsAsync())?.accessToken).toBe('acc-1')
 
   // After an explicit invalidation the next read reflects storage.
