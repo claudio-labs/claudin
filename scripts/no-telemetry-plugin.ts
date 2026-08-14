@@ -284,7 +284,7 @@ export function to1PEventFormat() { return {}; }
 
 	// ─── Telemetry subsystems ───────────────────────────────────────
 
-	'utils/telemetry/bigqueryExporter': `
+	'services/telemetry/bigqueryExporter': `
 export class BigQueryMetricsExporter {
 	constructor() {}
 	async export(metrics, resultCallback) { resultCallback({ code: 0 }); }
@@ -294,7 +294,7 @@ export class BigQueryMetricsExporter {
 }
 `,
 
-	'utils/telemetry/perfettoTracing': `
+	'services/telemetry/perfettoTracing': `
 export function initializePerfettoTracing() {}
 export function isPerfettoTracingEnabled() { return false; }
 export function registerAgent() {}
@@ -317,7 +317,7 @@ export const MAX_EVENTS_FOR_TESTING = 0;
 export function evictOldestEventsForTesting() {}
 `,
 
-	'utils/telemetry/sessionTracing': `
+	'services/telemetry/sessionTracing': `
 const noopSpan = {
 	end() {}, setAttribute() {}, setStatus() {},
 	recordException() {}, addEvent() {}, isRecording() { return false; },
@@ -343,7 +343,7 @@ export function endHookSpan() {}
 
 	// ─── Plugin fetch telemetry (not the marketplace itself) ───────
 
-	'utils/plugins/fetchTelemetry': `
+	'services/plugins/fetchTelemetry': `
 export function logPluginFetch() {}
 export function classifyFetchError() { return 'disabled'; }
 `,
@@ -406,7 +406,7 @@ export const PublicApiAuth = {
 };
 `,
 
-	'utils/telemetry/instrumentation': `
+	'services/telemetry/instrumentation': `
 export function bootstrapTelemetry() {}
 export function parseExporterTypes() { return []; }
 export function isTelemetryEnabled() { return false; }
