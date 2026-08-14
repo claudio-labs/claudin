@@ -90,5 +90,5 @@ The explicit `view`/`symbol` parameters and the over-cap pivot are always on. Th
 ## Detailed docs
 
 - `docs/features/7.1-smart-code-navigation.md` — original design doc (rationale, parser decision, rollout phases)
-- `src/tools/shared/codeOutline/scanSymbols.ts` — the scanner (per-language masking and detection)
+- `src/tools/shared/codeOutline/` — the scanner package. `scanSymbols.ts` is the barrel (dispatchers + public surface); `mask/` holds the string/comment masking, `clike/` the brace-depth engine and its per-language detectors, and `langs/` one module per non-C-like scanner
 - `src/tools/FileReadTool/FileReadTool.ts` — `view`/`symbol` plumbing, over-cap pivot, `AUTO_OUTLINE_ON_ELISION` threshold rationale

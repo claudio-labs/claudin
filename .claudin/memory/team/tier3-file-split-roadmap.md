@@ -1,6 +1,6 @@
 ---
 name: tier3-file-split-roadmap
-description: The Tier-3 giant-file split roadmap (item 11a-11m) lives only in a DELETED ROADMAP.md — recover it with git show; 11b/11e are now done, 11i/11j/11k remain
+description: The Tier-3 giant-file split roadmap (item 11a-11m) lives only in a DELETED ROADMAP.md — recover it with git show; every actionable item is DONE as of 2026-08-14, and the new top offenders are listed here
 type: project
 ---
 
@@ -24,10 +24,47 @@ were worth more than the entries themselves:
 `src/cli/print/`, `REPL.tsx` 4369→3145 across 5 hooks in
 `src/screens/repl/controllers/`. No non-test source file is above 4k any more; the
 largest remaining are `openaiShim.test.ts` (4618) and `bashFilter.test.ts` (3966),
-both tests. Still open from the list: **11i** `services/mcp/client.ts`, **11j**
-`services/api/claude.ts`, **11k** `services/api/openaiShim.ts`. 11l (bridgeMain,
-feature-gated off) and 11m (ansiToPng, base64 assets) are marked won't-do with
-reasons.
+both tests.
+
+**CORRECTION 2026-08-14: 11i/11j/11k are DONE too** — an earlier version of this
+memory listed them as open. All three are barrels now: `services/api/claude.ts` 66
+lines over `claude/` (`1b543a4d`), `services/api/openaiShim.ts` 51 over
+`openaiShim/` (`85c06f03`), `services/mcp/client.ts` 66 over `mcp/client/`
+(`9db88d9c`). 11l (bridgeMain, feature-gated off) and 11m (ansiToPng, base64
+assets) stay won't-do. **The ROADMAP-11 list is exhausted** — measure the tree, do
+not work from it.
+
+## New top offenders, measured 2026-08-14 (lines × 6-month commits)
+
+Ranked by size × churn, since a big file only costs when people edit it:
+
+1. ~~`tools/shared/codeOutline/scanSymbols.ts` — 3911 lines~~ — **DONE 2026-08-14**,
+   3911 → a 191-line barrel over 18 modules (`types` `detectLang` `internal`,
+   `mask/{core,languages}`, `clike/{types,detectors,specs,scan}`, `langs/*` with
+   css+html+xml grouped as `webMarkup.ts` and yaml/toml/properties+env/dockerfile/
+   makefile as `config.ts`). Largest module is now `mask/core.ts` at 600. Pure
+   relocation; `scanSymbols.test.ts` (2855 lines, one `describe` per language) was
+   **not touched** and stayed green — that untouched suite is what made a move this
+   size safe, and is the pattern to repeat. Two things the plan's range table got
+   wrong, both caught by a failing test: `BlockFrame` is shared by ruby AND lua (it
+   went to `internal.ts`, not `langs/ruby.ts`), and `findDocLineCLike` +
+   `RE_IDENT_START`/`RE_UPPER_START`/`RE_WORD_CHAR` needed wider export than
+   "C-like engine only" implied. This is also where the tree-sitter work in
+   [[symbol-parser-options-researched]] now lands — `langs/` is the seam for it.
+2. `screens/REPL.tsx` 3160 × **36** — highest churn in the repo even after 11e took
+   it 4369→3145; the controllers came out, the composition did not.
+3. `components/PromptInput/PromptInput.tsx` 2568 × **30**, one export, NOT
+   React-Compiler output (so hand-splittable — check `grep -c '_c('` before assuming).
+4. `tools/FileReadTool/FileReadTool.ts` 2440 × 24 and
+   `services/api/claude/streaming.ts` 2479 × 21 — the two hot paths; streaming.ts is
+   the 11j leftover (65% of the split `claude/` dir).
+5. `components/ProviderManager.tsx` 3114 × 14.
+
+**Big but nearly frozen — low payoff, do NOT start here:** `plugins/pluginLoader.ts`
+3307, `services/bash/ast.ts` 2679, `plugins/marketplaceManager.ts` 2648,
+`services/messages/normalize.ts` 2613, `services/config/config.ts` 2268 (56 exports)
+— all 1 commit in 6 months. `native-ts/yoga-layout/index.ts` 2578 is a port that
+must mirror upstream, and `bridge/bridgeMain.ts` 2975 is still 11l.
 
 ## Two traps a file split hits here that a normal refactor does not
 
