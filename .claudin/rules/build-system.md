@@ -70,9 +70,13 @@ it looks — the specifier silently stops naming the declaration and becomes a r
 before the move either (742 of them in PR #88, from a single directory move).
 
 `bun run build:strict` pins the set: `scripts/missing-imports-baseline.json`
-records the 105 specifiers this fork legitimately stubs, and the build fails on
+records the 104 specifiers this fork legitimately stubs, and the build fails on
 any new one, naming the file that referenced it. It is what tells a deliberate
-stub apart from an import that broke.
+stub apart from an import that broke. A plain `bun run build` prints the count
+and, when it matches the baseline exactly, says so — that line is the expected
+steady state, not a warning. `*.test.ts(x)` is skipped by the scan: a fixture
+string such as `'import { cfg } from "./a.js"'` is indistinguishable from a real
+import to the regex scanner, and a test file never reaches the bundle anyway.
 
 ## Feature Flags
 
