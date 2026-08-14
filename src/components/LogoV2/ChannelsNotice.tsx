@@ -161,13 +161,13 @@ export function ChannelsNotice() {
   }
   return t4;
 }
-function _temp4(u_0) {
+function _temp4(u_0: Unmatched) {
   return <Text key={`${formatEntry(u_0.entry)}:${u_0.why}`} color="warning">{formatEntry(u_0.entry)} · {u_0.why}</Text>;
 }
-function _temp3(u) {
+function _temp3(u: Unmatched) {
   return <Text key={`${formatEntry(u.entry)}:${u.why}`} color="warning">{formatEntry(u.entry)} · {u.why}</Text>;
 }
-function _temp2(c) {
+function _temp2(c: ChannelEntry) {
   return !c.dev;
 }
 function _temp() {

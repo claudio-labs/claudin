@@ -26,7 +26,7 @@ describe('spliceMessageByUuid', () => {
     const history = [msg('uuid-a'), clone, msg('uuid-b')]
 
     expect(spliceMessageByUuid(history, original.uuid)).toBe(true)
-    expect(history.map(m => m.uuid)).toEqual(['uuid-a', 'uuid-b'])
+    expect(history.map(m => m.uuid) as string[]).toEqual(['uuid-a', 'uuid-b'])
   })
 
   test('removes the LAST occurrence (the partial is the most recent)', () => {
@@ -38,7 +38,7 @@ describe('spliceMessageByUuid', () => {
     expect(spliceMessageByUuid(history, 'uuid-x')).toBe(true)
     expect(history).toHaveLength(2)
     expect(history.includes(lastRef!)).toBe(false)
-    expect(history[0]!.uuid).toBe('uuid-x')
+    expect(history[0]!.uuid as string).toBe('uuid-x')
   })
 
   test('no-ops (returns false) when the uuid is absent', () => {

@@ -119,7 +119,7 @@ export function StructuredDiffFallback(t0: Props) {
 }
 
 // Transform lines to line objects with type information
-function _temp(node, i) {
+function _temp(node: React.ReactNode, i: number) {
   return <Box key={i}>{node}</Box>;
 }
 export function transformLinesToObjects(lines: string[]): LineObject[] {

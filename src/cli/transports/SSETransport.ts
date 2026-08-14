@@ -7,7 +7,15 @@ import { getSessionIngressAuthHeaders } from '../../utils/sessionIngressAuth.js'
 import { sleep } from '../../utils/sleep.js'
 import { jsonParse, jsonStringify } from '../../utils/slowOperations.js'
 import { getClaudeCodeUserAgent } from '../../utils/userAgent.js'
-import type { Transport } from './Transport.js'
+// Transport.js is a missing-module stub (src/cli/transports/Transport.d.ts)
+// whose only names are `default`/AxiosError/StdoutMessage/URL — mirrors
+// remoteIO.ts's import, which is the file the stub was actually generated
+// for. `Transport` itself has always been a default export here, and
+// remoteIO.ts uses it as `typeof Transport` (a value import) rather than a
+// bare type name — `implements <TypeName>`'s heritage-clause grammar
+// doesn't accept a `typeof` type query directly, so alias it first.
+import Transport from './Transport.js'
+type TransportInterface = typeof Transport
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -159,7 +167,7 @@ export type StreamClientEvent = {
  * Supports automatic reconnection with exponential backoff and Last-Event-ID
  * for resumption after disconnection.
  */
-export class SSETransport implements Transport {
+export class SSETransport implements TransportInterface {
   private state: SSETransportState = 'idle'
   private onData?: (data: string) => void
   private onCloseCallback?: (closeCode?: number) => void

@@ -1,4 +1,5 @@
 import { c as _c } from "react-compiler-runtime";
+import type { StructuredPatchHunk } from 'diff';
 import * as React from 'react';
 import { useMemo } from 'react';
 import { useTerminalSize } from '../../../hooks/useTerminalSize.js';
@@ -24,7 +25,7 @@ export function FileWriteToolDiff(t0: Props) {
   const {
     columns
   } = useTerminalSize();
-  let t1;
+  let t1: StructuredPatchHunk[] | null;
   bb0: {
     if (!fileExists) {
       t1 = null;
@@ -62,7 +63,7 @@ export function FileWriteToolDiff(t0: Props) {
   const firstLine = t2;
   let t3;
   if ($[6] !== columns || $[7] !== content || $[8] !== file_path || $[9] !== firstLine || $[10] !== hunks || $[11] !== oldContent) {
-    t3 = hunks ? intersperse(hunks.map(_ => <StructuredDiff key={_.newStart} patch={_} dim={false} filePath={file_path} firstLine={firstLine} fileContent={oldContent} width={columns - 2} />), _temp) : <HighlightedCode code={content || "(No content)"} filePath={file_path} />;
+    t3 = hunks ? intersperse(hunks.map((_: StructuredPatchHunk) => <StructuredDiff key={_.newStart} patch={_} dim={false} filePath={file_path} firstLine={firstLine} fileContent={oldContent} width={columns - 2} />), _temp) : <HighlightedCode code={content || "(No content)"} filePath={file_path} />;
     $[6] = columns;
     $[7] = content;
     $[8] = file_path;
@@ -83,6 +84,6 @@ export function FileWriteToolDiff(t0: Props) {
   }
   return t4;
 }
-function _temp(i) {
+function _temp(i: number) {
   return <NoSelect fromLeftEdge={true} key={`ellipsis-${i}`}><Text dimColor={true}>...</Text></NoSelect>;
 }

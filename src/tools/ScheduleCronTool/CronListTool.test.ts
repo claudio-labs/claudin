@@ -41,7 +41,7 @@ describe('CronListTool', () => {
   })
 
   test('call() returns empty job list when nothing is scheduled', async () => {
-    const { data } = await CronListTool.call({} as never, {} as never)
+    const { data } = await CronListTool.call()
     expect(data.jobs).toEqual([])
   })
 
@@ -53,7 +53,7 @@ describe('CronListTool', () => {
       createdAt: Date.now(),
       recurring: true,
     })
-    const { data } = await CronListTool.call({} as never, {} as never)
+    const { data } = await CronListTool.call()
     const job = data.jobs.find(j => j.id === 'sess-1')
     expect(job).toBeDefined()
     expect(job?.recurring).toBe(true)

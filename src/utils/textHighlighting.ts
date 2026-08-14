@@ -1,6 +1,7 @@
 import {
   type AnsiCode,
   ansiCodesToString,
+  type Char,
   reduceAnsiCodes,
   type Token,
   tokenize,
@@ -127,15 +128,19 @@ class HighlightSegmenter {
         this.stringPos += token.code.length
         this.tokenIdx++
       } else {
+        // tokenize() also emits `control` tokens, which this loop has always
+        // treated as visible characters. Narrow to Char to keep that behavior
+        // explicit rather than changing it here.
+        const charToken = token as Char
         const charsNeeded = targetVisiblePos - this.visiblePos
-        const charsAvailable = token.value.length - this.charIdx
+        const charsAvailable = charToken.value.length - this.charIdx
         const charsToTake = Math.min(charsNeeded, charsAvailable)
 
         this.stringPos += charsToTake
         this.visiblePos += charsToTake
         this.charIdx += charsToTake
 
-        if (this.charIdx >= token.value.length) {
+        if (this.charIdx >= charToken.value.length) {
           this.tokenIdx++
           this.charIdx = 0
         }

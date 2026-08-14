@@ -35,7 +35,7 @@ const ideDiffSupport: IDEDiffSupport<FileWriteToolInput> = {
     return input;
   }
 };
-export function FileWritePermissionRequest(props) {
+export function FileWritePermissionRequest(props: PermissionRequestProps) {
   const $ = _c(30);
   const parseInput = _temp;
   let t0;
@@ -155,6 +155,6 @@ export function FileWritePermissionRequest(props) {
   }
   return t13;
 }
-function _temp(input) {
+function _temp(input: unknown): FileWriteToolInput {
   return FileWriteTool.inputSchema.parse(input);
 }

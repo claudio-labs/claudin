@@ -189,7 +189,20 @@ export type SelectProps<T> = {
    */
   readonly onRemoveImage?: (id: number) => void;
 };
-export function Select(t0: SelectProps) {
+/** Shape produced per row by the two-column (label + description) layout. */
+type OptionRowData<T> = {
+  option: OptionWithDescription<T> & {
+    index: number;
+  };
+  index: number;
+  label: ReactNode;
+  isFocused: boolean;
+  isSelected: boolean;
+  isOptionDisabled: boolean;
+  shouldShowDownArrow: boolean;
+  shouldShowUpArrow: boolean;
+};
+export function Select<T = string>(t0: SelectProps<T>) {
   const $ = _c(72);
   const {
     isDisabled: t1,
@@ -221,10 +234,10 @@ export function Select(t0: SelectProps) {
   const inlineDescriptions = t6 === undefined ? false : t6;
   const [imagesSelected, setImagesSelected] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  let t7;
+  let t7: () => Map<T, string>;
   if ($[0] !== options) {
     t7 = () => {
-      const initialMap = new Map();
+      const initialMap = new Map<T, string>();
       options.forEach(option => {
         if (option.type === "input" && option.initialValue) {
           initialMap.set(option.value, option.initialValue);
@@ -238,9 +251,9 @@ export function Select(t0: SelectProps) {
     t7 = $[1];
   }
   const [inputValues, setInputValues] = useState(t7);
-  let t8;
+  let t8: Map<T, string>;
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
-    t8 = new Map();
+    t8 = new Map<T, string>();
     $[2] = t8;
   } else {
     t8 = $[2];
@@ -298,7 +311,7 @@ export function Select(t0: SelectProps) {
   } else {
     t11 = $[14];
   }
-  const state = useSelectState(t11);
+  const state = useSelectState<T>(t11);
   const t12 = disableSelection || (hideIndexes ? "numeric" : false);
   let t13;
   if ($[15] !== pastedContents) {
@@ -376,7 +389,7 @@ export function Select(t0: SelectProps) {
             const isFocused = !isDisabled && state.focusedValue === option_1.value;
             const isSelected = state.value === option_1.value;
             if (option_1.type === "input") {
-              const inputValue = inputValues.has(option_1.value) ? inputValues.get(option_1.value) : option_1.initialValue || "";
+              const inputValue = inputValues.has(option_1.value) ? inputValues.get(option_1.value) ?? "" : option_1.initialValue || "";
               return <SelectInputOption key={String(option_1.value)} option={option_1} isFocused={isFocused} isSelected={isSelected} shouldShowDownArrow={areMoreOptionsBelow && isLastVisibleOption} shouldShowUpArrow={areMoreOptionsAbove && isFirstVisibleOption} maxIndexWidth={maxIndexWidth} index={i} inputValue={inputValue} onInputChange={value => {
                 setInputValues(prev_0 => {
                   const next_0 = new Map(prev_0);
@@ -424,7 +437,7 @@ export function Select(t0: SelectProps) {
             const isFocused_0 = !isDisabled && state.focusedValue === option_2.value;
             const isSelected_0 = state.value === option_2.value;
             if (option_2.type === "input") {
-              const inputValue_0 = inputValues.has(option_2.value) ? inputValues.get(option_2.value) : option_2.initialValue || "";
+              const inputValue_0 = inputValues.has(option_2.value) ? inputValues.get(option_2.value) ?? "" : option_2.initialValue || "";
               return <SelectInputOption key={String(option_2.value)} option={option_2} isFocused={isFocused_0} isSelected={isSelected_0} shouldShowDownArrow={areMoreOptionsBelow_0 && isLastVisibleOption_0} shouldShowUpArrow={areMoreOptionsAbove_0 && isFirstVisibleOption_0} maxIndexWidth={maxIndexWidth_0} index={i_0} inputValue={inputValue_0} onInputChange={value_1 => {
                 setInputValues(prev_1 => {
                   const next_1 = new Map(prev_1);
@@ -490,9 +503,9 @@ export function Select(t0: SelectProps) {
         };
       });
       if (hasDescriptions) {
-        let t19;
+        let t19: (data: OptionRowData<T>) => number;
         if ($[61] !== hideIndexes || $[62] !== maxIndexWidth_1) {
-          t19 = data => {
+          t19 = (data: OptionRowData<T>) => {
             if (data.option.type === "input") {
               return 0;
             }
@@ -508,9 +521,9 @@ export function Select(t0: SelectProps) {
           t19 = $[63];
         }
         const maxLabelWidth = Math.max(...optionData.map(t19));
-        let t20;
+        let t20: (data_0: OptionRowData<T>) => ReactNode;
         if ($[64] !== hideIndexes || $[65] !== maxIndexWidth_1 || $[66] !== maxLabelWidth) {
-          t20 = data_0 => {
+          t20 = (data_0: OptionRowData<T>) => {
             if (data_0.option.type === "input") {
               return null;
             }
@@ -535,7 +548,7 @@ export function Select(t0: SelectProps) {
       t15 = styles.container();
       t16 = state.visibleOptions.map((option_4, index_4) => {
         if (option_4.type === "input") {
-          const inputValue_1 = inputValues.has(option_4.value) ? inputValues.get(option_4.value) : option_4.initialValue || "";
+          const inputValue_1 = inputValues.has(option_4.value) ? inputValues.get(option_4.value) ?? "" : option_4.initialValue || "";
           const isFirstVisibleOption_2 = option_4.index === state.visibleFromIndex;
           const isLastVisibleOption_2 = option_4.index === state.visibleToIndex - 1;
           const areMoreOptionsBelow_2 = state.visibleToIndex < options.length;
@@ -626,19 +639,19 @@ export function Select(t0: SelectProps) {
 // the other Select layouts, this one doesn't render through SelectOption →
 // ListItem, so it declares the native cursor directly. Parks the cursor
 // on the pointer indicator so screen readers / magnifiers track focus.
-function _temp9(c_3) {
+function _temp9(c_3: PastedContent) {
   return c_3.type === "image";
 }
-function _temp8(opt_0) {
+function _temp8<T>(opt_0: OptionWithDescription<T>) {
   return opt_0.description;
 }
-function _temp7(opt) {
+function _temp7<T>(opt: OptionWithDescription<T>) {
   return opt.type === "input";
 }
-function _temp6(c_2) {
+function _temp6(c_2: PastedContent) {
   return c_2.type === "image";
 }
-function _temp5(c_1) {
+function _temp5(c_1: PastedContent) {
   return c_1.type === "image";
 }
 function _temp4() {
@@ -651,13 +664,16 @@ function _temp3() {
     flexDirection: "column" as const
   };
 }
-function _temp2(c) {
+function _temp2(c: PastedContent) {
   return c.type === "image";
 }
-function _temp(c_0) {
+function _temp(c_0: PastedContent) {
   return c_0.type === "image";
 }
-function TwoColumnRow(t0) {
+function TwoColumnRow(t0: {
+  isFocused: boolean;
+  children?: ReactNode;
+}) {
   const $ = _c(5);
   const {
     isFocused,

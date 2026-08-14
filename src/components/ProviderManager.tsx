@@ -474,7 +474,7 @@ function CodexOAuthSetup({
   }, persistCredentials: (options?: { profileId?: string }) => void) => {
     await onConfigured(tokens, persistCredentials)
   }, [onConfigured])
-  useKeybinding('confirm:no', onBack, [onBack])
+  useKeybinding('confirm:no', onBack)
 
   const status = useCodexOAuthFlow({
     onAuthenticated: handleAuthenticated,
@@ -566,7 +566,7 @@ function XaiOAuthSetup({
     },
     [onConfigured],
   )
-  useKeybinding('confirm:no', onBack, [onBack])
+  useKeybinding('confirm:no', onBack)
 
   const status = useXaiOAuthFlow({
     onAuthenticated: handleAuthenticated,

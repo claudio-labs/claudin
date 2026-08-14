@@ -22,6 +22,7 @@
 import { feature } from 'bun:bundle'
 import { randomUUID } from 'crypto'
 import type { UUID } from 'crypto'
+import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
 import { notifyCommandLifecycle } from 'src/utils/commandLifecycle.js'
@@ -127,6 +128,10 @@ export async function runControlLoop(
     }
 
     if (message.type === 'control_request') {
+      // Subtypes this loop handles that `controlSchemas.ts` has no union arm
+      // for are matched through this widened view — the same escape hatch the
+      // `set_proactive` branch below already uses.
+      const requestSubtype: string = message.request.subtype
       if (message.request.subtype === 'interrupt') {
         // Track escapes for attribution (internal-only feature)
         if (feature('COMMIT_ATTRIBUTION')) {
@@ -146,9 +151,9 @@ export async function runControlLoop(
         suggestionState.lastEmitted = null
         suggestionState.pendingSuggestion = null
         ctx.sendControlResponseSuccess(message)
-      } else if (message.request.subtype === 'end_session') {
+      } else if (requestSubtype === 'end_session') {
         logForDebugging(
-          `[print.ts] end_session received, reason=${message.request.reason ?? 'unspecified'}`,
+          `[print.ts] end_session received, reason=${(message.request as { reason?: string }).reason ?? 'unspecified'}`,
         )
         if (ctx.abortController) {
           ctx.abortController.abort()
@@ -288,7 +293,9 @@ export async function runControlLoop(
           sdkClient.type === 'connected' &&
           sdkClient.client?.transport?.onmessage
         ) {
-          sdkClient.client.transport.onmessage(mcpRequest.message)
+          sdkClient.client.transport.onmessage(
+            mcpRequest.message as JSONRPCMessage,
+          )
         }
         ctx.sendControlResponseSuccess(message)
       } else if (message.request.subtype === 'rewind_files') {
@@ -328,11 +335,11 @@ export async function runControlLoop(
         await handleMcpReconnect(ctx, message as unknown as McpServerNameRequest)
       } else if (message.request.subtype === 'mcp_toggle') {
         await handleMcpToggle(ctx, message as unknown as McpToggleRequest)
-      } else if (message.request.subtype === 'channel_enable') {
+      } else if (requestSubtype === 'channel_enable') {
         const currentAppState = getAppState()
         handleChannelEnable(
           message.request_id,
-          message.request.serverName,
+          (message.request as unknown as { serverName: string }).serverName,
           // Pool spread matches mcp_status — all three client sources.
           [
             ...currentAppState.mcp.clients,
@@ -341,27 +348,27 @@ export async function runControlLoop(
           ],
           output,
         )
-      } else if (message.request.subtype === 'mcp_authenticate') {
+      } else if (requestSubtype === 'mcp_authenticate') {
         await handleMcpAuthenticate(ctx, message as unknown as McpServerNameRequest)
-      } else if (message.request.subtype === 'mcp_oauth_callback_url') {
+      } else if (requestSubtype === 'mcp_oauth_callback_url') {
         await handleMcpOauthCallbackUrl(
           ctx,
           message as unknown as McpOauthCallbackUrlRequest,
         )
-      } else if (message.request.subtype === 'claude_authenticate') {
+      } else if (requestSubtype === 'claude_authenticate') {
         await handleClaudeAuthenticate(
           ctx,
           message as unknown as ClaudeAuthenticateRequest,
         )
       } else if (
-        message.request.subtype === 'claude_oauth_callback' ||
-        message.request.subtype === 'claude_oauth_wait_for_completion'
+        requestSubtype === 'claude_oauth_callback' ||
+        requestSubtype === 'claude_oauth_wait_for_completion'
       ) {
         handleClaudeOauthCallback(
           ctx,
           message as unknown as ClaudeOauthCallbackRequest,
         )
-      } else if (message.request.subtype === 'mcp_clear_auth') {
+      } else if (requestSubtype === 'mcp_clear_auth') {
         await handleMcpClearAuth(ctx, message as unknown as McpServerNameRequest)
       } else if (message.request.subtype === 'apply_flag_settings') {
         handleApplyFlagSettings(
@@ -381,16 +388,16 @@ export async function runControlLoop(
         } catch (error) {
           ctx.sendControlResponseError(message, errorMessage(error))
         }
-      } else if (message.request.subtype === 'generate_session_title') {
+      } else if (requestSubtype === 'generate_session_title') {
         handleGenerateSessionTitle(
           ctx,
           message as unknown as GenerateSessionTitleRequest,
         )
-      } else if (message.request.subtype === 'side_question') {
+      } else if (requestSubtype === 'side_question') {
         handleSideQuestion(ctx, message as unknown as SideQuestionRequest)
       } else if (
         (feature('PROACTIVE') || feature('KAIROS')) &&
-        (message.request as { subtype: string }).subtype === 'set_proactive'
+        requestSubtype === 'set_proactive'
       ) {
         const req = message.request as unknown as {
           subtype: string
@@ -405,14 +412,14 @@ export async function runControlLoop(
           proactiveModule!.deactivateProactive()
         }
         ctx.sendControlResponseSuccess(message)
-      } else if (message.request.subtype === 'remote_control') {
+      } else if (requestSubtype === 'remote_control') {
         await handleRemoteControl(ctx, message as unknown as RemoteControlRequest)
       } else {
         // Unknown control request subtype — send an error response so
         // the caller doesn't hang waiting for a reply that never comes.
         ctx.sendControlResponseError(
           message,
-          `Unsupported control request subtype: ${(message.request as { subtype: string }).subtype}`,
+          `Unsupported control request subtype: ${requestSubtype}`,
         )
       }
       continue
@@ -450,14 +457,15 @@ export async function runControlLoop(
 
     // Check for duplicate user message - skip if already processed
     if (message.uuid) {
+      const messageUuid = message.uuid as UUID
       const sessionId = getSessionId() as UUID
       const existsInSession = await doesMessageExistInSession(
         sessionId,
-        message.uuid,
+        messageUuid,
       )
 
       // Check both historical duplicates (from file) and runtime duplicates (this session)
-      if (existsInSession || hasReceivedMessageUuid(message.uuid)) {
+      if (existsInSession || hasReceivedMessageUuid(messageUuid)) {
         logForDebugging(`Skipping duplicate user message: ${message.uuid}`)
         // Send acknowledgment for duplicate message if replay mode is enabled
         if (options.replayUserMessages) {
@@ -485,15 +493,19 @@ export async function runControlLoop(
       }
 
       // Track this UUID to prevent runtime duplicates
-      trackReceivedMessageUuid(message.uuid)
+      trackReceivedMessageUuid(messageUuid)
     }
 
     enqueue({
       mode: 'prompt' as const,
       // file_attachments rides the protobuf catchall from the web composer.
       // Same-ref no-op when absent (no 'file_attachments' key).
-      value: await resolveAndPrepend(message, message.message.content),
-      uuid: message.uuid,
+      value: await resolveAndPrepend(
+        message,
+        (message.message as { content: Parameters<typeof resolveAndPrepend>[1] })
+          .content,
+      ),
+      uuid: message.uuid as UUID | undefined,
       priority: message.priority,
     })
     // Increment prompt count for attribution tracking and save snapshot

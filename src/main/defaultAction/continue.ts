@@ -3,6 +3,9 @@
 // Fase 5b). Pure code-motion: signatures match the original closure variables.
 
 import type { Root } from '../../ink.js';
+import type { StatsStore } from '../../context/stats.js';
+import type { FpsMetrics } from '../../utils/fpsTracker.js';
+import type { AgentDefinition } from '../../tools/AgentTool/loadAgentsDir.js';
 import { exitWithError, renderAndRun } from '../../interactiveHelpers.js';
 import { launchRepl } from '../../replLauncher.js';
 import { logError } from '../../utils/log.js';
@@ -59,13 +62,13 @@ export async function runContinueBranch(deps: ContinueBranchDeps): Promise<void>
       initialState: loaded.initialState,
     }, {
       ...sessionConfig,
-      mainThreadAgentDefinition: loaded.restoredAgentDef ?? mainThreadAgentDefinitionRef.current,
+      mainThreadAgentDefinition: (loaded.restoredAgentDef ?? mainThreadAgentDefinitionRef.current) as AgentDefinition | undefined,
       initialMessages: loaded.messages,
       initialFileHistorySnapshots: loaded.fileHistorySnapshots,
       initialContentReplacements: loaded.contentReplacements,
       initialAgentName: loaded.agentName,
       initialAgentColor: loaded.agentColor,
-    }, renderAndRun);
+    } as Parameters<typeof launchRepl>[2], renderAndRun);
   } catch (error) {
     if (!resumeSucceeded) {
       logEvent('tengu_continue', { success: false });

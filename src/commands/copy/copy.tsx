@@ -18,6 +18,7 @@ import { logEvent } from '../../services/analytics/index.js';
 import type { LocalJSXCommandCall } from '../../types/command.js';
 import type { AssistantMessage, Message } from '../../types/message.js';
 import { getGlobalConfig, saveGlobalConfig } from '../../utils/config.js';
+import type { GlobalConfig } from '../../utils/config.js';
 import { extractTextContent, stripPromptXMLTags } from '../../utils/messages.js';
 import { countCharInString } from '../../utils/stringUtils.js';
 const COPY_DIR = join(tmpdir(), 'claude');
@@ -117,7 +118,7 @@ type PickerProps = {
   }) => void;
 };
 type PickerSelection = number | 'full' | 'always';
-function CopyPicker(t0) {
+function CopyPicker(t0: PickerProps) {
   const $ = _c(33);
   const {
     fullText,
@@ -125,7 +126,7 @@ function CopyPicker(t0) {
     messageAge,
     onDone
   } = t0;
-  const focusedRef = useRef("full");
+  const focusedRef = useRef<PickerSelection>("full");
   const t1 = `${fullText.length} chars, ${countCharInString(fullText, "\n") + 1} lines`;
   let t2;
   if ($[0] !== t1) {
@@ -162,7 +163,11 @@ function CopyPicker(t0) {
   const options = t3;
   let t4;
   if ($[6] !== codeBlocks || $[7] !== fullText) {
-    t4 = function getSelectionContent(selected) {
+    t4 = function getSelectionContent(selected: PickerSelection): {
+      text: string;
+      filename: string;
+      blockIndex?: number;
+    } {
       if (selected === "full" || selected === "always") {
         return {
           text: fullText,
@@ -185,7 +190,7 @@ function CopyPicker(t0) {
   const getSelectionContent = t4;
   let t5;
   if ($[9] !== codeBlocks.length || $[10] !== getSelectionContent || $[11] !== messageAge || $[12] !== onDone) {
-    t5 = async function handleSelect(selected_0) {
+    t5 = async function handleSelect(selected_0: PickerSelection) {
       const content = getSelectionContent(selected_0);
       if (selected_0 === "always") {
         if (!getGlobalConfig().copyFullResponse) {
@@ -219,7 +224,7 @@ function CopyPicker(t0) {
   const handleSelect = t5;
   let t6;
   if ($[14] !== codeBlocks.length || $[15] !== getSelectionContent || $[16] !== messageAge || $[17] !== onDone) {
-    const handleWrite = async function handleWrite(selected_1) {
+    const handleWrite = async function handleWrite(selected_1: PickerSelection) {
       const content_0 = getSelectionContent(selected_1);
       logEvent("tengu_copy", {
         selected_block: content_0.blockIndex,
@@ -236,7 +241,7 @@ function CopyPicker(t0) {
         onDone(`Failed to write file: ${e instanceof Error ? e.message : e}`);
       }
     };
-    t6 = function handleKeyDown(e_0) {
+    t6 = function handleKeyDown(e_0: KeyboardEvent) {
       if (e_0.key === "w") {
         e_0.preventDefault();
         handleWrite(focusedRef.current);
@@ -260,7 +265,7 @@ function CopyPicker(t0) {
   }
   let t8;
   if ($[20] === Symbol.for("react.memo_cache_sentinel")) {
-    t8 = value => {
+    t8 = (value: PickerSelection) => {
       focusedRef.current = value;
     };
     $[20] = t8;
@@ -269,7 +274,7 @@ function CopyPicker(t0) {
   }
   let t9;
   if ($[21] !== handleSelect) {
-    t9 = selected_2 => {
+    t9 = (selected_2: PickerSelection) => {
       handleSelect(selected_2);
     };
     $[21] = handleSelect;
@@ -317,13 +322,13 @@ function CopyPicker(t0) {
   }
   return t13;
 }
-function _temp2(c) {
+function _temp2(c: GlobalConfig): GlobalConfig {
   return {
     ...c,
     copyFullResponse: true
   };
 }
-function _temp(block, index) {
+function _temp(block: CodeBlock, index: number) {
   const blockLines = countCharInString(block.code, "\n") + 1;
   return {
     label: truncateLine(block.code, 60),

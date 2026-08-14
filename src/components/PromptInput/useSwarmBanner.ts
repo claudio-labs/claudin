@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useAppState, useAppStateStore } from '../../state/AppState.js'
+import { type AppState, useAppState, useAppStateStore } from '../../state/AppState.js'
 import {
   getActiveAgentForInput,
   getViewedTeammateTask,
@@ -42,12 +42,12 @@ type SwarmBannerInfo = {
  * - --agent CLI flag: Returns "@agentName" with cyan background
  */
 export function useSwarmBanner(): SwarmBannerInfo {
-  const teamContext = useAppState(s => s.teamContext)
-  const standaloneAgentContext = useAppState(s => s.standaloneAgentContext)
-  const agent = useAppState(s => s.agent)
+  const teamContext = useAppState((s: AppState) => s.teamContext)
+  const standaloneAgentContext = useAppState((s: AppState) => s.standaloneAgentContext)
+  const agent = useAppState((s: AppState) => s.agent)
   // Subscribe so the banner updates on enter/exit teammate view even though
   // getActiveAgentForInput reads it from store.getState().
-  useAppState(s => s.viewingAgentTaskId)
+  useAppState((s: AppState) => s.viewingAgentTaskId)
   const store = useAppStateStore()
   const [insideTmux, setInsideTmux] = React.useState<boolean | null>(null)
 

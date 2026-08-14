@@ -389,7 +389,9 @@ function isElementNode(node: DOMNode | undefined): node is DOMElement {
 
 function isRenderableElementNode(node: unknown): node is DOMElement {
   if (!node || typeof node !== 'object') return false
-  const candidate = node as Partial<DOMElement> & { nodeName?: string }
+  const candidate = node as Omit<Partial<DOMElement>, 'nodeName'> & {
+    nodeName?: string
+  }
   return (
     candidate.nodeName !== undefined &&
     candidate.nodeName !== '#text' &&

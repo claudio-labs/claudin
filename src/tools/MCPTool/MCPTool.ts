@@ -1,4 +1,5 @@
 import { Ajv } from 'ajv'
+import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { z } from 'zod/v4'
 import { buildTool, type ToolDef, type ValidationResult } from '../../Tool.js'
 import { lazySchema } from '../../utils/lazySchema.js'
@@ -68,12 +69,12 @@ export const MCPTool = buildTool({
     return outputSchema()
   },
   // Overridden in mcpClient.ts
-  async call() {
+  async call(_args, _context) {
     return {
       data: '',
     }
   },
-  async checkPermissions(): Promise<PermissionResult> {
+  async checkPermissions(_input, _context): Promise<PermissionResult> {
     return {
       behavior: 'passthrough',
       message: 'MCPTool requires permission.',
@@ -118,7 +119,10 @@ export const MCPTool = buildTool({
   // Overridden in mcpClient.ts
   userFacingName: () => 'mcp',
   renderToolUseProgressMessage,
-  renderToolResultMessage,
+  renderToolResultMessage: renderToolResultMessage as unknown as ToolDef<
+    InputSchema,
+    Output
+  >['renderToolResultMessage'],
   isResultTruncated(output: Output): boolean {
     if (typeof output === 'string') {
       return isOutputLineTruncated(output)
@@ -134,12 +138,11 @@ export const MCPTool = buildTool({
     }
     return false
   },
-  mapToolResultToToolResultBlockParam(content, toolUseID) {
+  mapToolResultToToolResultBlockParam(content: Output, toolUseID: string) {
     return {
       tool_use_id: toolUseID,
       type: 'tool_result',
       content,
-    }
+    } as unknown as ToolResultBlockParam
   },
 } satisfies ToolDef<InputSchema, Output>)
-

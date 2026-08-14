@@ -25,6 +25,12 @@ const IDLE_SEQUENCE = [0, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 2, 0, 0, 0];
 // Hearts float up-and-out over 5 ticks (~2.5s). Prepended above the sprite.
 const H = figures.heart;
 const PET_HEARTS = [`   ${H}    ${H}   `, `  ${H}  ${H}   ${H}  `, ` ${H}   ${H}  ${H}   `, `${H}  ${H}      ${H} `, '·    ·   ·  '];
+type SpeechBubbleProps = {
+  text: string;
+  color: keyof Theme;
+  fading: boolean;
+  tail: 'right' | 'down';
+};
 function wrap(text: string, width: number): string[] {
   const words = text.split(' ');
   const lines: string[] = [];
@@ -40,7 +46,7 @@ function wrap(text: string, width: number): string[] {
   if (cur) lines.push(cur);
   return lines;
 }
-function SpeechBubble(t0) {
+function SpeechBubble(t0: SpeechBubbleProps) {
   const $ = _c(31);
   const {
     text,
@@ -67,7 +73,7 @@ function SpeechBubble(t0) {
     t5 = 34;
     let t7;
     if ($[11] !== fading) {
-      t7 = (l, i) => <Text key={i} italic={true} dimColor={!fading} color={fading ? "inactive" : undefined}>{l}</Text>;
+      t7 = (l: string, i: number) => <Text key={i} italic={true} dimColor={!fading} color={fading ? "inactive" : undefined}>{l}</Text>;
       $[11] = fading;
       $[12] = t7;
     } else {
@@ -356,15 +362,19 @@ export function CompanionFloatingBubble() {
   }
   return t5;
 }
-function _temp3(set) {
+type BubbleTickState = {
+  tick: number;
+  forReaction: string | undefined;
+};
+function _temp3(set: (updater: (prev: BubbleTickState) => BubbleTickState) => void) {
   return set(_temp2);
 }
-function _temp2(s_0) {
+function _temp2(s_0: BubbleTickState) {
   return {
     ...s_0,
     tick: s_0.tick + 1
   };
 }
-function _temp(s) {
+function _temp(s: AppState) {
   return s.companionReaction;
 }

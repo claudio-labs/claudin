@@ -19,8 +19,13 @@ async function checkEndpoints(): Promise<PreflightCheckResult> {
   // Claudin is provider-agnostic: skip the Anthropic-endpoint reachability
   // gate (which fails in regions where api.anthropic.com is blocked) and
   // let the user proceed to /provider to pick any backend.
-  return { success: true };
-  // eslint-disable-next-line no-unreachable
+  // Typed `boolean` rather than left as the literal `true` so the upstream
+  // implementation below stays type-checked instead of being analysed as
+  // unreachable code (where TypeScript performs no narrowing at all).
+  const SKIP_ANTHROPIC_ENDPOINT_CHECK: boolean = true;
+  if (SKIP_ANTHROPIC_ENDPOINT_CHECK) {
+    return { success: true };
+  }
   try {
     const oauthConfig = getOauthConfig();
     const tokenUrl = new URL(oauthConfig.TOKEN_URL);
@@ -86,11 +91,11 @@ export function PreflightStep(t0: PreflightStepProps) {
   const {
     onSuccess
   } = t0;
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<PreflightCheckResult | null>(null);
   const [isChecking, setIsChecking] = useState(true);
   const showSpinner = useTimeout(1000) && isChecking;
   let t1;
-  let t2;
+  let t2: React.DependencyList;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = () => {
       const run = async function run() {

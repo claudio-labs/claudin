@@ -1,4 +1,5 @@
 import { c as _c } from "react-compiler-runtime";
+import type { BetaContentBlock } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs';
 import React from 'react';
 import { stringWidth } from '../ink/stringWidth.js';
 import { Box, Text } from '../ink.js';
@@ -57,6 +58,6 @@ export function MessageTimestamp(t0: Props) {
   }
   return t3;
 }
-function _temp(c) {
+function _temp(c: BetaContentBlock) {
   return c.type === "text";
 }

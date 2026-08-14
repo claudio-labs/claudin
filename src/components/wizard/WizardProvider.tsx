@@ -6,7 +6,7 @@ import type { WizardContextValue, WizardProviderProps } from './types.js';
 // Use any here for the context since it will be cast properly when used
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const WizardContext = createContext<WizardContextValue<any> | null>(null);
-export function WizardProvider(t0) {
+export function WizardProvider<T extends Record<string, unknown> = Record<string, unknown>>(t0: WizardProviderProps<T>) {
   const $ = _c(38);
   const {
     steps,
@@ -17,7 +17,7 @@ export function WizardProvider(t0) {
     title,
     showStepCounter: t2
   } = t0;
-  let t3;
+  let t3: T;
   if ($[0] !== t1) {
     t3 = t1 === undefined ? {} as T : t1;
     $[0] = t1;
@@ -30,7 +30,7 @@ export function WizardProvider(t0) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [wizardData, setWizardData] = useState(initialData);
   const [isCompleted, setIsCompleted] = useState(false);
-  let t4;
+  let t4: number[];
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
     t4 = [];
     $[2] = t4;
@@ -108,7 +108,7 @@ export function WizardProvider(t0) {
   const goBack = t8;
   let t9;
   if ($[16] !== currentStepIndex || $[17] !== steps.length) {
-    t9 = index => {
+    t9 = (index: number) => {
       if (index >= 0 && index < steps.length) {
         setNavigationHistory(prev_3 => [...prev_3, currentStepIndex]);
         setCurrentStepIndex(index);
@@ -137,8 +137,8 @@ export function WizardProvider(t0) {
   const cancel = t10;
   let t11;
   if ($[21] === Symbol.for("react.memo_cache_sentinel")) {
-    t11 = updates => {
-      setWizardData(prev_4 => ({
+    t11 = (updates: Partial<T>) => {
+      setWizardData((prev_4: T) => ({
         ...prev_4,
         ...updates
       }));
@@ -201,12 +201,12 @@ export function WizardProvider(t0) {
   }
   return t14;
 }
-function _temp3(prev_2) {
+function _temp3(prev_2: number) {
   return prev_2 - 1;
 }
-function _temp2(prev_1) {
+function _temp2(prev_1: number[]) {
   return prev_1.slice(0, -1);
 }
-function _temp(prev_0) {
+function _temp(prev_0: number) {
   return prev_0 + 1;
 }

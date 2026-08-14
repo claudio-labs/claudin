@@ -26,7 +26,7 @@ export function Settings(t0: Props) {
     context,
     defaultTab
   } = t0;
-  const [selectedTab, setSelectedTab] = useState(defaultTab);
+  const [selectedTab, setSelectedTab] = useState<string>(defaultTab);
   const [tabsHidden, setTabsHidden] = useState(false);
   const [configOwnsEsc, setConfigOwnsEsc] = useState(false);
   const [gatesOwnsEsc, setGatesOwnsEsc] = useState(false);
@@ -95,7 +95,10 @@ export function Settings(t0: Props) {
   }
   let t7;
   if ($[13] !== contentHeight) {
-    t7 = false ? [<Tab key="gates" title="Gates"><Gates onOwnsEscChange={setGatesOwnsEsc} contentHeight={contentHeight} /></Tab>] : [];
+    // The Gates debug view (GrowthBook gate inspector) was never received by
+    // this fork — this branch was already dead (`false ?`) before that, so
+    // dropping the unresolved `Gates` reference changes nothing at runtime.
+    t7 = [] as React.ReactNode[];
     $[13] = contentHeight;
     $[14] = t7;
   } else {

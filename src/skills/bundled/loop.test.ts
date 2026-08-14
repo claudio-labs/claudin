@@ -14,7 +14,8 @@ test('bare /loop returns dynamic maintenance instructions', async () => {
   expect(skill).toBeDefined()
   expect(skill?.type).toBe('prompt')
 
-  const blocks = await skill!.getPromptForCommand('', {} as never)
+  if (skill?.type !== 'prompt') throw new Error('unreachable')
+  const blocks = await skill.getPromptForCommand('', {} as never)
   const text = (blocks[0] as { text: string }).text
 
   expect(text).toContain('# /loop — dynamic rescheduling')
@@ -31,7 +32,8 @@ test('prompt-only /loop returns dynamic rescheduling instructions', async () => 
   registerLoopSkill()
 
   const skill = getBundledSkills().find(command => command.name === 'loop')
-  const blocks = await skill!.getPromptForCommand('check the deploy', {} as never)
+  if (skill?.type !== 'prompt') throw new Error('unreachable')
+  const blocks = await skill.getPromptForCommand('check the deploy', {} as never)
   const text = (blocks[0] as { text: string }).text
 
   expect(text).toContain('# /loop — dynamic rescheduling')
@@ -53,7 +55,8 @@ test('interval /loop returns fixed recurring instructions', async () => {
   registerLoopSkill()
 
   const skill = getBundledSkills().find(command => command.name === 'loop')
-  const blocks = await skill!.getPromptForCommand('5m check the deploy', {} as never)
+  if (skill?.type !== 'prompt') throw new Error('unreachable')
+  const blocks = await skill.getPromptForCommand('5m check the deploy', {} as never)
   const text = (blocks[0] as { text: string }).text
 
   expect(text).toContain('# /loop — fixed recurring interval')
@@ -68,7 +71,8 @@ test('interval-only /loop becomes fixed maintenance mode', async () => {
   registerLoopSkill()
 
   const skill = getBundledSkills().find(command => command.name === 'loop')
-  const blocks = await skill!.getPromptForCommand('15m', {} as never)
+  if (skill?.type !== 'prompt') throw new Error('unreachable')
+  const blocks = await skill.getPromptForCommand('15m', {} as never)
   const text = (blocks[0] as { text: string }).text
 
   expect(text).toContain('# /loop — fixed recurring interval')
@@ -84,7 +88,8 @@ test('trailing every clause parses interval and prompt', async () => {
   registerLoopSkill()
 
   const skill = getBundledSkills().find(command => command.name === 'loop')
-  const blocks = await skill!.getPromptForCommand('check the deploy every 20m', {} as never)
+  if (skill?.type !== 'prompt') throw new Error('unreachable')
+  const blocks = await skill.getPromptForCommand('check the deploy every 20m', {} as never)
   const text = (blocks[0] as { text: string }).text
 
   expect(text).toContain('# /loop — fixed recurring interval')
@@ -96,7 +101,8 @@ test('trailing every clause with word unit parses correctly', async () => {
   registerLoopSkill()
 
   const skill = getBundledSkills().find(command => command.name === 'loop')
-  const blocks = await skill!.getPromptForCommand('run tests every 5 minutes', {} as never)
+  if (skill?.type !== 'prompt') throw new Error('unreachable')
+  const blocks = await skill.getPromptForCommand('run tests every 5 minutes', {} as never)
   const text = (blocks[0] as { text: string }).text
 
   expect(text).toContain('# /loop — fixed recurring interval')
@@ -108,7 +114,8 @@ test('"check every PR" is not treated as an interval', async () => {
   registerLoopSkill()
 
   const skill = getBundledSkills().find(command => command.name === 'loop')
-  const blocks = await skill!.getPromptForCommand('check every PR', {} as never)
+  if (skill?.type !== 'prompt') throw new Error('unreachable')
+  const blocks = await skill.getPromptForCommand('check every PR', {} as never)
   const text = (blocks[0] as { text: string }).text
 
   expect(text).toContain('# /loop — dynamic rescheduling')
@@ -119,7 +126,8 @@ test('human-readable hour unit parses correctly', async () => {
   registerLoopSkill()
 
   const skill = getBundledSkills().find(command => command.name === 'loop')
-  const blocks = await skill!.getPromptForCommand('2h check logs', {} as never)
+  if (skill?.type !== 'prompt') throw new Error('unreachable')
+  const blocks = await skill.getPromptForCommand('2h check logs', {} as never)
   const text = (blocks[0] as { text: string }).text
 
   expect(text).toContain('# /loop — fixed recurring interval')
@@ -131,7 +139,8 @@ test('prompt delimiters are present and unambiguous', async () => {
   registerLoopSkill()
 
   const skill = getBundledSkills().find(command => command.name === 'loop')
-  const blocks = await skill!.getPromptForCommand('5m say hi', {} as never)
+  if (skill?.type !== 'prompt') throw new Error('unreachable')
+  const blocks = await skill.getPromptForCommand('5m say hi', {} as never)
   const text = (blocks[0] as { text: string }).text
 
   expect(text).toContain('--- BEGIN PROMPT ---')

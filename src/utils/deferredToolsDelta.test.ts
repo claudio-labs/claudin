@@ -93,7 +93,9 @@ function latch(
   opts: { subagent?: boolean } = {},
 ): void {
   maybeLatchLegacyDeferredAnnouncement(
-    messages as Parameters<typeof maybeLatchLegacyDeferredAnnouncement>[0],
+    messages as unknown as Parameters<
+      typeof maybeLatchLegacyDeferredAnnouncement
+    >[0],
     { epochMs: PROCESS_START, ...opts },
   )
 }
@@ -219,7 +221,7 @@ describe('maybeLatchLegacyDeferredAnnouncement', () => {
           addedLines: ['- mcp__foo__bar'],
           removedNames: [],
         },
-      } as Parameters<typeof isLoggableMessage>[0]),
+      } as unknown as Parameters<typeof isLoggableMessage>[0]),
     ).toBe(true)
   })
 })
@@ -270,7 +272,9 @@ describe('session switch (in-REPL /resume, /branch)', () => {
         { type: 'user' },
         { type: 'assistant', timestamp: postStartTs },
         { type: 'user' },
-      ] as Parameters<typeof maybeLatchLegacyDeferredAnnouncement>[0])
+      ] as unknown as Parameters<
+        typeof maybeLatchLegacyDeferredAnnouncement
+      >[0])
       expect(isDeferredToolsDeltaActive()).toBe(false)
     } finally {
       switchSession(originalSession)

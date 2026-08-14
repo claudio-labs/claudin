@@ -1509,7 +1509,10 @@ export async function* queryModel(
                     feature("CONNECTOR_TEXT") &&
                     contentBlock.type === "connector_text"
                   ) {
-                    contentBlock.signature = delta.signature;
+                    // ConnectorTextBlock (src/types/connectorText.ts) doesn't
+                    // declare `signature` — bolt it on locally, same pattern
+                    // used elsewhere for a field the base type is missing.
+                    (contentBlock as ConnectorTextBlock & { signature?: string }).signature = delta.signature;
                     break;
                   }
                   if (contentBlock.type !== "thinking") {
@@ -1585,20 +1588,25 @@ export async function* queryModel(
           }
           case "message_delta": {
             usage = updateUsage(usage, part.usage);
+            // NonNullableUsage deliberately omits `fallback_credit`
+            // (src/entrypoints/sdk/sdkUtilityTypes.ts) but the SDK's
+            // BetaUsage — what these downstream sinks are typed against —
+            // now requires it; null is the honest "not applicable" value.
+            const usageForSdk: BetaUsage = { ...usage, fallback_credit: null };
 
             stopReason = part.delta.stop_reason;
             applyMessageDeltaToLastMessage(
               newMessages.at(-1),
-              usage,
+              usageForSdk,
               stopReason,
               part.context_management,
             );
 
             // Update cost
-            const costUSDForPart = calculateUSDCost(resolvedModel, usage);
+            const costUSDForPart = calculateUSDCost(resolvedModel, usageForSdk);
             costUSD += addToTotalSessionCost(
               costUSDForPart,
-              usage,
+              usageForSdk,
               options.model,
             );
 
@@ -1619,7 +1627,6 @@ export async function* queryModel(
                 content: `${API_ERROR_MESSAGE_PREFIX}: Claude's response exceeded the ${
                   maxOutputTokens
                 } output token maximum. To configure this behavior, set the CLAUDE_CODE_MAX_OUTPUT_TOKENS environment variable.`,
-                apiError: "max_output_tokens",
                 error: "max_output_tokens",
               });
             }
@@ -1634,7 +1641,6 @@ export async function* queryModel(
               // where you left off."
               yield createAssistantAPIErrorMessage({
                 content: `${API_ERROR_MESSAGE_PREFIX}: The model has reached its context window limit.`,
-                apiError: "max_output_tokens",
                 error: "max_output_tokens",
               });
             }
@@ -2217,7 +2223,10 @@ export async function* queryModel(
     if (fallbackMessage) {
       const fallbackUsage = fallbackMessage.message.usage;
       usage = updateUsage(EMPTY_USAGE, fallbackUsage);
-      stopReason = fallbackMessage.message.stop_reason;
+      // AssistantMessage['message']['stop_reason'] is `string | null` (widened
+      // in types/message.ts to cover non-Anthropic providers); this path is
+      // Anthropic-only, so it is genuinely a BetaStopReason.
+      stopReason = fallbackMessage.message.stop_reason as BetaStopReason | null;
       const fallbackCost = calculateUSDCost(resolvedModel, fallbackUsage);
       costUSD += addToTotalSessionCost(
         fallbackCost,

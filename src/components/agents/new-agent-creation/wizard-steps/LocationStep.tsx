@@ -15,7 +15,7 @@ export function LocationStep() {
     goNext,
     updateWizardData,
     cancel
-  } = useWizard();
+  } = useWizard<AgentWizardData>();
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = {
@@ -46,7 +46,7 @@ export function LocationStep() {
   }
   let t3;
   if ($[3] !== goNext || $[4] !== updateWizardData) {
-    t3 = value => {
+    t3 = (value: string) => {
       updateWizardData({
         location: value as SettingSource
       });

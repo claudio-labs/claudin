@@ -10,7 +10,7 @@ import { useSettings } from '../../hooks/useSettings.js';
 import { useTerminalSize } from '../../hooks/useTerminalSize.js';
 import { Box, Text } from '../../ink.js';
 import type { MCPServerConnection } from '../../services/mcp/types.js';
-import { useAppState } from '../../state/AppState.js';
+import { type AppState, useAppState } from '../../state/AppState.js';
 import type { ToolPermissionContext } from '../../Tool.js';
 import type { Message } from '../../types/message.js';
 import type { PromptInputMode, VimMode } from '../../types/textInputTypes.js';
@@ -120,7 +120,7 @@ function PromptInputFooter({
   // coordinatorTaskCount === 0 covers the bash-only case (no agent rows
   // exist, pill is the only selectable item).
   const coordinatorTaskCount = useCoordinatorTaskCount();
-  const coordinatorTaskIndex = useAppState(s => s.coordinatorTaskIndex);
+  const coordinatorTaskIndex = useAppState((s: AppState) => s.coordinatorTaskIndex);
   const pillSelected = tasksSelected && (coordinatorTaskCount === 0 || coordinatorTaskIndex < 0);
 
   // Hide `? for shortcuts` if the user has a custom status line, or during ctrl-r
@@ -177,15 +177,15 @@ function BridgeStatusIndicator({
   if (!feature('BRIDGE_MODE')) return null;
 
   // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  const enabled = useAppState(s => s.replBridgeEnabled);
+  const enabled = useAppState((s: AppState) => s.replBridgeEnabled);
   // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  const connected = useAppState(s_0 => s_0.replBridgeConnected);
+  const connected = useAppState((s_0: AppState) => s_0.replBridgeConnected);
   // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  const sessionActive = useAppState(s_1 => s_1.replBridgeSessionActive);
+  const sessionActive = useAppState((s_1: AppState) => s_1.replBridgeSessionActive);
   // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  const reconnecting = useAppState(s_2 => s_2.replBridgeReconnecting);
+  const reconnecting = useAppState((s_2: AppState) => s_2.replBridgeReconnecting);
   // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  const explicit = useAppState(s_3 => s_3.replBridgeExplicit);
+  const explicit = useAppState((s_3: AppState) => s_3.replBridgeExplicit);
 
   // Failed state is surfaced via notification (useReplBridge), not a footer pill.
   if (!isBridgeEnabled() || !enabled) return null;

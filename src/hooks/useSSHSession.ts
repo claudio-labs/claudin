@@ -12,6 +12,8 @@
 import { randomUUID } from 'crypto'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import type { ToolUseConfirm } from '../components/permissions/PermissionRequest.js'
+import type { SDKMessage } from '../entrypoints/agentSdkTypes.js'
+import type { SDKControlPermissionRequest } from '../entrypoints/sdk/controlTypes.js'
 import {
   createSyntheticAssistantMessage,
   createToolStub,
@@ -70,7 +72,7 @@ export function useSSHSession({
     logForDebugging('[useSSHSession] wiring SSH session manager')
 
     const manager = session.createManager({
-      onMessage: sdkMessage => {
+      onMessage: (sdkMessage: SDKMessage) => {
         if (isSessionEndMessage(sdkMessage)) {
           setIsLoading(false)
         }
@@ -88,7 +90,7 @@ export function useSSHSession({
           setMessages(prev => [...prev, converted.message])
         }
       },
-      onPermissionRequest: (request, requestId) => {
+      onPermissionRequest: (request: SDKControlPermissionRequest, requestId: string) => {
         logForDebugging(
           `[useSSHSession] permission request: ${request.tool_name}`,
         )
@@ -159,7 +161,7 @@ export function useSSHSession({
         logForDebugging('[useSSHSession] connected')
         isConnectedRef.current = true
       },
-      onReconnecting: (attempt, max) => {
+      onReconnecting: (attempt: number, max: number) => {
         logForDebugging(
           `[useSSHSession] ssh dropped, reconnecting (${attempt}/${max})`,
         )
@@ -197,7 +199,7 @@ export function useSSHSession({
         }
         void gracefulShutdown(1, 'other', { finalMessage: msg })
       },
-      onError: error => {
+      onError: (error: Error) => {
         logForDebugging(`[useSSHSession] error: ${error.message}`)
       },
     })

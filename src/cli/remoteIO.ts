@@ -25,7 +25,7 @@ import { ndjsonSafeStringify } from './ndjsonSafeStringify.js'
 import { StructuredIO } from './structuredIO.js'
 import { CCRClient, CCRInitError } from './transports/ccrClient.js'
 import { SSETransport } from './transports/SSETransport.js'
-import type { Transport } from './transports/Transport.js'
+import type Transport from './transports/Transport.js'
 import { getTransportForUrl } from './transports/transportUtils.js'
 
 /**
@@ -34,7 +34,7 @@ import { getTransportForUrl } from './transports/transportUtils.js'
  */
 export class RemoteIO extends StructuredIO {
   private url: URL
-  private transport: Transport
+  private transport: typeof Transport
   private inputStream: PassThrough
   private readonly isBridge: boolean = false
   private readonly isDebug: boolean = false

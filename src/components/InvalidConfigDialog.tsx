@@ -32,7 +32,7 @@ function InvalidConfigDialog(t0: InvalidConfigDialogProps) {
   } = t0;
   let t1;
   if ($[0] !== onExit || $[1] !== onReset) {
-    t1 = value => {
+    t1 = (value: string) => {
       if (value === "exit") {
         onExit();
       } else {

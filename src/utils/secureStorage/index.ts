@@ -3,8 +3,11 @@ import { macOsKeychainStorage } from './macOsKeychainStorage.js'
 import { linuxSecretStorage } from './linuxSecretStorage.js'
 import { windowsCredentialStorage } from './windowsCredentialStorage.js'
 import { plainTextStorage } from './plainTextStorage.js'
+import type { OAuthTokens } from '../../services/oauth/types.js'
 
 export interface SecureStorageData {
+  /** The primary Anthropic web-login OAuth credentials. */
+  claudeAiOauth?: OAuthTokens
   codex?: {
     apiKey?: string
     accessToken: string
@@ -58,6 +61,13 @@ export interface SecureStorageData {
     }
   >
   mcpOAuthClientConfig?: Record<string, { clientSecret: string }>
+  /**
+   * Cached IdP `id_token`s for MCP cross-app access, keyed by normalized IdP
+   * issuer. Written by `services/mcp/xaaIdpLogin.ts`.
+   */
+  mcpXaaIdp?: Record<string, { idToken: string; expiresAt: number }>
+  /** IdP client secrets for MCP cross-app access, keyed by the same issuer. */
+  mcpXaaIdpConfig?: Record<string, { clientSecret: string }>
   trustedDeviceToken?: string
   pluginSecrets?: Record<string, Record<string, string>>
 }

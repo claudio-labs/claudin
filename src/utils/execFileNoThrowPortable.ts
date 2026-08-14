@@ -1,4 +1,4 @@
-import { type Options as ExecaOptions, execaSync } from 'execa'
+import { execaSync } from 'execa'
 import { getCwd } from '../utils/cwd.js'
 import { slowLogging } from './slowOperations.js'
 
@@ -9,7 +9,18 @@ type ExecSyncOptions = {
   abortSignal?: AbortSignal
   timeout?: number
   input?: string
-  stdio?: ExecaOptions['stdio']
+  // Deliberately narrower than execa's own `stdio` union: the full type is
+  // generic over the encoding, so it does not match the call below (which
+  // passes `input`, pinning execaSync to its string overload).
+  stdio?:
+    | 'ignore'
+    | 'inherit'
+    | 'pipe'
+    | readonly [
+        'ignore' | 'inherit' | 'pipe',
+        'ignore' | 'inherit' | 'pipe',
+        'ignore' | 'inherit' | 'pipe',
+      ]
 }
 
 /**

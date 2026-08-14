@@ -42,8 +42,8 @@ describe('EnterPlanModeTool', () => {
 
   test('shouldDefer is true and read-only / concurrency-safe flags', () => {
     expect(EnterPlanModeTool.shouldDefer).toBe(true)
-    expect(EnterPlanModeTool.isReadOnly?.()).toBe(true)
-    expect(EnterPlanModeTool.isConcurrencySafe?.()).toBe(true)
+    expect(EnterPlanModeTool.isReadOnly?.({} as never)).toBe(true)
+    expect(EnterPlanModeTool.isConcurrencySafe?.({} as never)).toBe(true)
   })
 
   test('isEnabled() is true when no channel restriction is active', () => {
@@ -60,19 +60,19 @@ describe('EnterPlanModeTool', () => {
   })
 
   test('userFacingName is empty (rendered by UI helpers)', () => {
-    expect(EnterPlanModeTool.userFacingName()).toBe('')
+    expect(EnterPlanModeTool.userFacingName(undefined)).toBe('')
   })
 
   test('call() refuses to run inside a sub-agent context', async () => {
     const { ctx } = makeCtx({ agentId: 'sub-1' })
     await expect(
-      EnterPlanModeTool.call({} as never, ctx),
+      EnterPlanModeTool.call({} as never, ctx, {} as never, {} as never),
     ).rejects.toThrow('cannot be used in agent contexts')
   })
 
   test('call() flips the permission context to plan mode', async () => {
     const { ctx, state } = makeCtx()
-    const { data } = await EnterPlanModeTool.call({} as never, ctx)
+    const { data } = await EnterPlanModeTool.call({} as never, ctx, {} as never, {} as never)
 
     expect(data.message).toContain('Entered plan mode')
     expect(state.toolPermissionContext.mode).toBe('plan')

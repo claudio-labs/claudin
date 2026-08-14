@@ -43,7 +43,11 @@ export default function sliceAnsi(
     // pass start/end in display cells (via stringWidth), so position must
     // track the same units.
     const width =
-      token.type === 'ansi' ? 0 : token.fullWidth ? 2 : stringWidth(token.value)
+      token.type !== 'char'
+        ? 0
+        : token.fullWidth
+          ? 2
+          : stringWidth(token.value)
 
     // Break AFTER trailing zero-width marks — a combining mark attaches to
     // the preceding base char, so "भा" (भ + ा, 1 display cell) sliced at
@@ -54,13 +58,19 @@ export default function sliceAnsi(
     // !include guard ensures empty slices (start===end) stay empty even
     // when the string starts with a zero-width char (BOM, ZWJ).
     if (end !== undefined && position >= end) {
-      if (token.type === 'ansi' || width > 0 || !include) break
+      if (token.type !== 'char' || width > 0 || !include) break
     }
 
     if (token.type === 'ansi') {
       activeCodes.push(token)
       if (include) {
         // Emit all ANSI codes during the slice
+        result += token.code
+      }
+    } else if (token.type === 'control') {
+      // Zero-width control sequences (not style codes, so they don't join
+      // activeCodes) are passed through verbatim while inside the slice.
+      if (include) {
         result += token.code
       }
     } else {

@@ -21,10 +21,10 @@ export function ToolsStep(t0: Props) {
     goBack,
     updateWizardData,
     wizardData
-  } = useWizard();
+  } = useWizard<AgentWizardData>();
   let t1;
   if ($[0] !== goNext || $[1] !== updateWizardData) {
-    t1 = selectedTools => {
+    t1 = (selectedTools: string[] | undefined) => {
       updateWizardData({
         selectedTools
       });

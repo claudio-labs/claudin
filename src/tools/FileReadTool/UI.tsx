@@ -80,10 +80,14 @@ export function renderToolResultMessage(output: Output): React.ReactNode {
   switch (output.type) {
     case 'image':
       {
+        // outputSchema's 'image' arm (FileReadTool.ts) never gained the
+        // `filePath` field its internal ImageResult type has carried since
+        // it was added for Kitty-terminal inline rendering — bolt it on
+        // here rather than losing the feature.
         const {
           originalSize,
           filePath
-        } = output.file;
+        } = output.file as typeof output.file & { filePath?: string };
         const formattedSize = formatFileSize(originalSize);
         const fallback = <Text>Read image ({formattedSize})</Text>;
         // Omit height when InlineImage may grow into multi-row placeholders;

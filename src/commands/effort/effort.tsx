@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useMainLoopModel } from '../../hooks/useMainLoopModel.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from '../../services/analytics/index.js';
-import { useAppState, useSetAppState } from '../../state/AppState.js';
+import { type AppState, useAppState, useSetAppState } from '../../state/AppState.js';
 import type { LocalJSXCommandOnDone } from '../../types/command.js';
 import { type EffortValue, clearProjectEffortPin, effortEnvOverrideConflictsWith, getDisplayedEffortLabel, getEffortEnvOverride, getEffortValueDescription, getInitialEffortSetting, getProjectEffortOrigin, isEffortLevel, isOpenAIEffortLevel, modelUsesOpenAIEffort, persistEffortForProject, pinProjectEffortAuto, toPersistableEffort } from '../../utils/effort.js';
 import { EffortPicker } from '../../components/EffortPicker.js';
@@ -159,7 +159,7 @@ export function executeEffort(args: string): EffortCommandResult {
     message: `Invalid argument: ${args}. Valid options are: low, medium, high, max, xhigh, auto, inherit`
   };
 }
-function ShowCurrentEffort(t0) {
+function ShowCurrentEffort(t0: { onDone: LocalJSXCommandOnDone }) {
   const {
     onDone
   } = t0;
@@ -171,10 +171,13 @@ function ShowCurrentEffort(t0) {
   onDone(message);
   return null;
 }
-function _temp(s) {
+function _temp(s: AppState) {
   return s.effortValue;
 }
-function ApplyEffortAndClose(t0) {
+function ApplyEffortAndClose(t0: {
+  result: EffortCommandResult;
+  onDone: LocalJSXCommandOnDone;
+}) {
   const $ = _c(6);
   const {
     result,

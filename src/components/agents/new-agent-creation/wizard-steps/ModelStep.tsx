@@ -14,10 +14,10 @@ export function ModelStep() {
     goBack,
     updateWizardData,
     wizardData
-  } = useWizard();
+  } = useWizard<AgentWizardData>();
   let t0;
   if ($[0] !== goNext || $[1] !== updateWizardData) {
-    t0 = model => {
+    t0 = (model?: string) => {
       updateWizardData({
         selectedModel: model
       });

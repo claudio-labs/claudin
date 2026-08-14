@@ -173,7 +173,7 @@ export function InlineImage({
     return <>{fallback}</>
   }
   return (
-    <Box borderStyle="round" borderColor="gray" flexDirection="column">
+    <Box borderStyle="round" borderColor="subtle" flexDirection="column">
       <Text>{lines.join('\n')}</Text>
     </Box>
   )

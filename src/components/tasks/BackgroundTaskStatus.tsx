@@ -9,6 +9,8 @@ import { enterTeammateView, exitTeammateView } from 'src/state/teammateViewHelpe
 import { isPanelAgentTask } from 'src/tasks/LocalAgentTask/LocalAgentTask.js';
 import { getPillLabel, pillNeedsCta } from 'src/tasks/pillLabel.js';
 import { type BackgroundTaskState, isBackgroundTask, type TaskState } from 'src/tasks/types.js';
+import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js';
+import type { AppState } from 'src/state/AppStateStore.js';
 import { calculateHorizontalScrollWindow } from 'src/utils/horizontalScroll.js';
 import { Box, Text } from '../../ink.js';
 import { AGENT_COLOR_TO_THEME_COLOR, AGENT_COLORS, type AgentColorName } from '../../tools/AgentTool/agentColorManager.js';
@@ -23,6 +25,17 @@ type Props = {
   teammateFooterIndex?: number;
   isLeaderIdle?: boolean;
   onOpenDialog?: (taskId?: string) => void;
+};
+/** One footer pill: the leader ("main") or a teammate. */
+type FooterPill = {
+  name: string;
+  color?: keyof Theme;
+  isIdle: boolean;
+  taskId?: string;
+  tokenCount?: number;
+};
+type IndexedFooterPill = FooterPill & {
+  idx: number;
 };
 export function BackgroundTaskStatus(t0: Props) {
   const $ = _c(48);
@@ -105,7 +118,7 @@ export function BackgroundTaskStatus(t0: Props) {
     const selectedIdx = tasksSelected ? teammateFooterIndex : -1;
     let t8;
     if ($[12] !== teammateEntries || $[13] !== viewingAgentTaskId) {
-      t8 = viewingAgentTaskId ? teammateEntries.findIndex(t_3 => t_3.id === viewingAgentTaskId) + 1 : 0;
+      t8 = viewingAgentTaskId ? teammateEntries.findIndex((t_3: InProcessTeammateTaskState) => t_3.id === viewingAgentTaskId) + 1 : 0;
       $[12] = teammateEntries;
       $[13] = viewingAgentTaskId;
       $[14] = t8;
@@ -152,7 +165,7 @@ export function BackgroundTaskStatus(t0: Props) {
     }
     let t13;
     if ($[25] !== selectedIdx || $[26] !== setAppState || $[27] !== viewedIdx || $[28] !== visiblePills) {
-      t13 = visiblePills.map((pill_1, i_1) => {
+      t13 = visiblePills.map((pill_1: IndexedFooterPill, i_1: number) => {
         const needsSeparator = i_1 > 0;
         return <React.Fragment key={pill_1.name}>{needsSeparator && <Text> </Text>}<AgentPill name={pill_1.name} color={pill_1.color} isSelected={selectedIdx === pill_1.idx} isViewed={viewedIdx === pill_1.idx} isIdle={pill_1.isIdle} tokenCount={pill_1.tokenCount} onClick={() => pill_1.taskId ? enterTeammateView(pill_1.taskId, setAppState) : exitTeammateView(setAppState)} /></React.Fragment>;
       });
@@ -234,23 +247,23 @@ export function BackgroundTaskStatus(t0: Props) {
   }
   return t11;
 }
-function _temp1(pill_0, i_0) {
+function _temp1(pill_0: IndexedFooterPill, i_0: number) {
   const pillText = `@${pill_0.name}`;
   return stringWidth(pillText) + (i_0 > 0 ? 1 : 0);
 }
-function _temp0(pill, i) {
+function _temp0(pill: FooterPill, i: number): IndexedFooterPill {
   return {
     ...pill,
     idx: i
   };
 }
-function _temp9(a_0, b_0) {
+function _temp9(a_0: FooterPill, b_0: FooterPill) {
   if (a_0.isIdle !== b_0.isIdle) {
     return a_0.isIdle ? 1 : -1;
   }
   return 0;
 }
-function _temp8(t_2) {
+function _temp8(t_2: InProcessTeammateTaskState): FooterPill {
   return {
     name: t_2.identity.agentName,
     color: getAgentThemeColor(t_2.identity.color),
@@ -259,25 +272,25 @@ function _temp8(t_2) {
     tokenCount: t_2.progress?.tokenCount
   };
 }
-function _temp7(a, b) {
+function _temp7(a: InProcessTeammateTaskState, b: InProcessTeammateTaskState) {
   return a.identity.agentName.localeCompare(b.identity.agentName);
 }
-function _temp6(t_1) {
+function _temp6(t_1: TaskState): t_1 is InProcessTeammateTaskState {
   return t_1.type === "in_process_teammate";
 }
-function _temp5(t_0) {
+function _temp5(t_0: TaskState) {
   return t_0.type === "in_process_teammate";
 }
-function _temp4(s_1) {
+function _temp4(s_1: AppState) {
   return s_1.expandedView;
 }
-function _temp3(t) {
+function _temp3(t: TaskState) {
   return isBackgroundTask(t) && !isPanelAgentTask(t);
 }
-function _temp2(s_0) {
+function _temp2(s_0: AppState) {
   return s_0.viewingAgentTaskId;
 }
-function _temp(s) {
+function _temp(s: AppState) {
   return s.tasks;
 }
 type AgentPillProps = {
@@ -383,7 +396,14 @@ function AgentPill(t0: AgentPillProps) {
   }
   return t3;
 }
-function SummaryPill(t0) {
+type SummaryPillProps = {
+  selected: boolean;
+  // Forwarded verbatim to <Box onClick>, which invokes it with its own click
+  // event — so this pill promises no argument to whatever it is given.
+  onClick?: () => void;
+  children: React.ReactNode;
+};
+function SummaryPill(t0: SummaryPillProps) {
   const $ = _c(8);
   const {
     selected,

@@ -52,7 +52,7 @@ function resolveColor(color: keyof Theme | Color | undefined, theme: Theme): Col
  * Theme-aware Box component that resolves theme color keys to raw colors.
  * This wraps the base Box component with theme resolution for border colors.
  */
-function ThemedBoxInner(t0, ref: React.ForwardedRef<DOMElement>) {
+function ThemedBoxInner(t0: PropsWithChildren<Props>, ref: React.ForwardedRef<DOMElement>) {
   const $ = _c(33);
   let backgroundColor;
   let borderBottomColor;

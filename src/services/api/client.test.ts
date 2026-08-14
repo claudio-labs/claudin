@@ -102,6 +102,7 @@ test('routes Gemini provider requests through the OpenAI-compatible shim', async
     baseUrl: 'https://gemini.example/v1beta/openai',
     model: 'gemini-2.0-flash',
     apiKey: 'gemini-test-key',
+    name: 'Gemini',
   }
 
   globalThis.fetch = (async (input, init) => {
@@ -171,6 +172,7 @@ test('strips Anthropic-specific custom headers before sending OpenAI-compatible 
     baseUrl: 'http://example.test/v1',
     model: 'gpt-4o',
     apiKey: 'openai-test-key',
+    name: 'OpenAI',
     extras: {
       customHeaders: {
         'anthropic-version': '2023-06-01',

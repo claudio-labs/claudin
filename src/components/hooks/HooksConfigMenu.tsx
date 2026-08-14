@@ -15,12 +15,14 @@ import * as React from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import type { HookEvent } from 'src/entrypoints/agentSdkTypes.js';
 import { useAppState, useAppStateStore } from 'src/state/AppState.js';
+import type { AppState } from 'src/state/AppStateStore.js';
 import type { CommandResultDisplay } from '../../commands.js';
 import { useSettingsChange } from '../../hooks/useSettingsChange.js';
 import { Box, Text } from '../../ink.js';
 import { useKeybinding } from '../../keybindings/useKeybinding.js';
 import { getHookEventMetadata, getHooksForMatcher, getMatcherMetadata, getSortedMatchersForEvent, groupHooksByEventAndMatcher } from '../../utils/hooks/hooksConfigManager.js';
 import type { IndividualHookConfig } from '../../utils/hooks/hooksSettings.js';
+import type { SettingSource } from '../../utils/settings/constants.js';
 import { getInitialSettings, getSettingsForSource } from '../../utils/settings/settings.js';
 import { plural } from '../../utils/stringUtils.js';
 import { Dialog } from '../design-system/Dialog.js';
@@ -68,7 +70,7 @@ export function HooksConfigMenu(t0: Props) {
   const [restrictedByPolicy, setRestrictedByPolicy] = useState(_temp2);
   let t2;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
-    t2 = source => {
+    t2 = (source: SettingSource) => {
       if (source === "policySettings") {
         const settings_0 = getInitialSettings();
         const hooksDisabled_0 = settings_0?.disableAllHooks === true;
@@ -96,7 +98,7 @@ export function HooksConfigMenu(t0: Props) {
     t3 = $[4];
   }
   const combinedToolNames = t3;
-  let t4;
+  let t4: Record<HookEvent, Record<string, IndividualHookConfig[]>>;
   if ($[5] !== appStateStore || $[6] !== combinedToolNames) {
     t4 = groupHooksByEventAndMatcher(appStateStore.getState(), combinedToolNames);
     $[5] = appStateStore;
@@ -258,7 +260,7 @@ export function HooksConfigMenu(t0: Props) {
   const hooksDisabled_1 = settings_1?.disableAllHooks === true;
   let t20;
   if ($[33] !== hooksByEventAndMatcher) {
-    const byEvent = {};
+    const byEvent: Partial<Record<HookEvent, number>> = {};
     let total = 0;
     for (const [event_0, matchers] of Object.entries(hooksByEventAndMatcher)) {
       const eventCount = Object.values(matchers).reduce(_temp5, 0);
@@ -382,7 +384,7 @@ export function HooksConfigMenu(t0: Props) {
       {
         let t21;
         if ($[61] !== combinedToolNames) {
-          t21 = event_2 => {
+          t21 = (event_2: HookEvent) => {
             if (getMatcherMetadata(event_2, combinedToolNames) !== undefined) {
               setModeState({
                 mode: "select-matcher",
@@ -421,7 +423,7 @@ export function HooksConfigMenu(t0: Props) {
         const t21 = hookEventMetadata[modeState.event];
         let t22;
         if ($[70] !== modeState.event) {
-          t22 = matcher => {
+          t22 = (matcher: string) => {
             setModeState({
               mode: "select-hook",
               event: modeState.event,
@@ -463,7 +465,7 @@ export function HooksConfigMenu(t0: Props) {
         const t21 = hookEventMetadata[modeState.event];
         let t22;
         if ($[79] !== modeState.event) {
-          t22 = hook_1 => {
+          t22 = (hook_1: IndividualHookConfig) => {
             setModeState({
               mode: "view-hook",
               event: modeState.event,
@@ -558,13 +560,13 @@ export function HooksConfigMenu(t0: Props) {
 function _temp6() {
   return <Text>Esc to close</Text>;
 }
-function _temp5(sum, hooks) {
+function _temp5(sum: number, hooks: IndividualHookConfig[]) {
   return sum + hooks.length;
 }
-function _temp4(tool) {
+function _temp4(tool: AppState['mcp']['tools'][number]) {
   return tool.name;
 }
-function _temp3(s) {
+function _temp3(s: AppState) {
   return s.mcp;
 }
 function _temp2() {

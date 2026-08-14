@@ -57,15 +57,18 @@ async function fetchPrForAutofix(): Promise<PrLookup> {
   try {
     parsed = jsonParse(stdout)
   } catch (e) {
-    logError('autofix-pr: failed to parse `gh pr view` JSON', e)
+    logError(
+      new Error('autofix-pr: failed to parse `gh pr view` JSON', { cause: e }),
+    )
     return { kind: 'gh_error' }
   }
 
   const validation = PrViewSchema.safeParse(parsed)
   if (!validation.success) {
     logError(
-      'autofix-pr: `gh pr view` JSON did not match expected schema',
-      validation.error,
+      new Error('autofix-pr: `gh pr view` JSON did not match expected schema', {
+        cause: validation.error,
+      }),
     )
     return { kind: 'gh_error' }
   }

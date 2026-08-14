@@ -9,6 +9,15 @@ import { count } from '../../utils/array.js';
 import { getRainbowColor } from '../../utils/thinking.js';
 const TICK_MS = 80;
 type ReviewStage = NonNullable<NonNullable<RemoteAgentTaskState['reviewProgress']>['stage']>;
+type RemoteSession = DeepImmutable<RemoteAgentTaskState>;
+type RemoteTodo = RemoteSession['todoList'][number];
+type RainbowTextProps = {
+  text: string;
+  phase?: number;
+};
+type SessionProps = {
+  session: RemoteSession;
+};
 
 /**
  * Stage-appropriate counts line for a running review. Shared between the
@@ -40,7 +49,7 @@ export function formatReviewStageCounts(stage: ReviewStage | undefined, found: n
 // Per-character rainbow gradient, same treatment as the ultraplan keyword.
 // The phase offset lets the gradient cycle — so the colors sweep along the
 // text on each animation frame instead of being static.
-function RainbowText(t0) {
+function RainbowText(t0: RainbowTextProps) {
   const $ = _c(5);
   const {
     text,
@@ -57,7 +66,7 @@ function RainbowText(t0) {
   }
   let t3;
   if ($[2] !== phase || $[3] !== t2) {
-    t3 = <>{t2.map((ch, i) => <Text key={i} color={getRainbowColor(i + phase)}>{ch}</Text>)}</>;
+    t3 = <>{t2.map((ch: string, i: number) => <Text key={i} color={getRainbowColor(i + phase)}>{ch}</Text>)}</>;
     $[2] = phase;
     $[3] = t2;
     $[4] = t3;
@@ -84,7 +93,7 @@ function useSmoothCount(target: number, time: number, snap: boolean): number {
   }
   return displayed.current;
 }
-function ReviewRainbowLine(t0) {
+function ReviewRainbowLine(t0: SessionProps) {
   const $ = _c(15);
   const {
     session
@@ -169,7 +178,7 @@ function ReviewRainbowLine(t0) {
   }
   return t6;
 }
-export function RemoteSessionProgress(t0) {
+export function RemoteSessionProgress(t0: SessionProps) {
   const $ = _c(11);
   const {
     session
@@ -237,6 +246,6 @@ export function RemoteSessionProgress(t0) {
   }
   return t2;
 }
-function _temp(_) {
+function _temp(_: RemoteTodo) {
   return _.status === "completed";
 }

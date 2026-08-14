@@ -1,9 +1,10 @@
 import { c as _c } from "react-compiler-runtime";
+import type { StructuredPatchHunk } from 'diff';
 import { relative } from 'path';
 import * as React from 'react';
 import { Suspense, use, useMemo } from 'react';
 import { Box, NoSelect, Text } from '../../../ink.js';
-import type { NotebookCellType, NotebookContent } from '../../../types/notebook.js';
+import type { NotebookCell, NotebookCellType, NotebookContent } from '../../../types/notebook.js';
 import { intersperse } from '../../../utils/array.js';
 import { getCwd } from '../../../utils/cwd.js';
 import { getPatchForDisplay } from '../../../utils/diff.js';
@@ -31,7 +32,7 @@ type InnerProps = {
   width: number;
   promise: Promise<NotebookContent | null>;
 };
-export function NotebookEditToolDiff(props) {
+export function NotebookEditToolDiff(props: Props) {
   const $ = _c(5);
   let t0;
   if ($[0] !== props.notebook_path) {
@@ -58,10 +59,10 @@ export function NotebookEditToolDiff(props) {
 function _temp2() {
   return null;
 }
-function _temp(content) {
+function _temp(content: string) {
   return safeParseJSON(content) as NotebookContent | null;
 }
-function NotebookEditToolDiffInner(t0: Props) {
+function NotebookEditToolDiffInner(t0: InnerProps) {
   const $ = _c(34);
   const {
     notebook_path,
@@ -102,7 +103,7 @@ function NotebookEditToolDiffInner(t0: Props) {
       }
       let t3;
       if ($[5] !== cell_id) {
-        t3 = cell => cell.id === cell_id;
+        t3 = (cell: NotebookCell) => cell.id === cell_id;
         $[5] = cell_id;
         $[6] = t3;
       } else {
@@ -122,7 +123,7 @@ function NotebookEditToolDiffInner(t0: Props) {
     t2 = $[2];
   }
   const oldSource = t2;
-  let t3;
+  let t3: StructuredPatchHunk[] | null;
   bb1: {
     if (!notebookData || edit_mode === "insert" || edit_mode === "delete") {
       t3 = null;
@@ -206,7 +207,7 @@ function NotebookEditToolDiffInner(t0: Props) {
   }
   let t9;
   if ($[23] !== cell_type || $[24] !== edit_mode || $[25] !== hunks || $[26] !== new_source || $[27] !== notebook_path || $[28] !== oldSource || $[29] !== width) {
-    t9 = edit_mode === "delete" ? <Box flexDirection="column" paddingLeft={2}><HighlightedCode code={oldSource} filePath={notebook_path} /></Box> : edit_mode === "insert" ? <Box flexDirection="column" paddingLeft={2}><HighlightedCode code={new_source} filePath={cell_type === "markdown" ? "file.md" : notebook_path} /></Box> : hunks ? intersperse(hunks.map(_ => <StructuredDiff key={_.newStart} patch={_} dim={false} width={width} filePath={notebook_path} firstLine={new_source.split("\n")[0] ?? null} fileContent={oldSource} />), _temp3) : <HighlightedCode code={new_source} filePath={cell_type === "markdown" ? "file.md" : notebook_path} />;
+    t9 = edit_mode === "delete" ? <Box flexDirection="column" paddingLeft={2}><HighlightedCode code={oldSource} filePath={notebook_path} /></Box> : edit_mode === "insert" ? <Box flexDirection="column" paddingLeft={2}><HighlightedCode code={new_source} filePath={cell_type === "markdown" ? "file.md" : notebook_path} /></Box> : hunks ? intersperse(hunks.map((_: StructuredPatchHunk) => <StructuredDiff key={_.newStart} patch={_} dim={false} width={width} filePath={notebook_path} firstLine={new_source.split("\n")[0] ?? null} fileContent={oldSource} />), _temp3) : <HighlightedCode code={new_source} filePath={cell_type === "markdown" ? "file.md" : notebook_path} />;
     $[23] = cell_type;
     $[24] = edit_mode;
     $[25] = hunks;
@@ -229,6 +230,6 @@ function NotebookEditToolDiffInner(t0: Props) {
   }
   return t10;
 }
-function _temp3(i) {
+function _temp3(i: number) {
   return <NoSelect fromLeftEdge={true} key={`ellipsis-${i}`}><Text dimColor={true}>...</Text></NoSelect>;
 }

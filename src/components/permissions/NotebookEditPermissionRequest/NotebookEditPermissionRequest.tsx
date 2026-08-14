@@ -9,7 +9,7 @@ import { FilePermissionDialog } from '../FilePermissionDialog/FilePermissionDial
 import type { PermissionRequestProps } from '../PermissionRequest.js';
 import { NotebookEditToolDiff } from './NotebookEditToolDiff.js';
 type NotebookEditInput = z.infer<typeof NotebookEditTool.inputSchema>;
-export function NotebookEditPermissionRequest(props) {
+export function NotebookEditPermissionRequest(props: PermissionRequestProps) {
   const $ = _c(52);
   const parseInput = _temp;
   let T0;
@@ -151,7 +151,7 @@ export function NotebookEditPermissionRequest(props) {
   }
   return t15;
 }
-function _temp(input) {
+function _temp(input: unknown): NotebookEditInput {
   const result = NotebookEditTool.inputSchema.safeParse(input);
   if (!result.success) {
     logError(new Error(`Failed to parse notebook edit input: ${result.error.message}`));

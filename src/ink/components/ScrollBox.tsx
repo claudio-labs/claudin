@@ -7,6 +7,24 @@ import { markCommitStart } from '../reconciler.js';
 import type { Styles } from '../styles.js';
 import '../global.d.ts';
 import Box from './Box.js';
+
+// 'ink-box' is a real host element recognized by the renderer (src/ink/dom.ts,
+// render-node-to-output.ts). tsconfig uses jsx:"react-jsx" (automatic
+// runtime), which resolves the JSX namespace from the "react" module's own
+// exported JSX (react/jsx-runtime.d.ts re-exports React.JSX) — NOT the true
+// global JSX namespace, so the shared src/ink/global.d.ts's `declare
+// namespace JSX {...}` augmentation is a silent no-op here (same latent bug
+// documented in RawAnsi.tsx). The augmentation has to target "react"'s own
+// JSX namespace instead — same shape as Box.tsx's identical declaration
+// (module augmentations of the same key must match exactly, project-wide, or
+// TS reports a conflicting merge).
+declare module 'react' {
+  namespace JSX {
+    interface IntrinsicElements {
+      'ink-box': Record<string, unknown>;
+    }
+  }
+}
 export type ScrollBoxHandle = {
   scrollTo: (y: number) => void;
   scrollBy: (dy: number) => void;
@@ -214,7 +232,7 @@ function ScrollBox({
   // stickyScroll is passed as a DOM attribute (via ink-box directly) so it's
   // available on the first render — ref callbacks fire after the initial
   // commit, which is too late for the first frame.
-  return <ink-box ref={el => {
+  return <ink-box ref={(el: DOMElement | null) => {
     domRef.current = el;
     if (el) el.scrollTop ??= 0;
   }} style={{

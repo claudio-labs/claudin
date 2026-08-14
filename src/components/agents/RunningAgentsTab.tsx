@@ -6,7 +6,7 @@ import { formatTokens } from '../../utils/format.js'
 import { Divider } from '../design-system/Divider.js'
 
 export function RunningAgentsTab() {
-  const tasks = useAppState((s: AppState) => s.tasks)
+  const tasks: AppState['tasks'] = useAppState((s: AppState) => s.tasks)
 
   const runningAgents = Object.values(tasks).filter(
     (task): task is LocalAgentTaskState =>

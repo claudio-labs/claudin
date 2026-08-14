@@ -79,6 +79,6 @@ export function ErrorStep(t0: ErrorStepProps) {
   }
   return t8;
 }
-function _temp(instruction, index) {
+function _temp(instruction: string, index: number) {
   return <Box key={index} marginLeft={2}><Text dimColor={true}>• </Text><Text>{instruction}</Text></Box>;
 }

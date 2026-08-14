@@ -1,5 +1,5 @@
 // Reconstructed from its use sites — the original module was not carried into
-// this fork. The three arms are the literals pushed into the
+// this fork. The four arms are the literals pushed into the
 // `UnifiedInstalledItem[]` accumulators in `ManagePlugins.tsx`, and the fields
 // read by `UnifiedInstalledCell.tsx`.
 import type { LoadedPlugin, PluginError } from '../../types/plugin.js'
@@ -56,8 +56,22 @@ export type UnifiedInstalledFailedPluginItem = UnifiedInstalledItemBase & {
   errors: PluginError[]
 }
 
+/**
+ * A plugin delisted from its marketplace, surfaced from the cached security
+ * messages file rather than a live `LoadedPlugin`/load failure.
+ */
+export type UnifiedInstalledFlaggedPluginItem = UnifiedInstalledItemBase & {
+  type: 'flagged-plugin'
+  marketplace: string
+  scope: 'flagged'
+  reason: string
+  text: string
+  flaggedAt: string
+}
+
 /** One row of the unified "installed" list: plugins and MCP servers together. */
 export type UnifiedInstalledItem =
   | UnifiedInstalledPluginItem
   | UnifiedInstalledMcpItem
   | UnifiedInstalledFailedPluginItem
+  | UnifiedInstalledFlaggedPluginItem

@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { type PropsWithChildren } from 'react';
 import Box, { type Props as BoxProps } from './Box.js';
-type Props = Omit<BoxProps, 'noSelect'> & {
+type Props = PropsWithChildren<Omit<BoxProps, 'noSelect'> & {
   /**
    * Extend the exclusion zone from column 0 to this box's right edge,
    * for every row this box occupies. Use for gutters rendered inside a
@@ -12,7 +12,7 @@ type Props = Omit<BoxProps, 'noSelect'> & {
    * @default false
    */
   fromLeftEdge?: boolean;
-};
+}>;
 
 /**
  * Marks its contents as non-selectable in fullscreen text selection.

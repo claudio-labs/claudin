@@ -14,6 +14,8 @@ import { logEvent } from '../../services/analytics/index.js';
 import { isAutoDreamEnabled } from '../../services/autoDream/config.js';
 import { readLastConsolidatedAt } from '../../services/autoDream/consolidationLock.js';
 import { useAppState } from '../../state/AppState.js';
+import type { AppState } from '../../state/AppStateStore.js';
+import type { TaskState } from '../../tasks/types.js';
 import { getAgentMemoryDir } from '../../tools/AgentTool/agentMemory.js';
 import { openPath } from '../../utils/browser.js';
 import { getMemoryFiles, type MemoryFileInfo } from '../../utils/claudemd.js';
@@ -55,7 +57,7 @@ export function MemoryFileSelector(t0: Props) {
   const projectMemoryFileName = basename(projectMemoryPath);
   const hasUserMemory = existingMemoryFiles.some(f => f.path === userMemoryPath);
   const hasProjectMemory = existingMemoryFiles.some(f_0 => f_0.path === projectMemoryPath);
-  const allMemoryFiles = [...existingMemoryFiles.filter(_temp).map(_temp2), ...(hasUserMemory ? [] : [{
+  const allMemoryFiles: ExtendedMemoryFileInfo[] = [...existingMemoryFiles.filter(_temp).map(_temp2), ...(hasUserMemory ? [] : [{
     path: userMemoryPath,
     type: "User" as const,
     content: "",
@@ -127,12 +129,12 @@ export function MemoryFileSelector(t0: Props) {
       t1 = $[0];
     }
     folderOptions.push(t1);
-    if (feature("TEAMMEM") && teamMemPaths.isTeamMemoryEnabled()) {
+    if (feature("TEAMMEM") && teamMemPaths?.isTeamMemoryEnabled()) {
       let t2;
       if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
         t2 = {
           label: "Open team memory folder",
-          value: `${OPEN_FOLDER_PREFIX}${teamMemPaths.getTeamMemPath()}`,
+          value: `${OPEN_FOLDER_PREFIX}${teamMemPaths?.getTeamMemPath()}`,
           description: ""
         };
         $[1] = t2;
@@ -166,7 +168,7 @@ export function MemoryFileSelector(t0: Props) {
   const [autoDreamOn, setAutoDreamOn] = useState(isAutoDreamEnabled);
   const [showDreamRow] = useState(isAutoMemoryEnabled);
   const isDreamRunning = useAppState(_temp6);
-  const [lastDreamAt, setLastDreamAt] = useState(null);
+  const [lastDreamAt, setLastDreamAt] = useState<number | null>(null);
   let t2;
   if ($[4] !== showDreamRow) {
     t2 = () => {
@@ -200,7 +202,7 @@ export function MemoryFileSelector(t0: Props) {
     t4 = $[11];
   }
   const dreamStatus = t4;
-  const [focusedToggle, setFocusedToggle] = useState(null);
+  const [focusedToggle, setFocusedToggle] = useState<number | null>(null);
   const toggleFocused = focusedToggle !== null;
   const lastToggleIndex = showDreamRow ? 1 : 0;
   let t5;
@@ -365,7 +367,7 @@ export function MemoryFileSelector(t0: Props) {
   }
   let t20;
   if ($[44] !== onSelect) {
-    t20 = value => {
+    t20 = (value: string) => {
       if (value.startsWith(OPEN_FOLDER_PREFIX)) {
         const folderPath = value.slice(OPEN_FOLDER_PREFIX.length);
         mkdir(folderPath, {
@@ -414,27 +416,29 @@ export function MemoryFileSelector(t0: Props) {
   return t23;
 }
 function _temp8() {}
-function _temp7(prev_0) {
+function _temp7(prev_0: number | null) {
   return prev_0 !== null && prev_0 > 0 ? prev_0 - 1 : prev_0;
 }
-function _temp6(s_0) {
+function _temp6(s_0: AppState) {
   return Object.values(s_0.tasks).some(_temp5);
 }
-function _temp5(t) {
+function _temp5(t: TaskState) {
   return t.type === "dream" && t.status === "running";
 }
-function _temp4(opt) {
+function _temp4(opt: {
+  value: string;
+}) {
   return opt.value === lastSelectedPath;
 }
-function _temp3(s) {
+function _temp3(s: AppState) {
   return s.agentDefinitions;
 }
-function _temp2(f_2) {
+function _temp2(f_2: MemoryFileInfo) {
   return {
     ...f_2,
     exists: true
   };
 }
-function _temp(f_1) {
+function _temp(f_1: MemoryFileInfo) {
   return f_1.type !== "AutoMem" && f_1.type !== "TeamMem";
 }

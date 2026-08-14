@@ -36,7 +36,12 @@ export function countLines(content: string): number {
   const parts = content.split(EOL);
   return content.endsWith(EOL) ? parts.length - 1 : parts.length;
 }
-function FileWriteToolCreatedMessage(t0) {
+type FileWriteToolCreatedMessageProps = {
+  filePath: string;
+  content: string;
+  verbose: boolean;
+};
+function FileWriteToolCreatedMessage(t0: FileWriteToolCreatedMessageProps) {
   const $ = _c(25);
   const {
     filePath,
@@ -205,7 +210,13 @@ type RejectionDiffData = {
 } | {
   type: 'error';
 };
-function WriteRejectionDiff(t0) {
+type WriteRejectionDiffProps = {
+  filePath: string;
+  content: string;
+  style?: 'condensed';
+  verbose: boolean;
+};
+function WriteRejectionDiff(t0: WriteRejectionDiffProps) {
   const $ = _c(20);
   const {
     filePath,
@@ -268,7 +279,15 @@ function WriteRejectionDiff(t0) {
   }
   return t5;
 }
-function WriteRejectionBody(t0) {
+type WriteRejectionBodyProps = {
+  promise: Promise<RejectionDiffData>;
+  filePath: string;
+  firstLine: string | null;
+  createFallback: React.ReactNode;
+  style?: 'condensed';
+  verbose: boolean;
+};
+function WriteRejectionBody(t0: WriteRejectionBodyProps) {
   const $ = _c(8);
   const {
     promise,

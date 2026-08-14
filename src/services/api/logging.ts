@@ -428,7 +428,10 @@ function logAPISuccess({
   preNormalizedModel: string
   messageCount: number
   messageTokens: number
-  usage: Usage
+  // Its only caller (logAPISuccessAndDuration below) passes NonNullableUsage,
+  // which lacks `fallback_credit` — Usage (BetaUsage) now requires it, but
+  // logAPISuccess only reads the token-count fields both types share.
+  usage: NonNullableUsage
   durationMs: number
   durationMsIncludingRetries: number
   attempt: number

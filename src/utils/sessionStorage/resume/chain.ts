@@ -306,7 +306,8 @@ export function applyPreservedSegmentRelinks(
         tailIndex: entryIndex.get(lastSeg.tailUuid),
         headIndex: entryIndex.get(lastSeg.headUuid),
         anchorIndex: entryIndex.get(lastSeg.anchorUuid),
-        lastSeenType,
+        lastSeenType:
+          lastSeenType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
         breakParentInTranscript: Boolean(
           breakParentUuid && messages.has(breakParentUuid),
         ),

@@ -61,6 +61,7 @@ export type {
   ElicitationResponse,
   HookResult,
   AggregatedHookResult,
+  HookOutsideReplResult,
 } from './hooks/types.js'
 export {
   getPreToolHookBlockingMessage,

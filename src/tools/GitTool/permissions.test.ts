@@ -1,6 +1,6 @@
 import { beforeAll, expect, test } from 'bun:test'
 import { getEmptyToolPermissionContext } from '../../Tool.js'
-import type { ToolUseContext } from '../../Tool.js'
+import type { ToolPermissionContext, ToolUseContext } from '../../Tool.js'
 import { checkGitBatchPermission } from './permissions.js'
 
 beforeAll(() => {
@@ -13,9 +13,12 @@ function contextWith(rules: {
   allow?: string[]
   deny?: string[]
 }): ToolUseContext {
-  const toolPermissionContext = getEmptyToolPermissionContext()
-  if (rules.allow) toolPermissionContext.alwaysAllowRules = { cliArg: rules.allow }
-  if (rules.deny) toolPermissionContext.alwaysDenyRules = { cliArg: rules.deny }
+  const base = getEmptyToolPermissionContext()
+  const toolPermissionContext: ToolPermissionContext = {
+    ...base,
+    ...(rules.allow ? { alwaysAllowRules: { cliArg: rules.allow } } : {}),
+    ...(rules.deny ? { alwaysDenyRules: { cliArg: rules.deny } } : {}),
+  }
   return {
     abortController: new AbortController(),
     options: { isNonInteractiveSession: false },

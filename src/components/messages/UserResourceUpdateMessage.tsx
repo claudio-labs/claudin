@@ -115,6 +115,6 @@ export function UserResourceUpdateMessage(t0: Props) {
   }
   return t6;
 }
-function _temp(update, i) {
+function _temp(update: ParsedUpdate, i: number) {
   return <Box key={i}><Text><Text color="success">{REFRESH_ARROW}</Text>{" "}<Text dimColor={true}>{update.server}:</Text>{" "}<Text color="suggestion">{update.kind === "resource" ? formatUri(update.target) : update.target}</Text>{update.reason && <Text dimColor={true}> · {update.reason}</Text>}</Text></Box>;
 }

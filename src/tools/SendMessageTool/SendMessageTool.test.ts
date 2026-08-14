@@ -8,7 +8,7 @@ afterEach(() => {
 
 describe('SendMessageTool', () => {
   test('userFacingName is SendMessage and shouldDefer is true', () => {
-    expect(SendMessageTool.userFacingName()).toBe('SendMessage')
+    expect(SendMessageTool.userFacingName(undefined)).toBe('SendMessage')
     expect(SendMessageTool.shouldDefer).toBe(true)
   })
 

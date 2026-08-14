@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { type ReactNode, useEffect, useRef, useState } from 'react';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- UP arrow exit not in Attachments bindings
-import { Box, Text, useInput } from '../../ink.js';
+import { Box, type Key, Text, useInput } from '../../ink.js';
 import { useKeybinding, useKeybindings } from '../../keybindings/useKeybinding.js';
 import type { PastedContent } from '../../utils/config.js';
 import { getImageFromClipboard } from '../../utils/imagePaste.js';
@@ -75,7 +75,7 @@ type Props<T> = {
    */
   onSelectedImageIndexChange?: (index: number) => void;
 };
-export function SelectInputOption(t0: Props) {
+export function SelectInputOption<T>(t0: Props<T>) {
   const $ = _c(100);
   const {
     option,
@@ -105,7 +105,7 @@ export function SelectInputOption(t0: Props) {
   const showLabelProp = t1 === undefined ? false : t1;
   const resetCursorOnUpdate = t2 === undefined ? false : t2;
   const selectedImageIndex = t3 === undefined ? 0 : t3;
-  let t4;
+  let t4: PastedContent[];
   if ($[0] !== pastedContents) {
     t4 = pastedContents ? Object.values(pastedContents).filter(_temp) : [];
     $[0] = pastedContents;
@@ -205,7 +205,10 @@ export function SelectInputOption(t0: Props) {
   if ($[20] !== imageAttachments || $[21] !== onRemoveImage) {
     t13 = () => {
       if (imageAttachments.length > 0 && onRemoveImage) {
-        onRemoveImage(imageAttachments.at(-1).id);
+        const last = imageAttachments.at(-1);
+        if (last) {
+          onRemoveImage(last.id);
+        }
       }
     };
     $[20] = imageAttachments;
@@ -312,7 +315,7 @@ export function SelectInputOption(t0: Props) {
   useKeybindings(t20, t22);
   let t23;
   if ($[45] !== onImagesSelectedChange) {
-    t23 = (_input, key) => {
+    t23 = (_input: string, key: Key) => {
       if (key.upArrow) {
         onImagesSelectedChange?.(false);
       }
@@ -482,6 +485,6 @@ export function SelectInputOption(t0: Props) {
   }
   return t38;
 }
-function _temp(c) {
+function _temp(c: PastedContent) {
   return c.type === "image";
 }

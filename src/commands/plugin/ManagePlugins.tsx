@@ -1468,12 +1468,16 @@ export function ManagePlugins({
             for (const source of editableSources) {
               const settings = getSettingsForSource(source);
               if (settings?.enabledPlugins?.[pluginId_7] !== undefined) {
-                updateSettingsForSource(source, {
+                // `undefined` is the documented deletion marker for a record
+                // field (see updateSettingsForSource) — SettingsJson types the
+                // values without it, so build the payload as a loose record.
+                const updates: Record<string, unknown> = {
                   enabledPlugins: {
                     ...settings.enabledPlugins,
                     [pluginId_7]: undefined
                   }
-                });
+                };
+                updateSettingsForSource(source, updates);
                 success = true;
               }
             }

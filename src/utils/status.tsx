@@ -26,6 +26,15 @@ export type Property = {
   label?: string;
   value: React.ReactNode | Array<string>;
 };
+
+/**
+ * `process.env` typed as a plain record. `SecretValueSource` is a weak type
+ * (every key optional), so `NodeJS.ProcessEnv` is rejected outright without an
+ * index-signature source to compare against.
+ */
+function processEnvRecord(): Record<string, string | undefined> {
+  return process.env;
+}
 export type Diagnostic = React.ReactNode;
 export function buildSandboxProperties(): Property[] {
   return [];
@@ -245,6 +254,8 @@ export function buildAPIProviderProperties(): Property[] {
       gemini: 'Google Gemini',
       github: 'GitHub Copilot',
       mistral: 'Mistral',
+      minimax: 'MiniMax',
+      'nvidia-nim': 'NVIDIA NIM',
     }[apiProvider];
     properties.push({
       label: 'API provider',
@@ -334,7 +345,7 @@ export function buildAPIProviderProperties(): Property[] {
     if (baseUrl) {
       properties.push({
         label: baseUrlLabel,
-        value: redactSecretValueForDisplay(baseUrl, process.env) ?? baseUrl
+        value: redactSecretValueForDisplay(baseUrl, processEnvRecord()) ?? baseUrl
       });
     }
     if (profileModel) {
@@ -352,7 +363,7 @@ export function buildAPIProviderProperties(): Property[] {
       }
       properties.push({
         label: 'Model',
-        value: redactSecretValueForDisplay(modelDisplay, process.env) ?? modelDisplay
+        value: redactSecretValueForDisplay(modelDisplay, processEnvRecord()) ?? modelDisplay
       });
     }
   }

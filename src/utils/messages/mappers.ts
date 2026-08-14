@@ -26,17 +26,23 @@ import { getPlan } from '../plans.js'
 export function toInternalMessages(
   messages: readonly DeepImmutable<SDKMessage>[],
 ): Message[] {
-  return messages.flatMap(message => {
+  return messages.flatMap((message): Message[] => {
     switch (message.type) {
       case 'assistant':
         return [
           {
             type: 'assistant',
+            // message.message (DeepImmutable<SDKMessage>'s assistant arm) is
+            // the SDK's own wire-shaped Message; our internal
+            // AssistantMessage['message'] (src/types/message.ts) is a
+            // reduced, mutable mirror of it — only partial overlap, so this
+            // goes through `unknown` like the file's other inbound/outbound
+            // SDK boundary casts.
             message: message.message,
             uuid: message.uuid,
             requestId: undefined,
             timestamp: new Date().toISOString(),
-          } as Message,
+          } as unknown as Message,
         ]
       case 'user':
         return [
@@ -61,7 +67,7 @@ export function toInternalMessages(
               compactMetadata: fromSDKCompactMetadata(
                 compactMsg.compact_metadata,
               ),
-              uuid: message.uuid,
+              uuid: message.uuid as UUID,
               timestamp: new Date().toISOString(),
             },
           ]
@@ -104,9 +110,9 @@ export function fromSDKCompactMetadata(
     preTokens: meta.pre_tokens,
     ...(seg && {
       preservedSegment: {
-        headUuid: seg.head_uuid,
-        anchorUuid: seg.anchor_uuid,
-        tailUuid: seg.tail_uuid,
+        headUuid: seg.head_uuid as UUID,
+        anchorUuid: seg.anchor_uuid as UUID,
+        tailUuid: seg.tail_uuid as UUID,
       },
     }),
   }
@@ -115,17 +121,33 @@ export function fromSDKCompactMetadata(
 export function toSDKMessages(messages: Message[]): SDKMessage[] {
   return messages.flatMap((message): SDKMessage[] => {
     switch (message.type) {
-      case 'assistant':
+      case 'assistant': {
+        const normalized = normalizeAssistantMessageForSDK(message)
         return [
           {
             type: 'assistant',
-            message: normalizeAssistantMessageForSDK(message),
+            // SDKAssistantMessage['message'] is the SDK's own non-beta
+            // `Message` type (@anthropic-ai/sdk/resources/messages.mjs) —
+            // it requires `stop_details`, doesn't have
+            // `context_management` at all (beta-only), and types
+            // `content`/`usage` against the non-beta content-block/usage
+            // shapes. Our internal AssistantMessage['message'] shape
+            // (src/types/message.ts) is beta-shaped and reduced (no
+            // `container`/`diagnostics` tracking) — this boundary cast
+            // mirrors the one `toClientEvent` already does below for the
+            // same reason: our internal model is not a 1:1 mirror of the
+            // full outbound SDK wire type.
+            message: {
+              ...normalized,
+              stop_details: null,
+            } as unknown as SDKAssistantMessage['message'],
             session_id: getSessionId(),
             parent_tool_use_id: null,
             uuid: message.uuid,
             error: message.error,
           },
         ]
+      }
       case 'user':
         return [
           {
@@ -207,7 +229,11 @@ export function localCommandOutputToSDKAssistantMessage(
   const synthetic = createAssistantMessage({ content: cleanContent })
   return {
     type: 'assistant',
-    message: synthetic.message,
+    // See the boundary-cast note in toSDKMessages above.
+    message: {
+      ...synthetic.message,
+      stop_details: null,
+    } as unknown as SDKAssistantMessage['message'],
     parent_tool_use_id: null,
     session_id: getSessionId(),
     uuid,

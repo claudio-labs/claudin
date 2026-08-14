@@ -363,7 +363,7 @@ export function reorderMessagesInUI(
 
 export function isHookAttachmentMessage(
   message: Message,
-): message is AttachmentMessage<HookAttachment> {
+): message is AttachmentMessage & { attachment: HookAttachment } {
   return (
     message.type === 'attachment' &&
     (message.attachment.type === 'hook_blocking_error' ||

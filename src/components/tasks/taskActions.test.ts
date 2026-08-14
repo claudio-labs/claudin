@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test';
+import type { AppState } from '../../state/AppStateStore.js';
 import type { BackgroundTaskState } from '../../tasks/types.js';
 
 // Capture the real LocalAgentTask module *before* the mocks below land. The
@@ -56,7 +57,7 @@ afterAll(() => {
   mock.module('../../tasks/LocalAgentTask/LocalAgentTask.js', () => realLocalAgentTask);
 });
 
-const setAppState = mock((_: (prev: unknown) => unknown) => {});
+const setAppState = mock((_: (prev: AppState) => AppState) => {});
 
 function makeTask<T extends BackgroundTaskState['type']>(
   type: T,

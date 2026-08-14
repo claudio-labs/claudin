@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { useAppState } from 'src/state/AppState.js'
+import { type AppState, useAppState } from 'src/state/AppState.js'
 import { useKeybindings } from '../../../keybindings/useKeybinding.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -60,7 +60,9 @@ export function useFilePermissionDialog<T extends ToolInput>({
   parseInput,
   operationType = 'write',
 }: UseFilePermissionDialogProps<T>): UseFilePermissionDialogResult<T> {
-  const toolPermissionContext = useAppState(s => s.toolPermissionContext)
+  const toolPermissionContext = useAppState(
+    (s: AppState) => s.toolPermissionContext,
+  )
   const [acceptFeedback, setAcceptFeedback] = useState('')
   const [rejectFeedback, setRejectFeedback] = useState('')
   const [focusedOption, setFocusedOption] = useState('yes')

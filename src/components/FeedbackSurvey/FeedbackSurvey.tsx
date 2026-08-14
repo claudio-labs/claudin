@@ -108,7 +108,7 @@ type ThanksProps = {
   onRequestFeedback?: () => void;
 };
 const isFollowUpDigit = (char: string): char is '1' => char === '1';
-function FeedbackSurveyThanks(t0) {
+function FeedbackSurveyThanks(t0: ThanksProps) {
   const $ = _c(12);
   const {
     lastResponse,

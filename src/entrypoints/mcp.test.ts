@@ -5,10 +5,13 @@ import type { Tool as InternalTool } from '../Tool.js'
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
 import { getCombinedTools, loadReexposedMcpTools } from './mcp.js'
 
+type GetMcpToolsFn = typeof import('../services/mcp/client/fetchCapabilities.js').getMcpToolsCommandsAndResources
+type OnConnectionAttempt = Parameters<GetMcpToolsFn>[0]
+
 const realMcpClient = { ...(await import('../services/mcp/client.js')) }
 
 // Mock the MCP client service to control the tools and connections returned
-const mockGetMcpToolsCommandsAndResources = mock(async () => {})
+const mockGetMcpToolsCommandsAndResources = mock(async (_onConnectionAttempt: OnConnectionAttempt) => {})
 mock.module('../services/mcp/client.js', () => ({
   getMcpToolsCommandsAndResources: mockGetMcpToolsCommandsAndResources
 }))

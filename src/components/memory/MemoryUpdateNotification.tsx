@@ -18,7 +18,10 @@ export function getRelativeMemoryPath(path: string): string {
   }
   return relativeToHome || relativeToCwd || path;
 }
-export function MemoryUpdateNotification(t0) {
+type MemoryUpdateNotificationProps = {
+  memoryPath: string;
+};
+export function MemoryUpdateNotification(t0: MemoryUpdateNotificationProps) {
   const $ = _c(4);
   const {
     memoryPath

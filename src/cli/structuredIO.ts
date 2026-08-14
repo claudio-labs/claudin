@@ -448,9 +448,13 @@ export class StructuredIO {
       if (message.type === 'assistant' || message.type === 'system') {
         return message
       }
-      if (message.message.role !== 'user') {
+      // message.message is `unknown` by schema design (a wire-format
+      // placeholder for the real Anthropic SDK Message type) — narrow just
+      // enough to read the discriminant we actually check here.
+      const userMessagePayload = message.message as { role?: unknown }
+      if (userMessagePayload.role !== 'user') {
         exitWithMessage(
-          `Error: Expected message role 'user', got '${message.message.role}'`,
+          `Error: Expected message role 'user', got '${String(userMessagePayload.role)}'`,
         )
       }
       return message

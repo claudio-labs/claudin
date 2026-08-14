@@ -15,7 +15,7 @@ export function MethodStep() {
     goBack,
     updateWizardData,
     goToStep
-  } = useWizard();
+  } = useWizard<AgentWizardData>();
   let t0;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = [{
@@ -39,7 +39,7 @@ export function MethodStep() {
   }
   let t2;
   if ($[2] !== goNext || $[3] !== goToStep || $[4] !== updateWizardData) {
-    t2 = value => {
+    t2 = (value: string) => {
       const method = value as 'generate' | 'manual';
       updateWizardData({
         method,

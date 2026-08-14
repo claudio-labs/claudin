@@ -59,7 +59,13 @@ function makeContext(abortController: AbortController): ToolUseContext {
 }
 
 function makeToolUse(id: string): ToolUseBlock {
-  return { type: 'tool_use', id, name: 'FakeHangingTool', input: {} }
+  return {
+    type: 'tool_use',
+    id,
+    name: 'FakeHangingTool',
+    input: {},
+    caller: { type: 'direct' },
+  }
 }
 
 function makeAssistantMessage(): AssistantMessage {

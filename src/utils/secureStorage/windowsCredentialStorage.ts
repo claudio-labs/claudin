@@ -44,11 +44,20 @@ function runPowerShell(
   }
 }
 
+/**
+ * `execaSync`'s `stdout`/`stderr` are typed as a union of every encoding the
+ * options could select. This helper narrows to the string form these calls
+ * actually get (no `encoding: 'buffer'` is passed anywhere in this module).
+ */
+function asText(stream: unknown): string {
+  return typeof stream === 'string' ? stream : ''
+}
+
 function getFailureWarning(
   result: ReturnType<typeof execaSync> | null,
   fallback: string,
 ): string {
-  const stderr = result?.stderr?.trim()
+  const stderr = asText(result?.stderr).trim()
   if (stderr) {
     return stderr
   }
@@ -78,7 +87,7 @@ function readLegacyPasswordVault(): SecureStorageData | null {
   const result = runPowerShell(script)
   if (result?.exitCode === 0 && result.stdout) {
     try {
-      return jsonParse(result.stdout)
+      return jsonParse(asText(result.stdout))
     } catch {
       return null
     }
@@ -128,7 +137,7 @@ export const windowsCredentialStorage: SecureStorage = {
     const result = runPowerShell(script)
     if (result?.exitCode === 0 && result.stdout) {
       try {
-        return jsonParse(result.stdout)
+        return jsonParse(asText(result.stdout))
       } catch {
         return readLegacyPasswordVault()
       }

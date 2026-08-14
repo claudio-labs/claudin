@@ -50,7 +50,7 @@ export function getInstallationPath(): string {
   }
   return '~/.local/bin/claudin';
 }
-function SetupNotes(t0) {
+function SetupNotes(t0: { messages: string[] }) {
   const $ = _c(5);
   const {
     messages
@@ -83,7 +83,7 @@ function SetupNotes(t0) {
   }
   return t3;
 }
-function _temp(message, index) {
+function _temp(message: string, index: number) {
   return <Box key={index} marginLeft={2}><Text dimColor={true}>• {message}</Text></Box>;
 }
 function Install({

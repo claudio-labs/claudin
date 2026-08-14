@@ -69,6 +69,7 @@ test('creates a cache scope for local openai-compatible providers', () => {
     transport: 'openai_compat',
     baseUrl: 'http://localhost:1234/v1',
     model: 'llama-3.2-3b-instruct',
+    name: 'Local',
   }
 
   expect(getAdditionalModelOptionsCacheScope()).toBe(
@@ -81,6 +82,7 @@ test('keeps codex alias models on chat completions for local openai-compatible p
     transport: 'openai_compat',
     baseUrl: 'http://127.0.0.1:8080/v1',
     model: 'gpt-5.4',
+    name: 'Local',
   }
 
   expect(resolveProviderRequest()).toMatchObject({
@@ -99,6 +101,7 @@ test('creates cache scope for remote openai-compatible providers', () => {
     transport: 'openai_compat',
     baseUrl: 'https://api.openai.com/v1',
     model: 'gpt-4o',
+    name: 'OpenAI',
   }
 
   expect(getAdditionalModelOptionsCacheScope()).toBe(

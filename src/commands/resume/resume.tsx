@@ -36,7 +36,7 @@ function resumeHelpMessage(result: ResumeResult): string {
       return `Found ${result.count} sessions matching ${chalk.bold(result.arg)}. Please use /resume to pick a specific session.`;
   }
 }
-function ResumeError(t0) {
+function ResumeError(t0: { message: string; args: string; onDone: () => void }) {
   const $ = _c(10);
   const {
     message,

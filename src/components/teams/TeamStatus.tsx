@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { Text } from '../../ink.js';
-import { useAppState } from '../../state/AppState.js';
+import { type AppState, useAppState } from '../../state/AppState.js';
 type Props = {
   teamsSelected: boolean;
   showHint: boolean;
@@ -71,9 +71,10 @@ export function TeamStatus(t0: Props) {
   }
   return t6;
 }
-function _temp2(t) {
+type Teammate = NonNullable<AppState['teamContext']>['teammates'][string];
+function _temp2(t: Teammate) {
   return t.name !== "team-lead";
 }
-function _temp(s) {
+function _temp(s: AppState) {
   return s.teamContext;
 }

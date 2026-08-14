@@ -2,6 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { Box, Text } from '../ink.js';
 import { getCachedKeybindingWarnings, getKeybindingsPath, isKeybindingCustomizationEnabled } from '../keybindings/loadUserBindings.js';
+import type { KeybindingWarning } from '../keybindings/validate.js';
 
 /**
  * Displays keybinding validation warnings in the UI.
@@ -40,15 +41,15 @@ export function KeybindingWarnings() {
   }
   return t0;
 }
-function _temp4(warning, i_0) {
+function _temp4(warning: KeybindingWarning, i_0: number) {
   return <Box key={`warning-${i_0}`} flexDirection="column"><Box><Text dimColor={true}>└ </Text><Text color="warning">[Warning]</Text><Text dimColor={true}> {warning.message}</Text></Box>{warning.suggestion && <Box marginLeft={3}><Text dimColor={true}>→ {warning.suggestion}</Text></Box>}</Box>;
 }
-function _temp3(error, i) {
+function _temp3(error: KeybindingWarning, i: number) {
   return <Box key={`error-${i}`} flexDirection="column"><Box><Text dimColor={true}>└ </Text><Text color="error">[Error]</Text><Text dimColor={true}> {error.message}</Text></Box>{error.suggestion && <Box marginLeft={3}><Text dimColor={true}>→ {error.suggestion}</Text></Box>}</Box>;
 }
-function _temp2(w_0) {
+function _temp2(w_0: KeybindingWarning) {
   return w_0.severity === "warning";
 }
-function _temp(w) {
+function _temp(w: KeybindingWarning) {
   return w.severity === "error";
 }

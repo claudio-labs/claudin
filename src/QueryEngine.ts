@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs'
+import type { ContentBlockParam, RawMessageStreamEvent } from '@anthropic-ai/sdk/resources/messages.mjs'
 import { randomUUID } from 'crypto'
 import last from 'lodash-es/last.js'
 import {
@@ -918,7 +918,12 @@ export class QueryEngine {
           if (includePartialMessages) {
             yield {
               type: 'stream_event' as const,
-              event: message.event,
+              // message.event is the internal BetaRawMessageStreamEvent
+              // (see StreamEvent in types/message.ts); SDKMessage's
+              // stream_event arm expects the non-beta RawMessageStreamEvent.
+              // Same beta/non-beta divergence handled the same way in
+              // src/remote/sdkMessageAdapter.ts.
+              event: message.event as unknown as RawMessageStreamEvent,
               session_id: getSessionId(),
               parent_tool_use_id: null,
               uuid: randomUUID(),
@@ -1384,7 +1389,16 @@ export async function* ask({
           snipReplay: (yielded: Message, store: Message[]) => {
             if (!snipProjection!.isSnipBoundaryMessage(yielded))
               return undefined
-            return snipModule!.snipCompactIfNeeded(store, { force: true })
+            // snipCompactIfNeeded's shape (messages/tokensFreed/boundaryMessage)
+            // is fixed by query.ts's usage; adapt it to the
+            // messages/executed shape QueryEngineConfig.snipReplay expects.
+            const result = snipModule!.snipCompactIfNeeded(store, {
+              force: true,
+            })
+            return {
+              messages: result.messages,
+              executed: result.tokensFreed > 0,
+            }
           },
         }
       : {}),

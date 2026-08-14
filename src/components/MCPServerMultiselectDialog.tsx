@@ -22,7 +22,7 @@ export function MCPServerMultiselectDialog(t0: Props) {
   } = t0;
   let t1;
   if ($[0] !== onDone || $[1] !== serverNames) {
-    t1 = function onSubmit(selectedServers) {
+    t1 = function onSubmit(selectedServers: string[]) {
       const currentSettings = getInitialSettings() || {};
       const enabledServers = currentSettings.enabledMcpjsonServers || [];
       const disabledServers = currentSettings.disabledMcpjsonServers || [];
@@ -124,7 +124,7 @@ export function MCPServerMultiselectDialog(t0: Props) {
   }
   return t9;
 }
-function _temp(server_0) {
+function _temp(server_0: string) {
   return {
     label: server_0,
     value: server_0

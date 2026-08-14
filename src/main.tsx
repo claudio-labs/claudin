@@ -30,6 +30,9 @@ import type { McpSdkServerConfig, ScopedMcpServerConfig } from './services/mcp/t
 import type { ToolInputJSONSchema } from './Tool.js';
 import type * as ToolsMod from './tools.js';
 import type * as InitMod from './entrypoints/init.js';
+import type { AssistantHandles } from './main/action/parseOptions.js';
+import type { AssistantModule as SetupAgentAssistantModule } from './main/action/setupAgent.js';
+import type { RunMcpHooksAndTelemetryDeps } from './main/action/startupSequence.js';
 const getLaunchRepl = async (): Promise<typeof ReplLauncherMod.launchRepl> =>
   (await import('./replLauncher.js')).launchRepl;
 const getSetPreloadedChunks = async (): Promise<typeof ReplLauncherMod.setPreloadedChunks> =>
@@ -328,7 +331,7 @@ async function run(): Promise<CommanderCommand> {
     // and returns the locals needed by Blocks B/C/D/E.
     const actionOptions = await parseActionOptions(prompt, options as ActionOptions, ctx, {
       teammate: { getTeammateUtils, getTeammatePromptAddendum, getTeammateModeSnapshot },
-      assistant: { assistantModule, kairosGate },
+      assistant: { assistantModule: assistantModule as AssistantHandles['assistantModule'], kairosGate },
     });
     prompt = actionOptions.prompt;
     const {
@@ -484,7 +487,7 @@ async function run(): Promise<CommanderCommand> {
         appendSystemPrompt,
         inputPrompt,
       },
-      { coordinatorModeModule, assistantModule },
+      { coordinatorModeModule, assistantModule: assistantModule as SetupAgentAssistantModule },
     );
     const {
       agentDefinitions,
@@ -589,7 +592,7 @@ async function run(): Promise<CommanderCommand> {
         toolPermissionContext,
         sessionNameArg,
       },
-      { assistantModule, coordinatorModeModule },
+      { assistantModule: assistantModule as RunMcpHooksAndTelemetryDeps['assistantModule'], coordinatorModeModule },
     );
     const {
       hooksPromise,
@@ -660,7 +663,7 @@ async function run(): Promise<CommanderCommand> {
           enableAuthStatus: options.enableAuthStatus,
           effort: options.effort,
         },
-        teleport,
+        teleport: teleport ?? undefined,
         setupTrigger,
         outputFormat,
         inputPrompt,

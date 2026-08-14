@@ -211,8 +211,14 @@ function getConfigSignature(config: ScopedMcpServerConfig): string {
       return `${config.scope}:${config.type}:${config.url}`
     case 'sdk':
       return `${config.scope}:${config.type}:${config.name}`
-    default:
-      return `${config.scope}:${config.type ?? 'stdio'}:${config.command}:${JSON.stringify(config.args ?? [])}`
+    default: {
+      // Only the stdio arm reaches here at runtime; the `in` checks are what
+      // let TypeScript see that, since `type` is optional on that arm and so
+      // the switch does not narrow the union.
+      const command = 'command' in config ? config.command : undefined
+      const args = 'args' in config ? config.args : undefined
+      return `${config.scope}:${config.type ?? 'stdio'}:${command}:${JSON.stringify(args ?? [])}`
+    }
   }
 }
 

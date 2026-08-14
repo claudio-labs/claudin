@@ -130,7 +130,9 @@ describe('removeInterruptedMessage', () => {
       { uuid: 'u-after' },
     ] as never
     removeInterruptedMessage(messages, target as never)
-    expect(messages.map((m: { uuid: string }) => m.uuid)).toEqual([
+    expect(
+      (messages as Array<{ uuid: string }>).map(m => m.uuid),
+    ).toEqual([
       'u-before',
       'u-after',
     ])

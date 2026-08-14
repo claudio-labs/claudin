@@ -19,7 +19,7 @@ function formatTime(date: Date): string {
 import { getPlatform } from 'src/utils/platform.js';
 export function SandboxViolationExpandedView() {
   const $ = _c(15);
-  let t0;
+  let t0: SandboxViolationEvent[];
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = [];
     $[0] = t0;
@@ -29,7 +29,7 @@ export function SandboxViolationExpandedView() {
   const [violations, setViolations] = useState(t0);
   const [totalCount, setTotalCount] = useState(0);
   let t1;
-  let t2;
+  let t2: React.DependencyList;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = () => {
       if (!SandboxManager.isSandboxingEnabled() || getPlatform() === "linux") {
@@ -39,7 +39,7 @@ export function SandboxViolationExpandedView() {
       if (!store || typeof store.subscribe !== "function") {
         return;
       }
-      const unsubscribe = store.subscribe(allViolations => {
+      const unsubscribe = store.subscribe((allViolations: SandboxViolationEvent[]) => {
         setViolations(allViolations.slice(-10));
         setTotalCount(store.getTotalCount());
       });
@@ -99,6 +99,6 @@ export function SandboxViolationExpandedView() {
   }
   return t8;
 }
-function _temp(v, i) {
+function _temp(v: SandboxViolationEvent, i: number) {
   return <Box key={`${v.timestamp.getTime()}-${i}`} paddingLeft={2}><Text dimColor={true}>{formatTime(v.timestamp)}{v.command ? ` ${v.command}:` : ""} {v.line}</Text></Box>;
 }

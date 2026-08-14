@@ -83,6 +83,7 @@ describe('buildStartupBannerLines', () => {
       baseUrl: 'https://api.openai.com/v1',
       model: 'gpt-4o',
       apiKey: 'test',
+      name: 'OpenAI',
     }
 
     const { buildStartupBannerLines } = await import('./StartupScreen.js')
@@ -100,6 +101,7 @@ describe('buildStartupBannerLines', () => {
       model: 'claude-sonnet-4-6',
       apiKey: 'test',
       extras: { reasoningEffort: 'high' },
+      name: 'Anthropic',
     }
     // Anthropic effort is sourced from the /effort slider, not provider.extras.
     effortOverride = 'high'
@@ -118,6 +120,7 @@ describe('buildStartupBannerLines', () => {
       transport: 'openai_compat',
       baseUrl: 'http://localhost:11434/v1',
       model: 'llama3',
+      name: 'Ollama',
     }
 
     const { buildStartupBannerLines } = await import('./StartupScreen.js')

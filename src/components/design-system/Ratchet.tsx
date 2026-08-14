@@ -26,7 +26,7 @@ export function Ratchet(t0: Props) {
   const [minHeight, setMinHeight] = useState(0);
   let t3;
   if ($[0] !== viewportRef) {
-    t3 = el => {
+    t3 = (el: DOMElement | null) => {
       viewportRef(el);
     };
     $[0] = viewportRef;

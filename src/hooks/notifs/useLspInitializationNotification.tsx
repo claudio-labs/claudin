@@ -5,6 +5,7 @@ import { getIsRemoteMode, getIsScrollDraining } from '../../bootstrap/state.js';
 import { useNotifications } from '../../context/notifications.js';
 import { Text } from '../../ink.js';
 import { getInitializationStatus, getLspServerManager } from '../../services/lsp/manager.js';
+import type { PluginError } from '../../types/plugin.js';
 import { useSetAppState } from '../../state/AppState.js';
 import { logForDebugging } from '../../utils/debug.js';
 import { isEnvTruthy } from '../../utils/envUtils.js';
@@ -34,7 +35,7 @@ export function useLspInitializationNotification() {
   const notifiedErrorsRef = React.useRef(t0);
   let t1;
   if ($[1] !== addNotification || $[2] !== setAppState) {
-    t1 = (source, errorMessage) => {
+    t1 = (source: string, errorMessage: string) => {
       const errorKey = `${source}:${errorMessage}`;
       if (notifiedErrorsRef.current.has(errorKey)) {
         return;
@@ -129,7 +130,7 @@ export function useLspInitializationNotification() {
   }
   React.useEffect(t3, t4);
 }
-function _temp2(e) {
+function _temp2(e: PluginError) {
   if (e.type === "generic-error") {
     return `generic-error:${e.source}:${e.error}`;
   }

@@ -1,8 +1,4 @@
 import type {
-  BetaContentBlockParam,
-  BetaImageBlockParam,
-  BetaRequestDocumentBlock,
-  BetaToolResultBlockParam,
   BetaMessageParam as MessageParam,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { feature } from 'bun:bundle'
@@ -123,16 +119,29 @@ export function getPreviousRequestIdFromMessages(
   return undefined
 }
 
-function isMedia(
-  block: BetaContentBlockParam,
-): block is BetaImageBlockParam | BetaRequestDocumentBlock {
-  return block.type === 'image' || block.type === 'document'
+// Media/tool-result checks are shared between AssistantMessage content
+// (BetaContentBlock, the response shape) and UserMessage content
+// (ContentBlockParam, the non-Beta param shape) — plus the nested,
+// non-Beta content of a tool_result block. `unknown` + a runtime guard
+// sidesteps reconciling those three type families for a plain `.type` check.
+function isMedia(block: unknown): block is { type: 'image' | 'document' } {
+  return (
+    typeof block === 'object' &&
+    block !== null &&
+    'type' in block &&
+    (block.type === 'image' || block.type === 'document')
+  )
 }
 
 function isToolResult(
-  block: BetaContentBlockParam,
-): block is BetaToolResultBlockParam {
-  return block.type === 'tool_result'
+  block: unknown,
+): block is { type: 'tool_result'; content?: unknown } {
+  return (
+    typeof block === 'object' &&
+    block !== null &&
+    'type' in block &&
+    block.type === 'tool_result'
+  )
 }
 
 /**

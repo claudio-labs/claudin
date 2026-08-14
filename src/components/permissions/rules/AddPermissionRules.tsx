@@ -65,7 +65,7 @@ export function AddPermissionRules(t0: Props) {
   const allOptions = t1;
   let t2;
   if ($[1] !== initialContext || $[2] !== onAddRules || $[3] !== onCancel || $[4] !== ruleBehavior || $[5] !== ruleValues || $[6] !== setToolPermissionContext) {
-    t2 = selectedValue => {
+    t2 = (selectedValue: string) => {
       if (selectedValue === "cancel") {
         onCancel();
         return;
@@ -174,6 +174,6 @@ export function AddPermissionRules(t0: Props) {
   }
   return t10;
 }
-function _temp(ruleValue_0) {
+function _temp(ruleValue_0: PermissionRuleValue) {
   return <Box flexDirection="column" key={permissionRuleValueToString(ruleValue_0)}><Text bold={true}>{permissionRuleValueToString(ruleValue_0)}</Text><PermissionRuleDescription ruleValue={ruleValue_0} /></Box>;
 }

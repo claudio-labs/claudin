@@ -4,8 +4,8 @@ import * as React from 'react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { type Notification, useNotifications } from 'src/context/notifications.js';
 import { logEvent } from 'src/services/analytics/index.js';
-import { useAppState } from 'src/state/AppState.js';
-import { useVoiceState } from '../../context/voice.js';
+import { type AppState, useAppState } from 'src/state/AppState.js';
+import { type VoiceState, useVoiceState } from '../../context/voice.js';
 import type { VerificationStatus } from '../../hooks/useApiKeyVerification.js';
 import { useIdeConnectionStatus } from '../../hooks/useIdeConnectionStatus.js';
 import type { IDESelection } from '../../hooks/useIdeSelection.js';
@@ -209,7 +209,7 @@ export function Notifications(t0: Props) {
 function _temp2() {
   return setEnvHookNotifier(null);
 }
-function _temp(s) {
+function _temp(s: AppState) {
   return s.notifications;
 }
 function NotificationContent({
@@ -267,15 +267,15 @@ function NotificationContent({
   // Voice state (VOICE_MODE builds only, runtime-gated by GrowthBook)
   const voiceState = feature('VOICE_MODE') ?
   // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useVoiceState(s => s.voiceState) : 'idle' as const;
+  useVoiceState((s: VoiceState) => s.voiceState) : 'idle' as const;
   // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
   const voiceEnabled = feature('VOICE_MODE') ? useVoiceEnabled() : false;
   const voiceError = feature('VOICE_MODE') ?
   // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useVoiceState(s_0 => s_0.voiceError) : null;
+  useVoiceState((s_0: VoiceState) => s_0.voiceError) as VoiceState['voiceError'] : null;
   const isBriefOnly = feature('KAIROS') || feature('KAIROS_BRIEF') ?
   // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useAppState(s_1 => s_1.isBriefOnly) : false;
+  useAppState((s_1: AppState) => s_1.isBriefOnly) : false;
 
   // When voice is actively recording or processing, replace all
   // notifications with just the voice indicator.

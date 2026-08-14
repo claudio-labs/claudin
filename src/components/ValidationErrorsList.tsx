@@ -4,6 +4,13 @@ import * as React from 'react';
 import { Box, Text, useTheme } from '../ink.js';
 import type { ValidationError } from '../utils/settings/validation.js';
 import { type TreeNode, treeify } from '../utils/treeify.js';
+type Props = {
+  errors: ValidationError[];
+};
+type SuggestionPair = {
+  suggestion: ValidationError['suggestion'];
+  docLink: ValidationError['docLink'];
+};
 
 /**
  * Builds a nested tree structure from dot-notation paths
@@ -59,7 +66,7 @@ function buildNestedTree(errors: ValidationError[]): TreeNode {
 /**
  * Groups and displays validation errors using treeify with deduplication
  */
-export function ValidationErrorsList(t0) {
+export function ValidationErrorsList(t0: Props) {
   const $ = _c(9);
   const {
     errors
@@ -125,10 +132,10 @@ export function ValidationErrorsList(t0) {
   }
   return t3;
 }
-function _temp3(pair, index) {
+function _temp3(pair: SuggestionPair, index: number) {
   return <Box key={`suggestion-pair-${index}`} flexDirection="column" marginBottom={1}>{pair.suggestion && <Text dimColor={true} wrap="wrap">{pair.suggestion}</Text>}{pair.docLink && <Text dimColor={true} wrap="wrap">Learn more: {pair.docLink}</Text>}</Box>;
 }
-function _temp2(a, b) {
+function _temp2(a: ValidationError, b: ValidationError) {
   if (!a.path && b.path) {
     return -1;
   }
@@ -137,11 +144,11 @@ function _temp2(a, b) {
   }
   return (a.path || "").localeCompare(b.path || "");
 }
-function _temp(acc, error) {
+function _temp(acc: Record<string, ValidationError[]>, error: ValidationError) {
   const file = error.file || "(file not specified)";
   if (!acc[file]) {
     acc[file] = [];
   }
-  acc[file].push(error);
+  acc[file]!.push(error);
   return acc;
 }

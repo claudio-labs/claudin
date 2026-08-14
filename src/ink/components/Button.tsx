@@ -72,9 +72,9 @@ function Button(t0: Props) {
   const [isFocused, setIsFocused] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isActive, setIsActive] = useState(false);
-  const activeTimer = useRef(null);
+  const activeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   let t2;
-  let t3;
+  let t3: React.DependencyList;
   if ($[7] === Symbol.for("react.memo_cache_sentinel")) {
     t2 = () => () => {
       if (activeTimer.current) {
@@ -91,7 +91,7 @@ function Button(t0: Props) {
   useEffect(t2, t3);
   let t4;
   if ($[9] !== onAction) {
-    t4 = e => {
+    t4 = (e: KeyboardEvent) => {
       if (e.key === "return" || e.key === " ") {
         e.preventDefault();
         setIsActive(true);
@@ -110,7 +110,7 @@ function Button(t0: Props) {
   const handleKeyDown = t4;
   let t5;
   if ($[11] !== onAction) {
-    t5 = _e => {
+    t5 = (_e: ClickEvent) => {
       onAction();
     };
     $[11] = onAction;
@@ -121,7 +121,7 @@ function Button(t0: Props) {
   const handleClick = t5;
   let t6;
   if ($[13] === Symbol.for("react.memo_cache_sentinel")) {
-    t6 = _e_0 => setIsFocused(true);
+    t6 = (_e_0: FocusEvent) => setIsFocused(true);
     $[13] = t6;
   } else {
     t6 = $[13];
@@ -129,7 +129,7 @@ function Button(t0: Props) {
   const handleFocus = t6;
   let t7;
   if ($[14] === Symbol.for("react.memo_cache_sentinel")) {
-    t7 = _e_1 => setIsFocused(false);
+    t7 = (_e_1: FocusEvent) => setIsFocused(false);
     $[14] = t7;
   } else {
     t7 = $[14];
@@ -184,7 +184,7 @@ function Button(t0: Props) {
   }
   return t11;
 }
-function _temp(setter) {
+function _temp(setter: (value: boolean) => void) {
   return setter(false);
 }
 export default Button;

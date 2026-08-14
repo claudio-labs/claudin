@@ -9,6 +9,7 @@ import { getFsImplementation } from 'src/utils/fsOperations.js';
 import { Text } from '../../../ink.js';
 import { BashTool } from '../../../tools/BashTool/BashTool.js';
 import { applySedSubstitution, type SedEditInfo } from '../../../tools/BashTool/sedEditParser.js';
+import type { FileEdit } from '../../../tools/FileEditTool/types.js';
 import { FilePermissionDialog } from '../FilePermissionDialog/FilePermissionDialog.js';
 import type { PermissionRequestProps } from '../PermissionRequest.js';
 type SedEditPermissionRequestProps = PermissionRequestProps & {
@@ -67,7 +68,7 @@ export function SedEditPermissionRequest(t0: SedEditPermissionRequestProps) {
   }
   return t2;
 }
-function _temp(e) {
+function _temp(e: unknown): FileReadResult {
   if (!isENOENT(e)) {
     throw e;
   }
@@ -76,9 +77,12 @@ function _temp(e) {
     fileExists: false
   };
 }
-function SedEditPermissionRequestInner(t0) {
+type SedEditPermissionRequestInnerProps = SedEditPermissionRequestProps & {
+  contentPromise: Promise<FileReadResult>;
+};
+function SedEditPermissionRequestInner(t0: SedEditPermissionRequestInnerProps) {
   const $ = _c(35);
-  let contentPromise;
+  let contentPromise: Promise<FileReadResult>;
   let props;
   let sedInfo;
   if ($[0] !== t0) {
@@ -113,10 +117,10 @@ function SedEditPermissionRequestInner(t0) {
     t1 = $[6];
   }
   const newContent = t1;
-  let t2;
+  let t2: FileEdit[];
   bb0: {
     if (oldContent === newContent) {
-      let t3;
+      let t3: FileEdit[];
       if ($[7] === Symbol.for("react.memo_cache_sentinel")) {
         t3 = [];
         $[7] = t3;
@@ -126,7 +130,7 @@ function SedEditPermissionRequestInner(t0) {
       t2 = t3;
       break bb0;
     }
-    let t3;
+    let t3: FileEdit[];
     if ($[8] !== newContent || $[9] !== oldContent) {
       t3 = [{
         old_string: oldContent,
@@ -142,7 +146,7 @@ function SedEditPermissionRequestInner(t0) {
     t2 = t3;
   }
   const edits = t2;
-  let t3;
+  let t3: string;
   bb1: {
     if (!fileExists) {
       t3 = "File does not exist";
@@ -153,7 +157,7 @@ function SedEditPermissionRequestInner(t0) {
   const noChangesMessage = t3;
   let t4;
   if ($[11] !== filePath || $[12] !== newContent) {
-    t4 = input => {
+    t4 = (input: unknown) => {
       const parsed = BashTool.inputSchema.parse(input);
       return {
         ...parsed,

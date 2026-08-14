@@ -28,7 +28,6 @@ describe('SyntheticOutputTool (base)', () => {
   test('checkPermissions always allows', async () => {
     const result = await SyntheticOutputTool.checkPermissions?.(
       {} as never,
-      {} as never,
     )
     expect(result?.behavior).toBe('allow')
   })
@@ -36,7 +35,6 @@ describe('SyntheticOutputTool (base)', () => {
   test('call() reports success and surfaces structured_output', async () => {
     const result = await SyntheticOutputTool.call(
       { foo: 'bar' } as never,
-      {} as never,
     )
     expect(result.data).toBe('Structured output provided successfully')
     expect(
@@ -46,12 +44,11 @@ describe('SyntheticOutputTool (base)', () => {
 
   test('renderToolUseMessage compacts large keysets', () => {
     expect(
-      SyntheticOutputTool.renderToolUseMessage?.({} as never, {} as never),
+      SyntheticOutputTool.renderToolUseMessage?.({} as never),
     ).toBeNull()
     expect(
       SyntheticOutputTool.renderToolUseMessage?.(
         { a: 1, b: 2, c: 3, d: 4 } as never,
-        {} as never,
       ),
     ).toBe('4 fields: a, b, c…')
   })
@@ -96,11 +93,11 @@ describe('createSyntheticOutputTool', () => {
     })
     expect('tool' in result).toBe(true)
     if ('tool' in result) {
-      const ok = await result.tool.call({ count: 7 } as never, {} as never)
+      const ok = await result.tool.call({ count: 7 } as never, {} as never, {} as never, {} as never)
       expect(ok.data).toBe('Structured output provided successfully')
 
       await expect(
-        result.tool.call({ count: 'bad' } as never, {} as never),
+        result.tool.call({ count: 'bad' } as never, {} as never, {} as never, {} as never),
       ).rejects.toThrow('Output does not match required schema')
     }
   })

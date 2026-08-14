@@ -7,6 +7,7 @@ import type { DeepImmutable } from 'src/types/utils.js';
 import type { CommandResultDisplay } from '../../commands.js';
 import { DIAMOND_FILLED, DIAMOND_OPEN } from '../../constants/figures.js';
 import { useElapsedTime } from '../../hooks/useElapsedTime.js';
+import type { ExitState } from '../../hooks/useExitOnCtrlCDWithKeybindings.js';
 import type { KeyboardEvent } from '../../ink/events/keyboard-event.js';
 import { Box, Link, Text } from '../../ink.js';
 import type { RemoteAgentTaskState } from '../../tasks/RemoteAgentTask/RemoteAgentTask.js';
@@ -36,6 +37,7 @@ type Props = {
   onBack?: () => void;
   onKill?: () => void;
 };
+type SessionDetailProps = Omit<Props, 'toolUseContext'>;
 
 // Compact one-line summary: tool name + first meaningful string arg.
 // Lighter than tool.renderToolUseMessage (no registry lookup / schema parse).
@@ -78,7 +80,7 @@ const AGENT_VERB = {
   needs_input: 'waiting',
   plan_ready: 'done'
 } as const;
-function UltraplanSessionDetail(t0) {
+function UltraplanSessionDetail(t0: SessionDetailProps) {
   const $ = _c(70);
   const {
     session,
@@ -350,7 +352,7 @@ function UltraplanSessionDetail(t0) {
   }
   let t23;
   if ($[54] !== goBackOrClose || $[55] !== onDone || $[56] !== sessionUrl) {
-    t23 = v_0 => {
+    t23 = (v_0: string) => {
       switch (v_0) {
         case "open":
           {
@@ -415,13 +417,19 @@ const STAGE_LABELS: Record<(typeof STAGES)[number], string> = {
   verifying: 'Verify',
   synthesizing: 'Dedupe'
 };
+type ReviewStageName = (typeof STAGES)[number];
+type StagePipelineProps = {
+  stage: ReviewStageName | undefined;
+  completed: boolean;
+  hasProgress: boolean;
+};
 
 // Setup → Find → Verify → Dedupe pipeline. Current stage in cloud teal,
 // rest dim. When completed, all stages dim with a trailing green ✓. The
 // "Setup" label shows before the orchestrator writes its first progress
 // snapshot (container boot + repo clone), so the 0-found display doesn't
 // look like a hung finder.
-function StagePipeline(t0) {
+function StagePipeline(t0: StagePipelineProps) {
   const $ = _c(15);
   const {
     stage,
@@ -455,7 +463,7 @@ function StagePipeline(t0) {
   }
   let t4;
   if ($[5] !== completed || $[6] !== currentIdx || $[7] !== inSetup) {
-    t4 = STAGES.map((s, i) => {
+    t4 = STAGES.map((s: ReviewStageName, i: number) => {
       const isCurrent = !completed && !inSetup && i === currentIdx;
       return <React.Fragment key={s}>{i > 0 && <Text dimColor={true}> → </Text>}{isCurrent ? <Text color="background">{STAGE_LABELS[s]}</Text> : <Text dimColor={true}>{STAGE_LABELS[s]}</Text>}</React.Fragment>;
     });
@@ -505,7 +513,7 @@ function reviewCountsLine(session: DeepImmutable<RemoteAgentTaskState>): string 
   return formatReviewStageCounts(p.stage, p.bugsFound, verified, refuted);
 }
 type MenuAction = 'open' | 'stop' | 'back' | 'dismiss';
-function ReviewSessionDetail(t0) {
+function ReviewSessionDetail(t0: SessionDetailProps) {
   const $ = _c(56);
   const {
     session,
@@ -620,7 +628,7 @@ function ReviewSessionDetail(t0) {
   const options = t3;
   let t4;
   if ($[15] !== goBackOrClose || $[16] !== handleClose || $[17] !== onDone || $[18] !== sessionUrl) {
-    t4 = action => {
+    t4 = (action: MenuAction) => {
       bb45: switch (action) {
         case "open":
           {
@@ -772,7 +780,7 @@ function ReviewSessionDetail(t0) {
   }
   return t20;
 }
-function _temp(exitState) {
+function _temp(exitState: ExitState) {
   return exitState.pending ? <Text>Press {exitState.keyName} again to exit</Text> : <Byline><KeyboardShortcutHint shortcut="Enter" action="select" /><KeyboardShortcutHint shortcut="Esc" action="go back" /></Byline>;
 }
 export function RemoteSessionDetailDialog({

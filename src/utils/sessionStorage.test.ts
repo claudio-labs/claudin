@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from 'bun:test'
+import { type UUID } from 'node:crypto'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -13,11 +14,11 @@ const tempDirs: string[] = []
 const sessionId = '00000000-0000-4000-8000-000000000999'
 const ts = '2026-04-02T00:00:00.000Z'
 
-function id(n: number): string {
+function id(n: number): UUID {
   return `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 }
 
-function base(uuid: string, parentUuid: string | null) {
+function base(uuid: UUID, parentUuid: UUID | null) {
   return {
     uuid,
     parentUuid,
@@ -30,7 +31,20 @@ function base(uuid: string, parentUuid: string | null) {
   }
 }
 
-function user(uuid: string, parentUuid: string | null, content: string) {
+/**
+ * A persisted user entry's `message.content` is either the plain prompt string
+ * or the tool_result block array — both shapes are exercised below.
+ */
+type UserEntryContent =
+  | string
+  | Array<{
+      type: 'tool_result'
+      tool_use_id: string
+      is_error: boolean
+      content: string
+    }>
+
+function user(uuid: UUID, parentUuid: UUID | null, content: UserEntryContent) {
   return {
     ...base(uuid, parentUuid),
     type: 'user',
@@ -42,7 +56,7 @@ function user(uuid: string, parentUuid: string | null, content: string) {
   }
 }
 
-function assistant(uuid: string, parentUuid: string | null, text: string) {
+function assistant(uuid: UUID, parentUuid: UUID | null, text: string) {
   return {
     ...base(uuid, parentUuid),
     type: 'assistant',
@@ -64,12 +78,12 @@ function assistant(uuid: string, parentUuid: string | null, text: string) {
 }
 
 function compactBoundary(
-  uuid: string,
-  parentUuid: string | null,
+  uuid: UUID,
+  parentUuid: UUID | null,
   preservedSegment: {
-    headUuid: string
-    anchorUuid: string
-    tailUuid: string
+    headUuid: UUID
+    anchorUuid: UUID
+    tailUuid: UUID
   },
 ) {
   return {

@@ -215,14 +215,16 @@ export function FuzzyPicker<T>({
       </Box>
     </Pane>;
 }
-type ListProps<T> = Pick<Props<T>, 'visibleCount' | 'direction' | 'getKey' | 'renderItem'> & {
+type ListProps<T> = Pick<Props<T>, 'direction' | 'getKey' | 'renderItem'> & {
+  /** Required here: the caller always resolves the default before rendering. */
+  visibleCount: number;
   visible: readonly T[];
   windowStart: number;
   total: number;
   focusedIndex: number;
   emptyText: string;
 };
-function List(t0: ListProps) {
+function List<T>(t0: ListProps<T>) {
   const $ = _c(27);
   const {
     visible,
@@ -259,7 +261,7 @@ function List(t0: ListProps) {
   if ($[5] !== direction || $[6] !== focusedIndex || $[7] !== getKey || $[8] !== renderItem || $[9] !== total || $[10] !== visible || $[11] !== visibleCount || $[12] !== windowStart) {
     let t2;
     if ($[14] !== direction || $[15] !== focusedIndex || $[16] !== getKey || $[17] !== renderItem || $[18] !== total || $[19] !== visible.length || $[20] !== visibleCount || $[21] !== windowStart) {
-      t2 = (item, i) => {
+      t2 = (item: T, i: number) => {
         const actualIndex = windowStart + i;
         const isFocused = actualIndex === focusedIndex;
         const atLowEdge = i === 0 && windowStart > 0;

@@ -98,7 +98,10 @@ function MiniMaxUsageLimitBar({
 function MiniMaxUsageTextRow({
   label,
   value,
-}: Extract<MiniMaxUsageRow, { kind: 'text' }>): React.ReactNode {
+}: Pick<
+  Extract<MiniMaxUsageRow, { kind: 'text' }>,
+  'label' | 'value'
+>): React.ReactNode {
   if (!value) {
     return <Text bold>{label}</Text>
   }

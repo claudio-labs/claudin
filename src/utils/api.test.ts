@@ -3,6 +3,7 @@ import { z } from 'zod/v4'
 import { getEmptyToolPermissionContext, type Tool, type Tools } from '../Tool.js'
 import { SkillTool } from '../tools/SkillTool/SkillTool.js'
 import { splitSysPromptPrefix, toolToAPISchema } from './api.js'
+import { asSystemPrompt } from './systemPromptType.js'
 
 test('toolToAPISchema preserves provider-specific schema keywords in input_schema', async () => {
   const schema = await toolToAPISchema(
@@ -121,11 +122,13 @@ describe('splitSysPromptPrefix attribution header placement', () => {
   const claudinPrefix = 'You are Claudin, an open-source coding agent and CLI.'
 
   test('attribution header is block 0 with cacheScope=null', () => {
-    const blocks = splitSysPromptPrefix([
-      'x-anthropic-billing-header: cc_version=99.0.0.abc; cc_entrypoint=cli;',
-      claudinPrefix,
-      'You are working in a git repository at /tmp/x',
-    ])
+    const blocks = splitSysPromptPrefix(
+      asSystemPrompt([
+        'x-anthropic-billing-header: cc_version=99.0.0.abc; cc_entrypoint=cli;',
+        claudinPrefix,
+        'You are working in a git repository at /tmp/x',
+      ]),
+    )
     expect(blocks.length).toBeGreaterThan(0)
     expect(blocks[0]!.text).toMatch(/^x-anthropic-billing-header:/)
     expect(blocks[0]!.cacheScope).toBeNull()
@@ -133,11 +136,11 @@ describe('splitSysPromptPrefix attribution header placement', () => {
 
   test('attribution header placement holds with skipGlobalCacheForSystemPrompt=true (MCP path)', () => {
     const blocks = splitSysPromptPrefix(
-      [
+      asSystemPrompt([
         'x-anthropic-billing-header: cc_version=99.0.0.abc; cc_entrypoint=cli;',
         claudinPrefix,
         'extra context block',
-      ],
+      ]),
       { skipGlobalCacheForSystemPrompt: true },
     )
     expect(blocks[0]!.text).toMatch(/^x-anthropic-billing-header:/)
@@ -145,14 +148,18 @@ describe('splitSysPromptPrefix attribution header placement', () => {
   })
 
   test('two distinct attribution headers (interactive vs cron-tagged) produce DIFFERENT block 0 bytes', () => {
-    const interactive = splitSysPromptPrefix([
-      'x-anthropic-billing-header: cc_version=99.0.0.abc; cc_entrypoint=cli;',
-      claudinPrefix,
-    ])
-    const cron = splitSysPromptPrefix([
-      'x-anthropic-billing-header: cc_version=99.0.0.abc; cc_entrypoint=cli; cc_workload=cron;',
-      claudinPrefix,
-    ])
+    const interactive = splitSysPromptPrefix(
+      asSystemPrompt([
+        'x-anthropic-billing-header: cc_version=99.0.0.abc; cc_entrypoint=cli;',
+        claudinPrefix,
+      ]),
+    )
+    const cron = splitSysPromptPrefix(
+      asSystemPrompt([
+        'x-anthropic-billing-header: cc_version=99.0.0.abc; cc_entrypoint=cli; cc_workload=cron;',
+        claudinPrefix,
+      ]),
+    )
     // Block 0 differs: this is the byte shift that breaks every
     // downstream cache_control breakpoint on alternation.
     expect(interactive[0]!.text).not.toBe(cron[0]!.text)

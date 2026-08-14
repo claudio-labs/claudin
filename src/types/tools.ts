@@ -24,7 +24,11 @@
  */
 import type { TaskType } from 'src/Task.js'
 import type { AgentId } from 'src/types/ids.js'
-import type { AssistantMessage, NormalizedMessage } from 'src/types/message.js'
+import type {
+  AssistantMessage,
+  NormalizedMessage,
+  ProgressMessage,
+} from 'src/types/message.js'
 // The newer tools declare their own progress type next to the tool, each with a
 // comment explaining that it stayed out of this union only because this module
 // did not exist. They are pulled in here instead of duplicated, because
@@ -87,7 +91,7 @@ export type AgentToolProgress = {
 /** The `SkillTool` equivalent of {@link AgentToolProgress}. */
 export type SkillToolProgress = {
   type: 'skill_progress'
-  message: NormalizedMessage
+  message: Exclude<NormalizedMessage, ProgressMessage>
   prompt: string
   agentId: AgentId
 }

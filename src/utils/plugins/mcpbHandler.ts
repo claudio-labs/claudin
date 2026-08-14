@@ -417,7 +417,14 @@ async function generateMcpConfig(
 ): Promise<McpServerConfig> {
   // Lazy import: @anthropic-ai/mcpb barrel pulls in zod v3 schemas (~700KB of
   // bound closures). See dxt/helpers.ts for details.
-  const { getMcpConfigForManifest } = await import('@anthropic-ai/mcpb')
+  // The build's stub for this optional dependency (src/stubbed-modules.d.ts)
+  // only declares McpbManifest/McpbUserConfigurationOption — widen locally
+  // rather than touch the shared stub declaration.
+  const { getMcpConfigForManifest } = (await import(
+    '@anthropic-ai/mcpb'
+  )) as unknown as {
+    getMcpConfigForManifest: (opts: unknown) => Promise<unknown>
+  }
   const mcpConfig = await getMcpConfigForManifest({
     manifest,
     extensionPath: extractedPath,

@@ -159,8 +159,11 @@ export async function* openaiStreamToAnthropic(
     },
   }
 
-  const reader = response.body?.getReader()
-  if (!reader) return
+  const maybeReader = response.body?.getReader()
+  if (!maybeReader) return
+  // Re-bind after the guard: the narrowing does not reach inside the hoisted
+  // readWithTimeout declaration below.
+  const reader = maybeReader
 
   const decoder = new TextDecoder()
   let buffer = ''
@@ -175,7 +178,9 @@ export async function* openaiStreamToAnthropic(
    * Respects the caller's AbortSignal — clears the idle timer on abort
    * so the rejection reason is AbortError, not a spurious idle timeout.
    */
-  async function readWithTimeout(): Promise<ReadableStreamReadResult<Uint8Array>> {
+  async function readWithTimeout(): Promise<
+    Awaited<ReturnType<typeof reader.read>>
+  > {
     return new Promise((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         const elapsed = Math.round((Date.now() - lastDataTime) / 1000)
@@ -453,7 +458,7 @@ export async function* openaiStreamToAnthropic(
                   // Extract Gemini signature from extra_content
                   ...((tc.extra_content?.google as any)?.thought_signature
                     ? {
-                        signature: (tc.extra_content.google as any)
+                        signature: (tc.extra_content?.google as any)
                           .thought_signature,
                       }
                     : {}),

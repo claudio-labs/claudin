@@ -1,4 +1,5 @@
 import Anthropic, { type ClientOptions } from '@anthropic-ai/sdk'
+import type { ClientOptions as BedrockClientOptions } from '@anthropic-ai/bedrock-sdk'
 import { randomUUID } from 'crypto'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
@@ -215,7 +216,13 @@ export async function getAnthropicClient({
         ? process.env.ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION
         : (activeProvider?.extras?.awsRegion ?? getAWSRegion())
 
-    const bedrockArgs: ConstructorParameters<typeof AnthropicBedrock>[0] = {
+    // ConstructorParameters<typeof AnthropicBedrock>[0] resolves to the LAST
+    // overload (the deprecated "SecretOnly" one, requiring awsSecretKey and
+    // forbidding awsAccessKey) — not the general shape this object is built
+    // up as (aws creds populated incrementally below, or left unset to use
+    // the default credential chain). Use the SDK's own ClientOptions, which
+    // declares all three aws* fields as plain optional string|null.
+    const bedrockArgs: BedrockClientOptions = {
       ...ARGS,
       awsRegion,
       ...(isEnvTruthy(process.env.CLAUDE_CODE_SKIP_BEDROCK_AUTH) && {
@@ -242,7 +249,13 @@ export async function getAnthropicClient({
       }
     }
     // we have always been lying about the return type - this doesn't support batching or models
-    return new AnthropicBedrock(bedrockArgs) as unknown as Anthropic
+    // bedrockArgs is always either "no creds" (default chain) or "both
+    // creds" here — both valid overloads — but that invariant isn't
+    // expressible as bedrockArgs's static type, so assert to the SDK's own
+    // constructor parameter type.
+    return new AnthropicBedrock(
+      bedrockArgs as ConstructorParameters<typeof AnthropicBedrock>[0],
+    ) as unknown as Anthropic
   }
   if (transport === 'foundry') {
     const { AnthropicFoundry } = await importRuntimeModule(

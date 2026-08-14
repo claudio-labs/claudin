@@ -528,7 +528,7 @@ export async function reconnectMcpServerImpl(
     if (supportsResources) {
       // Only add resource tools if no other server has them
       const hasResourceTools = [ListMcpResourcesTool, ReadMcpResourceTool].some(
-        tool => tools.some(t => toolMatchesName(t, tool.name)),
+        tool => tools.some((t: Tool) => toolMatchesName(t, tool.name)),
       )
       if (!hasResourceTools) {
         resourceTools.push(ListMcpResourcesTool, ReadMcpResourceTool)

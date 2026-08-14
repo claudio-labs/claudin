@@ -8,7 +8,7 @@ const mockedClipboardPath = join(process.cwd(), 'claudin-clipboard.txt')
 const generateTempFilePathMock = mock(() => mockedClipboardPath)
 
 const execFileNoThrowMock = mock(
-  async () => ({ code: 0, stdout: '', stderr: '' }),
+  async (_cmd: string, _args: string[], _options?: Record<string, unknown>) => ({ code: 0, stdout: '', stderr: '' }),
 )
 
 // Capture the real modules before mocking so afterAll can restore them.

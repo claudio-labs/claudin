@@ -57,7 +57,10 @@ type MalformedFeatureDefinition = {
   [key: string]: unknown
 }
 
-let client: GrowthBook | null = null
+// `GrowthBook` is a value-only stub export (src/stubbed-modules.d.ts —
+// telemetry is stubbed out of this fork); `InstanceType<typeof GrowthBook>`
+// is the type-position equivalent.
+let client: InstanceType<typeof GrowthBook> | null = null
 
 // Named handler refs so resetGrowthBook can remove them to prevent accumulation
 let currentBeforeExitHandler: (() => void) | null = null
@@ -220,7 +223,7 @@ function logExposureForFeature(feature: string): void {
  * kill switch for long-running sessions.
  */
 async function processRemoteEvalPayload(
-  gbClient: GrowthBook,
+  gbClient: InstanceType<typeof GrowthBook>,
 ): Promise<boolean> {
   // WORKAROUND: Transform remote eval response format
   // The API returns { "value": ... } but SDK expects { "defaultValue": ... }
@@ -379,7 +382,7 @@ function getUserAttributes(): GrowthBookUserAttributes {
  * Get or create the GrowthBook client instance
  */
 const getGrowthBookClient = memoize(
-  (): { client: GrowthBook; initialized: Promise<void> } | null => {
+  (): { client: InstanceType<typeof GrowthBook>; initialized: Promise<void> } | null => {
     if (!isGrowthBookEnabled()) {
       return null
     }
@@ -428,7 +431,7 @@ const getGrowthBookClient = memoize(
 
     const initialized = thisClient
       .init({ timeout: 5000 })
-      .then(async _result => {
+      .then(async (_result: unknown) => {
         // Guard: if this client was replaced by a newer one, skip processing
         if (client !== thisClient) {
           return
@@ -454,7 +457,7 @@ const getGrowthBookClient = memoize(
         }
 
       })
-      .catch(_error => {})
+      .catch((_error: unknown) => {})
 
     // Register cleanup handlers for graceful shutdown (named refs so resetGrowthBook can remove them)
     currentBeforeExitHandler = () => client?.destroy()
@@ -470,7 +473,7 @@ const getGrowthBookClient = memoize(
  * Initialize GrowthBook client (blocks until ready)
  */
 export const initializeGrowthBook = memoize(
-  async (): Promise<GrowthBook | null> => {
+  async (): Promise<InstanceType<typeof GrowthBook> | null> => {
     let clientWrapper = getGrowthBookClient()
     if (!clientWrapper) {
       return null

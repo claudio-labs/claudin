@@ -34,6 +34,14 @@ type Props = {
   onComplete: (selectedTools: string[] | undefined) => void;
   onCancel?: () => void;
 };
+type NavigableItem = {
+  id: string;
+  label: string;
+  action: () => void;
+  isContinue?: boolean;
+  isToggle?: boolean;
+  isHeader?: boolean;
+};
 type ToolBucket = {
   name: string;
   toolNames: Set<string>;
@@ -102,7 +110,7 @@ export function ToolSelector(t0: Props) {
     onComplete,
     onCancel
   } = t0;
-  let t1;
+  let t1: Tools;
   if ($[0] !== tools) {
     t1 = filterToolsForAgent({
       tools,
@@ -115,7 +123,7 @@ export function ToolSelector(t0: Props) {
     t1 = $[1];
   }
   const customAgentTools = t1;
-  let t2;
+  let t2: string[];
   if ($[2] !== customAgentTools || $[3] !== initialTools) {
     t2 = !initialTools || initialTools.includes("*") ? customAgentTools.map(_temp) : initialTools;
     $[2] = customAgentTools;
@@ -128,7 +136,7 @@ export function ToolSelector(t0: Props) {
   const [selectedTools, setSelectedTools] = useState(expandedInitialTools);
   const [focusIndex, setFocusIndex] = useState(0);
   const [showIndividualTools, setShowIndividualTools] = useState(false);
-  let t3;
+  let t3: Set<string>;
   if ($[5] !== customAgentTools) {
     t3 = new Set(customAgentTools.map(_temp2));
     $[5] = customAgentTools;
@@ -137,11 +145,11 @@ export function ToolSelector(t0: Props) {
     t3 = $[6];
   }
   const toolNames = t3;
-  let t4;
+  let t4: string[];
   if ($[7] !== selectedTools || $[8] !== toolNames) {
     let t5;
     if ($[10] !== toolNames) {
-      t5 = name => toolNames.has(name);
+      t5 = (name: string) => toolNames.has(name);
       $[10] = toolNames;
       $[11] = t5;
     } else {
@@ -155,7 +163,7 @@ export function ToolSelector(t0: Props) {
     t4 = $[9];
   }
   const validSelectedTools = t4;
-  let t5;
+  let t5: Set<string>;
   if ($[12] !== validSelectedTools) {
     t5 = new Set(validSelectedTools);
     $[12] = validSelectedTools;
@@ -167,7 +175,7 @@ export function ToolSelector(t0: Props) {
   const isAllSelected = validSelectedTools.length === customAgentTools.length && customAgentTools.length > 0;
   let t6;
   if ($[14] === Symbol.for("react.memo_cache_sentinel")) {
-    t6 = toolName => {
+    t6 = (toolName: string) => {
       if (!toolName) {
         return;
       }
@@ -180,7 +188,7 @@ export function ToolSelector(t0: Props) {
   const handleToggleTool = t6;
   let t7;
   if ($[15] === Symbol.for("react.memo_cache_sentinel")) {
-    t7 = (toolNames_0, select) => {
+    t7 = (toolNames_0: string[], select: boolean) => {
       setSelectedTools(current_0 => {
         if (select) {
           const toolsToAdd = toolNames_0.filter(t_2 => !current_0.includes(t_2));
@@ -211,7 +219,13 @@ export function ToolSelector(t0: Props) {
     t8 = $[19];
   }
   const handleConfirm = t8;
-  let buckets;
+  let buckets: {
+    readOnly: Tool[];
+    edit: Tool[];
+    execution: Tool[];
+    mcp: Tool[];
+    other: Tool[];
+  };
   if ($[20] !== customAgentTools) {
     const toolBuckets = getToolBuckets();
     buckets = {
@@ -250,7 +264,7 @@ export function ToolSelector(t0: Props) {
   const toolsByBucket = buckets;
   let t9;
   if ($[22] !== selectedSet) {
-    t9 = bucketTools => {
+    t9 = (bucketTools: readonly Tool[]) => {
       const selected = count(bucketTools, t_5 => selectedSet.has(t_5.name));
       const needsSelection = selected < bucketTools.length;
       return () => {
@@ -264,7 +278,7 @@ export function ToolSelector(t0: Props) {
     t9 = $[23];
   }
   const createBucketToggleAction = t9;
-  let navigableItems;
+  let navigableItems: NavigableItem[];
   if ($[24] !== createBucketToggleAction || $[25] !== customAgentTools || $[26] !== focusIndex || $[27] !== handleConfirm || $[28] !== isAllSelected || $[29] !== selectedSet || $[30] !== showIndividualTools || $[31] !== toolsByBucket.edit || $[32] !== toolsByBucket.execution || $[33] !== toolsByBucket.mcp || $[34] !== toolsByBucket.other || $[35] !== toolsByBucket.readOnly) {
     navigableItems = [];
     navigableItems.push({
@@ -441,7 +455,7 @@ export function ToolSelector(t0: Props) {
   useKeybinding("confirm:no", handleCancel, t11);
   let t12;
   if ($[49] !== focusIndex || $[50] !== navigableItems) {
-    t12 = e => {
+    t12 = (e: KeyboardEvent) => {
       if (e.key === "return") {
         e.preventDefault();
         const item = navigableItems[focusIndex];
@@ -495,7 +509,7 @@ export function ToolSelector(t0: Props) {
   } else {
     t17 = $[56];
   }
-  let t18;
+  let t18: NavigableItem[];
   if ($[57] !== navigableItems) {
     t18 = navigableItems.slice(1);
     $[57] = navigableItems;
@@ -540,22 +554,22 @@ export function ToolSelector(t0: Props) {
   return t22;
 }
 function _temp8() {}
-function _temp7(t_10) {
+function _temp7(t_10: Tool) {
   return t_10.name;
 }
 function _temp6() {}
-function _temp5(t_7) {
+function _temp5(t_7: Tool) {
   return t_7.name;
 }
-function _temp4(t_6) {
+function _temp4(t_6: Tool) {
   return t_6.name;
 }
-function _temp3(t_4) {
+function _temp3(t_4: Tool) {
   return t_4.name;
 }
-function _temp2(t_0) {
+function _temp2(t_0: Tool) {
   return t_0.name;
 }
-function _temp(t) {
+function _temp(t: Tool) {
   return t.name;
 }

@@ -58,7 +58,13 @@ const OPERATION_LABELS: Record<Input['operation'], {
 /**
  * Reusable component for LSP result summaries with collapsed/expanded views
  */
-function LSPResultSummary(t0) {
+function LSPResultSummary(t0: {
+  operation: Input['operation'];
+  resultCount: number;
+  fileCount: number;
+  content: string;
+  verbose: boolean;
+}) {
   const $ = _c(24);
   const {
     operation,

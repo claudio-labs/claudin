@@ -13,7 +13,14 @@ import { truncate } from '../../utils/format.js';
 import { extractTag } from '../../utils/messages.js';
 
 // Reusable component for search result summaries
-function SearchResultSummary(t0) {
+function SearchResultSummary(t0: {
+  count: number;
+  countLabel: string;
+  secondaryCount?: number;
+  secondaryLabel?: string;
+  content?: string;
+  verbose: boolean;
+}) {
   const $ = _c(26);
   const {
     count,

@@ -3,7 +3,7 @@ import { feature } from 'bun:bundle';
 import chalk from 'chalk';
 import React from 'react';
 import { Ansi, Box, Text } from '../../ink.js';
-import { useAppState } from '../../state/AppState.js';
+import { type AppState, useAppState } from '../../state/AppState.js';
 import type { PermissionDecision, PermissionDecisionReason } from '../../utils/permissions/PermissionResult.js';
 import { permissionRuleValueToString } from '../../utils/permissions/permissionRuleParser.js';
 import type { Theme } from '../../utils/theme.js';
@@ -115,6 +115,6 @@ export function PermissionRuleExplanation(t0: PermissionRuleExplanationProps) {
   }
   return t5;
 }
-function _temp(s) {
+function _temp(s: AppState) {
   return s.toolPermissionContext.mode;
 }

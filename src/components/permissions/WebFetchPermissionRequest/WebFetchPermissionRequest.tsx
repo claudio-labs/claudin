@@ -9,6 +9,7 @@ import { PermissionDialog } from '../PermissionDialog.js';
 import type { PermissionRequestProps } from '../PermissionRequest.js';
 import { PermissionRuleExplanation } from '../PermissionRuleExplanation.js';
 import { logUnaryPermissionEvent } from '../utils.js';
+type WebFetchOptionValue = 'yes' | 'yes-dont-ask-again-domain' | 'no';
 function inputToPermissionRuleContent(input: {
   [k: string]: unknown;
 }): string {
@@ -26,7 +27,7 @@ function inputToPermissionRuleContent(input: {
     return `input:${input.toString()}`;
   }
 }
-export function WebFetchPermissionRequest(t0) {
+export function WebFetchPermissionRequest(t0: PermissionRequestProps) {
   const $ = _c(41);
   const {
     toolUseConfirm,
@@ -80,7 +81,7 @@ export function WebFetchPermissionRequest(t0) {
   } else {
     t4 = $[4];
   }
-  let result;
+  let result: OptionWithDescription<WebFetchOptionValue>[];
   if ($[5] !== hostname) {
     result = [t4];
     if (showAlwaysAllowOptions) {
@@ -117,7 +118,7 @@ export function WebFetchPermissionRequest(t0) {
   const options = result;
   let t5;
   if ($[10] !== onDone || $[11] !== onReject || $[12] !== toolUseConfirm) {
-    t5 = function onChange(newValue) {
+    t5 = function onChange(newValue: WebFetchOptionValue) {
       bb8: switch (newValue) {
         case "yes":
           {

@@ -135,6 +135,6 @@ export function SystemAPIErrorMessage(t0: Props) {
   }
   return t12;
 }
-function _temp(ms) {
+function _temp(ms: number) {
   return ms + 1000;
 }

@@ -176,7 +176,9 @@ class OpenAIShimMessages {
             ? (m.message as Record<string, unknown>).content
             : m.content
           if (content != null && typeof content !== 'string' && !Array.isArray(content)) continue
-          estimatedInputTokens += roughTokenCountEstimationForContent(content)
+          estimatedInputTokens += roughTokenCountEstimationForContent(
+            content ?? undefined,
+          )
         }
         if (typeof params.system === 'string') {
           estimatedInputTokens += roughTokenCountEstimation(params.system)
@@ -649,11 +651,16 @@ class OpenAIShimMessages {
       : 0
     const maxAttempts = (isGithub ? GITHUB_429_MAX_RETRIES : 1) + maxSelfHealAttempts
 
-    const throwClassifiedTransportError = (
+    // The annotation lives on the CONST, not on the arrow: TypeScript only
+    // treats a call as never-returning (and therefore terminating, for
+    // control-flow analysis) when the callee is a function declaration or a
+    // const with an explicit type annotation. Without it `response` stays
+    // `Response | undefined` after every catch that ends in one of these.
+    const throwClassifiedTransportError: (
       error: unknown,
       requestUrl: string,
       preclassifiedFailure?: ReturnType<typeof classifyOpenAINetworkFailure>,
-    ): never => {
+    ) => never = (error, requestUrl, preclassifiedFailure) => {
       if (options?.signal?.aborted) {
         throw error
       }
@@ -686,15 +693,23 @@ class OpenAIShimMessages {
       )
     }
 
-    const throwClassifiedHttpError = (
+    const throwClassifiedHttpError: (
       status: number,
       errorBody: string,
       parsedBody: object | undefined,
       responseHeaders: Headers,
       requestUrl: string,
-      rateHint = '',
+      rateHint?: string,
       preclassifiedFailure?: ReturnType<typeof classifyOpenAIHttpFailure>,
-    ): never => {
+    ) => never = (
+      status,
+      errorBody,
+      parsedBody,
+      responseHeaders,
+      requestUrl,
+      rateHint = '',
+      preclassifiedFailure,
+    ) => {
       const failure =
         preclassifiedFailure ??
         classifyOpenAIHttpFailure({
@@ -1076,7 +1091,7 @@ class OpenAIShimMessages {
           ...(tc.extra_content ? { extra_content: tc.extra_content } : {}),
           // Extract Gemini signature from extra_content
           ...((tc.extra_content?.google as any)?.thought_signature
-            ? { signature: (tc.extra_content.google as any).thought_signature }
+            ? { signature: (tc.extra_content?.google as any).thought_signature }
             : {}),
         })
       }

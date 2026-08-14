@@ -79,7 +79,10 @@ function CodexUsageLimitBar({
 function CodexUsageTextRow({
   label,
   value,
-}: Extract<CodexUsageRow, { kind: 'text' }>): React.ReactNode {
+}: Pick<
+  Extract<CodexUsageRow, { kind: 'text' }>,
+  'label' | 'value'
+>): React.ReactNode {
   if (!value) {
     return <Text bold>{label}</Text>
   }

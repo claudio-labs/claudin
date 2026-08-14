@@ -23,7 +23,7 @@ export function MCPServerDesktopImportDialog(t0: Props) {
     scope,
     onDone
   } = t0;
-  let t1;
+  let t1: string[];
   if ($[0] !== servers) {
     t1 = Object.keys(servers);
     $[0] = servers;
@@ -41,7 +41,7 @@ export function MCPServerDesktopImportDialog(t0: Props) {
   }
   const [existingServers, setExistingServers] = useState(t2);
   let t3;
-  let t4;
+  let t4: React.DependencyList;
   if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
     t3 = () => {
       getAllMcpConfigs().then(t5 => {
@@ -69,7 +69,7 @@ export function MCPServerDesktopImportDialog(t0: Props) {
     t5 = $[7];
   }
   const collisions = t5;
-  const onSubmit = async function onSubmit(selectedServers) {
+  const onSubmit = async function onSubmit(selectedServers: string[]) {
     let importedCount = 0;
     for (const serverName of selectedServers) {
       const serverConfig = servers[serverName];
@@ -91,7 +91,7 @@ export function MCPServerDesktopImportDialog(t0: Props) {
   const [theme] = useTheme();
   let t6;
   if ($[8] !== onDone || $[9] !== scope || $[10] !== theme) {
-    t6 = importedCount_0 => {
+    t6 = (importedCount_0: number) => {
       if (importedCount_0 > 0) {
         writeToStdout(`\n${color("success", theme)(`Successfully imported ${importedCount_0} MCP ${plural(importedCount_0, "server")} to ${scope} config.`)}\n`);
       } else {

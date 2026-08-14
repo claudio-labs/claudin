@@ -11,6 +11,9 @@ import type { RepoGroup } from './types.js'
 
 export { buildTreeRows, type TreeRow }
 
+/** The colour vocabulary `<Text>` accepts (theme key or raw colour). */
+type TextColor = React.ComponentProps<typeof Text>['color']
+
 /**
  * Row width used when the list is the whole body (no side pane). Without a cap
  * the list stretches across the terminal and strands the right-hand badge
@@ -93,7 +96,12 @@ export function DiffFileList({
         glyphs={glyphs}
         alignFiles={alignFiles}
         statusColor={
-          row.kind === 'file' ? statusByPath?.get(row.file.path) : undefined
+          row.kind === 'file'
+            ? // The map is only ever filled with theme colour names (see
+              // STATUS_COLORS in ExplorerDialog); its declared value type is
+              // the wider `string` because the Map is built there.
+              (statusByPath?.get(row.file.path) as TextColor)
+            : undefined
         }
       />,
     )
@@ -120,7 +128,7 @@ function TreeRowItem({
   isSelected: boolean
   width: number
   glyphs: ReturnType<typeof getDiffGlyphs>
-  statusColor?: string
+  statusColor?: TextColor
   alignFiles?: boolean
 }): React.ReactNode {
   if (row.kind === 'group') {

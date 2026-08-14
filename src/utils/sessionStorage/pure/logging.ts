@@ -121,13 +121,11 @@ function transformMessagesForExternalTranscript(
     if (m.type === 'user' && Array.isArray(m.message.content)) {
       const content = m.message.content
       const hasRepl = content.some(
-        (b: { type: string; tool_use_id: string }) =>
-          b.type === 'tool_result' && replIds.has(b.tool_use_id),
+        b => b.type === 'tool_result' && replIds.has(b.tool_use_id),
       )
       const filtered = hasRepl
         ? content.filter(
-            (b: { type: string; tool_use_id: string }) =>
-              !(b.type === 'tool_result' && replIds.has(b.tool_use_id)),
+            b => !(b.type === 'tool_result' && replIds.has(b.tool_use_id)),
           )
         : content
       if (filtered.length === 0) return []

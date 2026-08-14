@@ -15,6 +15,19 @@ type ComputerUseApprovalProps = {
   request: CuPermissionRequest;
   onDone: (response: CuPermissionResponse) => void;
 };
+// `@ant/computer-use-mcp` is stubbed as `any` in this fork (see
+// src/stubbed-modules.d.ts), so the shapes this dialog actually reads are
+// spelled out here.
+type CuResolvedApp = {
+  bundleId: string;
+  displayName: string;
+};
+type CuRequestedApp = {
+  requestedName: string;
+  resolved?: CuResolvedApp;
+  alreadyGranted?: boolean;
+};
+type CuGrantFlagKey = 'clipboardRead' | 'clipboardWrite' | 'systemKeyCombos';
 const DENY_ALL_RESPONSE: CuPermissionResponse = {
   granted: [],
   denied: [],
@@ -48,13 +61,20 @@ export function ComputerUseApproval(t0: ComputerUseApprovalProps) {
 // ── TCC panel ─────────────────────────────────────────────────────────────
 
 type TccOption = 'open_accessibility' | 'open_screen_recording' | 'retry';
-function ComputerUseTccPanel(t0) {
+type ComputerUseTccPanelProps = {
+  tccState: {
+    accessibility: boolean;
+    screenRecording: boolean;
+  };
+  onDone: () => void;
+};
+function ComputerUseTccPanel(t0: ComputerUseTccPanelProps) {
   const $ = _c(26);
   const {
     tccState,
     onDone
   } = t0;
-  let opts;
+  let opts: OptionWithDescription<TccOption>[];
   if ($[0] !== tccState.accessibility || $[1] !== tccState.screenRecording) {
     opts = [];
     if (!tccState.accessibility) {
@@ -103,7 +123,7 @@ function ComputerUseTccPanel(t0) {
   const options = opts;
   let t1;
   if ($[6] !== onDone) {
-    t1 = function onChange(value) {
+    t1 = function onChange(value: TccOption) {
       switch (value) {
         case "open_accessibility":
           {
@@ -205,7 +225,16 @@ const SENTINEL_WARNING: Record<NonNullable<ReturnType<typeof getSentinelCategory
   filesystem: 'can read/write any file',
   system_settings: 'can change system settings'
 };
-function ComputerUseAppListPanel(t0) {
+type ComputerUseAppListPanelProps = {
+  request: {
+    apps: CuRequestedApp[];
+    requestedFlags: Partial<Record<CuGrantFlagKey, boolean>>;
+    reason?: string;
+    willHide?: readonly unknown[];
+  };
+  onDone: (response: CuPermissionResponse) => void;
+};
+function ComputerUseAppListPanel(t0: ComputerUseAppListPanelProps) {
   const $ = _c(48);
   const {
     request,
@@ -220,7 +249,7 @@ function ComputerUseAppListPanel(t0) {
     t1 = $[1];
   }
   const [checked] = useState(t1);
-  let t2;
+  let t2: CuGrantFlagKey[];
   if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
     t2 = ["clipboardRead", "clipboardWrite", "systemKeyCombos"];
     $[2] = t2;
@@ -279,18 +308,18 @@ function ComputerUseAppListPanel(t0) {
   const options = t9;
   let t10;
   if ($[12] !== checked || $[13] !== onDone || $[14] !== request.apps || $[15] !== requestedFlagKeys) {
-    t10 = function respond(allow) {
+    t10 = function respond(allow: boolean) {
       if (!allow) {
         onDone(DENY_ALL_RESPONSE);
         return;
       }
       const now = Date.now();
-      const granted = request.apps.flatMap(a_0 => a_0.resolved && checked.has(a_0.resolved.bundleId) ? [{
+      const granted = request.apps.flatMap((a_0: CuRequestedApp) => a_0.resolved && checked.has(a_0.resolved.bundleId) ? [{
         bundleId: a_0.resolved.bundleId,
         displayName: a_0.resolved.displayName,
         grantedAt: now
       }] : []);
-      const denied = request.apps.filter(a_1 => !a_1.resolved || !checked.has(a_1.resolved.bundleId)).map(_temp2);
+      const denied = request.apps.filter((a_1: CuRequestedApp) => !a_1.resolved || !checked.has(a_1.resolved.bundleId)).map(_temp2);
       const flags = {
         ...DEFAULT_GRANT_FLAGS,
         ...Object.fromEntries(requestedFlagKeys.map(_temp3))
@@ -330,7 +359,7 @@ function ComputerUseAppListPanel(t0) {
   if ($[21] !== checked || $[22] !== request.apps) {
     let t14;
     if ($[24] !== checked) {
-      t14 = a_3 => {
+      t14 = (a_3: CuRequestedApp) => {
         const resolved = a_3.resolved;
         if (!resolved) {
           return <Text key={a_3.requestedName} dimColor={true}>{"  "}{figures.circle} {a_3.requestedName}{" "}<Text dimColor={true}>(not installed)</Text></Text>;
@@ -381,7 +410,7 @@ function ComputerUseAppListPanel(t0) {
   let t17;
   let t18;
   if ($[32] !== respond) {
-    t17 = v => respond(v === "allow_all");
+    t17 = (v: AppListOption) => respond(v === "allow_all");
     t18 = () => respond(false);
     $[32] = respond;
     $[33] = t17;
@@ -423,18 +452,18 @@ function ComputerUseAppListPanel(t0) {
   }
   return t21;
 }
-function _temp4(flag) {
+function _temp4(flag: CuGrantFlagKey) {
   return <Text key={flag} dimColor={true}>{"  "}· {flag}</Text>;
 }
-function _temp3(k_0) {
+function _temp3(k_0: CuGrantFlagKey) {
   return [k_0, true] as const;
 }
-function _temp2(a_2) {
+function _temp2(a_2: CuRequestedApp) {
   return {
     bundleId: a_2.resolved?.bundleId ?? a_2.requestedName,
     reason: a_2.resolved ? "user_denied" as const : "not_installed" as const
   };
 }
-function _temp(a) {
+function _temp(a: CuRequestedApp) {
   return a.resolved && !a.alreadyGranted ? [a.resolved.bundleId] : [];
 }

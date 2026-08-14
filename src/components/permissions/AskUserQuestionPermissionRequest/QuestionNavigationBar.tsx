@@ -24,7 +24,7 @@ export function QuestionNavigationBar(t0: Props) {
   const {
     columns
   } = useTerminalSize();
-  let t2;
+  let t2: string[];
   if ($[0] !== columns || $[1] !== currentQuestionIndex || $[2] !== hideSubmitTab || $[3] !== questions) {
     bb0: {
       const submitText = hideSubmitTab ? "" : ` ${figures.tick} Submit `;
@@ -35,7 +35,7 @@ export function QuestionNavigationBar(t0: Props) {
         if ($[5] !== currentQuestionIndex || $[6] !== questions) {
           let t4;
           if ($[8] !== currentQuestionIndex) {
-            t4 = (q, index) => {
+            t4 = (q: Question, index: number) => {
               const header = q?.header || `Q${index + 1}`;
               return index === currentQuestionIndex ? header.slice(0, 3) : "";
             };
@@ -69,7 +69,7 @@ export function QuestionNavigationBar(t0: Props) {
       const widthPerOtherTab = Math.max(6, Math.floor(remainingWidth / Math.max(otherTabCount, 1)));
       let t3;
       if ($[10] !== currentQuestionIndex || $[11] !== currentTabWidth || $[12] !== widthPerOtherTab) {
-        t3 = (header_1, index_1) => {
+        t3 = (header_1: string, index_1: number) => {
           if (index_1 === currentQuestionIndex) {
             const maxTextWidth = currentTabWidth - 2 - 2;
             return truncateToWidth(header_1, maxTextWidth);
@@ -110,7 +110,7 @@ export function QuestionNavigationBar(t0: Props) {
   if ($[17] !== answers || $[18] !== currentQuestionIndex || $[19] !== questions || $[20] !== tabDisplayTexts) {
     let t5;
     if ($[22] !== answers || $[23] !== currentQuestionIndex || $[24] !== tabDisplayTexts) {
-      t5 = (q_1, index_2) => {
+      t5 = (q_1: Question, index_2: number) => {
         const isSelected = index_2 === currentQuestionIndex;
         const isAnswered = q_1?.question && !!answers[q_1.question];
         const checkbox = isAnswered ? figures.checkboxOn : figures.checkboxOff;
@@ -166,12 +166,12 @@ export function QuestionNavigationBar(t0: Props) {
   }
   return t7;
 }
-function _temp3(sum, w) {
+function _temp3(sum: number, w: number) {
   return sum + w;
 }
-function _temp2(header_0) {
+function _temp2(header_0: string) {
   return 4 + stringWidth(header_0);
 }
-function _temp(q_0, index_0) {
+function _temp(q_0: Question, index_0: number) {
   return q_0?.header || `Q${index_0 + 1}`;
 }

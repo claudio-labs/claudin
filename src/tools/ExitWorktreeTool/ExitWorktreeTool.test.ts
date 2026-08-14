@@ -19,7 +19,7 @@ describe('ExitWorktreeTool', () => {
 
   test('shouldDefer is true and userFacingName is human-friendly', () => {
     expect(ExitWorktreeTool.shouldDefer).toBe(true)
-    expect(ExitWorktreeTool.userFacingName()).toBe('Exiting worktree')
+    expect(ExitWorktreeTool.userFacingName(undefined)).toBe('Exiting worktree')
   })
 
   test('isDestructive() reflects remove vs keep', () => {

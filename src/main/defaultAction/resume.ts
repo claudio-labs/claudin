@@ -39,6 +39,10 @@ import { validateUuid } from '../../utils/uuid.js';
 import { isPolicyAllowed, waitForPolicyLimitsToLoad } from '../../services/policyLimits/index.js';
 import { maybeActivateBrief, maybeActivateProactive } from '../lifecycle.js';
 import type { BootContext } from '../bootContext.js';
+import type { Props as REPLProps } from '../../screens/REPL.js';
+import type { AgentDefinition } from '../../tools/AgentTool/loadAgentsDir.js';
+import type { FpsMetrics } from '../../utils/fpsTracker.js';
+import type { StatsStore } from '../../context/stats.js';
 
 export type ResumeBranchDeps = {
   root: Root;
@@ -181,11 +185,11 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
       initialTools: [],
       initialMessages: initialUserMessage ? [remoteInfoMessage, initialUserMessage] : [remoteInfoMessage],
       mcpClients: [],
-      autoConnectIdeFlag: ide,
-      mainThreadAgentDefinition: mainThreadAgentDefinitionRef.current,
+      autoConnectIdeFlag: ide as REPLProps['autoConnectIdeFlag'],
+      mainThreadAgentDefinition: mainThreadAgentDefinitionRef.current as REPLProps['mainThreadAgentDefinition'],
       disableSlashCommands: ctx.disableSlashCommands,
       remoteSessionConfig,
-      thinkingConfig,
+      thinkingConfig: thinkingConfig as REPLProps['thinkingConfig'],
     }, renderAndRun);
     return;
   } else if (teleport) {
@@ -318,24 +322,24 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
       initialState: resumeData.initialState,
     }, {
       ...sessionConfig,
-      mainThreadAgentDefinition: resumeData.restoredAgentDef ?? mainThreadAgentDefinitionRef.current,
+      mainThreadAgentDefinition: (resumeData.restoredAgentDef ?? mainThreadAgentDefinitionRef.current) as AgentDefinition | undefined,
       initialMessages: resumeData.messages,
       initialFileHistorySnapshots: resumeData.fileHistorySnapshots,
       initialContentReplacements: resumeData.contentReplacements,
       initialAgentName: resumeData.agentName,
       initialAgentColor: resumeData.agentColor,
-    }, renderAndRun);
+    } as Parameters<typeof launchRepl>[2], renderAndRun);
   } else {
     // Show interactive selector (includes same-repo worktrees)
     await launchResumeChooser(root, {
       getFpsMetrics,
-      stats,
+      stats: stats as StatsStore,
       initialState,
     }, getWorktreePaths(getOriginalCwd()), {
       ...sessionConfig,
       initialSearchQuery: searchTerm,
       forkSession: options.forkSession,
       filterByPr,
-    });
+    } as Parameters<typeof launchResumeChooser>[3]);
   }
 }

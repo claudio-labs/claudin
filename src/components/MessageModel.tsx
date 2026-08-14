@@ -7,6 +7,10 @@ type Props = {
   message: NormalizedMessage;
   isTranscriptMode: boolean;
 };
+type AssistantContentBlock = Extract<
+  NormalizedMessage,
+  { type: 'assistant' }
+>['message']['content'][number];
 export function MessageModel(t0: Props) {
   const $ = _c(5);
   const {
@@ -37,6 +41,6 @@ export function MessageModel(t0: Props) {
   }
   return t3;
 }
-function _temp(c) {
+function _temp(c: AssistantContentBlock) {
   return c.type === "text";
 }

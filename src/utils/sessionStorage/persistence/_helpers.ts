@@ -36,7 +36,9 @@ export function appendEntryToFile(
     // takes the create-exclusive branch in the wrapper — the file is
     // guaranteed to already exist after a failed mode-tagged append.
     try {
-      fs.mkdirSync(dirname(fullPath), { recursive: true, mode: 0o700 })
+      // fs.mkdirSync is always recursive (see FsOperations.mkdirSync) — no
+      // `recursive` option to pass through.
+      fs.mkdirSync(dirname(fullPath), { mode: 0o700 })
     } catch {
       throw firstErr
     }

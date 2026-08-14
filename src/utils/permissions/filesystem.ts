@@ -1514,10 +1514,9 @@ export function checkBatchWritePermission(
   // a large batch should still prompt — a 50-file rename is qualitatively
   // different from a single edit. Threshold is opt-in and passed through by
   // the caller as options.confirmThreshold.
-  // bypassPermissions explicitly opts out of all prompts, so the threshold
-  // must not reintroduce one there.
+  // bypassPermissions explicitly opts out of all prompts, and is already
+  // returned above, so the threshold cannot reintroduce one there.
   if (
-    toolPermissionContext.mode !== 'bypassPermissions' &&
     options?.confirmThreshold !== undefined &&
     options.confirmThreshold > 0 &&
     paths.length >= options.confirmThreshold

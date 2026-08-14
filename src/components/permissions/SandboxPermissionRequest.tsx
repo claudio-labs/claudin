@@ -23,7 +23,7 @@ export function SandboxPermissionRequest(t0: SandboxPermissionRequestProps) {
   } = t1;
   let t2;
   if ($[0] !== onUserResponse) {
-    t2 = function onSelect(value) {
+    t2 = function onSelect(value: 'yes' | 'yes-dont-ask-again' | 'no') {
       bb4: switch (value) {
         case "yes":
           {

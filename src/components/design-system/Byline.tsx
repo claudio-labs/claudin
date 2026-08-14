@@ -71,6 +71,6 @@ export function Byline(t0: Props) {
   }
   return t3;
 }
-function _temp(child, index) {
+function _temp(child: React.ReactNode, index: number) {
   return <React.Fragment key={isValidElement(child) ? child.key ?? index : index}>{index > 0 && <Text dimColor={true}> · </Text>}{child}</React.Fragment>;
 }

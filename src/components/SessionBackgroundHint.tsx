@@ -7,7 +7,7 @@ import { useKeybinding } from '../keybindings/useKeybinding.js';
 import { useShortcutDisplay } from '../keybindings/useShortcutDisplay.js';
 import { useAppState, useAppStateStore, useSetAppState } from '../state/AppState.js';
 import { backgroundAll, hasForegroundTasks } from '../tasks/LocalShellTask/LocalShellTask.js';
-import { getGlobalConfig, saveGlobalConfig } from '../utils/config.js';
+import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from '../utils/config.js';
 import { env } from '../utils/env.js';
 import { isEnvTruthy } from '../utils/envUtils.js';
 import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
@@ -98,7 +98,7 @@ export function SessionBackgroundHint(t0: Props) {
   }
   return t5;
 }
-function _temp2(c) {
+function _temp2(c: GlobalConfig): GlobalConfig {
   return c.hasUsedBackgroundTask ? c : {
     ...c,
     hasUsedBackgroundTask: true

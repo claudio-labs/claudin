@@ -72,7 +72,7 @@ const APPLE_EYES: Record<ClawdPose, string> = {
 };
 export function Clawd(t0: Props) {
   const $ = _c(26);
-  let t1;
+  let t1: Props;
   if ($[0] !== t0) {
     t1 = t0 === undefined ? {} : t0;
     $[0] = t0;
@@ -180,7 +180,9 @@ export function Clawd(t0: Props) {
   }
   return t12;
 }
-function AppleTerminalClawd(t0) {
+function AppleTerminalClawd(t0: {
+  pose: ClawdPose;
+}) {
   const $ = _c(10);
   const {
     pose

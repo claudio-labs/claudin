@@ -1,4 +1,14 @@
 import { afterAll, afterEach, expect, mock, test } from 'bun:test'
+import type { DebugLogLevel } from '../../utils/debug.js'
+
+/**
+ * Stand-in for `logForDebugging`. Declaring the parameters is what gives
+ * `debugSpy.mock.calls` a real tuple shape — a bare `mock(() => {})` records
+ * zero-length tuples, so `call[0]` does not exist as far as tsc is concerned.
+ */
+function makeDebugSpy() {
+  return mock((_message: string, _options?: { level: DebugLogLevel }) => {})
+}
 
 ;(globalThis as Record<string, unknown>).MACRO = {
   VERSION: '99.0.0',
@@ -55,7 +65,7 @@ afterEach(() => {
 })
 
 test('logs classified transport diagnostics with category and code', async () => {
-  const debugSpy = mock(() => {})
+  const debugSpy = makeDebugSpy()
   mock.module('../../utils/debug.js', () => ({
     logForDebugging: debugSpy,
   }))
@@ -72,7 +82,7 @@ test('logs classified transport diagnostics with category and code', async () =>
 
   globalThis.fetch = mock(async () => {
     throw transportError
-  }) as typeof globalThis.fetch
+  }) as unknown as typeof globalThis.fetch
 
   const client = createOpenAIShimClient({}) as {
     beta: {
@@ -102,7 +112,7 @@ test('logs classified transport diagnostics with category and code', async () =>
 })
 
 test('redacts credentials in transport diagnostic URL logs', async () => {
-  const debugSpy = mock(() => {})
+  const debugSpy = makeDebugSpy()
   mock.module('../../utils/debug.js', () => ({
     logForDebugging: debugSpy,
   }))
@@ -119,7 +129,7 @@ test('redacts credentials in transport diagnostic URL logs', async () => {
 
   globalThis.fetch = mock(async () => {
     throw transportError
-  }) as typeof globalThis.fetch
+  }) as unknown as typeof globalThis.fetch
 
   const client = createOpenAIShimClient({}) as {
     beta: {
@@ -149,7 +159,7 @@ test('redacts credentials in transport diagnostic URL logs', async () => {
   expect(logLine).not.toContain('supersecret@')
 })
 test('logs self-heal localhost fallback with redacted from/to URLs', async () => {
-  const debugSpy = mock(() => {})
+  const debugSpy = makeDebugSpy()
   mock.module('../../utils/debug.js', () => ({
     logForDebugging: debugSpy,
   }))
@@ -194,7 +204,7 @@ test('logs self-heal localhost fallback with redacted from/to URLs', async () =>
         },
       },
     )
-  }) as typeof globalThis.fetch
+  }) as unknown as typeof globalThis.fetch
 
   const client = createOpenAIShimClient({}) as {
     beta: {
@@ -226,7 +236,7 @@ test('logs self-heal localhost fallback with redacted from/to URLs', async () =>
 })
 
 test('logs self-heal toolless retry for local tool-call incompatibility', async () => {
-  const debugSpy = mock(() => {})
+  const debugSpy = makeDebugSpy()
   mock.module('../../utils/debug.js', () => ({
     logForDebugging: debugSpy,
   }))
@@ -275,7 +285,7 @@ test('logs self-heal toolless retry for local tool-call incompatibility', async 
         },
       },
     )
-  }) as typeof globalThis.fetch
+  }) as unknown as typeof globalThis.fetch
 
   const client = createOpenAIShimClient({}) as {
     beta: {

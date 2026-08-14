@@ -44,7 +44,14 @@ const URL_IN_JSON = /https?:\/\/[^\s"'<>\\]+/g;
 export function linkifyUrlsInText(content: string): string {
   return content.replace(URL_IN_JSON, url => createHyperlink(url));
 }
-export function OutputLine(t0) {
+type OutputLineProps = {
+  content: string;
+  verbose?: boolean;
+  isError?: boolean;
+  isWarning?: boolean;
+  linkifyUrls?: boolean;
+};
+export function OutputLine(t0: OutputLineProps) {
   const $ = _c(11);
   const {
     content,

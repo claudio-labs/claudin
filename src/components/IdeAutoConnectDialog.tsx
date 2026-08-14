@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useCallback } from 'react';
 import { Text } from '../ink.js';
-import { getGlobalConfig, saveGlobalConfig } from '../utils/config.js';
+import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from '../utils/config.js';
 import { isSupportedTerminal } from '../utils/ide.js';
 import { Select } from './CustomSelect/index.js';
 import { Dialog } from './design-system/Dialog.js';
@@ -15,7 +15,7 @@ export function IdeAutoConnectDialog(t0: IdeAutoConnectDialogProps) {
   } = t0;
   let t1;
   if ($[0] !== onComplete) {
-    t1 = async value => {
+    t1 = async (value: string) => {
       const autoConnect = value === "yes";
       saveGlobalConfig(current => ({
         ...current,
@@ -84,7 +84,7 @@ export function IdeDisableAutoConnectDialog(t0: IdeDisableAutoConnectDialogProps
   } = t0;
   let t1;
   if ($[0] !== onComplete) {
-    t1 = value => {
+    t1 = (value: string) => {
       const disableAutoConnect = value === "yes";
       if (disableAutoConnect) {
         saveGlobalConfig(_temp);
@@ -141,7 +141,7 @@ export function IdeDisableAutoConnectDialog(t0: IdeDisableAutoConnectDialogProps
   }
   return t5;
 }
-function _temp(current) {
+function _temp(current: GlobalConfig): GlobalConfig {
   return {
     ...current,
     autoConnectIde: false

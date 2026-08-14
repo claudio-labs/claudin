@@ -31,6 +31,9 @@ import { startDeferredPrefetches } from '../deferredPrefetches.js';
 import { getMcpStartupTimeoutMs, raceConnectTimeout } from './mcpStartupWait.js';
 import { logSessionTelemetry } from '../lifecycle.js';
 import type { BootContext } from '../bootContext.js';
+import type { Command } from '../../types/command.js';
+import type { ToolPermissionContext, Tools } from '../../Tool.js';
+import type { AgentDefinition } from '../../tools/AgentTool/loadAgentsDir.js';
 
 export type HeadlessBranchDeps = {
   ctx: BootContext;
@@ -52,16 +55,16 @@ export type HeadlessBranchDeps = {
   setupTrigger: 'init' | 'maintenance' | null;
   outputFormat: string | undefined;
   inputPrompt: string | AsyncIterable<string>;
-  commands: ReadonlyArray<{ type: string; disableNonInteractive?: boolean; supportsNonInteractive?: boolean }>;
-  tools: unknown;
+  commands: readonly Command[];
+  tools: Tools;
   mcpClients: unknown[];
   mcpCommands: unknown[];
   mcpTools: unknown[];
   sdkMcpConfigs: Record<string, McpSdkServerConfig>;
-  agentDefinitions: { activeAgents: unknown[] };
+  agentDefinitions: { activeAgents: AgentDefinition[] };
   regularMcpConfigs: Record<string, ScopedMcpServerConfig>;
   claudeaiConfigPromise: Promise<Record<string, ScopedMcpServerConfig>>;
-  toolPermissionContext: unknown;
+  toolPermissionContext: ToolPermissionContext;
   effectiveModel: string | undefined;
   advisorModel: string | undefined;
   allowDangerouslySkipPermissions: boolean;
@@ -339,7 +342,10 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
   profileCheckpoint('after_print_import');
   void runHeadless(inputPrompt, () => headlessStore.getState(), headlessStore.setState, commandsHeadless, tools, sdkMcpConfigs, agentDefinitions.activeAgents, {
     continue: options.continue,
-    resume: options.resume,
+    // runHeadless's resume param doesn't accept null (only
+    // string | boolean | undefined) — deps.options.resume does, to mirror
+    // the CLI option's own type.
+    resume: options.resume ?? undefined,
     verbose: verbose,
     outputFormat: outputFormat,
     jsonSchema,
@@ -355,7 +361,9 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
     appendSystemPrompt,
     userSpecifiedModel: effectiveModel,
     fallbackModel: userSpecifiedFallbackModel,
-    teleport,
+    // runHeadless's teleport param doesn't accept plain `false` (only
+    // string | true | null | undefined) — normalize the falsy boolean case.
+    teleport: teleport === false ? undefined : teleport,
     sdkUrl: ctx.sdkUrl,
     replayUserMessages: effectiveReplayUserMessages,
     includePartialMessages: ctx.effectiveIncludePartialMessages,

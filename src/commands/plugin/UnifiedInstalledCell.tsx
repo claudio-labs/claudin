@@ -8,7 +8,7 @@ type Props = {
   item: UnifiedInstalledItem;
   isSelected: boolean;
 };
-export function UnifiedInstalledCell(t0) {
+export function UnifiedInstalledCell(t0: Props) {
   const $ = _c(142);
   const {
     item,

@@ -69,6 +69,7 @@ function baseCreateAssistantMessage({
       ephemeral_1h_input_tokens: 0,
       ephemeral_5m_input_tokens: 0,
     },
+    fallback_credit: null,
     inference_geo: null,
     iterations: null,
     speed: null,

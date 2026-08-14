@@ -32,13 +32,13 @@ test('custom error responses log the error redirect analytics event', async () =
   )
   const listener = new AuthCodeListener('/callback')
   const response = {
-    writeHead: () => {},
-    end: () => {},
+    writeHead: (_statusCode: number, _headers?: Record<string, string>) => {},
+    end: (_body?: string) => {},
   }
 
   ;(listener as any).pendingResponse = response
 
-  listener.handleErrorRedirect(res => {
+  listener.handleErrorRedirect((res: typeof response) => {
     res.writeHead(400, {
       'Content-Type': 'text/plain; charset=utf-8',
     })
@@ -62,10 +62,10 @@ test('custom handlers that do not end the response are closed automatically and 
     destroyed: false,
     headersSent: false,
     writableEnded: false,
-    writeHead: () => {
+    writeHead: (_statusCode: number, _headers?: Record<string, string>) => {
       response.headersSent = true
     },
-    end: () => {
+    end: (_body?: string) => {
       response.writableEnded = true
     },
   }
@@ -91,7 +91,7 @@ test('custom handlers that do not end the response are closed automatically and 
 
   ;(listener as any).pendingResponse = response
 
-  listener.handleErrorRedirect(res => {
+  listener.handleErrorRedirect((res: typeof response) => {
     res.writeHead(400, {
       'Content-Type': 'text/plain; charset=utf-8',
     })

@@ -1,8 +1,22 @@
 ---
 name: typecheck-backlog-shape
-description: how to read the tsc backlog and the baseline ratchet; the "React-Compiler output cannot be hand-fixed" claim here was disproven 2026-08-07 — see the correction
+description: how to read the tsc backlog and the baseline ratchet; TWO claims here were later disproven — "cannot be hand-fixed" (2026-08-07) and "never reaches zero" (2026-08-13)
 type: project
 ---
+
+**CORRECTION, 2026-08-13: the backlog reached ZERO.** `bunx tsc --noEmit` emits
+no errors and `typecheck-baseline.json` is `count: 0`. Everything below about
+*shape* is still the right way to read a backlog if one returns, but treat every
+absolute number here as history. The ratchet still guards the diff, and the
+baseline now ratchets against zero — so a newly added error fails CI outright
+rather than hiding under a large number.
+
+Where the 2820 went: ~2700 across 493 source files (mostly React-Compiler `t0`
+annotations, per the correction below), plus ~107 TS2307 retired by all-`any`
+declaration files — see [[missing-subsystems-are-not-fixable-by-declaration]],
+whose own "declaring them away does not work" headline was corrected the same
+day. Verify a large drop is real before believing it: the failure mode is tsc
+skipping semantic analysis after a parse error in a generated `.d.ts`.
 
 `bun run typecheck` is **not** a pass/fail gate — read it as a diff, never as an
 absolute number. What CI runs is `bun run typecheck:ci`, a ratchet that fails a PR
@@ -42,8 +56,9 @@ Shape of the backlog, measured 2026-08-06 on branch `chore/repo-improvements`
   242 annotations took the branch 3161 → 2863. Read
   [[react-compiler-props-param-typing]] before believing any "structural,
   unfixable" framing about this half of the backlog — including this file's.
-- **~107 unresolved modules are deliberate**, and are NOT fixable by declaring
-  them; that was measured and reverted. See
+- **~107 unresolved modules are deliberate.** Superseded 2026-08-13: they ARE
+  retired by declaring them, but only with all-`any` exports, and doing so buys
+  no type safety — an unresolved import is already `any`. See
   [[missing-subsystems-are-not-fixable-by-declaration]] for the current list,
   which is wider than the obvious optional subsystems (`src/services` and
   `src/tools` account for 21 of the 70 missing modules).

@@ -9,7 +9,7 @@ afterEach(() => {
 describe('TeamCreateTool', () => {
   test('shouldDefer is true and userFacingName is empty', () => {
     expect(TeamCreateTool.shouldDefer).toBe(true)
-    expect(TeamCreateTool.userFacingName()).toBe('')
+    expect(TeamCreateTool.userFacingName(undefined)).toBe('')
   })
 
   test('isEnabled() requires the agent-teams opt-in env or flag', () => {

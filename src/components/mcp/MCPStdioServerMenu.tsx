@@ -6,7 +6,7 @@ import { Box, color, Text, useTheme } from '../../ink.js';
 import { getMcpConfigByName } from '../../services/mcp/config.js';
 import { useMcpReconnect, useMcpToggleEnabled } from '../../services/mcp/MCPConnectionManager.js';
 import { describeMcpConfigFilePath, filterMcpPromptsByServer } from '../../services/mcp/utils.js';
-import { useAppState } from '../../state/AppState.js';
+import { type AppState, useAppState } from '../../state/AppState.js';
 import { errorMessage } from '../../utils/errors.js';
 import { capitalize } from '../../utils/stringUtils.js';
 import { ConfigurableShortcutHint } from '../ConfigurableShortcutHint.js';
@@ -37,7 +37,7 @@ export function MCPStdioServerMenu({
 }: Props): React.ReactNode {
   const [theme] = useTheme();
   const exitState = useExitOnCtrlCDWithKeybindings();
-  const mcp = useAppState(s => s.mcp);
+  const mcp = useAppState((s: AppState) => s.mcp);
   const reconnectMcpServer = useMcpReconnect();
   const toggleMcpServer = useMcpToggleEnabled();
   const [isReconnecting, setIsReconnecting] = useState(false);

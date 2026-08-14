@@ -58,7 +58,7 @@ export function HelpV2(t0: Props) {
   if ($[3] !== commands) {
     const builtinNames = builtInCommandNames();
     builtinCommands = commands.filter(cmd => builtinNames.has(cmd.name) && !cmd.isHidden);
-    let t4;
+    let t4: Command[];
     if ($[7] === Symbol.for("react.memo_cache_sentinel")) {
       t4 = [];
       $[7] = t4;

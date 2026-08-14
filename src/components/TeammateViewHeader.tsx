@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { Box, Text } from '../ink.js';
-import { useAppState } from '../state/AppState.js';
+import { type AppState, useAppState } from '../state/AppState.js';
 import { getViewedTeammateTask } from '../state/selectors.js';
 import { toInkColor } from '../utils/ink.js';
 import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
@@ -76,6 +76,6 @@ export function TeammateViewHeader() {
   }
   return t6;
 }
-function _temp(s) {
+function _temp(s: AppState) {
   return getViewedTeammateTask(s);
 }

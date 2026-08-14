@@ -16,16 +16,16 @@ export function usePluginAutoupdateNotification() {
   const {
     addNotification
   } = useNotifications();
-  let t0;
+  let t0: string[];
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = [];
     $[0] = t0;
   } else {
     t0 = $[0];
   }
-  const [updatedPlugins, setUpdatedPlugins] = useState(t0);
+  const [updatedPlugins, setUpdatedPlugins] = useState<string[]>(t0);
   let t1;
-  let t2;
+  let t2: unknown[];
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = () => {
       if (getIsRemoteMode()) {
@@ -76,7 +76,7 @@ export function usePluginAutoupdateNotification() {
   }
   useEffect(t3, t4);
 }
-function _temp(id) {
+function _temp(id: string) {
   const atIndex = id.indexOf("@");
   return atIndex > 0 ? id.substring(0, atIndex) : id;
 }

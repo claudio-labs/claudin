@@ -5,6 +5,7 @@ import { useCallback, useContext, useEffect, useImperativeHandle, useRef, useSta
 import { useVirtualScroll } from '../hooks/useVirtualScroll.js';
 import type { ScrollBoxHandle } from '../ink/components/ScrollBox.js';
 import type { DOMElement } from '../ink/dom.js';
+import type { ClickEvent } from '../ink/events/click-event.js';
 import type { MatchPosition } from '../ink/render-to-screen.js';
 import { Box } from '../ink.js';
 import type { RenderableMessage } from '../types/message.js';
@@ -16,7 +17,7 @@ const HEADROOM = 3;
 import { logForDebugging } from '../utils/debug.js';
 import { sleep } from '../utils/sleep.js';
 import { renderableSearchText } from '../utils/transcriptSearch.js';
-import { isNavigableMessage, type MessageActionsNav, type MessageActionsState, type NavigableMessage, stripSystemReminders, toolCallOf } from './messageActions.js';
+import { isNavigableMessage, type MessageActionsNav, type MessageActionsState, type NavigableMessage, type NavigableType, stripSystemReminders, toolCallOf } from './messageActions.js';
 
 // Fallback extractor: lower + cache here for callers without the
 // Messages.tsx tool-lookup path (tests, static contexts). Messages.tsx
@@ -222,7 +223,7 @@ function VirtualItem(t0: VirtualItemProps) {
   const t3 = expanded ? 1 : undefined;
   let t4;
   if ($[3] !== clickable || $[4] !== msg || $[5] !== onClickK) {
-    t4 = clickable ? e => onClickK(msg, e.cellIsBlank) : undefined;
+    t4 = clickable ? (e: ClickEvent) => onClickK(msg, e.cellIsBlank) : undefined;
     $[3] = clickable;
     $[4] = msg;
     $[5] = onClickK;
@@ -345,7 +346,9 @@ export function VirtualMessageList({
   useImperativeHandle(cursorNavRef, (): MessageActionsNav => {
     const select = (m: NavigableMessage) => setCursor?.({
       uuid: m.uuid,
-      msgType: m.type,
+      // Every caller gates on isNavigableMessage, which is falsy for
+      // 'progress' — the only RenderableMessage type outside NavigableType.
+      msgType: m.type as NavigableType,
       expanded: false,
       toolName: toolCallOf(m)?.name
     });

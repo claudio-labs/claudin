@@ -12,9 +12,9 @@ import { useStartupNotification } from './notifs/useStartupNotification.js';
 export function useOfficialMarketplaceNotification() {
   useStartupNotification(_temp);
 }
-async function _temp() {
+async function _temp(): Promise<Notification[]> {
   const result = await checkAndInstallOfficialMarketplace();
-  const notifs = [];
+  const notifs: Notification[] = [];
   if (result.configSaveFailed) {
     logForDebugging("Showing marketplace config save failure notification");
     notifs.push({

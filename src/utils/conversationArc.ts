@@ -160,7 +160,9 @@ export function updateArcPhase(messages: Message[]): void {
   if (!arc) return
 
   for (const msg of messages.slice(-5).reverse()) {
-    const content = extractTextFromContent(msg.message?.content)
+    const content = extractTextFromContent(
+      'message' in msg ? msg.message?.content : undefined,
+    )
     if (!content) continue
 
     // Phase detection

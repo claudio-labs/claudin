@@ -71,7 +71,7 @@ export function IdleReturnDialog(t0: Props) {
   } else {
     t7 = $[8];
   }
-  let t8;
+  let t8: { value: IdleReturnAction; label: string }[];
   if ($[9] === Symbol.for("react.memo_cache_sentinel")) {
     t8 = [t6, t7, {
       value: "never" as const,

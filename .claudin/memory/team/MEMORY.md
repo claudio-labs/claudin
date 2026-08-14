@@ -14,7 +14,7 @@
 - [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — headless resume is keyed by project dir; verify multi-turn behavior from a throwaway cwd, never `-c` in the repo
 
 ## Repo health
-- [tsc --noEmit never reaches zero here](typecheck-backlog-shape.md) — the ratchet, the absolute-path fingerprint trap, and a CORRECTION: its "React-Compiler output cannot be hand-fixed" claim was disproven
+- [tsc --noEmit reached ZERO on 2026-08-13](typecheck-backlog-shape.md) — the ratchet, the absolute-path fingerprint trap, and TWO corrections: "cannot be hand-fixed" and "never reaches zero" were both disproven
 - [/upgrade and /extra-usage hang on a Login component that does not exist](upsell-commands-missing-login.md) — stubbed to `() => null`, onDone never fires; product call, not fixed
 - [CLAUDE_CODE_SYNC_PLUGIN_INSTALL hung headless -p](headless-sync-plugin-install-broken-import.md) — FIXED in PR #57; kept for the 2-question test that tells a real TS2307 from the fork's ~107 expected ones
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — it means nothing IMPORTS it; needs a local-reference guard AND a grep guard, with `bun run build` as the gate — re-parsing is too weak
@@ -38,7 +38,7 @@
 - [Typecheck tool — baseline design + the traps it hides](typecheck-tool-baseline-design.md) — clean-tree baseline keyed by HEAD, line-independent fingerprints; worktree reconstruction for the first dirty check; exec() caps stdout at 30k
 - [typecheck ratchet phantom "new" errors — fixed 2026-08-07](typecheck-baseline-message-fingerprint-fragile.md) — tsc's union elaboration used to shift the hash on any added file; elideTruncatedUnion fixes it, triage step kept
 - [React Compiler's t0 param is the root of ~1400 TS7006](react-compiler-props-param-typing.md) — count sites (403) not errors (1710); the props type is already in the file; grade every guess with the compiler
-- [The 107 TS2307 are the fork's shape, not a backlog](missing-subsystems-are-not-fixable-by-declaration.md) — 70 files never received, all unreachable; generating .d.ts measured WORSE (2849→2880) and was reverted
+- [The 107 TS2307 are the fork's shape, not a backlog](missing-subsystems-are-not-fixable-by-declaration.md) — CORRECTED: all-`any` .d.ts retire them (concrete shapes cannot — TS2339); buys zero type safety; 19 call sites DO hit the stub eagerly
 - [Typecheck A/B bench — what to cite and what is noise](typecheck-ab-bench-fixture-flaw.md) — cost −16/−18% and payload −80% hold across 5 runs; context swings −13%→−1%; fixture backlog must overlap the edited files
 - [RunTestsTool still has the 3 shell/env bugs Typecheck fixed](runtests-tool-shell-env-bugs.md) — ignores its cwd (worktree sub-agent tests main), FORCE_COLOR=0 enables colour, env-prefix breaks compound commands
 - [RunTestsTool language coverage + reporter constraints](runtests-tool-language-coverage.md) — 23 runners IMPLEMENTED (feat/run-tests-tool); JUnit/JSON-via-flag vs heuristic-only tier; catch2/doctest override-only triad (enum+case+DESCRIPTION); fake-runner-on-PATH validation

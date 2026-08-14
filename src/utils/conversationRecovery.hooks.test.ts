@@ -13,6 +13,16 @@ const originalSimple = process.env.CLAUDE_CODE_SIMPLE
 const sessionId = '00000000-0000-4000-8000-000000001999'
 const ts = '2026-04-02T00:00:00.000Z'
 
+/**
+ * Shape this test needs off the deserializer's output. The module is loaded
+ * through a cache-busting dynamic `import()`, so its return type is not
+ * available statically.
+ */
+type ResumedMessage = {
+  type: string
+  message?: { content?: unknown }
+}
+
 function id(n: number): string {
   return `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 }
@@ -118,8 +128,8 @@ test('deserializeMessagesWithInterruptDetection strips thinking blocks only for 
   const openaiModule = await import(`./conversationRecovery.ts?provider=openai-${Date.now()}`)
   const thirdParty = openaiModule.deserializeMessagesWithInterruptDetection(serializedMessages as never[])
   const thirdPartyAssistantMessages = thirdParty.messages.filter(
-    message => message.type === 'assistant',
-  )
+    (message: ResumedMessage) => message.type === 'assistant',
+  ) as ResumedMessage[]
 
   expect(thirdPartyAssistantMessages).toHaveLength(2)
   expect(thirdPartyAssistantMessages[0]?.message?.content).toEqual([
@@ -144,8 +154,8 @@ test('deserializeMessagesWithInterruptDetection strips thinking blocks only for 
   const bedrockModule = await import(`./conversationRecovery.ts?provider=bedrock-${Date.now()}`)
   const anthropicCompatible = bedrockModule.deserializeMessagesWithInterruptDetection(serializedMessages as never[])
   const anthropicAssistantMessages = anthropicCompatible.messages.filter(
-    message => message.type === 'assistant',
-  )
+    (message: ResumedMessage) => message.type === 'assistant',
+  ) as ResumedMessage[]
 
   expect(anthropicAssistantMessages).toHaveLength(2)
   expect(anthropicAssistantMessages[0]?.message?.content).toEqual([

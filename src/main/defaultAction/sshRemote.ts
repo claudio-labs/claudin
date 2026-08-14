@@ -6,11 +6,17 @@
 // Extracted from src/main.tsx (ROADMAP 11g Fase 5b).
 
 import { setCwdState, setDirectConnectServerUrl, setOriginalCwd } from '../../bootstrap/state.js';
+import type { Command } from '../../commands.js';
 import type { Root } from '../../ink.js';
 import { exitWithError, renderAndRun } from '../../interactiveHelpers.js';
 import { launchRepl } from '../../replLauncher.js';
+import type { AppState } from '../../state/AppStateStore.js';
+import type { AgentDefinition } from '../../tools/AgentTool/loadAgentsDir.js';
 import { gracefulShutdown } from '../../utils/gracefulShutdown.js';
 import { createSystemMessage } from '../../utils/messages.js';
+import type { FpsMetrics } from '../../utils/fpsTracker.js';
+import type { StatsStore } from '../../context/stats.js';
+import type { ThinkingConfig } from '../../utils/thinking.js';
 import type { BootContext } from '../bootContext.js';
 
 export type SshRemoteBranchDeps = {
@@ -18,13 +24,13 @@ export type SshRemoteBranchDeps = {
   ctx: BootContext;
   debug: boolean;
   debugToStderr: boolean;
-  commands: unknown[];
-  ide: unknown;
-  mainThreadAgentDefinition: unknown;
-  thinkingConfig: unknown;
+  commands: Command[];
+  ide: boolean | undefined;
+  mainThreadAgentDefinition: AgentDefinition | undefined;
+  thinkingConfig: ThinkingConfig;
   getFpsMetrics: () => FpsMetrics | undefined;
   stats: StatsStore | undefined;
-  initialState: unknown;
+  initialState: AppState;
 };
 
 export async function runSshRemoteBranch(deps: SshRemoteBranchDeps): Promise<void> {
@@ -64,7 +70,14 @@ export async function runSshRemoteBranch(deps: SshRemoteBranchDeps): Promise<voi
     setCwdState(sshSession.remoteCwd);
     setDirectConnectServerUrl(pending.local ? 'local' : pending.host!);
   } catch (err) {
-    return await exitWithError(root, err instanceof SSHSessionError ? err.message : String(err), () => gracefulShutdown(1));
+    // SSHSessionError comes back typed `any` from the SSH_REMOTE stub module
+    // (feature off in this build), which doesn't narrow `unknown` via
+    // `instanceof` — fall back to the general Error check for the message.
+    const message =
+      err instanceof SSHSessionError && err instanceof Error
+        ? err.message
+        : String(err);
+    return await exitWithError(root, message, () => gracefulShutdown(1));
   }
   const sshInfoMessage = createSystemMessage(
     pending.local

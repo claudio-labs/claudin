@@ -66,11 +66,16 @@ export function getCurrentTurn(): TurnContext | null {
 export function addMessageToTurn(message: Message): void {
   const turn = currentTurn || startNewTurn()
   turn.messages.push(message)
-  
-  // Update token estimate
-  const content = typeof message.message.content === 'string' 
-    ? message.message.content 
-    : JSON.stringify(message.message.content)
+
+  // Update token estimate. Only user/assistant messages carry an API payload;
+  // attachments, progress and system messages have no `.message`.
+  if (!('message' in message)) {
+    return
+  }
+  const payload = message.message
+  const content = typeof payload.content === 'string'
+    ? payload.content
+    : JSON.stringify(payload.content)
   turn.tokens += roughTokenCountEstimation(content)
 }
 

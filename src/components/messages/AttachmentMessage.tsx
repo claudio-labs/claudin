@@ -28,6 +28,9 @@ import FullWidthRow from '../design-system/FullWidthRow.js';
 import { FilePathLink } from '../FilePathLink.js';
 import { feature } from 'bun:bundle';
 import { useSelectedMessageBg } from '../messageActions.js';
+import type { AppState } from '../../state/AppStateStore.js';
+import type { Color } from '../../ink/styles.js';
+import type { TaskState } from '../../tasks/types.js';
 type Props = {
   addMargin: boolean;
   attachment: Attachment;
@@ -138,7 +141,23 @@ export function AttachmentMessage({
       }
       return <Line>
           Read <Text bold>{attachment.displayPath}</Text> (
-          {attachment.content.type === 'text' ? `${attachment.content.file.numLines}${attachment.truncated ? '+' : ''} lines` : formatFileSize(attachment.content.file.originalSize)}
+          {(() => {
+          const content = attachment.content;
+          switch (content.type) {
+            case 'text':
+              return `${content.file.numLines}${attachment.truncated ? '+' : ''} lines`;
+            case 'image':
+            case 'pdf':
+            case 'parts':
+              return formatFileSize(content.file.originalSize);
+            case 'outline':
+              return `outline, ${content.file.totalLines} lines`;
+            case 'clip_pin_fallback':
+              return content.file.servedOutline ? 'outline' : 'redirect';
+            default:
+              return '';
+          }
+        })()}
           )
         </Line>;
     case 'compact_file_reference':
@@ -353,7 +372,9 @@ export function AttachmentMessage({
 type TaskStatusAttachment = Extract<Attachment, {
   type: 'task_status';
 }>;
-function TaskStatusMessage(t0) {
+function TaskStatusMessage(t0: {
+  attachment: TaskStatusAttachment;
+}) {
   const $ = _c(4);
   const {
     attachment
@@ -382,7 +403,9 @@ function TaskStatusMessage(t0) {
   }
   return t1;
 }
-function GenericTaskStatus(t0) {
+function GenericTaskStatus(t0: {
+  attachment: TaskStatusAttachment;
+}) {
   const $ = _c(9);
   const {
     attachment
@@ -424,15 +447,17 @@ function GenericTaskStatus(t0) {
   }
   return t4;
 }
-function TeammateTaskStatus(t0) {
+function TeammateTaskStatus(t0: {
+  attachment: TaskStatusAttachment;
+}) {
   const $ = _c(16);
   const {
     attachment
   } = t0;
   const bg = useSelectedMessageBg();
-  let t1;
+  let t1: (s: AppState) => TaskState;
   if ($[0] !== attachment.taskId) {
-    t1 = s => s.tasks[attachment.taskId];
+    t1 = (s: AppState) => s.tasks[attachment.taskId];
     $[0] = attachment.taskId;
     $[1] = t1;
   } else {
@@ -498,7 +523,11 @@ function TeammateTaskStatus(t0) {
 }
 // We allow setting dimColor to false here to help work around the dim-bold bug.
 // https://github.com/chalk/chalk/issues/290
-function Line(t0) {
+function Line(t0: {
+  dimColor?: boolean;
+  children: React.ReactNode;
+  color?: keyof Theme | Color;
+}) {
   const $ = _c(7);
   const {
     dimColor: t1,

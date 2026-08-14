@@ -13,7 +13,6 @@ import { getSessionCacheMetrics } from '../services/api/cacheStatsTracker.js';
 import { formatTokens } from '../utils/format.js';
 import { getAPIProvider, isGithubNativeAnthropicMode } from '../utils/model/providers.js';
 import { hasNerdFontGlyphs } from '../utils/terminalFont.js';
-import { getTheme } from '../utils/theme.js';
 import { getCurrentUsage } from '../utils/tokens.js';
 import type { Message } from '../types/message.js';
 
@@ -169,7 +168,6 @@ export function SessionTokensIndicator({ messages }: { messages?: Message[] } = 
   }
 
   const costValue = displaySnapshot.cost > 0 ? formatCost(displaySnapshot.cost) : null;
-  const theme = getTheme();
   // Same divider for every group boundary and before the cost; dot as the fallback.
   const sep = hasNerdFontGlyphs() ? ` ${SEP_NF} ` : ` ${SEP_FALLBACK} `;
 
@@ -179,7 +177,7 @@ export function SessionTokensIndicator({ messages }: { messages?: Message[] } = 
         {parts.join(sep)}
         {costValue ? sep : ''}
       </Text>
-      {costValue ? <Text color={theme.claude}>{costValue}</Text> : null}
+      {costValue ? <Text color="claude">{costValue}</Text> : null}
     </Box>
   );
 }

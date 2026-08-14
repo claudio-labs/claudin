@@ -141,12 +141,12 @@ export function* normalizeMessage(message: Message): Generator<SDKMessage> {
         }
         yield {
           type: 'assistant',
-          message: _.message,
+          message: { ..._.message, stop_details: null },
           parent_tool_use_id: null,
           session_id: getSessionId(),
           uuid: _.uuid,
           error: _.error,
-        }
+        } as unknown as SDKMessage
       }
       return
     case 'progress':
@@ -163,12 +163,12 @@ export function* normalizeMessage(message: Message): Generator<SDKMessage> {
               }
               yield {
                 type: 'assistant',
-                message: _.message,
+                message: { ..._.message, stop_details: null },
                 parent_tool_use_id: message.parentToolUseID,
                 session_id: getSessionId(),
                 uuid: _.uuid,
                 error: _.error,
-              }
+              } as unknown as SDKMessage
               break
             case 'user':
               yield {
@@ -335,9 +335,10 @@ export async function* handleOrphanedPermission(
 
   const sdkAssistantMessage: SDKMessage = {
     ...assistantMessage,
+    message: { ...assistantMessage.message, stop_details: null },
     session_id: getSessionId(),
     parent_tool_use_id: null,
-  } as SDKMessage
+  } as unknown as SDKMessage
   yield sdkAssistantMessage
 
   // Execute the tool - errors are handled internally by runToolUse

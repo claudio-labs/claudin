@@ -1,6 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import { createContext, type RefObject, useContext } from 'react';
 import type { ScrollBoxHandle } from '../ink/components/ScrollBox.js';
+import type { TerminalSize } from '../ink/components/TerminalSizeContext.js';
 
 /**
  * Set by FullscreenLayout when rendering content in its `modal` slot —
@@ -35,7 +36,7 @@ export function useIsInsideModal() {
  * component caps its visible content height — the modal's inner area is
  * smaller than the terminal.
  */
-export function useModalOrTerminalSize(fallback) {
+export function useModalOrTerminalSize(fallback: TerminalSize) {
   const $ = _c(3);
   const ctx = useContext(ModalContext);
   let t0;

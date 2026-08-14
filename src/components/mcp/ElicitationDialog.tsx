@@ -50,7 +50,7 @@ function ResolvingSpinner() {
   const $ = _c(4);
   const [frame, setFrame] = useState(0);
   let t0;
-  let t1;
+  let t1: React.DependencyList;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t0 = () => {
       const timer = setInterval(setFrame, 80, advanceSpinnerFrame);

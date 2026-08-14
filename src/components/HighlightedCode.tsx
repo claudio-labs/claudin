@@ -15,6 +15,10 @@ type Props = {
   dim?: boolean;
 };
 const DEFAULT_WIDTH = 80;
+type CodeLineProps = {
+  line: string;
+  gutterWidth: number;
+};
 export const HighlightedCode = memo(function HighlightedCode(t0: Props) {
   const $ = _c(21);
   const {
@@ -121,7 +125,7 @@ export const HighlightedCode = memo(function HighlightedCode(t0: Props) {
   const gutterWidth = t6;
   let t7;
   if ($[14] !== code || $[15] !== dim || $[16] !== filePath || $[17] !== gutterWidth || $[18] !== lines || $[19] !== syntaxHighlightingDisabled) {
-    t7 = <Box ref={ref}>{lines ? <Box flexDirection="column">{lines.map((line, i) => gutterWidth > 0 ? <CodeLine key={i} line={line} gutterWidth={gutterWidth} /> : <Text key={i}><Ansi>{line}</Ansi></Text>)}</Box> : <HighlightedCodeFallback code={code} filePath={filePath} dim={dim} skipColoring={syntaxHighlightingDisabled} />}</Box>;
+    t7 = <Box ref={ref}>{lines ? <Box flexDirection="column">{lines.map((line: string, i: number) => gutterWidth > 0 ? <CodeLine key={i} line={line} gutterWidth={gutterWidth} /> : <Text key={i}><Ansi>{line}</Ansi></Text>)}</Box> : <HighlightedCodeFallback code={code} filePath={filePath} dim={dim} skipColoring={syntaxHighlightingDisabled} />}</Box>;
     $[14] = code;
     $[15] = dim;
     $[16] = filePath;
@@ -134,7 +138,7 @@ export const HighlightedCode = memo(function HighlightedCode(t0: Props) {
   }
   return t7;
 });
-function CodeLine(t0) {
+function CodeLine(t0: CodeLineProps) {
   const $ = _c(13);
   const {
     line,

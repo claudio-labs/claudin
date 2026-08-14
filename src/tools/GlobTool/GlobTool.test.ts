@@ -77,7 +77,7 @@ describe('GlobTool', () => {
   })
 
   test('isSearchOrReadCommand classifies as search', () => {
-    const cls = GlobTool.isSearchOrReadCommand?.({} as never)
+    const cls = GlobTool.isSearchOrReadCommand?.()
     expect(cls).toEqual({ isSearch: true, isRead: false })
   })
 
@@ -122,7 +122,6 @@ describe('GlobTool', () => {
   test('validateInput rejects non-existent path', async () => {
     const result = await GlobTool.validateInput?.(
       { pattern: '**/*', path: '/definitely/not/here/__nope__' } as never,
-      makeCtx(),
     )
     expect(result?.result).toBe(false)
     if (result && result.result === false) {
@@ -133,7 +132,6 @@ describe('GlobTool', () => {
   test('validateInput rejects path that points to a file', async () => {
     const result = await GlobTool.validateInput?.(
       { pattern: '**/*', path: join(workDir, 'a.ts') } as never,
-      makeCtx(),
     )
     expect(result?.result).toBe(false)
     if (result && result.result === false) {
@@ -144,7 +142,6 @@ describe('GlobTool', () => {
   test('validateInput accepts an existing directory', async () => {
     const result = await GlobTool.validateInput?.(
       { pattern: '**/*.ts', path: workDir } as never,
-      makeCtx(),
     )
     expect(result?.result).toBe(true)
   })

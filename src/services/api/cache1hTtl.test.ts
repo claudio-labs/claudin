@@ -161,7 +161,7 @@ describe('getCacheControl — 1h TTL gating', () => {
   test('firstParty + short-lived utility sources (agent_summary, web_search_tool) → no ttl', async () => {
     setProvider('firstParty')
     const { claude } = await importFresh()
-    for (const querySource of ['agent_summary', 'web_search_tool']) {
+    for (const querySource of ['agent_summary', 'web_search_tool'] as const) {
       expect(claude.getCacheControl({ querySource })).toEqual({
         type: 'ephemeral',
       })
@@ -178,7 +178,7 @@ describe('getCacheControl — 1h TTL gating', () => {
       'session_memory',
       'speculation',
       'auto_mode',
-    ]) {
+    ] as const) {
       expect(claude.getCacheControl({ querySource })).toEqual({
         type: 'ephemeral',
         ttl: '1h',

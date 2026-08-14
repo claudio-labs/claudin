@@ -25,8 +25,8 @@ import {
   hasBlockingResult,
   getSessionEndHookTimeoutMs,
   type HookBlockingError,
-  type HookOutsideReplResult,
 } from 'src/utils/hooks.js'
+import type { HookOutsideReplResult } from 'src/utils/hooks/types.js'
 
 const sampleError: HookBlockingError = {
   blockingError: 'permission denied',

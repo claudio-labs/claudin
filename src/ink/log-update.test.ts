@@ -49,6 +49,7 @@ function frameFromLines(
         char,
         styleId: stylePool.none,
         width: CellWidth.Narrow,
+        hyperlink: undefined,
       })
     }
   }

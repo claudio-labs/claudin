@@ -481,7 +481,7 @@ describe('setActiveProviderProfile model cache', () => {
     setActiveProviderProfile('multi_provider')
 
     const cache = getActiveOpenAIModelOptionsCache()
-    const cacheValues = cache.map(opt => opt.value)
+    const cacheValues = cache.map((opt: { value: string }) => opt.value)
     expect(cacheValues).toContain('glm-4.7')
     expect(cacheValues).toContain('glm-4.7-flash')
     expect(cacheValues).toContain('glm-4.7-plus')

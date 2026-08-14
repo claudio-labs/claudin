@@ -55,7 +55,7 @@ export function TeleportResumeWrapper(t0: TeleportResumeWrapperProps) {
   useEffect(t2, t3);
   let t4;
   if ($[3] !== error || $[4] !== onComplete || $[5] !== onError || $[6] !== resumeSession) {
-    t4 = async session => {
+    t4 = async (session: CodeSession) => {
       const result = await resumeSession(session);
       if (result) {
         onComplete(result);

@@ -5,8 +5,10 @@ import { getIsRemoteMode } from '../../bootstrap/state.js';
 import { useNotifications } from '../../context/notifications.js';
 import { Text } from '../../ink.js';
 import { useAppState } from '../../state/AppState.js';
+import type { AppState } from '../../state/AppStateStore.js';
 import { logForDebugging } from '../../utils/debug.js';
 import { plural } from '../../utils/stringUtils.js';
+type InstallationStatus = AppState['plugins']['installationStatus'];
 export function usePluginInstallationStatus() {
   const $ = _c(20);
   const {
@@ -116,12 +118,12 @@ export function usePluginInstallationStatus() {
   }
   useEffect(t1, t2);
 }
-function _temp3(p) {
+function _temp3(p: InstallationStatus['plugins'][number]) {
   return p.status === "failed";
 }
-function _temp2(m) {
+function _temp2(m: InstallationStatus['marketplaces'][number]) {
   return m.status === "failed";
 }
-function _temp(s) {
+function _temp(s: AppState) {
   return s.plugins.installationStatus;
 }

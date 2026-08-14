@@ -13,7 +13,7 @@ import {
 
 describe('autoUpdater — neutralized GCS + kill-switch', () => {
   test('getLatestVersionFromGcs returns null (GCS path neutralized)', async () => {
-    const result = await getLatestVersionFromGcs()
+    const result = await getLatestVersionFromGcs('stable')
     expect(result).toBeNull()
   })
 

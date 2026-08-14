@@ -34,7 +34,17 @@ export async function launchSnapshotUpdateDialog(root: Root, props: {
   const {
     SnapshotUpdateDialog
   } = await import('./components/agents/SnapshotUpdateDialog.js');
-  return showSetupDialog<'merge' | 'keep' | 'replace'>(root, done => <SnapshotUpdateDialog agentType={props.agentType} scope={props.scope} snapshotTimestamp={props.snapshotTimestamp} onComplete={done} onCancel={() => done('keep')} />);
+  // SnapshotUpdateDialog.tsx is a stub (`(_props: unknown) => null`) — cast
+  // to the real props shape its call site (and the original inline JSX)
+  // expects.
+  const Dialog = SnapshotUpdateDialog as React.ComponentType<{
+    agentType: string;
+    scope: AgentMemoryScope;
+    snapshotTimestamp: string;
+    onComplete: (result: 'merge' | 'keep' | 'replace') => void;
+    onCancel: () => void;
+  }>;
+  return showSetupDialog<'merge' | 'keep' | 'replace'>(root, done => <Dialog agentType={props.agentType} scope={props.scope} snapshotTimestamp={props.snapshotTimestamp} onComplete={done} onCancel={() => done('keep')} />);
 }
 
 /**

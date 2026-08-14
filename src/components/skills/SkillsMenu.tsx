@@ -64,7 +64,7 @@ export function SkillsMenu(t0: Props) {
     t1 = $[1];
   }
   const skills = t1;
-  let groups;
+  let groups: Record<SkillSource, SkillCommand[]>;
   if ($[2] !== skills) {
     groups = {
       policySettings: [],
@@ -74,7 +74,7 @@ export function SkillsMenu(t0: Props) {
       flagSettings: [],
       plugin: [],
       mcp: []
-    };
+    } as Record<SkillSource, SkillCommand[]>;
     for (const skill of skills) {
       const source = skill.source as SkillSource;
       if (source in groups) {
@@ -131,7 +131,7 @@ export function SkillsMenu(t0: Props) {
   const renderSkill = _temp3;
   let t3;
   if ($[10] !== skillsBySource) {
-    t3 = source_0 => {
+    t3 = (source_0: SkillSource) => {
       const groupSkills = skillsBySource[source_0];
       if (groupSkills.length === 0) {
         return null;
@@ -227,15 +227,15 @@ export function SkillsMenu(t0: Props) {
   }
   return t14;
 }
-function _temp3(skill_0) {
+function _temp3(skill_0: SkillCommand) {
   const estimatedTokens = estimateSkillFrontmatterTokens(skill_0);
   const tokenDisplay = `~${formatTokens(estimatedTokens)}`;
   const pluginName = skill_0.source === "plugin" ? skill_0.pluginInfo?.pluginManifest.name : undefined;
   return <FullWidthRow key={`${skill_0.name}-${skill_0.source}`}><Text>{getSkillListLabel(skill_0)}</Text><Text dimColor={true}>{pluginName ? ` · ${pluginName}` : ""} · {tokenDisplay} description tokens</Text></FullWidthRow>;
 }
-function _temp2(a, b) {
+function _temp2(a: SkillCommand, b: SkillCommand) {
   return a.name.localeCompare(b.name);
 }
-function _temp(cmd) {
+function _temp(cmd: Command) {
   return cmd.type === "prompt" && (cmd.loadedFrom === "skills" || cmd.loadedFrom === "commands_DEPRECATED" || cmd.loadedFrom === "plugin" || cmd.loadedFrom === "mcp");
 }

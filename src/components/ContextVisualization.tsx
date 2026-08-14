@@ -9,7 +9,42 @@ import { formatTokens } from '../utils/format.js';
 import { getSourceDisplayName, type SettingSource } from '../utils/settings/constants.js';
 import { plural } from '../utils/stringUtils.js';
 import { ContextSuggestions } from './ContextSuggestions.js';
+
+// The element types behind ContextData's collections are not exported from
+// analyzeContext.ts, so they are recovered here by indexed access. They exist
+// to annotate the callbacks the React Compiler hoisted to module scope below,
+// which lost their contextual typing in the process.
+type ContextCategory = ContextData['categories'][number];
+type GridSquare = ContextData['gridRows'][number][number];
+type MemoryFileInfo = ContextData['memoryFiles'][number];
+type McpToolInfo = ContextData['mcpTools'][number];
+type AgentInfo = ContextData['agents'][number];
+type SkillFrontmatterInfo =
+  NonNullable<ContextData['skills']>['skillFrontmatter'][number];
+type SystemToolInfo = NonNullable<ContextData['systemTools']>[number];
+type DeferredBuiltinToolInfo = NonNullable<
+  ContextData['deferredBuiltinTools']
+>[number];
+type SystemPromptSectionInfo = NonNullable<
+  ContextData['systemPromptSections']
+>[number];
+type ToolCallByType = NonNullable<
+  ContextData['messageBreakdown']
+>['toolCallsByType'][number];
+type AttachmentByType = NonNullable<
+  ContextData['messageBreakdown']
+>['attachmentsByType'][number];
 const RESERVED_CATEGORY_NAME = 'Autocompact buffer';
+
+/**
+ * The `[internal]` panels below (system tools, system prompt sections, message
+ * breakdown) are Ant-only and stay hidden in this fork. Declaring the switch as
+ * `boolean` instead of leaving the literal `false` in the `&&` chain keeps
+ * TypeScript's narrowing alive inside those branches: after a literal `false`
+ * the rest of the chain is unreachable, and unreachable code falls back to
+ * declared types, discarding the `x && …` guards the compiler emitted.
+ */
+const SHOW_INTERNAL_PANELS: boolean = false;
 
 /**
  * Tree connector for a list item: '├' for every item except the last, which
@@ -112,7 +147,7 @@ function groupBySource<T extends {
 interface Props {
   data: ContextData;
 }
-export function ContextVisualization(t0) {
+export function ContextVisualization(t0: Props) {
   const $ = _c(87);
   const {
     data
@@ -226,7 +261,7 @@ export function ContextVisualization(t0) {
     }
     let t19;
     if ($[38] !== rawMaxTokens) {
-      t19 = (cat_2, index) => {
+      t19 = (cat_2: ContextCategory, index: number) => {
         const tokenDisplay = formatTokens(cat_2.tokens);
         const percentDisplay = cat_2.isDeferred ? "N/A" : `${(cat_2.tokens / rawMaxTokens * 100).toFixed(1)}%`;
         const isReserved = cat_2.name === RESERVED_CATEGORY_NAME;
@@ -280,7 +315,7 @@ export function ContextVisualization(t0) {
     } else {
       t4 = $[53];
     }
-    t5 = (systemTools && systemTools.length > 0 || hasDeferredBuiltinTools) && false && <Box flexDirection="column" marginTop={1}><Box><Text bold={true}>[internal] System tools</Text>{hasDeferredBuiltinTools && <Text dimColor={true}> (some loaded on-demand)</Text>}</Box><Box flexDirection="column" marginTop={1}><Text dimColor={true}>Loaded</Text>{systemTools?.map(_temp14)}{deferredBuiltinTools.filter(_temp15).map(_temp16)}</Box>{hasDeferredBuiltinTools && deferredBuiltinTools.some(_temp17) && <Box flexDirection="column" marginTop={1}><Text dimColor={true}>Available</Text>{deferredBuiltinTools.filter(_temp18).map(_temp19)}</Box>}</Box>;
+    t5 = (systemTools && systemTools.length > 0 || hasDeferredBuiltinTools) && SHOW_INTERNAL_PANELS && <Box flexDirection="column" marginTop={1}><Box><Text bold={true}>[internal] System tools</Text>{hasDeferredBuiltinTools && <Text dimColor={true}> (some loaded on-demand)</Text>}</Box><Box flexDirection="column" marginTop={1}><Text dimColor={true}>Loaded</Text>{systemTools?.map(_temp14)}{deferredBuiltinTools.filter(_temp15).map(_temp16)}</Box>{hasDeferredBuiltinTools && deferredBuiltinTools.some(_temp17) && <Box flexDirection="column" marginTop={1}><Text dimColor={true}>Available</Text>{deferredBuiltinTools.filter(_temp18).map(_temp19)}</Box>}</Box>;
     $[0] = categories;
     $[1] = gridRows;
     $[2] = mcpTools;
@@ -314,7 +349,7 @@ export function ContextVisualization(t0) {
   }
   let t10;
   if ($[54] !== systemPromptSections) {
-    t10 = systemPromptSections && systemPromptSections.length > 0 && false && <Box flexDirection="column" marginTop={1}><Text bold={true}>[internal] System prompt sections</Text>{systemPromptSections.map(_temp20)}</Box>;
+    t10 = systemPromptSections && systemPromptSections.length > 0 && SHOW_INTERNAL_PANELS && <Box flexDirection="column" marginTop={1}><Text bold={true}>[internal] System prompt sections</Text>{systemPromptSections.map(_temp20)}</Box>;
     $[54] = systemPromptSections;
     $[55] = t10;
   } else {
@@ -346,7 +381,7 @@ export function ContextVisualization(t0) {
   }
   let t14;
   if ($[62] !== messageBreakdown) {
-    t14 = messageBreakdown && false && <Box flexDirection="column" marginTop={1}><Text bold={true}>[internal] Message breakdown</Text><Box flexDirection="column" marginLeft={1}><Box><Text>Tool calls: </Text><Text dimColor={true}>{formatTokens(messageBreakdown.toolCallTokens)} tokens</Text></Box><Box><Text>Tool results: </Text><Text dimColor={true}>{formatTokens(messageBreakdown.toolResultTokens)} tokens</Text></Box><Box><Text>Attachments: </Text><Text dimColor={true}>{formatTokens(messageBreakdown.attachmentTokens)} tokens</Text></Box><Box><Text>Assistant messages (non-tool): </Text><Text dimColor={true}>{formatTokens(messageBreakdown.assistantMessageTokens)} tokens</Text></Box><Box><Text>User messages (non-tool-result): </Text><Text dimColor={true}>{formatTokens(messageBreakdown.userMessageTokens)} tokens</Text></Box></Box>{messageBreakdown.toolCallsByType.length > 0 && <Box flexDirection="column" marginTop={1}><Text bold={true}>[internal] Top tools</Text>{messageBreakdown.toolCallsByType.slice(0, 5).map(_temp26)}</Box>}{messageBreakdown.attachmentsByType.length > 0 && <Box flexDirection="column" marginTop={1}><Text bold={true}>[internal] Top attachments</Text>{messageBreakdown.attachmentsByType.slice(0, 5).map(_temp27)}</Box>}</Box>;
+    t14 = messageBreakdown && SHOW_INTERNAL_PANELS && <Box flexDirection="column" marginTop={1}><Text bold={true}>[internal] Message breakdown</Text><Box flexDirection="column" marginLeft={1}><Box><Text>Tool calls: </Text><Text dimColor={true}>{formatTokens(messageBreakdown.toolCallTokens)} tokens</Text></Box><Box><Text>Tool results: </Text><Text dimColor={true}>{formatTokens(messageBreakdown.toolResultTokens)} tokens</Text></Box><Box><Text>Attachments: </Text><Text dimColor={true}>{formatTokens(messageBreakdown.attachmentTokens)} tokens</Text></Box><Box><Text>Assistant messages (non-tool): </Text><Text dimColor={true}>{formatTokens(messageBreakdown.assistantMessageTokens)} tokens</Text></Box><Box><Text>User messages (non-tool-result): </Text><Text dimColor={true}>{formatTokens(messageBreakdown.userMessageTokens)} tokens</Text></Box></Box>{messageBreakdown.toolCallsByType.length > 0 && <Box flexDirection="column" marginTop={1}><Text bold={true}>[internal] Top tools</Text>{messageBreakdown.toolCallsByType.slice(0, 5).map(_temp26)}</Box>}{messageBreakdown.attachmentsByType.length > 0 && <Box flexDirection="column" marginTop={1}><Text bold={true}>[internal] Top attachments</Text>{messageBreakdown.attachmentsByType.slice(0, 5).map(_temp27)}</Box>}</Box>;
     $[62] = messageBreakdown;
     $[63] = t14;
   } else {
@@ -401,84 +436,104 @@ export function ContextVisualization(t0) {
   }
   return t18;
 }
-function _temp27(attachment, i_10, arr) {
+function _temp27(
+  attachment: AttachmentByType,
+  i_10: number,
+  arr: readonly unknown[],
+) {
   return <Box key={i_10} marginLeft={1}><Text>{branchPrefix(i_10, arr)} {attachment.name}: </Text><Text dimColor={true}>{formatTokens(attachment.tokens)} tokens</Text></Box>;
 }
-function _temp26(tool_5, i_9, arr) {
+function _temp26(tool_5: ToolCallByType, i_9: number, arr: readonly unknown[]) {
   return <Box key={i_9} marginLeft={1}><Text>{branchPrefix(i_9, arr)} {tool_5.name}: </Text><Text dimColor={true}>calls {formatTokens(tool_5.callTokens)}, results{" "}{formatTokens(tool_5.resultTokens)}</Text></Box>;
 }
-function _temp25(t0) {
+function _temp25(t0: [string, SkillFrontmatterInfo[]]) {
   const [sourceDisplay_0, sourceSkills] = t0;
   return <Box key={sourceDisplay_0} flexDirection="column" marginTop={1}><Text dimColor={true}>{sourceDisplay_0}</Text>{sourceSkills.map(_temp24)}</Box>;
 }
-function _temp24(skill, i_8, arr) {
+function _temp24(
+  skill: SkillFrontmatterInfo,
+  i_8: number,
+  arr: readonly unknown[],
+) {
   return <Box key={i_8}><Text>{branchPrefix(i_8, arr)} {skill.name}: </Text><Text dimColor={true}>{formatTokens(skill.tokens)} tokens</Text></Box>;
 }
-function _temp23(file, i_7, arr) {
+function _temp23(file: MemoryFileInfo, i_7: number, arr: readonly unknown[]) {
   return <Box key={i_7}><Text>{branchPrefix(i_7, arr)} {getDisplayPath(file.path)}: </Text><Text dimColor={true}>{formatTokens(file.tokens)} tokens</Text></Box>;
 }
-function _temp22(t0) {
+function _temp22(t0: [string, AgentInfo[]]) {
   const [sourceDisplay, sourceAgents] = t0;
   return <Box key={sourceDisplay} flexDirection="column" marginTop={1}><Text dimColor={true}>{sourceDisplay}</Text>{sourceAgents.map(_temp21)}</Box>;
 }
-function _temp21(agent, i_6, arr) {
+function _temp21(agent: AgentInfo, i_6: number, arr: readonly unknown[]) {
   return <Box key={i_6}><Text>{branchPrefix(i_6, arr)} {agent.agentType}: </Text><Text dimColor={true}>{formatTokens(agent.tokens)} tokens</Text></Box>;
 }
-function _temp20(section, i_5, arr) {
+function _temp20(
+  section: SystemPromptSectionInfo,
+  i_5: number,
+  arr: readonly unknown[],
+) {
   return <Box key={i_5}><Text>{branchPrefix(i_5, arr)} {section.name}: </Text><Text dimColor={true}>{formatTokens(section.tokens)} tokens</Text></Box>;
 }
-function _temp19(tool_4, i_4, arr) {
+function _temp19(
+  tool_4: DeferredBuiltinToolInfo,
+  i_4: number,
+  arr: readonly unknown[],
+) {
   return <Box key={i_4}><Text dimColor={true}>{branchPrefix(i_4, arr)} {tool_4.name}</Text></Box>;
 }
-function _temp18(t_4) {
+function _temp18(t_4: DeferredBuiltinToolInfo) {
   return !t_4.isLoaded;
 }
-function _temp17(t_5) {
+function _temp17(t_5: DeferredBuiltinToolInfo) {
   return !t_5.isLoaded;
 }
-function _temp16(tool_3, i_3, arr) {
+function _temp16(
+  tool_3: DeferredBuiltinToolInfo,
+  i_3: number,
+  arr: readonly unknown[],
+) {
   return <Box key={`def-${i_3}`}><Text>{branchPrefix(i_3, arr)} {tool_3.name}: </Text><Text dimColor={true}>{formatTokens(tool_3.tokens)} tokens</Text></Box>;
 }
-function _temp15(t_3) {
+function _temp15(t_3: DeferredBuiltinToolInfo) {
   return t_3.isLoaded;
 }
-function _temp14(tool_2, i_2, arr) {
+function _temp14(tool_2: SystemToolInfo, i_2: number, arr: readonly unknown[]) {
   return <Box key={`sys-${i_2}`}><Text>{branchPrefix(i_2, arr)} {tool_2.name}: </Text><Text dimColor={true}>{formatTokens(tool_2.tokens)} tokens</Text></Box>;
 }
-function _temp13(tool_1, i_1, arr) {
+function _temp13(tool_1: McpToolInfo, i_1: number, arr: readonly unknown[]) {
   return <Box key={i_1}><Text>{branchPrefix(i_1, arr)} {tool_1.name}: </Text><Text dimColor={true}>{formatTokens(tool_1.tokens)} tokens</Text></Box>;
 }
-function _temp12(tool_0, i_0, arr) {
+function _temp12(tool_0: McpToolInfo, i_0: number, arr: readonly unknown[]) {
   return <Box key={i_0}><Text dimColor={true}>{branchPrefix(i_0, arr)} {tool_0.name}</Text></Box>;
 }
-function _temp11(t_1) {
+function _temp11(t_1: McpToolInfo) {
   return !t_1.isLoaded;
 }
-function _temp10(t_2) {
+function _temp10(t_2: McpToolInfo) {
   return !t_2.isLoaded;
 }
-function _temp1(tool, i, arr) {
+function _temp1(tool: McpToolInfo, i: number, arr: readonly unknown[]) {
   return <Box key={i}><Text>{branchPrefix(i, arr)} {tool.name}: </Text><Text dimColor={true}>{formatTokens(tool.tokens)} tokens</Text></Box>;
 }
-function _temp0(t) {
+function _temp0(t: McpToolInfo) {
   return t.isLoaded;
 }
-function _temp9(t_0) {
+function _temp9(t_0: McpToolInfo) {
   return t_0.isLoaded;
 }
-function _temp8(c_0) {
+function _temp8(c_0: ContextCategory) {
   return c_0.name === "Free space";
 }
-function _temp7(c) {
+function _temp7(c: ContextCategory) {
   return c.name === "Free space";
 }
-function _temp6(c_1) {
+function _temp6(c_1: ContextCategory) {
   return c_1.name === "Free space";
 }
-function _temp5(row, rowIndex) {
+function _temp5(row: GridSquare[], rowIndex: number) {
   return <Box key={rowIndex} flexDirection="row">{row.map(_temp4)}</Box>;
 }
-function _temp4(square, colIndex) {
+function _temp4(square: GridSquare, colIndex: number) {
   if (square.categoryName === "Free space") {
     return <Text key={colIndex} dimColor={true}>{"\u26F6 "}</Text>;
   }
@@ -487,12 +542,12 @@ function _temp4(square, colIndex) {
   }
   return <Text key={colIndex} color={square.color}>{square.squareFullness >= 0.7 ? "\u26C1 " : "\u26C0 "}</Text>;
 }
-function _temp3(cat_1) {
+function _temp3(cat_1: ContextCategory) {
   return cat_1.name === RESERVED_CATEGORY_NAME;
 }
-function _temp2(cat_0) {
+function _temp2(cat_0: ContextCategory) {
   return cat_0.isDeferred && cat_0.name.includes("MCP");
 }
-function _temp(cat) {
+function _temp(cat: ContextCategory) {
   return cat.tokens > 0 && cat.name !== "Free space" && cat.name !== RESERVED_CATEGORY_NAME && !cat.isDeferred;
 }
