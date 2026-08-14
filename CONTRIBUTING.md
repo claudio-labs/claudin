@@ -100,7 +100,7 @@ Good PRs usually include:
 - the user or developer impact
 - the exact checks you ran
 
-If the PR touches UI, terminal presentation, or the VS Code extension, include screenshots when useful.
+If the PR touches UI or terminal presentation, include screenshots when useful.
 
 If the PR changes provider behavior, mention which provider path was tested.
 

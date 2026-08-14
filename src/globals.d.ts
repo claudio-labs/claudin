@@ -21,6 +21,4 @@ declare const MACRO: {
   readonly PACKAGE_URL: string
   /** npm package name of the native binary distribution, if one exists. */
   readonly NATIVE_PACKAGE_URL: string | undefined
-  /** Version of the bundled VS Code extension. */
-  readonly IDE_EXTENSION_VERSION: string
 }

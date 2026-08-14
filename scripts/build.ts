@@ -15,11 +15,6 @@ import { noTelemetryPlugin } from './no-telemetry-plugin'
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 const version = pkg.version
 
-const ideExtensionPkg = JSON.parse(
-  readFileSync('./vscode-extension/claudin-vscode/package.json', 'utf-8'),
-)
-const ideExtensionVersion = ideExtensionPkg.version
-
 // Feature flags for the open build.
 // Most Anthropic-internal features stay off; open-build features can be
 // selectively enabled here when their full source exists in the mirror.
@@ -302,7 +297,6 @@ const result = await Bun.build({
     ),
     'MACRO.PACKAGE_URL': JSON.stringify('@claudiolabs/claudin'),
     'MACRO.NATIVE_PACKAGE_URL': 'undefined',
-    'MACRO.IDE_EXTENSION_VERSION': JSON.stringify(ideExtensionVersion),
   },
   plugins: [
     noTelemetryPlugin,

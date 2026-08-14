@@ -35,14 +35,13 @@ source changes**. Validated with `bun install`, `bun run build`,
   configured `clientMaxWindowBits`. Inert here: nothing in the repo sets
   `perMessageDeflate`/`*MaxWindowBits`, and our ws use is client-side
   (`src/services/voiceStreamSTT.ts`, `src/services/mcp/mcpWebSocketTransport.ts`,
-  `src/cli/transports/WebSocketTransport.ts`) plus the VS Code extension's
-  `WebSocketServer` on ws defaults (deflate off by default server-side).
+  `src/cli/transports/WebSocketTransport.ts`).
 
-**Gap worth knowing:** `.github/dependabot.yml` only watches `directory: "/"`,
-so `vscode-extension/claudin-vscode/` (its own `package.json` + `bun.lock`,
-`ws: ^8.18.0`) is **never bumped by Dependabot**. Its caret range floats on a
-fresh install, so it is not stale in practice — but a pinned or security-critical
-dep there would be. Add a second `bun` entry for that directory if that changes.
+**Superseded 2026-08-14:** this note used to flag that `.github/dependabot.yml`
+only watches `directory: "/"`, leaving the nested `vscode-extension/claudin-vscode/`
+package unbumped. That directory was deleted (the fork no longer ships a VS Code
+extension), so `/` is now the only manifest and the gap is closed. Re-add a second
+`bun` entry only if another nested `package.json` appears.
 
 See [[dependabot-bumps-2026-08-03-no-code-changes]] for the previous batch and
 [[incremental-bun-install-misses-nested-deps]] for the install footgun.
