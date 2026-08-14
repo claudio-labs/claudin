@@ -198,21 +198,23 @@ the redirect.
 
 ## Module Map
 
-Approximate `.ts(x)` counts in `(N)` — the big dirs (`utils`, `components`,
-`tools`, `services`) are where most code lives, so always Grep/Glob inside them
-rather than reading broadly. Cross-refs point to the rule that owns that subsystem.
+Approximate `.ts(x)` counts in `(N)`, measured 2026-08-14 — the big dirs
+(`services`, `components`, `tools`) are where most code lives, so always
+Grep/Glob inside them rather than reading broadly. Cross-refs point to the rule
+that owns that subsystem.
 
 ```
 src/
-├── entrypoints/ (12)            ← cli.tsx: process entry — fast-paths --version, defers heavy imports
+├── entrypoints/ (16)            ← cli.tsx: process entry — fast-paths --version, defers heavy imports
 ├── QueryEngine.ts               ← agent loop: model drive, tool dispatch, streaming, compaction
 ├── query.ts                     ← query helpers, SDKMessage types (see also query/ for config/deps)
-├── query/ (4)                   ← config.ts, deps.ts, stopHooks.ts, tokenBudget.ts
+├── query/ (7)                   ← config.ts, deps.ts, stopHooks.ts, tokenBudget.ts
 ├── context.ts                   ← getSystemContext/getUserContext: the memoized system-prompt
-│                                  context blocks (git status, dir structure). NOT src/context/
+│                                  context blocks (git status, dir structure). NOT src/context/,
+│                                  and NOT services/context/ (token accounting) — three different things
 ├── Tool.ts                      ← central type system: Tool, Tools, ToolUseContext, buildTool()
 ├── tools.ts                     ← dynamic tool registry (sandbox/plan/coordinator/MCP-aware)
-├── tools/ (326)                 ← built-in tools, one dir per tool
+├── tools/ (469)                 ← built-in tools, one dir per tool
 │   ├── BashTool/                ← shell execution, permissions, sandbox
 │   ├── FileReadTool/ FileEditTool/ FileWriteTool/ NotebookEditTool/  ← file IO
 │   ├── GrepTool/ GlobTool/      ← ripgrep + glob wrappers
@@ -225,7 +227,7 @@ src/
 │   ├── WorkflowTool/ SkillTool/ MonitorTool/ ScheduleCronTool/  ← workflow
 │   ├── EnterWorktreeTool/ ExitWorktreeTool/  ← worktree (safety → agent-safety.md)
 │   └── shared/                  ← cross-tool helpers
-├── services/ (298)
+├── services/ (832)              ← one dir per subsystem; the reorg moved most of src/utils here
 │   ├── api/                     ← provider abstraction (start here for provider issues)
 │   │   ├── client.ts            ← SDK builder for all providers
 │   │   ├── activeProvider.ts    ← active provider resolver
@@ -238,41 +240,51 @@ src/
 │   ├── cache/                   ← prompt/tool-result cache policy (→ cache.md)
 │   ├── tools/                   ← toolExecution, toolResultCache, cacheInvalidation (→ cache.md)
 │   ├── mcp/                     ← MCP client + server connection mgmt; mcpServerApproval trust dialog
+│   ├── session/                 ← sessionStorage, resume/restore, conversationRecovery, spill dirs
+│   ├── config/                  ← config.ts (getGlobalConfig/saveGlobalConfig), claudinMigration
+│   ├── permissions/             ← permission rules, always-allow, classifier approvals
+│   ├── plugins/                 ← plugin discovery, install, marketplace
+│   ├── bash/                    ← bash parsing, command splitting, shell snapshots
+│   ├── lifecycleHooks/          ← Claude Code lifecycle hooks (PreToolUse …) — NOT src/hooks/, which is React
+│   ├── context/                 ← token accounting + context-window math — NOT src/context/, which is React
+│   ├── instructions/            ← claudemd.ts: AGENTS.md/CLAUDE.md + .claudin/rules/*.md loader
+│   ├── git/ shell/ messages/ attachments/ settings/ install/ computerUse/  ← moved subsystems
 │   ├── compact/                 ← conversation compaction + sessionMemoryCompact
 │   ├── extractMemories/ SessionMemory/ teamMemorySync/  ← auto-memory subsystem
 │   ├── oauth/                   ← token store, PKCE, callback server (reused by all OAuth providers)
 │   ├── lsp/                     ← LSP client service
 │   ├── github/ settingsSync/ policyLimits/ tips/ wiki/  ← misc services
 │   └── analytics/               ← GrowthBook, logEvent (telemetry stubbed at build time)
-├── commands/ (219)             ← slash commands (/provider, /review, /plan, /resume, /mcp …); registry in src/commands.ts
-├── components/ (459)           ← Ink React TUI components (→ ink-tui.md; some are committed React-Compiler output)
+├── commands/ (224)             ← slash commands (/provider, /review, /plan, /resume, /mcp …); registry in src/commands.ts
+├── components/ (481)           ← Ink React TUI components (→ ink-tui.md; some are committed React-Compiler output)
 ├── ink/ (109)                  ← the forked Ink renderer: screen.ts, log-update, stringWidth, ScrollBox (→ ink-tui.md)
 ├── native-ts/ (5)              ← TS ports to avoid native addons: yoga-layout, color-diff, file-index
-├── screens/ (32)               ← REPL.tsx (main loop), ResumeConversation, StartupScreen
-├── hooks/ (118)                ← React hooks, file suggestions, prompt-suggestion ghost, notifs
+├── screens/ (36)               ← REPL.tsx (main loop), ResumeConversation, StartupScreen
+├── hooks/ (117)                ← React hooks only (use*) — lifecycle hooks are services/lifecycleHooks/
 ├── context/ (9) state/ (8)     ← React context providers + AppState store (getState/selectors).
 │                                 The TUI providers only — the system-prompt context is src/context.ts
-├── keybindings/ (14)           ← keybinding parser, defaultBindings, loadUserBindings, match
+│                                 and the token accounting is services/context/
+├── keybindings/ (15)           ← keybinding parser, defaultBindings, loadUserBindings, match
 ├── outputFilter/ (51)          ← command-aware Bash output filter (noise stripping/rewrites)
 ├── main/ (44)                  ← boot sequence: bootContext, argvPreparse, action, commands
-├── cli/ (40)                   ← headless -p / print mode, ndjson, exit handling
-├── coordinator/ (3)            ← multi-agent coordinator (COORDINATOR_MODE flag)
-├── tasks/ (13)                 ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
-├── memdir/ (14)                ← auto-memory dir I/O (project-local <repo>/.claudin/memory/ by default)
+├── cli/ (51)                   ← headless -p / print mode, ndjson, exit handling
+├── coordinator/ (39)           ← multi-agent coordinator (COORDINATOR_MODE flag)
+├── tasks/ (27)                 ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
+├── memdir/ (20)                ← auto-memory dir I/O (project-local <repo>/.claudin/memory/ by default)
 ├── skills/ (27)                ← user-invocable skills (/<name>); bundled/ + /create authoring
 ├── migrations/ (11)            ← one-time settings/model migrations (migrateFennecToOpus …)
 ├── bridge/ (32)                ← bridge mode (BRIDGE_MODE flag; largely gated/stubbed)
-├── constants/ (36) types/ (12) ← shared constants + types
-├── utils/ (846)               ← the catch-all; key anchors:
+├── constants/ (40) types/ (22) ← shared constants + types
+├── utils/ (292)                ← primitives only since the reorg — a subsystem here is a bug:
+│   ├── data/ (26)              ← pure data helpers
+│   ├── fs/ (35)                ← path.ts, glob.ts, ripgrep.ts, textEncoding.ts, file IO
+│   ├── proc/ (19)              ← Shell.ts, execFileNoThrow, process helpers
+│   ├── text/ (14)              ← string/format helpers
+│   ├── model/ (42)             ← model.ts (getPrimaryModel, getContextWindowForModel),
+│   │                             providers.ts (getAPIProvider). Stays here on purpose — see testing.md
 │   ├── errors.ts               ← ClaudeError, AbortError, isAbortError, isENOENT, isSdk* guards
-│   ├── log.ts                  ← logError, logForDebugging
-│   ├── config.ts               ← getGlobalConfig, saveGlobalConfig
-│   ├── model/model.ts          ← getPrimaryModel, getSmallFastModel, getContextWindowForModel
-│   ├── model/providers.ts      ← getAPIProvider, isFirstPartyAnthropicBaseUrl
-│   ├── providerProfiles.ts     ← ProviderPreset union + getProviderPresetDefaults
-│   ├── claudinMigration.ts     ← ~/.claude ↔ ~/.claudin one-time migration
-│   ├── Shell.ts envUtils.ts path.ts  ← exec wrapper, env helpers, path expansion
-│   └── claudemd.ts             ← AGENTS.md/CLAUDE.md + .claudin/rules/*.md loader (rule path matching)
+│   ├── log.ts theme.ts envUtils.ts  ← logError/logForDebugging, theme, env helpers
+│   └── (~121 loose files left at the root — the next slice of the same cleanup)
 └── bootstrap/
     └── state.ts                ← getSessionId, getIsNonInteractiveSession, cwd helpers
 ```
@@ -375,6 +387,12 @@ Grep pattern="z\.object\(\|z\.string\(\|z\.union\(" type="ts" output_mode="files
 2. Check `src/services/config/config.ts` → `getGlobalConfig()` for stored profile
 3. Check `src/services/api/providerConfig.ts` for preset definitions
 4. Run `/provider doctor` from inside the REPL after `bun run dev`
+
+### "This used to be in src/utils/ — where is it now?"
+
+`scripts/reorg/manifest.ts` records every one of the 708 destinations the reorg
+used, so it answers the question directly. Failing that, `git log --follow
+--diff-filter=R -- <old-path>` finds the rename.
 
 ### Debugging tool output
 
