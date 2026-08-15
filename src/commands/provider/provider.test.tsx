@@ -13,12 +13,12 @@ const SYNC_START = '\x1B[?2026h'
 const SYNC_END = '\x1B[?2026l'
 
 const realGithubModelsCredentials = { ...(await import(
-  'src/services/api/githubModelsCredentials.js'
+  'src/providers/oauth/githubModelsCredentials.js'
 )) }
 
 afterAll(() => {
   mock.module(
-    'src/services/api/githubModelsCredentials.js',
+    'src/providers/oauth/githubModelsCredentials.js',
     () => realGithubModelsCredentials,
   )
 })
@@ -130,7 +130,7 @@ test('buildProviderManagerCompletion skips provider reminder when manager is can
 })
 
 test('GithubDeviceFlowStep renders setup menu when no stored token exists', async () => {
-  mock.module('src/services/api/githubModelsCredentials.js', () => ({
+  mock.module('src/providers/oauth/githubModelsCredentials.js', () => ({
     ...realGithubModelsCredentials,
     readGithubModelsToken: () => undefined,
   }))
@@ -152,7 +152,7 @@ test('GithubDeviceFlowStep renders setup menu when no stored token exists', asyn
 })
 
 test('GithubDeviceFlowStep renders already-authed screen when a token is stored', async () => {
-  mock.module('src/services/api/githubModelsCredentials.js', () => ({
+  mock.module('src/providers/oauth/githubModelsCredentials.js', () => ({
     ...realGithubModelsCredentials,
     readGithubModelsToken: () => 'stored-copilot-token',
   }))
@@ -174,12 +174,12 @@ test('GithubDeviceFlowStep renders already-authed screen when a token is stored'
 })
 
 const realProviderProfilesForFinalize = { ...(await import(
-  'src/services/api/providerProfiles.js'
+  'src/providers/presets/providerProfiles.js'
 )) }
 
 afterAll(() => {
   mock.module(
-    'src/services/api/providerProfiles.js',
+    'src/providers/presets/providerProfiles.js',
     () => realProviderProfilesForFinalize,
   )
 })
@@ -194,7 +194,7 @@ function mockProviderProfilesForFinalize(options: {
   const addProviderProfile = mock(() => ({ id: 'profile_saved' }))
   const updateProviderProfile = mock(() => ({ id: 'profile_saved' }))
   const setActiveProviderProfile = mock(() => null)
-  mock.module('src/services/api/providerProfiles.js', () => ({
+  mock.module('src/providers/presets/providerProfiles.js', () => ({
     ...realProviderProfilesForFinalize,
     getProviderProfiles: () => options.profiles,
     addProviderProfile,
@@ -310,7 +310,7 @@ test('persistCopilotProfile reports failure when the profile cannot be saved', a
   const addProviderProfile = mock(() => null)
   const updateProviderProfile = mock(() => null)
   const setActiveProviderProfile = mock(() => null)
-  mock.module('src/services/api/providerProfiles.js', () => ({
+  mock.module('src/providers/presets/providerProfiles.js', () => ({
     ...realProviderProfilesForFinalize,
     getProviderProfiles: () => [],
     addProviderProfile,

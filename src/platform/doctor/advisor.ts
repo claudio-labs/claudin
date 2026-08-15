@@ -1,6 +1,6 @@
 import type { BetaUsage } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { shouldIncludeFirstPartyOnlyBetas } from 'src/services/api/betas.js'
+import { shouldIncludeFirstPartyOnlyBetas } from 'src/providers/transport/betas.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 

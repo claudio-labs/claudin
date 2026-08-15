@@ -7,7 +7,7 @@ const originalEnv = { ...process.env }
 // restores see the original bindings, not a later mock factory's exports.
 const realEnvUtilsForUserTest = { ...(await import('src/shared/envUtils.js')) }
 const realConfigForUserTest = { ...(await import('src/platform/config/config.js')) }
-const realAuthForUserTest = { ...(await import('src/services/auth/auth.js')) }
+const realAuthForUserTest = { ...(await import('src/providers/auth/auth.js')) }
 const realBootstrapStateForUserTest = { ...(await import('src/platform/bootstrap/state.js')) }
 const realCwdForUserTest = { ...(await import('src/shared/fs/cwd.js')) }
 const realEnvForUserTest = { ...(await import('src/shared/env.js')) }
@@ -24,7 +24,7 @@ function installCommonMocks(options?: {
     getSessionId: () => 'session-test',
   }))
 
-  mock.module('src/services/auth/auth.js', () => ({
+  mock.module('src/providers/auth/auth.js', () => ({
     getOauthAccountInfo: () =>
       options?.oauthEmail
         ? {
@@ -78,7 +78,7 @@ afterEach(() => {
 afterAll(() => {
   mock.module('src/platform/config/config.js', () => realConfigForUserTest)
   mock.module('./envUtils.js', () => realEnvUtilsForUserTest)
-  mock.module('src/services/auth/auth.js', () => realAuthForUserTest)
+  mock.module('src/providers/auth/auth.js', () => realAuthForUserTest)
   mock.module('src/platform/bootstrap/state.js', () => realBootstrapStateForUserTest)
   mock.module('src/shared/fs/cwd.js', () => realCwdForUserTest)
   mock.module('./env.js', () => realEnvForUserTest)

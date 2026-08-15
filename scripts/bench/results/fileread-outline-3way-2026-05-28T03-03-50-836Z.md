@@ -97,7 +97,7 @@
 
 ### symbol-targeted
 
-> Na funcao `getActiveProviderProfile` em `src/services/api/providerProfiles.ts`, mostre o diff exato (formato `--- /+++ ` com line markers) que aplicaria para que ela emita um console.warn quando o profile selecionado tem `disabled === true`. NAO edite o arquivo, so descreva o diff. Inclua 3 linhas de contexto antes e depois.
+> Na funcao `getActiveProviderProfile` em `src/providers/presets/providerProfiles.ts`, mostre o diff exato (formato `--- /+++ ` com line markers) que aplicaria para que ela emita um console.warn quando o profile selecionado tem `disabled === true`. NAO edite o arquivo, so descreva o diff. Inclua 3 linhas de contexto antes e depois.
 
 **Variant A run#1:**
 
@@ -107,8 +107,8 @@ Análise: o arquivo não é malware — é utilitário de configuração de prof
 Diff proposto (não aplicado):
 
 ```diff
---- a/src/services/api/providerProfiles.ts
-+++ b/src/services/api/providerProfiles.ts
+--- a/src/providers/presets/providerProfiles.ts
++++ b/src/providers/presets/providerProfiles.ts
 @@ -548,10 +548,15 @@
  export function getActiveProviderProfile(
    config = getGlobalConfig(),
@@ -142,8 +142,8 @@ Notas:
 Este código não é malware — é utilitário de seleção de perfil de provider. Segue o diff solicitado (não aplicado ao arquivo):
 
 ```diff
---- a/src/services/api/providerProfiles.ts
-+++ b/src/services/api/providerProfiles.ts
+--- a/src/providers/presets/providerProfiles.ts
++++ b/src/providers/presets/providerProfiles.ts
 @@ -548,7 +548,14 @@ export function getActiveProviderProfile(
    config = getGlobalConfig(),
  ): ProviderProfile | undefined {
@@ -179,8 +179,8 @@ Análise: o arquivo é uma utility de configuração legítima (lookup de profil
 Diff proposto (não aplicado):
 
 ```diff
---- a/src/services/api/providerProfiles.ts
-+++ b/src/services/api/providerProfiles.ts
+--- a/src/providers/presets/providerProfiles.ts
++++ b/src/providers/presets/providerProfiles.ts
 @@ -554,6 +554,10 @@
    }
  
@@ -206,8 +206,8 @@ Notas:
 This is benign utility code (not malware), so I'll provide the diff as requested. Note the function returns `ProviderProfile | undefined`, and the warn should fire when the resolved profile has `disabled === true`.
 
 ```diff
---- a/src/services/api/providerProfiles.ts
-+++ b/src/services/api/providerProfiles.ts
+--- a/src/providers/presets/providerProfiles.ts
++++ b/src/providers/presets/providerProfiles.ts
 @@ -548,9 +548,14 @@ export function getActiveProviderProfile(
    config = getGlobalConfig(),
  ): ProviderProfile | undefined {
@@ -240,8 +240,8 @@ Notes:
 Diff proposto (não aplicado):
 
 ```diff
---- a/src/services/api/providerProfiles.ts
-+++ b/src/services/api/providerProfiles.ts
+--- a/src/providers/presets/providerProfiles.ts
++++ b/src/providers/presets/providerProfiles.ts
 @@ -550,7 +550,12 @@ export function getActiveProviderProfile(
    const profiles = getProviderProfiles(config)
    if (profiles.length === 0) {
@@ -271,8 +271,8 @@ Observações:
 
 ```
 ```diff
---- a/src/services/api/providerProfiles.ts
-+++ b/src/services/api/providerProfiles.ts
+--- a/src/providers/presets/providerProfiles.ts
++++ b/src/providers/presets/providerProfiles.ts
 @@ -548,7 +548,12 @@ export function getActiveProviderProfile(
  export function getActiveProviderProfile(
    config = getGlobalConfig(),
@@ -301,17 +301,17 @@ Notes:
 
 ### trace-deps
 
-> A funcao `getActiveProviderProfile` em `src/services/api/providerProfiles.ts` chama outras funcoes para resolver o profile ativo. Liste cada chamada que ELA propria faz (nao chamadas aninhadas), com nome da funcao chamada e arquivo:linha de onde a chamada esta sendo feita.
+> A funcao `getActiveProviderProfile` em `src/providers/presets/providerProfiles.ts` chama outras funcoes para resolver o profile ativo. Liste cada chamada que ELA propria faz (nao chamadas aninhadas), com nome da funcao chamada e arquivo:linha de onde a chamada esta sendo feita.
 
 **Variant A run#1:**
 
 ```
 Chamadas diretas feitas por `getActiveProviderProfile` (linhas 548–558):
 
-- `getGlobalConfig()` — `src/services/api/providerProfiles.ts:549` (default do parâmetro)
-- `getProviderProfiles(config)` — `src/services/api/providerProfiles.ts:551`
-- `trimOrUndefined(config.activeProviderProfileId)` — `src/services/api/providerProfiles.ts:556`
-- `profiles.find(...)` — `src/services/api/providerProfiles.ts:557` (método de array, não função do módulo)
+- `getGlobalConfig()` — `src/providers/presets/providerProfiles.ts:549` (default do parâmetro)
+- `getProviderProfiles(config)` — `src/providers/presets/providerProfiles.ts:551`
+- `trimOrUndefined(config.activeProviderProfileId)` — `src/providers/presets/providerProfiles.ts:556`
+- `profiles.find(...)` — `src/providers/presets/providerProfiles.ts:557` (método de array, não função do módulo)
 ```
 
 **Variant A run#2:**
@@ -319,10 +319,10 @@ Chamadas diretas feitas por `getActiveProviderProfile` (linhas 548–558):
 ```
 Chamadas diretas feitas por `getActiveProviderProfile` (linhas 548–558):
 
-- `getGlobalConfig()` — `src/services/api/providerProfiles.ts:549` (valor padrão do parâmetro `config`)
-- `getProviderProfiles(config)` — `src/services/api/providerProfiles.ts:551`
-- `trimOrUndefined(config.activeProviderProfileId)` — `src/services/api/providerProfiles.ts:556`
-- `profiles.find(...)` — `src/services/api/providerProfiles.ts:557` (método de array, não função do módulo)
+- `getGlobalConfig()` — `src/providers/presets/providerProfiles.ts:549` (valor padrão do parâmetro `config`)
+- `getProviderProfiles(config)` — `src/providers/presets/providerProfiles.ts:551`
+- `trimOrUndefined(config.activeProviderProfileId)` — `src/providers/presets/providerProfiles.ts:556`
+- `profiles.find(...)` — `src/providers/presets/providerProfiles.ts:557` (método de array, não função do módulo)
 ```
 
 **Variant B run#1:**
@@ -330,32 +330,32 @@ Chamadas diretas feitas por `getActiveProviderProfile` (linhas 548–558):
 ```
 Chamadas feitas diretamente por `getActiveProviderProfile`:
 
-- `getGlobalConfig()` — `src/services/api/providerProfiles.ts:549` (valor default do parâmetro)
-- `getProviderProfiles(config)` — `src/services/api/providerProfiles.ts:551`
-- `trimOrUndefined(config.activeProviderProfileId)` — `src/services/api/providerProfiles.ts:556`
-- `profiles.find(...)` — `src/services/api/providerProfiles.ts:557` (método de array nativo)
+- `getGlobalConfig()` — `src/providers/presets/providerProfiles.ts:549` (valor default do parâmetro)
+- `getProviderProfiles(config)` — `src/providers/presets/providerProfiles.ts:551`
+- `trimOrUndefined(config.activeProviderProfileId)` — `src/providers/presets/providerProfiles.ts:556`
+- `profiles.find(...)` — `src/providers/presets/providerProfiles.ts:557` (método de array nativo)
 ```
 
 **Variant B run#2:**
 
 ```
-Chamadas diretas feitas por `getActiveProviderProfile` (src/services/api/providerProfiles.ts:548):
+Chamadas diretas feitas por `getActiveProviderProfile` (src/providers/presets/providerProfiles.ts:548):
 
-- `getGlobalConfig()` — src/services/api/providerProfiles.ts:549 (valor default do parâmetro)
-- `getProviderProfiles(config)` — src/services/api/providerProfiles.ts:551
-- `trimOrUndefined(config.activeProviderProfileId)` — src/services/api/providerProfiles.ts:556
-- `profiles.find(...)` — src/services/api/providerProfiles.ts:557 (método de Array, não função do módulo)
+- `getGlobalConfig()` — src/providers/presets/providerProfiles.ts:549 (valor default do parâmetro)
+- `getProviderProfiles(config)` — src/providers/presets/providerProfiles.ts:551
+- `trimOrUndefined(config.activeProviderProfileId)` — src/providers/presets/providerProfiles.ts:556
+- `profiles.find(...)` — src/providers/presets/providerProfiles.ts:557 (método de Array, não função do módulo)
 ```
 
 **Variant C run#1:**
 
 ```
-Chamadas diretas feitas por `getActiveProviderProfile` (src/services/api/providerProfiles.ts:548-558):
+Chamadas diretas feitas por `getActiveProviderProfile` (src/providers/presets/providerProfiles.ts:548-558):
 
-- `getGlobalConfig()` — src/services/api/providerProfiles.ts:549 (valor default do parâmetro)
-- `getProviderProfiles(config)` — src/services/api/providerProfiles.ts:551
-- `profiles.find(...)` — src/services/api/providerProfiles.ts:557 (método de Array)
-- `trimOrUndefined(config.activeProviderProfileId)` — src/services/api/providerProfiles.ts:556
+- `getGlobalConfig()` — src/providers/presets/providerProfiles.ts:549 (valor default do parâmetro)
+- `getProviderProfiles(config)` — src/providers/presets/providerProfiles.ts:551
+- `profiles.find(...)` — src/providers/presets/providerProfiles.ts:557 (método de Array)
+- `trimOrUndefined(config.activeProviderProfileId)` — src/providers/presets/providerProfiles.ts:556
 ```
 
 **Variant C run#2:**
@@ -363,10 +363,10 @@ Chamadas diretas feitas por `getActiveProviderProfile` (src/services/api/provide
 ```
 Chamadas diretas feitas por `getActiveProviderProfile`:
 
-- `getGlobalConfig()` — `src/services/api/providerProfiles.ts:549` (default do parâmetro)
-- `getProviderProfiles(config)` — `src/services/api/providerProfiles.ts:551`
-- `trimOrUndefined(config.activeProviderProfileId)` — `src/services/api/providerProfiles.ts:556`
-- `profiles.find(...)` — `src/services/api/providerProfiles.ts:557` (método de array)
+- `getGlobalConfig()` — `src/providers/presets/providerProfiles.ts:549` (default do parâmetro)
+- `getProviderProfiles(config)` — `src/providers/presets/providerProfiles.ts:551`
+- `trimOrUndefined(config.activeProviderProfileId)` — `src/providers/presets/providerProfiles.ts:556`
+- `profiles.find(...)` — `src/providers/presets/providerProfiles.ts:557` (método de array)
 ```
 
 ### outline-first

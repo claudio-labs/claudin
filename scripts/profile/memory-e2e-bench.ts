@@ -161,7 +161,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #7 sessionIngress
   try {
-    const mod = await import('../../src/services/api/sessionIngress.js')
+    const mod = await import('../../src/providers/transport/sessionIngress.js')
     if (typeof mod._getLastUuidMapSize === 'function') {
       out['sessionIngress.lastUuidMap'] = mod._getLastUuidMapSize()
     }
@@ -324,16 +324,16 @@ async function measureStages(): Promise<BootstrapStage[]> {
     await import('../../src/platform/config/config.js')
   })
   await stage('03 services/api/providerConfig', async () => {
-    await import('../../src/services/api/providerConfig.js')
+    await import('../../src/providers/presets/providerConfig.js')
   })
   await stage('04 services/api/client', async () => {
-    await import('../../src/services/api/client.js')
+    await import('../../src/providers/transport/client.js')
   })
   await stage('05 services/api/openaiShim', async () => {
-    await import('../../src/services/api/openaiShim.js')
+    await import('../../src/providers/shims/openaiShim.js')
   })
   await stage('06 services/api/claude', async () => {
-    await import('../../src/services/api/claude.js')
+    await import('../../src/providers/shims/claude.js')
   })
   await stage('07 services/mcp/client', async () => {
     await import('../../src/services/mcp/client.js')
@@ -397,7 +397,7 @@ async function measureStages(): Promise<BootstrapStage[]> {
 
   // Phase C: provoke heavy graphs — MCP connect server cache, skill loading etc.
   await stage('17 activeProvider resolve', async () => {
-    const mod = await import('../../src/services/api/activeProvider.js')
+    const mod = await import('../../src/providers/presets/activeProvider.js')
     try {
       mod.tryGetActiveProvider()
     } catch {}

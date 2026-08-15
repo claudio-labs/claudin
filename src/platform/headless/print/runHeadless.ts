@@ -49,7 +49,7 @@ import {
 } from 'src/services/session/sessionStart.js'
 import { settingsChangeDetector } from 'src/platform/settings/changeDetector.js'
 import { applySettingsChange } from 'src/platform/settings/applySettingsChange.js'
-import { isFastModeEnabled } from 'src/utils/fastMode.js'
+import { isFastModeEnabled } from 'src/providers/fastMode.js'
 import { restoreAgentFromSession } from 'src/services/session/sessionRestore.js'
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import {
@@ -60,7 +60,7 @@ import {
 import {
   isQualifiedForGrove,
   checkGroveForNonInteractive,
-} from 'src/services/api/grove.js'
+} from 'src/platform/privacy/grove.js'
 import { saveAgentSetting } from 'src/services/session/sessionStorage.js'
 import { getMainThreadAgentType } from 'src/platform/bootstrap/state.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'

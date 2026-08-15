@@ -327,10 +327,10 @@ Grep pattern="export function myFunction\|export const myFunction" type="ts"
 
 ```
 # Start at activeProvider.ts — it's the central resolver
-Read src/services/api/activeProvider.ts
+Read src/providers/presets/activeProvider.ts
 
 # For shim logic:
-Grep pattern="'openai_compat'\|'gemini'\|'mistral'" path="src/services/api/openaiShim.ts"
+Grep pattern="'openai_compat'\|'gemini'\|'mistral'" path="src/providers/shims/openaiShim.ts"
 ```
 
 ### "Which feature flags exist?"
@@ -383,9 +383,9 @@ Grep pattern="z\.object\(\|z\.string\(\|z\.union\(" type="ts" output_mode="files
 
 ### Debugging provider issues
 
-1. Start at `src/services/api/activeProvider.ts` → `tryGetActiveProvider()`
+1. Start at `src/providers/presets/activeProvider.ts` → `tryGetActiveProvider()`
 2. Check `src/platform/config/config.ts` → `getGlobalConfig()` for stored profile
-3. Check `src/services/api/providerConfig.ts` for preset definitions
+3. Check `src/providers/presets/providerConfig.ts` for preset definitions
 4. Run `/provider doctor` from inside the REPL after `bun run dev`
 
 ### "This used to be in src/utils/ — where is it now?"

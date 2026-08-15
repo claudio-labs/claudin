@@ -2078,7 +2078,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
 
   // Resolve auth
   const { clearOAuthTokenCache, checkAndRefreshOAuthTokenIfNeeded } =
-    await import('src/services/auth/auth.js')
+    await import('src/providers/auth/auth.js')
   const { getBridgeAccessToken, getBridgeBaseUrl } = await import(
     'src/platform/bridge/bridgeConfig.js'
   )
@@ -2322,7 +2322,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
   const machineName = hostname()
   const bridgeId = randomUUID()
 
-  const { handleOAuth401Error } = await import('src/services/auth/auth.js')
+  const { handleOAuth401Error } = await import('src/providers/auth/auth.js')
   const api = createBridgeApiClient({
     baseUrl,
     getAccessToken: getBridgeAccessToken,

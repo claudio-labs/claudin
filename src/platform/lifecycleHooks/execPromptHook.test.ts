@@ -18,8 +18,8 @@ type CapturedQuery = {
 let nextResponseText = '{"ok": true}'
 let lastQuery: CapturedQuery | undefined
 
-const realClaude = await import('src/services/api/claude.js')
-mock.module('src/services/api/claude.js', () => ({
+const realClaude = await import('src/providers/shims/claude.js')
+mock.module('src/providers/shims/claude.js', () => ({
   ...realClaude,
   queryModelWithoutStreaming: async (query: CapturedQuery) => {
     lastQuery = query
@@ -39,7 +39,7 @@ const { execPromptHook, buildStopConditionJudgePrompt } = await import(
 // `mock.module` is process-global and `mock.restore()` does not undo it, so
 // without this every later test file would inherit this file's stub.
 afterAll(() => {
-  mock.module('src/services/api/claude.js', () => realClaude)
+  mock.module('src/providers/shims/claude.js', () => realClaude)
 })
 
 function makeToolUseContext(): ToolUseContext {

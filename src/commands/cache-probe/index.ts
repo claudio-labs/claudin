@@ -1,5 +1,5 @@
 import type { Command } from 'src/commands.js'
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 
 const cacheProbe: Command = {
   type: 'local',

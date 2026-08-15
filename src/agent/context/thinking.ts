@@ -193,7 +193,7 @@ export function modelRequiresAdaptiveThinking(model: string): boolean {
 /**
  * Whether this model *would* use adaptive thinking (`thinking: { type:
  * 'adaptive' }`) when thinking is on. Mirrors the model/env side of the gate in
- * src/services/api/claude/streaming.ts (do not change that selection here —
+ * src/providers/shims/claude/streaming.ts (do not change that selection here —
  * this is a display-only helper). It deliberately does NOT decide whether
  * thinking is enabled at all (config/`thinkingConfig.type`); callers must
  * already know thinking is on (e.g. the spinner only shows the verb while
@@ -215,7 +215,7 @@ export function modelWouldUseAdaptiveThinking(model: string): boolean {
  * visible answer token by ~2s). Opt out — falling back to budget mode — by
  * setting CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING to a falsy value (0/false/no/off).
  * Both the display helper here and the real request selection in
- * src/services/api/claude/streaming.ts read this, so they stay in sync.
+ * src/providers/shims/claude/streaming.ts read this, so they stay in sync.
  */
 export function isAdaptiveThinkingEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING)

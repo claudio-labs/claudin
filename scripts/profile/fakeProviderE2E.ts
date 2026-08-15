@@ -11,7 +11,7 @@
  * engine.submitMessage() N times; the fake deps.callModel pops the
  * next TurnScript entry on each call.
  *
- * Shape mirrors what src/services/api/claude.ts yields:
+ * Shape mirrors what src/providers/shims/claude.ts yields:
  *   - message_start stream_event (with ttftMs)
  *   - content_block_start/delta/stop events
  *   - message_delta stream_event (with stop_reason + usage)
@@ -26,7 +26,7 @@
  */
 
 import { randomUUID } from 'crypto'
-import type { queryModelWithStreaming } from '../../src/services/api/claude.js'
+import type { queryModelWithStreaming } from '../../src/providers/shims/claude.js'
 
 // --- TurnScript DSL ---
 

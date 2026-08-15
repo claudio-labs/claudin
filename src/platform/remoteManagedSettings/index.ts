@@ -20,7 +20,7 @@ import {
   checkAndRefreshOAuthTokenIfNeeded,
   getAnthropicApiKeyWithSource,
   getClaudeAIOAuthTokens,
-} from 'src/services/auth/auth.js'
+} from 'src/providers/auth/auth.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { classifyAxiosError, getErrnoCode } from 'src/shared/errors.js'
@@ -31,8 +31,8 @@ import {
 } from 'src/platform/settings/types.js'
 import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
-import { getRetryDelay } from 'src/services/api/withRetry.js'
+import { getClaudeCodeUserAgent } from 'src/providers/transport/userAgent.js'
+import { getRetryDelay } from 'src/providers/transport/withRetry.js'
 import {
   checkManagedSettingsSecurity,
   handleSecurityCheckResult,

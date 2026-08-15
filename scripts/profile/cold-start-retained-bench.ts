@@ -169,7 +169,7 @@ const PROBES: Probe[] = [
   },
   {
     name: 'openaiShim',
-    importExpr: `await import('./src/services/api/openaiShim.ts')`,
+    importExpr: `await import('./src/providers/shims/openaiShim.ts')`,
     description: 'OpenAI-compatible translator (~2.2k LoC).',
   },
   {

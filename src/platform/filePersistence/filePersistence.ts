@@ -16,7 +16,7 @@ import {
 import {
   type FilesApiConfig,
   uploadSessionFiles,
-} from 'src/services/api/filesApi.js'
+} from 'src/providers/transport/filesApi.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'

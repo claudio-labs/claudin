@@ -5,7 +5,7 @@ import { getOrCreateUserID } from 'src/platform/config/config.js'
 import { logError } from 'src/shared/log.js'
 import { getCanonicalName } from 'src/utils/model/model.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import { MODEL_COSTS } from 'src/services/api/modelCost.js'
+import { MODEL_COSTS } from 'src/providers/usage/modelCost.js'
 import { isAnalyticsDisabled } from 'src/platform/analytics/config.js'
 import { getEventMetadata } from 'src/platform/analytics/metadata.js'
 

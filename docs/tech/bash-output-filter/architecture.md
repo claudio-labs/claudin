@@ -111,7 +111,7 @@ src/outputFilter/Bash/
 1. **One file per command family**, not per command. `git.ts` exports 5 specs that share `^git\b` infrastructure. This keeps each file 50–150 LoC and the module flat.
 2. **All specs statically imported.** Total spec data <8 KB; lazy-loading complicates the bundler with no runtime win.
 3. **Tests colocated** per `.claudin/rules/testing.md` ("Tests are colocated as `*.test.ts(x)` next to the code they cover"). No `__tests__/` subdir — that's only used in claudin for cross-cutting tests at `src/__tests__/`.
-4. **Fixtures in `__fixtures__/`** (singular) matching the existing precedent at `src/services/api/__fixtures__/`.
+4. **Fixtures in `__fixtures__/`** (singular) matching the existing precedent at `src/providers/usage/__fixtures__/`.
 5. **No subclasses, no plugins.** A custom-code filter (e.g. `tsc` parsing, JSON reformat) is a v2 native parser — see §17.
 6. **No standalone `safety.ts`/`analytics.ts`/`debug.ts`/`parse.ts`.** Each was <30 LoC; inline at callers (review §"Over-engineering #2-6").
 

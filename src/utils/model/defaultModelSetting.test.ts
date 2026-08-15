@@ -14,7 +14,7 @@ import { resetModelStringsForTestingOnly } from 'src/platform/bootstrap/state.js
 // exercise the REAL getDefaultMainLoopModelSetting + isOpus1mMergeEnabled.
 
 const realProviders = { ...(await import('src/utils/model/providers.js')) }
-const realAuth = { ...(await import('src/services/auth/auth.js')) }
+const realAuth = { ...(await import('src/providers/auth/auth.js')) }
 const realContext = { ...(await import('src/agent/context/context.js')) }
 
 async function importSetting(opts: {
@@ -25,7 +25,7 @@ async function importSetting(opts: {
     ...realProviders,
     getAPIProvider: () => 'firstParty',
   }))
-  mock.module('src/services/auth/auth.js', () => ({
+  mock.module('src/providers/auth/auth.js', () => ({
     ...realAuth,
     isMaxSubscriber: () => opts.max,
     isTeamPremiumSubscriber: () => opts.teamPremium,
@@ -54,7 +54,7 @@ afterEach(() => {
 
 afterAll(() => {
   mock.module('./providers.js', () => realProviders)
-  mock.module('src/services/auth/auth.js', () => realAuth)
+  mock.module('src/providers/auth/auth.js', () => realAuth)
   mock.module('src/agent/context/context.js', () => realContext)
 })
 

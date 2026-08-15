@@ -10,9 +10,9 @@
  * fails or hasn't completed yet, so nothing regresses offline.
  */
 
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { COPILOT_HEADERS } from 'src/services/api/openaiShim/constants.js'
-import { getGithubEndpointType } from 'src/services/api/providerConfig.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { COPILOT_HEADERS } from 'src/providers/shims/openaiShim/constants.js'
+import { getGithubEndpointType } from 'src/providers/presets/providerConfig.js'
 import { onGlobalConfigChange } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import {

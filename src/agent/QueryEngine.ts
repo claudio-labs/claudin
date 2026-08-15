@@ -14,15 +14,15 @@ import type {
   SDKStatus,
   SDKUserMessageReplay,
 } from 'src/platform/entrypoints/agentSdkTypes.js'
-import { accumulateUsage, updateUsage } from 'src/services/api/claude.js'
+import { accumulateUsage, updateUsage } from 'src/providers/shims/claude.js'
 import {
   applyStableStubs,
   pruneOldToolResults,
   pruneToolResultsByBytes,
 } from 'src/agent/compact/stableStubState.js'
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
-import type { NonNullableUsage } from 'src/services/api/logging.js'
-import { EMPTY_USAGE } from 'src/services/api/logging.js'
+import type { NonNullableUsage } from 'src/providers/transport/logging.js'
+import { EMPTY_USAGE } from 'src/providers/transport/logging.js'
 import stripAnsi from 'strip-ansi'
 import type { Command } from 'src/commands.js'
 import { getSlashCommandToolSkills } from 'src/commands.js'
@@ -39,7 +39,7 @@ import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import { loadMemoryPrompt } from 'src/memdir/memdir.js'
 import { hasAutoMemPathOverride } from 'src/memdir/paths.js'
 import { query } from 'src/agent/query.js'
-import { categorizeRetryableAPIError } from 'src/services/api/errors.js'
+import { categorizeRetryableAPIError } from 'src/providers/transport/errors.js'
 import type { MCPServerConnection } from 'src/services/mcp/types.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import { type Tools, type ToolUseContext, toolMatchesName } from 'src/Tool.js'
@@ -53,7 +53,7 @@ import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { getFastModeState } from 'src/utils/fastMode.js'
+import { getFastModeState } from 'src/providers/fastMode.js'
 import {
   type FileHistoryState,
   fileHistoryEnabled,

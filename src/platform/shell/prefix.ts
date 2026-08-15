@@ -14,8 +14,8 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/platform/analytics/index.js'
-import { queryHaiku } from 'src/services/api/claude.js'
-import { startsWithApiErrorPrefix } from 'src/services/api/errors.js'
+import { queryHaiku } from 'src/providers/shims/claude.js'
+import { startsWithApiErrorPrefix } from 'src/providers/transport/errors.js'
 import { memoizeWithLRU } from 'src/shared/data/memoize.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'

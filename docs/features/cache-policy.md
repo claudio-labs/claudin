@@ -102,8 +102,8 @@ src/agent/cache/
 Key mechanism pointers (full list in `src/agent/cache/README.md`):
 
 - `src/agent/compact/stableStubState.ts` — stable stubs, first-write-wins byte registry, age prune, RSS byte-guard, **`getClipFrontierIndex`**
-- `src/services/api/claude/paramBuilders.ts` — `addCacheBreakpoints`: defer-2048 walk capped at `min(defer, frontier)`
-- `src/services/api/claude/streaming.ts` — wiring order: pairing → stable stubs → history redactions → frontier → breakpoints
+- `src/providers/shims/claude/paramBuilders.ts` — `addCacheBreakpoints`: defer-2048 walk capped at `min(defer, frontier)`
+- `src/providers/shims/claude/streaming.ts` — wiring order: pairing → stable stubs → history redactions → frontier → breakpoints
 - `src/agent/compact/microCompact.ts` — explicit clips; size trigger profile-gated (0.5 aggressive / 0.85 retain)
 
 ## Smaller design wins riding the same invariants
@@ -114,7 +114,7 @@ Key mechanism pointers (full list in `src/agent/cache/README.md`):
 
 ## Observability — how to tell it's working
 
-- **Built-in break detection** (`src/services/api/promptCacheBreakDetection.ts`): every request's prompt state is hashed per-section (system, tools, per-message); when `cache_read` drops unexpectedly, the detector classifies the break — *client-side* (which section's bytes changed, with a diff written to disk) vs *likely server-side* ("prompt unchanged, <5min gap"). This is how the ~63k reset was root-caused to server eviction rather than a Claudin bug.
+- **Built-in break detection** (`src/providers/cache/promptCacheBreakDetection.ts`): every request's prompt state is hashed per-section (system, tools, per-message); when `cache_read` drops unexpectedly, the detector classifies the break — *client-side* (which section's bytes changed, with a diff written to disk) vs *likely server-side* ("prompt unchanged, <5min gap"). This is how the ~63k reset was root-caused to server eviction rather than a Claudin bug.
 - **Wire dumps for deep debugging**: `CLAUDIN_DUMP_CACHE_ANNOTATIONS` logs every `cache_control` annotation actually sent (marker position, TTL); `CLAUDIN_DUMP_PREFIX_HASHES` dumps block-level hashes per request to diff the exact mutating block across turns.
 - **In-session**: `/cost` prices cache reads/writes per the actually-served model.
 - **Reproducing the numbers**: `scripts/profile/cache-lockstep-bench.ts` is the reliable harness (one user turn per file via `--input-format stream-json` — identical pacing by construction). `cache-ab-bench.ts` exists but is exploratory-only; don't cite its numbers.

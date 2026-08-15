@@ -18,9 +18,9 @@
 import { logEvent } from 'src/platform/analytics/index.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
-import { OAuthService } from 'src/services/oauth/index.js'
+import { OAuthService } from 'src/providers/oauth/index.js'
 import { installOAuthTokens } from 'src/platform/headless/handlers/auth.js'
-import { getAccountInformation } from 'src/services/auth/auth.js'
+import { getAccountInformation } from 'src/providers/auth/auth.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import type {
   HeadlessStreamingContext,

@@ -11,8 +11,8 @@ import {
   type ContentReplacementState,
   reconstructContentReplacementState,
 } from 'src/agent/tools/toolResultStorage.js'
-import { resetPromptCacheBreakDetection } from 'src/services/api/promptCacheBreakDetection.js'
-import { clearAllSessions } from 'src/services/api/sessionIngress.js'
+import { resetPromptCacheBreakDetection } from 'src/providers/cache/promptCacheBreakDetection.js'
+import { clearAllSessions } from 'src/providers/transport/sessionIngress.js'
 import { diagnosticTracker } from 'src/platform/diagnosticTracking.js'
 import { clearSessionMessagesCache } from 'src/services/session/sessionStorage.js'
 import { clearBetaTracingState } from 'src/platform/telemetry/betaSessionTracing.js'

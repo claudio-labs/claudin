@@ -45,7 +45,7 @@ const MAX_PROMPTS = Number(process.env.CLAUDIN_BENCH_PROMPTS ?? '0')
 const PROMPTS: { id: string; text: string }[] = [
   {
     id: 'explain-openai-shim',
-    text: 'Explique como o openaiShim traduz tool calls do formato Anthropic para o formato OpenAI Chat Completions. Leia os arquivos relevantes em src/services/api/openaiShim/ e me de uma explicacao final coesa.',
+    text: 'Explique como o openaiShim traduz tool calls do formato Anthropic para o formato OpenAI Chat Completions. Leia os arquivos relevantes em src/providers/shims/openaiShim/ e me de uma explicacao final coesa.',
   },
   {
     id: 'explain-auto-memory',
@@ -53,7 +53,7 @@ const PROMPTS: { id: string; text: string }[] = [
   },
   {
     id: 'explain-provider-resolution',
-    text: 'Como o Claudin resolve qual provider/SDK usar a partir do profile ativo? Leia src/services/api/activeProvider.ts e client.ts e explique o caminho de decisao.',
+    text: 'Como o Claudin resolve qual provider/SDK usar a partir do profile ativo? Leia src/providers/presets/activeProvider.ts e client.ts e explique o caminho de decisao.',
   },
 ]
 

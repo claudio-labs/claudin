@@ -298,7 +298,7 @@ describe('latch call sites pass the subagent scan context', () => {
   })
 
   test('queryModel marks sidechain query sources as subagent', () => {
-    const src = sourceAt('../services/api/claude/streaming.ts')
+    const src = sourceAt('../providers/shims/claude/streaming.ts')
     expect(src).toContain('maybeLatchLegacyDeferredAnnouncement(messages, {')
     expect(src).toContain('options.querySource.startsWith("agent:")')
     expect(src).toContain('options.querySource === "hook_agent"')

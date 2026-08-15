@@ -14,8 +14,8 @@ import type { CacheSafeParams } from 'src/agent/coordinator/forkedAgent.js'
 import { logError } from 'src/shared/log.js'
 import { tokenCountWithEstimation } from 'src/agent/context/tokens.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { getMaxOutputTokensForModel } from 'src/services/api/claude.js'
-import { notifyCompaction } from 'src/services/api/promptCacheBreakDetection.js'
+import { getMaxOutputTokensForModel } from 'src/providers/shims/claude.js'
+import { notifyCompaction } from 'src/providers/cache/promptCacheBreakDetection.js'
 import { setLastSummarizedMessageId } from 'src/services/SessionMemory/sessionMemoryUtils.js'
 import {
   buildPostCompactMessages,

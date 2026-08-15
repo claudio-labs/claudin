@@ -27,7 +27,7 @@ import {
   parseUserSpecifiedModel,
 } from 'src/utils/model/model.js'
 import { getModelMaxOutputTokens, modelSupports1M } from 'src/agent/context/context.js'
-import { isFastModeSupportedByModel } from 'src/utils/fastMode.js'
+import { isFastModeSupportedByModel } from 'src/providers/fastMode.js'
 import {
   modelRequiresAdaptiveThinking,
   modelSupportsAdaptiveThinking,
@@ -39,7 +39,7 @@ import {
   modelSupportsMaxEffort,
   modelSupportsXhighEffort,
 } from 'src/utils/effort.js'
-import { COST_TIER_5_25, MODEL_COSTS } from 'src/services/api/modelCost.js'
+import { COST_TIER_5_25, MODEL_COSTS } from 'src/providers/usage/modelCost.js'
 import { CLAUDE_OPUS_5_CONFIG } from 'src/utils/model/configs.js'
 
 // Opus 5 shares Fable 5 / Sonnet 5's request-shaping profile (adaptive thinking

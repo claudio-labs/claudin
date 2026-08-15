@@ -4,7 +4,7 @@ import { logError } from 'src/shared/log.js'
 import {
   getActiveProviderProfile,
   getProfileModelOptions,
-} from 'src/services/api/providerProfiles.js'
+} from 'src/providers/presets/providerProfiles.js'
 
 /**
  * Returns the set of model IDs available on the active provider profile,

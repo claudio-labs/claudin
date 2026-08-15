@@ -1,5 +1,5 @@
 import { getHostPlatformForAnalytics } from 'src/shared/env.js'
-import { type CompletionType, logUnaryEvent } from 'src/services/api/unaryLogging.js'
+import { type CompletionType, logUnaryEvent } from 'src/providers/transport/unaryLogging.js'
 import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
 
 export function logUnaryPermissionEvent(

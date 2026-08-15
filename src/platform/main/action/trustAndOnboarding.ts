@@ -19,7 +19,7 @@ import { refreshGrowthBookAfterAuthChange } from 'src/platform/analytics/growthb
 import { refreshPolicyLimits } from 'src/platform/policyLimits/index.js';
 import { refreshRemoteManagedSettings } from 'src/platform/remoteManagedSettings/index.js';
 import { isCustomAgent } from 'src/tools/AgentTool/loadAgentsDir.js';
-import { validateForceLoginOrg } from 'src/services/auth/auth.js';
+import { validateForceLoginOrg } from 'src/providers/auth/auth.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { resetUserCache } from 'src/shared/user.js';
 import type { Root } from 'src/terminal/ink.js';
@@ -171,11 +171,11 @@ export async function runTrustAndOnboarding(
   // the user through provider selection twice when they intentionally
   // skipped during Onboarding.
   try {
-    const { getActiveProviderProfile, getProviderProfiles } = await import('src/services/api/providerProfiles.js');
+    const { getActiveProviderProfile, getProviderProfiles } = await import('src/providers/presets/providerProfiles.js');
     const hasProfiles = getProviderProfiles().length > 0 || Boolean(getActiveProviderProfile());
     if (!hasProfiles && !onboardingShown) {
       const { showSetupDialog } = await import('src/terminal/interactiveHelpers.js');
-      const { ProviderManager } = await import('src/components/ProviderManager.js');
+      const { ProviderManager } = await import('src/providers/ui/ProviderManager.js');
       await showSetupDialog<void>(root, done => (
         React.createElement(ProviderManager, {
           mode: 'first-run' as const,
@@ -192,7 +192,7 @@ export async function runTrustAndOnboarding(
   // banner itself is rendered by Ink (<StartupBanner /> in REPL.tsx) so it
   // scrolls naturally into scrollback as content grows.
   try {
-    const { tryGetActiveProvider } = await import('src/services/api/activeProvider.js');
+    const { tryGetActiveProvider } = await import('src/providers/presets/activeProvider.js');
     if (tryGetActiveProvider() && process.stdout.isTTY && process.env.CLAUDIN_CLEAR_ON_START === '1') {
       const { clearTerminal } = await import('src/terminal/ink/clearTerminal.js');
       process.stdout.write(clearTerminal);

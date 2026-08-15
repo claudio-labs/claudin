@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, test, mock } from 'bun:test'
 import { resetModelStringsForTestingOnly } from 'src/platform/bootstrap/state.js'
 
 const realProviders = await import('src/utils/model/providers.js')
-const realAuth = await import('src/services/auth/auth.js')
+const realAuth = await import('src/providers/auth/auth.js')
 const realAccess = await import('src/utils/model/check1mAccess.js')
 const realModel = await import('src/utils/model/model.js')
 
@@ -31,7 +31,7 @@ async function importMaxPicker(opts: {
     ...realProviders,
     getAPIProvider: () => 'firstParty',
   }))
-  mock.module('src/services/auth/auth.js', () => ({
+  mock.module('src/providers/auth/auth.js', () => ({
     ...realAuth,
     isClaudeAISubscriber: () => true,
     isMaxSubscriber: () => true,

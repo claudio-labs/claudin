@@ -1,7 +1,7 @@
 import type { CoordinateMode, CuSubGates } from '@ant/computer-use-mcp/types'
 
 import { getDynamicConfig_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { getSubscriptionType } from 'src/services/auth/auth.js'
+import { getSubscriptionType } from 'src/providers/auth/auth.js'
 
 type ChicagoConfig = CuSubGates & {
   enabled: boolean

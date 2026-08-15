@@ -33,7 +33,7 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
-import { appendSystemContext, prependUserContext } from 'src/services/api/api.js'
+import { appendSystemContext, prependUserContext } from 'src/providers/transport/api.js'
 import { getClaudeMdDelta } from 'src/services/instructions/claudeMdDelta.js'
 import { getGitStatusDelta } from 'src/services/git/gitStatusDelta.js'
 import { stableStringify } from 'src/shared/data/stableStringify.js'
@@ -495,7 +495,7 @@ describe('static-dedup integration: end-to-end savings', () => {
 
 /**
  * Real production pipeline: call the exact `appendSystemContext` and
- * `prependUserContext` functions used by `src/services/api/claude.ts`
+ * `prependUserContext` functions used by `src/providers/shims/claude.ts`
  * before every request and verify the static-dedup keys are stripped.
  *
  * `prependUserContext` early-returns when NODE_ENV === 'test' (a guard
@@ -505,7 +505,7 @@ describe('static-dedup integration: end-to-end savings', () => {
 describe('static-dedup integration: production injection functions', () => {
   // Minimal SystemPrompt-branded empty array for calling
   // appendSystemContext. Matches the shape of production callers in
-  // src/services/api/claude.ts when the dynamic-boundary split yields
+  // src/providers/shims/claude.ts when the dynamic-boundary split yields
   // an empty prefix half.
   const EMPTY_SYSTEM_PROMPT = [] as unknown as Parameters<
     typeof appendSystemContext

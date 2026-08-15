@@ -35,7 +35,7 @@ import type {
   HasKey,
 } from 'src/types/typeAssertions.js'
 import type { NonNullableUsage } from 'src/platform/entrypoints/sdk/sdkUtilityTypes.js'
-import { EMPTY_USAGE } from 'src/services/api/emptyUsage.js'
+import { EMPTY_USAGE } from 'src/providers/usage/emptyUsage.js'
 
 // --- the two documented deviations from a plain BetaUsage mapping ----------
 

@@ -30,7 +30,7 @@ import {
 import { notifyCommandLifecycle } from 'src/utils/commandLifecycle.js'
 import { notifySessionStateChanged } from 'src/services/session/sessionState.js'
 import { getInMemoryErrors, logError } from 'src/shared/log.js'
-import { EMPTY_USAGE } from 'src/services/api/logging.js'
+import { EMPTY_USAGE } from 'src/providers/transport/logging.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { mergeFileStateCaches } from 'src/shared/fs/fileStateCache.js'

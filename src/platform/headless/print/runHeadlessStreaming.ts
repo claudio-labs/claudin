@@ -60,11 +60,11 @@ import {
 } from 'src/shared/proc/gracefulShutdown.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { createIdleTimeoutManager } from 'src/platform/idleTimeout.js'
-import { AwsAuthStatusManager } from 'src/services/api/awsAuthStatusManager.js'
+import { AwsAuthStatusManager } from 'src/providers/oauth/awsAuthStatusManager.js'
 import {
   statusListeners,
   type ClaudeAILimits,
-} from 'src/services/claudeAiLimits.js'
+} from 'src/providers/claudeAiLimits.js'
 import { toSDKRateLimitInfo } from 'src/agent/messages/mappers.js'
 import { createModelSwitchBreadcrumbs } from 'src/agent/messages/messages.js'
 import { LOCAL_COMMAND_STDOUT_TAG, TICK_TAG } from 'src/constants/xml.js'
@@ -80,8 +80,8 @@ import {
   EFFORT_LEVELS,
 } from 'src/utils/effort.js'
 import { modelSupportsAdaptiveThinking } from 'src/agent/context/thinking.js'
-import { modelSupportsAutoMode } from 'src/services/api/betas.js'
-import { isFastModeSupportedByModel } from 'src/utils/fastMode.js'
+import { modelSupportsAutoMode } from 'src/providers/transport/betas.js'
+import { isFastModeSupportedByModel } from 'src/providers/fastMode.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { skillChangeDetector } from 'src/skills/skillChangeDetector.js'
 import { getCommands, clearCommandsCache } from 'src/commands.js'

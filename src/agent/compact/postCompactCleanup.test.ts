@@ -19,11 +19,11 @@ import {
 import {
   resetPromptCacheBreakDetection,
   _getSourceCountForTesting,
-} from 'src/services/api/promptCacheBreakDetection.js'
+} from 'src/providers/cache/promptCacheBreakDetection.js'
 import {
   clearAllSessions,
   _getSessionCountForTesting,
-} from 'src/services/api/sessionIngress.js'
+} from 'src/providers/transport/sessionIngress.js'
 
 // Helper: build a user message containing a tool_result
 function makeToolResultMessage(id: string, content: string) {

@@ -3,10 +3,10 @@ import * as React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { Text } from 'src/terminal/ink.js';
-import { getRateLimitWarning, getUsingOverageText } from 'src/services/claudeAiLimits.js';
-import { useClaudeAiLimits } from 'src/services/claudeAiLimitsHook.js';
-import { getSubscriptionType } from 'src/services/auth/auth.js';
-import { hasClaudeAiBillingAccess } from 'src/services/api/billing.js';
+import { getRateLimitWarning, getUsingOverageText } from 'src/providers/claudeAiLimits.js';
+import { useClaudeAiLimits } from 'src/providers/claudeAiLimitsHook.js';
+import { getSubscriptionType } from 'src/providers/auth/auth.js';
+import { hasClaudeAiBillingAccess } from 'src/providers/usage/billing.js';
 import { getIsRemoteMode } from 'src/platform/bootstrap/state.js';
 export function useRateLimitWarningNotification(model: string) {
   const $ = _c(17);

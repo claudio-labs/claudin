@@ -5,11 +5,11 @@ import { type OptionWithDescription, Select } from 'src/terminal/custom-select/s
 import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { logEvent } from 'src/platform/analytics/index.js';
-import { useClaudeAiLimits } from 'src/services/claudeAiLimitsHook.js';
+import { useClaudeAiLimits } from 'src/providers/claudeAiLimitsHook.js';
 import type { ToolUseContext } from 'src/Tool.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
-import { getOauthAccountInfo, getRateLimitTier, getSubscriptionType } from 'src/services/auth/auth.js';
-import { hasClaudeAiBillingAccess } from 'src/services/api/billing.js';
+import { getOauthAccountInfo, getRateLimitTier, getSubscriptionType } from 'src/providers/auth/auth.js';
+import { hasClaudeAiBillingAccess } from 'src/providers/usage/billing.js';
 import { call as extraUsageCall } from 'src/commands/extra-usage/extra-usage.js';
 import { extraUsage } from 'src/commands/extra-usage/index.js';
 import upgrade from 'src/commands/upgrade/index.js';

@@ -13,7 +13,7 @@ import {
   setDeferredDeltaLegacySession,
 } from 'src/platform/bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
@@ -36,7 +36,7 @@ import {
   TOOL_TOKEN_COUNT_OVERHEAD,
 } from 'src/agent/context/analyzeContext.js'
 import { count } from 'src/shared/data/array.js'
-import { getMergedBetas } from 'src/services/api/betas.js'
+import { getMergedBetas } from 'src/providers/transport/betas.js'
 import { getContextWindowForModel } from 'src/agent/context/context.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'

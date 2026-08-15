@@ -103,14 +103,14 @@ import {
 import {
   getMaxOutputTokensForModel,
   queryModelWithStreaming,
-} from 'src/services/api/claude.js'
+} from 'src/providers/shims/claude.js'
 import {
   getPromptTooLongTokenGap,
   PROMPT_TOO_LONG_ERROR_MESSAGE,
   startsWithApiErrorPrefix,
-} from 'src/services/api/errors.js'
-import { notifyCompaction } from 'src/services/api/promptCacheBreakDetection.js'
-import { getRetryDelay } from 'src/services/api/withRetry.js'
+} from 'src/providers/transport/errors.js'
+import { notifyCompaction } from 'src/providers/cache/promptCacheBreakDetection.js'
+import { getRetryDelay } from 'src/providers/transport/withRetry.js'
 import {
   roughTokenCountEstimation,
   roughTokenCountEstimationForMessages,

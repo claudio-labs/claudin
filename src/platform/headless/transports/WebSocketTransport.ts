@@ -5,11 +5,11 @@ import { CircularBuffer } from 'src/shared/data/CircularBuffer.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { getWebSocketTLSOptions } from 'src/services/api/mtls.js'
+import { getWebSocketTLSOptions } from 'src/providers/transport/mtls.js'
 import {
   getWebSocketProxyAgent,
   getWebSocketProxyUrl,
-} from 'src/services/api/proxy.js'
+} from 'src/providers/transport/proxy.js'
 import {
   registerSessionActivityCallback,
   unregisterSessionActivityCallback,

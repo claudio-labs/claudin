@@ -5,7 +5,7 @@ import {
   getOauthAccountInfo,
   getRateLimitTier,
   getSubscriptionType,
-} from 'src/services/auth/auth.js'
+} from 'src/providers/auth/auth.js'
 import { getGlobalConfig, getOrCreateUserID } from 'src/platform/config/config.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { type env, getHostPlatformForAnalytics } from 'src/shared/env.js'

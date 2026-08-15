@@ -11,7 +11,7 @@ import { afterEach, beforeEach, expect, test, mock } from 'bun:test'
 // (getCurrentProjectConfig / providerProfiles / state) into every later test file
 // (e.g. modelOptions.dualcontext). See CLAUDE.md mock.module rules.
 const realState = { ...(await import('src/platform/bootstrap/state.js')) }
-const realProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
+const realProfiles = { ...(await import('src/providers/presets/providerProfiles.js')) }
 const realConfig = { ...(await import('src/platform/config/config.js')) }
 const realAllowlist = { ...(await import('src/utils/model/modelAllowlist.js')) }
 
@@ -24,7 +24,7 @@ async function importWithProjectModel(activeModelForProject: string | undefined)
     ...realState,
     getMainLoopModelOverride: () => undefined, // no session/CLI override → read project config
   }))
-  mock.module('src/services/api/providerProfiles.js', () => ({
+  mock.module('src/providers/presets/providerProfiles.js', () => ({
     ...realProfiles,
     getActiveProviderProfile: () => undefined, // effective id undefined → matches undefined pin
   }))
@@ -49,7 +49,7 @@ afterEach(() => {
   // Re-install the real modules — mock.restore() leaves mock.module() overrides
   // in place, which would otherwise leak into later test files.
   mock.module('src/platform/bootstrap/state.js', () => realState)
-  mock.module('src/services/api/providerProfiles.js', () => realProfiles)
+  mock.module('src/providers/presets/providerProfiles.js', () => realProfiles)
   mock.module('src/platform/config/config.js', () => realConfig)
   mock.module('./modelAllowlist.js', () => realAllowlist)
   if (origDisable1m === undefined) delete process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT

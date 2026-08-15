@@ -14,7 +14,7 @@ import { renderToString } from 'src/terminal/render/staticRender.js'
 // detectProvider reads from getActiveProvider(). Spread the real module so
 // other consumers' shapes survive Bun's process-global mock; restore in
 // afterAll to avoid leaks.
-const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
+const realActiveProvider = { ...(await import('src/providers/presets/activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
 
 type ResolvedProvider = ReturnType<typeof realActiveProvider.getActiveProvider> | null
@@ -28,7 +28,7 @@ const realEffort = { ...(await import('src/utils/effort.js')) }
 const realEffortSnapshot = { ...realEffort }
 let effortOverride: ReturnType<typeof realEffort.getInitialEffortSetting> | undefined
 
-mock.module('src/services/api/activeProvider.js', () => ({
+mock.module('src/providers/presets/activeProvider.js', () => ({
   ...realActiveProviderSnapshot,
   tryGetActiveProvider: () => resolvedOverride,
 }))
@@ -40,7 +40,7 @@ mock.module('src/utils/effort.js', () => ({
 }))
 
 afterAll(() => {
-  mock.module('src/services/api/activeProvider.js', () => realActiveProviderSnapshot)
+  mock.module('src/providers/presets/activeProvider.js', () => realActiveProviderSnapshot)
   mock.module('src/utils/effort.js', () => realEffortSnapshot)
   mock.module('src/utils/effort.js', () => realEffortSnapshot)
 })

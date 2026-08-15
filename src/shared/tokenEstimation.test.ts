@@ -9,11 +9,11 @@ import {
   roughTokenCountEstimationForCountRequest,
   roughTokenCountEstimationForFileType,
 } from 'src/shared/tokenEstimation.js'
-import { invalidateClientCache } from 'src/services/api/clientCache.js'
+import { invalidateClientCache } from 'src/providers/transport/clientCache.js'
 
 const realModel = { ...(await import('src/utils/model/model.js')) }
-const realClient = { ...(await import('src/services/api/client.js')) }
-const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
+const realClient = { ...(await import('src/providers/transport/client.js')) }
+const realActiveProvider = { ...(await import('src/providers/presets/activeProvider.js')) }
 
 function setActiveModel(name: string): void {
   mock.module('src/utils/model/model.js', () => ({
@@ -37,15 +37,15 @@ function restoreModelModule(): void {
 
 afterEach(() => {
   restoreModelModule()
-  mock.module('src/services/api/client.js', () => realClient)
-  mock.module('src/services/api/activeProvider.js', () => realActiveProvider)
+  mock.module('src/providers/transport/client.js', () => realClient)
+  mock.module('src/providers/presets/activeProvider.js', () => realActiveProvider)
   __resetMemoizedRatiosForTests()
 })
 
 afterAll(() => {
   mock.module('src/utils/model/model.js', () => realModel)
-  mock.module('src/services/api/client.js', () => realClient)
-  mock.module('src/services/api/activeProvider.js', () => realActiveProvider)
+  mock.module('src/providers/transport/client.js', () => realClient)
+  mock.module('src/providers/presets/activeProvider.js', () => realActiveProvider)
 })
 
 describe('roughTokenCountEstimation — model-aware', () => {
@@ -185,7 +185,7 @@ describe('countTokensViaHaikuFallback — uses free countTokens, not paid messag
     const createSpy = mock(async () => {
       throw new Error('messages.create must NOT be called for token counting')
     })
-    mock.module('src/services/api/client.js', () => ({
+    mock.module('src/providers/transport/client.js', () => ({
       getAnthropicClient: async () => ({
         beta: {
           messages: {
@@ -195,7 +195,7 @@ describe('countTokensViaHaikuFallback — uses free countTokens, not paid messag
         },
       }),
     }))
-    mock.module('src/services/api/activeProvider.js', () => ({
+    mock.module('src/providers/presets/activeProvider.js', () => ({
       ...realActiveProvider,
       tryGetActiveProvider: () => ({ transport: 'anthropic' }),
       getAPIProvider: () => 'anthropic',
@@ -219,7 +219,7 @@ describe('countTokensViaHaikuFallback — client without a counting endpoint', (
       throw new Error('messages.create must NOT be called for token counting')
     })
     // Shim-shaped client: beta.messages exists but has no countTokens method.
-    mock.module('src/services/api/client.js', () => ({
+    mock.module('src/providers/transport/client.js', () => ({
       getAnthropicClient: async () => ({
         beta: {
           messages: {
@@ -228,7 +228,7 @@ describe('countTokensViaHaikuFallback — client without a counting endpoint', (
         },
       }),
     }))
-    mock.module('src/services/api/activeProvider.js', () => ({
+    mock.module('src/providers/presets/activeProvider.js', () => ({
       ...realActiveProvider,
       tryGetActiveProvider: () => ({ transport: 'openai_compat' }),
       getAPIProvider: () => 'openai',

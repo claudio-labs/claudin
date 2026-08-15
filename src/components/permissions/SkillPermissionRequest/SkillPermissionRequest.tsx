@@ -8,7 +8,7 @@ import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js';
 import { SkillTool } from 'src/tools/SkillTool/SkillTool.js';
 import { env } from 'src/shared/env.js';
 import { shouldShowAlwaysAllowOptions } from 'src/services/permissions/permissionsLoader.js';
-import { logUnaryEvent } from 'src/services/api/unaryLogging.js';
+import { logUnaryEvent } from 'src/providers/transport/unaryLogging.js';
 import { type UnaryEvent, usePermissionRequestLogging } from 'src/components/permissions/hooks.js';
 import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
 import { PermissionPrompt, type PermissionPromptOption, type ToolAnalyticsContext } from 'src/components/permissions/PermissionPrompt.js';

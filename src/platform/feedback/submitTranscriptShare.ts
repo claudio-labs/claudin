@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { readFile, stat } from 'fs/promises'
 import type { Message } from 'src/types/message.js'
-import { checkAndRefreshOAuthTokenIfNeeded } from 'src/services/auth/auth.js'
+import { checkAndRefreshOAuthTokenIfNeeded } from 'src/providers/auth/auth.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { getAuthHeaders, getUserAgent } from 'src/shared/http.js'

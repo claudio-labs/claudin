@@ -48,7 +48,7 @@ const PROMPTS: { id: string; text: string }[] = [
   },
   {
     id: 'bigfile-summary',
-    text: 'Rode `cat src/services/api/openaiShim.ts` e me explique em 2 frases o que esse arquivo faz. Quero so a essencia, nao o arquivo colado de volta.',
+    text: 'Rode `cat src/providers/shims/openaiShim.ts` e me explique em 2 frases o que esse arquivo faz. Quero so a essencia, nao o arquivo colado de volta.',
   },
   {
     id: 'log-themes',
@@ -92,7 +92,7 @@ interface RunResult {
 }
 
 function projectDirForCwd(cwd: string): string {
-  // Must match claudin's real transcript-dir encoding (src/services/vcr.ts): EVERY
+  // Must match claudin's real transcript-dir encoding (src/providers/vcr.ts): EVERY
   // non-alphanumeric char becomes '-', not just '/'. The old `/`-only rule silently
   // produced a wrong path whenever cwd had '_' or '.' (e.g. /tmp/bench_wt -> -tmp-bench_wt,
   // but the real dir is -tmp-bench-wt), making analyzeSession return Bash=0 for every session.

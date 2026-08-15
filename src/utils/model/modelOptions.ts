@@ -1,11 +1,11 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { getInitialMainLoopModel } from 'src/platform/bootstrap/state.js'
-import { getAdditionalModelOptionsCacheScope, isDirectOpenAIProvider } from 'src/services/api/providerConfig.js'
+import { getAdditionalModelOptionsCacheScope, isDirectOpenAIProvider } from 'src/providers/presets/providerConfig.js'
 import {
   isClaudeAISubscriber,
   isMaxSubscriber,
   isTeamPremiumSubscriber,
-} from 'src/services/auth/auth.js'
+} from 'src/providers/auth/auth.js'
 import { getModelStrings } from 'src/utils/model/modelStrings.js'
 import {
   COST_TIER_3_15,
@@ -13,7 +13,7 @@ import {
   COST_HAIKU_35,
   COST_HAIKU_45,
   formatModelPricing,
-} from 'src/services/api/modelCost.js'
+} from 'src/providers/usage/modelCost.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { checkOpus1mAccess, checkSonnet1mAccess } from 'src/utils/model/check1mAccess.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
@@ -40,7 +40,7 @@ import {
   getActiveOpenAIModelOptionsCache,
   getActiveProviderProfile,
   getProfileModelOptions,
-} from 'src/services/api/providerProfiles.js'
+} from 'src/providers/presets/providerProfiles.js'
 import { getCachedOllamaModelOptions, isOllamaProvider } from 'src/utils/model/ollamaModels.js'
 import { getCachedNvidiaNimModelOptions, isNvidiaNimProvider } from 'src/utils/model/nvidiaNimModels.js'
 import { getCachedMiniMaxModelOptions, isMiniMaxProvider } from 'src/utils/model/minimaxModels.js'

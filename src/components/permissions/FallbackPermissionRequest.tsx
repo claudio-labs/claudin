@@ -6,7 +6,7 @@ import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js
 import { env } from 'src/shared/env.js';
 import { shouldShowAlwaysAllowOptions } from 'src/services/permissions/permissionsLoader.js';
 import { truncateToLines } from 'src/shared/text/stringUtils.js';
-import { logUnaryEvent } from 'src/services/api/unaryLogging.js';
+import { logUnaryEvent } from 'src/providers/transport/unaryLogging.js';
 import { type UnaryEvent, usePermissionRequestLogging } from 'src/components/permissions/hooks.js';
 import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
 import { PermissionPrompt, type PermissionPromptOption, type ToolAnalyticsContext } from 'src/components/permissions/PermissionPrompt.js';

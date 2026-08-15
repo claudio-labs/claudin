@@ -38,7 +38,7 @@ import {
   modelSupportsMaxEffort,
   modelSupportsXhighEffort,
 } from 'src/utils/effort.js'
-import { COST_TIER_3_15, MODEL_COSTS } from 'src/services/api/modelCost.js'
+import { COST_TIER_3_15, MODEL_COSTS } from 'src/providers/usage/modelCost.js'
 import { CLAUDE_SONNET_5_CONFIG } from 'src/utils/model/configs.js'
 
 // Sonnet 5 shares Fable 5's request-shaping profile (adaptive thinking always on,

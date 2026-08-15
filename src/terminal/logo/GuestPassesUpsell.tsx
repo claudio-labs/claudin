@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import { useState } from 'react';
 import { Text } from 'src/terminal/ink.js';
 import { logEvent } from 'src/platform/analytics/index.js';
-import { checkCachedPassesEligibility, formatCreditAmount, getCachedReferrerReward, getCachedRemainingPasses } from 'src/services/api/referral.js';
+import { checkCachedPassesEligibility, formatCreditAmount, getCachedReferrerReward, getCachedRemainingPasses } from 'src/providers/usage/referral.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 function resetIfPassesRefreshed(): void {
   const remaining = getCachedRemainingPasses();

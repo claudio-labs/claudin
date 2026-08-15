@@ -1,9 +1,9 @@
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { resolveProviderRequest } from 'src/services/api/providerConfig.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { resolveProviderRequest } from 'src/providers/presets/providerConfig.js'
 import type { LocalCommandCall } from 'src/types/command.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { hydrateGithubModelsTokenFromSecureStorage } from 'src/services/api/githubModelsCredentials.js'
+import { hydrateGithubModelsTokenFromSecureStorage } from 'src/providers/oauth/githubModelsCredentials.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
 
 const COPILOT_HEADERS: Record<string, string> = {

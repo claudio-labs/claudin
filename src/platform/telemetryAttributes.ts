@@ -1,6 +1,6 @@
 import type { Attributes } from 'src/vendor/otel.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import { getOauthAccountInfo } from 'src/services/auth/auth.js'
+import { getOauthAccountInfo } from 'src/providers/auth/auth.js'
 import { getOrCreateUserID } from 'src/platform/config/config.js'
 import { envDynamic } from 'src/shared/envDynamic.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'

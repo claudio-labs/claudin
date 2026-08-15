@@ -14,10 +14,10 @@
  *    models (5.1/5.2/5.3) the numeric `>5.4` rule would drop stay in the picker.
  *
  * The filter governs only the DISPLAYED list. Alias/transport resolution still
- * lives in CODEX_ALIAS_MODELS (src/services/api/providerConfig.ts) — a model
+ * lives in CODEX_ALIAS_MODELS (src/providers/presets/providerConfig.ts) — a model
  * hidden from the picker still resolves if typed, exactly like opencode.
  */
-import type { ReasoningEffort } from 'src/services/api/providerConfig.js'
+import type { ReasoningEffort } from 'src/providers/presets/providerConfig.js'
 
 export type CodexModelEntry = {
   id: string

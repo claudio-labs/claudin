@@ -10,7 +10,7 @@ import { extname } from 'path'
 import memoize from 'lodash-es/memoize.js'
 import { env, getHostPlatformForAnalytics } from 'src/shared/env.js'
 import { envDynamic } from 'src/shared/envDynamic.js'
-import { getModelBetas } from 'src/services/api/betas.js'
+import { getModelBetas } from 'src/providers/transport/betas.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
 import {
   getSessionId,
@@ -21,7 +21,7 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { isOfficialMcpUrl } from 'src/services/mcp/officialRegistry.js'
-import { isClaudeAISubscriber, getSubscriptionType } from 'src/services/auth/auth.js'
+import { isClaudeAISubscriber, getSubscriptionType } from 'src/providers/auth/auth.js'
 import { getRepoRemoteHash } from 'src/services/git/git.js'
 import {
   getWslVersion,

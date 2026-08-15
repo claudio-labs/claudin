@@ -23,7 +23,7 @@ source changes**. Validated with `bun install`, `bun run build`,
   knobs `maxConcurrentStreams`, `initialWindowSize`, `connectionWindowSize` and
   `pingInterval` are now **`@deprecated` in favor of `h2Options.*`**
   (`h2Options.settings.initialWindowSize` for the window one). `allowH2` itself
-  is **not** deprecated. `src/services/api/proxy.ts` (`ProviderPoolConfig`, ~line 297)
+  is **not** deprecated. `src/providers/transport/proxy.ts` (`ProviderPoolConfig`, ~line 297)
   only passes `allowH2`/`connections`/`keepAliveTimeout`/`pipelining`, and
   `scripts/profile/undici-pool-bench.ts` only `allowH2` — so nothing to change
   today. **Apply when tuning h2:** put any new stream/window/ping knob under

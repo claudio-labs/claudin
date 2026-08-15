@@ -3,12 +3,12 @@ import chalk from 'chalk'
 import {
   extractCacheMetrics,
   resolveCacheProvider,
-} from 'src/services/api/cacheMetrics.js'
+} from 'src/providers/cache/cacheMetrics.js'
 import {
   recordRequest as recordCacheRequest,
   resetSessionCacheStats,
-} from 'src/services/api/cacheStatsTracker.js'
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+} from 'src/providers/cache/cacheStatsTracker.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { getAPIProvider, isGithubNativeAnthropicMode } from 'src/utils/model/providers.js'
 import {
   addToTotalCostState,
@@ -51,12 +51,12 @@ import {
   getContextWindowForModel,
   getModelMaxOutputTokens,
 } from 'src/agent/context/context.js'
-import { isFastModeEnabled } from 'src/utils/fastMode.js'
+import { isFastModeEnabled } from 'src/providers/fastMode.js'
 import { formatDuration, formatNumber } from 'src/shared/text/format.js'
 import { resetBytesSaved } from 'src/agent/context/tokensSaved.js'
 import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js'
 import { getCanonicalName } from 'src/utils/model/model.js'
-import { calculateUSDCost } from 'src/services/api/modelCost.js'
+import { calculateUSDCost } from 'src/providers/usage/modelCost.js'
 export {
   getTotalCostUSD as getTotalCost,
   getTotalDuration,

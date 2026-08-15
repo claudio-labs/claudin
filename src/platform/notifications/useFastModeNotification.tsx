@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
-import { type CooldownReason, isFastModeEnabled, onCooldownExpired, onCooldownTriggered, onFastModeOverageRejection, onOrgFastModeChanged } from 'src/utils/fastMode.js';
+import { type CooldownReason, isFastModeEnabled, onCooldownExpired, onCooldownTriggered, onFastModeOverageRejection, onOrgFastModeChanged } from 'src/providers/fastMode.js';
 import { formatDuration } from 'src/shared/text/format.js';
 import { getIsRemoteMode } from 'src/platform/bootstrap/state.js';
 const COOLDOWN_STARTED_KEY = 'fast-mode-cooldown-started';

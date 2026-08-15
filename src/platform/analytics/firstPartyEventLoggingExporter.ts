@@ -10,7 +10,7 @@ import { randomUUID } from 'crypto'
 import { appendFile, mkdir, readdir, unlink, writeFile } from 'fs/promises'
 import * as path from 'path'
 import type { CoreUserData } from 'src/shared/user.js'
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import {
   getIsNonInteractiveSession,
   getSessionId,
@@ -21,7 +21,7 @@ import {
   getClaudeAIOAuthTokens,
   hasProfileScope,
   isClaudeAISubscriber,
-} from 'src/services/auth/auth.js'
+} from 'src/providers/auth/auth.js'
 import { checkHasTrustDialogAccepted } from 'src/platform/config/config.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { errorMessage, isFsInaccessible, toError } from 'src/shared/errors.js'
@@ -30,8 +30,8 @@ import { readJSONLFile } from 'src/shared/data/json.js'
 import { logError } from 'src/shared/log.js'
 import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
-import { isOAuthTokenExpired } from 'src/services/oauth/client.js'
+import { getClaudeCodeUserAgent } from 'src/providers/transport/userAgent.js'
+import { isOAuthTokenExpired } from 'src/providers/oauth/client.js'
 import { stripProtoFields } from 'src/platform/analytics/index.js'
 import { type EventMetadata, to1PEventFormat } from 'src/platform/analytics/metadata.js'
 

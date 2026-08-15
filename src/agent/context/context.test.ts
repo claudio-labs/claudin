@@ -11,7 +11,7 @@ import type { ProviderProfile } from 'src/platform/config/config.js'
 // getActiveProviderProfile by the time afterAll restores it — leaking the
 // OpenAI provider into every later test file (cacheProfile, contextManagement,
 // modelProjectPersistence). The snapshot preserves the original bindings.
-const realProviderProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
+const realProviderProfiles = { ...(await import('src/providers/presets/providerProfiles.js')) }
 
 let mockProviderProfile: ProviderProfile | null = {
   id: 'test-openai',
@@ -21,16 +21,16 @@ let mockProviderProfile: ProviderProfile | null = {
   model: 'gpt-4o',
 }
 
-mock.module('src/services/api/providerProfiles.js', () => ({
+mock.module('src/providers/presets/providerProfiles.js', () => ({
   ...realProviderProfiles,
   getActiveProviderProfile: () => mockProviderProfile ?? undefined,
 }))
 
 afterAll(() => {
-  mock.module('src/services/api/providerProfiles.js', () => realProviderProfiles)
+  mock.module('src/providers/presets/providerProfiles.js', () => realProviderProfiles)
 })
 
-import { invalidateActiveProviderCache } from 'src/services/api/activeProvider.js'
+import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvider.js'
 
 invalidateActiveProviderCache()
 
@@ -42,7 +42,7 @@ afterEach(() => {
   invalidateActiveProviderCache()
 })
 
-import { getMaxOutputTokensForModel } from 'src/services/api/claude.js'
+import { getMaxOutputTokensForModel } from 'src/providers/shims/claude.js'
 import {
   getContextWindowForModel,
   getModelMaxOutputTokens,

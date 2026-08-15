@@ -6,7 +6,7 @@ import { getPlatform } from 'src/shared/proc/platform.js';
 import { isKeybindingCustomizationEnabled } from 'src/terminal/keybindings/loadUserBindings.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
-import { isFastModeAvailable, isFastModeEnabled } from 'src/utils/fastMode.js';
+import { isFastModeAvailable, isFastModeEnabled } from 'src/providers/fastMode.js';
 import { getNewlineInstructions } from 'src/terminal/prompt-input/utils.js';
 
 /** Format a shortcut for display in the help menu (e.g., "ctrl+o" → "ctrl + o") */

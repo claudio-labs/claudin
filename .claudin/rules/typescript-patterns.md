@@ -16,7 +16,7 @@ These override general TypeScript conventions:
 3. **Regex at module level** — Never compile regex inside a function. Define as module-level `const`.
 4. **Fallback pattern** — If a tool/filter fails, return the raw result unchanged. Never block the user.
 5. **No hardcoded model names** — Always use `getPrimaryModel()` / `getSmallFastModel()` from `src/utils/model/`.
-6. **No hardcoded provider logic** — Always use `tryGetActiveProvider()` from `src/services/api/activeProvider.ts`.
+6. **No hardcoded provider logic** — Always use `tryGetActiveProvider()` from `src/providers/presets/activeProvider.ts`.
 7. **Privacy enforcement** — Any analytics event name containing code/paths must use the `_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS` suffix. Run `bun run verify:privacy` before every PR.
 8. **Feature flags over conditionals** — New Anthropic-internal features go behind `feature('FLAG')` in `scripts/build.ts`. Never use runtime env vars for build-time feature gating.
 
@@ -167,8 +167,8 @@ function isErrorLine(line: string): boolean {
 ## Provider — Never Hardcode
 
 ```typescript
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { getPrimaryModel, getSmallFastModel } from 'src/services/api/providerModels.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { getPrimaryModel, getSmallFastModel } from 'src/providers/presets/providerModels.js'
 
 // ✅ Correct — respects user's active provider
 const provider = tryGetActiveProvider()

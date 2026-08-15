@@ -3,7 +3,7 @@ import { homedir } from 'os';
 import * as React from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { Step } from 'src/platform/projectOnboardingState.js';
-import { formatCreditAmount, getCachedReferrerReward } from 'src/services/api/referral.js';
+import { formatCreditAmount, getCachedReferrerReward } from 'src/providers/usage/referral.js';
 import type { LogOption } from 'src/types/logs.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { formatRelativeTimeAgo } from 'src/shared/text/format.js';

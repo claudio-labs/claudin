@@ -10,7 +10,7 @@ import { toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
-import { queryHaiku } from 'src/services/api/claude.js'
+import { queryHaiku } from 'src/providers/shims/claude.js'
 
 const TOOL_USE_SUMMARY_SYSTEM_PROMPT = `Write a short summary label describing what these tool calls accomplished. It appears as a single-line row in a mobile app and truncates around 30 characters, so think git-commit-subject, not sentence.
 

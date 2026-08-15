@@ -8,7 +8,7 @@ import { decodeJwtExpiry } from 'src/platform/bridge/jwtUtils.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { errorMessage, getErrnoCode } from 'src/shared/errors.js'
-import { createAxiosInstance } from 'src/services/api/proxy.js'
+import { createAxiosInstance } from 'src/providers/transport/proxy.js'
 import {
   registerSessionActivityCallback,
   unregisterSessionActivityCallback,
@@ -22,7 +22,7 @@ import type {
   SessionState,
 } from 'src/services/session/sessionState.js'
 import { sleep } from 'src/shared/sleep.js'
-import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
+import { getClaudeCodeUserAgent } from 'src/providers/transport/userAgent.js'
 import {
   RetryableError,
   SerialBatchEventUploader,

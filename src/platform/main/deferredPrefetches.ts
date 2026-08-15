@@ -9,11 +9,11 @@ import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js';
 import { initUser } from 'src/shared/user.js';
 import { getUserContext } from 'src/agent/context.js';
 import { getRelevantTips } from 'src/terminal/tips/tipRegistry.js';
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';
 import {
   prefetchAwsCredentialsAndBedRockInfoIfSafe,
   prefetchGcpCredentialsIfSafe,
-} from 'src/services/auth/auth.js';
+} from 'src/providers/auth/auth.js';
 import { countFilesRoundedRg } from 'src/shared/fs/ripgrep.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { initializeAnalyticsGates } from 'src/platform/analytics/sink.js';

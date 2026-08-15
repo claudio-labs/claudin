@@ -2,11 +2,11 @@ import {
   checkAdminRequestEligibility,
   createAdminRequest,
   getMyAdminRequests,
-} from 'src/services/api/adminRequests.js'
-import { invalidateOverageCreditGrantCache } from 'src/services/api/overageCreditGrant.js'
-import { type ExtraUsage, fetchUtilization } from 'src/services/api/usage.js'
-import { getSubscriptionType } from 'src/services/auth/auth.js'
-import { hasClaudeAiBillingAccess } from 'src/services/api/billing.js'
+} from 'src/providers/transport/adminRequests.js'
+import { invalidateOverageCreditGrantCache } from 'src/providers/usage/overageCreditGrant.js'
+import { type ExtraUsage, fetchUtilization } from 'src/providers/usage/usage.js'
+import { getSubscriptionType } from 'src/providers/auth/auth.js'
+import { hasClaudeAiBillingAccess } from 'src/providers/usage/billing.js'
 import { openBrowser } from 'src/shared/browser.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logError } from 'src/shared/log.js'

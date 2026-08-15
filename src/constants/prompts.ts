@@ -42,7 +42,7 @@ import {
 } from 'src/services/permissions/filesystem.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { feature } from 'bun:bundle'
-import { shouldUseGlobalCacheScope } from 'src/services/api/betas.js'
+import { shouldUseGlobalCacheScope } from 'src/providers/transport/betas.js'
 import { isForkSubagentEnabled } from 'src/tools/AgentTool/forkSubagent.js'
 import {
   systemPromptSection,
@@ -102,8 +102,8 @@ export const CLAUDE_CODE_DOCS_MAP_URL =
  * Everything AFTER contains user/session-specific content and should not be cached.
  *
  * WARNING: Do not remove or reorder this marker without updating cache logic in:
- * - src/services/api/api.ts (splitSysPromptPrefix)
- * - src/services/api/claude/paramBuilders.ts (buildSystemPromptBlocks)
+ * - src/providers/transport/api.ts (splitSysPromptPrefix)
+ * - src/providers/shims/claude/paramBuilders.ts (buildSystemPromptBlocks)
  */
 export const SYSTEM_PROMPT_DYNAMIC_BOUNDARY =
   '__SYSTEM_PROMPT_DYNAMIC_BOUNDARY__'
@@ -699,7 +699,7 @@ export async function computeSimpleEnvInfo(
       : null,
     `Claudin is available as a CLI in the terminal and can be used across local development environments and IDE workflows.`,
     // @[MODEL LAUNCH]: Keep the fast-mode model list in sync with
-    // isFastModeSupportedByModel / FAST_MODE_MODEL_DISPLAY (src/utils/fastMode.ts).
+    // isFastModeSupportedByModel / FAST_MODE_MODEL_DISPLAY (src/providers/fastMode.ts).
     // firstParty-only: fast mode is rejected on every other provider
     // (isFastModeEnabled bails on getAPIProvider() !== 'firstParty').
     isAnthropicFamily && getAPIProvider() === 'firstParty'

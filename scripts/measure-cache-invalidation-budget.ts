@@ -8,7 +8,7 @@
  * price and re-cached. The break is silent: you only see it as a higher
  * input-token bill on that turn.
  *
- * `src/services/api/promptCacheBreakDetection.ts` enumerates the things
+ * `src/providers/cache/promptCacheBreakDetection.ts` enumerates the things
  * that can break the cache. This bench builds a realistic baseline prefix
  * and computes the *re-bill cost* of each individual break cause:
  *

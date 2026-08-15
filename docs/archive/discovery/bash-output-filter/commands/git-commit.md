@@ -16,7 +16,7 @@
 ```
 [fix/user-agent-openai-shim a3f8c9d] fix(api): use claudin branding in User-Agent
  7 files changed, 30 insertions(+), 4 deletions(-)
- create mode 100644 src/services/api/userAgent.ts
+ create mode 100644 src/providers/transport/userAgent.ts
 ```
 
 ### Amostra 2 — commit com hooks (típico, ~400-2KB+)
@@ -45,8 +45,8 @@ Your branch is up to date with 'origin/fix/user-agent-openai-shim'.
 Changes not staged for commit:
   (use "git add <file>..." to update what will be committed)
   (use "git restore <file>..." to discard changes in working directory)
-	modified:   src/services/api/claude.ts
-	modified:   src/services/api/withRetry.ts
+	modified:   src/providers/shims/claude.ts
+	modified:   src/providers/transport/withRetry.ts
 
 Untracked files:
   (use "git add <file>..." to include in what will be committed)

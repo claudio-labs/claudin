@@ -3,12 +3,12 @@ import {
   getCurrentTurnCacheMetrics,
   getSessionCacheMetrics,
   type CacheStatsEntry,
-} from 'src/services/api/cacheStatsTracker.js'
+} from 'src/providers/cache/cacheStatsTracker.js'
 import {
   formatCacheMetricsCompact,
   formatCacheMetricsFull,
   type CacheMetrics,
-} from 'src/services/api/cacheMetrics.js'
+} from 'src/providers/cache/cacheMetrics.js'
 import type { LocalCommandCall } from 'src/types/command.js'
 
 // Cap the per-request breakdown to keep output readable. Users wanting

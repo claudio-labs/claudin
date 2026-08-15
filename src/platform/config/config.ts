@@ -10,7 +10,7 @@ import type { McpServerConfig } from 'src/services/mcp/types.js'
 import type {
   BillingType,
   ReferralEligibilityResponse,
-} from 'src/services/oauth/types.js'
+} from 'src/providers/oauth/types.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'

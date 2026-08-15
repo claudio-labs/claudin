@@ -25,13 +25,13 @@ const realConfig = { ...(await import('src/platform/config/config.js')) }
 // installs its own mock factory whose default `addProviderProfile` is
 // `() => null`, which leaks across files. We re-pin the real module so the
 // migration's profile-bootstrap path sees the genuine implementation.
-const realProviderProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
+const realProviderProfiles = { ...(await import('src/providers/presets/providerProfiles.js')) }
 
 let testConfigState: Record<string, unknown> = {}
 
 afterAll(() => {
   mock.module('./config.js', () => realConfig)
-  mock.module('src/services/api/providerProfiles.js', () => realProviderProfiles)
+  mock.module('src/providers/presets/providerProfiles.js', () => realProviderProfiles)
   realConfig.resetGlobalConfigForTests?.()
 })
 
@@ -65,7 +65,7 @@ beforeAll(async () => {
   // (ProviderManager.test.tsx, geminiAuth.test.ts, etc.) install partial
   // mocks of `./providerProfiles.js` that leak across files via Bun's
   // shape-locked `mock.module`.
-  mock.module('src/services/api/providerProfiles.js', () => ({
+  mock.module('src/providers/presets/providerProfiles.js', () => ({
     ...realProviderProfiles,
     getProviderProfiles: () =>
       ((testConfigState.providerProfiles ?? []) as unknown[]),

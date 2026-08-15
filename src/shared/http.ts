@@ -9,9 +9,9 @@ import {
   getClaudeAIOAuthTokens,
   handleOAuth401Error,
   isClaudeAISubscriber,
-} from 'src/services/auth/auth.js'
+} from 'src/providers/auth/auth.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import { getClaudeCodeUserAgent, getClaudinUserAgent } from 'src/services/api/userAgent.js'
+import { getClaudeCodeUserAgent, getClaudinUserAgent } from 'src/providers/transport/userAgent.js'
 
 // WARNING: We rely on `claude-cli` in the user agent for log filtering.
 // Please do NOT change this without making sure that logging also gets updated!

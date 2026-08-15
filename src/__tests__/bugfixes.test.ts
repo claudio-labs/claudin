@@ -27,8 +27,8 @@ const file = (relative: string) => Bun.file(resolve(SRC, relative))
  * over bare symbol names so a stray JSDoc mention can't make it pass.
  */
 async function openaiShimSource(): Promise<string> {
-  const barrel = await file('services/api/openaiShim.ts').text()
-  const dir = resolve(SRC, 'services/api/openaiShim')
+  const barrel = await file('providers/shims/openaiShim.ts').text()
+  const dir = resolve(SRC, 'providers/shims/openaiShim')
   const glob = new Bun.Glob('**/*.ts')
   const parts: string[] = [barrel]
   for await (const rel of glob.scan({ cwd: dir, onlyFiles: true })) {
@@ -75,7 +75,7 @@ describe('Session timeout fix', () => {
   })
 
   test('codexShim has idle timeout for SSE streams', async () => {
-    const content = await file('services/api/codexShim.ts').text()
+    const content = await file('providers/shims/codexShim.ts').text()
 
     expect(content).toMatch(/STREAM_IDLE_TIMEOUT_MS\s*=\s*[\d_]+/)
     expect(content).toMatch(/\b(function\s+readWithTimeout|const\s+readWithTimeout\s*=)\b/)
@@ -299,7 +299,7 @@ describe('AgentTool cleanup fix', () => {
 // ---------------------------------------------------------------------------
 describe('Context overflow 500 fix', () => {
   test('errors.ts has handler for context overflow 500 errors', async () => {
-    const content = await file('services/api/errors.ts').text()
+    const content = await file('providers/transport/errors.ts').text()
 
     expect(content).toContain('500 errors caused by context overflow')
     expect(content).toContain('too many tokens')

@@ -10,7 +10,7 @@ import {
 } from 'fs/promises'
 import { extname, join } from 'path'
 import type { Command } from 'src/commands.js'
-import { queryWithModel } from 'src/services/api/claude.js'
+import { queryWithModel } from 'src/providers/shims/claude.js'
 import {
   AGENT_TOOL_NAME,
   LEGACY_AGENT_TOOL_NAME,

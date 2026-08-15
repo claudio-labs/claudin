@@ -103,7 +103,7 @@ import {
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { Stream } from 'src/shared/stream.js'
 import { stripPlaceholderOptionalFields } from 'src/agent/tools/toolInputPlaceholders.js'
-import { transportSendsStrictToolSchemas } from 'src/services/api/providerConfig.js'
+import { transportSendsStrictToolSchemas } from 'src/providers/presets/providerConfig.js'
 import { logOTelEvent } from 'src/platform/telemetry/events.js'
 import {
   addToolContentEvent,

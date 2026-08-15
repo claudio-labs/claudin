@@ -88,14 +88,14 @@ Call sites de `getSmallFastModel` (excluindo a definição e os imports):
 - src/platform/lifecycleHooks/execPromptHook.ts:79
 - src/platform/lifecycleHooks/execAgentHook.ts:118
 - src/tools/WebSearchTool/WebSearchTool.ts:796
-- src/services/claudeAiLimits.ts:201
+- src/providers/claudeAiLimits.ts:201
 - src/agent/awaySummary.ts:49
 - src/shared/tokenEstimation.ts:404
 - src/shared/tokenEstimation.ts:420
-- src/services/api/client.ts:351
-- src/services/api/claude.ts:348
-- src/services/api/claude.ts:550
-- src/services/api/claude.ts:3293
+- src/providers/transport/client.ts:351
+- src/providers/shims/claude.ts:348
+- src/providers/shims/claude.ts:550
+- src/providers/shims/claude.ts:3293
 
 Em testes:
 - src/utils/model/model.openai-shim-providers.test.ts:196, :207, :216, :226 (mais usos como referência nas linhas 313, 319, 336, 342)
@@ -114,12 +114,12 @@ Call sites de `getSmallFastModel` (excluindo a definição e imports):
 - src/platform/lifecycleHooks/execAgentHook.ts:118
 - src/shared/tokenEstimation.ts:404
 - src/shared/tokenEstimation.ts:420
-- src/services/claudeAiLimits.ts:201
+- src/providers/claudeAiLimits.ts:201
 - src/agent/awaySummary.ts:49
-- src/services/api/client.ts:351
-- src/services/api/claude.ts:348
-- src/services/api/claude.ts:550
-- src/services/api/claude.ts:3293
+- src/providers/transport/client.ts:351
+- src/providers/shims/claude.ts:348
+- src/providers/shims/claude.ts:550
+- src/providers/shims/claude.ts:3293
 
 Testes (src/utils/model/model.openai-shim-providers.test.ts):
 - :196, :207, :216, :226 (chamadas diretas)
@@ -141,12 +141,12 @@ Callers de `getSmallFastModel` (excluindo a definição em `src/utils/model/mode
 - src/tools/WebSearchTool/WebSearchTool.ts:796
 - src/shared/tokenEstimation.ts:404
 - src/shared/tokenEstimation.ts:420
-- src/services/claudeAiLimits.ts:201
+- src/providers/claudeAiLimits.ts:201
 - src/agent/awaySummary.ts:49
-- src/services/api/client.ts:351
-- src/services/api/claude.ts:348
-- src/services/api/claude.ts:550
-- src/services/api/claude.ts:3293
+- src/providers/transport/client.ts:351
+- src/providers/shims/claude.ts:348
+- src/providers/shims/claude.ts:550
+- src/providers/shims/claude.ts:3293
 
 Call sites em testes (`src/utils/model/model.openai-shim-providers.test.ts`): linhas 196, 207, 216, 226.
 ```
@@ -165,12 +165,12 @@ Call sites de `getSmallFastModel` (excluindo a definição em `src/utils/model/m
 - src/shared/tokenEstimation.ts:404
 - src/shared/tokenEstimation.ts:420
 - src/services/session/agenticSessionSearch.ts:261
-- src/services/claudeAiLimits.ts:201
+- src/providers/claudeAiLimits.ts:201
 - src/agent/awaySummary.ts:49
-- src/services/api/client.ts:351
-- src/services/api/claude.ts:348
-- src/services/api/claude.ts:550
-- src/services/api/claude.ts:3293
+- src/providers/transport/client.ts:351
+- src/providers/shims/claude.ts:348
+- src/providers/shims/claude.ts:550
+- src/providers/shims/claude.ts:3293
 
 **Testes:**
 - src/utils/model/model.openai-shim-providers.test.ts:196
@@ -188,7 +188,7 @@ Call sites de `getSmallFastModel` (excluindo a definição em `src/utils/model/m
 ```
 Duas declarações encontradas:
 
-- `src/services/api/providerProfile.ts:122` — `export type ProviderProfile = ...`
+- `src/providers/presets/providerProfile.ts:122` — `export type ProviderProfile = ...`
 - `src/platform/config/config.ts:191` — `export type ProviderProfile = { ... }`
 
 As demais ocorrências são imports/re-exports.
@@ -199,7 +199,7 @@ As demais ocorrências são imports/re-exports.
 ```
 Encontrei 2 declarações do tipo `ProviderProfile`:
 
-- `src/services/api/providerProfile.ts:122` — `export type ProviderProfile = …`
+- `src/providers/presets/providerProfile.ts:122` — `export type ProviderProfile = …`
 - `src/platform/config/config.ts:191` — `export type ProviderProfile = { … }`
 
 As demais ocorrências são importações (linhas com `import { type ProviderProfile, … }` ou re-exports com alias).
@@ -210,10 +210,10 @@ As demais ocorrências são importações (linhas com `import { type ProviderPro
 ```
 Há **2 declarações** do tipo `ProviderProfile` no codebase:
 
-1. `src/services/api/providerProfile.ts:122` — `export type ProviderProfile = ...`
+1. `src/providers/presets/providerProfile.ts:122` — `export type ProviderProfile = ...`
 2. `src/platform/config/config.ts:191` — `export type ProviderProfile = { ... }`
 
-As demais ocorrências (`src/services/api/providerProfiles.ts`, `scripts/*.ts`, `src/commands/provider/provider.tsx`) são apenas re-exportações/importações com `type ProviderProfile`, não declarações.
+As demais ocorrências (`src/providers/presets/providerProfiles.ts`, `scripts/*.ts`, `src/commands/provider/provider.tsx`) são apenas re-exportações/importações com `type ProviderProfile`, não declarações.
 ```
 
 **Variant B run#2:**
@@ -221,7 +221,7 @@ As demais ocorrências (`src/services/api/providerProfiles.ts`, `scripts/*.ts`, 
 ```
 Existem **2 declarações** do tipo `ProviderProfile` no codebase:
 
-- `src/services/api/providerProfile.ts:122` — `export type ProviderProfile = ...`
+- `src/providers/presets/providerProfile.ts:122` — `export type ProviderProfile = ...`
 - `src/platform/config/config.ts:191` — `export type ProviderProfile = { ... }`
 
 Os demais resultados (`providerProfiles.ts`, `provider.tsx`, scripts) são apenas re-imports/aliases.

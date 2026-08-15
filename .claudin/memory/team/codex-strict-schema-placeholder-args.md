@@ -33,7 +33,7 @@ required. Four other files looped the same way in that one session.
   from the SAME JSON Schema (`inputJSONSchema`, else
   `zodToJsonSchema(inputSchema)`), so they cannot drift.
 - **The strip is gated on the transport of the request being made**, via
-  `transportSendsStrictToolSchemas(model)` (`src/services/api/providerConfig.ts`).
+  `transportSendsStrictToolSchemas(model)` (`src/providers/presets/providerConfig.ts`).
   Three traps that gate has to survive, all found in review: (1) reading the
   ACTIVE PROFILE's model is wrong — `/model`, a sub-agent `model:` override and
   `--fallback-model` all change the request model without touching the profile,

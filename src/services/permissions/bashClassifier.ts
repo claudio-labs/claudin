@@ -22,7 +22,7 @@
 import { feature } from 'bun:bundle'
 import type { BetaToolUnion } from '@anthropic-ai/sdk/resources/beta/messages.js'
 import { z } from 'zod/v4'
-import { getDefaultMaxRetries } from 'src/services/api/withRetry.js'
+import { getDefaultMaxRetries } from 'src/providers/transport/withRetry.js'
 import type { ToolPermissionContext } from 'src/Tool.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'

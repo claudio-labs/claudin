@@ -2,7 +2,7 @@
  * CLAUDE.md content delta — emit only when the project/user memory
  * file content changes between turns, not every turn.
  *
- * WHY: `prependUserContext` in `src/services/api/api.ts` renders the CLAUDE.md
+ * WHY: `prependUserContext` in `src/providers/transport/api.ts` renders the CLAUDE.md
  * contents as a `<system-reminder>` user message on EVERY API call
  * (per turn AND per tool-use cycle within a turn). The memoized source
  * (`getUserContext` in `src/agent/context.ts`) returns a stable string across

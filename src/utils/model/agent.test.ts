@@ -5,13 +5,26 @@ import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
 // leaks across parallel test files; resetting to `{}` would strip exports the
 // modelOptions → ollamaModels chain depends on. See team memory
 // bun-test-global-config-isolation.md.
-const realProvidersModule = await import('src/utils/model/providers.js')
-const realModelOptionsModule = await import('src/utils/model/modelOptions.js')
+//
+// These MUST be plain-object copies. A bare `await import()` hands back the
+// live namespace, which `mock.module()` rewrites in place — so once the first
+// test installs its two-export stub, "the real module" IS that stub and the
+// afterEach below restores the stub onto itself, permanently. Every later file
+// then reads a `providers.js` with two exports; that is what broke
+// `ProviderModelIndicator.test.ts`, which never touches this one.
+const realProvidersModule = { ...(await import('src/utils/model/providers.js')) }
+const realModelOptionsModule = {
+  ...(await import('src/utils/model/modelOptions.js')),
+}
 
 describe('getAgentModel provider-aware fallback', () => {
   // Restore all mocks after each test
   afterEach(() => {
     mock.module('./providers.js', () => realProvidersModule)
+    // The alias form too: production code imports `src/utils/model/providers.js`
+    // and Bun keys each override by specifier, so restoring only the relative
+    // one leaves the alias still pointing at the stub.
+    mock.module('src/utils/model/providers.js', () => realProvidersModule)
   })
 
   describe('Claude-native providers', () => {
@@ -271,6 +284,7 @@ describe('getAgentModel provider-aware fallback', () => {
 describe('getAgentModelOptions picker', () => {
   afterEach(() => {
     mock.module('./modelOptions.js', () => realModelOptionsModule)
+    mock.module('src/utils/model/modelOptions.js', () => realModelOptionsModule)
   })
 
   test('falls back to Claude aliases + inherit when getModelOptions returns no string values', async () => {

@@ -5,7 +5,7 @@ import {
   getSessionTrustAccepted,
 } from 'src/platform/bootstrap/state.js'
 import { getGrowthBookClientKey } from 'src/constants/keys.js'
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import {
   checkHasTrustDialogAccepted,
   getGlobalConfig,
@@ -329,7 +329,7 @@ function isGrowthBookEnabled(): boolean {
  * apiKeyHelper auth, which means isAnthropicAuthEnabled() returns false and
  * organizationUUID/accountUUID/email are all absent from GrowthBook
  * attributes. Without this, there's no stable attribute to target them on
- * — only per-device IDs. See src/services/auth/auth.ts isAnthropicAuthEnabled().
+ * — only per-device IDs. See src/providers/auth/auth.ts isAnthropicAuthEnabled().
  *
  * Returns undefined for unset/default (api.anthropic.com) so the attribute
  * is absent for direct-API users. Hostname only — no path/query/creds.

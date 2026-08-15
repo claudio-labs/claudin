@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useState } from 'react';
 import { Text } from 'src/terminal/ink.js';
 import { logEvent } from 'src/platform/analytics/index.js';
-import { formatGrantAmount, getCachedOverageCreditGrant, refreshOverageCreditGrantCache } from 'src/services/api/overageCreditGrant.js';
+import { formatGrantAmount, getCachedOverageCreditGrant, refreshOverageCreditGrantCache } from 'src/providers/usage/overageCreditGrant.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { truncate } from 'src/shared/text/format.js';
 import type { FeedConfig } from 'src/terminal/logo/Feed.js';

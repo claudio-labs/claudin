@@ -23,7 +23,7 @@ import {
   getProviderPresetDefaults,
   getProviderProfiles,
   type ProviderProfileInput,
-} from 'src/services/api/providerProfiles.js'
+} from 'src/providers/presets/providerProfiles.js'
 
 export type MigrationReport = {
   tokens: number

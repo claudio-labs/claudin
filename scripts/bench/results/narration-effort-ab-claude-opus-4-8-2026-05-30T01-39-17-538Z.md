@@ -84,7 +84,7 @@
 
 **Variant A (effort=adaptive) run#1** (5 blocks):
 
-- The relevant directory is `src/services/api/openaiShim/`. Let me read the key files for tool call translation.
+- The relevant directory is `src/providers/shims/openaiShim/`. Let me read the key files for tool call translation.
 - I need the middle of messageConverter.ts (the tool_use → tool_calls emission) and the streamParser for the reverse direction.
 - I need the core of both: the tool_use → tool_calls emission (messageConverter ~100-365) and the stream's tool_call reassembly (streamParser ~50-494).
 - I still need two key middle sections: messageConverter ~150-320 (the tool_use pairing/scan + tool message emission) and streamParser ~100-444 (the tool_call delta reassembly). Let me read them.

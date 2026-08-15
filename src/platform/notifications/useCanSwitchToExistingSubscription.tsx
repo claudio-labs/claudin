@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { getOauthProfileFromApiKey } from 'src/services/oauth/getOauthProfile.js';
-import { isClaudeAISubscriber } from 'src/services/auth/auth.js';
+import { getOauthProfileFromApiKey } from 'src/providers/oauth/getOauthProfile.js';
+import { isClaudeAISubscriber } from 'src/providers/auth/auth.js';
 import type { Notification } from 'src/terminal/contexts/notifications.js';
 import { Text } from 'src/terminal/ink.js';
 import { logEvent } from 'src/platform/analytics/index.js';

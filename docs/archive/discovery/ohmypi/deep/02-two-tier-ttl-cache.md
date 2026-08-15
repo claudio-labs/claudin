@@ -51,7 +51,7 @@ Caches exist; the soft/hard tier does not. Inventory:
 - `src/tools/WebFetchTool/utils.ts:64` — `URL_CACHE = new LRUCache<string, CacheEntry>` with `ttl = 15 min` (`:61`), `maxSize = 50 MB` (`:62`), entry shape at `:49-57` (bytes/code/content/contentType/persistedPath). Single TTL, hard eviction. Hit path at `:415-426`, write path at `:522-534`.
 - `src/tools/WebFetchTool/utils.ts:73` — `DOMAIN_CHECK_CACHE` (hostname → `true`) with `ttl = 5 min`, `max = 128`. Caches only "allowed"; failures re-checked.
 - `src/tools/WebSearchTool/WebSearchTool.ts` — **no result cache**. Each query hits the search provider every time. Only growthbook feature flags are cached upstream (`getFeatureValue_CACHED_MAY_BE_STALE`, `:9, :706`).
-- `src/services/api/providerConfig.ts:592` — `getAdditionalModelOptionsCacheScope()` returns a scope key used by *other* caches; preset metadata itself is computed per call. No persisted provider-metadata cache.
+- `src/providers/presets/providerConfig.ts:592` — `getAdditionalModelOptionsCacheScope()` returns a scope key used by *other* caches; preset metadata itself is computed per call. No persisted provider-metadata cache.
 
 ### Persisted under `~/.claudin/`
 
@@ -237,5 +237,5 @@ so users can see whether the cache is actually helping their workflow.
 - Claudin WebSearch (no cache): `/home/dev/projects/claudin/src/tools/WebSearchTool/WebSearchTool.ts`
 - Claudin model cache: `/home/dev/projects/claudin/src/utils/model/modelCache.ts`
 - Claudin latest-version cache: `/home/dev/projects/claudin/src/platform/install/latestVersionCache.ts`
-- Claudin provider metadata: `/home/dev/projects/claudin/src/services/api/providerConfig.ts:592`
+- Claudin provider metadata: `/home/dev/projects/claudin/src/providers/presets/providerConfig.ts:592`
 - Config-dir helper: `/home/dev/projects/claudin/src/shared/envUtils.ts` (`getClaudinConfigHomeDir`)

@@ -2,12 +2,12 @@ import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 
 const realProviders = { ...(await import('src/utils/model/providers.js')) }
 const realModelSupportOverrides = { ...(await import('src/utils/model/modelSupportOverrides.js')) }
-const realProviderConfig = { ...(await import('src/services/api/providerConfig.js')) }
+const realProviderConfig = { ...(await import('src/providers/presets/providerConfig.js')) }
 
 afterAll(() => {
   mock.module('src/utils/model/providers.js', () => realProviders)
   mock.module('src/utils/model/modelSupportOverrides.js', () => realModelSupportOverrides)
-  mock.module('src/services/api/providerConfig.js', () => realProviderConfig)
+  mock.module('src/providers/presets/providerConfig.js', () => realProviderConfig)
 })
 
 async function importFreshEffortModule(options: {
@@ -20,7 +20,7 @@ async function importFreshEffortModule(options: {
   mock.module('src/utils/model/modelSupportOverrides.js', () => ({
     get3PModelCapabilityOverride: () => undefined,
   }))
-  mock.module('src/services/api/providerConfig.js', () => ({
+  mock.module('src/providers/presets/providerConfig.js', () => ({
     supportsCodexReasoningEffort: () => options.supportsCodexReasoningEffort,
     isOpenAICodexShortcut: () => false,
   }))

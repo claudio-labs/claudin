@@ -1,28 +1,28 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { getMainLoopModelOverride } from 'src/platform/bootstrap/state.js'
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { getCurrentProjectConfig } from 'src/platform/config/config.js'
-import { getActiveProviderProfile } from 'src/services/api/providerProfiles.js'
+import { getActiveProviderProfile } from 'src/providers/presets/providerProfiles.js'
 import {
   getSubscriptionType,
   isClaudeAISubscriber,
   isMaxSubscriber,
   isProSubscriber,
   isTeamPremiumSubscriber,
-} from 'src/services/auth/auth.js'
+} from 'src/providers/auth/auth.js'
 import {
   has1mContext,
   is1mContextDisabled,
   modelSupports1M,
 } from 'src/agent/context/context.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { getPrimaryModel } from 'src/services/api/providerModels.js'
+import { getPrimaryModel } from 'src/providers/presets/providerModels.js'
 import { getModelStrings, resolveOverriddenModel } from 'src/utils/model/modelStrings.js'
 import {
   formatModelPricing,
   getOpus46CostTier,
   getOpus5CostTier,
-} from 'src/services/api/modelCost.js'
+} from 'src/providers/usage/modelCost.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'

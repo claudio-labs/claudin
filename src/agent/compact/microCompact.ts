@@ -16,14 +16,14 @@ import { SHELL_TOOL_NAMES } from 'src/platform/shell/shellToolUtils.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
 import { logEvent } from 'src/platform/analytics/index.js'
-import { notifyCacheDeletion } from 'src/services/api/promptCacheBreakDetection.js'
+import { notifyCacheDeletion } from 'src/providers/cache/promptCacheBreakDetection.js'
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
 import { getAutoCompactThreshold, getEffectiveContextWindowSize, isAutoCompactEnabled } from 'src/agent/compact/autoCompact.js'
 import {
   clearCompactWarningSuppression,
   suppressCompactWarning,
 } from 'src/agent/compact/compactWarningState.js'
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import {
   addClippedIds,
   getClippedIds,

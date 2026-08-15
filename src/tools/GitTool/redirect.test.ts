@@ -353,7 +353,7 @@ const RECORDED_COMMANDS: readonly string[] = [
   // Quoted arguments — operators the shell never acts on.
   "git log -3 --format='%an|%s%n%b%n---'",
   "git log -20 --format='%h %s%n%b---' main..HEAD | head -200",
-  "git log --oneline -S\"strict: true\" -- src/services/api/codexShim.ts | tail -5",
+  "git log --oneline -S\"strict: true\" -- src/providers/shims/codexShim.ts | tail -5",
   "git show --stat --format='%b' eaabb20 | head -20",
   "gh pr view 51 --json comments,reviews --jq '.comments[] | .body' 2>&1 | head -50",
   "gh run view 31442130244 --json status,conclusion,jobs --jq '.status'",

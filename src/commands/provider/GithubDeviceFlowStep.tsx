@@ -15,14 +15,14 @@ import type { LocalJSXCommandOnDone } from 'src/types/command.js'
 import {
   readGithubModelsToken,
   saveGithubModelsToken,
-} from 'src/services/api/githubModelsCredentials.js'
+} from 'src/providers/oauth/githubModelsCredentials.js'
 import { prefetchCopilotModelCatalog } from 'src/utils/model/copilotModelCatalog.js'
 import {
   addProviderProfile,
   getProviderProfiles,
   setActiveProviderProfile,
   updateProviderProfile,
-} from 'src/services/api/providerProfiles.js'
+} from 'src/providers/presets/providerProfiles.js'
 
 const GITHUB_DEFAULT_MODEL = 'github:copilot'
 const GITHUB_DEFAULT_BASE_URL = 'https://api.githubcopilot.com'

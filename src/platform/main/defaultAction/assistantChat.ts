@@ -80,7 +80,7 @@ export async function runAssistantChatBranch(deps: AssistantChatBranchDeps): Pro
 
   // Auth — call prepareApiRequest() once for orgUUID, but use a
   // getAccessToken closure for the token so reconnects get fresh tokens.
-  const { checkAndRefreshOAuthTokenIfNeeded, getClaudeAIOAuthTokens } = await import('src/services/auth/auth.js');
+  const { checkAndRefreshOAuthTokenIfNeeded, getClaudeAIOAuthTokens } = await import('src/providers/auth/auth.js');
   await checkAndRefreshOAuthTokenIfNeeded();
   let apiCreds;
   try {

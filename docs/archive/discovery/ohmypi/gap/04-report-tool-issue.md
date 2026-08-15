@@ -56,7 +56,7 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 - **Médio-alto.** `src/agent/coordinator/` é multi-agent mas sem consultor explícito. Encaixa em `AgentTool/`.
 - Útil em fallback chain (primário + escalation a modelo mais forte).
 
-**Encaixe**: `src/prompts/agents/oracle.md`. Registrar via `AgentTool/`. Preset adicional `getPrimaryModel`/`getSlowModel` em `src/services/api/providerModels.ts`.
+**Encaixe**: `src/prompts/agents/oracle.md`. Registrar via `AgentTool/`. Preset adicional `getPrimaryModel`/`getSlowModel` em `src/providers/presets/providerModels.ts`.
 
 ## 5. Autoresearch — closed-loop self-eval com confidence
 

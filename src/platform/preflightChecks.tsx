@@ -6,7 +6,7 @@ import { Spinner } from 'src/terminal/spinner/Spinner.js';
 import { getOauthConfig } from 'src/constants/oauth.js';
 import { useTimeout } from 'src/terminal/hooks/useTimeout.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import { getSSLErrorHint } from 'src/services/api/errorUtils.js';
+import { getSSLErrorHint } from 'src/providers/transport/errorUtils.js';
 import { getUserAgent } from 'src/shared/http.js';
 import { logError } from 'src/shared/log.js';
 import { getAPIProvider } from 'src/utils/model/providers.js';

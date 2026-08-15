@@ -10,7 +10,7 @@ import {
   formatCodexPlanType,
   type CodexUsageData,
   type CodexUsageRow,
-} from 'src/services/api/codexUsage.js'
+} from 'src/providers/usage/codexUsage.js'
 import { formatResetText } from 'src/shared/text/format.js'
 import { logError } from 'src/shared/log.js'
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js'

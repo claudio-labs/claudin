@@ -572,16 +572,16 @@ describe('grep summarizer — when a header is worth its cost', () => {
     // same path off a single line, and the summary grows. This is the shape the
     // no-win guard was throwing away wholesale.
     const text = [
-      'src/services/api/providerConfig.ts:10:the only match here',
-      'src/services/api/activeProvider.ts:20:the only match there',
+      'src/providers/presets/providerConfig.ts:10:the only match here',
+      'src/providers/presets/activeProvider.ts:20:the only match there',
     ].join('\n')
     const body = bodyOf(text)
     expect(body).not.toContain('---')
-    expect(body).toContain('src/services/api/providerConfig.ts:10:the only match here')
+    expect(body).toContain('src/providers/presets/providerConfig.ts:10:the only match here')
   })
 
   test('heads a block as soon as there are lines to amortize it over', () => {
-    const path = 'src/services/api/providerConfig.ts'
+    const path = 'src/providers/presets/providerConfig.ts'
     const text = [
       `${path}:10:first`,
       `${path}:11:second`,

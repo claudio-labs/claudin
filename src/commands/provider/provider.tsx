@@ -3,7 +3,7 @@ import { COMMON_HELP_ARGS, COMMON_INFO_ARGS } from 'src/constants/xml.js'
 import {
   ProviderManager,
   type ProviderManagerResult,
-} from 'src/components/ProviderManager.js'
+} from 'src/providers/ui/ProviderManager.js'
 import { runProviderDoctor } from 'src/commands/provider/doctor.js'
 import { runProviderMigrate } from 'src/commands/provider/migrate.js'
 

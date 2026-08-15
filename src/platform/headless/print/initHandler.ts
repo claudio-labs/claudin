@@ -39,14 +39,14 @@ import {
   getAllOutputStyles,
 } from 'src/constants/outputStyles.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
-import { getAccountInformation } from 'src/services/auth/auth.js'
+import { getAccountInformation } from 'src/providers/auth/auth.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import {
   isFastModeAvailable,
   isFastModeEnabled,
   getFastModeState,
-} from 'src/utils/fastMode.js'
-import { AwsAuthStatusManager } from 'src/services/api/awsAuthStatusManager.js'
+} from 'src/providers/fastMode.js'
+import { AwsAuthStatusManager } from 'src/providers/oauth/awsAuthStatusManager.js'
 
 export async function handleInitializeRequest(
   request: SDKControlInitializeRequest,

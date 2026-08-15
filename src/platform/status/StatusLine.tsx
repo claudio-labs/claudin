@@ -11,7 +11,7 @@ import { getTotalAPIDuration, getTotalCost, getTotalDuration, getTotalInputToken
 import { useMainLoopModel } from 'src/agent/hooks/useMainLoopModel.js';
 import { type ReadonlySettings, useSettings } from 'src/platform/useSettings.js';
 import { Ansi, Box, Text } from 'src/terminal/ink.js';
-import { getRawUtilization } from 'src/services/claudeAiLimits.js';
+import { getRawUtilization } from 'src/providers/claudeAiLimits.js';
 import type { Message } from 'src/types/message.js';
 import type { StatusLineCommandInput } from 'src/types/statusLine.js';
 import type { VimMode } from 'src/types/textInputTypes.js';

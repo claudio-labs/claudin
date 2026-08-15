@@ -7,7 +7,7 @@ import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrl
 import type { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js';
 import { Box } from 'src/terminal/ink.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
-import { getAnthropicApiKey, isAnthropicAuthEnabled } from 'src/services/auth/auth.js';
+import { getAnthropicApiKey, isAnthropicAuthEnabled } from 'src/providers/auth/auth.js';
 import { openBrowser } from 'src/shared/browser.js';
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js';
 import { getGithubRepo } from 'src/services/git/git.js';

@@ -1,4 +1,4 @@
-import { queryHaiku } from 'src/services/api/claude.js'
+import { queryHaiku } from 'src/providers/shims/claude.js'
 import type { Message } from 'src/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'

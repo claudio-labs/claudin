@@ -35,7 +35,7 @@ import {
   getPdfPasswordProtectedErrorMessage,
   getPdfTooLargeErrorMessage,
   getRequestTooLargeErrorMessage,
-} from 'src/services/api/errors.js'
+} from 'src/providers/transport/errors.js'
 import {
   findToolByName,
   toolMatchesName,
@@ -55,7 +55,7 @@ import type {
 import type { HookAttachment } from 'src/agent/attachments/attachments.js'
 import { isAdvisorBlock } from 'src/platform/doctor/advisor.js'
 import { isConnectorTextBlock } from 'src/types/connectorText.js'
-import { normalizeToolInput, normalizeToolInputForAPI } from 'src/services/api/api.js'
+import { normalizeToolInput, normalizeToolInputForAPI } from 'src/providers/transport/api.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { validateImagesForAPI } from 'src/terminal/image/imageValidation.js'
 import { safeParseJSON } from 'src/shared/data/json.js'

@@ -16,7 +16,7 @@ import type { ToolUseConfirm } from 'src/components/permissions/PermissionReques
 import { useSetAppState } from 'src/terminal/state/AppState.js'
 import { env } from 'src/shared/env.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { type CompletionType, logUnaryEvent } from 'src/services/api/unaryLogging.js'
+import { type CompletionType, logUnaryEvent } from 'src/providers/transport/unaryLogging.js'
 
 export type UnaryEvent = {
   completion_type: CompletionType

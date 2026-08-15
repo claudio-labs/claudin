@@ -3,7 +3,7 @@
  * Implementation is lazy-loaded from cost.ts to reduce startup time.
  */
 import type { Command } from 'src/commands.js'
-import { isClaudeAISubscriber } from 'src/services/auth/auth.js'
+import { isClaudeAISubscriber } from 'src/providers/auth/auth.js'
 
 const cost = {
   type: 'local',

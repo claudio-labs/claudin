@@ -9,7 +9,7 @@ import {
   fetchMiniMaxUsage,
   type MiniMaxUsageData,
   type MiniMaxUsageRow,
-} from 'src/services/api/minimaxUsage.js'
+} from 'src/providers/usage/minimaxUsage.js'
 import { logError } from 'src/shared/log.js'
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js'
 import { Byline } from 'src/terminal/design-system/Byline.js'

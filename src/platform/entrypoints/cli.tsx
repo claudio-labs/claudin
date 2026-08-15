@@ -220,7 +220,7 @@ async function main(): Promise<void> {
   // refresh below, the Grove prefetch, and the clear-on-start logic further
   // down. enableConfigs() already ran above, so profile reads are safe here.
   const { tryGetActiveProvider } = await import(
-    'src/services/api/activeProvider.js'
+    'src/providers/presets/activeProvider.js'
   )
   const activeProvider = tryGetActiveProvider()
 
@@ -235,13 +235,13 @@ async function main(): Promise<void> {
     const {
       hydrateGithubModelsTokenFromSecureStorage,
       refreshGithubModelsTokenIfNeeded,
-    } = await import('src/services/api/githubModelsCredentials.js')
+    } = await import('src/providers/oauth/githubModelsCredentials.js')
     await refreshGithubModelsTokenIfNeeded()
     hydrateGithubModelsTokenFromSecureStorage()
   }
 
   const { validateProviderEnvForStartupOrExit } = await import(
-    'src/services/api/providerValidation.js'
+    'src/providers/presets/providerValidation.js'
   )
   await validateProviderEnvForStartupOrExit()
 
@@ -258,7 +258,7 @@ async function main(): Promise<void> {
   // are already swallowed inside each memoized fn.
   if (activeProvider && activeProvider.transport === 'anthropic') {
     void (async () => {
-      const grove = await import('src/services/api/grove.js')
+      const grove = await import('src/platform/privacy/grove.js')
       void grove.getGroveSettings()
       void grove.getGroveNoticeConfig()
     })()
@@ -357,7 +357,7 @@ async function main(): Promise<void> {
     // (not the stale disk cache), but init still needs auth headers to work.
     const {
       getClaudeAIOAuthTokens
-    } = await import('src/services/auth/auth.js');
+    } = await import('src/providers/auth/auth.js');
     if (!getClaudeAIOAuthTokens()?.accessToken) {
       exitWithError(BRIDGE_LOGIN_ERROR);
     }

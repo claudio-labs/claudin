@@ -16,14 +16,14 @@ import { logEvent } from 'src/platform/analytics/index.js';
 import { MCPConnectionManager } from 'src/services/mcp/MCPConnectionManager.js';
 import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import { onChangeAppState } from 'src/terminal/state/onChangeAppState.js';
-import { isAnthropicAuthEnabled } from 'src/services/auth/auth.js';
+import { isAnthropicAuthEnabled } from 'src/providers/auth/auth.js';
 import type { CommandResultDisplay } from 'src/types/command.js';
 export async function setupTokenHandler(root: Root): Promise<void> {
   logEvent('tengu_setup_token_command', {});
   const showAuthWarning = !isAnthropicAuthEnabled();
   const {
     ConsoleOAuthFlow
-  } = await import('src/components/ConsoleOAuthFlow.js');
+  } = await import('src/providers/ui/ConsoleOAuthFlow.js');
   await new Promise<void>(resolve => {
     root.render(<AppStateProvider onChangeAppState={onChangeAppState}>
         <KeybindingSetup>

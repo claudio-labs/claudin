@@ -40,8 +40,8 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
   })
 }
 
-import { convertToolsToResponsesTools } from '../src/services/api/codexShim.js'
-import { convertTools } from '../src/services/api/openaiShim.js'
+import { convertToolsToResponsesTools } from '../src/providers/shims/codexShim.js'
+import { convertTools } from '../src/providers/shims/openaiShim.js'
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,

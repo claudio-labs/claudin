@@ -2,10 +2,10 @@ import { c as _c } from "react-compiler-runtime";
 import React, { useEffect, useMemo, useState } from 'react';
 import { extraUsage } from 'src/commands/extra-usage/index.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import { useClaudeAiLimits } from 'src/services/claudeAiLimitsHook.js';
-import { shouldProcessMockLimits } from 'src/services/rateLimitMocking.js'; // Used for /mock-limits command
-import { getRateLimitTier, getSubscriptionType, isClaudeAISubscriber } from 'src/services/auth/auth.js';
-import { hasClaudeAiBillingAccess } from 'src/services/api/billing.js';
+import { useClaudeAiLimits } from 'src/providers/claudeAiLimitsHook.js';
+import { shouldProcessMockLimits } from 'src/providers/rateLimitMocking.js'; // Used for /mock-limits command
+import { getRateLimitTier, getSubscriptionType, isClaudeAISubscriber } from 'src/providers/auth/auth.js';
+import { hasClaudeAiBillingAccess } from 'src/providers/usage/billing.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 type UpsellParams = {
   shouldShowUpsell: boolean;

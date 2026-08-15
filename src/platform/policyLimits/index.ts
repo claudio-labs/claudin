@@ -26,7 +26,7 @@ import {
   checkAndRefreshOAuthTokenIfNeeded,
   getAnthropicApiKeyWithSource,
   getClaudeAIOAuthTokens,
-} from 'src/services/auth/auth.js'
+} from 'src/providers/auth/auth.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
@@ -39,8 +39,8 @@ import {
 import { isEssentialTrafficOnly } from 'src/platform/config/privacyLevel.js'
 import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
-import { getRetryDelay } from 'src/services/api/withRetry.js'
+import { getClaudeCodeUserAgent } from 'src/providers/transport/userAgent.js'
+import { getRetryDelay } from 'src/providers/transport/withRetry.js'
 import {
   type PolicyLimitsFetchResult,
   type PolicyLimitsResponse,

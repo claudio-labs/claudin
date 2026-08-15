@@ -12,10 +12,10 @@ import {
 } from 'src/constants/system.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
-import { getAPIMetadata } from 'src/services/api/claude.js'
-import { getAnthropicClient } from 'src/services/api/client.js'
-import { getCachedAnthropicClient } from 'src/services/api/clientCache.js'
-import { getModelBetas, modelSupportsStructuredOutputs } from 'src/services/api/betas.js'
+import { getAPIMetadata } from 'src/providers/shims/claude.js'
+import { getAnthropicClient } from 'src/providers/transport/client.js'
+import { getCachedAnthropicClient } from 'src/providers/transport/clientCache.js'
+import { getModelBetas, modelSupportsStructuredOutputs } from 'src/providers/transport/betas.js'
 import { computeFingerprint } from 'src/shared/data/fingerprint.js'
 import {
   modelRejectsSamplingParams,

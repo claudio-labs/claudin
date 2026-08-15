@@ -31,7 +31,7 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 
 ### 5. CGNAT (Tailscale) em `isLocalProviderUrl`
 - **Issue:** usuários Tailscale com IP 100.64.0.0/10 perdem otimizações local-provider (toolless retry, loopback retry).
-- **Estado:** `src/services/api/providerConfig.ts:107-118` cobre 127/8, 192.168, 10/8, mas falta 100.64/10.
+- **Estado:** `src/providers/presets/providerConfig.ts:107-118` cobre 127/8, 192.168, 10/8, mas falta 100.64/10.
 - **Falta:** adicionar range CGNAT.
 - **Esforço:** 5 linhas.
 
@@ -61,17 +61,17 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 - **Esforço:** alto se for trocar backend.
 
 ### 10. Remote Ollama / Tailscale (parcial)
-- **Estado:** funciona em LAN/Tailscale com API key vazia (`src/services/api/openaiShim.ts:1702-1731`).
+- **Estado:** funciona em LAN/Tailscale com API key vazia (`src/providers/shims/openaiShim.ts:1702-1731`).
 - **Falta:** detecção CGNAT (ver #5 acima) para que retry loopback dispare.
 
 ### 11. Headless Codex/ChatGPT OAuth
-- **Estado:** `src/services/api/codexOAuth.ts:183` funciona em WSL2 (localhost hairpin) e SSH com port-forward manual.
+- **Estado:** `src/providers/oauth/codexOAuth.ts:183` funciona em WSL2 (localhost hairpin) e SSH com port-forward manual.
 - **Falta:** device-code flow ou OOB — callback hoje exige `localhost:1455` no mesmo host do browser.
 - **Workaround atual:** copiar `~/.codex/auth.json` de outra máquina.
 - **Esforço:** médio (implementar device-code, depende de suporte do provider).
 
 ### 12. Tolerant tool-call parser (Ollama / modelos locais fracos)
-- **Estado:** `src/services/api/openaiShim.ts:1097-1179` só parseia `delta.tool_calls` estruturado.
+- **Estado:** `src/providers/shims/openaiShim.ts:1097-1179` só parseia `delta.tool_calls` estruturado.
 - **Falta:** sniffer no `content` para extrair JSON / XML-tag-style tool calls quando o modelo não emite o formato estruturado.
 - **Esforço:** fácil-médio (~100 linhas), bem isolado.
 
@@ -87,7 +87,7 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 - **Workaround:** `CLAUDIN_CONFIG_DIR` env var por shell (já funciona).
 
 ### 14. Cursor CLI provider
-- **Estado:** ausente. `src/services/api/providerConfig.ts:569` não tem.
+- **Estado:** ausente. `src/providers/presets/providerConfig.ts:569` não tem.
 - **Falta:** Cursor CLI **não é OpenAI-compat** — exige shim novo (tipo `codexShim.ts`).
 - **Esforço:** alto, ROI questionável (demanda real?).
 
@@ -103,7 +103,7 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 
 ### 17. Copilot "One Premium Request per turn" (bundling)
 - **Issue:** usuários Copilot batem na quota porque cada tool call = 1 request.
-- **Estado:** `src/agent/QueryEngine.ts` e `src/services/api/openaiShim.ts:1616` não fazem batching/coalescing.
+- **Estado:** `src/agent/QueryEngine.ts` e `src/providers/shims/openaiShim.ts:1616` não fazem batching/coalescing.
 - **Falta:** inlinar Haiku-summaries, cachear cadeias triviais, diferir sub-agent reports.
 - **Esforço:** alto, refactor profundo do agent loop. ROI questionável fora de Copilot.
 

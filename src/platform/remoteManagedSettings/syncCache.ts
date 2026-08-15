@@ -11,7 +11,7 @@ import { CLAUDE_AI_INFERENCE_SCOPE } from 'src/constants/oauth.js'
 import {
   getAnthropicApiKeyWithSource,
   getClaudeAIOAuthTokens,
-} from 'src/services/auth/auth.js'
+} from 'src/providers/auth/auth.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,

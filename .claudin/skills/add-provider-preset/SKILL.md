@@ -14,22 +14,22 @@ Two paths depending on auth. Confirm which the vendor uses first (API key/token
 The common case. `provider: 'openai'`, `requiresApiKey: true`. Recurring touch-set
 (zai 980aabd7, cloudflare c6b2d20a, opencode-zen 4a4e619):
 
-1. **`src/services/api/providerProfiles.ts`** — add the key to the `ProviderPreset` union
+1. **`src/providers/presets/providerProfiles.ts`** — add the key to the `ProviderPreset` union
    AND a `getProviderPresetDefaults` switch case. ⚠️ The switch `default` falls
    through to `ollama`, so a union member with **no case silently becomes Ollama**
    (no compile error). This fn reads NO env — defaults are deterministic.
-2. **`src/components/ProviderManager.tsx`** — add a `{ value, label, description }`
+2. **`src/providers/ui/ProviderManager.tsx`** — add a `{ value, label, description }`
    menu entry; the value flows straight into `getProviderPresetDefaults(preset)`,
    no extra wiring.
-3. **`src/services/api/providerProfiles.test.ts`** — mirror the `opencode-zen` defaults test.
-4. **`src/components/ProviderManager.test.tsx`** — add the preset to **`PRESET_ORDER`**.
+3. **`src/providers/presets/providerProfiles.test.ts`** — mirror the `opencode-zen` defaults test.
+4. **`src/providers/ui/ProviderManager.test.tsx`** — add the preset to **`PRESET_ORDER`**.
    ⚠️ This is a TEST-ONLY ordering registry (not a source constant), so the menu
    wiring is NOT self-contained — omit it and the ProviderManager test fails.
-5. **`src/services/api/openaiShim/constants.ts`** — ONLY if the vendor serves a GLM
+5. **`src/providers/shims/openaiShim/constants.ts`** — ONLY if the vendor serves a GLM
    (Zhipu) or DeepSeek family model: add its host to `GLM_API_HOSTS` /
    `DEEPSEEK_API_HOSTS` (~line 22/30), or that family's tool-calling/format addendum
    silently won't apply. Then add a case to
-   `src/services/api/openaiShim/__tests__/regression.test.ts` (opencode-zen 4a4e619).
+   `src/providers/shims/openaiShim/__tests__/regression.test.ts` (opencode-zen 4a4e619).
 6. **`src/platform/StartupScreen.ts`** — ONLY if the default model name collides
    with a vendor regex in the pill name-detection (see gotcha below).
 
@@ -55,7 +55,7 @@ Much bigger than a menu clone. The canonical template is **xAI** (9425ad9, b7a78
 loopback PKCE); **copilot** (dc28c35) is the GitHub-style **device-code** variant.
 Decide loopback PKCE vs device-code (RFC 8628) up front — xAI switched once (479e78f).
 Reuse — do NOT re-port — the token store / PKCE / callback server in
-`src/services/oauth/` + `src/shared/browser.ts`. Device-code providers reuse
+`src/providers/oauth/` + `src/shared/browser.ts`. Device-code providers reuse
 `src/commands/provider/GithubDeviceFlowStep.tsx` + `src/platform/github/deviceFlow.ts`.
 (The declarative `Method`/`Authorization`/`prompts` two-step from opencode's
 `provider/auth.ts` was explicitly deferred — don't build it unless asked.)
@@ -65,9 +65,9 @@ Recurring touch-set (rename `<vendor>` per provider):
   `<vendor>OAuthShared.ts` for shared consts.
 - **Credentials:** `src/utils/<vendor>Credentials.ts` (+`.test.ts`) AND register the
   key in `src/platform/secureStorage/index.ts`. UA header in `src/utils/<vendor>UserAgent.ts`.
-- **Wire:** inject the auth header in `src/services/api/openaiShim/messagesClient.ts`;
-  handle 401/refresh in `src/services/api/withRetry.ts`.
-- **Schema:** `src/services/api/providerConfig.ts` (+`providerConfig.test.ts`) — profile
+- **Wire:** inject the auth header in `src/providers/shims/openaiShim/messagesClient.ts`;
+  handle 401/refresh in `src/providers/transport/withRetry.ts`.
+- **Schema:** `src/providers/presets/providerConfig.ts` (+`providerConfig.test.ts`) — profile
   + credential schema.
 - **UI:** `src/components/use<Vendor>OAuthFlow.ts` (+`.test.tsx`) and the
   `<XxxOAuthSetup>` clone in `ProviderManager.tsx`; `src/commands/provider/doctor.tsx`
@@ -75,7 +75,7 @@ Recurring touch-set (rename `<vendor>` per provider):
 - **Models (if the provider exposes a catalog):** a catalog like
   `src/utils/model/copilotModelCatalog.ts` (dc28c35) + context-window entries in
   `src/utils/model/openaiContextWindows.ts` / `model.ts` / `providers.ts`. Dynamic
-  discovery lives in `src/services/api/providerDiscovery.ts`.
+  discovery lives in `src/providers/presets/providerDiscovery.ts`.
 
 Backlog of OAuth providers opencode ships that Claudin lacks (re-verify against the
 sibling repo `../opencode/packages/opencode/src/plugin/` — this

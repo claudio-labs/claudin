@@ -13,9 +13,9 @@ import {
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
-import { getCacheControl } from 'src/services/api/claude.js'
-import { parsePromptTooLongTokenCounts } from 'src/services/api/errors.js'
-import { getDefaultMaxRetries } from 'src/services/api/withRetry.js'
+import { getCacheControl } from 'src/providers/shims/claude.js'
+import { parsePromptTooLongTokenCounts } from 'src/providers/transport/errors.js'
+import { getDefaultMaxRetries } from 'src/providers/transport/withRetry.js'
 import type { Tool, ToolPermissionContext, Tools } from 'src/Tool.js'
 import type { Message } from 'src/types/message.js'
 import type {

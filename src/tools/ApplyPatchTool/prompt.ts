@@ -2,7 +2,7 @@ export const APPLY_PATCH_TOOL_NAME = 'apply_patch'
 
 // IMPORTANT — cache safety: this description is serialized into the `tools`
 // block, which is the head of the cached request prefix and carries no
-// cache_control marker of its own. toolToAPISchema (src/services/api/api.ts) freezes
+// cache_control marker of its own. toolToAPISchema (src/providers/transport/api.ts) freezes
 // it per session, so it MUST be a static module-level constant — never
 // interpolate dates, cwd, model id, git state, or per-turn flags. Any byte
 // change here invalidates the whole downstream prompt cache.

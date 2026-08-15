@@ -93,7 +93,7 @@
 
 **Variant A run#2** (6 blocks):
 
-- Vou ler os arquivos relevantes em `src/services/api/openaiShim/`.
+- Vou ler os arquivos relevantes em `src/providers/shims/openaiShim/`.
 - The most relevant files are `toolConverter.ts` and `messageConverter.ts`. Let me read those plus the streamParser and types.
 - Vou ler o miolo do `messageConverter.ts` (a passagem pesada de conversão) e o `streamParser.ts` para a direção de resposta.
 - I still need the core tool_use → tool_calls mapping (lines ~100–362). Let me read that range and the streamParser for the response direction.

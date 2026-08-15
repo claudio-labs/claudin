@@ -6,10 +6,10 @@ import type { CountTokensCommandInput } from '@aws-sdk/client-bedrock-runtime'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import { VERTEX_COUNT_TOKENS_ALLOWED_BETAS } from 'src/constants/betas.js'
 import type { Attachment } from 'src/agent/attachments/attachments.js'
-import { getModelBetas } from 'src/services/api/betas.js'
+import { getModelBetas } from 'src/providers/transport/betas.js'
 import { estimateImageTokens } from 'src/agent/context/imageTokenEstimator.js'
 import { getVertexRegionForModel, isEnvTruthy } from 'src/shared/envUtils.js'
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { logError } from 'src/shared/log.js'
 import { normalizeAttachmentForAPI } from 'src/agent/messages/messages.js'
 import {
@@ -25,9 +25,9 @@ import {
 } from 'src/utils/model/model.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { isToolReferenceBlock } from 'src/agent/tools/toolSearch.js'
-import { getAnthropicClient } from 'src/services/api/client.js'
-import { getCachedAnthropicClient } from 'src/services/api/clientCache.js'
-import { withTokenCountVCR } from 'src/services/vcr.js'
+import { getAnthropicClient } from 'src/providers/transport/client.js'
+import { getCachedAnthropicClient } from 'src/providers/transport/clientCache.js'
+import { withTokenCountVCR } from 'src/providers/vcr.js'
 
 // Minimal values for token counting with thinking enabled
 // API constraint: max_tokens must be greater than thinking.budget_tokens

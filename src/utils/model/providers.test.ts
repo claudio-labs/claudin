@@ -1,13 +1,13 @@
 import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 import type { GlobalConfig, ProviderProfile } from 'src/platform/config/config.js'
-import type { ResolvedProvider } from 'src/services/api/activeProvider.js'
+import type { ResolvedProvider } from 'src/providers/presets/activeProvider.js'
 
 let mockProviderProfile: ProviderProfile | null = null
 
 // Spread into plain objects so afterAll restores the original bindings, not
 // the live ESM namespaces (which mock.module mutates after the fact).
 const realConfig = { ...(await import('src/platform/config/config.js')) }
-const realProviderProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
+const realProviderProfiles = { ...(await import('src/providers/presets/providerProfiles.js')) }
 
 mock.module('src/platform/config/config.js', () => ({
   ...realConfig,
@@ -17,17 +17,17 @@ mock.module('src/platform/config/config.js', () => ({
   } as unknown as GlobalConfig),
 }))
 
-mock.module('src/services/api/providerProfiles.js', () => ({
+mock.module('src/providers/presets/providerProfiles.js', () => ({
   ...realProviderProfiles,
   getActiveProviderProfile: () => mockProviderProfile ?? undefined,
 }))
 
 afterAll(() => {
   mock.module('src/platform/config/config.js', () => realConfig)
-  mock.module('src/services/api/providerProfiles.js', () => realProviderProfiles)
+  mock.module('src/providers/presets/providerProfiles.js', () => realProviderProfiles)
 })
 
-import { invalidateActiveProviderCache } from 'src/services/api/activeProvider.js'
+import { invalidateActiveProviderCache } from 'src/providers/presets/activeProvider.js'
 import {
   _setCopilotCatalogForTesting,
   type CopilotCatalogEntry,

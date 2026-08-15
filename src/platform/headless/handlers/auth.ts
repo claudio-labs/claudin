@@ -6,21 +6,21 @@ import {
   logEvent,
 } from 'src/platform/analytics/index.js'
 import { refreshGrowthBookAfterAuthChange } from 'src/platform/analytics/growthbook.js'
-import { getGroveNoticeConfig, getGroveSettings } from 'src/services/api/grove.js'
+import { getGroveNoticeConfig, getGroveSettings } from 'src/platform/privacy/grove.js'
 import { clearPolicyLimitsCache } from 'src/platform/policyLimits/index.js'
 import { clearRemoteManagedSettingsCache } from 'src/platform/remoteManagedSettings/index.js'
-import { getSSLErrorHint } from 'src/services/api/errorUtils.js'
-import { fetchAndStoreClaudeCodeFirstTokenDate } from 'src/services/api/firstTokenDate.js'
+import { getSSLErrorHint } from 'src/providers/transport/errorUtils.js'
+import { fetchAndStoreClaudeCodeFirstTokenDate } from 'src/providers/usage/firstTokenDate.js'
 import {
   createAndStoreApiKey,
   fetchAndStoreUserRoles,
   refreshOAuthToken,
   shouldUseClaudeAIAuth,
   storeOAuthAccountInfo,
-} from 'src/services/oauth/client.js'
-import { getOauthProfileFromOauthToken } from 'src/services/oauth/getOauthProfile.js'
-import { OAuthService } from 'src/services/oauth/index.js'
-import type { OAuthTokens } from 'src/services/oauth/types.js'
+} from 'src/providers/oauth/client.js'
+import { getOauthProfileFromOauthToken } from 'src/providers/oauth/getOauthProfile.js'
+import { OAuthService } from 'src/providers/oauth/index.js'
+import type { OAuthTokens } from 'src/providers/oauth/types.js'
 import {
   clearOAuthTokenCache,
   getAnthropicApiKeyWithSource,
@@ -32,8 +32,8 @@ import {
   removeApiKey,
   saveOAuthTokensIfNeeded,
   validateForceLoginOrg,
-} from 'src/services/auth/auth.js'
-import { clearBetasCaches } from 'src/services/api/betas.js'
+} from 'src/providers/auth/auth.js'
+import { clearBetasCaches } from 'src/providers/transport/betas.js'
 import { saveGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'

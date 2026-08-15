@@ -19,7 +19,7 @@ import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
 import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type { SDKControlResponse } from 'src/platform/entrypoints/sdk/controlTypes.js'
 import { getFeatureValue_CACHED_WITH_REFRESH } from 'src/platform/analytics/growthbook.js'
-import { getOrganizationUUID } from 'src/services/oauth/client.js'
+import { getOrganizationUUID } from 'src/providers/oauth/client.js'
 import {
   isPolicyAllowed,
   waitForPolicyLimitsToLoad,
@@ -29,7 +29,7 @@ import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
   handleOAuth401Error,
-} from 'src/services/auth/auth.js'
+} from 'src/providers/auth/auth.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { stripDisplayTagsAllowEmpty } from 'src/shared/text/displayTags.js'

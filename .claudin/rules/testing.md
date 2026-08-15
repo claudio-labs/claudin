@@ -171,7 +171,7 @@ in a full run.
 // ✅ Correct — mock at the network boundary
 import { mock } from 'bun:test'
 
-mock.module('src/services/api/client.js', () => ({
+mock.module('src/providers/transport/client.js', () => ({
   createClient: () => ({ messages: { create: mock(() => Promise.resolve(mockResponse)) } })
 }))
 
@@ -382,16 +382,17 @@ launcher runs the bundle.
 
 ## Known full-suite flakes & the typecheck baseline
 
-Full `bun test` on a clean `main` fails — but the failure SET depends on the
-**directory**, not the commit (measured 2026-07-18, cross-checked main vs
-branch in both environments):
+> **The "2 fails in a real checkout" entry was wrong and is retired
+> (2026-08-14).** `ProviderModelIndicator.test.ts > readSnapshot` was never a
+> parallelism race — bun runs test files in ONE process, so there is no
+> parallelism to race. `modelOptions.github.test.ts` captured `providers.js` as
+> the live `await import` namespace and "restored" that in `afterAll`, which
+> re-installed its own `getAPIProvider: () => 'github'` stub for the rest of the
+> run. `renderModelName` then stopped mapping Claude ids. Fixed by taking a
+> plain-object copy; the suite is **0 fail** in a real checkout. Treat any
+> revival of those two names as a real leak, not as this flake.
 
-- **Real project checkout**: 2 fails — `src/components/ProviderModelIndicator.test.ts >
-  readSnapshot` ("renders the friendly model name…", "never leaks the [1m]
-  context suffix…"). That file `mock.module`s global config/model modules, so
-  under full-suite parallelism it races with other files' mocks; it passes in
-  isolation and in any pairwise combination.
-- **git worktree with symlinked `node_modules`** (e.g. `/tmp/...` review
+In a **git worktree with symlinked `node_modules`** (e.g. `/tmp/...` review
   worktrees): 9 fails — the effort-cycling batch ("Opus 4.8 steps xhigh →
   max", "non-xhigh model… wraps", "numeric session effort…"),
   `deserializeMessagesWithInterruptDetection strips thinking blocks…`, and the

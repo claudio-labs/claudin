@@ -24,7 +24,7 @@ import {
   getBridgeBaseUrlOverride,
 } from 'src/platform/bridge/bridgeConfig.js'
 import { getOauthConfig } from 'src/constants/oauth.js'
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'

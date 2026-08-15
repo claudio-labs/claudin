@@ -356,7 +356,7 @@ The OOM @ 4 GB originally hypothesized for 5.3 cannot come from these
 caches; it was mitigated by the heap-pressure trigger + 8 GB bump in 5.0.
 
 **Not covered**: `auth.ts pending401Handlers` (uses `finally { delete }`
-self-cleanup; verified by inspection at `src/services/auth/auth.ts:1383-1390`).
+self-cleanup; verified by inspection at `src/providers/auth/auth.ts:1383-1390`).
 Other module-level Maps in 179 files are reachable through the discovery
 pattern in this bench if a future regression appears — the systematic
 sweep is documented in `~/.claudin/plans/immutable-jingling-hare.md`.

@@ -7,7 +7,7 @@ import { getLanguageName } from 'src/shared/text/cliHighlight.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { getFsImplementation, safeResolvePath } from 'src/shared/fs/fsOperations.js';
 import { expandPath } from 'src/shared/fs/path.js';
-import type { CompletionType } from 'src/services/api/unaryLogging.js';
+import type { CompletionType } from 'src/providers/transport/unaryLogging.js';
 import { Select } from 'src/terminal/custom-select/index.js';
 import { ShowInIDEPrompt } from 'src/platform/ide/ShowInIDEPrompt.js';
 import { usePermissionRequestLogging } from 'src/components/permissions/hooks.js';

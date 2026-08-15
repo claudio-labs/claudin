@@ -15,8 +15,8 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/platform/analytics/index.js'
-import { fetchUltrareviewQuota } from 'src/services/api/ultrareviewQuota.js'
-import { fetchUtilization } from 'src/services/api/usage.js'
+import { fetchUltrareviewQuota } from 'src/providers/usage/ultrareviewQuota.js'
+import { fetchUtilization } from 'src/providers/usage/usage.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import {
   checkRemoteAgentEligibility,
@@ -24,7 +24,7 @@ import {
   getRemoteTaskSessionUrl,
   registerRemoteAgentTask,
 } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js'
-import { isEnterpriseSubscriber, isTeamSubscriber } from 'src/services/auth/auth.js'
+import { isEnterpriseSubscriber, isTeamSubscriber } from 'src/providers/auth/auth.js'
 import { detectCurrentRepositoryWithHost } from 'src/services/git/detectRepository.js'
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
 import { getDefaultBranch, gitExe } from 'src/services/git/git.js'

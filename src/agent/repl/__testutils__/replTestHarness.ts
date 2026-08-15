@@ -76,7 +76,7 @@ const realUseMainLoopModel = { ...(await import('src/agent/hooks/useMainLoopMode
 // cache-busts a fresh import of the real hook and waits for 'missing'), hanging
 // it until timeout. Plain snapshot so the live namespace can't re-mock it.
 const realUseApiKeyVerification = {
-  ...(await import('src/hooks/useApiKeyVerification.js')),
+  ...(await import('src/providers/hooks/useApiKeyVerification.js')),
 }
 
 export function setupReplMocks(): void {
@@ -166,7 +166,7 @@ export function setupReplMocks(): void {
   }))
 
   // Direct connect — connects to a claudin server.
-  mock.module('src/hooks/useDirectConnect.js', () => ({
+  mock.module('src/providers/hooks/useDirectConnect.js', () => ({
     useDirectConnect: () => ({ state: 'idle', error: null }),
   }))
   mock.module('../../../screens/hooks/useDirectConnect.js', () => ({
@@ -376,7 +376,7 @@ export function setupReplMocks(): void {
   }))
 
   // API key verification fires a network request on mount.
-  mock.module('src/hooks/useApiKeyVerification.js', () => ({
+  mock.module('src/providers/hooks/useApiKeyVerification.js', () => ({
     useApiKeyVerification: () => ({
       status: 'valid',
       reverify: returnEmptyObject,
@@ -395,7 +395,7 @@ export function teardownReplMocks(): void {
   // mock.restore() does not revert mock.module(); restore the pinned hook.
   mock.module('src/agent/hooks/useMainLoopModel.js', () => realUseMainLoopModel)
   mock.module('src/agent/hooks/useMainLoopModel.js', () => realUseMainLoopModel)
-  mock.module('src/hooks/useApiKeyVerification.js', () => realUseApiKeyVerification)
+  mock.module('src/providers/hooks/useApiKeyVerification.js', () => realUseApiKeyVerification)
   mock.module('../../../screens/hooks/useApiKeyVerification.js', () => realUseApiKeyVerification)
   if (effortEnvWasSet) {
     if (savedEffortEnv === undefined) {

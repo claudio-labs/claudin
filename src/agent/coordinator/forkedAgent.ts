@@ -18,8 +18,8 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/platform/analytics/index.js'
-import { accumulateUsage, updateUsage } from 'src/services/api/claude.js'
-import { EMPTY_USAGE, type NonNullableUsage } from 'src/services/api/logging.js'
+import { accumulateUsage, updateUsage } from 'src/providers/shims/claude.js'
+import { EMPTY_USAGE, type NonNullableUsage } from 'src/providers/transport/logging.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { AgentId } from 'src/types/ids.js'

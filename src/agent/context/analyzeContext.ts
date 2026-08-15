@@ -47,7 +47,7 @@ import type {
   NormalizedUserMessage,
   UserMessage,
 } from 'src/types/message.js'
-import { toolToAPISchema } from 'src/services/api/api.js'
+import { toolToAPISchema } from 'src/providers/transport/api.js'
 import { filterInjectedMemoryFiles, getMemoryFiles } from 'src/services/instructions/claudemd.js'
 import { getContextWindowForModel } from 'src/agent/context/context.js'
 import { getCwd } from 'src/shared/fs/cwd.js'

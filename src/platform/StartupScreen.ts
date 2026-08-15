@@ -7,12 +7,12 @@ import os from 'os'
 
 import { readLatestVersion } from 'src/platform/install/latestVersionCache.js'
 import { gt } from 'src/shared/semver.js'
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { isLocalProviderUrl, resolveProviderRequest } from 'src/services/api/providerConfig.js'
-import { getLocalOpenAICompatibleProviderLabel } from 'src/services/api/providerDiscovery.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { isLocalProviderUrl, resolveProviderRequest } from 'src/providers/presets/providerConfig.js'
+import { getLocalOpenAICompatibleProviderLabel } from 'src/providers/presets/providerDiscovery.js'
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
 import { getDisplayedEffortLabel, getInitialEffortSetting, modelSupportsEffort, type AdaptiveEffort, type EffortLevel } from 'src/utils/effort.js'
-import { effortLevelToSymbol } from 'src/components/EffortIndicator.js'
+import { effortLevelToSymbol } from 'src/providers/ui/EffortIndicator.js'
 
 const UNCONFIGURED_PLACEHOLDER = '—'
 

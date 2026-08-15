@@ -4,7 +4,7 @@ import type {
   ToolUseBlock,
 } from '@anthropic-ai/sdk/resources/index.mjs'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
-import { FallbackTriggeredError } from 'src/services/api/withRetry.js'
+import { FallbackTriggeredError } from 'src/providers/transport/withRetry.js'
 import {
   calculateTokenWarningState,
   isAutoCompactEnabled,
@@ -41,7 +41,7 @@ import { logError } from 'src/shared/log.js'
 import {
   PROMPT_TOO_LONG_ERROR_MESSAGE,
   isPromptTooLongMessage,
-} from 'src/services/api/errors.js'
+} from 'src/providers/transport/errors.js'
 import { logAntError, logForDebugging } from 'src/shared/debug.js'
 import { claimsAgentLaunch } from 'src/shared/proc/phantomLaunchGuard.js'
 import {
@@ -60,7 +60,7 @@ import {
   createToolUseSummaryMessage,
 } from 'src/agent/messages/messages.js'
 import { generateToolUseSummary } from 'src/agent/toolUseSummary/toolUseSummaryGenerator.js'
-import { prependUserContext, appendSystemContext } from 'src/services/api/api.js'
+import { prependUserContext, appendSystemContext } from 'src/providers/transport/api.js'
 import {
   createAttachmentMessage,
   filterDuplicateMemoryAttachments,

@@ -43,7 +43,7 @@ import { count } from 'src/shared/data/array.js'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
-} from 'src/services/auth/auth.js'
+} from 'src/providers/auth/auth.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { classifyAxiosError } from 'src/shared/errors.js'
 import { getGithubRepo } from 'src/services/git/git.js'
@@ -53,10 +53,10 @@ import {
 } from 'src/utils/model/providers.js'
 import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
+import { getClaudeCodeUserAgent } from 'src/providers/transport/userAgent.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
-import { getRetryDelay } from 'src/services/api/withRetry.js'
+import { getRetryDelay } from 'src/providers/transport/withRetry.js'
 import { scanForSecrets } from 'src/services/teamMemorySync/secretScanner.js'
 import {
   type SkippedSecretFile,

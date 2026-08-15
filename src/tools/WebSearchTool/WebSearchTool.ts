@@ -7,14 +7,14 @@ import type { PermissionResult } from 'src/services/permissions/PermissionResult
 
 import { z } from 'zod/v4'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { queryModelWithStreaming } from 'src/services/api/claude.js'
-import { collectCodexCompletedResponse } from 'src/services/api/codexShim.js'
-import { fetchWithProxyRetry } from 'src/services/api/fetchWithProxyRetry.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { queryModelWithStreaming } from 'src/providers/shims/claude.js'
+import { collectCodexCompletedResponse } from 'src/providers/shims/codexShim.js'
+import { fetchWithProxyRetry } from 'src/providers/transport/fetchWithProxyRetry.js'
 import {
   resolveCodexApiCredentials,
   resolveProviderRequest,
-} from 'src/services/api/providerConfig.js'
+} from 'src/providers/presets/providerConfig.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logError } from 'src/shared/log.js'

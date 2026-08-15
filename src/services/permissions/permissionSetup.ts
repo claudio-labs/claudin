@@ -58,11 +58,11 @@ import {
   getFsImplementation,
   safeResolvePath,
 } from 'src/shared/fs/fsOperations.js'
-import { modelSupportsAutoMode } from 'src/services/api/betas.js'
+import { modelSupportsAutoMode } from 'src/providers/transport/betas.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import {
   getCachedClassifierProbe,
   getClassifierProbeKey,

@@ -7,8 +7,8 @@ import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import type { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js';
 import { setClipboard } from 'src/terminal/ink/termio/osc.js';
 import { Box, Link, Text } from 'src/terminal/ink.js';
-import { OAuthService } from 'src/services/oauth/index.js';
-import { saveOAuthTokensIfNeeded } from 'src/services/auth/auth.js';
+import { OAuthService } from 'src/providers/oauth/index.js';
+import { saveOAuthTokensIfNeeded } from 'src/providers/auth/auth.js';
 import { logError } from 'src/shared/log.js';
 interface OAuthFlowStepProps {
   onSuccess: (token: string) => void;

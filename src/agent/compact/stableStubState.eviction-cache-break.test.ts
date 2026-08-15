@@ -26,7 +26,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-// Same MACRO shim as src/services/api/claude/__tests__/addCacheBreakpoints.test.ts
+// Same MACRO shim as src/providers/shims/claude/__tests__/addCacheBreakpoints.test.ts
 ;(globalThis as Record<string, unknown>).MACRO = {
   VERSION: '99.0.0',
   DISPLAY_VERSION: '0.0.0-test',
@@ -45,7 +45,7 @@ import {
 import {
   _resetDeferCacheMarkerForTesting,
   addCacheBreakpoints,
-} from 'src/services/api/claude/paramBuilders.js'
+} from 'src/providers/shims/claude/paramBuilders.js'
 
 type Block = Record<string, unknown>
 // API-message shape (type + .message wrapper) — accepted both by

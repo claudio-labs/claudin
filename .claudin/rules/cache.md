@@ -1,7 +1,7 @@
 ---
 paths:
   - "src/agent/cache/**"
-  - "src/services/api/claude/**"
+  - "src/providers/shims/claude/**"
   - "src/agent/tools/toolResultCache.ts"
   - "src/agent/tools/cacheInvalidation.ts"
 ---
@@ -25,7 +25,7 @@ invalidates the whole prefix and silently rebills `cache_creation`.
 
 ## 2. Defer-cache-marker — `Math.max(i, 0)` fallback is load-bearing
 
-`src/services/api/claude/paramBuilders.ts::addCacheBreakpoints` does NOT pin the
+`src/providers/shims/claude/paramBuilders.ts::addCacheBreakpoints` does NOT pin the
 single `cache_control` marker at `messages[length-1]` each turn — it walks
 backward summing `roughTokenCountEstimationForMessage` and places the marker at
 the earliest index whose suffix sums to ≥ `DEFAULT_DEFER_CACHE_MARKER_TOKENS`
@@ -40,7 +40,7 @@ the earliest index whose suffix sums to ≥ `DEFAULT_DEFER_CACHE_MARKER_TOKENS`
   comment in `paramBuilders.ts` documents this — respect it.
 - `skipCacheWrite` bypasses the defer logic (preserved). Tests memoize the
   threshold: call `_resetDeferCacheMarkerForTesting()` after flipping the env
-  (`src/services/api/claude/__tests__/addCacheBreakpoints.test.ts`).
+  (`src/providers/shims/claude/__tests__/addCacheBreakpoints.test.ts`).
 
 ## 3. toolResultCache keys omit cwd — invalidate on any chdir
 

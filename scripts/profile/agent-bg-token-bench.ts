@@ -49,7 +49,7 @@ const TEN_FILES = [
   'src/platform/bootstrap/state.ts',
   'src/Tool.ts',
   'src/utils/model/model.ts',
-  'src/services/api/providerModels.ts',
+  'src/providers/presets/providerModels.ts',
 ]
 
 const SENTINEL = 'BENCH_AGENT_REPORT'

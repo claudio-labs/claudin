@@ -9,7 +9,7 @@ import {
   setLastAPIRequest,
   setLastAPIRequestMessages,
 } from 'src/platform/bootstrap/state.js'
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { TICK_TAG } from 'src/constants/xml.js'
 import {
   type LogOption,

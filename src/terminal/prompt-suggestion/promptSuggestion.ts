@@ -24,7 +24,7 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/platform/analytics/index.js'
-import { currentLimits } from 'src/services/claudeAiLimits.js'
+import { currentLimits } from 'src/providers/claudeAiLimits.js'
 import { endsWithFollowupOffer } from 'src/terminal/prompt-suggestion/followupOffer.js'
 import { isSpeculationEnabled, startSpeculation } from 'src/terminal/prompt-suggestion/speculation.js'
 

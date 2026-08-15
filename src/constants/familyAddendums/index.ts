@@ -1,8 +1,8 @@
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import {
   isGlmCompatibleBaseUrl,
   isMoonshotCompatibleBaseUrl,
-} from 'src/services/api/openaiShim/providerModes.js'
+} from 'src/providers/shims/openaiShim/providerModes.js'
 import { getAPIProvider, type APIProvider } from 'src/utils/model/providers.js'
 import { getAnthropicAddendum } from 'src/constants/familyAddendums/anthropic.js'
 import { CODEX_ADDENDUM } from 'src/constants/familyAddendums/codex.js'

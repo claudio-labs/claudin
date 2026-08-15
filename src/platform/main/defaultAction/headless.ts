@@ -16,12 +16,12 @@ import { type AppState, getDefaultAppState } from 'src/terminal/state/AppStateSt
 import { onChangeAppState } from 'src/terminal/state/onChangeAppState.js';
 import { createStore } from 'src/terminal/state/store.js';
 import { isAdvisorEnabled } from 'src/platform/doctor/advisor.js';
-import { validateForceLoginOrg } from 'src/services/auth/auth.js';
-import { filterAllowedSdkBetas } from 'src/services/api/betas.js';
+import { validateForceLoginOrg } from 'src/providers/auth/auth.js';
+import { filterAllowedSdkBetas } from 'src/providers/transport/betas.js';
 import { logForDebugging, setHasFormattedOutput } from 'src/shared/debug.js';
 import { getInitialEffortSetting, parseEffortValue } from 'src/utils/effort.js';
 import { isBareMode } from 'src/shared/envUtils.js';
-import { getInitialFastModeSetting, isFastModeEnabled } from 'src/utils/fastMode.js';
+import { getInitialFastModeSetting, isFastModeEnabled } from 'src/providers/fastMode.js';
 import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js';
 import { checkAndDisableBypassPermissions, verifyAutoModeGateAccess } from 'src/services/permissions/permissionSetup.js';
 import { processSessionStartHooks } from 'src/services/session/sessionStart.js';

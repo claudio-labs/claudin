@@ -1,6 +1,6 @@
 import axios, { type AxiosResponse } from 'axios'
 import { LRUCache } from 'lru-cache'
-import { queryHaiku } from 'src/services/api/claude.js'
+import { queryHaiku } from 'src/providers/shims/claude.js'
 import { AbortError } from 'src/shared/errors.js'
 import { getWebFetchUserAgent } from 'src/shared/http.js'
 import { logError } from 'src/shared/log.js'

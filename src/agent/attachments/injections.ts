@@ -20,7 +20,7 @@ import {
 } from 'src/tools/AgentTool/prompt.js'
 import { filterAgentsByMcpRequirements } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { filterDeniedAgents } from 'src/services/permissions/permissions.js'
-import { getSubscriptionType } from 'src/services/auth/auth.js'
+import { getSubscriptionType } from 'src/providers/auth/auth.js'
 import { mcpInfoFromString } from 'src/services/mcp/mcpStringUtils.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { getLocalISODate } from 'src/constants/common.js'

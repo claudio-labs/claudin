@@ -4,7 +4,7 @@ import { isPolicyAllowed } from 'src/platform/policyLimits/index.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { ASK_USER_QUESTION_TOOL_NAME } from 'src/tools/AskUserQuestionTool/prompt.js'
 import { REMOTE_TRIGGER_TOOL_NAME } from 'src/tools/RemoteTriggerTool/prompt.js'
-import { getClaudeAIOAuthTokens } from 'src/services/auth/auth.js'
+import { getClaudeAIOAuthTokens } from 'src/providers/auth/auth.js'
 import { checkRepoForRemoteAccess } from 'src/agent/background/remote/preconditions.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import {

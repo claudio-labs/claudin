@@ -23,7 +23,7 @@ import { CHANNEL_TAG } from 'src/constants/xml.js'
 import {
   getClaudeAIOAuthTokens,
   getSubscriptionType,
-} from 'src/services/auth/auth.js'
+} from 'src/providers/auth/auth.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { parsePluginIdentifier } from 'src/services/plugins/pluginIdentifier.js'
 import { getSettingsForSource } from 'src/platform/settings/settings.js'

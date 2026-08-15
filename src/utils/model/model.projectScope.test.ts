@@ -3,9 +3,9 @@ import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 // Spread into plain objects so afterAll restores the original bindings rather
 // than the live ESM namespace (which mock.module mutates after the fact).
 const realConfig = { ...(await import('src/platform/config/config.js')) }
-const realProviderProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
+const realProviderProfiles = { ...(await import('src/providers/presets/providerProfiles.js')) }
 const realActiveProvider = {
-  ...(await import('src/services/api/activeProvider.js')),
+  ...(await import('src/providers/presets/activeProvider.js')),
 }
 const realBootstrapState = { ...(await import('src/platform/bootstrap/state.js')) }
 const realSettings = { ...(await import('src/platform/settings/settings.js')) }
@@ -28,13 +28,13 @@ function installMocks(): void {
     ...realConfig,
     getCurrentProjectConfig: () => projectConfig,
   }))
-  mock.module('src/services/api/providerProfiles.js', () => ({
+  mock.module('src/providers/presets/providerProfiles.js', () => ({
     ...realProviderProfiles,
     // The leak guard reads only `.id` off the effective profile.
     getActiveProviderProfile: () =>
       effectiveProfileId ? { id: effectiveProfileId } : undefined,
   }))
-  mock.module('src/services/api/activeProvider.js', () => ({
+  mock.module('src/providers/presets/activeProvider.js', () => ({
     ...realActiveProvider,
     // `getActiveProfileModel` (inherited default) reads `.model` off this.
     tryGetActiveProvider: () => (profileModel ? { model: profileModel } : null),
@@ -67,8 +67,8 @@ beforeEach(() => {
 
 afterEach(() => {
   mock.module('src/platform/config/config.js', () => realConfig)
-  mock.module('src/services/api/providerProfiles.js', () => realProviderProfiles)
-  mock.module('src/services/api/activeProvider.js', () => realActiveProvider)
+  mock.module('src/providers/presets/providerProfiles.js', () => realProviderProfiles)
+  mock.module('src/providers/presets/activeProvider.js', () => realActiveProvider)
   mock.module('src/platform/bootstrap/state.js', () => realBootstrapState)
   mock.module('src/platform/settings/settings.js', () => realSettings)
   mock.module('./modelAllowlist.js', () => realAllowlist)

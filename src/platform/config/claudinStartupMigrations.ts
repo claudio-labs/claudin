@@ -19,7 +19,7 @@ import {
   loadProfileFile,
   type ProfileFile,
   type ProviderProfile as LegacyProviderProfile,
-} from 'src/services/api/providerProfile.js'
+} from 'src/providers/presets/providerProfile.js'
 import {
   addProviderProfile,
   getActiveProviderProfile,
@@ -27,14 +27,14 @@ import {
   getProviderProfiles,
   stripProjectProviderPointers,
   type ProviderProfileInput,
-} from 'src/services/api/providerProfiles.js'
+} from 'src/providers/presets/providerProfiles.js'
 import {
   getGlobalConfig,
   saveGlobalConfig,
   type ProviderProfile as StoredProviderProfile,
 } from 'src/platform/config/config.js'
-import { parseModelList } from 'src/services/api/providerModels.js'
-import { KIMI_CODE_MODEL_LIST } from 'src/services/api/kimiOAuthShared.js'
+import { parseModelList } from 'src/providers/presets/providerModels.js'
+import { KIMI_CODE_MODEL_LIST } from 'src/providers/oauth/kimiOAuthShared.js'
 
 const GITHUB_COPILOT_DEFAULT_BASE_URL = 'https://models.github.ai/inference'
 const GITHUB_COPILOT_DEFAULT_MODEL = 'github:copilot'

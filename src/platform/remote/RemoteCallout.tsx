@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { isBridgeEnabled } from 'src/platform/bridge/bridgeEnabled.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import { getClaudeAIOAuthTokens } from 'src/services/auth/auth.js';
+import { getClaudeAIOAuthTokens } from 'src/providers/auth/auth.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import type { OptionWithDescription } from 'src/terminal/custom-select/select.js';
 import { Select } from 'src/terminal/custom-select/select.js';

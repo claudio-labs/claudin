@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import type { HookEvent } from 'src/platform/entrypoints/agentSdkTypes.js'
-import { queryModelWithoutStreaming } from 'src/services/api/claude.js'
+import { queryModelWithoutStreaming } from 'src/providers/shims/claude.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { Message } from 'src/types/message.js'
 import { createAttachmentMessage } from 'src/agent/attachments/attachments.js'

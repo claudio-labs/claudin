@@ -160,7 +160,7 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
       return await exitWithError(root, `Error: ${errorMessage(error) || 'Failed to authenticate'}`, () => gracefulShutdown(1));
     }
 
-    const { getClaudeAIOAuthTokens: getTokensForRemote } = await import('src/services/auth/auth.js');
+    const { getClaudeAIOAuthTokens: getTokensForRemote } = await import('src/providers/auth/auth.js');
     const getAccessTokenForRemote = (): string => getTokensForRemote()?.accessToken ?? apiCreds.accessToken;
     const remoteSessionConfig = createRemoteSessionConfig(createdSession.id, getAccessTokenForRemote, apiCreds.orgUUID, hasInitialPrompt);
 

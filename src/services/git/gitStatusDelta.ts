@@ -4,7 +4,7 @@
  * WHY: `getGitStatus` in `src/agent/context.ts` explicitly documents its
  * output as "a snapshot in time, and will not update during the
  * conversation." Today that snapshot is re-appended to every system
- * prompt via `appendSystemContext` (src/services/api/api.ts:486), costing
+ * prompt via `appendSystemContext` (src/providers/transport/api.ts:486), costing
  * bytes on every request for content that cannot change.
  *
  * Since the snapshot is immutable by design, the scanner's job is

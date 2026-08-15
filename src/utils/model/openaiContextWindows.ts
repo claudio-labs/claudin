@@ -10,7 +10,7 @@
  *
  * Prices in tokens as of April 2026 — update as needed.
  */
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import {
   CODEX_CONTEXT_WINDOWS,
   CODEX_MAX_OUTPUT_TOKENS,

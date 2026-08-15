@@ -89,7 +89,7 @@ import {
   buildYoloRejectionMessage,
   DONT_ASK_REJECT_MESSAGE,
 } from 'src/agent/messages/messages.js'
-import { calculateCostFromTokens } from 'src/services/api/modelCost.js'
+import { calculateCostFromTokens } from 'src/providers/usage/modelCost.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import {

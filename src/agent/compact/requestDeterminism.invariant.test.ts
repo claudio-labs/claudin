@@ -62,7 +62,7 @@ const {
   MAX_DISPLAY_MESSAGES,
 } = await import('src/agent/compact/stableStubState.js')
 const { addCacheBreakpoints, _resetDeferCacheMarkerForTesting } = await import(
-  'src/services/api/claude/paramBuilders.js'
+  'src/providers/shims/claude/paramBuilders.js'
 )
 const {
   createContentReplacementState,

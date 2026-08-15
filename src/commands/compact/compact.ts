@@ -4,7 +4,7 @@ import { markPostCompaction } from 'src/platform/bootstrap/state.js'
 import { getSystemPrompt } from 'src/constants/prompts.js'
 import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js'
-import { notifyCompaction } from 'src/services/api/promptCacheBreakDetection.js'
+import { notifyCompaction } from 'src/providers/cache/promptCacheBreakDetection.js'
 import {
   buildPostCompactMessages,
   type CompactionResult,

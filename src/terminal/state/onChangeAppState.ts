@@ -3,7 +3,7 @@ import {
   clearApiKeyHelperCache,
   clearAwsCredentialsCache,
   clearGcpCredentialsCache,
-} from 'src/services/auth/auth.js'
+} from 'src/providers/auth/auth.js'
 import {
   getGlobalConfig,
   saveCurrentProjectConfig,
@@ -12,7 +12,7 @@ import {
 import { toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
 import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js'
-import { getActiveProviderProfile } from 'src/services/api/providerProfiles.js'
+import { getActiveProviderProfile } from 'src/providers/presets/providerProfiles.js'
 import {
   permissionModeFromString,
   toExternalPermissionMode,

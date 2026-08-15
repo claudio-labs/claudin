@@ -15,7 +15,7 @@ import {
   logEvent,
 } from 'src/platform/analytics/index.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { type FilesApiConfig, uploadFile } from 'src/services/api/filesApi.js'
+import { type FilesApiConfig, uploadFile } from 'src/providers/transport/filesApi.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'

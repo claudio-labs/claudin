@@ -1,14 +1,14 @@
 import { afterAll, expect, mock, test } from 'bun:test'
 
 const realSettings = { ...(await import('src/platform/settings/settings.js')) }
-const realAuth = { ...(await import('src/services/auth/auth.js')) }
+const realAuth = { ...(await import('src/providers/auth/auth.js')) }
 const realThinking = { ...(await import('src/agent/context/thinking.js')) }
 const realGrowthbook = { ...(await import('src/platform/analytics/growthbook.js')) }
 const realProviders = { ...(await import('src/utils/model/providers.js')) }
 
 afterAll(() => {
   mock.module('src/platform/settings/settings.js', () => realSettings)
-  mock.module('src/services/auth/auth.js', () => realAuth)
+  mock.module('src/providers/auth/auth.js', () => realAuth)
   mock.module('src/agent/context/thinking.js', () => realThinking)
   mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
   mock.module('src/utils/model/providers.js', () => realProviders)
@@ -28,7 +28,7 @@ async function importFreshEffortModule(options: {
       codingLoopXhighDefault: options.codingLoopXhighDefault,
     }),
   }))
-  mock.module('src/services/auth/auth.js', () => ({
+  mock.module('src/providers/auth/auth.js', () => ({
     isProSubscriber: () => options.isPro ?? false,
     isMaxSubscriber: () => options.isMax ?? false,
     isTeamSubscriber: () => options.isTeam ?? false,

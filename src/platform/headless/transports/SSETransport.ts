@@ -6,7 +6,7 @@ import { errorMessage } from 'src/shared/errors.js'
 import { getSessionIngressAuthHeaders } from 'src/services/session/sessionIngressAuth.js'
 import { sleep } from 'src/shared/sleep.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
-import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
+import { getClaudeCodeUserAgent } from 'src/providers/transport/userAgent.js'
 // Transport.js is a missing-module stub (src/platform/headless/transports/Transport.d.ts)
 // whose only names are `default`/AxiosError/StdoutMessage/URL — mirrors
 // remoteIO.ts's import, which is the file the stub was actually generated

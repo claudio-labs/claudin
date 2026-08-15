@@ -23,7 +23,7 @@ import {
 import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
-} from 'src/services/auth/auth.js'
+} from 'src/providers/auth/auth.js'
 import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
 import { getMemoryPath } from 'src/platform/config/config.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
@@ -37,10 +37,10 @@ import { markInternalWrite } from 'src/platform/settings/internalWrites.js'
 import { getSettingsFilePathForSource } from 'src/platform/settings/settings.js'
 import { resetSettingsCache } from 'src/platform/settings/settingsCache.js'
 import { sleep } from 'src/shared/sleep.js'
-import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
+import { getClaudeCodeUserAgent } from 'src/providers/transport/userAgent.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { logEvent } from 'src/platform/analytics/index.js'
-import { getRetryDelay } from 'src/services/api/withRetry.js'
+import { getRetryDelay } from 'src/providers/transport/withRetry.js'
 import {
   type SettingsSyncFetchResult,
   type SettingsSyncUploadResult,

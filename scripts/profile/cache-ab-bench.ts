@@ -54,19 +54,19 @@ import { join, resolve } from 'node:path'
 // --revisits>0 the FULL list is used and --turns is ignored.
 const TWELVE_FILES = [
   // large (provider/runtime guts)
-  'src/services/api/client.ts',
-  'src/services/api/providerConfig.ts',
+  'src/providers/transport/client.ts',
+  'src/providers/presets/providerConfig.ts',
   'src/agent/QueryEngine.ts',
   'src/commands.ts',
   'src/Tool.ts',
   // medium
   'src/agent/messages/messages.ts',
   'src/platform/config/config.ts',
-  'src/services/api/withRetry.ts',
-  'src/services/api/errors.ts',
+  'src/providers/transport/withRetry.ts',
+  'src/providers/transport/errors.ts',
   'src/services/mcp/client.ts',
   'src/utils/model/model.ts',
-  'src/services/api/providerModels.ts',
+  'src/providers/presets/providerModels.ts',
   'src/agent/context.ts',
   'src/agent/query.ts',
   'src/shared/errors.ts',
@@ -87,23 +87,23 @@ const TWELVE_FILES = [
   'src/agent/compact/snipCompact.ts',
   'src/shared/data/objectGroupBy.ts',
   // 50-file extension (mixed sizes) for longer-session workloads
-  'src/services/api/openaiShim.ts',
-  'src/services/api/codexShim.ts',
+  'src/providers/shims/openaiShim.ts',
+  'src/providers/shims/codexShim.ts',
   'src/agent/repl/REPL.tsx',
-  'src/services/api/claude/streaming.ts',
-  'src/services/api/claude/paramBuilders.ts',
+  'src/providers/shims/claude/streaming.ts',
+  'src/providers/shims/claude/paramBuilders.ts',
   'src/agent/messages/normalize.ts',
   'src/agent/compact/stableStubState.ts',
   'src/agent/compact/microCompact.ts',
   'src/agent/cache/cacheProfile.ts',
   'src/agent/cost-tracker.ts',
-  'src/services/api/modelCost.ts',
+  'src/providers/usage/modelCost.ts',
   'src/utils/model/modelAllowlist.ts',
-  'src/services/api/promptCacheBreakDetection.ts',
+  'src/providers/cache/promptCacheBreakDetection.ts',
   'src/agent/compact/autoCompact.ts',
-  'src/services/api/api.ts',
-  'src/services/api/betas.ts',
-  'src/services/api/activeProvider.ts',
+  'src/providers/transport/api.ts',
+  'src/providers/transport/betas.ts',
+  'src/providers/presets/activeProvider.ts',
   'src/agent/context/thinking.ts',
   'src/shared/debug.ts',
   'src/shared/data/json.ts',
@@ -115,11 +115,11 @@ const TWELVE_FILES = [
 // while keep-everything strategies may still hold the bytes in context.
 // Spread across size classes: 2 large, 4 medium, 2 small.
 const REVISIT_FILES = [
-  'src/services/api/client.ts',      // large
+  'src/providers/transport/client.ts',      // large
   'src/agent/QueryEngine.ts',              // large
   'src/agent/messages/messages.ts',           // medium
   'src/platform/config/config.ts',             // medium
-  'src/services/api/withRetry.ts',   // medium
+  'src/providers/transport/withRetry.ts',   // medium
   'src/utils/model/model.ts',        // medium
   'src/constants/keys.ts',           // small
   'src/shared/data/array.ts',              // small

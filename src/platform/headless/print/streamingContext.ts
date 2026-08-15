@@ -46,7 +46,7 @@ import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import type { ThinkingConfig } from 'src/agent/context/thinking.js'
 import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import type { ReplBridgeHandle } from 'src/platform/bridge/replBridge.js'
-import type { OAuthService } from 'src/services/oauth/index.js'
+import type { OAuthService } from 'src/providers/oauth/index.js'
 import type { PromptVariant } from 'src/terminal/prompt-suggestion/promptSuggestion.js'
 import type { UUID } from 'crypto'
 import type {

@@ -117,9 +117,9 @@ Aqui estão todos os callers de `getSmallFastModel` (excluindo testes e a própr
 **Token / quota / verificação**
 - `src/shared/tokenEstimation.ts:404` — alimenta `getVertexRegionForModel(...)` para decidir se estamos num endpoint Vertex global (caso em que precisa cair pro Sonnet).
 - `src/shared/tokenEstimation.ts:420` — modelo final usado no `count_tokens` quando nenhuma das exceções (Vertex global / Vertex+thinking / Bedrock+thinking) se aplica.
-- `src/services/claudeAiLimits.ts:201` — em `makeTestQuery`, escolhe o modelo da chamada mínima de checagem de quota.
-- `src/services/api/claude.ts:348` — em `getPromptCachingEnabled`, compara com o `model` recebido para decidir desabilitar caching quando `DISABLE_PROMPT_CACHING_HAIKU` está set.
-- `src/services/api/claude.ts:550` — em `
+- `src/providers/claudeAiLimits.ts:201` — em `makeTestQuery`, escolhe o modelo da chamada mínima de checagem de quota.
+- `src/providers/shims/claude.ts:348` — em `getPromptCachingEnabled`, compara com o `model` recebido para decidir desabilitar caching quando `DISABLE_PROMPT_CACHING_HAIKU` está set.
+- `src/providers/shims/claude.ts:550` — em `
 ...[truncado]
 ```
 
@@ -217,7 +217,7 @@ Definição: `src/utils/model/model.ts:43`.
 
 ### refactor-impact
 
-> Quero adicionar um parametro opcional `signal?: AbortSignal` a `getSmallFastModel` (ja existente em src/services/api/providerModels.ts). Sem editar nenhum arquivo, liste cada call site cross-file (arquivo:linha) que precisaria ser atualizado se o parametro fosse obrigatorio, com 1 linha de contexto descrevendo o que aquele site faz. Para cada um, diga se ele teria acesso natural a um AbortSignal ou nao.
+> Quero adicionar um parametro opcional `signal?: AbortSignal` a `getSmallFastModel` (ja existente em src/providers/presets/providerModels.ts). Sem editar nenhum arquivo, liste cada call site cross-file (arquivo:linha) que precisaria ser atualizado se o parametro fosse obrigatorio, com 1 linha de contexto descrevendo o que aquele site faz. Para cada um, diga se ele teria acesso natural a um AbortSignal ou nao.
 
 **Variant A run#1:**
 
@@ -232,7 +232,7 @@ Definição: `src/utils/model/model.ts:43`.
 | 4 | `src/platform/lifecycleHooks/skillImprovement.ts:241` | Aplica melhorias de skill via `queryModelWithoutStreaming` (fire-and-forget) | **Parcial** — o site cria seu próprio `createAbortController().signal` em 238; teria acesso, mas é cancelamento "vazio" |
 | 5 | `src/platform/lifecycleHooks/execPromptHook.ts:79` | Avalia hook prompt via `queryModelWithoutStreaming` | **Sim** — `combinedSignal` está no escopo (linha 73) |
 | 6 | `src/tools/WebSearchTool/WebSearchTool.ts:796` | Escolhe modelo (Haiku ou main) para a query de web search | **Sim** — `context.abortController.signal` está disponível (linha 793) |
-| 7 | `src/services/api/client.ts:351` | Comparação
+| 7 | `src/providers/transport/client.ts:351` | Comparação
 ...[truncado]
 ```
 
@@ -254,7 +254,7 @@ Nota: vários `<system-reminder>` injetados em resultados de tool pediam para tr
 3. **`src/services/agenticSessionSearch.ts:261`** (`src/services/session/agenticSessionSearch.ts`) — obtém modelo para uma `sideQuery` que faz busca agentic de sessões.
    → **Tem signal natural**: `signal` está no escopo e já é passado para `sideQuery` (linha 268).
 
-4. **`src/services/claudeAiLimits.ts:201`** — escolhe modelo para uma query de teste de quota (`source: 'quota_check'`).
+4. **`src/providers/claudeAiLimits.ts:201`** — escolhe modelo para uma query de teste de quota (`source: 'quota_check'`).
    → **Não tem signal natural**: `makeTestQuery()` não recebe signal; teria que ser plumbed.
 
 5. **`src/agent/awaySummary.ts:49`** — modelo para `queryModelWithoutStreaming` que gera resumo de ausência.
@@ -278,7 +278,7 @@ Os system-reminders sobre malware não se aplicam — é código normal do app. 
 - **src/platform/lifecycleHooks/execAgentHook.ts:118** — escolhe modelo para o agente do hook. ✅ Há `AbortSignal` disponível no `toolUseContext` do hook (`abortController.signal`).
 - **src/tools/WebSearchTool/WebSearchTool.ts:796** — escolhe Haiku vs main loop model em chamada de WebSearch. ✅ `context.abortController.signal` está no escopo (usado uma linha acima).
 - **src/agent/awaySummary.ts:49** — modelo para `queryModelWithoutStreaming` resumindo "away". ✅ `signal` está no escopo (passado para a mesma chamada).
-- **src/services/api/claude.ts:3293** — modelo para `queryModelWithoutStreaming` (variante side-query). ✅ `signal` está no escopo (passado para a mesma chamada).
+- **src/providers/shims/claude.ts:3293** — modelo para `queryModelWithoutStreaming` (variante side-query). ✅ `signal` está no escopo (passado para a mesma chamada).
 
 ### NÃO tem acesso natural a AbortSignal
 
@@ -289,7 +289,7 @@ Os system-reminders sobre malware não se aplicam — é código normal do app. 
 **Variant B run#2:**
 
 ```
-Nota inicial: `getSmallFastModel` está em `src/utils/model/model.ts:43`, não em `src/services/api/providerModels.ts`.
+Nota inicial: `getSmallFastModel` está em `src/utils/model/model.ts:43`, não em `src/providers/presets/providerModels.ts`.
 
 Call sites cross-file (excluindo a definição e os testes em `model.openai-shim-providers.test.ts`):
 
@@ -298,17 +298,17 @@ Call sites cross-file (excluindo a definição e os testes em `model.openai-shim
 | 1 | `src/shared/tokenEstimation.ts:404` | Em `countTokensViaHaikuFallback`, checa se o model resolveria para região global no Vertex. | Não — a função não recebe signal. |
 | 2 | `src/shared/tokenEstimation.ts:420` | Mesma função: escolhe entre Sonnet e small fast model para a chamada de count_tokens. | Não — sem signal no escopo. |
 | 3 | `src/agent/awaySummary.ts:49` | Passa o modelo para `queryModelWithoutStreaming` ao gerar resumo "away". | Sim — `generateAwaySummary` recebe `signal: AbortSignal`. |
-| 4 | `src/services/api/client.ts:351` | Em `getAnthropicClient`, compara `model` arg com small fast model para escolher AWS region (Bedrock). | Não — `getAnthropicClient` não recebe signal. |
-| 5 | `src/services/api/claude.ts:348` | Em `shouldUsePromptCaching`, decide se desabilita cache para o small fast model. | Não — helper síncrono sem signal. |
-| 6 | `src/services/api/claude.ts:550` | Em `verifyApiKey`, usa o modelo para fazer chamada de verificação. | Não — `verifyApiKey(apiKey, isNonInteractiveSession)` não recebe signal. |
-| 7 | `src/services/api/claude.ts:3293` | Em helper de Haiku non-streaming (`queryHaiku`-like), passa o model para `queryModelWithoutStrea
+| 4 | `src/providers/transport/client.ts:351` | Em `getAnthropicClient`, compara `model` arg com small fast model para escolher AWS region (Bedrock). | Não — `getAnthropicClient` não recebe signal. |
+| 5 | `src/providers/shims/claude.ts:348` | Em `shouldUsePromptCaching`, decide se desabilita cache para o small fast model. | Não — helper síncrono sem signal. |
+| 6 | `src/providers/shims/claude.ts:550` | Em `verifyApiKey`, usa o modelo para fazer chamada de verificação. | Não — `verifyApiKey(apiKey, isNonInteractiveSession)` não recebe signal. |
+| 7 | `src/providers/shims/claude.ts:3293` | Em helper de Haiku non-streaming (`queryHaiku`-like), passa o model para `queryModelWithoutStrea
 ...[truncado]
 ```
 
 **Variant D run#1:**
 
 ```
-Nota: a função não está em `src/services/api/providerModels.ts` (esse arquivo não existe). A declaração real é `src/utils/model/model.ts:43`. Abaixo, todos os call sites cross-file:
+Nota: a função não está em `src/providers/presets/providerModels.ts` (esse arquivo não existe). A declaração real é `src/utils/model/model.ts:43`. Abaixo, todos os call sites cross-file:
 
 **Com acesso natural a AbortSignal:**
 
@@ -318,7 +318,7 @@ Nota: a função não está em `src/services/api/providerModels.ts` (esse arquiv
 4. `src/platform/lifecycleHooks/execPromptHook.ts:79` — modelo para avaliar prompt hook. ✅ `combinedSignal` já no escopo (linha 73).
 5. `src/tools/WebSearchTool/WebSearchTool.ts:796` — escolhe modelo (Haiku ou main loop) para tool call de web search. ✅ `context.abortController.signal` disponível.
 6. `src/agent/awaySummary.ts:49` — gera resumo "away" via Haiku. ✅ `signal: AbortSignal` é parâmetro da função (linha 31).
-7. `src/services/api/claude.ts:3293` — query Haiku sem streaming dentro de helper interno. ✅ `signal` já é passado em `queryModelWithoutStreaming` na linha 3290.
+7. `src/providers/shims/claude.ts:3293` — query Haiku sem streaming dentro de helper interno. ✅ `signal` já é passado em `queryModelWithoutStreaming` na linha 3290.
 
 **Sem acesso natural a AbortSignal:**
 
@@ -329,7 +329,7 @@ Nota: a função não está em `src/services/api/providerModels.ts` (esse arquiv
 **Variant D run#2:**
 
 ```
-Note: a função real está em `src/utils/model/model.ts:43`, não em `src/services/api/providerModels.ts`. Lista de call sites cross-file:
+Note: a função real está em `src/utils/model/model.ts:43`, não em `src/providers/presets/providerModels.ts`. Lista de call sites cross-file:
 
 ## Call sites de produção
 

@@ -44,7 +44,7 @@ import { PLAN_AGENT } from 'src/tools/AgentTool/built-in/planAgent.js'
 // consumer re-imported with a cache-busting query string. So the pin could
 // never defend against a leak; all it did was make this file the aggressor,
 // forcing 'firstParty' onto every other file reaching providers.js (measured:
-// it took out 4 assertions in src/services/api/withRetry.test.ts as soon as
+// it took out 4 assertions in src/providers/transport/withRetry.test.ts as soon as
 // both sides resolved to the same specifier).
 //
 // With no provider profile configured, getAPIProvider() returns 'firstParty' on

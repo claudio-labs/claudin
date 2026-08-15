@@ -13,12 +13,12 @@ import type { RenderOptions, Root, TextProps } from 'src/terminal/ink.js';
 import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js';
 import { startDeferredPrefetches } from 'src/platform/main/deferredPrefetches.js';
 import { checkGate_CACHED_OR_BLOCKING, initializeGrowthBook, resetGrowthBook } from 'src/platform/analytics/growthbook.js';
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
-import { isQualifiedForGrove } from 'src/services/api/grove.js';
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';
+import { isQualifiedForGrove } from 'src/platform/privacy/grove.js';
 import { handleMcpjsonServerApprovals } from 'src/services/mcpServerApproval.js';
 import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import { onChangeAppState } from 'src/terminal/state/onChangeAppState.js';
-import { normalizeApiKeyForConfig } from 'src/services/auth/authPortable.js';
+import { normalizeApiKeyForConfig } from 'src/providers/auth/authPortable.js';
 import { getExternalClaudeMdIncludes, getMemoryFiles, shouldShowClaudeMdExternalIncludesWarning } from 'src/services/instructions/claudemd.js';
 import { checkHasTrustDialogAccepted, getCustomApiKeyStatus, getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { shouldShowMigrationBanner } from 'src/platform/config/claudinMigration.js';
@@ -229,7 +229,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
     profileCheckpoint('setupScreens_grove_block_enter');
     const {
       GroveDialog
-    } = await import('src/platform/privacy/Grove.js');
+    } = await import('src/platform/privacy/ui/Grove.js');
     const decision = await showSetupDialog<string>(root, done => <GroveDialog showIfAlreadyViewed={false} location={onboardingShown ? 'onboarding' : 'policy_update_modal'} onDone={done} />);
     if (decision === 'escape') {
       logEvent('tengu_grove_policy_exited', {});
@@ -249,7 +249,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
       const keyStatus = getCustomApiKeyStatus(customApiKeyTruncated);
       profileCheckpoint('setupScreens_after_keyStatus');
       if (keyStatus === 'new') {
-        const { ApproveApiKey } = await import('src/components/ApproveApiKey.js');
+        const { ApproveApiKey } = await import('src/providers/ui/ApproveApiKey.js');
         await showSetupDialog<boolean>(
           root,
           done => <ApproveApiKey customApiKeyTruncated={customApiKeyTruncated} onDone={done} />,
@@ -299,7 +299,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
         isChannelsEnabled
       }, {
         getClaudeAIOAuthTokens
-      }] = await Promise.all([import('src/services/mcp/channelAllowlist.js'), import('src/services/auth/auth.js')]);
+      }] = await Promise.all([import('src/services/mcp/channelAllowlist.js'), import('src/providers/auth/auth.js')]);
       // Skip the dialog when channels are blocked (tengu_harbor off or no
       // OAuth) — accepting then immediately seeing "not available" in
       // ChannelsNotice is worse than no dialog. Append entries anyway so

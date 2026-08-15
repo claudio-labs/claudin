@@ -2,9 +2,9 @@ import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'b
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { ProfileFile } from 'src/services/api/providerProfile.js'
+import type { ProfileFile } from 'src/providers/presets/providerProfile.js'
 import type { ProviderProfile } from 'src/platform/config/config.js'
-import type { ProviderProfileInput } from 'src/services/api/providerProfiles.js'
+import type { ProviderProfileInput } from 'src/providers/presets/providerProfiles.js'
 
 const _require = createRequire(import.meta.url)
 const realFs = _require('fs') as typeof import('fs')
@@ -26,8 +26,8 @@ const { mkdtempSync, rmSync } = realFs
 // mocks below are installed it reports THEM, and `mock.module(x, () => real)`
 // at teardown restores the stub onto itself. Spreading here freezes the real
 // exports while they are still real.
-const realProviderProfile = { ...(await import('src/services/api/providerProfile.js')) }
-const realProviderProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
+const realProviderProfile = { ...(await import('src/providers/presets/providerProfile.js')) }
+const realProviderProfiles = { ...(await import('src/providers/presets/providerProfiles.js')) }
 const realConfig = { ...(await import('src/platform/config/config.js')) }
 
 // In-memory config singleton backing './config.js' for this file. Several
@@ -112,7 +112,7 @@ function createProfile(
   return profile
 }
 
-mock.module('src/services/api/providerProfiles.js', () => ({
+mock.module('src/providers/presets/providerProfiles.js', () => ({
   getActiveProviderProfile: () => store.active,
   // The heal path calls this both bare and with an explicit config snapshot;
   // the in-memory store is the single source of truth in both cases.
@@ -149,7 +149,7 @@ const legacyFileState: LegacyFileState = {
   malformed: false,
 }
 
-mock.module('src/services/api/providerProfile.js', () => ({
+mock.module('src/providers/presets/providerProfile.js', () => ({
   ...realProviderProfile,
   loadProfileFile: () => {
     if (legacyFileState.malformed) return null
@@ -163,8 +163,8 @@ mock.module('src/services/api/providerProfile.js', () => ({
 }))
 
 afterAll(() => {
-  mock.module('src/services/api/providerProfile.js', () => realProviderProfile)
-  mock.module('src/services/api/providerProfiles.js', () => realProviderProfiles)
+  mock.module('src/providers/presets/providerProfile.js', () => realProviderProfile)
+  mock.module('src/providers/presets/providerProfiles.js', () => realProviderProfiles)
   // Both spellings, per the teardown rule in .claudin/rules/testing.md: the
   // install above uses the relative form, but production imports the `src/...`
   // alias, and restoring only one key leaves the other pointing at

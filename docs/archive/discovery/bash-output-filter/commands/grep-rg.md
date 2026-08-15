@@ -14,8 +14,8 @@
 ### Amostra REAL — `grep -rn "isAbortError" src --include="*.ts"` (589 bytes, 7 matches)
 
 ```
-/home/dev/projects/claudin/src/services/api/openaiShim.ts:1909:        const isAbortError =
-/home/dev/projects/claudin/src/services/api/openaiShim.ts:1919:        if (isAbortError) {
+/home/dev/projects/claudin/src/providers/shims/openaiShim.ts:1909:        const isAbortError =
+/home/dev/projects/claudin/src/providers/shims/openaiShim.ts:1919:        if (isAbortError) {
 /home/dev/projects/claudin/src/platform/lsp/config.test.ts:69:  isAbortError: (_e: unknown) => false,
 /home/dev/projects/claudin/src/shared/errors.ts:27:export function isAbortError(e: unknown): boolean {
 /home/dev/projects/claudin/src/agent/attachments/attachments.ts:122:import { isAbortError } from './errors.js'
@@ -29,8 +29,8 @@
 src/agent/attachments/attachments.ts:import { isAbortError } from './errors.js'
 src/agent/attachments/attachments.ts:    if (!isAbortError(e)) {
 src/platform/lsp/config.test.ts:  isAbortError: (_e: unknown) => false,
-src/services/api/openaiShim.ts:        const isAbortError =
-src/services/api/openaiShim.ts:        if (isAbortError) {
+src/providers/shims/openaiShim.ts:        const isAbortError =
+src/providers/shims/openaiShim.ts:        if (isAbortError) {
 src/shared/errors.ts:export function isAbortError(e: unknown): boolean {
 ```
 

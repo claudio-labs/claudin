@@ -258,7 +258,7 @@ async function main(): Promise<void> {
 
   // --- #7 sessionIngress ---------------------------------------------------
   try {
-    const mod = await import('../../src/services/api/sessionIngress.js')
+    const mod = await import('../../src/providers/transport/sessionIngress.js')
     if (typeof mod._getSessionCountForTesting === 'function') {
       results.push({
         name: '#7 sessionIngress total sessions (observed)',

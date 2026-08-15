@@ -7,7 +7,7 @@ import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
 import type { AttributedCounter } from 'src/platform/bootstrap/state.js'
 import { getSessionCounter, setMeter } from 'src/platform/bootstrap/state.js'
 import { shutdownLspServerManager } from 'src/platform/lsp/manager.js'
-import { populateOAuthAccountInfoIfNeeded } from 'src/services/oauth/client.js'
+import { populateOAuthAccountInfoIfNeeded } from 'src/providers/oauth/client.js'
 import {
   initializePolicyLimitsLoadingPromise,
   isPolicyLimitsEligible,
@@ -17,8 +17,8 @@ import {
   isEligibleForRemoteManagedSettings,
   waitForRemoteManagedSettingsToLoad,
 } from 'src/platform/remoteManagedSettings/index.js'
-import { preconnectAnthropicApi } from 'src/services/api/apiPreconnect.js'
-import { applyExtraCACertsFromConfig } from 'src/services/api/caCertsConfig.js'
+import { preconnectAnthropicApi } from 'src/providers/transport/apiPreconnect.js'
+import { applyExtraCACertsFromConfig } from 'src/providers/transport/caCertsConfig.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { enableConfigs, recordFirstStartTime } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -36,14 +36,14 @@ import {
   applyConfigEnvironmentVariables,
   applySafeConfigEnvironmentVariables,
 } from 'src/platform/config/managedEnv.js'
-import { configureGlobalMTLS } from 'src/services/api/mtls.js'
+import { configureGlobalMTLS } from 'src/providers/transport/mtls.js'
 import {
   ensureScratchpadDir,
   isScratchpadEnabled,
 } from 'src/services/permissions/filesystem.js'
 // initializeTelemetry is loaded lazily via import() in setMeterState() to defer
 // ~400KB of OpenTelemetry + protobuf modules until telemetry is actually initialized.
-import { configureGlobalAgents } from 'src/services/api/proxy.js'
+import { configureGlobalAgents } from 'src/providers/transport/proxy.js'
 import { isBetaTracingEnabled } from 'src/platform/telemetry/betaSessionTracing.js'
 import { getTelemetryAttributes } from 'src/platform/telemetryAttributes.js'
 import { setShellIfWindows } from 'src/shared/fs/windowsPaths.js'

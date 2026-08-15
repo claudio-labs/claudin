@@ -1,13 +1,13 @@
 import { isRemoteManagedSettingsEligible } from 'src/platform/remoteManagedSettings/syncCache.js'
-import { clearCACertsCache } from 'src/services/api/caCerts.js'
+import { clearCACertsCache } from 'src/providers/transport/caCerts.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   isProviderManagedEnvVar,
   SAFE_ENV_VARS,
 } from 'src/platform/config/managedEnvConstants.js'
-import { clearMTLSCache } from 'src/services/api/mtls.js'
-import { clearProxyCache, configureGlobalAgents } from 'src/services/api/proxy.js'
+import { clearMTLSCache } from 'src/providers/transport/mtls.js'
+import { clearProxyCache, configureGlobalAgents } from 'src/providers/transport/proxy.js'
 import { isSettingSourceEnabled } from 'src/platform/settings/constants.js'
 import {
   getInitialSettings,

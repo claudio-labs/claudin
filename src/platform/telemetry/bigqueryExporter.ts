@@ -10,16 +10,16 @@ import {
   type ResourceMetrics,
 } from 'src/vendor/otel.js'
 import axios from 'axios'
-import { checkMetricsEnabled } from 'src/services/api/metricsOptOut.js'
+import { checkMetricsEnabled } from 'src/providers/usage/metricsOptOut.js'
 import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
-import { getSubscriptionType, isClaudeAISubscriber } from 'src/services/auth/auth.js'
+import { getSubscriptionType, isClaudeAISubscriber } from 'src/providers/auth/auth.js'
 import { checkHasTrustDialogAccepted } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage, toError } from 'src/shared/errors.js'
 import { getAuthHeaders } from 'src/shared/http.js'
 import { logError } from 'src/shared/log.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
+import { getClaudeCodeUserAgent } from 'src/providers/transport/userAgent.js'
 
 type DataPoint = {
   attributes: Record<string, string>

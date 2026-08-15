@@ -14,7 +14,7 @@ import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import { query } from 'src/agent/query.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { cleanupAgentTracking } from 'src/services/api/promptCacheBreakDetection.js'
+import { cleanupAgentTracking } from 'src/providers/cache/promptCacheBreakDetection.js'
 import {
   connectToServer,
   fetchToolsForClient,

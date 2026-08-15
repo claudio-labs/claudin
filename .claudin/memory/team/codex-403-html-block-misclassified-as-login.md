@@ -9,7 +9,7 @@ A Codex/ChatGPT-OAuth **403 whose response body is HTML** (an OpenAI/Cloudflare
 `.message`, `.explanation`) is an **edge/CDN block on the network/IP side**, not an
 auth problem. It is rejected before reaching the Codex auth layer.
 
-**Why:** Claudin's generic 401/403 branch in `src/services/api/errors.ts` (~line
+**Why:** Claudin's generic 401/403 branch in `src/providers/transport/errors.ts` (~line
 956-972) maps *any* interactive 401/403 to `Please run /login · <API error>`. Only a
 403 containing the string `OAuth token has been revoked` (errors.ts:930-939) is a
 real token problem; and `shouldRetry` (withRetry.ts:945-964) does NOT retry a bare

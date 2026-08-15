@@ -359,7 +359,13 @@ export const GROUPS: readonly Group[] = [
       { from: 'src/components/FeedbackSurvey', to: 'src/platform/feedback' },
       { from: 'src/components/HelpV2', to: 'src/platform/help' },
       { from: 'src/components/teams', to: 'src/platform/teams' },
-      { from: 'src/components/grove', to: 'src/platform/privacy' },
+      // `ui/`, not `privacy/` directly: the providers group lands
+      // `src/services/api/grove.ts` (the qualification/settings logic) in
+      // `src/platform/privacy/`, and `Grove.tsx` beside it gives one directory
+      // two files whose names differ only in case. Bun's resolver collapses
+      // them, so `import … from './Grove.js'` silently resolves to `grove.ts`
+      // and the build fails on the dialog's missing exports.
+      { from: 'src/components/grove', to: 'src/platform/privacy/ui' },
       { from: 'src/components/Passes', to: 'src/platform/billing' },
       { from: 'src/components/DesktopUpsell', to: 'src/platform/billing/desktop-upsell' },
       { from: 'src/components/ClaudeCodeHint', to: 'src/platform/hints' },

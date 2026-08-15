@@ -1,5 +1,5 @@
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { getRateLimitTier, getSubscriptionType } from 'src/services/auth/auth.js'
+import { getRateLimitTier, getSubscriptionType } from 'src/providers/auth/auth.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 
 export function getPlanModeV2AgentCount(): number {

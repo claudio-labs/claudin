@@ -15,16 +15,16 @@ import {
 import mapValues from 'lodash-es/mapValues.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { getOauthConfig } from 'src/constants/oauth.js'
-import { getClaudeAIOAuthTokens } from 'src/services/auth/auth.js'
+import { getClaudeAIOAuthTokens } from 'src/providers/auth/auth.js'
 import { getMCPUserAgent } from 'src/shared/http.js'
 import { logMCPDebug } from 'src/shared/log.js'
 import { WebSocketTransport } from 'src/services/mcp/mcpWebSocketTransport.js'
-import { getWebSocketTLSOptions } from 'src/services/api/mtls.js'
+import { getWebSocketTLSOptions } from 'src/providers/transport/mtls.js'
 import {
   getProxyFetchOptions,
   getWebSocketProxyAgent,
   getWebSocketProxyUrl,
-} from 'src/services/api/proxy.js'
+} from 'src/providers/transport/proxy.js'
 import { getSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { subprocessEnv } from 'src/shared/proc/subprocessEnv.js'

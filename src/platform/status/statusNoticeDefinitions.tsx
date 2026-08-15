@@ -7,7 +7,7 @@ import { getCwd } from 'src/shared/fs/cwd.js';
 import { relative } from 'path';
 import { formatNumber } from 'src/shared/text/format.js';
 import type { getGlobalConfig } from 'src/platform/config/config.js';
-import { getAnthropicApiKeyWithSource, getApiKeyFromConfigOrMacOSKeychain, getAuthTokenSource, isClaudeAISubscriber } from 'src/services/auth/auth.js';
+import { getAnthropicApiKeyWithSource, getApiKeyFromConfigOrMacOSKeychain, getAuthTokenSource, isClaudeAISubscriber } from 'src/providers/auth/auth.js';
 import type { AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { getAgentDescriptionsTotalTokens, AGENT_DESCRIPTIONS_THRESHOLD } from 'src/platform/status/statusNoticeHelpers.js';
 import { isSupportedJetBrainsTerminal, toIDEDisplayName, getTerminalIdeType } from 'src/platform/ide/ide.js';

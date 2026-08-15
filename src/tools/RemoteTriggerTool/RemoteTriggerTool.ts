@@ -2,14 +2,14 @@ import axios from 'axios'
 import { z } from 'zod/v4'
 import { getOauthConfig } from 'src/constants/oauth.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { getOrganizationUUID } from 'src/services/oauth/client.js'
+import { getOrganizationUUID } from 'src/providers/oauth/client.js'
 import { isPolicyAllowed } from 'src/platform/policyLimits/index.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
-} from 'src/services/auth/auth.js'
+} from 'src/providers/auth/auth.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { DESCRIPTION, PROMPT, REMOTE_TRIGGER_TOOL_NAME } from 'src/tools/RemoteTriggerTool/prompt.js'

@@ -24,7 +24,7 @@ import {
 import {
   getCurrentTurnCacheMetrics,
   getSessionCacheMetrics,
-} from 'src/services/api/cacheStatsTracker.js'
+} from 'src/providers/cache/cacheStatsTracker.js'
 
 // BetaUsage-compatible shape — minimum fields addToTotalSessionCost
 // needs to run without throwing. Cache fields are the ones we care

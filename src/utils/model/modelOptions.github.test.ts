@@ -4,7 +4,14 @@ import { mock } from 'bun:test'
 import { resetModelStringsForTestingOnly } from 'src/platform/bootstrap/state.js'
 import { resetGlobalConfigForTests, saveGlobalConfig } from 'src/platform/config/config.js'
 
-const realProvidersModule = await import('src/utils/model/providers.js')
+// Plain-object copy, not the live namespace: `mock.module()` rewrites a
+// namespace in place, so a bare `await import` would leave this variable
+// pointing at the `getAPIProvider: () => 'github'` stub installed below — and
+// the `afterAll` restore would then re-install that stub instead of undoing it.
+// It pinned the whole run to the github provider, which is how
+// `renderModelName` stopped mapping Claude ids and broke
+// `ProviderModelIndicator.test.ts` two directories away.
+const realProvidersModule = { ...(await import('src/utils/model/providers.js')) }
 
 async function importFreshModelOptionsModule() {
   mock.module('./providers.js', () => ({

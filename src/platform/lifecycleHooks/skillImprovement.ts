@@ -6,7 +6,7 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
   logEvent,
 } from 'src/platform/analytics/index.js'
-import { queryModelWithoutStreaming } from 'src/services/api/claude.js'
+import { queryModelWithoutStreaming } from 'src/providers/shims/claude.js'
 import { getEmptyToolPermissionContext } from 'src/Tool.js'
 import type { Message } from 'src/types/message.js'
 import { createAbortController } from 'src/shared/abortController.js'

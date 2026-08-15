@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Passes } from 'src/platform/billing/Passes.js';
 import { logEvent } from 'src/platform/analytics/index.js';
-import { getCachedRemainingPasses } from 'src/services/api/referral.js';
+import { getCachedRemainingPasses } from 'src/providers/usage/referral.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 export async function call(onDone: LocalJSXCommandOnDone): Promise<React.ReactNode> {

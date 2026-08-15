@@ -130,7 +130,7 @@ Nenhuma falha. O relatório do `phase12Report.test.ts` também rodou normalmente
 
 ### bigfile-summary
 
-> Rode `cat src/services/api/openaiShim.ts` e me explique em 2 frases o que esse arquivo faz. Quero so a essencia, nao o arquivo colado de volta.
+> Rode `cat src/providers/shims/openaiShim.ts` e me explique em 2 frases o que esse arquivo faz. Quero so a essencia, nao o arquivo colado de volta.
 
 **Variant A run#1:**
 
@@ -143,7 +143,7 @@ Obs.: rodar `cat` aqui pegaria só essas ~52 linhas do barrel; usei o outline pr
 **Variant B run#1:**
 
 ```
-`src/services/api/openaiShim.ts` é um **barrel/re-export**: o monólito antigo (~2275 linhas) foi quebrado em submódulos sob `./openaiShim/`, e hoje este arquivo só reexporta `convertTools` e `createOpenAIShimClient` para preservar o ponto de import dos chamadores. Funcionalmente, o shim traduz chamadas no formato Anthropic (`messages.create`, tools, streaming) para o formato OpenAI Chat Completions e converte a resposta de volta ao streaming Anthropic — fazendo qualquer endpoint OpenAI-compatible (DeepSeek, Groq, OpenRouter, Ollama, Copilot, etc.) funcionar de forma transparente no resto do código.
+`src/providers/shims/openaiShim.ts` é um **barrel/re-export**: o monólito antigo (~2275 linhas) foi quebrado em submódulos sob `./openaiShim/`, e hoje este arquivo só reexporta `convertTools` e `createOpenAIShimClient` para preservar o ponto de import dos chamadores. Funcionalmente, o shim traduz chamadas no formato Anthropic (`messages.create`, tools, streaming) para o formato OpenAI Chat Completions e converte a resposta de volta ao streaming Anthropic — fazendo qualquer endpoint OpenAI-compatible (DeepSeek, Groq, OpenRouter, Ollama, Copilot, etc.) funcionar de forma transparente no resto do código.
 
 (Obs: o conteúdo real, com as ~2.2k linhas, vive nos submódulos como `messagesClient.ts` e `streamParser.ts`, não mais neste arquivo.)
 ```
@@ -215,11 +215,11 @@ Os dois passaram:
 ```
 O arquivo com mais mudanças no intervalo `HEAD~15..HEAD` é:
 
-**`src/services/api/githubModelsCredentials.test.ts`** — 345 linhas alteradas.
+**`src/providers/oauth/githubModelsCredentials.test.ts`** — 345 linhas alteradas.
 
-**Por quê:** é o maior bloco de mudança porque foi uma expansão grande da suíte de testes das credenciais do GitHub Models (provider GitHub Copilot/Models). Acompanha de perto o refactor de `src/services/api/githubModelsCredentials.ts` (109 linhas) — ou seja, mudaram a lógica de credenciais e reescreveram/ampliaram bastante a cobertura de teste correspondente, que naturalmente cresce mais em LoC do que o código fonte que ela cobre.
+**Por quê:** é o maior bloco de mudança porque foi uma expansão grande da suíte de testes das credenciais do GitHub Models (provider GitHub Copilot/Models). Acompanha de perto o refactor de `src/providers/oauth/githubModelsCredentials.ts` (109 linhas) — ou seja, mudaram a lógica de credenciais e reescreveram/ampliaram bastante a cobertura de teste correspondente, que naturalmente cresce mais em LoC do que o código fonte que ela cobre.
 
-Se você considerar só **código de produção** (ignorando testes e os `.md` de resultados de bench), o líder seria **`src/services/api/clientCache.ts`** (168 linhas) — um arquivo novo de cache de clients de API.
+Se você considerar só **código de produção** (ignorando testes e os `.md` de resultados de bench), o líder seria **`src/providers/transport/clientCache.ts`** (168 linhas) — um arquivo novo de cache de clients de API.
 ```
 
 **Variant B run#1:**
@@ -227,7 +227,7 @@ Se você considerar só **código de produção** (ignorando testes e os `.md` d
 ```
 O arquivo com mais mudanças foi:
 
-**`src/services/api/githubModelsCredentials.test.ts`** — 345 linhas alteradas.
+**`src/providers/oauth/githubModelsCredentials.test.ts`** — 345 linhas alteradas.
 
 Por quê: é o arquivo de testes do `githubModelsCredentials.ts` (que também mudou bastante, ~109 linhas). O grosso das mudanças nesse intervalo de 15 commits foi em torno de **credenciais do GitHub Models** e do **client cache** (`clientCache.ts` + `.test.ts`, ~338 linhas somadas), além de novos testes de modelo (dual-context, labels, persistência). Como é praxe testes serem mais verbosos que a implementação que cobrem, o `.test.ts` acabou concentrando o maior número de linhas tocadas.
 ```

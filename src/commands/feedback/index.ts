@@ -1,5 +1,5 @@
 import type { Command } from 'src/commands.js'
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { isPolicyAllowed } from 'src/platform/policyLimits/index.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { isEssentialTrafficOnly } from 'src/platform/config/privacyLevel.js'

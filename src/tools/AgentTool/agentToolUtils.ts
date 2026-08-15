@@ -12,7 +12,7 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/platform/analytics/index.js'
-import { clearDumpState } from 'src/services/api/dumpPrompts.js'
+import { clearDumpState } from 'src/providers/transport/dumpPrompts.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type {
   Tool,

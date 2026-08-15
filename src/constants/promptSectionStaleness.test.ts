@@ -45,7 +45,7 @@ const { clearSystemPromptSections } = await import('src/constants/systemPromptSe
 // longer feeds provider resolution here; the in-test invalidateActiveProviderCache()
 // calls are kept as harmless no-ops and just need a live binding.
 const { invalidateActiveProviderCache } = await import(
-  'src/services/api/activeProvider.js'
+  'src/providers/presets/activeProvider.js'
 )
 const { applyPermissionUpdate } = await import(
   'src/services/permissions/PermissionUpdate.js'

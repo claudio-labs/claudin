@@ -10,7 +10,7 @@ import { color } from 'src/terminal/design-system/color.js'
 import { shouldShowOverageCreditUpsell } from 'src/terminal/logo/OverageCreditUpsell.js'
 import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js'
 import { isKairosCronEnabled } from 'src/tools/ScheduleCronTool/prompt.js'
-import { is1PApiCustomer } from 'src/services/auth/auth.js'
+import { is1PApiCustomer } from 'src/providers/auth/auth.js'
 import { countConcurrentSessions } from 'src/services/session/concurrentSessions.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import {
@@ -46,12 +46,12 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/grow
 import {
   formatGrantAmount,
   getCachedOverageCreditGrant,
-} from 'src/services/api/overageCreditGrant.js'
+} from 'src/providers/usage/overageCreditGrant.js'
 import {
   checkCachedPassesEligibility,
   formatCreditAmount,
   getCachedReferrerReward,
-} from 'src/services/api/referral.js'
+} from 'src/providers/usage/referral.js'
 import { getSessionsSinceLastShown } from 'src/terminal/tips/tipHistory.js'
 import type { Tip, TipContext } from 'src/terminal/tips/types.js'
 

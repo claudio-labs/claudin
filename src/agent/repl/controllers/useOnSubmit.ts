@@ -60,7 +60,7 @@ import type { EffortValue } from 'src/utils/effort.js';
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js';
 import type { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js';
 import type { useRemoteSession } from 'src/hooks/useRemoteSession.js';
-import type { useDirectConnect } from 'src/hooks/useDirectConnect.js';
+import type { useDirectConnect } from 'src/providers/hooks/useDirectConnect.js';
 import type { useSSHSession } from 'src/hooks/useSSHSession.js';
 import type { useNotifications } from 'src/terminal/contexts/notifications.js';
 import type { useDeferredHookMessages } from 'src/agent/hooks/useDeferredHookMessages.js';
