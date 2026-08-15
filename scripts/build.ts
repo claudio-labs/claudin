@@ -23,7 +23,7 @@ const featureFlags: Record<string, boolean> = {
   VOICE_MODE: false,              // Push-to-talk STT via claude.ai OAuth endpoint
   PROACTIVE: false,               // Autonomous agent mode (missing proactive/ module)
   KAIROS: false,                  // Persistent assistant/session mode (cloud backend)
-  BRIDGE_MODE: true,              // Remote desktop bridge via CCR — EXPERIMENT branch only; gated at runtime by a claude.ai web login. Never merge to release.
+  BRIDGE_MODE: false,             // Remote desktop bridge via CCR — upstream's own note said "EXPERIMENT branch only; never merge to release", and it is gated at runtime behind a claude.ai web login a Claudin user never performs. build-system.md already listed it as disabled; the flag was the outlier. Folds the /bridge command and BriefTool's upload path (−18 chunks, −130 KB); src/platform/bridge/ itself is reached outside this flag and still ships until it is deleted.
   DAEMON: false,                  // Background daemon process (stubbed in open build)
   AGENT_TRIGGERS: false,          // Scheduled remote agent triggers
   ABLATION_BASELINE: false,       // A/B testing harness for eval experiments
