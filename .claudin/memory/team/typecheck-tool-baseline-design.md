@@ -4,15 +4,22 @@ description: Why TypecheckTool keys its pre-existing-error baseline on a clean g
 type: project
 ---
 
+**Owns:** how TypecheckTool's baseline MECHANISM works — what is recorded, when,
+against what, and every write path that can corrupt it — plus the parser
+validation and the shell traps that only a live run exposes. How to read this
+repo's own backlog and the CI ratchet is [[typecheck-backlog-shape]]; the one
+fingerprint bug and its triage are
+[[typecheck-baseline-message-fingerprint-fragile]]; the measured payoff is
+[[typecheck-ab-bench-fixture-flaw]].
+
 `src/tools/TypecheckTool/` (branch `feat/typecheck-tool`, 2026-08-03) is the
 RunTests-shaped wrapper for the type-check step: detect the checker, run it,
 report only the diagnostics missing from a recorded backlog. Twelve checkers —
 tsc, deno, cargo, pyright, mypy, go, dart, dotnet, maven, gradle, phpstan,
-psalm. It exists because `main` carried **4623 pre-existing `tsc` errors** when
-it was built (2026-08-03 — a dated snapshot, not a fixed figure; `main` reads
-2820 on 2026-08-07, and [[typecheck-backlog-shape]] says how to read it live),
-so raw compiler output is unusable in context and nothing distinguished an error
-the agent caused from one that was already there.
+psalm. It exists because `main` carried a backlog thousands of `tsc` errors deep
+when it was built (4623 on 2026-08-03), so raw compiler output is unusable in
+context and nothing distinguished an error the agent caused from one that was
+already there.
 
 **Baseline mechanism (the load-bearing decision).** When `git status --porcelain`
 is empty, every diagnostic is pre-existing *by definition*, so the run's
@@ -22,7 +29,8 @@ mutation. Consequences that are easy to get wrong:
 
 - Fingerprints hash file + code + message and **exclude line/column**. With a
   backlog thousands deep, a line-based key would re-report thousands as "new"
-  after a one-line insertion.
+  after a one-line insertion. The message component is also the fragile one —
+  see [[typecheck-baseline-message-fingerprint-fragile]].
 - Comparison is a **multiset**, not a set: three copies of a once-baselined error
   means two are new.
 - Entries under `.claudin/` are filtered out of the clean-tree check, and
@@ -35,13 +43,14 @@ mutation. Consequences that are easy to get wrong:
   under Bun and SHA-256 under Node, and this value is written by a Node CLI and
   read back by Bun tests.
 
-**The trap worth remembering beyond this tool:** `exec()` (utils/Shell.ts) caps
-`result.stdout` at `BASH_MAX_OUTPUT_LENGTH` (default **30 000 chars**) — the
-full text stays on disk at `result.outputFilePath`
-(`utils/ShellCommand.ts:306-315`). Anything that PARSES shell output must read
-that file or it silently summarises a large run from its first few hundred
-lines. RunTests had the same latent bug on its text-scrape path; both now use
-`readFullShellOutput()` in `src/platform/shell/fullOutput.ts`.
+**The trap worth remembering beyond this tool:** `exec()`
+(`src/shared/proc/Shell.ts`) caps `result.stdout` at `BASH_MAX_OUTPUT_LENGTH`
+(default **30 000 chars**) — the full text stays on disk at
+`result.outputFilePath` (`src/shared/proc/ShellCommand.ts:306-315`). Anything
+that PARSES shell output must read that file or it silently summarises a large
+run from its first few hundred lines. RunTests had the same latent bug on its
+text-scrape path; both now use `readFullShellOutput()` in
+`src/platform/shell/fullOutput.ts`.
 
 **Three traps that only a LIVE run against the real binary exposes** (unit
 fixtures written from memory passed for all three):
@@ -138,9 +147,7 @@ The remaining unknown is not the parsers but the payoff — see
 most tokens; the baseline is what makes it usable in a repo with a permanent
 error backlog, and the truncation cap invalidates the naive implementation.
 
-**How to apply:** measured 21× smaller payload than raw `tsc` on a 40-error
-fixture (`scripts/bench/typecheck-ab.ts`, verified live against sonnet 5) — far
-more on this repo. Verify baseline behaviour in throwaway `/tmp` git repos with
+**How to apply:** verify baseline behaviour in throwaway `/tmp` git repos with
 `claudindev`, never in this checkout: the lifecycle needs commits and deliberate
 breakage. See also [[runtests-tool-language-coverage]] for the per-runner
 reporter tiering this mirrors, and [[tool-result-nudges-benched-zero-adoption]]

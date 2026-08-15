@@ -27,9 +27,9 @@ largest remaining are `openaiShim.test.ts` (4618) and `bashFilter.test.ts` (3966
 both tests.
 
 **CORRECTION 2026-08-14: 11i/11j/11k are DONE too** — an earlier version of this
-memory listed them as open. All three are barrels now: `services/api/claude.ts` 66
-lines over `claude/` (`1b543a4d`), `services/api/openaiShim.ts` 51 over
-`openaiShim/` (`85c06f03`), `services/mcp/client.ts` 66 over `mcp/client/`
+memory listed them as open. All three are barrels now: `src/providers/shims/claude.ts`
+66 lines over `claude/` (`1b543a4d`), `src/providers/shims/openaiShim.ts` 51 over
+`openaiShim/` (`85c06f03`), `src/mcp/client.ts` 66 over `client/`
 (`9db88d9c`). 11l (bridgeMain, feature-gated off) and 11m (ansiToPng, base64
 assets) stay won't-do. **The ROADMAP-11 list is exhausted** — measure the tree, do
 not work from it.
@@ -38,7 +38,7 @@ not work from it.
 
 Ranked by size × churn, since a big file only costs when people edit it:
 
-1. ~~`tools/shared/codeOutline/scanSymbols.ts` — 3911 lines~~ — **DONE 2026-08-14**,
+1. ~~`src/tools/shared/codeOutline/scanSymbols.ts` — 3911 lines~~ — **DONE 2026-08-14**,
    3911 → a 191-line barrel over 18 modules (`types` `detectLang` `internal`,
    `mask/{core,languages}`, `clike/{types,detectors,specs,scan}`, `langs/*` with
    css+html+xml grouped as `webMarkup.ts` and yaml/toml/properties+env/dockerfile/
@@ -51,20 +51,20 @@ Ranked by size × churn, since a big file only costs when people edit it:
    `RE_IDENT_START`/`RE_UPPER_START`/`RE_WORD_CHAR` needed wider export than
    "C-like engine only" implied. This is also where the tree-sitter work in
    [[symbol-parser-options-researched]] now lands — `langs/` is the seam for it.
-2. `screens/REPL.tsx` 3160 × **36** — highest churn in the repo even after 11e took
+2. `src/agent/repl/REPL.tsx` 3160 × **36** — highest churn in the repo even after 11e took
    it 4369→3145; the controllers came out, the composition did not.
-3. `components/PromptInput/PromptInput.tsx` 2568 × **30**, one export, NOT
+3. `src/terminal/prompt-input/PromptInput.tsx` 2568 × **30**, one export, NOT
    React-Compiler output (so hand-splittable — check `grep -c '_c('` before assuming).
-4. `tools/FileReadTool/FileReadTool.ts` 2440 × 24 and
-   `services/api/claude/streaming.ts` 2479 × 21 — the two hot paths; streaming.ts is
+4. `src/tools/FileReadTool/FileReadTool.ts` 2440 × 24 and
+   `src/providers/shims/claude/streaming.ts` 2479 × 21 — the two hot paths; streaming.ts is
    the 11j leftover (65% of the split `claude/` dir).
-5. `components/ProviderManager.tsx` 3114 × 14.
+5. `src/providers/ui/ProviderManager.tsx` 3114 × 14.
 
-**Big but nearly frozen — low payoff, do NOT start here:** `plugins/pluginLoader.ts`
-3307, `services/bash/ast.ts` 2679, `plugins/marketplaceManager.ts` 2648,
-`services/messages/normalize.ts` 2613, `services/config/config.ts` 2268 (56 exports)
-— all 1 commit in 6 months. `native-ts/yoga-layout/index.ts` 2578 is a port that
-must mirror upstream, and `bridge/bridgeMain.ts` 2975 is still 11l.
+**Big but nearly frozen — low payoff, do NOT start here:** `src/plugins/pluginLoader.ts`
+3307, `src/platform/bash/ast.ts` 2679, `src/plugins/marketplaceManager.ts` 2648,
+`src/agent/messages/normalize.ts` 2613, `src/platform/config/config.ts` 2268 (56 exports)
+— all 1 commit in 6 months. `src/native-ts/yoga-layout/index.ts` 2578 is a port that
+must mirror upstream, and `src/platform/bridge/bridgeMain.ts` 2975 is still 11l.
 
 ## Two traps a file split hits here that a normal refactor does not
 

@@ -11,7 +11,7 @@ Empirically (mitmproxy on `--allow-hosts anthropic\.com`, cold REPL start, Anthr
 - **Before**: 7 requests — `POST /v1/messages` (quota warm), `GET /api/claude_cli/bootstrap`, `GET /api/oauth/.../referral/eligibility`, `GET /api/claude_code_penguin_mode`, `GET /api/claude_code/settings` (MDM), `GET /api/claude_code/policy_limits`, `GET /mcp-registry/v0/servers`, plus (uncovered in this session) `GET /api/claude_code_grove`, `GET /api/oauth/account/settings`, `GET /v1/mcp_servers?limit=1000` (claudeai MCP).
 - **After**: 0 requests.
 
-To get there, `isEssentialTrafficOnly()` is now also gated in `services/policyLimits/index.ts:isPolicyLimitsEligible`, `services/remoteManagedSettings/syncCache.ts:isRemoteManagedSettingsEligible`, `services/mcp/officialRegistry.ts`, and `services/mcp/claudeai.ts`.
+To get there, `isEssentialTrafficOnly()` is now also gated in `src/platform/policyLimits/index.ts:isPolicyLimitsEligible`, `src/platform/remoteManagedSettings/syncCache.ts:isRemoteManagedSettingsEligible`, `src/mcp/officialRegistry.ts`, and `src/mcp/claudeai.ts`.
 
 `getEssentialTrafficOnlyReason()` now returns `'claudin-default'` when no env var is set but the level resolves to `essential-traffic`.
 
@@ -20,5 +20,5 @@ To get there, `isEssentialTrafficOnly()` is now also gated in `services/policyLi
 **How to apply:**
 - When users report "the build doesn't reach my MDM/policy endpoint", check whether they need to set `ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC=0` (opt-in) — the default kills that path.
 - The semantics of `DISABLE_TELEMETRY=1` *alone* are now: still `essential-traffic` (more restrictive default wins). To get the old `no-telemetry` level you must opt in (`ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC=0` + `DISABLE_TELEMETRY=1`).
-- Any new gate that should be skipped under the privacy default should call `isEssentialTrafficOnly()` from `src/platform/config/privacyLevel.js`, not read the env var directly — otherwise the alias and the new default will be missed.
+- Any new gate that should be skipped under the privacy default should call `isEssentialTrafficOnly()` from `src/platform/config/privacyLevel.ts`, not read the env var directly — otherwise the alias and the new default will be missed.
 - Existing tests covering this matrix live in `src/platform/config/privacyLevel.test.ts` (8 cases).

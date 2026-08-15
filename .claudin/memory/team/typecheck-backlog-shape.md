@@ -4,12 +4,19 @@ description: how to read the tsc backlog and the baseline ratchet; TWO claims he
 type: project
 ---
 
+**Owns:** how to READ this repo's tsc backlog and the `typecheck:ci` ratchet —
+the current count, the scripts, what the backlog was made of, and the two files
+that must track the build. The TypecheckTool's own baseline mechanism is
+[[typecheck-tool-baseline-design]]; the union-elaboration fingerprint bug and
+its triage are [[typecheck-baseline-message-fingerprint-fragile]]; what the tool
+measurably saved is [[typecheck-ab-bench-fixture-flaw]].
+
 **CORRECTION, 2026-08-13: the backlog reached ZERO.** `bunx tsc --noEmit` emits
-no errors and `typecheck-baseline.json` is `count: 0`. Everything below about
-*shape* is still the right way to read a backlog if one returns, but treat every
-absolute number here as history. The ratchet still guards the diff, and the
-baseline now ratchets against zero — so a newly added error fails CI outright
-rather than hiding under a large number.
+no errors and `typecheck-baseline.json` is `count: 0` (still true 2026-08-15 at
+`c99ade66`). Everything below about *shape* is still the right way to read a
+backlog if one returns, but treat every absolute number here as history. The
+ratchet still guards the diff, and the baseline now ratchets against zero — so a
+newly added error fails CI outright rather than hiding under a large number.
 
 Where the 2820 went: ~2700 across 493 source files (mostly React-Compiler `t0`
 annotations, per the correction below), plus ~107 TS2307 retired by all-`any`
@@ -44,10 +51,16 @@ treat any of them as evidence about its own date only.
 Shape of the backlog, measured 2026-08-06 on branch `chore/repo-improvements`
 (4623 → 3161 errors over that branch):
 
-- **~66% sits in committed React-Compiler output.** `src/components/*.tsx` files
-  with `const $ = _c(N)` / `$[i]` bookkeeping are the real source; the transform
-  strips parameter types, so 1529 of the 1710 implicit-`any` errors live there.
-  See `.claudin/rules/ink-tui.md` §6 before editing one.
+- **~66% sat in committed React-Compiler output.** The `.tsx` carrying
+  `const $ = _c(N)` / `$[i]` bookkeeping are the real source; the transform
+  strips parameter types, so 1529 of the 1710 implicit-`any` errors lived there.
+  Those files were then in `src/components/`; the 2026-08 reorg retired that
+  directory, and as of 2026-08-15 the 372 React-Compiler `.tsx` sit in the `ui/`
+  dir of whichever slice owns them — `src/terminal/` (94), `src/agent/ui/` (87),
+  `src/platform/` (64), `src/permissions/ui/` (46), `src/commands/` (35),
+  `src/tools/*/UI.tsx` (20), the rest spread thin. Find them with
+  `grep -rl 'const $ = _c(' src --include='*.tsx'`, and read
+  `.claudin/rules/ink-tui.md` §6 before editing one.
 
   **CORRECTION, 2026-08-07: "and cannot be hand-fixed — the pre-compiler sources
   are not in this fork" was wrong**, and stood here for a day as a reason not to
@@ -60,8 +73,11 @@ Shape of the backlog, measured 2026-08-06 on branch `chore/repo-improvements`
   retired by declaring them, but only with all-`any` exports, and doing so buys
   no type safety — an unresolved import is already `any`. See
   [[missing-subsystems-are-not-fixable-by-declaration]] for the current list,
-  which is wider than the obvious optional subsystems (`src/services` and
-  `src/tools` account for 21 of the 70 missing modules).
+  which is wider than the obvious optional subsystems. It is also spread wider
+  than it was: the reorg dissolved `src/services/`, so the 87 declaration-only
+  modules now sit in every slice, led by `src/platform/` (23), `src/commands/`
+  (20) and `src/agent/` (13). Enumerate them by finding each `.d.ts` with no
+  `.ts`/`.tsx` sibling.
 - The rest are genuine mismatches, newly visible now that the central types
   resolve.
 

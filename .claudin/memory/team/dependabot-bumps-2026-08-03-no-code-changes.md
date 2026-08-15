@@ -55,8 +55,9 @@ future-proofing, not size.
 
 **How to apply:** validation already run and green — `bun run build`,
 `bun run build:compile` (224 MB binary, `--version` OK), `node dist/cli.mjs
---version`, and 164 focused tests across `geminiAuth`, `proxy`, `services/mcp/`,
-`WebSearchTool/`, `WebFetchTool/`. `bun run typecheck` reported ~4,623 errors on
+--version`, and 164 focused tests across `geminiAuth`, `proxy`, `services/mcp/`
+(now `src/mcp/`), `WebSearchTool/`, `WebFetchTool/`. `bun run typecheck` reported
+~4,623 errors on
 2026-08-03 — a snapshot of that day, **not** a standing figure; it was 2820 by
 2026-08-07, and [[typecheck-backlog-shape]] says how to read it live. All of it
 is pre-existing backlog (MACRO, build-time stub modules, test globals), with
