@@ -13,7 +13,7 @@ import sample from 'lodash-es/sample.js';
 import { formatDuration, formatNumber, formatSecondsShort, truncateToWidth } from 'src/shared/text/format.js';
 import type { Theme } from 'src/terminal/theme/theme.js';
 import { activityManager } from 'src/agent/coordinator/activityManager.js';
-import { getSpinnerVerbs } from 'src/constants/spinnerVerbs.js';
+import { getSpinnerVerbs } from 'src/agent/prompts/spinnerVerbs.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { TaskListV2 } from 'src/agent/ui/TaskListV2.js';
 import { useTasksV2 } from 'src/agent/hooks/useTasksV2.js';
@@ -32,7 +32,7 @@ import { getAllInProcessTeammateTasks } from 'src/agent/tasks/InProcessTeammateT
 import { getEffortSuffix, isAdaptiveEffort } from 'src/utils/effort.js';
 import { getMainLoopModel } from 'src/utils/model/model.js';
 import { getViewedTeammateTask } from 'src/terminal/state/selectors.js';
-import { TEARDROP_ASTERISK } from 'src/constants/figures.js';
+import { TEARDROP_ASTERISK } from 'src/shared/constants/figures.js';
 import figures from 'figures';
 import { getCurrentTurnTokenBudget, getTurnOutputTokens } from 'src/platform/bootstrap/state.js';
 import { TeammateSpinnerTree } from 'src/terminal/spinner/TeammateSpinnerTree.js';

@@ -5,7 +5,7 @@ import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEve
 import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js';
 import { isPolicyAllowed } from 'src/platform/policyLimits/index.js';
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js';
-import type { Message } from 'src/types/message.js';
+import type { Message } from 'src/shared/types/message.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { isAutoManagedMemoryFile } from 'src/memory/memdir/memoryFileDetection.js';

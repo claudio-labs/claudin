@@ -1,5 +1,5 @@
 import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
-import type { LocalJSXCommandOnDone } from 'src/types/command.js'
+import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js'
 import { buildMemoryTidyPrompt } from 'src/commands/memory/tidyPrompt.js'
 import { resolveTidyTeamRoot } from 'src/commands/memory/tidyTeam.js'
 

@@ -18,7 +18,7 @@
  * blast radius tiny.
  */
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
-import type { AttachmentMessage } from 'src/types/message.js'
+import type { AttachmentMessage } from 'src/shared/types/message.js'
 
 const realDiagnosticsEdit = { ...(await import('src/platform/lsp/diagnosticsForToolResult.js')) }
 

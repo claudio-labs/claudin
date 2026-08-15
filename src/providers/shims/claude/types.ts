@@ -12,8 +12,8 @@ import type {
   Tools,
 } from 'src/tools/Tool.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
-import type { AgentId } from 'src/types/ids.js'
-import type { QuerySource } from 'src/constants/querySource.js'
+import type { AgentId } from 'src/shared/types/ids.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import type { Notification } from 'src/terminal/contexts/notifications.js'
 import type { EffortValue } from 'src/utils/effort.js'
 

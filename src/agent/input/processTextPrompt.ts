@@ -5,9 +5,9 @@ import type {
   AttachmentMessage,
   SystemMessage,
   UserMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { logEvent } from 'src/platform/analytics/index.js'
-import type { PermissionMode } from 'src/types/permissions.js'
+import type { PermissionMode } from 'src/shared/types/permissions.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import { logOTelEvent, redactIfDisabled } from 'src/platform/telemetry/events.js'
 import { startInteractionSpan } from 'src/platform/telemetry/sessionTracing.js'

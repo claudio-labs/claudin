@@ -2,7 +2,7 @@ import { afterAll, describe, expect, mock, test } from 'bun:test'
 import type { ToolUseBlock } from '@anthropic-ai/sdk/resources/index.mjs'
 
 import type { Tool, Tools, ToolUseContext } from 'src/tools/Tool.js'
-import type { AssistantMessage } from 'src/types/message.js'
+import type { AssistantMessage } from 'src/shared/types/message.js'
 
 // Boundary mock: replace runToolUse so executeTool's real wiring (per-tool
 // child controller + bubble-up listener) can be exercised without dragging

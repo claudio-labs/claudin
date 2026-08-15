@@ -6,7 +6,7 @@ import {
   hasProfileScope,
 } from 'src/providers/auth/auth.js'
 import { z } from 'zod/v4'
-import { getOauthConfig, OAUTH_BETA_HEADER } from 'src/constants/oauth.js'
+import { getOauthConfig, OAUTH_BETA_HEADER } from 'src/shared/constants/oauth.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { withOAuth401Retry } from 'src/shared/http.js'

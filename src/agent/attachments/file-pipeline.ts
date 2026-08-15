@@ -13,7 +13,7 @@ import { getDefaultFileReadingLimits } from 'src/tools/FileReadTool/limits.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { getPDFPageCount } from 'src/shared/fs/pdf.js'
 import { isPDFExtension } from 'src/shared/fs/pdfUtils.js'
-import { PDF_AT_MENTION_INLINE_THRESHOLD } from 'src/constants/apiLimits.js'
+import { PDF_AT_MENTION_INLINE_THRESHOLD } from 'src/shared/constants/apiLimits.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { countCharInString } from 'src/shared/text/stringUtils.js'
 import {

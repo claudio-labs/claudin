@@ -21,7 +21,7 @@ import { randomUUID } from 'crypto'
 import uniqBy from 'lodash-es/uniqBy.js'
 import { RemoteIO } from 'src/platform/headless/remoteIO.js'
 import { ask } from 'src/agent/QueryEngine.js'
-import type { QueuedCommand } from 'src/types/textInputTypes.js'
+import type { QueuedCommand } from 'src/shared/types/textInputTypes.js'
 import {
   dequeue,
   enqueue,
@@ -45,7 +45,7 @@ import type {
   SDKUserMessageReplay,
 } from 'src/platform/entrypoints/agentSdkTypes.js'
 import { createAbortController } from 'src/shared/abortController.js'
-import { TEAMMATE_MESSAGE_TAG } from 'src/constants/xml.js'
+import { TEAMMATE_MESSAGE_TAG } from 'src/shared/constants/xml.js'
 import {
   tryGenerateSuggestion,
   logSuggestionOutcome,

@@ -1,4 +1,4 @@
-import type { QuerySource } from "src/constants/querySource.js";
+import type { QuerySource } from "src/agent/prompts/querySource.js";
 import type { CacheScope } from "src/providers/transport/api.js";
 import { isEnvTruthy } from "src/shared/envUtils.js";
 import { getAPIProvider } from "src/utils/model/providers.js";

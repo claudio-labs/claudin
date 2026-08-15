@@ -33,7 +33,7 @@ import {
   CLAUDE_AI_PROFILE_SCOPE,
   getOauthConfig,
   OAUTH_BETA_HEADER,
-} from 'src/constants/oauth.js'
+} from 'src/shared/constants/oauth.js'
 import {
   getTeamMemPath,
   PathTraversalError,

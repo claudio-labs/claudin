@@ -17,11 +17,11 @@ import { getCacheControl } from 'src/providers/shims/claude.js'
 import { parsePromptTooLongTokenCounts } from 'src/providers/transport/errors.js'
 import { getDefaultMaxRetries } from 'src/providers/transport/withRetry.js'
 import type { Tool, ToolPermissionContext, Tools } from 'src/tools/Tool.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import type {
   ClassifierUsage,
   YoloClassifierResult,
-} from 'src/types/permissions.js'
+} from 'src/shared/types/permissions.js'
 import { isDebugMode, logForDebugging } from 'src/shared/debug.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { errorMessage, isSdkApiError } from 'src/shared/errors.js'

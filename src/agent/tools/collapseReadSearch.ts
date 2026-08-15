@@ -27,7 +27,7 @@ import type {
   SystemStopHookSummaryMessage,
   WriteFileStat,
   WriteKind,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { countAddDel } from 'src/vcs/git/diffStat.js'

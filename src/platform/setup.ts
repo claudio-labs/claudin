@@ -20,7 +20,7 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import { getCommands } from 'src/commands/commands.js'
 import { initSessionMemory } from 'src/memory/session/sessionMemory.js'
-import { asSessionId } from 'src/types/ids.js'
+import { asSessionId } from 'src/shared/types/ids.js'
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import { checkAndRestoreTerminalBackup } from 'src/platform/ide/appleTerminalBackup.js'
 import { prefetchApiKeyFromApiKeyHelperIfSafe } from 'src/providers/auth/auth.js'

@@ -36,7 +36,7 @@ export type Framework =
  * What the TUI shows while the suite is still running.
  *
  * Declared here rather than added to the `ToolProgressData` union in
- * `src/types/tools.js`, which does not exist in this fork and is stubbed at
+ * `src/shared/types/tools.js`, which does not exist in this fork and is stubbed at
  * bundle time. Never reaches the model: every `progress` message is dropped
  * before serialization, so this costs nothing in tokens.
  */

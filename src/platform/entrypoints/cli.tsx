@@ -299,7 +299,7 @@ async function main(): Promise<void> {
       getSystemPrompt,
       enhanceSystemPromptWithEnvDetails,
       DEFAULT_AGENT_PROMPT
-    } = await import('src/constants/prompts.js');
+    } = await import('src/agent/prompts/prompts.js');
     const prompt = args.includes('--subagent') ? await enhanceSystemPromptWithEnvDetails([DEFAULT_AGENT_PROMPT], model) : await getSystemPrompt([], model);
     // biome-ignore lint/suspicious/noConsole:: intentional console output
     console.log(prompt.join('\n'));

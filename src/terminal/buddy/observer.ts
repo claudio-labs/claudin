@@ -1,4 +1,4 @@
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getUserMessageText } from 'src/agent/messages/messages.js'
 import { getCompanion } from 'src/terminal/buddy/companion.js'

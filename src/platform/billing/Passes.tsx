@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import type { CommandResultDisplay } from 'src/commands/commands.js';
-import { TEARDROP_ASTERISK } from 'src/constants/figures.js';
+import { TEARDROP_ASTERISK } from 'src/shared/constants/figures.js';
 import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { setClipboard } from 'src/terminal/ink/termio/osc.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- enter to copy link

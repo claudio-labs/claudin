@@ -9,8 +9,8 @@ import { linkifyUrlsInText, OutputLine } from 'src/tools/BashTool/ui/OutputLine.
 import { stringWidth } from 'src/terminal/ink/stringWidth.js';
 import { Ansi, Box, Text } from 'src/terminal/ink.js';
 import type { ToolProgressData } from 'src/tools/Tool.js';
-import type { ProgressMessage } from 'src/types/message.js';
-import type { MCPProgress } from 'src/types/tools.js';
+import type { ProgressMessage } from 'src/shared/types/message.js';
+import type { MCPProgress } from 'src/shared/types/tools.js';
 import { formatNumber } from 'src/shared/text/format.js';
 import { createHyperlink } from 'src/shared/text/hyperlink.js';
 import { getContentSizeEstimate, type MCPToolResult } from 'src/mcp/mcpValidation.js';

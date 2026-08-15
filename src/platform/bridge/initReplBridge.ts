@@ -24,7 +24,7 @@ import {
   isPolicyAllowed,
   waitForPolicyLimitsToLoad,
 } from 'src/platform/policyLimits/index.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,

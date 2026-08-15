@@ -21,7 +21,7 @@ import type {
   SDKControlInitializeResponse,
   StdoutMessage,
 } from 'src/platform/entrypoints/sdk/controlTypes.js'
-import type { HookCallbackMatcher } from 'src/types/hooks.js'
+import type { HookCallbackMatcher } from 'src/shared/types/hooks.js'
 import type { StructuredIO } from 'src/platform/headless/structuredIO.js'
 import type { Stream } from 'src/shared/stream.js'
 import {
@@ -37,7 +37,7 @@ import { getInitialSettings } from 'src/platform/settings/settings.js'
 import {
   DEFAULT_OUTPUT_STYLE_NAME,
   getAllOutputStyles,
-} from 'src/constants/outputStyles.js'
+} from 'src/shared/constants/outputStyles.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getAccountInformation } from 'src/providers/auth/auth.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'

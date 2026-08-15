@@ -5,7 +5,7 @@ import {
   McpServerConfigSchema,
   type ScopedMcpServerConfig,
 } from 'src/mcp/types.js'
-import type { LoadedPlugin, PluginError } from 'src/types/plugin.js'
+import type { LoadedPlugin, PluginError } from 'src/shared/types/plugin.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage, isENOENT } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'

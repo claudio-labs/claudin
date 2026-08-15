@@ -4,7 +4,7 @@ import { renderPlaceholder } from 'src/terminal/prompt-suggestion/renderPlacehol
 import { usePasteHandler } from 'src/terminal/hooks/usePasteHandler.js';
 import { useDeclaredCursor } from 'src/terminal/ink/hooks/use-declared-cursor.js';
 import { Ansi, Box, Text, useInput } from 'src/terminal/ink.js';
-import type { BaseInputState, BaseTextInputProps } from 'src/types/textInputTypes.js';
+import type { BaseInputState, BaseTextInputProps } from 'src/shared/types/textInputTypes.js';
 import type { TextHighlight } from 'src/shared/text/textHighlighting.js';
 import { HighlightedInput } from 'src/terminal/prompt-input/ShimmeredInput.js';
 type BaseTextInputComponentProps = BaseTextInputProps & {

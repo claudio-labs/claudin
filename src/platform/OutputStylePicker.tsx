@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useCallback, useEffect, useState } from 'react';
-import { getAllOutputStyles, OUTPUT_STYLE_CONFIG, type OutputStyleConfig } from 'src/constants/outputStyles.js';
+import { getAllOutputStyles, OUTPUT_STYLE_CONFIG, type OutputStyleConfig } from 'src/shared/constants/outputStyles.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { OutputStyle } from 'src/platform/config/config.js';
 import { getCwd } from 'src/shared/fs/cwd.js';

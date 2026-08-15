@@ -12,7 +12,7 @@ import { Box, Text, useInput } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { queryHaiku } from 'src/providers/shims/claude.js';
 import { startsWithApiErrorPrefix } from 'src/providers/transport/errors.js';
-import type { Message } from 'src/types/message.js';
+import type { Message } from 'src/shared/types/message.js';
 import { checkAndRefreshOAuthTokenIfNeeded } from 'src/providers/auth/auth.js';
 import { openBrowser } from 'src/shared/browser.js';
 import { logForDebugging } from 'src/shared/debug.js';

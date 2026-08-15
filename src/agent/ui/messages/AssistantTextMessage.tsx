@@ -3,7 +3,7 @@ import type { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import React, { useContext } from 'react';
 import { ERROR_MESSAGE_USER_ABORT } from 'src/agent/compact/compact.js';
 import { isRateLimitErrorMessage } from 'src/providers/rateLimitMessages.js';
-import { BLACK_CIRCLE } from 'src/constants/figures.js';
+import { BLACK_CIRCLE } from 'src/shared/constants/figures.js';
 import { Box, NoSelect, Text } from 'src/terminal/ink.js';
 import { API_ERROR_MESSAGE_PREFIX, API_TIMEOUT_ERROR_MESSAGE, CREDIT_BALANCE_TOO_LOW_ERROR_MESSAGE, CUSTOM_OFF_SWITCH_MESSAGE, INVALID_API_KEY_ERROR_MESSAGE, INVALID_API_KEY_ERROR_MESSAGE_EXTERNAL, ORG_DISABLED_ERROR_MESSAGE_ENV_KEY, ORG_DISABLED_ERROR_MESSAGE_ENV_KEY_WITH_OAUTH, PROMPT_TOO_LONG_ERROR_MESSAGE, startsWithApiErrorPrefix, TOKEN_REVOKED_ERROR_MESSAGE } from 'src/providers/transport/errors.js';
 import { isEmptyMessageText, NO_RESPONSE_REQUESTED } from 'src/agent/messages/messages.js';

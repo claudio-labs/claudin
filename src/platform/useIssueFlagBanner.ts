@@ -1,4 +1,4 @@
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 
 // Banner intentionally disabled — internal-only friction-signal feature stubbed
 // out for the open build.

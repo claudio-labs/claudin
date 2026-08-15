@@ -4,7 +4,7 @@ import type {
   JSONRPCMessage,
 } from '@modelcontextprotocol/sdk/types.js'
 import { randomUUID } from 'crypto'
-import type { AssistantMessage } from 'src/types/message.js'
+import type { AssistantMessage } from 'src/shared/types/message.js'
 import type {
   HookInput,
   HookJSONOutput,
@@ -21,7 +21,7 @@ import type {
 } from 'src/platform/entrypoints/sdk/controlTypes.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
-import { type HookCallback, hookJSONOutputSchema } from 'src/types/hooks.js'
+import { type HookCallback, hookJSONOutputSchema } from 'src/shared/types/hooks.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { AbortError } from 'src/shared/errors.js'

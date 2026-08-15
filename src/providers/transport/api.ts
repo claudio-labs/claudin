@@ -4,7 +4,7 @@ import type {
   BetaToolUnion,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { createHash } from 'crypto'
-import { SYSTEM_PROMPT_DYNAMIC_BOUNDARY } from 'src/constants/prompts.js'
+import { SYSTEM_PROMPT_DYNAMIC_BOUNDARY } from 'src/agent/prompts/prompts.js'
 import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import { isAnalyticsDisabled } from 'src/platform/analytics/config.js'
 import {
@@ -25,16 +25,16 @@ import {
 } from 'src/tools/FileEditTool/utils.js'
 import { FileWriteTool } from 'src/tools/FileWriteTool/FileWriteTool.js'
 import { getTools } from 'src/tools/tools.js'
-import type { AgentId } from 'src/types/ids.js'
+import type { AgentId } from 'src/shared/types/ids.js'
 import type { z } from 'zod/v4'
-import { CLI_SYSPROMPT_PREFIXES } from 'src/constants/system.js'
+import { CLI_SYSPROMPT_PREFIXES } from 'src/agent/prompts/system.js'
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
 import type { Tool, ToolPermissionContext, Tools } from 'src/tools/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
 import { TASK_OUTPUT_TOOL_NAME } from 'src/tools/TaskOutputTool/constants.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import {
   modelSupportsStructuredOutputs,

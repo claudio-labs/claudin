@@ -9,7 +9,7 @@ import {
   setOriginalCwd,
   switchSession,
 } from 'src/platform/bootstrap/state.js'
-import { clearSystemPromptSections } from 'src/constants/systemPromptSections.js'
+import { clearSystemPromptSections } from 'src/agent/prompts/systemPromptSections.js'
 import { recomputeCostStateFromMessages, restoreCostStateForSession } from 'src/agent/cost-tracker.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
@@ -20,14 +20,14 @@ import {
   getAgentDefinitionsWithOverrides,
 } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { TODO_WRITE_TOOL_NAME } from 'src/tools/TodoWriteTool/constants.js'
-import { asSessionId } from 'src/types/ids.js'
+import { asSessionId } from 'src/shared/types/ids.js'
 import type {
   AttributionSnapshotMessage,
   ContextCollapseCommitEntry,
   ContextCollapseSnapshotEntry,
   PersistedWorktreeSession,
-} from 'src/types/logs.js'
-import type { Message } from 'src/types/message.js'
+} from 'src/shared/types/logs.js'
+import type { Message } from 'src/shared/types/message.js'
 import { renameRecordingForSession } from 'src/terminal/image/asciicast.js'
 import { clearMemoryFileCaches } from 'src/memory/instructions/claudemd.js'
 import {

@@ -26,7 +26,7 @@ import {
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import type { PermissionMode } from 'src/permissions/PermissionMode.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import { LIGHTNING_BOLT } from 'src/constants/figures.js'
+import { LIGHTNING_BOLT } from 'src/shared/constants/figures.js'
 import { isModelAllowed } from 'src/utils/model/modelAllowlist.js'
 import { type ModelAlias, isModelAlias } from 'src/utils/model/aliases.js'
 import { capitalize } from 'src/shared/text/stringUtils.js'

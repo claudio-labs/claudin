@@ -4,7 +4,7 @@ import React from 'react';
 import { useClipboardImageHint } from 'src/terminal/hooks/useClipboardImageHint.js';
 import { useVimInput } from 'src/terminal/hooks/useVimInput.js';
 import { Box, color, useTerminalFocus, useTheme } from 'src/terminal/ink.js';
-import type { VimTextInputProps } from 'src/types/textInputTypes.js';
+import type { VimTextInputProps } from 'src/shared/types/textInputTypes.js';
 import type { TextHighlight } from 'src/shared/text/textHighlighting.js';
 import { BaseTextInput } from 'src/terminal/text-input/BaseTextInput.js';
 export type Props = VimTextInputProps & {

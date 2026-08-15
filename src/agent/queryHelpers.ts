@@ -16,8 +16,8 @@ import {
   FILE_UNCHANGED_STUB,
 } from 'src/tools/FileReadTool/prompt.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
-import type { Message } from 'src/types/message.js'
-import type { OrphanedPermission } from 'src/types/textInputTypes.js'
+import type { Message } from 'src/shared/types/message.js'
+import type { OrphanedPermission } from 'src/shared/types/textInputTypes.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { isFsInaccessible } from 'src/shared/errors.js'

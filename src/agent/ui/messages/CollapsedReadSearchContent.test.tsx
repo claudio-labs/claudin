@@ -6,7 +6,7 @@ import type { Tools } from 'src/tools/Tool.js'
 import type {
   CollapsedReadSearchGroup,
   WriteFileStat,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { renderToString } from 'src/terminal/render/staticRender.js'
 import { CollapsedReadSearchContent } from 'src/agent/ui/messages/CollapsedReadSearchContent.js'
 

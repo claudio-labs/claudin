@@ -22,8 +22,8 @@ import {
   type LocalAgentTaskState,
 } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import { isLocalShellTask } from 'src/agent/tasks/LocalShellTask/guards.js'
-import { asAgentId } from 'src/types/ids.js'
-import type { Message } from 'src/types/message.js'
+import { asAgentId } from 'src/shared/types/ids.js'
+import type { Message } from 'src/shared/types/message.js'
 import {
   resetCostState,
   saveCurrentSessionCosts,

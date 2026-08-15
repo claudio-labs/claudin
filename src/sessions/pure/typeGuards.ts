@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle'
 import type { UUID } from 'crypto'
-import type { Entry, TranscriptMessage } from 'src/types/logs.js'
-import type { Message } from 'src/types/message.js'
+import type { Entry, TranscriptMessage } from 'src/shared/types/logs.js'
+import type { Message } from 'src/shared/types/message.js'
 
 /**
  * Type guard to check if an entry is a transcript message.

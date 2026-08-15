@@ -1,4 +1,4 @@
-import type { RenderableMessage } from 'src/types/message.js'
+import type { RenderableMessage } from 'src/shared/types/message.js'
 import {
   INTERRUPT_MESSAGE,
   INTERRUPT_MESSAGE_FOR_TOOL_USE,

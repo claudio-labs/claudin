@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import { ASYNC_AGENT_ALLOWED_TOOLS } from 'src/constants/tools.js'
+import { ASYNC_AGENT_ALLOWED_TOOLS } from 'src/tools/constants/tools.js'
 import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,

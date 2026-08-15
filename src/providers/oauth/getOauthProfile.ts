@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getOauthConfig, OAUTH_BETA_HEADER } from 'src/constants/oauth.js'
+import { getOauthConfig, OAUTH_BETA_HEADER } from 'src/shared/constants/oauth.js'
 import type { OAuthProfileResponse } from 'src/providers/oauth/types.js'
 import { getAnthropicApiKey } from 'src/providers/auth/auth.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'

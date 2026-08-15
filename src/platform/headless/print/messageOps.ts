@@ -1,4 +1,4 @@
-import type { Message, NormalizedUserMessage } from 'src/types/message.js'
+import type { Message, NormalizedUserMessage } from 'src/shared/types/message.js'
 
 /**
  * Removes an interrupted user message and its synthetic assistant sentinel

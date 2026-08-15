@@ -1,6 +1,6 @@
 import * as path from 'path'
-import { PDF_MAX_PAGES_PER_READ } from 'src/constants/apiLimits.js'
-import { hasBinaryExtension } from 'src/constants/files.js'
+import { PDF_MAX_PAGES_PER_READ } from 'src/shared/constants/apiLimits.js'
+import { hasBinaryExtension } from 'src/shared/constants/files.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import { getFileExtensionForAnalytics } from 'src/platform/analytics/metadata.js'

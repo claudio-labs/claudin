@@ -40,7 +40,7 @@ import type {
   Message,
   SystemLocalCommandMessage,
   SystemMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import { count, uniq } from 'src/shared/data/array.js'
 import { logForDebugging } from 'src/shared/debug.js'

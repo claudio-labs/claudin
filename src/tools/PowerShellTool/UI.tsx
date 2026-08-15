@@ -9,8 +9,8 @@ import { ShellProgressMessage } from 'src/tools/BashTool/ui/ShellProgressMessage
 import { ShellTimeDisplay } from 'src/tools/BashTool/ui/ShellTimeDisplay.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { Tool } from 'src/tools/Tool.js';
-import type { ProgressMessage } from 'src/types/message.js';
-import type { PowerShellProgress } from 'src/types/tools.js';
+import type { ProgressMessage } from 'src/shared/types/message.js';
+import type { PowerShellProgress } from 'src/shared/types/tools.js';
 import type { ThemeName } from 'src/terminal/theme/theme.js';
 import type { Out, PowerShellToolInput } from 'src/tools/PowerShellTool/PowerShellTool.js';
 

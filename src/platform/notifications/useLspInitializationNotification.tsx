@@ -5,7 +5,7 @@ import { getIsRemoteMode, getIsScrollDraining } from 'src/platform/bootstrap/sta
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { Text } from 'src/terminal/ink.js';
 import { getInitializationStatus, getLspServerManager } from 'src/platform/lsp/manager.js';
-import type { PluginError } from 'src/types/plugin.js';
+import type { PluginError } from 'src/shared/types/plugin.js';
 import { useSetAppState } from 'src/terminal/state/AppState.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';

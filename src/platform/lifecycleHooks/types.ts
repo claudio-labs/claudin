@@ -1,9 +1,9 @@
 import type { ElicitResult } from '@modelcontextprotocol/sdk/types.js'
-import type { HookResultMessage } from 'src/types/message.js'
+import type { HookResultMessage } from 'src/shared/types/message.js'
 import type {
   HookCallback,
   PermissionRequestResult,
-} from 'src/types/hooks.js'
+} from 'src/shared/types/hooks.js'
 import type { HookCommand } from 'src/platform/settings/types.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import type { FunctionHook } from 'src/platform/lifecycleHooks/sessionHooks.js'

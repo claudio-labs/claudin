@@ -10,7 +10,7 @@ import { Message as MessageComponent } from 'src/agent/ui/Message.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { Tools } from 'src/tools/Tool.js';
-import type { ProgressMessage } from 'src/types/message.js';
+import type { ProgressMessage } from 'src/shared/types/message.js';
 import { buildSubagentLookups, EMPTY_LOOKUPS } from 'src/agent/messages/messages.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import type { inputSchema, Output, Progress } from 'src/tools/SkillTool/SkillTool.js';

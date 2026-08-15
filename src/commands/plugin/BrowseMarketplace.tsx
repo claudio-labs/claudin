@@ -5,7 +5,7 @@ import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.
 import { Byline } from 'src/terminal/design-system/Byline.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding, useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
-import type { LoadedPlugin } from 'src/types/plugin.js';
+import type { LoadedPlugin } from 'src/shared/types/plugin.js';
 import { count } from 'src/shared/data/array.js';
 import { openBrowser } from 'src/shared/browser.js';
 import { logForDebugging } from 'src/shared/debug.js';

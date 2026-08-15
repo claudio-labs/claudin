@@ -4,7 +4,7 @@ import {
   getIsNonInteractiveSession,
   getSessionTrustAccepted,
 } from 'src/platform/bootstrap/state.js'
-import { getGrowthBookClientKey } from 'src/constants/keys.js'
+import { getGrowthBookClientKey } from 'src/shared/constants/keys.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import {
   checkHasTrustDialogAccepted,

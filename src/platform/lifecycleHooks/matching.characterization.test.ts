@@ -19,7 +19,7 @@ import type {
   HookEvent,
   HookInput,
   HookMatcher,
-} from 'src/types/hookEvents.js'
+} from 'src/shared/types/hookEvents.js'
 
 type Hooks = typeof import('src/platform/lifecycleHooks/hooks.js')
 

@@ -12,7 +12,7 @@
 
 import type { UUID } from 'crypto'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import type { LogOption } from 'src/types/logs.js'
+import type { LogOption } from 'src/shared/types/logs.js'
 import { getWorktreePaths } from 'src/vcs/git/getWorktreePaths.js'
 import { getStatOnlyLogsForWorktrees } from 'src/sessions/indexing/crossProject.js'
 import {

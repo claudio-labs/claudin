@@ -26,7 +26,7 @@ import {
   killAllRunningAgentTasks,
   markAgentsNotified,
 } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
-import type { PromptInputMode, VimMode } from 'src/types/textInputTypes.js'
+import type { PromptInputMode, VimMode } from 'src/shared/types/textInputTypes.js'
 import {
   clearCommandQueue,
   enqueuePendingNotification,

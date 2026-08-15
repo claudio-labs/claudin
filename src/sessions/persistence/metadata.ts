@@ -12,8 +12,8 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/platform/analytics/index.js'
-import type { SessionId } from 'src/types/ids.js'
-import type { PersistedWorktreeSession } from 'src/types/logs.js'
+import type { SessionId } from 'src/shared/types/ids.js'
+import type { PersistedWorktreeSession } from 'src/shared/types/logs.js'
 import { updateSessionName } from 'src/sessions/concurrentSessions.js'
 import { appendEntryToFile } from 'src/sessions/persistence/_helpers.js'
 import { getProject } from 'src/sessions/persistence/project.js'

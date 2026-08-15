@@ -1,7 +1,7 @@
 import { normalizeLanguageForSTT } from 'src/terminal/voice/useVoice.js'
 import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js'
 import { logEvent } from 'src/platform/analytics/index.js'
-import type { LocalCommandCall } from 'src/types/command.js'
+import type { LocalCommandCall } from 'src/shared/types/command.js'
 import { isAnthropicAuthEnabled } from 'src/providers/auth/auth.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { settingsChangeDetector } from 'src/platform/settings/changeDetector.js'

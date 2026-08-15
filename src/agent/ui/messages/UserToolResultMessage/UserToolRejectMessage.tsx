@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { useTheme } from 'src/terminal/ink.js';
 import { filterToolProgressMessages, type Tool, type Tools } from 'src/tools/Tool.js';
-import type { ProgressMessage } from 'src/types/message.js';
+import type { ProgressMessage } from 'src/shared/types/message.js';
 import type { buildMessageLookups } from 'src/agent/messages/messages.js';
 import { FallbackToolUseRejectedMessage } from 'src/agent/ui/FallbackToolUseRejectedMessage.js';
 type Props = {

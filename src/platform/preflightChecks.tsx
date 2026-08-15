@@ -3,7 +3,7 @@ import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { logEvent } from 'src/platform/analytics/index.js';
 import { Spinner } from 'src/terminal/spinner/Spinner.js';
-import { getOauthConfig } from 'src/constants/oauth.js';
+import { getOauthConfig } from 'src/shared/constants/oauth.js';
 import { useTimeout } from 'src/terminal/hooks/useTimeout.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { getSSLErrorHint } from 'src/providers/transport/errorUtils.js';

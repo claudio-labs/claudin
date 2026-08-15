@@ -7,7 +7,7 @@
  * LSP tests in the shard prevent real-fs integration tests from running here.
  */
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
-import type { AttachmentMessage } from 'src/types/message.js'
+import type { AttachmentMessage } from 'src/shared/types/message.js'
 
 const realDiagnosticsWrite = { ...(await import('src/platform/lsp/diagnosticsForToolResult.js')) }
 

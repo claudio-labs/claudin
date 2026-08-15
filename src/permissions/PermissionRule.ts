@@ -1,11 +1,11 @@
 import z from 'zod/v4'
-// Types extracted to src/types/permissions.ts to break import cycles
+// Types extracted to src/shared/types/permissions.ts to break import cycles
 import type {
   PermissionBehavior,
   PermissionRule,
   PermissionRuleSource,
   PermissionRuleValue,
-} from 'src/types/permissions.js'
+} from 'src/shared/types/permissions.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 
 // Re-export for backwards compatibility

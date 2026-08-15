@@ -2,7 +2,7 @@
 //
 // Self-contained: no relative imports. Typecheck sees this file at
 // scripts/external-stubs/src/terminal/moreright/ before overlay, where ../types/
-// would resolve to scripts/external-stubs/src/types/ (doesn't exist).
+// would resolve to scripts/external-stubs/src/shared/types/ (doesn't exist).
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type M = any;

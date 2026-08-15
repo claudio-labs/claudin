@@ -19,8 +19,8 @@ import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrl
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import { useAppState } from 'src/terminal/state/AppState.js';
-import { getPluginErrorMessage } from 'src/types/plugin.js';
-import type { PluginError } from 'src/types/plugin.js';
+import { getPluginErrorMessage } from 'src/shared/types/plugin.js';
+import type { PluginError } from 'src/shared/types/plugin.js';
 import { getGcsDistTags, getNpmDistTags, type NpmDistTags } from 'src/platform/install/autoUpdater.js';
 import { type ContextWarnings, checkContextWarnings } from 'src/platform/doctor/doctorContextWarnings.js';
 import { type DiagnosticInfo, getDoctorDiagnostic } from 'src/platform/doctor/doctorDiagnostic.js';

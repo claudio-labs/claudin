@@ -31,7 +31,7 @@ mock.module('src/platform/analytics/growthbook.js', () => ({
   getFeatureValue_CACHED_MAY_BE_STALE: (_key: string, def: unknown) => def,
 }))
 
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 const { createAssistantMessage, createUserMessage } = await import(
   'src/agent/messages/messages.js'
 )

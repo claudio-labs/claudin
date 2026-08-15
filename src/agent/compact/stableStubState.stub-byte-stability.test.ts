@@ -38,7 +38,7 @@ import {
   createAssistantMessage,
   createUserMessage,
 } from 'src/agent/messages/messages.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 
 const TOOL_USE_ID = 'toolu_s3_byte_stability'
 const TOOL_NAME = 'Bash'

@@ -1,6 +1,6 @@
 import type { ToolUseBlock } from '@anthropic-ai/sdk/resources';
-import { getRemoteSessionUrl } from 'src/constants/product.js';
-import { OUTPUT_FILE_TAG, REMOTE_REVIEW_PROGRESS_TAG, REMOTE_REVIEW_TAG, STATUS_TAG, SUMMARY_TAG, TASK_ID_TAG, TASK_NOTIFICATION_TAG, TASK_TYPE_TAG, TOOL_USE_ID_TAG, ULTRAPLAN_TAG } from 'src/constants/xml.js';
+import { getRemoteSessionUrl } from 'src/shared/constants/product.js';
+import { OUTPUT_FILE_TAG, REMOTE_REVIEW_PROGRESS_TAG, REMOTE_REVIEW_TAG, STATUS_TAG, SUMMARY_TAG, TASK_ID_TAG, TASK_NOTIFICATION_TAG, TASK_TYPE_TAG, TOOL_USE_ID_TAG, ULTRAPLAN_TAG } from 'src/shared/constants/xml.js';
 import type { SDKAssistantMessage, SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js';
 import type { SetAppState, Task, TaskContext, TaskStateBase } from 'src/agent/Task.js';
 import { createTaskStateBase, generateTaskId } from 'src/agent/Task.js';

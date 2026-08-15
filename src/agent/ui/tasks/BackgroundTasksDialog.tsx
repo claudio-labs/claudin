@@ -21,7 +21,7 @@ import type { LocalWorkflowTaskState } from 'src/agent/tasks/LocalWorkflowTask/L
 import type { MonitorMcpTaskState } from 'src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js';
 import { RemoteAgentTask, type RemoteAgentTaskState } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import { type BackgroundTaskState, isBackgroundTask, type TaskState } from 'src/agent/tasks/types.js';
-import type { DeepImmutable } from 'src/types/utils.js';
+import type { DeepImmutable } from 'src/shared/types/utils.js';
 import { intersperse } from 'src/shared/data/array.js';
 import { TEAM_LEAD_NAME } from 'src/agent/coordinator/swarm/constants.js';
 import { stopUltraplan } from 'src/commands/ultraplan.js';

@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useMemo } from 'react';
-import type { DeepImmutable } from 'src/types/utils.js';
+import type { DeepImmutable } from 'src/shared/types/utils.js';
 import { useElapsedTime } from 'src/terminal/hooks/useElapsedTime.js';
 import type { ExitState } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import type { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js';

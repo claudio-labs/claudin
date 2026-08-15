@@ -1,6 +1,6 @@
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.js';
 import React from 'react';
-import type { LocalJSXCommandCall, LocalJSXCommandOnDone } from 'src/types/command.js';
+import type { LocalJSXCommandCall, LocalJSXCommandOnDone } from 'src/shared/types/command.js';
 import { checkOverageGate, confirmOverage, launchRemoteReview } from 'src/commands/review/reviewRemote.js';
 import { UltrareviewOverageDialog } from 'src/commands/review/UltrareviewOverageDialog.js';
 function contentBlocksToString(blocks: ContentBlockParam[]): string {

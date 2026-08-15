@@ -8,7 +8,7 @@ import type { ToolPermissionContext, ToolUseContext } from 'src/tools/Tool.js'
 import type {
   PermissionDecisionReason,
   PermissionResult,
-} from 'src/types/permissions.js'
+} from 'src/shared/types/permissions.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isCurrentDirectoryBareGitRepo } from 'src/vcs/git/git.js'
 import type { PermissionRule } from 'src/permissions/PermissionRule.js'

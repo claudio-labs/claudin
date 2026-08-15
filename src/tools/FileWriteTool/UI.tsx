@@ -15,7 +15,7 @@ import { HighlightedCode } from 'src/terminal/highlighted-code/HighlightedCode.j
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { ToolProgressData } from 'src/tools/Tool.js';
-import type { ProgressMessage } from 'src/types/message.js';
+import type { ProgressMessage } from 'src/shared/types/message.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { getPatchForDisplay } from 'src/vcs/git/diff.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';

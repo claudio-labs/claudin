@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { Box, color, Link, Text, useTheme } from 'src/terminal/ink.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
-import type { CommandResultDisplay } from 'src/types/command.js';
+import type { CommandResultDisplay } from 'src/shared/types/command.js';
 import type { SandboxDependencyCheck } from 'src/platform/sandbox/sandbox-adapter.js';
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';
 import { getInitialSettings } from 'src/platform/settings/settings.js';

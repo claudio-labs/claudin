@@ -1,4 +1,4 @@
-// Types extracted to src/types/permissions.ts to break import cycles
+// Types extracted to src/shared/types/permissions.ts to break import cycles
 import type {
   PermissionAllowDecision,
   PermissionAskDecision,
@@ -7,7 +7,7 @@ import type {
   PermissionDenyDecision,
   PermissionMetadata,
   PermissionResult,
-} from 'src/types/permissions.js'
+} from 'src/shared/types/permissions.js'
 
 // Re-export for backwards compatibility
 export type {

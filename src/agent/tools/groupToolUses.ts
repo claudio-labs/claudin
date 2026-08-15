@@ -7,7 +7,7 @@ import type {
   NormalizedUserMessage,
   ProgressMessage,
   RenderableMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 
 export type MessageWithoutProgress = Exclude<NormalizedMessage, ProgressMessage>
 

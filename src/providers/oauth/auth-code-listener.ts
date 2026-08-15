@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'http'
 import { createServer, type Server } from 'http'
 import type { AddressInfo } from 'net'
 import { logEvent } from 'src/platform/analytics/index.js'
-import { getOauthConfig } from 'src/constants/oauth.js'
+import { getOauthConfig } from 'src/shared/constants/oauth.js'
 import { logError } from 'src/shared/log.js'
 import { shouldUseClaudeAIAuth } from 'src/providers/oauth/client.js'
 

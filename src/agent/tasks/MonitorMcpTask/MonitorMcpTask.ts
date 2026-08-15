@@ -9,7 +9,7 @@
 
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { SetAppState, Task, TaskStateBase } from 'src/agent/Task.js'
-import type { AgentId } from 'src/types/ids.js'
+import type { AgentId } from 'src/shared/types/ids.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { dequeueAllMatching } from 'src/agent/messageQueueManager.js'
 import { evictTaskOutput } from 'src/agent/tasks/diskOutput.js'

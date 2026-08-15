@@ -76,7 +76,7 @@ Não existe template engine no Claudin. Prompts hoje resolvem variáveis de quat
 
 1. **Template literal puro** com `${expr}` (a maioria). Ex.: `BashTool/prompt.ts` interpola `AGENT_TOOL_NAME`, `getMaxBashTimeoutMs()`, condicionais via `${cond ? '...' : ''}`.
 2. **Concatenação condicional** dentro da função. Ex.: `coordinatorMode.ts:104-106` (`content += ...`).
-3. **Composição de fragmentos** importados — `src/constants/prompts.ts` exporta `prependBullets()`; `BashTool/prompt.ts:2` importa.
+3. **Composição de fragmentos** importados — `src/agent/prompts/prompts.ts` exporta `prependBullets()`; `BashTool/prompt.ts:2` importa.
 4. **Mini-funções** retornando trecho ou `null` para gating (`getBackgroundUsageNote()` em `BashTool/prompt.ts:31`).
 
 Grep `prompt.*template|render.*prompt` em `src/`: **nenhum match relevante**. A migração exigiria introduzir um renderer (Handlebars como omp, ou um `{{var}}` minimalista). Adiciona **~1 dependência (ou ~30 LOC se feito à mão)** + um conceito novo para o time + um vetor extra de bug ("placeholder não substituído").

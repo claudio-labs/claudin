@@ -1,12 +1,12 @@
 import React from 'react'
-import { COMMON_HELP_ARGS, COMMON_INFO_ARGS } from 'src/constants/xml.js'
+import { COMMON_HELP_ARGS, COMMON_INFO_ARGS } from 'src/shared/constants/xml.js'
 import { ingestLocalWikiSource } from 'src/platform/wiki/ingest.js'
 import { initializeWiki } from 'src/platform/wiki/init.js'
 import { getWikiStatus } from 'src/platform/wiki/status.js'
 import type {
   LocalJSXCommandCall,
   LocalJSXCommandOnDone,
-} from 'src/types/command.js'
+} from 'src/shared/types/command.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 
 function renderHelp(): string {

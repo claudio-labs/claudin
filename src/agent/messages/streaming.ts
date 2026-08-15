@@ -1,14 +1,14 @@
 import { feature } from 'bun:bundle'
 import type { BetaToolUseBlock } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js'
-import { isConnectorTextBlock } from 'src/types/connectorText.js'
+import { isConnectorTextBlock } from 'src/shared/types/connectorText.js'
 import type {
   Message,
   RequestStartEvent,
   StreamEvent,
   TombstoneMessage,
   ToolUseSummaryMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 
 export type StreamingToolUse = {
   index: number

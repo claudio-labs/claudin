@@ -1,4 +1,4 @@
-import type { QueuedCommand } from 'src/types/textInputTypes.js'
+import type { QueuedCommand } from 'src/shared/types/textInputTypes.js'
 import {
   dequeue,
   dequeueAllMatching,

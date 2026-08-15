@@ -6,7 +6,7 @@ import {
   injectUserMessageToTeammate,
 } from 'src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js'
 import { isKairosCronEnabled } from 'src/tools/ScheduleCronTool/prompt.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import { getCronJitterConfig } from 'src/agent/tasks/cronJitterConfig.js'
 import { createCronScheduler } from 'src/agent/tasks/cronScheduler.js'
 import { removeCronTasks } from 'src/agent/tasks/cronTasks.js'

@@ -5,7 +5,7 @@ import type {
   RewindFilesResult,
 } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type { StdoutMessage } from 'src/platform/entrypoints/sdk/controlTypes.js'
-import type { PermissionMode as InternalPermissionMode } from 'src/types/permissions.js'
+import type { PermissionMode as InternalPermissionMode } from 'src/shared/types/permissions.js'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type { Stream } from 'src/shared/stream.js'

@@ -10,13 +10,13 @@
  */
 
 import type { Command } from 'src/commands/commands.js'
-import { getSystemPrompt } from 'src/constants/prompts.js'
+import { getSystemPrompt } from 'src/agent/prompts/prompts.js'
 import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import type { MCPServerConnection } from 'src/mcp/types.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type { Tools, ToolUseContext } from 'src/tools/Tool.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import type { CacheSafeParams } from 'src/agent/coordinator/forkedAgent.js'

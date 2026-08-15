@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { Box, color, Link, Text, useTheme } from 'src/terminal/ink.js';
-import type { CommandResultDisplay } from 'src/types/command.js';
+import type { CommandResultDisplay } from 'src/shared/types/command.js';
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';
 import { Select } from 'src/terminal/custom-select/select.js';
 import { useTabHeaderFocus } from 'src/terminal/design-system/Tabs.js';

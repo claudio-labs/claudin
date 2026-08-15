@@ -3,7 +3,7 @@ import React from 'react';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { extractTag } from 'src/agent/messages/messages.js';
 import { FallbackToolUseErrorMessage } from 'src/agent/ui/FallbackToolUseErrorMessage.js';
-import { TOOL_SUMMARY_MAX_LENGTH } from 'src/constants/toolLimits.js';
+import { TOOL_SUMMARY_MAX_LENGTH } from 'src/tools/constants/toolLimits.js';
 import { Text } from 'src/terminal/ink.js';
 import { FILE_NOT_FOUND_CWD_NOTE, getDisplayPath } from 'src/shared/fs/file.js';
 import { truncate } from 'src/shared/text/format.js';

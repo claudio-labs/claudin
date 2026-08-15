@@ -9,7 +9,7 @@ import { Box, Text, Link } from 'src/terminal/ink.js';
 import * as React from 'react';
 import figures from 'figures';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import type { VimMode, PromptInputMode } from 'src/types/textInputTypes.js';
+import type { VimMode, PromptInputMode } from 'src/shared/types/textInputTypes.js';
 import type { ToolPermissionContext } from 'src/tools/Tool.js';
 import { isVimModeEnabled } from 'src/terminal/prompt-input/utils.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';

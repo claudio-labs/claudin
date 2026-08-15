@@ -29,7 +29,7 @@ import { randomUUID } from 'crypto'
 import type { StructuredIO } from 'src/platform/headless/structuredIO.js'
 import type { Command } from 'src/commands/commands.js'
 import type { Tools } from 'src/tools/Tool.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
@@ -67,7 +67,7 @@ import {
 } from 'src/providers/claudeAiLimits.js'
 import { toSDKRateLimitInfo } from 'src/agent/messages/mappers.js'
 import { createModelSwitchBreadcrumbs } from 'src/agent/messages/messages.js'
-import { LOCAL_COMMAND_STDOUT_TAG, TICK_TAG } from 'src/constants/xml.js'
+import { LOCAL_COMMAND_STDOUT_TAG, TICK_TAG } from 'src/shared/constants/xml.js'
 import { getModelOptions } from 'src/utils/model/modelOptions.js'
 import {
   getDefaultMainLoopModel,

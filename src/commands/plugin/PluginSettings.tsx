@@ -10,7 +10,7 @@ import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrl
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding, useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
-import type { PluginError } from 'src/types/plugin.js';
+import type { PluginError } from 'src/shared/types/plugin.js';
 import { errorMessage } from 'src/shared/errors.js';
 import { clearAllCaches } from 'src/plugins/cacheUtils.js';
 import { loadMarketplacesWithGracefulDegradation } from 'src/plugins/marketplaceHelpers.js';

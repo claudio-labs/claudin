@@ -6,7 +6,7 @@
  */
 
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 
 export interface TurnContext {
   turnId: string

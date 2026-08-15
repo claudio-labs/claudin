@@ -8,14 +8,14 @@ import type { BridgeState, ReplBridgeHandle } from 'src/platform/bridge/replBrid
 import { setReplBridgeHandle } from 'src/platform/bridge/replBridgeHandle.js';
 import type { Command } from 'src/commands/commands.js';
 import { getSlashCommandToolSkills, isBridgeSafeCommand } from 'src/commands/commands.js';
-import { getRemoteSessionUrl } from 'src/constants/product.js';
+import { getRemoteSessionUrl } from 'src/shared/constants/product.js';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import type { PermissionMode, SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js';
 import type { SDKControlResponse } from 'src/platform/entrypoints/sdk/controlTypes.js';
 import { Text } from 'src/terminal/ink.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { useAppState, useAppStateStore, useSetAppState } from 'src/terminal/state/AppState.js';
-import type { Message } from 'src/types/message.js';
+import type { Message } from 'src/shared/types/message.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { errorMessage } from 'src/shared/errors.js';

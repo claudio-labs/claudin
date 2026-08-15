@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import { getOauthConfig } from 'src/constants/oauth.js'
+import { getOauthConfig } from 'src/shared/constants/oauth.js'
 import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type {
   SDKControlCancelRequest,

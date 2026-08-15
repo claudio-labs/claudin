@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import type { PendingClassifierCheck } from 'src/types/permissions.js'
+import type { PendingClassifierCheck } from 'src/shared/types/permissions.js'
 import { logError } from 'src/shared/log.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'

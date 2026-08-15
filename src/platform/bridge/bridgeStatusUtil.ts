@@ -1,7 +1,7 @@
 import {
   getClaudeAiBaseUrl,
   getRemoteSessionUrl,
-} from 'src/constants/product.js'
+} from 'src/shared/constants/product.js'
 import { stringWidth } from 'src/terminal/ink/stringWidth.js'
 import { formatDuration, truncateToWidth } from 'src/shared/text/format.js'
 import { getGraphemeSegmenter } from 'src/shared/text/intl.js'

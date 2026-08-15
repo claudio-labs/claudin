@@ -18,7 +18,7 @@ import { randomUUID } from 'crypto'
 import type { UUID } from 'crypto'
 
 import { resetStateForTests, switchSession } from 'src/platform/bootstrap/state.js'
-import { asAgentId, asSessionId } from 'src/types/ids.js'
+import { asAgentId, asSessionId } from 'src/shared/types/ids.js'
 import {
   clearAgentTranscriptSubdir,
   cleanMessagesForLogging,

@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useState } from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import { formatAPIError } from 'src/providers/transport/errorUtils.js';
-import type { SystemAPIErrorMessage } from 'src/types/message.js';
+import type { SystemAPIErrorMessage } from 'src/shared/types/message.js';
 import { useInterval } from 'usehooks-ts';
 import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';

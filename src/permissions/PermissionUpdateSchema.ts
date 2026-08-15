@@ -2,15 +2,15 @@
  * Zod schemas for permission updates.
  *
  * This file is intentionally kept minimal with no complex dependencies
- * so it can be safely imported by src/types/hooks.ts without creating
+ * so it can be safely imported by src/shared/types/hooks.ts without creating
  * circular dependencies.
  */
 import z from 'zod/v4'
-// Types extracted to src/types/permissions.ts to break import cycles
+// Types extracted to src/shared/types/permissions.ts to break import cycles
 import type {
   PermissionUpdate,
   PermissionUpdateDestination,
-} from 'src/types/permissions.js'
+} from 'src/shared/types/permissions.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { externalPermissionModeSchema } from 'src/permissions/PermissionMode.js'
 import {

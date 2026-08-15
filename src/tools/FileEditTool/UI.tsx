@@ -12,7 +12,7 @@ import { FilePathLink } from 'src/terminal/FilePathLink.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { ToolUseLoader } from 'src/agent/ui/ToolUseLoader.js';
 import type { Tools } from 'src/tools/Tool.js';
-import type { Message, ProgressMessage } from 'src/types/message.js';
+import type { Message, ProgressMessage } from 'src/shared/types/message.js';
 import { adjustHunkLineNumbers, CONTEXT_LINES } from 'src/vcs/git/diff.js';
 import { FILE_NOT_FOUND_CWD_NOTE, getDisplayPath } from 'src/shared/fs/file.js';
 import { logError } from 'src/shared/log.js';

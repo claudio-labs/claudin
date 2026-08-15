@@ -49,7 +49,7 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
 import { getBytesPerTokenForModel } from '../src/shared/tokenEstimation.js'
 import { enableConfigs } from '../src/platform/config/config.js'
 import { measureToolSchemas } from './measure-tool-schemas.ts'
-import { getSystemPrompt, computeSimpleEnvInfo } from '../src/constants/prompts.js'
+import { getSystemPrompt, computeSimpleEnvInfo } from '../src/agent/prompts/prompts.js'
 import { loadMemoryPrompt } from '../src/memory/memdir/memdir.js'
 import { getAllBaseTools } from '../src/tools/tools.js'
 

@@ -11,7 +11,7 @@
  * using IPC auth) use the Override getters directly.
  */
 
-import { getOauthConfig } from 'src/constants/oauth.js'
+import { getOauthConfig } from 'src/shared/constants/oauth.js'
 import { getClaudeAIOAuthTokens } from 'src/providers/auth/auth.js'
 
 /** Dev override: CLAUDE_BRIDGE_OAUTH_TOKEN, else undefined. */

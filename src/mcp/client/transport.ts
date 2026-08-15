@@ -14,7 +14,7 @@ import {
 } from '@modelcontextprotocol/sdk/shared/transport.js'
 import mapValues from 'lodash-es/mapValues.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import { getOauthConfig } from 'src/constants/oauth.js'
+import { getOauthConfig } from 'src/shared/constants/oauth.js'
 import { getClaudeAIOAuthTokens } from 'src/providers/auth/auth.js'
 import { getMCPUserAgent } from 'src/shared/http.js'
 import { logMCPDebug } from 'src/shared/log.js'

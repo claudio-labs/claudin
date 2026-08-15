@@ -6,7 +6,7 @@ import {
   ASYNC_AGENT_ALLOWED_TOOLS,
   CUSTOM_AGENT_DISALLOWED_TOOLS,
   IN_PROCESS_TEAMMATE_ALLOWED_TOOLS,
-} from 'src/constants/tools.js'
+} from 'src/tools/constants/tools.js'
 import { startAgentSummarization } from 'src/agent/summary/agentSummary.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -35,8 +35,8 @@ import {
   updateAgentProgress as updateAsyncAgentProgress,
   updateProgressFromMessage,
 } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
-import { asAgentId } from 'src/types/ids.js'
-import type { Message as MessageType } from 'src/types/message.js'
+import { asAgentId } from 'src/shared/types/ids.js'
+import type { Message as MessageType } from 'src/shared/types/message.js'
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isInProtectedNamespace } from 'src/shared/envUtils.js'

@@ -12,7 +12,7 @@ import {
   yieldToEventLoop,
 } from 'src/native-ts/file-index/index.js'
 import { logEvent } from 'src/platform/analytics/index.js'
-import type { FileSuggestionCommandInput } from 'src/types/fileSuggestion.js'
+import type { FileSuggestionCommandInput } from 'src/shared/types/fileSuggestion.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'

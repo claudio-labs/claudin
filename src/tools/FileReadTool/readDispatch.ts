@@ -5,7 +5,7 @@ import {
   PDF_AT_MENTION_INLINE_THRESHOLD,
   PDF_EXTRACT_SIZE_THRESHOLD,
   PDF_MAX_PAGES_PER_READ,
-} from 'src/constants/apiLimits.js'
+} from 'src/shared/constants/apiLimits.js'
 import { isAutoMemFile } from 'src/memory/memdir/memoryFileDetection.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import {

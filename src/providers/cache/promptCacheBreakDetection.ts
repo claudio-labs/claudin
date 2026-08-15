@@ -3,14 +3,14 @@ import type { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { createPatch } from 'diff'
 import { mkdir, writeFile } from 'fs/promises'
 import { join } from 'path'
-import type { AgentId } from 'src/types/ids.js'
-import type { Message } from 'src/types/message.js'
+import type { AgentId } from 'src/shared/types/ids.js'
+import type { Message } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { djb2Hash } from 'src/shared/data/hash.js'
 import { logError } from 'src/shared/log.js'
 import { getClaudeTempDir } from 'src/permissions/filesystem.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import type { QuerySource } from 'src/constants/querySource.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,

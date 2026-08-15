@@ -4,7 +4,7 @@ import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { OutputLine } from 'src/tools/BashTool/ui/OutputLine.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { ToolProgressData } from 'src/tools/Tool.js';
-import type { ProgressMessage } from 'src/types/message.js';
+import type { ProgressMessage } from 'src/shared/types/message.js';
 import { jsonStringify } from 'src/platform/slowOperations.js';
 import type { inputSchema, Output } from 'src/tools/ReadMcpResourceTool/ReadMcpResourceTool.js';
 export function renderToolUseMessage(input: Partial<z.infer<ReturnType<typeof inputSchema>>>): React.ReactNode {

@@ -1,4 +1,4 @@
-import type { Command } from 'src/types/command.js'
+import type { Command } from 'src/shared/types/command.js'
 
 const command: Command = {
   name: 'auto-fix',

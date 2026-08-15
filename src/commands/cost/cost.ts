@@ -1,6 +1,6 @@
 import { formatTotalCost } from 'src/agent/cost-tracker.js'
 import { currentLimits } from 'src/providers/claudeAiLimits.js'
-import type { LocalCommandCall } from 'src/types/command.js'
+import type { LocalCommandCall } from 'src/shared/types/command.js'
 import { isClaudeAISubscriber } from 'src/providers/auth/auth.js'
 
 export const call: LocalCommandCall = async () => {

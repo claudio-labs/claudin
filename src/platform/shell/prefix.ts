@@ -8,7 +8,7 @@
  */
 
 import chalk from 'chalk'
-import type { QuerySource } from 'src/constants/querySource.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,

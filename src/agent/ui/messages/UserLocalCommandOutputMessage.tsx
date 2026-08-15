@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { DIAMOND_FILLED, DIAMOND_OPEN } from 'src/constants/figures.js';
-import { NO_CONTENT_MESSAGE } from 'src/constants/messages.js';
+import { DIAMOND_FILLED, DIAMOND_OPEN } from 'src/shared/constants/figures.js';
+import { NO_CONTENT_MESSAGE } from 'src/agent/prompts/messages.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { extractTag } from 'src/agent/messages/messages.js';
 import { Markdown } from 'src/terminal/markdown/Markdown.js';

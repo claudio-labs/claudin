@@ -20,7 +20,7 @@ import {
   setOriginalCwd,
   switchSession,
 } from 'src/platform/bootstrap/state.js'
-import { asSessionId } from 'src/types/ids.js'
+import { asSessionId } from 'src/shared/types/ids.js'
 import { resetGlobalConfigForTests } from 'src/platform/config/config.js'
 import {
   buildConversationChain,
@@ -34,7 +34,7 @@ import {
   resetProjectForTesting,
   resetSessionFilePointer,
 } from 'src/sessions/sessionStorage.js'
-import type { TranscriptMessage } from 'src/types/logs.js'
+import type { TranscriptMessage } from 'src/shared/types/logs.js'
 
 const ORIGINAL_CWD = process.cwd()
 const ORIGINAL_CONFIG_DIR = process.env.CLAUDIN_CONFIG_DIR

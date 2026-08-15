@@ -3,7 +3,7 @@ import { spawnSync } from 'child_process';
 import sample from 'lodash-es/sample.js';
 import * as React from 'react';
 import { ExitFlow } from 'src/platform/ExitFlow.js';
-import type { LocalJSXCommandOnDone } from 'src/types/command.js';
+import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js';
 import { isBgSession } from 'src/sessions/concurrentSessions.js';
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';
 import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js';

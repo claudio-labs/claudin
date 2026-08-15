@@ -44,14 +44,14 @@ import type {
   SystemLocalCommandMessage,
   SystemMessage,
   UserMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 // Import permission types from centralized location to break import cycles
 // Import PermissionResult from centralized location to break import cycles
 import type {
   AdditionalWorkingDirectory,
   PermissionMode,
   PermissionResult,
-} from 'src/types/permissions.js'
+} from 'src/shared/types/permissions.js'
 // Import tool progress types from centralized location to break import cycles
 import type {
   AgentToolProgress,
@@ -62,7 +62,7 @@ import type {
   TaskOutputProgress,
   ToolProgressData,
   WebSearchProgress,
-} from 'src/types/tools.js'
+} from 'src/shared/types/tools.js'
 import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import type { DenialTrackingState } from 'src/permissions/denialTracking.js'
 import type { SystemPrompt } from 'src/agent/systemPromptType.js'
@@ -80,16 +80,16 @@ export type {
 }
 
 import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js'
-import type { QuerySource } from 'src/constants/querySource.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import type { SDKStatus } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type {
   HookProgress,
   PromptRequest,
   PromptResponse,
-} from 'src/types/hooks.js'
-import type { AgentId } from 'src/types/ids.js'
-import type { DeepImmutable } from 'src/types/utils.js'
+} from 'src/shared/types/hooks.js'
+import type { AgentId } from 'src/shared/types/ids.js'
+import type { DeepImmutable } from 'src/shared/types/utils.js'
 import type { AttributionState } from 'src/vcs/git/commitAttribution.js'
 import type { FileHistoryState } from 'src/shared/fs/fileHistory.js'
 import type { Theme, ThemeName } from 'src/terminal/theme/theme.js'
@@ -129,7 +129,7 @@ export type SetToolJSXFn = (
 ) => void
 
 // Import tool permission types from centralized location to break import cycles
-import type { ToolPermissionRulesBySource } from 'src/types/permissions.js'
+import type { ToolPermissionRulesBySource } from 'src/shared/types/permissions.js'
 
 // Re-export for backwards compatibility
 export type { ToolPermissionRulesBySource }

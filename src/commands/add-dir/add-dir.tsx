@@ -7,7 +7,7 @@ import type { LocalJSXCommandContext } from 'src/commands/commands.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { AddWorkspaceDirectory } from 'src/permissions/ui/rules/AddWorkspaceDirectory.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import type { LocalJSXCommandOnDone } from 'src/types/command.js';
+import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js';
 import { applyPermissionUpdate, persistPermissionUpdate } from 'src/permissions/PermissionUpdate.js';
 import type { PermissionUpdateDestination } from 'src/permissions/PermissionUpdateSchema.js';
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';

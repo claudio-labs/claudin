@@ -7,7 +7,7 @@ import type { TaskStatus } from 'src/agent/Task.js';
 import type { InProcessTeammateTaskState } from 'src/agent/tasks/InProcessTeammateTask/types.js';
 import { isPanelAgentTask } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
 import { isBackgroundTask, type TaskState } from 'src/agent/tasks/types.js';
-import type { DeepImmutable } from 'src/types/utils.js';
+import type { DeepImmutable } from 'src/shared/types/utils.js';
 import { summarizeRecentActivities } from 'src/agent/tools/collapseReadSearch.js';
 
 /**

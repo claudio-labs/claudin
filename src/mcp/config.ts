@@ -4,8 +4,8 @@ import mapValues from 'lodash-es/mapValues.js'
 import memoize from 'lodash-es/memoize.js'
 import { dirname, join, parse } from 'path'
 import { getPlatform } from 'src/shared/proc/platform.js'
-import type { PluginError } from 'src/types/plugin.js'
-import { getPluginErrorMessage } from 'src/types/plugin.js'
+import type { PluginError } from 'src/shared/types/plugin.js'
+import { getPluginErrorMessage } from 'src/shared/types/plugin.js'
 import {
   getCurrentProjectConfig,
   getGlobalConfig,

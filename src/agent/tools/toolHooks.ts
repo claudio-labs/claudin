@@ -6,13 +6,13 @@ import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js
 import type z from 'zod/v4'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { AnyObject, Tool, ToolUseContext } from 'src/tools/Tool.js'
-import type { HookProgress } from 'src/types/hooks.js'
+import type { HookProgress } from 'src/shared/types/hooks.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
   ProgressMessage,
-} from 'src/types/message.js'
-import type { PermissionDecision } from 'src/types/permissions.js'
+} from 'src/shared/types/message.js'
+import type { PermissionDecision } from 'src/shared/types/permissions.js'
 import { createAttachmentMessage } from 'src/agent/attachments/attachments.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'

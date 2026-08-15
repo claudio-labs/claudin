@@ -1,6 +1,6 @@
 import { z } from 'zod/v4'
 import { getSessionId, setOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { clearSystemPromptSections } from 'src/constants/systemPromptSections.js'
+import { clearSystemPromptSections } from 'src/agent/prompts/systemPromptSections.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import type { Tool } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'

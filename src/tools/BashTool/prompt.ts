@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle'
-import { prependBullets } from 'src/constants/prompts.js'
-import { isLeanToolPromptFamily } from 'src/constants/toolPromptTier.js'
+import { prependBullets } from 'src/agent/prompts/prompts.js'
+import { isLeanToolPromptFamily } from 'src/agent/prompts/toolPromptTier.js'
 import { getAttributionTexts } from 'src/vcs/git/attribution.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'

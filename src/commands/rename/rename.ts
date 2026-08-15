@@ -8,7 +8,7 @@ import type { ToolUseContext } from 'src/tools/Tool.js'
 import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
-} from 'src/types/command.js'
+} from 'src/shared/types/command.js'
 import { getMessagesAfterCompactBoundary } from 'src/agent/messages/messages.js'
 import {
   getTranscriptPath,

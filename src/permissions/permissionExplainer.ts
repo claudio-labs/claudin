@@ -1,7 +1,7 @@
 import { z } from 'zod/v4'
 import { logEvent } from 'src/platform/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
-import type { AssistantMessage, Message } from 'src/types/message.js'
+import type { AssistantMessage, Message } from 'src/shared/types/message.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'

@@ -38,7 +38,7 @@ import { SearchBox } from 'src/terminal/SearchBox.js';
 import { isSupportedTerminal, hasAccessToIDEExtensionDiffFeature } from 'src/platform/ide/ide.js';
 import { getInitialSettings, getSettingsForSource, updateSettingsForSource } from 'src/platform/settings/settings.js';
 import { getUserMsgOptIn, setUserMsgOptIn } from 'src/platform/bootstrap/state.js';
-import { DEFAULT_OUTPUT_STYLE_NAME } from 'src/constants/outputStyles.js';
+import { DEFAULT_OUTPUT_STYLE_NAME } from 'src/shared/constants/outputStyles.js';
 import { isEnvTruthy, isRunningOnHomespace } from 'src/shared/envUtils.js';
 import type { LocalJSXCommandContext, CommandResultDisplay } from 'src/commands/commands.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';

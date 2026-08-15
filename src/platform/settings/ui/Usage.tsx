@@ -6,7 +6,7 @@ import { formatCost, getModelUsage, getProjectTotals, getTotalAPIDuration, getTo
 import { getCanonicalName } from 'src/utils/model/model.js';
 import { formatDuration, formatNumber, formatTokens } from 'src/shared/text/format.js';
 import { getBytesSaved } from 'src/agent/context/tokensSaved.js';
-import { BYTES_PER_TOKEN } from 'src/constants/toolLimits.js';
+import { BYTES_PER_TOKEN } from 'src/tools/constants/toolLimits.js';
 import { getSubscriptionType } from 'src/providers/auth/auth.js';
 import chalk from 'chalk';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';

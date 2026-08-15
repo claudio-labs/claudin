@@ -334,7 +334,7 @@ const RECORDED_COMMANDS: readonly string[] = [
   'git diff .claudin/memory/team/MEMORY.md',
   'git diff HEAD --stat',
   'git diff main...HEAD --stat',
-  'git diff src/constants/prompts.ts',
+  'git diff src/agent/prompts/prompts.ts',
   'git log --oneline -15',
   'git log --oneline -5',
   'git status --short',

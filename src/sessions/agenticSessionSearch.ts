@@ -1,4 +1,4 @@
-import type { LogOption, SerializedMessage } from 'src/types/logs.js'
+import type { LogOption, SerializedMessage } from 'src/shared/types/logs.js'
 import { count } from 'src/shared/data/array.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getLogDisplayTitle, logError } from 'src/shared/log.js'

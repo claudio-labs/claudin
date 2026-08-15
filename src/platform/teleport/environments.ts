@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getOauthConfig } from 'src/constants/oauth.js'
+import { getOauthConfig } from 'src/shared/constants/oauth.js'
 import { getOrganizationUUID } from 'src/providers/oauth/client.js'
 import { getClaudeAIOAuthTokens } from 'src/providers/auth/auth.js'
 import { toError } from 'src/shared/errors.js'

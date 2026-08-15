@@ -5,7 +5,7 @@
  * High-level abstraction of conversation progress.
  */
 
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 
 export interface Entity {
   id: string

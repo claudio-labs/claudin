@@ -17,7 +17,7 @@ import { MCPConnectionManager } from 'src/mcp/MCPConnectionManager.js';
 import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import { onChangeAppState } from 'src/terminal/state/onChangeAppState.js';
 import { isAnthropicAuthEnabled } from 'src/providers/auth/auth.js';
-import type { CommandResultDisplay } from 'src/types/command.js';
+import type { CommandResultDisplay } from 'src/shared/types/command.js';
 export async function setupTokenHandler(root: Root): Promise<void> {
   logEvent('tengu_setup_token_command', {});
   const showAuthWarning = !isAnthropicAuthEnabled();

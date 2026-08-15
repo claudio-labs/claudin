@@ -15,8 +15,8 @@ import {
   setLastApiCompletionTimestamp,
 } from 'src/platform/bootstrap/state.js'
 import type { QueryChainTracking } from 'src/tools/Tool.js'
-import { isConnectorTextBlock } from 'src/types/connectorText.js'
-import type { AssistantMessage } from 'src/types/message.js'
+import { isConnectorTextBlock } from 'src/shared/types/connectorText.js'
+import type { AssistantMessage } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { EffortLevel } from 'src/utils/effort.js'
 import { logError } from 'src/shared/log.js'

@@ -42,23 +42,23 @@ import {
   switchSession,
 } from 'src/platform/bootstrap/state.js'
 import * as sessionIngress from 'src/providers/transport/sessionIngress.js'
-import { asAgentId, type AgentId, asSessionId } from 'src/types/ids.js'
-import type { AttributionSnapshotMessage } from 'src/types/logs.js'
+import { asAgentId, type AgentId, asSessionId } from 'src/shared/types/ids.js'
+import type { AttributionSnapshotMessage } from 'src/shared/types/logs.js'
 import {
   type ContentReplacementEntry,
   type Entry,
   type FileHistorySnapshotMessage,
   type PersistedWorktreeSession,
   type TranscriptMessage,
-} from 'src/types/logs.js'
+} from 'src/shared/types/logs.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
   Message,
   SystemMessage,
   UserMessage,
-} from 'src/types/message.js'
-import type { QueueOperationMessage } from 'src/types/messageQueueTypes.js'
+} from 'src/shared/types/message.js'
+import type { QueueOperationMessage } from 'src/shared/types/messageQueueTypes.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'

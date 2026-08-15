@@ -2,7 +2,7 @@ import {
   hookJSONOutputSchema,
   isAsyncHookJSONOutput,
   isSyncHookJSONOutput,
-} from 'src/types/hooks.js'
+} from 'src/shared/types/hooks.js'
 import type {
   HookEvent,
   HookJSONOutput,

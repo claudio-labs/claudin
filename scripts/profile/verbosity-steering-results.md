@@ -6,7 +6,7 @@ resolver `isVerbositySteeringEnabled()`. Targets answer **length** — the axis 
 `ANTI_NARRATION_HARNESS_BULLETS` deliberately do *not* cover (those kill preamble/narration,
 not paragraph count), so it adds signal instead of restating "skip preamble".
 
-Block text (`VERBOSITY_STEERING_SECTION` in `src/constants/prompts.ts`):
+Block text (`VERBOSITY_STEERING_SECTION` in `src/agent/prompts/prompts.ts`):
 
 > Default to the shortest response that fully answers the question. Prefer a few sentences
 > over multiple paragraphs, and a short list over a long one, unless the user asks for depth

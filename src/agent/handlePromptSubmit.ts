@@ -4,19 +4,19 @@ import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 
 import { type Command, getCommandName, isCommandEnabled } from 'src/commands/commands.js'
 import { selectableUserMessagesFilter } from 'src/agent/ui/MessageSelector.js'
 import type { SpinnerMode } from 'src/terminal/spinner/types.js'
-import type { QuerySource } from 'src/constants/querySource.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { expandPastedTextRefs, parseReferences } from 'src/agent/history.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { IDESelection } from 'src/platform/ide/useIdeSelection.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { SetToolJSXFn } from 'src/tools/Tool.js'
-import type { LocalJSXCommandOnDone } from 'src/types/command.js'
-import type { Message } from 'src/types/message.js'
+import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js'
+import type { Message } from 'src/shared/types/message.js'
 import {
   isValidImagePaste,
   type PromptInputMode,
   type QueuedCommand,
-} from 'src/types/textInputTypes.js'
+} from 'src/shared/types/textInputTypes.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import type { PastedContent } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'

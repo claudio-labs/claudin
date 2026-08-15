@@ -21,7 +21,7 @@ import {
   getSkillToolCommands,
   getMcpSkillCommands,
 } from 'src/commands/commands.js'
-import type { Command } from 'src/types/command.js'
+import type { Command } from 'src/shared/types/command.js'
 import uniqBy from 'lodash-es/uniqBy.js'
 import { getProjectRoot } from 'src/platform/bootstrap/state.js'
 import { formatCommandsWithinBudget } from 'src/tools/SkillTool/prompt.js'

@@ -9,7 +9,7 @@ import {
   formatCacheMetricsFull,
   type CacheMetrics,
 } from 'src/providers/cache/cacheMetrics.js'
-import type { LocalCommandCall } from 'src/types/command.js'
+import type { LocalCommandCall } from 'src/shared/types/command.js'
 
 // Cap the per-request breakdown to keep output readable. Users wanting
 // the full history can rely on CLAUDIN_LOG_TOKEN_USAGE=verbose for

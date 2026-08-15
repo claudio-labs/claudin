@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useRef } from 'react';
 import type { RemoteAgentTaskState } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
-import type { DeepImmutable } from 'src/types/utils.js';
-import { DIAMOND_FILLED, DIAMOND_OPEN } from 'src/constants/figures.js';
+import type { DeepImmutable } from 'src/shared/types/utils.js';
+import { DIAMOND_FILLED, DIAMOND_OPEN } from 'src/shared/constants/figures.js';
 import { useSettings } from 'src/platform/useSettings.js';
 import { Text, useAnimationFrame } from 'src/terminal/ink.js';
 import { count } from 'src/shared/data/array.js';

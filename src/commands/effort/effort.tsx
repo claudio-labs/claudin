@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useMainLoopModel } from 'src/agent/hooks/useMainLoopModel.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
-import type { LocalJSXCommandOnDone } from 'src/types/command.js';
+import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js';
 import { type EffortValue, clearProjectEffortPin, effortEnvOverrideConflictsWith, getDisplayedEffortLabel, getEffortEnvOverride, getEffortValueDescription, getInitialEffortSetting, getProjectEffortOrigin, isEffortLevel, isOpenAIEffortLevel, modelUsesOpenAIEffort, persistEffortForProject, pinProjectEffortAuto, toPersistableEffort } from 'src/utils/effort.js';
 import { EffortPicker } from 'src/providers/ui/EffortPicker.js';
 const COMMON_HELP_ARGS = ['help', '-h', '--help'];

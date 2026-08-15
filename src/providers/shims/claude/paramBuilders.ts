@@ -12,8 +12,8 @@ import {
 import {
   EFFORT_BETA_HEADER,
   TASK_BUDGETS_BETA_HEADER,
-} from "src/constants/betas.js";
-import type { QuerySource } from "src/constants/querySource.js";
+} from "src/shared/constants/betas.js";
+import type { QuerySource } from "src/agent/prompts/querySource.js";
 import { getFeatureValue_CACHED_MAY_BE_STALE } from "src/platform/analytics/growthbook.js";
 import { type CacheScope, splitSysPromptPrefix } from "src/providers/transport/api.js";
 import { shouldIncludeFirstPartyOnlyBetas } from "src/providers/transport/betas.js";
@@ -38,7 +38,7 @@ import {
 } from "src/utils/model/providers.js";
 import type { SystemPrompt } from "src/agent/systemPromptType.js";
 import { roughTokenCountEstimationForMessage } from "src/shared/tokenEstimation.js";
-import type { AssistantMessage, UserMessage } from "src/types/message.js";
+import type { AssistantMessage, UserMessage } from "src/shared/types/message.js";
 import { logEvent } from "src/platform/analytics/index.js";
 import { getCacheControl } from "src/providers/shims/claude/cacheControl.js";
 import {

@@ -19,7 +19,7 @@ import {
   createUserMessage,
   createMemorySavedMessage,
 } from 'src/agent/messages/messages.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { logEvent } from 'src/platform/analytics/index.js'

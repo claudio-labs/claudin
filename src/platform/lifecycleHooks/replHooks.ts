@@ -35,17 +35,17 @@ import type {
   PermissionRequestHookInput,
   PermissionUpdate,
 } from 'src/platform/entrypoints/agentSdkTypes.js'
-import type { StatusLineCommandInput } from 'src/types/statusLine.js'
-import type { FileSuggestionCommandInput } from 'src/types/fileSuggestion.js'
+import type { StatusLineCommandInput } from 'src/shared/types/statusLine.js'
+import type { FileSuggestionCommandInput } from 'src/shared/types/fileSuggestion.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type {
   HookCallback,
   PromptRequest,
   PromptResponse,
-} from 'src/types/hooks.js'
-import type { Message } from 'src/types/message.js'
+} from 'src/shared/types/hooks.js'
+import type { Message } from 'src/shared/types/message.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
-import type { AgentId } from 'src/types/ids.js'
+import type { AgentId } from 'src/shared/types/ids.js'
 import { getAgentTranscriptPath } from 'src/sessions/sessionStorage.js'
 import {
   getLastAssistantMessage,

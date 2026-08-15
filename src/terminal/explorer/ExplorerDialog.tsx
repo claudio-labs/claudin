@@ -13,7 +13,7 @@ import { Box, Text, useInput, useTheme } from 'src/terminal/ink.js'
 import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
-} from 'src/types/command.js'
+} from 'src/shared/types/command.js'
 import type { TreeRow } from 'src/vcs/diff/ui/fileTree.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { writeFileSyncAndFlush, writeTextContent } from 'src/shared/fs/file.js'

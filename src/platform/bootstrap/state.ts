@@ -13,7 +13,7 @@ import sumBy from 'lodash-es/sumBy.js'
 import { cwd } from 'process'
 import type { HookEvent, ModelUsage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
-import type { HookCallbackMatcher } from 'src/types/hooks.js'
+import type { HookCallbackMatcher } from 'src/shared/types/hooks.js'
 // Indirection for browser-sdk build (package.json "browser" field swaps
 // crypto.ts for crypto.browser.ts). Pure leaf re-export of node:crypto —
 // zero circular-dep risk. Path-alias import bypasses bootstrap-isolation
@@ -30,7 +30,7 @@ import { createSignal } from 'src/shared/signal.js'
 // Union type for registered hooks - can be SDK callbacks or native plugin hooks
 type RegisteredHookMatcher = HookCallbackMatcher | PluginHookMatcher
 
-import type { SessionId } from 'src/types/ids.js'
+import type { SessionId } from 'src/shared/types/ids.js'
 
 // Listeners for runtime state changes that affect tool availability (e.g. isEnabled()).
 // Used by tools.ts to invalidate the isEnabled() cache without going through saveGlobalConfig.

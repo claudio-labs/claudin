@@ -6,13 +6,13 @@ import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { z } from 'zod/v4';
 import { getKairosActive } from 'src/platform/bootstrap/state.js';
-import { TOOL_SUMMARY_MAX_LENGTH } from 'src/constants/toolLimits.js';
+import { TOOL_SUMMARY_MAX_LENGTH } from 'src/tools/constants/toolLimits.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import type { SetToolJSXFn, Tool, ToolCallProgress, ValidationResult } from 'src/tools/Tool.js';
 import { buildTool, type ToolDef } from 'src/tools/Tool.js';
 import { backgroundExistingForegroundTask, markTaskNotified, registerForeground, spawnShellTask, unregisterForeground } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js';
-import type { AgentId } from 'src/types/ids.js';
-import type { AssistantMessage } from 'src/types/message.js';
+import type { AgentId } from 'src/shared/types/ids.js';
+import type { AssistantMessage } from 'src/shared/types/message.js';
 import { extractClaudeCodeHints } from 'src/platform/claudeCodeHints.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { errorMessage as getErrorMessage, ShellError } from 'src/shared/errors.js';
@@ -264,8 +264,8 @@ const outputSchema = lazySchema(() => z.object({
 }));
 type OutputSchema = ReturnType<typeof outputSchema>;
 export type Out = z.infer<OutputSchema>;
-import type { PowerShellProgress } from 'src/types/tools.js';
-export type { PowerShellProgress } from 'src/types/tools.js';
+import type { PowerShellProgress } from 'src/shared/types/tools.js';
+export type { PowerShellProgress } from 'src/shared/types/tools.js';
 const COMMON_BACKGROUND_COMMANDS = ['npm', 'yarn', 'pnpm', 'node', 'python', 'python3', 'go', 'cargo', 'make', 'docker', 'terraform', 'webpack', 'vite', 'jest', 'pytest', 'curl', 'Invoke-WebRequest', 'build', 'test', 'serve', 'watch', 'dev'] as const;
 function getCommandTypeForLogging(command: string): AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS {
   const trimmed = command.trim();

@@ -7,7 +7,7 @@
 
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import type { AssistantMessage, Message } from 'src/types/message.js'
+import type { AssistantMessage, Message } from 'src/shared/types/message.js'
 
 export interface ThinkingBlock {
   type: 'thinking' | 'redacted_thinking'

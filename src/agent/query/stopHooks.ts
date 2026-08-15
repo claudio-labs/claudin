@@ -6,7 +6,7 @@ import {
   logEvent,
 } from 'src/platform/analytics/index.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
-import type { HookProgress } from 'src/types/hooks.js'
+import type { HookProgress } from 'src/shared/types/hooks.js'
 import type {
   AssistantMessage,
   Message,
@@ -15,7 +15,7 @@ import type {
   StreamEvent,
   TombstoneMessage,
   ToolUseSummaryMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { createAttachmentMessage } from 'src/agent/attachments/attachments.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
@@ -48,7 +48,7 @@ const jobClassifierModule = feature('TEMPLATES')
 
 /* eslint-enable @typescript-eslint/no-require-imports */
 
-import type { QuerySource } from 'src/constants/querySource.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 import {
   handleGoalBlockingError,

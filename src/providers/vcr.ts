@@ -12,7 +12,7 @@ import type {
   StreamEvent,
   SystemAPIErrorMessage,
   UserMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { env } from 'src/shared/env.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'

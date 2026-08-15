@@ -36,7 +36,7 @@ export function renderToolUseErrorMessage(
 
 /**
  * Structural, rather than the framework's `ProgressMessage<GitProgress>`:
- * `src/types/message.js` does not exist in this fork (it is stubbed at bundle
+ * `src/shared/types/message.js` does not exist in this fork (it is stubbed at bundle
  * time), so importing it would add one more unresolved module for a type we
  * read one field of.
  */

@@ -40,8 +40,8 @@ const ALL_FILES = [
   'src/shared/envUtils.ts',
   'src/shared/proc/Shell.ts',
   'src/platform/bootstrap/state.ts',
-  'src/constants/messages.ts',
-  'src/constants/keys.ts',
+  'src/agent/prompts/messages.ts',
+  'src/shared/constants/keys.ts',
   'src/terminal/ink/constants.ts',
   'src/utils/protectedNamespace.ts',
   'src/shared/data/array.ts',
@@ -79,7 +79,7 @@ const REVISITS = [
   'src/platform/config/config.ts',
   'src/providers/transport/withRetry.ts',
   'src/utils/model/model.ts',
-  'src/constants/keys.ts',
+  'src/shared/constants/keys.ts',
   'src/shared/data/array.ts',
 ]
 

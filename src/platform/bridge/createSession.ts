@@ -54,7 +54,7 @@ export async function createBridgeSession({
 }): Promise<string | null> {
   const { getClaudeAIOAuthTokens } = await import('src/providers/auth/auth.js')
   const { getOrganizationUUID } = await import('src/providers/oauth/client.js')
-  const { getOauthConfig } = await import('src/constants/oauth.js')
+  const { getOauthConfig } = await import('src/shared/constants/oauth.js')
   const { getOAuthHeaders } = await import('src/platform/teleport/api.js')
   const { parseGitHubRepository } = await import('src/vcs/git/detectRepository.js')
   const { getDefaultBranch } = await import('src/vcs/git/git.js')
@@ -193,7 +193,7 @@ export async function getBridgeSession(
 ): Promise<{ environment_id?: string; title?: string } | null> {
   const { getClaudeAIOAuthTokens } = await import('src/providers/auth/auth.js')
   const { getOrganizationUUID } = await import('src/providers/oauth/client.js')
-  const { getOauthConfig } = await import('src/constants/oauth.js')
+  const { getOauthConfig } = await import('src/shared/constants/oauth.js')
   const { getOAuthHeaders } = await import('src/platform/teleport/api.js')
   const { default: axios } = await import('axios')
 
@@ -284,7 +284,7 @@ export async function archiveBridgeSession(
 ): Promise<void> {
   const { getClaudeAIOAuthTokens } = await import('src/providers/auth/auth.js')
   const { getOrganizationUUID } = await import('src/providers/oauth/client.js')
-  const { getOauthConfig } = await import('src/constants/oauth.js')
+  const { getOauthConfig } = await import('src/shared/constants/oauth.js')
   const { getOAuthHeaders } = await import('src/platform/teleport/api.js')
   const { default: axios } = await import('axios')
 
@@ -345,7 +345,7 @@ export async function updateBridgeSessionTitle(
 ): Promise<void> {
   const { getClaudeAIOAuthTokens } = await import('src/providers/auth/auth.js')
   const { getOrganizationUUID } = await import('src/providers/oauth/client.js')
-  const { getOauthConfig } = await import('src/constants/oauth.js')
+  const { getOauthConfig } = await import('src/shared/constants/oauth.js')
   const { getOAuthHeaders } = await import('src/platform/teleport/api.js')
   const { default: axios } = await import('axios')
 

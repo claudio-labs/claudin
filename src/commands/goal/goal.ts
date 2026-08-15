@@ -7,7 +7,7 @@ import type { ToolUseContext } from 'src/tools/Tool.js'
 import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
-} from 'src/types/command.js'
+} from 'src/shared/types/command.js'
 import { formatDuration } from 'src/shared/text/format.js'
 import {
   buildGoalDirective,

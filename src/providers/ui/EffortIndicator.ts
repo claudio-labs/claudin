@@ -5,7 +5,7 @@ import {
   EFFORT_MAX,
   EFFORT_MEDIUM,
   EFFORT_XHIGH,
-} from 'src/constants/figures.js'
+} from 'src/shared/constants/figures.js'
 import {
   type AdaptiveEffort,
   type EffortLevel,

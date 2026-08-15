@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import { executeSessionEndHooks } from 'src/platform/lifecycleHooks/events.js'
 import { createAssistantMessage } from 'src/agent/messages/factories.js'
 import {

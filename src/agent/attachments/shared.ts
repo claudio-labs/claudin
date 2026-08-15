@@ -3,7 +3,7 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from 'src/platform/analytics/index.js'
 import { randomUUID } from 'crypto'
-import type { AttachmentMessage } from 'src/types/message.js'
+import type { AttachmentMessage } from 'src/shared/types/message.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { logError } from 'src/shared/log.js'
 import { logAntError } from 'src/shared/debug.js'

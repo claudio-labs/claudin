@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 import type { ToolUseContext } from 'src/tools/Tool.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import { createTask, getTaskListId, resetTaskList } from 'src/agent/tasks/tasks.js'
 import { getTaskReminderAttachments } from 'src/agent/attachments/lifecycle.js'
 

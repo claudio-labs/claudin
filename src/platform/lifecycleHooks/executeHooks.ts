@@ -33,7 +33,7 @@ import {
   type PromptResponse,
   isAsyncHookJSONOutput,
   isSyncHookJSONOutput,
-} from 'src/types/hooks.js'
+} from 'src/shared/types/hooks.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import chalk from 'chalk'
 import { errorMessage } from 'src/shared/errors.js'
@@ -55,7 +55,7 @@ import { createAttachmentMessage } from 'src/agent/attachments/attachments.js'
 import { all } from 'src/shared/generators.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { execPromptHook } from 'src/platform/lifecycleHooks/execPromptHook.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import { execAgentHook } from 'src/platform/lifecycleHooks/execAgentHook.js'
 import { execHttpHook } from 'src/platform/lifecycleHooks/execHttpHook.js'
 import type { FunctionHook } from 'src/platform/lifecycleHooks/sessionHooks.js'

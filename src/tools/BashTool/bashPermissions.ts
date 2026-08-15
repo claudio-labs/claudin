@@ -6,7 +6,7 @@ import {
   logEvent,
 } from 'src/platform/analytics/index.js'
 import type { ToolPermissionContext, ToolUseContext } from 'src/tools/Tool.js'
-import type { PendingClassifierCheck } from 'src/types/permissions.js'
+import type { PendingClassifierCheck } from 'src/shared/types/permissions.js'
 import { count } from 'src/shared/data/array.js'
 import {
   checkSemantics,

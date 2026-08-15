@@ -1,5 +1,5 @@
 import type { Attachment } from 'src/agent/attachments/attachments.js'
-import type { Message, NormalizedMessage } from 'src/types/message.js'
+import type { Message, NormalizedMessage } from 'src/shared/types/message.js'
 
 /**
  * Attachment types that AttachmentMessage renders as `null` unconditionally

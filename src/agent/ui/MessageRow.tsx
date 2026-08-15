@@ -5,7 +5,7 @@ import { Box } from 'src/terminal/ink.js';
 import type { Screen } from 'src/agent/repl/REPL.js';
 import type { Tools } from 'src/tools/Tool.js';
 import type { BetaContentBlock } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs';
-import type { NormalizedAssistantMessage, ProgressMessage, RenderableMessage } from 'src/types/message.js';
+import type { NormalizedAssistantMessage, ProgressMessage, RenderableMessage } from 'src/shared/types/message.js';
 import { getDisplayMessageFromCollapsed, getToolSearchOrReadInfo, getToolUseIdsFromCollapsedGroup, hasAnyToolInProgress } from 'src/agent/tools/collapseReadSearch.js';
 import { type buildMessageLookups, EMPTY_STRING_SET, getProgressMessagesFromLookup, getSiblingToolUseIDsFromLookup, getToolUseID } from 'src/agent/messages/messages.js';
 import { hasThinkingContent, Message } from 'src/agent/ui/Message.js';

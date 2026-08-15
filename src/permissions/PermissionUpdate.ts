@@ -1,11 +1,11 @@
 import { posix } from 'path'
-import { clearSystemPromptSections } from 'src/constants/systemPromptSections.js'
+import { clearSystemPromptSections } from 'src/agent/prompts/systemPromptSections.js'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
-// Types extracted to src/types/permissions.ts to break import cycles
+// Types extracted to src/shared/types/permissions.ts to break import cycles
 import type {
   AdditionalWorkingDirectory,
   WorkingDirectorySource,
-} from 'src/types/permissions.js'
+} from 'src/shared/types/permissions.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { EditableSettingSource } from 'src/platform/settings/constants.js'
 import {

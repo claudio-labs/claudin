@@ -3,14 +3,14 @@ import { chmodSync } from 'fs'
 import { copyFile, writeFile } from 'fs/promises'
 import memoize from 'lodash-es/memoize.js'
 import { join, relative, resolve, sep } from 'path'
-import type { AgentId, SessionId } from 'src/types/ids.js'
-import type { LogOption } from 'src/types/logs.js'
+import type { AgentId, SessionId } from 'src/shared/types/ids.js'
+import type { LogOption } from 'src/shared/types/logs.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
   SystemFileSnapshotMessage,
   UserMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { getPlanSlugCache, getSessionId } from 'src/platform/bootstrap/state.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
 import { getSessionRootCwd } from 'src/shared/fs/cwd.js'

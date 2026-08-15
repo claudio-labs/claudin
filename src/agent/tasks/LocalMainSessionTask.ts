@@ -18,7 +18,7 @@ import {
   TASK_ID_TAG,
   TASK_NOTIFICATION_TAG,
   TOOL_USE_ID_TAG,
-} from 'src/constants/xml.js'
+} from 'src/shared/constants/xml.js'
 import { type QueryParams, query } from 'src/agent/query.js'
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
 import type { SetAppState } from 'src/agent/Task.js'
@@ -27,8 +27,8 @@ import type {
   AgentDefinition,
   CustomAgentDefinition,
 } from 'src/tools/AgentTool/loadAgentsDir.js'
-import { asAgentId } from 'src/types/ids.js'
-import type { Message } from 'src/types/message.js'
+import { asAgentId } from 'src/shared/types/ids.js'
+import type { Message } from 'src/shared/types/message.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import {
   runWithAgentContext,

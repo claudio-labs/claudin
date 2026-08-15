@@ -18,7 +18,7 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js'
-import type { LogOption } from 'src/types/logs.js'
+import type { LogOption } from 'src/shared/types/logs.js'
 import { inspect } from 'util'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'

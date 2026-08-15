@@ -15,7 +15,7 @@ import {
   AGENT_TOOL_NAME,
   LEGACY_AGENT_TOOL_NAME,
 } from 'src/tools/AgentTool/constants.js'
-import type { LogOption } from 'src/types/logs.js'
+import type { LogOption } from 'src/shared/types/logs.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'

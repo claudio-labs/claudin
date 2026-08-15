@@ -13,13 +13,13 @@ import type {
 } from 'src/tools/Tool.js'
 import { awaitClassifierAutoApproval } from 'src/tools/BashTool/bashPermissions.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
-import type { AssistantMessage } from 'src/types/message.js'
+import type { AssistantMessage } from 'src/shared/types/message.js'
 import type {
   PendingClassifierCheck,
   PermissionAllowDecision,
   PermissionDecisionReason,
   PermissionDenyDecision,
-} from 'src/types/permissions.js'
+} from 'src/shared/types/permissions.js'
 import { setClassifierApproval } from 'src/permissions/classifierApprovals.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { executePermissionRequestHooks } from 'src/platform/lifecycleHooks/hooks.js'

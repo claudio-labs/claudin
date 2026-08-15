@@ -1,12 +1,12 @@
 import { REMOTE_CONTROL_DISCONNECTED_MSG } from 'src/platform/bridge/types.js';
 import type { Command } from 'src/commands/commands.js';
-import { DIAMOND_OPEN } from 'src/constants/figures.js';
-import { getRemoteSessionUrl } from 'src/constants/product.js';
+import { DIAMOND_OPEN } from 'src/shared/constants/figures.js';
+import { getRemoteSessionUrl } from 'src/shared/constants/product.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import { checkRemoteAgentEligibility, formatPreconditionError, RemoteAgentTask, type RemoteAgentTaskState, registerRemoteAgentTask } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
-import type { LocalJSXCommandCall } from 'src/types/command.js';
+import type { LocalJSXCommandCall } from 'src/shared/types/command.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { errorMessage } from 'src/shared/errors.js';
 import { logError } from 'src/shared/log.js';

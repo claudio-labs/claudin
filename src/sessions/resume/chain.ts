@@ -20,8 +20,8 @@ import {
 import type {
   SystemCompactBoundaryMessage,
   Message,
-} from 'src/types/message.js'
-import type { TranscriptMessage } from 'src/types/logs.js'
+} from 'src/shared/types/message.js'
+import type { TranscriptMessage } from 'src/shared/types/logs.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { logError } from 'src/shared/log.js'

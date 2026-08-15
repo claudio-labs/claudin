@@ -2,7 +2,7 @@
 // this fork. The four arms are the literals pushed into the
 // `UnifiedInstalledItem[]` accumulators in `ManagePlugins.tsx`, and the fields
 // read by `UnifiedInstalledCell.tsx`.
-import type { LoadedPlugin, PluginError } from 'src/types/plugin.js'
+import type { LoadedPlugin, PluginError } from 'src/shared/types/plugin.js'
 import type { PersistablePluginScope } from 'src/plugins/pluginIdentifier.js'
 import type { ConfigScope, MCPServerConnection } from 'src/mcp/types.js'
 

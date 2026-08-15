@@ -1,4 +1,4 @@
-import type { UserMessage } from 'src/types/message.js'
+import type { UserMessage } from 'src/shared/types/message.js'
 import { createUserMessage } from 'src/agent/messages/factories.js'
 import { wrapMessagesInSystemReminder } from 'src/agent/messages/text.js'
 

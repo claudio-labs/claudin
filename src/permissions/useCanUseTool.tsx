@@ -9,7 +9,7 @@ import { Text } from 'src/terminal/ink.js';
 import type { ToolPermissionContext, Tool as ToolType, ToolUseContext } from 'src/tools/Tool.js';
 import { consumeSpeculativeClassifierCheck, peekSpeculativeClassifierCheck } from 'src/tools/BashTool/bashPermissions.js';
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
-import type { AssistantMessage } from 'src/types/message.js';
+import type { AssistantMessage } from 'src/shared/types/message.js';
 import { recordAutoModeDenial } from 'src/permissions/autoModeDenials.js';
 import { clearClassifierChecking, setClassifierApproval, setYoloClassifierApproval } from 'src/permissions/classifierApprovals.js';
 import { logForDebugging } from 'src/shared/debug.js';

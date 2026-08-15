@@ -4,12 +4,12 @@ import {
   getLastApiCompletionTimestamp,
   setLastApiCompletionTimestamp,
 } from 'src/platform/bootstrap/state.js'
-import { STRUCTURED_OUTPUTS_BETA_HEADER } from 'src/constants/betas.js'
-import type { QuerySource } from 'src/constants/querySource.js'
+import { STRUCTURED_OUTPUTS_BETA_HEADER } from 'src/shared/constants/betas.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import {
   getAttributionHeader,
   getCLISyspromptPrefix,
-} from 'src/constants/system.js'
+} from 'src/agent/prompts/system.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
 import { getAPIMetadata } from 'src/providers/shims/claude.js'

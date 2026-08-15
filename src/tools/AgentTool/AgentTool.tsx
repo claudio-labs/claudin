@@ -1,13 +1,13 @@
 import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { buildTool, type ToolDef, toolMatchesName } from 'src/tools/Tool.js';
-import type { Message as MessageType, NormalizedUserMessage } from 'src/types/message.js';
+import type { Message as MessageType, NormalizedUserMessage } from 'src/shared/types/message.js';
 import { getQuerySourceForAgent } from 'src/agent/promptCategory.js';
 import { getAgentPlanSlug } from 'src/agent/planDossier.js';
 import { getPlan, getPlanSlug, getPlansDirectory } from 'src/agent/plans/plans.js';
 import { z } from 'zod/v4';
 import { clearInvokedSkillsForAgent, getSdkAgentProgressSummariesEnabled, getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js';
-import { enhanceSystemPromptWithEnvDetails, getSystemPrompt } from 'src/constants/prompts.js';
+import { enhanceSystemPromptWithEnvDetails, getSystemPrompt } from 'src/agent/prompts/prompts.js';
 import { isCoordinatorMode } from 'src/agent/coordinator/coordinatorMode.js';
 import { startAgentSummarization, summarizeAgentResult } from 'src/agent/summary/agentSummary.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
@@ -17,7 +17,7 @@ import { clearDumpState } from 'src/providers/transport/dumpPrompts.js';
 import { completeAgentTask as completeAsyncAgent, createActivityDescriptionResolver, createProgressTracker, enqueueAgentNotification, failAgentTask as failAsyncAgent, getProgressUpdate, getTokenCountFromTracker, isLocalAgentTask, killAsyncAgent, registerAgentForeground, registerAsyncAgent, unregisterAgentForeground, updateAgentProgress as updateAsyncAgentProgress, updateProgressFromMessage } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
 import { checkRemoteAgentEligibility, formatPreconditionError, getRemoteTaskSessionUrl, registerRemoteAgentTask } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import { assembleToolPool } from 'src/tools/tools.js';
-import { asAgentId } from 'src/types/ids.js';
+import { asAgentId } from 'src/shared/types/ids.js';
 import { runWithAgentContext } from 'src/agent/coordinator/agentContext.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { getCwd, runWithCwdOverride } from 'src/shared/fs/cwd.js';
@@ -208,7 +208,7 @@ export type RemoteLaunchedOutput = {
   outputFile: string;
 };
 type InternalOutput = Output | TeammateSpawnedOutput | RemoteLaunchedOutput;
-import type { AgentToolProgress, ShellProgress } from 'src/types/tools.js';
+import type { AgentToolProgress, ShellProgress } from 'src/shared/types/tools.js';
 // AgentTool forwards both its own progress events and shell progress
 // events from the sub-agent so the SDK receives tool_progress updates during bash/powershell runs.
 export type Progress = AgentToolProgress | ShellProgress;

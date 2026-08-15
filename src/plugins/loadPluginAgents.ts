@@ -10,7 +10,7 @@ import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
-import { getPluginErrorMessage } from 'src/types/plugin.js'
+import { getPluginErrorMessage } from 'src/shared/types/plugin.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { EFFORT_LEVELS, parseEffortValue } from 'src/utils/effort.js'
 import {

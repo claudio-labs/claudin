@@ -3,7 +3,7 @@ import type { Anthropic } from '@anthropic-ai/sdk'
 import {
   getSystemPrompt,
   SYSTEM_PROMPT_DYNAMIC_BOUNDARY,
-} from 'src/constants/prompts.js'
+} from 'src/agent/prompts/prompts.js'
 import { microcompactMessages } from 'src/agent/compact/microCompact.js'
 import { getSdkBetas } from 'src/platform/bootstrap/state.js'
 import { getCommandName } from 'src/commands/commands.js'
@@ -46,7 +46,7 @@ import type {
   NormalizedAssistantMessage,
   NormalizedUserMessage,
   UserMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { toolToAPISchema } from 'src/providers/transport/api.js'
 import { filterInjectedMemoryFiles, getMemoryFiles } from 'src/memory/instructions/claudemd.js'
 import { getContextWindowForModel } from 'src/agent/context/context.js'

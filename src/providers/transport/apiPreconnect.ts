@@ -23,7 +23,7 @@
  * - Bedrock/Vertex/Foundry (different endpoints, different auth)
  */
 
-import { getOauthConfig } from 'src/constants/oauth.js'
+import { getOauthConfig } from 'src/shared/constants/oauth.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 

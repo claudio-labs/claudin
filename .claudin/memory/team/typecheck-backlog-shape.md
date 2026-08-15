@@ -65,7 +65,7 @@ Shape of the backlog, measured 2026-08-06 on branch `chore/repo-improvements`
 - The rest are genuine mismatches, newly visible now that the central types
   resolve.
 
-**Why it was 4623.** The fork shipped without `src/types/message.ts` (39 types,
+**Why it was 4623.** The fork shipped without `src/shared/types/message.ts` (39 types,
 ~240 imports) and with `src/platform/entrypoints/sdk/coreTypes.generated.ts` +
 `runtimeTypes.ts` as empty stubs, so `Message`, `Options`, `SDKMessage` and every
 hook-input type were silently `any`. All 22 modules were reconstructed from their

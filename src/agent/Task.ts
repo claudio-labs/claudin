@@ -1,6 +1,6 @@
 import { randomInt } from 'crypto'
 import type { AppState } from 'src/terminal/state/AppState.js'
-import type { AgentId } from 'src/types/ids.js'
+import type { AgentId } from 'src/shared/types/ids.js'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
 
 export type TaskType =

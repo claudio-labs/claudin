@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle'
 import { randomUUID } from 'crypto'
 import { hostname, tmpdir } from 'os'
 import { basename, join, resolve } from 'path'
-import { getRemoteSessionUrl } from 'src/constants/product.js'
+import { getRemoteSessionUrl } from 'src/shared/constants/product.js'
 import { shutdownDatadog } from 'src/platform/analytics/datadog.js'
 import { shutdown1PEventLogging } from 'src/platform/analytics/firstPartyEventLogger.js'
 import { checkGate_CACHED_OR_BLOCKING } from 'src/platform/analytics/growthbook.js'
@@ -1873,7 +1873,7 @@ export function parseArgs(args: string[]): ParsedArgs {
 async function printHelp(): Promise<void> {
   // Use EXTERNAL_PERMISSION_MODES for help text — internal modes (bubble)
   // are internal-only and auto is feature-gated; they're still accepted by validation.
-  const { EXTERNAL_PERMISSION_MODES } = await import('src/types/permissions.js')
+  const { EXTERNAL_PERMISSION_MODES } = await import('src/shared/types/permissions.js')
   const modes = EXTERNAL_PERMISSION_MODES.join(', ')
   const showServer = await isMultiSessionSpawnEnabled()
   const serverOptions = showServer
@@ -2005,7 +2005,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
   // Validate permission mode early so the user gets an error before
   // the bridge starts polling for work.
   if (permissionMode !== undefined) {
-    const { PERMISSION_MODES } = await import('src/types/permissions.js')
+    const { PERMISSION_MODES } = await import('src/shared/types/permissions.js')
     const valid: readonly string[] = PERMISSION_MODES
     if (!valid.includes(permissionMode)) {
       // biome-ignore lint/suspicious/noConsole: intentional error output

@@ -12,7 +12,7 @@ import type {
   NotebookCellSourceOutput,
   NotebookContent,
   NotebookOutputImage,
-} from 'src/types/notebook.js'
+} from 'src/shared/types/notebook.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { jsonParse } from 'src/platform/slowOperations.js'

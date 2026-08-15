@@ -11,7 +11,7 @@ import type {
   NormalizedMessage,
   NormalizedUserMessage,
   ProgressMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { count } from 'src/shared/data/array.js'
 import {
   type HookAttachment,

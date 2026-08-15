@@ -20,7 +20,7 @@ import {
   setOriginalCwd,
   switchSession,
 } from 'src/platform/bootstrap/state.js'
-import { asSessionId } from 'src/types/ids.js'
+import { asSessionId } from 'src/shared/types/ids.js'
 import { resetGlobalConfigForTests } from 'src/platform/config/config.js'
 import {
   flushSessionStorage,

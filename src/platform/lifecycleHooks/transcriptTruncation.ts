@@ -8,7 +8,7 @@
  * judge that evidence may have been omitted.
  */
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import { getContextWindowForModel } from 'src/agent/context/context.js'
 import { logError } from 'src/shared/log.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'

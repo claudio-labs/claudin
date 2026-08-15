@@ -22,7 +22,7 @@ import type {
   LoadedPlugin,
   PluginError,
   PluginManifest,
-} from 'src/types/plugin.js'
+} from 'src/shared/types/plugin.js'
 import {
   isOfficialMarketplaceName,
   parsePluginIdentifier,

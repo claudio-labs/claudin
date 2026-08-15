@@ -4,7 +4,7 @@ import type { ToolUseContext } from 'src/tools/Tool.js'
 import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
-} from 'src/types/command.js'
+} from 'src/shared/types/command.js'
 import { GOAL_MAX_CONDITION_LENGTH } from 'src/agent/goal/goal.js'
 import type { SessionStore } from 'src/platform/lifecycleHooks/sessionHooks.js'
 

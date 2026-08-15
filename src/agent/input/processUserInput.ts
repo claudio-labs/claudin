@@ -5,7 +5,7 @@ import type {
   ImageBlockParam,
 } from '@anthropic-ai/sdk/resources/messages.mjs'
 import { randomUUID } from 'crypto'
-import type { QuerySource } from 'src/constants/querySource.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import { getContentText } from 'src/agent/messages/messages.js'
 import {
@@ -24,12 +24,12 @@ import type {
   ProgressMessage,
   SystemMessage,
   UserMessage,
-} from 'src/types/message.js'
-import type { PermissionMode } from 'src/types/permissions.js'
+} from 'src/shared/types/message.js'
+import type { PermissionMode } from 'src/shared/types/permissions.js'
 import {
   isValidImagePaste,
   type PromptInputMode,
-} from 'src/types/textInputTypes.js'
+} from 'src/shared/types/textInputTypes.js'
 import {
   type AgentMentionAttachment,
   createAttachmentMessage,

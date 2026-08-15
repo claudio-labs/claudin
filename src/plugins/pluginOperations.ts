@@ -14,7 +14,7 @@
 import { dirname, join } from 'path'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { isBuiltinPluginId } from 'src/plugins/builtinPlugins.js'
-import type { LoadedPlugin, PluginManifest } from 'src/types/plugin.js'
+import type { LoadedPlugin, PluginManifest } from 'src/shared/types/plugin.js'
 import { isENOENT, toError } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { logError } from 'src/shared/log.js'

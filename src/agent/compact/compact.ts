@@ -13,7 +13,7 @@ import {
   getInvokedSkillsForAgent,
   getOriginalCwd,
 } from 'src/platform/bootstrap/state.js'
-import type { QuerySource } from 'src/constants/querySource.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
 import type { LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
@@ -23,7 +23,7 @@ import {
   FILE_UNCHANGED_STUB,
 } from 'src/tools/FileReadTool/prompt.js'
 import { ToolSearchTool } from 'src/tools/ToolSearchTool/ToolSearchTool.js'
-import type { AgentId } from 'src/types/ids.js'
+import type { AgentId } from 'src/shared/types/ids.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
@@ -33,7 +33,7 @@ import type {
   SystemCompactBoundaryMessage,
   SystemMessage,
   UserMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import {
   createAttachmentMessage,
   generateFileAttachment,

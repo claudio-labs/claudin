@@ -1,7 +1,7 @@
 import memoize from 'lodash-es/memoize.js'
 import { basename } from 'path'
-import type { OutputStyleConfig } from 'src/constants/outputStyles.js'
-import { getPluginErrorMessage } from 'src/types/plugin.js'
+import type { OutputStyleConfig } from 'src/shared/constants/outputStyles.js'
+import { getPluginErrorMessage } from 'src/shared/types/plugin.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import {
   coerceDescriptionToString,

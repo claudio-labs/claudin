@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import type { PartialCompactDirection } from 'src/types/message.js'
+import type { PartialCompactDirection } from 'src/shared/types/message.js'
 
 // Dead code elimination: conditional import for proactive mode
 /* eslint-disable @typescript-eslint/no-require-imports */

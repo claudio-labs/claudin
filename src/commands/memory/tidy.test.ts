@@ -1,6 +1,6 @@
 import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
 import { getAutoMemPath } from 'src/memory/memdir/paths.js'
-import type { LocalJSXCommandOnDone } from 'src/types/command.js'
+import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js'
 import { parseMemorySubcommand, runMemoryTidy } from 'src/commands/memory/tidy.js'
 
 // Mock the team-root boundary so the team-on path is reachable under bun test

@@ -11,8 +11,8 @@
 
 import { feature } from 'bun:bundle'
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs'
-import { getSystemPrompt } from 'src/constants/prompts.js'
-import { TEAMMATE_MESSAGE_TAG } from 'src/constants/xml.js'
+import { getSystemPrompt } from 'src/agent/prompts/prompts.js'
+import { TEAMMATE_MESSAGE_TAG } from 'src/shared/constants/xml.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import {
   processMailboxPermissionResponse,
@@ -55,8 +55,8 @@ import { TASK_LIST_TOOL_NAME } from 'src/tools/TaskListTool/constants.js'
 import { TASK_UPDATE_TOOL_NAME } from 'src/tools/TaskUpdateTool/constants.js'
 import { TEAM_CREATE_TOOL_NAME } from 'src/tools/TeamCreateTool/constants.js'
 import { TEAM_DELETE_TOOL_NAME } from 'src/tools/TeamDeleteTool/constants.js'
-import type { Message } from 'src/types/message.js'
-import type { PermissionDecision } from 'src/types/permissions.js'
+import type { Message } from 'src/shared/types/message.js'
+import type { PermissionDecision } from 'src/shared/types/permissions.js'
 import {
   createAssistantAPIErrorMessage,
   createUserMessage,

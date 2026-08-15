@@ -4,7 +4,7 @@ import { relative } from 'path';
 import * as React from 'react';
 import { Suspense, use, useMemo } from 'react';
 import { Box, NoSelect, Text } from 'src/terminal/ink.js';
-import type { NotebookCell, NotebookCellType, NotebookContent } from 'src/types/notebook.js';
+import type { NotebookCell, NotebookCellType, NotebookContent } from 'src/shared/types/notebook.js';
 import { intersperse } from 'src/shared/data/array.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { getPatchForDisplay } from 'src/vcs/git/diff.js';

@@ -2,8 +2,8 @@ import type {
   BetaMessage,
   BetaMessageStreamParams,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
-import type { QuerySource } from 'src/constants/querySource.js'
-import type { SystemAPIErrorMessage } from 'src/types/message.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
+import type { SystemAPIErrorMessage } from 'src/shared/types/message.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { isSdkApiUserAbortError } from 'src/shared/errors.js'

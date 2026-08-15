@@ -13,7 +13,7 @@ import chalk from 'chalk';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { feature } from 'bun:bundle';
-import { getOauthConfig } from 'src/constants/oauth.js';
+import { getOauthConfig } from 'src/shared/constants/oauth.js';
 import { getSessionId, getIsNonInteractiveSession, setKairosActive } from 'src/platform/bootstrap/state.js';
 import { downloadSessionFiles, type FilesApiConfig, parseFileSpecs } from 'src/providers/transport/filesApi.js';
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';

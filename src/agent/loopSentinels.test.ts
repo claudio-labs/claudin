@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 import { getSessionId, regenerateSessionId, switchSession } from 'src/platform/bootstrap/state.js'
-import type { SessionId } from 'src/types/ids.js'
+import type { SessionId } from 'src/shared/types/ids.js'
 import {
   AUTONOMOUS_LOOP_DYNAMIC_SENTINEL,
   AUTONOMOUS_LOOP_SENTINEL,

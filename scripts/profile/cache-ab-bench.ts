@@ -76,8 +76,8 @@ const TWELVE_FILES = [
   'src/shared/proc/Shell.ts',
   'src/platform/bootstrap/state.ts',
   // small (constants / tiny utils)
-  'src/constants/messages.ts',
-  'src/constants/keys.ts',
+  'src/agent/prompts/messages.ts',
+  'src/shared/constants/keys.ts',
   'src/terminal/ink/constants.ts',
   'src/utils/protectedNamespace.ts',
   'src/shared/data/array.ts',
@@ -121,7 +121,7 @@ const REVISIT_FILES = [
   'src/platform/config/config.ts',             // medium
   'src/providers/transport/withRetry.ts',   // medium
   'src/utils/model/model.ts',        // medium
-  'src/constants/keys.ts',           // small
+  'src/shared/constants/keys.ts',           // small
   'src/shared/data/array.ts',              // small
 ]
 
@@ -261,7 +261,7 @@ function buildJsonWorkloadPrompt(turns: number): string {
 // A and B arms is the CLAUDIN_VERBOSITY_STEERING env, so the output-token delta
 // is attributable to the steering block alone.
 const PROSE_QUESTIONS: readonly string[] = [
-  'Explain what `getSystemPrompt()` in src/constants/prompts.ts does, and name the boundary marker it inserts between the cacheable and dynamic sections.',
+  'Explain what `getSystemPrompt()` in src/agent/prompts/prompts.ts does, and name the boundary marker it inserts between the cacheable and dynamic sections.',
   'Describe how the Bash output filter decides what to strip from a command\u2019s output. Which file implements the filter pipeline?',
   'Walk me through how the active model provider is resolved at runtime. What is the central resolver function and which file is it in?',
   'Explain the tool-result JSON compression: how are omitted rows still retrievable afterward, and what is the build flag that gates it?',

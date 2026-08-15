@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { LocalJSXCommandContext } from 'src/commands/commands.js';
 import { getOauthProfileFromOauthToken } from 'src/providers/oauth/getOauthProfile.js';
-import type { LocalJSXCommandOnDone } from 'src/types/command.js';
+import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js';
 import { getClaudeAIOAuthTokens, isClaudeAISubscriber } from 'src/providers/auth/auth.js';
 import { openBrowser } from 'src/shared/browser.js';
 import { logError } from 'src/shared/log.js';

@@ -1,5 +1,5 @@
 import { getMainThreadAgentType } from 'src/platform/bootstrap/state.js'
-import type { HookResultMessage } from 'src/types/message.js'
+import type { HookResultMessage } from 'src/shared/types/message.js'
 import { createAttachmentMessage } from 'src/agent/attachments/attachments.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { withDiagnosticsTiming } from 'src/shared/diagLogs.js'

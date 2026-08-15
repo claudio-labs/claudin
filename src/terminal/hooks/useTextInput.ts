@@ -7,7 +7,7 @@ import type { Key } from 'src/terminal/ink.js'
 import type {
   InlineGhostText,
   TextInputState,
-} from 'src/types/textInputTypes.js'
+} from 'src/shared/types/textInputTypes.js'
 import {
   Cursor,
   getLastKill,

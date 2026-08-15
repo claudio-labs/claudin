@@ -11,7 +11,7 @@ import {
   pollAccessToken,
   requestDeviceCode,
 } from 'src/platform/github/deviceFlow.js'
-import type { LocalJSXCommandOnDone } from 'src/types/command.js'
+import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js'
 import {
   readGithubModelsToken,
   saveGithubModelsToken,

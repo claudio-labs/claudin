@@ -24,7 +24,7 @@ import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
 import type { UUID } from 'crypto'
 
 import type { ResumeSessionDeps } from 'src/agent/repl/services/resumeSession.js'
-import type { LogOption } from 'src/types/logs.js'
+import type { LogOption } from 'src/shared/types/logs.js'
 
 // --- module mocks (must be installed before importing the SUT) -----------
 
@@ -57,7 +57,7 @@ const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all
     'src/agent/tools/toolResultStorage.js',
     'src/platform/analytics/index.js',
     'src/agent/messages/messages.js',
-    'src/types/ids.js',
+    'src/shared/types/ids.js',
   ].map(
     async spec =>
       [spec, { ...(await import(spec)) }] as [string, Record<string, unknown>],
@@ -200,7 +200,7 @@ mock.module('src/agent/messages/messages.js', () => ({
   createSystemMessage: (text: string) => ({ type: 'system', text }),
 }))
 
-mock.module('src/types/ids.js', () => ({
+mock.module('src/shared/types/ids.js', () => ({
   asSessionId: (id: unknown) => id,
   asAgentId: (id: unknown) => id,
 }))

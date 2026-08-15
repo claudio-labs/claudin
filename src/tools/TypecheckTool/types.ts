@@ -117,7 +117,7 @@ export type BaselineState =
  * What the TUI shows while the check is still running.
  *
  * Declared here rather than added to the `ToolProgressData` union in
- * `src/types/tools.js` for the same reason as `BuildProgress`: that module does
+ * `src/shared/types/tools.js` for the same reason as `BuildProgress`: that module does
  * not exist in this fork and is stubbed at bundle time. Nothing needs the
  * membership — the only type-based dispatch on progress is
  * `!== 'hook_progress'`.

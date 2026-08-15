@@ -41,7 +41,7 @@ function installCommonMocks(options?: {
     },
   }))
 
-  mock.module('src/constants/oauth.js', () => ({
+  mock.module('src/shared/constants/oauth.js', () => ({
     getOauthConfig: () => ({ BASE_API_URL: 'https://api.anthropic.com' }),
     OAUTH_BETA_HEADER: 'test-beta',
   }))

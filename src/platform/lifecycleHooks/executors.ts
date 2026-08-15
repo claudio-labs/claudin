@@ -32,7 +32,7 @@ import { ALLOWED_OFFICIAL_MARKETPLACE_NAMES } from 'src/plugins/schemas.js'
 import {
   isAsyncHookJSONOutput,
   isSyncHookJSONOutput,
-} from 'src/types/hooks.js'
+} from 'src/shared/types/hooks.js'
 import type { HookEvent, HookInput } from 'src/platform/entrypoints/agentSdkTypes.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logError } from 'src/shared/log.js'

@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { Suspense, use, useDeferredValue, useEffect, useState } from 'react';
-import type { DeepImmutable } from 'src/types/utils.js';
+import type { DeepImmutable } from 'src/shared/types/utils.js';
 import type { CommandResultDisplay } from 'src/commands/commands.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import type { ExitState } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';

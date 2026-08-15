@@ -17,14 +17,14 @@ import type {
   ValidationResult,
 } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
-import type { Command } from 'src/types/command.js'
+import type { Command } from 'src/shared/types/command.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
   Message,
   SystemMessage,
   UserMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import { getRuleByContentsForTool } from 'src/permissions/permissions.js'
@@ -39,7 +39,7 @@ import {
   clearInvokedSkillsForAgent,
   getSessionId,
 } from 'src/platform/bootstrap/state.js'
-import { COMMAND_MESSAGE_TAG } from 'src/constants/xml.js'
+import { COMMAND_MESSAGE_TAG } from 'src/shared/constants/xml.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -94,9 +94,9 @@ async function getAllCommands(context: ToolUseContext): Promise<Command[]> {
 }
 
 // Re-export Progress from centralized types to break import cycles
-export type { SkillToolProgress as Progress } from 'src/types/tools.js'
+export type { SkillToolProgress as Progress } from 'src/shared/types/tools.js'
 
-import type { SkillToolProgress as Progress } from 'src/types/tools.js'
+import type { SkillToolProgress as Progress } from 'src/shared/types/tools.js'
 
 // Conditional require for remote skill modules — static imports here would
 // pull in akiBackend.ts (via remoteSkillLoader → akiBackend), which has

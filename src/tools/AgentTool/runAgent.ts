@@ -8,8 +8,8 @@ import { getCommand, getSkillToolCommands, hasCommand } from 'src/commands/comma
 import {
   DEFAULT_AGENT_PROMPT,
   enhanceSystemPromptWithEnvDetails,
-} from 'src/constants/prompts.js'
-import type { QuerySource } from 'src/constants/querySource.js'
+} from 'src/agent/prompts/prompts.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { query } from 'src/agent/query.js'
@@ -26,8 +26,8 @@ import type {
 } from 'src/mcp/types.js'
 import type { Tool, Tools, ToolUseContext } from 'src/tools/Tool.js'
 import { killShellTasksForAgent } from 'src/agent/tasks/LocalShellTask/killShellTasks.js'
-import type { Command } from 'src/types/command.js'
-import type { AgentId } from 'src/types/ids.js'
+import type { Command } from 'src/shared/types/command.js'
+import type { AgentId } from 'src/shared/types/ids.js'
 import type {
   AssistantMessage,
   Message,
@@ -38,7 +38,7 @@ import type {
   TombstoneMessage,
   ToolUseSummaryMessage,
   UserMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { createAttachmentMessage } from 'src/agent/attachments/attachments.js'
 import { AbortError } from 'src/shared/errors.js'
 import {

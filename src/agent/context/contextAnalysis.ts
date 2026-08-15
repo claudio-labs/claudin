@@ -8,7 +8,7 @@ import type {
   AssistantMessage,
   Message,
   UserMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { normalizeMessagesForAPI } from 'src/agent/messages/messages.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 

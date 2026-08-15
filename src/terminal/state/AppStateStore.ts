@@ -18,10 +18,10 @@ import type { TaskState } from 'src/agent/tasks/types.js'
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
 import type { AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { AllowedPrompt } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js'
-import type { AgentId } from 'src/types/ids.js'
-import type { Message, UserMessage } from 'src/types/message.js'
-import type { LoadedPlugin, PluginError } from 'src/types/plugin.js'
-import type { DeepImmutable } from 'src/types/utils.js'
+import type { AgentId } from 'src/shared/types/ids.js'
+import type { Message, UserMessage } from 'src/shared/types/message.js'
+import type { LoadedPlugin, PluginError } from 'src/shared/types/plugin.js'
+import type { DeepImmutable } from 'src/shared/types/utils.js'
 import {
   type AttributionState,
   createEmptyAttributionState,

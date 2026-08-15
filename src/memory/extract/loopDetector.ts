@@ -19,7 +19,7 @@ import {
   REJECT_MESSAGE_WITH_REASON_PREFIX,
 } from 'src/agent/messages/constants.js'
 import { isHumanTurn } from 'src/agent/messages/messagePredicates.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 
 /** Minimal tool_result guard (inlined to keep this module dependency-light). */
 function isToolResultBlock(

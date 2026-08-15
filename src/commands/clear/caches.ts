@@ -8,7 +8,7 @@ import {
   setLastEmittedDate,
 } from 'src/platform/bootstrap/state.js'
 import { clearCommandsCache } from 'src/commands/commands.js'
-import { getSessionStartDate } from 'src/constants/common.js'
+import { getSessionStartDate } from 'src/shared/constants/common.js'
 import {
   getGitStatus,
   getSystemContext,

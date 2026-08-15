@@ -2,8 +2,8 @@
  * EXPERIMENT: Session memory compaction
  */
 
-import type { AgentId } from 'src/types/ids.js'
-import type { HookResultMessage, Message } from 'src/types/message.js'
+import type { AgentId } from 'src/shared/types/ids.js'
+import type { HookResultMessage, Message } from 'src/shared/types/message.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   createCompactBoundaryMessage,

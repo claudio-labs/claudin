@@ -1,4 +1,4 @@
-import { getPluginErrorMessage, type PluginError } from 'src/types/plugin.js';
+import { getPluginErrorMessage, type PluginError } from 'src/shared/types/plugin.js';
 export function formatErrorMessage(error: PluginError): string {
   switch (error.type) {
     case 'path-not-found':

@@ -4,7 +4,7 @@ import React from 'react';
 import { Text } from 'src/terminal/ink.js';
 import type { TaskStatus } from 'src/agent/Task.js';
 import type { LocalShellTaskState } from 'src/agent/tasks/LocalShellTask/guards.js';
-import type { DeepImmutable } from 'src/types/utils.js';
+import type { DeepImmutable } from 'src/shared/types/utils.js';
 type TaskStatusTextProps = {
   status: TaskStatus;
   label?: string;

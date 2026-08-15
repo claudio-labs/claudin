@@ -23,7 +23,7 @@ import { filterDeniedAgents } from 'src/permissions/permissions.js'
 import { getSubscriptionType } from 'src/providers/auth/auth.js'
 import { mcpInfoFromString } from 'src/mcp/mcpStringUtils.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
-import { getLocalISODate } from 'src/constants/common.js'
+import { getLocalISODate } from 'src/shared/constants/common.js'
 import {
   getLastEmittedDate,
   setLastEmittedDate,
@@ -65,7 +65,7 @@ import {
 import { getEffectiveContextWindowSize } from 'src/agent/compact/autoCompact.js'
 import { isEnvTruthy, getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { feature } from 'bun:bundle'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import type { Attachment } from 'src/agent/attachments/types.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */

@@ -16,7 +16,7 @@
  * one-time achievement notice.
  */
 import type { ActiveGoalState, AppState } from 'src/terminal/state/AppStateStore.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getCurrentUsage } from 'src/agent/context/tokens.js'
 import type { HookBlockingError, AggregatedHookResult } from 'src/platform/lifecycleHooks/types.js'

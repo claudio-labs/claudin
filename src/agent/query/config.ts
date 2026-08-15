@@ -1,6 +1,6 @@
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import type { SessionId } from 'src/types/ids.js'
+import type { SessionId } from 'src/shared/types/ids.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 
 // -- config

@@ -3,7 +3,7 @@ import React, { Suspense, use, useState } from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { logEvent } from 'src/platform/analytics/index.js';
-import type { Message } from 'src/types/message.js';
+import type { Message } from 'src/shared/types/message.js';
 import { generatePermissionExplanation, isPermissionExplainerEnabled, type PermissionExplanation as PermissionExplanationType, type RiskLevel } from 'src/permissions/permissionExplainer.js';
 import { ShimmerChar } from 'src/terminal/spinner/ShimmerChar.js';
 import { useShimmerAnimation } from 'src/terminal/spinner/useShimmerAnimation.js';

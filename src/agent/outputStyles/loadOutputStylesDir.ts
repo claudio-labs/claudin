@@ -1,6 +1,6 @@
 import memoize from 'lodash-es/memoize.js'
 import { basename } from 'path'
-import type { OutputStyleConfig } from 'src/constants/outputStyles.js'
+import type { OutputStyleConfig } from 'src/shared/constants/outputStyles.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { coerceDescriptionToString } from 'src/shared/frontmatterParser.js'
 import { logError } from 'src/shared/log.js'

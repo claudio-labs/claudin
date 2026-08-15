@@ -16,7 +16,7 @@ import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
 import { useAppState, useAppStateStore } from 'src/terminal/state/AppState.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
-import type { InlineGhostText, PromptInputMode } from 'src/types/textInputTypes.js';
+import type { InlineGhostText, PromptInputMode } from 'src/shared/types/textInputTypes.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { generateProgressiveArgumentHint, parseArguments } from 'src/commands/argumentSubstitution.js';
 import { getShellCompletions, type ShellCompletionType } from 'src/platform/bash/shellCompletion.js';

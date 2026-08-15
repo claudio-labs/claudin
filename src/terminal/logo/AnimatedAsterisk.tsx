@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { TEARDROP_ASTERISK } from 'src/constants/figures.js';
+import { TEARDROP_ASTERISK } from 'src/shared/constants/figures.js';
 import { Box, Text, useAnimationFrame } from 'src/terminal/ink.js';
 import { getInitialSettings } from 'src/platform/settings/settings.js';
 import { hueToRgb, toRGBColor } from 'src/terminal/spinner/utils.js';

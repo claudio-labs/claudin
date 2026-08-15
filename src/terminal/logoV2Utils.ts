@@ -1,6 +1,6 @@
 import { getDirectConnectServerUrl, getSessionId } from 'src/platform/bootstrap/state.js'
 import { stringWidth } from 'src/terminal/ink/stringWidth.js'
-import type { LogOption } from 'src/types/logs.js'
+import type { LogOption } from 'src/shared/types/logs.js'
 import { getSubscriptionName, isClaudeAISubscriber } from 'src/providers/auth/auth.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getDisplayPath } from 'src/shared/fs/file.js'

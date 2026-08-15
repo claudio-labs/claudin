@@ -1,6 +1,6 @@
 import { APIUserAbortError } from '@anthropic-ai/sdk/error'
 import type { Tools } from 'src/tools/Tool.js'
-import type { AssistantMessage, Message } from 'src/types/message.js'
+import type { AssistantMessage, Message } from 'src/shared/types/message.js'
 import type { SystemPrompt } from 'src/agent/systemPromptType.js'
 import type { ThinkingConfig } from 'src/agent/context/thinking.js'
 import { withStreamingVCR } from 'src/providers/vcr.js'

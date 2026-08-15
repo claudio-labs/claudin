@@ -9,7 +9,7 @@ import { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js'
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- backward-compat bridge until consumers wire handleKeyDown to <Box onKeyDown>
 import { useInput } from 'src/terminal/ink.js'
 import { useKeybinding, useKeybindings } from 'src/terminal/keybindings/useKeybinding.js'
-import type { PromptInputMode } from 'src/types/textInputTypes.js'
+import type { PromptInputMode } from 'src/shared/types/textInputTypes.js'
 import type { HistoryEntry } from 'src/platform/config/config.js'
 
 export function useHistorySearch(

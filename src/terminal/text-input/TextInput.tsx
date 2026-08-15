@@ -6,7 +6,7 @@ import { useClipboardImageHint } from 'src/terminal/hooks/useClipboardImageHint.
 import { useSettings } from 'src/platform/useSettings.js';
 import { useTextInput } from 'src/terminal/hooks/useTextInput.js';
 import { Box, color, useAnimationFrame, useTerminalFocus, useTheme } from 'src/terminal/ink.js';
-import type { BaseTextInputProps } from 'src/types/textInputTypes.js';
+import type { BaseTextInputProps } from 'src/shared/types/textInputTypes.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import type { TextHighlight } from 'src/shared/text/textHighlighting.js';
 import { BaseTextInput } from 'src/terminal/text-input/BaseTextInput.js';

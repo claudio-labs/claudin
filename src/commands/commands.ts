@@ -212,7 +212,7 @@ import {
   type Command,
   getCommandName,
   isCommandEnabled,
-} from 'src/types/command.js'
+} from 'src/shared/types/command.js'
 
 // Re-export types from the centralized location
 export type {
@@ -223,8 +223,8 @@ export type {
   LocalJSXCommandContext,
   PromptCommand,
   ResumeEntrypoint,
-} from 'src/types/command.js'
-export { getCommandName, isCommandEnabled } from 'src/types/command.js'
+} from 'src/shared/types/command.js'
+export { getCommandName, isCommandEnabled } from 'src/shared/types/command.js'
 
 // Commands that get eliminated from the external build
 

@@ -5,7 +5,7 @@ import {
   getQueuedCommandAttachments,
 } from 'src/agent/attachments/attachments.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
-import type { QueuedCommand } from 'src/types/textInputTypes.js'
+import type { QueuedCommand } from 'src/shared/types/textInputTypes.js'
 
 // The claude_md_delta attachment reads getUserContext().claudeMd, which is
 // discovered from the cwd's CLAUDE.md/AGENTS.md. That doc is present in a dev

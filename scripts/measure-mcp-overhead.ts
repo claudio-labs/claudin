@@ -153,7 +153,7 @@ function shimSchema(
 }
 
 /**
- * Mirror `getMcpInstructions()` in `src/constants/prompts.ts`. Inlined here
+ * Mirror `getMcpInstructions()` in `src/agent/prompts/prompts.ts`. Inlined here
  * so we don't depend on `MCPServerConnection` having a real `Client`
  * field — the production helper only reads `name` and `instructions`.
  */

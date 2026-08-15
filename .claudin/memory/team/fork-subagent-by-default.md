@@ -22,6 +22,6 @@ Three planned edits: (1) `scripts/build.ts` flip `FORK_SUBAGENT:true`; (2) `Agen
 - New `AgentTool/autoBackground.ts::allowsImplicitAutoBackground()` — even with the toggle ON, one-shot built-ins (`ONE_SHOT_BUILTIN_AGENT_TYPES`) and an explicit `run_in_background: false` never take the implicit path. Before this, `false` was silently overridden, so the parameter had no `false` meaning.
 - `isForkSubagentEnabled()` no longer reads config at all (the `isConfigReadingAllowed()` guard from the 2026-06-04 round is gone with it) — **fork is context inheritance, backgrounding is execution mode**. Keeping them on one flag meant "stop backgrounding my agents" also meant "lose context inheritance".
 
-`src/constants/prompts.ts::getAgentToolSection()` and `AgentTool/prompt.ts:91` now both describe fork as inline-by-default, which finally matches the runtime — the old text promised inline while the toggle backgrounded everything.
+`src/agent/prompts/prompts.ts::getAgentToolSection()` and `AgentTool/prompt.ts:91` now both describe fork as inline-by-default, which finally matches the runtime — the old text promised inline while the toggle backgrounded everything.
 
 Still open: agent notifications enqueue at `priority: 'later'` while the mid-turn drain in `query.ts` (~1803) uses threshold `'next'`, so a *genuinely* backgrounded fork's report cannot arrive between two tool calls — only after `isQueryActive` flips false. `LocalShellTask` already uses `'next'`; moving agents there is a behavior change nobody has signed off on.

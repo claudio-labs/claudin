@@ -387,7 +387,7 @@ export function getUndercoverInstructions() { return ''; }
 export function shouldShowUndercoverAutoNotice() { return false; }
 `,
 
-	'src/types/generated/events_mono/claude_code/v1/claude_code_internal_event': `
+	'src/shared/types/generated/events_mono/claude_code/v1/claude_code_internal_event': `
 export const ClaudeCodeInternalEvent = {
   fromJSON: value => value,
   toJSON: value => value,
@@ -396,7 +396,7 @@ export const ClaudeCodeInternalEvent = {
 };
 `,
 
-	'src/types/generated/events_mono/growthbook/v1/growthbook_experiment_event': `
+	'src/shared/types/generated/events_mono/growthbook/v1/growthbook_experiment_event': `
 export const GrowthbookExperimentEvent = {
   fromJSON: value => value,
   toJSON: value => value,
@@ -405,7 +405,7 @@ export const GrowthbookExperimentEvent = {
 };
 `,
 
-	'src/types/generated/events_mono/common/v1/auth': `
+	'src/shared/types/generated/events_mono/common/v1/auth': `
 export const PublicApiAuth = {
   fromJSON: value => value,
   toJSON: value => value,
@@ -422,7 +422,7 @@ export async function initializeTelemetry() { return undefined; }
 export async function flushTelemetry() {}
 `,
 
-	'src/types/generated/google/protobuf/timestamp': `
+	'src/shared/types/generated/google/protobuf/timestamp': `
 export const Timestamp = {
   fromJSON: value => value,
   toJSON: value => value,

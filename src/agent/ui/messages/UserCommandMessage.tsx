@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import type { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import figures from 'figures';
 import * as React from 'react';
-import { COMMAND_MESSAGE_TAG } from 'src/constants/xml.js';
+import { COMMAND_MESSAGE_TAG } from 'src/shared/constants/xml.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { extractTag } from 'src/agent/messages/messages.js';
 type Props = {

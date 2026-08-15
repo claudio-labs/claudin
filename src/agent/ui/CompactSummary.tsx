@@ -1,9 +1,9 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { BLACK_CIRCLE } from 'src/constants/figures.js';
+import { BLACK_CIRCLE } from 'src/shared/constants/figures.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { Screen } from 'src/agent/repl/REPL.js';
-import type { NormalizedUserMessage } from 'src/types/message.js';
+import type { NormalizedUserMessage } from 'src/shared/types/message.js';
 import { getUserMessageText } from 'src/agent/messages/messages.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';

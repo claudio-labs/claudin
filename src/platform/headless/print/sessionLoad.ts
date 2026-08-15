@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle'
 import { randomUUID } from 'crypto'
 import { dirname } from 'path'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type {
   SessionExternalMetadata,
@@ -29,7 +29,7 @@ import {
   switchSession,
   isSessionPersistenceDisabled,
 } from 'src/platform/bootstrap/state.js'
-import { asSessionId } from 'src/types/ids.js'
+import { asSessionId } from 'src/shared/types/ids.js'
 import { processSessionStartHooks } from 'src/sessions/sessionStart.js'
 import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js'
 import { EMPTY_USAGE } from 'src/providers/transport/logging.js'

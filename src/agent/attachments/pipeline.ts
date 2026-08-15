@@ -14,12 +14,12 @@ import type { IDESelection } from 'src/platform/ide/useIdeSelection.js'
 import type {
   AttachmentMessage,
   Message,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import {
   type QueuedCommand,
   getImagePasteIds,
   isValidImagePaste,
-} from 'src/types/textInputTypes.js'
+} from 'src/shared/types/textInputTypes.js'
 import type {
   ContentBlockParam,
   ImageBlockParam,
@@ -28,7 +28,7 @@ import type {
 import { maybeResizeAndDownsampleImageBlock } from 'src/terminal/image/imageResizer.js'
 import type { PastedContent } from 'src/platform/config/config.js'
 import { drainPendingMessages } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
-import type { QuerySource } from 'src/constants/querySource.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { extractTextContent } from 'src/agent/messages/messages.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { feature } from 'bun:bundle'

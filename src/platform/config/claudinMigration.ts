@@ -11,7 +11,7 @@ import {
 import { homedir } from 'os'
 import { join } from 'path'
 
-import { fileSuffixForOauthConfig } from 'src/constants/oauth.js'
+import { fileSuffixForOauthConfig } from 'src/shared/constants/oauth.js'
 import {
   _setGlobalConfigCacheForTesting,
   getGlobalConfig,

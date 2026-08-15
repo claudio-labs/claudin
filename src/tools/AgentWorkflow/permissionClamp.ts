@@ -4,7 +4,7 @@
  * permission mode, but must never exceed the session's permission context; this
  * returns the *less* permissive of the two.
  */
-import type { PermissionMode } from 'src/types/permissions.js'
+import type { PermissionMode } from 'src/shared/types/permissions.js'
 
 export const MODE_RANK: Record<string, number> = {
   plan: 0,

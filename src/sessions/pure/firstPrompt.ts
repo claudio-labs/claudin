@@ -1,8 +1,8 @@
 import { feature } from 'bun:bundle'
 import { builtInCommandNames } from 'src/commands/commands.js'
-import { COMMAND_NAME_TAG, TICK_TAG } from 'src/constants/xml.js'
-import type { TranscriptMessage } from 'src/types/logs.js'
-import type { Message } from 'src/types/message.js'
+import { COMMAND_NAME_TAG, TICK_TAG } from 'src/shared/constants/xml.js'
+import type { TranscriptMessage } from 'src/shared/types/logs.js'
+import type { Message } from 'src/shared/types/message.js'
 import { extractTag } from 'src/agent/messages/messages.js'
 import { jsonParse } from 'src/platform/slowOperations.js'
 

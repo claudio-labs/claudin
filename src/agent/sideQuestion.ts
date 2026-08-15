@@ -8,7 +8,7 @@
 
 import { formatAPIError } from 'src/providers/transport/errorUtils.js'
 import type { NonNullableUsage } from 'src/providers/transport/logging.js'
-import type { Message, SystemAPIErrorMessage } from 'src/types/message.js'
+import type { Message, SystemAPIErrorMessage } from 'src/shared/types/message.js'
 import { type CacheSafeParams, runForkedAgent } from 'src/agent/coordinator/forkedAgent.js'
 import { createUserMessage, extractTextContent } from 'src/agent/messages/messages.js'
 

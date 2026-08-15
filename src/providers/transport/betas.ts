@@ -19,8 +19,8 @@ import {
   TOOL_SEARCH_BETA_HEADER_1P,
   TOOL_SEARCH_BETA_HEADER_3P,
   WEB_SEARCH_BETA_HEADER,
-} from 'src/constants/betas.js'
-import { OAUTH_BETA_HEADER } from 'src/constants/oauth.js'
+} from 'src/shared/constants/betas.js'
+import { OAUTH_BETA_HEADER } from 'src/shared/constants/oauth.js'
 import { isClaudeAISubscriber } from 'src/providers/auth/auth.js'
 import { has1mContext } from 'src/agent/context/context.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'

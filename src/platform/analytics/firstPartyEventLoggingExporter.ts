@@ -15,8 +15,8 @@ import {
   getIsNonInteractiveSession,
   getSessionId,
 } from 'src/platform/bootstrap/state.js'
-import { ClaudeCodeInternalEvent } from 'src/types/generated/events_mono/claude_code/v1/claude_code_internal_event.js'
-import { GrowthbookExperimentEvent } from 'src/types/generated/events_mono/growthbook/v1/growthbook_experiment_event.js'
+import { ClaudeCodeInternalEvent } from 'src/shared/types/generated/events_mono/claude_code/v1/claude_code_internal_event.js'
+import { GrowthbookExperimentEvent } from 'src/shared/types/generated/events_mono/growthbook/v1/growthbook_experiment_event.js'
 import {
   getClaudeAIOAuthTokens,
   hasProfileScope,

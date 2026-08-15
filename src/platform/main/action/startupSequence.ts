@@ -60,7 +60,7 @@ import { shouldEnableThinkingByDefault, type ThinkingConfig } from 'src/agent/co
 import { launchInvalidSettingsDialog } from 'src/terminal/dialogLaunchers.js';
 import { type AppState, IDLE_SPECULATION_STATE } from 'src/terminal/state/AppStateStore.js';
 import type { Root } from 'src/terminal/ink.js';
-import type { InternalPermissionMode } from 'src/types/permissions.js';
+import type { InternalPermissionMode } from 'src/shared/types/permissions.js';
 import type { BootContext } from 'src/platform/main/bootContext.js';
 import type { ActionOptions } from 'src/platform/main/action/parseOptions.js';
 import uniqBy from 'lodash-es/uniqBy.js';

@@ -3,7 +3,7 @@ import type { Tools } from 'src/tools/Tool.js'
 import type {
   CollapsedReadSearchGroup,
   RenderableMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import {
   collapseReadSearchGroups,
   summarizeRecentActivities,

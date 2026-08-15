@@ -4,7 +4,7 @@ import React, { useCallback } from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { getAllBaseTools } from 'src/tools/tools.js';
-import type { LogOption } from 'src/types/logs.js';
+import type { LogOption } from 'src/shared/types/logs.js';
 import { formatRelativeTimeAgo } from 'src/shared/text/format.js';
 import { getSessionIdFromLog, isLiteLog, loadFullLog } from 'src/sessions/sessionStorage.js';
 import type { Command } from 'src/commands/commands.js';

@@ -21,18 +21,18 @@ import {
 import {
   getAttributionHeader,
   getCLISyspromptPrefix,
-} from "src/constants/system.js";
+} from "src/agent/prompts/system.js";
 import { type Tool, type Tools, toolMatchesName } from "src/tools/Tool.js";
 import type {
   ConnectorTextBlock,
   ConnectorTextDelta,
-} from "src/types/connectorText.js";
+} from "src/shared/types/connectorText.js";
 import type {
   AssistantMessage,
   Message,
   StreamEvent,
   SystemAPIErrorMessage,
-} from "src/types/message.js";
+} from "src/shared/types/message.js";
 import { logAPIPrefix, toolToAPISchema } from "src/providers/transport/api.js";
 import {
   getBedrockExtraBodyParamsBetas,
@@ -112,7 +112,7 @@ import {
   PROMPT_CACHING_SCOPE_BETA_HEADER,
   REDACT_THINKING_BETA_HEADER,
   STRUCTURED_OUTPUTS_BETA_HEADER,
-} from "src/constants/betas.js";
+} from "src/shared/constants/betas.js";
 import { addToTotalSessionCost } from "src/agent/cost-tracker.js";
 import { getFeatureValue_CACHED_MAY_BE_STALE } from "src/platform/analytics/growthbook.js";
 import {
@@ -155,8 +155,8 @@ import {
   isToolSearchEnabled,
   maybeLatchLegacyDeferredAnnouncement,
 } from "src/agent/tools/toolSearch.js";
-import { API_MAX_MEDIA_PER_REQUEST } from "src/constants/apiLimits.js";
-import { ADVISOR_BETA_HEADER } from "src/constants/betas.js";
+import { API_MAX_MEDIA_PER_REQUEST } from "src/shared/constants/apiLimits.js";
+import { ADVISOR_BETA_HEADER } from "src/shared/constants/betas.js";
 import {
   formatDeferredToolLine,
   isDeferredTool,
@@ -1509,7 +1509,7 @@ export async function* queryModel(
                     feature("CONNECTOR_TEXT") &&
                     contentBlock.type === "connector_text"
                   ) {
-                    // ConnectorTextBlock (src/types/connectorText.ts) doesn't
+                    // ConnectorTextBlock (src/shared/types/connectorText.ts) doesn't
                     // declare `signature` — bolt it on locally, same pattern
                     // used elsewhere for a field the base type is missing.
                     (contentBlock as ConnectorTextBlock & { signature?: string }).signature = delta.signature;

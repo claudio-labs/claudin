@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import { BLACK_CIRCLE } from 'src/constants/figures.js';
+import { BLACK_CIRCLE } from 'src/shared/constants/figures.js';
 import { useBlink } from 'src/terminal/hooks/useBlink.js';
 import { Box, Text } from 'src/terminal/ink.js';
 type Props = {

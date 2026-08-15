@@ -1,6 +1,6 @@
 import type { BetaUsage as Usage } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { roughTokenCountEstimation, roughTokenCountEstimationForMessages } from 'src/shared/tokenEstimation.js'
-import type { AssistantMessage, Message } from 'src/types/message.js'
+import type { AssistantMessage, Message } from 'src/shared/types/message.js'
 import { SYNTHETIC_MESSAGES, SYNTHETIC_MODEL } from 'src/agent/messages/messages.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 

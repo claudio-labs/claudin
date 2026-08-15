@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getOauthConfig } from 'src/constants/oauth.js'
+import { getOauthConfig } from 'src/shared/constants/oauth.js'
 import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getOAuthHeaders, prepareApiRequest } from 'src/platform/teleport/api.js'

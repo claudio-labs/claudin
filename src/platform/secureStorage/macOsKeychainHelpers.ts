@@ -16,7 +16,7 @@
 
 import { createHash } from 'crypto'
 import { userInfo } from 'os'
-import { getOauthConfig } from 'src/constants/oauth.js'
+import { getOauthConfig } from 'src/shared/constants/oauth.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import type { SecureStorageData } from 'src/platform/secureStorage/index.js'
 

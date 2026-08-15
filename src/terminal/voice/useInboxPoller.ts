@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import { useCallback, useEffect, useRef } from 'react'
 import { useInterval } from 'usehooks-ts'
 import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js'
-import { TEAMMATE_MESSAGE_TAG } from 'src/constants/xml.js'
+import { TEAMMATE_MESSAGE_TAG } from 'src/shared/constants/xml.js'
 import { useTerminalNotification } from 'src/terminal/ink/useTerminalNotification.js'
 import { sendNotification } from 'src/platform/notifications/notifier.js'
 import {
@@ -14,7 +14,7 @@ import {
 import { findToolByName } from 'src/tools/Tool.js'
 import { isInProcessTeammateTask } from 'src/agent/tasks/InProcessTeammateTask/types.js'
 import { getAllBaseTools } from 'src/tools/tools.js'
-import type { PermissionUpdate } from 'src/types/permissions.js'
+import type { PermissionUpdate } from 'src/shared/types/permissions.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import {
   findInProcessTeammateTaskId,

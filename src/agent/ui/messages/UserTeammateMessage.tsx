@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import type { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import figures from 'figures';
 import * as React from 'react';
-import { TEAMMATE_MESSAGE_TAG } from 'src/constants/xml.js';
+import { TEAMMATE_MESSAGE_TAG } from 'src/shared/constants/xml.js';
 import { Ansi, Box, Text, type TextProps } from 'src/terminal/ink.js';
 import { toInkColor } from 'src/terminal/render/ink.js';
 import { jsonParse } from 'src/platform/slowOperations.js';

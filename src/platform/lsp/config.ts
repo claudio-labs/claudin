@@ -1,4 +1,4 @@
-import type { PluginError } from 'src/types/plugin.js'
+import type { PluginError } from 'src/shared/types/plugin.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage, toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'

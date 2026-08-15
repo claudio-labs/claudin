@@ -1,5 +1,5 @@
 import { getSdkAgentProgressSummariesEnabled } from 'src/platform/bootstrap/state.js';
-import { OUTPUT_FILE_TAG, STATUS_TAG, SUMMARY_TAG, TASK_ID_TAG, TASK_NOTIFICATION_TAG, TOOL_USE_ID_TAG, WORKTREE_BRANCH_TAG, WORKTREE_PATH_TAG, WORKTREE_TAG } from 'src/constants/xml.js';
+import { OUTPUT_FILE_TAG, STATUS_TAG, SUMMARY_TAG, TASK_ID_TAG, TASK_NOTIFICATION_TAG, TOOL_USE_ID_TAG, WORKTREE_BRANCH_TAG, WORKTREE_PATH_TAG, WORKTREE_TAG } from 'src/shared/constants/xml.js';
 import { abortSpeculation } from 'src/terminal/prompt-suggestion/speculation.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import type { SetAppState, Task, TaskStateBase } from 'src/agent/Task.js';
@@ -9,8 +9,8 @@ import { findToolByName } from 'src/tools/Tool.js';
 import type { AgentToolResult } from 'src/tools/AgentTool/agentToolUtils.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { SYNTHETIC_OUTPUT_TOOL_NAME } from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js';
-import { asAgentId } from 'src/types/ids.js';
-import type { Message } from 'src/types/message.js';
+import { asAgentId } from 'src/shared/types/ids.js';
+import type { Message } from 'src/shared/types/message.js';
 import { createAbortController, createChildAbortController } from 'src/shared/abortController.js';
 import { registerCleanup } from 'src/shared/cleanupRegistry.js';
 import { getToolSearchOrReadInfo } from 'src/agent/tools/collapseReadSearch.js';

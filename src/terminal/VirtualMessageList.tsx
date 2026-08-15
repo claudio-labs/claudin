@@ -8,7 +8,7 @@ import type { DOMElement } from 'src/terminal/ink/dom.js';
 import type { ClickEvent } from 'src/terminal/ink/events/click-event.js';
 import type { MatchPosition } from 'src/terminal/ink/render-to-screen.js';
 import { Box } from 'src/terminal/ink.js';
-import type { RenderableMessage } from 'src/types/message.js';
+import type { RenderableMessage } from 'src/shared/types/message.js';
 import { TextHoverColorContext } from 'src/terminal/design-system/ThemedText.js';
 import { ScrollChromeContext } from 'src/terminal/FullscreenLayout.js';
 

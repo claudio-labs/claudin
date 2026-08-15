@@ -20,7 +20,7 @@ import { plural } from 'src/shared/text/stringUtils.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { tryRenderPlanApprovalMessage, formatTeammateMessageContent } from 'src/agent/ui/messages/PlanApprovalMessage.js';
-import { BLACK_CIRCLE } from 'src/constants/figures.js';
+import { BLACK_CIRCLE } from 'src/shared/constants/figures.js';
 import { TeammateMessageContent } from 'src/agent/ui/messages/UserTeammateMessage.js';
 import { isShutdownApproved } from 'src/agent/coordinator/teammateMailbox.js';
 import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';

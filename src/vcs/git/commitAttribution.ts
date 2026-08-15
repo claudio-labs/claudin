@@ -5,7 +5,7 @@ import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
 import type {
   AttributionSnapshotMessage,
   FileAttributionState,
-} from 'src/types/logs.js'
+} from 'src/shared/types/logs.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'

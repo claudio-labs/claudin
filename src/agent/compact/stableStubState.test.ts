@@ -29,7 +29,7 @@ import {
   regenerateSessionId,
   switchSession,
 } from 'src/platform/bootstrap/state.js'
-import type { SessionId } from 'src/types/ids.js'
+import type { SessionId } from 'src/shared/types/ids.js'
 
 type Block = Record<string, unknown>
 type Msg = {
@@ -653,7 +653,7 @@ describe('pruneOldToolResults', () => {
 
   // Regression: QueryEngine.mutableMessages stores messages in the
   // `{ type, message: { role, content } }` wrapper shape (see Message type in
-  // src/types/message.ts). pruneOldToolResults must stub those correctly.
+  // src/shared/types/message.ts). pruneOldToolResults must stub those correctly.
   // Without this coverage, an edit to getInner() could silently break A1.
   test('handles .message wrapper shape used by mutableMessages', () => {
     const bigContent = 'C'.repeat(10_000)

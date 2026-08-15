@@ -4,7 +4,7 @@ import { isFeedbackSurveyDisabled } from 'src/platform/analytics/config.js';
 import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { shouldUseSessionMemoryCompaction } from 'src/agent/compact/sessionMemoryCompact.js';
-import type { Message } from 'src/types/message.js';
+import type { Message } from 'src/shared/types/message.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { isCompactBoundaryMessage } from 'src/agent/messages/messages.js';
 import { logOTelEvent } from 'src/platform/telemetry/events.js';

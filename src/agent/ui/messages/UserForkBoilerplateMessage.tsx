@@ -3,7 +3,7 @@ import React from 'react'
 import {
   FORK_BOILERPLATE_TAG,
   FORK_DIRECTIVE_PREFIX,
-} from 'src/constants/xml.js'
+} from 'src/shared/constants/xml.js'
 import { UserPromptMessage } from 'src/agent/ui/messages/UserPromptMessage.js'
 
 type Props = {

@@ -1,4 +1,4 @@
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 
 /**
  * Groups messages at API-round boundaries: one group per API round-trip.

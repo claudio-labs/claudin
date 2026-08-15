@@ -1,6 +1,6 @@
-import type { QuerySource } from 'src/constants/querySource.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import { toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
 import type { SystemPrompt } from 'src/agent/systemPromptType.js'

@@ -33,7 +33,7 @@ import type {
   Expect,
   ExpectFalse,
   HasKey,
-} from 'src/types/typeAssertions.js'
+} from 'src/shared/types/typeAssertions.js'
 import type { NonNullableUsage } from 'src/platform/entrypoints/sdk/sdkUtilityTypes.js'
 import { EMPTY_USAGE } from 'src/providers/usage/emptyUsage.js'
 

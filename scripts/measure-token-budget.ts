@@ -28,7 +28,7 @@
  */
 
 import { getAllBaseTools } from '../src/tools/tools.js'
-import { getSystemPrompt, computeSimpleEnvInfo } from '../src/constants/prompts.js'
+import { getSystemPrompt, computeSimpleEnvInfo } from '../src/agent/prompts/prompts.js'
 import { loadMemoryPrompt } from '../src/memory/memdir/memdir.js'
 import {
   getBytesPerTokenForModel,

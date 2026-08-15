@@ -57,7 +57,7 @@ import type {
   PluginError,
   PluginLoadResult,
   PluginManifest,
-} from 'src/types/plugin.js'
+} from 'src/shared/types/plugin.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {

@@ -4,7 +4,7 @@ import type { CommandResultDisplay } from 'src/commands/commands.js';
 import { Pane } from 'src/terminal/design-system/Pane.js';
 import { ThemePicker } from 'src/platform/ThemePicker.js';
 import { useTheme } from 'src/terminal/ink.js';
-import type { LocalJSXCommandCall } from 'src/types/command.js';
+import type { LocalJSXCommandCall } from 'src/shared/types/command.js';
 import type { ThemeSetting } from 'src/terminal/theme/theme.js';
 type Props = {
   onDone: (result?: string, options?: {

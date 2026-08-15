@@ -1,6 +1,6 @@
 import { z } from 'zod/v4'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
-import type { PermissionUpdate } from 'src/types/permissions.js'
+import type { PermissionUpdate } from 'src/shared/types/permissions.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'

@@ -6,15 +6,15 @@ import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { z } from 'zod/v4';
 import { getKairosActive } from 'src/platform/bootstrap/state.js';
-import { TOOL_SUMMARY_MAX_LENGTH } from 'src/constants/toolLimits.js';
+import { TOOL_SUMMARY_MAX_LENGTH } from 'src/tools/constants/toolLimits.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { logError } from 'src/shared/log.js';
 import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js';
 import type { SetToolJSXFn, ToolCallProgress, ToolUseContext, ValidationResult } from 'src/tools/Tool.js';
 import { buildTool, findToolByName, type ToolDef } from 'src/tools/Tool.js';
 import { backgroundExistingForegroundTask, markTaskNotified, registerForeground, spawnShellTask, unregisterForeground } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js';
-import type { AgentId } from 'src/types/ids.js';
-import type { AssistantMessage } from 'src/types/message.js';
+import type { AgentId } from 'src/shared/types/ids.js';
+import type { AssistantMessage } from 'src/shared/types/message.js';
 import { parseForSecurity } from 'src/platform/bash/ast.js';
 import { splitCommand_DEPRECATED, splitCommandWithOperators } from 'src/platform/bash/commands.js';
 import { SEMANTIC_NEUTRAL_COMMANDS, walkCommandSegments } from 'src/platform/bash/segments.js';
@@ -306,8 +306,8 @@ type OutputSchema = ReturnType<typeof outputSchema>;
 export type Out = z.infer<OutputSchema>;
 
 // Re-export BashProgress from centralized types to break import cycles
-export type { BashProgress } from 'src/types/tools.js';
-import type { BashProgress } from 'src/types/tools.js';
+export type { BashProgress } from 'src/shared/types/tools.js';
+import type { BashProgress } from 'src/shared/types/tools.js';
 
 /**
  * Checks if a command is allowed to be automatically backgrounded

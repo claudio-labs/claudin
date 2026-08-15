@@ -35,7 +35,7 @@ import type {
   SessionEndHookInput,
   StopFailureHookInput,
 } from 'src/platform/entrypoints/agentSdkTypes.js'
-import type { AssistantMessage } from 'src/types/message.js'
+import type { AssistantMessage } from 'src/shared/types/message.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import type {

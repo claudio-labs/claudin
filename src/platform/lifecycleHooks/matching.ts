@@ -30,7 +30,7 @@ import {
   permissionRuleValueFromString,
 } from 'src/permissions/permissionRuleParser.js'
 import { findToolByName, type Tools } from 'src/tools/Tool.js'
-import type { HookCallbackMatcher } from 'src/types/hooks.js'
+import type { HookCallbackMatcher } from 'src/shared/types/hooks.js'
 import {
   getSessionHooks,
   getSessionFunctionHooks,

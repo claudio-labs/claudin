@@ -5,7 +5,7 @@ import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.
 import { FOOTER_TEMPORARY_STATUS_TIMEOUT } from 'src/terminal/prompt-input/Notifications.js';
 import { getHistory } from 'src/agent/history.js';
 import { Text } from 'src/terminal/ink.js';
-import type { PromptInputMode } from 'src/types/textInputTypes.js';
+import type { PromptInputMode } from 'src/shared/types/textInputTypes.js';
 import type { HistoryEntry, PastedContent } from 'src/platform/config/config.js';
 export type HistoryMode = PromptInputMode;
 

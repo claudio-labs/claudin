@@ -1097,7 +1097,7 @@ export const GROUPS: readonly Group[] = [
     // the directory — first claim wins, and groups run in order.
     name: 'constants-split',
     dirs: [
-      { from: 'src/constants/familyAddendums', to: 'src/agent/prompts/familyAddendums' },
+      { from: 'src/shared/constants/familyAddendums', to: 'src/agent/prompts/familyAddendums' },
     ],
     files: [
       {

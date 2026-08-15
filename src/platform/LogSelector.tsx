@@ -12,7 +12,7 @@ import type { Color } from 'src/terminal/ink/styles.js';
 import { Box, type Key, Text, useInput, useTerminalFocus, useTheme } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { logEvent } from 'src/platform/analytics/index.js';
-import type { LogOption, SerializedMessage } from 'src/types/logs.js';
+import type { LogOption, SerializedMessage } from 'src/shared/types/logs.js';
 import { formatLogMetadata, truncateToWidth } from 'src/shared/text/format.js';
 import { getWorktreePaths } from 'src/vcs/git/getWorktreePaths.js';
 import { getBranch } from 'src/vcs/git/git.js';

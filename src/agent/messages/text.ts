@@ -1,10 +1,10 @@
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import type { UUID } from 'crypto'
-import { NO_CONTENT_MESSAGE } from 'src/constants/messages.js'
+import { NO_CONTENT_MESSAGE } from 'src/agent/prompts/messages.js'
 import {
   COMMAND_ARGS_TAG,
   COMMAND_NAME_TAG,
-} from 'src/constants/xml.js'
+} from 'src/shared/constants/xml.js'
 import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import type {
@@ -12,8 +12,8 @@ import type {
   MessageOrigin,
   NormalizedMessage,
   UserMessage,
-} from 'src/types/message.js'
-import type { DeepImmutable } from 'src/types/utils.js'
+} from 'src/shared/types/message.js'
+import type { DeepImmutable } from 'src/shared/types/utils.js'
 import { stripIdeContextTags } from 'src/shared/text/displayTags.js'
 import { escapeRegExp } from 'src/shared/text/stringUtils.js'
 

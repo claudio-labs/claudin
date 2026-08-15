@@ -16,7 +16,7 @@
  */
 import { expect, test } from 'bun:test'
 import { z } from 'zod/v4'
-import type { Equal, Expect } from 'src/types/typeAssertions.js'
+import type { Equal, Expect } from 'src/shared/types/typeAssertions.js'
 import type { BuiltTool, DefaultableToolKeys, ToolDefaults } from 'src/tools/Tool.js'
 import { buildTool } from 'src/tools/Tool.js'
 

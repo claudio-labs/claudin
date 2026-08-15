@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react'
 import type { Key } from 'src/terminal/ink.js'
-import type { VimInputState, VimMode } from 'src/types/textInputTypes.js'
+import type { VimInputState, VimMode } from 'src/shared/types/textInputTypes.js'
 import { Cursor } from 'src/terminal/input/Cursor.js'
 import { lastGrapheme } from 'src/shared/text/intl.js'
 import {

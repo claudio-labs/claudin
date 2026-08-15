@@ -8,7 +8,7 @@ import {
 } from 'bun:test'
 import { getProjectTotals, resetCostState } from 'src/agent/cost-tracker.js'
 import { switchSession, getSessionId } from 'src/platform/bootstrap/state.js'
-import { asSessionId } from 'src/types/ids.js'
+import { asSessionId } from 'src/shared/types/ids.js'
 import { saveCurrentProjectConfig } from 'src/platform/config/config.js'
 
 describe('getProjectTotals', () => {

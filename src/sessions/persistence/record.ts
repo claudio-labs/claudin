@@ -10,10 +10,10 @@
  */
 import type { UUID } from 'crypto'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import type { AgentId } from 'src/types/ids.js'
-import type { AttributionSnapshotMessage } from 'src/types/logs.js'
-import type { Message } from 'src/types/message.js'
-import type { QueueOperationMessage } from 'src/types/messageQueueTypes.js'
+import type { AgentId } from 'src/shared/types/ids.js'
+import type { AttributionSnapshotMessage } from 'src/shared/types/logs.js'
+import type { Message } from 'src/shared/types/message.js'
+import type { QueueOperationMessage } from 'src/shared/types/messageQueueTypes.js'
 import type { FileHistorySnapshot } from 'src/shared/fs/fileHistory.js'
 import { getProject } from 'src/sessions/persistence/project.js'
 import {

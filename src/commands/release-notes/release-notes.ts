@@ -1,4 +1,4 @@
-import type { LocalCommandResult } from 'src/types/command.js'
+import type { LocalCommandResult } from 'src/shared/types/command.js'
 import {
   CHANGELOG_URL,
   fetchAndStoreChangelog,

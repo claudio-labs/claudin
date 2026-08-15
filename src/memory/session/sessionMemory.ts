@@ -7,7 +7,7 @@
 import { writeFile } from 'fs/promises'
 import memoize from 'lodash-es/memoize.js'
 import { getIsRemoteMode } from 'src/platform/bootstrap/state.js'
-import { getSystemPrompt } from 'src/constants/prompts.js'
+import { getSystemPrompt } from 'src/agent/prompts/prompts.js'
 import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
@@ -16,7 +16,7 @@ import {
   FileReadTool,
   type Output as FileReadToolOutput,
 } from 'src/tools/FileReadTool/FileReadTool.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import { count } from 'src/shared/data/array.js'
 import {
   createCacheSafeParams,

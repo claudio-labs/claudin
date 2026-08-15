@@ -37,7 +37,7 @@ import { validateUuid } from 'src/shared/data/uuid.js';
 import { initBuiltinPlugins } from 'src/plugins/bundled/index.js';
 import { initBundledSkills } from 'src/skills/bundled/index.js';
 import { maybeActivateBrief } from 'src/platform/main/lifecycle.js';
-import type { InternalPermissionMode } from 'src/types/permissions.js';
+import type { InternalPermissionMode } from 'src/shared/types/permissions.js';
 import type { BootContext } from 'src/platform/main/bootContext.js';
 import type { ActionOptions } from 'src/platform/main/action/parseOptions.js';
 

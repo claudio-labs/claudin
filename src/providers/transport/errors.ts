@@ -4,13 +4,13 @@ import type {
   BetaRefusalStopDetails,
   BetaStopReason,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
-import { AFK_MODE_BETA_HEADER } from 'src/constants/betas.js'
+import { AFK_MODE_BETA_HEADER } from 'src/shared/constants/betas.js'
 import type { SDKAssistantMessageError } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type {
   AssistantMessage,
   Message,
   UserMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import {
   getAnthropicApiKeyWithSource,
   getClaudeAIOAuthTokens,
@@ -32,7 +32,7 @@ import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
 import {
   API_PDF_MAX_PAGES,
   PDF_TARGET_RAW_SIZE,
-} from 'src/constants/apiLimits.js'
+} from 'src/shared/constants/apiLimits.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { formatFileSize } from 'src/shared/text/format.js'

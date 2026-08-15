@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import React from 'react';
-import { GITHUB_ACTION_SETUP_DOCS_URL } from 'src/constants/github-app.js';
+import { GITHUB_ACTION_SETUP_DOCS_URL } from 'src/shared/constants/github-app.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 interface InstallAppStepProps {

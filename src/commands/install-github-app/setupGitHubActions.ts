@@ -8,7 +8,7 @@ import {
   PR_BODY,
   PR_TITLE,
   WORKFLOW_CONTENT,
-} from 'src/constants/github-app.js'
+} from 'src/shared/constants/github-app.js'
 import { openBrowser } from 'src/shared/browser.js'
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
 import { logError } from 'src/shared/log.js'

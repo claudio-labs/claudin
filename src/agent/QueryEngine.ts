@@ -29,7 +29,7 @@ import { getSlashCommandToolSkills } from 'src/commands/commands.js'
 import {
   LOCAL_COMMAND_STDERR_TAG,
   LOCAL_COMMAND_STDOUT_TAG,
-} from 'src/constants/xml.js'
+} from 'src/shared/constants/xml.js'
 import {
   getModelUsage,
   getTotalAPIDuration,
@@ -45,8 +45,8 @@ import type { AppState } from 'src/terminal/state/AppState.js'
 import { type Tools, type ToolUseContext, toolMatchesName } from 'src/tools/Tool.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { SYNTHETIC_OUTPUT_TOOL_NAME } from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js'
-import type { Message } from 'src/types/message.js'
-import type { OrphanedPermission } from 'src/types/textInputTypes.js'
+import type { Message } from 'src/shared/types/message.js'
+import type { OrphanedPermission } from 'src/shared/types/textInputTypes.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import type { AttributionState } from 'src/vcs/git/commitAttribution.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'

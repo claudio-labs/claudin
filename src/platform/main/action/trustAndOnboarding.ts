@@ -26,7 +26,7 @@ import type { Root } from 'src/terminal/ink.js';
 import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
 import type { StatsStore } from 'src/terminal/contexts/stats.js';
 import type { ChannelEntry } from 'src/platform/bootstrap/state.js';
-import type { InternalPermissionMode } from 'src/types/permissions.js';
+import type { InternalPermissionMode } from 'src/shared/types/permissions.js';
 import { launchSnapshotUpdateDialog } from 'src/terminal/dialogLaunchers.js';
 import { exitWithError, getRenderContext, showSetupScreens } from 'src/terminal/interactiveHelpers.js';
 import { profileCheckpoint } from 'src/platform/startupProfiler.js';

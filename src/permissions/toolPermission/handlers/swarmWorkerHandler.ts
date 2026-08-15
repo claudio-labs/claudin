@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle'
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs'
-import type { PendingClassifierCheck } from 'src/types/permissions.js'
+import type { PendingClassifierCheck } from 'src/shared/types/permissions.js'
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import { toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'

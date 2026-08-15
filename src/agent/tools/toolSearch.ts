@@ -30,7 +30,7 @@ import {
   isDeferredTool,
   TOOL_SEARCH_TOOL_NAME,
 } from 'src/tools/ToolSearchTool/prompt.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import {
   countToolDefinitionTokens,
   TOOL_TOKEN_COUNT_OVERHEAD,

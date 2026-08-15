@@ -49,7 +49,7 @@ import {
 } from '../src/shared/tokenEstimation.js'
 import { enableConfigs } from '../src/platform/config/config.js'
 import { measureToolSchemas } from './measure-tool-schemas.ts'
-import { computeSimpleEnvInfo, getSystemPrompt } from '../src/constants/prompts.js'
+import { computeSimpleEnvInfo, getSystemPrompt } from '../src/agent/prompts/prompts.js'
 import { loadMemoryPrompt } from '../src/memory/memdir/memdir.js'
 import { getAllBaseTools } from '../src/tools/tools.js'
 import { getEffectiveContextWindowSize } from '../src/agent/compact/autoCompact.js'

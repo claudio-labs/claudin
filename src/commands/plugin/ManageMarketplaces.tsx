@@ -9,7 +9,7 @@ import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcu
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- useInput needed for marketplace-specific u/r shortcuts and y/n confirmation not in keybinding schema
 import { Box, Text, useInput } from 'src/terminal/ink.js';
 import { useKeybinding, useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
-import type { LoadedPlugin } from 'src/types/plugin.js';
+import type { LoadedPlugin } from 'src/shared/types/plugin.js';
 import { count } from 'src/shared/data/array.js';
 import { shouldSkipPluginAutoupdate } from 'src/platform/config/config.js';
 import { errorMessage } from 'src/shared/errors.js';

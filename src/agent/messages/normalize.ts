@@ -24,8 +24,8 @@ import {
   logEvent,
 } from 'src/platform/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
-import type { AgentId } from 'src/types/ids.js'
-import { NO_CONTENT_MESSAGE } from 'src/constants/messages.js'
+import type { AgentId } from 'src/shared/types/ids.js'
+import { NO_CONTENT_MESSAGE } from 'src/agent/prompts/messages.js'
 import {
   checkStatsigFeatureGate_CACHED_MAY_BE_STALE,
 } from 'src/platform/analytics/growthbook.js'
@@ -51,10 +51,10 @@ import type {
   SystemLocalCommandMessage,
   SystemMessage,
   UserMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import type { HookAttachment } from 'src/agent/attachments/attachments.js'
 import { isAdvisorBlock } from 'src/platform/doctor/advisor.js'
-import { isConnectorTextBlock } from 'src/types/connectorText.js'
+import { isConnectorTextBlock } from 'src/shared/types/connectorText.js'
 import { normalizeToolInput, normalizeToolInputForAPI } from 'src/providers/transport/api.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { validateImagesForAPI } from 'src/terminal/image/imageValidation.js'

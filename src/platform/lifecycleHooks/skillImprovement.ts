@@ -8,7 +8,7 @@ import {
 } from 'src/platform/analytics/index.js'
 import { queryModelWithoutStreaming } from 'src/providers/shims/claude.js'
 import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import { count } from 'src/shared/data/array.js'
 import { getCwd } from 'src/shared/fs/cwd.js'

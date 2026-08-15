@@ -4,7 +4,7 @@
 // (ROADMAP 11g Fase 5b).
 
 import chalk from 'chalk';
-import { getRemoteSessionUrl } from 'src/constants/product.js';
+import { getRemoteSessionUrl } from 'src/shared/constants/product.js';
 import { getOriginalCwd, setIsRemoteMode, setOriginalCwd, setTeleportedSessionInfo, switchSession } from 'src/platform/bootstrap/state.js';
 import { filterCommandsForRemoteMode } from 'src/commands/commands.js';
 import { launchResumeChooser, launchTeleportRepoMismatchDialog, launchTeleportResumeWrapper } from 'src/terminal/dialogLaunchers.js';
@@ -17,9 +17,9 @@ import { logEvent } from 'src/platform/analytics/index.js';
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';
-import { asSessionId } from 'src/types/ids.js';
-import type { LogOption } from 'src/types/logs.js';
-import type { Message as MessageType } from 'src/types/message.js';
+import { asSessionId } from 'src/shared/types/ids.js';
+import type { LogOption } from 'src/shared/types/logs.js';
+import type { Message as MessageType } from 'src/shared/types/message.js';
 import { count } from 'src/shared/data/array.js';
 import { loadConversationForResume } from 'src/sessions/conversationRecovery.js';
 import { errorMessage, TeleportOperationError, toError } from 'src/shared/errors.js';

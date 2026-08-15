@@ -3,7 +3,7 @@ import { useMemo, useRef } from 'react'
 import type { ApplyPatchFileResult } from 'src/tools/ApplyPatchTool/applyPatch.js'
 import type { FileEditOutput } from 'src/tools/FileEditTool/types.js'
 import type { Output as FileWriteOutput } from 'src/tools/FileWriteTool/FileWriteTool.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 
 export type TurnFileDiff = {
   filePath: string

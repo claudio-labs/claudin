@@ -5,7 +5,7 @@ import type { TodoList } from 'src/tools/TodoWriteTool/types.js'
 import type { Task } from 'src/agent/tasks/tasks.js'
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd.js'
 import type { DiagnosticFile } from 'src/platform/diagnosticTracking.js'
-import type { MessageOrigin } from 'src/types/message.js'
+import type { MessageOrigin } from 'src/shared/types/message.js'
 import type { UUID } from 'crypto'
 import type {
   ContentBlockParam,

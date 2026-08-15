@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import { isLeanToolPromptFamily } from 'src/constants/toolPromptTier.js'
+import { isLeanToolPromptFamily } from 'src/agent/prompts/toolPromptTier.js'
 import { isCompactLinePrefixEnabled } from 'src/shared/fs/file.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 

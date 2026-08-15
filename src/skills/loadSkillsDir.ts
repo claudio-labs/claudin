@@ -18,7 +18,7 @@ import {
   logEvent,
 } from 'src/platform/analytics/index.js'
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
-import type { Command, PromptCommand } from 'src/types/command.js'
+import type { Command, PromptCommand } from 'src/shared/types/command.js'
 import {
   parseArgumentNames,
   substituteArguments,

@@ -4,7 +4,7 @@ import { getSessionId } from 'src/platform/bootstrap/state.js'
 import {
   LOCAL_COMMAND_STDERR_TAG,
   LOCAL_COMMAND_STDOUT_TAG,
-} from 'src/constants/xml.js'
+} from 'src/shared/constants/xml.js'
 import type {
   SDKAssistantMessage,
   SDKCompactBoundaryMessage,
@@ -17,8 +17,8 @@ import type {
   AssistantMessage,
   CompactMetadata,
   Message,
-} from 'src/types/message.js'
-import type { DeepImmutable } from 'src/types/utils.js'
+} from 'src/shared/types/message.js'
+import type { DeepImmutable } from 'src/shared/types/utils.js'
 import stripAnsi from 'strip-ansi'
 import { createAssistantMessage } from 'src/agent/messages/messages.js'
 import { getPlan } from 'src/agent/plans/plans.js'
@@ -34,7 +34,7 @@ export function toInternalMessages(
             type: 'assistant',
             // message.message (DeepImmutable<SDKMessage>'s assistant arm) is
             // the SDK's own wire-shaped Message; our internal
-            // AssistantMessage['message'] (src/types/message.ts) is a
+            // AssistantMessage['message'] (src/shared/types/message.ts) is a
             // reduced, mutable mirror of it — only partial overlap, so this
             // goes through `unknown` like the file's other inbound/outbound
             // SDK boundary casts.
@@ -132,7 +132,7 @@ export function toSDKMessages(messages: Message[]): SDKMessage[] {
             // `context_management` at all (beta-only), and types
             // `content`/`usage` against the non-beta content-block/usage
             // shapes. Our internal AssistantMessage['message'] shape
-            // (src/types/message.ts) is beta-shaped and reduced (no
+            // (src/shared/types/message.ts) is beta-shaped and reduced (no
             // `container`/`diagnostics` tracking) — this boundary cast
             // mirrors the one `toClientEvent` already does below for the
             // same reason: our internal model is not a 1:1 mirror of the

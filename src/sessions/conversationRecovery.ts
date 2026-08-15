@@ -3,7 +3,7 @@ import type { UUID } from 'crypto'
 import { relative } from 'path'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { addInvokedSkill } from 'src/platform/bootstrap/state.js'
-import { asSessionId } from 'src/types/ids.js'
+import { asSessionId } from 'src/shared/types/ids.js'
 import type {
   AttributionSnapshotMessage,
   ContextCollapseCommitEntry,
@@ -11,13 +11,13 @@ import type {
   LogOption,
   PersistedWorktreeSession,
   SerializedMessage,
-} from 'src/types/logs.js'
+} from 'src/shared/types/logs.js'
 import type {
   Message,
   NormalizedMessage,
   NormalizedUserMessage,
-} from 'src/types/message.js'
-import { PERMISSION_MODES } from 'src/types/permissions.js'
+} from 'src/shared/types/message.js'
+import { PERMISSION_MODES } from 'src/shared/types/permissions.js'
 import {
   suppressNextBashGitInstructions,
   suppressNextSkillListing,

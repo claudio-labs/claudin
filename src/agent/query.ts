@@ -36,7 +36,7 @@ import type {
   ToolUseSummaryMessage,
   UserMessage,
   TombstoneMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { logError } from 'src/shared/log.js'
 import {
   PROMPT_TOO_LONG_ERROR_MESSAGE,
@@ -105,7 +105,7 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/grow
 import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js'
 import { executePostSamplingHooks } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import { executeStopFailureHooks } from 'src/platform/lifecycleHooks/hooks.js'
-import type { QuerySource } from 'src/constants/querySource.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { StreamingToolExecutor } from 'src/agent/tools/StreamingToolExecutor.js'
 import { queryCheckpoint } from 'src/agent/queryProfiler.js'
 import { runTools } from 'src/agent/tools/toolOrchestration.js'

@@ -1,18 +1,18 @@
 import { feature } from 'bun:bundle'
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs'
-import type { Permutations } from 'src/types/utils.js'
+import type { Permutations } from 'src/shared/types/utils.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type {
   QueueOperation,
   QueueOperationMessage,
-} from 'src/types/messageQueueTypes.js'
+} from 'src/shared/types/messageQueueTypes.js'
 import type {
   EditablePromptInputMode,
   PromptInputMode,
   QueuedCommand,
   QueuePriority,
-} from 'src/types/textInputTypes.js'
+} from 'src/shared/types/textInputTypes.js'
 import type { PastedContent } from 'src/platform/config/config.js'
 import { extractTextContent } from 'src/agent/messages/messages.js'
 import { objectGroupBy } from 'src/shared/data/objectGroupBy.js'

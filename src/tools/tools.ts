@@ -189,7 +189,7 @@ export {
   CUSTOM_AGENT_DISALLOWED_TOOLS,
   ASYNC_AGENT_ALLOWED_TOOLS,
   COORDINATOR_MODE_ALLOWED_TOOLS,
-} from 'src/constants/tools.js'
+} from 'src/tools/constants/tools.js'
 export { REPL_ONLY_TOOLS }
 
 // Cache for isEnabled() results. Keyed by tool name; invalidated on every

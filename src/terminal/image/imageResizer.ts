@@ -7,7 +7,7 @@ import {
   IMAGE_MAX_HEIGHT,
   IMAGE_MAX_WIDTH,
   IMAGE_TARGET_RAW_SIZE,
-} from 'src/constants/apiLimits.js'
+} from 'src/shared/constants/apiLimits.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import {
   getImageProcessor,

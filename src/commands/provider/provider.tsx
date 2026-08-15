@@ -1,5 +1,5 @@
-import type { LocalJSXCommandCall } from 'src/types/command.js'
-import { COMMON_HELP_ARGS, COMMON_INFO_ARGS } from 'src/constants/xml.js'
+import type { LocalJSXCommandCall } from 'src/shared/types/command.js'
+import { COMMON_HELP_ARGS, COMMON_INFO_ARGS } from 'src/shared/constants/xml.js'
 import {
   ProviderManager,
   type ProviderManagerResult,

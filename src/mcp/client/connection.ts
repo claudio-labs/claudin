@@ -9,7 +9,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import memoize from 'lodash-es/memoize.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { PRODUCT_URL } from 'src/constants/product.js'
+import { PRODUCT_URL } from 'src/shared/constants/product.js'
 import { type Tool } from 'src/tools/Tool.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'

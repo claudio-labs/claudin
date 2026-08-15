@@ -302,13 +302,13 @@ counting no longer existed.
 ### Type-level tests (`*.types.test.ts`)
 
 Compile-time assertions using `Expect<Equal<…>>` from
-`src/types/typeAssertions.ts`. They are enforced by `tsc` — that is, by
+`src/shared/types/typeAssertions.ts`. They are enforced by `tsc` — that is, by
 `bun run typecheck:ci` — not by the runner, so a broken invariant shows up as a
 new diagnostic on the `Expect<…>` line. Each file also carries a `test()` or
 two pinning the runtime half of the same invariant.
 
 They exist where a type is load-bearing and documented only in prose:
-`src/types/utils.types.test.ts` (the three `DeepImmutable` carve-outs),
+`src/shared/types/utils.types.test.ts` (the three `DeepImmutable` carve-outs),
 `src/platform/entrypoints/sdk/sdkUtilityTypes.types.test.ts` (`NonNullableUsage`'s
 deviation from the SDK shape) and `src/tools/Tool.types.test.ts` (`BuiltTool<D>`
 versus what `buildTool` actually spreads, including the fail-closed defaults).

@@ -55,9 +55,9 @@ import { isPanelAgentTask, type LocalAgentTaskState } from 'src/agent/tasks/Loca
 import { isBackgroundTask } from 'src/agent/tasks/types.js';
 import { AGENT_COLOR_TO_THEME_COLOR, AGENT_COLORS, type AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
-import type { Message } from 'src/types/message.js';
-import type { PermissionMode } from 'src/types/permissions.js';
-import type { BaseTextInputProps, PromptInputMode, VimMode } from 'src/types/textInputTypes.js';
+import type { Message } from 'src/shared/types/message.js';
+import type { PermissionMode } from 'src/shared/types/permissions.js';
+import type { BaseTextInputProps, PromptInputMode, VimMode } from 'src/shared/types/textInputTypes.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { count } from 'src/shared/data/array.js';
 import type { AutoUpdaterResult } from 'src/platform/install/autoUpdater.js';

@@ -32,11 +32,11 @@ import { useCallback } from 'react';
 import { feature } from 'bun:bundle';
 import { randomUUID, type UUID } from 'crypto';
 import type { ImageBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
-import type { Message as MessageType, UserMessage } from 'src/types/message.js';
+import type { Message as MessageType, UserMessage } from 'src/shared/types/message.js';
 import type { PastedContent } from 'src/platform/config/config.js';
 import type { MessageActionCaps } from 'src/agent/ui/messageActions.js';
 import type { FileHistoryState } from 'src/shared/fs/fileHistory.js';
-import type { PromptInputMode } from 'src/types/textInputTypes.js';
+import type { PromptInputMode } from 'src/shared/types/textInputTypes.js';
 import type { SetAppState } from 'src/agent/messageQueueManager.js';
 import type { useNotifications } from 'src/terminal/contexts/notifications.js';
 import {

@@ -15,13 +15,13 @@ import { readdir, readFile, stat } from 'fs/promises'
 import { basename, join } from 'path'
 import { logEvent } from 'src/platform/analytics/index.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import type { AttributionSnapshotMessage } from 'src/types/logs.js'
+import type { AttributionSnapshotMessage } from 'src/shared/types/logs.js'
 import {
   type LogOption,
   sortLogs,
   type TranscriptMessage,
-} from 'src/types/logs.js'
-import type { AssistantMessage } from 'src/types/message.js'
+} from 'src/shared/types/logs.js'
+import type { AssistantMessage } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { FileHistorySnapshot } from 'src/shared/fs/fileHistory.js'
 import {

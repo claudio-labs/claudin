@@ -63,7 +63,7 @@ import {
   logEvent,
 } from 'src/platform/analytics/index.js'
 import type { ReplBridgeHandle, BridgeState } from 'src/platform/bridge/replBridge.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type {
   SDKControlRequest,

@@ -9,7 +9,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js'
 import { isEssentialTrafficOnly } from 'src/platform/config/privacyLevel.js'
 import { writeToStderr } from 'src/shared/proc/process.js'
-import { getOauthConfig } from 'src/constants/oauth.js'
+import { getOauthConfig } from 'src/shared/constants/oauth.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import {
   getAuthHeaders,

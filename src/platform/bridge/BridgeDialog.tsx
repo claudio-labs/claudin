@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
 import { buildActiveFooterText, buildIdleFooterText, FAILED_FOOTER_TEXT, getBridgeStatus } from 'src/platform/bridge/bridgeStatusUtil.js';
-import { BRIDGE_FAILED_INDICATOR, BRIDGE_READY_INDICATOR } from 'src/constants/figures.js';
+import { BRIDGE_FAILED_INDICATOR, BRIDGE_READY_INDICATOR } from 'src/shared/constants/figures.js';
 import { useRegisterOverlay } from 'src/terminal/contexts/overlayContext.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- raw 'd' key for disconnect, not a configurable keybinding action
 import { Box, Text, useInput } from 'src/terminal/ink.js';

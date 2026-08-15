@@ -113,7 +113,7 @@ export type McpSdkServerConfigWithInstance = McpSdkServerConfig & {
 // in `coreTypes.generated.ts`: `SDKControlInitializeRequestSchema` carries only
 // `hookCallbackIds` on the wire, and the CLI calls back with a `hook_callback`
 // control request. Deliberately NOT reusing `HookCallback`/`HookCallbackMatcher`
-// from `src/types/hooks.ts` — those are the CLI's internal representation, carry
+// from `src/shared/types/hooks.ts` — those are the CLI's internal representation, carry
 // CLI-only concerns (`hookIndex`, `context`, `internal`), and importing them
 // here would create a runtimeTypes → hooks → agentSdkTypes → runtimeTypes cycle.
 // ---------------------------------------------------------------------------

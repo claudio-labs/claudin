@@ -14,7 +14,7 @@ import { formatTokens } from 'src/shared/text/format.js';
 import { getAPIProvider, isGithubNativeAnthropicMode } from 'src/utils/model/providers.js';
 import { hasNerdFontGlyphs } from 'src/terminal/terminalFont.js';
 import { getCurrentUsage } from 'src/agent/context/tokens.js';
-import type { Message } from 'src/types/message.js';
+import type { Message } from 'src/shared/types/message.js';
 
 type Snapshot = {
   input: number;

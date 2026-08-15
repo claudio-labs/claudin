@@ -9,7 +9,7 @@
 import { homedir } from 'os'
 import { isAbsolute, resolve } from 'path'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
-import type { PermissionRule } from 'src/types/permissions.js'
+import type { PermissionRule } from 'src/shared/types/permissions.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import {
   getFsImplementation,

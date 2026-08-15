@@ -4,18 +4,18 @@ import { readdir, readFile, stat } from 'fs/promises'
 import type { Dirent } from 'fs'
 import memoize from 'lodash-es/memoize.js'
 import { join } from 'path'
-import type { QuerySource } from 'src/constants/querySource.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import {
   setLastAPIRequest,
   setLastAPIRequestMessages,
 } from 'src/platform/bootstrap/state.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
-import { TICK_TAG } from 'src/constants/xml.js'
+import { TICK_TAG } from 'src/shared/constants/xml.js'
 import {
   type LogOption,
   type SerializedMessage,
   sortLogs,
-} from 'src/types/logs.js'
+} from 'src/shared/types/logs.js'
 import { CACHE_PATHS } from 'src/shared/fs/cachePaths.js'
 import { stripDisplayTags, stripDisplayTagsAllowEmpty } from 'src/shared/text/displayTags.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'

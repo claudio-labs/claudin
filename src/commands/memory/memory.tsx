@@ -5,7 +5,7 @@ import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import { MemoryFileSelector } from 'src/memory/ui/MemoryFileSelector.js';
 import { getRelativeMemoryPath } from 'src/memory/ui/MemoryUpdateNotification.js';
 import { Box, Link, Text } from 'src/terminal/ink.js';
-import type { LocalJSXCommandCall } from 'src/types/command.js';
+import type { LocalJSXCommandCall } from 'src/shared/types/command.js';
 import { clearMemoryFileCaches, getMemoryFiles } from 'src/memory/instructions/claudemd.js';
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js';
 import { getErrnoCode } from 'src/shared/errors.js';

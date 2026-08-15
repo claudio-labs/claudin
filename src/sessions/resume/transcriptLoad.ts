@@ -31,8 +31,8 @@ import {
   getOriginalCwd,
   getSessionProjectDir,
 } from 'src/platform/bootstrap/state.js'
-import type { AgentId } from 'src/types/ids.js'
-import type { AttributionSnapshotMessage } from 'src/types/logs.js'
+import type { AgentId } from 'src/shared/types/ids.js'
+import type { AttributionSnapshotMessage } from 'src/shared/types/logs.js'
 import {
   type ContextCollapseCommitEntry,
   type ContextCollapseSnapshotEntry,
@@ -40,7 +40,7 @@ import {
   type FileHistorySnapshotMessage,
   type PersistedWorktreeSession,
   type TranscriptMessage,
-} from 'src/types/logs.js'
+} from 'src/shared/types/logs.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import type { FileHistorySnapshot } from 'src/shared/fs/fileHistory.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'

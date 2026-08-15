@@ -1,5 +1,5 @@
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import type { LogOption } from 'src/types/logs.js'
+import type { LogOption } from 'src/shared/types/logs.js'
 import { quote } from 'src/platform/bash/shellQuote.js'
 import { getSessionIdFromLog } from 'src/sessions/sessionStorage.js'
 

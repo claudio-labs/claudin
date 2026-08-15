@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import { createAssistantMessage, createUserMessage } from 'src/agent/messages/messages.js'
 
 // We test the exported collectCompactableToolIds behavior indirectly via

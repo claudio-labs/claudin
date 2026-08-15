@@ -13,7 +13,7 @@ import type {
   Message,
   StreamEvent,
   SystemMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import type { UUID } from 'crypto'
 import { logForDebugging } from 'src/shared/debug.js'
 import { fromSDKCompactMetadata } from 'src/agent/messages/mappers.js'

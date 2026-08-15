@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import { spliceMessageByUuid } from 'src/agent/QueryEngine.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 
 // Covers the tombstone case in QueryEngine.submitMessage: the failed
 // streaming attempt's partial must be dropped from mutableMessages and the

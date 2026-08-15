@@ -10,7 +10,7 @@
  */
 import { feature } from 'bun:bundle'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import { BYTES_PER_TOKEN } from 'src/constants/toolLimits.js'
+import { BYTES_PER_TOKEN } from 'src/tools/constants/toolLimits.js'
 import { compressJsonArray } from 'src/agent/tools/jsonArrayCompress.js'
 import { detectCodeLang, stripLineNumberPrefix } from 'src/shared/fs/detectCodeLang.js'
 import { scanSymbols } from 'src/tools/shared/codeOutline/scanSymbols.js'

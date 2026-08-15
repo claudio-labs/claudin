@@ -6,7 +6,7 @@ import type {
 import { applyMessageDeltaToLastMessage } from 'src/providers/shims/claude/streaming.js'
 
 // Derive the message type from the function under test instead of importing
-// src/types/message.js (tsc can't resolve that module in this fork).
+// src/shared/types/message.js (tsc can't resolve that module in this fork).
 type LastMessage = NonNullable<
   Parameters<typeof applyMessageDeltaToLastMessage>[0]
 >

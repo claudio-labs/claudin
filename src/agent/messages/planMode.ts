@@ -8,7 +8,7 @@ import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { FileWriteTool } from 'src/tools/FileWriteTool/FileWriteTool.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
-import type { UserMessage } from 'src/types/message.js'
+import type { UserMessage } from 'src/shared/types/message.js'
 import { getCurrentProjectConfig } from 'src/platform/config/config.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
 import {

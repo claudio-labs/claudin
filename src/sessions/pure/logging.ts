@@ -2,14 +2,14 @@ import { REPL_TOOL_NAME } from 'src/tools/REPLTool/constants.js'
 import type {
   SerializedMessage,
   TranscriptMessage,
-} from 'src/types/logs.js'
+} from 'src/shared/types/logs.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
   Message,
   SystemMessage,
   UserMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 
 type Transcript = (

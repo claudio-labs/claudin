@@ -4,18 +4,18 @@ import { randomUUID } from 'crypto'
 import {
   FORK_BOILERPLATE_TAG,
   FORK_DIRECTIVE_PREFIX,
-} from 'src/constants/xml.js'
+} from 'src/shared/constants/xml.js'
 import { isCoordinatorMode } from 'src/agent/coordinator/coordinatorMode.js'
 import type {
   AssistantMessage,
   Message as MessageType,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import {
   WORKTREE_STASH_WARNING,
   WORKTREE_WRITE_SCOPE_NOTE,
-} from 'src/constants/worktreeSafety.js'
+} from 'src/shared/constants/worktreeSafety.js'
 import type { BuiltInAgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 
 /**

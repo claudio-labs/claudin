@@ -51,14 +51,14 @@ import {
   TOOL_SEARCH_TOOL_NAME,
 } from 'src/tools/ToolSearchTool/prompt.js'
 import { getAllBaseTools } from 'src/tools/tools.js'
-import type { HookProgress } from 'src/types/hooks.js'
+import type { HookProgress } from 'src/shared/types/hooks.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
   Message,
   ProgressMessage,
   StopHookInfo,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { count } from 'src/shared/data/array.js'
 import { createAttachmentMessage } from 'src/agent/attachments/attachments.js'
 import { logForDebugging } from 'src/shared/debug.js'

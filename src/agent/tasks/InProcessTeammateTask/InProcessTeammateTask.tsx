@@ -10,7 +10,7 @@
  */
 
 import { isTerminalTaskStatus, type SetAppState, type Task, type TaskStateBase } from 'src/agent/Task.js';
-import type { Message } from 'src/types/message.js';
+import type { Message } from 'src/shared/types/message.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { createUserMessage } from 'src/agent/messages/messages.js';
 import { killInProcessTeammate } from 'src/agent/coordinator/swarm/spawnInProcess.js';

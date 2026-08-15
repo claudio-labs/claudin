@@ -2,13 +2,13 @@ import type {
   BetaMessageParam as MessageParam,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { feature } from 'bun:bundle'
-import type { QuerySource } from 'src/constants/querySource.js'
-import { isConnectorTextBlock } from 'src/types/connectorText.js'
+import type { QuerySource } from 'src/agent/prompts/querySource.js'
+import { isConnectorTextBlock } from 'src/shared/types/connectorText.js'
 import type {
   AssistantMessage,
   Message,
   UserMessage,
-} from 'src/types/message.js'
+} from 'src/shared/types/message.js'
 import { getCacheControl } from 'src/providers/shims/claude/cacheControl.js'
 
 export function userMessageToMessageParam(

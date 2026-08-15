@@ -1,4 +1,4 @@
-import type { SdkWorkflowProgress } from 'src/types/tools.js'
+import type { SdkWorkflowProgress } from 'src/shared/types/tools.js'
 import { enqueueSdkEvent } from 'src/agent/sdkEventQueue.js'
 
 /**

@@ -15,7 +15,7 @@
 
 import type { Command } from 'src/commands/commands.js'
 import type { BundledSkillDefinition } from 'src/skills/bundledSkills.js'
-import type { BuiltinPluginDefinition, LoadedPlugin } from 'src/types/plugin.js'
+import type { BuiltinPluginDefinition, LoadedPlugin } from 'src/shared/types/plugin.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 
 const BUILTIN_PLUGINS: Map<string, BuiltinPluginDefinition> = new Map()

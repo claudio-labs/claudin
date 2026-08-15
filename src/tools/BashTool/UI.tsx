@@ -12,7 +12,7 @@ import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.
 import { useAppStateStore, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { Tool } from 'src/tools/Tool.js';
 import { backgroundAll } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js';
-import type { ProgressMessage } from 'src/types/message.js';
+import type { ProgressMessage } from 'src/shared/types/message.js';
 import { env } from 'src/shared/env.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';

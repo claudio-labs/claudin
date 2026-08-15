@@ -31,7 +31,7 @@ import { startDeferredPrefetches } from 'src/platform/main/deferredPrefetches.js
 import { getMcpStartupTimeoutMs, raceConnectTimeout } from 'src/platform/main/defaultAction/mcpStartupWait.js';
 import { logSessionTelemetry } from 'src/platform/main/lifecycle.js';
 import type { BootContext } from 'src/platform/main/bootContext.js';
-import type { Command } from 'src/types/command.js';
+import type { Command } from 'src/shared/types/command.js';
 import type { ToolPermissionContext, Tools } from 'src/tools/Tool.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 

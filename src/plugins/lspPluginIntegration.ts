@@ -6,7 +6,7 @@ import type {
   ScopedLspServerConfig,
 } from 'src/platform/lsp/types.js'
 import { expandEnvVarsInString } from 'src/mcp/envExpansion.js'
-import type { LoadedPlugin, PluginError } from 'src/types/plugin.js'
+import type { LoadedPlugin, PluginError } from 'src/shared/types/plugin.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isENOENT, toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'

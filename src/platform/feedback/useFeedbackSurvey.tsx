@@ -3,7 +3,7 @@ import { useDynamicConfig } from 'src/platform/useDynamicConfig.js';
 import { isFeedbackSurveyDisabled } from 'src/platform/analytics/config.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { isPolicyAllowed } from 'src/platform/policyLimits/index.js';
-import type { Message } from 'src/types/message.js';
+import type { Message } from 'src/shared/types/message.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { getLastAssistantMessage } from 'src/agent/messages/messages.js';

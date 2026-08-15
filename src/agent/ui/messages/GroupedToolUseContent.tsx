@@ -1,7 +1,7 @@
 import type { ToolResultBlockParam, ToolUseBlockParam } from '@anthropic-ai/sdk/resources/messages/messages.mjs';
 import * as React from 'react';
 import { filterToolProgressMessages, findToolByName, type Tools } from 'src/tools/Tool.js';
-import type { GroupedToolUseMessage } from 'src/types/message.js';
+import type { GroupedToolUseMessage } from 'src/shared/types/message.js';
 import type { buildMessageLookups } from 'src/agent/messages/messages.js';
 type Props = {
   message: GroupedToolUseMessage;

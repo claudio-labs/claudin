@@ -10,7 +10,7 @@ import figures from 'figures';
 import * as React from 'react';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
-import { BLACK_CIRCLE, PAUSE_ICON, PLAY_ICON } from 'src/constants/figures.js';
+import { BLACK_CIRCLE, PAUSE_ICON, PLAY_ICON } from 'src/shared/constants/figures.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { stringWidth } from 'src/terminal/ink/stringWidth.js';

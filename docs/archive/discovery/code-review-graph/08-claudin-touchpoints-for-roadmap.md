@@ -40,7 +40,7 @@ Tool descriptions (o que o modelo lê quando decide qual chamar):
 Builder central do system prompt do agente principal:
 
 - `src/agent/systemPrompt.ts:41-119` — `buildEffectiveSystemPrompt(...)`.
-- `src/constants/prompts.ts:384-501` — `getSystemPrompt()` (a fonte que
+- `src/agent/prompts/prompts.ts:384-501` — `getSystemPrompt()` (a fonte que
   o builder envolve). Seção `getUsingYourToolsSection(enabledTools)` em
   `:230-275` é onde uma "policy" tipo "para perguntas tipo X, prefira LSP
   antes de Grep" se encaixa.
@@ -68,7 +68,7 @@ no set" entra sem mudança de assinatura.
 
 ### 4. Tests to copy patterns from
 
-- `src/constants/promptIdentity.test.ts` — testa identity/wording dos
+- `src/agent/prompts/promptIdentity.test.ts` — testa identity/wording dos
   prompts; padrão de regression test para alterações verbais.
 - `src/tools/AgentTool/built-in/webResearcherAgent.test.ts` — único
   teste colocado ao lado de um built-in agent; usar como template para
@@ -84,7 +84,7 @@ no set" entra sem mudança de assinatura.
   como agentes disponíveis no modo coordinator (flag `COORDINATOR_MODE`
   ligada em `scripts/build.ts:45`). Qualquer mudança nos prompts dos
   três últimos afeta também o coordinator worker.
-- `DEFAULT_AGENT_PROMPT` em `src/constants/prompts.ts:658-659` é usado
+- `DEFAULT_AGENT_PROMPT` em `src/agent/prompts/prompts.ts:658-659` é usado
   pelo loop principal quando nada mais especifica. Não confundir com os
   prompts de built-in agents.
 - `getUsingYourToolsSection` (`constants/prompts.ts:230-275`) é

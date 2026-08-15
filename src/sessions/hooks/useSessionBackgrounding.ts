@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 
 type UseSessionBackgroundingProps = {
   setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void

@@ -147,7 +147,7 @@ Comportamento concreto:
   declaredMax)` (`toolResultStorage.ts:59`) que aplica
   `Math.min(declared, DEFAULT_MAX_RESULT_SIZE_CHARS)`, com
   `DEFAULT_MAX_RESULT_SIZE_CHARS = 50_000`
-  (`src/constants/toolLimits.ts:13`).
+  (`src/tools/constants/toolLimits.ts:13`).
 - **Path** (`toolResultStorage.ts:118`):
   `~/.claudin/projects/<dir>/<sessionId>/tool-results/<toolUseId>.<ext>`
   com ext = `txt` para string, `json` para array de blocks.
@@ -458,7 +458,7 @@ SHA-256 prático: 2^128 operations para colisão. Não é vetor.
   formato `<persisted-output>` que o modelo vê.
 - `/home/dev/projects/claudin/src/agent/tools/toolResultStorage.ts:308–369` —
   trigger por threshold.
-- `/home/dev/projects/claudin/src/constants/toolLimits.ts:13` —
+- `/home/dev/projects/claudin/src/tools/constants/toolLimits.ts:13` —
   `DEFAULT_MAX_RESULT_SIZE_CHARS = 50_000`.
 - `/home/dev/projects/claudin/src/shared/cleanup.ts:155` —
   `cleanupOldSessionFiles` (time-based, 30d default).

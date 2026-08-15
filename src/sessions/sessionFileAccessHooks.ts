@@ -20,7 +20,7 @@ import { GlobTool } from 'src/tools/GlobTool/GlobTool.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GrepTool } from 'src/tools/GrepTool/GrepTool.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
-import type { HookCallback } from 'src/types/hooks.js'
+import type { HookCallback } from 'src/shared/types/hooks.js'
 import {
   detectSessionFileType,
   detectSessionPatternType,

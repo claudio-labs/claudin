@@ -8,7 +8,7 @@ import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import ScrollBox, { type ScrollBoxHandle } from 'src/terminal/ink/components/ScrollBox.js';
 import instances from 'src/terminal/ink/instances.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import type { Message } from 'src/types/message.js';
+import type { Message } from 'src/shared/types/message.js';
 import { openBrowser, openPath } from 'src/shared/browser.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { plural } from 'src/shared/text/stringUtils.js';

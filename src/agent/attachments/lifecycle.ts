@@ -32,7 +32,7 @@ import { isHumanTurn } from 'src/agent/messages/messagePredicates.js'
 import { isThinkingMessage } from 'src/agent/messages/messages.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { feature } from 'bun:bundle'
-import type { Message } from 'src/types/message.js'
+import type { Message } from 'src/shared/types/message.js'
 import type { TodoList } from 'src/tools/TodoWriteTool/types.js'
 import {
   getTodoReminderDelta,

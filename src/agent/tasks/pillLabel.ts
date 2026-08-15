@@ -1,4 +1,4 @@
-import { DIAMOND_FILLED, DIAMOND_OPEN } from 'src/constants/figures.js'
+import { DIAMOND_FILLED, DIAMOND_OPEN } from 'src/shared/constants/figures.js'
 import { count } from 'src/shared/data/array.js'
 import type { BackgroundTaskState } from 'src/agent/tasks/types.js'
 

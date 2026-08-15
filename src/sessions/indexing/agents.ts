@@ -16,7 +16,7 @@ import {
   getSessionId,
   getSessionProjectDir,
 } from 'src/platform/bootstrap/state.js'
-import type { AgentId } from 'src/types/ids.js'
+import type { AgentId } from 'src/shared/types/ids.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isFsInaccessible } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'

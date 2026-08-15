@@ -3,7 +3,7 @@ paths:
   - "scripts/build.ts"
   - "scripts/no-telemetry-plugin.ts"
   - "scripts/feature-flags-source-guard.test.ts"
-  - "src/constants/prompts.ts"
+  - "src/agent/prompts/prompts.ts"
   - "scripts/profile/dump-system-prompt.ts"
 ---
 # Build System — Claudin Development Rules

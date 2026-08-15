@@ -9,7 +9,7 @@ import { supportsHyperlinks } from 'src/terminal/ink/supports-hyperlinks.js';
 import { color } from 'src/terminal/ink.js';
 import { maybeMarkProjectOnboardingComplete } from 'src/platform/projectOnboardingState.js';
 import type { ToolUseContext } from 'src/tools/Tool.js';
-import type { LocalJSXCommandContext, LocalJSXCommandOnDone } from 'src/types/command.js';
+import type { LocalJSXCommandContext, LocalJSXCommandOnDone } from 'src/shared/types/command.js';
 import { backupTerminalPreferences, checkAndRestoreTerminalBackup, getTerminalPlistPath, markTerminalSetupComplete } from 'src/platform/ide/appleTerminalBackup.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { env } from 'src/shared/env.js';

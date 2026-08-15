@@ -53,7 +53,7 @@ const BUNDLE = join(REPO_ROOT, 'dist/cli.mjs')
 // sub-agent notices all land in one of the two dumps below.
 const PROMPT_SOURCE_GLOBS = [
   'scripts/build.ts',
-  'src/constants/**/*.ts',
+  'src/shared/constants/**/*.ts',
   'src/agent/context.ts',
   'src/memory/instructions/claudemd.ts',
   'src/tools/*/prompt.ts',
@@ -118,7 +118,7 @@ function dumpFromBundle(): number {
 async function dumpFromSource(): Promise<void> {
   const { getAllBaseTools } = await import('../../src/tools/tools.js')
   const { getSystemPrompt, enhanceSystemPromptWithEnvDetails, DEFAULT_AGENT_PROMPT } =
-    await import('../../src/constants/prompts.js')
+    await import('../../src/agent/prompts/prompts.js')
   const { enableConfigs } = await import('../../src/platform/config/config.js')
   try { enableConfigs() } catch {}
   process.env.NODE_ENV = 'production'

@@ -1,7 +1,7 @@
 import type { ToolUseBlock } from '@anthropic-ai/sdk/resources/index.mjs'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { findToolByName, type ToolUseContext } from 'src/tools/Tool.js'
-import type { AssistantMessage, Message } from 'src/types/message.js'
+import type { AssistantMessage, Message } from 'src/shared/types/message.js'
 import { all } from 'src/shared/generators.js'
 import { type MessageUpdateLazy, runToolUse } from 'src/agent/tools/toolExecution.js'
 
