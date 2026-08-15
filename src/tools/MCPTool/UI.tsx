@@ -13,7 +13,7 @@ import type { ProgressMessage } from 'src/types/message.js';
 import type { MCPProgress } from 'src/types/tools.js';
 import { formatNumber } from 'src/shared/text/format.js';
 import { createHyperlink } from 'src/shared/text/hyperlink.js';
-import { getContentSizeEstimate, type MCPToolResult } from 'src/services/mcp/mcpValidation.js';
+import { getContentSizeEstimate, type MCPToolResult } from 'src/mcp/mcpValidation.js';
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js';
 import type { inputSchema } from 'src/tools/MCPTool/MCPTool.js';
 

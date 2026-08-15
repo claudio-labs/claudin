@@ -75,7 +75,7 @@ import { markDiagnosticsAsDelivered } from 'src/platform/lsp/LSPDiagnosticRegist
 import { getGlobalConfig } from 'src/platform/config/config.js'
 /* eslint-disable @typescript-eslint/no-require-imports */
 const skillPrefetch = feature('EXPERIMENTAL_SKILL_SEARCH')
-  ? (require('../services/skillSearch/prefetch.js') as typeof import('../services/skillSearch/prefetch.js'))
+  ? (require('../skills/search/prefetch.js') as typeof import('../skills/search/prefetch.js'))
   : null
 const jobClassifier = feature('TEMPLATES')
   ? (require('../platform/jobs/classifier.js') as typeof import('../platform/jobs/classifier.js'))

@@ -37,7 +37,7 @@ import type { TurnInterruptionState } from 'src/sessions/conversationRecovery.js
 import type {
   MCPServerConnection,
   McpSdkServerConfig,
-} from 'src/services/mcp/types.js'
+} from 'src/mcp/types.js'
 import type { StdoutMessage } from 'src/platform/entrypoints/sdk/controlTypes.js'
 import type {
   SDKUserMessageReplay,

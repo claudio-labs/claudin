@@ -8,7 +8,7 @@ import {
   extractDescriptionFromMarkdown,
   loadMarkdownFilesForSubdir,
 } from 'src/memory/instructions/markdownConfigLoader.js'
-import { clearPluginOutputStyleCache } from 'src/services/plugins/loadPluginOutputStyles.js'
+import { clearPluginOutputStyleCache } from 'src/plugins/loadPluginOutputStyles.js'
 
 /**
  * Loads markdown files from .claudin/output-styles directories throughout the project

@@ -272,7 +272,7 @@ export function setupReplMocks(): void {
   }))
 
   // Plugin startup checks — disk I/O.
-  mock.module('src/services/plugins/performStartupChecks.js', () => ({
+  mock.module('src/plugins/performStartupChecks.js', () => ({
     performStartupChecks: async () => undefined,
   }))
 

@@ -20,8 +20,8 @@ import { resetCommandQueue } from 'src/agent/messageQueueManager.js'
 // afterAll can restore them. Without this, the boundary mocks (e.g.
 // areMcpConfigsEqual stubbed to `() => true`) leak into other test files
 // in the same `bun test` run.
-const realMcpClient = { ...(await import('src/services/mcp/client.js')) }
-const realMcpConfig = { ...(await import('src/services/mcp/config.js')) }
+const realMcpClient = { ...(await import('src/mcp/client.js')) }
+const realMcpConfig = { ...(await import('src/mcp/config.js')) }
 
 describe('promptBatching', () => {
   test('joinPromptValues: single string passes through unchanged', async () => {
@@ -245,7 +245,7 @@ describe('mcpReconcile', () => {
     const cleanupCalls: CleanupCall[] = []
     const clearCacheCalls: string[] = []
 
-    mock.module('src/services/mcp/client.js', () => ({
+    mock.module('src/mcp/client.js', () => ({
       setupSdkMcpClients: async () => [],
       connectToServer: async (name: string, config: unknown) => {
         connectCalls.push({ name, config })
@@ -272,7 +272,7 @@ describe('mcpReconcile', () => {
       reconnectMcpServerImpl: async () => undefined,
     }))
 
-    mock.module('src/services/mcp/config.js', () => ({
+    mock.module('src/mcp/config.js', () => ({
       filterMcpServersByPolicy: (servers: Record<string, unknown>) => ({
         allowed: servers,
         blocked: [] as string[],
@@ -474,7 +474,7 @@ describe('getCanUseToolFn', () => {
 
 describe('handleMcpSetServers', () => {
   test('policy-blocked servers appear in response.errors (regression: SDK V2 bypass)', async () => {
-    mock.module('src/services/mcp/client.js', () => ({
+    mock.module('src/mcp/client.js', () => ({
       setupSdkMcpClients: async () => [],
       connectToServer: async () => ({ type: 'connected', name: 'x', cleanup: async () => {} }),
       clearServerCache: async () => {},
@@ -482,7 +482,7 @@ describe('handleMcpSetServers', () => {
       areMcpConfigsEqual: () => true,
       reconnectMcpServerImpl: async () => undefined,
     }))
-    mock.module('src/services/mcp/config.js', () => ({
+    mock.module('src/mcp/config.js', () => ({
       filterMcpServersByPolicy: (servers: Record<string, unknown>) => ({
         allowed: {},
         blocked: Object.keys(servers),
@@ -511,8 +511,8 @@ describe('handleMcpSetServers', () => {
 afterAll(() => {
   // Restore the real MCP modules so the boundary mocks staged above don't
   // leak into other test files sharing this `bun test` process.
-  mock.module('src/services/mcp/client.js', () => realMcpClient)
-  mock.module('src/services/mcp/config.js', () => realMcpConfig)
+  mock.module('src/mcp/client.js', () => realMcpClient)
+  mock.module('src/mcp/config.js', () => realMcpConfig)
   // The headless print flow leaves entries in the shared command queue; drain
   // it so a later <REPL> mount doesn't process an orphaned queued input.
   resetCommandQueue()

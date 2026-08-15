@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle'
 import type { UUID } from 'crypto'
-import type { MCPServerConnection } from 'src/services/mcp/types.js'
+import type { MCPServerConnection } from 'src/mcp/types.js'
 import type {
   RewindFilesResult,
 } from 'src/platform/entrypoints/agentSdkTypes.js'
@@ -14,8 +14,8 @@ import {
   gateChannelServer,
   wrapChannelMessage,
   findChannelEntry,
-} from 'src/services/mcp/channelNotification.js'
-import { asMcpSchema } from 'src/services/mcp/zodCompat.js'
+} from 'src/mcp/channelNotification.js'
+import { asMcpSchema } from 'src/mcp/zodCompat.js'
 import {
   getAllowedChannels,
   setAllowedChannels,
@@ -27,7 +27,7 @@ import {
   fileHistoryEnabled,
   fileHistoryGetDiffStats,
 } from 'src/shared/fs/fileHistory.js'
-import { parsePluginIdentifier } from 'src/services/plugins/pluginIdentifier.js'
+import { parsePluginIdentifier } from 'src/plugins/pluginIdentifier.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { logMCPDebug } from 'src/shared/log.js'
 import {

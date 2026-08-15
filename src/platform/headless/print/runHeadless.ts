@@ -34,7 +34,7 @@ import {
   writeToStdout,
   registerProcessOutputErrorHandlers,
 } from 'src/shared/proc/process.js'
-import type { McpSdkServerConfig } from 'src/services/mcp/types.js'
+import type { McpSdkServerConfig } from 'src/mcp/types.js'
 import { validateUuid } from 'src/shared/data/uuid.js'
 import { registerHookEventHandler } from 'src/platform/lifecycleHooks/hookEvents.js'
 import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js'

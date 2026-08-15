@@ -22,7 +22,7 @@ import {
 } from 'src/platform/lsp/diagnosticsForToolResult.js'
 import { clearDeliveredDiagnosticsForFile } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
 import { getLspServerManager } from 'src/platform/lsp/manager.js'
-import { notifyVscodeFileUpdated } from 'src/services/mcp/vscodeSdkMcp.js'
+import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js'
 import { checkTeamMemSecrets } from 'src/memory/teamSync/teamMemSecretGuard.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { countLinesChanged, getPatchFromContents } from 'src/vcs/git/diff.js'

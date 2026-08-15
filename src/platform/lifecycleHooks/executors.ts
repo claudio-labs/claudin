@@ -28,7 +28,7 @@ import {
   logEvent,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from 'src/platform/analytics/index.js'
-import { ALLOWED_OFFICIAL_MARKETPLACE_NAMES } from 'src/services/plugins/schemas.js'
+import { ALLOWED_OFFICIAL_MARKETPLACE_NAMES } from 'src/plugins/schemas.js'
 import {
   isAsyncHookJSONOutput,
   isSyncHookJSONOutput,

@@ -16,7 +16,7 @@ const registerProtocolModule = feature('LODESTONE')
 import { getIsInteractive, getLastInteractionTime } from 'src/platform/bootstrap/state.js'
 import { cleanupOldMessageFilesInBackground } from 'src/shared/cleanup.js'
 import { cleanupOldVersions } from 'src/platform/install/index.js'
-import { autoUpdateMarketplacesAndPluginsInBackground } from 'src/services/plugins/pluginAutoupdate.js'
+import { autoUpdateMarketplacesAndPluginsInBackground } from 'src/plugins/pluginAutoupdate.js'
 
 // 10 minutes after start.
 const DELAY_VERY_SLOW_OPERATIONS_THAT_HAPPEN_EVERY_SESSION = 10 * 60 * 1000

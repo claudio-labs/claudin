@@ -74,7 +74,7 @@ Não vale: nada explicitamente. **Não encontrado em omp** (responde perguntas d
 | 1.2 Tokenizer NFKD | `src/utils/bm25ToolIndex.ts` — port direto de `tool-index.ts:115-134`. Compartilhar com `ToolSearchTool.ts:132-185` se o scorer linear continuar como fallback. |
 | 1.3 `discoveryMode` | `src/platform/config/config.ts` (`getGlobalConfig`) + zod schema. Setting `toolGating.mode: "off"\|"mcp-only"\|"all"`. Lido em `assembleToolPool` (`src/tools.ts:365-387`). |
 | 1.4 Persistência | `src/utils/messagesStorage.ts` (resume path) + novo entry type `tool_selection`. `assembleToolPool` consulta last selection on resume. |
-| 1.5 Seeds por server | `src/services/mcp/fetchCapabilities.ts:152` (onde MCP tools são montadas) + setting `toolGating.seedMcpServers: string[]`. |
+| 1.5 Seeds por server | `src/mcp/fetchCapabilities.ts:152` (onde MCP tools são montadas) + setting `toolGating.seedMcpServers: string[]`. |
 | 1.6 Cache do índice (não de queries) | Confirma deep §MVP PR1 — `bm25ToolIndex.ts` com `let cached: Index \| null`; invalidação em hot path do MCP refresh (`fetchCapabilities.ts`) e em mutações de active pool (raro). |
 | 1.7 Excluir ativas | `src/tools/ToolSearchTool/ToolSearchTool.ts:186-302` — filtrar `tools.filter(t => !activeSet.has(t.name))` antes do scoring. |
 | 1.8 Invariant | Teste em `src/tools/ToolSearchTool/ToolSearchTool.test.ts`: garantir que após desativação externa, próxima `search` redescobre. |

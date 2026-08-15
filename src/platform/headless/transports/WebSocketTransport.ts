@@ -196,7 +196,7 @@ export class WebSocketTransport implements Transport {
   // Stored as class-property arrow functions so they can be removed in
   // doDisconnect(). Without removal, each reconnect orphans the old WS
   // object + its 5 closures until GC, which accumulates under network
-  // instability. Mirrors the pattern in src/services/mcp/mcpWebSocketTransport.ts.
+  // instability. Mirrors the pattern in src/mcp/mcpWebSocketTransport.ts.
 
   private onBunOpen = () => {
     this.handleOpenEvent()
@@ -355,7 +355,7 @@ export class WebSocketTransport implements Transport {
    * Remove all listeners attached in connect() for the given WebSocket.
    * Without this, each reconnect orphans the old WS object + its closures
    * until GC — these accumulate under network instability. Mirrors the
-   * pattern in src/services/mcp/mcpWebSocketTransport.ts.
+   * pattern in src/mcp/mcpWebSocketTransport.ts.
    */
   private removeWsListeners(ws: WebSocketLike): void {
     if (this.isBunWs) {

@@ -1,9 +1,9 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useEffect, useRef } from 'react';
-import { MCPSettings } from 'src/components/mcp/index.js';
-import { MCPReconnect } from 'src/components/mcp/MCPReconnect.js';
-import { useMcpToggleEnabled } from 'src/services/mcp/MCPConnectionManager.js';
-import type { MCPServerConnection } from 'src/services/mcp/types.js';
+import { MCPSettings } from 'src/mcp/ui/index.js';
+import { MCPReconnect } from 'src/mcp/ui/MCPReconnect.js';
+import { useMcpToggleEnabled } from 'src/mcp/MCPConnectionManager.js';
+import type { MCPServerConnection } from 'src/mcp/types.js';
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 

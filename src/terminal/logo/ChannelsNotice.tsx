@@ -9,11 +9,11 @@ import * as React from 'react';
 import { useState } from 'react';
 import { type ChannelEntry, getAllowedChannels, getHasDevChannels } from 'src/platform/bootstrap/state.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import { isChannelsEnabled } from 'src/services/mcp/channelAllowlist.js';
-import { getEffectiveChannelAllowlist } from 'src/services/mcp/channelNotification.js';
-import { getMcpConfigsByScope } from 'src/services/mcp/config.js';
+import { isChannelsEnabled } from 'src/mcp/channelAllowlist.js';
+import { getEffectiveChannelAllowlist } from 'src/mcp/channelNotification.js';
+import { getMcpConfigsByScope } from 'src/mcp/config.js';
 import { getClaudeAIOAuthTokens, getSubscriptionType } from 'src/providers/auth/auth.js';
-import { loadInstalledPluginsV2 } from 'src/services/plugins/installedPluginsManager.js';
+import { loadInstalledPluginsV2 } from 'src/plugins/installedPluginsManager.js';
 import { getSettingsForSource } from 'src/platform/settings/settings.js';
 export function ChannelsNotice() {
   const $ = _c(32);

@@ -351,7 +351,7 @@ export function endHookSpan() {}
 
 	// ─── Plugin fetch telemetry (not the marketplace itself) ───────
 
-	'src/services/plugins/fetchTelemetry': `
+	'src/plugins/fetchTelemetry': `
 export function logPluginFetch() {}
 export function classifyFetchError() { return 'disabled'; }
 `,

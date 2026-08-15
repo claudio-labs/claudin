@@ -1,8 +1,8 @@
 import { buildComputerUseTools } from '@ant/computer-use-mcp'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
-import { buildMcpToolName } from 'src/services/mcp/mcpStringUtils.js'
-import type { ScopedMcpServerConfig } from 'src/services/mcp/types.js'
+import { buildMcpToolName } from 'src/mcp/mcpStringUtils.js'
+import type { ScopedMcpServerConfig } from 'src/mcp/types.js'
 
 import { isInBundledMode } from 'src/platform/install/bundledMode.js'
 import { CLI_CU_CAPABILITIES, COMPUTER_USE_MCP_SERVER_NAME } from 'src/platform/computerUse/common.js'

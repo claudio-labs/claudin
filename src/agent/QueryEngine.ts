@@ -40,7 +40,7 @@ import { loadMemoryPrompt } from 'src/memory/memdir/memdir.js'
 import { hasAutoMemPathOverride } from 'src/memory/memdir/paths.js'
 import { query } from 'src/agent/query.js'
 import { categorizeRetryableAPIError } from 'src/providers/transport/errors.js'
-import type { MCPServerConnection } from 'src/services/mcp/types.js'
+import type { MCPServerConnection } from 'src/mcp/types.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import { type Tools, type ToolUseContext, toolMatchesName } from 'src/Tool.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
@@ -71,7 +71,7 @@ import {
   getMainLoopModel,
   parseUserSpecifiedModel,
 } from 'src/utils/model/model.js'
-import { loadAllPluginsCacheOnly } from 'src/services/plugins/pluginLoader.js'
+import { loadAllPluginsCacheOnly } from 'src/plugins/pluginLoader.js'
 import {
   type ProcessUserInputContext,
   processUserInput,

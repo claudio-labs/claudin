@@ -12,7 +12,7 @@
 import type { Command } from 'src/commands.js'
 import { getSystemPrompt } from 'src/constants/prompts.js'
 import { getSystemContext, getUserContext } from 'src/agent/context.js'
-import type { MCPServerConnection } from 'src/services/mcp/types.js'
+import type { MCPServerConnection } from 'src/mcp/types.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type { Tools, ToolUseContext } from 'src/Tool.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'

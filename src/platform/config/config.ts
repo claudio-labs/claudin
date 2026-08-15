@@ -6,7 +6,7 @@ import { basename, dirname, join, resolve } from 'path'
 import { getOriginalCwd, getSessionTrustAccepted } from 'src/platform/bootstrap/state.js'
 import { getAutoMemEntrypoint } from 'src/memory/memdir/paths.js'
 import { logEvent } from 'src/platform/analytics/index.js'
-import type { McpServerConfig } from 'src/services/mcp/types.js'
+import type { McpServerConfig } from 'src/mcp/types.js'
 import type {
   BillingType,
   ReferralEligibilityResponse,

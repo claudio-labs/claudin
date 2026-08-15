@@ -17,7 +17,7 @@ import mapValues from 'lodash-es/mapValues.js';
 import { feature } from 'bun:bundle';
 import { setAdditionalDirectoriesForClaudeMd } from 'src/platform/bootstrap/state.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
-import { fetchClaudeAIMcpConfigsIfEligible } from 'src/services/mcp/claudeai.js';
+import { fetchClaudeAIMcpConfigsIfEligible } from 'src/mcp/claudeai.js';
 import {
   areMcpConfigsAllowedWithEnterpriseMcpConfig,
   doesEnterpriseMcpConfigExist,
@@ -25,8 +25,8 @@ import {
   getClaudeCodeMcpConfigs,
   parseMcpConfig,
   parseMcpConfigFromFilePath,
-} from 'src/services/mcp/config.js';
-import type { McpServerConfig, ScopedMcpServerConfig } from 'src/services/mcp/types.js';
+} from 'src/mcp/config.js';
+import type { McpServerConfig, ScopedMcpServerConfig } from 'src/mcp/types.js';
 import { type ChannelEntry, setAllowedChannels, setUserMsgOptIn } from 'src/platform/bootstrap/state.js';
 import { assertMinVersion } from 'src/platform/install/autoUpdater.js';
 import { logForDebugging } from 'src/shared/debug.js';

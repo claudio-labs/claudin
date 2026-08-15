@@ -10,19 +10,19 @@ import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import { Spinner } from 'src/terminal/spinner/Spinner.js';
 import instances from 'src/terminal/ink/instances.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import { enablePluginOp } from 'src/services/plugins/pluginOperations.js';
+import { enablePluginOp } from 'src/plugins/pluginOperations.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { isENOENT, toError } from 'src/shared/errors.js';
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js';
 import { pathExists } from 'src/shared/fs/file.js';
 import { logError } from 'src/shared/log.js';
 import { getPlatform } from 'src/shared/proc/platform.js';
-import { clearAllCaches } from 'src/services/plugins/cacheUtils.js';
-import { isPluginInstalled } from 'src/services/plugins/installedPluginsManager.js';
-import { addMarketplaceSource, clearMarketplacesCache, loadKnownMarketplacesConfig, refreshMarketplace } from 'src/services/plugins/marketplaceManager.js';
-import { OFFICIAL_MARKETPLACE_NAME } from 'src/services/plugins/officialMarketplace.js';
-import { loadAllPlugins } from 'src/services/plugins/pluginLoader.js';
-import { installSelectedPlugins } from 'src/services/plugins/pluginStartupCheck.js';
+import { clearAllCaches } from 'src/plugins/cacheUtils.js';
+import { isPluginInstalled } from 'src/plugins/installedPluginsManager.js';
+import { addMarketplaceSource, clearMarketplacesCache, loadKnownMarketplacesConfig, refreshMarketplace } from 'src/plugins/marketplaceManager.js';
+import { OFFICIAL_MARKETPLACE_NAME } from 'src/plugins/officialMarketplace.js';
+import { loadAllPlugins } from 'src/plugins/pluginLoader.js';
+import { installSelectedPlugins } from 'src/plugins/pluginStartupCheck.js';
 
 const OFFICIAL_MARKETPLACE_REPO = 'anthropics/claude-plugins-official';
 function getMarketplaceName(): string {

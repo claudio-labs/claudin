@@ -14,7 +14,7 @@ import { useVoiceEnabled } from 'src/terminal/voice/useVoiceEnabled.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useClaudeAiLimits } from 'src/providers/claudeAiLimitsHook.js';
 import { calculateTokenWarningState } from 'src/agent/compact/autoCompact.js';
-import type { MCPServerConnection } from 'src/services/mcp/types.js';
+import type { MCPServerConnection } from 'src/mcp/types.js';
 import type { Message } from 'src/types/message.js';
 import { getApiKeyHelperElapsedMs, getConfiguredApiKeyHelper, getSubscriptionType } from 'src/providers/auth/auth.js';
 import type { AutoUpdaterResult } from 'src/platform/install/autoUpdater.js';

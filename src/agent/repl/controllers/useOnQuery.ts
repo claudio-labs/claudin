@@ -31,7 +31,7 @@ import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { createCoalescedUpdater } from 'src/platform/install/coalescedUpdater.js';
 import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js';
 import type { ToolPermissionContext } from 'src/Tool.js';
-import type { MCPServerConnection } from 'src/services/mcp/types.js';
+import type { MCPServerConnection } from 'src/mcp/types.js';
 import type { useAppStateStore } from 'src/terminal/state/AppState.js';
 import type { provisionContentReplacementState } from 'src/agent/tools/toolResultStorage.js';
 import { feature } from 'bun:bundle';
@@ -60,7 +60,7 @@ import { BASH_INPUT_TAG, COMMAND_MESSAGE_TAG, COMMAND_NAME_TAG, LOCAL_COMMAND_ST
 import { queryCheckpoint, logQueryProfileReport } from 'src/agent/queryProfiler.js';
 import type { Message as MessageType, UserMessage } from 'src/types/message.js';
 import { query } from 'src/agent/query.js';
-import { mergeClients } from 'src/hooks/useMergedClients.js';
+import { mergeClients } from 'src/mcp/hooks/useMergedClients.js';
 import { getQuerySourceForREPL } from 'src/agent/promptCategory.js';
 import { maybeMarkProjectOnboardingComplete } from 'src/platform/projectOnboardingState.js';
 import { randomUUID } from 'crypto';

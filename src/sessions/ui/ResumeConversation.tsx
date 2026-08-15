@@ -12,7 +12,7 @@ import { setClipboard } from 'src/terminal/ink/termio/osc.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
-import type { MCPServerConnection, ScopedMcpServerConfig } from 'src/services/mcp/types.js';
+import type { MCPServerConnection, ScopedMcpServerConfig } from 'src/mcp/types.js';
 import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { Tool } from 'src/Tool.js';
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';

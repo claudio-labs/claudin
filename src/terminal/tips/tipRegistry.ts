@@ -35,9 +35,9 @@ import {
   getUserSpecifiedModelSetting,
 } from 'src/utils/model/model.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
-import { isPluginInstalled } from 'src/services/plugins/installedPluginsManager.js'
-import { loadKnownMarketplacesConfigSafe } from 'src/services/plugins/marketplaceManager.js'
-import { OFFICIAL_MARKETPLACE_NAME } from 'src/services/plugins/officialMarketplace.js'
+import { isPluginInstalled } from 'src/plugins/installedPluginsManager.js'
+import { loadKnownMarketplacesConfigSafe } from 'src/plugins/marketplaceManager.js'
+import { OFFICIAL_MARKETPLACE_NAME } from 'src/plugins/officialMarketplace.js'
 import {
   getCurrentSessionAgentColor,
   isCustomTitleEnabled,

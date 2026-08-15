@@ -11,7 +11,7 @@ import { getIsRemoteMode } from 'src/platform/bootstrap/state.js';
 import type { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { Text } from 'src/terminal/ink.js';
 import { logError } from 'src/shared/log.js';
-import { getPluginById } from 'src/services/plugins/marketplaceManager.js';
+import { getPluginById } from 'src/plugins/marketplaceManager.js';
 type AddNotification = ReturnType<typeof useNotifications>['addNotification'];
 type PluginData = NonNullable<Awaited<ReturnType<typeof getPluginById>>>;
 

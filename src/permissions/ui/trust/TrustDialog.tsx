@@ -7,7 +7,7 @@ import type { Command } from 'src/commands.js';
 import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { Box, Link, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
-import { getMcpConfigsByScope } from 'src/services/mcp/config.js';
+import { getMcpConfigsByScope } from 'src/mcp/config.js';
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
 import { checkHasTrustDialogAccepted, type ProjectConfig, saveCurrentProjectConfig } from 'src/platform/config/config.js';
 import { getCwd } from 'src/shared/fs/cwd.js';

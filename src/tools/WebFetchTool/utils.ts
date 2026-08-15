@@ -8,7 +8,7 @@ import { getAPIProvider } from 'src/utils/model/providers.js'
 import {
   isBinaryContentType,
   persistBinaryContent,
-} from 'src/services/mcp/mcpOutputStorage.js'
+} from 'src/mcp/mcpOutputStorage.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { ssrfGuardedLookup } from 'src/platform/lifecycleHooks/ssrfGuard.js'

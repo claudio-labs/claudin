@@ -20,7 +20,7 @@ import {
   getParentSessionId as getParentSessionIdFromState,
 } from 'src/platform/bootstrap/state.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { isOfficialMcpUrl } from 'src/services/mcp/officialRegistry.js'
+import { isOfficialMcpUrl } from 'src/mcp/officialRegistry.js'
 import { isClaudeAISubscriber, getSubscriptionType } from 'src/providers/auth/auth.js'
 import { getRepoRemoteHash } from 'src/vcs/git/git.js'
 import {

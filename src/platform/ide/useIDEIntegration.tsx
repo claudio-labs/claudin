@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import { useEffect } from 'react';
-import type { ScopedMcpServerConfig } from 'src/services/mcp/types.js';
+import type { ScopedMcpServerConfig } from 'src/mcp/types.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js';
 import type { DetectedIDEInfo } from 'src/platform/ide/ide.js';

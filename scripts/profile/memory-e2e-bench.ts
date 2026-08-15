@@ -147,7 +147,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #3 MCP memoize cache
   try {
-    const mod = await import('../../src/services/mcp/client.js')
+    const mod = await import('../../src/mcp/client.js')
     if (typeof mod.__TEST_ONLY_getMemoizeCacheSize === 'function') {
       out['mcp.connectToServer.cache'] = mod.__TEST_ONLY_getMemoizeCacheSize()
     }
@@ -336,7 +336,7 @@ async function measureStages(): Promise<BootstrapStage[]> {
     await import('../../src/providers/shims/claude.js')
   })
   await stage('07 services/mcp/client', async () => {
-    await import('../../src/services/mcp/client.js')
+    await import('../../src/mcp/client.js')
   })
   await stage('08 tools/FileReadTool', async () => {
     await import('../../src/tools/FileReadTool/index.js').catch(() => {})

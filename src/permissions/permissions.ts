@@ -3,7 +3,7 @@ import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import {
   getToolNameForPermissionCheck,
   mcpInfoFromString,
-} from 'src/services/mcp/mcpStringUtils.js'
+} from 'src/mcp/mcpStringUtils.js'
 import type { Tool, ToolPermissionContext, ToolUseContext } from 'src/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js'

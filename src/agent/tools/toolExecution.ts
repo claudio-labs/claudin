@@ -131,15 +131,15 @@ import {
 import {
   McpAuthError,
   McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from 'src/services/mcp/client.js'
-import { mcpInfoFromString } from 'src/services/mcp/mcpStringUtils.js'
-import { normalizeNameForMCP } from 'src/services/mcp/normalization.js'
-import type { MCPServerConnection } from 'src/services/mcp/types.js'
+} from 'src/mcp/client.js'
+import { mcpInfoFromString } from 'src/mcp/mcpStringUtils.js'
+import { normalizeNameForMCP } from 'src/mcp/normalization.js'
+import type { MCPServerConnection } from 'src/mcp/types.js'
 import {
   getLoggingSafeMcpBaseUrl,
   getMcpServerScopeFromToolName,
   isMcpTool,
-} from 'src/services/mcp/utils.js'
+} from 'src/mcp/utils.js'
 import {
   resolveHookPermissionDecision,
   runPostToolUseFailureHooks,

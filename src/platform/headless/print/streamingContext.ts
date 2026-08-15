@@ -52,7 +52,7 @@ import type { UUID } from 'crypto'
 import type {
   MCPServerConnection,
   McpSdkServerConfig,
-} from 'src/services/mcp/types.js'
+} from 'src/mcp/types.js'
 import type {
   SDKStatus,
   ModelInfo,

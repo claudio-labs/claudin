@@ -1,23 +1,23 @@
 import { afterAll, describe, expect, it, mock } from 'bun:test'
 import { readFileSync } from 'node:fs'
-import type { MCPServerConnection } from 'src/services/mcp/types.js'
+import type { MCPServerConnection } from 'src/mcp/types.js'
 import type { Tool as InternalTool } from 'src/Tool.js'
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
 import { getCombinedTools, loadReexposedMcpTools } from 'src/platform/entrypoints/mcp.js'
 
-type GetMcpToolsFn = typeof import('src/services/mcp/client/fetchCapabilities.js').getMcpToolsCommandsAndResources
+type GetMcpToolsFn = typeof import('src/mcp/client/fetchCapabilities.js').getMcpToolsCommandsAndResources
 type OnConnectionAttempt = Parameters<GetMcpToolsFn>[0]
 
-const realMcpClient = { ...(await import('src/services/mcp/client.js')) }
+const realMcpClient = { ...(await import('src/mcp/client.js')) }
 
 // Mock the MCP client service to control the tools and connections returned
 const mockGetMcpToolsCommandsAndResources = mock(async (_onConnectionAttempt: OnConnectionAttempt) => {})
-mock.module('src/services/mcp/client.js', () => ({
+mock.module('src/mcp/client.js', () => ({
   getMcpToolsCommandsAndResources: mockGetMcpToolsCommandsAndResources
 }))
 
 afterAll(() => {
-  mock.module('src/services/mcp/client.js', () => realMcpClient)
+  mock.module('src/mcp/client.js', () => realMcpClient)
 })
 
 describe('getCombinedTools', () => {

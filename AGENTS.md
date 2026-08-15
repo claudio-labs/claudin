@@ -68,7 +68,7 @@ Single entrypoint, single-file bundle: `src/platform/entrypoints/cli.tsx` → `d
 - `src/services/api/` — provider abstraction. `client.ts` builds the right SDK from `activeProvider.ts`; `openaiShim.ts` (~2.2k lines) translates to OpenAI Chat Completions; `codexShim.ts` is ChatGPT OAuth; `providerConfig.ts` holds presets/profile schema/OAuth; `withRetry.ts`/`errors.ts` do retry + error classification.
 - `src/commands/` — slash commands (`/provider`, `/review`, `/plan`, `/resume`, `/mcp`, `/skills`, …), discovered via `src/commands.ts`.
 - `src/tools/` — built-in tools: file IO, search (`GrepTool`/`GlobTool`), shell (`BashTool`), version control (`GitTool`), agents/tasks, MCP, planning, web, workflow, worktree.
-- `src/services/mcp/` — MCP client + server connection management; `src/services/mcpServerApproval.tsx` is the trust dialog.
+- `src/mcp/` — MCP client + server connection management; `src/mcp/mcpServerApproval.tsx` is the trust dialog.
 - `src/agent/coordinator/` — multi-agent coordinator (active when `COORDINATOR_MODE` is on).
 - `src/components/` + `src/screens/` + `src/terminal/ink/` — Ink React TUI; `src/platform/main.tsx` mounts, `src/agent/repl/REPL.tsx` is the main loop; `src/native-ts/yoga-layout` avoids a native-addon dep.
 - `src/memory/memdir/`, `src/memory/extract/`, `src/memory/session/` — auto-memory: for git projects defaults to project-local `<repo>/.claudin/memory/`, `.md` files indexed by `MEMORY.md`. `memory/team/` is meant to be git-tracked (carve it out of `.gitignore`, which blanket-ignores `.claudin/`); private `memory/*.md` stays ignored.

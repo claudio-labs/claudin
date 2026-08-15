@@ -21,7 +21,7 @@ import {
 import { filterAgentsByMcpRequirements } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { filterDeniedAgents } from 'src/permissions/permissions.js'
 import { getSubscriptionType } from 'src/providers/auth/auth.js'
-import { mcpInfoFromString } from 'src/services/mcp/mcpStringUtils.js'
+import { mcpInfoFromString } from 'src/mcp/mcpStringUtils.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { getLocalISODate } from 'src/constants/common.js'
 import {
@@ -49,8 +49,8 @@ import {
 import {
   getMcpInstructionsDelta,
   isMcpInstructionsDeltaEnabled,
-} from 'src/services/mcp/mcpInstructionsDelta.js'
-import type { MCPServerConnection } from 'src/services/mcp/types.js'
+} from 'src/mcp/mcpInstructionsDelta.js'
+import type { MCPServerConnection } from 'src/mcp/types.js'
 import { getClaudeMdDelta } from 'src/memory/instructions/claudeMdDelta.js'
 import { getGitStatusDelta } from 'src/vcs/git/gitStatusDelta.js'
 import { getSystemContext, getUserContext } from 'src/agent/context.js'

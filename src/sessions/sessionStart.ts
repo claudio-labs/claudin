@@ -8,7 +8,7 @@ import { updateWatchPaths } from 'src/platform/lifecycleHooks/fileChangedWatcher
 import { shouldAllowManagedHooksOnly } from 'src/platform/lifecycleHooks/hooksConfigSnapshot.js'
 import { executeSessionStartHooks, executeSetupHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import { logError } from 'src/shared/log.js'
-import { loadPluginHooks } from 'src/services/plugins/loadPluginHooks.js'
+import { loadPluginHooks } from 'src/plugins/loadPluginHooks.js'
 
 type SessionStartHooksOptions = {
   sessionId?: string

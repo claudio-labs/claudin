@@ -26,7 +26,7 @@ import type { Root } from 'src/terminal/ink.js';
 // pulls undici/growthbook/OAuth populate. All three are gated by argv: cold
 // paths (--help/--version/subcommands) never need them. (Phase D.)
 import type * as ReplLauncherMod from 'src/agent/repl/replLauncher.js';
-import type { McpSdkServerConfig, ScopedMcpServerConfig } from 'src/services/mcp/types.js';
+import type { McpSdkServerConfig, ScopedMcpServerConfig } from 'src/mcp/types.js';
 import type { ToolInputJSONSchema } from 'src/Tool.js';
 import type * as ToolsMod from 'src/tools.js';
 import type * as InitMod from 'src/platform/entrypoints/init.js';
@@ -87,9 +87,9 @@ const getBuildDeepLinkBanner = () => require('src/platform/deepLink/banner.js').
 const getPermissionModes = () => require('src/permissions/PermissionMode.js').PERMISSION_MODES as typeof import('src/permissions/PermissionMode.js').PERMISSION_MODES
 const getLogEvent = () => require('src/platform/analytics/index.js').logEvent as typeof import('src/platform/analytics/index.js').logEvent
 type AnalyticsMetadata = import('src/platform/analytics/index.js').AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-const getInitializeVersionedPlugins = () => require('src/services/plugins/installedPluginsManager.js').initializeVersionedPlugins as typeof import('src/services/plugins/installedPluginsManager.js').initializeVersionedPlugins
-const getCleanupOrphanedPluginVersionsInBackground = () => require('src/services/plugins/cacheUtils.js').cleanupOrphanedPluginVersionsInBackground as typeof import('src/services/plugins/cacheUtils.js').cleanupOrphanedPluginVersionsInBackground
-const getGlobExclusionsForPluginCacheFn = () => require('src/services/plugins/orphanedPluginFilter.js').getGlobExclusionsForPluginCache as typeof import('src/services/plugins/orphanedPluginFilter.js').getGlobExclusionsForPluginCache
+const getInitializeVersionedPlugins = () => require('src/plugins/installedPluginsManager.js').initializeVersionedPlugins as typeof import('src/plugins/installedPluginsManager.js').initializeVersionedPlugins
+const getCleanupOrphanedPluginVersionsInBackground = () => require('src/plugins/cacheUtils.js').cleanupOrphanedPluginVersionsInBackground as typeof import('src/plugins/cacheUtils.js').cleanupOrphanedPluginVersionsInBackground
+const getGlobExclusionsForPluginCacheFn = () => require('src/plugins/orphanedPluginFilter.js').getGlobExclusionsForPluginCache as typeof import('src/plugins/orphanedPluginFilter.js').getGlobExclusionsForPluginCache
 const getProcessSessionStartHooks = () => require('src/sessions/sessionStart.js').processSessionStartHooks as typeof import('src/sessions/sessionStart.js').processSessionStartHooks
 const getProcessSetupHooks = () => require('src/sessions/sessionStart.js').processSetupHooks as typeof import('src/sessions/sessionStart.js').processSetupHooks
 const getSaveMode = () => require('src/sessions/sessionStorage.js').saveMode as typeof import('src/sessions/sessionStorage.js').saveMode

@@ -102,7 +102,7 @@ const webCmd = feature('CCR_REMOTE_SETUP')
   : null
 const clearSkillIndexCache = feature('EXPERIMENTAL_SKILL_SEARCH')
   ? (
-      require('./services/skillSearch/localSearch.js') as typeof import('./services/skillSearch/localSearch.js')
+      require('./skills/search/localSearch.js') as typeof import('./skills/search/localSearch.js')
     ).clearSkillIndexCache
   : null
 const subscribePr = feature('KAIROS_GITHUB_WEBHOOKS')
@@ -172,7 +172,7 @@ import {
   clearPluginCommandCache,
   getPluginSkills,
   clearPluginSkillsCache,
-} from 'src/services/plugins/loadPluginCommands.js'
+} from 'src/plugins/loadPluginCommands.js'
 import memoize from 'lodash-es/memoize.js'
 import { isUsing3PServices, isClaudeAISubscriber } from 'src/providers/auth/auth.js'
 import { isFirstPartyAnthropicBaseUrl } from 'src/utils/model/providers.js'

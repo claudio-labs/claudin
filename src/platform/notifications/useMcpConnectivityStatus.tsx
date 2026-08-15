@@ -5,8 +5,8 @@ import { useEffect } from 'react';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { getIsRemoteMode } from 'src/platform/bootstrap/state.js';
 import { Text } from 'src/terminal/ink.js';
-import { hasClaudeAiMcpEverConnected } from 'src/services/mcp/claudeai.js';
-import type { MCPServerConnection } from 'src/services/mcp/types.js';
+import { hasClaudeAiMcpEverConnected } from 'src/mcp/claudeai.js';
+import type { MCPServerConnection } from 'src/mcp/types.js';
 type Props = {
   mcpClients?: MCPServerConnection[];
 };

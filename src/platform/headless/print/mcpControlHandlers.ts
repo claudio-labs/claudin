@@ -22,18 +22,18 @@ import { errorMessage } from 'src/shared/errors.js'
 import {
   clearServerCache,
   reconnectMcpServerImpl,
-} from 'src/services/mcp/client.js'
+} from 'src/mcp/client.js'
 import {
   getMcpConfigByName,
   isMcpServerDisabled,
   setMcpServerEnabled,
-} from 'src/services/mcp/config.js'
+} from 'src/mcp/config.js'
 import {
   performMCPOAuthFlow,
   revokeServerTokens,
-} from 'src/services/mcp/auth.js'
-import { getMcpPrefix } from 'src/services/mcp/mcpStringUtils.js'
-import { commandBelongsToServer } from 'src/services/mcp/utils.js'
+} from 'src/mcp/auth.js'
+import { getMcpPrefix } from 'src/mcp/mcpStringUtils.js'
+import { commandBelongsToServer } from 'src/mcp/utils.js'
 import { reregisterChannelHandlerAfterReconnect } from 'src/platform/headless/print/controlHandlers.js'
 import type {
   HeadlessStreamingContext,

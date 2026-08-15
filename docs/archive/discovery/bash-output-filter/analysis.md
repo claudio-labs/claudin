@@ -115,7 +115,7 @@ unless = "(?i)\\b(error|warning|deprecated)\\b"
 | `commandSemantics.ts` | `src/tools/BashTool/commandSemantics.ts:31-77` | Mapa "exit≠0 não é necessariamente erro" (grep/rg/find/diff/test) |
 | Chokepoint de tool result | `src/agent/tools/toolResultStorage.ts:225` | Local provider-agnóstico onde plugar |
 | Marker convention | `<tool-result-summary>` em `toolResultSummarizer.ts:28` | Padrão pro modelo entender que houve compactação |
-| MCP approval dialog | `src/services/mcpServerApproval.tsx` | Análogo direto do trust do rtk |
+| MCP approval dialog | `src/mcp/mcpServerApproval.tsx` | Análogo direto do trust do rtk |
 
 ## Pontos de integração no código
 

@@ -26,7 +26,7 @@ import {
 import type {
   MCPServerConnection,
   ConnectedMCPServer,
-} from 'src/services/mcp/types.js'
+} from 'src/mcp/types.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
@@ -53,7 +53,7 @@ import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js'
 import { TICK_TAG } from 'src/constants/xml.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { loadMemoryPrompt } from 'src/memory/memdir/memdir.js'
-import { isMcpInstructionsDeltaEnabled } from 'src/services/mcp/mcpInstructionsDelta.js'
+import { isMcpInstructionsDeltaEnabled } from 'src/mcp/mcpInstructionsDelta.js'
 import {
   isAntiNarrationEnabled,
   isSubagentNotesEnabled,
@@ -87,7 +87,7 @@ const DISCOVER_SKILLS_TOOL_NAME: string | null = feature(
 // Capture the module (not .isSkillSearchEnabled directly) so spyOn() in tests
 // patches what we actually call — a captured function ref would point past the spy.
 const skillSearchFeatureCheck = feature('EXPERIMENTAL_SKILL_SEARCH')
-  ? (require('../services/skillSearch/featureCheck.js') as typeof import('../services/skillSearch/featureCheck.js'))
+  ? (require('../skills/search/featureCheck.js') as typeof import('../skills/search/featureCheck.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 import type { OutputStyleConfig } from 'src/constants/outputStyles.js'

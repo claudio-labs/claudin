@@ -4,7 +4,7 @@ import { getOutputStyleDirStyles } from 'src/agent/outputStyles/loadOutputStyles
 import type { OutputStyle } from 'src/platform/config/config.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { loadPluginOutputStyles } from 'src/services/plugins/loadPluginOutputStyles.js'
+import { loadPluginOutputStyles } from 'src/plugins/loadPluginOutputStyles.js'
 import type { SettingSource } from 'src/platform/settings/constants.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 

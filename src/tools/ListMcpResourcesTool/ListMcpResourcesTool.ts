@@ -2,7 +2,7 @@ import { z } from 'zod/v4'
 import {
   ensureConnectedClient,
   fetchResourcesForClient,
-} from 'src/services/mcp/client.js'
+} from 'src/mcp/client.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'

@@ -9,7 +9,7 @@ import type { Command } from '@commander-js/extra-typings'
 import { registerMcpAddCommand } from 'src/commands/mcp/addCommand.js'
 import { registerMcpDoctorCommand } from 'src/commands/mcp/doctorCommand.js'
 import { registerMcpXaaIdpCommand } from 'src/commands/mcp/xaaIdpCommand.js'
-import { isXaaEnabled } from 'src/services/mcp/xaaIdpLogin.js'
+import { isXaaEnabled } from 'src/mcp/xaaIdpLogin.js'
 import { createSortedHelpConfig } from 'src/platform/main/commands/_helpConfig.js'
 
 export function registerMcpCommands(program: Command): void {

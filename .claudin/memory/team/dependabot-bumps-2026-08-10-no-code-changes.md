@@ -34,7 +34,7 @@ source changes**. Validated with `bun install`, `bun run build`,
   a permessage-deflate offer whose `client_max_window_bits` is below the
   configured `clientMaxWindowBits`. Inert here: nothing in the repo sets
   `perMessageDeflate`/`*MaxWindowBits`, and our ws use is client-side
-  (`src/terminal/voice/voiceStreamSTT.ts`, `src/services/mcp/mcpWebSocketTransport.ts`,
+  (`src/terminal/voice/voiceStreamSTT.ts`, `src/mcp/mcpWebSocketTransport.ts`,
   `src/platform/headless/transports/WebSocketTransport.ts`).
 
 **Superseded 2026-08-14:** this note used to flag that `.github/dependabot.yml`

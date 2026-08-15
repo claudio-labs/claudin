@@ -5,11 +5,11 @@ import memoize from 'lodash-es/memoize.js'
 import { createConnection } from 'net'
 import { basename, join, sep as pathSeparator, resolve } from 'path'
 import { getIsScrollDraining, getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { callIdeRpc } from 'src/services/mcp/client.js'
+import { callIdeRpc } from 'src/mcp/client.js'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,
-} from 'src/services/mcp/types.js'
+} from 'src/mcp/types.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { env } from 'src/shared/env.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'

@@ -18,8 +18,8 @@ import {
 import { getDefaultAppState } from 'src/terminal/state/AppStateStore.js'
 import review from 'src/commands/review.js'
 import type { Command } from 'src/commands.js'
-import { getMcpToolsCommandsAndResources } from 'src/services/mcp/client.js'
-import type { MCPServerConnection } from 'src/services/mcp/types.js'
+import { getMcpToolsCommandsAndResources } from 'src/mcp/client.js'
+import type { MCPServerConnection } from 'src/mcp/types.js'
 import {
   findToolByName,
   getEmptyToolPermissionContext,

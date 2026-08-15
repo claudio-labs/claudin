@@ -6,7 +6,7 @@ import {
   normalizePatternsToPath,
 } from 'src/permissions/filesystem.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
-import { getGlobExclusionsForPluginCache } from 'src/services/plugins/orphanedPluginFilter.js'
+import { getGlobExclusionsForPluginCache } from 'src/plugins/orphanedPluginFilter.js'
 import type { RipgrepIncompleteReason } from 'src/shared/fs/ripgrep.js'
 import { ripGrepWithStatus } from 'src/shared/fs/ripgrep.js'
 

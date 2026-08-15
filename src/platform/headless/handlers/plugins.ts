@@ -20,20 +20,20 @@ import {
   updatePluginCli,
   VALID_INSTALLABLE_SCOPES,
   VALID_UPDATE_SCOPES,
-} from 'src/services/plugins/pluginCliCommands.js'
+} from 'src/plugins/pluginCliCommands.js'
 import { getPluginErrorMessage } from 'src/types/plugin.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
-import { clearAllCaches } from 'src/services/plugins/cacheUtils.js'
-import { getInstallCounts } from 'src/services/plugins/installCounts.js'
+import { clearAllCaches } from 'src/plugins/cacheUtils.js'
+import { getInstallCounts } from 'src/plugins/installCounts.js'
 import {
   isPluginInstalled,
   loadInstalledPluginsV2,
-} from 'src/services/plugins/installedPluginsManager.js'
+} from 'src/plugins/installedPluginsManager.js'
 import {
   createPluginId,
   loadMarketplacesWithGracefulDegradation,
-} from 'src/services/plugins/marketplaceHelpers.js'
+} from 'src/plugins/marketplaceHelpers.js'
 import {
   addMarketplaceSource,
   loadKnownMarketplacesConfig,
@@ -41,20 +41,20 @@ import {
   refreshMarketplace,
   removeMarketplaceSource,
   saveMarketplaceToSettings,
-} from 'src/services/plugins/marketplaceManager.js'
-import { loadPluginMcpServers } from 'src/services/plugins/mcpPluginIntegration.js'
-import { parseMarketplaceInput } from 'src/services/plugins/parseMarketplaceInput.js'
+} from 'src/plugins/marketplaceManager.js'
+import { loadPluginMcpServers } from 'src/plugins/mcpPluginIntegration.js'
+import { parseMarketplaceInput } from 'src/plugins/parseMarketplaceInput.js'
 import {
   parsePluginIdentifier,
   scopeToSettingSource,
-} from 'src/services/plugins/pluginIdentifier.js'
-import { loadAllPlugins } from 'src/services/plugins/pluginLoader.js'
-import type { PluginSource } from 'src/services/plugins/schemas.js'
+} from 'src/plugins/pluginIdentifier.js'
+import { loadAllPlugins } from 'src/plugins/pluginLoader.js'
+import type { PluginSource } from 'src/plugins/schemas.js'
 import {
   type ValidationResult,
   validateManifest,
   validatePluginContents,
-} from 'src/services/plugins/validatePlugin.js'
+} from 'src/plugins/validatePlugin.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 import { cliError, cliOk } from 'src/platform/headless/exit.js'
@@ -164,7 +164,7 @@ export async function pluginListHandler(options: {
 
   const installedData = loadInstalledPluginsV2()
   const { getPluginEditableScopes } = await import(
-    'src/services/plugins/pluginStartupCheck.js'
+    'src/plugins/pluginStartupCheck.js'
   )
   const enabledPlugins = getPluginEditableScopes()
 

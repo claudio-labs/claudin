@@ -219,7 +219,7 @@ async function main(): Promise<void> {
 
   // --- #3 MCP connectToServer memoize cache -------------------------------
   try {
-    const mod = await import('../../src/services/mcp/client.js')
+    const mod = await import('../../src/mcp/client.js')
     const get = mod.__TEST_ONLY_getMemoizeCacheSize
     if (typeof get === 'function') {
       results.push({

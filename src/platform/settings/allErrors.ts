@@ -9,7 +9,7 @@
  * is eliminated.
  */
 
-import { getMcpConfigsByScope } from 'src/services/mcp/config.js'
+import { getMcpConfigsByScope } from 'src/mcp/config.js'
 import { getSettingsWithErrors } from 'src/platform/settings/settings.js'
 import type { SettingsWithErrors } from 'src/platform/settings/validation.js'
 

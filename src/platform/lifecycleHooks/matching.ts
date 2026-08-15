@@ -12,7 +12,7 @@ import {
   getHooksConfigFromSnapshot,
   shouldAllowManagedHooksOnly,
 } from 'src/platform/lifecycleHooks/hooksConfigSnapshot.js'
-import { ALLOWED_OFFICIAL_MARKETPLACE_NAMES } from 'src/services/plugins/schemas.js'
+import { ALLOWED_OFFICIAL_MARKETPLACE_NAMES } from 'src/plugins/schemas.js'
 import type {
   HookEvent,
   HookInput,

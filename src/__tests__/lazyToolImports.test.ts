@@ -167,14 +167,14 @@ const CANDIDATES: Candidate[] = [
     modulePath: 'src/tools/ListMcpResourcesTool/ListMcpResourcesTool',
     current: [
       'src/agent/ui/agents/ToolSelector.tsx',
-      'src/services/mcp/client/fetchCapabilities.ts',    ],
+      'src/mcp/client/fetchCapabilities.ts',    ],
     goal: ['src/tools.ts'],
   },
   {
     modulePath: 'src/tools/ReadMcpResourceTool/ReadMcpResourceTool',
     current: [
       'src/agent/ui/agents/ToolSelector.tsx',
-      'src/services/mcp/client/fetchCapabilities.ts',    ],
+      'src/mcp/client/fetchCapabilities.ts',    ],
     goal: ['src/tools.ts'],
   },
 ]

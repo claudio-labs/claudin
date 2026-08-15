@@ -4,7 +4,7 @@ import { join } from 'path'
 import {
   type McpServerConfig,
   McpStdioServerConfigSchema,
-} from 'src/services/mcp/types.js'
+} from 'src/mcp/types.js'
 import { getErrnoCode } from 'src/shared/errors.js'
 import { safeParseJSON } from 'src/shared/data/json.js'
 import { logError } from 'src/shared/log.js'

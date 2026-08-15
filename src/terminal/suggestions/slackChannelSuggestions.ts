@@ -1,6 +1,6 @@
 import { z } from 'zod/v4'
 import type { SuggestionItem } from 'src/terminal/prompt-input/PromptInputFooterSuggestions.js'
-import type { MCPServerConnection } from 'src/services/mcp/types.js'
+import type { MCPServerConnection } from 'src/mcp/types.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { createSignal } from 'src/shared/signal.js'

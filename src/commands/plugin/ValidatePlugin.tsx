@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import { errorMessage } from 'src/shared/errors.js';
 import { logError } from 'src/shared/log.js';
-import { validateManifest } from 'src/services/plugins/validatePlugin.js';
+import { validateManifest } from 'src/plugins/validatePlugin.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 type Props = {
   onComplete: (result?: string) => void;

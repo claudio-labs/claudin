@@ -22,12 +22,12 @@ describe('MCP tool result sanitization', () => {
   test('transformResultContent sanitizes text content', async () => {
     // Tool definitions are already sanitized in fetchCapabilities.ts
     const fetchContent = await file(
-      'src/services/mcp/client/fetchCapabilities.ts',
+      'src/mcp/client/fetchCapabilities.ts',
     ).text()
     expect(fetchContent).toContain('recursivelySanitizeUnicode(result.tools)')
     // Tool results must also be sanitized in toolResult.ts
     const toolResultContent = await file(
-      'src/services/mcp/client/toolResult.ts',
+      'src/mcp/client/toolResult.ts',
     ).text()
     expect(toolResultContent).toMatch(
       /case 'text':[\s\S]*?recursivelySanitizeUnicode\(resultContent\.text\)/,
@@ -35,7 +35,7 @@ describe('MCP tool result sanitization', () => {
   })
 
   test('resource text content is also sanitized', async () => {
-    const content = await file('src/services/mcp/client/toolResult.ts').text()
+    const content = await file('src/mcp/client/toolResult.ts').text()
     expect(content).toMatch(
       /recursivelySanitizeUnicode\(\s*`\$\{prefix\}\$\{resource\.text\}`/,
     )
@@ -69,7 +69,7 @@ describe('Sandbox settings trust boundary', () => {
 // ---------------------------------------------------------------------------
 describe('Plugin git operations disable hooks', () => {
   test('gitClone includes core.hooksPath=/dev/null', async () => {
-    const content = await file('src/services/plugins/marketplaceManager.ts').text()
+    const content = await file('src/plugins/marketplaceManager.ts').text()
     // The clone args must disable hooks
     const cloneSection = content.slice(
       content.indexOf('export async function gitClone('),
@@ -79,7 +79,7 @@ describe('Plugin git operations disable hooks', () => {
   })
 
   test('gitPull includes core.hooksPath=/dev/null', async () => {
-    const content = await file('src/services/plugins/marketplaceManager.ts').text()
+    const content = await file('src/plugins/marketplaceManager.ts').text()
     const pullSection = content.slice(
       content.indexOf('export async function gitPull('),
       content.indexOf('export async function gitPull(') + 2000,
@@ -88,7 +88,7 @@ describe('Plugin git operations disable hooks', () => {
   })
 
   test('gitSubmoduleUpdate includes core.hooksPath=/dev/null', async () => {
-    const content = await file('src/services/plugins/marketplaceManager.ts').text()
+    const content = await file('src/plugins/marketplaceManager.ts').text()
     const subSection = content.slice(
       content.indexOf('async function gitSubmoduleUpdate('),
       content.indexOf('async function gitSubmoduleUpdate(') + 1000,

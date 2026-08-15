@@ -33,7 +33,7 @@ abaixo, exceto `authCachePromise` que coalesce *leitura* do mesmo arquivo).
 |---|---|---|---|---|
 | Model lists | `src/utils/model/modelCache.ts:20,47` | JSON-per-provider em `model-cache/` | 24 h hard, versionado | não |
 | Latest version banner | `src/platform/install/latestVersionCache.ts:38,53` | JSON único `latest-version.json` | sem TTL próprio (caller decide via `checkedAt`) | não |
-| MCP auth-required cache | `src/services/mcp/client/authCache.ts:6,29` | JSON único `mcp-needs-auth-cache.json` | 15 min hard | parcial (leitura memoizada via `authCachePromise`) |
+| MCP auth-required cache | `src/mcp/client/authCache.ts:6,29` | JSON único `mcp-needs-auth-cache.json` | 15 min hard | parcial (leitura memoizada via `authCachePromise`) |
 | Paste store | `src/terminal/input/pasteStore.ts:8` | files in `paste-cache/` | sem TTL (cleanup por `cutoffDate`) | n/a (content-addressed) |
 | File history | `src/shared/fs/fileHistory.ts:54` | `file-history/` por sessão | cap 100 snapshots | n/a |
 | Tool result spill | `src/agent/tools/toolResultStorage.ts` | files in `cache/` | sem TTL | n/a |
@@ -114,7 +114,7 @@ Estimativas, não medidas neste ambiente:
 ## 4. Onde NÃO ganha (e portanto NÃO encaixa)
 
 - **Provider presets** (`providerConfig.ts:592` e arredores): estáticos no build time. Recomputo é nanosegundos. `getAdditionalModelOptionsCacheScope()` é útil como `scope` para outros caches, NÃO como valor cacheado.
-- **MCP tool listings / capabilities** (`src/services/mcp/client/fetchCapabilities.ts`): mudam por conexão, e a conexão já é estável durante a sessão. TTL adicionaria invalidação que o ciclo de conexão MCP já governa.
+- **MCP tool listings / capabilities** (`src/mcp/client/fetchCapabilities.ts`): mudam por conexão, e a conexão já é estável durante a sessão. TTL adicionaria invalidação que o ciclo de conexão MCP já governa.
 - **MCP auth-cache** (`authCache.ts`): já é hard 15 min, JSON em disco, com leitura memoizada. Conceito = "ainda precisa de auth?" — não há ganho em servir stale; ou ainda precisa, ou não.
 - **Tool result cache (Read/Glob/Grep/LSP)** (`toolResultCache.ts`): já tem TTL curto (15-60 s) + mtime-check no path. Stale-while-revalidate seria perigoso — servir Read stale enquanto arquivo mudou no disco viola contrato. Mantém como está.
 - **File-read / file-state / file-history caches**: content-addressed ou mtime-gated. Soft/hard não acrescenta.

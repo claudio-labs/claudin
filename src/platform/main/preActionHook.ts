@@ -20,7 +20,7 @@ import { loadPolicyLimits } from 'src/platform/policyLimits/index.js';
 import { loadRemoteManagedSettings } from 'src/platform/remoteManagedSettings/index.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
-import { clearPluginCache } from 'src/services/plugins/pluginLoader.js';
+import { clearPluginCache } from 'src/plugins/pluginLoader.js';
 import { ensureKeychainPrefetchCompleted } from 'src/platform/secureStorage/keychainPrefetch.js';
 import { ensureMdmSettingsLoaded } from 'src/platform/settings/mdm/settings.js';
 import { profileCheckpoint } from 'src/platform/startupProfiler.js';

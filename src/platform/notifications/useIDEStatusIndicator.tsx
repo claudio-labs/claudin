@@ -3,7 +3,7 @@ import React, { useEffect, useRef } from 'react';
 import type { Notification } from 'src/terminal/contexts/notifications.js';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { Text } from 'src/terminal/ink.js';
-import type { MCPServerConnection } from 'src/services/mcp/types.js';
+import type { MCPServerConnection } from 'src/mcp/types.js';
 import type { GlobalConfig } from 'src/platform/config/config.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { detectIDEs, type IDEExtensionInstallationStatus, isJetBrainsIde, isSupportedTerminal } from 'src/platform/ide/ide.js';

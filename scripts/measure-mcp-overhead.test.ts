@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { isMcpInstructionsDeltaEnabled } from '../src/services/mcp/mcpInstructionsDelta.js'
+import { isMcpInstructionsDeltaEnabled } from '../src/mcp/mcpInstructionsDelta.js'
 import { measureMcpOverhead } from './measure-mcp-overhead.ts'
 
 describe('measureMcpOverhead', () => {

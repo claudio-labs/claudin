@@ -64,7 +64,7 @@ const TWELVE_FILES = [
   'src/platform/config/config.ts',
   'src/providers/transport/withRetry.ts',
   'src/providers/transport/errors.ts',
-  'src/services/mcp/client.ts',
+  'src/mcp/client.ts',
   'src/utils/model/model.ts',
   'src/providers/presets/providerModels.ts',
   'src/agent/context.ts',

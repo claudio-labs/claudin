@@ -22,14 +22,14 @@ type AnyAsyncFn = (...args: any[]) => Promise<any>
 // on first import, so a partial mock here would leak missing-export errors
 // into every later test file that pulls pluginLoader transitively (e.g.
 // tools.lsp-gate, diagnosticsForToolResult).
-const realPluginLoader = { ...(await import('src/services/plugins/pluginLoader.js')) }
+const realPluginLoader = { ...(await import('src/plugins/pluginLoader.js')) }
 // `errors` is not optional padding: `getClaudeCodeMcpConfigs` and
 // `loadPluginOutputStyles` both read `.errors.length` off this result, and a
 // module-scope `mock.module` is live for the WHOLE run — so a stub missing the
 // key is a TypeError in any later file that reaches those, not just here. It
 // took out all 15 `<REPL> * baseline` tests once the reorg moved them.
 const mockLoadPlugins = mock<AnyAsyncFn>(async () => ({ enabled: [], errors: [] }))
-mock.module('src/services/plugins/pluginLoader.js', () => ({
+mock.module('src/plugins/pluginLoader.js', () => ({
   ...realPluginLoader,
   loadAllPluginsCacheOnly: mockLoadPlugins,
 }))
@@ -70,7 +70,7 @@ mock.module('src/shared/errors.js', () => ({
   classifyAxiosError: (_e: unknown) => ({ type: 'unknown' }),
 }))
 // Prevent deep plugin integration chain from loading
-mock.module('src/services/plugins/lspPluginIntegration.js', () => ({
+mock.module('src/plugins/lspPluginIntegration.js', () => ({
   getPluginLspServers: mock(async () => ({})),
   addPluginScopeToLspServers: mock((s: unknown) => s),
 }))
@@ -102,7 +102,7 @@ describe('getAllLspServers — plugin-only', () => {
         enabled: true,
       }],
     }))
-    mock.module('src/services/plugins/lspPluginIntegration.js', () => ({
+    mock.module('src/plugins/lspPluginIntegration.js', () => ({
       getPluginLspServers: async () => ({
         'my-server': makeServer('plugin-cmd', 'test-plugin'),
       }),
@@ -150,7 +150,7 @@ afterAll(() => {
   mock.module('src/shared/errors.js', () => realErrorsConfigTest)
   mock.module('src/shared/log.js', () => realLogConfig)
   mock.module('src/shared/log.js', () => realLogConfig)
-  mock.module('src/services/plugins/pluginLoader.js', () => ({
+  mock.module('src/plugins/pluginLoader.js', () => ({
     ...realPluginLoader,
     loadAllPluginsCacheOnly: async () => ({ enabled: [], errors: [] }),
   }))

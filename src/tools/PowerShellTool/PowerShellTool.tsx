@@ -21,7 +21,7 @@ import { lazySchema } from 'src/shared/data/lazySchema.js';
 import { logError } from 'src/shared/log.js';
 import type { PermissionResult } from 'src/permissions/PermissionResult.js';
 import { getPlatform } from 'src/shared/proc/platform.js';
-import { maybeRecordPluginHint } from 'src/services/plugins/hintRecommendation.js';
+import { maybeRecordPluginHint } from 'src/plugins/hintRecommendation.js';
 import { exec } from 'src/shared/proc/Shell.js';
 import type { ExecResult } from 'src/shared/proc/ShellCommand.js';
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';

@@ -35,7 +35,7 @@ import type { Attachment } from 'src/agent/attachments/types.js'
 const skillSearchModules = feature('EXPERIMENTAL_SKILL_SEARCH')
   ? {
       featureCheck:
-        require('../../services/skillSearch/featureCheck.js') as typeof import('../../services/skillSearch/featureCheck.js'),
+        require('../../skills/search/featureCheck.js') as typeof import('../../skills/search/featureCheck.js'),
     }
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */

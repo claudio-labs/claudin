@@ -26,8 +26,8 @@ import {
   formatDescriptionWithSource,
 } from 'src/commands.js'
 import { getCommands } from 'src/commands.js'
-import { loadAllPluginsCacheOnly } from 'src/services/plugins/pluginLoader.js'
-import { refreshActivePlugins } from 'src/services/plugins/refresh.js'
+import { loadAllPluginsCacheOnly } from 'src/plugins/pluginLoader.js'
+import { refreshActivePlugins } from 'src/plugins/refresh.js'
 import { redownloadUserSettings } from 'src/platform/settingsSync/index.js'
 import { settingsChangeDetector } from 'src/platform/settings/changeDetector.js'
 import { getSettingsWithSources } from 'src/platform/settings/settings.js'

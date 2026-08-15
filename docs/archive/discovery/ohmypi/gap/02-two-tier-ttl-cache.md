@@ -69,10 +69,10 @@ Padrões adicionais de cache no omp que não entraram em `02-*` insight/deep/fit
 
 - **Negative cache + path-prefix invalidate** → `src/agent/tools/toolResultCache.ts:63` (Grep/Glob/Read). Não tem invalidate por write-em-vizinho; hoje só mtime do file próprio.
 - **Config-hash invalidation** → `src/utils/model/modelCache.ts:20,47` (hoje só `version` numérico) e `src/platform/settings/settingsCache.ts`.
-- **Atomic staging-rename / path whitelist** → `src/services/plugins/zipCache.ts`, `src/services/plugins/cacheUtils.ts`.
+- **Atomic staging-rename / path whitelist** → `src/plugins/zipCache.ts`, `src/plugins/cacheUtils.ts`.
 - **`getStale()` durable retention** → `src/platform/install/latestVersionCache.ts:38,53` (banner serve último valor bom indefinidamente, refresh em background).
 - **Empty-result fast recheck** → `src/tools/GlobTool/` + `src/tools/GrepTool/`.
-- **MCP tool cache (config-hash + TTL longo)** → gap real: `src/services/mcp/client/authCache.ts:6,29` cobre só "needs auth"; não existe cache de tool-list/schema MCP. omp tem 30 dias com config-hash.
+- **MCP tool cache (config-hash + TTL longo)** → gap real: `src/mcp/client/authCache.ts:6,29` cobre só "needs auth"; não existe cache de tool-list/schema MCP. omp tem 30 dias com config-hash.
 - **Native fs cache layer** → Claudin evita native deps; replicar empty-recheck e prefix-invalidate em **TypeScript layer** sobre `GrepTool`/`GlobTool` é viável e barato.
 - **Stale-on-demand explicit API** → todos os caches Claudin hoje são fresh-or-miss. Padronizar `getStale()` opcional é refactor de baixo risco.
 

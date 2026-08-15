@@ -1,7 +1,7 @@
 import { join } from 'path'
 import type { LocalCommandResult } from 'src/commands.js'
-import { loadInstalledPluginsV2 } from 'src/services/plugins/installedPluginsManager.js'
-import { OFFICIAL_MARKETPLACE_NAME } from 'src/services/plugins/officialMarketplace.js'
+import { loadInstalledPluginsV2 } from 'src/plugins/installedPluginsManager.js'
+import { OFFICIAL_MARKETPLACE_NAME } from 'src/plugins/officialMarketplace.js'
 import { playAnimation } from 'src/commands/thinkback/thinkback.js'
 
 const SKILL_NAME = 'thinkback'

@@ -31,7 +31,7 @@ import type { Notification } from 'src/terminal/contexts/notifications.js'
 import type {
   MCPServerConnection,
   ServerResource,
-} from 'src/services/mcp/types.js'
+} from 'src/mcp/types.js'
 import type {
   AgentDefinition,
   AgentDefinitionsResult,

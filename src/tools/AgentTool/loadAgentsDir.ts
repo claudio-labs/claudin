@@ -11,7 +11,7 @@ import {
 import {
   type McpServerConfig,
   McpServerConfigSchema,
-} from 'src/services/mcp/types.js'
+} from 'src/mcp/types.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import {
@@ -35,7 +35,7 @@ import {
 import {
   clearPluginAgentCache,
   loadPluginAgents,
-} from 'src/services/plugins/loadPluginAgents.js'
+} from 'src/plugins/loadPluginAgents.js'
 import { HooksSchema, type HooksSettings } from 'src/platform/settings/types.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'

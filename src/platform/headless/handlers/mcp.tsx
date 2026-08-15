@@ -7,7 +7,7 @@ import { stat } from 'fs/promises';
 import pMap from 'p-map';
 import { cwd } from 'process';
 import React from 'react';
-import { MCPServerDesktopImportDialog } from 'src/components/MCPServerDesktopImportDialog.js';
+import { MCPServerDesktopImportDialog } from 'src/mcp/ui/MCPServerDesktopImportDialog.js';
 import { render } from 'src/terminal/ink.js';
 import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
@@ -16,12 +16,12 @@ import {
   clearServerTokensFromSecureStorage,
   readClientSecret,
   saveMcpClientSecret,
-} from 'src/services/mcp/auth.js'
-import { doctorAllServers, doctorServer, type McpDoctorReport, type McpDoctorScopeFilter } from 'src/services/mcp/doctor.js';
-import { connectToServer, getMcpServerConnectionBatchSize } from 'src/services/mcp/client.js';
-import { addMcpConfig, getAllMcpConfigs, getMcpConfigByName, getMcpConfigsByScope, removeMcpConfig } from 'src/services/mcp/config.js';
-import type { ConfigScope, ScopedMcpServerConfig } from 'src/services/mcp/types.js';
-import { describeMcpConfigFilePath, ensureConfigScope, getScopeLabel } from 'src/services/mcp/utils.js';
+} from 'src/mcp/auth.js'
+import { doctorAllServers, doctorServer, type McpDoctorReport, type McpDoctorScopeFilter } from 'src/mcp/doctor.js';
+import { connectToServer, getMcpServerConnectionBatchSize } from 'src/mcp/client.js';
+import { addMcpConfig, getAllMcpConfigs, getMcpConfigByName, getMcpConfigsByScope, removeMcpConfig } from 'src/mcp/config.js';
+import type { ConfigScope, ScopedMcpServerConfig } from 'src/mcp/types.js';
+import { describeMcpConfigFilePath, ensureConfigScope, getScopeLabel } from 'src/mcp/utils.js';
 import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import { getCurrentProjectConfig, getGlobalConfig, saveCurrentProjectConfig } from 'src/platform/config/config.js';
 import { isFsInaccessible } from 'src/shared/errors.js';

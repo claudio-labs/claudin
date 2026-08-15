@@ -1,5 +1,5 @@
 import { z } from 'zod/v4'
-import { mcpInfoFromString } from 'src/services/mcp/mcpStringUtils.js'
+import { mcpInfoFromString } from 'src/mcp/mcpStringUtils.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { permissionRuleValueFromString } from 'src/permissions/permissionRuleParser.js'
 import { capitalize } from 'src/shared/text/stringUtils.js'

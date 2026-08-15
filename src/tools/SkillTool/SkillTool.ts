@@ -31,7 +31,7 @@ import { getRuleByContentsForTool } from 'src/permissions/permissions.js'
 import {
   isOfficialMarketplaceName,
   parsePluginIdentifier,
-} from 'src/services/plugins/pluginIdentifier.js'
+} from 'src/plugins/pluginIdentifier.js'
 import { buildPluginCommandTelemetryFields } from 'src/platform/telemetry/pluginTelemetry.js'
 import { z } from 'zod/v4'
 import {
@@ -107,10 +107,10 @@ import type { SkillToolProgress as Progress } from 'src/types/tools.js'
 /* eslint-disable @typescript-eslint/no-require-imports */
 const remoteSkillModules = feature('EXPERIMENTAL_SKILL_SEARCH')
   ? {
-      ...(require('../../services/skillSearch/remoteSkillState.js') as typeof import('../../services/skillSearch/remoteSkillState.js')),
-      ...(require('../../services/skillSearch/remoteSkillLoader.js') as typeof import('../../services/skillSearch/remoteSkillLoader.js')),
-      ...(require('../../services/skillSearch/telemetry.js') as typeof import('../../services/skillSearch/telemetry.js')),
-      ...(require('../../services/skillSearch/featureCheck.js') as typeof import('../../services/skillSearch/featureCheck.js')),
+      ...(require('../../skills/search/remoteSkillState.js') as typeof import('../../skills/search/remoteSkillState.js')),
+      ...(require('../../skills/search/remoteSkillLoader.js') as typeof import('../../skills/search/remoteSkillLoader.js')),
+      ...(require('../../skills/search/telemetry.js') as typeof import('../../skills/search/telemetry.js')),
+      ...(require('../../skills/search/featureCheck.js') as typeof import('../../skills/search/featureCheck.js')),
     }
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */

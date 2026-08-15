@@ -13,7 +13,7 @@
  * full snapshot once.
  *
  * Mirrors the pattern of:
- *   - `src/services/mcp/mcpInstructionsDelta.ts`
+ *   - `src/mcp/mcpInstructionsDelta.ts`
  *   - `src/agent/tools/toolSearch.ts` (`getDeferredToolsDelta`)
  *   - `src/agent/attachments/attachments.ts` (`getAgentListingDeltaAttachment`)
  *

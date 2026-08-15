@@ -90,7 +90,7 @@ import {
 const skillSearchModules = feature('EXPERIMENTAL_SKILL_SEARCH')
   ? {
       prefetch:
-        require('../../services/skillSearch/prefetch.js') as typeof import('../../services/skillSearch/prefetch.js'),
+        require('../../skills/search/prefetch.js') as typeof import('../../skills/search/prefetch.js'),
     }
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
@@ -266,7 +266,7 @@ export async function getAttachments(
     // (query.ts, concurrent with the main turn). The blocking call that
     // previously lived here was the assistant_turn signal — 97% of those
     // Haiku calls found nothing in prod. Prefetch + await-at-collection
-    // replaces it; see src/services/skillSearch/prefetch.ts.
+    // replaces it; see src/skills/search/prefetch.ts.
     maybe('plan_mode', () => getPlanModeAttachments(messages, toolUseContext)),
     maybe('plan_mode_exit', () => getPlanModeExitAttachment(toolUseContext)),
     ...(feature('TRANSCRIPT_CLASSIFIER')

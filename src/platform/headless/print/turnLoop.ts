@@ -172,7 +172,7 @@ export async function runTurnLoop(
     // `-p` under this env var HUNG rather than failing. An alias cannot rot the same
     // way when a file changes depth, which is why the repo rule forbids `../../`.
     const { setupPluginHookHotReload } = await import(
-      'src/services/plugins/loadPluginHooks.js'
+      'src/plugins/loadPluginHooks.js'
     )
     setupPluginHookHotReload()
   }

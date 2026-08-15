@@ -8,7 +8,7 @@ import { stringWidth } from 'src/terminal/ink/stringWidth.js';
 import { Box, Text, useInput } from 'src/terminal/ink.js';
 import { useKeybinding, useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
-import type { PluginOptionSchema, PluginOptionValues } from 'src/services/plugins/pluginOptionsStorage.js';
+import type { PluginOptionSchema, PluginOptionValues } from 'src/plugins/pluginOptionsStorage.js';
 
 /**
  * Build the onSave payload from collected string inputs.

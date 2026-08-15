@@ -9,9 +9,9 @@ import TextInput from 'src/terminal/text-input/TextInput.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { toError } from 'src/shared/errors.js';
 import { logError } from 'src/shared/log.js';
-import { clearAllCaches } from 'src/services/plugins/cacheUtils.js';
-import { addMarketplaceSource, saveMarketplaceToSettings } from 'src/services/plugins/marketplaceManager.js';
-import { parseMarketplaceInput } from 'src/services/plugins/parseMarketplaceInput.js';
+import { clearAllCaches } from 'src/plugins/cacheUtils.js';
+import { addMarketplaceSource, saveMarketplaceToSettings } from 'src/plugins/marketplaceManager.js';
+import { parseMarketplaceInput } from 'src/plugins/parseMarketplaceInput.js';
 import type { ViewState } from 'src/commands/plugin/types.js';
 type Props = {
   inputValue: string;

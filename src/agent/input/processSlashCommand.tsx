@@ -34,7 +34,7 @@ import { createCommandInputMessage, createSyntheticUserCaveatMessage, createSyst
 import type { ModelAlias } from 'src/utils/model/aliases.js';
 import { parseToolListFromCLI } from 'src/permissions/permissionSetup.js';
 import { hasPermissionsToUseTool } from 'src/permissions/permissions.js';
-import { isOfficialMarketplaceName, parsePluginIdentifier } from 'src/services/plugins/pluginIdentifier.js';
+import { isOfficialMarketplaceName, parsePluginIdentifier } from 'src/plugins/pluginIdentifier.js';
 import { isRestrictedToPluginOnly, isSourceAdminTrusted } from 'src/platform/settings/pluginOnlyPolicy.js';
 import { parseSlashCommand } from 'src/utils/slashCommandParsing.js';
 import { sleep } from 'src/shared/sleep.js';

@@ -23,8 +23,8 @@ import { buildPowerShellArgs } from 'src/platform/shell/powershellProvider.js'
 import {
   loadPluginOptions,
   substituteUserConfigVariables,
-} from 'src/services/plugins/pluginOptionsStorage.js'
-import { getPluginDataDir } from 'src/services/plugins/pluginDirectories.js'
+} from 'src/plugins/pluginOptionsStorage.js'
+import { getPluginDataDir } from 'src/plugins/pluginDirectories.js'
 import { getProjectRoot, getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import {
   promptRequestSchema,

@@ -9,7 +9,7 @@ Model: claude-opus-4-8.
 - `src/platform/headless/print/runHeadless.ts` (160K)
 - `src/platform/bridge/bridgeMain.ts` (112K)
 - `src/platform/bash/ast.ts` (112K)
-- `src/services/plugins/pluginLoader.ts` (112K)
+- `src/plugins/pluginLoader.ts` (112K)
 - `src/terminal/prompt-input/PromptInput.tsx` (104K)
 - `src/commands/insights.ts` (104K)
 - `src/tools/BashTool/bashSecurity.ts` (104K)

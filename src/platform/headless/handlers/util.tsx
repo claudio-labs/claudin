@@ -13,7 +13,7 @@ import type { Root } from 'src/terminal/ink.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js';
 import { logEvent } from 'src/platform/analytics/index.js';
-import { MCPConnectionManager } from 'src/services/mcp/MCPConnectionManager.js';
+import { MCPConnectionManager } from 'src/mcp/MCPConnectionManager.js';
 import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import { onChangeAppState } from 'src/terminal/state/onChangeAppState.js';
 import { isAnthropicAuthEnabled } from 'src/providers/auth/auth.js';

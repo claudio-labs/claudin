@@ -6,7 +6,7 @@ type: project
 
 `src/platform/headless/print/turnLoop.ts` imported `'../utils/plugins/loadPluginHooks.js'`, which
 resolves to `src/platform/headless/utils/plugins/` — a directory that does not exist. The real
-module is `src/services/plugins/loadPluginHooks.ts`. The specifier had been one level
+module is `src/plugins/loadPluginHooks.ts`. The specifier had been one level
 short since `2e178cf7` moved `runHeadless` from `src/platform/headless/` into `src/platform/headless/print/`
 without re-basing it. **Fixed 2026-08-07 in PR #57** (`2e0d4ecc`), using the `src/`
 path alias rather than `../../`.

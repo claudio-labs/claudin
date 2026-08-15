@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useIdeConnectionStatus } from 'src/platform/ide/useIdeConnectionStatus.js';
 import type { IDESelection } from 'src/platform/ide/useIdeSelection.js';
 import { Text } from 'src/terminal/ink.js';
-import type { MCPServerConnection } from 'src/services/mcp/types.js';
+import type { MCPServerConnection } from 'src/mcp/types.js';
 type IdeStatusIndicatorProps = {
   ideSelection: IDESelection | undefined;
   mcpClients?: MCPServerConnection[];

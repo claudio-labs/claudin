@@ -28,30 +28,30 @@ import {
 import { logForDebugging } from 'src/shared/debug.js'
 import { withDiagnosticsTiming } from 'src/shared/diagLogs.js'
 import { logError, logMCPDebug } from 'src/shared/log.js'
-import type { MCPServerConnection } from 'src/services/mcp/types.js'
+import type { MCPServerConnection } from 'src/mcp/types.js'
 import {
   isChannelAllowlisted,
   isChannelsEnabled,
-} from 'src/services/mcp/channelAllowlist.js'
+} from 'src/mcp/channelAllowlist.js'
 import type {
   McpServerConfigForProcessTransport,
   McpServerStatus,
 } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
-import { setupSdkMcpClients } from 'src/services/mcp/client.js'
-import { getAllMcpConfigs } from 'src/services/mcp/config.js'
+import { setupSdkMcpClients } from 'src/mcp/client.js'
+import { getAllMcpConfigs } from 'src/mcp/config.js'
 import {
   runElicitationHooks,
   runElicitationResultHooks,
-} from 'src/services/mcp/elicitationHandler.js'
+} from 'src/mcp/elicitationHandler.js'
 import { executeNotificationHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import {
   ElicitRequestSchema,
   ElicitationCompleteNotificationSchema,
 } from '@modelcontextprotocol/sdk/types.js'
-import { getMcpPrefix } from 'src/services/mcp/mcpStringUtils.js'
-import { filterToolsByServer } from 'src/services/mcp/utils.js'
-import { setupVscodeSdkMcp } from 'src/services/mcp/vscodeSdkMcp.js'
+import { getMcpPrefix } from 'src/mcp/mcpStringUtils.js'
+import { filterToolsByServer } from 'src/mcp/utils.js'
+import { setupVscodeSdkMcp } from 'src/mcp/vscodeSdkMcp.js'
 import {
   getInitJsonSchema,
   getIsRemoteMode,
@@ -62,8 +62,8 @@ import { randomUUID } from 'crypto'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getCommands } from 'src/commands.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { installPluginsForHeadless } from 'src/services/plugins/headlessPluginInstall.js'
-import { refreshActivePlugins } from 'src/services/plugins/refresh.js'
+import { installPluginsForHeadless } from 'src/plugins/headlessPluginInstall.js'
+import { refreshActivePlugins } from 'src/plugins/refresh.js'
 import { handleMcpSetServers } from 'src/platform/headless/print/mcpReconcile.js'
 import type {
   HeadlessStreamingContext,

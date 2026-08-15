@@ -18,12 +18,12 @@ import { cleanupAgentTracking } from 'src/providers/cache/promptCacheBreakDetect
 import {
   connectToServer,
   fetchToolsForClient,
-} from 'src/services/mcp/client.js'
-import { getMcpConfigByName } from 'src/services/mcp/config.js'
+} from 'src/mcp/client.js'
+import { getMcpConfigByName } from 'src/mcp/config.js'
 import type {
   MCPServerConnection,
   ScopedMcpServerConfig,
-} from 'src/services/mcp/types.js'
+} from 'src/mcp/types.js'
 import type { Tool, Tools, ToolUseContext } from 'src/Tool.js'
 import { killShellTasksForAgent } from 'src/agent/tasks/LocalShellTask/killShellTasks.js'
 import type { Command } from 'src/types/command.js'

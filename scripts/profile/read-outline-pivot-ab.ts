@@ -77,7 +77,7 @@ const FIXTURES = [
   'src/providers/usage/modelCost.ts',
   'src/tools/BashTool/sedValidation.ts',
   'src/platform/lifecycleHooks/events.ts',
-  'src/services/mcp/doctor.ts',
+  'src/mcp/doctor.ts',
   'src/sessions/sessionRestore.ts',
 ]
 

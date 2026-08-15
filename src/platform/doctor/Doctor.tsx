@@ -3,7 +3,7 @@ import figures from 'figures';
 import { join } from 'path';
 import React, { Suspense, use, useCallback, useEffect, useMemo, useState } from 'react';
 import { KeybindingWarnings } from 'src/platform/KeybindingWarnings.js';
-import { McpParsingWarnings } from 'src/components/mcp/McpParsingWarnings.js';
+import { McpParsingWarnings } from 'src/mcp/ui/McpParsingWarnings.js';
 import { getModelMaxOutputTokens } from 'src/agent/context/context.js';
 import { getDefaultMainLoopModel } from 'src/utils/model/model.js';
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js';

@@ -15,7 +15,7 @@ import { startDeferredPrefetches } from 'src/platform/main/deferredPrefetches.js
 import { checkGate_CACHED_OR_BLOCKING, initializeGrowthBook, resetGrowthBook } from 'src/platform/analytics/growthbook.js';
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';
 import { isQualifiedForGrove } from 'src/platform/privacy/grove.js';
-import { handleMcpjsonServerApprovals } from 'src/services/mcpServerApproval.js';
+import { handleMcpjsonServerApprovals } from 'src/mcp/mcpServerApproval.js';
 import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import { onChangeAppState } from 'src/terminal/state/onChangeAppState.js';
 import { normalizeApiKeyForConfig } from 'src/providers/auth/authPortable.js';
@@ -299,7 +299,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
         isChannelsEnabled
       }, {
         getClaudeAIOAuthTokens
-      }] = await Promise.all([import('src/services/mcp/channelAllowlist.js'), import('src/providers/auth/auth.js')]);
+      }] = await Promise.all([import('src/mcp/channelAllowlist.js'), import('src/providers/auth/auth.js')]);
       // Skip the dialog when channels are blocked (tengu_harbor off or no
       // OAuth) — accepting then immediately seeing "not available" in
       // ChannelsNotice is worse than no dialog. Append entries anyway so

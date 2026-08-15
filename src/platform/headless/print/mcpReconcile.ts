@@ -2,7 +2,7 @@ import type {
   MCPServerConnection,
   McpSdkServerConfig,
   ScopedMcpServerConfig,
-} from 'src/services/mcp/types.js'
+} from 'src/mcp/types.js'
 import type {
   McpServerConfigForProcessTransport,
 } from 'src/platform/entrypoints/agentSdkTypes.js'
@@ -14,8 +14,8 @@ import {
   clearServerCache,
   connectToServer,
   fetchToolsForClient,
-} from 'src/services/mcp/client.js'
-import { filterMcpServersByPolicy } from 'src/services/mcp/config.js'
+} from 'src/mcp/client.js'
+import { filterMcpServersByPolicy } from 'src/mcp/config.js'
 import { logError } from 'src/shared/log.js'
 import { toError } from 'src/shared/errors.js'
 

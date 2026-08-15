@@ -43,7 +43,7 @@ import { Box, type ClickEvent, type Key, Text, useInput } from 'src/terminal/ink
 import { useOptionalKeybindingContext } from 'src/terminal/keybindings/KeybindingContext.js';
 import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js';
 import { useKeybinding, useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
-import type { MCPServerConnection } from 'src/services/mcp/types.js';
+import type { MCPServerConnection } from 'src/mcp/types.js';
 import { abortPromptSuggestion, logSuggestionSuppressed } from 'src/terminal/prompt-suggestion/promptSuggestion.js';
 import { type ActiveSpeculationState, abortSpeculation } from 'src/terminal/prompt-suggestion/speculation.js';
 import { getActiveAgentForInput, getViewedTeammateTask } from 'src/terminal/state/selectors.js';
