@@ -1,6 +1,6 @@
 ---
 name: mechanical-rewrites-skip-producers
-description: A repo-wide path rewrite updates derived artifacts but not the code that produces them; the 2026-08 reorg hit this three times, each silent
+description: A repo-wide path rewrite updates derived artifacts but not the code that produces them — and rewrites recorded results it should have left alone; the 2026-08 reorg hit both, five times, each silent
 type: feedback
 ---
 
@@ -28,6 +28,25 @@ failed loudly:
   had. The reorg's rewriter dutifully updated the fictional path to match the
   new tree.
 
+The same walk has a second failure direction, found on 2026-08-15: it also
+rewrites files that are **records rather than text**, and there the update is
+the corruption. It edited 106 of them — 38 bench transcripts under
+`scripts/bench/results/`, 62 archived discovery notes under `docs/archive/`, and
+`scripts/profile/baselines/cold-start-retained.json`, whose measured RSS and
+import-time figures ended up filed under module names that were never measured.
+Verbatim model output now cited slice paths nobody could have typed on the day
+it was produced. All 106 were reverted and `scripts/reorg/apply.ts` now skips
+those trees (`isRecordedArtifact`).
+
+And one gate was left mid-migration: `scripts/missing-imports-baseline.json`,
+the pin behind `build:strict`, was last captured in reorg group 3 of N. Every
+later group moved importers, so 53 specifiers were unbaselined and 55 baselined
+ones no longer existed — `CLAUDIN_STRICT_IMPORTS=1 bun run build` failed on the
+branch while a plain `bun run build` stayed green and merely printed the count.
+That is the one gate whose whole job is catching a path gone stale after a move.
+Re-captured 2026-08-15; the module set was identical, so nothing had actually
+broken, only the guard.
+
 **Why:** these all sit downstream of the file walk. A generator, a plugin filter
 and a comment are *about* paths rather than *containing* imports, so nothing
 type-checks them and no test covered the pinning itself.
@@ -39,5 +58,9 @@ mechanism is path-pinned and its failure mode is "silently does nothing", the
 guard must assert the pin resolves, not that the output looks right:
 `scripts/no-telemetry-stubs-resolve.test.ts` distinguishes a dead key (module the
 fork never received — reported) from a key disarmed by a move (fails, and names
-the destination). See [[rule-files-two-silent-failure-modes]] for the same shape
-in rule frontmatter, and [[reorg-catch-all-dirs-retired]] for the reorg itself.
+the destination). Re-run every ratchet the move could have desynced —
+`build:strict`, `test:floor`, the typecheck baseline — as part of the move, not
+after someone notices. And decide up front which trees are records: a bench
+result, a captured baseline and an archive are evidence, and evidence is not
+maintained. See [[rule-files-two-silent-failure-modes]] for the same shape in
+rule frontmatter, and [[reorg-catch-all-dirs-retired]] for the reorg itself.
