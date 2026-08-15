@@ -572,7 +572,10 @@ export function withRepeatedFailureHint(
   // Default on, like the bash output filter. It has a toggle because it
   // changes model-facing bytes for EVERY tool, not just the one whose branch
   // shipped it — a user who never touches the Read clip-pin should still be
-  // able to turn this off. AGENTS.md's default-on table lists it.
+  // able to turn this off. Surfaced to users as /config → "Repeated-failure
+  // hint"; `repeatedFailureHintEnabled: false` in the global config is the same
+  // switch. Not listed in AGENTS.md — that file describes the repo, and every
+  // other harness that reads it has no such behavior to honor.
   if (getGlobalConfig().repeatedFailureHintEnabled === false) return content
   const messages = toolUseContext.messages
   if (!Array.isArray(messages)) return content

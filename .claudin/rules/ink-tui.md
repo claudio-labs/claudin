@@ -107,7 +107,8 @@ the right one.
   React-Compiler-transformed**: `import { c as _c } from 'react-compiler-runtime'`,
   `const $ = _c(13)` fixed-slot cache, `$[i]` bookkeeping,
   `Symbol.for("react.memo_cache_sentinel")` guards — this is the real source, not
-  a build artifact. Likely true of other `src/components/*.tsx`.
+  a build artifact. Likely true of other `.tsx` in the slices' own `ui/`
+  directories (heaviest in `src/agent/ui/`, `src/permissions/ui/`, `src/mcp/ui/`).
 - When hand-editing one, **do not change the `_c(N)` slot count or the `$[index]`
   bookkeeping** or memoization breaks. Prefer edits that ride existing structures:
   add a field to an existing destructure, or change a string/expression inside an
@@ -118,6 +119,12 @@ the right one.
   `if ($[k] !== dep) { v = compute(); $[k] = dep; $[k+1] = v } else { v = $[k+1] }`
   — PR #18 added `stripOutputMarkers` memoization to `BashToolResultMessage.tsx`
   this way, `_c(34)`→`_c(36)`.)
+- **Their type errors ARE hand-fixable**, contrary to a claim that stood in
+  AGENTS.md for months. The transform strips the annotation off the props
+  parameter (`function C(t0)`) but leaves the props type declared a few lines
+  above, so annotating `t0` with it clears a whole cluster of `TS7006` at once —
+  no `_c` bookkeeping is touched. Count the sites, not the errors: 403 sites
+  produced 1,710 errors, and `tsc --noEmit` reached zero this way (#87).
 
 ## 7. `useTextInput`'s local mirror only re-syncs on a PROP change
 

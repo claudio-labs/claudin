@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { mkdtempSync, mkdirSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
-import { join } from 'path'
+import { join, sep } from 'path'
 import {
   extractProsePaths,
   isCheckableProsePath,
@@ -133,6 +133,25 @@ describe('lintRuleFiles', () => {
     const result = await lintRuleFiles({ root, trackedFiles: ['src/a.ts'] })
     expect(result.findings.map(f => f.kind)).toEqual(['missing_path'])
     expect(result.filesChecked).toBe(1)
+  })
+
+  // The budget exists to price what every turn pays for. Counting only the rule
+  // files hid the biggest always-on file of all: AGENTS.md takes no `paths:`, so
+  // it is unconditional by construction and outweighed every rule combined.
+  test('counts the root context files against the always-loaded budget', async () => {
+    const agents = '# Agents\n'
+    const claude = '# Claude\n'
+    const scoped = '---\npaths: src/**/*.ts\n---\n# Scoped\n'
+    const root = makeProject({
+      'AGENTS.md': agents,
+      'CLAUDE.md': claude,
+      '.claudin/rules/scoped.md': scoped,
+    })
+    const result = await lintRuleFiles({ root, trackedFiles: ['src/a.ts'] })
+    expect(
+      result.unconditional.map(r => r.file.split(sep).pop()).sort(),
+    ).toEqual(['AGENTS.md', 'CLAUDE.md'])
+    expect(result.unconditionalChars).toBe(agents.length + claude.length)
   })
 
   test('ignores citations whose first segment is not a project directory', async () => {

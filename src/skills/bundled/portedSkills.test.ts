@@ -132,7 +132,9 @@ describe('refresh-rules skill', () => {
     registerRefreshRulesSkill()
     const text = await promptText('refresh-rules')
     expect(text).toContain('rule file(s)')
-    expect(text).toMatch(/Always-loaded rules: \d+/)
+    // Root context files count too — AGENTS.md is unconditional by construction
+    // and is normally the largest thing in this number.
+    expect(text).toMatch(/Always-loaded context: \d+ file\(s\)/)
   })
 
   test('states the create threshold and the supported frontmatter key', async () => {

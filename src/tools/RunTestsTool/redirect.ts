@@ -38,6 +38,16 @@ export { MEMO_LIMIT }
  * ONE-SHOT per command: re-sending the identical command runs it. Without that
  * escape there would be no way to get raw runner output at all (print
  * debugging, a crash trace), and the refusal would be a wall, not a signpost.
+ *
+ * On by default, with all three gates on the call site (BashTool.tsx's
+ * validateInput): it is skipped when RunTests is absent from THIS agent's
+ * toolset — refusing Bash without an alternative is a dead end — never fires for
+ * a backgrounded run, which RunTests cannot do, and
+ * `CLAUDIN_DISABLE_RUNTESTS_REDIRECT=1` turns the lane off entirely.
+ * Deliberately NOT documented in AGENTS.md: that file is read by every agent
+ * harness that opens this repo, and a Claudin-only refusal listed there reads as
+ * an instruction the others cannot honor. The sibling Typecheck redirect
+ * (`CLAUDIN_DISABLE_TYPECHECK_REDIRECT`) shipped with no AGENTS.md row at all.
  */
 
 /**

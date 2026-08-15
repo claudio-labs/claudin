@@ -94,7 +94,13 @@ export type RuleLintFinding = {
 
 export type RuleLintResult = {
   findings: RuleLintFinding[]
-  /** Rule files with no `paths:`, i.e. loaded into every turn of every session. */
+  /**
+   * Everything paid on every turn of every session: the root context files
+   * (AGENTS.md, CLAUDE.md) plus any rule with no `paths:`. The root files are
+   * the reason this number is worth printing — AGENTS.md has on its own
+   * outweighed every unconditional rule combined, and counting only the rules
+   * left the largest always-on file invisible to the budget meant to police it.
+   */
   unconditional: { file: string; chars: number }[]
   unconditionalChars: number
   filesChecked: number
@@ -296,6 +302,10 @@ export async function lintRuleFiles(
 
     const isRootContextFile = !file.includes(`${sep}rules${sep}`)
     const inspection = inspectRuleFrontmatter(raw)
+
+    // Unconditional by definition: a root context file takes no `paths:`, so
+    // there is no session that does not pay for it.
+    if (isRootContextFile) unconditional.push({ file, chars: raw.length })
 
     // Root context files are unconditional by design and take no frontmatter,
     // so only their prose paths are checked.

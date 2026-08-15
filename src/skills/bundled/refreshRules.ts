@@ -40,7 +40,7 @@ async function buildPrompt(): Promise<string> {
       lines.length > 0
         ? `\nMechanical findings (already computed — do not re-derive these):\n${lines.join('\n')}`
         : '\nNo mechanical findings: every `paths:` matches at least one tracked file, no unsupported frontmatter keys, no stale path references.',
-      `\nAlways-loaded rules: ${unconditional.length} totalling ${unconditionalChars.toLocaleString()} chars, paid on every turn.`,
+      `\nAlways-loaded context: ${unconditional.length} file(s) totalling ${unconditionalChars.toLocaleString()} chars, paid on every turn — the root AGENTS.md/CLAUDE.md plus every rule with no \`paths:\`.`,
     ].join('\n')
   } catch {
     lintSection =

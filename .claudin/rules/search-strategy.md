@@ -321,7 +321,7 @@ Not under `src/`, but among the most-opened files in practice:
 | `package.json` | the script names (`build`, `smoke`, `verify:*`, `typecheck:ci`) and which deps are real vs stubbed |
 | `tsconfig.json` | the `src/…` path aliases and the compiler settings the typecheck backlog is measured against |
 | `bunfig.toml` | the test runner's preload/config — start here when a test behaves differently under `bun test` than standalone |
-| `AGENTS.md` | repo orientation; the toggle table for on-by-default runtime behaviors |
+| `AGENTS.md` | repo orientation, loaded every turn: the slice layout, where a new file goes, the import convention. On-by-default runtime behaviors are NOT here — each is documented at the top of the module that implements it |
 | `typecheck-baseline.json` | the ratchet's recorded backlog (`bun run typecheck:baseline` regenerates) |
 
 ## Common Search Patterns
@@ -418,6 +418,12 @@ the batch that moved it and annotated with why, so it answers the question
 directly. Failing that, `git log --follow --diff-filter=R -- <old-path>` finds
 the rename — every group was committed as pure renames, so `--follow` works
 across the whole reorg.
+
+A search that comes back empty may be looking for something that left the repo
+rather than moved. The headless gRPC service was **removed** in #22 — `src/grpc/`
+and `src/proto/claudin.proto` no longer exist, nor do the `dev:grpc*` scripts —
+and the bundled VS Code extension was **deleted** in #90 (fcbcbc11). Older docs
+and commit messages still mention both.
 
 ### Debugging tool output
 
