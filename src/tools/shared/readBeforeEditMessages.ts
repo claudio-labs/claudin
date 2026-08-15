@@ -26,7 +26,7 @@
 // following that advice means outline → refusal, three times over — the exact
 // give-up-and-edit-one-file-at-a-time loop these messages exist to prevent.
 
-import type { FileState } from 'src/shared/fs/fileStateCache.js'
+import type { FileState, SeenRange } from 'src/shared/fs/fileStateCache.js'
 
 export type ReadGateReason = 'never-read' | 'partial-view' | 'clipped'
 
@@ -163,6 +163,62 @@ function lineBlock(text: string): string {
     .join('\n')}\n`
 }
 
+/** The lines a slice holds, with the trailing newline's phantom line dropped. */
+/**
+ * The lines a slice holds, with the trailing newline's phantom line dropped —
+ * the reading `seenRangeLabel` has always used.
+ *
+ * It is genuinely ambiguous: content ending in `\n` is either N lines whose
+ * last one is blank, or N-1 lines plus a terminator. Taking it as a terminator
+ * under-counts by one when the slice really did end on a blank line, which can
+ * split an adjacency into a gap and refuse a write it should have allowed —
+ * 1 of 40 refusals in the corpus replay. The other reading would instead claim
+ * coverage of a line nobody read, so the miss stays on the safe side.
+ */
+function sliceLines(content: string): string[] {
+  const body = content.endsWith('\n') ? content.slice(0, -1) : content
+  return body === '' ? [] : body.split('\n')
+}
+
+/** A maximal run of consecutive lines the model has been shown. */
+export type SeenSegment = { offset: number; lines: string[] }
+
+/**
+ * Everything the model has seen of this file version, as contiguous runs: the
+ * entry's own slice plus the earlier ones `carrySeenRanges` kept
+ * (`fileStateCache.ts`), merged by line number.
+ *
+ * Merging is what keeps the accumulation honest. Two slices join only when
+ * they touch or overlap, so a hole between them stays a hole and a hunk
+ * anchored inside it is still refused — the alternative, concatenating the
+ * slices, would invent adjacency the model never saw and wave through a patch
+ * whose context spans the gap.
+ */
+export function coveredSegments(state: FileState): SeenSegment[] {
+  const slices: SeenRange[] = [
+    ...(state.seenRanges ?? []),
+    { offset: state.offset ?? 1, content: state.content },
+  ]
+  const sorted = slices
+    .map(slice => ({ offset: slice.offset, lines: sliceLines(slice.content) }))
+    .filter(slice => slice.lines.length > 0)
+    .sort((a, b) => a.offset - b.offset)
+
+  const merged: SeenSegment[] = []
+  for (const slice of sorted) {
+    const last = merged[merged.length - 1]
+    if (!last || slice.offset > last.offset + last.lines.length) {
+      merged.push({ offset: slice.offset, lines: [...slice.lines] })
+      continue
+    }
+    // Touching or overlapping: append only the part past what `last` already
+    // covers. A slice entirely inside `last` contributes nothing.
+    const overlap = last.offset + last.lines.length - slice.offset
+    last.lines.push(...slice.lines.slice(Math.max(0, overlap)))
+  }
+  return merged
+}
+
 /**
  * Does what the model actually read contain this run of lines? `needed` is the
  * OLD side of the write: an Update chunk's context+removed lines, or Edit's
@@ -181,20 +237,27 @@ export function seenRegionCovers(
   if (needed.length === 0) return true
   // Blank lines localize nothing; refusing on them would be noise.
   if (needed.every(line => line.trim() === '')) return true
-  return lineBlock(state.content).includes(lineBlock(needed.join('\n')))
+  const block = lineBlock(needed.join('\n'))
+  // Per SEGMENT, never across two of them — see coveredSegments.
+  return coveredSegments(state).some(segment =>
+    lineBlock(segment.lines.join('\n')).includes(block),
+  )
 }
 
-/** "lines 266-273" — what the entry's content actually spans. */
+/**
+ * "lines 266-273", or "lines 1-40, 266-273" once the entry carries earlier
+ * reads. Listing every segment is not cosmetic: the refusal tells the model
+ * what it has already been shown, and naming only the last read would send it
+ * to re-read lines it is holding.
+ */
 export function seenRangeLabel(state: FileState): string {
-  const body = state.content.endsWith('\n')
-    ? state.content.slice(0, -1)
-    : state.content
-  const count = body === '' ? 0 : body.split('\n').length
-  if (count === 0) return 'no lines'
-  const start = state.offset ?? 1
-  return count === 1
-    ? `line ${start}`
-    : `lines ${start}-${start + count - 1}`
+  const segments = coveredSegments(state)
+  if (segments.length === 0) return 'no lines'
+  const spans = segments.map(({ offset, lines }) =>
+    lines.length === 1 ? `${offset}` : `${offset}-${offset + lines.length - 1}`,
+  )
+  const singular = segments.length === 1 && segments[0]!.lines.length === 1
+  return `${singular ? 'line' : 'lines'} ${spans.join(', ')}`
 }
 
 /**

@@ -13,10 +13,6 @@ import {
   toolMatchesName,
   type ToolUseContext,
 } from 'src/tools/Tool.js'
-import {
-  FileReadTool,
-  readImageWithTokenBudget,
-} from 'src/tools/FileReadTool/FileReadTool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { getFsImplementation as _unusedGetFs } from 'src/shared/fs/fsOperations.js'
@@ -27,13 +23,9 @@ import { relative, resolve } from 'path'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getViewedTeammateTask } from 'src/terminal/state/selectors.js'
 import { logError } from 'src/shared/log.js'
-import { isENOENT, toError } from 'src/shared/errors.js'
+import { toError } from 'src/shared/errors.js'
 import { diagnosticTracker } from 'src/platform/diagnosticTracking.js'
-import { getSnippetForTwoFileDiff } from 'src/tools/FileEditTool/utils.js'
 import { cacheKeys } from 'src/shared/fs/fileStateCache.js'
-import {
-  getFileModificationTimeAsync,
-} from 'src/shared/fs/file.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import {
   checkForAsyncHookResponses,
@@ -72,6 +64,7 @@ import {
 } from 'src/agent/attachments/mentions.js'
 import { generateFileAttachment } from 'src/agent/attachments/file-pipeline.js'
 import { getNestedMemoryAttachmentsForFile } from 'src/agent/attachments/memory.js'
+import { refreshChangedFile } from 'src/agent/attachments/changedFile.js'
 
 void _unusedGetFs
 
@@ -330,77 +323,14 @@ export async function getChangedFiles(
         return null
       }
 
-      try {
-        const mtime = await getFileModificationTimeAsync(normalizedPath)
-        if (mtime <= fileState.timestamp) {
-          return null
-        }
-
-        const fileInput = { file_path: normalizedPath }
-
-        // Validate file path is valid
-        const isValid = await FileReadTool.validateInput(
-          fileInput,
-          toolUseContext,
-        )
-        if (!isValid.result) {
-          return null
-        }
-
-        const result = await FileReadTool.call(fileInput, toolUseContext)
-        // Extract only the changed section
-        if (result.data.type === 'text') {
-          const snippet = getSnippetForTwoFileDiff(
-            fileState.content,
-            result.data.file.content,
-          )
-
-          // File was touched but not modified
-          if (snippet === '') {
-            return null
-          }
-
-          return {
-            type: 'edited_text_file' as const,
-            filename: normalizedPath,
-            snippet,
-          }
-        }
-
-        // For non-text files (images), apply the same token limit logic as FileReadTool
-        if (result.data.type === 'image') {
-          try {
-            const data = await readImageWithTokenBudget(normalizedPath)
-            return {
-              type: 'edited_image_file' as const,
-              filename: normalizedPath,
-              content: data,
-            }
-          } catch (compressionError) {
-            logError(compressionError)
-            logEvent('tengu_watched_file_compression_failed', {
-              file: normalizedPath,
-            } as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS)
-            return null
-          }
-        }
-
-        // notebook / pdf / parts — no diff representation; explicitly
-        // null so the map callback has no implicit-undefined path.
-        return null
-      } catch (err) {
-        // Evict ONLY on ENOENT (file truly deleted). Transient stat
-        // failures — atomic-save races (editor writes tmp→rename and
-        // stat hits the gap), EACCES churn, network-FS hiccups — must
-        // NOT evict, or the next Edit fails code-6 even though the
-        // file still exists and the model just read it. VS Code
-        // auto-save/format-on-save hits this race especially often.
-        // See regression analysis on PR #18525.
-        if (isENOENT(err)) {
-          toolUseContext.readFileState.delete(filePath)
-        }
-        return null
-      }
+      // The re-read, the write-back and the eviction rules live in
+      // changedFile.ts, where a test can reach them.
+      return refreshChangedFile(
+        filePath,
+        normalizedPath,
+        fileState,
+        toolUseContext,
+      )
     }),
   )
   return results.filter(result => result != null) as Attachment[]

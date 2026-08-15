@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import {
+  carrySeenRanges,
   cloneFileStateCache,
   createFileStateCacheWithSizeLimit,
   mergeFileStateCaches,
   mergeReplacingLiveCache,
+  SEEN_RANGES_MAX_BYTES,
+  SEEN_RANGES_MAX_COUNT,
   type FileState,
 } from 'src/shared/fs/fileStateCache.js'
 import {
@@ -257,8 +260,8 @@ describe('FileStateCache — stand-down replay budget', () => {
   test('mutates in place, so the entry keeps its identity and its size', () => {
     // In place is the whole point: a re-`set` would churn the LRU. Identity is
     // the observable — same object, so nothing downstream holding a reference
-    // sees a stale counter, and `content` is untouched so the cache's byte
-    // accounting (which measures only `content`) stays exact.
+    // sees a stale counter, and neither `content` nor `seenRanges` is touched,
+    // so the cache's byte accounting stays exact.
     const cache = makeCache()
     cache.set('/a.ts', marked(0))
     const before = cache.get('/a.ts')
@@ -295,5 +298,202 @@ describe('FileStateCache — stand-down replay budget', () => {
     const cache = makeCache()
     cache.set('/dir/a.ts', marked(0))
     expect(cache.chargeStandDownReplay('/dir/./a.ts')).toBe(1)
+  })
+})
+
+/**
+ * Coverage for the ACCUMULATED read ranges.
+ *
+ * An entry used to stand for the last Read alone, so a file walked in slices
+ * accumulated no coverage and a narrow Read landing on a full one destroyed
+ * what the full one had proved. Both are silent: the model is refused with a
+ * message about lines it has already been shown.
+ *
+ * The dangerous direction is the other one, and it is what most of these pin:
+ * carrying a slice one byte past the moment it stopped describing the file on
+ * disk turns the coverage gate into a rubber stamp for a blind write.
+ */
+describe('FileStateCache — carrySeenRanges', () => {
+  const makeCache = (maxEntries = 10, maxBytes = 8 * 1024 * 1024) =>
+    createFileStateCacheWithSizeLimit(maxEntries, maxBytes)
+
+  /** A Read of `count` lines starting at `offset`, of one version of a file. */
+  const range = (
+    offset: number,
+    count: number,
+    timestamp = 1000,
+    fill = 'x',
+  ): FileState => ({
+    content: Array.from(
+      { length: count },
+      (_, i) => `${fill}${offset + i}`,
+    ).join('\n'),
+    timestamp,
+    offset,
+    limit: count,
+  })
+
+  const whole = (content: string, timestamp = 1000): FileState => ({
+    content,
+    timestamp,
+    offset: undefined,
+    limit: undefined,
+  })
+
+  test('a second range read carries the first forward', () => {
+    const cache = makeCache()
+    cache.set('/a.ts', range(1, 3))
+    cache.set('/a.ts', range(50, 3))
+
+    const stored = cache.get('/a.ts')!
+    expect(stored.seenRanges).toHaveLength(1)
+    expect(stored.seenRanges![0]!.offset).toBe(1)
+    // The entry itself still describes only the newest read; the carried list
+    // is additive, not a replacement.
+    expect(stored.offset).toBe(50)
+  })
+
+  test('a changed mtime drops everything carried', () => {
+    // The one invariant the whole lane rests on. Slices describe bytes; a new
+    // mtime means different bytes, and carrying them would let a write be
+    // authorized against a version of the file that no longer exists.
+    const cache = makeCache()
+    cache.set('/a.ts', range(1, 3, 1000))
+    cache.set('/a.ts', range(50, 3, 1000))
+    cache.set('/a.ts', range(90, 3, 2000))
+
+    expect(cache.get('/a.ts')!.seenRanges).toBeUndefined()
+  })
+
+  test('an Edit/Write entry carries nothing, and a later range starts fresh', () => {
+    // Write tools store the post-write mtime and the whole file, so they hit
+    // both exits at once. Pinned because it is what makes "edit then re-read a
+    // slice" behave like a first read rather than inheriting pre-edit lines.
+    const cache = makeCache()
+    cache.set('/a.ts', range(1, 3, 1000))
+    cache.set('/a.ts', whole('new content', 2000))
+    expect(cache.get('/a.ts')!.seenRanges).toBeUndefined()
+
+    cache.set('/a.ts', range(50, 3, 2000))
+    const stored = cache.get('/a.ts')!
+    expect(stored.seenRanges).toHaveLength(1)
+    expect(stored.seenRanges![0]!.content).toBe('new content')
+  })
+
+  test('a whole-file read drops the list instead of hoarding it', () => {
+    // seenRegionCovers short-circuits on a whole-file entry, so slices there
+    // are pure memory. This is also the shape Edit/Write write.
+    const cache = makeCache()
+    cache.set('/a.ts', range(1, 3))
+    cache.set('/a.ts', range(50, 3))
+    cache.set('/a.ts', whole('everything'))
+
+    expect(cache.get('/a.ts')!.seenRanges).toBeUndefined()
+  })
+
+  test('re-reading the same slice does not duplicate it', () => {
+    const cache = makeCache()
+    cache.set('/a.ts', range(1, 3))
+    cache.set('/a.ts', range(50, 3))
+    cache.set('/a.ts', range(1, 3))
+    cache.set('/a.ts', range(50, 3))
+
+    // Order is by recency, because that is the order the caps evict in — the
+    // assertion is that four reads of two slices leave two entries, not four.
+    const offsets = cache.get('/a.ts')!.seenRanges!.map(r => r.offset)
+    expect([...offsets].sort((a, b) => a - b)).toEqual([1, 50])
+  })
+
+  test('the byte cap drops the OLDEST slices', () => {
+    const cache = makeCache()
+    const big = (offset: number): FileState => ({
+      content: 'y'.repeat(32 * 1024),
+      timestamp: 1000,
+      offset,
+      limit: 10,
+    })
+    cache.set('/a.ts', big(1))
+    cache.set('/a.ts', big(100))
+    cache.set('/a.ts', big(200))
+    cache.set('/a.ts', big(300))
+
+    const offsets = cache.get('/a.ts')!.seenRanges!.map(r => r.offset)
+    // 3 x 32 KB is over the 64 KB budget, so the first read goes.
+    expect(offsets).toEqual([100, 200])
+  })
+
+  test('the newest slice survives even when it alone is over the budget', () => {
+    // The clobber case on a big file: a narrow Read landing on a full one. That
+    // full body was legally this entry's `content` a moment earlier, so keeping
+    // it costs the cache nothing it was not already paying — and dropping it is
+    // exactly the regression this whole change exists to fix.
+    const cache = makeCache()
+    cache.set('/a.ts', whole('z'.repeat(SEEN_RANGES_MAX_BYTES * 2)))
+    cache.set('/a.ts', range(50, 3))
+
+    const stored = cache.get('/a.ts')!
+    expect(stored.seenRanges).toHaveLength(1)
+    expect(stored.seenRanges![0]!.content.length).toBe(
+      SEEN_RANGES_MAX_BYTES * 2,
+    )
+  })
+
+  test('the count cap bounds the list at SEEN_RANGES_MAX_COUNT', () => {
+    const cache = makeCache()
+    for (let i = 0; i < SEEN_RANGES_MAX_COUNT + 6; i++) {
+      cache.set('/a.ts', range(i * 10 + 1, 1))
+    }
+    const ranges = cache.get('/a.ts')!.seenRanges!
+    expect(ranges).toHaveLength(SEEN_RANGES_MAX_COUNT)
+    // Oldest first out, newest kept.
+    expect(ranges[0]!.offset).toBeGreaterThan(1)
+    expect(ranges[ranges.length - 1]!.offset).toBe(
+      (SEEN_RANGES_MAX_COUNT + 4) * 10 + 1,
+    )
+  })
+
+  test('calculatedSize counts the carried bytes', () => {
+    // Without this the 25 MB cap stops bounding the cache: the carried slices
+    // are real retained memory and a size calculation blind to them under-
+    // reports every accumulating entry.
+    const cache = makeCache()
+    const slice = (offset: number): FileState => ({
+      content: 'w'.repeat(1024),
+      timestamp: 1000,
+      offset,
+      limit: 10,
+    })
+    cache.set('/a.ts', slice(1))
+    const oneRead = cache.calculatedSize
+    cache.set('/a.ts', slice(100))
+
+    expect(cache.calculatedSize).toBe(oneRead * 2)
+  })
+
+  test('carrySeenRanges is pure — it does not write to either argument', () => {
+    const prev = range(1, 3)
+    const next = range(50, 3)
+    const carried = carrySeenRanges(prev, next)
+
+    expect(carried).toHaveLength(1)
+    expect(prev.seenRanges).toBeUndefined()
+    expect(next.seenRanges).toBeUndefined()
+  })
+
+  test('an entry merged in from another cache keeps its own list', () => {
+    // mergeFileStateCaches only writes an entry whose timestamp is NEWER, which
+    // is the "carry nothing" case — so `set` must leave the incoming list
+    // alone rather than clearing it. Clearing here would silently drop the
+    // coverage a resumed or forked context had already earned.
+    const live = makeCache()
+    const incoming = makeCache()
+    live.set('/a.ts', range(1, 3, 1000))
+    const withRanges: FileState = { ...range(50, 3, 2000), seenRanges: [{ offset: 10, content: 'x10' }] }
+    incoming.set('/a.ts', withRanges)
+
+    const merged = mergeFileStateCaches(live, incoming)
+    expect(merged.get('/a.ts')!.seenRanges).toEqual([
+      { offset: 10, content: 'x10' },
+    ])
   })
 })

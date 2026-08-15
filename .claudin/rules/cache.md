@@ -133,16 +133,50 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
     `makeUnfoldData` (`FileReadTool.ts:1868-1873`) keeps those editable on
     purpose — that is the outline → symbol → edit flow the auto-outline pivot
     exists to enable. NotebookEdit stays out: it addresses cells, not lines.
+  - **An entry stands for every read of that file VERSION, not just the last
+    one** (2026-08-15). `set` used to replace the entry wholesale, so walking a
+    file in slices accumulated no coverage and a narrow Read landing on a full
+    one destroyed what the full one proved. Over 683 sessions that was 30 of 40
+    `coverage:unseen-region` refusals — hunks whose old side sat verbatim in
+    lines the model had already been shown — plus 561 whole-file entries
+    clobbered by a later narrower Read. `carrySeenRanges`
+    (`shared/fs/fileStateCache.ts`) now carries the previous slice forward and
+    `coveredSegments` merges them **by line number**, so two slices join only
+    where they touch. Three things hold it together, and all three have tests:
+    the list is dropped the moment `timestamp` moves (bytes from an older
+    version must never authorize a write); a gap between slices stays a gap (a
+    concatenation would invent adjacency and pass a hunk spanning it); and the
+    LRU's `sizeCalculation` counts the carried bytes, capped at
+    `SEEN_RANGES_MAX_BYTES` (64 KB) — a cap at the per-read ceiling would evict
+    by SIZE and trade a coverage refusal for a `never-read` one. The
+    accumulation is not per-turn: it lives exactly as long as its entry, and
+    compaction clears the whole cache anyway.
   - The obligation above belongs to consumers that read presence as **"the
     model has seen these bytes"** — not to every `readFileState` caller.
     `attachments/memory.ts:94,258,469` gate on `has()` and look like the same
     bug, but are not: that module WRITES `isPartialView` itself (`:110`) to
     mean "I injected a deliberately stripped form", so re-injecting on partial
-    would re-inject every turn, forever. `getChangedFiles`
-    (`attachments/services.ts:318`) is likewise safe by a different route — it
-    bails at `:322` on `offset !== undefined`, which every Read-authored entry
-    (marker included) has. Check what presence is being used to *conclude*
-    before copying the fix.
+    would re-inject every turn, forever. Check what presence is being used to
+    *conclude* before copying the fix.
+  - **The changed-files watcher WRITES to this cache, and used to corrupt it.**
+    `getChangedFiles` skips entries with an `offset`, which is often described
+    as "every Read-authored entry has one" — false: an outline entry writes
+    `offset: undefined` (`outlineView.ts`), so outline entries are walked. What
+    it does with them is the part that mattered: it re-read the file through
+    FileReadTool with **no `view`**, i.e. as a vanilla Read, which for a code
+    file over ~10 KB pivots to an outline and writes `isPartialView: true`. A
+    file the model had read in FULL was silently downgraded, its next write
+    refused with "only been seen as an outline", and — because an `outline`
+    result matches neither the `text` nor the `image` arm — the change
+    notification was dropped, so the model was never told the file had moved.
+    38 of the 50 partial-view refusals on an already-read path had an
+    out-of-band rewrite in between. It now lives in `attachments/changedFile.ts`
+    (`services.ts` cannot be imported under `bun test`), reads with
+    `view: 'full'`, normalizes the entry it writes back to the whole-file shape
+    so the file stays eligible next turn, and evicts on ENOENT or over-cap
+    rather than leaving a stale entry to retry every turn. **How to apply:**
+    anything that re-reads a file on the model's behalf must pass `view:
+    'full'` — a vanilla Read there is a cache write, not a read.
 
 ## 4. Cache TTL tiers — new query sources default to the expensive 1h
 
