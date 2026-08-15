@@ -17,22 +17,33 @@ launched by `bin/claudin`. There is no dev runner that bypasses the bundle —
 **always `bun run build` after a source change**; the launcher runs `dist/cli.mjs`,
 not source.
 
-## What the build does (five things that bite)
+## What the build does (six things that bite)
 
-1. **`feature()` flag preprocessing.** Source files are mutated **in place**:
-   `feature('FLAG')` calls become boolean literals from the `featureFlags` map,
-   and the `import { feature } from 'bun:bundle'` line is stripped. Originals are
+1. **Source pre-processing (`preProcessSources`).** Source files are mutated **in
+   place**, then restored: `feature('FLAG')` calls become boolean literals from
+   the `featureFlags` map, and the `import { feature } from 'bun:bundle'` line is
+   stripped. Originals are
    restored in a `finally` block (and on `SIGINT`/`SIGTERM`). A `SIGKILL`
    mid-build can leave files preprocessed — `git status` shows the damage.
    > ⚠️ **Never commit a file with a literal `true`/`false` where `feature('X')`
    > should be.** Run `git diff` after any killed build. This preprocessing
    > exists because Bun ≥1.3.9 resolves `bun:bundle` natively before plugins can
    > intercept it.
-2. **`MACRO.*` constants** (`MACRO.VERSION`, `MACRO.DISPLAY_VERSION`,
+2. **`tengu_*` event-name stripping**, in that same pass. Telemetry is already a
+   no-op (see #5), but the ~1000 event-name literals survive minification as
+   arguments to the stubs, so they are blanked to `''`. Scope is **only the first
+   argument of `logEvent`/`logEventAsync`**: a `tengu_*` string handed to
+   `checkGate*`/`getFeatureValue*`/`getDynamicConfig*` is a feature-gate KEY, and
+   blanking one would silently change which default that gate resolves to. Names
+   reached through a variable are left alone for the same reason. Measured on a
+   clean `dist/chunks`: 832 distinct names → 205, all 54 gate keys among the
+   survivors. Verify with `rm -rf dist/chunks && bun run build`, never against a
+   stale generation (see #6).
+3. **`MACRO.*` constants** (`MACRO.VERSION`, `MACRO.DISPLAY_VERSION`,
    `MACRO.BUILD_TIME`, …) are inlined via `define`. `MACRO.VERSION` is pinned to
    `99.0.0` to pass first-party minimum-version guards; the **real** version is
    `MACRO.DISPLAY_VERSION`. Never compare against `MACRO.VERSION` for version logic.
-3. **Stub modules.** Native addons, missing internal Anthropic packages
+4. **Stub modules.** Native addons, missing internal Anthropic packages
    (`@ant/computer-use-mcp`, `daemon/*`, `cli/bg`, `self-hosted-runner`, …),
    `.md`/`.txt` imports, and `react/compiler-runtime` are redirected to inline
    stubs. A pre-scan walks `src/` for unresolved `.js` relative imports /
@@ -40,11 +51,11 @@ not source.
    > A new top-level Anthropic-internal import still builds (the pre-scan stubs
    > it) but is a **no-op at runtime**. Gate it behind `feature()` so it only
    > loads when intentionally enabled.
-4. **`noTelemetryPlugin`** (`scripts/no-telemetry-plugin.ts`) replaces analytics,
+5. **`noTelemetryPlugin`** (`scripts/no-telemetry-plugin.ts`) replaces analytics,
    GrowthBook, Datadog, BigQuery, OTel session tracing, the auto-updater, and
    feedback/transcript sharing with stubs. `bun run verify:privacy` enforces this
    on the bundle — run it for any build/telemetry/network change.
-5. **Path alias.** `tsconfig.json` maps `src/*` → `./src/*`. Both `src/...` and
+6. **Path alias.** `tsconfig.json` maps `src/*` → `./src/*`. Both `src/...` and
    relative imports work; prefer the `src/...` form.
 
 ### A declaration-only module has to stay a relative import
@@ -60,15 +71,15 @@ earlier attempt measured worse than the diagnostic it was replacing. They buy
 error. Nor do they mean the code is unreachable: `src/commands/commands.ts`
 imports 19 of them eagerly and does hit the `() => null` stub at runtime.
 
-The pre-scan in #3 is what keeps the build green over them, and it fires on
-exactly one shape: `scripts/build.ts:561` registers a module as missing when the
+The pre-scan in #4 is what keeps the build green over them, and it fires on
+exactly one shape: `scripts/build.ts:579` registers a module as missing when the
 specifier both ends in `.js` and starts with `./` or `../`, testing for a
 `.ts`/`.tsx` sibling that a `.d.ts` does not provide. So the relative form is
 stubbed to a noop and the bundle builds. The `src/…` alias form is never scanned
 at all — Bun's resolver reaches it directly and the build dies with
 `Could not resolve`.
 
-Item 5 above therefore has one exception, and it is the opposite of what a
+Item 6 above therefore has one exception, and it is the opposite of what a
 mechanical alias pass will do: **an import of a declaration-only module keeps its
 `../` and stays relative.** Aliasing one trades a green build for a hard resolver
 failure. Moving the importing file without re-deriving that `../` is worse than
