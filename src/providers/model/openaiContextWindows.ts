@@ -178,7 +178,7 @@ export const OPENAI_CONTEXT_WINDOWS: Record<string, number> = {
   'google/gemini-2.0-flash':1_048_576,
   'google/gemini-2.5-pro':  1_048_576,
 
-  // Google (native via CLAUDE_CODE_USE_GEMINI)
+  // Google (native via CLAUDIN_USE_GEMINI)
   'gemini-2.0-flash':              1_048_576,
   'gemini-2.5-pro':                1_048_576,
   'gemini-2.5-flash':              1_048_576,
@@ -332,7 +332,7 @@ export const OPENAI_MAX_OUTPUT_TOKENS: Record<string, number> = {
   'google/gemini-2.0-flash':   8_192,
   'google/gemini-2.5-pro':    65_536,
 
-  // Google (native via CLAUDE_CODE_USE_GEMINI)
+  // Google (native via CLAUDIN_USE_GEMINI)
   'gemini-2.0-flash':              8_192,
   'gemini-2.5-pro':                65_536,
   'gemini-2.5-flash':              65_536,
@@ -406,13 +406,13 @@ export const OPENAI_MAX_OUTPUT_TOKENS: Record<string, number> = {
 }
 
 // External context-window overrides loaded once at startup.
-// Set CLAUDE_CODE_OPENAI_CONTEXT_WINDOWS to a JSON object mapping model name
+// Set CLAUDIN_OPENAI_CONTEXT_WINDOWS to a JSON object mapping model name
 // → context-window token count to add or override entries without editing
 // this file.  Example:
-//   CLAUDE_CODE_OPENAI_CONTEXT_WINDOWS='{"my-corp/llm-v2":200000}'
+//   CLAUDIN_OPENAI_CONTEXT_WINDOWS='{"my-corp/llm-v2":200000}'
 const OPENAI_EXTERNAL_CONTEXT_WINDOWS: Record<string, number> = (() => {
   try {
-    const raw = process.env.CLAUDE_CODE_OPENAI_CONTEXT_WINDOWS
+    const raw = process.env.CLAUDIN_OPENAI_CONTEXT_WINDOWS
     if (raw) {
       const parsed = JSON.parse(raw)
       if (typeof parsed === 'object' && parsed !== null) return parsed as Record<string, number>
@@ -422,11 +422,11 @@ const OPENAI_EXTERNAL_CONTEXT_WINDOWS: Record<string, number> = (() => {
 })()
 
 // External max-output-token overrides.
-// Set CLAUDE_CODE_OPENAI_MAX_OUTPUT_TOKENS to a JSON object mapping model name
+// Set CLAUDIN_OPENAI_MAX_OUTPUT_TOKENS to a JSON object mapping model name
 // → max output token count.
 const OPENAI_EXTERNAL_MAX_OUTPUT_TOKENS: Record<string, number> = (() => {
   try {
-    const raw = process.env.CLAUDE_CODE_OPENAI_MAX_OUTPUT_TOKENS
+    const raw = process.env.CLAUDIN_OPENAI_MAX_OUTPUT_TOKENS
     if (raw) {
       const parsed = JSON.parse(raw)
       if (typeof parsed === 'object' && parsed !== null) return parsed as Record<string, number>

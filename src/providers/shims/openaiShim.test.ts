@@ -32,7 +32,7 @@ function profileFromEnv(env: NodeJS.ProcessEnv): {
   apiKey?: string
   extras?: { githubToken?: string }
 } | null {
-  if (env.CLAUDE_CODE_USE_GEMINI === '1' || env.CLAUDE_CODE_USE_GEMINI === 'true') {
+  if (env.CLAUDIN_USE_GEMINI === '1' || env.CLAUDIN_USE_GEMINI === 'true') {
     return {
       transport: 'gemini',
       baseUrl: env.GEMINI_BASE_URL ?? env.OPENAI_BASE_URL ?? 'https://generativelanguage.googleapis.com/v1beta/openai',
@@ -40,7 +40,7 @@ function profileFromEnv(env: NodeJS.ProcessEnv): {
       apiKey: env.GEMINI_API_KEY ?? env.GOOGLE_API_KEY,
     }
   }
-  if (env.CLAUDE_CODE_USE_MISTRAL === '1' || env.CLAUDE_CODE_USE_MISTRAL === 'true') {
+  if (env.CLAUDIN_USE_MISTRAL === '1' || env.CLAUDIN_USE_MISTRAL === 'true') {
     return {
       transport: 'mistral',
       baseUrl: env.MISTRAL_BASE_URL ?? env.OPENAI_BASE_URL ?? 'https://api.mistral.ai/v1',
@@ -48,7 +48,7 @@ function profileFromEnv(env: NodeJS.ProcessEnv): {
       apiKey: env.MISTRAL_API_KEY ?? env.OPENAI_API_KEY,
     }
   }
-  if (env.CLAUDE_CODE_USE_GITHUB === '1' || env.CLAUDE_CODE_USE_GITHUB === 'true') {
+  if (env.CLAUDIN_USE_GITHUB === '1' || env.CLAUDIN_USE_GITHUB === 'true') {
     return {
       transport: 'github_copilot',
       baseUrl: env.OPENAI_BASE_URL ?? 'https://api.githubcopilot.com',
@@ -86,11 +86,11 @@ const originalEnv = {
   OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   OPENAI_MODEL: process.env.OPENAI_MODEL,
-  CLAUDE_CODE_USE_GITHUB: process.env.CLAUDE_CODE_USE_GITHUB,
+  CLAUDIN_USE_GITHUB: process.env.CLAUDIN_USE_GITHUB,
   GITHUB_TOKEN: process.env.GITHUB_TOKEN,
   GH_TOKEN: process.env.GH_TOKEN,
-  CLAUDE_CODE_USE_OPENAI: process.env.CLAUDE_CODE_USE_OPENAI,
-  CLAUDE_CODE_USE_GEMINI: process.env.CLAUDE_CODE_USE_GEMINI,
+  CLAUDIN_USE_OPENAI: process.env.CLAUDIN_USE_OPENAI,
+  CLAUDIN_USE_GEMINI: process.env.CLAUDIN_USE_GEMINI,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
   GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
   GEMINI_ACCESS_TOKEN: process.env.GEMINI_ACCESS_TOKEN,
@@ -154,11 +154,11 @@ beforeEach(() => {
   process.env.OPENAI_BASE_URL = 'http://example.test/v1'
   process.env.OPENAI_API_KEY = 'test-key'
   delete process.env.OPENAI_MODEL
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
-  delete process.env.CLAUDE_CODE_USE_OPENAI
-  delete process.env.CLAUDE_CODE_USE_GEMINI
+  delete process.env.CLAUDIN_USE_OPENAI
+  delete process.env.CLAUDIN_USE_GEMINI
   delete process.env.GEMINI_API_KEY
   delete process.env.GOOGLE_API_KEY
   delete process.env.GEMINI_ACCESS_TOKEN
@@ -173,11 +173,11 @@ afterEach(() => {
   restoreEnv('OPENAI_BASE_URL', originalEnv.OPENAI_BASE_URL)
   restoreEnv('OPENAI_API_KEY', originalEnv.OPENAI_API_KEY)
   restoreEnv('OPENAI_MODEL', originalEnv.OPENAI_MODEL)
-  restoreEnv('CLAUDE_CODE_USE_GITHUB', originalEnv.CLAUDE_CODE_USE_GITHUB)
+  restoreEnv('CLAUDIN_USE_GITHUB', originalEnv.CLAUDIN_USE_GITHUB)
   restoreEnv('GITHUB_TOKEN', originalEnv.GITHUB_TOKEN)
   restoreEnv('GH_TOKEN', originalEnv.GH_TOKEN)
-  restoreEnv('CLAUDE_CODE_USE_OPENAI', originalEnv.CLAUDE_CODE_USE_OPENAI)
-  restoreEnv('CLAUDE_CODE_USE_GEMINI', originalEnv.CLAUDE_CODE_USE_GEMINI)
+  restoreEnv('CLAUDIN_USE_OPENAI', originalEnv.CLAUDIN_USE_OPENAI)
+  restoreEnv('CLAUDIN_USE_GEMINI', originalEnv.CLAUDIN_USE_GEMINI)
   restoreEnv('GEMINI_API_KEY', originalEnv.GEMINI_API_KEY)
   restoreEnv('GOOGLE_API_KEY', originalEnv.GOOGLE_API_KEY)
   restoreEnv('GEMINI_ACCESS_TOKEN', originalEnv.GEMINI_ACCESS_TOKEN)
@@ -311,7 +311,7 @@ test('strips canonical Anthropic headers from per-request shim headers too', asy
 test('strips Anthropic-specific headers on GitHub Codex transport requests', async () => {
   let capturedHeaders: Headers | undefined
 
-  process.env.CLAUDE_CODE_USE_GITHUB = '1'
+  process.env.CLAUDIN_USE_GITHUB = '1'
   process.env.OPENAI_API_KEY = 'github-test-key'
   delete process.env.OPENAI_BASE_URL
   delete process.env.OPENAI_MODEL

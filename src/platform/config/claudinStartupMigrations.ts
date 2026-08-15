@@ -52,13 +52,13 @@ export type StartupMigrationsResult = {
 }
 
 const PROVIDER_USE_ENVS = [
-  'CLAUDE_CODE_USE_OPENAI',
-  'CLAUDE_CODE_USE_GEMINI',
-  'CLAUDE_CODE_USE_MISTRAL',
-  'CLAUDE_CODE_USE_GITHUB',
-  'CLAUDE_CODE_USE_BEDROCK',
-  'CLAUDE_CODE_USE_VERTEX',
-  'CLAUDE_CODE_USE_FOUNDRY',
+  'CLAUDIN_USE_OPENAI',
+  'CLAUDIN_USE_GEMINI',
+  'CLAUDIN_USE_MISTRAL',
+  'CLAUDIN_USE_GITHUB',
+  'CLAUDIN_USE_BEDROCK',
+  'CLAUDIN_USE_VERTEX',
+  'CLAUDIN_USE_FOUNDRY',
 ] as const
 
 function listPresentProviderEnvs(env: NodeJS.ProcessEnv): string[] {
@@ -141,7 +141,7 @@ type RescueProfile = {
 function profileFromProviderEnvs(
   env: NodeJS.ProcessEnv,
 ): RescueProfile | null {
-  if (env.CLAUDE_CODE_USE_OPENAI) {
+  if (env.CLAUDIN_USE_OPENAI) {
     const baseUrl = env.OPENAI_BASE_URL?.trim() ?? env.OPENAI_API_BASE?.trim()
     const model = env.OPENAI_MODEL?.trim()
     if (!baseUrl || !model) return null
@@ -155,7 +155,7 @@ function profileFromProviderEnvs(
       },
     }
   }
-  if (env.CLAUDE_CODE_USE_GEMINI) {
+  if (env.CLAUDIN_USE_GEMINI) {
     return {
       input: {
         provider: 'gemini',
@@ -166,7 +166,7 @@ function profileFromProviderEnvs(
       },
     }
   }
-  if (env.CLAUDE_CODE_USE_MISTRAL) {
+  if (env.CLAUDIN_USE_MISTRAL) {
     return {
       input: {
         provider: 'mistral',
@@ -177,7 +177,7 @@ function profileFromProviderEnvs(
       },
     }
   }
-  if (env.CLAUDE_CODE_USE_GITHUB) {
+  if (env.CLAUDIN_USE_GITHUB) {
     const githubToken = env.GITHUB_TOKEN?.trim() ?? env.GH_TOKEN?.trim() ?? ''
     return {
       input: {
@@ -190,7 +190,7 @@ function profileFromProviderEnvs(
       },
     }
   }
-  if (env.CLAUDE_CODE_USE_BEDROCK) {
+  if (env.CLAUDIN_USE_BEDROCK) {
     const awsRegion =
       env.AWS_REGION?.trim() ??
       env.AWS_DEFAULT_REGION?.trim() ??
@@ -205,7 +205,7 @@ function profileFromProviderEnvs(
       },
     }
   }
-  if (env.CLAUDE_CODE_USE_VERTEX) {
+  if (env.CLAUDIN_USE_VERTEX) {
     const gcpProject =
       env.GCLOUD_PROJECT?.trim() ??
       env.GOOGLE_CLOUD_PROJECT?.trim() ??
@@ -223,7 +223,7 @@ function profileFromProviderEnvs(
       },
     }
   }
-  if (env.CLAUDE_CODE_USE_FOUNDRY) {
+  if (env.CLAUDIN_USE_FOUNDRY) {
     return {
       input: {
         provider: 'foundry',
@@ -232,7 +232,7 @@ function profileFromProviderEnvs(
         model: DEFAULT_CLAUDE_CLOUD_MODEL,
       },
       warning:
-        'Profile created from CLAUDE_CODE_USE_FOUNDRY but azureResource missing — open /provider to complete',
+        'Profile created from CLAUDIN_USE_FOUNDRY but azureResource missing — open /provider to complete',
     }
   }
   return null

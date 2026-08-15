@@ -72,7 +72,7 @@ Se você criar um agent em `.claudin/agents/WebResearcher.md` (mesmo `agentType`
 
 ## Indisponibilidade em `COORDINATOR_MODE`
 
-Quando o build tem a flag `COORDINATOR_MODE` ligada **e** `CLAUDE_CODE_COORDINATOR_MODE` está truthy no ambiente, `getBuiltInAgents()` retorna apenas o conjunto de agents do coordenador (`builtInAgents.ts:34-42`) e o `WebResearcher` não fica disponível. O pai precisa cair em `WebFetch`/`WebSearch` diretos nesse modo.
+Quando o build tem a flag `COORDINATOR_MODE` ligada **e** `CLAUDIN_COORDINATOR_MODE` está truthy no ambiente, `getBuiltInAgents()` retorna apenas o conjunto de agents do coordenador (`builtInAgents.ts:34-42`) e o `WebResearcher` não fica disponível. O pai precisa cair em `WebFetch`/`WebSearch` diretos nesse modo.
 
 ## WebResearcherManager — orquestrador de deep-research
 

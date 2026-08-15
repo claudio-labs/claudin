@@ -451,7 +451,7 @@ export function extractCacheMetrics(
   const fresh = asNumber(u.input_tokens)
   // Copilot vanilla (no Claude) and Ollama don't expose cache fields at
   // all as a provider-identity matter. These are explicit provider
-  // selections (via CLAUDE_CODE_USE_GITHUB and the Ollama base-URL
+  // selections (via CLAUDIN_USE_GITHUB and the Ollama base-URL
   // default port), so we can hard-wire `supported: false` and let the
   // REPL print "N/A" instead of a fabricated 0%.
   if (provider === 'copilot' || provider === 'ollama') {

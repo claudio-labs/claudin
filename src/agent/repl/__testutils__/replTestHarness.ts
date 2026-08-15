@@ -47,7 +47,7 @@ function returnEmptyObject(): Record<string, never> {
   return {}
 }
 
-// The footer effort indicator resolves from CLAUDE_CODE_EFFORT_LEVEL →
+// The footer effort indicator resolves from CLAUDIN_EFFORT_LEVEL →
 // appState → settings.json. Left unpinned, snapshots capture the developer's
 // personal `effortLevel` (e.g. "high") in isolation but the clean default
 // ("medium") under the full suite, making them non-deterministic. Pin the env
@@ -108,9 +108,9 @@ export function setupReplMocks(): void {
   // harness cannot become the leaker for whatever file runs next.
   resetCostState()
 
-  savedEffortEnv = process.env.CLAUDE_CODE_EFFORT_LEVEL
+  savedEffortEnv = process.env.CLAUDIN_EFFORT_LEVEL
   effortEnvWasSet = true
-  process.env.CLAUDE_CODE_EFFORT_LEVEL = REPL_SNAPSHOT_EFFORT
+  process.env.CLAUDIN_EFFORT_LEVEL = REPL_SNAPSHOT_EFFORT
 
   savedNerdFontEnv = process.env.CLAUDIN_NERD_FONT
   nerdFontEnvWasSet = true
@@ -365,9 +365,9 @@ export function teardownReplMocks(): void {
   mock.module('src/providers/hooks/useApiKeyVerification.js', () => realUseApiKeyVerification)
   if (effortEnvWasSet) {
     if (savedEffortEnv === undefined) {
-      delete process.env.CLAUDE_CODE_EFFORT_LEVEL
+      delete process.env.CLAUDIN_EFFORT_LEVEL
     } else {
-      process.env.CLAUDE_CODE_EFFORT_LEVEL = savedEffortEnv
+      process.env.CLAUDIN_EFFORT_LEVEL = savedEffortEnv
     }
     effortEnvWasSet = false
   }

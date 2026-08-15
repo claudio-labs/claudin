@@ -95,9 +95,9 @@ export async function registerSession(): Promise<boolean> {
           : {}),
         ...(feature('BG_SESSIONS')
           ? {
-              name: process.env.CLAUDE_CODE_SESSION_NAME,
-              logPath: process.env.CLAUDE_CODE_SESSION_LOG,
-              agent: process.env.CLAUDE_CODE_AGENT,
+              name: process.env.CLAUDIN_SESSION_NAME,
+              logPath: process.env.CLAUDIN_SESSION_LOG,
+              agent: process.env.CLAUDIN_AGENT,
             }
           : {}),
       }),

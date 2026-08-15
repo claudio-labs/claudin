@@ -42,7 +42,7 @@
 //
 // `schemaErrors` is not a guardrail at all, it is the validity check that the
 // arms are comparable. It exists because the first otherwise-clean run of this
-// bench was invalid: with `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` (copied from
+// bench was invalid: with `CLAUDIN_DISABLE_BACKGROUND_TASKS=1` (copied from
 // the sibling benches) Bash loses its `run_in_background` parameter, while the
 // verbose sleep block goes on advertising it — that bullet is not gated on the
 // same env as `getBackgroundUsageNote()`, which IS. The verbose arm called the
@@ -450,7 +450,7 @@ function runArm(
         ...process.env,
         ANTHROPIC_MODEL: MODEL,
         CLAUDIN_TOOL_PROMPT_TIER: tier,
-        // Deliberately NOT setting CLAUDE_CODE_DISABLE_BACKGROUND_TASKS, which
+        // Deliberately NOT setting CLAUDIN_DISABLE_BACKGROUND_TASKS, which
         // the sibling benches set because headless -p drains auto-backgrounded
         // SUB-AGENTS non-deterministically. There is no Agent tool in `--tools`
         // here, so it buys nothing — and it actively breaks this fixture: it

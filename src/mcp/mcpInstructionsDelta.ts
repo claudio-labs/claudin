@@ -31,12 +31,12 @@ export type ClientSideInstruction = {
  * False → prompts.ts keeps its DANGEROUS_uncachedSystemPromptSection
  * (rebuilt every turn; cache-busts on late connect).
  *
- * Env override for local testing: CLAUDE_CODE_MCP_INSTR_DELTA=true/false
+ * Env override for local testing: CLAUDIN_MCP_INSTR_DELTA=true/false
  * wins over both ant bypass and the GrowthBook gate.
  */
 export function isMcpInstructionsDeltaEnabled(): boolean {
-  if (isEnvTruthy(process.env.CLAUDE_CODE_MCP_INSTR_DELTA)) return true
-  if (isEnvDefinedFalsy(process.env.CLAUDE_CODE_MCP_INSTR_DELTA)) return false
+  if (isEnvTruthy(process.env.CLAUDIN_MCP_INSTR_DELTA)) return true
+  if (isEnvDefinedFalsy(process.env.CLAUDIN_MCP_INSTR_DELTA)) return false
   return getFeatureValue_CACHED_MAY_BE_STALE('tengu_basalt_3kr', true)
 }
 

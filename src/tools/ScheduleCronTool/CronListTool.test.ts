@@ -15,7 +15,7 @@ let configDir: string
 beforeAll(() => {
   configDir = mkdtempSync(join(tmpdir(), 'cronlist-'))
   process.env.CLAUDIN_CONFIG_DIR = configDir
-  delete process.env.CLAUDE_CODE_DISABLE_CRON
+  delete process.env.CLAUDIN_DISABLE_CRON
 })
 
 afterAll(() => {

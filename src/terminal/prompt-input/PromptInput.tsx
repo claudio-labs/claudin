@@ -1501,13 +1501,13 @@ function PromptInput({
     logEvent('tengu_effort_command', {
       effort: next as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
     });
-    // CLAUDE_CODE_EFFORT_LEVEL wins at resolve time, so the footer indicator
+    // CLAUDIN_EFFORT_LEVEL wins at resolve time, so the footer indicator
     // won't move — warn once (only when env resolves to a different level) so
     // the key doesn't look dead.
     if (effortEnvOverrideConflictsWith(next)) {
       addNotification({
         key: 'effort-env-override',
-        jsx: <Text dimColor>CLAUDE_CODE_EFFORT_LEVEL={process.env.CLAUDE_CODE_EFFORT_LEVEL} overrides effort this session</Text>,
+        jsx: <Text dimColor>CLAUDIN_EFFORT_LEVEL={process.env.CLAUDIN_EFFORT_LEVEL} overrides effort this session</Text>,
         priority: 'immediate',
         timeoutMs: 3000
       });

@@ -4,8 +4,8 @@ import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 
 export function getPlanModeV2AgentCount(): number {
   // Environment variable override takes precedence
-  if (process.env.CLAUDE_CODE_PLAN_V2_AGENT_COUNT) {
-    const count = parseInt(process.env.CLAUDE_CODE_PLAN_V2_AGENT_COUNT, 10)
+  if (process.env.CLAUDIN_PLAN_V2_AGENT_COUNT) {
+    const count = parseInt(process.env.CLAUDIN_PLAN_V2_AGENT_COUNT, 10)
     if (!isNaN(count) && count > 0 && count <= 10) {
       return count
     }
@@ -29,9 +29,9 @@ export function getPlanModeV2AgentCount(): number {
 }
 
 export function getPlanModeV2ExploreAgentCount(): number {
-  if (process.env.CLAUDE_CODE_PLAN_V2_EXPLORE_AGENT_COUNT) {
+  if (process.env.CLAUDIN_PLAN_V2_EXPLORE_AGENT_COUNT) {
     const count = parseInt(
-      process.env.CLAUDE_CODE_PLAN_V2_EXPLORE_AGENT_COUNT,
+      process.env.CLAUDIN_PLAN_V2_EXPLORE_AGENT_COUNT,
       10,
     )
     if (!isNaN(count) && count > 0 && count <= 10) {
@@ -48,7 +48,7 @@ export function getPlanModeV2ExploreAgentCount(): number {
  * Config: tengu_plan_mode_interview_phase gate, envVar=true
  */
 export function isPlanModeInterviewPhaseEnabled(): boolean {
-  const env = process.env.CLAUDE_CODE_PLAN_MODE_INTERVIEW_PHASE
+  const env = process.env.CLAUDIN_PLAN_MODE_INTERVIEW_PHASE
   if (isEnvTruthy(env)) return true
   if (isEnvDefinedFalsy(env)) return false
 

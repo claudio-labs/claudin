@@ -132,14 +132,14 @@ export async function runTurnLoop(
   await ctx.updateSdkMcp()
   headlessProfilerCheckpoint('after_updateSdkMcp')
 
-  // Resolve deferred plugin installation (CLAUDE_CODE_SYNC_PLUGIN_INSTALL).
+  // Resolve deferred plugin installation (CLAUDIN_SYNC_PLUGIN_INSTALL).
   // The promise was started eagerly so installation overlaps with other init.
   // Awaiting here guarantees plugins are available before the first ask().
-  // If CLAUDE_CODE_SYNC_PLUGIN_INSTALL_TIMEOUT_MS is set, races against that
+  // If CLAUDIN_SYNC_PLUGIN_INSTALL_TIMEOUT_MS is set, races against that
   // deadline and proceeds without plugins on timeout (logging an error).
   if (ctx.pluginInstallPromise) {
     const timeoutMs = parseInt(
-      process.env.CLAUDE_CODE_SYNC_PLUGIN_INSTALL_TIMEOUT_MS || '',
+      process.env.CLAUDIN_SYNC_PLUGIN_INSTALL_TIMEOUT_MS || '',
       10,
     )
     if (timeoutMs > 0) {
@@ -148,7 +148,7 @@ export async function runTurnLoop(
       if (result === 'timeout') {
         logError(
           new Error(
-            `CLAUDE_CODE_SYNC_PLUGIN_INSTALL: plugin installation timed out after ${timeoutMs}ms`,
+            `CLAUDIN_SYNC_PLUGIN_INSTALL: plugin installation timed out after ${timeoutMs}ms`,
           ),
         )
         logEvent('tengu_sync_plugin_install_timeout', {
@@ -165,7 +165,7 @@ export async function runTurnLoop(
 
     // Set up hot-reload for plugin hooks now that the initial install is done.
     // In sync-install mode, setup.ts skips this to avoid racing with the install,
-    // so this is the ONLY call site that arms it under CLAUDE_CODE_SYNC_PLUGIN_INSTALL.
+    // so this is the ONLY call site that arms it under CLAUDIN_SYNC_PLUGIN_INSTALL.
     // Path-aliased on purpose. This specifier was relative until #57 and had been
     // resolving one directory short since 2e178cf7 moved runHeadless deeper, so the
     // rejected import left `run()` unfinished and the output stream never closed --
@@ -618,7 +618,7 @@ export async function runTurnLoop(
         // Generate and emit prompt suggestion for SDK consumers
         if (
           options.promptSuggestions &&
-          !isEnvDefinedFalsy(process.env.CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION)
+          !isEnvDefinedFalsy(process.env.CLAUDIN_ENABLE_PROMPT_SUGGESTION)
         ) {
           // TS narrows suggestionState to never in the while loop body;
           // cast via unknown to reset narrowing.

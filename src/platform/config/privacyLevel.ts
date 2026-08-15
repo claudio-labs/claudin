@@ -14,13 +14,13 @@
  * Anthropic-backend startup probes (bootstrap, quota warm, MCP registry,
  * fast-mode org status, oauth account settings, …) are dead weight
  * for the typical user. Set `ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC=0`
- * (or `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=0`) to opt back in to the
+ * (or `CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC=0`) to opt back in to the
  * upstream behaviour.
  *
  * Env-var resolution (most restrictive wins):
- *   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=0 / ANTHROPIC_…=0  →  default
+ *   CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC=0 / ANTHROPIC_…=0  →  default
  *     (explicit opt-in to nonessential traffic)
- *   CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC / ANTHROPIC_…  →  essential-traffic
+ *   CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC / ANTHROPIC_…  →  essential-traffic
  *   DISABLE_TELEMETRY  →  no-telemetry (only when neither of the above is set)
  *   unset             →  essential-traffic (Claudin default)
  */
@@ -42,7 +42,7 @@ function isFalsy(value: string | undefined): boolean {
 }
 
 export function getPrivacyLevel(): PrivacyLevel {
-  const claudeCode = process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+  const claudeCode = process.env.CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC
   const anthropic = process.env.ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC
 
   // Explicit opt-in to nonessential traffic.
@@ -62,7 +62,7 @@ export function getPrivacyLevel(): PrivacyLevel {
 
 /**
  * True when all nonessential network traffic should be suppressed.
- * Equivalent to the old `process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` check.
+ * Equivalent to the old `process.env.CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC` check.
  */
 export function isEssentialTrafficOnly(): boolean {
   return getPrivacyLevel() === 'essential-traffic'
@@ -82,9 +82,9 @@ export function isTelemetryDisabled(): boolean {
  */
 export function getEssentialTrafficOnlyReason(): string | null {
   if (!isEssentialTrafficOnly()) return null
-  const claudeCode = process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+  const claudeCode = process.env.CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC
   if (claudeCode !== undefined && !isFalsy(claudeCode)) {
-    return 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC'
+    return 'CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC'
   }
   const anthropic = process.env.ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC
   if (anthropic !== undefined && !isFalsy(anthropic)) {

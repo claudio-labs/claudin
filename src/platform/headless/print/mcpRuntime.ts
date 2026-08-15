@@ -514,7 +514,7 @@ export async function installPluginsAndApplyMcpInBackground(
 
 /**
  * Clear all plugin-related caches, reload commands/agents/hooks.
- * Called after CLAUDE_CODE_SYNC_PLUGIN_INSTALL completes (before first query)
+ * Called after CLAUDIN_SYNC_PLUGIN_INSTALL completes (before first query)
  * and after non-sync background install finishes.
  * refreshActivePlugins calls clearAllCaches() which is required because
  * loadAllPlugins() may have run during main.tsx startup BEFORE managed

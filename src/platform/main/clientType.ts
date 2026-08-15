@@ -52,7 +52,7 @@ function resolveTypeFromEnv(): ClientType {
 }
 
 function resolvePreviewFormat(clientType: ClientType): PreviewFormat | undefined {
-  const previewFormat = process.env.CLAUDE_CODE_QUESTION_PREVIEW_FORMAT;
+  const previewFormat = process.env.CLAUDIN_QUESTION_PREVIEW_FORMAT;
   if (previewFormat === 'markdown' || previewFormat === 'html') {
     return previewFormat;
   }

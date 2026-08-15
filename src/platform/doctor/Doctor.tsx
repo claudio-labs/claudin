@@ -155,7 +155,7 @@ export function Doctor(t0: Props) {
       default: TASK_MAX_OUTPUT_DEFAULT,
       upperLimit: TASK_MAX_OUTPUT_UPPER_LIMIT
     }, {
-      name: "CLAUDE_CODE_MAX_OUTPUT_TOKENS",
+      name: "CLAUDIN_MAX_OUTPUT_TOKENS",
       // Bounds follow the session's actual model — a hardcoded ID reports the
       // wrong limits whenever the default moves (it lagged at Opus 4.8).
       ...getModelMaxOutputTokens(getDefaultMainLoopModel())

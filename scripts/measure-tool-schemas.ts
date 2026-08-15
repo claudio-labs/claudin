@@ -142,7 +142,7 @@ async function measureTool(
 export type MeasureOptions = {
   engines?: readonly Engine[]
   /**
-   * When 'off', flips CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS on for the duration
+   * When 'off', flips CLAUDIN_DISABLE_GIT_INSTRUCTIONS on for the duration
    * of measurement so `shouldIncludeGitInstructions()` returns false. Restored
    * after measurement to leave the process env untouched.
    */
@@ -194,14 +194,14 @@ export async function measureToolSchemas(
   // every call. Force Task v2 on so the bundle matches typical interactive
   // REPL output. Restored in finally so the test runner doesn't leak the
   // override into adjacent suites.
-  const TASKS_KEY = 'CLAUDE_CODE_ENABLE_TASKS'
+  const TASKS_KEY = 'CLAUDIN_ENABLE_TASKS'
   const previousTasks = process.env[TASKS_KEY]
   process.env[TASKS_KEY] = '1'
 
   // Toggle `shouldIncludeGitInstructions()` via env. The helper checks
-  // `process.env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS` first; setting it to
+  // `process.env.CLAUDIN_DISABLE_GIT_INSTRUCTIONS` first; setting it to
   // '1' is enough to short-circuit the BashTool git block.
-  const ENV_KEY = 'CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS'
+  const ENV_KEY = 'CLAUDIN_DISABLE_GIT_INSTRUCTIONS'
   const previousEnv = process.env[ENV_KEY]
   if (gitMode === 'off') {
     process.env[ENV_KEY] = '1'

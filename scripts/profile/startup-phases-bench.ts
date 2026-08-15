@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // Startup-phases profile harness.
 //
-// Drives the bundled CLI with CLAUDE_CODE_PROFILE_STARTUP=1 to collect the
+// Drives the bundled CLI with CLAUDIN_PROFILE_STARTUP=1 to collect the
 // in-process `profileCheckpoint(...)` timeline (perf_hooks marks). For each
 // invocation we run N iterations into an isolated CLAUDIN_CONFIG_DIR, read
 // the per-session timeline file the profiler writes, and aggregate the
@@ -70,7 +70,7 @@ function printHelp(): void {
   --help             show this help
 
 Requires dist/cli.mjs (run \`bun run build\` first). Forces
-CLAUDE_CODE_PROFILE_STARTUP=1 to collect per-checkpoint marks.`,
+CLAUDIN_PROFILE_STARTUP=1 to collect per-checkpoint marks.`,
   )
 }
 
@@ -163,7 +163,7 @@ function runOne(
     stdio: 'ignore',
     env: {
       ...process.env,
-      CLAUDE_CODE_PROFILE_STARTUP: '1',
+      CLAUDIN_PROFILE_STARTUP: '1',
       CLAUDIN_CONFIG_DIR: configDir,
       // Disable update check + statsig + anything that would talk to network.
       // The bundle already stubs telemetry, but belt-and-suspenders.

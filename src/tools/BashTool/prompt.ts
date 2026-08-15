@@ -34,7 +34,7 @@ export function getMaxTimeoutMs(): number {
 }
 
 function getBackgroundUsageNote(): string | null {
-  if (isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS)) {
+  if (isEnvTruthy(process.env.CLAUDIN_DISABLE_BACKGROUND_TASKS)) {
     return null
   }
   return "You can use the `run_in_background` parameter to run the command in the background. Only use this if you don't need the result immediately and are OK being notified when the command completes later. You do not need to check the output right away - you'll be notified when it finishes. You do not need to use '&' at the end of the command when using this parameter."
@@ -50,7 +50,7 @@ function getBackgroundUsageNote(): string | null {
  * cache stable when only the git block changes (toggle, cwd switch in/out
  * of repo).
  *
- * Override with CLAUDE_CODE_BASH_GIT_IN_MESSAGES=false to revert to the
+ * Override with CLAUDIN_BASH_GIT_IN_MESSAGES=false to revert to the
  * inline behavior. Default = true (attachment on).
  *
  * Note: the upstream `tengu_bash_git_attach` GrowthBook gate is intentionally
@@ -59,7 +59,7 @@ function getBackgroundUsageNote(): string | null {
  * without the GrowthBook server. Env var is the only toggle.
  */
 export function shouldInjectBashGitInstructionsInMessages(): boolean {
-  if (isEnvDefinedFalsy(process.env.CLAUDE_CODE_BASH_GIT_IN_MESSAGES))
+  if (isEnvDefinedFalsy(process.env.CLAUDIN_BASH_GIT_IN_MESSAGES))
     return false
   return true
 }

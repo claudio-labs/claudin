@@ -29,13 +29,13 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { getAttributionHeader } from 'src/agent/prompts/system.ts'
 
-const ENV_KEYS = ['CLAUDE_CODE_ATTRIBUTION_HEADER', 'CLAUDE_CODE_ENTRYPOINT'] as const
+const ENV_KEYS = ['CLAUDIN_ATTRIBUTION_HEADER', 'CLAUDE_CODE_ENTRYPOINT'] as const
 const savedEnv: Record<string, string | undefined> = {}
 
 beforeEach(() => {
   for (const k of ENV_KEYS) savedEnv[k] = process.env[k]
   // Force header on regardless of growthbook stub default.
-  process.env.CLAUDE_CODE_ATTRIBUTION_HEADER = 'true'
+  process.env.CLAUDIN_ATTRIBUTION_HEADER = 'true'
   process.env.CLAUDE_CODE_ENTRYPOINT = 'cli'
 })
 

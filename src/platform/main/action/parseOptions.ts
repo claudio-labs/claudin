@@ -179,7 +179,7 @@ export async function parseActionOptions(
   // gates fire (CLAUDE.md, skills, hooks inside executeHooks, agent
   // dir-walk). Must be set before setup() / any of the gated work runs.
   if (options.bare) {
-    process.env.CLAUDE_CODE_SIMPLE = '1';
+    process.env.CLAUDIN_SIMPLE = '1';
   }
 
   // Ignore "code" as a prompt - treat it the same as no prompt
@@ -260,7 +260,7 @@ export async function parseActionOptions(
   const agentsJson = options.agents;
   const agentCli = options.agent;
   if (feature('BG_SESSIONS') && agentCli) {
-    process.env.CLAUDE_CODE_AGENT = agentCli;
+    process.env.CLAUDIN_AGENT = agentCli;
   }
 
   let outputFormat = options.outputFormat;
@@ -331,7 +331,7 @@ export async function parseActionOptions(
   }
 
   ctx.sdkUrl = options.sdkUrl ?? undefined;
-  ctx.effectiveIncludePartialMessages = !!includePartialMessages || isEnvTruthy(process.env.CLAUDE_CODE_INCLUDE_PARTIAL_MESSAGES);
+  ctx.effectiveIncludePartialMessages = !!includePartialMessages || isEnvTruthy(process.env.CLAUDIN_INCLUDE_PARTIAL_MESSAGES);
 
   if (includeHookEvents || isEnvTruthy(process.env.CLAUDE_CODE_REMOTE)) {
     setAllHookEventsEnabled(true);

@@ -1,7 +1,7 @@
 /**
  * Measure the per-turn token overhead of `COORDINATOR_MODE`.
  *
- * When the coordinator feature is on (env `CLAUDE_CODE_COORDINATOR_MODE=1`),
+ * When the coordinator feature is on (env `CLAUDIN_COORDINATOR_MODE=1`),
  * the main agent loop runs in "coordinator" shape:
  *
  *   - A *replacement* system prompt (`getCoordinatorSystemPrompt()`) — not
@@ -28,7 +28,7 @@
  *     worker turn)
  *   - Projected cost for "coordinator + N workers"
  *
- * Read-only. Forces `CLAUDE_CODE_COORDINATOR_MODE=1` for the duration of
+ * Read-only. Forces `CLAUDIN_COORDINATOR_MODE=1` for the duration of
  * the measurement and restores afterward.
  *
  * Flags:
@@ -100,7 +100,7 @@ function bytes(s: string): number {
   return Buffer.byteLength(s, 'utf8')
 }
 
-const COORD_FLAG = 'CLAUDE_CODE_COORDINATOR_MODE'
+const COORD_FLAG = 'CLAUDIN_COORDINATOR_MODE'
 
 export type CoordinatorRow = {
   section:

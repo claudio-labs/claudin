@@ -107,7 +107,7 @@ async function loadAgentFromFile(
     const backgroundRaw = frontmatter.background
     const background =
       backgroundRaw === 'true' || backgroundRaw === true ? true : undefined
-    // Substitute ${CLAUDE_PLUGIN_ROOT} so agents can reference bundled files,
+    // Substitute ${CLAUDIN_PLUGIN_ROOT} so agents can reference bundled files,
     // and ${user_config.X} (non-sensitive only) so they can embed configured
     // usernames, endpoints, etc. Sensitive refs resolve to a placeholder.
     let systemPrompt = substitutePluginVariables(markdownContent.trim(), {

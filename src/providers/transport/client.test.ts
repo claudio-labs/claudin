@@ -51,7 +51,7 @@ const originalEnv = {
   OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
   OPENAI_MODEL: process.env.OPENAI_MODEL,
   ANTHROPIC_AUTH_TOKEN: process.env.ANTHROPIC_AUTH_TOKEN,
-  CLAUDE_CODE_SKIP_VERTEX_AUTH: process.env.CLAUDE_CODE_SKIP_VERTEX_AUTH,
+  CLAUDIN_SKIP_VERTEX_AUTH: process.env.CLAUDIN_SKIP_VERTEX_AUTH,
   ANTHROPIC_VERTEX_PROJECT_ID: process.env.ANTHROPIC_VERTEX_PROJECT_ID,
 }
 
@@ -73,7 +73,7 @@ beforeEach(() => {
   delete process.env.OPENAI_BASE_URL
   delete process.env.OPENAI_MODEL
   delete process.env.ANTHROPIC_AUTH_TOKEN
-  delete process.env.CLAUDE_CODE_SKIP_VERTEX_AUTH
+  delete process.env.CLAUDIN_SKIP_VERTEX_AUTH
   delete process.env.ANTHROPIC_VERTEX_PROJECT_ID
   resolvedOverride = null
 })
@@ -86,7 +86,7 @@ afterEach(() => {
   restoreEnv('OPENAI_BASE_URL', originalEnv.OPENAI_BASE_URL)
   restoreEnv('OPENAI_MODEL', originalEnv.OPENAI_MODEL)
   restoreEnv('ANTHROPIC_AUTH_TOKEN', originalEnv.ANTHROPIC_AUTH_TOKEN)
-  restoreEnv('CLAUDE_CODE_SKIP_VERTEX_AUTH', originalEnv.CLAUDE_CODE_SKIP_VERTEX_AUTH)
+  restoreEnv('CLAUDIN_SKIP_VERTEX_AUTH', originalEnv.CLAUDIN_SKIP_VERTEX_AUTH)
   restoreEnv('ANTHROPIC_VERTEX_PROJECT_ID', originalEnv.ANTHROPIC_VERTEX_PROJECT_ID)
   globalThis.fetch = originalFetch
   resolvedOverride = null
@@ -238,16 +238,16 @@ test('strips Anthropic-specific custom headers before sending OpenAI-compatible 
 })
 
 
-// CLAUDE_CODE_SKIP_VERTEX_AUTH swaps a stub in for GoogleAuth so requests can be
+// CLAUDIN_SKIP_VERTEX_AUTH swaps a stub in for GoogleAuth so requests can be
 // pointed at an auth-injecting proxy. @anthropic-ai/vertex-sdk calls
 // `.get('x-goog-user-project')` on whatever `getRequestHeaders()` returns and then
 // passes it to `buildHeaders()`, so the stub has to hand back a real `Headers`.
 // While it returned a plain object every request under the escape hatch died with
 // "googleAuthHeaders.get is not a function" before reaching the network.
-test('CLAUDE_CODE_SKIP_VERTEX_AUTH stub returns Headers the Vertex SDK can read', async () => {
+test('CLAUDIN_SKIP_VERTEX_AUTH stub returns Headers the Vertex SDK can read', async () => {
   let capturedUrl: string | undefined
 
-  process.env.CLAUDE_CODE_SKIP_VERTEX_AUTH = '1'
+  process.env.CLAUDIN_SKIP_VERTEX_AUTH = '1'
   process.env.ANTHROPIC_VERTEX_PROJECT_ID = 'test-project'
 
   // Partial fixture on purpose: the Vertex branch only reads `transport`,

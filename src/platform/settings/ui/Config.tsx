@@ -205,7 +205,7 @@ export function Config({
     onIsSearchModeChange?.(ownsEsc);
   }, [ownsEsc, onIsSearchModeChange]);
   const isConnectedToIde = hasAccessToIDEExtensionDiffFeature(context.options.mcpClients);
-  const isFileCheckpointingAvailable = !isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_FILE_CHECKPOINTING);
+  const isFileCheckpointingAvailable = !isEnvTruthy(process.env.CLAUDIN_DISABLE_FILE_CHECKPOINTING);
   const memoryFiles = React.use(getMemoryFiles(true));
   const shouldShowExternalIncludesToggle = hasExternalClaudeMdIncludes(memoryFiles);
   const autoUpdaterDisabledReason = getAutoUpdaterDisabledReason();
@@ -807,7 +807,7 @@ export function Config({
     }
   }] : []), {
     id: 'terminalRenderer',
-    // CLAUDE_CODE_NO_FLICKER pins the renderer — say so rather than leaving
+    // CLAUDIN_NO_FLICKER pins the renderer — say so rather than leaving
     // a row that ignores every keypress.
     label: isFullscreenForcedByEnv() ? 'Terminal UI renderer (env)' : 'Terminal UI renderer',
     searchText: 'terminal ui renderer fullscreen flicker-free alt-screen',

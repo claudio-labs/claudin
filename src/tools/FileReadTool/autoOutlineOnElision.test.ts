@@ -40,7 +40,7 @@ import {
 //   - explicit view='outline'            → neutral header, no footer
 // ---------------------------------------------------------------------------
 
-process.env.CLAUDE_CODE_SIMPLE = '1'
+process.env.CLAUDIN_SIMPLE = '1'
 process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE = '1'
 
 let dir: string

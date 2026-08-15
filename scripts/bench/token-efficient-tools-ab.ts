@@ -3,8 +3,8 @@
  * Bench A/B: token-efficient tools (FC v3 JSON tool_use)
  *
  * Mesmo binario (dist/cli.mjs) em ambas as variantes; o que muda e' so o env:
- *   A (baseline) = default (CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=true, sem JSON tool_use)
- *   B (feature)  = CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=false + CLAUDE_CODE_JSON_TOOL_USE=1
+ *   A (baseline) = default (CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=true, sem JSON tool_use)
+ *   B (feature)  = CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=false + CLAUDIN_JSON_TOOL_USE=1
  *
  * Anthropic anuncia ~4.5% reducao em output tokens; o ganho concentra em turnos
  * com tool_use (~14% nesses). Provider tem que ser 1P Anthropic ou Foundry; em
@@ -198,15 +198,15 @@ function runOnce(variant: 'A' | 'B', prompt: { id: string; text: string }, runId
   // B liga explicitamente o header beta + o gate de JSON tool_use.
   const env: NodeJS.ProcessEnv = { ...process.env }
   if (variant === 'B') {
-    env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS = 'false'
-    env.CLAUDE_CODE_JSON_TOOL_USE = '1'
+    env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS = 'false'
+    env.CLAUDIN_JSON_TOOL_USE = '1'
     // Destrancar betas tambem habilita global-cache-scope, que esta bugado
     // no caminho atual ("system[0] global mas tools renderizam antes" -> 400).
     // Mantemos especificamente desligado para isolar o efeito de token-efficient.
     env.CLAUDIN_DISABLE_GLOBAL_CACHE_SCOPE = '1'
   } else {
-    delete env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS
-    delete env.CLAUDE_CODE_JSON_TOOL_USE
+    delete env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS
+    delete env.CLAUDIN_JSON_TOOL_USE
     delete env.CLAUDIN_DISABLE_GLOBAL_CACHE_SCOPE
   }
   return new Promise((resolvePromise) => {
@@ -308,7 +308,7 @@ async function main() {
   console.log(`  Model:        ${MODEL}`)
   console.log(`  Target cwd:   ${TARGET_CWD}`)
   console.log(`  A = baseline (no betas)`)
-  console.log(`  B = CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=false CLAUDE_CODE_JSON_TOOL_USE=1`)
+  console.log(`  B = CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=false CLAUDIN_JSON_TOOL_USE=1`)
   console.log('')
 
   // Monta a lista de (prompt, variant, runIdx). Em RESUME, so' inclui o que falhou no relatorio anterior.

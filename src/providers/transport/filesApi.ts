@@ -35,7 +35,7 @@ function getDefaultApiBaseUrl(): string {
   const profileBase = profile?.transport === 'anthropic' ? profile.baseUrl : undefined
   return (
     profileBase ||
-    process.env.CLAUDE_CODE_API_BASE_URL ||
+    process.env.CLAUDIN_API_BASE_URL ||
     'https://api.anthropic.com'
   )
 }

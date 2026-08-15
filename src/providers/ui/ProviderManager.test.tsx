@@ -24,8 +24,8 @@ const SYNC_START = '\x1B[?2026h'
 const SYNC_END = '\x1B[?2026l'
 
 const ORIGINAL_ENV = {
-  CLAUDE_CODE_SIMPLE: process.env.CLAUDE_CODE_SIMPLE,
-  CLAUDE_CODE_USE_GITHUB: process.env.CLAUDE_CODE_USE_GITHUB,
+  CLAUDIN_SIMPLE: process.env.CLAUDIN_SIMPLE,
+  CLAUDIN_USE_GITHUB: process.env.CLAUDIN_USE_GITHUB,
   GITHUB_TOKEN: process.env.GITHUB_TOKEN,
   GH_TOKEN: process.env.GH_TOKEN,
 }
@@ -548,7 +548,7 @@ test('ProviderManager renders the GitHub Copilot profile exactly once when a rea
   // Regression: previously a synthetic "__github_models__" virtual entry was
   // injected whenever the secure-storage Copilot token existed, which double-
   // listed Copilot once GithubDeviceFlowStep started creating real profiles.
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
@@ -581,8 +581,8 @@ test('ProviderManager renders the GitHub Copilot profile exactly once when a rea
 })
 
 test('ProviderManager preset list includes GitHub Copilot entry positioned after Codex OAuth', async () => {
-  delete process.env.CLAUDE_CODE_SIMPLE
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_SIMPLE
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
@@ -606,7 +606,7 @@ test('ProviderManager preset list includes GitHub Copilot entry positioned after
 })
 
 test('ProviderManager first-run Ollama preset auto-detects installed models', async () => {
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
@@ -695,8 +695,8 @@ test('ProviderManager first-run Ollama preset auto-detects installed models', as
 })
 
 test('ProviderManager activating a multi-model provider sets the session model to the primary model', async () => {
-  delete process.env.CLAUDE_CODE_SIMPLE
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_SIMPLE
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
@@ -774,8 +774,8 @@ test('ProviderManager activating a multi-model provider sets the session model t
 })
 
 test('ProviderManager activating a blank-model provider falls back to the provider default, not the stale model', async () => {
-  delete process.env.CLAUDE_CODE_SIMPLE
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_SIMPLE
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
@@ -856,8 +856,8 @@ test('ProviderManager activating a blank-model provider falls back to the provid
 })
 
 test('ProviderManager editing an active multi-model provider keeps app state on the primary model', async () => {
-  delete process.env.CLAUDE_CODE_SIMPLE
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_SIMPLE
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
@@ -986,8 +986,8 @@ test('ProviderManager editing an active multi-model provider keeps app state on 
 })
 
 test('ProviderManager discovers OpenAI-compatible models and saves the picked one', async () => {
-  delete process.env.CLAUDE_CODE_SIMPLE
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_SIMPLE
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
@@ -1081,8 +1081,8 @@ test('ProviderManager discovers OpenAI-compatible models and saves the picked on
 })
 
 test('ProviderManager resolves Codex OAuth state from async storage without sync reads in render flow', async () => {
-  delete process.env.CLAUDE_CODE_SIMPLE
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_SIMPLE
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
@@ -1114,8 +1114,8 @@ test('ProviderManager resolves Codex OAuth state from async storage without sync
 })
 
 test('ProviderManager hides Codex OAuth setup in bare mode', async () => {
-  process.env.CLAUDE_CODE_SIMPLE = '1'
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  process.env.CLAUDIN_SIMPLE = '1'
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
@@ -1134,7 +1134,7 @@ test('ProviderManager hides Codex OAuth setup in bare mode', async () => {
 })
 
 test('ProviderManager Bedrock preset collects awsRegion before form', async () => {
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
@@ -1218,7 +1218,7 @@ test('ProviderManager Bedrock preset collects awsRegion before form', async () =
 })
 
 test('ProviderManager Vertex preset collects gcpProject and gcpRegion', async () => {
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
@@ -1285,7 +1285,7 @@ test('ProviderManager Vertex preset collects gcpProject and gcpRegion', async ()
 })
 
 test('ProviderManager Foundry preset collects azureResource', async () => {
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
@@ -1345,7 +1345,7 @@ test('ProviderManager Foundry preset collects azureResource', async () => {
 })
 
 test('ProviderManager Anthropic preset shows OAuth vs API-key choice', async () => {
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
@@ -1379,7 +1379,7 @@ test('ProviderManager Anthropic preset shows OAuth vs API-key choice', async () 
 })
 
 test('ProviderManager Moonshot AI preset shows OAuth vs API-key choice', async () => {
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
@@ -1414,7 +1414,7 @@ test('ProviderManager Moonshot AI preset shows OAuth vs API-key choice', async (
 })
 
 test('ProviderManager Anthropic API-key path leads to form', async () => {
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
@@ -1454,7 +1454,7 @@ test('ProviderManager Anthropic API-key path leads to form', async () => {
 })
 
 test('ProviderManager menu shows Import from Claude Code when ~/.claude/ is unmigrated', async () => {
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
@@ -1482,7 +1482,7 @@ test('ProviderManager menu shows Import from Claude Code when ~/.claude/ is unmi
 })
 
 test('ProviderManager menu hides Import from Claude Code when ~/.claude/ is absent', async () => {
-  delete process.env.CLAUDE_CODE_USE_GITHUB
+  delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 

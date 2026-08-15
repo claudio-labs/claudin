@@ -374,7 +374,7 @@ export async function runActionAgentSetup(
   // Coordinator mode has its own system prompt.
   if (
     (feature('PROACTIVE') || feature('KAIROS')) &&
-    ((options as { proactive?: boolean }).proactive || isEnvTruthy(process.env.CLAUDE_CODE_PROACTIVE)) &&
+    ((options as { proactive?: boolean }).proactive || isEnvTruthy(process.env.CLAUDIN_PROACTIVE)) &&
     !coordinatorModeModule?.isCoordinatorMode()
   ) {
     /* eslint-disable @typescript-eslint/no-require-imports */

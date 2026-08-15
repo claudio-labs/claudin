@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const tempDirs: string[] = []
-const originalSimple = process.env.CLAUDE_CODE_SIMPLE
+const originalSimple = process.env.CLAUDIN_SIMPLE
 const sessionId = '00000000-0000-4000-8000-000000001999'
 const ts = '2026-04-02T00:00:00.000Z'
 
@@ -57,12 +57,12 @@ async function writeJsonl(entry: unknown): Promise<string> {
 afterEach(async () => {
   mock.module('./sessionStart.js', () => ({}))
   mock.module('src/providers/model/providers.js', () => ({}))
-  process.env.CLAUDE_CODE_SIMPLE = originalSimple
+  process.env.CLAUDIN_SIMPLE = originalSimple
   await Promise.all(tempDirs.splice(0).map(dir => rm(dir, { recursive: true, force: true })))
 })
 
 test('loadConversationForResume rejects oversized transcripts before resume hooks run', async () => {
-  delete process.env.CLAUDE_CODE_SIMPLE
+  delete process.env.CLAUDIN_SIMPLE
   const hugeContent = 'x'.repeat(8 * 1024 * 1024 + 32 * 1024)
   const path = await writeJsonl(user(id(3), hugeContent))
   const hookSpy = mock(() => Promise.resolve([{ type: 'hook' }]))

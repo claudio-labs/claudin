@@ -890,7 +890,7 @@ export async function* queryModel(
 
     const hasThinking =
       thinkingConfig.type !== "disabled" &&
-      !isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_THINKING);
+      !isEnvTruthy(process.env.CLAUDIN_DISABLE_THINKING);
     let thinking: BetaMessageStreamParams["thinking"] | undefined = undefined;
 
     // When redact-thinking is active the server already resolves the thinking
@@ -915,7 +915,7 @@ export async function* queryModel(
         // the only accepted configuration, so it wins over the opt-out too.
         modelRequiresAdaptiveThinking(options.model) ||
         // Adaptive is the default for models that support it; opt out with
-        // CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING=0 to use /effort budget mode.
+        // CLAUDIN_ENABLE_ADAPTIVE_THINKING=0 to use /effort budget mode.
         (isAdaptiveThinkingEnabled() &&
           modelSupportsAdaptiveThinking(options.model))
       ) {
@@ -1115,7 +1115,7 @@ export async function* queryModel(
     // Observability for the reasoning-channel: if Anthropic-native requests
     // ever stop opting into the `thinking` block, CoT can leak into visible
     // text. Mirroring the [OpenAIShim] log style so regressions show up in
-    // CLAUDE_DEBUG output without ad-hoc instrumentation.
+    // CLAUDIN_DEBUG output without ad-hoc instrumentation.
     logForDebugging(
       `[Claude] thinking=${logThinkingType} model=${options.model}`,
     );
@@ -1259,12 +1259,12 @@ export async function* queryModel(
     // kill hung streams. Without this, a silently dropped connection can hang
     // the session indefinitely since the SDK's request timeout only covers the
     // initial fetch(), not the streaming body.
-    // On by default; set CLAUDE_ENABLE_STREAM_WATCHDOG=0 to opt out.
+    // On by default; set CLAUDIN_ENABLE_STREAM_WATCHDOG=0 to opt out.
     const streamWatchdogEnabled = !isEnvDefinedFalsy(
-      process.env.CLAUDE_ENABLE_STREAM_WATCHDOG,
+      process.env.CLAUDIN_ENABLE_STREAM_WATCHDOG,
     );
     const STREAM_IDLE_TIMEOUT_MS =
-      parseInt(process.env.CLAUDE_STREAM_IDLE_TIMEOUT_MS || "", 10) || 65_000;
+      parseInt(process.env.CLAUDIN_STREAM_IDLE_TIMEOUT_MS || "", 10) || 65_000;
     const STREAM_IDLE_WARNING_MS = STREAM_IDLE_TIMEOUT_MS / 2;
     let streamIdleAborted = false;
     // performance.now() snapshot when watchdog fires, for measuring abort propagation delay
@@ -1626,7 +1626,7 @@ export async function* queryModel(
               yield createAssistantAPIErrorMessage({
                 content: `${API_ERROR_MESSAGE_PREFIX}: Claude's response exceeded the ${
                   maxOutputTokens
-                } output token maximum. To configure this behavior, set the CLAUDE_CODE_MAX_OUTPUT_TOKENS environment variable.`,
+                } output token maximum. To configure this behavior, set the CLAUDIN_MAX_OUTPUT_TOKENS environment variable.`,
                 error: "max_output_tokens",
               });
             }
@@ -1821,7 +1821,7 @@ export async function* queryModel(
       // starts a tool, then the non-streaming retry produces the same tool_use
       // and runs it again. See inc-4258.
       const disableFallback =
-        isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK) ||
+        isEnvTruthy(process.env.CLAUDIN_DISABLE_NONSTREAMING_FALLBACK) ||
         getFeatureValue_CACHED_MAY_BE_STALE(
           "tengu_disable_streaming_to_non_streaming_fallback",
           false,

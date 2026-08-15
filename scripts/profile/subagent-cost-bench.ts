@@ -5,7 +5,7 @@
 //
 //   default                       → fork-by-default ON (subagent forks the parent,
 //                                    inherits its warm prompt cache)
-//   CLAUDE_AUTO_BACKGROUND_TASKS=0 → plain isolated subagents (cold prefix each)
+//   CLAUDIN_AUTO_BACKGROUND_TASKS=0 → plain isolated subagents (cold prefix each)
 //
 // In headless -p, forks run INLINE (auto-background gate is masked), so their
 // usage IS captured in the parent's reported totals — the comparison is fair.
@@ -86,7 +86,7 @@ function main() {
   console.log(`\nSubagent-cost bench — model=${MODEL}, ${agents} sub-agents, claudin only\n`)
 
   const a = run('FORK default (auto-background ON)', {}, prompt)
-  const b = run('FORK OFF (CLAUDE_AUTO_BACKGROUND_TASKS=0)', { CLAUDE_AUTO_BACKGROUND_TASKS: '0' }, prompt)
+  const b = run('FORK OFF (CLAUDIN_AUTO_BACKGROUND_TASKS=0)', { CLAUDIN_AUTO_BACKGROUND_TASKS: '0' }, prompt)
 
   console.log('\n' + '─'.repeat(78))
   console.log(`  ${'regime'.padEnd(40)} ${'cR'.padStart(7)} ${'cW'.padStart(7)} ${'$'.padStart(9)} ${'turns'.padStart(6)} ${'subs'.padStart(5)}`)

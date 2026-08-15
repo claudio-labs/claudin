@@ -78,12 +78,12 @@ const FOREGROUND_REGISTRATION_DELAY_MS = 3_500
 const TEST_TIMEOUT_MS = 30_000
 
 // `isBackgroundTasksDisabled` in BashTool is captured at module load time:
-//   const isBackgroundTasksDisabled = isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS)
+//   const isBackgroundTasksDisabled = isEnvTruthy(process.env.CLAUDIN_DISABLE_BACKGROUND_TASKS)
 // We can't flip it at runtime — so we honestly skip the kill-fallback test
 // unless the runner was launched with the env var pre-set, instead of pretending
 // to test it.
 const BG_DISABLED_AT_LOAD = isEnvTruthy(
-  process.env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS,
+  process.env.CLAUDIN_DISABLE_BACKGROUND_TASKS,
 )
 
 describe('runShellCommand — happy paths', () => {
@@ -526,15 +526,15 @@ describe('runShellCommand — interrupt-backgrounding (regression for shells-stu
   )
 
   test.skipIf(!BG_DISABLED_AT_LOAD)(
-    'interrupt with CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 falls back to killing the process',
+    'interrupt with CLAUDIN_DISABLE_BACKGROUND_TASKS=1 falls back to killing the process',
     async () => {
       // Honest skip: isBackgroundTasksDisabled is a module-load constant in
       // BashTool.tsx:226. The previous version of this test pretended to
       // exercise the kill branch by doing an early-return when the env var
       // wasn't set in advance — which silently re-tested the enabled path.
       // This version only runs when the runner was actually launched with
-      // CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1, e.g.:
-      //   CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 bun test runShellCommand
+      // CLAUDIN_DISABLE_BACKGROUND_TASKS=1, e.g.:
+      //   CLAUDIN_DISABLE_BACKGROUND_TASKS=1 bun test runShellCommand
       // Otherwise the kill fallback at BashTool.tsx:1119 stays uncovered by
       // CI but at least we're not hiding that.
       const harness = makeStateHarness()

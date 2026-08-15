@@ -189,7 +189,7 @@ const SIZE_BASED_KEEP_RECENT = 2
 // see the rationale there, including why retain's 0.85 was abandoned).
 // The trigger is additionally capped just below the autocompact threshold:
 // the fraction is relative while autocompact subtracts an ABSOLUTE 13k
-// buffer, so for effective windows ≤ ~52k (or CLAUDE_AUTOCOMPACT_PCT_OVERRIDE
+// buffer, so for effective windows ≤ ~52k (or CLAUDIN_AUTOCOMPACT_PCT_OVERRIDE
 // < the fraction) the uncapped fraction would sit ABOVE autocompact and the
 // cheap stub-clip could never pre-empt the expensive wipe-plus-re-reads.
 const STUB_TRIGGER_PREEMPT_MARGIN_TOKENS = 5_000

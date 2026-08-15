@@ -19,13 +19,13 @@ describe('readGithubModelsToken', () => {
       './githubModelsCredentials.js?read-bare-mode'
     )
 
-    const prev = process.env.CLAUDE_CODE_SIMPLE
-    process.env.CLAUDE_CODE_SIMPLE = '1'
+    const prev = process.env.CLAUDIN_SIMPLE
+    process.env.CLAUDIN_SIMPLE = '1'
     expect(readGithubModelsToken()).toBeUndefined()
     if (prev === undefined) {
-      delete process.env.CLAUDE_CODE_SIMPLE
+      delete process.env.CLAUDIN_SIMPLE
     } else {
-      process.env.CLAUDE_CODE_SIMPLE = prev
+      process.env.CLAUDIN_SIMPLE = prev
     }
   })
 })
@@ -37,15 +37,15 @@ describe('saveGithubModelsToken / clearGithubModelsToken', () => {
       './githubModelsCredentials.js?save-bare-mode'
     )
 
-    const prev = process.env.CLAUDE_CODE_SIMPLE
-    process.env.CLAUDE_CODE_SIMPLE = '1'
+    const prev = process.env.CLAUDIN_SIMPLE
+    process.env.CLAUDIN_SIMPLE = '1'
     const r = saveGithubModelsToken('abc')
     expect(r.success).toBe(false)
     expect(r.warning).toContain('Bare mode')
     if (prev === undefined) {
-      delete process.env.CLAUDE_CODE_SIMPLE
+      delete process.env.CLAUDIN_SIMPLE
     } else {
-      process.env.CLAUDE_CODE_SIMPLE = prev
+      process.env.CLAUDIN_SIMPLE = prev
     }
   })
 
@@ -55,13 +55,13 @@ describe('saveGithubModelsToken / clearGithubModelsToken', () => {
       './githubModelsCredentials.js?clear-bare-mode'
     )
 
-    const prev = process.env.CLAUDE_CODE_SIMPLE
-    process.env.CLAUDE_CODE_SIMPLE = '1'
+    const prev = process.env.CLAUDIN_SIMPLE
+    process.env.CLAUDIN_SIMPLE = '1'
     expect(clearGithubModelsToken().success).toBe(true)
     if (prev === undefined) {
-      delete process.env.CLAUDE_CODE_SIMPLE
+      delete process.env.CLAUDIN_SIMPLE
     } else {
-      process.env.CLAUDE_CODE_SIMPLE = prev
+      process.env.CLAUDIN_SIMPLE = prev
     }
   })
 })
@@ -76,18 +76,18 @@ function makeCopilotToken(expSeconds: number): string {
 }
 
 describe('refreshGithubModelsTokenIfNeeded', () => {
-  const originalSimple = process.env.CLAUDE_CODE_SIMPLE
+  const originalSimple = process.env.CLAUDIN_SIMPLE
 
   afterEach(() => {
     if (originalSimple === undefined) {
-      delete process.env.CLAUDE_CODE_SIMPLE
+      delete process.env.CLAUDIN_SIMPLE
     } else {
-      process.env.CLAUDE_CODE_SIMPLE = originalSimple
+      process.env.CLAUDIN_SIMPLE = originalSimple
     }
   })
 
   test('returns false when not on github_copilot transport', async () => {
-    delete process.env.CLAUDE_CODE_SIMPLE
+    delete process.env.CLAUDIN_SIMPLE
 
     mock.module('src/providers/presets/activeProvider.js', () => ({
       tryGetActiveProvider: () => ({ transport: 'anthropic' }),
@@ -103,7 +103,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
   })
 
   test('returns false when bare mode is active', async () => {
-    process.env.CLAUDE_CODE_SIMPLE = '1'
+    process.env.CLAUDIN_SIMPLE = '1'
 
     const { refreshGithubModelsTokenIfNeeded } = await import(
       // @ts-expect-error cache-busting query string for Bun module mocks
@@ -115,7 +115,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
   })
 
   test('returns false when token is still valid', async () => {
-    delete process.env.CLAUDE_CODE_SIMPLE
+    delete process.env.CLAUDIN_SIMPLE
 
     const validToken = makeCopilotToken(
       Math.floor((Date.now() + 3_600_000) / 1000),
@@ -152,7 +152,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
   })
 
   test('refreshes expired token and updates profile', async () => {
-    delete process.env.CLAUDE_CODE_SIMPLE
+    delete process.env.CLAUDIN_SIMPLE
 
     const expiredToken = makeCopilotToken(
       Math.floor((Date.now() - 60_000) / 1000),
@@ -220,7 +220,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
   })
 
   test('returns false when no tokens are stored', async () => {
-    delete process.env.CLAUDE_CODE_SIMPLE
+    delete process.env.CLAUDIN_SIMPLE
 
     let storageState: Record<string, unknown> = {}
 
@@ -248,7 +248,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
   })
 
   test('deduplicates concurrent refresh attempts', async () => {
-    delete process.env.CLAUDE_CODE_SIMPLE
+    delete process.env.CLAUDIN_SIMPLE
 
     const expiredToken = makeCopilotToken(
       Math.floor((Date.now() - 60_000) / 1000),
@@ -326,7 +326,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
   })
 
   test('clears in-flight promise after completion to allow subsequent refreshes', async () => {
-    delete process.env.CLAUDE_CODE_SIMPLE
+    delete process.env.CLAUDIN_SIMPLE
 
     const expiredToken = makeCopilotToken(
       Math.floor((Date.now() - 60_000) / 1000),

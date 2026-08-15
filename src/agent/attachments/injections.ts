@@ -364,7 +364,7 @@ export function getTokenUsageAttachment(
   messages: Message[],
   model: string,
 ): Attachment[] {
-  if (!isEnvTruthy(process.env.CLAUDE_CODE_ENABLE_TOKEN_USAGE_ATTACHMENT)) {
+  if (!isEnvTruthy(process.env.CLAUDIN_ENABLE_TOKEN_USAGE_ATTACHMENT)) {
     return []
   }
 

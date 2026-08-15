@@ -69,22 +69,22 @@ export async function getSessionEnvironmentScript(): Promise<string | null> {
 
   const scripts: string[] = []
 
-  // Check for CLAUDE_ENV_FILE passed from parent process (e.g., HFI trajectory runner)
+  // Check for CLAUDIN_ENV_FILE passed from parent process (e.g., HFI trajectory runner)
   // This allows venv/conda activation to persist across shell commands
-  const envFile = process.env.CLAUDE_ENV_FILE
+  const envFile = process.env.CLAUDIN_ENV_FILE
   if (envFile) {
     try {
       const envScript = (await readFile(envFile, 'utf8')).trim()
       if (envScript) {
         scripts.push(envScript)
         logForDebugging(
-          `Session environment loaded from CLAUDE_ENV_FILE: ${envFile} (${envScript.length} chars)`,
+          `Session environment loaded from CLAUDIN_ENV_FILE: ${envFile} (${envScript.length} chars)`,
         )
       }
     } catch (e: unknown) {
       const code = getErrnoCode(e)
       if (code !== 'ENOENT') {
-        logForDebugging(`Failed to read CLAUDE_ENV_FILE: ${errorMessage(e)}`)
+        logForDebugging(`Failed to read CLAUDIN_ENV_FILE: ${errorMessage(e)}`)
       }
     }
   }

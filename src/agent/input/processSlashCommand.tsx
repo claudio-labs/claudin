@@ -787,11 +787,11 @@ async function getMessagesForPromptSlashCommand(command: CommandBase & PromptCom
   // skill content and allowedTools are useless. Instead, send a brief summary
   // telling the coordinator how to delegate this skill to a worker.
   //
-  // Workers run in-process and inherit CLAUDE_CODE_COORDINATOR_MODE from the
+  // Workers run in-process and inherit CLAUDIN_COORDINATOR_MODE from the
   // parent env, so we also check !context.agentId: agentId is only set for
   // subagents, letting workers fall through to getPromptForCommand and receive
   // the real skill content when they invoke the Skill tool.
-  if (feature('COORDINATOR_MODE') && isEnvTruthy(process.env.CLAUDE_CODE_COORDINATOR_MODE) && !context.agentId) {
+  if (feature('COORDINATOR_MODE') && isEnvTruthy(process.env.CLAUDIN_COORDINATOR_MODE) && !context.agentId) {
     const metadata = formatCommandLoadingMetadata(command, args);
     const parts: string[] = [`Skill "/${command.name}" is available for workers.`];
     if (command.description) {

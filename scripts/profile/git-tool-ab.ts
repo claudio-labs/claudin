@@ -467,7 +467,7 @@ function runArm(label: string, extraEnv: Record<string, string>, args: Args): Ar
         ...process.env,
         ANTHROPIC_MODEL: MODEL,
         // Headless `-p` drains auto-backgrounded sub-agents non-deterministically.
-        CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1',
+        CLAUDIN_DISABLE_BACKGROUND_TASKS: '1',
         // Otherwise the second arm can replay the first arm's tool results.
         CLAUDIN_DISABLE_TOOL_RESULT_CACHE: '1',
         ...extraEnv,

@@ -231,7 +231,7 @@ export type HeadlessStreamingContext = {
   bridgeLastForwardedIndex: number
   /** Serializes concurrent `applyMcpServerChanges` callers. */
   mcpChangesPromise: Promise<McpSetServersOutcome>
-  /** Set only under CLAUDE_CODE_SYNC_PLUGIN_INSTALL; awaited once by `run()`. */
+  /** Set only under CLAUDIN_SYNC_PLUGIN_INSTALL; awaited once by `run()`. */
   pluginInstallPromise: Promise<void> | null
   /** Hot-reloadable command list (the REPL uses AppState for this instead). */
   currentCommands: Command[]

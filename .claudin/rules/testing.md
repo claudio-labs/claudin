@@ -149,14 +149,14 @@ bun test scripts/no-telemetry-growthbook-stub.test.ts  # no phone-home
 bun test scripts/pr-intent-scan.test.ts                # PR security scan
 ```
 
-### A fake binary on PATH needs `CLAUDE_ENV_FILE`, not `process.env.PATH`
+### A fake binary on PATH needs `CLAUDIN_ENV_FILE`, not `process.env.PATH`
 
 Setting `process.env.PATH` does NOT put a stand-in `gh`/`git` in front of the
 real one for anything that goes through `exec()`. The bash provider writes an
 environment snapshot on the process's FIRST `exec()` and every later command
 runs `source <snapshot> && …`, re-exporting the PATH captured at that moment —
 which under `bun test` usually belongs to a different test file. The lever that
-works is `CLAUDE_ENV_FILE` pointing at a script that prepends the directory,
+works is `CLAUDIN_ENV_FILE` pointing at a script that prepends the directory,
 plus `invalidateSessionEnvCache()`; `installFakeGh` in
 `src/tools/GitTool/__fixtures__/fakeGh.ts` is the worked example.
 

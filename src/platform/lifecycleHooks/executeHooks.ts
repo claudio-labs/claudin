@@ -116,7 +116,7 @@ export async function* executeHooks({
     return
   }
 
-  if (isEnvTruthy(process.env.CLAUDE_CODE_SIMPLE)) {
+  if (isEnvTruthy(process.env.CLAUDIN_SIMPLE)) {
     return
   }
 

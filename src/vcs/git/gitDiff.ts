@@ -525,7 +525,7 @@ export async function fetchDiffStatSummary(): Promise<DiffStatSummary> {
 
   // Same base resolution as the /diff reviewer (getDiffRef), so the footer and
   // the reviewer never disagree about what "the branch" means.
-  const base = process.env.CLAUDE_CODE_BASE_REF || (await getDefaultBranch())
+  const base = process.env.CLAUDIN_BASE_REF || (await getDefaultBranch())
   const [head, mergeBase] = await Promise.all([
     getHead(),
     runGit(
@@ -657,13 +657,13 @@ function parseRawDiffToToolUseDiff(
 /**
  * Determine the best ref to diff against for a PR-like diff.
  * Priority:
- * 1. CLAUDE_CODE_BASE_REF env var (set externally, e.g. by CCR managed containers)
+ * 1. CLAUDIN_BASE_REF env var (set externally, e.g. by CCR managed containers)
  * 2. Merge base with the default branch (best guess)
  * 3. HEAD (fallback if merge-base fails)
  */
 async function getDiffRef(gitRoot: string): Promise<string> {
   const baseBranch =
-    process.env.CLAUDE_CODE_BASE_REF || (await getDefaultBranch())
+    process.env.CLAUDIN_BASE_REF || (await getDefaultBranch())
   const { stdout, code } = await execFileNoThrowWithCwd(
     gitExe(),
     ['--no-optional-locks', 'merge-base', 'HEAD', baseBranch],

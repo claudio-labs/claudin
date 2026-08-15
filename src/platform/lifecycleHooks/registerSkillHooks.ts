@@ -15,7 +15,7 @@ import { addSessionHook, removeSessionHook } from 'src/platform/lifecycleHooks/s
  * @param sessionId - The current session ID
  * @param hooks - The hooks settings from the skill's frontmatter
  * @param skillName - The name of the skill (for logging)
- * @param skillRoot - The base directory of the skill (for CLAUDE_PLUGIN_ROOT env var)
+ * @param skillRoot - The base directory of the skill (for CLAUDIN_PLUGIN_ROOT env var)
  */
 export function registerSkillHooks(
   setAppState: (updater: (prev: AppState) => AppState) => void,

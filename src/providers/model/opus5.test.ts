@@ -108,7 +108,7 @@ test('reports the public marketing name', () => {
 // The config documents "128K max output". Without an explicit branch in
 // getModelMaxOutputTokens, claude-opus-5 matches no `else if` and silently
 // falls through to the 32k/64k default — halving the output budget of the
-// model it replaces and clamping CLAUDE_CODE_MAX_OUTPUT_TOKENS.
+// model it replaces and clamping CLAUDIN_MAX_OUTPUT_TOKENS.
 test('gets the 64k/128k max-output tier, not the 32k fallthrough default', () => {
   expect(getModelMaxOutputTokens('claude-opus-5')).toEqual({
     default: 64_000,

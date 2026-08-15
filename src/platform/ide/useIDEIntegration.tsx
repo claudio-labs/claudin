@@ -30,7 +30,7 @@ export function useIDEIntegration(t0: UseIDEIntegrationProps) {
           return;
         }
         const globalConfig = getGlobalConfig();
-        const autoConnectEnabled = (globalConfig.autoConnectIde || autoConnectIdeFlag || isSupportedTerminal() || process.env.CLAUDE_CODE_SSE_PORT || ideToInstallExtension || isEnvTruthy(process.env.CLAUDE_CODE_AUTO_CONNECT_IDE)) && !isEnvDefinedFalsy(process.env.CLAUDE_CODE_AUTO_CONNECT_IDE);
+        const autoConnectEnabled = (globalConfig.autoConnectIde || autoConnectIdeFlag || isSupportedTerminal() || process.env.CLAUDE_CODE_SSE_PORT || ideToInstallExtension || isEnvTruthy(process.env.CLAUDIN_AUTO_CONNECT_IDE)) && !isEnvDefinedFalsy(process.env.CLAUDIN_AUTO_CONNECT_IDE);
         if (!autoConnectEnabled) {
           return;
         }

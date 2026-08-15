@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe('checkDomainBlocklist', () => {
   test('returns allowed without API call in OpenAI mode', async () => {
-    process.env.CLAUDE_CODE_USE_OPENAI = '1'
+    process.env.CLAUDIN_USE_OPENAI = '1'
     const actual = await import('src/providers/model/providers.js')
     mock.module('src/providers/model/providers.js', () => ({
       ...actual,
@@ -37,7 +37,7 @@ describe('checkDomainBlocklist', () => {
   })
 
   test('returns allowed without API call in Gemini mode', async () => {
-    process.env.CLAUDE_CODE_USE_GEMINI = '1'
+    process.env.CLAUDIN_USE_GEMINI = '1'
     const actual = await import('src/providers/model/providers.js')
     mock.module('src/providers/model/providers.js', () => ({
       ...actual,
@@ -57,9 +57,9 @@ describe('checkDomainBlocklist', () => {
   })
 
   test('calls Anthropic domain check in first-party mode', async () => {
-    delete process.env.CLAUDE_CODE_USE_OPENAI
-    delete process.env.CLAUDE_CODE_USE_GEMINI
-    delete process.env.CLAUDE_CODE_USE_GITHUB
+    delete process.env.CLAUDIN_USE_OPENAI
+    delete process.env.CLAUDIN_USE_GEMINI
+    delete process.env.CLAUDIN_USE_GITHUB
 
     const actual = await import('src/providers/model/providers.js')
     mock.module('src/providers/model/providers.js', () => ({

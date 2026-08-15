@@ -169,7 +169,7 @@ export function modelSupportsAdaptiveThinking(model: string): boolean {
  * Models where thinking is always on server-side and adaptive is the ONLY
  * accepted thinking-ON configuration. Sending budget_tokens — claudin's
  * /effort budget thinking mode — returns a 400 on these models, so streaming.ts
- * must force adaptive regardless of the CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING
+ * must force adaptive regardless of the CLAUDIN_ENABLE_ADAPTIVE_THINKING
  * opt-out. It also
  * suppresses the temperature param (rejected as a non-default sampling param).
  *
@@ -201,7 +201,7 @@ export function modelRequiresAdaptiveThinking(model: string): boolean {
  * precisely because the enabled-decision lives with the caller.
  */
 export function modelWouldUseAdaptiveThinking(model: string): boolean {
-  if (isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_THINKING)) return false
+  if (isEnvTruthy(process.env.CLAUDIN_DISABLE_THINKING)) return false
   // Fable-class models only accept adaptive — forced on regardless of the opt-out.
   if (modelRequiresAdaptiveThinking(model)) return true
   if (!isAdaptiveThinkingEnabled()) return false
@@ -213,12 +213,12 @@ export function modelWouldUseAdaptiveThinking(model: string): boolean {
  * the model scale thinking to task difficulty instead of burning a fixed
  * /effort-derived budget on trivial turns (which otherwise delays the first
  * visible answer token by ~2s). Opt out — falling back to budget mode — by
- * setting CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING to a falsy value (0/false/no/off).
+ * setting CLAUDIN_ENABLE_ADAPTIVE_THINKING to a falsy value (0/false/no/off).
  * Both the display helper here and the real request selection in
  * src/providers/shims/claude/streaming.ts read this, so they stay in sync.
  */
 export function isAdaptiveThinkingEnabled(): boolean {
-  return !isEnvDefinedFalsy(process.env.CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING)
+  return !isEnvDefinedFalsy(process.env.CLAUDIN_ENABLE_ADAPTIVE_THINKING)
 }
 
 export function shouldEnableThinkingByDefault(): boolean {

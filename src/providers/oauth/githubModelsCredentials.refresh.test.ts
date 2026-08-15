@@ -55,7 +55,7 @@ function mockActiveProvider(transport: 'github_copilot' | 'anthropic' = 'github_
 
 describe('refreshGithubModelsTokenIfNeeded', () => {
   const orig = {
-    CLAUDE_CODE_SIMPLE: process.env.CLAUDE_CODE_SIMPLE,
+    CLAUDIN_SIMPLE: process.env.CLAUDIN_SIMPLE,
   }
 
   beforeEach(() => {
@@ -74,7 +74,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
   })
 
   test('refreshes expired Copilot token using stored OAuth token', async () => {
-    delete process.env.CLAUDE_CODE_SIMPLE
+    delete process.env.CLAUDIN_SIMPLE
     mockActiveProvider('github_copilot')
 
     const futureExp = Math.floor(Date.now() / 1000) + 3600
@@ -119,7 +119,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
   })
 
   test('does not refresh when current Copilot token is valid', async () => {
-    delete process.env.CLAUDE_CODE_SIMPLE
+    delete process.env.CLAUDIN_SIMPLE
     mockActiveProvider('github_copilot')
 
     const futureExp = Math.floor(Date.now() / 1000) + 3600

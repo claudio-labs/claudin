@@ -10,7 +10,7 @@ import {
 } from 'src/platform/config/privacyLevel.js'
 
 const ENV_KEYS = [
-  'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
+  'CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC',
   'ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC',
   'DISABLE_TELEMETRY',
 ] as const
@@ -39,11 +39,11 @@ describe('privacyLevel', () => {
     expect(getEssentialTrafficOnlyReason()).toBe('claudin-default')
   })
 
-  test('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 → essential-traffic (explicit)', () => {
-    process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1'
+  test('CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC=1 → essential-traffic (explicit)', () => {
+    process.env.CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC = '1'
     expect(getPrivacyLevel()).toBe('essential-traffic')
     expect(getEssentialTrafficOnlyReason()).toBe(
-      'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
+      'CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC',
     )
   })
 
@@ -62,8 +62,8 @@ describe('privacyLevel', () => {
     expect(getEssentialTrafficOnlyReason()).toBeNull()
   })
 
-  test('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=false → default', () => {
-    process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = 'false'
+  test('CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC=false → default', () => {
+    process.env.CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC = 'false'
     expect(getPrivacyLevel()).toBe('default')
   })
 
@@ -79,10 +79,10 @@ describe('privacyLevel', () => {
   })
 
   test('CLAUDE_CODE_* takes precedence over ANTHROPIC_* in reason reporting', () => {
-    process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1'
+    process.env.CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC = '1'
     process.env.ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC = '1'
     expect(getEssentialTrafficOnlyReason()).toBe(
-      'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
+      'CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC',
     )
   })
 
@@ -106,9 +106,9 @@ describe('privacyLevel', () => {
         'ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC',
       )
       delete process.env.ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC
-      process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1'
+      process.env.CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC = '1'
       expect(getExplicitEssentialTrafficOnlyReason()).toBe(
-        'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
+        'CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC',
       )
     })
 

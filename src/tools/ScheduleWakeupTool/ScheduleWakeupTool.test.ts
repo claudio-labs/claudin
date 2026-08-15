@@ -26,7 +26,7 @@ import { ScheduleWakeupTool } from 'src/tools/ScheduleWakeupTool/ScheduleWakeupT
 let priorEnabled = false
 
 beforeAll(() => {
-  delete process.env.CLAUDE_CODE_DISABLE_CRON
+  delete process.env.CLAUDIN_DISABLE_CRON
   priorEnabled = getScheduledTasksEnabled()
 })
 
@@ -67,11 +67,11 @@ describe('clampWakeupDelaySeconds', () => {
 describe('ScheduleWakeupTool', () => {
   test('isEnabled() follows the cron gate', () => {
     expect(ScheduleWakeupTool.isEnabled?.()).toBe(true)
-    process.env.CLAUDE_CODE_DISABLE_CRON = '1'
+    process.env.CLAUDIN_DISABLE_CRON = '1'
     try {
       expect(ScheduleWakeupTool.isEnabled?.()).toBe(false)
     } finally {
-      delete process.env.CLAUDE_CODE_DISABLE_CRON
+      delete process.env.CLAUDIN_DISABLE_CRON
     }
   })
 

@@ -24,10 +24,10 @@ export const MODEL_CONTEXT_WINDOW_DEFAULT = 200_000
 // Fallback context window for unknown 3P models. Must be large enough that
 // the effective context (this minus output token reservation) stays positive,
 // otherwise auto-compact fires on every message (issue #635).
-// Override via CLAUDE_CODE_OPENAI_FALLBACK_CONTEXT_WINDOW env var to avoid
+// Override via CLAUDIN_OPENAI_FALLBACK_CONTEXT_WINDOW env var to avoid
 // hardcoding when deploying models not yet in openaiContextWindows.ts.
 export const OPENAI_FALLBACK_CONTEXT_WINDOW = (() => {
-  const v = parseInt(process.env.CLAUDE_CODE_OPENAI_FALLBACK_CONTEXT_WINDOW ?? '', 10)
+  const v = parseInt(process.env.CLAUDIN_OPENAI_FALLBACK_CONTEXT_WINDOW ?? '', 10)
   return !isNaN(v) && v > 0 ? v : 128_000
 })()
 
@@ -52,7 +52,7 @@ export const ESCALATED_MAX_TOKENS = 64_000
  * Used by C4E admins to disable 1M context for HIPAA compliance.
  */
 export function is1mContextDisabled(): boolean {
-  return isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT)
+  return isEnvTruthy(process.env.CLAUDIN_DISABLE_1M_CONTEXT)
 }
 
 export function has1mContext(model: string): boolean {

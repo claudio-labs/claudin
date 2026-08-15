@@ -877,7 +877,7 @@ export async function getVerifyPlanReminderAttachment(
   messages: Message[] | undefined,
   toolUseContext: ToolUseContext,
 ): Promise<Attachment[]> {
-  if (!isEnvTruthy(process.env.CLAUDE_CODE_VERIFY_PLAN)) {
+  if (!isEnvTruthy(process.env.CLAUDIN_VERIFY_PLAN)) {
     return []
   }
 

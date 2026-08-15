@@ -15,7 +15,7 @@ let configDir: string
 beforeAll(() => {
   configDir = mkdtempSync(join(tmpdir(), 'crondelete-'))
   process.env.CLAUDIN_CONFIG_DIR = configDir
-  delete process.env.CLAUDE_CODE_DISABLE_CRON
+  delete process.env.CLAUDIN_DISABLE_CRON
 })
 
 afterAll(() => {
@@ -30,11 +30,11 @@ afterEach(() => {
 describe('CronDeleteTool', () => {
   test('isEnabled() follows the cron kill switch', () => {
     expect(CronDeleteTool.isEnabled?.()).toBe(true)
-    process.env.CLAUDE_CODE_DISABLE_CRON = '1'
+    process.env.CLAUDIN_DISABLE_CRON = '1'
     try {
       expect(CronDeleteTool.isEnabled?.()).toBe(false)
     } finally {
-      delete process.env.CLAUDE_CODE_DISABLE_CRON
+      delete process.env.CLAUDIN_DISABLE_CRON
     }
   })
 

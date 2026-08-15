@@ -215,7 +215,7 @@ export function getToolSearchBetaHeader(): string {
 export function shouldIncludeFirstPartyOnlyBetas(): boolean {
   return (
     (getAPIProvider() === 'firstParty' || getAPIProvider() === 'foundry') &&
-    !isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS)
+    !isEnvTruthy(process.env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS)
   )
 }
 
@@ -228,7 +228,7 @@ export function shouldUseGlobalCacheScope(): boolean {
   if (isEnvTruthy(process.env.CLAUDIN_DISABLE_GLOBAL_CACHE_SCOPE)) return false
   return (
     getAPIProvider() === 'firstParty' &&
-    !isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS)
+    !isEnvTruthy(process.env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS)
   )
 }
 
@@ -280,7 +280,7 @@ export const getAllModelBetas = memoize((model: string): string[] => {
     betaHeaders.push(CONTEXT_MANAGEMENT_BETA_HEADER)
   }
   // Add strict tool use beta if experiment is enabled.
-  // Gate on includeFirstPartyOnlyBetas: CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS
+  // Gate on includeFirstPartyOnlyBetas: CLAUDIN_DISABLE_EXPERIMENTAL_BETAS
   // already strips schema.strict from tool bodies at api.ts's choke point, but
   // this header was escaping that kill switch. Proxy gateways that look like
   // firstParty but forward to Vertex reject this header with 400.
@@ -289,11 +289,11 @@ export const getAllModelBetas = memoize((model: string): string[] => {
     checkStatsigFeatureGate_CACHED_MAY_BE_STALE('tengu_tool_pear')
   // API rejects strict + token-efficient-tools together (tool_use.py:139),
   // so these are mutually exclusive — strict wins. Off by default; opt in
-  // via CLAUDE_CODE_JSON_TOOL_USE=1 or the tengu_amber_json_tools remote
+  // via CLAUDIN_JSON_TOOL_USE=1 or the tengu_amber_json_tools remote
   // flag.
   const tokenEfficientToolsEnabled =
     !strictToolsEnabled &&
-    (isEnvTruthy(process.env.CLAUDE_CODE_JSON_TOOL_USE) ||
+    (isEnvTruthy(process.env.CLAUDIN_JSON_TOOL_USE) ||
       getFeatureValue_CACHED_MAY_BE_STALE('tengu_amber_json_tools', false))
   if (
     includeFirstPartyOnlyBetas &&

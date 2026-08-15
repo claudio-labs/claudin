@@ -7,7 +7,7 @@ import { type MessageUpdateLazy, runToolUse } from 'src/agent/tools/toolExecutio
 
 function getMaxToolUseConcurrency(): number {
   return (
-    parseInt(process.env.CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY || '', 10) || 10
+    parseInt(process.env.CLAUDIN_MAX_TOOL_USE_CONCURRENCY || '', 10) || 10
   )
 }
 

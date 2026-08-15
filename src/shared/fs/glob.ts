@@ -109,11 +109,11 @@ export async function glob(
   //   most likely to matter — the same ranking GrepTool's files_with_matches
   //   mode applies. Plain --sort=modified is ascending, which made a truncated
   //   result the 100 LEAST recently modified matches.
-  // --no-ignore: don't respect .gitignore (default true, set CLAUDE_CODE_GLOB_NO_IGNORE=false to respect .gitignore)
-  // --hidden: include hidden files (default true, set CLAUDE_CODE_GLOB_HIDDEN=false to exclude)
+  // --no-ignore: don't respect .gitignore (default true, set CLAUDIN_GLOB_NO_IGNORE=false to respect .gitignore)
+  // --hidden: include hidden files (default true, set CLAUDIN_GLOB_HIDDEN=false to exclude)
   // Note: use || instead of ?? to treat empty string as unset (defaulting to true)
-  const noIgnore = isEnvTruthy(process.env.CLAUDE_CODE_GLOB_NO_IGNORE || 'true')
-  const hidden = isEnvTruthy(process.env.CLAUDE_CODE_GLOB_HIDDEN || 'true')
+  const noIgnore = isEnvTruthy(process.env.CLAUDIN_GLOB_NO_IGNORE || 'true')
+  const hidden = isEnvTruthy(process.env.CLAUDIN_GLOB_HIDDEN || 'true')
   const args = [
     '--files',
     caseInsensitive ? '--iglob' : '--glob',

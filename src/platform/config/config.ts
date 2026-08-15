@@ -568,7 +568,7 @@ export type GlobalConfig = {
   // restore upstream's behaviour.
   notifyMemorySaved?: boolean
 
-  // Flicker-free fullscreen mode (equivalent to CLAUDE_CODE_NO_FLICKER=1 env var).
+  // Flicker-free fullscreen mode (equivalent to CLAUDIN_NO_FLICKER=1 env var).
   // When true, enables alt-screen + virtualized scroll for all users.
   // Env var still takes precedence: =0 always off, =1 always on.
   flickerFreeMode?: boolean
@@ -722,7 +722,7 @@ export type GlobalConfig = {
   // background (task-notification on completion) instead of running inline.
   // undefined → false (opt-in): a backgrounded spawn's report only reaches the
   // parent in a LATER turn, so the parent has to be written for it. Env
-  // CLAUDE_AUTO_BACKGROUND_TASKS overrides to on. Even when on, one-shot
+  // CLAUDIN_AUTO_BACKGROUND_TASKS overrides to on. Even when on, one-shot
   // built-ins and an explicit run_in_background:false stay inline — see
   // AgentTool/autoBackground.ts. Independent of whether fork exists.
   autoBackgroundAgentsEnabled?: boolean

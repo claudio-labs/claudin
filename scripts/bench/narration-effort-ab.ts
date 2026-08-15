@@ -11,7 +11,7 @@
  *
  * Diferenca para narration-prompt-ab.ts (steering): aqui ambas as variantes
  * usam o MESMO bundle (dist/cli.mjs). A unica diferenca e' a env var
- * CLAUDE_CODE_EFFORT_LEVEL no spawn:
+ * CLAUDIN_EFFORT_LEVEL no spawn:
  *   Variante A = adaptive  (servidor escala per-request; nenhum campo effort)
  *   Variante B = xhigh     (effort=xhigh fixo; Opus 4.8 suporta)
  *
@@ -185,7 +185,7 @@ function runOnce(variant: 'A' | 'B', effort: string, prompt: { id: string; text:
   return new Promise((resolvePromise) => {
     const child = spawn('node', [FEATURE, '-p', prompt.text, '--model', MODEL, '--output-format', 'json'], {
       cwd: TARGET_CWD,
-      env: { ...process.env, CLAUDE_CODE_EFFORT_LEVEL: effort },
+      env: { ...process.env, CLAUDIN_EFFORT_LEVEL: effort },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
     let stdoutBuf = ''

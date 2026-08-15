@@ -17,7 +17,7 @@ import type { GitProgress } from 'src/tools/GitTool/types.js'
  * shapes exactly; the FORMAT is pinned separately, against captured bytes, in
  * `parsers/watch.test.ts`.
  *
- * Getting the fake onto the child's PATH takes `CLAUDE_ENV_FILE` and not just
+ * Getting the fake onto the child's PATH takes `CLAUDIN_ENV_FILE` and not just
  * `process.env.PATH` — see the long note in `families.test.ts`. Skipping it is
  * not a failing test, it is a test that silently runs REAL `gh` against this
  * repository: that is exactly what happened here first, and `gh pr checks 1`
@@ -36,19 +36,19 @@ beforeAll(() => {
   const envFile = join(fakeGh.binDir, 'env.sh')
   writeFileSync(envFile, `export PATH="${fakeGh.binDir}:$PATH"\n`)
   originalPath = process.env.PATH
-  originalEnvFile = process.env.CLAUDE_ENV_FILE
+  originalEnvFile = process.env.CLAUDIN_ENV_FILE
   process.env.PATH = fakeGh.path
-  process.env.CLAUDE_ENV_FILE = envFile
+  process.env.CLAUDIN_ENV_FILE = envFile
   invalidateSessionEnvCache()
 })
 
 afterAll(() => {
   if (originalPath === undefined) delete process.env.PATH
   else process.env.PATH = originalPath
-  // Leaving CLAUDE_ENV_FILE set would prepend this directory to every shell
+  // Leaving CLAUDIN_ENV_FILE set would prepend this directory to every shell
   // command in every later test file of the same process.
-  if (originalEnvFile === undefined) delete process.env.CLAUDE_ENV_FILE
-  else process.env.CLAUDE_ENV_FILE = originalEnvFile
+  if (originalEnvFile === undefined) delete process.env.CLAUDIN_ENV_FILE
+  else process.env.CLAUDIN_ENV_FILE = originalEnvFile
   invalidateSessionEnvCache()
   cleanupAllFakeGh()
 })
