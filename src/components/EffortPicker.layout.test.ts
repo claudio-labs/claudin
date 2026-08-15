@@ -7,7 +7,7 @@ import {
   SLIDER_GAP_MIN,
   SLIDER_MARKER,
   SMARTER_LABEL,
-} from './EffortPicker.layout.js'
+} from 'src/components/EffortPicker.layout.js'
 
 const LABELS = ['Adaptive', 'Low', 'Medium', 'High', 'Extra', 'Max']
 

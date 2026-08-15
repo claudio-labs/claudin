@@ -4,7 +4,7 @@
  * so the synchronous getModelOptions() can use them.
  */
 
-import type { ModelOption } from './modelOptions.js'
+import type { ModelOption } from 'src/utils/model/modelOptions.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { getOllamaApiBaseUrl } from 'src/services/api/providerDiscovery.js'
 

@@ -11,8 +11,8 @@ import { afterAll, describe, expect, test, mock } from 'bun:test'
 // unrelated exports (e.g. getSessionId) from these same modules.
 const realState = { ...(await import('src/bootstrap/state.js')) }
 const realGit = { ...(await import('src/services/git/git.js')) }
-const realPaths = { ...(await import('./paths.js')) }
-const realTeamMemPaths = { ...(await import('./teamMemPaths.js')) }
+const realPaths = { ...(await import('src/memdir/paths.js')) }
+const realTeamMemPaths = { ...(await import('src/memdir/teamMemPaths.js')) }
 
 // Bun's mock.module() is process-global and is NOT reverted by mock.restore().
 // importFreshTeamMemPrompts() leaves ./paths.js, ./teamMemPaths.js,

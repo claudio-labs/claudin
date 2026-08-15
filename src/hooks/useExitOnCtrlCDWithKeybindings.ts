@@ -1,5 +1,5 @@
 import { useKeybindings } from 'src/keybindings/useKeybinding.js'
-import { type ExitState, useExitOnCtrlCD } from './useExitOnCtrlCD.js'
+import { type ExitState, useExitOnCtrlCD } from 'src/hooks/useExitOnCtrlCD.js'
 
 export type { ExitState }
 

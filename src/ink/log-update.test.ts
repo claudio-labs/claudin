@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test'
 
-import type { Frame } from './frame.ts'
-import { LogUpdate } from './log-update.ts'
+import type { Frame } from 'src/ink/frame.ts'
+import { LogUpdate } from 'src/ink/log-update.ts'
 import {
   CellWidth,
   CharPool,
@@ -9,9 +9,9 @@ import {
   HyperlinkPool,
   setCellAt,
   StylePool,
-} from './screen.ts'
-import { stringWidth } from './stringWidth.ts'
-import { cursorMove, cursorTo, eraseLines } from './termio/csi.ts'
+} from 'src/ink/screen.ts'
+import { stringWidth } from 'src/ink/stringWidth.ts'
+import { cursorMove, cursorTo, eraseLines } from 'src/ink/termio/csi.ts'
 
 function collectStdout(diff: ReturnType<LogUpdate['render']>): string {
   return diff

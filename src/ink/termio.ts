@@ -12,7 +12,7 @@
  * Usage:
  *
  * ```typescript
- * import { Parser } from './termio.js'
+ * import { Parser } from 'src/ink/termio.js'
  *
  * const parser = new Parser()
  * const actions = parser.feed('\x1b[31mred\x1b[0m')
@@ -21,11 +21,11 @@
  */
 
 // Parser
-export { Parser } from './termio/parser.js'
+export { Parser } from 'src/ink/termio/parser.js'
 // Types
 export type {
   Color,
   NamedColor,
   TextStyle,
-} from './termio/types.js'
-export { colorsEqual, defaultStyle, stylesEqual } from './termio/types.js'
+} from 'src/ink/termio/types.js'
+export { colorsEqual, defaultStyle, stylesEqual } from 'src/ink/termio/types.js'

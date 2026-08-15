@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { z } from 'zod/v4'
-import { stripPlaceholderOptionalFields } from './toolInputPlaceholders.js'
+import { stripPlaceholderOptionalFields } from 'src/services/tools/toolInputPlaceholders.js'
 
 // Mirrors the shape a strict-schema provider hits hardest: a required string,
 // optional strings, an optional enum and an optional number.

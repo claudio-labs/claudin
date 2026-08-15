@@ -10,7 +10,7 @@ import {
 } from 'src/services/settings/settings.js'
 import type { HookCommand, HookMatcher } from 'src/services/settings/types.js'
 import { DEFAULT_HOOK_SHELL } from 'src/services/shell/shellProvider.js'
-import { getSessionHooks } from './sessionHooks.js'
+import { getSessionHooks } from 'src/services/lifecycleHooks/sessionHooks.js'
 
 export type HookSource =
   | EditableSettingSource

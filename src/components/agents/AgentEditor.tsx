@@ -11,11 +11,11 @@ import { type AgentColorName, setAgentColor } from 'src/tools/AgentTool/agentCol
 import { type AgentDefinition, getActiveAgentsFromList, isCustomAgent, isPluginAgent } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { editFileInEditor } from 'src/utils/promptEditor.js';
 import { writeProjectAgentOverride } from 'src/tools/AgentTool/projectAgentOverrides.js';
-import { getActualAgentFilePath, updateAgentFile } from './agentFileUtils.js';
-import { ColorPicker } from './ColorPicker.js';
-import { ModelSelector } from './ModelSelector.js';
-import { ToolSelector } from './ToolSelector.js';
-import { getAgentSourceDisplayName } from './utils.js';
+import { getActualAgentFilePath, updateAgentFile } from 'src/components/agents/agentFileUtils.js';
+import { ColorPicker } from 'src/components/agents/ColorPicker.js';
+import { ModelSelector } from 'src/components/agents/ModelSelector.js';
+import { ToolSelector } from 'src/components/agents/ToolSelector.js';
+import { getAgentSourceDisplayName } from 'src/components/agents/utils.js';
 type Props = {
   agent: AgentDefinition;
   tools: Tools;

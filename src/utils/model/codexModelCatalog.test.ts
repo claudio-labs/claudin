@@ -6,7 +6,7 @@ import {
   filterCodexModels,
   getFilteredCodexCatalog,
   isCodexModelAllowed,
-} from './codexModelCatalog.js'
+} from 'src/utils/model/codexModelCatalog.js'
 
 describe('codexModelCatalog — opencode predicate parity', () => {
   test('includes the models opencode allowlists', () => {

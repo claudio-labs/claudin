@@ -11,7 +11,7 @@ import {
   ghPrListRule,
   ghPrViewRule,
   installFakeGh,
-} from './__fixtures__/fakeGh.js'
+} from 'src/tools/GitTool/__fixtures__/fakeGh.js'
 import {
   cleanupAllRepos,
   conflictingBranches,
@@ -25,9 +25,9 @@ import {
   repoWithUnreachableOrigin,
   stagedRepo,
   writeRepoFile,
-} from './__fixtures__/repo.js'
-import { formatGitBatchResult, runGitBatch } from './run.js'
-import type { GitBatchResult } from './types.js'
+} from 'src/tools/GitTool/__fixtures__/repo.js'
+import { formatGitBatchResult, runGitBatch } from 'src/tools/GitTool/run.js'
+import type { GitBatchResult } from 'src/tools/GitTool/types.js'
 
 /**
  * End-to-end, one family at a time: real temporary repositories, the real

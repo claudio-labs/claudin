@@ -6,7 +6,7 @@ import {
   classifyOpenAINetworkFailure,
   extractOpenAICategoryMarker,
   formatOpenAICategoryMarker,
-} from './openaiErrorClassification.js'
+} from 'src/services/api/openaiErrorClassification.js'
 
 test('classifies localhost ECONNREFUSED as connection_refused', () => {
   const error = Object.assign(new TypeError('fetch failed'), {

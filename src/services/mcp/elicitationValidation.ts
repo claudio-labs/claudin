@@ -10,7 +10,7 @@ import { plural } from 'src/utils/text/stringUtils.js'
 import {
   looksLikeISO8601,
   parseNaturalLanguageDateTime,
-} from './dateTimeParser.js'
+} from 'src/services/mcp/dateTimeParser.js'
 
 export type ValidationResult = {
   value?: string | number | boolean

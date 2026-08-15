@@ -6,8 +6,8 @@ import { Ansi, Box, useTheme } from 'src/ink.js';
 import { type CliHighlight, getCliHighlightPromise } from 'src/utils/text/cliHighlight.js';
 import { configureMarked, formatToken } from 'src/utils/text/markdown.js';
 import { stripPromptXMLTags } from 'src/services/messages/messages.js';
-import { cachedLexer } from './markdownTokenCache.js';
-import { MarkdownTable } from './MarkdownTable.js';
+import { cachedLexer } from 'src/components/markdownTokenCache.js';
+import { MarkdownTable } from 'src/components/MarkdownTable.js';
 
 // marked.lexer normalizes \r\n → \n BEFORE tokenizing, so token raw lengths
 // sum over the normalized string. StreamingMarkdown's boundary arithmetic

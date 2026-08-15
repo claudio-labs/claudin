@@ -24,7 +24,7 @@ import { getGlobalConfig } from 'src/services/config/config.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/utils/envUtils.js'
 import { getErrnoCode, isENOENT } from 'src/utils/errors.js'
-import { pathExists } from './file.js'
+import { pathExists } from 'src/utils/fs/file.js'
 import { logError } from 'src/utils/log.js'
 import { recordFileHistorySnapshot } from 'src/services/session/sessionStorage.js'
 

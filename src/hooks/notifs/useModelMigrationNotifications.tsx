@@ -1,6 +1,6 @@
 import type { Notification } from 'src/context/notifications.js';
 import { type GlobalConfig, getGlobalConfig } from 'src/services/config/config.js';
-import { useStartupNotification } from './useStartupNotification.js';
+import { useStartupNotification } from 'src/hooks/notifs/useStartupNotification.js';
 
 // Shows a one-time notification right after a model migration writes its
 // timestamp to config. Each entry reads its own timestamp field(s) and emits

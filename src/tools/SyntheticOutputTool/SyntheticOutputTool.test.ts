@@ -4,7 +4,7 @@ import {
   createSyntheticOutputTool,
   isSyntheticOutputToolEnabled,
   SyntheticOutputTool,
-} from './SyntheticOutputTool.js'
+} from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js'
 
 describe('SyntheticOutputTool (base)', () => {
   test('flags: read-only, concurrency-safe, not open-world, not MCP', () => {

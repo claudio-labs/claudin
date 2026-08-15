@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { ThinkingTokenAnalyzer } from './thinkingTokenExtractor.js'
+import { ThinkingTokenAnalyzer } from 'src/services/context/thinkingTokenExtractor.js'
 
 describe('ThinkingTokenAnalyzer', () => {
   describe('extract', () => {

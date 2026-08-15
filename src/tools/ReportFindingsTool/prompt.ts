@@ -1,4 +1,4 @@
-import { MAX_FINDINGS } from './constants.js'
+import { MAX_FINDINGS } from 'src/tools/ReportFindingsTool/constants.js'
 
 export const DESCRIPTION = `Report code-review findings as a typed list so the host UI can render them.`
 

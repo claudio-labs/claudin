@@ -2,8 +2,8 @@
 
 import { errorMessage } from 'src/utils/errors.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import type { DirectConnectConfig } from './directConnectManager.js'
-import { connectResponseSchema } from './types.js'
+import type { DirectConnectConfig } from 'src/server/directConnectManager.js'
+import { connectResponseSchema } from 'src/server/types.js'
 
 /**
  * Errors thrown by createDirectConnectSession when the connection fails.

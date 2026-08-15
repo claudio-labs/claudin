@@ -3,8 +3,8 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
-import { logForDebugging } from './debug.js'
-import { isEnvTruthy } from './envUtils.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { getPlatform } from 'src/utils/proc/platform.js'
 
 // Track warnings to avoid spam — bounded to prevent unbounded memory growth

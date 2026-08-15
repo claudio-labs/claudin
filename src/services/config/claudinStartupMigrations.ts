@@ -32,7 +32,7 @@ import {
   getGlobalConfig,
   saveGlobalConfig,
   type ProviderProfile as StoredProviderProfile,
-} from './config.js'
+} from 'src/services/config/config.js'
 import { parseModelList } from 'src/services/api/providerModels.js'
 import { KIMI_CODE_MODEL_LIST } from 'src/services/api/kimiOAuthShared.js'
 

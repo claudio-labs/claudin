@@ -23,7 +23,7 @@ import {
   jsonStringify,
   writeFileSync_DEPRECATED,
 } from 'src/utils/slowOperations.js'
-import { getPluginsDirectory } from './pluginDirectories.js'
+import { getPluginsDirectory } from 'src/services/plugins/pluginDirectories.js'
 import {
   type InstalledPlugin,
   InstalledPluginsFileSchemaV1,
@@ -32,7 +32,7 @@ import {
   type InstalledPluginsFileV2,
   type PluginInstallationEntry,
   type PluginScope,
-} from './schemas.js'
+} from 'src/services/plugins/schemas.js'
 
 // Type alias for V2 plugins map
 type InstalledPluginsMapV2 = Record<string, PluginInstallationEntry[]>
@@ -48,12 +48,12 @@ import {
   getInitialSettings,
   getSettingsForSource,
 } from 'src/services/settings/settings.js'
-import { getPluginById } from './marketplaceManager.js'
+import { getPluginById } from 'src/services/plugins/marketplaceManager.js'
 import {
   parsePluginIdentifier,
   settingSourceToScope,
-} from './pluginIdentifier.js'
-import { getPluginCachePath, getVersionedCachePath } from './pluginLoader.js'
+} from 'src/services/plugins/pluginIdentifier.js'
+import { getPluginCachePath, getVersionedCachePath } from 'src/services/plugins/pluginLoader.js'
 
 // Migration state to prevent running migration multiple times per session
 let migrationCompleted = false

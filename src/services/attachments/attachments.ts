@@ -25,11 +25,11 @@ export type {
   HookAttachment,
   HookPermissionDecisionAttachment,
   Attachment,
-} from './types.js'
+} from 'src/services/attachments/types.js'
 
 export {
   PLAN_MODE_ATTACHMENT_CONFIG,
-} from './config.js'
+} from 'src/services/attachments/config.js'
 
 export {
   maybe,
@@ -37,30 +37,30 @@ export {
   isFileReadDenied,
   isToolResultBlock,
   hasToolResultContent,
-} from './shared.js'
+} from 'src/services/attachments/shared.js'
 
 export {
   extractAtMentionedFiles,
   extractMcpResourceMentions,
-} from './mentions.js'
+} from 'src/services/attachments/mentions.js'
 
 export {
   tryGetPDFReference,
   generateFileAttachment,
-} from './file-pipeline.js'
+} from 'src/services/attachments/file-pipeline.js'
 
 export {
   memoryHeader,
   startRelevantMemoryPrefetch,
   filterDuplicateMemoryAttachments,
-} from './memory.js'
+} from 'src/services/attachments/memory.js'
 
 
 export {
   getDeferredToolsDeltaAttachment,
   getAgentListingDeltaAttachment,
   getMcpInstructionsDeltaAttachment,
-} from './injections.js'
+} from 'src/services/attachments/injections.js'
 
 export {
   resetSentSkillNames,
@@ -71,14 +71,14 @@ export {
   resetSentBashGitInstructions,
   suppressNextBashGitInstructions,
   getBashGitInstructionsAttachment,
-} from './skill-bash-gates.js'
+} from 'src/services/attachments/skill-bash-gates.js'
 
 export {
   getLSPDiagnosticAttachments,
-} from './services.js'
+} from 'src/services/attachments/services.js'
 
 export {
   getAttachments,
   getQueuedCommandAttachments,
   getAttachmentMessages,
-} from './pipeline.js'
+} from 'src/services/attachments/pipeline.js'

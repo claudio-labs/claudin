@@ -11,7 +11,7 @@ import {
   attachExistingWorktree,
   restoreWorktreeSession,
   withGitWorktreeMutationLock,
-} from './worktree.js'
+} from 'src/services/git/worktree.js'
 
 afterEach(() => {
   _resetGitWorktreeMutationLocksForTesting()

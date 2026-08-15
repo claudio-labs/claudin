@@ -5,7 +5,7 @@ import {
   mergeFileStateCaches,
   mergeReplacingLiveCache,
   type FileState,
-} from './fileStateCache.js'
+} from 'src/utils/fs/fileStateCache.js'
 import {
   _resetAllClippedIdsForTesting,
   isPinRegistered,

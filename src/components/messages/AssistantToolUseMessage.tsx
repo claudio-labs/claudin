@@ -17,7 +17,7 @@ import { MessageResponse } from 'src/components/MessageResponse.js';
 import { useSelectedMessageBg } from 'src/components/messageActions.js';
 import { SentryErrorBoundary } from 'src/components/SentryErrorBoundary.js';
 import { ToolUseLoader } from 'src/components/ToolUseLoader.js';
-import { HookProgressMessage } from './HookProgressMessage.js';
+import { HookProgressMessage } from 'src/components/messages/HookProgressMessage.js';
 type Props = {
   param: ToolUseBlockParam;
   addMargin: boolean;

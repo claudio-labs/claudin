@@ -6,7 +6,7 @@ import {
   resetBuildRedirectMemoForTesting,
   shouldRedirectToBuild,
   stripOutputTrimTail,
-} from './redirect.js'
+} from 'src/tools/BuildTool/redirect.js'
 
 beforeEach(() => {
   resetBuildRedirectMemoForTesting()

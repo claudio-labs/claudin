@@ -21,7 +21,7 @@ import {
   GLM_API_HOSTS,
   KIMI_CODE_API_HOST,
   MOONSHOT_API_HOSTS,
-} from './constants.js'
+} from 'src/services/api/openaiShim/constants.js'
 
 export function isGithubModelsMode(): boolean {
   return tryGetActiveProvider()?.transport === 'github_copilot'

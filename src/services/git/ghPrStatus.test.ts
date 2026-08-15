@@ -7,7 +7,7 @@ import {
   pickHostKind,
   resolveHostKind,
   staticHostKind,
-} from './ghPrStatus.js'
+} from 'src/services/git/ghPrStatus.js'
 
 describe('resolveHostKind', () => {
   test('auto-detects public hosts', () => {

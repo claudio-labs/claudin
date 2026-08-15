@@ -14,8 +14,8 @@ import {
   CRON_DELETE_TOOL_NAME,
   isDurableCronEnabled,
   isKairosCronEnabled,
-} from './prompt.js'
-import { renderDeleteResultMessage, renderDeleteToolUseMessage } from './UI.js'
+} from 'src/tools/ScheduleCronTool/prompt.js'
+import { renderDeleteResultMessage, renderDeleteToolUseMessage } from 'src/tools/ScheduleCronTool/UI.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({

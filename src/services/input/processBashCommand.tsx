@@ -13,7 +13,7 @@ import { resolveDefaultShell } from 'src/services/shell/resolveDefaultShell.js';
 import { isPowerShellToolEnabled } from 'src/services/shell/shellToolUtils.js';
 import { processToolResultBlock } from 'src/services/tools/toolResultStorage.js';
 import { escapeXml } from 'src/utils/data/xml.js';
-import type { ProcessUserInputContext } from './processUserInput.js';
+import type { ProcessUserInputContext } from 'src/services/input/processUserInput.js';
 export async function processBashCommand(inputString: string, precedingInputBlocks: ContentBlockParam[], attachmentMessages: AttachmentMessage[], context: ProcessUserInputContext, setToolJSX: SetToolJSXFn): Promise<{
   messages: (UserMessage | AttachmentMessage | SystemMessage)[];
   shouldQuery: boolean;

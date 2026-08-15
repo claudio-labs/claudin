@@ -3,7 +3,7 @@ import { afterAll, beforeEach, expect, mock, test } from 'bun:test'
 // Provider isolation — see sonnet5.test.ts for the full rationale. Pin
 // getAPIProvider to 'firstParty' so a cross-file mock.module leak can't collapse
 // the effort ladder to the OpenAI tiers.
-const realProviders = { ...(await import('./providers.js')) }
+const realProviders = { ...(await import('src/utils/model/providers.js')) }
 const pinFirstParty = () =>
   mock.module('./providers.js', () => ({
     ...realProviders,
@@ -25,7 +25,7 @@ import {
   isNonCustomOpusModel,
   modelRejectsSamplingParams,
   parseUserSpecifiedModel,
-} from './model.js'
+} from 'src/utils/model/model.js'
 import { getModelMaxOutputTokens, modelSupports1M } from 'src/services/context/context.js'
 import { isFastModeSupportedByModel } from 'src/utils/fastMode.js'
 import {
@@ -40,7 +40,7 @@ import {
   modelSupportsXhighEffort,
 } from 'src/utils/effort.js'
 import { COST_TIER_5_25, MODEL_COSTS } from 'src/services/api/modelCost.js'
-import { CLAUDE_OPUS_5_CONFIG } from './configs.js'
+import { CLAUDE_OPUS_5_CONFIG } from 'src/utils/model/configs.js'
 
 // Opus 5 shares Fable 5 / Sonnet 5's request-shaping profile (adaptive thinking
 // always on, budget_tokens/sampling params rejected, 1M-native) but is the new

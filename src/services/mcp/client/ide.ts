@@ -1,7 +1,7 @@
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { createAbortController } from 'src/utils/abortController.js'
 import type { ConnectedMCPServer } from 'src/services/mcp/types.js'
-import { callMCPTool } from './callTool.js'
+import { callMCPTool } from 'src/services/mcp/client/callTool.js'
 
 /**
  * Call an IDE tool directly as an RPC

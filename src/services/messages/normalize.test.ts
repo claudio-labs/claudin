@@ -26,7 +26,7 @@ import {
   stripSignatureBlocks,
 } from 'src/services/messages/messages.js'
 import { resetGlobalConfigForTests } from 'src/services/config/config.js'
-import { normalizeForSnapshot } from './__test-helpers__/snapshot.js'
+import { normalizeForSnapshot } from 'src/services/messages/__test-helpers__/snapshot.js'
 
 afterAll(() => {
   resetGlobalConfigForTests()

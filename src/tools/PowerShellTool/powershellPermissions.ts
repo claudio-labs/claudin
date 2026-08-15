@@ -35,17 +35,17 @@ import {
   stripModulePrefix,
 } from 'src/services/shell/powershell/parser.js'
 import { containsVulnerableUncPath } from 'src/services/shell/readOnlyCommandValidation.js'
-import { isDotGitPathPS, isGitInternalPathPS } from './gitSafety.js'
+import { isDotGitPathPS, isGitInternalPathPS } from 'src/tools/PowerShellTool/gitSafety.js'
 import {
   checkPermissionMode,
   isSymlinkCreatingCommand,
-} from './modeValidation.js'
+} from 'src/tools/PowerShellTool/modeValidation.js'
 import {
   checkPathConstraints,
   dangerousRemovalDeny,
   isDangerousRemovalRawPath,
-} from './pathValidation.js'
-import { powershellCommandIsSafe } from './powershellSecurity.js'
+} from 'src/tools/PowerShellTool/pathValidation.js'
+import { powershellCommandIsSafe } from 'src/tools/PowerShellTool/powershellSecurity.js'
 import {
   argLeaksValue,
   isAllowlistedCommand,
@@ -54,8 +54,8 @@ import {
   isReadOnlyCommand,
   isSafeOutputCommand,
   resolveToCanonical,
-} from './readOnlyValidation.js'
-import { POWERSHELL_TOOL_NAME } from './toolName.js'
+} from 'src/tools/PowerShellTool/readOnlyValidation.js'
+import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js'
 
 // Matches `$var = `, `$var += `, `$env:X = `, `$x ??= ` etc. Used to strip
 // nested assignment prefixes in the parse-failed fallback path.

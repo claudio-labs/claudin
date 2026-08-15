@@ -26,14 +26,14 @@
  * 6. Audit log on first custom search (one-time warning)
  */
 
-import type { SearchInput, SearchProvider } from './types.js'
+import type { SearchInput, SearchProvider } from 'src/tools/WebSearchTool/providers/types.js'
 import {
   applyDomainFilters,
   normalizeHit,
   safeHostname,
   type ProviderOutput,
   type SearchHit,
-} from './types.js'
+} from 'src/tools/WebSearchTool/providers/types.js'
 
 // ---------------------------------------------------------------------------
 // Built-in provider presets

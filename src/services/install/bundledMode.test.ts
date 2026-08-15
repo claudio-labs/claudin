@@ -2,7 +2,7 @@ import { afterEach, expect, test } from 'bun:test'
 import { mkdtempSync, realpathSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { getLauncherPath } from './bundledMode.js'
+import { getLauncherPath } from 'src/services/install/bundledMode.js'
 
 const originalArgv1 = process.argv[1]
 const originalExecPath = process.execPath

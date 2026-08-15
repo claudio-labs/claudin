@@ -6,7 +6,7 @@ import {
   defaultResolveOverrideDeps,
   resolveModelOverride,
   type ResolveOverrideDeps,
-} from './agentModelResolver.js'
+} from 'src/tools/AgentTool/agentModelResolver.js'
 
 /**
  * Per-`.md`-agent model overrides live next to the agents directory so

@@ -11,17 +11,17 @@ import { readFullShellOutput } from 'src/services/shell/fullOutput.js'
 import { TaskOutput } from 'src/tasks/TaskOutput.js'
 import { trimShellStdout } from 'src/tools/shellToolResultMappers.js'
 import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js'
-import { summarizeGitOutput } from './budget.js'
-import { applyGitDelta } from './delta.js'
-import { oneLineCommand } from './display.js'
-import { diagnoseGitFailure } from './errors.js'
-import { ghCommandPair, isWatchGitCommand } from './grammar.js'
+import { summarizeGitOutput } from 'src/tools/GitTool/budget.js'
+import { applyGitDelta } from 'src/tools/GitTool/delta.js'
+import { oneLineCommand } from 'src/tools/GitTool/display.js'
+import { diagnoseGitFailure } from 'src/tools/GitTool/errors.js'
+import { ghCommandPair, isWatchGitCommand } from 'src/tools/GitTool/grammar.js'
 import type {
   GitBatchResult,
   GitCommandOutcome,
   GitProgress,
   GitStall,
-} from './types.js'
+} from 'src/tools/GitTool/types.js'
 
 /**
  * Sequential batch execution.

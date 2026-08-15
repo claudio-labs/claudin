@@ -23,7 +23,7 @@ import {
   type RecordedChange,
   type VimState,
 } from 'src/vim/types.js'
-import { type UseTextInputProps, useTextInput } from './useTextInput.js'
+import { type UseTextInputProps, useTextInput } from 'src/hooks/useTextInput.js'
 
 type UseVimInputProps = Omit<UseTextInputProps, 'inputFilter'> & {
   onModeChange?: (mode: VimMode) => void

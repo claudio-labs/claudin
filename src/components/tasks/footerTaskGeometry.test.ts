@@ -5,7 +5,7 @@ import {
   footerTreeBaseIndex,
   getAgentPanelRows,
   getVisibleAgentTasks,
-} from './footerTaskGeometry.js';
+} from 'src/components/tasks/footerTaskGeometry.js';
 
 // Minimal panel-agent fixture: only the fields isPanelAgentTask and the row
 // sort/visibility rules read. Cast through unknown so we don't have to satisfy

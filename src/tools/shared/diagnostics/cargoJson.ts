@@ -1,4 +1,4 @@
-import type { ParseInput, ParsedDiagnostics, RawDiagnostic } from './types.js'
+import type { ParseInput, ParsedDiagnostics, RawDiagnostic } from 'src/tools/shared/diagnostics/types.js'
 
 /**
  * `cargo check --message-format=json` streams one JSON object per line. Only

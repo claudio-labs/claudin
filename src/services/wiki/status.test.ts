@@ -2,9 +2,9 @@ import { afterEach, expect, test } from 'bun:test'
 import { mkdtemp, mkdir, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { initializeWiki } from './init.js'
-import { getWikiPaths } from './paths.js'
-import { getWikiStatus } from './status.js'
+import { initializeWiki } from 'src/services/wiki/init.js'
+import { getWikiPaths } from 'src/services/wiki/paths.js'
+import { getWikiStatus } from 'src/services/wiki/status.js'
 
 const tempDirs: string[] = []
 

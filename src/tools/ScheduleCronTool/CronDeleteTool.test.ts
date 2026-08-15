@@ -8,7 +8,7 @@ import {
   getSessionCronTasks,
   removeSessionCronTasks,
 } from 'src/bootstrap/state.js'
-import { CronDeleteTool } from './CronDeleteTool.js'
+import { CronDeleteTool } from 'src/tools/ScheduleCronTool/CronDeleteTool.js'
 
 let configDir: string
 

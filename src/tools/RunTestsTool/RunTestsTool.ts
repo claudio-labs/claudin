@@ -4,19 +4,19 @@ import { bashToolHasPermission } from 'src/tools/BashTool/bashPermissions.js'
 import { buildTool, type ToolCallProgress, type ToolDef } from 'src/Tool.js'
 import { getCwd } from 'src/utils/fs/cwd.js'
 import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { formatTestResult } from './budget.js'
-import { detectFrameworkFromCommand, detectTestRunner } from './detect.js'
-import { DESCRIPTION, RUN_TESTS_TOOL_NAME } from './prompt.js'
-import { noteRunTestsExecution } from './redirect.js'
-import { runTests } from './run.js'
-import type { Framework, TestProgress, TestResult } from './types.js'
+import { formatTestResult } from 'src/tools/RunTestsTool/budget.js'
+import { detectFrameworkFromCommand, detectTestRunner } from 'src/tools/RunTestsTool/detect.js'
+import { DESCRIPTION, RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
+import { noteRunTestsExecution } from 'src/tools/RunTestsTool/redirect.js'
+import { runTests } from 'src/tools/RunTestsTool/run.js'
+import type { Framework, TestProgress, TestResult } from 'src/tools/RunTestsTool/types.js'
 import {
   renderToolUseErrorMessage,
   renderToolUseMessage,
   renderToolUseProgressMessage,
   renderToolResultMessage,
   userFacingName,
-} from './UI.js'
+} from 'src/tools/RunTestsTool/UI.js'
 
 const DEFAULT_TIMEOUT_MS = 300_000
 const MAX_TIMEOUT_MS = 900_000

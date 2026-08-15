@@ -7,11 +7,11 @@ import { createRoot } from 'src/ink.js'
 import { AppStateProvider } from 'src/state/AppState.js'
 import { getCliHighlightPromise } from 'src/utils/text/cliHighlight.js'
 import { renderToString } from 'src/components/staticRender.js'
-import { Markdown, StreamingMarkdown } from './Markdown.js'
+import { Markdown, StreamingMarkdown } from 'src/components/Markdown.js'
 import {
   __TEST_ONLY_getTokenCacheSize,
   __TEST_ONLY_resetTokenCache,
-} from './markdownTokenCache.js'
+} from 'src/components/markdownTokenCache.js'
 
 // Multi-block document exercising the segment split: paragraphs, heading,
 // list, and a closed code fence (all completed top-level blocks).

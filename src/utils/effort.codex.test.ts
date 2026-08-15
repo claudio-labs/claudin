@@ -1,7 +1,7 @@
 import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 
-const realProviders = { ...(await import('./model/providers.js')) }
-const realModelSupportOverrides = { ...(await import('./model/modelSupportOverrides.js')) }
+const realProviders = { ...(await import('src/utils/model/providers.js')) }
+const realModelSupportOverrides = { ...(await import('src/utils/model/modelSupportOverrides.js')) }
 const realProviderConfig = { ...(await import('src/services/api/providerConfig.js')) }
 
 afterAll(() => {

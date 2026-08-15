@@ -7,8 +7,8 @@ import {
 } from 'src/services/permissions/filesystem.js'
 import { getPlatform } from 'src/utils/proc/platform.js'
 import { getGlobExclusionsForPluginCache } from 'src/services/plugins/orphanedPluginFilter.js'
-import type { RipgrepIncompleteReason } from './ripgrep.js'
-import { ripGrepWithStatus } from './ripgrep.js'
+import type { RipgrepIncompleteReason } from 'src/utils/fs/ripgrep.js'
+import { ripGrepWithStatus } from 'src/utils/fs/ripgrep.js'
 
 /**
  * Extracts the static base directory from a glob pattern.

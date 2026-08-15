@@ -6,7 +6,7 @@ import {
   normalizeGithubEnterpriseDomain,
   pollAccessToken,
   requestDeviceCode,
-} from './deviceFlow.js'
+} from 'src/services/github/deviceFlow.js'
 
 async function importFreshModule() {
   return import(`./deviceFlow.ts?ts=${Date.now()}-${Math.random()}`)

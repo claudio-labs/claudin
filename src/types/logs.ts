@@ -1,9 +1,9 @@
 import type { UUID } from 'crypto'
 import type { FileHistorySnapshot } from 'src/utils/fs/fileHistory.js'
 import type { ContentReplacementRecord } from 'src/services/tools/toolResultStorage.js'
-import type { AgentId } from './ids.js'
-import type { Message } from './message.js'
-import type { QueueOperationMessage } from './messageQueueTypes.js'
+import type { AgentId } from 'src/types/ids.js'
+import type { Message } from 'src/types/message.js'
+import type { QueueOperationMessage } from 'src/types/messageQueueTypes.js'
 
 export type SerializedMessage = Message & {
   cwd: string

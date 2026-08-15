@@ -10,7 +10,7 @@ import { backgroundAll, hasForegroundTasks } from 'src/tasks/LocalShellTask/Loca
 import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import { env } from 'src/utils/env.js';
 import { isEnvTruthy } from 'src/utils/envUtils.js';
-import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
 type Props = {
   onBackgroundSession: () => void;
   isLoading: boolean;

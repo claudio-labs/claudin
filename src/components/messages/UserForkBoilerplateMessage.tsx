@@ -4,7 +4,7 @@ import {
   FORK_BOILERPLATE_TAG,
   FORK_DIRECTIVE_PREFIX,
 } from 'src/constants/xml.js'
-import { UserPromptMessage } from './UserPromptMessage.js'
+import { UserPromptMessage } from 'src/components/messages/UserPromptMessage.js'
 
 type Props = {
   addMargin: boolean

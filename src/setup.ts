@@ -17,20 +17,20 @@ import {
   setOriginalCwd,
   setProjectRoot,
   switchSession,
-} from './bootstrap/state.js'
-import { getCommands } from './commands.js'
-import { initSessionMemory } from './services/SessionMemory/sessionMemory.js'
-import { asSessionId } from './types/ids.js'
+} from 'src/bootstrap/state.js'
+import { getCommands } from 'src/commands.js'
+import { initSessionMemory } from 'src/services/SessionMemory/sessionMemory.js'
+import { asSessionId } from 'src/types/ids.js'
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
 import { checkAndRestoreTerminalBackup } from 'src/services/ide/appleTerminalBackup.js'
 import { prefetchApiKeyFromApiKeyHelperIfSafe } from 'src/services/auth/auth.js'
 import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
 import { getCurrentProjectConfig, getGlobalConfig } from 'src/services/config/config.js'
-import { logForDiagnosticsNoPII } from './utils/diagLogs.js'
-import { env } from './utils/env.js'
-import { envDynamic } from './utils/envDynamic.js'
-import { isBareMode, isEnvTruthy } from './utils/envUtils.js'
-import { errorMessage } from './utils/errors.js'
+import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
+import { env } from 'src/utils/env.js'
+import { envDynamic } from 'src/utils/envDynamic.js'
+import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js'
+import { errorMessage } from 'src/utils/errors.js'
 import { findCanonicalGitRoot, findGitRoot, getIsGit } from 'src/services/git/git.js'
 import { initializeFileChangedWatcher } from 'src/services/lifecycleHooks/fileChangedWatcher.js'
 import {
@@ -39,13 +39,13 @@ import {
 } from 'src/services/lifecycleHooks/hooksConfigSnapshot.js'
 import { hasWorktreeCreateHook } from 'src/services/lifecycleHooks/hooks.js'
 import { checkAndRestoreITerm2Backup } from 'src/services/ide/iTermBackup.js'
-import { logError } from './utils/log.js'
-import { getRecentActivity } from './utils/logoV2Utils.js'
+import { logError } from 'src/utils/log.js'
+import { getRecentActivity } from 'src/utils/logoV2Utils.js'
 import { lockCurrentVersion } from 'src/services/install/index.js'
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
-import { getPlanSlug } from './utils/plans.js'
+import { getPlanSlug } from 'src/utils/plans.js'
 import { saveWorktreeState } from 'src/services/session/sessionStorage.js'
-import { profileCheckpoint } from './utils/startupProfiler.js'
+import { profileCheckpoint } from 'src/utils/startupProfiler.js'
 import {
   createTmuxSessionForWorktree,
   createWorktreeForSession,
@@ -295,7 +295,7 @@ export async function setup(
     if (feature('CONTEXT_COLLAPSE')) {
       /* eslint-disable @typescript-eslint/no-require-imports */
       ;(
-        require('./services/contextCollapse/index.js') as typeof import('./services/contextCollapse/index.js')
+        require('src/services/contextCollapse/index.js') as typeof import('src/services/contextCollapse/index.js')
       ).initContextCollapse()
       /* eslint-enable @typescript-eslint/no-require-imports */
     }
@@ -350,7 +350,7 @@ export async function setup(
       m.registerSessionFileAccessHooks(),
     ) // Register session file access analytics hooks
     if (feature('TEAMMEM')) {
-      void import('./services/teamMemorySync/watcher.js').then(m =>
+      void import('src/services/teamMemorySync/watcher.js').then(m =>
         m.startTeamMemoryWatcher(),
       ) // Start team memory sync watcher
     }

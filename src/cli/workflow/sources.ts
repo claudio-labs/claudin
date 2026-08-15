@@ -18,7 +18,7 @@ import {
   commentOnIssue,
   listTriggerIssues,
   type TriggerIssue,
-} from './githubSource.js'
+} from 'src/cli/workflow/githubSource.js'
 
 /** One dispatchable unit of work. `id` is the persisted dedup key. */
 export type TriggerItem = {

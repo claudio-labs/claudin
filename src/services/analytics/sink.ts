@@ -8,11 +8,11 @@
  * Usage: Call initializeAnalyticsSink() during app startup to attach the sink.
  */
 
-import { trackDatadogEvent } from './datadog.js'
-import { logEventTo1P, shouldSampleEvent } from './firstPartyEventLogger.js'
-import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from './growthbook.js'
-import { attachAnalyticsSink, stripProtoFields } from './index.js'
-import { isSinkKilled } from './sinkKillswitch.js'
+import { trackDatadogEvent } from 'src/services/analytics/datadog.js'
+import { logEventTo1P, shouldSampleEvent } from 'src/services/analytics/firstPartyEventLogger.js'
+import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { attachAnalyticsSink, stripProtoFields } from 'src/services/analytics/index.js'
+import { isSinkKilled } from 'src/services/analytics/sinkKillswitch.js'
 
 // Local type matching the logEvent metadata signature
 type LogEventMetadata = { [key: string]: boolean | number | undefined }

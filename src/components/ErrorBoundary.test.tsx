@@ -8,7 +8,7 @@ afterAll(() => {
   mock.module('src/utils/log.js', () => realLog)
 })
 
-import { ErrorBoundary } from './ErrorBoundary.js'
+import { ErrorBoundary } from 'src/components/ErrorBoundary.js'
 
 beforeEach(() => {
   logErrorSpy.mockClear()

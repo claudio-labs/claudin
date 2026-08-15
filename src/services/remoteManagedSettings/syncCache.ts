@@ -21,7 +21,7 @@ import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
 import {
   resetSyncCache as resetLeafCache,
   setEligibility,
-} from './syncCacheState.js'
+} from 'src/services/remoteManagedSettings/syncCacheState.js'
 
 let cached: boolean | undefined
 

@@ -3,7 +3,7 @@ import {
   getAttachments,
   getAttachmentMessages,
   getQueuedCommandAttachments,
-} from './attachments.js'
+} from 'src/services/attachments/attachments.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { QueuedCommand } from 'src/types/textInputTypes.js'
 

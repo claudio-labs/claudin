@@ -11,7 +11,7 @@ import { afterEach, expect, test } from 'bun:test'
   NATIVE_PACKAGE_URL: undefined,
 }
 
-import { clearSystemPromptSections } from './systemPromptSections.js'
+import { clearSystemPromptSections } from 'src/constants/systemPromptSections.js'
 import {
   ACT_ON_WHAT_YOU_KNOW_SECTION,
   CORRECTIONS_SECTION,
@@ -19,12 +19,12 @@ import {
   DELIVERING_WORK_SECTION,
   PRONOUNS_SECTION,
   getSystemPrompt,
-} from './prompts.js'
-import { CLI_SYSPROMPT_PREFIXES, getCLISyspromptPrefix } from './system.js'
-import { GEMINI_ADDENDUM } from './familyAddendums/gemini.js'
-import { GLM_ADDENDUM } from './familyAddendums/glm.js'
-import { KIMI_ADDENDUM } from './familyAddendums/kimi.js'
-import { OPENAI_REASONING_ADDENDUM } from './familyAddendums/openaiReasoning.js'
+} from 'src/constants/prompts.js'
+import { CLI_SYSPROMPT_PREFIXES, getCLISyspromptPrefix } from 'src/constants/system.js'
+import { GEMINI_ADDENDUM } from 'src/constants/familyAddendums/gemini.js'
+import { GLM_ADDENDUM } from 'src/constants/familyAddendums/glm.js'
+import { KIMI_ADDENDUM } from 'src/constants/familyAddendums/kimi.js'
+import { OPENAI_REASONING_ADDENDUM } from 'src/constants/familyAddendums/openaiReasoning.js'
 import { CLAUDE_CODE_GUIDE_AGENT } from 'src/tools/AgentTool/built-in/claudeCodeGuideAgent.js'
 import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js'
 import { EXPLORE_AGENT } from 'src/tools/AgentTool/built-in/exploreAgent.js'

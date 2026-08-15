@@ -18,10 +18,10 @@ import {
 } from 'src/types/logs.js'
 import { CACHE_PATHS } from 'src/utils/fs/cachePaths.js'
 import { stripDisplayTags, stripDisplayTagsAllowEmpty } from 'src/utils/text/displayTags.js'
-import { isEnvTruthy } from './envUtils.js'
-import { toError } from './errors.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { toError } from 'src/utils/errors.js'
 import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
-import { jsonParse } from './slowOperations.js'
+import { jsonParse } from 'src/utils/slowOperations.js'
 
 /**
  * Gets the display title for a log/session with fallback logic.

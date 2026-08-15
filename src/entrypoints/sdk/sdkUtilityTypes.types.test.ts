@@ -34,7 +34,7 @@ import type {
   ExpectFalse,
   HasKey,
 } from 'src/types/typeAssertions.js'
-import type { NonNullableUsage } from './sdkUtilityTypes.js'
+import type { NonNullableUsage } from 'src/entrypoints/sdk/sdkUtilityTypes.js'
 import { EMPTY_USAGE } from 'src/services/api/emptyUsage.js'
 
 // --- the two documented deviations from a plain BetaUsage mapping ----------

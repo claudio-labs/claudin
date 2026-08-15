@@ -8,12 +8,12 @@ import {
   roughTokenCountEstimation,
   roughTokenCountEstimationForCountRequest,
   roughTokenCountEstimationForFileType,
-} from './tokenEstimation.js'
-import { invalidateClientCache } from './api/clientCache.js'
+} from 'src/services/tokenEstimation.js'
+import { invalidateClientCache } from 'src/services/api/clientCache.js'
 
 const realModel = { ...(await import('src/utils/model/model.js')) }
-const realClient = { ...(await import('./api/client.js')) }
-const realActiveProvider = { ...(await import('./api/activeProvider.js')) }
+const realClient = { ...(await import('src/services/api/client.js')) }
+const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
 
 function setActiveModel(name: string): void {
   mock.module('src/utils/model/model.js', () => ({

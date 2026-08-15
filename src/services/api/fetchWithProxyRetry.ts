@@ -1,6 +1,6 @@
 import { disableKeepAlive, getProxyFetchOptions } from 'src/services/api/proxy.js'
-import { withH2Fallback } from './h2Fallback.js'
-import { pickFetch } from './pickFetch.js'
+import { withH2Fallback } from 'src/services/api/h2Fallback.js'
+import { pickFetch } from 'src/services/api/pickFetch.js'
 
 const RETRYABLE_FETCH_ERROR_PATTERN =
   /socket connection was closed unexpectedly|ECONNRESET|EPIPE|socket hang up|Connection reset by peer|fetch failed/i

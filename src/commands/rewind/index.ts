@@ -7,7 +7,7 @@ const rewind = {
   argumentHint: '',
   type: 'local',
   supportsNonInteractive: false,
-  load: () => import('./rewind.js'),
+  load: () => import('src/commands/rewind/rewind.js'),
 } satisfies Command
 
 export default rewind

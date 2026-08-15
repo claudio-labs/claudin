@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { DEFAULT_MCP_STARTUP_TIMEOUT_MS, getMcpStartupTimeoutMs, raceConnectTimeout } from './mcpStartupWait.js';
+import { DEFAULT_MCP_STARTUP_TIMEOUT_MS, getMcpStartupTimeoutMs, raceConnectTimeout } from 'src/main/defaultAction/mcpStartupWait.js';
 
 describe('getMcpStartupTimeoutMs', () => {
   test('defaults to 30000ms when env var is unset', () => {

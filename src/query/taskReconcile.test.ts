@@ -5,7 +5,7 @@ import {
   buildTaskReconcileReminder,
   shouldReconcileTasks,
   taskStateSignature,
-} from './taskReconcile.js'
+} from 'src/query/taskReconcile.js'
 
 // Plain literals rather than the message factories: this module only reads
 // `type`, `isMeta`, the content blocks and the attachment payload, and

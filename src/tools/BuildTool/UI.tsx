@@ -4,10 +4,10 @@ import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseError
 import { MessageResponse } from 'src/components/MessageResponse.js'
 import { ShellElapsedTime } from 'src/components/shell/ShellElapsedTime.js'
 import { Text } from 'src/ink.js'
-import { formatDuration } from './budget.js'
-import type { Input, Output } from './BuildTool.js'
-import { resolveBuildCommand } from './BuildTool.js'
-import type { BuildProgress } from './types.js'
+import { formatDuration } from 'src/tools/BuildTool/budget.js'
+import type { Input, Output } from 'src/tools/BuildTool/BuildTool.js'
+import { resolveBuildCommand } from 'src/tools/BuildTool/BuildTool.js'
+import type { BuildProgress } from 'src/tools/BuildTool/types.js'
 
 export function userFacingName(): string {
   return 'Build'

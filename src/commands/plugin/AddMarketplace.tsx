@@ -12,7 +12,7 @@ import { logError } from 'src/utils/log.js';
 import { clearAllCaches } from 'src/services/plugins/cacheUtils.js';
 import { addMarketplaceSource, saveMarketplaceToSettings } from 'src/services/plugins/marketplaceManager.js';
 import { parseMarketplaceInput } from 'src/services/plugins/parseMarketplaceInput.js';
-import type { ViewState } from './types.js';
+import type { ViewState } from 'src/commands/plugin/types.js';
 type Props = {
   inputValue: string;
   setInputValue: (value: string) => void;

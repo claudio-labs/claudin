@@ -14,12 +14,12 @@ import { getPlatform, getWslVersion } from 'src/utils/proc/platform.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { profileCheckpoint } from 'src/utils/startupProfiler.js'
 import { getCoreUserData } from 'src/utils/user.js'
-import { isAnalyticsDisabled } from './config.js'
-import { FirstPartyEventLoggingExporter } from './firstPartyEventLoggingExporter.js'
-import type { GrowthBookUserAttributes } from './growthbook.js'
-import { getDynamicConfig_CACHED_MAY_BE_STALE } from './growthbook.js'
-import { getEventMetadata } from './metadata.js'
-import { isSinkKilled } from './sinkKillswitch.js'
+import { isAnalyticsDisabled } from 'src/services/analytics/config.js'
+import { FirstPartyEventLoggingExporter } from 'src/services/analytics/firstPartyEventLoggingExporter.js'
+import type { GrowthBookUserAttributes } from 'src/services/analytics/growthbook.js'
+import { getDynamicConfig_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getEventMetadata } from 'src/services/analytics/metadata.js'
+import { isSinkKilled } from 'src/services/analytics/sinkKillswitch.js'
 
 /**
  * Configuration for sampling individual event types.

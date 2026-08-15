@@ -1,8 +1,8 @@
 import { URL } from 'url'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { HybridTransport } from './HybridTransport.js'
-import { SSETransport } from './SSETransport.js'
-import { WebSocketTransport } from './WebSocketTransport.js'
+import { HybridTransport } from 'src/cli/transports/HybridTransport.js'
+import { SSETransport } from 'src/cli/transports/SSETransport.js'
+import { WebSocketTransport } from 'src/cli/transports/WebSocketTransport.js'
 
 /**
  * Helper function to get the appropriate transport for a URL.

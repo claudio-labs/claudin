@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { assistantWithAppliedEdits as assistantWithEdits } from './__test-helpers__/contextManagementFixtures.js'
-import { hasServerClearedToolUses } from './serverClearingDetection.js'
+import { assistantWithAppliedEdits as assistantWithEdits } from 'src/tools/FileReadTool/__test-helpers__/contextManagementFixtures.js'
+import { hasServerClearedToolUses } from 'src/tools/FileReadTool/serverClearingDetection.js'
 
 describe('hasServerClearedToolUses', () => {
   test('empty transcript → false', () => {

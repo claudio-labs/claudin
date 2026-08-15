@@ -20,9 +20,9 @@ import {
   type StagedChange,
   stageContentReplacement,
 } from 'src/tools/shared/stagedWrite/stagedWrite.js'
-import { findSites, isValidIdentifier, type RenameSite } from './findSites.js'
-import { RENAME_TOOL_NAME } from './prompt.js'
-import { renderPreview } from './renderPreview.js'
+import { findSites, isValidIdentifier, type RenameSite } from 'src/tools/RenameTool/findSites.js'
+import { RENAME_TOOL_NAME } from 'src/tools/RenameTool/prompt.js'
+import { renderPreview } from 'src/tools/RenameTool/renderPreview.js'
 
 export type RenameInput = {
   symbol: string

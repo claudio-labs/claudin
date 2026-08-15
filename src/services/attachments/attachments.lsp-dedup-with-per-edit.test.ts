@@ -72,7 +72,7 @@ describe('LSP dedup: per-edit + turn-level share the LRU', () => {
     // after per-edit already settled). The pending entry is still queued.
     registerPendingLSPDiagnostic({ serverName: 'tsserver', files: [fileF] })
 
-    const { getLSPDiagnosticAttachments } = await import('./attachments.js')
+    const { getLSPDiagnosticAttachments } = await import('src/services/attachments/attachments.js')
     const result = await getLSPDiagnosticAttachments(makeCtx())
     expect(result).toEqual([])
   })
@@ -105,7 +105,7 @@ describe('LSP dedup: per-edit + turn-level share the LRU', () => {
 
       // Republish — next turn pull must dedup.
       registerPendingLSPDiagnostic({ serverName: 'tsserver', files: [fileF] })
-      const { getLSPDiagnosticAttachments } = await import('./attachments.js')
+      const { getLSPDiagnosticAttachments } = await import('src/services/attachments/attachments.js')
       const result = await getLSPDiagnosticAttachments(makeCtx())
       expect(result).toEqual([])
     } finally {
@@ -139,7 +139,7 @@ describe('LSP dedup: per-edit + turn-level share the LRU', () => {
       files: [fileFNext],
     })
 
-    const { getLSPDiagnosticAttachments } = await import('./attachments.js')
+    const { getLSPDiagnosticAttachments } = await import('src/services/attachments/attachments.js')
     const result = await getLSPDiagnosticAttachments(makeCtx())
     expect(result).toHaveLength(1)
     if (result[0]!.type === 'diagnostics') {

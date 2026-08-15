@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import type { MCPServerConnection } from 'src/services/mcp/types.js'
 import type { Tool as InternalTool } from 'src/Tool.js'
 import type { Tool } from '@modelcontextprotocol/sdk/types.js'
-import { getCombinedTools, loadReexposedMcpTools } from './mcp.js'
+import { getCombinedTools, loadReexposedMcpTools } from 'src/entrypoints/mcp.js'
 
 type GetMcpToolsFn = typeof import('src/services/mcp/client/fetchCapabilities.js').getMcpToolsCommandsAndResources
 type OnConnectionAttempt = Parameters<GetMcpToolsFn>[0]

@@ -25,7 +25,7 @@ import {
   _resetAllClippedIdsForTesting,
   addClippedIds,
   applyStableStubs,
-} from './stableStubState.js'
+} from 'src/services/compact/stableStubState.js'
 import {
   applyToolResultReplacementsToMessages,
   buildLargeToolResultMessage,

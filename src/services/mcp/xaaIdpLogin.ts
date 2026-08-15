@@ -27,7 +27,7 @@ import { getPlatform } from 'src/utils/proc/platform.js'
 import { getSecureStorage } from 'src/services/secureStorage/index.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
-import { buildRedirectUri, findAvailablePort } from './oauthPort.js'
+import { buildRedirectUri, findAvailablePort } from 'src/services/mcp/oauthPort.js'
 
 export function isXaaEnabled(): boolean {
   return isEnvTruthy(process.env.CLAUDE_CODE_ENABLE_XAA)

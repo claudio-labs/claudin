@@ -4,24 +4,24 @@ import { buildTool, type ToolCallProgress, type ToolDef } from 'src/Tool.js'
 import { getCwd } from 'src/utils/fs/cwd.js'
 import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { bashToolHasPermission } from 'src/tools/BashTool/bashPermissions.js'
-import { formatCheckResult } from './budget.js'
+import { formatCheckResult } from 'src/tools/TypecheckTool/budget.js'
 import {
   applyCompactFlags,
   detectAllCheckers,
   detectChecker,
   detectCheckerFor,
   detectCheckerFromCommand,
-} from './detect.js'
-import { DESCRIPTION, TYPECHECK_TOOL_NAME } from './prompt.js'
-import { runTypecheck } from './run.js'
-import type { Checker, CheckProgress, CheckResult } from './types.js'
+} from 'src/tools/TypecheckTool/detect.js'
+import { DESCRIPTION, TYPECHECK_TOOL_NAME } from 'src/tools/TypecheckTool/prompt.js'
+import { runTypecheck } from 'src/tools/TypecheckTool/run.js'
+import type { Checker, CheckProgress, CheckResult } from 'src/tools/TypecheckTool/types.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
   renderToolUseProgressMessage,
   userFacingName,
-} from './UI.js'
+} from 'src/tools/TypecheckTool/UI.js'
 
 const DEFAULT_TIMEOUT_MS = 300_000
 const MAX_TIMEOUT_MS = 900_000

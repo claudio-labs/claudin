@@ -8,23 +8,23 @@ import {
   getSettingsForSource,
   updateSettingsForSource,
 } from 'src/services/settings/settings.js'
-import { getAddDirEnabledPlugins } from './addDirPluginSettings.js'
+import { getAddDirEnabledPlugins } from 'src/services/plugins/addDirPluginSettings.js'
 import {
   getInMemoryInstalledPlugins,
   migrateFromEnabledPlugins,
-} from './installedPluginsManager.js'
-import { getPluginById } from './marketplaceManager.js'
+} from 'src/services/plugins/installedPluginsManager.js'
+import { getPluginById } from 'src/services/plugins/marketplaceManager.js'
 import {
   type ExtendedPluginScope,
   type PersistablePluginScope,
   SETTING_SOURCE_TO_SCOPE,
   scopeToSettingSource,
-} from './pluginIdentifier.js'
+} from 'src/services/plugins/pluginIdentifier.js'
 import {
   cacheAndRegisterPlugin,
   registerPluginInstallation,
-} from './pluginInstallationHelpers.js'
-import { isLocalPluginSource, type PluginScope } from './schemas.js'
+} from 'src/services/plugins/pluginInstallationHelpers.js'
+import { isLocalPluginSource, type PluginScope } from 'src/services/plugins/schemas.js'
 
 /**
  * Checks for enabled plugins across all settings sources, including --add-dir.

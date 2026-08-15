@@ -28,12 +28,12 @@ import { errorMessage } from 'src/utils/errors.js'
 import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
-import { permissionRuleValueFromString } from './permissionRuleParser.js'
+import { permissionRuleValueFromString } from 'src/services/permissions/permissionRuleParser.js'
 import { sideQuery } from 'src/utils/sideQuery.js'
 import {
   extractToolUseBlock,
   parseClassifierResponse,
-} from './classifierShared.js'
+} from 'src/services/permissions/classifierShared.js'
 
 export const PROMPT_PREFIX = 'prompt:'
 

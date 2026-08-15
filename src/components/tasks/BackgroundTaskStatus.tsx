@@ -16,7 +16,7 @@ import { Box, Text } from 'src/ink.js';
 import { AGENT_COLOR_TO_THEME_COLOR, AGENT_COLORS, type AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';
 import type { Theme } from 'src/utils/theme.js';
 import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
-import { shouldHideTasksFooter } from './taskStatusUtils.js';
+import { shouldHideTasksFooter } from 'src/components/tasks/taskStatusUtils.js';
 import { formatNumber } from 'src/utils/text/format.js';
 import { useRampedNumber } from 'src/hooks/useRampedNumber.js';
 type Props = {

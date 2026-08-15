@@ -19,7 +19,7 @@ import {
   markDiagnosticsAsDelivered,
   registerPendingLSPDiagnostic,
   resetAllLSPDiagnosticState,
-} from './LSPDiagnosticRegistry.js'
+} from 'src/services/lsp/LSPDiagnosticRegistry.js'
 
 const fileX: DiagnosticFile = {
   uri: 'file:///tmp/x.ts',

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { isValidPemContent } from './upstreamproxy.ts'
+import { isValidPemContent } from 'src/upstreamproxy/upstreamproxy.ts'
 
 // Finding #42-6: The CA cert downloaded from the upstream proxy is written
 // to disk without validation. A compromised server could send arbitrary data.

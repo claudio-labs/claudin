@@ -8,7 +8,7 @@ import {
 import {
   countIdenticalFailures,
   detectRepeatedErrorLoop,
-} from './loopDetector.js'
+} from 'src/services/extractMemories/loopDetector.js'
 
 let counter = 0
 const uid = () => `id-${counter++}`

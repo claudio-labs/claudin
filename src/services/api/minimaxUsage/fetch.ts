@@ -5,8 +5,8 @@ import {
   DEFAULT_MINIMAX_BASE_URL,
   DEFAULT_MINIMAX_UNAVAILABLE_MESSAGE,
   type MiniMaxUsageData,
-} from './types.js'
-import { normalizeMiniMaxUsagePayload } from './parse.js'
+} from 'src/services/api/minimaxUsage/types.js'
+import { normalizeMiniMaxUsagePayload } from 'src/services/api/minimaxUsage/parse.js'
 
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, '')

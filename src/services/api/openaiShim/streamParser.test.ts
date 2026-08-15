@@ -7,7 +7,7 @@
 
 import { describe, expect, test } from 'bun:test'
 
-import { openaiStreamToAnthropic } from './streamParser.js'
+import { openaiStreamToAnthropic } from 'src/services/api/openaiShim/streamParser.js'
 import type { AnthropicStreamEvent } from 'src/services/api/codexShim.js'
 
 function sseResponse(dataObjects: Array<Record<string, unknown>>): Response {

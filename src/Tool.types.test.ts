@@ -16,9 +16,9 @@
  */
 import { expect, test } from 'bun:test'
 import { z } from 'zod/v4'
-import type { Equal, Expect } from './types/typeAssertions.js'
-import type { BuiltTool, DefaultableToolKeys, ToolDefaults } from './Tool.js'
-import { buildTool } from './Tool.js'
+import type { Equal, Expect } from 'src/types/typeAssertions.js'
+import type { BuiltTool, DefaultableToolKeys, ToolDefaults } from 'src/Tool.js'
+import { buildTool } from 'src/Tool.js'
 
 // --- the mapping: omitted vs provided vs optional --------------------------
 

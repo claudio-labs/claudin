@@ -2,7 +2,7 @@ import { afterEach, expect, test } from 'bun:test'
 import { mkdtemp, mkdir, writeFile, rm } from 'fs/promises'
 import { join } from 'path'
 import { tmpdir } from 'os'
-import { scanMemoryFiles } from './memoryScan.ts'
+import { scanMemoryFiles } from 'src/memdir/memoryScan.ts'
 
 // Finding #42-3: readdir({ recursive: true }) has no depth limit.
 // A deeply nested directory in the memory dir causes a full unbounded walk.

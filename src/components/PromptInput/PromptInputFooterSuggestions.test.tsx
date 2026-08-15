@@ -7,7 +7,7 @@ import {
   isPathCompletionItem,
   PromptInputFooterSuggestions,
   type SuggestionItem,
-} from './PromptInputFooterSuggestions.js'
+} from 'src/components/PromptInput/PromptInputFooterSuggestions.js'
 
 describe('PromptInputFooterSuggestions', () => {
   it('renders a visible marker for the selected suggestion', async () => {

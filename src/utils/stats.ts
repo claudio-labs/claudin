@@ -3,14 +3,14 @@ import { open } from 'fs/promises'
 import { basename, dirname, join, sep } from 'path'
 import type { ModelUsage } from 'src/entrypoints/agentSdkTypes.js'
 import type { Entry, TranscriptMessage } from 'src/types/logs.js'
-import { logForDebugging } from './debug.js'
-import { errorMessage, isENOENT } from './errors.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { errorMessage, isENOENT } from 'src/utils/errors.js'
 import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import { readJSONLFile } from 'src/utils/data/json.js'
 import { SYNTHETIC_MODEL } from 'src/services/messages/messages.js'
 import { getProjectsDir, isTranscriptMessage } from 'src/services/session/sessionStorage.js'
 import { SHELL_TOOL_NAMES } from 'src/services/shell/shellToolUtils.js'
-import { jsonParse } from './slowOperations.js'
+import { jsonParse } from 'src/utils/slowOperations.js'
 import {
   getTodayDateString,
   getYesterdayDateString,
@@ -21,7 +21,7 @@ import {
   saveStatsCache,
   toDateString,
   withStatsCacheLock,
-} from './statsCache.js'
+} from 'src/utils/statsCache.js'
 
 export type DailyActivity = {
   date: string // YYYY-MM-DD format

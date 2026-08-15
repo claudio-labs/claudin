@@ -11,7 +11,7 @@ import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js';
 import { getErrnoCode } from 'src/utils/errors.js';
 import { logError } from 'src/utils/log.js';
 import { editFileInEditor } from 'src/utils/promptEditor.js';
-import { parseMemorySubcommand, runMemoryTidy } from './tidy.js';
+import { parseMemorySubcommand, runMemoryTidy } from 'src/commands/memory/tidy.js';
 function MemoryCommand({
   onDone
 }: {

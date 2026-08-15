@@ -1,4 +1,4 @@
-import type { BuildDiagnostic, BuildResult, StallReport } from './types.js'
+import type { BuildDiagnostic, BuildResult, StallReport } from 'src/tools/BuildTool/types.js'
 
 /**
  * Token-economy formatter. Turns a BuildResult into the model-facing string,

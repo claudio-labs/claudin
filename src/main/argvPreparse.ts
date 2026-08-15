@@ -13,7 +13,7 @@ import { feature } from 'bun:bundle';
 
 import { gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js';
 
-import type { PendingAssistantChat, PendingConnect, PendingSSH } from './bootContext.js';
+import type { PendingAssistantChat, PendingConnect, PendingSSH } from 'src/main/bootContext.js';
 
 /**
  * Check argv for a `cc://` or `cc+unix://` URL and rewrite so the main command

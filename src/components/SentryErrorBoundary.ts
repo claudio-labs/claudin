@@ -1,1 +1,1 @@
-export { ErrorBoundary as SentryErrorBoundary } from './ErrorBoundary.js'
+export { ErrorBoundary as SentryErrorBoundary } from 'src/components/ErrorBoundary.js'

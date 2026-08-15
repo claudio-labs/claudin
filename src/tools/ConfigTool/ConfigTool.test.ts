@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { ConfigTool } from './ConfigTool.js'
+import { ConfigTool } from 'src/tools/ConfigTool/ConfigTool.js'
 
 function makeCtx(): {
   ctx: import('src/Tool.js').ToolUseContext

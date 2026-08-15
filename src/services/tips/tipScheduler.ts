@@ -3,9 +3,9 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
-import { getSessionsSinceLastShown, recordTipShown } from './tipHistory.js'
-import { getRelevantTips } from './tipRegistry.js'
-import type { Tip, TipContext } from './types.js'
+import { getSessionsSinceLastShown, recordTipShown } from 'src/services/tips/tipHistory.js'
+import { getRelevantTips } from 'src/services/tips/tipRegistry.js'
+import type { Tip, TipContext } from 'src/services/tips/types.js'
 
 export function selectTipWithLongestTimeSinceShown(
   availableTips: Tip[],

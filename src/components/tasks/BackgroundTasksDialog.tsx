@@ -36,12 +36,12 @@ import { count } from 'src/utils/data/array.js';
 import { Byline } from 'src/components/design-system/Byline.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
 import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
-import { AsyncAgentDetailDialog } from './AsyncAgentDetailDialog.js';
-import { BackgroundTask as BackgroundTaskComponent } from './BackgroundTask.js';
-import { DreamDetailDialog } from './DreamDetailDialog.js';
-import { InProcessTeammateDetailDialog } from './InProcessTeammateDetailDialog.js';
-import { RemoteSessionDetailDialog } from './RemoteSessionDetailDialog.js';
-import { ShellDetailDialog } from './ShellDetailDialog.js';
+import { AsyncAgentDetailDialog } from 'src/components/tasks/AsyncAgentDetailDialog.js';
+import { BackgroundTask as BackgroundTaskComponent } from 'src/components/tasks/BackgroundTask.js';
+import { DreamDetailDialog } from 'src/components/tasks/DreamDetailDialog.js';
+import { InProcessTeammateDetailDialog } from 'src/components/tasks/InProcessTeammateDetailDialog.js';
+import { RemoteSessionDetailDialog } from 'src/components/tasks/RemoteSessionDetailDialog.js';
+import { ShellDetailDialog } from 'src/components/tasks/ShellDetailDialog.js';
 type ViewState = {
   mode: 'list';
 } | {

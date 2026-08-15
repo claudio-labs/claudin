@@ -17,7 +17,7 @@ import {
   getWorktreeCountFromFs,
   isShallowClone as isShallowCloneFs,
   resolveGitDir,
-} from './gitFilesystem.js'
+} from 'src/services/git/gitFilesystem.js'
 import { logError } from 'src/utils/log.js'
 import { memoizeWithLRU } from 'src/utils/data/memoize.js'
 import { whichSync } from 'src/utils/proc/which.js'
@@ -668,7 +668,7 @@ export async function getGitState(): Promise<GitRepoState | null> {
 }
 
 export async function getGithubRepo(): Promise<string | null> {
-  const { parseGitRemote } = await import('./detectRepository.js')
+  const { parseGitRemote } = await import('src/services/git/detectRepository.js')
   const remoteUrl = await getRemoteUrl()
   if (!remoteUrl) {
     logForDebugging('Local GitHub repo: unknown')

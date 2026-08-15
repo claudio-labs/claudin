@@ -3,7 +3,7 @@ import { count } from 'src/utils/data/array.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { getLogDisplayTitle, logError } from 'src/utils/log.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
-import { isLiteLog, loadFullLog } from './sessionStorage.js'
+import { isLiteLog, loadFullLog } from 'src/services/session/sessionStorage.js'
 import { sideQuery } from 'src/utils/sideQuery.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
 

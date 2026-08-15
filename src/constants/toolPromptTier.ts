@@ -1,5 +1,5 @@
 import { getMainLoopModel } from 'src/utils/model/model.js'
-import { getFamilyForLogging, type ModelFamily } from './familyAddendums/index.js'
+import { getFamilyForLogging, type ModelFamily } from 'src/constants/familyAddendums/index.js'
 
 // Tool-prompt verbosity tier by model family. Capable families follow the
 // system prompt's altitude principle ("Don't add features… beyond what was

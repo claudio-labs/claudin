@@ -7,7 +7,7 @@ const keybindings = {
   isEnabled: () => isKeybindingCustomizationEnabled(),
   supportsNonInteractive: false,
   type: 'local',
-  load: () => import('./keybindings.js'),
+  load: () => import('src/commands/keybindings/keybindings.js'),
 } satisfies Command
 
 export default keybindings

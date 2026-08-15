@@ -4,7 +4,7 @@ import React, { useContext } from 'react';
 import Text from 'src/ink/components/Text.js';
 import type { Color, Styles } from 'src/ink/styles.js';
 import { getTheme, type Theme } from 'src/utils/theme.js';
-import { useTheme } from './ThemeProvider.js';
+import { useTheme } from 'src/components/design-system/ThemeProvider.js';
 
 /** Colors uncolored ThemedText in the subtree. Precedence: explicit `color` >
  *  this > dimColor. Crosses Box boundaries (Ink's style cascade doesn't). */

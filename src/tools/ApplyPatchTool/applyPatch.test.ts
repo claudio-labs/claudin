@@ -23,7 +23,7 @@ import {
   summarizeApplyPatch,
   validateApplyPatchInput,
   resolveApplyPatchPaths,
-} from './applyPatch.js'
+} from 'src/tools/ApplyPatchTool/applyPatch.js'
 
 beforeAll(() => {
   // Defend against an fs mock leaked from another test file in the shard.

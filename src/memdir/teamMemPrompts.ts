@@ -6,10 +6,10 @@ import {
   DIRS_EXIST_GUIDANCE,
   ENTRYPOINT_NAME,
   MAX_ENTRYPOINT_LINES,
-} from './memdir.js'
-import { MEMORY_FRONTMATTER_EXAMPLE } from './memoryTypes.js'
-import { getAutoMemPath } from './paths.js'
-import { getTeamMemPath, isTeamMemLikelyGitIgnored } from './teamMemPaths.js'
+} from 'src/memdir/memdir.js'
+import { MEMORY_FRONTMATTER_EXAMPLE } from 'src/memdir/memoryTypes.js'
+import { getAutoMemPath } from 'src/memdir/paths.js'
+import { getTeamMemPath, isTeamMemLikelyGitIgnored } from 'src/memdir/teamMemPaths.js'
 
 /**
  * When team memory is project-local and the project's root .gitignore would

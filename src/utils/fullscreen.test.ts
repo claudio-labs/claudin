@@ -35,7 +35,7 @@ mock.module('src/ink/terminal.js', () => ({
 const {
   isFullscreenEnvEnabled,
   _resetTmuxControlModeProbeForTesting,
-} = await import('./fullscreen.js')
+} = await import('src/utils/fullscreen.js')
 
 const ENV_KEYS = ['CLAUDE_CODE_NO_FLICKER', 'TMUX', 'TERM_PROGRAM', 'TERM'] as const
 const saved: Record<string, string | undefined> = {}

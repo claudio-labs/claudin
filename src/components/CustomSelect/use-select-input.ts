@@ -7,8 +7,8 @@ import {
   normalizeFullWidthDigits,
   normalizeFullWidthSpace,
 } from 'src/utils/text/stringUtils.js'
-import type { OptionWithDescription } from './select.js'
-import type { SelectState } from './use-select-state.js'
+import type { OptionWithDescription } from 'src/components/CustomSelect/select.js'
+import type { SelectState } from 'src/components/CustomSelect/use-select-state.js'
 
 export type UseSelectProps<T> = {
   /**

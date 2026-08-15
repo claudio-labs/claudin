@@ -18,8 +18,8 @@
 
 import type { AppState } from 'src/state/AppStateStore.js'
 import { isBackgroundTask, type TaskState } from 'src/tasks/types.js'
-import { buildFooterTaskRows, type FooterTaskRow } from './BackgroundTaskGroupTree.js'
-import { footerTreeBaseIndex } from './footerTaskGeometry.js'
+import { buildFooterTaskRows, type FooterTaskRow } from 'src/components/tasks/BackgroundTaskGroupTree.js'
+import { footerTreeBaseIndex } from 'src/components/tasks/footerTaskGeometry.js'
 
 /**
  * Cheap row-count for useCoordinatorTaskCount: counts headers + visible items

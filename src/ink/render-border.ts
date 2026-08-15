@@ -1,10 +1,10 @@
 import chalk from 'chalk'
 import cliBoxes, { type Boxes, type BoxStyle } from 'cli-boxes'
-import { applyColor } from './colorize.js'
-import type { DOMNode } from './dom.js'
-import type Output from './output.js'
-import { stringWidth } from './stringWidth.js'
-import type { Color } from './styles.js'
+import { applyColor } from 'src/ink/colorize.js'
+import type { DOMNode } from 'src/ink/dom.js'
+import type Output from 'src/ink/output.js'
+import { stringWidth } from 'src/ink/stringWidth.js'
+import type { Color } from 'src/ink/styles.js'
 
 export type BorderTextOptions = {
   content: string // Pre-rendered string with ANSI color codes

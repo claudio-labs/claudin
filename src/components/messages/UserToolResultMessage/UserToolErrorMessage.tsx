@@ -10,8 +10,8 @@ import { INTERRUPT_MESSAGE_FOR_TOOL_USE, isClassifierDenial, PLAN_REJECTION_PREF
 import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseErrorMessage.js';
 import { InterruptedByUser } from 'src/components/InterruptedByUser.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
-import { RejectedPlanMessage } from './RejectedPlanMessage.js';
-import { RejectedToolUseMessage } from './RejectedToolUseMessage.js';
+import { RejectedPlanMessage } from 'src/components/messages/UserToolResultMessage/RejectedPlanMessage.js';
+import { RejectedToolUseMessage } from 'src/components/messages/UserToolResultMessage/RejectedToolUseMessage.js';
 type Props = {
   progressMessagesForMessage: ProgressMessage[];
   tool?: Tool; // undefined when resuming an old conversation that uses an old tool

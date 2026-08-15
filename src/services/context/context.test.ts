@@ -46,7 +46,7 @@ import { getMaxOutputTokensForModel } from 'src/services/api/claude.js'
 import {
   getContextWindowForModel,
   getModelMaxOutputTokens,
-} from './context.js'
+} from 'src/services/context/context.js'
 
 const originalEnv = {
   CLAUDE_CODE_USE_OPENAI: process.env.CLAUDE_CODE_USE_OPENAI,

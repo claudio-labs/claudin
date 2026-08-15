@@ -3,10 +3,10 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { checkIsGitClean, checkNeedsClaudeAiLogin } from 'src/services/background/remote/preconditions.js';
 import { gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js';
 import { Box, Text } from 'src/ink.js';
-import { ConsoleOAuthFlow } from './ConsoleOAuthFlow.js';
-import { Select } from './CustomSelect/index.js';
-import { Dialog } from './design-system/Dialog.js';
-import { TeleportStash } from './TeleportStash.js';
+import { ConsoleOAuthFlow } from 'src/components/ConsoleOAuthFlow.js';
+import { Select } from 'src/components/CustomSelect/index.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { TeleportStash } from 'src/components/TeleportStash.js';
 export type TeleportLocalErrorType = 'needsLogin' | 'needsGitStash';
 type TeleportErrorProps = {
   onComplete: () => void;

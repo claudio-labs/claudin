@@ -12,20 +12,20 @@ import { openBrowser } from 'src/utils/browser.js';
 import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js';
 import { getGithubRepo } from 'src/services/git/git.js';
 import { plural } from 'src/utils/text/stringUtils.js';
-import { ApiKeyStep } from './ApiKeyStep.js';
-import { CheckExistingSecretStep } from './CheckExistingSecretStep.js';
-import { CheckGitHubStep } from './CheckGitHubStep.js';
-import { ChooseRepoStep } from './ChooseRepoStep.js';
-import { CreatingStep } from './CreatingStep.js';
-import { ErrorStep } from './ErrorStep.js';
-import { ExistingWorkflowStep } from './ExistingWorkflowStep.js';
-import { InstallAppStep } from './InstallAppStep.js';
-import { OAuthFlowStep } from './OAuthFlowStep.js';
-import { extractGitHubRepoSlug } from './repoSlug.js';
-import { SuccessStep } from './SuccessStep.js';
-import { setupGitHubActions } from './setupGitHubActions.js';
-import type { State, Warning, Workflow } from './types.js';
-import { WarningsStep } from './WarningsStep.js';
+import { ApiKeyStep } from 'src/commands/install-github-app/ApiKeyStep.js';
+import { CheckExistingSecretStep } from 'src/commands/install-github-app/CheckExistingSecretStep.js';
+import { CheckGitHubStep } from 'src/commands/install-github-app/CheckGitHubStep.js';
+import { ChooseRepoStep } from 'src/commands/install-github-app/ChooseRepoStep.js';
+import { CreatingStep } from 'src/commands/install-github-app/CreatingStep.js';
+import { ErrorStep } from 'src/commands/install-github-app/ErrorStep.js';
+import { ExistingWorkflowStep } from 'src/commands/install-github-app/ExistingWorkflowStep.js';
+import { InstallAppStep } from 'src/commands/install-github-app/InstallAppStep.js';
+import { OAuthFlowStep } from 'src/commands/install-github-app/OAuthFlowStep.js';
+import { extractGitHubRepoSlug } from 'src/commands/install-github-app/repoSlug.js';
+import { SuccessStep } from 'src/commands/install-github-app/SuccessStep.js';
+import { setupGitHubActions } from 'src/commands/install-github-app/setupGitHubActions.js';
+import type { State, Warning, Workflow } from 'src/commands/install-github-app/types.js';
+import { WarningsStep } from 'src/commands/install-github-app/WarningsStep.js';
 const INITIAL_STATE: State = {
   step: 'check-gh',
   selectedRepoName: '',

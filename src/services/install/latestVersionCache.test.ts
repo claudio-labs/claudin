@@ -8,7 +8,7 @@ import {
   subscribeLatestVersion,
   writeLatestVersion,
   type LatestVersionCache,
-} from './latestVersionCache.ts'
+} from 'src/services/install/latestVersionCache.ts'
 
 let tmp: string
 let originalEnv: string | undefined

@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 
-import { modelRejectsSamplingParams } from './model.js'
+import { modelRejectsSamplingParams } from 'src/utils/model/model.js'
 
 test('rejects sampling params for Opus 4.7+ family', () => {
   expect(modelRejectsSamplingParams('claude-opus-4-8')).toBe(true)

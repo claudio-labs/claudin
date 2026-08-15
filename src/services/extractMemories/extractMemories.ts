@@ -58,12 +58,12 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/grow
 import { logEvent } from 'src/services/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
 import { isEnvDefinedFalsy } from 'src/utils/envUtils.js'
-import { detectRepeatedErrorLoop } from './loopDetector.js'
+import { detectRepeatedErrorLoop } from 'src/services/extractMemories/loopDetector.js'
 import {
   buildExtractAutoOnlyPrompt,
   buildExtractCombinedPrompt,
   buildLoopHint,
-} from './prompts.js'
+} from 'src/services/extractMemories/prompts.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemPaths = feature('TEAMMEM')

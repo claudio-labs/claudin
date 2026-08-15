@@ -29,8 +29,8 @@ import {
   pullTeamMemory,
   pushTeamMemory,
   type SyncState,
-} from './index.js'
-import type { TeamMemorySyncPushResult } from './types.js'
+} from 'src/services/teamMemorySync/index.js'
+import type { TeamMemorySyncPushResult } from 'src/services/teamMemorySync/types.js'
 
 const DEBOUNCE_MS = 2000 // Wait 2s after last change before pushing
 

@@ -13,17 +13,17 @@ import {
   updateSettingsForSource,
 } from 'src/services/settings/settings.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { toPosixPath } from './filesystem.js'
-import type { PermissionRuleValue } from './PermissionRule.js'
+import { toPosixPath } from 'src/services/permissions/filesystem.js'
+import type { PermissionRuleValue } from 'src/services/permissions/PermissionRule.js'
 import type {
   PermissionUpdate,
   PermissionUpdateDestination,
-} from './PermissionUpdateSchema.js'
+} from 'src/services/permissions/PermissionUpdateSchema.js'
 import {
   permissionRuleValueFromString,
   permissionRuleValueToString,
-} from './permissionRuleParser.js'
-import { addPermissionRulesToSettings } from './permissionsLoader.js'
+} from 'src/services/permissions/permissionRuleParser.js'
+import { addPermissionRulesToSettings } from 'src/services/permissions/permissionsLoader.js'
 
 // Re-export for backwards compatibility
 export type { AdditionalWorkingDirectory, WorkingDirectorySource }

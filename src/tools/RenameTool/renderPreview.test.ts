@@ -8,8 +8,8 @@ import {
   scanSymbols,
 } from 'src/tools/shared/codeOutline/scanSymbols.js'
 import { renderOutline } from 'src/tools/shared/codeOutline/renderOutline.js'
-import { findSites } from './findSites.js'
-import { renderPreview } from './renderPreview.js'
+import { findSites } from 'src/tools/RenameTool/findSites.js'
+import { renderPreview } from 'src/tools/RenameTool/renderPreview.js'
 
 const SOURCE = [
   'export function loadAll() {',

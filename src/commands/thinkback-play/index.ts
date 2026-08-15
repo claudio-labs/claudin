@@ -11,7 +11,7 @@ const thinkbackPlay = {
     checkStatsigFeatureGate_CACHED_MAY_BE_STALE('tengu_thinkback'),
   isHidden: true,
   supportsNonInteractive: false,
-  load: () => import('./thinkback-play.js'),
+  load: () => import('src/commands/thinkback-play/thinkback-play.js'),
 } satisfies Command
 
 export default thinkbackPlay

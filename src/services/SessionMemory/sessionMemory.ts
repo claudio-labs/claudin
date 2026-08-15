@@ -44,7 +44,7 @@ import { isAutoCompactEnabled } from 'src/services/compact/autoCompact.js'
 import {
   buildSessionMemoryUpdatePrompt,
   loadSessionMemoryTemplate,
-} from './prompts.js'
+} from 'src/services/SessionMemory/prompts.js'
 import {
   DEFAULT_SESSION_MEMORY_CONFIG,
   getSessionMemoryConfig,
@@ -59,7 +59,7 @@ import {
   type SessionMemoryConfig,
   setLastSummarizedMessageId,
   setSessionMemoryConfig,
-} from './sessionMemoryUtils.js'
+} from 'src/services/SessionMemory/sessionMemoryUtils.js'
 
 // ============================================================================
 // Feature Gate and Config (Cached - Non-blocking)

@@ -12,7 +12,7 @@ import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
   VERSION: '99.0.0',
   DISPLAY_VERSION: '0.0.0-test',
 }
-import { createOpenAIShimClient } from './openaiShim.js'
+import { createOpenAIShimClient } from 'src/services/api/openaiShim.js'
 import {
   addClippedIds,
   resetClippedIds,

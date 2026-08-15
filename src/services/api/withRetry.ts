@@ -18,11 +18,11 @@ import {
   isEnterpriseSubscriber,
 } from 'src/services/auth/auth.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { tryGetActiveProvider } from './activeProvider.js'
-import { invalidateClientCache } from './clientCache.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { invalidateClientCache } from 'src/services/api/clientCache.js'
 import { refreshGithubModelsTokenIfNeeded } from 'src/services/api/githubModelsCredentials.js'
 import { refreshCodexAccessTokenIfNeeded } from 'src/services/api/codexCredentials.js'
-import { forceRefreshOAuthWebTokenOn401 } from './openaiShim/oauthProviderAuth.js'
+import { forceRefreshOAuthWebTokenOn401 } from 'src/services/api/openaiShim/oauthProviderAuth.js'
 import {
   errorMessage,
   isSdkApiConnectionError,
@@ -36,7 +36,7 @@ import {
   isFastModeEnabled,
   triggerFastModeCooldown,
 } from 'src/utils/fastMode.js'
-import { extractOpenAICategoryMarker } from './openaiErrorClassification.js'
+import { extractOpenAICategoryMarker } from 'src/services/api/openaiErrorClassification.js'
 import { isNonCustomOpusModel } from 'src/utils/model/model.js'
 import { disableKeepAlive } from 'src/services/api/proxy.js'
 import { sleep } from 'src/utils/sleep.js'
@@ -47,8 +47,8 @@ import {
   logEvent,
 } from 'src/services/analytics/index.js'
 import { isMockRateLimitError } from 'src/services/rateLimitMocking.js'
-import { REPEATED_529_ERROR_MESSAGE } from './errors.js'
-import { extractConnectionErrorDetails } from './errorUtils.js'
+import { REPEATED_529_ERROR_MESSAGE } from 'src/services/api/errors.js'
+import { extractConnectionErrorDetails } from 'src/services/api/errorUtils.js'
 
 const abortError = () => new APIUserAbortError()
 

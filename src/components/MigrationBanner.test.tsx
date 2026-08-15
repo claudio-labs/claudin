@@ -126,7 +126,7 @@ afterEach(async () => {
 })
 
 test("calls onDismiss with 'skipped' when user picks Skip — start fresh", async () => {
-  const { MigrationBanner } = await import('./MigrationBanner.js')
+  const { MigrationBanner } = await import('src/components/MigrationBanner.js')
   const { stdout, stdin, getOutput } = createTestStreams()
   const root = await createRoot({
     stdout: stdout as unknown as NodeJS.WriteStream,
@@ -169,7 +169,7 @@ test("calls onDismiss with 'skipped' when user picks Skip — start fresh", asyn
 })
 
 test("calls onDismiss with 'migrated' after successful migration", async () => {
-  const { MigrationBanner } = await import('./MigrationBanner.js')
+  const { MigrationBanner } = await import('src/components/MigrationBanner.js')
   const { stdout, stdin, getOutput } = createTestStreams()
   const root = await createRoot({
     stdout: stdout as unknown as NodeJS.WriteStream,

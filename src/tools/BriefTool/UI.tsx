@@ -8,7 +8,7 @@ import type { ProgressMessage } from 'src/types/message.js';
 import { getDisplayPath } from 'src/utils/fs/file.js';
 import { formatFileSize } from 'src/utils/text/format.js';
 import { formatBriefTimestamp } from 'src/utils/text/formatBriefTimestamp.js';
-import type { Output } from './BriefTool.js';
+import type { Output } from 'src/tools/BriefTool/BriefTool.js';
 export function renderToolUseMessage(): React.ReactNode {
   return '';
 }

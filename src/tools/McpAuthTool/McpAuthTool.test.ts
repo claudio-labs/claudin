@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import type { ToolUseContext } from 'src/Tool.js'
-import { createMcpAuthTool } from './McpAuthTool.js'
+import { createMcpAuthTool } from 'src/tools/McpAuthTool/McpAuthTool.js'
 
 function makeCtx(): ToolUseContext {
   return {

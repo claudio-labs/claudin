@@ -6,7 +6,7 @@
 import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js'
 import { isInProcessTeammateTask } from 'src/tasks/InProcessTeammateTask/types.js'
 import type { LocalAgentTaskState } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
-import type { AppState } from './AppStateStore.js'
+import type { AppState } from 'src/state/AppStateStore.js'
 
 /**
  * Get the currently viewed teammate task, if any.

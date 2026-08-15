@@ -35,19 +35,19 @@ export {
   cleanupStream,
   queryModelWithStreaming,
   updateUsage,
-} from './claude/streaming.js'
+} from 'src/services/api/claude/streaming.js'
 
-export { queryModelWithoutStreaming } from './claude/nonStreaming.js'
+export { queryModelWithoutStreaming } from 'src/services/api/claude/nonStreaming.js'
 
-export { getAPIMetadata, verifyApiKey } from './claude/metadata.js'
+export { getAPIMetadata, verifyApiKey } from 'src/services/api/claude/metadata.js'
 
 export {
   assistantMessageToMessageParam,
   stripExcessMediaItems,
   userMessageToMessageParam,
-} from './claude/messageConverters.js'
+} from 'src/services/api/claude/messageConverters.js'
 
-export { getCacheControl } from './claude/cacheControl.js'
+export { getCacheControl } from 'src/services/api/claude/cacheControl.js'
 
 export {
   addCacheBreakpoints,
@@ -59,8 +59,8 @@ export {
   getMaxOutputTokensForModel,
   getPromptCachingEnabled,
   MAX_NON_STREAMING_TOKENS,
-} from './claude/paramBuilders.js'
+} from 'src/services/api/claude/paramBuilders.js'
 
-export { queryHaiku, queryWithModel } from './claude/convenience.js'
+export { queryHaiku, queryWithModel } from 'src/services/api/claude/convenience.js'
 
-export type { Options } from './claude/types.js'
+export type { Options } from 'src/services/api/claude/types.js'

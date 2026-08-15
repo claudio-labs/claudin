@@ -13,10 +13,10 @@
 
 import type { FilterSpec } from 'src/outputFilter/Bash/types.js'
 
-import { bundleInstall } from './pkg.js'
-import { pytest, rspec, goTest } from './tests.js'
-import { jest, vitest, bunTest, mocha, playwright } from './tests-js.js'
-import { tsc } from './tsc.js'
+import { bundleInstall } from 'src/outputFilter/Bash/filters/pkg.js'
+import { pytest, rspec, goTest } from 'src/outputFilter/Bash/filters/tests.js'
+import { jest, vitest, bunTest, mocha, playwright } from 'src/outputFilter/Bash/filters/tests-js.js'
+import { tsc } from 'src/outputFilter/Bash/filters/tsc.js'
 import {
   psAux,
   top,
@@ -31,7 +31,7 @@ import {
   stat,
   jq,
   find,
-} from './system.js'
+} from 'src/outputFilter/Bash/filters/system.js'
 import {
   rubocop,
   ruffCheck,
@@ -48,9 +48,9 @@ import {
   poetry,
   basedpyright,
   ty,
-} from './linters.js'
-import { lsLa } from './ls.js'
-import { grepRg } from './grep-rg.js'
+} from 'src/outputFilter/Bash/filters/linters.js'
+import { lsLa } from 'src/outputFilter/Bash/filters/ls.js'
+import { grepRg } from 'src/outputFilter/Bash/filters/grep-rg.js'
 import {
   gitLog,
   gitStatus,
@@ -65,19 +65,19 @@ import {
   gitBranch,
   gitStash,
   gitWorktree,
-} from './git.js'
-import { glabList, gt, jj } from './vcs.js'
-import { ghPrList, ghIssueList, ghRunList } from './gh.js'
-import { gradle, mvn } from './java-build.js'
+} from 'src/outputFilter/Bash/filters/git.js'
+import { glabList, gt, jj } from 'src/outputFilter/Bash/filters/vcs.js'
+import { ghPrList, ghIssueList, ghRunList } from 'src/outputFilter/Bash/filters/gh.js'
+import { gradle, mvn } from 'src/outputFilter/Bash/filters/java-build.js'
 // Phase 13 — Java extras (spring-boot). The gradle/mvn specs above now reject
 // bootRun/spring-boot:run, so spring-boot claims those without an order
 // dependency; it is registered in the T9 block below.
-import { springBoot } from './java-build.js'
-import { terraform } from './iac.js'
-import { cargoBuild, cargoCheck, cargoTest, cargoClippy, cargoRun, cargoFmt } from './cargo.js'
-import { goBuild, goVet, golangciLint } from './go.js'
-import { dockerPs, dockerImages, dockerLogs } from './containers.js'
-import { curlV, dig, curlPlain, wget } from './network.js'
+import { springBoot } from 'src/outputFilter/Bash/filters/java-build.js'
+import { terraform } from 'src/outputFilter/Bash/filters/iac.js'
+import { cargoBuild, cargoCheck, cargoTest, cargoClippy, cargoRun, cargoFmt } from 'src/outputFilter/Bash/filters/cargo.js'
+import { goBuild, goVet, golangciLint } from 'src/outputFilter/Bash/filters/go.js'
+import { dockerPs, dockerImages, dockerLogs } from 'src/outputFilter/Bash/filters/containers.js'
+import { curlV, dig, curlPlain, wget } from 'src/outputFilter/Bash/filters/network.js'
 import {
   npmInstall,
   npmRun,
@@ -94,14 +94,14 @@ import {
   oxlint,
   turbo,
   nx,
-} from './js-pkg.js'
+} from 'src/outputFilter/Bash/filters/js-pkg.js'
 // Phase 13 — language toolchains (rtk gap-fill).
-import { gccCompile, make, pioRun } from './cc.js'
-import { dotnetBuild, dotnetTest, dotnetFormat } from './dotnet.js'
-import { composer } from './php.js'
-import { rake } from './ruby.js'
-import { mixCompile, mixFormat } from './elixir.js'
-import { swiftBuild, xcodebuild } from './swift.js'
+import { gccCompile, make, pioRun } from 'src/outputFilter/Bash/filters/cc.js'
+import { dotnetBuild, dotnetTest, dotnetFormat } from 'src/outputFilter/Bash/filters/dotnet.js'
+import { composer } from 'src/outputFilter/Bash/filters/php.js'
+import { rake } from 'src/outputFilter/Bash/filters/ruby.js'
+import { mixCompile, mixFormat } from 'src/outputFilter/Bash/filters/elixir.js'
+import { swiftBuild, xcodebuild } from 'src/outputFilter/Bash/filters/swift.js'
 
 export const builtInFilters: FilterSpec[] = [
   // Package managers

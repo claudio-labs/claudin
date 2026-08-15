@@ -13,7 +13,7 @@ import { afterEach, beforeEach, expect, test, mock } from 'bun:test'
 const realState = { ...(await import('src/bootstrap/state.js')) }
 const realProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
 const realConfig = { ...(await import('src/services/config/config.js')) }
-const realAllowlist = { ...(await import('./modelAllowlist.js')) }
+const realAllowlist = { ...(await import('src/utils/model/modelAllowlist.js')) }
 
 const origDisable1m = process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT
 

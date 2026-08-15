@@ -10,7 +10,7 @@ import {
   getTaskPath,
   listTasks,
   resetTaskList,
-} from './tasks.js'
+} from 'src/tasks/tasks.js'
 
 let configDir: string
 

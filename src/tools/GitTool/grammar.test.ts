@@ -7,7 +7,7 @@ import {
   isReadOnlyGitCommand,
   isWatchGitCommand,
   parseGitCommand,
-} from './grammar.js'
+} from 'src/tools/GitTool/grammar.js'
 
 describe('accept / refuse', () => {
   test('accepts a plain git or gh command', () => {

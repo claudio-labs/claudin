@@ -10,11 +10,11 @@ import { toInkColor } from 'src/utils/ink.js';
 import type { Theme } from 'src/utils/theme.js';
 import { Byline } from 'src/components/design-system/Byline.js';
 import FullWidthRow from 'src/components/design-system/FullWidthRow.js';
-import { GlimmerMessage } from './GlimmerMessage.js';
-import { SpinnerGlyph } from './SpinnerGlyph.js';
-import type { SpinnerMode } from './types.js';
-import { useStalledAnimation } from './useStalledAnimation.js';
-import { interpolateColor, SPINNER_FRAME_MS, toRGBColor } from './utils.js';
+import { GlimmerMessage } from 'src/components/Spinner/GlimmerMessage.js';
+import { SpinnerGlyph } from 'src/components/Spinner/SpinnerGlyph.js';
+import type { SpinnerMode } from 'src/components/Spinner/types.js';
+import { useStalledAnimation } from 'src/components/Spinner/useStalledAnimation.js';
+import { interpolateColor, SPINNER_FRAME_MS, toRGBColor } from 'src/components/Spinner/utils.js';
 const SEP_WIDTH = stringWidth(' · ');
 // Claudin: upstream waits 30s before surfacing the timer + token count, so on
 // short responses the spinner never shows them. Drop to ~3s — still skips the

@@ -31,7 +31,7 @@
  * to reconstruct chronological order, but that only runs when the user
  * opens `/cache-stats` or the REPL renders — never in the hot path.
  */
-import { addCacheMetrics, type CacheMetrics } from './cacheMetrics.js'
+import { addCacheMetrics, type CacheMetrics } from 'src/services/api/cacheMetrics.js'
 
 /** One request's cache footprint — what the tracker remembers per turn. */
 export type CacheStatsEntry = {

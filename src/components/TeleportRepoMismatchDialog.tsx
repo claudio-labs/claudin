@@ -3,9 +3,9 @@ import React, { useCallback, useState } from 'react';
 import { Box, Text } from 'src/ink.js';
 import { getDisplayPath } from 'src/utils/fs/file.js';
 import { removePathFromRepo, validateRepoAtPath } from 'src/services/git/githubRepoPathMapping.js';
-import { Select } from './CustomSelect/index.js';
-import { Dialog } from './design-system/Dialog.js';
-import { Spinner } from './Spinner.js';
+import { Select } from 'src/components/CustomSelect/index.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { Spinner } from 'src/components/Spinner.js';
 type Props = {
   targetRepo: string;
   initialPaths: string[];

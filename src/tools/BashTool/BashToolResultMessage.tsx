@@ -8,7 +8,7 @@ import { stripOutputMarkers } from 'src/outputFilter/Bash/markers.js';
 import { OutputLine } from 'src/components/shell/OutputLine.js';
 import { ShellTimeDisplay } from 'src/components/shell/ShellTimeDisplay.js';
 import { Box, Text } from 'src/ink.js';
-import type { Out as BashOut } from './BashTool.js';
+import type { Out as BashOut } from 'src/tools/BashTool/BashTool.js';
 type Props = {
   content: Omit<BashOut, 'interrupted'>;
   verbose: boolean;

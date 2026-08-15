@@ -4,8 +4,8 @@ import { Markdown } from 'src/components/Markdown.js';
 import { Box, Text } from 'src/ink.js';
 import { jsonParse } from 'src/utils/slowOperations.js';
 import { type IdleNotificationMessage, isIdleNotification, isPlanApprovalRequest, isPlanApprovalResponse, type PlanApprovalRequestMessage, type PlanApprovalResponseMessage } from 'src/coordinator/teammateMailbox.js';
-import { getShutdownMessageSummary } from './ShutdownMessage.js';
-import { getTaskAssignmentSummary } from './TaskAssignmentMessage.js';
+import { getShutdownMessageSummary } from 'src/components/messages/ShutdownMessage.js';
+import { getTaskAssignmentSummary } from 'src/components/messages/TaskAssignmentMessage.js';
 type PlanApprovalRequestProps = {
   request: PlanApprovalRequestMessage;
 };

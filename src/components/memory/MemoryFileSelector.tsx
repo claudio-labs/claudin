@@ -26,7 +26,7 @@ import { projectIsInGitRepo } from 'src/memdir/versions.js';
 import { updateSettingsForSource } from 'src/services/settings/settings.js';
 import { Select } from 'src/components/CustomSelect/index.js';
 import { ListItem } from 'src/components/design-system/ListItem.js';
-import { getProjectMemoryPathForSelector } from './memoryFileSelectorPaths.js';
+import { getProjectMemoryPathForSelector } from 'src/components/memory/memoryFileSelectorPaths.js';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemPaths = feature('TEAMMEM') ? require('src/memdir/teamMemPaths.js') as typeof import('src/memdir/teamMemPaths.js') : null;

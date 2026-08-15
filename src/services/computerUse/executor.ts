@@ -46,11 +46,11 @@ import {
   CLI_CU_CAPABILITIES,
   CLI_HOST_BUNDLE_ID,
   getTerminalBundleId,
-} from './common.js'
-import { drainRunLoop } from './drainRunLoop.js'
-import { notifyExpectedEscape } from './escHotkey.js'
-import { requireComputerUseInput } from './inputLoader.js'
-import { requireComputerUseSwift } from './swiftLoader.js'
+} from 'src/services/computerUse/common.js'
+import { drainRunLoop } from 'src/services/computerUse/drainRunLoop.js'
+import { notifyExpectedEscape } from 'src/services/computerUse/escHotkey.js'
+import { requireComputerUseInput } from 'src/services/computerUse/inputLoader.js'
+import { requireComputerUseSwift } from 'src/services/computerUse/swiftLoader.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

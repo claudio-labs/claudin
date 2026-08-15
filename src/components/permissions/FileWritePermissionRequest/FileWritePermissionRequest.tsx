@@ -10,7 +10,7 @@ import { readFileSync } from 'src/utils/fs/fileRead.js';
 import { FilePermissionDialog } from 'src/components/permissions/FilePermissionDialog/FilePermissionDialog.js';
 import { createSingleEditDiffConfig, type FileEdit, type IDEDiffSupport } from 'src/components/permissions/FilePermissionDialog/ideDiffConfig.js';
 import type { PermissionRequestProps } from 'src/components/permissions/PermissionRequest.js';
-import { FileWriteToolDiff } from './FileWriteToolDiff.js';
+import { FileWriteToolDiff } from 'src/components/permissions/FileWritePermissionRequest/FileWriteToolDiff.js';
 type FileWriteToolInput = z.infer<typeof FileWriteTool.inputSchema>;
 const ideDiffSupport: IDEDiffSupport<FileWriteToolInput> = {
   getConfig: (input: FileWriteToolInput) => {

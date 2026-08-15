@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { extractFailureBlock } from './failureBlock.js'
-import { isUpToDate } from './noOp.js'
+import { extractFailureBlock } from 'src/tools/BuildTool/failureBlock.js'
+import { isUpToDate } from 'src/tools/BuildTool/noOp.js'
 
 describe('extractFailureBlock', () => {
   test('takes the gradle what-went-wrong block and drops the help boilerplate', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { parseGitLog, parseStashList } from './gitLog.js'
+import { parseGitLog, parseStashList } from 'src/services/git/gitLog.js'
 
 const US = '\x1f'
 const RS = '\x1e'

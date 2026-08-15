@@ -14,9 +14,9 @@ import { usePermissionRequestLogging } from 'src/components/permissions/hooks.js
 import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
 import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';
 import type { WorkerBadgeProps } from 'src/components/permissions/WorkerBadge.js';
-import type { IDEDiffSupport } from './ideDiffConfig.js';
-import type { FileOperationType, PermissionOption } from './permissionOptions.js';
-import { type ToolInput, useFilePermissionDialog } from './useFilePermissionDialog.js';
+import type { IDEDiffSupport } from 'src/components/permissions/FilePermissionDialog/ideDiffConfig.js';
+import type { FileOperationType, PermissionOption } from 'src/components/permissions/FilePermissionDialog/permissionOptions.js';
+import { type ToolInput, useFilePermissionDialog } from 'src/components/permissions/FilePermissionDialog/useFilePermissionDialog.js';
 export type FilePermissionDialogProps<T extends ToolInput = ToolInput> = {
   // Required props from PermissionRequestProps
   toolUseConfirm: ToolUseConfirm;

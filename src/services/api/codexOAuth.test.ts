@@ -1,6 +1,6 @@
 import { afterEach, expect, mock, test } from 'bun:test'
 
-import { CodexOAuthService } from './codexOAuth.js'
+import { CodexOAuthService } from 'src/services/api/codexOAuth.js'
 
 const originalFetch = globalThis.fetch
 const originalCallbackPort = process.env.CODEX_OAUTH_CALLBACK_PORT

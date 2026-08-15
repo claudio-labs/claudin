@@ -10,10 +10,10 @@
 //
 // Phase C of cold-start plan.
 
-export { parseActionOptions } from './action/parseOptions.js'
-export type { ActionOptions } from './action/parseOptions.js'
-export { runMcpAndPerms } from './action/mcpAndPerms.js'
-export { runActionAgentSetup, runActionPostSetup, runActionSetup } from './action/setupAgent.js'
-export { runTrustAndOnboarding } from './action/trustAndOnboarding.js'
-export { runInteractiveStartupBlock, runMcpHooksAndTelemetry, runPostHeadlessGuards } from './action/startupSequence.js'
-export { runDefaultActionDispatch } from './defaultAction/dispatch.js'
+export { parseActionOptions } from 'src/main/action/parseOptions.js'
+export type { ActionOptions } from 'src/main/action/parseOptions.js'
+export { runMcpAndPerms } from 'src/main/action/mcpAndPerms.js'
+export { runActionAgentSetup, runActionPostSetup, runActionSetup } from 'src/main/action/setupAgent.js'
+export { runTrustAndOnboarding } from 'src/main/action/trustAndOnboarding.js'
+export { runInteractiveStartupBlock, runMcpHooksAndTelemetry, runPostHeadlessGuards } from 'src/main/action/startupSequence.js'
+export { runDefaultActionDispatch } from 'src/main/defaultAction/dispatch.js'

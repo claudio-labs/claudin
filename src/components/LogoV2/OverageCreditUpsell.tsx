@@ -6,7 +6,7 @@ import { logEvent } from 'src/services/analytics/index.js';
 import { formatGrantAmount, getCachedOverageCreditGrant, refreshOverageCreditGrantCache } from 'src/services/api/overageCreditGrant.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import { truncate } from 'src/utils/text/format.js';
-import type { FeedConfig } from './Feed.js';
+import type { FeedConfig } from 'src/components/LogoV2/Feed.js';
 const MAX_IMPRESSIONS = 3;
 
 /**

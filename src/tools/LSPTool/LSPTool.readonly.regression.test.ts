@@ -85,7 +85,7 @@ afterAll(() => {
   mock.module('src/utils/proc/execFileNoThrow.js', () => realExecFileNoThrow)
 })
 
-const { LSPTool } = await import('./LSPTool.js')
+const { LSPTool } = await import('src/tools/LSPTool/LSPTool.js')
 
 // ---------------------------------------------------------------------------
 // Filesystem setup — one .ts file per test, cwd-rooted relative paths so the

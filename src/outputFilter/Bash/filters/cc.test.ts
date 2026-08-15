@@ -1,7 +1,7 @@
 // Phase 13 — cc family (gcc/g++, make, pio run). Real captured output lives in
 // __testutils__/phase13Samples.ts; helpers in __testutils__/harness.ts.
 import { describe, expect, test } from "bun:test";
-import { runFilterBody, reductionPct, routesTo } from "./__testutils__/harness.js";
+import { runFilterBody, reductionPct, routesTo } from "src/outputFilter/Bash/filters/__testutils__/harness.js";
 import {
   GCC_ERR,
   GCC_LINK_ERR,
@@ -11,7 +11,7 @@ import {
   PIO_ERR,
   PIO_OK,
   PIO_SIZE,
-} from "./__testutils__/phase13Samples.js";
+} from "src/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
 
 describe("phase 13 — gcc", () => {
   test("strips include chain + tallies, keeps diagnostics and carets", () => {

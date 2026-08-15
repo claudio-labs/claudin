@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { TASK_OUTPUT_TOOL_NAME } from 'src/tools/TaskOutputTool/constants.js'
 import { TASK_STOP_TOOL_NAME } from 'src/tools/TaskStopTool/prompt.js'
-import type { PermissionRuleValue } from './PermissionRule.js'
+import type { PermissionRuleValue } from 'src/services/permissions/PermissionRule.js'
 
 // Dead code elimination: internal-only tool names are conditionally required so
 // their strings don't leak into external builds. Static imports always bundle.

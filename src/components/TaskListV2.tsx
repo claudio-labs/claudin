@@ -14,9 +14,9 @@ import { summarizeRecentActivities } from 'src/services/tools/collapseReadSearch
 import { truncateToWidth } from 'src/utils/text/format.js';
 import { isTodoV2Enabled, type Task } from 'src/tasks/tasks.js';
 import type { Theme } from 'src/utils/theme.js';
-import FullWidthRow from './design-system/FullWidthRow.js';
-import ThemedText from './design-system/ThemedText.js';
-import { orderTasksForDisplay } from './tasks/taskOrdering.js';
+import FullWidthRow from 'src/components/design-system/FullWidthRow.js';
+import ThemedText from 'src/components/design-system/ThemedText.js';
+import { orderTasksForDisplay } from 'src/components/tasks/taskOrdering.js';
 type Props = {
   tasks: Task[];
   isStandalone?: boolean;

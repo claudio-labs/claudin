@@ -1,5 +1,5 @@
 import { nonAlphanumericKeys, type ParsedKey } from 'src/ink/parse-keypress.js'
-import { Event } from './event.js'
+import { Event } from 'src/ink/events/event.js'
 
 export type Key = {
   upArrow: boolean

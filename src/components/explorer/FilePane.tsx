@@ -1,7 +1,7 @@
 import React, { useRef } from 'react'
 import type { EditorHighlighter } from 'src/native-ts/color-diff/index.js'
 import { Box, RawAnsi, Text } from 'src/ink.js'
-import type { Cursor } from './editorState.js'
+import type { Cursor } from 'src/components/explorer/editorState.js'
 
 const DIM = '\x1b[2m'
 const RESET = '\x1b[0m'

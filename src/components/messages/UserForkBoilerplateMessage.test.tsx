@@ -7,7 +7,7 @@ import { renderToString } from 'src/components/staticRender.js'
 import {
   extractForkDirective,
   UserForkBoilerplateMessage,
-} from './UserForkBoilerplateMessage.js'
+} from 'src/components/messages/UserForkBoilerplateMessage.js'
 
 function render(text: string): Promise<string> {
   return renderToString(

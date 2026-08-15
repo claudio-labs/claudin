@@ -8,7 +8,7 @@ import type {
   WriteFileStat,
 } from 'src/types/message.js'
 import { renderToString } from 'src/components/staticRender.js'
-import { CollapsedReadSearchContent } from './CollapsedReadSearchContent.js'
+import { CollapsedReadSearchContent } from 'src/components/messages/CollapsedReadSearchContent.js'
 
 const EMPTY_GROUP = {
   type: 'collapsed_read_search',

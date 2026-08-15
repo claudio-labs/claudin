@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { parseDesktopExec } from './browser.js'
+import { parseDesktopExec } from 'src/utils/browser.js'
 
 describe('parseDesktopExec', () => {
   test('strips %u field code and returns the binary', () => {

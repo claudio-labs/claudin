@@ -52,8 +52,8 @@ import {
   formatCreditAmount,
   getCachedReferrerReward,
 } from 'src/services/api/referral.js'
-import { getSessionsSinceLastShown } from './tipHistory.js'
-import type { Tip, TipContext } from './types.js'
+import { getSessionsSinceLastShown } from 'src/services/tips/tipHistory.js'
+import type { Tip, TipContext } from 'src/services/tips/types.js'
 
 let _isOfficialMarketplaceInstalledCache: boolean | undefined
 async function isOfficialMarketplaceInstalled(): Promise<boolean> {

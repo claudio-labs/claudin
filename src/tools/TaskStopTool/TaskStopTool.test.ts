@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import type { ToolUseContext } from 'src/Tool.js'
-import { TaskStopTool } from './TaskStopTool.js'
+import { TaskStopTool } from 'src/tools/TaskStopTool/TaskStopTool.js'
 
 function makeCtx(appState: Record<string, unknown>): ToolUseContext {
   return {

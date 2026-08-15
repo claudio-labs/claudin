@@ -5,7 +5,7 @@ import {
   markTurnStart,
   resetCostState,
   setCostStateForRestore,
-} from './state.js'
+} from 'src/bootstrap/state.js'
 
 describe('active wall-duration tracking', () => {
   let nowSpy: ReturnType<typeof spyOn>

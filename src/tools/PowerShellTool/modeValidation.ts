@@ -20,7 +20,7 @@ import {
   isCwdChangingCmdlet,
   isSafeOutputCommand,
   resolveToCanonical,
-} from './readOnlyValidation.js'
+} from 'src/tools/PowerShellTool/readOnlyValidation.js'
 
 /**
  * Filesystem-modifying cmdlets that are auto-allowed in acceptEdits mode.

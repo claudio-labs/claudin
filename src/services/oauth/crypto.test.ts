@@ -5,7 +5,7 @@ import {
   generateCodeChallenge,
   generateCodeVerifier,
   generateState,
-} from './crypto.ts'
+} from 'src/services/oauth/crypto.ts'
 
 test('generateCodeChallenge returns the RFC 7636 S256 challenge', async () => {
   const challenge = await generateCodeChallenge(

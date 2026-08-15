@@ -11,8 +11,8 @@ import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constant
 import {
   checkRuleBasedPermissions,
   hasPermissionsToUseTool,
-} from './permissions.js'
-import type { PermissionResult } from './PermissionResult.js'
+} from 'src/services/permissions/permissions.js'
+import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
 
 type FakeToolOpts = {
   name: string

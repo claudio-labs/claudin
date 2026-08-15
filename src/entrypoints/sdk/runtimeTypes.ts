@@ -33,7 +33,7 @@ import type {
   SDKControlGetSettingsResponseSchema,
   SDKControlMcpSetServersResponseSchema,
   SDKControlReloadPluginsResponseSchema,
-} from './controlSchemas.js'
+} from 'src/entrypoints/sdk/controlSchemas.js'
 import type {
   AgentDefinition,
   HookEvent,
@@ -52,7 +52,7 @@ import type {
   SdkPluginConfig,
   SettingSource,
   ThinkingConfig,
-} from './coreTypes.js'
+} from 'src/entrypoints/sdk/coreTypes.js'
 
 // ---------------------------------------------------------------------------
 // Utility types

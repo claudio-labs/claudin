@@ -20,7 +20,7 @@ import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import { logError } from 'src/utils/log.js'
 import { sleep } from 'src/utils/sleep.js'
 import { jsonStringify, writeFileSync_DEPRECATED } from 'src/utils/slowOperations.js'
-import { getBinaryName, getPlatform } from './installer.js'
+import { getBinaryName, getPlatform } from 'src/services/install/installer.js'
 
 // Neutralized. Upstream this pointed at Anthropic's Claude Code distribution
 // bucket. Claudin ships per-platform binaries via npm (@claudiolabs/claudin-*)

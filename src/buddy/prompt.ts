@@ -1,8 +1,8 @@
 import type { Message } from 'src/types/message.js'
 import type { Attachment } from 'src/services/attachments/attachments.js'
 import { getGlobalConfig } from 'src/services/config/config.js'
-import { getCompanion } from './companion.js'
-import { isBuddyEnabled } from './feature.js'
+import { getCompanion } from 'src/buddy/companion.js'
+import { isBuddyEnabled } from 'src/buddy/feature.js'
 
 export function companionIntroText(name: string, species: string): string {
   return `# Companion

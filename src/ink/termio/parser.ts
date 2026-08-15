@@ -12,15 +12,15 @@
  */
 
 import { getGraphemeSegmenter } from 'src/utils/text/intl.js'
-import { C0 } from './ansi.js'
-import { CSI, CURSOR_STYLES, ERASE_DISPLAY, ERASE_LINE_REGION } from './csi.js'
-import { DEC } from './dec.js'
-import { parseEsc } from './esc.js'
-import { parseOSC } from './osc.js'
-import { applySGR } from './sgr.js'
-import { createTokenizer, type Token, type Tokenizer } from './tokenize.js'
-import type { Action, Grapheme, TextStyle } from './types.js'
-import { defaultStyle } from './types.js'
+import { C0 } from 'src/ink/termio/ansi.js'
+import { CSI, CURSOR_STYLES, ERASE_DISPLAY, ERASE_LINE_REGION } from 'src/ink/termio/csi.js'
+import { DEC } from 'src/ink/termio/dec.js'
+import { parseEsc } from 'src/ink/termio/esc.js'
+import { parseOSC } from 'src/ink/termio/osc.js'
+import { applySGR } from 'src/ink/termio/sgr.js'
+import { createTokenizer, type Token, type Tokenizer } from 'src/ink/termio/tokenize.js'
+import type { Action, Grapheme, TextStyle } from 'src/ink/termio/types.js'
+import { defaultStyle } from 'src/ink/termio/types.js'
 
 // =============================================================================
 // Grapheme Utilities

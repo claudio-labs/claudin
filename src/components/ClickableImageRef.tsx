@@ -5,7 +5,7 @@ import { supportsHyperlinks } from 'src/ink/supports-hyperlinks.js'
 import { Text } from 'src/ink.js'
 import { getStoredImagePath } from 'src/utils/imageStore.js'
 import type { Theme } from 'src/utils/theme.js'
-import { InlineImage } from './InlineImage.js'
+import { InlineImage } from 'src/components/InlineImage.js'
 
 type Props = {
   imageId: number

@@ -25,13 +25,13 @@ import {
 import {
   type PermissionMode,
   permissionModeFromString,
-} from './PermissionMode.js'
-import { applyPermissionRulesToPermissionContext } from './permissions.js'
-import { loadAllPermissionRulesFromDisk } from './permissionsLoader.js'
+} from 'src/services/permissions/PermissionMode.js'
+import { applyPermissionRulesToPermissionContext } from 'src/services/permissions/permissions.js'
+import { loadAllPermissionRulesFromDisk } from 'src/services/permissions/permissionsLoader.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER')
-  ? (require('./autoModeState.js') as typeof import('./autoModeState.js'))
+  ? (require('src/services/permissions/autoModeState.js') as typeof import('src/services/permissions/autoModeState.js'))
   : null
 
 import { resolve } from 'path'
@@ -67,26 +67,26 @@ import {
   getCachedClassifierProbe,
   getClassifierProbeKey,
   probeClassifierCapability,
-} from './classifierProbe.js'
+} from 'src/services/permissions/classifierProbe.js'
 import {
   CROSS_PLATFORM_CODE_EXEC,
   DANGEROUS_BASH_PATTERNS,
-} from './dangerousPatterns.js'
+} from 'src/services/permissions/dangerousPatterns.js'
 import type {
   PermissionRule,
   PermissionRuleSource,
   PermissionRuleValue,
-} from './PermissionRule.js'
+} from 'src/services/permissions/PermissionRule.js'
 import {
   type AdditionalWorkingDirectory,
   applyPermissionUpdate,
-} from './PermissionUpdate.js'
-import type { PermissionUpdateDestination } from './PermissionUpdateSchema.js'
+} from 'src/services/permissions/PermissionUpdate.js'
+import type { PermissionUpdateDestination } from 'src/services/permissions/PermissionUpdateSchema.js'
 import {
   normalizeLegacyToolName,
   permissionRuleValueFromString,
   permissionRuleValueToString,
-} from './permissionRuleParser.js'
+} from 'src/services/permissions/permissionRuleParser.js'
 
 /**
  * Checks if a Bash permission rule is dangerous for auto mode.

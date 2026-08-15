@@ -2,8 +2,8 @@ import { afterEach, expect, test } from 'bun:test'
 import { mkdtemp, readFile, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { ingestLocalWikiSource } from './ingest.js'
-import { getWikiPaths } from './paths.js'
+import { ingestLocalWikiSource } from 'src/services/wiki/ingest.js'
+import { getWikiPaths } from 'src/services/wiki/paths.js'
 
 const tempDirs: string[] = []
 

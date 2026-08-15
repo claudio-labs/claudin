@@ -36,12 +36,12 @@ import { tokenCountWithEstimation } from 'src/services/context/tokens.js'
 import {
   getBashPromptAllowDescriptions,
   getBashPromptDenyDescriptions,
-} from './bashClassifier.js'
+} from 'src/services/permissions/bashClassifier.js'
 import {
   extractToolUseBlock,
   parseClassifierResponse,
-} from './classifierShared.js'
-import { getClaudeTempDir } from './filesystem.js'
+} from 'src/services/permissions/classifierShared.js'
+import { getClaudeTempDir } from 'src/services/permissions/filesystem.js'
 
 // Dead code elimination: conditional imports for auto mode classifier prompts.
 // At build time, the bundler inlines .txt files as string literals. At test

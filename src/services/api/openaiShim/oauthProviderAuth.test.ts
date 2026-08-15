@@ -11,7 +11,7 @@ import { getXaiUserAgent } from 'src/services/api/xaiUserAgent.js'
 import {
   forceRefreshOAuthWebTokenOn401,
   resolveOAuthProviderAuth,
-} from './oauthProviderAuth.js'
+} from 'src/services/api/openaiShim/oauthProviderAuth.js'
 
 // This suite drives real credential round-trips (saveKimi/saveXai → resolve),
 // so it needs a working secure storage. Many sibling test files mock.module

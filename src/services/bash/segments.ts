@@ -1,4 +1,4 @@
-import { splitCommandWithOperators } from './commands.js'
+import { splitCommandWithOperators } from 'src/services/bash/commands.js'
 
 /**
  * Segment walk for compound bash commands.

@@ -8,7 +8,7 @@ import path from 'node:path'
 import { getCwd } from 'src/utils/fs/cwd.js'
 import { logError } from 'src/utils/log.js'
 
-export { execSyncWithDefaults_DEPRECATED } from './execFileNoThrowPortable.js'
+export { execSyncWithDefaults_DEPRECATED } from 'src/utils/proc/execFileNoThrowPortable.js'
 
 const MS_IN_SECOND = 1000
 const SECONDS_IN_MINUTE = 60

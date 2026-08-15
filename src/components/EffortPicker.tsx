@@ -15,12 +15,12 @@ import {
 } from 'src/utils/effort.js'
 import { getReasoningEffortForModel } from 'src/services/api/providerConfig.js'
 import { getRainbowColor } from 'src/services/context/thinking.js'
-import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js'
-import { Byline } from './design-system/Byline.js'
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js'
+import { Byline } from 'src/components/design-system/Byline.js'
 import {
   fitSliderLayout,
   SLIDER_MARKER,
-} from './EffortPicker.layout.js'
+} from 'src/components/EffortPicker.layout.js'
 
 type SliderOption = {
   /** Effort value to apply on select. `'adaptive'` is the sentinel. */

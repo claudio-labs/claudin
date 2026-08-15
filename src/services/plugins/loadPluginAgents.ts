@@ -23,14 +23,14 @@ import {
   parseAgentToolsFromFrontmatter,
   parseSlashCommandToolsFromFrontmatter,
 } from 'src/services/instructions/markdownConfigLoader.js'
-import { loadAllPluginsCacheOnly } from './pluginLoader.js'
+import { loadAllPluginsCacheOnly } from 'src/services/plugins/pluginLoader.js'
 import {
   loadPluginOptions,
   substitutePluginVariables,
   substituteUserConfigInContent,
-} from './pluginOptionsStorage.js'
-import type { PluginManifest } from './schemas.js'
-import { walkPluginMarkdown } from './walkPluginMarkdown.js'
+} from 'src/services/plugins/pluginOptionsStorage.js'
+import type { PluginManifest } from 'src/services/plugins/schemas.js'
+import { walkPluginMarkdown } from 'src/services/plugins/walkPluginMarkdown.js'
 
 const VALID_MEMORY_SCOPES: AgentMemoryScope[] = ['user', 'project', 'local']
 

@@ -3,7 +3,7 @@ import {
   MAX_ENTRYPOINT_BYTES,
   MAX_ENTRYPOINT_LINES,
 } from 'src/memdir/memdir.js'
-import { buildMemoryTidyPrompt } from './tidyPrompt.js'
+import { buildMemoryTidyPrompt } from 'src/commands/memory/tidyPrompt.js'
 
 const PRIVATE_ROOT = '/repo/.claudin/memory'
 const TEAM_ROOT = '/repo/.claudin/memory/team'

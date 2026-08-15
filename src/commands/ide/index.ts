@@ -5,7 +5,7 @@ const ide = {
   name: 'ide',
   description: 'Manage IDE integrations and show status',
   argumentHint: '[open]',
-  load: () => import('./ide.js'),
+  load: () => import('src/commands/ide/ide.js'),
 } satisfies Command
 
 export default ide

@@ -1,5 +1,5 @@
-import type { SearchInput, SearchProvider } from './types.js'
-import { applyDomainFilters, type ProviderOutput } from './types.js'
+import type { SearchInput, SearchProvider } from 'src/tools/WebSearchTool/providers/types.js'
+import { applyDomainFilters, type ProviderOutput } from 'src/tools/WebSearchTool/providers/types.js'
 
 export const firecrawlProvider: SearchProvider = {
   name: 'firecrawl',

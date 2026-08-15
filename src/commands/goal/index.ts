@@ -14,7 +14,7 @@ const goal = {
   description:
     'Set a session-scoped stopping condition — an LLM judge blocks stopping until it is met',
   argumentHint: '<condition> | clear',
-  load: () => import('./goal.js'),
+  load: () => import('src/commands/goal/goal.js'),
 } satisfies Command
 
 export default goal

@@ -13,7 +13,7 @@
 import { createHash } from 'crypto'
 import { logForDebugging } from 'src/utils/debug.js'
 import { getHeadForDir } from 'src/services/git/gitFilesystem.js'
-import type { PluginManifest, PluginSource } from './schemas.js'
+import type { PluginManifest, PluginSource } from 'src/services/plugins/schemas.js'
 
 /**
  * Calculate the version for a plugin based on its source.

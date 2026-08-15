@@ -75,8 +75,8 @@ import { pathInWorkingPath } from 'src/services/permissions/filesystem.js'
 import {
   getProjectInstructionFilePath,
   isProjectInstructionFileName,
-} from './projectInstructions.js'
-import { inspectRuleFrontmatter } from './ruleFrontmatter.js'
+} from 'src/services/instructions/projectInstructions.js'
+import { inspectRuleFrontmatter } from 'src/services/instructions/ruleFrontmatter.js'
 import { isSettingSourceEnabled } from 'src/services/settings/constants.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
 

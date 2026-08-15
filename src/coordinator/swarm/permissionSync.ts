@@ -41,7 +41,7 @@ import {
   createSandboxPermissionResponseMessage,
   writeToMailbox,
 } from 'src/coordinator/teammateMailbox.js'
-import { getTeamDir, readTeamFileAsync } from './teamHelpers.js'
+import { getTeamDir, readTeamFileAsync } from 'src/coordinator/swarm/teamHelpers.js'
 
 /**
  * Full request schema for a permission request from a worker to the leader

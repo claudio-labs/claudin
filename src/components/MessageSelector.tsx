@@ -14,8 +14,8 @@ import { useKeybinding, useKeybindings } from 'src/keybindings/useKeybinding.js'
 import type { Message, PartialCompactDirection, UserMessage } from 'src/types/message.js';
 import { stripDisplayTags } from 'src/utils/text/displayTags.js';
 import { createUserMessage, extractTag, isEmptyMessageText, isSyntheticMessage, isToolUseResultMessage } from 'src/services/messages/messages.js';
-import { type OptionWithDescription, Select } from './CustomSelect/select.js';
-import { Spinner } from './Spinner.js';
+import { type OptionWithDescription, Select } from 'src/components/CustomSelect/select.js';
+import { Spinner } from 'src/components/Spinner.js';
 function isTextBlock(block: ContentBlockParam): block is TextBlockParam {
   return block.type === 'text';
 }
@@ -27,7 +27,7 @@ import { BASH_STDERR_TAG, BASH_STDOUT_TAG, COMMAND_MESSAGE_TAG, LOCAL_COMMAND_ST
 import { count } from 'src/utils/data/array.js';
 import { formatRelativeTimeAgo, truncate } from 'src/utils/text/format.js';
 import type { Theme } from 'src/utils/theme.js';
-import { Divider } from './design-system/Divider.js';
+import { Divider } from 'src/components/design-system/Divider.js';
 type RestoreOption = 'both' | 'conversation' | 'code' | 'summarize' | 'summarize_up_to' | 'nevermind';
 function isSummarizeOption(option: RestoreOption | null): option is 'summarize' | 'summarize_up_to' {
   return option === 'summarize' || option === 'summarize_up_to';

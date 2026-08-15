@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { AutoFixConfigSchema, getAutoFixConfig, type AutoFixConfig } from './autoFixConfig.js'
+import { AutoFixConfigSchema, getAutoFixConfig, type AutoFixConfig } from 'src/services/autoFix/autoFixConfig.js'
 
 describe('AutoFixConfigSchema', () => {
   test('parses valid full config', () => {

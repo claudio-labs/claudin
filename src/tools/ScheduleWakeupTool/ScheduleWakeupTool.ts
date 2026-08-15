@@ -19,8 +19,8 @@ import {
   SCHEDULE_WAKEUP_TOOL_NAME,
   WAKEUP_MAX_DELAY_SECONDS,
   WAKEUP_MIN_DELAY_SECONDS,
-} from './prompt.js'
-import { renderWakeupResultMessage, renderWakeupToolUseMessage } from './UI.js'
+} from 'src/tools/ScheduleWakeupTool/prompt.js'
+import { renderWakeupResultMessage, renderWakeupToolUseMessage } from 'src/tools/ScheduleWakeupTool/UI.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({

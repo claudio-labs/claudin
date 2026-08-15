@@ -19,18 +19,18 @@ import {
   clearMarketplacesCache,
   getDeclaredMarketplaces,
   registerSeedMarketplaces,
-} from './marketplaceManager.js'
-import { detectAndUninstallDelistedPlugins } from './pluginBlocklist.js'
-import { clearPluginCache } from './pluginLoader.js'
-import { reconcileMarketplaces } from './reconciler.js'
+} from 'src/services/plugins/marketplaceManager.js'
+import { detectAndUninstallDelistedPlugins } from 'src/services/plugins/pluginBlocklist.js'
+import { clearPluginCache } from 'src/services/plugins/pluginLoader.js'
+import { reconcileMarketplaces } from 'src/services/plugins/reconciler.js'
 import {
   cleanupSessionPluginCache,
   getZipCacheMarketplacesDir,
   getZipCachePluginsDir,
   isMarketplaceSourceSupportedByZipCache,
   isPluginZipCacheEnabled,
-} from './zipCache.js'
-import { syncMarketplacesToZipCache } from './zipCacheAdapters.js'
+} from 'src/services/plugins/zipCache.js'
+import { syncMarketplacesToZipCache } from 'src/services/plugins/zipCacheAdapters.js'
 
 /**
  * Install plugins for headless/CCR mode.

@@ -21,9 +21,9 @@ import { applyMarkdown } from 'src/utils/text/markdown.js';
 import { isPlanModeInterviewPhaseEnabled } from 'src/utils/planModeV2.js';
 import { getPlanFilePath } from 'src/utils/plans.js';
 import type { PermissionRequestProps } from 'src/components/permissions/PermissionRequest.js';
-import { QuestionView } from './QuestionView.js';
-import { SubmitQuestionsView } from './SubmitQuestionsView.js';
-import { useMultipleChoiceState } from './use-multiple-choice-state.js';
+import { QuestionView } from 'src/components/permissions/AskUserQuestionPermissionRequest/QuestionView.js';
+import { SubmitQuestionsView } from 'src/components/permissions/AskUserQuestionPermissionRequest/SubmitQuestionsView.js';
+import { useMultipleChoiceState } from 'src/components/permissions/AskUserQuestionPermissionRequest/use-multiple-choice-state.js';
 const MIN_CONTENT_HEIGHT = 12;
 const MIN_CONTENT_WIDTH = 40;
 // Lines used by chrome around the content area (nav bar, title, footer, help text, etc.)

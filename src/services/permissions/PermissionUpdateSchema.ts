@@ -12,11 +12,11 @@ import type {
   PermissionUpdateDestination,
 } from 'src/types/permissions.js'
 import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { externalPermissionModeSchema } from './PermissionMode.js'
+import { externalPermissionModeSchema } from 'src/services/permissions/PermissionMode.js'
 import {
   permissionBehaviorSchema,
   permissionRuleValueSchema,
-} from './PermissionRule.js'
+} from 'src/services/permissions/PermissionRule.js'
 
 // Re-export for backwards compatibility
 export type { PermissionUpdate, PermissionUpdateDestination }

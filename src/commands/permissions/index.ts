@@ -5,7 +5,7 @@ const permissions = {
   name: 'permissions',
   aliases: ['allowed-tools'],
   description: 'Manage allow & deny tool permission rules',
-  load: () => import('./permissions.js'),
+  load: () => import('src/commands/permissions/permissions.js'),
 } satisfies Command
 
 export default permissions

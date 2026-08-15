@@ -9,15 +9,15 @@ import type { ClickEvent } from 'src/ink/events/click-event.js';
 import type { MatchPosition } from 'src/ink/render-to-screen.js';
 import { Box } from 'src/ink.js';
 import type { RenderableMessage } from 'src/types/message.js';
-import { TextHoverColorContext } from './design-system/ThemedText.js';
-import { ScrollChromeContext } from './FullscreenLayout.js';
+import { TextHoverColorContext } from 'src/components/design-system/ThemedText.js';
+import { ScrollChromeContext } from 'src/components/FullscreenLayout.js';
 
 // Rows of breathing room above the target when we scrollTo.
 const HEADROOM = 3;
 import { logForDebugging } from 'src/utils/debug.js';
 import { sleep } from 'src/utils/sleep.js';
 import { renderableSearchText } from 'src/services/session/transcriptSearch.js';
-import { isNavigableMessage, type MessageActionsNav, type MessageActionsState, type NavigableMessage, type NavigableType, stripSystemReminders, toolCallOf } from './messageActions.js';
+import { isNavigableMessage, type MessageActionsNav, type MessageActionsState, type NavigableMessage, type NavigableType, stripSystemReminders, toolCallOf } from 'src/components/messageActions.js';
 
 // Fallback extractor: lower + cache here for callers without the
 // Messages.tsx tool-lookup path (tests, static contexts). Messages.tsx

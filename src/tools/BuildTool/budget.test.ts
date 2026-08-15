@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { formatBuildResult, formatDuration } from './budget.js'
-import type { BuildDiagnostic, BuildResult } from './types.js'
+import { formatBuildResult, formatDuration } from 'src/tools/BuildTool/budget.js'
+import type { BuildDiagnostic, BuildResult } from 'src/tools/BuildTool/types.js'
 
 function diagnostic(overrides: Partial<BuildDiagnostic> = {}): BuildDiagnostic {
   return {

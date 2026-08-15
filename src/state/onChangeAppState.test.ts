@@ -8,7 +8,7 @@ import {
   test,
 } from 'bun:test'
 
-import type { AppState } from './AppStateStore.js'
+import type { AppState } from 'src/state/AppStateStore.js'
 import { getEmptyToolPermissionContext } from 'src/Tool.js'
 import type { ProjectConfig } from 'src/services/config/config.js'
 

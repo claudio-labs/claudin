@@ -18,7 +18,7 @@ const cacheStats = {
   description:
     'Show per-turn and session cache hit/miss stats (works across all providers)',
   supportsNonInteractive: true,
-  load: () => import('./cacheStats.js'),
+  load: () => import('src/commands/cacheStats/cacheStats.js'),
 } satisfies Command
 
 export default cacheStats

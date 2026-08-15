@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import type { LoadedPlugin } from 'src/types/plugin.js'
-import { mergePluginSources } from './pluginLoader.js'
+import { mergePluginSources } from 'src/services/plugins/pluginLoader.js'
 
 function marketplacePlugin(
   name: string,

@@ -52,25 +52,25 @@ import {
   getBridgeAccessToken,
   getBridgeBaseUrl,
   getBridgeTokenOverride,
-} from './bridgeConfig.js'
+} from 'src/bridge/bridgeConfig.js'
 import {
   checkBridgeMinVersion,
   isBridgeEnabledBlocking,
   isCseShimEnabled,
   isEnvLessBridgeEnabled,
-} from './bridgeEnabled.js'
+} from 'src/bridge/bridgeEnabled.js'
 import {
   archiveBridgeSession,
   createBridgeSession,
   updateBridgeSessionTitle,
-} from './createSession.js'
-import { logBridgeSkip } from './debugUtils.js'
-import { checkEnvLessBridgeMinVersion } from './envLessBridgeConfig.js'
-import { getPollIntervalConfig } from './pollConfig.js'
-import type { BridgeState, ReplBridgeHandle } from './replBridge.js'
-import { initBridgeCore } from './replBridge.js'
-import { setCseShimGate } from './sessionIdCompat.js'
-import type { BridgeWorkerType } from './types.js'
+} from 'src/bridge/createSession.js'
+import { logBridgeSkip } from 'src/bridge/debugUtils.js'
+import { checkEnvLessBridgeMinVersion } from 'src/bridge/envLessBridgeConfig.js'
+import { getPollIntervalConfig } from 'src/bridge/pollConfig.js'
+import type { BridgeState, ReplBridgeHandle } from 'src/bridge/replBridge.js'
+import { initBridgeCore } from 'src/bridge/replBridge.js'
+import { setCseShimGate } from 'src/bridge/sessionIdCompat.js'
+import type { BridgeWorkerType } from 'src/bridge/types.js'
 
 export type InitBridgeOptions = {
   onInboundMessage?: (msg: SDKMessage) => void | Promise<void>
@@ -421,7 +421,7 @@ export async function initReplBridge(
     logForDebugging(
       '[bridge:repl] Using env-less bridge path (tengu_bridge_repl_v2)',
     )
-    const { initEnvLessBridgeCore } = await import('./remoteBridgeCore.js')
+    const { initEnvLessBridgeCore } = await import('src/bridge/remoteBridgeCore.js')
     return initEnvLessBridgeCore({
       baseUrl,
       orgUUID,

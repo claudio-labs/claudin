@@ -14,7 +14,7 @@ import { getRelativeSettingsFilePathForSource } from 'src/services/settings/sett
 import { plural } from 'src/utils/text/stringUtils.js';
 import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
-import { PermissionRuleDescription } from './PermissionRuleDescription.js';
+import { PermissionRuleDescription } from 'src/components/permissions/rules/PermissionRuleDescription.js';
 export function optionForPermissionSaveDestination(saveDestination: EditableSettingSource): OptionWithDescription {
   switch (saveDestination) {
     case 'localSettings':

@@ -19,19 +19,19 @@ import {
   updateSettingsForSource,
 } from 'src/services/settings/settings.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { CONFIG_TOOL_NAME } from './constants.js'
-import { DESCRIPTION, generatePrompt } from './prompt.js'
+import { CONFIG_TOOL_NAME } from 'src/tools/ConfigTool/constants.js'
+import { DESCRIPTION, generatePrompt } from 'src/tools/ConfigTool/prompt.js'
 import {
   getConfig,
   getOptionsForSetting,
   getPath,
   isSupported,
-} from './supportedSettings.js'
+} from 'src/tools/ConfigTool/supportedSettings.js'
 import {
   renderToolResultMessage,
   renderToolUseMessage,
   renderToolUseRejectedMessage,
-} from './UI.js'
+} from 'src/tools/ConfigTool/UI.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({

@@ -6,8 +6,8 @@ import type { Key } from 'src/ink.js'
 import type { PastedContent } from 'src/services/config/config.js'
 import type { ImageDimensions } from 'src/utils/imageResizer.js'
 import type { TextHighlight } from 'src/utils/text/textHighlighting.js'
-import type { AgentId } from './ids.js'
-import type { AssistantMessage, MessageOrigin } from './message.js'
+import type { AgentId } from 'src/types/ids.js'
+import type { AssistantMessage, MessageOrigin } from 'src/types/message.js'
 
 /**
  * Inline ghost text for mid-input command autocomplete

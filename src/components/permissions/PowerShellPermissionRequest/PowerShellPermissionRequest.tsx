@@ -18,7 +18,7 @@ import type { PermissionRequestProps } from 'src/components/permissions/Permissi
 import { PermissionRuleExplanation } from 'src/components/permissions/PermissionRuleExplanation.js';
 import { useShellPermissionFeedback } from 'src/components/permissions/useShellPermissionFeedback.js';
 import { logUnaryPermissionEvent } from 'src/components/permissions/utils.js';
-import { powershellToolUseOptions } from './powershellToolUseOptions.js';
+import { powershellToolUseOptions } from 'src/components/permissions/PowerShellPermissionRequest/powershellToolUseOptions.js';
 export function PowerShellPermissionRequest(props: PermissionRequestProps): React.ReactNode {
   const {
     toolUseConfirm,

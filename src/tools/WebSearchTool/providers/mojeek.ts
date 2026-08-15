@@ -4,8 +4,8 @@
  * Auth: optional Bearer for API tier
  */
 
-import type { SearchInput, SearchProvider } from './types.js'
-import { applyDomainFilters, safeHostname, type ProviderOutput } from './types.js'
+import type { SearchInput, SearchProvider } from 'src/tools/WebSearchTool/providers/types.js'
+import { applyDomainFilters, safeHostname, type ProviderOutput } from 'src/tools/WebSearchTool/providers/types.js'
 
 export const mojeekProvider: SearchProvider = {
   name: 'mojeek',

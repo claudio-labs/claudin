@@ -1,4 +1,4 @@
-import { LayoutEdge, type LayoutNode } from './layout/node.js'
+import { LayoutEdge, type LayoutNode } from 'src/ink/layout/node.js'
 
 /**
  * Returns the yoga node's content width (computed width minus padding and

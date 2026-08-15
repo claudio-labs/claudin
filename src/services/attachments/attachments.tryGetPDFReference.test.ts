@@ -30,7 +30,7 @@ mock.module('src/utils/fs/fsOperations.js', () => ({
   }),
 }))
 
-import { tryGetPDFReference } from './attachments.js'
+import { tryGetPDFReference } from 'src/services/attachments/attachments.js'
 
 // Scope: covers tryGetPDFReference, the lightweight reference path used by
 // generateFileAttachment for large PDFs on @-mention. The richer

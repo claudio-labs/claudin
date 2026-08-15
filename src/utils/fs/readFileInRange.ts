@@ -46,7 +46,7 @@
 import { createReadStream, fstat } from 'fs'
 import { stat as fsStat, readFile } from 'fs/promises'
 import { formatFileSize } from 'src/utils/text/format.js'
-import { createTextDecoder, encodingOverride } from './textEncoding.js'
+import { createTextDecoder, encodingOverride } from 'src/utils/fs/textEncoding.js'
 
 const FAST_PATH_MAX_SIZE = 10 * 1024 * 1024 // 10 MB
 

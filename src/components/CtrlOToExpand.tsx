@@ -4,8 +4,8 @@ import React, { useContext } from 'react';
 import { Text } from 'src/ink.js';
 import { getShortcutDisplay } from 'src/keybindings/shortcutFormat.js';
 import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
-import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
-import { InVirtualListContext } from './messageActions.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { InVirtualListContext } from 'src/components/messageActions.js';
 
 // Context to track if we're inside a sub agent
 // Similar to MessageResponseContext, this helps us avoid showing

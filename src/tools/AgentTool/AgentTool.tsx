@@ -47,17 +47,17 @@ import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
 import { BackgroundHint } from 'src/tools/BashTool/UI.js';
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js';
 import { spawnTeammate } from 'src/tools/shared/spawnMultiAgent.js';
-import { setAgentColor } from './agentColorManager.js';
-import { agentToolResultSchema, classifyHandoffIfNeeded, emitTaskProgress, extractPartialResult, finalizeAgentTool, getLastToolUseName, runAsyncAgentLifecycle } from './agentToolUtils.js';
-import { GENERAL_PURPOSE_AGENT } from './built-in/generalPurposeAgent.js';
-import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME, ONE_SHOT_BUILTIN_AGENT_TYPES } from './constants.js';
-import { allowsImplicitAutoBackground } from './autoBackground.js';
-import { buildAgentWorktreeNotice, buildForkedMessages, buildWorktreeNotice, FORK_AGENT, isForkSubagentEnabled, isInForkChild } from './forkSubagent.js';
-import type { AgentDefinition } from './loadAgentsDir.js';
-import { filterAgentsByMcpRequirements, hasRequiredMcpServers, isBuiltInAgent } from './loadAgentsDir.js';
-import { getPrompt } from './prompt.js';
-import { runAgent } from './runAgent.js';
-import { renderGroupedAgentToolUse, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseRejectedMessage, renderToolUseTag, userFacingName, userFacingNameBackgroundColor } from './UI.js';
+import { setAgentColor } from 'src/tools/AgentTool/agentColorManager.js';
+import { agentToolResultSchema, classifyHandoffIfNeeded, emitTaskProgress, extractPartialResult, finalizeAgentTool, getLastToolUseName, runAsyncAgentLifecycle } from 'src/tools/AgentTool/agentToolUtils.js';
+import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js';
+import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME, ONE_SHOT_BUILTIN_AGENT_TYPES } from 'src/tools/AgentTool/constants.js';
+import { allowsImplicitAutoBackground } from 'src/tools/AgentTool/autoBackground.js';
+import { buildAgentWorktreeNotice, buildForkedMessages, buildWorktreeNotice, FORK_AGENT, isForkSubagentEnabled, isInForkChild } from 'src/tools/AgentTool/forkSubagent.js';
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
+import { filterAgentsByMcpRequirements, hasRequiredMcpServers, isBuiltInAgent } from 'src/tools/AgentTool/loadAgentsDir.js';
+import { getPrompt } from 'src/tools/AgentTool/prompt.js';
+import { runAgent } from 'src/tools/AgentTool/runAgent.js';
+import { renderGroupedAgentToolUse, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseRejectedMessage, renderToolUseTag, userFacingName, userFacingNameBackgroundColor } from 'src/tools/AgentTool/UI.js';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../../proactive/index.js') as typeof import('../../proactive/index.js') : null;

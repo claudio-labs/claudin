@@ -49,7 +49,7 @@ mock.module('src/utils/debug.js', () => ({
   logForDebugging: debugMock,
 }));
 
-const { killBackgroundTask } = await import('./taskActions.js');
+const { killBackgroundTask } = await import('src/components/tasks/taskActions.js');
 
 afterAll(() => {
   // Re-pin the real LocalAgentTask so the next file's getVisibleAgentTasks

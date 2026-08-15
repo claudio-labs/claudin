@@ -45,15 +45,15 @@ import {
   AGENT_COLORS,
   type AgentColorName,
   setAgentColor,
-} from './agentColorManager.js'
-import { type AgentMemoryScope, loadAgentMemoryPrompt } from './agentMemory.js'
+} from 'src/tools/AgentTool/agentColorManager.js'
+import { type AgentMemoryScope, loadAgentMemoryPrompt } from 'src/tools/AgentTool/agentMemory.js'
 import {
   checkAgentMemorySnapshot,
   initializeFromSnapshot,
-} from './agentMemorySnapshot.js'
-import { getBuiltInAgents } from './builtInAgents.js'
-import { applyBuiltInModelOverrides } from './builtInModelOverrides.js'
-import { applyProjectAgentOverrides } from './projectAgentOverrides.js'
+} from 'src/tools/AgentTool/agentMemorySnapshot.js'
+import { getBuiltInAgents } from 'src/tools/AgentTool/builtInAgents.js'
+import { applyBuiltInModelOverrides } from 'src/tools/AgentTool/builtInModelOverrides.js'
+import { applyProjectAgentOverrides } from 'src/tools/AgentTool/projectAgentOverrides.js'
 
 // Type for MCP server specification in agent definitions
 // Can be either a reference to an existing server by name, or an inline definition as { [name]: config }

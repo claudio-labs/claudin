@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { allowsImplicitAutoBackground } from './autoBackground.js'
-import { FORK_SUBAGENT_TYPE } from './forkSubagent.js'
+import { allowsImplicitAutoBackground } from 'src/tools/AgentTool/autoBackground.js'
+import { FORK_SUBAGENT_TYPE } from 'src/tools/AgentTool/forkSubagent.js'
 
 describe('allowsImplicitAutoBackground', () => {
   test('one-shot built-ins stay inline so the parent gets the report this turn', () => {

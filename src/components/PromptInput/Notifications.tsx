@@ -30,10 +30,10 @@ import { IdeStatusIndicator } from 'src/components/IdeStatusIndicator.js';
 import { SessionTokensIndicator } from 'src/components/SessionTokensIndicator.js';
 import { SentryErrorBoundary } from 'src/components/SentryErrorBoundary.js';
 import { TokenWarning } from 'src/components/TokenWarning.js';
-import { SandboxPromptFooterHint } from './SandboxPromptFooterHint.js';
+import { SandboxPromptFooterHint } from 'src/components/PromptInput/SandboxPromptFooterHint.js';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-const VoiceIndicator: typeof import('./VoiceIndicator.js').VoiceIndicator = feature('VOICE_MODE') ? require('./VoiceIndicator.js').VoiceIndicator : () => null;
+const VoiceIndicator: typeof import('src/components/PromptInput/VoiceIndicator.js').VoiceIndicator = feature('VOICE_MODE') ? require('src/components/PromptInput/VoiceIndicator.js').VoiceIndicator : () => null;
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 export const FOOTER_TEMPORARY_STATUS_TIMEOUT = 5000;

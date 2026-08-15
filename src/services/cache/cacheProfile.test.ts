@@ -6,7 +6,7 @@ import {
   _resetCacheProfileForTesting,
   getCacheProfile,
   resolveProfileForProvider,
-} from './cacheProfile.js'
+} from 'src/services/cache/cacheProfile.js'
 
 const originalEnv = process.env.CLAUDIN_CACHE_PROFILE
 

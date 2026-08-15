@@ -27,7 +27,7 @@ import {
   SDKStreamlinedToolUseSummaryMessageSchema,
   SDKUserMessageSchema,
   SlashCommandSchema,
-} from './coreSchemas.js'
+} from 'src/entrypoints/sdk/coreSchemas.js'
 
 // ============================================================================
 // External Type Placeholders

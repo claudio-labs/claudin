@@ -18,7 +18,7 @@ import {
   ignoreSurroundingWs,
   ignoreTrailingWs,
 } from 'src/tools/shared/fuzzyLineMatch.js'
-import type { EditInput, FileEdit } from './types.js'
+import type { EditInput, FileEdit } from 'src/tools/FileEditTool/types.js'
 
 /**
  * Groups items that carry a `filePath` by that path, preserving the order in

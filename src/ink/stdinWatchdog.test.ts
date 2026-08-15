@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { isStdinWatchdogEnabled, StdinWatchdog } from './stdinWatchdog.js'
+import { isStdinWatchdogEnabled, StdinWatchdog } from 'src/ink/stdinWatchdog.js'
 
 type FakeStdin = {
   isTTY: boolean

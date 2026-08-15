@@ -8,13 +8,13 @@ import { which } from 'src/utils/proc/which.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from './analytics/index.js'
+} from 'src/services/analytics/index.js'
 import {
   appleScriptString,
   buildWindowsToastScript,
   makeDebouncer,
   pickOscChannel,
-} from './notifierHelpers.js'
+} from 'src/services/notifierHelpers.js'
 
 export type NotificationOptions = {
   message: string

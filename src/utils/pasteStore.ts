@@ -1,9 +1,9 @@
 import { createHash } from 'crypto'
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'fs/promises'
 import { join } from 'path'
-import { logForDebugging } from './debug.js'
-import { getClaudinConfigHomeDir } from './envUtils.js'
-import { isENOENT } from './errors.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
+import { isENOENT } from 'src/utils/errors.js'
 
 const PASTE_STORE_DIR = 'paste-cache'
 

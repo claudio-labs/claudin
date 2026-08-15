@@ -27,14 +27,14 @@ import type {
   ConnectedMCPServer,
   MCPServerConnection,
 } from 'src/services/mcp/types.js'
-import { clearServerCache } from './connection.js'
+import { clearServerCache } from 'src/services/mcp/client/connection.js'
 import {
   isMcpSessionExpiredError,
   McpAuthError,
   McpSessionExpiredError,
   McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from './errors.js'
-import { processMCPResult } from './toolResult.js'
+} from 'src/services/mcp/client/errors.js'
+import { processMCPResult } from 'src/services/mcp/client/toolResult.js'
 
 /**
  * Default timeout for MCP tool calls (5 minutes — reasonable for most tools).

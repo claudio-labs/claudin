@@ -14,11 +14,11 @@ import {
   COPILOT_DISPLAY_NAMES,
   COPILOT_MODELS,
   getAllCopilotModels,
-} from './copilotModels.js'
+} from 'src/utils/model/copilotModels.js'
 import {
   OPENAI_CONTEXT_WINDOWS,
   OPENAI_MAX_OUTPUT_TOKENS,
-} from './openaiContextWindows.js'
+} from 'src/utils/model/openaiContextWindows.js'
 
 const NAMESPACE_PROVIDER = 'github:copilot:' as const
 const NAMESPACE_LITELLM = 'github_copilot/' as const

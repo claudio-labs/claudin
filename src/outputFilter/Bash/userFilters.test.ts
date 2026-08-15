@@ -8,7 +8,7 @@ import {
   compileUserFilters,
   isSafeRegex,
   loadUserFilters,
-} from "./userFilters.js";
+} from "src/outputFilter/Bash/userFilters.js";
 
 // ---------------------------------------------------------------------------
 // isSafeRegex

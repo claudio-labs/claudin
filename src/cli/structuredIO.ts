@@ -52,7 +52,7 @@ import {
 } from 'src/services/session/sessionState.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
 import { Stream } from 'src/utils/stream.js'
-import { ndjsonSafeStringify } from './ndjsonSafeStringify.js'
+import { ndjsonSafeStringify } from 'src/cli/ndjsonSafeStringify.js'
 
 /**
  * Synthetic tool name used when forwarding sandbox network permission

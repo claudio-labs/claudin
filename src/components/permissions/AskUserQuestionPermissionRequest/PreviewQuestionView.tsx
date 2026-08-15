@@ -12,9 +12,9 @@ import { editPromptInEditor } from 'src/utils/promptEditor.js';
 import { Divider } from 'src/components/design-system/Divider.js';
 import TextInput from 'src/components/TextInput.js';
 import { PermissionRequestTitle } from 'src/components/permissions/PermissionRequestTitle.js';
-import { PreviewBox } from './PreviewBox.js';
-import { QuestionNavigationBar } from './QuestionNavigationBar.js';
-import type { QuestionState } from './use-multiple-choice-state.js';
+import { PreviewBox } from 'src/components/permissions/AskUserQuestionPermissionRequest/PreviewBox.js';
+import { QuestionNavigationBar } from 'src/components/permissions/AskUserQuestionPermissionRequest/QuestionNavigationBar.js';
+import type { QuestionState } from 'src/components/permissions/AskUserQuestionPermissionRequest/use-multiple-choice-state.js';
 type Props = {
   question: Question;
   questions: Question[];

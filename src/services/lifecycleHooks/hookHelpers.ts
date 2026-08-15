@@ -8,7 +8,7 @@ import { substituteArguments } from 'src/utils/argumentSubstitution.js'
 import { lazySchema } from 'src/utils/data/lazySchema.js'
 import type { SetAppState } from 'src/utils/messageQueueManager.js'
 import { hasSuccessfulToolCall } from 'src/services/messages/messages.js'
-import { addFunctionHook } from './sessionHooks.js'
+import { addFunctionHook } from 'src/services/lifecycleHooks/sessionHooks.js'
 
 /**
  * Schema for hook responses (shared by prompt and agent hooks)

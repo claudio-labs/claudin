@@ -1,14 +1,14 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 
 // Capture real modules before mocking so afterAll can restore them
-const realFsOperations = { ...(await import('./fsOperations.js')) }
-const realFileRead = { ...(await import('./fileRead.js')) }
+const realFsOperations = { ...(await import('src/utils/fs/fsOperations.js')) }
+const realFileRead = { ...(await import('src/utils/fs/fileRead.js')) }
 const realDebug = { ...(await import('src/utils/debug.js')) }
 const realLog = { ...(await import('src/utils/log.js')) }
 const realGrowthbook = { ...(await import('src/services/analytics/growthbook.js')) }
 const realAnalytics = { ...(await import('src/services/analytics/index.js')) }
-const realCwd = { ...(await import('./cwd.js')) }
-const realPath = { ...(await import('./path.js')) }
+const realCwd = { ...(await import('src/utils/fs/cwd.js')) }
+const realPath = { ...(await import('src/utils/fs/path.js')) }
 const realPlatform = { ...(await import('src/utils/proc/platform.js')) }
 const realErrors = { ...(await import('src/utils/errors.js')) }
 
@@ -74,7 +74,7 @@ mock.module('src/utils/errors.js', () => ({
   isFsInaccessible: () => false,
 }))
 
-const { fileReadCache } = await import('./fileReadCache.js')
+const { fileReadCache } = await import('src/utils/fs/fileReadCache.js')
 
 beforeEach(() => {
   fileReadCache.clear()

@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 
-import { buildMemoryLines, buildMemoryStubLines } from './memdir.js'
+import { buildMemoryLines, buildMemoryStubLines } from 'src/memdir/memdir.js'
 import {
   MEMORY_FRONTMATTER_EXAMPLE,
   MEMORY_TYPES,
   parseMemoryType,
-} from './memoryTypes.js'
-import { buildCombinedMemoryPrompt } from './teamMemPrompts.js'
+} from 'src/memdir/memoryTypes.js'
+import { buildCombinedMemoryPrompt } from 'src/memdir/teamMemPrompts.js'
 
 const DIR = '/tmp/memdir-prompt-test/memory/'
 

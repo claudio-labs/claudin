@@ -8,7 +8,7 @@ import {
   _getRememberedCountForTesting,
   applyGitDelta,
   resetGitDelta,
-} from './delta.js'
+} from 'src/tools/GitTool/delta.js'
 
 const DIFF = 'git diff'
 

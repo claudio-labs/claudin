@@ -42,7 +42,7 @@ export {
   isLegacyProgressEntry,
   isTranscriptMessage,
   type LegacyProgressEntry,
-} from './pure/typeGuards.js'
+} from 'src/services/session/pure/typeGuards.js'
 
 export {
   clearAgentTranscriptSubdir,
@@ -53,7 +53,7 @@ export {
   getTranscriptPathForSession,
   MAX_TRANSCRIPT_READ_BYTES,
   setAgentTranscriptSubdir,
-} from './pure/paths.js'
+} from 'src/services/session/pure/paths.js'
 
 export {
   type AgentMetadata,
@@ -65,7 +65,7 @@ export {
   sessionIdExists,
   writeAgentMetadata,
   writeRemoteAgentMetadata,
-} from './indexing/agents.js'
+} from 'src/services/session/indexing/agents.js'
 
 export {
   getProject,
@@ -77,7 +77,7 @@ export {
   setInternalEventWriter,
   setRemoteIngressUrlForTesting,
   setSessionFileForTesting,
-} from './persistence/project.js'
+} from 'src/services/session/persistence/project.js'
 
 export {
   adoptResumedSessionFile,
@@ -92,7 +92,7 @@ export {
   removeTranscriptMessage,
   resetSessionFilePointer,
   type TeamInfo,
-} from './persistence/record.js'
+} from 'src/services/session/persistence/record.js'
 
 export {
   cacheSessionTitle,
@@ -112,23 +112,23 @@ export {
   saveTag,
   saveTaskSummary,
   saveWorktreeState,
-} from './persistence/metadata.js'
+} from 'src/services/session/persistence/metadata.js'
 
-export { flushSessionStorage } from './persistence/flush.js'
+export { flushSessionStorage } from 'src/services/session/persistence/flush.js'
 
 export {
   extractFirstPrompt,
   extractFirstPromptFromChunk,
   getFirstMeaningfulUserMessageTextContent,
   SKIP_FIRST_PROMPT_PATTERN,
-} from './pure/firstPrompt.js'
+} from 'src/services/session/pure/firstPrompt.js'
 
 export {
   cleanMessagesForLogging,
   getUserType,
   isLoggableMessage,
   removeExtraFields,
-} from './pure/logging.js'
+} from 'src/services/session/pure/logging.js'
 
 export {
   applyPreservedSegmentRelinks,
@@ -137,18 +137,18 @@ export {
   checkResumeConsistency,
   findLatestMessage,
   recoverOrphanedParallelToolResults,
-} from './resume/chain.js'
+} from 'src/services/session/resume/chain.js'
 
 export {
   buildAttributionSnapshotChain,
   buildFileHistorySnapshotChain,
   loadTranscriptFile,
-} from './resume/transcriptLoad.js'
+} from 'src/services/session/resume/transcriptLoad.js'
 
 export {
   clearSessionMessagesCache,
   doesMessageExistInSession,
-} from './resume/cache.js'
+} from 'src/services/session/resume/cache.js'
 
 export {
   extractAgentIdsFromMessages,
@@ -156,9 +156,9 @@ export {
   getAgentTranscript,
   loadAllSubagentTranscriptsFromDisk,
   loadSubagentTranscripts,
-} from './resume/subagents.js'
+} from 'src/services/session/resume/subagents.js'
 
-export { stripPersistedToolUseResultsFromJSONLBuffer } from './pure/jsonlStripping.js'
+export { stripPersistedToolUseResultsFromJSONLBuffer } from 'src/services/session/pure/jsonlStripping.js'
 
 export {
   fetchLogs,
@@ -177,7 +177,7 @@ export {
   loadMessageLogs,
   loadTranscriptFromFile,
   enrichLogs,
-} from './indexing/liteMetadata.js'
+} from 'src/services/session/indexing/liteMetadata.js'
 
 export {
   loadAllProjectsMessageLogs,
@@ -185,6 +185,6 @@ export {
   loadSameRepoMessageLogs,
   loadSameRepoMessageLogsProgressive,
   type SessionLogResult,
-} from './indexing/crossProject.js'
+} from 'src/services/session/indexing/crossProject.js'
 
-export { searchSessionsByCustomTitle } from './indexing/search.js'
+export { searchSessionsByCustomTitle } from 'src/services/session/indexing/search.js'

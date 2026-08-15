@@ -1,15 +1,15 @@
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import { capitalize } from 'src/utils/text/stringUtils.js'
 import { logError } from 'src/utils/log.js'
-import { MODEL_ALIASES, type ModelAlias } from './aliases.js'
-import { getModelOptions } from './modelOptions.js'
-import { applyBedrockRegionPrefix, getBedrockRegionPrefix } from './bedrock.js'
+import { MODEL_ALIASES, type ModelAlias } from 'src/utils/model/aliases.js'
+import { getModelOptions } from 'src/utils/model/modelOptions.js'
+import { applyBedrockRegionPrefix, getBedrockRegionPrefix } from 'src/utils/model/bedrock.js'
 import {
   getCanonicalName,
   getRuntimeMainLoopModel,
   parseUserSpecifiedModel,
-} from './model.js'
-import { getAPIProvider, isFirstPartyAnthropicBaseUrl } from './providers.js'
+} from 'src/utils/model/model.js'
+import { getAPIProvider, isFirstPartyAnthropicBaseUrl } from 'src/utils/model/providers.js'
 
 export const AGENT_MODEL_OPTIONS = [...MODEL_ALIASES, 'inherit'] as const
 export type AgentModelAlias = (typeof AGENT_MODEL_OPTIONS)[number]

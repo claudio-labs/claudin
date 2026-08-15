@@ -50,7 +50,7 @@ import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
 import { clearFastModeCooldown, FAST_MODE_MODEL_DISPLAY, isFastModeAvailable, isFastModeEnabled, getFastModeModel, isFastModeSupportedByModel } from 'src/utils/fastMode.js';
 import { isFullscreenEnvEnabled, isFullscreenForcedByEnv } from 'src/utils/fullscreen.js';
 import { FRAME_RATE_OPTIONS, type FrameRateSetting, getEffectiveFrameRate, isFrameRateForcedByEnv } from 'src/utils/renderCadence.js';
-import { buildDisplayRows, countSettingRows, firstSelectableIndex, isSelectableRow, lastSelectableIndex, nextSelectableIndex, sectionJumpIndex } from './configGroups.js';
+import { buildDisplayRows, countSettingRows, firstSelectableIndex, isSelectableRow, lastSelectableIndex, nextSelectableIndex, sectionJumpIndex } from 'src/components/Settings/configGroups.js';
 type Props = {
   onClose: (result?: string, options?: {
     display?: CommandResultDisplay;

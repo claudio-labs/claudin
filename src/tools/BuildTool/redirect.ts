@@ -4,7 +4,7 @@ import {
   hasShellComposition,
   MEMO_LIMIT,
 } from 'src/tools/shared/redirect.js'
-import { BUILD_TOOL_NAME } from './prompt.js'
+import { BUILD_TOOL_NAME } from 'src/tools/BuildTool/prompt.js'
 
 export { MEMO_LIMIT }
 

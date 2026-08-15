@@ -10,8 +10,8 @@
  */
 
 import { getMcpConfigsByScope } from 'src/services/mcp/config.js'
-import { getSettingsWithErrors } from './settings.js'
-import type { SettingsWithErrors } from './validation.js'
+import { getSettingsWithErrors } from 'src/services/settings/settings.js'
+import type { SettingsWithErrors } from 'src/services/settings/validation.js'
 
 /**
  * Get merged settings with all validation errors, including MCP config errors.

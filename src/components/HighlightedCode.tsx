@@ -6,8 +6,8 @@ import { Ansi, Box, type DOMElement, measureElement, NoSelect, Text, useTheme } 
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
 import sliceAnsi from 'src/utils/text/sliceAnsi.js';
 import { countCharInString } from 'src/utils/text/stringUtils.js';
-import { HighlightedCodeFallback } from './HighlightedCode/Fallback.js';
-import { expectColorFile } from './StructuredDiff/colorDiff.js';
+import { HighlightedCodeFallback } from 'src/components/HighlightedCode/Fallback.js';
+import { expectColorFile } from 'src/components/StructuredDiff/colorDiff.js';
 type Props = {
   code: string;
   filePath: string;

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { MonitorTool } from './MonitorTool.js'
+import { MonitorTool } from 'src/tools/MonitorTool/MonitorTool.js'
 
 describe('MonitorTool', () => {
   test('isConcurrencySafe is true and userFacingName is Monitor', () => {

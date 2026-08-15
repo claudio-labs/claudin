@@ -19,7 +19,7 @@ import {
   COPILOT_MODELS,
   getAllCopilotModels,
   type CopilotModel,
-} from './copilotModels.js'
+} from 'src/utils/model/copilotModels.js'
 
 const CATALOG_TIMEOUT_MS = 5000
 

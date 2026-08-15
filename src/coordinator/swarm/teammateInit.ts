@@ -16,7 +16,7 @@ import {
   getLastPeerDmSummary,
   writeToMailbox,
 } from 'src/coordinator/teammateMailbox.js'
-import { readTeamFile, setMemberActive } from './teamHelpers.js'
+import { readTeamFile, setMemberActive } from 'src/coordinator/swarm/teamHelpers.js'
 
 /**
  * Initializes hooks for a teammate running in a swarm.

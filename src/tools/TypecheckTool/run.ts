@@ -6,10 +6,10 @@ import { readFullShellOutput } from 'src/services/shell/fullOutput.js'
 import { TaskOutput } from 'src/tasks/TaskOutput.js'
 import { readSourceExcerpt } from 'src/tools/shared/sourceExcerpt.js'
 import { tailLabel } from 'src/tools/shared/progressTail.js'
-import { resolveBaseline, type BaselineMode } from './baseline.js'
-import { fingerprintDiagnostic, normalizeDiagnosticPath } from './fingerprint.js'
-import { parseCheckerOutput } from './parseChain.js'
-import type { Checker, CheckProgress, CheckResult, Diagnostic, RawDiagnostic } from './types.js'
+import { resolveBaseline, type BaselineMode } from 'src/tools/TypecheckTool/baseline.js'
+import { fingerprintDiagnostic, normalizeDiagnosticPath } from 'src/tools/TypecheckTool/fingerprint.js'
+import { parseCheckerOutput } from 'src/tools/TypecheckTool/parseChain.js'
+import type { Checker, CheckProgress, CheckResult, Diagnostic, RawDiagnostic } from 'src/tools/TypecheckTool/types.js'
 
 /**
  * Execution orchestrator: run the checker, read its FULL output, parse it,

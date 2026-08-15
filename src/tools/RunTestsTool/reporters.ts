@@ -1,7 +1,7 @@
 import { randomBytes } from 'crypto'
 import * as os from 'os'
 import * as path from 'path'
-import type { Framework } from './types.js'
+import type { Framework } from 'src/tools/RunTestsTool/types.js'
 
 /**
  * Reporter-flag injection. For each framework we prefer to append a *built-in*

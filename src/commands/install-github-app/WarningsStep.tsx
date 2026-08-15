@@ -4,7 +4,7 @@ import React from 'react';
 import { GITHUB_ACTION_SETUP_DOCS_URL } from 'src/constants/github-app.js';
 import { Box, Text } from 'src/ink.js';
 import { useKeybinding } from 'src/keybindings/useKeybinding.js';
-import type { Warning } from './types.js';
+import type { Warning } from 'src/commands/install-github-app/types.js';
 interface WarningsStepProps {
   warnings: Warning[];
   onContinue: () => void;

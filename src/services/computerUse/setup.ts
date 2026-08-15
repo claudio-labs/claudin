@@ -5,8 +5,8 @@ import { buildMcpToolName } from 'src/services/mcp/mcpStringUtils.js'
 import type { ScopedMcpServerConfig } from 'src/services/mcp/types.js'
 
 import { isInBundledMode } from 'src/services/install/bundledMode.js'
-import { CLI_CU_CAPABILITIES, COMPUTER_USE_MCP_SERVER_NAME } from './common.js'
-import { getChicagoCoordinateMode } from './gates.js'
+import { CLI_CU_CAPABILITIES, COMPUTER_USE_MCP_SERVER_NAME } from 'src/services/computerUse/common.js'
+import { getChicagoCoordinateMode } from 'src/services/computerUse/gates.js'
 
 /**
  * Build the dynamic MCP config + allowed tool names. Mirror of

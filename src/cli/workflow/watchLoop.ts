@@ -19,8 +19,8 @@ import {
   UrlSource,
   type TriggerItem,
   type TriggerSource,
-} from './sources.js'
-import { loadProcessed, saveProcessed } from './watchState.js'
+} from 'src/cli/workflow/sources.js'
+import { loadProcessed, saveProcessed } from 'src/cli/workflow/watchState.js'
 
 export type WatchLoopOptions = {
   label: string

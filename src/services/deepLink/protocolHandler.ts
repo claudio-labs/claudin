@@ -18,10 +18,10 @@ import {
   getKnownPathsForRepo,
 } from 'src/services/git/githubRepoPathMapping.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { readLastFetchTime } from './banner.js'
-import { parseDeepLink } from './parseDeepLink.js'
-import { MACOS_BUNDLE_ID } from './registerProtocol.js'
-import { launchInTerminal } from './terminalLauncher.js'
+import { readLastFetchTime } from 'src/services/deepLink/banner.js'
+import { parseDeepLink } from 'src/services/deepLink/parseDeepLink.js'
+import { MACOS_BUNDLE_ID } from 'src/services/deepLink/registerProtocol.js'
+import { launchInTerminal } from 'src/services/deepLink/terminalLauncher.js'
 
 /**
  * Handle an incoming deep link URI.

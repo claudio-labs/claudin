@@ -17,8 +17,8 @@ import {
   getPlanModeV2ExploreAgentCount,
   isPlanModeInterviewPhaseEnabled,
 } from 'src/utils/planModeV2.js'
-import { createUserMessage } from './factories.js'
-import { wrapMessagesInSystemReminder } from './text.js'
+import { createUserMessage } from 'src/services/messages/factories.js'
+import { wrapMessagesInSystemReminder } from 'src/services/messages/text.js'
 
 export function getPlanModeInstructions(attachment: {
   reminderType: 'full' | 'sparse'

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { AskUserQuestionTool } from './AskUserQuestionTool.js'
+import { AskUserQuestionTool } from 'src/tools/AskUserQuestionTool/AskUserQuestionTool.js'
 
 function validQuestion(over: Record<string, unknown> = {}) {
   return {

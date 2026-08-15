@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { getTheme, THEME_NAMES } from './theme.js'
+import { getTheme, THEME_NAMES } from 'src/utils/theme.js'
 
 test("'terminal' theme exposes the full palette", () => {
   const ref = Object.keys(getTheme('dark'))

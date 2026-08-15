@@ -5,7 +5,7 @@ import { getClaudinConfigHomeDir } from "src/utils/envUtils.js";
 import { ClaudeError } from "src/utils/errors.js";
 import { logError } from "src/utils/log.js";
 import { z } from "zod/v4";
-import type { FilterSpec } from "./types.js";
+import type { FilterSpec } from "src/outputFilter/Bash/types.js";
 
 const REGEX_MAX_LEN = 500;
 

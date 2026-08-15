@@ -6,7 +6,7 @@ import { join } from 'path'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { Message } from 'src/types/message.js'
 import { createTask, getTaskListId, resetTaskList } from 'src/tasks/tasks.js'
-import { getTaskReminderAttachments } from './lifecycle.js'
+import { getTaskReminderAttachments } from 'src/services/attachments/lifecycle.js'
 
 const TASK_LIST_ID = 'lifecycle-archived-test'
 let configDir: string

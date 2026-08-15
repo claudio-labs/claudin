@@ -26,7 +26,7 @@ import { stripDisplayTagsAllowEmpty } from 'src/utils/text/displayTags.js'
 import { errorMessage } from 'src/utils/errors.js'
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
-import type { ReplBridgeTransport } from './replBridgeTransport.js'
+import type { ReplBridgeTransport } from 'src/bridge/replBridgeTransport.js'
 
 // ─── Type guards ─────────────────────────────────────────────────────────────
 

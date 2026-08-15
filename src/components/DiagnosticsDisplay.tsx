@@ -5,8 +5,8 @@ import { Box, Text } from 'src/ink.js';
 import { DiagnosticTrackingService } from 'src/services/diagnosticTracking.js';
 import type { Attachment } from 'src/services/attachments/attachments.js';
 import { getCwd } from 'src/utils/fs/cwd.js';
-import { CtrlOToExpand } from './CtrlOToExpand.js';
-import { MessageResponse } from './MessageResponse.js';
+import { CtrlOToExpand } from 'src/components/CtrlOToExpand.js';
+import { MessageResponse } from 'src/components/MessageResponse.js';
 type DiagnosticsAttachment = Extract<Attachment, {
   type: 'diagnostics';
 }>;

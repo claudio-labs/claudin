@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { FileTooLargeError, readFileInRange } from './readFileInRange.js'
+import { FileTooLargeError, readFileInRange } from 'src/utils/fs/readFileInRange.js'
 
 // ---------------------------------------------------------------------------
 // Line-counting semantics (cat -n): a trailing '\n' does NOT open a phantom

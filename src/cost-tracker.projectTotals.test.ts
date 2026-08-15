@@ -6,9 +6,9 @@ import {
   spyOn,
   test,
 } from 'bun:test'
-import { getProjectTotals, resetCostState } from './cost-tracker.js'
-import { switchSession, getSessionId } from './bootstrap/state.js'
-import { asSessionId } from './types/ids.js'
+import { getProjectTotals, resetCostState } from 'src/cost-tracker.js'
+import { switchSession, getSessionId } from 'src/bootstrap/state.js'
+import { asSessionId } from 'src/types/ids.js'
 import { saveCurrentProjectConfig } from 'src/services/config/config.js'
 
 describe('getProjectTotals', () => {

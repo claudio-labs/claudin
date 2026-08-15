@@ -18,7 +18,7 @@ import {
   rewriteSource,
   runRename,
   summarizeRename,
-} from './rename.js'
+} from 'src/tools/RenameTool/rename.js'
 
 beforeAll(() => {
   // Defend against an fs mock leaked from another test file in the shard.

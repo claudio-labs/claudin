@@ -13,9 +13,9 @@ import {
   hasSkipDangerousModePermissionPrompt,
 } from 'src/services/settings/settings.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { getEnterpriseMcpFilePath, getMcpConfigByName } from './config.js'
-import { mcpInfoFromString } from './mcpStringUtils.js'
-import { normalizeNameForMCP } from './normalization.js'
+import { getEnterpriseMcpFilePath, getMcpConfigByName } from 'src/services/mcp/config.js'
+import { mcpInfoFromString } from 'src/services/mcp/mcpStringUtils.js'
+import { normalizeNameForMCP } from 'src/services/mcp/normalization.js'
 import {
   type ConfigScope,
   ConfigScopeSchema,
@@ -27,7 +27,7 @@ import {
   type McpWebSocketServerConfig,
   type ScopedMcpServerConfig,
   type ServerResource,
-} from './types.js'
+} from 'src/services/mcp/types.js'
 
 /**
  * Filters tools by MCP server name

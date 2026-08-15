@@ -8,7 +8,7 @@ import { getDisplayPath } from 'src/utils/fs/file.js';
 import { formatTokens } from 'src/utils/text/format.js';
 import { getSourceDisplayName, type SettingSource } from 'src/services/settings/constants.js';
 import { plural } from 'src/utils/text/stringUtils.js';
-import { ContextSuggestions } from './ContextSuggestions.js';
+import { ContextSuggestions } from 'src/components/ContextSuggestions.js';
 
 // The element types behind ContextData's collections are not exported from
 // analyzeContext.ts, so they are recovered here by indexed access. They exist

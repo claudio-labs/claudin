@@ -9,7 +9,7 @@ import { createAssistantMessage, createUserMessage } from 'src/services/messages
 // compactable alongside the built-in tool set.
 
 // Import internals we can test
-import { evaluateTimeBasedTrigger } from './microCompact.js'
+import { evaluateTimeBasedTrigger } from 'src/services/compact/microCompact.js'
 
 /**
  * Helper: build a minimal assistant message with a tool_use block.
@@ -60,14 +60,14 @@ describe('microCompact MCP tool compaction', () => {
   // built-in and MCP tools are treated consistently.
 
   test('module exports load correctly', async () => {
-    const mod = await import('./microCompact.js')
+    const mod = await import('src/services/compact/microCompact.js')
     expect(mod.microcompactMessages).toBeFunction()
     expect(mod.estimateMessageTokens).toBeFunction()
     expect(mod.evaluateTimeBasedTrigger).toBeFunction()
   })
 
   test('estimateMessageTokens counts MCP tool_use blocks', async () => {
-    const { estimateMessageTokens } = await import('./microCompact.js')
+    const { estimateMessageTokens } = await import('src/services/compact/microCompact.js')
 
     const builtinMessages: Message[] = [
       assistantWithToolUse('Read', 'tool-builtin-1'),
@@ -92,7 +92,7 @@ describe('microCompact MCP tool compaction', () => {
   })
 
   test('microcompactMessages processes MCP tools without error', async () => {
-    const { microcompactMessages } = await import('./microCompact.js')
+    const { microcompactMessages } = await import('src/services/compact/microCompact.js')
 
     const messages: Message[] = [
       assistantWithToolUse('mcp__slack__send_message', 'tool-mcp-2'),
@@ -109,7 +109,7 @@ describe('microCompact MCP tool compaction', () => {
   })
 
   test('microcompactMessages processes mixed built-in and MCP tools', async () => {
-    const { microcompactMessages } = await import('./microCompact.js')
+    const { microcompactMessages } = await import('src/services/compact/microCompact.js')
 
     const messages: Message[] = [
       assistantWithToolUse('Read', 'tool-read-1'),
@@ -134,7 +134,7 @@ const mockSizeState = {
   effectiveWindow: 100_000,
 }
 
-const realAutoCompact = { ...(await import('./autoCompact.js')) }
+const realAutoCompact = { ...(await import('src/services/compact/autoCompact.js')) }
 const realModel = { ...(await import('src/utils/model/model.js')) }
 
 mock.module('./autoCompact.js', () => ({
@@ -149,13 +149,13 @@ mock.module('src/utils/model/model.js', () => ({
 
 describe('size-driven stable-stub trigger', () => {
   beforeEach(async () => {
-    const { resetClippedIds } = await import('./stableStubState.js')
+    const { resetClippedIds } = await import('src/services/compact/stableStubState.js')
     resetClippedIds()
     mockSizeState.effectiveWindow = 100_000
   })
 
   afterEach(async () => {
-    const { resetClippedIds } = await import('./stableStubState.js')
+    const { resetClippedIds } = await import('src/services/compact/stableStubState.js')
     resetClippedIds()
   })
 
@@ -169,8 +169,8 @@ describe('size-driven stable-stub trigger', () => {
   }
 
   test('below threshold: no new clipped ids', async () => {
-    const { microcompactMessages } = await import('./microCompact.js')
-    const { getClippedIds } = await import('./stableStubState.js')
+    const { microcompactMessages } = await import('src/services/compact/microCompact.js')
+    const { getClippedIds } = await import('src/services/compact/stableStubState.js')
     // Tiny conversation, far below 50% of 100k tokens
     const messages = buildHeavyHistory(2, 100)
     await microcompactMessages(messages)
@@ -178,8 +178,8 @@ describe('size-driven stable-stub trigger', () => {
   })
 
   test('above threshold: clips all but the last 2 compactable ids', async () => {
-    const { microcompactMessages } = await import('./microCompact.js')
-    const { getClippedIds } = await import('./stableStubState.js')
+    const { microcompactMessages } = await import('src/services/compact/microCompact.js')
+    const { getClippedIds } = await import('src/services/compact/stableStubState.js')
     // 10 exchanges × ~5k chars each → ~12k tokens (×4/3 padding ≈ 16k).
     // Drop the window so we cross the 50% threshold easily.
     mockSizeState.effectiveWindow = 20_000
@@ -196,8 +196,8 @@ describe('size-driven stable-stub trigger', () => {
   })
 
   test('threshold met but everything already clipped: no change', async () => {
-    const { microcompactMessages } = await import('./microCompact.js')
-    const { addClippedIds, getClippedIds } = await import('./stableStubState.js')
+    const { microcompactMessages } = await import('src/services/compact/microCompact.js')
+    const { addClippedIds, getClippedIds } = await import('src/services/compact/stableStubState.js')
     mockSizeState.effectiveWindow = 20_000
     const messages = buildHeavyHistory(10, 5_000)
     // Pre-populate: keep-recent leaves out the last 2, so the candidate set is 0..7.
@@ -209,8 +209,8 @@ describe('size-driven stable-stub trigger', () => {
   })
 
   test('small-history dead zone: 3 compactable ids → clips 1, keeps 2', async () => {
-    const { microcompactMessages } = await import('./microCompact.js')
-    const { getClippedIds } = await import('./stableStubState.js')
+    const { microcompactMessages } = await import('src/services/compact/microCompact.js')
+    const { getClippedIds } = await import('src/services/compact/stableStubState.js')
     // 3 huge results, threshold breached. Without the fix, candidateIds
     // would be empty (3 > 2 → slice(0,-2) leaves [0]), so it actually clips
     // 1. Test the EDGE case where ids count == keepRecent: 2 results.
@@ -225,8 +225,8 @@ describe('size-driven stable-stub trigger', () => {
   })
 
   test('single compactable id below dead zone: no clipping', async () => {
-    const { microcompactMessages } = await import('./microCompact.js')
-    const { getClippedIds } = await import('./stableStubState.js')
+    const { microcompactMessages } = await import('src/services/compact/microCompact.js')
+    const { getClippedIds } = await import('src/services/compact/stableStubState.js')
     // Only 1 compactable id — keep at least 1 most-recent → 0 candidates.
     mockSizeState.effectiveWindow = 5_000
     const messages = buildHeavyHistory(1, 10_000)
@@ -235,8 +235,8 @@ describe('size-driven stable-stub trigger', () => {
   })
 
   test('effective window 0: no clipping (degrades gracefully)', async () => {
-    const { microcompactMessages } = await import('./microCompact.js')
-    const { getClippedIds } = await import('./stableStubState.js')
+    const { microcompactMessages } = await import('src/services/compact/microCompact.js')
+    const { getClippedIds } = await import('src/services/compact/stableStubState.js')
     // Provider returns 0 / unknown context window — the size-driven
     // trigger is gated behind `effectiveWindow > 0` so we should not
     // clip even with a heavy history that would otherwise breach the
@@ -248,8 +248,8 @@ describe('size-driven stable-stub trigger', () => {
   })
 
   test('resetMicrocompactState clears the clipped set', async () => {
-    const { resetMicrocompactState } = await import('./microCompact.js')
-    const { addClippedIds, getClippedIds } = await import('./stableStubState.js')
+    const { resetMicrocompactState } = await import('src/services/compact/microCompact.js')
+    const { addClippedIds, getClippedIds } = await import('src/services/compact/stableStubState.js')
     addClippedIds(['toolu_x', 'toolu_y'])
     expect(getClippedIds().size).toBe(2)
     resetMicrocompactState()

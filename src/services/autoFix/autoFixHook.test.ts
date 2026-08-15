@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   shouldRunAutoFix,
   buildAutoFixContext,
-} from './autoFixHook.js'
+} from 'src/services/autoFix/autoFixHook.js'
 
 describe('shouldRunAutoFix', () => {
   test('returns true for file_edit tool when autoFix enabled', () => {

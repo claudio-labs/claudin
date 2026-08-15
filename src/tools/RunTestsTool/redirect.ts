@@ -1,6 +1,6 @@
-import { detectFrameworkFromCommand } from './detect.js'
-import { RUN_TESTS_TOOL_NAME } from './prompt.js'
-import type { Framework } from './types.js'
+import { detectFrameworkFromCommand } from 'src/tools/RunTestsTool/detect.js'
+import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
+import type { Framework } from 'src/tools/RunTestsTool/types.js'
 import {
   createBoundedKeySet,
   createOneShotMemo,

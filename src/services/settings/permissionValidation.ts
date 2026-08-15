@@ -7,7 +7,7 @@ import {
   getCustomValidation,
   isBashPrefixTool,
   isFilePatternTool,
-} from './toolValidationConfig.js'
+} from 'src/services/settings/toolValidationConfig.js'
 
 /**
  * Checks if a character at a given index is escaped (preceded by odd number of backslashes).

@@ -21,14 +21,14 @@ import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
 import { errorMessage, isENOENT } from 'src/utils/errors.js'
 import { createSignal } from 'src/utils/signal.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
-import { DEFAULT_BINDINGS } from './defaultBindings.js'
-import { parseBindings } from './parser.js'
-import type { KeybindingBlock, ParsedBinding } from './types.js'
+import { DEFAULT_BINDINGS } from 'src/keybindings/defaultBindings.js'
+import { parseBindings } from 'src/keybindings/parser.js'
+import type { KeybindingBlock, ParsedBinding } from 'src/keybindings/types.js'
 import {
   checkDuplicateKeysInJson,
   type KeybindingWarning,
   validateBindings,
-} from './validate.js'
+} from 'src/keybindings/validate.js'
 
 /**
  * Check if keybinding customization is enabled.

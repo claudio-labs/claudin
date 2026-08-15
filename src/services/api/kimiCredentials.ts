@@ -1,7 +1,7 @@
 import { logForDebugging } from 'src/utils/debug.js'
 import { isBareMode } from 'src/utils/envUtils.js'
 import { isENOENT } from 'src/utils/errors.js'
-import { getKimiDeviceHeaders } from './kimiDeviceHeaders.js'
+import { getKimiDeviceHeaders } from 'src/services/api/kimiDeviceHeaders.js'
 import { logError } from 'src/utils/log.js'
 import { getSecureStorage } from 'src/services/secureStorage/index.js'
 import {

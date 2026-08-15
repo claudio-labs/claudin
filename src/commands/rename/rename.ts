@@ -16,7 +16,7 @@ import {
   saveCustomTitle,
 } from 'src/services/session/sessionStorage.js'
 import { isTeammate } from 'src/coordinator/teammate.js'
-import { generateSessionName } from './generateSessionName.js'
+import { generateSessionName } from 'src/commands/rename/generateSessionName.js'
 
 export async function call(
   onDone: LocalJSXCommandOnDone,

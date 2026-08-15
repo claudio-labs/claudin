@@ -24,7 +24,7 @@ const {
   classifyYoloAction,
   formatActionForClassifier,
   isClassifierBundled,
-} = await import('./yoloClassifier.js')
+} = await import('src/services/permissions/yoloClassifier.js')
 
 const tools = [
   {

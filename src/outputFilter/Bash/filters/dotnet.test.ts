@@ -1,6 +1,6 @@
 // Phase 13 — dotnet family (build / test / format).
 import { describe, expect, test } from "bun:test";
-import { runFilterBody, routesTo } from "./__testutils__/harness.js";
+import { runFilterBody, routesTo } from "src/outputFilter/Bash/filters/__testutils__/harness.js";
 import {
   DOTNET_BUILD_OK,
   DOTNET_BUILD_WARN,
@@ -9,7 +9,7 @@ import {
   DOTNET_TEST_FAIL,
   DOTNET_FORMAT_OK,
   DOTNET_FORMAT_ERR,
-} from "./__testutils__/phase13Samples.js";
+} from "src/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
 
 describe("phase 13 — dotnet build", () => {
   test("clean 0/0 build collapses to sentinel", () => {

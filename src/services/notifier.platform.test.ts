@@ -18,7 +18,7 @@ const realExecFileNoThrow = { ...(await import('src/utils/proc/execFileNoThrow.j
 const realWhich = { ...(await import('src/utils/proc/which.js')) }
 const realEnv = { ...(await import('src/utils/env.js')) }
 const realHooks = { ...(await import('src/services/lifecycleHooks/hooks.js')) }
-const realAnalyticsIndex = { ...(await import('./analytics/index.js')) }
+const realAnalyticsIndex = { ...(await import('src/services/analytics/index.js')) }
 const realLog = { ...(await import('src/utils/log.js')) }
 
 // -- Top-level mocks (must run before importing the SUT) --------------------
@@ -116,7 +116,7 @@ mock.module('src/utils/log.js', () => ({
 
 // SUT — dynamic import so mock.module() above is applied first
 const { _resetNotifierCachesForTests, sendNotification } = await import(
-  './notifier.js'
+  'src/services/notifier.js'
 )
 
 const terminalStub: TerminalNotification = {

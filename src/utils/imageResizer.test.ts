@@ -50,7 +50,7 @@ describe('maybeResizeAndDownsampleImageBuffer — no image processor available',
   test('passes an oversized-dimension PNG through raw when under the 5MB base64 limit', async () => {
     mockProcessorUnavailable()
     const { maybeResizeAndDownsampleImageBuffer } = await import(
-      './imageResizer.js'
+      'src/utils/imageResizer.js'
     )
     // Dimensions exceed the 1568px cap — the old code threw ImageResizeError
     // here (silent paste failure in the compiled binary). Now it must return
@@ -68,7 +68,7 @@ describe('maybeResizeAndDownsampleImageBuffer — no image processor available',
   test('throws a clear error when the image exceeds the 5MB base64 limit', async () => {
     mockProcessorUnavailable()
     const { maybeResizeAndDownsampleImageBuffer, ImageResizeError } =
-      await import('./imageResizer.js')
+      await import('src/utils/imageResizer.js')
     const png = fakePng(3000, 2000)
     // 4MB raw → ~5.33MB base64, over the hard API limit.
     const oversized = 4 * 1024 * 1024
@@ -83,7 +83,7 @@ describe('maybeResizeAndDownsampleImageBuffer — no image processor available',
     // (well under 5MB base64) must still reject, not leak the raw buffer.
     mockProcessorThrowsGeneric()
     const { maybeResizeAndDownsampleImageBuffer, ImageResizeError } =
-      await import('./imageResizer.js')
+      await import('src/utils/imageResizer.js')
     const png = fakePng(3000, 2000) // over the 1568px cap, only 64 bytes
     await expect(
       maybeResizeAndDownsampleImageBuffer(png, png.length, 'png'),

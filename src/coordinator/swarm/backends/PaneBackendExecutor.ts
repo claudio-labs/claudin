@@ -12,7 +12,7 @@ import {
   getTeammateCommand,
 } from 'src/coordinator/swarm/spawnUtils.js'
 import { assignTeammateColor } from 'src/coordinator/swarm/teammateLayoutManager.js'
-import { isInsideTmux } from './detection.js'
+import { isInsideTmux } from 'src/coordinator/swarm/backends/detection.js'
 import type {
   BackendType,
   PaneBackend,
@@ -20,7 +20,7 @@ import type {
   TeammateMessage,
   TeammateSpawnConfig,
   TeammateSpawnResult,
-} from './types.js'
+} from 'src/coordinator/swarm/backends/types.js'
 
 /**
  * PaneBackendExecutor adapts a PaneBackend to the TeammateExecutor interface.

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import {
   getTokenizerConfig,
   getBytesPerTokenForModel,
-} from './tokenEstimation.js'
+} from 'src/services/tokenEstimation.js'
 
 describe('Model Tokenizers', () => {
   describe('getTokenizerConfig', () => {

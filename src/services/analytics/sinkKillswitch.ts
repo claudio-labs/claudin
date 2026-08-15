@@ -1,4 +1,4 @@
-import { getDynamicConfig_CACHED_MAY_BE_STALE } from './growthbook.js'
+import { getDynamicConfig_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 
 // Mangled name: per-sink analytics killswitch
 const SINK_KILLSWITCH_CONFIG_NAME = 'tengu_frond_boric'

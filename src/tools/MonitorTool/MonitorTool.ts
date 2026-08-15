@@ -12,7 +12,7 @@ import {
   permissionRuleExtractPrefix,
 } from 'src/tools/BashTool/bashPermissions.js'
 import { parseForSecurity } from 'src/services/bash/ast.js'
-import { MONITOR_TOOL_NAME } from './toolName.js'
+import { MONITOR_TOOL_NAME } from 'src/tools/MonitorTool/toolName.js'
 
 const MONITOR_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
 

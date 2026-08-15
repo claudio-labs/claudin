@@ -10,7 +10,7 @@ import {
 } from 'src/services/config/config.js'
 import { createRoot } from 'src/ink.js'
 import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js'
-import { parseCustomHeaders } from './ProviderManager.js'
+import { parseCustomHeaders } from 'src/components/ProviderManager.js'
 import { AppStateProvider } from 'src/state/AppState.js'
 import { getDefaultMainLoopModel } from 'src/utils/model/model.js'
 
@@ -172,7 +172,7 @@ const realClaudinMigrationForPm = { ...(await import('src/services/config/claudi
 const realProviderDiscoveryForPm = { ...(await import('src/services/api/providerDiscovery.js')) }
 const realGithubModelsCredentialsForPm = { ...(await import('src/services/api/githubModelsCredentials.js')) }
 const realCodexCredentialsForPm = { ...(await import('src/services/api/codexCredentials.js')) }
-const realUseCodexOAuthFlowForPm = { ...(await import('./useCodexOAuthFlow.js')) }
+const realUseCodexOAuthFlowForPm = { ...(await import('src/components/useCodexOAuthFlow.js')) }
 
 function mockProviderProfilesModule(options?: {
   // `never[]` rather than `unknown[]`: callers pass a stand-in that declares

@@ -12,7 +12,7 @@ import {
   updateYankLength,
   yankPop,
 } from 'src/utils/Cursor.js'
-import { useTerminalSize } from './useTerminalSize.js'
+import { useTerminalSize } from 'src/hooks/useTerminalSize.js'
 
 type UseSearchInputOptions = {
   isActive: boolean

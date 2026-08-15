@@ -38,7 +38,7 @@ import { runAutoFixCheck } from 'src/services/autoFix/autoFixRunner.js'
 // Key: queryChainId (or 'default'), Value: number of auto-fix attempts used.
 const autoFixRetryCount = new Map<string, number>()
 import { isMcpTool } from 'src/services/mcp/utils.js'
-import type { McpServerType, MessageUpdateLazy } from './toolExecution.js'
+import type { McpServerType, MessageUpdateLazy } from 'src/services/tools/toolExecution.js'
 
 export type PostToolUseHooksResult<Output> =
   | MessageUpdateLazy<AttachmentMessage | ProgressMessage<HookProgress>>

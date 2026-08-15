@@ -5,7 +5,7 @@ import { getCwd } from 'src/utils/fs/cwd.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
-import { type AgentMemoryScope, getAgentMemoryDir } from './agentMemory.js'
+import { type AgentMemoryScope, getAgentMemoryDir } from 'src/tools/AgentTool/agentMemory.js'
 
 const SNAPSHOT_BASE = 'agent-memory-snapshots'
 const SNAPSHOT_JSON = 'snapshot.json'

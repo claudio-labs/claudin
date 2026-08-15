@@ -9,7 +9,7 @@ import { logError } from 'src/utils/log.js'
 import { dequeueAllMatching } from 'src/utils/messageQueueManager.js'
 import { evictTaskOutput } from 'src/tasks/diskOutput.js'
 import { updateTaskState } from 'src/tasks/framework.js'
-import { isLocalShellTask, type LocalShellTaskState } from './guards.js'
+import { isLocalShellTask, type LocalShellTaskState } from 'src/tasks/LocalShellTask/guards.js'
 
 type SetAppStateFn = (updater: (prev: AppState) => AppState) => void
 

@@ -6,11 +6,11 @@ import { Box, color, Text, useTheme } from 'src/ink.js';
 import { addMcpConfig, getAllMcpConfigs } from 'src/services/mcp/config.js';
 import type { ConfigScope, McpServerConfig, ScopedMcpServerConfig } from 'src/services/mcp/types.js';
 import { plural } from 'src/utils/text/stringUtils.js';
-import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
-import { SelectMulti } from './CustomSelect/SelectMulti.js';
-import { Byline } from './design-system/Byline.js';
-import { Dialog } from './design-system/Dialog.js';
-import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { SelectMulti } from 'src/components/CustomSelect/SelectMulti.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
 type Props = {
   servers: Record<string, McpServerConfig>;
   scope: ConfigScope;

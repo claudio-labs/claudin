@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url'
 
 import { describe, expect, test } from 'bun:test'
 
-import { getCoordinatorUserContext } from './coordinatorMode.ts'
+import { getCoordinatorUserContext } from 'src/coordinator/coordinatorMode.ts'
 
 describe('getCoordinatorUserContext', () => {
   test('returns {} when coordinator mode is off (default in tests)', () => {

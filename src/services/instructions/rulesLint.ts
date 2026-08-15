@@ -22,7 +22,7 @@ import { promisify } from 'util'
 import { logForDebugging } from 'src/utils/debug.js'
 import { getErrnoCode } from 'src/utils/errors.js'
 import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { inspectRuleFrontmatter } from './ruleFrontmatter.js'
+import { inspectRuleFrontmatter } from 'src/services/instructions/ruleFrontmatter.js'
 
 /** Root-level context files that are loaded without any `paths:` gating. */
 const ROOT_CONTEXT_FILES = ['AGENTS.md', 'CLAUDE.md'] as const

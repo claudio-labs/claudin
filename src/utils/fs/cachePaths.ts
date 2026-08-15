@@ -1,6 +1,6 @@
 import envPaths from 'env-paths'
 import { join } from 'path'
-import { getFsImplementation } from './fsOperations.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import { djb2Hash } from 'src/utils/data/hash.js'
 
 const paths = envPaths('claude-cli')

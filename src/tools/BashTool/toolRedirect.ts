@@ -10,7 +10,7 @@ import { FILE_READ_TOOL_NAME, MAX_LINES_TO_READ } from 'src/tools/FileReadTool/p
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { createOneShotMemo, MEMO_LIMIT } from 'src/tools/shared/redirect.js'
-import { PATH_EXTRACTORS } from './pathValidation.js'
+import { PATH_EXTRACTORS } from 'src/tools/BashTool/pathValidation.js'
 
 export { MEMO_LIMIT }
 

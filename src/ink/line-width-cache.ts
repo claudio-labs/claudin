@@ -1,4 +1,4 @@
-import { stringWidth } from './stringWidth.js'
+import { stringWidth } from 'src/ink/stringWidth.js'
 
 // During streaming, text grows but completed lines are immutable.
 // Caching stringWidth per-line avoids re-measuring hundreds of

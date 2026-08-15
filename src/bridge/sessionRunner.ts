@@ -4,14 +4,14 @@ import { tmpdir } from 'os'
 import { dirname, join } from 'path'
 import { createInterface } from 'readline'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
-import { debugTruncate } from './debugUtils.js'
+import { debugTruncate } from 'src/bridge/debugUtils.js'
 import type {
   SessionActivity,
   SessionDoneStatus,
   SessionHandle,
   SessionSpawner,
   SessionSpawnOpts,
-} from './types.js'
+} from 'src/bridge/types.js'
 
 const MAX_ACTIVITIES = 10
 const MAX_STDERR_LINES = 10

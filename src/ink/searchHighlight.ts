@@ -4,7 +4,7 @@ import {
   type Screen,
   type StylePool,
   setCellStyleId,
-} from './screen.js'
+} from 'src/ink/screen.js'
 
 /**
  * Highlight all visible occurrences of `query` in the screen buffer by

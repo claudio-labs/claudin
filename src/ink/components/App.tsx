@@ -17,13 +17,13 @@ import { TerminalQuerier, xtversion } from 'src/ink/terminal-querier.js';
 import { createStdinWatchdog, type StdinWatchdog } from 'src/ink/stdinWatchdog.js';
 import { DISABLE_KITTY_KEYBOARD, DISABLE_MODIFY_OTHER_KEYS, ENABLE_KITTY_KEYBOARD, ENABLE_MODIFY_OTHER_KEYS, FOCUS_IN, FOCUS_OUT } from 'src/ink/termio/csi.js';
 import { DBP, DFE, DISABLE_MOUSE_TRACKING, EBP, EFE, HIDE_CURSOR, SHOW_CURSOR } from 'src/ink/termio/dec.js';
-import AppContext from './AppContext.js';
-import { ClockProvider } from './ClockContext.js';
-import CursorDeclarationContext, { type CursorDeclarationSetter } from './CursorDeclarationContext.js';
-import ErrorOverview from './ErrorOverview.js';
-import StdinContext from './StdinContext.js';
-import { TerminalFocusProvider } from './TerminalFocusContext.js';
-import { TerminalSizeContext } from './TerminalSizeContext.js';
+import AppContext from 'src/ink/components/AppContext.js';
+import { ClockProvider } from 'src/ink/components/ClockContext.js';
+import CursorDeclarationContext, { type CursorDeclarationSetter } from 'src/ink/components/CursorDeclarationContext.js';
+import ErrorOverview from 'src/ink/components/ErrorOverview.js';
+import StdinContext from 'src/ink/components/StdinContext.js';
+import { TerminalFocusProvider } from 'src/ink/components/TerminalFocusContext.js';
+import { TerminalSizeContext } from 'src/ink/components/TerminalSizeContext.js';
 
 // Platforms that support Unix-style process suspension (SIGSTOP/SIGCONT)
 const SUPPORTS_SUSPEND = process.platform !== 'win32';

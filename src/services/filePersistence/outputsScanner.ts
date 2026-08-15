@@ -12,7 +12,7 @@ import type { Dirent } from 'fs'
 import * as path from 'path'
 import { logForDebugging } from 'src/utils/debug.js'
 import type { EnvironmentKind } from 'src/services/teleport/environments.js'
-import type { TurnStartTime } from './types.js'
+import type { TurnStartTime } from 'src/services/filePersistence/types.js'
 
 /** Shared debug logger for file persistence modules */
 export function logDebug(message: string): void {

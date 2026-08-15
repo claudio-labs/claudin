@@ -1,5 +1,5 @@
-import type { ModelName } from './model.js'
-import type { APIProvider } from './providers.js'
+import type { ModelName } from 'src/utils/model/model.js'
+import type { APIProvider } from 'src/utils/model/providers.js'
 
 export type ModelConfig = Record<APIProvider, ModelName>
 

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   detectSerialReadPattern,
   markFiredAndCheck,
-} from './serialReadNudge.js'
+} from 'src/tools/FileReadTool/serialReadNudge.js'
 
 function asstReadWithText(text: string | null) {
   const content: Array<{ type: string; name?: string; text?: string }> = []

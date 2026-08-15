@@ -4,7 +4,7 @@
 // `insertQueueOperation`; the literal that produces it lives in `logOperation`
 // (`src/utils/messageQueueManager.ts:30`).
 
-import type { SessionId } from './ids.js'
+import type { SessionId } from 'src/types/ids.js'
 
 /**
  * What happened to the prompt queue. Only these four are ever logged —

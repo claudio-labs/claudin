@@ -4,12 +4,12 @@ import { pathToFileURL } from 'url'
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
-import { getAllLspServers } from './config.js'
+import { getAllLspServers } from 'src/services/lsp/config.js'
 import {
   createLSPServerInstance,
   type LSPServerInstance,
-} from './LSPServerInstance.js'
-import type { ScopedLspServerConfig } from './types.js'
+} from 'src/services/lsp/LSPServerInstance.js'
+import type { ScopedLspServerConfig } from 'src/services/lsp/types.js'
 /**
  * LSP Server Manager interface returned by createLSPServerManager.
  * Manages multiple LSP server instances and routes requests based on file extensions.

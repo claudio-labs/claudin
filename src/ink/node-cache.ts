@@ -1,5 +1,5 @@
-import type { DOMElement } from './dom.js'
-import type { Rectangle } from './layout/geometry.js'
+import type { DOMElement } from 'src/ink/dom.js'
+import type { Rectangle } from 'src/ink/layout/geometry.js'
 
 /**
  * Cached layout bounds for each rendered node (used for blit + clearing).

@@ -4,8 +4,8 @@ import { MCPServerMultiselectDialog } from 'src/components/MCPServerMultiselectD
 import type { Root } from 'src/ink.js';
 import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js';
 import { AppStateProvider } from 'src/state/AppState.js';
-import { getMcpConfigsByScope } from './mcp/config.js';
-import { getProjectMcpServerStatus } from './mcp/utils.js';
+import { getMcpConfigsByScope } from 'src/services/mcp/config.js';
+import { getProjectMcpServerStatus } from 'src/services/mcp/utils.js';
 
 /**
  * Show MCP server approval dialogs for pending project servers.

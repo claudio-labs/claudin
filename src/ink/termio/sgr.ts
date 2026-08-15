@@ -5,8 +5,8 @@
  * Handles both semicolon (;) and colon (:) separated parameters.
  */
 
-import type { NamedColor, TextStyle, UnderlineStyle } from './types.js'
-import { defaultStyle } from './types.js'
+import type { NamedColor, TextStyle, UnderlineStyle } from 'src/ink/termio/types.js'
+import { defaultStyle } from 'src/ink/termio/types.js'
 
 const NAMED_COLORS: NamedColor[] = [
   'black',

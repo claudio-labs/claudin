@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { stringWidth } from 'src/ink/stringWidth.js'
 import { type DOMElement, useAnimationFrame } from 'src/ink.js'
-import type { SpinnerMode } from './types.js'
+import type { SpinnerMode } from 'src/components/Spinner/types.js'
 
 export function useShimmerAnimation(
   mode: SpinnerMode,

@@ -5,7 +5,7 @@ import {
   resetProjectConfigForTests,
   saveCurrentProjectConfig,
   type ProjectConfig,
-} from './config.js'
+} from 'src/services/config/config.js'
 
 // In NODE_ENV=test, saveCurrentProjectConfig writes into the in-memory
 // TEST_PROJECT_CONFIG_FOR_TESTING object. This file verifies the contract

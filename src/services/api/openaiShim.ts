@@ -47,5 +47,5 @@
 //   messagesClient.ts   — OpenAIShimMessages, OpenAIShimBeta,
 //                         createOpenAIShimClient
 
-export { convertTools } from './openaiShim/toolConverter.js'
-export { createOpenAIShimClient } from './openaiShim/messagesClient.js'
+export { convertTools } from 'src/services/api/openaiShim/toolConverter.js'
+export { createOpenAIShimClient } from 'src/services/api/openaiShim/messagesClient.js'

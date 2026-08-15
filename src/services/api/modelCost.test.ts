@@ -7,7 +7,7 @@ import {
   calculateUSDCost,
   getModelCosts,
   getModelPricingString,
-} from './modelCost.js'
+} from 'src/services/api/modelCost.js'
 
 const usageOneM: Usage = {
   input_tokens: 1_000_000,

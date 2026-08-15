@@ -40,7 +40,7 @@ import { stableStringify } from 'src/utils/data/stableStringify.js'
 import {
   getTodoReminderDelta,
   type TodoSnapshotItem,
-} from './todoReminderDelta.js'
+} from 'src/utils/todoReminderDelta.js'
 
 // Minimum savings ratio for turn 2+ to declare the dedup active. The
 // Phase 2 plan targets -30 to -40%; we use 25% as a conservative

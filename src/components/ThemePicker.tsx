@@ -12,11 +12,11 @@ import type { AppState } from 'src/state/AppStateStore.js';
 import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js';
 import { updateSettingsForSource } from 'src/services/settings/settings.js';
 import type { ThemeSetting } from 'src/utils/theme.js';
-import { Select } from './CustomSelect/index.js';
-import { Byline } from './design-system/Byline.js';
-import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
-import { getColorModuleUnavailableReason, getSyntaxTheme } from './StructuredDiff/colorDiff.js';
-import { StructuredDiff } from './StructuredDiff.js';
+import { Select } from 'src/components/CustomSelect/index.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { getColorModuleUnavailableReason, getSyntaxTheme } from 'src/components/StructuredDiff/colorDiff.js';
+import { StructuredDiff } from 'src/components/StructuredDiff.js';
 
 type StructuredDiffComponent = React.ComponentType<{
   patch: StructuredPatchHunk

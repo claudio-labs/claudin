@@ -1,6 +1,6 @@
 import { test, expect } from 'bun:test'
 
-import { clamp, clampInt, inRange } from './clamp.js'
+import { clamp, clampInt, inRange } from 'src/utils/data/clamp.js'
 
 test('returns the value when inside the range', () => {
   expect(clamp(5, 0, 10)).toBe(5)

@@ -6,7 +6,7 @@ import { Text } from 'src/ink.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import type { GlobalConfig } from 'src/services/config/config.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
-import { useStartupNotification } from './useStartupNotification.js';
+import { useStartupNotification } from 'src/hooks/notifs/useStartupNotification.js';
 const MAX_SHOW_COUNT = 3;
 
 /**

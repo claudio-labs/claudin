@@ -20,7 +20,7 @@ import { join } from 'path'
 // Bun's `await import(...)` returns a live module record whose bindings mutate
 // when the module is re-mocked later — so `mock.module(spec, () => realX)`
 // otherwise hands back the most recent mock factory's exports.
-const realConfig = { ...(await import('./config.js')) }
+const realConfig = { ...(await import('src/services/config/config.js')) }
 // Same defensive capture for providerProfiles — ProviderManager.test.tsx
 // installs its own mock factory whose default `addProviderProfile` is
 // `() => null`, which leaks across files. We re-pin the real module so the
@@ -38,11 +38,11 @@ afterAll(() => {
 // Use dynamic imports inside beforeAll so we get fresh bindings after any
 // mock.module() leak from earlier files (e.g. ProviderManager.test.tsx mocks
 // this same module to suppress its banner).
-let formatMigrationReport: typeof import('./claudinMigration.js')['formatMigrationReport']
-let legacyClaudeDirExists: typeof import('./claudinMigration.js')['legacyClaudeDirExists']
-let legacyGlobalConfigExists: typeof import('./claudinMigration.js')['legacyGlobalConfigExists']
-let migrateLegacyClaudeDir: typeof import('./claudinMigration.js')['migrateLegacyClaudeDir']
-let shouldShowMigrationBanner: typeof import('./claudinMigration.js')['shouldShowMigrationBanner']
+let formatMigrationReport: typeof import('src/services/config/claudinMigration.js')['formatMigrationReport']
+let legacyClaudeDirExists: typeof import('src/services/config/claudinMigration.js')['legacyClaudeDirExists']
+let legacyGlobalConfigExists: typeof import('src/services/config/claudinMigration.js')['legacyGlobalConfigExists']
+let migrateLegacyClaudeDir: typeof import('src/services/config/claudinMigration.js')['migrateLegacyClaudeDir']
+let shouldShowMigrationBanner: typeof import('src/services/config/claudinMigration.js')['shouldShowMigrationBanner']
 
 beforeAll(async () => {
   // Install mocks here (not at module top-level) so they're applied AFTER
@@ -119,7 +119,7 @@ beforeAll(async () => {
   const nonce = `${Date.now()}-${Math.random()}`
   const mod = (await import(
     `./claudinMigration.js?ts=${nonce}`
-  )) as typeof import('./claudinMigration.js')
+  )) as typeof import('src/services/config/claudinMigration.js')
   formatMigrationReport = mod.formatMigrationReport
   legacyClaudeDirExists = mod.legacyClaudeDirExists
   legacyGlobalConfigExists = mod.legacyGlobalConfigExists

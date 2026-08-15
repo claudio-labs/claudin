@@ -7,8 +7,8 @@ import {
 import { logForDebugging } from 'src/utils/debug.js'
 import { getGraphemeSegmenter } from 'src/utils/text/intl.js'
 import sliceAnsi from 'src/utils/text/sliceAnsi.js'
-import { reorderBidi } from './bidi.js'
-import { type Rectangle, unionRect } from './layout/geometry.js'
+import { reorderBidi } from 'src/ink/bidi.js'
+import { type Rectangle, unionRect } from 'src/ink/layout/geometry.js'
 import {
   blitRegion,
   CellWidth,
@@ -21,9 +21,9 @@ import {
   type StylePool,
   setCellAt,
   shiftRows,
-} from './screen.js'
-import { stringWidth } from './stringWidth.js'
-import { widestLine } from './widest-line.js'
+} from 'src/ink/screen.js'
+import { stringWidth } from 'src/ink/stringWidth.js'
+import { widestLine } from 'src/ink/widest-line.js'
 
 /**
  * A grapheme cluster with precomputed terminal width, styleId, and hyperlink.

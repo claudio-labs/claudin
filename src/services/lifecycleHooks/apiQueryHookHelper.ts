@@ -7,7 +7,7 @@ import { logError } from 'src/utils/log.js'
 import { toError } from 'src/utils/errors.js'
 import { extractTextContent } from 'src/services/messages/messages.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
-import type { REPLHookContext } from './postSamplingHooks.js'
+import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
 
 export type ApiQueryHookContext = REPLHookContext & {
   queryMessageCount?: number

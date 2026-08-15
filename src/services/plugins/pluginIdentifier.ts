@@ -5,7 +5,7 @@ import type {
 import {
   ALLOWED_OFFICIAL_MARKETPLACE_NAMES,
   type PluginScope,
-} from './schemas.js'
+} from 'src/services/plugins/schemas.js'
 
 /**
  * Extended scope type that includes 'flag' for session-only plugins.

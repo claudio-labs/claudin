@@ -5,8 +5,8 @@ import { describe, test, expect, beforeEach, afterEach, mock } from 'bun:test'
 // leaks across parallel test files; resetting to `{}` would strip exports the
 // modelOptions → ollamaModels chain depends on. See team memory
 // bun-test-global-config-isolation.md.
-const realProvidersModule = await import('./providers.js')
-const realModelOptionsModule = await import('./modelOptions.js')
+const realProvidersModule = await import('src/utils/model/providers.js')
+const realModelOptionsModule = await import('src/utils/model/modelOptions.js')
 
 describe('getAgentModel provider-aware fallback', () => {
   // Restore all mocks after each test
@@ -23,7 +23,7 @@ describe('getAgentModel provider-aware fallback', () => {
       }))
 
       // Import after mock is set up
-      const { getAgentModel } = await import('./agent.js')
+      const { getAgentModel } = await import('src/utils/model/agent.js')
       const result = getAgentModel('haiku', 'claude-sonnet-4-6', undefined, 'default')
 
       // Should resolve haiku alias, not inherit parent
@@ -37,7 +37,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { getAgentModel } = await import('./agent.js')
+      const { getAgentModel } = await import('src/utils/model/agent.js')
       const result = getAgentModel('haiku', 'claude-sonnet-4-6', undefined, 'default')
 
       // Should resolve haiku alias for Bedrock
@@ -50,7 +50,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { getAgentModel } = await import('./agent.js')
+      const { getAgentModel } = await import('src/utils/model/agent.js')
       const result = getAgentModel('haiku', 'claude-sonnet-4-6', undefined, 'default')
 
       // Should resolve haiku alias for Vertex
@@ -63,7 +63,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { getAgentModel } = await import('./agent.js')
+      const { getAgentModel } = await import('src/utils/model/agent.js')
       const result = getAgentModel('haiku', 'claude-sonnet-4-6', undefined, 'default')
 
       // Should resolve haiku alias for Foundry
@@ -78,7 +78,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { getAgentModel } = await import('./agent.js')
+      const { getAgentModel } = await import('src/utils/model/agent.js')
       const result = getAgentModel('haiku', 'gpt-4o-mini', undefined, 'default')
 
       // Should inherit parent model for OpenAI (no haiku concept)
@@ -91,7 +91,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { getAgentModel } = await import('./agent.js')
+      const { getAgentModel } = await import('src/utils/model/agent.js')
       const result = getAgentModel('haiku', 'gemini-2.5-pro', undefined, 'default')
 
       // Should inherit parent model for Gemini
@@ -105,7 +105,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { getAgentModel } = await import('./agent.js')
+      const { getAgentModel } = await import('src/utils/model/agent.js')
       const result = getAgentModel('haiku', 'claude-sonnet-4-6', undefined, 'default')
 
       // Should inherit parent for custom Anthropic-compatible URL
@@ -118,7 +118,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { getAgentModel } = await import('./agent.js')
+      const { getAgentModel } = await import('src/utils/model/agent.js')
       const result = getAgentModel('sonnet', 'gpt-4o-mini', undefined, 'default')
 
       // Should inherit parent model for OpenAI
@@ -131,7 +131,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { getAgentModel } = await import('./agent.js')
+      const { getAgentModel } = await import('src/utils/model/agent.js')
       const result = getAgentModel('haiku', 'mistral-small-latest', undefined, 'default')
 
       // Should inherit parent model for Mistral (no haiku concept)
@@ -144,7 +144,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { getAgentModel } = await import('./agent.js')
+      const { getAgentModel } = await import('src/utils/model/agent.js')
       const result = getAgentModel('haiku', 'gpt-4o-mini', undefined, 'default')
 
       // Should inherit parent model for GitHub Copilot
@@ -157,7 +157,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { getAgentModel } = await import('./agent.js')
+      const { getAgentModel } = await import('src/utils/model/agent.js')
       const result = getAgentModel('haiku', 'meta/llama-3.1-8b-instruct', undefined, 'default')
 
       // Should inherit parent model for NVIDIA NIM (no haiku concept)
@@ -170,7 +170,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { getAgentModel } = await import('./agent.js')
+      const { getAgentModel } = await import('src/utils/model/agent.js')
       const result = getAgentModel('haiku', 'MiniMax-M2.5-highspeed', undefined, 'default')
 
       // Should inherit parent model for MiniMax (no haiku concept)
@@ -183,7 +183,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { getAgentModel } = await import('./agent.js')
+      const { getAgentModel } = await import('src/utils/model/agent.js')
       const result = getAgentModel('haiku', 'gpt-5.5-mini', undefined, 'default')
 
       // Should inherit parent model for Codex provider (no haiku concept)
@@ -198,7 +198,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { getAgentModel } = await import('./agent.js')
+      const { getAgentModel } = await import('src/utils/model/agent.js')
       const result = getAgentModel('inherit', 'gpt-4o', undefined, 'default')
 
       expect(result).toBe('gpt-4o')
@@ -212,7 +212,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => true,
       }))
 
-      const { checkIsClaudeNativeProvider } = await import('./agent.js')
+      const { checkIsClaudeNativeProvider } = await import('src/utils/model/agent.js')
       expect(checkIsClaudeNativeProvider()).toBe(true)
     })
 
@@ -222,7 +222,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { checkIsClaudeNativeProvider } = await import('./agent.js')
+      const { checkIsClaudeNativeProvider } = await import('src/utils/model/agent.js')
       expect(checkIsClaudeNativeProvider()).toBe(true)
     })
 
@@ -232,7 +232,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { checkIsClaudeNativeProvider } = await import('./agent.js')
+      const { checkIsClaudeNativeProvider } = await import('src/utils/model/agent.js')
       expect(checkIsClaudeNativeProvider()).toBe(true)
     })
 
@@ -242,7 +242,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { checkIsClaudeNativeProvider } = await import('./agent.js')
+      const { checkIsClaudeNativeProvider } = await import('src/utils/model/agent.js')
       expect(checkIsClaudeNativeProvider()).toBe(true)
     })
 
@@ -252,7 +252,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { checkIsClaudeNativeProvider } = await import('./agent.js')
+      const { checkIsClaudeNativeProvider } = await import('src/utils/model/agent.js')
       expect(checkIsClaudeNativeProvider()).toBe(false)
     })
 
@@ -262,7 +262,7 @@ describe('getAgentModel provider-aware fallback', () => {
         isFirstPartyAnthropicBaseUrl: () => false,
       }))
 
-      const { checkIsClaudeNativeProvider } = await import('./agent.js')
+      const { checkIsClaudeNativeProvider } = await import('src/utils/model/agent.js')
       expect(checkIsClaudeNativeProvider()).toBe(false)
     })
   })
@@ -278,7 +278,7 @@ describe('getAgentModelOptions picker', () => {
       getModelOptions: () => [{ value: null, label: 'Default', description: 'recommended' }],
     }))
 
-    const { getAgentModelOptions } = await import('./agent.js')
+    const { getAgentModelOptions } = await import('src/utils/model/agent.js')
     const opts = getAgentModelOptions()
     const values = opts.map(o => o.value)
     expect(values).toEqual(['inherit', 'sonnet', 'opus', 'haiku'])
@@ -290,7 +290,7 @@ describe('getAgentModelOptions picker', () => {
       getModelOptions: () => [],
     }))
 
-    const { getAgentModelOptions } = await import('./agent.js')
+    const { getAgentModelOptions } = await import('src/utils/model/agent.js')
     const values = getAgentModelOptions().map(o => o.value)
     expect(values).toEqual(['inherit', 'sonnet', 'opus', 'haiku'])
   })
@@ -304,7 +304,7 @@ describe('getAgentModelOptions picker', () => {
       ],
     }))
 
-    const { getAgentModelOptions } = await import('./agent.js')
+    const { getAgentModelOptions } = await import('src/utils/model/agent.js')
     const opts = getAgentModelOptions()
     expect(opts.map(o => o.value)).toEqual(['inherit', 'deepseek-chat', 'deepseek-r1'])
     expect(opts[1].description).toBe('Provider: DeepSeek')
@@ -317,7 +317,7 @@ describe('getAgentModelOptions picker', () => {
       },
     }))
 
-    const { getAgentModelOptions } = await import('./agent.js')
+    const { getAgentModelOptions } = await import('src/utils/model/agent.js')
     const values = getAgentModelOptions().map(o => o.value)
     expect(values).toEqual(['inherit', 'sonnet', 'opus', 'haiku'])
   })
@@ -325,17 +325,17 @@ describe('getAgentModelOptions picker', () => {
 
 describe('getAgentModelDisplay text', () => {
   test('omitted model → Inherit from parent (default)', async () => {
-    const { getAgentModelDisplay } = await import('./agent.js')
+    const { getAgentModelDisplay } = await import('src/utils/model/agent.js')
     expect(getAgentModelDisplay(undefined)).toBe('Inherit from parent (default)')
   })
 
   test('inherit → Inherit from parent', async () => {
-    const { getAgentModelDisplay } = await import('./agent.js')
+    const { getAgentModelDisplay } = await import('src/utils/model/agent.js')
     expect(getAgentModelDisplay('inherit')).toBe('Inherit from parent')
   })
 
   test('capitalizes other values', async () => {
-    const { getAgentModelDisplay } = await import('./agent.js')
+    const { getAgentModelDisplay } = await import('src/utils/model/agent.js')
     expect(getAgentModelDisplay('haiku')).toBe('Haiku')
   })
 })
@@ -351,7 +351,7 @@ describe('getAgentModel with provider-specific models', () => {
       isFirstPartyAnthropicBaseUrl: () => false,
     }))
 
-    const { getAgentModel } = await import('./agent.js')
+    const { getAgentModel } = await import('src/utils/model/agent.js')
     const result = getAgentModel('gpt-5.1', 'gpt-4o-mini', undefined, 'default')
 
     // Should NOT inherit parent — provider-specific string passes through.

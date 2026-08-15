@@ -12,7 +12,7 @@ import { isLocalProviderUrl, resolveProviderRequest } from 'src/services/api/pro
 import { getLocalOpenAICompatibleProviderLabel } from 'src/services/api/providerDiscovery.js'
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
 import { getDisplayedEffortLabel, getInitialEffortSetting, modelSupportsEffort, type AdaptiveEffort, type EffortLevel } from 'src/utils/effort.js'
-import { effortLevelToSymbol } from './EffortIndicator.js'
+import { effortLevelToSymbol } from 'src/components/EffortIndicator.js'
 
 const UNCONFIGURED_PLACEHOLDER = '—'
 

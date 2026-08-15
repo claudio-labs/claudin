@@ -37,7 +37,7 @@ import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
 import type { SettingsJson } from 'src/services/settings/types.js'
 import { shouldEnableThinkingByDefault } from 'src/services/context/thinking.js'
-import type { Store } from './store.js'
+import type { Store } from 'src/state/store.js'
 
 export type CompletionBoundary =
   | { type: 'complete'; completedAt: number; outputTokens: number }

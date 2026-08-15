@@ -23,9 +23,9 @@ import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHin
 import { Byline } from 'src/components/design-system/Byline.js';
 import { ProgressBar } from 'src/components/design-system/ProgressBar.js';
 import { isEligibleForOverageCreditGrant, OverageCreditUpsell } from 'src/components/LogoV2/OverageCreditUpsell.js';
-import { CodexUsage } from './CodexUsage.js';
-import { MiniMaxUsage } from './MiniMaxUsage.js';
-import { UnsupportedUsage } from './UnsupportedUsage.js';
+import { CodexUsage } from 'src/components/Settings/CodexUsage.js';
+import { MiniMaxUsage } from 'src/components/Settings/MiniMaxUsage.js';
+import { UnsupportedUsage } from 'src/components/Settings/UnsupportedUsage.js';
 import { computeUsageContribution, type ContributionResult, type UsageWindow } from 'src/services/usageContribution/usageContribution.js';
 type LimitBarProps = {
   title: string;

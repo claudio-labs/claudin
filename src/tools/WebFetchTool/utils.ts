@@ -13,8 +13,8 @@ import { getInitialSettings } from 'src/services/settings/settings.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
 import { ssrfGuardedLookup } from 'src/services/lifecycleHooks/ssrfGuard.js'
 import { createTwoTierCache } from 'src/tools/shared/twoTierCache.js'
-import { isPreapprovedHost } from './preapproved.js'
-import { makeSecondaryModelPrompt } from './prompt.js'
+import { isPreapprovedHost } from 'src/tools/WebFetchTool/preapproved.js'
+import { makeSecondaryModelPrompt } from 'src/tools/WebFetchTool/prompt.js'
 
 // Custom error classes for domain blocking
 class DomainBlockedError extends Error {

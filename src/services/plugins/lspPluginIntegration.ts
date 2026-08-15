@@ -11,15 +11,15 @@ import { logForDebugging } from 'src/utils/debug.js'
 import { isENOENT, toError } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
-import { getPluginDataDir } from './pluginDirectories.js'
+import { getPluginDataDir } from 'src/services/plugins/pluginDirectories.js'
 import {
   getPluginStorageId,
   loadPluginOptions,
   type PluginOptionValues,
   substitutePluginVariables,
   substituteUserConfigVariables,
-} from './pluginOptionsStorage.js'
-import { LspServerConfigSchema } from './schemas.js'
+} from 'src/services/plugins/pluginOptionsStorage.js'
+import { LspServerConfigSchema } from 'src/services/plugins/schemas.js'
 
 /**
  * Validate that a resolved path stays within the plugin directory.

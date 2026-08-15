@@ -6,7 +6,7 @@
  * loader's constraint.
  */
 import { stringifyYaml } from 'src/utils/data/yaml.js'
-import type { WorkflowDef, WorkflowStep } from './types.js'
+import type { WorkflowDef, WorkflowStep } from 'src/tools/AgentWorkflow/types.js'
 
 /** Frontmatter keys owned by the structured editor / WorkflowDefSchema. */
 const OWNED_KEYS = new Set(['name', 'description', 'main', 'steps'])

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { detectGitOperation, parseGitCommitId } from './gitOperationTracking.js'
+import { detectGitOperation, parseGitCommitId } from 'src/tools/shared/gitOperationTracking.js'
 
 describe('detectGitOperation', () => {
   test('parses commit sha and push branch from raw output', () => {

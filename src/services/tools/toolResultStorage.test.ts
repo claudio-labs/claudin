@@ -8,7 +8,7 @@ import {
   applyToolResultReplacementsToMessages,
   getSessionSpillDir,
   unlinkSessionSpillDir,
-} from './toolResultStorage.ts'
+} from 'src/services/tools/toolResultStorage.ts'
 
 test('applyToolResultReplacementsToMessages replaces matching tool results and preserves unrelated messages', () => {
   const unrelated = createUserMessage({ content: 'keep me' })

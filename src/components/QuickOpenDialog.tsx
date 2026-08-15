@@ -12,9 +12,9 @@ import { openFileInExternalEditor } from 'src/utils/editor.js';
 import { truncatePathMiddle, truncateToWidth } from 'src/utils/text/format.js';
 import { highlightMatch } from 'src/components/highlightMatch.js';
 import { readFileInRange } from 'src/utils/fs/readFileInRange.js';
-import { FuzzyPicker } from './design-system/FuzzyPicker.js';
-import { LoadingState } from './design-system/LoadingState.js';
-import type { SuggestionItem } from './PromptInput/PromptInputFooterSuggestions.js';
+import { FuzzyPicker } from 'src/components/design-system/FuzzyPicker.js';
+import { LoadingState } from 'src/components/design-system/LoadingState.js';
+import type { SuggestionItem } from 'src/components/PromptInput/PromptInputFooterSuggestions.js';
 type Props = {
   onDone: () => void;
   onInsert: (text: string) => void;

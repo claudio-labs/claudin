@@ -5,7 +5,7 @@ import { Box, Text } from 'src/ink.js';
 import type { ToolProgressData } from 'src/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';
 import { formatFileSize, truncate } from 'src/utils/text/format.js';
-import type { Output } from './WebFetchTool.js';
+import type { Output } from 'src/tools/WebFetchTool/WebFetchTool.js';
 export function renderToolUseMessage({
   url,
   prompt

@@ -4,8 +4,8 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
 import { getAllBaseTools } from 'src/tools.js'
-import { GitTool, MAX_COMMANDS } from './GitTool.js'
-import { batchFailed, formatGitBatchResult, runGitBatch } from './run.js'
+import { GitTool, MAX_COMMANDS } from 'src/tools/GitTool/GitTool.js'
+import { batchFailed, formatGitBatchResult, runGitBatch } from 'src/tools/GitTool/run.js'
 
 const roots: string[] = []
 

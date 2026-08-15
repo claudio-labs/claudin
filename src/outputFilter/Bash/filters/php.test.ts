@@ -1,11 +1,11 @@
 // Phase 13 — php family (composer).
 import { describe, expect, test } from "bun:test";
-import { runFilterBody, routesTo } from "./__testutils__/harness.js";
+import { runFilterBody, routesTo } from "src/outputFilter/Bash/filters/__testutils__/harness.js";
 import {
   COMPOSER_NOTHING,
   COMPOSER_INSTALL,
   COMPOSER_ERR,
-} from "./__testutils__/phase13Samples.js";
+} from "src/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
 
 describe("phase 13 — composer", () => {
   test("no-op run collapses to sentinel", () => {

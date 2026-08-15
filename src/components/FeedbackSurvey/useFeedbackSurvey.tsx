@@ -10,10 +10,10 @@ import { getLastAssistantMessage } from 'src/services/messages/messages.js';
 import { getMainLoopModel } from 'src/utils/model/model.js';
 import { getInitialSettings } from 'src/services/settings/settings.js';
 import { logOTelEvent } from 'src/services/telemetry/events.js';
-import { submitTranscriptShare, type TranscriptShareTrigger } from './submitTranscriptShare.js';
-import type { TranscriptShareResponse } from './TranscriptSharePrompt.js';
-import { useSurveyState } from './useSurveyState.js';
-import type { FeedbackSurveyResponse, FeedbackSurveyType } from './utils.js';
+import { submitTranscriptShare, type TranscriptShareTrigger } from 'src/components/FeedbackSurvey/submitTranscriptShare.js';
+import type { TranscriptShareResponse } from 'src/components/FeedbackSurvey/TranscriptSharePrompt.js';
+import { useSurveyState } from 'src/components/FeedbackSurvey/useSurveyState.js';
+import type { FeedbackSurveyResponse, FeedbackSurveyType } from 'src/components/FeedbackSurvey/utils.js';
 type FeedbackSurveyConfig = {
   minTimeBeforeFeedbackMs: number;
   minTimeBetweenFeedbackMs: number;

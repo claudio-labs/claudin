@@ -8,7 +8,7 @@ import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 // single decision point — to 'firstParty' and re-assert it before each test so
 // this file wins over whatever ran before it, regardless of which seam the
 // leaked mock targeted.
-const realProviders = { ...(await import('./providers.js')) }
+const realProviders = { ...(await import('src/utils/model/providers.js')) }
 const pinFirstParty = () =>
   mock.module('./providers.js', () => ({
     ...realProviders,
@@ -25,7 +25,7 @@ afterAll(() => {
 import {
   firstPartyNameToCanonical,
   getMarketingNameForModel,
-} from './model.js'
+} from 'src/utils/model/model.js'
 import { modelSupports1M } from 'src/services/context/context.js'
 import {
   modelRequiresAdaptiveThinking,
@@ -39,7 +39,7 @@ import {
   modelSupportsXhighEffort,
 } from 'src/utils/effort.js'
 import { COST_TIER_3_15, MODEL_COSTS } from 'src/services/api/modelCost.js'
-import { CLAUDE_SONNET_5_CONFIG } from './configs.js'
+import { CLAUDE_SONNET_5_CONFIG } from 'src/utils/model/configs.js'
 
 // Sonnet 5 shares Fable 5's request-shaping profile (adaptive thinking always on,
 // budget_tokens/sampling params rejected, 1M-native) but is the new Sonnet tier.

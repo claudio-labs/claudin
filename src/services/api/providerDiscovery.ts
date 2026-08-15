@@ -1,4 +1,4 @@
-import type { OllamaModelDescriptor } from './providerRecommendation.js'
+import type { OllamaModelDescriptor } from 'src/services/api/providerRecommendation.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { DEFAULT_OPENAI_BASE_URL } from 'src/services/api/providerConfig.js'
 

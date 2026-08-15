@@ -23,9 +23,9 @@ import {
   compactConversation,
   ERROR_MESSAGE_USER_ABORT,
   type RecompactionInfo,
-} from './compact.js'
-import { runPostCompactCleanup } from './postCompactCleanup.js'
-import { trySessionMemoryCompaction } from './sessionMemoryCompact.js'
+} from 'src/services/compact/compact.js'
+import { runPostCompactCleanup } from 'src/services/compact/postCompactCleanup.js'
+import { trySessionMemoryCompaction } from 'src/services/compact/sessionMemoryCompact.js'
 
 // Reserve this many tokens for output during compaction
 // Based on p99.99 of compact summary output being 17,387 tokens.

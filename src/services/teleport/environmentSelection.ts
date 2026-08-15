@@ -3,7 +3,7 @@ import {
   getInitialSettings,
   getSettingsForSource,
 } from 'src/services/settings/settings.js'
-import { type EnvironmentResource, fetchEnvironments } from './environments.js'
+import { type EnvironmentResource, fetchEnvironments } from 'src/services/teleport/environments.js'
 
 export type EnvironmentSelectionInfo = {
   availableEnvironments: EnvironmentResource[]

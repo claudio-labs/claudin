@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { join } from 'node:path'
 
 import type { MemoryFileInfo } from 'src/services/instructions/claudemd.js'
-import { getProjectMemoryPathForSelector } from './memoryFileSelectorPaths.js'
+import { getProjectMemoryPathForSelector } from 'src/components/memory/memoryFileSelectorPaths.js'
 
 function projectFile(path: string): MemoryFileInfo {
   return {

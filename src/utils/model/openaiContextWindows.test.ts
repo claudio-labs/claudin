@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, mock, test } from 'bun:test'
-import * as realDiscovery from './openaiModelDiscovery.ts'
+import * as realDiscovery from 'src/utils/model/openaiModelDiscovery.ts'
 
 // Control the value getOpenAIContextWindow reads from the provider's /models
 // discovery. Spreading the real module keeps every other export intact so this
@@ -17,7 +17,7 @@ afterAll(() => {
 
 // Imported after the mock is registered. getOpenAIContextWindow only requires
 // the discovery module lazily, so the mock is in place before the first call.
-import { getOpenAIContextWindow } from './openaiContextWindows.ts'
+import { getOpenAIContextWindow } from 'src/utils/model/openaiContextWindows.ts'
 
 describe('getOpenAIContextWindow — discovery precedence', () => {
   test('prefers the provider-reported window over the hardcoded table', () => {

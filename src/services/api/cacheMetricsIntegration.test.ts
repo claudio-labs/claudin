@@ -28,7 +28,7 @@ import {
   formatCacheMetricsFull,
   resolveCacheProvider,
   type CacheAwareProvider,
-} from './cacheMetrics.js'
+} from 'src/services/api/cacheMetrics.js'
 
 type Scenario = {
   name: string

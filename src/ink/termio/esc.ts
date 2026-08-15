@@ -4,7 +4,7 @@
  * Handles simple escape sequences: ESC + one or two characters
  */
 
-import type { Action } from './types.js'
+import type { Action } from 'src/ink/termio/types.js'
 
 /**
  * Parse a simple ESC sequence

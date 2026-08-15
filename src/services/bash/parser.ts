@@ -5,7 +5,7 @@ import {
   ensureParserInitialized,
   getParserModule,
   type TsNode,
-} from './bashParser.js'
+} from 'src/services/bash/bashParser.js'
 
 export type Node = TsNode
 

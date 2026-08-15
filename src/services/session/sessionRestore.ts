@@ -35,7 +35,7 @@ import {
   attributionRestoreStateFromLog,
   restoreAttributionStateFromSnapshots,
 } from 'src/services/git/commitAttribution.js'
-import { updateSessionName } from './concurrentSessions.js'
+import { updateSessionName } from 'src/services/session/concurrentSessions.js'
 import { getCwd } from 'src/utils/fs/cwd.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import type { FileHistorySnapshot } from 'src/utils/fs/fileHistory.js'
@@ -52,7 +52,7 @@ import {
   restoreSessionMetadata,
   saveMode,
   saveWorktreeState,
-} from './sessionStorage.js'
+} from 'src/services/session/sessionStorage.js'
 import { isTodoV2Enabled } from 'src/tasks/tasks.js'
 import type { TodoList } from 'src/tools/TodoWriteTool/types.js'
 import { TodoListSchema } from 'src/tools/TodoWriteTool/types.js'

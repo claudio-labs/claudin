@@ -11,17 +11,17 @@
 import { uninstallPluginOp } from 'src/services/plugins/pluginOperations.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
-import { loadInstalledPluginsV2 } from './installedPluginsManager.js'
+import { loadInstalledPluginsV2 } from 'src/services/plugins/installedPluginsManager.js'
 import {
   getMarketplace,
   loadKnownMarketplacesConfigSafe,
-} from './marketplaceManager.js'
+} from 'src/services/plugins/marketplaceManager.js'
 import {
   addFlaggedPlugin,
   getFlaggedPlugins,
   loadFlaggedPlugins,
-} from './pluginFlagging.js'
-import type { InstalledPluginsFileV2, PluginMarketplace } from './schemas.js'
+} from 'src/services/plugins/pluginFlagging.js'
+import type { InstalledPluginsFileV2, PluginMarketplace } from 'src/services/plugins/schemas.js'
 
 /**
  * Detect plugins installed from a marketplace that are no longer listed there.

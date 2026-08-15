@@ -3,7 +3,7 @@ import {
   isAliasOrInherit,
   resolveModelOverride,
   type ResolveOverrideDeps,
-} from './agentModelResolver.js'
+} from 'src/tools/AgentTool/agentModelResolver.js'
 
 const silentDeps = (
   available: Set<string> | undefined = undefined,

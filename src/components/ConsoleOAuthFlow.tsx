@@ -12,10 +12,10 @@ import { OAuthService } from 'src/services/oauth/index.js';
 import { getOauthAccountInfo, validateForceLoginOrg } from 'src/services/auth/auth.js';
 import { logError } from 'src/utils/log.js';
 import { getInitialSettings } from 'src/services/settings/settings.js';
-import { Select } from './CustomSelect/select.js';
-import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
-import { Spinner } from './Spinner.js';
-import TextInput from './TextInput.js';
+import { Select } from 'src/components/CustomSelect/select.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { Spinner } from 'src/components/Spinner.js';
+import TextInput from 'src/components/TextInput.js';
 export type ConsoleOAuthFlowResult = {
   type: 'oauth';
 } | {

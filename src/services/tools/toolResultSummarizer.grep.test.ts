@@ -16,7 +16,7 @@ import { join } from 'path'
 import {
   maybeSummarizeToolResult,
   summarizeGrepOutput,
-} from './toolResultSummarizer.js'
+} from 'src/services/tools/toolResultSummarizer.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 
 const FIXTURE_DIR = join(import.meta.dir, '__fixtures__', 'grepSamples')

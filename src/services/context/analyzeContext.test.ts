@@ -9,7 +9,7 @@ const realModel = { ...(await import('src/utils/model/model.js')) }
 const {
   countToolDefinitionTokens,
   TOOL_TOKEN_COUNT_OVERHEAD,
-} = await import('./analyzeContext.js')
+} = await import('src/services/context/analyzeContext.js')
 
 // Shim-shaped client: beta.messages exists but has no countTokens method —
 // this is what getAnthropicClient returns for any OpenAI-compatible provider.

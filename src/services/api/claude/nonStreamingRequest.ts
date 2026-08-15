@@ -20,8 +20,8 @@ import { type RetryContext, withRetry } from 'src/services/api/withRetry.js'
 import {
   MAX_NON_STREAMING_TOKENS,
   adjustParamsForNonStreaming,
-} from './paramBuilders.js'
-import type { Options } from './types.js'
+} from 'src/services/api/claude/paramBuilders.js'
+import type { Options } from 'src/services/api/claude/types.js'
 
 /**
  * Per-attempt timeout for non-streaming fallback requests, in milliseconds.

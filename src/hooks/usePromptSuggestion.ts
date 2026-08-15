@@ -6,7 +6,7 @@ import {
 } from 'src/services/analytics/index.js'
 import { abortSpeculation } from 'src/services/PromptSuggestion/speculation.js'
 import { useAppState, useSetAppState } from 'src/state/AppState.js'
-import { computeGhostRemainder } from './promptSuggestionGhost.js'
+import { computeGhostRemainder } from 'src/hooks/promptSuggestionGhost.js'
 
 type Props = {
   inputValue: string

@@ -11,8 +11,8 @@ import {
   CRON_LIST_TOOL_NAME,
   isDurableCronEnabled,
   isKairosCronEnabled,
-} from './prompt.js'
-import { renderListResultMessage, renderListToolUseMessage } from './UI.js'
+} from 'src/tools/ScheduleCronTool/prompt.js'
+import { renderListResultMessage, renderListToolUseMessage } from 'src/tools/ScheduleCronTool/UI.js'
 
 const inputSchema = lazySchema(() => z.strictObject({}))
 type InputSchema = ReturnType<typeof inputSchema>

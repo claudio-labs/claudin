@@ -11,7 +11,7 @@ import {
 import {
   asTrimmedString,
   parseChatgptAccountId,
-} from './codexOAuthShared.js'
+} from 'src/services/api/codexOAuthShared.js'
 export const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1'
 export const DEFAULT_CODEX_BASE_URL = 'https://chatgpt.com/backend-api/codex'
 export const DEFAULT_XAI_BASE_URL = 'https://api.x.ai/v1'
@@ -666,7 +666,7 @@ export function transportSendsStrictToolSchemas(model?: string): boolean {
  */
 function tryGetActiveProviderShape(): ResolvedProviderShape | null {
   try {
-    const { tryGetActiveProvider } = require('./activeProvider.js') as typeof import('./activeProvider.js')
+    const { tryGetActiveProvider } = require('src/services/api/activeProvider.js') as typeof import('src/services/api/activeProvider.js')
     return tryGetActiveProvider()
   } catch {
     return null
@@ -694,7 +694,7 @@ type ResolvedProviderShape = {
 export function getAdditionalModelOptionsCacheScope(): string | null {
   let activeProvider: ResolvedProviderShape | null = null
   try {
-    const { tryGetActiveProvider } = require('./activeProvider.js') as typeof import('./activeProvider.js')
+    const { tryGetActiveProvider } = require('src/services/api/activeProvider.js') as typeof import('src/services/api/activeProvider.js')
     activeProvider = tryGetActiveProvider()
   } catch {
     activeProvider = null
@@ -755,7 +755,7 @@ export function resolveCodexAuthPath(
 
 function readActiveProviderCodexAuthPath(): string | undefined {
   try {
-    const { tryGetActiveProvider } = require('./activeProvider.js') as typeof import('./activeProvider.js')
+    const { tryGetActiveProvider } = require('src/services/api/activeProvider.js') as typeof import('src/services/api/activeProvider.js')
     return asTrimmedString(tryGetActiveProvider()?.extras?.codexAuthPath)
   } catch {
     return undefined
@@ -764,7 +764,7 @@ function readActiveProviderCodexAuthPath(): string | undefined {
 
 function readActiveProviderCodexAccountId(): string | undefined {
   try {
-    const { tryGetActiveProvider } = require('./activeProvider.js') as typeof import('./activeProvider.js')
+    const { tryGetActiveProvider } = require('src/services/api/activeProvider.js') as typeof import('src/services/api/activeProvider.js')
     return asTrimmedString(tryGetActiveProvider()?.extras?.codexAccountId)
   } catch {
     return undefined

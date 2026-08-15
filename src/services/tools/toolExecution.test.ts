@@ -10,7 +10,7 @@ import {
   getSchemaValidationErrorOverride,
   getSchemaValidationToolUseResult,
   withRepeatedFailureHint,
-} from './toolExecution.js'
+} from 'src/services/tools/toolExecution.js'
 
 describe('getSchemaValidationErrorOverride', () => {
   test('returns actionable missing-skill error for SkillTool', () => {

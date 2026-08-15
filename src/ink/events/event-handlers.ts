@@ -1,6 +1,6 @@
-import type { ClickEvent } from './click-event.js'
-import type { FocusEvent } from './focus-event.js'
-import type { KeyboardEvent } from './keyboard-event.js'
+import type { ClickEvent } from 'src/ink/events/click-event.js'
+import type { FocusEvent } from 'src/ink/events/focus-event.js'
+import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js'
 import type { PasteEvent } from './paste-event.js'
 import type { ResizeEvent } from './resize-event.js'
 

@@ -9,8 +9,8 @@
  * Samples are the real captures in filters/__testutils__/phase13Samples.ts.
  */
 import { afterAll, describe, expect, test } from "bun:test";
-import { runFilterBody, reductionPct, getFilter } from "./filters/__testutils__/harness.js";
-import * as S from "./filters/__testutils__/phase13Samples.js";
+import { runFilterBody, reductionPct, getFilter } from "src/outputFilter/Bash/filters/__testutils__/harness.js";
+import * as S from "src/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
 
 type Row = {
   phase: string;

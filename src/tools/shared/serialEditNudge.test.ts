@@ -5,7 +5,7 @@ import {
   SERIAL_EDIT_MAX_SCAN,
   SERIAL_EDIT_THRESHOLD,
   SERIAL_EDIT_WINDOW,
-} from './serialEditNudge.js'
+} from 'src/tools/shared/serialEditNudge.js'
 
 type Block = { type: string; name?: string; input?: unknown; text?: string }
 

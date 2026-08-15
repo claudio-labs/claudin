@@ -35,7 +35,7 @@ import {
   createClaudeAiProxyFetch,
   MCP_REQUEST_TIMEOUT_MS,
   wrapFetchWithTimeout,
-} from './fetch.js'
+} from 'src/services/mcp/client/fetch.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 // Lazy: wrapper.tsx → hostAdapter.ts → executor.ts pulls both native modules

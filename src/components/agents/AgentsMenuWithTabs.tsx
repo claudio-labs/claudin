@@ -4,8 +4,8 @@ import type { CommandResultDisplay } from 'src/commands.js'
 import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js'
 import { useKeybinding } from 'src/keybindings/useKeybinding.js'
 import type { Tools } from 'src/Tool.js'
-import { AgentsMenu } from './AgentsMenu.js'
-import { RunningAgentsTab } from './RunningAgentsTab.js'
+import { AgentsMenu } from 'src/components/agents/AgentsMenu.js'
+import { RunningAgentsTab } from 'src/components/agents/RunningAgentsTab.js'
 
 type Tab = 'running' | 'library'
 

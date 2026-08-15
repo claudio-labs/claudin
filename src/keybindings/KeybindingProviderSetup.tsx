@@ -17,11 +17,11 @@ import { type Key, useInput } from 'src/ink.js';
 import { count } from 'src/utils/data/array.js';
 import { logForDebugging } from 'src/utils/debug.js';
 import { plural } from 'src/utils/text/stringUtils.js';
-import { KeybindingProvider } from './KeybindingContext.js';
-import { initializeKeybindingWatcher, type KeybindingsLoadResult, loadKeybindingsSyncWithWarnings, subscribeToKeybindingChanges } from './loadUserBindings.js';
-import { resolveKeyWithChordState } from './resolver.js';
-import type { KeybindingContextName, ParsedBinding, ParsedKeystroke } from './types.js';
-import type { KeybindingWarning } from './validate.js';
+import { KeybindingProvider } from 'src/keybindings/KeybindingContext.js';
+import { initializeKeybindingWatcher, type KeybindingsLoadResult, loadKeybindingsSyncWithWarnings, subscribeToKeybindingChanges } from 'src/keybindings/loadUserBindings.js';
+import { resolveKeyWithChordState } from 'src/keybindings/resolver.js';
+import type { KeybindingContextName, ParsedBinding, ParsedKeystroke } from 'src/keybindings/types.js';
+import type { KeybindingWarning } from 'src/keybindings/validate.js';
 
 /**
  * Timeout for chord sequences in milliseconds.

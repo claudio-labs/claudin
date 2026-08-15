@@ -14,9 +14,9 @@ import {
   git,
   repoWithCommits,
   writeRepoFile,
-} from './__fixtures__/repo.js'
-import { acceptsGitCommand } from './grammar.js'
-import { formatGitBatchResult, runGitBatch } from './run.js'
+} from 'src/tools/GitTool/__fixtures__/repo.js'
+import { acceptsGitCommand } from 'src/tools/GitTool/grammar.js'
+import { formatGitBatchResult, runGitBatch } from 'src/tools/GitTool/run.js'
 
 afterAll(() => {
   cleanupAllRepos()

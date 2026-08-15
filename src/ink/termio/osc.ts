@@ -7,8 +7,8 @@ import { unlink, writeFile } from 'node:fs/promises'
 import { env } from 'src/utils/env.js'
 import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
 import { generateTempFilePath } from 'src/utils/fs/tempfile.js'
-import { BEL, ESC, ESC_TYPE, SEP } from './ansi.js'
-import type { Action, Color, TabStatusAction } from './types.js'
+import { BEL, ESC, ESC_TYPE, SEP } from 'src/ink/termio/ansi.js'
+import type { Action, Color, TabStatusAction } from 'src/ink/termio/types.js'
 
 export const OSC_PREFIX = ESC + String.fromCharCode(ESC_TYPE.OSC)
 

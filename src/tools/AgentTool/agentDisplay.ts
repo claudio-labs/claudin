@@ -16,8 +16,8 @@ import {
 import {
   getAvailableModelIdsForActiveProfile,
   resolveModelOverride,
-} from './agentModelResolver.js'
-import type { AgentDefinition } from './loadAgentsDir.js'
+} from 'src/tools/AgentTool/agentModelResolver.js'
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 
 type AgentSource = SettingSource | 'built-in' | 'plugin'
 

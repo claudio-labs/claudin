@@ -44,7 +44,7 @@ import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
 import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
 import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
-import { invalidateCacheForWrite } from './cacheInvalidation.js'
+import { invalidateCacheForWrite } from 'src/services/tools/cacheInvalidation.js'
 import { parseGitCommitId } from 'src/tools/shared/gitOperationTracking.js'
 import {
   isDeferredTool,
@@ -145,7 +145,7 @@ import {
   runPostToolUseFailureHooks,
   runPostToolUseHooks,
   runPreToolUseHooks,
-} from './toolHooks.js'
+} from 'src/services/tools/toolHooks.js'
 
 /** Minimum total hook duration (ms) to show inline timing summary */
 export const HOOK_TIMING_DISPLAY_THRESHOLD_MS = 500

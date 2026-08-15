@@ -39,7 +39,7 @@ afterAll(() => {
   realConfig.resetGlobalConfigForTests?.()
 })
 
-import { parseMigrateArgs, runProviderMigrate } from './migrate.js'
+import { parseMigrateArgs, runProviderMigrate } from 'src/commands/provider/migrate.js'
 
 function makeTempHome(): { home: string; legacy: string; next: string } {
   const home = mkdtempSync(join(tmpdir(), 'claudin-migrate-cmd-'))

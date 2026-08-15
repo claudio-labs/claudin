@@ -10,7 +10,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { getAPIProvider } from './providers.js'
+import { getAPIProvider } from 'src/utils/model/providers.js'
 
 function getActiveBaseUrl(): string {
   return tryGetActiveProvider()?.baseUrl ?? ''

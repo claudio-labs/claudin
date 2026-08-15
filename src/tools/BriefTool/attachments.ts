@@ -93,7 +93,7 @@ export async function resolveAttachments(
     const shouldUpload =
       uploadCtx.replBridgeEnabled ||
       isEnvTruthy(process.env.CLAUDE_CODE_BRIEF_UPLOAD)
-    const { uploadBriefAttachment } = await import('./upload.js')
+    const { uploadBriefAttachment } = await import('src/tools/BriefTool/upload.js')
     const uuids = await Promise.all(
       stated.map(a =>
         uploadBriefAttachment(a.path, a.size, {

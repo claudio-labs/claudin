@@ -3,10 +3,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
-import { formatCheckResult } from './budget.js'
-import { runTypecheck } from './run.js'
-import { resolveCheckCommand, TypecheckTool } from './TypecheckTool.js'
-import type { CheckProgress, CheckResult } from './types.js'
+import { formatCheckResult } from 'src/tools/TypecheckTool/budget.js'
+import { runTypecheck } from 'src/tools/TypecheckTool/run.js'
+import { resolveCheckCommand, TypecheckTool } from 'src/tools/TypecheckTool/TypecheckTool.js'
+import type { CheckProgress, CheckResult } from 'src/tools/TypecheckTool/types.js'
 
 const roots: string[] = []
 

@@ -5,7 +5,7 @@
  * To understand what happens in any state, look up that state's transition function.
  */
 
-import { resolveMotion } from './motions.js'
+import { resolveMotion } from 'src/vim/motions.js'
 import {
   executeIndent,
   executeJoin,
@@ -21,7 +21,7 @@ import {
   executeToggleCase,
   executeX,
   type OperatorContext,
-} from './operators.js'
+} from 'src/vim/operators.js'
 import {
   type CommandState,
   FIND_KEYS,
@@ -35,7 +35,7 @@ import {
   TEXT_OBJ_SCOPES,
   TEXT_OBJ_TYPES,
   type TextObjScope,
-} from './types.js'
+} from 'src/vim/types.js'
 
 /**
  * Context passed to transition functions.

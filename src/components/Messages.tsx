@@ -32,19 +32,19 @@ import { applyGrouping } from 'src/services/tools/groupToolUses.js';
 import { buildMessageLookups, createAssistantMessage, deriveUUID, getMessagesAfterCompactBoundary, getToolUseID, getToolUseIDs, hasUnresolvedHooksFromLookup, isNotEmptyMessage, normalizeMessages, reorderMessagesInUI, type StreamingThinking, type StreamingToolUse, shouldShowUserMessage } from 'src/services/messages/messages.js';
 import { plural } from 'src/utils/text/stringUtils.js';
 import { renderableSearchText } from 'src/services/session/transcriptSearch.js';
-import { Divider } from './design-system/Divider.js';
-import type { UnseenDivider } from './FullscreenLayout.js';
-import { LogoV2 } from './LogoV2/LogoV2.js';
-import { StreamingMarkdown } from './Markdown.js';
+import { Divider } from 'src/components/design-system/Divider.js';
+import type { UnseenDivider } from 'src/components/FullscreenLayout.js';
+import { LogoV2 } from 'src/components/LogoV2/LogoV2.js';
+import { StreamingMarkdown } from 'src/components/Markdown.js';
 import { useStreamingTextValue } from 'src/hooks/useStreamingTextStore.js';
-import { hasContentAfterIndex, MessageRow } from './MessageRow.js';
-import { InVirtualListContext, type MessageActionsNav, MessageActionsSelectedContext, type MessageActionsState } from './messageActions.js';
-import { AssistantThinkingMessage } from './messages/AssistantThinkingMessage.js';
-import { isNullRenderingAttachment } from './messages/nullRenderingAttachments.js';
-import { OffscreenFreeze } from './OffscreenFreeze.js';
-import type { ToolUseConfirm } from './permissions/PermissionRequest.js';
-import { StatusNotices } from './StatusNotices.js';
-import type { JumpHandle } from './VirtualMessageList.js';
+import { hasContentAfterIndex, MessageRow } from 'src/components/MessageRow.js';
+import { InVirtualListContext, type MessageActionsNav, MessageActionsSelectedContext, type MessageActionsState } from 'src/components/messageActions.js';
+import { AssistantThinkingMessage } from 'src/components/messages/AssistantThinkingMessage.js';
+import { isNullRenderingAttachment } from 'src/components/messages/nullRenderingAttachments.js';
+import { OffscreenFreeze } from 'src/components/OffscreenFreeze.js';
+import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';
+import { StatusNotices } from 'src/components/StatusNotices.js';
+import type { JumpHandle } from 'src/components/VirtualMessageList.js';
 
 /** LogoHeader only consumes the agent definitions, not the full Messages props. */
 type LogoHeaderProps = {
@@ -89,7 +89,7 @@ const BRIEF_TOOL_NAME: string | null = feature('KAIROS') || feature('KAIROS_BRIE
 const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS') ? (require('../tools/SendUserFileTool/prompt.js') as typeof import('../tools/SendUserFileTool/prompt.js')).SEND_USER_FILE_TOOL_NAME : null;
 
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { VirtualMessageList } from './VirtualMessageList.js';
+import { VirtualMessageList } from 'src/components/VirtualMessageList.js';
 
 /**
  * In brief-only mode, filter messages to show ONLY Brief tool_use blocks,

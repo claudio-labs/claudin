@@ -1,7 +1,7 @@
 import type * as React from 'react';
 import { useEffect, useState } from 'react';
 import { Box, Text } from 'src/ink.js';
-import { useTheme } from './design-system/ThemeProvider.js';
+import { useTheme } from 'src/components/design-system/ThemeProvider.js';
 import { onGlobalConfigChange } from 'src/services/config/config.js';
 import type { ProviderProfile } from 'src/services/config/config.js';
 import { getActiveProviderProfile } from 'src/services/api/providerProfiles.js';

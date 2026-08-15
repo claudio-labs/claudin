@@ -3,11 +3,11 @@ import { PassThrough } from 'node:stream'
 import { expect, test } from 'bun:test'
 import React, { Activity } from 'react'
 
-import type { DOMElement, ElementNames } from './dom.ts'
-import instances from './instances.ts'
-import { LayoutDisplay, LayoutEdge } from './layout/node.ts'
-import type { ParsedKey } from './parse-keypress.ts'
-import { createRoot } from './root.ts'
+import type { DOMElement, ElementNames } from 'src/ink/dom.ts'
+import instances from 'src/ink/instances.ts'
+import { LayoutDisplay, LayoutEdge } from 'src/ink/layout/node.ts'
+import type { ParsedKey } from 'src/ink/parse-keypress.ts'
+import { createRoot } from 'src/ink/root.ts'
 
 type TestStdin = PassThrough & {
   isTTY: boolean

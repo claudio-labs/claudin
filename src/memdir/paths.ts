@@ -20,7 +20,7 @@ import {
   getSettingsForSource,
 } from 'src/services/settings/settings.js'
 import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { migrateGlobalMemoryIfNeeded } from './memoryMigration.js'
+import { migrateGlobalMemoryIfNeeded } from 'src/memdir/memoryMigration.js'
 
 /**
  * Whether auto-memory features are enabled (memdir, agent memory, past session search).

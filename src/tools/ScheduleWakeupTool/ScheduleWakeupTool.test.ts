@@ -20,8 +20,8 @@ import {
   clampWakeupDelaySeconds,
   WAKEUP_MAX_DELAY_SECONDS,
   WAKEUP_MIN_DELAY_SECONDS,
-} from './prompt.js'
-import { ScheduleWakeupTool } from './ScheduleWakeupTool.js'
+} from 'src/tools/ScheduleWakeupTool/prompt.js'
+import { ScheduleWakeupTool } from 'src/tools/ScheduleWakeupTool/ScheduleWakeupTool.js'
 
 let priorEnabled = false
 

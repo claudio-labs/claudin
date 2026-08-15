@@ -25,7 +25,7 @@ import type { ToolUseContext } from 'src/Tool.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import { isAutoMemoryEnabled, getAutoMemPath } from 'src/memdir/paths.js'
-import { isAutoDreamEnabled } from './config.js'
+import { isAutoDreamEnabled } from 'src/services/autoDream/config.js'
 import { getGlobalConfig } from 'src/services/config/config.js'
 import { getProjectDir } from 'src/services/session/sessionStorage.js'
 import {
@@ -35,13 +35,13 @@ import {
   getSessionId,
 } from 'src/bootstrap/state.js'
 import { createAutoMemCanUseTool } from 'src/services/extractMemories/extractMemories.js'
-import { buildConsolidationPrompt } from './consolidationPrompt.js'
+import { buildConsolidationPrompt } from 'src/services/autoDream/consolidationPrompt.js'
 import {
   readLastConsolidatedAt,
   listSessionsTouchedSince,
   tryAcquireConsolidationLock,
   rollbackConsolidationLock,
-} from './consolidationLock.js'
+} from 'src/services/autoDream/consolidationLock.js'
 import {
   registerDreamTask,
   addDreamTurn,

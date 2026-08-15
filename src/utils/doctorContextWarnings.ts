@@ -8,7 +8,7 @@ import {
   getMemoryFiles,
   MAX_MEMORY_CHARACTER_COUNT,
 } from 'src/services/instructions/claudemd.js'
-import { getMainLoopModel } from './model/model.js'
+import { getMainLoopModel } from 'src/utils/model/model.js'
 import { permissionRuleValueToString } from 'src/services/permissions/permissionRuleParser.js'
 import { detectUnreachableRules } from 'src/services/permissions/shadowedRuleDetection.js'
 import { lintRuleFiles, relativeFindingPath } from 'src/services/instructions/rulesLint.js'

@@ -5,7 +5,7 @@ import type { AppState } from 'src/state/AppState.js'
 import type { TaskStateBase } from 'src/Task.js'
 import { getTaskByType } from 'src/tasks.js'
 import { emitTaskTerminatedSdk } from 'src/utils/sdkEventQueue.js'
-import { isLocalShellTask } from './LocalShellTask/guards.js'
+import { isLocalShellTask } from 'src/tasks/LocalShellTask/guards.js'
 
 export class StopTaskError extends Error {
   constructor(

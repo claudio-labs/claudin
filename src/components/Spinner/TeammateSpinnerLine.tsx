@@ -12,7 +12,7 @@ import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask
 import { summarizeRecentActivities } from 'src/services/tools/collapseReadSearch.js';
 import { formatDuration, formatNumber, truncateToWidth } from 'src/utils/text/format.js';
 import { toInkColor } from 'src/utils/ink.js';
-import { TEAMMATE_SELECT_HINT } from './teammateSelectHint.js';
+import { TEAMMATE_SELECT_HINT } from 'src/components/Spinner/teammateSelectHint.js';
 type Props = {
   teammate: InProcessTeammateTaskState;
   isLast: boolean;

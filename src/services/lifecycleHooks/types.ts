@@ -6,7 +6,7 @@ import type {
 } from 'src/types/hooks.js'
 import type { HookCommand } from 'src/services/settings/types.js'
 import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
-import type { FunctionHook } from './sessionHooks.js'
+import type { FunctionHook } from 'src/services/lifecycleHooks/sessionHooks.js'
 
 export interface HookBlockingError {
   blockingError: string

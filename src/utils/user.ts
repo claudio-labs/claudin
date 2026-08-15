@@ -8,8 +8,8 @@ import {
 } from 'src/services/auth/auth.js'
 import { getGlobalConfig, getOrCreateUserID } from 'src/services/config/config.js'
 import { getCwd } from 'src/utils/fs/cwd.js'
-import { type env, getHostPlatformForAnalytics } from './env.js'
-import { isEnvTruthy } from './envUtils.js'
+import { type env, getHostPlatformForAnalytics } from 'src/utils/env.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 
 // Cache for email fetched asynchronously at startup
 let cachedEmail: string | undefined | null = null // null means not fetched yet

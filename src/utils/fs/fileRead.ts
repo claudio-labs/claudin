@@ -13,7 +13,7 @@
  */
 
 import { logForDebugging } from 'src/utils/debug.js'
-import { getFsImplementation, safeResolvePath } from './fsOperations.js'
+import { getFsImplementation, safeResolvePath } from 'src/utils/fs/fsOperations.js'
 
 export type LineEndingType = 'CRLF' | 'LF'
 

@@ -18,7 +18,7 @@ import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/constants.js'
 import { MONITOR_TOOL_NAME } from 'src/tools/MonitorTool/toolName.js'
 import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
 import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js'
-import { invalidateAll, invalidateForPath } from './toolResultCache.js'
+import { invalidateAll, invalidateForPath } from 'src/services/tools/toolResultCache.js'
 
 /**
  * Drop cached read-only tool results that may have been invalidated by a

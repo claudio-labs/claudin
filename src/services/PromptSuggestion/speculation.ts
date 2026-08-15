@@ -50,7 +50,7 @@ import {
   getSuggestionSuppressReason,
   logSuggestionSuppressed,
   shouldFilterSuggestion,
-} from './promptSuggestion.js'
+} from 'src/services/PromptSuggestion/promptSuggestion.js'
 
 const MAX_SPECULATION_TURNS = 20
 const MAX_SPECULATION_MESSAGES = 100

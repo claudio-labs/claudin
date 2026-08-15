@@ -10,8 +10,8 @@ import {
   retirePinAfterUse,
   _resetAllClippedIdsForTesting,
   _getClippedIdsMapSizeForTesting,
-} from './stableStubState.js'
-import { runPostCompactCleanup } from './postCompactCleanup.js'
+} from 'src/services/compact/stableStubState.js'
+import { runPostCompactCleanup } from 'src/services/compact/postCompactCleanup.js'
 import {
   type ContentReplacementState,
   reconstructContentReplacementState,

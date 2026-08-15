@@ -23,23 +23,23 @@
  *       It is only used when WEB_SEARCH_PROVIDER=custom is explicitly selected.
  */
 
-import type { SearchInput, SearchProvider } from './types.js'
-import type { ProviderOutput } from './types.js'
+import type { SearchInput, SearchProvider } from 'src/tools/WebSearchTool/providers/types.js'
+import type { ProviderOutput } from 'src/tools/WebSearchTool/providers/types.js'
 
-import { customProvider } from './custom.js'
-import { duckduckgoProvider } from './duckduckgo.js'
-import { firecrawlProvider } from './firecrawl.js'
-import { tavilyProvider } from './tavily.js'
-import { exaProvider } from './exa.js'
-import { youProvider } from './you.js'
-import { jinaProvider } from './jina.js'
-import { bingProvider } from './bing.js'
-import { mojeekProvider } from './mojeek.js'
-import { linkupProvider } from './linkup.js'
+import { customProvider } from 'src/tools/WebSearchTool/providers/custom.js'
+import { duckduckgoProvider } from 'src/tools/WebSearchTool/providers/duckduckgo.js'
+import { firecrawlProvider } from 'src/tools/WebSearchTool/providers/firecrawl.js'
+import { tavilyProvider } from 'src/tools/WebSearchTool/providers/tavily.js'
+import { exaProvider } from 'src/tools/WebSearchTool/providers/exa.js'
+import { youProvider } from 'src/tools/WebSearchTool/providers/you.js'
+import { jinaProvider } from 'src/tools/WebSearchTool/providers/jina.js'
+import { bingProvider } from 'src/tools/WebSearchTool/providers/bing.js'
+import { mojeekProvider } from 'src/tools/WebSearchTool/providers/mojeek.js'
+import { linkupProvider } from 'src/tools/WebSearchTool/providers/linkup.js'
 
-export { type SearchInput, type SearchProvider, type ProviderOutput, type SearchHit } from './types.js'
-export { applyDomainFilters, safeHostname, hostMatchesDomain } from './types.js'
-export { extractHits } from './custom.js'
+export { type SearchInput, type SearchProvider, type ProviderOutput, type SearchHit } from 'src/tools/WebSearchTool/providers/types.js'
+export { applyDomainFilters, safeHostname, hostMatchesDomain } from 'src/tools/WebSearchTool/providers/types.js'
+export { extractHits } from 'src/tools/WebSearchTool/providers/custom.js'
 
 // ---------------------------------------------------------------------------
 // All registered providers — order matters for auto mode

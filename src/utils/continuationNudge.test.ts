@@ -4,7 +4,7 @@ import {
   shouldNudgeContinuation,
   signalsCompletion,
   signalsContinuation,
-} from './continuationNudge.js'
+} from 'src/utils/continuationNudge.js'
 
 describe('signalsContinuation — positives (intent to keep working)', () => {
   const positives = [

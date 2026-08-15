@@ -5,7 +5,7 @@ const exportCommand = {
   name: 'export',
   description: 'Export the current conversation to a file or clipboard',
   argumentHint: '[filename]',
-  load: () => import('./export.js'),
+  load: () => import('src/commands/export/export.js'),
 } satisfies Command
 
 export default exportCommand

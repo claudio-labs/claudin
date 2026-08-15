@@ -7,8 +7,8 @@ import type { ConfigParseError } from 'src/utils/errors.js';
 import { getBaseRenderOptions } from 'src/utils/renderOptions.js';
 import { jsonStringify, writeFileSync_DEPRECATED } from 'src/utils/slowOperations.js';
 import type { ThemeName } from 'src/utils/theme.js';
-import { Select } from './CustomSelect/index.js';
-import { Dialog } from './design-system/Dialog.js';
+import { Select } from 'src/components/CustomSelect/index.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
 interface InvalidConfigHandlerProps {
   error: ConfigParseError;
 }

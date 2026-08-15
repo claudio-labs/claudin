@@ -1,11 +1,11 @@
 // Phase 13 — elixir family (mix compile / format).
 import { describe, expect, test } from "bun:test";
-import { runFilterBody, routesTo } from "./__testutils__/harness.js";
+import { runFilterBody, routesTo } from "src/outputFilter/Bash/filters/__testutils__/harness.js";
 import {
   MIX_COMPILE_WARN,
   MIX_COMPILE_OK,
   MIX_FORMAT_FILES,
-} from "./__testutils__/phase13Samples.js";
+} from "src/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
 
 describe("phase 13 — mix compile", () => {
   test("strips Compiling/Generated, keeps the warning", () => {

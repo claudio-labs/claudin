@@ -11,7 +11,7 @@
 import { feature } from 'bun:bundle'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { BYTES_PER_TOKEN } from 'src/constants/toolLimits.js'
-import { compressJsonArray } from './jsonArrayCompress.js'
+import { compressJsonArray } from 'src/services/tools/jsonArrayCompress.js'
 import { detectCodeLang, stripLineNumberPrefix } from 'src/utils/fs/detectCodeLang.js'
 import { scanSymbols } from 'src/tools/shared/codeOutline/scanSymbols.js'
 import { renderOutlineBody } from 'src/tools/shared/codeOutline/renderOutline.js'

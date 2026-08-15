@@ -13,12 +13,12 @@ import { afterEach, describe, expect, test } from 'bun:test'
 }
 
 import { clearBundledSkills, getBundledSkills } from 'src/skills/bundledSkills.js'
-import { registerFewerPermissionPromptsSkill } from './fewerPermissionPrompts.js'
-import { registerRefreshRulesSkill } from './refreshRules.js'
-import { registerRunSkill } from './run.js'
-import { registerSimplifySkill } from './simplify.js'
-import { registerVerifySkill } from './verify.js'
-import { RUN_EXAMPLE_FILES, VERIFY_EXAMPLE_FILES } from './verifyRunExamples.js'
+import { registerFewerPermissionPromptsSkill } from 'src/skills/bundled/fewerPermissionPrompts.js'
+import { registerRefreshRulesSkill } from 'src/skills/bundled/refreshRules.js'
+import { registerRunSkill } from 'src/skills/bundled/run.js'
+import { registerSimplifySkill } from 'src/skills/bundled/simplify.js'
+import { registerVerifySkill } from 'src/skills/bundled/verify.js'
+import { RUN_EXAMPLE_FILES, VERIFY_EXAMPLE_FILES } from 'src/skills/bundled/verifyRunExamples.js'
 
 afterEach(() => {
   clearBundledSkills()

@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'bun:test'
 
 import { clearBundledSkills, getBundledSkills } from 'src/skills/bundledSkills.js'
-import { registerUpdateConfigSkill } from './updateConfig.js'
+import { registerUpdateConfigSkill } from 'src/skills/bundled/updateConfig.js'
 
 afterEach(() => {
   clearBundledSkills()

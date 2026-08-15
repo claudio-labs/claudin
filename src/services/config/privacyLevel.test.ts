@@ -7,7 +7,7 @@ import {
   getPrivacyLevel,
   isEssentialTrafficOnly,
   isTelemetryDisabled,
-} from './privacyLevel.js'
+} from 'src/services/config/privacyLevel.js'
 
 const ENV_KEYS = [
   'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',

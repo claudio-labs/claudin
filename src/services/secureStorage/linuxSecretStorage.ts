@@ -4,8 +4,8 @@ import {
   CREDENTIALS_SERVICE_SUFFIX,
   getSecureStorageServiceName,
   getUsername,
-} from './macOsKeychainHelpers.js'
-import type { SecureStorage, SecureStorageData } from './index.js'
+} from 'src/services/secureStorage/macOsKeychainHelpers.js'
+import type { SecureStorage, SecureStorageData } from 'src/services/secureStorage/index.js'
 
 /**
  * Linux-specific secure storage implementation using the secret-tool CLI.

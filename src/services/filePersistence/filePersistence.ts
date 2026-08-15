@@ -25,7 +25,7 @@ import {
   findModifiedFiles,
   getEnvironmentKind,
   logDebug,
-} from './outputsScanner.js'
+} from 'src/services/filePersistence/outputsScanner.js'
 import {
   DEFAULT_UPLOAD_CONCURRENCY,
   type FailedPersistence,
@@ -34,7 +34,7 @@ import {
   OUTPUTS_SUBDIR,
   type PersistedFile,
   type TurnStartTime,
-} from './types.js'
+} from 'src/services/filePersistence/types.js'
 
 /**
  * Execute file persistence for modified files in the outputs directory.

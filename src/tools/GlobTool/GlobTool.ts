@@ -15,14 +15,14 @@ import { checkReadPermissionForTool } from 'src/services/permissions/filesystem.
 import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
 import { matchWildcardPattern } from 'src/services/permissions/shellRuleMatching.js'
 import { semanticNumber } from 'src/utils/data/semanticNumber.js'
-import { DESCRIPTION, GLOB_TOOL_NAME } from './prompt.js'
+import { DESCRIPTION, GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import {
   getToolUseSummary,
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
   userFacingName,
-} from './UI.js'
+} from 'src/tools/GlobTool/UI.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({

@@ -1,13 +1,13 @@
-import { builtInFilters } from "./filters/index.js";
+import { builtInFilters } from "src/outputFilter/Bash/filters/index.js";
 import {
   consumeExecutionPrefix,
   hasCompound,
   matchesAtomicCommand,
   splitTopLevelSegments,
   splitTrailingReducerPipe,
-} from "./pipeline.js";
-import type { FilterSpec } from "./types.js";
-import { loadUserFilters } from "./userFilters.js";
+} from "src/outputFilter/Bash/pipeline.js";
+import type { FilterSpec } from "src/outputFilter/Bash/types.js";
+import { loadUserFilters } from "src/outputFilter/Bash/userFilters.js";
 
 /** Strips sudo/time/nice prefixes, leading env assignments and runner prefixes
  * (npx, poetry run, pnpm dlx, …) — in any interleaving — so `sudo FOO=bar ls`

@@ -24,7 +24,7 @@ import {
   type BashToolInput,
   planBashFilterForExecution,
   shouldFilterOutput,
-} from './BashTool.js'
+} from 'src/tools/BashTool/BashTool.js'
 import { getBytesSaved, resetBytesSaved } from 'src/services/context/tokensSaved.js'
 
 // ---------------------------------------------------------------------------

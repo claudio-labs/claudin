@@ -22,7 +22,7 @@ import {
   hasToolCallsInLastAssistantTurn,
 } from 'src/services/messages/messages.js'
 import { sequential } from 'src/utils/sequential.js'
-import { buildMagicDocsUpdatePrompt } from './prompts.js'
+import { buildMagicDocsUpdatePrompt } from 'src/services/MagicDocs/prompts.js'
 
 // Magic Doc header pattern: # MAGIC DOC: [title]
 // Matches at the start of the file (first line)

@@ -2,10 +2,10 @@ import { afterAll, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { resetBaselineDirectoryCacheForTesting } from './baseline.js'
-import { formatCheckResult } from './budget.js'
-import { fingerprintDiagnostic } from './fingerprint.js'
-import { eraseCheckoutPath, runTypecheck, type RunOptions } from './run.js'
+import { resetBaselineDirectoryCacheForTesting } from 'src/tools/TypecheckTool/baseline.js'
+import { formatCheckResult } from 'src/tools/TypecheckTool/budget.js'
+import { fingerprintDiagnostic } from 'src/tools/TypecheckTool/fingerprint.js'
+import { eraseCheckoutPath, runTypecheck, type RunOptions } from 'src/tools/TypecheckTool/run.js'
 
 /**
  * These drive the orchestrator through REAL shell commands rather than a mocked

@@ -2,10 +2,10 @@ import { HOOK_EVENTS, type HookEvent } from 'src/entrypoints/agentSdkTypes.js'
 import type { AppState } from 'src/state/AppState.js'
 import type { Message } from 'src/types/message.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import type { AggregatedHookResult } from './types.js'
+import type { AggregatedHookResult } from 'src/services/lifecycleHooks/types.js'
 import type { HookCommand } from 'src/services/settings/types.js'
-import { isHookEqual } from './hooksSettings.js'
-import { isStopConditionJudge } from './stopConditionJudge.js'
+import { isHookEqual } from 'src/services/lifecycleHooks/hooksSettings.js'
+import { isStopConditionJudge } from 'src/services/lifecycleHooks/stopConditionJudge.js'
 
 type OnHookSuccess = (
   hook: HookCommand | FunctionHook,

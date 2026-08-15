@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { OptionWithDescription } from './select.js'
+import type { OptionWithDescription } from 'src/components/CustomSelect/select.js'
 
 type OptionMapItem<T> = {
   label: ReactNode

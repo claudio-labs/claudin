@@ -30,7 +30,7 @@ import { normalizePathForConfigKey } from 'src/utils/fs/path.js'
 import {
   getEssentialTrafficOnlyReason,
   getExplicitEssentialTrafficOnlyReason,
-} from './privacyLevel.js'
+} from 'src/services/config/privacyLevel.js'
 import { getManagedFilePath } from 'src/services/settings/managedPath.js'
 import type { ThemeSetting } from 'src/utils/theme.js'
 import { PRIMARY_PROJECT_INSTRUCTION_FILE } from 'src/services/instructions/projectInstructions.js'
@@ -219,9 +219,9 @@ export type InstallMethod = 'local' | 'native' | 'global' | 'unknown'
 export {
   EDITOR_MODES,
   NOTIFICATION_CHANNELS,
-} from './configConstants.js'
+} from 'src/services/config/configConstants.js'
 
-import type { EDITOR_MODES, NOTIFICATION_CHANNELS, PROVIDERS } from './configConstants.js'
+import type { EDITOR_MODES, NOTIFICATION_CHANNELS, PROVIDERS } from 'src/services/config/configConstants.js'
 
 export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number]
 

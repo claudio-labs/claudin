@@ -45,10 +45,10 @@ import { sleep } from 'src/utils/sleep.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/metadata.js'
-import { buildRedirectUri, findAvailablePort } from './oauthPort.js'
-import type { McpHTTPServerConfig, McpSSEServerConfig } from './types.js'
-import { getLoggingSafeMcpBaseUrl } from './utils.js'
-import { performCrossAppAccess, XaaTokenExchangeError } from './xaa.js'
+import { buildRedirectUri, findAvailablePort } from 'src/services/mcp/oauthPort.js'
+import type { McpHTTPServerConfig, McpSSEServerConfig } from 'src/services/mcp/types.js'
+import { getLoggingSafeMcpBaseUrl } from 'src/services/mcp/utils.js'
+import { performCrossAppAccess, XaaTokenExchangeError } from 'src/services/mcp/xaa.js'
 import {
   acquireIdpIdToken,
   clearIdpIdToken,
@@ -57,7 +57,7 @@ import {
   getIdpClientSecret,
   getXaaIdpSettings,
   isXaaEnabled,
-} from './xaaIdpLogin.js'
+} from 'src/services/mcp/xaaIdpLogin.js'
 
 /**
  * Timeout for individual OAuth requests (metadata discovery, token refresh, etc.)

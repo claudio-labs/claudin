@@ -5,10 +5,10 @@ import { Box, Text } from 'src/ink.js';
 import { useKeybinding } from 'src/keybindings/useKeybinding.js';
 import type { Theme } from 'src/utils/theme.js';
 import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
-import { Byline } from './Byline.js';
-import FullWidthRow from './FullWidthRow.js';
-import { KeyboardShortcutHint } from './KeyboardShortcutHint.js';
-import { Pane } from './Pane.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import FullWidthRow from 'src/components/design-system/FullWidthRow.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { Pane } from 'src/components/design-system/Pane.js';
 type DialogProps = {
   title: React.ReactNode;
   subtitle?: React.ReactNode;

@@ -30,7 +30,7 @@ import {
   hasShellQuoteSingleQuoteBug,
   tryParseShellCommand,
 } from 'src/services/bash/shellQuote.js'
-import { oneLineCommand } from './display.js'
+import { oneLineCommand } from 'src/tools/GitTool/display.js'
 
 export const GIT_BINARIES = ['git', 'gh'] as const
 export type GitBinary = (typeof GIT_BINARIES)[number]

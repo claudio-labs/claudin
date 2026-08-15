@@ -14,9 +14,9 @@ import {
 } from 'src/coordinator/swarm/teamHelpers.js'
 import { clearTeammateColors } from 'src/coordinator/swarm/teammateLayoutManager.js'
 import { clearLeaderTeamName } from 'src/tasks/tasks.js'
-import { TEAM_DELETE_TOOL_NAME } from './constants.js'
-import { getPrompt } from './prompt.js'
-import { renderToolResultMessage, renderToolUseMessage } from './UI.js'
+import { TEAM_DELETE_TOOL_NAME } from 'src/tools/TeamDeleteTool/constants.js'
+import { getPrompt } from 'src/tools/TeamDeleteTool/prompt.js'
+import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/TeamDeleteTool/UI.js'
 
 const inputSchema = lazySchema(() => z.strictObject({}))
 type InputSchema = ReturnType<typeof inputSchema>

@@ -18,8 +18,8 @@ import {
   isGithubNativeAnthropicMode,
 } from 'src/utils/model/providers.js'
 import { getProxyFetchOptions } from 'src/services/api/proxy.js'
-import { withH2Fallback } from './h2Fallback.js'
-import { pickFetch } from './pickFetch.js'
+import { withH2Fallback } from 'src/services/api/h2Fallback.js'
+import { pickFetch } from 'src/services/api/pickFetch.js'
 import {
   getIsNonInteractiveSession,
   getSessionId,
@@ -30,7 +30,7 @@ import {
   getVertexRegionForModel,
   isEnvTruthy,
 } from 'src/utils/envUtils.js'
-import { tryGetActiveProvider } from './activeProvider.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 
 const importRuntimeModule = new Function(
   'specifier',
@@ -173,8 +173,8 @@ export async function getAnthropicClient({
     const githubToken = activeProvider?.extras?.githubToken ?? activeProvider?.apiKey ?? ''
     const [{ COPILOT_HEADERS }, { wrapFetchWithCopilotHeaders }] =
       await Promise.all([
-        import('./openaiShim/constants.js'),
-        import('./copilotHeaders.js'),
+        import('src/services/api/openaiShim/constants.js'),
+        import('src/services/api/copilotHeaders.js'),
       ])
     const nativeArgs: ConstructorParameters<typeof Anthropic>[0] = {
       ...ARGS,
@@ -200,7 +200,7 @@ export async function getAnthropicClient({
     transport === 'github_copilot' ||
     transport === 'codex_responses'
   ) {
-    const { createOpenAIShimClient } = await import('./openaiShim.js')
+    const { createOpenAIShimClient } = await import('src/services/api/openaiShim.js')
     return createOpenAIShimClient({
       defaultHeaders,
       maxRetries,

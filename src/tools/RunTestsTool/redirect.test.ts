@@ -8,7 +8,7 @@ import {
   resetRunTestsRedirectMemoForTesting,
   shouldRedirectToRunTests,
   stripOutputTrimTail,
-} from './redirect.js'
+} from 'src/tools/RunTestsTool/redirect.js'
 
 describe('isRedirectableTestCommand — fires on a bare test run', () => {
   const REDIRECTED = [

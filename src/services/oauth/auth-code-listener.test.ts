@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test'
 
-import { AuthCodeListener } from './auth-code-listener.js'
+import { AuthCodeListener } from 'src/services/oauth/auth-code-listener.js'
 
 const listeners: AuthCodeListener[] = []
 

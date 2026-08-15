@@ -1,5 +1,5 @@
 import type { ParsedKey } from 'src/ink/parse-keypress.js'
-import { TerminalEvent } from './terminal-event.js'
+import { TerminalEvent } from 'src/ink/events/terminal-event.js'
 
 /**
  * Keyboard event dispatched through the DOM tree via capture/bubble.

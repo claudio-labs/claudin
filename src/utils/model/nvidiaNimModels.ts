@@ -3,9 +3,9 @@
  * Filtered to chat/instruct models only - embedding, reward, safety, vision, etc. excluded.
  */
 
-import type { ModelOption } from './modelOptions.js'
+import type { ModelOption } from 'src/utils/model/modelOptions.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { getAPIProvider } from './providers.js'
+import { getAPIProvider } from 'src/utils/model/providers.js'
 
 export function isNvidiaNimProvider(): boolean {
   // Check if active profile points at an NVIDIA NIM endpoint

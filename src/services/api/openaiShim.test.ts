@@ -11,7 +11,7 @@ import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 // describe the desired provider; we synthesize a matching profile from those
 // envs so the resolver-driven code paths see the same configuration. Spread
 // the real activeProvider module + restore in afterAll to avoid leaks.
-const realActiveProvider = { ...(await import('./activeProvider.js')) }
+const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
 
 type Transport =
@@ -77,7 +77,7 @@ afterAll(() => {
   mock.module('./activeProvider.js', () => realActiveProviderSnapshot)
 })
 
-const { createOpenAIShimClient } = await import('./openaiShim.js')
+const { createOpenAIShimClient } = await import('src/services/api/openaiShim.js')
 const { getSessionId } = await import('src/bootstrap/state.js')
 
 type FetchType = typeof globalThis.fetch

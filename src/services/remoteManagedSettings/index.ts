@@ -36,17 +36,17 @@ import { getRetryDelay } from 'src/services/api/withRetry.js'
 import {
   checkManagedSettingsSecurity,
   handleSecurityCheckResult,
-} from './securityCheck.jsx'
-import { isRemoteManagedSettingsEligible, resetSyncCache } from './syncCache.js'
+} from 'src/services/remoteManagedSettings/securityCheck.jsx'
+import { isRemoteManagedSettingsEligible, resetSyncCache } from 'src/services/remoteManagedSettings/syncCache.js'
 import {
   getRemoteManagedSettingsSyncFromCache,
   getSettingsPath,
   setSessionCache,
-} from './syncCacheState.js'
+} from 'src/services/remoteManagedSettings/syncCacheState.js'
 import {
   type RemoteManagedSettingsFetchResult,
   RemoteManagedSettingsResponseSchema,
-} from './types.js'
+} from 'src/services/remoteManagedSettings/types.js'
 
 // Constants
 const SETTINGS_TIMEOUT_MS = 10000 // 10 seconds for settings fetch

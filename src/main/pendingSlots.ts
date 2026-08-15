@@ -10,7 +10,7 @@
 
 import { feature } from 'bun:bundle';
 
-import type { PendingAssistantChat, PendingConnect, PendingSSH } from './bootContext.js';
+import type { PendingAssistantChat, PendingConnect, PendingSSH } from 'src/main/bootContext.js';
 
 /** Set by early argv processing when `claude` is invoked with a cc:// URL. */
 export const pendingConnect: PendingConnect | undefined = feature('DIRECT_CONNECT') ? {

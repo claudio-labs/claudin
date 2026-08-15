@@ -2,11 +2,11 @@ import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import { Box, Text } from 'src/ink.js';
-import { FeedbackSurveyView, isValidResponseInput } from './FeedbackSurveyView.js';
-import type { TranscriptShareResponse } from './TranscriptSharePrompt.js';
-import { TranscriptSharePrompt } from './TranscriptSharePrompt.js';
-import { useDebouncedDigitInput } from './useDebouncedDigitInput.js';
-import type { FeedbackSurveyResponse } from './utils.js';
+import { FeedbackSurveyView, isValidResponseInput } from 'src/components/FeedbackSurvey/FeedbackSurveyView.js';
+import type { TranscriptShareResponse } from 'src/components/FeedbackSurvey/TranscriptSharePrompt.js';
+import { TranscriptSharePrompt } from 'src/components/FeedbackSurvey/TranscriptSharePrompt.js';
+import { useDebouncedDigitInput } from 'src/components/FeedbackSurvey/useDebouncedDigitInput.js';
+import type { FeedbackSurveyResponse } from 'src/components/FeedbackSurvey/utils.js';
 type Props = {
   state: 'closed' | 'open' | 'thanks' | 'transcript_prompt' | 'submitting' | 'submitted';
   lastResponse: FeedbackSurveyResponse | null;

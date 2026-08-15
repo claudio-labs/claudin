@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { buildMcpValidationError, describeSchemaShape } from './validationMessage.js'
+import { buildMcpValidationError, describeSchemaShape } from 'src/tools/MCPTool/validationMessage.js'
 
 describe('describeSchemaShape', () => {
   test('lists required and optional properties with types', () => {

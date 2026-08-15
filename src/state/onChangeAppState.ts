@@ -22,7 +22,7 @@ import {
   notifySessionMetadataChanged,
   type SessionExternalMetadata,
 } from 'src/services/session/sessionState.js'
-import type { AppState } from './AppStateStore.js'
+import type { AppState } from 'src/state/AppStateStore.js'
 
 // One-shot flag: when set, the next `mainLoopModel` diff handled by
 // `onChangeAppState` updates the bootstrap override sentinel but skips the

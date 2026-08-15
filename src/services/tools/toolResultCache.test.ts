@@ -17,7 +17,7 @@ import {
   isCacheDisabled,
   isCacheableTool,
   setCached,
-} from './toolResultCache.js'
+} from 'src/services/tools/toolResultCache.js'
 
 let tmp: string
 beforeEach(() => {

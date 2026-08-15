@@ -22,7 +22,7 @@ import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { logError } from 'src/utils/log.js'
 import { getAgentId } from 'src/coordinator/teammate.js'
 import { detectGitOperation } from 'src/tools/shared/gitOperationTracking.js'
-import { gitSubcommandOf } from './grammar.js'
+import { gitSubcommandOf } from 'src/tools/GitTool/grammar.js'
 
 /**
  * How many consecutive deltas one command gets before a full body is served

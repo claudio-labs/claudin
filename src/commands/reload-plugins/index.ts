@@ -12,7 +12,7 @@ const reloadPlugins = {
   // sending this as a text prompt — that returns structured data
   // (commands, agents, plugins, mcpServers) for UI updates.
   supportsNonInteractive: false,
-  load: () => import('./reload-plugins.js'),
+  load: () => import('src/commands/reload-plugins/reload-plugins.js'),
 } satisfies Command
 
 export default reloadPlugins

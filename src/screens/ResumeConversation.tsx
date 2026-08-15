@@ -33,7 +33,7 @@ import { computeStandaloneAgentContext, restoreAgentFromSession, restoreWorktree
 import { adoptResumedSessionFile, enrichLogs, isCustomTitleEnabled, loadAllProjectsMessageLogsProgressive, loadSameRepoMessageLogsProgressive, recordContentReplacement, resetSessionFilePointer, restoreSessionMetadata, type SessionLogResult } from 'src/services/session/sessionStorage.js';
 import type { ThinkingConfig } from 'src/services/context/thinking.js';
 import type { ContentReplacementRecord } from 'src/services/tools/toolResultStorage.js';
-import { REPL } from './REPL.js';
+import { REPL } from 'src/screens/REPL.js';
 function parsePrIdentifier(value: string): number | null {
   const directNumber = parseInt(value, 10);
   if (!isNaN(directNumber) && directNumber > 0) {

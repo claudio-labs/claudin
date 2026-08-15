@@ -56,10 +56,10 @@ import {
   wordBackward,
   wordForward,
   yankLine,
-} from './editorState.js'
-import { createPrefill, resolveNewFilePath } from './explorerActions.js'
-import { FilePane } from './FilePane.js'
-import { buildFileIndex, FuzzyOverlay } from './fuzzyFinder.js'
+} from 'src/components/explorer/editorState.js'
+import { createPrefill, resolveNewFilePath } from 'src/components/explorer/explorerActions.js'
+import { FilePane } from 'src/components/explorer/FilePane.js'
+import { buildFileIndex, FuzzyOverlay } from 'src/components/explorer/fuzzyFinder.js'
 import {
   buildChangedRows,
   buildExplorerGroup,
@@ -67,7 +67,7 @@ import {
   CHANGED_GROUP_KEY,
   collectChangedFiles,
   initialCollapsed,
-} from './tree.js'
+} from 'src/components/explorer/tree.js'
 
 type Props = {
   onDone: LocalJSXCommandOnDone

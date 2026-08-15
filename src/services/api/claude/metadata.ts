@@ -11,7 +11,7 @@ import { getSmallFastModel } from 'src/utils/model/model.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { getAnthropicClient } from 'src/services/api/client.js'
 import { getCachedAnthropicClient } from 'src/services/api/clientCache.js'
-import { getExtraBodyParams } from './paramBuilders.js'
+import { getExtraBodyParams } from 'src/services/api/claude/paramBuilders.js'
 import { CannotRetryError, withRetry } from 'src/services/api/withRetry.js'
 
 // Define a type that represents valid JSON values (local to this module)

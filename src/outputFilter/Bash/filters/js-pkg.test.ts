@@ -1,6 +1,6 @@
 // Phase 13 — js-extras family (next / biome / oxlint / turbo / nx).
 import { describe, expect, test } from "bun:test";
-import { runFilterBody, routesTo } from "./__testutils__/harness.js";
+import { runFilterBody, routesTo } from "src/outputFilter/Bash/filters/__testutils__/harness.js";
 import {
   NEXT_BUILD_OK,
   NEXT_TYPE_ERR,
@@ -14,7 +14,7 @@ import {
   TURBO_CACHED,
   NX_OK,
   NX_ERR,
-} from "./__testutils__/phase13Samples.js";
+} from "src/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
 
 describe("phase 13 — next build", () => {
   test("clean build collapses to sentinel", () => {

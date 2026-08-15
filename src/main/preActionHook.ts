@@ -25,7 +25,7 @@ import { ensureKeychainPrefetchCompleted } from 'src/services/secureStorage/keyc
 import { ensureMdmSettingsLoaded } from 'src/services/settings/mdm/settings.js';
 import { profileCheckpoint } from 'src/utils/startupProfiler.js';
 
-import { runMigrations } from './lifecycle.js';
+import { runMigrations } from 'src/main/lifecycle.js';
 
 /**
  * Attach the preAction hook to `program`. Returns the same `program` to allow

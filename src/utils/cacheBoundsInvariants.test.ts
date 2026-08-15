@@ -25,12 +25,12 @@ import { _resetAllClippedIdsForTesting } from 'src/services/compact/stableStubSt
 // Capture real modules before mocking so afterAll can restore them
 const realGrowthbook = { ...(await import('src/services/analytics/growthbook.js')) }
 const realAnalytics = { ...(await import('src/services/analytics/index.js')) }
-const realDebug = { ...(await import('./debug.js')) }
+const realDebug = { ...(await import('src/utils/debug.js')) }
 const realBootstrapState = { ...(await import('src/bootstrap/state.js')) }
-const realEnvUtils = { ...(await import('./envUtils.js')) }
+const realEnvUtils = { ...(await import('src/utils/envUtils.js')) }
 const realFsOperations = { ...(await import('src/utils/fs/fsOperations.js')) }
-const realLog = { ...(await import('./log.js')) }
-const realSlowOperations = { ...(await import('./slowOperations.js')) }
+const realLog = { ...(await import('src/utils/log.js')) }
+const realSlowOperations = { ...(await import('src/utils/slowOperations.js')) }
 const realFile = { ...(await import('src/utils/fs/file.js')) }
 
 // ── Shared mocks: silence telemetry/analytics/growthbook used by deep imports ──
@@ -84,7 +84,7 @@ describe('cache bounds invariants', () => {
       __TEST_ONLY_recordToolProgress,
       __TEST_ONLY_getToolProgressMapSize,
       __TEST_ONLY_resetToolProgressMap,
-    } = await import('./queryHelpers.js')
+    } = await import('src/utils/queryHelpers.js')
 
     __TEST_ONLY_resetToolProgressMap()
     for (let i = 0; i < 1000; i++) {
@@ -115,7 +115,7 @@ describe('cache bounds invariants', () => {
       cacheImagePath,
       __TEST_ONLY_getStoredImagePathsSize,
       clearStoredImagePaths,
-    } = await import('./imageStore.js')
+    } = await import('src/utils/imageStore.js')
 
     clearStoredImagePaths()
     for (let i = 0; i < 1000; i++) {

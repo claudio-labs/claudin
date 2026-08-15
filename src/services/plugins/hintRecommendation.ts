@@ -22,13 +22,13 @@ import {
 } from 'src/utils/claudeCodeHints.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { isPluginInstalled } from './installedPluginsManager.js'
-import { getPluginById } from './marketplaceManager.js'
+import { isPluginInstalled } from 'src/services/plugins/installedPluginsManager.js'
+import { getPluginById } from 'src/services/plugins/marketplaceManager.js'
 import {
   isOfficialMarketplaceName,
   parsePluginIdentifier,
-} from './pluginIdentifier.js'
-import { isPluginBlockedByPolicy } from './pluginPolicy.js'
+} from 'src/services/plugins/pluginIdentifier.js'
+import { isPluginBlockedByPolicy } from 'src/services/plugins/pluginPolicy.js'
 
 /**
  * Hard cap on `claudeCodeHints.plugin[]` — bounds config growth. Each shown

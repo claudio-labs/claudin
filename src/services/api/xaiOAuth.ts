@@ -16,7 +16,7 @@ import {
   XAI_OAUTH_DEVICE_CODE_URL,
   XAI_OAUTH_SCOPE,
   XAI_OAUTH_TOKEN_URL,
-} from './xaiOAuthShared.js'
+} from 'src/services/api/xaiOAuthShared.js'
 
 const DEVICE_CODE_DEFAULT_INTERVAL_MS = 5_000
 const DEVICE_CODE_MIN_INTERVAL_MS = 1_000

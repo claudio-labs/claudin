@@ -4,7 +4,7 @@ import { getOrganizationUUID } from 'src/services/oauth/client.js'
 import { getClaudeAIOAuthTokens } from 'src/services/auth/auth.js'
 import { toError } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
-import { getOAuthHeaders } from './api.js'
+import { getOAuthHeaders } from 'src/services/teleport/api.js'
 
 export type EnvironmentKind = 'anthropic_cloud' | 'byoc' | 'bridge'
 export type EnvironmentState = 'active'

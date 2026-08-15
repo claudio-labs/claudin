@@ -33,16 +33,16 @@ import axios from 'axios'
 import {
   createV2ReplTransport,
   type ReplBridgeTransport,
-} from './replBridgeTransport.js'
-import { buildCCRv2SdkUrl } from './workSecret.js'
-import { toCompatSessionId } from './sessionIdCompat.js'
-import { FlushGate } from './flushGate.js'
-import { createTokenRefreshScheduler } from './jwtUtils.js'
-import { getTrustedDeviceToken } from './trustedDevice.js'
+} from 'src/bridge/replBridgeTransport.js'
+import { buildCCRv2SdkUrl } from 'src/bridge/workSecret.js'
+import { toCompatSessionId } from 'src/bridge/sessionIdCompat.js'
+import { FlushGate } from 'src/bridge/flushGate.js'
+import { createTokenRefreshScheduler } from 'src/bridge/jwtUtils.js'
+import { getTrustedDeviceToken } from 'src/bridge/trustedDevice.js'
 import {
   getEnvLessBridgeConfig,
   type EnvLessBridgeConfig,
-} from './envLessBridgeConfig.js'
+} from 'src/bridge/envLessBridgeConfig.js'
 import {
   handleIngressMessage,
   handleServerControlRequest,
@@ -50,8 +50,8 @@ import {
   isEligibleBridgeMessage,
   extractTitleText,
   BoundedUUIDSet,
-} from './bridgeMessaging.js'
-import { logBridgeSkip } from './debugUtils.js'
+} from 'src/bridge/bridgeMessaging.js'
+import { logBridgeSkip } from 'src/bridge/debugUtils.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
 import { isInProtectedNamespace } from 'src/utils/envUtils.js'
@@ -62,7 +62,7 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
-import type { ReplBridgeHandle, BridgeState } from './replBridge.js'
+import type { ReplBridgeHandle, BridgeState } from 'src/bridge/replBridge.js'
 import type { Message } from 'src/types/message.js'
 import type { SDKMessage } from 'src/entrypoints/agentSdkTypes.js'
 import type {
@@ -917,13 +917,13 @@ async function withRetry<T>(
 export {
   createCodeSession,
   type RemoteCredentials,
-} from './codeSessionApi.js'
+} from 'src/bridge/codeSessionApi.js'
 import {
   createCodeSession,
   fetchRemoteCredentials as fetchRemoteCredentialsRaw,
   type RemoteCredentials,
-} from './codeSessionApi.js'
-import { getBridgeBaseUrlOverride } from './bridgeConfig.js'
+} from 'src/bridge/codeSessionApi.js'
+import { getBridgeBaseUrlOverride } from 'src/bridge/bridgeConfig.js'
 
 // CLI-side wrapper that applies the CLAUDE_BRIDGE_BASE_URL dev override and
 // injects the trusted-device token (both are env/GrowthBook reads that the

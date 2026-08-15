@@ -8,7 +8,7 @@ import {
   jsonStringify,
   writeFileSync_DEPRECATED,
 } from 'src/utils/slowOperations.js'
-import type { SecureStorage, SecureStorageData } from './index.js'
+import type { SecureStorage, SecureStorageData } from 'src/services/secureStorage/index.js'
 
 function getStoragePath(): { storageDir: string; storagePath: string } {
   const storageDir = getClaudinConfigHomeDir()

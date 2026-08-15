@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { streamingTextStore } from './useStreamingTextStore.js'
+import { streamingTextStore } from 'src/hooks/useStreamingTextStore.js'
 import { FRAME_INTERVAL_MS } from 'src/ink/constants.js'
 
 // Real-timer waits: the store schedules with setTimeout(FRAME_INTERVAL_MS).

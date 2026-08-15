@@ -8,8 +8,8 @@ import {
 } from 'src/services/messages/messages.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
-import { queryModelWithoutStreaming } from './api/claude.js'
-import { getSessionMemoryContent } from './SessionMemory/sessionMemoryUtils.js'
+import { queryModelWithoutStreaming } from 'src/services/api/claude.js'
+import { getSessionMemoryContent } from 'src/services/SessionMemory/sessionMemoryUtils.js'
 
 // Recap only needs recent context — truncate to avoid "prompt too long" on
 // large sessions. 30 messages ≈ ~15 exchanges, plenty for "where we left off."

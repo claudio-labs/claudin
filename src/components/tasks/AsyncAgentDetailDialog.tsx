@@ -15,8 +15,8 @@ import { Byline } from 'src/components/design-system/Byline.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
 import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
 import { UserPlanMessage } from 'src/components/messages/UserPlanMessage.js';
-import { renderToolActivity } from './renderToolActivity.js';
-import { getTaskStatusColor, getTaskStatusIcon } from './taskStatusUtils.js';
+import { renderToolActivity } from 'src/components/tasks/renderToolActivity.js';
+import { getTaskStatusColor, getTaskStatusIcon } from 'src/components/tasks/taskStatusUtils.js';
 type Props = {
   agent: DeepImmutable<LocalAgentTaskState>;
   onDone: () => void;

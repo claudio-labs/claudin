@@ -10,8 +10,8 @@ import { ClickableImageRef } from 'src/components/ClickableImageRef.js';
 import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
 import { Byline } from 'src/components/design-system/Byline.js';
 import TextInput from 'src/components/TextInput.js';
-import type { OptionWithDescription } from './select.js';
-import { SelectOption } from './select-option.js';
+import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
+import { SelectOption } from 'src/components/CustomSelect/select-option.js';
 type Props<T> = {
   option: Extract<OptionWithDescription<T>, {
     type: 'input';

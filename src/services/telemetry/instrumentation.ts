@@ -51,14 +51,14 @@ import { getProxyUrl, shouldBypassProxy } from 'src/services/api/proxy.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { profileCheckpoint } from 'src/utils/startupProfiler.js'
-import { isBetaTracingEnabled } from './betaSessionTracing.js'
-import { BigQueryMetricsExporter } from './bigqueryExporter.js'
-import { ClaudeCodeDiagLogger } from './logger.js'
-import { initializePerfettoTracing } from './perfettoTracing.js'
+import { isBetaTracingEnabled } from 'src/services/telemetry/betaSessionTracing.js'
+import { BigQueryMetricsExporter } from 'src/services/telemetry/bigqueryExporter.js'
+import { ClaudeCodeDiagLogger } from 'src/services/telemetry/logger.js'
+import { initializePerfettoTracing } from 'src/services/telemetry/perfettoTracing.js'
 import {
   endInteractionSpan,
   isEnhancedTelemetryEnabled,
-} from './sessionTracing.js'
+} from 'src/services/telemetry/sessionTracing.js'
 
 const DEFAULT_METRICS_EXPORT_INTERVAL_MS = 60000
 const DEFAULT_LOGS_EXPORT_INTERVAL_MS = 5000

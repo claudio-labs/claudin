@@ -7,7 +7,7 @@ import { logForDebugging } from 'src/utils/debug.js'
 import type { ShellCommand } from 'src/utils/proc/ShellCommand.js'
 import { invalidateSessionEnvCache } from 'src/services/session/sessionEnvironment.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
-import { emitHookResponse, startHookProgressInterval } from './hookEvents.js'
+import { emitHookResponse, startHookProgressInterval } from 'src/services/lifecycleHooks/hookEvents.js'
 
 export type PendingAsyncHook = {
   processId: string

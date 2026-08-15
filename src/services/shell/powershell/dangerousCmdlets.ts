@@ -8,7 +8,7 @@
  */
 
 import { CROSS_PLATFORM_CODE_EXEC } from 'src/services/permissions/dangerousPatterns.js'
-import { COMMON_ALIASES } from './parser.js'
+import { COMMON_ALIASES } from 'src/services/shell/powershell/parser.js'
 
 /**
  * Cmdlets that accept a -FilePath (or positional path) and execute the

@@ -1,4 +1,4 @@
-import { lineWidth } from './line-width-cache.js'
+import { lineWidth } from 'src/ink/line-width-cache.js'
 
 export function widestLine(string: string): number {
   let maxWidth = 0

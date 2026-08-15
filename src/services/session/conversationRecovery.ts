@@ -39,7 +39,7 @@ import {
   normalizeMessages,
 } from 'src/services/messages/messages.js'
 import { copyPlanForResume } from 'src/utils/plans.js'
-import { processSessionStartHooks } from './sessionStart.js'
+import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
 import {
   buildConversationChain,
   checkResumeConsistency,
@@ -50,7 +50,7 @@ import {
   loadMessageLogs,
   loadTranscriptFile,
   removeExtraFields,
-} from './sessionStorage.js'
+} from 'src/services/session/sessionStorage.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import type { ContentReplacementRecord } from 'src/services/tools/toolResultStorage.js'
 

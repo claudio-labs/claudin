@@ -39,7 +39,7 @@ import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
 import {
   modelSupportsStructuredOutputs,
   shouldUseGlobalCacheScope,
-} from './betas.js'
+} from 'src/services/api/betas.js'
 import { getCwd } from 'src/utils/fs/cwd.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'

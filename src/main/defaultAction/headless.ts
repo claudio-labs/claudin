@@ -28,7 +28,7 @@ import { processSessionStartHooks } from 'src/services/session/sessionStart.js';
 import { profileCheckpoint } from 'src/utils/startupProfiler.js';
 import type { ThinkingConfig } from 'src/services/context/thinking.js';
 import { startDeferredPrefetches } from 'src/main/deferredPrefetches.js';
-import { getMcpStartupTimeoutMs, raceConnectTimeout } from './mcpStartupWait.js';
+import { getMcpStartupTimeoutMs, raceConnectTimeout } from 'src/main/defaultAction/mcpStartupWait.js';
 import { logSessionTelemetry } from 'src/main/lifecycle.js';
 import type { BootContext } from 'src/main/bootContext.js';
 import type { Command } from 'src/types/command.js';

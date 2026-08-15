@@ -8,9 +8,9 @@ import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
-import { AGENT_TOOL_NAME } from './constants.js'
-import { isForkSubagentEnabled } from './forkSubagent.js'
-import type { AgentDefinition } from './loadAgentsDir.js'
+import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
+import { isForkSubagentEnabled } from 'src/tools/AgentTool/forkSubagent.js'
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 
 function getToolsDescription(agent: AgentDefinition): string {
   const { tools, disallowedTools } = agent

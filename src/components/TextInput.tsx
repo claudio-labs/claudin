@@ -9,8 +9,8 @@ import { Box, color, useAnimationFrame, useTerminalFocus, useTheme } from 'src/i
 import type { BaseTextInputProps } from 'src/types/textInputTypes.js';
 import { isEnvTruthy } from 'src/utils/envUtils.js';
 import type { TextHighlight } from 'src/utils/text/textHighlighting.js';
-import { BaseTextInput } from './BaseTextInput.js';
-import { hueToRgb } from './Spinner/utils.js';
+import { BaseTextInput } from 'src/components/BaseTextInput.js';
+import { hueToRgb } from 'src/components/Spinner/utils.js';
 
 // Block characters for waveform bars: space (silent) + 8 rising block elements.
 const BARS = ' \u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588';

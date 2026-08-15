@@ -6,10 +6,10 @@ import { errorMessage } from 'src/utils/errors.js'
 import {
   executeCwdChangedHooks,
   executeFileChangedHooks,
-} from './events.js'
-import type { HookOutsideReplResult } from './types.js'
+} from 'src/services/lifecycleHooks/events.js'
+import type { HookOutsideReplResult } from 'src/services/lifecycleHooks/types.js'
 import { clearCwdEnvFiles } from 'src/services/session/sessionEnvironment.js'
-import { getHooksConfigFromSnapshot } from './hooksConfigSnapshot.js'
+import { getHooksConfigFromSnapshot } from 'src/services/lifecycleHooks/hooksConfigSnapshot.js'
 
 let watcher: FSWatcher | null = null
 let currentCwd: string

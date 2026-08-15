@@ -127,7 +127,7 @@ afterAll(() => {
   mock.module('src/utils/sideQuery.js', () => realSideQuery)
 })
 
-const { runProviderDoctor } = await import('./doctor.js')
+const { runProviderDoctor } = await import('src/commands/provider/doctor.js')
 const { __setClassifierProbeStoreDirForTests } = await import(
   'src/services/permissions/classifierProbeStore.js'
 )

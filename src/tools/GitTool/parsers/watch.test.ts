@@ -5,8 +5,8 @@ import {
   RUN_WATCH,
   RUN_WATCH_POLL,
 } from 'src/tools/GitTool/__fixtures__/watchPolls.js'
-import { renderRunLog } from './gh.js'
-import { renderWatchPolls } from './watch.js'
+import { renderRunLog } from 'src/tools/GitTool/parsers/gh.js'
+import { renderWatchPolls } from 'src/tools/GitTool/parsers/watch.js'
 
 describe('renderWatchPolls', () => {
   test('keeps the last `gh pr checks --watch` refresh and counts the rest', () => {

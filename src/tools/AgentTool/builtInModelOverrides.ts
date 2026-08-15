@@ -6,7 +6,7 @@ import {
   getAvailableModelIdsForActiveProfile,
   resolveModelOverride,
   type ResolveOverrideDeps,
-} from './agentModelResolver.js'
+} from 'src/tools/AgentTool/agentModelResolver.js'
 
 type AgentLike = { agentType: string; model?: string }
 

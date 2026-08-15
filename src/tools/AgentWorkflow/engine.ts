@@ -27,11 +27,11 @@ import { logError } from 'src/utils/log.js'
 import { createUserMessage } from 'src/services/messages/factories.js'
 import { getQuerySourceForAgent } from 'src/utils/promptCategory.js'
 import { getTokenCountFromUsage } from 'src/services/context/tokens.js'
-import { WORKFLOW_ORCHESTRATOR_AGENT, WORKFLOW_ORCHESTRATOR_AGENT_TYPE } from './orchestratorAgent.js'
-import { clampMode } from './permissionClamp.js'
-import { buildMainContext, buildWorkerPrompt } from './promptKit.js'
-import { createRun, writeRun } from './runStore.js'
-import { applyDecision } from './transitionReducer.js'
+import { WORKFLOW_ORCHESTRATOR_AGENT, WORKFLOW_ORCHESTRATOR_AGENT_TYPE } from 'src/tools/AgentWorkflow/orchestratorAgent.js'
+import { clampMode } from 'src/tools/AgentWorkflow/permissionClamp.js'
+import { buildMainContext, buildWorkerPrompt } from 'src/tools/AgentWorkflow/promptKit.js'
+import { createRun, writeRun } from 'src/tools/AgentWorkflow/runStore.js'
+import { applyDecision } from 'src/tools/AgentWorkflow/transitionReducer.js'
 import {
   type AgentRun,
   type PhaseRecord,
@@ -40,7 +40,7 @@ import {
   type WorkflowDef,
   buildDecisionSchema,
   isTerminalStep,
-} from './types.js'
+} from 'src/tools/AgentWorkflow/types.js'
 
 export type WorkflowProgress = (state: RunState) => void
 

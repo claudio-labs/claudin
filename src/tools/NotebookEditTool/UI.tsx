@@ -12,7 +12,7 @@ import { NotebookEditToolUseRejectedMessage } from 'src/components/NotebookEditT
 import { Box, Text } from 'src/ink.js';
 import type { Tools } from 'src/Tool.js';
 import { getDisplayPath } from 'src/utils/fs/file.js';
-import type { inputSchema, Output } from './NotebookEditTool.js';
+import type { inputSchema, Output } from 'src/tools/NotebookEditTool/NotebookEditTool.js';
 export function getToolUseSummary(input: Partial<z.infer<ReturnType<typeof inputSchema>>> | undefined): string | null {
   if (!input?.notebook_path) {
     return null;

@@ -1,4 +1,4 @@
-import { Event } from './event.js'
+import { Event } from 'src/ink/events/event.js'
 
 export type TerminalFocusEventType = 'terminalfocus' | 'terminalblur'
 

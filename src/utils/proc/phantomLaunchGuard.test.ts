@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { claimsAgentLaunch } from './phantomLaunchGuard.js'
+import { claimsAgentLaunch } from 'src/utils/proc/phantomLaunchGuard.js'
 
 describe('claimsAgentLaunch — positives (agent launch announcements)', () => {
   const positives = [

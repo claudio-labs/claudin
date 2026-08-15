@@ -11,12 +11,12 @@ import { getSettingSourceName, type SettingSource } from 'src/services/settings/
 import { updateSettingsForSource } from 'src/services/settings/settings.js';
 import { getEnvironmentSelectionInfo } from 'src/services/teleport/environmentSelection.js';
 import type { EnvironmentResource } from 'src/services/teleport/environments.js';
-import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
-import { Select } from './CustomSelect/select.js';
-import { Byline } from './design-system/Byline.js';
-import { Dialog } from './design-system/Dialog.js';
-import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
-import { LoadingState } from './design-system/LoadingState.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { Select } from 'src/components/CustomSelect/select.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { LoadingState } from 'src/components/design-system/LoadingState.js';
 const DIALOG_TITLE = 'Select Remote Environment';
 const SETUP_HINT = `Configure environments at: https://claude.ai/code`;
 type Props = {

@@ -20,7 +20,7 @@ import type {
   TeammateMessage,
   TeammateSpawnConfig,
   TeammateSpawnResult,
-} from './types.js'
+} from 'src/coordinator/swarm/backends/types.js'
 
 /**
  * InProcessBackend implements TeammateExecutor for in-process teammates.

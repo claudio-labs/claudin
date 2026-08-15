@@ -7,8 +7,8 @@ export {
   getSteps,
   isProjectOnboardingComplete,
   type Step,
-} from './projectOnboardingSteps.js'
-import { isProjectOnboardingComplete } from './projectOnboardingSteps.js'
+} from 'src/projectOnboardingSteps.js'
+import { isProjectOnboardingComplete } from 'src/projectOnboardingSteps.js'
 
 export function maybeMarkProjectOnboardingComplete(): void {
   // Short-circuit on cached config — isProjectOnboardingComplete() hits

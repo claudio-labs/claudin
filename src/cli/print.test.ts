@@ -25,17 +25,17 @@ const realMcpConfig = { ...(await import('src/services/mcp/config.js')) }
 
 describe('promptBatching', () => {
   test('joinPromptValues: single string passes through unchanged', async () => {
-    const { joinPromptValues } = await import('./print.js')
+    const { joinPromptValues } = await import('src/cli/print.js')
     expect(joinPromptValues(['hello'])).toBe('hello')
   })
 
   test('joinPromptValues: all-strings newline-joined', async () => {
-    const { joinPromptValues } = await import('./print.js')
+    const { joinPromptValues } = await import('src/cli/print.js')
     expect(joinPromptValues(['a', 'b', 'c'])).toBe('a\nb\nc')
   })
 
   test('joinPromptValues: any block array → flatMap to blocks', async () => {
-    const { joinPromptValues } = await import('./print.js')
+    const { joinPromptValues } = await import('src/cli/print.js')
     const out = joinPromptValues([
       'hi',
       [{ type: 'text', text: 'world' }],
@@ -47,26 +47,26 @@ describe('promptBatching', () => {
   })
 
   test('joinPromptValues: single block array passes through unchanged', async () => {
-    const { joinPromptValues } = await import('./print.js')
+    const { joinPromptValues } = await import('src/cli/print.js')
     const blocks = [{ type: 'text' as const, text: 'only' }]
     expect(joinPromptValues([blocks])).toBe(blocks)
   })
 
   test('canBatchWith: undefined next → false', async () => {
-    const { canBatchWith } = await import('./print.js')
+    const { canBatchWith } = await import('src/cli/print.js')
     const head = { value: 'a', mode: 'prompt' as const }
     expect(canBatchWith(head, undefined)).toBe(false)
   })
 
   test('canBatchWith: mode mismatch → false', async () => {
-    const { canBatchWith } = await import('./print.js')
+    const { canBatchWith } = await import('src/cli/print.js')
     const head = { value: 'a', mode: 'prompt' as const }
     const next = { value: 'b', mode: 'bash' as const }
     expect(canBatchWith(head, next)).toBe(false)
   })
 
   test('canBatchWith: isMeta mismatch (proactive vs user) → false', async () => {
-    const { canBatchWith } = await import('./print.js')
+    const { canBatchWith } = await import('src/cli/print.js')
     const userHead = { value: 'a', mode: 'prompt' as const, isMeta: false }
     const metaNext = { value: 'b', mode: 'prompt' as const, isMeta: true }
     expect(canBatchWith(userHead, metaNext)).toBe(false)
@@ -74,7 +74,7 @@ describe('promptBatching', () => {
   })
 
   test('canBatchWith: same mode + same isMeta → true', async () => {
-    const { canBatchWith } = await import('./print.js')
+    const { canBatchWith } = await import('src/cli/print.js')
     const head = { value: 'a', mode: 'prompt' as const, isMeta: false }
     const next = { value: 'b', mode: 'prompt' as const, isMeta: false }
     expect(canBatchWith(head, next)).toBe(true)
@@ -84,7 +84,7 @@ describe('promptBatching', () => {
 describe('uuidDedupe', () => {
   test('first insertion returns true, duplicate returns false', async () => {
     const { trackReceivedMessageUuid, __resetForTests } = await import(
-      './print/uuidDedupe.js'
+      'src/cli/print/uuidDedupe.js'
     )
     __resetForTests()
     const uuid = '00000000-0000-0000-0000-000000000001' as never
@@ -94,7 +94,7 @@ describe('uuidDedupe', () => {
 
   test('hasReceivedMessageUuid reflects tracked state', async () => {
     const { trackReceivedMessageUuid, hasReceivedMessageUuid, __resetForTests } =
-      await import('./print/uuidDedupe.js')
+      await import('src/cli/print/uuidDedupe.js')
     __resetForTests()
     const uuid = '00000000-0000-0000-0000-000000000002' as never
     expect(hasReceivedMessageUuid(uuid)).toBe(false)
@@ -104,7 +104,7 @@ describe('uuidDedupe', () => {
 
   test('FIFO eviction at MAX_RECEIVED_UUIDS boundary (oldest dropped)', async () => {
     const { trackReceivedMessageUuid, hasReceivedMessageUuid, __resetForTests } =
-      await import('./print/uuidDedupe.js')
+      await import('src/cli/print/uuidDedupe.js')
     __resetForTests()
     const MAX = 10_000
     const mk = (n: number): never =>
@@ -121,7 +121,7 @@ describe('uuidDedupe', () => {
 
 describe('removeInterruptedMessage', () => {
   test('removes user message and following sentinel', async () => {
-    const { removeInterruptedMessage } = await import('./print.js')
+    const { removeInterruptedMessage } = await import('src/cli/print.js')
     const target = { uuid: 'u-target' } as unknown
     const messages = [
       { uuid: 'u-before' },
@@ -139,7 +139,7 @@ describe('removeInterruptedMessage', () => {
   })
 
   test('no-op when uuid not found', async () => {
-    const { removeInterruptedMessage } = await import('./print.js')
+    const { removeInterruptedMessage } = await import('src/cli/print.js')
     const messages = [{ uuid: 'a' }, { uuid: 'b' }] as never
     removeInterruptedMessage(messages, { uuid: 'missing' } as never)
     expect((messages as Array<{ uuid: string }>).map(m => m.uuid)).toEqual([
@@ -149,7 +149,7 @@ describe('removeInterruptedMessage', () => {
   })
 
   test('splice tolerates target at last position (no sentinel to drop)', async () => {
-    const { removeInterruptedMessage } = await import('./print.js')
+    const { removeInterruptedMessage } = await import('src/cli/print.js')
     const target = { uuid: 'last' } as unknown
     const messages = [{ uuid: 'a' }, target] as never
     removeInterruptedMessage(messages, target as never)
@@ -176,7 +176,7 @@ describe('handleOrphanedPermissionResponse', () => {
       saveAiGeneratedTitle: async () => {},
       restoreSessionMetadata: async () => null,
     }))
-    const { handleOrphanedPermissionResponse } = await import('./print.js')
+    const { handleOrphanedPermissionResponse } = await import('src/cli/print.js')
 
     const handled = new Set<string>()
     const baseMessage = {
@@ -205,7 +205,7 @@ describe('handleOrphanedPermissionResponse', () => {
   })
 
   test('returns false when subtype is not success', async () => {
-    const { handleOrphanedPermissionResponse } = await import('./print.js')
+    const { handleOrphanedPermissionResponse } = await import('src/cli/print.js')
     const out = await handleOrphanedPermissionResponse({
       message: {
         response: { subtype: 'error', request_id: 'r', response: {} },
@@ -217,7 +217,7 @@ describe('handleOrphanedPermissionResponse', () => {
   })
 
   test('returns false when toolUseID is missing', async () => {
-    const { handleOrphanedPermissionResponse } = await import('./print.js')
+    const { handleOrphanedPermissionResponse } = await import('src/cli/print.js')
     const out = await handleOrphanedPermissionResponse({
       message: {
         response: { subtype: 'success', request_id: 'r', response: {} },
@@ -296,7 +296,7 @@ describe('mcpReconcile', () => {
 
   test('add new server: connect + fetch tools, report in added', async () => {
     const mocks = stageMcpMocks({})
-    const { reconcileMcpServers } = await import('./print.js')
+    const { reconcileMcpServers } = await import('src/cli/print.js')
 
     let appState = emptyAppState()
     const setAppState = (f: (prev: typeof appState) => typeof appState) => {
@@ -320,7 +320,7 @@ describe('mcpReconcile', () => {
     const cleanupCalls: string[] = []
     stageMcpMocks({})
 
-    const { reconcileMcpServers } = await import('./print.js')
+    const { reconcileMcpServers } = await import('src/cli/print.js')
 
     let appState = {
       mcp: {
@@ -361,7 +361,7 @@ describe('mcpReconcile', () => {
 
   test('unchanged server: no connect, no cleanup, no removal', async () => {
     const mocks = stageMcpMocks({})
-    const { reconcileMcpServers } = await import('./print.js')
+    const { reconcileMcpServers } = await import('src/cli/print.js')
 
     const sameConfig = { type: 'stdio', command: 'same' }
     let appState = emptyAppState()
@@ -390,7 +390,7 @@ describe('mcpReconcile', () => {
         throw new Error('boom')
       },
     })
-    const { reconcileMcpServers } = await import('./print.js')
+    const { reconcileMcpServers } = await import('src/cli/print.js')
 
     let appState = emptyAppState()
     const setAppState = (f: (prev: typeof appState) => typeof appState) => {
@@ -415,7 +415,7 @@ describe('mcpReconcile', () => {
         error: 'auth denied',
       }),
     })
-    const { reconcileMcpServers } = await import('./print.js')
+    const { reconcileMcpServers } = await import('src/cli/print.js')
 
     let appState = emptyAppState()
     const setAppState = (f: (prev: typeof appState) => typeof appState) => {
@@ -434,7 +434,7 @@ describe('mcpReconcile', () => {
 
   test("config.type === 'sdk' → tracked but no connect attempted", async () => {
     const mocks = stageMcpMocks({})
-    const { reconcileMcpServers } = await import('./print.js')
+    const { reconcileMcpServers } = await import('src/cli/print.js')
 
     let appState = emptyAppState()
     const setAppState = (f: (prev: typeof appState) => typeof appState) => {
@@ -454,7 +454,7 @@ describe('mcpReconcile', () => {
 
 describe('getCanUseToolFn', () => {
   test("permissionPromptToolName 'stdio' → delegates to structuredIO.createCanUseTool", async () => {
-    const { getCanUseToolFn } = await import('./print.js')
+    const { getCanUseToolFn } = await import('src/cli/print.js')
 
     const sentinel = () => Promise.resolve({ behavior: 'allow' as const })
     const fakeStructuredIO = {
@@ -466,7 +466,7 @@ describe('getCanUseToolFn', () => {
   })
 
   test('no permissionPromptToolName → fallback uses hasPermissionsToUseTool', async () => {
-    const { getCanUseToolFn } = await import('./print.js')
+    const { getCanUseToolFn } = await import('src/cli/print.js')
     const fn = getCanUseToolFn(undefined, {} as never, () => [])
     expect(typeof fn).toBe('function')
   })
@@ -492,7 +492,7 @@ describe('handleMcpSetServers', () => {
       setMcpServerEnabled: () => {},
     }))
 
-    const { handleMcpSetServers } = await import('./print.js')
+    const { handleMcpSetServers } = await import('src/cli/print.js')
 
     const result = await handleMcpSetServers(
       { evil: { type: 'stdio', command: 'rm -rf /' } as never },

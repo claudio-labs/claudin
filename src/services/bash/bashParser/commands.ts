@@ -13,7 +13,7 @@ import {
   SHELL_KEYWORDS,
   SPECIAL_VARS,
   type Token,
-} from './tokens.js'
+} from 'src/services/bash/bashParser/tokens.js'
 import {
   advance,
   byteAt,
@@ -27,26 +27,26 @@ import {
   restoreLex,
   saveLex,
   skipBlanks,
-} from './lexer.js'
+} from 'src/services/bash/bashParser/lexer.js'
 import {
   leaf,
   mk,
   sliceBytes,
   type ParseState,
   type TsNode,
-} from './parserContext.js'
+} from 'src/services/bash/bashParser/parserContext.js'
 import {
   parseArithCommaList,
   parseArithExpr,
   parseTestExpr,
-} from './expressions.js'
+} from 'src/services/bash/bashParser/expressions.js'
 import {
   parseBacktick,
   parseBareWord,
   parseDollarLike,
   parseDoubleQuoted,
   parseWord,
-} from './words.js'
+} from 'src/services/bash/bashParser/words.js'
 
 /**
  * Parse a sequence of statements separated by ; & newline. Returns a flat list

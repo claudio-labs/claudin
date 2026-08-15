@@ -10,7 +10,7 @@ import {
   scanSymbols,
   type SymbolEntry,
 } from 'src/tools/shared/codeOutline/scanSymbols.js'
-import { RG_LINE_RE } from './relativize.js'
+import { RG_LINE_RE } from 'src/tools/GrepTool/relativize.js'
 
 // Cap on files scanned in 'symbols' mode — scanning is per-file work and a
 // broad pattern can match thousands of files; this bounds the cost.

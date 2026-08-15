@@ -20,7 +20,7 @@ import {
 } from 'src/services/settings/settings.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 import { getSystemDirectories } from 'src/utils/fs/systemDirectories.js'
-import { classifyFetchError, logPluginFetch } from './fetchTelemetry.js'
+import { classifyFetchError, logPluginFetch } from 'src/services/plugins/fetchTelemetry.js'
 /**
  * User configuration values for MCPB
  */

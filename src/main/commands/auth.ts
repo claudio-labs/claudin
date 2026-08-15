@@ -2,7 +2,7 @@
 // Pure relocation — behavior identical. See main.tsx for the original site.
 
 import type { Command } from '@commander-js/extra-typings'
-import { createSortedHelpConfig } from './_helpConfig.js'
+import { createSortedHelpConfig } from 'src/main/commands/_helpConfig.js'
 
 export function registerAuthCommands(program: Command): void {
   // claude auth

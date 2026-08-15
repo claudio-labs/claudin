@@ -12,7 +12,7 @@ import { getCwd } from 'src/utils/fs/cwd.js'
 import type { EffortValue } from 'src/utils/effort.js'
 import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
 import { getErrnoCode } from 'src/utils/errors.js'
-import { AGENT_PATHS } from './types.js'
+import { AGENT_PATHS } from 'src/components/agents/types.js'
 
 /**
  * Formats agent data as markdown file content

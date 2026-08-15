@@ -21,7 +21,7 @@ import { loadAllPlugins } from 'src/services/plugins/pluginLoader.js';
 import { isMarketplaceAutoUpdate } from 'src/services/plugins/schemas.js';
 import { getSettingsForSource, updateSettingsForSource } from 'src/services/settings/settings.js';
 import { plural } from 'src/utils/text/stringUtils.js';
-import type { ViewState } from './types.js';
+import type { ViewState } from 'src/commands/plugin/types.js';
 type Props = {
   setViewState: (state: ViewState) => void;
   error?: string | null;

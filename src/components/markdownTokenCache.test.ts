@@ -3,7 +3,7 @@ import {
   __TEST_ONLY_getTokenCacheSize,
   __TEST_ONLY_resetTokenCache,
   cachedLexer,
-} from './markdownTokenCache.js'
+} from 'src/components/markdownTokenCache.js'
 
 // Content must contain markdown syntax — plain text takes the single-paragraph
 // fast path and never touches the cache.

@@ -15,12 +15,12 @@ import {
 } from 'v8'
 import { getSessionId } from 'src/bootstrap/state.js'
 import { logEvent } from 'src/services/analytics/index.js'
-import { logForDebugging } from './debug.js'
-import { toError } from './errors.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { toError } from 'src/utils/errors.js'
 import { getDesktopPath } from 'src/utils/fs/file.js'
 import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { logError } from './log.js'
-import { jsonStringify } from './slowOperations.js'
+import { logError } from 'src/utils/log.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
 
 export type HeapDumpResult = {
   success: boolean

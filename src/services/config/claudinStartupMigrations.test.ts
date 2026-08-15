@@ -3,7 +3,7 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ProfileFile } from 'src/services/api/providerProfile.js'
-import type { ProviderProfile } from './config.js'
+import type { ProviderProfile } from 'src/services/config/config.js'
 import type { ProviderProfileInput } from 'src/services/api/providerProfiles.js'
 
 const _require = createRequire(import.meta.url)
@@ -23,7 +23,7 @@ const { mkdtempSync, rmSync } = realFs
 // activeProvider.test.ts.
 const realProviderProfile = await import('src/services/api/providerProfile.js')
 const realProviderProfiles = await import('src/services/api/providerProfiles.js')
-const realConfig = await import('./config.js')
+const realConfig = await import('src/services/config/config.js')
 
 // In-memory config singleton backing './config.js' for this file. Several
 // other test files mock './config.js' too, and bun's process-wide module
@@ -172,7 +172,7 @@ afterAll(() => {
 // instance bound to the mocks installed above.
 const { runClaudinStartupMigrations } = (await import(
   `./claudinStartupMigrations.js?ts=${Date.now()}-${Math.random()}`
-)) as typeof import('./claudinStartupMigrations.js')
+)) as typeof import('src/services/config/claudinStartupMigrations.js')
 
 function legacy(profile: ProfileFile['profile'], env: ProfileFile['env']): ProfileFile {
   return {

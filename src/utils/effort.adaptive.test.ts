@@ -6,7 +6,7 @@ import {
   isAdaptiveEffort,
   resolveAppliedEffort,
   toPersistableEffort,
-} from './effort.js'
+} from 'src/utils/effort.js'
 
 const OPUS = 'claude-opus-4-8'
 

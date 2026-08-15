@@ -39,9 +39,9 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
-import { fetchClaudeAIMcpConfigsIfEligible } from './claudeai.js'
-import { expandEnvVarsInString } from './envExpansion.js'
-import { isClaudeAIMcpServerName } from './normalization.js'
+import { fetchClaudeAIMcpConfigsIfEligible } from 'src/services/mcp/claudeai.js'
+import { expandEnvVarsInString } from 'src/services/mcp/envExpansion.js'
+import { isClaudeAIMcpServerName } from 'src/services/mcp/normalization.js'
 import {
   type ConfigScope,
   type McpHTTPServerConfig,
@@ -53,8 +53,8 @@ import {
   type McpStdioServerConfig,
   type McpWebSocketServerConfig,
   type ScopedMcpServerConfig,
-} from './types.js'
-import { getProjectMcpServerStatus } from './utils.js'
+} from 'src/services/mcp/types.js'
+import { getProjectMcpServerStatus } from 'src/services/mcp/utils.js'
 
 /**
  * Get the path to the managed MCP configuration file

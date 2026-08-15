@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { PromptHook } from 'src/services/settings/types.js'
-import { markStopConditionJudge } from './stopConditionJudge.js'
+import { markStopConditionJudge } from 'src/services/lifecycleHooks/stopConditionJudge.js'
 
 // Boundary mock: replace the model query so the judge's response parsing can
 // be exercised without network. Captures the request for prompt assertions.
@@ -32,7 +32,7 @@ mock.module('src/services/api/claude.js', () => ({
 }))
 
 const { execPromptHook, buildStopConditionJudgePrompt } = await import(
-  './execPromptHook.js'
+  'src/services/lifecycleHooks/execPromptHook.js'
 )
 
 // Re-pin the mocked module to its captured real namespace. Bun's

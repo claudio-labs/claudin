@@ -1,14 +1,14 @@
 import { appendFile, readFile, stat, writeFile } from 'fs/promises'
 import { basename, extname, isAbsolute, relative, resolve } from 'path'
-import { initializeWiki } from './init.js'
-import { rebuildWikiIndex } from './indexBuilder.js'
-import { getWikiPaths } from './paths.js'
-import type { WikiIngestResult } from './types.js'
+import { initializeWiki } from 'src/services/wiki/init.js'
+import { rebuildWikiIndex } from 'src/services/wiki/indexBuilder.js'
+import { getWikiPaths } from 'src/services/wiki/paths.js'
+import type { WikiIngestResult } from 'src/services/wiki/types.js'
 import {
   extractTitleFromText,
   sanitizeWikiSlug,
   summarizeText,
-} from './utils.js'
+} from 'src/services/wiki/utils.js'
 
 function buildSourceNote(params: {
   title: string

@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { parsePlanTasks, seedTasksFromPlan } from './planTasks.js'
-import { archiveCompletedTasks, listTasks, updateTask } from './tasks.js'
+import { parsePlanTasks, seedTasksFromPlan } from 'src/tasks/planTasks.js'
+import { archiveCompletedTasks, listTasks, updateTask } from 'src/tasks/tasks.js'
 
 describe('parsePlanTasks', () => {
   test('parses checkbox items with nested file/note lines into description', () => {

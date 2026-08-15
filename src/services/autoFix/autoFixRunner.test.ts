@@ -3,7 +3,7 @@ import {
   runAutoFixCheck,
   type AutoFixResult,
   type AutoFixCheckOptions,
-} from './autoFixRunner.js'
+} from 'src/services/autoFix/autoFixRunner.js'
 
 const TEST_CWD = process.cwd()
 

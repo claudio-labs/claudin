@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { Box, Text, useTheme } from 'src/ink.js';
 import { getTheme, type Theme } from 'src/utils/theme.js';
-import { getDefaultCharacters, interpolateColor, isBoldSpinnerFrame, isBrandCFrame, isGlyphShimmerHit, parseRGB, resolveStallColor, toRGBColor } from './utils.js';
+import { getDefaultCharacters, interpolateColor, isBoldSpinnerFrame, isBrandCFrame, isGlyphShimmerHit, parseRGB, resolveStallColor, toRGBColor } from 'src/components/Spinner/utils.js';
 const DEFAULT_CHARACTERS = getDefaultCharacters();
 // No mirroring: the orbit is a directional rotation (see getDefaultCharacters).
 const SPINNER_FRAMES = [...DEFAULT_CHARACTERS];

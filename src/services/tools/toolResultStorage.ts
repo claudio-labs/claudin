@@ -28,8 +28,8 @@ import {
   isToolResultCodeOutlineEnabled,
   isToolResultJsonCompressionEnabled,
   maybeSummarizeToolResult,
-} from './toolResultSummarizer.js'
-import { compressJsonArray } from './jsonArrayCompress.js'
+} from 'src/services/tools/toolResultSummarizer.js'
+import { compressJsonArray } from 'src/services/tools/jsonArrayCompress.js'
 import { recordBytesSaved } from 'src/services/context/tokensSaved.js'
 
 // Subdirectory name for tool results within a session

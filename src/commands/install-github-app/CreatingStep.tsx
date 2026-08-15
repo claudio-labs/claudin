@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { Box, Text } from 'src/ink.js';
-import type { Workflow } from './types.js';
+import type { Workflow } from 'src/commands/install-github-app/types.js';
 interface CreatingStepProps {
   currentWorkflowInstallStep: number;
   secretExists: boolean;

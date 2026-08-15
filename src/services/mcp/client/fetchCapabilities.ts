@@ -41,14 +41,14 @@ import type {
   ScopedMcpServerConfig,
   ServerResource,
 } from 'src/services/mcp/types.js'
-import { isMcpAuthCached } from './authCache.js'
+import { isMcpAuthCached } from 'src/services/mcp/client/authCache.js'
 // callTool.js and connection.js below form intentional ESM cycles with this
 // module: every cross-module symbol is dereferenced inside function bodies, not
 // at module-eval time, so live bindings resolve safely. Do not collapse them.
 import {
   callMCPToolWithUrlElicitationRetry,
   extractToolUseId,
-} from './callTool.js'
+} from 'src/services/mcp/client/callTool.js'
 import {
   clearServerCache,
   connectToServer,
@@ -56,14 +56,14 @@ import {
   isIncludedMcpTool,
   isLocalMcpServer,
   MAX_MCP_DESCRIPTION_LENGTH,
-} from './connection.js'
-import { McpSessionExpiredError } from './errors.js'
+} from 'src/services/mcp/client/connection.js'
+import { McpSessionExpiredError } from 'src/services/mcp/client/errors.js'
 import {
   getMcpServerConnectionBatchSize,
   getRemoteMcpServerConnectionBatchSize,
-} from './fetch.js'
-import { transformResultContent } from './toolResult.js'
-import { computerUseWrapper, isComputerUseMCPServer } from './transport.js'
+} from 'src/services/mcp/client/fetch.js'
+import { transformResultContent } from 'src/services/mcp/client/toolResult.js'
+import { computerUseWrapper, isComputerUseMCPServer } from 'src/services/mcp/client/transport.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 export const fetchMcpSkillsForClient = feature('MCP_SKILLS')

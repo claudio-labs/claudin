@@ -1,7 +1,7 @@
 import { getInitialSettings } from 'src/services/settings/settings.js'
-import { isModelAlias, isModelFamilyAlias } from './aliases.js'
-import { parseUserSpecifiedModel } from './model.js'
-import { resolveOverriddenModel } from './modelStrings.js'
+import { isModelAlias, isModelFamilyAlias } from 'src/utils/model/aliases.js'
+import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
+import { resolveOverriddenModel } from 'src/utils/model/modelStrings.js'
 
 /**
  * Check if a model belongs to a given family by checking if its name

@@ -3,11 +3,11 @@ import React, { useCallback, useState } from 'react';
 import type { Workflow } from 'src/commands/install-github-app/types.js';
 import type { ExitState } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { Box, Link, Text } from 'src/ink.js';
-import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
-import { SelectMulti } from './CustomSelect/SelectMulti.js';
-import { Byline } from './design-system/Byline.js';
-import { Dialog } from './design-system/Dialog.js';
-import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { SelectMulti } from 'src/components/CustomSelect/SelectMulti.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
 type WorkflowOption = {
   value: Workflow;
   label: string;

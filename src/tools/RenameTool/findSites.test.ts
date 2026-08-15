@@ -7,7 +7,7 @@ import {
   findSites,
   isValidIdentifier,
   scanFileForSites,
-} from './findSites.js'
+} from 'src/tools/RenameTool/findSites.js'
 
 describe('isValidIdentifier', () => {
   test('accepts identifiers, rejects anything regex-ish or pathy', () => {

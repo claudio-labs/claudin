@@ -17,8 +17,8 @@ import { errorMessage, getErrnoCode } from 'src/utils/errors.js'
 import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import { logError } from 'src/utils/log.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
-import { classifyFetchError, logPluginFetch } from './fetchTelemetry.js'
-import { getPluginsDirectory } from './pluginDirectories.js'
+import { classifyFetchError, logPluginFetch } from 'src/services/plugins/fetchTelemetry.js'
+import { getPluginsDirectory } from 'src/services/plugins/pluginDirectories.js'
 
 const INSTALL_COUNTS_CACHE_VERSION = 1
 const INSTALL_COUNTS_CACHE_FILENAME = 'install-counts-cache.json'

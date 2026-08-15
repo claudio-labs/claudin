@@ -41,14 +41,14 @@ import { logMCPDebug } from 'src/utils/log.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { isTodoV2Enabled } from 'src/tasks/tasks.js'
 import type { Tool } from 'src/Tool.js'
-import { createUserMessage } from './factories.js'
-import { getAutoModeInstructions } from './autoMode.js'
-import { getPlanModeInstructions } from './planMode.js'
+import { createUserMessage } from 'src/services/messages/factories.js'
+import { getAutoModeInstructions } from 'src/services/messages/autoMode.js'
+import { getPlanModeInstructions } from 'src/services/messages/planMode.js'
 import {
   wrapCommandText,
   wrapInSystemReminder,
   wrapMessagesInSystemReminder,
-} from './text.js'
+} from 'src/services/messages/text.js'
 
 // Lazy import to avoid circular dependency (teammateMailbox -> teammate -> ... -> messages)
 function getTeammateMailbox(): typeof import('src/coordinator/teammateMailbox.js') {

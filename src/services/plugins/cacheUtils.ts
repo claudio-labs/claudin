@@ -8,17 +8,17 @@ import { resetSentSkillNames } from 'src/services/attachments/attachments.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { getErrnoCode } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
-import { loadInstalledPluginsFromDisk } from './installedPluginsManager.js'
-import { clearPluginAgentCache } from './loadPluginAgents.js'
-import { clearPluginCommandCache } from './loadPluginCommands.js'
+import { loadInstalledPluginsFromDisk } from 'src/services/plugins/installedPluginsManager.js'
+import { clearPluginAgentCache } from 'src/services/plugins/loadPluginAgents.js'
+import { clearPluginCommandCache } from 'src/services/plugins/loadPluginCommands.js'
 import {
   clearPluginHookCache,
   pruneRemovedPluginHooks,
-} from './loadPluginHooks.js'
-import { clearPluginOutputStyleCache } from './loadPluginOutputStyles.js'
-import { clearPluginCache, getPluginCachePath } from './pluginLoader.js'
-import { clearPluginOptionsCache } from './pluginOptionsStorage.js'
-import { isPluginZipCacheEnabled } from './zipCache.js'
+} from 'src/services/plugins/loadPluginHooks.js'
+import { clearPluginOutputStyleCache } from 'src/services/plugins/loadPluginOutputStyles.js'
+import { clearPluginCache, getPluginCachePath } from 'src/services/plugins/pluginLoader.js'
+import { clearPluginOptionsCache } from 'src/services/plugins/pluginOptionsStorage.js'
+import { isPluginZipCacheEnabled } from 'src/services/plugins/zipCache.js'
 
 const ORPHANED_AT_FILENAME = '.orphaned_at'
 const CLEANUP_AGE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days

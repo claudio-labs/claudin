@@ -3,7 +3,7 @@ import { isBareMode } from 'src/utils/envUtils.js'
 import { isENOENT } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
 import { getSecureStorage } from 'src/services/secureStorage/index.js'
-import { getXaiUserAgent } from './xaiUserAgent.js'
+import { getXaiUserAgent } from 'src/services/api/xaiUserAgent.js'
 import {
   asTrimmedString,
   decodeJwtPayload,

@@ -20,7 +20,7 @@ import {
   ensureParserInitialized,
   getParserModule,
   type TsNode,
-} from './bashParser.js'
+} from 'src/services/bash/bashParser.js'
 
 type Shape = { type: string; children: Shape[] }
 

@@ -2,10 +2,10 @@ import { afterEach, beforeEach, expect, test, mock } from 'bun:test'
 
 import { resetModelStringsForTestingOnly } from 'src/bootstrap/state.js'
 
-const realProviders = await import('./providers.js')
+const realProviders = await import('src/utils/model/providers.js')
 const realAuth = await import('src/services/auth/auth.js')
-const realAccess = await import('./check1mAccess.js')
-const realModel = await import('./model.js')
+const realAccess = await import('src/utils/model/check1mAccess.js')
+const realModel = await import('src/utils/model/model.js')
 
 // Opus 5, Sonnet 5 and Fable 5 are all 1M-native: each is a single picker entry
 // with no separate [1m] variant (asserted below). Legacy generations were

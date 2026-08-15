@@ -13,7 +13,7 @@ import { useKeybindings } from 'src/keybindings/useKeybinding.js';
 import { type AppState, useAppState, useSetAppState } from 'src/state/AppState.js';
 import { type GlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import { getBranch } from 'src/services/git/git.js';
-import { Dialog } from './design-system/Dialog.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
 type Props = {
   onDone: () => void;
 };

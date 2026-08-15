@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { createContext, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
-import type { WizardContextValue, WizardProviderProps } from './types.js';
+import type { WizardContextValue, WizardProviderProps } from 'src/components/wizard/types.js';
 
 // Use any here for the context since it will be cast properly when used
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -4,9 +4,9 @@ import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseError
 import { MessageResponse } from 'src/components/MessageResponse.js'
 import { ShellElapsedTime } from 'src/components/shell/ShellElapsedTime.js'
 import { Box, Text } from 'src/ink.js'
-import { oneLineCommand } from './display.js'
-import type { Input, Output } from './GitTool.js'
-import type { GitProgress } from './types.js'
+import { oneLineCommand } from 'src/tools/GitTool/display.js'
+import type { Input, Output } from 'src/tools/GitTool/GitTool.js'
+import type { GitProgress } from 'src/tools/GitTool/types.js'
 
 export function userFacingName(): string {
   return 'Git'

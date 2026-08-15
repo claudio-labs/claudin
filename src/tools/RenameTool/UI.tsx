@@ -5,7 +5,7 @@ import { StructuredDiffList } from 'src/components/StructuredDiffList.js'
 import { useTerminalSize } from 'src/hooks/useTerminalSize.js'
 import { Box, Text } from 'src/ink.js'
 import { getDisplayPath } from 'src/utils/fs/file.js'
-import type { RenameFileResult, RenameOutput } from './rename.js'
+import type { RenameFileResult, RenameOutput } from 'src/tools/RenameTool/rename.js'
 
 /**
  * Diff lines rendered inline before the rest collapses into a tail line.

@@ -22,20 +22,20 @@ import { createUserMessage } from 'src/services/messages/messages.js'
 import { getMainLoopModel, getSmallFastModel } from 'src/utils/model/model.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
-import { getWebSearchPrompt, WEB_SEARCH_TOOL_NAME } from './prompt.js'
+import { getWebSearchPrompt, WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
 import {
   getToolUseSummary,
   renderToolResultMessage,
   renderToolUseMessage,
   renderToolUseProgressMessage,
-} from './UI.js'
+} from 'src/tools/WebSearchTool/UI.js'
 
 import {
   runSearch,
   getProviderMode,
   getAvailableProviders,
   type ProviderOutput,
-} from './providers/index.js'
+} from 'src/tools/WebSearchTool/providers/index.js'
 import { createTwoTierCache } from 'src/tools/shared/twoTierCache.js'
 
 const inputSchema = lazySchema(() =>

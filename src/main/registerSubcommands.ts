@@ -6,22 +6,22 @@
 
 import type { Command as CommanderCommand } from '@commander-js/extra-typings';
 
-import type { PendingConnect } from './bootContext.js';
-import { registerAgentsCommand } from './commands/agents.js';
-import { registerAssistantCommand } from './commands/assistant.js';
-import { registerAuthCommands } from './commands/auth.js';
-import { registerAutoModeCommand } from './commands/autoMode.js';
-import { registerDoctorCommand } from './commands/doctor.js';
-import { registerInstallCommand } from './commands/install.js';
-import { registerMcpCommands } from './commands/mcp.js';
-import { registerOpenCommand } from './commands/open.js';
-import { registerPluginCommands } from './commands/plugin.js';
-import { registerRemoteControlCommand } from './commands/remoteControl.js';
-import { registerServerCommand } from './commands/server.js';
-import { registerSetupTokenCommand } from './commands/setupToken.js';
-import { registerSshCommand } from './commands/ssh.js';
-import { registerUpdateCommand } from './commands/update.js';
-import { registerWorkflowCommand } from './commands/workflow.js';
+import type { PendingConnect } from 'src/main/bootContext.js';
+import { registerAgentsCommand } from 'src/main/commands/agents.js';
+import { registerAssistantCommand } from 'src/main/commands/assistant.js';
+import { registerAuthCommands } from 'src/main/commands/auth.js';
+import { registerAutoModeCommand } from 'src/main/commands/autoMode.js';
+import { registerDoctorCommand } from 'src/main/commands/doctor.js';
+import { registerInstallCommand } from 'src/main/commands/install.js';
+import { registerMcpCommands } from 'src/main/commands/mcp.js';
+import { registerOpenCommand } from 'src/main/commands/open.js';
+import { registerPluginCommands } from 'src/main/commands/plugin.js';
+import { registerRemoteControlCommand } from 'src/main/commands/remoteControl.js';
+import { registerServerCommand } from 'src/main/commands/server.js';
+import { registerSetupTokenCommand } from 'src/main/commands/setupToken.js';
+import { registerSshCommand } from 'src/main/commands/ssh.js';
+import { registerUpdateCommand } from 'src/main/commands/update.js';
+import { registerWorkflowCommand } from 'src/main/commands/workflow.js';
 
 export interface RegisterSubcommandsDeps {
   pendingConnect: PendingConnect | undefined;

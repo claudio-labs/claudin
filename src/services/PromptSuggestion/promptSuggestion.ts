@@ -25,8 +25,8 @@ import {
   logEvent,
 } from 'src/services/analytics/index.js'
 import { currentLimits } from 'src/services/claudeAiLimits.js'
-import { endsWithFollowupOffer } from './followupOffer.js'
-import { isSpeculationEnabled, startSpeculation } from './speculation.js'
+import { endsWithFollowupOffer } from 'src/services/PromptSuggestion/followupOffer.js'
+import { isSpeculationEnabled, startSpeculation } from 'src/services/PromptSuggestion/speculation.js'
 
 let currentAbortController: AbortController | null = null
 

@@ -6,7 +6,7 @@ import {
   formatCacheMetricsCompact,
   formatCacheMetricsFull,
   addCacheMetrics,
-} from './cacheMetrics.js'
+} from 'src/services/api/cacheMetrics.js'
 
 describe('extractCacheMetrics — Anthropic (firstParty/bedrock/vertex/foundry)', () => {
   test('reports read/created separately and computes hit rate over total input', () => {

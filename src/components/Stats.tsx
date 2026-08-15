@@ -22,9 +22,9 @@ import { aggregateClaudeCodeStatsForRange, type ClaudeCodeStats, type DailyModel
 import type { ModelUsage } from 'src/entrypoints/agentSdkTypes.js';
 import { resolveThemeSetting } from 'src/utils/systemTheme.js';
 import { getTheme, themeColorToAnsi } from 'src/utils/theme.js';
-import { Pane } from './design-system/Pane.js';
-import { Tab, Tabs, useTabHeaderFocus } from './design-system/Tabs.js';
-import { Spinner } from './Spinner.js';
+import { Pane } from 'src/components/design-system/Pane.js';
+import { Tab, Tabs, useTabHeaderFocus } from 'src/components/design-system/Tabs.js';
+import { Spinner } from 'src/components/Spinner.js';
 function formatPeakDay(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-US', {

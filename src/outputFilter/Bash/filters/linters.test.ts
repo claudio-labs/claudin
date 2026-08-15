@@ -1,6 +1,6 @@
 // Phase 13 — python-extras family (uv / poetry / basedpyright / ty).
 import { describe, expect, test } from "bun:test";
-import { runFilterBody, routesTo } from "./__testutils__/harness.js";
+import { runFilterBody, routesTo } from "src/outputFilter/Bash/filters/__testutils__/harness.js";
 import {
   UV_OK,
   UV_INSTALL,
@@ -10,7 +10,7 @@ import {
   BASEDPYRIGHT_CLEAN,
   TY_ERR,
   TY_CLEAN,
-} from "./__testutils__/phase13Samples.js";
+} from "src/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
 
 describe("phase 13 — uv", () => {
   test("audited (up-to-date) collapses to sentinel", () => {

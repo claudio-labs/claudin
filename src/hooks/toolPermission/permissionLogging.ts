@@ -15,7 +15,7 @@ import { logOTelEvent } from 'src/services/telemetry/events.js'
 import type {
   PermissionApprovalSource,
   PermissionRejectionSource,
-} from './PermissionContext.js'
+} from 'src/hooks/toolPermission/PermissionContext.js'
 
 type PermissionLogContext = {
   tool: ToolType

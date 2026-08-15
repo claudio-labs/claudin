@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import type { DiffFile } from 'src/hooks/useDiffData.js'
 import type { TreeRow } from 'src/components/diff/fileTree.js'
-import { createPrefill, resolveNewFilePath } from './explorerActions.js'
+import { createPrefill, resolveNewFilePath } from 'src/components/explorer/explorerActions.js'
 
 const ROOT = '/repo'
 

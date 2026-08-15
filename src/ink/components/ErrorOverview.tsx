@@ -1,6 +1,6 @@
 import React from 'react';
-import Box from './Box.js';
-import Text from './Text.js';
+import Box from 'src/ink/components/Box.js';
+import Text from 'src/ink/components/Text.js';
 
 type Props = {
   readonly error: Error;

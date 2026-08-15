@@ -5,7 +5,7 @@ import {
   roughTokenCountEstimationForFileType,
 } from 'src/services/tokenEstimation.js'
 import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { getDefaultFileReadingLimits } from './limits.js'
+import { getDefaultFileReadingLimits } from 'src/tools/FileReadTool/limits.js'
 
 // Device files that would hang the process: infinite output or blocking input.
 // Checked by path only (no I/O). Safe devices like /dev/null are intentionally omitted.

@@ -24,36 +24,36 @@ import { getCacheProfile } from 'src/services/cache/cacheProfile.js'
 import type { NonNullableUsage } from 'src/services/api/logging.js'
 import { EMPTY_USAGE } from 'src/services/api/logging.js'
 import stripAnsi from 'strip-ansi'
-import type { Command } from './commands.js'
-import { getSlashCommandToolSkills } from './commands.js'
+import type { Command } from 'src/commands.js'
+import { getSlashCommandToolSkills } from 'src/commands.js'
 import {
   LOCAL_COMMAND_STDERR_TAG,
   LOCAL_COMMAND_STDOUT_TAG,
-} from './constants/xml.js'
+} from 'src/constants/xml.js'
 import {
   getModelUsage,
   getTotalAPIDuration,
   getTotalCost,
-} from './cost-tracker.js'
-import type { CanUseToolFn } from './hooks/useCanUseTool.js'
-import { loadMemoryPrompt } from './memdir/memdir.js'
-import { hasAutoMemPathOverride } from './memdir/paths.js'
-import { query } from './query.js'
-import { categorizeRetryableAPIError } from './services/api/errors.js'
-import type { MCPServerConnection } from './services/mcp/types.js'
-import type { AppState } from './state/AppState.js'
-import { type Tools, type ToolUseContext, toolMatchesName } from './Tool.js'
-import type { AgentDefinition } from './tools/AgentTool/loadAgentsDir.js'
-import { SYNTHETIC_OUTPUT_TOOL_NAME } from './tools/SyntheticOutputTool/SyntheticOutputTool.js'
-import type { Message } from './types/message.js'
-import type { OrphanedPermission } from './types/textInputTypes.js'
-import { createAbortController } from './utils/abortController.js'
+} from 'src/cost-tracker.js'
+import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import { loadMemoryPrompt } from 'src/memdir/memdir.js'
+import { hasAutoMemPathOverride } from 'src/memdir/paths.js'
+import { query } from 'src/query.js'
+import { categorizeRetryableAPIError } from 'src/services/api/errors.js'
+import type { MCPServerConnection } from 'src/services/mcp/types.js'
+import type { AppState } from 'src/state/AppState.js'
+import { type Tools, type ToolUseContext, toolMatchesName } from 'src/Tool.js'
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
+import { SYNTHETIC_OUTPUT_TOOL_NAME } from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js'
+import type { Message } from 'src/types/message.js'
+import type { OrphanedPermission } from 'src/types/textInputTypes.js'
+import { createAbortController } from 'src/utils/abortController.js'
 import type { AttributionState } from 'src/services/git/commitAttribution.js'
 import { getGlobalConfig } from 'src/services/config/config.js'
 import { getCwd } from 'src/utils/fs/cwd.js'
-import { isBareMode, isEnvTruthy } from './utils/envUtils.js'
-import { logForDebugging } from './utils/debug.js'
-import { getFastModeState } from './utils/fastMode.js'
+import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { getFastModeState } from 'src/utils/fastMode.js'
 import {
   type FileHistoryState,
   fileHistoryEnabled,
@@ -63,28 +63,28 @@ import {
   cloneFileStateCache,
   type FileStateCache,
 } from 'src/utils/fs/fileStateCache.js'
-import { headlessProfilerCheckpoint } from './utils/headlessProfiler.js'
+import { headlessProfilerCheckpoint } from 'src/utils/headlessProfiler.js'
 import { registerStructuredOutputEnforcement } from 'src/services/lifecycleHooks/hookHelpers.js'
-import { getInMemoryErrors } from './utils/log.js'
+import { getInMemoryErrors } from 'src/utils/log.js'
 import { countToolCalls, SYNTHETIC_MESSAGES } from 'src/services/messages/messages.js'
 import {
   getMainLoopModel,
   parseUserSpecifiedModel,
-} from './utils/model/model.js'
+} from 'src/utils/model/model.js'
 import { loadAllPluginsCacheOnly } from 'src/services/plugins/pluginLoader.js'
 import {
   type ProcessUserInputContext,
   processUserInput,
 } from 'src/services/input/processUserInput.js'
-import { fetchSystemPromptParts } from './utils/queryContext.js'
+import { fetchSystemPromptParts } from 'src/utils/queryContext.js'
 import { setCwd } from 'src/utils/proc/Shell.js'
 import {
   flushSessionStorage,
   recordTranscript,
   removeTranscriptMessage,
 } from 'src/services/session/sessionStorage.js'
-import { asSystemPrompt } from './utils/systemPromptType.js'
-import { resolveThemeSetting } from './utils/systemTheme.js'
+import { asSystemPrompt } from 'src/utils/systemPromptType.js'
+import { resolveThemeSetting } from 'src/utils/systemTheme.js'
 import {
   shouldEnableThinkingByDefault,
   type ThinkingConfig,
@@ -113,7 +113,7 @@ import {
   handleOrphanedPermission,
   isResultSuccessful,
   normalizeMessage,
-} from './utils/queryHelpers.js'
+} from 'src/utils/queryHelpers.js'
 
 // Dead code elimination: conditional import for coordinator mode
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -121,14 +121,14 @@ const getCoordinatorUserContext: (
   mcpClients: ReadonlyArray<{ name: string }>,
   scratchpadDir?: string,
 ) => { [k: string]: string } = feature('COORDINATOR_MODE')
-  ? require('./coordinator/coordinatorMode.js').getCoordinatorUserContext
+  ? require('src/coordinator/coordinatorMode.js').getCoordinatorUserContext
   : () => ({})
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 // Dead code elimination: conditional import for snip compaction
 /* eslint-disable @typescript-eslint/no-require-imports */
 const snipModule = feature('HISTORY_SNIP')
-  ? (require('./services/compact/snipCompact.js') as typeof import('./services/compact/snipCompact.js'))
+  ? (require('src/services/compact/snipCompact.js') as typeof import('src/services/compact/snipCompact.js'))
   : null
 const snipProjection = feature('HISTORY_SNIP')
   ? (require('./services/compact/snipProjection.js') as typeof import('./services/compact/snipProjection.js'))

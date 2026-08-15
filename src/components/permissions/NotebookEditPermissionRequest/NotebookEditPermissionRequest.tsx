@@ -7,7 +7,7 @@ import { NotebookEditTool } from 'src/tools/NotebookEditTool/NotebookEditTool.js
 import { logError } from 'src/utils/log.js';
 import { FilePermissionDialog } from 'src/components/permissions/FilePermissionDialog/FilePermissionDialog.js';
 import type { PermissionRequestProps } from 'src/components/permissions/PermissionRequest.js';
-import { NotebookEditToolDiff } from './NotebookEditToolDiff.js';
+import { NotebookEditToolDiff } from 'src/components/permissions/NotebookEditPermissionRequest/NotebookEditToolDiff.js';
 type NotebookEditInput = z.infer<typeof NotebookEditTool.inputSchema>;
 export function NotebookEditPermissionRequest(props: PermissionRequestProps) {
   const $ = _c(52);

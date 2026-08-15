@@ -1,4 +1,4 @@
-import type { ParseInput, ParsedDiagnostics, RawDiagnostic } from './types.js'
+import type { ParseInput, ParsedDiagnostics, RawDiagnostic } from 'src/tools/shared/diagnostics/types.js'
 
 /**
  * Bun's own bundler output, which is neither esbuild's block nor a GNU line:

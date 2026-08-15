@@ -32,8 +32,8 @@ import { sleep } from 'src/utils/sleep.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 import { isOAuthTokenExpired } from 'src/services/oauth/client.js'
-import { stripProtoFields } from './index.js'
-import { type EventMetadata, to1PEventFormat } from './metadata.js'
+import { stripProtoFields } from 'src/services/analytics/index.js'
+import { type EventMetadata, to1PEventFormat } from 'src/services/analytics/metadata.js'
 
 // Unique ID for this process run - used to isolate failed event files between runs
 const BATCH_UUID = randomUUID()

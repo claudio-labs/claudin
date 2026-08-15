@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { EnterWorktreeTool } from './EnterWorktreeTool.js'
+import { EnterWorktreeTool } from 'src/tools/EnterWorktreeTool/EnterWorktreeTool.js'
 
 describe('EnterWorktreeTool', () => {
   test('shouldDefer is true and the user-facing name is human-friendly', () => {

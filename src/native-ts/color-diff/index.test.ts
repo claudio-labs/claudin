@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { ColorDiff, getSyntaxTheme } from './index.js'
+import { ColorDiff, getSyntaxTheme } from 'src/native-ts/color-diff/index.js'
 
 const hunk = {
   oldStart: 1,

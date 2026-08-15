@@ -10,22 +10,22 @@ import { logError } from 'src/utils/log.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from './analytics/index.js'
-import { logEvent } from './analytics/index.js'
-import { getAPIMetadata } from './api/claude.js'
-import { getAnthropicClient } from './api/client.js'
-import { getCachedAnthropicClient } from './api/clientCache.js'
+import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/services/analytics/index.js'
+import { getAPIMetadata } from 'src/services/api/claude.js'
+import { getAnthropicClient } from 'src/services/api/client.js'
+import { getCachedAnthropicClient } from 'src/services/api/clientCache.js'
 import {
   processRateLimitHeaders,
   shouldProcessRateLimits,
-} from './rateLimitMocking.js'
+} from 'src/services/rateLimitMocking.js'
 
 // Re-export message functions from centralized location
 export {
   getRateLimitErrorMessage,
   getRateLimitWarning,
   getUsingOverageText,
-} from './rateLimitMessages.js'
+} from 'src/services/rateLimitMessages.js'
 
 type QuotaStatus = 'allowed' | 'allowed_warning' | 'rejected'
 

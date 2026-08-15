@@ -8,10 +8,10 @@ import {
   detectBuild,
   detectBuildFor,
   detectBuildSystemFromCommand,
-} from './detect.js'
+} from 'src/tools/BuildTool/detect.js'
 import { detectTestRunner } from 'src/tools/RunTestsTool/detect.js'
 import { detectChecker } from 'src/tools/TypecheckTool/detect.js'
-import type { BuildSystem } from './types.js'
+import type { BuildSystem } from 'src/tools/BuildTool/types.js'
 
 function project(files: Record<string, string>): string {
   const dir = mkdtempSync(path.join(tmpdir(), 'build-detect-'))

@@ -4,7 +4,7 @@ import { createUserMessage } from 'src/services/messages/messages.js'
 import {
   buildTruncationNotice,
   truncateTranscriptForHookEvaluator,
-} from './transcriptTruncation.js'
+} from 'src/services/lifecycleHooks/transcriptTruncation.js'
 
 // Known Anthropic model id → 200k context window. Budget = 50% = 100k tokens.
 const MODEL = 'claude-3-5-haiku-20241022'

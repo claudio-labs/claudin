@@ -15,7 +15,7 @@ import { formatNumber } from 'src/utils/text/format.js';
 import { createHyperlink } from 'src/utils/text/hyperlink.js';
 import { getContentSizeEstimate, type MCPToolResult } from 'src/services/mcp/mcpValidation.js';
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js';
-import type { inputSchema } from './MCPTool.js';
+import type { inputSchema } from 'src/tools/MCPTool/MCPTool.js';
 
 // Threshold for displaying warning about large MCP responses
 const MCP_OUTPUT_WARNING_THRESHOLD_TOKENS = 10_000;

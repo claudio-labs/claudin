@@ -9,7 +9,7 @@ import {
   isPinRegistered,
   pinToolResult,
 } from 'src/services/compact/stableStubState.js'
-import { installLiveReadFileCache } from './readFileCacheHandover.js'
+import { installLiveReadFileCache } from 'src/cli/print/readFileCacheHandover.js'
 
 /**
  * Coverage for headless's read-file-cache handover, which had none — there is

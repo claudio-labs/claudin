@@ -8,7 +8,7 @@ import {
   maybeResizeAndDownsampleImageBuffer,
 } from 'src/utils/imageResizer.js'
 import { logError } from 'src/utils/log.js'
-import { getDefaultFileReadingLimits } from './limits.js'
+import { getDefaultFileReadingLimits } from 'src/tools/FileReadTool/limits.js'
 
 export type ImageResult = {
   type: 'image'

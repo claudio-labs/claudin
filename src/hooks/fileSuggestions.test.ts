@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, realpathSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import * as path from 'path'
 import { getCwdState, setCwdState } from 'src/bootstrap/state.js'
-import { getProjectFilePaths } from './fileSuggestions.js'
+import { getProjectFilePaths } from 'src/hooks/fileSuggestions.js'
 
 // Regression: getProjectFilePaths used to pass '.' as the ripgrep target, which
 // ripGrepRaw resolves against process.cwd() (the launch dir) rather than the

@@ -5,7 +5,7 @@ import {
   getFrameIntervalMs,
   scrollDrainIntervalMs,
   setFrameIntervalMs,
-} from './constants.js'
+} from 'src/ink/constants.js'
 
 // The resolved interval is a module global. Leaving it set would leak into
 // every other test file in the run — see .claudin/rules/testing.md.

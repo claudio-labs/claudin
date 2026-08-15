@@ -19,7 +19,7 @@ export {
   redactSecretValueForDisplay,
   sanitizeApiKey,
   sanitizeProviderConfigValue,
-} from './providerSecrets.js'
+} from 'src/services/api/providerSecrets.js'
 
 const PROFILE_FILE_NAME = '.claudin-profile.json'
 

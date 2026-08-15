@@ -18,21 +18,21 @@ import { getCwd } from 'src/utils/fs/cwd.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage, getErrnoCode } from 'src/utils/errors.js'
 import { execFileNoThrow, execFileNoThrowWithCwd } from 'src/utils/proc/execFileNoThrow.js'
-import { parseGitConfigValue } from './gitConfigParser.js'
-import { GIT_NO_PROMPT_ENV } from './noPromptEnv.js'
+import { parseGitConfigValue } from 'src/services/git/gitConfigParser.js'
+import { GIT_NO_PROMPT_ENV } from 'src/services/git/noPromptEnv.js'
 import {
   getCommonDir,
   readWorktreeHeadSha,
   resolveGitDir,
   resolveRef,
-} from './gitFilesystem.js'
+} from 'src/services/git/gitFilesystem.js'
 import {
   findCanonicalGitRoot,
   findGitRoot,
   getBranch,
   getDefaultBranch,
   gitExe,
-} from './git.js'
+} from 'src/services/git/git.js'
 import {
   executeWorktreeCreateHook,
   executeWorktreeRemoveHook,

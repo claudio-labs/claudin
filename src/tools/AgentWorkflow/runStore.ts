@@ -9,8 +9,8 @@ import { readdir, readFile, rename, unlink, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { isENOENT } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
-import { getWorkflowRunsDir } from './paths.js'
-import { type RunState, RunStateSchema } from './types.js'
+import { getWorkflowRunsDir } from 'src/tools/AgentWorkflow/paths.js'
+import { type RunState, RunStateSchema } from 'src/tools/AgentWorkflow/types.js'
 
 // runIds are a 12-char slice of randomUUID() (hex + one hyphen). Constrain the
 // charset so a model-supplied runId (WorkflowStatusTool) can never escape the

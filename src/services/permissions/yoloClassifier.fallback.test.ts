@@ -4,7 +4,7 @@ import {
   classifyYoloAction,
   formatActionForClassifier,
   isClassifierBundled,
-} from './yoloClassifier.js'
+} from 'src/services/permissions/yoloClassifier.js'
 
 const tools = [
   {

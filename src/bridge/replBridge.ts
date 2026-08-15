@@ -5,8 +5,8 @@ import {
   BridgeFatalError,
   isExpiredErrorType,
   isSuppressible403,
-} from './bridgeApi.js'
-import type { BridgeConfig, BridgeApiClient } from './types.js'
+} from 'src/bridge/bridgeApi.js'
+import type { BridgeConfig, BridgeApiClient } from 'src/bridge/types.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
 import {
@@ -21,30 +21,30 @@ import {
   isEligibleBridgeMessage,
   extractTitleText,
   BoundedUUIDSet,
-} from './bridgeMessaging.js'
+} from 'src/bridge/bridgeMessaging.js'
 import {
   decodeWorkSecret,
   buildSdkUrl,
   buildCCRv2SdkUrl,
   sameSessionId,
-} from './workSecret.js'
-import { toCompatSessionId, toInfraSessionId } from './sessionIdCompat.js'
+} from 'src/bridge/workSecret.js'
+import { toCompatSessionId, toInfraSessionId } from 'src/bridge/sessionIdCompat.js'
 import { updateSessionBridgeId } from 'src/services/session/concurrentSessions.js'
-import { getTrustedDeviceToken } from './trustedDevice.js'
+import { getTrustedDeviceToken } from 'src/bridge/trustedDevice.js'
 import { HybridTransport } from 'src/cli/transports/HybridTransport.js'
 import {
   type ReplBridgeTransport,
   createV1ReplTransport,
   createV2ReplTransport,
-} from './replBridgeTransport.js'
+} from 'src/bridge/replBridgeTransport.js'
 import { updateSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js'
 import { isEnvTruthy, isInProtectedNamespace } from 'src/utils/envUtils.js'
-import { validateBridgeId } from './bridgeApi.js'
+import { validateBridgeId } from 'src/bridge/bridgeApi.js'
 import {
   describeAxiosError,
   extractHttpStatus,
   logBridgeSkip,
-} from './debugUtils.js'
+} from 'src/bridge/debugUtils.js'
 import type { Message } from 'src/types/message.js'
 import type { SDKMessage } from 'src/entrypoints/agentSdkTypes.js'
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
@@ -52,12 +52,12 @@ import type {
   SDKControlRequest,
   SDKControlResponse,
 } from 'src/entrypoints/sdk/controlTypes.js'
-import { createCapacityWake, type CapacitySignal } from './capacityWake.js'
-import { FlushGate } from './flushGate.js'
+import { createCapacityWake, type CapacitySignal } from 'src/bridge/capacityWake.js'
+import { FlushGate } from 'src/bridge/flushGate.js'
 import {
   DEFAULT_POLL_CONFIG,
   type PollIntervalConfig,
-} from './pollConfigDefaults.js'
+} from 'src/bridge/pollConfigDefaults.js'
 import { errorMessage } from 'src/utils/errors.js'
 import { sleep } from 'src/utils/sleep.js'
 
@@ -294,7 +294,7 @@ export async function initBridgeCore(
   // bridgePointer import hoisted: perpetual mode reads it before register;
   // non-perpetual writes it after session create; both use clear at teardown.
   const { writeBridgePointer, clearBridgePointer, readBridgePointer } =
-    await import('./bridgePointer.js')
+    await import('src/bridge/bridgePointer.js')
 
   // Perpetual mode: read the crash-recovery pointer and treat it as prior
   // state. The pointer is written unconditionally after session create

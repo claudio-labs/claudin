@@ -23,9 +23,9 @@ const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS')
 
 /* eslint-enable @typescript-eslint/no-require-imports */
 
-export { TOOL_SEARCH_TOOL_NAME } from './constants.js'
+export { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/constants.js'
 
-import { TOOL_SEARCH_TOOL_NAME } from './constants.js'
+import { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/constants.js'
 
 const PROMPT_HEAD = `Fetches full schema definitions for deferred tools so they can be called.
 

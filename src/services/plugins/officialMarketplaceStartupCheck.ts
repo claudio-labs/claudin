@@ -16,19 +16,19 @@ import { logForDebugging } from 'src/utils/debug.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { toError } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
-import { checkGitAvailable, markGitUnavailable } from './gitAvailability.js'
-import { isSourceAllowedByPolicy } from './marketplaceHelpers.js'
+import { checkGitAvailable, markGitUnavailable } from 'src/services/plugins/gitAvailability.js'
+import { isSourceAllowedByPolicy } from 'src/services/plugins/marketplaceHelpers.js'
 import {
   addMarketplaceSource,
   getMarketplacesCacheDir,
   loadKnownMarketplacesConfig,
   saveKnownMarketplacesConfig,
-} from './marketplaceManager.js'
+} from 'src/services/plugins/marketplaceManager.js'
 import {
   OFFICIAL_MARKETPLACE_NAME,
   OFFICIAL_MARKETPLACE_SOURCE,
-} from './officialMarketplace.js'
-import { fetchOfficialMarketplaceFromGcs } from './officialMarketplaceGcs.js'
+} from 'src/services/plugins/officialMarketplace.js'
+import { fetchOfficialMarketplaceFromGcs } from 'src/services/plugins/officialMarketplaceGcs.js'
 
 /**
  * Reason why the official marketplace was not installed

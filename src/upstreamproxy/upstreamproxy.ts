@@ -27,7 +27,7 @@ import { registerCleanup } from 'src/utils/cleanupRegistry.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { isENOENT } from 'src/utils/errors.js'
-import { startUpstreamProxyRelay } from './relay.js'
+import { startUpstreamProxyRelay } from 'src/upstreamproxy/relay.js'
 
 export const SESSION_TOKEN_PATH = '/run/ccr/session_token'
 const SYSTEM_CA_BUNDLE = '/etc/ssl/certs/ca-certificates.crt'

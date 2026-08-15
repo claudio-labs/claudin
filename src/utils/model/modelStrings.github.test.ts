@@ -1,8 +1,8 @@
 import { afterEach, expect, test } from 'bun:test'
 
 import { resetModelStringsForTestingOnly } from 'src/bootstrap/state.js'
-import { parseUserSpecifiedModel } from './model.js'
-import { getModelStrings } from './modelStrings.js'
+import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
+import { getModelStrings } from 'src/utils/model/modelStrings.js'
 
 const originalEnv = {
   CLAUDE_CODE_USE_GITHUB: process.env.CLAUDE_CODE_USE_GITHUB,

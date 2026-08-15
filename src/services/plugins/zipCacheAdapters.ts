@@ -14,19 +14,19 @@ import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { logForDebugging } from 'src/utils/debug.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
-import { loadKnownMarketplacesConfigSafe } from './marketplaceManager.js'
+import { loadKnownMarketplacesConfigSafe } from 'src/services/plugins/marketplaceManager.js'
 import {
   type KnownMarketplacesFile,
   KnownMarketplacesFileSchema,
   type PluginMarketplace,
   PluginMarketplaceSchema,
-} from './schemas.js'
+} from 'src/services/plugins/schemas.js'
 import {
   atomicWriteToZipCache,
   getMarketplaceJsonRelativePath,
   getPluginZipCachePath,
   getZipCacheKnownMarketplacesPath,
-} from './zipCache.js'
+} from 'src/services/plugins/zipCache.js'
 
 // ── Metadata I/O ──
 

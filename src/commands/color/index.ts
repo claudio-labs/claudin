@@ -10,7 +10,7 @@ const color = {
   description: 'Set the prompt bar color for this session',
   immediate: true,
   argumentHint: '<color|default>',
-  load: () => import('./color.js'),
+  load: () => import('src/commands/color/color.js'),
 } satisfies Command
 
 export default color

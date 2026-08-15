@@ -9,7 +9,7 @@ import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPAT
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import { openBrowser } from 'src/utils/browser.js';
 import { getGhAuthStatus } from 'src/services/github/ghAuthStatus.js';
-import { createDefaultEnvironment, getCodeWebUrl, type ImportTokenError, importGithubToken, isSignedIn, RedactedGithubToken } from './api.js';
+import { createDefaultEnvironment, getCodeWebUrl, type ImportTokenError, importGithubToken, isSignedIn, RedactedGithubToken } from 'src/commands/remote-setup/api.js';
 type CheckResult = {
   status: 'not_signed_in';
 } | {

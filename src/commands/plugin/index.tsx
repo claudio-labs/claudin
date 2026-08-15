@@ -5,6 +5,6 @@ const plugin = {
   aliases: ['plugins', 'marketplace'],
   description: 'Manage Claude Code plugins',
   immediate: true,
-  load: () => import('./plugin.js')
+  load: () => import('src/commands/plugin/plugin.js')
 } satisfies Command;
 export default plugin;

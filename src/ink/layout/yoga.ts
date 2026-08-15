@@ -25,7 +25,7 @@ import {
   type LayoutOverflow,
   type LayoutPositionType,
   type LayoutWrap,
-} from './node.js'
+} from 'src/ink/layout/node.js'
 
 // --
 // Edge/Gutter mapping

@@ -19,7 +19,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { getUserAgent } from './http.ts'
+import { getUserAgent } from 'src/utils/http.ts'
 
 const ENV_KEYS = [
   'CLAUDE_CODE_ENTRYPOINT',

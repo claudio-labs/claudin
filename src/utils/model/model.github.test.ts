@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeEach, expect, test } from 'bun:test'
 
 import { resetGlobalConfigForTests, saveGlobalConfig } from 'src/services/config/config.js'
-import { getDefaultMainLoopModelSetting, getUserSpecifiedModelSetting } from './model.js'
+import { getDefaultMainLoopModelSetting, getUserSpecifiedModelSetting } from 'src/utils/model/model.js'
 
 const env = {
   CLAUDE_CODE_USE_GITHUB: process.env.CLAUDE_CODE_USE_GITHUB,

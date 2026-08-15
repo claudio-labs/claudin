@@ -5,8 +5,8 @@
  * then interprets sequences as keypresses.
  */
 import { Buffer } from 'buffer'
-import { PASTE_END, PASTE_START } from './termio/csi.js'
-import { createTokenizer, type Tokenizer } from './termio/tokenize.js'
+import { PASTE_END, PASTE_START } from 'src/ink/termio/csi.js'
+import { createTokenizer, type Tokenizer } from 'src/ink/termio/tokenize.js'
 
 // eslint-disable-next-line no-control-regex
 const META_KEY_CODE_RE = /^(?:\x1b)([a-zA-Z0-9])$/

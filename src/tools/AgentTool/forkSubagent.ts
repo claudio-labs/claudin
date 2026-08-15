@@ -16,7 +16,7 @@ import {
   WORKTREE_STASH_WARNING,
   WORKTREE_WRITE_SCOPE_NOTE,
 } from 'src/constants/worktreeSafety.js'
-import type { BuiltInAgentDefinition } from './loadAgentsDir.js'
+import type { BuiltInAgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 
 /**
  * Fork subagent feature gate.

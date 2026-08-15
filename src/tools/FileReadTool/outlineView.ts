@@ -13,7 +13,7 @@ import {
 import { isAbortError } from 'src/utils/errors.js'
 import { readFileInRange } from 'src/utils/fs/readFileInRange.js'
 import { logError } from 'src/utils/log.js'
-import type { Output } from './schemas.js'
+import type { Output } from 'src/tools/FileReadTool/schemas.js'
 
 /**
  * Footer appended to outline tool_results produced by AUTO_OUTLINE_ON_ELISION

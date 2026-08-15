@@ -12,7 +12,7 @@ import {
   createDisabledBypassPermissionsContext,
   shouldDisableBypassPermissions,
   verifyAutoModeGateAccess,
-} from './permissionSetup.js'
+} from 'src/services/permissions/permissionSetup.js'
 
 let bypassPermissionsCheckRan = false
 

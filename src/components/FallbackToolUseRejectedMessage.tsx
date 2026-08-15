@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
-import { InterruptedByUser } from './InterruptedByUser.js';
-import { MessageResponse } from './MessageResponse.js';
+import { InterruptedByUser } from 'src/components/InterruptedByUser.js';
+import { MessageResponse } from 'src/components/MessageResponse.js';
 export function FallbackToolUseRejectedMessage() {
   const $ = _c(1);
   let t0;

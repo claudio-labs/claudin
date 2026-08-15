@@ -4,9 +4,9 @@ import React from 'react';
 import { Box, Text } from 'src/ink.js';
 import { getCwd } from 'src/utils/fs/cwd.js';
 import { isSupportedVSCodeTerminal } from 'src/services/ide/ide.js';
-import { Select } from './CustomSelect/index.js';
-import { Pane } from './design-system/Pane.js';
-import type { PermissionOption, PermissionOptionWithLabel } from './permissions/FilePermissionDialog/permissionOptions.js';
+import { Select } from 'src/components/CustomSelect/index.js';
+import { Pane } from 'src/components/design-system/Pane.js';
+import type { PermissionOption, PermissionOptionWithLabel } from 'src/components/permissions/FilePermissionDialog/permissionOptions.js';
 type Props<A> = {
   filePath: string;
   input: A;

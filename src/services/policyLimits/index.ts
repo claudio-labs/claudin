@@ -45,7 +45,7 @@ import {
   type PolicyLimitsFetchResult,
   type PolicyLimitsResponse,
   PolicyLimitsResponseSchema,
-} from './types.js'
+} from 'src/services/policyLimits/types.js'
 
 function isNodeError(e: unknown): e is NodeJS.ErrnoException {
   return e instanceof Error

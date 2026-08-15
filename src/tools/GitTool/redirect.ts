@@ -3,8 +3,8 @@ import {
   createOutputTrimTailStripper,
   MEMO_LIMIT,
 } from 'src/tools/shared/redirect.js'
-import { acceptsGitCommand } from './grammar.js'
-import { GIT_TOOL_NAME } from './prompt.js'
+import { acceptsGitCommand } from 'src/tools/GitTool/grammar.js'
+import { GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js'
 
 export { MEMO_LIMIT }
 

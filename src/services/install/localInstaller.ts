@@ -5,7 +5,7 @@
 import { access, chmod, writeFile } from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
-import { getLauncherPath } from './bundledMode.js'
+import { getLauncherPath } from 'src/services/install/bundledMode.js'
 import { type ReleaseChannel, saveGlobalConfig } from 'src/services/config/config.js'
 import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
 import { getErrnoCode } from 'src/utils/errors.js'

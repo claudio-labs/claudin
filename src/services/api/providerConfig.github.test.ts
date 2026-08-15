@@ -3,7 +3,7 @@ import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 // GitHub mode is driven by `transport === 'github_copilot'` from the active
 // profile (not CLAUDE_CODE_USE_GITHUB). Spread the real activeProvider
 // module + restore in afterAll to avoid Bun mock leaks.
-const realActiveProvider = { ...(await import('./activeProvider.js')) }
+const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
 
 type ResolvedProvider = ReturnType<typeof realActiveProvider.getActiveProvider> | null
@@ -24,7 +24,7 @@ const {
   getGithubEndpointType,
   normalizeGithubModelsApiModel,
   resolveProviderRequest,
-} = await import('./providerConfig.js')
+} = await import('src/services/api/providerConfig.js')
 
 afterEach(() => {
   resolvedOverride = null

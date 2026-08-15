@@ -6,7 +6,7 @@ import type { ClickEvent } from 'src/ink/events/click-event.js';
 import type { FocusEvent } from 'src/ink/events/focus-event.js';
 import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
 import type { Styles } from 'src/ink/styles.js';
-import Box from './Box.js';
+import Box from 'src/ink/components/Box.js';
 type ButtonState = {
   focused: boolean;
   hovered: boolean;

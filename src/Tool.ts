@@ -8,15 +8,15 @@ import type {
 } from '@modelcontextprotocol/sdk/types.js'
 import type { UUID } from 'crypto'
 import type { z } from 'zod/v4'
-import type { Command } from './commands.js'
-import type { CanUseToolFn } from './hooks/useCanUseTool.js'
+import type { Command } from 'src/commands.js'
+import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import {
   getCached,
   isCacheDisabled,
   isCacheableTool,
   setCached,
-} from './services/tools/toolResultCache.js'
-import { logError } from './utils/log.js'
+} from 'src/services/tools/toolResultCache.js'
+import { logError } from 'src/utils/log.js'
 import type { ThinkingConfig } from 'src/services/context/thinking.js'
 
 export type ToolInputJSONSchema = {
@@ -27,15 +27,15 @@ export type ToolInputJSONSchema = {
   }
 }
 
-import type { Notification } from './context/notifications.js'
+import type { Notification } from 'src/context/notifications.js'
 import type {
   MCPServerConnection,
   ServerResource,
-} from './services/mcp/types.js'
+} from 'src/services/mcp/types.js'
 import type {
   AgentDefinition,
   AgentDefinitionsResult,
-} from './tools/AgentTool/loadAgentsDir.js'
+} from 'src/tools/AgentTool/loadAgentsDir.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
@@ -44,14 +44,14 @@ import type {
   SystemLocalCommandMessage,
   SystemMessage,
   UserMessage,
-} from './types/message.js'
+} from 'src/types/message.js'
 // Import permission types from centralized location to break import cycles
 // Import PermissionResult from centralized location to break import cycles
 import type {
   AdditionalWorkingDirectory,
   PermissionMode,
   PermissionResult,
-} from './types/permissions.js'
+} from 'src/types/permissions.js'
 // Import tool progress types from centralized location to break import cycles
 import type {
   AgentToolProgress,
@@ -62,10 +62,10 @@ import type {
   TaskOutputProgress,
   ToolProgressData,
   WebSearchProgress,
-} from './types/tools.js'
+} from 'src/types/tools.js'
 import type { FileStateCache } from 'src/utils/fs/fileStateCache.js'
 import type { DenialTrackingState } from 'src/services/permissions/denialTracking.js'
-import type { SystemPrompt } from './utils/systemPromptType.js'
+import type { SystemPrompt } from 'src/utils/systemPromptType.js'
 import type { ContentReplacementState } from 'src/services/tools/toolResultStorage.js'
 
 // Re-export progress types for backwards compatibility
@@ -79,20 +79,20 @@ export type {
   WebSearchProgress,
 }
 
-import type { SpinnerMode } from './components/Spinner.js'
-import type { QuerySource } from './constants/querySource.js'
-import type { SDKStatus } from './entrypoints/agentSdkTypes.js'
-import type { AppState } from './state/AppState.js'
+import type { SpinnerMode } from 'src/components/Spinner.js'
+import type { QuerySource } from 'src/constants/querySource.js'
+import type { SDKStatus } from 'src/entrypoints/agentSdkTypes.js'
+import type { AppState } from 'src/state/AppState.js'
 import type {
   HookProgress,
   PromptRequest,
   PromptResponse,
-} from './types/hooks.js'
-import type { AgentId } from './types/ids.js'
-import type { DeepImmutable } from './types/utils.js'
+} from 'src/types/hooks.js'
+import type { AgentId } from 'src/types/ids.js'
+import type { DeepImmutable } from 'src/types/utils.js'
 import type { AttributionState } from 'src/services/git/commitAttribution.js'
 import type { FileHistoryState } from 'src/utils/fs/fileHistory.js'
-import type { Theme, ThemeName } from './utils/theme.js'
+import type { Theme, ThemeName } from 'src/utils/theme.js'
 
 export type QueryChainTracking = {
   chainId: string
@@ -129,7 +129,7 @@ export type SetToolJSXFn = (
 ) => void
 
 // Import tool permission types from centralized location to break import cycles
-import type { ToolPermissionRulesBySource } from './types/permissions.js'
+import type { ToolPermissionRulesBySource } from 'src/types/permissions.js'
 
 // Re-export for backwards compatibility
 export type { ToolPermissionRulesBySource }

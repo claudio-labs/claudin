@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { mkdtempSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { isTeamMemLikelyGitIgnored } from './teamMemPaths.js'
+import { isTeamMemLikelyGitIgnored } from 'src/memdir/teamMemPaths.js'
 
 function freshDir(): string {
   return mkdtempSync(join(tmpdir(), 'claudin-team-gitignore-'))

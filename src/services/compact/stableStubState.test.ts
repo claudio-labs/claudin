@@ -23,7 +23,7 @@ import {
   resetClippedIds,
   stubToolResultForDisplay,
   unpinToolResult,
-} from './stableStubState.js'
+} from 'src/services/compact/stableStubState.js'
 import {
   getSessionId,
   regenerateSessionId,

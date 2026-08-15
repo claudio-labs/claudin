@@ -18,7 +18,7 @@ import { logError } from 'src/utils/log.js'
 import { getPlatform } from 'src/utils/proc/platform.js'
 import { ripgrepCommand } from 'src/utils/fs/ripgrep.js'
 import { subprocessEnv } from 'src/utils/proc/subprocessEnv.js'
-import { quote } from './shellQuote.js'
+import { quote } from 'src/services/bash/shellQuote.js'
 
 const LITERAL_BACKSLASH = '\\'
 const SNAPSHOT_CREATION_TIMEOUT = 10000 // 10 seconds

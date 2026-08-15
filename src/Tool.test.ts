@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { buildTool } from './Tool.js'
-import type { ToolResult } from './Tool.js'
-import { invalidateAll } from './services/tools/toolResultCache.js'
+import { buildTool } from 'src/Tool.js'
+import type { ToolResult } from 'src/Tool.js'
+import { invalidateAll } from 'src/services/tools/toolResultCache.js'
 
 /**
  * Coverage for the tool-result cache wrapper in buildTool — specifically the

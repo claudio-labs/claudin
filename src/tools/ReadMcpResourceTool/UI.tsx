@@ -6,7 +6,7 @@ import { Box, Text } from 'src/ink.js';
 import type { ToolProgressData } from 'src/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';
 import { jsonStringify } from 'src/utils/slowOperations.js';
-import type { inputSchema, Output } from './ReadMcpResourceTool.js';
+import type { inputSchema, Output } from 'src/tools/ReadMcpResourceTool/ReadMcpResourceTool.js';
 export function renderToolUseMessage(input: Partial<z.infer<ReturnType<typeof inputSchema>>>): React.ReactNode {
   if (!input.uri || !input.server) {
     return null;

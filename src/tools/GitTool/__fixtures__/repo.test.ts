@@ -26,7 +26,7 @@ import {
   stagedRepo,
   untrackedRepo,
   writeRepoFile,
-} from './repo.js'
+} from 'src/tools/GitTool/__fixtures__/repo.js'
 import {
   cleanupAllFakeGh,
   GH_NOT_AUTHENTICATED,
@@ -35,7 +35,7 @@ import {
   ghPrViewRule,
   ghRunViewLogRule,
   installFakeGh,
-} from './fakeGh.js'
+} from 'src/tools/GitTool/__fixtures__/fakeGh.js'
 
 const NO_COMMITS_RE = /does not have any commits yet|unknown revision/i
 const CONFLICT_RE = /CONFLICT|Automatic merge failed|could not apply/i

@@ -57,7 +57,7 @@ describe('buildStartupBannerLines', () => {
   })
 
   it('renders a "Not configured" banner when no provider profile exists', async () => {
-    const { buildStartupBannerLines } = await import('./StartupScreen.js')
+    const { buildStartupBannerLines } = await import('src/components/StartupScreen.js')
     const lines = buildStartupBannerLines('claude-sonnet-4-6')
     const text = stripAnsi(lines.join('\n'))
 
@@ -68,7 +68,7 @@ describe('buildStartupBannerLines', () => {
   })
 
   it('uses the em-dash placeholder for the model when nothing is configured', async () => {
-    const { buildStartupBannerLines } = await import('./StartupScreen.js')
+    const { buildStartupBannerLines } = await import('src/components/StartupScreen.js')
     const lines = buildStartupBannerLines()
     const text = stripAnsi(lines.join('\n'))
 
@@ -86,7 +86,7 @@ describe('buildStartupBannerLines', () => {
       name: 'OpenAI',
     }
 
-    const { buildStartupBannerLines } = await import('./StartupScreen.js')
+    const { buildStartupBannerLines } = await import('src/components/StartupScreen.js')
     const lines = buildStartupBannerLines()
     const text = stripAnsi(lines.join('\n'))
 
@@ -106,7 +106,7 @@ describe('buildStartupBannerLines', () => {
     // Anthropic effort is sourced from the /effort slider, not provider.extras.
     effortOverride = 'high'
 
-    const { buildStartupBannerLines } = await import('./StartupScreen.js')
+    const { buildStartupBannerLines } = await import('src/components/StartupScreen.js')
     const lines = buildStartupBannerLines()
     const text = stripAnsi(lines.join('\n'))
 
@@ -123,7 +123,7 @@ describe('buildStartupBannerLines', () => {
       name: 'Ollama',
     }
 
-    const { buildStartupBannerLines } = await import('./StartupScreen.js')
+    const { buildStartupBannerLines } = await import('src/components/StartupScreen.js')
     const lines = buildStartupBannerLines()
     const text = stripAnsi(lines.join('\n'))
 
@@ -131,7 +131,7 @@ describe('buildStartupBannerLines', () => {
   })
 
   it('includes the current working directory', async () => {
-    const { buildStartupBannerLines } = await import('./StartupScreen.js')
+    const { buildStartupBannerLines } = await import('src/components/StartupScreen.js')
     const lines = buildStartupBannerLines()
     const text = stripAnsi(lines.join('\n'))
 
@@ -146,14 +146,14 @@ describe('buildStartupBannerLines', () => {
   })
 
   it('returns a stable line count for snapshot-style assertions', async () => {
-    const { buildStartupBannerLines } = await import('./StartupScreen.js')
+    const { buildStartupBannerLines } = await import('src/components/StartupScreen.js')
     const lines = buildStartupBannerLines('claude-sonnet-4-6')
     // Banner shape: 4 logo rows (no leading/trailing blank).
     expect(lines.length).toBe(4)
   })
 
   it('appends an update-available notice when one is passed', async () => {
-    const { buildStartupBannerLines } = await import('./StartupScreen.js')
+    const { buildStartupBannerLines } = await import('src/components/StartupScreen.js')
     const lines = buildStartupBannerLines('claude-sonnet-4-6', {
       latest: '9.9.9',
     })
@@ -165,7 +165,7 @@ describe('buildStartupBannerLines', () => {
   })
 
   it('wraps only (vX.Y.Z) in green; the rest of the notice is DIM', async () => {
-    const { buildStartupBannerLines } = await import('./StartupScreen.js')
+    const { buildStartupBannerLines } = await import('src/components/StartupScreen.js')
     const lines = buildStartupBannerLines('claude-sonnet-4-6', {
       latest: '9.9.9',
     })
@@ -179,7 +179,7 @@ describe('buildStartupBannerLines', () => {
   })
 
   it('omits the notice line when none is provided', async () => {
-    const { buildStartupBannerLines } = await import('./StartupScreen.js')
+    const { buildStartupBannerLines } = await import('src/components/StartupScreen.js')
     const lines = buildStartupBannerLines('claude-sonnet-4-6')
     const text = stripAnsi(lines.join('\n'))
     expect(text).not.toContain('New version')
@@ -199,7 +199,7 @@ describe('<StartupBanner />', () => {
   })
 
   it('renders the banner content when mounted in the Ink tree', async () => {
-    const { StartupBanner } = await import('./StartupBanner.js')
+    const { StartupBanner } = await import('src/components/StartupBanner.js')
     const output = await renderToString(
       <AppStateProvider>
         <StartupBanner modelOverride="claude-sonnet-4-6" />
@@ -230,7 +230,7 @@ describe('<StartupBanner />', () => {
       },
     }))
     try {
-      const { StartupBanner } = await import('./StartupBanner.js')
+      const { StartupBanner } = await import('src/components/StartupBanner.js')
       await renderToString(
         <AppStateProvider>
           <StartupBanner modelOverride="claude-sonnet-4-6" />
@@ -259,7 +259,7 @@ describe('<StartupBanner />', () => {
     // subscribe-listener body was deleted. Persistent root → mount once →
     // captured() → wait for re-render → assert.
     const realCache = { ...(await import('src/services/install/latestVersionCache.js')) }
-    const realScreen = { ...(await import('./StartupScreen.js')) }
+    const realScreen = { ...(await import('src/components/StartupScreen.js')) }
     let captured: (() => void) | null = null
     let resolveReturn: { latest: string } | undefined
     mock.module('src/services/install/latestVersionCache.js', () => ({
@@ -322,7 +322,7 @@ describe('<StartupBanner />', () => {
     })
 
     try {
-      const { StartupBanner } = await import('./StartupBanner.js')
+      const { StartupBanner } = await import('src/components/StartupBanner.js')
 
       // Initial state: no notice.
       resolveReturn = undefined

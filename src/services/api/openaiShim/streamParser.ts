@@ -41,15 +41,15 @@ import {
   getBytesPerTokenForModel,
 } from 'src/services/tokenEstimation.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { makeMessageId } from './helpers.js'
-import { extractReasoningDelta } from './reasoningNormalizer.js'
-import type { OpenAIStreamChunk } from './types.js'
+import { makeMessageId } from 'src/services/api/openaiShim/helpers.js'
+import { extractReasoningDelta } from 'src/services/api/openaiShim/reasoningNormalizer.js'
+import type { OpenAIStreamChunk } from 'src/services/api/openaiShim/types.js'
 import {
   findXmlToolCallOpener,
   isHy3Model,
   recoverXmlToolCallsFromText,
   trailingXmlOpenerPrefixLen,
-} from './xmlToolCallParser.js'
+} from 'src/services/api/openaiShim/xmlToolCallParser.js'
 
 export function convertChunkUsage(
   usage: OpenAIStreamChunk['usage'] | undefined,

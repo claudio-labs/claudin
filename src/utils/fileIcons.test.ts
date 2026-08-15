@@ -7,7 +7,7 @@ import {
   FOLDER_ICON,
   GENERIC_FILE_ICON,
   getFileTypeIcon,
-} from './fileIcons.js'
+} from 'src/utils/fileIcons.js'
 
 describe('getFileTypeIcon', () => {
   test('directory with trailing slash → folder', () => {

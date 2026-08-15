@@ -9,7 +9,7 @@
  * token appears) — this module only exposes the pending list.
  */
 
-import type { Token } from './tokens.js'
+import type { Token } from 'src/services/bash/bashParser/tokens.js'
 
 type HeredocPending = {
   delim: string

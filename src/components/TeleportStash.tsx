@@ -4,9 +4,9 @@ import { Box, Text } from 'src/ink.js';
 import { logForDebugging } from 'src/utils/debug.js';
 import type { GitFileStatus } from 'src/services/git/git.js';
 import { getFileStatus, stashToCleanState } from 'src/services/git/git.js';
-import { Select } from './CustomSelect/index.js';
-import { Dialog } from './design-system/Dialog.js';
-import { Spinner } from './Spinner.js';
+import { Select } from 'src/components/CustomSelect/index.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { Spinner } from 'src/components/Spinner.js';
 type TeleportStashProps = {
   onStashAndContinue: () => void;
   onCancel: () => void;

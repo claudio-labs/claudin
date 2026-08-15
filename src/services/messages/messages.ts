@@ -11,7 +11,7 @@ export {
   extractTextContent,
   getContentText,
   wrapInSystemReminder,
-} from './text.js'
+} from 'src/services/messages/text.js'
 
 export {
   INTERRUPT_MESSAGE,
@@ -28,7 +28,7 @@ export {
   SYNTHETIC_MODEL,
   SYNTHETIC_MESSAGES,
   EMPTY_STRING_SET,
-} from './constants.js'
+} from 'src/services/messages/constants.js'
 
 export {
   AUTO_REJECT_MESSAGE,
@@ -36,9 +36,9 @@ export {
   isClassifierDenial,
   buildYoloRejectionMessage,
   buildClassifierUnavailableMessage,
-} from './rejection.js'
+} from 'src/services/messages/rejection.js'
 
-export { PLAN_PHASE4_CONTROL } from './planMode.js'
+export { PLAN_PHASE4_CONTROL } from 'src/services/messages/planMode.js'
 
 export {
   isSyntheticMessage,
@@ -54,7 +54,7 @@ export {
   isThinkingMessage,
   countToolCalls,
   hasSuccessfulToolCall,
-} from './predicates.js'
+} from 'src/services/messages/predicates.js'
 
 export {
   normalizeMessages,
@@ -72,7 +72,7 @@ export {
   stripAdvisorBlocks,
   stripOldNarrationBlocks,
   stripOldThinkingBlocks,
-} from './normalize.js'
+} from 'src/services/messages/normalize.js'
 
 export {
   createAssistantMessage,
@@ -99,7 +99,7 @@ export {
   createCompactBoundaryMessage,
   createSystemAPIErrorMessage,
   createToolUseSummaryMessage,
-} from './factories.js'
+} from 'src/services/messages/factories.js'
 
 export {
   getToolResultIDs,
@@ -110,14 +110,14 @@ export {
   getProgressMessagesFromLookup,
   hasUnresolvedHooksFromLookup,
   getToolUseIDs,
-} from './lookups.js'
+} from 'src/services/messages/lookups.js'
 
-export { getToolUseID } from './toolUseID.js'
+export { getToolUseID } from 'src/services/messages/toolUseID.js'
 
 export {
   type StreamingToolUse,
   type StreamingThinking,
   handleMessageFromStream,
-} from './streaming.js'
+} from 'src/services/messages/streaming.js'
 
-export { normalizeAttachmentForAPI } from './attachments.js'
+export { normalizeAttachmentForAPI } from 'src/services/messages/attachments.js'

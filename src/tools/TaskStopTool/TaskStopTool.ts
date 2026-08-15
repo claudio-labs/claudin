@@ -4,8 +4,8 @@ import { buildTool, type ToolDef } from 'src/Tool.js'
 import { stopTask } from 'src/tasks/stopTask.js'
 import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { DESCRIPTION, TASK_STOP_TOOL_NAME } from './prompt.js'
-import { renderToolResultMessage, renderToolUseMessage } from './UI.js'
+import { DESCRIPTION, TASK_STOP_TOOL_NAME } from 'src/tools/TaskStopTool/prompt.js'
+import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/TaskStopTool/UI.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({

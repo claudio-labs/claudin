@@ -90,7 +90,7 @@ describe('<SessionCostStats />', () => {
   afterEach(resetState)
 
   it('renders nothing when there is no usage in the session', async () => {
-    const { SessionCostStats } = await import('./Usage.js')
+    const { SessionCostStats } = await import('src/components/Settings/Usage.js')
     const output = stripAnsi(await renderToString(<SessionCostStats />, 100))
     expect(output.trim()).toBe('')
   })
@@ -117,7 +117,7 @@ describe('<SessionCostStats />', () => {
       modelUsage: { 'claude-haiku-4-5-20251001': { inputTokens: 680, outputTokens: 25, cacheReadInputTokens: 0, cacheCreationInputTokens: 0, webSearchRequests: 0, costUSD: 0.0008 } },
     }
 
-    const { SessionCostStats } = await import('./Usage.js')
+    const { SessionCostStats } = await import('src/components/Settings/Usage.js')
     const output = stripAnsi(await renderToString(<SessionCostStats />, 120))
 
     expect(output).toContain('Project total (all sessions)')
@@ -147,7 +147,7 @@ describe('<SessionCostStats />', () => {
       modelUsage: { 'claude-opus-4-7-20251101': { inputTokens: 5000, outputTokens: 2500, cacheReadInputTokens: 0, cacheCreationInputTokens: 0, webSearchRequests: 0, costUSD: 1.23 } },
     }
 
-    const { SessionCostStats } = await import('./Usage.js')
+    const { SessionCostStats } = await import('src/components/Settings/Usage.js')
     const output = stripAnsi(await renderToString(<SessionCostStats />, 140))
 
     expect(output).toContain('Project total (all sessions)')
@@ -181,7 +181,7 @@ describe('<SessionCostStats />', () => {
       modelUsage: { 'claude-opus-4-7-20251101': { inputTokens: 6, outputTokens: 25, cacheReadInputTokens: 15900, cacheCreationInputTokens: 15100, webSearchRequests: 3, costUSD: 0.103 } },
     }
 
-    const { SessionCostStats } = await import('./Usage.js')
+    const { SessionCostStats } = await import('src/components/Settings/Usage.js')
     const output = stripAnsi(await renderToString(<SessionCostStats />, 140))
 
     expect(output).toContain('Total code changes:    1 line added, 2 lines removed')
@@ -198,7 +198,7 @@ describe('<SessionCostStats />', () => {
     }
     recordBytesSaved(4_000_000, 0) // 4 MB → ~1m tokens
 
-    const { Usage } = await import('./Usage.js')
+    const { Usage } = await import('src/components/Settings/Usage.js')
     const output = stripAnsi(await renderToString(<Usage view="session" />, 140))
 
     expect(output).toContain('Current session')
@@ -213,7 +213,7 @@ describe('<SessionCostStats />', () => {
     }
     // no recordBytesSaved → 0
 
-    const { Usage } = await import('./Usage.js')
+    const { Usage } = await import('src/components/Settings/Usage.js')
     const output = stripAnsi(await renderToString(<Usage view="session" />, 140))
 
     expect(output).toContain('Current session')
@@ -231,7 +231,7 @@ describe('<SessionCostStats />', () => {
     }
     recordBytesSaved(4_000_000, 0)
 
-    const { SessionCostStats } = await import('./Usage.js')
+    const { SessionCostStats } = await import('src/components/Settings/Usage.js')
     const output = stripAnsi(await renderToString(<SessionCostStats view="global" />, 140))
 
     expect(output).toContain('Project total (all sessions)')
@@ -253,7 +253,7 @@ describe('<SessionCostStats />', () => {
     }
     unknownCost = true
 
-    const { SessionCostStats } = await import('./Usage.js')
+    const { SessionCostStats } = await import('src/components/Settings/Usage.js')
     const output = stripAnsi(await renderToString(<SessionCostStats />, 160))
 
     expect(output).toContain('costs may be inaccurate due to usage of unknown models')

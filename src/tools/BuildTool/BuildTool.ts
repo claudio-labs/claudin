@@ -6,7 +6,7 @@ import { buildTool, type ToolCallProgress, type ToolDef } from 'src/Tool.js'
 import { getCwd } from 'src/utils/fs/cwd.js'
 import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { bashToolHasPermission } from 'src/tools/BashTool/bashPermissions.js'
-import { formatBuildResult } from './budget.js'
+import { formatBuildResult } from 'src/tools/BuildTool/budget.js'
 import {
   applyQuietFlags,
   detectAllBuildSystems,
@@ -14,17 +14,17 @@ import {
   detectBuildFor,
   detectBuildSystemFromCommand,
   detectSubprojects,
-} from './detect.js'
-import { BUILD_TOOL_NAME, DESCRIPTION } from './prompt.js'
-import { runBuild } from './run.js'
-import type { BuildProgress, BuildResult, BuildSystem } from './types.js'
+} from 'src/tools/BuildTool/detect.js'
+import { BUILD_TOOL_NAME, DESCRIPTION } from 'src/tools/BuildTool/prompt.js'
+import { runBuild } from 'src/tools/BuildTool/run.js'
+import type { BuildProgress, BuildResult, BuildSystem } from 'src/tools/BuildTool/types.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
   renderToolUseProgressMessage,
   userFacingName,
-} from './UI.js'
+} from 'src/tools/BuildTool/UI.js'
 
 /**
  * Generous next to `Typecheck`'s 300s, because a cold build genuinely takes

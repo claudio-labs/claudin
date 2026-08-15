@@ -5,7 +5,7 @@ import { join } from 'node:path'
 
 import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
 
-import { loadProcessed, saveProcessed } from './watchState.js'
+import { loadProcessed, saveProcessed } from 'src/cli/workflow/watchState.js'
 
 describe('watchState', () => {
   let dir: string

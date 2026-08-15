@@ -8,9 +8,9 @@ import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
 import { useIsInsideModal, useModalOrTerminalSize } from 'src/context/modalContext.js';
 import { Pane } from 'src/components/design-system/Pane.js';
 import { Tabs, Tab } from 'src/components/design-system/Tabs.js';
-import { Status, buildDiagnostics } from './Status.js';
-import { Config } from './Config.js';
-import { Usage } from './Usage.js';
+import { Status, buildDiagnostics } from 'src/components/Settings/Status.js';
+import { Config } from 'src/components/Settings/Config.js';
+import { Usage } from 'src/components/Settings/Usage.js';
 import type { LocalJSXCommandContext, CommandResultDisplay } from 'src/commands.js';
 type Props = {
   onClose: (result?: string, options?: {

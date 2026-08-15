@@ -21,7 +21,7 @@ import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
 import { TodoWriteTool } from 'src/tools/TodoWriteTool/TodoWriteTool.js'
-import { BASH_TOOL_NAME } from './toolName.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 
 export function getDefaultTimeoutMs(): number {
   return getDefaultBashTimeoutMs()

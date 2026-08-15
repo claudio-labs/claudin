@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { Box, Text } from 'src/ink.js'
 import type { GitLogRow } from 'src/services/git/gitLog.js'
-import { entityColor } from './entityColor.js'
+import { entityColor } from 'src/components/diff/entityColor.js'
 
 /** Split a decoration name into a display label + whether it's a tag. */
 function refParts(ref: string): { label: string; isTag: boolean } {

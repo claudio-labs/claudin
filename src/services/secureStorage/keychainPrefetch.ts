@@ -28,7 +28,7 @@ import {
   getMacOsKeychainStorageServiceName,
   getUsername,
   primeKeychainCacheFromPrefetch,
-} from './macOsKeychainHelpers.js'
+} from 'src/services/secureStorage/macOsKeychainHelpers.js'
 
 const KEYCHAIN_PREFETCH_TIMEOUT_MS = 10_000
 

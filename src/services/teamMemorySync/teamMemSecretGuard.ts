@@ -21,7 +21,7 @@ export function checkTeamMemSecrets(
     const { isTeamMemPath } =
       require('src/memdir/teamMemPaths.js') as typeof import('src/memdir/teamMemPaths.js')
     const { scanForSecrets } =
-      require('./secretScanner.js') as typeof import('./secretScanner.js')
+      require('src/services/teamMemorySync/secretScanner.js') as typeof import('src/services/teamMemorySync/secretScanner.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
 
     if (!isTeamMemPath(filePath)) {

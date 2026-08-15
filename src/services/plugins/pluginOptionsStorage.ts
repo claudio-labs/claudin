@@ -25,8 +25,8 @@ import {
   type UserConfigSchema,
   type UserConfigValues,
   validateUserConfig,
-} from './mcpbHandler.js'
-import { getPluginDataDir } from './pluginDirectories.js'
+} from 'src/services/plugins/mcpbHandler.js'
+import { getPluginDataDir } from 'src/services/plugins/pluginDirectories.js'
 
 export type PluginOptionValues = UserConfigValues
 export type PluginOptionSchema = UserConfigSchema

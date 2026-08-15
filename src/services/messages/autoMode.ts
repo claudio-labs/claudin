@@ -1,6 +1,6 @@
 import type { UserMessage } from 'src/types/message.js'
-import { createUserMessage } from './factories.js'
-import { wrapMessagesInSystemReminder } from './text.js'
+import { createUserMessage } from 'src/services/messages/factories.js'
+import { wrapMessagesInSystemReminder } from 'src/services/messages/text.js'
 
 export function getAutoModeInstructions(attachment: {
   reminderType: 'full' | 'sparse'

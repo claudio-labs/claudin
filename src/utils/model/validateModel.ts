@@ -1,7 +1,7 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
-import { MODEL_ALIASES } from './aliases.js'
-import { isModelAllowed } from './modelAllowlist.js'
-import { getAPIProvider } from './providers.js'
+import { MODEL_ALIASES } from 'src/utils/model/aliases.js'
+import { isModelAllowed } from 'src/utils/model/modelAllowlist.js'
+import { getAPIProvider } from 'src/utils/model/providers.js'
 import { sideQuery } from 'src/utils/sideQuery.js'
 import {
   isSdkApiConnectionError,
@@ -9,10 +9,10 @@ import {
   isSdkAuthenticationError,
   isSdkNotFoundError,
 } from 'src/utils/errors.js'
-import { getModelStrings } from './modelStrings.js'
-import { getCachedOllamaModelOptions, isOllamaProvider } from './ollamaModels.js'
-import { getCachedNvidiaNimModelOptions, isNvidiaNimProvider } from './nvidiaNimModels.js'
-import { getCachedMiniMaxModelOptions, isMiniMaxProvider } from './minimaxModels.js'
+import { getModelStrings } from 'src/utils/model/modelStrings.js'
+import { getCachedOllamaModelOptions, isOllamaProvider } from 'src/utils/model/ollamaModels.js'
+import { getCachedNvidiaNimModelOptions, isNvidiaNimProvider } from 'src/utils/model/nvidiaNimModels.js'
+import { getCachedMiniMaxModelOptions, isMiniMaxProvider } from 'src/utils/model/minimaxModels.js'
 
 // Cache valid models to avoid repeated API calls
 const validModelCache = new Map<string, boolean>()

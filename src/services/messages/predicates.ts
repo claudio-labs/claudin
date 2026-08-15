@@ -16,7 +16,7 @@ import type {
 import {
   INTERRUPT_MESSAGE_FOR_TOOL_USE,
   SYNTHETIC_MESSAGES,
-} from './constants.js'
+} from 'src/services/messages/constants.js'
 
 export function isSyntheticMessage(message: Message): boolean {
   return (

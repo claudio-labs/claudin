@@ -5,11 +5,11 @@ import {
 } from 'src/history.js'
 import instances from 'src/ink/instances.js'
 import type { PastedContent } from 'src/services/config/config.js'
-import { classifyGuiEditor, getExternalEditor } from './editor.js'
+import { classifyGuiEditor, getExternalEditor } from 'src/utils/editor.js'
 import { execSync_DEPRECATED } from 'src/utils/proc/execSyncWrapper.js'
 import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import { toIDEDisplayName } from 'src/services/ide/ide.js'
-import { writeFileSync_DEPRECATED } from './slowOperations.js'
+import { writeFileSync_DEPRECATED } from 'src/utils/slowOperations.js'
 import { generateTempFilePath } from 'src/utils/fs/tempfile.js'
 
 // Map of editor command overrides (e.g., to add wait flags)

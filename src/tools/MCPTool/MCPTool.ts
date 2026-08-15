@@ -6,13 +6,13 @@ import { lazySchema } from 'src/utils/data/lazySchema.js'
 import type { PermissionResult } from 'src/types/permissions.js'
 import { isOutputLineTruncated } from 'src/utils/terminal.js'
 import { logError } from 'src/utils/log.js'
-import { DESCRIPTION, PROMPT } from './prompt.js'
-import { buildMcpValidationError } from './validationMessage.js'
+import { DESCRIPTION, PROMPT } from 'src/tools/MCPTool/prompt.js'
+import { buildMcpValidationError } from 'src/tools/MCPTool/validationMessage.js'
 import {
   renderToolResultMessage,
   renderToolUseMessage,
   renderToolUseProgressMessage,
-} from './UI.js'
+} from 'src/tools/MCPTool/UI.js'
 
 // Allow any input object since MCP tools define their own schemas
 export const inputSchema = lazySchema(() => z.object({}).passthrough())

@@ -46,7 +46,7 @@ import { setSessionBypassPermissionsMode } from 'src/bootstrap/state.js';
 import { plural } from 'src/utils/text/stringUtils.js';
 import type { ValidationError } from 'src/services/settings/validation.js';
 import type { BootContext } from 'src/main/bootContext.js';
-import type { ActionOptions } from './parseOptions.js';
+import type { ActionOptions } from 'src/main/action/parseOptions.js';
 
 /**
  * Lazy-require accessor for autoModeState (gated by TRANSCRIPT_CLASSIFIER).

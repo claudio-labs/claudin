@@ -6,10 +6,10 @@ import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js
 import type { EffortLevel } from 'src/utils/effort.js';
 import { convertEffortValueToLevel, getDefaultEffortForModel, getOpusDefaultEffortConfig, persistEffortForProject, pinProjectEffortAuto } from 'src/utils/effort.js';
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js';
-import type { OptionWithDescription } from './CustomSelect/select.js';
-import { Select } from './CustomSelect/select.js';
-import { effortLevelToSymbol } from './EffortIndicator.js';
-import { PermissionDialog } from './permissions/PermissionDialog.js';
+import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
+import { Select } from 'src/components/CustomSelect/select.js';
+import { effortLevelToSymbol } from 'src/components/EffortIndicator.js';
+import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
 type EffortCalloutSelection = EffortLevel | undefined | 'dismiss';
 type Props = {
   model: string;

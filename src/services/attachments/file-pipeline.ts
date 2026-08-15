@@ -26,8 +26,8 @@ import type {
   CompactFileReferenceAttachment,
   PDFReferenceAttachment,
   AlreadyReadFileAttachment,
-} from './types.js'
-import { isFileReadDenied } from './shared.js'
+} from 'src/services/attachments/types.js'
+import { isFileReadDenied } from 'src/services/attachments/shared.js'
 
 export async function tryGetPDFReference(
   filename: string,

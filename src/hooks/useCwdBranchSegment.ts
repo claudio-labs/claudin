@@ -13,7 +13,7 @@ import {
 import { type PrReviewState } from 'src/services/git/ghPrStatus.js'
 import { getAheadBehind, getBranch } from 'src/services/git/git.js'
 import { getTheme } from 'src/utils/theme.js'
-import { usePrStatus } from './usePrStatus.js'
+import { usePrStatus } from 'src/hooks/usePrStatus.js'
 
 export interface UseCwdBranchSegmentOptions {
   /** When a tool finishes (e.g. git push), trigger an immediate refresh. */

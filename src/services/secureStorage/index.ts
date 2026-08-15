@@ -1,8 +1,8 @@
-import { createFallbackStorage } from './fallbackStorage.js'
-import { macOsKeychainStorage } from './macOsKeychainStorage.js'
-import { linuxSecretStorage } from './linuxSecretStorage.js'
-import { windowsCredentialStorage } from './windowsCredentialStorage.js'
-import { plainTextStorage } from './plainTextStorage.js'
+import { createFallbackStorage } from 'src/services/secureStorage/fallbackStorage.js'
+import { macOsKeychainStorage } from 'src/services/secureStorage/macOsKeychainStorage.js'
+import { linuxSecretStorage } from 'src/services/secureStorage/linuxSecretStorage.js'
+import { windowsCredentialStorage } from 'src/services/secureStorage/windowsCredentialStorage.js'
+import { plainTextStorage } from 'src/services/secureStorage/plainTextStorage.js'
 import type { OAuthTokens } from 'src/services/oauth/types.js'
 
 export interface SecureStorageData {

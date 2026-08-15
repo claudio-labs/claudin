@@ -28,7 +28,7 @@ import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
 import { which } from 'src/utils/proc/which.js'
 import { getUserBinDir, getXDGDataHome } from 'src/utils/fs/xdg.js'
-import { DEEP_LINK_PROTOCOL } from './parseDeepLink.js'
+import { DEEP_LINK_PROTOCOL } from 'src/services/deepLink/parseDeepLink.js'
 
 export const MACOS_BUNDLE_ID = 'com.anthropic.claude-code-url-handler'
 const APP_NAME = 'Claude Code URL Handler'

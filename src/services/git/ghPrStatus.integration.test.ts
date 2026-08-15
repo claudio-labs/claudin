@@ -2,7 +2,7 @@ import { afterAll, describe, expect, mock, test } from 'bun:test'
 
 // Mock at the process/git/config boundary, restore in afterAll, and re-import
 // the module fresh per test (?ts=...) to avoid mock.module cross-file leak.
-const realGit = { ...(await import('./git.js')) }
+const realGit = { ...(await import('src/services/git/git.js')) }
 const realExec = { ...(await import('src/utils/proc/execFileNoThrow.js')) }
 const realConfig = { ...(await import('src/services/config/config.js')) }
 

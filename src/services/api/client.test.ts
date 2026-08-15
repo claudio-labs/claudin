@@ -21,7 +21,7 @@ type VertexClient = {
 // real module so other exports (getActiveProvider, ActiveProviderNotConfiguredError)
 // remain shape-compatible, and restore in afterAll to avoid leaking the mock
 // to subsequent test files.
-const realActiveProvider = { ...(await import('./activeProvider.js')) }
+const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
 // Snapshot the real exports BEFORE registering the mock — Bun mutates the
 // namespace object in place when mock.module installs, so the spread inside
 // afterAll would otherwise pick up the mocked functions.
@@ -40,7 +40,7 @@ afterAll(() => {
   mock.module('./activeProvider.js', () => realActiveProviderSnapshot)
 })
 
-const { getAnthropicClient } = await import('./client.js')
+const { getAnthropicClient } = await import('src/services/api/client.js')
 
 const originalFetch = globalThis.fetch
 const originalMacro = (globalThis as Record<string, unknown>).MACRO

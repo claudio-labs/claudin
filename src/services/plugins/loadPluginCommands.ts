@@ -25,14 +25,14 @@ import {
 } from 'src/services/instructions/markdownConfigLoader.js'
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
 import { executeShellCommandsInPrompt } from 'src/utils/proc/promptShellExecution.js'
-import { loadAllPluginsCacheOnly } from './pluginLoader.js'
+import { loadAllPluginsCacheOnly } from 'src/services/plugins/pluginLoader.js'
 import {
   loadPluginOptions,
   substitutePluginVariables,
   substituteUserConfigInContent,
-} from './pluginOptionsStorage.js'
-import type { CommandMetadata, PluginManifest } from './schemas.js'
-import { walkPluginMarkdown } from './walkPluginMarkdown.js'
+} from 'src/services/plugins/pluginOptionsStorage.js'
+import type { CommandMetadata, PluginManifest } from 'src/services/plugins/schemas.js'
+import { walkPluginMarkdown } from 'src/services/plugins/walkPluginMarkdown.js'
 
 // Similar to MarkdownFile but for plugin sources
 type PluginMarkdownFile = {

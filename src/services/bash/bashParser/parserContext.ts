@@ -8,7 +8,7 @@
  * both without creating cycles.
  */
 
-import { byteAt, type Lexer } from './lexer.js'
+import { byteAt, type Lexer } from 'src/services/bash/bashParser/lexer.js'
 
 export type TsNode = {
   type: string

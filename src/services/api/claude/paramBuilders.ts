@@ -40,12 +40,12 @@ import type { SystemPrompt } from "src/utils/systemPromptType.js";
 import { roughTokenCountEstimationForMessage } from "src/services/tokenEstimation.js";
 import type { AssistantMessage, UserMessage } from "src/types/message.js";
 import { logEvent } from "src/services/analytics/index.js";
-import { getCacheControl } from "./cacheControl.js";
+import { getCacheControl } from "src/services/api/claude/cacheControl.js";
 import {
   assistantMessageToMessageParam,
   userMessageToMessageParam,
-} from "./messageConverters.js";
-import type { Options, TaskBudgetParam } from "./types.js";
+} from "src/services/api/claude/messageConverters.js";
+import type { Options, TaskBudgetParam } from "src/services/api/claude/types.js";
 
 // Define a type that represents valid JSON values
 type JsonValue = string | number | boolean | null | JsonObject | JsonArray;

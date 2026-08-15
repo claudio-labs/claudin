@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
-import { SendMessageTool } from './SendMessageTool.js'
+import { SendMessageTool } from 'src/tools/SendMessageTool/SendMessageTool.js'
 
 afterEach(() => {
   delete process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS

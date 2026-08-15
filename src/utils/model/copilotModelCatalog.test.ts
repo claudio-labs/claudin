@@ -33,8 +33,8 @@ const {
   getEffectiveCopilotModels,
   normalizeBareCopilotModelId,
   prefetchCopilotModelCatalog,
-} = await import('./copilotModelCatalog.js')
-const { getAllCopilotModels } = await import('./copilotModels.js')
+} = await import('src/utils/model/copilotModelCatalog.js')
+const { getAllCopilotModels } = await import('src/utils/model/copilotModels.js')
 
 function setGithubProfile(): void {
   resolvedOverride = {

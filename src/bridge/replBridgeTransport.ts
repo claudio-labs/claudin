@@ -6,7 +6,7 @@ import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
 import { updateSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js'
 import type { SessionState } from 'src/services/session/sessionState.js'
-import { registerWorker } from './workSecret.js'
+import { registerWorker } from 'src/bridge/workSecret.js'
 
 /**
  * Transport abstraction for replBridge. Covers exactly the surface that

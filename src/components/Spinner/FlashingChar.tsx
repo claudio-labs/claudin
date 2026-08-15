@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { Text, useTheme } from 'src/ink.js';
 import { getTheme, type Theme } from 'src/utils/theme.js';
-import { interpolateColor, parseRGB, toRGBColor } from './utils.js';
+import { interpolateColor, parseRGB, toRGBColor } from 'src/components/Spinner/utils.js';
 type Props = {
   char: string;
   flashOpacity: number;

@@ -10,7 +10,7 @@ import { Box, Text } from 'src/ink.js';
 import type { Tool } from 'src/Tool.js';
 import { buildTool, type ToolDef } from 'src/Tool.js';
 import { lazySchema } from 'src/utils/data/lazySchema.js';
-import { ASK_USER_QUESTION_TOOL_CHIP_WIDTH, ASK_USER_QUESTION_TOOL_NAME, ASK_USER_QUESTION_TOOL_PROMPT, DESCRIPTION, PREVIEW_FEATURE_PROMPT } from './prompt.js';
+import { ASK_USER_QUESTION_TOOL_CHIP_WIDTH, ASK_USER_QUESTION_TOOL_NAME, ASK_USER_QUESTION_TOOL_PROMPT, DESCRIPTION, PREVIEW_FEATURE_PROMPT } from 'src/tools/AskUserQuestionTool/prompt.js';
 const questionOptionSchema = lazySchema(() => z.object({
   label: z.string().describe('Display text the user selects (1-5 words).'),
   description: z.string().describe('What this option means or what happens if chosen.'),

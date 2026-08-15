@@ -8,8 +8,8 @@ import {
 } from 'src/services/permissions/permissionSetup.js'
 import { syncPermissionRulesFromDisk } from 'src/services/permissions/permissions.js'
 import { loadAllPermissionRulesFromDisk } from 'src/services/permissions/permissionsLoader.js'
-import type { SettingSource } from './constants.js'
-import { getInitialSettings } from './settings.js'
+import type { SettingSource } from 'src/services/settings/constants.js'
+import { getInitialSettings } from 'src/services/settings/settings.js'
 import { getProjectEffortPin } from 'src/utils/effort.js'
 
 /**

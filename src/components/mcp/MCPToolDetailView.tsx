@@ -6,7 +6,7 @@ import { extractMcpToolDisplayName, getMcpDisplayName } from 'src/services/mcp/m
 import type { Tool } from 'src/Tool.js';
 import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
-import type { ServerInfo } from './types.js';
+import type { ServerInfo } from 'src/components/mcp/types.js';
 type Props = {
   tool: Tool;
   server: ServerInfo;

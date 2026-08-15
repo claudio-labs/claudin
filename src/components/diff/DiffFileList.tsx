@@ -4,10 +4,10 @@ import React, { useMemo } from 'react'
 import type { DiffFile } from 'src/hooks/useDiffData.js'
 import { Box, Text } from 'src/ink.js'
 import { truncateStartToWidth, truncateToWidth } from 'src/utils/text/format.js'
-import { entityColorByIndex } from './entityColor.js'
-import { buildTreeRows, type TreeRow } from './fileTree.js'
-import { getDiffGlyphs } from './glyphs.js'
-import type { RepoGroup } from './types.js'
+import { entityColorByIndex } from 'src/components/diff/entityColor.js'
+import { buildTreeRows, type TreeRow } from 'src/components/diff/fileTree.js'
+import { getDiffGlyphs } from 'src/components/diff/glyphs.js'
+import type { RepoGroup } from 'src/components/diff/types.js'
 
 export { buildTreeRows, type TreeRow }
 

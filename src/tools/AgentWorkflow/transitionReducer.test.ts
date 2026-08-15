@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { applyDecision } from './transitionReducer.js'
+import { applyDecision } from 'src/tools/AgentWorkflow/transitionReducer.js'
 import {
   MAX_REFINES_PER_STEP,
   MAX_TRANSITIONS,
   type RunState,
   type StepDecision,
   type WorkflowDef,
-} from './types.js'
+} from 'src/tools/AgentWorkflow/types.js'
 
 const DEF: WorkflowDef = {
   name: 'dev-flow',

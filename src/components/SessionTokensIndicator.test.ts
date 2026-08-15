@@ -78,7 +78,7 @@ mock.module('src/ink.js', () => ({
   Text: () => null,
 }));
 
-const { readSnapshot } = await import('./SessionTokensIndicator.js');
+const { readSnapshot } = await import('src/components/SessionTokensIndicator.js');
 
 afterEach(() => {
   setTotals({});

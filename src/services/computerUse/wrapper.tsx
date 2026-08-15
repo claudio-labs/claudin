@@ -22,11 +22,11 @@ import { getSessionId } from 'src/bootstrap/state.js';
 import { ComputerUseApproval } from 'src/components/permissions/ComputerUseApproval/ComputerUseApproval.js';
 import type { Tool, ToolUseContext } from 'src/Tool.js';
 import { logForDebugging } from 'src/utils/debug.js';
-import { checkComputerUseLock, tryAcquireComputerUseLock } from './computerUseLock.js';
-import { registerEscHotkey } from './escHotkey.js';
-import { getChicagoCoordinateMode } from './gates.js';
-import { getComputerUseHostAdapter } from './hostAdapter.js';
-import { getComputerUseMCPRenderingOverrides } from './toolRendering.js';
+import { checkComputerUseLock, tryAcquireComputerUseLock } from 'src/services/computerUse/computerUseLock.js';
+import { registerEscHotkey } from 'src/services/computerUse/escHotkey.js';
+import { getChicagoCoordinateMode } from 'src/services/computerUse/gates.js';
+import { getComputerUseHostAdapter } from 'src/services/computerUse/hostAdapter.js';
+import { getComputerUseMCPRenderingOverrides } from 'src/services/computerUse/toolRendering.js';
 type CallOverride = Pick<Tool, 'call'>['call'];
 /**
  * `@ant/computer-use-mcp` is not part of this fork (see

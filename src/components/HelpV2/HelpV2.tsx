@@ -9,8 +9,8 @@ import { Box, Link, Text } from 'src/ink.js';
 import { useKeybinding } from 'src/keybindings/useKeybinding.js';
 import { Pane } from 'src/components/design-system/Pane.js';
 import { Tab, Tabs } from 'src/components/design-system/Tabs.js';
-import { Commands } from './Commands.js';
-import { General } from './General.js';
+import { Commands } from 'src/components/HelpV2/Commands.js';
+import { General } from 'src/components/HelpV2/General.js';
 type Props = {
   onClose: (result?: string, options?: {
     display?: CommandResultDisplay;

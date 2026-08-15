@@ -12,7 +12,7 @@ import {
   listTasks,
   resetTaskList,
 } from 'src/tasks/tasks.js'
-import { TaskUpdateTool } from './TaskUpdateTool.js'
+import { TaskUpdateTool } from 'src/tools/TaskUpdateTool/TaskUpdateTool.js'
 
 let configDir: string
 

@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
-import { getBuiltInAgents } from './builtInAgents.js'
-import { WEB_RESEARCHER_AGENT_TYPE } from './built-in/webResearcherAgent.js'
-import { WEB_RESEARCHER_MANAGER_AGENT_TYPE } from './built-in/webResearcherManagerAgent.js'
-import { AGENT_TOOL_NAME } from './constants.js'
+import { getBuiltInAgents } from 'src/tools/AgentTool/builtInAgents.js'
+import { WEB_RESEARCHER_AGENT_TYPE } from 'src/tools/AgentTool/built-in/webResearcherAgent.js'
+import { WEB_RESEARCHER_MANAGER_AGENT_TYPE } from 'src/tools/AgentTool/built-in/webResearcherManagerAgent.js'
+import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 
 describe('getBuiltInAgents', () => {
   test('includes WebResearcher in the default (non-coordinator) registry', () => {

@@ -5,12 +5,12 @@ import { lazySchema } from 'src/utils/data/lazySchema.js'
 import type {
   PermissionDecision,
   PermissionDecisionReason,
-} from './PermissionResult.js'
+} from 'src/services/permissions/PermissionResult.js'
 import {
   applyPermissionUpdates,
   persistPermissionUpdates,
-} from './PermissionUpdate.js'
-import { permissionUpdateSchema } from './PermissionUpdateSchema.js'
+} from 'src/services/permissions/PermissionUpdate.js'
+import { permissionUpdateSchema } from 'src/services/permissions/PermissionUpdateSchema.js'
 
 export const inputSchema = lazySchema(() =>
   z.object({

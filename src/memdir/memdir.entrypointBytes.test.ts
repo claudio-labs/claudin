@@ -4,7 +4,7 @@ import {
   MAX_ENTRYPOINT_BYTES,
   MAX_ENTRYPOINT_LINES,
   truncateEntrypointContent,
-} from './memdir.js'
+} from 'src/memdir/memdir.js'
 
 // The cap is named BYTES and rendered through formatFileSize(), so it has to be
 // measured and cut in byte space. Measuring with `.length` (UTF-16 code units)

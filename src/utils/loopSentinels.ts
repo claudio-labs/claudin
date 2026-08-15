@@ -15,9 +15,9 @@ import { getProjectRoot, onSessionSwitch } from 'src/bootstrap/state.js'
 import {
   SCHEDULE_WAKEUP_TOOL_NAME,
 } from 'src/tools/ScheduleWakeupTool/prompt.js'
-import { logForDebugging } from './debug.js'
-import { getClaudinConfigHomeDir } from './envUtils.js'
-import { isENOENT } from './errors.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
+import { isENOENT } from 'src/utils/errors.js'
 
 /** Scheduled-prompt body for fixed-interval maintenance loops (CronCreate recurring). */
 export const AUTONOMOUS_LOOP_SENTINEL = '<<autonomous-loop>>'

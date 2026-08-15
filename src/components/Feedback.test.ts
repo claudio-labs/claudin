@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 
-import { createGitHubIssueUrl } from './Feedback.tsx'
+import { createGitHubIssueUrl } from 'src/components/Feedback.tsx'
 
 (globalThis as { MACRO?: { VERSION?: string } }).MACRO = { VERSION: '0.1.7' }
 

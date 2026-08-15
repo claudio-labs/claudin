@@ -47,13 +47,13 @@ import { writeToMailbox } from 'src/coordinator/teammateMailbox.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { TASK_UPDATE_TOOL_NAME } from 'src/tools/TaskUpdateTool/constants.js'
 import { TEAM_CREATE_TOOL_NAME } from 'src/tools/TeamCreateTool/constants.js'
-import { EXIT_PLAN_MODE_V2_TOOL_NAME } from './constants.js'
-import { EXIT_PLAN_MODE_V2_TOOL_PROMPT } from './prompt.js'
+import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
+import { EXIT_PLAN_MODE_V2_TOOL_PROMPT } from 'src/tools/ExitPlanModeTool/prompt.js'
 import {
   renderToolResultMessage,
   renderToolUseMessage,
   renderToolUseRejectedMessage,
-} from './UI.js'
+} from 'src/tools/ExitPlanModeTool/UI.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER')

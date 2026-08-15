@@ -4,7 +4,7 @@ import {
   detectCopilotInitiator,
   messagesContainImage,
   wrapFetchWithCopilotHeaders,
-} from './copilotHeaders.js'
+} from 'src/services/api/copilotHeaders.js'
 
 const text = (s: string) => ({ type: 'text', text: s })
 const image = () => ({

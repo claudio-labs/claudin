@@ -34,7 +34,7 @@ import {
   PDF_TARGET_RAW_SIZE,
 } from 'src/constants/apiLimits.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { tryGetActiveProvider } from './activeProvider.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { formatFileSize } from 'src/utils/text/format.js'
 import { ImageResizeError } from 'src/utils/imageResizer.js'
 import { ImageSizeError } from 'src/utils/imageValidation.js'
@@ -48,11 +48,11 @@ import {
   type OverageDisabledReason,
 } from 'src/services/claudeAiLimits.js'
 import { shouldProcessRateLimits } from 'src/services/rateLimitMocking.js' // Used for /mock-limits command
-import { extractConnectionErrorDetails, formatAPIError } from './errorUtils.js'
+import { extractConnectionErrorDetails, formatAPIError } from 'src/services/api/errorUtils.js'
 import {
   extractOpenAICategoryMarker,
   type OpenAICompatibilityFailureCategory,
-} from './openaiErrorClassification.js'
+} from 'src/services/api/openaiErrorClassification.js'
 
 export const API_ERROR_MESSAGE_PREFIX = 'API Error'
 

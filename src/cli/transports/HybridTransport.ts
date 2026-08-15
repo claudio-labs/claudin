@@ -3,11 +3,11 @@ import type { StdoutMessage } from 'src/entrypoints/sdk/controlTypes.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
 import { getSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js'
-import { SerialBatchEventUploader } from './SerialBatchEventUploader.js'
+import { SerialBatchEventUploader } from 'src/cli/transports/SerialBatchEventUploader.js'
 import {
   WebSocketTransport,
   type WebSocketTransportOptions,
-} from './WebSocketTransport.js'
+} from 'src/cli/transports/WebSocketTransport.js'
 
 const BATCH_FLUSH_INTERVAL_MS = 100
 // Per-attempt POST timeout. Bounds how long a single stuck POST can block

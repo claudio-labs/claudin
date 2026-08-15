@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
-import { getAutoFixConfig } from './autoFixConfig.js'
-import { shouldRunAutoFix, buildAutoFixContext } from './autoFixHook.js'
-import { runAutoFixCheck } from './autoFixRunner.js'
+import { getAutoFixConfig } from 'src/services/autoFix/autoFixConfig.js'
+import { shouldRunAutoFix, buildAutoFixContext } from 'src/services/autoFix/autoFixHook.js'
+import { runAutoFixCheck } from 'src/services/autoFix/autoFixRunner.js'
 
 const TEST_CWD = process.cwd()
 

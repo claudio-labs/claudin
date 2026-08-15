@@ -3,30 +3,30 @@ import type {
   ToolResultBlockParam,
   ToolUseBlock,
 } from '@anthropic-ai/sdk/resources/index.mjs'
-import type { CanUseToolFn } from './hooks/useCanUseTool.js'
-import { FallbackTriggeredError } from './services/api/withRetry.js'
+import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import { FallbackTriggeredError } from 'src/services/api/withRetry.js'
 import {
   calculateTokenWarningState,
   isAutoCompactEnabled,
   type AutoCompactTrackingState,
-} from './services/compact/autoCompact.js'
-import { buildPostCompactMessages } from './services/compact/compact.js'
+} from 'src/services/compact/autoCompact.js'
+import { buildPostCompactMessages } from 'src/services/compact/compact.js'
 /* eslint-disable @typescript-eslint/no-require-imports */
 const reactiveCompact = feature('REACTIVE_COMPACT')
   ? (require('./services/compact/reactiveCompact.js') as typeof import('./services/compact/reactiveCompact.js'))
   : null
 const contextCollapse = feature('CONTEXT_COLLAPSE')
-  ? (require('./services/contextCollapse/index.js') as typeof import('./services/contextCollapse/index.js'))
+  ? (require('src/services/contextCollapse/index.js') as typeof import('src/services/contextCollapse/index.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 import {
   logEvent,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from 'src/services/analytics/index.js'
-import { ImageSizeError } from './utils/imageValidation.js'
-import { ImageResizeError } from './utils/imageResizer.js'
-import { findToolByName, type ToolUseContext } from './Tool.js'
-import { asSystemPrompt, type SystemPrompt } from './utils/systemPromptType.js'
+import { ImageSizeError } from 'src/utils/imageValidation.js'
+import { ImageResizeError } from 'src/utils/imageResizer.js'
+import { findToolByName, type ToolUseContext } from 'src/Tool.js'
+import { asSystemPrompt, type SystemPrompt } from 'src/utils/systemPromptType.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
@@ -36,20 +36,20 @@ import type {
   ToolUseSummaryMessage,
   UserMessage,
   TombstoneMessage,
-} from './types/message.js'
-import { logError } from './utils/log.js'
+} from 'src/types/message.js'
+import { logError } from 'src/utils/log.js'
 import {
   PROMPT_TOO_LONG_ERROR_MESSAGE,
   isPromptTooLongMessage,
-} from './services/api/errors.js'
-import { logAntError, logForDebugging } from './utils/debug.js'
+} from 'src/services/api/errors.js'
+import { logAntError, logForDebugging } from 'src/utils/debug.js'
 import { claimsAgentLaunch } from 'src/utils/proc/phantomLaunchGuard.js'
 import {
   isStructurallyIncomplete,
   signalsCompletion,
   signalsContinuation,
-} from './utils/continuationNudge.js'
-import { AGENT_TOOL_NAME } from './tools/AgentTool/constants.js'
+} from 'src/utils/continuationNudge.js'
+import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import {
   createUserMessage,
   createUserInterruptionMessage,
@@ -59,7 +59,7 @@ import {
   getMessagesAfterCompactBoundary,
   createToolUseSummaryMessage,
 } from 'src/services/messages/messages.js'
-import { generateToolUseSummary } from './services/toolUseSummary/toolUseSummaryGenerator.js'
+import { generateToolUseSummary } from 'src/services/toolUseSummary/toolUseSummaryGenerator.js'
 import { prependUserContext, appendSystemContext } from 'src/services/api/api.js'
 import {
   createAttachmentMessage,
@@ -70,8 +70,8 @@ import {
 import {
   awaitLateDiagnosticsForTurn,
   clearArmedFiles,
-} from './services/lsp/diagnosticsForToolResult.js'
-import { markDiagnosticsAsDelivered } from './services/lsp/LSPDiagnosticRegistry.js'
+} from 'src/services/lsp/diagnosticsForToolResult.js'
+import { markDiagnosticsAsDelivered } from 'src/services/lsp/LSPDiagnosticRegistry.js'
 import { getGlobalConfig } from 'src/services/config/config.js'
 /* eslint-disable @typescript-eslint/no-require-imports */
 const skillPrefetch = feature('EXPERIMENTAL_SKILL_SEARCH')
@@ -85,48 +85,48 @@ import {
   remove as removeFromQueue,
   getCommandsByMaxPriority,
   isSlashCommand,
-} from './utils/messageQueueManager.js'
-import { notifyCommandLifecycle } from './utils/commandLifecycle.js'
-import { headlessProfilerCheckpoint } from './utils/headlessProfiler.js'
+} from 'src/utils/messageQueueManager.js'
+import { notifyCommandLifecycle } from 'src/utils/commandLifecycle.js'
+import { headlessProfilerCheckpoint } from 'src/utils/headlessProfiler.js'
 import {
   getDefaultMainLoopModelSetting,
   getUserSpecifiedModelSetting,
   getRuntimeMainLoopModel,
   parseUserSpecifiedModel,
   renderModelName,
-} from './utils/model/model.js'
+} from 'src/utils/model/model.js'
 import {
   doesMostRecentAssistantMessageExceed200k,
   finalContextTokensFromLastResponse,
   tokenCountWithEstimation,
 } from 'src/services/context/tokens.js'
 import { ESCALATED_MAX_TOKENS } from 'src/services/context/context.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from './services/analytics/growthbook.js'
-import { SLEEP_TOOL_NAME } from './tools/SleepTool/prompt.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js'
 import { executePostSamplingHooks } from 'src/services/lifecycleHooks/postSamplingHooks.js'
 import { executeStopFailureHooks } from 'src/services/lifecycleHooks/hooks.js'
-import type { QuerySource } from './constants/querySource.js'
-import { StreamingToolExecutor } from './services/tools/StreamingToolExecutor.js'
-import { queryCheckpoint } from './utils/queryProfiler.js'
-import { runTools } from './services/tools/toolOrchestration.js'
+import type { QuerySource } from 'src/constants/querySource.js'
+import { StreamingToolExecutor } from 'src/services/tools/StreamingToolExecutor.js'
+import { queryCheckpoint } from 'src/utils/queryProfiler.js'
+import { runTools } from 'src/services/tools/toolOrchestration.js'
 import { applyToolResultBudget } from 'src/services/tools/toolResultStorage.js'
 import { recordContentReplacement } from 'src/services/session/sessionStorage.js'
-import { handleStopHooks } from './query/stopHooks.js'
-import { buildQueryConfig } from './query/config.js'
-import { productionDeps, type QueryDeps } from './query/deps.js'
+import { handleStopHooks } from 'src/query/stopHooks.js'
+import { buildQueryConfig } from 'src/query/config.js'
+import { productionDeps, type QueryDeps } from 'src/query/deps.js'
 import type { Terminal, Continue } from './query/transitions.js'
 import { feature } from 'bun:bundle'
 import {
   getCurrentTurnTokenBudget,
   getTurnOutputTokens,
   incrementBudgetContinuationCount,
-} from './bootstrap/state.js'
-import { createBudgetTracker, checkTokenBudget } from './query/tokenBudget.js'
+} from 'src/bootstrap/state.js'
+import { createBudgetTracker, checkTokenBudget } from 'src/query/tokenBudget.js'
 import { count } from 'src/utils/data/array.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const snipModule = feature('HISTORY_SNIP')
-  ? (require('./services/compact/snipCompact.js') as typeof import('./services/compact/snipCompact.js'))
+  ? (require('src/services/compact/snipCompact.js') as typeof import('src/services/compact/snipCompact.js'))
   : null
 const taskSummaryModule = feature('BG_SESSIONS')
   ? (require('./utils/taskSummary.js') as typeof import('./utils/taskSummary.js'))

@@ -56,12 +56,12 @@ mock.module('src/services/analytics/index.js', () => ({
 }))
 
 const { processToolResultBlock, processPreMappedToolResultBlock } =
-  await import('./toolResultStorage.js')
-const summarizer = await import('./toolResultSummarizer.js')
+  await import('src/services/tools/toolResultStorage.js')
+const summarizer = await import('src/services/tools/toolResultSummarizer.js')
 const { setOriginalCwd, getOriginalCwd, getSessionId } = await import('src/bootstrap/state.js')
 const { getProjectDir } = await import('src/services/session/sessionStorage.js')
 const { saveGlobalConfig, resetGlobalConfigForTests } = await import('src/services/config/config.js')
-const { compressJsonArray } = await import('./jsonArrayCompress.js')
+const { compressJsonArray } = await import('src/services/tools/jsonArrayCompress.js')
 
 let tempRoot = ''
 const createdProjectDirs = new Set<string>()

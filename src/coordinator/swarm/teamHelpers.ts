@@ -13,8 +13,8 @@ import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 import { getTasksDir, notifyTasksUpdated } from 'src/tasks/tasks.js'
 import { getAgentName, getTeamName, isTeammate } from 'src/coordinator/teammate.js'
-import { type BackendType, isPaneBackend } from './backends/types.js'
-import { TEAM_LEAD_NAME } from './constants.js'
+import { type BackendType, isPaneBackend } from 'src/coordinator/swarm/backends/types.js'
+import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js'
 
 export const inputSchema = lazySchema(() =>
   z.strictObject({
@@ -610,8 +610,8 @@ async function killOrphanedTeammatePanes(teamName: string): Promise<void> {
 
   const [{ ensureBackendsRegistered, getBackendByType }, { isInsideTmux }] =
     await Promise.all([
-      import('./backends/registry.js'),
-      import('./backends/detection.js'),
+      import('src/coordinator/swarm/backends/registry.js'),
+      import('src/coordinator/swarm/backends/detection.js'),
     ])
   await ensureBackendsRegistered()
   const useExternalSession = !(await isInsideTmux())

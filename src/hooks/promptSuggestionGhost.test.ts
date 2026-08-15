@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { computeGhostRemainder } from './promptSuggestionGhost.js'
+import { computeGhostRemainder } from 'src/hooks/promptSuggestionGhost.js'
 
 describe('computeGhostRemainder', () => {
   test('returns the full suggestion when input is empty', () => {

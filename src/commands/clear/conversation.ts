@@ -51,7 +51,7 @@ import {
 } from 'src/tasks/diskOutput.js'
 import { unlinkSessionSpillDir } from 'src/services/tools/toolResultStorage.js'
 import { getCurrentWorktreeSession } from 'src/services/git/worktree.js'
-import { clearSessionCaches } from './caches.js'
+import { clearSessionCaches } from 'src/commands/clear/caches.js'
 
 export async function clearConversation({
   setMessages,

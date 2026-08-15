@@ -3,8 +3,8 @@ import {
   fingerprintDiagnostic,
   normalizeDiagnosticPath,
   partitionAgainstBaseline,
-} from './fingerprint.js'
-import type { RawDiagnostic } from './types.js'
+} from 'src/tools/TypecheckTool/fingerprint.js'
+import type { RawDiagnostic } from 'src/tools/TypecheckTool/types.js'
 
 const CWD = '/home/dev/project'
 

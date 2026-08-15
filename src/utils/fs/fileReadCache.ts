@@ -1,6 +1,6 @@
 import type { Stats } from 'node:fs'
-import { detectFileEncoding } from './file.js'
-import { getFsImplementation } from './fsOperations.js'
+import { detectFileEncoding } from 'src/utils/fs/file.js'
+import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 
 type CachedFileData = {
   content: string

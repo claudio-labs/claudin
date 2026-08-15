@@ -13,7 +13,7 @@ import {
   getArcSummary,
   resetArc,
   getArcStats,
-} from './conversationArc.js'
+} from 'src/services/context/conversationArc.js'
 
 function createMessage(role: string, content: string): any {
   return {

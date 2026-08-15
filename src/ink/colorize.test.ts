@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { colorize } from './colorize.js'
+import { colorize } from 'src/ink/colorize.js'
 
 test("'terminal' sentinel emits no escape (inherits terminal default)", () => {
   // Passthrough regardless of chalk's color level — the sentinel must never

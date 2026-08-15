@@ -4,7 +4,7 @@ import { UP_ARROW } from 'src/constants/figures.js';
 import { Box, Text } from 'src/ink.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import { isOpus1mMergeEnabled } from 'src/utils/model/model.js';
-import { AnimatedAsterisk } from './AnimatedAsterisk.js';
+import { AnimatedAsterisk } from 'src/components/LogoV2/AnimatedAsterisk.js';
 const MAX_SHOW_COUNT = 6;
 export function shouldShowOpus1mMergeNotice(): boolean {
   return isOpus1mMergeEnabled() && (getGlobalConfig().opus1mMergeNoticeSeenCount ?? 0) < MAX_SHOW_COUNT;

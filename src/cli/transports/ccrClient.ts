@@ -26,9 +26,9 @@ import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 import {
   RetryableError,
   SerialBatchEventUploader,
-} from './SerialBatchEventUploader.js'
-import type { SSETransport, StreamClientEvent } from './SSETransport.js'
-import { WorkerStateUploader } from './WorkerStateUploader.js'
+} from 'src/cli/transports/SerialBatchEventUploader.js'
+import type { SSETransport, StreamClientEvent } from 'src/cli/transports/SSETransport.js'
+import { WorkerStateUploader } from 'src/cli/transports/WorkerStateUploader.js'
 
 /** Default interval between heartbeat events (20s; server TTL is 60s). */
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 20_000

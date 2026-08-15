@@ -18,14 +18,14 @@ import {
   type UserConfigSchema,
   type UserConfigValues,
   validateUserConfig,
-} from './mcpbHandler.js'
-import { getPluginDataDir } from './pluginDirectories.js'
+} from 'src/services/plugins/mcpbHandler.js'
+import { getPluginDataDir } from 'src/services/plugins/pluginDirectories.js'
 import {
   getPluginStorageId,
   loadPluginOptions,
   substitutePluginVariables,
   substituteUserConfigVariables,
-} from './pluginOptionsStorage.js'
+} from 'src/services/plugins/pluginOptionsStorage.js'
 
 /**
  * Load MCP servers from an MCPB file

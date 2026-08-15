@@ -7,7 +7,7 @@ import type {
 import {
   collapseReadSearchGroups,
   summarizeRecentActivities,
-} from './collapseReadSearch.js'
+} from 'src/services/tools/collapseReadSearch.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
 
 let counter = 0

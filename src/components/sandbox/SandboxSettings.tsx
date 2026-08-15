@@ -9,9 +9,9 @@ import { getInitialSettings } from 'src/services/settings/settings.js';
 import { Select } from 'src/components/CustomSelect/select.js';
 import { Pane } from 'src/components/design-system/Pane.js';
 import { Tab, Tabs, useTabHeaderFocus } from 'src/components/design-system/Tabs.js';
-import { SandboxConfigTab } from './SandboxConfigTab.js';
-import { SandboxDependenciesTab } from './SandboxDependenciesTab.js';
-import { SandboxOverridesTab } from './SandboxOverridesTab.js';
+import { SandboxConfigTab } from 'src/components/sandbox/SandboxConfigTab.js';
+import { SandboxDependenciesTab } from 'src/components/sandbox/SandboxDependenciesTab.js';
+import { SandboxOverridesTab } from 'src/components/sandbox/SandboxOverridesTab.js';
 type Props = {
   onComplete: (result?: string, options?: {
     display?: CommandResultDisplay;

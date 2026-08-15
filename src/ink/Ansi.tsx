@@ -1,9 +1,9 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import Link from './components/Link.js';
-import Text from './components/Text.js';
-import type { Color } from './styles.js';
-import { type NamedColor, Parser, type Color as TermioColor, type TextStyle } from './termio.js';
+import Link from 'src/ink/components/Link.js';
+import Text from 'src/ink/components/Text.js';
+import type { Color } from 'src/ink/styles.js';
+import { type NamedColor, Parser, type Color as TermioColor, type TextStyle } from 'src/ink/termio.js';
 type Props = {
   children: string;
   /** When true, force all text to be rendered with dim styling */

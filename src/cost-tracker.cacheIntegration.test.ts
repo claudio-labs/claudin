@@ -20,11 +20,11 @@ import {
   getTotalCost,
   recomputeCostStateFromMessages,
   resetCostState,
-} from './cost-tracker.js'
+} from 'src/cost-tracker.js'
 import {
   getCurrentTurnCacheMetrics,
   getSessionCacheMetrics,
-} from './services/api/cacheStatsTracker.js'
+} from 'src/services/api/cacheStatsTracker.js'
 
 // BetaUsage-compatible shape — minimum fields addToTotalSessionCost
 // needs to run without throwing. Cache fields are the ones we care

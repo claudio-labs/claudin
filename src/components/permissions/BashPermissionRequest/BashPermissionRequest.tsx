@@ -30,7 +30,7 @@ import { PermissionRuleExplanation } from 'src/components/permissions/Permission
 import { SedEditPermissionRequest } from 'src/components/permissions/SedEditPermissionRequest/SedEditPermissionRequest.js';
 import { useShellPermissionFeedback } from 'src/components/permissions/useShellPermissionFeedback.js';
 import { logUnaryPermissionEvent } from 'src/components/permissions/utils.js';
-import { bashToolUseOptions } from './bashToolUseOptions.js';
+import { bashToolUseOptions } from 'src/components/permissions/BashPermissionRequest/bashToolUseOptions.js';
 const CHECKING_TEXT = 'Attempting to auto-approve\u2026';
 
 // Isolates the 20fps shimmer clock from BashPermissionRequestInner. Before this

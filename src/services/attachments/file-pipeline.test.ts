@@ -9,7 +9,7 @@ import {
   createFileStateCacheWithSizeLimit,
   READ_FILE_STATE_CACHE_SIZE,
 } from 'src/utils/fs/fileStateCache.js'
-import { generateFileAttachment } from './file-pipeline.js'
+import { generateFileAttachment } from 'src/services/attachments/file-pipeline.js'
 
 // Skill discovery touches the real filesystem and is irrelevant here.
 process.env.CLAUDE_CODE_SIMPLE = '1'

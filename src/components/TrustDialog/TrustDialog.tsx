@@ -15,7 +15,7 @@ import { getFsImplementation } from 'src/utils/fs/fsOperations.js';
 import { gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js';
 import { Select } from 'src/components/CustomSelect/index.js';
 import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
-import { getApiKeyHelperSources, getAwsCommandsSources, getBashPermissionSources, getDangerousEnvVarsSources, getGcpCommandsSources, getHooksSources, getOtelHeadersHelperSources } from './utils.js';
+import { getApiKeyHelperSources, getAwsCommandsSources, getBashPermissionSources, getDangerousEnvVarsSources, getGcpCommandsSources, getHooksSources, getOtelHeadersHelperSources } from 'src/components/TrustDialog/utils.js';
 type Props = {
   onDone(): void;
   commands?: Command[];

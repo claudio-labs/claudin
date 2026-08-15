@@ -42,11 +42,11 @@ import { windowsPathToPosixPath } from 'src/utils/fs/windowsPaths.js'
 import type {
   PermissionDecision,
   PermissionResult,
-} from './PermissionResult.js'
-import type { PermissionRule, PermissionRuleSource } from './PermissionRule.js'
-import { createReadRuleSuggestion } from './PermissionUpdate.js'
-import type { PermissionUpdate } from './PermissionUpdateSchema.js'
-import { getRuleByContentsForToolName } from './permissions.js'
+} from 'src/services/permissions/PermissionResult.js'
+import type { PermissionRule, PermissionRuleSource } from 'src/services/permissions/PermissionRule.js'
+import { createReadRuleSuggestion } from 'src/services/permissions/PermissionUpdate.js'
+import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
+import { getRuleByContentsForToolName } from 'src/services/permissions/permissions.js'
 
 declare const MACRO: { VERSION: string }
 

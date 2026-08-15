@@ -14,4 +14,4 @@ export {
   installLatest,
   lockCurrentVersion,
   removeInstalledSymlink,
-} from './installer.js'
+} from 'src/services/install/installer.js'

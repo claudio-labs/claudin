@@ -3,9 +3,9 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } 
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
-import { formatBuildResult } from './budget.js'
-import { BuildTool, resolveBuildCommand } from './BuildTool.js'
-import type { BuildProgress, BuildResult } from './types.js'
+import { formatBuildResult } from 'src/tools/BuildTool/budget.js'
+import { BuildTool, resolveBuildCommand } from 'src/tools/BuildTool/BuildTool.js'
+import type { BuildProgress, BuildResult } from 'src/tools/BuildTool/types.js'
 
 const roots: string[] = []
 

@@ -63,7 +63,7 @@ describe('getLSPDiagnosticAttachments — global gate', () => {
     registerPendingLSPDiagnostic({ serverName: 'tsserver', files: [sampleFile] })
     const before = getPendingLSPDiagnosticCount()
 
-    const { getLSPDiagnosticAttachments } = await import('./attachments.js')
+    const { getLSPDiagnosticAttachments } = await import('src/services/attachments/attachments.js')
     const result = await getLSPDiagnosticAttachments(makeContext([BASH_TOOL_NAME]))
 
     expect(result).toEqual([])
@@ -73,7 +73,7 @@ describe('getLSPDiagnosticAttachments — global gate', () => {
 
   test('returns [] when globally enabled but no diagnostics pending', async () => {
     mockIsLspGloballyEnabled.mockImplementation(() => true)
-    const { getLSPDiagnosticAttachments } = await import('./attachments.js')
+    const { getLSPDiagnosticAttachments } = await import('src/services/attachments/attachments.js')
     const result = await getLSPDiagnosticAttachments(makeContext([BASH_TOOL_NAME]))
     expect(result).toEqual([])
   })
@@ -82,7 +82,7 @@ describe('getLSPDiagnosticAttachments — global gate', () => {
     mockIsLspGloballyEnabled.mockImplementation(() => true)
     registerPendingLSPDiagnostic({ serverName: 'tsserver', files: [sampleFile] })
 
-    const { getLSPDiagnosticAttachments } = await import('./attachments.js')
+    const { getLSPDiagnosticAttachments } = await import('src/services/attachments/attachments.js')
     const result = await getLSPDiagnosticAttachments(makeContext([BASH_TOOL_NAME]))
 
     expect(result).toHaveLength(1)
@@ -95,7 +95,7 @@ describe('getLSPDiagnosticAttachments — global gate', () => {
     mockIsLspGloballyEnabled.mockImplementation(() => true)
     registerPendingLSPDiagnostic({ serverName: 'tsserver', files: [sampleFile] })
 
-    const { getLSPDiagnosticAttachments } = await import('./attachments.js')
+    const { getLSPDiagnosticAttachments } = await import('src/services/attachments/attachments.js')
     const result = await getLSPDiagnosticAttachments(makeContext([]))
 
     expect(result).toEqual([])

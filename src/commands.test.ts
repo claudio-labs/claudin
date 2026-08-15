@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { formatDescriptionWithSource } from './commands.js'
+import { formatDescriptionWithSource } from 'src/commands.js'
 
 describe('formatDescriptionWithSource', () => {
   test('returns empty text for prompt commands missing a description', () => {

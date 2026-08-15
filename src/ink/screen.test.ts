@@ -8,7 +8,7 @@ import {
   HyperlinkPool,
   setCellAt,
   StylePool,
-} from './screen.ts'
+} from 'src/ink/screen.ts'
 
 function makeScreen(width: number, lines: string[]) {
   const stylePool = new StylePool()

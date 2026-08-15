@@ -4,9 +4,9 @@ import {
   modify,
   parse as parseJsonc,
 } from 'jsonc-parser/lib/esm/main.js'
-import { stripBOM } from './jsonRead.js'
+import { stripBOM } from 'src/utils/data/jsonRead.js'
 import { logError } from 'src/utils/log.js'
-import { memoizeWithLRU } from './memoize.js'
+import { memoizeWithLRU } from 'src/utils/data/memoize.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 
 type CachedParse = { ok: true; value: unknown } | { ok: false }

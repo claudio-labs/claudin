@@ -1,13 +1,13 @@
 // Phase 13 — swift family (swift build / xcodebuild).
 import { describe, expect, test } from "bun:test";
-import { runFilterBody, routesTo } from "./__testutils__/harness.js";
+import { runFilterBody, routesTo } from "src/outputFilter/Bash/filters/__testutils__/harness.js";
 import {
   SWIFT_OK,
   SWIFT_ERR,
   SWIFT_WARN,
   XCODE_OK,
   XCODE_FAIL,
-} from "./__testutils__/phase13Samples.js";
+} from "src/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
 
 describe("phase 13 — swift build", () => {
   test("clean build collapses to sentinel", () => {

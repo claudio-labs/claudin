@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import {
   getSteps,
   isProjectOnboardingComplete,
-} from './projectOnboardingSteps.js'
+} from 'src/projectOnboardingSteps.js'
 import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
 
 let tempDir: string | undefined

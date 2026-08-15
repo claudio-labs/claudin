@@ -8,16 +8,16 @@ import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
 import { extractTag, INTERRUPT_MESSAGE, INTERRUPT_MESSAGE_FOR_TOOL_USE } from 'src/services/messages/messages.js';
 import { InterruptedByUser } from 'src/components/InterruptedByUser.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
-import { UserAgentNotificationMessage } from './UserAgentNotificationMessage.js';
-import { UserBashInputMessage } from './UserBashInputMessage.js';
-import { UserBashOutputMessage } from './UserBashOutputMessage.js';
-import { UserCommandMessage } from './UserCommandMessage.js';
-import { UserLocalCommandOutputMessage } from './UserLocalCommandOutputMessage.js';
-import { UserMemoryInputMessage } from './UserMemoryInputMessage.js';
-import { UserPlanMessage } from './UserPlanMessage.js';
-import { UserPromptMessage } from './UserPromptMessage.js';
-import { UserResourceUpdateMessage } from './UserResourceUpdateMessage.js';
-import { UserTeammateMessage } from './UserTeammateMessage.js';
+import { UserAgentNotificationMessage } from 'src/components/messages/UserAgentNotificationMessage.js';
+import { UserBashInputMessage } from 'src/components/messages/UserBashInputMessage.js';
+import { UserBashOutputMessage } from 'src/components/messages/UserBashOutputMessage.js';
+import { UserCommandMessage } from 'src/components/messages/UserCommandMessage.js';
+import { UserLocalCommandOutputMessage } from 'src/components/messages/UserLocalCommandOutputMessage.js';
+import { UserMemoryInputMessage } from 'src/components/messages/UserMemoryInputMessage.js';
+import { UserPlanMessage } from 'src/components/messages/UserPlanMessage.js';
+import { UserPromptMessage } from 'src/components/messages/UserPromptMessage.js';
+import { UserResourceUpdateMessage } from 'src/components/messages/UserResourceUpdateMessage.js';
+import { UserTeammateMessage } from 'src/components/messages/UserTeammateMessage.js';
 type Props = {
   addMargin: boolean;
   param: TextBlockParam;
@@ -191,14 +191,14 @@ export function UserTextMessage(t0: Props) {
     if (param.text.includes("<fork-boilerplate>")) {
       let t1;
       if ($[32] === Symbol.for("react.memo_cache_sentinel")) {
-        t1 = require("./UserForkBoilerplateMessage.js");
+        t1 = require("src/components/messages/UserForkBoilerplateMessage.js");
         $[32] = t1;
       } else {
         t1 = $[32];
       }
       const {
         UserForkBoilerplateMessage
-      } = t1 as typeof import('./UserForkBoilerplateMessage.js');
+      } = t1 as typeof import('src/components/messages/UserForkBoilerplateMessage.js');
       let t2;
       if ($[33] !== addMargin || $[34] !== param) {
         t2 = <UserForkBoilerplateMessage addMargin={addMargin} param={param} />;
@@ -239,14 +239,14 @@ export function UserTextMessage(t0: Props) {
     if (param.text.includes("<channel source=\"")) {
       let t1;
       if ($[40] === Symbol.for("react.memo_cache_sentinel")) {
-        t1 = require("./UserChannelMessage.js");
+        t1 = require("src/components/messages/UserChannelMessage.js");
         $[40] = t1;
       } else {
         t1 = $[40];
       }
       const {
         UserChannelMessage
-      } = t1 as typeof import('./UserChannelMessage.js');
+      } = t1 as typeof import('src/components/messages/UserChannelMessage.js');
       let t2;
       if ($[41] !== addMargin || $[42] !== param) {
         t2 = <UserChannelMessage addMargin={addMargin} param={param} />;

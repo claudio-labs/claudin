@@ -7,7 +7,7 @@ import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKey
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- enter to proceed through setup steps
 import { Box, type Key, Text, useInput } from 'src/ink.js';
 import { useKeybinding } from 'src/keybindings/useKeybinding.js';
-import { detectPythonPackageManager, getPythonApiInstructions, installIt2, markIt2SetupComplete, type PythonPackageManager, setPreferTmuxOverIterm2, verifyIt2Setup } from './backends/it2Setup.js';
+import { detectPythonPackageManager, getPythonApiInstructions, installIt2, markIt2SetupComplete, type PythonPackageManager, setPreferTmuxOverIterm2, verifyIt2Setup } from 'src/coordinator/swarm/backends/it2Setup.js';
 type SetupStep = 'initial' | 'installing' | 'install-failed' | 'verify-api' | 'api-instructions' | 'verifying' | 'success' | 'failed';
 type Props = {
   onDone: (result: 'installed' | 'use-tmux' | 'cancelled') => void;

@@ -5,8 +5,8 @@ import { Box, Text } from 'src/ink.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import { getInitialSettings } from 'src/services/settings/settings.js';
 import { isVoiceModeEnabled } from 'src/voice/voiceModeEnabled.js';
-import { AnimatedAsterisk } from './AnimatedAsterisk.js';
-import { shouldShowOpus1mMergeNotice } from './Opus1mMergeNotice.js';
+import { AnimatedAsterisk } from 'src/components/LogoV2/AnimatedAsterisk.js';
+import { shouldShowOpus1mMergeNotice } from 'src/components/LogoV2/Opus1mMergeNotice.js';
 const MAX_SHOW_COUNT = 3;
 export function VoiceModeNotice() {
   const $ = _c(1);

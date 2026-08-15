@@ -7,10 +7,10 @@ import { Ansi, Box, Text } from 'src/ink.js';
 import { count } from 'src/utils/data/array.js';
 import type { PastedContent } from 'src/services/config/config.js';
 import type { ImageDimensions } from 'src/utils/imageResizer.js';
-import { SelectInputOption } from './select-input-option.js';
-import { SelectOption } from './select-option.js';
-import { useSelectInput } from './use-select-input.js';
-import { useSelectState } from './use-select-state.js';
+import { SelectInputOption } from 'src/components/CustomSelect/select-input-option.js';
+import { SelectOption } from 'src/components/CustomSelect/select-option.js';
+import { useSelectInput } from 'src/components/CustomSelect/use-select-input.js';
+import { useSelectState } from 'src/components/CustomSelect/use-select-state.js';
 
 // Extract text content from ReactNode for width calculation
 function getTextContent(node: ReactNode): string {

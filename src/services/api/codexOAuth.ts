@@ -14,7 +14,7 @@ import {
   getCodexOAuthCallbackPort,
   getCodexOAuthClientId,
   parseChatgptAccountId,
-} from './codexOAuthShared.js'
+} from 'src/services/api/codexOAuthShared.js'
 
 type CodexOAuthTokenResponse = {
   id_token?: string

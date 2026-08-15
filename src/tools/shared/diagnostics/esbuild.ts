@@ -1,4 +1,4 @@
-import type { ParseInput, ParsedDiagnostics, RawDiagnostic } from './types.js'
+import type { ParseInput, ParsedDiagnostics, RawDiagnostic } from 'src/tools/shared/diagnostics/types.js'
 
 /**
  * esbuild's block format, which vite, tsup and anything else bundling through

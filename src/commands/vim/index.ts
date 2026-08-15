@@ -5,7 +5,7 @@ const command = {
   description: 'Toggle between Vim and Normal editing modes',
   supportsNonInteractive: false,
   type: 'local',
-  load: () => import('./vim.js'),
+  load: () => import('src/commands/vim/vim.js'),
 } satisfies Command
 
 export default command

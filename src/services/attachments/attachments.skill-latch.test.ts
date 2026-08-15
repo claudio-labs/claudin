@@ -5,7 +5,7 @@ import {
   suppressNextSkillListing,
   _getSkillLatchSnapshotForTests,
   _seedSentSkillNamesForTests,
-} from './attachments.js'
+} from 'src/services/attachments/attachments.js'
 import type { Command } from 'src/commands.js'
 
 function cmd(name: string, loadedFrom: Command['loadedFrom']): Command {

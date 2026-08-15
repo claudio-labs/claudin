@@ -21,7 +21,7 @@ import { prefetchOfficialMcpUrls } from 'src/services/mcp/officialRegistry.js';
 import { refreshModelCapabilities } from 'src/utils/model/modelCapabilities.js';
 import { settingsChangeDetector } from 'src/services/settings/changeDetector.js';
 import { skillChangeDetector } from 'src/skills/skillChangeDetector.js';
-import { prefetchSystemContextIfSafe } from './lifecycle.js';
+import { prefetchSystemContextIfSafe } from 'src/main/lifecycle.js';
 
 /**
  * Start background prefetches and housekeeping that are NOT needed before first render.

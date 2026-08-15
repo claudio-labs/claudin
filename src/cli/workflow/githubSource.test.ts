@@ -4,7 +4,7 @@ import {
   extractPrUrl,
   parseDefaultBranch,
   parseTriggerIssues,
-} from './githubSource.js'
+} from 'src/cli/workflow/githubSource.js'
 
 describe('parseTriggerIssues', () => {
   test('parses a well-formed gh issue list payload', () => {

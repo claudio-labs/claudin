@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import useApp from 'src/ink/hooks/use-app.js'
 import type { KeybindingContextName } from 'src/keybindings/types.js'
-import { useDoublePress } from './useDoublePress.js'
+import { useDoublePress } from 'src/hooks/useDoublePress.js'
 
 export type ExitState = {
   pending: boolean

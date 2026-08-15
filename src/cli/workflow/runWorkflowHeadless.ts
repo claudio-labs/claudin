@@ -45,7 +45,7 @@ import {
   getDefaultBranch,
   hasUncommittedChanges,
   pushBranch,
-} from './githubSource.js'
+} from 'src/cli/workflow/githubSource.js'
 
 export type RunWorkflowHeadlessOptions = {
   workflow: string

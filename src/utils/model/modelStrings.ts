@@ -5,14 +5,14 @@ import {
 import { logError } from 'src/utils/log.js'
 import { sequential } from 'src/utils/sequential.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
-import { findFirstMatch, getBedrockInferenceProfiles } from './bedrock.js'
+import { findFirstMatch, getBedrockInferenceProfiles } from 'src/utils/model/bedrock.js'
 import {
   ALL_MODEL_CONFIGS,
   CANONICAL_ID_TO_KEY,
   type CanonicalModelId,
   type ModelKey,
-} from './configs.js'
-import { type APIProvider, getAPIProvider } from './providers.js'
+} from 'src/utils/model/configs.js'
+import { type APIProvider, getAPIProvider } from 'src/utils/model/providers.js'
 
 /**
  * Maps each model version to its provider-specific model ID string.

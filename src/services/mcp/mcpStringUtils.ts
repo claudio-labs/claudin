@@ -4,7 +4,7 @@
  * consumers that only need string parsing (e.g., permissionValidation).
  */
 
-import { normalizeNameForMCP } from './normalization.js'
+import { normalizeNameForMCP } from 'src/services/mcp/normalization.js'
 
 /*
  * Extracts MCP server information from a tool name string

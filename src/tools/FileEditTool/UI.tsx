@@ -20,10 +20,10 @@ import { getPlansDirectory } from 'src/utils/plans.js';
 import { readEditContext } from 'src/utils/fs/readEditContext.js';
 import { firstLineOf } from 'src/utils/text/stringUtils.js';
 import type { ThemeName } from 'src/utils/theme.js';
-import { FILE_CLIPPED_VIEW_ERROR, FILE_NOT_READ_ERROR, FILE_PARTIAL_VIEW_ERROR } from './constants.js';
-import { inputSchema } from './types.js';
-import type { FileEditInput, FileEditOutput } from './types.js';
-import { findActualString, getPatchForEdit, groupEditsByFile, preserveQuoteStyle } from './utils.js';
+import { FILE_CLIPPED_VIEW_ERROR, FILE_NOT_READ_ERROR, FILE_PARTIAL_VIEW_ERROR } from 'src/tools/FileEditTool/constants.js';
+import { inputSchema } from 'src/tools/FileEditTool/types.js';
+import type { FileEditInput, FileEditOutput } from 'src/tools/FileEditTool/types.js';
+import { findActualString, getPatchForEdit, groupEditsByFile, preserveQuoteStyle } from 'src/tools/FileEditTool/utils.js';
 export function userFacingName(input: Partial<{
   file_path: string;
   old_string: string;

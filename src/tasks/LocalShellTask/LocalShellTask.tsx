@@ -16,8 +16,8 @@ import { registerTask, updateTaskState } from 'src/tasks/framework.js';
 import { escapeXml } from 'src/utils/data/xml.js';
 import { backgroundAgentTask, isLocalAgentTask } from 'src/tasks/LocalAgentTask/LocalAgentTask.js';
 import { isMainSessionTask } from 'src/tasks/LocalMainSessionTask.js';
-import { type BashTaskKind, isLocalShellTask, type LocalShellTaskState } from './guards.js';
-import { killTask } from './killShellTasks.js';
+import { type BashTaskKind, isLocalShellTask, type LocalShellTaskState } from 'src/tasks/LocalShellTask/guards.js';
+import { killTask } from 'src/tasks/LocalShellTask/killShellTasks.js';
 
 /** Prefix that identifies a LocalShellTask summary to the UI collapse transform. */
 export const BACKGROUND_BASH_SUMMARY_PREFIX = 'Background command ';

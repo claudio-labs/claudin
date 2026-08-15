@@ -4,7 +4,7 @@ import {
   processStreamChunk,
   flushStreamBuffer,
   getStreamStats,
-} from './streamingOptimizer.js'
+} from 'src/utils/streamingOptimizer.js'
 
 describe('streamingOptimizer', () => {
   let state: ReturnType<typeof createStreamState>

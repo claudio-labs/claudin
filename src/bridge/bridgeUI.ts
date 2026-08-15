@@ -19,13 +19,13 @@ import {
   timestamp,
   truncatePrompt,
   wrapWithOsc8Link,
-} from './bridgeStatusUtil.js'
+} from 'src/bridge/bridgeStatusUtil.js'
 import type {
   BridgeConfig,
   BridgeLogger,
   SessionActivity,
   SpawnMode,
-} from './types.js'
+} from 'src/bridge/types.js'
 
 const QR_OPTIONS = {
   type: 'utf8' as const,

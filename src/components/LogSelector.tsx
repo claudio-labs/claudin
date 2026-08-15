@@ -19,17 +19,17 @@ import { getBranch } from 'src/services/git/git.js';
 import { getLogDisplayTitle } from 'src/utils/log.js';
 import { getFirstMeaningfulUserMessageTextContent, getSessionIdFromLog, isCustomTitleEnabled, saveCustomTitle } from 'src/services/session/sessionStorage.js';
 import { getTheme } from 'src/utils/theme.js';
-import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
-import { Select } from './CustomSelect/select.js';
-import { Byline } from './design-system/Byline.js';
-import { Divider } from './design-system/Divider.js';
-import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
-import { SearchBox } from './SearchBox.js';
-import { SessionPreview } from './SessionPreview.js';
-import { Spinner } from './Spinner.js';
-import { TagTabs } from './TagTabs.js';
-import TextInput from './TextInput.js';
-import { type TreeNode, TreeSelect } from './ui/TreeSelect.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { Select } from 'src/components/CustomSelect/select.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { Divider } from 'src/components/design-system/Divider.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { SearchBox } from 'src/components/SearchBox.js';
+import { SessionPreview } from 'src/components/SessionPreview.js';
+import { Spinner } from 'src/components/Spinner.js';
+import { TagTabs } from 'src/components/TagTabs.js';
+import TextInput from 'src/components/TextInput.js';
+import { type TreeNode, TreeSelect } from 'src/components/ui/TreeSelect.js';
 type AgenticSearchState = {
   status: 'idle';
 } | {

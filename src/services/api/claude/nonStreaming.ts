@@ -4,8 +4,8 @@ import type { AssistantMessage, Message } from 'src/types/message.js'
 import type { SystemPrompt } from 'src/utils/systemPromptType.js'
 import type { ThinkingConfig } from 'src/services/context/thinking.js'
 import { withStreamingVCR } from 'src/services/vcr.js'
-import { queryModel } from './streaming.js'
-import type { Options } from './types.js'
+import { queryModel } from 'src/services/api/claude/streaming.js'
+import type { Options } from 'src/services/api/claude/types.js'
 
 export async function queryModelWithoutStreaming({
   messages,

@@ -14,7 +14,7 @@ import {
 } from 'src/services/settings/settings.js'
 import type { PluginHookMatcher } from 'src/services/settings/types.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { clearPluginCache, loadAllPluginsCacheOnly } from './pluginLoader.js'
+import { clearPluginCache, loadAllPluginsCacheOnly } from 'src/services/plugins/pluginLoader.js'
 
 // Track if hot reload subscription is set up
 let hotReloadSubscribed = false

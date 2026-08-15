@@ -52,14 +52,14 @@ import {
 import { getTaskOutputPath } from 'src/tasks/diskOutput.js'
 import type { LocalShellTaskState } from 'src/tasks/LocalShellTask/guards.js'
 import type { LocalAgentTaskState } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
-import type { Attachment } from './types.js'
+import type { Attachment } from 'src/services/attachments/types.js'
 import {
   PLAN_MODE_ATTACHMENT_CONFIG,
   AUTO_MODE_ATTACHMENT_CONFIG,
   TODO_REMINDER_CONFIG,
   VERIFY_PLAN_REMINDER_CONFIG,
-} from './config.js'
-import { hasToolResultContent } from './shared.js'
+} from 'src/services/attachments/config.js'
+import { hasToolResultContent } from 'src/services/attachments/shared.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const BRIEF_TOOL_NAME: string | null =

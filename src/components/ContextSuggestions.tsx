@@ -3,7 +3,7 @@ import figures from 'figures';
 import { Box, Text } from 'src/ink.js';
 import type { ContextSuggestion } from 'src/services/context/contextSuggestions.js';
 import { formatTokens } from 'src/utils/text/format.js';
-import { StatusIcon } from './design-system/StatusIcon.js';
+import { StatusIcon } from 'src/components/design-system/StatusIcon.js';
 type Props = {
   suggestions: ContextSuggestion[];
 };

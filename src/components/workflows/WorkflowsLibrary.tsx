@@ -8,7 +8,7 @@ import { Divider } from 'src/components/design-system/Divider.js'
 import { loadWorkflowDefs } from 'src/tools/AgentWorkflow/loadWorkflows.js'
 import { getWorkflowsDir } from 'src/tools/AgentWorkflow/paths.js'
 import type { WorkflowDef } from 'src/tools/AgentWorkflow/types.js'
-import { WorkflowEditor } from './WorkflowEditor.js'
+import { WorkflowEditor } from 'src/components/workflows/WorkflowEditor.js'
 
 type Mode = 'list' | 'task' | 'new' | 'confirmDelete'
 

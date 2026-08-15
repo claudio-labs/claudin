@@ -22,7 +22,7 @@ const feedback = {
       !isPolicyAllowed('allow_product_feedback')
     )
   },
-  load: () => import('./feedback.js'),
+  load: () => import('src/commands/feedback/feedback.js'),
 } satisfies Command
 
 export default feedback

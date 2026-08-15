@@ -3,13 +3,13 @@ import chalk from 'chalk'
 import {
   extractCacheMetrics,
   resolveCacheProvider,
-} from './services/api/cacheMetrics.js'
+} from 'src/services/api/cacheMetrics.js'
 import {
   recordRequest as recordCacheRequest,
   resetSessionCacheStats,
-} from './services/api/cacheStatsTracker.js'
-import { tryGetActiveProvider } from './services/api/activeProvider.js'
-import { getAPIProvider, isGithubNativeAnthropicMode } from './utils/model/providers.js'
+} from 'src/services/api/cacheStatsTracker.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
+import { getAPIProvider, isGithubNativeAnthropicMode } from 'src/utils/model/providers.js'
 import {
   addToTotalCostState,
   addToTotalLinesChanged,
@@ -36,13 +36,13 @@ import {
   resetStateForTests,
   setCostStateForRestore,
   setHasUnknownModelCost,
-} from './bootstrap/state.js'
-import type { ModelUsage } from './entrypoints/agentSdkTypes.js'
+} from 'src/bootstrap/state.js'
+import type { ModelUsage } from 'src/entrypoints/agentSdkTypes.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from './services/analytics/index.js'
-import { getAdvisorUsage } from './utils/advisor.js'
+} from 'src/services/analytics/index.js'
+import { getAdvisorUsage } from 'src/utils/advisor.js'
 import {
   getCurrentProjectConfig,
   saveCurrentProjectConfig,
@@ -51,11 +51,11 @@ import {
   getContextWindowForModel,
   getModelMaxOutputTokens,
 } from 'src/services/context/context.js'
-import { isFastModeEnabled } from './utils/fastMode.js'
+import { isFastModeEnabled } from 'src/utils/fastMode.js'
 import { formatDuration, formatNumber } from 'src/utils/text/format.js'
 import { resetBytesSaved } from 'src/services/context/tokensSaved.js'
-import type { FpsMetrics } from './utils/fpsTracker.js'
-import { getCanonicalName } from './utils/model/model.js'
+import type { FpsMetrics } from 'src/utils/fpsTracker.js'
+import { getCanonicalName } from 'src/utils/model/model.js'
 import { calculateUSDCost } from 'src/services/api/modelCost.js'
 export {
   getTotalCostUSD as getTotalCost,

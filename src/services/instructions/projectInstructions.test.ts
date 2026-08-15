@@ -9,7 +9,7 @@ import {
   hasProjectInstructionFile,
   isProjectInstructionFileName,
   PRIMARY_PROJECT_INSTRUCTION_FILE,
-} from './projectInstructions.js'
+} from 'src/services/instructions/projectInstructions.js'
 
 describe('projectInstructions', () => {
   test('prefers AGENTS.md over CLAUDE.md for root project instructions', () => {

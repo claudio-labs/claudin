@@ -1,6 +1,6 @@
 import { readdir, stat } from 'fs/promises'
-import { getWikiPaths } from './paths.js'
-import type { WikiStatus } from './types.js'
+import { getWikiPaths } from 'src/services/wiki/paths.js'
+import type { WikiStatus } from 'src/services/wiki/types.js'
 
 async function pathExists(path: string): Promise<boolean> {
   try {

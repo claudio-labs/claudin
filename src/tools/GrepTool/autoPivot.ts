@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle'
 
-import { RG_LINE_RE } from './relativize.js'
+import { RG_LINE_RE } from 'src/tools/GrepTool/relativize.js'
 
 /**
  * Auto-pivot for BROAD content-mode Grep results: when a search matched widely

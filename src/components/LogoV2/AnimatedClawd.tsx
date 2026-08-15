@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import { useEffect, useRef, useState } from 'react';
 import { Box } from 'src/ink.js';
 import { getInitialSettings } from 'src/services/settings/settings.js';
-import { Clawd, type ClawdPose } from './Clawd.js';
+import { Clawd, type ClawdPose } from 'src/components/LogoV2/Clawd.js';
 type Frame = {
   pose: ClawdPose;
   offset: number;

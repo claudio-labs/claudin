@@ -8,9 +8,9 @@ import { getPlansDirectory } from 'src/utils/plans.js';
 import { invalidateAll as invalidateToolResultCache } from 'src/services/tools/toolResultCache.js';
 import { setCwd } from 'src/utils/proc/Shell.js';
 import { cleanupWorktree, getCurrentWorktreeSession, keepWorktree, killTmuxSession } from 'src/services/git/worktree.js';
-import { Select } from './CustomSelect/select.js';
-import { Dialog } from './design-system/Dialog.js';
-import { Spinner } from './Spinner.js';
+import { Select } from 'src/components/CustomSelect/select.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { Spinner } from 'src/components/Spinner.js';
 
 // Inline require breaks the cycle this file would otherwise close:
 // sessionStorage → commands → exit → ExitFlow → here. All call sites

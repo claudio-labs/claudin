@@ -13,7 +13,7 @@ import {
   type LoopMdPaths,
   MAINTENANCE_PROMPT,
   resetLoopSentinelState,
-} from './loopSentinels.js'
+} from 'src/utils/loopSentinels.js'
 
 let dir: string
 let paths: LoopMdPaths

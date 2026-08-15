@@ -11,12 +11,12 @@ import { type AppState, useAppState, useSetAppState } from 'src/state/AppState.j
 import { convertEffortValueToLevel, type EffortLevel, getDefaultEffortForModel, getPriorPersistedEffort, modelSupportsEffort, modelSupportsMaxEffort, persistEffortForProject, resolvePickerEffortPersistence } from 'src/utils/effort.js';
 import { getCanonicalName, getDefaultMainLoopModel, type ModelSetting, modelDisplayString, parseUserSpecifiedModel } from 'src/utils/model/model.js';
 import { getModelOptions, type ModelOption } from 'src/utils/model/modelOptions.js';
-import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
-import { Select } from './CustomSelect/index.js';
-import { Byline } from './design-system/Byline.js';
-import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
-import { Pane } from './design-system/Pane.js';
-import { effortLevelToSymbol } from './EffortIndicator.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { Select } from 'src/components/CustomSelect/index.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { Pane } from 'src/components/design-system/Pane.js';
+import { effortLevelToSymbol } from 'src/components/EffortIndicator.js';
 export type Props = {
   initial: string | null;
   sessionModel?: ModelSetting;

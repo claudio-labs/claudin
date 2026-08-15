@@ -88,8 +88,8 @@ import { createAgentId } from 'src/utils/data/uuid.js'
 import {
   resolveAgentTools,
   scopeChildAgentDefinitions,
-} from './agentToolUtils.js'
-import { type AgentDefinition, isBuiltInAgent } from './loadAgentsDir.js'
+} from 'src/tools/AgentTool/agentToolUtils.js'
+import { type AgentDefinition, isBuiltInAgent } from 'src/tools/AgentTool/loadAgentsDir.js'
 
 /**
  * Initialize agent-specific MCP servers

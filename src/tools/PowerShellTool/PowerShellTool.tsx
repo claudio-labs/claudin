@@ -37,12 +37,12 @@ import { BackgroundHint } from 'src/tools/BashTool/UI.js';
 import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from 'src/tools/BashTool/utils.js';
 import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js';
 import { ASSISTANT_BLOCKING_BUDGET_MS, mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
-import { interpretCommandResult } from './commandSemantics.js';
-import { powershellToolHasPermission } from './powershellPermissions.js';
-import { getDefaultTimeoutMs, getMaxTimeoutMs, getPrompt } from './prompt.js';
-import { hasSyncSecurityConcerns, isReadOnlyCommand, resolveToCanonical } from './readOnlyValidation.js';
-import { POWERSHELL_TOOL_NAME } from './toolName.js';
-import { renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseQueuedMessage } from './UI.js';
+import { interpretCommandResult } from 'src/tools/PowerShellTool/commandSemantics.js';
+import { powershellToolHasPermission } from 'src/tools/PowerShellTool/powershellPermissions.js';
+import { getDefaultTimeoutMs, getMaxTimeoutMs, getPrompt } from 'src/tools/PowerShellTool/prompt.js';
+import { hasSyncSecurityConcerns, isReadOnlyCommand, resolveToCanonical } from 'src/tools/PowerShellTool/readOnlyValidation.js';
+import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js';
+import { renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseQueuedMessage } from 'src/tools/PowerShellTool/UI.js';
 
 // Never use os.EOL for terminal output — \r\n on Windows breaks Ink rendering
 const EOL = '\n';

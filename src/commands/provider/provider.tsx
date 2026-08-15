@@ -4,8 +4,8 @@ import {
   ProviderManager,
   type ProviderManagerResult,
 } from 'src/components/ProviderManager.js'
-import { runProviderDoctor } from './doctor.js'
-import { runProviderMigrate } from './migrate.js'
+import { runProviderDoctor } from 'src/commands/provider/doctor.js'
+import { runProviderMigrate } from 'src/commands/provider/migrate.js'
 
 export function buildProviderManagerCompletion(result?: ProviderManagerResult): {
   message: string

@@ -5,12 +5,12 @@ const originalEnv = { ...process.env }
 // to spread the full namespace shape into the partial mock, preventing
 // cross-file leaks of missing exports. Spread into snapshots so afterAll
 // restores see the original bindings, not a later mock factory's exports.
-const realEnvUtilsForUserTest = { ...(await import('./envUtils.js')) }
+const realEnvUtilsForUserTest = { ...(await import('src/utils/envUtils.js')) }
 const realConfigForUserTest = { ...(await import('src/services/config/config.js')) }
 const realAuthForUserTest = { ...(await import('src/services/auth/auth.js')) }
 const realBootstrapStateForUserTest = { ...(await import('src/bootstrap/state.js')) }
 const realCwdForUserTest = { ...(await import('src/utils/fs/cwd.js')) }
-const realEnvForUserTest = { ...(await import('./env.js')) }
+const realEnvForUserTest = { ...(await import('src/utils/env.js')) }
 
 async function importFreshUserModule() {
   return import(`./user.ts?ts=${Date.now()}-${Math.random()}`)

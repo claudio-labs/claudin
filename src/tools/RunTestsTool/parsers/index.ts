@@ -1,10 +1,10 @@
 import type { Framework, ParseInput, TestResult } from 'src/tools/RunTestsTool/types.js'
-import { parseCargo } from './cargo.js'
-import { parseDart } from './dartTest.js'
-import { parseGoJson } from './goTest.js'
-import { parseHeuristic } from './heuristic.js'
-import { parseJUnitXml } from './junitXml.js'
-import { parseTap } from './tap.js'
+import { parseCargo } from 'src/tools/RunTestsTool/parsers/cargo.js'
+import { parseDart } from 'src/tools/RunTestsTool/parsers/dartTest.js'
+import { parseGoJson } from 'src/tools/RunTestsTool/parsers/goTest.js'
+import { parseHeuristic } from 'src/tools/RunTestsTool/parsers/heuristic.js'
+import { parseJUnitXml } from 'src/tools/RunTestsTool/parsers/junitXml.js'
+import { parseTap } from 'src/tools/RunTestsTool/parsers/tap.js'
 
 /**
  * Run the fallback chain and return the first structured result. Order matters:

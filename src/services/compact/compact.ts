@@ -115,12 +115,12 @@ import {
   roughTokenCountEstimation,
   roughTokenCountEstimationForMessages,
 } from 'src/services/tokenEstimation.js'
-import { groupMessagesByApiRound } from './grouping.js'
+import { groupMessagesByApiRound } from 'src/services/compact/grouping.js'
 import {
   getCompactPrompt,
   getCompactUserSummaryMessage,
   getPartialCompactPrompt,
-} from './prompt.js'
+} from 'src/services/compact/prompt.js'
 
 export const POST_COMPACT_MAX_FILES_TO_RESTORE = 5
 export const POST_COMPACT_TOKEN_BUDGET = 50_000

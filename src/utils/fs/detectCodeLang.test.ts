@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { detectCodeLang, stripLineNumberPrefix } from './detectCodeLang.js'
+import { detectCodeLang, stripLineNumberPrefix } from 'src/utils/fs/detectCodeLang.js'
 
 // --- Source fixtures (each ≥ MIN_ANCHORS declaration lines) ---
 

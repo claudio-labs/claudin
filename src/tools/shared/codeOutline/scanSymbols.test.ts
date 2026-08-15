@@ -5,9 +5,9 @@ import {
   detectOutlineLangFromPath,
   maskSourceForLang,
   scanSymbols,
-} from './scanSymbols.js'
-import type { OutlineLang } from './scanSymbols.js'
-import { OUTLINE_MAX_TOKENS, renderOutline } from './renderOutline.js'
+} from 'src/tools/shared/codeOutline/scanSymbols.js'
+import type { OutlineLang } from 'src/tools/shared/codeOutline/scanSymbols.js'
+import { OUTLINE_MAX_TOKENS, renderOutline } from 'src/tools/shared/codeOutline/renderOutline.js'
 
 describe('detectOutlineLang', () => {
   test('maps known extensions, with or without a leading dot', () => {

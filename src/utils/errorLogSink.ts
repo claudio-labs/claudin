@@ -13,13 +13,13 @@
 import axios from 'axios'
 import { dirname, join } from 'path'
 import { getSessionId } from 'src/bootstrap/state.js'
-import { createBufferedWriter } from './bufferedWriter.js'
+import { createBufferedWriter } from 'src/utils/bufferedWriter.js'
 import { CACHE_PATHS } from 'src/utils/fs/cachePaths.js'
-import { registerCleanup } from './cleanupRegistry.js'
-import { logForDebugging } from './debug.js'
+import { registerCleanup } from 'src/utils/cleanupRegistry.js'
+import { logForDebugging } from 'src/utils/debug.js'
 import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { attachErrorLogSink, dateToFilename } from './log.js'
-import { jsonStringify } from './slowOperations.js'
+import { attachErrorLogSink, dateToFilename } from 'src/utils/log.js'
+import { jsonStringify } from 'src/utils/slowOperations.js'
 
 const DATE = dateToFilename(new Date())
 

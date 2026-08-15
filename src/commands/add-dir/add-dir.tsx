@@ -11,7 +11,7 @@ import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import { applyPermissionUpdate, persistPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js';
 import type { PermissionUpdateDestination } from 'src/services/permissions/PermissionUpdateSchema.js';
 import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
-import { addDirHelpMessage, validateDirectoryForWorkspace } from './validation.js';
+import { addDirHelpMessage, validateDirectoryForWorkspace } from 'src/commands/add-dir/validation.js';
 function AddDirError(t0: { message: string; args: string; onDone: () => void }) {
   const $ = _c(10);
   const {

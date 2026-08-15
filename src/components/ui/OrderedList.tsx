@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { createContext, isValidElement, type ReactNode, useContext } from 'react';
 import { Box } from 'src/ink.js';
-import { OrderedListItem, OrderedListItemContext } from './OrderedListItem.js';
+import { OrderedListItem, OrderedListItemContext } from 'src/components/ui/OrderedListItem.js';
 const OrderedListContext = createContext({
   marker: ''
 });

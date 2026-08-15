@@ -11,7 +11,7 @@ import type {
   McpSSEServerConfig,
   McpWebSocketServerConfig,
   ScopedMcpServerConfig,
-} from './types.js'
+} from 'src/services/mcp/types.js'
 
 /**
  * Check if the MCP server config comes from project settings (projectSettings or localSettings)

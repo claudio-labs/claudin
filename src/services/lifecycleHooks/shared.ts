@@ -29,7 +29,7 @@ import type {
   SpawnFallbackAgentRequest,
   SpawnFallbackAgentResponse,
 } from 'src/services/lifecycleHooks/hookChains.js'
-import type { MatchedHook } from './types.js'
+import type { MatchedHook } from 'src/services/lifecycleHooks/types.js'
 
 export const TOOL_HOOK_EXECUTION_TIMEOUT_MS = 10 * 60 * 1000
 

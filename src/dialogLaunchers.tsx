@@ -8,19 +8,19 @@
  */
 import React from 'react';
 import type { AssistantSession } from './assistant/sessionDiscovery.js';
-import type { StatsStore } from './context/stats.js';
-import type { Root } from './ink.js';
-import { renderAndRun, showSetupDialog } from './interactiveHelpers.js';
-import { KeybindingSetup } from './keybindings/KeybindingProviderSetup.js';
-import type { AppState } from './state/AppStateStore.js';
-import type { AgentMemoryScope } from './tools/AgentTool/agentMemory.js';
+import type { StatsStore } from 'src/context/stats.js';
+import type { Root } from 'src/ink.js';
+import { renderAndRun, showSetupDialog } from 'src/interactiveHelpers.js';
+import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js';
+import type { AppState } from 'src/state/AppStateStore.js';
+import type { AgentMemoryScope } from 'src/tools/AgentTool/agentMemory.js';
 import type { TeleportRemoteResponse } from 'src/services/session/conversationRecovery.js';
-import type { FpsMetrics } from './utils/fpsTracker.js';
+import type { FpsMetrics } from 'src/utils/fpsTracker.js';
 import type { ValidationError } from 'src/services/settings/validation.js';
 
 // Type-only access to ResumeConversation's Props via the module type.
 // No runtime cost - erased at compile time.
-type ResumeConversationProps = React.ComponentProps<typeof import('./screens/ResumeConversation.js').ResumeConversation>;
+type ResumeConversationProps = React.ComponentProps<typeof import('src/screens/ResumeConversation.js').ResumeConversation>;
 
 /**
  * Site ~3173: SnapshotUpdateDialog (agent memory snapshot update prompt).
@@ -33,7 +33,7 @@ export async function launchSnapshotUpdateDialog(root: Root, props: {
 }): Promise<'merge' | 'keep' | 'replace'> {
   const {
     SnapshotUpdateDialog
-  } = await import('./components/agents/SnapshotUpdateDialog.js');
+  } = await import('src/components/agents/SnapshotUpdateDialog.js');
   // SnapshotUpdateDialog.tsx is a stub (`(_props: unknown) => null`) — cast
   // to the real props shape its call site (and the original inline JSX)
   // expects.
@@ -57,7 +57,7 @@ export async function launchInvalidSettingsDialog(root: Root, props: {
 }): Promise<void> {
   const {
     InvalidSettingsDialog
-  } = await import('./components/InvalidSettingsDialog.js');
+  } = await import('src/components/InvalidSettingsDialog.js');
   return showSetupDialog(root, done => <InvalidSettingsDialog settingsErrors={props.settingsErrors} onContinue={done} onExit={props.onExit} />);
 }
 
@@ -70,7 +70,7 @@ export async function launchAssistantSessionChooser(root: Root, props: {
 }): Promise<string | null> {
   const {
     AssistantSessionChooser
-  } = await import('./assistant/AssistantSessionChooser.js');
+  } = await import('src/assistant/AssistantSessionChooser.js');
   return showSetupDialog<string | null>(root, done => <AssistantSessionChooser sessions={props.sessions} onSelect={id => done(id)} onCancel={() => done(null)} />);
 }
 
@@ -84,7 +84,7 @@ export async function launchAssistantInstallWizard(root: Root): Promise<string |
   const {
     NewInstallWizard,
     computeDefaultInstallDir
-  } = await import('./commands/assistant/assistant.js');
+  } = await import('src/commands/assistant/assistant.js');
   const defaultDir = await computeDefaultInstallDir();
   let rejectWithError: (reason: Error) => void;
   const errorPromise = new Promise<never>((_, reject) => {
@@ -101,7 +101,7 @@ export async function launchAssistantInstallWizard(root: Root): Promise<string |
 export async function launchTeleportResumeWrapper(root: Root): Promise<TeleportRemoteResponse | null> {
   const {
     TeleportResumeWrapper
-  } = await import('./components/TeleportResumeWrapper.js');
+  } = await import('src/components/TeleportResumeWrapper.js');
   return showSetupDialog<TeleportRemoteResponse | null>(root, done => <TeleportResumeWrapper onComplete={done} onCancel={() => done(null)} source="cliArg" />);
 }
 
@@ -115,7 +115,7 @@ export async function launchTeleportRepoMismatchDialog(root: Root, props: {
 }): Promise<string | null> {
   const {
     TeleportRepoMismatchDialog
-  } = await import('./components/TeleportRepoMismatchDialog.js');
+  } = await import('src/components/TeleportRepoMismatchDialog.js');
   return showSetupDialog<string | null>(root, done => <TeleportRepoMismatchDialog targetRepo={props.targetRepo} initialPaths={props.initialPaths} onSelectPath={done} onCancel={() => done(null)} />);
 }
 
@@ -133,7 +133,7 @@ export async function launchResumeChooser(root: Root, appProps: {
     ResumeConversation
   }, {
     App
-  }] = await Promise.all([worktreePathsPromise, import('./screens/ResumeConversation.js'), import('./components/App.js')]);
+  }] = await Promise.all([worktreePathsPromise, import('src/screens/ResumeConversation.js'), import('src/components/App.js')]);
   await renderAndRun(root, <App getFpsMetrics={appProps.getFpsMetrics} stats={appProps.stats} initialState={appProps.initialState}>
       <KeybindingSetup>
         <ResumeConversation {...resumeProps} worktreePaths={worktreePaths} />

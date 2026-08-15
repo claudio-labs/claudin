@@ -27,7 +27,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { getAttributionHeader } from './system.ts'
+import { getAttributionHeader } from 'src/constants/system.ts'
 
 const ENV_KEYS = ['CLAUDE_CODE_ATTRIBUTION_HEADER', 'CLAUDE_CODE_ENTRYPOINT'] as const
 const savedEnv: Record<string, string | undefined> = {}

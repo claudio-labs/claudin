@@ -4,7 +4,7 @@ import {
   type ReducerInternal,
   type ToolJSXAction,
   type ToolJSXState,
-} from './setToolJSXReducer.js'
+} from 'src/utils/setToolJSXReducer.js'
 
 /**
  * Module-level singleton wrapping the toolJSX reducer.

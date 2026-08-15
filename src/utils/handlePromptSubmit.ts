@@ -17,20 +17,20 @@ import {
   type PromptInputMode,
   type QueuedCommand,
 } from 'src/types/textInputTypes.js'
-import { createAbortController } from './abortController.js'
+import { createAbortController } from 'src/utils/abortController.js'
 import type { PastedContent } from 'src/services/config/config.js'
-import { logForDebugging } from './debug.js'
-import type { EffortValue } from './effort.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import type { EffortValue } from 'src/utils/effort.js'
 import type { FileHistoryState } from 'src/utils/fs/fileHistory.js'
 import { fileHistoryEnabled, fileHistoryMakeSnapshot } from 'src/utils/fs/fileHistory.js'
 import { gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js'
-import { enqueue } from './messageQueueManager.js'
-import { resolveSkillModelOverride } from './model/model.js'
-import { getCurrentLocalJSXGeneration } from './toolJSXStore.js'
+import { enqueue } from 'src/utils/messageQueueManager.js'
+import { resolveSkillModelOverride } from 'src/utils/model/model.js'
+import { getCurrentLocalJSXGeneration } from 'src/utils/toolJSXStore.js'
 import type { ProcessUserInputContext } from 'src/services/input/processUserInput.js'
 import { processUserInput } from 'src/services/input/processUserInput.js'
-import type { QueryGuard } from './QueryGuard.js'
-import { queryCheckpoint, startQueryProfile } from './queryProfiler.js'
+import type { QueryGuard } from 'src/utils/QueryGuard.js'
+import { queryCheckpoint, startQueryProfile } from 'src/utils/queryProfiler.js'
 
 function exit(): void {
   gracefulShutdownSync(0)

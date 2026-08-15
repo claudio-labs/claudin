@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test'
-import { getAPIContextManagement } from './apiMicrocompact.js'
+import { getAPIContextManagement } from 'src/services/cache/anthropic/apiMicrocompact.js'
 
 describe('getAPIContextManagement', () => {
   test('returns undefined when thinking inactive', () => {

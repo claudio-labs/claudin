@@ -1,13 +1,13 @@
 import type { Cursor } from './cursor.js'
-import type { Size } from './layout/geometry.js'
-import type { ScrollHint } from './render-node-to-output.js'
+import type { Size } from 'src/ink/layout/geometry.js'
+import type { ScrollHint } from 'src/ink/render-node-to-output.js'
 import {
   type CharPool,
   createScreen,
   type HyperlinkPool,
   type Screen,
   type StylePool,
-} from './screen.js'
+} from 'src/ink/screen.js'
 
 export type Frame = {
   readonly screen: Screen

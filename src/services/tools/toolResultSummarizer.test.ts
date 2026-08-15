@@ -51,7 +51,7 @@ const {
   TOOL_RESULT_SUMMARY_CLOSING_TAG,
   collapseIdenticalRuns,
   collapseDigitTemplates,
-} = await import('./toolResultSummarizer.js')
+} = await import('src/services/tools/toolResultSummarizer.js')
 const { saveGlobalConfig } = await import('src/services/config/config.js')
 const { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } = await import('src/tools/AgentTool/constants.js')
 

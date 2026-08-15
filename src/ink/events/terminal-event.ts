@@ -1,4 +1,4 @@
-import { Event } from './event.js'
+import { Event } from 'src/ink/events/event.js'
 
 type EventPhase = 'none' | 'capturing' | 'at_target' | 'bubbling'
 

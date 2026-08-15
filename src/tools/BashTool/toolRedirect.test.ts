@@ -9,7 +9,7 @@ import {
   resetToolRedirectMemoForTesting,
   shouldRedirectToTools,
   type SuggestedCall,
-} from './toolRedirect.js'
+} from 'src/tools/BashTool/toolRedirect.js'
 
 // Real files, because the analyzer refuses any path that is not a regular file
 // on disk — a fixture-free existence gate is the point, not an inconvenience.

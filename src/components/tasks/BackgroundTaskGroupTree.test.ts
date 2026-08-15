@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 import type { TaskState } from 'src/tasks/types.js';
-import { buildFooterTaskRows } from './BackgroundTaskGroupTree.js';
-import { footerTreeBaseIndex } from './footerTaskGeometry.js';
+import { buildFooterTaskRows } from 'src/components/tasks/BackgroundTaskGroupTree.js';
+import { footerTreeBaseIndex } from 'src/components/tasks/footerTaskGeometry.js';
 import {
   countFooterTaskRows,
   resolveFooterTreeRow,
-} from './footerSelection.js';
+} from 'src/components/tasks/footerSelection.js';
 
 // Minimal fixtures — only the fields buildFooterTaskRows reads. Cast through
 // unknown so we don't have to satisfy every TaskStateBase field.

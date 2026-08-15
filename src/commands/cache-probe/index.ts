@@ -16,7 +16,7 @@ const cacheProbe: Command = {
     )
   },
   supportsNonInteractive: false,
-  load: () => import('./cache-probe.js'),
+  load: () => import('src/commands/cache-probe/cache-probe.js'),
 }
 
 export default cacheProbe

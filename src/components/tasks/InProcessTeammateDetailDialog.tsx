@@ -14,8 +14,8 @@ import { toInkColor } from 'src/utils/ink.js';
 import { Byline } from 'src/components/design-system/Byline.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
 import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
-import { renderToolActivity } from './renderToolActivity.js';
-import { describeTeammateActivity } from './taskStatusUtils.js';
+import { renderToolActivity } from 'src/components/tasks/renderToolActivity.js';
+import { describeTeammateActivity } from 'src/components/tasks/taskStatusUtils.js';
 type Props = {
   teammate: DeepImmutable<InProcessTeammateTaskState>;
   onDone: () => void;

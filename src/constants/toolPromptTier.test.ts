@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it } from 'bun:test'
-import type { ModelFamily } from './familyAddendums/index.js'
+import type { ModelFamily } from 'src/constants/familyAddendums/index.js'
 import {
   getForcedToolPromptTier,
   isLeanFamily,
   isLeanToolPromptFamily,
-} from './toolPromptTier.js'
+} from 'src/constants/toolPromptTier.js'
 
 describe('isLeanFamily', () => {
   const lean: ModelFamily[] = ['anthropic', 'openai-reasoning', 'gemini', 'codex']

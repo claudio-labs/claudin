@@ -27,7 +27,7 @@ mock.module('src/services/lifecycleHooks/shared.js', () => ({
   shouldSkipHookDueToTrust: () => false,
 }))
 
-const { call, parseGoalArgs } = await import('./goal.js')
+const { call, parseGoalArgs } = await import('src/commands/goal/goal.js')
 
 // Re-pin the mocked modules to their captured real namespaces. Bun's
 // `mock.module` is process-global and `mock.restore()` does not undo it, so
@@ -187,7 +187,7 @@ describe('/goal command', () => {
     // Regression: headless.ts filters slash commands to prompt commands plus
     // local/local-jsx commands with supportsNonInteractive — without the
     // flag, `claudin -p '/goal ...'` fails with "Unknown skill: goal".
-    const { default: goalCommand } = await import('./index.js')
+    const { default: goalCommand } = await import('src/commands/goal/index.js')
     expect(goalCommand.type).toBe('local-jsx')
     expect(goalCommand.supportsNonInteractive).toBe(true)
   })

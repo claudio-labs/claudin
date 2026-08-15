@@ -23,45 +23,45 @@ import {
   SETTING_SOURCES,
 } from 'src/services/settings/constants.js'
 import { plural } from 'src/utils/text/stringUtils.js'
-import { permissionModeTitle } from './PermissionMode.js'
+import { permissionModeTitle } from 'src/services/permissions/PermissionMode.js'
 import type {
   PermissionAskDecision,
   PermissionDecision,
   PermissionDecisionReason,
   PermissionDenyDecision,
   PermissionResult,
-} from './PermissionResult.js'
+} from 'src/services/permissions/PermissionResult.js'
 import type {
   PermissionBehavior,
   PermissionRule,
   PermissionRuleSource,
   PermissionRuleValue,
-} from './PermissionRule.js'
+} from 'src/services/permissions/PermissionRule.js'
 import {
   applyPermissionUpdate,
   applyPermissionUpdates,
   persistPermissionUpdates,
-} from './PermissionUpdate.js'
+} from 'src/services/permissions/PermissionUpdate.js'
 import type {
   PermissionUpdate,
   PermissionUpdateDestination,
-} from './PermissionUpdateSchema.js'
+} from 'src/services/permissions/PermissionUpdateSchema.js'
 import {
   permissionRuleValueFromString,
   permissionRuleValueToString,
-} from './permissionRuleParser.js'
+} from 'src/services/permissions/permissionRuleParser.js'
 import {
   deletePermissionRuleFromSettings,
   type PermissionRuleFromEditableSettings,
   shouldAllowManagedPermissionRulesOnly,
-} from './permissionsLoader.js'
+} from 'src/services/permissions/permissionsLoader.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const classifierDecisionModule = feature('TRANSCRIPT_CLASSIFIER')
-  ? (require('./classifierDecision.js') as typeof import('./classifierDecision.js'))
+  ? (require('src/services/permissions/classifierDecision.js') as typeof import('src/services/permissions/classifierDecision.js'))
   : null
 const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER')
-  ? (require('./autoModeState.js') as typeof import('./autoModeState.js'))
+  ? (require('src/services/permissions/autoModeState.js') as typeof import('src/services/permissions/autoModeState.js'))
   : null
 
 import {
@@ -99,11 +99,11 @@ import {
   recordDenial,
   recordSuccess,
   shouldFallbackToPrompting,
-} from './denialTracking.js'
+} from 'src/services/permissions/denialTracking.js'
 import {
   classifyYoloAction,
   formatActionForClassifier,
-} from './yoloClassifier.js'
+} from 'src/services/permissions/yoloClassifier.js'
 
 const CLASSIFIER_FAIL_CLOSED_REFRESH_MS = 30 * 60 * 1000 // 30 minutes
 

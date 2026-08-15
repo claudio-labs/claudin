@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { parseFeed, parseUrlTriggers } from './sources.js'
+import { parseFeed, parseUrlTriggers } from 'src/cli/workflow/sources.js'
 
 const URL = 'https://example.com/feed'
 

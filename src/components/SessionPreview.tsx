@@ -9,12 +9,12 @@ import { formatRelativeTimeAgo } from 'src/utils/text/format.js';
 import { getSessionIdFromLog, isLiteLog, loadFullLog } from 'src/services/session/sessionStorage.js';
 import type { Command } from 'src/commands.js';
 import type { StreamingToolUse } from 'src/services/messages/messages.js';
-import type { ToolUseConfirm } from './permissions/PermissionRequest.js';
-import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
-import { Byline } from './design-system/Byline.js';
-import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
-import { LoadingState } from './design-system/LoadingState.js';
-import { Messages } from './Messages.js';
+import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { LoadingState } from 'src/components/design-system/LoadingState.js';
+import { Messages } from 'src/components/Messages.js';
 type Props = {
   log: LogOption;
   onExit: () => void;

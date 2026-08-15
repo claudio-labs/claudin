@@ -1,4 +1,4 @@
-import { type EventTarget, TerminalEvent } from './terminal-event.js'
+import { type EventTarget, TerminalEvent } from 'src/ink/events/terminal-event.js'
 
 /**
  * Focus event for component focus changes.

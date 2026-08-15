@@ -4,8 +4,8 @@ import { Box, Text } from 'src/ink.js';
 import { type AppState, useAppState } from 'src/state/AppState.js';
 import { getViewedTeammateTask } from 'src/state/selectors.js';
 import { toInkColor } from 'src/utils/ink.js';
-import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
-import { OffscreenFreeze } from './OffscreenFreeze.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { OffscreenFreeze } from 'src/components/OffscreenFreeze.js';
 
 /**
  * Header shown when viewing a teammate's transcript.

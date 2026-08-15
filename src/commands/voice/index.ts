@@ -14,7 +14,7 @@ const voice = {
     return !isVoiceModeEnabled()
   },
   supportsNonInteractive: false,
-  load: () => import('./voice.js'),
+  load: () => import('src/commands/voice/voice.js'),
 } satisfies Command
 
 export default voice

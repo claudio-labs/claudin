@@ -1,4 +1,4 @@
-import type { CompanionBones, Eye, Hat, Species } from './types.js'
+import type { CompanionBones, Eye, Hat, Species } from 'src/buddy/types.js'
 import {
   axolotl,
   blob,
@@ -18,7 +18,7 @@ import {
   robot,
   snail,
   turtle,
-} from './types.js'
+} from 'src/buddy/types.js'
 
 // Each sprite is 5 lines tall, 12 wide (after {E}→1char substitution).
 // Multiple frames per species for idle fidget animation.

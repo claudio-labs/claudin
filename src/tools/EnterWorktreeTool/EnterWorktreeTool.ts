@@ -17,9 +17,9 @@ import {
   getCurrentWorktreeSession,
   validateWorktreeSlug,
 } from 'src/services/git/worktree.js'
-import { ENTER_WORKTREE_TOOL_NAME } from './constants.js'
-import { getEnterWorktreeToolPrompt } from './prompt.js'
-import { renderToolResultMessage, renderToolUseMessage } from './UI.js'
+import { ENTER_WORKTREE_TOOL_NAME } from 'src/tools/EnterWorktreeTool/constants.js'
+import { getEnterWorktreeToolPrompt } from 'src/tools/EnterWorktreeTool/prompt.js'
+import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/EnterWorktreeTool/UI.js'
 
 const inputSchema = lazySchema(() =>
   z

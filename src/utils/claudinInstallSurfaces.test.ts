@@ -5,7 +5,7 @@ import { join } from 'path'
 
 const originalEnv = { ...process.env }
 const originalMacro = (globalThis as Record<string, unknown>).MACRO
-const realEnvUtils = { ...(await import('./envUtils.js')) }
+const realEnvUtils = { ...(await import('src/utils/envUtils.js')) }
 const realExecFileNoThrowInstall = { ...(await import('src/utils/proc/execFileNoThrow.js')) }
 // Plain snapshot of the real fs/promises taken BEFORE any mock.module runs.
 // `fsPromises` above is a live namespace view — once the rm stub is installed
@@ -76,7 +76,7 @@ test('cleanupNpmInstallations removes both claudin and legacy claude local insta
   // (isEnvDefinedFalsy, hasNodeOption, etc.) — Bun locks shape on first
   // mock.module call and leaks the partial shape into every later test
   // file that imports those symbols transitively.
-  const realEnvUtilsForCleanup = await import('./envUtils.js')
+  const realEnvUtilsForCleanup = await import('src/utils/envUtils.js')
   mock.module('./envUtils.js', () => ({
     ...realEnvUtilsForCleanup,
     getClaudinConfigHomeDir: () => join(homedir(), '.claudin'),

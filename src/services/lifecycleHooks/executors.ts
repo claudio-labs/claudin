@@ -23,7 +23,7 @@ import { getSessionId } from 'src/bootstrap/state.js'
 import {
   shouldAllowManagedHooksOnly,
   shouldDisableAllHooksIncludingManaged,
-} from './hooksConfigSnapshot.js'
+} from 'src/services/lifecycleHooks/hooksConfigSnapshot.js'
 import {
   logEvent,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -37,7 +37,7 @@ import type { HookEvent, HookInput } from 'src/entrypoints/agentSdkTypes.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logError } from 'src/utils/log.js'
 import { createCombinedAbortSignal } from 'src/utils/combinedAbortSignal.js'
-import { execHttpHook } from './execHttpHook.js'
+import { execHttpHook } from 'src/services/lifecycleHooks/execHttpHook.js'
 import type { AppState } from 'src/state/AppState.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
@@ -45,11 +45,11 @@ import {
   TOOL_HOOK_EXECUTION_TIMEOUT_MS,
   isInternalHook,
   shouldSkipHookDueToTrust,
-} from './shared.js'
-import { parseHookOutput, parseHttpHookOutput } from './parsing.js'
-import { getMatchingHooks } from './matching.js'
-import { execCommandHook } from './runners.js'
-import type { MatchedHook, HookOutsideReplResult } from './types.js'
+} from 'src/services/lifecycleHooks/shared.js'
+import { parseHookOutput, parseHttpHookOutput } from 'src/services/lifecycleHooks/parsing.js'
+import { getMatchingHooks } from 'src/services/lifecycleHooks/matching.js'
+import { execCommandHook } from 'src/services/lifecycleHooks/runners.js'
+import type { MatchedHook, HookOutsideReplResult } from 'src/services/lifecycleHooks/types.js'
 
 /**
  * Build a map of {sanitizedPluginName: hookCount} from matched hooks.

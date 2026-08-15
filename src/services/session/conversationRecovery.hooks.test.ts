@@ -72,7 +72,7 @@ test('loadConversationForResume rejects oversized transcripts before resume hook
   }))
 
   const { loadConversationForResume, ResumeTranscriptTooLargeError } = await import(
-    './conversationRecovery.ts'
+    'src/services/session/conversationRecovery.ts'
   )
 
   await expect(loadConversationForResume('fixture', path)).rejects.toBeInstanceOf(

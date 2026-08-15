@@ -13,7 +13,7 @@
 // than the over-cap error it replaces.
 // ---------------------------------------------------------------------------
 
-import type { SymbolEntry } from './scanSymbols.js'
+import type { SymbolEntry } from 'src/tools/shared/codeOutline/scanSymbols.js'
 
 /** Token ceiling for the rendered outline body. */
 export const OUTLINE_MAX_TOKENS = 10_000

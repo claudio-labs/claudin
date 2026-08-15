@@ -19,7 +19,7 @@ import { waitForScrollIdle } from 'src/bootstrap/state.js'
 import { registerCleanup } from 'src/utils/cleanupRegistry.js'
 import { getCwd } from 'src/utils/fs/cwd.js'
 import { findGitRoot } from 'src/services/git/git.js'
-import { parseGitConfigValue } from './gitConfigParser.js'
+import { parseGitConfigValue } from 'src/services/git/gitConfigParser.js'
 
 // ---------------------------------------------------------------------------
 // resolveGitDir — find the actual .git directory

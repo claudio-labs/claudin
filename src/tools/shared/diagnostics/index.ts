@@ -1,7 +1,7 @@
-import { parseGnuStyle } from './gnuStyle.js'
-import { scrapeCounts } from './heuristic.js'
-import { parseMsvcStyle } from './msvcStyle.js'
-import type { DiagnosticParser, ParseInput, RawDiagnostic } from './types.js'
+import { parseGnuStyle } from 'src/tools/shared/diagnostics/gnuStyle.js'
+import { scrapeCounts } from 'src/tools/shared/diagnostics/heuristic.js'
+import { parseMsvcStyle } from 'src/tools/shared/diagnostics/msvcStyle.js'
+import type { DiagnosticParser, ParseInput, RawDiagnostic } from 'src/tools/shared/diagnostics/types.js'
 
 /**
  * The shared parse chain, used by both `Typecheck` and `Build`.

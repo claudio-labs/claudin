@@ -40,15 +40,15 @@ import {
   formatPrepareCallHierarchyResult,
   formatWorkspaceSymbolResult,
   toLocation,
-} from './formatters.js'
-import { DESCRIPTION, LSP_TOOL_NAME } from './prompt.js'
-import { lspToolInputSchema } from './schemas.js'
+} from 'src/tools/LSPTool/formatters.js'
+import { DESCRIPTION, LSP_TOOL_NAME } from 'src/tools/LSPTool/prompt.js'
+import { lspToolInputSchema } from 'src/tools/LSPTool/schemas.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
   userFacingName,
-} from './UI.js'
+} from 'src/tools/LSPTool/UI.js'
 
 const MAX_LSP_FILE_SIZE_BYTES = 10_000_000
 

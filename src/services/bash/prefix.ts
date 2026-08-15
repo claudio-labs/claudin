@@ -1,7 +1,7 @@
 import { buildPrefix } from 'src/services/shell/specPrefix.js'
-import { splitCommand_DEPRECATED } from './commands.js'
-import { extractCommandArguments, parseCommand } from './parser.js'
-import { getCommandSpec } from './registry.js'
+import { splitCommand_DEPRECATED } from 'src/services/bash/commands.js'
+import { extractCommandArguments, parseCommand } from 'src/services/bash/parser.js'
+import { getCommandSpec } from 'src/services/bash/registry.js'
 
 const NUMERIC = /^\d+$/
 const ENV_VAR = /^[A-Za-z_][A-Za-z0-9_]*=/

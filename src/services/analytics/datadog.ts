@@ -6,8 +6,8 @@ import { logError } from 'src/utils/log.js'
 import { getCanonicalName } from 'src/utils/model/model.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import { MODEL_COSTS } from 'src/services/api/modelCost.js'
-import { isAnalyticsDisabled } from './config.js'
-import { getEventMetadata } from './metadata.js'
+import { isAnalyticsDisabled } from 'src/services/analytics/config.js'
+import { getEventMetadata } from 'src/services/analytics/metadata.js'
 
 const DATADOG_LOGS_ENDPOINT =
   'https://http-intake.logs.us5.datadoghq.com/api/v2/logs'

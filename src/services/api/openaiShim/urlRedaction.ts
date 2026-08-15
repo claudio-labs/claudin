@@ -9,8 +9,8 @@
  */
 
 import { redactSecretValueForDisplay } from 'src/services/api/providerProfile.js'
-import { SENSITIVE_URL_QUERY_PARAM_NAMES } from './constants.js'
-import type { SecretValueSource } from './types.js'
+import { SENSITIVE_URL_QUERY_PARAM_NAMES } from 'src/services/api/openaiShim/constants.js'
+import type { SecretValueSource } from 'src/services/api/openaiShim/types.js'
 
 export function shouldRedactUrlQueryParam(name: string): boolean {
   const lower = name.toLowerCase()

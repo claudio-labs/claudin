@@ -4,7 +4,7 @@ import {
   isAntiNarrationEnabled,
   isSubagentNotesEnabled,
   isWorkContractEnabled,
-} from './steeringToggles.js'
+} from 'src/constants/steeringToggles.js'
 
 const VARS = [
   'CLAUDIN_WORK_CONTRACT',

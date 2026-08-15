@@ -8,7 +8,7 @@
 import type { Command } from '@commander-js/extra-typings'
 import { Option } from '@commander-js/extra-typings'
 import { VALID_INSTALLABLE_SCOPES, VALID_UPDATE_SCOPES } from 'src/services/plugins/pluginCliCommands.js'
-import { createSortedHelpConfig } from './_helpConfig.js'
+import { createSortedHelpConfig } from 'src/main/commands/_helpConfig.js'
 
 export function registerPluginCommands(program: Command): void {
   /**

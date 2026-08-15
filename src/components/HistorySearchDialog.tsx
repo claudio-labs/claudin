@@ -9,7 +9,7 @@ import { Box, Text } from 'src/ink.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import type { HistoryEntry } from 'src/services/config/config.js';
 import { formatRelativeTimeAgo, truncateToWidth } from 'src/utils/text/format.js';
-import { FuzzyPicker } from './design-system/FuzzyPicker.js';
+import { FuzzyPicker } from 'src/components/design-system/FuzzyPicker.js';
 type Props = {
   initialQuery?: string;
   onSelect: (entry: HistoryEntry) => void;

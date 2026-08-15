@@ -11,7 +11,7 @@ import {
   SETTING_GROUPS,
   sectionJumpIndex,
   type DisplayRow,
-} from './configGroups.js'
+} from 'src/components/Settings/configGroups.js'
 
 type FakeSetting = { id: string }
 

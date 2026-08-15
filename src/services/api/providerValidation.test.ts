@@ -5,7 +5,7 @@ let mockProviderProfile: ProviderProfile | null = null
 // Spread into plain objects so afterAll restores the original bindings, not
 // the live ESM namespaces (which mock.module mutates after the fact).
 const realConfig = { ...(await import('src/services/config/config.js')) }
-const realProviderProfiles = { ...(await import('./providerProfiles.js')) }
+const realProviderProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
 
 mock.module('src/services/config/config.js', () => ({
   ...realConfig,
@@ -29,7 +29,7 @@ import { invalidateActiveProviderCache } from 'src/services/api/activeProvider.j
 import {
   getProviderValidationError,
   shouldExitForStartupProviderValidationError,
-} from './providerValidation.js'
+} from 'src/services/api/providerValidation.js'
 
 afterEach(() => {
   mockProviderProfile = null

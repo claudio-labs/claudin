@@ -7,7 +7,7 @@ import {
   parseCodeReviewArgs,
   registerCodeReviewSkill,
   resolveReviewLevel,
-} from './code-review.js'
+} from 'src/skills/bundled/code-review.js'
 
 afterEach(() => {
   clearBundledSkills()

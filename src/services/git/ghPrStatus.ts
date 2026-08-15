@@ -1,8 +1,8 @@
 import { getGlobalConfig } from 'src/services/config/config.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { parseGitRemote } from './detectRepository.js'
+import { parseGitRemote } from 'src/services/git/detectRepository.js'
 import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
-import { getBranch, getDefaultBranch, getIsGit, getRemoteUrl } from './git.js'
+import { getBranch, getDefaultBranch, getIsGit, getRemoteUrl } from 'src/services/git/git.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
 
 export type PrReviewState =

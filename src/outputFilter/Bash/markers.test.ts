@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { stripOutputMarkers, wrapStdoutWithMarkers } from "./markers.js";
-import type { PipelineResult, PreExecPlan } from "./types.js";
+import { stripOutputMarkers, wrapStdoutWithMarkers } from "src/outputFilter/Bash/markers.js";
+import type { PipelineResult, PreExecPlan } from "src/outputFilter/Bash/types.js";
 
 const NO_FILTER_PLAN: PreExecPlan = {
   effectiveCommand: "npm install",

@@ -23,17 +23,17 @@
 import { isAbortError } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
 import { sideQuery } from 'src/utils/sideQuery.js'
-import { extractToolUseBlock } from './classifierShared.js'
+import { extractToolUseBlock } from 'src/services/permissions/classifierShared.js'
 import {
   classifierProbeKey,
   readClassifierProbe,
   writeClassifierProbe,
   type ClassifierProbeEntry,
-} from './classifierProbeStore.js'
+} from 'src/services/permissions/classifierProbeStore.js'
 import {
   YOLO_CLASSIFIER_TOOL_NAME,
   YOLO_CLASSIFIER_TOOL_SCHEMA,
-} from './yoloClassifier.js'
+} from 'src/services/permissions/yoloClassifier.js'
 
 export type ClassifierProbeResult = { ok: boolean; detail?: string }
 

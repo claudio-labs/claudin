@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { getInlineImageProtocol, setXtversionName } from './terminal.js'
+import { getInlineImageProtocol, setXtversionName } from 'src/ink/terminal.js'
 
 describe('getInlineImageProtocol', () => {
   const origEnv = { ...process.env }

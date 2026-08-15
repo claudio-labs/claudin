@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   routeModel,
   type SmartRoutingConfig,
-} from './smartModelRouting.ts'
+} from 'src/services/api/smartModelRouting.ts'
 
 const ENABLED: SmartRoutingConfig = {
   enabled: true,

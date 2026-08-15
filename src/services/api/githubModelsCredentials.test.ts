@@ -3,7 +3,7 @@ import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
 const realSecureStorage = { ...(await import('src/services/secureStorage/index.js')) }
 const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
 const realDeviceFlow = { ...(await import('src/services/github/deviceFlow.js')) }
-const realProviderProfiles = { ...(await import('./providerProfiles.js')) }
+const realProviderProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
 
 afterAll(() => {
   mock.module('src/services/secureStorage/index.js', () => realSecureStorage)

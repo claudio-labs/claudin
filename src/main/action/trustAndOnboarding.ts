@@ -30,7 +30,7 @@ import type { InternalPermissionMode } from 'src/types/permissions.js';
 import { launchSnapshotUpdateDialog } from 'src/dialogLaunchers.js';
 import { exitWithError, getRenderContext, showSetupScreens } from 'src/interactiveHelpers.js';
 import { profileCheckpoint } from 'src/utils/startupProfiler.js';
-import type { AgentDefinitionsBundle } from './setupAgent.js';
+import type { AgentDefinitionsBundle } from 'src/main/action/setupAgent.js';
 
 export type RunTrustAndOnboardingInput = {
   permissionMode: InternalPermissionMode;

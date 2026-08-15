@@ -4,7 +4,7 @@ const memory: Command = {
   type: 'local-jsx',
   name: 'memory',
   description: 'Edit memory files; /memory tidy merges duplicate memories',
-  load: () => import('./memory.js'),
+  load: () => import('src/commands/memory/memory.js'),
 }
 
 export default memory

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { getClaudeMdDelta } from './claudeMdDelta.js'
+import { getClaudeMdDelta } from 'src/services/instructions/claudeMdDelta.js'
 
 // Fake minimal attachment-message shape — mirrors the Message union's
 // AttachmentMessage but without dragging in the whole message type

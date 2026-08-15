@@ -25,7 +25,7 @@ describe('PromptInputQueuedCommands', () => {
   })
 
   it('shows a next-turn guidance banner for queued prompt messages', async () => {
-    const { PromptInputQueuedCommands } = await import('./PromptInputQueuedCommands.js')
+    const { PromptInputQueuedCommands } = await import('src/components/PromptInput/PromptInputQueuedCommands.js')
 
     const output = await renderToString(<PromptInputQueuedCommands />, 100)
 

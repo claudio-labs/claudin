@@ -57,7 +57,7 @@ import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/metadata.js'
 import { getRetryDelay } from 'src/services/api/withRetry.js'
-import { scanForSecrets } from './secretScanner.js'
+import { scanForSecrets } from 'src/services/teamMemorySync/secretScanner.js'
 import {
   type SkippedSecretFile,
   TeamMemoryDataSchema,
@@ -66,7 +66,7 @@ import {
   type TeamMemorySyncPushResult,
   type TeamMemorySyncUploadResult,
   TeamMemoryTooManyEntriesSchema,
-} from './types.js'
+} from 'src/services/teamMemorySync/types.js'
 
 const TEAM_MEMORY_SYNC_TIMEOUT_MS = 30_000
 // Per-entry size cap — server default from anthropic/anthropic#293258.

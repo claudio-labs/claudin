@@ -46,7 +46,7 @@ import {
   type SettingsSyncUploadResult,
   SYNC_KEYS,
   UserSyncDataSchema,
-} from './types.js'
+} from 'src/services/settingsSync/types.js'
 
 const SETTINGS_SYNC_TIMEOUT_MS = 10000 // 10 seconds
 const DEFAULT_MAX_RETRIES = 3

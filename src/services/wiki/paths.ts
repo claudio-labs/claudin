@@ -1,5 +1,5 @@
 import { join } from 'path'
-import type { WikiPaths } from './types.js'
+import type { WikiPaths } from 'src/services/wiki/types.js'
 
 export const CLAUDIN_DIRNAME = '.claudin'
 export const WIKI_DIRNAME = 'wiki'

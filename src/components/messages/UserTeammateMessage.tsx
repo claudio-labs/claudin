@@ -8,9 +8,9 @@ import { toInkColor } from 'src/utils/ink.js';
 import { jsonParse } from 'src/utils/slowOperations.js';
 import { isShutdownApproved } from 'src/coordinator/teammateMailbox.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
-import { tryRenderPlanApprovalMessage } from './PlanApprovalMessage.js';
-import { tryRenderShutdownMessage } from './ShutdownMessage.js';
-import { tryRenderTaskAssignmentMessage } from './TaskAssignmentMessage.js';
+import { tryRenderPlanApprovalMessage } from 'src/components/messages/PlanApprovalMessage.js';
+import { tryRenderShutdownMessage } from 'src/components/messages/ShutdownMessage.js';
+import { tryRenderTaskAssignmentMessage } from 'src/components/messages/TaskAssignmentMessage.js';
 type Props = {
   addMargin: boolean;
   param: TextBlockParam;

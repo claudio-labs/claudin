@@ -10,7 +10,7 @@ import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
 import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import type { BuiltInAgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
-import { EXPLORE_AGENT } from './exploreAgent.js'
+import { EXPLORE_AGENT } from 'src/tools/AgentTool/built-in/exploreAgent.js'
 
 function getPlanV2SystemPrompt(): string {
   // Ant-native builds alias find/grep to embedded bfs/ugrep and remove the

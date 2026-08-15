@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   extractReasoningDelta,
   extractReasoningMessage,
-} from './reasoningNormalizer.js'
+} from 'src/services/api/openaiShim/reasoningNormalizer.js'
 
 describe('extractReasoningDelta', () => {
   test('returns reasoning_content when set', () => {

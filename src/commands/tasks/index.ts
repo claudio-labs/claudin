@@ -5,7 +5,7 @@ const tasks = {
   name: 'tasks',
   aliases: ['bashes'],
   description: 'List and manage background tasks',
-  load: () => import('./tasks.js'),
+  load: () => import('src/commands/tasks/tasks.js'),
 } satisfies Command
 
 export default tasks

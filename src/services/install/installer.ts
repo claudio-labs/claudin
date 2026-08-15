@@ -61,7 +61,7 @@ import {
   getXDGDataHome,
   getXDGStateHome,
 } from 'src/utils/fs/xdg.js'
-import { downloadVersion, getLatestVersion } from './download.js'
+import { downloadVersion, getLatestVersion } from 'src/services/install/download.js'
 import {
   acquireProcessLifetimeLock,
   cleanupStaleLocks,
@@ -69,7 +69,7 @@ import {
   isPidBasedLockingEnabled,
   readLockContent,
   withLock,
-} from './pidLock.js'
+} from 'src/services/install/pidLock.js'
 
 export const VERSION_RETENTION_COUNT = 2
 

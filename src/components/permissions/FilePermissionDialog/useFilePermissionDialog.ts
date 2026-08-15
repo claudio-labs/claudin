@@ -14,11 +14,11 @@ import {
   getFilePermissionOptions,
   type PermissionOption,
   type PermissionOptionWithLabel,
-} from './permissionOptions.js'
+} from 'src/components/permissions/FilePermissionDialog/permissionOptions.js'
 import {
   PERMISSION_HANDLERS,
   type PermissionHandlerParams,
-} from './usePermissionHandler.js'
+} from 'src/components/permissions/FilePermissionDialog/usePermissionHandler.js'
 
 export interface ToolInput {
   [key: string]: unknown

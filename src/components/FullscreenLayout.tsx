@@ -12,9 +12,9 @@ import type { Message } from 'src/types/message.js';
 import { openBrowser, openPath } from 'src/utils/browser.js';
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
 import { plural } from 'src/utils/text/stringUtils.js';
-import { isNullRenderingAttachment } from './messages/nullRenderingAttachments.js';
-import PromptInputFooterSuggestions from './PromptInput/PromptInputFooterSuggestions.js';
-import type { StickyPrompt } from './VirtualMessageList.js';
+import { isNullRenderingAttachment } from 'src/components/messages/nullRenderingAttachments.js';
+import PromptInputFooterSuggestions from 'src/components/PromptInput/PromptInputFooterSuggestions.js';
+import type { StickyPrompt } from 'src/components/VirtualMessageList.js';
 
 /** Rows of transcript context kept visible above the modal pane's ▔ divider. */
 const MODAL_TRANSCRIPT_PEEK = 2;

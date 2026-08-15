@@ -57,16 +57,16 @@ import {
 } from 'src/outputFilter/Bash/index.js';
 import { getGlobalConfig } from 'src/services/config/config.js';
 import { recordBytesSaved } from 'src/services/context/tokensSaved.js';
-import { bashToolHasPermission, commandHasAnyCd, matchWildcardPattern, permissionRuleExtractPrefix } from './bashPermissions.js';
-import { interpretCommandResult } from './commandSemantics.js';
-import { getDefaultTimeoutMs, getMaxTimeoutMs, getSimplePrompt } from './prompt.js';
-import { checkReadOnlyConstraints } from './readOnlyValidation.js';
-import { parseSedEditCommand } from './sedEditParser.js';
-import { shouldUseSandbox } from './shouldUseSandbox.js';
-import { BASH_TOOL_NAME } from './toolName.js';
-import { renderToolRedirect, shouldRedirectToTools } from './toolRedirect.js';
-import { BackgroundHint, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseQueuedMessage } from './UI.js';
-import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from './utils.js';
+import { bashToolHasPermission, commandHasAnyCd, matchWildcardPattern, permissionRuleExtractPrefix } from 'src/tools/BashTool/bashPermissions.js';
+import { interpretCommandResult } from 'src/tools/BashTool/commandSemantics.js';
+import { getDefaultTimeoutMs, getMaxTimeoutMs, getSimplePrompt } from 'src/tools/BashTool/prompt.js';
+import { checkReadOnlyConstraints } from 'src/tools/BashTool/readOnlyValidation.js';
+import { parseSedEditCommand } from 'src/tools/BashTool/sedEditParser.js';
+import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js';
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
+import { renderToolRedirect, shouldRedirectToTools } from 'src/tools/BashTool/toolRedirect.js';
+import { BackgroundHint, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseQueuedMessage } from 'src/tools/BashTool/UI.js';
+import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from 'src/tools/BashTool/utils.js';
 import { ASSISTANT_BLOCKING_BUDGET_MS, mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
 const EOL = '\n';
 

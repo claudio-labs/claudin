@@ -14,12 +14,12 @@
 import { invalidateSessionEnvCache } from 'src/services/session/sessionEnvironment.js'
 import { getSessionId } from 'src/bootstrap/state.js'
 import { getRegisteredHooks } from 'src/bootstrap/state.js'
-import { getHooksConfigFromSnapshot } from './hooksConfigSnapshot.js'
-import { shouldAllowManagedHooksOnly } from './hooksConfigSnapshot.js'
+import { getHooksConfigFromSnapshot } from 'src/services/lifecycleHooks/hooksConfigSnapshot.js'
+import { shouldAllowManagedHooksOnly } from 'src/services/lifecycleHooks/hooksConfigSnapshot.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { extractTextContent } from 'src/services/messages/messages.js'
 import { resetGoalStateForSessionEnd } from 'src/services/goal/goal.js'
-import { clearSessionHooks } from './sessionHooks.js'
+import { clearSessionHooks } from 'src/services/lifecycleHooks/sessionHooks.js'
 import type {
   ConfigChangeHookInput,
   CwdChangedHookInput,
@@ -47,11 +47,11 @@ import type {
   HookOutsideReplResult,
   InstructionsLoadReason,
   InstructionsMemoryType,
-} from './types.js'
-import { createBaseHookInput, TOOL_HOOK_EXECUTION_TIMEOUT_MS } from './shared.js'
-import { parseElicitationHookOutput } from './parsing.js'
-import { hasHookForEvent } from './matching.js'
-import { executeHooksOutsideREPL } from './executors.js'
+} from 'src/services/lifecycleHooks/types.js'
+import { createBaseHookInput, TOOL_HOOK_EXECUTION_TIMEOUT_MS } from 'src/services/lifecycleHooks/shared.js'
+import { parseElicitationHookOutput } from 'src/services/lifecycleHooks/parsing.js'
+import { hasHookForEvent } from 'src/services/lifecycleHooks/matching.js'
+import { executeHooksOutsideREPL } from 'src/services/lifecycleHooks/executors.js'
 
 /**
  * Execute notification hooks if configured

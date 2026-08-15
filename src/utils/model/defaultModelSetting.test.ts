@@ -13,7 +13,7 @@ import { resetModelStringsForTestingOnly } from 'src/bootstrap/state.js'
 // (auth / providers / context), so we mock those — never model.js itself — and
 // exercise the REAL getDefaultMainLoopModelSetting + isOpus1mMergeEnabled.
 
-const realProviders = { ...(await import('./providers.js')) }
+const realProviders = { ...(await import('src/utils/model/providers.js')) }
 const realAuth = { ...(await import('src/services/auth/auth.js')) }
 const realContext = { ...(await import('src/services/context/context.js')) }
 

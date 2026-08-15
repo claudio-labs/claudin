@@ -19,15 +19,15 @@ import { toError } from 'src/utils/errors.js';
 import { logError } from 'src/utils/log.js';
 import { Select } from 'src/components/CustomSelect/select.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
-import { AgentDetail } from './AgentDetail.js';
-import { AgentEditor } from './AgentEditor.js';
-import { AgentNavigationFooter } from './AgentNavigationFooter.js';
-import { AgentsList } from './AgentsList.js';
-import { ModelSelector } from './ModelSelector.js';
-import { deleteAgentFromFile } from './agentFileUtils.js';
+import { AgentDetail } from 'src/components/agents/AgentDetail.js';
+import { AgentEditor } from 'src/components/agents/AgentEditor.js';
+import { AgentNavigationFooter } from 'src/components/agents/AgentNavigationFooter.js';
+import { AgentsList } from 'src/components/agents/AgentsList.js';
+import { ModelSelector } from 'src/components/agents/ModelSelector.js';
+import { deleteAgentFromFile } from 'src/components/agents/agentFileUtils.js';
 import { getCwd } from 'src/utils/fs/cwd.js';
-import { CreateAgentWizard } from './new-agent-creation/CreateAgentWizard.js';
-import type { ModeState } from './types.js';
+import { CreateAgentWizard } from 'src/components/agents/new-agent-creation/CreateAgentWizard.js';
+import type { ModeState } from 'src/components/agents/types.js';
 type Props = {
   tools: Tools;
   onExit: (result?: string, options?: {

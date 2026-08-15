@@ -39,7 +39,7 @@ import { initBundledSkills } from 'src/skills/bundled/index.js';
 import { maybeActivateBrief } from 'src/main/lifecycle.js';
 import type { InternalPermissionMode } from 'src/types/permissions.js';
 import type { BootContext } from 'src/main/bootContext.js';
-import type { ActionOptions } from './parseOptions.js';
+import type { ActionOptions } from 'src/main/action/parseOptions.js';
 
 /**
  * Lazy-require accessor for coordinatorMode (gated by COORDINATOR_MODE).

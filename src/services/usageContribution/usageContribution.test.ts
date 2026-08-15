@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdtemp, mkdir, writeFile, utimes } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { computeUsageContribution } from './usageContribution.js'
+import { computeUsageContribution } from 'src/services/usageContribution/usageContribution.js'
 
 type Rec = { ts: number; input: number; output?: number }
 

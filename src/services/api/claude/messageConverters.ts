@@ -9,7 +9,7 @@ import type {
   Message,
   UserMessage,
 } from 'src/types/message.js'
-import { getCacheControl } from './cacheControl.js'
+import { getCacheControl } from 'src/services/api/claude/cacheControl.js'
 
 export function userMessageToMessageParam(
   message: UserMessage,

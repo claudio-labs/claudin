@@ -19,11 +19,11 @@ import type { ClassifierResult } from 'src/services/permissions/bashClassifier.j
 import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js';
 import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js';
 import { jsonStringify } from 'src/utils/slowOperations.js';
-import { handleCoordinatorPermission } from './toolPermission/handlers/coordinatorHandler.js';
-import { handleInteractivePermission } from './toolPermission/handlers/interactiveHandler.js';
-import { handleSwarmWorkerPermission } from './toolPermission/handlers/swarmWorkerHandler.js';
-import { createPermissionContext, createPermissionQueueOps } from './toolPermission/PermissionContext.js';
-import { logPermissionDecision } from './toolPermission/permissionLogging.js';
+import { handleCoordinatorPermission } from 'src/hooks/toolPermission/handlers/coordinatorHandler.js';
+import { handleInteractivePermission } from 'src/hooks/toolPermission/handlers/interactiveHandler.js';
+import { handleSwarmWorkerPermission } from 'src/hooks/toolPermission/handlers/swarmWorkerHandler.js';
+import { createPermissionContext, createPermissionQueueOps } from 'src/hooks/toolPermission/PermissionContext.js';
+import { logPermissionDecision } from 'src/hooks/toolPermission/permissionLogging.js';
 export type CanUseToolFn<Input extends Record<string, unknown> = Record<string, unknown>> = (tool: ToolType, input: Input, toolUseContext: ToolUseContext, assistantMessage: AssistantMessage, toolUseID: string, forceDecision?: PermissionDecision<Input>) => Promise<PermissionDecision<Input>>;
 function useCanUseTool(setToolUseConfirmQueue: React.Dispatch<React.SetStateAction<ToolUseConfirm[]>>, setToolPermissionContext: (context: ToolPermissionContext, options?: {
   preserveMode?: boolean;

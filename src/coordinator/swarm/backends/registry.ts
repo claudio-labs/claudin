@@ -7,17 +7,17 @@ import {
   isInsideTmuxSync,
   isIt2CliAvailable,
   isTmuxAvailable,
-} from './detection.js'
-import { createInProcessBackend } from './InProcessBackend.js'
-import { getPreferTmuxOverIterm2 } from './it2Setup.js'
-import { createPaneBackendExecutor } from './PaneBackendExecutor.js'
-import { getTeammateModeFromSnapshot } from './teammateModeSnapshot.js'
+} from 'src/coordinator/swarm/backends/detection.js'
+import { createInProcessBackend } from 'src/coordinator/swarm/backends/InProcessBackend.js'
+import { getPreferTmuxOverIterm2 } from 'src/coordinator/swarm/backends/it2Setup.js'
+import { createPaneBackendExecutor } from 'src/coordinator/swarm/backends/PaneBackendExecutor.js'
+import { getTeammateModeFromSnapshot } from 'src/coordinator/swarm/backends/teammateModeSnapshot.js'
 import type {
   BackendDetectionResult,
   PaneBackend,
   PaneBackendType,
   TeammateExecutor,
-} from './types.js'
+} from 'src/coordinator/swarm/backends/types.js'
 
 /**
  * Cached backend detection result.
@@ -73,8 +73,8 @@ let ITermBackendClass: (new () => PaneBackend) | null = null
  */
 export async function ensureBackendsRegistered(): Promise<void> {
   if (backendsRegistered) return
-  await import('./TmuxBackend.js')
-  await import('./ITermBackend.js')
+  await import('src/coordinator/swarm/backends/TmuxBackend.js')
+  await import('src/coordinator/swarm/backends/ITermBackend.js')
   backendsRegistered = true
 }
 

@@ -24,7 +24,7 @@ import {
 import {
   is1PEventLoggingEnabled,
   logGrowthBookExperimentTo1P,
-} from './firstPartyEventLogger.js'
+} from 'src/services/analytics/firstPartyEventLogger.js'
 
 /**
  * User attributes sent to GrowthBook for targeting.

@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'fs/promises'
 import { basename, relative } from 'path'
-import { getWikiPaths } from './paths.js'
-import type { WikiInitResult } from './types.js'
+import { getWikiPaths } from 'src/services/wiki/paths.js'
+import type { WikiInitResult } from 'src/services/wiki/types.js'
 
 function buildSchemaTemplate(projectName: string): string {
   return `# Claudin Wiki Schema

@@ -51,10 +51,10 @@ import {
 import {
   getAddDirEnabledPlugins,
   getAddDirExtraMarketplaces,
-} from './addDirPluginSettings.js'
-import { markPluginVersionOrphaned } from './cacheUtils.js'
-import { classifyFetchError, logPluginFetch } from './fetchTelemetry.js'
-import { removeAllPluginsForMarketplace } from './installedPluginsManager.js'
+} from 'src/services/plugins/addDirPluginSettings.js'
+import { markPluginVersionOrphaned } from 'src/services/plugins/cacheUtils.js'
+import { classifyFetchError, logPluginFetch } from 'src/services/plugins/fetchTelemetry.js'
+import { removeAllPluginsForMarketplace } from 'src/services/plugins/installedPluginsManager.js'
 import {
   extractHostFromSource,
   formatSourceForDisplay,
@@ -62,19 +62,19 @@ import {
   getStrictKnownMarketplaces,
   isSourceAllowedByPolicy,
   isSourceInBlocklist,
-} from './marketplaceHelpers.js'
+} from 'src/services/plugins/marketplaceHelpers.js'
 import {
   OFFICIAL_MARKETPLACE_NAME,
   OFFICIAL_MARKETPLACE_SOURCE,
-} from './officialMarketplace.js'
-import { fetchOfficialMarketplaceFromGcs } from './officialMarketplaceGcs.js'
+} from 'src/services/plugins/officialMarketplace.js'
+import { fetchOfficialMarketplaceFromGcs } from 'src/services/plugins/officialMarketplaceGcs.js'
 import {
   deletePluginDataDir,
   getPluginSeedDirs,
   getPluginsDirectory,
-} from './pluginDirectories.js'
-import { parsePluginIdentifier } from './pluginIdentifier.js'
-import { deletePluginOptions } from './pluginOptionsStorage.js'
+} from 'src/services/plugins/pluginDirectories.js'
+import { parsePluginIdentifier } from 'src/services/plugins/pluginIdentifier.js'
+import { deletePluginOptions } from 'src/services/plugins/pluginOptionsStorage.js'
 import {
   isLocalMarketplaceSource,
   type KnownMarketplace,
@@ -85,7 +85,7 @@ import {
   type PluginMarketplaceEntry,
   PluginMarketplaceSchema,
   validateOfficialNameSource,
-} from './schemas.js'
+} from 'src/services/plugins/schemas.js'
 
 /**
  * Result of loading and caching a marketplace

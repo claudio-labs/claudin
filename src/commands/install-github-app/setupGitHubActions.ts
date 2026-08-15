@@ -12,7 +12,7 @@ import {
 import { openBrowser } from 'src/utils/browser.js'
 import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
 import { logError } from 'src/utils/log.js'
-import type { Workflow } from './types.js'
+import type { Workflow } from 'src/commands/install-github-app/types.js'
 
 async function createWorkflowFile(
   repoName: string,

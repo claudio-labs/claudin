@@ -10,10 +10,10 @@
 
 // Re-export sandbox types for SDK consumers
 // Re-export all generated types
-export * from './coreTypes.generated.js'
+export * from 'src/entrypoints/sdk/coreTypes.generated.js'
 
 // Re-export utility types that can't be expressed as Zod schemas
-export type { NonNullableUsage } from './sdkUtilityTypes.js'
+export type { NonNullableUsage } from 'src/entrypoints/sdk/sdkUtilityTypes.js'
 
 // Const arrays for runtime usage
 export const HOOK_EVENTS = [

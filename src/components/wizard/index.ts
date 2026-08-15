@@ -1,4 +1,4 @@
-export { useWizard } from './useWizard.js'
-export { WizardDialogLayout } from './WizardDialogLayout.js'
-export { WizardNavigationFooter } from './WizardNavigationFooter.js'
-export { WizardProvider } from './WizardProvider.js'
+export { useWizard } from 'src/components/wizard/useWizard.js'
+export { WizardDialogLayout } from 'src/components/wizard/WizardDialogLayout.js'
+export { WizardNavigationFooter } from 'src/components/wizard/WizardNavigationFooter.js'
+export { WizardProvider } from 'src/components/wizard/WizardProvider.js'

@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
-import { getCommandQueue, resetCommandQueue } from './messageQueueManager.js'
+import { getCommandQueue, resetCommandQueue } from 'src/utils/messageQueueManager.js'
 
 const realAnalytics = await import('src/services/analytics/index.js')
 
@@ -20,7 +20,7 @@ describe('handlePromptSubmit', () => {
   })
 
   it('queues prompt submissions during generation without interrupting the current turn', async () => {
-    const { handlePromptSubmit } = await import('./handlePromptSubmit.js')
+    const { handlePromptSubmit } = await import('src/utils/handlePromptSubmit.js')
 
     const abortCalls: unknown[] = []
     const inputChanges: string[] = []

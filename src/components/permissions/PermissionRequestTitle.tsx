@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { Box, Text } from 'src/ink.js';
 import type { Theme } from 'src/utils/theme.js';
-import type { WorkerBadgeProps } from './WorkerBadge.js';
+import type { WorkerBadgeProps } from 'src/components/permissions/WorkerBadge.js';
 type Props = {
   title: string;
   subtitle?: React.ReactNode;

@@ -6,7 +6,7 @@ import {
   getCommandName,
 } from 'src/commands.js'
 import type { SuggestionItem } from 'src/components/PromptInput/PromptInputFooterSuggestions.js'
-import { getSkillUsageScore } from './skillUsageTracking.js'
+import { getSkillUsageScore } from 'src/services/suggestions/skillUsageTracking.js'
 
 // Treat these characters as word separators for command search
 const SEPARATORS = /[:_-]/g

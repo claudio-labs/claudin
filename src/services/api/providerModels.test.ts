@@ -4,7 +4,7 @@ import {
   getPrimaryModel,
   hasMultipleModels,
   parseModelList,
-} from './providerModels.ts'
+} from 'src/services/api/providerModels.ts'
 
 // ── parseModelList ────────────────────────────────────────────────────────────
 

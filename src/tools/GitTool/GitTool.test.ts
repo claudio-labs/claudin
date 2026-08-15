@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { GitTool } from './GitTool.js'
+import { GitTool } from 'src/tools/GitTool/GitTool.js'
 
 /**
  * `isReadOnly` is the gate plan mode calls

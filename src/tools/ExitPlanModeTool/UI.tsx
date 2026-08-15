@@ -10,7 +10,7 @@ import type { ProgressMessage } from 'src/types/message.js';
 import { getDisplayPath } from 'src/utils/fs/file.js';
 import { getPlan } from 'src/utils/plans.js';
 import type { ThemeName } from 'src/utils/theme.js';
-import type { Output } from './ExitPlanModeV2Tool.js';
+import type { Output } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js';
 export function renderToolUseMessage(): React.ReactNode {
   return null;
 }

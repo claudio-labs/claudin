@@ -10,7 +10,7 @@ import { parseMsvcStyle } from 'src/tools/shared/diagnostics/msvcStyle.js'
 import { parsePhpstanJson, parsePsalmJson } from 'src/tools/shared/diagnostics/phpJson.js'
 import { parseMypyJson, parsePyrightJson } from 'src/tools/shared/diagnostics/pythonJson.js'
 import type { DiagnosticParser, ParseInput } from 'src/tools/shared/diagnostics/types.js'
-import type { Checker } from './types.js'
+import type { Checker } from 'src/tools/TypecheckTool/types.js'
 
 /**
  * This tool's checker → native-parser map. The chain itself, the ANSI strip and

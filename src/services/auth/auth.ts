@@ -30,11 +30,11 @@ import type { OAuthTokens, SubscriptionType } from 'src/services/oauth/types.js'
 import {
   getApiKeyFromFileDescriptor,
   getOAuthTokenFromFileDescriptor,
-} from './authFileDescriptor.js'
+} from 'src/services/auth/authFileDescriptor.js'
 import {
   maybeRemoveApiKeyFromMacOSKeychainThrows,
   normalizeApiKeyForConfig,
-} from './authPortable.js'
+} from 'src/services/auth/authPortable.js'
 import {
   checkStsCallerIdentity,
   clearAwsIniCache,

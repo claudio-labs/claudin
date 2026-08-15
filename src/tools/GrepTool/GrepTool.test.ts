@@ -9,7 +9,7 @@ import { getCwdState, setCwdState } from 'src/bootstrap/state.js'
 // Import GlobTool first so its UI resolves GrepTool only once GrepTool has
 // fully initialized — importing GrepTool alone trips a TDZ in the cycle.
 import 'src/tools/GlobTool/GlobTool.js'
-import { GrepTool, RG_LINE_RE, relativizeRgLine } from './GrepTool.js'
+import { GrepTool, RG_LINE_RE, relativizeRgLine } from 'src/tools/GrepTool/GrepTool.js'
 
 // ---------------------------------------------------------------------------
 // Regression + feature suite for GrepTool.

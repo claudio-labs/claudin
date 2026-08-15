@@ -18,7 +18,7 @@ import {
 import {
   AUTO_OUTLINE_PIVOT_FOOTER,
   FileReadTool,
-} from './FileReadTool.js'
+} from 'src/tools/FileReadTool/FileReadTool.js'
 
 // ---------------------------------------------------------------------------
 // AUTO_OUTLINE_ON_ELISION coverage.

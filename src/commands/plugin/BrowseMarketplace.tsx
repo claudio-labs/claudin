@@ -20,11 +20,11 @@ import { installPluginFromMarketplace } from 'src/services/plugins/pluginInstall
 import { isPluginBlockedByPolicy } from 'src/services/plugins/pluginPolicy.js';
 import { plural } from 'src/utils/text/stringUtils.js';
 import { truncateToWidth } from 'src/utils/text/truncate.js';
-import { findPluginOptionsTarget, PluginOptionsFlow } from './PluginOptionsFlow.js';
-import { PluginTrustWarning } from './PluginTrustWarning.js';
-import { buildPluginDetailsMenuOptions, extractGitHubRepo, type InstallablePlugin, PluginSelectionKeyHint } from './pluginDetailsHelpers.js';
-import type { ViewState as ParentViewState } from './types.js';
-import { usePagination } from './usePagination.js';
+import { findPluginOptionsTarget, PluginOptionsFlow } from 'src/commands/plugin/PluginOptionsFlow.js';
+import { PluginTrustWarning } from 'src/commands/plugin/PluginTrustWarning.js';
+import { buildPluginDetailsMenuOptions, extractGitHubRepo, type InstallablePlugin, PluginSelectionKeyHint } from 'src/commands/plugin/pluginDetailsHelpers.js';
+import type { ViewState as ParentViewState } from 'src/commands/plugin/types.js';
+import { usePagination } from 'src/commands/plugin/usePagination.js';
 type Props = {
   error: string | null;
   setError: (error: string | null) => void;

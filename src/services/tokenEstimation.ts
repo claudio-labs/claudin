@@ -9,7 +9,7 @@ import type { Attachment } from 'src/services/attachments/attachments.js'
 import { getModelBetas } from 'src/services/api/betas.js'
 import { estimateImageTokens } from 'src/services/context/imageTokenEstimator.js'
 import { getVertexRegionForModel, isEnvTruthy } from 'src/utils/envUtils.js'
-import { tryGetActiveProvider } from './api/activeProvider.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { logError } from 'src/utils/log.js'
 import { normalizeAttachmentForAPI } from 'src/services/messages/messages.js'
 import {
@@ -25,9 +25,9 @@ import {
 } from 'src/utils/model/model.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { isToolReferenceBlock } from 'src/services/tools/toolSearch.js'
-import { getAnthropicClient } from './api/client.js'
-import { getCachedAnthropicClient } from './api/clientCache.js'
-import { withTokenCountVCR } from './vcr.js'
+import { getAnthropicClient } from 'src/services/api/client.js'
+import { getCachedAnthropicClient } from 'src/services/api/clientCache.js'
+import { withTokenCountVCR } from 'src/services/vcr.js'
 
 // Minimal values for token counting with thinking enabled
 // API constraint: max_tokens must be greater than thinking.budget_tokens

@@ -7,7 +7,7 @@ import {
   loadConversationForResume,
   ResumeTranscriptTooLargeError,
   restoreSkillStateFromMessages,
-} from './conversationRecovery.js'
+} from 'src/services/session/conversationRecovery.js'
 import {
   getBashGitInstructionsAttachment,
   resetSentBashGitInstructions,

@@ -1,6 +1,6 @@
 import { useContext } from 'react'
-import type { WizardContextValue } from './types.js'
-import { WizardContext } from './WizardProvider.js'
+import type { WizardContextValue } from 'src/components/wizard/types.js'
+import { WizardContext } from 'src/components/wizard/WizardProvider.js'
 
 export function useWizard<
   T extends Record<string, unknown> = Record<string, unknown>,

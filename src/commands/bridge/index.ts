@@ -20,7 +20,7 @@ const bridge = {
     return !isEnabled()
   },
   immediate: true,
-  load: () => import('./bridge.js'),
+  load: () => import('src/commands/bridge/bridge.js'),
 } satisfies Command
 
 export default bridge

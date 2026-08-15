@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'bun:test'
 import { getEmptyToolPermissionContext } from 'src/Tool.js'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
-import { executeShellCommandsInPrompt } from './promptShellExecution.js'
+import { executeShellCommandsInPrompt } from 'src/utils/proc/promptShellExecution.js'
 
 const originalCall = BashTool.call
 const originalMapToolResultToToolResultBlockParam =

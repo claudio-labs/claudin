@@ -13,9 +13,9 @@ import { type OptionWithDescription, Select, SelectMulti } from 'src/components/
 import { Divider } from 'src/components/design-system/Divider.js';
 import { FilePathLink } from 'src/components/FilePathLink.js';
 import { PermissionRequestTitle } from 'src/components/permissions/PermissionRequestTitle.js';
-import { PreviewQuestionView } from './PreviewQuestionView.js';
-import { QuestionNavigationBar } from './QuestionNavigationBar.js';
-import type { QuestionState } from './use-multiple-choice-state.js';
+import { PreviewQuestionView } from 'src/components/permissions/AskUserQuestionPermissionRequest/PreviewQuestionView.js';
+import { QuestionNavigationBar } from 'src/components/permissions/AskUserQuestionPermissionRequest/QuestionNavigationBar.js';
+import type { QuestionState } from 'src/components/permissions/AskUserQuestionPermissionRequest/use-multiple-choice-state.js';
 type Props = {
   question: Question;
   questions: Question[];

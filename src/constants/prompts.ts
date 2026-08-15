@@ -5,7 +5,7 @@ import { getIsGit } from 'src/services/git/git.js'
 import { getCwd } from 'src/utils/fs/cwd.js'
 import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
 import { getCurrentWorktreeSession } from 'src/services/git/worktree.js'
-import { getSessionStartDate } from './common.js'
+import { getSessionStartDate } from 'src/constants/common.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import type { Tools } from 'src/Tool.js'
@@ -18,11 +18,11 @@ import {
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import { getSkillToolCommands } from 'src/commands.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
-import { getOutputStyleConfig } from './outputStyles.js'
+import { getOutputStyleConfig } from 'src/constants/outputStyles.js'
 import {
   getFamilyAddendum,
   getFamilyForLogging,
-} from './familyAddendums/index.js'
+} from 'src/constants/familyAddendums/index.js'
 import type {
   MCPServerConnection,
   ConnectedMCPServer,
@@ -48,9 +48,9 @@ import {
   systemPromptSection,
   DANGEROUS_uncachedSystemPromptSection,
   resolveSystemPromptSections,
-} from './systemPromptSections.js'
+} from 'src/constants/systemPromptSections.js'
 import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js'
-import { TICK_TAG } from './xml.js'
+import { TICK_TAG } from 'src/constants/xml.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { loadMemoryPrompt } from 'src/memdir/memdir.js'
 import { isMcpInstructionsDeltaEnabled } from 'src/services/mcp/mcpInstructionsDelta.js'
@@ -58,8 +58,8 @@ import {
   isAntiNarrationEnabled,
   isSubagentNotesEnabled,
   isWorkContractEnabled,
-} from './steeringToggles.js'
-import { WORKTREE_STASH_WARNING } from './worktreeSafety.js'
+} from 'src/constants/steeringToggles.js'
+import { WORKTREE_STASH_WARNING } from 'src/constants/worktreeSafety.js'
 
 // Dead code elimination: conditional imports for feature-gated modules
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -90,8 +90,8 @@ const skillSearchFeatureCheck = feature('EXPERIMENTAL_SKILL_SEARCH')
   ? (require('../services/skillSearch/featureCheck.js') as typeof import('../services/skillSearch/featureCheck.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
-import type { OutputStyleConfig } from './outputStyles.js'
-import { CYBER_RISK_INSTRUCTION } from './cyberRiskInstruction.js'
+import type { OutputStyleConfig } from 'src/constants/outputStyles.js'
+import { CYBER_RISK_INSTRUCTION } from 'src/constants/cyberRiskInstruction.js'
 
 export const CLAUDE_CODE_DOCS_MAP_URL =
   'https://code.claude.com/docs/en/claude_code_docs_map.md'

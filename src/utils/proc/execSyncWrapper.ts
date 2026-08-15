@@ -13,7 +13,7 @@ import { slowLogging } from 'src/utils/slowOperations.js'
  * Use this instead of child_process execSync directly to detect performance issues.
  *
  * @example
- * import { execSync_DEPRECATED } from './execSyncWrapper.js'
+ * import { execSync_DEPRECATED } from 'src/utils/proc/execSyncWrapper.js'
  * const result = execSync_DEPRECATED('git status', { encoding: 'utf8' })
  */
 export function execSync_DEPRECATED(command: string): Buffer

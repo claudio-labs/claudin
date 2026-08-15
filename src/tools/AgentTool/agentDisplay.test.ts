@@ -8,10 +8,10 @@ import {
   test,
 } from 'bun:test'
 
-import type { AgentDefinition } from './loadAgentsDir.js'
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 
 const realAgentUtil = { ...(await import('src/utils/model/agent.js')) }
-const realResolver = { ...(await import('./agentModelResolver.js')) }
+const realResolver = { ...(await import('src/tools/AgentTool/agentModelResolver.js')) }
 const realAllowlist = { ...(await import('src/utils/model/modelAllowlist.js')) }
 
 let providerIsClaudeNative = true
@@ -34,7 +34,7 @@ mock.module('src/utils/model/modelAllowlist.js', () => ({
     allowedAliases === null ? true : allowedAliases.has(m),
 }))
 
-const { resolveAgentModelDisplay } = await import('./agentDisplay.js')
+const { resolveAgentModelDisplay } = await import('src/tools/AgentTool/agentDisplay.js')
 
 function makeAgent(model: string | undefined): AgentDefinition {
   return {

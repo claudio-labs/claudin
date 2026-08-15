@@ -3,8 +3,8 @@ import React, { type PropsWithChildren, useContext, useInsertionEffect } from 'r
 import instances from 'src/ink/instances.js';
 import { DISABLE_MOUSE_TRACKING, ENABLE_MOUSE_TRACKING, ENTER_ALT_SCREEN, EXIT_ALT_SCREEN } from 'src/ink/termio/dec.js';
 import { TerminalWriteContext } from 'src/ink/useTerminalNotification.js';
-import Box from './Box.js';
-import { TerminalSizeContext } from './TerminalSizeContext.js';
+import Box from 'src/ink/components/Box.js';
+import { TerminalSizeContext } from 'src/ink/components/TerminalSizeContext.js';
 type Props = PropsWithChildren<{
   /** Enable SGR mouse tracking (wheel + click/drag). Default true. */
   mouseTracking?: boolean;

@@ -28,8 +28,8 @@ import type { ToolUseContext } from 'src/Tool.js'
 import type { MemoryFileInfo } from 'src/services/instructions/claudemd.js'
 import { FileStateCache } from 'src/utils/fs/fileStateCache.js'
 import { normalizeAttachmentForAPI } from 'src/services/messages/messages.js'
-import type { Attachment } from './types.js'
-import { memoryFilesToAttachments } from './memory.js'
+import type { Attachment } from 'src/services/attachments/types.js'
+import { memoryFilesToAttachments } from 'src/services/attachments/memory.js'
 
 // Long and unique so a partial re-emission (a truncated or re-wrapped
 // second copy) cannot accidentally match, and so a stray substring

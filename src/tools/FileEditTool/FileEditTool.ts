@@ -57,20 +57,20 @@ import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js
 import {
   FILE_EDIT_TOOL_NAME,
   FILE_UNEXPECTEDLY_MODIFIED_ERROR,
-} from './constants.js'
+} from 'src/tools/FileEditTool/constants.js'
 import {
   satisfiesReadGate,
   seenRegionCovers,
   unseenRegionMessage,
   writeFamilyReadGateError,
 } from 'src/tools/shared/readBeforeEditMessages.js'
-import { getEditToolDescription } from './prompt.js'
+import { getEditToolDescription } from 'src/tools/FileEditTool/prompt.js'
 import {
   type FileEditInput,
   type FileEditOutput,
   inputSchema,
   outputSchema,
-} from './types.js'
+} from 'src/tools/FileEditTool/types.js'
 import {
   getToolUseSummary,
   renderGroupedFileEditToolUse,
@@ -79,14 +79,14 @@ import {
   renderToolUseMessage,
   renderToolUseRejectedMessage,
   userFacingName,
-} from './UI.js'
+} from 'src/tools/FileEditTool/UI.js'
 import {
   areFileEditsInputsEquivalent,
   findActualString,
   getPatchForEdit,
   preserveQuoteStyle,
   resolveFuzzyEdit,
-} from './utils.js'
+} from 'src/tools/FileEditTool/utils.js'
 
 // V8/Bun string length limit is ~2^30 characters (~1 billion). For typical
 // ASCII/Latin-1 files, 1 byte on disk = 1 character, so 1 GiB in stat bytes

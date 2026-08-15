@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { PermissionMode } from 'src/types/permissions.js'
-import { clampMode, MODE_RANK } from './permissionClamp.js'
+import { clampMode, MODE_RANK } from 'src/tools/AgentWorkflow/permissionClamp.js'
 
 describe('clampMode', () => {
   test('returns the less permissive of desired vs session', () => {

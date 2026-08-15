@@ -3,9 +3,9 @@ import { toError } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
 import { getSettingsForSource } from 'src/services/settings/settings.js'
 import { plural } from 'src/utils/text/stringUtils.js'
-import { checkGitAvailable } from './gitAvailability.js'
-import { getMarketplace } from './marketplaceManager.js'
-import type { KnownMarketplace, MarketplaceSource } from './schemas.js'
+import { checkGitAvailable } from 'src/services/plugins/gitAvailability.js'
+import { getMarketplace } from 'src/services/plugins/marketplaceManager.js'
+import type { KnownMarketplace, MarketplaceSource } from 'src/services/plugins/schemas.js'
 
 /**
  * Format plugin failure details for user display

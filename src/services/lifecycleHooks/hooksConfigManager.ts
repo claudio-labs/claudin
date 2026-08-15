@@ -6,7 +6,7 @@ import {
   getAllHooks,
   type IndividualHookConfig,
   sortMatchersByPriority,
-} from './hooksSettings.js'
+} from 'src/services/lifecycleHooks/hooksSettings.js'
 
 export type MatcherMetadata = {
   fieldToMatch: string

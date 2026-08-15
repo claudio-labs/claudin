@@ -8,7 +8,7 @@ import {
   type ProviderProfile,
 } from 'src/services/config/config.js'
 import type { ModelOption } from 'src/utils/model/modelOptions.js'
-import { parseModelList } from './providerModels.js'
+import { parseModelList } from 'src/services/api/providerModels.js'
 
 export type ProviderPreset =
   | 'anthropic'

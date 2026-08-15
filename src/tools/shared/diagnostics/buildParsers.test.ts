@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { parseBunBuild } from './bunBuild.js'
-import { parseEsbuild } from './esbuild.js'
-import { parseGnuStyle } from './gnuStyle.js'
-import { parseDiagnostics } from './index.js'
-import { parseKotlinc } from './kotlinc.js'
-import { parseMixCompile } from './mixCompile.js'
-import { parseSbtBracket } from './sbtBracket.js'
-import type { ParseInput } from './types.js'
+import { parseBunBuild } from 'src/tools/shared/diagnostics/bunBuild.js'
+import { parseEsbuild } from 'src/tools/shared/diagnostics/esbuild.js'
+import { parseGnuStyle } from 'src/tools/shared/diagnostics/gnuStyle.js'
+import { parseDiagnostics } from 'src/tools/shared/diagnostics/index.js'
+import { parseKotlinc } from 'src/tools/shared/diagnostics/kotlinc.js'
+import { parseMixCompile } from 'src/tools/shared/diagnostics/mixCompile.js'
+import { parseSbtBracket } from 'src/tools/shared/diagnostics/sbtBracket.js'
+import type { ParseInput } from 'src/tools/shared/diagnostics/types.js'
 
 function input(stdout: string, exitCode = 1): ParseInput {
   return { stdout, stderr: '', exitCode }

@@ -18,11 +18,11 @@ import type {
   PermissionRule,
   PermissionRuleSource,
   PermissionRuleValue,
-} from './PermissionRule.js'
+} from 'src/services/permissions/PermissionRule.js'
 import {
   permissionRuleValueFromString,
   permissionRuleValueToString,
-} from './permissionRuleParser.js'
+} from 'src/services/permissions/permissionRuleParser.js'
 
 /**
  * Returns true if allowManagedPermissionRulesOnly is enabled in managed settings (policySettings).

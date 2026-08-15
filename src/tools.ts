@@ -1,5 +1,5 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
-import { toolMatchesName, type Tool, type Tools } from './Tool.js'
+import { toolMatchesName, type Tool, type Tools } from 'src/Tool.js'
 // All tool modules are loaded lazily to avoid evaluating ~50 tool schemas,
 // prompts, and dependency chains at module load time. This shaves significant
 // time off startup (the tools aren't needed until the action handler runs,
@@ -7,41 +7,41 @@ import { toolMatchesName, type Tool, type Tools } from './Tool.js'
 // first call, so each getter is effectively evaluated once.
 /* eslint-disable @typescript-eslint/no-require-imports */
 const getAgentTool = () =>
-  require('./tools/AgentTool/AgentTool.js').AgentTool as typeof import('./tools/AgentTool/AgentTool.js').AgentTool
+  require('src/tools/AgentTool/AgentTool.js').AgentTool as typeof import('src/tools/AgentTool/AgentTool.js').AgentTool
 const getSkillTool = () =>
-  require('./tools/SkillTool/SkillTool.js').SkillTool as typeof import('./tools/SkillTool/SkillTool.js').SkillTool
+  require('src/tools/SkillTool/SkillTool.js').SkillTool as typeof import('src/tools/SkillTool/SkillTool.js').SkillTool
 const getBashTool = () =>
-  require('./tools/BashTool/BashTool.js').BashTool as typeof import('./tools/BashTool/BashTool.js').BashTool
+  require('src/tools/BashTool/BashTool.js').BashTool as typeof import('src/tools/BashTool/BashTool.js').BashTool
 const getFileEditTool = () =>
-  require('./tools/FileEditTool/FileEditTool.js').FileEditTool as typeof import('./tools/FileEditTool/FileEditTool.js').FileEditTool
+  require('src/tools/FileEditTool/FileEditTool.js').FileEditTool as typeof import('src/tools/FileEditTool/FileEditTool.js').FileEditTool
 const getFileReadTool = () =>
-  require('./tools/FileReadTool/FileReadTool.js').FileReadTool as typeof import('./tools/FileReadTool/FileReadTool.js').FileReadTool
+  require('src/tools/FileReadTool/FileReadTool.js').FileReadTool as typeof import('src/tools/FileReadTool/FileReadTool.js').FileReadTool
 const getFileWriteTool = () =>
-  require('./tools/FileWriteTool/FileWriteTool.js').FileWriteTool as typeof import('./tools/FileWriteTool/FileWriteTool.js').FileWriteTool
+  require('src/tools/FileWriteTool/FileWriteTool.js').FileWriteTool as typeof import('src/tools/FileWriteTool/FileWriteTool.js').FileWriteTool
 const getApplyPatchTool = () =>
-  require('./tools/ApplyPatchTool/ApplyPatchTool.js').ApplyPatchTool as typeof import('./tools/ApplyPatchTool/ApplyPatchTool.js').ApplyPatchTool
+  require('src/tools/ApplyPatchTool/ApplyPatchTool.js').ApplyPatchTool as typeof import('src/tools/ApplyPatchTool/ApplyPatchTool.js').ApplyPatchTool
 const getGlobTool = () =>
-  require('./tools/GlobTool/GlobTool.js').GlobTool as typeof import('./tools/GlobTool/GlobTool.js').GlobTool
+  require('src/tools/GlobTool/GlobTool.js').GlobTool as typeof import('src/tools/GlobTool/GlobTool.js').GlobTool
 const getNotebookEditTool = () =>
-  require('./tools/NotebookEditTool/NotebookEditTool.js').NotebookEditTool as typeof import('./tools/NotebookEditTool/NotebookEditTool.js').NotebookEditTool
+  require('src/tools/NotebookEditTool/NotebookEditTool.js').NotebookEditTool as typeof import('src/tools/NotebookEditTool/NotebookEditTool.js').NotebookEditTool
 const getWebFetchTool = () =>
-  require('./tools/WebFetchTool/WebFetchTool.js').WebFetchTool as typeof import('./tools/WebFetchTool/WebFetchTool.js').WebFetchTool
+  require('src/tools/WebFetchTool/WebFetchTool.js').WebFetchTool as typeof import('src/tools/WebFetchTool/WebFetchTool.js').WebFetchTool
 const getTaskStopTool = () =>
-  require('./tools/TaskStopTool/TaskStopTool.js').TaskStopTool as typeof import('./tools/TaskStopTool/TaskStopTool.js').TaskStopTool
+  require('src/tools/TaskStopTool/TaskStopTool.js').TaskStopTool as typeof import('src/tools/TaskStopTool/TaskStopTool.js').TaskStopTool
 const getBriefTool = () =>
-  require('./tools/BriefTool/BriefTool.js').BriefTool as typeof import('./tools/BriefTool/BriefTool.js').BriefTool
+  require('src/tools/BriefTool/BriefTool.js').BriefTool as typeof import('src/tools/BriefTool/BriefTool.js').BriefTool
 const getLSPTool = () =>
-  require('./tools/LSPTool/LSPTool.js').LSPTool as typeof import('./tools/LSPTool/LSPTool.js').LSPTool
+  require('src/tools/LSPTool/LSPTool.js').LSPTool as typeof import('src/tools/LSPTool/LSPTool.js').LSPTool
 const getRunTestsTool = () =>
-  require('./tools/RunTestsTool/RunTestsTool.js').RunTestsTool as typeof import('./tools/RunTestsTool/RunTestsTool.js').RunTestsTool
+  require('src/tools/RunTestsTool/RunTestsTool.js').RunTestsTool as typeof import('src/tools/RunTestsTool/RunTestsTool.js').RunTestsTool
 const getTypecheckTool = () =>
-  require('./tools/TypecheckTool/TypecheckTool.js').TypecheckTool as typeof import('./tools/TypecheckTool/TypecheckTool.js').TypecheckTool
+  require('src/tools/TypecheckTool/TypecheckTool.js').TypecheckTool as typeof import('src/tools/TypecheckTool/TypecheckTool.js').TypecheckTool
 const getBuildTool = () =>
-  require('./tools/BuildTool/BuildTool.js').BuildTool as typeof import('./tools/BuildTool/BuildTool.js').BuildTool
+  require('src/tools/BuildTool/BuildTool.js').BuildTool as typeof import('src/tools/BuildTool/BuildTool.js').BuildTool
 const getGitTool = () =>
-  require('./tools/GitTool/GitTool.js').GitTool as typeof import('./tools/GitTool/GitTool.js').GitTool
+  require('src/tools/GitTool/GitTool.js').GitTool as typeof import('src/tools/GitTool/GitTool.js').GitTool
 const getRenameTool = () =>
-  require('./tools/RenameTool/RenameTool.js').RenameTool as typeof import('./tools/RenameTool/RenameTool.js').RenameTool
+  require('src/tools/RenameTool/RenameTool.js').RenameTool as typeof import('src/tools/RenameTool/RenameTool.js').RenameTool
 // Dead code elimination: conditional import for internal-only tools
 const REPLTool = null
 const SuggestBackgroundPRTool = null
@@ -50,20 +50,20 @@ const SleepTool =
     ? require('./tools/SleepTool/SleepTool.js').SleepTool
     : null
 const getCronTools = () => [
-  require('./tools/ScheduleCronTool/CronCreateTool.js').CronCreateTool,
-  require('./tools/ScheduleCronTool/CronDeleteTool.js').CronDeleteTool,
-  require('./tools/ScheduleCronTool/CronListTool.js').CronListTool,
+  require('src/tools/ScheduleCronTool/CronCreateTool.js').CronCreateTool,
+  require('src/tools/ScheduleCronTool/CronDeleteTool.js').CronDeleteTool,
+  require('src/tools/ScheduleCronTool/CronListTool.js').CronListTool,
   // One-shot in-session wakeup for /loop dynamic mode. Rides the session
   // cron delivery machinery, so it ships and gates alongside the cron tools
   // (isEnabled → isKairosCronEnabled).
-  require('./tools/ScheduleWakeupTool/ScheduleWakeupTool.js')
+  require('src/tools/ScheduleWakeupTool/ScheduleWakeupTool.js')
     .ScheduleWakeupTool,
 ]
 const RemoteTriggerTool = feature('AGENT_TRIGGERS_REMOTE')
-  ? require('./tools/RemoteTriggerTool/RemoteTriggerTool.js').RemoteTriggerTool
+  ? require('src/tools/RemoteTriggerTool/RemoteTriggerTool.js').RemoteTriggerTool
   : null
 const MonitorTool = feature('MONITOR_TOOL')
-  ? require('./tools/MonitorTool/MonitorTool.js').MonitorTool
+  ? require('src/tools/MonitorTool/MonitorTool.js').MonitorTool
   : null
 const SendUserFileTool = feature('KAIROS')
   ? require('./tools/SendUserFileTool/SendUserFileTool.js').SendUserFileTool
@@ -77,51 +77,51 @@ const SubscribePRTool = feature('KAIROS_GITHUB_WEBHOOKS')
   ? require('./tools/SubscribePRTool/SubscribePRTool.js').SubscribePRTool
   : null
 const getTaskOutputTool = () =>
-  require('./tools/TaskOutputTool/TaskOutputTool.js').TaskOutputTool as typeof import('./tools/TaskOutputTool/TaskOutputTool.js').TaskOutputTool
+  require('src/tools/TaskOutputTool/TaskOutputTool.js').TaskOutputTool as typeof import('src/tools/TaskOutputTool/TaskOutputTool.js').TaskOutputTool
 const getWebSearchTool = () =>
-  require('./tools/WebSearchTool/WebSearchTool.js').WebSearchTool as typeof import('./tools/WebSearchTool/WebSearchTool.js').WebSearchTool
+  require('src/tools/WebSearchTool/WebSearchTool.js').WebSearchTool as typeof import('src/tools/WebSearchTool/WebSearchTool.js').WebSearchTool
 const getTodoWriteTool = () =>
-  require('./tools/TodoWriteTool/TodoWriteTool.js').TodoWriteTool as typeof import('./tools/TodoWriteTool/TodoWriteTool.js').TodoWriteTool
+  require('src/tools/TodoWriteTool/TodoWriteTool.js').TodoWriteTool as typeof import('src/tools/TodoWriteTool/TodoWriteTool.js').TodoWriteTool
 const getExitPlanModeV2Tool = () =>
-  require('./tools/ExitPlanModeTool/ExitPlanModeV2Tool.js').ExitPlanModeV2Tool as typeof import('./tools/ExitPlanModeTool/ExitPlanModeV2Tool.js').ExitPlanModeV2Tool
+  require('src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js').ExitPlanModeV2Tool as typeof import('src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js').ExitPlanModeV2Tool
 const getTestingPermissionTool = () =>
-  require('./tools/testing/TestingPermissionTool.js').TestingPermissionTool as typeof import('./tools/testing/TestingPermissionTool.js').TestingPermissionTool
+  require('src/tools/testing/TestingPermissionTool.js').TestingPermissionTool as typeof import('src/tools/testing/TestingPermissionTool.js').TestingPermissionTool
 const getGrepTool = () =>
-  require('./tools/GrepTool/GrepTool.js').GrepTool as typeof import('./tools/GrepTool/GrepTool.js').GrepTool
+  require('src/tools/GrepTool/GrepTool.js').GrepTool as typeof import('src/tools/GrepTool/GrepTool.js').GrepTool
 // Lazy require to break circular dependency: tools.ts -> TeamCreateTool/TeamDeleteTool -> ... -> tools.ts
 const getTeamCreateTool = () =>
-  require('./tools/TeamCreateTool/TeamCreateTool.js')
-    .TeamCreateTool as typeof import('./tools/TeamCreateTool/TeamCreateTool.js').TeamCreateTool
+  require('src/tools/TeamCreateTool/TeamCreateTool.js')
+    .TeamCreateTool as typeof import('src/tools/TeamCreateTool/TeamCreateTool.js').TeamCreateTool
 const getTeamDeleteTool = () =>
-  require('./tools/TeamDeleteTool/TeamDeleteTool.js')
-    .TeamDeleteTool as typeof import('./tools/TeamDeleteTool/TeamDeleteTool.js').TeamDeleteTool
+  require('src/tools/TeamDeleteTool/TeamDeleteTool.js')
+    .TeamDeleteTool as typeof import('src/tools/TeamDeleteTool/TeamDeleteTool.js').TeamDeleteTool
 const getSendMessageTool = () =>
-  require('./tools/SendMessageTool/SendMessageTool.js')
-    .SendMessageTool as typeof import('./tools/SendMessageTool/SendMessageTool.js').SendMessageTool
+  require('src/tools/SendMessageTool/SendMessageTool.js')
+    .SendMessageTool as typeof import('src/tools/SendMessageTool/SendMessageTool.js').SendMessageTool
 const getAskUserQuestionTool = () =>
-  require('./tools/AskUserQuestionTool/AskUserQuestionTool.js').AskUserQuestionTool as typeof import('./tools/AskUserQuestionTool/AskUserQuestionTool.js').AskUserQuestionTool
+  require('src/tools/AskUserQuestionTool/AskUserQuestionTool.js').AskUserQuestionTool as typeof import('src/tools/AskUserQuestionTool/AskUserQuestionTool.js').AskUserQuestionTool
 const getReportFindingsTool = () =>
-  require('./tools/ReportFindingsTool/ReportFindingsTool.js').ReportFindingsTool as typeof import('./tools/ReportFindingsTool/ReportFindingsTool.js').ReportFindingsTool
+  require('src/tools/ReportFindingsTool/ReportFindingsTool.js').ReportFindingsTool as typeof import('src/tools/ReportFindingsTool/ReportFindingsTool.js').ReportFindingsTool
 const getToolSearchTool = () =>
-  require('./tools/ToolSearchTool/ToolSearchTool.js').ToolSearchTool as typeof import('./tools/ToolSearchTool/ToolSearchTool.js').ToolSearchTool
+  require('src/tools/ToolSearchTool/ToolSearchTool.js').ToolSearchTool as typeof import('src/tools/ToolSearchTool/ToolSearchTool.js').ToolSearchTool
 const getEnterPlanModeTool = () =>
-  require('./tools/EnterPlanModeTool/EnterPlanModeTool.js').EnterPlanModeTool as typeof import('./tools/EnterPlanModeTool/EnterPlanModeTool.js').EnterPlanModeTool
+  require('src/tools/EnterPlanModeTool/EnterPlanModeTool.js').EnterPlanModeTool as typeof import('src/tools/EnterPlanModeTool/EnterPlanModeTool.js').EnterPlanModeTool
 const getEnterWorktreeTool = () =>
-  require('./tools/EnterWorktreeTool/EnterWorktreeTool.js').EnterWorktreeTool as typeof import('./tools/EnterWorktreeTool/EnterWorktreeTool.js').EnterWorktreeTool
+  require('src/tools/EnterWorktreeTool/EnterWorktreeTool.js').EnterWorktreeTool as typeof import('src/tools/EnterWorktreeTool/EnterWorktreeTool.js').EnterWorktreeTool
 const getExitWorktreeTool = () =>
-  require('./tools/ExitWorktreeTool/ExitWorktreeTool.js').ExitWorktreeTool as typeof import('./tools/ExitWorktreeTool/ExitWorktreeTool.js').ExitWorktreeTool
+  require('src/tools/ExitWorktreeTool/ExitWorktreeTool.js').ExitWorktreeTool as typeof import('src/tools/ExitWorktreeTool/ExitWorktreeTool.js').ExitWorktreeTool
 const getTaskCreateTool = () =>
-  require('./tools/TaskCreateTool/TaskCreateTool.js').TaskCreateTool as typeof import('./tools/TaskCreateTool/TaskCreateTool.js').TaskCreateTool
+  require('src/tools/TaskCreateTool/TaskCreateTool.js').TaskCreateTool as typeof import('src/tools/TaskCreateTool/TaskCreateTool.js').TaskCreateTool
 const getTaskGetTool = () =>
-  require('./tools/TaskGetTool/TaskGetTool.js').TaskGetTool as typeof import('./tools/TaskGetTool/TaskGetTool.js').TaskGetTool
+  require('src/tools/TaskGetTool/TaskGetTool.js').TaskGetTool as typeof import('src/tools/TaskGetTool/TaskGetTool.js').TaskGetTool
 const getTaskUpdateTool = () =>
-  require('./tools/TaskUpdateTool/TaskUpdateTool.js').TaskUpdateTool as typeof import('./tools/TaskUpdateTool/TaskUpdateTool.js').TaskUpdateTool
+  require('src/tools/TaskUpdateTool/TaskUpdateTool.js').TaskUpdateTool as typeof import('src/tools/TaskUpdateTool/TaskUpdateTool.js').TaskUpdateTool
 const getTaskListTool = () =>
-  require('./tools/TaskListTool/TaskListTool.js').TaskListTool as typeof import('./tools/TaskListTool/TaskListTool.js').TaskListTool
+  require('src/tools/TaskListTool/TaskListTool.js').TaskListTool as typeof import('src/tools/TaskListTool/TaskListTool.js').TaskListTool
 // Dead code elimination: conditional import for CLAUDE_CODE_VERIFY_PLAN
 const VerifyPlanExecutionTool =
   process.env.CLAUDE_CODE_VERIFY_PLAN === 'true'
-    ? require('./tools/VerifyPlanExecutionTool/VerifyPlanExecutionTool.js')
+    ? require('src/tools/VerifyPlanExecutionTool/VerifyPlanExecutionTool.js')
         .VerifyPlanExecutionTool
     : null
 const SYNTHETIC_OUTPUT_TOOL_NAME = 'StructuredOutput'
@@ -139,7 +139,7 @@ const WebBrowserTool = feature('WEB_BROWSER_TOOL')
   ? require('./tools/WebBrowserTool/WebBrowserTool.js').WebBrowserTool
   : null
 const coordinatorModeModule = feature('COORDINATOR_MODE')
-  ? (require('./coordinator/coordinatorMode.js') as typeof import('./coordinator/coordinatorMode.js'))
+  ? (require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js'))
   : null
 const SnipTool = feature('HISTORY_SNIP')
   ? require('./tools/SnipTool/SnipTool.js').SnipTool
@@ -155,13 +155,13 @@ const WorkflowTool = feature('WORKFLOW_SCRIPTS')
   : null
 const agentWorkflowTools = feature('AGENT_WORKFLOWS')
   ? (
-      require('./tools/AgentWorkflow/tools.js') as typeof import('./tools/AgentWorkflow/tools.js')
+      require('src/tools/AgentWorkflow/tools.js') as typeof import('src/tools/AgentWorkflow/tools.js')
     ).getAgentWorkflowTools()
   : null
 const getPowerShellTool = () => {
   if (!isPowerShellToolEnabled()) return null
   return (
-    require('./tools/PowerShellTool/PowerShellTool.js') as typeof import('./tools/PowerShellTool/PowerShellTool.js')
+    require('src/tools/PowerShellTool/PowerShellTool.js') as typeof import('src/tools/PowerShellTool/PowerShellTool.js')
   ).PowerShellTool
 }
 /* eslint-enable @typescript-eslint/no-require-imports */
@@ -169,27 +169,27 @@ import { feature } from 'bun:bundle'
 import uniqBy from 'lodash-es/uniqBy.js'
 import { isToolSearchEnabledOptimistic } from 'src/services/tools/toolSearch.js'
 import { isTodoV2Enabled } from 'src/tasks/tasks.js'
-import type { ToolPermissionContext } from './Tool.js'
+import type { ToolPermissionContext } from 'src/Tool.js'
 import { getDenyRuleForTool } from 'src/services/permissions/permissions.js'
 import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
-import { isEnvTruthy } from './utils/envUtils.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { isPowerShellToolEnabled } from 'src/services/shell/shellToolUtils.js'
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
 import { isWorktreeModeEnabled } from 'src/services/git/worktreeModeEnabled.js'
 import { onGlobalConfigChange } from 'src/services/config/config.js'
-import { onRuntimeStateChange } from './bootstrap/state.js'
-import { onGrowthBookRefresh } from './services/analytics/growthbook.js'
+import { onRuntimeStateChange } from 'src/bootstrap/state.js'
+import { onGrowthBookRefresh } from 'src/services/analytics/growthbook.js'
 import {
   REPL_TOOL_NAME,
   REPL_ONLY_TOOLS,
   isReplModeEnabled,
-} from './tools/REPLTool/constants.js'
+} from 'src/tools/REPLTool/constants.js'
 export {
   ALL_AGENT_DISALLOWED_TOOLS,
   CUSTOM_AGENT_DISALLOWED_TOOLS,
   ASYNC_AGENT_ALLOWED_TOOLS,
   COORDINATOR_MODE_ALLOWED_TOOLS,
-} from './constants/tools.js'
+} from 'src/constants/tools.js'
 export { REPL_ONLY_TOOLS }
 
 // Cache for isEnabled() results. Keyed by tool name; invalidated on every

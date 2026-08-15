@@ -6,8 +6,8 @@ import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
 import { sleep } from 'src/utils/sleep.js'
-import type { createLSPClient as createLSPClientType } from './LSPClient.js'
-import type { LspServerState, ScopedLspServerConfig } from './types.js'
+import type { createLSPClient as createLSPClientType } from 'src/services/lsp/LSPClient.js'
+import type { LspServerState, ScopedLspServerConfig } from 'src/services/lsp/types.js'
 
 /**
  * LSP error code for "content modified" - indicates the server's state changed
@@ -116,7 +116,7 @@ export function createLSPServerInstance(
   // vscode-jsonrpc (~129KB) only loads when an LSP server is actually
   // instantiated, not when the static import chain reaches this module.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { createLSPClient } = require('./LSPClient.js') as {
+  const { createLSPClient } = require('src/services/lsp/LSPClient.js') as {
     createLSPClient: typeof createLSPClientType
   }
   let state: LspServerState = 'stopped'

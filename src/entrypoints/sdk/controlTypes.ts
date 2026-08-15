@@ -14,7 +14,7 @@
  */
 
 import type { z } from 'zod/v4'
-import type { SDKPartialAssistantMessageSchema } from './coreSchemas.js'
+import type { SDKPartialAssistantMessageSchema } from 'src/entrypoints/sdk/coreSchemas.js'
 import type {
   SDKControlCancelRequestSchema,
   SDKControlInitializeRequestSchema,
@@ -27,7 +27,7 @@ import type {
   SDKControlResponseSchema,
   StdinMessageSchema,
   StdoutMessageSchema,
-} from './controlSchemas.js'
+} from 'src/entrypoints/sdk/controlSchemas.js'
 
 // ============================================================================
 // Control requests

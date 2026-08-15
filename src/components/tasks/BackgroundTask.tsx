@@ -7,9 +7,9 @@ import { truncate } from 'src/utils/text/format.js';
 import { toInkColor } from 'src/utils/ink.js';
 import { plural } from 'src/utils/text/stringUtils.js';
 import { DIAMOND_FILLED, DIAMOND_OPEN } from 'src/constants/figures.js';
-import { RemoteSessionProgress } from './RemoteSessionProgress.js';
-import { ShellProgress, TaskStatusText } from './ShellProgress.js';
-import { describeTeammateActivity } from './taskStatusUtils.js';
+import { RemoteSessionProgress } from 'src/components/tasks/RemoteSessionProgress.js';
+import { ShellProgress, TaskStatusText } from 'src/components/tasks/ShellProgress.js';
+import { describeTeammateActivity } from 'src/components/tasks/taskStatusUtils.js';
 type Props = {
   task: DeepImmutable<BackgroundTaskState>;
   maxActivityWidth?: number;

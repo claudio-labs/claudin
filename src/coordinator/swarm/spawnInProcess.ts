@@ -40,7 +40,7 @@ import {
   registerAgent as registerPerfettoAgent,
   unregisterAgent as unregisterPerfettoAgent,
 } from 'src/services/telemetry/perfettoTracing.js'
-import { removeMemberByAgentId } from './teamHelpers.js'
+import { removeMemberByAgentId } from 'src/coordinator/swarm/teamHelpers.js'
 
 type SetAppStateFn = (updater: (prev: AppState) => AppState) => void
 

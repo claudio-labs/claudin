@@ -3,7 +3,7 @@ import * as React from 'react';
 import { Box, Text } from 'src/ink.js';
 import { getAgentName, getTeammateColor, getTeamName } from 'src/coordinator/teammate.js';
 import { Spinner } from 'src/components/Spinner.js';
-import { WorkerBadge } from './WorkerBadge.js';
+import { WorkerBadge } from 'src/components/permissions/WorkerBadge.js';
 type Props = {
   toolName: string;
   description: string;

@@ -3,8 +3,8 @@ import {
   execFileNoThrow,
   execFileNoThrowWithCwd,
 } from 'src/utils/proc/execFileNoThrow.js'
-import { getIsGit, gitExe } from './git.js'
-import { parseGitDiff, parseGitNumstat, type PerFileStats } from './gitDiff.js'
+import { getIsGit, gitExe } from 'src/services/git/git.js'
+import { parseGitDiff, parseGitNumstat, type PerFileStats } from 'src/services/git/gitDiff.js'
 
 // Read-only git data for the diff reviewer's Log tab and stash sources.
 // Kept separate from gitDiff.ts (which these import for parsing) and from

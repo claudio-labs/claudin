@@ -1,11 +1,11 @@
 import type { Key } from 'src/ink.js'
-import { getKeyName, matchesBinding } from './match.js'
-import { chordToString } from './parser.js'
+import { getKeyName, matchesBinding } from 'src/keybindings/match.js'
+import { chordToString } from 'src/keybindings/parser.js'
 import type {
   KeybindingContextName,
   ParsedBinding,
   ParsedKeystroke,
-} from './types.js'
+} from 'src/keybindings/types.js'
 
 export type ResolveResult =
   | { type: 'match'; action: string }

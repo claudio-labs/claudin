@@ -7,8 +7,8 @@ import type {
   ApplyPatchChangeType,
   ApplyPatchFileResult,
   ApplyPatchOutput,
-} from './applyPatch.js'
-import { parsePatch } from './patchFormat.js'
+} from 'src/tools/ApplyPatchTool/applyPatch.js'
+import { parsePatch } from 'src/tools/ApplyPatchTool/patchFormat.js'
 
 const LABEL: Record<ApplyPatchChangeType, string> = {
   add: 'Write',

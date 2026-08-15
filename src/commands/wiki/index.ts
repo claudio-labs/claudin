@@ -6,7 +6,7 @@ const wiki = {
   description: 'Initialize and inspect the Claudin project wiki',
   argumentHint: '[init|status]',
   immediate: true,
-  load: () => import('./wiki.js'),
+  load: () => import('src/commands/wiki/wiki.js'),
 } satisfies Command
 
 export default wiki

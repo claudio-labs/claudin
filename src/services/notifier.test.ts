@@ -5,7 +5,7 @@ import {
   makeDebouncer,
   pickOscChannel,
   xmlEscape,
-} from './notifierHelpers.js'
+} from 'src/services/notifierHelpers.js'
 
 describe('pickOscChannel', () => {
   test('maps known terminals to their native protocol', () => {

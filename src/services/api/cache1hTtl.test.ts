@@ -35,7 +35,7 @@ async function importFresh() {
   // claude.ts uses internally. Reset the latch manually.
   const state = await import('src/bootstrap/state.js')
   state.setLargeSystemPromptDetected(null)
-  const claude = await import('./claude.js')
+  const claude = await import('src/services/api/claude.js')
   return { claude, state }
 }
 

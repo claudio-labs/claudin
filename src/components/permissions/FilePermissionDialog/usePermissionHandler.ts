@@ -20,7 +20,7 @@ import type { ToolUseConfirm } from 'src/components/permissions/PermissionReques
 import type {
   FileOperationType,
   PermissionOption,
-} from './permissionOptions.js'
+} from 'src/components/permissions/FilePermissionDialog/permissionOptions.js'
 
 function logPermissionEvent(
   event: 'accept' | 'reject',

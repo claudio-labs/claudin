@@ -1,6 +1,6 @@
 import type { StructuredPatchHunk } from 'diff'
 import { describe, expect, test } from 'bun:test'
-import { buildDiffRenderModel } from './collapse.js'
+import { buildDiffRenderModel } from 'src/components/diff/collapse.js'
 
 // A 20-line file; one hunk touching new lines 8-10 (3 context lines built in
 // by git would normally widen this, but we keep it tight to exercise gaps).

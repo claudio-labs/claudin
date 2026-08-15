@@ -1,7 +1,7 @@
 import memoize from 'lodash-es/memoize.js'
 import * as path from 'path'
 import * as pathWin32 from 'path/win32'
-import { getCwd } from './cwd.js'
+import { getCwd } from 'src/utils/fs/cwd.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { execSync_DEPRECATED } from 'src/utils/proc/execSyncWrapper.js'
 import { memoizeWithLRU } from 'src/utils/data/memoize.js'

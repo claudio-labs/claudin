@@ -4,7 +4,7 @@ import {
   estimateImageTokens,
   IMAGE_TOKEN_FALLBACK,
   parseImageDimensions,
-} from './imageTokenEstimator.js'
+} from 'src/services/context/imageTokenEstimator.js'
 
 // ------------------------------------------------------------------
 // Synthetic image header builders. Each returns a base64 string with

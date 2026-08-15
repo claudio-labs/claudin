@@ -4,8 +4,8 @@ import {
   DiscreteEventPriority,
 } from 'react-reconciler/constants.js'
 import { logError } from 'src/utils/log.js'
-import { HANDLER_FOR_EVENT } from './event-handlers.js'
-import type { EventTarget, TerminalEvent } from './terminal-event.js'
+import { HANDLER_FOR_EVENT } from 'src/ink/events/event-handlers.js'
+import type { EventTarget, TerminalEvent } from 'src/ink/events/terminal-event.js'
 
 // --
 

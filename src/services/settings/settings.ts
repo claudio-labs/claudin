@@ -27,13 +27,13 @@ import {
   type EditableSettingSource,
   getEnabledSettingSources,
   type SettingSource,
-} from './constants.js'
-import { markInternalWrite } from './internalWrites.js'
+} from 'src/services/settings/constants.js'
+import { markInternalWrite } from 'src/services/settings/internalWrites.js'
 import {
   getManagedFilePath,
   getManagedSettingsDropInDir,
-} from './managedPath.js'
-import { getHkcuSettings, getMdmSettings } from './mdm/settings.js'
+} from 'src/services/settings/managedPath.js'
+import { getHkcuSettings, getMdmSettings } from 'src/services/settings/mdm/settings.js'
 import {
   getCachedParsedFile,
   getCachedSettingsForSource,
@@ -43,14 +43,14 @@ import {
   setCachedParsedFile,
   setCachedSettingsForSource,
   setSessionSettingsCache,
-} from './settingsCache.js'
-import { type SettingsJson, SettingsSchema } from './types.js'
+} from 'src/services/settings/settingsCache.js'
+import { type SettingsJson, SettingsSchema } from 'src/services/settings/types.js'
 import {
   filterInvalidPermissionRules,
   formatZodError,
   type SettingsWithErrors,
   type ValidationError,
-} from './validation.js'
+} from 'src/services/settings/validation.js'
 
 /**
  * Get the path to the managed settings file based on the current platform

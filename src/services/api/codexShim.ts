@@ -1,21 +1,21 @@
 import * as os from 'node:os'
 import { APIError } from '@anthropic-ai/sdk'
-import { buildAnthropicUsageFromRawUsage } from './cacheMetrics.js'
+import { buildAnthropicUsageFromRawUsage } from 'src/services/api/cacheMetrics.js'
 import { applyStableStubs } from 'src/services/compact/stableStubState.js'
-import { fetchWithProxyRetry } from './fetchWithProxyRetry.js'
+import { fetchWithProxyRetry } from 'src/services/api/fetchWithProxyRetry.js'
 import { stableStringify } from 'src/utils/data/stableStringify.js'
 import { getSessionId } from 'src/bootstrap/state.js'
 import type {
   ResolvedCodexCredentials,
   ResolvedProviderRequest,
-} from './providerConfig.js'
-import { isCodexBaseUrl } from './providerConfig.js'
+} from 'src/services/api/providerConfig.js'
+import { isCodexBaseUrl } from 'src/services/api/providerConfig.js'
 declare const MACRO: { VERSION: string; DISPLAY_VERSION?: string }
-import { sanitizeSchemaForOpenAICompat } from './openaiSchemaSanitizer.js'
+import { sanitizeSchemaForOpenAICompat } from 'src/services/api/openaiSchemaSanitizer.js'
 import {
   createThinkTagFilter,
   stripThinkTags,
-} from './thinkTagSanitizer.js'
+} from 'src/services/api/thinkTagSanitizer.js'
 
 export interface AnthropicUsage {
   input_tokens: number

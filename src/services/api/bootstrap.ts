@@ -20,11 +20,11 @@ import {
   listOpenAICompatibleModels,
 } from 'src/services/api/providerDiscovery.js'
 import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
-import { tryGetActiveProvider } from './activeProvider.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import {
   getAdditionalModelOptionsCacheScope,
   resolveProviderRequest,
-} from './providerConfig.js'
+} from 'src/services/api/providerConfig.js'
 
 const bootstrapResponseSchema = lazySchema(() =>
   z.object({

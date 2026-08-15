@@ -9,8 +9,8 @@ import {
 } from 'src/utils/frontmatterParser.js'
 import { getFsImplementation, isDuplicatePath } from 'src/utils/fs/fsOperations.js'
 import { extractDescriptionFromMarkdown } from 'src/services/instructions/markdownConfigLoader.js'
-import { loadAllPluginsCacheOnly } from './pluginLoader.js'
-import { walkPluginMarkdown } from './walkPluginMarkdown.js'
+import { loadAllPluginsCacheOnly } from 'src/services/plugins/pluginLoader.js'
+import { walkPluginMarkdown } from 'src/services/plugins/walkPluginMarkdown.js'
 
 async function loadOutputStylesFromDirectory(
   outputStylesPath: string,

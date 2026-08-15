@@ -64,15 +64,15 @@ import {
   getToolUseIDFromParentMessage,
   tagMessagesWithToolUseID,
 } from 'src/tools/utils.js'
-import { SKILL_TOOL_NAME } from './constants.js'
-import { getPrompt } from './prompt.js'
+import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
+import { getPrompt } from 'src/tools/SkillTool/prompt.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
   renderToolUseProgressMessage,
   renderToolUseRejectedMessage,
-} from './UI.js'
+} from 'src/tools/SkillTool/UI.js'
 
 /**
  * Gets all commands including MCP skills/prompts from AppState.

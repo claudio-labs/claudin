@@ -11,7 +11,7 @@ import {
 import {
   getHooksConfigFromSnapshot,
   shouldAllowManagedHooksOnly,
-} from './hooksConfigSnapshot.js'
+} from 'src/services/lifecycleHooks/hooksConfigSnapshot.js'
 import { ALLOWED_OFFICIAL_MARKETPLACE_NAMES } from 'src/services/plugins/schemas.js'
 import type {
   HookEvent,
@@ -36,11 +36,11 @@ import {
   getSessionFunctionHooks,
   type SessionDerivedHookMatcher,
   type FunctionHook,
-} from './sessionHooks.js'
+} from 'src/services/lifecycleHooks/sessionHooks.js'
 import type { AppState } from 'src/state/AppState.js'
 import { DEFAULT_HOOK_SHELL } from 'src/services/shell/shellProvider.js'
-import type { MatchedHook } from './types.js'
-import { hookDedupKey } from './shared.js'
+import type { MatchedHook } from 'src/services/lifecycleHooks/types.js'
+import { hookDedupKey } from 'src/services/lifecycleHooks/shared.js'
 
 type FunctionHookMatcher = {
   matcher: string

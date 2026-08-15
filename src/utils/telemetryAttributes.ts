@@ -2,8 +2,8 @@ import type { Attributes } from 'src/vendor/otel.js'
 import { getSessionId } from 'src/bootstrap/state.js'
 import { getOauthAccountInfo } from 'src/services/auth/auth.js'
 import { getOrCreateUserID } from 'src/services/config/config.js'
-import { envDynamic } from './envDynamic.js'
-import { isEnvTruthy } from './envUtils.js'
+import { envDynamic } from 'src/utils/envDynamic.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { toTaggedId } from 'src/utils/data/taggedId.js'
 
 // Default configuration for metrics cardinality

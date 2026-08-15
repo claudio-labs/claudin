@@ -23,7 +23,7 @@
 import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
 import type { UUID } from 'crypto'
 
-import type { ResumeSessionDeps } from './resumeSession.js'
+import type { ResumeSessionDeps } from 'src/screens/repl/services/resumeSession.js'
 import type { LogOption } from 'src/types/logs.js'
 
 // --- module mocks (must be installed before importing the SUT) -----------
@@ -207,7 +207,7 @@ mock.module('src/types/ids.js', () => ({
 
 // --- SUT import (after mocks) -------------------------------------------
 
-const { resumeSession } = await import('./resumeSession.js')
+const { resumeSession } = await import('src/screens/repl/services/resumeSession.js')
 
 // --- harness ------------------------------------------------------------
 

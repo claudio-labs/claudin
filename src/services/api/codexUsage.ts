@@ -9,7 +9,7 @@ import {
   isCodexBaseUrl,
   resolveRuntimeCodexCredentials,
   resolveProviderRequest,
-} from './providerConfig.js'
+} from 'src/services/api/providerConfig.js'
 
 export type CodexUsageWindow = {
   usedPercent: number

@@ -1,6 +1,6 @@
-import type { SettingSource } from './constants.js'
-import type { SettingsJson } from './types.js'
-import type { SettingsWithErrors, ValidationError } from './validation.js'
+import type { SettingSource } from 'src/services/settings/constants.js'
+import type { SettingsJson } from 'src/services/settings/types.js'
+import type { SettingsWithErrors, ValidationError } from 'src/services/settings/validation.js'
 
 let sessionSettingsCache: SettingsWithErrors | null = null
 

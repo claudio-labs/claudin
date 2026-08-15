@@ -1,5 +1,5 @@
 import type { Command } from 'src/commands.js'
-import { createStore } from './store.js'
+import { createStore } from 'src/state/store.js'
 
 const pluginCommandsStore = createStore<Command[]>([])
 

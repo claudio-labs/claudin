@@ -1,11 +1,11 @@
 import type { StructuredPatchHunk } from 'diff'
 import { describe, expect, test } from 'bun:test'
-import type { TurnDiff } from './useTurnDiffs.js'
+import type { TurnDiff } from 'src/hooks/useTurnDiffs.js'
 import {
   applyToolResultToTurn,
   isApplyPatchResult,
   mergeFileDiff,
-} from './useTurnDiffs.js'
+} from 'src/hooks/useTurnDiffs.js'
 
 const hunk = (lines: string[]): StructuredPatchHunk => ({
   oldStart: 1,

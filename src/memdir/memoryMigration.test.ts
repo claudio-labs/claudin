@@ -8,7 +8,7 @@ import {
 } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { migrateGlobalMemoryIfNeeded } from './memoryMigration.js'
+import { migrateGlobalMemoryIfNeeded } from 'src/memdir/memoryMigration.js'
 
 function freshDir(prefix: string): string {
   return mkdtempSync(join(tmpdir(), prefix))

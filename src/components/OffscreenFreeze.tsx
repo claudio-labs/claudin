@@ -1,7 +1,7 @@
 import React, { useContext, useRef } from 'react';
 import { useTerminalViewport } from 'src/ink/hooks/use-terminal-viewport.js';
 import { Box } from 'src/ink.js';
-import { InVirtualListContext } from './messageActions.js';
+import { InVirtualListContext } from 'src/components/messageActions.js';
 type Props = {
   children: React.ReactNode;
 };

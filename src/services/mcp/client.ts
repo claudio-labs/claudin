@@ -21,15 +21,15 @@ export {
   McpAuthError,
   McpToolCallError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   isMcpSessionExpiredError,
-} from './client/errors.js'
+} from 'src/services/mcp/client/errors.js'
 
-export { clearMcpAuthCache } from './client/authCache.js'
+export { clearMcpAuthCache } from 'src/services/mcp/client/authCache.js'
 
 export {
   createClaudeAiProxyFetch,
   wrapFetchWithTimeout,
   getMcpServerConnectionBatchSize,
-} from './client/fetch.js'
+} from 'src/services/mcp/client/fetch.js'
 
 export {
   cleanupFailedConnection,
@@ -38,7 +38,7 @@ export {
   clearServerCache,
   ensureConnectedClient,
   areMcpConfigsEqual,
-} from './client/connection.js'
+} from 'src/services/mcp/client/connection.js'
 
 export {
   transformResultContent,
@@ -47,9 +47,9 @@ export {
   processMCPResult,
   type MCPResultType,
   type TransformedMCPResult,
-} from './client/toolResult.js'
+} from 'src/services/mcp/client/toolResult.js'
 
-export { callMCPToolWithUrlElicitationRetry } from './client/callTool.js'
+export { callMCPToolWithUrlElicitationRetry } from 'src/services/mcp/client/callTool.js'
 
 export {
   mcpToolInputToAutoClassifierInput,
@@ -59,8 +59,8 @@ export {
   reconnectMcpServerImpl,
   getMcpToolsCommandsAndResources,
   prefetchAllMcpResources,
-} from './client/fetchCapabilities.js'
+} from 'src/services/mcp/client/fetchCapabilities.js'
 
-export { callIdeRpc } from './client/ide.js'
+export { callIdeRpc } from 'src/services/mcp/client/ide.js'
 
-export { setupSdkMcpClients } from './client/sdkClients.js'
+export { setupSdkMcpClients } from 'src/services/mcp/client/sdkClients.js'

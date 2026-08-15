@@ -49,7 +49,7 @@ import {
   initTaskOutputAsSymlink,
 } from 'src/tasks/diskOutput.js'
 import { registerTask, updateTaskState } from 'src/tasks/framework.js'
-import type { LocalAgentTaskState } from './LocalAgentTask/LocalAgentTask.js'
+import type { LocalAgentTaskState } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
 
 // Main session tasks use LocalAgentTaskState with agentType='main-session'
 export type LocalMainSessionTaskState = LocalAgentTaskState & {

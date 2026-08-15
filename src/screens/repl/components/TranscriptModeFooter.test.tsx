@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import * as React from 'react'
 import { renderToString } from 'src/components/staticRender.js'
-import { TranscriptModeFooter } from './TranscriptModeFooter.js'
+import { TranscriptModeFooter } from 'src/screens/repl/components/TranscriptModeFooter.js'
 
 // `useShortcutDisplay` falls back to the third argument when no keybinding
 // context is mounted (see src/keybindings/useShortcutDisplay.ts:36-58), so

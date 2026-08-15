@@ -8,12 +8,12 @@ import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
 import { logForDebugging } from 'src/utils/debug.js';
 import { detectCurrentRepository } from 'src/services/git/detectRepository.js';
 import { formatRelativeTime } from 'src/utils/text/format.js';
-import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
-import { Select } from './CustomSelect/index.js';
-import { Byline } from './design-system/Byline.js';
-import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
-import { Spinner } from './Spinner.js';
-import { TeleportError } from './TeleportError.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { Select } from 'src/components/CustomSelect/index.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { Spinner } from 'src/components/Spinner.js';
+import { TeleportError } from 'src/components/TeleportError.js';
 type Props = {
   onSelect: (session: CodeSession) => void;
   onCancel: () => void;

@@ -27,7 +27,7 @@ import {
   resetGoalStateForSessionEnd,
   setActiveGoal,
   shouldWarnGoalCheckIncomplete,
-} from './goal.js'
+} from 'src/services/goal/goal.js'
 
 const SESSION_ID = 'test-session'
 

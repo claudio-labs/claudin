@@ -8,7 +8,7 @@ import {
 import {
   fetchWithProxyRetry,
   isRetryableFetchError,
-} from './fetchWithProxyRetry.js'
+} from 'src/services/api/fetchWithProxyRetry.js'
 
 type FetchType = typeof globalThis.fetch
 

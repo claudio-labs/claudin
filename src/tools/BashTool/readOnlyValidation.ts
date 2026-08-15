@@ -20,15 +20,15 @@ import {
   RIPGREP_READ_ONLY_COMMANDS,
   validateFlags,
 } from 'src/services/shell/readOnlyCommandValidation.js'
-import type { BashTool } from './BashTool.js'
-import { isNormalizedGitCommand } from './bashPermissions.js'
-import { bashCommandIsSafe_DEPRECATED } from './bashSecurity.js'
+import type { BashTool } from 'src/tools/BashTool/BashTool.js'
+import { isNormalizedGitCommand } from 'src/tools/BashTool/bashPermissions.js'
+import { bashCommandIsSafe_DEPRECATED } from 'src/tools/BashTool/bashSecurity.js'
 import {
   COMMAND_OPERATION_TYPE,
   PATH_EXTRACTORS,
   type PathCommand,
-} from './pathValidation.js'
-import { sedCommandIsAllowedByAllowlist } from './sedValidation.js'
+} from 'src/tools/BashTool/pathValidation.js'
+import { sedCommandIsAllowedByAllowlist } from 'src/tools/BashTool/sedValidation.js'
 
 // Unified command validation configuration system
 type CommandConfig = {

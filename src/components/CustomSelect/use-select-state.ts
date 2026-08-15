@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
-import type { OptionWithDescription } from './select.js'
-import { useSelectNavigation } from './use-select-navigation.js'
+import type { OptionWithDescription } from 'src/components/CustomSelect/select.js'
+import { useSelectNavigation } from 'src/components/CustomSelect/use-select-navigation.js'
 
 export type UseSelectStateProps<T> = {
   /**

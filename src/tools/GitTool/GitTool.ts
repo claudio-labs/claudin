@@ -2,24 +2,24 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 import { z } from 'zod/v4'
 import { buildTool, type ToolCallProgress, type ToolDef } from 'src/Tool.js'
 import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { isReadOnlyGitBatch, parseGitCommand } from './grammar.js'
-import { checkGitBatchPermission } from './permissions.js'
-import { DESCRIPTION, GIT_TOOL_NAME } from './prompt.js'
+import { isReadOnlyGitBatch, parseGitCommand } from 'src/tools/GitTool/grammar.js'
+import { checkGitBatchPermission } from 'src/tools/GitTool/permissions.js'
+import { DESCRIPTION, GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js'
 import {
   batchFailed,
   DEFAULT_TIMEOUT_MS,
   formatGitBatchResult,
   runGitBatch,
   WATCH_DEFAULT_TIMEOUT_MS,
-} from './run.js'
-import type { GitBatchResult, GitProgress } from './types.js'
+} from 'src/tools/GitTool/run.js'
+import type { GitBatchResult, GitProgress } from 'src/tools/GitTool/types.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
   renderToolUseProgressMessage,
   userFacingName,
-} from './UI.js'
+} from 'src/tools/GitTool/UI.js'
 
 /**
  * `Git` — run git and gh commands with a budgeted result instead of raw shell

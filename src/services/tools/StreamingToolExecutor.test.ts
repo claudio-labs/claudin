@@ -11,7 +11,7 @@ import type { AssistantMessage } from 'src/types/message.js'
 // attempt — and exposes that controller so tests can drive the two abort
 // directions (discard vs permission rejection).
 let capturedToolAbortController: AbortController | undefined
-const realToolExecution = await import('./toolExecution.js')
+const realToolExecution = await import('src/services/tools/toolExecution.js')
 mock.module('./toolExecution.js', () => ({
   ...realToolExecution,
   runToolUse: async function* (
@@ -31,7 +31,7 @@ mock.module('./toolExecution.js', () => ({
     })
   },
 }))
-const { StreamingToolExecutor } = await import('./StreamingToolExecutor.js')
+const { StreamingToolExecutor } = await import('src/services/tools/StreamingToolExecutor.js')
 
 // Re-pin the mocked module to its captured real namespace. Bun's
 // `mock.module` is process-global and `mock.restore()` does not undo it, so

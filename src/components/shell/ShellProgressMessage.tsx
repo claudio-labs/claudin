@@ -5,7 +5,7 @@ import { Box, Text } from 'src/ink.js';
 import { formatFileSize } from 'src/utils/text/format.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { OffscreenFreeze } from 'src/components/OffscreenFreeze.js';
-import { ShellElapsedTime } from './ShellElapsedTime.js';
+import { ShellElapsedTime } from 'src/components/shell/ShellElapsedTime.js';
 type Props = {
   output: string;
   fullOutput: string;

@@ -11,9 +11,9 @@ import { logForDebugging } from 'src/utils/debug.js'
 import { isEnvDefinedFalsy } from 'src/utils/envUtils.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
-import { clearMcpAuthCache } from './client.js'
-import { normalizeNameForMCP } from './normalization.js'
-import type { ScopedMcpServerConfig } from './types.js'
+import { clearMcpAuthCache } from 'src/services/mcp/client.js'
+import { normalizeNameForMCP } from 'src/services/mcp/normalization.js'
+import type { ScopedMcpServerConfig } from 'src/services/mcp/types.js'
 
 type ClaudeAIMcpServer = {
   type: 'mcp_server'

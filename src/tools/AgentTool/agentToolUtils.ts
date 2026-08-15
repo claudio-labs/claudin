@@ -57,8 +57,8 @@ import { emitTaskProgress as emitTaskProgressEvent } from 'src/tasks/sdkProgress
 import { isInProcessTeammate } from 'src/coordinator/teammateContext.js'
 import { getTokenCountFromUsage } from 'src/services/context/tokens.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
-import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } from './constants.js'
-import type { AgentDefinition } from './loadAgentsDir.js'
+import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 export type ResolvedAgentTools = {
   hasWildcard: boolean
   validTools: string[]

@@ -25,18 +25,18 @@ import { readFileSafe } from 'src/utils/fs/file.js'
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js'
 import { buildAddedFileHunks } from 'src/services/git/gitDiff.js'
 import { Dialog } from 'src/components/design-system/Dialog.js'
-import { buildDiffRenderModel } from './collapse.js'
-import { CommitFileList } from './CommitFileList.js'
-import { CommitGraph } from './CommitGraph.js'
+import { buildDiffRenderModel } from 'src/components/diff/collapse.js'
+import { CommitFileList } from 'src/components/diff/CommitFileList.js'
+import { CommitGraph } from 'src/components/diff/CommitGraph.js'
 import {
   buildTreeRows,
   DiffFileList,
   flattenGroupFiles,
   INLINE_LIST_WIDTH,
   type TreeRow,
-} from './DiffFileList.js'
-import { DiffPane, renderDiffRows } from './DiffPane.js'
-import type { DiffSegment, DiffSource, RepoGroup } from './types.js'
+} from 'src/components/diff/DiffFileList.js'
+import { DiffPane, renderDiffRows } from 'src/components/diff/DiffPane.js'
+import type { DiffSegment, DiffSource, RepoGroup } from 'src/components/diff/types.js'
 
 type Props = {
   messages: Parameters<typeof useTurnDiffs>[0]

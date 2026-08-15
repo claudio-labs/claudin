@@ -34,9 +34,9 @@ import { FullscreenLayout } from 'src/components/FullscreenLayout.js'
 import { AlternateScreen } from 'src/ink/components/AlternateScreen.js'
 import { SandboxViolationExpandedView } from 'src/components/SandboxViolationExpandedView.js'
 import { isFullscreenEnvEnabled, isMouseTrackingEnabled } from 'src/utils/fullscreen.js'
-import { AnimatedTerminalTitle } from './AnimatedTerminalTitle.js'
-import { TranscriptSearchBar } from './TranscriptSearchBar.js'
-import { TranscriptModeFooter } from './TranscriptModeFooter.js'
+import { AnimatedTerminalTitle } from 'src/screens/repl/components/AnimatedTerminalTitle.js'
+import { TranscriptSearchBar } from 'src/screens/repl/components/TranscriptSearchBar.js'
+import { TranscriptModeFooter } from 'src/screens/repl/components/TranscriptModeFooter.js'
 import type { JumpHandle } from 'src/components/VirtualMessageList.js'
 
 export type REPLTranscriptViewProps = {

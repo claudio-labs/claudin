@@ -8,13 +8,13 @@ import type { AppState } from 'src/state/AppState.js';
 import { useAppState } from 'src/state/AppState.js';
 import type { Tool } from 'src/Tool.js';
 import { getSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js';
-import { MCPAgentServerMenu } from './MCPAgentServerMenu.js';
-import { MCPListPanel } from './MCPListPanel.js';
-import { MCPRemoteServerMenu } from './MCPRemoteServerMenu.js';
-import { MCPStdioServerMenu } from './MCPStdioServerMenu.js';
-import { MCPToolDetailView } from './MCPToolDetailView.js';
-import { MCPToolListView } from './MCPToolListView.js';
-import type { AgentMcpServerInfo, MCPViewState, ServerInfo } from './types.js';
+import { MCPAgentServerMenu } from 'src/components/mcp/MCPAgentServerMenu.js';
+import { MCPListPanel } from 'src/components/mcp/MCPListPanel.js';
+import { MCPRemoteServerMenu } from 'src/components/mcp/MCPRemoteServerMenu.js';
+import { MCPStdioServerMenu } from 'src/components/mcp/MCPStdioServerMenu.js';
+import { MCPToolDetailView } from 'src/components/mcp/MCPToolDetailView.js';
+import { MCPToolListView } from 'src/components/mcp/MCPToolListView.js';
+import type { AgentMcpServerInfo, MCPViewState, ServerInfo } from 'src/components/mcp/types.js';
 type Props = {
   onComplete: (result?: string, options?: {
     display?: CommandResultDisplay;

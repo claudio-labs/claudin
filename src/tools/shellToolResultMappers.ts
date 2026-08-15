@@ -5,7 +5,7 @@ import {
   generatePreview,
   PREVIEW_SIZE_BYTES,
 } from 'src/services/tools/toolResultStorage.js'
-import { buildImageToolResult } from './BashTool/utils.js'
+import { buildImageToolResult } from 'src/tools/BashTool/utils.js'
 
 /**
  * Shared model-facing result mapper for the shell-family tools.

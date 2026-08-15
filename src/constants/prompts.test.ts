@@ -15,17 +15,17 @@ import {
   getHarnessSection,
   isVerbositySteeringEnabled,
   prependBullets,
-} from './prompts.js'
-import { isSubagentNotesEnabled } from './steeringToggles.js'
+} from 'src/constants/prompts.js'
+import { isSubagentNotesEnabled } from 'src/constants/steeringToggles.js'
 import {
   WORKTREE_STASH_WARNING,
   WORKTREE_WRITE_SCOPE_NOTE,
-} from './worktreeSafety.js'
+} from 'src/constants/worktreeSafety.js'
 import {
   ANTHROPIC_ANTI_NARRATION_ADDENDUM,
   ANTHROPIC_BATCHED_EDITS_ADDENDUM,
   composeAnthropicAddendum,
-} from './familyAddendums/anthropic.js'
+} from 'src/constants/familyAddendums/anthropic.js'
 
 describe('getHarnessSection', () => {
   // The test preload (src/stubs/test-preload.ts) stubs `feature()` to false

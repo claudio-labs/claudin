@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import { z } from 'zod/v4'
 import { getEmptyToolPermissionContext, type Tool, type Tools } from 'src/Tool.js'
 import { SkillTool } from 'src/tools/SkillTool/SkillTool.js'
-import { splitSysPromptPrefix, toolToAPISchema } from './api.js'
+import { splitSysPromptPrefix, toolToAPISchema } from 'src/services/api/api.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
 
 test('toolToAPISchema preserves provider-specific schema keywords in input_schema', async () => {

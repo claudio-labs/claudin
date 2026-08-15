@@ -4,7 +4,7 @@ import { useNotifications } from 'src/context/notifications.js';
 import { Text } from 'src/ink.js';
 import { getGlobalConfig } from 'src/services/config/config.js';
 import { getRainbowColor } from 'src/services/context/thinking.js';
-import { isBuddyEnabled } from './feature.js';
+import { isBuddyEnabled } from 'src/buddy/feature.js';
 
 // Local date, not UTC — 24h rolling wave across timezones. Sustained Twitter
 // buzz instead of a single UTC-midnight spike, gentler on soul-gen load.

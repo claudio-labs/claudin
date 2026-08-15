@@ -10,8 +10,8 @@ import {
   MAX_CATEGORY_CHARS,
   MAX_FINDINGS,
   REPORT_FINDINGS_TOOL_NAME,
-} from './constants.js'
-import { DESCRIPTION, PROMPT } from './prompt.js'
+} from 'src/tools/ReportFindingsTool/constants.js'
+import { DESCRIPTION, PROMPT } from 'src/tools/ReportFindingsTool/prompt.js'
 
 const findingSchema = lazySchema(() =>
   z.strictObject({

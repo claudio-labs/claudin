@@ -1,16 +1,16 @@
 import { feature } from 'bun:bundle'
-import { registerBatchSkill } from './batch.js'
-import { registerCodeReviewSkill } from './code-review.js'
-import { registerCreateSkill } from './create.js'
-import { registerDebugSkill } from './debug.js'
-import { registerFewerPermissionPromptsSkill } from './fewerPermissionPrompts.js'
-import { registerKeybindingsSkill } from './keybindings.js'
-import { registerLoopSkill } from './loop.js'
-import { registerRefreshRulesSkill } from './refreshRules.js'
-import { registerRunSkill } from './run.js'
-import { registerSimplifySkill } from './simplify.js'
-import { registerUpdateConfigSkill } from './updateConfig.js'
-import { registerVerifySkill } from './verify.js'
+import { registerBatchSkill } from 'src/skills/bundled/batch.js'
+import { registerCodeReviewSkill } from 'src/skills/bundled/code-review.js'
+import { registerCreateSkill } from 'src/skills/bundled/create.js'
+import { registerDebugSkill } from 'src/skills/bundled/debug.js'
+import { registerFewerPermissionPromptsSkill } from 'src/skills/bundled/fewerPermissionPrompts.js'
+import { registerKeybindingsSkill } from 'src/skills/bundled/keybindings.js'
+import { registerLoopSkill } from 'src/skills/bundled/loop.js'
+import { registerRefreshRulesSkill } from 'src/skills/bundled/refreshRules.js'
+import { registerRunSkill } from 'src/skills/bundled/run.js'
+import { registerSimplifySkill } from 'src/skills/bundled/simplify.js'
+import { registerUpdateConfigSkill } from 'src/skills/bundled/updateConfig.js'
+import { registerVerifySkill } from 'src/skills/bundled/verify.js'
 
 /**
  * Initialize all bundled skills.
@@ -59,13 +59,13 @@ export function initBundledSkills(): void {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const {
       registerScheduleRemoteAgentsSkill,
-    } = require('./scheduleRemoteAgents.js')
+    } = require('src/skills/bundled/scheduleRemoteAgents.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
     registerScheduleRemoteAgentsSkill()
   }
   if (feature('BUILDING_CLAUDE_APPS')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
-    const { registerClaudeApiSkill } = require('./claudeApi.js')
+    const { registerClaudeApiSkill } = require('src/skills/bundled/claudeApi.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
     registerClaudeApiSkill()
   }

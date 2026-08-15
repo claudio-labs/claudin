@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import { Text } from 'src/ink.js';
-import { Select } from './CustomSelect/index.js';
-import { Dialog } from './design-system/Dialog.js';
+import { Select } from 'src/components/CustomSelect/index.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
 export type ChannelDowngradeChoice = 'downgrade' | 'stay' | 'cancel';
 type Props = {
   currentVersion: string;

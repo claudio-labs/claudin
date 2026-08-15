@@ -1,12 +1,12 @@
 import { describe, expect, it, beforeEach } from 'bun:test'
-import { acceptsGitCommand } from './grammar.js'
+import { acceptsGitCommand } from 'src/tools/GitTool/grammar.js'
 import {
   isRedirectableGitCommand,
   renderGitRedirect,
   resetGitRedirectMemoForTesting,
   shouldRedirectToGit,
   stripOutputTrimTail,
-} from './redirect.js'
+} from 'src/tools/GitTool/redirect.js'
 
 beforeEach(() => {
   resetGitRedirectMemoForTesting()

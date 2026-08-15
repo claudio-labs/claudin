@@ -3,7 +3,7 @@ import {
   deriveNewContentsFromChunks,
   parsePatch,
   type UpdateFileChunk,
-} from './patchFormat.js'
+} from 'src/tools/ApplyPatchTool/patchFormat.js'
 
 function envelope(body: string): string {
   return `*** Begin Patch\n${body}\n*** End Patch`

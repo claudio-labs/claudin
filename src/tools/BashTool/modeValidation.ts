@@ -4,9 +4,9 @@ import { splitCommand_DEPRECATED } from 'src/services/bash/commands.js'
 import { tryParseShellCommand } from 'src/services/bash/shellQuote.js'
 import { getCwd } from 'src/utils/fs/cwd.js'
 import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
-import type { BashTool } from './BashTool.js'
-import { checkReadOnlyConstraints } from './readOnlyValidation.js'
-import { checkDangerousRemovalPaths } from './pathValidation.js'
+import type { BashTool } from 'src/tools/BashTool/BashTool.js'
+import { checkReadOnlyConstraints } from 'src/tools/BashTool/readOnlyValidation.js'
+import { checkDangerousRemovalPaths } from 'src/tools/BashTool/pathValidation.js'
 
 const ACCEPT_EDITS_WRITE_COMMANDS = [
   // Filesystem write commands

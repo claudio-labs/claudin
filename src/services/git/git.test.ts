@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { basename, join } from 'path'
-import { dedupeCanonicalRoots, findNestedGitRoots } from './git.js'
+import { dedupeCanonicalRoots, findNestedGitRoots } from 'src/services/git/git.js'
 
 describe('dedupeCanonicalRoots', () => {
   test('drops nulls and keeps first occurrence order', () => {

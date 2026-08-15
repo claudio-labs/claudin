@@ -12,17 +12,17 @@ import {
 } from 'src/services/lifecycleHooks/hooks.js'
 import { createSignal } from 'src/utils/signal.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { SETTING_SOURCES, type SettingSource } from './constants.js'
-import { clearInternalWrites, consumeInternalWrite } from './internalWrites.js'
-import { getManagedSettingsDropInDir } from './managedPath.js'
+import { SETTING_SOURCES, type SettingSource } from 'src/services/settings/constants.js'
+import { clearInternalWrites, consumeInternalWrite } from 'src/services/settings/internalWrites.js'
+import { getManagedSettingsDropInDir } from 'src/services/settings/managedPath.js'
 import {
   getHkcuSettings,
   getMdmSettings,
   refreshMdmSettings,
   setMdmSettingsCache,
-} from './mdm/settings.js'
-import { getSettingsFilePathForSource } from './settings.js'
-import { resetSettingsCache } from './settingsCache.js'
+} from 'src/services/settings/mdm/settings.js'
+import { getSettingsFilePathForSource } from 'src/services/settings/settings.js'
+import { resetSettingsCache } from 'src/services/settings/settingsCache.js'
 
 /**
  * Time in milliseconds to wait for file writes to stabilize before processing.

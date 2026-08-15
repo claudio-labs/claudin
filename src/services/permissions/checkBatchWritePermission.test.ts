@@ -9,7 +9,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 
 import { getEmptyToolPermissionContext } from 'src/Tool.js'
 import type { ToolPermissionContext } from 'src/Tool.js'
-import { checkBatchWritePermission } from './filesystem.js'
+import { checkBatchWritePermission } from 'src/services/permissions/filesystem.js'
 
 function withCwdContext(): ToolPermissionContext {
   // acceptEdits allows writes within working dirs without prompting

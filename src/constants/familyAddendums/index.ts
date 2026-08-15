@@ -4,13 +4,13 @@ import {
   isMoonshotCompatibleBaseUrl,
 } from 'src/services/api/openaiShim/providerModes.js'
 import { getAPIProvider, type APIProvider } from 'src/utils/model/providers.js'
-import { getAnthropicAddendum } from './anthropic.js'
-import { CODEX_ADDENDUM } from './codex.js'
-import { DEFAULT_ADDENDUM } from './default.js'
-import { GEMINI_ADDENDUM } from './gemini.js'
-import { GLM_ADDENDUM } from './glm.js'
-import { KIMI_ADDENDUM } from './kimi.js'
-import { OPENAI_REASONING_ADDENDUM } from './openaiReasoning.js'
+import { getAnthropicAddendum } from 'src/constants/familyAddendums/anthropic.js'
+import { CODEX_ADDENDUM } from 'src/constants/familyAddendums/codex.js'
+import { DEFAULT_ADDENDUM } from 'src/constants/familyAddendums/default.js'
+import { GEMINI_ADDENDUM } from 'src/constants/familyAddendums/gemini.js'
+import { GLM_ADDENDUM } from 'src/constants/familyAddendums/glm.js'
+import { KIMI_ADDENDUM } from 'src/constants/familyAddendums/kimi.js'
+import { OPENAI_REASONING_ADDENDUM } from 'src/constants/familyAddendums/openaiReasoning.js'
 
 export type ModelFamily =
   | 'anthropic'

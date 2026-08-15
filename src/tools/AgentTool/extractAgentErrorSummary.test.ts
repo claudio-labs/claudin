@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { extractAgentErrorSummary } from './UI.js'
+import { extractAgentErrorSummary } from 'src/tools/AgentTool/UI.js'
 
 describe('extractAgentErrorSummary', () => {
   test('returns undefined for missing content', () => {

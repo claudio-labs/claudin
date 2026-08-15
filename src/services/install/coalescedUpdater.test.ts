@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { createCoalescedUpdater } from './coalescedUpdater.js'
+import { createCoalescedUpdater } from 'src/services/install/coalescedUpdater.js'
 
 const INTERVAL_MS = 16
 const FLUSH_WAIT_MS = INTERVAL_MS * 3

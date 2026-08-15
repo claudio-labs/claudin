@@ -54,7 +54,7 @@ mock.module('src/services/lsp/manager.js', () => ({
   _resetLspManagerForTesting: () => {},
 }))
 
-const { LSPTool } = await import('./LSPTool.js')
+const { LSPTool } = await import('src/tools/LSPTool/LSPTool.js')
 
 const FILE_PATH = '/tmp/lsp-cache-invariants/sample.ts'
 

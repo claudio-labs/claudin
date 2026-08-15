@@ -1,8 +1,8 @@
 
 import { afterAll, expect, test, mock, describe, beforeEach, afterEach } from "bun:test";
-import { linuxSecretStorage } from "./linuxSecretStorage.js";
-import { windowsCredentialStorage } from "./windowsCredentialStorage.js";
-import { getSecureStorageServiceName, CREDENTIALS_SERVICE_SUFFIX } from "./macOsKeychainHelpers.js";
+import { linuxSecretStorage } from "src/services/secureStorage/linuxSecretStorage.js";
+import { windowsCredentialStorage } from "src/services/secureStorage/windowsCredentialStorage.js";
+import { getSecureStorageServiceName, CREDENTIALS_SERVICE_SUFFIX } from "src/services/secureStorage/macOsKeychainHelpers.js";
 
 const realExeca = await import("execa");
 

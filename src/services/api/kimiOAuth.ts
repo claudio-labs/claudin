@@ -20,7 +20,7 @@ import {
   KIMI_OAUTH_DEVICE_CODE_GRANT_TYPE,
   KIMI_OAUTH_DEVICE_CODE_URL,
   KIMI_OAUTH_TOKEN_URL,
-} from './kimiOAuthShared.js'
+} from 'src/services/api/kimiOAuthShared.js'
 
 const DEVICE_CODE_DEFAULT_INTERVAL_MS = 5_000
 const DEVICE_CODE_MIN_INTERVAL_MS = 1_000

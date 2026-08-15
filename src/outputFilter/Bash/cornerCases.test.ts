@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { applyBashFilterToStdout, planBashFilter } from "./index.js";
+import { applyBashFilterToStdout, planBashFilter } from "src/outputFilter/Bash/index.js";
 import {
   applyPipeline,
   extractCommandPrefix,
@@ -16,12 +16,12 @@ import {
   maybeRewrite,
   parseBashCommand,
   splitTopLevelSegments,
-} from "./pipeline.js";
-import type { FilterSpec } from "./types.js";
+} from "src/outputFilter/Bash/pipeline.js";
+import type { FilterSpec } from "src/outputFilter/Bash/types.js";
 import {
   canonicalizeForMatching,
   findFilterForCommand,
-} from "./registry.js";
+} from "src/outputFilter/Bash/registry.js";
 
 const filterName = (cmd: string): string | null =>
   findFilterForCommand(cmd)?.name ?? null;

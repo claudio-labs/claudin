@@ -5,8 +5,8 @@ import {
   matchesCommand,
   maybeRewrite,
   parseBashCommand,
-} from "./pipeline.js";
-import type { FilterSpec } from "./types.js";
+} from "src/outputFilter/Bash/pipeline.js";
+import type { FilterSpec } from "src/outputFilter/Bash/types.js";
 
 // ---------------------------------------------------------------------------
 // parseBashCommand
@@ -151,7 +151,7 @@ describe("hasCompound", () => {
 import {
   splitTopLevelSegments,
   splitTrailingReducerPipe,
-} from "./pipeline.js";
+} from "src/outputFilter/Bash/pipeline.js";
 
 describe("splitTopLevelSegments", () => {
   test("splits on &&", () => {

@@ -3,7 +3,7 @@ import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import { findToolByName, type ToolUseContext } from 'src/Tool.js'
 import type { AssistantMessage, Message } from 'src/types/message.js'
 import { all } from 'src/utils/generators.js'
-import { type MessageUpdateLazy, runToolUse } from './toolExecution.js'
+import { type MessageUpdateLazy, runToolUse } from 'src/services/tools/toolExecution.js'
 
 function getMaxToolUseConcurrency(): number {
   return (

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import type { Tool, ToolUseContext } from 'src/Tool.js'
-import { clearToolSearchDescriptionCache, ToolSearchTool } from './ToolSearchTool.js'
+import { clearToolSearchDescriptionCache, ToolSearchTool } from 'src/tools/ToolSearchTool/ToolSearchTool.js'
 
 function makeTool(overrides: Partial<Tool> = {}): Tool {
   return {

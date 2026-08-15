@@ -11,7 +11,7 @@ import { Byline } from 'src/components/design-system/Byline.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
 import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
 import { Spinner } from 'src/components/Spinner.js';
-import type { AgentMcpServerInfo } from './types.js';
+import type { AgentMcpServerInfo } from 'src/components/mcp/types.js';
 type Props = {
   agentServer: AgentMcpServerInfo;
   onCancel: () => void;

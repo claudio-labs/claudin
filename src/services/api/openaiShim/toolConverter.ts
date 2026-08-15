@@ -15,8 +15,8 @@
 
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { sanitizeSchemaForOpenAICompat } from 'src/utils/data/schemaSanitizer.js'
-import { isGeminiMode } from './providerModes.js'
-import type { OpenAITool } from './types.js'
+import { isGeminiMode } from 'src/services/api/openaiShim/providerModes.js'
+import type { OpenAITool } from 'src/services/api/openaiShim/types.js'
 
 function normalizeSchemaForOpenAI(
   schema: Record<string, unknown>,

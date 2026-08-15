@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { buildChildEnv } from './sessionRunner.ts'
+import { buildChildEnv } from 'src/bridge/sessionRunner.ts'
 
 // Finding #42-1: sessionRunner spreads the full parent process.env into the
 // child process environment, leaking API keys, DB credentials, proxy secrets.

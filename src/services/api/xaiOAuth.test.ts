@@ -5,7 +5,7 @@ import {
   requestDeviceCode,
   XaiOAuthService,
   type XaiDeviceCodeResponse,
-} from './xaiOAuth.js'
+} from 'src/services/api/xaiOAuth.js'
 
 const originalFetch = globalThis.fetch
 const originalClientId = process.env.XAI_OAUTH_CLIENT_ID

@@ -4,7 +4,7 @@ import memoize from 'lodash-es/memoize.js'
 import { dirname, join, resolve, sep } from 'path'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import { getErrnoCode } from 'src/utils/errors.js'
-import { getAutoMemPath, isAutoMemoryEnabled } from './paths.js'
+import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memdir/paths.js'
 
 /**
  * Error thrown when a path validation detects a traversal or injection attempt.

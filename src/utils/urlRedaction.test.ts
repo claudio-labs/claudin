@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { redactUrlForDisplay } from './urlRedaction.ts'
+import { redactUrlForDisplay } from 'src/utils/urlRedaction.ts'
 
 describe('redactUrlForDisplay', () => {
   test('redacts credentials and sensitive query params for valid URLs', () => {

@@ -5,8 +5,8 @@ import { toError } from 'src/utils/errors.js'
 import { logError } from 'src/utils/log.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import type { DiagnosticFile } from 'src/services/diagnosticTracking.js'
-import { registerPendingLSPDiagnostic } from './LSPDiagnosticRegistry.js'
-import type { LSPServerManager } from './LSPServerManager.js'
+import { registerPendingLSPDiagnostic } from 'src/services/lsp/LSPDiagnosticRegistry.js'
+import type { LSPServerManager } from 'src/services/lsp/LSPServerManager.js'
 
 /**
  * Map LSP severity to Claude diagnostic severity

@@ -8,7 +8,7 @@ const privacySettings = {
   isEnabled: () => {
     return isConsumerSubscriber()
   },
-  load: () => import('./privacy-settings.js'),
+  load: () => import('src/commands/privacy-settings/privacy-settings.js'),
 } satisfies Command
 
 export default privacySettings

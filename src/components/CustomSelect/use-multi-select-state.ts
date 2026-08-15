@@ -7,9 +7,9 @@ import {
   normalizeFullWidthDigits,
   normalizeFullWidthSpace,
 } from 'src/utils/text/stringUtils.js'
-import type { OptionWithDescription } from './select.js'
-import { optionsNavigateEqual } from './use-select-navigation.js'
-import { useSelectNavigation } from './use-select-navigation.js'
+import type { OptionWithDescription } from 'src/components/CustomSelect/select.js'
+import { optionsNavigateEqual } from 'src/components/CustomSelect/use-select-navigation.js'
+import { useSelectNavigation } from 'src/components/CustomSelect/use-select-navigation.js'
 
 export type UseMultiSelectStateProps<T> = {
   /**

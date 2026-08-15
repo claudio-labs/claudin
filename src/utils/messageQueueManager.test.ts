@@ -24,7 +24,7 @@ import {
   getCommandQueue,
   getCommandQueueLength,
   resetCommandQueue,
-} from './messageQueueManager.ts'
+} from 'src/utils/messageQueueManager.ts'
 
 beforeEach(() => {
   resetCommandQueue()

@@ -13,7 +13,7 @@ import {
   isSdkApiUserAbortError,
   isSdkAuthenticationError,
   isSdkNotFoundError,
-} from './errors.js'
+} from 'src/utils/errors.js'
 
 /**
  * Mirrors the class hierarchy of a *second* @anthropic-ai/sdk copy — the

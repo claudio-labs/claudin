@@ -5,5 +5,5 @@ export default {
   name: 'diff',
   description:
     'Review local changes, stashes and git log in a tabbed, split-pane viewer',
-  load: () => import('./diff.js'),
+  load: () => import('src/commands/diff/diff.js'),
 } satisfies Command

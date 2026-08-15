@@ -48,7 +48,7 @@ import {
   INTERRUPT_MESSAGE,
   INTERRUPT_MESSAGE_FOR_TOOL_USE,
   SYNTHETIC_MODEL,
-} from './constants.js'
+} from 'src/services/messages/constants.js'
 
 function baseCreateAssistantMessage({
   content,

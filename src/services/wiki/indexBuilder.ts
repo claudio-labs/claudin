@@ -1,6 +1,6 @@
 import { readdir, readFile, writeFile } from 'fs/promises'
 import { basename, relative } from 'path'
-import { getWikiPaths } from './paths.js'
+import { getWikiPaths } from 'src/services/wiki/paths.js'
 
 async function listMarkdownFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true })

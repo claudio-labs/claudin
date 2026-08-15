@@ -14,7 +14,7 @@ import { createAttachmentMessage } from 'src/services/attachments/attachments.js
 import { createCombinedAbortSignal } from 'src/utils/combinedAbortSignal.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
-import type { HookResult } from './types.js'
+import type { HookResult } from 'src/services/lifecycleHooks/types.js'
 import { createUserMessage, handleMessageFromStream } from 'src/services/messages/messages.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
 import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js'
@@ -27,8 +27,8 @@ import {
   createStructuredOutputTool,
   hookResponseSchema,
   registerStructuredOutputEnforcement,
-} from './hookHelpers.js'
-import { clearSessionHooks } from './sessionHooks.js'
+} from 'src/services/lifecycleHooks/hookHelpers.js'
+import { clearSessionHooks } from 'src/services/lifecycleHooks/sessionHooks.js'
 
 /**
  * Execute an agent-based hook using a multi-turn LLM query

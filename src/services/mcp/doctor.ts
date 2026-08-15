@@ -1,15 +1,15 @@
 import type { ValidationError } from 'src/services/settings/validation.js'
-import { clearServerCache, connectToServer } from './client.js'
+import { clearServerCache, connectToServer } from 'src/services/mcp/client.js'
 import {
   getAllMcpConfigs,
   getMcpConfigsByScope,
   isMcpServerDisabled,
-} from './config.js'
+} from 'src/services/mcp/config.js'
 import type {
   ConfigScope,
   ScopedMcpServerConfig,
-} from './types.js'
-import { describeMcpConfigFilePath, getProjectMcpServerStatus } from './utils.js'
+} from 'src/services/mcp/types.js'
+import { describeMcpConfigFilePath, getProjectMcpServerStatus } from 'src/services/mcp/utils.js'
 
 export type McpDoctorSeverity = 'info' | 'warn' | 'error'
 export type McpDoctorScopeFilter = 'local' | 'project' | 'user' | 'enterprise'

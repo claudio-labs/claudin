@@ -9,7 +9,7 @@ const realActiveProvider = {
 }
 const realBootstrapState = { ...(await import('src/bootstrap/state.js')) }
 const realSettings = { ...(await import('src/services/settings/settings.js')) }
-const realAllowlist = { ...(await import('./modelAllowlist.js')) }
+const realAllowlist = { ...(await import('src/utils/model/modelAllowlist.js')) }
 
 type MockProjectConfig = {
   activeModelForProject?: string

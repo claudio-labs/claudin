@@ -8,7 +8,7 @@
  * resolved at call time via the live module namespace.
  */
 
-import { SPECIAL_VARS, type Token } from './tokens.js'
+import { SPECIAL_VARS, type Token } from 'src/services/bash/bashParser/tokens.js'
 import {
   advance,
   isBaseDigit,
@@ -21,18 +21,18 @@ import {
   restoreLex,
   saveLex,
   skipBlanks,
-} from './lexer.js'
+} from 'src/services/bash/bashParser/lexer.js'
 import {
   leaf,
   mk,
   type ParseState,
   type TsNode,
-} from './parserContext.js'
+} from 'src/services/bash/bashParser/parserContext.js'
 import {
   parseDollarLike,
   parseDoubleQuoted,
   parseWord,
-} from './words.js'
+} from 'src/services/bash/bashParser/words.js'
 
 export function parseTestExpr(P: ParseState, closer: string): TsNode | null {
   return parseTestOr(P, closer)

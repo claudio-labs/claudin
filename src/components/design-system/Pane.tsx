@@ -3,7 +3,7 @@ import React from 'react';
 import { useIsInsideModal } from 'src/context/modalContext.js';
 import { Box } from 'src/ink.js';
 import type { Theme } from 'src/utils/theme.js';
-import { Divider } from './Divider.js';
+import { Divider } from 'src/components/design-system/Divider.js';
 type PaneProps = {
   children: React.ReactNode;
   /**

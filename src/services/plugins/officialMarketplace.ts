@@ -6,7 +6,7 @@
  * to install and identify this marketplace.
  */
 
-import type { MarketplaceSource } from './schemas.js'
+import type { MarketplaceSource } from 'src/services/plugins/schemas.js'
 
 /**
  * Source configuration for the official Anthropic plugins marketplace.

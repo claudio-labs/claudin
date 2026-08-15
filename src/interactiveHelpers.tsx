@@ -3,37 +3,37 @@ import { appendFileSync } from 'fs';
 import React from 'react';
 import { logEvent } from 'src/services/analytics/index.js';
 import { gracefulShutdown, gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js';
-import { type ChannelEntry, getAllowedChannels, setAllowedChannels, setHasDevChannels, setSessionTrustAccepted, setStatsStore } from './bootstrap/state.js';
-import type { Command } from './commands.js';
-import { createStatsStore, type StatsStore } from './context/stats.js';
-import { getSystemContext } from './context.js';
-import { initializeTelemetryAfterTrust } from './entrypoints/init.js';
-import { isSynchronizedOutputSupported } from './ink/terminal.js';
-import type { RenderOptions, Root, TextProps } from './ink.js';
-import { KeybindingSetup } from './keybindings/KeybindingProviderSetup.js';
-import { startDeferredPrefetches } from './main/deferredPrefetches.js';
-import { checkGate_CACHED_OR_BLOCKING, initializeGrowthBook, resetGrowthBook } from './services/analytics/growthbook.js';
-import { tryGetActiveProvider } from './services/api/activeProvider.js';
-import { isQualifiedForGrove } from './services/api/grove.js';
-import { handleMcpjsonServerApprovals } from './services/mcpServerApproval.js';
-import { AppStateProvider } from './state/AppState.js';
-import { onChangeAppState } from './state/onChangeAppState.js';
+import { type ChannelEntry, getAllowedChannels, setAllowedChannels, setHasDevChannels, setSessionTrustAccepted, setStatsStore } from 'src/bootstrap/state.js';
+import type { Command } from 'src/commands.js';
+import { createStatsStore, type StatsStore } from 'src/context/stats.js';
+import { getSystemContext } from 'src/context.js';
+import { initializeTelemetryAfterTrust } from 'src/entrypoints/init.js';
+import { isSynchronizedOutputSupported } from 'src/ink/terminal.js';
+import type { RenderOptions, Root, TextProps } from 'src/ink.js';
+import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js';
+import { startDeferredPrefetches } from 'src/main/deferredPrefetches.js';
+import { checkGate_CACHED_OR_BLOCKING, initializeGrowthBook, resetGrowthBook } from 'src/services/analytics/growthbook.js';
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
+import { isQualifiedForGrove } from 'src/services/api/grove.js';
+import { handleMcpjsonServerApprovals } from 'src/services/mcpServerApproval.js';
+import { AppStateProvider } from 'src/state/AppState.js';
+import { onChangeAppState } from 'src/state/onChangeAppState.js';
 import { normalizeApiKeyForConfig } from 'src/services/auth/authPortable.js';
 import { getExternalClaudeMdIncludes, getMemoryFiles, shouldShowClaudeMdExternalIncludesWarning } from 'src/services/instructions/claudemd.js';
 import { checkHasTrustDialogAccepted, getCustomApiKeyStatus, getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import { shouldShowMigrationBanner } from 'src/services/config/claudinMigration.js';
 import { updateDeepLinkTerminalPreference } from 'src/services/deepLink/terminalPreference.js';
-import { isEnvTruthy, isRunningOnHomespace } from './utils/envUtils.js';
-import { type FpsMetrics, FpsTracker } from './utils/fpsTracker.js';
+import { isEnvTruthy, isRunningOnHomespace } from 'src/utils/envUtils.js';
+import { type FpsMetrics, FpsTracker } from 'src/utils/fpsTracker.js';
 import { updateGithubRepoPathMapping } from 'src/services/git/githubRepoPathMapping.js';
 import { applyConfigEnvironmentVariables } from 'src/services/config/managedEnv.js';
-import { usesAnthropicAccountFlow } from './utils/model/providers.js';
+import { usesAnthropicAccountFlow } from 'src/utils/model/providers.js';
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js';
-import { getBaseRenderOptions } from './utils/renderOptions.js';
-import { applyRenderCadence } from './utils/renderCadence.js';
+import { getBaseRenderOptions } from 'src/utils/renderOptions.js';
+import { applyRenderCadence } from 'src/utils/renderCadence.js';
 import { getSettingsWithAllErrors } from 'src/services/settings/allErrors.js';
 import { hasAutoModeOptIn, hasSkipDangerousModePermissionPrompt } from 'src/services/settings/settings.js';
-import { profileCheckpoint } from './utils/startupProfiler.js';
+import { profileCheckpoint } from 'src/utils/startupProfiler.js';
 export function completeOnboarding(): void {
   saveGlobalConfig(current => ({
     ...current,
@@ -74,7 +74,7 @@ export async function exitWithMessage(root: Root, message: string, options?: {
 }): Promise<never> {
   const {
     Text
-  } = await import('./ink.js');
+  } = await import('src/ink.js');
   const color = options?.color;
   const exitCode = options?.exitCode ?? 1;
   root.render(color ? <Text color={color}>{message}</Text> : <Text>{message}</Text>);
@@ -123,7 +123,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
   // the regular Onboarding (welcome + theme + trust + provider).
   if (shouldShowMigrationBanner()) {
     const { MigrationDialog } = await import(
-      './components/MigrationDialog.js'
+      'src/components/MigrationDialog.js'
     );
     await showSetupDialog(root, done => (
       <MigrationDialog onDone={() => void done()} />
@@ -138,7 +138,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
     onboardingShown = true;
     const {
       Onboarding
-    } = await import('./components/Onboarding.js');
+    } = await import('src/components/Onboarding.js');
     await showSetupDialog(root, done => <Onboarding onDone={() => {
       completeOnboarding();
       void done();
@@ -159,7 +159,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
     if (usesAnthropicSetup && !checkHasTrustDialogAccepted()) {
       const {
         TrustDialog
-      } = await import('./components/TrustDialog/TrustDialog.js');
+      } = await import('src/components/TrustDialog/TrustDialog.js');
       await showSetupDialog(root, done => <TrustDialog commands={commands} onDone={done} />);
     }
 
@@ -198,7 +198,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
         const externalIncludes = getExternalClaudeMdIncludes(await getMemoryFiles(true));
         const {
           ClaudeMdExternalIncludesDialog
-        } = await import('./components/ClaudeMdExternalIncludesDialog.js');
+        } = await import('src/components/ClaudeMdExternalIncludesDialog.js');
         await showSetupDialog(root, done => <ClaudeMdExternalIncludesDialog onDone={done} isStandaloneDialog externalIncludes={externalIncludes} />);
       }
     }
@@ -249,7 +249,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
       const keyStatus = getCustomApiKeyStatus(customApiKeyTruncated);
       profileCheckpoint('setupScreens_after_keyStatus');
       if (keyStatus === 'new') {
-        const { ApproveApiKey } = await import('./components/ApproveApiKey.js');
+        const { ApproveApiKey } = await import('src/components/ApproveApiKey.js');
         await showSetupDialog<boolean>(
           root,
           done => <ApproveApiKey customApiKeyTruncated={customApiKeyTruncated} onDone={done} />,
@@ -262,7 +262,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
   if ((permissionMode === 'bypassPermissions' || allowDangerouslySkipPermissions) && !hasSkipDangerousModePermissionPrompt()) {
     const {
       BypassPermissionsModeDialog
-    } = await import('./components/BypassPermissionsModeDialog.js');
+    } = await import('src/components/BypassPermissionsModeDialog.js');
     await showSetupDialog(root, done => <BypassPermissionsModeDialog onAccept={done} />);
   }
   if (feature('TRANSCRIPT_CLASSIFIER')) {
@@ -273,7 +273,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
     if (permissionMode === 'auto' && !hasAutoModeOptIn()) {
       const {
         AutoModeOptInDialog
-      } = await import('./components/AutoModeOptInDialog.js');
+      } = await import('src/components/AutoModeOptInDialog.js');
       await showSetupDialog(root, done => <AutoModeOptInDialog onAccept={done} onDecline={() => gracefulShutdownSync(1)} declineExits />);
     }
   }
@@ -299,7 +299,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
         isChannelsEnabled
       }, {
         getClaudeAIOAuthTokens
-      }] = await Promise.all([import('./services/mcp/channelAllowlist.js'), import('src/services/auth/auth.js')]);
+      }] = await Promise.all([import('src/services/mcp/channelAllowlist.js'), import('src/services/auth/auth.js')]);
       // Skip the dialog when channels are blocked (tengu_harbor off or no
       // OAuth) — accepting then immediately seeing "not available" in
       // ChannelsNotice is worse than no dialog. Append entries anyway so
@@ -316,7 +316,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
       } else {
         const {
           DevChannelsDialog
-        } = await import('./components/DevChannelsDialog.js');
+        } = await import('src/components/DevChannelsDialog.js');
         await showSetupDialog(root, done => <DevChannelsDialog channels={devChannels} onAccept={() => {
           // Mark dev entries per-entry so the allowlist bypass doesn't leak
           // to --channels entries when both flags are passed.

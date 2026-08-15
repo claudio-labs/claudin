@@ -6,22 +6,22 @@ import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
 import { stringWidth } from 'src/ink/stringWidth.js';
 import { getLayoutMode, calculateLayoutDimensions, calculateOptimalLeftWidth, formatWelcomeMessage, truncatePath, getRecentActivitySync, getRecentReleaseNotesSync, getLogoDisplayData } from 'src/utils/logoV2Utils.js';
 import { truncate } from 'src/utils/text/format.js';
-import { Clawd } from './Clawd.js';
-import { FeedColumn } from './FeedColumn.js';
-import { createRecentActivityFeed, createWhatsNewFeed, createProjectOnboardingFeed, createGuestPassesFeed } from './feedConfigs.js';
+import { Clawd } from 'src/components/LogoV2/Clawd.js';
+import { FeedColumn } from 'src/components/LogoV2/FeedColumn.js';
+import { createRecentActivityFeed, createWhatsNewFeed, createProjectOnboardingFeed, createGuestPassesFeed } from 'src/components/LogoV2/feedConfigs.js';
 import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import { resolveThemeSetting } from 'src/utils/systemTheme.js';
 import { getInitialSettings } from 'src/services/settings/settings.js';
 import { isDebugMode, isDebugToStdErr, getDebugLogPath } from 'src/utils/debug.js';
 import { useEffect, useState } from 'react';
 import { getSteps, shouldShowProjectOnboarding, incrementProjectOnboardingSeenCount } from 'src/projectOnboardingState.js';
-import { CondensedLogo } from './CondensedLogo.js';
+import { CondensedLogo } from 'src/components/LogoV2/CondensedLogo.js';
 import { OffscreenFreeze } from 'src/components/OffscreenFreeze.js';
 import { checkForReleaseNotesSync } from 'src/services/install/releaseNotes.js';
 import { isEnvTruthy } from 'src/utils/envUtils.js';
-import { EmergencyTip } from './EmergencyTip.js';
-import { VoiceModeNotice } from './VoiceModeNotice.js';
-import { Opus1mMergeNotice } from './Opus1mMergeNotice.js';
+import { EmergencyTip } from 'src/components/LogoV2/EmergencyTip.js';
+import { VoiceModeNotice } from 'src/components/LogoV2/VoiceModeNotice.js';
+import { Opus1mMergeNotice } from 'src/components/LogoV2/Opus1mMergeNotice.js';
 import { feature } from 'bun:bundle';
 
 // Conditional require so ChannelsNotice.tsx tree-shakes when both flags are
@@ -30,11 +30,11 @@ import { feature } from 'bun:bundle';
 // whole file. VoiceModeNotice uses the unsafe helper pattern but VOICE_MODE
 // is external: true so it's moot there.
 /* eslint-disable @typescript-eslint/no-require-imports */
-const ChannelsNoticeModule = feature('KAIROS') || feature('KAIROS_CHANNELS') ? require('./ChannelsNotice.js') as typeof import('./ChannelsNotice.js') : null;
+const ChannelsNoticeModule = feature('KAIROS') || feature('KAIROS_CHANNELS') ? require('src/components/LogoV2/ChannelsNotice.js') as typeof import('src/components/LogoV2/ChannelsNotice.js') : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
-import { useShowGuestPassesUpsell, incrementGuestPassesSeenCount } from './GuestPassesUpsell.js';
-import { useShowOverageCreditUpsell, incrementOverageCreditUpsellSeenCount, createOverageCreditFeed } from './OverageCreditUpsell.js';
+import { useShowGuestPassesUpsell, incrementGuestPassesSeenCount } from 'src/components/LogoV2/GuestPassesUpsell.js';
+import { useShowOverageCreditUpsell, incrementOverageCreditUpsellSeenCount, createOverageCreditFeed } from 'src/components/LogoV2/OverageCreditUpsell.js';
 import { plural } from 'src/utils/text/stringUtils.js';
 import { useAppState } from 'src/state/AppState.js';
 import type { AppState } from 'src/state/AppStateStore.js';

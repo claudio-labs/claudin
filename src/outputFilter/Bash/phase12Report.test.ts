@@ -12,9 +12,9 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { builtInFilters } from "./filters/index.js";
-import { applyBashFilterToStdout } from "./index.js";
-import type { FilterSpec } from "./types.js";
+import { builtInFilters } from "src/outputFilter/Bash/filters/index.js";
+import { applyBashFilterToStdout } from "src/outputFilter/Bash/index.js";
+import type { FilterSpec } from "src/outputFilter/Bash/types.js";
 
 const SAMPLES_DIR = resolve(
   import.meta.dir,

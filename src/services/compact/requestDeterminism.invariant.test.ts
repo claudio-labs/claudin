@@ -39,7 +39,7 @@ process.env.CLAUDIN_CACHE_PROFILE = 'retain'
 const { _resetCacheProfileForTesting } = await import('src/services/cache/cacheProfile.js')
 _resetCacheProfileForTesting()
 
-const realAutoCompact = { ...(await import('./autoCompact.js')) }
+const realAutoCompact = { ...(await import('src/services/compact/autoCompact.js')) }
 const realModel = { ...(await import('src/utils/model/model.js')) }
 mock.module('./autoCompact.js', () => ({
   ...realAutoCompact,
@@ -50,7 +50,7 @@ mock.module('src/utils/model/model.js', () => ({
   getMainLoopModel: () => 'claude-sonnet-4',
 }))
 
-const { microcompactMessages } = await import('./microCompact.js')
+const { microcompactMessages } = await import('src/services/compact/microCompact.js')
 const {
   _resetAllClippedIdsForTesting,
   applyStableStubs,
@@ -60,7 +60,7 @@ const {
   EVICT_MIN_BATCH,
   EVICT_TRIGGER_AT,
   MAX_DISPLAY_MESSAGES,
-} = await import('./stableStubState.js')
+} = await import('src/services/compact/stableStubState.js')
 const { addCacheBreakpoints, _resetDeferCacheMarkerForTesting } = await import(
   'src/services/api/claude/paramBuilders.js'
 )

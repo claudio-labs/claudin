@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test'
 import {
   shouldHandleInputAsPaste,
   supportsClipboardImageFallback,
-} from './usePasteHandler.ts'
+} from 'src/hooks/usePasteHandler.ts'
 
 test('supports clipboard image fallback on Windows', () => {
   expect(supportsClipboardImageFallback('windows')).toBe(true)

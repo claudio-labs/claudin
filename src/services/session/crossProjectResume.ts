@@ -1,7 +1,7 @@
 import { getOriginalCwd } from 'src/bootstrap/state.js'
 import type { LogOption } from 'src/types/logs.js'
 import { quote } from 'src/services/bash/shellQuote.js'
-import { getSessionIdFromLog } from './sessionStorage.js'
+import { getSessionIdFromLog } from 'src/services/session/sessionStorage.js'
 
 export type CrossProjectResumeResult =
   | {

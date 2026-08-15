@@ -37,8 +37,8 @@ import { isBuddyEnabled } from 'src/buddy/feature.js'
 import { getCompanionIntroAttachment } from 'src/buddy/prompt.js'
 import { isTodoV2Enabled } from 'src/tasks/tasks.js'
 import { getTaskReconcileAttachments } from 'src/query/taskReconcile.js'
-import type { Attachment } from './types.js'
-import { maybe, createAttachmentMessage } from './shared.js'
+import type { Attachment } from 'src/services/attachments/types.js'
+import { maybe, createAttachmentMessage } from 'src/services/attachments/shared.js'
 import {
   processAtMentionedFiles,
   processMcpResourceAttachments,
@@ -51,7 +51,7 @@ import {
   getLSPDiagnosticAttachments,
   getAsyncHookResponseAttachments,
   getTeammateMailboxAttachments,
-} from './services.js'
+} from 'src/services/attachments/services.js'
 import {
   getDateChangeAttachments,
   getUltrathinkEffortAttachment,
@@ -67,7 +67,7 @@ import {
   getOutputTokenUsageAttachment,
   getMaxBudgetUsdAttachment,
   getContextEfficiencyAttachment,
-} from './injections.js'
+} from 'src/services/attachments/injections.js'
 import {
   getPlanModeAttachments,
   getPlanModeExitAttachment,
@@ -79,12 +79,12 @@ import {
   getActiveBackgroundTaskReminders,
   getVerifyPlanReminderAttachment,
   getCompactionReminderAttachment,
-} from './lifecycle.js'
-import { getNestedMemoryAttachments } from './memory.js'
+} from 'src/services/attachments/lifecycle.js'
+import { getNestedMemoryAttachments } from 'src/services/attachments/memory.js'
 import {
   getSkillListingAttachments,
   getBashGitInstructionsAttachment,
-} from './skill-bash-gates.js'
+} from 'src/services/attachments/skill-bash-gates.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const skillSearchModules = feature('EXPERIMENTAL_SKILL_SEARCH')

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { formatCheckResult } from './budget.js'
-import type { CheckResult, Diagnostic } from './types.js'
+import { formatCheckResult } from 'src/tools/TypecheckTool/budget.js'
+import type { CheckResult, Diagnostic } from 'src/tools/TypecheckTool/types.js'
 
 function diagnostic(i: number): Diagnostic {
   return {

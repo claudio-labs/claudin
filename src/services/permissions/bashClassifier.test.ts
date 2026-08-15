@@ -7,7 +7,7 @@ import {
   getBashPromptAskDescriptions,
   getBashPromptDenyDescriptions,
   PROMPT_PREFIX,
-} from './bashClassifier.js'
+} from 'src/services/permissions/bashClassifier.js'
 
 const ctx = (rulesByBucket: {
   allow?: string[]

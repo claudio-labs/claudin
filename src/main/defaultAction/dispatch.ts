@@ -9,11 +9,11 @@
 // inline REPL launcher.
 
 import { feature } from 'bun:bundle';
-import { runContinueBranch } from './continue.js';
-import { runDirectConnectBranch } from './directConnect.js';
-import { runSshRemoteBranch } from './sshRemote.js';
-import { runAssistantChatBranch } from './assistantChat.js';
-import { runResumeBranch } from './resume.js';
+import { runContinueBranch } from 'src/main/defaultAction/continue.js';
+import { runDirectConnectBranch } from 'src/main/defaultAction/directConnect.js';
+import { runSshRemoteBranch } from 'src/main/defaultAction/sshRemote.js';
+import { runAssistantChatBranch } from 'src/main/defaultAction/assistantChat.js';
+import { runResumeBranch } from 'src/main/defaultAction/resume.js';
 import type { Root } from 'src/ink.js';
 import type { FpsMetrics } from 'src/utils/fpsTracker.js';
 import type { StatsStore } from 'src/context/stats.js';

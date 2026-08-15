@@ -1,6 +1,6 @@
 // Pure display formatters — leaf-safe (no Ink). Width-aware truncation lives in ./truncate.ts.
 
-import { getRelativeTimeFormat, getTimeZone } from './intl.js'
+import { getRelativeTimeFormat, getTimeZone } from 'src/utils/text/intl.js'
 
 /**
  * Formats a byte count to a human-readable string (KB, MB, GB).
@@ -306,4 +306,4 @@ export {
   truncateStartToWidth,
   truncateToWidth,
   truncateToWidthNoEllipsis,
-} from './truncate.js'
+} from 'src/utils/text/truncate.js'

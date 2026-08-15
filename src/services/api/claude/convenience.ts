@@ -5,8 +5,8 @@ import { createUserMessage } from 'src/services/messages/messages.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
 import { asSystemPrompt, type SystemPrompt } from 'src/utils/systemPromptType.js'
 import { withVCR } from 'src/services/vcr.js'
-import { queryModelWithoutStreaming } from './nonStreaming.js'
-import type { HaikuOptions, QueryWithModelOptions } from './types.js'
+import { queryModelWithoutStreaming } from 'src/services/api/claude/nonStreaming.js'
+import type { HaikuOptions, QueryWithModelOptions } from 'src/services/api/claude/types.js'
 
 export async function queryHaiku({
   systemPrompt = asSystemPrompt([]),

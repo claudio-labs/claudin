@@ -6,8 +6,8 @@ import { notifyRuntimeStateChange } from 'src/bootstrap/state.js'
 import {
   createLSPServerManager,
   type LSPServerManager,
-} from './LSPServerManager.js'
-import { registerLSPNotificationHandlers } from './passiveFeedback.js'
+} from 'src/services/lsp/LSPServerManager.js'
+import { registerLSPNotificationHandlers } from 'src/services/lsp/passiveFeedback.js'
 
 /**
  * Initialization state of the LSP server manager

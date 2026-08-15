@@ -1,1 +1,1 @@
-export { default } from './dream.js'
+export { default } from 'src/commands/dream/dream.js'

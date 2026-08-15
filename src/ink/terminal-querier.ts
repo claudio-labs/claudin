@@ -20,9 +20,9 @@
  *   // sync and grapheme are DECRPM responses or undefined if unsupported
  */
 
-import type { TerminalResponse } from './parse-keypress.js'
-import { csi } from './termio/csi.js'
-import { osc } from './termio/osc.js'
+import type { TerminalResponse } from 'src/ink/parse-keypress.js'
+import { csi } from 'src/ink/termio/csi.js'
+import { osc } from 'src/ink/termio/osc.js'
 
 /** A terminal query: an outbound request sequence paired with a matcher
  *  that recognizes the expected inbound response. Built by `decrqm()`,

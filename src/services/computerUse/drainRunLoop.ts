@@ -1,6 +1,6 @@
 import { logForDebugging } from 'src/utils/debug.js'
 import { withResolvers } from 'src/utils/withResolvers.js'
-import { requireComputerUseSwift } from './swiftLoader.js'
+import { requireComputerUseSwift } from 'src/services/computerUse/swiftLoader.js'
 
 /**
  * Shared CFRunLoop pump. Swift's four `@MainActor` async methods

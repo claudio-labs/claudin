@@ -9,7 +9,7 @@ const compact = {
   isEnabled: () => !isEnvTruthy(process.env.DISABLE_COMPACT),
   supportsNonInteractive: true,
   argumentHint: '<optional custom summarization instructions>',
-  load: () => import('./compact.js'),
+  load: () => import('src/commands/compact/compact.js'),
 } satisfies Command
 
 export default compact

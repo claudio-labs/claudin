@@ -1,17 +1,17 @@
 import { ClaudeError } from "src/utils/errors.js";
 import { logError } from "src/utils/log.js";
-import { ALREADY_WRAPPED_RE, wrapStdoutWithMarkers } from "./markers.js";
+import { ALREADY_WRAPPED_RE, wrapStdoutWithMarkers } from "src/outputFilter/Bash/markers.js";
 import {
   applyPipeline,
   hasCompound,
   maybeRewrite,
   splitTrailingReducerPipe,
-} from "./pipeline.js";
-import { findFilterForCommand } from "./registry.js";
-import type { PipelineResult, PreExecPlan } from "./types.js";
+} from "src/outputFilter/Bash/pipeline.js";
+import { findFilterForCommand } from "src/outputFilter/Bash/registry.js";
+import type { PipelineResult, PreExecPlan } from "src/outputFilter/Bash/types.js";
 
 export type { MatchOutputRule, ReplaceRule, RewriteContext } from "src/outputFilter/types.js";
-export type { FilterSpec, PipelineResult, PreExecPlan } from "./types.js";
+export type { FilterSpec, PipelineResult, PreExecPlan } from "src/outputFilter/Bash/types.js";
 
 // ---------------------------------------------------------------------------
 // Safe apply — fail-open wrapper (architecture §13)

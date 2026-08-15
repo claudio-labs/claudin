@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-import { getSkillDirCommands, clearSkillCaches } from './loadSkillsDir.ts'
+import { getSkillDirCommands, clearSkillCaches } from 'src/skills/loadSkillsDir.ts'
 
 function writeSkill(rootDir: string, skillPath: string): void {
   const skillDir = join(rootDir, '.claudin', 'skills', ...skillPath.split('/'))

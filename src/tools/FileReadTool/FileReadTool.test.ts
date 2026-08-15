@@ -34,14 +34,14 @@ import {
   assistantWithAppliedEdits,
   assistantWithClearing,
   userWithToolResult,
-} from './__test-helpers__/contextManagementFixtures.js'
+} from 'src/tools/FileReadTool/__test-helpers__/contextManagementFixtures.js'
 import {
   FileReadTool,
   MaxFileReadTokenExceededError,
   STAND_DOWN_STRIKES,
   STICKY_REPLAY_BUDGET,
   scanFile,
-} from './FileReadTool.js'
+} from 'src/tools/FileReadTool/FileReadTool.js'
 
 // ---------------------------------------------------------------------------
 // Baseline regression suite for FileReadTool.

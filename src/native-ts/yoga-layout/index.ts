@@ -55,7 +55,7 @@ import {
   PositionType,
   Unit,
   Wrap,
-} from './enums.js'
+} from 'src/native-ts/yoga-layout/enums.js'
 
 export {
   Align,

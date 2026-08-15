@@ -7,7 +7,7 @@ import {
   migrateLegacyClaudeDir,
   type MigrationReport,
 } from 'src/services/config/claudinMigration.js'
-import { Select } from './CustomSelect/index.js'
+import { Select } from 'src/components/CustomSelect/index.js'
 
 type Phase =
   | { kind: 'prompt' }

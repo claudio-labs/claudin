@@ -41,7 +41,7 @@ import {
   EVICT_MIN_BATCH,
   EVICT_TRIGGER_AT,
   MAX_DISPLAY_MESSAGES,
-} from './stableStubState.js'
+} from 'src/services/compact/stableStubState.js'
 import {
   _resetDeferCacheMarkerForTesting,
   addCacheBreakpoints,

@@ -15,11 +15,11 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
-import { logForDebugging } from './debug.js'
-import { getClaudinConfigHomeDir, isEnvTruthy } from './envUtils.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/utils/envUtils.js'
 import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { formatMs, formatTimelineLine, getPerformance } from './profilerBase.js'
-import { writeFileSync_DEPRECATED } from './slowOperations.js'
+import { formatMs, formatTimelineLine, getPerformance } from 'src/utils/profilerBase.js'
+import { writeFileSync_DEPRECATED } from 'src/utils/slowOperations.js'
 
 // Module-level state - decided once at module load
 // eslint-disable-next-line custom-rules/no-process-env-top-level

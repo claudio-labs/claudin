@@ -1,5 +1,5 @@
-import type { DOMElement } from './dom.js'
-import type { TextStyles } from './styles.js'
+import type { DOMElement } from 'src/ink/dom.js'
+import type { TextStyles } from 'src/ink/styles.js'
 
 /**
  * A segment of text with its associated styles.

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import type { ToolUseContext } from 'src/Tool.js'
-import { ReadMcpResourceTool } from './ReadMcpResourceTool.js'
+import { ReadMcpResourceTool } from 'src/tools/ReadMcpResourceTool/ReadMcpResourceTool.js'
 
 function ctxWithClients(mcpClients: unknown[]): ToolUseContext {
   return {

@@ -7,10 +7,10 @@ import stripAnsi from 'strip-ansi'
 import { createRoot, Text, useTheme } from 'src/ink.js'
 import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js'
 import { AppStateProvider } from 'src/state/AppState.js'
-import { ThemeProvider } from './design-system/ThemeProvider.js'
+import { ThemeProvider } from 'src/components/design-system/ThemeProvider.js'
 
-const realStructuredDiff = { ...(await import('./StructuredDiff.js')) }
-const realColorDiff = { ...(await import('./StructuredDiff/colorDiff.js')) }
+const realStructuredDiff = { ...(await import('src/components/StructuredDiff.js')) }
+const realColorDiff = { ...(await import('src/components/StructuredDiff/colorDiff.js')) }
 
 mock.module('./StructuredDiff.js', () => ({
   StructuredDiff: function StructuredDiffPreview(): React.ReactNode {
@@ -128,7 +128,7 @@ afterAll(() => {
 })
 
 test('updates the preview when keyboard focus moves to another theme', async () => {
-  const { ThemePicker } = await import('./ThemePicker.js')
+  const { ThemePicker } = await import('src/components/ThemePicker.js')
   const { stdout, stdin, getOutput } = createTestStreams()
   const root = await createRoot({
     stdout: stdout as unknown as NodeJS.WriteStream,

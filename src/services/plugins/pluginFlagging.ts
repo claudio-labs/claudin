@@ -19,7 +19,7 @@ import { logForDebugging } from 'src/utils/debug.js'
 import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import { logError } from 'src/utils/log.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
-import { getPluginsDirectory } from './pluginDirectories.js'
+import { getPluginsDirectory } from 'src/services/plugins/pluginDirectories.js'
 
 const FLAGGED_PLUGINS_FILENAME = 'flagged-plugins.json'
 

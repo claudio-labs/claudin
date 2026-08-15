@@ -1,4 +1,4 @@
-import { quote } from './shellQuote.js'
+import { quote } from 'src/services/bash/shellQuote.js'
 
 /**
  * Detects if a command contains a heredoc pattern

@@ -22,41 +22,41 @@ import {
   updateSettingsForSource,
 } from 'src/services/settings/settings.js'
 import { buildPluginTelemetryFields } from 'src/services/telemetry/pluginTelemetry.js'
-import { clearAllCaches } from './cacheUtils.js'
+import { clearAllCaches } from 'src/services/plugins/cacheUtils.js'
 import {
   formatDependencyCountSuffix,
   getEnabledPluginIdsForScope,
   type ResolutionResult,
   resolveDependencyClosure,
-} from './dependencyResolver.js'
+} from 'src/services/plugins/dependencyResolver.js'
 import {
   addInstalledPlugin,
   getGitCommitSha,
-} from './installedPluginsManager.js'
-import { getManagedPluginNames } from './managedPlugins.js'
-import { getMarketplaceCacheOnly, getPluginById } from './marketplaceManager.js'
+} from 'src/services/plugins/installedPluginsManager.js'
+import { getManagedPluginNames } from 'src/services/plugins/managedPlugins.js'
+import { getMarketplaceCacheOnly, getPluginById } from 'src/services/plugins/marketplaceManager.js'
 import {
   isOfficialMarketplaceName,
   parsePluginIdentifier,
   scopeToSettingSource,
-} from './pluginIdentifier.js'
+} from 'src/services/plugins/pluginIdentifier.js'
 import {
   cachePlugin,
   getVersionedCachePath,
   getVersionedZipCachePath,
-} from './pluginLoader.js'
-import { isPluginBlockedByPolicy } from './pluginPolicy.js'
-import { calculatePluginVersion } from './pluginVersioning.js'
+} from 'src/services/plugins/pluginLoader.js'
+import { isPluginBlockedByPolicy } from 'src/services/plugins/pluginPolicy.js'
+import { calculatePluginVersion } from 'src/services/plugins/pluginVersioning.js'
 import {
   isLocalPluginSource,
   type PluginMarketplaceEntry,
   type PluginScope,
   type PluginSource,
-} from './schemas.js'
+} from 'src/services/plugins/schemas.js'
 import {
   convertDirectoryToZipInPlace,
   isPluginZipCacheEnabled,
-} from './zipCache.js'
+} from 'src/services/plugins/zipCache.js'
 
 /**
  * Plugin installation metadata for installed_plugins.json

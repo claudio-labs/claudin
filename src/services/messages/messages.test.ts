@@ -5,7 +5,7 @@ import {
   normalizeAttachmentForAPI,
   stripOldNarrationBlocks,
   stripOldThinkingBlocks,
-} from './messages.js'
+} from 'src/services/messages/messages.js'
 
 // Inline fixture helpers
 function assistantWithThinking(text = 'reasoning') {

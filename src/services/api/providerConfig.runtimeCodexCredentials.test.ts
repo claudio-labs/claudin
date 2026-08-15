@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { resolveRuntimeCodexCredentials } from './providerConfig.js'
+import { resolveRuntimeCodexCredentials } from 'src/services/api/providerConfig.js'
 
 const realCodexCredentials = { ...(await import('src/services/api/codexCredentials.js')) }
 

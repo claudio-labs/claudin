@@ -6,7 +6,7 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
-import { getLauncherPath } from './bundledMode.js'
+import { getLauncherPath } from 'src/services/install/bundledMode.js'
 import { type ReleaseChannel, saveGlobalConfig } from 'src/services/config/config.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { env } from 'src/utils/env.js'

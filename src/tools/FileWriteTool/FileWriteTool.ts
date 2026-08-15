@@ -52,7 +52,7 @@ import {
   writeFamilyReadGateError,
 } from 'src/tools/shared/readBeforeEditMessages.js'
 import { gitDiffSchema, hunkSchema } from 'src/tools/FileEditTool/types.js'
-import { FILE_WRITE_TOOL_NAME, getWriteToolDescription } from './prompt.js'
+import { FILE_WRITE_TOOL_NAME, getWriteToolDescription } from 'src/tools/FileWriteTool/prompt.js'
 import {
   getToolUseSummary,
   isResultTruncated,
@@ -61,7 +61,7 @@ import {
   renderToolUseMessage,
   renderToolUseRejectedMessage,
   userFacingName,
-} from './UI.js'
+} from 'src/tools/FileWriteTool/UI.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({

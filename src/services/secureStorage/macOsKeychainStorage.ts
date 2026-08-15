@@ -10,8 +10,8 @@ import {
   getUsername,
   KEYCHAIN_CACHE_TTL_MS,
   keychainCacheState,
-} from './macOsKeychainHelpers.js'
-import type { SecureStorage, SecureStorageData } from './index.js'
+} from 'src/services/secureStorage/macOsKeychainHelpers.js'
+import type { SecureStorage, SecureStorageData } from 'src/services/secureStorage/index.js'
 
 // `security -i` reads stdin with a 4096-byte fgets() buffer (BUFSIZ on darwin).
 // A command line longer than this is truncated mid-argument: the first 4096

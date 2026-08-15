@@ -18,8 +18,8 @@ import {
 } from 'src/services/auth/auth.js'
 import { isInBundledMode } from 'src/services/install/bundledMode.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
-import { logForDebugging } from './debug.js'
-import { isEnvTruthy } from './envUtils.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
 import {
   getDefaultMainLoopModelSetting,
   getDefaultOpusModel,
@@ -27,15 +27,15 @@ import {
   isOpus1mMergeEnabled,
   type ModelSetting,
   parseUserSpecifiedModel,
-} from './model/model.js'
-import { getAPIProvider } from './model/providers.js'
+} from 'src/utils/model/model.js'
+import { getAPIProvider } from 'src/utils/model/providers.js'
 import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
 import {
   getInitialSettings,
   getSettingsForSource,
   updateSettingsForSource,
 } from 'src/services/settings/settings.js'
-import { createSignal } from './signal.js'
+import { createSignal } from 'src/utils/signal.js'
 
 export function isFastModeEnabled(): boolean {
   if (getAPIProvider() !== 'firstParty') {

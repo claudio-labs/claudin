@@ -3,8 +3,8 @@ import type { ToolUseContext } from 'src/Tool.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
 import { withResolvers } from 'src/utils/withResolvers.js'
-import { isLockHeldLocally, releaseComputerUseLock } from './computerUseLock.js'
-import { unregisterEscHotkey } from './escHotkey.js'
+import { isLockHeldLocally, releaseComputerUseLock } from 'src/services/computerUse/computerUseLock.js'
+import { unregisterEscHotkey } from 'src/services/computerUse/escHotkey.js'
 
 // cu.apps.unhide is NOT one of the four @MainActor methods wrapped by
 // drainRunLoop's 30s backstop. On abort paths (where the user hit Ctrl+C
@@ -37,7 +37,7 @@ export async function cleanupComputerUseAfterTurn(
 
   const hidden = appState.computerUseMcpState?.hiddenDuringTurn
   if (hidden && hidden.size > 0) {
-    const { unhideComputerUseApps } = await import('./executor.js')
+    const { unhideComputerUseApps } = await import('src/services/computerUse/executor.js')
     const unhide = unhideComputerUseApps([...hidden]).catch(err =>
       logForDebugging(
         `[Computer Use MCP] auto-unhide failed: ${errorMessage(err)}`,

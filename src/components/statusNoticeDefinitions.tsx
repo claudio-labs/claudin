@@ -9,7 +9,7 @@ import { formatNumber } from 'src/utils/text/format.js';
 import type { getGlobalConfig } from 'src/services/config/config.js';
 import { getAnthropicApiKeyWithSource, getApiKeyFromConfigOrMacOSKeychain, getAuthTokenSource, isClaudeAISubscriber } from 'src/services/auth/auth.js';
 import type { AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js';
-import { getAgentDescriptionsTotalTokens, AGENT_DESCRIPTIONS_THRESHOLD } from './statusNoticeHelpers.js';
+import { getAgentDescriptionsTotalTokens, AGENT_DESCRIPTIONS_THRESHOLD } from 'src/components/statusNoticeHelpers.js';
 import { isSupportedJetBrainsTerminal, toIDEDisplayName, getTerminalIdeType } from 'src/services/ide/ide.js';
 import { isJetBrainsPluginInstalledCachedSync } from 'src/services/ide/jetbrains.js';
 

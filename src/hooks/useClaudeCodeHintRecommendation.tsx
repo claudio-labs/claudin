@@ -16,7 +16,7 @@ import { clearPendingHint, getPendingHintSnapshot, markShownThisSession, subscri
 import { logForDebugging } from 'src/utils/debug.js';
 import { disableHintRecommendations, markHintPluginShown, type PluginHintRecommendation, resolvePluginHint } from 'src/services/plugins/hintRecommendation.js';
 import { installPluginFromMarketplace } from 'src/services/plugins/pluginInstallationHelpers.js';
-import { installPluginAndNotify, usePluginRecommendationBase } from './usePluginRecommendationBase.js';
+import { installPluginAndNotify, usePluginRecommendationBase } from 'src/hooks/usePluginRecommendationBase.js';
 type UseClaudeCodeHintRecommendationResult = {
   recommendation: PluginHintRecommendation | null;
   handleResponse: (response: 'yes' | 'no' | 'disable') => void;

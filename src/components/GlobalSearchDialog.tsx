@@ -13,8 +13,8 @@ import { highlightMatch } from 'src/components/highlightMatch.js';
 import { relativePath } from 'src/services/permissions/filesystem.js';
 import { readFileInRange } from 'src/utils/fs/readFileInRange.js';
 import { ripGrepStream } from 'src/utils/fs/ripgrep.js';
-import { FuzzyPicker } from './design-system/FuzzyPicker.js';
-import { LoadingState } from './design-system/LoadingState.js';
+import { FuzzyPicker } from 'src/components/design-system/FuzzyPicker.js';
+import { LoadingState } from 'src/components/design-system/LoadingState.js';
 type Props = {
   onDone: () => void;
   onInsert: (text: string) => void;

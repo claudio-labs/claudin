@@ -2,11 +2,11 @@ import type { ConfigScope } from 'src/services/mcp/types.js'
 import type { ZodError, ZodIssue } from 'zod/v4'
 import { jsonParse } from 'src/utils/slowOperations.js'
 import { plural } from 'src/utils/text/stringUtils.js'
-import { validatePermissionRule } from './permissionValidation.js'
-import { generateSettingsJSONSchema } from './schemaOutput.js'
-import type { SettingsJson } from './types.js'
-import { SettingsSchema } from './types.js'
-import { getValidationTip } from './validationTips.js'
+import { validatePermissionRule } from 'src/services/settings/permissionValidation.js'
+import { generateSettingsJSONSchema } from 'src/services/settings/schemaOutput.js'
+import type { SettingsJson } from 'src/services/settings/types.js'
+import { SettingsSchema } from 'src/services/settings/types.js'
+import { getValidationTip } from 'src/services/settings/validationTips.js'
 
 /**
  * Helper type guards for specific Zod v4 issue types

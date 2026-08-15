@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { canonicalizeForMatching, findFilterForCommand } from "./registry.js";
+import { canonicalizeForMatching, findFilterForCommand } from "src/outputFilter/Bash/registry.js";
 
 describe("canonicalizeForMatching", () => {
   test("strips sudo prefix", () => {

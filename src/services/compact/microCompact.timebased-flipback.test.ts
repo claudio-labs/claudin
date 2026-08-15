@@ -47,7 +47,7 @@ _resetCacheProfileForTesting()
 // Same boundary mocks as microCompact.test.ts: pin the model + a huge
 // effective window so the SIZE-based trigger can never fire in these tests
 // (history here is tiny). Everything else is the real code path.
-const realAutoCompact = { ...(await import('./autoCompact.js')) }
+const realAutoCompact = { ...(await import('src/services/compact/autoCompact.js')) }
 const realModel = { ...(await import('src/utils/model/model.js')) }
 
 mock.module('./autoCompact.js', () => ({
@@ -59,14 +59,14 @@ mock.module('src/utils/model/model.js', () => ({
   getMainLoopModel: () => 'claude-sonnet-4',
 }))
 
-const { microcompactMessages } = await import('./microCompact.js')
-const { getTimeBasedMCConfig } = await import('./timeBasedMCConfig.js')
+const { microcompactMessages } = await import('src/services/compact/microCompact.js')
+const { getTimeBasedMCConfig } = await import('src/services/compact/timeBasedMCConfig.js')
 const {
   _resetAllClippedIdsForTesting,
   addClippedIds,
   applyStableStubs,
   getClippedIds,
-} = await import('./stableStubState.js')
+} = await import('src/services/compact/stableStubState.js')
 
 // querySource must start with 'repl_main_thread' (isMainThreadSource) and be
 // defined (evaluateTimeBasedTrigger early-returns on undefined).

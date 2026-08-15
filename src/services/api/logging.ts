@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle'
 import { isSdkApiError } from 'src/utils/errors.js'
-import { tryGetActiveProvider } from './activeProvider.js'
+import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import type {
   BetaStopReason,
   BetaUsage as Usage,
@@ -36,9 +36,9 @@ import {
   logEvent,
 } from 'src/services/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
-import { EMPTY_USAGE } from './emptyUsage.js'
-import { classifyAPIError } from './errors.js'
-import { extractConnectionErrorDetails } from './errorUtils.js'
+import { EMPTY_USAGE } from 'src/services/api/emptyUsage.js'
+import { classifyAPIError } from 'src/services/api/errors.js'
+import { extractConnectionErrorDetails } from 'src/services/api/errorUtils.js'
 
 export type { NonNullableUsage }
 export { EMPTY_USAGE }

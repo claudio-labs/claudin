@@ -3,7 +3,7 @@ import {
   buildAddedFileHunks,
   parseGitDiff,
   parseGitNumstat,
-} from './gitDiff.js'
+} from 'src/services/git/gitDiff.js'
 
 describe('buildAddedFileHunks', () => {
   test('renders every line as a + addition numbered from 1', () => {

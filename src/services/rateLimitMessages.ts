@@ -10,7 +10,7 @@ import {
 } from 'src/services/auth/auth.js'
 import { hasClaudeAiBillingAccess } from 'src/services/api/billing.js'
 import { formatResetTime } from 'src/utils/text/format.js'
-import type { ClaudeAILimits } from './claudeAiLimits.js'
+import type { ClaudeAILimits } from 'src/services/claudeAiLimits.js'
 
 /**
  * All possible rate limit error message prefixes

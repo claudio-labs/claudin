@@ -7,8 +7,8 @@ import {
   listTasks,
   TaskStatusSchema,
 } from 'src/tasks/tasks.js'
-import { TASK_LIST_TOOL_NAME } from './constants.js'
-import { DESCRIPTION, getPrompt } from './prompt.js'
+import { TASK_LIST_TOOL_NAME } from 'src/tools/TaskListTool/constants.js'
+import { DESCRIPTION, getPrompt } from 'src/tools/TaskListTool/prompt.js'
 
 const inputSchema = lazySchema(() => z.strictObject({}))
 type InputSchema = ReturnType<typeof inputSchema>

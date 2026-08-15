@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { isKimiCodeBaseUrl, isXaiOAuthBaseUrl } from './providerConfig.js'
+import { isKimiCodeBaseUrl, isXaiOAuthBaseUrl } from 'src/services/api/providerConfig.js'
 
 describe('isXaiOAuthBaseUrl', () => {
   test('exact api.x.ai host matches', () => {

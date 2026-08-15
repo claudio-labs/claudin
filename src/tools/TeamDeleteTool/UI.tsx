@@ -1,6 +1,6 @@
 import React from 'react';
 import { jsonParse } from 'src/utils/slowOperations.js';
-import type { Output } from './TeamDeleteTool.js';
+import type { Output } from 'src/tools/TeamDeleteTool/TeamDeleteTool.js';
 export function renderToolUseMessage(_input: Record<string, unknown>): React.ReactNode {
   return 'cleanup team: current';
 }

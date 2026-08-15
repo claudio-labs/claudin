@@ -10,7 +10,7 @@ import { adjustHunkLineNumbers, CONTEXT_LINES, getPatchForDisplay } from 'src/se
 import { logError } from 'src/utils/log.js';
 import { CHUNK_SIZE, openForScan, readCapped, scanForContext } from 'src/utils/fs/readEditContext.js';
 import { firstLineOf } from 'src/utils/text/stringUtils.js';
-import { StructuredDiffList } from './StructuredDiffList.js';
+import { StructuredDiffList } from 'src/components/StructuredDiffList.js';
 type Props = {
   file_path: string;
   edits: FileEdit[];

@@ -8,7 +8,7 @@ import { logForDebugging } from 'src/utils/debug.js';
 import { createDisabledBypassPermissionsContext, isBypassPermissionsModeDisabled } from 'src/services/permissions/permissionSetup.js';
 import { applySettingsChange } from 'src/services/settings/applySettingsChange.js';
 import type { SettingSource } from 'src/services/settings/constants.js';
-import { createStore } from './store.js';
+import { createStore } from 'src/state/store.js';
 
 // DCE: voice context is internal-only. External builds get a passthrough.
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -19,12 +19,12 @@ const VoiceProvider: (props: {
 }) => children;
 
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { type AppState, type AppStateStore, getDefaultAppState } from './AppStateStore.js';
+import { type AppState, type AppStateStore, getDefaultAppState } from 'src/state/AppStateStore.js';
 
 // TODO: Remove these re-exports once all callers import directly from
 // ./AppStateStore.js. Kept for back-compat during migration so .ts callers
 // can incrementally move off the .tsx import and stop pulling React.
-export { type ActiveGoalState, type AppState, type AppStateStore, type CompletionBoundary, getDefaultAppState, type GoalResultState, IDLE_SPECULATION_STATE, type SpeculationResult, type SpeculationState } from './AppStateStore.js';
+export { type ActiveGoalState, type AppState, type AppStateStore, type CompletionBoundary, getDefaultAppState, type GoalResultState, IDLE_SPECULATION_STATE, type SpeculationResult, type SpeculationState } from 'src/state/AppStateStore.js';
 export const AppStoreContext = React.createContext<AppStateStore | null>(null);
 type Props = {
   children: React.ReactNode;

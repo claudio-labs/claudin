@@ -11,14 +11,14 @@ import {
   isInclusiveMotion,
   isLinewiseMotion,
   resolveMotion,
-} from './motions.js'
-import { findTextObject } from './textObjects.js'
+} from 'src/vim/motions.js'
+import { findTextObject } from 'src/vim/textObjects.js'
 import type {
   FindType,
   Operator,
   RecordedChange,
   TextObjScope,
-} from './types.js'
+} from 'src/vim/types.js'
 
 /**
  * Context for operator execution.

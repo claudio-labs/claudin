@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { stripReinjectedAttachments } from './compact.js'
+import { stripReinjectedAttachments } from 'src/services/compact/compact.js'
 
 // `stripReinjectedAttachments` removes attachment types that
 // runPostCompactCleanup is responsible for re-emitting on the next turn, so

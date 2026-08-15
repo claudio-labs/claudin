@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { compressJsonArray } from './jsonArrayCompress.js'
+import { compressJsonArray } from 'src/services/tools/jsonArrayCompress.js'
 
 const mkRows = (n: number) =>
   Array.from({ length: n }, (_, i) => ({

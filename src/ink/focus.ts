@@ -1,5 +1,5 @@
-import type { DOMElement } from './dom.js'
-import { FocusEvent } from './events/focus-event.js'
+import type { DOMElement } from 'src/ink/dom.js'
+import { FocusEvent } from 'src/ink/events/focus-event.js'
 
 const MAX_FOCUS_STACK = 32
 

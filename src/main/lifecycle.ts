@@ -38,7 +38,7 @@ import { getInitialSettings, getManagedSettingsKeysForLogging, getSettingsForSou
 import { logSkillsLoaded } from 'src/services/telemetry/skillLoadedEvent.js';
 import { logPluginLoadErrors, logPluginsEnabledForSession } from 'src/services/telemetry/pluginTelemetry.js';
 import type { ThinkingConfig } from 'src/services/context/thinking.js';
-import { loadSettingSourcesFromFlag, loadSettingsFromFlag } from './helpers.js';
+import { loadSettingSourcesFromFlag, loadSettingsFromFlag } from 'src/main/helpers.js';
 
 /**
  * Log managed settings keys to Statsig for analytics.

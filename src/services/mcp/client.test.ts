@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { cleanupFailedConnection } from './client.js'
+import { cleanupFailedConnection } from 'src/services/mcp/client.js'
 
 test('cleanupFailedConnection awaits transport close before resolving', async () => {
   let closed = false

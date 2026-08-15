@@ -3,7 +3,7 @@ import {
   applyToolJSXAction,
   initialReducerState,
   type ReducerInternal,
-} from './setToolJSXReducer.js'
+} from 'src/utils/setToolJSXReducer.js'
 
 const localPayload = (label: string) => ({
   jsx: { type: 'mock', props: { label } } as unknown as React.ReactNode,

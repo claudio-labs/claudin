@@ -12,7 +12,7 @@ import { getSessionId } from 'src/bootstrap/state.js'
 import {
   shouldAllowManagedHooksOnly,
   shouldDisableAllHooksIncludingManaged,
-} from './hooksConfigSnapshot.js'
+} from 'src/services/lifecycleHooks/hooksConfigSnapshot.js'
 import {
   getInitialSettings,
   getSettingsForSource,
@@ -57,14 +57,14 @@ import {
   shouldSkipHookDueToTrust,
   createBaseHookInput,
   dispatchHookChainFromHookRuntime,
-} from './shared.js'
-import { hasHookForEvent } from './matching.js'
-import { execCommandHook } from './runners.js'
-import { executeHooks } from './executeHooks.js'
+} from 'src/services/lifecycleHooks/shared.js'
+import { hasHookForEvent } from 'src/services/lifecycleHooks/matching.js'
+import { execCommandHook } from 'src/services/lifecycleHooks/runners.js'
+import { executeHooks } from 'src/services/lifecycleHooks/executeHooks.js'
 import type {
   HookBlockingError,
   AggregatedHookResult,
-} from './types.js'
+} from 'src/services/lifecycleHooks/types.js'
 
 /**
  * Format a list of blocking errors from a PreTool hook's configured commands.

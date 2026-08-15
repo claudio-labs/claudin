@@ -24,8 +24,8 @@ import {
   getTeamName,
 } from 'src/coordinator/teammate.js'
 import { writeToMailbox } from 'src/coordinator/teammateMailbox.js'
-import { TASK_UPDATE_TOOL_NAME } from './constants.js'
-import { DESCRIPTION, PROMPT } from './prompt.js'
+import { TASK_UPDATE_TOOL_NAME } from 'src/tools/TaskUpdateTool/constants.js'
+import { DESCRIPTION, PROMPT } from 'src/tools/TaskUpdateTool/prompt.js'
 
 const inputSchema = lazySchema(() => {
   // Extended status schema that includes 'deleted' as a special action

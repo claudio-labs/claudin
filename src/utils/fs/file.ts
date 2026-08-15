@@ -21,11 +21,11 @@ import {
   detectEncodingForResolvedPath,
   detectLineEndingsForString,
   type LineEndingType,
-} from './fileRead.js'
-import { fileReadCache } from './fileReadCache.js'
-import { getFsImplementation, safeResolvePath } from './fsOperations.js'
+} from 'src/utils/fs/fileRead.js'
+import { fileReadCache } from 'src/utils/fs/fileReadCache.js'
+import { getFsImplementation, safeResolvePath } from 'src/utils/fs/fsOperations.js'
 import { logError } from 'src/utils/log.js'
-import { expandPath } from './path.js'
+import { expandPath } from 'src/utils/fs/path.js'
 import { getPlatform } from 'src/utils/proc/platform.js'
 
 export type File = {

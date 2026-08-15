@@ -3,7 +3,7 @@ import React from 'react'
 import stripAnsi from 'strip-ansi'
 import { Text } from 'src/ink.js'
 import { renderToString } from 'src/components/staticRender.js'
-import { ShellElapsedTime, ShellGroupElapsedTime } from './ShellElapsedTime.js'
+import { ShellElapsedTime, ShellGroupElapsedTime } from 'src/components/shell/ShellElapsedTime.js'
 
 function render(node: React.ReactNode): Promise<string> {
   // Both live inside the parent <Text> of a message row, which is what lets

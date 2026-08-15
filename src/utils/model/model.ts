@@ -17,7 +17,7 @@ import {
 } from 'src/services/context/context.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { getPrimaryModel } from 'src/services/api/providerModels.js'
-import { getModelStrings, resolveOverriddenModel } from './modelStrings.js'
+import { getModelStrings, resolveOverriddenModel } from 'src/utils/model/modelStrings.js'
 import {
   formatModelPricing,
   getOpus46CostTier,
@@ -25,12 +25,12 @@ import {
 } from 'src/services/api/modelCost.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
-import { getAPIProvider } from './providers.js'
+import { getAPIProvider } from 'src/utils/model/providers.js'
 import { LIGHTNING_BOLT } from 'src/constants/figures.js'
-import { isModelAllowed } from './modelAllowlist.js'
-import { type ModelAlias, isModelAlias } from './aliases.js'
+import { isModelAllowed } from 'src/utils/model/modelAllowlist.js'
+import { type ModelAlias, isModelAlias } from 'src/utils/model/aliases.js'
 import { capitalize } from 'src/utils/text/stringUtils.js'
-import { COPILOT_DISPLAY_NAMES } from './copilotModels.js'
+import { COPILOT_DISPLAY_NAMES } from 'src/utils/model/copilotModels.js'
 
 export type ModelShortName = string
 export type ModelName = string
@@ -593,7 +593,7 @@ export function getPublicModelDisplayName(model: ModelName): string | null {
     if (getAPIProvider() === 'github') {
       // Live catalog covers models the hardcoded registry doesn't know yet.
       const { getCopilotDisplayName } =
-        require('./copilotModelCatalog.js') as typeof import('./copilotModelCatalog.js')
+        require('src/utils/model/copilotModelCatalog.js') as typeof import('src/utils/model/copilotModelCatalog.js')
       return getCopilotDisplayName(model) ?? null
     }
     return null

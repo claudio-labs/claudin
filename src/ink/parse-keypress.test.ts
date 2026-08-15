@@ -4,8 +4,8 @@ import {
   INITIAL_STATE,
   parseMultipleKeypresses,
   type ParsedKey,
-} from './parse-keypress.ts'
-import { InputEvent } from './events/input-event.ts'
+} from 'src/ink/parse-keypress.ts'
+import { InputEvent } from 'src/ink/events/input-event.ts'
 
 function parseInputEvent(sequence: string): InputEvent {
   const [items] = parseMultipleKeypresses(INITIAL_STATE, sequence)

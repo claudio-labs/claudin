@@ -2,7 +2,7 @@ import type { StructuredPatchHunk } from 'diff'
 import { basename } from 'path'
 import type { DiffFile } from 'src/hooks/useDiffData.js'
 import { plural } from 'src/utils/text/stringUtils.js'
-import type { RepoGroup } from './types.js'
+import type { RepoGroup } from 'src/components/diff/types.js'
 
 /**
  * A flattened, render-ready row of the file tree. `dir`/`group` rows are

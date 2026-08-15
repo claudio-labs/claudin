@@ -10,7 +10,7 @@ import {
   SPECIES,
   STAT_NAMES,
   type StatName,
-} from './types.js'
+} from 'src/buddy/types.js'
 
 // Mulberry32 — tiny seeded PRNG, good enough for picking ducks
 function mulberry32(seed: number): () => number {

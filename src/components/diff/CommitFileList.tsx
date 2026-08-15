@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { Box, Text } from 'src/ink.js'
 import type { CommitFile } from 'src/services/git/gitLog.js'
-import { getDiffGlyphs } from './glyphs.js'
+import { getDiffGlyphs } from 'src/components/diff/glyphs.js'
 
 type Props = {
   /** Files changed in the selected commit; `null` while loading. */

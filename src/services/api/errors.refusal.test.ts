@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 
-import { getErrorMessageIfRefusal } from './errors.js'
+import { getErrorMessageIfRefusal } from 'src/services/api/errors.js'
 
 function getText(message: ReturnType<typeof getErrorMessageIfRefusal>): string {
   if (!message) return ''

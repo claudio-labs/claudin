@@ -6,8 +6,8 @@ import {
   getFeatureValue_CACHED_MAY_BE_STALE,
 } from 'src/services/analytics/growthbook.js'
 import { logEvent } from 'src/services/analytics/index.js'
-import type { ConnectedMCPServer, MCPServerConnection } from './types.js'
-import { asMcpSchema } from './zodCompat.js'
+import type { ConnectedMCPServer, MCPServerConnection } from 'src/services/mcp/types.js'
+import { asMcpSchema } from 'src/services/mcp/zodCompat.js'
 
 // Mirror of AutoModeEnabledState in permissionSetup.ts — inlined because that
 // file pulls in too many deps for this thin IPC module.

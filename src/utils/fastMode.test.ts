@@ -5,19 +5,19 @@ const originalEnv = { ...process.env }
 // to spread the full namespace shape into the partial mock, preventing
 // cross-file leaks of missing exports. Spread into snapshots so afterAll
 // restores see the original bindings, not a later mock factory's exports.
-const realEnvUtilsForFastMode = { ...(await import('./envUtils.js')) }
+const realEnvUtilsForFastMode = { ...(await import('src/utils/envUtils.js')) }
 const realConfigForFastMode = { ...(await import('src/services/config/config.js')) }
 const realAuthForFastMode = { ...(await import('src/services/auth/auth.js')) }
-const realDebugForFastMode = { ...(await import('./debug.js')) }
+const realDebugForFastMode = { ...(await import('src/utils/debug.js')) }
 const realBootstrapStateForFastMode = { ...(await import('src/bootstrap/state.js')) }
 const realAnalyticsForFastMode = { ...(await import('src/services/analytics/index.js')) }
 const realGrowthbookForFastMode = { ...(await import('src/services/analytics/growthbook.js')) }
 const realBundledModeForFastMode = { ...(await import('src/services/install/bundledMode.js')) }
-const realModelForFastMode = { ...(await import('./model/model.js')) }
-const realProvidersForFastMode = { ...(await import('./model/providers.js')) }
+const realModelForFastMode = { ...(await import('src/utils/model/model.js')) }
+const realProvidersForFastMode = { ...(await import('src/utils/model/providers.js')) }
 const realPrivacyLevelForFastMode = { ...(await import('src/services/config/privacyLevel.js')) }
 const realSettingsForFastMode = { ...(await import('src/services/settings/settings.js')) }
-const realSignalForFastMode = { ...(await import('./signal.js')) }
+const realSignalForFastMode = { ...(await import('src/utils/signal.js')) }
 
 async function importFreshFastModeModule() {
   return import(`./fastMode.ts?ts=${Date.now()}-${Math.random()}`)

@@ -70,15 +70,15 @@ import {
 import {
   SYNTHETIC_MODEL,
   SYNTHETIC_TOOL_RESULT_PLACEHOLDER,
-} from './constants.js'
-import { normalizeAttachmentForAPI } from './attachments.js'
-import { createUserMessage } from './factories.js'
+} from 'src/services/messages/constants.js'
+import { normalizeAttachmentForAPI } from 'src/services/messages/attachments.js'
+import { createUserMessage } from 'src/services/messages/factories.js'
 import {
   isSystemLocalCommandMessage,
   isToolUseRequestMessage,
   type ToolUseRequestMessage,
-} from './predicates.js'
-import { deriveShortMessageId, deriveUUID, wrapInSystemReminder } from './text.js'
+} from 'src/services/messages/predicates.js'
+import { deriveShortMessageId, deriveUUID, wrapInSystemReminder } from 'src/services/messages/text.js'
 
 const TOOL_REFERENCE_TURN_BOUNDARY = 'Tool loaded.'
 

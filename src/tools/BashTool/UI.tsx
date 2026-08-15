@@ -18,10 +18,10 @@ import { isEnvTruthy } from 'src/utils/envUtils.js';
 import { getDisplayPath } from 'src/utils/fs/file.js';
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
 import type { ThemeName } from 'src/utils/theme.js';
-import type { BashProgress, BashToolInput, Out } from './BashTool.js';
-import BashToolResultMessage from './BashToolResultMessage.js';
-import { extractBashCommentLabel } from './commentLabel.js';
-import { parseSedEditCommand } from './sedEditParser.js';
+import type { BashProgress, BashToolInput, Out } from 'src/tools/BashTool/BashTool.js';
+import BashToolResultMessage from 'src/tools/BashTool/BashToolResultMessage.js';
+import { extractBashCommentLabel } from 'src/tools/BashTool/commentLabel.js';
+import { parseSedEditCommand } from 'src/tools/BashTool/sedEditParser.js';
 
 // Constants for command display
 const MAX_COMMAND_DISPLAY_LINES = 2;

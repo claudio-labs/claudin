@@ -22,7 +22,7 @@ import { env } from 'src/utils/env.js'
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js'
 import type { ImageDimensions } from 'src/utils/imageResizer.js'
 import { isModifierPressed, prewarmModifiers } from 'src/utils/modifiers.js'
-import { useDoublePress } from './useDoublePress.js'
+import { useDoublePress } from 'src/hooks/useDoublePress.js'
 
 type MaybeCursor = void | Cursor
 type InputHandler = (input: string) => MaybeCursor

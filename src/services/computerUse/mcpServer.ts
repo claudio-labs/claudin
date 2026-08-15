@@ -11,9 +11,9 @@ import { shutdown1PEventLogging } from 'src/services/analytics/firstPartyEventLo
 import { initializeAnalyticsSink } from 'src/services/analytics/sink.js'
 import { enableConfigs } from 'src/services/config/config.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { filterAppsForDescription } from './appNames.js'
-import { getChicagoCoordinateMode } from './gates.js'
-import { getComputerUseHostAdapter } from './hostAdapter.js'
+import { filterAppsForDescription } from 'src/services/computerUse/appNames.js'
+import { getChicagoCoordinateMode } from 'src/services/computerUse/gates.js'
+import { getComputerUseHostAdapter } from 'src/services/computerUse/hostAdapter.js'
 
 const APP_ENUM_TIMEOUT_MS = 1000
 

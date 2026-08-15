@@ -27,8 +27,8 @@ import { getDirectoryCompletions, getPathCompletions, isPathLikeToken } from 'sr
 import { getShellHistoryCompletion } from 'src/services/suggestions/shellHistoryCompletion.js';
 import { getSlackChannelSuggestions, hasSlackMcpServer } from 'src/services/suggestions/slackChannelSuggestions.js';
 import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js';
-import { applyFileSuggestion, findLongestCommonPrefix, onIndexBuildComplete, startBackgroundCacheRefresh } from './fileSuggestions.js';
-import { generateUnifiedSuggestions } from './unifiedSuggestions.js';
+import { applyFileSuggestion, findLongestCommonPrefix, onIndexBuildComplete, startBackgroundCacheRefresh } from 'src/hooks/fileSuggestions.js';
+import { generateUnifiedSuggestions } from 'src/hooks/unifiedSuggestions.js';
 
 // Unicode-aware character class for file path tokens:
 // \p{L} = letters (CJK, Latin, Cyrillic, etc.)

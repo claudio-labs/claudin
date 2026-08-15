@@ -9,7 +9,7 @@ import {
   checkHasRemoteEnvironment,
   checkIsInGitRepo,
   checkNeedsClaudeAiLogin,
-} from './preconditions.js'
+} from 'src/services/background/remote/preconditions.js'
 
 /**
  * Background remote session type for managing teleport sessions

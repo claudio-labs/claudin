@@ -9,12 +9,12 @@ import {
   doctorServer,
   findingsFromValidationErrors,
   type McpDoctorDependencies,
-} from './doctor.js'
+} from 'src/services/mcp/doctor.js'
 import type {
   ConnectedMCPServer,
   FailedMCPServer,
   NeedsAuthMCPServer,
-} from './types.js'
+} from 'src/services/mcp/types.js'
 
 function stdioConfig(scope: 'local' | 'project' | 'user' | 'enterprise', command: string) {
   return {

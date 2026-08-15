@@ -11,7 +11,7 @@ import { resolveAgentTools } from 'src/tools/AgentTool/agentToolUtils.js';
 import { type AgentDefinition, isBuiltInAgent } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { getAgentModelDisplay } from 'src/utils/model/agent.js';
 import { Markdown } from 'src/components/Markdown.js';
-import { getActualRelativeAgentFilePath } from './agentFileUtils.js';
+import { getActualRelativeAgentFilePath } from 'src/components/agents/agentFileUtils.js';
 type Props = {
   agent: AgentDefinition;
   tools: Tools;

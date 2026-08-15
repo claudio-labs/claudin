@@ -7,7 +7,7 @@ import { getProxyUrl, shouldBypassProxy } from 'src/services/api/proxy.js'
 // Import as namespace so spyOn works in tests (direct imports bypass spies)
 import * as settingsModule from 'src/services/settings/settings.js'
 import type { HttpHook } from 'src/services/settings/types.js'
-import { ssrfGuardedLookup } from './ssrfGuard.js'
+import { ssrfGuardedLookup } from 'src/services/lifecycleHooks/ssrfGuard.js'
 
 const DEFAULT_HTTP_HOOK_TIMEOUT_MS = 10 * 60 * 1000 // 10 minutes (matches TOOL_HOOK_EXECUTION_TIMEOUT_MS)
 

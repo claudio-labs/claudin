@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { buildWriteToolDescription } from './prompt.js'
+import { buildWriteToolDescription } from 'src/tools/FileWriteTool/prompt.js'
 
 const GATED = [
   'NEVER create documentation files (*.md) or README files',

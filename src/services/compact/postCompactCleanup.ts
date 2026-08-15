@@ -16,12 +16,12 @@ import { clearAllSessions } from 'src/services/api/sessionIngress.js'
 import { diagnosticTracker } from 'src/services/diagnosticTracking.js'
 import { clearSessionMessagesCache } from 'src/services/session/sessionStorage.js'
 import { clearBetaTracingState } from 'src/services/telemetry/betaSessionTracing.js'
-import { resetMicrocompactState } from './microCompact.js'
+import { resetMicrocompactState } from 'src/services/compact/microCompact.js'
 import {
   bumpStandDownEpoch,
   pruneStaleClippedIds,
   pruneOrphanClippedIds,
-} from './stableStubState.js'
+} from 'src/services/compact/stableStubState.js'
 import { clearSkippedTimestamps } from 'src/history.js'
 
 /**

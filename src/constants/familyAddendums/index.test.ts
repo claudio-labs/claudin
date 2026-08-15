@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { getAnthropicAddendum } from './anthropic.js'
-import { CODEX_ADDENDUM } from './codex.js'
-import { DEFAULT_ADDENDUM } from './default.js'
-import { GEMINI_ADDENDUM } from './gemini.js'
-import { GLM_ADDENDUM } from './glm.js'
-import { getModelFamily, type ModelFamily } from './index.js'
-import { KIMI_ADDENDUM } from './kimi.js'
-import { OPENAI_REASONING_ADDENDUM } from './openaiReasoning.js'
+import { getAnthropicAddendum } from 'src/constants/familyAddendums/anthropic.js'
+import { CODEX_ADDENDUM } from 'src/constants/familyAddendums/codex.js'
+import { DEFAULT_ADDENDUM } from 'src/constants/familyAddendums/default.js'
+import { GEMINI_ADDENDUM } from 'src/constants/familyAddendums/gemini.js'
+import { GLM_ADDENDUM } from 'src/constants/familyAddendums/glm.js'
+import { getModelFamily, type ModelFamily } from 'src/constants/familyAddendums/index.js'
+import { KIMI_ADDENDUM } from 'src/constants/familyAddendums/kimi.js'
+import { OPENAI_REASONING_ADDENDUM } from 'src/constants/familyAddendums/openaiReasoning.js'
 
 const SECRET_RE = /sk-[a-z0-9]{20,}|api[_-]?key\s*[:=]/i
 const ABSOLUTE_PATH_RE = /(?:^|\s)\/(?:home|usr|var|etc|opt|tmp)\//

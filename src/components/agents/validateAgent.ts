@@ -4,7 +4,7 @@ import type {
   AgentDefinition,
   CustomAgentDefinition,
 } from 'src/tools/AgentTool/loadAgentsDir.js'
-import { getAgentSourceDisplayName } from './utils.js'
+import { getAgentSourceDisplayName } from 'src/components/agents/utils.js'
 
 export type AgentValidationResult = {
   isValid: boolean

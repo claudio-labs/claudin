@@ -2,8 +2,8 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { Box } from 'src/ink.js';
 import { Divider } from 'src/components/design-system/Divider.js';
-import type { FeedConfig } from './Feed.js';
-import { calculateFeedWidth, Feed } from './Feed.js';
+import type { FeedConfig } from 'src/components/LogoV2/Feed.js';
+import { calculateFeedWidth, Feed } from 'src/components/LogoV2/Feed.js';
 type FeedColumnProps = {
   feeds: FeedConfig[];
   maxWidth: number;

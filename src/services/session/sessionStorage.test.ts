@@ -8,7 +8,7 @@ import {
   buildConversationChain,
   loadTranscriptFile,
   stripPersistedToolUseResultsFromJSONLBuffer,
-} from './sessionStorage.ts'
+} from 'src/services/session/sessionStorage.ts'
 
 const tempDirs: string[] = []
 const sessionId = '00000000-0000-4000-8000-000000000999'

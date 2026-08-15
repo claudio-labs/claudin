@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import type { DiffFile } from 'src/hooks/useDiffData.js'
-import type { RepoGroup } from './types.js'
-import { buildTreeRows, type TreeRow } from './fileTree.js'
+import type { RepoGroup } from 'src/components/diff/types.js'
+import { buildTreeRows, type TreeRow } from 'src/components/diff/fileTree.js'
 
 function file(path: string): DiffFile {
   return {

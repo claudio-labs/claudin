@@ -26,16 +26,16 @@ import {
   isExpiredErrorType,
   isSuppressible403,
   validateBridgeId,
-} from './bridgeApi.js'
-import { formatDuration } from './bridgeStatusUtil.js'
-import { createBridgeLogger } from './bridgeUI.js'
-import { createCapacityWake } from './capacityWake.js'
-import { describeAxiosError } from './debugUtils.js'
-import { createTokenRefreshScheduler } from './jwtUtils.js'
-import { getPollIntervalConfig } from './pollConfig.js'
-import { toCompatSessionId, toInfraSessionId } from './sessionIdCompat.js'
-import { createSessionSpawner, safeFilenameId } from './sessionRunner.js'
-import { getTrustedDeviceToken } from './trustedDevice.js'
+} from 'src/bridge/bridgeApi.js'
+import { formatDuration } from 'src/bridge/bridgeStatusUtil.js'
+import { createBridgeLogger } from 'src/bridge/bridgeUI.js'
+import { createCapacityWake } from 'src/bridge/capacityWake.js'
+import { describeAxiosError } from 'src/bridge/debugUtils.js'
+import { createTokenRefreshScheduler } from 'src/bridge/jwtUtils.js'
+import { getPollIntervalConfig } from 'src/bridge/pollConfig.js'
+import { toCompatSessionId, toInfraSessionId } from 'src/bridge/sessionIdCompat.js'
+import { createSessionSpawner, safeFilenameId } from 'src/bridge/sessionRunner.js'
+import { getTrustedDeviceToken } from 'src/bridge/trustedDevice.js'
 import {
   BRIDGE_LOGIN_ERROR,
   type BridgeApiClient,
@@ -47,14 +47,14 @@ import {
   type SessionSpawner,
   type SessionSpawnOpts,
   type SpawnMode,
-} from './types.js'
+} from 'src/bridge/types.js'
 import {
   buildCCRv2SdkUrl,
   buildSdkUrl,
   decodeWorkSecret,
   registerWorker,
   sameSessionId,
-} from './workSecret.js'
+} from 'src/bridge/workSecret.js'
 
 export type BackoffConfig = {
   connInitialMs: number
@@ -1027,7 +1027,7 @@ export async function runBridgeLoop(
                 logForDebugging(
                   `[bridge:title] derived title for ${compatSessionId}: ${title}`,
                 )
-                void import('./createSession.js')
+                void import('src/bridge/createSession.js')
                   .then(({ updateBridgeSessionTitle }) =>
                     updateBridgeSessionTitle(compatSessionId, title, {
                       baseUrl: config.apiBaseUrl,
@@ -1557,7 +1557,7 @@ export async function runBridgeLoop(
   // Clear the crash-recovery pointer — the env is gone, pointer would be
   // stale. The early return above (resumable SIGINT shutdown) skips this,
   // leaving the pointer as a backup for the printed --session-id hint.
-  const { clearBridgePointer } = await import('./bridgePointer.js')
+  const { clearBridgePointer } = await import('src/bridge/bridgePointer.js')
   await clearBridgePointer(config.dir)
 
   logger.logVerbose('Environment offline.')
@@ -1956,7 +1956,7 @@ async function fetchSessionTitle(
   compatSessionId: string,
   baseUrl: string,
 ): Promise<string | undefined> {
-  const { getBridgeSession } = await import('./createSession.js')
+  const { getBridgeSession } = await import('src/bridge/createSession.js')
   const session = await getBridgeSession(compatSessionId, { baseUrl })
   return session?.title || undefined
 }
@@ -2080,7 +2080,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
   const { clearOAuthTokenCache, checkAndRefreshOAuthTokenIfNeeded } =
     await import('src/services/auth/auth.js')
   const { getBridgeAccessToken, getBridgeBaseUrl } = await import(
-    './bridgeConfig.js'
+    'src/bridge/bridgeConfig.js'
   )
 
   const bridgeToken = getBridgeAccessToken()
@@ -2132,7 +2132,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
   // builds, so this block tree-shakes.
   if (feature('KAIROS') && continueSession) {
     const { readBridgePointerAcrossWorktrees } = await import(
-      './bridgePointer.js'
+      'src/bridge/bridgePointer.js'
     )
     const found = await readBridgePointerAcrossWorktrees(dir)
     if (!found) {
@@ -2301,7 +2301,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
   // starts fresh in worktree mode. Only single-session mode writes new
   // pointers.
   if (!resumeSessionId) {
-    const { clearBridgePointer } = await import('./bridgePointer.js')
+    const { clearBridgePointer } = await import('src/bridge/bridgePointer.js')
     await clearBridgePointer(dir)
   }
 
@@ -2356,7 +2356,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
     // token would otherwise produce a misleading "not found" error.
     await checkAndRefreshOAuthTokenIfNeeded()
     clearOAuthTokenCache()
-    const { getBridgeSession } = await import('./createSession.js')
+    const { getBridgeSession } = await import('src/bridge/createSession.js')
     const session = await getBridgeSession(resumeSessionId, {
       baseUrl,
       getAccessToken: getBridgeAccessToken,
@@ -2367,7 +2367,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
       // pointer alone — it's an independent file they may not even have.)
       // resumePointerDir may be a worktree sibling — clear THAT file.
       if (resumePointerDir) {
-        const { clearBridgePointer } = await import('./bridgePointer.js')
+        const { clearBridgePointer } = await import('src/bridge/bridgePointer.js')
         await clearBridgePointer(resumePointerDir)
       }
       // biome-ignore lint/suspicious/noConsole: intentional error output
@@ -2379,7 +2379,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
     }
     if (!session.environment_id) {
       if (resumePointerDir) {
-        const { clearBridgePointer } = await import('./bridgePointer.js')
+        const { clearBridgePointer } = await import('src/bridge/bridgePointer.js')
         await clearBridgePointer(resumePointerDir)
       }
       // biome-ignore lint/suspicious/noConsole: intentional error output
@@ -2509,7 +2509,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
         // ("try running the same command again") should keep the pointer so
         // next launch re-prompts — that IS the retry mechanism.
         if (resumePointerDir && isFatal) {
-          const { clearBridgePointer } = await import('./bridgePointer.js')
+          const { clearBridgePointer } = await import('src/bridge/bridgePointer.js')
           await clearBridgePointer(resumePointerDir)
         }
         // biome-ignore lint/suspicious/noConsole: intentional error output
@@ -2652,7 +2652,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
       ? effectiveResumeSessionId
       : null
   if (preCreateSession && !(feature('KAIROS') && effectiveResumeSessionId)) {
-    const { createBridgeSession } = await import('./createSession.js')
+    const { createBridgeSession } = await import('src/bridge/createSession.js')
     try {
       initialSessionId = await createBridgeSession({
         environmentId,
@@ -2691,7 +2691,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
   // config when they try to resume. The resumable-shutdown path is also
   // gated to single-session (line ~1254) so the pointer would be orphaned.
   if (initialSessionId && spawnMode === 'single-session') {
-    const { writeBridgePointer } = await import('./bridgePointer.js')
+    const { writeBridgePointer } = await import('src/bridge/bridgePointer.js')
     const pointerPayload = {
       sessionId: initialSessionId,
       environmentId,
@@ -2819,7 +2819,7 @@ export async function runBridgeHeadless(
     throw new Error(BRIDGE_LOGIN_ERROR)
   }
 
-  const { getBridgeBaseUrl } = await import('./bridgeConfig.js')
+  const { getBridgeBaseUrl } = await import('src/bridge/bridgeConfig.js')
   const baseUrl = getBridgeBaseUrl()
   if (
     baseUrl.startsWith('http://') &&
@@ -2905,7 +2905,7 @@ export async function runBridgeHeadless(
 
   let initialSessionId: string | undefined
   if (opts.createSessionOnStart) {
-    const { createBridgeSession } = await import('./createSession.js')
+    const { createBridgeSession } = await import('src/bridge/createSession.js')
     try {
       const sid = await createBridgeSession({
         environmentId,

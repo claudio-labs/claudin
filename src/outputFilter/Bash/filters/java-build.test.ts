@@ -1,7 +1,7 @@
 // Phase 13 — java-extras family (spring-boot) + the gradle/mvn overlap fix.
 import { describe, expect, test } from "bun:test";
-import { runFilterBody, routesTo } from "./__testutils__/harness.js";
-import { SPRING_OK, SPRING_ERR } from "./__testutils__/phase13Samples.js";
+import { runFilterBody, routesTo } from "src/outputFilter/Bash/filters/__testutils__/harness.js";
+import { SPRING_OK, SPRING_ERR } from "src/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
 
 describe("phase 13 — spring-boot", () => {
   test("startup keeps Tomcat/Started summary, drops banner + per-bean INFO", () => {

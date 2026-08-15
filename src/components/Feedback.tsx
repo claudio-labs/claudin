@@ -25,11 +25,11 @@ import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js';
 import { extractTeammateTranscriptsFromTasks, getTranscriptPath, loadAllSubagentTranscriptsFromDisk, MAX_TRANSCRIPT_READ_BYTES } from 'src/services/session/sessionStorage.js';
 import { jsonStringify } from 'src/utils/slowOperations.js';
 import { asSystemPrompt } from 'src/utils/systemPromptType.js';
-import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
-import { Byline } from './design-system/Byline.js';
-import { Dialog } from './design-system/Dialog.js';
-import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
-import TextInput from './TextInput.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import TextInput from 'src/components/TextInput.js';
 
 // This value was determined experimentally by testing the URL length limit
 const GITHUB_URL_LIMIT = 7250;

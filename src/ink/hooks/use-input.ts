@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect } from 'react'
 import { useEventCallback } from 'usehooks-ts'
 import type { InputEvent, Key } from 'src/ink/events/input-event.js'
-import useStdin from './use-stdin.js'
+import useStdin from 'src/ink/hooks/use-stdin.js'
 
 type Handler = (input: string, key: Key, event: InputEvent) => void
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { shouldRunStartupChecks } from './replStartupGates.js'
+import { shouldRunStartupChecks } from 'src/screens/replStartupGates.js'
 
 describe('shouldRunStartupChecks', () => {
   test('runs checks after first message submission', () => {

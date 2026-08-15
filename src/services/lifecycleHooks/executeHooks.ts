@@ -16,7 +16,7 @@ import {
   getStatsStore,
   addToTurnHookDuration,
 } from 'src/bootstrap/state.js'
-import { shouldAllowManagedHooksOnly } from './hooksConfigSnapshot.js'
+import { shouldAllowManagedHooksOnly } from 'src/services/lifecycleHooks/hooksConfigSnapshot.js'
 import {
   logEvent,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -37,53 +37,53 @@ import {
 import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
 import chalk from 'chalk'
 import { errorMessage } from 'src/utils/errors.js'
-import { getSessionHookCallback } from './sessionHooks.js'
+import { getSessionHookCallback } from 'src/services/lifecycleHooks/sessionHooks.js'
 import {
   emitHookStarted,
   emitHookResponse,
   startHookProgressInterval,
-} from './hookEvents.js'
+} from 'src/services/lifecycleHooks/hookEvents.js'
 import type {
   HookEvent,
   HookInput,
 } from 'src/entrypoints/agentSdkTypes.js'
-import { getHookDisplayText } from './hooksSettings.js'
+import { getHookDisplayText } from 'src/services/lifecycleHooks/hooksSettings.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logError } from 'src/utils/log.js'
 import { createCombinedAbortSignal } from 'src/utils/combinedAbortSignal.js'
 import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
 import { all } from 'src/utils/generators.js'
 import type { ToolUseContext } from 'src/Tool.js'
-import { execPromptHook } from './execPromptHook.js'
+import { execPromptHook } from 'src/services/lifecycleHooks/execPromptHook.js'
 import type { Message } from 'src/types/message.js'
-import { execAgentHook } from './execAgentHook.js'
-import { execHttpHook } from './execHttpHook.js'
-import type { FunctionHook } from './sessionHooks.js'
+import { execAgentHook } from 'src/services/lifecycleHooks/execAgentHook.js'
+import { execHttpHook } from 'src/services/lifecycleHooks/execHttpHook.js'
+import type { FunctionHook } from 'src/services/lifecycleHooks/sessionHooks.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import {
   TOOL_HOOK_EXECUTION_TIMEOUT_MS,
   shouldSkipHookDueToTrust,
   isInternalHook,
-} from './shared.js'
+} from 'src/services/lifecycleHooks/shared.js'
 import {
   parseHookOutput,
   parseHttpHookOutput,
   processHookJSONOutput,
-} from './parsing.js'
-import { getMatchingHooks } from './matching.js'
-import { execCommandHook } from './runners.js'
-import { isStopConditionJudge } from './stopConditionJudge.js'
+} from 'src/services/lifecycleHooks/parsing.js'
+import { getMatchingHooks } from 'src/services/lifecycleHooks/matching.js'
+import { execCommandHook } from 'src/services/lifecycleHooks/runners.js'
+import { isStopConditionJudge } from 'src/services/lifecycleHooks/stopConditionJudge.js'
 import {
   getHookDefinitionsForTelemetry,
   getPluginHookCounts,
   getHookTypeCounts,
-} from './executors.js'
-import { shouldDisableAllHooksIncludingManaged } from './hooksConfigSnapshot.js'
+} from 'src/services/lifecycleHooks/executors.js'
+import { shouldDisableAllHooksIncludingManaged } from 'src/services/lifecycleHooks/hooksConfigSnapshot.js'
 import type {
   HookResult,
   AggregatedHookResult,
-} from './types.js'
+} from 'src/services/lifecycleHooks/types.js'
 
 
 export async function* executeHooks({

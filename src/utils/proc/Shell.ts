@@ -17,24 +17,24 @@ import {
   createFailedCommand,
   type ShellCommand,
   wrapSpawn,
-} from './ShellCommand.js'
+} from 'src/utils/proc/ShellCommand.js'
 import { getTaskOutputDir } from 'src/tasks/diskOutput.js'
 import { TaskOutput } from 'src/tasks/TaskOutput.js'
-import { which } from './which.js'
+import { which } from 'src/utils/proc/which.js'
 
-export type { ExecResult } from './ShellCommand.js'
+export type { ExecResult } from 'src/utils/proc/ShellCommand.js'
 
 import { accessSync } from 'fs'
 import { onCwdChangedForHooks } from 'src/services/lifecycleHooks/fileChangedWatcher.js'
 import { getClaudeTempDirName } from 'src/services/permissions/filesystem.js'
-import { getPlatform } from './platform.js'
+import { getPlatform } from 'src/utils/proc/platform.js'
 import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
 import { invalidateSessionEnvCache } from 'src/services/session/sessionEnvironment.js'
 import { createBashShellProvider } from 'src/services/shell/bashProvider.js'
 import { getCachedPowerShellPath } from 'src/services/shell/powershellDetection.js'
 import { createPowerShellProvider } from 'src/services/shell/powershellProvider.js'
 import type { ShellProvider, ShellType } from 'src/services/shell/shellProvider.js'
-import { subprocessEnv } from './subprocessEnv.js'
+import { subprocessEnv } from 'src/utils/proc/subprocessEnv.js'
 import { posixPathToWindowsPath } from 'src/utils/fs/windowsPaths.js'
 
 const DEFAULT_TIMEOUT = 30 * 60 * 1000 // 30 minutes

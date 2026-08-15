@@ -11,7 +11,7 @@ import { editFileInEditor } from 'src/utils/promptEditor.js';
 import { useWizard } from 'src/components/wizard/index.js';
 import { getNewAgentFilePath, saveAgentToFile } from 'src/components/agents/agentFileUtils.js';
 import type { AgentWizardData } from 'src/components/agents/new-agent-creation/types.js';
-import { ConfirmStep } from './ConfirmStep.js';
+import { ConfirmStep } from 'src/components/agents/new-agent-creation/wizard-steps/ConfirmStep.js';
 type Props = {
   tools: Tools;
   existingAgents: AgentDefinition[];

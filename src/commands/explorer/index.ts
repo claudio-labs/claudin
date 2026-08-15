@@ -5,5 +5,5 @@ export default {
   name: 'explorer',
   aliases: ['editor'],
   description: 'Browse the project tree and edit files (nvim-lite, split-pane)',
-  load: () => import('./explorer.js'),
+  load: () => import('src/commands/explorer/explorer.js'),
 } satisfies Command

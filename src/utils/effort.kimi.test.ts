@@ -4,12 +4,12 @@ import {
   modelSupportsEffort,
   modelSupportsMaxEffort,
   resolveAppliedEffort,
-} from './effort.js'
+} from 'src/utils/effort.js'
 
 // Pin getAPIProvider to 'openai' so the effort functions see a Kimi provider as
 // an OpenAI-compatible transport, not the first-party fallback. This matches
 // the real runtime when a Kimi Code profile is active.
-const realProviders = { ...(await import('./model/providers.js')) }
+const realProviders = { ...(await import('src/utils/model/providers.js')) }
 const pinOpenAiProvider = () =>
   mock.module('./model/providers.js', () => ({
     ...realProviders,

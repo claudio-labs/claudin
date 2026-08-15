@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { spliceMessageByUuid } from './QueryEngine.js'
+import { spliceMessageByUuid } from 'src/QueryEngine.js'
 import type { Message } from 'src/types/message.js'
 
 // Covers the tombstone case in QueryEngine.submitMessage: the failed

@@ -8,7 +8,7 @@ import {
   rankOllamaModels,
   recommendOllamaModel,
   type OllamaModelDescriptor,
-} from './providerRecommendation.ts'
+} from 'src/services/api/providerRecommendation.ts'
 
 function model(
   name: string,

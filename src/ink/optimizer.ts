@@ -1,4 +1,4 @@
-import type { Diff } from './frame.js'
+import type { Diff } from 'src/ink/frame.js'
 
 /**
  * Optimize a diff by applying all optimization rules in a single pass.

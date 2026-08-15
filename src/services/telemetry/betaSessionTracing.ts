@@ -33,7 +33,7 @@ import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js
 import type { AssistantMessage, UserMessage } from 'src/types/message.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
-import { logOTelEvent } from './events.js'
+import { logOTelEvent } from 'src/services/telemetry/events.js'
 
 // Message type for API calls (UserMessage or AssistantMessage)
 type APIMessage = UserMessage | AssistantMessage

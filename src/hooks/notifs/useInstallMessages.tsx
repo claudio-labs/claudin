@@ -1,6 +1,6 @@
 import type { Notification } from 'src/context/notifications.js';
 import { checkInstall } from 'src/services/install/index.js';
-import { useStartupNotification } from './useStartupNotification.js';
+import { useStartupNotification } from 'src/hooks/notifs/useStartupNotification.js';
 // The barrel (src/services/install/index.js) deliberately re-exports
 // only the functions external modules use, not the SetupMessage type —
 // derive the element type from checkInstall's own return type instead.

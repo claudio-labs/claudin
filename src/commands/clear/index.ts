@@ -13,7 +13,7 @@ const clear = {
   description: 'Clear conversation history and free up context',
   aliases: ['reset', 'clear'],
   supportsNonInteractive: false, // Should just create a new session
-  load: () => import('./clear.js'),
+  load: () => import('src/commands/clear/clear.js'),
 } satisfies Command
 
 export default clear

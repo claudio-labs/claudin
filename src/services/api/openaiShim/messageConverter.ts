@@ -18,8 +18,8 @@
  */
 
 import { logForDebugging } from 'src/utils/debug.js'
-import { isGeminiMode } from './providerModes.js'
-import type { OpenAIMessage } from './types.js'
+import { isGeminiMode } from 'src/services/api/openaiShim/providerModes.js'
+import type { OpenAIMessage } from 'src/services/api/openaiShim/types.js'
 
 /**
  * Identity caches for the two heavyweight per-block conversions.

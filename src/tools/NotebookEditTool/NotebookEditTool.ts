@@ -21,15 +21,15 @@ import {
   satisfiesReadGate,
   writeFamilyReadGateError,
 } from 'src/tools/shared/readBeforeEditMessages.js'
-import { NOTEBOOK_EDIT_TOOL_NAME } from './constants.js'
-import { DESCRIPTION, PROMPT } from './prompt.js'
+import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
+import { DESCRIPTION, PROMPT } from 'src/tools/NotebookEditTool/prompt.js'
 import {
   getToolUseSummary,
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
   renderToolUseRejectedMessage,
-} from './UI.js'
+} from 'src/tools/NotebookEditTool/UI.js'
 
 export const inputSchema = lazySchema(() =>
   z.strictObject({

@@ -4,8 +4,8 @@ import {
   diffAnsiCodes,
 } from '@alcalzone/ansi-tokenize'
 import { logForDebugging } from 'src/utils/debug.js'
-import type { Diff, FlickerReason, Frame } from './frame.js'
-import type { Point } from './layout/geometry.js'
+import type { Diff, FlickerReason, Frame } from 'src/ink/frame.js'
+import type { Point } from 'src/ink/layout/geometry.js'
 import {
   type Cell,
   CellWidth,
@@ -19,7 +19,7 @@ import {
   type StylePool,
   shiftRows,
   visibleCellAtIndex,
-} from './screen.js'
+} from 'src/ink/screen.js'
 import {
   CURSOR_HOME,
   scrollDown as csiScrollDown,
@@ -27,8 +27,8 @@ import {
   eraseToEndOfLine,
   RESET_SCROLL_REGION,
   setScrollRegion,
-} from './termio/csi.js'
-import { LINK_END, link as oscLink } from './termio/osc.js'
+} from 'src/ink/termio/csi.js'
+import { LINK_END, link as oscLink } from 'src/ink/termio/osc.js'
 
 type State = {
   previousOutput: string

@@ -2,7 +2,7 @@ import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { isBareMode } from 'src/utils/envUtils.js'
 import { getSecureStorage } from 'src/services/secureStorage/index.js'
 import { exchangeForCopilotToken } from 'src/services/github/deviceFlow.js'
-import { getProviderProfiles, updateProviderProfile } from './providerProfiles.js'
+import { getProviderProfiles, updateProviderProfile } from 'src/services/api/providerProfiles.js'
 
 function isGithubCopilotProfileActive(): boolean {
   return tryGetActiveProvider()?.transport === 'github_copilot'

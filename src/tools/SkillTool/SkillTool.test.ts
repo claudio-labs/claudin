@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
 import type { Command } from 'src/commands.js'
-import { SkillTool } from './SkillTool.js'
-import { renderToolUseMessage } from './UI.js'
+import { SkillTool } from 'src/tools/SkillTool/SkillTool.js'
+import { renderToolUseMessage } from 'src/tools/SkillTool/UI.js'
 
 function createPromptCommand(
   name: string,

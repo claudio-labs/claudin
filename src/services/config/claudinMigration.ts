@@ -16,7 +16,7 @@ import {
   _setGlobalConfigCacheForTesting,
   getGlobalConfig,
   saveGlobalConfig,
-} from './config.js'
+} from 'src/services/config/config.js'
 import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
 import {
   addProviderProfile,

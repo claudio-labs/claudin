@@ -4,7 +4,7 @@ import {
   _resetH1OnlyForTesting,
   isProviderH1Only,
 } from 'src/services/api/proxy.js'
-import { isH2FailureError, withH2Fallback } from './h2Fallback.js'
+import { isH2FailureError, withH2Fallback } from 'src/services/api/h2Fallback.js'
 
 beforeEach(() => {
   _resetH1OnlyForTesting()

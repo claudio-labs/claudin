@@ -15,7 +15,7 @@ import { InterruptedByUser } from 'src/components/InterruptedByUser.js';
 import { Markdown } from 'src/components/Markdown.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { MessageActionsSelectedContext } from 'src/components/messageActions.js';
-import { RateLimitMessage } from './RateLimitMessage.js';
+import { RateLimitMessage } from 'src/components/messages/RateLimitMessage.js';
 const MAX_API_ERROR_CHARS = 1000;
 type Props = {
   param: TextBlockParam;

@@ -39,9 +39,9 @@ import {
   writeToMailbox,
 } from 'src/coordinator/teammateMailbox.js'
 import { resumeAgentBackground } from 'src/tools/AgentTool/resumeAgent.js'
-import { SEND_MESSAGE_TOOL_NAME } from './constants.js'
-import { DESCRIPTION, getPrompt } from './prompt.js'
-import { renderToolResultMessage, renderToolUseMessage } from './UI.js'
+import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
+import { DESCRIPTION, getPrompt } from 'src/tools/SendMessageTool/prompt.js'
+import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/SendMessageTool/UI.js'
 
 const StructuredMessage = lazySchema(() =>
   z.discriminatedUnion('type', [

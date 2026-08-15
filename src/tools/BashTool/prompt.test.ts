@@ -13,8 +13,8 @@ import {
   getBashGitInstructionsBody,
   getSimplePrompt,
   shouldInjectBashGitInstructionsInMessages,
-} from './prompt.js'
-import { BASH_TOOL_NAME } from './toolName.js'
+} from 'src/tools/BashTool/prompt.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 
 describe('shouldInjectBashGitInstructionsInMessages', () => {
   const originalEnv = process.env.CLAUDE_CODE_BASH_GIT_IN_MESSAGES

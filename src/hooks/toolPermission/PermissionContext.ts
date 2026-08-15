@@ -40,7 +40,7 @@ import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdate
 import {
   logPermissionDecision,
   type PermissionDecisionArgs,
-} from './permissionLogging.js'
+} from 'src/hooks/toolPermission/permissionLogging.js'
 
 type PermissionApprovalSource =
   | { type: 'hook'; permanent?: boolean }

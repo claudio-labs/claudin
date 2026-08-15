@@ -8,11 +8,11 @@ import type { BetaContentBlock } from '@anthropic-ai/sdk/resources/beta/messages
 import type { NormalizedAssistantMessage, ProgressMessage, RenderableMessage } from 'src/types/message.js';
 import { getDisplayMessageFromCollapsed, getToolSearchOrReadInfo, getToolUseIdsFromCollapsedGroup, hasAnyToolInProgress } from 'src/services/tools/collapseReadSearch.js';
 import { type buildMessageLookups, EMPTY_STRING_SET, getProgressMessagesFromLookup, getSiblingToolUseIDsFromLookup, getToolUseID } from 'src/services/messages/messages.js';
-import { hasThinkingContent, Message } from './Message.js';
-import { MessageModel } from './MessageModel.js';
-import { shouldRenderStatically } from './Messages.js';
-import { MessageTimestamp } from './MessageTimestamp.js';
-import { OffscreenFreeze } from './OffscreenFreeze.js';
+import { hasThinkingContent, Message } from 'src/components/Message.js';
+import { MessageModel } from 'src/components/MessageModel.js';
+import { shouldRenderStatically } from 'src/components/Messages.js';
+import { MessageTimestamp } from 'src/components/MessageTimestamp.js';
+import { OffscreenFreeze } from 'src/components/OffscreenFreeze.js';
 export type Props = {
   // Messages.tsx filters progress messages out of renderableMessages before
   // ever constructing a MessageRow, so this is narrower than RenderableMessage.

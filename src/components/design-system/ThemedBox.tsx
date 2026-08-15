@@ -7,7 +7,7 @@ import type { FocusEvent } from 'src/ink/events/focus-event.js';
 import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
 import type { Color, Styles } from 'src/ink/styles.js';
 import { getTheme, type Theme } from 'src/utils/theme.js';
-import { useTheme } from './ThemeProvider.js';
+import { useTheme } from 'src/components/design-system/ThemeProvider.js';
 
 // Color props that accept theme keys
 type ThemedColorProps = {

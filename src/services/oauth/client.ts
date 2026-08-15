@@ -20,7 +20,7 @@ import {
 import type { AccountInfo } from 'src/services/config/config.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import { getOauthProfileFromOauthToken } from './getOauthProfile.js'
+import { getOauthProfileFromOauthToken } from 'src/services/oauth/getOauthProfile.js'
 import type {
   BillingType,
   OAuthProfileResponse,
@@ -29,7 +29,7 @@ import type {
   RateLimitTier,
   SubscriptionType,
   UserRolesResponse,
-} from './types.js'
+} from 'src/services/oauth/types.js'
 
 /**
  * Check if the user has Claude.ai authentication scope

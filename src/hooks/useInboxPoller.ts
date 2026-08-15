@@ -69,7 +69,7 @@ import {
   hasSandboxPermissionCallback,
   processMailboxPermissionResponse,
   processSandboxPermissionResponse,
-} from './useSwarmPermissionPoller.js'
+} from 'src/hooks/useSwarmPermissionPoller.js'
 
 /**
  * Get the agent name to poll for messages.

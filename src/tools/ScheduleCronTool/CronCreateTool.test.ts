@@ -9,7 +9,7 @@ import {
   removeSessionCronTasks,
   setScheduledTasksEnabled,
 } from 'src/bootstrap/state.js'
-import { CronCreateTool } from './CronCreateTool.js'
+import { CronCreateTool } from 'src/tools/ScheduleCronTool/CronCreateTool.js'
 
 let configDir: string
 let priorEnabled = false

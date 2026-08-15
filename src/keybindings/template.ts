@@ -4,12 +4,12 @@
  */
 
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { DEFAULT_BINDINGS } from './defaultBindings.js'
+import { DEFAULT_BINDINGS } from 'src/keybindings/defaultBindings.js'
 import {
   NON_REBINDABLE,
   normalizeKeyForComparison,
-} from './reservedShortcuts.js'
-import type { KeybindingBlock } from './types.js'
+} from 'src/keybindings/reservedShortcuts.js'
+import type { KeybindingBlock } from 'src/keybindings/types.js'
 
 /**
  * Filter out reserved shortcuts that cannot be rebound.

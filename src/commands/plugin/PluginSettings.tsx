@@ -18,15 +18,15 @@ import { loadKnownMarketplacesConfig, removeMarketplaceSource } from 'src/servic
 import { getPluginEditableScopes } from 'src/services/plugins/pluginStartupCheck.js';
 import type { EditableSettingSource } from 'src/services/settings/constants.js';
 import { getSettingsForSource, updateSettingsForSource } from 'src/services/settings/settings.js';
-import { AddMarketplace } from './AddMarketplace.js';
-import { BrowseMarketplace } from './BrowseMarketplace.js';
-import { DiscoverPlugins } from './DiscoverPlugins.js';
-import { ManageMarketplaces } from './ManageMarketplaces.js';
-import { ManagePlugins } from './ManagePlugins.js';
-import { formatErrorMessage, getErrorGuidance } from './PluginErrors.js';
-import { type ParsedCommand, parsePluginArgs } from './parseArgs.js';
-import type { PluginSettingsProps, ViewState } from './types.js';
-import { ValidatePlugin } from './ValidatePlugin.js';
+import { AddMarketplace } from 'src/commands/plugin/AddMarketplace.js';
+import { BrowseMarketplace } from 'src/commands/plugin/BrowseMarketplace.js';
+import { DiscoverPlugins } from 'src/commands/plugin/DiscoverPlugins.js';
+import { ManageMarketplaces } from 'src/commands/plugin/ManageMarketplaces.js';
+import { ManagePlugins } from 'src/commands/plugin/ManagePlugins.js';
+import { formatErrorMessage, getErrorGuidance } from 'src/commands/plugin/PluginErrors.js';
+import { type ParsedCommand, parsePluginArgs } from 'src/commands/plugin/parseArgs.js';
+import type { PluginSettingsProps, ViewState } from 'src/commands/plugin/types.js';
+import { ValidatePlugin } from 'src/commands/plugin/ValidatePlugin.js';
 type TabId = 'discover' | 'installed' | 'marketplaces' | 'errors';
 type MarketplaceStatus =
   AppState['plugins']['installationStatus']['marketplaces'][number];

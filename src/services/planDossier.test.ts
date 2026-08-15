@@ -43,8 +43,8 @@ import {
   type GlobEntry,
   type GrepEntry,
   type ReadEntry,
-} from './planDossier.js'
-import { getEffectiveContextWindowSize } from './compact/autoCompact.js'
+} from 'src/services/planDossier.js'
+import { getEffectiveContextWindowSize } from 'src/services/compact/autoCompact.js'
 
 beforeEach(() => {
   testTempDir = mkdtempSync(join(tmpdir(), 'planDossier-'))

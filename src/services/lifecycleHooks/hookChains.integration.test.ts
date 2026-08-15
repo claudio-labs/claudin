@@ -13,7 +13,7 @@ const realReplBridgeHandle = { ...(await import('src/bridge/replBridgeHandle.js'
 const realAgentTool = { ...(await import('src/tools/AgentTool/AgentTool.js')) }
 const realEnvUtils = { ...(await import('src/utils/envUtils.js')) }
 
-type HookChainsModule = typeof import('./hookChains.js')
+type HookChainsModule = typeof import('src/services/lifecycleHooks/hookChains.js')
 
 type ImportHarnessOptions = {
   allowRemoteSessions?: boolean

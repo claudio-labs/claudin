@@ -6,7 +6,7 @@ import {
   resetTypecheckRedirectMemoForTesting,
   shouldRedirectToTypecheck,
   stripOutputTrimTail,
-} from './redirect.js'
+} from 'src/tools/TypecheckTool/redirect.js'
 
 describe('isRedirectableCheckCommand — what it catches', () => {
   test.each([

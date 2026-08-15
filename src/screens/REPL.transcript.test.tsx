@@ -11,12 +11,12 @@ import * as React from 'react'
 
 import { renderToString } from 'src/components/staticRender.js'
 import { AppStateProvider } from 'src/state/AppState.js'
-import { REPL } from './REPL.js'
+import { REPL } from 'src/screens/REPL.js'
 import {
   mockReplProps,
   setupReplMocks,
   teardownReplMocks,
-} from './__testutils__/replTestHarness.js'
+} from 'src/screens/__testutils__/replTestHarness.js'
 
 beforeAll(setupReplMocks)
 afterAll(teardownReplMocks)

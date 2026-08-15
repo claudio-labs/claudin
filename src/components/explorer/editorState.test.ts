@@ -29,7 +29,7 @@ import {
   wordBackward,
   wordForward,
   yankLine,
-} from './editorState.js'
+} from 'src/components/explorer/editorState.js'
 
 const text = 'alpha\nbravo\ncharlie'
 

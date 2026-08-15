@@ -7,11 +7,11 @@ import { env } from 'src/utils/env.js';
 import { shouldShowAlwaysAllowOptions } from 'src/services/permissions/permissionsLoader.js';
 import { truncateToLines } from 'src/utils/text/stringUtils.js';
 import { logUnaryEvent } from 'src/services/api/unaryLogging.js';
-import { type UnaryEvent, usePermissionRequestLogging } from './hooks.js';
-import { PermissionDialog } from './PermissionDialog.js';
-import { PermissionPrompt, type PermissionPromptOption, type ToolAnalyticsContext } from './PermissionPrompt.js';
-import type { PermissionRequestProps } from './PermissionRequest.js';
-import { PermissionRuleExplanation } from './PermissionRuleExplanation.js';
+import { type UnaryEvent, usePermissionRequestLogging } from 'src/components/permissions/hooks.js';
+import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
+import { PermissionPrompt, type PermissionPromptOption, type ToolAnalyticsContext } from 'src/components/permissions/PermissionPrompt.js';
+import type { PermissionRequestProps } from 'src/components/permissions/PermissionRequest.js';
+import { PermissionRuleExplanation } from 'src/components/permissions/PermissionRuleExplanation.js';
 type FallbackOptionValue = 'yes' | 'yes-dont-ask-again' | 'no';
 export function FallbackPermissionRequest(t0: PermissionRequestProps) {
   const $ = _c(58);

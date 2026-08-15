@@ -9,8 +9,8 @@ import { logError } from 'src/utils/log.js'
 import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js'
 import { runWorkflow } from 'src/tools/AgentWorkflow/engine.js'
 import type { RunState, WorkflowDef } from 'src/tools/AgentWorkflow/types.js'
-import { RunningWorkflowsTab } from './RunningWorkflowsTab.js'
-import { WorkflowsLibrary } from './WorkflowsLibrary.js'
+import { RunningWorkflowsTab } from 'src/components/workflows/RunningWorkflowsTab.js'
+import { WorkflowsLibrary } from 'src/components/workflows/WorkflowsLibrary.js'
 
 type Tab = 'running' | 'library'
 

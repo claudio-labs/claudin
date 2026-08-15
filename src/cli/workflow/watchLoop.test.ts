@@ -5,8 +5,8 @@ import {
   compileMatcher,
   itemMatches,
   type WatchLoopOptions,
-} from './watchLoop.js'
-import type { TriggerItem } from './sources.js'
+} from 'src/cli/workflow/watchLoop.js'
+import type { TriggerItem } from 'src/cli/workflow/sources.js'
 
 const OPTS: WatchLoopOptions = {
   label: 'claudin',

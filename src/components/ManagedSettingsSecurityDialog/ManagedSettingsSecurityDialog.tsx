@@ -6,7 +6,7 @@ import { useKeybinding } from 'src/keybindings/useKeybinding.js';
 import type { SettingsJson } from 'src/services/settings/types.js';
 import { Select } from 'src/components/CustomSelect/index.js';
 import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
-import { extractDangerousSettings, formatDangerousSettingsList } from './utils.js';
+import { extractDangerousSettings, formatDangerousSettingsList } from 'src/components/ManagedSettingsSecurityDialog/utils.js';
 type Props = {
   settings: SettingsJson;
   onAccept: () => void;

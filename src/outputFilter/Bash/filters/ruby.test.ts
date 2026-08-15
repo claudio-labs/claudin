@@ -1,7 +1,7 @@
 // Phase 13 — ruby family (rake).
 import { describe, expect, test } from "bun:test";
-import { runFilterBody, routesTo } from "./__testutils__/harness.js";
-import { RAKE_OK, RAKE_FAIL } from "./__testutils__/phase13Samples.js";
+import { runFilterBody, routesTo } from "src/outputFilter/Bash/filters/__testutils__/harness.js";
+import { RAKE_OK, RAKE_FAIL } from "src/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
 
 describe("phase 13 — rake", () => {
   test("strips ANSI and collapses blank runs, keeps the summary", () => {

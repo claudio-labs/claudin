@@ -7,7 +7,7 @@ import {
   encodingOverride,
   isUtf8Label,
   UnknownEncodingError,
-} from './textEncoding.js'
+} from 'src/utils/fs/textEncoding.js'
 
 // ---------------------------------------------------------------------------
 // The label space here is ripgrep's (Encoding Standard), not Node's

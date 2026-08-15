@@ -14,7 +14,7 @@ import { describe, expect, test } from 'bun:test'
 import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { DISPATCH_TABLE, type SubcommandSpec } from './dispatchTable.js'
+import { DISPATCH_TABLE, type SubcommandSpec } from 'src/main/__tests__/dispatchTable.js'
 
 const REPO_ROOT = join(__dirname, '..', '..', '..')
 const BIN = join(REPO_ROOT, 'bin', 'claudin')

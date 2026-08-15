@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import type { ToolUseContext } from 'src/Tool.js'
-import { BriefTool, isBriefEnabled, isBriefEntitled } from './BriefTool.js'
+import { BriefTool, isBriefEnabled, isBriefEntitled } from 'src/tools/BriefTool/BriefTool.js'
 
 function makeCtx(): ToolUseContext {
   return {

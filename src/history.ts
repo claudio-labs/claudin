@@ -1,20 +1,20 @@
 import { appendFile, writeFile } from 'fs/promises'
 import { join } from 'path'
-import { getProjectRoot, getSessionId } from './bootstrap/state.js'
-import { registerCleanup } from './utils/cleanupRegistry.js'
+import { getProjectRoot, getSessionId } from 'src/bootstrap/state.js'
+import { registerCleanup } from 'src/utils/cleanupRegistry.js'
 import type { HistoryEntry, PastedContent } from 'src/services/config/config.js'
-import { logForDebugging } from './utils/debug.js'
-import { getClaudinConfigHomeDir, isEnvTruthy } from './utils/envUtils.js'
-import { getErrnoCode } from './utils/errors.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/utils/envUtils.js'
+import { getErrnoCode } from 'src/utils/errors.js'
 import { readLinesReverse } from 'src/utils/fs/fsOperations.js'
 import { lock } from 'src/utils/fs/lockfile.js'
 import {
   hashPastedText,
   retrievePastedText,
   storePastedText,
-} from './utils/pasteStore.js'
-import { sleep } from './utils/sleep.js'
-import { jsonParse, jsonStringify } from './utils/slowOperations.js'
+} from 'src/utils/pasteStore.js'
+import { sleep } from 'src/utils/sleep.js'
+import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 
 const MAX_HISTORY_ITEMS = 100
 const MAX_PASTED_CONTENT_LENGTH = 1024

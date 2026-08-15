@@ -3,8 +3,8 @@ import {
   buildMainContext,
   buildWorkerPrompt,
   MAX_WORKER_OUTPUT_CHARS,
-} from './promptKit.js'
-import type { RunState, WorkflowDef } from './types.js'
+} from 'src/tools/AgentWorkflow/promptKit.js'
+import type { RunState, WorkflowDef } from 'src/tools/AgentWorkflow/types.js'
 
 const DEF: WorkflowDef = {
   name: 'dev-flow',

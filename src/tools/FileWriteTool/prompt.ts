@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle'
 import { isLeanToolPromptFamily } from 'src/constants/toolPromptTier.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 
-export { FILE_WRITE_TOOL_NAME } from './constants.js'
+export { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/constants.js'
 export const DESCRIPTION = 'Write a file to the local filesystem.'
 
 function getPreReadInstruction(): string {

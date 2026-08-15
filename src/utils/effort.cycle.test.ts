@@ -4,7 +4,7 @@ const realSettings = { ...(await import('src/services/settings/settings.js')) }
 const realAuth = { ...(await import('src/services/auth/auth.js')) }
 const realThinking = { ...(await import('src/services/context/thinking.js')) }
 const realGrowthbook = { ...(await import('src/services/analytics/growthbook.js')) }
-const realProviders = { ...(await import('./model/providers.js')) }
+const realProviders = { ...(await import('src/utils/model/providers.js')) }
 
 afterAll(() => {
   mock.module('src/services/settings/settings.js', () => realSettings)

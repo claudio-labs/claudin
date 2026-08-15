@@ -1,5 +1,5 @@
 import { validateBoundedIntEnvVar } from 'src/utils/envValidation.js'
-import { getTaskOutputPath } from './diskOutput.js'
+import { getTaskOutputPath } from 'src/tasks/diskOutput.js'
 
 export const TASK_MAX_OUTPUT_UPPER_LIMIT = 160_000
 export const TASK_MAX_OUTPUT_DEFAULT = 32_000

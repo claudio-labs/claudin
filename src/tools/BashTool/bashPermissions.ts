@@ -66,16 +66,16 @@ import { getPlatform } from 'src/utils/proc/platform.js'
 import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { windowsPathToPosixPath } from 'src/utils/fs/windowsPaths.js'
-import { BashTool } from './BashTool.js'
-import { checkCommandOperatorPermissions } from './bashCommandHelpers.js'
+import { BashTool } from 'src/tools/BashTool/BashTool.js'
+import { checkCommandOperatorPermissions } from 'src/tools/BashTool/bashCommandHelpers.js'
 import {
   bashCommandIsSafeAsync_DEPRECATED,
   stripSafeHeredocSubstitutions,
-} from './bashSecurity.js'
-import { checkPermissionMode } from './modeValidation.js'
-import { checkPathConstraints } from './pathValidation.js'
-import { checkSedConstraints } from './sedValidation.js'
-import { shouldUseSandbox } from './shouldUseSandbox.js'
+} from 'src/tools/BashTool/bashSecurity.js'
+import { checkPermissionMode } from 'src/tools/BashTool/modeValidation.js'
+import { checkPathConstraints } from 'src/tools/BashTool/pathValidation.js'
+import { checkSedConstraints } from 'src/tools/BashTool/sedValidation.js'
+import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js'
 
 // DCE cliff: Bun's feature() evaluator has a per-function complexity budget.
 // bashToolHasPermission is right at the limit. `import { X as Y }` aliases

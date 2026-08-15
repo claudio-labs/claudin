@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { createAttachmentMessage } from './attachments.js'
-import type { Attachment } from './attachments.js'
+import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
+import type { Attachment } from 'src/services/attachments/attachments.js'
 
 // Enumerated set of every discriminant in the Attachment union. The
 // `satisfies` clause below pairs this tuple with `Attachment['type']`,

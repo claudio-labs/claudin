@@ -11,7 +11,7 @@ import {
   PluginManifestSchema,
   PluginMarketplaceEntrySchema,
   PluginMarketplaceSchema,
-} from './schemas.js'
+} from 'src/services/plugins/schemas.js'
 
 /**
  * Fields that belong in marketplace.json entries (PluginMarketplaceEntrySchema)

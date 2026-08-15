@@ -7,7 +7,7 @@ import type { GlobalConfig, ProviderProfile } from 'src/services/config/config.j
 // the live ESM namespaces (which mock.module mutates after the fact).
 const realConfig = { ...(await import('src/services/config/config.js')) }
 const realProviderProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
-const realActiveProvider = { ...(await import('./activeProvider.js')) }
+const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
 
 // Defensive restore: another test file running earlier in the same process
 // may have left a partial mock of `activeProvider.js` (e.g. context.test.ts
@@ -55,8 +55,8 @@ const {
   getActiveProvider,
   invalidateActiveProviderCache,
   ActiveProviderNotConfiguredError,
-} = await import('./activeProvider.js')
-const { transportSendsStrictToolSchemas } = await import('./providerConfig.js')
+} = await import('src/services/api/activeProvider.js')
+const { transportSendsStrictToolSchemas } = await import('src/services/api/providerConfig.js')
 
 function setProfileState(profiles: ProviderProfile[], activeId?: string): void {
   const id = activeId ?? profiles[0]?.id

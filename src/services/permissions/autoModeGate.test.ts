@@ -38,12 +38,12 @@ afterAll(() => {
 })
 
 const { __setAutoModeEnabledForTests } = await import('src/services/api/betas.js')
-const { __autoModeAllowedForModelForTests } = await import('./permissionSetup.js')
-const { getClassifierProbeKey } = await import('./classifierProbe.js')
+const { __autoModeAllowedForModelForTests } = await import('src/services/permissions/permissionSetup.js')
+const { getClassifierProbeKey } = await import('src/services/permissions/classifierProbe.js')
 const {
   __setClassifierProbeStoreDirForTests,
   writeClassifierProbe,
-} = await import('./classifierProbeStore.js')
+} = await import('src/services/permissions/classifierProbeStore.js')
 
 let fakeConfigDir: string
 

@@ -12,7 +12,7 @@ import {
   awaitDiagnosticsForFile,
   registerPendingLSPDiagnostic,
   resetAllLSPDiagnosticState,
-} from './LSPDiagnosticRegistry.js'
+} from 'src/services/lsp/LSPDiagnosticRegistry.js'
 
 const file: DiagnosticFile = {
   uri: 'file:///tmp/perf.ts',

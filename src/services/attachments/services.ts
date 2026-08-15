@@ -62,16 +62,16 @@ import { isInProcessTeammate } from 'src/coordinator/teammateContext.js'
 import { removeTeammateFromTeamFile } from 'src/coordinator/swarm/teamHelpers.js'
 import { unassignTeammateTasks } from 'src/tasks/tasks.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import type { Attachment } from './types.js'
-import { isFileReadDenied } from './shared.js'
+import type { Attachment } from 'src/services/attachments/types.js'
+import { isFileReadDenied } from 'src/services/attachments/shared.js'
 import {
   extractAtMentionedFiles,
   extractMcpResourceMentions,
   extractAgentMentions,
   parseAtMentionedFileLines,
-} from './mentions.js'
-import { generateFileAttachment } from './file-pipeline.js'
-import { getNestedMemoryAttachmentsForFile } from './memory.js'
+} from 'src/services/attachments/mentions.js'
+import { generateFileAttachment } from 'src/services/attachments/file-pipeline.js'
+import { getNestedMemoryAttachmentsForFile } from 'src/services/attachments/memory.js'
 
 void _unusedGetFs
 

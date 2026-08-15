@@ -4,9 +4,9 @@ import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseError
 import { MessageResponse } from 'src/components/MessageResponse.js'
 import { ShellElapsedTime } from 'src/components/shell/ShellElapsedTime.js'
 import { Box, Text } from 'src/ink.js'
-import type { Input, Output } from './TypecheckTool.js'
-import { resolveCheckCommand } from './TypecheckTool.js'
-import type { CheckProgress } from './types.js'
+import type { Input, Output } from 'src/tools/TypecheckTool/TypecheckTool.js'
+import { resolveCheckCommand } from 'src/tools/TypecheckTool/TypecheckTool.js'
+import type { CheckProgress } from 'src/tools/TypecheckTool/types.js'
 
 /**
  * Display label only — the wire name stays `Typecheck` (see prompt.ts), which is

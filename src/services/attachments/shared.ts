@@ -9,7 +9,7 @@ import { logError } from 'src/utils/log.js'
 import { logAntError } from 'src/utils/debug.js'
 import { matchingRuleForInput } from 'src/services/permissions/filesystem.js'
 import type { ToolPermissionContext } from 'src/Tool.js'
-import type { Attachment } from './types.js'
+import type { Attachment } from 'src/services/attachments/types.js'
 
 export async function maybe<A>(
   label: string,

@@ -7,7 +7,7 @@ import {
   pollDeviceCodeToken,
   requestDeviceCode,
   type KimiDeviceCodeResponse,
-} from './kimiOAuth.js'
+} from 'src/services/api/kimiOAuth.js'
 
 const originalFetch = globalThis.fetch
 const originalClientId = process.env.KIMI_OAUTH_CLIENT_ID

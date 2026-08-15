@@ -13,8 +13,8 @@ import type {
   MessageParam,
   RawMessageStreamEvent,
 } from '@anthropic-ai/sdk/resources/messages.mjs'
-import type { NonNullableUsage } from './sdkUtilityTypes.js'
-import type * as coreSchemas from './coreSchemas.js'
+import type { NonNullableUsage } from 'src/entrypoints/sdk/sdkUtilityTypes.js'
+import type * as coreSchemas from 'src/entrypoints/sdk/coreSchemas.js'
 
 // ============================================================================
 // Usage & Model Types

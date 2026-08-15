@@ -9,7 +9,7 @@ import {
   collapseKeyOf,
   collectChangedFiles,
   initialCollapsed,
-} from './tree.js'
+} from 'src/components/explorer/tree.js'
 
 const ROOT = '/repo'
 const PATHS = ['a.ts', 'src/b.ts', 'src/c.ts']

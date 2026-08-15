@@ -5,7 +5,7 @@ import {
   nextImageId,
   placeholderLines,
   transmitKittyImage,
-} from './kittyImageProtocol.js'
+} from 'src/utils/kittyImageProtocol.js'
 
 describe('kittyImageProtocol', () => {
   test('nextImageId is monotonic and wraps at uint24', () => {

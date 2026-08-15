@@ -9,8 +9,8 @@ import { resetModelStringsForTestingOnly } from 'src/bootstrap/state.js'
 // on (previously the merge suppressed the annotation, making the two flavors
 // indistinguishable).
 
-const realProviders = await import('./providers.js')
-const realModel = await import('./model.js')
+const realProviders = await import('src/utils/model/providers.js')
+const realModel = await import('src/utils/model/model.js')
 
 async function importRenderer(mergeEnabled: boolean) {
   mock.module('./providers.js', () => ({

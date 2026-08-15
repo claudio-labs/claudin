@@ -8,8 +8,8 @@ import {
   PERMISSION_MODES,
 } from 'src/services/permissions/PermissionMode.js'
 import { MarketplaceSourceSchema } from 'src/services/plugins/schemas.js'
-import { CLAUDE_CODE_SETTINGS_SCHEMA_URL } from './constants.js'
-import { PermissionRuleSchema } from './permissionValidation.js'
+import { CLAUDE_CODE_SETTINGS_SCHEMA_URL } from 'src/services/settings/constants.js'
+import { PermissionRuleSchema } from 'src/services/settings/permissionValidation.js'
 
 // Re-export hook schemas and types from centralized location for backward compatibility
 export {

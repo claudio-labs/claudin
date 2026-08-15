@@ -9,7 +9,7 @@ mock.module('src/services/analytics/index.js', () => ({
   },
 }))
 
-import { maybe } from './attachments.js'
+import { maybe } from 'src/services/attachments/attachments.js'
 
 describe('maybe wrapper', () => {
   const originalRandom = Math.random

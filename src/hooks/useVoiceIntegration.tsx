@@ -11,7 +11,7 @@ import { useOptionalKeybindingContext } from 'src/keybindings/KeybindingContext.
 import { keystrokesEqual } from 'src/keybindings/resolver.js';
 import type { ParsedKeystroke } from 'src/keybindings/types.js';
 import { normalizeFullWidthSpace } from 'src/utils/text/stringUtils.js';
-import { useVoiceEnabled } from './useVoiceEnabled.js';
+import { useVoiceEnabled } from 'src/hooks/useVoiceEnabled.js';
 
 // Dead code elimination: conditional import for voice input hook.
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -19,8 +19,8 @@ import { useVoiceEnabled } from './useVoiceEnabled.js';
 // object, so `voiceNs.useVoice(...)` resolves to the spy even if this module
 // was loaded before the spy was installed (test ordering independence).
 const voiceNs: {
-  useVoice: typeof import('./useVoice.js').useVoice;
-} = feature('VOICE_MODE') ? require('./useVoice.js') : {
+  useVoice: typeof import('src/hooks/useVoice.js').useVoice;
+} = feature('VOICE_MODE') ? require('src/hooks/useVoice.js') : {
   useVoice: ({
     enabled: _e
   }: {

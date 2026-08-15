@@ -2,10 +2,10 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { writeFileSync } from 'fs'
 import { join } from 'path'
 import { invalidateSessionEnvCache } from 'src/services/session/sessionEnvironment.js'
-import { cleanupAllFakeGh, type FakeGh, installFakeGh } from './__fixtures__/fakeGh.js'
-import { GitTool } from './GitTool.js'
-import { batchFailed, formatGitBatchResult, runGitBatch } from './run.js'
-import type { GitProgress } from './types.js'
+import { cleanupAllFakeGh, type FakeGh, installFakeGh } from 'src/tools/GitTool/__fixtures__/fakeGh.js'
+import { GitTool } from 'src/tools/GitTool/GitTool.js'
+import { batchFailed, formatGitBatchResult, runGitBatch } from 'src/tools/GitTool/run.js'
+import type { GitProgress } from 'src/tools/GitTool/types.js'
 
 /**
  * The watch lane, driven by the fake `gh`.

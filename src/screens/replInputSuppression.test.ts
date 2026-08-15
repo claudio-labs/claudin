@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 
-import { isPromptTypingSuppressionActive } from './replInputSuppression.js'
+import { isPromptTypingSuppressionActive } from 'src/screens/replInputSuppression.js'
 
 describe('isPromptTypingSuppressionActive', () => {
   it('suppresses dialogs when early input already exists', () => {

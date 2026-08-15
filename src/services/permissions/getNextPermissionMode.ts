@@ -1,12 +1,12 @@
 import { feature } from 'bun:bundle'
 import type { ToolPermissionContext } from 'src/Tool.js'
 import { logForDebugging } from 'src/utils/debug.js'
-import type { PermissionMode } from './PermissionMode.js'
+import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import {
   getAutoModeUnavailableReason,
   isAutoModeGateEnabled,
   transitionPermissionMode,
-} from './permissionSetup.js'
+} from 'src/services/permissions/permissionSetup.js'
 
 // Checks both the cached isAutoModeAvailable (set at startup by
 // verifyAutoModeGateAccess) and the live isAutoModeGateEnabled() — these can

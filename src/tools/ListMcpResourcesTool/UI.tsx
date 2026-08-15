@@ -5,7 +5,7 @@ import { Text } from 'src/ink.js';
 import type { ToolProgressData } from 'src/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';
 import { jsonStringify } from 'src/utils/slowOperations.js';
-import type { Output } from './ListMcpResourcesTool.js';
+import type { Output } from 'src/tools/ListMcpResourcesTool/ListMcpResourcesTool.js';
 export function renderToolUseMessage(input: Partial<{
   server?: string;
 }>): React.ReactNode {

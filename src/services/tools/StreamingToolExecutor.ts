@@ -9,7 +9,7 @@ import { findToolByName, type Tools, type ToolUseContext } from 'src/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import type { AssistantMessage, Message } from 'src/types/message.js'
 import { createChildAbortController } from 'src/utils/abortController.js'
-import { runToolUse } from './toolExecution.js'
+import { runToolUse } from 'src/services/tools/toolExecution.js'
 
 type MessageUpdate = {
   message?: Message

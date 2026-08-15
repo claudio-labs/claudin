@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-type HookChainsModule = typeof import('./hookChains.js')
+type HookChainsModule = typeof import('src/services/lifecycleHooks/hookChains.js')
 
 const tempDirs: string[] = []
 const originalHookChainsEnabled = process.env.CLAUDE_CODE_ENABLE_HOOK_CHAINS

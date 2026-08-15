@@ -25,9 +25,9 @@
  *                       setup, subagent-start, permission-request,
  *                       status-line, file-suggestion) + message formatters
  */
-export { getSessionEndHookTimeoutMs } from './shared.js'
-export { getMatchingHooks } from './matching.js'
-export { hasBlockingResult } from './executors.js'
+export { getSessionEndHookTimeoutMs } from 'src/services/lifecycleHooks/shared.js'
+export { getMatchingHooks } from 'src/services/lifecycleHooks/matching.js'
+export { hasBlockingResult } from 'src/services/lifecycleHooks/executors.js'
 export {
   executeNotificationHooks,
   executeStopFailureHooks,
@@ -44,25 +44,25 @@ export {
   hasWorktreeCreateHook,
   executeWorktreeCreateHook,
   executeWorktreeRemoveHook,
-} from './events.js'
+} from 'src/services/lifecycleHooks/events.js'
 export type {
   ConfigChangeSource,
   ElicitationHookResult,
   ElicitationResultHookResult,
   InstructionsLoadReason,
   InstructionsMemoryType,
-} from './types.js'
+} from 'src/services/lifecycleHooks/types.js'
 export {
   shouldSkipHookDueToTrust,
   createBaseHookInput,
-} from './shared.js'
+} from 'src/services/lifecycleHooks/shared.js'
 export type {
   HookBlockingError,
   ElicitationResponse,
   HookResult,
   AggregatedHookResult,
   HookOutsideReplResult,
-} from './types.js'
+} from 'src/services/lifecycleHooks/types.js'
 export {
   getPreToolHookBlockingMessage,
   getStopHookMessage,
@@ -85,5 +85,5 @@ export {
   executePermissionRequestHooks,
   executeStatusLineCommand,
   executeFileSuggestionCommand,
-} from './replHooks.js'
-export { executeHooks } from './executeHooks.js'
+} from 'src/services/lifecycleHooks/replHooks.js'
+export { executeHooks } from 'src/services/lifecycleHooks/executeHooks.js'

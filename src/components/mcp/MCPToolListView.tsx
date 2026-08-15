@@ -13,7 +13,7 @@ import { Select } from 'src/components/CustomSelect/index.js';
 import { Byline } from 'src/components/design-system/Byline.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
 import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
-import type { ServerInfo } from './types.js';
+import type { ServerInfo } from 'src/components/mcp/types.js';
 type Props = {
   server: ServerInfo;
   onSelectTool: (tool: Tool, index: number) => void;

@@ -4,7 +4,7 @@ import {
   getTaskListId,
   isTodoV2Enabled,
   listTasks,
-} from './tasks.js'
+} from 'src/tasks/tasks.js'
 
 export type ParsedPlanTask = {
   subject: string

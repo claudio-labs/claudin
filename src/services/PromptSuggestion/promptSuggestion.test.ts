@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { endsWithFollowupOffer } from './followupOffer.js'
+import { endsWithFollowupOffer } from 'src/services/PromptSuggestion/followupOffer.js'
 
 describe('endsWithFollowupOffer', () => {
   test('returns false for empty / whitespace text', () => {

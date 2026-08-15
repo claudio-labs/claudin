@@ -3,9 +3,9 @@
  * Full model catalog from MiniMax API.
  */
 
-import type { ModelOption } from './modelOptions.js'
+import type { ModelOption } from 'src/utils/model/modelOptions.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { getAPIProvider } from './providers.js'
+import { getAPIProvider } from 'src/utils/model/providers.js'
 
 export function isMiniMaxProvider(): boolean {
   const baseUrl = tryGetActiveProvider()?.baseUrl ?? ''

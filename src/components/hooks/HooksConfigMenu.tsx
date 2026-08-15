@@ -26,10 +26,10 @@ import type { SettingSource } from 'src/services/settings/constants.js';
 import { getInitialSettings, getSettingsForSource } from 'src/services/settings/settings.js';
 import { plural } from 'src/utils/text/stringUtils.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
-import { SelectEventMode } from './SelectEventMode.js';
-import { SelectHookMode } from './SelectHookMode.js';
-import { SelectMatcherMode } from './SelectMatcherMode.js';
-import { ViewHookMode } from './ViewHookMode.js';
+import { SelectEventMode } from 'src/components/hooks/SelectEventMode.js';
+import { SelectHookMode } from 'src/components/hooks/SelectHookMode.js';
+import { SelectMatcherMode } from 'src/components/hooks/SelectMatcherMode.js';
+import { ViewHookMode } from 'src/components/hooks/ViewHookMode.js';
 type Props = {
   toolNames: string[];
   onExit: (result?: string, options?: {

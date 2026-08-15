@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { clearWebFetchCache, getWebFetchCacheStats } from './utils.js'
+import { clearWebFetchCache, getWebFetchCacheStats } from 'src/tools/WebFetchTool/utils.js'
 
 // Soft/hard TTL boundary logic now lives in src/tools/shared/twoTierCache.ts
 // and is tested in twoTierCache.test.ts. This file keeps only the integration

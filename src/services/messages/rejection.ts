@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle'
 import { normalizeModelStringForAPI } from 'src/utils/model/model.js'
-import { DENIAL_WORKAROUND_GUIDANCE } from './constants.js'
+import { DENIAL_WORKAROUND_GUIDANCE } from 'src/services/messages/constants.js'
 
 export function AUTO_REJECT_MESSAGE(toolName: string): string {
   return `Permission to use ${toolName} has been denied. ${DENIAL_WORKAROUND_GUIDANCE}`

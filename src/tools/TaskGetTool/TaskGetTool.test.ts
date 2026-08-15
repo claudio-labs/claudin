@@ -9,7 +9,7 @@ import {
   isTodoV2Enabled,
   resetTaskList,
 } from 'src/tasks/tasks.js'
-import { TaskGetTool } from './TaskGetTool.js'
+import { TaskGetTool } from 'src/tools/TaskGetTool/TaskGetTool.js'
 
 let configDir: string
 

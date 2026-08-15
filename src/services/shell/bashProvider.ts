@@ -18,7 +18,7 @@ import { getSessionEnvironmentScript } from 'src/services/session/sessionEnviron
 import { getSessionEnvVars } from 'src/services/session/sessionEnvVars.js'
 import { getClaudeTmuxEnv } from 'src/utils/proc/tmuxSocket.js'
 import { windowsPathToPosixPath } from 'src/utils/fs/windowsPaths.js'
-import type { ShellProvider } from './shellProvider.js'
+import type { ShellProvider } from 'src/services/shell/shellProvider.js'
 
 /**
  * Returns a shell command to disable extended glob patterns for security.

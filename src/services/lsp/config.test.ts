@@ -3,7 +3,7 @@
  * enabled plugins (no built-in registry, no user-settings server definitions).
  */
 import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
-import type { ScopedLspServerConfig } from './types.js'
+import type { ScopedLspServerConfig } from 'src/services/lsp/types.js'
 
 function makeServer(name: string, source: string): ScopedLspServerConfig {
   return {

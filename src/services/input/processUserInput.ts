@@ -58,7 +58,7 @@ import {
   hasUltraplanKeyword,
   replaceUltraplanKeyword,
 } from 'src/services/ultraplan/keyword.js'
-import { processTextPrompt } from './processTextPrompt.js'
+import { processTextPrompt } from 'src/services/input/processTextPrompt.js'
 export type ProcessUserInputContext = ToolUseContext & LocalJSXCommandContext
 
 export type ProcessUserInputBaseResult = {
@@ -480,7 +480,7 @@ async function processUserInputBase(
   ) {
     logEvent('tengu_ultraplan_keyword', {})
     const rewritten = replaceUltraplanKeyword(inputString).trim()
-    const { processSlashCommand } = await import('./processSlashCommand.js')
+    const { processSlashCommand } = await import('src/services/input/processSlashCommand.js')
     const slashResult = await processSlashCommand(
       `/ultraplan ${rewritten}`,
       precedingInputBlocks,
@@ -518,7 +518,7 @@ async function processUserInputBase(
 
   // Bash commands
   if (inputString !== null && mode === 'bash') {
-    const { processBashCommand } = await import('./processBashCommand.js')
+    const { processBashCommand } = await import('src/services/input/processBashCommand.js')
     return addImageMetadataMessage(
       await processBashCommand(
         inputString,
@@ -538,7 +538,7 @@ async function processUserInputBase(
     !effectiveSkipSlash &&
     inputString.startsWith('/')
   ) {
-    const { processSlashCommand } = await import('./processSlashCommand.js')
+    const { processSlashCommand } = await import('src/services/input/processSlashCommand.js')
     const slashResult = await processSlashCommand(
       inputString,
       precedingInputBlocks,

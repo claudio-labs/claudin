@@ -34,7 +34,7 @@ import { EMPTY_USAGE } from 'src/services/api/logging.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { mergeFileStateCaches } from 'src/utils/fs/fileStateCache.js'
-import { installLiveReadFileCache } from './readFileCacheHandover.js'
+import { installLiveReadFileCache } from 'src/cli/print/readFileCacheHandover.js'
 import { executeFilePersistence } from 'src/services/filePersistence/filePersistence.js'
 import { finalizePendingAsyncHooks } from 'src/services/lifecycleHooks/AsyncHookRegistry.js'
 import {

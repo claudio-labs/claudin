@@ -9,5 +9,5 @@ export default {
   get immediate() {
     return shouldInferenceConfigCommandBeImmediate()
   },
-  load: () => import('./effort.js'),
+  load: () => import('src/commands/effort/effort.js'),
 } satisfies Command

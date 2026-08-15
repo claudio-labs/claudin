@@ -47,7 +47,7 @@ import { parseZipModes, unzipFile } from 'src/services/plugins/dxt/zip.js'
 import { isEnvTruthy } from 'src/utils/envUtils.js'
 import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import { expandTilde } from 'src/services/permissions/pathValidation.js'
-import type { MarketplaceSource } from './schemas.js'
+import type { MarketplaceSource } from 'src/services/plugins/schemas.js'
 
 /**
  * Check if the plugin zip cache mode is enabled.

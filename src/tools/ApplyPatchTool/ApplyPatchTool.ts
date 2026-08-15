@@ -7,9 +7,9 @@ import {
   runApplyPatch,
   summarizeApplyPatch,
   validateApplyPatchInput,
-} from './applyPatch.js'
-import { APPLY_PATCH_TOOL_NAME, DESCRIPTION } from './prompt.js'
-import { renderToolResultMessage, renderToolUseMessage } from './UI.js'
+} from 'src/tools/ApplyPatchTool/applyPatch.js'
+import { APPLY_PATCH_TOOL_NAME, DESCRIPTION } from 'src/tools/ApplyPatchTool/prompt.js'
+import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/ApplyPatchTool/UI.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({

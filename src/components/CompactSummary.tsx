@@ -5,8 +5,8 @@ import { Box, Text } from 'src/ink.js';
 import type { Screen } from 'src/screens/REPL.js';
 import type { NormalizedUserMessage } from 'src/types/message.js';
 import { getUserMessageText } from 'src/services/messages/messages.js';
-import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
-import { MessageResponse } from './MessageResponse.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { MessageResponse } from 'src/components/MessageResponse.js';
 type Props = {
   message: NormalizedUserMessage;
   screen: Screen;

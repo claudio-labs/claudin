@@ -6,7 +6,7 @@ import {
   isAutoCompactEnabled,
   WARNING_THRESHOLD_BUFFER_TOKENS,
   ERROR_THRESHOLD_BUFFER_TOKENS,
-} from './autoCompact.ts'
+} from 'src/services/compact/autoCompact.ts'
 import { getContextWindowForModel } from 'src/services/context/context.ts'
 
 describe('getEffectiveContextWindowSize', () => {

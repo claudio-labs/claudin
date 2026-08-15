@@ -1,5 +1,5 @@
 import type { StructuredPatchHunk } from 'diff'
-import type { DiffSegment } from './types.js'
+import type { DiffSegment } from 'src/components/diff/types.js'
 
 /**
  * Build the collapsible render model for a file's hunks. Unchanged stretches

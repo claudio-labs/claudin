@@ -7,7 +7,7 @@
  * — see expressions.ts header for the ESM-cycle rationale.
  */
 
-import { DECL_KEYWORDS, SPECIAL_VARS, type Token } from './tokens.js'
+import { DECL_KEYWORDS, SPECIAL_VARS, type Token } from 'src/services/bash/bashParser/tokens.js'
 import {
   advance,
   isDigit,
@@ -20,19 +20,19 @@ import {
   restoreLex,
   saveLex,
   skipBlanks,
-} from './lexer.js'
+} from 'src/services/bash/bashParser/lexer.js'
 import {
   leaf,
   mk,
   sliceBytes,
   type ParseState,
   type TsNode,
-} from './parserContext.js'
+} from 'src/services/bash/bashParser/parserContext.js'
 import {
   parseArithCommaList,
   parseArithExpr,
   parseTestExpr,
-} from './expressions.js'
+} from 'src/services/bash/bashParser/expressions.js'
 import {
   parseAndOr,
   parseProcessSub,
@@ -40,7 +40,7 @@ import {
   parseSubscriptIndexInline,
   scanHeredocBodies,
   tryParseRedirect,
-} from './commands.js'
+} from 'src/services/bash/bashParser/commands.js'
 
 /**
  * Parse a word-position element: bare word, string, expansion, or concatenation

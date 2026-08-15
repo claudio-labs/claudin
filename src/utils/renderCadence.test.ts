@@ -37,7 +37,7 @@ const {
   isFrameRateForcedByEnv,
   isGpuTerminal,
   resolveFrameIntervalMs,
-} = await import('./renderCadence.js')
+} = await import('src/utils/renderCadence.js')
 
 const ENV_KEYS = [
   'CLAUDIN_FPS',

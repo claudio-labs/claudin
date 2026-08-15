@@ -13,8 +13,8 @@
  * runtime half of `Permutations`, which is the half a value can express.
  */
 import { expect, test } from 'bun:test'
-import type { Equal, Expect } from './typeAssertions.js'
-import type { DeepImmutable, Permutations } from './utils.js'
+import type { Equal, Expect } from 'src/types/typeAssertions.js'
+import type { DeepImmutable, Permutations } from 'src/types/utils.js'
 
 // --- DeepImmutable: primitives pass through untouched -----------------------
 

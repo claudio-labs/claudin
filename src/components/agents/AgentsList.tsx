@@ -14,7 +14,7 @@ import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { count } from 'src/utils/data/array.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
 import { Divider } from 'src/components/design-system/Divider.js';
-import { getAgentSourceDisplayName } from './utils.js';
+import { getAgentSourceDisplayName } from 'src/components/agents/utils.js';
 
 type Props = {
   source: SettingSource | 'all' | 'built-in' | 'plugin';

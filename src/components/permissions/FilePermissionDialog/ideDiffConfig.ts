@@ -1,4 +1,4 @@
-import type { ToolInput } from './useFilePermissionDialog.js'
+import type { ToolInput } from 'src/components/permissions/FilePermissionDialog/useFilePermissionDialog.js'
 
 export interface FileEdit {
   old_string: string

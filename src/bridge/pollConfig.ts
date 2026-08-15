@@ -4,7 +4,7 @@ import { lazySchema } from 'src/utils/data/lazySchema.js'
 import {
   DEFAULT_POLL_CONFIG,
   type PollIntervalConfig,
-} from './pollConfigDefaults.js'
+} from 'src/bridge/pollConfigDefaults.js'
 
 // .min(100) on the seek-work intervals restores the old Math.max(..., 100)
 // defense-in-depth floor against fat-fingered GrowthBook values. Unlike a

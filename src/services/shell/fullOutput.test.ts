@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import type { ExecResult } from 'src/utils/proc/ShellCommand.js'
-import { readFullShellOutput } from './fullOutput.js'
+import { readFullShellOutput } from 'src/services/shell/fullOutput.js'
 
 const dir = mkdtempSync(join(tmpdir(), 'claudin-full-output-'))
 afterAll(() => rmSync(dir, { recursive: true, force: true }))

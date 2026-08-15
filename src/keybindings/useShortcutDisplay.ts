@@ -3,8 +3,8 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
-import { useOptionalKeybindingContext } from './KeybindingContext.js'
-import type { KeybindingContextName } from './types.js'
+import { useOptionalKeybindingContext } from 'src/keybindings/KeybindingContext.js'
+import type { KeybindingContextName } from 'src/keybindings/types.js'
 
 // TODO(keybindings-migration): Remove fallback parameter after migration is complete
 // and we've confirmed no 'keybinding_fallback_used' events are being logged.

@@ -1,7 +1,7 @@
 import type { Message } from 'src/types/message.js'
 import { getGlobalConfig } from 'src/services/config/config.js'
 import { getUserMessageText } from 'src/services/messages/messages.js'
-import { getCompanion } from './companion.js'
+import { getCompanion } from 'src/buddy/companion.js'
 
 const DIRECT_REPLIES = [
   'I am observing.',

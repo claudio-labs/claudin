@@ -9,7 +9,7 @@ let mockProviderProfile: ProviderProfile | null = null
 // Spread into plain objects so afterAll restores the original bindings, not
 // the live ESM namespaces (which mock.module mutates after the fact).
 const realConfig = { ...(await import('src/services/config/config.js')) }
-const realProviderProfiles = { ...(await import('./providerProfiles.js')) }
+const realProviderProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
 const realDeviceFlow = { ...(await import('src/services/github/deviceFlow.js')) }
 const realSecureStorage = { ...(await import('src/services/secureStorage/index.js')) }
 

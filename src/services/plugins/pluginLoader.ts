@@ -83,28 +83,28 @@ import {
 import type { HooksSettings } from 'src/services/settings/types.js'
 import { SettingsSchema } from 'src/services/settings/types.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
-import { getAddDirEnabledPlugins } from './addDirPluginSettings.js'
-import { verifyAndDemote } from './dependencyResolver.js'
-import { classifyFetchError, logPluginFetch } from './fetchTelemetry.js'
-import { checkGitAvailable } from './gitAvailability.js'
-import { getInMemoryInstalledPlugins } from './installedPluginsManager.js'
-import { getManagedPluginNames } from './managedPlugins.js'
+import { getAddDirEnabledPlugins } from 'src/services/plugins/addDirPluginSettings.js'
+import { verifyAndDemote } from 'src/services/plugins/dependencyResolver.js'
+import { classifyFetchError, logPluginFetch } from 'src/services/plugins/fetchTelemetry.js'
+import { checkGitAvailable } from 'src/services/plugins/gitAvailability.js'
+import { getInMemoryInstalledPlugins } from 'src/services/plugins/installedPluginsManager.js'
+import { getManagedPluginNames } from 'src/services/plugins/managedPlugins.js'
 import {
   formatSourceForDisplay,
   getBlockedMarketplaces,
   getStrictKnownMarketplaces,
   isSourceAllowedByPolicy,
   isSourceInBlocklist,
-} from './marketplaceHelpers.js'
+} from 'src/services/plugins/marketplaceHelpers.js'
 import {
   getMarketplaceCacheOnly,
   getPluginByIdCacheOnly,
   loadKnownMarketplacesConfigSafe,
-} from './marketplaceManager.js'
-import { getPluginSeedDirs, getPluginsDirectory } from './pluginDirectories.js'
-import { parsePluginIdentifier } from './pluginIdentifier.js'
-import { validatePathWithinBase } from './pluginInstallationHelpers.js'
-import { calculatePluginVersion } from './pluginVersioning.js'
+} from 'src/services/plugins/marketplaceManager.js'
+import { getPluginSeedDirs, getPluginsDirectory } from 'src/services/plugins/pluginDirectories.js'
+import { parsePluginIdentifier } from 'src/services/plugins/pluginIdentifier.js'
+import { validatePathWithinBase } from 'src/services/plugins/pluginInstallationHelpers.js'
+import { calculatePluginVersion } from 'src/services/plugins/pluginVersioning.js'
 import {
   type CommandMetadata,
   PluginHooksSchema,
@@ -112,13 +112,13 @@ import {
   PluginManifestSchema,
   type PluginMarketplaceEntry,
   type PluginSource,
-} from './schemas.js'
+} from 'src/services/plugins/schemas.js'
 import {
   convertDirectoryToZipInPlace,
   extractZipToDirectory,
   getSessionPluginCachePath,
   isPluginZipCacheEnabled,
-} from './zipCache.js'
+} from 'src/services/plugins/zipCache.js'
 
 /**
  * Get the path where plugin cache is stored

@@ -15,8 +15,8 @@ import { logForDebugging } from 'src/utils/debug.js';
 import { createUserMessage } from 'src/services/messages/messages.js';
 import { killInProcessTeammate } from 'src/coordinator/swarm/spawnInProcess.js';
 import { updateTaskState } from 'src/tasks/framework.js';
-import type { InProcessTeammateTaskState } from './types.js';
-import { appendCappedMessage, isInProcessTeammateTask } from './types.js';
+import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js';
+import { appendCappedMessage, isInProcessTeammateTask } from 'src/tasks/InProcessTeammateTask/types.js';
 
 /**
  * InProcessTeammateTask - Handles in-process teammate execution.

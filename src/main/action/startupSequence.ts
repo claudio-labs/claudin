@@ -62,7 +62,7 @@ import { type AppState, IDLE_SPECULATION_STATE } from 'src/state/AppStateStore.j
 import type { Root } from 'src/ink.js';
 import type { InternalPermissionMode } from 'src/types/permissions.js';
 import type { BootContext } from 'src/main/bootContext.js';
-import type { ActionOptions } from './parseOptions.js';
+import type { ActionOptions } from 'src/main/action/parseOptions.js';
 import uniqBy from 'lodash-es/uniqBy.js';
 
 // =============================================================================

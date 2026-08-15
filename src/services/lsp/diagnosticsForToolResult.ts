@@ -10,9 +10,9 @@ import {
   filterUndeliveredDiagnostics,
   markDiagnosticsAsDelivered,
   peekPendingDiagnosticsForFile,
-} from './LSPDiagnosticRegistry.js'
-import { getLspServerManager } from './manager.js'
-import { isLspGloballyEnabled } from './userSettings.js'
+} from 'src/services/lsp/LSPDiagnosticRegistry.js'
+import { getLspServerManager } from 'src/services/lsp/manager.js'
+import { isLspGloballyEnabled } from 'src/services/lsp/userSettings.js'
 
 const DEFAULT_TIMEOUT_MS = 1500
 const MIN_TIMEOUT_MS = 100

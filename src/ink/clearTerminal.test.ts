@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
-import { getClearTerminalSequence } from './clearTerminal.js'
+import { getClearTerminalSequence } from 'src/ink/clearTerminal.js'
 
 const ERASE_SCROLLBACK = '\x1B[3J'
 const ERASE_SCREEN = '\x1B[2J'

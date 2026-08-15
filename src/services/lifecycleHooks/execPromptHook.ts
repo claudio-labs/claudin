@@ -7,15 +7,15 @@ import { createAttachmentMessage } from 'src/services/attachments/attachments.js
 import { createCombinedAbortSignal } from 'src/utils/combinedAbortSignal.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
-import type { HookResult } from './types.js'
+import type { HookResult } from 'src/services/lifecycleHooks/types.js'
 import { safeParseJSON } from 'src/utils/data/json.js'
 import { createUserMessage, extractTextContent } from 'src/services/messages/messages.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
 import type { PromptHook } from 'src/services/settings/types.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
-import { addArgumentsToPrompt, hookResponseSchema } from './hookHelpers.js'
-import { isStopConditionJudge } from './stopConditionJudge.js'
-import { truncateTranscriptForHookEvaluator } from './transcriptTruncation.js'
+import { addArgumentsToPrompt, hookResponseSchema } from 'src/services/lifecycleHooks/hookHelpers.js'
+import { isStopConditionJudge } from 'src/services/lifecycleHooks/stopConditionJudge.js'
+import { truncateTranscriptForHookEvaluator } from 'src/services/lifecycleHooks/transcriptTruncation.js'
 
 /**
  * System prompt for the generic prompt-hook evaluator (every prompt hook

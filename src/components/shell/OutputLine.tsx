@@ -8,7 +8,7 @@ import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js';
 import { renderTruncatedContent } from 'src/utils/terminal.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { InVirtualListContext } from 'src/components/messageActions.js';
-import { useExpandShellOutput } from './ExpandShellOutputContext.js';
+import { useExpandShellOutput } from 'src/components/shell/ExpandShellOutputContext.js';
 export function tryFormatJson(line: string): string {
   try {
     const parsed = jsonParse(line);

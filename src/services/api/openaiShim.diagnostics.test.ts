@@ -19,7 +19,7 @@ function makeDebugSpy() {
 // test sets the legacy OPENAI_* envs to describe the provider; we synthesize
 // a matching profile so the resolver-driven branches pick up the same
 // configuration. Restore in afterAll to keep the mock from leaking.
-const realActiveProvider = { ...(await import('./activeProvider.js')) }
+const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
 
 mock.module('./activeProvider.js', () => ({

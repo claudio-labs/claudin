@@ -5,8 +5,8 @@ import {
 } from 'src/services/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
 import { useSetAppState } from 'src/state/AppState.js'
-import type { ToolUseConfirm } from './PermissionRequest.js'
-import { logUnaryPermissionEvent } from './utils.js'
+import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
+import { logUnaryPermissionEvent } from 'src/components/permissions/utils.js'
 
 /**
  * Shared feedback-mode state + handlers for shell permission dialogs (Bash,

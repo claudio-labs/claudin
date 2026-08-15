@@ -12,13 +12,13 @@ import { applyPermissionUpdate } from 'src/services/permissions/PermissionUpdate
 import { prepareContextForPlanMode } from 'src/services/permissions/permissionSetup.js'
 import { isPlanModeInterviewPhaseEnabled } from 'src/utils/planModeV2.js'
 import { getPlanSlug } from 'src/utils/plans.js'
-import { ENTER_PLAN_MODE_TOOL_NAME } from './constants.js'
-import { getEnterPlanModeToolPrompt } from './prompt.js'
+import { ENTER_PLAN_MODE_TOOL_NAME } from 'src/tools/EnterPlanModeTool/constants.js'
+import { getEnterPlanModeToolPrompt } from 'src/tools/EnterPlanModeTool/prompt.js'
 import {
   renderToolResultMessage,
   renderToolUseMessage,
   renderToolUseRejectedMessage,
-} from './UI.js'
+} from 'src/tools/EnterPlanModeTool/UI.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({

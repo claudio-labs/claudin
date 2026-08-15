@@ -18,7 +18,7 @@ import {
   ripgrepCommand,
   ripGrepWithStatus,
   wrapRipgrepUnavailableError,
-} from './ripgrep.js'
+} from 'src/utils/fs/ripgrep.js'
 
 const MOCK_BUILTIN_PATH = path.normalize(
   process.platform === 'win32'

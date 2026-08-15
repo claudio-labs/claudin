@@ -15,7 +15,7 @@ import {
   type InstallMethod,
 } from 'src/services/config/config.js'
 import { getCwd } from 'src/utils/fs/cwd.js'
-import { getClaudinConfigHomeDir, isEnvTruthy } from './envUtils.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/utils/envUtils.js'
 import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
 import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import {
@@ -49,7 +49,7 @@ import {
   findValidClaudeAlias,
   getShellConfigPaths,
 } from 'src/utils/proc/shellConfig.js'
-import { jsonParse } from './slowOperations.js'
+import { jsonParse } from 'src/utils/slowOperations.js'
 import { which } from 'src/utils/proc/which.js'
 
 function getCliBinaryName(): string {

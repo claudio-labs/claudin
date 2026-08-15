@@ -19,7 +19,7 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
-import { cronToHuman } from './cron.js'
+import { cronToHuman } from 'src/tasks/cron.js'
 import {
   type CronJitterConfig,
   type CronTask,
@@ -32,11 +32,11 @@ import {
   oneShotJitteredNextCronRunMs,
   readCronTasks,
   removeCronTasks,
-} from './cronTasks.js'
+} from 'src/tasks/cronTasks.js'
 import {
   releaseSchedulerLock,
   tryAcquireSchedulerLock,
-} from './cronTasksLock.js'
+} from 'src/tasks/cronTasksLock.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { expandLoopSentinelPrompt } from 'src/utils/loopSentinels.js'
 

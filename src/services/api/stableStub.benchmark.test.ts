@@ -58,8 +58,8 @@ const {
   addClippedIds,
   applyStableStubs,
 } = await import('src/services/compact/stableStubState.js')
-const { createOpenAIShimClient } = await import('./openaiShim.js')
-const { convertAnthropicMessagesToResponsesInput } = await import('./codexShim.js')
+const { createOpenAIShimClient } = await import('src/services/api/openaiShim.js')
+const { convertAnthropicMessagesToResponsesInput } = await import('src/services/api/codexShim.js')
 
 type AnyMsg = {
   role?: string
@@ -230,7 +230,7 @@ function captureOpenAIResponsesBody(messages: AnyMsg[]): string {
 async function captureAnthropicBody(
   messages: AnyMsg[],
 ): Promise<{ body: string; cacheControlCount: number }> {
-  const claude = await import('./claude.js')
+  const claude = await import('src/services/api/claude.js')
   const compressed = applyStableStubs(messages)
   const messageParams = claude.addCacheBreakpoints(
     // Cast: addCacheBreakpoints is typed against the internal UserMessage /

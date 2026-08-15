@@ -67,7 +67,7 @@ import {
   shouldAttemptLocalToollessRetry,
   type ReasoningEffort,
 } from 'src/services/api/providerConfig.js'
-import { resolveOAuthProviderAuth } from './oauthProviderAuth.js'
+import { resolveOAuthProviderAuth } from 'src/services/api/openaiShim/oauthProviderAuth.js'
 import { stripThinkTags } from 'src/services/api/thinkTagSanitizer.js'
 import { normalizeToolArguments } from 'src/services/api/toolArgumentNormalization.js'
 import { getClaudinUserAgent } from 'src/services/api/userAgent.js'
@@ -77,10 +77,10 @@ import {
   GITHUB_429_BASE_DELAY_SEC,
   GITHUB_429_MAX_DELAY_SEC,
   GITHUB_429_MAX_RETRIES,
-} from './constants.js'
-import { filterAnthropicHeaders, formatRetryAfterHint } from './headers.js'
-import { makeMessageId, sleepMs } from './helpers.js'
-import { convertMessages, convertSystemPrompt } from './messageConverter.js'
+} from 'src/services/api/openaiShim/constants.js'
+import { filterAnthropicHeaders, formatRetryAfterHint } from 'src/services/api/openaiShim/headers.js'
+import { makeMessageId, sleepMs } from 'src/services/api/openaiShim/helpers.js'
+import { convertMessages, convertSystemPrompt } from 'src/services/api/openaiShim/messageConverter.js'
 import {
   isDeepSeekBaseUrl,
   isGeminiMode,
@@ -89,9 +89,9 @@ import {
   isMistralMode,
   isMoonshotCompatibleBaseUrl,
   normalizeDeepSeekReasoningEffort,
-} from './providerModes.js'
-import { extractReasoningMessage } from './reasoningNormalizer.js'
-import { openaiStreamToAnthropic, OpenAIShimStream } from './streamParser.js'
+} from 'src/services/api/openaiShim/providerModes.js'
+import { extractReasoningMessage } from 'src/services/api/openaiShim/reasoningNormalizer.js'
+import { openaiStreamToAnthropic, OpenAIShimStream } from 'src/services/api/openaiShim/streamParser.js'
 import { getSessionId } from 'src/bootstrap/state.js'
 
 // api.openai.com (and the chatgpt.com backend) honor prompt_cache_key /
@@ -105,10 +105,10 @@ function isOfficialOpenAIUrl(baseUrl: string | undefined): boolean {
     return false
   }
 }
-import { convertTools } from './toolConverter.js'
-import { isHy3Model, recoverXmlToolCallsFromText } from './xmlToolCallParser.js'
-import type { SecretValueSource } from './types.js'
-import { redactUrlForDiagnostics } from './urlRedaction.js'
+import { convertTools } from 'src/services/api/openaiShim/toolConverter.js'
+import { isHy3Model, recoverXmlToolCallsFromText } from 'src/services/api/openaiShim/xmlToolCallParser.js'
+import type { SecretValueSource } from 'src/services/api/openaiShim/types.js'
+import { redactUrlForDiagnostics } from 'src/services/api/openaiShim/urlRedaction.js'
 
 class OpenAIShimMessages {
   private defaultHeaders: Record<string, string>

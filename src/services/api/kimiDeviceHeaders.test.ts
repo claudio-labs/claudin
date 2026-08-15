@@ -8,7 +8,7 @@ import {
   buildKimiDeviceHeaders,
   getKimiDeviceHeaders,
   getOrCreateKimiDeviceId,
-} from './kimiDeviceHeaders.js'
+} from 'src/services/api/kimiDeviceHeaders.js'
 import { getKimiCliVersion } from 'src/services/api/kimiOAuthShared.js'
 
 const originalConfigDir = process.env.CLAUDIN_CONFIG_DIR

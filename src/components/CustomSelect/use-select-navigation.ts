@@ -6,8 +6,8 @@ import {
   useRef,
   useState,
 } from 'react'
-import OptionMap from './option-map.js'
-import type { OptionWithDescription } from './select.js'
+import OptionMap from 'src/components/CustomSelect/option-map.js'
+import type { OptionWithDescription } from 'src/components/CustomSelect/select.js'
 
 /**
  * Compare two option arrays for structural equality on properties that

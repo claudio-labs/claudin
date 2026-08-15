@@ -10,7 +10,7 @@ import {
 import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
 import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { expandPath, toRelativePath } from 'src/utils/fs/path.js'
-import { relativizeRgLine, RG_LINE_RE } from './relativize.js'
+import { relativizeRgLine, RG_LINE_RE } from 'src/tools/GrepTool/relativize.js'
 import {
   checkReadPermissionForTool,
   getFileReadIgnorePatterns,
@@ -23,21 +23,21 @@ import { ripGrepWithStatus } from 'src/utils/fs/ripgrep.js'
 import { semanticBoolean } from 'src/utils/data/semanticBoolean.js'
 import { semanticNumber } from 'src/utils/data/semanticNumber.js'
 import { plural } from 'src/utils/text/stringUtils.js'
-import { buildSymbolsOutput } from './symbolsOutput.js'
-import { GREP_TOOL_NAME, getDescription } from './prompt.js'
+import { buildSymbolsOutput } from 'src/tools/GrepTool/symbolsOutput.js'
+import { GREP_TOOL_NAME, getDescription } from 'src/tools/GrepTool/prompt.js'
 import {
   GREP_AUTO_PIVOT_FOOTER,
   grepAutoPivotEnabled,
   measureGrepShape,
   pivotWins,
   shouldAutoPivot,
-} from './autoPivot.js'
+} from 'src/tools/GrepTool/autoPivot.js'
 import {
   getToolUseSummary,
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
-} from './UI.js'
+} from 'src/tools/GrepTool/UI.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({
@@ -189,7 +189,7 @@ function formatLimitInfo(
   return parts.join(', ')
 }
 
-export { RG_LINE_RE, RG_PREFIX_RE, relativizeRgLine } from './relativize.js'
+export { RG_LINE_RE, RG_PREFIX_RE, relativizeRgLine } from 'src/tools/GrepTool/relativize.js'
 
 const outputSchema = lazySchema(() =>
   z.object({

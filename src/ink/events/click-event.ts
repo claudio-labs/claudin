@@ -1,4 +1,4 @@
-import { Event } from './event.js'
+import { Event } from 'src/ink/events/event.js'
 
 /**
  * Mouse click event. Fired on left-button release without drag, only when

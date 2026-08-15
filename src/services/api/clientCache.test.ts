@@ -3,7 +3,7 @@ import { afterAll, beforeEach, expect, mock, test } from 'bun:test'
 // clientCache derives its key from tryGetActiveProvider(). Mock at that
 // boundary so tests can control transport/apiKey/baseUrl. Spread the real
 // module so other exports stay shape-compatible and restore in afterAll.
-const realActiveProvider = { ...(await import('./activeProvider.js')) }
+const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
 
 type ResolvedProvider = {
@@ -33,7 +33,7 @@ afterAll(() => {
   mock.module('src/services/config/config.js', () => realConfigSnapshot)
 })
 
-const { getCachedAnthropicClient, invalidateClientCache } = await import('./clientCache.js')
+const { getCachedAnthropicClient, invalidateClientCache } = await import('src/services/api/clientCache.js')
 
 // A fake "client" — the cache treats it opaquely, so any object works.
 function fakeClient(tag: string): any {

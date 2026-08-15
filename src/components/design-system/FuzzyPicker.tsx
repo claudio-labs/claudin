@@ -7,10 +7,10 @@ import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
 import { clamp } from 'src/ink/layout/geometry.js';
 import { Box, Text, useTerminalFocus } from 'src/ink.js';
 import { SearchBox } from 'src/components/SearchBox.js';
-import { Byline } from './Byline.js';
-import { KeyboardShortcutHint } from './KeyboardShortcutHint.js';
-import { ListItem } from './ListItem.js';
-import { Pane } from './Pane.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { ListItem } from 'src/components/design-system/ListItem.js';
+import { Pane } from 'src/components/design-system/Pane.js';
 type PickerAction<T> = {
   /** Hint label shown in the byline, e.g. "mention" → "Tab to mention". */
   action: string;

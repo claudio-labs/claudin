@@ -44,13 +44,13 @@ import { getPluginEditableScopes } from 'src/services/plugins/pluginStartupCheck
 import { getInitialSettings, getSettingsForSource, updateSettingsForSource } from 'src/services/settings/settings.js';
 import { jsonParse } from 'src/utils/slowOperations.js';
 import { plural } from 'src/utils/text/stringUtils.js';
-import { formatErrorMessage, getErrorGuidance } from './PluginErrors.js';
-import { PluginOptionsDialog } from './PluginOptionsDialog.js';
-import { PluginOptionsFlow } from './PluginOptionsFlow.js';
-import type { ViewState as ParentViewState } from './types.js';
-import { UnifiedInstalledCell } from './UnifiedInstalledCell.js';
-import type { UnifiedInstalledItem } from './unifiedTypes.js';
-import { usePagination } from './usePagination.js';
+import { formatErrorMessage, getErrorGuidance } from 'src/commands/plugin/PluginErrors.js';
+import { PluginOptionsDialog } from 'src/commands/plugin/PluginOptionsDialog.js';
+import { PluginOptionsFlow } from 'src/commands/plugin/PluginOptionsFlow.js';
+import type { ViewState as ParentViewState } from 'src/commands/plugin/types.js';
+import { UnifiedInstalledCell } from 'src/commands/plugin/UnifiedInstalledCell.js';
+import type { UnifiedInstalledItem } from 'src/commands/plugin/unifiedTypes.js';
+import { usePagination } from 'src/commands/plugin/usePagination.js';
 type Props = {
   setViewState: (state: ParentViewState) => void;
   setResult: (result: string | null) => void;

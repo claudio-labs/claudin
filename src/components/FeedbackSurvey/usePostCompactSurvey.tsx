@@ -8,8 +8,8 @@ import type { Message } from 'src/types/message.js';
 import { isEnvTruthy } from 'src/utils/envUtils.js';
 import { isCompactBoundaryMessage } from 'src/services/messages/messages.js';
 import { logOTelEvent } from 'src/services/telemetry/events.js';
-import { useSurveyState } from './useSurveyState.js';
-import type { FeedbackSurveyResponse } from './utils.js';
+import { useSurveyState } from 'src/components/FeedbackSurvey/useSurveyState.js';
+import type { FeedbackSurveyResponse } from 'src/components/FeedbackSurvey/utils.js';
 const HIDE_THANKS_AFTER_MS = 3000;
 const POST_COMPACT_SURVEY_GATE = 'tengu_post_compact_survey';
 const SURVEY_PROBABILITY = 0.2; // Show survey 20% of the time after compaction

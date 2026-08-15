@@ -14,7 +14,7 @@ import {
 import {
   SessionsWebSocket,
   type SessionsWebSocketCallbacks,
-} from './SessionsWebSocket.js'
+} from 'src/remote/SessionsWebSocket.js'
 
 /**
  * Type guard to check if a message is an SDKMessage (not a control message)

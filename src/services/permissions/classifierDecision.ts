@@ -18,7 +18,7 @@ import { TEAM_CREATE_TOOL_NAME } from 'src/tools/TeamCreateTool/constants.js'
 import { TEAM_DELETE_TOOL_NAME } from 'src/tools/TeamDeleteTool/constants.js'
 import { TODO_WRITE_TOOL_NAME } from 'src/tools/TodoWriteTool/constants.js'
 import { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/prompt.js'
-import { YOLO_CLASSIFIER_TOOL_NAME } from './yoloClassifier.js'
+import { YOLO_CLASSIFIER_TOOL_NAME } from 'src/services/permissions/yoloClassifier.js'
 
 // Ant-only tool names: conditional require so Bun can DCE these in external builds.
 // Gates mirror tools.ts. Keeps the tool name strings out of cli.js.

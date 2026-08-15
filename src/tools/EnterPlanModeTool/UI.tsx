@@ -5,7 +5,7 @@ import { Box, Text } from 'src/ink.js';
 import type { ToolProgressData } from 'src/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';
 import type { ThemeName } from 'src/utils/theme.js';
-import type { Output } from './EnterPlanModeTool.js';
+import type { Output } from 'src/tools/EnterPlanModeTool/EnterPlanModeTool.js';
 export function renderToolUseMessage(): React.ReactNode {
   return null;
 }

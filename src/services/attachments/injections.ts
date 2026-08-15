@@ -66,7 +66,7 @@ import { getEffectiveContextWindowSize } from 'src/services/compact/autoCompact.
 import { isEnvTruthy, getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
 import { feature } from 'bun:bundle'
 import type { Message } from 'src/types/message.js'
-import type { Attachment } from './types.js'
+import type { Attachment } from 'src/services/attachments/types.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const sessionTranscriptModule = feature('KAIROS')

@@ -11,7 +11,7 @@ import {
   checkRenamePermissions,
   type RenameInput,
   validateRenameInput,
-} from './rename.js'
+} from 'src/tools/RenameTool/rename.js'
 
 beforeAll(() => {
   setOriginalFsImplementation()

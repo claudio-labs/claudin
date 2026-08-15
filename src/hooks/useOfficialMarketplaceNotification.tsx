@@ -3,7 +3,7 @@ import type { Notification } from 'src/context/notifications.js';
 import { Text } from 'src/ink.js';
 import { logForDebugging } from 'src/utils/debug.js';
 import { checkAndInstallOfficialMarketplace } from 'src/services/plugins/officialMarketplaceStartupCheck.js';
-import { useStartupNotification } from './notifs/useStartupNotification.js';
+import { useStartupNotification } from 'src/hooks/notifs/useStartupNotification.js';
 
 /**
  * Hook that handles official marketplace auto-installation and shows

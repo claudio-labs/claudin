@@ -39,12 +39,12 @@ import {
   WINDOWS_REGISTRY_KEY_PATH_HKCU,
   WINDOWS_REGISTRY_KEY_PATH_HKLM,
   WINDOWS_REGISTRY_VALUE_NAME,
-} from './constants.js'
+} from 'src/services/settings/mdm/constants.js'
 import {
   fireRawRead,
   getMdmRawReadPromise,
   type RawReadResult,
-} from './rawRead.js'
+} from 'src/services/settings/mdm/rawRead.js'
 
 // ---------------------------------------------------------------------------
 // Types and cache

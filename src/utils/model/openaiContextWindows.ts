@@ -14,7 +14,7 @@ import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import {
   CODEX_CONTEXT_WINDOWS,
   CODEX_MAX_OUTPUT_TOKENS,
-} from './codexModelCatalog.js'
+} from 'src/utils/model/codexModelCatalog.js'
 
 // Exported for copilotModels.consistency.test.ts. Production code should
 // prefer getOpenAIContextWindow() / getOpenAIMaxOutputTokens() — those handle
@@ -480,7 +480,7 @@ export function getOpenAIContextWindow(model: string): number | undefined {
   // report. Imported lazily to avoid a module-init cycle (openaiModelDiscovery
   // imports modelOptions which imports openaiContextWindows).
   try {
-    const { getDiscoveredContextWindow } = require('./openaiModelDiscovery.js') as typeof import('./openaiModelDiscovery.js')
+    const { getDiscoveredContextWindow } = require('src/utils/model/openaiModelDiscovery.js') as typeof import('src/utils/model/openaiModelDiscovery.js')
     const discovered = getDiscoveredContextWindow(model)
     if (discovered !== undefined) return discovered
   } catch {
@@ -491,7 +491,7 @@ export function getOpenAIContextWindow(model: string): number | undefined {
   // Copilot models missing from the hardcoded table (new releases) resolve
   // from the live account catalog. Lazy for the same cycle reason as above.
   try {
-    const { getCatalogCopilotContextWindow } = require('./copilotModelCatalog.js') as typeof import('./copilotModelCatalog.js')
+    const { getCatalogCopilotContextWindow } = require('src/utils/model/copilotModelCatalog.js') as typeof import('src/utils/model/copilotModelCatalog.js')
     return getCatalogCopilotContextWindow(model)
   } catch {
     return undefined
@@ -506,7 +506,7 @@ export function getOpenAIMaxOutputTokens(model: string): number | undefined {
   const known = lookupByModel(OPENAI_MAX_OUTPUT_TOKENS, OPENAI_EXTERNAL_MAX_OUTPUT_TOKENS, model)
   if (known !== undefined) return known
   try {
-    const { getCatalogCopilotMaxOutputTokens } = require('./copilotModelCatalog.js') as typeof import('./copilotModelCatalog.js')
+    const { getCatalogCopilotMaxOutputTokens } = require('src/utils/model/copilotModelCatalog.js') as typeof import('src/utils/model/copilotModelCatalog.js')
     return getCatalogCopilotMaxOutputTokens(model)
   } catch {
     return undefined

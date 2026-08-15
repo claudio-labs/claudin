@@ -18,9 +18,9 @@ import {
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
 import type { Message } from 'src/types/message.js'
 import type { OrphanedPermission } from 'src/types/textInputTypes.js'
-import { logForDebugging } from './debug.js'
-import { isEnvTruthy } from './envUtils.js'
-import { isFsInaccessible } from './errors.js'
+import { logForDebugging } from 'src/utils/debug.js'
+import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isFsInaccessible } from 'src/utils/errors.js'
 import { getFileModificationTime, stripLineNumberPrefix } from 'src/utils/fs/file.js'
 import { readFileSyncWithMetadata } from 'src/utils/fs/fileRead.js'
 import {

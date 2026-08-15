@@ -214,7 +214,7 @@ import {
   type RetryContext,
   withRetry,
 } from "src/services/api/withRetry.js";
-import { should1hCacheTTL } from "./cacheControl.js";
+import { should1hCacheTTL } from "src/services/api/claude/cacheControl.js";
 import {
   addCacheBreakpoints,
   buildSystemPromptBlocks,
@@ -223,14 +223,14 @@ import {
   getExtraBodyParams,
   getMaxOutputTokensForModel,
   getPromptCachingEnabled,
-} from "./paramBuilders.js";
-import { getAPIMetadata } from "./metadata.js";
+} from "src/services/api/claude/paramBuilders.js";
+import { getAPIMetadata } from "src/services/api/claude/metadata.js";
 import {
   getPreviousRequestIdFromMessages,
   stripExcessMediaItems,
-} from "./messageConverters.js";
-import { executeNonStreamingRequest } from "./nonStreamingRequest.js";
-import type { Options, TaskBudgetParam } from "./types.js";
+} from "src/services/api/claude/messageConverters.js";
+import { executeNonStreamingRequest } from "src/services/api/claude/nonStreamingRequest.js";
+import type { Options, TaskBudgetParam } from "src/services/api/claude/types.js";
 
 export async function* queryModelWithStreaming({
   messages,

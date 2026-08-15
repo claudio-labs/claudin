@@ -41,8 +41,8 @@ import {
   IMAGE_EXTENSIONS,
   MaxFileReadTokenExceededError,
   validateContentTokens,
-} from './guards.js'
-import { readImageWithTokenBudget } from './imageRead.js'
+} from 'src/tools/FileReadTool/guards.js'
+import { readImageWithTokenBudget } from 'src/tools/FileReadTool/imageRead.js'
 import {
   autoOutlineOnElisionEnabled,
   findSymbolEntry,
@@ -53,9 +53,9 @@ import {
   READ_AUTO_OUTLINE_THRESHOLD_CHARS,
   READ_AUTO_OUTLINE_THRESHOLD_LINES,
   scanFile,
-} from './outlineView.js'
-import { markMemoryFileMtime } from './resultContent.js'
-import type { Output } from './schemas.js'
+} from 'src/tools/FileReadTool/outlineView.js'
+import { markMemoryFileMtime } from 'src/tools/FileReadTool/resultContent.js'
+import type { Output } from 'src/tools/FileReadTool/schemas.js'
 
 /**
  * Inner implementation of call, separated to allow ENOENT handling in the outer call.

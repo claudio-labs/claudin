@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { buildClassifierUnavailableMessage } from './rejection.js'
+import { buildClassifierUnavailableMessage } from 'src/services/messages/rejection.js'
 
 describe('buildClassifierUnavailableMessage', () => {
   test('strips the UI-only alias suffix from the model id', () => {

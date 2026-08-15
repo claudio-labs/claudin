@@ -7,7 +7,7 @@ import { isKeybindingCustomizationEnabled } from 'src/keybindings/loadUserBindin
 import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
 import { isFastModeAvailable, isFastModeEnabled } from 'src/utils/fastMode.js';
-import { getNewlineInstructions } from './utils.js';
+import { getNewlineInstructions } from 'src/components/PromptInput/utils.js';
 
 /** Format a shortcut for display in the help menu (e.g., "ctrl+o" → "ctrl + o") */
 function formatShortcut(shortcut: string): string {

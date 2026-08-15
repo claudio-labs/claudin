@@ -8,7 +8,7 @@ import {
   getProxyFetchOptions,
   isProviderH1Only,
   markProviderH1Only,
-} from './proxy.js'
+} from 'src/services/api/proxy.js'
 
 const originalProxyEnv = {
   HTTP_PROXY: process.env.HTTP_PROXY,

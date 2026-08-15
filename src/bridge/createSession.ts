@@ -1,8 +1,8 @@
 import type { SDKMessage } from 'src/entrypoints/agentSdkTypes.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { errorMessage } from 'src/utils/errors.js'
-import { extractErrorDetail } from './debugUtils.js'
-import { toCompatSessionId } from './sessionIdCompat.js'
+import { extractErrorDetail } from 'src/bridge/debugUtils.js'
+import { toCompatSessionId } from 'src/bridge/sessionIdCompat.js'
 
 type GitSource = {
   type: 'git_repository'

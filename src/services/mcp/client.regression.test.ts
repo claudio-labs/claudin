@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'bun:test'
 
-import { areMcpConfigsEqual, getServerCacheKey } from './client/connection.js'
-import { isMcpSessionExpiredError } from './client/errors.js'
-import { mcpToolInputToAutoClassifierInput } from './client/fetchCapabilities.js'
+import { areMcpConfigsEqual, getServerCacheKey } from 'src/services/mcp/client/connection.js'
+import { isMcpSessionExpiredError } from 'src/services/mcp/client/errors.js'
+import { mcpToolInputToAutoClassifierInput } from 'src/services/mcp/client/fetchCapabilities.js'
 import {
   inferCompactSchema,
   processMCPResult,
   transformMCPResult,
-} from './client/toolResult.js'
-import type { ScopedMcpServerConfig } from './types.js'
+} from 'src/services/mcp/client/toolResult.js'
+import type { ScopedMcpServerConfig } from 'src/services/mcp/types.js'
 
 // Characterization tests for the pure exported surface of mcp/client.
 // They lock current behavior so the 11i split (barrel + submodules) is

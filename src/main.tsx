@@ -6,7 +6,7 @@
 //    key) in parallel — isRemoteManagedSettingsEligible() otherwise reads them
 //    sequentially via sync spawn inside applySafeConfigEnvironmentVariables()
 //    (~65ms on every macOS startup)
-import { profileCheckpoint, profileReport } from './utils/startupProfiler.js';
+import { profileCheckpoint, profileReport } from 'src/utils/startupProfiler.js';
 
 // eslint-disable-next-line custom-rules/no-top-level-side-effects
 profileCheckpoint('main_tsx_entry');
@@ -20,30 +20,30 @@ import { startKeychainPrefetch } from 'src/services/secureStorage/keychainPrefet
 startKeychainPrefetch();
 import { feature } from 'bun:bundle';
 import { Command as CommanderCommand, InvalidArgumentError, Option } from '@commander-js/extra-typings';
-import type { Root } from './ink.js';
+import type { Root } from 'src/ink.js';
 // launchRepl/setPreloadedChunks pull React+Ink — only needed for interactive
 // launch path. getTools pulls every tool's transitive graph. initBootstrap
 // pulls undici/growthbook/OAuth populate. All three are gated by argv: cold
 // paths (--help/--version/subcommands) never need them. (Phase D.)
-import type * as ReplLauncherMod from './replLauncher.js';
-import type { McpSdkServerConfig, ScopedMcpServerConfig } from './services/mcp/types.js';
-import type { ToolInputJSONSchema } from './Tool.js';
-import type * as ToolsMod from './tools.js';
-import type * as InitMod from './entrypoints/init.js';
-import type { AssistantHandles } from './main/action/parseOptions.js';
-import type { AssistantModule as SetupAgentAssistantModule } from './main/action/setupAgent.js';
-import type { RunMcpHooksAndTelemetryDeps } from './main/action/startupSequence.js';
+import type * as ReplLauncherMod from 'src/replLauncher.js';
+import type { McpSdkServerConfig, ScopedMcpServerConfig } from 'src/services/mcp/types.js';
+import type { ToolInputJSONSchema } from 'src/Tool.js';
+import type * as ToolsMod from 'src/tools.js';
+import type * as InitMod from 'src/entrypoints/init.js';
+import type { AssistantHandles } from 'src/main/action/parseOptions.js';
+import type { AssistantModule as SetupAgentAssistantModule } from 'src/main/action/setupAgent.js';
+import type { RunMcpHooksAndTelemetryDeps } from 'src/main/action/startupSequence.js';
 const getLaunchRepl = async (): Promise<typeof ReplLauncherMod.launchRepl> =>
-  (await import('./replLauncher.js')).launchRepl;
+  (await import('src/replLauncher.js')).launchRepl;
 const getSetPreloadedChunks = async (): Promise<typeof ReplLauncherMod.setPreloadedChunks> =>
-  (await import('./replLauncher.js')).setPreloadedChunks;
+  (await import('src/replLauncher.js')).setPreloadedChunks;
 const getGetTools = async (): Promise<typeof ToolsMod.getTools> =>
-  (await import('./tools.js')).getTools;
+  (await import('src/tools.js')).getTools;
 const getInitBootstrap = async (): Promise<typeof InitMod.init> =>
-  (await import('./entrypoints/init.js')).init;
-import { stopCapturingEarlyInput } from './utils/earlyInput.js';
+  (await import('src/entrypoints/init.js')).init;
+import { stopCapturingEarlyInput } from 'src/utils/earlyInput.js';
 import { applyConfigEnvironmentVariables } from 'src/services/config/managedEnv.js';
-import { installLifecycleHandlers } from './main/lifecycleHandlers.js';
+import { installLifecycleHandlers } from 'src/main/lifecycleHandlers.js';
 
 // Lazy require to avoid circular dependency: teammate.ts -> AppState.tsx -> ... -> main.tsx
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -53,24 +53,24 @@ const getTeammateModeSnapshot = () => require('src/coordinator/swarm/backends/te
 /* eslint-enable @typescript-eslint/no-require-imports */
 // Dead code elimination: conditional import for COORDINATOR_MODE
 /* eslint-disable @typescript-eslint/no-require-imports */
-const coordinatorModeModule = feature('COORDINATOR_MODE') ? require('./coordinator/coordinatorMode.js') as typeof import('./coordinator/coordinatorMode.js') : null;
+const coordinatorModeModule = feature('COORDINATOR_MODE') ? require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js') : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
 // Dead code elimination: conditional import for KAIROS (assistant mode)
 /* eslint-disable @typescript-eslint/no-require-imports */
 const assistantModule = feature('KAIROS') ? require('./assistant/index.js') as typeof import('./assistant/index.js') : null;
 const kairosGate = feature('KAIROS') ? require('./assistant/gate.js') as typeof import('./assistant/gate.js') : null;
 import { resolve } from 'path';
-import type { StatsStore } from './context/stats.js';
+import type { StatsStore } from 'src/context/stats.js';
 // renderAndRun is loaded lazily inside the default action — it pulls React,
 // Ink, KeybindingSetup, AppStateProvider, growthbook, mcpServerApproval, and
 // ~20 transitive utilities. None of those are needed for `--help`, `--version`,
 // or any non-interactive subcommand path, so deferring this single import
 // keeps that whole graph out of `main_tsx_entry`. (Phase B of cold-start plan.)
 const getRenderAndRun = async () =>
-  (await import('./interactiveHelpers.js')).renderAndRun;
+  (await import('src/interactiveHelpers.js')).renderAndRun;
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { isBareMode, isEnvTruthy } from './utils/envUtils.js';
-import type { FpsMetrics } from './utils/fpsTracker.js';
+import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js';
+import type { FpsMetrics } from 'src/utils/fpsTracker.js';
 // Plugin startup checks are now handled non-blockingly in REPL.tsx
 
 import { getCwd } from 'src/utils/fs/cwd.js';
@@ -79,9 +79,9 @@ import { getCwd } from 'src/utils/fs/cwd.js';
 // dispatch, not during module evaluation. Lazy-loading them defers their
 // dependency chains until the REPL is ready to mount.
 /* eslint-disable @typescript-eslint/no-require-imports */
-const getCreateSyntheticOutputTool = () => require('./tools/SyntheticOutputTool/SyntheticOutputTool.js').createSyntheticOutputTool as typeof import('./tools/SyntheticOutputTool/SyntheticOutputTool.js').createSyntheticOutputTool
-const getIsSyntheticOutputToolEnabled = () => require('./tools/SyntheticOutputTool/SyntheticOutputTool.js').isSyntheticOutputToolEnabled as typeof import('./tools/SyntheticOutputTool/SyntheticOutputTool.js').isSyntheticOutputToolEnabled
-const getJsonParse = () => require('./utils/slowOperations.js').jsonParse as typeof import('./utils/slowOperations.js').jsonParse
+const getCreateSyntheticOutputTool = () => require('src/tools/SyntheticOutputTool/SyntheticOutputTool.js').createSyntheticOutputTool as typeof import('src/tools/SyntheticOutputTool/SyntheticOutputTool.js').createSyntheticOutputTool
+const getIsSyntheticOutputToolEnabled = () => require('src/tools/SyntheticOutputTool/SyntheticOutputTool.js').isSyntheticOutputToolEnabled as typeof import('src/tools/SyntheticOutputTool/SyntheticOutputTool.js').isSyntheticOutputToolEnabled
+const getJsonParse = () => require('src/utils/slowOperations.js').jsonParse as typeof import('src/utils/slowOperations.js').jsonParse
 const getCreateSystemMessage = () => require('src/services/messages/messages.js').createSystemMessage as typeof import('src/services/messages/messages.js').createSystemMessage
 const getBuildDeepLinkBanner = () => require('src/services/deepLink/banner.js').buildDeepLinkBanner as typeof import('src/services/deepLink/banner.js').buildDeepLinkBanner
 const getPermissionModes = () => require('src/services/permissions/PermissionMode.js').PERMISSION_MODES as typeof import('src/services/permissions/PermissionMode.js').PERMISSION_MODES
@@ -106,13 +106,13 @@ import {
   getInputPrompt,
   isBeingDebugged,
   type TeammateOptions,
-} from './main/helpers.js';
+} from 'src/main/helpers.js';
 import {
   eagerLoadSettings,
   initializeEntrypoint,
   maybeActivateBrief,
   maybeActivateProactive,
-} from './main/lifecycle.js';
+} from 'src/main/lifecycle.js';
 
 // eslint-disable-next-line custom-rules/no-top-level-side-effects
 profileCheckpoint('main_tsx_imports_loaded');
@@ -131,32 +131,32 @@ if (isBeingDebugged()) {
 // logSessionTelemetry, logStartupTelemetry, runMigrations, prefetchSystemContextIfSafe moved to src/main/lifecycle.ts (ROADMAP 11g Fase 2)
 // startDeferredPrefetches moved to src/main/deferredPrefetches.ts (ROADMAP 11g Fase 3)
 // Re-exported below to preserve the public surface for src/interactiveHelpers.tsx.
-import { startDeferredPrefetches } from './main/deferredPrefetches.js';
+import { startDeferredPrefetches } from 'src/main/deferredPrefetches.js';
 export { startDeferredPrefetches };
-import { buildBootContext } from './main/bootContext.js';
-import { pendingAssistantChat, pendingConnect, pendingSSH } from './main/pendingSlots.js';
+import { buildBootContext } from 'src/main/bootContext.js';
+import { pendingAssistantChat, pendingConnect, pendingSSH } from 'src/main/pendingSlots.js';
 import {
   runAssistantArgvStash,
   runDeepLinkArgvHandling,
   runDirectConnectArgvRewrite,
   runSshArgvStash,
-} from './main/argvPreparse.js';
-import { applyClientType, resolveClientType } from './main/clientType.js';
+} from 'src/main/argvPreparse.js';
+import { applyClientType, resolveClientType } from 'src/main/clientType.js';
 // All three registrars touch heavy graphs (preActionHook pulls policyLimits +
 // remoteManagedSettings; registerSubcommands pulls every command's transitive
 // closure — that's the bulk of the 5.2 MB shared chunk). Defer them so they
 // only evaluate inside run(), not during module load. (Phase F.)
 const getRegisterPreActionHook = async () =>
-  (await import('./main/preActionHook.js')).registerPreActionHook;
+  (await import('src/main/preActionHook.js')).registerPreActionHook;
 const getRegisterRootOptions = async () =>
-  (await import('./main/rootOptions.js')).registerRootOptions;
+  (await import('src/main/rootOptions.js')).registerRootOptions;
 const getRegisterSubcommands = async () =>
-  (await import('./main/registerSubcommands.js')).registerSubcommands;
+  (await import('src/main/registerSubcommands.js')).registerSubcommands;
 // Default-action deps are loaded lazily via './main/defaultActionDeps.js' —
 // see the dynamic import at the top of program.action() below. Keeping these
 // as type-only imports preserves the type-checking surface while letting the
 // bundler keep them out of `main_tsx_entry`. (Phase C of cold-start plan.)
-import type { ActionOptions } from './main/action/parseOptions.js';
+import type { ActionOptions } from 'src/main/action/parseOptions.js';
 // Subcommands extracted to src/main/commands/ (ROADMAP 11g Fase 5a) and bundled
 // via registerSubcommands in src/main/registerSubcommands.ts (ROADMAP 11g Fase 7b).
 // Default-action branches extracted to src/main/defaultAction/ (ROADMAP 11g Fase 5b).
@@ -219,11 +219,11 @@ export async function main() {
     a === '--help' || a === '-h' || a === '--version' || a === '-V',
   );
   if (!looksHelpOrVersion) {
-    const replChunkPromise = import('./screens/REPL.js');
-    const appChunkPromise = import('./components/App.js');
+    const replChunkPromise = import('src/screens/REPL.js');
+    const appChunkPromise = import('src/components/App.js');
     void getSetPreloadedChunks().then(set => set(
-      appChunkPromise as Promise<typeof import('./components/App.js')>,
-      replChunkPromise as Promise<typeof import('./screens/REPL.js')>,
+      appChunkPromise as Promise<typeof import('src/components/App.js')>,
+      replChunkPromise as Promise<typeof import('src/screens/REPL.js')>,
     ));
   }
 
@@ -314,7 +314,7 @@ async function run(): Promise<CommanderCommand> {
       runMcpHooksAndTelemetry,
       runPostHeadlessGuards,
       runDefaultActionDispatch,
-    } = await import('./main/defaultActionDeps.js');
+    } = await import('src/main/defaultActionDeps.js');
 
     // BootContext seam (ROADMAP 11g Fase 4). Currently only carries the three
     // pending slots (DIRECT_CONNECT / KAIROS / SSH_REMOTE) populated by argv
@@ -646,7 +646,7 @@ async function run(): Promise<CommanderCommand> {
 
     // --print mode (extracted to src/main/defaultAction/headless.ts — Fase 5c)
     if (isNonInteractiveSession) {
-      const { runHeadlessBranch } = await import('./main/defaultAction/headless.js');
+      const { runHeadlessBranch } = await import('src/main/defaultAction/headless.js');
       await runHeadlessBranch({
         ctx,
         options: {

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { getGitStatusDelta } from './gitStatusDelta.js'
+import { getGitStatusDelta } from 'src/services/git/gitStatusDelta.js'
 
 type FakeMsg = {
   type: string

@@ -29,10 +29,10 @@ import { buildSubagentLookups, createAssistantMessage, EMPTY_LOOKUPS } from 'src
 import type { ModelAlias } from 'src/utils/model/aliases.js';
 import { getMainLoopModel, parseUserSpecifiedModel, renderModelName } from 'src/utils/model/model.js';
 import type { Theme, ThemeName } from 'src/utils/theme.js';
-import type { outputSchema, Progress, RemoteLaunchedOutput } from './AgentTool.js';
-import { inputSchema } from './AgentTool.js';
-import { getAgentColor } from './agentColorManager.js';
-import { GENERAL_PURPOSE_AGENT } from './built-in/generalPurposeAgent.js';
+import type { outputSchema, Progress, RemoteLaunchedOutput } from 'src/tools/AgentTool/AgentTool.js';
+import { inputSchema } from 'src/tools/AgentTool/AgentTool.js';
+import { getAgentColor } from 'src/tools/AgentTool/agentColorManager.js';
+import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js';
 const MAX_PROGRESS_MESSAGES_TO_SHOW = 3;
 const AGENT_ERROR_MAX_CHARS = 80;
 const TOOL_USE_ERROR_TAG_RE = /<tool_use_error>([\s\S]*?)<\/tool_use_error>/;

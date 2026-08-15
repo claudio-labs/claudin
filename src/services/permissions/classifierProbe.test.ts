@@ -72,11 +72,11 @@ afterAll(() => {
   mock.module('src/utils/sideQuery.js', () => realSideQueryNS)
 })
 
-const { probeClassifierCapability } = await import('./classifierProbe.js')
+const { probeClassifierCapability } = await import('src/services/permissions/classifierProbe.js')
 const {
   __setClassifierProbeStoreDirForTests,
   readClassifierProbe,
-} = await import('./classifierProbeStore.js')
+} = await import('src/services/permissions/classifierProbeStore.js')
 
 let fakeConfigDir: string
 

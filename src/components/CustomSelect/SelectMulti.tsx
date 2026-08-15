@@ -4,10 +4,10 @@ import React from 'react';
 import { Box, Text } from 'src/ink.js';
 import type { PastedContent } from 'src/services/config/config.js';
 import type { ImageDimensions } from 'src/utils/imageResizer.js';
-import type { OptionWithDescription } from './select.js';
-import { SelectInputOption } from './select-input-option.js';
-import { SelectOption } from './select-option.js';
-import { useMultiSelectState } from './use-multi-select-state.js';
+import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
+import { SelectInputOption } from 'src/components/CustomSelect/select-input-option.js';
+import { SelectOption } from 'src/components/CustomSelect/select-option.js';
+import { useMultiSelectState } from 'src/components/CustomSelect/use-multi-select-state.js';
 export type SelectMultiProps<T> = {
   readonly isDisabled?: boolean;
   readonly visibleOptionCount?: number;

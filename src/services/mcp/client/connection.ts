@@ -31,16 +31,16 @@ import type {
   ScopedMcpServerConfig,
 } from 'src/services/mcp/types.js'
 import { getLoggingSafeMcpBaseUrl } from 'src/services/mcp/utils.js'
-import { setMcpAuthCacheEntry } from './authCache.js'
-import { isMcpSessionExpiredError } from './errors.js'
-import { getConnectionTimeoutMs } from './fetch.js'
+import { setMcpAuthCacheEntry } from 'src/services/mcp/client/authCache.js'
+import { isMcpSessionExpiredError } from 'src/services/mcp/client/errors.js'
+import { getConnectionTimeoutMs } from 'src/services/mcp/client/fetch.js'
 import {
   fetchCommandsForClient,
   fetchMcpSkillsForClient,
   fetchResourcesForClient,
   fetchToolsForClient,
-} from './fetchCapabilities.js'
-import { createTransport, type InProcessMcpServer } from './transport.js'
+} from 'src/services/mcp/client/fetchCapabilities.js'
+import { createTransport, type InProcessMcpServer } from 'src/services/mcp/client/transport.js'
 
 // connection.ts <-> fetchCapabilities.ts form an intentional ESM cycle: each
 // references the other only inside function bodies (never at module-eval time),

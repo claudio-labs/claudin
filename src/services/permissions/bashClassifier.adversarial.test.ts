@@ -35,7 +35,7 @@ import {
   classifyBashCommand,
   generateGenericDescription,
   __setBashClassifierEnabledForTests,
-} from './bashClassifier.js'
+} from 'src/services/permissions/bashClassifier.js'
 
 // At test time `feature('BASH_CLASSIFIER')` returns false (no build-time
 // preprocessing in `bun test`), which would short-circuit classifyBashCommand

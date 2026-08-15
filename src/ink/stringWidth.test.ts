@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { stringWidth } from './stringWidth.js'
+import { stringWidth } from 'src/ink/stringWidth.js'
 
 describe('stringWidth — Kitty placeholder support', () => {
   const PLACEHOLDER = '\u{10EEEE}'

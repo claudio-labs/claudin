@@ -25,8 +25,8 @@ import { asSystemPrompt } from 'src/utils/systemPromptType.js'
 import {
   type ApiQueryHookConfig,
   createApiQueryHook,
-} from './apiQueryHookHelper.js'
-import { registerPostSamplingHook } from './postSamplingHooks.js'
+} from 'src/services/lifecycleHooks/apiQueryHookHelper.js'
+import { registerPostSamplingHook } from 'src/services/lifecycleHooks/postSamplingHooks.js'
 
 const TURN_BATCH_SIZE = 5
 

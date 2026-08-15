@@ -27,7 +27,7 @@ import { Byline } from 'src/components/design-system/Byline.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
 import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
 import { Message } from 'src/components/Message.js';
-import { formatReviewStageCounts, RemoteSessionProgress } from './RemoteSessionProgress.js';
+import { formatReviewStageCounts, RemoteSessionProgress } from 'src/components/tasks/RemoteSessionProgress.js';
 type Props = {
   session: DeepImmutable<RemoteAgentTaskState>;
   toolUseContext: ToolUseContext;

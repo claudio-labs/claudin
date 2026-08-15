@@ -10,9 +10,9 @@
  * the cursor is now). The rendered highlight normalizes to start ≤ end.
  */
 
-import { clamp } from './layout/geometry.js'
-import type { Screen, StylePool } from './screen.js'
-import { CellWidth, cellAt, cellAtIndex, setCellStyleId } from './screen.js'
+import { clamp } from 'src/ink/layout/geometry.js'
+import type { Screen, StylePool } from 'src/ink/screen.js'
+import { CellWidth, cellAt, cellAtIndex, setCellStyleId } from 'src/ink/screen.js'
 
 type Point = { col: number; row: number }
 

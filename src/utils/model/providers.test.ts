@@ -31,7 +31,7 @@ import { invalidateActiveProviderCache } from 'src/services/api/activeProvider.j
 import {
   _setCopilotCatalogForTesting,
   type CopilotCatalogEntry,
-} from './copilotModelCatalog.js'
+} from 'src/utils/model/copilotModelCatalog.js'
 
 afterEach(() => {
   mockProviderProfile = null

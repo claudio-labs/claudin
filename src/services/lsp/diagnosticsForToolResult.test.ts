@@ -24,10 +24,10 @@ import {
   checkForLSPDiagnostics,
   registerPendingLSPDiagnostic,
   resetAllLSPDiagnosticState,
-} from './LSPDiagnosticRegistry.js'
+} from 'src/services/lsp/LSPDiagnosticRegistry.js'
 
 const mockIsLspGloballyEnabled = mock(() => true)
-const realUserSettingsDiag = { ...(await import('./userSettings.js')) }
+const realUserSettingsDiag = { ...(await import('src/services/lsp/userSettings.js')) }
 mock.module('./userSettings.js', () => ({
   ...realUserSettingsDiag,
   isLspGloballyEnabled: mockIsLspGloballyEnabled,
@@ -117,7 +117,7 @@ describe('buildPostEditDiagnosticsMessages', () => {
   test('returns [] when LSP is globally disabled', async () => {
     mockIsLspGloballyEnabled.mockImplementation(() => false)
     const { buildPostEditDiagnosticsMessages } = await import(
-      './diagnosticsForToolResult.js'
+      'src/services/lsp/diagnosticsForToolResult.js'
     )
     const out = await buildPostEditDiagnosticsMessages('/tmp/x.ts')
     expect(out).toEqual([])
@@ -126,7 +126,7 @@ describe('buildPostEditDiagnosticsMessages', () => {
   test('returns [] when no LSP manager is available', async () => {
     mockGetLspServerManager.mockImplementation(() => undefined as never)
     const { buildPostEditDiagnosticsMessages } = await import(
-      './diagnosticsForToolResult.js'
+      'src/services/lsp/diagnosticsForToolResult.js'
     )
     const out = await buildPostEditDiagnosticsMessages('/tmp/x.ts')
     expect(out).toEqual([])
@@ -135,7 +135,7 @@ describe('buildPostEditDiagnosticsMessages', () => {
   test('returns [] when no server handles the file extension', async () => {
     mockGetServerForFile.mockImplementation(() => undefined)
     const { buildPostEditDiagnosticsMessages } = await import(
-      './diagnosticsForToolResult.js'
+      'src/services/lsp/diagnosticsForToolResult.js'
     )
     const out = await buildPostEditDiagnosticsMessages('/tmp/x.unknownext')
     expect(out).toEqual([])
@@ -147,7 +147,7 @@ describe('buildPostEditDiagnosticsMessages', () => {
       lsp: { diagnosticsTimeoutMs: 100 },
     }))
     const { buildPostEditDiagnosticsMessages } = await import(
-      './diagnosticsForToolResult.js'
+      'src/services/lsp/diagnosticsForToolResult.js'
     )
     const start = performance.now()
     const out = await buildPostEditDiagnosticsMessages('/tmp/x.ts')
@@ -165,7 +165,7 @@ describe('buildPostEditDiagnosticsMessages', () => {
       files: [{ uri: 'file:///tmp/x.ts', diagnostics: [] }],
     })
     const { buildPostEditDiagnosticsMessages } = await import(
-      './diagnosticsForToolResult.js'
+      'src/services/lsp/diagnosticsForToolResult.js'
     )
     const out = await buildPostEditDiagnosticsMessages('/tmp/x.ts')
     expect(out).toEqual([])
@@ -179,7 +179,7 @@ describe('buildPostEditDiagnosticsMessages', () => {
       files: [fileWithDiag],
     })
     const { buildPostEditDiagnosticsMessages } = await import(
-      './diagnosticsForToolResult.js'
+      'src/services/lsp/diagnosticsForToolResult.js'
     )
     const out = await buildPostEditDiagnosticsMessages('/tmp/x.ts')
 
@@ -213,7 +213,7 @@ describe('buildPostEditDiagnosticsMessages', () => {
       files: [fileWithDiag],
     })
     const { buildPostEditDiagnosticsMessages } = await import(
-      './diagnosticsForToolResult.js'
+      'src/services/lsp/diagnosticsForToolResult.js'
     )
     const out = await buildPostEditDiagnosticsMessages('/tmp/x.ts')
     expect(out).toHaveLength(1)
@@ -222,7 +222,7 @@ describe('buildPostEditDiagnosticsMessages', () => {
 
 describe('armFileForLateDiagnostics + awaitLateDiagnosticsForTurn', () => {
   beforeEach(async () => {
-    const { clearArmedFiles } = await import('./diagnosticsForToolResult.js')
+    const { clearArmedFiles } = await import('src/services/lsp/diagnosticsForToolResult.js')
     clearArmedFiles()
   })
 
@@ -230,7 +230,7 @@ describe('armFileForLateDiagnostics + awaitLateDiagnosticsForTurn', () => {
     const {
       armFileForLateDiagnostics,
       awaitLateDiagnosticsForTurn,
-    } = await import('./diagnosticsForToolResult.js')
+    } = await import('src/services/lsp/diagnosticsForToolResult.js')
     mockGetInitialSettings.mockImplementation(() => ({
       lsp: { diagnosticsTimeoutMs: 200 },
     }))
@@ -251,7 +251,7 @@ describe('armFileForLateDiagnostics + awaitLateDiagnosticsForTurn', () => {
     const {
       armFileForLateDiagnostics,
       awaitLateDiagnosticsForTurn,
-    } = await import('./diagnosticsForToolResult.js')
+    } = await import('src/services/lsp/diagnosticsForToolResult.js')
     mockGetInitialSettings.mockImplementation(() => ({
       lsp: { diagnosticsTimeoutMs: 200 },
     }))
@@ -277,7 +277,7 @@ describe('armFileForLateDiagnostics + awaitLateDiagnosticsForTurn', () => {
     const {
       armFileForLateDiagnostics,
       awaitLateDiagnosticsForTurn,
-    } = await import('./diagnosticsForToolResult.js')
+    } = await import('src/services/lsp/diagnosticsForToolResult.js')
     mockGetInitialSettings.mockImplementation(() => ({
       lsp: { diagnosticsTimeoutMs: 200 },
     }))
@@ -297,7 +297,7 @@ describe('armFileForLateDiagnostics + awaitLateDiagnosticsForTurn', () => {
     const {
       armFileForLateDiagnostics,
       awaitLateDiagnosticsForTurn,
-    } = await import('./diagnosticsForToolResult.js')
+    } = await import('src/services/lsp/diagnosticsForToolResult.js')
     mockGetInitialSettings.mockImplementation(() => ({
       lsp: { diagnosticsTimeoutMs: 100 },
     }))
@@ -314,7 +314,7 @@ describe('armFileForLateDiagnostics + awaitLateDiagnosticsForTurn', () => {
     const {
       armFileForLateDiagnostics,
       awaitLateDiagnosticsForTurn,
-    } = await import('./diagnosticsForToolResult.js')
+    } = await import('src/services/lsp/diagnosticsForToolResult.js')
     mockGetInitialSettings.mockImplementation(() => ({
       lsp: { diagnosticsTimeoutMs: 500 },
     }))
@@ -338,7 +338,7 @@ describe('armFileForLateDiagnostics + awaitLateDiagnosticsForTurn', () => {
     const {
       armFileForLateDiagnostics,
       _getArmedFilesForTesting,
-    } = await import('./diagnosticsForToolResult.js')
+    } = await import('src/services/lsp/diagnosticsForToolResult.js')
     armFileForLateDiagnostics('/tmp/x.ts', 'subagent-1')
     expect(_getArmedFilesForTesting()).toEqual([])
   })
@@ -348,7 +348,7 @@ describe('armFileForLateDiagnostics + awaitLateDiagnosticsForTurn', () => {
     const {
       armFileForLateDiagnostics,
       _getArmedFilesForTesting,
-    } = await import('./diagnosticsForToolResult.js')
+    } = await import('src/services/lsp/diagnosticsForToolResult.js')
     armFileForLateDiagnostics('/tmp/x.ts', undefined)
     expect(_getArmedFilesForTesting()).toEqual([])
   })
@@ -358,7 +358,7 @@ describe('armFileForLateDiagnostics + awaitLateDiagnosticsForTurn', () => {
     const {
       armFileForLateDiagnostics,
       _getArmedFilesForTesting,
-    } = await import('./diagnosticsForToolResult.js')
+    } = await import('src/services/lsp/diagnosticsForToolResult.js')
     armFileForLateDiagnostics('/tmp/x.unknownext', undefined)
     expect(_getArmedFilesForTesting()).toEqual([])
   })
@@ -371,7 +371,7 @@ describe('armFileForLateDiagnostics + awaitLateDiagnosticsForTurn', () => {
       buildPostEditDiagnosticsMessages,
       armFileForLateDiagnostics,
       awaitLateDiagnosticsForTurn,
-    } = await import('./diagnosticsForToolResult.js')
+    } = await import('src/services/lsp/diagnosticsForToolResult.js')
     mockGetInitialSettings.mockImplementation(() => ({
       lsp: { diagnosticsTimeoutMs: 200 },
     }))
@@ -399,7 +399,7 @@ describe('armFileForLateDiagnostics + awaitLateDiagnosticsForTurn', () => {
       buildPostEditDiagnosticsMessages,
       armFileForLateDiagnostics,
       awaitLateDiagnosticsForTurn,
-    } = await import('./diagnosticsForToolResult.js')
+    } = await import('src/services/lsp/diagnosticsForToolResult.js')
     mockGetInitialSettings.mockImplementation(() => ({
       lsp: { diagnosticsTimeoutMs: 200 },
     }))
@@ -452,7 +452,7 @@ describe('armFileForLateDiagnostics + awaitLateDiagnosticsForTurn', () => {
       armFileForLateDiagnostics,
       clearArmedFiles,
       _getArmedFilesForTesting,
-    } = await import('./diagnosticsForToolResult.js')
+    } = await import('src/services/lsp/diagnosticsForToolResult.js')
     armFileForLateDiagnostics('/tmp/a.ts', undefined)
     armFileForLateDiagnostics('/tmp/b.ts', undefined)
     expect(_getArmedFilesForTesting()).toHaveLength(2)

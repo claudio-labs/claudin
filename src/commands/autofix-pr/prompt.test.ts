@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { buildAutofixPrompt } from './prompt.js'
+import { buildAutofixPrompt } from 'src/commands/autofix-pr/prompt.js'
 
 describe('buildAutofixPrompt', () => {
   const baseInput = {

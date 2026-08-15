@@ -6,7 +6,7 @@ import { useKeybindings } from 'src/keybindings/useKeybinding.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import { env } from 'src/utils/env.js';
 import { getTerminalIdeType, type IDEExtensionInstallationStatus, isJetBrainsIde, toIDEDisplayName } from 'src/services/ide/ide.js';
-import { Dialog } from './design-system/Dialog.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
 interface Props {
   onDone: () => void;
   installationStatus: IDEExtensionInstallationStatus | null;

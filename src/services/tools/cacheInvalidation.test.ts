@@ -8,8 +8,8 @@ import { ENTER_WORKTREE_TOOL_NAME } from 'src/tools/EnterWorktreeTool/constants.
 import { EXIT_WORKTREE_TOOL_NAME } from 'src/tools/ExitWorktreeTool/constants.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { MONITOR_TOOL_NAME } from 'src/tools/MonitorTool/toolName.js'
-import { invalidateCacheForWrite } from './cacheInvalidation.js'
-import { __resetForTests, getCached, setCached } from './toolResultCache.js'
+import { invalidateCacheForWrite } from 'src/services/tools/cacheInvalidation.js'
+import { __resetForTests, getCached, setCached } from 'src/services/tools/toolResultCache.js'
 
 beforeEach(() => __resetForTests())
 afterEach(() => __resetForTests())

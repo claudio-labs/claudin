@@ -77,7 +77,7 @@ export function isGithubNativeAnthropicMode(resolvedModel?: string): boolean {
   // keep this module leaf-light.
   try {
     const { copilotModelSupportsAnthropicMessages } =
-      require('./copilotModelCatalog.js') as typeof import('./copilotModelCatalog.js')
+      require('src/utils/model/copilotModelCatalog.js') as typeof import('src/utils/model/copilotModelCatalog.js')
     const supported = copilotModelSupportsAnthropicMessages(model)
     if (supported !== null) return supported
   } catch {

@@ -17,7 +17,7 @@ mock.module('src/services/api/activeProvider.js', () => ({
 }))
 
 // Re-import after mock so detectProvider sees the patched module.
-const { detectProvider } = await import('./StartupScreen.js')
+const { detectProvider } = await import('src/components/StartupScreen.js')
 
 afterAll(() => {
   mock.module('src/services/api/activeProvider.js', () => realActiveProviderSnapshot)
@@ -272,7 +272,7 @@ describe('resolveUpdateNotice', () => {
       dir,
       JSON.stringify({ latest: '1.2.3', current: '1.0.0', checkedAt: 1 }),
     )
-    const { resolveUpdateNotice } = await import('./StartupScreen.js')
+    const { resolveUpdateNotice } = await import('src/components/StartupScreen.js')
     expect(resolveUpdateNotice()).toEqual({ latest: '1.2.3' })
   })
 
@@ -286,7 +286,7 @@ describe('resolveUpdateNotice', () => {
       dir,
       JSON.stringify({ latest: '1.2.3', current: '0.9.0', checkedAt: 1 }),
     )
-    const { resolveUpdateNotice } = await import('./StartupScreen.js')
+    const { resolveUpdateNotice } = await import('src/components/StartupScreen.js')
     expect(resolveUpdateNotice()).toBeUndefined()
   })
 
@@ -297,7 +297,7 @@ describe('resolveUpdateNotice', () => {
       dir,
       JSON.stringify({ latest: '1.0.0', current: '1.0.0', checkedAt: 1 }),
     )
-    const { resolveUpdateNotice } = await import('./StartupScreen.js')
+    const { resolveUpdateNotice } = await import('src/components/StartupScreen.js')
     expect(resolveUpdateNotice()).toBeUndefined()
   })
 
@@ -308,14 +308,14 @@ describe('resolveUpdateNotice', () => {
       dir,
       JSON.stringify({ latest: '0.9.0', current: '1.0.0', checkedAt: 1 }),
     )
-    const { resolveUpdateNotice } = await import('./StartupScreen.js')
+    const { resolveUpdateNotice } = await import('src/components/StartupScreen.js')
     expect(resolveUpdateNotice()).toBeUndefined()
   })
 
   test('suppresses notice when cache is missing', async () => {
     const dir = await mkTmp()
     process.env.CLAUDIN_CONFIG_DIR = dir
-    const { resolveUpdateNotice } = await import('./StartupScreen.js')
+    const { resolveUpdateNotice } = await import('src/components/StartupScreen.js')
     expect(resolveUpdateNotice()).toBeUndefined()
   })
 
@@ -329,7 +329,7 @@ describe('resolveUpdateNotice', () => {
       dir,
       JSON.stringify({ latest: 'not-a-version', current: '1.0.0', checkedAt: 1 }),
     )
-    const { resolveUpdateNotice } = await import('./StartupScreen.js')
+    const { resolveUpdateNotice } = await import('src/components/StartupScreen.js')
     expect(resolveUpdateNotice()).toBeUndefined()
   })
 })

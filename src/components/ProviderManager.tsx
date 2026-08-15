@@ -50,13 +50,13 @@ import { redactUrlForDisplay } from 'src/utils/urlRedaction.js'
 import {
   type OptionWithDescription,
   Select,
-} from './CustomSelect/index.js'
-import { Pane } from './design-system/Pane.js'
-import { MigrationBanner } from './MigrationBanner.js'
-import TextInput from './TextInput.js'
-import { useCodexOAuthFlow } from './useCodexOAuthFlow.js'
-import { useXaiOAuthFlow } from './useXaiOAuthFlow.js'
-import { useKimiOAuthFlow } from './useKimiOAuthFlow.js'
+} from 'src/components/CustomSelect/index.js'
+import { Pane } from 'src/components/design-system/Pane.js'
+import { MigrationBanner } from 'src/components/MigrationBanner.js'
+import TextInput from 'src/components/TextInput.js'
+import { useCodexOAuthFlow } from 'src/components/useCodexOAuthFlow.js'
+import { useXaiOAuthFlow } from 'src/components/useXaiOAuthFlow.js'
+import { useKimiOAuthFlow } from 'src/components/useKimiOAuthFlow.js'
 import {
   clearXaiCredentials,
   readXaiCredentials,
@@ -2254,7 +2254,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     // Lazy require to avoid circular import: ConsoleOAuthFlow imports
     // ProviderManager for its `platform_setup` fallback. Resolving the module
     // at render-time breaks the cycle without restructuring either side.
-    const ConsoleOAuthFlow = require('./ConsoleOAuthFlow.js')
+    const ConsoleOAuthFlow = require('src/components/ConsoleOAuthFlow.js')
       .ConsoleOAuthFlow as React.ComponentType<{
       onDone: () => void
       mode?: 'login' | 'setup-token'

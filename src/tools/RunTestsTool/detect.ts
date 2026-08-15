@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'fs'
 import * as path from 'path'
 import { logError } from 'src/utils/log.js'
-import type { Framework } from './types.js'
+import type { Framework } from 'src/tools/RunTestsTool/types.js'
 
 /**
  * Framework detection. Two entry points:

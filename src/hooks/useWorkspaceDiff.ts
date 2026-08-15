@@ -7,7 +7,7 @@ import {
   getBranch,
 } from 'src/services/git/git.js'
 import { fetchGitDiff, fetchGitDiffHunks } from 'src/services/git/gitDiff.js'
-import { gitDiffResultToFiles } from './useDiffData.js'
+import { gitDiffResultToFiles } from 'src/hooks/useDiffData.js'
 
 export type WorkspaceDiff = {
   groups: RepoGroup[]

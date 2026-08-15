@@ -39,8 +39,8 @@ import {
   deriveNewContentsFromChunks,
   type Hunk,
   parsePatch,
-} from './patchFormat.js'
-import { APPLY_PATCH_TOOL_NAME } from './prompt.js'
+} from 'src/tools/ApplyPatchTool/patchFormat.js'
+import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 
 export type ApplyPatchInput = { patchText: string }
 

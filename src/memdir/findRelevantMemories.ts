@@ -8,7 +8,7 @@ import {
   formatMemoryManifest,
   type MemoryHeader,
   scanMemoryFiles,
-} from './memoryScan.js'
+} from 'src/memdir/memoryScan.js'
 
 export type RelevantMemory = {
   path: string

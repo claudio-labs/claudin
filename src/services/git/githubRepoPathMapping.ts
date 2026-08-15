@@ -5,10 +5,10 @@ import { logForDebugging } from 'src/utils/debug.js'
 import {
   detectCurrentRepository,
   parseGitHubRepository,
-} from './detectRepository.js'
+} from 'src/services/git/detectRepository.js'
 import { pathExists } from 'src/utils/fs/file.js'
-import { getRemoteUrlForDir } from './gitFilesystem.js'
-import { findGitRoot } from './git.js'
+import { getRemoteUrlForDir } from 'src/services/git/gitFilesystem.js'
+import { findGitRoot } from 'src/services/git/git.js'
 
 /**
  * Updates the GitHub repository path mapping in global config.

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   getTodoReminderDelta,
   type TodoSnapshotItem,
-} from './todoReminderDelta.js'
+} from 'src/utils/todoReminderDelta.js'
 
 type FakeMsg = {
   type: string

@@ -1,7 +1,7 @@
 import type {
   createSkillCommand,
   parseSkillFrontmatterFields,
-} from './loadSkillsDir.js'
+} from 'src/skills/loadSkillsDir.js'
 
 /**
  * Write-once registry for the two loadSkillsDir functions that MCP skill

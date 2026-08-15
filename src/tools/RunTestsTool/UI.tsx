@@ -4,9 +4,9 @@ import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseError
 import { MessageResponse } from 'src/components/MessageResponse.js'
 import { ShellElapsedTime } from 'src/components/shell/ShellElapsedTime.js'
 import { Box, Text } from 'src/ink.js'
-import type { Input, Output } from './RunTestsTool.js'
-import { resolveRunCommand } from './RunTestsTool.js'
-import type { TestProgress } from './types.js'
+import type { Input, Output } from 'src/tools/RunTestsTool/RunTestsTool.js'
+import { resolveRunCommand } from 'src/tools/RunTestsTool/RunTestsTool.js'
+import type { TestProgress } from 'src/tools/RunTestsTool/types.js'
 
 export function userFacingName(): string {
   return 'Test'

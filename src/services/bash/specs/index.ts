@@ -1,11 +1,11 @@
 import type { CommandSpec } from 'src/services/bash/registry.js'
-import alias from './alias.js'
-import nohup from './nohup.js'
-import pyright from './pyright.js'
-import sleep from './sleep.js'
-import srun from './srun.js'
-import time from './time.js'
-import timeout from './timeout.js'
+import alias from 'src/services/bash/specs/alias.js'
+import nohup from 'src/services/bash/specs/nohup.js'
+import pyright from 'src/services/bash/specs/pyright.js'
+import sleep from 'src/services/bash/specs/sleep.js'
+import srun from 'src/services/bash/specs/srun.js'
+import time from 'src/services/bash/specs/time.js'
+import timeout from 'src/services/bash/specs/timeout.js'
 
 export default [
   pyright,

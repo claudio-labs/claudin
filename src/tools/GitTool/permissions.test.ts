@@ -1,7 +1,7 @@
 import { beforeAll, expect, test } from 'bun:test'
 import { getEmptyToolPermissionContext } from 'src/Tool.js'
 import type { ToolPermissionContext, ToolUseContext } from 'src/Tool.js'
-import { checkGitBatchPermission } from './permissions.js'
+import { checkGitBatchPermission } from 'src/tools/GitTool/permissions.js'
 
 beforeAll(() => {
   ;(globalThis as unknown as { MACRO: { VERSION: string } }).MACRO = {

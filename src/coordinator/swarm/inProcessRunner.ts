@@ -98,16 +98,16 @@ import {
 } from 'src/coordinator/teammateMailbox.js'
 import { unregisterAgent as unregisterPerfettoAgent } from 'src/services/telemetry/perfettoTracing.js'
 import { createContentReplacementState } from 'src/services/tools/toolResultStorage.js'
-import { TEAM_LEAD_NAME } from './constants.js'
+import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js'
 import {
   getLeaderSetToolPermissionContext,
   getLeaderToolUseConfirmQueue,
-} from './leaderPermissionBridge.js'
+} from 'src/coordinator/swarm/leaderPermissionBridge.js'
 import {
   createPermissionRequest,
   sendPermissionRequestViaMailbox,
-} from './permissionSync.js'
-import { TEAMMATE_SYSTEM_PROMPT_ADDENDUM } from './teammatePromptAddendum.js'
+} from 'src/coordinator/swarm/permissionSync.js'
+import { TEAMMATE_SYSTEM_PROMPT_ADDENDUM } from 'src/coordinator/swarm/teammatePromptAddendum.js'
 
 type SetAppStateFn = (updater: (prev: AppState) => AppState) => void
 

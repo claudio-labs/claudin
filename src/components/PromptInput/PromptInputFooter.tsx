@@ -22,10 +22,10 @@ import { BackgroundTaskGroupTree } from 'src/components/tasks/BackgroundTaskGrou
 import { WorkflowRunStatusLine } from 'src/components/workflows/WorkflowRunStatusLine.js';
 import { getLastAssistantMessageId, StatusLine, statusLineShouldDisplay } from 'src/components/StatusLine.js';
 import { SessionTokensIndicator } from 'src/components/SessionTokensIndicator.js';
-import { Notifications } from './Notifications.js';
-import { PromptInputFooterLeftSide } from './PromptInputFooterLeftSide.js';
-import { PromptInputFooterSuggestions, type SuggestionItem } from './PromptInputFooterSuggestions.js';
-import { PromptInputHelpMenu } from './PromptInputHelpMenu.js';
+import { Notifications } from 'src/components/PromptInput/Notifications.js';
+import { PromptInputFooterLeftSide } from 'src/components/PromptInput/PromptInputFooterLeftSide.js';
+import { PromptInputFooterSuggestions, type SuggestionItem } from 'src/components/PromptInput/PromptInputFooterSuggestions.js';
+import { PromptInputHelpMenu } from 'src/components/PromptInput/PromptInputHelpMenu.js';
 type Props = {
   apiKeyStatus: VerificationStatus;
   debug: boolean;

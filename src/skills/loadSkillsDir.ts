@@ -62,7 +62,7 @@ import { getManagedFilePath } from 'src/services/settings/managedPath.js'
 import { isRestrictedToPluginOnly } from 'src/services/settings/pluginOnlyPolicy.js'
 import { HooksSchema, type HooksSettings } from 'src/services/settings/types.js'
 import { createSignal } from 'src/utils/signal.js'
-import { registerMCPSkillBuilders } from './mcpSkillBuilders.js'
+import { registerMCPSkillBuilders } from 'src/skills/mcpSkillBuilders.js'
 
 export type LoadedFrom =
   | 'commands_DEPRECATED'

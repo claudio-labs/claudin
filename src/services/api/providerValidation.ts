@@ -9,7 +9,7 @@ import { isBareMode } from 'src/utils/envUtils.js'
 import {
   type GeminiResolvedCredential,
   resolveGeminiCredential,
-} from './geminiAuth.js'
+} from 'src/services/api/geminiAuth.js'
 
 type GithubTokenStatus = 'valid' | 'expired' | 'invalid_format'
 

@@ -13,10 +13,10 @@ import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
 import { formatModelAndBilling, getLogoDisplayData, truncatePath } from 'src/utils/logoV2Utils.js';
 import { renderModelSetting } from 'src/utils/model/model.js';
 import { OffscreenFreeze } from 'src/components/OffscreenFreeze.js';
-import { AnimatedClawd } from './AnimatedClawd.js';
-import { Clawd } from './Clawd.js';
-import { GuestPassesUpsell, incrementGuestPassesSeenCount, useShowGuestPassesUpsell } from './GuestPassesUpsell.js';
-import { incrementOverageCreditUpsellSeenCount, OverageCreditUpsell, useShowOverageCreditUpsell } from './OverageCreditUpsell.js';
+import { AnimatedClawd } from 'src/components/LogoV2/AnimatedClawd.js';
+import { Clawd } from 'src/components/LogoV2/Clawd.js';
+import { GuestPassesUpsell, incrementGuestPassesSeenCount, useShowGuestPassesUpsell } from 'src/components/LogoV2/GuestPassesUpsell.js';
+import { incrementOverageCreditUpsellSeenCount, OverageCreditUpsell, useShowOverageCreditUpsell } from 'src/components/LogoV2/OverageCreditUpsell.js';
 export function CondensedLogo() {
   const $ = _c(29);
   const {

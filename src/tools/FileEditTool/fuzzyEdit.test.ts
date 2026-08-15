@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { resolveFuzzyEdit } from './utils.js'
+import { resolveFuzzyEdit } from 'src/tools/FileEditTool/utils.js'
 
 describe('resolveFuzzyEdit', () => {
   test('matches despite trailing whitespace drift', () => {

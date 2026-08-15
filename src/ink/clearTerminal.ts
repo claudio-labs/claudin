@@ -10,7 +10,7 @@
  * scrollback on rmcup).
  */
 
-import { CURSOR_HOME, csi, ERASE_SCREEN } from './termio/csi.js'
+import { CURSOR_HOME, csi, ERASE_SCREEN } from 'src/ink/termio/csi.js'
 
 // HVP (Horizontal Vertical Position) - legacy Windows cursor home
 const CURSOR_HOME_WINDOWS = csi(0, 'f')

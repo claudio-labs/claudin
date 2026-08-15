@@ -1,5 +1,5 @@
 import type { Key } from 'src/ink.js'
-import type { ParsedBinding, ParsedKeystroke } from './types.js'
+import type { ParsedBinding, ParsedKeystroke } from 'src/keybindings/types.js'
 
 /**
  * Modifier keys from Ink's Key type that we care about for matching.

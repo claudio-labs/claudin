@@ -16,7 +16,7 @@ import { join } from 'path'
 // see plans.test.ts) so this file can pin exact directories/dates without
 // touching the developer's real ~/.claudin settings or plans. All the actual
 // sweep behavior under test (readdir/stat/unlink) runs against real fs.
-const realPlans = { ...(await import('./plans.js')) }
+const realPlans = { ...(await import('src/utils/plans.js')) }
 const realSettings = { ...(await import('src/services/settings/settings.js')) }
 
 afterAll(() => {

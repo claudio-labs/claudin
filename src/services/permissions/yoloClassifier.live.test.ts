@@ -31,7 +31,7 @@ import {
   classifyYoloAction,
   formatActionForClassifier,
   isClassifierBundled,
-} from './yoloClassifier.js'
+} from 'src/services/permissions/yoloClassifier.js'
 
 const RUN = process.env.RUN_CLASSIFIER_CALIBRATION === '1'
 const itLive = RUN ? test : test.skip

@@ -1,6 +1,6 @@
 import { createHash } from 'crypto'
 import { isAbsolute, relative, sep } from 'path'
-import type { RawDiagnostic } from './types.js'
+import type { RawDiagnostic } from 'src/tools/TypecheckTool/types.js'
 
 /**
  * Diagnostic identity, for comparing one run against a recorded baseline.

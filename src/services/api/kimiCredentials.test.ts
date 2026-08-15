@@ -40,7 +40,7 @@ const {
   readKimiCredentialsAsync,
   refreshKimiAccessTokenIfNeeded,
   saveKimiCredentials,
-} = await import('./kimiCredentials.js')
+} = await import('src/services/api/kimiCredentials.js')
 
 const originalFetch = globalThis.fetch
 

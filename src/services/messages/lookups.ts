@@ -17,9 +17,9 @@ import {
   type HookAttachment,
   type HookPermissionDecisionAttachment,
 } from 'src/services/attachments/attachments.js'
-import { EMPTY_STRING_SET } from './constants.js'
-import { isHookAttachmentMessage } from './normalize.js'
-import { getToolUseID } from './toolUseID.js'
+import { EMPTY_STRING_SET } from 'src/services/messages/constants.js'
+import { isHookAttachmentMessage } from 'src/services/messages/normalize.js'
+import { getToolUseID } from 'src/services/messages/toolUseID.js'
 
 // Hook attachments that have a hookName field (excludes HookPermissionDecisionAttachment)
 type HookAttachmentWithName = Exclude<

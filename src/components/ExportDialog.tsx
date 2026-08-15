@@ -7,12 +7,12 @@ import { Box, Text } from 'src/ink.js';
 import { useKeybinding } from 'src/keybindings/useKeybinding.js';
 import { getCwd } from 'src/utils/fs/cwd.js';
 import { writeFileSync_DEPRECATED } from 'src/utils/slowOperations.js';
-import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
-import { Select } from './CustomSelect/select.js';
-import { Byline } from './design-system/Byline.js';
-import { Dialog } from './design-system/Dialog.js';
-import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
-import TextInput from './TextInput.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { Select } from 'src/components/CustomSelect/select.js';
+import { Byline } from 'src/components/design-system/Byline.js';
+import { Dialog } from 'src/components/design-system/Dialog.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import TextInput from 'src/components/TextInput.js';
 type ExportDialogProps = {
   content: string;
   defaultFilename: string;

@@ -18,22 +18,22 @@ import { getMainLoopModel } from 'src/utils/model/model.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import { notifyCacheDeletion } from 'src/services/api/promptCacheBreakDetection.js'
 import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
-import { getAutoCompactThreshold, getEffectiveContextWindowSize, isAutoCompactEnabled } from './autoCompact.js'
+import { getAutoCompactThreshold, getEffectiveContextWindowSize, isAutoCompactEnabled } from 'src/services/compact/autoCompact.js'
 import {
   clearCompactWarningSuppression,
   suppressCompactWarning,
-} from './compactWarningState.js'
+} from 'src/services/compact/compactWarningState.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import {
   addClippedIds,
   getClippedIds,
   resetClippedIds,
-} from './stableStubState.js'
+} from 'src/services/compact/stableStubState.js'
 import { getCacheProfile } from 'src/services/cache/cacheProfile.js'
 import {
   getTimeBasedMCConfig,
   type TimeBasedMCConfig,
-} from './timeBasedMCConfig.js'
+} from 'src/services/compact/timeBasedMCConfig.js'
 
 // Per-provider image sizing lives in utils/imageTokenEstimator.ts. Document
 // (PDF) blocks still fall back to this conservative cap since page-accurate

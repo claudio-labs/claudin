@@ -1,9 +1,9 @@
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
-import { IT2_COMMAND, isInITerm2, isIt2CliAvailable } from './detection.js'
-import { registerITermBackend } from './registry.js'
-import type { CreatePaneResult, PaneBackend, PaneId } from './types.js'
+import { IT2_COMMAND, isInITerm2, isIt2CliAvailable } from 'src/coordinator/swarm/backends/detection.js'
+import { registerITermBackend } from 'src/coordinator/swarm/backends/registry.js'
+import type { CreatePaneResult, PaneBackend, PaneId } from 'src/coordinator/swarm/backends/types.js'
 
 // Track session IDs for teammates
 const teammateSessionIds: string[] = []

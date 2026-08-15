@@ -23,7 +23,7 @@ import {
   restoreLex,
   saveLex,
   skipBlanks,
-} from './bashParser/lexer.js'
+} from 'src/services/bash/bashParser/lexer.js'
 import {
   byteLengthUtf8,
   leaf,
@@ -31,11 +31,11 @@ import {
   PARSE_TIMEOUT_MS,
   type ParseState,
   type TsNode,
-} from './bashParser/parserContext.js'
-import { parseStatements } from './bashParser/commands.js'
+} from 'src/services/bash/bashParser/parserContext.js'
+import { parseStatements } from 'src/services/bash/bashParser/commands.js'
 
 export type { TsNode }
-export { SHELL_KEYWORDS } from './bashParser/tokens.js'
+export { SHELL_KEYWORDS } from 'src/services/bash/bashParser/tokens.js'
 
 type ParserModule = {
   parse: (source: string, timeoutMs?: number) => TsNode | null

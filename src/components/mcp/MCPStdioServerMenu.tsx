@@ -14,9 +14,9 @@ import { Select } from 'src/components/CustomSelect/index.js';
 import { Byline } from 'src/components/design-system/Byline.js';
 import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
 import { Spinner } from 'src/components/Spinner.js';
-import { CapabilitiesSection } from './CapabilitiesSection.js';
-import type { StdioServerInfo } from './types.js';
-import { handleReconnectError, handleReconnectResult } from './utils/reconnectHelpers.js';
+import { CapabilitiesSection } from 'src/components/mcp/CapabilitiesSection.js';
+import type { StdioServerInfo } from 'src/components/mcp/types.js';
+import { handleReconnectError, handleReconnectResult } from 'src/components/mcp/utils/reconnectHelpers.js';
 type Props = {
   server: StdioServerInfo;
   serverToolsCount: number;

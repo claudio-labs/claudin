@@ -15,7 +15,7 @@ import {
   unseenRegionMessage,
   wholeFileRequiredMessage,
   writeFamilyReadGateError,
-} from './readBeforeEditMessages.js'
+} from 'src/tools/shared/readBeforeEditMessages.js'
 
 function state(over: Partial<FileState> = {}): FileState {
   return {

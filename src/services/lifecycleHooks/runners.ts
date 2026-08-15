@@ -40,13 +40,13 @@ import type { HookCommand } from 'src/services/settings/types.js'
 import { logForDebugging } from 'src/utils/debug.js'
 import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
 import { firstLineOf } from 'src/utils/text/stringUtils.js'
-import { registerPendingAsyncHook } from './AsyncHookRegistry.js'
+import { registerPendingAsyncHook } from 'src/services/lifecycleHooks/AsyncHookRegistry.js'
 import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js'
 import { wrapInSystemReminder } from 'src/services/messages/messages.js'
-import { emitHookResponse, startHookProgressInterval } from './hookEvents.js'
+import { emitHookResponse, startHookProgressInterval } from 'src/services/lifecycleHooks/hookEvents.js'
 import { jsonStringify, jsonParse } from 'src/utils/slowOperations.js'
 import { errorMessage, getErrnoCode } from 'src/utils/errors.js'
-import { TOOL_HOOK_EXECUTION_TIMEOUT_MS } from './shared.js'
+import { TOOL_HOOK_EXECUTION_TIMEOUT_MS } from 'src/services/lifecycleHooks/shared.js'
 
 function executeInBackground({
   processId,

@@ -16,7 +16,7 @@ import type {
   HookBlockingError,
   HookOutsideReplResult,
   HookResult,
-} from './types.js'
+} from 'src/services/lifecycleHooks/types.js'
 
 /**
  * Parse and validate a JSON string against the hook output Zod schema.

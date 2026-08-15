@@ -1,10 +1,10 @@
-import { checkOpus1mAccess, checkSonnet1mAccess } from './check1mAccess.js'
+import { checkOpus1mAccess, checkSonnet1mAccess } from 'src/utils/model/check1mAccess.js'
 import {
   getCanonicalName,
   getDefaultOpusModel,
   getDefaultSonnetModel,
   getUserSpecifiedModelSetting,
-} from './model.js'
+} from 'src/utils/model/model.js'
 
 // @[MODEL LAUNCH]: Add a branch for the new model if it supports a 1M context upgrade path.
 /**

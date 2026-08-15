@@ -20,14 +20,14 @@ import {
   hasPendingUpdates,
   isInstallationRelevantToCurrentProject,
   loadInstalledPluginsFromDisk,
-} from './installedPluginsManager.js'
+} from 'src/services/plugins/installedPluginsManager.js'
 import {
   getDeclaredMarketplaces,
   loadKnownMarketplacesConfig,
   refreshMarketplace,
-} from './marketplaceManager.js'
-import { parsePluginIdentifier } from './pluginIdentifier.js'
-import { isMarketplaceAutoUpdate, type PluginScope } from './schemas.js'
+} from 'src/services/plugins/marketplaceManager.js'
+import { parsePluginIdentifier } from 'src/services/plugins/pluginIdentifier.js'
+import { isMarketplaceAutoUpdate, type PluginScope } from 'src/services/plugins/schemas.js'
 
 /**
  * Callback type for notifying when plugins have been updated

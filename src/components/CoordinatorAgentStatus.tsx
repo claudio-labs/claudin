@@ -8,8 +8,8 @@
 
 import figures from 'figures';
 import * as React from 'react';
-import { ConfigurableShortcutHint } from './ConfigurableShortcutHint.js';
-import { KeyboardShortcutHint } from './design-system/KeyboardShortcutHint.js';
+import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
+import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
 import { BLACK_CIRCLE, PAUSE_ICON, PLAY_ICON } from 'src/constants/figures.js';
 import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
 import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
@@ -22,9 +22,9 @@ import { isPanelAgentTask, type LocalAgentTaskState } from 'src/tasks/LocalAgent
 import { getAgentColor } from 'src/tools/AgentTool/agentColorManager.js';
 import { formatDuration, formatNumber } from 'src/utils/text/format.js';
 import { evictTerminalTask } from 'src/tasks/framework.js';
-import { isTerminalStatus } from './tasks/taskStatusUtils.js';
-import { countFooterTaskRows } from './tasks/footerSelection.js';
-import { countVisibleAgentTasks, getAgentPanelRows } from './tasks/footerTaskGeometry.js';
+import { isTerminalStatus } from 'src/components/tasks/taskStatusUtils.js';
+import { countFooterTaskRows } from 'src/components/tasks/footerSelection.js';
+import { countVisibleAgentTasks, getAgentPanelRows } from 'src/components/tasks/footerTaskGeometry.js';
 export function CoordinatorTaskPanel(): React.ReactNode {
   const tasks: AppState['tasks'] = useAppState((s: AppState) => s.tasks);
   const viewingAgentTaskId: AppState['viewingAgentTaskId'] = useAppState((s_0: AppState) => s_0.viewingAgentTaskId);

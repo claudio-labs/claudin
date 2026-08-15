@@ -6,7 +6,7 @@ import { markDirty, scheduleRenderFrom } from 'src/ink/dom.js';
 import { markCommitStart } from 'src/ink/reconciler.js';
 import type { Styles } from 'src/ink/styles.js';
 import 'src/ink/global.d.ts';
-import Box from './Box.js';
+import Box from 'src/ink/components/Box.js';
 
 // 'ink-box' is a real host element recognized by the renderer (src/ink/dom.ts,
 // render-node-to-output.ts). tsconfig uses jsx:"react-jsx" (automatic

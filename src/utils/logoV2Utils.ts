@@ -10,7 +10,7 @@ import {
   truncateToWidthNoEllipsis,
 } from 'src/utils/text/format.js'
 import { getStoredChangelogFromMemory, parseChangelog } from 'src/services/install/releaseNotes.js'
-import { gt } from './semver.js'
+import { gt } from 'src/utils/semver.js'
 import { loadMessageLogs } from 'src/services/session/sessionStorage.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
 

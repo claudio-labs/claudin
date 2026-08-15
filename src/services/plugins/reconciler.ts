@@ -20,12 +20,12 @@ import {
   type DeclaredMarketplace,
   getDeclaredMarketplaces,
   loadKnownMarketplacesConfig,
-} from './marketplaceManager.js'
+} from 'src/services/plugins/marketplaceManager.js'
 import {
   isLocalMarketplaceSource,
   type KnownMarketplacesFile,
   type MarketplaceSource,
-} from './schemas.js'
+} from 'src/services/plugins/schemas.js'
 
 export type MarketplaceDiff = {
   /** Declared in settings, absent from known_marketplaces.json */

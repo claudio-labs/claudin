@@ -1,11 +1,11 @@
 import { feature } from 'bun:bundle'
 import { join } from 'path'
 import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { getAutoMemPath, isAutoMemoryEnabled } from './paths.js'
+import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memdir/paths.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemPaths = feature('TEAMMEM')
-  ? (require('./teamMemPaths.js') as typeof import('./teamMemPaths.js'))
+  ? (require('src/memdir/teamMemPaths.js') as typeof import('src/memdir/teamMemPaths.js'))
   : null
 
 import { getKairosActive, getOriginalCwd } from 'src/bootstrap/state.js'
@@ -26,7 +26,7 @@ import { getInitialSettings } from 'src/services/settings/settings.js'
 import {
   MEMORY_FRONTMATTER_EXAMPLE,
   WHAT_NOT_TO_SAVE_SECTION,
-} from './memoryTypes.js'
+} from 'src/memdir/memoryTypes.js'
 
 export const ENTRYPOINT_NAME = 'MEMORY.md'
 export const MAX_ENTRYPOINT_LINES = 200
@@ -120,7 +120,7 @@ export function truncateEntrypointContent(raw: string): EntrypointTruncation {
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemPrompts = feature('TEAMMEM')
-  ? (require('./teamMemPrompts.js') as typeof import('./teamMemPrompts.js'))
+  ? (require('src/memdir/teamMemPrompts.js') as typeof import('src/memdir/teamMemPrompts.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

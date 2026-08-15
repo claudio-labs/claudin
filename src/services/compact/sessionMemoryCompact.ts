@@ -35,9 +35,9 @@ import {
   buildPostCompactMessages,
   type CompactionResult,
   createPlanAttachmentIfNeeded,
-} from './compact.js'
-import { estimateMessageTokens } from './microCompact.js'
-import { getCompactUserSummaryMessage } from './prompt.js'
+} from 'src/services/compact/compact.js'
+import { estimateMessageTokens } from 'src/services/compact/microCompact.js'
+import { getCompactUserSummaryMessage } from 'src/services/compact/prompt.js'
 
 /**
  * Configuration for session memory compaction thresholds

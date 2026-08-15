@@ -26,7 +26,7 @@ import {
   isBetaTracingEnabled,
   type LLMRequestNewContext,
   truncateContent,
-} from './betaSessionTracing.js'
+} from 'src/services/telemetry/betaSessionTracing.js'
 import {
   endInteractionPerfettoSpan,
   endLLMRequestPerfettoSpan,
@@ -37,7 +37,7 @@ import {
   startLLMRequestPerfettoSpan,
   startToolPerfettoSpan,
   startUserInputPerfettoSpan,
-} from './perfettoTracing.js'
+} from 'src/services/telemetry/perfettoTracing.js'
 
 // Re-export for callers
 export type { Span }

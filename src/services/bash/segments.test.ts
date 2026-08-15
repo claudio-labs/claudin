@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { SEMANTIC_NEUTRAL_COMMANDS, walkCommandSegments } from './segments.js'
+import { SEMANTIC_NEUTRAL_COMMANDS, walkCommandSegments } from 'src/services/bash/segments.js'
 
 /** Compact view of the walk, so the assertions read like the command. */
 function shape(command: string): Array<[string, string | null]> {

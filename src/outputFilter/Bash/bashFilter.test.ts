@@ -8,10 +8,10 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { applyBashFilterToStdout, planBashFilter } from "./index.js";
-import { findFilterForCommand } from "./registry.js";
-import { builtInFilters } from "./filters/index.js";
-import type { FilterSpec } from "./types.js";
+import { applyBashFilterToStdout, planBashFilter } from "src/outputFilter/Bash/index.js";
+import { findFilterForCommand } from "src/outputFilter/Bash/registry.js";
+import { builtInFilters } from "src/outputFilter/Bash/filters/index.js";
+import type { FilterSpec } from "src/outputFilter/Bash/types.js";
 
 // ---------------------------------------------------------------------------
 // Phase 6.1.2 harness helpers — load real shell output captured in
@@ -179,7 +179,7 @@ describe("structural (Phase 1)", () => {
 
   test("module init + first filter lookup completes under 50ms", async () => {
     const start = performance.now();
-    const mod = await import("./index.js");
+    const mod = await import("src/outputFilter/Bash/index.js");
     mod.planBashFilter("git status");
     const elapsed = performance.now() - start;
     expect(elapsed).toBeLessThan(50);

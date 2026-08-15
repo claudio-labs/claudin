@@ -7,7 +7,7 @@ import {
   classifierProbeKey,
   readClassifierProbe,
   writeClassifierProbe,
-} from './classifierProbeStore.js'
+} from 'src/services/permissions/classifierProbeStore.js'
 
 let fakeConfigDir: string
 

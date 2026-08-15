@@ -6,8 +6,8 @@ import {
   CREDENTIALS_SERVICE_SUFFIX,
   getSecureStorageServiceName,
   getUsername,
-} from './macOsKeychainHelpers.js'
-import type { SecureStorage, SecureStorageData } from './index.js'
+} from 'src/services/secureStorage/macOsKeychainHelpers.js'
+import type { SecureStorage, SecureStorageData } from 'src/services/secureStorage/index.js'
 
 /**
  * Windows-specific secure storage implementation using DPAPI for new writes,

@@ -17,7 +17,7 @@ import {
   type StagedChange,
   stageContentReplacement,
   writeChange,
-} from './stagedWrite.js'
+} from 'src/tools/shared/stagedWrite/stagedWrite.js'
 
 beforeAll(() => {
   // Defend against an fs mock leaked from another test file in the shard.

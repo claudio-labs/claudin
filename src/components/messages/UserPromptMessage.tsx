@@ -9,7 +9,7 @@ import { isEnvTruthy } from 'src/utils/envUtils.js';
 import { logError } from 'src/utils/log.js';
 import { countCharInString } from 'src/utils/text/stringUtils.js';
 import { MessageActionsSelectedContext } from 'src/components/messageActions.js';
-import { HighlightedThinkingText } from './HighlightedThinkingText.js';
+import { HighlightedThinkingText } from 'src/components/messages/HighlightedThinkingText.js';
 type Props = {
   addMargin: boolean;
   param: TextBlockParam;

@@ -39,8 +39,8 @@ const pinFromState = (): void => {
 }
 pinFromState()
 
-const { getSystemPrompt } = await import('./prompts.js')
-const { clearSystemPromptSections } = await import('./systemPromptSections.js')
+const { getSystemPrompt } = await import('src/constants/prompts.js')
+const { clearSystemPromptSections } = await import('src/constants/systemPromptSections.js')
 // getAPIProvider is mocked directly (above), so the activeProvider cache no
 // longer feeds provider resolution here; the in-test invalidateActiveProviderCache()
 // calls are kept as harmless no-ops and just need a live binding.

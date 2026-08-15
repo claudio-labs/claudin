@@ -1,5 +1,5 @@
-import type { AutoFixConfig } from './autoFixConfig.js'
-import type { AutoFixResult } from './autoFixRunner.js'
+import type { AutoFixConfig } from 'src/services/autoFix/autoFixConfig.js'
+import type { AutoFixResult } from 'src/services/autoFix/autoFixRunner.js'
 
 const AUTO_FIX_TOOLS = new Set(['file_edit', 'file_write'])
 

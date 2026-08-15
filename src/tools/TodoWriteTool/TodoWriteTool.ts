@@ -4,8 +4,8 @@ import { buildTool, type ToolDef } from 'src/Tool.js'
 import { lazySchema } from 'src/utils/data/lazySchema.js'
 import { isTodoV2Enabled } from 'src/tasks/tasks.js'
 import { TodoListSchema } from 'src/tools/TodoWriteTool/types.js'
-import { TODO_WRITE_TOOL_NAME } from './constants.js'
-import { DESCRIPTION, PROMPT } from './prompt.js'
+import { TODO_WRITE_TOOL_NAME } from 'src/tools/TodoWriteTool/constants.js'
+import { DESCRIPTION, PROMPT } from 'src/tools/TodoWriteTool/prompt.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({

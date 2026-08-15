@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { rename, stat, unlink, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
-import { getEffectiveContextWindowSize } from './compact/autoCompact.js'
+import { getEffectiveContextWindowSize } from 'src/services/compact/autoCompact.js'
 import { ENTER_PLAN_MODE_TOOL_NAME } from 'src/tools/EnterPlanModeTool/constants.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'

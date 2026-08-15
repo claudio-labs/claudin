@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { getSourceDisplayName } from './constants.js'
+import { getSourceDisplayName } from 'src/services/settings/constants.js'
 
 // Regression: bundled CLI skills and built-in plugin skills both carry
 // source 'bundled' (skillDefinitionToCommand / bundledSkills.ts). Before the

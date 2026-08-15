@@ -8,7 +8,7 @@ import {
   resolveUpdateNotice,
   STARTUP_BANNER_WIDTH,
   type UpdateNotice,
-} from './StartupScreen.js'
+} from 'src/components/StartupScreen.js'
 
 type Props = {
   /**

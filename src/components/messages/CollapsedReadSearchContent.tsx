@@ -22,7 +22,7 @@ import { SHELL_PROGRESS_MIN_SECONDS, ShellGroupElapsedTime } from 'src/component
 import { ToolUseLoader } from 'src/components/ToolUseLoader.js';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-const teamMemCollapsed = feature('TEAMMEM') ? require('./teamMemCollapsed.js') as typeof import('./teamMemCollapsed.js') : null;
+const teamMemCollapsed = feature('TEAMMEM') ? require('src/components/messages/teamMemCollapsed.js') as typeof import('src/components/messages/teamMemCollapsed.js') : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 // Hold each ⤿ hint for a minimum duration so fast-completing tool calls

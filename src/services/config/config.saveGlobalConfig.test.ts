@@ -5,7 +5,7 @@ import {
   DEFAULT_GLOBAL_CONFIG,
   type GlobalConfig,
   type ProjectConfig,
-} from './config.js'
+} from 'src/services/config/config.js'
 
 // Regression guard for the projects clobber: saveGlobalConfig's production
 // paths persist `_buildWrittenGlobalConfig(updaterResult)`. The original code

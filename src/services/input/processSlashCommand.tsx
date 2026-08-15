@@ -43,7 +43,7 @@ import { logOTelEvent, redactIfDisabled } from 'src/services/telemetry/events.js
 import { buildPluginCommandTelemetryFields } from 'src/services/telemetry/pluginTelemetry.js';
 import { getAssistantMessageContentLength } from 'src/services/context/tokens.js';
 import { createAgentId } from 'src/utils/data/uuid.js';
-import type { ProcessUserInputBaseResult, ProcessUserInputContext } from './processUserInput.js';
+import type { ProcessUserInputBaseResult, ProcessUserInputContext } from 'src/services/input/processUserInput.js';
 type SlashCommandResult = ProcessUserInputBaseResult & {
   command: Command;
 };

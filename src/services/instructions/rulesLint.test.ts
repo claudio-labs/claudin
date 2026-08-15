@@ -6,7 +6,7 @@ import {
   extractProsePaths,
   isCheckableProsePath,
   lintRuleFiles,
-} from './rulesLint.js'
+} from 'src/services/instructions/rulesLint.js'
 
 function makeProject(files: Record<string, string>): string {
   const root = mkdtempSync(join(tmpdir(), 'ruleslint-'))

@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, mock, test } from 'bun:test'
 import { resolve } from 'node:path'
 
-const realActiveProvider_minimax = { ...(await import('./activeProvider.js')) }
+const realActiveProvider_minimax = { ...(await import('src/services/api/activeProvider.js')) }
 const realActiveProviderSnapshot_minimax = { ...realActiveProvider_minimax }
 mock.module('./activeProvider.js', () => ({
   ...realActiveProviderSnapshot_minimax,
@@ -15,7 +15,7 @@ import {
   buildMiniMaxUsageRows,
   getMiniMaxUsageUrls,
   normalizeMiniMaxUsagePayload,
-} from './minimaxUsage.js'
+} from 'src/services/api/minimaxUsage.js'
 
 const fixture = (name: string) =>
   Bun.file(resolve(import.meta.dir, '__fixtures__', name))

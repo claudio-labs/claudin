@@ -6,7 +6,7 @@ import {
   isMaxSubscriber,
   isTeamPremiumSubscriber,
 } from 'src/services/auth/auth.js'
-import { getModelStrings } from './modelStrings.js'
+import { getModelStrings } from 'src/utils/model/modelStrings.js'
 import {
   COST_TIER_3_15,
   COST_TIER_10_50,
@@ -15,9 +15,9 @@ import {
   formatModelPricing,
 } from 'src/services/api/modelCost.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
-import { checkOpus1mAccess, checkSonnet1mAccess } from './check1mAccess.js'
-import { getAPIProvider } from './providers.js'
-import { isModelAllowed } from './modelAllowlist.js'
+import { checkOpus1mAccess, checkSonnet1mAccess } from 'src/utils/model/check1mAccess.js'
+import { getAPIProvider } from 'src/utils/model/providers.js'
+import { isModelAllowed } from 'src/utils/model/modelAllowlist.js'
 import {
   getCanonicalName,
   getClaudeAiUserDefaultModelDescription,
@@ -32,18 +32,18 @@ import {
   parseUserSpecifiedModel,
   renderDefaultModelSetting,
   type ModelSetting,
-} from './model.js'
+} from 'src/utils/model/model.js'
 import { has1mContext } from 'src/services/context/context.js'
-import { getFilteredCodexCatalog } from './codexModelCatalog.js'
+import { getFilteredCodexCatalog } from 'src/utils/model/codexModelCatalog.js'
 import { getGlobalConfig } from 'src/services/config/config.js'
 import {
   getActiveOpenAIModelOptionsCache,
   getActiveProviderProfile,
   getProfileModelOptions,
 } from 'src/services/api/providerProfiles.js'
-import { getCachedOllamaModelOptions, isOllamaProvider } from './ollamaModels.js'
-import { getCachedNvidiaNimModelOptions, isNvidiaNimProvider } from './nvidiaNimModels.js'
-import { getCachedMiniMaxModelOptions, isMiniMaxProvider } from './minimaxModels.js'
+import { getCachedOllamaModelOptions, isOllamaProvider } from 'src/utils/model/ollamaModels.js'
+import { getCachedNvidiaNimModelOptions, isNvidiaNimProvider } from 'src/utils/model/nvidiaNimModels.js'
+import { getCachedMiniMaxModelOptions, isMiniMaxProvider } from 'src/utils/model/minimaxModels.js'
 
 // @[MODEL LAUNCH]: Update all the available and default model option strings below.
 
@@ -402,7 +402,7 @@ function getCodexModelOptions(): ModelOption[] {
 // @[MODEL LAUNCH]: Update the model picker lists below to include/reorder options for the new model.
 // Each user tier (ant, Max/Team Premium, Pro/Team Standard/Enterprise, PAYG 1P, PAYG 3P) has its own list.
 
-import { getEffectiveCopilotModels } from './copilotModelCatalog.js'
+import { getEffectiveCopilotModels } from 'src/utils/model/copilotModelCatalog.js'
 
 function getCopilotModelOptions(): ModelOption[] {
   return getEffectiveCopilotModels().map(m => ({
