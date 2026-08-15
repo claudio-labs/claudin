@@ -200,7 +200,9 @@ describe("structural (Phase 1)", () => {
     expect(result).toBe(ansiError);
   });
 
-  test("error output with rewrite still shows rewrite marker", () => {
+  test("error output with rewrite discloses it as a note, never as a marker", () => {
+    // The error string is printed verbatim by FallbackToolUseErrorMessage, so a
+    // wrapper here reaches the user's screen as raw XML with escaped attributes.
     const filter = { name: "docker", matchCommand: /^docker$/ };
     const plan = {
       effectiveCommand: "docker build --progress=plain .",
@@ -209,11 +211,12 @@ describe("structural (Phase 1)", () => {
     };
     const errorOutput = "error: build failed";
     const result = applyBashFilterToStdout(errorOutput, true, plan);
-    expect(result).toContain("<bash-output-rewritten");
+    expect(result).not.toContain("<bash-output-");
+    expect(result).toContain("what ran was: docker build --progress=plain .");
     expect(result).toContain("error: build failed");
   });
 
-  test("error output with rewrite marker preserves full error content", () => {
+  test("error output with a rewrite note preserves full error content", () => {
     const filter = { name: "docker", matchCommand: /^docker$/ };
     const plan = {
       effectiveCommand: "docker build --progress=plain .",
@@ -224,6 +227,25 @@ describe("structural (Phase 1)", () => {
     const result = applyBashFilterToStdout(longError, true, plan);
     expect(result).toContain("error line 0");
     expect(result).toContain("error line 99");
+  });
+
+  test("a failing reducer-stripped command leaks no XML to the error renderer", () => {
+    // The reported shape: `make lint 2>&1 | tail -40` exits non-zero after the
+    // trailing pipe was stripped, so the whole output takes the error path.
+    const plan = planBashFilter("make lint 2>&1 | tail -40");
+    expect(plan.rewrite).toEqual({
+      from: "make lint 2>&1 | tail -40",
+      to: "make lint 2>&1",
+    });
+    const result = applyBashFilterToStdout(
+      "uv run ruff check .\nE501 Line too long\n",
+      true,
+      plan,
+    );
+    expect(result).not.toContain("<bash-output-");
+    // …and nothing XML-escaped either: `2&gt;&amp;1` is what the user saw.
+    expect(result).not.toContain("&gt;");
+    expect(result).toContain("what ran was: make lint 2>&1");
   });
 
   test("safeApply returns raw output on pipeline crash", () => {

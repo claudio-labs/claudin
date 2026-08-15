@@ -1,6 +1,10 @@
 import { ClaudeError } from "src/shared/errors.js";
 import { logError } from "src/shared/log.js";
-import { ALREADY_WRAPPED_RE, wrapStdoutWithMarkers } from "src/tools/shared/outputFilter/Bash/markers.js";
+import {
+  ALREADY_WRAPPED_RE,
+  prependRewriteNote,
+  wrapStdoutWithMarkers,
+} from "src/tools/shared/outputFilter/Bash/markers.js";
 import {
   applyPipeline,
   hasCompound,
@@ -97,9 +101,15 @@ export function applyBashFilterToStdout(
       if (rawStdout === "") return "";
       // No filter matched — pass through (but add rewrite marker if applicable)
       if (!plan.filter && !plan.rewrite) return rawStdout;
-      // Error output — don't filter content, but wrap with rewrite marker if applicable
+      // Error output — don't filter content, and don't marker-wrap it either:
+      // this string is what the error renderers print to the user verbatim, so
+      // the tag and its escaped attributes end up on screen. An executed
+      // rewrite still has to be disclosed — as a plain note (see
+      // prependRewriteNote for why the wrapper cannot be used here).
       if (isError) {
-        return wrapStdoutWithMarkers(rawStdout, plan, null);
+        return plan.rewrite
+          ? prependRewriteNote(rawStdout, plan.rewrite.to)
+          : rawStdout;
       }
       // Already wrapped — don't double-wrap
       if (ALREADY_WRAPPED_RE.test(rawStdout)) {

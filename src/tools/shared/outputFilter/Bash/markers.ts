@@ -23,6 +23,27 @@ export function stripOutputMarkers(stdout: string): string {
   return match ? match[1]! : stdout;
 }
 
+/** Plain-text disclosure of an executed rewrite, for the paths that must NOT
+ * use {@link wrapStdoutWithMarkers}.
+ *
+ * The wrapper is stripped for display by exactly one renderer (the Bash success
+ * one), and every other consumer prints the string it is given verbatim. The
+ * error renderers do — `FallbackToolUseErrorMessage` shows the model-facing
+ * text as-is — so a wrapped error put `<bash-output-rewritten original="make
+ * lint 2&gt;&amp;1 | tail -40" …>` on the user's screen, XML-escaped
+ * attributes and all. Teaching those renderers to unwrap is not the fix: the
+ * error string carries a prefix (`Exit code N`, a git diagnosis line) AND a
+ * possible suffix (the repeated-failure hint), so nothing about the wrapper is
+ * anchored any more, and an unanchored strip would eat a tag-like substring out
+ * of the output itself.
+ *
+ * A wrapper buys nothing here anyway — the error path runs no pipeline, so
+ * there are no `lines=`/`reduction=` attributes to report, only the rewrite.
+ * This is the same shape as the background-task disclosure in BashTool. */
+export function prependRewriteNote(body: string, actual: string): string {
+  return `Note: the bash output filter rewrote this command before execution; what ran was: ${actual}\n${body}`;
+}
+
 function truncateAttr(value: string): string {
   // Truncate the raw value BEFORE escaping so the cut can never land inside
   // an escape entity (`&quo…`). The escaped result may slightly exceed
