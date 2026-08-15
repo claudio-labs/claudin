@@ -1,7 +1,7 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { Box, Text } from 'src/terminal/ink.js';
 import * as React from 'react';
-import { getLargeMemoryFiles, MAX_MEMORY_CHARACTER_COUNT, type MemoryFileInfo } from 'src/services/instructions/claudemd.js';
+import { getLargeMemoryFiles, MAX_MEMORY_CHARACTER_COUNT, type MemoryFileInfo } from 'src/memory/instructions/claudemd.js';
 import figures from 'figures';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { relative } from 'path';

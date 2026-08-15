@@ -5,7 +5,7 @@ import { color, Text } from 'src/terminal/ink.js';
 import type { MCPServerConnection } from 'src/services/mcp/types.js';
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';
 import { getAccountInformation, isClaudeAISubscriber } from 'src/providers/auth/auth.js';
-import { getLargeMemoryFiles, getMemoryFiles, MAX_MEMORY_CHARACTER_COUNT } from 'src/services/instructions/claudemd.js';
+import { getLargeMemoryFiles, getMemoryFiles, MAX_MEMORY_CHARACTER_COUNT } from 'src/memory/instructions/claudemd.js';
 import { getDoctorDiagnostic } from 'src/platform/doctor/doctorDiagnostic.js';
 import { getAWSRegion, getDefaultVertexRegion, isEnvTruthy } from 'src/shared/envUtils.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';

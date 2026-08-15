@@ -43,7 +43,7 @@ import {
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { CLAUDE_MD_CONTEXT_KEY } from 'src/services/instructions/claudeMdDelta.js'
+import { CLAUDE_MD_CONTEXT_KEY } from 'src/memory/instructions/claudeMdDelta.js'
 import { GIT_STATUS_CONTEXT_KEY } from 'src/vcs/git/gitStatusDelta.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import {

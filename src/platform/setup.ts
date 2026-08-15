@@ -19,12 +19,12 @@ import {
   switchSession,
 } from 'src/platform/bootstrap/state.js'
 import { getCommands } from 'src/commands.js'
-import { initSessionMemory } from 'src/services/SessionMemory/sessionMemory.js'
+import { initSessionMemory } from 'src/memory/session/sessionMemory.js'
 import { asSessionId } from 'src/types/ids.js'
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import { checkAndRestoreTerminalBackup } from 'src/platform/ide/appleTerminalBackup.js'
 import { prefetchApiKeyFromApiKeyHelperIfSafe } from 'src/providers/auth/auth.js'
-import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
+import { clearMemoryFileCaches } from 'src/memory/instructions/claudemd.js'
 import { getCurrentProjectConfig, getGlobalConfig } from 'src/platform/config/config.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { env } from 'src/shared/env.js'
@@ -350,7 +350,7 @@ export async function setup(
       m.registerSessionFileAccessHooks(),
     ) // Register session file access analytics hooks
     if (feature('TEAMMEM')) {
-      void import('src/services/teamMemorySync/watcher.js').then(m =>
+      void import('src/memory/teamSync/watcher.js').then(m =>
         m.startTeamMemoryWatcher(),
       ) // Start team memory sync watcher
     }

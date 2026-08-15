@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import React, { type ReactNode } from 'react';
 import { Box } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
-import { isAutoMemoryEnabled } from 'src/memdir/paths.js';
+import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js';
 import { type AgentMemoryScope, loadAgentMemoryPrompt } from 'src/tools/AgentTool/agentMemory.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
 import { Select } from 'src/terminal/custom-select/select.js';

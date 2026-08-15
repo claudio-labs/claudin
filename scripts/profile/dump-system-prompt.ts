@@ -55,7 +55,7 @@ const PROMPT_SOURCE_GLOBS = [
   'scripts/build.ts',
   'src/constants/**/*.ts',
   'src/agent/context.ts',
-  'src/services/instructions/claudemd.ts',
+  'src/memory/instructions/claudemd.ts',
   'src/tools/*/prompt.ts',
   'src/tools/AgentTool/forkSubagent.ts',
 ]

@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { logEvent } from 'src/platform/analytics/index.js';
 import { Box, Link, Text } from 'src/terminal/ink.js';
-import type { ExternalClaudeMdInclude } from 'src/services/instructions/claudemd.js';
+import type { ExternalClaudeMdInclude } from 'src/memory/instructions/claudemd.js';
 import { saveCurrentProjectConfig } from 'src/platform/config/config.js';
 import { Select } from 'src/terminal/custom-select/index.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';

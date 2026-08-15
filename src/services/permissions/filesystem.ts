@@ -4,7 +4,7 @@ import ignore from 'ignore'
 import memoize from 'lodash-es/memoize.js'
 import { homedir, tmpdir } from 'os'
 import { join, normalize, posix, sep } from 'path'
-import { hasAutoMemPathOverride, isAutoMemPath } from 'src/memdir/paths.js'
+import { hasAutoMemPathOverride, isAutoMemPath } from 'src/memory/memdir/paths.js'
 import { isAgentMemoryPath } from 'src/tools/AgentTool/agentMemory.js'
 import {
   CLAUDE_FOLDER_PERMISSION_PATTERN,

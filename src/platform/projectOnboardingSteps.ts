@@ -1,7 +1,7 @@
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isDirEmpty } from 'src/shared/fs/file.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import { findProjectInstructionFilePathInAncestors } from 'src/services/instructions/projectInstructions.js'
+import { findProjectInstructionFilePathInAncestors } from 'src/memory/instructions/projectInstructions.js'
 
 export type Step = {
   key: string

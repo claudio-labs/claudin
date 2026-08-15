@@ -6,7 +6,7 @@ import type { Message } from 'src/types/message.js'
 import { clearSpeculativeChecks } from 'src/tools/BashTool/bashPermissions.js'
 import { resetSentBashGitInstructions } from 'src/agent/attachments/attachments.js'
 import { clearClassifierApprovals } from 'src/utils/classifierApprovals.js'
-import { resetGetMemoryFilesCache } from 'src/services/instructions/claudemd.js'
+import { resetGetMemoryFilesCache } from 'src/memory/instructions/claudemd.js'
 import {
   type ContentReplacementState,
   reconstructContentReplacementState,

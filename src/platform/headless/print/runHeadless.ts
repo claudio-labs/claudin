@@ -70,7 +70,7 @@ import { jsonStringify } from 'src/platform/slowOperations.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { initializeGrowthBook } from 'src/platform/analytics/growthbook.js'
 import { errorMessage } from 'src/shared/errors.js'
-import { isExtractModeActive } from 'src/memdir/paths.js'
+import { isExtractModeActive } from 'src/memory/memdir/paths.js'
 import { getCanUseToolFn } from 'src/platform/headless/print/permissionGlue.js'
 import { handleRewindFiles } from 'src/platform/headless/print/controlHandlers.js'
 import { loadInitialMessages } from 'src/platform/headless/print/sessionLoad.js'
@@ -84,7 +84,7 @@ const coordinatorModeModule = feature('COORDINATOR_MODE')
   ? (require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js'))
   : null
 const extractMemoriesModule = feature('EXTRACT_MEMORIES')
-  ? (require('src/services/extractMemories/extractMemories.js') as typeof import('src/services/extractMemories/extractMemories.js'))
+  ? (require('src/memory/extract/extractMemories.js') as typeof import('src/memory/extract/extractMemories.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

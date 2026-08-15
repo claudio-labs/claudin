@@ -29,7 +29,7 @@
 
 import { getAllBaseTools } from '../src/tools.js'
 import { getSystemPrompt, computeSimpleEnvInfo } from '../src/constants/prompts.js'
-import { loadMemoryPrompt } from '../src/memdir/memdir.js'
+import { loadMemoryPrompt } from '../src/memory/memdir/memdir.js'
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,

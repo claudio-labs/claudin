@@ -23,4 +23,4 @@ Vira loop de QA: o agente sinaliza pontos cegos da própria spec.
 ## Referência
 
 - omp tool registry (procurar `report_tool_issue`)
-- `src/memdir/` (claudin)
+- `src/memory/memdir/` (claudin)

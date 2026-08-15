@@ -3,7 +3,7 @@ import memoize from 'lodash-es/memoize.js'
 import { basename } from 'path'
 import type { SettingSource } from 'src/platform/settings/constants.js'
 import { z } from 'zod/v4'
-import { isAutoMemoryEnabled } from 'src/memdir/paths.js'
+import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
@@ -27,7 +27,7 @@ import {
   loadMarkdownFilesForSubdir,
   parseAgentToolsFromFrontmatter,
   parseSlashCommandToolsFromFrontmatter,
-} from 'src/services/instructions/markdownConfigLoader.js'
+} from 'src/memory/instructions/markdownConfigLoader.js'
 import {
   PERMISSION_MODES,
   type PermissionMode,

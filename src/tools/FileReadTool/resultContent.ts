@@ -1,6 +1,6 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { feature } from 'bun:bundle'
-import { memoryFreshnessNote } from 'src/memdir/memoryAge.js'
+import { memoryFreshnessNote } from 'src/memory/memdir/memoryAge.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { addLineNumbers } from 'src/shared/fs/file.js'

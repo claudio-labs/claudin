@@ -43,7 +43,7 @@ O que vale copiar do claude-mem aqui é **modesto**: o conceito de renderizar me
 
 ## Como o Claudin faz hoje
 
-`src/memdir/` injeta o `MEMORY.md` inteiro (já é one-liner por entrada — isso já é "tier compacto" de fato) **mais** os arquivos `.md` de memória julgados relevantes, em conteúdo completo.
+`src/memory/memdir/` injeta o `MEMORY.md` inteiro (já é one-liner por entrada — isso já é "tier compacto" de fato) **mais** os arquivos `.md` de memória julgados relevantes, em conteúdo completo.
 
 O que falta:
 
@@ -53,7 +53,7 @@ O que falta:
 
 ## Proposta (vai além do claude-mem)
 
-Renderer de memória com 3 tiers e budget explícito, em `src/memdir/` (renderer):
+Renderer de memória com 3 tiers e budget explícito, em `src/memory/memdir/` (renderer):
 
 | Tier | Conteúdo | Custo/item |
 |---|---|---|

@@ -166,7 +166,7 @@ e o enum é snapshot. Drift (MCP carregando depois) cai no silent-drop.
 Justificativa:
 
 1. **Memórias têm taxonomia rígida** (`MEMORY_TYPES = ['user',
-   'feedback', 'project', 'reference']` em `src/memdir/memoryTypes.ts:14-19`).
+   'feedback', 'project', 'reference']` em `src/memory/memdir/memoryTypes.ts:14-19`).
    "Tool issue" não é nenhum desses — é dado operacional, não
    conhecimento sobre o projeto/usuário.
 2. **MEMORY.md index é semântico, não cronológico.** Cada `.md` tem
@@ -185,7 +185,7 @@ Alternativa: `~/.claudin/projects/<dir>/tool-issues.jsonl` (fora de
 `memory/`). Trade-off: perde a co-localização com o resto da memória
 do projeto, ganha separação clara de domínio. Eu ficaria com o
 caminho dentro de `memory/` mas como `.jsonl` plano — o memdir scan
-hoje só ingere `.md` (`src/memdir/memoryScan.ts` filtra por extensão),
+hoje só ingere `.md` (`src/memory/memdir/memoryScan.ts` filtra por extensão),
 então não vai entrar no índice por acidente.
 
 Schema da linha JSONL:
@@ -324,9 +324,9 @@ omp:
 
 Claudin (onde encaixar):
 - `/home/dev/projects/claudin/src/Tool.ts` — `buildTool`, `ToolDef`, `ToolUseContext` (símbolos linhas 748-823)
-- `/home/dev/projects/claudin/src/memdir/paths.ts` — `getAutoMemPath()` para destino do JSONL
-- `/home/dev/projects/claudin/src/memdir/memoryTypes.ts:14-19` — taxonomia de memória (porque NÃO usar `.md`)
-- `/home/dev/projects/claudin/src/memdir/memoryScan.ts` — confirma filtragem por extensão (`.jsonl` não é ingerido como memória)
+- `/home/dev/projects/claudin/src/memory/memdir/paths.ts` — `getAutoMemPath()` para destino do JSONL
+- `/home/dev/projects/claudin/src/memory/memdir/memoryTypes.ts:14-19` — taxonomia de memória (porque NÃO usar `.md`)
+- `/home/dev/projects/claudin/src/memory/memdir/memoryScan.ts` — confirma filtragem por extensão (`.jsonl` não é ingerido como memória)
 - `/home/dev/projects/claudin/scripts/build.ts` — featureFlags (adicionar `REPORT_TOOL_ISSUE`)
 - `/home/dev/projects/claudin/scripts/verify-no-phone-home.ts:6-18` — banlist (nada a adicionar enquanto for local-only)
 - `/home/dev/projects/claudin/src/tools/BashTool/` — exemplo canônico de estrutura de tool

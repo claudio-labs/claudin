@@ -28,7 +28,7 @@ import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import { Select } from 'src/terminal/custom-select/index.js';
 import { OutputStylePicker } from 'src/platform/OutputStylePicker.js';
 import { LanguagePicker } from 'src/platform/LanguagePicker.js';
-import { getExternalClaudeMdIncludes, getMemoryFiles, hasExternalClaudeMdIncludes } from 'src/services/instructions/claudemd.js';
+import { getExternalClaudeMdIncludes, getMemoryFiles, hasExternalClaudeMdIncludes } from 'src/memory/instructions/claudemd.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';

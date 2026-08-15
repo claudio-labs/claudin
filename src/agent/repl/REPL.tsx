@@ -78,7 +78,7 @@ import { SpinnerWithVerb, BriefIdleStatus, type SpinnerMode } from 'src/terminal
 import { getSystemPrompt } from 'src/constants/prompts.js';
 import { buildEffectiveSystemPrompt } from 'src/agent/systemPrompt.js';
 import { getSystemContext, getUserContext } from 'src/agent/context.js';
-import { getMemoryFiles } from 'src/services/instructions/claudemd.js';
+import { getMemoryFiles } from 'src/memory/instructions/claudemd.js';
 import { startBackgroundHousekeeping } from 'src/platform/backgroundHousekeeping.js';
 import { getTotalCost, saveCurrentSessionCosts, resetCostState, getStoredSessionCosts } from 'src/agent/cost-tracker.js';
 import { useCostSummary } from 'src/agent/costHook.js';

@@ -52,7 +52,7 @@ import {
 import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js'
 import { TICK_TAG } from 'src/constants/xml.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { loadMemoryPrompt } from 'src/memdir/memdir.js'
+import { loadMemoryPrompt } from 'src/memory/memdir/memdir.js'
 import { isMcpInstructionsDeltaEnabled } from 'src/services/mcp/mcpInstructionsDelta.js'
 import {
   isAntiNarrationEnabled,

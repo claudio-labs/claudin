@@ -1,5 +1,5 @@
 import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
-import { parseSlashCommandToolsFromFrontmatter } from 'src/services/instructions/markdownConfigLoader.js'
+import { parseSlashCommandToolsFromFrontmatter } from 'src/memory/instructions/markdownConfigLoader.js'
 import { executeShellCommandsInPrompt } from 'src/shared/proc/promptShellExecution.js'
 import { createMovedToPluginCommand } from 'src/commands/createMovedToPluginCommand.js'
 

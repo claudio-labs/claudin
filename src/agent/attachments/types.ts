@@ -3,7 +3,7 @@
 import type { Output as FileReadToolOutput } from 'src/tools/FileReadTool/FileReadTool.js'
 import type { TodoList } from 'src/tools/TodoWriteTool/types.js'
 import type { Task } from 'src/agent/tasks/tasks.js'
-import type { MemoryFileInfo } from 'src/services/instructions/claudemd.js'
+import type { MemoryFileInfo } from 'src/memory/instructions/claudemd.js'
 import type { DiagnosticFile } from 'src/platform/diagnosticTracking.js'
 import type { MessageOrigin } from 'src/types/message.js'
 import type { UUID } from 'crypto'
@@ -442,7 +442,7 @@ export type Attachment =
   | {
       // Phase 2 static-dedup: emit CLAUDE.md body once (or when changed)
       // instead of re-prepending the full content every turn. See
-      // src/services/instructions/claudeMdDelta.ts for the scan+diff rationale.
+      // src/memory/instructions/claudeMdDelta.ts for the scan+diff rationale.
       type: 'claude_md_delta'
       addedContent: string
       contentHash: string

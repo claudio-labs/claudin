@@ -19,7 +19,7 @@ import { handleMcpjsonServerApprovals } from 'src/services/mcpServerApproval.js'
 import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import { onChangeAppState } from 'src/terminal/state/onChangeAppState.js';
 import { normalizeApiKeyForConfig } from 'src/providers/auth/authPortable.js';
-import { getExternalClaudeMdIncludes, getMemoryFiles, shouldShowClaudeMdExternalIncludesWarning } from 'src/services/instructions/claudemd.js';
+import { getExternalClaudeMdIncludes, getMemoryFiles, shouldShowClaudeMdExternalIncludesWarning } from 'src/memory/instructions/claudemd.js';
 import { checkHasTrustDialogAccepted, getCustomApiKeyStatus, getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { shouldShowMigrationBanner } from 'src/platform/config/claudinMigration.js';
 import { updateDeepLinkTerminalPreference } from 'src/platform/deepLink/terminalPreference.js';

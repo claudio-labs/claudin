@@ -83,7 +83,7 @@ import {
 import {
   countIdenticalFailures,
   REPEATED_ERROR_THRESHOLD,
-} from 'src/services/extractMemories/loopDetector.js'
+} from 'src/memory/extract/loopDetector.js'
 import {
   CANCEL_MESSAGE,
   createProgressMessage,

@@ -13,11 +13,11 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 - **Fail-open** (retain.ts:43-44) — batch failure vira UI warning, LLM não sabe.
 
 **Vale pra Claudin?**
-- **Parcial.** `src/services/extractMemories/` já cobre retain automático (extração pós-turno). `reflect` (forçar pausa pra introspecção) é o ganho novo.
+- **Parcial.** `src/memory/extract/` já cobre retain automático (extração pós-turno). `reflect` (forçar pausa pra introspecção) é o ganho novo.
 - **Privacy red flag**: `client.ts` é RPC HTTP. Portar exige backend 100% local (SQLite ou flat-file).
 - Risco de duplicar com infra existente.
 
-**Encaixe**: `src/services/hindsight/` paralelo a `extractMemories/`. Reuso `src/memdir/paths.ts`. Tool `src/tools/ReflectTool/`. Flag `HINDSIGHT_REFLECT`.
+**Encaixe**: `src/services/hindsight/` paralelo a `extractMemories/`. Reuso `src/memory/memdir/paths.ts`. Tool `src/tools/ReflectTool/`. Flag `HINDSIGHT_REFLECT`.
 
 ## 2. Checkpoint/Rewind — investigação sandbox com rollback
 

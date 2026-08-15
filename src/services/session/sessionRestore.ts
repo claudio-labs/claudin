@@ -29,7 +29,7 @@ import type {
 } from 'src/types/logs.js'
 import type { Message } from 'src/types/message.js'
 import { renameRecordingForSession } from 'src/terminal/image/asciicast.js'
-import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
+import { clearMemoryFileCaches } from 'src/memory/instructions/claudemd.js'
 import {
   type AttributionState,
   attributionRestoreStateFromLog,

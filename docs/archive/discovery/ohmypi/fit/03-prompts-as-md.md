@@ -31,13 +31,13 @@ Top 13 por tamanho (file:size:interp_count):
 
 | File | chars | linhas | `${…}` |
 |---|---:|---:|---:|
-| `src/services/extractMemories/extractMemories.ts` | 21 501 | 609 | 21 |
+| `src/memory/extract/extractMemories.ts` | 21 501 | 609 | 21 |
 | `src/agent/coordinator/coordinatorMode.ts` | 19 038 | 369 | 34 |
 | `src/tools/BashTool/prompt.ts` | 18 040 | 326 | 25 |
 | `src/tools/AgentTool/prompt.ts` | 14 797 | 255 | 29 |
 | `src/tools/PowerShellTool/prompt.ts` | 9 826 | 145 | 15 |
 | `src/tools/AgentTool/built-in/claudeCodeGuideAgent.ts` | 8 938 | 205 | 28 |
-| `src/services/extractMemories/prompts.ts` | 7 944 | 156 | 16 |
+| `src/memory/extract/prompts.ts` | 7 944 | 156 | 16 |
 | `src/tools/TeamCreateTool/prompt.ts` | 6 895 | 113 | **0** |
 | `src/tools/SkillTool/prompt.ts` | 6 885 | 205 | 10 |
 | `src/tools/ScheduleCronTool/prompt.ts` | 6 145 | 117 | 8 |

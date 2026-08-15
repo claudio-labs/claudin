@@ -3,8 +3,8 @@
 **Status:** Default ON for git projects. Set `autoMemoryProjectLocal: false`
 in settings.json (user/local/policy — never projectSettings, for security)
 to force the legacy global-only location.
-**Scope:** `src/memdir/paths.ts`, `src/memdir/memoryMigration.ts`,
-`src/memdir/teamMemPaths.ts`, `src/memdir/teamMemPrompts.ts`
+**Scope:** `src/memory/memdir/paths.ts`, `src/memory/memdir/memoryMigration.ts`,
+`src/memory/memdir/teamMemPaths.ts`, `src/memory/memdir/teamMemPrompts.ts`
 
 ## Problem
 
@@ -12,7 +12,7 @@ Claudin's auto-memory (private notes + the `team/` subfolder) used to live
 entirely outside the repo, under
 `~/.claudin/projects/<sanitized-git-root>/memory/`. "Team" memory was meant
 to reach collaborators via a server-mediated sync
-(`src/services/teamMemorySync/`) that requires first-party Anthropic OAuth
+(`src/memory/teamSync/`) that requires first-party Anthropic OAuth
 *and* a `github.com` remote. Claudin is explicitly provider-agnostic and not
 Anthropic-account-bound, so that sync path never activates for most Claudin
 users — including any project hosted on a self-hosted git server (Gitea,
@@ -21,7 +21,7 @@ everyone who isn't both on Anthropic OAuth and GitHub.
 
 ## Fix
 
-`getAutoMemPath()` (`src/memdir/paths.ts`) now defaults to
+`getAutoMemPath()` (`src/memory/memdir/paths.ts`) now defaults to
 `<gitRoot>/.claudin/memory/` for any project inside a git repository — the
 same project-local pattern already used for `.claudin/plans/`
 (`src/agent/plans/plans.ts`), with the same symlink-escape containment check and
@@ -42,7 +42,7 @@ Resolution order (first match wins):
 
 The first time the project-local path resolves for a project whose legacy
 global directory already has memory content, `migrateGlobalMemoryIfNeeded()`
-(`src/memdir/memoryMigration.ts`) **copies** that content into the new
+(`src/memory/memdir/memoryMigration.ts`) **copies** that content into the new
 location — it never deletes or moves the original, so the old
 `~/.claudin/projects/.../memory/` directory remains as a backup. The copy is
 idempotent: once the project-local directory has any memory content of its
@@ -54,7 +54,7 @@ Most projects' `.gitignore` blanket-excludes `.claudin/` (Claudin scaffolds
 this by default), which would silently swallow `.claudin/memory/team/` even
 after it becomes project-local. Claudin never edits `.gitignore` in code —
 instead, when `buildCombinedMemoryPrompt()` detects this conflict
-(`isTeamMemLikelyGitIgnored()` in `src/memdir/teamMemPaths.ts`, a best-effort
+(`isTeamMemLikelyGitIgnored()` in `src/memory/memdir/teamMemPaths.ts`, a best-effort
 heuristic that only recognizes the common blanket-ignore pattern shape), it
 adds a guidance paragraph to the memory system prompt asking the model to
 show the user this diff and apply it only with explicit approval:

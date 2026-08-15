@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle'
 import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js'
-import { isExtractModeActive } from 'src/memdir/paths.js'
+import { isExtractModeActive } from 'src/memory/memdir/paths.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
@@ -40,7 +40,7 @@ import { getAgentName, getTeamName, isTeammate } from 'src/agent/coordinator/tea
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const extractMemoriesModule = feature('EXTRACT_MEMORIES')
-  ? (require('src/services/extractMemories/extractMemories.js') as typeof import('src/services/extractMemories/extractMemories.js'))
+  ? (require('src/memory/extract/extractMemories.js') as typeof import('src/memory/extract/extractMemories.js'))
   : null
 const jobClassifierModule = feature('TEMPLATES')
   ? (require('../../platform/jobs/classifier.js') as typeof import('../../platform/jobs/classifier.js'))
@@ -54,7 +54,7 @@ import {
   handleGoalBlockingError,
   shouldWarnGoalCheckIncomplete,
 } from 'src/agent/goal/goal.js'
-import { executeAutoDream } from 'src/services/autoDream/autoDream.js'
+import { executeAutoDream } from 'src/memory/autoDream/autoDream.js'
 import { executePromptSuggestion } from 'src/terminal/prompt-suggestion/promptSuggestion.js'
 import { isBareMode, isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import {

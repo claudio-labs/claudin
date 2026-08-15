@@ -35,7 +35,7 @@ Em vez de *comprimir* lixo, **descarta** lixo na origem. Memória só para o nã
 
 O prompt (`code.json:105`) manda "return an empty response only" — ou seja, roteia o skip de rotina pelo path *inválido*, que é silenciosamente ack-ado. O provider ainda sintetiza `<skip_summary reason="all_events_private"/>` quando o privacy-stripping esvazia o batch (`ClaudeObservationProvider.ts:61`) para não cobrar a API.
 
-**Proposta:** adicionar uma seção "skip guidance" ao prompt do `src/services/extractMemories/`. ~10 linhas. Instruir explicitamente: não extrair memória de tarefas de rotina, comandos triviais bem-sucedidos, navegação exploratória sem conclusão. Custo zero, ganho imediato em ruído.
+**Proposta:** adicionar uma seção "skip guidance" ao prompt do `src/memory/extract/`. ~10 linhas. Instruir explicitamente: não extrair memória de tarefas de rotina, comandos triviais bem-sucedidos, navegação exploratória sem conclusão. Custo zero, ganho imediato em ruído.
 
 ## Técnica 3 — Output estruturado de verdade (fazer melhor que o claude-mem)
 
@@ -80,10 +80,10 @@ Alinha com a regra do projeto "fallback pattern — nunca bloquear o usuário" (
 
 | Técnica | Esforço | Risco | Onde mexer |
 |---|---|---|---|
-| Skip-routine no prompt | ~10 linhas | Nenhum | `src/services/extractMemories/` (prompt) |
+| Skip-routine no prompt | ~10 linhas | Nenhum | `src/memory/extract/` (prompt) |
 | Campo `concept` enum | schema bump | Baixo (retroativo via regex) | frontmatter de memória + extractor |
-| `tool_choice` estruturado | ~80 linhas | Médio (testar cada provider) | `src/services/extractMemories/` + `test:provider` |
-| Política discard+ack | ~15 linhas | Nenhum | `src/services/extractMemories/` (error path) |
+| `tool_choice` estruturado | ~80 linhas | Médio (testar cada provider) | `src/memory/extract/` + `test:provider` |
+| Política discard+ack | ~15 linhas | Nenhum | `src/memory/extract/` (error path) |
 
 ## Antipadrão — NÃO copiar
 

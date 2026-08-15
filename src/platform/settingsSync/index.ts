@@ -24,7 +24,7 @@ import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
 } from 'src/providers/auth/auth.js'
-import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
+import { clearMemoryFileCaches } from 'src/memory/instructions/claudemd.js'
 import { getMemoryPath } from 'src/platform/config/config.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { classifyAxiosError } from 'src/shared/errors.js'

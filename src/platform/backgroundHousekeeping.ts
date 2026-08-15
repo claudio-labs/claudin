@@ -1,11 +1,11 @@
 import { feature } from 'bun:bundle'
-import { initAutoDream } from 'src/services/autoDream/autoDream.js'
+import { initAutoDream } from 'src/memory/autoDream/autoDream.js'
 import { initMagicDocs } from 'src/platform/MagicDocs/magicDocs.js'
 import { initSkillImprovement } from 'src/platform/lifecycleHooks/skillImprovement.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const extractMemoriesModule = feature('EXTRACT_MEMORIES')
-  ? (require('src/services/extractMemories/extractMemories.js') as typeof import('src/services/extractMemories/extractMemories.js'))
+  ? (require('src/memory/extract/extractMemories.js') as typeof import('src/memory/extract/extractMemories.js'))
   : null
 const registerProtocolModule = feature('LODESTONE')
   ? (require('src/platform/deepLink/registerProtocol.js') as typeof import('src/platform/deepLink/registerProtocol.js'))

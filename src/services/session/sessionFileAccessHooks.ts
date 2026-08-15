@@ -26,17 +26,17 @@ import {
   detectSessionPatternType,
   isAutoMemFile,
   memoryScopeForPath,
-} from 'src/memdir/memoryFileDetection.js'
+} from 'src/memory/memdir/memoryFileDetection.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemPaths = feature('TEAMMEM')
-  ? (require('src/memdir/teamMemPaths.js') as typeof import('src/memdir/teamMemPaths.js'))
+  ? (require('src/memory/memdir/teamMemPaths.js') as typeof import('src/memory/memdir/teamMemPaths.js'))
   : null
 const teamMemWatcher = feature('TEAMMEM')
-  ? (require('src/services/teamMemorySync/watcher.js') as typeof import('src/services/teamMemorySync/watcher.js'))
+  ? (require('src/memory/teamSync/watcher.js') as typeof import('src/memory/teamSync/watcher.js'))
   : null
 const memoryShapeTelemetry = feature('MEMORY_SHAPE_TELEMETRY')
-  ? (require('../../memdir/memoryShapeTelemetry.js') as typeof import('../../memdir/memoryShapeTelemetry.js'))
+  ? (require('../../memory/memdir/memoryShapeTelemetry.js') as typeof import('../../memory/memdir/memoryShapeTelemetry.js'))
   : null
 
 /* eslint-enable @typescript-eslint/no-require-imports */

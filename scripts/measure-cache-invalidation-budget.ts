@@ -50,7 +50,7 @@ import { getBytesPerTokenForModel } from '../src/shared/tokenEstimation.js'
 import { enableConfigs } from '../src/platform/config/config.js'
 import { measureToolSchemas } from './measure-tool-schemas.ts'
 import { getSystemPrompt, computeSimpleEnvInfo } from '../src/constants/prompts.js'
-import { loadMemoryPrompt } from '../src/memdir/memdir.js'
+import { loadMemoryPrompt } from '../src/memory/memdir/memdir.js'
 import { getAllBaseTools } from '../src/tools.js'
 
 type Engine = 'anthropic' | 'openai' | 'codex'

@@ -1,5 +1,5 @@
 import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
-import { getAutoMemPath } from 'src/memdir/paths.js'
+import { getAutoMemPath } from 'src/memory/memdir/paths.js'
 import type { LocalJSXCommandOnDone } from 'src/types/command.js'
 import { parseMemorySubcommand, runMemoryTidy } from 'src/commands/memory/tidy.js'
 

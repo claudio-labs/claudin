@@ -204,7 +204,7 @@ when A executes first, regardless of `--max-concurrency=1`.
   `toEqual([...])` over everything the analytics mock captured passes only while
   no other module happens to log inside that window — and several log
   fire-and-forget from a promise the file that started them never awaited
-  (`logMemoryDirCounts` in `src/memdir/memdir.ts` is the one that has bitten:
+  (`logMemoryDirCounts` in `src/memory/memdir/memdir.ts` is the one that has bitten:
   its `readdir` callback lands in whichever file is running when it resolves).
   Nothing about the victim file has to change for it to start failing; adding
   tests anywhere upstream is enough to move the timing. Select the events you

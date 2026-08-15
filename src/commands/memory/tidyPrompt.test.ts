@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   MAX_ENTRYPOINT_BYTES,
   MAX_ENTRYPOINT_LINES,
-} from 'src/memdir/memdir.js'
+} from 'src/memory/memdir/memdir.js'
 import { buildMemoryTidyPrompt } from 'src/commands/memory/tidyPrompt.js'
 
 const PRIVATE_ROOT = '/repo/.claudin/memory'

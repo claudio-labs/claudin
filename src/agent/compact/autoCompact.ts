@@ -16,7 +16,7 @@ import { tokenCountWithEstimation } from 'src/agent/context/tokens.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getMaxOutputTokensForModel } from 'src/providers/shims/claude.js'
 import { notifyCompaction } from 'src/providers/cache/promptCacheBreakDetection.js'
-import { setLastSummarizedMessageId } from 'src/services/SessionMemory/sessionMemoryUtils.js'
+import { setLastSummarizedMessageId } from 'src/memory/session/sessionMemoryUtils.js'
 import {
   buildPostCompactMessages,
   type CompactionResult,

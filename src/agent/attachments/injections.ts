@@ -51,7 +51,7 @@ import {
   isMcpInstructionsDeltaEnabled,
 } from 'src/services/mcp/mcpInstructionsDelta.js'
 import type { MCPServerConnection } from 'src/services/mcp/types.js'
-import { getClaudeMdDelta } from 'src/services/instructions/claudeMdDelta.js'
+import { getClaudeMdDelta } from 'src/memory/instructions/claudeMdDelta.js'
 import { getGitStatusDelta } from 'src/vcs/git/gitStatusDelta.js'
 import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import {
@@ -261,7 +261,7 @@ export function getMcpInstructionsDeltaAttachment(
 /**
  * CLAUDE.md delta attachment — emits only the current CLAUDE.md body
  * if it changed since the last turn, or nothing on a no-op.
- * See src/services/instructions/claudeMdDelta.ts for the diff logic.
+ * See src/memory/instructions/claudeMdDelta.ts for the diff logic.
  */
 export async function getClaudeMdDeltaAttachment(
   messages: Message[] | undefined,

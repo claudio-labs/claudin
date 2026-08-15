@@ -14,7 +14,7 @@ import {
   getManagedAndUserConditionalRules,
   getMemoryFilesForNestedDirectory,
   getConditionalRulesForCwdLevelDirectory,
-} from 'src/services/instructions/claudemd.js'
+} from 'src/memory/instructions/claudemd.js'
 import {
   hasInstructionsLoadedHook,
   executeInstructionsLoadedHooks,
@@ -27,9 +27,9 @@ import { isAbortError } from 'src/shared/errors.js'
 import { createChildAbortController } from 'src/shared/abortController.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { findRelevantMemories } from 'src/memdir/findRelevantMemories.js'
-import { memoryAge, memoryFreshnessText } from 'src/memdir/memoryAge.js'
-import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memdir/paths.js'
+import { findRelevantMemories } from 'src/memory/memdir/findRelevantMemories.js'
+import { memoryAge, memoryFreshnessText } from 'src/memory/memdir/memoryAge.js'
+import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
 import { getAgentMemoryDir } from 'src/tools/AgentTool/agentMemory.js'
 import { extractAgentMentions } from 'src/agent/attachments/mentions.js'
 import { readFileInRange } from 'src/shared/fs/readFileInRange.js'

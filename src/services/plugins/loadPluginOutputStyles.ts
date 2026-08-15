@@ -8,7 +8,7 @@ import {
   parseFrontmatter,
 } from 'src/shared/frontmatterParser.js'
 import { getFsImplementation, isDuplicatePath } from 'src/shared/fs/fsOperations.js'
-import { extractDescriptionFromMarkdown } from 'src/services/instructions/markdownConfigLoader.js'
+import { extractDescriptionFromMarkdown } from 'src/memory/instructions/markdownConfigLoader.js'
 import { loadAllPluginsCacheOnly } from 'src/services/plugins/pluginLoader.js'
 import { walkPluginMarkdown } from 'src/services/plugins/walkPluginMarkdown.js'
 

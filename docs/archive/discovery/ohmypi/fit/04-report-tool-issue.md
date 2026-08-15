@@ -47,7 +47,7 @@ mexer no contrato de `Tool.ts`.
 
 ### Prompt do agente
 
-Ponto de injeção: `src/services/extractMemories/prompts.ts` é prompt
+Ponto de injeção: `src/memory/extract/prompts.ts` é prompt
 de subagente extractor, não serve. O system prompt do agente principal
 está montado em outro lugar (não tocou nesta análise, mas é onde uma
 seção `<reporting-tool-issues>` ~3 linhas deveria entrar — análoga ao
@@ -55,7 +55,7 @@ seção `<reporting-tool-issues>` ~3 linhas deveria entrar — análoga ao
 
 ### Por que JSONL, não memory
 
-`src/memdir/memoryTypes.ts:14-19` define **4 tipos** de memory:
+`src/memory/memdir/memoryTypes.ts:14-19` define **4 tipos** de memory:
 `user | feedback | project | reference`. Relatos de tool issue
 **não se encaixam** em nenhum:
 
@@ -210,7 +210,7 @@ Em tese poderia ser ensinado a extrair tool issues, mas:
 Cobre debug do componente, não agregação cross-session indexada por
 tool name. Dev teria que `grep` em STDERR de N sessões. Inferior.
 
-### `src/services/extractMemories/`
+### `src/memory/extract/`
 
 Conforme acima, não cobre direção agent→tool feedback.
 

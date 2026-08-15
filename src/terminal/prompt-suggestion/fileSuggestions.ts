@@ -4,7 +4,7 @@ import * as path from 'path'
 import {
   CLAUDE_CONFIG_DIRECTORIES,
   loadMarkdownFilesForSubdir,
-} from 'src/services/instructions/markdownConfigLoader.js'
+} from 'src/memory/instructions/markdownConfigLoader.js'
 import type { SuggestionItem } from 'src/terminal/prompt-input/PromptInputFooterSuggestions.js'
 import {
   CHUNK_MS,

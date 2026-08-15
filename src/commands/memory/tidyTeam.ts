@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import { getTeamMemPath, isTeamMemoryEnabled } from 'src/memdir/teamMemPaths.js'
+import { getTeamMemPath, isTeamMemoryEnabled } from 'src/memory/memdir/teamMemPaths.js'
 
 /**
  * Resolves the team memory dir for a `/memory tidy` run, or null when team

@@ -3,7 +3,7 @@
 // Shift+Down dialog. The dream agent itself is unchanged — this is pure UI
 // surfacing via the existing task registry.
 
-import { rollbackConsolidationLock } from 'src/services/autoDream/consolidationLock.js'
+import { rollbackConsolidationLock } from 'src/memory/autoDream/consolidationLock.js'
 import type { SetAppState, Task, TaskStateBase } from 'src/agent/Task.js'
 import { createTaskStateBase, generateTaskId } from 'src/agent/Task.js'
 import { registerTask, updateTaskState } from 'src/agent/tasks/framework.js'

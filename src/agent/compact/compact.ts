@@ -59,7 +59,7 @@ import {
   executePreCompactHooks,
 } from 'src/platform/lifecycleHooks/hooks.js'
 import { logError } from 'src/shared/log.js'
-import { MEMORY_TYPE_VALUES } from 'src/memdir/types.js'
+import { MEMORY_TYPE_VALUES } from 'src/memory/memdir/types.js'
 import {
   createCompactBoundaryMessage,
   createUserMessage,
@@ -71,7 +71,7 @@ import {
 } from 'src/agent/messages/messages.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { getPlan, getPlanFilePath } from 'src/agent/plans/plans.js'
-import { getProjectInstructionFilePaths } from 'src/services/instructions/projectInstructions.js'
+import { getProjectInstructionFilePaths } from 'src/memory/instructions/projectInstructions.js'
 import {
   isSessionActivityTrackingActive,
   sendSessionActivitySignal,

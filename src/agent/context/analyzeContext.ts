@@ -48,7 +48,7 @@ import type {
   UserMessage,
 } from 'src/types/message.js'
 import { toolToAPISchema } from 'src/providers/transport/api.js'
-import { filterInjectedMemoryFiles, getMemoryFiles } from 'src/services/instructions/claudemd.js'
+import { filterInjectedMemoryFiles, getMemoryFiles } from 'src/memory/instructions/claudemd.js'
 import { getContextWindowForModel } from 'src/agent/context/context.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'

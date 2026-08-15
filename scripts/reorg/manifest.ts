@@ -931,7 +931,7 @@ export const GROUPS: readonly Group[] = [
   },
 
   {
-    // Auto-memory, end to end. `src/memdir/` was already the only vertical slice
+    // Auto-memory, end to end. `src/memory/memdir/` was already the only vertical slice
     // in the tree; this gives it the extraction, session and team halves.
     name: 'memory',
     dirs: [

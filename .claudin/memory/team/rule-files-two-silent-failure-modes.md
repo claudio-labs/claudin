@@ -8,7 +8,7 @@ Rule files are injected into context with **no validation of any kind** — no z
 schema on the frontmatter, no glob check, no existence check on cited paths.
 Two failure modes follow, and neither produces any runtime signal.
 
-**Class A — inert.** `parseFrontmatterPaths` (`src/services/instructions/claudemd.ts`) hands
+**Class A — inert.** `parseFrontmatterPaths` (`src/memory/instructions/claudemd.ts`) hands
 patterns to `ignore().add(...)` — the *gitignore* library, not a glob matcher.
 It accepts nearly any string, so a `paths:` matching no file leaves the rule
 permanently unloaded and indistinguishable from a working one.
@@ -22,7 +22,7 @@ frontmatter key turns a scoped rule into a permanent context tax, invisibly.
 **Why:** the only telemetry on that path is
 `tengu_claude_rules_md_permission_error`, EACCES only.
 
-**How to apply:** three surfaces now exist, all over `src/services/instructions/rulesLint.ts` —
+**How to apply:** three surfaces now exist, all over `src/memory/instructions/rulesLint.ts` —
 `bun run verify:rules` (CI + `/pre-pr`, hard-fails both classes), a `/doctor`
 line under "Context Usage Warnings", and `/refresh-rules` for the semantic half
 no checker can see. Two things learned building it, worth keeping:
@@ -42,7 +42,7 @@ no checker can see. Two things learned building it, worth keeping:
   `mock.module` that specifier for the whole `bun test` run, and it drags in the
   analytics graph, which makes any module importing it unusable from
   `scripts/`). That last point is why rule-frontmatter parsing lives in the leaf
-  module `src/services/instructions/ruleFrontmatter.ts` rather than in `claudemd.ts`.
+  module `src/memory/instructions/ruleFrontmatter.ts` rather than in `claudemd.ts`.
 
 See [[repo-map-rejected-orientation-measured]] for why upkeep was built instead
 of an index generator.

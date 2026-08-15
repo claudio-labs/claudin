@@ -22,7 +22,7 @@ import { getFsImplementation, isDuplicatePath } from 'src/shared/fs/fsOperations
 import {
   extractDescriptionFromMarkdown,
   parseSlashCommandToolsFromFrontmatter,
-} from 'src/services/instructions/markdownConfigLoader.js'
+} from 'src/memory/instructions/markdownConfigLoader.js'
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
 import { executeShellCommandsInPrompt } from 'src/shared/proc/promptShellExecution.js'
 import { loadAllPluginsCacheOnly } from 'src/services/plugins/pluginLoader.js'

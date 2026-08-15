@@ -53,7 +53,7 @@ import {
   loadMarkdownFilesForSubdir,
   type MarkdownFile,
   parseSlashCommandToolsFromFrontmatter,
-} from 'src/services/instructions/markdownConfigLoader.js'
+} from 'src/memory/instructions/markdownConfigLoader.js'
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
 import { executeShellCommandsInPrompt } from 'src/shared/proc/promptShellExecution.js'
 import type { SettingSource } from 'src/platform/settings/constants.js'

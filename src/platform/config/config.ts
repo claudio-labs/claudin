@@ -4,7 +4,7 @@ import { unwatchFile, watchFile } from 'fs'
 import pickBy from 'lodash-es/pickBy.js'
 import { basename, dirname, join, resolve } from 'path'
 import { getOriginalCwd, getSessionTrustAccepted } from 'src/platform/bootstrap/state.js'
-import { getAutoMemEntrypoint } from 'src/memdir/paths.js'
+import { getAutoMemEntrypoint } from 'src/memory/memdir/paths.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import type { McpServerConfig } from 'src/services/mcp/types.js'
 import type {
@@ -25,7 +25,7 @@ import { safeParseJSON } from 'src/shared/data/json.js'
 import { stripBOM } from 'src/shared/data/jsonRead.js'
 import * as lockfile from 'src/shared/fs/lockfile.js'
 import { logError } from 'src/shared/log.js'
-import type { MemoryType } from 'src/memdir/types.js'
+import type { MemoryType } from 'src/memory/memdir/types.js'
 import { normalizePathForConfigKey } from 'src/shared/fs/path.js'
 import {
   getEssentialTrafficOnlyReason,
@@ -33,11 +33,11 @@ import {
 } from 'src/platform/config/privacyLevel.js'
 import { getManagedFilePath } from 'src/platform/settings/managedPath.js'
 import type { ThemeSetting } from 'src/terminal/theme/theme.js'
-import { PRIMARY_PROJECT_INSTRUCTION_FILE } from 'src/services/instructions/projectInstructions.js'
+import { PRIMARY_PROJECT_INSTRUCTION_FILE } from 'src/memory/instructions/projectInstructions.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemPaths = feature('TEAMMEM')
-  ? (require('src/memdir/teamMemPaths.js') as typeof import('src/memdir/teamMemPaths.js'))
+  ? (require('src/memory/memdir/teamMemPaths.js') as typeof import('src/memory/memdir/teamMemPaths.js'))
   : null
 const ccrAutoConnect = feature('CCR_AUTO_CONNECT')
   ? (require('src/platform/bridge/bridgeEnabled.js') as typeof import('src/platform/bridge/bridgeEnabled.js'))

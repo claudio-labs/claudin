@@ -5,7 +5,7 @@
  * Rules under `.claudin/rules/` (and AGENTS.md) are injected into context with
  * no validation, so a rule can be silently inert or silently unconditional and
  * look identical to a working one at runtime. This is the CI gate over
- * src/services/instructions/rulesLint.ts; `/doctor` and `/refresh-rules` are the surfaces users
+ * src/memory/instructions/rulesLint.ts; `/doctor` and `/refresh-rules` are the surfaces users
  * get, since a `scripts/` file only ever runs in this repo.
  *
  *   bun run scripts/rules-check.ts            # report + exit non-zero on error
@@ -17,7 +17,7 @@ import {
   lintRuleFiles,
   relativeFindingPath,
   type RuleLintFinding,
-} from '../src/services/instructions/rulesLint.js'
+} from '../src/memory/instructions/rulesLint.js'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const QUIET = process.argv.includes('--quiet')

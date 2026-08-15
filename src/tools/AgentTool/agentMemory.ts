@@ -3,8 +3,8 @@ import { getProjectRoot } from 'src/platform/bootstrap/state.js'
 import {
   buildMemoryPrompt,
   ensureMemoryDirExists,
-} from 'src/memdir/memdir.js'
-import { getMemoryBaseDir } from 'src/memdir/paths.js'
+} from 'src/memory/memdir/memdir.js'
+import { getMemoryBaseDir } from 'src/memory/memdir/paths.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { findCanonicalGitRoot } from 'src/vcs/git/git.js'
 import { sanitizePath } from 'src/shared/fs/path.js'

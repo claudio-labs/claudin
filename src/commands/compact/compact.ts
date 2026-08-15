@@ -18,7 +18,7 @@ import { suppressCompactWarning } from 'src/agent/compact/compactWarningState.js
 import { microcompactMessages } from 'src/agent/compact/microCompact.js'
 import { runPostCompactCleanup } from 'src/agent/compact/postCompactCleanup.js'
 import { trySessionMemoryCompaction } from 'src/agent/compact/sessionMemoryCompact.js'
-import { setLastSummarizedMessageId } from 'src/services/SessionMemory/sessionMemoryUtils.js'
+import { setLastSummarizedMessageId } from 'src/memory/session/sessionMemoryUtils.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { LocalCommandCall } from 'src/types/command.js'
 import type { Message } from 'src/types/message.js'

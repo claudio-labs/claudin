@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { type ReactNode } from 'react';
-import { isAutoMemoryEnabled } from 'src/memdir/paths.js';
+import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js';
 import type { Tools } from 'src/Tool.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { WizardProvider } from 'src/terminal/wizard/index.js';

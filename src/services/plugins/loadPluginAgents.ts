@@ -1,6 +1,6 @@
 import memoize from 'lodash-es/memoize.js'
 import { basename } from 'path'
-import { isAutoMemoryEnabled } from 'src/memdir/paths.js'
+import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
 import {
   type AgentMemoryScope,
@@ -22,7 +22,7 @@ import { getFsImplementation, isDuplicatePath } from 'src/shared/fs/fsOperations
 import {
   parseAgentToolsFromFrontmatter,
   parseSlashCommandToolsFromFrontmatter,
-} from 'src/services/instructions/markdownConfigLoader.js'
+} from 'src/memory/instructions/markdownConfigLoader.js'
 import { loadAllPluginsCacheOnly } from 'src/services/plugins/pluginLoader.js'
 import {
   loadPluginOptions,

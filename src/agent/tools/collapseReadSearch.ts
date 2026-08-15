@@ -38,12 +38,12 @@ import {
   isAutoManagedMemoryPattern,
   isMemoryDirectory,
   isShellCommandTargetingMemory,
-} from 'src/memdir/memoryFileDetection.js'
+} from 'src/memory/memdir/memoryFileDetection.js'
 import { expandPath } from 'src/shared/fs/path.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemOps = feature('TEAMMEM')
-  ? (require('src/memdir/teamMemoryOps.js') as typeof import('src/memdir/teamMemoryOps.js'))
+  ? (require('src/memory/memdir/teamMemoryOps.js') as typeof import('src/memory/memdir/teamMemoryOps.js'))
   : null
 const SNIP_TOOL_NAME = feature('HISTORY_SNIP')
   ? (
