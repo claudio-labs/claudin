@@ -115,22 +115,46 @@ function checkAutoModeClassifierPrompts(): void {
 // Match feature('FLAG') calls, including multi-line: feature(\n  'FLAG',\n)
 const featureCallRe = /\bfeature\(\s*['"](\w+)['"][,\s]*\)/gs
 const featureImportRe = /import\s*\{[^}]*\bfeature\b[^}]*\}\s*from\s*['"]bun:bundle['"];?\s*\n?/g
+
+// Zero out upstream's `tengu_*` analytics vocabulary. Telemetry is already a
+// no-op (noTelemetryPlugin stubs logEvent/logEventAsync to empty functions),
+// but the ~1000 event-name literals survive minification as arguments and are
+// the single loudest upstream fingerprint left in the bundle.
+//
+// Scope is deliberately narrow: ONLY the first argument of logEvent /
+// logEventAsync. A `tengu_*` string passed to checkGate*/getFeatureValue*/
+// getDynamicConfig* is a feature-gate KEY, not an event name — blanking one
+// would silently change which default a gate resolves to. Names reached
+// through a variable are left alone for the same reason: the regex cannot
+// tell an event constant from a gate constant.
+//
+// Backticks are in the quote class because five call sites use a template
+// literal with no interpolation (`tengu_run_hook`); \2 pins the closing quote
+// to the opening one so a mixed pair never matches.
+const tenguEventNameRe = /\b(logEvent(?:Async)?)\(\s*(['"`])tengu_[A-Za-z0-9_]*\2/g
 const modifiedFiles = new Map<string, string>() // path → original content
 
-function preProcessFeatureFlags(dir: string) {
+function preProcessSources(dir: string) {
   for (const ent of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, ent.name)
-    if (ent.isDirectory()) { preProcessFeatureFlags(full); continue }
+    if (ent.isDirectory()) { preProcessSources(full); continue }
     if (!/\.(ts|tsx)$/.test(ent.name)) continue
 
     const raw = readFileSync(full, 'utf-8')
-    if (!raw.includes('feature(')) continue
+    const hasFeature = raw.includes('feature(')
+    const hasTenguEvent = raw.includes('tengu_')
+    if (!hasFeature && !hasTenguEvent) continue
 
     let contents = raw
-    contents = contents.replace(featureImportRe, '')
-    contents = contents.replace(featureCallRe, (_match, name) =>
-      String((featureFlags as Record<string, boolean>)[name] ?? false),
-    )
+    if (hasFeature) {
+      contents = contents.replace(featureImportRe, '')
+      contents = contents.replace(featureCallRe, (_match, name) =>
+        String((featureFlags as Record<string, boolean>)[name] ?? false),
+      )
+    }
+    if (hasTenguEvent) {
+      contents = contents.replace(tenguEventNameRe, (_m, fn) => `${fn}(''`)
+    }
 
     if (contents !== raw) {
       modifiedFiles.set(full, raw)
@@ -205,7 +229,7 @@ const compileOutfile = join(
   isWindowsTarget ? 'claudin.exe' : 'claudin',
 )
 
-preProcessFeatureFlags(join(import.meta.dir, '..', 'src'))
+preProcessSources(join(import.meta.dir, '..', 'src'))
 const numModified = modifiedFiles.size
 
 // Restore source files on abrupt termination (Ctrl+C, kill, etc.)
@@ -337,7 +361,7 @@ export async function handleBgFlag() { throw new Error("Background sessions are 
         ] as const)
 
         // bun:bundle feature() replacement is handled by the source
-        // pre-processing step above (see preProcessFeatureFlags).
+        // pre-processing step above (see preProcessSources).
         // The previous onResolve/onLoad shim was ineffective in Bun
         // v1.3.9+ because the bun: namespace is resolved natively
         // before the JS plugin phase runs.
@@ -891,5 +915,5 @@ if (!result.success) {
 } finally {
   // Always restore source files, even if Bun.build() throws
   restoreModifiedFiles()
-  console.log(`  🔄 feature-flags: pre-processed ${numModified} files (restored)`)
+  console.log(`  🔄 source pre-processing: ${numModified} files (restored)`)
 }
