@@ -16,6 +16,10 @@ export { MEMO_LIMIT }
  * moves behaviour is a refusal that names the alternative. BashTool's
  * validateInput declines a bare build command once and points here.
  *
+ * What the refusal says is only what to CALL. Why the tool is worth calling
+ * belongs upstream of any command, in BashTool's own "Prefer:" list — a model
+ * that has read the description already knows before it reaches this file.
+ *
  * Disable with `CLAUDIN_DISABLE_BUILD_REDIRECT=1` (read at the BashTool call
  * site, alongside the sibling redirects).
  *
@@ -30,9 +34,12 @@ export { MEMO_LIMIT }
  * to save nothing. cargo, gradle, maven, msbuild, cmake, make and sbt are the
  * ones that print hundreds of lines around the handful that matter.
  *
- * And one hard exclusion: a command that also RUNS, INSTALLS, PUBLISHES or
- * DEPLOYS is never refused. Those are side effects the caller wants and the
- * tool's detected target would not reproduce.
+ * And two hard exclusions. A command that also RUNS, INSTALLS, PUBLISHES or
+ * DEPLOYS is never refused — those are side effects the caller wants and the
+ * tool's detected target would not reproduce. Neither is one whose TARGET is
+ * not a build: the make, gradle, mvn and sbt entries below accept any target,
+ * so `make lint`, `./gradlew lint` and `mvn checkstyle:check` were all being
+ * refused and their linter output handed to the compiler diagnostic parsers.
  *
  * ONE-SHOT per command: re-sending the identical command runs it. Without that
  * escape there would be no way to get the raw build log at all.
@@ -78,6 +85,23 @@ const SIDE_EFFECT_RE =
   /(?<![-\w])(?:install|publish|deploy|release|run|serve|start|clean|uninstall)\b/
 
 /**
+ * Targets that are not a build, for the entries that accept any target. Same
+ * lookbehind as above, and for the same reason: as a FLAG these words are
+ * build options (`--check`, `--tests`), and only as a bare argument are they a
+ * different job.
+ *
+ * `test` is here rather than in the RunTests lane on purpose — that lane's
+ * head regex has no `make` token and its framework detection has nothing to
+ * say about an arbitrary Makefile target, so `make test` runs in Bash.
+ *
+ * The word boundary is what limits this: a camelCase Gradle/sbt task
+ * (`lintDebug`, `ktlintCheck`, `scalafmtCheck`) is still refused, since
+ * `lint` followed by `D` closes no boundary.
+ */
+const NON_BUILD_TARGET_RE =
+  /(?<![-\w])(?:lint|fmt|format|check|docs?|help|bench|coverage|tests?)\b/
+
+/**
  * A command must MATCH one of these to be redirected — an allowlist, not a
  * heuristic, because the cost of a wrong refusal is much higher than the cost
  * of missing one redirect.
@@ -109,6 +133,7 @@ export function parseRedirectableBuild(command: string): RedirectableBuild | nul
   if (hasShellComposition(cmd)) return null
   if (OPT_OUT_FLAG_RE.test(cmd)) return null
   if (SIDE_EFFECT_RE.test(cmd)) return null
+  if (NON_BUILD_TARGET_RE.test(cmd)) return null
   if (!REDIRECTABLE_RES.some(re => re.test(cmd))) return null
   return directory === undefined ? { command: cmd } : { command: cmd, directory }
 }
@@ -142,8 +167,7 @@ export function renderBuildRedirect(command: string): string {
       ? `pass command: ${JSON.stringify(parsed?.command ?? core)} to run this exact one`
       : `pass directory: ${JSON.stringify(parsed.directory)} and command: ${JSON.stringify(parsed.command)} — it builds there, so you do not need the \`cd\``
   return [
-    `Blocked: \`${cmd}\` builds the project, and ${BUILD_TOOL_NAME} is available.`,
-    `Call ${BUILD_TOOL_NAME} instead — it runs the same build and reports the diagnostics with file:line and a source excerpt, plus the "what went wrong" block for a failure that has no file:line, instead of the hundreds of progress lines around them.`,
+    `Blocked: \`${cmd}\` builds the project — call ${BUILD_TOOL_NAME} instead.`,
     `With no arguments it runs the build it detects here; ${call}.`,
     ...(core === cmd
       ? []

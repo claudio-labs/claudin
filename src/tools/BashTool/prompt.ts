@@ -13,6 +13,7 @@ import {
   getMaxBashTimeoutMs,
 } from 'src/shared/timeouts.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
+import { BUILD_TOOL_NAME } from 'src/tools/BuildTool/prompt.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
@@ -21,6 +22,7 @@ import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
 import { TodoWriteTool } from 'src/tools/TodoWriteTool/TodoWriteTool.js'
+import { TYPECHECK_TOOL_NAME } from 'src/tools/TypecheckTool/prompt.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 
 export function getDefaultTimeoutMs(): number {
@@ -253,6 +255,8 @@ export function getSimplePrompt(leanOverride?: boolean): string {
     `Edit files: Use ${FILE_EDIT_TOOL_NAME} (NOT sed/awk)`,
     `Write files: Use ${FILE_WRITE_TOOL_NAME} (NOT echo >/cat <<EOF)`,
     `Run tests: Use ${RUN_TESTS_TOOL_NAME} (NOT npm test/pytest/go test)`,
+    `Build the project: Use ${BUILD_TOOL_NAME} (NOT make/cargo build/gradle)`,
+    `Type-check: Use ${TYPECHECK_TOOL_NAME} (NOT tsc --noEmit/cargo check/mypy)`,
     `git and gh: Use ${GIT_TOOL_NAME}, several commands per call (NOT one shell call each)`,
     'Communication: Output text directly (NOT echo/printf)',
   ]
