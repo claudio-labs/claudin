@@ -40,7 +40,7 @@ bun run build               # bundle src/platform/entrypoints/cli.tsx → dist/c
 bun run dev                 # build + node dist/cli.mjs
 bun run smoke               # build + --version sanity check
 bun run typecheck           # tsc --noEmit
-bun test                    # full Bun test runner suite (~198 test files)
+bun test                    # full Bun test runner suite (~605 test files)
 bun test path/to/file.test.ts  # focused single-file test
 bun run verify:privacy      # scan dist/cli.mjs for banned phone-home patterns
 ```
@@ -60,21 +60,28 @@ Implication: if a user reports a just-built feature "doesn't show up", check whi
 
 ## Architecture
 
-Single entrypoint, single-file bundle: `src/platform/entrypoints/cli.tsx` → `dist/cli.mjs`, launched by `bin/claudin`. The [search-strategy.md](.claudin/rules/search-strategy.md) rule has the full navigable module map; the high-level shape:
+Single entrypoint, single-file bundle: `src/platform/entrypoints/cli.tsx` → `dist/cli.mjs`, launched by `bin/claudin`. The [search-strategy.md](.claudin/rules/search-strategy.md) rule has the full navigable module map.
+
+Every directory under `src/` is a **feature slice** that owns its own logic, UI and tests: `agent/` (the loop, its prompts, its REPL, its tasks), `providers/`, `tools/`, `commands/`, `permissions/`, `mcp/`, `sessions/`, `memory/`, `vcs/`, `plugins/`, `skills/`, plus `platform/` (the host — process, config, settings, OS integration) and `terminal/` (the TUI shell). `shared/` is for primitives with no owner, grouped into `data/` `fs/` `proc/` `text/` `constants/` `types/`; a subsystem appearing there is a bug.
+
+That replaced seven catch-all directories — `components/`, `services/`, `utils/`, `screens/`, `constants/`, `hooks/`, `types/` — which had grown by accretion because "where does this go?" had no answer, and which once forced `/diff` to reach across eleven top-level dirs. `src/__tests__/moduleBoundaries.test.ts` fails if any of them comes back; the fix when it does is to put the file in the slice that owns it, not to re-open the bucket. `scripts/reorg/manifest.ts` records every destination and why, and `git log --follow` works across the move (each group was committed as pure renames).
+
+Two name collisions the old layout had are now resolved by position rather than by convention: the Claude Code lifecycle hooks (`PreToolUse`, …) are `src/platform/lifecycleHooks/` while React hooks sit in each slice's own `hooks/`, and context-window/token accounting is `src/agent/context/` while the React providers are `src/terminal/contexts/` — with `src/agent/context.ts` (singular) being a third thing again, the memoized system-prompt context blocks.
+
+The high-level shape:
 
 - `src/platform/entrypoints/cli.tsx` — process entrypoint. Fast-paths `--version`, then dynamically imports the rest (cold paths don't pay full module-eval cost).
 - `src/agent/QueryEngine.ts` + `src/agent/query.ts` — the agent loop: model drive, tool dispatch, streaming SDK messages (`src/platform/entrypoints/agentSdkTypes.ts`), usage, compaction/permission/coordination.
 - `src/tools/Tool.ts` — central tool type system (`Tool`, `ToolUseContext`, `buildTool`). Tools live under `src/tools/<Name>/` (zod schema + prompt + execute); the registry is built dynamically per context.
-- `src/services/api/` — provider abstraction. `client.ts` builds the right SDK from `activeProvider.ts`; `openaiShim.ts` (~2.2k lines) translates to OpenAI Chat Completions; `codexShim.ts` is ChatGPT OAuth; `providerConfig.ts` holds presets/profile schema/OAuth; `withRetry.ts`/`errors.ts` do retry + error classification.
+- `src/providers/` — provider abstraction. `transport/client.ts` builds the right SDK from `presets/activeProvider.ts`; `shims/openaiShim.ts` (~2.2k lines) translates to OpenAI Chat Completions; `shims/codexShim.ts` is ChatGPT OAuth; `presets/providerConfig.ts` holds presets/profile schema; `oauth/` holds the per-provider credential stores; `transport/withRetry.ts`/`errors.ts` do retry + error classification; `model/` and `effort/` resolve which model and reasoning level a request runs at.
 - `src/commands/` — slash commands (`/provider`, `/review`, `/plan`, `/resume`, `/mcp`, `/skills`, …), discovered via `src/commands/commands.ts`.
-- `src/tools/` — built-in tools: file IO, search (`GrepTool`/`GlobTool`), shell (`BashTool`), version control (`GitTool`), agents/tasks, MCP, planning, web, workflow, worktree.
+- `src/tools/` — built-in tools: file IO, search (`GrepTool`/`GlobTool`), shell (`BashTool`), version control (`GitTool`), agents/tasks, MCP, planning, web, workflow, worktree. `shared/` holds what more than one tool needs — the Bash output filter, the Build/Typecheck diagnostic parsers, `codeOutline/`.
 - `src/mcp/` — MCP client + server connection management; `src/mcp/mcpServerApproval.tsx` is the trust dialog.
 - `src/agent/coordinator/` — multi-agent coordinator (active when `COORDINATOR_MODE` is on).
-- `src/components/` + `src/screens/` + `src/terminal/ink/` — Ink React TUI; `src/platform/main.tsx` mounts, `src/agent/repl/REPL.tsx` is the main loop; `src/native-ts/yoga-layout` avoids a native-addon dep.
+- `src/terminal/` + each slice's own `ui/` — Ink React TUI. `src/terminal/` is the shell (the forked renderer in `ink/`, the input box, keybindings, theme); the components that render a feature live with that feature — `src/agent/ui/` for the loop, `src/permissions/ui/` for permission dialogs, `src/providers/ui/` for `/provider`. `src/platform/main.tsx` mounts, `src/agent/repl/REPL.tsx` is the main loop; `src/native-ts/yoga-layout` avoids a native-addon dep.
 - `src/memory/memdir/`, `src/memory/extract/`, `src/memory/session/` — auto-memory: for git projects defaults to project-local `<repo>/.claudin/memory/`, `.md` files indexed by `MEMORY.md`. `memory/team/` is meant to be git-tracked (carve it out of `.gitignore`, which blanket-ignores `.claudin/`); private `memory/*.md` stays ignored.
 - `src/skills/` — skills (`/<skill-name>`); bundled ones in `src/skills/bundled/`, `/create` authors new skills/rules/agents in the `.claudin/` structure.
 - `src/platform/config/claudinMigration.ts` + `claudinStartupMigrations.ts` — one-time migration of legacy `~/.claude/` into `~/.claudin/`; rerunnable via `/provider migrate`; override the config dir with `CLAUDIN_CONFIG_DIR`. (The `~/.openclaude/` half of this was dropped in 0a1d4ff2 — `legacyClaudeDir()` reads `~/.claude` and nothing else.)
-- `src/utils/` — primitives only, grouped into `data/` `fs/` `proc/` `text/` (plus `log.ts`, `theme.ts` and `model/` at the root). It used to be the catch-all; the subsystems that lived there now sit under `src/services/<name>/` — `config/`, `auth/`, `session/`, `context/`, `instructions/`, `permissions/`, `lifecycleHooks/`, `messages/`, `attachments/`, `plugins/`, `install/`, `git/`, `ide/`, `bash/`, `shell/`, `settings/`, `secureStorage/`, `telemetry/`, `sandbox/`, `computerUse/`. Two of those names matter: `services/lifecycleHooks/` is the Claude Code hook system (`src/hooks/` is React hooks), and `services/context/` is context-window/token accounting (`src/terminal/contexts/` is React providers). Destinations are recorded in `scripts/reorg/manifest.ts`, which also explains why `src/providers/model/` stayed behind.
 
 Note: an earlier headless gRPC service (`src/grpc/`, `src/proto/claudin.proto`, `dev:grpc*` scripts) was removed (#22) — it no longer exists despite lingering mentions in older docs.
 
@@ -105,7 +112,7 @@ Several runtime behaviors are **on by default** with their own docs and toggles:
 - **Typecheck** — `bun run typecheck` (`tsc --noEmit`) **reaches zero**, and `typecheck-baseline.json` is `count: 0`. CI still runs the `bun run typecheck:ci` ratchet (`scripts/typecheck-ci.ts`), which fails a PR only for errors it **adds** against the committed baseline by a line-independent fingerprint — against an empty baseline that is simply "no new errors". Refresh it with `bun run typecheck:baseline` when a change legitimately moves existing errors; fixing errors never fails the run.
 
   Getting there took two things worth knowing before you read old notes:
-  - The `src/components/*.tsx` files checked in as **React-Compiler output** (`const $ = _c(N)`, `$[i]` bookkeeping) *are* hand-fixable, despite a long-standing claim here that they were not. The transform strips the parameter type but leaves the props type declared a few lines above, so annotating the `t0` parameter clears whole clusters at once.
+  - The `.tsx` files checked in as **React-Compiler output** (`const $ = _c(N)`, `$[i]` bookkeeping) *are* hand-fixable, despite a long-standing claim here that they were not. The transform strips the parameter type but leaves the props type declared a few lines above, so annotating the `t0` parameter clears whole clusters at once. They are no longer in one directory — the reorg spread them across each slice's `ui/` (heaviest in `src/agent/ui/`, `src/permissions/ui/`, `src/mcp/ui/`) plus `src/terminal/`.
   - The ~107 TS2307 for subsystems this fork never received are retired by the `.d.ts` files sitting next to each missing module. **Every export in them is `any` on purpose**: a concrete invented shape lets tsc walk into the caller and raise TS2339 on properties the invention lacks, which is why an earlier attempt measured worse. These declarations buy **no** type safety — an unresolved import is already `any` — they only retire the diagnostic. They also do not mean the code is unreachable: `src/commands/commands.ts` imports 19 of these eagerly and does hit the `() => null` build stub at runtime.
 
   Three files keep this signal readable and should be kept current: `src/globals.d.ts` (the `MACRO.*` constants `scripts/build.ts` inlines — a member here that is missing from the `define` map ships as a `ReferenceError`), `src/stubbed-modules.d.ts` (the packages and `.md`/`.txt` assets the build replaces with stubs), and the per-module `.d.ts` files above. When a large drop looks too good, check for `TS1xxx` first: one syntax error in a generated `.d.ts` makes tsc skip semantic analysis entirely and report near-zero.
