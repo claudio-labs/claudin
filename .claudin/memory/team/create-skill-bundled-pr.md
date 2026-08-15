@@ -1,10 +1,16 @@
 ---
-name: /create bundled skill (PR #98)
-description: feat/create-skill adds bundled /create teaching skills/rules/agents authoring in .claudin structure; /init now points at it
+name: /create bundled skill (commit 28eacc0c)
+description: bundled /create teaches skills/rules/agents authoring in .claudin; cite the COMMIT, not "#98" — that number is a different PR on GitHub
 type: project
 ---
 
-PR #98 (branch `feat/create-skill`, 2026-07-03) adds a bundled `/create` skill (`src/skills/bundled/create.ts`) that teaches the model to create/refine skills, rules, and custom agents in `.claudin/` (project) and `~/.claudin/` (global). Replaces the recommendation to install `skill-creator@claude-plugins-official` in `/init`.
+Commit `28eacc0c` (branch `feat/create-skill`, 2026-07-03) adds a bundled `/create` skill (`src/skills/bundled/create.ts`) that teaches the model to create/refine skills, rules, and custom agents in `.claudin/` (project) and `~/.claudin/` (global). Replaces the recommendation to install `skill-creator@claude-plugins-official` in `/init`.
+
+**Its `(#98)` suffix is NOT a GitHub number.** That PR was opened on the retired
+`git.viudescloud.uk` remote, whose numbering is independent — GitHub's own #98 is
+an unrelated bash-filter fix opened 2026-08-15. Every PR reference in a commit
+message from before the GitHub move has the same problem, so resolve one by
+commit SHA rather than by asking `gh` for the number.
 
 Facts learned while building it (verified against loaders):
 - Agent markdown frontmatter does NOT support `model` (`parseAgentFromMarkdown`, loadAgentsDir.ts) — session model is inherited.
