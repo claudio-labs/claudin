@@ -2,13 +2,15 @@
  * The typecheck ratchet: fail a PR for the type errors it ADDS, ignore the ones
  * it inherited.
  *
- * `tsc --noEmit` does not come back clean in this repo and is not going to.
- * Roughly two thirds of its output sits in the `src/components/*.tsx` files that
- * are checked in as React-Compiler output, where the transform has already
- * stripped the parameter types and the pre-compiler sources do not exist in this
- * fork. Wiring `bun run typecheck` straight into CI would therefore fail every
- * PR ever opened, which is the same as having no check at all — so the gate is
- * on the DIFF against a committed baseline instead.
+ * `tsc --noEmit` used to carry thousands of inherited errors, roughly two thirds
+ * of them in the `.tsx` files checked in as React-Compiler output, where the
+ * transform has already stripped the parameter types and the pre-compiler
+ * sources do not exist in this fork. Wiring `bun run typecheck` straight into CI
+ * would have failed every PR ever opened, which is the same as having no check
+ * at all — so the gate is on the DIFF against a committed baseline instead.
+ * The backlog reached zero in #87 and those files now live in each slice's own
+ * `ui/` (heaviest in `src/agent/ui/`); the ratchet stays because an empty
+ * baseline is what keeps anything new from landing.
  *
  * Identity is `fingerprintDiagnostic`, shared with the Typecheck tool: it hashes
  * file + code + message and deliberately excludes line and column. Without that,

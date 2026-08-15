@@ -13,6 +13,15 @@
 //
 // Iterating: when a test discovers a new mount-side-effect, add a mock here
 // and document it inline so the next agent knows which surface it covered.
+//
+// Each surface is registered ONCE, under the `src/…` specifier REPL.tsx imports.
+// It used to be registered twice, the second time under a relative twin, from
+// back when this file and its subjects lived in `src/screens/`. Those twins
+// never resolved to anything (there was no `src/screens/hooks/`), and the reorg
+// re-derived them into `../../../screens/…`, which named the retired catch-all
+// while mocking nothing. Do not reintroduce a twin: Bun keys a module mock by
+// the specifier STRING, so a second registration only matters when a real
+// importer spells it that way.
 
 import { mock } from 'bun:test'
 import { homedir } from 'os'
@@ -123,17 +132,9 @@ export function setupReplMocks(): void {
   mock.module('src/agent/hooks/useMainLoopModel.js', () => ({
     useMainLoopModel: () => REPL_SNAPSHOT_MODEL,
   }))
-  mock.module('src/agent/hooks/useMainLoopModel.js', () => ({
-    useMainLoopModel: () => REPL_SNAPSHOT_MODEL,
-  }))
 
   // Side-effecting service: starts an interval that keeps the OS awake.
   mock.module('src/platform/preventSleep.js', () => ({
-    startPreventSleep: noop,
-    stopPreventSleep: noop,
-  }))
-  // Relative path twin (REPL.tsx imports as `../services/preventSleep.js`).
-  mock.module('../../../screens/services/preventSleep.js', () => ({
     startPreventSleep: noop,
     stopPreventSleep: noop,
   }))
@@ -144,16 +145,9 @@ export function setupReplMocks(): void {
     useReplBridge: () => ({ sendBridgeResult: noop }),
     BRIDGE_FAILURE_DISMISS_MS: 10_000,
   }))
-  mock.module('../../../screens/hooks/useReplBridge.js', () => ({
-    useReplBridge: () => ({ sendBridgeResult: noop }),
-    BRIDGE_FAILURE_DISMISS_MS: 10_000,
-  }))
 
   // Mailbox bridge — polls the on-disk mailbox for cross-session messages.
   mock.module('src/platform/bridge/useMailboxBridge.js', () => ({
-    useMailboxBridge: noop,
-  }))
-  mock.module('../../../screens/hooks/useMailboxBridge.js', () => ({
     useMailboxBridge: noop,
   }))
 
@@ -161,15 +155,9 @@ export function setupReplMocks(): void {
   mock.module('src/sessions/hooks/useRemoteSession.js', () => ({
     useRemoteSession: () => ({ state: 'idle', error: null }),
   }))
-  mock.module('../../../screens/hooks/useRemoteSession.js', () => ({
-    useRemoteSession: () => ({ state: 'idle', error: null }),
-  }))
 
   // Direct connect — connects to a claudin server.
   mock.module('src/providers/hooks/useDirectConnect.js', () => ({
-    useDirectConnect: () => ({ state: 'idle', error: null }),
-  }))
-  mock.module('../../../screens/hooks/useDirectConnect.js', () => ({
     useDirectConnect: () => ({ state: 'idle', error: null }),
   }))
 
@@ -177,23 +165,14 @@ export function setupReplMocks(): void {
   mock.module('src/sessions/hooks/useSSHSession.js', () => ({
     useSSHSession: () => ({ state: 'idle', error: null }),
   }))
-  mock.module('../../../screens/hooks/useSSHSession.js', () => ({
-    useSSHSession: () => ({ state: 'idle', error: null }),
-  }))
 
   // Swarm initialization — spawns worker processes and creates files.
   mock.module('src/agent/coordinator/hooks/useSwarmInitialization.js', () => ({
     useSwarmInitialization: noop,
   }))
-  mock.module('../../../screens/hooks/useSwarmInitialization.js', () => ({
-    useSwarmInitialization: noop,
-  }))
 
   // Scheduled tasks — owns a cron scheduler instance.
   mock.module('src/agent/hooks/useScheduledTasks.js', () => ({
-    useScheduledTasks: noop,
-  }))
-  mock.module('../../../screens/hooks/useScheduledTasks.js', () => ({
     useScheduledTasks: noop,
   }))
 
@@ -224,18 +203,9 @@ export function setupReplMocks(): void {
       mcpClientState: { type: 'idle' },
     }),
   }))
-  mock.module('../../../screens/hooks/useIDEIntegration.js', () => ({
-    useIDEIntegration: () => ({
-      ideInstallationStatus: null,
-      mcpClientState: { type: 'idle' },
-    }),
-  }))
 
   // File history snapshot init — writes to ~/.claudin.
   mock.module('src/sessions/hooks/useFileHistorySnapshotInit.js', () => ({
-    useFileHistorySnapshotInit: noop,
-  }))
-  mock.module('../../../screens/hooks/useFileHistorySnapshotInit.js', () => ({
     useFileHistorySnapshotInit: noop,
   }))
 
@@ -243,15 +213,9 @@ export function setupReplMocks(): void {
   mock.module('src/terminal/voice/useInboxPoller.js', () => ({
     useInboxPoller: noop,
   }))
-  mock.module('../../../screens/hooks/useInboxPoller.js', () => ({
-    useInboxPoller: noop,
-  }))
 
   // Background housekeeping — interval that GCs caches.
   mock.module('src/platform/backgroundHousekeeping.js', () => ({
-    startBackgroundHousekeeping: () => () => undefined,
-  }))
-  mock.module('../../../screens/utils/backgroundHousekeeping.js', () => ({
     startBackgroundHousekeeping: () => () => undefined,
   }))
 
@@ -267,9 +231,6 @@ export function setupReplMocks(): void {
   mock.module('src/sessions/sessionStart.js', () => ({
     processSessionStartHooks: async () => [],
   }))
-  mock.module('../../../screens/utils/sessionStart.js', () => ({
-    processSessionStartHooks: async () => [],
-  }))
 
   // Plugin startup checks — disk I/O.
   mock.module('src/plugins/performStartupChecks.js', () => ({
@@ -279,7 +240,6 @@ export function setupReplMocks(): void {
   // Notification hook bundle — many of these are tiny but they all read
   // settings; mock to bare returns to avoid noise.
   const noopHook = (): unknown => undefined
-  const closedSurvey = (): { state: string } => ({ state: 'closed' })
   mock.module(
     'src/platform/notifications/useInstallMessages.js',
     () => ({ useInstallMessages: noopHook }),
@@ -357,12 +317,9 @@ export function setupReplMocks(): void {
     'src/platform/notifications/useFastModeNotification.js',
     () => ({ useFastModeNotification: noopHook }),
   )
-  mock.module(
-    'src/hooks/useFrustrationDetection.js',
-    () => ({
-      useFrustrationDetection: closedSurvey,
-    }),
-  )
+  // useFrustrationDetection is NOT mocked: the module behind it never reached
+  // this fork, so REPL.tsx declares a hardcoded `state: 'closed'` dummy inline
+  // (see the .d.ts stub comment there). There is nothing to intercept.
 
   // StatusNotices throws "Configure Anthropic profile" because no provider
   // is configured under a test env. Ink turns the throw into a full-screen
@@ -371,18 +328,9 @@ export function setupReplMocks(): void {
   mock.module('src/platform/status/StatusNotices.js', () => ({
     StatusNotices: () => null,
   }))
-  mock.module('../../../screens/components/StatusNotices.js', () => ({
-    StatusNotices: () => null,
-  }))
 
   // API key verification fires a network request on mount.
   mock.module('src/providers/hooks/useApiKeyVerification.js', () => ({
-    useApiKeyVerification: () => ({
-      status: 'valid',
-      reverify: returnEmptyObject,
-    }),
-  }))
-  mock.module('../../../screens/hooks/useApiKeyVerification.js', () => ({
     useApiKeyVerification: () => ({
       status: 'valid',
       reverify: returnEmptyObject,
@@ -394,9 +342,7 @@ export function teardownReplMocks(): void {
   mock.restore()
   // mock.restore() does not revert mock.module(); restore the pinned hook.
   mock.module('src/agent/hooks/useMainLoopModel.js', () => realUseMainLoopModel)
-  mock.module('src/agent/hooks/useMainLoopModel.js', () => realUseMainLoopModel)
   mock.module('src/providers/hooks/useApiKeyVerification.js', () => realUseApiKeyVerification)
-  mock.module('../../../screens/hooks/useApiKeyVerification.js', () => realUseApiKeyVerification)
   if (effortEnvWasSet) {
     if (savedEffortEnv === undefined) {
       delete process.env.CLAUDE_CODE_EFFORT_LEVEL

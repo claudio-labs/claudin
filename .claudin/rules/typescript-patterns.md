@@ -185,9 +185,21 @@ const model = 'claude-opus-4-7-20251101'
 import { logError } from 'src/shared/log.js'
 import { buildTool } from 'src/tools/Tool.js'
 
-// ❌ Wrong — breaks when file moves, hard to read
-import { logError } from '../../../utils/log.js'
+// ❌ Wrong — encodes the distance between two slices, breaks on the next move
+import { logError } from '../../shared/log.js'
 ```
+
+Within one slice a relative import to a sibling file is fine; the rule is about
+**crossing** slices. One exception, and it is load-bearing:
+an import of a module this fork never received — a `.d.ts` with no `.ts`/`.tsx`
+beside it — **keeps its `../`**, because `scripts/build.ts` only stubs a missing
+module when the specifier starts with `./` or `../`. Aliasing one turns a green
+build into a hard resolver failure; see [build-system.md](build-system.md).
+Those declarations export `any` deliberately — don't "improve" them with a
+concrete shape, which makes tsc walk into the caller and raise `TS2339`.
+`src/__tests__/moduleBoundaries.test.ts` enforces exactly this split: it resolves
+every cross-slice relative specifier and fails only on the ones backed by a real
+module.
 
 ## Privacy — No Phone-Home
 
@@ -237,7 +249,7 @@ when you edit `scripts/build.ts`). The two that bite while editing `src/`:
 | `catch (e) {}` | Silent failure, user gets nothing | `logError()` + re-throw or fallback |
 | `/regex/` inside function | Recompiles every call | Module-level `const RE = /pattern/` |
 | Hardcoded model string | Breaks non-Anthropic providers | `getPrimaryModel(provider)` |
-| `../../` relative imports | Breaks on file moves | `src/...` path aliases |
+| `../../` import crossing a slice | Encodes the distance between slices, breaks on the next move | `src/...` path alias (except a declaration-only module, which must stay relative) |
 | `console.log` in production | Pollutes TUI output | `logError()` / `logForDebugging()` |
 | Raw `new Error(msg)` | No typed catch | Subclass from `src/shared/errors.ts` |
 | `process.exit(0)` without cleanup | Skips graceful shutdown | Use abort signals |

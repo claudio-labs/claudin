@@ -77,7 +77,7 @@ what wave 7 attacks.
 
 ## Wave 7 in detail
 
-`src/platform/privacy/Grove.tsx`'s `useEffect` runs:
+`src/platform/privacy/ui/Grove.tsx`'s `useEffect` runs:
 
 ```ts
 const [settingsResult, configResult] = await Promise.all([

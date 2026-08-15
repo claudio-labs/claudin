@@ -61,17 +61,19 @@ Reuse — do NOT re-port — the token store / PKCE / callback server in
 `provider/auth.ts` was explicitly deferred — don't build it unless asked.)
 
 Recurring touch-set (rename `<vendor>` per provider):
-- **Flow:** `src/services/api/<vendor>OAuth.ts` (+`.test.ts`) and a
-  `<vendor>OAuthShared.ts` for shared consts.
-- **Credentials:** `src/utils/<vendor>Credentials.ts` (+`.test.ts`) AND register the
-  key in `src/platform/secureStorage/index.ts`. UA header in `src/utils/<vendor>UserAgent.ts`.
+- **Flow:** `src/providers/oauth/<vendor>OAuth.ts` (+`.test.ts`) and a
+  `<vendor>OAuthShared.ts` beside it for shared consts.
+- **Credentials:** `src/providers/oauth/<vendor>Credentials.ts` (+`.test.ts`) AND register
+  the key in `src/platform/secureStorage/index.ts`. UA header in
+  `src/providers/oauth/<vendor>UserAgent.ts`.
 - **Wire:** inject the auth header in `src/providers/shims/openaiShim/messagesClient.ts`;
   handle 401/refresh in `src/providers/transport/withRetry.ts`.
 - **Schema:** `src/providers/presets/providerConfig.ts` (+`providerConfig.test.ts`) — profile
   + credential schema.
-- **UI:** `src/components/use<Vendor>OAuthFlow.ts` (+`.test.tsx`) and the
-  `<XxxOAuthSetup>` clone in `ProviderManager.tsx`; `src/commands/provider/doctor.tsx`
-  (doctor check); `src/platform/config/config.ts`; `README.md`.
+- **UI:** `src/providers/ui/use<Vendor>OAuthFlow.ts` (+`.test.tsx`) and the
+  `<XxxOAuthSetup>` clone in `src/providers/ui/ProviderManager.tsx`;
+  `src/commands/provider/doctor.tsx` (doctor check); `src/platform/config/config.ts`;
+  `README.md`.
 - **Models (if the provider exposes a catalog):** a catalog like
   `src/providers/model/copilotModelCatalog.ts` (dc28c35) + context-window entries in
   `src/providers/model/openaiContextWindows.ts` / `model.ts` / `providers.ts`. Dynamic
@@ -88,5 +90,5 @@ Cloudflare (API-key). Devin is blocked (see `docs/tech/devin-provider/`).
 ## Finish
 
 Run `/pre-pr` (build → smoke → typecheck → focused test), then
-`bun run test:provider` since this touches `src/services/api/*`/provider config. Name
-the provider you exercised in the PR description.
+`bun run test:provider` since this touches `src/providers/*`. Name the provider you
+exercised in the PR description.

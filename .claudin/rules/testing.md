@@ -37,9 +37,9 @@ re-send it when you genuinely need raw compiler output.
 bun test                                   # full suite (608 files, ~9000 tests)
 bun test src/path/to/file.test.ts          # single file
 bun run test:coverage                      # lcov + heatmap at coverage/index.html
-bun run test:provider                      # focused: api/* + utils/context
+bun run test:provider                      # focused: providers/ + agent/context
 
-# Always run before any PR touching api/* or provider logic:
+# Always run before any PR touching src/providers/ or provider logic:
 bun run test:provider
 
 # Always run before any PR touching build system, telemetry, or network:
@@ -121,12 +121,13 @@ bun test --update-snapshots src/path/to/file.test.ts
 
 ## Provider Tests — Special Rules
 
-Any change to `src/services/api/*` or `src/utils/context*` must run `test:provider`:
+Any change to `src/providers/*` or `src/agent/context/*` must run `test:provider` —
+those are the two trees the script actually covers (see `package.json`):
 
 ```typescript
-// src/services/api/myFeature.test.ts
+// src/providers/presets/myFeature.test.ts
 import { describe, expect, test } from 'bun:test'
-import { tryGetActiveProvider } from './activeProvider.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 
 test('resolves provider from config', () => {
   // Use real config resolution, not mocked provider
@@ -265,15 +266,15 @@ it from the `.tsx` (e.g. `src/vcs/diff/ui/fileTree.ts` split out of
 
 | Area | Target | Notes |
 |------|--------|-------|
-| `src/services/api/*` | 80%+ | Provider abstraction is critical |
+| `src/providers/*` | 80%+ | Provider abstraction is critical |
 | `src/tools/*` | 70%+ | Each tool needs at least happy + error path |
-| `src/utils/*` | 75%+ | Shared utils used everywhere |
+| `src/shared/*` | 75%+ | Cross-cutting primitives used everywhere |
 | Build scripts | 60%+ | Invariants via the guard tests |
 
 ### The test floor (`bun run test:floor`)
 
 A ratchet, not a target. `test-floor.json` records the test-to-source LOC ratio
-(18.87% as of 2026-08-07, over `src/` and `scripts/`) and the check fails when
+(19.43% as of 2026-08-15, over `src/` and `scripts/`) and the check fails when
 it drops more than 0.5pp, or when one of the named invariant suites disappears:
 
 ```
@@ -404,7 +405,6 @@ regression signal. (Older list — `ProviderManager.test.tsx` Ollama/Vertex TTY
 timeouts, `memory-turn-by-turn-bench` RSS flake — no longer reproduces on
 2026-07 main; keep it in mind if they resurface.)
 
-**Typecheck baseline:** `main` carries thousands of pre-existing `error TS`
 **Typecheck baseline:** `main` reaches **zero** `error TS` since #87, which
 retired the fork's ~107 `TS2307` by adding a `.d.ts` next to each absent module
 — see [build-system.md](build-system.md) for the import trap that creates. The
@@ -424,7 +424,7 @@ confirm a cited diagnostic with the tool (`path:` filters the report) first.
 - [ ] Focused test passes (RunTests tool, scoped with `path`)
 - [ ] `bun run test:floor` holds (7/7 invariant suites, ratio within 0.5pp)
 - [ ] `bun run deadcode:ci` is clean (no declared dependency left unimported)
-- [ ] If touching `src/services/api/*`: `bun run test:provider`
+- [ ] If touching `src/providers/*`: `bun run test:provider`
 - [ ] If touching build/telemetry/network: `bun run verify:privacy`
 - [ ] If touching output format: snapshots reviewed and updated
 - [ ] Typecheck tool reports **zero new** diagnostics (the baseline is empty
