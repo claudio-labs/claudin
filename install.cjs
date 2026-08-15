@@ -191,7 +191,7 @@ function main() {
   }
 
   // The compiled binary finds its vendored ripgrep via
-  // dirname(process.execPath)/vendor/ripgrep/… (src/utils/ripgrep.ts). The
+  // dirname(process.execPath)/vendor/ripgrep/… (src/shared/fs/ripgrep.ts). The
   // hardlink above places the binary in bin/, away from the platform package's
   // vendor/, so mirror vendor/ beside the binary. Non-fatal: search falls back
   // to a system `rg` if this can't be copied.

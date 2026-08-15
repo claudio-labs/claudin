@@ -79,7 +79,6 @@ const TWELVE_FILES = [
   'src/agent/prompts/messages.ts',
   'src/shared/constants/keys.ts',
   'src/terminal/ink/constants.ts',
-  'src/utils/protectedNamespace.ts',
   'src/shared/data/array.ts',
   'src/shared/withResolvers.ts',
   'src/shared/data/lazySchema.ts',

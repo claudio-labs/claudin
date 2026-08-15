@@ -363,6 +363,11 @@ export async function submitTranscriptShare() { return { success: false }; }
 `,
 
 	// ─── Internal employee logging (not needed in the external build) ─────
+	//
+	// Permanently inert: the module was deleted, and `src/services/` is one of
+	// the buckets the 2026-08 reorg retired, so this key can never resolve
+	// again. `no-telemetry-stubs-resolve.test.ts` reports it as dead rather
+	// than disarmed. Same for `src/utils/undercover` below.
 
 	'src/services/internalLogging': `
 export async function logPermissionContextForAnts() {}

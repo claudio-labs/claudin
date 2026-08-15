@@ -46,7 +46,7 @@ const PROMPTS: { id: string; text: string }[] = [
   },
   {
     id: 'explain-auto-memory',
-    text: 'Como funciona o sistema de auto-memory deste repositorio? Descreva o fluxo de ponta a ponta lendo o codigo relevante (src/memdir, src/services/extractMemories, src/services/SessionMemory).',
+    text: 'Como funciona o sistema de auto-memory deste repositorio? Descreva o fluxo de ponta a ponta lendo o codigo relevante (src/memory/memdir, src/memory/extract, src/memory/session).',
   },
   {
     id: 'explain-provider-resolution',
