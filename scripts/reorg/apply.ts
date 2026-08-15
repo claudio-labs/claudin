@@ -70,49 +70,81 @@ function snapshotFor(dir: string, testFile: string): string | null {
   return existsSync(snap) ? snap : null
 }
 
-function collectMoves(all = false): { moves: Move[]; rewrites: Map<string, string> } {
+/**
+ * Which slice of the manifest to collect, and how strictly.
+ *
+ *  - `group`   the `--group=` one alone (or everything when no group is named),
+ *              and every path it names must still exist. This is what MOVES.
+ *  - `through` every group up to AND INCLUDING that one, leniently: the earlier
+ *              groups already ran, so their sources are gone. This is the map the
+ *              ./-relative repair needs, and stopping at the current group is the
+ *              whole point — repairing with the FULL manifest rewrites specifiers
+ *              for directories that have NOT moved yet, which silently breaks the
+ *              build for every group still ahead.
+ */
+type Scope = 'group' | 'through'
+
+function collectMoves(scope: Scope = 'group'): {
+  moves: Move[]
+  rewrites: Map<string, string>
+} {
+  const strict = scope === 'group'
   const moves: Move[] = []
+  // A file can be claimed twice: `EffortPicker.tsx` and `EffortPicker.layout.ts`
+  // both drag `EffortPicker.layout.test.ts` as a companion. The second `git mv`
+  // would fail on a path that no longer exists, so queue each source once.
+  const queued = new Set<string>()
+  const push = (move: Move): void => {
+    if (queued.has(move.from)) return
+    queued.add(move.from)
+    moves.push(move)
+  }
   // Module-path prefix → replacement. Keys keep their trailing `/` or `.`.
   const rewrites = new Map<string, string>()
 
   for (const group of GROUPS) {
-    if (!all && ONLY && group.name !== ONLY) continue
+    if (ONLY && scope === 'group' && group.name !== ONLY) continue
 
     for (const { from, to } of group.dirs ?? []) {
       const abs = join(REPO_ROOT, from)
       if (!existsSync(abs)) {
         // Already moved by an earlier run — its rewrite still has to be known.
-        if (!all) throw new Error(`manifest names a missing directory: ${from}`)
+        if (strict) throw new Error(`manifest names a missing directory: ${from}`)
       } else {
         for (const file of walk(abs)) {
           const rel = relative(abs, file)
-          moves.push({ from: relative(REPO_ROOT, file), to: join(to, rel) })
+          push({ from: relative(REPO_ROOT, file), to: join(to, rel) })
         }
       }
       rewrites.set(`${from}/`, `${to}/`)
     }
 
-    for (const { files, to } of group.files ?? []) {
+    for (const { from, files, to } of group.files ?? []) {
+      const fromDir = join(REPO_ROOT, from)
       for (const file of files) {
-        const abs = join(REPO_ROOT, 'src/utils', file)
+        const abs = join(fromDir, file)
         if (!existsSync(abs)) {
-          if (!all) throw new Error(`manifest names a missing file: src/utils/${file}`)
+          if (strict) throw new Error(`manifest names a missing file: ${from}/${file}`)
         } else {
-          const carry = [file, ...companionTests(join(REPO_ROOT, 'src/utils'), file)]
+          const carry = [file, ...companionTests(fromDir, file)]
           for (const name of carry) {
-            moves.push({ from: join('src/utils', name), to: join(to, name) })
-            const snap = snapshotFor(join(REPO_ROOT, 'src/utils'), name)
+            push({ from: join(from, name), to: join(to, name) })
+            const snap = snapshotFor(fromDir, name)
             if (snap) {
-              moves.push({
+              push({
                 from: relative(REPO_ROOT, snap),
                 to: join(to, '__snapshots__', basename(snap)),
               })
             }
           }
         }
-        rewrites.set(`src/utils/${file.replace(/\.(ts|tsx)$/, '')}.`, `${to}/${file.replace(/\.(ts|tsx)$/, '')}.`)
+        // `d\.ts` first: on `foo.d.ts` the `tsx?` arm would leave a `foo.d` stem.
+        const stem = file.replace(/\.(d\.ts|tsx?)$/, '')
+        rewrites.set(`${from}/${stem}.`, `${to}/${stem}.`)
       }
     }
+
+    if (ONLY && group.name === ONLY) break
   }
 
   return { moves, rewrites }
@@ -218,7 +250,7 @@ function main(): void {
   const touched = applyRewrites(rewrites)
   console.log(`${DRY ? 'would rewrite' : 'rewrote'} paths in ${touched} files`)
 
-  const repaired = repairRelativeSpecifiers(collectMoves(true).rewrites)
+  const repaired = repairRelativeSpecifiers(collectMoves('through').rewrites)
   console.log(`${DRY ? 'would repair' : 'repaired'} ./-relative specifiers in ${repaired} files`)
 
   if (DRY) {
