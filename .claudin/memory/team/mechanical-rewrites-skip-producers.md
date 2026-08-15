@@ -1,6 +1,6 @@
 ---
 name: mechanical-rewrites-skip-producers
-description: A repo-wide path rewrite updates derived artifacts but not the code that produces them — and rewrites recorded results it should have left alone; the 2026-08 reorg hit both, five times, each silent
+description: A repo-wide path rewrite updates derived artifacts but not the code that produces them, rewrites recorded results it should have left alone, and leaves prose pointers behind — the 2026-08 reorg hit all three, each silent
 type: feedback
 ---
 
@@ -47,6 +47,23 @@ That is the one gate whose whole job is catching a path gone stale after a move.
 Re-captured 2026-08-15; the module set was identical, so nothing had actually
 broken, only the guard.
 
+A third direction, swept 2026-08-15: the walk also leaves alone everything that
+names a path in **prose**, because nothing resolves those — module-header
+comments, barrel headers, design docs, bench prompt strings, the postinstall
+script. Eighteen survived the reorg still naming retired buckets. The two that
+actively misled: `src/agent/cache/README.md` (twelve pointers, and
+`.claudin/rules/cache.md` names it as the architecture entry point, so it is
+live navigation) and the `claude`/`openaiShim` barrel headers, which told
+callers to import from `src/services/api/`. Fixed in f07a3091, b3247283,
+1bda875e.
+
+The sharpest one is a variant of the freshening above. `docs/features/8.1-diff-reviewer.md`
+cited `DiffDetailView.tsx`, **deleted four days earlier** in PR #72, and the
+reorg rewrote `src/components/diff/DiffDetailView.tsx` →
+`src/vcs/diff/ui/DiffDetailView.tsx`. The path was not fictional, it was dead —
+and the rewrite made a dead citation read as current. A path whose *shape*
+matches the new layout is not evidence its target exists.
+
 A path-pinned mechanism also lives outside the repo, and that one cannot be
 fixed in the same commit: **CodeQL keys a dismissal to a file path**, so every
 move resurrects the finding. PR #93 re-raised the same five high alerts that
@@ -73,7 +90,9 @@ type-checks them and no test covered the pinning itself.
 
 **How to apply:** after any tree-wide rewrite, grep the **producers** — build
 plugins, code generators, `package.json` script globs, rule `paths:` frontmatter,
-skill trigger paths, CI workflow filters — before trusting a green suite. When a
+skill trigger paths, CI workflow filters — before trusting a green suite. Then
+sweep the **prose** the same way, and *resolve* each path rather than checking
+that it looks post-reorg. When a
 mechanism is path-pinned and its failure mode is "silently does nothing", the
 guard must assert the pin resolves, not that the output looks right:
 `scripts/no-telemetry-stubs-resolve.test.ts` distinguishes a dead key (module the
