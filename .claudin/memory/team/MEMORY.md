@@ -89,6 +89,7 @@
 - [bashfilter fixture edits must preserve byte length](bashfilter-fixtures-byte-length-sensitive.md) — ROI tests assert reduction % per sample; scrub fixtures with equal-length placeholders (viudes→devusr)
 - [Bash filter samples live in ONE dir since 2026-08-06](bash-filter-sample-corpus-unified.md) — docs/discovery copy merged into __fixtures__/samples/; don't recreate the mirror; 87 of 142 unmapped in FIXTURE_MAP
 - [Live-verifying TUI mouse click/hover under tmux](tmux-mouse-click-verification.md) — mouse only works in fullscreen (CLAUDE_CODE_NO_FLICKER=1); inject SGR clicks via `send-keys`; ctrl+o verifies the render, SGR verifies the click
+- [apply_patch fails 11.9% vs Edit 4.6% — measured taxonomy](apply-patch-failure-taxonomy.md) — 53% read gates (atomicity amplifies: 9.4% @1 file → 38.5% @5+), 31% real context mismatch, 11% parser strictness → four repairs landed 2026-08-15; replay the 1,870-payload corpus before touching the parser
 - [checkBatchWritePermission's updatedInput:{} clobbers the tool's real input](checkbatchwrite-updatedinput-clobbers-input.md) — apply_patch was DOA in auto/bypass mode; harness applies updatedInput verbatim; echo real input on allow; green unit tests missed it
 
 ## References (sibling repos, wire formats, archives)

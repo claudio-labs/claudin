@@ -80,6 +80,60 @@ function isSectionBoundary(line: string): boolean {
   )
 }
 
+// Any of the three section headers, used to recognize a patch body whose
+// envelope markers are missing. Module-level per repo regex rule.
+const SECTION_HEADER_RE = /^\*\*\* (?:Add|Update|Delete) File:/
+
+// A body line carrying one of the three diff prefixes. Used inside a chunk,
+// and — for the implicit-`@@` repair — to recognize that a chunk has begun
+// without its anchor line.
+function isChangeLine(line: string): boolean {
+  return line.startsWith(' ') || line.startsWith('+') || line.startsWith('-')
+}
+
+/** The same file named two ways: an absolute path and the repo-relative one. */
+function samePathTarget(a: string, b: string): boolean {
+  return a === b || a.endsWith(`/${b}`) || b.endsWith(`/${a}`)
+}
+
+/**
+ * Where the section bodies start and end. Both markers present is the normal
+ * case; a MISSING one is repaired rather than rejected, which is the single
+ * biggest parse failure in practice — 14 of 25 measured over 682 sessions on
+ * 2026-08-15, 9 having lost the Begin marker and 5 the End one, every body
+ * otherwise valid.
+ *
+ * The repair is safe because a tool call reaches this parser as complete JSON:
+ * a model cut off mid-emit never produces a callable `patchText`, so a missing
+ * End marker means the marker was forgotten, not that the patch is truncated.
+ * It requires a real section header to be present — without one there is no
+ * patch here to speak of and the original refusal stands.
+ */
+function locateEnvelope(lines: string[]): {
+  bodyStart: number
+  bodyEnd: number
+} {
+  const beginIdx = lines.findIndex(line => line.trim() === BEGIN_MARKER)
+  const endIdx = lines.findIndex(line => line.trim() === END_MARKER)
+  if (beginIdx !== -1 && endIdx !== -1 && beginIdx < endIdx) {
+    return { bodyStart: beginIdx + 1, bodyEnd: endIdx }
+  }
+
+  const firstHeader = lines.findIndex(line => SECTION_HEADER_RE.test(line))
+  // No section header at all, or both markers present but out of order: this
+  // is a malformed envelope, not a forgotten marker.
+  if (firstHeader === -1 || (beginIdx !== -1 && endIdx !== -1)) {
+    throw new Error('Invalid patch format: missing Begin/End markers')
+  }
+  const bodyStart =
+    beginIdx !== -1 && beginIdx < firstHeader ? beginIdx + 1 : firstHeader
+  const bodyEnd = endIdx > firstHeader ? endIdx : lines.length
+  if (bodyStart >= bodyEnd) {
+    throw new Error('Invalid patch format: missing Begin/End markers')
+  }
+  return { bodyStart, bodyEnd }
+}
+
 // Matches a `cat <<'EOF' ... EOF` / `<<EOF ... EOF` heredoc wrapper, in case a
 // model wraps the envelope in one. Module-level per repo regex rule.
 const HEREDOC_RE = /^(?:cat\s+)?<<['"]?(\w+)['"]?\s*\n([\s\S]*?)\n\1\s*$/
@@ -153,9 +207,19 @@ function parseUpdateFileChunks(
   let i = startIdx
 
   while (i < lines.length && !lines[i].startsWith('***')) {
-    if (lines[i].startsWith('@@')) {
-      const changeContext = lines[i].substring(2).trim()
-      i++
+    const hasAnchor = lines[i].startsWith('@@')
+    // A chunk may open WITHOUT its `@@` line — the model emits the change lines
+    // straight after the `*** Update File:` header, or straight after the
+    // previous chunk. The anchor is only a search CURSOR, so a missing one is
+    // exactly a bare `@@`: the chunk's own lines still have to match the file,
+    // and a hunk that matches nowhere is refused by computeReplacements just
+    // the same. Rejecting the whole patch bought no safety over that.
+    if (hasAnchor || isChangeLine(lines[i])) {
+      let changeContext: string | undefined
+      if (hasAnchor) {
+        changeContext = lines[i].substring(2).trim() || undefined
+        i++
+      }
 
       const oldLines: string[] = []
       const newLines: string[] = []
@@ -208,24 +272,18 @@ function parseUpdateFileChunks(
           const content = changeLine.substring(1)
           newLines.push(content)
           ops.push({ kind: 'add', text: content })
-        } else if (changeLine === '') {
-          // A blank context line whose single leading space was stripped (a
-          // common whitespace artifact in model-emitted patches). Treat it as
-          // context on both sides rather than dropping it.
-          oldLines.push('')
-          newLines.push('')
-          ops.push({ kind: 'context', text: '' })
         } else {
-          // Any other unprefixed body line is malformed. opencode (and our
-          // original port) silently dropped it — which can quietly degrade a
-          // replacement into a pure insertion that lands at EOF while still
-          // reporting success. Fail loudly instead, mirroring the empty-@@-chunk
-          // guard in parsePatch.
-          throw new Error(
-            `Update File '${filePath}' has a hunk line without a ' '/'+'/'-' prefix: ${JSON.stringify(
-              changeLine,
-            )}`,
-          )
+          // A body line whose leading space was stripped — a blank line, or the
+          // `}` that closes the hunk, which is by far the most common shape (6
+          // of 25 parse failures measured on 2026-08-15). Take it as context,
+          // WHOLE: nothing is dropped (opencode dropped it, which silently
+          // degrades a replacement into an EOF insertion), and the line still
+          // has to be in the file — so a `+` the model forgot fails loudly at
+          // apply time, with the divergence point named, instead of rejecting
+          // an otherwise-correct N-file patch at parse time.
+          oldLines.push(changeLine)
+          newLines.push(changeLine)
+          ops.push({ kind: 'context', text: changeLine })
         }
 
         i++
@@ -235,7 +293,7 @@ function parseUpdateFileChunks(
         oldLines,
         newLines,
         ops,
-        changeContext: changeContext || undefined,
+        changeContext,
         isEndOfFile: isEndOfFile || undefined,
       })
     } else if (lines[i].trim() === '') {
@@ -245,7 +303,8 @@ function parseUpdateFileChunks(
     } else {
       // A non-blank line that is not part of any `@@` chunk — almost always
       // prose the model emitted between the `*** Update File:` header and the
-      // first `@@` (e.g. "Here is my change:"). opencode (and our original port)
+      // first `@@` (e.g. "Here is my change:"), a line carrying a diff prefix
+      // having opened an implicit chunk above. opencode (and our original port)
       // silently skipped these via `i++` while reporting a successful apply, so
       // the text never reached the file. Fail loudly, mirroring the
       // unprefixed-body-line guard above.
@@ -319,15 +378,10 @@ export function parsePatch(patchText: string): { hunks: Hunk[] } {
   const lines = cleaned.split('\n')
   const hunks: Hunk[] = []
 
-  const beginIdx = lines.findIndex(line => line.trim() === BEGIN_MARKER)
-  const endIdx = lines.findIndex(line => line.trim() === END_MARKER)
+  const { bodyStart, bodyEnd } = locateEnvelope(lines)
 
-  if (beginIdx === -1 || endIdx === -1 || beginIdx >= endIdx) {
-    throw new Error('Invalid patch format: missing Begin/End markers')
-  }
-
-  let i = beginIdx + 1
-  while (i < endIdx) {
+  let i = bodyStart
+  while (i < bodyEnd) {
     const header = parsePatchHeader(lines, i)
     if (!header) {
       if (lines[i].trim() === '') {
@@ -365,10 +419,25 @@ export function parsePatch(patchText: string): { hunks: Hunk[] } {
         header.nextIdx,
         header.filePath,
       )
-      // opencode silently produces an empty update (a no-op write) when an
-      // Update section has no `@@` chunks; we fail loudly instead so a
-      // malformed hunk never masquerades as a successful edit.
       if (chunks.length === 0) {
+        // A chunk-less Update header immediately followed by another Update
+        // header for the SAME file is the model naming the path twice — the
+        // absolute one, then the repo-relative one — and the body belongs to
+        // the second. Drop this header instead of rejecting the patch.
+        const next = nextIdx < bodyEnd ? lines[nextIdx] : undefined
+        if (
+          next?.startsWith(UPDATE_HEADER) &&
+          samePathTarget(
+            header.filePath,
+            next.slice(UPDATE_HEADER.length).trim(),
+          )
+        ) {
+          i = nextIdx
+          continue
+        }
+        // Otherwise: opencode silently produces an empty update (a no-op write)
+        // when an Update section has no `@@` chunks; we fail loudly instead so
+        // a malformed hunk never masquerades as a successful edit.
         throw new Error(
           `Update File '${header.filePath}' has no @@ chunks (expected a "@@" context line before the changes)`,
         )
