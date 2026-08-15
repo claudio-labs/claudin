@@ -1,0 +1,22 @@
+Addic7ed release group
+YIFY release group
+## Heading two
+prose with a ## heading in the middle
+a^b holds a literal caret
+ab holds no caret
+bar$baz holds a literal dollar
+*foo starts with a literal star
+prose with a *foo star in the middle
+aardvark has a doubled a
+a+b holds a literal plus
+a?b holds a literal question mark
+foo|bar holds a literal pipe
+boo and foo differ in one letter
+the fox jumped
+ababc repeats a group
+a.b holds a literal dot
+axb holds any character
+foo at the start of the line
+this line reaches the end
+AnimeKalesi in camel case
+animekalesi in lower case

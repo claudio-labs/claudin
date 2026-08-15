@@ -20,11 +20,12 @@ function run(
   cwd: string,
   limit = 100,
   offset = 0,
+  caseInsensitive?: boolean,
 ): Promise<{ files: string[]; truncated: boolean }> {
   return glob(
     pattern,
     cwd,
-    { limit, offset },
+    { limit, offset, caseInsensitive },
     new AbortController().signal,
     permissionContext,
   )
@@ -199,5 +200,39 @@ describe('glob — CLAUDE_CODE_GLOB_NO_IGNORE', () => {
     process.env.CLAUDE_CODE_GLOB_NO_IGNORE = 'false'
     const { files } = await run('**/*.txt', dir)
     expect(files.map(f => basename(f))).toEqual(['kept.txt'])
+  })
+})
+
+describe('glob — case-insensitive matching', () => {
+  let dir: string
+
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'glob-case-'))
+    writeFileSync(join(dir, 'README.md'), 'x')
+    writeFileSync(join(dir, 'notes.md'), 'x')
+  })
+
+  afterAll(() => {
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  test('is case-sensitive by default', async () => {
+    // The guard against reaching for --iglob unconditionally: Glob has always
+    // been sensitive, and widening the default would change what every
+    // existing call answers.
+    const { files } = await run('*readme*', dir)
+    expect(files).toEqual([])
+  })
+
+  test('matches either case when asked', async () => {
+    const { files } = await run('*readme*', dir, 100, 0, true)
+    expect(files.map(f => basename(f))).toEqual(['README.md'])
+  })
+
+  test('a pattern already in the right case is unaffected by the flag', async () => {
+    const sensitive = await run('*notes*', dir)
+    const insensitive = await run('*notes*', dir, 100, 0, true)
+    expect(sensitive.files.map(f => basename(f))).toEqual(['notes.md'])
+    expect(insensitive.files.map(f => basename(f))).toEqual(['notes.md'])
   })
 })

@@ -1,6 +1,6 @@
 ---
 name: bash-file-read-census-and-redirect-reach
-description: Measured 2026-08-09 — models read files via Bash in 38% of Bash calls, but 82-85% of that is Grep/Glob work, not Read work; the redirect converts 84.7% when it fires; Read-friction ruled out except on the error path
+description: Measured 2026-08-09 and re-measured 2026-08-15 — 82-85% of Bash file-reads are Grep/Glob work, the refusal converts 84.7%, and the reach queue now has a standing collector; BRE translation alone is 40% of all redirects
 type: project
 ---
 
@@ -85,3 +85,52 @@ occurrences — not worth path-rebasing for.
 Corpus method: transcripts at `~/.claudin/projects/**/*.jsonl`; the replay needs
 `bun test` (bunfig's stub aliases), a plain `bun` run dies on
 `@anthropic-ai/sandbox-runtime`.
+
+## 2026-08-15 — the queue has a standing collector, and the gaps were capability gaps
+
+`scripts/profile/bash-redirect-gaps.test.ts` (`CLAUDIN_BENCH=1 bun test …`)
+replaces the hand-run probe: it walks every transcript, asks the REAL
+`analyzeCommandForRedirect` for a verdict, and buckets the non-redirecting
+commands by a best-effort reason with samples. Over **2,032 sessions / 23,388
+Bash calls**: 6,451 read/search calls (27.6% of Bash), **1,006 redirect
+(15.6%)**, 5,445 run in the shell, 308 skipped for a cwd that no longer exists.
+
+The round that produced it started from ONE session where 0 of 6 Bash calls
+redirected. Re-asking *why the model went to the shell* — instead of "why is the
+mapper narrow" — flipped the diagnosis: **4 of the 6 were capabilities Grep/Glob
+did not have**, not disobedience. That is the question to ask of this report.
+
+What landed, sized by the collector's own breakdown of the 1,006:
+
+- **BRE→ERE translation is 40% of ALL redirects (405).** `breToEre.ts` translates
+  `grep`'s default dialect instead of standing it down (`\|`→`|`, `\{n,m\}`→
+  `{n,m}`, the positional `^ $ *` rules, refusing back-refs/`\<`/`[\w]`/stacked
+  repetition). Equivalence is pinned by a **differential** test that runs the BRE
+  through the real `grep` and the TRANSLATOR'S OWN OUTPUT through the vendored
+  rg over a fixture and demands identical lines — feeding it the table's
+  expected value instead would let a wrong translation pass, verified by
+  mutation.
+- **`find -iname` → `Glob(-i: true)` is 35.** Glob gained `-i` (rg `--iglob`,
+  `src/shared/fs/glob.ts`), case-SENSITIVE by default — unlike Grep, whose
+  default is smart-case.
+- **`cat F | grep PAT` folding is 6.** A stdin grep is a `filter` role now, but
+  only over an identity window: `sed -n '1,400p' F | grep` still stands down.
+- Reach went roughly **560 → 1,006 (+80%)**.
+
+**The bug this round found, worth its own rule of thumb:** a suggested `Grep`
+that omits `-i` is NOT equivalent to the `grep` it replaces. GrepTool sends
+`--smart-case` when the caller says nothing (`GrepTool.ts:470-476`), so a
+lowercase pattern matches any case. `parseGrep` now always emits
+`caseInsensitive`, and `false` is the load-bearing value.
+
+**Rejected on cost:** `start_line`/`end_line` on Grep, to redirect
+`sed -n 'A,Bp' F | grep`. Two fields in every request forever for a restriction
+the model *invented* to bound output — it asked to scan the top of a file, not
+to search lines 1-400. A tool the model would never reach for spontaneously does
+not pay for its schema.
+
+**Next queue** (non-redirecting, most frequent first): `ls` 1,236 and `tail` 643
+are deliberate; `unclassified` 1,217 is dominated by commands whose file is
+simply gone (`/tmp/*.log`), i.e. noise, not a gap; then shell
+operators/redirection 813, `find` predicates 308 (`-maxdepth`, `-type d`, `-o`),
+expansions 263, grep flags with no Grep spelling 267.
