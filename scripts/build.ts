@@ -23,7 +23,6 @@ const featureFlags: Record<string, boolean> = {
   VOICE_MODE: false,              // Push-to-talk STT via claude.ai OAuth endpoint
   PROACTIVE: false,               // Autonomous agent mode (missing proactive/ module)
   KAIROS: false,                  // Persistent assistant/session mode (cloud backend)
-  BRIDGE_MODE: false,             // Remote desktop bridge via CCR — upstream's own note said "EXPERIMENT branch only; never merge to release", and it is gated at runtime behind a claude.ai web login a Claudin user never performs. build-system.md already listed it as disabled; the flag was the outlier. Folds the /bridge command and BriefTool's upload path (−18 chunks, −130 KB); src/platform/bridge/ itself is reached outside this flag and still ships until it is deleted.
   DAEMON: false,                  // Background daemon process (stubbed in open build)
   AGENT_TRIGGERS: false,          // Scheduled remote agent triggers
   ABLATION_BASELINE: false,       // A/B testing harness for eval experiments
@@ -74,6 +73,7 @@ const featureFlags: Record<string, boolean> = {
   LOOP_ERROR_MEMORY_TRIGGER: true,    // When the agent repeats the same failing (tool+input) ≥3× in one human turn and is still failing, fire a memory extraction with a hint to capture the lesson as a `feedback` memory. Bypasses the bramble_lintel throttle, gated by a per-loopKey + per-human-turn cooldown. Default-ON; opt out with CLAUDIN_LOOP_MEMORY_TRIGGER=0.
   TOOL_RESULT_CODE_OUTLINE: true,     // When a large text tool-result is recognizably one source file (content-sniffed lang), replace it with a scanSymbols structural outline (signatures + line ranges) instead of the blind head/tail that triggered a re-read thrashing loop on code. Full source persisted verbatim → retrievable via Read offset/limit + Grep on source=. On by default; opt out with CLAUDIN_CODE_OUTLINE=0.
   AGENT_WORKFLOWS: true,              // Claudin-only /workflows: staged agent state-machine (linear phases + handback) driven by a main orchestrator over 1+ parallel worker agents per phase. New tools (Workflow/ListWorkflows/WorkflowStatus) + tabbed /workflows command. Distinct from the upstream WORKFLOW_SCRIPTS fan-out tool. Defs in .claudin/workflows/*.md, run state in .claudin/workflows/.runs/.
+  BRIDGE_MODE: true,                  // Remote Control: the `remote-control`/`rc` entry, the /bridge command and BriefTool's upload path (+18 chunks, +130 KB over flag-off). The subsystem itself (src/platform/bridge/, 37 files) is reached outside this flag and ships either way — the flag only decides whether anything can enter it. Gated at runtime by hasBridgeCredential() in bridgeEnabled.ts: a claude.ai web-login OAuth token with the user:profile scope, or the CLAUDE_BRIDGE_OAUTH_TOKEN dev override. Was flipped off in 81ad5a83 as part of the de-fingerprinting round and turned back on here; upstream's "experiment branch only" note is why it stays credential-gated rather than open.
 }
 
 // ── Auto-mode classifier prompt files: warn if missing ──────────────
