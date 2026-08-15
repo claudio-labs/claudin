@@ -46,6 +46,7 @@
     "verify:sdk-types": "bun run scripts/generate-sdk-types.ts --check",
     "verify:rules": "bun run scripts/rules-check.ts",
     "smoke": "bun run build && node dist/cli.mjs --version && node dist/cli.mjs --help >/dev/null",
+    "smoke:hello": "bun run scripts/smoke-hello.ts",
     "verify:privacy": "bun run scripts/verify-no-phone-home.ts",
     "build:verified": "bun run build && bun run verify:privacy",
     "build:release": "CLAUDIN_RELEASE_BUILD=1 bun run build",
