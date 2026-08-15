@@ -65,7 +65,7 @@ When touching the tool, read the four traps before changing behaviour.
    it writes is `source`d by every later command, so `process.env.PATH` set
    afterwards never reaches the child — under `bun test` that first exec usually
    belongs to another file, making a PATH-based fake binary unreachable.
-   `CLAUDE_ENV_FILE` is the supported way in (sourced after the snapshot,
+   `CLAUDIN_ENV_FILE` is the supported way in (sourced after the snapshot,
    `bashProvider.ts:157-169`).
 2. **The Bash output filter rewrites commands the tool runs**: `git status` →
    `--porcelain --branch`, `git pull` → a one-line "already up to date",

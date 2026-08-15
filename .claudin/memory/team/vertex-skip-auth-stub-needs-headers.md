@@ -1,10 +1,10 @@
 ---
 name: vertex-skip-auth-stub-needs-headers
-description: The CLAUDE_CODE_SKIP_VERTEX_AUTH stub GoogleAuth must return a real Headers from getRequestHeaders() — a plain object kills every Vertex request
+description: The CLAUDIN_SKIP_VERTEX_AUTH stub GoogleAuth must return a real Headers from getRequestHeaders() — a plain object kills every Vertex request
 type: project
 ---
 
-In `src/providers/transport/client.ts`, the `CLAUDE_CODE_SKIP_VERTEX_AUTH` escape hatch
+In `src/providers/transport/client.ts`, the `CLAUDIN_SKIP_VERTEX_AUTH` escape hatch
 swaps a stub in for `GoogleAuth` so Vertex traffic can be pointed at a proxy that
 injects auth itself. That stub's `getClient().getRequestHeaders()` **must return
 a real `Headers`**, not a plain object.
@@ -25,7 +25,7 @@ moved `getRequestHeaders()` to `Promise<Headers>` well before v11, and 10.7.0 an
 See [[dependabot-bumps-2026-08-03-no-code-changes]].
 
 **How to apply:** the guard is the test
-`'CLAUDE_CODE_SKIP_VERTEX_AUTH stub returns Headers the Vertex SDK can read'` in
+`'CLAUDIN_SKIP_VERTEX_AUTH stub returns Headers the Vertex SDK can read'` in
 `src/providers/transport/client.test.ts`. It drives the **real** vertex-sdk with a
 stubbed `globalThis.fetch` and asserts the request URL reaches
 `/projects/test-project/locations/…:rawPredict`, which is only reachable if

@@ -15,10 +15,11 @@
 - [A tree-wide rewrite updates artifacts, not their producers](mechanical-rewrites-skip-producers.md) — the 2026-08 reorg silently disarmed a telemetry stub, broke verify:sdk-types and "freshened" a fictional path; grep generators/plugins/script globs after any move
 
 ## Repo health
+- [De-fingerprinting round (feat/claudin-identity, 2026-08-15)](defingerprinting-branch-2026-08.md) — what shipped, the ONE lane that keeps upstream headers, and the two env clusters that must move as units, not piecemeal
 - [The seven catch-all dirs are retired — 18 feature slices](reorg-catch-all-dirs-retired.md) — moduleBoundaries.test.ts is the only thing keeping them gone; `src/shared/` is explicitly NOT a clean leaf layer (~169 upward imports, unpinned on purpose)
 - [tsc --noEmit reached ZERO on 2026-08-13](typecheck-backlog-shape.md) — the ratchet, the absolute-path fingerprint trap, and TWO corrections: "cannot be hand-fixed" and "never reaches zero" were both disproven
 - [/upgrade and /extra-usage hang on a Login component that does not exist](upsell-commands-missing-login.md) — stubbed to `() => null`, onDone never fires; product call, not fixed
-- [CLAUDE_CODE_SYNC_PLUGIN_INSTALL hung headless -p](headless-sync-plugin-install-broken-import.md) — FIXED in PR #57; kept for the 2-question test that tells a real TS2307 from the fork's ~107 expected ones
+- [CLAUDIN_SYNC_PLUGIN_INSTALL hung headless -p](headless-sync-plugin-install-broken-import.md) — FIXED in PR #57; kept for the 2-question test that tells a real TS2307 from the fork's ~107 expected ones
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — it means nothing IMPORTS it; needs a local-reference guard AND a grep guard, with `bun run build` as the gate — re-parsing is too weak
 - [Per-turn filesystem scans audited 2026-08-07](per-turn-fs-scan-audit.md) — CORRECTED: scanMemoryFiles is uncached but gated OFF per-turn (tengu_moth_copse) and benched at 0.014 ms/file; getMemoryFiles memo omits cwd; worktree-exit *dialog* leaks stale rule caches
 - [memory_delta deleted 2026-08-07 — it was a second full copy, not a delta](memory-delta-removed-double-send.md) — re-sent every rule/CLAUDE.md body one turn after nested_memory (~57 KB/session); check the raw lane announces a hash before pairing a delta with it
@@ -56,10 +57,10 @@
 - [Runtime /models discovery only parses `context_length`](context-window-discovery-field-names.md) — in-memory per-session; Groq/vLLM/Mistral field names mapped but unshipped; strict OpenAI/DeepSeek/Azure return nothing
 - [provider !== 'anthropic' wrongly includes bedrock/vertex/foundry](provider-tag-not-anthropic-includes-cloud.md) — gate OpenAI-only form behavior (/models discovery) with an exclusion set, not != 'anthropic'
 - [Native-1M models need an explicit getContextWindowForModel branch](native-1m-context-window.md) — modelSupports1M=true does NOT set the runtime window for a no-[1m]-suffix model; add it beside the `fable-5` check or it compacts at 200k (bit Sonnet 5)
-- [Adaptive thinking is now the default (was opt-in)](adaptive-thinking-default-on.md) — 2026-07-13 flip: Claude models send {type:'adaptive'} by default; CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING=0 opts back to budget mode
+- [Adaptive thinking is now the default (was opt-in)](adaptive-thinking-default-on.md) — 2026-07-13 flip: Claude models send {type:'adaptive'} by default; CLAUDIN_ENABLE_ADAPTIVE_THINKING=0 opts back to budget mode
 - [Provider pointer heal — open follow-ups](provider-pointer-heal-followups.md) — febf362a fixed projects clobber + startup heal; mid-session reconcile, cache GC, /provider migrate rerun still pending
 - [SDK error checks: use isSdk* guards from src/shared/errors.ts, never instanceof](externalized-sdk-copies-instanceof-apierror.md) — externalized bedrock/vertex/foundry load their own sdk copy; FIXED 2026-07-03
-- [CLAUDE_CODE_SKIP_VERTEX_AUTH stub must return a real Headers](vertex-skip-auth-stub-needs-headers.md) — vertex-sdk calls .get() on getRequestHeaders(); the old `{}` killed every request under the flag; fixed + guarded 2026-08-03
+- [CLAUDIN_SKIP_VERTEX_AUTH stub must return a real Headers](vertex-skip-auth-stub-needs-headers.md) — vertex-sdk calls .get() on getRequestHeaders(); the old `{}` killed every request under the flag; fixed + guarded 2026-08-03
 - [Adding a /provider preset](../../skills/add-provider-preset/SKILL.md) — the recipe (API-key OpenAI-compat + OAuth variant) is now the `/add-provider-preset` skill, not a memory
 - [Kimi Code OAuth provider (device-flow)](kimi-code-oauth-provider.md) — mirrors xAI; RE wire-format at docs/tech/kimi-code/; impersonates official CLI (UA+X-Msh-*, gray area); OAuth-web registry; review follow-ups resolved (preset removed, /coding path pinned, test gaps closed)
 - [Shim-only body fields need a model-aware gate](shim-only-body-fields-model-aware-gate.md) — provider-quirk fields added to the openaiShim wire body 400 native Anthropic + Copilot-on-Claude unless gated on activeTransportUsesOpenAiShim(model)
@@ -88,7 +89,7 @@
 - [collapseRuns + blank-strip is SAFE since the 2026-06-27 root fix](bashfilter-collapseruns-blankstrip-footgun.md) — collapseIdenticalRuns no longer marks blank runs; the combo is now allowed; don't reintroduce the marker-on-blank behavior
 - [bashfilter fixture edits must preserve byte length](bashfilter-fixtures-byte-length-sensitive.md) — ROI tests assert reduction % per sample; scrub fixtures with equal-length placeholders (viudes→devusr)
 - [Bash filter samples live in ONE dir since 2026-08-06](bash-filter-sample-corpus-unified.md) — docs/discovery copy merged into __fixtures__/samples/; don't recreate the mirror; 87 of 142 unmapped in FIXTURE_MAP
-- [Live-verifying TUI mouse click/hover under tmux](tmux-mouse-click-verification.md) — mouse only works in fullscreen (CLAUDE_CODE_NO_FLICKER=1); inject SGR clicks via `send-keys`; ctrl+o verifies the render, SGR verifies the click
+- [Live-verifying TUI mouse click/hover under tmux](tmux-mouse-click-verification.md) — mouse only works in fullscreen (CLAUDIN_NO_FLICKER=1); inject SGR clicks via `send-keys`; ctrl+o verifies the render, SGR verifies the click
 - [apply_patch fails 11.9% vs Edit 4.6% — measured taxonomy](apply-patch-failure-taxonomy.md) — 53% read gates (atomicity amplifies: 9.4% @1 file → 38.5% @5+), 31% real context mismatch, 11% parser strictness → four repairs landed 2026-08-15; replay the 1,870-payload corpus before touching the parser
 - [checkBatchWritePermission's updatedInput:{} clobbers the tool's real input](checkbatchwrite-updatedinput-clobbers-input.md) — apply_patch was DOA in auto/bypass mode; harness applies updatedInput verbatim; echo real input on allow; green unit tests missed it
 
