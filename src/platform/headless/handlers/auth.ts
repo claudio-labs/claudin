@@ -6,7 +6,6 @@ import {
   logEvent,
 } from 'src/platform/analytics/index.js'
 import { refreshGrowthBookAfterAuthChange } from 'src/platform/analytics/growthbook.js'
-import { getGroveNoticeConfig, getGroveSettings } from 'src/platform/privacy/grove.js'
 import { clearPolicyLimitsCache } from 'src/platform/policyLimits/index.js'
 import { clearRemoteManagedSettingsCache } from 'src/platform/remoteManagedSettings/index.js'
 import { getSSLErrorHint } from 'src/providers/transport/errorUtils.js'
@@ -92,10 +91,6 @@ export async function clearAuthRelatedCaches(): Promise<void> {
   // Clear user data cache BEFORE GrowthBook refresh so it picks up fresh credentials
   resetUserCache()
   refreshGrowthBookAfterAuthChange()
-
-  // Clear Grove config cache
-  getGroveNoticeConfig.cache?.clear?.()
-  getGroveSettings.cache?.clear?.()
 
   // Clear remotely managed settings cache
   await clearRemoteManagedSettingsCache()

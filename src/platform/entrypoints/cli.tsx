@@ -217,8 +217,8 @@ async function main(): Promise<void> {
   })()
 
   // Resolve the active provider once — it gates the GitHub Copilot token
-  // refresh below, the Grove prefetch, and the clear-on-start logic further
-  // down. enableConfigs() already ran above, so profile reads are safe here.
+  // refresh below and the clear-on-start logic further down. enableConfigs()
+  // already ran above, so profile reads are safe here.
   const { tryGetActiveProvider } = await import(
     'src/providers/presets/activeProvider.js'
   )
@@ -250,19 +250,6 @@ async function main(): Promise<void> {
   // CLAUDIN_CLEAR_ON_START=1. Scrollback is preserved either way (no \x1b[3J).
   // The banner is rendered by Ink (<StartupBanner /> in REPL.tsx) so it scrolls
   // naturally into scrollback as content grows.
-  // Wave 7 prefetch (earlier kick) — only meaningful for Anthropic OAuth
-  // consumer subscribers, the audience the GroveDialog targets. Fired here
-  // (instead of inside trustAndOnboarding) so the two HTTP GETs overlap
-  // with main.tsx parse + setup() + commander dispatch — roughly +500 ms
-  // of headroom vs. +66 ms when kicked from trust_onboarding_start. Errors
-  // are already swallowed inside each memoized fn.
-  if (activeProvider && activeProvider.transport === 'anthropic') {
-    void (async () => {
-      const grove = await import('src/platform/privacy/grove.js')
-      void grove.getGroveSettings()
-      void grove.getGroveNoticeConfig()
-    })()
-  }
   if (
     activeProvider &&
     process.stdout.isTTY &&

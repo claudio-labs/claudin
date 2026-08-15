@@ -15,7 +15,6 @@
 // invocation is never expected at runtime.
 
 import { feature } from 'bun:bundle'
-import { downloadUserSettings } from 'src/platform/settingsSync/index.js'
 import type { Command } from 'src/commands/commands.js'
 import { createStreamlinedTransformer } from 'src/agent/tools/streamlinedTransform.js'
 import { installStreamJsonStdoutGuard } from 'src/terminal/render/streamJsonStdoutGuard.js'
@@ -57,10 +56,6 @@ import {
   headlessProfilerCheckpoint,
   logHeadlessProfilerTurn,
 } from 'src/platform/headlessProfiler.js'
-import {
-  isQualifiedForGrove,
-  checkGroveForNonInteractive,
-} from 'src/platform/privacy/grove.js'
 import { saveAgentSetting } from 'src/sessions/sessionStorage.js'
 import { getMainThreadAgentType } from 'src/platform/bootstrap/state.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
@@ -126,18 +121,6 @@ export async function runHeadless(
     setSDKStatus?: (status: SDKStatus) => void
   },
 ): Promise<void> {
-  // Fire user settings download now so it overlaps with the MCP/tool setup
-  // below. Managed settings already started in main.tsx preAction; this gives
-  // user settings a similar head start. The cached promise is joined in
-  // installPluginsAndApplyMcpInBackground before plugin install reads
-  // enabledPlugins.
-  if (
-    feature('DOWNLOAD_USER_SETTINGS') &&
-    (isEnvTruthy(process.env.CLAUDE_CODE_REMOTE) || getIsRemoteMode())
-  ) {
-    void downloadUserSettings()
-  }
-
   // In headless mode there is no React tree, so the useSettingsChange hook
   // never runs. Subscribe directly so that settings changes (including
   // managed-settings / policy updates) are fully applied.
@@ -177,12 +160,6 @@ export async function runHeadless(
   // Start headless profiler for first turn
   headlessProfilerStartTurn()
   headlessProfilerCheckpoint('runHeadless_entry')
-
-  // Check Grove requirements for non-interactive consumer subscribers
-  if (await isQualifiedForGrove()) {
-    await checkGroveForNonInteractive()
-  }
-  headlessProfilerCheckpoint('after_grove_check')
 
   // Initialize GrowthBook so feature flags take effect in headless mode.
   // Without this, the disk cache is empty and all flags fall back to defaults.

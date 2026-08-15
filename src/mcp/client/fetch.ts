@@ -14,6 +14,7 @@ import {
  * token and retries once on 401 via handleOAuth401Error (force-refresh).
  *
  * The Anthropic API path has this retry (withRetry.ts, grove.ts) to handle
+ * The Anthropic API path has this retry (withRetry.ts) to handle
  * memoize-cache staleness and clock drift. Without the same here, a single
  * stale token mass-401s every claude.ai connector and sticks them all in the
  * 15-min needs-auth cache.

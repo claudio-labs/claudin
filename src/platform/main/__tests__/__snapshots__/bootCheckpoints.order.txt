@@ -32,7 +32,6 @@
 938     preAction_after_migrations              preAction hook
 950     preAction_after_claudin_migrations      preAction hook
 958     preAction_after_remote_settings         preAction hook
-965     preAction_after_settings_sync           preAction hook
 
 # --- default action handler ---
 1006    action_handler_start

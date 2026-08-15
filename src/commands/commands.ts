@@ -134,7 +134,6 @@ import permissions from 'src/commands/permissions/index.js'
 import plan from 'src/commands/plan/index.js'
 import fast from 'src/commands/fast/index.js'
 import passes from 'src/commands/passes/index.js'
-import privacySettings from 'src/commands/privacy-settings/index.js'
 import provider from 'src/commands/provider/index.js'
 import hooks from 'src/commands/hooks/index.js'
 import branch from 'src/commands/branch/index.js'
@@ -311,7 +310,6 @@ const COMMANDS = memoize((): Command[] => [
   thinkbackPlay,
   permissions,
   plan,
-  privacySettings,
   hooks,
   exportCommand,
   sandboxToggle,

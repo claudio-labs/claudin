@@ -8,11 +8,11 @@
  * - default:            Everything enabled.
  * - no-telemetry:       Analytics/telemetry disabled (Datadog, 1P events, feedback survey).
  * - essential-traffic:  ALL nonessential network traffic disabled
- *                       (telemetry + auto-updates, grove, release notes, model capabilities, etc.).
+ *                       (telemetry + auto-updates, release notes, model capabilities, etc.).
  *
  * Claudin defaults to `essential-traffic`: as a provider-agnostic fork, the
  * Anthropic-backend startup probes (bootstrap, quota warm, MCP registry,
- * fast-mode org status, grove, oauth account settings, …) are dead weight
+ * fast-mode org status, oauth account settings, …) are dead weight
  * for the typical user. Set `ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC=0`
  * (or `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=0`) to opt back in to the
  * upstream behaviour.

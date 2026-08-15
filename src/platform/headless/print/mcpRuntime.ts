@@ -16,7 +16,6 @@ import { feature } from 'bun:bundle'
 import uniqBy from 'lodash-es/uniqBy.js'
 import { uniq } from 'src/shared/data/array.js'
 import { cwd } from 'process'
-import { downloadUserSettings } from 'src/platform/settingsSync/index.js'
 import { waitForRemoteManagedSettingsToLoad } from 'src/platform/remoteManagedSettings/index.js'
 import { assembleToolPool } from 'src/tools/tools.js'
 import { mergeAndFilterTools } from 'src/agent/tools/toolPool.js'
@@ -54,14 +53,12 @@ import { filterToolsByServer } from 'src/mcp/utils.js'
 import { setupVscodeSdkMcp } from 'src/mcp/vscodeSdkMcp.js'
 import {
   getInitJsonSchema,
-  getIsRemoteMode,
   getSessionId,
 } from 'src/platform/bootstrap/state.js'
 import { createSyntheticOutputTool } from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js'
 import { randomUUID } from 'crypto'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getCommands } from 'src/commands/commands.js'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { installPluginsForHeadless } from 'src/plugins/headlessPluginInstall.js'
 import { refreshActivePlugins } from 'src/plugins/refresh.js'
 import { handleMcpSetServers } from 'src/platform/headless/print/mcpReconcile.js'
@@ -500,20 +497,10 @@ export async function installPluginsAndApplyMcpInBackground(
   ctx: HeadlessStreamingContext,
 ): Promise<void> {
   try {
-    // Join point for user settings (fired at runHeadless entry) and managed
-    // settings (fired in main.tsx preAction). downloadUserSettings() caches
-    // its promise so this awaits the same in-flight request.
-    await Promise.all([
-      feature('DOWNLOAD_USER_SETTINGS') &&
-      (isEnvTruthy(process.env.CLAUDE_CODE_REMOTE) || getIsRemoteMode())
-        ? withDiagnosticsTiming('headless_user_settings_download', () =>
-            downloadUserSettings(),
-          )
-        : Promise.resolve(),
-      withDiagnosticsTiming('headless_managed_settings_wait', () =>
-        waitForRemoteManagedSettingsToLoad(),
-      ),
-    ])
+    // Join point for managed settings, fired in main.tsx preAction.
+    await withDiagnosticsTiming('headless_managed_settings_wait', () =>
+      waitForRemoteManagedSettingsToLoad(),
+    )
 
     const pluginsInstalled = await installPluginsForHeadless()
 

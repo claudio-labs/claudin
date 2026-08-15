@@ -408,12 +408,6 @@ export type GlobalConfig = {
     ReferralEligibilityResponse & { timestamp: number }
   >
 
-  // Grove config cache per account - key is account UUID
-  groveConfigCache?: Record<
-    string,
-    { grove_enabled: boolean; timestamp: number }
-  >
-
   // Guest passes upsell tracking
   passesUpsellSeenCount?: number // Number of times the guest passes upsell has been shown
   hasVisitedPasses?: boolean // Whether the user has visited /passes command

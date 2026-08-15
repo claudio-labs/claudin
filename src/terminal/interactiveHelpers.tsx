@@ -14,7 +14,6 @@ import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetu
 import { startDeferredPrefetches } from 'src/platform/main/deferredPrefetches.js';
 import { checkGate_CACHED_OR_BLOCKING, initializeGrowthBook, resetGrowthBook } from 'src/platform/analytics/growthbook.js';
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';
-import { isQualifiedForGrove } from 'src/platform/privacy/grove.js';
 import { handleMcpjsonServerApprovals } from 'src/mcp/mcpServerApproval.js';
 import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import { onChangeAppState } from 'src/terminal/state/onChangeAppState.js';
@@ -223,20 +222,6 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
   // Defer to next tick so the OTel dynamic import resolves after first render
   // instead of during the pre-render microtask queue.
   setImmediate(() => initializeTelemetryAfterTrust());
-  const qualifiedForGrove = await isQualifiedForGrove();
-  profileCheckpoint('setupScreens_after_grove_check');
-  if (qualifiedForGrove) {
-    profileCheckpoint('setupScreens_grove_block_enter');
-    const {
-      GroveDialog
-    } = await import('src/platform/privacy/ui/Grove.js');
-    const decision = await showSetupDialog<string>(root, done => <GroveDialog showIfAlreadyViewed={false} location={onboardingShown ? 'onboarding' : 'policy_update_modal'} onDone={done} />);
-    if (decision === 'escape') {
-      logEvent('tengu_grove_policy_exited', {});
-      gracefulShutdownSync(0);
-      return false;
-    }
-  }
 
   // Check for a custom API key surfaced by the active Anthropic profile.
   {
