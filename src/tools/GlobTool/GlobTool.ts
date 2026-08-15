@@ -14,6 +14,7 @@ import { expandPath, toRelativePath } from 'src/shared/fs/path.js'
 import { checkReadPermissionForTool } from 'src/permissions/filesystem.js'
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import { matchWildcardPattern } from 'src/permissions/shellRuleMatching.js'
+import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
 import { semanticNumber } from 'src/shared/data/semanticNumber.js'
 import { DESCRIPTION, GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import {
@@ -35,6 +36,9 @@ const inputSchema = lazySchema(() =>
       ),
     offset: semanticNumber(z.number().optional()).describe(
       'Skip the first N matching files before applying the 100-file cap. Pass the offset a truncated result reports to page through the rest. Defaults to 0.',
+    ),
+    '-i': semanticBoolean(z.boolean().optional()).describe(
+      'Match the pattern case-insensitively (rg --iglob). Defaults to false — unlike Grep, which applies smart-case, this tool is case-sensitive unless you ask. Use it for the `find -iname` case: "*readme*" with -i finds README.md.',
     ),
   }),
 )
@@ -186,7 +190,7 @@ export const GlobTool = buildTool({
     const { files, truncated, incomplete } = await glob(
       input.pattern,
       GlobTool.getPath(input),
-      { limit: DEFAULT_GLOB_LIMIT, offset },
+      { limit: DEFAULT_GLOB_LIMIT, offset, caseInsensitive: input['-i'] },
       abortController.signal,
       appState.toolPermissionContext,
     )

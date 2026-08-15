@@ -185,7 +185,7 @@ describe('search pipelines fold into the Grep call', () => {
         path: FILE_A,
         glob: undefined,
         output_mode: 'content',
-        caseInsensitive: undefined,
+        caseInsensitive: false,
         context: undefined,
         walksTree: undefined,
         head_limit: 20,
@@ -243,7 +243,7 @@ describe('searches → Grep', () => {
         path: 'src',
         glob: '*.ts',
         output_mode: 'content',
-        caseInsensitive: undefined,
+        caseInsensitive: false,
         context: undefined,
         walksTree: true,
       },
@@ -253,6 +253,77 @@ describe('searches → Grep', () => {
   test('two --include flags collapse into one brace glob', () => {
     const [call] = calls('grep -rn "foo" src --include=*.ts --include=*.tsx')
     expect(call).toMatchObject({ tool: 'Grep', glob: '*.{ts,tsx}' })
+  })
+
+  test('a grep without -i asks for case-sensitive matching, explicitly', () => {
+    // Grep applies ripgrep SMART-CASE when the caller says nothing, so a
+    // lowercase pattern matches any case — while the `grep` being replaced
+    // matched only the case it was given. Leaving the field off is the bug;
+    // `false` is what reproduces the command.
+    const command = `grep -n "animekalesi" ${FILE_A}`
+    expect(calls(command)[0]).toMatchObject({ caseInsensitive: false })
+    expect(renderToolRedirect(analyze(command)!)).toContain('"-i": false')
+  })
+
+  test('and -i still travels as true', () => {
+    const command = `grep -in "animekalesi" ${FILE_A}`
+    expect(calls(command)[0]).toMatchObject({ caseInsensitive: true })
+    expect(renderToolRedirect(analyze(command)!)).toContain('"-i": true')
+  })
+})
+
+// grep without -E is BRE, and the redirect used to stand every divergent BRE
+// pattern down. Now it translates (breToEre.ts) — these rows are the ones that
+// used to sit in the stand-down table. The translation's own equivalence is
+// pinned against the real grep and the real rg in breToEre.test.ts; what these
+// pin is that the redirect FIRES and carries the translated pattern.
+describe('BRE patterns are translated, not refused', () => {
+  const TRANSLATED: [string, string, string][] = [
+    [`grep -rn "foo\\|bar" src`, 'foo|bar', 'the alternation the model writes'],
+    ['grep -rn "foo|bar" src', 'foo\\|bar', 'a bare pipe stays a literal'],
+    [`grep -rn "a\\{2\\}" ${FILE_A}`, 'a{2}', 'an interval'],
+    ['grep -rn "a+b" src', 'a\\+b', 'a literal plus'],
+    ['grep -rn "a?b" src', 'a\\?b', 'a literal question mark'],
+    [`grep -c "a^b" ${FILE_A}`, 'a\\^b', 'a caret mid-pattern'],
+    // Single-quoted on purpose: in double quotes `$baz` is an expansion, which
+    // stands the segment down at argvOf before the dialect ever matters.
+    [`grep -c 'bar$baz' ${FILE_A}`, 'bar\\$baz', 'a dollar mid-pattern'],
+    [`grep -c "*foo" ${FILE_A}`, '\\*foo', 'a leading star'],
+    [`grep -c "^*foo" ${FILE_A}`, '^\\*foo', 'a star after the anchor'],
+  ]
+  for (const [command, pattern, why] of TRANSLATED) {
+    test(`${command} → ${pattern} — ${why}`, () => {
+      expect(calls(command)[0]).toMatchObject({ pattern, translated: true })
+    })
+  }
+
+  test('the session command that motivated this', () => {
+    const command = `grep -n "Addic7ed\\|YIFY\\|^## " ${FILE_A}`
+    expect(calls(command)[0]).toMatchObject({
+      tool: 'Grep',
+      pattern: 'Addic7ed|YIFY|^## ',
+      caseInsensitive: false,
+    })
+  })
+
+  test('a pattern the translation leaves alone is not flagged', () => {
+    // `translated` drives a note in the message, so it must mean "rewritten",
+    // not "went through the BRE arm".
+    expect(calls(`grep -n "AnimeKalesi" ${FILE_A}`)[0]).not.toHaveProperty(
+      'translated',
+    )
+  })
+
+  test('the message says the pattern was converted', () => {
+    const analysis = analyze(`grep -rn "foo\\|bar" src`)
+    const message = renderToolRedirect(analysis!)
+    expect(message).toContain('Grep(pattern: "foo|bar"')
+    expect(message).toContain('it was converted')
+  })
+
+  test('and says nothing when nothing was converted', () => {
+    const message = renderToolRedirect(analyze(`grep -rn "foo" src`)!)
+    expect(message).not.toContain('it was converted')
   })
 
   test('-c maps to count mode, -l to files_with_matches', () => {
@@ -408,6 +479,64 @@ describe('discovery → Glob', () => {
       { tool: 'Glob', pattern: '**/*', path: 'src' },
     ])
   })
+
+  test('find DIR -iname PAT carries the case flag', () => {
+    expect(calls('find src -iname "*.TS"')).toEqual([
+      { tool: 'Glob', pattern: '**/*.TS', path: 'src', caseInsensitive: true },
+    ])
+  })
+
+  test('a plain -name does NOT carry it — Glob is sensitive by default', () => {
+    // The flag has to be absent, not false: it drives the `"-i": true` the
+    // message prints, and Glob's default already matches `find -name`.
+    expect(calls('find src -name "*.ts"')[0]).not.toHaveProperty(
+      'caseInsensitive',
+    )
+  })
+
+  test('the rendered call spells the flag the tool takes', () => {
+    const analysis = analyze('find src -iname "*.TS"')
+    expect(renderToolRedirect(analysis!)).toContain(
+      'Glob(pattern: "**/*.TS", path: "src", "-i": true)',
+    )
+  })
+})
+
+describe('a file source piped into grep', () => {
+  test('cat f | grep PAT is one Grep over f', () => {
+    expect(calls(`cat ${FILE_A} | grep -n foo`)).toMatchObject([
+      {
+        tool: 'Grep',
+        pattern: 'foo',
+        path: `${REPO_ROOT}/${FILE_A}`,
+        output_mode: 'content',
+      },
+    ])
+  })
+
+  test('a whole-file sed range counts as the whole file', () => {
+    expect(calls(`sed -n '1,$p' ${FILE_A} | grep foo`)).toMatchObject([
+      { tool: 'Grep', pattern: 'foo', path: `${REPO_ROOT}/${FILE_A}` },
+    ])
+  })
+
+  test('a trailing selector still folds, now onto the Grep', () => {
+    expect(calls(`cat ${FILE_A} | grep -n foo | head -5`)).toMatchObject([
+      { tool: 'Grep', pattern: 'foo', head_limit: 5 },
+    ])
+  })
+
+  test('grep -c over a piped file keeps the count mode', () => {
+    // Over ONE file grep prints the bare count whether it reads the file or
+    // stdin, so the count is reproducible where `-l` is not.
+    expect(calls(`cat ${FILE_A} | grep -c foo`)).toMatchObject([
+      { tool: 'Grep', output_mode: 'count' },
+    ])
+  })
+
+  test('the Read is gone — the pipeline is not a read plus a search', () => {
+    expect(calls(`cat ${FILE_A} | grep -n foo`)).toHaveLength(1)
+  })
 })
 
 describe('compound commands', () => {
@@ -475,27 +604,14 @@ describe('stands down', () => {
     // "several files banner" arm cannot absorb the rejection.
     [`head -q ${FILE_A}`, 'an unrecognised head flag'],
     [`cat -A ${FILE_A}`, 'shows non-printing characters'],
-    // grep's default dialect is BRE, and Grep hands the pattern to ripgrep
-    // verbatim: `\|` is an alternation to grep and a literal pipe to rg, and a
-    // bare `|` is the exact inverse. Either way the result set would differ.
-    [`grep -rn "foo\\|bar" src`, 'BRE alternation reads as a literal to rg'],
-    ['grep -rn "foo|bar" src', 'an unescaped pipe is a literal in BRE'],
-    [`grep -rn "a\\{2\\}" ${FILE_A}`, 'BRE interval braces'],
+    // The BRE forms are TRANSLATED now, not refused — see the describe below.
+    // What still stands down is a BRE construct with no ERE equivalent.
     ['rg "(foo)\\1" src', 'back-references have no ripgrep spelling'],
-    // Same BRE char-class gate, on the characters the fixtures above do not
-    // touch: in BRE these are literals, to rg they are repetition operators.
-    ['grep -rn "a+b" src', 'a plus is a literal in BRE, a repetition to rg'],
-    ['grep -rn "a?b" src', 'a question mark is a literal in BRE, an optional to rg'],
-    // Positional BRE metacharacters: anchors away from the edges are literals
-    // to grep but anchors to rg (a silent zero-match), and a leading star is
-    // a literal to grep but a parse error to rg.
-    [`grep -c "a^b" ${FILE_A}`, 'a caret mid-pattern is a literal in BRE, an anchor to rg'],
-    // Single-quoted on purpose: in double quotes `$baz` is an expansion, which
-    // stands the segment down at argvOf and would never reach the anchor gate
-    // this row exists to pin.
-    [`grep -c 'bar$baz' ${FILE_A}`, 'a dollar mid-pattern is a literal in BRE'],
-    [`grep -c "*foo" ${FILE_A}`, 'a leading star is a literal in BRE, a parse error to rg'],
-    [`grep -c "^*foo" ${FILE_A}`, 'a star after a leading caret is still a literal in BRE'],
+    [`grep -rn "\\(foo\\)\\1" ${FILE_A}`, 'a BRE back-reference, same problem'],
+    [`grep -rn "\\<word\\>" ${FILE_A}`, 'GNU word anchors have no stable rg spelling'],
+    [`grep -rn "a**" ${FILE_A}`, 'stacked repetition is a parse error to rg'],
+    [`grep -rn "foo\\d" ${FILE_A}`, 'a BRE \\d is a literal d to grep, a class to rg'],
+    [`grep -rn "[\\w]" ${FILE_A}`, 'a backslash inside a bracket'],
     // ERE: an alphanumeric escape the engines do not share. grep -E reads \d
     // as a literal d (matching "food"); rg reads a digit class (matching
     // "foo9") — same count, different lines, undetectable downstream.
@@ -526,6 +642,34 @@ describe('stands down', () => {
     [`grep foo ${FILE_A} ${FILE_B}`, 'Grep searches one path'],
     ['grep TODO src', 'without -r, grep prints "Is a directory" and matches nothing'],
     [`cat ${FILE_A} | echo hi`, 'the read is discarded'],
+    // A grep reading stdin only maps when an upstream segment named the file
+    // AND handed over all of it — Grep cannot restrict a search to a slice.
+    [
+      `sed -n '1,400p' ${FILE_A} | grep foo`,
+      'the shell searched a line slice, which Grep cannot express',
+    ],
+    [
+      `head -n 100 ${FILE_A} | grep foo`,
+      'same slice problem, spelled with head',
+    ],
+    ['grep foo', 'a bare stdin filter names no file at all'],
+    [
+      `cat ${FILE_A} | grep -l foo`,
+      'grep -l over stdin answers "(standard input)", not the filename',
+    ],
+    [
+      `cat ${FILE_A} ${FILE_B} | grep foo`,
+      'two sources, so no single path for the Grep',
+    ],
+    [
+      `cat ${FILE_A} | grep --include=*.ts foo`,
+      'grep ignores --include on stdin; honoring it would narrow the search',
+    ],
+    [`cat ${FILE_A} | grep foo | grep bar`, 'a second filter has nothing to map to'],
+    [
+      'find src -name "*.ts" | grep foo',
+      'a list of paths is not a file to search',
+    ],
     [`find . -name "*.ts" -delete`, 'destructive predicate'],
     ['find src -type d', 'directories, which Glob does not return'],
     ['find src -maxdepth 2 -name "*.ts"', 'depth limit'],

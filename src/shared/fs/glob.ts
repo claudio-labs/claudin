@@ -67,7 +67,11 @@ export function extractGlobBaseDirectory(pattern: string): {
 export async function glob(
   filePattern: string,
   cwd: string,
-  { limit, offset }: { limit: number; offset: number },
+  {
+    limit,
+    offset,
+    caseInsensitive,
+  }: { limit: number; offset: number; caseInsensitive?: boolean },
   abortSignal: AbortSignal,
   toolPermissionContext: ToolPermissionContext,
 ): Promise<{
@@ -96,6 +100,10 @@ export async function glob(
   // Use ripgrep for better memory performance
   // --files: list files instead of searching content
   // --glob: filter by pattern
+  // --iglob: the same filter matched case-insensitively. Only the CALLER's
+  //   pattern switches — the exclusions appended below are ours and are already
+  //   written in the case they occur in, so widening them would drop paths the
+  //   caller asked for.
   // --sortr=modified: sort by modification time, NEWEST first. The caller caps
   //   the list (GlobTool keeps the first 100), so the cap has to keep the files
   //   most likely to matter — the same ranking GrepTool's files_with_matches
@@ -108,7 +116,7 @@ export async function glob(
   const hidden = isEnvTruthy(process.env.CLAUDE_CODE_GLOB_HIDDEN || 'true')
   const args = [
     '--files',
-    '--glob',
+    caseInsensitive ? '--iglob' : '--glob',
     searchPattern,
     '--sortr=modified',
     ...(noIgnore ? ['--no-ignore'] : []),

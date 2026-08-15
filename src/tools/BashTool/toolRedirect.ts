@@ -6,6 +6,7 @@ import {
 } from 'src/platform/bash/segments.js'
 import { tryParseShellCommand } from 'src/platform/bash/shellQuote.js'
 import { expandTilde } from 'src/permissions/pathValidation.js'
+import { breToEre } from 'src/tools/BashTool/breToEre.js'
 import { FILE_READ_TOOL_NAME, MAX_LINES_TO_READ } from 'src/tools/FileReadTool/prompt.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
@@ -81,8 +82,20 @@ export type SuggestedCall =
       path?: string
       glob?: string
       output_mode: 'content' | 'count' | 'files_with_matches'
-      caseInsensitive?: boolean
+      /**
+       * ALWAYS set, and `false` is the load-bearing value: Grep applies
+       * ripgrep smart-case when the caller says nothing, so a lowercase
+       * pattern would match any case where the `grep` being replaced matched
+       * only the case it was given. The suggestion has to decide.
+       */
+      caseInsensitive: boolean
       context?: { flag: '-A' | '-B' | '-C'; lines: number }
+      /**
+       * The pattern reaching the tool is not the one the command carried: it
+       * came out of the BRE→ERE translation. The message says so, because a
+       * rewritten pattern otherwise reads as the redirect having mangled it.
+       */
+      translated?: boolean
       /**
        * The window a trailing selector folded in — `| head -N` becomes
        * `head_limit`, `| sed -n 'A,Bp'` adds `offset`. Grep's `offset` skips
@@ -100,7 +113,13 @@ export type SuggestedCall =
       */
      walksTree?: boolean
     }
-  | { tool: 'Glob'; pattern: string; path?: string }
+  | {
+      tool: 'Glob'
+      pattern: string
+      path?: string
+      /** `find -iname`. Glob is case-SENSITIVE by default, unlike Grep. */
+      caseInsensitive?: boolean
+    }
 
 /** One pipeline's worth of segments and the calls that replace them. */
 export type RedirectUnit = {
@@ -274,6 +293,13 @@ function composeWindow(base: LineWindow, next: LineWindow): LineWindow {
 type SegmentRole =
   | { kind: 'source'; calls: SuggestedCall[]; window?: LineWindow }
   | { kind: 'selector'; window: LineWindow }
+  /**
+   * A `grep` reading stdin: it neither produces the file nor merely narrows
+   * lines, it SEARCHES what came before it. Usable only when an upstream
+   * segment named the file, which is what classifyPipeline checks — on its
+   * own (`grep PAT` with no path) it is a terminal filter and maps to nothing.
+   */
+  | { kind: 'filter'; call: Extract<SuggestedCall, { tool: 'Grep' }> }
 
 /** `sed -n '330,400p'`, `sed -n 5p`, `sed -n '330,$p'` — nothing else. */
 const SED_RANGE_RE = /^(\d+)(?:,(\d+|\$))?p$/
@@ -479,21 +505,8 @@ function expandShortFlagClusters(args: string[]): string[] {
 }
 
 /**
- * Metacharacters whose meaning DIVERGES between grep's default BRE and the
- * dialect ripgrep speaks. `grep 'foo\|bar'` is an alternation while rg reads
- * the same string as a literal pipe — and `grep 'foo|bar'` is the exact
- * inverse. Grep hands the pattern to rg verbatim, so a BRE pattern carrying any
- * of these would quietly answer with a different result set than the command it
- * replaced, which is worse than not redirecting at all.
- *
- * Deliberately blunt: `grep 'a\.b'` loses the redirect even though `\.` means
- * the same in both. Translating BRE to ERE is the alternative and it is its own
- * bug surface (character classes, `\{n,m\}`, POSIX classes, nested escapes);
- * standing down costs a round-trip, translating wrong costs correctness.
+ * A character that opens a POSIX class/collating/equivalence inside [...].
  */
-const BRE_DIVERGENT_RE = /[\\|(){}+?]/
-
-/** A character that opens a POSIX class/collating/equivalence inside [...]. */
 const POSIX_CLASS_OPEN_RE = /^[:=.]$/
 
 /**
@@ -537,28 +550,6 @@ function bracketSpans(pattern: string): boolean[] {
     i = j + 1
   }
   return inBracket
-}
-
-/**
- * Anchors and the repetition star diverge by POSITION, so the character
- * class above cannot see them. In POSIX BRE `^` and `$` are special only at
- * the pattern's edges — `grep 'a^b'` matches a literal caret — while
- * ripgrep reads an anchor anywhere and answers with ZERO matches: a silent
- * divergence. A leading `*` repeats nothing to rg, which aborts with a
- * parse error, and is a literal star to grep. Inside a bracket expression
- * all three are literal in both dialects, so the scan tracks brackets —
- * otherwise `grep '[^f]oo'` would stand down for nothing.
- */
-function hasDivergentBreAnchors(pattern: string): boolean {
-  const inBracket = bracketSpans(pattern)
-  for (let i = 0; i < pattern.length; i++) {
-    if (inBracket[i]) continue
-    const ch = pattern[i]!
-    if (ch === '^' && i !== 0) return true
-    if (ch === '$' && i !== pattern.length - 1) return true
-    if (ch === '*' && (i === 0 || (i === 1 && pattern[0] === '^'))) return true
-  }
-  return false
 }
 
 const ALNUM_RE = /[A-Za-z0-9]/
@@ -726,17 +717,23 @@ function parseGrep(
 
   if (flags.countOnly && flags.filesOnly) return null
   if (positional.length === 0) return null
-  const pattern = positional[0]!
+  let pattern = positional[0]!
   const paths = positional.slice(1)
   if (paths.length > 1) return null
   if (paths.length === 1 && targetsExcludedVcsDir(paths[0]!)) return null
-  // The pattern reaches rg unchanged, so a dialect Grep cannot reproduce has to
-  // stand the whole command down rather than search for something else.
-  if (
-    dialect === 'bre'
-      ? BRE_DIVERGENT_RE.test(pattern) || hasDivergentBreAnchors(pattern)
-      : hasDivergentEreSyntax(pattern)
-  ) {
+  // BRE and the dialect Grep speaks invert each other — `\|` is an alternation
+  // to one and a literal pipe to the other — so a BRE pattern is TRANSLATED
+  // rather than handed over (breToEre.ts), while an ERE one is already in the
+  // target dialect and only has to be checked. Either way, a pattern whose
+  // equivalence cannot be PROVEN stands the whole command down instead of
+  // searching for something else.
+  let translated = false
+  if (dialect === 'bre') {
+    const ere = breToEre(pattern)
+    if (ere === null) return null
+    translated = ere !== pattern
+    pattern = ere
+  } else if (hasDivergentEreSyntax(pattern)) {
     return null
   }
 
@@ -765,6 +762,7 @@ function parseGrep(
   let walksTree = false
   let targetIsDirectory = false
   let path: string | undefined
+  let readsStdin = false
   if (paths.length === 1) {
     // Resolved only to prove it exists — Grep is happy with the relative form
     // the model already wrote, and echoing that keeps the suggestion readable.
@@ -782,9 +780,10 @@ function parseGrep(
     }
     path = paths[0]!
   } else if (!flags.recursive) {
-    // Non-recursive grep with no path reads stdin — that is a filter on someone
-    // else's output, not a search of the tree.
-    return null
+    // Non-recursive grep with no path reads stdin — a filter on someone else's
+    // output. It maps only when an upstream segment named the file it is
+    // filtering, so the decision belongs to classifyPipeline.
+    readsStdin = true
   } else {
     walksTree = divergesOnIgnoredFiles
   }
@@ -798,26 +797,32 @@ function parseGrep(
 
   const glob = combineIncludes(flags.includes)
   if (glob === null) return null
+  // grep ignores --include when it reads stdin, so honoring it here would
+  // narrow a search the shell ran over everything.
+  if (readsStdin && glob !== undefined) return null
+  // `cat f | grep -l PAT` answers "(standard input)", not the filename, so the
+  // suggestion cannot reproduce it. Counting IS reproducible: over one file
+  // grep prints the bare count either way.
+  if (readsStdin && flags.filesOnly) return null
 
-  return {
-    kind: 'source',
-    calls: [
-      {
-        tool: 'Grep',
-        pattern,
-        path,
-        glob,
-        output_mode: flags.countOnly
-          ? 'count'
-          : flags.filesOnly
-            ? 'files_with_matches'
-            : 'content',
-        caseInsensitive: flags.caseInsensitive || undefined,
-        context: flags.context,
-        walksTree: walksTree || undefined,
-      },
-    ],
+  const call: Extract<SuggestedCall, { tool: 'Grep' }> = {
+    tool: 'Grep',
+    pattern,
+    path,
+    glob,
+    output_mode: flags.countOnly
+      ? 'count'
+      : flags.filesOnly
+        ? 'files_with_matches'
+        : 'content',
+    caseInsensitive: flags.caseInsensitive,
+    context: flags.context,
+    walksTree: walksTree || undefined,
+    ...(translated && { translated: true }),
   }
+  return readsStdin
+    ? { kind: 'filter', call }
+    : { kind: 'source', calls: [call] }
 }
 
 /** `--flag=value` → ['--flag', 'value']; `--flag` → ['--flag', undefined]. */
@@ -850,6 +855,7 @@ function parseFind(argv: string[], cwd: string): SegmentRole | null {
   const args = argv.slice(1)
   const roots: string[] = []
   let namePattern: string | undefined
+  let caseInsensitive = false
   let sawTypeFile = false
 
   for (let i = 0; i < args.length; i++) {
@@ -867,6 +873,16 @@ function parseFind(argv: string[], cwd: string): SegmentRole | null {
         namePattern = value
         break
       }
+      // Glob's `-i` is the same filter matched case-insensitively (rg
+      // --iglob), so this maps exactly. `-name` and `-iname` together are
+      // barred by the same guard that bars two `-name`s.
+      case '-iname': {
+        const value = args[++i]
+        if (value === undefined || namePattern !== undefined) return null
+        namePattern = value
+        caseInsensitive = true
+        break
+      }
       case '-type': {
         const value = args[++i]
         // Glob returns files. `-type d` and `-type l` have no spelling.
@@ -875,7 +891,7 @@ function parseFind(argv: string[], cwd: string): SegmentRole | null {
         break
       }
       default:
-        // -exec, -delete, -maxdepth, -mtime, -size, -newer, -iname, -o, -not …
+        // -exec, -delete, -maxdepth, -mtime, -size, -newer, -o, -not …
         // and -path, which LOOKS translatable and is not: its wildcards cross
         // `/`, ripgrep's globset `*` stops at one segment, so `-path "./src/*"`
         // would become a Glob over direct children only — silently narrower.
@@ -898,6 +914,7 @@ function parseFind(argv: string[], cwd: string): SegmentRole | null {
         tool: 'Glob',
         pattern,
         path: root === undefined || root === '.' ? undefined : root,
+        ...(caseInsensitive && { caseInsensitive: true }),
       },
     ],
   }
@@ -1002,14 +1019,27 @@ function classifyPipeline(
   // common shape the shell is still being used for, and `head_limit`/`offset`
   // spell it exactly.
   const only = head.calls.length === 1 ? head.calls[0] : undefined
-  const windowable =
+  let windowable =
     only && (only.tool === 'Read' || only.tool === 'Grep') ? only : undefined
 
   let window: LineWindow = head.window ?? IDENTITY_WINDOW
   for (const segment of group.slice(1)) {
     if (!windowable) return null
     const role = classifySegment(segment, cwd)
-    if (!role || role.kind !== 'selector') return null
+    if (!role) return null
+    if (role.kind === 'filter') {
+      // `cat f | grep PAT` is a search of f, and Grep spells it in one call.
+      // Only when the source handed over the WHOLE file, though: with a window
+      // upstream (`sed -n '1,400p' f | grep PAT`) the shell searched a slice,
+      // and Grep has no way to say "only these lines" — standing down is the
+      // honest answer rather than searching more than the command did.
+      if (windowable.tool !== 'Read') return null
+      if (window.offset !== 1 || window.limit !== undefined) return null
+      windowable = { ...role.call, path: windowable.file_path }
+      window = IDENTITY_WINDOW
+      continue
+    }
+    if (role.kind !== 'selector') return null
     window = composeWindow(window, role.window)
     if (window.limit !== undefined && window.limit < 1) return null
   }
@@ -1142,6 +1172,15 @@ export function renderToolRedirect(analysis: RedirectAnalysis): string {
       'Note: Grep honors .gitignore — the shell command would also have searched ignored files (node_modules, build output, vendored dirs); the suggested call skips them, and answers at most 250 entries unless you pass head_limit.',
     )
   }
+  if (
+    analysis.units.some(unit =>
+      unit.calls.some(call => call.tool === 'Grep' && call.translated),
+    )
+  ) {
+    lines.push(
+      "Note: the pattern above is not a typo — grep's default dialect is BRE and Grep speaks ripgrep's, so it was converted (`\\|` → `|`, and so on). It matches the same lines.",
+    )
+  }
   lines.push(
     'If you genuinely need the shell form, re-send this exact Bash command and it will run.',
   )
@@ -1167,7 +1206,9 @@ function renderCall(call: SuggestedCall): string {
       if (call.path !== undefined) args.push(`path: ${JSON.stringify(call.path)}`)
       if (call.glob !== undefined) args.push(`glob: ${JSON.stringify(call.glob)}`)
       args.push(`output_mode: ${JSON.stringify(call.output_mode)}`)
-      if (call.caseInsensitive) args.push('"-i": true')
+      // Spelled even when false — omitting it is what hands the search to
+      // smart-case.
+      args.push(`"-i": ${call.caseInsensitive}`)
       if (call.context) args.push(`"${call.context.flag}": ${call.context.lines}`)
       if (call.offset !== undefined) args.push(`offset: ${call.offset}`)
       if (call.head_limit !== undefined) {
@@ -1178,6 +1219,7 @@ function renderCall(call: SuggestedCall): string {
     case 'Glob': {
       const args = [`pattern: ${JSON.stringify(call.pattern)}`]
       if (call.path !== undefined) args.push(`path: ${JSON.stringify(call.path)}`)
+      if (call.caseInsensitive) args.push('"-i": true')
       return `${GLOB_TOOL_NAME}(${args.join(', ')})`
     }
   }
