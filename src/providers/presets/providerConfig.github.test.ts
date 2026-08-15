@@ -1,7 +1,7 @@
 import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 
 // GitHub mode is driven by `transport === 'github_copilot'` from the active
-// profile (not CLAUDE_CODE_USE_GITHUB). Spread the real activeProvider
+// profile (not CLAUDIN_USE_GITHUB). Spread the real activeProvider
 // module + restore in afterAll to avoid Bun mock leaks.
 const realActiveProvider = { ...(await import('src/providers/presets/activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }

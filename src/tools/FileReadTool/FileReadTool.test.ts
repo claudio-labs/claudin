@@ -52,7 +52,7 @@ import {
 // ---------------------------------------------------------------------------
 
 // Skill discovery touches the real filesystem and is irrelevant here.
-process.env.CLAUDE_CODE_SIMPLE = '1'
+process.env.CLAUDIN_SIMPLE = '1'
 // The tool-result cache short-circuits call() on identical inputs, which would
 // mask the in-call dedup path we want to exercise. Disable it for this suite.
 process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE = '1'

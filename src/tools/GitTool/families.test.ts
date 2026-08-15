@@ -61,26 +61,26 @@ function scratch(label: string): string {
  * a PATH set here never reaches the child — measured: the fake recorded zero
  * invocations while a stale directory answered the call.
  *
- * `CLAUDE_ENV_FILE` is the lever that works, and it is a production mechanism
+ * `CLAUDIN_ENV_FILE` is the lever that works, and it is a production mechanism
  * rather than a reach into internals: `getSessionEnvironmentScript()` sources
  * it AFTER the snapshot (`bashProvider.ts:157-169`), which is exactly what it
  * exists for — persisting a venv activation across commands.
  */
 const originalPath = process.env.PATH
-const originalEnvFile = process.env.CLAUDE_ENV_FILE
+const originalEnvFile = process.env.CLAUDIN_ENV_FILE
 const fakeGh = installFakeGh()
 const ghEnvFile = join(fakeGh.binDir, 'env.sh')
 writeFileSync(ghEnvFile, `export PATH="${fakeGh.binDir}:$PATH"\n`)
 process.env.PATH = fakeGh.path
-process.env.CLAUDE_ENV_FILE = ghEnvFile
+process.env.CLAUDIN_ENV_FILE = ghEnvFile
 invalidateSessionEnvCache()
 
 afterAll(() => {
   process.env.PATH = originalPath
-  // Leaving CLAUDE_ENV_FILE set would prepend this directory to every shell
+  // Leaving CLAUDIN_ENV_FILE set would prepend this directory to every shell
   // command in every later test file of the same process.
-  if (originalEnvFile === undefined) delete process.env.CLAUDE_ENV_FILE
-  else process.env.CLAUDE_ENV_FILE = originalEnvFile
+  if (originalEnvFile === undefined) delete process.env.CLAUDIN_ENV_FILE
+  else process.env.CLAUDIN_ENV_FILE = originalEnvFile
   invalidateSessionEnvCache()
   cleanupAllFakeGh()
   cleanupAllRepos()

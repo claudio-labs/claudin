@@ -139,7 +139,7 @@ export async function loadTranscriptFile(
     let buf: Buffer | null = null
     let metadataLines: string[] | null = null
     let hasPreservedSegment = false
-    if (!isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_PRECOMPACT_SKIP)) {
+    if (!isEnvTruthy(process.env.CLAUDIN_DISABLE_PRECOMPACT_SKIP)) {
       const { size } = await stat(filePath)
       if (size > SKIP_PRECOMPACT_THRESHOLD) {
         const scan = await readTranscriptForLoad(filePath, size)
@@ -171,14 +171,14 @@ export async function loadTranscriptFile(
     // preservedSegment (those messages keep their pre-compact parentUuid on
     // disk -- applyPreservedSegmentRelinks splices them in-memory AFTER
     // parse, so a pre-parse chain walk would drop them as orphans), and when
-    // CLAUDE_CODE_DISABLE_PRECOMPACT_SKIP is set (that kill switch means
+    // CLAUDIN_DISABLE_PRECOMPACT_SKIP is set (that kill switch means
     // "load everything, skip nothing"; this is another skip-before-parse
     // optimization and the scan it depends on for hasPreservedSegment did
     // not run).
     if (
       !opts?.keepAllLeaves &&
       !hasPreservedSegment &&
-      !isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_PRECOMPACT_SKIP) &&
+      !isEnvTruthy(process.env.CLAUDIN_DISABLE_PRECOMPACT_SKIP) &&
       buf.length > SKIP_PRECOMPACT_THRESHOLD
     ) {
       buf = walkChainBeforeParse(buf)

@@ -475,7 +475,7 @@ export function runHeadlessStreaming(
 
   // Auto-resume interrupted turns on restart so CC continues from where it
   // left off without requiring the SDK to re-send the prompt.
-  const resumeInterruptedTurnEnv = process.env.CLAUDE_CODE_RESUME_INTERRUPTED_TURN
+  const resumeInterruptedTurnEnv = process.env.CLAUDIN_RESUME_INTERRUPTED_TURN
   if (
     turnInterruptionState &&
     turnInterruptionState.kind !== 'none' &&
@@ -501,12 +501,12 @@ export function runHeadlessStreaming(
 
   // Background plugin installation for all headless users
   // Installs marketplaces from extraKnownMarketplaces and missing enabled
-  // plugins. CLAUDE_CODE_SYNC_PLUGIN_INSTALL=true: resolved in run() before the
+  // plugins. CLAUDIN_SYNC_PLUGIN_INSTALL=true: resolved in run() before the
   // first query so plugins are guaranteed available on the first ask().
   // --bare / SIMPLE: skip plugin install. Scripted calls don't add plugins
   // mid-session; the next interactive run reconciles.
   if (!isBareMode()) {
-    if (isEnvTruthy(process.env.CLAUDE_CODE_SYNC_PLUGIN_INSTALL)) {
+    if (isEnvTruthy(process.env.CLAUDIN_SYNC_PLUGIN_INSTALL)) {
       ctx.pluginInstallPromise = installPluginsAndApplyMcpInBackground(ctx)
     } else {
       void installPluginsAndApplyMcpInBackground(ctx)

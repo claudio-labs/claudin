@@ -7,7 +7,7 @@
 import { type ChildProcess, spawn, spawnSync } from 'child_process'
 import { readFile } from 'fs/promises'
 import { logForDebugging } from 'src/shared/debug.js'
-import { isEnvTruthy, isRunningOnHomespace } from 'src/shared/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { logError } from 'src/shared/log.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 
@@ -258,7 +258,7 @@ export async function requestMicrophonePermission(): Promise<boolean> {
 
 export async function checkRecordingAvailability(): Promise<RecordingAvailability> {
   // Remote environments have no local microphone
-  if (isRunningOnHomespace() || isEnvTruthy(process.env.CLAUDE_CODE_REMOTE)) {
+  if (isEnvTruthy(process.env.CLAUDE_CODE_REMOTE)) {
     return {
       available: false,
       reason:

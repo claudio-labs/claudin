@@ -22,14 +22,14 @@ beforeAll(() => {
   // src/agent/query/taskReconcile.pipeline.test.ts, which has nothing to do
   // with this one. (The static imports above are hoisted over it either way,
   // so nothing here ever read it at module-init time.)
-  priorSimpleMode = process.env.CLAUDE_CODE_SIMPLE
-  process.env.CLAUDE_CODE_SIMPLE = '1'
+  priorSimpleMode = process.env.CLAUDIN_SIMPLE
+  process.env.CLAUDIN_SIMPLE = '1'
   dir = mkdtempSync(join(tmpdir(), 'file-pipeline-'))
 })
 
 afterAll(() => {
-  if (priorSimpleMode === undefined) delete process.env.CLAUDE_CODE_SIMPLE
-  else process.env.CLAUDE_CODE_SIMPLE = priorSimpleMode
+  if (priorSimpleMode === undefined) delete process.env.CLAUDIN_SIMPLE
+  else process.env.CLAUDIN_SIMPLE = priorSimpleMode
   rmSync(dir, { recursive: true, force: true })
 })
 

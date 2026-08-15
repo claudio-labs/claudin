@@ -87,13 +87,13 @@ export function buildInheritedCliFlags(options?: {
 const TEAMMATE_ENV_VARS = [
   // API provider selection — without these, teammates default to firstParty
   // and send requests to the wrong endpoint (GitHub issue #23561)
-  'CLAUDE_CODE_USE_BEDROCK',
-  'CLAUDE_CODE_USE_VERTEX',
-  'CLAUDE_CODE_USE_FOUNDRY',
-  'CLAUDE_CODE_USE_GITHUB',
-  'CLAUDE_CODE_USE_GEMINI',
-  'CLAUDE_CODE_USE_MISTRAL',
-  'CLAUDE_CODE_USE_OPENAI',
+  'CLAUDIN_USE_BEDROCK',
+  'CLAUDIN_USE_VERTEX',
+  'CLAUDIN_USE_FOUNDRY',
+  'CLAUDIN_USE_GITHUB',
+  'CLAUDIN_USE_GEMINI',
+  'CLAUDIN_USE_MISTRAL',
+  'CLAUDIN_USE_OPENAI',
   'GITHUB_TOKEN',
   'GH_TOKEN',
   'OPENAI_API_KEY',

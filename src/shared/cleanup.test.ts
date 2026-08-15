@@ -145,7 +145,7 @@ describe('cleanupOldPlanFiles', () => {
 describe('cleanupOldTaskListDirs', () => {
   const tmpDirs: string[] = []
   const originalConfigDirEnv = process.env.CLAUDIN_CONFIG_DIR
-  const originalTaskListIdEnv = process.env.CLAUDE_CODE_TASK_LIST_ID
+  const originalTaskListIdEnv = process.env.CLAUDIN_TASK_LIST_ID
 
   afterAll(() => {
     for (const dir of tmpDirs) {
@@ -157,9 +157,9 @@ describe('cleanupOldTaskListDirs', () => {
       process.env.CLAUDIN_CONFIG_DIR = originalConfigDirEnv
     }
     if (originalTaskListIdEnv === undefined) {
-      delete process.env.CLAUDE_CODE_TASK_LIST_ID
+      delete process.env.CLAUDIN_TASK_LIST_ID
     } else {
-      process.env.CLAUDE_CODE_TASK_LIST_ID = originalTaskListIdEnv
+      process.env.CLAUDIN_TASK_LIST_ID = originalTaskListIdEnv
     }
   })
 
@@ -172,7 +172,7 @@ describe('cleanupOldTaskListDirs', () => {
     const configDir = join(home, '.claudin')
     const tasksBaseDir = join(configDir, 'tasks')
     mkdirSync(tasksBaseDir, { recursive: true })
-    process.env.CLAUDE_CODE_TASK_LIST_ID = 'live-session'
+    process.env.CLAUDIN_TASK_LIST_ID = 'live-session'
     const mod = await importFreshCleanupModule({
       plansDir: join(configDir, 'plans'),
       legacyHomeConfigDir: configDir,

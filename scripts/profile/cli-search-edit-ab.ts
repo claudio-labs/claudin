@@ -604,7 +604,7 @@ function runArm(label: string, bin: string, rep: number, args: Args): ArmResult 
       ...process.env,
       // Headless `-p` drains auto-backgrounded sub-agents non-deterministically;
       // an orphaned one hides its tokens from the parent's usage.
-      CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1',
+      CLAUDIN_DISABLE_BACKGROUND_TASKS: '1',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   })

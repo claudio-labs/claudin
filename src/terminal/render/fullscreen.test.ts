@@ -37,7 +37,7 @@ const {
   _resetTmuxControlModeProbeForTesting,
 } = await import('src/terminal/render/fullscreen.js')
 
-const ENV_KEYS = ['CLAUDE_CODE_NO_FLICKER', 'TMUX', 'TERM_PROGRAM', 'TERM'] as const
+const ENV_KEYS = ['CLAUDIN_NO_FLICKER', 'TMUX', 'TERM_PROGRAM', 'TERM'] as const
 const saved: Record<string, string | undefined> = {}
 
 beforeEach(() => {
@@ -69,14 +69,14 @@ afterAll(() => {
 
 describe('isFullscreenEnvEnabled — precedence order', () => {
   test('env opt-out wins over everything', () => {
-    process.env.CLAUDE_CODE_NO_FLICKER = '0'
+    process.env.CLAUDIN_NO_FLICKER = '0'
     mockConfig = { flickerFreeMode: true }
     mockRewrite = true
     expect(isFullscreenEnvEnabled()).toBe(false)
   })
 
   test('env opt-in wins over tmux -CC and config', () => {
-    process.env.CLAUDE_CODE_NO_FLICKER = '1'
+    process.env.CLAUDIN_NO_FLICKER = '1'
     process.env.TMUX = '/tmp/tmux'
     process.env.TERM_PROGRAM = 'iTerm.app'
     process.env.TERM = 'xterm-256color'

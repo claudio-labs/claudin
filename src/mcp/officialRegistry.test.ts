@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe('prefetchOfficialMcpUrls', () => {
   test('does not fetch registry when using OpenAI mode', async () => {
-    process.env.CLAUDE_CODE_USE_OPENAI = '1'
+    process.env.CLAUDIN_USE_OPENAI = '1'
     mock.module('src/providers/model/providers.js', () => ({
       getAPIProvider: () => 'openai',
     }))
@@ -31,7 +31,7 @@ describe('prefetchOfficialMcpUrls', () => {
   })
 
   test('does not fetch registry when using Gemini mode', async () => {
-    process.env.CLAUDE_CODE_USE_GEMINI = '1'
+    process.env.CLAUDIN_USE_GEMINI = '1'
     mock.module('src/providers/model/providers.js', () => ({
       getAPIProvider: () => 'gemini',
     }))
@@ -45,9 +45,9 @@ describe('prefetchOfficialMcpUrls', () => {
   })
 
   test('fetches registry in first-party mode', async () => {
-    delete process.env.CLAUDE_CODE_USE_OPENAI
-    delete process.env.CLAUDE_CODE_USE_GEMINI
-    delete process.env.CLAUDE_CODE_USE_GITHUB
+    delete process.env.CLAUDIN_USE_OPENAI
+    delete process.env.CLAUDIN_USE_GEMINI
+    delete process.env.CLAUDIN_USE_GITHUB
     // The registry prefetch is nonessential startup traffic, suppressed under
     // Claudin's default essential-traffic privacy level. Opt back in so this
     // test can exercise the actual fetch path.

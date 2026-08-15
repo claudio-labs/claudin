@@ -78,7 +78,7 @@ export const ScheduleWakeupTool = buildTool({
   },
   isEnabled() {
     // Wakeups ride the session cron delivery machinery, so they share the
-    // cron killswitch (CLAUDE_CODE_DISABLE_CRON).
+    // cron killswitch (CLAUDIN_DISABLE_CRON).
     return isKairosCronEnabled()
   },
   toAutoClassifierInput(input) {

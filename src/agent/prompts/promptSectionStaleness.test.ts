@@ -52,8 +52,8 @@ const { applyPermissionUpdate } = await import(
 )
 const { getEmptyToolPermissionContext } = await import('src/tools/Tool.js')
 
-const originalSimpleEnv = process.env.CLAUDE_CODE_SIMPLE
-delete process.env.CLAUDE_CODE_SIMPLE
+const originalSimpleEnv = process.env.CLAUDIN_SIMPLE
+delete process.env.CLAUDIN_SIMPLE
 
 beforeEach(() => {
   state.activeProfile = undefined
@@ -66,7 +66,7 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  process.env.CLAUDE_CODE_SIMPLE = originalSimpleEnv
+  process.env.CLAUDIN_SIMPLE = originalSimpleEnv
   mock.module('src/providers/model/providers.js', () => realProviders)
   clearSystemPromptSections()
 })

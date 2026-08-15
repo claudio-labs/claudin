@@ -18,7 +18,7 @@ const getIsDocker = memoize(async (): Promise<boolean> => {
 function getIsBubblewrapSandbox(): boolean {
   return (
     process.platform === 'linux' &&
-    isEnvTruthy(process.env.CLAUDE_CODE_BUBBLEWRAP)
+    isEnvTruthy(process.env.CLAUDIN_BUBBLEWRAP)
   )
 }
 

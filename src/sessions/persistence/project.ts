@@ -668,7 +668,7 @@ export class Project {
 
   /**
    * True when test env / cleanupPeriodDays=0 / --no-session-persistence /
-   * CLAUDE_CODE_SKIP_PROMPT_HISTORY should suppress all transcript writes.
+   * CLAUDIN_SKIP_PROMPT_HISTORY should suppress all transcript writes.
    * Shared guard for appendEntry and materializeSessionFile so both skip
    * consistently. The env var is set by tmuxSocket.ts so Tungsten-spawned
    * test sessions don't pollute the user's --resume list.
@@ -681,7 +681,7 @@ export class Project {
       (getNodeEnv() === 'test' && !allowTestPersistence) ||
       getInitialSettings()?.cleanupPeriodDays === 0 ||
       isSessionPersistenceDisabled() ||
-      isEnvTruthy(process.env.CLAUDE_CODE_SKIP_PROMPT_HISTORY)
+      isEnvTruthy(process.env.CLAUDIN_SKIP_PROMPT_HISTORY)
     )
   }
 

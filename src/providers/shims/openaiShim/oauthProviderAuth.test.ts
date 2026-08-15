@@ -45,14 +45,14 @@ function mockSecureStorage() {
   mock.module('src/platform/secureStorage/index.js', factory)
 }
 
-const originalSimple = process.env.CLAUDE_CODE_SIMPLE
+const originalSimple = process.env.CLAUDIN_SIMPLE
 const originalArgv = [...process.argv]
 
 beforeEach(() => {
-  // A sibling test may leak bare mode (CLAUDE_CODE_SIMPLE truthy or --bare in
+  // A sibling test may leak bare mode (CLAUDIN_SIMPLE truthy or --bare in
   // argv), which makes saveKimi/saveXaiCredentials short-circuit to {success:
   // false} before touching storage — so clear it, else every save no-ops here.
-  delete process.env.CLAUDE_CODE_SIMPLE
+  delete process.env.CLAUDIN_SIMPLE
   process.argv = originalArgv.filter(arg => arg !== '--bare')
   storageState = {}
   mockSecureStorage()
@@ -63,8 +63,8 @@ beforeEach(() => {
 
 afterEach(() => {
   process.argv = originalArgv
-  if (originalSimple === undefined) delete process.env.CLAUDE_CODE_SIMPLE
-  else process.env.CLAUDE_CODE_SIMPLE = originalSimple
+  if (originalSimple === undefined) delete process.env.CLAUDIN_SIMPLE
+  else process.env.CLAUDIN_SIMPLE = originalSimple
 })
 
 afterAll(() => {

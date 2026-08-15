@@ -121,7 +121,7 @@ describe('hasBlockingResult (characterization)', () => {
 })
 
 describe('getSessionEndHookTimeoutMs (characterization)', () => {
-  const ENV_KEY = 'CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS'
+  const ENV_KEY = 'CLAUDIN_SESSIONEND_HOOKS_TIMEOUT_MS'
   const original = process.env[ENV_KEY]
 
   beforeEach(() => {

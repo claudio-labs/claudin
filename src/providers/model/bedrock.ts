@@ -55,7 +55,7 @@ async function createBedrockClient() {
   // This ensures we query profiles from the same region the client will use
   const region = getAWSRegion()
 
-  const skipAuth = isEnvTruthy(process.env.CLAUDE_CODE_SKIP_BEDROCK_AUTH)
+  const skipAuth = isEnvTruthy(process.env.CLAUDIN_SKIP_BEDROCK_AUTH)
 
   // BedrockClient comes from a package this fork stubs, so
   // ConstructorParameters<typeof BedrockClient>[0] resolves to `unknown` and
@@ -110,7 +110,7 @@ export async function createBedrockRuntimeClient() {
     }
   }
   const region = getAWSRegion()
-  const skipAuth = isEnvTruthy(process.env.CLAUDE_CODE_SKIP_BEDROCK_AUTH)
+  const skipAuth = isEnvTruthy(process.env.CLAUDIN_SKIP_BEDROCK_AUTH)
 
   const clientConfig: Record<string, unknown> = {
     region,

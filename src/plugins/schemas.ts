@@ -663,7 +663,7 @@ const PluginManifestUserConfigSchema = lazySchema(() =>
           .string()
           .regex(
             /^[A-Za-z_]\w*$/,
-            'Option keys must be valid identifiers (letters, digits, underscore; no leading digit) — they become CLAUDE_PLUGIN_OPTION_<KEY> env vars in hooks',
+            'Option keys must be valid identifiers (letters, digits, underscore; no leading digit) — they become CLAUDIN_PLUGIN_OPTION_<KEY> env vars in hooks',
           ),
         PluginUserConfigOptionSchema(),
       )

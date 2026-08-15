@@ -49,22 +49,22 @@ import {
 } from 'src/agent/context/context.js'
 
 const originalEnv = {
-  CLAUDE_CODE_USE_OPENAI: process.env.CLAUDE_CODE_USE_OPENAI,
-  CLAUDE_CODE_MAX_OUTPUT_TOKENS: process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS,
+  CLAUDIN_USE_OPENAI: process.env.CLAUDIN_USE_OPENAI,
+  CLAUDIN_MAX_OUTPUT_TOKENS: process.env.CLAUDIN_MAX_OUTPUT_TOKENS,
   OPENAI_MODEL: process.env.OPENAI_MODEL,
 }
 
 afterEach(() => {
-  if (originalEnv.CLAUDE_CODE_USE_OPENAI === undefined) {
-    delete process.env.CLAUDE_CODE_USE_OPENAI
+  if (originalEnv.CLAUDIN_USE_OPENAI === undefined) {
+    delete process.env.CLAUDIN_USE_OPENAI
   } else {
-    process.env.CLAUDE_CODE_USE_OPENAI = originalEnv.CLAUDE_CODE_USE_OPENAI
+    process.env.CLAUDIN_USE_OPENAI = originalEnv.CLAUDIN_USE_OPENAI
   }
-  if (originalEnv.CLAUDE_CODE_MAX_OUTPUT_TOKENS === undefined) {
-    delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  if (originalEnv.CLAUDIN_MAX_OUTPUT_TOKENS === undefined) {
+    delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
   } else {
-    process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS =
-      originalEnv.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+    process.env.CLAUDIN_MAX_OUTPUT_TOKENS =
+      originalEnv.CLAUDIN_MAX_OUTPUT_TOKENS
   }
   if (originalEnv.OPENAI_MODEL === undefined) {
     delete process.env.OPENAI_MODEL
@@ -80,7 +80,7 @@ test('Sonnet 5 resolves to native 1M on first party (no [1m] suffix, no beta hea
   // clearing the active profile + OpenAI env so isOpenAIShimTransport() is false.
   const prevProfile = mockProviderProfile
   mockProviderProfile = null
-  delete process.env.CLAUDE_CODE_USE_OPENAI
+  delete process.env.CLAUDIN_USE_OPENAI
   invalidateActiveProviderCache()
   try {
     expect(getContextWindowForModel('claude-sonnet-5')).toBe(1_000_000)
@@ -97,7 +97,7 @@ test('Opus 5 resolves to native 1M on first party (no [1m] suffix, no beta heade
   // first party so isOpenAIShimTransport() is false.
   const prevProfile = mockProviderProfile
   mockProviderProfile = null
-  delete process.env.CLAUDE_CODE_USE_OPENAI
+  delete process.env.CLAUDIN_USE_OPENAI
   invalidateActiveProviderCache()
   try {
     expect(getContextWindowForModel('claude-opus-5')).toBe(1_000_000)
@@ -108,8 +108,8 @@ test('Opus 5 resolves to native 1M on first party (no [1m] suffix, no beta heade
 })
 
 test('deepseek-v4-flash uses provider-specific context and output caps', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
   delete process.env.OPENAI_MODEL
 
   expect(getContextWindowForModel('deepseek-v4-flash')).toBe(1_048_576)
@@ -121,8 +121,8 @@ test('deepseek-v4-flash uses provider-specific context and output caps', () => {
 })
 
 test('deepseek legacy aliases keep their documented provider caps', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
   delete process.env.OPENAI_MODEL
 
   expect(getContextWindowForModel('deepseek-chat')).toBe(128_000)
@@ -132,16 +132,16 @@ test('deepseek legacy aliases keep their documented provider caps', () => {
 })
 
 test('deepseek-v4-flash clamps oversized max output overrides to the provider limit', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS = '500000'
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  process.env.CLAUDIN_MAX_OUTPUT_TOKENS = '500000'
   delete process.env.OPENAI_MODEL
 
   expect(getMaxOutputTokensForModel('deepseek-v4-flash')).toBe(262_144)
 })
 
 test('gpt-4o uses provider-specific context and output caps', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
   delete process.env.OPENAI_MODEL
 
   expect(getContextWindowForModel('gpt-4o')).toBe(128_000)
@@ -153,16 +153,16 @@ test('gpt-4o uses provider-specific context and output caps', () => {
 })
 
 test('gpt-4o clamps oversized max output overrides to the provider limit', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS = '32000'
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  process.env.CLAUDIN_MAX_OUTPUT_TOKENS = '32000'
   delete process.env.OPENAI_MODEL
 
   expect(getMaxOutputTokensForModel('gpt-4o')).toBe(16_384)
 })
 
 test('gpt-5.4 family uses provider-specific context and output caps', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
   delete process.env.OPENAI_MODEL
 
   expect(getContextWindowForModel('gpt-5.4')).toBe(1_050_000)
@@ -185,8 +185,8 @@ test('gpt-5.4 family uses provider-specific context and output caps', () => {
 })
 
 test('gpt-5.4 family keeps large max output overrides within provider limits', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS = '200000'
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  process.env.CLAUDIN_MAX_OUTPUT_TOKENS = '200000'
 
   expect(getMaxOutputTokensForModel('gpt-5.4')).toBe(128_000)
   expect(getMaxOutputTokensForModel('gpt-5.4-mini')).toBe(128_000)
@@ -194,8 +194,8 @@ test('gpt-5.4 family keeps large max output overrides within provider limits', (
 })
 
 test('MiniMax-M2.7 uses explicit provider-specific context and output caps', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
   delete process.env.OPENAI_MODEL
 
   expect(getContextWindowForModel('MiniMax-M2.7')).toBe(204_800)
@@ -207,16 +207,16 @@ test('MiniMax-M2.7 uses explicit provider-specific context and output caps', () 
 })
 
 test('unknown openai-compatible models use the 128k fallback window (not 8k, see #635)', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
   delete process.env.OPENAI_MODEL
 
   expect(getContextWindowForModel('some-unknown-3p-model')).toBe(128_000)
 })
 
 test('MiniMax-M2.5 and M2.1 use explicit provider-specific context and output caps', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
   delete process.env.OPENAI_MODEL
 
   expect(getContextWindowForModel('MiniMax-M2.5')).toBe(204_800)
@@ -230,8 +230,8 @@ test('MiniMax-M2.5 and M2.1 use explicit provider-specific context and output ca
 })
 
 test('DashScope qwen3.6-plus uses provider-specific context and output caps', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
 
   expect(getContextWindowForModel('qwen3.6-plus')).toBe(1_000_000)
   expect(getModelMaxOutputTokens('qwen3.6-plus')).toEqual({
@@ -242,8 +242,8 @@ test('DashScope qwen3.6-plus uses provider-specific context and output caps', ()
 })
 
 test('DashScope qwen3.5-plus uses provider-specific context and output caps', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
 
   expect(getContextWindowForModel('qwen3.5-plus')).toBe(1_000_000)
   expect(getModelMaxOutputTokens('qwen3.5-plus')).toEqual({
@@ -254,8 +254,8 @@ test('DashScope qwen3.5-plus uses provider-specific context and output caps', ()
 })
 
 test('DashScope qwen3-coder-plus uses provider-specific context and output caps', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
 
   expect(getContextWindowForModel('qwen3-coder-plus')).toBe(1_000_000)
   expect(getModelMaxOutputTokens('qwen3-coder-plus')).toEqual({
@@ -265,8 +265,8 @@ test('DashScope qwen3-coder-plus uses provider-specific context and output caps'
 })
 
 test('DashScope qwen3-coder-next uses provider-specific context and output caps', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
 
   expect(getContextWindowForModel('qwen3-coder-next')).toBe(262_144)
   expect(getModelMaxOutputTokens('qwen3-coder-next')).toEqual({
@@ -276,8 +276,8 @@ test('DashScope qwen3-coder-next uses provider-specific context and output caps'
 })
 
 test('DashScope qwen3-max uses provider-specific context and output caps', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
 
   expect(getContextWindowForModel('qwen3-max')).toBe(262_144)
   expect(getModelMaxOutputTokens('qwen3-max')).toEqual({
@@ -287,8 +287,8 @@ test('DashScope qwen3-max uses provider-specific context and output caps', () =>
 })
 
 test('DashScope qwen3-max dated variant resolves to base entry via prefix match', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
 
   expect(getContextWindowForModel('qwen3-max-2026-01-23')).toBe(262_144)
   expect(getModelMaxOutputTokens('qwen3-max-2026-01-23')).toEqual({
@@ -298,8 +298,8 @@ test('DashScope qwen3-max dated variant resolves to base entry via prefix match'
 })
 
 test('DashScope kimi-k2.5 uses provider-specific context and output caps', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
 
   expect(getContextWindowForModel('kimi-k2.5')).toBe(262_144)
   expect(getModelMaxOutputTokens('kimi-k2.5')).toEqual({
@@ -309,8 +309,8 @@ test('DashScope kimi-k2.5 uses provider-specific context and output caps', () =>
 })
 
 test('Kimi Code kimi-for-coding uses provider-specific context and output caps', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
 
   expect(getContextWindowForModel('kimi-for-coding')).toBe(262_144)
   expect(getModelMaxOutputTokens('kimi-for-coding')).toEqual({
@@ -320,8 +320,8 @@ test('Kimi Code kimi-for-coding uses provider-specific context and output caps',
 })
 
 test('Kimi Code k3 uses 1M context window', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
 
   expect(getContextWindowForModel('k3')).toBe(1_048_576)
   expect(getModelMaxOutputTokens('k3')).toEqual({
@@ -331,8 +331,8 @@ test('Kimi Code k3 uses 1M context window', () => {
 })
 
 test('DashScope glm-5 uses provider-specific context and output caps', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
 
   expect(getContextWindowForModel('glm-5')).toBe(202_752)
   expect(getModelMaxOutputTokens('glm-5')).toEqual({
@@ -342,8 +342,8 @@ test('DashScope glm-5 uses provider-specific context and output caps', () => {
 })
 
 test('DashScope glm-4.7 uses provider-specific context and output caps', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  delete process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS
 
   expect(getContextWindowForModel('glm-4.7')).toBe(202_752)
   expect(getModelMaxOutputTokens('glm-4.7')).toEqual({
@@ -353,8 +353,8 @@ test('DashScope glm-4.7 uses provider-specific context and output caps', () => {
 })
 
 test('DashScope models clamp oversized max output overrides to the provider limit', () => {
-  process.env.CLAUDE_CODE_USE_OPENAI = '1'
-  process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS = '100000'
+  process.env.CLAUDIN_USE_OPENAI = '1'
+  process.env.CLAUDIN_MAX_OUTPUT_TOKENS = '100000'
 
   expect(getMaxOutputTokensForModel('qwen3.6-plus')).toBe(65_536)
   expect(getMaxOutputTokensForModel('qwen3.5-plus')).toBe(65_536)

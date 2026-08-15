@@ -14,7 +14,7 @@ export const DEFAULT_MAX_AGE_DAYS =
  * Open builds (USER_TYPE !== 'ant') enable cron unconditionally — the
  * cron tools and /loop skill are registered without the AGENT_TRIGGERS
  * build flag, so this gate is the sole runtime switch. Set the env var
- * `CLAUDE_CODE_DISABLE_CRON=1` to turn it off locally.
+ * `CLAUDIN_DISABLE_CRON=1` to turn it off locally.
  *
  * Anthropic-internal (ant) builds additionally consult the
  * `tengu_kairos_cron` GrowthBook gate on a 5-minute refresh window,
@@ -24,10 +24,10 @@ export const DEFAULT_MAX_AGE_DAYS =
  * imperative setup, never at module scope — so the disk cache has had a
  * chance to populate.
  *
- * `CLAUDE_CODE_DISABLE_CRON` is a local override that wins over GB.
+ * `CLAUDIN_DISABLE_CRON` is a local override that wins over GB.
  */
 export function isKairosCronEnabled(): boolean {
-  if (isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_CRON)) return false
+  if (isEnvTruthy(process.env.CLAUDIN_DISABLE_CRON)) return false
   // Claudin open builds do not rely on Anthropic's internal runtime gates.
   // Expose cron support by default unless explicitly disabled.
   return true
@@ -39,7 +39,7 @@ export function isKairosCronEnabled(): boolean {
  * the call() site, leaving session-only cron (in-memory, GA) untouched.
  *
  * Defaults to `true` so Bedrock/Vertex/Foundry and DISABLE_TELEMETRY users get
- * durable cron. Does NOT consult CLAUDE_CODE_DISABLE_CRON (that kills the whole
+ * durable cron. Does NOT consult CLAUDIN_DISABLE_CRON (that kills the whole
  * scheduler via isKairosCronEnabled).
  */
 export function isDurableCronEnabled(): boolean {

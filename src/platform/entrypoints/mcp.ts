@@ -1,9 +1,9 @@
 // Claudin: disable experimental API betas by default.
 // Tool search (defer_loading), global cache scope, and context management
 // require internal API support not available to external accounts → 500.
-// Users can opt-in with CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=false.
+// Users can opt-in with CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=false.
 // eslint-disable-next-line custom-rules/no-top-level-side-effects
-process.env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS ??= 'true'
+process.env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS ??= 'true'
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'

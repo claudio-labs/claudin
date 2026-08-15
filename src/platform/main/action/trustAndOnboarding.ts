@@ -71,10 +71,6 @@ export async function runTrustAndOnboarding(
   let inputPrompt = input.inputPrompt;
 
   profileCheckpoint('trust_onboarding_start');
-  // Grove HTTP prefetch lives in cli.tsx (wave 7) so it overlaps with
-  // main.tsx parse + setup() — we're already ~500 ms past that kick by
-  // the time we reach here, so the memoized cache should be warm before
-  // GroveDialog mounts inside showSetupScreens.
   const renderCtx = getRenderContext(false);
   const getFpsMetrics = renderCtx.getFpsMetrics;
   const stats = renderCtx.stats;

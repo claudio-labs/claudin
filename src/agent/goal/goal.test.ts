@@ -298,8 +298,8 @@ describe('session-end goal reset (/clear and in-process /resume)', () => {
 
     // Skip actual hook execution (no user hooks must run in tests); the
     // cleanup block under test runs regardless.
-    const prevSimple = process.env.CLAUDE_CODE_SIMPLE
-    process.env.CLAUDE_CODE_SIMPLE = '1'
+    const prevSimple = process.env.CLAUDIN_SIMPLE
+    process.env.CLAUDIN_SIMPLE = '1'
     try {
       await executeSessionEndHooks('clear', {
         getAppState: harness.getState,
@@ -307,9 +307,9 @@ describe('session-end goal reset (/clear and in-process /resume)', () => {
       })
     } finally {
       if (prevSimple === undefined) {
-        delete process.env.CLAUDE_CODE_SIMPLE
+        delete process.env.CLAUDIN_SIMPLE
       } else {
-        process.env.CLAUDE_CODE_SIMPLE = prevSimple
+        process.env.CLAUDIN_SIMPLE = prevSimple
       }
     }
 

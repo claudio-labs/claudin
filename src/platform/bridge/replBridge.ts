@@ -38,7 +38,7 @@ import {
   createV2ReplTransport,
 } from 'src/platform/bridge/replBridgeTransport.js'
 import { updateSessionIngressAuthToken } from 'src/sessions/sessionIngressAuth.js'
-import { isEnvTruthy, isInProtectedNamespace } from 'src/shared/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { validateBridgeId } from 'src/platform/bridge/bridgeApi.js'
 import {
   describeAxiosError,
@@ -480,7 +480,6 @@ export async function initBridgeCore(
   logForDiagnosticsNoPII('info', 'bridge_repl_session_created')
   logEvent('tengu_bridge_repl_started', {
     has_initial_messages: !!(initialMessages && initialMessages.length > 0),
-    inProtectedNamespace: isInProtectedNamespace(),
   })
 
   // UUIDs of initial messages. Used for dedup in writeMessages to avoid

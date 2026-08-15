@@ -49,13 +49,13 @@ import { PLAN_AGENT } from 'src/tools/AgentTool/built-in/planAgent.js'
 //
 // With no provider profile configured, getAPIProvider() returns 'firstParty' on
 // its own, which is exactly the environment these tests want.
-const originalSimpleEnv = process.env.CLAUDE_CODE_SIMPLE
+const originalSimpleEnv = process.env.CLAUDIN_SIMPLE
 
 afterEach(() => {
   // `process.env.X = undefined` stores the STRING "undefined", which is truthy —
   // it would leave simple mode on for every file that runs after this one.
-  if (originalSimpleEnv === undefined) delete process.env.CLAUDE_CODE_SIMPLE
-  else process.env.CLAUDE_CODE_SIMPLE = originalSimpleEnv
+  if (originalSimpleEnv === undefined) delete process.env.CLAUDIN_SIMPLE
+  else process.env.CLAUDIN_SIMPLE = originalSimpleEnv
   clearSystemPromptSections()
 })
 
@@ -72,7 +72,7 @@ test('CLI identity prefixes describe Claudin instead of Claude Code', () => {
 })
 
 test('simple mode identity describes Claudin instead of Claude Code', async () => {
-  process.env.CLAUDE_CODE_SIMPLE = '1'
+  process.env.CLAUDIN_SIMPLE = '1'
 
   const prompt = await getSystemPrompt([], 'gpt-4o')
 
@@ -82,7 +82,7 @@ test('simple mode identity describes Claudin instead of Claude Code', async () =
 })
 
 test('system prompt model identity updates when model changes mid-session', async () => {
-  delete process.env.CLAUDE_CODE_SIMPLE
+  delete process.env.CLAUDIN_SIMPLE
   clearSystemPromptSections()
 
   const firstPrompt = await getSystemPrompt([], 'old-test-model')
@@ -97,7 +97,7 @@ test('system prompt model identity updates when model changes mid-session', asyn
 })
 
 test('Claude model recommendations only ship for the anthropic family', async () => {
-  delete process.env.CLAUDE_CODE_SIMPLE
+  delete process.env.CLAUDIN_SIMPLE
   clearSystemPromptSections()
 
   // Test env has no provider profile → getAPIProvider() falls back to
@@ -113,7 +113,7 @@ test('Claude model recommendations only ship for the anthropic family', async ()
 })
 
 test('Anthropic-family system prompt does not include any non-Anthropic family addendum', async () => {
-  delete process.env.CLAUDE_CODE_SIMPLE
+  delete process.env.CLAUDIN_SIMPLE
   clearSystemPromptSections()
 
   // In the test environment there is no active provider profile, so
@@ -139,7 +139,7 @@ test('Anthropic-family system prompt does not include any non-Anthropic family a
 })
 
 test('the system prompt opens by naming Claudin', async () => {
-  delete process.env.CLAUDE_CODE_SIMPLE
+  delete process.env.CLAUDIN_SIMPLE
   clearSystemPromptSections()
 
   const [intro] = await getSystemPrompt([], 'claude-opus-4-8')
@@ -155,7 +155,7 @@ test('the system prompt opens by naming Claudin', async () => {
 })
 
 test('the pronoun default ships regardless of the WORK_CONTRACT gate', async () => {
-  delete process.env.CLAUDE_CODE_SIMPLE
+  delete process.env.CLAUDIN_SIMPLE
   clearSystemPromptSections()
 
   // The test preload stubs feature() to false, so this render is the

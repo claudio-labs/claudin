@@ -27,7 +27,7 @@ export function parseMemorySubcommand(args: string): 'tidy' | null {
 export function runMemoryTidy(onDone: LocalJSXCommandOnDone): null {
   if (!isAutoMemoryEnabled()) {
     onDone(
-      'Memory tidy unavailable: auto memory is disabled (autoMemoryEnabled is false, or CLAUDE_CODE_DISABLE_AUTO_MEMORY is set).',
+      'Memory tidy unavailable: auto memory is disabled (autoMemoryEnabled is false, or CLAUDIN_DISABLE_AUTO_MEMORY is set).',
       { display: 'system' },
     )
     return null

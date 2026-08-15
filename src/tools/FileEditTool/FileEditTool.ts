@@ -450,7 +450,7 @@ export const FileEditTool = buildTool({
     // Discover skills from this file's path (fire-and-forget, non-blocking)
     // Skip in simple mode - no skills available
     const cwd = getCwd()
-    if (!isEnvTruthy(process.env.CLAUDE_CODE_SIMPLE)) {
+    if (!isEnvTruthy(process.env.CLAUDIN_SIMPLE)) {
       const newSkillDirs = await discoverSkillDirsForPaths(
         [absoluteFilePath],
         cwd,

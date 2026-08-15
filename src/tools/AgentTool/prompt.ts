@@ -54,11 +54,11 @@ export function formatAgentLine(agent: AgentDefinition): string {
  * connect, /reload-plugins, or permission-mode changes mutate the list →
  * description changes → full tool-schema cache bust.
  *
- * Override with CLAUDE_CODE_AGENT_LIST_IN_MESSAGES=true/false for testing.
+ * Override with CLAUDIN_AGENT_LIST_IN_MESSAGES=true/false for testing.
  */
 export function shouldInjectAgentListInMessages(): boolean {
-  if (isEnvTruthy(process.env.CLAUDE_CODE_AGENT_LIST_IN_MESSAGES)) return true
-  if (isEnvDefinedFalsy(process.env.CLAUDE_CODE_AGENT_LIST_IN_MESSAGES))
+  if (isEnvTruthy(process.env.CLAUDIN_AGENT_LIST_IN_MESSAGES)) return true
+  if (isEnvDefinedFalsy(process.env.CLAUDIN_AGENT_LIST_IN_MESSAGES))
     return false
   return getFeatureValue_CACHED_MAY_BE_STALE('tengu_agent_list_attach', true)
 }
@@ -241,7 +241,7 @@ Usage notes:
 - Always include a short description (3-5 words) summarizing what the agent will do${concurrencyNote}
 - When the agent is done, it will return a single message back to you. The result returned by the agent is not visible to the user. To show the user the result, you should send a text message back to the user with a concise summary of the result.${
     // eslint-disable-next-line custom-rules/no-process-env-top-level
-    !isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS) &&
+    !isEnvTruthy(process.env.CLAUDIN_DISABLE_BACKGROUND_TASKS) &&
     !isInProcessTeammate() &&
     !forkEnabled
       ? `

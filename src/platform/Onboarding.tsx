@@ -10,7 +10,6 @@ import { isAnthropicAuthEnabled } from 'src/providers/auth/auth.js';
 import { normalizeApiKeyForConfig } from 'src/providers/auth/authPortable.js';
 import { getCustomApiKeyStatus } from 'src/platform/config/config.js';
 import { env } from 'src/shared/env.js';
-import { isRunningOnHomespace } from 'src/shared/envUtils.js';
 import { PreflightStep } from 'src/platform/preflightChecks.js';
 import type { ThemeSetting } from 'src/terminal/theme/theme.js';
 import { ApproveApiKey } from 'src/providers/ui/ApproveApiKey.js';
@@ -101,13 +100,11 @@ export function Onboarding({
   const preflightStep = <PreflightStep onSuccess={goToNextStep} />;
   // Create the steps array - determine which steps to include based on reAuth and oauthEnabled
   const apiKeyNeedingApproval = useMemo(() => {
-    // Surface the active Anthropic profile's apiKey for approval. On
-    // homespace, profile keys are preserved for child processes but ignored
-    // by Claude Code itself (see auth.ts).
+    // Surface the active Anthropic profile's apiKey for approval.
     const profile = tryGetActiveProvider();
     const profileKey =
       profile?.transport === 'anthropic' ? profile.apiKey?.trim() : undefined;
-    if (!profileKey || isRunningOnHomespace() || !isAnthropicAuthEnabled()) {
+    if (!profileKey || !isAnthropicAuthEnabled()) {
       return '';
     }
     const customApiKeyTruncated = normalizeApiKeyForConfig(profileKey);

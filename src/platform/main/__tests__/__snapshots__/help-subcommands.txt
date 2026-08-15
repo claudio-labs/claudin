@@ -1,5 +1,5 @@
 === agents ===
-Usage: claude agents [options]
+Usage: claudin agents [options]
 
 List configured agents
 
@@ -10,7 +10,7 @@ Options:
 
 
 === auth ===
-Usage: claude auth [options] [command]
+Usage: claudin auth [options] [command]
 
 Manage authentication
 
@@ -25,7 +25,7 @@ Commands:
 
 
 === auto-mode ===
-Usage: claude auto-mode [options] [command]
+Usage: claudin auto-mode [options] [command]
 
 Inspect auto mode classifier configuration
 
@@ -42,7 +42,7 @@ Commands:
 
 
 === doctor ===
-Usage: claude doctor [options]
+Usage: claudin doctor [options]
 
 Check the health of your Claude Code auto-updater. Note: The workspace trust
 dialog is skipped and stdio servers from .mcp.json are spawned for health
@@ -53,7 +53,7 @@ Options:
 
 
 === install ===
-Usage: claude install [options] [target]
+Usage: claudin install [options] [target]
 
 Install Claude Code native build. Use [target] to specify version (stable,
 latest, or specific version)
@@ -64,7 +64,7 @@ Options:
 
 
 === mcp ===
-Usage: claude mcp [options] [command]
+Usage: claudin mcp [options] [command]
 
 Configure and manage MCP servers
 
@@ -98,7 +98,7 @@ Commands:
 
 
 === plugin ===
-Usage: claude plugin|plugins [options] [command]
+Usage: claudin plugin|plugins [options] [command]
 
 Manage Claude Code plugins
 
@@ -121,7 +121,7 @@ Commands:
 
 
 === setup-token ===
-Usage: claude setup-token [options]
+Usage: claudin setup-token [options]
 
 Set up a long-lived authentication token (requires Claude subscription)
 
@@ -130,7 +130,7 @@ Options:
 
 
 === update ===
-Usage: claude update|upgrade [options]
+Usage: claudin update|upgrade [options]
 
 Check for updates and install if available
 
@@ -139,7 +139,7 @@ Options:
 
 
 === auth login ===
-Usage: claude auth login [options]
+Usage: claudin auth login [options]
 
 Sign in to your Anthropic account
 
@@ -153,7 +153,7 @@ Options:
 
 
 === auth logout ===
-Usage: claude auth logout [options]
+Usage: claudin auth logout [options]
 
 Log out from your Anthropic account
 
@@ -162,7 +162,7 @@ Options:
 
 
 === auth status ===
-Usage: claude auth status [options]
+Usage: claudin auth status [options]
 
 Show authentication status
 
@@ -173,7 +173,7 @@ Options:
 
 
 === auto-mode config ===
-Usage: claude auto-mode config [options]
+Usage: claudin auto-mode config [options]
 
 Print the effective auto mode config as JSON: your settings where set, defaults
 otherwise
@@ -183,7 +183,7 @@ Options:
 
 
 === auto-mode critique ===
-Usage: claude auto-mode critique [options]
+Usage: claudin auto-mode critique [options]
 
 Get AI feedback on your custom auto mode rules
 
@@ -193,7 +193,7 @@ Options:
 
 
 === auto-mode defaults ===
-Usage: claude auto-mode defaults [options]
+Usage: claudin auto-mode defaults [options]
 
 Print the default auto mode environment, allow, and deny rules as JSON
 
@@ -202,7 +202,7 @@ Options:
 
 
 === mcp add ===
-Usage: claude mcp add [options] <name> <commandOrUrl> [args...]
+Usage: claudin mcp add [options] <name> <commandOrUrl> [args...]
 
 Add an MCP server to Claude Code.
 
@@ -237,7 +237,7 @@ Options:
 
 
 === mcp add-from-claude-desktop ===
-Usage: claude mcp add-from-claude-desktop [options]
+Usage: claudin mcp add-from-claude-desktop [options]
 
 Import MCP servers from Claude Desktop (Mac and WSL only)
 
@@ -248,7 +248,7 @@ Options:
 
 
 === mcp add-json ===
-Usage: claude mcp add-json [options] <name> <json>
+Usage: claudin mcp add-json [options] <name> <json>
 
 Add an MCP server (stdio or SSE) with a JSON string
 
@@ -261,7 +261,7 @@ Options:
 
 
 === mcp doctor ===
-Usage: claude mcp doctor [options] [name]
+Usage: claudin mcp doctor [options] [name]
 
 Diagnose MCP configuration, precedence, disabled/pending state, and connection
 health. Note: unless --config-only is used, stdio servers may be spawned and
@@ -277,7 +277,7 @@ Options:
 
 
 === mcp get ===
-Usage: claude mcp get [options] <name>
+Usage: claudin mcp get [options] <name>
 
 Get details about an MCP server. Note: The workspace trust dialog is skipped and
 stdio servers from .mcp.json are spawned for health checks. Only use this
@@ -288,7 +288,7 @@ Options:
 
 
 === mcp list ===
-Usage: claude mcp list [options]
+Usage: claudin mcp list [options]
 
 List configured MCP servers. Note: The workspace trust dialog is skipped and
 stdio servers from .mcp.json are spawned for health checks. Only use this
@@ -299,7 +299,7 @@ Options:
 
 
 === mcp remove ===
-Usage: claude mcp remove [options] <name>
+Usage: claudin mcp remove [options] <name>
 
 Remove an MCP server
 
@@ -310,7 +310,7 @@ Options:
 
 
 === mcp reset-project-choices ===
-Usage: claude mcp reset-project-choices [options]
+Usage: claudin mcp reset-project-choices [options]
 
 Reset all approved and rejected project-scoped (.mcp.json) servers within this
 project
@@ -320,7 +320,7 @@ Options:
 
 
 === mcp serve ===
-Usage: claude mcp serve [options]
+Usage: claudin mcp serve [options]
 
 Start the Claude Code MCP server
 
@@ -331,7 +331,7 @@ Options:
 
 
 === plugin disable ===
-Usage: claude plugin disable [options] [plugin]
+Usage: claudin plugin disable [options] [plugin]
 
 Disable an enabled plugin
 
@@ -343,7 +343,7 @@ Options:
 
 
 === plugin enable ===
-Usage: claude plugin enable [options] <plugin>
+Usage: claudin plugin enable [options] <plugin>
 
 Enable a disabled plugin
 
@@ -354,7 +354,7 @@ Options:
 
 
 === plugin install ===
-Usage: claude plugin install|i [options] <plugin>
+Usage: claudin plugin install|i [options] <plugin>
 
 Install a plugin from available marketplaces (use plugin@marketplace for
 specific marketplace)
@@ -366,7 +366,7 @@ Options:
 
 
 === plugin list ===
-Usage: claude plugin list [options]
+Usage: claudin plugin list [options]
 
 List installed plugins
 
@@ -377,7 +377,7 @@ Options:
 
 
 === plugin marketplace ===
-Usage: claude plugin marketplace [options] [command]
+Usage: claudin plugin marketplace [options] [command]
 
 Manage Claude Code marketplaces
 
@@ -394,7 +394,7 @@ Commands:
 
 
 === plugin uninstall ===
-Usage: claude plugin uninstall|remove [options] <plugin>
+Usage: claudin plugin uninstall|remove [options] <plugin>
 
 Uninstall an installed plugin
 
@@ -407,7 +407,7 @@ Options:
 
 
 === plugin update ===
-Usage: claude plugin update [options] <plugin>
+Usage: claudin plugin update [options] <plugin>
 
 Update a plugin to the latest version (restart required to apply)
 
@@ -418,7 +418,7 @@ Options:
 
 
 === plugin validate ===
-Usage: claude plugin validate [options] <path>
+Usage: claudin plugin validate [options] <path>
 
 Validate a plugin or marketplace manifest
 

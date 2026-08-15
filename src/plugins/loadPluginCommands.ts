@@ -238,7 +238,7 @@ function createPluginCommand(
         isSkill ? 'Plugin skill' : 'Plugin command',
       )
 
-    // Substitute ${CLAUDE_PLUGIN_ROOT} in allowed-tools before parsing
+    // Substitute ${CLAUDIN_PLUGIN_ROOT} in allowed-tools before parsing
     const rawAllowedTools = frontmatter['allowed-tools']
     const substitutedAllowedTools =
       typeof rawAllowedTools === 'string'
@@ -336,7 +336,7 @@ function createPluginCommand(
           argumentNames,
         )
 
-        // Replace ${CLAUDE_PLUGIN_ROOT} and ${CLAUDE_PLUGIN_DATA} with their paths
+        // Replace ${CLAUDIN_PLUGIN_ROOT} and ${CLAUDIN_PLUGIN_DATA} with their paths
         finalContent = substitutePluginVariables(finalContent, {
           path: pluginPath,
           source: sourceName,
@@ -353,10 +353,10 @@ function createPluginCommand(
           )
         }
 
-        // Replace ${CLAUDE_SKILL_DIR} with this specific skill's directory.
-        // Distinct from ${CLAUDE_PLUGIN_ROOT}: a plugin can contain multiple
-        // skills, so CLAUDE_PLUGIN_ROOT points to the plugin root while
-        // CLAUDE_SKILL_DIR points to the individual skill's subdirectory.
+        // Replace ${CLAUDIN_SKILL_DIR} with this specific skill's directory.
+        // Distinct from ${CLAUDIN_PLUGIN_ROOT}: a plugin can contain multiple
+        // skills, so CLAUDIN_PLUGIN_ROOT points to the plugin root while
+        // CLAUDIN_SKILL_DIR points to the individual skill's subdirectory.
         if (config.isSkillMode) {
           const rawSkillDir = dirname(file.filePath)
           const skillDir =
@@ -364,14 +364,14 @@ function createPluginCommand(
               ? rawSkillDir.replace(/\\/g, '/')
               : rawSkillDir
           finalContent = finalContent.replace(
-            /\$\{CLAUDE_SKILL_DIR\}/g,
+            /\$\{CLAUDIN_SKILL_DIR\}/g,
             skillDir,
           )
         }
 
-        // Replace ${CLAUDE_SESSION_ID} with the current session ID
+        // Replace ${CLAUDIN_SESSION_ID} with the current session ID
         finalContent = finalContent.replace(
-          /\$\{CLAUDE_SESSION_ID\}/g,
+          /\$\{CLAUDIN_SESSION_ID\}/g,
           getSessionId(),
         )
 

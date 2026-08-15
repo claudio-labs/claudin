@@ -15,8 +15,8 @@ afterAll(() => {
 })
 
 afterEach(() => {
-  delete process.env.CLAUDE_CODE_ALWAYS_ENABLE_EFFORT
-  delete process.env.CLAUDE_CODE_EFFORT_LEVEL
+  delete process.env.CLAUDIN_ALWAYS_ENABLE_EFFORT
+  delete process.env.CLAUDIN_EFFORT_LEVEL
 })
 
 async function importFreshEffortModule(options: {
@@ -101,7 +101,7 @@ test('model without effort support returns undefined (no-op signal)', async () =
 })
 
 test('OpenAI provider cycles the OpenAI effort family, wrapping at xhigh', async () => {
-  process.env.CLAUDE_CODE_ALWAYS_ENABLE_EFFORT = '1'
+  process.env.CLAUDIN_ALWAYS_ENABLE_EFFORT = '1'
   const { cycleEffortForModel } = await importFreshEffortModule({ provider: 'openai' })
   expect(cycleEffortForModel('high', 'gpt-5', 'right')).toBe('xhigh')
   expect(cycleEffortForModel('xhigh', 'gpt-5', 'right')).toBe('low')
@@ -113,21 +113,21 @@ test('effortEnvOverrideConflictsWith: unset env never conflicts', async () => {
 })
 
 test('effortEnvOverrideConflictsWith: auto/unset env overrides any concrete pick', async () => {
-  process.env.CLAUDE_CODE_EFFORT_LEVEL = 'auto'
+  process.env.CLAUDIN_EFFORT_LEVEL = 'auto'
   const { effortEnvOverrideConflictsWith } = await importFreshEffortModule()
   // env=auto forces adaptive at resolve time, so it overrides the user's level.
   expect(effortEnvOverrideConflictsWith('high')).toBe(true)
 })
 
 test('effortEnvOverrideConflictsWith: pinned env matching the bucket is not a conflict', async () => {
-  process.env.CLAUDE_CODE_EFFORT_LEVEL = '30' // buckets to 'low'
+  process.env.CLAUDIN_EFFORT_LEVEL = '30' // buckets to 'low'
   const { effortEnvOverrideConflictsWith } = await importFreshEffortModule()
   expect(effortEnvOverrideConflictsWith('low')).toBe(false)
   expect(effortEnvOverrideConflictsWith('high')).toBe(true)
 })
 
 test('effortEnvOverrideConflictsWith: pinned level env conflicts only on a different level', async () => {
-  process.env.CLAUDE_CODE_EFFORT_LEVEL = 'low'
+  process.env.CLAUDIN_EFFORT_LEVEL = 'low'
   const { effortEnvOverrideConflictsWith } = await importFreshEffortModule()
   expect(effortEnvOverrideConflictsWith('low')).toBe(false)
   expect(effortEnvOverrideConflictsWith('high')).toBe(true)

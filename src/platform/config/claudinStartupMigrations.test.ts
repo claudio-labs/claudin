@@ -389,10 +389,10 @@ describe('runClaudinStartupMigrations — legacy .claudin-profile.json', () => {
 })
 
 describe('runClaudinStartupMigrations — rescue CLAUDE_CODE_USE_* envs', () => {
-  test('CLAUDE_CODE_USE_OPENAI → creates openai profile from envs', () => {
+  test('CLAUDIN_USE_OPENAI → creates openai profile from envs', () => {
     callRun({
       processEnv: {
-        CLAUDE_CODE_USE_OPENAI: '1',
+        CLAUDIN_USE_OPENAI: '1',
         OPENAI_BASE_URL: 'https://api.openai.com/v1',
         OPENAI_MODEL: 'gpt-4o',
         OPENAI_API_KEY: 'sk-test',
@@ -408,19 +408,19 @@ describe('runClaudinStartupMigrations — rescue CLAUDE_CODE_USE_* envs', () => 
     expect(store.profiles[0].apiKey).toBe('sk-test')
   })
 
-  test('CLAUDE_CODE_USE_OPENAI without base/model → no profile (rescue requires data)', () => {
+  test('CLAUDIN_USE_OPENAI without base/model → no profile (rescue requires data)', () => {
     callRun({
-      processEnv: { CLAUDE_CODE_USE_OPENAI: '1' },
+      processEnv: { CLAUDIN_USE_OPENAI: '1' },
       log: silentLog,
     })
 
     expect(store.profiles).toHaveLength(0)
   })
 
-  test('CLAUDE_CODE_USE_GEMINI → creates gemini profile with defaults', () => {
+  test('CLAUDIN_USE_GEMINI → creates gemini profile with defaults', () => {
     callRun({
       processEnv: {
-        CLAUDE_CODE_USE_GEMINI: '1',
+        CLAUDIN_USE_GEMINI: '1',
         GEMINI_API_KEY: 'aistudio-xxx',
       },
       log: silentLog,
@@ -432,10 +432,10 @@ describe('runClaudinStartupMigrations — rescue CLAUDE_CODE_USE_* envs', () => 
     expect(store.profiles[0].apiKey).toBe('aistudio-xxx')
   })
 
-  test('CLAUDE_CODE_USE_MISTRAL → creates mistral profile', () => {
+  test('CLAUDIN_USE_MISTRAL → creates mistral profile', () => {
     callRun({
       processEnv: {
-        CLAUDE_CODE_USE_MISTRAL: '1',
+        CLAUDIN_USE_MISTRAL: '1',
         MISTRAL_API_KEY: 'mistral-xxx',
       },
       log: silentLog,
@@ -447,10 +447,10 @@ describe('runClaudinStartupMigrations — rescue CLAUDE_CODE_USE_* envs', () => 
     expect(store.profiles[0].apiKey).toBe('mistral-xxx')
   })
 
-  test('CLAUDE_CODE_USE_GITHUB → creates openai profile with extras.githubToken from GITHUB_TOKEN', () => {
+  test('CLAUDIN_USE_GITHUB → creates openai profile with extras.githubToken from GITHUB_TOKEN', () => {
     callRun({
       processEnv: {
-        CLAUDE_CODE_USE_GITHUB: '1',
+        CLAUDIN_USE_GITHUB: '1',
         GITHUB_TOKEN: 'ghp_test123',
       },
       log: silentLog,
@@ -464,10 +464,10 @@ describe('runClaudinStartupMigrations — rescue CLAUDE_CODE_USE_* envs', () => 
     expect(store.profiles[0].extras?.githubToken).toBe('ghp_test123')
   })
 
-  test('CLAUDE_CODE_USE_GITHUB → falls back to GH_TOKEN when GITHUB_TOKEN absent', () => {
+  test('CLAUDIN_USE_GITHUB → falls back to GH_TOKEN when GITHUB_TOKEN absent', () => {
     callRun({
       processEnv: {
-        CLAUDE_CODE_USE_GITHUB: '1',
+        CLAUDIN_USE_GITHUB: '1',
         GH_TOKEN: 'gho_alt456',
       },
       log: silentLog,
@@ -477,10 +477,10 @@ describe('runClaudinStartupMigrations — rescue CLAUDE_CODE_USE_* envs', () => 
     expect(store.profiles[0].extras?.githubToken).toBe('gho_alt456')
   })
 
-  test('CLAUDE_CODE_USE_BEDROCK → creates bedrock profile with awsRegion from AWS_REGION', () => {
+  test('CLAUDIN_USE_BEDROCK → creates bedrock profile with awsRegion from AWS_REGION', () => {
     callRun({
       processEnv: {
-        CLAUDE_CODE_USE_BEDROCK: '1',
+        CLAUDIN_USE_BEDROCK: '1',
         AWS_REGION: 'us-west-2',
       },
       log: silentLog,
@@ -494,10 +494,10 @@ describe('runClaudinStartupMigrations — rescue CLAUDE_CODE_USE_* envs', () => 
     expect(store.profiles[0].extras?.awsRegion).toBe('us-west-2')
   })
 
-  test('CLAUDE_CODE_USE_BEDROCK falls back to AWS_DEFAULT_REGION when AWS_REGION missing', () => {
+  test('CLAUDIN_USE_BEDROCK falls back to AWS_DEFAULT_REGION when AWS_REGION missing', () => {
     callRun({
       processEnv: {
-        CLAUDE_CODE_USE_BEDROCK: '1',
+        CLAUDIN_USE_BEDROCK: '1',
         AWS_DEFAULT_REGION: 'eu-west-1',
       },
       log: silentLog,
@@ -506,19 +506,19 @@ describe('runClaudinStartupMigrations — rescue CLAUDE_CODE_USE_* envs', () => 
     expect(store.profiles[0].extras?.awsRegion).toBe('eu-west-1')
   })
 
-  test('CLAUDE_CODE_USE_BEDROCK with no region env → defaults to us-east-1', () => {
+  test('CLAUDIN_USE_BEDROCK with no region env → defaults to us-east-1', () => {
     callRun({
-      processEnv: { CLAUDE_CODE_USE_BEDROCK: '1' },
+      processEnv: { CLAUDIN_USE_BEDROCK: '1' },
       log: silentLog,
     })
 
     expect(store.profiles[0].extras?.awsRegion).toBe('us-east-1')
   })
 
-  test('CLAUDE_CODE_USE_VERTEX → creates vertex profile with gcpProject + default gcpRegion', () => {
+  test('CLAUDIN_USE_VERTEX → creates vertex profile with gcpProject + default gcpRegion', () => {
     callRun({
       processEnv: {
-        CLAUDE_CODE_USE_VERTEX: '1',
+        CLAUDIN_USE_VERTEX: '1',
         GCLOUD_PROJECT: 'my-proj',
       },
       log: silentLog,
@@ -532,10 +532,10 @@ describe('runClaudinStartupMigrations — rescue CLAUDE_CODE_USE_* envs', () => 
     expect(store.profiles[0].baseUrl).toBe('https://us-east5-aiplatform.googleapis.com')
   })
 
-  test('CLAUDE_CODE_USE_VERTEX picks up CLOUD_ML_REGION + ANTHROPIC_VERTEX_PROJECT_ID', () => {
+  test('CLAUDIN_USE_VERTEX picks up CLOUD_ML_REGION + ANTHROPIC_VERTEX_PROJECT_ID', () => {
     callRun({
       processEnv: {
-        CLAUDE_CODE_USE_VERTEX: '1',
+        CLAUDIN_USE_VERTEX: '1',
         ANTHROPIC_VERTEX_PROJECT_ID: 'anthropic-proj',
         CLOUD_ML_REGION: 'us-central1',
       },
@@ -548,9 +548,9 @@ describe('runClaudinStartupMigrations — rescue CLAUDE_CODE_USE_* envs', () => 
     expect(profile.baseUrl).toBe('https://us-central1-aiplatform.googleapis.com')
   })
 
-  test('CLAUDE_CODE_USE_VERTEX without any project env → still creates profile (no gcpProject extra)', () => {
+  test('CLAUDIN_USE_VERTEX without any project env → still creates profile (no gcpProject extra)', () => {
     callRun({
-      processEnv: { CLAUDE_CODE_USE_VERTEX: '1' },
+      processEnv: { CLAUDIN_USE_VERTEX: '1' },
       log: silentLog,
     })
 
@@ -560,10 +560,10 @@ describe('runClaudinStartupMigrations — rescue CLAUDE_CODE_USE_* envs', () => 
     expect(profile.extras?.gcpRegion).toBe('us-east5')
   })
 
-  test('CLAUDE_CODE_USE_FOUNDRY → creates foundry profile with placeholder + warning', () => {
+  test('CLAUDIN_USE_FOUNDRY → creates foundry profile with placeholder + warning', () => {
     const notices: string[] = []
     callRun({
-      processEnv: { CLAUDE_CODE_USE_FOUNDRY: '1' },
+      processEnv: { CLAUDIN_USE_FOUNDRY: '1' },
       log: msg => notices.push(msg),
     })
 
@@ -588,17 +588,17 @@ describe('runClaudinStartupMigrations — rescue CLAUDE_CODE_USE_* envs', () => 
     const notices: string[] = []
     const result = callRun({
       processEnv: {
-        CLAUDE_CODE_USE_BEDROCK: '1',
+        CLAUDIN_USE_BEDROCK: '1',
         AWS_REGION: 'us-east-1',
       },
       log: msg => notices.push(msg),
     })
 
-    expect(result.envsIgnored).toContain('CLAUDE_CODE_USE_BEDROCK')
+    expect(result.envsIgnored).toContain('CLAUDIN_USE_BEDROCK')
     expect(store.profiles).toHaveLength(1)
     expect(store.active?.id).toBe('existing_profile')
     expect(
-      notices.some(m => m.includes('ignoring') && m.includes('CLAUDE_CODE_USE_BEDROCK')),
+      notices.some(m => m.includes('ignoring') && m.includes('CLAUDIN_USE_BEDROCK')),
     ).toBe(true)
   })
 })
@@ -606,7 +606,7 @@ describe('runClaudinStartupMigrations — rescue CLAUDE_CODE_USE_* envs', () => 
 describe('runClaudinStartupMigrations — full-run idempotency', () => {
   test('running twice with the same envs does not duplicate profiles', () => {
     const env = {
-      CLAUDE_CODE_USE_OPENAI: '1',
+      CLAUDIN_USE_OPENAI: '1',
       OPENAI_BASE_URL: 'https://api.openai.com/v1',
       OPENAI_MODEL: 'gpt-4o',
       OPENAI_API_KEY: 'sk-test',
@@ -623,7 +623,7 @@ describe('runClaudinStartupMigrations — full-run idempotency', () => {
       log: silentLog,
     })
 
-    expect(second.envsIgnored).toContain('CLAUDE_CODE_USE_OPENAI')
+    expect(second.envsIgnored).toContain('CLAUDIN_USE_OPENAI')
     expect(store.profiles).toHaveLength(1)
   })
 
@@ -635,14 +635,14 @@ describe('runClaudinStartupMigrations — full-run idempotency', () => {
 
     const result = callRun({
       processEnv: {
-        CLAUDE_CODE_USE_BEDROCK: '1',
+        CLAUDIN_USE_BEDROCK: '1',
         AWS_REGION: 'us-east-1',
       },
       log: silentLog,
     })
 
     expect(result.legacyProfileMigrated).toBe(true)
-    expect(result.envsIgnored).toContain('CLAUDE_CODE_USE_BEDROCK')
+    expect(result.envsIgnored).toContain('CLAUDIN_USE_BEDROCK')
     expect(store.profiles).toHaveLength(1)
     expect(store.profiles[0].name).toBe('OpenAI (legacy)')
     expect(legacyFileState.deleted).toBe(true)

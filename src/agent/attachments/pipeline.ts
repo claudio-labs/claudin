@@ -1,6 +1,6 @@
 // Attachment orchestration: composes every per-turn attachment producer
 // into a single bounded pipeline with an early kill-switch
-// (CLAUDE_CODE_DISABLE_ATTACHMENTS / CLAUDE_CODE_SIMPLE), a 1-second
+// (CLAUDIN_DISABLE_ATTACHMENTS / CLAUDIN_SIMPLE), a 1-second
 // abort fence, and parallel main-thread / shared-thread fan-out.
 //
 // Extracted from src/agent/attachments/attachments.ts as the final step of the split.
@@ -109,8 +109,8 @@ export async function getAttachments(
   options?: { skipSkillDiscovery?: boolean },
 ): Promise<Attachment[]> {
   if (
-    isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS) ||
-    isEnvTruthy(process.env.CLAUDE_CODE_SIMPLE)
+    isEnvTruthy(process.env.CLAUDIN_DISABLE_ATTACHMENTS) ||
+    isEnvTruthy(process.env.CLAUDIN_SIMPLE)
   ) {
     // query.ts:removeFromQueue dequeues these unconditionally after
     // getAttachmentMessages runs — returning [] here silently drops them.

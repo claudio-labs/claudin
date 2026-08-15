@@ -3,7 +3,7 @@
  *
  * Extracted from main.tsx to enable direct testing.
  */
-import { type Command, Option } from '@commander-js/extra-typings'
+import type { Command } from '@commander-js/extra-typings'
 import { cliError, cliOk } from 'src/platform/headless/exit.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -20,10 +20,6 @@ import {
   ensureTransport,
   parseHeaders,
 } from 'src/mcp/utils.js'
-import {
-  getXaaIdpSettings,
-  isXaaEnabled,
-} from 'src/mcp/xaaIdpLogin.js'
 import { parseEnvVars } from 'src/shared/envUtils.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 
@@ -72,12 +68,6 @@ export function registerMcpAddCommand(mcp: Command): void {
       'Fixed port for OAuth callback (for servers requiring pre-registered redirect URIs)',
     )
     .helpOption('-h, --help', 'Display help for command')
-    .addOption(
-      new Option(
-        '--xaa',
-        "Enable XAA (SEP-990) for this server. Requires 'claude mcp xaa setup' first. Also requires --client-id and --client-secret (for the MCP server's AS).",
-      ).hideHelp(!isXaaEnabled()),
-    )
     .action(async (name, commandOrUrl, args, options) => {
       // Commander.js handles -- natively: it consumes -- and everything after becomes args
       const actualCommand = commandOrUrl
@@ -87,39 +77,18 @@ export function registerMcpAddCommand(mcp: Command): void {
       if (!name) {
         cliError(
           'Error: Server name is required.\n' +
-            'Usage: claude mcp add <name> <command> [args...]',
+            'Usage: claudin mcp add <name> <command> [args...]',
         )
       } else if (!actualCommand) {
         cliError(
           'Error: Command is required when server name is provided.\n' +
-            'Usage: claude mcp add <name> <command> [args...]',
+            'Usage: claudin mcp add <name> <command> [args...]',
         )
       }
 
       try {
         const scope = ensureConfigScope(options.scope)
         const transport = ensureTransport(options.transport)
-
-        // XAA fail-fast: validate at add-time, not auth-time.
-        if (options.xaa && !isXaaEnabled()) {
-          cliError(
-            'Error: --xaa requires CLAUDE_CODE_ENABLE_XAA=1 in your environment',
-          )
-        }
-        const xaa = Boolean(options.xaa)
-        if (xaa) {
-          const missing: string[] = []
-          if (!options.clientId) missing.push('--client-id')
-          if (!options.clientSecret) missing.push('--client-secret')
-          if (!getXaaIdpSettings()) {
-            missing.push(
-              "'claude mcp xaa setup' (settings.xaaIdp not configured)",
-            )
-          }
-          if (missing.length) {
-            cliError(`Error: --xaa requires: ${missing.join(', ')}`)
-          }
-        }
 
         // Check if transport was explicitly provided
         const transportExplicit = options.transport !== undefined
@@ -157,11 +126,10 @@ export function registerMcpAddCommand(mcp: Command): void {
             ? parseInt(options.callbackPort, 10)
             : undefined
           const oauth =
-            options.clientId || callbackPort || xaa
+            options.clientId || callbackPort
               ? {
                   ...(options.clientId ? { clientId: options.clientId } : {}),
                   ...(callbackPort ? { callbackPort } : {}),
-                  ...(xaa ? { xaa: true } : {}),
                 }
               : undefined
 
@@ -203,11 +171,10 @@ export function registerMcpAddCommand(mcp: Command): void {
             ? parseInt(options.callbackPort, 10)
             : undefined
           const oauth =
-            options.clientId || callbackPort || xaa
+            options.clientId || callbackPort
               ? {
                   ...(options.clientId ? { clientId: options.clientId } : {}),
                   ...(callbackPort ? { callbackPort } : {}),
-                  ...(xaa ? { xaa: true } : {}),
                 }
               : undefined
 
@@ -240,11 +207,10 @@ export function registerMcpAddCommand(mcp: Command): void {
           if (
             options.clientId ||
             options.clientSecret ||
-            options.callbackPort ||
-            options.xaa
+            options.callbackPort
           ) {
             process.stderr.write(
-              `Warning: --client-id, --client-secret, --callback-port, and --xaa are only supported for HTTP/SSE transports and will be ignored for stdio.\n`,
+              `Warning: --client-id, --client-secret, and --callback-port are only supported for HTTP/SSE transports and will be ignored for stdio.\n`,
             )
           }
 

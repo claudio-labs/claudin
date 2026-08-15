@@ -458,7 +458,7 @@ export const createAndSaveSnapshot = async (
         ['-c', '-l', snapshotScript],
         {
           env: {
-            ...((process.env.CLAUDE_CODE_DONT_INHERIT_ENV
+            ...((process.env.CLAUDIN_DONT_INHERIT_ENV
               ? {}
               : subprocessEnv()) as typeof process.env),
             SHELL: binShell,

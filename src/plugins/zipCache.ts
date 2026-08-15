@@ -2,7 +2,7 @@
  * Plugin Zip Cache Module
  *
  * Manages plugins as ZIP archives in a mounted directory (e.g., Filestore).
- * When CLAUDE_CODE_PLUGIN_USE_ZIP_CACHE is enabled and CLAUDE_CODE_PLUGIN_CACHE_DIR
+ * When CLAUDIN_PLUGIN_USE_ZIP_CACHE is enabled and CLAUDIN_PLUGIN_CACHE_DIR
  * is set, plugins are stored as ZIPs in that directory and extracted to a
  * session-local temp directory at startup.
  *
@@ -53,19 +53,19 @@ import type { MarketplaceSource } from 'src/plugins/schemas.js'
  * Check if the plugin zip cache mode is enabled.
  */
 export function isPluginZipCacheEnabled(): boolean {
-  return isEnvTruthy(process.env.CLAUDE_CODE_PLUGIN_USE_ZIP_CACHE)
+  return isEnvTruthy(process.env.CLAUDIN_PLUGIN_USE_ZIP_CACHE)
 }
 
 /**
  * Get the path to the zip cache directory.
- * Requires CLAUDE_CODE_PLUGIN_CACHE_DIR to be set.
+ * Requires CLAUDIN_PLUGIN_CACHE_DIR to be set.
  * Returns undefined if zip cache is not enabled.
  */
 export function getPluginZipCachePath(): string | undefined {
   if (!isPluginZipCacheEnabled()) {
     return undefined
   }
-  const dir = process.env.CLAUDE_CODE_PLUGIN_CACHE_DIR
+  const dir = process.env.CLAUDIN_PLUGIN_CACHE_DIR
   return dir ? expandTilde(dir) : undefined
 }
 

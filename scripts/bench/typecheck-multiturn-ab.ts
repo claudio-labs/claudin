@@ -22,7 +22,7 @@
  *   bun scripts/bench/typecheck-multiturn-ab.ts --reps 1 --turns 4 --keep
  *
  * Headless orphans auto-background sub-agents, which would drop their usage
- * from the totals — CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1 is forced below.
+ * from the totals — CLAUDIN_DISABLE_BACKGROUND_TASKS=1 is forced below.
  */
 import { spawnSync } from 'child_process'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'fs'
@@ -156,7 +156,7 @@ function runTurn(bin: string, cwd: string, prompt: string, model: string, first:
     encoding: 'utf8',
     timeout: timeoutMs,
     maxBuffer: 64 * 1024 * 1024,
-    env: { ...process.env, CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: '1' },
+    env: { ...process.env, CLAUDIN_DISABLE_BACKGROUND_TASKS: '1' },
   })
   const last = (res.stdout ?? '').trim().split('\n').filter(Boolean).pop() ?? ''
   try {

@@ -68,7 +68,7 @@ function isExecutable(shellPath: string): boolean {
  */
 export async function findSuitableShell(): Promise<string> {
   // Check for explicit shell override first
-  const shellOverride = process.env.CLAUDE_CODE_SHELL
+  const shellOverride = process.env.CLAUDIN_SHELL
   if (shellOverride) {
     // Validate it's a supported shell type
     const isSupported =
@@ -79,7 +79,7 @@ export async function findSuitableShell(): Promise<string> {
     } else {
       // Note, if we ever want to add support for new shells here we'll need to update or Bash tool parsing to account for this
       logForDebugging(
-        `CLAUDE_CODE_SHELL="${shellOverride}" is not a valid bash/zsh path, falling back to detection`,
+        `CLAUDIN_SHELL="${shellOverride}" is not a valid bash/zsh path, falling back to detection`,
       )
     }
   }
@@ -205,7 +205,7 @@ export async function exec(
 
   // Sandbox temp directory - use per-user directory name to prevent multi-user permission conflicts
   const sandboxTmpDir = posixJoin(
-    process.env.CLAUDE_CODE_TMPDIR || '/tmp',
+    process.env.CLAUDIN_TMPDIR || '/tmp',
     getClaudeTempDirName(),
   )
 

@@ -1,0 +1,1511 @@
+{
+  "scheme": "CLAUDE_CODE_FOO -> CLAUDIN_FOO (CODE drops); CLAUDE_FOO -> CLAUDIN_FOO. Hard cut-over, no dual read.",
+  "generated": "from the 221 names read via process.env across src/ and scripts/",
+  "buckets": {
+    "A": {
+      "what": "internal knob - only this codebase reads and sets it",
+      "action": "rename",
+      "count": 149
+    },
+    "B": {
+      "what": "outbound contract - we write it into a hook/plugin/skill/MCP process env",
+      "action": "rename (BREAKING for third-party consumers)",
+      "count": 1,
+      "warning": "Bucket B is mostly INVISIBLE in this population: CLAUDE_PROJECT_DIR, CLAUDE_PLUGIN_ROOT, CLAUDE_PLUGIN_DATA, CLAUDE_SKILL_DIR, CLAUDE_SESSION_ID and CLAUDE_PLUGIN_OPTION_* are WRITTEN, never read, so they are not among the 221. They must be renamed by the same commit - see writeOnlyOutbound."
+    },
+    "C": {
+      "what": "inbound contract - something outside this process sets it",
+      "action": "KEEP",
+      "count": 18
+    },
+    "D": {
+      "what": "dead in this fork",
+      "action": "KEEP for now",
+      "count": 53
+    },
+    "E": {
+      "what": "third-party (ANTHROPIC_*, AWS_*, OTEL_*)",
+      "action": "never touch",
+      "count": 0,
+      "note": "None appear in this CLAUDE*-prefixed population, as expected."
+    }
+  },
+  "writeOnlyOutbound": [
+    {
+      "from": "CLAUDE_PROJECT_DIR",
+      "to": "CLAUDIN_PROJECT_DIR",
+      "bucket": "B",
+      "where": "src/platform/lifecycleHooks/runners.ts:280"
+    },
+    {
+      "from": "CLAUDE_PLUGIN_ROOT",
+      "to": "CLAUDIN_PLUGIN_ROOT",
+      "bucket": "B",
+      "where": "runners.ts:286,304; mcpPluginIntegration.ts:512; lspPluginIntegration.ts:267; loadPluginCommands.ts; pluginOptionsStorage.ts:332"
+    },
+    {
+      "from": "CLAUDE_PLUGIN_DATA",
+      "to": "CLAUDIN_PLUGIN_DATA",
+      "bucket": "B",
+      "where": "runners.ts:288; mcpPluginIntegration.ts; lspPluginIntegration.ts; pluginOptionsStorage.ts"
+    },
+    {
+      "from": "CLAUDE_SKILL_DIR",
+      "to": "CLAUDIN_SKILL_DIR",
+      "bucket": "B",
+      "where": "loadSkillsDir.ts:362; SkillTool.ts:1042; loadPluginCommands.ts:367"
+    },
+    {
+      "from": "CLAUDE_SESSION_ID",
+      "to": "CLAUDIN_SESSION_ID",
+      "bucket": "B",
+      "where": "SkillTool.ts:1035"
+    },
+    {
+      "from": "CLAUDE_PLUGIN_OPTION_<KEY>",
+      "to": "CLAUDIN_PLUGIN_OPTION_<KEY>",
+      "bucket": "B",
+      "where": "runners.ts:300 (dynamic prefix); schemas.ts:666 documents it"
+    }
+  ],
+  "managedListUpdates": {
+    "note": "Both lists in src/platform/config/managedEnvConstants.ts are keyed by NAME. A rename that misses them silently reclassifies the variable security-wise.",
+    "PROVIDER_MANAGED_ENV_VARS": [
+      "CLAUDE_CODE_SKIP_BEDROCK_AUTH",
+      "CLAUDE_CODE_SKIP_FOUNDRY_AUTH",
+      "CLAUDE_CODE_SKIP_VERTEX_AUTH",
+      "CLAUDE_CODE_SUBAGENT_MODEL",
+      "CLAUDE_CODE_USE_BEDROCK",
+      "CLAUDE_CODE_USE_FOUNDRY",
+      "CLAUDE_CODE_USE_GITHUB",
+      "CLAUDE_CODE_USE_VERTEX"
+    ],
+    "SAFE_ENV_VARS": [
+      "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR",
+      "CLAUDE_CODE_API_KEY_HELPER_TTL_MS",
+      "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+      "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+      "CLAUDE_CODE_DISABLE_TERMINAL_TITLE",
+      "CLAUDE_CODE_IDE_SKIP_AUTO_INSTALL",
+      "CLAUDE_CODE_MAX_OUTPUT_TOKENS",
+      "CLAUDE_CODE_SKIP_BEDROCK_AUTH",
+      "CLAUDE_CODE_SKIP_FOUNDRY_AUTH",
+      "CLAUDE_CODE_SKIP_VERTEX_AUTH",
+      "CLAUDE_CODE_SUBAGENT_MODEL",
+      "CLAUDE_CODE_USE_BEDROCK",
+      "CLAUDE_CODE_USE_FOUNDRY",
+      "CLAUDE_CODE_USE_GITHUB",
+      "CLAUDE_CODE_USE_VERTEX"
+    ]
+  },
+  "rename": [
+    {
+      "from": "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE",
+      "to": "CLAUDIN_AUTOCOMPACT_PCT_OVERRIDE",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_AUTO_BACKGROUND_TASKS",
+      "to": "CLAUDIN_AUTO_BACKGROUND_TASKS",
+      "bucket": "A",
+      "files": 3,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR",
+      "to": "CLAUDIN_BASH_MAINTAIN_PROJECT_WORKING_DIR",
+      "bucket": "A",
+      "files": 2,
+      "managedList": "SAFE_ENV_VARS"
+    },
+    {
+      "from": "CLAUDE_CODE_ACCESSIBILITY",
+      "to": "CLAUDIN_ACCESSIBILITY",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD",
+      "to": "CLAUDIN_ADDITIONAL_DIRECTORIES_CLAUDE_MD",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_ADDITIONAL_PROTECTION",
+      "to": "CLAUDIN_ADDITIONAL_PROTECTION",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_AGENT",
+      "to": "CLAUDIN_AGENT",
+      "bucket": "A",
+      "files": 12,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_AGENT_LIST_IN_MESSAGES",
+      "to": "CLAUDIN_AGENT_LIST_IN_MESSAGES",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_ALWAYS_ENABLE_EFFORT",
+      "to": "CLAUDIN_ALWAYS_ENABLE_EFFORT",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_API_BASE_URL",
+      "to": "CLAUDIN_API_BASE_URL",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_API_KEY_HELPER_TTL_MS",
+      "to": "CLAUDIN_API_KEY_HELPER_TTL_MS",
+      "bucket": "A",
+      "files": 2,
+      "managedList": "SAFE_ENV_VARS"
+    },
+    {
+      "from": "CLAUDE_CODE_ATTRIBUTION_HEADER",
+      "to": "CLAUDIN_ATTRIBUTION_HEADER",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
+      "to": "CLAUDIN_AUTO_COMPACT_WINDOW",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_AUTO_CONNECT_IDE",
+      "to": "CLAUDIN_AUTO_CONNECT_IDE",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_BASE_REF",
+      "to": "CLAUDIN_BASE_REF",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_BASH_GIT_IN_MESSAGES",
+      "to": "CLAUDIN_BASH_GIT_IN_MESSAGES",
+      "bucket": "A",
+      "files": 4,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_BASH_SANDBOX_SHOW_INDICATOR",
+      "to": "CLAUDIN_BASH_SANDBOX_SHOW_INDICATOR",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_BLOCKING_LIMIT_OVERRIDE",
+      "to": "CLAUDIN_BLOCKING_LIMIT_OVERRIDE",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_BUBBLEWRAP",
+      "to": "CLAUDIN_BUBBLEWRAP",
+      "bucket": "A",
+      "files": 3,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_CLIENT_CERT",
+      "to": "CLAUDIN_CLIENT_CERT",
+      "bucket": "A",
+      "files": 4,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_CLIENT_KEY",
+      "to": "CLAUDIN_CLIENT_KEY",
+      "bucket": "A",
+      "files": 3,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_CLIENT_KEY_PASSPHRASE",
+      "to": "CLAUDIN_CLIENT_KEY_PASSPHRASE",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_COMMIT_LOG",
+      "to": "CLAUDIN_COMMIT_LOG",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_COORDINATOR_MODE",
+      "to": "CLAUDIN_COORDINATOR_MODE",
+      "bucket": "A",
+      "files": 8,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DEBUG_LOGS_DIR",
+      "to": "CLAUDIN_DEBUG_LOGS_DIR",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DEBUG_LOG_LEVEL",
+      "to": "CLAUDIN_DEBUG_LOG_LEVEL",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DEBUG_REPAINTS",
+      "to": "CLAUDIN_DEBUG_REPAINTS",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DIAGNOSTICS_FILE",
+      "to": "CLAUDIN_DIAGNOSTICS_FILE",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_1M_CONTEXT",
+      "to": "CLAUDIN_DISABLE_1M_CONTEXT",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_ADVISOR_TOOL",
+      "to": "CLAUDIN_DISABLE_ADVISOR_TOOL",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_ATTACHMENTS",
+      "to": "CLAUDIN_DISABLE_ATTACHMENTS",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_AUTO_MEMORY",
+      "to": "CLAUDIN_DISABLE_AUTO_MEMORY",
+      "bucket": "A",
+      "files": 5,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS",
+      "to": "CLAUDIN_DISABLE_BACKGROUND_TASKS",
+      "bucket": "A",
+      "files": 17,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_CLAUDE_MDS",
+      "to": "CLAUDIN_DISABLE_CLAUDE_MDS",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_COMMAND_INJECTION_CHECK",
+      "to": "CLAUDIN_DISABLE_COMMAND_INJECTION_CHECK",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_CRON",
+      "to": "CLAUDIN_DISABLE_CRON",
+      "bucket": "A",
+      "files": 6,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS",
+      "to": "CLAUDIN_DISABLE_EXPERIMENTAL_BETAS",
+      "bucket": "A",
+      "files": 7,
+      "managedList": "SAFE_ENV_VARS"
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_FAST_MODE",
+      "to": "CLAUDIN_DISABLE_FAST_MODE",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_FILE_CHECKPOINTING",
+      "to": "CLAUDIN_DISABLE_FILE_CHECKPOINTING",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS",
+      "to": "CLAUDIN_DISABLE_GIT_INSTRUCTIONS",
+      "bucket": "A",
+      "files": 5,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_LEGACY_MODEL_REMAP",
+      "to": "CLAUDIN_DISABLE_LEGACY_MODEL_REMAP",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_MESSAGE_ACTIONS",
+      "to": "CLAUDIN_DISABLE_MESSAGE_ACTIONS",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_MOUSE",
+      "to": "CLAUDIN_DISABLE_MOUSE",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_MOUSE_CLICKS",
+      "to": "CLAUDIN_DISABLE_MOUSE_CLICKS",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+      "to": "CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC",
+      "bucket": "A",
+      "files": 3,
+      "managedList": "SAFE_ENV_VARS"
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK",
+      "to": "CLAUDIN_DISABLE_NONSTREAMING_FALLBACK",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL",
+      "to": "CLAUDIN_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_POLICY_SKILLS",
+      "to": "CLAUDIN_DISABLE_POLICY_SKILLS",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_PRECOMPACT_SKIP",
+      "to": "CLAUDIN_DISABLE_PRECOMPACT_SKIP",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_TERMINAL_TITLE",
+      "to": "CLAUDIN_DISABLE_TERMINAL_TITLE",
+      "bucket": "A",
+      "files": 4,
+      "managedList": "SAFE_ENV_VARS"
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_THINKING",
+      "to": "CLAUDIN_DISABLE_THINKING",
+      "bucket": "A",
+      "files": 3,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DISABLE_VIRTUAL_SCROLL",
+      "to": "CLAUDIN_DISABLE_VIRTUAL_SCROLL",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_DONT_INHERIT_ENV",
+      "to": "CLAUDIN_DONT_INHERIT_ENV",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_EFFORT_LEVEL",
+      "to": "CLAUDIN_EFFORT_LEVEL",
+      "bucket": "A",
+      "files": 6,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_EMIT_TOOL_USE_SUMMARIES",
+      "to": "CLAUDIN_EMIT_TOOL_USE_SUMMARIES",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING",
+      "to": "CLAUDIN_ENABLE_ADAPTIVE_THINKING",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_ENABLE_FINE_GRAINED_TOOL_STREAMING",
+      "to": "CLAUDIN_ENABLE_FINE_GRAINED_TOOL_STREAMING",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_ENABLE_HOOK_CHAINS",
+      "to": "CLAUDIN_ENABLE_HOOK_CHAINS",
+      "bucket": "A",
+      "files": 3,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION",
+      "to": "CLAUDIN_ENABLE_PROMPT_SUGGESTION",
+      "bucket": "A",
+      "files": 3,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING",
+      "to": "CLAUDIN_ENABLE_SDK_FILE_CHECKPOINTING",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_ENABLE_TASKS",
+      "to": "CLAUDIN_ENABLE_TASKS",
+      "bucket": "A",
+      "files": 11,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_ENABLE_TOKEN_USAGE_ATTACHMENT",
+      "to": "CLAUDIN_ENABLE_TOKEN_USAGE_ATTACHMENT",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_EXIT_AFTER_FIRST_RENDER",
+      "to": "CLAUDIN_EXIT_AFTER_FIRST_RENDER",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_EXIT_AFTER_STOP_DELAY",
+      "to": "CLAUDIN_EXIT_AFTER_STOP_DELAY",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_EXTRA_BODY",
+      "to": "CLAUDIN_EXTRA_BODY",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_EXTRA_METADATA",
+      "to": "CLAUDIN_EXTRA_METADATA",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS",
+      "to": "CLAUDIN_FILE_READ_MAX_OUTPUT_TOKENS",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_FORCE_FULL_LOGO",
+      "to": "CLAUDIN_FORCE_FULL_LOGO",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_FRAME_TIMING_LOG",
+      "to": "CLAUDIN_FRAME_TIMING_LOG",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_GIT_BASH_PATH",
+      "to": "CLAUDIN_GIT_BASH_PATH",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_GLOB_HIDDEN",
+      "to": "CLAUDIN_GLOB_HIDDEN",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_GLOB_NO_IGNORE",
+      "to": "CLAUDIN_GLOB_NO_IGNORE",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_GLOB_TIMEOUT_SECONDS",
+      "to": "CLAUDIN_GLOB_TIMEOUT_SECONDS",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_IDE_SKIP_AUTO_INSTALL",
+      "to": "CLAUDIN_IDE_SKIP_AUTO_INSTALL",
+      "bucket": "A",
+      "files": 2,
+      "managedList": "SAFE_ENV_VARS"
+    },
+    {
+      "from": "CLAUDE_CODE_IDE_SKIP_VALID_CHECK",
+      "to": "CLAUDIN_IDE_SKIP_VALID_CHECK",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_IDLE_THRESHOLD_MINUTES",
+      "to": "CLAUDIN_IDLE_THRESHOLD_MINUTES",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_IDLE_TOKEN_THRESHOLD",
+      "to": "CLAUDIN_IDLE_TOKEN_THRESHOLD",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_INCLUDE_PARTIAL_MESSAGES",
+      "to": "CLAUDIN_INCLUDE_PARTIAL_MESSAGES",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_JSON_TOOL_USE",
+      "to": "CLAUDIN_JSON_TOOL_USE",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_MAX_OUTPUT_TOKENS",
+      "to": "CLAUDIN_MAX_OUTPUT_TOKENS",
+      "bucket": "A",
+      "files": 7,
+      "managedList": "SAFE_ENV_VARS"
+    },
+    {
+      "from": "CLAUDE_CODE_MAX_RETRIES",
+      "to": "CLAUDIN_MAX_RETRIES",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_MAX_TOOL_USE_CONCURRENCY",
+      "to": "CLAUDIN_MAX_TOOL_USE_CONCURRENCY",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_MCP_INSTR_DELTA",
+      "to": "CLAUDIN_MCP_INSTR_DELTA",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_NO_FLICKER",
+      "to": "CLAUDIN_NO_FLICKER",
+      "bucket": "A",
+      "files": 7,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_OPENAI_CONTEXT_WINDOWS",
+      "to": "CLAUDIN_OPENAI_CONTEXT_WINDOWS",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_OPENAI_FALLBACK_CONTEXT_WINDOW",
+      "to": "CLAUDIN_OPENAI_FALLBACK_CONTEXT_WINDOW",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_OPENAI_MAX_OUTPUT_TOKENS",
+      "to": "CLAUDIN_OPENAI_MAX_OUTPUT_TOKENS",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_OVERRIDE_DATE",
+      "to": "CLAUDIN_OVERRIDE_DATE",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_PERFETTO_TRACE",
+      "to": "CLAUDIN_PERFETTO_TRACE",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_PERFETTO_WRITE_INTERVAL_S",
+      "to": "CLAUDIN_PERFETTO_WRITE_INTERVAL_S",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_PLAN_MODE_INTERVIEW_PHASE",
+      "to": "CLAUDIN_PLAN_MODE_INTERVIEW_PHASE",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_PLAN_MODE_REQUIRED",
+      "to": "CLAUDIN_PLAN_MODE_REQUIRED",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_PLAN_V2_AGENT_COUNT",
+      "to": "CLAUDIN_PLAN_V2_AGENT_COUNT",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_PLAN_V2_EXPLORE_AGENT_COUNT",
+      "to": "CLAUDIN_PLAN_V2_EXPLORE_AGENT_COUNT",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_PLUGIN_CACHE_DIR",
+      "to": "CLAUDIN_PLUGIN_CACHE_DIR",
+      "bucket": "A",
+      "files": 4,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS",
+      "to": "CLAUDIN_PLUGIN_GIT_TIMEOUT_MS",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_PLUGIN_SEED_DIR",
+      "to": "CLAUDIN_PLUGIN_SEED_DIR",
+      "bucket": "A",
+      "files": 4,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_PLUGIN_USE_ZIP_CACHE",
+      "to": "CLAUDIN_PLUGIN_USE_ZIP_CACHE",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_PROACTIVE",
+      "to": "CLAUDIN_PROACTIVE",
+      "bucket": "A",
+      "files": 3,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_PROFILE_QUERY",
+      "to": "CLAUDIN_PROFILE_QUERY",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_PROFILE_STARTUP",
+      "to": "CLAUDIN_PROFILE_STARTUP",
+      "bucket": "A",
+      "files": 3,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_PROXY_RESOLVES_HOSTS",
+      "to": "CLAUDIN_PROXY_RESOLVES_HOSTS",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_PWSH_PARSE_TIMEOUT_MS",
+      "to": "CLAUDIN_PWSH_PARSE_TIMEOUT_MS",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_QUESTION_PREVIEW_FORMAT",
+      "to": "CLAUDIN_QUESTION_PREVIEW_FORMAT",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_REPL",
+      "to": "CLAUDIN_REPL",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_RESUME_INTERRUPTED_TURN",
+      "to": "CLAUDIN_RESUME_INTERRUPTED_TURN",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_SAVE_HOOK_ADDITIONAL_CONTEXT",
+      "to": "CLAUDIN_SAVE_HOOK_ADDITIONAL_CONTEXT",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_SCROLL_SPEED",
+      "to": "CLAUDIN_SCROLL_SPEED",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS",
+      "to": "CLAUDIN_SESSIONEND_HOOKS_TIMEOUT_MS",
+      "bucket": "A",
+      "files": 4,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_SESSION_LOG",
+      "to": "CLAUDIN_SESSION_LOG",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_SESSION_NAME",
+      "to": "CLAUDIN_SESSION_NAME",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_SHELL",
+      "to": "CLAUDIN_SHELL",
+      "bucket": "A",
+      "files": 4,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_SHELL_PREFIX",
+      "to": "CLAUDIN_SHELL_PREFIX",
+      "bucket": "A",
+      "files": 3,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_SIMPLE",
+      "to": "CLAUDIN_SIMPLE",
+      "bucket": "A",
+      "files": 31,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_SKIP_BEDROCK_AUTH",
+      "to": "CLAUDIN_SKIP_BEDROCK_AUTH",
+      "bucket": "A",
+      "files": 5,
+      "managedList": "PROVIDER_MANAGED_ENV_VARS"
+    },
+    {
+      "from": "CLAUDE_CODE_SKIP_FAST_MODE_NETWORK_ERRORS",
+      "to": "CLAUDIN_SKIP_FAST_MODE_NETWORK_ERRORS",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_SKIP_FOUNDRY_AUTH",
+      "to": "CLAUDIN_SKIP_FOUNDRY_AUTH",
+      "bucket": "A",
+      "files": 3,
+      "managedList": "PROVIDER_MANAGED_ENV_VARS"
+    },
+    {
+      "from": "CLAUDE_CODE_SKIP_PROMPT_HISTORY",
+      "to": "CLAUDIN_SKIP_PROMPT_HISTORY",
+      "bucket": "A",
+      "files": 3,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_SKIP_VERTEX_AUTH",
+      "to": "CLAUDIN_SKIP_VERTEX_AUTH",
+      "bucket": "A",
+      "files": 5,
+      "managedList": "PROVIDER_MANAGED_ENV_VARS"
+    },
+    {
+      "from": "CLAUDE_CODE_SLOW_OPERATION_THRESHOLD_MS",
+      "to": "CLAUDIN_SLOW_OPERATION_THRESHOLD_MS",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_STALL_TIMEOUT_MS_FOR_TESTING",
+      "to": "CLAUDIN_STALL_TIMEOUT_MS_FOR_TESTING",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_STREAMLINED_OUTPUT",
+      "to": "CLAUDIN_STREAMLINED_OUTPUT",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_SUBAGENT_MODEL",
+      "to": "CLAUDIN_SUBAGENT_MODEL",
+      "bucket": "A",
+      "files": 2,
+      "managedList": "PROVIDER_MANAGED_ENV_VARS"
+    },
+    {
+      "from": "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB",
+      "to": "CLAUDIN_SUBPROCESS_ENV_SCRUB",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_SYNC_PLUGIN_INSTALL",
+      "to": "CLAUDIN_SYNC_PLUGIN_INSTALL",
+      "bucket": "A",
+      "files": 7,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_SYNC_PLUGIN_INSTALL_TIMEOUT_MS",
+      "to": "CLAUDIN_SYNC_PLUGIN_INSTALL_TIMEOUT_MS",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_SYNTAX_HIGHLIGHT",
+      "to": "CLAUDIN_SYNTAX_HIGHLIGHT",
+      "bucket": "A",
+      "files": 3,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_TASK_LIST_ID",
+      "to": "CLAUDIN_TASK_LIST_ID",
+      "bucket": "A",
+      "files": 10,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_TEST_FIXTURES_ROOT",
+      "to": "CLAUDIN_TEST_FIXTURES_ROOT",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_TMPDIR",
+      "to": "CLAUDIN_TMPDIR",
+      "bucket": "A",
+      "files": 5,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_TMUX_PREFIX",
+      "to": "CLAUDIN_TMUX_PREFIX",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_TMUX_PREFIX_CONFLICTS",
+      "to": "CLAUDIN_TMUX_PREFIX_CONFLICTS",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_TMUX_SESSION",
+      "to": "CLAUDIN_TMUX_SESSION",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_TMUX_TRUECOLOR",
+      "to": "CLAUDIN_TMUX_TRUECOLOR",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_UNATTENDED_RETRY",
+      "to": "CLAUDIN_UNATTENDED_RETRY",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_USE_BEDROCK",
+      "to": "CLAUDIN_USE_BEDROCK",
+      "bucket": "A",
+      "files": 13,
+      "managedList": "PROVIDER_MANAGED_ENV_VARS"
+    },
+    {
+      "from": "CLAUDE_CODE_USE_FOUNDRY",
+      "to": "CLAUDIN_USE_FOUNDRY",
+      "bucket": "A",
+      "files": 11,
+      "managedList": "PROVIDER_MANAGED_ENV_VARS"
+    },
+    {
+      "from": "CLAUDE_CODE_USE_GEMINI",
+      "to": "CLAUDIN_USE_GEMINI",
+      "bucket": "A",
+      "files": 14,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_USE_GITHUB",
+      "to": "CLAUDIN_USE_GITHUB",
+      "bucket": "A",
+      "files": 19,
+      "managedList": "PROVIDER_MANAGED_ENV_VARS"
+    },
+    {
+      "from": "CLAUDE_CODE_USE_MISTRAL",
+      "to": "CLAUDIN_USE_MISTRAL",
+      "bucket": "A",
+      "files": 6,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_USE_NATIVE_FILE_SEARCH",
+      "to": "CLAUDIN_USE_NATIVE_FILE_SEARCH",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_USE_OPENAI",
+      "to": "CLAUDIN_USE_OPENAI",
+      "bucket": "A",
+      "files": 17,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_USE_POWERSHELL_TOOL",
+      "to": "CLAUDIN_USE_POWERSHELL_TOOL",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_CODE_USE_VERTEX",
+      "to": "CLAUDIN_USE_VERTEX",
+      "bucket": "A",
+      "files": 11,
+      "managedList": "PROVIDER_MANAGED_ENV_VARS"
+    },
+    {
+      "from": "CLAUDE_CODE_VERIFY_PLAN",
+      "to": "CLAUDIN_VERIFY_PLAN",
+      "bucket": "A",
+      "files": 4,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_DEBUG",
+      "to": "CLAUDIN_DEBUG",
+      "bucket": "A",
+      "files": 2,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_ENABLE_STREAM_WATCHDOG",
+      "to": "CLAUDIN_ENABLE_STREAM_WATCHDOG",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_ENV_FILE",
+      "to": "CLAUDIN_ENV_FILE",
+      "bucket": "B",
+      "files": 6,
+      "managedList": null,
+      "note": "Written into every hook process env (lifecycleHooks/runners.ts:321). Third-party hooks read it to export vars back."
+    },
+    {
+      "from": "CLAUDE_REPL_MODE",
+      "to": "CLAUDIN_REPL_MODE",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    },
+    {
+      "from": "CLAUDE_STREAM_IDLE_TIMEOUT_MS",
+      "to": "CLAUDIN_STREAM_IDLE_TIMEOUT_MS",
+      "bucket": "A",
+      "files": 1,
+      "managedList": null
+    }
+  ],
+  "keep": [
+    {
+      "name": "CLAUDE_AFTER_LAST_COMPACT",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_AGENT_SDK_CLIENT_APP",
+      "bucket": "C",
+      "why": "Set by the Agent SDK host app; never written here."
+    },
+    {
+      "name": "CLAUDE_AGENT_SDK_DISABLE_BUILTIN_AGENTS",
+      "bucket": "C",
+      "why": "Agent SDK toggle, set by the SDK caller."
+    },
+    {
+      "name": "CLAUDE_AGENT_SDK_MCP_NO_PREFIX",
+      "bucket": "C",
+      "why": "Agent SDK toggle, set by the SDK caller."
+    },
+    {
+      "name": "CLAUDE_AGENT_SDK_VERSION",
+      "bucket": "C",
+      "why": "Claude Agent SDK sets it; never written here (0 writes, 4 files). Renaming makes the SDK invisible to the UA/telemetry path."
+    },
+    {
+      "name": "CLAUDE_BRIDGE_BASE_URL",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_BRIDGE_OAUTH_TOKEN",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_BRIDGE_SESSION_INGRESS_URL",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_BRIDGE_USE_CCR_V2",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_ABLATION_BASELINE",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_ACCOUNT_TAGGED_ID",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_ACCOUNT_UUID",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_ACTION",
+      "bucket": "C",
+      "why": "Set by the claude-code-action GitHub Action, outside this process."
+    },
+    {
+      "name": "CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR",
+      "bucket": "C",
+      "why": "FD handed in by a managed parent process at spawn."
+    },
+    {
+      "name": "CLAUDE_CODE_BRIEF",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_BRIEF_UPLOAD",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_CCR_MIRROR",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_CONTAINER_ID",
+      "bucket": "C",
+      "why": "Injected by a managed container runtime."
+    },
+    {
+      "name": "CLAUDE_CODE_COWORKER_TYPE",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_CUSTOM_OAUTH_URL",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_DATADOG_FLUSH_INTERVAL_MS",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_EAGER_FLUSH",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_EMIT_SESSION_STATE_EVENTS",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_ENABLE_TELEMETRY",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_ENHANCED_TELEMETRY_BETA",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_ENTRYPOINT",
+      "bucket": "C",
+      "why": "BUCKET A n C. Read as an internal knob AND set by the IDE extension / SDK / wrappers to identify the host. Explicitly exempted by the plan."
+    },
+    {
+      "name": "CLAUDE_CODE_ENVIRONMENT_KIND",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_ENVIRONMENT_RUNNER_VERSION",
+      "bucket": "C",
+      "why": "Injected by the managed environment runner."
+    },
+    {
+      "name": "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_HOST_PLATFORM",
+      "bucket": "C",
+      "why": "Injected by the managed host."
+    },
+    {
+      "name": "CLAUDE_CODE_IDE_HOST_OVERRIDE",
+      "bucket": "C",
+      "why": "Set by the IDE extension to point the CLI at its host."
+    },
+    {
+      "name": "CLAUDE_CODE_INTERNAL_ARTIFACTORY_REGISTRY_URL",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_IS_COWORK",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_MESSAGING_SOCKET",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_OAUTH_CLIENT_ID",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_OAUTH_REFRESH_TOKEN",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_OAUTH_SCOPES",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_OAUTH_TOKEN",
+      "bucket": "C",
+      "why": "BUCKET A n C. Also a PROVIDER_MANAGED_ENV_VAR and the documented headless auth input. Explicitly exempted by the plan."
+    },
+    {
+      "name": "CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR",
+      "bucket": "C",
+      "why": "FD handed in by a managed parent process at spawn."
+    },
+    {
+      "name": "CLAUDE_CODE_ORGANIZATION_UUID",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_OTEL_FLUSH_TIMEOUT_MS",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_OTEL_HEADERS_HELPER_DEBOUNCE_MS",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_OTEL_SHUTDOWN_TIMEOUT_MS",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_POST_FOR_SESSION_INGRESS_V2",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST",
+      "bucket": "C",
+      "why": "The host sets it to declare it owns routing; PROVIDER_MANAGED_ENV_VARS keys off it."
+    },
+    {
+      "name": "CLAUDE_CODE_REMOTE",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_REMOTE_ENVIRONMENT_TYPE",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_REMOTE_MEMORY_DIR",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_REMOTE_SEND_KEEPALIVES",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_REMOTE_SESSION_ID",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_SESSION_ACCESS_TOKEN",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_SESSION_KIND",
+      "bucket": "C",
+      "why": "Injected by the managed session host."
+    },
+    {
+      "name": "CLAUDE_CODE_SSE_PORT",
+      "bucket": "C",
+      "why": "Set by the IDE extension when it opens the SSE bridge; never written here."
+    },
+    {
+      "name": "CLAUDE_CODE_TAGS",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_USER_EMAIL",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_USE_CCR_V2",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_USE_COWORK_PLUGINS",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_WEBSOCKET_AUTH_FILE_DESCRIPTOR",
+      "bucket": "C",
+      "why": "FD handed in by a managed parent process at spawn."
+    },
+    {
+      "name": "CLAUDE_CODE_WORKER_EPOCH",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_CODE_WORKSPACE_HOST_PATHS",
+      "bucket": "C",
+      "why": "Injected by the managed host (devcontainer path mapping)."
+    },
+    {
+      "name": "CLAUDE_COWORK_MEMORY_EXTRA_GUIDELINES",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_COWORK_MEMORY_PATH_OVERRIDE",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_FEATURE_FLAGS_FILE",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_FORCE_DISPLAY_SURVEY",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_JOB_DIR",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_LOCAL_OAUTH_API_BASE",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_LOCAL_OAUTH_APPS_BASE",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_LOCAL_OAUTH_CONSOLE_BASE",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_SESSION_INGRESS_TOKEN_FILE",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    },
+    {
+      "name": "CLAUDE_TRUSTED_DEVICE_TOKEN",
+      "bucket": "D",
+      "why": "Dead in this fork (CCR/remote, cowork, internal telemetry, or an off flag); a later round removes the code, not the name."
+    }
+  ]
+}

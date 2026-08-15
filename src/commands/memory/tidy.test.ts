@@ -23,7 +23,7 @@ afterAll(() => {
   mock.module('src/commands/memory/tidyTeam.js', () => realTidyTeam)
 })
 
-const DISABLE_ENV = 'CLAUDE_CODE_DISABLE_AUTO_MEMORY'
+const DISABLE_ENV = 'CLAUDIN_DISABLE_AUTO_MEMORY'
 const savedDisableEnv = process.env[DISABLE_ENV]
 
 afterEach(() => {

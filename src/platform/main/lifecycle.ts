@@ -10,7 +10,7 @@ import { isAnalyticsDisabled } from 'src/platform/analytics/config.js';
 import { checkHasTrustDialogAccepted, getGlobalConfig, isAutoUpdaterDisabled, saveGlobalConfig } from 'src/platform/config/config.js';
 import { getContextWindowForModel } from 'src/agent/context/context.js';
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js';
-import { hasNodeOption, isBareMode, isEnvTruthy, isInProtectedNamespace } from 'src/shared/envUtils.js';
+import { hasNodeOption, isBareMode, isEnvTruthy } from 'src/shared/envUtils.js';
 import { getIsGit, getWorktreeCount } from 'src/vcs/git/git.js';
 import { getGhAuthStatus } from 'src/platform/github/ghAuthStatus.js';
 import { logError } from 'src/shared/log.js';
@@ -83,7 +83,7 @@ function getCertEnvVarTelemetry(): Record<string, boolean> {
   if (process.env.NODE_EXTRA_CA_CERTS) {
     result.has_node_extra_ca_certs = true;
   }
-  if (process.env.CLAUDE_CODE_CLIENT_CERT) {
+  if (process.env.CLAUDIN_CLIENT_CERT) {
     result.has_client_cert = true;
   }
   if (hasNodeOption('--use-system-ca')) {
@@ -292,7 +292,6 @@ export async function logTenguInit({
       dangerouslySkipPermissionsPassed,
       permissionMode: permissionMode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
       modeIsBypass,
-      inProtectedNamespace: isInProtectedNamespace(),
       allowDangerouslySkipPermissionsPassed,
       thinkingType: thinkingConfig.type as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
       ...(systemPromptFlag && {
@@ -316,7 +315,7 @@ export async function logTenguInit({
 export function maybeActivateProactive(options: unknown): void {
   if (
     (feature('PROACTIVE') || feature('KAIROS')) &&
-    ((options as { proactive?: boolean }).proactive || isEnvTruthy(process.env.CLAUDE_CODE_PROACTIVE))
+    ((options as { proactive?: boolean }).proactive || isEnvTruthy(process.env.CLAUDIN_PROACTIVE))
   ) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const proactiveModule = require('../proactive/index.js');

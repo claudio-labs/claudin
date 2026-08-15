@@ -72,7 +72,7 @@ export function modelUsesKimiEffort(model: string): boolean {
 // @[MODEL LAUNCH]: Add the new model to the allowlist if it supports the effort parameter.
 export function modelSupportsEffort(model: string): boolean {
   const m = model.toLowerCase()
-  if (isEnvTruthy(process.env.CLAUDE_CODE_ALWAYS_ENABLE_EFFORT)) {
+  if (isEnvTruthy(process.env.CLAUDIN_ALWAYS_ENABLE_EFFORT)) {
     return true
   }
   const supported3P = get3PModelCapabilityOverride(model, 'effort')
@@ -182,7 +182,7 @@ export function cycleEffortForModel(
   if (levels.length === 0) {
     return undefined
   }
-  // Bucket a numeric session effort (e.g. CLAUDE_CODE_EFFORT_LEVEL=30, CLI,
+  // Bucket a numeric session effort (e.g. CLAUDIN_EFFORT_LEVEL=30, CLI,
   // remote config) into its named level so cycling steps from where the user
   // actually is, not the model default. Strings ('adaptive', out-of-range
   // levels) fall through to the default start so adaptive leaves for a concrete
@@ -215,7 +215,7 @@ function defaultStartLevel(
  * session value and env override — with the same 'high' fallback the API uses
  * when no effort param is sent. Canonical resolver for "what level does this
  * model default to" (distinct from getDisplayedEffortLevel, which folds in the
- * session value and CLAUDE_CODE_EFFORT_LEVEL).
+ * session value and CLAUDIN_EFFORT_LEVEL).
  */
 export function getModelDefaultEffortLevel(model: string): EffortLevel {
   const def = getDefaultEffortForModel(model)
@@ -432,7 +432,7 @@ export function resolvePickerEffortPersistence(
 }
 
 export function getEffortEnvOverride(): EffortValue | null | undefined {
-  const envOverride = process.env.CLAUDE_CODE_EFFORT_LEVEL
+  const envOverride = process.env.CLAUDIN_EFFORT_LEVEL
   return envOverride?.toLowerCase() === 'unset' ||
     envOverride?.toLowerCase() === 'auto'
     ? null
@@ -440,7 +440,7 @@ export function getEffortEnvOverride(): EffortValue | null | undefined {
 }
 
 /**
- * True when CLAUDE_CODE_EFFORT_LEVEL will keep overriding `next` this session.
+ * True when CLAUDIN_EFFORT_LEVEL will keep overriding `next` this session.
  * Backs the "won't apply" warning on the prompt effort hotkey / /effort.
  *   - unset (undefined): no conflict.
  *   - 'auto'/'unset' (null): forces adaptive at resolve time, overriding any
@@ -463,7 +463,7 @@ export function effortEnvOverrideConflictsWith(next: EffortValue): boolean {
 /**
  * Resolve the effort value that will actually be sent to the API for a given
  * model, following the full precedence chain:
- *   env CLAUDE_CODE_EFFORT_LEVEL → appState.effortValue → model default
+ *   env CLAUDIN_EFFORT_LEVEL → appState.effortValue → model default
  *
  * Returns undefined when no effort parameter should be sent (env set to
  * 'unset', or no default exists for the model).
@@ -582,7 +582,7 @@ export function convertEffortValueToLevel(value: EffortValue): EffortLevel {
     // rather than passing them through unchecked.
     return isEffortLevel(value) ? value : 'high'
   }
-  // Numeric inputs come from env overrides (CLAUDE_CODE_EFFORT_LEVEL=30) or
+  // Numeric inputs come from env overrides (CLAUDIN_EFFORT_LEVEL=30) or
   // remote config. Bucket into named levels so downstream code paths that
   // only know about the discrete EffortLevel enum behave sensibly.
   if (value <= 50) return 'low'

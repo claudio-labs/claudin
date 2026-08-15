@@ -41,7 +41,7 @@ const {
 
 const ENV_KEYS = [
   'CLAUDIN_FPS',
-  'CLAUDE_CODE_NO_FLICKER',
+  'CLAUDIN_NO_FLICKER',
   'TERM',
   'TERM_PROGRAM',
   'TMUX',
@@ -225,12 +225,12 @@ describe('inline and fullscreen share one cadence', () => {
   // source of the animation rate. A per-mode branch reappearing here is exactly
   // the regression this pins.
   test.each(['ghostty', 'Apple_Terminal'])(
-    'CLAUDE_CODE_NO_FLICKER does not change the interval on %s',
+    'CLAUDIN_NO_FLICKER does not change the interval on %s',
     termProgram => {
       process.env.TERM_PROGRAM = termProgram
-      process.env.CLAUDE_CODE_NO_FLICKER = '0'
+      process.env.CLAUDIN_NO_FLICKER = '0'
       const inline = resolveFrameIntervalMs()
-      process.env.CLAUDE_CODE_NO_FLICKER = '1'
+      process.env.CLAUDIN_NO_FLICKER = '1'
       expect(resolveFrameIntervalMs()).toBe(inline)
     },
   )

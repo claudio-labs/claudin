@@ -181,7 +181,7 @@ export function getToolSearchMode(): ToolSearchMode {
   // Handle auto:N syntax - check edge cases first
   const autoPercent = value ? parseAutoPercentage(value) : null
 
-  // CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS is a kill switch for beta API
+  // CLAUDIN_DISABLE_EXPERIMENTAL_BETAS is a kill switch for beta API
   // features. Tool search emits defer_loading on tool definitions and
   // tool_reference content blocks — both require the API to accept a beta
   // header, which proxy gateways and non-Anthropic providers often reject.
@@ -201,7 +201,7 @@ export function getToolSearchMode(): ToolSearchMode {
   const genuineFirstParty =
     getAPIProvider() === 'firstParty' && isFirstPartyAnthropicBaseUrl()
   if (
-    isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS) &&
+    isEnvTruthy(process.env.CLAUDIN_DISABLE_EXPERIMENTAL_BETAS) &&
     !explicitlyEnabled &&
     !genuineFirstParty
   ) {

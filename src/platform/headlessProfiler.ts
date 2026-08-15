@@ -9,7 +9,7 @@
  * Uses Node.js built-in performance hooks API for standard timing measurement.
  * Sampled logging: 100% of ant users, 5% of external users.
  *
- * Set CLAUDE_CODE_PROFILE_STARTUP=1 for detailed logging output.
+ * Set CLAUDIN_PROFILE_STARTUP=1 for detailed logging output.
  */
 
 import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
@@ -24,7 +24,7 @@ import { jsonStringify } from 'src/platform/slowOperations.js'
 
 // Detailed profiling mode - same env var as startupProfiler
 // eslint-disable-next-line custom-rules/no-process-env-top-level
-const DETAILED_PROFILING = isEnvTruthy(process.env.CLAUDE_CODE_PROFILE_STARTUP)
+const DETAILED_PROFILING = isEnvTruthy(process.env.CLAUDIN_PROFILE_STARTUP)
 
 // Sampling for Statsig logging: 5%
 // Decision made once at module load - non-sampled users pay no profiling cost
@@ -167,7 +167,7 @@ export function logHeadlessProfilerTurn(): void {
     )
   }
 
-  // Log detailed output if CLAUDE_CODE_PROFILE_STARTUP=1
+  // Log detailed output if CLAUDIN_PROFILE_STARTUP=1
   if (DETAILED_PROFILING) {
     logForDebugging(
       `[headlessProfiler] Turn ${currentTurnNumber} metrics: ${jsonStringify(metadata)}`,

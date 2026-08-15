@@ -502,7 +502,7 @@ function seedDirFor(installLocation: string): string | undefined {
 /**
  * Git pull operation (exported for testing)
  *
- * Pulls latest changes with a configurable timeout (default 120s, override via CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS).
+ * Pulls latest changes with a configurable timeout (default 120s, override via CLAUDIN_PLUGIN_GIT_TIMEOUT_MS).
  * Provides helpful error messages for common failure scenarios.
  * If a ref is specified, fetches and checks out that specific branch or tag.
  */
@@ -515,7 +515,7 @@ const GIT_NO_PROMPT_ENV = {
 const DEFAULT_PLUGIN_GIT_TIMEOUT_MS = 120 * 1000
 
 function getPluginGitTimeoutMs(): number {
-  const envValue = process.env.CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS
+  const envValue = process.env.CLAUDIN_PLUGIN_GIT_TIMEOUT_MS
   if (envValue) {
     const parsed = parseInt(envValue, 10)
     if (!isNaN(parsed) && parsed > 0) {
@@ -664,7 +664,7 @@ function enhanceGitPullErrorMessages(result: {
     const timeoutSec = Math.round(getPluginGitTimeoutMs() / 1000)
     return {
       ...result,
-      stderr: `Git pull timed out after ${timeoutSec}s. Try increasing the timeout via CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS environment variable.\n\nOriginal error: ${result.stderr}`,
+      stderr: `Git pull timed out after ${timeoutSec}s. Try increasing the timeout via CLAUDIN_PLUGIN_GIT_TIMEOUT_MS environment variable.\n\nOriginal error: ${result.stderr}`,
     }
   }
 
@@ -789,7 +789,7 @@ function extractSshHost(gitUrl: string): string | null {
 /**
  * Git clone operation (exported for testing)
  *
- * Clones a git repository with a configurable timeout (default 120s, override via CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS)
+ * Clones a git repository with a configurable timeout (default 120s, override via CLAUDIN_PLUGIN_GIT_TIMEOUT_MS)
  * and larger repositories. Provides helpful error messages for common failure scenarios.
  * Optionally checks out a specific branch or tag.
  *
@@ -915,7 +915,7 @@ export async function gitClone(
   if (result.error?.includes('timed out')) {
     return {
       ...result,
-      stderr: `Git clone timed out after ${Math.round(timeoutMs / 1000)}s. The repository may be too large for the current timeout. Set CLAUDE_CODE_PLUGIN_GIT_TIMEOUT_MS to increase it (e.g., 300000 for 5 minutes).\n\nOriginal error: ${result.stderr}`,
+      stderr: `Git clone timed out after ${Math.round(timeoutMs / 1000)}s. The repository may be too large for the current timeout. Set CLAUDIN_PLUGIN_GIT_TIMEOUT_MS to increase it (e.g., 300000 for 5 minutes).\n\nOriginal error: ${result.stderr}`,
     }
   }
 

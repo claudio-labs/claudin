@@ -106,7 +106,7 @@ Instructions for the model...
 
 **Body features**: \`$ARGUMENTS\` is replaced with the full invocation args,
 \`$0\`/\`$ARGUMENTS[0]\` with individual args, and \`$<name>\` with the
-positional arg matching \`arguments\`; \`\${CLAUDE_SKILL_DIR}\` resolves to the
+positional arg matching \`arguments\`; \`\${CLAUDIN_SKILL_DIR}\` resolves to the
 skill's directory (for referencing sibling scripts); \`!\` + backtick-wrapped
 shell commands are executed before the prompt is sent (gated by
 \`allowed-tools\`).

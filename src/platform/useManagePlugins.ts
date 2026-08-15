@@ -270,7 +270,7 @@ export function useManagePlugins({
       const { ant_enabled_names, ...baseMetrics } = metrics
       const allMetrics = {
         ...baseMetrics,
-        has_custom_plugin_cache_dir: !!process.env.CLAUDE_CODE_PLUGIN_CACHE_DIR,
+        has_custom_plugin_cache_dir: !!process.env.CLAUDIN_PLUGIN_CACHE_DIR,
       }
       logEvent('tengu_plugins_loaded', {
         ...allMetrics,

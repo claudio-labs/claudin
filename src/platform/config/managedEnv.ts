@@ -149,7 +149,7 @@ export function applySafeConfigEnvironmentVariables(): void {
   }
 
   // Compute remote-managed-settings eligibility now, with userSettings and
-  // flagSettings env applied. Eligibility reads CLAUDE_CODE_USE_BEDROCK,
+  // flagSettings env applied. Eligibility reads CLAUDIN_USE_BEDROCK,
   // ANTHROPIC_BASE_URL — both settable via settings.env.
   // getSettingsForSource('policySettings') below consults the remote cache,
   // which guards on this. The two-phase structure makes the ordering

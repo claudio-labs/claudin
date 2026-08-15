@@ -206,7 +206,7 @@ const DISALLOWED_AUTO_BACKGROUND_COMMANDS = ['sleep' // Sleep should run in fore
 // Check if background tasks are disabled at module load time
 const isBackgroundTasksDisabled =
 // eslint-disable-next-line custom-rules/no-process-env-top-level -- Intentional: env vars are immutable after process start
-isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_BACKGROUND_TASKS);
+isEnvTruthy(process.env.CLAUDIN_DISABLE_BACKGROUND_TASKS);
 // Captured at module load so the filter decision is consistent for the entire
 // process lifetime — a child cannot silently re-enable filtering after the
 // operator sets the kill switch before starting the agent.
@@ -510,7 +510,7 @@ export const BashTool = buildTool({
     // `new RegExp` per call. userFacingName runs per-render for every bash
     // message in history; with ~50 msgs + one slow-to-tokenize command, this
     // exceeds the shimmer tick → transition abort → infinite retry (#21605).
-    return isEnvTruthy(process.env.CLAUDE_CODE_BASH_SANDBOX_SHOW_INDICATOR) && shouldUseSandbox(input) ? 'SandboxedBash' : 'Bash';
+    return isEnvTruthy(process.env.CLAUDIN_BASH_SANDBOX_SHOW_INDICATOR) && shouldUseSandbox(input) ? 'SandboxedBash' : 'Bash';
   },
   getToolUseSummary(input) {
     if (!input?.command) {

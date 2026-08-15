@@ -908,10 +908,10 @@ export const getMemoryFiles = memoize(
     }
 
     // Process root project instruction files from additional directories (--add-dir) if env var is enabled
-    // This is controlled by CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD and defaults to off
+    // This is controlled by CLAUDIN_ADDITIONAL_DIRECTORIES_CLAUDE_MD and defaults to off
     // Note: we don't check isSettingSourceEnabled('projectSettings') here because --add-dir
     // is an explicit user action and the SDK defaults settingSources to [] when not specified
-    if (isEnvTruthy(process.env.CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD)) {
+    if (isEnvTruthy(process.env.CLAUDIN_ADDITIONAL_DIRECTORIES_CLAUDE_MD)) {
       const additionalDirs = getAdditionalDirectoriesForClaudeMd()
       for (const dir of additionalDirs) {
         // Try reading the root project instruction file from the additional directory

@@ -28,7 +28,7 @@ describe('getEffectiveContextWindowSize', () => {
     // summary reservation is 8k and the floor is 8k + 13k = 21k. With cap
     // disabled it's 20k + 13k = 33k. Assert the worst case so the test is
     // stable regardless of flag state in CI vs local.
-    process.env.CLAUDE_CODE_USE_OPENAI = '1'
+    process.env.CLAUDIN_USE_OPENAI = '1'
     try {
       const effective = getEffectiveContextWindowSize('some-unknown-3p-model')
       expect(effective).toBeGreaterThan(0)
@@ -37,7 +37,7 @@ describe('getEffectiveContextWindowSize', () => {
       // the GrowthBook flag state.
       expect(effective).toBeGreaterThanOrEqual(21_000)
     } finally {
-      delete process.env.CLAUDE_CODE_USE_OPENAI
+      delete process.env.CLAUDIN_USE_OPENAI
     }
   })
 })
@@ -49,12 +49,12 @@ describe('getAutoCompactThreshold', () => {
   })
 
   test('never returns negative threshold even for unknown 3P models (issue #635)', () => {
-    process.env.CLAUDE_CODE_USE_OPENAI = '1'
+    process.env.CLAUDIN_USE_OPENAI = '1'
     try {
       const threshold = getAutoCompactThreshold('some-unknown-3p-model')
       expect(threshold).toBeGreaterThan(0)
     } finally {
-      delete process.env.CLAUDE_CODE_USE_OPENAI
+      delete process.env.CLAUDIN_USE_OPENAI
     }
   })
 })

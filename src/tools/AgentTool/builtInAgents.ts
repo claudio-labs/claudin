@@ -33,7 +33,7 @@ export function getBuiltInAgents(): AgentDefinition[] {
   // issues at module init time. The coordinatorMode module depends on tools
   // which depend on AgentTool which imports this file.
   if (feature('COORDINATOR_MODE')) {
-    if (isEnvTruthy(process.env.CLAUDE_CODE_COORDINATOR_MODE)) {
+    if (isEnvTruthy(process.env.CLAUDIN_COORDINATOR_MODE)) {
       /* eslint-disable @typescript-eslint/no-require-imports */
       const { getCoordinatorAgents } =
         require('src/agent/coordinator/workerAgent.js') as typeof import('src/agent/coordinator/workerAgent.js')

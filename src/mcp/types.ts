@@ -34,12 +34,6 @@ export const McpStdioServerConfigSchema = lazySchema(() =>
   }),
 )
 
-// Cross-App Access (XAA / SEP-990): just a per-server flag. IdP connection
-// details (issuer, clientId, callbackPort) come from settings.xaaIdp — configured
-// once, shared across all XAA-enabled servers. clientId/clientSecret (parent
-// oauth config + keychain slot) are for the MCP server's AS.
-const McpXaaConfigSchema = lazySchema(() => z.boolean())
-
 const McpOAuthConfigSchema = lazySchema(() =>
   z.object({
     clientId: z.string().optional(),
@@ -51,7 +45,6 @@ const McpOAuthConfigSchema = lazySchema(() =>
         message: 'authServerMetadataUrl must use https://',
       })
       .optional(),
-    xaa: McpXaaConfigSchema().optional(),
   }),
 )
 
@@ -248,5 +241,4 @@ export interface SerializedClient {
   type: 'connected' | 'failed' | 'needs-auth' | 'pending' | 'disabled'
   capabilities?: ServerCapabilities
 }
-
 

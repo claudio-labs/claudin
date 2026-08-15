@@ -42,24 +42,24 @@ function makeQueuedCommand(value: string, uuid?: string): QueuedCommand {
 }
 
 describe('getAttachments — disabled-attachments early-exit', () => {
-  const originalDisable = process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS
-  const originalSimple = process.env.CLAUDE_CODE_SIMPLE
+  const originalDisable = process.env.CLAUDIN_DISABLE_ATTACHMENTS
+  const originalSimple = process.env.CLAUDIN_SIMPLE
 
   beforeEach(() => {
-    delete process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS
-    delete process.env.CLAUDE_CODE_SIMPLE
+    delete process.env.CLAUDIN_DISABLE_ATTACHMENTS
+    delete process.env.CLAUDIN_SIMPLE
   })
 
   afterEach(() => {
     if (originalDisable === undefined)
-      delete process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS
-    else process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS = originalDisable
-    if (originalSimple === undefined) delete process.env.CLAUDE_CODE_SIMPLE
-    else process.env.CLAUDE_CODE_SIMPLE = originalSimple
+      delete process.env.CLAUDIN_DISABLE_ATTACHMENTS
+    else process.env.CLAUDIN_DISABLE_ATTACHMENTS = originalDisable
+    if (originalSimple === undefined) delete process.env.CLAUDIN_SIMPLE
+    else process.env.CLAUDIN_SIMPLE = originalSimple
   })
 
-  test('CLAUDE_CODE_DISABLE_ATTACHMENTS=1: only queued commands are returned', async () => {
-    process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS = '1'
+  test('CLAUDIN_DISABLE_ATTACHMENTS=1: only queued commands are returned', async () => {
+    process.env.CLAUDIN_DISABLE_ATTACHMENTS = '1'
     const queued = [
       makeQueuedCommand('hello', 'uuid-1'),
       makeQueuedCommand('world', 'uuid-2'),
@@ -69,8 +69,8 @@ describe('getAttachments — disabled-attachments early-exit', () => {
     expect(out.every(a => a.type === 'queued_command')).toBe(true)
   })
 
-  test('CLAUDE_CODE_SIMPLE=1: same early-exit as disable flag', async () => {
-    process.env.CLAUDE_CODE_SIMPLE = '1'
+  test('CLAUDIN_SIMPLE=1: same early-exit as disable flag', async () => {
+    process.env.CLAUDIN_SIMPLE = '1'
     const queued = [makeQueuedCommand('hi', 'uuid-3')]
     const out = await getAttachments(null, makeContext(), null, queued)
     expect(out).toHaveLength(1)
@@ -78,7 +78,7 @@ describe('getAttachments — disabled-attachments early-exit', () => {
   })
 
   test('disabled + empty queue: returns []', async () => {
-    process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS = '1'
+    process.env.CLAUDIN_DISABLE_ATTACHMENTS = '1'
     const out = await getAttachments(null, makeContext(), null, [])
     expect(out).toEqual([])
   })
@@ -92,10 +92,10 @@ describe('getAttachments — subagent context-omission gates', () => {
   beforeEach(() => {
     // Same env hygiene as the block above. Either of these turns getAttachments
     // into an early return, and both are process-global — a sibling file that
-    // restores CLAUDE_CODE_SIMPLE by assigning an undefined variable leaves the
+    // restores CLAUDIN_SIMPLE by assigning an undefined variable leaves the
     // literal string "undefined" behind, which is truthy.
-    delete process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS
-    delete process.env.CLAUDE_CODE_SIMPLE
+    delete process.env.CLAUDIN_DISABLE_ATTACHMENTS
+    delete process.env.CLAUDIN_SIMPLE
     mock.module('src/agent/context.js', () => ({
       ...realContext,
       getUserContext: async () => ({ claudeMd: HERMETIC_CLAUDE_MD }),
@@ -185,16 +185,16 @@ describe('getQueuedCommandAttachments — direct producer', () => {
 })
 
 describe('getAttachmentMessages — generator wraps each attachment with createAttachmentMessage', () => {
-  const originalDisable = process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS
+  const originalDisable = process.env.CLAUDIN_DISABLE_ATTACHMENTS
 
   beforeEach(() => {
-    process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS = '1'
+    process.env.CLAUDIN_DISABLE_ATTACHMENTS = '1'
   })
 
   afterEach(() => {
     if (originalDisable === undefined)
-      delete process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS
-    else process.env.CLAUDE_CODE_DISABLE_ATTACHMENTS = originalDisable
+      delete process.env.CLAUDIN_DISABLE_ATTACHMENTS
+    else process.env.CLAUDIN_DISABLE_ATTACHMENTS = originalDisable
   })
 
   async function collect<T>(gen: AsyncGenerator<T, void>): Promise<T[]> {

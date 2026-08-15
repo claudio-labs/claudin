@@ -12,7 +12,7 @@ REPL runs inline (`tmux display -p '#{mouse_any_flag}'` → 0, `#{alternate_on}`
 collapsible groups, message-row expand, pills):**
 
 1. Launch with fullscreen forced so mouse tracking turns on:
-   `CLAUDE_CODE_NO_FLICKER=1 claudindev` (see `src/terminal/render/fullscreen.ts` —
+   `CLAUDIN_NO_FLICKER=1 claudindev` (see `src/terminal/render/fullscreen.ts` —
    `isFullscreenEnvEnabled` / `isMouseTrackingEnabled`). Confirm with
    `tmux -L <sock> display -p -t t '#{mouse_any_flag}'` → should be `1`,
    `#{alternate_on}` → `1`.

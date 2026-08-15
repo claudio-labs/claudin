@@ -20,6 +20,8 @@ import {
 import { getProxyFetchOptions } from 'src/providers/transport/proxy.js'
 import { withH2Fallback } from 'src/providers/transport/h2Fallback.js'
 import { pickFetch } from 'src/providers/transport/pickFetch.js'
+import { buildIdentityHeaders } from 'src/providers/transport/identityHeaders.js'
+import { getClaudinUserAgent } from 'src/providers/transport/userAgent.js'
 import {
   getIsNonInteractiveSession,
   getSessionId,
@@ -111,9 +113,15 @@ export async function getAnthropicClient({
   const clientApp = process.env.CLAUDE_AGENT_SDK_CLIENT_APP
   const customHeaders = getCustomHeaders()
   const defaultHeaders: { [key: string]: string } = {
-    'x-app': 'cli',
-    'User-Agent': getUserAgent(),
-    'X-Claude-Code-Session-Id': getSessionId(),
+    // Who we tell the endpoint we are. Upstream's identity only on the
+    // first-party lane — this object also reaches the OpenAI-compat shim,
+    // Copilot and bedrock/vertex/foundry. See identityHeaders.ts.
+    ...buildIdentityHeaders({
+      firstParty: isFirstPartyAnthropicBaseUrl(),
+      sessionId: getSessionId(),
+      firstPartyUserAgent: getUserAgent(),
+      claudinUserAgent: getClaudinUserAgent(),
+    }),
     ...customHeaders,
     ...(containerId ? { 'x-claude-remote-container-id': containerId } : {}),
     ...(remoteSessionId
@@ -130,7 +138,7 @@ export async function getAnthropicClient({
 
   // Add additional protection header if enabled via env var
   const additionalProtectionEnabled = isEnvTruthy(
-    process.env.CLAUDE_CODE_ADDITIONAL_PROTECTION,
+    process.env.CLAUDIN_ADDITIONAL_PROTECTION,
   )
   if (additionalProtectionEnabled) {
     defaultHeaders['x-anthropic-additional-protection'] = 'true'
@@ -225,7 +233,7 @@ export async function getAnthropicClient({
     const bedrockArgs: BedrockClientOptions = {
       ...ARGS,
       awsRegion,
-      ...(isEnvTruthy(process.env.CLAUDE_CODE_SKIP_BEDROCK_AUTH) && {
+      ...(isEnvTruthy(process.env.CLAUDIN_SKIP_BEDROCK_AUTH) && {
         skipAuth: true,
       }),
       ...(isDebugToStdErr() && { logger: createStderrLogger() }),
@@ -239,7 +247,7 @@ export async function getAnthropicClient({
         ...bedrockArgs.defaultHeaders,
         Authorization: `Bearer ${process.env.AWS_BEARER_TOKEN_BEDROCK}`,
       }
-    } else if (!isEnvTruthy(process.env.CLAUDE_CODE_SKIP_BEDROCK_AUTH)) {
+    } else if (!isEnvTruthy(process.env.CLAUDIN_SKIP_BEDROCK_AUTH)) {
       // Refresh auth and get credentials with cache clearing
       const cachedCredentials = await refreshAndGetAwsCredentials()
       if (cachedCredentials) {
@@ -270,7 +278,7 @@ export async function getAnthropicClient({
     const foundryApiKey = activeProvider?.apiKey || process.env.ANTHROPIC_FOUNDRY_API_KEY
     let azureADTokenProvider: (() => Promise<string>) | undefined
     if (!foundryApiKey) {
-      if (isEnvTruthy(process.env.CLAUDE_CODE_SKIP_FOUNDRY_AUTH)) {
+      if (isEnvTruthy(process.env.CLAUDIN_SKIP_FOUNDRY_AUTH)) {
         // Mock token provider for testing/proxy scenarios (similar to Vertex mock GoogleAuth)
         azureADTokenProvider = () => Promise.resolve('')
       } else {
@@ -297,7 +305,7 @@ export async function getAnthropicClient({
   if (transport === 'vertex') {
     // Refresh GCP credentials if gcpAuthRefresh is configured and credentials are expired
     // This is similar to how we handle AWS credential refresh for Bedrock
-    if (!isEnvTruthy(process.env.CLAUDE_CODE_SKIP_VERTEX_AUTH)) {
+    if (!isEnvTruthy(process.env.CLAUDIN_SKIP_VERTEX_AUTH)) {
       await refreshGcpCredentialsIfNeeded()
     }
 
@@ -340,7 +348,7 @@ export async function getAnthropicClient({
       process.env['google_application_credentials']
 
     const profileGcpProject = activeProvider?.extras?.gcpProject
-    const googleAuth = isEnvTruthy(process.env.CLAUDE_CODE_SKIP_VERTEX_AUTH)
+    const googleAuth = isEnvTruthy(process.env.CLAUDIN_SKIP_VERTEX_AUTH)
       ? ({
           // Mock GoogleAuth for testing/proxy scenarios. `getRequestHeaders`
           // MUST return a `Headers` — @anthropic-ai/vertex-sdk calls `.get()`

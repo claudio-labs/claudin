@@ -71,7 +71,7 @@ export async function clearConversation({
   setConversationId?: (id: UUID) => void
 }): Promise<void> {
   // Execute SessionEnd hooks before clearing (bounded by
-  // CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS, default 1.5s)
+  // CLAUDIN_SESSIONEND_HOOKS_TIMEOUT_MS, default 1.5s)
   const sessionEndTimeoutMs = getSessionEndHookTimeoutMs()
   await executeSessionEndHooks('clear', {
     getAppState,

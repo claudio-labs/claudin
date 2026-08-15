@@ -168,7 +168,7 @@ export function prependBullets(items: Array<string | string[]>): string[] {
   )
 }
 
-// Product identity leads the prompt, matching the CLAUDE_CODE_SIMPLE path
+// Product identity leads the prompt, matching the CLAUDIN_SIMPLE path
 // below and DEFAULT_AGENT_PROMPT. Without it the model has no idea what it
 // is until the env section — and on a non-Anthropic provider that section
 // is generic, so it could go the whole session without knowing. Wording is
@@ -455,7 +455,7 @@ export async function getSystemPrompt(
   additionalWorkingDirectories?: string[],
   mcpClients?: MCPServerConnection[],
 ): Promise<string[]> {
-  if (isEnvTruthy(process.env.CLAUDE_CODE_SIMPLE)) {
+  if (isEnvTruthy(process.env.CLAUDIN_SIMPLE)) {
     return [
       `You are Claudin, an open-source coding agent and CLI.\n\nCWD: ${getCwd()}\nDate: ${getSessionStartDate()}`,
     ]

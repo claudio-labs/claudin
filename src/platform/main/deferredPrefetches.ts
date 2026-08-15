@@ -35,7 +35,7 @@ export function startDeferredPrefetches(): void {
   // loop time, which skews startup benchmarks (CPU profiles, time-to-first-render
   // measurements). Skip all of it when we're only measuring startup performance.
   if (
-    isEnvTruthy(process.env.CLAUDE_CODE_EXIT_AFTER_FIRST_RENDER) ||
+    isEnvTruthy(process.env.CLAUDIN_EXIT_AFTER_FIRST_RENDER) ||
     // --bare: skip ALL prefetches. These are cache-warms for the REPL's
     // first-turn responsiveness (initUser, getUserContext, tips, countFiles,
     // modelCapabilities, change detectors). Scripted -p calls don't have a
@@ -52,10 +52,10 @@ export function startDeferredPrefetches(): void {
   prefetchSystemContextIfSafe();
   void getRelevantTips();
   const startupTransport = tryGetActiveProvider()?.transport;
-  if (startupTransport === 'bedrock' && !isEnvTruthy(process.env.CLAUDE_CODE_SKIP_BEDROCK_AUTH)) {
+  if (startupTransport === 'bedrock' && !isEnvTruthy(process.env.CLAUDIN_SKIP_BEDROCK_AUTH)) {
     void prefetchAwsCredentialsAndBedRockInfoIfSafe();
   }
-  if (startupTransport === 'vertex' && !isEnvTruthy(process.env.CLAUDE_CODE_SKIP_VERTEX_AUTH)) {
+  if (startupTransport === 'vertex' && !isEnvTruthy(process.env.CLAUDIN_SKIP_VERTEX_AUTH)) {
     void prefetchGcpCredentialsIfSafe();
   }
   void countFilesRoundedRg(getCwd(), AbortSignal.timeout(3000), []);

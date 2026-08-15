@@ -4,7 +4,7 @@ description: As of commit b2be87b5 (2026-06-06), Claudin's privacy level default
 type: project
 ---
 
-Claudin's privacy level (`src/platform/config/privacyLevel.ts`) defaults to `'essential-traffic'` when neither `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` nor `ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC` is set. Setting either env var to `0`/`false`/`no`/`off`/empty opts back in to upstream-Claude-Code behaviour.
+Claudin's privacy level (`src/platform/config/privacyLevel.ts`) defaults to `'essential-traffic'` when neither `CLAUDIN_DISABLE_NONESSENTIAL_TRAFFIC` nor `ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC` is set. Setting either env var to `0`/`false`/`no`/`off`/empty opts back in to upstream-Claude-Code behaviour.
 
 Empirically (mitmproxy on `--allow-hosts anthropic\.com`, cold REPL start, Anthropic-first-party profile):
 

@@ -10,8 +10,7 @@ import {
   handleOAuth401Error,
   isClaudeAISubscriber,
 } from 'src/providers/auth/auth.js'
-import { getAPIProvider } from 'src/providers/model/providers.js'
-import { getClaudeCodeUserAgent, getClaudinUserAgent } from 'src/providers/transport/userAgent.js'
+import { getClaudinUserAgent } from 'src/providers/transport/userAgent.js'
 
 // WARNING: We rely on `claude-cli` in the user agent for log filtering.
 // Please do NOT change this without making sure that logging also gets updated!
@@ -42,14 +41,17 @@ export function getMCPUserAgent(): string {
   return `claude-code/${MACRO.VERSION}${suffix}`
 }
 
-// User-Agent for WebFetch requests to arbitrary sites. `Claude-User` is
-// The first-party provider's publicly documented agent for user-initiated fetches (what site
-// operators match in robots.txt); the claude-code suffix lets them distinguish
-// local CLI traffic from claude.ai server-side fetches.
+// User-Agent for WebFetch requests to arbitrary sites — always Claudin's own.
+//
+// This used to send `Claude-User (…; +https://support.anthropic.com/)` whenever
+// the active provider was first-party: the agent string Anthropic publishes for
+// user-initiated fetches, and what site operators match in robots.txt. Claudin
+// is not that client, and presenting a fetcher identity we do not own is not
+// ours to do — so the branch is gone and every site sees `Claudin-User`.
+//
+// The known cost is real: a site that allowlists `Claude-User` specifically now
+// treats us like any other client, and may block or serve different content.
 export function getWebFetchUserAgent(): string {
-  if (getAPIProvider() === 'firstParty') {
-    return `Claude-User (${getClaudeCodeUserAgent()}; +https://support.anthropic.com/)`
-  }
   return `Claudin-User (${getClaudinUserAgent()})`
 }
 

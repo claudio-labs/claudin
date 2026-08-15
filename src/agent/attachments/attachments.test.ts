@@ -26,8 +26,8 @@ function makeContext(
 
 describe('getBashGitInstructionsAttachment', () => {
   const originalNodeEnv = process.env.NODE_ENV
-  const originalInject = process.env.CLAUDE_CODE_BASH_GIT_IN_MESSAGES
-  const originalDisable = process.env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS
+  const originalInject = process.env.CLAUDIN_BASH_GIT_IN_MESSAGES
+  const originalDisable = process.env.CLAUDIN_DISABLE_GIT_INSTRUCTIONS
   const originalApiKey = process.env.ANTHROPIC_API_KEY
   const originalUserType = process.env.USER_TYPE
 
@@ -37,8 +37,8 @@ describe('getBashGitInstructionsAttachment', () => {
     // Allow config reads now that we've left NODE_ENV=test mode; otherwise
     // getConfig() throws "Config accessed before allowed".
     enableConfigs()
-    delete process.env.CLAUDE_CODE_BASH_GIT_IN_MESSAGES
-    process.env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS = 'false'
+    delete process.env.CLAUDIN_BASH_GIT_IN_MESSAGES
+    process.env.CLAUDIN_DISABLE_GIT_INSTRUCTIONS = 'false'
     delete process.env.USER_TYPE
     if (!process.env.ANTHROPIC_API_KEY) {
       // Non-key-shaped value avoids tripping secret-scanners on this file.
@@ -56,14 +56,14 @@ describe('getBashGitInstructionsAttachment', () => {
       process.env.NODE_ENV = originalNodeEnv
     }
     if (originalInject === undefined) {
-      delete process.env.CLAUDE_CODE_BASH_GIT_IN_MESSAGES
+      delete process.env.CLAUDIN_BASH_GIT_IN_MESSAGES
     } else {
-      process.env.CLAUDE_CODE_BASH_GIT_IN_MESSAGES = originalInject
+      process.env.CLAUDIN_BASH_GIT_IN_MESSAGES = originalInject
     }
     if (originalDisable === undefined) {
-      delete process.env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS
+      delete process.env.CLAUDIN_DISABLE_GIT_INSTRUCTIONS
     } else {
-      process.env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS = originalDisable
+      process.env.CLAUDIN_DISABLE_GIT_INSTRUCTIONS = originalDisable
     }
     if (originalApiKey === undefined) {
       delete process.env.ANTHROPIC_API_KEY
@@ -86,7 +86,7 @@ describe('getBashGitInstructionsAttachment', () => {
   })
 
   it('returns [] when injection is disabled via env', async () => {
-    process.env.CLAUDE_CODE_BASH_GIT_IN_MESSAGES = 'false'
+    process.env.CLAUDIN_BASH_GIT_IN_MESSAGES = 'false'
     const result = await getBashGitInstructionsAttachment(
       makeContext([BASH_TOOL_NAME]),
     )
@@ -101,7 +101,7 @@ describe('getBashGitInstructionsAttachment', () => {
   })
 
   it('returns [] when git instructions are disabled', async () => {
-    process.env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS = 'true'
+    process.env.CLAUDIN_DISABLE_GIT_INSTRUCTIONS = 'true'
     const result = await getBashGitInstructionsAttachment(
       makeContext([BASH_TOOL_NAME]),
     )

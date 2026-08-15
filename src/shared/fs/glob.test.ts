@@ -134,9 +134,9 @@ describe('glob — ordering, cap and pagination', () => {
   })
 })
 
-describe('glob — CLAUDE_CODE_GLOB_HIDDEN', () => {
+describe('glob — CLAUDIN_GLOB_HIDDEN', () => {
   let dir: string
-  const previous = process.env.CLAUDE_CODE_GLOB_HIDDEN
+  const previous = process.env.CLAUDIN_GLOB_HIDDEN
 
   beforeAll(() => {
     dir = mkdtempSync(join(tmpdir(), 'glob-hidden-'))
@@ -147,13 +147,13 @@ describe('glob — CLAUDE_CODE_GLOB_HIDDEN', () => {
   })
 
   afterAll(() => {
-    if (previous === undefined) delete process.env.CLAUDE_CODE_GLOB_HIDDEN
-    else process.env.CLAUDE_CODE_GLOB_HIDDEN = previous
+    if (previous === undefined) delete process.env.CLAUDIN_GLOB_HIDDEN
+    else process.env.CLAUDIN_GLOB_HIDDEN = previous
     rmSync(dir, { recursive: true, force: true })
   })
 
   test('walks hidden directories by default', async () => {
-    delete process.env.CLAUDE_CODE_GLOB_HIDDEN
+    delete process.env.CLAUDIN_GLOB_HIDDEN
     const { files } = await run('**/*.txt', dir)
     expect(files.map(f => basename(f)).sort()).toEqual([
       'shown.txt',
@@ -162,15 +162,15 @@ describe('glob — CLAUDE_CODE_GLOB_HIDDEN', () => {
   })
 
   test('skips hidden directories when set to false', async () => {
-    process.env.CLAUDE_CODE_GLOB_HIDDEN = 'false'
+    process.env.CLAUDIN_GLOB_HIDDEN = 'false'
     const { files } = await run('**/*.txt', dir)
     expect(files.map(f => basename(f))).toEqual(['shown.txt'])
   })
 })
 
-describe('glob — CLAUDE_CODE_GLOB_NO_IGNORE', () => {
+describe('glob — CLAUDIN_GLOB_NO_IGNORE', () => {
   let dir: string
-  const previous = process.env.CLAUDE_CODE_GLOB_NO_IGNORE
+  const previous = process.env.CLAUDIN_GLOB_NO_IGNORE
 
   beforeAll(() => {
     dir = mkdtempSync(join(tmpdir(), 'glob-ignore-'))
@@ -182,13 +182,13 @@ describe('glob — CLAUDE_CODE_GLOB_NO_IGNORE', () => {
   })
 
   afterAll(() => {
-    if (previous === undefined) delete process.env.CLAUDE_CODE_GLOB_NO_IGNORE
-    else process.env.CLAUDE_CODE_GLOB_NO_IGNORE = previous
+    if (previous === undefined) delete process.env.CLAUDIN_GLOB_NO_IGNORE
+    else process.env.CLAUDIN_GLOB_NO_IGNORE = previous
     rmSync(dir, { recursive: true, force: true })
   })
 
   test('ignores ignore-files by default', async () => {
-    delete process.env.CLAUDE_CODE_GLOB_NO_IGNORE
+    delete process.env.CLAUDIN_GLOB_NO_IGNORE
     const { files } = await run('**/*.txt', dir)
     expect(files.map(f => basename(f)).sort()).toEqual([
       'kept.txt',
@@ -197,7 +197,7 @@ describe('glob — CLAUDE_CODE_GLOB_NO_IGNORE', () => {
   })
 
   test('honors ignore-files when set to false', async () => {
-    process.env.CLAUDE_CODE_GLOB_NO_IGNORE = 'false'
+    process.env.CLAUDIN_GLOB_NO_IGNORE = 'false'
     const { files } = await run('**/*.txt', dir)
     expect(files.map(f => basename(f))).toEqual(['kept.txt'])
   })

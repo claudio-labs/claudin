@@ -14,15 +14,15 @@ let configDir: string
 beforeAll(() => {
   configDir = mkdtempSync(join(tmpdir(), 'reconcile-pipeline-'))
   process.env.CLAUDIN_CONFIG_DIR = configDir
-  process.env.CLAUDE_CODE_TASK_LIST_ID = TASK_LIST_ID
-  process.env.CLAUDE_CODE_ENABLE_TASKS = '1'
+  process.env.CLAUDIN_TASK_LIST_ID = TASK_LIST_ID
+  process.env.CLAUDIN_ENABLE_TASKS = '1'
 })
 
 afterAll(() => {
   rmSync(configDir, { recursive: true, force: true })
   delete process.env.CLAUDIN_CONFIG_DIR
-  delete process.env.CLAUDE_CODE_TASK_LIST_ID
-  delete process.env.CLAUDE_CODE_ENABLE_TASKS
+  delete process.env.CLAUDIN_TASK_LIST_ID
+  delete process.env.CLAUDIN_ENABLE_TASKS
   delete process.env.CLAUDIN_DISABLE_TASK_RECONCILE
 })
 

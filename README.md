@@ -15,6 +15,8 @@
 
 Claudin brings a terminal-first agentic workflow — bash, file tools, grep, glob, agents, MCP, slash commands, streaming — to any model provider. Switch between OpenAI, Gemini, DeepSeek, Ollama, Mistral, GitHub Copilot, Bedrock, Vertex, and 200+ OpenAI-compatible endpoints without changing your workflow.
 
+Claudin began as a fork of Anthropic's [Claude Code](https://github.com/anthropics/claude-code) and keeps its agent loop, tool surface, and configuration format. It is developed and released independently, and is not affiliated with or endorsed by Anthropic.
+
 ---
 
 ## Install
@@ -39,6 +41,28 @@ code-signed, so the OS may block the first launch:
 - **Windows** (SmartScreen "unrecognized app"): click "More info" → "Run anyway"
   on the first launch.
 
+### Breaking change: environment variables are now `CLAUDIN_*`
+
+Every environment variable Claudin owns was renamed from `CLAUDE_CODE_FOO` /
+`CLAUDE_FOO` to `CLAUDIN_FOO` — 156 names, with no dual reading and no
+deprecation period. If you only ever set provider credentials
+(`ANTHROPIC_API_KEY`, `AWS_*`, `OPENAI_*`, …) nothing changes: third-party
+variables were not touched.
+
+**What breaks is anything you wrote against the old contract.** A hook, plugin,
+skill, or MCP `headersHelper` script that reads `$CLAUDE_PROJECT_DIR`,
+`${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}`, `${CLAUDE_SKILL_DIR}`,
+`$CLAUDE_SESSION_ID`, `CLAUDE_PLUGIN_OPTION_*`, `CLAUDE_ENV_FILE`, or
+`CLAUDE_CODE_MCP_SERVER_NAME` / `_URL` stops receiving a value until you rename
+it — the substitution simply no longer fires, so the failure is a silently
+empty variable rather than an error. Swap the prefix and it works again.
+
+Names that something *outside* Claudin sets are deliberately unchanged, so the
+Claude Agent SDK, the IDE extension, and managed deployments keep working:
+`CLAUDE_CODE_ENTRYPOINT`, `CLAUDE_CODE_OAUTH_TOKEN`, the `CLAUDE_AGENT_SDK_*`
+family, and 15 more. `scripts/env-rename-map.json` is the full mapping, bucket
+by bucket, with the reason for every name that stayed.
+
 ## Quick Start
 
 ```bash
@@ -46,6 +70,17 @@ claudin
 ```
 
 On first run, Claudin opens the `/provider` wizard — pick a preset, sign in or paste a key, and start working. No environment variables required. Credentials are saved as profiles under `~/.claudin/`, so you can keep several providers configured and switch between them anytime.
+
+## What Claudin adds
+
+The agent loop is inherited. These are not:
+
+- **Any provider, managed from inside the REPL.** `/provider` keeps profiles for every backend — API key, OAuth web sign-in, or a local endpoint — under `~/.claudin/`. Switching provider, model, or reasoning effort never leaves the session, and no environment variable is required to start.
+- **Tools that answer instead of paging.** `Git`, `Build`, `Typecheck` and `RunTests` run the underlying command and hand back the diagnostics with `file:line`, not the log around them. `Typecheck` goes further and reports only what your change *added*, against a backlog recorded per commit.
+- **`/diff`** — a reviewer for the working tree, with multi-repo and worktree discovery.
+- **Workflows and a self-hosted background agent** — multi-phase agent runs in isolated worktrees, and a trigger-driven runner that opens its own pull request.
+- **Zero telemetry.** Analytics, GrowthBook, Datadog, BigQuery, and the auto-updater are replaced with no-op stubs at build time; `bun run verify:privacy` scans the bundle and fails the build if a phone-home path survives.
+- **Token and cost behavior on by default** — the Bash output filter, the prompt-cache policy, the Read clip-pin, and fork-by-default sub-agents. Each carries a `CLAUDIN_*` killswitch, documented at the top of the module that implements it.
 
 ## Documentation
 

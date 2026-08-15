@@ -97,7 +97,7 @@ function shouldRetry529(querySource: QuerySource | undefined): boolean {
   )
 }
 
-// CLAUDE_CODE_UNATTENDED_RETRY: for unattended sessions (internal-only). Retries 429/529
+// CLAUDIN_UNATTENDED_RETRY: for unattended sessions (internal-only). Retries 429/529
 // indefinitely with higher backoff and periodic keep-alive yields so the host
 // environment does not mark the session idle mid-wait.
 // TODO(ANT-344): the keep-alive via SystemAPIErrorMessage yields is a stopgap
@@ -108,7 +108,7 @@ const HEARTBEAT_INTERVAL_MS = 30_000
 
 function isPersistentRetryEnabled(): boolean {
   return feature('UNATTENDED_RETRY')
-    ? isEnvTruthy(process.env.CLAUDE_CODE_UNATTENDED_RETRY)
+    ? isEnvTruthy(process.env.CLAUDIN_UNATTENDED_RETRY)
     : false
 }
 
@@ -965,8 +965,8 @@ export function shouldRetry(error: APIError, attempt = 1): boolean {
 }
 
 export function getDefaultMaxRetries(): number {
-  if (process.env.CLAUDE_CODE_MAX_RETRIES) {
-    return parseInt(process.env.CLAUDE_CODE_MAX_RETRIES, 10)
+  if (process.env.CLAUDIN_MAX_RETRIES) {
+    return parseInt(process.env.CLAUDIN_MAX_RETRIES, 10)
   }
   return DEFAULT_MAX_RETRIES
 }

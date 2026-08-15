@@ -33,11 +33,11 @@ function makeCtx(opts: { agentId?: string } = {}): {
 
 describe('EnterPlanModeTool', () => {
   beforeEach(() => {
-    delete process.env.CLAUDE_CODE_PLAN_MODE_INTERVIEW_PHASE
+    delete process.env.CLAUDIN_PLAN_MODE_INTERVIEW_PHASE
   })
 
   afterEach(() => {
-    delete process.env.CLAUDE_CODE_PLAN_MODE_INTERVIEW_PHASE
+    delete process.env.CLAUDIN_PLAN_MODE_INTERVIEW_PHASE
   })
 
   test('shouldDefer is true and read-only / concurrency-safe flags', () => {
@@ -79,7 +79,7 @@ describe('EnterPlanModeTool', () => {
   })
 
   test('mapToolResultToToolResultBlockParam switches text by interview flag', () => {
-    process.env.CLAUDE_CODE_PLAN_MODE_INTERVIEW_PHASE = '1'
+    process.env.CLAUDIN_PLAN_MODE_INTERVIEW_PHASE = '1'
     const interview = EnterPlanModeTool.mapToolResultToToolResultBlockParam?.(
       { message: 'Entered plan mode.' },
       'use-1',
@@ -88,7 +88,7 @@ describe('EnterPlanModeTool', () => {
       'DO NOT write or edit any files except the plan file',
     )
 
-    process.env.CLAUDE_CODE_PLAN_MODE_INTERVIEW_PHASE = '0'
+    process.env.CLAUDIN_PLAN_MODE_INTERVIEW_PHASE = '0'
     const legacy = EnterPlanModeTool.mapToolResultToToolResultBlockParam?.(
       { message: 'Entered plan mode.' },
       'use-2',

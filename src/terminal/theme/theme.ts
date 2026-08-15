@@ -46,7 +46,7 @@ export type Theme = {
   orange_FOR_SUBAGENTS_ONLY: string
   pink_FOR_SUBAGENTS_ONLY: string
   cyan_FOR_SUBAGENTS_ONLY: string
-  // Grove colors
+  // Accent colors
   professionalBlue: string
   // Chrome colors
   chromeYellow: string
@@ -170,7 +170,7 @@ const lightTheme: Theme = {
   orange_FOR_SUBAGENTS_ONLY: 'rgb(234,88,12)', // Orange 600
   pink_FOR_SUBAGENTS_ONLY: 'rgb(219,39,119)', // Pink 600
   cyan_FOR_SUBAGENTS_ONLY: 'rgb(8,145,178)', // Cyan 600
-  // Grove colors
+  // Accent colors
   professionalBlue: 'rgb(106,155,204)',
   // Chrome colors
   chromeYellow: 'rgb(251,188,4)', // Chrome yellow
@@ -253,7 +253,7 @@ const lightAnsiTheme: Theme = {
   orange_FOR_SUBAGENTS_ONLY: 'ansi:redBright',
   pink_FOR_SUBAGENTS_ONLY: 'ansi:magentaBright',
   cyan_FOR_SUBAGENTS_ONLY: 'ansi:cyan',
-  // Grove colors
+  // Accent colors
   professionalBlue: 'ansi:blueBright',
   // Chrome colors
   chromeYellow: 'ansi:yellow', // Chrome yellow
@@ -335,7 +335,7 @@ const darkAnsiTheme: Theme = {
   orange_FOR_SUBAGENTS_ONLY: 'ansi:redBright',
   pink_FOR_SUBAGENTS_ONLY: 'ansi:magentaBright',
   cyan_FOR_SUBAGENTS_ONLY: 'ansi:cyanBright',
-  // Grove colors
+  // Accent colors
   professionalBlue: 'rgb(106,155,204)',
   // Chrome colors
   chromeYellow: 'ansi:yellowBright', // Chrome yellow
@@ -417,7 +417,7 @@ const lightDaltonizedTheme: Theme = {
   orange_FOR_SUBAGENTS_ONLY: 'rgb(255,128,0)', // True orange
   pink_FOR_SUBAGENTS_ONLY: 'rgb(255,102,178)', // Adjusted pink
   cyan_FOR_SUBAGENTS_ONLY: 'rgb(0,178,178)', // Adjusted cyan
-  // Grove colors
+  // Accent colors
   professionalBlue: 'rgb(106,155,204)',
   // Chrome colors
   chromeYellow: 'rgb(251,188,4)', // Chrome yellow
@@ -499,7 +499,7 @@ const darkTheme: Theme = {
   orange_FOR_SUBAGENTS_ONLY: 'rgb(234,88,12)', // Orange 600
   pink_FOR_SUBAGENTS_ONLY: 'rgb(219,39,119)', // Pink 600
   cyan_FOR_SUBAGENTS_ONLY: 'rgb(8,145,178)', // Cyan 600
-  // Grove colors
+  // Accent colors
   professionalBlue: 'rgb(106,155,204)',
   // Chrome colors
   chromeYellow: 'rgb(251,188,4)', // Chrome yellow
@@ -581,7 +581,7 @@ const darkDaltonizedTheme: Theme = {
   orange_FOR_SUBAGENTS_ONLY: 'rgb(255,178,102)', // Bright orange
   pink_FOR_SUBAGENTS_ONLY: 'rgb(255,153,204)', // Bright pink
   cyan_FOR_SUBAGENTS_ONLY: 'rgb(102,204,204)', // Bright cyan
-  // Grove colors
+  // Accent colors
   professionalBlue: 'rgb(106,155,204)',
   // Chrome colors
   chromeYellow: 'rgb(251,188,4)', // Chrome yellow
@@ -667,7 +667,7 @@ const terminalTheme: Theme = {
   orange_FOR_SUBAGENTS_ONLY: 'ansi:redBright',
   pink_FOR_SUBAGENTS_ONLY: 'ansi:magentaBright',
   cyan_FOR_SUBAGENTS_ONLY: 'ansi:cyanBright',
-  // Grove colors
+  // Accent colors
   professionalBlue: 'rgb(106,155,204)',
   // Chrome colors
   chromeYellow: 'ansi:yellowBright',
@@ -749,7 +749,7 @@ const draculaTheme: Theme = {
   orange_FOR_SUBAGENTS_ONLY: 'rgb(255,184,108)', // Orange
   pink_FOR_SUBAGENTS_ONLY: 'rgb(255,121,198)', // Pink
   cyan_FOR_SUBAGENTS_ONLY: 'rgb(139,233,253)', // Cyan
-  // Grove colors
+  // Accent colors
   professionalBlue: 'rgb(106,130,180)',
   // Chrome colors
   chromeYellow: 'rgb(241,250,140)',
@@ -831,7 +831,7 @@ const catppuccinMochaTheme: Theme = {
   orange_FOR_SUBAGENTS_ONLY: 'rgb(250,179,135)', // Peach
   pink_FOR_SUBAGENTS_ONLY: 'rgb(245,194,231)', // Pink
   cyan_FOR_SUBAGENTS_ONLY: 'rgb(148,226,213)', // Teal
-  // Grove colors
+  // Accent colors
   professionalBlue: 'rgb(116,199,236)',
   // Chrome colors
   chromeYellow: 'rgb(249,226,175)',
@@ -913,7 +913,7 @@ const catppuccinLatteTheme: Theme = {
   orange_FOR_SUBAGENTS_ONLY: 'rgb(254,100,11)', // Peach
   pink_FOR_SUBAGENTS_ONLY: 'rgb(234,118,203)', // Pink
   cyan_FOR_SUBAGENTS_ONLY: 'rgb(23,146,153)', // Teal
-  // Grove colors
+  // Accent colors
   professionalBlue: 'rgb(32,159,181)',
   // Chrome colors
   chromeYellow: 'rgb(223,142,29)',
@@ -995,7 +995,7 @@ const tokyoNightTheme: Theme = {
   orange_FOR_SUBAGENTS_ONLY: 'rgb(255,158,100)', // Orange
   pink_FOR_SUBAGENTS_ONLY: 'rgb(255,117,160)', // Pink
   cyan_FOR_SUBAGENTS_ONLY: 'rgb(125,207,255)', // Cyan
-  // Grove colors
+  // Accent colors
   professionalBlue: 'rgb(94,129,172)',
   // Chrome colors
   chromeYellow: 'rgb(224,175,104)',
@@ -1077,7 +1077,7 @@ const nordTheme: Theme = {
   orange_FOR_SUBAGENTS_ONLY: 'rgb(208,135,112)', // Orange
   pink_FOR_SUBAGENTS_ONLY: 'rgb(196,142,168)', // Pink
   cyan_FOR_SUBAGENTS_ONLY: 'rgb(136,192,208)', // Cyan
-  // Grove colors
+  // Accent colors
   professionalBlue: 'rgb(94,129,172)',
   // Chrome colors
   chromeYellow: 'rgb(235,203,139)',
@@ -1159,7 +1159,7 @@ const gruvboxDarkTheme: Theme = {
   orange_FOR_SUBAGENTS_ONLY: 'rgb(254,128,25)', // Orange
   pink_FOR_SUBAGENTS_ONLY: 'rgb(216,140,168)', // Pink
   cyan_FOR_SUBAGENTS_ONLY: 'rgb(142,192,124)', // Aqua
-  // Grove colors
+  // Accent colors
   professionalBlue: 'rgb(106,140,140)',
   // Chrome colors
   chromeYellow: 'rgb(250,189,47)',

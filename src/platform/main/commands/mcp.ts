@@ -2,14 +2,12 @@
 // Pure relocation — behavior identical. See main.tsx for the original site.
 //
 // `mcp` is a parent command with several nested subcommands. Three of
-// those (mcp add, mcp doctor, mcp xaa-idp) are already extracted to
+// those (mcp add, mcp doctor) are already extracted to
 // src/commands/mcp/*.ts and are simply re-invoked here.
 
 import type { Command } from '@commander-js/extra-typings'
 import { registerMcpAddCommand } from 'src/commands/mcp/addCommand.js'
 import { registerMcpDoctorCommand } from 'src/commands/mcp/doctorCommand.js'
-import { registerMcpXaaIdpCommand } from 'src/commands/mcp/xaaIdpCommand.js'
-import { isXaaEnabled } from 'src/mcp/xaaIdpLogin.js'
 import { createSortedHelpConfig } from 'src/platform/main/commands/_helpConfig.js'
 
 export function registerMcpCommands(program: Command): void {
@@ -35,9 +33,6 @@ export function registerMcpCommands(program: Command): void {
   // Register the mcp add subcommand (extracted for testability)
   registerMcpAddCommand(mcp)
   registerMcpDoctorCommand(mcp)
-  if (isXaaEnabled()) {
-    registerMcpXaaIdpCommand(mcp)
-  }
   mcp.command('remove <name>').description('Remove an MCP server').option('-s, --scope <scope>', 'Configuration scope (local, user, or project) - if not specified, removes from whichever scope it exists in').action(async (name: string, options: {
     scope?: string
   }) => {

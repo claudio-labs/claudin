@@ -57,7 +57,7 @@ const GHA_SUBPROCESS_SCRUB = [
  * spawning subprocesses (Bash tool, shell snapshot, MCP stdio servers, LSP
  * servers, shell hooks).
  *
- * Gated on CLAUDE_CODE_SUBPROCESS_ENV_SCRUB. claude-code-action sets this
+ * Gated on CLAUDIN_SUBPROCESS_ENV_SCRUB. claude-code-action sets this
  * automatically when `allowed_non_write_users` is configured — the flag that
  * exposes a workflow to untrusted content (prompt injection surface).
  */
@@ -83,7 +83,7 @@ export function subprocessEnv(): NodeJS.ProcessEnv {
   // CCR containers.
   const proxyEnv = _getUpstreamProxyEnv?.() ?? {}
 
-  if (!isEnvTruthy(process.env.CLAUDE_CODE_SUBPROCESS_ENV_SCRUB)) {
+  if (!isEnvTruthy(process.env.CLAUDIN_SUBPROCESS_ENV_SCRUB)) {
     return Object.keys(proxyEnv).length > 0
       ? { ...process.env, ...proxyEnv }
       : process.env

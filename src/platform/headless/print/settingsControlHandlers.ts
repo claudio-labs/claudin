@@ -12,7 +12,6 @@
 // API roundtrip here would delay every subsequent user message and interrupt
 // for its duration.
 
-import { feature } from 'bun:bundle'
 import { readFile, stat } from 'fs/promises'
 import { cwd } from 'process'
 import { randomUUID } from 'crypto'
@@ -28,15 +27,12 @@ import {
 import { getCommands } from 'src/commands/commands.js'
 import { loadAllPluginsCacheOnly } from 'src/plugins/pluginLoader.js'
 import { refreshActivePlugins } from 'src/plugins/refresh.js'
-import { redownloadUserSettings } from 'src/platform/settingsSync/index.js'
 import { settingsChangeDetector } from 'src/platform/settings/changeDetector.js'
 import { getSettingsWithSources } from 'src/platform/settings/settings.js'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   getFlagSettingsInline,
   setFlagSettingsInline,
   setMainLoopModelOverride,
-  getIsRemoteMode,
   getSessionId,
 } from 'src/platform/bootstrap/state.js'
 import { getMainLoopModel } from 'src/providers/model/model.js'
@@ -141,18 +137,6 @@ export async function handleReloadPlugins(
 ): Promise<void> {
   const { setAppState } = ctx
   try {
-    if (
-      feature('DOWNLOAD_USER_SETTINGS') &&
-      (isEnvTruthy(process.env.CLAUDE_CODE_REMOTE) || getIsRemoteMode())
-    ) {
-      // Re-pull user settings so enabledPlugins pushed from the
-      // user's local CLI take effect before the cache sweep.
-      const applied = await redownloadUserSettings()
-      if (applied) {
-        settingsChangeDetector.notifyChange('userSettings')
-      }
-    }
-
     const r = await refreshActivePlugins(setAppState)
 
     const sdkAgents = ctx.currentAgents.filter(a => a.source === 'flagSettings')

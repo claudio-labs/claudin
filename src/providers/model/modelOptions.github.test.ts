@@ -23,24 +23,24 @@ async function importFreshModelOptionsModule() {
 }
 
 const originalEnv = {
-  CLAUDE_CODE_USE_GITHUB: process.env.CLAUDE_CODE_USE_GITHUB,
-  CLAUDE_CODE_USE_OPENAI: process.env.CLAUDE_CODE_USE_OPENAI,
-  CLAUDE_CODE_USE_GEMINI: process.env.CLAUDE_CODE_USE_GEMINI,
-  CLAUDE_CODE_USE_BEDROCK: process.env.CLAUDE_CODE_USE_BEDROCK,
-  CLAUDE_CODE_USE_VERTEX: process.env.CLAUDE_CODE_USE_VERTEX,
-  CLAUDE_CODE_USE_FOUNDRY: process.env.CLAUDE_CODE_USE_FOUNDRY,
+  CLAUDIN_USE_GITHUB: process.env.CLAUDIN_USE_GITHUB,
+  CLAUDIN_USE_OPENAI: process.env.CLAUDIN_USE_OPENAI,
+  CLAUDIN_USE_GEMINI: process.env.CLAUDIN_USE_GEMINI,
+  CLAUDIN_USE_BEDROCK: process.env.CLAUDIN_USE_BEDROCK,
+  CLAUDIN_USE_VERTEX: process.env.CLAUDIN_USE_VERTEX,
+  CLAUDIN_USE_FOUNDRY: process.env.CLAUDIN_USE_FOUNDRY,
   OPENAI_MODEL: process.env.OPENAI_MODEL,
   OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
   ANTHROPIC_CUSTOM_MODEL_OPTION: process.env.ANTHROPIC_CUSTOM_MODEL_OPTION,
 }
 
 beforeEach(() => {
-  delete process.env.CLAUDE_CODE_USE_GITHUB
-  delete process.env.CLAUDE_CODE_USE_OPENAI
-  delete process.env.CLAUDE_CODE_USE_GEMINI
-  delete process.env.CLAUDE_CODE_USE_BEDROCK
-  delete process.env.CLAUDE_CODE_USE_VERTEX
-  delete process.env.CLAUDE_CODE_USE_FOUNDRY
+  delete process.env.CLAUDIN_USE_GITHUB
+  delete process.env.CLAUDIN_USE_OPENAI
+  delete process.env.CLAUDIN_USE_GEMINI
+  delete process.env.CLAUDIN_USE_BEDROCK
+  delete process.env.CLAUDIN_USE_VERTEX
+  delete process.env.CLAUDIN_USE_FOUNDRY
   delete process.env.OPENAI_MODEL
   delete process.env.OPENAI_BASE_URL
   delete process.env.ANTHROPIC_CUSTOM_MODEL_OPTION
@@ -48,12 +48,12 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  process.env.CLAUDE_CODE_USE_GITHUB = originalEnv.CLAUDE_CODE_USE_GITHUB
-  process.env.CLAUDE_CODE_USE_OPENAI = originalEnv.CLAUDE_CODE_USE_OPENAI
-  process.env.CLAUDE_CODE_USE_GEMINI = originalEnv.CLAUDE_CODE_USE_GEMINI
-  process.env.CLAUDE_CODE_USE_BEDROCK = originalEnv.CLAUDE_CODE_USE_BEDROCK
-  process.env.CLAUDE_CODE_USE_VERTEX = originalEnv.CLAUDE_CODE_USE_VERTEX
-  process.env.CLAUDE_CODE_USE_FOUNDRY = originalEnv.CLAUDE_CODE_USE_FOUNDRY
+  process.env.CLAUDIN_USE_GITHUB = originalEnv.CLAUDIN_USE_GITHUB
+  process.env.CLAUDIN_USE_OPENAI = originalEnv.CLAUDIN_USE_OPENAI
+  process.env.CLAUDIN_USE_GEMINI = originalEnv.CLAUDIN_USE_GEMINI
+  process.env.CLAUDIN_USE_BEDROCK = originalEnv.CLAUDIN_USE_BEDROCK
+  process.env.CLAUDIN_USE_VERTEX = originalEnv.CLAUDIN_USE_VERTEX
+  process.env.CLAUDIN_USE_FOUNDRY = originalEnv.CLAUDIN_USE_FOUNDRY
   process.env.OPENAI_MODEL = originalEnv.OPENAI_MODEL
   process.env.OPENAI_BASE_URL = originalEnv.OPENAI_BASE_URL
   process.env.ANTHROPIC_CUSTOM_MODEL_OPTION =
@@ -71,12 +71,12 @@ afterEach(() => {
 })
 
 test('GitHub provider exposes default + all Copilot models in /model options', async () => {
-  process.env.CLAUDE_CODE_USE_GITHUB = '1'
-  delete process.env.CLAUDE_CODE_USE_OPENAI
-  delete process.env.CLAUDE_CODE_USE_GEMINI
-  delete process.env.CLAUDE_CODE_USE_BEDROCK
-  delete process.env.CLAUDE_CODE_USE_VERTEX
-  delete process.env.CLAUDE_CODE_USE_FOUNDRY
+  process.env.CLAUDIN_USE_GITHUB = '1'
+  delete process.env.CLAUDIN_USE_OPENAI
+  delete process.env.CLAUDIN_USE_GEMINI
+  delete process.env.CLAUDIN_USE_BEDROCK
+  delete process.env.CLAUDIN_USE_VERTEX
+  delete process.env.CLAUDIN_USE_FOUNDRY
 
   process.env.OPENAI_MODEL = 'gpt-4o'
   delete process.env.ANTHROPIC_CUSTOM_MODEL_OPTION

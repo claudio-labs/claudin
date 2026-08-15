@@ -48,16 +48,6 @@ import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 
 import { buildRedirectUri, findAvailablePort } from 'src/mcp/oauthPort.js'
 import type { McpHTTPServerConfig, McpSSEServerConfig } from 'src/mcp/types.js'
 import { getLoggingSafeMcpBaseUrl } from 'src/mcp/utils.js'
-import { performCrossAppAccess, XaaTokenExchangeError } from 'src/mcp/xaa.js'
-import {
-  acquireIdpIdToken,
-  clearIdpIdToken,
-  discoverOidc,
-  getCachedIdpIdToken,
-  getIdpClientSecret,
-  getXaaIdpSettings,
-  isXaaEnabled,
-} from 'src/mcp/xaaIdpLogin.js'
 
 /**
  * Timeout for individual OAuth requests (metadata discovery, token refresh, etc.)
@@ -418,13 +408,6 @@ export function hasMcpDiscoveryButNoToken(
   serverName: string,
   serverConfig: McpSSEServerConfig | McpHTTPServerConfig,
 ): boolean {
-  // XAA servers can silently re-auth via cached id_token even without an
-  // access/refresh token — tokens() fires the xaaRefresh path. Skipping the
-  // connection here would make that auto-auth branch unreachable after
-  // invalidateCredentials('tokens') clears the stored tokens.
-  if (isXaaEnabled() && serverConfig.oauth?.xaa) {
-    return false
-  }
   const serverKey = getServerKey(serverName, serverConfig)
   const entry = getSecureStorage().read()?.mcpOAuth?.[serverKey]
   return entry !== undefined && !entry.accessToken && !entry.refreshToken
@@ -473,9 +456,9 @@ async function revokeToken({
     'Content-Type': 'application/x-www-form-urlencoded',
   }
 
-  // RFC 7009 §2.1 requires client auth per RFC 6749 §2.3. XAA always uses a
-  // confidential client at the AS — strict ASes (Okta/Stytch) reject public-
-  // client revocation of confidential-client tokens.
+  // RFC 7009 §2.1 requires client auth per RFC 6749 §2.3. Strict ASes
+  // (Okta/Stytch) reject public-client revocation of confidential-client
+  // tokens, so send client auth whenever we have it.
   if (clientId && clientSecret) {
     if (authMethod === 'client_secret_post') {
       params.set('client_id', clientId)
@@ -547,8 +530,8 @@ export async function revokeServerTokens(
   // Attempt server-side revocation if there are tokens to revoke (best-effort)
   if (tokenData?.accessToken || tokenData?.refreshToken) {
     try {
-      // For XAA (and any PRM-discovered auth), the AS is at a different host
-      // than the MCP URL — use the persisted discoveryState if we have it.
+      // For PRM-discovered auth the AS is at a different host than the MCP
+      // URL — use the persisted discoveryState if we have it.
       const asUrl =
         tokenData.discoveryState?.authorizationServerUrl ?? serverConfig.url
       const metadata = await fetchAuthServerMetadata(
@@ -707,212 +690,6 @@ type WWWAuthenticateParams = {
   resourceMetadataUrl?: URL
 }
 
-type XaaFailureStage =
-  | 'idp_login'
-  | 'discovery'
-  | 'token_exchange'
-  | 'jwt_bearer'
-
-/**
- * XAA (Cross-App Access) auth.
- *
- * One IdP browser login is reused across all XAA-configured MCP servers:
- * 1. Acquire an id_token from the IdP (cached in keychain by issuer; if
- *    missing/expired, runs a standard OIDC authorization_code+PKCE flow
- *    — this is the one browser pop)
- * 2. Run the RFC 8693 + RFC 7523 exchange (no browser)
- * 3. Save tokens to the same keychain slot as normal OAuth
- *
- * IdP connection details come from settings.xaaIdp (configured once via
- * `claude mcp xaa setup`). Per-server config is just `oauth.xaa: true`
- * plus the AS clientId/clientSecret.
- *
- * No silent fallback: if `oauth.xaa` is set, XAA is the only path.
- * All errors are actionable — they tell the user what to run.
- */
-async function performMCPXaaAuth(
-  serverName: string,
-  serverConfig: McpSSEServerConfig | McpHTTPServerConfig,
-  onAuthorizationUrl: (url: string) => void,
-  abortSignal?: AbortSignal,
-  skipBrowserOpen?: boolean,
-): Promise<void> {
-  if (!serverConfig.oauth?.xaa) {
-    throw new Error('XAA: oauth.xaa must be set') // guarded by caller
-  }
-
-  // IdP config comes from user-level settings, not per-server.
-  const idp = getXaaIdpSettings()
-  if (!idp) {
-    throw new Error(
-      "XAA: no IdP connection configured. Run 'claude mcp xaa setup --issuer <url> --client-id <id> --client-secret' to configure.",
-    )
-  }
-
-  const clientId = serverConfig.oauth?.clientId
-  if (!clientId) {
-    throw new Error(
-      `XAA: server '${serverName}' needs an AS client_id. Re-add with --client-id.`,
-    )
-  }
-
-  const clientConfig = getMcpClientConfig(serverName, serverConfig)
-  const clientSecret = clientConfig?.clientSecret
-  if (!clientSecret) {
-    // Diagnostic context for serverKey mismatch debugging. Only computed
-    // on the error path so there's no perf cost on success.
-    const wantedKey = getServerKey(serverName, serverConfig)
-    const haveKeys = Object.keys(
-      getSecureStorage().read()?.mcpOAuthClientConfig ?? {},
-    )
-    const headersForLogging = Object.fromEntries(
-      Object.entries(serverConfig.headers ?? {}).map(([k, v]) =>
-        k.toLowerCase() === 'authorization' ? [k, '[REDACTED]'] : [k, v],
-      ),
-    )
-    logMCPDebug(
-      serverName,
-      `XAA: secret lookup miss. wanted=${wantedKey} have=[${haveKeys.join(', ')}] configHeaders=${jsonStringify(headersForLogging)}`,
-    )
-    throw new Error(
-      `XAA: AS client secret not found for '${serverName}'. Re-add with --client-secret.`,
-    )
-  }
-
-  logMCPDebug(serverName, 'XAA: starting cross-app access flow')
-
-  // IdP client secret lives in a separate keychain slot (keyed by IdP issuer),
-  // NOT the AS secret — different trust domain. Optional: if absent, PKCE-only.
-  const idpClientSecret = getIdpClientSecret(idp.issuer)
-
-  // Acquire id_token (cached or via one OIDC browser pop at the IdP).
-  // Peek the cache first so we can report idTokenCacheHit in analytics before
-  // acquireIdpIdToken potentially writes a fresh one.
-  const idTokenCacheHit = getCachedIdpIdToken(idp.issuer) !== undefined
-
-  let failureStage: XaaFailureStage = 'idp_login'
-  try {
-    let idToken
-    try {
-      idToken = await acquireIdpIdToken({
-        idpIssuer: idp.issuer,
-        idpClientId: idp.clientId,
-        idpClientSecret,
-        callbackPort: idp.callbackPort,
-        onAuthorizationUrl,
-        skipBrowserOpen,
-        abortSignal,
-      })
-    } catch (e) {
-      if (abortSignal?.aborted) throw new AuthenticationCancelledError()
-      throw e
-    }
-
-    // Discover the IdP's token endpoint for the RFC 8693 exchange.
-    failureStage = 'discovery'
-    const oidc = await discoverOidc(idp.issuer)
-
-    // Run the exchange. performCrossAppAccess throws XaaTokenExchangeError
-    // for the IdP leg and "jwt-bearer grant failed" for the AS leg.
-    failureStage = 'token_exchange'
-    let tokens
-    try {
-      tokens = await performCrossAppAccess(
-        serverConfig.url,
-        {
-          clientId,
-          clientSecret,
-          idpClientId: idp.clientId,
-          idpClientSecret,
-          idpIdToken: idToken,
-          idpTokenEndpoint: oidc.token_endpoint,
-        },
-        serverName,
-        abortSignal,
-      )
-    } catch (e) {
-      if (abortSignal?.aborted) throw new AuthenticationCancelledError()
-      const msg = errorMessage(e)
-      // If the IdP says the id_token is bad, drop it from the cache so the
-      // next attempt does a fresh IdP login. XaaTokenExchangeError carries
-      // shouldClearIdToken so we key off OAuth semantics (4xx / invalid body
-      // → clear; 5xx IdP outage → preserve) rather than substring matching.
-      if (e instanceof XaaTokenExchangeError) {
-        if (e.shouldClearIdToken) {
-          clearIdpIdToken(idp.issuer)
-          logMCPDebug(
-            serverName,
-            'XAA: cleared cached id_token after token-exchange failure',
-          )
-        }
-      } else if (
-        msg.includes('PRM discovery failed') ||
-        msg.includes('AS metadata discovery failed') ||
-        msg.includes('no authorization server supports jwt-bearer')
-      ) {
-        // performCrossAppAccess runs PRM + AS discovery before the actual
-        // exchange — don't attribute their failures to 'token_exchange'.
-        failureStage = 'discovery'
-      } else if (msg.includes('jwt-bearer')) {
-        failureStage = 'jwt_bearer'
-      }
-      throw e
-    }
-
-    // Save tokens via the same storage path as normal OAuth. We write directly
-    // (instead of ClaudeAuthProvider.saveTokens) to avoid instantiating the
-    // whole provider just to write the same keys.
-    const storage = getSecureStorage()
-    const existingData = storage.read() || {}
-    const serverKey = getServerKey(serverName, serverConfig)
-    const prev = existingData.mcpOAuth?.[serverKey]
-    storage.update({
-      ...existingData,
-      mcpOAuth: {
-        ...existingData.mcpOAuth,
-        [serverKey]: {
-          ...prev,
-          serverName,
-          serverUrl: serverConfig.url,
-          accessToken: tokens.access_token,
-          // AS may omit refresh_token on jwt-bearer — preserve any existing one
-          refreshToken: tokens.refresh_token ?? prev?.refreshToken,
-          expiresAt: Date.now() + (tokens.expires_in || 3600) * 1000,
-          scope: tokens.scope,
-          clientId,
-          clientSecret,
-          // Persist the AS URL so _doRefresh and revokeServerTokens can locate
-          // the token/revocation endpoints when MCP URL ≠ AS URL (the common
-          // XAA topology).
-          discoveryState: {
-            authorizationServerUrl: tokens.authorizationServerUrl,
-          },
-        },
-      },
-    })
-
-    logMCPDebug(serverName, 'XAA: tokens saved')
-    logEvent('tengu_mcp_oauth_flow_success', {
-      authMethod:
-        'xaa' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      idTokenCacheHit,
-    })
-  } catch (e) {
-    // User-initiated cancel (Esc during IdP browser pop) isn't a failure.
-    if (e instanceof AuthenticationCancelledError) {
-      throw e
-    }
-    logEvent('tengu_mcp_oauth_flow_failure', {
-      authMethod:
-        'xaa' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      xaaFailureStage:
-        failureStage as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      idTokenCacheHit,
-    })
-    throw e
-  }
-}
-
 export async function performMCPOAuthFlow(
   serverName: string,
   serverConfig: McpSSEServerConfig | McpHTTPServerConfig,
@@ -923,52 +700,6 @@ export async function performMCPOAuthFlow(
     onWaitingForCallback?: (submit: (callbackUrl: string) => void) => void
   },
 ): Promise<void> {
-  // XAA (SEP-990): if configured, bypass the per-server consent dance.
-  // If the IdP id_token isn't cached, this pops the browser once at the IdP
-  // (shared across all XAA servers for that issuer). Subsequent servers hit
-  // the cache and are silent. Tokens land in the same keychain slot, so the
-  // rest of CC's transport wiring (ClaudeAuthProvider.tokens() in client.ts)
-  // works unchanged.
-  //
-  // No silent fallback: if `oauth.xaa` is set, XAA is the only path. We
-  // never fall through to the consent flow — that would be surprising (the
-  // user explicitly asked for XAA) and security-relevant (consent flow may
-  // have a different trust/scope posture than the org's IdP policy).
-  //
-  // Servers with `oauth.xaa` but CLAUDE_CODE_ENABLE_XAA unset hard-fail with
-  // actionable copy rather than silently degrade to consent.
-  if (serverConfig.oauth?.xaa) {
-    if (!isXaaEnabled()) {
-      throw new Error(
-        `XAA is not enabled (set CLAUDE_CODE_ENABLE_XAA=1). Remove 'oauth.xaa' from server '${serverName}' to use the standard consent flow.`,
-      )
-    }
-    logEvent('tengu_mcp_oauth_flow_start', {
-      isOAuthFlow: true,
-      authMethod:
-        'xaa' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      transportType:
-        serverConfig.type as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      ...(getLoggingSafeMcpBaseUrl(serverConfig)
-        ? {
-            mcpServerBaseUrl: getLoggingSafeMcpBaseUrl(
-              serverConfig,
-            ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          }
-        : {}),
-    })
-    // performMCPXaaAuth logs its own success/failure events (with
-    // idTokenCacheHit + xaaFailureStage).
-    await performMCPXaaAuth(
-      serverName,
-      serverConfig,
-      onAuthorizationUrl,
-      abortSignal,
-      options?.skipBrowserOpen,
-    )
-    return
-  }
-
   // Check for cached step-up scope and resource metadata URL before clearing
   // tokens. The transport-attached auth provider persists scope when it receives
   // a step-up 401, so we can use it here instead of making an extra probe request.
@@ -1617,69 +1348,6 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
 
     const tokenData = data?.mcpOAuth?.[serverKey]
 
-    // XAA: a cached id_token plays the same UX role as a refresh_token — run
-    // the silent exchange to get a fresh access_token without a browser. The
-    // id_token does expire (we re-acquire via `xaa login` when it does); the
-    // point is that while it's valid, re-auth is zero-interaction.
-    //
-    // Only fire when we don't have a refresh_token. If the AS returned one,
-    // the normal refresh path (below) is cheaper — 1 request vs the 4-request
-    // XAA chain. If that refresh is revoked, refreshAuthorization() clears it
-    // (invalidateCredentials('tokens')), and the next tokens() falls through
-    // to here.
-    //
-    // Fires on:
-    //   - never authed (!tokenData)                 → first connect, auto-auth
-    //   - SDK partial write {accessToken:''}        → stale from past session
-    //   - expired/expiring, no refresh_token        → proactive XAA re-auth
-    //
-    // No special-casing of {accessToken:'', expiresAt:0}. Yes, SDK auth()
-    // writes that mid-flow (saveClientInformation defaults). But with this
-    // auto-auth branch, the *first* tokens() call — before auth() writes
-    // anything — fires xaaRefresh. If id_token is cached, SDK short-circuits
-    // there and never reaches the write. If id_token isn't cached, xaaRefresh
-    // returns undefined in ~1 keychain read, auth() proceeds, writes the
-    // marker, calls tokens() again, xaaRefresh fails again identically.
-    // Harmless redundancy, not a wasted exchange. And guarding on `!==''`
-    // permanently bricks auto-auth when a *prior* session left that marker
-    // in keychain — real bug seen with xaa.dev.
-    //
-    // xaaRefresh() internally short-circuits to undefined when the id_token
-    // isn't cached (or settings.xaaIdp is gone) → we fall through to the
-    // existing needs-auth path → user runs `xaa login`.
-    //
-    if (
-      isXaaEnabled() &&
-      this.serverConfig.oauth?.xaa &&
-      !tokenData?.refreshToken &&
-      (!tokenData?.accessToken ||
-        (tokenData.expiresAt - Date.now()) / 1000 <= 300)
-    ) {
-      if (!this._refreshInProgress) {
-        logMCPDebug(
-          this.serverName,
-          tokenData
-            ? `XAA: access_token expiring, attempting silent exchange`
-            : `XAA: no access_token yet, attempting silent exchange`,
-        )
-        this._refreshInProgress = this.xaaRefresh().finally(() => {
-          this._refreshInProgress = undefined
-        })
-      }
-      try {
-        const refreshed = await this._refreshInProgress
-        if (refreshed) return refreshed
-      } catch (e) {
-        logMCPDebug(
-          this.serverName,
-          `XAA silent exchange failed: ${errorMessage(e)}`,
-        )
-      }
-      // Fall through. Either id_token isn't cached (xaaRefresh returned
-      // undefined) or the exchange errored. Normal path below handles both:
-      // !tokenData → undefined → 401 → needs-auth; expired → undefined → same.
-    }
-
     if (!tokenData) {
       logMCPDebug(this.serverName, `No token data found`)
       return undefined
@@ -1794,125 +1462,6 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
     }
 
     storage.update(updatedData)
-  }
-
-  /**
-   * XAA silent refresh: cached id_token → Layer-2 exchange → new access_token.
-   * No browser.
-   *
-   * Returns undefined if the id_token is gone from cache — caller treats this
-   * as needs-interactive-reauth (transport will 401, CC surfaces it).
-   *
-   * On exchange failure, clears the id_token cache so the next interactive
-   * auth does a fresh IdP login (the cached id_token is likely stale/revoked).
-   *
-   * TODO(xaa-ga): add cross-process lockfile before GA. `_refreshInProgress`
-   * only dedupes within one process — two CC instances with expiring tokens
-   * both fire the full 4-request XAA chain and race on storage.update().
-   * Unlike inc-4829 the id_token is not single-use so both access_tokens
-   * stay valid (wasted round-trips + keychain write race, not brickage),
-   * but this is the shape CLAUDE.md flags under "Token/auth caching across
-   * process boundaries". Mirror refreshAuthorization()'s lockfile pattern.
-   */
-  private async xaaRefresh(): Promise<OAuthTokens | undefined> {
-    const idp = getXaaIdpSettings()
-    if (!idp) return undefined // config was removed mid-session
-
-    const idToken = getCachedIdpIdToken(idp.issuer)
-    if (!idToken) {
-      logMCPDebug(
-        this.serverName,
-        'XAA: id_token not cached, needs interactive re-auth',
-      )
-      return undefined
-    }
-
-    const clientId = this.serverConfig.oauth?.clientId
-    const clientConfig = getMcpClientConfig(this.serverName, this.serverConfig)
-    if (!clientId || !clientConfig?.clientSecret) {
-      logMCPDebug(
-        this.serverName,
-        'XAA: missing clientId or clientSecret in config — skipping silent refresh',
-      )
-      return undefined // shouldn't happen if `mcp add` was correct
-    }
-
-    const idpClientSecret = getIdpClientSecret(idp.issuer)
-
-    // Discover IdP token endpoint. Could cache (fetchCache.ts already
-    // caches /.well-known/ requests), but OIDC metadata is cheap + idempotent.
-    // xaaRefresh is the silent tokens() path — soft-fail to undefined so the
-    // caller falls through to needs-authentication instead of throwing mid-connect.
-    let oidc
-    try {
-      oidc = await discoverOidc(idp.issuer)
-    } catch (e) {
-      logMCPDebug(
-        this.serverName,
-        `XAA: OIDC discovery failed in silent refresh: ${errorMessage(e)}`,
-      )
-      return undefined
-    }
-
-    try {
-      const tokens = await performCrossAppAccess(
-        this.serverConfig.url,
-        {
-          clientId,
-          clientSecret: clientConfig.clientSecret,
-          idpClientId: idp.clientId,
-          idpClientSecret,
-          idpIdToken: idToken,
-          idpTokenEndpoint: oidc.token_endpoint,
-        },
-        this.serverName,
-      )
-      // Write directly (not via saveTokens) so clientId + clientSecret land in
-      // storage even when this is the first write for serverKey. saveTokens
-      // only spreads existing data; if no prior performMCPXaaAuth ran,
-      // revokeServerTokens would later read tokenData.clientId as undefined
-      // and send a client_id-less RFC 7009 request that strict ASes reject.
-      const storage = getSecureStorage()
-      const existingData = storage.read() || {}
-      const serverKey = getServerKey(this.serverName, this.serverConfig)
-      const prev = existingData.mcpOAuth?.[serverKey]
-      storage.update({
-        ...existingData,
-        mcpOAuth: {
-          ...existingData.mcpOAuth,
-          [serverKey]: {
-            ...prev,
-            serverName: this.serverName,
-            serverUrl: this.serverConfig.url,
-            accessToken: tokens.access_token,
-            refreshToken: tokens.refresh_token ?? prev?.refreshToken,
-            expiresAt: Date.now() + (tokens.expires_in || 3600) * 1000,
-            scope: tokens.scope,
-            clientId,
-            clientSecret: clientConfig.clientSecret,
-            discoveryState: {
-              authorizationServerUrl: tokens.authorizationServerUrl,
-            },
-          },
-        },
-      })
-      return {
-        access_token: tokens.access_token,
-        token_type: 'Bearer',
-        expires_in: tokens.expires_in,
-        scope: tokens.scope,
-        refresh_token: tokens.refresh_token,
-      }
-    } catch (e) {
-      if (e instanceof XaaTokenExchangeError && e.shouldClearIdToken) {
-        clearIdpIdToken(idp.issuer)
-        logMCPDebug(
-          this.serverName,
-          'XAA: cleared id_token after exchange failure',
-        )
-      }
-      throw e
-    }
   }
 
   async redirectToAuthorization(authorizationUrl: URL): Promise<void> {

@@ -122,7 +122,7 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
     const hasInitialPrompt = remote.length > 0;
     const isRemoteTuiEnabled = getFeatureValue_CACHED_MAY_BE_STALE('tengu_remote_backend', false);
     if (!isRemoteTuiEnabled && !hasInitialPrompt) {
-      return await exitWithError(root, 'Error: --remote requires a description.\nUsage: claude --remote "your task description"', () => gracefulShutdown(1));
+      return await exitWithError(root, 'Error: --remote requires a description.\nUsage: claudin --remote "your task description"', () => gracefulShutdown(1));
     }
     logEvent('tengu_remote_create_session', {
       has_initial_prompt: String(hasInitialPrompt) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,

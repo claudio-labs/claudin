@@ -5,7 +5,6 @@
 // inside the hook callback, which is the original logical callsite. The
 // snapshot test in src/platform/main/__tests__/bootSnapshot.test.ts scans this file.
 
-import { feature } from 'bun:bundle';
 import type { Command as CommanderCommand } from '@commander-js/extra-typings';
 
 import { setInlinePlugins } from 'src/platform/bootstrap/state.js';
@@ -42,7 +41,7 @@ export function registerPreActionHook(program: CommanderCommand<any, any, any>):
     // process.title on Windows sets the console title directly; on POSIX,
     // terminal shell integration may mirror the process name to the tab.
     // After init() so settings.json env can also gate this (gh-4765).
-    if (!isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_TERMINAL_TITLE)) {
+    if (!isEnvTruthy(process.env.CLAUDIN_DISABLE_TERMINAL_TITLE)) {
       process.title = 'claudin';
     }
 
@@ -90,13 +89,6 @@ export function registerPreActionHook(program: CommanderCommand<any, any, any>):
     void loadRemoteManagedSettings();
     void loadPolicyLimits();
     profileCheckpoint('preAction_after_remote_settings');
-
-    // Load settings sync (non-blocking, fail-open)
-    // CLI: uploads local settings to remote (CCR download is handled by print.ts)
-    if (feature('UPLOAD_USER_SETTINGS')) {
-      void import('src/platform/settingsSync/index.js').then(m => m.uploadUserSettingsInBackground());
-    }
-    profileCheckpoint('preAction_after_settings_sync');
   });
   return program;
 }

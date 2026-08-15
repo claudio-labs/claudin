@@ -39,7 +39,7 @@ import { isSupportedTerminal, hasAccessToIDEExtensionDiffFeature } from 'src/pla
 import { getInitialSettings, getSettingsForSource, updateSettingsForSource } from 'src/platform/settings/settings.js';
 import { getUserMsgOptIn, setUserMsgOptIn } from 'src/platform/bootstrap/state.js';
 import { DEFAULT_OUTPUT_STYLE_NAME } from 'src/shared/constants/outputStyles.js';
-import { isEnvTruthy, isRunningOnHomespace } from 'src/shared/envUtils.js';
+import { isEnvTruthy } from 'src/shared/envUtils.js';
 import type { LocalJSXCommandContext, CommandResultDisplay } from 'src/commands/commands.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
@@ -205,7 +205,7 @@ export function Config({
     onIsSearchModeChange?.(ownsEsc);
   }, [ownsEsc, onIsSearchModeChange]);
   const isConnectedToIde = hasAccessToIDEExtensionDiffFeature(context.options.mcpClients);
-  const isFileCheckpointingAvailable = !isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_FILE_CHECKPOINTING);
+  const isFileCheckpointingAvailable = !isEnvTruthy(process.env.CLAUDIN_DISABLE_FILE_CHECKPOINTING);
   const memoryFiles = React.use(getMemoryFiles(true));
   const shouldShowExternalIncludesToggle = hasExternalClaudeMdIncludes(memoryFiles);
   const autoUpdaterDisabledReason = getAutoUpdaterDisabledReason();
@@ -807,7 +807,7 @@ export function Config({
     }
   }] : []), {
     id: 'terminalRenderer',
-    // CLAUDE_CODE_NO_FLICKER pins the renderer — say so rather than leaving
+    // CLAUDIN_NO_FLICKER pins the renderer — say so rather than leaving
     // a row that ignores every keypress.
     label: isFullscreenForcedByEnv() ? 'Terminal UI renderer (env)' : 'Terminal UI renderer',
     searchText: 'terminal ui renderer fullscreen flicker-free alt-screen',
@@ -1199,7 +1199,7 @@ export function Config({
     const activeProfile = tryGetActiveProvider();
     const profileApiKey =
       activeProfile?.transport === 'anthropic' ? activeProfile.apiKey?.trim() : undefined;
-    if (!profileApiKey || isRunningOnHomespace()) return [] as const;
+    if (!profileApiKey) return [] as const;
     return [{
     id: 'apiKey',
     label: <Text>
@@ -1334,13 +1334,11 @@ export function Config({
       });
       return `Set ${key} to ${chalk.bold(value_2)}`;
     });
-    // Check for API key changes. On homespace, the active profile's API key
-    // is preserved for child processes but ignored by Claude Code itself
-    // (see auth.ts).
+    // Check for API key changes.
     const activeProfile_save = tryGetActiveProvider();
     const profileApiKey_save =
       activeProfile_save?.transport === 'anthropic' ? activeProfile_save.apiKey?.trim() : undefined;
-    const effectiveApiKey = isRunningOnHomespace() ? undefined : profileApiKey_save;
+    const effectiveApiKey = profileApiKey_save;
     const initialUsingCustomKey = Boolean(effectiveApiKey && initialConfig.current.customApiKeyResponses?.approved?.includes(normalizeApiKeyForConfig(effectiveApiKey)));
     const currentUsingCustomKey = Boolean(effectiveApiKey && globalConfig.customApiKeyResponses?.approved?.includes(normalizeApiKeyForConfig(effectiveApiKey)));
     if (initialUsingCustomKey !== currentUsingCustomKey) {

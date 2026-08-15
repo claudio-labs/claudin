@@ -1,6 +1,6 @@
 ---
 name: headless-sync-plugin-install-broken-import
-description: CLAUDE_CODE_SYNC_PLUGIN_INSTALL=true HUNG headless -p for months on a stale relative import — fixed in PR #57; keep the discriminator that separates a real TS2307 from the fork's expected ones
+description: CLAUDIN_SYNC_PLUGIN_INSTALL=true HUNG headless -p for months on a stale relative import — fixed in PR #57; keep the discriminator that separates a real TS2307 from the fork's expected ones
 type: project
 ---
 
@@ -14,7 +14,7 @@ path alias rather than `../../`.
 ## The symptom was a hang, not an error
 
 Only `runHeadlessStreaming.ts` sets `pluginInstallPromise`, and only under
-`CLAUDE_CODE_SYNC_PLUGIN_INSTALL`, so ordinary `-p` never reached it. When it did
+`CLAUDIN_SYNC_PLUGIN_INSTALL`, so ordinary `-p` never reached it. When it did
 fire, the rejected dynamic import left `run()` unfinished and the output stream
 never closed — the process produced **zero bytes and never exited**. Measured on
 one build, `-p` with a trivial prompt:
@@ -22,7 +22,7 @@ one build, `-p` with a trivial prompt:
 | env var | result |
 |---|---|
 | unset | exit 0, full JSON result |
-| `CLAUDE_CODE_SYNC_PLUGIN_INSTALL=true` | no output, killed at 90s |
+| `CLAUDIN_SYNC_PLUGIN_INSTALL=true` | no output, killed at 90s |
 | same, after the fix | exit 0, full JSON result |
 
 Also worth knowing: `setup.ts` deliberately skips arming the hot reload in

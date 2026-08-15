@@ -145,15 +145,15 @@ describe('seedTasksFromPlan', () => {
   beforeEach(() => {
     for (const k of [
       'CLAUDIN_CONFIG_DIR',
-      'CLAUDE_CODE_ENABLE_TASKS',
-      'CLAUDE_CODE_TASK_LIST_ID',
+      'CLAUDIN_ENABLE_TASKS',
+      'CLAUDIN_TASK_LIST_ID',
     ]) {
       saved[k] = process.env[k]
     }
     tmp = mkdtempSync(join(tmpdir(), 'plantasks-'))
     process.env.CLAUDIN_CONFIG_DIR = tmp
-    process.env.CLAUDE_CODE_ENABLE_TASKS = '1'
-    process.env.CLAUDE_CODE_TASK_LIST_ID = TASK_LIST_ID
+    process.env.CLAUDIN_ENABLE_TASKS = '1'
+    process.env.CLAUDIN_TASK_LIST_ID = TASK_LIST_ID
   })
 
   afterEach(() => {
@@ -238,7 +238,7 @@ describe('seedTasksFromPlan', () => {
   })
 
   test('returns 0 (no-op) when TodoV2 is disabled', async () => {
-    process.env.CLAUDE_CODE_ENABLE_TASKS = '0'
+    process.env.CLAUDIN_ENABLE_TASKS = '0'
     // Non-interactive test session + disabled env → isTodoV2Enabled() false.
     expect(await seedTasksFromPlan(PLAN)).toBe(0)
   })

@@ -131,8 +131,8 @@ describe('measureToolSchemas', () => {
     // Sanity: with the attachment toggle off, --git-mode=on must once again
     // grow the Bash description vs --git-mode=off. This guards against the
     // attachment path becoming permanent / unrevertable.
-    const previous = process.env.CLAUDE_CODE_BASH_GIT_IN_MESSAGES
-    process.env.CLAUDE_CODE_BASH_GIT_IN_MESSAGES = 'false'
+    const previous = process.env.CLAUDIN_BASH_GIT_IN_MESSAGES
+    process.env.CLAUDIN_BASH_GIT_IN_MESSAGES = 'false'
     try {
       const onResult = await measureToolSchemas({
         engines: ['anthropic', 'openai', 'codex'],
@@ -154,9 +154,9 @@ describe('measureToolSchemas', () => {
       }
     } finally {
       if (previous === undefined) {
-        delete process.env.CLAUDE_CODE_BASH_GIT_IN_MESSAGES
+        delete process.env.CLAUDIN_BASH_GIT_IN_MESSAGES
       } else {
-        process.env.CLAUDE_CODE_BASH_GIT_IN_MESSAGES = previous
+        process.env.CLAUDIN_BASH_GIT_IN_MESSAGES = previous
       }
     }
   })

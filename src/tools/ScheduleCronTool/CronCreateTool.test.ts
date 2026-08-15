@@ -17,7 +17,7 @@ let priorEnabled = false
 beforeAll(() => {
   configDir = mkdtempSync(join(tmpdir(), 'croncreate-'))
   process.env.CLAUDIN_CONFIG_DIR = configDir
-  delete process.env.CLAUDE_CODE_DISABLE_CRON
+  delete process.env.CLAUDIN_DISABLE_CRON
   priorEnabled = getScheduledTasksEnabled()
 })
 
@@ -36,12 +36,12 @@ describe('CronCreateTool', () => {
     expect(CronCreateTool.isEnabled?.()).toBe(true)
   })
 
-  test('isEnabled() is false when CLAUDE_CODE_DISABLE_CRON=1', () => {
-    process.env.CLAUDE_CODE_DISABLE_CRON = '1'
+  test('isEnabled() is false when CLAUDIN_DISABLE_CRON=1', () => {
+    process.env.CLAUDIN_DISABLE_CRON = '1'
     try {
       expect(CronCreateTool.isEnabled?.()).toBe(false)
     } finally {
-      delete process.env.CLAUDE_CODE_DISABLE_CRON
+      delete process.env.CLAUDIN_DISABLE_CRON
     }
   })
 

@@ -54,7 +54,7 @@ type JsonArray = JsonValue[];
 
 /**
  * Assemble the extra body parameters for the API request, based on the
- * CLAUDE_CODE_EXTRA_BODY environment variable if present and on any beta
+ * CLAUDIN_EXTRA_BODY environment variable if present and on any beta
  * headers (primarily for Bedrock requests).
  *
  * @param betaHeaders - An array of beta headers to include in the request.
@@ -62,7 +62,7 @@ type JsonArray = JsonValue[];
  */
 export function getExtraBodyParams(betaHeaders?: string[]): JsonObject {
   // Parse user's extra body parameters first
-  const extraBodyStr = process.env.CLAUDE_CODE_EXTRA_BODY;
+  const extraBodyStr = process.env.CLAUDIN_EXTRA_BODY;
   let result: JsonObject = {};
 
   if (extraBodyStr) {
@@ -77,13 +77,13 @@ export function getExtraBodyParams(betaHeaders?: string[]): JsonObject {
         result = { ...(parsed as JsonObject) };
       } else {
         logForDebugging(
-          `CLAUDE_CODE_EXTRA_BODY env var must be a JSON object, but was given ${extraBodyStr}`,
+          `CLAUDIN_EXTRA_BODY env var must be a JSON object, but was given ${extraBodyStr}`,
           { level: "error" },
         );
       }
     } catch (error) {
       logForDebugging(
-        `Error parsing CLAUDE_CODE_EXTRA_BODY: ${errorMessage(error)}`,
+        `Error parsing CLAUDIN_EXTRA_BODY: ${errorMessage(error)}`,
         { level: "error" },
       );
     }
@@ -541,14 +541,14 @@ export function getMaxOutputTokensForModel(model: string): number {
   // Requests hitting the cap get one clean retry at 64k (query.ts
   // max_output_tokens_escalate). Math.min keeps models with lower native
   // defaults (e.g. claude-3-opus at 4k) at their native value. Applied
-  // before the env-var override so CLAUDE_CODE_MAX_OUTPUT_TOKENS still wins.
+  // before the env-var override so CLAUDIN_MAX_OUTPUT_TOKENS still wins.
   const defaultTokens = isMaxTokensCapEnabled()
     ? Math.min(maxOutputTokens.default, CAPPED_DEFAULT_MAX_TOKENS)
     : maxOutputTokens.default;
 
   const result = validateBoundedIntEnvVar(
-    "CLAUDE_CODE_MAX_OUTPUT_TOKENS",
-    process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS,
+    "CLAUDIN_MAX_OUTPUT_TOKENS",
+    process.env.CLAUDIN_MAX_OUTPUT_TOKENS,
     defaultTokens,
     maxOutputTokens.upperLimit,
   );

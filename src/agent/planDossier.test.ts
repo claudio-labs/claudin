@@ -906,7 +906,7 @@ describe('dossierBudgetTokens — branch coverage guard', () => {
     { branch: 'Anthropic 200k canonical', model: 'claude-opus-4-7', minWindow: 150_000, maxWindow: 200_000 },
     { branch: 'Anthropic legacy fallback', model: 'claude-3-5-sonnet-latest', minWindow: 150_000, maxWindow: 200_000 },
     // gpt models only resolve via the OpenAI lookup table, but in the test
-    // env CLAUDE_CODE_USE_OPENAI is unset → the openai branch never fires
+    // env CLAUDIN_USE_OPENAI is unset → the openai branch never fires
     // and these fall through to the default 200k. The point of the entry
     // is to assert the default fallback path is exercised by ALL_MODELS.
     { branch: 'unrecognized → default 200k', model: 'gpt-5.2', minWindow: 150_000, maxWindow: 200_000 },

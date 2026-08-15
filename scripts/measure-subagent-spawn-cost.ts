@@ -169,7 +169,7 @@ export async function measureSubagentSpawnCost(options: {
   // tool prompts emit production-shape bytes.
   const previousNodeEnv = process.env.NODE_ENV
   process.env.NODE_ENV = 'production'
-  const TASKS_KEY = 'CLAUDE_CODE_ENABLE_TASKS'
+  const TASKS_KEY = 'CLAUDIN_ENABLE_TASKS'
   const previousTasks = process.env[TASKS_KEY]
   process.env[TASKS_KEY] = '1'
 

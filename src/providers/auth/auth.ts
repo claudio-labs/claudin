@@ -53,7 +53,6 @@ import {
   getClaudinConfigHomeDir,
   isBareMode,
   isEnvTruthy,
-  isRunningOnHomespace,
 } from 'src/shared/envUtils.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { execSyncWithDefaults_DEPRECATED } from 'src/shared/proc/execFileNoThrow.js'
@@ -267,9 +266,7 @@ export function getAnthropicApiKeyWithSource(
     return { key: null, source: 'none' }
   }
 
-  // On homespace, don't use the profile's API key (use Console key instead)
-  // https://anthropic.slack.com/archives/C08428WSLKV/p1747331773214779
-  const apiKeyEnv = isRunningOnHomespace() ? undefined : profileForAnthropic
+  const apiKeyEnv = profileForAnthropic
 
   // Always check for direct environment variable when the user ran claude --print.
   // This is useful for CI, etc.
@@ -449,11 +446,11 @@ export function isAwsCredentialExportFromProjectSettings(): boolean {
 
 /**
  * Calculate TTL in milliseconds for the API key helper cache
- * Uses CLAUDE_CODE_API_KEY_HELPER_TTL_MS env var if set and valid,
+ * Uses CLAUDIN_API_KEY_HELPER_TTL_MS env var if set and valid,
  * otherwise defaults to 5 minutes
  */
 export function calculateApiKeyHelperTTL(): number {
-  const envTtl = process.env.CLAUDE_CODE_API_KEY_HELPER_TTL_MS
+  const envTtl = process.env.CLAUDIN_API_KEY_HELPER_TTL_MS
 
   if (envTtl) {
     const parsed = parseInt(envTtl, 10)
@@ -461,7 +458,7 @@ export function calculateApiKeyHelperTTL(): number {
       return parsed
     }
     logForDebugging(
-      `Found CLAUDE_CODE_API_KEY_HELPER_TTL_MS env var, but it was not a valid number. Got ${envTtl}`,
+      `Found CLAUDIN_API_KEY_HELPER_TTL_MS env var, but it was not a valid number. Got ${envTtl}`,
       { level: 'error' },
     )
   }

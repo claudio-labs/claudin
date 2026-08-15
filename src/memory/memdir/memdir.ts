@@ -559,10 +559,10 @@ export async function loadMemoryPrompt(): Promise<string | null> {
 
   logEvent('tengu_memdir_disabled', {
     disabled_by_env_var: isEnvTruthy(
-      process.env.CLAUDE_CODE_DISABLE_AUTO_MEMORY,
+      process.env.CLAUDIN_DISABLE_AUTO_MEMORY,
     ),
     disabled_by_setting:
-      !isEnvTruthy(process.env.CLAUDE_CODE_DISABLE_AUTO_MEMORY) &&
+      !isEnvTruthy(process.env.CLAUDIN_DISABLE_AUTO_MEMORY) &&
       getInitialSettings().autoMemoryEnabled === false,
   })
   // Gate on the GB flag directly, not isTeamMemoryEnabled() — that function
