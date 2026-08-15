@@ -8,7 +8,11 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { applyBashFilterToStdout, planBashFilter } from "src/tools/shared/outputFilter/Bash/index.js";
+import {
+  applyBashFilterToStdout,
+  exitCodeAfterRewrite,
+  planBashFilter,
+} from "src/tools/shared/outputFilter/Bash/index.js";
 import { findFilterForCommand } from "src/tools/shared/outputFilter/Bash/registry.js";
 import { builtInFilters } from "src/tools/shared/outputFilter/Bash/filters/index.js";
 import type { FilterSpec } from "src/tools/shared/outputFilter/Bash/types.js";
@@ -200,7 +204,9 @@ describe("structural (Phase 1)", () => {
     expect(result).toBe(ansiError);
   });
 
-  test("error output with rewrite still shows rewrite marker", () => {
+  test("error output with rewrite discloses it as a note, never as a marker", () => {
+    // The error string is printed verbatim by FallbackToolUseErrorMessage, so a
+    // wrapper here reaches the user's screen as raw XML with escaped attributes.
     const filter = { name: "docker", matchCommand: /^docker$/ };
     const plan = {
       effectiveCommand: "docker build --progress=plain .",
@@ -209,11 +215,12 @@ describe("structural (Phase 1)", () => {
     };
     const errorOutput = "error: build failed";
     const result = applyBashFilterToStdout(errorOutput, true, plan);
-    expect(result).toContain("<bash-output-rewritten");
+    expect(result).not.toContain("<bash-output-");
+    expect(result).toContain("what ran was: docker build --progress=plain .");
     expect(result).toContain("error: build failed");
   });
 
-  test("error output with rewrite marker preserves full error content", () => {
+  test("error output with a rewrite note preserves full error content", () => {
     const filter = { name: "docker", matchCommand: /^docker$/ };
     const plan = {
       effectiveCommand: "docker build --progress=plain .",
@@ -224,6 +231,69 @@ describe("structural (Phase 1)", () => {
     const result = applyBashFilterToStdout(longError, true, plan);
     expect(result).toContain("error line 0");
     expect(result).toContain("error line 99");
+  });
+
+  test("a failing reducer-stripped command leaks no XML to the error renderer", () => {
+    // The reported shape: `make lint 2>&1 | tail -40` exits non-zero after the
+    // trailing pipe was stripped, so the whole output takes the error path.
+    const plan = planBashFilter("make lint 2>&1 | tail -40");
+    expect(plan.rewrite).toEqual({
+      from: "make lint 2>&1 | tail -40",
+      to: "make lint 2>&1",
+    });
+    const result = applyBashFilterToStdout(
+      "uv run ruff check .\nE501 Line too long\n",
+      true,
+      plan,
+    );
+    expect(result).not.toContain("<bash-output-");
+    // …and nothing XML-escaped either: `2&gt;&amp;1` is what the user saw.
+    expect(result).not.toContain("&gt;");
+    expect(result).toContain("what ran was: make lint 2>&1");
+  });
+
+  test("error path honours the line cap of the reducer it stripped", () => {
+    // The strip is justified by the pipeline out-trimming a blind cap — and the
+    // pipeline does not run on an error, so the cap has to be applied here or
+    // the model gets MORE than the `| tail -3` it asked for.
+    const plan = planBashFilter("make lint | tail -3");
+    const raw = Array.from({ length: 20 }, (_, i) => `line ${i}`).join("\n");
+    const result = applyBashFilterToStdout(raw, true, plan);
+    expect(result).toContain("line 19");
+    expect(result).toContain("line 17");
+    expect(result).not.toContain("line 16");
+    expect(result).toContain("`| tail -3`");
+  });
+
+  test("error path with `| cat` caps nothing (cat reduces nothing)", () => {
+    const plan = planBashFilter("make lint | cat");
+    const raw = Array.from({ length: 20 }, (_, i) => `line ${i}`).join("\n");
+    const result = applyBashFilterToStdout(raw, true, plan);
+    expect(result).toContain("line 0");
+    expect(result).toContain("line 19");
+  });
+
+  test("success path caps at the stripped reducer even when the filter trims nothing", () => {
+    // The strip is a bet that the filter beats a blind line count. When the bet
+    // does not pay — a failing `make` has no `Entering directory` noise to strip
+    // — the model still gets only the lines it asked for. Live-verified shape:
+    // 14 lines came back for a `| tail -5` before this cap existed.
+    const plan = planBashFilter("make lint | tail -5");
+    const raw = Array.from({ length: 14 }, (_, i) => `line ${i}`).join("\n");
+    const result = applyBashFilterToStdout(raw, false, plan, 2);
+    expect(result).toContain("line 13");
+    expect(result).toContain("line 9");
+    expect(result).not.toContain("line 8");
+    expect(result).toContain('exit="2"');
+  });
+
+  test("the cap counts lines the way `tail -N` does (a trailing newline is not one)", () => {
+    const plan = planBashFilter("make lint | tail -5");
+    const raw = `${Array.from({ length: 14 }, (_, i) => `line ${i}`).join("\n")}\n`;
+    const result = applyBashFilterToStdout(raw, false, plan, 0);
+    expect(result).toContain('lines="5/14"');
+    expect(result).toContain("line 9");
+    expect(result).not.toContain("line 8");
   });
 
   test("safeApply returns raw output on pipeline crash", () => {
@@ -258,6 +328,24 @@ describe("planBashFilter — allowRewrite gate", () => {
     // rewritten command is executed, so it must stay byte-identical.
     const plan = planBashFilter('git log --grep="a  b"');
     expect(plan.rewrite?.to).toBe('git log --oneline --grep="a  b"');
+  });
+});
+
+describe("exitCodeAfterRewrite", () => {
+  test("a stripped reducer reports the status the model's pipeline would have", () => {
+    // No `pipefail` anywhere in the bash provider, so `make lint | tail -40`
+    // exits with tail's 0 however badly `make lint` failed. Reporting the base's
+    // 2 turned a success into a tool error — which then skipped the filter and
+    // handed back everything the `| tail -40` was there to cut.
+    const plan = planBashFilter("make lint | tail -40");
+    expect(plan.droppedReducer).toEqual({ text: "tail -40", lines: 40 });
+    expect(exitCodeAfterRewrite(plan, 2)).toBe(0);
+  });
+
+  test("every other plan keeps the real status", () => {
+    expect(exitCodeAfterRewrite(planBashFilter("make lint"), 2)).toBe(2);
+    // `git log` → `git log --oneline` is a flag rewrite: same process, same exit.
+    expect(exitCodeAfterRewrite(planBashFilter("git log"), 2)).toBe(2);
   });
 });
 

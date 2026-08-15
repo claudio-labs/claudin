@@ -242,30 +242,36 @@ describe("splitTrailingReducerPipe", () => {
   test("strips `| tail -N`", () => {
     expect(splitTrailingReducerPipe("bun test src/x | tail -40")).toEqual({
       base: "bun test src/x",
+      reducer: { text: "tail -40", lines: 40 },
     });
   });
 
   test("strips `| tail -n N`", () => {
     expect(splitTrailingReducerPipe("git log | tail -n 5")).toEqual({
       base: "git log",
+      reducer: { text: "tail -n 5", lines: 5 },
     });
   });
 
   test("strips `| tail -1` (any count)", () => {
     expect(splitTrailingReducerPipe("git log --oneline | tail -1")).toEqual({
       base: "git log --oneline",
+      reducer: { text: "tail -1", lines: 1 },
     });
   });
 
   test("strips `| cat` (bare)", () => {
     expect(splitTrailingReducerPipe("ls -R src | cat")).toEqual({
       base: "ls -R src",
+      // `cat` caps nothing, so there is no line count to make good on later.
+      reducer: { text: "cat", lines: null },
     });
   });
 
   test("keeps redirection in the base (2>&1)", () => {
     expect(splitTrailingReducerPipe("git diff 2>&1 | tail -50")).toEqual({
       base: "git diff 2>&1",
+      reducer: { text: "tail -50", lines: 50 },
     });
   });
 
@@ -308,6 +314,19 @@ describe("splitTrailingReducerPipe", () => {
   test("respects quotes around the pipe", () => {
     expect(splitTrailingReducerPipe("echo 'a | tail' | tail -5")).toEqual({
       base: "echo 'a | tail'",
+      reducer: { text: "tail -5", lines: 5 },
+    });
+  });
+
+  test("reads the line cap the caller has to make good on", () => {
+    // Bare `tail` keeps 10; `-c` counts bytes, which we do not reproduce.
+    expect(splitTrailingReducerPipe("git log | tail")?.reducer).toEqual({
+      text: "tail",
+      lines: 10,
+    });
+    expect(splitTrailingReducerPipe("git log | tail -c 200")?.reducer).toEqual({
+      text: "tail -c 200",
+      lines: null,
     });
   });
 });

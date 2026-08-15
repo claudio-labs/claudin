@@ -52,6 +52,7 @@ import { GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js';
 import { renderGitRedirect, shouldRedirectToGit } from 'src/tools/GitTool/redirect.js';
 import {
   applyBashFilterToStdout,
+  exitCodeAfterRewrite,
   planBashFilter,
   type PreExecPlan,
 } from 'src/tools/shared/outputFilter/Bash/index.js';
@@ -730,8 +731,13 @@ export const BashTool = buildTool({
       trackGitOperations(input.command, result.code, rawStdout);
       const isInterrupt = result.interrupted && abortController.signal.reason === 'interrupt';
 
-      // Interpret the command result using semantic rules (on the raw output)
-      interpretationResult = interpretCommandResult(input.command, result.code, rawStdout, '');
+      // Interpret the command result using semantic rules (on the raw output).
+      // The verdict is about the command the MODEL sent: when the plan stripped
+      // a trailing `| tail -N`, that pipeline would have exited 0 whatever the
+      // base did, so `result.code` is not the status to judge it by. The base's
+      // real code is disclosed on the marker instead (exitCodeAfterRewrite).
+      const verdictCode = exitCodeAfterRewrite(filterPlan, result.code);
+      interpretationResult = interpretCommandResult(input.command, verdictCode, rawStdout, '');
 
       // Check for git index.lock error (stderr is in stdout now)
       if (rawStdout.includes(".git/index.lock': File exists")) {
@@ -741,7 +747,7 @@ export const BashTool = buildTool({
       // Filter last, with the semantic verdict folded in: output that either
       // the exit code or the interpreter deems an error skips the pipeline
       // (errors are sacred).
-      result = applyBashOutputFilter(result, input.command, filterPlan, interpretationResult.isError || result.code !== 0);
+      result = applyBashOutputFilter(result, input.command, filterPlan, interpretationResult.isError || verdictCode !== 0);
 
       stdoutAccumulator.append((result.stdout || '').trimEnd() + EOL);
       if (interpretationResult.isError && !isInterrupt) {
@@ -949,7 +955,12 @@ export function applyBashOutputFilter(
     // rewrites off so the markers never claim a rewrite that didn't happen.
     const filterPlan = plan ?? planBashFilter(command, { allowRewrite: false })
     const rawBytes = (result.stdout ?? '').length
-    result.stdout = applyBashFilterToStdout(result.stdout, isError ?? result.code !== 0, filterPlan)
+    result.stdout = applyBashFilterToStdout(
+      result.stdout,
+      isError ?? result.code !== 0,
+      filterPlan,
+      result.code,
+    )
     recordBytesSaved(rawBytes, (result.stdout ?? '').length)
   } catch (e) {
     // Fail-open: extra defensive layer — planBashFilter and applyBashFilterToStdout

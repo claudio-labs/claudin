@@ -29,6 +29,29 @@ describe("wrapStdoutWithMarkers", () => {
     expect(result).toContain("</bash-output-rewritten>");
   });
 
+  test("discloses the real exit code a reducer strip hid from the verdict", () => {
+    const plan: PreExecPlan = {
+      effectiveCommand: "make lint",
+      filter: null,
+      rewrite: { from: "make lint | tail -40", to: "make lint" },
+      droppedReducer: { text: "tail -40", lines: 40 },
+    };
+    // The result is reported as a success (the model's own pipeline would have
+    // exited 0), so the base's failure has to show up somewhere.
+    expect(wrapStdoutWithMarkers("output", plan, null, 2)).toContain('exit="2"');
+    expect(wrapStdoutWithMarkers("output", plan, null, 0)).not.toContain("exit=");
+  });
+
+  test("a rewrite that hid nothing carries no exit attribute", () => {
+    const plan: PreExecPlan = {
+      effectiveCommand: "git log --oneline",
+      filter: null,
+      rewrite: { from: "git log", to: "git log --oneline" },
+    };
+    // No reducer was dropped, so the exit code reached the caller intact.
+    expect(wrapStdoutWithMarkers("output", plan, null, 2)).not.toContain("exit=");
+  });
+
   test("wraps with bash-output-filtered for filter only", () => {
     const plan: PreExecPlan = {
       effectiveCommand: "npm install",

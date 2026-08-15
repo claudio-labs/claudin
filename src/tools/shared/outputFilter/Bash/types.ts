@@ -41,9 +41,22 @@ export interface PreExecPlan {
   readonly effectiveCommand: string;
   readonly filter: FilterSpec | null;
   readonly rewrite: { readonly from: string; readonly to: string } | null;
+  /** Set when the rewrite was a trailing-reducer strip (`BASE | tail -N` → `BASE`).
+   * The reducer is what the model asked for, so what it would have produced has to
+   * be honoured after the fact: its exit status (`exitCodeAfterRewrite`) and its line
+   * cap (the error path, where the filter pipeline that justified the strip does not
+   * run). Absent for every other rewrite. */
+  readonly droppedReducer?: DroppedReducer;
   /** True when the command that produced the output is compound (`a && b`, pipes, …).
    * The pipeline output then interleaves several commands, so `matchOutput`
    * short-circuits are unsafe — a "✓ up to date" sentinel from one segment would
    * silently swallow the other segments' output. Optional: absent means atomic. */
   readonly isCompound?: boolean;
+}
+
+export interface DroppedReducer {
+  /** The reducer verbatim, e.g. `tail -40` — quoted back to the model in the note. */
+  readonly text: string;
+  /** Lines it would have kept, or null when it caps nothing reproducible (`cat`, `tail -c`). */
+  readonly lines: number | null;
 }

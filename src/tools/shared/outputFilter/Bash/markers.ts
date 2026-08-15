@@ -23,6 +23,34 @@ export function stripOutputMarkers(stdout: string): string {
   return match ? match[1]! : stdout;
 }
 
+/** Plain-text disclosure of an executed rewrite, for the paths that must NOT
+ * use {@link wrapStdoutWithMarkers}.
+ *
+ * The wrapper is stripped for display by exactly one renderer (the Bash success
+ * one), and every other consumer prints the string it is given verbatim. The
+ * error renderers do — `FallbackToolUseErrorMessage` shows the model-facing
+ * text as-is — so a wrapped error put `<bash-output-rewritten original="make
+ * lint 2&gt;&amp;1 | tail -40" …>` on the user's screen, XML-escaped
+ * attributes and all. Teaching those renderers to unwrap is not the fix: the
+ * error string carries a prefix (`Exit code N`, a git diagnosis line) AND a
+ * possible suffix (the repeated-failure hint), so nothing about the wrapper is
+ * anchored any more, and an unanchored strip would eat a tag-like substring out
+ * of the output itself.
+ *
+ * A wrapper buys nothing here anyway — the error path runs no pipeline, so
+ * there are no `lines=`/`reduction=` attributes to report, only the rewrite.
+ * This is the same shape as the background-task disclosure in BashTool. */
+export function prependRewriteNote(
+  body: string,
+  actual: string,
+  cappedBy?: string,
+): string {
+  const cap = cappedBy
+    ? `\nOnly the tail is shown, as the \`| ${cappedBy}\` it replaced would have.`
+    : "";
+  return `Note: the bash output filter rewrote this command before execution; what ran was: ${actual}${cap}\n${body}`;
+}
+
 function truncateAttr(value: string): string {
   // Truncate the raw value BEFORE escaping so the cut can never land inside
   // an escape entity (`&quo…`). The escaped result may slightly exceed
@@ -36,6 +64,7 @@ export function wrapStdoutWithMarkers(
   rawStdout: string,
   plan: PreExecPlan,
   pipelineResult: PipelineResult | null,
+  exitCode?: number,
 ): string {
   // Idempotency: don't double-wrap
   if (ALREADY_WRAPPED_RE.test(rawStdout)) return rawStdout;
@@ -60,14 +89,23 @@ export function wrapStdoutWithMarkers(
     ? ` lines="${pipelineResult.bodyLines}/${pipelineResult.originalLines}"`
     : "";
 
+  // A reducer strip reports the status the model's own pipeline would have had
+  // (0 — `tail` succeeds), so the base command's failure would otherwise be
+  // invisible. Disclose it here rather than flipping the whole result to an
+  // error, which is what used to happen and what cost the model its line cap.
+  const exit =
+    plan.droppedReducer && exitCode !== undefined && exitCode !== 0
+      ? ` exit="${exitCode}"`
+      : "";
+
   if (hasRewrite && hasFilter) {
     const actual = truncateAttr(rewrite.to);
-    return `<bash-output-filtered original="${original}" actual="${actual}"${lines} reduction="${reduction}%">${body}</bash-output-filtered>`;
+    return `<bash-output-filtered original="${original}" actual="${actual}"${exit}${lines} reduction="${reduction}%">${body}</bash-output-filtered>`;
   }
 
   if (hasRewrite) {
     const actual = truncateAttr(rewrite.to);
-    return `<bash-output-rewritten original="${original}" actual="${actual}">${body}</bash-output-rewritten>`;
+    return `<bash-output-rewritten original="${original}" actual="${actual}"${exit}>${body}</bash-output-rewritten>`;
   }
 
   // Filter only
