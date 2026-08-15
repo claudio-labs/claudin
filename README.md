@@ -41,6 +41,28 @@ code-signed, so the OS may block the first launch:
 - **Windows** (SmartScreen "unrecognized app"): click "More info" → "Run anyway"
   on the first launch.
 
+### Breaking change: environment variables are now `CLAUDIN_*`
+
+Every environment variable Claudin owns was renamed from `CLAUDE_CODE_FOO` /
+`CLAUDE_FOO` to `CLAUDIN_FOO` — 156 names, with no dual reading and no
+deprecation period. If you only ever set provider credentials
+(`ANTHROPIC_API_KEY`, `AWS_*`, `OPENAI_*`, …) nothing changes: third-party
+variables were not touched.
+
+**What breaks is anything you wrote against the old contract.** A hook, plugin,
+skill, or MCP `headersHelper` script that reads `$CLAUDE_PROJECT_DIR`,
+`${CLAUDE_PLUGIN_ROOT}`, `${CLAUDE_PLUGIN_DATA}`, `${CLAUDE_SKILL_DIR}`,
+`$CLAUDE_SESSION_ID`, `CLAUDE_PLUGIN_OPTION_*`, `CLAUDE_ENV_FILE`, or
+`CLAUDE_CODE_MCP_SERVER_NAME` / `_URL` stops receiving a value until you rename
+it — the substitution simply no longer fires, so the failure is a silently
+empty variable rather than an error. Swap the prefix and it works again.
+
+Names that something *outside* Claudin sets are deliberately unchanged, so the
+Claude Agent SDK, the IDE extension, and managed deployments keep working:
+`CLAUDE_CODE_ENTRYPOINT`, `CLAUDE_CODE_OAUTH_TOKEN`, the `CLAUDE_AGENT_SDK_*`
+family, and 15 more. `scripts/env-rename-map.json` is the full mapping, bucket
+by bucket, with the reason for every name that stayed.
+
 ## Quick Start
 
 ```bash

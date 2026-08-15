@@ -45,12 +45,15 @@ const ALLOWED = new Set(MAP.keep.map(k => k.name))
  *   3. **Real env vars the map never saw.** The map was built from the names
  *      READ via `process.env`, and these are only ever WRITTEN — into a
  *      subprocess, an MCP server, or a teammate agent's environment. That is
- *      the same blind spot that hid bucket B, and it means the outbound
- *      contract is not fully cut over: `CLAUDE_CODE_AGENT_ID`,
- *      `CLAUDE_CODE_AGENT_NAME`, `CLAUDE_CODE_TEAM_NAME`,
- *      `CLAUDE_CODE_PARENT_SESSION_ID`, `CLAUDE_CODE_MCP_SERVER_NAME`,
- *      `CLAUDE_CODE_MCP_SERVER_URL` and friends are still upstream-spelled.
- *      A follow-up round has to classify them; this list is the worklist.
+  *      the same blind spot that hid bucket B. Each was checked afterwards:
+  *      the MCP `headersHelper` pair was a genuine miss on a LIVE feature and
+  *      has been renamed. The rest belong to the deferred clusters — the agent
+  *      identity vars (`CLAUDE_CODE_AGENT_ID`, `CLAUDE_CODE_TEAM_NAME`,
+  *      `CLAUDE_CODE_PARENT_SESSION_ID`, …) travel with
+  *      `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, which the map filed as bucket
+  *      D, and the `sessionRunner` set is bridge/CCR, also D. They move when
+  *      those subsystems do, not before; splitting a cluster half-way is how
+  *      an outbound contract ends up inconsistent.
  *
  * A new entry means someone added a `CLAUDE_*` name after the cut-over —
  * decide which kind it is before adding it here.
@@ -84,8 +87,6 @@ const UNCLASSIFIED = new Set([
   'CLAUDE_CODE_GUIDE_AGENT',
   'CLAUDE_CODE_GUIDE_AGENT_TYPE',
   'CLAUDE_CODE_HOOK_CHAINS_CONFIG_PATH',
-  'CLAUDE_CODE_MCP_SERVER_NAME',
-  'CLAUDE_CODE_MCP_SERVER_URL',
   'CLAUDE_CODE_PARENT_SESSION_ID',
   'CLAUDE_CODE_PERMISSIONS_SETTING',
   'CLAUDE_CODE_PERMISSIONS_VERSION',
