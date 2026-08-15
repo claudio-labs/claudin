@@ -2,7 +2,7 @@
 // Query engine message-history bench — ROADMAP item 5.6.
 //
 // Simulates the message growth pattern of QueryEngine.mutableMessages
-// (src/QueryEngine.ts:187) without booting the full engine. The engine has
+// (src/agent/QueryEngine.ts:187) without booting the full engine. The engine has
 // no cap on this array — every assistant turn, tool_use, and tool_result
 // gets pushed and stays until /clear. Realistic tool outputs (FileRead,
 // Bash, Grep) easily reach 50-200 KB each.
@@ -155,7 +155,7 @@ function makeUserPromptMessage(text: string): SyntheticMessage {
   }
 }
 
-// ---- Stable-stub simulation (mirrors src/services/compact/stableStubState.ts)
+// ---- Stable-stub simulation (mirrors src/agent/compact/stableStubState.ts)
 //
 // Standalone re-implementation: the bench can't import the real module
 // without dragging in ~100 MB of QueryEngine module graph. The contract is

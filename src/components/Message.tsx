@@ -12,7 +12,7 @@ import type { AssistantMessage, AttachmentMessage as AttachmentMessageType, Coll
 import { type AdvisorBlock, isAdvisorBlock } from 'src/platform/doctor/advisor.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { logError } from 'src/shared/log.js';
-import type { buildMessageLookups } from 'src/services/messages/messages.js';
+import type { buildMessageLookups } from 'src/agent/messages/messages.js';
 import { CompactSummary } from 'src/components/CompactSummary.js';
 import { AdvisorMessage } from 'src/components/messages/AdvisorMessage.js';
 import { AssistantRedactedThinkingMessage } from 'src/components/messages/AssistantRedactedThinkingMessage.js';
@@ -249,10 +249,10 @@ function MessageImpl(t0: Props) {
         if (feature("HISTORY_SNIP")) {
           const {
             isSnipBoundaryMessage
-          } = require("../services/compact/snipProjection.js") as typeof import('../services/compact/snipProjection.js');
+          } = require("../agent/compact/snipProjection.js") as typeof import('../agent/compact/snipProjection.js');
           const {
             isSnipMarkerMessage
-          } = require("src/services/compact/snipCompact.js") as typeof import('src/services/compact/snipCompact.js');
+          } = require("src/agent/compact/snipCompact.js") as typeof import('src/agent/compact/snipCompact.js');
           if (isSnipBoundaryMessage(message)) {
             let t2;
             if ($[65] === Symbol.for("react.memo_cache_sentinel")) {

@@ -2,7 +2,7 @@
 
 Padrões adicionais de cache no omp que não entraram em `02-*` insight/deep/fit.
 
-> **Errata 2026-05-27 — prefix-invalidation (§1.5, §2, §3):** o gap "toolResultCache faz mtime mas não invalida vizinhos" estava **errado**. `src/services/tools/toolExecution.ts:1245` já chama `invalidateCacheForWrite` após cada tool, e o dispatcher em `:1762-1779` cobre `FileEditTool`/`FileWriteTool`/`NotebookEditTool` (→ `invalidateForPath`) e `BashTool`/`PowerShellTool` (→ `invalidateAll`). `invalidateForPath` faz prefix-match bidirecional (`toolResultCache.ts:150-164`), então write em vizinho derruba Grep/Glob cacheado. `LSPTool/workspaceEdit.ts` estende o padrão para rename/edit LSP. Roadmap T5.10 foi descartado por isso.
+> **Errata 2026-05-27 — prefix-invalidation (§1.5, §2, §3):** o gap "toolResultCache faz mtime mas não invalida vizinhos" estava **errado**. `src/agent/tools/toolExecution.ts:1245` já chama `invalidateCacheForWrite` após cada tool, e o dispatcher em `:1762-1779` cobre `FileEditTool`/`FileWriteTool`/`NotebookEditTool` (→ `invalidateForPath`) e `BashTool`/`PowerShellTool` (→ `invalidateAll`). `invalidateForPath` faz prefix-match bidirecional (`toolResultCache.ts:150-164`), então write em vizinho derruba Grep/Glob cacheado. `LSPTool/workspaceEdit.ts` estende o padrão para rename/edit LSP. Roadmap T5.10 foi descartado por isso.
 
 ## 1. Caches omp não cobertos pelas análises anteriores
 
@@ -67,7 +67,7 @@ Padrões adicionais de cache no omp que não entraram em `02-*` insight/deep/fit
 
 ## 3. Encaixe Claudin (caches relacionados)
 
-- **Negative cache + path-prefix invalidate** → `src/services/tools/toolResultCache.ts:63` (Grep/Glob/Read). Não tem invalidate por write-em-vizinho; hoje só mtime do file próprio.
+- **Negative cache + path-prefix invalidate** → `src/agent/tools/toolResultCache.ts:63` (Grep/Glob/Read). Não tem invalidate por write-em-vizinho; hoje só mtime do file próprio.
 - **Config-hash invalidation** → `src/utils/model/modelCache.ts:20,47` (hoje só `version` numérico) e `src/platform/settings/settingsCache.ts`.
 - **Atomic staging-rename / path whitelist** → `src/services/plugins/zipCache.ts`, `src/services/plugins/cacheUtils.ts`.
 - **`getStale()` durable retention** → `src/platform/install/latestVersionCache.ts:38,53` (banner serve último valor bom indefinidamente, refresh em background).

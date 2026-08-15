@@ -19,9 +19,9 @@ import type { Message } from 'src/types/message.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { errorMessage } from 'src/shared/errors.js';
-import { enqueue } from 'src/utils/messageQueueManager.js';
-import { buildSystemInitMessage } from 'src/services/messages/systemInit.js';
-import { createBridgeStatusMessage, createSystemMessage } from 'src/services/messages/messages.js';
+import { enqueue } from 'src/agent/messageQueueManager.js';
+import { buildSystemInitMessage } from 'src/agent/messages/systemInit.js';
+import { createBridgeStatusMessage, createSystemMessage } from 'src/agent/messages/messages.js';
 import { getAutoModeUnavailableNotification, getAutoModeUnavailableReason, isAutoModeGateEnabled, isBypassPermissionsModeDisabled, transitionPermissionMode } from 'src/services/permissions/permissionSetup.js';
 import { getLeaderToolUseConfirmQueue } from 'src/coordinator/swarm/leaderPermissionBridge.js';
 

@@ -103,7 +103,7 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 
 ### 17. Copilot "One Premium Request per turn" (bundling)
 - **Issue:** usuários Copilot batem na quota porque cada tool call = 1 request.
-- **Estado:** `src/QueryEngine.ts` e `src/services/api/openaiShim.ts:1616` não fazem batching/coalescing.
+- **Estado:** `src/agent/QueryEngine.ts` e `src/services/api/openaiShim.ts:1616` não fazem batching/coalescing.
 - **Falta:** inlinar Haiku-summaries, cachear cadeias triviais, diferir sub-agent reports.
 - **Esforço:** alto, refactor profundo do agent loop. ROI questionável fora de Copilot.
 

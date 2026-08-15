@@ -1,5 +1,5 @@
 import { z } from 'zod/v4'
-import type { TaskStateBase } from 'src/Task.js'
+import type { TaskStateBase } from 'src/agent/Task.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { stopTask } from 'src/tasks/stopTask.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'

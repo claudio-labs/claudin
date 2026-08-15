@@ -10,7 +10,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import {
   embeddedSearchToolsBinaryPath,
   hasEmbeddedSearchTools,
-} from 'src/services/tools/embeddedTools.js'
+} from 'src/agent/tools/embeddedTools.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { pathExists } from 'src/shared/fs/file.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'

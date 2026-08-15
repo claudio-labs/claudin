@@ -11,7 +11,7 @@
 import { test } from 'bun:test'
 import { getAllBaseTools } from '../../src/tools.js'
 import { getSystemPrompt } from '../../src/constants/prompts.js'
-import { roughTokenCountEstimation } from '../../src/services/tokenEstimation.js'
+import { roughTokenCountEstimation } from '../../src/shared/tokenEstimation.js'
 import { measureToolSchemas } from '../measure-tool-schemas.ts'
 
 const MODEL = 'claude-opus-4-7'

@@ -56,7 +56,7 @@ Failure mode at every layer: return raw stdout unchanged. The filter must never 
 
 | File | Change | LoC |
 |---|---|---|
-| `src/services/tools/toolResultSummarizer.ts:242-248` (`isAlreadyCompacted`) | Add 2 string startsWith checks for `<bash-output-rewritten` and `<bash-output-filtered` | +2 |
+| `src/agent/tools/toolResultSummarizer.ts:242-248` (`isAlreadyCompacted`) | Add 2 string startsWith checks for `<bash-output-rewritten` and `<bash-output-filtered` | +2 |
 | `src/platform/config/config.ts:705+` (`GLOBAL_CONFIG_KEYS`) | Register `bashOutputFilterEnabled`, `bashOutputFilterRewriteEnabled`, `bashOutputFilterUserEnabled` | +3 |
 | `src/tools/BashTool/BashTool.tsx` | Two ~7-line insertions: rewrite hook before `runShellCommand` (~line 656); pipeline + marker injection on `result.stdout` after capture, before error/success branching (~line 720) | +15 |
 
@@ -65,8 +65,8 @@ Failure mode at every layer: return raw stdout unchanged. The filter must never 
 - `src/tools/BashTool/BashTool.tsx:563` (`mapToolResultToToolResultBlockParam`) — receives stdout that already has markers; renders them as part of the body
 - `src/tools/BashTool/BashTool.tsx:547` (`checkPermissions`) — runs against `input.command` (original), unchanged
 - `src/tools/BashTool/BashTool.tsx:287-304` (`outputSchema`/`Out`) — no schema change
-- `src/services/tools/toolExecution.ts:1636` (error rendering) — naturally inherits filtered stdout from the thrown `ShellError`'s captured output
-- `src/services/tools/toolResultStorage.ts:209` (`processToolResultBlock`) — sees stdout-with-markers like everything else
+- `src/agent/tools/toolExecution.ts:1636` (error rendering) — naturally inherits filtered stdout from the thrown `ShellError`'s captured output
+- `src/agent/tools/toolResultStorage.ts:209` (`processToolResultBlock`) — sees stdout-with-markers like everything else
 
 **Why mark in stdout, not in `Out` metadata:**
 
@@ -285,7 +285,7 @@ result.stdout = applyFilterToStdout(result.stdout, result.isError, plan)
 **Why this works for both error and success paths:**
 
 - `result.stdout` is captured before the `interpretationResult.isError && !isInterrupt` branch (`BashTool.tsx:724-728`).
-- **Error path** (`isError && !isInterrupt`): `BashTool.tsx:728` constructs `new ShellError('', outputWithSbFailures, code, interrupted)`. Note: `outputWithSbFailures` is `SandboxManager.annotateStderrWithSandboxFailures(input.command, result.stdout)` — i.e., **our filtered stdout flows into `error.stderr`**, not `error.stdout`. The catch at `toolExecution.ts:1636` calls `formatError(error)` (`src/services/tools/toolErrors.ts:5`), which calls `getErrorParts(error)` (line 24) → for `ShellError`, returns `[Exit code N, interruptMsg, error.stderr, error.stdout]` joined with `\n\n`. **Our markers travel via `error.stderr`.**
+- **Error path** (`isError && !isInterrupt`): `BashTool.tsx:728` constructs `new ShellError('', outputWithSbFailures, code, interrupted)`. Note: `outputWithSbFailures` is `SandboxManager.annotateStderrWithSandboxFailures(input.command, result.stdout)` — i.e., **our filtered stdout flows into `error.stderr`**, not `error.stdout`. The catch at `toolExecution.ts:1636` calls `formatError(error)` (`src/agent/tools/toolErrors.ts:5`), which calls `getErrorParts(error)` (line 24) → for `ShellError`, returns `[Exit code N, interruptMsg, error.stderr, error.stdout]` joined with `\n\n`. **Our markers travel via `error.stderr`.**
 - **Success path** returns `Out` containing `result.stdout` — markers go to `mapToolResult...:563` which renders `data.stdout` as part of the body. No code change needed.
 - The single integration point (filter in `BashTool.call` mutating `result.stdout` before the `isError` branch) works for both paths because `outputWithSbFailures` derives from `result.stdout` and `mapToolResult...` reads from `result.stdout` — same source.
 
@@ -804,7 +804,7 @@ When you write a new filter (built-in or PR):
    - Returns string (or null/undefined). Validation enforces non-empty + verb prefix.
    - You don't need to handle compound — `hasCompound` skips you.
 6. Spec file size: aim for <80 LoC per spec. Larger means you're either doing too much or you need a v2 native parser.
-7. Don't import from outside `bashOutputFilter/` except: `escapeXmlAttr` from `src/shared/data/xml.js`, `collapseIdenticalRuns`/`collapseDigitTemplates` from `src/services/tools/toolResultSummarizer.js`, `logForDebugging` from `src/shared/debug.js`, `logError` from `src/shared/log.js`, `isEnvTruthy` from `src/shared/envUtils.js`.
+7. Don't import from outside `bashOutputFilter/` except: `escapeXmlAttr` from `src/shared/data/xml.js`, `collapseIdenticalRuns`/`collapseDigitTemplates` from `src/agent/tools/toolResultSummarizer.js`, `logForDebugging` from `src/shared/debug.js`, `logError` from `src/shared/log.js`, `isEnvTruthy` from `src/shared/envUtils.js`.
 
 ---
 

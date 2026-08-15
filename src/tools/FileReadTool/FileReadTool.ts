@@ -17,7 +17,7 @@ import {
   isPinShielding,
   pinToolResult,
   retirePinAfterUse,
-} from 'src/services/compact/stableStubState.js'
+} from 'src/agent/compact/stableStubState.js'
 import {
   activateConditionalSkillsForPaths,
   addSkillDirectories,

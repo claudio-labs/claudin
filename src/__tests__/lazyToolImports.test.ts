@@ -93,7 +93,7 @@ const CANDIDATES: Candidate[] = [
   // ToolSearch is pulled by compact.ts as a value import — needs audit.
   {
     modulePath: 'src/tools/ToolSearchTool/ToolSearchTool',
-    current: ['src/services/compact/compact.ts'],
+    current: ['src/agent/compact/compact.ts'],
     goal: ['src/tools.ts'],
   },
   {
@@ -155,9 +155,10 @@ const CANDIDATES: Candidate[] = [
   {
     modulePath: 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool',
     current: [
+      'src/agent/messages/attachments.ts',
+      'src/agent/messages/planMode.ts',
       'src/components/agents/ToolSelector.tsx',
-      'src/components/permissions/PermissionRequest.tsx',      'src/services/messages/attachments.ts',
-      'src/services/messages/planMode.ts',
+      'src/components/permissions/PermissionRequest.tsx',
     ],
     goal: ['src/tools.ts'],
   },

@@ -2,7 +2,7 @@
 // Extracted from LocalShellTask.tsx so non-React consumers (stopTask.ts via
 // print.ts) don't pull React/ink into the module graph.
 
-import type { TaskStateBase } from 'src/Task.js'
+import type { TaskStateBase } from 'src/agent/Task.js'
 import type { AgentId } from 'src/types/ids.js'
 import type { ShellCommand } from 'src/shared/proc/ShellCommand.js'
 

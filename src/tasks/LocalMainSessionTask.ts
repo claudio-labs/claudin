@@ -19,10 +19,10 @@ import {
   TASK_NOTIFICATION_TAG,
   TOOL_USE_ID_TAG,
 } from 'src/constants/xml.js'
-import { type QueryParams, query } from 'src/query.js'
-import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
-import type { SetAppState } from 'src/Task.js'
-import { createTaskStateBase } from 'src/Task.js'
+import { type QueryParams, query } from 'src/agent/query.js'
+import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
+import type { SetAppState } from 'src/agent/Task.js'
+import { createTaskStateBase } from 'src/agent/Task.js'
 import type {
   AgentDefinition,
   CustomAgentDefinition,
@@ -37,8 +37,8 @@ import {
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logError } from 'src/shared/log.js'
-import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js'
-import { emitTaskTerminatedSdk } from 'src/utils/sdkEventQueue.js'
+import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js'
+import { emitTaskTerminatedSdk } from 'src/agent/sdkEventQueue.js'
 import {
   getAgentTranscriptPath,
   recordSidechainTranscript,

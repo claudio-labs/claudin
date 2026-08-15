@@ -10,7 +10,7 @@ import { getEmptyToolPermissionContext } from 'src/Tool.js';
 import type { LocalAgentTaskState } from 'src/tasks/LocalAgentTask/LocalAgentTask.js';
 import { getTools } from 'src/tools.js';
 import { formatNumber } from 'src/shared/text/format.js';
-import { extractTag } from 'src/services/messages/messages.js';
+import { extractTag } from 'src/agent/messages/messages.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';

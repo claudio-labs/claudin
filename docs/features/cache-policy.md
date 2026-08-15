@@ -92,19 +92,19 @@ Measured consequence: the benchmark runs (38- and 58-read workloads) finished wi
 Policy is centralized; mechanisms live with their subsystems:
 
 ```
-src/services/cache/
+src/agent/cache/
   README.md            map of the whole system (start here)
   cacheProfile.ts      provider → profile resolver (auto/aggressive/retain)
   anthropic/           Anthropic-server-only policy (context_management beta:
                        clear_tool_uses / clear_thinking)
 ```
 
-Key mechanism pointers (full list in `src/services/cache/README.md`):
+Key mechanism pointers (full list in `src/agent/cache/README.md`):
 
-- `src/services/compact/stableStubState.ts` — stable stubs, first-write-wins byte registry, age prune, RSS byte-guard, **`getClipFrontierIndex`**
+- `src/agent/compact/stableStubState.ts` — stable stubs, first-write-wins byte registry, age prune, RSS byte-guard, **`getClipFrontierIndex`**
 - `src/services/api/claude/paramBuilders.ts` — `addCacheBreakpoints`: defer-2048 walk capped at `min(defer, frontier)`
 - `src/services/api/claude/streaming.ts` — wiring order: pairing → stable stubs → history redactions → frontier → breakpoints
-- `src/services/compact/microCompact.ts` — explicit clips; size trigger profile-gated (0.5 aggressive / 0.85 retain)
+- `src/agent/compact/microCompact.ts` — explicit clips; size trigger profile-gated (0.5 aggressive / 0.85 retain)
 
 ## Smaller design wins riding the same invariants
 
@@ -140,5 +140,5 @@ Everything is on by default. Overrides, per knob:
 
 ## Detailed docs
 
-- `src/services/cache/README.md` — system map, the three byte-stability rules, mechanism pointers
+- `src/agent/cache/README.md` — system map, the three byte-stability rules, mechanism pointers
 - `docs/tech/cache/clip-frontier-breakpoint.md` — full design rationale, every measured run (including the failed/corrected ones), root-caused server-side behaviors

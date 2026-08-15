@@ -98,9 +98,9 @@ describe('Session timeout fix', () => {
 // ---------------------------------------------------------------------------
 describe('Agent loop continuation nudge', () => {
   test('query.ts wires the continuation-nudge detector', async () => {
-    const content = await file('query.ts').text()
+    const content = await file('agent/query.ts').text()
 
-    // Detection lives in src/utils/continuationNudge.ts (behavioral coverage in
+    // Detection lives in src/agent/continuationNudge.ts (behavioral coverage in
     // continuationNudge.test.ts); query.ts only wires it into the loop.
     expect(content).toContain('continuationNudge.js')
     expect(content).toContain('signalsContinuation')
@@ -111,7 +111,7 @@ describe('Agent loop continuation nudge', () => {
   })
 
   test('nudge counter guard exists', async () => {
-    const content = await file('query.ts').text()
+    const content = await file('agent/query.ts').text()
 
     expect(content).toContain('MAX_CONTINUATION_NUDGES')
     // Verify the nudge counter guard exists
@@ -119,7 +119,7 @@ describe('Agent loop continuation nudge', () => {
   })
 
   test('nudge creates a meta user message to continue', async () => {
-    const content = await file('query.ts').text()
+    const content = await file('agent/query.ts').text()
 
     expect(content).toContain(
       'Continue with the task. Use the appropriate tools to proceed.',
@@ -307,7 +307,7 @@ describe('Context overflow 500 fix', () => {
   })
 
   test('query.ts has circuit breaker safety net for oversized context', async () => {
-    const content = await file('query.ts').text()
+    const content = await file('agent/query.ts').text()
 
     expect(content).toContain('Safety net: when auto-compact')
     expect(content).toContain('circuit breaker has tripped')

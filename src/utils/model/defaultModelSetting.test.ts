@@ -15,7 +15,7 @@ import { resetModelStringsForTestingOnly } from 'src/platform/bootstrap/state.js
 
 const realProviders = { ...(await import('src/utils/model/providers.js')) }
 const realAuth = { ...(await import('src/services/auth/auth.js')) }
-const realContext = { ...(await import('src/services/context/context.js')) }
+const realContext = { ...(await import('src/agent/context/context.js')) }
 
 async function importSetting(opts: {
   max: boolean
@@ -34,7 +34,7 @@ async function importSetting(opts: {
     // Non-null subscription type so isOpus1mMergeEnabled doesn't fail closed.
     getSubscriptionType: () => 'max',
   }))
-  mock.module('src/services/context/context.js', () => ({
+  mock.module('src/agent/context/context.js', () => ({
     ...realContext,
     is1mContextDisabled: () => false,
   }))
@@ -55,7 +55,7 @@ afterEach(() => {
 afterAll(() => {
   mock.module('./providers.js', () => realProviders)
   mock.module('src/services/auth/auth.js', () => realAuth)
-  mock.module('src/services/context/context.js', () => realContext)
+  mock.module('src/agent/context/context.js', () => realContext)
 })
 
 test('Max subscriber default is native-1M Opus 5 with no [1m] suffix (merge enabled)', async () => {

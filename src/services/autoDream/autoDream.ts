@@ -18,7 +18,7 @@ import {
 import {
   createUserMessage,
   createMemorySavedMessage,
-} from 'src/services/messages/messages.js'
+} from 'src/agent/messages/messages.js'
 import type { Message } from 'src/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { ToolUseContext } from 'src/Tool.js'
@@ -285,7 +285,7 @@ ${sessionIds.map(id => `- ${id}`).join('\n')}`
  */
 function makeDreamProgressWatcher(
   taskId: string,
-  setAppState: import('src/Task.js').SetAppState,
+  setAppState: import('src/agent/Task.js').SetAppState,
 ): (msg: Message) => void {
   return msg => {
     if (msg.type !== 'assistant') return

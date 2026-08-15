@@ -8,11 +8,11 @@ import { useModalOrTerminalSize } from 'src/terminal/contexts/modalContext.js';
 import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import ScrollBox, { type ScrollBoxHandle } from 'src/terminal/ink/components/ScrollBox.js';
-import { microcompactMessages } from 'src/services/compact/microCompact.js';
+import { microcompactMessages } from 'src/agent/compact/microCompact.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import type { Message } from 'src/types/message.js';
-import { analyzeContextUsage, type ContextData } from 'src/services/context/analyzeContext.js';
-import { getMessagesAfterCompactBoundary } from 'src/services/messages/messages.js';
+import { analyzeContextUsage, type ContextData } from 'src/agent/context/analyzeContext.js';
+import { getMessagesAfterCompactBoundary } from 'src/agent/messages/messages.js';
 
 // Rows reserved for the panel's own footer + the REPL chrome below it, so the
 // scroll viewport never runs past the bottom of the terminal.
@@ -86,7 +86,7 @@ function toApiView(messages: Message[]): Message[] {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const {
       projectView
-    } = require('../../services/contextCollapse/operations.js') as typeof import('../../services/contextCollapse/operations.js');
+    } = require('../../agent/contextCollapse/operations.js') as typeof import('../../agent/contextCollapse/operations.js');
     /* eslint-enable @typescript-eslint/no-require-imports */
     view = projectView(view);
   }

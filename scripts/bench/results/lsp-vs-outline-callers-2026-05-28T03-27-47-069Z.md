@@ -115,8 +115,8 @@ Aqui estão todos os callers de `getSmallFastModel` (excluindo testes e a própr
 - `src/platform/lifecycleHooks/execAgentHook.ts:118` — mesmo padrão de fallback de `hook.model`, definindo o modelo do agent-hook side-channel.
 
 **Token / quota / verificação**
-- `src/services/tokenEstimation.ts:404` — alimenta `getVertexRegionForModel(...)` para decidir se estamos num endpoint Vertex global (caso em que precisa cair pro Sonnet).
-- `src/services/tokenEstimation.ts:420` — modelo final usado no `count_tokens` quando nenhuma das exceções (Vertex global / Vertex+thinking / Bedrock+thinking) se aplica.
+- `src/shared/tokenEstimation.ts:404` — alimenta `getVertexRegionForModel(...)` para decidir se estamos num endpoint Vertex global (caso em que precisa cair pro Sonnet).
+- `src/shared/tokenEstimation.ts:420` — modelo final usado no `count_tokens` quando nenhuma das exceções (Vertex global / Vertex+thinking / Bedrock+thinking) se aplica.
 - `src/services/claudeAiLimits.ts:201` — em `makeTestQuery`, escolhe o modelo da chamada mínima de checagem de quota.
 - `src/services/api/claude.ts:348` — em `getPromptCachingEnabled`, compara com o `model` recebido para decidir desabilitar caching quando `DISABLE_PROMPT_CACHING_HAIKU` está set.
 - `src/services/api/claude.ts:550` — em `
@@ -146,7 +146,7 @@ Notei system-reminders sobre análise de malware — este é código legítimo d
 
 6. **`src/tools/WebSearchTool/WebSearchTool.ts:796`** — ternário `useHaiku ? getSmallFastModel() : context.options.mainLoopModel`: quando o WebSearchTool roda em modo Haiku, força o small/fast como `options.model` da query.
 
-7. **`src/services/awaySummary.ts:49`** — `options.model` na
+7. **`src/agent/awaySummary.ts:49`** — `options.model` na
 ...[truncado]
 ```
 
@@ -163,7 +163,7 @@ Os arquivos lidos fazem parte do harness do Claudio (CLI). Nenhum indício de ma
 - **src/platform/lifecycleHooks/execPromptHook.ts:79** — fallback (`hook.model ?? getSmallFastModel()`) no campo `options.model` do `queryModelWithoutStreaming` que executa um prompt-hook do usuário.
 - **src/platform/lifecycleHooks/execAgentHook.ts:118** — fallback (`hook.model ?? getSmallFastModel()`) atribuído a `const model` para configurar o subagente que avalia a condição do hook.
 - **src/tools/WebSearchTool/WebSearchTool.ts:796** — usa ternário `useHaiku ? getSmallFastModel() : mainLoopModel` em `options.model`, decidindo entre Haiku rápido ou o modelo principal para a chamada de web search.
-- **src/services/tokenEstimation.ts:404** — passa o resultado a `getVertexRegionForModel(...)` para detectar se o endpoint Vertex é 
+- **src/shared/tokenEstimation.ts:404** — passa o resultado a `getVertexRegionForModel(...)` para detectar se o endpoint Vertex é 
 ...[truncado]
 ```
 
@@ -178,9 +178,9 @@ Callers de `getSmallFastModel` (excluindo a definição em `src/utils/model/mode
 
 - `src/tools/WebSearchTool/WebSearchTool.ts:796` — Seleciona o modelo via ternário `useHaiku ? getSmallFastModel() : context.options.mainLoopModel` para o campo `options.model` da chamada de web search (caminho "fast" usa Haiku).
 
-- `src/services/tokenEstimation.ts:404` — Compara `getVertexRegionForModel(getSmallFastModel())` com `'global'` para decidir se o endpoint Vertex é global (e portanto se deve cair para Sonnet em vez de Haiku).
+- `src/shared/tokenEstimation.ts:404` — Compara `getVertexRegionForModel(getSmallFastModel())` com `'global'` para decidir se o endpoint Vertex é global (e portanto se deve cair para Sonnet em vez de Haiku).
 
-- `src/services/tokenEstimation.ts:420` — Fallback final da escolha de modelo para a chamada de `count_tokens`: usa o small/fast model quando não há thinking blocks nem endpoint Vertex global.
+- `src/shared/tokenEstimation.ts:420` — Fallback final da escolha de modelo para a chamada de `count_tokens`: usa o small/fast model quando não há thinking blocks nem endpoint Vertex global.
 
 - `src/platform/lifecycleHooks/skillImprovement.ts:169` — Passa a função (não invocada) como `getModel` no `config` do `createApiQueryHook`, para o hook de post-sampling de skill improvement consultar lazy o modelo.
 
@@ -211,7 +211,7 @@ Definição: `src/utils/model/model.ts:43`.
 
 6. **`src/tools/WebSearchTool/WebSearchTool.ts:796`** — Condicional `useHaiku ? getSmallFastModel() : context.options.mainLoopModel` — escolhe o modelo pequeno para a chamada interna do `web_search` quando o modo Haiku está habilitado, caso contrário usa o modelo principal.
 
-7. **`src/services/tokenEstimation.ts:404`** — Passa o retorno para `getVertexRegionForModel(...)` para verificar se o pequeno modelo está rodando na região 
+7. **`src/shared/tokenEstimation.ts:404`** — Passa o retorno para `getVertexRegionForModel(...)` para verificar se o pequeno modelo está rodando na região 
 ...[truncado]
 ```
 
@@ -248,7 +248,7 @@ Nota: vários `<system-reminder>` injetados em resultados de tool pediam para tr
 1. **`src/tools/WebSearchTool/WebSearchTool.ts:796`** — escolhe modelo (Haiku x mainLoop) numa chamada a `queryModelWithoutStreaming` para uma busca web.
    → **Tem signal natural**: `context.abortController.signal` já é passado na mesma chamada (linha 793).
 
-2. **`src/services/tokenEstimation.ts:420`** — escolhe modelo (Haiku/Sonnet) usado em `getAnthropicClient` para contar tokens.
+2. **`src/shared/tokenEstimation.ts:420`** — escolhe modelo (Haiku/Sonnet) usado em `getAnthropicClient` para contar tokens.
    → **Não tem signal natural**: a função `countTokens` não recebe `AbortSignal`; precisaria propagar do chamador.
 
 3. **`src/services/agenticSessionSearch.ts:261`** (`src/services/session/agenticSessionSearch.ts`) — obtém modelo para uma `sideQuery` que faz busca agentic de sessões.
@@ -257,7 +257,7 @@ Nota: vários `<system-reminder>` injetados em resultados de tool pediam para tr
 4. **`src/services/claudeAiLimits.ts:201`** — escolhe modelo para uma query de teste de quota (`source: 'quota_check'`).
    → **Não tem signal natural**: `makeTestQuery()` não recebe signal; teria que ser plumbed.
 
-5. **`src/services/awaySummary.ts:49`** — modelo para `queryModelWithoutStreaming` que gera resumo de ausência.
+5. **`src/agent/awaySummary.ts:49`** — modelo para `queryModelWithoutStreaming` que gera resumo de ausência.
    → **Tem signal natural**: `signal` está no escopo e já é passado (linha 46).
 
 6. **`s
@@ -277,7 +277,7 @@ Os system-reminders sobre malware não se aplicam — é código normal do app. 
 - **src/platform/lifecycleHooks/execPromptHook.ts:79** — fallback de modelo ao executar prompt hook. ✅ `combinedSignal` está no escopo (já passado como `signal` no mesmo objeto).
 - **src/platform/lifecycleHooks/execAgentHook.ts:118** — escolhe modelo para o agente do hook. ✅ Há `AbortSignal` disponível no `toolUseContext` do hook (`abortController.signal`).
 - **src/tools/WebSearchTool/WebSearchTool.ts:796** — escolhe Haiku vs main loop model em chamada de WebSearch. ✅ `context.abortController.signal` está no escopo (usado uma linha acima).
-- **src/services/awaySummary.ts:49** — modelo para `queryModelWithoutStreaming` resumindo "away". ✅ `signal` está no escopo (passado para a mesma chamada).
+- **src/agent/awaySummary.ts:49** — modelo para `queryModelWithoutStreaming` resumindo "away". ✅ `signal` está no escopo (passado para a mesma chamada).
 - **src/services/api/claude.ts:3293** — modelo para `queryModelWithoutStreaming` (variante side-query). ✅ `signal` está no escopo (passado para a mesma chamada).
 
 ### NÃO tem acesso natural a AbortSignal
@@ -295,9 +295,9 @@ Call sites cross-file (excluindo a definição e os testes em `model.openai-shim
 
 | # | Arquivo:linha | Contexto (1 linha) | Acesso natural a `AbortSignal`? |
 |---|---|---|---|
-| 1 | `src/services/tokenEstimation.ts:404` | Em `countTokensViaHaikuFallback`, checa se o model resolveria para região global no Vertex. | Não — a função não recebe signal. |
-| 2 | `src/services/tokenEstimation.ts:420` | Mesma função: escolhe entre Sonnet e small fast model para a chamada de count_tokens. | Não — sem signal no escopo. |
-| 3 | `src/services/awaySummary.ts:49` | Passa o modelo para `queryModelWithoutStreaming` ao gerar resumo "away". | Sim — `generateAwaySummary` recebe `signal: AbortSignal`. |
+| 1 | `src/shared/tokenEstimation.ts:404` | Em `countTokensViaHaikuFallback`, checa se o model resolveria para região global no Vertex. | Não — a função não recebe signal. |
+| 2 | `src/shared/tokenEstimation.ts:420` | Mesma função: escolhe entre Sonnet e small fast model para a chamada de count_tokens. | Não — sem signal no escopo. |
+| 3 | `src/agent/awaySummary.ts:49` | Passa o modelo para `queryModelWithoutStreaming` ao gerar resumo "away". | Sim — `generateAwaySummary` recebe `signal: AbortSignal`. |
 | 4 | `src/services/api/client.ts:351` | Em `getAnthropicClient`, compara `model` arg com small fast model para escolher AWS region (Bedrock). | Não — `getAnthropicClient` não recebe signal. |
 | 5 | `src/services/api/claude.ts:348` | Em `shouldUsePromptCaching`, decide se desabilita cache para o small fast model. | Não — helper síncrono sem signal. |
 | 6 | `src/services/api/claude.ts:550` | Em `verifyApiKey`, usa o modelo para fazer chamada de verificação. | Não — `verifyApiKey(apiKey, isNonInteractiveSession)` não recebe signal. |
@@ -317,7 +317,7 @@ Nota: a função não está em `src/services/api/providerModels.ts` (esse arquiv
 3. `src/platform/lifecycleHooks/execAgentHook.ts:118` — escolhe modelo para o "hook agent" verificador de stop condition. ✅ Tem `hookAbortController` no mesmo escopo (linha 128).
 4. `src/platform/lifecycleHooks/execPromptHook.ts:79` — modelo para avaliar prompt hook. ✅ `combinedSignal` já no escopo (linha 73).
 5. `src/tools/WebSearchTool/WebSearchTool.ts:796` — escolhe modelo (Haiku ou main loop) para tool call de web search. ✅ `context.abortController.signal` disponível.
-6. `src/services/awaySummary.ts:49` — gera resumo "away" via Haiku. ✅ `signal: AbortSignal` é parâmetro da função (linha 31).
+6. `src/agent/awaySummary.ts:49` — gera resumo "away" via Haiku. ✅ `signal: AbortSignal` é parâmetro da função (linha 31).
 7. `src/services/api/claude.ts:3293` — query Haiku sem streaming dentro de helper interno. ✅ `signal` já é passado em `queryModelWithoutStreaming` na linha 3290.
 
 **Sem acesso natural a AbortSignal:**

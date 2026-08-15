@@ -4,7 +4,7 @@ import { mkdir, readFile, writeFile } from 'fs/promises'
 import isPlainObject from 'lodash-es/isPlainObject.js'
 import mapValues from 'lodash-es/mapValues.js'
 import { dirname, join } from 'path'
-import { addToTotalSessionCost } from 'src/cost-tracker.js'
+import { addToTotalSessionCost } from 'src/agent/cost-tracker.js'
 import { calculateUSDCost } from 'src/services/api/modelCost.js'
 import type {
   AssistantMessage,
@@ -17,7 +17,7 @@ import { getCwd } from 'src/shared/fs/cwd.js'
 import { env } from 'src/shared/env.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import { getErrnoCode } from 'src/shared/errors.js'
-import { normalizeMessagesForAPI } from 'src/services/messages/messages.js'
+import { normalizeMessagesForAPI } from 'src/agent/messages/messages.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 
 function shouldUseVCR(): boolean {

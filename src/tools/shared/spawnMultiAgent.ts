@@ -12,7 +12,7 @@ import {
   getSessionId,
 } from 'src/platform/bootstrap/state.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
-import { createTaskStateBase, generateTaskId } from 'src/Task.js'
+import { createTaskStateBase, generateTaskId } from 'src/agent/Task.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js'
 import { formatAgentId } from 'src/coordinator/agentId.js'

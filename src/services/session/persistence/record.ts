@@ -22,7 +22,7 @@ import {
 import { isChainParticipant } from 'src/services/session/pure/typeGuards.js'
 import { getTranscriptPath } from 'src/services/session/pure/paths.js'
 import { getSessionMessages } from 'src/services/session/resume/cache.js'
-import type { ContentReplacementRecord } from 'src/services/tools/toolResultStorage.js'
+import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
 
 export type TeamInfo = {
   teamName?: string

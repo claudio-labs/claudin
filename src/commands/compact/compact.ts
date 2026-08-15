@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle'
 import chalk from 'chalk'
 import { markPostCompaction } from 'src/platform/bootstrap/state.js'
 import { getSystemPrompt } from 'src/constants/prompts.js'
-import { getSystemContext, getUserContext } from 'src/context.js'
+import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js'
 import { notifyCompaction } from 'src/services/api/promptCacheBreakDetection.js'
 import {
@@ -13,11 +13,11 @@ import {
   ERROR_MESSAGE_NOT_ENOUGH_MESSAGES,
   ERROR_MESSAGE_USER_ABORT,
   mergeHookInstructions,
-} from 'src/services/compact/compact.js'
-import { suppressCompactWarning } from 'src/services/compact/compactWarningState.js'
-import { microcompactMessages } from 'src/services/compact/microCompact.js'
-import { runPostCompactCleanup } from 'src/services/compact/postCompactCleanup.js'
-import { trySessionMemoryCompaction } from 'src/services/compact/sessionMemoryCompact.js'
+} from 'src/agent/compact/compact.js'
+import { suppressCompactWarning } from 'src/agent/compact/compactWarningState.js'
+import { microcompactMessages } from 'src/agent/compact/microCompact.js'
+import { runPostCompactCleanup } from 'src/agent/compact/postCompactCleanup.js'
+import { trySessionMemoryCompaction } from 'src/agent/compact/sessionMemoryCompact.js'
 import { setLastSummarizedMessageId } from 'src/services/SessionMemory/sessionMemoryUtils.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { LocalCommandCall } from 'src/types/command.js'
@@ -25,16 +25,16 @@ import type { Message } from 'src/types/message.js'
 import { hasExactErrorMessage } from 'src/shared/errors.js'
 import { executePreCompactHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import { logError } from 'src/shared/log.js'
-import { getMessagesAfterCompactBoundary } from 'src/services/messages/messages.js'
+import { getMessagesAfterCompactBoundary } from 'src/agent/messages/messages.js'
 import { getUpgradeMessage } from 'src/utils/model/contextWindowUpgradeCheck.js'
 import {
   buildEffectiveSystemPrompt,
   type SystemPrompt,
-} from 'src/utils/systemPrompt.js'
+} from 'src/agent/systemPrompt.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const reactiveCompact = feature('REACTIVE_COMPACT')
-  ? (require('../../services/compact/reactiveCompact.js') as typeof import('../../services/compact/reactiveCompact.js'))
+  ? (require('../../agent/compact/reactiveCompact.js') as typeof import('../../agent/compact/reactiveCompact.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

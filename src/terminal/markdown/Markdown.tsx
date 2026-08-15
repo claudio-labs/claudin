@@ -5,7 +5,7 @@ import { useSettings } from 'src/platform/useSettings.js';
 import { Ansi, Box, useTheme } from 'src/terminal/ink.js';
 import { type CliHighlight, getCliHighlightPromise } from 'src/shared/text/cliHighlight.js';
 import { configureMarked, formatToken } from 'src/shared/text/markdown.js';
-import { stripPromptXMLTags } from 'src/services/messages/messages.js';
+import { stripPromptXMLTags } from 'src/agent/messages/messages.js';
 import { cachedLexer } from 'src/terminal/markdown/markdownTokenCache.js';
 import { MarkdownTable } from 'src/terminal/markdown/MarkdownTable.js';
 

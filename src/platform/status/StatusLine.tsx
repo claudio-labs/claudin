@@ -7,7 +7,7 @@ import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import { getIsRemoteMode, getKairosActive, getMainThreadAgentType, getOriginalCwd, getSdkBetas, getSessionId } from 'src/platform/bootstrap/state.js';
 import { DEFAULT_OUTPUT_STYLE_NAME } from 'src/constants/outputStyles.js';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
-import { getTotalAPIDuration, getTotalCost, getTotalDuration, getTotalInputTokens, getTotalLinesAdded, getTotalLinesRemoved, getTotalOutputTokens } from 'src/cost-tracker.js';
+import { getTotalAPIDuration, getTotalCost, getTotalDuration, getTotalInputTokens, getTotalLinesAdded, getTotalLinesRemoved, getTotalOutputTokens } from 'src/agent/cost-tracker.js';
 import { useMainLoopModel } from 'src/hooks/useMainLoopModel.js';
 import { type ReadonlySettings, useSettings } from 'src/platform/useSettings.js';
 import { Ansi, Box, Text } from 'src/terminal/ink.js';
@@ -16,15 +16,15 @@ import type { Message } from 'src/types/message.js';
 import type { StatusLineCommandInput } from 'src/types/statusLine.js';
 import type { VimMode } from 'src/types/textInputTypes.js';
 import { checkHasTrustDialogAccepted } from 'src/platform/config/config.js';
-import { calculateContextPercentages, getContextWindowForModel } from 'src/services/context/context.js';
+import { calculateContextPercentages, getContextWindowForModel } from 'src/agent/context/context.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { createBaseHookInput, executeStatusLineCommand } from 'src/platform/lifecycleHooks/hooks.js';
-import { getLastAssistantMessage } from 'src/services/messages/messages.js';
+import { getLastAssistantMessage } from 'src/agent/messages/messages.js';
 import { getRuntimeMainLoopModel, type ModelName, renderModelName } from 'src/utils/model/model.js';
 import { getCurrentSessionTitle } from 'src/services/session/sessionStorage.js';
-import { doesMostRecentAssistantMessageExceed200k, getCurrentUsage } from 'src/services/context/tokens.js';
+import { doesMostRecentAssistantMessageExceed200k, getCurrentUsage } from 'src/agent/context/tokens.js';
 import { getCurrentWorktreeSession } from 'src/services/git/worktree.js';
 import { isVimModeEnabled } from 'src/terminal/prompt-input/utils.js';
 export function statusLineShouldDisplay(settings: ReadonlySettings): boolean {

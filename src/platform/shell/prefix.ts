@@ -18,7 +18,7 @@ import { queryHaiku } from 'src/services/api/claude.js'
 import { startsWithApiErrorPrefix } from 'src/services/api/errors.js'
 import { memoizeWithLRU } from 'src/shared/data/memoize.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { asSystemPrompt } from 'src/utils/systemPromptType.js'
+import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 
 /**
  * Shell executables that must never be accepted as bare prefixes.

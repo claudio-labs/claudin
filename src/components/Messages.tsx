@@ -23,13 +23,13 @@ import type { Message as MessageType, NormalizedMessage, ProgressMessage as Prog
 import { type AdvisorBlock, isAdvisorBlock } from 'src/platform/doctor/advisor.js';
 import { collapseBackgroundBashNotifications } from 'src/utils/collapseBackgroundBashNotifications.js';
 import { collapseHookSummaries } from 'src/utils/collapseHookSummaries.js';
-import { collapseReadSearchGroups } from 'src/services/tools/collapseReadSearch.js';
+import { collapseReadSearchGroups } from 'src/agent/tools/collapseReadSearch.js';
 import { collapseTeammateShutdowns } from 'src/utils/collapseTeammateShutdowns.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
-import { applyGrouping } from 'src/services/tools/groupToolUses.js';
-import { buildMessageLookups, createAssistantMessage, deriveUUID, getMessagesAfterCompactBoundary, getToolUseID, getToolUseIDs, hasUnresolvedHooksFromLookup, isNotEmptyMessage, normalizeMessages, reorderMessagesInUI, type StreamingThinking, type StreamingToolUse, shouldShowUserMessage } from 'src/services/messages/messages.js';
+import { applyGrouping } from 'src/agent/tools/groupToolUses.js';
+import { buildMessageLookups, createAssistantMessage, deriveUUID, getMessagesAfterCompactBoundary, getToolUseID, getToolUseIDs, hasUnresolvedHooksFromLookup, isNotEmptyMessage, normalizeMessages, reorderMessagesInUI, type StreamingThinking, type StreamingToolUse, shouldShowUserMessage } from 'src/agent/messages/messages.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import { renderableSearchText } from 'src/services/session/transcriptSearch.js';
 import { Divider } from 'src/terminal/design-system/Divider.js';

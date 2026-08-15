@@ -6,7 +6,7 @@ import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseError
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
-import { extractTag } from 'src/services/messages/messages.js';
+import { extractTag } from 'src/agent/messages/messages.js';
 import type { Input, Output } from 'src/tools/LSPTool/LSPTool.js';
 import { getSymbolAtPosition } from 'src/tools/LSPTool/symbolContext.js';
 

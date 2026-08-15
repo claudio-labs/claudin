@@ -1,7 +1,7 @@
 /**
  * Wire-level integration test for CLAUDIN_STATIC_DEDUP.
  *
- * WHY this file exists beyond `src/utils/staticDedup.integration.test.ts`:
+ * WHY this file exists beyond `src/agent/staticDedup.integration.test.ts`:
  * the tests in that file assert the deltas + injection functions in
  * isolation, but the ONE thing that actually matters at runtime is
  * "how many bytes hit the wire?". To measure that honestly we need to
@@ -54,9 +54,9 @@ mock.module('src/platform/config/config.js', () => ({
 // installed and left installed: mock.module is process-global and survives
 // mock.restore(), so a partial stub of autoCompact (it exports one function
 // here) answered for every other file too, and
-// src/services/compact/autoCompact.test.ts read a 128k context window from it.
-const realAutoCompact_staticDedup = { ...(await import('src/services/compact/autoCompact.js')) }
-mock.module('src/services/compact/autoCompact.js', () => ({
+// src/agent/compact/autoCompact.test.ts read a 128k context window from it.
+const realAutoCompact_staticDedup = { ...(await import('src/agent/compact/autoCompact.js')) }
+mock.module('src/agent/compact/autoCompact.js', () => ({
   ...realAutoCompact_staticDedup,
   getEffectiveContextWindowSize: () => 200_000,
 }))
@@ -128,7 +128,7 @@ afterAll(() => {
     delete process.env.CLAUDIN_STATIC_DEDUP
   else process.env.CLAUDIN_STATIC_DEDUP = originalEnv.CLAUDIN_STATIC_DEDUP
   mock.module('src/platform/config/config.js', () => realConfig_staticDedup)
-  mock.module('src/services/compact/autoCompact.js', () => realAutoCompact_staticDedup)
+  mock.module('src/agent/compact/autoCompact.js', () => realAutoCompact_staticDedup)
 })
 
 beforeEach(() => {

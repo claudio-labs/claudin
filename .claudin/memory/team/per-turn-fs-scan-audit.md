@@ -20,7 +20,7 @@ any cwd-sensitive memo.
    **every** `.md`.
    **CORRECTION 2026-08-07 (re-verified):** it does NOT run every user turn in
    the open build. The per-turn caller
-   `startRelevantMemoryPrefetch` (`src/services/attachments/memory.ts:344-353`,
+   `startRelevantMemoryPrefetch` (`src/agent/attachments/memory.ts:344-353`,
    from `query.ts:342`) returns `undefined` before touching the filesystem
    unless the GrowthBook flag **`tengu_moth_copse`** is true — and that key is
    absent from `_openBuildDefaults` in `scripts/no-telemetry-plugin.ts:52-58`,

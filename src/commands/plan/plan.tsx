@@ -8,7 +8,7 @@ import { getExternalEditor } from 'src/shared/editor.js';
 import { toIDEDisplayName } from 'src/platform/ide/ide.js';
 import { applyPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js';
 import { prepareContextForPlanMode } from 'src/services/permissions/permissionSetup.js';
-import { getPlan, getPlanFilePath } from 'src/utils/plans.js';
+import { getPlan, getPlanFilePath } from 'src/agent/plans/plans.js';
 import { editFileInEditor } from 'src/terminal/input/promptEditor.js';
 import { renderToString } from 'src/terminal/render/staticRender.js';
 function PlanDisplay(t0: {

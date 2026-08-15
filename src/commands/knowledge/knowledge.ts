@@ -1,5 +1,5 @@
 import type { LocalCommandCall } from 'src/types/command.js';
-import { getArcSummary, resetArc, getArcStats, getArc } from 'src/services/context/conversationArc.js';
+import { getArcSummary, resetArc, getArcStats, getArc } from 'src/agent/context/conversationArc.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import chalk from 'chalk';
 

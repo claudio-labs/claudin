@@ -50,7 +50,7 @@ import { getAgentTranscriptPath } from 'src/services/session/sessionStorage.js'
 import {
   getLastAssistantMessage,
   extractTextContent,
-} from 'src/services/messages/messages.js'
+} from 'src/agent/messages/messages.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   TOOL_HOOK_EXECUTION_TIMEOUT_MS,

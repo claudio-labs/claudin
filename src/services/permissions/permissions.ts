@@ -16,7 +16,7 @@ import { extractOutputRedirections } from 'src/platform/bash/commands.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { AbortError, isSdkApiUserAbortError, toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
-import { getPlanFilePath } from 'src/utils/plans.js'
+import { getPlanFilePath } from 'src/agent/plans/plans.js'
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import {
   getSettingSourceDisplayNameLowercase,
@@ -88,7 +88,7 @@ import {
   buildClassifierUnavailableMessage,
   buildYoloRejectionMessage,
   DONT_ASK_REJECT_MESSAGE,
-} from 'src/services/messages/messages.js'
+} from 'src/agent/messages/messages.js'
 import { calculateCostFromTokens } from 'src/services/api/modelCost.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { jsonStringify } from 'src/platform/slowOperations.js'

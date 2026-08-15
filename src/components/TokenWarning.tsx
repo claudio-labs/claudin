@@ -4,8 +4,8 @@ import * as React from 'react';
 import { useSyncExternalStore } from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
-import { calculateTokenWarningState, getEffectiveContextWindowSize, isAutoCompactEnabled } from 'src/services/compact/autoCompact.js';
-import { useCompactWarningSuppression } from 'src/services/compact/compactWarningHook.js';
+import { calculateTokenWarningState, getEffectiveContextWindowSize, isAutoCompactEnabled } from 'src/agent/compact/autoCompact.js';
+import { useCompactWarningSuppression } from 'src/agent/compact/compactWarningHook.js';
 import { getUpgradeMessage } from 'src/utils/model/contextWindowUpgradeCheck.js';
 type Props = {
   tokenUsage: number;
@@ -28,7 +28,7 @@ function CollapseLabel(t0: CollapseLabelProps) {
   } = t0;
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t1 = require("src/services/contextCollapse/index.js");
+    t1 = require("src/agent/contextCollapse/index.js");
     $[0] = t1;
   } else {
     t1 = $[0];
@@ -36,7 +36,7 @@ function CollapseLabel(t0: CollapseLabelProps) {
   const {
     getStats,
     subscribe
-  } = t1 as typeof import('src/services/contextCollapse/index.js');
+  } = t1 as typeof import('src/agent/contextCollapse/index.js');
   let t2: () => string;
   if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
     t2 = () => {
@@ -139,7 +139,7 @@ export function TokenWarning(t0: Props) {
   if (feature("CONTEXT_COLLAPSE")) {
     const {
       isContextCollapseEnabled
-    } = require("src/services/contextCollapse/index.js") as typeof import('src/services/contextCollapse/index.js');
+    } = require("src/agent/contextCollapse/index.js") as typeof import('src/agent/contextCollapse/index.js');
     if (isContextCollapseEnabled()) {
       collapseMode = true;
     }

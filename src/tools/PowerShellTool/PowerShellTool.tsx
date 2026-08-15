@@ -31,7 +31,7 @@ import { getCachedPowerShellPath } from 'src/platform/shell/powershellDetection.
 import { EndTruncatingAccumulator } from 'src/shared/text/stringUtils.js';
 import { TaskOutput } from 'src/tasks/TaskOutput.js';
 import { isOutputLineTruncated } from 'src/terminal/terminal.js';
-import { ensureToolResultsDir, getToolResultPath } from 'src/services/tools/toolResultStorage.js';
+import { ensureToolResultsDir, getToolResultPath } from 'src/agent/tools/toolResultStorage.js';
 import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js';
 import { BackgroundHint } from 'src/tools/BashTool/UI.js';
 import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from 'src/tools/BashTool/utils.js';

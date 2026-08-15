@@ -8,7 +8,7 @@ import { errorMessage } from 'src/shared/errors.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logError } from 'src/shared/log.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
-import { sideQuery } from 'src/utils/sideQuery.js'
+import { sideQuery } from 'src/agent/sideQuery.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH'

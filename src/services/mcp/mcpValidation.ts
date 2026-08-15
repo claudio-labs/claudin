@@ -7,7 +7,7 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/grow
 import {
   countMessagesTokensWithAPI,
   roughTokenCountEstimation,
-} from 'src/services/tokenEstimation.js'
+} from 'src/shared/tokenEstimation.js'
 import { compressImageBlock } from 'src/terminal/image/imageResizer.js'
 import { logError } from 'src/shared/log.js'
 

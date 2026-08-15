@@ -19,7 +19,7 @@ import type { LogOption } from 'src/types/logs.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
-import { extractTextContent } from 'src/services/messages/messages.js'
+import { extractTextContent } from 'src/agent/messages/messages.js'
 import { getDefaultOpusModel } from 'src/utils/model/model.js'
 import {
   getProjectsDir,
@@ -29,7 +29,7 @@ import {
 } from 'src/services/session/sessionStorage.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { countCharInString } from 'src/shared/text/stringUtils.js'
-import { asSystemPrompt } from 'src/utils/systemPromptType.js'
+import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { escapeXmlAttr as escapeHtml } from 'src/shared/data/xml.js'
 
 // Model for facet extraction and summarization (Opus - best quality)

@@ -6,6 +6,13 @@ import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 // into later test files (Bun's discovery is process-global).
 const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
+// The discovery mock further down replaces this module with a ONE-export
+// object, so anything else reading it afterwards loses every other export.
+// `openaiContextWindows.ts` reads `getDiscoveredContextWindow` from it and
+// silently fell back to the hardcoded table for the rest of the run.
+const realOpenaiModelDiscovery = {
+  ...(await import('src/utils/model/openaiModelDiscovery.js')),
+}
 
 mock.module('src/services/api/activeProvider.js', () => ({
   ...realActiveProviderSnapshot,
@@ -25,6 +32,10 @@ mock.module('src/services/api/activeProvider.js', () => ({
 
 afterAll(() => {
   mock.module('src/services/api/activeProvider.js', () => realActiveProviderSnapshot)
+  mock.module(
+    'src/utils/model/openaiModelDiscovery.js',
+    () => realOpenaiModelDiscovery,
+  )
 })
 
 const { getAdditionalModelOptionsCacheScope } = await import('src/services/api/providerConfig.js')
@@ -79,6 +90,7 @@ test('opens the model picker without awaiting local model discovery refresh', as
   )
 
   mock.module('src/utils/model/openaiModelDiscovery.js', () => ({
+    ...realOpenaiModelDiscovery,
     discoverOpenAICompatibleModelOptions,
   }))
 

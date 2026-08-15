@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import React, { useMemo } from 'react';
 import { Ansi, Box, Text } from 'src/terminal/ink.js';
-import type { Attachment } from 'src/services/attachments/attachments.js';
+import type { Attachment } from 'src/agent/attachments/attachments.js';
 import type { NullRenderingAttachmentType } from 'src/components/messages/nullRenderingAttachments.js';
 import { useAppState } from 'src/terminal/state/AppState.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
@@ -11,7 +11,7 @@ import { MessageResponse } from 'src/components/MessageResponse.js';
 import { basename, sep } from 'path';
 import { UserTextMessage } from 'src/components/messages/UserTextMessage.js';
 import { DiagnosticsDisplay } from 'src/platform/DiagnosticsDisplay.js';
-import { getContentText } from 'src/services/messages/messages.js';
+import { getContentText } from 'src/agent/messages/messages.js';
 import type { Theme } from 'src/terminal/theme/theme.js';
 import { UserImageMessage } from 'src/components/messages/UserImageMessage.js';
 import { toInkColor } from 'src/terminal/render/ink.js';

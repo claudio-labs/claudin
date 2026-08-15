@@ -18,7 +18,7 @@ Never use Bash `find`/`grep` for code search — use dedicated Grep/Glob tools.
 
 A content-mode Grep result over ~6 KB is regrouped by file before it reaches the
 model, and its `-A/-B/-C` context is clamped to ±3 lines around each match
-(`summarizeGrepOutput` in `src/services/tools/toolResultSummarizer.ts`). So asking for
+(`summarizeGrepOutput` in `src/agent/tools/toolResultSummarizer.ts`). So asking for
 `-C 30` on a wide search does not buy 30 lines of context — scope the search
 instead, or re-run against the one file you care about. Between ~3 KB and ~6 KB
 the same regrouping applies, but only when it costs no match line: a result
@@ -41,7 +41,7 @@ first (`--sortr=modified` in `src/shared/fs/glob.ts`), so what the cap drops is 
 files nobody has touched. That ranking is the same one Grep's
 `files_with_matches` mode applies, and it is load-bearing twice over: the
 summarizer trims the result again to the first 50 paths
-(`GLOB_MAX_PATHS` in `src/services/tools/toolResultSummarizer.ts`), so on a wide pattern
+(`GLOB_MAX_PATHS` in `src/agent/tools/toolResultSummarizer.ts`), so on a wide pattern
 the model sees the 50 newest matches and nothing else. A truncated result names
 the `offset` to pass for the next page — that is the way to reach the rest,
 narrowing the pattern being the other. Ordering is by mtime, not relevance: a
@@ -262,7 +262,7 @@ src/
 ├── screens/ (36)               ← REPL.tsx (main loop), ResumeConversation, StartupScreen
 ├── hooks/ (117)                ← React hooks only (use*) — lifecycle hooks are services/lifecycleHooks/
 ├── context/ (9) state/ (8)     ← React context providers + AppState store (getState/selectors).
-│                                 The TUI providers only — the system-prompt context is src/context.ts
+│                                 The TUI providers only — the system-prompt context is src/agent/context.ts
 │                                 and the token accounting is services/context/
 ├── keybindings/ (15)           ← keybinding parser, defaultBindings, loadUserBindings, match
 ├── outputFilter/ (51)          ← command-aware Bash output filter (noise stripping/rewrites)
@@ -399,7 +399,7 @@ used, so it answers the question directly. Failing that, `git log --follow
 1. Find tool dir: `src/tools/<ToolName>/`
 2. Look at `execute()` in the entry file `<ToolName>Tool.ts(x)` (tools don't use `index.ts`)
 3. Check `src/tools/shared/` for shared helpers
-4. Check `src/services/tools/toolResultStorage.ts` for large output persistence
+4. Check `src/agent/tools/toolResultStorage.ts` for large output persistence
 
 ### Build issues (feature() preprocessing)
 

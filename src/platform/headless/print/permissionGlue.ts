@@ -1,5 +1,5 @@
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
-import type { PermissionPromptTool } from 'src/utils/queryHelpers.js'
+import type { PermissionPromptTool } from 'src/agent/queryHelpers.js'
 import type { Tool } from 'src/Tool.js'
 import { toolMatchesName } from 'src/Tool.js'
 import type { StructuredIO } from 'src/platform/headless/structuredIO.js'

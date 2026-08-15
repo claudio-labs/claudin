@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getTotalLinesAdded, getTotalLinesRemoved } from 'src/cost-tracker.js'
+import { getTotalLinesAdded, getTotalLinesRemoved } from 'src/agent/cost-tracker.js'
 
 /** Same cadence as the other footer indicators (cwd/branch, tokens). */
 const POLL_INTERVAL_MS = 1000

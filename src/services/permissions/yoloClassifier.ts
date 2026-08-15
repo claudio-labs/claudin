@@ -26,13 +26,13 @@ import { isDebugMode, logForDebugging } from 'src/shared/debug.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { errorMessage, isSdkApiError } from 'src/shared/errors.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
-import { extractTextContent } from 'src/services/messages/messages.js'
+import { extractTextContent } from 'src/agent/messages/messages.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
 import { getAutoModeConfig } from 'src/platform/settings/settings.js'
-import { sideQuery } from 'src/utils/sideQuery.js'
+import { sideQuery } from 'src/agent/sideQuery.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { modelRequiresAdaptiveThinking } from 'src/services/context/thinking.js'
-import { tokenCountWithEstimation } from 'src/services/context/tokens.js'
+import { modelRequiresAdaptiveThinking } from 'src/agent/context/thinking.js'
+import { tokenCountWithEstimation } from 'src/agent/context/tokens.js'
 import {
   getBashPromptAllowDescriptions,
   getBashPromptDenyDescriptions,

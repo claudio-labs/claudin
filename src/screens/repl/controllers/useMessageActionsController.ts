@@ -37,14 +37,14 @@ import type { PastedContent } from 'src/platform/config/config.js';
 import type { MessageActionCaps } from 'src/components/messageActions.js';
 import type { FileHistoryState } from 'src/shared/fs/fileHistory.js';
 import type { PromptInputMode } from 'src/types/textInputTypes.js';
-import type { SetAppState } from 'src/utils/messageQueueManager.js';
+import type { SetAppState } from 'src/agent/messageQueueManager.js';
 import type { useNotifications } from 'src/terminal/contexts/notifications.js';
 import {
   selectableUserMessagesFilter,
   messagesAfterAreOnlySynthetic,
 } from 'src/components/MessageSelector.js';
-import { textForResubmit } from 'src/services/messages/messages.js';
-import { resetMicrocompactState } from 'src/services/compact/microCompact.js';
+import { textForResubmit } from 'src/agent/messages/messages.js';
+import { resetMicrocompactState } from 'src/agent/compact/microCompact.js';
 import { fileHistoryHasAnyChanges } from 'src/shared/fs/fileHistory.js';
 import { setClipboard } from 'src/terminal/ink/termio/osc.js';
 import { logEvent } from 'src/platform/analytics/index.js';
@@ -121,7 +121,7 @@ export function useMessageActionsController(
       // threshold crossing.
       /* eslint-disable @typescript-eslint/no-require-imports */
       ;
-      (require('src/services/contextCollapse/index.js') as typeof import('src/services/contextCollapse/index.js')).resetContextCollapse();
+      (require('src/agent/contextCollapse/index.js') as typeof import('src/agent/contextCollapse/index.js')).resetContextCollapse();
       /* eslint-enable @typescript-eslint/no-require-imports */
     }
 

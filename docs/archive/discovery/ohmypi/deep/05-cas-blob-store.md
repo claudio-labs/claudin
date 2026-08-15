@@ -137,7 +137,7 @@ JSONL persistido fica compacto; runtime vê dados completos.
 
 ### O que existe
 
-`src/services/tools/toolResultStorage.ts:171 persistToolResult()` — única função de
+`src/agent/tools/toolResultStorage.ts:171 persistToolResult()` — única função de
 persistência de tool result no projeto.
 
 Comportamento concreto:
@@ -182,7 +182,7 @@ Comportamento concreto:
 
 ### Compaction: o que sobrevive entre turnos
 
-`src/services/compact/postCompactCleanup.ts:42 runPostCompactCleanup`:
+`src/agent/compact/postCompactCleanup.ts:42 runPostCompactCleanup`:
 
 - Reseta caches in-memory (`microcompactState`, prompt cache break detection,
   session ingress, diagnostic tracker, skipped timestamps).
@@ -448,15 +448,15 @@ SHA-256 prático: 2^128 operations para colisão. Não é vetor.
 
 ### claudin
 
-- `/home/dev/projects/claudin/src/services/tools/toolResultStorage.ts:118` —
+- `/home/dev/projects/claudin/src/agent/tools/toolResultStorage.ts:118` —
   layout atual de tool-results.
-- `/home/dev/projects/claudin/src/services/tools/toolResultStorage.ts:146` —
+- `/home/dev/projects/claudin/src/agent/tools/toolResultStorage.ts:146` —
   `unlinkSessionSpillDir` (deletado no `/clear`).
-- `/home/dev/projects/claudin/src/services/tools/toolResultStorage.ts:171` —
+- `/home/dev/projects/claudin/src/agent/tools/toolResultStorage.ts:171` —
   `persistToolResult`.
-- `/home/dev/projects/claudin/src/services/tools/toolResultStorage.ts:223` —
+- `/home/dev/projects/claudin/src/agent/tools/toolResultStorage.ts:223` —
   formato `<persisted-output>` que o modelo vê.
-- `/home/dev/projects/claudin/src/services/tools/toolResultStorage.ts:308–369` —
+- `/home/dev/projects/claudin/src/agent/tools/toolResultStorage.ts:308–369` —
   trigger por threshold.
 - `/home/dev/projects/claudin/src/constants/toolLimits.ts:13` —
   `DEFAULT_MAX_RESULT_SIZE_CHARS = 50_000`.
@@ -464,7 +464,7 @@ SHA-256 prático: 2^128 operations para colisão. Não é vetor.
   `cleanupOldSessionFiles` (time-based, 30d default).
 - `/home/dev/projects/claudin/src/shared/cleanup.ts:196–203` —
   varre tool-results dentro de session dirs.
-- `/home/dev/projects/claudin/src/services/compact/postCompactCleanup.ts:42` —
+- `/home/dev/projects/claudin/src/agent/compact/postCompactCleanup.ts:42` —
   `runPostCompactCleanup` (não toca em tool-results).
-- `/home/dev/projects/claudin/src/services/compact/postCompactCleanup.ts:159–165` —
+- `/home/dev/projects/claudin/src/agent/compact/postCompactCleanup.ts:159–165` —
   comentário explícito: arquivos persistidos sobrevivem ao compact.

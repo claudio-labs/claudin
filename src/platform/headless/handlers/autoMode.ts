@@ -15,7 +15,7 @@ import {
   isClassifierBundled,
 } from 'src/services/permissions/yoloClassifier.js'
 import { getAutoModeConfig } from 'src/platform/settings/settings.js'
-import { sideQuery } from 'src/utils/sideQuery.js'
+import { sideQuery } from 'src/agent/sideQuery.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 
 function writeRules(rules: AutoModeRules): void {

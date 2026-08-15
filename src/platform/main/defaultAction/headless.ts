@@ -26,7 +26,7 @@ import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.
 import { checkAndDisableBypassPermissions, verifyAutoModeGateAccess } from 'src/services/permissions/permissionSetup.js';
 import { processSessionStartHooks } from 'src/services/session/sessionStart.js';
 import { profileCheckpoint } from 'src/platform/startupProfiler.js';
-import type { ThinkingConfig } from 'src/services/context/thinking.js';
+import type { ThinkingConfig } from 'src/agent/context/thinking.js';
 import { startDeferredPrefetches } from 'src/platform/main/deferredPrefetches.js';
 import { getMcpStartupTimeoutMs, raceConnectTimeout } from 'src/platform/main/defaultAction/mcpStartupWait.js';
 import { logSessionTelemetry } from 'src/platform/main/lifecycle.js';

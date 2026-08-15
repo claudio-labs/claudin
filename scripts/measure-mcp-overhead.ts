@@ -45,7 +45,7 @@ import { convertTools } from '../src/services/api/openaiShim.js'
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
-} from '../src/services/tokenEstimation.js'
+} from '../src/shared/tokenEstimation.js'
 import { enableConfigs } from '../src/platform/config/config.js'
 
 type Engine = 'anthropic' | 'openai' | 'codex'
@@ -170,7 +170,7 @@ function renderMcpInstructionsBlock(
 
 /**
  * Mirror the wire shape of `mcp_instructions_delta` on first announcement
- * (see `src/services/messages/messages.ts` rendering). The attachment carries
+ * (see `src/agent/messages/messages.ts` rendering). The attachment carries
  * `addedNames` + `addedBlocks`; on initial turn `addedBlocks` is the same
  * content as the system-prompt block, but it lives in the conversation
  * tail instead of the cacheable system prompt.

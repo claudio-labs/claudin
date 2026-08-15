@@ -37,7 +37,7 @@ import { registerSandboxPermissionCallback } from 'src/hooks/useSwarmPermissionP
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
 import { SANDBOX_NETWORK_ACCESS_TOOL_NAME } from 'src/platform/headless/structuredIO.js';
 import { useAppStateStore } from 'src/terminal/state/AppState.js';
-import type { SetAppState } from 'src/utils/messageQueueManager.js';
+import type { SetAppState } from 'src/agent/messageQueueManager.js';
 
 export interface SandboxPermissionRequest {
   hostPattern: NetworkHostPattern;

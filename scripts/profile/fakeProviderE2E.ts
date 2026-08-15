@@ -2,7 +2,7 @@
  * Fake callModel for memory-e2e-bench.
  *
  * This module produces an AsyncGenerator that matches the shape
- * expected by src/query.ts — it emits stream_event + assistant messages
+ * expected by src/agent/query.ts — it emits stream_event + assistant messages
  * in the order the real `queryModelWithStreaming` would, but without
  * any network IO.
  *
@@ -16,9 +16,9 @@
  *   - content_block_start/delta/stop events
  *   - message_delta stream_event (with stop_reason + usage)
  *   - message_stop stream_event
- *   - final APIAssistantMessage yielded via src/query.ts:createAssistantMessage
+ *   - final APIAssistantMessage yielded via src/agent/query.ts:createAssistantMessage
  *
- * The minimal set of events src/query.ts actually cares about is:
+ * The minimal set of events src/agent/query.ts actually cares about is:
  *   - final APIAssistantMessage (consumed for tool dispatch)
  * Everything else is observability. We still emit stream_event to keep
  * the wire path realistic, but the bench will work with only the final

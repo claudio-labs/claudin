@@ -4,7 +4,7 @@ import {
   buildLargeToolResultMessage,
   generatePreview,
   PREVIEW_SIZE_BYTES,
-} from 'src/services/tools/toolResultStorage.js'
+} from 'src/agent/tools/toolResultStorage.js'
 import { buildImageToolResult } from 'src/tools/BashTool/utils.js'
 
 /**

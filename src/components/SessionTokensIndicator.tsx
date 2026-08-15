@@ -5,7 +5,7 @@ import {
   getTotalCost,
   getTotalInputTokens,
   getTotalOutputTokens,
-} from 'src/cost-tracker.js';
+} from 'src/agent/cost-tracker.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
 import { resolveCacheProvider } from 'src/services/api/cacheMetrics.js';
@@ -13,7 +13,7 @@ import { getSessionCacheMetrics } from 'src/services/api/cacheStatsTracker.js';
 import { formatTokens } from 'src/shared/text/format.js';
 import { getAPIProvider, isGithubNativeAnthropicMode } from 'src/utils/model/providers.js';
 import { hasNerdFontGlyphs } from 'src/terminal/terminalFont.js';
-import { getCurrentUsage } from 'src/services/context/tokens.js';
+import { getCurrentUsage } from 'src/agent/context/tokens.js';
 import type { Message } from 'src/types/message.js';
 
 type Snapshot = {

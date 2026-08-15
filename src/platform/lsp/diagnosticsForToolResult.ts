@@ -3,7 +3,7 @@ import { toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import type { AttachmentMessage } from 'src/types/message.js'
-import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
+import { createAttachmentMessage } from 'src/agent/attachments/attachments.js'
 import type { DiagnosticFile } from 'src/platform/diagnosticTracking.js'
 import {
   awaitDiagnosticsForFile,

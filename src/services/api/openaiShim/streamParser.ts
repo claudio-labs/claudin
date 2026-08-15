@@ -26,7 +26,7 @@ import {
   createStreamState,
   processStreamChunk,
   getStreamStats,
-} from 'src/utils/streamingOptimizer.js'
+} from 'src/agent/streamingOptimizer.js'
 import { buildAnthropicUsageFromRawUsage } from 'src/services/api/cacheMetrics.js'
 import type {
   AnthropicStreamEvent,
@@ -39,7 +39,7 @@ import {
 } from 'src/services/api/toolArgumentNormalization.js'
 import {
   getBytesPerTokenForModel,
-} from 'src/services/tokenEstimation.js'
+} from 'src/shared/tokenEstimation.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { makeMessageId } from 'src/services/api/openaiShim/helpers.js'
 import { extractReasoningDelta } from 'src/services/api/openaiShim/reasoningNormalizer.js'

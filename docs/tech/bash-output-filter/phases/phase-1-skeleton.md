@@ -41,7 +41,7 @@ Nenhum. O módulo é dead code — não tem importer ainda.
 
 2. **Port `pipeline.ts`** de `docs/archive/discovery/bash-output-filter/validation/pipeline.ts`:
    - Copiar literal os 11 estágios
-   - Trocar `collapseIdenticalRuns` e `collapseDigitTemplates` para imports de `src/services/tools/toolResultSummarizer.js` (Phase 0 fez o export)
+   - Trocar `collapseIdenticalRuns` e `collapseDigitTemplates` para imports de `src/agent/tools/toolResultSummarizer.js` (Phase 0 fez o export)
    - Adicionar `logForDebugging(msg, { level: 'info' })` calls condicionais em `isEnvTruthy(process.env.CLAUDIN_BASH_FILTER_DEBUG)` em cada stage que muta
    - **Não exportar** funções privadas de stage; só `applyPipeline` e `matchesCommand`.
 

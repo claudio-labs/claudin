@@ -1,6 +1,6 @@
 import figures from 'figures'
 import memoize from 'lodash-es/memoize.js'
-import { getOutputStyleDirStyles } from 'src/outputStyles/loadOutputStylesDir.js'
+import { getOutputStyleDirStyles } from 'src/agent/outputStyles/loadOutputStylesDir.js'
 import type { OutputStyle } from 'src/platform/config/config.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'

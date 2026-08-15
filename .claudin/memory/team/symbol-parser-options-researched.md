@@ -16,7 +16,7 @@ is under 2% of the binary. The 22 MB figure only applies if you embed ~20 gramma
 eagerly, which we would not.
 
 **The real blocker is synchronicity.** `summarizeCodeOutline`
-(`src/services/tools/toolResultSummarizer.ts:499-527`) calls `scanSymbols` **inline and
+(`src/agent/tools/toolResultSummarizer.ts:499-527`) calls `scanSymbols` **inline and
 synchronously**, and it is reached from `maybeSummarizeToolResult` → `toolResultStorage.ts:267,285`
 — i.e. on **every tool result**, not just file tools. web-tree-sitter's `Parser.init()`
 and `Language.load()` are async. A swap means either making that whole path async or

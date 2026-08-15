@@ -1,4 +1,4 @@
-import { getHistory } from 'src/history.js'
+import { getHistory } from 'src/agent/history.js'
 import { logForDebugging } from 'src/shared/debug.js'
 
 /**

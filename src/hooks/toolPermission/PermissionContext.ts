@@ -29,7 +29,7 @@ import {
   SUBAGENT_REJECT_MESSAGE,
   SUBAGENT_REJECT_MESSAGE_WITH_REASON_PREFIX,
   withMemoryCorrectionHint,
-} from 'src/services/messages/messages.js'
+} from 'src/agent/messages/messages.js'
 import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
 import {
   applyPermissionUpdates,

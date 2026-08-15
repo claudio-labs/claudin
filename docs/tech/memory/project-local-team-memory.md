@@ -24,7 +24,7 @@ everyone who isn't both on Anthropic OAuth and GitHub.
 `getAutoMemPath()` (`src/memdir/paths.ts`) now defaults to
 `<gitRoot>/.claudin/memory/` for any project inside a git repository — the
 same project-local pattern already used for `.claudin/plans/`
-(`src/utils/plans.ts`), with the same symlink-escape containment check and
+(`src/agent/plans/plans.ts`), with the same symlink-escape containment check and
 fallback to the legacy global path if verification fails or the project
 isn't a git repo. `getTeamMemPath()` derives from `getAutoMemPath()`, so the
 `team/` subfolder moves along with it automatically.

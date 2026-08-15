@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useAppStateStore, useSetAppState } from 'src/terminal/state/AppState.js'
-import { isTerminalTaskStatus } from 'src/Task.js'
+import { isTerminalTaskStatus } from 'src/agent/Task.js'
 import {
   findTeammateTaskByAgentId,
   injectUserMessageToTeammate,
@@ -11,8 +11,8 @@ import { getCronJitterConfig } from 'src/tasks/cronJitterConfig.js'
 import { createCronScheduler } from 'src/tasks/cronScheduler.js'
 import { removeCronTasks } from 'src/tasks/cronTasks.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js'
-import { createScheduledTaskFireMessage } from 'src/services/messages/messages.js'
+import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js'
+import { createScheduledTaskFireMessage } from 'src/agent/messages/messages.js'
 
 type Props = {
   isLoading: boolean

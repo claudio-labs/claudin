@@ -13,7 +13,7 @@ import { useAppState } from 'src/terminal/state/AppState.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type { Message } from 'src/types/message.js'
 import { formatDuration } from 'src/shared/text/format.js'
-import { getGoalTokenCount } from 'src/services/goal/goal.js'
+import { getGoalTokenCount } from 'src/agent/goal/goal.js'
 import { truncateToWidth } from 'src/shared/text/truncate.js'
 
 // Collapse newlines/runs of whitespace so a multi-line condition stays on one

@@ -20,13 +20,13 @@ import { cwd } from 'process'
 import { randomUUID } from 'crypto'
 import uniqBy from 'lodash-es/uniqBy.js'
 import { RemoteIO } from 'src/platform/headless/remoteIO.js'
-import { ask } from 'src/QueryEngine.js'
+import { ask } from 'src/agent/QueryEngine.js'
 import type { QueuedCommand } from 'src/types/textInputTypes.js'
 import {
   dequeue,
   enqueue,
   peek,
-} from 'src/utils/messageQueueManager.js'
+} from 'src/agent/messageQueueManager.js'
 import { notifyCommandLifecycle } from 'src/utils/commandLifecycle.js'
 import { notifySessionStateChanged } from 'src/services/session/sessionState.js'
 import { getInMemoryErrors, logError } from 'src/shared/log.js'
@@ -61,7 +61,7 @@ import {
 import {
   startQueryProfile,
   logQueryProfileReport,
-} from 'src/utils/queryProfiler.js'
+} from 'src/agent/queryProfiler.js'
 import {
   isTeamLead,
   hasActiveInProcessTeammates,
@@ -77,7 +77,7 @@ import { removeTeammateFromTeamFile } from 'src/coordinator/swarm/teamHelpers.js
 import { unassignTeammateTasks } from 'src/tasks/tasks.js'
 import { getRunningTasks } from 'src/tasks/framework.js'
 import { isBackgroundTask } from 'src/tasks/types.js'
-import { drainSdkEvents } from 'src/utils/sdkEventQueue.js'
+import { drainSdkEvents } from 'src/agent/sdkEventQueue.js'
 import { errorMessage, toError } from 'src/shared/errors.js'
 import { sleep } from 'src/shared/sleep.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'

@@ -30,14 +30,14 @@ import {
 } from 'src/coordinator/forkedAgent.js'
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import { logError } from 'src/shared/log.js'
-import type { SetAppState } from 'src/utils/messageQueueManager.js'
+import type { SetAppState } from 'src/agent/messageQueueManager.js'
 import {
   createUserMessage,
   INTERRUPT_MESSAGE,
   INTERRUPT_MESSAGE_FOR_TOOL_USE,
-} from 'src/services/messages/messages.js'
+} from 'src/agent/messages/messages.js'
 import { getClaudeTempDir } from 'src/services/permissions/filesystem.js'
-import { extractReadFilesFromMessages } from 'src/utils/queryHelpers.js'
+import { extractReadFilesFromMessages } from 'src/agent/queryHelpers.js'
 import { getTranscriptPath } from 'src/services/session/sessionStorage.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import {

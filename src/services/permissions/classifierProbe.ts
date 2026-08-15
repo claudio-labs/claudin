@@ -22,7 +22,7 @@
 
 import { isAbortError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
-import { sideQuery } from 'src/utils/sideQuery.js'
+import { sideQuery } from 'src/agent/sideQuery.js'
 import { extractToolUseBlock } from 'src/services/permissions/classifierShared.js'
 import {
   classifierProbeKey,

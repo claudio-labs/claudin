@@ -17,7 +17,7 @@ import { feature } from 'bun:bundle';
 import chalk from 'chalk';
 import { getInitialMainLoopModel, setInitialMainLoopModel, setMainLoopModelOverride, setMainThreadAgentType, setUserMsgOptIn } from 'src/platform/bootstrap/state.js';
 import { getCommands } from 'src/commands.js';
-import { getSystemContext, getUserContext } from 'src/context.js';
+import { getSystemContext, getUserContext } from 'src/agent/context.js';
 import { getActiveAgentsFromList, getAgentDefinitionsWithOverrides, isBuiltInAgent, parseAgentsFromJson } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { canUserConfigureAdvisor, getInitialAdvisorSetting, isAdvisorEnabled, isValidAdvisorModel, modelSupportsAdvisor } from 'src/platform/doctor/advisor.js';
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';

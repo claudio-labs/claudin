@@ -8,8 +8,8 @@ import { STATUS_TAG, SUMMARY_TAG, TASK_NOTIFICATION_TAG } from 'src/constants/xm
 import { QueuedMessageProvider } from 'src/terminal/contexts/QueuedMessageContext.js';
 import { useCommandQueue } from 'src/hooks/useCommandQueue.js';
 import type { QueuedCommand } from 'src/types/textInputTypes.js';
-import { isQueuedCommandEditable, isQueuedCommandVisible } from 'src/utils/messageQueueManager.js';
-import { createUserMessage, EMPTY_LOOKUPS, normalizeMessages } from 'src/services/messages/messages.js';
+import { isQueuedCommandEditable, isQueuedCommandVisible } from 'src/agent/messageQueueManager.js';
+import { createUserMessage, EMPTY_LOOKUPS, normalizeMessages } from 'src/agent/messages/messages.js';
 import { jsonParse } from 'src/platform/slowOperations.js';
 import { Message } from 'src/components/Message.js';
 const EMPTY_SET = new Set<string>();

@@ -1,5 +1,5 @@
 import { logEvent } from 'src/platform/analytics/index.js'
-import { isTerminalTaskStatus } from 'src/Task.js'
+import { isTerminalTaskStatus } from 'src/agent/Task.js'
 import type { LocalAgentTaskState } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
 
 // Inlined from framework.ts — importing creates a cycle through

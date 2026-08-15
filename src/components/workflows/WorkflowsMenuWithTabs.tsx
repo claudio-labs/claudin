@@ -6,7 +6,7 @@ import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrl
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { logError } from 'src/shared/log.js'
-import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js'
+import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js'
 import { runWorkflow } from 'src/tools/AgentWorkflow/engine.js'
 import type { RunState, WorkflowDef } from 'src/tools/AgentWorkflow/types.js'
 import { RunningWorkflowsTab } from 'src/components/workflows/RunningWorkflowsTab.js'

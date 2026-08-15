@@ -20,15 +20,15 @@ import { type ResumeEntrypoint } from 'src/commands.js'
 import type { LogOption } from 'src/types/logs.js'
 import type { AgentDefinition, AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { AppStateStore } from 'src/terminal/state/AppStateStore.js'
-import type { SetAppState } from 'src/utils/messageQueueManager.js'
+import type { SetAppState } from 'src/agent/messageQueueManager.js'
 import type { Message as MessageType } from 'src/types/message.js'
 
 import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
 import { deserializeMessages } from 'src/services/session/conversationRecovery.js'
-import { createSystemMessage } from 'src/services/messages/messages.js'
+import { createSystemMessage } from 'src/agent/messages/messages.js'
 import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
 import { executeSessionEndHooks, getSessionEndHookTimeoutMs } from 'src/platform/lifecycleHooks/hooks.js'
-import { copyPlanForFork, copyPlanForResume } from 'src/utils/plans.js'
+import { copyPlanForFork, copyPlanForResume } from 'src/agent/plans/plans.js'
 import {
   computeStandaloneAgentContext,
   exitRestoredWorktree,
@@ -56,12 +56,12 @@ import {
   getStoredSessionCosts,
   resetCostState,
   saveCurrentSessionCosts,
-} from 'src/cost-tracker.js'
+} from 'src/agent/cost-tracker.js'
 import {
   applyToolResultReplacementsToMessages,
   reconstructContentReplacementState,
   type ContentReplacementState,
-} from 'src/services/tools/toolResultStorage.js'
+} from 'src/agent/tools/toolResultStorage.js'
 
 export type ContentReplacementStateRef = {
   current: ContentReplacementState | undefined

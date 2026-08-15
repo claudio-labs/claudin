@@ -47,8 +47,8 @@ import {
   createFileStateCacheWithSizeLimit,
   READ_FILE_STATE_CACHE_SIZE,
 } from 'src/shared/fs/fileStateCache.js'
-import { extractReadFilesFromMessages } from 'src/utils/queryHelpers.js'
-import { enqueue, subscribeToCommandQueue, getCommandsByMaxPriority } from 'src/utils/messageQueueManager.js'
+import { extractReadFilesFromMessages } from 'src/agent/queryHelpers.js'
+import { enqueue, subscribeToCommandQueue, getCommandsByMaxPriority } from 'src/agent/messageQueueManager.js'
 import {
   getSessionState,
   setPermissionModeChangedListener,
@@ -65,8 +65,8 @@ import {
   statusListeners,
   type ClaudeAILimits,
 } from 'src/services/claudeAiLimits.js'
-import { toSDKRateLimitInfo } from 'src/services/messages/mappers.js'
-import { createModelSwitchBreadcrumbs } from 'src/services/messages/messages.js'
+import { toSDKRateLimitInfo } from 'src/agent/messages/mappers.js'
+import { createModelSwitchBreadcrumbs } from 'src/agent/messages/messages.js'
 import { LOCAL_COMMAND_STDOUT_TAG, TICK_TAG } from 'src/constants/xml.js'
 import { getModelOptions } from 'src/utils/model/modelOptions.js'
 import {
@@ -79,7 +79,7 @@ import {
   modelSupportsMaxEffort,
   EFFORT_LEVELS,
 } from 'src/utils/effort.js'
-import { modelSupportsAdaptiveThinking } from 'src/services/context/thinking.js'
+import { modelSupportsAdaptiveThinking } from 'src/agent/context/thinking.js'
 import { modelSupportsAutoMode } from 'src/services/api/betas.js'
 import { isFastModeSupportedByModel } from 'src/utils/fastMode.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'

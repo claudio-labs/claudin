@@ -6,7 +6,7 @@ Model: claude-opus-4-8.
 **Read files:**
 - `src/screens/REPL.tsx` (220K)
 - `src/Tool.ts` (32K)
-- `src/QueryEngine.ts` (48K)
+- `src/agent/QueryEngine.ts` (48K)
 
 **Edit files** (copied to scratch dir; real files untouched):
 - `src/platform/bridge/bridgeEnabled.ts` (12K)

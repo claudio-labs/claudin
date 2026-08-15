@@ -20,7 +20,7 @@ import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHo
 import {
   createUserMessage,
   hasToolCallsInLastAssistantTurn,
-} from 'src/services/messages/messages.js'
+} from 'src/agent/messages/messages.js'
 import { sequential } from 'src/shared/sequential.js'
 import { buildMagicDocsUpdatePrompt } from 'src/platform/MagicDocs/prompts.js'
 

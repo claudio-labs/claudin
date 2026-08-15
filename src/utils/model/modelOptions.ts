@@ -33,7 +33,7 @@ import {
   renderDefaultModelSetting,
   type ModelSetting,
 } from 'src/utils/model/model.js'
-import { has1mContext } from 'src/services/context/context.js'
+import { has1mContext } from 'src/agent/context/context.js'
 import { getFilteredCodexCatalog } from 'src/utils/model/codexModelCatalog.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import {

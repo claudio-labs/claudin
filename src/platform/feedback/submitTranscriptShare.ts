@@ -5,7 +5,7 @@ import { checkAndRefreshOAuthTokenIfNeeded } from 'src/services/auth/auth.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { getAuthHeaders, getUserAgent } from 'src/shared/http.js'
-import { normalizeMessagesForAPI } from 'src/services/messages/messages.js'
+import { normalizeMessagesForAPI } from 'src/agent/messages/messages.js'
 import {
   extractAgentIdsFromMessages,
   getTranscriptPath,

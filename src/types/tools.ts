@@ -22,7 +22,7 @@
  * Nothing here reaches the model: `normalizeMessagesForAPI` drops every
  * `progress` message before serialization.
  */
-import type { TaskType } from 'src/Task.js'
+import type { TaskType } from 'src/agent/Task.js'
 import type { AgentId } from 'src/types/ids.js'
 import type {
   AssistantMessage,

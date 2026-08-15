@@ -20,7 +20,7 @@ async function main() {
   // Dynamic imports AFTER the MACRO polyfill so module-eval-time reads succeed.
   const { getAllBaseTools } = await import('../../src/tools.js')
   const { getSystemPrompt } = await import('../../src/constants/prompts.js')
-  const { roughTokenCountEstimation } = await import('../../src/services/tokenEstimation.js')
+  const { roughTokenCountEstimation } = await import('../../src/shared/tokenEstimation.js')
   const { enableConfigs } = await import('../../src/platform/config/config.js')
   const { measureToolSchemas } = await import('../measure-tool-schemas.ts')
   const tk = (s: string) => roughTokenCountEstimation(s)

@@ -11,7 +11,7 @@
 // `querySource` field, is compared against one, or is a member of a
 // `Set<QuerySource>`. The three parametric families are template literal types
 // because they are built by interpolation at
-// `src/utils/promptCategory.ts:23,47`.
+// `src/agent/promptCategory.ts:23,47`.
 
 /**
  * A call originating from an agent. `agent:custom` and `agent:default` are

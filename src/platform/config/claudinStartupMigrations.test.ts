@@ -21,9 +21,14 @@ const { mkdtempSync, rmSync } = realFs
 // version. We work around this by driving our own in-memory profile store
 // for the migration's read/write surface — the same pattern used by
 // activeProvider.test.ts.
-const realProviderProfile = await import('src/services/api/providerProfile.js')
-const realProviderProfiles = await import('src/services/api/providerProfiles.js')
-const realConfig = await import('src/platform/config/config.js')
+// Plain-object copies, never the live `import * as` namespace: a namespace
+// object keeps tracking whatever the module cache currently holds, so once the
+// mocks below are installed it reports THEM, and `mock.module(x, () => real)`
+// at teardown restores the stub onto itself. Spreading here freezes the real
+// exports while they are still real.
+const realProviderProfile = { ...(await import('src/services/api/providerProfile.js')) }
+const realProviderProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
+const realConfig = { ...(await import('src/platform/config/config.js')) }
 
 // In-memory config singleton backing './config.js' for this file. Several
 // other test files mock './config.js' too, and bun's process-wide module
@@ -160,7 +165,19 @@ mock.module('src/services/api/providerProfile.js', () => ({
 afterAll(() => {
   mock.module('src/services/api/providerProfile.js', () => realProviderProfile)
   mock.module('src/services/api/providerProfiles.js', () => realProviderProfiles)
+  // Both spellings, per the teardown rule in .claudin/rules/testing.md: the
+  // install above uses the relative form, but production imports the `src/...`
+  // alias, and restoring only one key leaves the other pointing at
+  // `mockConfigState` — an empty object, so every consumer that reads a boolean
+  // off the global config sees it as disabled. That is what silently turned the
+  // tool-result summarizer off for the rest of the run.
   mock.module('./config.js', () => realConfig)
+  mock.module('src/platform/config/config.js', () => realConfig)
+  // The mock above only covers the relative spelling, so production modules
+  // importing the alias kept the REAL `saveGlobalConfig` — which under
+  // NODE_ENV=test does `Object.assign` onto a module-level singleton. The
+  // migrations under test write to it, and nothing puts it back.
+  realConfig.resetGlobalConfigForTests()
   const restore = () => ({ ...realFs, default: realFs })
   mock.module('node:fs', restore)
   mock.module('fs', restore)

@@ -51,7 +51,7 @@ import { getHookDisplayText } from 'src/platform/lifecycleHooks/hooksSettings.js
 import { logForDebugging } from 'src/shared/debug.js'
 import { logError } from 'src/shared/log.js'
 import { createCombinedAbortSignal } from 'src/shared/combinedAbortSignal.js'
-import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
+import { createAttachmentMessage } from 'src/agent/attachments/attachments.js'
 import { all } from 'src/shared/generators.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { execPromptHook } from 'src/platform/lifecycleHooks/execPromptHook.js'

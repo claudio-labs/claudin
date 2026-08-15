@@ -9,7 +9,7 @@ import type { Message } from 'src/types/message.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { isAutoManagedMemoryFile } from 'src/memdir/memoryFileDetection.js';
-import { extractTextContent, getLastAssistantMessage } from 'src/services/messages/messages.js';
+import { extractTextContent, getLastAssistantMessage } from 'src/agent/messages/messages.js';
 import { logOTelEvent } from 'src/platform/telemetry/events.js';
 import { submitTranscriptShare } from 'src/platform/feedback/submitTranscriptShare.js';
 import type { TranscriptShareResponse } from 'src/platform/feedback/TranscriptSharePrompt.js';

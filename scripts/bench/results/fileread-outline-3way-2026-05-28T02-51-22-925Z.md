@@ -76,12 +76,12 @@
 
 ### outline-first
 
-> No arquivo `src/services/messages/messages.ts` (codebase openclaude), liste todas as funcoes exportadas (`export function` e `export async function`) com seu nome e linha de declaracao. Nao preciso do corpo das funcoes.
+> No arquivo `src/agent/messages/messages.ts` (codebase openclaude), liste todas as funcoes exportadas (`export function` e `export async function`) com seu nome e linha de declaracao. Nao preciso do corpo das funcoes.
 
 **Variant A run#1:**
 
 ```
-Funções exportadas em `src/services/messages/messages.ts`:
+Funções exportadas em `src/agent/messages/messages.ts`:
 
 | Linha | Função |
 |---|---|
@@ -130,7 +130,7 @@ Funções exportadas em `src/services/messages/messages.ts`:
 **Variant B run#1:**
 
 ```
-Lista de funções exportadas em `src/services/messages/messages.ts` (apenas `export function` e `export async function`):
+Lista de funções exportadas em `src/agent/messages/messages.ts` (apenas `export function` e `export async function`):
 
 - `withMemoryCorrectionHint` — L187
 - `deriveShortMessageId` — L202
@@ -177,7 +177,7 @@ Lista de funções exportadas em `src/services/messages/messages.ts` (apenas `ex
 **Variant C run#1:**
 
 ```
-Funções exportadas em `src/services/messages/messages.ts` (nenhuma `export async function`):
+Funções exportadas em `src/agent/messages/messages.ts` (nenhuma `export async function`):
 
 - `withMemoryCorrectionHint` — L187
 - `deriveShortMessageId` — L202

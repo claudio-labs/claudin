@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { Text } from 'src/terminal/ink.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
-import { getRainbowColor } from 'src/services/context/thinking.js';
+import { getRainbowColor } from 'src/agent/context/thinking.js';
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
 
 // Local date, not UTC — 24h rolling wave across timezones. Sustained Twitter

@@ -52,7 +52,7 @@ import {
   readHeadAndTail,
 } from 'src/services/session/sessionStoragePortable.js'
 import { jsonParse } from 'src/platform/slowOperations.js'
-import type { ContentReplacementRecord } from 'src/services/tools/toolResultStorage.js'
+import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
 import { validateUuid } from 'src/shared/data/uuid.js'
 
 // exported for testing

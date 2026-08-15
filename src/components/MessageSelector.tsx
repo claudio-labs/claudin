@@ -13,7 +13,7 @@ import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding, useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import type { Message, PartialCompactDirection, UserMessage } from 'src/types/message.js';
 import { stripDisplayTags } from 'src/shared/text/displayTags.js';
-import { createUserMessage, extractTag, isEmptyMessageText, isSyntheticMessage, isToolUseResultMessage } from 'src/services/messages/messages.js';
+import { createUserMessage, extractTag, isEmptyMessageText, isSyntheticMessage, isToolUseResultMessage } from 'src/agent/messages/messages.js';
 import { type OptionWithDescription, Select } from 'src/terminal/custom-select/select.js';
 import { Spinner } from 'src/terminal/spinner/Spinner.js';
 function isTextBlock(block: ContentBlockParam): block is TextBlockParam {

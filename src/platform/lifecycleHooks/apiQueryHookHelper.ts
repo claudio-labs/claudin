@@ -5,8 +5,8 @@ import type { Message } from 'src/types/message.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import { logError } from 'src/shared/log.js'
 import { toError } from 'src/shared/errors.js'
-import { extractTextContent } from 'src/services/messages/messages.js'
-import { asSystemPrompt } from 'src/utils/systemPromptType.js'
+import { extractTextContent } from 'src/agent/messages/messages.js'
+import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 
 export type ApiQueryHookContext = REPLHookContext & {

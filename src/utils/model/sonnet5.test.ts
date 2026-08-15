@@ -26,12 +26,12 @@ import {
   firstPartyNameToCanonical,
   getMarketingNameForModel,
 } from 'src/utils/model/model.js'
-import { modelSupports1M } from 'src/services/context/context.js'
+import { modelSupports1M } from 'src/agent/context/context.js'
 import {
   modelRequiresAdaptiveThinking,
   modelSupportsAdaptiveThinking,
   modelSupportsThinking,
-} from 'src/services/context/thinking.js'
+} from 'src/agent/context/thinking.js'
 import {
   getAvailableEffortLevels,
   modelSupportsEffort,

@@ -8,7 +8,7 @@ import { supportsHyperlinks } from 'src/terminal/ink/supports-hyperlinks.js'
 import type { CliHighlight } from 'src/shared/text/cliHighlight.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { createHyperlink } from 'src/shared/text/hyperlink.js'
-import { stripPromptXMLTags } from 'src/services/messages/messages.js'
+import { stripPromptXMLTags } from 'src/agent/messages/messages.js'
 import type { ThemeName } from 'src/terminal/theme/theme.js'
 
 // Use \n unconditionally — os.EOL is \r\n on Windows, and the extra \r

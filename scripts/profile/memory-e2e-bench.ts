@@ -21,7 +21,7 @@
 import { performance } from 'node:perf_hooks'
 import { writeFileSync } from 'node:fs'
 
-import type { QueryDeps } from '../../src/query/deps.js'
+import type { QueryDeps } from '../../src/agent/query/deps.js'
 import {
   createFakeCallModel,
   fakeMicrocompact,
@@ -140,7 +140,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #1 perKeyClippedIds
   try {
-    const mod = await import('../../src/services/compact/stableStubState.js')
+    const mod = await import('../../src/agent/compact/stableStubState.js')
     out['perKeyClippedIds.keys'] = mod._getClippedIdsMapSizeForTesting()
     out['perKeyClippedIds.totalIds'] = mod._getClippedIdsTotalCountForTesting()
   } catch {}
@@ -192,7 +192,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #10 sentBashGitInstructions
   try {
-    const mod = await import('../../src/services/attachments/attachments.js')
+    const mod = await import('../../src/agent/attachments/attachments.js')
     if (typeof mod.__TEST_ONLY_getBashGitInstructionsSize === 'function') {
       out['attachments.sentBashGitInstructions'] =
         mod.__TEST_ONLY_getBashGitInstructionsSize()
@@ -351,15 +351,15 @@ async function measureStages(): Promise<BootstrapStage[]> {
     await import('../../src/tools/AgentTool/index.js').catch(() => {})
   })
   await stage('12 services/compact/*', async () => {
-    await import('../../src/services/compact/microCompact.js')
-    await import('../../src/services/compact/autoCompact.js')
-    await import('../../src/services/compact/stableStubState.js')
+    await import('../../src/agent/compact/microCompact.js')
+    await import('../../src/agent/compact/autoCompact.js')
+    await import('../../src/agent/compact/stableStubState.js')
   })
   await stage('13 utils/toolResultStorage', async () => {
-    await import('../../src/services/tools/toolResultStorage.js')
+    await import('../../src/agent/tools/toolResultStorage.js')
   })
   await stage('14 QueryEngine', async () => {
-    await import('../../src/QueryEngine.js')
+    await import('../../src/agent/QueryEngine.js')
   })
   await stage('15 screens/REPL', async () => {
     await import('../../src/screens/REPL.js').catch(() => {})
@@ -368,7 +368,7 @@ async function measureStages(): Promise<BootstrapStage[]> {
   // Phase B: actually construct a QueryEngine
   await stage('16 new QueryEngine()', async () => {
     const [{ QueryEngine }, fileStateCacheMod] = await Promise.all([
-      import('../../src/QueryEngine.js'),
+      import('../../src/agent/QueryEngine.js'),
       import('../../src/shared/fs/fileStateCache.js'),
     ])
     const {
@@ -414,7 +414,7 @@ async function runBench(args: Args): Promise<{
   // --- Phase 1: bootstrap (heavy imports, real modules) ---
   console.error('[bootstrap] importing real QueryEngine modules...')
 
-  const { QueryEngine } = await import('../../src/QueryEngine.js')
+  const { QueryEngine } = await import('../../src/agent/QueryEngine.js')
   const {
     createFileStateCacheWithSizeLimit,
     READ_FILE_STATE_CACHE_SIZE,

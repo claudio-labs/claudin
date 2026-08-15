@@ -13,7 +13,7 @@ import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 
 import {
   buildDossierFromMessages,
   serializeDossier,
-} from 'src/services/planDossier.js'
+} from 'src/agent/planDossier.js'
 import {
   buildTool,
   type Tool,
@@ -34,7 +34,7 @@ import {
   getPlanFilePath,
   getPlanSlug,
   persistFileSnapshotIfRemote,
-} from 'src/utils/plans.js'
+} from 'src/agent/plans/plans.js'
 import { seedTasksFromPlan } from 'src/tasks/planTasks.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import {

@@ -10,9 +10,9 @@ import {
   enhanceSystemPromptWithEnvDetails,
 } from 'src/constants/prompts.js'
 import type { QuerySource } from 'src/constants/querySource.js'
-import { getSystemContext, getUserContext } from 'src/context.js'
+import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
-import { query } from 'src/query.js'
+import { query } from 'src/agent/query.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { cleanupAgentTracking } from 'src/services/api/promptCacheBreakDetection.js'
 import {
@@ -39,7 +39,7 @@ import type {
   ToolUseSummaryMessage,
   UserMessage,
 } from 'src/types/message.js'
-import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
+import { createAttachmentMessage } from 'src/agent/attachments/attachments.js'
 import { AbortError } from 'src/shared/errors.js'
 import {
   cloneFileStateCache,
@@ -53,7 +53,7 @@ import {
 import { registerFrontmatterHooks } from 'src/platform/lifecycleHooks/registerFrontmatterHooks.js'
 import { clearSessionHooks } from 'src/platform/lifecycleHooks/sessionHooks.js'
 import { executeSubagentStartHooks } from 'src/platform/lifecycleHooks/hooks.js'
-import { createUserMessage } from 'src/services/messages/messages.js'
+import { createUserMessage } from 'src/agent/messages/messages.js'
 import { getAgentModel } from 'src/utils/model/agent.js'
 import {
   clearAgentPlanSlug,
@@ -61,9 +61,9 @@ import {
   renderDossierForSubagent,
   revalidateDossier,
   setAgentPlanSlug,
-} from 'src/services/planDossier.js'
+} from 'src/agent/planDossier.js'
 import type { ModelAlias } from 'src/utils/model/aliases.js'
-import { getPlan, getPlanSlug } from 'src/utils/plans.js'
+import { getPlan, getPlanSlug } from 'src/agent/plans/plans.js'
 import {
   clearAgentTranscriptSubdir,
   recordSidechainTranscript,
@@ -77,13 +77,13 @@ import {
 import {
   asSystemPrompt,
   type SystemPrompt,
-} from 'src/utils/systemPromptType.js'
+} from 'src/agent/systemPromptType.js'
 import {
   isPerfettoTracingEnabled,
   registerAgent as registerPerfettoAgent,
   unregisterAgent as unregisterPerfettoAgent,
 } from 'src/platform/telemetry/perfettoTracing.js'
-import type { ContentReplacementState } from 'src/services/tools/toolResultStorage.js'
+import type { ContentReplacementState } from 'src/agent/tools/toolResultStorage.js'
 import { createAgentId } from 'src/shared/data/uuid.js'
 import {
   resolveAgentTools,
@@ -673,7 +673,7 @@ export async function* runAgent({
 
     // Load all skill contents concurrently and add to initial messages
     const { formatSkillLoadingMetadata } = await import(
-      'src/services/input/processSlashCommand.js'
+      'src/agent/input/processSlashCommand.js'
     )
     const loaded = await Promise.all(
       validSkills.map(async ({ skillName, skill }) => ({

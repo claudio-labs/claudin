@@ -39,7 +39,7 @@ import {
  *    `git diff` run inside plan mode while `git commit` does not.
  *
  * NOT added to `isCacheableTool`'s whitelist in
- * `src/services/tools/toolResultCache.ts`: git state changes faster than that
+ * `src/agent/tools/toolResultCache.ts`: git state changes faster than that
  * cache's 30s TTL, and a replayed `git status` is a wrong answer.
  *
  * The rest of the subsystem, and the two killswitches that do not live here:

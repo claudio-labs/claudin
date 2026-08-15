@@ -10,7 +10,7 @@ import {
   switchSession,
 } from 'src/platform/bootstrap/state.js'
 import { clearSystemPromptSections } from 'src/constants/systemPromptSections.js'
-import { recomputeCostStateFromMessages, restoreCostStateForSession } from 'src/cost-tracker.js'
+import { recomputeCostStateFromMessages, restoreCostStateForSession } from 'src/agent/cost-tracker.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
 import {
@@ -40,10 +40,10 @@ import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { FileHistorySnapshot } from 'src/shared/fs/fileHistory.js'
 import { fileHistoryRestoreStateFromLog } from 'src/shared/fs/fileHistory.js'
-import { createSystemMessage } from 'src/services/messages/messages.js'
+import { createSystemMessage } from 'src/agent/messages/messages.js'
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
-import { getPlansDirectory } from 'src/utils/plans.js'
-import { invalidateAll as invalidateToolResultCache } from 'src/services/tools/toolResultCache.js'
+import { getPlansDirectory } from 'src/agent/plans/plans.js'
+import { invalidateAll as invalidateToolResultCache } from 'src/agent/tools/toolResultCache.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
 import {
   adoptResumedSessionFile,
@@ -56,7 +56,7 @@ import {
 import { isTodoV2Enabled } from 'src/tasks/tasks.js'
 import type { TodoList } from 'src/tools/TodoWriteTool/types.js'
 import { TodoListSchema } from 'src/tools/TodoWriteTool/types.js'
-import type { ContentReplacementRecord } from 'src/services/tools/toolResultStorage.js'
+import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
 import {
   getCurrentWorktreeSession,
   restoreWorktreeSession,
@@ -128,7 +128,7 @@ export function restoreSessionStateFromLog(
   if (feature('CONTEXT_COLLAPSE')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     ;(
-      require('../contextCollapse/persist.js') as typeof import('../contextCollapse/persist.js')
+      require('../../agent/contextCollapse/persist.js') as typeof import('../../agent/contextCollapse/persist.js')
     ).restoreFromEntries(
       result.contextCollapseCommits ?? [],
       result.contextCollapseSnapshot,
@@ -507,7 +507,7 @@ export async function processResumedConversation(
   if (feature('CONTEXT_COLLAPSE')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     ;(
-      require('../contextCollapse/persist.js') as typeof import('../contextCollapse/persist.js')
+      require('../../agent/contextCollapse/persist.js') as typeof import('../../agent/contextCollapse/persist.js')
     ).restoreFromEntries(
       result.contextCollapseCommits ?? [],
       result.contextCollapseSnapshot,

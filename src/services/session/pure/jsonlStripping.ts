@@ -13,7 +13,7 @@
  * DO NOT "simplify" this to JSON.parse + delete + JSON.stringify.
  *
  * TAG DUPLICATION: `PERSISTED_OUTPUT_TAG` is also defined (as a string) in
- * `src/services/tools/toolResultStorage.ts:34` (`PERSISTED_OUTPUT_TAG`). The values
+ * `src/agent/tools/toolResultStorage.ts:34` (`PERSISTED_OUTPUT_TAG`). The values
  * MUST stay in sync. Deduplication is intentionally deferred — it requires a
  * separate refactor that is out of scope for the sessionStorage split (11c).
  * TODO: consolidate against `toolResultStorage.ts` as the canonical source.

@@ -5,7 +5,7 @@ import type {
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { createHash } from 'crypto'
 import { SYSTEM_PROMPT_DYNAMIC_BOUNDARY } from 'src/constants/prompts.js'
-import { getSystemContext, getUserContext } from 'src/context.js'
+import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import { isAnalyticsDisabled } from 'src/platform/analytics/config.js'
 import {
   checkStatsigFeatureGate_CACHED_MAY_BE_STALE,
@@ -28,7 +28,7 @@ import { getTools } from 'src/tools.js'
 import type { AgentId } from 'src/types/ids.js'
 import type { z } from 'zod/v4'
 import { CLI_SYSPROMPT_PREFIXES } from 'src/constants/system.js'
-import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
+import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
 import type { Tool, ToolPermissionContext, Tools } from 'src/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
@@ -45,7 +45,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { CLAUDE_MD_CONTEXT_KEY } from 'src/services/instructions/claudeMdDelta.js'
 import { GIT_STATUS_CONTEXT_KEY } from 'src/services/git/gitStatusDelta.js'
-import { createUserMessage } from 'src/services/messages/messages.js'
+import { createUserMessage } from 'src/agent/messages/messages.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
@@ -58,12 +58,12 @@ import {
   getPlan,
   getPlanFilePath,
   persistFileSnapshotIfRemote,
-} from 'src/utils/plans.js'
+} from 'src/agent/plans/plans.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import { countFilesRoundedRg } from 'src/shared/fs/ripgrep.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import type { SystemPrompt } from 'src/utils/systemPromptType.js'
-import { getToolSchemaCache } from 'src/services/tools/toolSchemaCache.js'
+import type { SystemPrompt } from 'src/agent/systemPromptType.js'
+import { getToolSchemaCache } from 'src/agent/tools/toolSchemaCache.js'
 import { windowsPathToPosixPath } from 'src/shared/fs/windowsPaths.js'
 import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 

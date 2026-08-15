@@ -27,7 +27,7 @@ const mockSideQuery = mock(async (_opts: unknown) => ({
   usage: { input_tokens: 0, output_tokens: 0 },
 })) as any
 
-mock.module('src/utils/sideQuery.js', () => ({
+mock.module('src/agent/sideQuery.js', () => ({
   sideQuery: mockSideQuery,
 }))
 

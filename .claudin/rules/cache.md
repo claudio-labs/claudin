@@ -1,13 +1,13 @@
 ---
 paths:
-  - "src/services/cache/**"
+  - "src/agent/cache/**"
   - "src/services/api/claude/**"
-  - "src/services/tools/toolResultCache.ts"
-  - "src/services/tools/cacheInvalidation.ts"
+  - "src/agent/tools/toolResultCache.ts"
+  - "src/agent/tools/cacheInvalidation.ts"
 ---
 # Prompt Cache & Tool-Result Cache — Claudin Development Rules
 
-Architecture: `src/services/cache/README.md` + `docs/tech/cache/clip-frontier-breakpoint.md`.
+Architecture: `src/agent/cache/README.md` + `docs/tech/cache/clip-frontier-breakpoint.md`.
 This rule captures the **invariants** that are easy to break silently — verify
 file:line against current code.
 
@@ -44,7 +44,7 @@ the earliest index whose suffix sums to ≥ `DEFAULT_DEFER_CACHE_MARKER_TOKENS`
 
 ## 3. toolResultCache keys omit cwd — invalidate on any chdir
 
-`src/services/tools/toolResultCache.ts` keys entries as
+`src/agent/tools/toolResultCache.ts` keys entries as
 `tool::stableStringify(input)` — **no cwd component**. A relative-path arg maps to
 the same key before and after `process.chdir()`, serving a stale hit against the
 wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none.

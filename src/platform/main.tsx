@@ -82,7 +82,7 @@ import { getCwd } from 'src/shared/fs/cwd.js';
 const getCreateSyntheticOutputTool = () => require('src/tools/SyntheticOutputTool/SyntheticOutputTool.js').createSyntheticOutputTool as typeof import('src/tools/SyntheticOutputTool/SyntheticOutputTool.js').createSyntheticOutputTool
 const getIsSyntheticOutputToolEnabled = () => require('src/tools/SyntheticOutputTool/SyntheticOutputTool.js').isSyntheticOutputToolEnabled as typeof import('src/tools/SyntheticOutputTool/SyntheticOutputTool.js').isSyntheticOutputToolEnabled
 const getJsonParse = () => require('src/platform/slowOperations.js').jsonParse as typeof import('src/platform/slowOperations.js').jsonParse
-const getCreateSystemMessage = () => require('src/services/messages/messages.js').createSystemMessage as typeof import('src/services/messages/messages.js').createSystemMessage
+const getCreateSystemMessage = () => require('src/agent/messages/messages.js').createSystemMessage as typeof import('src/agent/messages/messages.js').createSystemMessage
 const getBuildDeepLinkBanner = () => require('src/platform/deepLink/banner.js').buildDeepLinkBanner as typeof import('src/platform/deepLink/banner.js').buildDeepLinkBanner
 const getPermissionModes = () => require('src/services/permissions/PermissionMode.js').PERMISSION_MODES as typeof import('src/services/permissions/PermissionMode.js').PERMISSION_MODES
 const getLogEvent = () => require('src/platform/analytics/index.js').logEvent as typeof import('src/platform/analytics/index.js').logEvent
@@ -417,7 +417,7 @@ async function run(): Promise<CommanderCommand> {
     if (feature('COORDINATOR_MODE') && isEnvTruthy(process.env.CLAUDE_CODE_COORDINATOR_MODE)) {
       const {
         applyCoordinatorToolFilter
-      } = await import('src/services/tools/toolPool.js');
+      } = await import('src/agent/tools/toolPool.js');
       tools = applyCoordinatorToolFilter(tools);
     }
     profileCheckpoint('action_tools_loaded');

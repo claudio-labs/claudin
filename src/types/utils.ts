@@ -57,7 +57,7 @@ type UnionToIntersection<U> = (
  * Used with `satisfies` to force an array literal to enumerate a union
  * exhaustively, so adding a member to the union breaks the literal rather than
  * silently leaving it out — see `NON_EDITABLE_MODES` in
- * `src/utils/messageQueueManager.ts`.
+ * `src/agent/messageQueueManager.ts`.
  */
 export type Permutations<T, U = T> = [T] extends [never]
   ? []

@@ -15,9 +15,9 @@ import {
   isCacheDisabled,
   isCacheableTool,
   setCached,
-} from 'src/services/tools/toolResultCache.js'
+} from 'src/agent/tools/toolResultCache.js'
 import { logError } from 'src/shared/log.js'
-import type { ThinkingConfig } from 'src/services/context/thinking.js'
+import type { ThinkingConfig } from 'src/agent/context/thinking.js'
 
 export type ToolInputJSONSchema = {
   [x: string]: unknown
@@ -65,8 +65,8 @@ import type {
 } from 'src/types/tools.js'
 import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import type { DenialTrackingState } from 'src/services/permissions/denialTracking.js'
-import type { SystemPrompt } from 'src/utils/systemPromptType.js'
-import type { ContentReplacementState } from 'src/services/tools/toolResultStorage.js'
+import type { SystemPrompt } from 'src/agent/systemPromptType.js'
+import type { ContentReplacementState } from 'src/agent/tools/toolResultStorage.js'
 
 // Re-export progress types for backwards compatibility
 export type {

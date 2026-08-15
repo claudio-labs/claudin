@@ -17,7 +17,7 @@ import {
   createUserMessage,
   extractTextContent,
   getLastAssistantMessage,
-} from 'src/services/messages/messages.js'
+} from 'src/agent/messages/messages.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { isTeammate } from 'src/coordinator/teammate.js'
 import {

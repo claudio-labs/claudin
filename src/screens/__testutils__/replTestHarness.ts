@@ -25,7 +25,7 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import type { Tool } from 'src/Tool.js'
 import type { Props as REPLProps } from 'src/screens/REPL.js'
-import type { ThinkingConfig } from 'src/services/context/thinking.js'
+import type { ThinkingConfig } from 'src/agent/context/thinking.js'
 
 // --- mock factories ------------------------------------------------------
 

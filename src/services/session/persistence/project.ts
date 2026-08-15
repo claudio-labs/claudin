@@ -73,7 +73,7 @@ import {
   isShuttingDown,
 } from 'src/shared/proc/gracefulShutdown.js'
 import { logError } from 'src/shared/log.js'
-import { isCompactBoundaryMessage } from 'src/services/messages/messages.js'
+import { isCompactBoundaryMessage } from 'src/agent/messages/messages.js'
 import {
   getFirstMeaningfulUserMessageTextContent,
 } from 'src/services/session/pure/firstPrompt.js'
@@ -97,7 +97,7 @@ import {
 } from 'src/services/session/sessionStoragePortable.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
-import type { ContentReplacementRecord } from 'src/services/tools/toolResultStorage.js'
+import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
 import {
   appendEntryToFile,
   readFileTailSync,

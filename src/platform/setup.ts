@@ -43,7 +43,7 @@ import { logError } from 'src/shared/log.js'
 import { getRecentActivity } from 'src/terminal/logoV2Utils.js'
 import { lockCurrentVersion } from 'src/platform/install/index.js'
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
-import { getPlanSlug } from 'src/utils/plans.js'
+import { getPlanSlug } from 'src/agent/plans/plans.js'
 import { saveWorktreeState } from 'src/services/session/sessionStorage.js'
 import { profileCheckpoint } from 'src/platform/startupProfiler.js'
 import {
@@ -295,7 +295,7 @@ export async function setup(
     if (feature('CONTEXT_COLLAPSE')) {
       /* eslint-disable @typescript-eslint/no-require-imports */
       ;(
-        require('src/services/contextCollapse/index.js') as typeof import('src/services/contextCollapse/index.js')
+        require('src/agent/contextCollapse/index.js') as typeof import('src/agent/contextCollapse/index.js')
       ).initContextCollapse()
       /* eslint-enable @typescript-eslint/no-require-imports */
     }
@@ -339,7 +339,7 @@ export async function setup(
       // Defer to next tick so the git subprocess spawn runs after first render
       // rather than during the setup() microtask window.
       setImmediate(() => {
-        void import('../utils/attributionHooks.js').then(
+        void import('../agent/attributionHooks.js').then(
           ({ registerAttributionHooks }) => {
             registerAttributionHooks() // Register attribution tracking hooks (internal-only feature)
           },

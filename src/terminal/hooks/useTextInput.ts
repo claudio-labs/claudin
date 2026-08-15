@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { useNotifications } from 'src/terminal/contexts/notifications.js'
 import stripAnsi from 'strip-ansi'
 import { markBackslashReturnUsed } from 'src/commands/terminalSetup/terminalSetup.js'
-import { addToHistory } from 'src/history.js'
+import { addToHistory } from 'src/agent/history.js'
 import type { Key } from 'src/terminal/ink.js'
 import type {
   InlineGhostText,

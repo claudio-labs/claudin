@@ -17,7 +17,7 @@
  */
 import { createHash } from 'crypto'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import { getClippedIds } from 'src/services/compact/stableStubState.js'
+import { getClippedIds } from 'src/agent/compact/stableStubState.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { logError } from 'src/shared/log.js'
 import { getAgentId } from 'src/coordinator/teammate.js'

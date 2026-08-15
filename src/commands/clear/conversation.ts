@@ -27,7 +27,7 @@ import type { Message } from 'src/types/message.js'
 import {
   resetCostState,
   saveCurrentSessionCosts,
-} from 'src/cost-tracker.js'
+} from 'src/agent/cost-tracker.js'
 import { createEmptyAttributionState } from 'src/services/git/commitAttribution.js'
 import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import {
@@ -35,8 +35,8 @@ import {
   getSessionEndHookTimeoutMs,
 } from 'src/platform/lifecycleHooks/hooks.js'
 import { logError } from 'src/shared/log.js'
-import { resetLoopSentinelState } from 'src/utils/loopSentinels.js'
-import { clearAllPlanSlugs } from 'src/utils/plans.js'
+import { resetLoopSentinelState } from 'src/agent/loopSentinels.js'
+import { clearAllPlanSlugs } from 'src/agent/plans/plans.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
 import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
 import {
@@ -49,7 +49,7 @@ import {
   evictTaskOutput,
   initTaskOutputAsSymlink,
 } from 'src/tasks/diskOutput.js'
-import { unlinkSessionSpillDir } from 'src/services/tools/toolResultStorage.js'
+import { unlinkSessionSpillDir } from 'src/agent/tools/toolResultStorage.js'
 import { getCurrentWorktreeSession } from 'src/services/git/worktree.js'
 import { clearSessionCaches } from 'src/commands/clear/caches.js'
 

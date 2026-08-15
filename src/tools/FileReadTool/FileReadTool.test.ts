@@ -25,11 +25,11 @@ import {
   bumpStandDownEpoch,
   isPinRegistered,
   pinToolResult,
-} from 'src/services/compact/stableStubState.js'
+} from 'src/agent/compact/stableStubState.js'
 import {
   getCached,
   invalidateAll,
-} from 'src/services/tools/toolResultCache.js'
+} from 'src/agent/tools/toolResultCache.js'
 import {
   assistantWithAppliedEdits,
   assistantWithClearing,

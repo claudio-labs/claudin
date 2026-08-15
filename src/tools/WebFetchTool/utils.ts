@@ -10,7 +10,7 @@ import {
   persistBinaryContent,
 } from 'src/services/mcp/mcpOutputStorage.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
-import { asSystemPrompt } from 'src/utils/systemPromptType.js'
+import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { ssrfGuardedLookup } from 'src/platform/lifecycleHooks/ssrfGuard.js'
 import { createTwoTierCache } from 'src/tools/shared/twoTierCache.js'
 import { isPreapprovedHost } from 'src/tools/WebFetchTool/preapproved.js'

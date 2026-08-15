@@ -5,7 +5,7 @@
  * WHY: `prependUserContext` in `src/services/api/api.ts` renders the CLAUDE.md
  * contents as a `<system-reminder>` user message on EVERY API call
  * (per turn AND per tool-use cycle within a turn). The memoized source
- * (`getUserContext` in `src/context.ts`) returns a stable string across
+ * (`getUserContext` in `src/agent/context.ts`) returns a stable string across
  * calls, so Anthropic/Bedrock/Vertex prompt caching covers it, but:
  *   - OpenAI / Kimi / DeepSeek / Codex use **implicit prefix caching**
  *     which benefits from byte-identical prefixes; spurious re-emission
@@ -15,8 +15,8 @@
  *
  * Mirrors the pattern of:
  *   - `src/services/mcp/mcpInstructionsDelta.ts`
- *   - `src/services/tools/toolSearch.ts` (`getDeferredToolsDelta`)
- *   - `src/services/attachments/attachments.ts` (`getAgentListingDeltaAttachment`)
+ *   - `src/agent/tools/toolSearch.ts` (`getDeferredToolsDelta`)
+ *   - `src/agent/attachments/attachments.ts` (`getAgentListingDeltaAttachment`)
  *
  * Each scanner reconstructs the "announced state" by walking prior
  * attachments of the same type, compares against the current state,
@@ -33,7 +33,7 @@ import { djb2Hash } from 'src/shared/data/hash.js'
 
 /**
  * Key inside the system/user-context object (see `getUserContext` in
- * src/context.ts) that this delta replaces when dedup is active.
+ * src/agent/context.ts) that this delta replaces when dedup is active.
  * `api.ts::filterStaticDedupKeys` reads this to know which key to strip
  * from `prependUserContext`, avoiding double-announce.
  */

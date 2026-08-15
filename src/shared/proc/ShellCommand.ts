@@ -2,7 +2,7 @@ import type { ChildProcess } from 'child_process'
 import { stat } from 'fs/promises'
 import type { Readable } from 'stream'
 import treeKill from 'tree-kill'
-import { generateTaskId } from 'src/Task.js'
+import { generateTaskId } from 'src/agent/Task.js'
 import { formatDuration } from 'src/shared/text/format.js'
 import {
   MAX_TASK_OUTPUT_BYTES,

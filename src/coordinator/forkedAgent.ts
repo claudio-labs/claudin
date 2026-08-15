@@ -13,7 +13,7 @@ import { randomUUID } from 'crypto'
 import type { PromptCommand } from 'src/commands.js'
 import type { QuerySource } from 'src/constants/querySource.js'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
-import { query } from 'src/query.js'
+import { query } from 'src/agent/query.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
@@ -32,15 +32,15 @@ import {
   createUserMessage,
   extractTextContent,
   getLastAssistantMessage,
-} from 'src/services/messages/messages.js'
+} from 'src/agent/messages/messages.js'
 import { createDenialTrackingState } from 'src/services/permissions/denialTracking.js'
 import { parseToolListFromCLI } from 'src/services/permissions/permissionSetup.js'
 import { recordSidechainTranscript } from 'src/services/session/sessionStorage.js'
-import type { SystemPrompt } from 'src/utils/systemPromptType.js'
+import type { SystemPrompt } from 'src/agent/systemPromptType.js'
 import {
   type ContentReplacementState,
   cloneContentReplacementState,
-} from 'src/services/tools/toolResultStorage.js'
+} from 'src/agent/tools/toolResultStorage.js'
 import { createAgentId } from 'src/shared/data/uuid.js'
 
 /**

@@ -9,7 +9,7 @@ import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { isSdkApiUserAbortError } from 'src/shared/errors.js'
 import { isFastModeEnabled } from 'src/utils/fastMode.js'
 import { normalizeModelStringForAPI } from 'src/utils/model/model.js'
-import type { ThinkingConfig } from 'src/services/context/thinking.js'
+import type { ThinkingConfig } from 'src/agent/context/thinking.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,

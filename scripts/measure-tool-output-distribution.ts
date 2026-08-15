@@ -50,7 +50,7 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
-} from '../src/services/tokenEstimation.js'
+} from '../src/shared/tokenEstimation.js'
 import { enableConfigs } from '../src/platform/config/config.js'
 import { MAX_OUTPUT_SIZE } from '../src/shared/fs/file.js'
 

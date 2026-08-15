@@ -2,7 +2,7 @@
 import { MODEL_ALIASES } from 'src/utils/model/aliases.js'
 import { isModelAllowed } from 'src/utils/model/modelAllowlist.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import { sideQuery } from 'src/utils/sideQuery.js'
+import { sideQuery } from 'src/agent/sideQuery.js'
 import {
   isSdkApiConnectionError,
   isSdkApiError,

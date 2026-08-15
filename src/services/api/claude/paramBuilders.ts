@@ -20,7 +20,7 @@ import { shouldIncludeFirstPartyOnlyBetas } from "src/services/api/betas.js";
 import {
   CAPPED_DEFAULT_MAX_TOKENS,
   getModelMaxOutputTokens,
-} from "src/services/context/context.js";
+} from "src/agent/context/context.js";
 import { type EffortValue, isAdaptiveEffort, modelSupportsEffort } from "src/utils/effort.js";
 import { isEnvTruthy } from "src/shared/envUtils.js";
 import { validateBoundedIntEnvVar } from "src/shared/envValidation.js";
@@ -36,8 +36,8 @@ import {
   getAPIProvider,
   isGithubNativeAnthropicMode,
 } from "src/utils/model/providers.js";
-import type { SystemPrompt } from "src/utils/systemPromptType.js";
-import { roughTokenCountEstimationForMessage } from "src/services/tokenEstimation.js";
+import type { SystemPrompt } from "src/agent/systemPromptType.js";
+import { roughTokenCountEstimationForMessage } from "src/shared/tokenEstimation.js";
 import type { AssistantMessage, UserMessage } from "src/types/message.js";
 import { logEvent } from "src/platform/analytics/index.js";
 import { getCacheControl } from "src/services/api/claude/cacheControl.js";

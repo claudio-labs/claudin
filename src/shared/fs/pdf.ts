@@ -9,7 +9,7 @@ import { errorMessage } from 'src/shared/errors.js'
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import { getToolResultsDir } from 'src/services/tools/toolResultStorage.js'
+import { getToolResultsDir } from 'src/agent/tools/toolResultStorage.js'
 
 export type PDFError = {
   reason:

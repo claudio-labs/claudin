@@ -12,10 +12,10 @@ import {
   isTerminalTaskStatus,
   type TaskStatus,
   type TaskType,
-} from 'src/Task.js'
+} from 'src/agent/Task.js'
 import type { TaskState } from 'src/tasks/types.js'
-import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js'
-import { enqueueSdkEvent } from 'src/utils/sdkEventQueue.js'
+import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js'
+import { enqueueSdkEvent } from 'src/agent/sdkEventQueue.js'
 import { getTaskOutputDelta, getTaskOutputPath } from 'src/tasks/diskOutput.js'
 
 // Standard polling interval for all tasks

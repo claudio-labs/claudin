@@ -12,7 +12,7 @@
  * unforgeable from any persisted configuration and is non-serializable by
  * construction — consistent with how session-only FunctionHooks embed
  * non-persistable callbacks (see sessionHooks.ts). Only buildGoalHook
- * (src/services/goal/goal.ts) sets it, on the in-memory session hook object,
+ * (src/agent/goal/goal.ts) sets it, on the in-memory session hook object,
  * which flows by reference through matching/dedup to execution.
  */
 import type { PromptHook } from 'src/platform/settings/types.js'

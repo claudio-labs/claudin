@@ -1,4 +1,4 @@
-import { formatTotalCost } from 'src/cost-tracker.js'
+import { formatTotalCost } from 'src/agent/cost-tracker.js'
 import { currentLimits } from 'src/services/claudeAiLimits.js'
 import type { LocalCommandCall } from 'src/types/command.js'
 import { isClaudeAISubscriber } from 'src/services/auth/auth.js'

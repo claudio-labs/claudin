@@ -11,7 +11,7 @@ import {
 import {
   getBashGitInstructionsAttachment,
   resetSentBashGitInstructions,
-} from 'src/services/attachments/attachments.js'
+} from 'src/agent/attachments/attachments.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 

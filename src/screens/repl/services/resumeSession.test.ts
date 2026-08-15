@@ -44,7 +44,7 @@ const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all
     'src/services/session/conversationRecovery.js',
     'src/services/session/sessionStart.js',
     'src/platform/lifecycleHooks/hooks.js',
-    'src/utils/plans.js',
+    'src/agent/plans/plans.js',
     'src/services/session/sessionRestore.js',
     'src/services/session/concurrentSessions.js',
     'src/shared/fs/fileHistory.js',
@@ -52,11 +52,11 @@ const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all
     'src/tasks/RemoteAgentTask/RemoteAgentTask.js',
     'src/services/git/worktree.js',
     'src/platform/bootstrap/state.js',
-    'src/cost-tracker.js',
+    'src/agent/cost-tracker.js',
     'src/terminal/image/asciicast.js',
-    'src/services/tools/toolResultStorage.js',
+    'src/agent/tools/toolResultStorage.js',
     'src/platform/analytics/index.js',
-    'src/services/messages/messages.js',
+    'src/agent/messages/messages.js',
     'src/types/ids.js',
   ].map(
     async spec =>
@@ -85,7 +85,7 @@ mock.module('src/platform/lifecycleHooks/hooks.js', () => ({
   getSessionEndHookTimeoutMs: () => 100,
 }))
 
-mock.module('src/utils/plans.js', () => ({
+mock.module('src/agent/plans/plans.js', () => ({
   copyPlanForFork: mock(() => {
     calls.push('copyPlanForFork')
   }),
@@ -162,7 +162,7 @@ mock.module('src/platform/bootstrap/state.js', () => ({
   }),
 }))
 
-mock.module('src/cost-tracker.js', () => ({
+mock.module('src/agent/cost-tracker.js', () => ({
   getStoredSessionCosts: mock(() => {
     calls.push('getStoredSessionCosts')
     return null
@@ -181,7 +181,7 @@ mock.module('src/terminal/image/asciicast.js', () => ({
   }),
 }))
 
-mock.module('src/services/tools/toolResultStorage.js', () => ({
+mock.module('src/agent/tools/toolResultStorage.js', () => ({
   applyToolResultReplacementsToMessages: (m: unknown) => m,
   reconstructContentReplacementState: mock((m: unknown) => {
     calls.push('reconstructContentReplacementState')
@@ -196,7 +196,7 @@ mock.module('src/platform/analytics/index.js', () => ({
   }),
 }))
 
-mock.module('src/services/messages/messages.js', () => ({
+mock.module('src/agent/messages/messages.js', () => ({
   createSystemMessage: (text: string) => ({ type: 'system', text }),
 }))
 

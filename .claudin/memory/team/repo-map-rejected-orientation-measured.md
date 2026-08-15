@@ -38,6 +38,6 @@ they were reproduced from two independent directions. Do treat rule *accuracy*
 as the live problem: the audit that produced these numbers found this repo's own
 `search-strategy.md` omitting `tsconfig.json` (9 sessions) and `bunfig.toml`
 (7), and describing `context/` as a React-providers directory while
-`src/context.ts` — which holds `getSystemContext` — went unnamed. A rule that
+`src/agent/context.ts` — which holds `getSystemContext` — went unnamed. A rule that
 misdirects is worse than no rule, and that class is invisible to every
 mechanical check, which is why `/refresh-rules` exists alongside the linter.

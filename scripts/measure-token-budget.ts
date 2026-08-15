@@ -33,7 +33,7 @@ import { loadMemoryPrompt } from '../src/memdir/memdir.js'
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
-} from '../src/services/tokenEstimation.js'
+} from '../src/shared/tokenEstimation.js'
 import { enableConfigs } from '../src/platform/config/config.js'
 import { measureToolSchemas } from './measure-tool-schemas.ts'
 

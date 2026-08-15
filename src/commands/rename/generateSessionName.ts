@@ -3,9 +3,9 @@ import type { Message } from 'src/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { safeParseJSON } from 'src/shared/data/json.js'
-import { extractTextContent } from 'src/services/messages/messages.js'
+import { extractTextContent } from 'src/agent/messages/messages.js'
 import { extractConversationText } from 'src/services/session/sessionTitle.js'
-import { asSystemPrompt } from 'src/utils/systemPromptType.js'
+import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 
 export async function generateSessionName(
   messages: Message[],

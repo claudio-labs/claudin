@@ -17,7 +17,7 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/platform/analytics/index.js'
-import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
+import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
 import type { Command, PromptCommand } from 'src/types/command.js'
 import {
   parseArgumentNames,

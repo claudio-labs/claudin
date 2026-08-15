@@ -39,8 +39,8 @@ import { stableStringify } from 'src/shared/data/stableStringify.js'
 import {
   roughTokenCountEstimation,
   roughTokenCountEstimationForContent,
-} from 'src/services/tokenEstimation.js'
-import { applyStableStubs } from 'src/services/compact/stableStubState.js'
+} from 'src/shared/tokenEstimation.js'
+import { applyStableStubs } from 'src/agent/compact/stableStubState.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { buildAnthropicUsageFromRawUsage } from 'src/services/api/cacheMetrics.js'
 import {

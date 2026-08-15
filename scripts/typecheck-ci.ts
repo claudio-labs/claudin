@@ -65,7 +65,7 @@ const MAX_SHOWN = 40
  * What the checkout path is replaced with before anything is hashed.
  *
  * tsc quotes ABSOLUTE paths inside the message text as well as in the file
- * field — `typeof import("/abs/src/services/compact/snipCompact")`, and the
+ * field — `typeof import("/abs/src/agent/compact/snipCompact")`, and the
  * second sentence of every TS7016. The file field is relativised by
  * `normalizeDiagnosticPath`, but the message is hashed verbatim, so 38 of this
  * repo's diagnostics fingerprinted differently under `/home/…/claudin` than

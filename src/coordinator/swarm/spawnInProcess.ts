@@ -18,7 +18,7 @@ import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { getSpinnerVerbs } from 'src/constants/spinnerVerbs.js'
 import { TURN_COMPLETION_VERBS } from 'src/constants/turnCompletionVerbs.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
-import { createTaskStateBase, generateTaskId } from 'src/Task.js'
+import { createTaskStateBase, generateTaskId } from 'src/agent/Task.js'
 import type {
   InProcessTeammateTaskState,
   TeammateIdentity,
@@ -27,7 +27,7 @@ import { createAbortController } from 'src/shared/abortController.js'
 import { formatAgentId } from 'src/coordinator/agentId.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { emitTaskTerminatedSdk } from 'src/utils/sdkEventQueue.js'
+import { emitTaskTerminatedSdk } from 'src/agent/sdkEventQueue.js'
 import { evictTaskOutput } from 'src/tasks/diskOutput.js'
 import {
   evictTerminalTask,

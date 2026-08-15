@@ -1,4 +1,4 @@
-import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
+import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
 import type { AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js'
 
 export const AGENT_DESCRIPTIONS_THRESHOLD = 15_000

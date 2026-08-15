@@ -53,7 +53,7 @@ import { getGlobalConfig } from 'src/platform/config/config.js'
 import {
   createMemorySavedMessage,
   createUserMessage,
-} from 'src/services/messages/messages.js'
+} from 'src/agent/messages/messages.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'

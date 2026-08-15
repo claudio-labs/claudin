@@ -9,10 +9,10 @@
  * 4. Can be idle (waiting for work) or active (processing)
  */
 
-import { isTerminalTaskStatus, type SetAppState, type Task, type TaskStateBase } from 'src/Task.js';
+import { isTerminalTaskStatus, type SetAppState, type Task, type TaskStateBase } from 'src/agent/Task.js';
 import type { Message } from 'src/types/message.js';
 import { logForDebugging } from 'src/shared/debug.js';
-import { createUserMessage } from 'src/services/messages/messages.js';
+import { createUserMessage } from 'src/agent/messages/messages.js';
 import { killInProcessTeammate } from 'src/coordinator/swarm/spawnInProcess.js';
 import { updateTaskState } from 'src/tasks/framework.js';
 import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js';

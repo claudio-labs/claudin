@@ -16,7 +16,7 @@
 // No helper performs profileCheckpoint(...).
 
 import { feature } from 'bun:bundle';
-import { addToHistory } from 'src/history.js';
+import { addToHistory } from 'src/agent/history.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { getSubscriptionType } from 'src/services/auth/auth.js';
 import { getRemoteControlAtStartup, getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
@@ -47,7 +47,7 @@ import { getInitialFastModeSetting, prefetchFastModeStatus, resolveFastModeStatu
 import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js';
 import { isInBundledMode } from 'src/platform/install/bundledMode.js';
 import { logManagedSettings, logSessionTelemetry, logStartupTelemetry, logTenguInit } from 'src/platform/main/lifecycle.js';
-import { createUserMessage } from 'src/services/messages/messages.js';
+import { createUserMessage } from 'src/agent/messages/messages.js';
 import { processSessionStartHooks } from 'src/services/session/sessionStart.js';
 import { prefetchCopilotModelCatalog } from 'src/utils/model/copilotModelCatalog.js';
 import { prefetchOllamaModels } from 'src/utils/model/ollamaModels.js';
@@ -56,7 +56,7 @@ import { getInitialSettings, getSettingsWithErrors } from 'src/platform/settings
 import { plural } from 'src/shared/text/stringUtils.js';
 import { computeInitialTeamContext } from 'src/coordinator/swarm/reconnection.js';
 import { shouldEnablePromptSuggestion } from 'src/terminal/prompt-suggestion/promptSuggestion.js';
-import { shouldEnableThinkingByDefault, type ThinkingConfig } from 'src/services/context/thinking.js';
+import { shouldEnableThinkingByDefault, type ThinkingConfig } from 'src/agent/context/thinking.js';
 import { launchInvalidSettingsDialog } from 'src/terminal/dialogLaunchers.js';
 import { type AppState, IDLE_SPECULATION_STATE } from 'src/terminal/state/AppStateStore.js';
 import type { Root } from 'src/terminal/ink.js';

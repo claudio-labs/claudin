@@ -8,7 +8,7 @@ import { Box, Text } from 'src/terminal/ink.js';
 import type { ToolProgressData } from 'src/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
-import { getPlan } from 'src/utils/plans.js';
+import { getPlan } from 'src/agent/plans/plans.js';
 import type { ThemeName } from 'src/terminal/theme/theme.js';
 import type { Output } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js';
 export function renderToolUseMessage(): React.ReactNode {

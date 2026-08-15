@@ -10,7 +10,7 @@ import { isInProcessTeammateTask } from 'src/tasks/InProcessTeammateTask/types.j
 import { AGENT_COLOR_TO_THEME_COLOR, type AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
 import { count } from 'src/shared/data/array.js';
-import { summarizeRecentActivities } from 'src/services/tools/collapseReadSearch.js';
+import { summarizeRecentActivities } from 'src/agent/tools/collapseReadSearch.js';
 import { truncateToWidth } from 'src/shared/text/format.js';
 import { isTodoV2Enabled, type Task } from 'src/tasks/tasks.js';
 import type { Theme } from 'src/terminal/theme/theme.js';

@@ -4,7 +4,7 @@ import {
   getModeFromInput,
   getValueFromInput,
 } from 'src/terminal/prompt-input/inputModes.js'
-import { makeHistoryReader } from 'src/history.js'
+import { makeHistoryReader } from 'src/agent/history.js'
 import { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js'
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- backward-compat bridge until consumers wire handleKeyDown to <Box onKeyDown>
 import { useInput } from 'src/terminal/ink.js'

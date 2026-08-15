@@ -23,13 +23,13 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/platform/analytics/index.js'
-import { getAutoCompactThreshold } from 'src/services/compact/autoCompact.js'
+import { getAutoCompactThreshold } from 'src/agent/compact/autoCompact.js'
 import {
   buildPostCompactMessages,
   compactConversation,
   ERROR_MESSAGE_USER_ABORT,
-} from 'src/services/compact/compact.js'
-import { resetMicrocompactState } from 'src/services/compact/microCompact.js'
+} from 'src/agent/compact/compact.js'
+import { resetMicrocompactState } from 'src/agent/compact/microCompact.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { Tool, ToolUseContext } from 'src/Tool.js'
 import { appendTeammateMessage } from 'src/tasks/InProcessTeammateTask/InProcessTeammateTask.js'
@@ -60,10 +60,10 @@ import type { PermissionDecision } from 'src/types/permissions.js'
 import {
   createAssistantAPIErrorMessage,
   createUserMessage,
-} from 'src/services/messages/messages.js'
+} from 'src/agent/messages/messages.js'
 import { evictTaskOutput } from 'src/tasks/diskOutput.js'
 import { evictTerminalTask } from 'src/tasks/framework.js'
-import { tokenCountWithEstimation } from 'src/services/context/tokens.js'
+import { tokenCountWithEstimation } from 'src/agent/context/tokens.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import { type AgentContext, runWithAgentContext } from 'src/coordinator/agentContext.js'
 import { count } from 'src/shared/data/array.js'
@@ -72,7 +72,7 @@ import { cloneFileStateCache } from 'src/shared/fs/fileStateCache.js'
 import {
   SUBAGENT_REJECT_MESSAGE,
   SUBAGENT_REJECT_MESSAGE_WITH_REASON_PREFIX,
-} from 'src/services/messages/messages.js'
+} from 'src/agent/messages/messages.js'
 import type { ModelAlias } from 'src/utils/model/aliases.js'
 import {
   applyPermissionUpdates,
@@ -80,10 +80,10 @@ import {
 } from 'src/services/permissions/PermissionUpdate.js'
 import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
 import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js'
-import { emitTaskTerminatedSdk } from 'src/utils/sdkEventQueue.js'
+import { emitTaskTerminatedSdk } from 'src/agent/sdkEventQueue.js'
 import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { asSystemPrompt } from 'src/utils/systemPromptType.js'
+import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { claimTask, listTasks, type Task, updateTask } from 'src/tasks/tasks.js'
 import type { TeammateContext } from 'src/coordinator/teammateContext.js'
 import { runWithTeammateContext } from 'src/coordinator/teammateContext.js'
@@ -97,7 +97,7 @@ import {
   writeToMailbox,
 } from 'src/coordinator/teammateMailbox.js'
 import { unregisterAgent as unregisterPerfettoAgent } from 'src/platform/telemetry/perfettoTracing.js'
-import { createContentReplacementState } from 'src/services/tools/toolResultStorage.js'
+import { createContentReplacementState } from 'src/agent/tools/toolResultStorage.js'
 import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js'
 import {
   getLeaderSetToolPermissionContext,

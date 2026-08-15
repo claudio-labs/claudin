@@ -16,11 +16,11 @@ import { join } from 'path'
 // see plans.test.ts) so this file can pin exact directories/dates without
 // touching the developer's real ~/.claudin settings or plans. All the actual
 // sweep behavior under test (readdir/stat/unlink) runs against real fs.
-const realPlans = { ...(await import('src/utils/plans.js')) }
+const realPlans = { ...(await import('src/agent/plans/plans.js')) }
 const realSettings = { ...(await import('src/platform/settings/settings.js')) }
 
 afterAll(() => {
-  mock.module('src/utils/plans.js', () => realPlans)
+  mock.module('src/agent/plans/plans.js', () => realPlans)
   mock.module('src/platform/settings/settings.js', () => realSettings)
 })
 
@@ -28,7 +28,7 @@ async function importFreshCleanupModule(options: {
   plansDir: string
   legacyHomeConfigDir: string
 }) {
-  mock.module('src/utils/plans.js', () => ({
+  mock.module('src/agent/plans/plans.js', () => ({
     ...realPlans,
     getPlansDirectory: () => options.plansDir,
   }))

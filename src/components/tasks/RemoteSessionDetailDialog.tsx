@@ -18,8 +18,8 @@ import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constant
 import { openBrowser } from 'src/shared/browser.js';
 import { errorMessage } from 'src/shared/errors.js';
 import { formatDuration, truncateToWidth } from 'src/shared/text/format.js';
-import { toInternalMessages } from 'src/services/messages/mappers.js';
-import { EMPTY_LOOKUPS, normalizeMessages } from 'src/services/messages/messages.js';
+import { toInternalMessages } from 'src/agent/messages/mappers.js';
+import { EMPTY_LOOKUPS, normalizeMessages } from 'src/agent/messages/messages.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import { teleportResumeCodeSession } from 'src/platform/teleport/teleport.js';
 import { Select } from 'src/terminal/custom-select/select.js';

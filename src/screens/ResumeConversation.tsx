@@ -7,7 +7,7 @@ import { getOriginalCwd, switchSession } from 'src/platform/bootstrap/state.js';
 import type { Command } from 'src/commands.js';
 import { LogSelector } from 'src/platform/LogSelector.js';
 import { Spinner } from 'src/terminal/spinner/Spinner.js';
-import { restoreCostStateForSession } from 'src/cost-tracker.js';
+import { restoreCostStateForSession } from 'src/agent/cost-tracker.js';
 import { setClipboard } from 'src/terminal/ink/termio/osc.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
@@ -28,11 +28,11 @@ import { checkCrossProjectResume } from 'src/services/session/crossProjectResume
 import { errorMessage } from 'src/shared/errors.js';
 import type { FileHistorySnapshot } from 'src/shared/fs/fileHistory.js';
 import { logError } from 'src/shared/log.js';
-import { createSystemMessage } from 'src/services/messages/messages.js';
+import { createSystemMessage } from 'src/agent/messages/messages.js';
 import { computeStandaloneAgentContext, restoreAgentFromSession, restoreWorktreeForResume } from 'src/services/session/sessionRestore.js';
 import { adoptResumedSessionFile, enrichLogs, isCustomTitleEnabled, loadAllProjectsMessageLogsProgressive, loadSameRepoMessageLogsProgressive, recordContentReplacement, resetSessionFilePointer, restoreSessionMetadata, type SessionLogResult } from 'src/services/session/sessionStorage.js';
-import type { ThinkingConfig } from 'src/services/context/thinking.js';
-import type { ContentReplacementRecord } from 'src/services/tools/toolResultStorage.js';
+import type { ThinkingConfig } from 'src/agent/context/thinking.js';
+import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js';
 import { REPL } from 'src/screens/REPL.js';
 function parsePrIdentifier(value: string): number | null {
   const directNumber = parseInt(value, 10);
@@ -267,7 +267,7 @@ export function ResumeConversation({
       if (feature('CONTEXT_COLLAPSE')) {
         /* eslint-disable @typescript-eslint/no-require-imports */
         ;
-        (require('../services/contextCollapse/persist.js') as typeof import('../services/contextCollapse/persist.js')).restoreFromEntries(result_3.contextCollapseCommits ?? [], result_3.contextCollapseSnapshot);
+        (require('../agent/contextCollapse/persist.js') as typeof import('../agent/contextCollapse/persist.js')).restoreFromEntries(result_3.contextCollapseCommits ?? [], result_3.contextCollapseSnapshot);
         /* eslint-enable @typescript-eslint/no-require-imports */
       }
       logEvent('tengu_session_resumed', {

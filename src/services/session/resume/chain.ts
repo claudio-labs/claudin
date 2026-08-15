@@ -25,7 +25,7 @@ import type { TranscriptMessage } from 'src/types/logs.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { logError } from 'src/shared/log.js'
-import { isCompactBoundaryMessage } from 'src/services/messages/messages.js'
+import { isCompactBoundaryMessage } from 'src/agent/messages/messages.js'
 
 /**
  * O(n) single-pass: find the message with the latest timestamp matching a predicate.

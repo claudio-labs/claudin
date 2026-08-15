@@ -19,11 +19,11 @@ Estrutura:
 
 ```
 $ tsc --noEmit
-src/QueryEngine.ts(10,3): error TS2305: Module '"src/platform/entrypoints/agentSdkTypes.js"' has no exported member 'PermissionMode'.
-src/QueryEngine.ts(11,3): error TS2305: Module '"src/platform/entrypoints/agentSdkTypes.js"' has no exported member 'SDKCompactBoundaryMessage'.
+src/agent/QueryEngine.ts(10,3): error TS2305: Module '"src/platform/entrypoints/agentSdkTypes.js"' has no exported member 'PermissionMode'.
+src/agent/QueryEngine.ts(11,3): error TS2305: Module '"src/platform/entrypoints/agentSdkTypes.js"' has no exported member 'SDKCompactBoundaryMessage'.
 ...
-src/QueryEngine.ts(726,50): error TS2550: Property 'findLastIndex' does not exist on type 'Message[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2023' or later.
-src/QueryEngine.ts(727,15): error TS7006: Parameter 'm' implicitly has an 'any' type.
+src/agent/QueryEngine.ts(726,50): error TS2550: Property 'findLastIndex' does not exist on type 'Message[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2023' or later.
+src/agent/QueryEngine.ts(727,15): error TS7006: Parameter 'm' implicitly has an 'any' type.
 ... (~6000 linhas similares)
 src/services/api/userAgent.ts(20,46): error TS2304: Cannot find name 'MACRO'.
 ```
@@ -92,8 +92,8 @@ Found 2 errors in src/foo.ts.
 
 ```
 [TS2305 × 8 — has no exported member]
-  src/QueryEngine.ts(10,3): 'PermissionMode'
-  src/QueryEngine.ts(11,3): 'SDKCompactBoundaryMessage'
+  src/agent/QueryEngine.ts(10,3): 'PermissionMode'
+  src/agent/QueryEngine.ts(11,3): 'SDKCompactBoundaryMessage'
   ... (6 mais)
 
 [TS2307 × 3 — Cannot find module]

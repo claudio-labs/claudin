@@ -24,7 +24,7 @@ import {
 } from 'src/services/session/resume/chain.js'
 import { loadTranscriptFile } from 'src/services/session/resume/transcriptLoad.js'
 import { getAgentTranscriptPath, getProjectDir } from 'src/services/session/pure/paths.js'
-import type { ContentReplacementRecord } from 'src/services/tools/toolResultStorage.js'
+import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
 
 /**
  * Get the transcript for a specific agent

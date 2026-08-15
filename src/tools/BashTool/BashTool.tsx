@@ -39,7 +39,7 @@ import { semanticNumber } from 'src/shared/data/semanticNumber.js';
 import { EndTruncatingAccumulator } from 'src/shared/text/stringUtils.js';
 import { TaskOutput } from 'src/tasks/TaskOutput.js';
 import { isOutputLineTruncated } from 'src/terminal/terminal.js';
-import { ensureToolResultsDir, getToolResultPath } from 'src/services/tools/toolResultStorage.js';
+import { ensureToolResultsDir, getToolResultPath } from 'src/agent/tools/toolResultStorage.js';
 import { userFacingName as fileEditUserFacingName } from 'src/tools/FileEditTool/UI.js';
 import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js';
 import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js';
@@ -56,7 +56,7 @@ import {
   type PreExecPlan,
 } from 'src/outputFilter/Bash/index.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
-import { recordBytesSaved } from 'src/services/context/tokensSaved.js';
+import { recordBytesSaved } from 'src/agent/context/tokensSaved.js';
 import { bashToolHasPermission, commandHasAnyCd, matchWildcardPattern, permissionRuleExtractPrefix } from 'src/tools/BashTool/bashPermissions.js';
 import { interpretCommandResult } from 'src/tools/BashTool/commandSemantics.js';
 import { getDefaultTimeoutMs, getMaxTimeoutMs, getSimplePrompt } from 'src/tools/BashTool/prompt.js';

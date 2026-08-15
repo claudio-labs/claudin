@@ -29,9 +29,9 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 **Vale pra Claudin?**
 - **Sim, alto valor.** Não há equivalente. Reduz drift em investigações longas.
 - 100% local, sem phone-home.
-- Sinergia com `src/services/contextCollapse/` e `src/services/compact/`.
+- Sinergia com `src/agent/contextCollapse/` e `src/agent/compact/`.
 
-**Encaixe**: `src/tools/CheckpointTool/` + `src/tools/RewindTool/`. History mutation hook em `src/QueryEngine.ts` (`messages.length = checkpointCount` + push do report). Flag `CHECKPOINT_REWIND`. Compatível com plan mode hard-gate.
+**Encaixe**: `src/tools/CheckpointTool/` + `src/tools/RewindTool/`. History mutation hook em `src/agent/QueryEngine.ts` (`messages.length = checkpointCount` + push do report). Flag `CHECKPOINT_REWIND`. Compatível com plan mode hard-gate.
 
 ## 3. Reviewer agent + `report_finding` (structured findings)
 
@@ -80,7 +80,7 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 - **Sim, 80% da infra existe.** `src/platform/lsp/diagnosticsForToolResult.ts` + `awaitDiagnosticsForFile.ts` + `diagnosticTracking.ts:30-40` (baseline).
 - **Falta:** canal de injeção *deferred* (mensagens que chegam depois do tool result ter retornado).
 
-**Encaixe**: `src/QueryEngine.ts` adicionar `queueDeferredMessage` entre turnos. `src/tools/FileEditTool/FileEditTool.ts` caller-side wiring.
+**Encaixe**: `src/agent/QueryEngine.ts` adicionar `queueDeferredMessage` entre turnos. `src/tools/FileEditTool/FileEditTool.ts` caller-side wiring.
 
 ## 7. IRC dedupe — loop/stuck detection
 
@@ -126,7 +126,7 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 | 8 | Confidence em schemas (convenção) | XS | Baixo | ✓ | **P3** |
 
 **Targets concretos:**
-- `src/QueryEngine.ts` — hook `queueDeferredMessage` (#6) + history mutation hooks (#2).
+- `src/agent/QueryEngine.ts` — hook `queueDeferredMessage` (#6) + history mutation hooks (#2).
 - `src/platform/lsp/diagnosticsForToolResult.ts` — extender com path "deferred" (#6).
 - `src/tools/FileEditTool/FileEditTool.ts` — caller-side wiring (#6).
 - `scripts/build.ts` featureFlags — `CHECKPOINT_REWIND`, `HINDSIGHT_REFLECT`, `REVIEWER_FINDINGS`.

@@ -167,11 +167,11 @@ const getPowerShellTool = () => {
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { feature } from 'bun:bundle'
 import uniqBy from 'lodash-es/uniqBy.js'
-import { isToolSearchEnabledOptimistic } from 'src/services/tools/toolSearch.js'
+import { isToolSearchEnabledOptimistic } from 'src/agent/tools/toolSearch.js'
 import { isTodoV2Enabled } from 'src/tasks/tasks.js'
 import type { ToolPermissionContext } from 'src/Tool.js'
 import { getDenyRuleForTool } from 'src/services/permissions/permissions.js'
-import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
+import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { isPowerShellToolEnabled } from 'src/platform/shell/shellToolUtils.js'
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'

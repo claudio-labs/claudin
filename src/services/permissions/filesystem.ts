@@ -28,7 +28,7 @@ import {
   getDirectoryForPath,
   sanitizePath,
 } from 'src/shared/fs/path.js'
-import { getPlansDirectory } from 'src/utils/plans.js'
+import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import { getProjectDir } from 'src/services/session/sessionStorage.js'
 import { SETTING_SOURCES } from 'src/platform/settings/constants.js'
@@ -37,7 +37,7 @@ import {
   getSettingsRootPathForSource,
 } from 'src/platform/settings/settings.js'
 import { containsVulnerableUncPath } from 'src/platform/shell/readOnlyCommandValidation.js'
-import { getToolResultsDir } from 'src/services/tools/toolResultStorage.js'
+import { getToolResultsDir } from 'src/agent/tools/toolResultStorage.js'
 import { windowsPathToPosixPath } from 'src/shared/fs/windowsPaths.js'
 import type {
   PermissionDecision,

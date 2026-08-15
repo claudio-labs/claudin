@@ -14,7 +14,7 @@ import {
   has1mContext,
   is1mContextDisabled,
   modelSupports1M,
-} from 'src/services/context/context.js'
+} from 'src/agent/context/context.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getPrimaryModel } from 'src/services/api/providerModels.js'
 import { getModelStrings, resolveOverriddenModel } from 'src/utils/model/modelStrings.js'
@@ -103,7 +103,7 @@ export function isNonCustomOpusModel(model: ModelName): boolean {
  * `<model>[1m]` case for them in getPublicModelDisplayName).
  *
  * Keep this list in sync with the native-1M branch in
- * getContextWindowForModel (src/services/context/context.ts).
+ * getContextWindowForModel (src/agent/context/context.ts).
  */
 export function isNative1mModel(model: ModelName): boolean {
   const canonical = getCanonicalName(model)

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCommandQueue } from 'src/hooks/useCommandQueue.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getExampleCommandPool } from 'src/utils/exampleCommands.js'
-import { isQueuedCommandEditable } from 'src/utils/messageQueueManager.js'
+import { isQueuedCommandEditable } from 'src/agent/messageQueueManager.js'
 
 // Dead code elimination: conditional import for proactive mode
 /* eslint-disable @typescript-eslint/no-require-imports */

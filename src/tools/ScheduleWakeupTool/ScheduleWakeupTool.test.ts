@@ -11,7 +11,7 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import type { SessionId } from 'src/types/ids.js'
 import { takeDueSessionWakeup } from 'src/tasks/cronScheduler.js'
-import { resetLoopSentinelState } from 'src/utils/loopSentinels.js'
+import { resetLoopSentinelState } from 'src/agent/loopSentinels.js'
 import {
   createTeammateContext,
   runWithTeammateContext,

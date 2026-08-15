@@ -15,7 +15,7 @@ import {
   GOAL_MAX_CONDITION_LENGTH,
   getGoalTokenCount,
   setActiveGoal,
-} from 'src/services/goal/goal.js'
+} from 'src/agent/goal/goal.js'
 import {
   shouldAllowManagedHooksOnly,
   shouldDisableAllHooksIncludingManaged,

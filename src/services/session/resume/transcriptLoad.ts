@@ -44,12 +44,12 @@ import {
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import type { FileHistorySnapshot } from 'src/shared/fs/fileHistory.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
-import { isCompactBoundaryMessage } from 'src/services/messages/messages.js'
+import { isCompactBoundaryMessage } from 'src/agent/messages/messages.js'
 import {
   SKIP_PRECOMPACT_THRESHOLD,
   readTranscriptForLoad,
 } from 'src/services/session/sessionStoragePortable.js'
-import type { ContentReplacementRecord } from 'src/services/tools/toolResultStorage.js'
+import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
 import { getProjectDir } from 'src/services/session/pure/paths.js'
 import {
   forEachParsedJSONLBufferEntry,

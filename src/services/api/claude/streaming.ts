@@ -39,7 +39,7 @@ import {
   getMergedBetas,
 } from "src/services/api/betas.js";
 import { getGlobalConfig } from "src/platform/config/config.js";
-import { getSonnet1mExpTreatmentEnabled } from "src/services/context/context.js";
+import { getSonnet1mExpTreatmentEnabled } from "src/agent/context/context.js";
 import { getThinkingBudgetForEffort, resolveAppliedEffort } from "src/utils/effort.js";
 import { isEnvDefinedFalsy, isEnvTruthy } from "src/shared/envUtils.js";
 import {
@@ -60,26 +60,26 @@ import {
   stripOldThinkingBlocks,
   stripCallerFieldFromAssistantMessage,
   stripToolReferenceBlocksFromUserMessage,
-} from "src/services/messages/messages.js";
+} from "src/agent/messages/messages.js";
 import { isNonCustomOpusModel } from "src/utils/model/model.js";
 import {
   asSystemPrompt,
   type SystemPrompt,
-} from "src/utils/systemPromptType.js";
-import { tokenCountFromLastAPIResponse } from "src/services/context/tokens.js";
+} from "src/agent/systemPromptType.js";
+import { tokenCountFromLastAPIResponse } from "src/agent/context/tokens.js";
 import { getDynamicConfig_BLOCKS_ON_INIT } from "src/platform/analytics/growthbook.js";
 import {
   currentLimits,
   extractQuotaStatusFromError,
   extractQuotaStatusFromHeaders,
 } from "src/services/claudeAiLimits.js";
-import { getAPIContextManagement } from "src/services/cache/anthropic/apiMicrocompact.js";
+import { getAPIContextManagement } from "src/agent/cache/anthropic/apiMicrocompact.js";
 import {
   applyStableStubs,
   getClipFrontierIndex,
   isClipFrontierEnabled,
-} from "src/services/compact/stableStubState.js";
-import { getCacheProfile } from "src/services/cache/cacheProfile.js";
+} from "src/agent/compact/stableStubState.js";
+import { getCacheProfile } from "src/agent/cache/cacheProfile.js";
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const autoModeStateModule = feature("TRANSCRIPT_CLASSIFIER")
@@ -113,7 +113,7 @@ import {
   REDACT_THINKING_BETA_HEADER,
   STRUCTURED_OUTPUTS_BETA_HEADER,
 } from "src/constants/betas.js";
-import { addToTotalSessionCost } from "src/cost-tracker.js";
+import { addToTotalSessionCost } from "src/agent/cost-tracker.js";
 import { getFeatureValue_CACHED_MAY_BE_STALE } from "src/platform/analytics/growthbook.js";
 import {
   ADVISOR_TOOL_INSTRUCTIONS,
@@ -141,20 +141,20 @@ import {
 } from "src/utils/fastMode.js";
 import { headlessProfilerCheckpoint } from "src/platform/headlessProfiler.js";
 import { calculateUSDCost } from "src/services/api/modelCost.js";
-import { endQueryProfile, queryCheckpoint } from "src/utils/queryProfiler.js";
+import { endQueryProfile, queryCheckpoint } from "src/agent/queryProfiler.js";
 import {
   isAdaptiveThinkingEnabled,
   modelRequiresAdaptiveThinking,
   modelSupportsAdaptiveThinking,
   modelSupportsThinking,
   type ThinkingConfig,
-} from "src/services/context/thinking.js";
+} from "src/agent/context/thinking.js";
 import {
   extractDiscoveredToolNames,
   isDeferredToolsDeltaActive,
   isToolSearchEnabled,
   maybeLatchLegacyDeferredAnnouncement,
-} from "src/services/tools/toolSearch.js";
+} from "src/agent/tools/toolSearch.js";
 import { API_MAX_MEDIA_PER_REQUEST } from "src/constants/apiLimits.js";
 import { ADVISOR_BETA_HEADER } from "src/constants/betas.js";
 import {

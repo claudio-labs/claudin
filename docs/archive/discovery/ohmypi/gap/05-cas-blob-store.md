@@ -72,7 +72,7 @@ Varredura de `packages/coding-agent/src/session/` omp além do CAS blob store j�
 
 | Feature | Inserir em | Mudança |
 |---|---|---|
-| **Compaction entry tipada** | `src/services/compact/compact.ts` + `src/services/session/pure/typeGuards.ts` | Schema-add. Nova variante de message no JSONL |
+| **Compaction entry tipada** | `src/agent/compact/compact.ts` + `src/services/session/pure/typeGuards.ts` | Schema-add. Nova variante de message no JSONL |
 | **Terminal breadcrumb** | Novo `src/services/session/breadcrumb.ts` + hook em `src/commands/resume/resume.tsx` | Aditivo ~50 LOC |
 | **Draft persistence** | Novo `src/services/session/persistence/draft.ts`, hook em Ctrl+C/shutdown, leitura em `useResumeSession*` | Aditivo, sidecar `draft.txt` |
 | **`titleSource: user`** | `src/services/session/persistence/metadata.ts` — 1 campo + 1 guard em quem escreve auto | Trivial |

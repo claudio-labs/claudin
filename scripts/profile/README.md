@@ -309,7 +309,7 @@ per-message cost.
 Drives the five module-level caches that grow per-turn / per-tool-call /
 per-LSP-publication with N distinct entries each, and measures: declared
 cap vs observed size, total heap delta, per-cycle heap delta. Companion
-to `src/utils/cacheBoundsInvariants.test.ts` — that test runs in CI to
+to `src/agent/cacheBoundsInvariants.test.ts` — that test runs in CI to
 catch a future regression dropping the eviction call; this bench produces
 the numbers for the baseline.
 

@@ -8,10 +8,10 @@
 // monitor-kind shell tasks.
 
 import type { AppState } from 'src/terminal/state/AppState.js'
-import type { SetAppState, Task, TaskStateBase } from 'src/Task.js'
+import type { SetAppState, Task, TaskStateBase } from 'src/agent/Task.js'
 import type { AgentId } from 'src/types/ids.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { dequeueAllMatching } from 'src/utils/messageQueueManager.js'
+import { dequeueAllMatching } from 'src/agent/messageQueueManager.js'
 import { evictTaskOutput } from 'src/tasks/diskOutput.js'
 import { updateTaskState } from 'src/tasks/framework.js'
 import { isLocalShellTask } from 'src/tasks/LocalShellTask/guards.js'

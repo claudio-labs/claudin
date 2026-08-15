@@ -41,7 +41,7 @@ import {
   isBypassPermissionsModeDisabled,
   transitionPermissionMode,
 } from 'src/services/permissions/permissionSetup.js'
-import { enqueue } from 'src/utils/messageQueueManager.js'
+import { enqueue } from 'src/agent/messageQueueManager.js'
 
 export async function handleRewindFiles(
   userMessageId: UUID,

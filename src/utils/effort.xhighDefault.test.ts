@@ -2,14 +2,14 @@ import { afterAll, expect, mock, test } from 'bun:test'
 
 const realSettings = { ...(await import('src/platform/settings/settings.js')) }
 const realAuth = { ...(await import('src/services/auth/auth.js')) }
-const realThinking = { ...(await import('src/services/context/thinking.js')) }
+const realThinking = { ...(await import('src/agent/context/thinking.js')) }
 const realGrowthbook = { ...(await import('src/platform/analytics/growthbook.js')) }
 const realProviders = { ...(await import('src/utils/model/providers.js')) }
 
 afterAll(() => {
   mock.module('src/platform/settings/settings.js', () => realSettings)
   mock.module('src/services/auth/auth.js', () => realAuth)
-  mock.module('src/services/context/thinking.js', () => realThinking)
+  mock.module('src/agent/context/thinking.js', () => realThinking)
   mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
   mock.module('src/utils/model/providers.js', () => realProviders)
 })
@@ -33,7 +33,7 @@ async function importFreshEffortModule(options: {
     isMaxSubscriber: () => options.isMax ?? false,
     isTeamSubscriber: () => options.isTeam ?? false,
   }))
-  mock.module('src/services/context/thinking.js', () => ({
+  mock.module('src/agent/context/thinking.js', () => ({
     isUltrathinkEnabled: () => options.ultrathink ?? false,
   }))
   mock.module('src/platform/analytics/growthbook.js', () => ({

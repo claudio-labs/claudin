@@ -1,6 +1,6 @@
 /**
  * Project-local directory resolution for agent workflows, hardened the same way
- * as the plans directory (`src/utils/plans.ts`): definitions live in
+ * as the plans directory (`src/agent/plans/plans.ts`): definitions live in
  * `<cwd>/.claudin/workflows/`, run state under `<cwd>/.claudin/workflows/.runs/`.
  * A symlink-containment check falls back to the global config dir if the project
  * `.claudin` escapes the repo root; `.runs/` is kept out of git.

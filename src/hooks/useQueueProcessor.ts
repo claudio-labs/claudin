@@ -3,8 +3,8 @@ import type { QueuedCommand } from 'src/types/textInputTypes.js'
 import {
   getCommandQueueSnapshot,
   subscribeToCommandQueue,
-} from 'src/utils/messageQueueManager.js'
-import type { QueryGuard } from 'src/utils/QueryGuard.js'
+} from 'src/agent/messageQueueManager.js'
+import type { QueryGuard } from 'src/agent/QueryGuard.js'
 import { processQueueIfReady } from 'src/shared/queueProcessor.js'
 
 type UseQueueProcessorParams = {

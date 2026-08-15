@@ -76,7 +76,7 @@ import {
 } from 'src/platform/settings/settings.js'
 import { sleep } from 'src/shared/sleep.js'
 import { jsonParse } from 'src/platform/slowOperations.js'
-import { clearToolSchemaCache } from 'src/services/tools/toolSchemaCache.js'
+import { clearToolSchemaCache } from 'src/agent/tools/toolSchemaCache.js'
 
 /** Default TTL for API key helper cache in milliseconds (5 minutes) */
 const DEFAULT_API_KEY_HELPER_TTL = 5 * 60 * 1000

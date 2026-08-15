@@ -36,7 +36,7 @@ Um usuário "atento" do Claudin que sabe que LSPTool existe já chama `findRefer
 **c) Medição mínima.** A/B controlado de 1-2 semanas comparando log de tool-calls em sessões reais (não synthetic). Métrica: ratio `LSP-symbol-ops / (LSP-symbol-ops + Grep-symbol-queries + Read-on-symbol-target)`. Hipótese: tem que subir ≥15 pontos percentuais sem aumentar `total-tokens-per-task` em >5%. Sem essa medida, o eixo é prompt-engineering de fé.
 
 **d) Custos escondidos.**
-- **Prompt bloat.** `src/utils/systemPrompt.ts:41-119` + `src/constants/prompts.ts:230-275` (`08 §1`) já é grande. Adicionar tabela "Tool | Use when" + bloco "use LSP first, fallback to Grep only if Z" mexe no system prompt **de toda** invocação do agente principal e dos Explore/Plan. Inflate de ~200-400 tokens × N turnos × N sessões.
+- **Prompt bloat.** `src/agent/systemPrompt.ts:41-119` + `src/constants/prompts.ts:230-275` (`08 §1`) já é grande. Adicionar tabela "Tool | Use when" + bloco "use LSP first, fallback to Grep only if Z" mexe no system prompt **de toda** invocação do agente principal e dos Explore/Plan. Inflate de ~200-400 tokens × N turnos × N sessões.
 - **Latência cold-start LSP.** `typescript-language-server` em repo grande leva segundos para indexar antes de responder. Em `Grep` o usuário paga ~80ms; o nudge "prefira LSP" pode trocar 80ms por 3-8s no primeiro símbolo. Roadmap não menciona.
 - **Servidor LSP indisponível.** Em um repo poliglota onde só TS tem server rodando, o agente nudgeado tenta LSP, falha, cai pra Grep — mas perdeu 1 tool call no caminho. Sem detecção up-front, custo é negativo.
 - **Manutenção.** Mais um lugar para sincronizar quando a lista de tools muda (já há `embeddedTools.ts` branch em `exploreAgent.ts:16-22`).
@@ -232,7 +232,7 @@ Concretamente, em ordem:
 
 1. **Eixo 1 minimal:** editar 2 strings — `src/tools/LSPTool/prompt.ts` e `src/tools/GrepTool/prompt.ts` — para incluir "for symbol queries prefer the other when applicable" cruzado. Instrumentar tool-call counters por 1-2 semanas. Custo: ~1 dia + medida.
 
-2. **Eixo 4 reduzido:** cache in-memory **só de `documentSymbol`**, com LRU cap, invalidação por path em FileEdit/FileWrite. Toca `src/tools/LSPTool/LSPTool.ts` + `src/services/tools/toolExecution.ts` (`08 Eixo 4`). Custo: ~3 dias.
+2. **Eixo 4 reduzido:** cache in-memory **só de `documentSymbol`**, com LRU cap, invalidação por path em FileEdit/FileWrite. Toca `src/tools/LSPTool/LSPTool.ts` + `src/agent/tools/toolExecution.ts` (`08 Eixo 4`). Custo: ~3 dias.
 
 3. **Eixo 2a:** parser de hunks + tabela estática (sem LSP), substitui o prompt de `src/commands/review.ts:9-31`. Bloco `## Verdict` ao final. Custo: ~2-3 dias.
 

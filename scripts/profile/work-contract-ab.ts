@@ -63,7 +63,7 @@
 //
 // The system prompt is NOT observable from `--output-format stream-json`: the
 // `init` event carries tools, model, betas and slash commands, but no prompt
-// text (src/services/messages/systemInit.ts). So the in-run prompt shape is
+// text (src/agent/messages/systemInit.ts). So the in-run prompt shape is
 // asserted INDIRECTLY, at startup, against the same bundle the arms will run:
 //
 //   1. the current build generation's chunks must contain the literal
@@ -828,7 +828,7 @@ function measureSizes(): Sizes {
   const script = `
     globalThis.MACRO ??= new Proxy({}, { get: (_t, p) => '<' + String(p) + '>' })
     const p = await import('./src/constants/prompts.ts')
-    const t = await import('./src/services/tokenEstimation.ts')
+    const t = await import('./src/shared/tokenEstimation.ts')
     const on = p.buildWorkContractSections(true)
     const joined = on.join('\\n\\n')
     console.log(JSON.stringify({

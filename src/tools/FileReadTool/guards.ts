@@ -3,7 +3,7 @@ import { posix, win32 } from 'path'
 import {
   countTokensWithAPI,
   roughTokenCountEstimationForFileType,
-} from 'src/services/tokenEstimation.js'
+} from 'src/shared/tokenEstimation.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { getDefaultFileReadingLimits } from 'src/tools/FileReadTool/limits.js'
 

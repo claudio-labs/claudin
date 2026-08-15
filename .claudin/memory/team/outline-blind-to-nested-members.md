@@ -40,7 +40,7 @@ file whose members are merely invisible. A density test (symbols per line) would
 **What the census killed.** Both are dead ends — do not re-propose without new data:
 - *A scanSymbols cache.* The cache it would duplicate already exists one layer up:
   `Read` is in the tool-result cache whitelist at a 60 s TTL with an `isFreshOnDisk`
-  check (`src/services/tools/toolResultCache.ts:41,92-95`), so a repeat on an
+  check (`src/agent/tools/toolResultCache.ts:41,92-95`), so a repeat on an
   unchanged file never reaches the scanner. Measured properly — counting the
   **auto-pivot** path, not just explicit `view:"outline"` — there are 675
   scan-triggering Reads of big code files; 174 repeat a file in-session, 145 with the

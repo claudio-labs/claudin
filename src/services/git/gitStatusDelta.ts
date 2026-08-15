@@ -1,7 +1,7 @@
 /**
  * gitStatus delta — inject on turn 1 only.
  *
- * WHY: `getGitStatus` in `src/context.ts` explicitly documents its
+ * WHY: `getGitStatus` in `src/agent/context.ts` explicitly documents its
  * output as "a snapshot in time, and will not update during the
  * conversation." Today that snapshot is re-appended to every system
  * prompt via `appendSystemContext` (src/services/api/api.ts:486), costing
@@ -14,8 +14,8 @@
  *
  * Mirrors the pattern of:
  *   - `src/services/mcp/mcpInstructionsDelta.ts`
- *   - `src/services/tools/toolSearch.ts` (`getDeferredToolsDelta`)
- *   - `src/services/attachments/attachments.ts` (`getAgentListingDeltaAttachment`)
+ *   - `src/agent/tools/toolSearch.ts` (`getDeferredToolsDelta`)
+ *   - `src/agent/attachments/attachments.ts` (`getAgentListingDeltaAttachment`)
  *
  * Complementary to the other two Phase-2 deltas (`claudeMdDelta`,
  * `todoReminderDelta`): together they cover the static context that was
@@ -26,7 +26,7 @@ import { logEvent } from 'src/platform/analytics/index.js'
 
 /**
  * Key inside the system-context object (see `getSystemContext` in
- * src/context.ts) that this delta replaces when dedup is active.
+ * src/agent/context.ts) that this delta replaces when dedup is active.
  * `api.ts::filterStaticDedupKeys` reads this to know which key to strip
  * from `appendSystemContext`, avoiding double-announce.
  */
@@ -65,7 +65,7 @@ export function getGitStatusDelta(
   }
 
   // Already announced — subsequent turns are a no-op. The snapshot is
-  // immutable by design (see getGitStatus in src/context.ts).
+  // immutable by design (see getGitStatus in src/agent/context.ts).
   if (priorAttachmentCount > 0) return null
 
   logEvent('claudin_git_status_delta', {

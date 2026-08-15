@@ -35,12 +35,12 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { stripDisplayTagsAllowEmpty } from 'src/shared/text/displayTags.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { getBranch, getRemoteUrl } from 'src/services/git/git.js'
-import { toSDKMessages } from 'src/services/messages/mappers.js'
+import { toSDKMessages } from 'src/agent/messages/mappers.js'
 import {
   getContentText,
   getMessagesAfterCompactBoundary,
   isSyntheticMessage,
-} from 'src/services/messages/messages.js'
+} from 'src/agent/messages/messages.js'
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import { getCurrentSessionTitle } from 'src/services/session/sessionStorage.js'
 import {

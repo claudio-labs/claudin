@@ -4,7 +4,7 @@ import {
   CANCEL_MESSAGE,
   INTERRUPT_MESSAGE_FOR_TOOL_USE,
   REJECT_MESSAGE,
-} from 'src/services/messages/constants.js'
+} from 'src/agent/messages/constants.js'
 import {
   countIdenticalFailures,
   detectRepeatedErrorLoop,

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useRegisterOverlay } from 'src/terminal/contexts/overlayContext.js';
-import { getTimestampedHistory, type TimestampedHistoryEntry } from 'src/history.js';
+import { getTimestampedHistory, type TimestampedHistoryEntry } from 'src/agent/history.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { stringWidth } from 'src/terminal/ink/stringWidth.js';
 import { wrapAnsi } from 'src/terminal/ink/wrapAnsi.js';

@@ -4,8 +4,8 @@
 // surfacing via the existing task registry.
 
 import { rollbackConsolidationLock } from 'src/services/autoDream/consolidationLock.js'
-import type { SetAppState, Task, TaskStateBase } from 'src/Task.js'
-import { createTaskStateBase, generateTaskId } from 'src/Task.js'
+import type { SetAppState, Task, TaskStateBase } from 'src/agent/Task.js'
+import { createTaskStateBase, generateTaskId } from 'src/agent/Task.js'
 import { registerTask, updateTaskState } from 'src/tasks/framework.js'
 
 // Keep only the N most recent turns for live display.

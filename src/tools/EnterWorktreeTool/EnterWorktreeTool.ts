@@ -8,7 +8,7 @@ import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { findCanonicalGitRoot } from 'src/services/git/git.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
-import { getPlanSlug, getPlansDirectory } from 'src/utils/plans.js'
+import { getPlanSlug, getPlansDirectory } from 'src/agent/plans/plans.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
 import { saveWorktreeState } from 'src/services/session/sessionStorage.js'
 import {

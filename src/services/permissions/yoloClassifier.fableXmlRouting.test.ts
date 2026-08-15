@@ -18,7 +18,7 @@ mock.module('src/utils/model/model.js', () => ({
   getMainLoopModel: () => mainLoopModel,
 }))
 
-mock.module('src/utils/sideQuery.js', () => ({
+mock.module('src/agent/sideQuery.js', () => ({
   sideQuery: (opts: Record<string, unknown>) => {
     capturedOpts.push(opts)
     // XML stage-1 allow verdict; the tool_use path treats this text-only

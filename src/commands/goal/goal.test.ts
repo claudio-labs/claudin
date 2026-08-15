@@ -5,7 +5,7 @@ import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
 } from 'src/types/command.js'
-import { GOAL_MAX_CONDITION_LENGTH } from 'src/services/goal/goal.js'
+import { GOAL_MAX_CONDITION_LENGTH } from 'src/agent/goal/goal.js'
 import type { SessionStore } from 'src/platform/lifecycleHooks/sessionHooks.js'
 
 // The /goal set path consults process-global gates (hook policy snapshot +

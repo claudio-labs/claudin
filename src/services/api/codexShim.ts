@@ -1,7 +1,7 @@
 import * as os from 'node:os'
 import { APIError } from '@anthropic-ai/sdk'
 import { buildAnthropicUsageFromRawUsage } from 'src/services/api/cacheMetrics.js'
-import { applyStableStubs } from 'src/services/compact/stableStubState.js'
+import { applyStableStubs } from 'src/agent/compact/stableStubState.js'
 import { fetchWithProxyRetry } from 'src/services/api/fetchWithProxyRetry.js'
 import { stableStringify } from 'src/shared/data/stableStringify.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
@@ -404,7 +404,7 @@ function enforceStrictSchema(schema: unknown): Record<string, unknown> {
  * `required`. Without it the model has no legal way to skip an argument and
  * invents a placeholder instead (`pages: ""`, `limit: 2000`,
  * `view: "full"`), which downstream tools then honor as a real value.
- * stripPlaceholderOptionalFields (src/services/tools/toolInputPlaceholders.ts) turns
+ * stripPlaceholderOptionalFields (src/agent/tools/toolInputPlaceholders.ts) turns
  * the resulting `null` back into an absent key.
  *
  * An `enum` needs `null` in BOTH the type union and the value list, or the

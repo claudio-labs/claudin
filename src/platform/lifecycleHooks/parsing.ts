@@ -8,7 +8,7 @@ import type {
   HookJSONOutput,
   SyncHookJSONOutput,
 } from 'src/platform/entrypoints/agentSdkTypes.js'
-import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
+import { createAttachmentMessage } from 'src/agent/attachments/attachments.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import type {

@@ -3,7 +3,7 @@ import type { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import * as React from 'react';
 import { BLACK_CIRCLE } from 'src/constants/figures.js';
 import { Box, Text, type TextProps } from 'src/terminal/ink.js';
-import { extractTag } from 'src/services/messages/messages.js';
+import { extractTag } from 'src/agent/messages/messages.js';
 type Props = {
   addMargin: boolean;
   param: TextBlockParam;

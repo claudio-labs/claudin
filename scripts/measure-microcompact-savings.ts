@@ -43,11 +43,11 @@ import {
   _resetAllClippedIdsForTesting,
   addClippedIds,
   applyStableStubs,
-} from '../src/services/compact/stableStubState.js'
+} from '../src/agent/compact/stableStubState.js'
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
-} from '../src/services/tokenEstimation.js'
+} from '../src/shared/tokenEstimation.js'
 import { enableConfigs } from '../src/platform/config/config.js'
 
 type AnyMsg = {

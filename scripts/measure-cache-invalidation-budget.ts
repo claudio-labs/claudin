@@ -46,7 +46,7 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
   })
 }
 
-import { getBytesPerTokenForModel } from '../src/services/tokenEstimation.js'
+import { getBytesPerTokenForModel } from '../src/shared/tokenEstimation.js'
 import { enableConfigs } from '../src/platform/config/config.js'
 import { measureToolSchemas } from './measure-tool-schemas.ts'
 import { getSystemPrompt, computeSimpleEnvInfo } from '../src/constants/prompts.js'

@@ -9,7 +9,7 @@
  * point is to restore the checking that the missing file took with it.
  *
  * Every shape below is reconstructed from a CONSTRUCTION site wherever one
- * exists — `src/services/messages/factories.ts` builds most of the union, and
+ * exists — `src/agent/messages/factories.ts` builds most of the union, and
  * `normalize.ts` / `collapseReadSearch.ts` / `groupToolUses.ts` define the
  * derived views. Where only consumers were available that is called out inline.
  * Expect it to be tightened over time; prefer narrowing a field here over
@@ -42,7 +42,7 @@ import type { SDKAssistantMessageErrorSchema } from 'src/platform/entrypoints/sd
 import type { z } from 'zod/v4'
 import type { Progress } from 'src/Tool.js'
 import type { PermissionMode } from 'src/types/permissions.js'
-import type { Attachment } from 'src/services/attachments/types.js'
+import type { Attachment } from 'src/agent/attachments/types.js'
 import type {
   BranchAction,
   CommitKind,
@@ -57,7 +57,7 @@ type SDKAssistantMessageError = z.infer<
 /**
  * Where a user message came from. `undefined` means a human typed it — the
  * `human` arm is the explicit spelling of the same thing.
- * Source: `wrapCommandText` in `src/services/messages/text.ts`.
+ * Source: `wrapCommandText` in `src/agent/messages/text.ts`.
  */
 export type MessageOrigin =
   | { kind: 'human' }
@@ -67,7 +67,7 @@ export type MessageOrigin =
 
 /**
  * Which side of the selected message a partial compaction summarizes.
- * Source: `src/services/compact/prompt.ts` (`direction === 'up_to'`) and the
+ * Source: `src/agent/compact/prompt.ts` (`direction === 'up_to'`) and the
  * `= 'from'` defaults in `compact.ts` / `REPL.tsx`.
  */
 export type PartialCompactDirection = 'from' | 'up_to'
@@ -325,7 +325,7 @@ export type SystemAPIErrorMessage = SystemMessageBase & {
   maxRetries: number
 }
 
-/** Written to the transcript by `src/utils/plans.ts` so a rewind can restore
+/** Written to the transcript by `src/agent/plans/plans.ts` so a rewind can restore
  *  files the plan touched. Never rendered. */
 export type SystemFileSnapshotMessage = SystemMessageBase & {
   subtype: 'file_snapshot'
@@ -398,7 +398,7 @@ export type NormalizedMessage =
 
 /**
  * Consecutive calls to the same tool, folded into one row.
- * Built in `src/services/tools/groupToolUses.ts`.
+ * Built in `src/agent/tools/groupToolUses.ts`.
  */
 export type GroupedToolUseMessage = {
   type: 'grouped_tool_use'
@@ -427,7 +427,7 @@ export type WriteFileStat = {
 
 /**
  * A run of read/search/write operations folded into a single summary row.
- * Built by `createCollapsedGroup` in `src/services/tools/collapseReadSearch.ts`; the
+ * Built by `createCollapsedGroup` in `src/agent/tools/collapseReadSearch.ts`; the
  * optional fields are the ones that function only sets conditionally.
  */
 export type CollapsedReadSearchGroup = {

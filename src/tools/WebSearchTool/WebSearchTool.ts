@@ -18,10 +18,10 @@ import {
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logError } from 'src/shared/log.js'
-import { createUserMessage } from 'src/services/messages/messages.js'
+import { createUserMessage } from 'src/agent/messages/messages.js'
 import { getMainLoopModel, getSmallFastModel } from 'src/utils/model/model.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
-import { asSystemPrompt } from 'src/utils/systemPromptType.js'
+import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { getWebSearchPrompt, WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
 import {
   getToolUseSummary,

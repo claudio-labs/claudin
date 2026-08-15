@@ -4,7 +4,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { getLogDisplayTitle, logError } from 'src/shared/log.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
 import { isLiteLog, loadFullLog } from 'src/services/session/sessionStorage.js'
-import { sideQuery } from 'src/utils/sideQuery.js'
+import { sideQuery } from 'src/agent/sideQuery.js'
 import { jsonParse } from 'src/platform/slowOperations.js'
 
 // Limits for transcript extraction

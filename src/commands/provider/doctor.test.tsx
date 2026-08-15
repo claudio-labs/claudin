@@ -13,7 +13,7 @@ const realActiveProviderNS = { ...(await import('src/services/api/activeProvider
 const realGeminiAuthNS = { ...(await import('src/services/api/geminiAuth.js')) }
 const realProviderDiscoveryNS = { ...(await import('src/services/api/providerDiscovery.js')) }
 const realModelNS = { ...(await import('src/utils/model/model.js')) }
-const realSideQueryNS = { ...(await import('src/utils/sideQuery.js')) }
+const realSideQueryNS = { ...(await import('src/agent/sideQuery.js')) }
 
 const realActiveProvider = { ...realActiveProviderNS }
 const realGeminiAuth = { ...realGeminiAuthNS }
@@ -88,11 +88,11 @@ mock.module('src/utils/model/model.js', () => ({
 // The doctor check probes via sideQuery; without a mock it would hit the real
 // API wrapper and fail on build-time MACROs under bun test. Mock both
 // specifier forms so the mock survives cross-file mock pre-application.
-mock.module('src/utils/sideQuery.js', () => ({
+mock.module('src/agent/sideQuery.js', () => ({
   ...realSideQuery,
   sideQuery: sideQueryMock,
 }))
-mock.module('src/utils/sideQuery.js', () => ({
+mock.module('src/agent/sideQuery.js', () => ({
   ...realSideQuery,
   sideQuery: sideQueryMock,
 }))
@@ -123,8 +123,8 @@ afterAll(() => {
   mock.module('src/services/api/providerDiscovery.js', () => realProviderDiscovery)
   mock.module('src/utils/model/model.js', () => realModel)
   mock.module('src/utils/model/model.js', () => realModel)
-  mock.module('src/utils/sideQuery.js', () => realSideQuery)
-  mock.module('src/utils/sideQuery.js', () => realSideQuery)
+  mock.module('src/agent/sideQuery.js', () => realSideQuery)
+  mock.module('src/agent/sideQuery.js', () => realSideQuery)
 })
 
 const { runProviderDoctor } = await import('src/commands/provider/doctor.js')

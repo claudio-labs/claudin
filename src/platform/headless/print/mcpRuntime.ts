@@ -19,7 +19,7 @@ import { cwd } from 'process'
 import { downloadUserSettings } from 'src/platform/settingsSync/index.js'
 import { waitForRemoteManagedSettingsToLoad } from 'src/platform/remoteManagedSettings/index.js'
 import { assembleToolPool } from 'src/tools.js'
-import { mergeAndFilterTools } from 'src/services/tools/toolPool.js'
+import { mergeAndFilterTools } from 'src/agent/tools/toolPool.js'
 import { toolMatchesName, type Tools } from 'src/Tool.js'
 import {
   logEvent,

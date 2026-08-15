@@ -5,7 +5,7 @@ import { useContext } from 'react';
 import { useQueuedMessage } from 'src/terminal/contexts/QueuedMessageContext.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { formatBriefTimestamp } from 'src/shared/text/formatBriefTimestamp.js';
-import { findThinkingTriggerPositions, getRainbowColor, isUltrathinkEnabled } from 'src/services/context/thinking.js';
+import { findThinkingTriggerPositions, getRainbowColor, isUltrathinkEnabled } from 'src/agent/context/thinking.js';
 import { MessageActionsSelectedContext } from 'src/components/messageActions.js';
 type Props = {
   text: string;

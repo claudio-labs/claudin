@@ -3,7 +3,7 @@ import { relative } from 'path';
 import React from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import { DiagnosticTrackingService } from 'src/platform/diagnosticTracking.js';
-import type { Attachment } from 'src/services/attachments/attachments.js';
+import type { Attachment } from 'src/agent/attachments/attachments.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';

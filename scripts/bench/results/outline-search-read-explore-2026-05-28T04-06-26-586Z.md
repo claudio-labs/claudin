@@ -89,9 +89,9 @@ Call sites de `getSmallFastModel` (excluindo a definição e os imports):
 - src/platform/lifecycleHooks/execAgentHook.ts:118
 - src/tools/WebSearchTool/WebSearchTool.ts:796
 - src/services/claudeAiLimits.ts:201
-- src/services/awaySummary.ts:49
-- src/services/tokenEstimation.ts:404
-- src/services/tokenEstimation.ts:420
+- src/agent/awaySummary.ts:49
+- src/shared/tokenEstimation.ts:404
+- src/shared/tokenEstimation.ts:420
 - src/services/api/client.ts:351
 - src/services/api/claude.ts:348
 - src/services/api/claude.ts:550
@@ -112,10 +112,10 @@ Call sites de `getSmallFastModel` (excluindo a definição e imports):
 - src/platform/lifecycleHooks/skillImprovement.ts:241
 - src/platform/lifecycleHooks/execPromptHook.ts:79
 - src/platform/lifecycleHooks/execAgentHook.ts:118
-- src/services/tokenEstimation.ts:404
-- src/services/tokenEstimation.ts:420
+- src/shared/tokenEstimation.ts:404
+- src/shared/tokenEstimation.ts:420
 - src/services/claudeAiLimits.ts:201
-- src/services/awaySummary.ts:49
+- src/agent/awaySummary.ts:49
 - src/services/api/client.ts:351
 - src/services/api/claude.ts:348
 - src/services/api/claude.ts:550
@@ -139,10 +139,10 @@ Callers de `getSmallFastModel` (excluindo a definição em `src/utils/model/mode
 - src/platform/lifecycleHooks/skillImprovement.ts:169
 - src/platform/lifecycleHooks/skillImprovement.ts:241
 - src/tools/WebSearchTool/WebSearchTool.ts:796
-- src/services/tokenEstimation.ts:404
-- src/services/tokenEstimation.ts:420
+- src/shared/tokenEstimation.ts:404
+- src/shared/tokenEstimation.ts:420
 - src/services/claudeAiLimits.ts:201
-- src/services/awaySummary.ts:49
+- src/agent/awaySummary.ts:49
 - src/services/api/client.ts:351
 - src/services/api/claude.ts:348
 - src/services/api/claude.ts:550
@@ -162,11 +162,11 @@ Call sites de `getSmallFastModel` (excluindo a definição em `src/utils/model/m
 - src/platform/lifecycleHooks/execAgentHook.ts:118
 - src/platform/lifecycleHooks/execPromptHook.ts:79
 - src/tools/WebSearchTool/WebSearchTool.ts:796
-- src/services/tokenEstimation.ts:404
-- src/services/tokenEstimation.ts:420
+- src/shared/tokenEstimation.ts:404
+- src/shared/tokenEstimation.ts:420
 - src/services/session/agenticSessionSearch.ts:261
 - src/services/claudeAiLimits.ts:201
-- src/services/awaySummary.ts:49
+- src/agent/awaySummary.ts:49
 - src/services/api/client.ts:351
 - src/services/api/claude.ts:348
 - src/services/api/claude.ts:550
@@ -237,12 +237,12 @@ Os demais resultados (`providerProfiles.ts`, `provider.tsx`, scripts) são apena
 ```
 src/shared/text/format.ts:124 (declaration)
 src/shared/text/format.ts:134 (internal call)
-src/cost-tracker.ts:52 (import)
-src/cost-tracker.ts:232
-src/cost-tracker.ts:233
-src/cost-tracker.ts:235
-src/cost-tracker.ts:238
-src/cost-tracker.ts:241
+src/agent/cost-tracker.ts:52 (import)
+src/agent/cost-tracker.ts:232
+src/agent/cost-tracker.ts:233
+src/agent/cost-tracker.ts:235
+src/agent/cost-tracker.ts:238
+src/agent/cost-tracker.ts:241
 src/platform/status/status.tsx:11 (import)
 src/platform/status/status.tsx:211 (2 occurrences)
 src/components/AgentProgressLine.tsx:3 (import)
@@ -281,12 +281,12 @@ src/components/S
 ```
 src/shared/text/format.ts:124
 src/shared/text/format.ts:134
-src/cost-tracker.ts:52
-src/cost-tracker.ts:232
-src/cost-tracker.ts:233
-src/cost-tracker.ts:235
-src/cost-tracker.ts:238
-src/cost-tracker.ts:241
+src/agent/cost-tracker.ts:52
+src/agent/cost-tracker.ts:232
+src/agent/cost-tracker.ts:233
+src/agent/cost-tracker.ts:235
+src/agent/cost-tracker.ts:238
+src/agent/cost-tracker.ts:241
 src/components/AgentProgressLine.tsx:3
 src/components/AgentProgressLine.tsx:87
 src/components/CoordinatorAgentStatus.tsx:19
@@ -303,10 +303,10 @@ src/components/messages/SystemTextMessage.tsx:21
 src/components/messages/SystemTextMessage.tsx:544 (4x)
 src/tools/MCPTool/UI.tsx:14
 src/tools/MCPTool/UI.tsx:112
-src/services/messages/messages.ts:86
-src/services/messages/messages.ts:4091 (2x)
-src/services/messages/messages.ts:4092
-src/services/messages/messages.ts:4096
+src/agent/messages/messages.ts:86
+src/agent/messages/messages.ts:4091 (2x)
+src/agent/messages/messages.ts:4092
+src/agent/messages/messages.ts:4096
 src/platform/status/statusNoticeDefinitions.tsx:8
 src/platform/status/statusNoticeDefinitions.tsx:44
 src/platform/status/statusNoticeDefinitions.tsx:45
@@ -330,12 +330,12 @@ src/components/
 ```
 src/shared/text/format.ts:124 (declaration)
 src/shared/text/format.ts:134 (internal call)
-src/cost-tracker.ts:52 (import)
-src/cost-tracker.ts:232
-src/cost-tracker.ts:233
-src/cost-tracker.ts:235
-src/cost-tracker.ts:238
-src/cost-tracker.ts:241
+src/agent/cost-tracker.ts:52 (import)
+src/agent/cost-tracker.ts:232
+src/agent/cost-tracker.ts:233
+src/agent/cost-tracker.ts:235
+src/agent/cost-tracker.ts:238
+src/agent/cost-tracker.ts:241
 src/platform/status/status.tsx:11 (import)
 src/platform/status/status.tsx:211 (2 calls)
 src/components/AgentProgressLine.tsx:3 (import)
@@ -346,10 +346,10 @@ src/components/tasks/AsyncAgentDetailDialog.tsx:11 (import)
 src/components/tasks/AsyncAgentDetailDialog.tsx:124
 src/platform/deepLink/banner.ts:18 (import)
 src/platform/deepLink/banner.ts:70
-src/services/messages/messages.ts:86 (import)
-src/services/messages/messages.ts:4091 (2 calls)
-src/services/messages/messages.ts:4092
-src/services/messages/messages.ts:4096
+src/agent/messages/messages.ts:86 (import)
+src/agent/messages/messages.ts:4091 (2 calls)
+src/agent/messages/messages.ts:4092
+src/agent/messages/messages.ts:4096
 src/platform/status/statusNoticeDefinitions.tsx:8 (import)
 src/platform/status/statusNoticeDefinitions.tsx:44
 src/platform/status/statusNoticeDefinitions.tsx:45
@@ -376,12 +376,12 @@ sr
 ```
 src/shared/text/format.ts:124 — declaration `export function formatNumber(number: number): string {`
 src/shared/text/format.ts:134 — internal call `return formatNumber(count).replace('.0', '')`
-src/cost-tracker.ts:52 — import
-src/cost-tracker.ts:232
-src/cost-tracker.ts:233
-src/cost-tracker.ts:235
-src/cost-tracker.ts:238
-src/cost-tracker.ts:241
+src/agent/cost-tracker.ts:52 — import
+src/agent/cost-tracker.ts:232
+src/agent/cost-tracker.ts:233
+src/agent/cost-tracker.ts:235
+src/agent/cost-tracker.ts:238
+src/agent/cost-tracker.ts:241
 src/components/CoordinatorAgentStatus.tsx:19 — import
 src/components/CoordinatorAgentStatus.tsx:173
 src/components/AgentProgressLine.tsx:3 — import
@@ -394,10 +394,10 @@ src/platform/deepLink/banner.ts:18 — import
 src/platform/deepLink/banner.ts:70
 src/components/tasks/AsyncAgentDetailDialog.tsx:11 — import
 src/components/tasks/AsyncAgentDetailDialog.tsx:124
-src/services/messages/messages.ts:86 — import
-src/services/messages/messages.ts:4091 (two occurrences)
-src/services/messages/messages.ts:4092
-src/services/messages/messages.ts:4096
+src/agent/messages/messages.ts:86 — import
+src/agent/messages/messages.ts:4091 (two occurrences)
+src/agent/messages/messages.ts:4092
+src/agent/messages/messages.ts:4096
 src/platform/status/statusNoticeDefinitions.tsx:8 — import
 src/platform/status/statusNoticeDefinitions.tsx:44
 src/platform/status/statusNoticeDefinitions.tsx:45

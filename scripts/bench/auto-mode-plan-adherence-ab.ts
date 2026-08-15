@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * Bench A/B: mede se promover o gatilho de plan mode na instrucao de auto-mode
- * (src/services/messages/autoMode.ts) aumenta a taxa com que o modelo chama a tool
+ * (src/agent/messages/autoMode.ts) aumenta a taxa com que o modelo chama a tool
  * EnterPlanMode quando o usuario pede explicitamente um plano.
  *
  * Variante A = baseline (instrucao atual, item "Prefer action over planning"

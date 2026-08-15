@@ -29,7 +29,7 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
 import { permissionRuleValueFromString } from 'src/services/permissions/permissionRuleParser.js'
-import { sideQuery } from 'src/utils/sideQuery.js'
+import { sideQuery } from 'src/agent/sideQuery.js'
 import {
   extractToolUseBlock,
   parseClassifierResponse,

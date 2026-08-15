@@ -3,7 +3,7 @@ import { getModeFromInput } from 'src/terminal/prompt-input/inputModes.js';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
 import { FOOTER_TEMPORARY_STATUS_TIMEOUT } from 'src/terminal/prompt-input/Notifications.js';
-import { getHistory } from 'src/history.js';
+import { getHistory } from 'src/agent/history.js';
 import { Text } from 'src/terminal/ink.js';
 import type { PromptInputMode } from 'src/types/textInputTypes.js';
 import type { HistoryEntry, PastedContent } from 'src/platform/config/config.js';

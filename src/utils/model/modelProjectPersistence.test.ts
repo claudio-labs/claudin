@@ -77,7 +77,7 @@ test('surrounding whitespace is trimmed but the [1m] suffix survives', async () 
 })
 
 test('a resolved [1m] model maps to a 1M window; the plain flavor stays 200k', async () => {
-  const { getContextWindowForModel } = await import('src/services/context/context.js')
+  const { getContextWindowForModel } = await import('src/agent/context/context.js')
   expect(getContextWindowForModel('claude-opus-4-8[1m]')).toBe(1_000_000)
   expect(getContextWindowForModel('claude-opus-4-7[1m]')).toBe(1_000_000)
   expect(getContextWindowForModel('claude-sonnet-4-6[1m]')).toBe(1_000_000)

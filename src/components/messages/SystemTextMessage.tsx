@@ -28,7 +28,7 @@ import { useAppStateStore } from 'src/terminal/state/AppState.js';
 import { isBackgroundTask, type TaskState } from 'src/tasks/types.js';
 import { getPillLabel } from 'src/tasks/pillLabel.js';
 import { useSelectedMessageBg } from 'src/components/messageActions.js';
-import { HOOK_TIMING_DISPLAY_THRESHOLD_MS } from 'src/services/tools/toolExecution.js';
+import { HOOK_TIMING_DISPLAY_THRESHOLD_MS } from 'src/agent/tools/toolExecution.js';
 type Props = {
   message: SystemMessage;
   addMargin: boolean;

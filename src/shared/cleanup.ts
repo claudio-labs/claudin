@@ -11,7 +11,7 @@ import * as lockfile from 'src/shared/fs/lockfile.js'
 import { logError } from 'src/shared/log.js'
 import { cleanupOldVersions } from 'src/platform/install/index.js'
 import { cleanupOldPastes } from 'src/terminal/input/pasteStore.js'
-import { getPlansDirectory } from 'src/utils/plans.js'
+import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { getProjectsDir } from 'src/services/session/sessionStorage.js'
 import { getSettingsWithAllErrors } from 'src/platform/settings/allErrors.js'
 import { getTaskListId, sanitizePathComponent } from 'src/tasks/tasks.js'
@@ -19,7 +19,7 @@ import {
   getInitialSettings,
   rawSettingsContainsKey,
 } from 'src/platform/settings/settings.js'
-import { TOOL_RESULTS_SUBDIR } from 'src/services/tools/toolResultStorage.js'
+import { TOOL_RESULTS_SUBDIR } from 'src/agent/tools/toolResultStorage.js'
 import { cleanupStaleAgentWorktrees } from 'src/services/git/worktree.js'
 
 const DEFAULT_CLEANUP_PERIOD_DAYS = 30

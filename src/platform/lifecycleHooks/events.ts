@@ -17,8 +17,8 @@ import { getRegisteredHooks } from 'src/platform/bootstrap/state.js'
 import { getHooksConfigFromSnapshot } from 'src/platform/lifecycleHooks/hooksConfigSnapshot.js'
 import { shouldAllowManagedHooksOnly } from 'src/platform/lifecycleHooks/hooksConfigSnapshot.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { extractTextContent } from 'src/services/messages/messages.js'
-import { resetGoalStateForSessionEnd } from 'src/services/goal/goal.js'
+import { extractTextContent } from 'src/agent/messages/messages.js'
+import { resetGoalStateForSessionEnd } from 'src/agent/goal/goal.js'
 import { clearSessionHooks } from 'src/platform/lifecycleHooks/sessionHooks.js'
 import type {
   ConfigChangeHookInput,

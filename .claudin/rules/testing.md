@@ -211,6 +211,41 @@ when A executes first, regardless of `--max-concurrency=1`.
   are asserting on by name (`events.filter(e => e.name.startsWith('tengu_oauth'))`),
   which keeps "logged nothing" meaningful instead of merely lucky.
 
+### A leaked stdlib mock, and the timer that outlives it
+
+Both of these came out of one test file (`useReplExit.test.tsx`) and cost a day
+during the `platform/` reorg. Neither announces itself as a mocking problem.
+
+- **Leaking a stdlib module hits files that import nothing of yours.** That file
+  mocked `child_process` with `spawnSync: () => ({ status: 0 })` and never
+  re-installed the real one, so every later file got a `spawnSync` that returns
+  instantly with no `stdout`. The victim was `bootSnapshot.test.ts`, which does
+  `res.stdout + ''` — `String(undefined)` is `"undefined"`, which it then diffed
+  against a 400-line help snapshot and reported as *the entire help text
+  changed*. **When a subprocess-based test suddenly disagrees with a snapshot
+  wholesale, check `status` first**: an exit 0 that produced no output in well
+  under a millisecond did not run. Make the assertion say so rather than letting
+  the diff misattribute it.
+- **A timer armed under a stub fires after you restore the real thing.**
+  `useReplExit`'s `handleExit()` arms a 10s failsafe that calls
+  `process.kill(process.pid, 'SIGKILL')` and deliberately does not `unref` it;
+  several of its branches return with the timer still running. The test stubbed
+  `process.kill`, asserted, and handed the real one back in `afterAll` — so ten
+  seconds later the bomb went off inside whatever file bun had reached by then
+  and killed the run with **exit 137 and no output at all**. There is no failing
+  test to point at, and the log simply stops.
+- **Exit 137 from `bun test` is not automatically OOM.** Confirm before you go
+  hunting for memory: sample `free -m` across the run and check
+  `journalctl -k | grep -i oom`. Here peak use was 14 GB of 46 GB with no kernel
+  OOM entry, which is what redirected the search to a self-inflicted SIGKILL.
+  Bisect it by moving the suspected file out of the tree and re-running — a
+  green suite minus one file localizes it in a single run.
+- **How to apply:** when a test drives production code that arms timers, record
+  them and clear them at teardown *before* restoring the global they would call
+  — wrap `globalThis.setTimeout` in `beforeAll`, collect the handles, and
+  `clearTimeout` each one in `afterAll`. Restoring a dangerous global while a
+  caller of it is still scheduled is the bug.
+
 ### Ink/React components are unimportable under `bun test`
 
 Any module whose import chain reaches `src/terminal/ink.js` fails to load under `bun test`
@@ -242,8 +277,8 @@ A ratchet, not a target. `test-floor.json` records the test-to-source LOC ratio
 it drops more than 0.5pp, or when one of the named invariant suites disappears:
 
 ```
-src/services/compact/requestDeterminism.invariant.test.ts
-src/services/compact/stableStubState.stub-byte-stability.test.ts
+src/agent/compact/requestDeterminism.invariant.test.ts
+src/agent/compact/stableStubState.stub-byte-stability.test.ts
 src/outputFilter/Bash/phase12Report.test.ts
 scripts/feature-flags-source-guard.test.ts
 scripts/measure-tool-schemas.test.ts
@@ -332,9 +367,9 @@ negative (it did, while verifying the task reminder on 2026-07-26).
 
 The observation channel that works is a temporary `appendFileSync` to `/tmp`,
 at BOTH ends: the producer (`getTaskReminderAttachments` and friends in
-`src/services/attachments/lifecycle.ts`) to see the gate decisions and turn
+`src/agent/attachments/lifecycle.ts`) to see the gate decisions and turn
 counters, and the renderer (`normalizeAttachmentForAPI` in
-`src/services/messages/attachments.ts`) to capture the literal text the model
+`src/agent/messages/attachments.ts`) to capture the literal text the model
 receives. Log the bail reason per branch, not just the success case — that is
 what tells you *which* gate closed. `logEvent` is useless here: telemetry is
 stubbed out at build time in this fork.

@@ -44,7 +44,7 @@ test`.
 Tier 1 to steal, all verified ABSENT in claudin:
 - **`src/integrations/`** (123 files, 24k LOC, always-on, no flag) — declarative provider registry. `defineVendor({id, defaultBaseUrl, requiredEnvVars, setup.authMode, transportConfig.openaiShim{thinkingRequestFormat,maxTokensField,removeBodyFields,preserveReasoningContent}, preset, catalog})`; lazy loader, `generated/*.generated.ts`, `integrations:generate|:check` as a CI drift gate. This is the structural answer to what claudin's `/add-provider-preset` skill does by hand (4-6 files per API-key preset, ~16 for OAuth). Canonical example: `src/integrations/vendors/deepseek.ts`.
 - **`compressToolHistory` (#1869)** — tiered shrink of old `tool_result` bodies for providers WITHOUT prompt cache (Copilot/Mistral/Ollama), sized off `getEffectiveContextWindowSize()`, idempotent. claudin's stub-rewrite (`stableStubState.ts` → openaiShim) is clip/microcompact-policy-driven, never provider-capability-driven. Feeds roadmap item D3.
-- **`src/utils/doomLoop.ts`** — BLOCKS after 3 consecutive identical `(name,input)` calls, state keyed per-agent. claudin only has the advisory hint (`src/services/tools/toolExecution.ts:589`), which counts *failures* and blocks nothing. They already paid for the two refinements: warn-before-stop (#1927), don't trip on same-turn parallel failures (#2048).
+- **`src/utils/doomLoop.ts`** — BLOCKS after 3 consecutive identical `(name,input)` calls, state keyed per-agent. claudin only has the advisory hint (`src/agent/tools/toolExecution.ts:589`), which counts *failures* and blocks nothing. They already paid for the two refinements: warn-before-stop (#1927), don't trip on same-turn parallel failures (#2048).
 - ~~**`src/terminal/contexts/repoMap/`** + RepoMapTool + `/repomap`~~ — **REJECTED with data 2026-08-07**, see [[repo-map-rejected-orientation-measured]]. Also worth knowing before reconsidering: it is ~1150 prod LOC (not the ~1900 first cited, which counted its 1734 LOC of tests), and it is probably non-functional in their published package — its five runtime deps sit in `devDependencies` and `scripts/build.ts` vendors no `.wasm`, so `loadLanguage` returns null and the map comes out empty in silence. `RepoMapTool` is still registered unconditionally (`tools.ts:192`) despite `REPO_MAP: false`, costing ~1.4 KB of prompt for a disabled feature.
 
 FREE WIN found during this audit: `src/services/api/smartModelRouting.ts` already exists in claudin (215 lines, `routeModel()` at :120) with **zero production importers** — only its own test. It is half of roadmap R1 (cost routing) sitting dead. Wiring it beats porting their `/smartroute` (#1734).
@@ -81,7 +81,7 @@ Ranked, all verified absent in claudin:
 
 claudin is AHEAD, do NOT port: `addCacheBreakpoints` (they pin the marker at
 `messages.length-1`, `claude.ts:3448`; claudin defers it via `clipFrontierIndex`
-at `claude/paramBuilders.ts:319`); the whole `src/services/cache/` tree and
+at `claude/paramBuilders.ts:319`); the whole `src/agent/cache/` tree and
 `toolResultCache.ts`/`cacheInvalidation.ts`, which have **no counterpart there**;
 `fileStateCache.ts` (395 vs 142 lines); `modelCache.ts`, `mcp/client/authCache.ts`.
 **`CACHED_MICROCOMPACT` being ON in their flag map buys them nothing** —
@@ -104,11 +104,11 @@ DANGLING REQUIRE in claudin, found here: `src/memdir/findRelevantMemories.ts:66-
 
 Tier 2 (real gaps, medium effort): providerFallbackChain + credential pool (still open since June); `compactModel`; cross-process credential-refresh mutex (#2093 — claudin's `lockfile.lock()` covers only the Anthropic path at `src/services/auth/auth.ts:1504`, NOT Codex/Copilot/xAI, so this is bug-shaped); `/replay` timeline + deterministic task report (#1705/#1802); `/diagnostics` command (claudin captures + attaches LSP diagnostics in `src/platform/lsp/passiveFeedback.ts:43` but has no command); statusline `ctx 74K/200K (37%)` (#1967); `/set-context-window` + per-model context_window/max_output_tokens overrides (#1810/#1234); i18n (their mechanism is ~100 lines, the dictionary is the cost).
 
-Tier 3 (cheap): `--yolo` alias (#2097); auto-compact thresholds in `/config`; configurable REPL max-turns (claudin's is `?? Infinity` at `src/query.ts:1440`); `/export` MD/JSON (`export.tsx:60` still forces `.txt`); Codex OAuth manual callback-URL paste for SSH/remote (#1288).
+Tier 3 (cheap): `--yolo` alias (#2097); auto-compact thresholds in `/config`; configurable REPL max-turns (claudin's is `?? Infinity` at `src/agent/query.ts:1440`); `/export` MD/JSON (`export.tsx:60` still forces `.txt`); Codex OAuth manual callback-URL paste for SSH/remote (#1288).
 
-NOW CONVERGED since June, do NOT port: fuzzy edit (`FileEditTool/utils.ts:175`), `/update` + PM detection (`src/platform/headless/update.ts`), multilingual+structural continuation nudge (`src/utils/continuationNudge.ts`), `/wiki` conventions, session `branch` (only the resume-picker grouping is missing), per-agent `maxTurns`.
+NOW CONVERGED since June, do NOT port: fuzzy edit (`FileEditTool/utils.ts:175`), `/update` + PM detection (`src/platform/headless/update.ts`), multilingual+structural continuation nudge (`src/agent/continuationNudge.ts`), `/wiki` conventions, session `branch` (only the resume-picker grouping is missing), per-agent `maxTurns`.
 
-STILL IGNORE: `grpc/`+`proto/` (deliberately removed here in #22); `daemon/`, `ssh/`, `jobs/`, `environment-runner/`, `self-hosted-runner/` are inert stubs on THEIR side too (13-145 LOC, written to satisfy their typechecker); sponsor providers. `CONTEXT_COLLAPSE`/`HISTORY_SNIP` remain non-revivable in claudin — not a disabled flag but absent source (`src/services/contextCollapse/index.ts` is 5 lines, `snipCompact.ts` is 104 bytes); `HISTORY_SNIP` is not even in claudin's flag map. Flag-map diff worth a separate look: they run `CACHED_MICROCOMPACT`, `MCP_SKILLS`, `BG_SESSIONS`, `VERIFICATION_AGENT` ON.
+STILL IGNORE: `grpc/`+`proto/` (deliberately removed here in #22); `daemon/`, `ssh/`, `jobs/`, `environment-runner/`, `self-hosted-runner/` are inert stubs on THEIR side too (13-145 LOC, written to satisfy their typechecker); sponsor providers. `CONTEXT_COLLAPSE`/`HISTORY_SNIP` remain non-revivable in claudin — not a disabled flag but absent source (`src/agent/contextCollapse/index.ts` is 5 lines, `snipCompact.ts` is 104 bytes); `HISTORY_SNIP` is not even in claudin's flag map. Flag-map diff worth a separate look: they run `CACHED_MICROCOMPACT`, `MCP_SKILLS`, `BG_SESSIONS`, `VERIFICATION_AGENT` ON.
 
 ## Original audit 2026-06-23 (v0.19)
 

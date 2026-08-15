@@ -7,7 +7,7 @@ import {
   CUSTOM_AGENT_DISALLOWED_TOOLS,
   IN_PROCESS_TEAMMATE_ALLOWED_TOOLS,
 } from 'src/constants/tools.js'
-import { startAgentSummarization } from 'src/services/AgentSummary/agentSummary.js'
+import { startAgentSummarization } from 'src/agent/summary/agentSummary.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
@@ -46,7 +46,7 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   extractTextContent,
   getLastAssistantMessage,
-} from 'src/services/messages/messages.js'
+} from 'src/agent/messages/messages.js'
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import { permissionRuleValueFromString } from 'src/services/permissions/permissionRuleParser.js'
 import {
@@ -55,7 +55,7 @@ import {
 } from 'src/services/permissions/yoloClassifier.js'
 import { emitTaskProgress as emitTaskProgressEvent } from 'src/tasks/sdkProgress.js'
 import { isInProcessTeammate } from 'src/coordinator/teammateContext.js'
-import { getTokenCountFromUsage } from 'src/services/context/tokens.js'
+import { getTokenCountFromUsage } from 'src/agent/context/tokens.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
 import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'

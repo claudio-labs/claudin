@@ -66,8 +66,8 @@ const PROBES: Probe[] = [
     description: 'Logger.',
   },
   {
-    name: 'src/services/tools/toolResultCache',
-    importExpr: `await import('./src/services/tools/toolResultCache.ts')`,
+    name: 'src/agent/tools/toolResultCache',
+    importExpr: `await import('./src/agent/tools/toolResultCache.ts')`,
     description: 'Imported directly by Tool.ts.',
   },
   {
@@ -179,7 +179,7 @@ const PROBES: Probe[] = [
   },
   {
     name: 'QueryEngine',
-    importExpr: `await import('./src/QueryEngine.ts')`,
+    importExpr: `await import('./src/agent/QueryEngine.ts')`,
     description: 'Core agent loop driver.',
   },
 ]

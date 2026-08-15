@@ -15,10 +15,10 @@ Nenhum — pode rodar em paralelo com Phase 1.
 
 | Arquivo | Linha aprox. | Mudança | LoC |
 |---|---|---|---|
-| `src/services/tools/toolResultSummarizer.ts` | 242-248 (`isAlreadyCompacted`) | Adicionar 2 checks de `startsWith` para reconhecer markers do filter | +2 |
-| `src/services/tools/toolResultSummarizer.ts` | 475-533 (collapse helpers) | Adicionar `export` em `collapseIdenticalRuns` e `collapseDigitTemplates` | +2 (modificadores) |
+| `src/agent/tools/toolResultSummarizer.ts` | 242-248 (`isAlreadyCompacted`) | Adicionar 2 checks de `startsWith` para reconhecer markers do filter | +2 |
+| `src/agent/tools/toolResultSummarizer.ts` | 475-533 (collapse helpers) | Adicionar `export` em `collapseIdenticalRuns` e `collapseDigitTemplates` | +2 (modificadores) |
 | `src/platform/config/config.ts` | 705+ (`GLOBAL_CONFIG_KEYS`) | Adicionar 3 entries: `'bashOutputFilterEnabled'`, `'bashOutputFilterRewriteEnabled'`, `'bashOutputFilterUserEnabled'` | +3 |
-| `src/services/tools/toolResultSummarizer.test.ts` | (existing) | 1 test confirmando que `<bash-output-rewritten>` e `<bash-output-filtered>` agora retornam true em `isAlreadyCompacted` | +~10 |
+| `src/agent/tools/toolResultSummarizer.test.ts` | (existing) | 1 test confirmando que `<bash-output-rewritten>` e `<bash-output-filtered>` agora retornam true em `isAlreadyCompacted` | +~10 |
 | `src/platform/config/config.test.ts` (se existir) ou novo | n/a | Confirmar que os 3 keys aceitam boolean | +~5 |
 
 ## Steps
@@ -63,7 +63,7 @@ Nenhum — pode rodar em paralelo com Phase 1.
 ## Tests
 
 ```bash
-bun test src/services/tools/toolResultSummarizer.test.ts
+bun test src/agent/tools/toolResultSummarizer.test.ts
 bun test src/platform/config/config.test.ts   # se existir
 bun run typecheck
 ```

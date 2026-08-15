@@ -6,7 +6,7 @@ type: project
 
 `checkBatchWritePermission` (src/services/permissions/filesystem.ts) returns `{ behavior:'allow', updatedInput: {} }` on its allow paths (~line 1442 bypassPermissions, ~1512 batch allow). It validates a SYNTHETIC per-path `{file_path}` input, so it has no single real input to echo — `{}` is a placeholder.
 
-The tool-execution harness (src/services/tools/toolExecution.ts ~1142) does `if (permissionDecision.updatedInput !== undefined) processedInput = permissionDecision.updatedInput`, then `callInput = processedInput` → `tool.call(callInput, ...)`. So that empty `{}` OVERWRITES the model's real, schema-parsed input before call().
+The tool-execution harness (src/agent/tools/toolExecution.ts ~1142) does `if (permissionDecision.updatedInput !== undefined) processedInput = permissionDecision.updatedInput`, then `callInput = processedInput` → `tool.call(callInput, ...)`. So that empty `{}` OVERWRITES the model's real, schema-parsed input before call().
 
 **Why:** apply_patch wired `checkBatchWritePermission` directly as its `checkPermissions`. In auto mode (and bypassPermissions — the DEFAULT/common modes) every apply_patch call reached `runApplyPatch` with `input = {}`, so `parsePatch(input.patchText)` ran `undefined.trim()` → `TypeError: Cannot read properties of undefined (reading 'trim')`. The tool was 100% DOA at runtime. FileEdit/FileWrite are unaffected: they use the single-path `checkWritePermissionForTool`, whose allow echoes the real input.
 

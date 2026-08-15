@@ -4,9 +4,9 @@ import { BashTool } from 'src/tools/BashTool/BashTool.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage, MalformedCommandError, ShellError } from 'src/shared/errors.js'
 import type { FrontmatterShell } from 'src/shared/frontmatterParser.js'
-import { createAssistantMessage } from 'src/services/messages/messages.js'
+import { createAssistantMessage } from 'src/agent/messages/messages.js'
 import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js'
-import { processToolResultBlock } from 'src/services/tools/toolResultStorage.js'
+import { processToolResultBlock } from 'src/agent/tools/toolResultStorage.js'
 
 // Narrow structural slice both BashTool and PowerShellTool satisfy. We can't
 // use the base Tool type: it marks call()'s canUseTool/parentMessage as

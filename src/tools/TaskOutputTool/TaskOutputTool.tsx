@@ -6,7 +6,7 @@ import { FallbackToolUseRejectedMessage } from 'src/components/FallbackToolUseRe
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
-import type { TaskType } from 'src/Task.js';
+import type { TaskType } from 'src/agent/Task.js';
 import type { Tool } from 'src/Tool.js';
 import { buildTool, type ToolDef } from 'src/Tool.js';
 import type { LocalAgentTaskState } from 'src/tasks/LocalAgentTask/LocalAgentTask.js';
@@ -15,7 +15,7 @@ import type { RemoteAgentTaskState } from 'src/tasks/RemoteAgentTask/RemoteAgent
 import type { TaskState } from 'src/tasks/types.js';
 import { AbortError } from 'src/shared/errors.js';
 import { lazySchema } from 'src/shared/data/lazySchema.js';
-import { extractTextContent } from 'src/services/messages/messages.js';
+import { extractTextContent } from 'src/agent/messages/messages.js';
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js';
 import { sleep } from 'src/shared/sleep.js';
 import { jsonParse } from 'src/platform/slowOperations.js';

@@ -21,7 +21,7 @@ import { PERMISSION_MODES } from 'src/types/permissions.js'
 import {
   suppressNextBashGitInstructions,
   suppressNextSkillListing,
-} from 'src/services/attachments/attachments.js'
+} from 'src/agent/attachments/attachments.js'
 import {
   copyFileHistoryForResume,
   type FileHistorySnapshot,
@@ -37,8 +37,8 @@ import {
   isToolUseResultMessage,
   NO_RESPONSE_REQUESTED,
   normalizeMessages,
-} from 'src/services/messages/messages.js'
-import { copyPlanForResume } from 'src/utils/plans.js'
+} from 'src/agent/messages/messages.js'
+import { copyPlanForResume } from 'src/agent/plans/plans.js'
 import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
 import {
   buildConversationChain,
@@ -52,7 +52,7 @@ import {
   removeExtraFields,
 } from 'src/services/session/sessionStorage.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import type { ContentReplacementRecord } from 'src/services/tools/toolResultStorage.js'
+import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
 
 // Dead code elimination: internal-only tool names are conditionally required so
 // their strings don't leak into external builds. Static imports always bundle.

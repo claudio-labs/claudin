@@ -29,7 +29,7 @@ import type {
 } from 'src/services/mcp/types.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
-import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
+import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
 import { ASK_USER_QUESTION_TOOL_NAME } from 'src/tools/AskUserQuestionTool/prompt.js'
 import {
   EXPLORE_AGENT,

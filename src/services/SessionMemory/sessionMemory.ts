@@ -8,7 +8,7 @@ import { writeFile } from 'fs/promises'
 import memoize from 'lodash-es/memoize.js'
 import { getIsRemoteMode } from 'src/platform/bootstrap/state.js'
 import { getSystemPrompt } from 'src/constants/prompts.js'
-import { getSystemContext, getUserContext } from 'src/context.js'
+import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import type { Tool, ToolUseContext } from 'src/Tool.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
@@ -31,16 +31,16 @@ import {
 import {
   createUserMessage,
   hasToolCallsInLastAssistantTurn,
-} from 'src/services/messages/messages.js'
+} from 'src/agent/messages/messages.js'
 import {
   getSessionMemoryDir,
   getSessionMemoryPath,
 } from 'src/services/permissions/filesystem.js'
 import { sequential } from 'src/shared/sequential.js'
-import { asSystemPrompt } from 'src/utils/systemPromptType.js'
-import { getTokenUsage, tokenCountWithEstimation } from 'src/services/context/tokens.js'
+import { asSystemPrompt } from 'src/agent/systemPromptType.js'
+import { getTokenUsage, tokenCountWithEstimation } from 'src/agent/context/tokens.js'
 import { logEvent } from 'src/platform/analytics/index.js'
-import { isAutoCompactEnabled } from 'src/services/compact/autoCompact.js'
+import { isAutoCompactEnabled } from 'src/agent/compact/autoCompact.js'
 import {
   buildSessionMemoryUpdatePrompt,
   loadSessionMemoryTemplate,

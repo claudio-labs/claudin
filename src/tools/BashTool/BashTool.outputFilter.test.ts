@@ -25,7 +25,7 @@ import {
   planBashFilterForExecution,
   shouldFilterOutput,
 } from 'src/tools/BashTool/BashTool.js'
-import { getBytesSaved, resetBytesSaved } from 'src/services/context/tokensSaved.js'
+import { getBytesSaved, resetBytesSaved } from 'src/agent/context/tokensSaved.js'
 
 // ---------------------------------------------------------------------------
 // Fixtures

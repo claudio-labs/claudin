@@ -191,7 +191,7 @@ async function exerciseToolProgress(cycles: number): Promise<CacheResult> {
     __TEST_ONLY_recordToolProgress,
     __TEST_ONLY_resetToolProgressMap,
     __TEST_ONLY_getToolProgressMapSize,
-  } = await import('../../src/utils/queryHelpers.js')
+  } = await import('../../src/agent/queryHelpers.js')
 
   return measure(
     'queryHelpers.toolProgressLastSentTime',
@@ -376,7 +376,7 @@ async function exerciseMixedSession(turns: number): Promise<MixedResult> {
     __TEST_ONLY_recordToolProgress,
     __TEST_ONLY_resetToolProgressMap,
     __TEST_ONLY_getToolProgressMapSize,
-  } = await import('../../src/utils/queryHelpers.js')
+  } = await import('../../src/agent/queryHelpers.js')
   const {
     cacheImagePath,
     clearStoredImagePaths,

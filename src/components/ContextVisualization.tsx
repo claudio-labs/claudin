@@ -2,8 +2,8 @@ import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
-import type { ContextData } from 'src/services/context/analyzeContext.js';
-import { generateContextSuggestions } from 'src/services/context/contextSuggestions.js';
+import type { ContextData } from 'src/agent/context/analyzeContext.js';
+import { generateContextSuggestions } from 'src/agent/context/contextSuggestions.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
 import { formatTokens } from 'src/shared/text/format.js';
 import { getSourceDisplayName, type SettingSource } from 'src/platform/settings/constants.js';
@@ -74,7 +74,7 @@ function CollapseStatus() {
         const {
           getStats,
           isContextCollapseEnabled
-        } = require("src/services/contextCollapse/index.js") as typeof import('src/services/contextCollapse/index.js');
+        } = require("src/agent/contextCollapse/index.js") as typeof import('src/agent/contextCollapse/index.js');
         if (!isContextCollapseEnabled()) {
           t1 = null;
           break bb0;

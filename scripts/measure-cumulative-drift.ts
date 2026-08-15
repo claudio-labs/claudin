@@ -46,14 +46,14 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
-} from '../src/services/tokenEstimation.js'
+} from '../src/shared/tokenEstimation.js'
 import { enableConfigs } from '../src/platform/config/config.js'
 import { measureToolSchemas } from './measure-tool-schemas.ts'
 import { computeSimpleEnvInfo, getSystemPrompt } from '../src/constants/prompts.js'
 import { loadMemoryPrompt } from '../src/memdir/memdir.js'
 import { getAllBaseTools } from '../src/tools.js'
-import { getEffectiveContextWindowSize } from '../src/services/compact/autoCompact.js'
-import { buildClipStub } from '../src/services/compact/stableStubState.js'
+import { getEffectiveContextWindowSize } from '../src/agent/compact/autoCompact.js'
+import { buildClipStub } from '../src/agent/compact/stableStubState.js'
 
 /** 5-minute cache hit ratio used for billing math (Anthropic public pricing). */
 const CACHE_5M_DISCOUNT = 0.1

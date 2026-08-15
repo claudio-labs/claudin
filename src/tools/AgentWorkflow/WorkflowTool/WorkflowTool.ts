@@ -5,7 +5,7 @@ import { getGlobalConfig, isConfigReadingAllowed } from 'src/platform/config/con
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logError } from 'src/shared/log.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
-import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js'
+import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js'
 import { getKnownAgentTypes } from 'src/tools/AgentWorkflow/agentTypes.js'
 import { WORKFLOW_RUN_TOOL_NAME } from 'src/tools/AgentWorkflow/constants.js'
 import {

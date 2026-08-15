@@ -6,7 +6,7 @@ import { DIAMOND_FILLED, DIAMOND_OPEN } from 'src/constants/figures.js';
 import { useSettings } from 'src/platform/useSettings.js';
 import { Text, useAnimationFrame } from 'src/terminal/ink.js';
 import { count } from 'src/shared/data/array.js';
-import { getRainbowColor } from 'src/services/context/thinking.js';
+import { getRainbowColor } from 'src/agent/context/thinking.js';
 const TICK_MS = 80;
 type ReviewStage = NonNullable<NonNullable<RemoteAgentTaskState['reviewProgress']>['stage']>;
 type RemoteSession = DeepImmutable<RemoteAgentTaskState>;

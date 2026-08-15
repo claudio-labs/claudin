@@ -19,7 +19,7 @@ import {
 import {
   createAssistantAPIErrorMessage,
   NO_RESPONSE_REQUESTED,
-} from 'src/services/messages/messages.js'
+} from 'src/agent/messages/messages.js'
 import {
   isSdkApiConnectionError,
   isSdkApiConnectionTimeoutError,

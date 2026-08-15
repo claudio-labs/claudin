@@ -6,7 +6,7 @@ import type { SystemAPIErrorMessage } from 'src/types/message.js'
 import { isAwsCredentialsProviderError } from 'src/services/api/aws.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logError } from 'src/shared/log.js'
-import { createSystemAPIErrorMessage } from 'src/services/messages/messages.js'
+import { createSystemAPIErrorMessage } from 'src/agent/messages/messages.js'
 import { getAPIProvider, getAPIProviderForStatsig } from 'src/utils/model/providers.js'
 import {
   clearApiKeyHelperCache,
@@ -40,7 +40,7 @@ import { extractOpenAICategoryMarker } from 'src/services/api/openaiErrorClassif
 import { isNonCustomOpusModel } from 'src/utils/model/model.js'
 import { disableKeepAlive } from 'src/services/api/proxy.js'
 import { sleep } from 'src/shared/sleep.js'
-import type { ThinkingConfig } from 'src/services/context/thinking.js'
+import type { ThinkingConfig } from 'src/agent/context/thinking.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,

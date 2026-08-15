@@ -14,7 +14,7 @@
  *   bun run scripts/profile/json-salient-probe.ts
  */
 import { execFileSync } from 'node:child_process'
-import { compressJsonArray } from '../../src/services/tools/jsonArrayCompress.js'
+import { compressJsonArray } from '../../src/agent/tools/jsonArrayCompress.js'
 
 const FIXTURE = `${import.meta.dir}/fixtures/big-json.sh`
 const N = 300

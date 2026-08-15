@@ -547,7 +547,7 @@ test('isLoggableMessage: external user drops generic attachments', () => {
 test('isLoggableMessage: deferred_tools_delta attachments persist for external users', () => {
   // Resume-visible marker for the legacy-announcement latch AND the bytes
   // a warm-resumed prefix must reproduce — see historyHasDeferredToolsDelta
-  // in src/services/tools/toolSearch.ts. Dropping these re-breaks every warm resume
+  // in src/agent/tools/toolSearch.ts. Dropping these re-breaks every warm resume
   // of a delta-format session.
   expect(
     isLoggableMessage({

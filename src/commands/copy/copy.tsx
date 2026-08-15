@@ -19,7 +19,7 @@ import type { LocalJSXCommandCall } from 'src/types/command.js';
 import type { AssistantMessage, Message } from 'src/types/message.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import type { GlobalConfig } from 'src/platform/config/config.js';
-import { extractTextContent, stripPromptXMLTags } from 'src/services/messages/messages.js';
+import { extractTextContent, stripPromptXMLTags } from 'src/agent/messages/messages.js';
 import { countCharInString } from 'src/shared/text/stringUtils.js';
 const COPY_DIR = join(tmpdir(), 'claude');
 const RESPONSE_FILENAME = 'response.md';

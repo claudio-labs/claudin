@@ -22,7 +22,7 @@ Flip `bashOutputFilterEnabled` para `true` por default. Última fase da feature.
 |---|---|---|
 | `src/platform/config/config.ts` (ou wherever defaults live) | Default value de `bashOutputFilterEnabled` flips de `false`/`undefined` pra `true` | +1 |
 | `src/platform/config/config.ts` | Same para `bashOutputFilterRewriteEnabled: true` e `bashOutputFilterUserEnabled: true` | +2 |
-| `src/services/tools/toolResultStorage.test.ts` (se existir, senão criar) | Test confirmando que filter + summarizer interaction não quebra (output >8KB com markers passa pelo summarizer sem corte) | +30 |
+| `src/agent/tools/toolResultStorage.test.ts` (se existir, senão criar) | Test confirmando que filter + summarizer interaction não quebra (output >8KB com markers passa pelo summarizer sem corte) | +30 |
 | `src/tools/BashTool/BashTool.test.ts` | Snapshot updates onde markers agora aparecem por default | (snapshot diffs) |
 
 ### Não-arquivos
@@ -46,7 +46,7 @@ Flip `bashOutputFilterEnabled` para `true` por default. Última fase da feature.
 
 3. **Add `processToolResultBlock` interaction test:**
    ```ts
-   // src/services/tools/toolResultStorage.test.ts
+   // src/agent/tools/toolResultStorage.test.ts
    test('filtered output >8KB does not get re-summarized by toolResultSummarizer', () => {
      const filteredStdout = '<bash-output-filtered name="cargo-build" reduction="55%">\n' + 'x'.repeat(15_000)
      const block = processToolResultBlock({...}, filteredStdout, ...)

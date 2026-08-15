@@ -13,7 +13,7 @@ import { enableConfigs } from 'src/platform/config/config.js'
 
 let thrown: unknown = new Error('not configured')
 
-mock.module('src/utils/sideQuery.js', () => ({
+mock.module('src/agent/sideQuery.js', () => ({
   sideQuery: () => {
     throw thrown
   },

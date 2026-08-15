@@ -4,7 +4,7 @@ import type {
 import type { SDKControlResponse } from 'src/platform/entrypoints/sdk/controlTypes.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { enqueue } from 'src/utils/messageQueueManager.js'
+import { enqueue } from 'src/agent/messageQueueManager.js'
 import { findUnresolvedToolUse } from 'src/services/session/sessionStorage.js'
 
 /**

@@ -3,16 +3,16 @@ import type { HookEvent } from 'src/platform/entrypoints/agentSdkTypes.js'
 import { queryModelWithoutStreaming } from 'src/services/api/claude.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { Message } from 'src/types/message.js'
-import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
+import { createAttachmentMessage } from 'src/agent/attachments/attachments.js'
 import { createCombinedAbortSignal } from 'src/shared/combinedAbortSignal.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import type { HookResult } from 'src/platform/lifecycleHooks/types.js'
 import { safeParseJSON } from 'src/shared/data/json.js'
-import { createUserMessage, extractTextContent } from 'src/services/messages/messages.js'
+import { createUserMessage, extractTextContent } from 'src/agent/messages/messages.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
 import type { PromptHook } from 'src/platform/settings/types.js'
-import { asSystemPrompt } from 'src/utils/systemPromptType.js'
+import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { addArgumentsToPrompt, hookResponseSchema } from 'src/platform/lifecycleHooks/hookHelpers.js'
 import { isStopConditionJudge } from 'src/platform/lifecycleHooks/stopConditionJudge.js'
 import { truncateTranscriptForHookEvaluator } from 'src/platform/lifecycleHooks/transcriptTruncation.js'
@@ -250,7 +250,7 @@ export async function execPromptHook(
           },
           // Goal judge: blocking feedback must be fed back so the model
           // keeps working toward the condition — preventContinuation would
-          // halt the session instead (see src/query/stopHooks.ts). All other
+          // halt the session instead (see src/agent/query/stopHooks.ts). All other
           // prompt hooks keep the legacy halting behavior.
           preventContinuation: !isJudge,
           stopReason: parsed.data.reason,

@@ -22,7 +22,7 @@
  *
  * Contexts rewritten: `from '…'`, side-effect `import '…'`, dynamic `import('…')`,
  * `require('…')` and `mock.module('…')` — each tolerant of newlines, because
- * `src/query.ts` and friends break the specifier onto its own line.
+ * `src/agent/query.ts` and friends break the specifier onto its own line.
  *
  * `mock.module` is the one exception to the `./` rule, and the exception is
  * load-bearing. Bun keys a module mock by the SPECIFIER STRING, not by the file

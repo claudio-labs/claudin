@@ -30,29 +30,29 @@ import { type ResumeEntrypoint } from 'src/commands.js';
 import { type ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';
 import type { PromptRequest, PromptResponse } from 'src/types/hooks.js';
 import { getSystemPrompt } from 'src/constants/prompts.js';
-import { buildEffectiveSystemPrompt } from 'src/utils/systemPrompt.js';
-import { getSystemContext, getUserContext } from 'src/context.js';
+import { buildEffectiveSystemPrompt } from 'src/agent/systemPrompt.js';
+import { getSystemContext, getUserContext } from 'src/agent/context.js';
 import useCanUseTool from 'src/hooks/useCanUseTool.js';
 import type { ToolPermissionContext, Tool } from 'src/Tool.js';
-import type { ThinkingConfig } from 'src/services/context/thinking.js';
+import type { ThinkingConfig } from 'src/agent/context/thinking.js';
 import type { Message as MessageType } from 'src/types/message.js';
 import { mergeClients } from 'src/hooks/useMergedClients.js';
-import { getQuerySourceForREPL } from 'src/utils/promptCategory.js';
-import { mergeAndFilterTools } from 'src/services/tools/toolPool.js';
+import { getQuerySourceForREPL } from 'src/agent/promptCategory.js';
+import { mergeAndFilterTools } from 'src/agent/tools/toolPool.js';
 import type { ScopedMcpServerConfig } from 'src/services/mcp/types.js';
 import { type IDESelection } from 'src/platform/ide/useIdeSelection.js';
 import { assembleToolPool } from 'src/tools.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { resolveAgentTools } from 'src/tools/AgentTool/agentToolUtils.js';
-import type { ProcessUserInputContext } from 'src/services/input/processUserInput.js';
+import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.js';
 import type { LogOption } from 'src/types/logs.js';
 import { type FileHistoryState } from 'src/shared/fs/fileHistory.js';
 import { type AttributionState } from 'src/services/git/commitAttribution.js';
 import { type IDEExtensionInstallationStatus, type IdeType } from 'src/platform/ide/ide.js';
-import { type SetAppState, removeByFilter } from 'src/utils/messageQueueManager.js';
+import { type SetAppState, removeByFilter } from 'src/agent/messageQueueManager.js';
 import { startBackgroundSession } from 'src/tasks/LocalMainSessionTask.js';
 import type { Theme } from 'src/terminal/theme/theme.js';
-import { createAttachmentMessage, getQueuedCommandAttachments } from 'src/services/attachments/attachments.js';
+import { createAttachmentMessage, getQueuedCommandAttachments } from 'src/agent/attachments/attachments.js';
 
 export interface UseToolUseContextDeps {
   // --- static-ish session inputs
@@ -82,7 +82,7 @@ export interface UseToolUseContextDeps {
   readFileState: React.RefObject<ReturnType<typeof import('src/shared/fs/fileStateCache.js').createFileStateCacheWithSizeLimit>>;
   discoveredSkillNamesRef: React.RefObject<Set<string>>;
   loadedNestedMemoryPathsRef: React.RefObject<Set<string>>;
-  contentReplacementStateRef: { current: ReturnType<typeof import('src/services/tools/toolResultStorage.js').provisionContentReplacementState> };
+  contentReplacementStateRef: { current: ReturnType<typeof import('src/agent/tools/toolResultStorage.js').provisionContentReplacementState> };
   hasInterruptibleToolInProgressRef: React.RefObject<boolean>;
   // --- callbacks handed through into the context
   resume: (sessionId: `${string}-${string}-${string}-${string}-${string}`, log: LogOption, entrypoint: ResumeEntrypoint) => Promise<void>;

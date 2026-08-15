@@ -9,7 +9,7 @@ import {
   setOriginalCwd,
 } from 'src/platform/bootstrap/state.js'
 import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
-import { getPlansDirectory, setPlanSlug } from 'src/utils/plans.js'
+import { getPlansDirectory, setPlanSlug } from 'src/agent/plans/plans.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { checkEditableInternalPath } from 'src/services/permissions/filesystem.js'
 

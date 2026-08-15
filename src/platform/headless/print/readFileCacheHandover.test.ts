@@ -8,7 +8,7 @@ import {
   _resetAllClippedIdsForTesting,
   isPinRegistered,
   pinToolResult,
-} from 'src/services/compact/stableStubState.js'
+} from 'src/agent/compact/stableStubState.js'
 import { installLiveReadFileCache } from 'src/platform/headless/print/readFileCacheHandover.js'
 
 /**

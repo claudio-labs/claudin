@@ -16,7 +16,7 @@ import { createOpenAIShimClient } from 'src/services/api/openaiShim.js'
 import {
   addClippedIds,
   resetClippedIds,
-} from 'src/services/compact/stableStubState.js'
+} from 'src/agent/compact/stableStubState.js'
 
 type FetchType = typeof globalThis.fetch
 const originalFetch = globalThis.fetch

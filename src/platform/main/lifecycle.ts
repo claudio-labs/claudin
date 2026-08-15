@@ -4,11 +4,11 @@
 
 import { feature } from 'bun:bundle';
 import { profileCheckpoint } from 'src/platform/startupProfiler.js';
-import { getSystemContext } from 'src/context.js';
+import { getSystemContext } from 'src/agent/context.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { isAnalyticsDisabled } from 'src/platform/analytics/config.js';
 import { checkHasTrustDialogAccepted, getGlobalConfig, isAutoUpdaterDisabled, saveGlobalConfig } from 'src/platform/config/config.js';
-import { getContextWindowForModel } from 'src/services/context/context.js';
+import { getContextWindowForModel } from 'src/agent/context/context.js';
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js';
 import { hasNodeOption, isBareMode, isEnvTruthy, isInProtectedNamespace } from 'src/shared/envUtils.js';
 import { getIsGit, getWorktreeCount } from 'src/services/git/git.js';
@@ -37,7 +37,7 @@ import { eagerParseCliFlag } from 'src/platform/cliArgs.js';
 import { getInitialSettings, getManagedSettingsKeysForLogging, getSettingsForSource } from 'src/platform/settings/settings.js';
 import { logSkillsLoaded } from 'src/platform/telemetry/skillLoadedEvent.js';
 import { logPluginLoadErrors, logPluginsEnabledForSession } from 'src/platform/telemetry/pluginTelemetry.js';
-import type { ThinkingConfig } from 'src/services/context/thinking.js';
+import type { ThinkingConfig } from 'src/agent/context/thinking.js';
 import { loadSettingSourcesFromFlag, loadSettingsFromFlag } from 'src/platform/main/helpers.js';
 
 /**

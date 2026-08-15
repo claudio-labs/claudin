@@ -1,4 +1,4 @@
-import type { TaskStateBase } from 'src/Task.js'
+import type { TaskStateBase } from 'src/agent/Task.js'
 import type { AgentToolResult } from 'src/tools/AgentTool/agentToolUtils.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { Message } from 'src/types/message.js'

@@ -20,8 +20,8 @@ import type { Message } from 'src/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { safeParseJSON } from 'src/shared/data/json.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
-import { extractTextContent } from 'src/services/messages/messages.js'
-import { asSystemPrompt } from 'src/utils/systemPromptType.js'
+import { extractTextContent } from 'src/agent/messages/messages.js'
+import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 
 const MAX_CONVERSATION_TEXT = 1000
 

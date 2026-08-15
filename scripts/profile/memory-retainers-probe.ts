@@ -151,7 +151,7 @@ async function main(): Promise<void> {
 
   // --- #1 perKeyClippedIds -------------------------------------------------
   try {
-    const mod = await import('../../src/services/compact/stableStubState.js')
+    const mod = await import('../../src/agent/compact/stableStubState.js')
     results.push(
       await measure(
         '#1 perKeyClippedIds (addClippedIds)',
@@ -182,7 +182,7 @@ async function main(): Promise<void> {
 
   // --- #2 ContentReplacementState (direct manipulation) -------------------
   try {
-    const mod = await import('../../src/services/tools/toolResultStorage.js')
+    const mod = await import('../../src/agent/tools/toolResultStorage.js')
     const state = mod.createContentReplacementState()
     results.push(
       await measure(
@@ -317,7 +317,7 @@ async function main(): Promise<void> {
 
   // --- #10 sentBashGitInstructions ---------------------------------------
   try {
-    const mod = await import('../../src/services/attachments/attachments.js')
+    const mod = await import('../../src/agent/attachments/attachments.js')
     if (typeof mod.__TEST_ONLY_getBashGitInstructionsSize === 'function') {
       results.push({
         name: '#10 sentBashGitInstructions (observed)',

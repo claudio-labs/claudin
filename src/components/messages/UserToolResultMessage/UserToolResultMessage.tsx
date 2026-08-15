@@ -3,7 +3,7 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 import * as React from 'react';
 import type { Tools } from 'src/Tool.js';
 import type { NormalizedUserMessage, ProgressMessage } from 'src/types/message.js';
-import { type buildMessageLookups, CANCEL_MESSAGE, INTERRUPT_MESSAGE_FOR_TOOL_USE, REJECT_MESSAGE } from 'src/services/messages/messages.js';
+import { type buildMessageLookups, CANCEL_MESSAGE, INTERRUPT_MESSAGE_FOR_TOOL_USE, REJECT_MESSAGE } from 'src/agent/messages/messages.js';
 import { UserToolCanceledMessage } from 'src/components/messages/UserToolResultMessage/UserToolCanceledMessage.js';
 import { UserToolErrorMessage } from 'src/components/messages/UserToolResultMessage/UserToolErrorMessage.js';
 import { UserToolRejectMessage } from 'src/components/messages/UserToolResultMessage/UserToolRejectMessage.js';

@@ -49,7 +49,7 @@ import type {
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
-} from '../src/services/tokenEstimation.js'
+} from '../src/shared/tokenEstimation.js'
 import { enableConfigs } from '../src/platform/config/config.js'
 
 // Hard cap inside formatDiagnosticsSummary. We don't import the constant

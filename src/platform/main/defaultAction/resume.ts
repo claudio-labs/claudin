@@ -29,7 +29,7 @@ import { filterExistingPaths, getKnownPathsForRepo } from 'src/services/git/gith
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { logError } from 'src/shared/log.js';
-import { createSystemMessage, createUserMessage } from 'src/services/messages/messages.js';
+import { createSystemMessage, createUserMessage } from 'src/agent/messages/messages.js';
 import { type ProcessedResume, processResumedConversation } from 'src/services/session/sessionRestore.js';
 import { getSessionIdFromLog, searchSessionsByCustomTitle } from 'src/services/session/sessionStorage.js';
 import { setCwd } from 'src/shared/proc/Shell.js';

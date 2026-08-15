@@ -3,7 +3,7 @@
 **Status:** Default ON (Phase 6 shipped). `CLAUDIN_CLIP_FRONTIER=0` reverts
 the marker placement; `CLAUDIN_CACHE_PROFILE=aggressive` forces the old
 clipping policy (unset resolves `auto` by provider).
-**Scope:** `src/services/compact/stableStubState.ts`, `src/services/api/claude/paramBuilders.ts`, `src/services/api/claude/streaming.ts`
+**Scope:** `src/agent/compact/stableStubState.ts`, `src/services/api/claude/paramBuilders.ts`, `src/services/api/claude/streaming.ts`
 
 ## Problem
 

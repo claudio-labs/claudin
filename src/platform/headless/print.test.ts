@@ -11,7 +11,7 @@
  */
 import { afterAll, describe, expect, mock, test } from 'bun:test'
 
-import { resetCommandQueue } from 'src/utils/messageQueueManager.js'
+import { resetCommandQueue } from 'src/agent/messageQueueManager.js'
 
 // Mocks must register before the SUT is imported. Imports are inside
 // describe blocks so each group can stage its own boundary mocks.

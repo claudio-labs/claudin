@@ -287,7 +287,7 @@ export const getAutoMemPath = memoize(
     // in the real git root; fall back to the legacy global dir if the check
     // fails OR can't be completed — an unverifiable path must be treated as
     // unsafe, not used as-is, since this value gets memoized for the process.
-    // Mirrors getPlansDirectory() in src/utils/plans.ts.
+    // Mirrors getPlansDirectory() in src/agent/plans/plans.ts.
     let containmentVerified = false
     try {
       const realRoot = getFsImplementation().realpathSync(gitRoot)

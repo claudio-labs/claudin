@@ -24,7 +24,7 @@ import { join } from 'path'
 import {
   maybeSummarizeToolResult,
   summarizeGrepOutput,
-} from '../../src/services/tools/toolResultSummarizer.js'
+} from '../../src/agent/tools/toolResultSummarizer.js'
 import { GREP_TOOL_NAME } from '../../src/tools/GrepTool/prompt.js'
 import { relativizeRgLine } from '../../src/tools/GrepTool/relativize.js'
 import { buildSymbolsOutput } from '../../src/tools/GrepTool/symbolsOutput.js'

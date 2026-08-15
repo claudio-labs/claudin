@@ -54,7 +54,7 @@ import {
 } from 'src/coordinator/forkedAgent.js'
 import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
-import { createUserMessage, normalizeMessages } from 'src/services/messages/messages.js'
+import { createUserMessage, normalizeMessages } from 'src/agent/messages/messages.js'
 import type { ModelAlias } from 'src/utils/model/aliases.js'
 import { resolveSkillModelOverride } from 'src/utils/model/model.js'
 import { recordSkillUsage } from 'src/terminal/suggestions/skillUsageTracking.js'
@@ -620,7 +620,7 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
 
     // Process the skill with optional args
     const { processPromptSlashCommand } = await import(
-      'src/services/input/processSlashCommand.js'
+      'src/agent/input/processSlashCommand.js'
     )
     const processedCommand = await processPromptSlashCommand(
       commandName,

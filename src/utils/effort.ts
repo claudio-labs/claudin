@@ -1,5 +1,5 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
-import { isUltrathinkEnabled } from 'src/services/context/thinking.js'
+import { isUltrathinkEnabled } from 'src/agent/context/thinking.js'
 import { getInitialSettings, getSettingsForSource } from 'src/platform/settings/settings.js'
 import { isProSubscriber, isMaxSubscriber, isTeamSubscriber } from 'src/services/auth/auth.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'

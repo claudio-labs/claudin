@@ -49,7 +49,7 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
-} from '../src/services/tokenEstimation.js'
+} from '../src/shared/tokenEstimation.js'
 import { enableConfigs } from '../src/platform/config/config.js'
 import { getEmptyToolPermissionContext } from '../src/Tool.js'
 import { toolToAPISchema } from '../src/services/api/api.js'
@@ -58,7 +58,7 @@ import { getBuiltInAgents } from '../src/tools/AgentTool/builtInAgents.js'
 import { resolveAgentTools } from '../src/tools/AgentTool/agentToolUtils.js'
 import { convertTools } from '../src/services/api/openaiShim.js'
 import { convertToolsToResponsesTools } from '../src/services/api/codexShim.js'
-import { clearToolSchemaCache } from '../src/services/tools/toolSchemaCache.js'
+import { clearToolSchemaCache } from '../src/agent/tools/toolSchemaCache.js'
 import type { Tool } from '../src/Tool.js'
 
 type Engine = 'anthropic' | 'openai' | 'codex'

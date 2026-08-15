@@ -26,14 +26,14 @@ function setTotals(next: {
   cacheCreated = next.cacheCreated ?? 0;
 }
 
-const realCostTracker = { ...(await import('src/cost-tracker.js')) };
+const realCostTracker = { ...(await import('src/agent/cost-tracker.js')) };
 const realCacheStatsTracker = { ...(await import('src/services/api/cacheStatsTracker.js')) };
 const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) };
 const realCacheMetrics = { ...(await import('src/services/api/cacheMetrics.js')) };
 const realProviders = { ...(await import('src/utils/model/providers.js')) };
 const realInk = { ...(await import('src/terminal/ink.js')) };
 
-mock.module('src/cost-tracker.js', () => ({
+mock.module('src/agent/cost-tracker.js', () => ({
   getTotalInputTokens: () => totalInput,
   getTotalOutputTokens: () => totalOutput,
 }));
@@ -159,8 +159,8 @@ describe('readSnapshot — supportsCache layout flag', () => {
 });
 
 afterAll(() => {
-  mock.module('src/cost-tracker.js', () => realCostTracker);
-  mock.module('src/cost-tracker.js', () => realCostTracker);
+  mock.module('src/agent/cost-tracker.js', () => realCostTracker);
+  mock.module('src/agent/cost-tracker.js', () => realCostTracker);
   mock.module('src/services/api/cacheStatsTracker.js', () => realCacheStatsTracker);
   mock.module('src/services/api/cacheStatsTracker.js', () => realCacheStatsTracker);
   mock.module('src/services/api/activeProvider.js', () => realActiveProvider);

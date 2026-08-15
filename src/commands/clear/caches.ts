@@ -14,17 +14,17 @@ import {
   getSystemContext,
   getUserContext,
   setSystemPromptInjection,
-} from 'src/context.js'
+} from 'src/agent/context.js'
 import { clearFileSuggestionCaches } from 'src/terminal/prompt-suggestion/fileSuggestions.js'
 import { clearAllPendingCallbacks } from 'src/hooks/useSwarmPermissionPoller.js'
 import { clearAllDumpState } from 'src/services/api/dumpPrompts.js'
 import { resetPromptCacheBreakDetection } from 'src/services/api/promptCacheBreakDetection.js'
 import { clearAllSessions } from 'src/services/api/sessionIngress.js'
-import { runPostCompactCleanup } from 'src/services/compact/postCompactCleanup.js'
+import { runPostCompactCleanup } from 'src/agent/compact/postCompactCleanup.js'
 import { resetAllLSPDiagnosticState } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
 import { clearTrackedMagicDocs } from 'src/platform/MagicDocs/magicDocs.js'
 import { clearDynamicSkills } from 'src/skills/loadSkillsDir.js'
-import { resetSentSkillNames } from 'src/services/attachments/attachments.js'
+import { resetSentSkillNames } from 'src/agent/attachments/attachments.js'
 import { clearCommandPrefixCaches } from 'src/platform/bash/commands.js'
 import { resetGetMemoryFilesCache } from 'src/services/instructions/claudemd.js'
 import { clearRepositoryCaches } from 'src/services/git/detectRepository.js'
@@ -101,7 +101,7 @@ export function clearSessionCaches(
   // Clear attribution caches (file content cache, pending bash states)
   // Dynamic import to preserve dead code elimination for COMMIT_ATTRIBUTION feature flag
   if (feature('COMMIT_ATTRIBUTION')) {
-    void import('../../utils/attributionHooks.js').then(
+    void import('../../agent/attributionHooks.js').then(
       ({ clearAttributionCaches }) => clearAttributionCaches(),
     )
   }

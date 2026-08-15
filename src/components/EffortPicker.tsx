@@ -14,7 +14,7 @@ import {
   modelUsesOpenAIEffort,
 } from 'src/utils/effort.js'
 import { getReasoningEffortForModel } from 'src/services/api/providerConfig.js'
-import { getRainbowColor } from 'src/services/context/thinking.js'
+import { getRainbowColor } from 'src/agent/context/thinking.js'
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js'
 import { Byline } from 'src/terminal/design-system/Byline.js'
 import {

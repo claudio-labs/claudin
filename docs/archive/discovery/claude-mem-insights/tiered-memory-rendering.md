@@ -1,6 +1,6 @@
 # Tiered Memory Rendering — two-tier render (+ proposta de token budget)
 
-> **Fonte:** `claude-mem` repo, `src/services/context/TimelineRenderer.ts`, `src/services/context/ObservationCompiler.ts`, `src/services/context/ContextBuilder.ts`, `src/services/context/TokenCalculator.ts`.
+> **Fonte:** `claude-mem` repo, `src/agent/context/TimelineRenderer.ts`, `src/agent/context/ObservationCompiler.ts`, `src/agent/context/ContextBuilder.ts`, `src/agent/context/TokenCalculator.ts`.
 > **Verificado contra o repo em 2026-05-19** — o "token budget com auto-degradação" que o rascunho anterior atribuía ao claude-mem **NÃO existe lá**. Ver "Correções pós-verificação".
 
 ## O que o claude-mem REALMENTE faz
@@ -96,7 +96,7 @@ Budget configurável, default conservador (ex: ~4-6k tokens para o bloco de mem�
 
 | Tema | Arquivo:linha |
 |---|---|
-| Two-tier switch | `src/services/context/TimelineRenderer.ts:64-71` |
-| Set de IDs expandidos (por contagem) | `src/services/context/ObservationCompiler.ts:288-294` |
+| Two-tier switch | `src/agent/context/TimelineRenderer.ts:64-71` |
+| Set de IDs expandidos (por contagem) | `src/agent/context/ObservationCompiler.ts:288-294` |
 | Settings de contagem | `src/shared/SettingsDefaultsManager.ts:83,109` |
-| Estimador de tokens (só cosmético) | `src/services/context/TokenCalculator.ts:6-12`; `types.ts:99` |
+| Estimador de tokens (só cosmético) | `src/agent/context/TokenCalculator.ts:6-12`; `types.ts:99` |

@@ -36,7 +36,7 @@ import type { DenialTrackingState } from 'src/services/permissions/denialTrackin
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import type { SettingsJson } from 'src/platform/settings/types.js'
-import { shouldEnableThinkingByDefault } from 'src/services/context/thinking.js'
+import { shouldEnableThinkingByDefault } from 'src/agent/context/thinking.js'
 import type { Store } from 'src/terminal/state/store.js'
 
 export type CompletionBoundary =

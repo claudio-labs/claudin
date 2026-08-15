@@ -46,8 +46,8 @@ mock.module('src/platform/config/config.js', () => ({
   ...realConfig,
   getGlobalConfig: () => ({ autoCompactEnabled: false }),
 }))
-const realAutoCompact = { ...(await import('src/services/compact/autoCompact.js')) }
-mock.module('src/services/compact/autoCompact.js', () => ({
+const realAutoCompact = { ...(await import('src/agent/compact/autoCompact.js')) }
+mock.module('src/agent/compact/autoCompact.js', () => ({
   ...realAutoCompact,
   getEffectiveContextWindowSize: () => 200_000,
 }))
@@ -57,7 +57,7 @@ const {
   _resetAllClippedIdsForTesting,
   addClippedIds,
   applyStableStubs,
-} = await import('src/services/compact/stableStubState.js')
+} = await import('src/agent/compact/stableStubState.js')
 const { createOpenAIShimClient } = await import('src/services/api/openaiShim.js')
 const { convertAnthropicMessagesToResponsesInput } = await import('src/services/api/codexShim.js')
 
@@ -280,7 +280,7 @@ afterAll(() => {
   }
   globalThis.fetch = originalFetch
   mock.module('src/platform/config/config.js', () => realConfig)
-  mock.module('src/services/compact/autoCompact.js', () => realAutoCompact)
+  mock.module('src/agent/compact/autoCompact.js', () => realAutoCompact)
 })
 
 afterEach(() => {

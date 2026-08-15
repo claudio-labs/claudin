@@ -3,7 +3,7 @@ import { join } from 'path'
 import {
   getActiveModelBytesPerToken,
   roughTokenCountEstimation,
-} from 'src/services/tokenEstimation.js'
+} from 'src/shared/tokenEstimation.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { getErrnoCode, toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'

@@ -26,13 +26,13 @@ import {
   modelRejectsSamplingParams,
   parseUserSpecifiedModel,
 } from 'src/utils/model/model.js'
-import { getModelMaxOutputTokens, modelSupports1M } from 'src/services/context/context.js'
+import { getModelMaxOutputTokens, modelSupports1M } from 'src/agent/context/context.js'
 import { isFastModeSupportedByModel } from 'src/utils/fastMode.js'
 import {
   modelRequiresAdaptiveThinking,
   modelSupportsAdaptiveThinking,
   modelSupportsThinking,
-} from 'src/services/context/thinking.js'
+} from 'src/agent/context/thinking.js'
 import {
   getAvailableEffortLevels,
   modelSupportsEffort,

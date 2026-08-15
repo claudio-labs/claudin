@@ -39,7 +39,7 @@ Tool descriptions (o que o modelo lê quando decide qual chamar):
 
 Builder central do system prompt do agente principal:
 
-- `src/utils/systemPrompt.ts:41-119` — `buildEffectiveSystemPrompt(...)`.
+- `src/agent/systemPrompt.ts:41-119` — `buildEffectiveSystemPrompt(...)`.
 - `src/constants/prompts.ts:384-501` — `getSystemPrompt()` (a fonte que
   o builder envolve). Seção `getUsingYourToolsSection(enabledTools)` em
   `:230-275` é onde uma "policy" tipo "para perguntas tipo X, prefira LSP
@@ -269,7 +269,7 @@ re-parse o caminho limpo é expor uma versão estruturada:
   (TTL 5min, max 200, in-memory `Map<string, CachedCodeAction>`). Padrão
   já estabelecido; expandir com novo módulo irmão
   `src/tools/LSPTool/symbolCache.ts` ou refatorar para genérico.
-- `src/services/tools/toolExecution.ts:1762-1779` —
+- `src/agent/tools/toolExecution.ts:1762-1779` —
   `invalidateCacheForWrite(toolName, input)`; já invalida path-by-path
   para `FileEditTool`/`FileWriteTool`/`NotebookEditTool` e `invalidateAll()`
   para Bash/PowerShell. **Esse é o hook de invalidação que precisamos

@@ -13,10 +13,10 @@ import { launchRepl } from 'src/replLauncher.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';
-import { createSystemMessage } from 'src/services/messages/messages.js';
+import { createSystemMessage } from 'src/agent/messages/messages.js';
 import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
 import type { StatsStore } from 'src/terminal/contexts/stats.js';
-import type { ThinkingConfig } from 'src/services/context/thinking.js';
+import type { ThinkingConfig } from 'src/agent/context/thinking.js';
 import type { BootContext } from 'src/platform/main/bootContext.js';
 
 export type SshRemoteBranchDeps = {

@@ -37,7 +37,7 @@ import {
   getClippedIds,
   isClipStubContent,
   isPinShielding,
-} from 'src/services/compact/stableStubState.js'
+} from 'src/agent/compact/stableStubState.js'
 
 interface MessageLike {
   role?: string

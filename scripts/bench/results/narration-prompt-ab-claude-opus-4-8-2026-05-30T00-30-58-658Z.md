@@ -120,7 +120,7 @@
 - Os arquivos são grandes e foram truncados. Vou ler as seções centrais que ficaram de fora.
 - Agora vou ler o `findRelevantMemories.ts` e a parte central do `memdir.ts` (construção do prompt) que ficou de fora.
 - Tenho um quadro claro. Deixa eu confirmar onde a recall (`findRelevantMemories`) é chamada e onde os hooks são registrados, para fechar o fluxo de ponta a ponta.
-- Deixa eu ver os dois pontos de wiring: o stopHooks (que dispara extractMemories) e o attachment de recall (`src/services/attachments/memory.ts`).
+- Deixa eu ver os dois pontos de wiring: o stopHooks (que dispara extractMemories) e o attachment de recall (`src/agent/attachments/memory.ts`).
 - Vou ler a seção do `memory.ts` onde `findRelevantMemories` é invocado para montar o attachment de recall.
 
 **Variant B run#1** (7 blocks):
@@ -130,7 +130,7 @@
 - Now let me read the SessionMemory module and the findRelevantMemories + memoryScan for the read-side, plus the stopHooks wiring.
 - Let me read the SessionMemory core logic, memoryScan, and find the wiring points for read-side injection and extraction triggering.
 - Now let me find where these are wired: where `findRelevantMemories` is invoked at query time, and where `executeExtractMemories` is triggered in stopHooks.
-- The read-side recall lives in `src/services/attachments/memory.ts` and `src/query/stopHooks.ts` triggers extraction. Let me read both.
+- The read-side recall lives in `src/agent/attachments/memory.ts` and `src/agent/query/stopHooks.ts` triggers extraction. Let me read both.
 - Let me read the recall logic in the middle of memory.ts (the `relevant_memories` attachment builder).
 
 **Variant B run#2** (8 blocks):

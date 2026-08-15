@@ -5,7 +5,7 @@ import * as React from 'react';
 import { NO_CONTENT_MESSAGE } from 'src/constants/messages.js';
 import { COMMAND_MESSAGE_TAG, LOCAL_COMMAND_CAVEAT_TAG, TASK_NOTIFICATION_TAG, TEAMMATE_MESSAGE_TAG, TICK_TAG } from 'src/constants/xml.js';
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
-import { extractTag, INTERRUPT_MESSAGE, INTERRUPT_MESSAGE_FOR_TOOL_USE } from 'src/services/messages/messages.js';
+import { extractTag, INTERRUPT_MESSAGE, INTERRUPT_MESSAGE_FOR_TOOL_USE } from 'src/agent/messages/messages.js';
 import { InterruptedByUser } from 'src/components/InterruptedByUser.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { UserAgentNotificationMessage } from 'src/components/messages/UserAgentNotificationMessage.js';

@@ -14,7 +14,7 @@ import {
   getSkillsPath,
   onDynamicSkillsLoaded,
 } from 'src/skills/loadSkillsDir.js'
-import { resetSentSkillNames } from 'src/services/attachments/attachments.js'
+import { resetSentSkillNames } from 'src/agent/attachments/attachments.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'

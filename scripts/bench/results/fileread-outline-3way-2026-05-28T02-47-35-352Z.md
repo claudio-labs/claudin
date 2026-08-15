@@ -34,5 +34,5 @@ Sem runs validas.
 
 ### outline-first
 
-> No arquivo `src/services/messages/messages.ts` (codebase openclaude), liste todas as funcoes exportadas (`export function` e `export async function`) com seu nome e linha de declaracao. Nao preciso do corpo das funcoes.
+> No arquivo `src/agent/messages/messages.ts` (codebase openclaude), liste todas as funcoes exportadas (`export function` e `export async function`) com seu nome e linha de declaracao. Nao preciso do corpo das funcoes.
 

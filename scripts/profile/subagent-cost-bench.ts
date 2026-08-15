@@ -20,7 +20,7 @@ import { performance } from 'node:perf_hooks'
 const FILES = [
   'src/shared/errors.ts', 'src/shared/log.ts', 'src/shared/fs/path.ts', 'src/shared/envUtils.ts',
   'src/shared/proc/Shell.ts', 'src/platform/config/config.ts', 'src/platform/bootstrap/state.ts', 'src/Tool.ts',
-  'src/utils/model/model.ts', 'src/services/api/providerModels.ts', 'src/context.ts', 'src/query.ts',
+  'src/utils/model/model.ts', 'src/services/api/providerModels.ts', 'src/agent/context.ts', 'src/agent/query.ts',
 ]
 const MODEL = 'claude-sonnet-4-6'
 const SENT = 'SUBAGENT_DONE'

@@ -6,7 +6,7 @@
 
 ## Por que importa para Claudin
 
-- Hoje `src/services/tools/toolResultStorage.ts` salva output grande de tools por sessão, sem dedupe.
+- Hoje `src/agent/tools/toolResultStorage.ts` salva output grande de tools por sessão, sem dedupe.
 - Mesmo `Read` de um arquivo grande em N sessões = N cópias.
 - Compaction frequentemente re-emite o mesmo blob: CAS poderia substituir por referência.
 - `~/.claudin/projects/<dir>/blobs/sha256/ab/cdef...` dá GC trivial (refcount ou mark-sweep contra MEMORY.md/transcripts).
@@ -21,4 +21,4 @@
 ## Referência
 
 - `packages/agent/src/session/blob-store.ts` (omp)
-- `src/services/tools/toolResultStorage.ts` (claudin)
+- `src/agent/tools/toolResultStorage.ts` (claudin)

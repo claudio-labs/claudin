@@ -2,7 +2,7 @@
 // this fork. `QueueOperationMessage` is one arm of the `Entry` union in
 // `src/types/logs.ts`, appended to the session transcript by
 // `insertQueueOperation`; the literal that produces it lives in `logOperation`
-// (`src/utils/messageQueueManager.ts:30`).
+// (`src/agent/messageQueueManager.ts:30`).
 
 import type { SessionId } from 'src/types/ids.js'
 

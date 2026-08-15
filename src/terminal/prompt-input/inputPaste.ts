@@ -1,4 +1,4 @@
-import { getPastedTextRefNumLines } from 'src/history.js'
+import { getPastedTextRefNumLines } from 'src/agent/history.js'
 import type { PastedContent } from 'src/platform/config/config.js'
 
 const TRUNCATION_THRESHOLD = 10000 // Characters before we truncate

@@ -8,7 +8,7 @@ veredito.
 
 | Local | Storage | Tamanho típico | Dedup | Cleanup |
 |---|---|---|---|---|
-| `src/services/tools/toolResultStorage.ts` | `~/.claudin/projects/<dir>/<sid>/tool-results/<toolUseId>.{txt,json}` | 50KB threshold, observado até 645 KB | Nenhum (chave = `toolUseId`, único por invocação) | Time-based 30d via `src/shared/cleanup.ts:155-203`; também deletado por `/clear` (`unlinkSessionSpillDir`, l.146) |
+| `src/agent/tools/toolResultStorage.ts` | `~/.claudin/projects/<dir>/<sid>/tool-results/<toolUseId>.{txt,json}` | 50KB threshold, observado até 645 KB | Nenhum (chave = `toolUseId`, único por invocação) | Time-based 30d via `src/shared/cleanup.ts:155-203`; também deletado por `/clear` (`unlinkSessionSpillDir`, l.146) |
 | `src/terminal/input/pasteStore.ts` | `~/.claudin/paste-cache/<sha256_short>.txt` | 11-37 KB observado (5 files, 104 KB total) | **Já content-addressed por SHA-256** (l.21 `hashPastedText`); idempotente | `cleanupOldPastes(cutoffDate)` l.76 |
 | `~/.claudin/file-history/<sessionId>/<hashedPath>@v<N>` | Por-sessão, snapshots versionados de arquivos editados | 45 MB total, 3 016 arquivos | Path hasheado, mas conteúdo NÃO dedup (versão N e N+1 ficam lado a lado) | Não localizei GC; cresce |
 | Session transcripts `~/.claudin/projects/<dir>/<sid>.jsonl` (+ `subagents/`) | JSONL append-only | 68 KB – 8.9 MB (max observado 9.4 MB) | Nenhum — conteúdo inteiro inline | Não há truncate; 30d cleanup só para tool-results |

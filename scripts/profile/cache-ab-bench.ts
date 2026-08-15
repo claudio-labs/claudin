@@ -56,19 +56,19 @@ const TWELVE_FILES = [
   // large (provider/runtime guts)
   'src/services/api/client.ts',
   'src/services/api/providerConfig.ts',
-  'src/QueryEngine.ts',
+  'src/agent/QueryEngine.ts',
   'src/commands.ts',
   'src/Tool.ts',
   // medium
-  'src/services/messages/messages.ts',
+  'src/agent/messages/messages.ts',
   'src/platform/config/config.ts',
   'src/services/api/withRetry.ts',
   'src/services/api/errors.ts',
   'src/services/mcp/client.ts',
   'src/utils/model/model.ts',
   'src/services/api/providerModels.ts',
-  'src/context.ts',
-  'src/query.ts',
+  'src/agent/context.ts',
+  'src/agent/query.ts',
   'src/shared/errors.ts',
   'src/shared/log.ts',
   'src/shared/fs/path.ts',
@@ -84,7 +84,7 @@ const TWELVE_FILES = [
   'src/shared/withResolvers.ts',
   'src/shared/data/lazySchema.ts',
   'src/shared/data/yaml.ts',
-  'src/services/compact/snipCompact.ts',
+  'src/agent/compact/snipCompact.ts',
   'src/shared/data/objectGroupBy.ts',
   // 50-file extension (mixed sizes) for longer-session workloads
   'src/services/api/openaiShim.ts',
@@ -92,19 +92,19 @@ const TWELVE_FILES = [
   'src/screens/REPL.tsx',
   'src/services/api/claude/streaming.ts',
   'src/services/api/claude/paramBuilders.ts',
-  'src/services/messages/normalize.ts',
-  'src/services/compact/stableStubState.ts',
-  'src/services/compact/microCompact.ts',
-  'src/services/cache/cacheProfile.ts',
-  'src/cost-tracker.ts',
+  'src/agent/messages/normalize.ts',
+  'src/agent/compact/stableStubState.ts',
+  'src/agent/compact/microCompact.ts',
+  'src/agent/cache/cacheProfile.ts',
+  'src/agent/cost-tracker.ts',
   'src/services/api/modelCost.ts',
   'src/utils/model/modelAllowlist.ts',
   'src/services/api/promptCacheBreakDetection.ts',
-  'src/services/compact/autoCompact.ts',
+  'src/agent/compact/autoCompact.ts',
   'src/services/api/api.ts',
   'src/services/api/betas.ts',
   'src/services/api/activeProvider.ts',
-  'src/services/context/thinking.ts',
+  'src/agent/context/thinking.ts',
   'src/shared/debug.ts',
   'src/shared/data/json.ts',
 ]
@@ -116,8 +116,8 @@ const TWELVE_FILES = [
 // Spread across size classes: 2 large, 4 medium, 2 small.
 const REVISIT_FILES = [
   'src/services/api/client.ts',      // large
-  'src/QueryEngine.ts',              // large
-  'src/services/messages/messages.ts',           // medium
+  'src/agent/QueryEngine.ts',              // large
+  'src/agent/messages/messages.ts',           // medium
   'src/platform/config/config.ts',             // medium
   'src/services/api/withRetry.ts',   // medium
   'src/utils/model/model.ts',        // medium
