@@ -6,20 +6,20 @@
 // (isBackgroundTask filters out isBackgrounded:false).
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import type { AppState } from 'src/state/AppStateStore.js'
-import { getDefaultAppState } from 'src/state/AppStateStore.js'
-import { isLocalShellTask } from 'src/tasks/LocalShellTask/guards.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { resetCommandQueue } from 'src/utils/messageQueueManager.js'
-import { drainSdkEvents } from 'src/utils/sdkEventQueue.js'
-import type { ExecResult } from 'src/utils/proc/ShellCommand.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
+import { getDefaultAppState } from 'src/terminal/state/AppStateStore.js'
+import { isLocalShellTask } from 'src/agent/tasks/LocalShellTask/guards.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { resetCommandQueue } from 'src/agent/messageQueueManager.js'
+import { drainSdkEvents } from 'src/agent/sdkEventQueue.js'
+import type { ExecResult } from 'src/shared/proc/ShellCommand.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import {
   applyBashOutputFilter,
   planBashFilterForExecution,
   runShellCommand,
   type BashToolInput,
-} from './BashTool.js'
+} from 'src/tools/BashTool/BashTool.js'
 
 type SetAppStateFn = (f: (prev: AppState) => AppState) => void
 

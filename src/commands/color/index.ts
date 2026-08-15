@@ -2,7 +2,7 @@
  * Color command - minimal metadata only.
  * Implementation is lazy-loaded from color.ts to reduce startup time.
  */
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 
 const color = {
   type: 'local-jsx',
@@ -10,7 +10,7 @@ const color = {
   description: 'Set the prompt bar color for this session',
   immediate: true,
   argumentHint: '<color|default>',
-  load: () => import('./color.js'),
+  load: () => import('src/commands/color/color.js'),
 } satisfies Command
 
 export default color

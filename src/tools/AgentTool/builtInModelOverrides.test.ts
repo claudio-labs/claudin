@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   applyBuiltInModelOverrides,
   type BuiltInModelOverrideDeps,
-} from './builtInModelOverrides.js'
+} from 'src/tools/AgentTool/builtInModelOverrides.js'
 
 function makeAgent(agentType: string, model: string | undefined = undefined) {
   return { agentType, model }

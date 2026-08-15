@@ -4,9 +4,13 @@ description: Design record for the Git tool (batched git+gh commands, delegated 
 type: project
 ---
 
+**Scope:** this file owns the Git tool itself — the design decisions, the numbers
+that are citable, and the traps found building it. Its place in the ranked
+token-efficiency queue, and the 760-session sizing that picked it, are D2 of
+[[dev-tooling-token-roadmap]].
+
 `Git({commands: [...]})` — one tool over **all** of git and gh, reads and
-mutations, landed on branch `feat/git-tool` (D2 of
-[[dev-tooling-token-roadmap]]). Each element is a verbatim shell command; shell
+mutations, landed on branch `feat/git-tool`. Each element is a verbatim shell command; shell
 composition is refused and stays in Bash.
 
 **Why:** the decisions below are not derivable from the code, and two of them

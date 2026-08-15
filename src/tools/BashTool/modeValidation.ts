@@ -1,12 +1,12 @@
 import type { z } from 'zod/v4'
-import type { ToolPermissionContext } from 'src/Tool.js'
-import { splitCommand_DEPRECATED } from 'src/services/bash/commands.js'
-import { tryParseShellCommand } from 'src/services/bash/shellQuote.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
-import type { BashTool } from './BashTool.js'
-import { checkReadOnlyConstraints } from './readOnlyValidation.js'
-import { checkDangerousRemovalPaths } from './pathValidation.js'
+import type { ToolPermissionContext } from 'src/tools/Tool.js'
+import { splitCommand_DEPRECATED } from 'src/platform/bash/commands.js'
+import { tryParseShellCommand } from 'src/platform/bash/shellQuote.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import type { PermissionResult } from 'src/permissions/PermissionResult.js'
+import type { BashTool } from 'src/tools/BashTool/BashTool.js'
+import { checkReadOnlyConstraints } from 'src/tools/BashTool/readOnlyValidation.js'
+import { checkDangerousRemovalPaths } from 'src/tools/BashTool/pathValidation.js'
 
 const ACCEPT_EDITS_WRITE_COMMANDS = [
   // Filesystem write commands

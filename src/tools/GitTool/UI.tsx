@@ -1,12 +1,12 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import React from 'react'
-import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseErrorMessage.js'
-import { MessageResponse } from 'src/components/MessageResponse.js'
-import { ShellElapsedTime } from 'src/components/shell/ShellElapsedTime.js'
-import { Box, Text } from 'src/ink.js'
-import { oneLineCommand } from './display.js'
-import type { Input, Output } from './GitTool.js'
-import type { GitProgress } from './types.js'
+import { FallbackToolUseErrorMessage } from 'src/agent/ui/FallbackToolUseErrorMessage.js'
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js'
+import { ShellElapsedTime } from 'src/tools/BashTool/ui/ShellElapsedTime.js'
+import { Box, Text } from 'src/terminal/ink.js'
+import { oneLineCommand } from 'src/tools/GitTool/display.js'
+import type { Input, Output } from 'src/tools/GitTool/GitTool.js'
+import type { GitProgress } from 'src/tools/GitTool/types.js'
 
 export function userFacingName(): string {
   return 'Git'
@@ -36,7 +36,7 @@ export function renderToolUseErrorMessage(
 
 /**
  * Structural, rather than the framework's `ProgressMessage<GitProgress>`:
- * `src/types/message.js` does not exist in this fork (it is stubbed at bundle
+ * `src/shared/types/message.js` does not exist in this fork (it is stubbed at bundle
  * time), so importing it would add one more unresolved module for a type we
  * read one field of.
  */

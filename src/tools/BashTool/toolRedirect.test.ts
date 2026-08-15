@@ -9,13 +9,13 @@ import {
   resetToolRedirectMemoForTesting,
   shouldRedirectToTools,
   type SuggestedCall,
-} from './toolRedirect.js'
+} from 'src/tools/BashTool/toolRedirect.js'
 
 // Real files, because the analyzer refuses any path that is not a regular file
 // on disk — a fixture-free existence gate is the point, not an inconvenience.
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
-const FILE_A = 'src/services/bash/segments.ts'
-const FILE_B = 'src/services/bash/commands.ts'
+const FILE_A = 'src/platform/bash/segments.ts'
+const FILE_B = 'src/platform/bash/commands.ts'
 
 function analyze(command: string) {
   return analyzeCommandForRedirect(command, REPO_ROOT)
@@ -718,7 +718,7 @@ describe('renderToolRedirect', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Wiring. BashTool.tsx reaches src/ink.js through its import chain, so it
+// Wiring. BashTool.tsx reaches src/terminal/ink.js through its import chain, so it
 // cannot be imported under `bun test` (see .claudin/rules/testing.md). Without
 // this block, deleting the call from validateInput leaves every test above
 // green while the redirect never fires in production.

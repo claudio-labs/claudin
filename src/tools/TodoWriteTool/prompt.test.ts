@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { DESCRIPTION, PROMPT } from './prompt.js'
+import { DESCRIPTION, PROMPT } from 'src/tools/TodoWriteTool/prompt.js'
 
 // Baseline: old file byte count (wc -c src/tools/TodoWriteTool/prompt.ts) before
 // the poda. PROMPT.length is smaller (excludes import, export declaration,

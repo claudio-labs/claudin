@@ -54,59 +54,58 @@ import { join, resolve } from 'node:path'
 // --revisits>0 the FULL list is used and --turns is ignored.
 const TWELVE_FILES = [
   // large (provider/runtime guts)
-  'src/services/api/client.ts',
-  'src/services/api/providerConfig.ts',
-  'src/QueryEngine.ts',
-  'src/commands.ts',
-  'src/Tool.ts',
+  'src/providers/transport/client.ts',
+  'src/providers/presets/providerConfig.ts',
+  'src/agent/QueryEngine.ts',
+  'src/commands/commands.ts',
+  'src/tools/Tool.ts',
   // medium
-  'src/services/messages/messages.ts',
-  'src/services/config/config.ts',
-  'src/services/api/withRetry.ts',
-  'src/services/api/errors.ts',
-  'src/services/mcp/client.ts',
-  'src/utils/model/model.ts',
-  'src/services/api/providerModels.ts',
-  'src/context.ts',
-  'src/query.ts',
-  'src/utils/errors.ts',
-  'src/utils/log.ts',
-  'src/utils/fs/path.ts',
-  'src/utils/envUtils.ts',
-  'src/utils/proc/Shell.ts',
-  'src/bootstrap/state.ts',
+  'src/agent/messages/messages.ts',
+  'src/platform/config/config.ts',
+  'src/providers/transport/withRetry.ts',
+  'src/providers/transport/errors.ts',
+  'src/mcp/client.ts',
+  'src/providers/model/model.ts',
+  'src/providers/presets/providerModels.ts',
+  'src/agent/context.ts',
+  'src/agent/query.ts',
+  'src/shared/errors.ts',
+  'src/shared/log.ts',
+  'src/shared/fs/path.ts',
+  'src/shared/envUtils.ts',
+  'src/shared/proc/Shell.ts',
+  'src/platform/bootstrap/state.ts',
   // small (constants / tiny utils)
-  'src/constants/messages.ts',
-  'src/constants/keys.ts',
-  'src/ink/constants.ts',
-  'src/utils/protectedNamespace.ts',
-  'src/utils/data/array.ts',
-  'src/utils/withResolvers.ts',
-  'src/utils/data/lazySchema.ts',
-  'src/utils/data/yaml.ts',
-  'src/services/compact/snipCompact.ts',
-  'src/utils/data/objectGroupBy.ts',
+  'src/agent/prompts/messages.ts',
+  'src/shared/constants/keys.ts',
+  'src/terminal/ink/constants.ts',
+  'src/shared/data/array.ts',
+  'src/shared/withResolvers.ts',
+  'src/shared/data/lazySchema.ts',
+  'src/shared/data/yaml.ts',
+  'src/agent/compact/snipCompact.ts',
+  'src/shared/data/objectGroupBy.ts',
   // 50-file extension (mixed sizes) for longer-session workloads
-  'src/services/api/openaiShim.ts',
-  'src/services/api/codexShim.ts',
-  'src/screens/REPL.tsx',
-  'src/services/api/claude/streaming.ts',
-  'src/services/api/claude/paramBuilders.ts',
-  'src/services/messages/normalize.ts',
-  'src/services/compact/stableStubState.ts',
-  'src/services/compact/microCompact.ts',
-  'src/services/cache/cacheProfile.ts',
-  'src/cost-tracker.ts',
-  'src/services/api/modelCost.ts',
-  'src/utils/model/modelAllowlist.ts',
-  'src/services/api/promptCacheBreakDetection.ts',
-  'src/services/compact/autoCompact.ts',
-  'src/services/api/api.ts',
-  'src/services/api/betas.ts',
-  'src/services/api/activeProvider.ts',
-  'src/services/context/thinking.ts',
-  'src/utils/debug.ts',
-  'src/utils/data/json.ts',
+  'src/providers/shims/openaiShim.ts',
+  'src/providers/shims/codexShim.ts',
+  'src/agent/repl/REPL.tsx',
+  'src/providers/shims/claude/streaming.ts',
+  'src/providers/shims/claude/paramBuilders.ts',
+  'src/agent/messages/normalize.ts',
+  'src/agent/compact/stableStubState.ts',
+  'src/agent/compact/microCompact.ts',
+  'src/agent/cache/cacheProfile.ts',
+  'src/agent/cost-tracker.ts',
+  'src/providers/usage/modelCost.ts',
+  'src/providers/model/modelAllowlist.ts',
+  'src/providers/cache/promptCacheBreakDetection.ts',
+  'src/agent/compact/autoCompact.ts',
+  'src/providers/transport/api.ts',
+  'src/providers/transport/betas.ts',
+  'src/providers/presets/activeProvider.ts',
+  'src/agent/context/thinking.ts',
+  'src/shared/debug.ts',
+  'src/shared/data/json.ts',
 ]
 
 // Revisit set for --revisits=N: files re-read a second time AFTER the full
@@ -115,14 +114,14 @@ const TWELVE_FILES = [
 // while keep-everything strategies may still hold the bytes in context.
 // Spread across size classes: 2 large, 4 medium, 2 small.
 const REVISIT_FILES = [
-  'src/services/api/client.ts',      // large
-  'src/QueryEngine.ts',              // large
-  'src/services/messages/messages.ts',           // medium
-  'src/services/config/config.ts',             // medium
-  'src/services/api/withRetry.ts',   // medium
-  'src/utils/model/model.ts',        // medium
-  'src/constants/keys.ts',           // small
-  'src/utils/data/array.ts',              // small
+  'src/providers/transport/client.ts',      // large
+  'src/agent/QueryEngine.ts',              // large
+  'src/agent/messages/messages.ts',           // medium
+  'src/platform/config/config.ts',             // medium
+  'src/providers/transport/withRetry.ts',   // medium
+  'src/providers/model/model.ts',        // medium
+  'src/shared/constants/keys.ts',           // small
+  'src/shared/data/array.ts',              // small
 ]
 
 const SENTINEL = 'BENCH_DONE'
@@ -261,7 +260,7 @@ function buildJsonWorkloadPrompt(turns: number): string {
 // A and B arms is the CLAUDIN_VERBOSITY_STEERING env, so the output-token delta
 // is attributable to the steering block alone.
 const PROSE_QUESTIONS: readonly string[] = [
-  'Explain what `getSystemPrompt()` in src/constants/prompts.ts does, and name the boundary marker it inserts between the cacheable and dynamic sections.',
+  'Explain what `getSystemPrompt()` in src/agent/prompts/prompts.ts does, and name the boundary marker it inserts between the cacheable and dynamic sections.',
   'Describe how the Bash output filter decides what to strip from a command\u2019s output. Which file implements the filter pipeline?',
   'Walk me through how the active model provider is resolved at runtime. What is the central resolver function and which file is it in?',
   'Explain the tool-result JSON compression: how are omitted rows still retrievable afterward, and what is the build flag that gates it?',

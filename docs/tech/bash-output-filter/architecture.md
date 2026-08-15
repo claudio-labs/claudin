@@ -27,7 +27,7 @@ Other rev 2 changes:
 - Drop `Promise.race` 200ms timeout (theatre against sync regex backtracking)
 - Drop `verb: string` required field on FilterSpec (linear scan of 20 filters is fine)
 - Drop 4 standalone files (safety/analytics/debug/parse) — inline at callers
-- Reuse `escapeXmlAttr` from `src/utils/data/xml.ts`, `collapseIdenticalRuns`/`collapseDigitTemplates` from `toolResultSummarizer.ts`
+- Reuse `escapeXmlAttr` from `src/shared/data/xml.ts`, `collapseIdenticalRuns`/`collapseDigitTemplates` from `toolResultSummarizer.ts`
 - Phase 0 added: extend `isAlreadyCompacted` in summarizer + register config keys
 - Tests colocated (not `__tests__/`); samples in `__fixtures__/`
 - Flat config keys (`bashOutputFilterEnabled`), registered in `GLOBAL_CONFIG_KEYS`
@@ -56,8 +56,8 @@ Failure mode at every layer: return raw stdout unchanged. The filter must never 
 
 | File | Change | LoC |
 |---|---|---|
-| `src/services/tools/toolResultSummarizer.ts:242-248` (`isAlreadyCompacted`) | Add 2 string startsWith checks for `<bash-output-rewritten` and `<bash-output-filtered` | +2 |
-| `src/services/config/config.ts:705+` (`GLOBAL_CONFIG_KEYS`) | Register `bashOutputFilterEnabled`, `bashOutputFilterRewriteEnabled`, `bashOutputFilterUserEnabled` | +3 |
+| `src/agent/tools/toolResultSummarizer.ts:242-248` (`isAlreadyCompacted`) | Add 2 string startsWith checks for `<bash-output-rewritten` and `<bash-output-filtered` | +2 |
+| `src/platform/config/config.ts:705+` (`GLOBAL_CONFIG_KEYS`) | Register `bashOutputFilterEnabled`, `bashOutputFilterRewriteEnabled`, `bashOutputFilterUserEnabled` | +3 |
 | `src/tools/BashTool/BashTool.tsx` | Two ~7-line insertions: rewrite hook before `runShellCommand` (~line 656); pipeline + marker injection on `result.stdout` after capture, before error/success branching (~line 720) | +15 |
 
 **Files NOT modified:**
@@ -65,8 +65,8 @@ Failure mode at every layer: return raw stdout unchanged. The filter must never 
 - `src/tools/BashTool/BashTool.tsx:563` (`mapToolResultToToolResultBlockParam`) — receives stdout that already has markers; renders them as part of the body
 - `src/tools/BashTool/BashTool.tsx:547` (`checkPermissions`) — runs against `input.command` (original), unchanged
 - `src/tools/BashTool/BashTool.tsx:287-304` (`outputSchema`/`Out`) — no schema change
-- `src/services/tools/toolExecution.ts:1636` (error rendering) — naturally inherits filtered stdout from the thrown `ShellError`'s captured output
-- `src/services/tools/toolResultStorage.ts:209` (`processToolResultBlock`) — sees stdout-with-markers like everything else
+- `src/agent/tools/toolExecution.ts:1636` (error rendering) — naturally inherits filtered stdout from the thrown `ShellError`'s captured output
+- `src/agent/tools/toolResultStorage.ts:209` (`processToolResultBlock`) — sees stdout-with-markers like everything else
 
 **Why mark in stdout, not in `Out` metadata:**
 
@@ -79,11 +79,11 @@ Failure mode at every layer: return raw stdout unchanged. The filter must never 
 ## 3. Module layout
 
 ```
-src/outputFilter/Bash/
+src/tools/shared/outputFilter/Bash/
 ├── index.ts                    # public API: planFilter, applyFilter, types
 ├── pipeline.ts                 # 11 stages (port of validation/pipeline.ts)
 ├── registry.ts                 # findFilterForCommand: linear scan
-├── markers.ts                  # wrapStdoutWithMarkers, uses escapeXmlAttr from src/utils/data/xml.ts
+├── markers.ts                  # wrapStdoutWithMarkers, uses escapeXmlAttr from src/shared/data/xml.ts
 ├── userFilters.ts              # zod schema + safe loader for ~/.claudin/filters.json
 ├── filters/
 │   ├── index.ts                # builtInFilters: FilterSpec[] (alphabetized export)
@@ -111,7 +111,7 @@ src/outputFilter/Bash/
 1. **One file per command family**, not per command. `git.ts` exports 5 specs that share `^git\b` infrastructure. This keeps each file 50–150 LoC and the module flat.
 2. **All specs statically imported.** Total spec data <8 KB; lazy-loading complicates the bundler with no runtime win.
 3. **Tests colocated** per `.claudin/rules/testing.md` ("Tests are colocated as `*.test.ts(x)` next to the code they cover"). No `__tests__/` subdir — that's only used in claudin for cross-cutting tests at `src/__tests__/`.
-4. **Fixtures in `__fixtures__/`** (singular) matching the existing precedent at `src/services/api/__fixtures__/`.
+4. **Fixtures in `__fixtures__/`** (singular) matching the existing precedent at `src/providers/usage/__fixtures__/`.
 5. **No subclasses, no plugins.** A custom-code filter (e.g. `tsc` parsing, JSON reformat) is a v2 native parser — see §17.
 6. **No standalone `safety.ts`/`analytics.ts`/`debug.ts`/`parse.ts`.** Each was <30 LoC; inline at callers (review §"Over-engineering #2-6").
 
@@ -122,7 +122,7 @@ src/outputFilter/Bash/
 The authoring shape, final:
 
 ```ts
-// src/outputFilter/Bash/filters/git.ts
+// src/tools/shared/outputFilter/Bash/filters/git.ts
 import type { FilterSpec } from '../index.js'
 
 const LOG_MATCH = /^git(\s+-[^\s]+)*\s+log\b/
@@ -155,7 +155,7 @@ export const gitLog: FilterSpec = {
 - `rewriteCommand` is sync, deterministic, pure of `RewriteContext` (the `{ command, verb, args }` shape).
 - No async filters. A filter that calls out is by definition not safe in the BashTool hot path.
 
-**Spec interface** (`src/outputFilter/Bash/index.ts`):
+**Spec interface** (`src/tools/shared/outputFilter/Bash/index.ts`):
 
 ```ts
 export interface RewriteContext {
@@ -218,7 +218,7 @@ parse + match → rewrite (pre-exec) ──► runShellCommand ──► result.
 **Implementation surface:**
 
 ```ts
-// src/outputFilter/Bash/pipeline.ts
+// src/tools/shared/outputFilter/Bash/pipeline.ts
 export interface PipelineResult {
   readonly body: string
   readonly applied: readonly string[]
@@ -244,7 +244,7 @@ Each stage is a private top-level function in `pipeline.ts`, takes `string[]` (l
 The orchestration lives in **two functions** in `index.ts` that `BashTool.call` invokes:
 
 ```ts
-// src/outputFilter/Bash/index.ts
+// src/tools/shared/outputFilter/Bash/index.ts
 
 export interface PreExecPlan {
   readonly effectiveCommand: string
@@ -285,7 +285,7 @@ result.stdout = applyFilterToStdout(result.stdout, result.isError, plan)
 **Why this works for both error and success paths:**
 
 - `result.stdout` is captured before the `interpretationResult.isError && !isInterrupt` branch (`BashTool.tsx:724-728`).
-- **Error path** (`isError && !isInterrupt`): `BashTool.tsx:728` constructs `new ShellError('', outputWithSbFailures, code, interrupted)`. Note: `outputWithSbFailures` is `SandboxManager.annotateStderrWithSandboxFailures(input.command, result.stdout)` — i.e., **our filtered stdout flows into `error.stderr`**, not `error.stdout`. The catch at `toolExecution.ts:1636` calls `formatError(error)` (`src/services/tools/toolErrors.ts:5`), which calls `getErrorParts(error)` (line 24) → for `ShellError`, returns `[Exit code N, interruptMsg, error.stderr, error.stdout]` joined with `\n\n`. **Our markers travel via `error.stderr`.**
+- **Error path** (`isError && !isInterrupt`): `BashTool.tsx:728` constructs `new ShellError('', outputWithSbFailures, code, interrupted)`. Note: `outputWithSbFailures` is `SandboxManager.annotateStderrWithSandboxFailures(input.command, result.stdout)` — i.e., **our filtered stdout flows into `error.stderr`**, not `error.stdout`. The catch at `toolExecution.ts:1636` calls `formatError(error)` (`src/agent/tools/toolErrors.ts:5`), which calls `getErrorParts(error)` (line 24) → for `ShellError`, returns `[Exit code N, interruptMsg, error.stderr, error.stdout]` joined with `\n\n`. **Our markers travel via `error.stderr`.**
 - **Success path** returns `Out` containing `result.stdout` — markers go to `mapToolResult...:563` which renders `data.stdout` as part of the body. No code change needed.
 - The single integration point (filter in `BashTool.call` mutating `result.stdout` before the `isError` branch) works for both paths because `outputWithSbFailures` derives from `result.stdout` and `mapToolResult...` reads from `result.stdout` — same source.
 
@@ -354,7 +354,7 @@ User filters are second priority after built-ins. Same-name conflicts: built-in 
 `~/.claudin/filters.json` is the v1 surface. Schema validated with zod (zod/v4, the standard import in this codebase per ~112 occurrences).
 
 ```ts
-// src/outputFilter/Bash/userFilters.ts
+// src/tools/shared/outputFilter/Bash/userFilters.ts
 import { z } from 'zod/v4'
 
 const REGEX_MAX_LEN = 500
@@ -430,7 +430,7 @@ When both apply (rewrite fired AND pipeline reduced):
 **`markers.ts` shape** (~50 LoC, uses existing helpers):
 
 ```ts
-import { escapeXmlAttr } from 'src/utils/data/xml.js'
+import { escapeXmlAttr } from 'src/shared/data/xml.js'
 
 const MAX_ATTR_LEN = 200
 
@@ -468,7 +468,7 @@ function truncate(s: string): string {
 }
 ```
 
-**Reuse:** `escapeXmlAttr` from `src/utils/data/xml.ts` (already in use at `src/commands/insights.ts:32`). Spec rev 1 invented this; rev 2 imports.
+**Reuse:** `escapeXmlAttr` from `src/shared/data/xml.ts` (already in use at `src/commands/insights.ts:32`). Spec rev 1 invented this; rev 2 imports.
 
 **Truncation:** `original`/`actual` capped at 200 chars to prevent a 10 KB heredoc-bearing command from blowing up the marker. The model already saw the full command in the `tool_use` block.
 
@@ -520,7 +520,7 @@ Three events. All names use the privacy convention from `BashTool.tsx:766` (suff
 | `claudin_bash_rewrite_applied` | Rewrite fired and changed the command | `filter_name: string` |
 | `claudin_bash_filter_skipped` | Filter matched but errored or yielded zero reduction | `filter_name: string`, `reason_code: number` (1=no-reduction, 2=error, 3=json-passthrough) |
 
-`logEvent` only accepts `boolean | number | undefined` metadata values (`src/services/analytics/index.ts:60-61`); the spec's payload uses only those types. No string values except via the suffix-cast pattern, which is reserved for IDs in our enumerated set.
+`logEvent` only accepts `boolean | number | undefined` metadata values (`src/platform/analytics/index.ts:60-61`); the spec's payload uses only those types. No string values except via the suffix-cast pattern, which is reserved for IDs in our enumerated set.
 
 **Privacy:**
 
@@ -565,7 +565,7 @@ No new GrowthBook flags. Future opt-out is the env var or config (§12).
 
 ## 13. Error handling — fail-open
 
-`logError` accepts a single argument (`src/utils/log.ts:159`). All call sites use `logError(error)`, not `logError(message, error)`. The spec's prior two-arg example was wrong.
+`logError` accepts a single argument (`src/shared/log.ts:159`). All call sites use `logError(error)`, not `logError(message, error)`. The spec's prior two-arg example was wrong.
 
 **Fail-open touchpoints:**
 
@@ -606,7 +606,7 @@ No silent swallow. Every catch calls `logError(e)`.
 Tests **colocated** per `.claudin/rules/testing.md`. Layout:
 
 ```
-src/outputFilter/Bash/
+src/tools/shared/outputFilter/Bash/
 ├── bashFilter.test.ts     # the integration harness — port of validate.ts
 ├── pipeline.test.ts             # unit tests for each stage (pure)
 ├── registry.test.ts             # canonicalization, lookup, sudo/env prefix, compound bypass
@@ -636,7 +636,7 @@ src/outputFilter/Bash/
 **Running:**
 
 ```bash
-bun test src/outputFilter/Bash
+bun test src/tools/shared/outputFilter/Bash
 bun run verify:privacy   # required (3 new event names with the suffix proof)
 ```
 
@@ -686,7 +686,7 @@ bun run verify:privacy   # required (3 new event names with the suffix proof)
 16. **`__tests__/` subdir layout.** Rejected: violates `.claudin/rules/testing.md` colocation rule. Only `src/__tests__/` (cross-cutting) exists in this repo.
 17. **Per-filter `.test.ts` smoke files.** Rejected: duplicates the harness. One harness is the source of truth.
 18. **Nested config keys (`bashOutputFilter.{enabled, ...}`).** Rejected: every existing key in `GLOBAL_CONFIG_KEYS` is flat.
-19. **Inventing `escapeXml` in `markers.ts`.** Rejected: `escapeXmlAttr` already exists at `src/utils/data/xml.ts`.
+19. **Inventing `escapeXml` in `markers.ts`.** Rejected: `escapeXmlAttr` already exists at `src/shared/data/xml.ts`.
 20. **Porting `collapseIdenticalRuns`/`collapseDigitTemplates`.** Rejected: they live in `toolResultSummarizer.ts:475/500`; export and import.
 
 ---
@@ -726,7 +726,7 @@ The earlier rev 1 estimate (~4675) over-counted by ~50% via duplicated tests, in
 - No behavior change yet.
 
 **Phase 1 — Skeleton + harness port (1 PR, ~700 LoC).**
-- Create `src/outputFilter/Bash/` with `pipeline.ts`, `registry.ts`, `markers.ts`, `userFilters.ts`, `index.ts`.
+- Create `src/tools/shared/outputFilter/Bash/` with `pipeline.ts`, `registry.ts`, `markers.ts`, `userFilters.ts`, `index.ts`.
 - Copy fixtures from `docs/discovery/bash-output-filter/validation/samples/` to `__fixtures__/samples/`.
 - Port `validation/validate.ts` to `bashFilter.test.ts`.
 - Add `scripts/regex-redos-scan.test.ts`.
@@ -804,14 +804,14 @@ When you write a new filter (built-in or PR):
    - Returns string (or null/undefined). Validation enforces non-empty + verb prefix.
    - You don't need to handle compound — `hasCompound` skips you.
 6. Spec file size: aim for <80 LoC per spec. Larger means you're either doing too much or you need a v2 native parser.
-7. Don't import from outside `bashOutputFilter/` except: `escapeXmlAttr` from `src/utils/data/xml.js`, `collapseIdenticalRuns`/`collapseDigitTemplates` from `src/services/tools/toolResultSummarizer.js`, `logForDebugging` from `src/utils/debug.js`, `logError` from `src/utils/log.js`, `isEnvTruthy` from `src/utils/envUtils.js`.
+7. Don't import from outside `bashOutputFilter/` except: `escapeXmlAttr` from `src/shared/data/xml.js`, `collapseIdenticalRuns`/`collapseDigitTemplates` from `src/agent/tools/toolResultSummarizer.js`, `logForDebugging` from `src/shared/debug.js`, `logError` from `src/shared/log.js`, `isEnvTruthy` from `src/shared/envUtils.js`.
 
 ---
 
 ## 21. Acceptance criteria for v1
 
 - [ ] `bun run build` clean.
-- [ ] `bun test src/outputFilter/Bash` — 100% pass (~20 filter cases + safety + rewrite + harness).
+- [ ] `bun test src/tools/shared/outputFilter/Bash` — 100% pass (~20 filter cases + safety + rewrite + harness).
 - [ ] `bun run verify:privacy` — passes (3 new event names with the suffix proof).
 - [ ] `bun run typecheck` — zero errors.
 - [ ] `scripts/regex-redos-scan.test.ts` — passes (no built-in filter has a denylisted pattern).
@@ -829,4 +829,4 @@ When you write a new filter (built-in or PR):
 
 ## 22. One-line summary
 
-`src/outputFilter/Bash/` is a pure, fail-open, command-aware compression module: a registry of ~20 `FilterSpec` objects scanned linearly, called from `BashTool.call()` to (a) rewrite `input.command` before `runShellCommand` and (b) apply a declarative pipeline + prepend `<bash-output-rewritten>`/`<bash-output-filtered>` markers directly into `result.stdout` — bounded by env-var kill-switches, length-cap and denylist defenses against ReDoS, and the existing `toolResultSummarizer` (with a 2-line `isAlreadyCompacted` extension) as the threshold-based safety net.
+`src/tools/shared/outputFilter/Bash/` is a pure, fail-open, command-aware compression module: a registry of ~20 `FilterSpec` objects scanned linearly, called from `BashTool.call()` to (a) rewrite `input.command` before `runShellCommand` and (b) apply a declarative pipeline + prepend `<bash-output-rewritten>`/`<bash-output-filtered>` markers directly into `result.stdout` — bounded by env-var kill-switches, length-cap and denylist defenses against ReDoS, and the existing `toolResultSummarizer` (with a 2-line `isAlreadyCompacted` extension) as the threshold-based safety net.

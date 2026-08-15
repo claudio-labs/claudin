@@ -8,20 +8,20 @@ import {
   regenerateSessionId,
   setScheduledTasksEnabled,
   switchSession,
-} from 'src/bootstrap/state.js'
-import type { SessionId } from 'src/types/ids.js'
-import { takeDueSessionWakeup } from 'src/tasks/cronScheduler.js'
-import { resetLoopSentinelState } from 'src/utils/loopSentinels.js'
+} from 'src/platform/bootstrap/state.js'
+import type { SessionId } from 'src/shared/types/ids.js'
+import { takeDueSessionWakeup } from 'src/agent/tasks/cronScheduler.js'
+import { resetLoopSentinelState } from 'src/agent/loopSentinels.js'
 import {
   createTeammateContext,
   runWithTeammateContext,
-} from 'src/coordinator/teammateContext.js'
+} from 'src/agent/coordinator/teammateContext.js'
 import {
   clampWakeupDelaySeconds,
   WAKEUP_MAX_DELAY_SECONDS,
   WAKEUP_MIN_DELAY_SECONDS,
-} from './prompt.js'
-import { ScheduleWakeupTool } from './ScheduleWakeupTool.js'
+} from 'src/tools/ScheduleWakeupTool/prompt.js'
+import { ScheduleWakeupTool } from 'src/tools/ScheduleWakeupTool/ScheduleWakeupTool.js'
 
 let priorEnabled = false
 

@@ -5,7 +5,7 @@
  * Rules under `.claudin/rules/` (and AGENTS.md) are injected into context with
  * no validation, so a rule can be silently inert or silently unconditional and
  * look identical to a working one at runtime. This is the CI gate over
- * src/services/instructions/rulesLint.ts; `/doctor` and `/refresh-rules` are the surfaces users
+ * src/memory/instructions/rulesLint.ts; `/doctor` and `/refresh-rules` are the surfaces users
  * get, since a `scripts/` file only ever runs in this repo.
  *
  *   bun run scripts/rules-check.ts            # report + exit non-zero on error
@@ -17,10 +17,23 @@ import {
   lintRuleFiles,
   relativeFindingPath,
   type RuleLintFinding,
-} from '../src/services/instructions/rulesLint.js'
+} from '../src/memory/instructions/rulesLint.js'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const QUIET = process.argv.includes('--quiet')
+
+/**
+ * Ceiling on what every session pays before it has done anything: AGENTS.md,
+ * CLAUDE.md and every rule with no `paths:`.
+ *
+ * Measured 2026-08-15, right after AGENTS.md was cut from 18,534 to ~10,000
+ * chars: 16,500 total. The headroom is deliberately thin (~20%) — a budget with
+ * a year of slack does not ratchet, and this file grew to 75% of the always-on
+ * cost precisely because nothing ever said no. When this fails, the fix is
+ * almost always to move the new prose into a `paths:`-scoped rule, not to raise
+ * the number.
+ */
+const ALWAYS_LOADED_CHAR_BUDGET = 20_000
 
 const KIND_LABEL: Record<RuleLintFinding['kind'], string> = {
   unsupported_key: 'unsupported frontmatter key',
@@ -65,9 +78,22 @@ if (!QUIET) {
     `\nChecked ${result.filesChecked} rule ${result.filesChecked === 1 ? 'file' : 'files'}.`,
   )
   console.log(
-    `Always-loaded rules: ${result.unconditional.length} — ${result.unconditionalChars.toLocaleString()} chars ` +
+    `Always-loaded context: ${result.unconditional.length} — ${result.unconditionalChars.toLocaleString()} chars ` +
       `(~${Math.round(result.unconditionalChars / 4).toLocaleString()} tokens every turn)` +
       (budget.length > 0 ? `\n  ${budget.join('\n  ')}` : ''),
+  )
+}
+
+const overBudget = result.unconditionalChars > ALWAYS_LOADED_CHAR_BUDGET
+if (overBudget) {
+  console.error(
+    `\n✗ always-loaded context is ${result.unconditionalChars.toLocaleString()} chars, ` +
+      `over the ${ALWAYS_LOADED_CHAR_BUDGET.toLocaleString()} budget by ` +
+      `${(result.unconditionalChars - ALWAYS_LOADED_CHAR_BUDGET).toLocaleString()}.`,
+  )
+  console.error(
+    `      fix: move the newest prose into a \`paths:\`-scoped rule under .claudin/rules/ ` +
+      `so it loads only for the files it is about.`,
   )
 }
 
@@ -78,6 +104,8 @@ if (errors.length > 0) {
   )
   process.exit(1)
 }
+
+if (overBudget) process.exit(1)
 
 console.log(
   warnings.length > 0

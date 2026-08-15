@@ -3,22 +3,22 @@ import { z } from 'zod/v4'
 import {
   getAllowedChannels,
   handlePlanModeTransition,
-} from 'src/bootstrap/state.js'
-import { clearRevalidateCache, deleteDossier } from 'src/services/planDossier.js'
-import type { Tool } from 'src/Tool.js'
-import { buildTool, type ToolDef } from 'src/Tool.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { applyPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js'
-import { prepareContextForPlanMode } from 'src/services/permissions/permissionSetup.js'
-import { isPlanModeInterviewPhaseEnabled } from 'src/utils/planModeV2.js'
-import { getPlanSlug } from 'src/utils/plans.js'
-import { ENTER_PLAN_MODE_TOOL_NAME } from './constants.js'
-import { getEnterPlanModeToolPrompt } from './prompt.js'
+} from 'src/platform/bootstrap/state.js'
+import { clearRevalidateCache, deleteDossier } from 'src/agent/planDossier.js'
+import type { Tool } from 'src/tools/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { applyPermissionUpdate } from 'src/permissions/PermissionUpdate.js'
+import { prepareContextForPlanMode } from 'src/permissions/permissionSetup.js'
+import { isPlanModeInterviewPhaseEnabled } from 'src/agent/plans/planModeV2.js'
+import { getPlanSlug } from 'src/agent/plans/plans.js'
+import { ENTER_PLAN_MODE_TOOL_NAME } from 'src/tools/EnterPlanModeTool/constants.js'
+import { getEnterPlanModeToolPrompt } from 'src/tools/EnterPlanModeTool/prompt.js'
 import {
   renderToolResultMessage,
   renderToolUseMessage,
   renderToolUseRejectedMessage,
-} from './UI.js'
+} from 'src/tools/EnterPlanModeTool/UI.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({

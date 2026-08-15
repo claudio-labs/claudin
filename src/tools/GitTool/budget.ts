@@ -18,11 +18,11 @@
  * `scripts/profile/git-summarizer-replay.ts` replays the recorded corpus
  * through this module; every threshold below was chosen from that run.
  */
-import { logError } from 'src/utils/log.js'
-import { renderDiff } from './parsers/diff.js'
-import { renderIssueView, renderRunLog } from './parsers/gh.js'
-import { renderStatusShort } from './parsers/status.js'
-import { renderWatchPolls } from './parsers/watch.js'
+import { logError } from 'src/shared/log.js'
+import { renderDiff } from 'src/tools/GitTool/parsers/diff.js'
+import { renderIssueView, renderRunLog } from 'src/tools/GitTool/parsers/gh.js'
+import { renderStatusShort } from 'src/tools/GitTool/parsers/status.js'
+import { renderWatchPolls } from 'src/tools/GitTool/parsers/watch.js'
 
 /** Ship a summary only when it saves at least this much. */
 export const NO_WIN_RATIO = 0.7

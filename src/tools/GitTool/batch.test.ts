@@ -2,10 +2,10 @@ import { afterAll, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
-import { getAllBaseTools } from 'src/tools.js'
-import { GitTool, MAX_COMMANDS } from './GitTool.js'
-import { batchFailed, formatGitBatchResult, runGitBatch } from './run.js'
+import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
+import { getAllBaseTools } from 'src/tools/tools.js'
+import { GitTool, MAX_COMMANDS } from 'src/tools/GitTool/GitTool.js'
+import { batchFailed, formatGitBatchResult, runGitBatch } from 'src/tools/GitTool/run.js'
 
 const roots: string[] = []
 

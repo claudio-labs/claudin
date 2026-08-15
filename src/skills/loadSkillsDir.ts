@@ -12,29 +12,29 @@ import {
 import {
   getAdditionalDirectoriesForClaudeMd,
   getSessionId,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
-import type { Command, PromptCommand } from 'src/types/command.js'
+} from 'src/platform/analytics/index.js'
+import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
+import type { Command, PromptCommand } from 'src/shared/types/command.js'
 import {
   parseArgumentNames,
   substituteArguments,
-} from 'src/utils/argumentSubstitution.js'
-import { logForDebugging } from 'src/utils/debug.js'
+} from 'src/commands/argumentSubstitution.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   EFFORT_LEVELS,
   type EffortValue,
   parseEffortValue,
-} from 'src/utils/effort.js'
+} from 'src/providers/effort/effort.js'
 import {
   getClaudinConfigHomeDir,
   isBareMode,
   isEnvTruthy,
-} from 'src/utils/envUtils.js'
-import { isENOENT, isFsInaccessible } from 'src/utils/errors.js'
+} from 'src/shared/envUtils.js'
+import { isENOENT, isFsInaccessible } from 'src/shared/errors.js'
 import {
   coerceDescriptionToString,
   type FrontmatterData,
@@ -43,26 +43,26 @@ import {
   parseFrontmatter,
   parseShellFrontmatter,
   splitPathInFrontmatter,
-} from 'src/utils/frontmatterParser.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { isPathGitignored } from 'src/services/git/gitignore.js'
-import { logError } from 'src/utils/log.js'
+} from 'src/shared/frontmatterParser.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { isPathGitignored } from 'src/vcs/git/gitignore.js'
+import { logError } from 'src/shared/log.js'
 import {
   extractDescriptionFromMarkdown,
   getProjectDirsUpToHome,
   loadMarkdownFilesForSubdir,
   type MarkdownFile,
   parseSlashCommandToolsFromFrontmatter,
-} from 'src/services/instructions/markdownConfigLoader.js'
-import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
-import { executeShellCommandsInPrompt } from 'src/utils/proc/promptShellExecution.js'
-import type { SettingSource } from 'src/services/settings/constants.js'
-import { isSettingSourceEnabled } from 'src/services/settings/constants.js'
-import { getManagedFilePath } from 'src/services/settings/managedPath.js'
-import { isRestrictedToPluginOnly } from 'src/services/settings/pluginOnlyPolicy.js'
-import { HooksSchema, type HooksSettings } from 'src/services/settings/types.js'
-import { createSignal } from 'src/utils/signal.js'
-import { registerMCPSkillBuilders } from './mcpSkillBuilders.js'
+} from 'src/memory/instructions/markdownConfigLoader.js'
+import { parseUserSpecifiedModel } from 'src/providers/model/model.js'
+import { executeShellCommandsInPrompt } from 'src/shared/proc/promptShellExecution.js'
+import type { SettingSource } from 'src/platform/settings/constants.js'
+import { isSettingSourceEnabled } from 'src/platform/settings/constants.js'
+import { getManagedFilePath } from 'src/platform/settings/managedPath.js'
+import { isRestrictedToPluginOnly } from 'src/platform/settings/pluginOnlyPolicy.js'
+import { HooksSchema, type HooksSettings } from 'src/platform/settings/types.js'
+import { createSignal } from 'src/shared/signal.js'
+import { registerMCPSkillBuilders } from 'src/skills/mcpSkillBuilders.js'
 
 export type LoadedFrom =
   | 'commands_DEPRECATED'

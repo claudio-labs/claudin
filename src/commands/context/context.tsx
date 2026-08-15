@@ -1,18 +1,18 @@
 import { feature } from 'bun:bundle';
 import * as React from 'react';
-import type { LocalJSXCommandContext } from 'src/commands.js';
-import { Box, Text, useInput } from 'src/ink.js';
-import { ContextVisualization } from 'src/components/ContextVisualization.js';
-import { DOWN_ARROW, UP_ARROW } from 'src/constants/figures.js';
-import { useModalOrTerminalSize } from 'src/context/modalContext.js';
-import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import ScrollBox, { type ScrollBoxHandle } from 'src/ink/components/ScrollBox.js';
-import { microcompactMessages } from 'src/services/compact/microCompact.js';
-import type { LocalJSXCommandOnDone } from 'src/types/command.js';
-import type { Message } from 'src/types/message.js';
-import { analyzeContextUsage, type ContextData } from 'src/services/context/analyzeContext.js';
-import { getMessagesAfterCompactBoundary } from 'src/services/messages/messages.js';
+import type { LocalJSXCommandContext } from 'src/commands/commands.js';
+import { Box, Text, useInput } from 'src/terminal/ink.js';
+import { ContextVisualization } from 'src/agent/ui/ContextVisualization.js';
+import { DOWN_ARROW, UP_ARROW } from 'src/shared/constants/figures.js';
+import { useModalOrTerminalSize } from 'src/terminal/contexts/modalContext.js';
+import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import ScrollBox, { type ScrollBoxHandle } from 'src/terminal/ink/components/ScrollBox.js';
+import { microcompactMessages } from 'src/agent/compact/microCompact.js';
+import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js';
+import type { Message } from 'src/shared/types/message.js';
+import { analyzeContextUsage, type ContextData } from 'src/agent/context/analyzeContext.js';
+import { getMessagesAfterCompactBoundary } from 'src/agent/messages/messages.js';
 
 // Rows reserved for the panel's own footer + the REPL chrome below it, so the
 // scroll viewport never runs past the bottom of the terminal.
@@ -86,7 +86,7 @@ function toApiView(messages: Message[]): Message[] {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const {
       projectView
-    } = require('../../services/contextCollapse/operations.js') as typeof import('../../services/contextCollapse/operations.js');
+    } = require('../../agent/contextCollapse/operations.js') as typeof import('../../agent/contextCollapse/operations.js');
     /* eslint-enable @typescript-eslint/no-require-imports */
     view = projectView(view);
   }

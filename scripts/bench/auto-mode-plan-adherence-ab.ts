@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * Bench A/B: mede se promover o gatilho de plan mode na instrucao de auto-mode
- * (src/services/messages/autoMode.ts) aumenta a taxa com que o modelo chama a tool
+ * (src/agent/messages/autoMode.ts) aumenta a taxa com que o modelo chama a tool
  * EnterPlanMode quando o usuario pede explicitamente um plano.
  *
  * Variante A = baseline (instrucao atual, item "Prefer action over planning"
@@ -67,7 +67,7 @@ const PROMPTS: { id: string; kind: PromptKind; text: string }[] = [
   {
     id: 'control-direct-action',
     kind: 'control',
-    text: 'adicione um console.log em src/utils/log.ts pra debugar',
+    text: 'adicione um console.log em src/shared/log.ts pra debugar',
   },
   {
     // Guarda anti-trigger-happy: pergunta factual sobre como o codigo JA funciona.

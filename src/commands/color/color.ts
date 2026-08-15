@@ -1,6 +1,6 @@
 import type { UUID } from 'crypto'
-import { getSessionId } from 'src/bootstrap/state.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import {
   AGENT_COLORS,
   type AgentColorName,
@@ -8,12 +8,12 @@ import {
 import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
-} from 'src/types/command.js'
+} from 'src/shared/types/command.js'
 import {
   getTranscriptPath,
   saveAgentColor,
-} from 'src/services/session/sessionStorage.js'
-import { isTeammate } from 'src/coordinator/teammate.js'
+} from 'src/sessions/sessionStorage.js'
+import { isTeammate } from 'src/agent/coordinator/teammate.js'
 
 const RESET_ALIASES = ['default', 'reset', 'none', 'gray', 'grey'] as const
 

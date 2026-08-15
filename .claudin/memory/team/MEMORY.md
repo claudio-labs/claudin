@@ -12,8 +12,10 @@
 - [AGENTS.md documents the repo, never Claudin-only runtime behavior](agents-md-excludes-claudin-only-behavior.md) — other harnesses read that file too; redirects/killswitches go in the source module header + .claudin/rules/, not the toggle table
 - [Reminders that say "don't tell the user" get flagged as injection](model-flags-hidden-reminders-as-injection.md) — same for attachments stapled mid-turn; gate new producers on input !== null, never add a gag order
 - [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — headless resume is keyed by project dir; verify multi-turn behavior from a throwaway cwd, never `-c` in the repo
+- [A tree-wide rewrite updates artifacts, not their producers](mechanical-rewrites-skip-producers.md) — the 2026-08 reorg silently disarmed a telemetry stub, broke verify:sdk-types and "freshened" a fictional path; grep generators/plugins/script globs after any move
 
 ## Repo health
+- [The seven catch-all dirs are retired — 18 feature slices](reorg-catch-all-dirs-retired.md) — moduleBoundaries.test.ts is the only thing keeping them gone; `src/shared/` is explicitly NOT a clean leaf layer (~169 upward imports, unpinned on purpose)
 - [tsc --noEmit reached ZERO on 2026-08-13](typecheck-backlog-shape.md) — the ratchet, the absolute-path fingerprint trap, and TWO corrections: "cannot be hand-fixed" and "never reaches zero" were both disproven
 - [/upgrade and /extra-usage hang on a Login component that does not exist](upsell-commands-missing-login.md) — stubbed to `() => null`, onDone never fires; product call, not fixed
 - [CLAUDE_CODE_SYNC_PLUGIN_INSTALL hung headless -p](headless-sync-plugin-install-broken-import.md) — FIXED in PR #57; kept for the 2-question test that tells a real TS2307 from the fork's ~107 expected ones
@@ -56,7 +58,7 @@
 - [Native-1M models need an explicit getContextWindowForModel branch](native-1m-context-window.md) — modelSupports1M=true does NOT set the runtime window for a no-[1m]-suffix model; add it beside the `fable-5` check or it compacts at 200k (bit Sonnet 5)
 - [Adaptive thinking is now the default (was opt-in)](adaptive-thinking-default-on.md) — 2026-07-13 flip: Claude models send {type:'adaptive'} by default; CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING=0 opts back to budget mode
 - [Provider pointer heal — open follow-ups](provider-pointer-heal-followups.md) — febf362a fixed projects clobber + startup heal; mid-session reconcile, cache GC, /provider migrate rerun still pending
-- [SDK error checks: use isSdk* guards from utils/errors.ts, never instanceof](externalized-sdk-copies-instanceof-apierror.md) — externalized bedrock/vertex/foundry load their own sdk copy; FIXED 2026-07-03
+- [SDK error checks: use isSdk* guards from src/shared/errors.ts, never instanceof](externalized-sdk-copies-instanceof-apierror.md) — externalized bedrock/vertex/foundry load their own sdk copy; FIXED 2026-07-03
 - [CLAUDE_CODE_SKIP_VERTEX_AUTH stub must return a real Headers](vertex-skip-auth-stub-needs-headers.md) — vertex-sdk calls .get() on getRequestHeaders(); the old `{}` killed every request under the flag; fixed + guarded 2026-08-03
 - [Adding a /provider preset](../../skills/add-provider-preset/SKILL.md) — the recipe (API-key OpenAI-compat + OAuth variant) is now the `/add-provider-preset` skill, not a memory
 - [Kimi Code OAuth provider (device-flow)](kimi-code-oauth-provider.md) — mirrors xAI; RE wire-format at docs/tech/kimi-code/; impersonates official CLI (UA+X-Msh-*, gray area); OAuth-web registry; review follow-ups resolved (preset removed, /coding path pinned, test gaps closed)
@@ -94,6 +96,6 @@
 - [openclaude is a sibling fork to mine for features](openclaude-sibling-fork-reference.md) — Tier-1 gaps (integrations/ registry, compressToolHistory, doomLoop) + 2026-08-14 hash-diff: only 209/3366 files byte-identical, so cherry-picks never apply
 - [code-review-graph audited 2026-08-08 — graph REJECTED, 4 ideas kept](code-review-graph-evaluated-rejected.md) — 284 MB db on claudin, TS parser blind to `export const` (445/495), impact answer = 203k tokens; their own bench shows the graph losing to reading the diff
 - [opencode (SST) feature-gap reference](opencode-sst-feature-gap-reference.md) — ../opencode SST monorepo scout 2026-06-24; apply_patch since shipped; open gaps: auto-format, LSP-diagnostics-on-edit, ACP/Zed adapter, part-level revert; Share=skip (privacy)
-- [Windsurf upstream reference repo](windsurf-upstream-reference.md) — sibling repo opencode-windsurf-auth holds the wire-format docs, proto field tags, OAuth flow Claudin's windsurf/ was ported from
+- [Windsurf upstream reference repo](windsurf-upstream-reference.md) — sibling repo opencode-windsurf-auth holds the wire-format docs, proto tags, OAuth flow; Claudin has NO windsurf provider, pure external reference
 - [mitmproxy recipe for Rust agent CLIs](mitmproxy-rust-binary-recipe.md) — SSL_CERT_FILE+NODE_EXTRA_CA_CERTS+REQUESTS_CA_BUNDLE bundle trick verified against Devin Rust binary
-- [Devin provider port — ARCHIVED to docs](../../../docs/tech/devin-provider/README.md) — port abandoned 2026-06-12 (f31 = per-request sealed attestation is the hard gate); full RE archive moved OUT of memory to docs/tech/devin-provider/; branch feat/devin-provider (ec607be) pushed, not merged
+- [Devin provider port — ARCHIVED to docs](../../../docs/tech/devin-provider/README.md) — port abandoned 2026-06-12 (f31 = per-request sealed attestation is the hard gate); full RE archive moved OUT of memory to docs/tech/devin-provider/; branch feat/devin-provider went to the retired remote, NOT reachable from origin

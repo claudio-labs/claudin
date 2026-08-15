@@ -4,11 +4,16 @@ description: fingerprintDiagnostic hashed tsc's union elaboration, so adding any
 type: project
 ---
 
+**Owns:** the one union-elaboration bug in `fingerprintDiagnostic`, and the
+triage to run when a "N new type errors" report is suspected of being phantom.
+What a fingerprint is made of and why is [[typecheck-tool-baseline-design]];
+reading the backlog and the ratchet is [[typecheck-backlog-shape]].
+
 `bun run typecheck:ci` used to report "N new type errors" in files a branch
 never opened. Fixed on 2026-08-07 in `src/tools/TypecheckTool/fingerprint.ts`.
 
-**Cause.** The fingerprint hashes file + code + message. For an error against a
-union too large to print, tsc expands ONE arbitrary constituent as the
+**Cause.** The fingerprint's message component is the fragile one. For an error
+against a union too large to print, tsc expands ONE arbitrary constituent as the
 representative and truncates the rest to `| ... 17 more ... |`. Which member it
 picks depends on what else has been interned in the program, so adding an
 unrelated file re-words a diagnostic that has not moved.
@@ -55,6 +60,10 @@ A cheaper pre-check that needed no script and agreed: collapse each diagnostic
 to `(file, TS code)`, `uniq -c` both revisions, and look for pairs that are new
 or higher. Grepping raw message text does NOT work — it flags the very
 union-elaboration churn the fingerprint exists to absorb.
+
+Note this is not the only way machine-specific text reaches a fingerprint: tsc
+also quotes absolute checkout paths inside the message, which
+[[typecheck-backlog-shape]] covers under the clean-clone trap.
 
 See [[bash-filter-sample-corpus-unified]] for the neighbouring habit of
 verifying against HEAD rather than trusting a green/red signal.

@@ -1,7 +1,7 @@
 import { z } from 'zod/v4'
-import { PDF_MAX_PAGES_PER_READ } from 'src/constants/apiLimits.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { semanticNumber } from 'src/utils/data/semanticNumber.js'
+import { PDF_MAX_PAGES_PER_READ } from 'src/shared/constants/apiLimits.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { semanticNumber } from 'src/shared/data/semanticNumber.js'
 
 export const inputSchema = lazySchema(() =>
   z.strictObject({

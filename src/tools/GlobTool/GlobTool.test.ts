@@ -9,8 +9,8 @@ import {
 import { tmpdir } from 'os'
 import { basename, join } from 'path'
 
-import type { ToolUseContext } from 'src/Tool.js'
-import { GlobTool } from './GlobTool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
+import { GlobTool } from 'src/tools/GlobTool/GlobTool.js'
 
 let workDir: string
 // Files whose mtimes run oldest → newest in the opposite order of their names,

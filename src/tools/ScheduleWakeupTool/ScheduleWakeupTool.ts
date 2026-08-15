@@ -4,13 +4,13 @@ import {
   getPendingSessionWakeup,
   setPendingSessionWakeup,
   setScheduledTasksEnabled,
-} from 'src/bootstrap/state.js'
-import type { ToolUseContext, ValidationResult } from 'src/Tool.js'
-import { buildTool, type ToolDef } from 'src/Tool.js'
-import { logEvent } from 'src/services/analytics/index.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { semanticBoolean } from 'src/utils/data/semanticBoolean.js'
-import { getTeammateContext } from 'src/coordinator/teammateContext.js'
+} from 'src/platform/bootstrap/state.js'
+import type { ToolUseContext, ValidationResult } from 'src/tools/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
+import { getTeammateContext } from 'src/agent/coordinator/teammateContext.js'
 import { isKairosCronEnabled } from 'src/tools/ScheduleCronTool/prompt.js'
 import {
   clampWakeupDelaySeconds,
@@ -19,8 +19,8 @@ import {
   SCHEDULE_WAKEUP_TOOL_NAME,
   WAKEUP_MAX_DELAY_SECONDS,
   WAKEUP_MIN_DELAY_SECONDS,
-} from './prompt.js'
-import { renderWakeupResultMessage, renderWakeupToolUseMessage } from './UI.js'
+} from 'src/tools/ScheduleWakeupTool/prompt.js'
+import { renderWakeupResultMessage, renderWakeupToolUseMessage } from 'src/tools/ScheduleWakeupTool/UI.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({

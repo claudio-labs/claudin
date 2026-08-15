@@ -18,7 +18,7 @@ import {
   GH_RATE_LIMITED,
   installFakeGh,
   type FakeGhRule,
-} from './__fixtures__/fakeGh.js'
+} from 'src/tools/GitTool/__fixtures__/fakeGh.js'
 import {
   cleanupAllRepos,
   conflictingBranches,
@@ -32,8 +32,8 @@ import {
   repoWithOrigin,
   repoWithUnreachableOrigin,
   writeRepoFile,
-} from './__fixtures__/repo.js'
-import { diagnose, diagnoseGitFailure } from './errors.js'
+} from 'src/tools/GitTool/__fixtures__/repo.js'
+import { diagnose, diagnoseGitFailure } from 'src/tools/GitTool/errors.js'
 
 afterAll(() => {
   cleanupAllRepos()

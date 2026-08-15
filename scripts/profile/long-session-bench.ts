@@ -139,7 +139,7 @@ async function exerciseTokenCache(cycles: number): Promise<CacheResult> {
     cachedLexer,
     __TEST_ONLY_resetTokenCache,
     __TEST_ONLY_getTokenCacheSize,
-  } = await import('../../src/components/markdownTokenCache.js')
+  } = await import('../../src/terminal/markdown/markdownTokenCache.js')
 
   return measure(
     'Markdown.tokenCache',
@@ -159,7 +159,7 @@ async function exerciseToolProgress(cycles: number): Promise<CacheResult> {
   // pulls in tools/, sessionStorage, analytics, etc. We only need
   // recordToolProgress + size accessor.
   const { mock } = await import('bun:test')
-  mock.module('../../src/services/analytics/growthbook.js', () => ({
+  mock.module('../../src/platform/analytics/growthbook.js', () => ({
     getFeatureValue_CACHED_MAY_BE_STALE: () => false,
     getFeatureValue_CACHED_WITH_REFRESH: () => false,
     getFeatureValue_DEPRECATED: async () => false,
@@ -179,7 +179,7 @@ async function exerciseToolProgress(cycles: number): Promise<CacheResult> {
     initializeGrowthBook: async () => null,
     getAllGrowthBookFeatures: () => ({}),
   }))
-  mock.module('../../src/services/analytics/index.js', () => ({
+  mock.module('../../src/platform/analytics/index.js', () => ({
     logEvent: () => {},
     logEventAsync: async () => {},
     attachAnalyticsSink: () => {},
@@ -191,7 +191,7 @@ async function exerciseToolProgress(cycles: number): Promise<CacheResult> {
     __TEST_ONLY_recordToolProgress,
     __TEST_ONLY_resetToolProgressMap,
     __TEST_ONLY_getToolProgressMapSize,
-  } = await import('../../src/utils/queryHelpers.js')
+  } = await import('../../src/agent/queryHelpers.js')
 
   return measure(
     'queryHelpers.toolProgressLastSentTime',
@@ -207,11 +207,11 @@ async function exerciseToolProgress(cycles: number): Promise<CacheResult> {
 
 async function exerciseImageStore(cycles: number): Promise<CacheResult> {
   const { mock } = await import('bun:test')
-  mock.module('../../src/utils/debug.js', () => ({ logForDebugging: () => {} }))
-  mock.module('../../src/bootstrap/state.js', () => ({
+  mock.module('../../src/shared/debug.js', () => ({ logForDebugging: () => {} }))
+  mock.module('../../src/platform/bootstrap/state.js', () => ({
     getSessionId: () => 'bench-session',
   }))
-  mock.module('../../src/utils/envUtils.js', () => ({
+  mock.module('../../src/shared/envUtils.js', () => ({
     getClaudinConfigHomeDir: () => '/tmp/claudin-bench',
     isEnvTruthy: () => false,
   }))
@@ -221,7 +221,7 @@ async function exerciseImageStore(cycles: number): Promise<CacheResult> {
     cacheImagePath,
     clearStoredImagePaths,
     __TEST_ONLY_getStoredImagePathsSize,
-  } = await import('../../src/utils/imageStore.js')
+  } = await import('../../src/terminal/image/imageStore.js')
 
   return measure(
     'imageStore.storedImagePaths',
@@ -243,9 +243,9 @@ async function exerciseImageStore(cycles: number): Promise<CacheResult> {
 
 async function exerciseLSPDelivered(cycles: number): Promise<CacheResult> {
   const { mock } = await import('bun:test')
-  mock.module('../../src/utils/debug.js', () => ({ logForDebugging: () => {} }))
-  mock.module('../../src/utils/log.js', () => ({ logError: () => {} }))
-  mock.module('../../src/utils/slowOperations.js', () => ({
+  mock.module('../../src/shared/debug.js', () => ({ logForDebugging: () => {} }))
+  mock.module('../../src/shared/log.js', () => ({ logError: () => {} }))
+  mock.module('../../src/platform/slowOperations.js', () => ({
     jsonStringify: (x: unknown) => JSON.stringify(x),
   }))
 
@@ -253,7 +253,7 @@ async function exerciseLSPDelivered(cycles: number): Promise<CacheResult> {
     markDiagnosticsAsDelivered,
     _resetDeliveredDiagnosticsForTesting,
     _getDeliveredDiagnosticsCountForTesting,
-  } = await import('../../src/services/lsp/LSPDiagnosticRegistry.js')
+  } = await import('../../src/platform/lsp/LSPDiagnosticRegistry.js')
 
   return measure(
     'LSPDiagnosticRegistry.deliveredDiagnostics',
@@ -294,7 +294,7 @@ async function exerciseFileReadCache(cycles: number): Promise<CacheResult> {
     writeFileSync(join(dir, `f_${i}.txt`), `content ${i}`)
   }
 
-  const { fileReadCache } = await import('../../src/utils/fs/fileReadCache.js')
+  const { fileReadCache } = await import('../../src/shared/fs/fileReadCache.js')
 
   const result = await measure(
     'fileReadCache',
@@ -371,22 +371,22 @@ async function exerciseMixedSession(turns: number): Promise<MixedResult> {
     cachedLexer,
     __TEST_ONLY_resetTokenCache,
     __TEST_ONLY_getTokenCacheSize,
-  } = await import('../../src/components/markdownTokenCache.js')
+  } = await import('../../src/terminal/markdown/markdownTokenCache.js')
   const {
     __TEST_ONLY_recordToolProgress,
     __TEST_ONLY_resetToolProgressMap,
     __TEST_ONLY_getToolProgressMapSize,
-  } = await import('../../src/utils/queryHelpers.js')
+  } = await import('../../src/agent/queryHelpers.js')
   const {
     cacheImagePath,
     clearStoredImagePaths,
     __TEST_ONLY_getStoredImagePathsSize,
-  } = await import('../../src/utils/imageStore.js')
+  } = await import('../../src/terminal/image/imageStore.js')
   const {
     markDiagnosticsAsDelivered,
     _resetDeliveredDiagnosticsForTesting,
     _getDeliveredDiagnosticsCountForTesting,
-  } = await import('../../src/services/lsp/LSPDiagnosticRegistry.js')
+  } = await import('../../src/platform/lsp/LSPDiagnosticRegistry.js')
 
   // Real fs fixtures for fileReadCache: create a pool of files larger than
   // the cap so we trigger evictions (turns × 5 reads / 1000 cap = many evictions).
@@ -399,7 +399,7 @@ async function exerciseMixedSession(turns: number): Promise<MixedResult> {
   }
   // We don't know what FileReadCache singleton exists; mocks may have been
   // installed by other exercisers but fileReadCache.ts is imported fresh.
-  const { fileReadCache } = await import('../../src/utils/fs/fileReadCache.js')
+  const { fileReadCache } = await import('../../src/shared/fs/fileReadCache.js')
 
   // Reset all caches so snapshots start clean.
   __TEST_ONLY_resetTokenCache()
@@ -565,7 +565,7 @@ async function main(): Promise<void> {
   }
 
   // Order matters: exerciseFileReadCache uses real fs and must run before
-  // any exerciser that mock.module's '../../src/utils/fs/fsOperations.js'.
+  // any exerciser that mock.module's '../../src/shared/fs/fsOperations.js'.
   // Bun's mock.module is process-global and not unwound between awaits.
   // Mixed-session runs LAST because it relies on mocks installed by the
   // isolated exercisers above.

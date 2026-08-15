@@ -1,9 +1,9 @@
 import { open, stat } from 'fs/promises'
 import { CLAUDE_CODE_GUIDE_AGENT_TYPE } from 'src/tools/AgentTool/built-in/claudeCodeGuideAgent.js'
-import { getSettingsFilePathForSource } from 'src/services/settings/settings.js'
-import { enableDebugLogging, getDebugLogPath } from 'src/utils/debug.js'
-import { errorMessage, isENOENT } from 'src/utils/errors.js'
-import { formatFileSize } from 'src/utils/text/format.js'
+import { getSettingsFilePathForSource } from 'src/platform/settings/settings.js'
+import { enableDebugLogging, getDebugLogPath } from 'src/shared/debug.js'
+import { errorMessage, isENOENT } from 'src/shared/errors.js'
+import { formatFileSize } from 'src/shared/text/format.js'
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 const DEFAULT_DEBUG_LINES_READ = 20

@@ -1,14 +1,14 @@
 import { c as _c } from "react-compiler-runtime";
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import React from 'react';
-import { CtrlOToExpand } from 'src/components/CtrlOToExpand.js';
-import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseErrorMessage.js';
-import { MessageResponse } from 'src/components/MessageResponse.js';
-import { Box, Text } from 'src/ink.js';
-import { getDisplayPath } from 'src/utils/fs/file.js';
-import { extractTag } from 'src/services/messages/messages.js';
-import type { Input, Output } from './LSPTool.js';
-import { getSymbolAtPosition } from './symbolContext.js';
+import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
+import { FallbackToolUseErrorMessage } from 'src/agent/ui/FallbackToolUseErrorMessage.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { getDisplayPath } from 'src/shared/fs/file.js';
+import { extractTag } from 'src/agent/messages/messages.js';
+import type { Input, Output } from 'src/tools/LSPTool/LSPTool.js';
+import { getSymbolAtPosition } from 'src/tools/LSPTool/symbolContext.js';
 
 // Lookup map for operation-specific labels
 const OPERATION_LABELS: Record<Input['operation'], {

@@ -8,15 +8,15 @@
  * real git in a real fixture repo.
  */
 import { afterAll, describe, expect, test } from 'bun:test'
-import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
+import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 import {
   cleanupAllRepos,
   git,
   repoWithCommits,
   writeRepoFile,
-} from './__fixtures__/repo.js'
-import { acceptsGitCommand } from './grammar.js'
-import { formatGitBatchResult, runGitBatch } from './run.js'
+} from 'src/tools/GitTool/__fixtures__/repo.js'
+import { acceptsGitCommand } from 'src/tools/GitTool/grammar.js'
+import { formatGitBatchResult, runGitBatch } from 'src/tools/GitTool/run.js'
 
 afterAll(() => {
   cleanupAllRepos()

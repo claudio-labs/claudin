@@ -1,11 +1,11 @@
 import * as React from 'react'
 import { useState } from 'react'
-import { FilePathLink } from 'src/components/FilePathLink.js'
-import { StructuredDiffList } from 'src/components/StructuredDiffList.js'
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js'
-import { Box, Text } from 'src/ink.js'
-import { getDisplayPath } from 'src/utils/fs/file.js'
-import type { RenameFileResult, RenameOutput } from './rename.js'
+import { FilePathLink } from 'src/terminal/FilePathLink.js'
+import { StructuredDiffList } from 'src/vcs/diff/structured/StructuredDiffList.js'
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js'
+import { Box, Text } from 'src/terminal/ink.js'
+import { getDisplayPath } from 'src/shared/fs/file.js'
+import type { RenameFileResult, RenameOutput } from 'src/tools/RenameTool/rename.js'
 
 /**
  * Diff lines rendered inline before the rest collapses into a tail line.

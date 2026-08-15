@@ -1,4 +1,4 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 
 function isSupportedPlatform(): boolean {
   if (process.platform === 'darwin') {
@@ -20,7 +20,7 @@ const desktop = {
   get isHidden() {
     return !isSupportedPlatform()
   },
-  load: () => import('./desktop.js'),
+  load: () => import('src/commands/desktop/desktop.js'),
 } satisfies Command
 
 export default desktop

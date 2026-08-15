@@ -4,10 +4,17 @@ import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 // Synthesize a profile from the legacy CLAUDE_CODE_USE_*/OPENAI_* envs the
 // existing test sets up. Spread + restore in afterAll to avoid mock-leaks
 // into later test files (Bun's discovery is process-global).
-const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
+const realActiveProvider = { ...(await import('src/providers/presets/activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
+// The discovery mock further down replaces this module with a ONE-export
+// object, so anything else reading it afterwards loses every other export.
+// `openaiContextWindows.ts` reads `getDiscoveredContextWindow` from it and
+// silently fell back to the hardcoded table for the rest of the run.
+const realOpenaiModelDiscovery = {
+  ...(await import('src/providers/model/openaiModelDiscovery.js')),
+}
 
-mock.module('src/services/api/activeProvider.js', () => ({
+mock.module('src/providers/presets/activeProvider.js', () => ({
   ...realActiveProviderSnapshot,
   tryGetActiveProvider: () => {
     const env = process.env
@@ -24,11 +31,15 @@ mock.module('src/services/api/activeProvider.js', () => ({
 }))
 
 afterAll(() => {
-  mock.module('src/services/api/activeProvider.js', () => realActiveProviderSnapshot)
+  mock.module('src/providers/presets/activeProvider.js', () => realActiveProviderSnapshot)
+  mock.module(
+    'src/providers/model/openaiModelDiscovery.js',
+    () => realOpenaiModelDiscovery,
+  )
 })
 
-const { getAdditionalModelOptionsCacheScope } = await import('src/services/api/providerConfig.js')
-const { getAPIProvider } = await import('src/utils/model/providers.js')
+const { getAdditionalModelOptionsCacheScope } = await import('src/providers/presets/providerConfig.js')
+const { getAPIProvider } = await import('src/providers/model/providers.js')
 void getAPIProvider
 
 const originalEnv = {
@@ -78,13 +89,14 @@ test('opens the model picker without awaiting local model discovery refresh', as
       }),
   )
 
-  mock.module('src/utils/model/openaiModelDiscovery.js', () => ({
+  mock.module('src/providers/model/openaiModelDiscovery.js', () => ({
+    ...realOpenaiModelDiscovery,
     discoverOpenAICompatibleModelOptions,
   }))
 
   expect(getAdditionalModelOptionsCacheScope()).toBe('openai:http://127.0.0.1:8080/v1')
 
-  const { call } = await import('./model.js')
+  const { call } = await import('src/commands/model/model.js')
   const result = await Promise.race([
     call(() => {}, {} as never, ''),
     new Promise(resolve => setTimeout(() => resolve('timeout'), 50)),

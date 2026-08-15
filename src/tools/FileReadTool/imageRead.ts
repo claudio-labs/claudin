@@ -1,14 +1,14 @@
 import type { Base64ImageSource } from '@anthropic-ai/sdk/resources/index.mjs'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {
   compressImageBufferWithTokenLimit,
   detectImageFormatFromBuffer,
   type ImageDimensions,
   ImageResizeError,
   maybeResizeAndDownsampleImageBuffer,
-} from 'src/utils/imageResizer.js'
-import { logError } from 'src/utils/log.js'
-import { getDefaultFileReadingLimits } from './limits.js'
+} from 'src/terminal/image/imageResizer.js'
+import { logError } from 'src/shared/log.js'
+import { getDefaultFileReadingLimits } from 'src/tools/FileReadTool/limits.js'
 
 export type ImageResult = {
   type: 'image'

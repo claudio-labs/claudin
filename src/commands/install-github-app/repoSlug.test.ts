@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { extractGitHubRepoSlug } from './repoSlug.ts'
+import { extractGitHubRepoSlug } from 'src/commands/install-github-app/repoSlug.ts'
 
 test('keeps owner/repo input as-is', () => {
   assert.equal(extractGitHubRepoSlug('Gitlawb/claudin'), 'Gitlawb/claudin')

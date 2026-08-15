@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
-import { parseWorkflow } from './loadWorkflows.js'
-import { renameStep, serializeWorkflow } from './serializeWorkflow.js'
-import type { WorkflowDef } from './types.js'
+import { parseWorkflow } from 'src/tools/AgentWorkflow/loadWorkflows.js'
+import { renameStep, serializeWorkflow } from 'src/tools/AgentWorkflow/serializeWorkflow.js'
+import type { WorkflowDef } from 'src/tools/AgentWorkflow/types.js'
 
 const DEF: WorkflowDef = {
   name: 'dev-flow',

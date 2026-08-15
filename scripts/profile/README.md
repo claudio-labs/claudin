@@ -177,7 +177,7 @@ prose (no code):  ~3 ms in all strategies
 
 ### What this measures
 
-The harness simulates `StreamingMarkdown` (`src/components/Markdown.tsx:186-235`):
+The harness simulates `StreamingMarkdown` (`src/terminal/markdown/Markdown.tsx:186-235`):
 on every line-buffered snapshot it lexes only the unstable suffix and renders
 both `<Markdown>{stablePrefix}</Markdown>` + `<Markdown>{unstableSuffix}</Markdown>`.
 By default it **models the React Compiler memoization** that
@@ -309,7 +309,7 @@ per-message cost.
 Drives the five module-level caches that grow per-turn / per-tool-call /
 per-LSP-publication with N distinct entries each, and measures: declared
 cap vs observed size, total heap delta, per-cycle heap delta. Companion
-to `src/utils/cacheBoundsInvariants.test.ts` — that test runs in CI to
+to `src/agent/cacheBoundsInvariants.test.ts` — that test runs in CI to
 catch a future regression dropping the eviction call; this bench produces
 the numbers for the baseline.
 
@@ -356,7 +356,7 @@ The OOM @ 4 GB originally hypothesized for 5.3 cannot come from these
 caches; it was mitigated by the heap-pressure trigger + 8 GB bump in 5.0.
 
 **Not covered**: `auth.ts pending401Handlers` (uses `finally { delete }`
-self-cleanup; verified by inspection at `src/services/auth/auth.ts:1383-1390`).
+self-cleanup; verified by inspection at `src/providers/auth/auth.ts:1383-1390`).
 Other module-level Maps in 179 files are reachable through the discovery
 pattern in this bench if a future regression appears — the systematic
 sweep is documented in `~/.claudin/plans/immutable-jingling-hare.md`.

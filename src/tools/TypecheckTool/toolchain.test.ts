@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { detectChecker } from './detect.js'
+import { detectChecker } from 'src/tools/TypecheckTool/detect.js'
 import { mkdirSync, mkdtempSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { dirname, join } from 'path'

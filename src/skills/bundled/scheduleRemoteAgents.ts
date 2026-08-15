@@ -1,23 +1,23 @@
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import type { MCPServerConnection } from 'src/services/mcp/types.js'
-import { isPolicyAllowed } from 'src/services/policyLimits/index.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
+import type { MCPServerConnection } from 'src/mcp/types.js'
+import { isPolicyAllowed } from 'src/platform/policyLimits/index.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { ASK_USER_QUESTION_TOOL_NAME } from 'src/tools/AskUserQuestionTool/prompt.js'
 import { REMOTE_TRIGGER_TOOL_NAME } from 'src/tools/RemoteTriggerTool/prompt.js'
-import { getClaudeAIOAuthTokens } from 'src/services/auth/auth.js'
-import { checkRepoForRemoteAccess } from 'src/services/background/remote/preconditions.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { getClaudeAIOAuthTokens } from 'src/providers/auth/auth.js'
+import { checkRepoForRemoteAccess } from 'src/agent/background/remote/preconditions.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   detectCurrentRepositoryWithHost,
   parseGitRemote,
-} from 'src/services/git/detectRepository.js'
-import { getRemoteUrl } from 'src/services/git/git.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+} from 'src/vcs/git/detectRepository.js'
+import { getRemoteUrl } from 'src/vcs/git/git.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   createDefaultCloudEnvironment,
   type EnvironmentResource,
   fetchEnvironments,
-} from 'src/services/teleport/environments.js'
+} from 'src/platform/teleport/environments.js'
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 // Base58 alphabet (Bitcoin-style) used by the tagged ID system

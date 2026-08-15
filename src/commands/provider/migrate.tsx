@@ -2,7 +2,7 @@ import {
   formatMigrationReport,
   migrateLegacyClaudeDir,
   type MigrationOptions,
-} from 'src/services/config/claudinMigration.js'
+} from 'src/platform/config/claudinMigration.js'
 
 export type MigrateArgs = {
   force: boolean

@@ -180,7 +180,7 @@ resume, so pass timestamps via `args` and vary randomness by index. No filesyste
 ## How it would land in claudin
 
 - **Flag.** Add `WORKFLOW_SCRIPTS: true` to `featureFlags` in `scripts/build.ts`; gate the tool
-  registration in `src/tools.ts` (`getAllBaseTools`) behind it, matching the existing
+  registration in `src/tools/tools.ts` (`getAllBaseTools`) behind it, matching the existing
   `feature()`-gated tools.
 - **Tool.** Flesh out `src/tools/WorkflowTool/` (currently the stub `constants.ts`): the tool
   schema (`script` / `scriptPath` / `name` / `args` / `resumeFromRunId`), the prompt (this
@@ -188,7 +188,7 @@ resume, so pass timestamps via `args` and vary randomness by index. No filesyste
   `phase`/`log`/`budget`/`workflow` hooks bound to claudin's existing `AgentTool` runner.
 - **Reuse.** claudin already has the hard parts: background agents + `TaskOutput`/`TaskStop`,
   fork subagents, worktree isolation (`EnterWorktree`), the `COORDINATOR_MODE` worker-delegation
-  machinery (`src/coordinator/`), and the `TOKEN_BUDGET` flag for `budget`. The engine is mostly
+  machinery (`src/agent/coordinator/`), and the `TOKEN_BUDGET` flag for `budget`. The engine is mostly
   glue over those.
 - **`/workflows` command.** A live progress viewer (`src/commands/workflows/`) over the run's
   phase tree + per-agent labels + `log()` narrator lines.
@@ -196,7 +196,7 @@ resume, so pass timestamps via `args` and vary randomness by index. No filesyste
 ## References
 
 - Upstream reference: Claude Code 2.1.201 `Workflow` tool (schema + prompt).
-- claudin building blocks: `src/coordinator/coordinatorMode.ts`, `src/tools/AgentTool/`,
+- claudin building blocks: `src/agent/coordinator/coordinatorMode.ts`, `src/tools/AgentTool/`,
   `src/tools/WorkflowTool/constants.ts` (stub), `scripts/build.ts` (`featureFlags`).
 - Related: `docs/features/report-findings.md` (a structured verifier output that pairs with the
   review/verify workflow shape).

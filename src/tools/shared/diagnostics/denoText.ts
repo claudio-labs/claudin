@@ -1,4 +1,4 @@
-import type { ParseInput, ParsedDiagnostics, RawDiagnostic } from './types.js'
+import type { ParseInput, ParsedDiagnostics, RawDiagnostic } from 'src/tools/shared/diagnostics/types.js'
 
 /**
  * `deno check` has no compact mode, so its human output is the only source.

@@ -53,13 +53,13 @@ import {
   _resetAllClippedIdsForTesting,
   addClippedIds,
   applyStableStubs,
-} from '../src/services/compact/stableStubState.js'
-import { getCompactPrompt } from '../src/services/compact/prompt.js'
+} from '../src/agent/compact/stableStubState.js'
+import { getCompactPrompt } from '../src/agent/compact/prompt.js'
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
-} from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/services/config/config.js'
+} from '../src/shared/tokenEstimation.js'
+import { enableConfigs } from '../src/platform/config/config.js'
 
 /**
  * Calibration: there is NO upper bound enforced by `getCompactPrompt()` —

@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os'
 // ---------------------------------------------------------------------------
 
 const pluginSource = readFileSync(join(__dirname, 'no-telemetry-plugin.ts'), 'utf-8')
-const stubMatch = pluginSource.match(/'services\/analytics\/growthbook': `([\s\S]*?)`/)
+const stubMatch = pluginSource.match(/'src\/platform\/analytics\/growthbook': `([\s\S]*?)`/)
 if (!stubMatch) throw new Error('Could not extract growthbook stub from no-telemetry-plugin.ts')
 
 const testDir = join(tmpdir(), `growthbook-stub-test-${process.pid}`)

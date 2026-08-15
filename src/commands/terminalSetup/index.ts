@@ -1,5 +1,5 @@
-import type { Command } from 'src/commands.js'
-import { env } from 'src/utils/env.js'
+import type { Command } from 'src/commands/commands.js'
+import { env } from 'src/shared/env.js'
 
 // Terminals that natively support CSI u / Kitty keyboard protocol
 const NATIVE_CSIU_TERMINALS: Record<string, string> = {
@@ -17,7 +17,7 @@ const terminalSetup = {
       ? 'Enable Option+Enter key binding for newlines and visual bell'
       : 'Install Shift+Enter key binding for newlines',
   isHidden: env.terminal !== null && env.terminal in NATIVE_CSIU_TERMINALS,
-  load: () => import('./terminalSetup.js'),
+  load: () => import('src/commands/terminalSetup/terminalSetup.js'),
 } satisfies Command
 
 export default terminalSetup

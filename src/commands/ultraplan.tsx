@@ -1,20 +1,20 @@
-import { REMOTE_CONTROL_DISCONNECTED_MSG } from 'src/bridge/types.js';
-import type { Command } from 'src/commands.js';
-import { DIAMOND_OPEN } from 'src/constants/figures.js';
-import { getRemoteSessionUrl } from 'src/constants/product.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import type { AppState } from 'src/state/AppStateStore.js';
-import { checkRemoteAgentEligibility, formatPreconditionError, RemoteAgentTask, type RemoteAgentTaskState, registerRemoteAgentTask } from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js';
-import type { LocalJSXCommandCall } from 'src/types/command.js';
-import { logForDebugging } from 'src/utils/debug.js';
-import { errorMessage } from 'src/utils/errors.js';
-import { logError } from 'src/utils/log.js';
-import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js';
-import { ALL_MODEL_CONFIGS } from 'src/utils/model/configs.js';
-import { updateTaskState } from 'src/tasks/framework.js';
-import { archiveRemoteSession, teleportToRemote } from 'src/components/teleport.js';
-import { pollForApprovedExitPlanMode, UltraplanPollError } from 'src/services/ultraplan/ccrSession.js';
+import { REMOTE_CONTROL_DISCONNECTED_MSG } from 'src/platform/bridge/types.js';
+import type { Command } from 'src/commands/commands.js';
+import { DIAMOND_OPEN } from 'src/shared/constants/figures.js';
+import { getRemoteSessionUrl } from 'src/shared/constants/product.js';
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
+import type { AppState } from 'src/terminal/state/AppStateStore.js';
+import { checkRemoteAgentEligibility, formatPreconditionError, RemoteAgentTask, type RemoteAgentTaskState, registerRemoteAgentTask } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
+import type { LocalJSXCommandCall } from 'src/shared/types/command.js';
+import { logForDebugging } from 'src/shared/debug.js';
+import { errorMessage } from 'src/shared/errors.js';
+import { logError } from 'src/shared/log.js';
+import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js';
+import { ALL_MODEL_CONFIGS } from 'src/providers/model/configs.js';
+import { updateTaskState } from 'src/agent/tasks/framework.js';
+import { archiveRemoteSession, teleportToRemote } from 'src/platform/teleport/teleport.js';
+import { pollForApprovedExitPlanMode, UltraplanPollError } from 'src/agent/ultraplan/ccrSession.js';
 
 // TODO(prod-hardening): OAuth token may go stale over the 30min poll;
 // consider refresh.
@@ -42,7 +42,7 @@ function getUltraplanModel(): string {
 //
 // Bundler inlines .txt as a string; the test runner wraps it as {default}.
 /* eslint-disable @typescript-eslint/no-require-imports */
-const _rawPrompt = require('src/services/ultraplan/prompt.txt');
+const _rawPrompt = require('src/agent/ultraplan/prompt.txt');
 /* eslint-enable @typescript-eslint/no-require-imports */
 const DEFAULT_INSTRUCTIONS: string = (typeof _rawPrompt === 'string' ? _rawPrompt : _rawPrompt.default).trimEnd();
 

@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 
 const branch = {
   type: 'local-jsx',
@@ -8,7 +8,7 @@ const branch = {
   aliases: feature('FORK_SUBAGENT') ? [] : ['fork'],
   description: 'Create a branch of the current conversation at this point',
   argumentHint: '[name]',
-  load: () => import('./branch.js'),
+  load: () => import('src/commands/branch/branch.js'),
 } satisfies Command
 
 export default branch

@@ -92,8 +92,8 @@ function hljs(): HLJSApi {
   return cachedHljs!
 }
 
-import { stringWidth } from 'src/ink/stringWidth.js'
-import { logError } from 'src/utils/log.js'
+import { stringWidth } from 'src/terminal/ink/stringWidth.js'
+import { logError } from 'src/shared/log.js'
 
 // ---------------------------------------------------------------------------
 // Public API types (match vendor/color-diff-src/index.d.ts)
@@ -231,7 +231,7 @@ type Theme = {
 
 // Dark theme names whose name doesn't literally contain "dark" (the diff/syntax
 // classification below keys off the name, not the palette). Keep in sync with
-// the dark entries in THEME_NAMES (src/utils/theme.ts).
+// the dark entries in THEME_NAMES (src/terminal/theme/theme.ts).
 const DARK_THEME_NAMES = new Set([
   'dracula',
   'catppuccin-mocha',

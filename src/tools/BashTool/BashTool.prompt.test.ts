@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { getSimplePrompt } from './prompt.js'
+import { getSimplePrompt } from 'src/tools/BashTool/prompt.js'
 
 // GATED blocks: present only in the verbose (weak-family) shape.
 const GATED = [

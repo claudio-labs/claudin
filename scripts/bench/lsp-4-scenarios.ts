@@ -48,11 +48,11 @@ const PROMPTS = [
   },
   {
     id: 'rename-impact',
-    text: 'Sem editar nenhum arquivo: quero renomear `formatNumber` (em src/utils/text/format.ts) para `formatTokenCount` em todo o codebase. Liste cada arquivo:linha onde a mudanca precisa acontecer (incluindo a declaracao, todos os imports e todos os call sites). Output cru: uma linha por ocorrencia.',
+    text: 'Sem editar nenhum arquivo: quero renomear `formatNumber` (em src/shared/text/format.ts) para `formatTokenCount` em todo o codebase. Liste cada arquivo:linha onde a mudanca precisa acontecer (incluindo a declaracao, todos os imports e todos os call sites). Output cru: uma linha por ocorrencia.',
   },
   {
     id: 'find-implementations',
-    text: 'No arquivo `src/Tool.ts` existe um tipo `Tool` (interface ou type). Liste todos os locais no codebase que implementam/satisfazem esse tipo `Tool` — ou seja, arquivos que exportam algo do tipo `Tool` (uma instancia concreta de tool builtin). Quero arquivo:linha de cada implementacao. Nao edite nada.',
+    text: 'No arquivo `src/tools/Tool.ts` existe um tipo `Tool` (interface ou type). Liste todos os locais no codebase que implementam/satisfazem esse tipo `Tool` — ou seja, arquivos que exportam algo do tipo `Tool` (uma instancia concreta de tool builtin). Quero arquivo:linha de cada implementacao. Nao edite nada.',
   },
 ]
 

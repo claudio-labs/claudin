@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
-import { Spinner } from 'src/components/Spinner.js';
-import TextInput from 'src/components/TextInput.js';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
-import { setClipboard } from 'src/ink/termio/osc.js';
-import { Box, Link, Text } from 'src/ink.js';
-import { OAuthService } from 'src/services/oauth/index.js';
-import { saveOAuthTokensIfNeeded } from 'src/services/auth/auth.js';
-import { logError } from 'src/utils/log.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
+import { Spinner } from 'src/terminal/spinner/Spinner.js';
+import TextInput from 'src/terminal/text-input/TextInput.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import type { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js';
+import { setClipboard } from 'src/terminal/ink/termio/osc.js';
+import { Box, Link, Text } from 'src/terminal/ink.js';
+import { OAuthService } from 'src/providers/oauth/index.js';
+import { saveOAuthTokensIfNeeded } from 'src/providers/auth/auth.js';
+import { logError } from 'src/shared/log.js';
 interface OAuthFlowStepProps {
   onSuccess: (token: string) => void;
   onCancel: () => void;

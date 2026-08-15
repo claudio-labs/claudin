@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
-import { MAX_FINDINGS } from './constants.js'
-import { ReportFindingsTool } from './ReportFindingsTool.js'
+import { MAX_FINDINGS } from 'src/tools/ReportFindingsTool/constants.js'
+import { ReportFindingsTool } from 'src/tools/ReportFindingsTool/ReportFindingsTool.js'
 
 function finding(over: Record<string, unknown> = {}) {
   return {

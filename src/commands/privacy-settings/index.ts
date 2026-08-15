@@ -1,5 +1,5 @@
-import type { Command } from 'src/commands.js'
-import { isConsumerSubscriber } from 'src/services/auth/auth.js'
+import type { Command } from 'src/commands/commands.js'
+import { isConsumerSubscriber } from 'src/providers/auth/auth.js'
 
 const privacySettings = {
   type: 'local-jsx',
@@ -8,7 +8,7 @@ const privacySettings = {
   isEnabled: () => {
     return isConsumerSubscriber()
   },
-  load: () => import('./privacy-settings.js'),
+  load: () => import('src/commands/privacy-settings/privacy-settings.js'),
 } satisfies Command
 
 export default privacySettings

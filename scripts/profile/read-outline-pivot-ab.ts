@@ -21,7 +21,7 @@
 //
 // `--tools`, NOT `--allowedTools`. The latter is a permission allowlist that
 // never reaches the registry (`getTools` filters on DENY rules only, see
-// src/tools.ts:383), so Grep and Bash stay in the toolset and the first run of
+// src/tools/tools.ts:383), so Grep and Bash stay in the toolset and the first run of
 // this bench had arm A reach for Grep twice while arm B never did. `--tools`
 // inverts the list into deny rules (permissionSetup.ts:866-876) and the tools
 // are genuinely absent; `--strict-mcp-config` is required alongside it because
@@ -74,11 +74,11 @@ const ALLOWED_TOOLS = 'Read,Glob'
 
 /** Real files, all 20-22 KB and > 250 lines: both pivot triggers fire in A. */
 const FIXTURES = [
-  'src/services/api/modelCost.ts',
+  'src/providers/usage/modelCost.ts',
   'src/tools/BashTool/sedValidation.ts',
-  'src/services/lifecycleHooks/events.ts',
-  'src/services/mcp/doctor.ts',
-  'src/services/session/sessionRestore.ts',
+  'src/platform/lifecycleHooks/events.ts',
+  'src/mcp/doctor.ts',
+  'src/sessions/sessionRestore.ts',
 ]
 
 /**

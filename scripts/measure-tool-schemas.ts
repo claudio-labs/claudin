@@ -20,15 +20,15 @@
  * `~/.claude/plans/enchanted-popping-oasis.md`. No side effects, no network.
  */
 
-import { getAllBaseTools } from '../src/tools.js'
-import { toolToAPISchema } from '../src/services/api/api.js'
-import { roughTokenCountEstimation } from '../src/services/tokenEstimation.js'
-import { getEmptyToolPermissionContext } from '../src/Tool.js'
-import type { Tool } from '../src/Tool.js'
-import { enableConfigs } from '../src/services/config/config.js'
-import { convertTools } from '../src/services/api/openaiShim.js'
-import { convertToolsToResponsesTools } from '../src/services/api/codexShim.js'
-import { clearToolSchemaCache } from '../src/services/tools/toolSchemaCache.js'
+import { getAllBaseTools } from '../src/tools/tools.js'
+import { toolToAPISchema } from '../src/providers/transport/api.js'
+import { roughTokenCountEstimation } from '../src/shared/tokenEstimation.js'
+import { getEmptyToolPermissionContext } from '../src/tools/Tool.js'
+import type { Tool } from '../src/tools/Tool.js'
+import { enableConfigs } from '../src/platform/config/config.js'
+import { convertTools } from '../src/providers/shims/openaiShim.js'
+import { convertToolsToResponsesTools } from '../src/providers/shims/codexShim.js'
+import { clearToolSchemaCache } from '../src/agent/tools/toolSchemaCache.js'
 
 type Engine = 'anthropic' | 'openai' | 'codex'
 const ALL_ENGINES: readonly Engine[] = ['anthropic', 'openai', 'codex'] as const

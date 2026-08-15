@@ -1,16 +1,16 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import type { ParseInput } from './types.js'
-import { parseCargoJson } from './cargoJson.js'
-import { parseDartMachine } from './dartMachine.js'
-import { parseDenoText } from './denoText.js'
-import { parseGnuStyle } from './gnuStyle.js'
-import { scrapeCounts } from './heuristic.js'
-import { parseDiagnostics } from './index.js'
-import { parseMsvcStyle } from './msvcStyle.js'
-import { parsePhpstanJson, parsePsalmJson } from './phpJson.js'
-import { parseMypyJson, parsePyrightJson } from './pythonJson.js'
+import type { ParseInput } from 'src/tools/shared/diagnostics/types.js'
+import { parseCargoJson } from 'src/tools/shared/diagnostics/cargoJson.js'
+import { parseDartMachine } from 'src/tools/shared/diagnostics/dartMachine.js'
+import { parseDenoText } from 'src/tools/shared/diagnostics/denoText.js'
+import { parseGnuStyle } from 'src/tools/shared/diagnostics/gnuStyle.js'
+import { scrapeCounts } from 'src/tools/shared/diagnostics/heuristic.js'
+import { parseDiagnostics } from 'src/tools/shared/diagnostics/index.js'
+import { parseMsvcStyle } from 'src/tools/shared/diagnostics/msvcStyle.js'
+import { parsePhpstanJson, parsePsalmJson } from 'src/tools/shared/diagnostics/phpJson.js'
+import { parseMypyJson, parsePyrightJson } from 'src/tools/shared/diagnostics/pythonJson.js'
 
 function input(stdout: string, exitCode = 1): ParseInput {
   return { stdout, stderr: '', exitCode }
@@ -82,7 +82,7 @@ describe('parseMsvcStyle — tsc compact output', () => {
     const fixture = readFileSync(
       join(
         import.meta.dir,
-        '../../../outputFilter/Bash/__fixtures__/samples/tsc-errors.txt',
+        '../outputFilter/Bash/__fixtures__/samples/tsc-errors.txt',
       ),
       'utf8',
     )
@@ -191,7 +191,7 @@ describe('parseGnuStyle', () => {
     // baseline records two fingerprints for one error.
     const gradle = [
       '> Task :compileJava FAILED',
-      '/w/src/main/java/Main.java:3: error: incompatible types: String cannot be converted to int',
+      '/w/src/platform/main/java/Main.java:3: error: incompatible types: String cannot be converted to int',
       '    int n = "not a number";',
       '            ^',
       '1 error',
@@ -203,7 +203,7 @@ describe('parseGnuStyle', () => {
       '* What went wrong:',
       "Execution failed for task ':compileJava'.",
       '> Compilation failed; see the compiler output below.',
-      '  /w/src/main/java/Main.java:3: error: incompatible types: String cannot be converted to int',
+      '  /w/src/platform/main/java/Main.java:3: error: incompatible types: String cannot be converted to int',
       '      int n = "not a number";',
       '              ^',
       '  1 error',
@@ -213,7 +213,7 @@ describe('parseGnuStyle', () => {
     const parsed = parseGnuStyle(input(gradle))
     expect(parsed?.diagnostics).toHaveLength(1)
     expect(parsed?.diagnostics[0]).toMatchObject({
-      file: '/w/src/main/java/Main.java',
+      file: '/w/src/platform/main/java/Main.java',
       line: 3,
       message: 'incompatible types: String cannot be converted to int',
     })
@@ -297,7 +297,7 @@ describe('parseCargoJson', () => {
           code: { code: 'E0308' },
           spans: [
             { file_name: 'src/lib.rs', line_start: 99, is_primary: false },
-            { file_name: 'src/main.rs', line_start: 4, column_start: 9, is_primary: true },
+            { file_name: 'src/platform/main.rs', line_start: 4, column_start: 9, is_primary: true },
           ],
         },
       }),
@@ -309,7 +309,7 @@ describe('parseCargoJson', () => {
     const result = parseCargoJson(input(stream))
     expect(result?.diagnostics).toHaveLength(1)
     expect(result?.diagnostics[0]).toMatchObject({
-      file: 'src/main.rs',
+      file: 'src/platform/main.rs',
       line: 4,
       code: 'E0308',
     })
@@ -444,7 +444,7 @@ describe('parseDiagnostics chain', () => {
   test('falls back to the generic parsers when the native one finds nothing', () => {
     // A cargo run through a composed script never gets --message-format=json,
     // so its human output must still be read rather than degraded.
-    const outcome = parseDiagnostics([parseCargoJson], input('src/main.rs:4:9: mismatched types'))
+    const outcome = parseDiagnostics([parseCargoJson], input('src/platform/main.rs:4:9: mismatched types'))
     expect(outcome.degraded).toBe(false)
     expect(outcome.diagnostics[0]?.line).toBe(4)
   })

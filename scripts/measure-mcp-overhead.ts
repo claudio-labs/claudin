@@ -40,13 +40,13 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
   })
 }
 
-import { convertToolsToResponsesTools } from '../src/services/api/codexShim.js'
-import { convertTools } from '../src/services/api/openaiShim.js'
+import { convertToolsToResponsesTools } from '../src/providers/shims/codexShim.js'
+import { convertTools } from '../src/providers/shims/openaiShim.js'
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
-} from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/services/config/config.js'
+} from '../src/shared/tokenEstimation.js'
+import { enableConfigs } from '../src/platform/config/config.js'
 
 type Engine = 'anthropic' | 'openai' | 'codex'
 
@@ -153,7 +153,7 @@ function shimSchema(
 }
 
 /**
- * Mirror `getMcpInstructions()` in `src/constants/prompts.ts`. Inlined here
+ * Mirror `getMcpInstructions()` in `src/agent/prompts/prompts.ts`. Inlined here
  * so we don't depend on `MCPServerConnection` having a real `Client`
  * field — the production helper only reads `name` and `instructions`.
  */
@@ -170,7 +170,7 @@ function renderMcpInstructionsBlock(
 
 /**
  * Mirror the wire shape of `mcp_instructions_delta` on first announcement
- * (see `src/services/messages/messages.ts` rendering). The attachment carries
+ * (see `src/agent/messages/messages.ts` rendering). The attachment carries
  * `addedNames` + `addedBlocks`; on initial turn `addedBlocks` is the same
  * content as the system-prompt block, but it lives in the conversation
  * tail instead of the cacheable system prompt.

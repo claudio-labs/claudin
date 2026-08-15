@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { buildEditToolDescription } from './prompt.js'
+import { buildEditToolDescription } from 'src/tools/FileEditTool/prompt.js'
 
 const GATED = [
   'NEVER write new files unless explicitly required',

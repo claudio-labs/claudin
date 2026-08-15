@@ -10,45 +10,45 @@ import {
   getMainLoopModelOverride,
   getSessionBypassPermissionsMode,
   getSessionId,
-} from 'src/bootstrap/state.js'
-import type { AppState } from 'src/state/AppState.js'
-import { createTaskStateBase, generateTaskId } from 'src/Task.js'
-import type { ToolUseContext } from 'src/Tool.js'
-import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js'
-import { formatAgentId } from 'src/coordinator/agentId.js'
-import { quote } from 'src/services/bash/shellQuote.js'
-import { isInBundledMode } from 'src/services/install/bundledMode.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage } from 'src/utils/errors.js'
-import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
-import { parseUserSpecifiedModel , getUserSpecifiedModelSetting } from 'src/utils/model/model.js'
-import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
-import { isTmuxAvailable } from 'src/coordinator/swarm/backends/detection.js'
+} from 'src/platform/bootstrap/state.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
+import { createTaskStateBase, generateTaskId } from 'src/agent/Task.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
+import type { InProcessTeammateTaskState } from 'src/agent/tasks/InProcessTeammateTask/types.js'
+import { formatAgentId } from 'src/agent/coordinator/agentId.js'
+import { quote } from 'src/platform/bash/shellQuote.js'
+import { isInBundledMode } from 'src/platform/install/bundledMode.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage } from 'src/shared/errors.js'
+import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
+import { parseUserSpecifiedModel , getUserSpecifiedModelSetting } from 'src/providers/model/model.js'
+import type { PermissionMode } from 'src/permissions/PermissionMode.js'
+import { isTmuxAvailable } from 'src/agent/coordinator/swarm/backends/detection.js'
 import {
   detectAndGetBackend,
   getBackendByType,
   isInProcessEnabled,
   markInProcessFallback,
   resetBackendDetection,
-} from 'src/coordinator/swarm/backends/registry.js'
-import { getTeammateModeFromSnapshot } from 'src/coordinator/swarm/backends/teammateModeSnapshot.js'
-import type { BackendType } from 'src/coordinator/swarm/backends/types.js'
-import { isPaneBackend } from 'src/coordinator/swarm/backends/types.js'
+} from 'src/agent/coordinator/swarm/backends/registry.js'
+import { getTeammateModeFromSnapshot } from 'src/agent/coordinator/swarm/backends/teammateModeSnapshot.js'
+import type { BackendType } from 'src/agent/coordinator/swarm/backends/types.js'
+import { isPaneBackend } from 'src/agent/coordinator/swarm/backends/types.js'
 import {
   SWARM_SESSION_NAME,
   TEAM_LEAD_NAME,
   TEAMMATE_COMMAND_ENV_VAR,
   TMUX_COMMAND,
-} from 'src/coordinator/swarm/constants.js'
-import { It2SetupPrompt } from 'src/coordinator/swarm/It2SetupPrompt.js'
-import { startInProcessTeammate } from 'src/coordinator/swarm/inProcessRunner.js'
+} from 'src/agent/coordinator/swarm/constants.js'
+import { It2SetupPrompt } from 'src/agent/coordinator/swarm/It2SetupPrompt.js'
+import { startInProcessTeammate } from 'src/agent/coordinator/swarm/inProcessRunner.js'
 import {
   type InProcessSpawnConfig,
   spawnInProcessTeammate,
-} from 'src/coordinator/swarm/spawnInProcess.js'
-import { buildInheritedEnvVars } from 'src/coordinator/swarm/spawnUtils.js'
+} from 'src/agent/coordinator/swarm/spawnInProcess.js'
+import { buildInheritedEnvVars } from 'src/agent/coordinator/swarm/spawnUtils.js'
 import {
   getTeamFilePath,
   readTeamFileAsync,
@@ -56,17 +56,17 @@ import {
   sanitizeAgentName,
   sanitizeName,
   writeTeamFileAsync,
-} from 'src/coordinator/swarm/teamHelpers.js'
+} from 'src/agent/coordinator/swarm/teamHelpers.js'
 import {
   assignTeammateColor,
   createTeammatePaneInSwarmView,
   enablePaneBorderStatus,
   isInsideTmux,
   sendCommandToPane,
-} from 'src/coordinator/swarm/teammateLayoutManager.js'
-import { getHardcodedTeammateModelFallback } from 'src/coordinator/swarm/teammateModel.js'
-import { registerTask } from 'src/tasks/framework.js'
-import { writeToMailbox } from 'src/coordinator/teammateMailbox.js'
+} from 'src/agent/coordinator/swarm/teammateLayoutManager.js'
+import { getHardcodedTeammateModelFallback } from 'src/agent/coordinator/swarm/teammateModel.js'
+import { registerTask } from 'src/agent/tasks/framework.js'
+import { writeToMailbox } from 'src/agent/coordinator/teammateMailbox.js'
 import type { CustomAgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { isCustomAgent } from 'src/tools/AgentTool/loadAgentsDir.js'
 
@@ -298,14 +298,14 @@ export async function generateUniqueTeammateName(
 async function ensureTeamFileExists(
   teamName: string,
   context: ToolUseContext,
-): Promise<import('src/coordinator/swarm/teamHelpers.js').TeamFile> {
+): Promise<import('src/agent/coordinator/swarm/teamHelpers.js').TeamFile> {
   const existing = await readTeamFileAsync(teamName)
   if (existing) return existing
 
   // Auto-create the team
   const leadAgentId = formatAgentId(TEAM_LEAD_NAME, teamName)
 
-  const teamFile: import('src/coordinator/swarm/teamHelpers.js').TeamFile = {
+  const teamFile: import('src/agent/coordinator/swarm/teamHelpers.js').TeamFile = {
     name: teamName,
     description: `Auto-created team for ${teamName}`,
     createdAt: Date.now(),

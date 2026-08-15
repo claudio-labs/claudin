@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { allowsImplicitAutoBackground } from './autoBackground.js'
-import { FORK_SUBAGENT_TYPE } from './forkSubagent.js'
+import { allowsImplicitAutoBackground } from 'src/tools/AgentTool/autoBackground.js'
+import { FORK_SUBAGENT_TYPE } from 'src/tools/AgentTool/forkSubagent.js'
 
 describe('allowsImplicitAutoBackground', () => {
   test('one-shot built-ins stay inline so the parent gets the report this turn', () => {
@@ -43,7 +43,7 @@ describe('auto-background is opt-in', () => {
   // `!== false` reads as a harmless cleanup — so pin the text.
   test('the config default is false', () => {
     const src = readFileSync(
-      join(import.meta.dir, '../../services/config/config.ts'),
+      join(import.meta.dir, '../../platform/config/config.ts'),
       'utf8',
     )
     expect(src).toContain('autoBackgroundAgentsEnabled: false,')

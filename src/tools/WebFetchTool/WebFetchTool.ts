@@ -1,25 +1,25 @@
 import { z } from 'zod/v4'
-import { buildTool, type ToolDef } from 'src/Tool.js'
-import type { PermissionUpdate } from 'src/types/permissions.js'
-import { formatFileSize } from 'src/utils/text/format.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
-import { getRuleByContentsForTool } from 'src/services/permissions/permissions.js'
-import { isPreapprovedHost } from './preapproved.js'
-import { DESCRIPTION, WEB_FETCH_TOOL_NAME } from './prompt.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
+import type { PermissionUpdate } from 'src/shared/types/permissions.js'
+import { formatFileSize } from 'src/shared/text/format.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
+import { getRuleByContentsForTool } from 'src/permissions/permissions.js'
+import { isPreapprovedHost } from 'src/tools/WebFetchTool/preapproved.js'
+import { DESCRIPTION, WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
 import {
   getToolUseSummary,
   renderToolResultMessage,
   renderToolUseMessage,
   renderToolUseProgressMessage,
-} from './UI.js'
+} from 'src/tools/WebFetchTool/UI.js'
 import {
   applyPromptToMarkdown,
   type FetchedContent,
   getURLMarkdownContent,
   isPreapprovedUrl,
   MAX_MARKDOWN_LENGTH,
-} from './utils.js'
+} from 'src/tools/WebFetchTool/utils.js'
 
 function isFirecrawlEnabled(): boolean {
   return Boolean(process.env.FIRECRAWL_API_KEY)

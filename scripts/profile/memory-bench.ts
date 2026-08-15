@@ -18,7 +18,7 @@ import { performance } from 'node:perf_hooks'
 import { mkdir, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { scanMemoryFiles } from '../../src/memdir/memoryScan.js'
+import { scanMemoryFiles } from '../../src/memory/memdir/memoryScan.js'
 
 type Args = {
   sizes: number[]

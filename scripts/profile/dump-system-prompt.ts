@@ -35,7 +35,7 @@
 //
 // Network: the source mode makes none. `--flags=ship` runs the real CLI, which
 // fires two Grove prefetch GETs before the fast path when the active profile is
-// on the anthropic transport (src/entrypoints/cli.tsx) — nothing is sent, but
+// on the anthropic transport (src/platform/entrypoints/cli.tsx) — nothing is sent, but
 // it is not an offline command.
 
 import { existsSync, statSync } from 'fs'
@@ -53,9 +53,9 @@ const BUNDLE = join(REPO_ROOT, 'dist/cli.mjs')
 // sub-agent notices all land in one of the two dumps below.
 const PROMPT_SOURCE_GLOBS = [
   'scripts/build.ts',
-  'src/constants/**/*.ts',
-  'src/context.ts',
-  'src/services/instructions/claudemd.ts',
+  'src/shared/constants/**/*.ts',
+  'src/agent/context.ts',
+  'src/memory/instructions/claudemd.ts',
   'src/tools/*/prompt.ts',
   'src/tools/AgentTool/forkSubagent.ts',
 ]
@@ -116,10 +116,10 @@ function dumpFromBundle(): number {
 }
 
 async function dumpFromSource(): Promise<void> {
-  const { getAllBaseTools } = await import('../../src/tools.js')
+  const { getAllBaseTools } = await import('../../src/tools/tools.js')
   const { getSystemPrompt, enhanceSystemPromptWithEnvDetails, DEFAULT_AGENT_PROMPT } =
-    await import('../../src/constants/prompts.js')
-  const { enableConfigs } = await import('../../src/services/config/config.js')
+    await import('../../src/agent/prompts/prompts.js')
+  const { enableConfigs } = await import('../../src/platform/config/config.js')
   try { enableConfigs() } catch {}
   process.env.NODE_ENV = 'production'
   const model = modelArg ?? 'claude-sonnet-4-6'

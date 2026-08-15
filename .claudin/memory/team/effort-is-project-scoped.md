@@ -8,13 +8,13 @@ Since 2026-07-26, effort follows the same project scoping as provider and model:
 the pin lives in `~/.claudin/config.json → projects[<git root>].activeEffortForProject`
 and the global `settings.effortLevel` is only the inherited fallback.
 
-**Why:** `/model` was already always project-scoped (`src/utils/model/model.ts:147`),
+**Why:** `/model` was already always project-scoped (`src/providers/model/model.ts:147`),
 but `/effort` still wrote `userSettings`, so an effort choice in one repo bled into
 every other one.
 
 **How to apply:**
 - A new surface that persists effort must call `persistEffortForProject` /
-  `pinProjectEffortAuto` / `clearProjectEffortPin` from `src/utils/effort.ts` —
+  `pinProjectEffortAuto` / `clearProjectEffortPin` from `src/providers/effort/effort.ts` —
   **never** `updateSettingsForSource('userSettings', { effortLevel })`. No REPL path
   writes the global anymore; it is edited by hand or via `/config`.
 - Resolution is centralized in `getInitialEffortSetting()`: pin → global → model

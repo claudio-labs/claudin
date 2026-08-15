@@ -1,11 +1,11 @@
 /**
  * Build-time ReDoS safety scan for bash-output-filter regex patterns.
  *
- * Scans all RegExp literals in src/outputFilter/Bash/filters/ and validates
+ * Scans all RegExp literals in src/tools/shared/outputFilter/Bash/filters/ and validates
  * them against isSafeRegex heuristics. Passes vacuously in Phase 1 (no filters).
  */
 import { describe, expect, test } from 'bun:test'
-import { isSafeRegex } from 'src/outputFilter/Bash/userFilters.js'
+import { isSafeRegex } from 'src/tools/shared/outputFilter/Bash/userFilters.js'
 
 describe('regex-redos-scan', () => {
   test('isSafeRegex rejects nested quantifiers', () => {
@@ -65,7 +65,7 @@ describe('regex-redos-scan', () => {
 
   test('builtInFilters regexes are all safe', async () => {
     // Dynamic import to get the current filter set
-    const { builtInFilters } = await import('src/outputFilter/Bash/filters/index.js')
+    const { builtInFilters } = await import('src/tools/shared/outputFilter/Bash/filters/index.js')
     for (const filter of builtInFilters) {
       assertSafe(filter.matchCommand.source, `filter "${filter.name}" matchCommand`)
       if (filter.matchCommandReject) {

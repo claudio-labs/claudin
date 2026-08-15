@@ -1,13 +1,13 @@
 ---
 paths:
-  - "src/services/cache/**"
-  - "src/services/api/claude/**"
-  - "src/services/tools/toolResultCache.ts"
-  - "src/services/tools/cacheInvalidation.ts"
+  - "src/agent/cache/**"
+  - "src/providers/shims/claude/**"
+  - "src/agent/tools/toolResultCache.ts"
+  - "src/agent/tools/cacheInvalidation.ts"
 ---
 # Prompt Cache & Tool-Result Cache — Claudin Development Rules
 
-Architecture: `src/services/cache/README.md` + `docs/tech/cache/clip-frontier-breakpoint.md`.
+Architecture: `src/agent/cache/README.md` + `docs/tech/cache/clip-frontier-breakpoint.md`.
 This rule captures the **invariants** that are easy to break silently — verify
 file:line against current code.
 
@@ -25,7 +25,7 @@ invalidates the whole prefix and silently rebills `cache_creation`.
 
 ## 2. Defer-cache-marker — `Math.max(i, 0)` fallback is load-bearing
 
-`src/services/api/claude/paramBuilders.ts::addCacheBreakpoints` does NOT pin the
+`src/providers/shims/claude/paramBuilders.ts::addCacheBreakpoints` does NOT pin the
 single `cache_control` marker at `messages[length-1]` each turn — it walks
 backward summing `roughTokenCountEstimationForMessage` and places the marker at
 the earliest index whose suffix sums to ≥ `DEFAULT_DEFER_CACHE_MARKER_TOKENS`
@@ -40,11 +40,11 @@ the earliest index whose suffix sums to ≥ `DEFAULT_DEFER_CACHE_MARKER_TOKENS`
   comment in `paramBuilders.ts` documents this — respect it.
 - `skipCacheWrite` bypasses the defer logic (preserved). Tests memoize the
   threshold: call `_resetDeferCacheMarkerForTesting()` after flipping the env
-  (`src/services/api/claude/__tests__/addCacheBreakpoints.test.ts`).
+  (`src/providers/shims/claude/__tests__/addCacheBreakpoints.test.ts`).
 
 ## 3. toolResultCache keys omit cwd — invalidate on any chdir
 
-`src/services/tools/toolResultCache.ts` keys entries as
+`src/agent/tools/toolResultCache.ts` keys entries as
 `tool::stableStringify(input)` — **no cwd component**. A relative-path arg maps to
 the same key before and after `process.chdir()`, serving a stale hit against the
 wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none.

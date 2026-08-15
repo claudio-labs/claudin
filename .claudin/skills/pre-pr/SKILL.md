@@ -48,7 +48,7 @@ Run these in order. Stop and report on the first failure; otherwise continue.
    state there rather than a defect.
 7. **Generated SDK types** — `bun run verify:sdk-types`. Gates in CI, so a green
    local run without it ships a red PR. It fails when
-   `src/entrypoints/sdk/coreTypes.generated.ts` no longer matches what
+   `src/platform/entrypoints/sdk/coreTypes.generated.ts` no longer matches what
    `coreSchemas.ts` would produce.
    - **Do not just regenerate and commit.** Regeneration always makes the check
      pass, including when the reason it broke is that a schema went missing —
@@ -70,8 +70,9 @@ Run these in order. Stop and report on the first failure; otherwise continue.
 
 ## Conditional steps (only when the diff touches these areas)
 
-- **Provider / context** (`src/services/api/*`, `src/utils/context*`):
-  `bun run test:provider`.
+- **Provider / context** (`src/providers/**`, `src/agent/context*`):
+  `bun run test:provider`. Both trigger paths named directories the reorg
+  retired, so this step had stopped firing on exactly the diffs it exists for.
 - **Build / telemetry / network** (`scripts/build.ts`, the bundle plugins,
   anything network-adjacent): `bun run verify:privacy`.
 - **Output-format changes**: re-run the affected snapshot tests and confirm the

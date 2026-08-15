@@ -2,21 +2,21 @@ import { existsSync } from 'fs'
 import { isAbsolute, resolve } from 'path'
 import { parseDiagnostics } from 'src/tools/shared/diagnostics/index.js'
 import { readSourceExcerpt } from 'src/tools/shared/sourceExcerpt.js'
-import { logError } from 'src/utils/log.js'
-import { exec } from 'src/utils/proc/Shell.js'
-import { readFullShellOutput } from 'src/services/shell/fullOutput.js'
-import { TaskOutput } from 'src/tasks/TaskOutput.js'
-import { extractFailureBlock } from './failureBlock.js'
-import { isUpToDate } from './noOp.js'
-import { parsersFor } from './parseChain.js'
-import { lastNonEmptyLine, progressLabel } from './progressLine.js'
+import { logError } from 'src/shared/log.js'
+import { exec } from 'src/shared/proc/Shell.js'
+import { readFullShellOutput } from 'src/platform/shell/fullOutput.js'
+import { TaskOutput } from 'src/agent/tasks/TaskOutput.js'
+import { extractFailureBlock } from 'src/tools/BuildTool/failureBlock.js'
+import { isUpToDate } from 'src/tools/BuildTool/noOp.js'
+import { parsersFor } from 'src/tools/BuildTool/parseChain.js'
+import { lastNonEmptyLine, progressLabel } from 'src/tools/BuildTool/progressLine.js'
 import type {
   BuildDiagnostic,
   BuildProgress,
   BuildResult,
   BuildSystem,
   StallReport,
-} from './types.js'
+} from 'src/tools/BuildTool/types.js'
 
 /**
  * Execution orchestrator: run the build, watch it for silence, read its FULL

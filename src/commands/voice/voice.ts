@@ -1,15 +1,15 @@
-import { normalizeLanguageForSTT } from 'src/hooks/useVoice.js'
-import { getShortcutDisplay } from 'src/keybindings/shortcutFormat.js'
-import { logEvent } from 'src/services/analytics/index.js'
-import type { LocalCommandCall } from 'src/types/command.js'
-import { isAnthropicAuthEnabled } from 'src/services/auth/auth.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
-import { settingsChangeDetector } from 'src/services/settings/changeDetector.js'
+import { normalizeLanguageForSTT } from 'src/terminal/voice/useVoice.js'
+import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import type { LocalCommandCall } from 'src/shared/types/command.js'
+import { isAnthropicAuthEnabled } from 'src/providers/auth/auth.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
+import { settingsChangeDetector } from 'src/platform/settings/changeDetector.js'
 import {
   getInitialSettings,
   updateSettingsForSource,
-} from 'src/services/settings/settings.js'
-import { isVoiceModeEnabled } from 'src/voice/voiceModeEnabled.js'
+} from 'src/platform/settings/settings.js'
+import { isVoiceModeEnabled } from 'src/terminal/voice/voiceModeEnabled.js'
 
 const LANG_HINT_MAX_SHOWS = 2
 
@@ -56,9 +56,9 @@ export const call: LocalCommandCall = async () => {
 
   // Toggle ON — run pre-flight checks first
   const { isVoiceStreamAvailable } = await import(
-    'src/services/voiceStreamSTT.js'
+    'src/terminal/voice/voiceStreamSTT.js'
   )
-  const { checkRecordingAvailability } = await import('src/services/voice.js')
+  const { checkRecordingAvailability } = await import('src/terminal/voice/voice.js')
 
   // Check recording availability (microphone access)
   const recording = await checkRecordingAvailability()
@@ -81,7 +81,7 @@ export const call: LocalCommandCall = async () => {
 
   // Check for recording tools
   const { checkVoiceDependencies, requestMicrophonePermission } = await import(
-    'src/services/voice.js'
+    'src/terminal/voice/voice.js'
   )
   const deps = await checkVoiceDependencies()
   if (!deps.available) {

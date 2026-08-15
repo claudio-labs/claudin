@@ -16,20 +16,20 @@ import {
   getInitializationStatus,
   getLspServerManager,
   waitForInitialization,
-} from 'src/services/lsp/manager.js'
-import type { ValidationResult } from 'src/Tool.js'
-import { buildTool, type ToolDef } from 'src/Tool.js'
-import { uniq } from 'src/utils/data/array.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isENOENT, toError } from 'src/utils/errors.js'
-import { execFileNoThrowWithCwd } from 'src/utils/proc/execFileNoThrow.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { logError } from 'src/utils/log.js'
-import { expandPath } from 'src/utils/fs/path.js'
-import { checkReadPermissionForTool } from 'src/services/permissions/filesystem.js'
-import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
+} from 'src/platform/lsp/manager.js'
+import type { ValidationResult } from 'src/tools/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
+import { uniq } from 'src/shared/data/array.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isENOENT, toError } from 'src/shared/errors.js'
+import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { logError } from 'src/shared/log.js'
+import { expandPath } from 'src/shared/fs/path.js'
+import { checkReadPermissionForTool } from 'src/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import {
   formatDocumentSymbolResult,
   formatFindReferencesResult,
@@ -40,15 +40,15 @@ import {
   formatPrepareCallHierarchyResult,
   formatWorkspaceSymbolResult,
   toLocation,
-} from './formatters.js'
-import { DESCRIPTION, LSP_TOOL_NAME } from './prompt.js'
-import { lspToolInputSchema } from './schemas.js'
+} from 'src/tools/LSPTool/formatters.js'
+import { DESCRIPTION, LSP_TOOL_NAME } from 'src/tools/LSPTool/prompt.js'
+import { lspToolInputSchema } from 'src/tools/LSPTool/schemas.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
   userFacingName,
-} from './UI.js'
+} from 'src/tools/LSPTool/UI.js'
 
 const MAX_LSP_FILE_SIZE_BYTES = 10_000_000
 

@@ -13,7 +13,7 @@ mock.module('./paths.js', () => ({
 }))
 
 const { createRun, readRun, writeRun, listRuns, deleteRun, exportRunSummary } =
-  await import('./runStore.js')
+  await import('src/tools/AgentWorkflow/runStore.js')
 
 afterAll(async () => {
   mock.restore()

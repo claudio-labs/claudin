@@ -1,6 +1,6 @@
-import { getOriginalCwd } from 'src/bootstrap/state.js'
-import { lintRuleFiles, relativeFindingPath } from 'src/services/instructions/rulesLint.js'
-import { getProjectDir } from 'src/services/session/pure/paths.js'
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
+import { lintRuleFiles, relativeFindingPath } from 'src/memory/instructions/rulesLint.js'
+import { getProjectDir } from 'src/sessions/pure/paths.js'
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 /**
@@ -9,7 +9,7 @@ import { registerBundledSkill } from 'src/skills/bundledSkills.js'
  * runtime.
  *
  * Two halves, deliberately weighted differently:
- *  - the mechanical findings are computed here (src/services/instructions/rulesLint.ts) and
+ *  - the mechanical findings are computed here (src/memory/instructions/rulesLint.ts) and
  *    embedded in the prompt, so the model starts from facts rather than
  *    re-deriving them;
  *  - the semantic half — a rule that names the wrong thing, which no
@@ -40,7 +40,7 @@ async function buildPrompt(): Promise<string> {
       lines.length > 0
         ? `\nMechanical findings (already computed — do not re-derive these):\n${lines.join('\n')}`
         : '\nNo mechanical findings: every `paths:` matches at least one tracked file, no unsupported frontmatter keys, no stale path references.',
-      `\nAlways-loaded rules: ${unconditional.length} totalling ${unconditionalChars.toLocaleString()} chars, paid on every turn.`,
+      `\nAlways-loaded context: ${unconditional.length} file(s) totalling ${unconditionalChars.toLocaleString()} chars, paid on every turn — the root AGENTS.md/CLAUDE.md plus every rule with no \`paths:\`.`,
     ].join('\n')
   } catch {
     lintSection =

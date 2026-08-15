@@ -75,8 +75,8 @@ that grew between the two checkpoints.
 
   // Pre-load everything we'll touch so the "before" snapshot already
   // contains the module graph — diff will highlight only data growth.
-  const { cachedLexer, __TEST_ONLY_resetTokenCache } = await import('../../src/components/markdownTokenCache.js')
-  const { fileReadCache } = await import('../../src/utils/fs/fileReadCache.js')
+  const { cachedLexer, __TEST_ONLY_resetTokenCache } = await import('../../src/terminal/markdown/markdownTokenCache.js')
+  const { fileReadCache } = await import('../../src/shared/fs/fileReadCache.js')
   __TEST_ONLY_resetTokenCache()
   fileReadCache.clear()
 

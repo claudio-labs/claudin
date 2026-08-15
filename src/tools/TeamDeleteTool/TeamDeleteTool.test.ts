@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
-import type { ToolUseContext } from 'src/Tool.js'
-import { TeamDeleteTool } from './TeamDeleteTool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
+import { TeamDeleteTool } from 'src/tools/TeamDeleteTool/TeamDeleteTool.js'
 
 afterEach(() => {
   delete process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS

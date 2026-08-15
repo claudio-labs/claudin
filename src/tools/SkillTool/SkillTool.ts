@@ -2,77 +2,77 @@ import { feature } from 'bun:bundle'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import uniqBy from 'lodash-es/uniqBy.js'
 import { dirname } from 'path'
-import { getProjectRoot } from 'src/bootstrap/state.js'
+import { getProjectRoot } from 'src/platform/bootstrap/state.js'
 import {
   builtInCommandNames,
   findCommand,
   getCommands,
   type PromptCommand,
-} from 'src/commands.js'
+} from 'src/commands/commands.js'
 import type {
   Tool,
   ToolCallProgress,
   ToolResult,
   ToolUseContext,
   ValidationResult,
-} from 'src/Tool.js'
-import { buildTool, type ToolDef } from 'src/Tool.js'
-import type { Command } from 'src/types/command.js'
+} from 'src/tools/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
+import type { Command } from 'src/shared/types/command.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
   Message,
   SystemMessage,
   UserMessage,
-} from 'src/types/message.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
-import { getRuleByContentsForTool } from 'src/services/permissions/permissions.js'
+} from 'src/shared/types/message.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
+import { getRuleByContentsForTool } from 'src/permissions/permissions.js'
 import {
   isOfficialMarketplaceName,
   parsePluginIdentifier,
-} from 'src/services/plugins/pluginIdentifier.js'
-import { buildPluginCommandTelemetryFields } from 'src/services/telemetry/pluginTelemetry.js'
+} from 'src/plugins/pluginIdentifier.js'
+import { buildPluginCommandTelemetryFields } from 'src/platform/telemetry/pluginTelemetry.js'
 import { z } from 'zod/v4'
 import {
   addInvokedSkill,
   clearInvokedSkillsForAgent,
   getSessionId,
-} from 'src/bootstrap/state.js'
-import { COMMAND_MESSAGE_TAG } from 'src/constants/xml.js'
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+} from 'src/platform/bootstrap/state.js'
+import { COMMAND_MESSAGE_TAG } from 'src/shared/constants/xml.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
   logEvent,
-} from 'src/services/analytics/index.js'
-import { getAgentContext } from 'src/coordinator/agentContext.js'
-import { errorMessage } from 'src/utils/errors.js'
+} from 'src/platform/analytics/index.js'
+import { getAgentContext } from 'src/agent/coordinator/agentContext.js'
+import { errorMessage } from 'src/shared/errors.js'
 import {
   extractResultText,
   prepareForkedCommandContext,
-} from 'src/coordinator/forkedAgent.js'
-import { parseFrontmatter } from 'src/utils/frontmatterParser.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { createUserMessage, normalizeMessages } from 'src/services/messages/messages.js'
-import type { ModelAlias } from 'src/utils/model/aliases.js'
-import { resolveSkillModelOverride } from 'src/utils/model/model.js'
-import { recordSkillUsage } from 'src/services/suggestions/skillUsageTracking.js'
-import { createAgentId } from 'src/utils/data/uuid.js'
+} from 'src/agent/coordinator/forkedAgent.js'
+import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { createUserMessage, normalizeMessages } from 'src/agent/messages/messages.js'
+import type { ModelAlias } from 'src/providers/model/aliases.js'
+import { resolveSkillModelOverride } from 'src/providers/model/model.js'
+import { recordSkillUsage } from 'src/terminal/suggestions/skillUsageTracking.js'
+import { createAgentId } from 'src/shared/data/uuid.js'
 import { runAgent } from 'src/tools/AgentTool/runAgent.js'
 import {
   getToolUseIDFromParentMessage,
   tagMessagesWithToolUseID,
 } from 'src/tools/utils.js'
-import { SKILL_TOOL_NAME } from './constants.js'
-import { getPrompt } from './prompt.js'
+import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
+import { getPrompt } from 'src/tools/SkillTool/prompt.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
   renderToolUseProgressMessage,
   renderToolUseRejectedMessage,
-} from './UI.js'
+} from 'src/tools/SkillTool/UI.js'
 
 /**
  * Gets all commands including MCP skills/prompts from AppState.
@@ -94,9 +94,9 @@ async function getAllCommands(context: ToolUseContext): Promise<Command[]> {
 }
 
 // Re-export Progress from centralized types to break import cycles
-export type { SkillToolProgress as Progress } from 'src/types/tools.js'
+export type { SkillToolProgress as Progress } from 'src/shared/types/tools.js'
 
-import type { SkillToolProgress as Progress } from 'src/types/tools.js'
+import type { SkillToolProgress as Progress } from 'src/shared/types/tools.js'
 
 // Conditional require for remote skill modules — static imports here would
 // pull in akiBackend.ts (via remoteSkillLoader → akiBackend), which has
@@ -107,10 +107,10 @@ import type { SkillToolProgress as Progress } from 'src/types/tools.js'
 /* eslint-disable @typescript-eslint/no-require-imports */
 const remoteSkillModules = feature('EXPERIMENTAL_SKILL_SEARCH')
   ? {
-      ...(require('../../services/skillSearch/remoteSkillState.js') as typeof import('../../services/skillSearch/remoteSkillState.js')),
-      ...(require('../../services/skillSearch/remoteSkillLoader.js') as typeof import('../../services/skillSearch/remoteSkillLoader.js')),
-      ...(require('../../services/skillSearch/telemetry.js') as typeof import('../../services/skillSearch/telemetry.js')),
-      ...(require('../../services/skillSearch/featureCheck.js') as typeof import('../../services/skillSearch/featureCheck.js')),
+      ...(require('../../skills/search/remoteSkillState.js') as typeof import('../../skills/search/remoteSkillState.js')),
+      ...(require('../../skills/search/remoteSkillLoader.js') as typeof import('../../skills/search/remoteSkillLoader.js')),
+      ...(require('../../skills/search/telemetry.js') as typeof import('../../skills/search/telemetry.js')),
+      ...(require('../../skills/search/featureCheck.js') as typeof import('../../skills/search/featureCheck.js')),
     }
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
@@ -620,7 +620,7 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
 
     // Process the skill with optional args
     const { processPromptSlashCommand } = await import(
-      'src/services/input/processSlashCommand.js'
+      'src/agent/input/processSlashCommand.js'
     )
     const processedCommand = await processPromptSlashCommand(
       commandName,

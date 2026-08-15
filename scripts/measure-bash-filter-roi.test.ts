@@ -15,14 +15,14 @@ import { resolve, basename } from "node:path";
 import {
   applyBashFilterToStdout,
   planBashFilter,
-} from "src/outputFilter/Bash/index.js";
-import { builtInFilters } from "src/outputFilter/Bash/filters/index.js";
-import type { FilterSpec } from "src/outputFilter/Bash/types.js";
+} from "src/tools/shared/outputFilter/Bash/index.js";
+import { builtInFilters } from "src/tools/shared/outputFilter/Bash/filters/index.js";
+import type { FilterSpec } from "src/tools/shared/outputFilter/Bash/types.js";
 
 const SAMPLES_DIR = resolve(
   import.meta.dir,
   "..",
-  "src/outputFilter/Bash/__fixtures__/samples",
+  "src/tools/shared/outputFilter/Bash/__fixtures__/samples",
 );
 
 const FIXTURE_MAP: Record<string, [string, string]> = {

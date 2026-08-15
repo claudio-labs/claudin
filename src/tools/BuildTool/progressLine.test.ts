@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { lastNonEmptyLine, progressLabel } from './progressLine.js'
+import { lastNonEmptyLine, progressLabel } from 'src/tools/BuildTool/progressLine.js'
 
 describe('progressLabel', () => {
   test('ninja reports the ratio, which is the only form that says how far along it is', () => {

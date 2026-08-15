@@ -4,15 +4,15 @@ import {
   PR_CHECKS_POLL,
   PR_CHECKS_WATCH,
   RUN_WATCH,
-} from './__fixtures__/watchPolls.js'
-import { NO_WIN_RATIO, summarizeGitOutput } from './budget.js'
+} from 'src/tools/GitTool/__fixtures__/watchPolls.js'
+import { NO_WIN_RATIO, summarizeGitOutput } from 'src/tools/GitTool/budget.js'
 import {
   DIFF_PIVOT_CHARS,
   isUnifiedDiff,
   summarizeDiffFiles,
-} from './parsers/diff.js'
-import { renderRunLog } from './parsers/gh.js'
-import { renderStatusShort } from './parsers/status.js'
+} from 'src/tools/GitTool/parsers/diff.js'
+import { renderRunLog } from 'src/tools/GitTool/parsers/gh.js'
+import { renderStatusShort } from 'src/tools/GitTool/parsers/status.js'
 
 /** A unified diff for `path` with `hunks` hunks of `linesPerHunk` added lines. */
 function makeDiff(path: string, hunks: number, linesPerHunk: number): string {

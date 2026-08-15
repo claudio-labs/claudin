@@ -6,11 +6,11 @@ import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
-import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
+import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
 import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import type { BuiltInAgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
-import { EXPLORE_AGENT } from './exploreAgent.js'
+import { EXPLORE_AGENT } from 'src/tools/AgentTool/built-in/exploreAgent.js'
 
 function getPlanV2SystemPrompt(): string {
   // Ant-native builds alias find/grep to embedded bfs/ugrep and remove the

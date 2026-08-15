@@ -1,9 +1,9 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useCallback, useState } from 'react';
-import TextInput from 'src/components/TextInput.js';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import { Box, Text } from 'src/ink.js';
-import { useKeybindings } from 'src/keybindings/useKeybinding.js';
+import TextInput from 'src/terminal/text-input/TextInput.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 interface ChooseRepoStepProps {
   currentRepo: string | null;
   useCurrentRepo: boolean;

@@ -22,6 +22,6 @@ provenance alone; it judges by shape and placement.
 
 **How to apply:** rely on the `<system-reminder>` wrapper to signal harness
 origin and never add a secrecy instruction. Gate new attachment producers in
-`src/services/attachments/pipeline.ts` on `input !== null` so they ride with a real
+`src/agent/attachments/pipeline.ts` on `input !== null` so they ride with a real
 user prompt. Verify by running a real turn and reading the reply — a unit test
 cannot catch either failure.

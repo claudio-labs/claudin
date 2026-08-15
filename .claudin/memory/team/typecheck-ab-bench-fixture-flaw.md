@@ -1,8 +1,12 @@
 ---
 name: Typecheck A/B benched flat — and the fixture cannot test the baseline
-description: The 2026-08-03/04 TypecheckTool multi-turn A/B measured only −4 to −6% context, why the agent's own filtering absorbs the win, and the fixture flaw that makes the bench unable to exercise the baseline at all
+description: What the TypecheckTool A/B actually measured across five runs (cite cost and payload, never context), why the agent's own filtering absorbs the win, and the fixture flaw that makes the bench unable to exercise the baseline at all
 type: project
 ---
+
+**Owns:** every measured number for TypecheckTool and the bench-design flaws
+behind them. The mechanism those runs exercised is
+[[typecheck-tool-baseline-design]]; this file does not re-explain it.
 
 `scripts/bench/typecheck-multiturn-ab.ts` (10 turns, sonnet 5, claudin release
 vs the Typecheck build) was run twice: 120 errors in one file × 3 reps, then 600
@@ -18,6 +22,11 @@ errors across 60 files × 1 rep. **The token thesis did not hold.**
 
 Per-rep final context on the A side spanned 40.5k–48.7k, so a ~20% cost delta
 over 3 reps is suggestive, not conclusive.
+
+The single-shot bench `scripts/bench/typecheck-ab.ts` measured **21× smaller
+payload than raw `tsc`** on a 40-error fixture (verified live against sonnet 5)
+— far more on this repo. That figure is the payload ceiling, not an end-to-end
+saving; the multi-turn runs below are what the tool is worth in a session.
 
 **Why the payload win does not become a context win.** Without the tool the
 agent builds its own baseline and filters in the shell — transcripts show
@@ -86,11 +95,9 @@ typecheck-shaped commands as checks, so `git stash`/`git stash pop` scored as
 `0B` — the headline said zero Bash checks while the transcript showed the
 forbidden pattern. Read the transcript, not the counter.
 
-**Two independent runs now say turn 1 needs a first-class answer.** Whatever the
-tool refuses, the model manufactures with shell commands. The remaining fix is
-the one deferred at design time: reconstruct HEAD's baseline in a temp worktree
-(`git worktree add --detach`) without touching the user's tree, so the first
-check of a session never has to choose between an unknown answer and a stash.
+**Two independent runs said turn 1 needed a first-class answer.** Whatever the
+tool refuses, the model manufactures with shell commands — which is what bought
+the worktree reconstruction described in [[typecheck-tool-baseline-design]].
 
 **Fifth run, with worktree reconstruction: the cleanest transcript of the
 series — 10 Typecheck calls, one per turn, zero Bash.** Turn 1's first call
@@ -115,5 +122,4 @@ for `git stash` to learn what is new.
 **How to apply:** do not cite a context-savings figure for this tool. Rebuild
 the fixture with overlapping errors before any further A/B. Bench runs die if
 the parent turn is interrupted — launch with `setsid nohup … & disown`. See
-[[typecheck-tool-baseline-design]] and [[clip-pin-cache-ab-2026-07-25]] for the
-other bench-design traps.
+[[clip-pin-cache-ab-2026-07-25]] for the other bench-design traps.

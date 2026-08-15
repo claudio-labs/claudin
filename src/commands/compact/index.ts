@@ -1,5 +1,5 @@
-import type { Command } from 'src/commands.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import type { Command } from 'src/commands/commands.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 
 const compact = {
   type: 'local',
@@ -9,7 +9,7 @@ const compact = {
   isEnabled: () => !isEnvTruthy(process.env.DISABLE_COMPACT),
   supportsNonInteractive: true,
   argumentHint: '<optional custom summarization instructions>',
-  load: () => import('./compact.js'),
+  load: () => import('src/commands/compact/compact.js'),
 } satisfies Command
 
 export default compact

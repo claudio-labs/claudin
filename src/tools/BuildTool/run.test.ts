@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { lastNonEmptyLine } from './progressLine.js'
-import { collectArtifacts, stripProgressRewrites } from './run.js'
+import { lastNonEmptyLine } from 'src/tools/BuildTool/progressLine.js'
+import { collectArtifacts, stripProgressRewrites } from 'src/tools/BuildTool/run.js'
 
 describe('collectArtifacts', () => {
   test('reads the executable cargo says it linked', () => {

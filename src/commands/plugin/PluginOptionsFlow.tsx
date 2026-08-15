@@ -8,13 +8,13 @@
  */
 
 import * as React from 'react';
-import type { LoadedPlugin } from 'src/types/plugin.js';
-import { errorMessage } from 'src/utils/errors.js';
-import { loadMcpServerUserConfig, saveMcpServerUserConfig } from 'src/services/plugins/mcpbHandler.js';
-import { getUnconfiguredChannels, type UnconfiguredChannel } from 'src/services/plugins/mcpPluginIntegration.js';
-import { loadAllPlugins } from 'src/services/plugins/pluginLoader.js';
-import { getUnconfiguredOptions, loadPluginOptions, type PluginOptionSchema, type PluginOptionValues, savePluginOptions } from 'src/services/plugins/pluginOptionsStorage.js';
-import { PluginOptionsDialog } from './PluginOptionsDialog.js';
+import type { LoadedPlugin } from 'src/shared/types/plugin.js';
+import { errorMessage } from 'src/shared/errors.js';
+import { loadMcpServerUserConfig, saveMcpServerUserConfig } from 'src/plugins/mcpbHandler.js';
+import { getUnconfiguredChannels, type UnconfiguredChannel } from 'src/plugins/mcpPluginIntegration.js';
+import { loadAllPlugins } from 'src/plugins/pluginLoader.js';
+import { getUnconfiguredOptions, loadPluginOptions, type PluginOptionSchema, type PluginOptionValues, savePluginOptions } from 'src/plugins/pluginOptionsStorage.js';
+import { PluginOptionsDialog } from 'src/commands/plugin/PluginOptionsDialog.js';
 
 /**
  * Post-install lookup: return the LoadedPlugin for the just-installed

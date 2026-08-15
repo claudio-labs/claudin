@@ -4,7 +4,7 @@
  * `required`? ANSWERED 2026-07-29 — yes; see RESULTS below. This script stays as
  * the reusable instrument for re-checking after a model or backend change.
  *
- * `convertToolsToResponsesTools` (src/services/api/codexShim.ts) asserted that
+ * `convertToolsToResponsesTools` (src/providers/shims/codexShim.ts) asserted that
  * since the initial commit — "Codex requires strict schemas: all properties must
  * be required" — with no recorded 400 backing it. That forced-required list is
  * what makes the model invent placeholder arguments (`pages: ""`), because it
@@ -46,7 +46,7 @@
  *   bun scripts/profile/codex-strict-probe.ts --model gpt-5.4 --only v2 --reps 5
  *
  * Credentials are read straight from the config dir rather than through
- * src/services/api/codexCredentials.js: importing that module pulls in the analytics
+ * src/providers/oauth/codexCredentials.js: importing that module pulls in the analytics
  * chain, which only resolves under the build's stub aliases. The token is used
  * for the Authorization header and is never printed.
  */

@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { Command } from '@commander-js/extra-typings'
 
-import { registerMcpDoctorCommand } from './doctorCommand.js'
+import { registerMcpDoctorCommand } from 'src/commands/mcp/doctorCommand.js'
 
 test('registerMcpDoctorCommand adds the doctor subcommand with expected options', () => {
   const mcp = new Command('mcp')

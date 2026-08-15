@@ -4,7 +4,7 @@
 > **LoC:** ~330 (filters: 5 jest/vitest/bun-test/mocha/playwright + tsc + 2 git extensions)
 > **PR:** _(preencher)_
 > **Parent spec:** [`../architecture.md`](../architecture.md)
-> **Roadmap entry:** [6.2 — Bash output filter — tier-1 follow-ups](../../../../ROADMAP.md)
+> **Roadmap entry:** 6.2 — Bash output filter — tier-1 follow-ups (the repo-root `ROADMAP.md` this numbered was deleted in `367058c2`)
 
 Expansão do bash-output-filter para os comandos de **maior frequência** numa sessão de coding agent que ainda não estavam cobertos pelo 6.1 — derivada de auditoria de gaps post-6.1 (ver `bench scripts/profile/bash-filter-gain.test.ts` + tabela em [`README.md`](../README.md#status)).
 
@@ -37,24 +37,24 @@ A lista de gaps original cobre Linux **e** Windows. Esta fase implementa **somen
 
 | Arquivo | LoC | Specs |
 |---|---|---|
-| `src/outputFilter/Bash/filters/tests-js.ts` | ~140 | `jest`, `vitest`, `bunTest`, `mocha`, `playwright` |
-| `src/outputFilter/Bash/filters/tsc.ts` | ~30 | `tsc` |
-| `src/outputFilter/Bash/__fixtures__/samples/jest-clean.txt` | 60 lines | fixture |
-| `src/outputFilter/Bash/__fixtures__/samples/vitest-clean.txt` | 50 lines | fixture |
-| `src/outputFilter/Bash/__fixtures__/samples/bun-test-clean.txt` | 40 lines | fixture |
-| `src/outputFilter/Bash/__fixtures__/samples/mocha-clean.txt` | 35 lines | fixture |
-| `src/outputFilter/Bash/__fixtures__/samples/playwright-clean.txt` | 28 lines | fixture |
-| `src/outputFilter/Bash/__fixtures__/samples/tsc-errors.txt` | 38 lines | fixture |
+| `src/tools/shared/outputFilter/Bash/filters/tests-js.ts` | ~140 | `jest`, `vitest`, `bunTest`, `mocha`, `playwright` |
+| `src/tools/shared/outputFilter/Bash/filters/tsc.ts` | ~30 | `tsc` |
+| `src/tools/shared/outputFilter/Bash/__fixtures__/samples/jest-clean.txt` | 60 lines | fixture |
+| `src/tools/shared/outputFilter/Bash/__fixtures__/samples/vitest-clean.txt` | 50 lines | fixture |
+| `src/tools/shared/outputFilter/Bash/__fixtures__/samples/bun-test-clean.txt` | 40 lines | fixture |
+| `src/tools/shared/outputFilter/Bash/__fixtures__/samples/mocha-clean.txt` | 35 lines | fixture |
+| `src/tools/shared/outputFilter/Bash/__fixtures__/samples/playwright-clean.txt` | 28 lines | fixture |
+| `src/tools/shared/outputFilter/Bash/__fixtures__/samples/tsc-errors.txt` | 38 lines | fixture |
 | (idem em `docs/discovery/bash-output-filter/validation/samples/`) | — | mirror — `bashFilter.test.ts` lê desse path |
 
 ### Arquivos modificados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/outputFilter/Bash/filters/git.ts` | adiciona `gitDiff`, `gitShow` no final + 3 const regex (`GIT_DIFF_STRIP_HEADER`/`INDEX`/`NOEOL`) |
-| `src/outputFilter/Bash/filters/index.ts` | importa + registra os 8 specs novos no `builtInFilters` (test-runners JS/TS antes dos single-word `jest`/`vitest`/`mocha` p/ ordem específica primeiro; git-diff/show no bloco git) |
-| `src/outputFilter/Bash/__fixtures__/samples/git-diff.txt` | overwrite (era 0 bytes, agora 3.1 KB realista) |
-| `src/outputFilter/Bash/bashFilter.test.ts` | + 8 `describe()` blocks no final do arquivo (1 por filter) — assertReduction + match positivo + reject + safety guards |
+| `src/tools/shared/outputFilter/Bash/filters/git.ts` | adiciona `gitDiff`, `gitShow` no final + 3 const regex (`GIT_DIFF_STRIP_HEADER`/`INDEX`/`NOEOL`) |
+| `src/tools/shared/outputFilter/Bash/filters/index.ts` | importa + registra os 8 specs novos no `builtInFilters` (test-runners JS/TS antes dos single-word `jest`/`vitest`/`mocha` p/ ordem específica primeiro; git-diff/show no bloco git) |
+| `src/tools/shared/outputFilter/Bash/__fixtures__/samples/git-diff.txt` | overwrite (era 0 bytes, agora 3.1 KB realista) |
+| `src/tools/shared/outputFilter/Bash/bashFilter.test.ts` | + 8 `describe()` blocks no final do arquivo (1 por filter) — assertReduction + match positivo + reject + safety guards |
 | `scripts/profile/bash-filter-gain.test.ts` | + 8 entradas no `SCENARIOS` array |
 
 ## Specs concretos
@@ -118,8 +118,8 @@ const GIT_SHOW_AUTHOR_DATE_RE =
 ## Tests
 
 ```bash
-bun test src/outputFilter/Bash/bashFilter.test.ts          # +50 asserts em phase 6.2 blocks
-bun test src/outputFilter/Bash                              # full suite — 306 pass / 71 skip
+bun test src/tools/shared/outputFilter/Bash/bashFilter.test.ts          # +50 asserts em phase 6.2 blocks
+bun test src/tools/shared/outputFilter/Bash                              # full suite — 306 pass / 71 skip
 CLAUDIN_BENCH=1 bun test scripts/profile/bash-filter-gain.test.ts   # gain table — 31 filters total
 bun run typecheck                                           # zero novos erros (TS errors pré-existentes não relacionados)
 ```
@@ -194,7 +194,7 @@ PowerShell tem 2 peculiaridades vs bash que precisam de spec antes de implementa
 
 ## Implementation notes
 
-- **Two sample directories.** ~~O harness (`bashFilter.test.ts:21`) lê de `docs/discovery/bash-output-filter/validation/samples/`, não de `src/outputFilter/Bash/__fixtures__/samples/`. Toda fixture nova precisa ser duplicada nos dois diretórios.~~ (Causa pegou a primeira execução desta fase — 6 testes falharam porque só copiei pra `__fixtures__/`.) **RESOLVIDO:** os dois diretórios foram fundidos em `__fixtures__/samples/` e todos os consumidores apontam pra lá — não duplique mais nada.
+- **Two sample directories.** ~~O harness (`bashFilter.test.ts:21`) lê de `docs/discovery/bash-output-filter/validation/samples/`, não de `src/tools/shared/outputFilter/Bash/__fixtures__/samples/`. Toda fixture nova precisa ser duplicada nos dois diretórios.~~ (Causa pegou a primeira execução desta fase — 6 testes falharam porque só copiei pra `__fixtures__/`.) **RESOLVIDO:** os dois diretórios foram fundidos em `__fixtures__/samples/` e todos os consumidores apontam pra lá — não duplique mais nada.
 - **`runFilterBody` vs `applyBashFilterToStdout`.** O helper de teste já strippa o `<bash-output-filtered>` wrapper antes de retornar — usar nos asserts. O `applyBashFilterToStdout` raw retorna com wrapper.
 - **Bench fixture target ≠ test fixture target.** Reduzi `git-show` de 8% → 5% após medir; o teto real é a metadata (commit/Author/Date/index/diff--git lines), o body do diff é >95% do output e é preservado por design. Para um fixture com diff curtos a redução pode ir mais alto, mas 5% é o mínimo seguro.
 - **Two-alternation forms.** `RSPEC_MATCH = /^rspec\b|^bundle\s+exec\s+rspec\b/` e similares são intencionais — evitam o flag REDOS_PATTERNS #5 (nested optional with quantifier). Não trocar por `^(?:bundle\s+exec\s+)?rspec\b`.

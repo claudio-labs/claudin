@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { parseBunBuild } from './bunBuild.js'
-import { parseEsbuild } from './esbuild.js'
-import { parseGnuStyle } from './gnuStyle.js'
-import { parseDiagnostics } from './index.js'
-import { parseKotlinc } from './kotlinc.js'
-import { parseMixCompile } from './mixCompile.js'
-import { parseSbtBracket } from './sbtBracket.js'
-import type { ParseInput } from './types.js'
+import { parseBunBuild } from 'src/tools/shared/diagnostics/bunBuild.js'
+import { parseEsbuild } from 'src/tools/shared/diagnostics/esbuild.js'
+import { parseGnuStyle } from 'src/tools/shared/diagnostics/gnuStyle.js'
+import { parseDiagnostics } from 'src/tools/shared/diagnostics/index.js'
+import { parseKotlinc } from 'src/tools/shared/diagnostics/kotlinc.js'
+import { parseMixCompile } from 'src/tools/shared/diagnostics/mixCompile.js'
+import { parseSbtBracket } from 'src/tools/shared/diagnostics/sbtBracket.js'
+import type { ParseInput } from 'src/tools/shared/diagnostics/types.js'
 
 function input(stdout: string, exitCode = 1): ParseInput {
   return { stdout, stderr: '', exitCode }
@@ -16,19 +16,19 @@ describe('parseKotlinc', () => {
   test('reads the file:// form gradle prints', () => {
     const out = [
       '> Task :app:compileKotlin FAILED',
-      'e: file:///p/src/main/kotlin/Foo.kt:10:20 Unresolved reference: bar',
-      "w: file:///p/src/main/kotlin/Foo.kt:3:5 Variable 'x' is never used",
+      'e: file:///p/src/platform/main/kotlin/Foo.kt:10:20 Unresolved reference: bar',
+      "w: file:///p/src/platform/main/kotlin/Foo.kt:3:5 Variable 'x' is never used",
     ].join('\n')
     expect(parseKotlinc(input(out))?.diagnostics).toEqual([
       {
-        file: '/p/src/main/kotlin/Foo.kt',
+        file: '/p/src/platform/main/kotlin/Foo.kt',
         line: 10,
         column: 20,
         severity: 'error',
         message: 'Unresolved reference: bar',
       },
       {
-        file: '/p/src/main/kotlin/Foo.kt',
+        file: '/p/src/platform/main/kotlin/Foo.kt',
         line: 3,
         column: 5,
         severity: 'warning',
@@ -47,9 +47,9 @@ describe('parseKotlinc', () => {
   })
 
   test('reads the parenthesised form older gradle plugins emit', () => {
-    const out = 'e: /p/src/main/kotlin/Foo.kt: (10, 20): Unresolved reference: bar'
+    const out = 'e: /p/src/platform/main/kotlin/Foo.kt: (10, 20): Unresolved reference: bar'
     expect(parseKotlinc(input(out))?.diagnostics[0]).toEqual({
-      file: '/p/src/main/kotlin/Foo.kt',
+      file: '/p/src/platform/main/kotlin/Foo.kt',
       line: 10,
       column: 20,
       severity: 'error',
@@ -68,19 +68,19 @@ describe('parseKotlinc', () => {
 describe('parseSbtBracket', () => {
   test('reads the scala 2 position line', () => {
     const out = [
-      '[error] /p/src/main/scala/Foo.scala:12:5: not found: value bar',
-      '[warn] /p/src/main/scala/Foo.scala:3:1: unused import',
+      '[error] /p/src/platform/main/scala/Foo.scala:12:5: not found: value bar',
+      '[warn] /p/src/platform/main/scala/Foo.scala:3:1: unused import',
     ].join('\n')
     expect(parseSbtBracket(input(out))?.diagnostics).toEqual([
       {
-        file: '/p/src/main/scala/Foo.scala',
+        file: '/p/src/platform/main/scala/Foo.scala',
         line: 12,
         column: 5,
         severity: 'error',
         message: 'not found: value bar',
       },
       {
-        file: '/p/src/main/scala/Foo.scala',
+        file: '/p/src/platform/main/scala/Foo.scala',
         line: 3,
         column: 1,
         severity: 'warning',
@@ -262,19 +262,19 @@ describe('parseBunBuild', () => {
 describe('parseDiagnostics with several native parsers', () => {
   test('merges the formats one gradle run emits from two tasks', () => {
     const out = [
-      'e: file:///p/src/main/kotlin/Foo.kt:10:20 Unresolved reference: bar',
-      '/p/src/main/java/Bar.java:7: error: cannot find symbol',
+      'e: file:///p/src/platform/main/kotlin/Foo.kt:10:20 Unresolved reference: bar',
+      '/p/src/platform/main/java/Bar.java:7: error: cannot find symbol',
     ].join('\n')
     const outcome = parseDiagnostics([parseKotlinc, parseGnuStyle], input(out))
     expect(outcome.degraded).toBe(false)
     expect(outcome.diagnostics.map(d => d.file)).toEqual([
-      '/p/src/main/kotlin/Foo.kt',
-      '/p/src/main/java/Bar.java',
+      '/p/src/platform/main/kotlin/Foo.kt',
+      '/p/src/platform/main/java/Bar.java',
     ])
   })
 
   test('reports one entry when two native parsers read the same line', () => {
-    const out = '/p/src/main/java/Bar.java:7: error: cannot find symbol'
+    const out = '/p/src/platform/main/java/Bar.java:7: error: cannot find symbol'
     const outcome = parseDiagnostics([parseGnuStyle, parseGnuStyle], input(out))
     expect(outcome.diagnostics).toHaveLength(1)
   })

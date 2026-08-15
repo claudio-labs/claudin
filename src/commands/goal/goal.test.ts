@@ -1,12 +1,12 @@
 import { afterAll, describe, expect, mock, test } from 'bun:test'
-import type { AppState } from 'src/state/AppStateStore.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
-} from 'src/types/command.js'
-import { GOAL_MAX_CONDITION_LENGTH } from 'src/services/goal/goal.js'
-import type { SessionStore } from 'src/services/lifecycleHooks/sessionHooks.js'
+} from 'src/shared/types/command.js'
+import { GOAL_MAX_CONDITION_LENGTH } from 'src/agent/goal/goal.js'
+import type { SessionStore } from 'src/platform/lifecycleHooks/sessionHooks.js'
 
 // The /goal set path consults process-global gates (hook policy snapshot +
 // workspace trust). In a full-suite run, earlier test files can leave those
@@ -14,30 +14,30 @@ import type { SessionStore } from 'src/services/lifecycleHooks/sessionHooks.js'
 // bail with a policy message. Pin the gates to their permissive defaults so
 // this file is deterministic regardless of run order.
 const realHooksConfigSnapshot = await import(
-  'src/services/lifecycleHooks/hooksConfigSnapshot.js'
+  'src/platform/lifecycleHooks/hooksConfigSnapshot.js'
 )
-mock.module('src/services/lifecycleHooks/hooksConfigSnapshot.js', () => ({
+mock.module('src/platform/lifecycleHooks/hooksConfigSnapshot.js', () => ({
   ...realHooksConfigSnapshot,
   shouldDisableAllHooksIncludingManaged: () => false,
   shouldAllowManagedHooksOnly: () => false,
 }))
-const realHooksShared = await import('src/services/lifecycleHooks/shared.js')
-mock.module('src/services/lifecycleHooks/shared.js', () => ({
+const realHooksShared = await import('src/platform/lifecycleHooks/shared.js')
+mock.module('src/platform/lifecycleHooks/shared.js', () => ({
   ...realHooksShared,
   shouldSkipHookDueToTrust: () => false,
 }))
 
-const { call, parseGoalArgs } = await import('./goal.js')
+const { call, parseGoalArgs } = await import('src/commands/goal/goal.js')
 
 // Re-pin the mocked modules to their captured real namespaces. Bun's
 // `mock.module` is process-global and `mock.restore()` does not undo it, so
 // without this every later test file would inherit this file's stubs.
 afterAll(() => {
   mock.module(
-    'src/services/lifecycleHooks/hooksConfigSnapshot.js',
+    'src/platform/lifecycleHooks/hooksConfigSnapshot.js',
     () => realHooksConfigSnapshot,
   )
-  mock.module('src/services/lifecycleHooks/shared.js', () => realHooksShared)
+  mock.module('src/platform/lifecycleHooks/shared.js', () => realHooksShared)
 })
 
 describe('parseGoalArgs', () => {
@@ -187,7 +187,7 @@ describe('/goal command', () => {
     // Regression: headless.ts filters slash commands to prompt commands plus
     // local/local-jsx commands with supportsNonInteractive — without the
     // flag, `claudin -p '/goal ...'` fails with "Unknown skill: goal".
-    const { default: goalCommand } = await import('./index.js')
+    const { default: goalCommand } = await import('src/commands/goal/index.js')
     expect(goalCommand.type).toBe('local-jsx')
     expect(goalCommand.supportsNonInteractive).toBe(true)
   })

@@ -4,8 +4,11 @@ description: The single binary-release path (release-binaries.yml, OIDC not NPM_
 type: project
 ---
 
-Durable release-process facts for the native-binary distribution (architecture in
-compile-binary-distribution.md). The 2026-07-14 rollout is **complete** — binaries
+**Scope:** this file owns the RELEASE and PUBLISH side — the sole workflow, OIDC,
+the privacy gate, publish order and the npm gotchas. How the binaries are built,
+assembled, vendored and updated is [[compile-binary-distribution]].
+
+Durable release-process facts for the native-binary distribution. The 2026-07-14 rollout is **complete** — binaries
 are live (tags v1.0.1 → v1.0.8+ published; `@claudiolabs/claudin@latest` is the
 binary wrapper, not the old Node package). What remains durable:
 
@@ -48,3 +51,7 @@ NPM_TOKEN.**
 - **`assemble-packages.ts` hard-fails if ANY of the 8 platform binaries is missing**
   — a flaky `windows-11-arm` / musl-Alpine leg fails the whole release rather than
   shipping a partial wrapper.
+- **Publish order is platform-first, wrapper-LAST** — the wrapper's
+  `optionalDependencies` pin exact platform versions, so publishing it before its
+  legs would point `latest` at a version whose binaries do not exist yet. A bad
+  leg must never be able to flip `latest`.

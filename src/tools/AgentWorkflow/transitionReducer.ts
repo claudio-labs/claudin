@@ -13,7 +13,7 @@ import {
   type RunStatus,
   type StepDecision,
   type WorkflowDef,
-} from './types.js'
+} from 'src/tools/AgentWorkflow/types.js'
 
 /**
  * Apply the main's decision for the phase the run is currently on. Returns a

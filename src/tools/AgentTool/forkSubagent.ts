@@ -4,19 +4,19 @@ import { randomUUID } from 'crypto'
 import {
   FORK_BOILERPLATE_TAG,
   FORK_DIRECTIVE_PREFIX,
-} from 'src/constants/xml.js'
-import { isCoordinatorMode } from 'src/coordinator/coordinatorMode.js'
+} from 'src/shared/constants/xml.js'
+import { isCoordinatorMode } from 'src/agent/coordinator/coordinatorMode.js'
 import type {
   AssistantMessage,
   Message as MessageType,
-} from 'src/types/message.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { createUserMessage } from 'src/services/messages/messages.js'
+} from 'src/shared/types/message.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { createUserMessage } from 'src/agent/messages/messages.js'
 import {
   WORKTREE_STASH_WARNING,
   WORKTREE_WRITE_SCOPE_NOTE,
-} from 'src/constants/worktreeSafety.js'
-import type { BuiltInAgentDefinition } from './loadAgentsDir.js'
+} from 'src/shared/constants/worktreeSafety.js'
+import type { BuiltInAgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 
 /**
  * Fork subagent feature gate.
@@ -164,7 +164,7 @@ export function buildForkedMessages(
   // TODO(smoosh): this text sibling creates a [tool_result, text] pattern on the wire
   // (renders as </function_results>\n\nHuman:<text>). One-off per-child construction,
   // not a repeated teacher, so low-priority. If we ever care, use smooshIntoToolResult
-  // from src/services/messages/messages.ts to fold the directive into the last tool_result.content.
+  // from src/agent/messages/messages.ts to fold the directive into the last tool_result.content.
   const toolResultMessage = createUserMessage({
     content: [
       ...toolResultBlocks,

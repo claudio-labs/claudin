@@ -72,7 +72,7 @@ export type StallReport = {
  * What the TUI shows while the build is still running.
  *
  * Declared here rather than added to the `ToolProgressData` union in
- * `src/types/tools.js`, because that module does not exist in this fork — all
+ * `src/shared/types/tools.js`, because that module does not exist in this fork — all
  * 19 imports of it are unresolved and stubbed at bundle time, so the union is
  * effectively `any`. Creating it to hold this one type would make every one of
  * those imports resolve at once against a partial file. Nothing needs the

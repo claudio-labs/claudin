@@ -77,7 +77,7 @@ what wave 7 attacks.
 
 ## Wave 7 in detail
 
-`src/components/grove/Grove.tsx`'s `useEffect` runs:
+`src/platform/privacy/ui/Grove.tsx`'s `useEffect` runs:
 
 ```ts
 const [settingsResult, configResult] = await Promise.all([
@@ -92,7 +92,7 @@ Both functions are `memoize`d but fire HTTP GETs to
 launches where the OAuth-consumer gate qualifies, the dialog mount
 blocks the REPL render for the network roundtrip.
 
-Wave 7 kicks both calls from `src/entrypoints/cli.tsx`, immediately after
+Wave 7 kicks both calls from `src/platform/entrypoints/cli.tsx`, immediately after
 `tryGetActiveProvider()` resolves, gated on `activeProvider.transport ===
 'anthropic'`. Fire-and-forget; the existing memo guarantees the
 dialog's `Promise.all` resolves from cache by the time it mounts (~570 ms
@@ -228,5 +228,5 @@ If someone picks this up again, the remaining concentrated cost lives in:
 3. MCP configs parse (28 ms): could become lazy if MCP servers are
    permitted to connect after first paint and merge into `appState.mcp`
    as they resolve — but the comment in
-   `src/main/action/startupSequence.ts:327` already claims that's the
+   `src/platform/main/action/startupSequence.ts:327` already claims that's the
    case for connection; only the config *parse* still happens inline.

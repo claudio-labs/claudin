@@ -1,15 +1,15 @@
 import type { z } from 'zod/v4'
-import { getOriginalCwd } from 'src/bootstrap/state.js'
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import {
   extractOutputRedirections,
   splitCommand_DEPRECATED,
-} from 'src/services/bash/commands.js'
-import { tryParseShellCommand } from 'src/services/bash/shellQuote.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { isCurrentDirectoryBareGitRepo } from 'src/services/git/git.js'
-import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
-import { getPlatform } from 'src/utils/proc/platform.js'
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
+} from 'src/platform/bash/commands.js'
+import { tryParseShellCommand } from 'src/platform/bash/shellQuote.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { isCurrentDirectoryBareGitRepo } from 'src/vcs/git/git.js'
+import type { PermissionResult } from 'src/permissions/PermissionResult.js'
+import { getPlatform } from 'src/shared/proc/platform.js'
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import {
   containsVulnerableUncPath,
   DOCKER_READ_ONLY_COMMANDS,
@@ -19,16 +19,16 @@ import {
   PYRIGHT_READ_ONLY_COMMANDS,
   RIPGREP_READ_ONLY_COMMANDS,
   validateFlags,
-} from 'src/services/shell/readOnlyCommandValidation.js'
-import type { BashTool } from './BashTool.js'
-import { isNormalizedGitCommand } from './bashPermissions.js'
-import { bashCommandIsSafe_DEPRECATED } from './bashSecurity.js'
+} from 'src/platform/shell/readOnlyCommandValidation.js'
+import type { BashTool } from 'src/tools/BashTool/BashTool.js'
+import { isNormalizedGitCommand } from 'src/tools/BashTool/bashPermissions.js'
+import { bashCommandIsSafe_DEPRECATED } from 'src/tools/BashTool/bashSecurity.js'
 import {
   COMMAND_OPERATION_TYPE,
   PATH_EXTRACTORS,
   type PathCommand,
-} from './pathValidation.js'
-import { sedCommandIsAllowedByAllowlist } from './sedValidation.js'
+} from 'src/tools/BashTool/pathValidation.js'
+import { sedCommandIsAllowedByAllowlist } from 'src/tools/BashTool/sedValidation.js'
 
 // Unified command validation configuration system
 type CommandConfig = {

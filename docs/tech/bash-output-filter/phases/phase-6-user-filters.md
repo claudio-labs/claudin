@@ -18,10 +18,10 @@ Abre superfície de extensão: usuário cria `~/.claudin/filters.json` com filtr
 
 | Arquivo | Mudança | LoC |
 |---|---|---|
-| `src/outputFilter/Bash/userFilters.ts` | Implementar `loadUserFilters`, `parseUserFilter`, ReDoS guards (length cap + denylist) | +150 |
-| `src/outputFilter/Bash/registry.ts` | Confirmar que `userFilters()` é chamado depois dos `builtInFilters` (precedência) | +5 |
-| `src/outputFilter/Bash/userFilters.test.ts` | Tests pra malformed JSON, denylisted regex, length cap, valid spec, regex compilation failure | +120 |
-| `src/outputFilter/Bash/__fixtures__/user-filters/` (NEW) | Sample valid + 5 malformed JSON files pra testar load behavior | +5 files |
+| `src/tools/shared/outputFilter/Bash/userFilters.ts` | Implementar `loadUserFilters`, `parseUserFilter`, ReDoS guards (length cap + denylist) | +150 |
+| `src/tools/shared/outputFilter/Bash/registry.ts` | Confirmar que `userFilters()` é chamado depois dos `builtInFilters` (precedência) | +5 |
+| `src/tools/shared/outputFilter/Bash/userFilters.test.ts` | Tests pra malformed JSON, denylisted regex, length cap, valid spec, regex compilation failure | +120 |
+| `src/tools/shared/outputFilter/Bash/__fixtures__/user-filters/` (NEW) | Sample valid + 5 malformed JSON files pra testar load behavior | +5 files |
 
 ## Steps
 
@@ -189,8 +189,8 @@ Abre superfície de extensão: usuário cria `~/.claudin/filters.json` com filtr
 ## Tests
 
 ```bash
-bun test src/outputFilter/Bash/userFilters.test.ts
-bun test src/outputFilter/Bash
+bun test src/tools/shared/outputFilter/Bash/userFilters.test.ts
+bun test src/tools/shared/outputFilter/Bash
 bun run typecheck
 bun run verify:privacy
 ```

@@ -1,4 +1,4 @@
-import { TYPECHECK_TOOL_NAME } from './prompt.js'
+import { TYPECHECK_TOOL_NAME } from 'src/tools/TypecheckTool/prompt.js'
 import {
   createOneShotMemo,
   createOutputTrimTailStripper,

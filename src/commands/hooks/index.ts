@@ -1,11 +1,11 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 
 const hooks = {
   type: 'local-jsx',
   name: 'hooks',
   description: 'View hook configurations for tool events',
   immediate: true,
-  load: () => import('./hooks.js'),
+  load: () => import('src/commands/hooks/hooks.js'),
 } satisfies Command
 
 export default hooks

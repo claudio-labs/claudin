@@ -3,7 +3,7 @@
  *
  * Spawns a fresh `bun` subprocess that:
  *   1. Registers a Bun plugin which records every `onResolve` call.
- *   2. Imports `getAllBaseTools` from `src/tools.ts` and calls it.
+ *   2. Imports `getAllBaseTools` from `src/tools/tools.ts` and calls it.
  *   3. Reports back the set of `tools/<Subdir>/` paths the resolver saw.
  *
  * The set is the empirical answer to "which tool modules does building the
@@ -29,7 +29,7 @@ import { resolve } from 'node:path'
 import { describe, expect, test } from 'bun:test'
 
 const REPO_ROOT = resolve(import.meta.dir, '..', '..')
-const TOOLS_TS = resolve(REPO_ROOT, 'src', 'tools.ts')
+const TOOLS_TS = resolve(REPO_ROOT, 'src', 'tools', 'tools.ts')
 
 /**
  * The probe that runs in the child subprocess. Returns JSON on stdout.

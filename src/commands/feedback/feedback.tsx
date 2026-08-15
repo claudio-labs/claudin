@@ -1,8 +1,8 @@
 import * as React from 'react';
-import type { CommandResultDisplay, LocalJSXCommandContext } from 'src/commands.js';
-import { Feedback } from 'src/components/Feedback.js';
-import type { LocalJSXCommandOnDone } from 'src/types/command.js';
-import type { Message } from 'src/types/message.js';
+import type { CommandResultDisplay, LocalJSXCommandContext } from 'src/commands/commands.js';
+import { Feedback } from 'src/platform/Feedback.js';
+import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js';
+import type { Message } from 'src/shared/types/message.js';
 
 // Shared function to render the Feedback component
 export function renderFeedbackComponent(onDone: (result?: string, options?: {

@@ -1,21 +1,21 @@
 import { feature } from 'bun:bundle'
 import { z } from 'zod/v4'
-import { getKairosActive, getUserMsgOptIn } from 'src/bootstrap/state.js'
-import { getFeatureValue_CACHED_WITH_REFRESH } from 'src/services/analytics/growthbook.js'
-import { logEvent } from 'src/services/analytics/index.js'
-import type { ValidationResult } from 'src/Tool.js'
-import { buildTool, type ToolDef } from 'src/Tool.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { plural } from 'src/utils/text/stringUtils.js'
-import { resolveAttachments, validateAttachmentPaths } from './attachments.js'
+import { getKairosActive, getUserMsgOptIn } from 'src/platform/bootstrap/state.js'
+import { getFeatureValue_CACHED_WITH_REFRESH } from 'src/platform/analytics/growthbook.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import type { ValidationResult } from 'src/tools/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { plural } from 'src/shared/text/stringUtils.js'
+import { resolveAttachments, validateAttachmentPaths } from 'src/tools/BriefTool/attachments.js'
 import {
   BRIEF_TOOL_NAME,
   BRIEF_TOOL_PROMPT,
   DESCRIPTION,
   LEGACY_BRIEF_TOOL_NAME,
-} from './prompt.js'
-import { renderToolResultMessage, renderToolUseMessage } from './UI.js'
+} from 'src/tools/BriefTool/prompt.js'
+import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/BriefTool/UI.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({

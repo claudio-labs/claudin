@@ -5,44 +5,44 @@ import {
   PDF_AT_MENTION_INLINE_THRESHOLD,
   PDF_EXTRACT_SIZE_THRESHOLD,
   PDF_MAX_PAGES_PER_READ,
-} from 'src/constants/apiLimits.js'
-import { isAutoMemFile } from 'src/memdir/memoryFileDetection.js'
-import { logEvent } from 'src/services/analytics/index.js'
+} from 'src/shared/constants/apiLimits.js'
+import { isAutoMemFile } from 'src/memory/memdir/memoryFileDetection.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   getFileExtensionForAnalytics,
-} from 'src/services/analytics/metadata.js'
-import { createUserMessage } from 'src/services/messages/messages.js'
-import type { ToolUseContext } from 'src/Tool.js'
+} from 'src/platform/analytics/metadata.js'
+import { createUserMessage } from 'src/agent/messages/messages.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { detectOutlineLangFromPath } from 'src/tools/shared/codeOutline/scanSymbols.js'
-import { logFileOperation } from 'src/utils/fileOperationAnalytics.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { readNotebook } from 'src/utils/fs/notebook.js'
-import { extractPDFPages, getPDFPageCount, readPDF } from 'src/utils/fs/pdf.js'
+import { logFileOperation } from 'src/platform/fileOperationAnalytics.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { readNotebook } from 'src/shared/fs/notebook.js'
+import { extractPDFPages, getPDFPageCount, readPDF } from 'src/shared/fs/pdf.js'
 import {
   isPDFExtension,
   isPDFSupported,
   parsePDFPageRange,
-} from 'src/utils/fs/pdfUtils.js'
+} from 'src/shared/fs/pdfUtils.js'
 import {
   FileTooLargeError,
   type ReadFileRangeResult,
   readFileInRange,
-} from 'src/utils/fs/readFileInRange.js'
+} from 'src/shared/fs/readFileInRange.js'
 import {
   createImageMetadataText,
   maybeResizeAndDownsampleImageBuffer,
-} from 'src/utils/imageResizer.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
-import { formatFileSize } from 'src/utils/text/format.js'
+} from 'src/terminal/image/imageResizer.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
+import { formatFileSize } from 'src/shared/text/format.js'
 import {
   detectSessionFileType,
   IMAGE_EXTENSIONS,
   MaxFileReadTokenExceededError,
   validateContentTokens,
-} from './guards.js'
-import { readImageWithTokenBudget } from './imageRead.js'
+} from 'src/tools/FileReadTool/guards.js'
+import { readImageWithTokenBudget } from 'src/tools/FileReadTool/imageRead.js'
 import {
   autoOutlineOnElisionEnabled,
   findSymbolEntry,
@@ -53,9 +53,9 @@ import {
   READ_AUTO_OUTLINE_THRESHOLD_CHARS,
   READ_AUTO_OUTLINE_THRESHOLD_LINES,
   scanFile,
-} from './outlineView.js'
-import { markMemoryFileMtime } from './resultContent.js'
-import type { Output } from './schemas.js'
+} from 'src/tools/FileReadTool/outlineView.js'
+import { markMemoryFileMtime } from 'src/tools/FileReadTool/resultContent.js'
+import type { Output } from 'src/tools/FileReadTool/schemas.js'
 
 /**
  * Inner implementation of call, separated to allow ENOENT handling in the outer call.

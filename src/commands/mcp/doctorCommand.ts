@@ -19,7 +19,7 @@ export function registerMcpDoctorCommand(mcp: Command): void {
       configOnly?: boolean
       json?: boolean
     }) => {
-      const { mcpDoctorHandler } = await import('src/cli/handlers/mcp.js')
+      const { mcpDoctorHandler } = await import('src/platform/headless/handlers/mcp.js')
       await mcpDoctorHandler(name, options)
     })
 }

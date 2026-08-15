@@ -1,26 +1,26 @@
 import { feature } from 'bun:bundle'
 import { z } from 'zod/v4'
-import { clearInvokedSkillsForAgent } from 'src/bootstrap/state.js'
+import { clearInvokedSkillsForAgent } from 'src/platform/bootstrap/state.js'
 import {
   ALL_AGENT_DISALLOWED_TOOLS,
   ASYNC_AGENT_ALLOWED_TOOLS,
   CUSTOM_AGENT_DISALLOWED_TOOLS,
   IN_PROCESS_TEAMMATE_ALLOWED_TOOLS,
-} from 'src/constants/tools.js'
-import { startAgentSummarization } from 'src/services/AgentSummary/agentSummary.js'
+} from 'src/tools/constants/tools.js'
+import { startAgentSummarization } from 'src/agent/summary/agentSummary.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import { clearDumpState } from 'src/services/api/dumpPrompts.js'
-import type { AppState } from 'src/state/AppState.js'
+} from 'src/platform/analytics/index.js'
+import { clearDumpState } from 'src/providers/transport/dumpPrompts.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import type {
   Tool,
   ToolPermissionContext,
   Tools,
   ToolUseContext,
-} from 'src/Tool.js'
-import { toolMatchesName } from 'src/Tool.js'
+} from 'src/tools/Tool.js'
+import { toolMatchesName } from 'src/tools/Tool.js'
 import {
   completeAgentTask as completeAsyncAgent,
   createActivityDescriptionResolver,
@@ -34,31 +34,31 @@ import {
   type ProgressTracker,
   updateAgentProgress as updateAsyncAgentProgress,
   updateProgressFromMessage,
-} from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
-import { asAgentId } from 'src/types/ids.js'
-import type { Message as MessageType } from 'src/types/message.js'
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isInProtectedNamespace } from 'src/utils/envUtils.js'
-import { AbortError, errorMessage } from 'src/utils/errors.js'
-import type { CacheSafeParams } from 'src/coordinator/forkedAgent.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+} from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
+import { asAgentId } from 'src/shared/types/ids.js'
+import type { Message as MessageType } from 'src/shared/types/message.js'
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isInProtectedNamespace } from 'src/shared/envUtils.js'
+import { AbortError, errorMessage } from 'src/shared/errors.js'
+import type { CacheSafeParams } from 'src/agent/coordinator/forkedAgent.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   extractTextContent,
   getLastAssistantMessage,
-} from 'src/services/messages/messages.js'
-import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
-import { permissionRuleValueFromString } from 'src/services/permissions/permissionRuleParser.js'
+} from 'src/agent/messages/messages.js'
+import type { PermissionMode } from 'src/permissions/PermissionMode.js'
+import { permissionRuleValueFromString } from 'src/permissions/permissionRuleParser.js'
 import {
   buildTranscriptForClassifier,
   classifyYoloAction,
-} from 'src/services/permissions/yoloClassifier.js'
-import { emitTaskProgress as emitTaskProgressEvent } from 'src/tasks/sdkProgress.js'
-import { isInProcessTeammate } from 'src/coordinator/teammateContext.js'
-import { getTokenCountFromUsage } from 'src/services/context/tokens.js'
+} from 'src/permissions/yoloClassifier.js'
+import { emitTaskProgress as emitTaskProgressEvent } from 'src/agent/tasks/sdkProgress.js'
+import { isInProcessTeammate } from 'src/agent/coordinator/teammateContext.js'
+import { getTokenCountFromUsage } from 'src/agent/context/tokens.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
-import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } from './constants.js'
-import type { AgentDefinition } from './loadAgentsDir.js'
+import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 export type ResolvedAgentTools = {
   hasWildcard: boolean
   validTools: string[]

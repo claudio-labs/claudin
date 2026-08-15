@@ -3,7 +3,7 @@ import {
   ENTRYPOINT_NAME,
   MAX_ENTRYPOINT_BYTES,
   MAX_ENTRYPOINT_LINES,
-} from 'src/memdir/memdir.js'
+} from 'src/memory/memdir/memdir.js'
 
 // getAutoMemPath()/getTeamMemPath() return paths with a trailing separator
 // (paths.ts, teamMemPaths.ts) — strip it before interpolating so the prompt

@@ -1,4 +1,4 @@
-import type { TestResult } from './types.js'
+import type { TestResult } from 'src/tools/RunTestsTool/types.js'
 
 /**
  * Token-economy formatter. Turns a normalized TestResult into the model-facing

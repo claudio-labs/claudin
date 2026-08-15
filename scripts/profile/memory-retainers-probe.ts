@@ -121,7 +121,7 @@ async function main(): Promise<void> {
 
   // Silence heavy analytics/growthbook that some retainers import
   const { mock } = await import('bun:test')
-  mock.module('../../src/services/analytics/growthbook.js', () => ({
+  mock.module('../../src/platform/analytics/growthbook.js', () => ({
     getFeatureValue_CACHED_MAY_BE_STALE: () => false,
     getFeatureValue_CACHED_WITH_REFRESH: () => false,
     getFeatureValue_DEPRECATED: async () => false,
@@ -141,7 +141,7 @@ async function main(): Promise<void> {
     initializeGrowthBook: async () => null,
     getAllGrowthBookFeatures: () => ({}),
   }))
-  mock.module('../../src/services/analytics/index.js', () => ({
+  mock.module('../../src/platform/analytics/index.js', () => ({
     logEvent: () => {},
     logEventAsync: async () => {},
     attachAnalyticsSink: () => {},
@@ -151,7 +151,7 @@ async function main(): Promise<void> {
 
   // --- #1 perKeyClippedIds -------------------------------------------------
   try {
-    const mod = await import('../../src/services/compact/stableStubState.js')
+    const mod = await import('../../src/agent/compact/stableStubState.js')
     results.push(
       await measure(
         '#1 perKeyClippedIds (addClippedIds)',
@@ -182,7 +182,7 @@ async function main(): Promise<void> {
 
   // --- #2 ContentReplacementState (direct manipulation) -------------------
   try {
-    const mod = await import('../../src/services/tools/toolResultStorage.js')
+    const mod = await import('../../src/agent/tools/toolResultStorage.js')
     const state = mod.createContentReplacementState()
     results.push(
       await measure(
@@ -219,7 +219,7 @@ async function main(): Promise<void> {
 
   // --- #3 MCP connectToServer memoize cache -------------------------------
   try {
-    const mod = await import('../../src/services/mcp/client.js')
+    const mod = await import('../../src/mcp/client.js')
     const get = mod.__TEST_ONLY_getMemoizeCacheSize
     if (typeof get === 'function') {
       results.push({
@@ -240,7 +240,7 @@ async function main(): Promise<void> {
 
   // --- #5 fileReadCache ----------------------------------------------------
   try {
-    const mod = await import('../../src/utils/fs/fileReadCache.js')
+    const mod = await import('../../src/shared/fs/fileReadCache.js')
     const cache = mod.fileReadCache
     results.push({
       name: '#5 fileReadCache (observed)',
@@ -258,7 +258,7 @@ async function main(): Promise<void> {
 
   // --- #7 sessionIngress ---------------------------------------------------
   try {
-    const mod = await import('../../src/services/api/sessionIngress.js')
+    const mod = await import('../../src/providers/transport/sessionIngress.js')
     if (typeof mod._getSessionCountForTesting === 'function') {
       results.push({
         name: '#7 sessionIngress total sessions (observed)',
@@ -277,7 +277,7 @@ async function main(): Promise<void> {
 
   // --- #8 diagnosticTracker -----------------------------------------------
   try {
-    const mod = await import('../../src/services/diagnosticTracking.js')
+    const mod = await import('../../src/platform/diagnosticTracking.js')
     if (typeof mod.__TEST_ONLY_getDiagnosticTrackerSizes === 'function') {
       const sizes = mod.__TEST_ONLY_getDiagnosticTrackerSizes()
       let i = 0
@@ -299,7 +299,7 @@ async function main(): Promise<void> {
 
   // --- #9 agentTranscriptSubdirs -----------------------------------------
   try {
-    const mod = await import('../../src/services/session/sessionStorage.js')
+    const mod = await import('../../src/sessions/sessionStorage.js')
     if (typeof mod.__TEST_ONLY_getAgentTranscriptSubdirsSize === 'function') {
       results.push({
         name: '#9 agentTranscriptSubdirs (observed)',
@@ -317,7 +317,7 @@ async function main(): Promise<void> {
 
   // --- #10 sentBashGitInstructions ---------------------------------------
   try {
-    const mod = await import('../../src/services/attachments/attachments.js')
+    const mod = await import('../../src/agent/attachments/attachments.js')
     if (typeof mod.__TEST_ONLY_getBashGitInstructionsSize === 'function') {
       results.push({
         name: '#10 sentBashGitInstructions (observed)',
@@ -335,7 +335,7 @@ async function main(): Promise<void> {
 
   // --- #11 markdownTokenCache --------------------------------------------
   try {
-    const mod = await import('../../src/components/markdownTokenCache.js')
+    const mod = await import('../../src/terminal/markdown/markdownTokenCache.js')
     // Use cache hot path (cachedLexer) to fill it
     results.push(
       await measure(
@@ -356,7 +356,7 @@ async function main(): Promise<void> {
 
   // --- #13 classifierApprovals -------------------------------------------
   try {
-    const mod = await import('../../src/utils/classifierApprovalsHook.js')
+    const mod = await import('../../src/permissions/classifierApprovalsHook.js')
     if (typeof mod.__TEST_ONLY_getClassifierApprovalsSize === 'function') {
       results.push({
         name: '#13 classifierApprovals (observed)',

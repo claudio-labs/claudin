@@ -2,7 +2,7 @@
  * Measure how many tokens microCompact / stable-stub compression saves on a
  * realistic multi-turn session.
  *
- * `src/services/api/stableStub.benchmark.test.ts` already measures wire
+ * `src/providers/cache/stableStub.benchmark.test.ts` already measures wire
  * BYTES per engine, but it never converts those to tokens (which is what
  * users pay for) and it doesn't sweep across session sizes. This script
  * fills that gap:
@@ -43,12 +43,12 @@ import {
   _resetAllClippedIdsForTesting,
   addClippedIds,
   applyStableStubs,
-} from '../src/services/compact/stableStubState.js'
+} from '../src/agent/compact/stableStubState.js'
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
-} from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/services/config/config.js'
+} from '../src/shared/tokenEstimation.js'
+import { enableConfigs } from '../src/platform/config/config.js'
 
 type AnyMsg = {
   type?: string

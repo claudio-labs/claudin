@@ -1,8 +1,8 @@
 import React from 'react';
-import type { LocalJSXCommandContext } from 'src/commands.js';
-import type { LocalJSXCommandOnDone } from 'src/types/command.js';
+import type { LocalJSXCommandContext } from 'src/commands/commands.js';
+import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js';
 import Login from '../login/login.js';
-import { runExtraUsage } from './extra-usage-core.js';
+import { runExtraUsage } from 'src/commands/extra-usage/extra-usage-core.js';
 export async function call(onDone: LocalJSXCommandOnDone, context: LocalJSXCommandContext): Promise<React.ReactNode | null> {
   const result = await runExtraUsage();
   if (result.type === 'message') {

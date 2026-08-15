@@ -7,9 +7,10 @@
 > replayed, or practically harvested, and reverse-engineering the embedded key
 > rotates with every chisel release. This file consolidates the reverse-
 > engineering notes (previously scattered across team memories) as a reference
-> for any future attempt. The branch `feat/devin-provider` (`ec607be`) was pushed
-> but never merged; its wire-format commits are reusable if Cognition ever ships
-> a real API-key path for Devin chat.
+> for any future attempt. The branch `feat/devin-provider` (`ec607be`) went to the
+> retired self-hosted remote: neither the branch nor that sha exists in this repo
+> today, so the wire-format commits are **not** recoverable from here and the notes
+> below are what survives.
 
 The one still-live, generic memory is `mitmproxy-rust-binary-recipe.md` (TLS
 interception recipe for Rust agent CLIs) — kept in team memory because it is not
@@ -87,8 +88,9 @@ plaintext layout — hence the opaque denial when it is absent.
 
 ## Durable wire facts (still true; reusable if the port reopens)
 
-These are correct and independent of the f31 gate — the `feat/devin-provider`
-commits already implement them.
+These are correct and independent of the f31 gate. The `feat/devin-provider`
+commits implemented them, but that branch is no longer reachable (see above), so
+read this as a spec to re-implement, not as code to cherry-pick.
 
 - **Shared backend.** Devin talks to the same `server.codeium.com` Connect-RPC
   backend as Windsurf (`.../GetChatMessage`), disambiguated by

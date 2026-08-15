@@ -15,7 +15,7 @@ import {
   isWorkingTreeClean,
   resetBaselineDirectoryCacheForTesting,
   resolveBaseline,
-} from './baseline.js'
+} from 'src/tools/TypecheckTool/baseline.js'
 
 const roots: string[] = []
 

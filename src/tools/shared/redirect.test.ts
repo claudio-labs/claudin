@@ -4,7 +4,7 @@ import {
   createOutputTrimTailStripper,
   DEFAULT_OUTPUT_TRIM_FILTERS,
   hasShellComposition,
-} from './redirect.js'
+} from 'src/tools/shared/redirect.js'
 
 const strip = createOutputTrimTailStripper()
 const stripWithWc = createOutputTrimTailStripper([

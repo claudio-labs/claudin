@@ -4,7 +4,7 @@ description: The CLAUDE_CODE_SKIP_VERTEX_AUTH stub GoogleAuth must return a real
 type: project
 ---
 
-In `src/services/api/client.ts`, the `CLAUDE_CODE_SKIP_VERTEX_AUTH` escape hatch
+In `src/providers/transport/client.ts`, the `CLAUDE_CODE_SKIP_VERTEX_AUTH` escape hatch
 swaps a stub in for `GoogleAuth` so Vertex traffic can be pointed at a proxy that
 injects auth itself. That stub's `getClient().getRequestHeaders()` **must return
 a real `Headers`**, not a plain object.
@@ -26,7 +26,7 @@ See [[dependabot-bumps-2026-08-03-no-code-changes]].
 
 **How to apply:** the guard is the test
 `'CLAUDE_CODE_SKIP_VERTEX_AUTH stub returns Headers the Vertex SDK can read'` in
-`src/services/api/client.test.ts`. It drives the **real** vertex-sdk with a
+`src/providers/transport/client.test.ts`. It drives the **real** vertex-sdk with a
 stubbed `globalThis.fetch` and asserts the request URL reaches
 `/projects/test-project/locations/…:rawPredict`, which is only reachable if
 `.get()` resolved on the line before. Verified by break-and-restore: reverting

@@ -1,4 +1,4 @@
-import { ONE_SHOT_BUILTIN_AGENT_TYPES } from './constants.js'
+import { ONE_SHOT_BUILTIN_AGENT_TYPES } from 'src/tools/AgentTool/constants.js'
 
 /**
  * Whether a spawn is eligible for the *implicit* auto-background toggle

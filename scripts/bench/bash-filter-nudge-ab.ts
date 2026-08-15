@@ -44,11 +44,11 @@ const PROMPTS: { id: string; text: string }[] = [
   },
   {
     id: 'test-bash-suite',
-    text: 'Rode `bun test src/outputFilter/Bash/` e me diga o veredito: a suite esta saudavel? Quantos testes passaram e algum falhou?',
+    text: 'Rode `bun test src/tools/shared/outputFilter/Bash/` e me diga o veredito: a suite esta saudavel? Quantos testes passaram e algum falhou?',
   },
   {
     id: 'bigfile-summary',
-    text: 'Rode `cat src/services/api/openaiShim.ts` e me explique em 2 frases o que esse arquivo faz. Quero so a essencia, nao o arquivo colado de volta.',
+    text: 'Rode `cat src/providers/shims/openaiShim.ts` e me explique em 2 frases o que esse arquivo faz. Quero so a essencia, nao o arquivo colado de volta.',
   },
   {
     id: 'log-themes',
@@ -60,7 +60,7 @@ const PROMPTS: { id: string; text: string }[] = [
   },
   {
     id: 'build-then-test',
-    text: 'Rode `bun run build` e depois `bun test src/outputFilter/Bash/markers.test.ts`. Me diga se os dois passaram sem erro — um sim/nao para cada, e o erro se algo falhou.',
+    text: 'Rode `bun run build` e depois `bun test src/tools/shared/outputFilter/Bash/markers.test.ts`. Me diga se os dois passaram sem erro — um sim/nao para cada, e o erro se algo falhou.',
   },
   {
     id: 'diff-biggest-file',
@@ -92,7 +92,7 @@ interface RunResult {
 }
 
 function projectDirForCwd(cwd: string): string {
-  // Must match claudin's real transcript-dir encoding (src/services/vcr.ts): EVERY
+  // Must match claudin's real transcript-dir encoding (src/providers/vcr.ts): EVERY
   // non-alphanumeric char becomes '-', not just '/'. The old `/`-only rule silently
   // produced a wrong path whenever cwd had '_' or '.' (e.g. /tmp/bench_wt -> -tmp-bench_wt,
   // but the real dir is -tmp-bench-wt), making analyzeSession return Bash=0 for every session.
@@ -100,7 +100,7 @@ function projectDirForCwd(cwd: string): string {
 }
 
 /**
- * Heuristica leve (alinhada com src/outputFilter/Bash/pipeline.ts:hasCompound):
+ * Heuristica leve (alinhada com src/tools/shared/outputFilter/Bash/pipeline.ts:hasCompound):
  * marca como composto qualquer comando com pipe nao-quotado, &&, ||, ; ou & top-level.
  * Quote-aware basico para single/double quotes; nao tenta lidar com subshells/heredocs
  * (esses tambem sao compostos no filtro real, entao a classificacao casa).

@@ -1,19 +1,19 @@
 import { z } from 'zod/v4'
-import { buildTool, type ToolDef } from 'src/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import {
   executeTaskCreatedHooks,
   getTaskCreatedHookMessage,
-} from 'src/services/lifecycleHooks/hooks.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+} from 'src/platform/lifecycleHooks/hooks.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   createTask,
   deleteTask,
   getTaskListId,
   isTodoV2Enabled,
-} from 'src/tasks/tasks.js'
-import { getAgentName, getTeamName } from 'src/coordinator/teammate.js'
-import { TASK_CREATE_TOOL_NAME } from './constants.js'
-import { DESCRIPTION, getPrompt } from './prompt.js'
+} from 'src/agent/tasks/tasks.js'
+import { getAgentName, getTeamName } from 'src/agent/coordinator/teammate.js'
+import { TASK_CREATE_TOOL_NAME } from 'src/tools/TaskCreateTool/constants.js'
+import { DESCRIPTION, getPrompt } from 'src/tools/TaskCreateTool/prompt.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({

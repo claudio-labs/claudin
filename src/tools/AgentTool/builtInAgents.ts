@@ -1,14 +1,14 @@
 import { feature } from 'bun:bundle'
-import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { CLAUDE_CODE_GUIDE_AGENT } from './built-in/claudeCodeGuideAgent.js'
-import { EXPLORE_AGENT } from './built-in/exploreAgent.js'
-import { GENERAL_PURPOSE_AGENT } from './built-in/generalPurposeAgent.js'
-import { PLAN_AGENT } from './built-in/planAgent.js'
-import { WEB_RESEARCHER_AGENT } from './built-in/webResearcherAgent.js'
-import { WEB_RESEARCHER_MANAGER_AGENT } from './built-in/webResearcherManagerAgent.js'
-import type { AgentDefinition } from './loadAgentsDir.js'
+import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { CLAUDE_CODE_GUIDE_AGENT } from 'src/tools/AgentTool/built-in/claudeCodeGuideAgent.js'
+import { EXPLORE_AGENT } from 'src/tools/AgentTool/built-in/exploreAgent.js'
+import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js'
+import { PLAN_AGENT } from 'src/tools/AgentTool/built-in/planAgent.js'
+import { WEB_RESEARCHER_AGENT } from 'src/tools/AgentTool/built-in/webResearcherAgent.js'
+import { WEB_RESEARCHER_MANAGER_AGENT } from 'src/tools/AgentTool/built-in/webResearcherManagerAgent.js'
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 
 export function areExplorePlanAgentsEnabled(): boolean {
   if (feature('BUILTIN_EXPLORE_PLAN_AGENTS')) {
@@ -36,7 +36,7 @@ export function getBuiltInAgents(): AgentDefinition[] {
     if (isEnvTruthy(process.env.CLAUDE_CODE_COORDINATOR_MODE)) {
       /* eslint-disable @typescript-eslint/no-require-imports */
       const { getCoordinatorAgents } =
-        require('src/coordinator/workerAgent.js') as typeof import('src/coordinator/workerAgent.js')
+        require('src/agent/coordinator/workerAgent.js') as typeof import('src/agent/coordinator/workerAgent.js')
       /* eslint-enable @typescript-eslint/no-require-imports */
       return getCoordinatorAgents()
     }

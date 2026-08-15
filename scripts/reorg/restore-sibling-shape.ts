@@ -4,11 +4,11 @@
  * `./sibling.js` stays `./sibling.js`, an alias stays an alias.
  *
  * Why shape is not cosmetic here: Bun's mock.module registry keys on the
- * specifier, so `./which.js` and `src/utils/proc/which.js` are two different
+ * specifier, so `./which.js` and `src/shared/proc/which.js` are two different
  * entries. Rewriting a sibling import to the alias merges them, and a stub
  * registered in one test file starts intercepting for the whole run —
- * src/utils/claudinInstallSurfaces.test.ts's execFileNoThrow stub reaching
- * src/utils/proc/execFileNoThrow.test.ts is the case that motivated this.
+ * src/platform/claudinInstallSurfaces.test.ts's execFileNoThrow stub reaching
+ * src/shared/proc/execFileNoThrow.test.ts is the case that motivated this.
  * Rewriting the other way is just as wrong: it silently unhooks a pin other
  * files depend on.
  *

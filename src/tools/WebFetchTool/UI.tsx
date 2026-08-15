@@ -1,11 +1,11 @@
 import React from 'react';
-import { MessageResponse } from 'src/components/MessageResponse.js';
-import { TOOL_SUMMARY_MAX_LENGTH } from 'src/constants/toolLimits.js';
-import { Box, Text } from 'src/ink.js';
-import type { ToolProgressData } from 'src/Tool.js';
-import type { ProgressMessage } from 'src/types/message.js';
-import { formatFileSize, truncate } from 'src/utils/text/format.js';
-import type { Output } from './WebFetchTool.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
+import { TOOL_SUMMARY_MAX_LENGTH } from 'src/tools/constants/toolLimits.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import type { ToolProgressData } from 'src/tools/Tool.js';
+import type { ProgressMessage } from 'src/shared/types/message.js';
+import { formatFileSize, truncate } from 'src/shared/text/format.js';
+import type { Output } from 'src/tools/WebFetchTool/WebFetchTool.js';
 export function renderToolUseMessage({
   url,
   prompt

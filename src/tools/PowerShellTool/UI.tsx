@@ -1,18 +1,18 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import * as React from 'react';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
-import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseErrorMessage.js';
-import { MessageResponse } from 'src/components/MessageResponse.js';
-import { OutputLine } from 'src/components/shell/OutputLine.js';
-import { ShellElapsedTime } from 'src/components/shell/ShellElapsedTime.js';
-import { ShellProgressMessage } from 'src/components/shell/ShellProgressMessage.js';
-import { ShellTimeDisplay } from 'src/components/shell/ShellTimeDisplay.js';
-import { Box, Text } from 'src/ink.js';
-import type { Tool } from 'src/Tool.js';
-import type { ProgressMessage } from 'src/types/message.js';
-import type { PowerShellProgress } from 'src/types/tools.js';
-import type { ThemeName } from 'src/utils/theme.js';
-import type { Out, PowerShellToolInput } from './PowerShellTool.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
+import { FallbackToolUseErrorMessage } from 'src/agent/ui/FallbackToolUseErrorMessage.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
+import { OutputLine } from 'src/tools/BashTool/ui/OutputLine.js';
+import { ShellElapsedTime } from 'src/tools/BashTool/ui/ShellElapsedTime.js';
+import { ShellProgressMessage } from 'src/tools/BashTool/ui/ShellProgressMessage.js';
+import { ShellTimeDisplay } from 'src/tools/BashTool/ui/ShellTimeDisplay.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import type { Tool } from 'src/tools/Tool.js';
+import type { ProgressMessage } from 'src/shared/types/message.js';
+import type { PowerShellProgress } from 'src/shared/types/tools.js';
+import type { ThemeName } from 'src/terminal/theme/theme.js';
+import type { Out, PowerShellToolInput } from 'src/tools/PowerShellTool/PowerShellTool.js';
 
 // Constants for command display
 const MAX_COMMAND_DISPLAY_LINES = 2;

@@ -1,6 +1,6 @@
 import { z } from 'zod/v4'
-import { buildTool, type ToolDef } from 'src/Tool.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { LIST_WORKFLOWS_TOOL_NAME } from 'src/tools/AgentWorkflow/constants.js'
 import { loadWorkflowDefs } from 'src/tools/AgentWorkflow/loadWorkflows.js'
 

@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'fs'
 import path from 'path'
-import type { BuildSystem } from './types.js'
+import type { BuildSystem } from 'src/tools/BuildTool/types.js'
 
 /**
  * Which build system this project uses, what to run, and how to make its

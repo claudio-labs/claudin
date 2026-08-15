@@ -8,7 +8,7 @@
  * price and re-cached. The break is silent: you only see it as a higher
  * input-token bill on that turn.
  *
- * `src/services/api/promptCacheBreakDetection.ts` enumerates the things
+ * `src/providers/cache/promptCacheBreakDetection.ts` enumerates the things
  * that can break the cache. This bench builds a realistic baseline prefix
  * and computes the *re-bill cost* of each individual break cause:
  *
@@ -46,12 +46,12 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
   })
 }
 
-import { getBytesPerTokenForModel } from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/services/config/config.js'
+import { getBytesPerTokenForModel } from '../src/shared/tokenEstimation.js'
+import { enableConfigs } from '../src/platform/config/config.js'
 import { measureToolSchemas } from './measure-tool-schemas.ts'
-import { getSystemPrompt, computeSimpleEnvInfo } from '../src/constants/prompts.js'
-import { loadMemoryPrompt } from '../src/memdir/memdir.js'
-import { getAllBaseTools } from '../src/tools.js'
+import { getSystemPrompt, computeSimpleEnvInfo } from '../src/agent/prompts/prompts.js'
+import { loadMemoryPrompt } from '../src/memory/memdir/memdir.js'
+import { getAllBaseTools } from '../src/tools/tools.js'
 
 type Engine = 'anthropic' | 'openai' | 'codex'
 

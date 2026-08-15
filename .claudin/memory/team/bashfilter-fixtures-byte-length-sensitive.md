@@ -4,11 +4,12 @@ description: Editing bash-output-filter fixture samples must preserve byte lengt
 type: feedback
 ---
 
-When editing `src/outputFilter/Bash/__fixtures__/samples/*.txt`, replacements must
-be byte-length-preserving. (There used to be a mirrored copy under
-`docs/discovery/bash-output-filter/validation/samples/`; it was merged away on
-2026-08-06 and that path no longer exists — see
-[[bash-filter-sample-corpus-unified]]. Do not recreate it.)
+**Scope:** this file owns the byte-length rule for EDITING a sample and the
+incident that proves it. Where the corpus lives, and which fixtures each harness
+actually loads, is [[bash-filter-sample-corpus-unified]].
+
+When editing `src/tools/shared/outputFilter/Bash/__fixtures__/samples/*.txt`, replacements must
+be byte-length-preserving.
 
 **Why:** `bashFilter.test.ts` "ROI" tests assert `reductionPct(raw, body) >=
 predictedPct - 5` per sample. Shortening a fixture shrinks the raw input and drops
@@ -20,5 +21,5 @@ can break tight upper-bound expectations too.
 **How to apply:** For any find/replace across the sample dir, pick equal-length
 placeholders, and update any test asserting a literal string from a sample (e.g.
 the git-worktree test asserts the sample's absolute path). After the edit run
-`bun test src/outputFilter/Bash/bashFilter.test.ts` and check the ROI assertions
+`bun test src/tools/shared/outputFilter/Bash/bashFilter.test.ts` and check the ROI assertions
 specifically — parse tests can all pass while a reduction test fails.

@@ -4,7 +4,7 @@
  */
 
 import { randomBytes } from 'crypto'
-import { tryParseShellCommand } from 'src/services/bash/shellQuote.js'
+import { tryParseShellCommand } from 'src/platform/bash/shellQuote.js'
 
 // BRE→ERE conversion placeholders (null-byte sentinels, never appear in user input)
 

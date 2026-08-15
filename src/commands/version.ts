@@ -1,4 +1,4 @@
-import type { Command, LocalCommandCall } from 'src/types/command.js'
+import type { Command, LocalCommandCall } from 'src/shared/types/command.js'
 
 const call: LocalCommandCall = async () => {
   return {

@@ -1,13 +1,13 @@
 import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
-import { getAutoMemPath } from 'src/memdir/paths.js'
-import type { LocalJSXCommandOnDone } from 'src/types/command.js'
-import { parseMemorySubcommand, runMemoryTidy } from './tidy.js'
+import { getAutoMemPath } from 'src/memory/memdir/paths.js'
+import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js'
+import { parseMemorySubcommand, runMemoryTidy } from 'src/commands/memory/tidy.js'
 
 // Mock the team-root boundary so the team-on path is reachable under bun test
 // (the preload stubs bun:bundle's feature() → false, so resolveTidyTeamRoot
 // would otherwise always return null). Canonical teardown: snapshot the real
 // exports BEFORE mocking, re-mock in afterAll.
-const realTidyTeam = { ...(await import('./tidyTeam.js')) }
+const realTidyTeam = { ...(await import('src/commands/memory/tidyTeam.js')) }
 let tidyTeamRoot: string | null = null
 mock.module('./tidyTeam.js', () => ({
   ...realTidyTeam,

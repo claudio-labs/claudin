@@ -5,7 +5,7 @@ import { ONE_SHOT_BUILTIN_AGENT_TYPES } from 'src/tools/AgentTool/constants.js'
 import {
   WEB_RESEARCHER_AGENT,
   WEB_RESEARCHER_AGENT_TYPE,
-} from './webResearcherAgent.js'
+} from 'src/tools/AgentTool/built-in/webResearcherAgent.js'
 
 // The WebResearcher's getSystemPrompt is a static, context-independent string —
 // it never reads its argument. We type the stub via the function's own parameter

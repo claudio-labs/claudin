@@ -2,11 +2,11 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 import { statSync } from 'fs'
 import path from 'path'
 import { z } from 'zod/v4'
-import { buildTool, type ToolCallProgress, type ToolDef } from 'src/Tool.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { buildTool, type ToolCallProgress, type ToolDef } from 'src/tools/Tool.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { bashToolHasPermission } from 'src/tools/BashTool/bashPermissions.js'
-import { formatBuildResult } from './budget.js'
+import { formatBuildResult } from 'src/tools/BuildTool/budget.js'
 import {
   applyQuietFlags,
   detectAllBuildSystems,
@@ -14,17 +14,17 @@ import {
   detectBuildFor,
   detectBuildSystemFromCommand,
   detectSubprojects,
-} from './detect.js'
-import { BUILD_TOOL_NAME, DESCRIPTION } from './prompt.js'
-import { runBuild } from './run.js'
-import type { BuildProgress, BuildResult, BuildSystem } from './types.js'
+} from 'src/tools/BuildTool/detect.js'
+import { BUILD_TOOL_NAME, DESCRIPTION } from 'src/tools/BuildTool/prompt.js'
+import { runBuild } from 'src/tools/BuildTool/run.js'
+import type { BuildProgress, BuildResult, BuildSystem } from 'src/tools/BuildTool/types.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
   renderToolUseProgressMessage,
   userFacingName,
-} from './UI.js'
+} from 'src/tools/BuildTool/UI.js'
 
 /**
  * Generous next to `Typecheck`'s 300s, because a cold build genuinely takes
@@ -212,7 +212,7 @@ export const BuildTool = buildTool({
   },
   isEnabled() {
     // Constant, never a detection result. The tool list is pinned to a shared
-    // system-prompt cache config (see getAllBaseTools in src/tools.ts), so a
+    // system-prompt cache config (see getAllBaseTools in src/tools/tools.ts), so a
     // per-project answer here would fragment that cache for every user. "No
     // build system here" is answered at call time instead.
     return true

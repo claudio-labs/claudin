@@ -1,22 +1,22 @@
 import { z } from 'zod/v4'
-import { logEvent } from 'src/services/analytics/index.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/metadata.js'
-import type { Tool } from 'src/Tool.js'
-import { buildTool, type ToolDef } from 'src/Tool.js'
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
-import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
+import type { Tool } from 'src/tools/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
+import { TEAM_LEAD_NAME } from 'src/agent/coordinator/swarm/constants.js'
 import {
   cleanupTeamDirectories,
   readTeamFile,
   unregisterTeamForSessionCleanup,
-} from 'src/coordinator/swarm/teamHelpers.js'
-import { clearTeammateColors } from 'src/coordinator/swarm/teammateLayoutManager.js'
-import { clearLeaderTeamName } from 'src/tasks/tasks.js'
-import { TEAM_DELETE_TOOL_NAME } from './constants.js'
-import { getPrompt } from './prompt.js'
-import { renderToolResultMessage, renderToolUseMessage } from './UI.js'
+} from 'src/agent/coordinator/swarm/teamHelpers.js'
+import { clearTeammateColors } from 'src/agent/coordinator/swarm/teammateLayoutManager.js'
+import { clearLeaderTeamName } from 'src/agent/tasks/tasks.js'
+import { TEAM_DELETE_TOOL_NAME } from 'src/tools/TeamDeleteTool/constants.js'
+import { getPrompt } from 'src/tools/TeamDeleteTool/prompt.js'
+import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/TeamDeleteTool/UI.js'
 
 const inputSchema = lazySchema(() => z.strictObject({}))
 type InputSchema = ReturnType<typeof inputSchema>

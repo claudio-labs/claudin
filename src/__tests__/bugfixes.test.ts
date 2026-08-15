@@ -27,8 +27,8 @@ const file = (relative: string) => Bun.file(resolve(SRC, relative))
  * over bare symbol names so a stray JSDoc mention can't make it pass.
  */
 async function openaiShimSource(): Promise<string> {
-  const barrel = await file('services/api/openaiShim.ts').text()
-  const dir = resolve(SRC, 'services/api/openaiShim')
+  const barrel = await file('providers/shims/openaiShim.ts').text()
+  const dir = resolve(SRC, 'providers/shims/openaiShim')
   const glob = new Bun.Glob('**/*.ts')
   const parts: string[] = [barrel]
   for await (const rel of glob.scan({ cwd: dir, onlyFiles: true })) {
@@ -75,7 +75,7 @@ describe('Session timeout fix', () => {
   })
 
   test('codexShim has idle timeout for SSE streams', async () => {
-    const content = await file('services/api/codexShim.ts').text()
+    const content = await file('providers/shims/codexShim.ts').text()
 
     expect(content).toMatch(/STREAM_IDLE_TIMEOUT_MS\s*=\s*[\d_]+/)
     expect(content).toMatch(/\b(function\s+readWithTimeout|const\s+readWithTimeout\s*=)\b/)
@@ -98,9 +98,9 @@ describe('Session timeout fix', () => {
 // ---------------------------------------------------------------------------
 describe('Agent loop continuation nudge', () => {
   test('query.ts wires the continuation-nudge detector', async () => {
-    const content = await file('query.ts').text()
+    const content = await file('agent/query.ts').text()
 
-    // Detection lives in src/utils/continuationNudge.ts (behavioral coverage in
+    // Detection lives in src/agent/continuationNudge.ts (behavioral coverage in
     // continuationNudge.test.ts); query.ts only wires it into the loop.
     expect(content).toContain('continuationNudge.js')
     expect(content).toContain('signalsContinuation')
@@ -111,7 +111,7 @@ describe('Agent loop continuation nudge', () => {
   })
 
   test('nudge counter guard exists', async () => {
-    const content = await file('query.ts').text()
+    const content = await file('agent/query.ts').text()
 
     expect(content).toContain('MAX_CONTINUATION_NUDGES')
     // Verify the nudge counter guard exists
@@ -119,7 +119,7 @@ describe('Agent loop continuation nudge', () => {
   })
 
   test('nudge creates a meta user message to continue', async () => {
-    const content = await file('query.ts').text()
+    const content = await file('agent/query.ts').text()
 
     expect(content).toContain(
       'Continue with the task. Use the appropriate tools to proceed.',
@@ -210,7 +210,7 @@ describe('Web search result count improvements', () => {
 // ---------------------------------------------------------------------------
 describe('MCP tool timeout fix', () => {
   test('default MCP tool timeout is reasonable (not 27 hours)', async () => {
-    const content = await file('services/mcp/client/callTool.ts').text()
+    const content = await file('mcp/client/callTool.ts').text()
 
     // Should NOT have the old ~27.8 hour default
     expect(content).not.toContain('100_000_000')
@@ -219,21 +219,21 @@ describe('MCP tool timeout fix', () => {
   })
 
   test('MCP tools/list has retry logic', async () => {
-    const content = await file('services/mcp/client/fetchCapabilities.ts').text()
+    const content = await file('mcp/client/fetchCapabilities.ts').text()
 
     expect(content).toContain('tools/list failed (attempt')
     expect(content).toContain('Retrying...')
   })
 
   test('MCP URL elicitation checks abort signal', async () => {
-    const content = await file('services/mcp/client/callTool.ts').text()
+    const content = await file('mcp/client/callTool.ts').text()
 
     expect(content).toContain('signal.aborted')
     expect(content).toContain('Tool call aborted during URL elicitation')
   })
 
   test('MCP tool error messages include server and tool name in telemetry', async () => {
-    const content = await file('services/mcp/client/callTool.ts').text()
+    const content = await file('mcp/client/callTool.ts').text()
 
     // Telemetry message should include context like "MCP tool [serverName] toolName: error"
     // The human-readable message stays unchanged to avoid breaking error consumers
@@ -299,7 +299,7 @@ describe('AgentTool cleanup fix', () => {
 // ---------------------------------------------------------------------------
 describe('Context overflow 500 fix', () => {
   test('errors.ts has handler for context overflow 500 errors', async () => {
-    const content = await file('services/api/errors.ts').text()
+    const content = await file('providers/transport/errors.ts').text()
 
     expect(content).toContain('500 errors caused by context overflow')
     expect(content).toContain('too many tokens')
@@ -307,7 +307,7 @@ describe('Context overflow 500 fix', () => {
   })
 
   test('query.ts has circuit breaker safety net for oversized context', async () => {
-    const content = await file('query.ts').text()
+    const content = await file('agent/query.ts').text()
 
     expect(content).toContain('Safety net: when auto-compact')
     expect(content).toContain('circuit breaker has tripped')

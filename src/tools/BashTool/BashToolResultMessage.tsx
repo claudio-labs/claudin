@@ -1,14 +1,14 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import { removeSandboxViolationTags } from 'src/services/sandbox/sandbox-ui-utils.js';
-import FullWidthRow from 'src/components/design-system/FullWidthRow.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
-import { MessageResponse } from 'src/components/MessageResponse.js';
-import { stripOutputMarkers } from 'src/outputFilter/Bash/markers.js';
-import { OutputLine } from 'src/components/shell/OutputLine.js';
-import { ShellTimeDisplay } from 'src/components/shell/ShellTimeDisplay.js';
-import { Box, Text } from 'src/ink.js';
-import type { Out as BashOut } from './BashTool.js';
+import { removeSandboxViolationTags } from 'src/platform/sandbox/sandbox-ui-utils.js';
+import FullWidthRow from 'src/terminal/design-system/FullWidthRow.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
+import { stripOutputMarkers } from 'src/tools/shared/outputFilter/Bash/markers.js';
+import { OutputLine } from 'src/tools/BashTool/ui/OutputLine.js';
+import { ShellTimeDisplay } from 'src/tools/BashTool/ui/ShellTimeDisplay.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import type { Out as BashOut } from 'src/tools/BashTool/BashTool.js';
 type Props = {
   content: Omit<BashOut, 'interrupted'>;
   verbose: boolean;

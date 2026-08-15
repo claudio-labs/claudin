@@ -1,12 +1,12 @@
-import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
-import type { Command } from 'src/commands.js'
+import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
+import type { Command } from 'src/commands/commands.js'
 
 export const context: Command = {
   name: 'context',
   description: 'Visualize current context usage as a colored grid',
   isEnabled: () => !getIsNonInteractiveSession(),
   type: 'local-jsx',
-  load: () => import('./context.js'),
+  load: () => import('src/commands/context/context.js'),
 }
 
 export const contextNonInteractive: Command = {
@@ -20,5 +20,5 @@ export const contextNonInteractive: Command = {
   isEnabled() {
     return getIsNonInteractiveSession()
   },
-  load: () => import('./context-noninteractive.js'),
+  load: () => import('src/commands/context/context-noninteractive.js'),
 }

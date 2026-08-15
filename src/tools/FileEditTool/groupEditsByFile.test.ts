@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { groupEditsByFile } from './utils.js'
+import { groupEditsByFile } from 'src/tools/FileEditTool/utils.js'
 
 describe('groupEditsByFile', () => {
   test('groups items by file path, preserving first-seen order', () => {

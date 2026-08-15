@@ -15,7 +15,7 @@ Measured across a typical 30-minute session (after Phase 12 covering JS/Python/G
 - **~75 000 tokens saved**
 - **~75% reduction in input cost across 60+ commands**
 
-Aggregate measurement across 30 Phase 12 sample fixtures: **75.1%** byte reduction (36 170 B → 8 999 B). Reproducible via `bun test src/outputFilter/Bash/phase12Report.test.ts`.
+Aggregate measurement across 30 Phase 12 sample fixtures: **75.1%** byte reduction (36 170 B → 8 999 B). Reproducible via `bun test src/tools/shared/outputFilter/Bash/phase12Report.test.ts`.
 
 ---
 
@@ -127,9 +127,9 @@ Strips `RUNS ...` carousel lines and indented `✓ test name (Nms)` per-test lin
 
 **Before**
 ```
- RUNS  src/utils/text/format.test.ts
+ RUNS  src/shared/text/format.test.ts
  RUNS  src/api/client.test.ts
- PASS  src/utils/text/format.test.ts
+ PASS  src/shared/text/format.test.ts
   ✓ formats currency correctly (3ms)
   ✓ handles null input (1ms)
   ✓ rounds to 2 decimal places (1ms)
@@ -184,7 +184,7 @@ Strips the `bun test v...` banner and per-test `✓ name [Nms]` lines. Collapses
 ```
 bun test v1.1.8 (9f27a12)
 
-src/utils/data/hash.test.ts:
+src/shared/data/hash.test.ts:
 ✓ hashes a string [0.82ms]
 ✓ returns consistent results [0.11ms]
 ✓ handles empty input [0.09ms]

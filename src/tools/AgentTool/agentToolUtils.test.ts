@@ -3,18 +3,18 @@ import { describe, expect, it } from 'bun:test'
 // (AgentTool builds eagerly and references agentToolResultSchema, defined in
 // agentToolUtils). Loading AgentTool first orders the graph so the schema is
 // initialized before the eager build runs.
-import './AgentTool.js'
-import type { Tool, Tools } from 'src/Tool.js'
+import 'src/tools/AgentTool/AgentTool.js'
+import type { Tool, Tools } from 'src/tools/Tool.js'
 import { WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
 import { WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
 import {
   resolveAgentTools,
   scopeChildAgentDefinitions,
   filterToolsForAgent,
-} from './agentToolUtils.js'
-import { WEB_RESEARCHER_AGENT_TYPE } from './built-in/webResearcherAgent.js'
-import { WEB_RESEARCHER_MANAGER_AGENT } from './built-in/webResearcherManagerAgent.js'
-import { AGENT_TOOL_NAME } from './constants.js'
+} from 'src/tools/AgentTool/agentToolUtils.js'
+import { WEB_RESEARCHER_AGENT_TYPE } from 'src/tools/AgentTool/built-in/webResearcherAgent.js'
+import { WEB_RESEARCHER_MANAGER_AGENT } from 'src/tools/AgentTool/built-in/webResearcherManagerAgent.js'
+import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
 
 // Only `name` is read by filterToolsForAgent/resolveAgentTools.

@@ -2,9 +2,9 @@ import { feature } from 'bun:bundle'
 import {
   getDeferredDeltaLegacySession,
   isReplBridgeActive,
-} from 'src/bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import type { Tool } from 'src/Tool.js'
+} from 'src/platform/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
+import type { Tool } from 'src/tools/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 
 // Dead code elimination: Brief tool name only needed when KAIROS or KAIROS_BRIEF is on
@@ -23,9 +23,9 @@ const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS')
 
 /* eslint-enable @typescript-eslint/no-require-imports */
 
-export { TOOL_SEARCH_TOOL_NAME } from './constants.js'
+export { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/constants.js'
 
-import { TOOL_SEARCH_TOOL_NAME } from './constants.js'
+import { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/constants.js'
 
 const PROMPT_HEAD = `Fetches full schema definitions for deferred tools so they can be called.
 

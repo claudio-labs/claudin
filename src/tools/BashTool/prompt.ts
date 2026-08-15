@@ -1,17 +1,17 @@
 import { feature } from 'bun:bundle'
-import { prependBullets } from 'src/constants/prompts.js'
-import { isLeanToolPromptFamily } from 'src/constants/toolPromptTier.js'
-import { getAttributionTexts } from 'src/services/git/attribution.js'
-import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
-import { shouldIncludeGitInstructions } from 'src/services/config/gitSettings.js'
-import { getClaudeTempDir } from 'src/services/permissions/filesystem.js'
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { prependBullets } from 'src/agent/prompts/prompts.js'
+import { isLeanToolPromptFamily } from 'src/agent/prompts/toolPromptTier.js'
+import { getAttributionTexts } from 'src/vcs/git/attribution.js'
+import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
+import { shouldIncludeGitInstructions } from 'src/platform/config/gitSettings.js'
+import { getClaudeTempDir } from 'src/permissions/filesystem.js'
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   getDefaultBashTimeoutMs,
   getMaxBashTimeoutMs,
-} from 'src/utils/timeouts.js'
+} from 'src/shared/timeouts.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
@@ -21,7 +21,7 @@ import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
 import { TodoWriteTool } from 'src/tools/TodoWriteTool/TodoWriteTool.js'
-import { BASH_TOOL_NAME } from './toolName.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 
 export function getDefaultTimeoutMs(): number {
   return getDefaultBashTimeoutMs()

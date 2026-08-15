@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
-import type { ToolUseContext } from 'src/Tool.js'
-import { ExitPlanModeV2Tool } from './ExitPlanModeV2Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
+import { ExitPlanModeV2Tool } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js'
 
 function makeCtx(mode: string): ToolUseContext {
   return {

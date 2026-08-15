@@ -33,11 +33,11 @@ process.env.FORCE_COLOR ??= '3'
 
 import { performance } from 'node:perf_hooks'
 import { marked, type Token, type Tokens } from 'marked'
-import { configureMarked, formatToken } from '../../src/utils/text/markdown.js'
+import { configureMarked, formatToken } from '../../src/shared/text/markdown.js'
 import {
   getCliHighlightPromise,
   type CliHighlight,
-} from '../../src/utils/text/cliHighlight.js'
+} from '../../src/shared/text/cliHighlight.js'
 import { getFixture, lineSnapshots, listFixtures } from './fixtures.js'
 
 type Strategy = 'status-quo' | 'defer-fence' | 'lru-text'
@@ -314,7 +314,7 @@ function runOnce(
 
   let stablePrefix = ''
   // Models <Markdown>{stablePrefix}</Markdown>'s memoization in
-  // src/components/Markdown.tsx:133 — when `children` doesn't change between
+  // src/terminal/markdown/Markdown.tsx:133 — when `children` doesn't change between
   // renders, MarkdownBody returns its cached output and no formatToken runs.
   // The stablePrefix only advances forward, so a single previousStable
   // comparison is sufficient.

@@ -1,4 +1,4 @@
-import { getProjectsDir } from 'src/services/session/pure/paths.js'
+import { getProjectsDir } from 'src/sessions/pure/paths.js'
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 /**
@@ -54,7 +54,7 @@ Then, add these to the project \`.claudin/settings.json\` under \`permissions.al
    - **All gh read-only subcommands:** \`gh pr view\`, \`gh pr list\`, \`gh pr diff\`, \`gh pr checks\`, \`gh pr status\`, \`gh issue view\`, \`gh issue list\`, \`gh issue status\`, \`gh run view\`, \`gh run list\`, \`gh workflow list\`, \`gh workflow view\`, \`gh repo view\`, \`gh release view\`, \`gh release list\`, \`gh api\` (GET), \`gh auth status\`, etc.
    - **Docker read-only subcommands:** \`docker ps\`, \`docker images\`, \`docker logs\`, \`docker inspect\`.
 
-   Source of truth: \`src/tools/BashTool/readOnlyValidation.ts\` (\`COMMAND_ALLOWLIST\`, \`READONLY_COMMANDS\`, \`READONLY_COMMAND_REGEXES\`) and \`src/services/shell/readOnlyCommandValidation.ts\` (\`GIT_READ_ONLY_COMMANDS\`, \`GH_READ_ONLY_COMMANDS\`, \`DOCKER_READ_ONLY_COMMANDS\`, \`RIPGREP_READ_ONLY_COMMANDS\`, \`PYRIGHT_READ_ONLY_COMMANDS\`). If you're in this repo and unsure whether a command is covered, grep these files rather than guessing.
+   Source of truth: \`src/tools/BashTool/readOnlyValidation.ts\` (\`COMMAND_ALLOWLIST\`, \`READONLY_COMMANDS\`, \`READONLY_COMMAND_REGEXES\`) and \`src/platform/shell/readOnlyCommandValidation.ts\` (\`GIT_READ_ONLY_COMMANDS\`, \`GH_READ_ONLY_COMMANDS\`, \`DOCKER_READ_ONLY_COMMANDS\`, \`RIPGREP_READ_ONLY_COMMANDS\`, \`PYRIGHT_READ_ONLY_COMMANDS\`). If you're in this repo and unsure whether a command is covered, grep these files rather than guessing.
 
 5. **Pick the pattern form.** Use the narrowest pattern that still covers the observed usage:
    - If the user runs many variants (\`git log\`, \`git log --oneline\`, \`git log main..HEAD\`): use \`Bash(git log *)\` — note the space before \`*\`, which is required for prefix matching to work correctly.

@@ -1,49 +1,49 @@
 import { dirname, sep } from 'path'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import { z } from 'zod/v4'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import { diagnosticTracker } from 'src/services/diagnosticTracking.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
+import { diagnosticTracker } from 'src/platform/diagnosticTracking.js'
 import {
   armFileForLateDiagnostics,
   buildPostEditDiagnosticsMessages,
-} from 'src/services/lsp/diagnosticsForToolResult.js'
-import { clearDeliveredDiagnosticsForFile } from 'src/services/lsp/LSPDiagnosticRegistry.js'
-import { getLspServerManager } from 'src/services/lsp/manager.js'
-import { notifyVscodeFileUpdated } from 'src/services/mcp/vscodeSdkMcp.js'
-import { checkTeamMemSecrets } from 'src/services/teamMemorySync/teamMemSecretGuard.js'
+} from 'src/platform/lsp/diagnosticsForToolResult.js'
+import { clearDeliveredDiagnosticsForFile } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
+import { getLspServerManager } from 'src/platform/lsp/manager.js'
+import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js'
+import { checkTeamMemSecrets } from 'src/memory/teamSync/teamMemSecretGuard.js'
 import {
   activateConditionalSkillsForPaths,
   addSkillDirectories,
   discoverSkillDirsForPaths,
 } from 'src/skills/loadSkillsDir.js'
-import type { ToolUseContext } from 'src/Tool.js'
-import { buildTool, type ToolDef } from 'src/Tool.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { countLinesChanged, getPatchForDisplay } from 'src/services/git/diff.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { isENOENT } from 'src/utils/errors.js'
-import { getFileModificationTime, writeTextContent } from 'src/utils/fs/file.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { countLinesChanged, getPatchForDisplay } from 'src/vcs/git/diff.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isENOENT } from 'src/shared/errors.js'
+import { getFileModificationTime, writeTextContent } from 'src/shared/fs/file.js'
 import {
   fileHistoryEnabled,
   fileHistoryTrackEdit,
-} from 'src/utils/fs/fileHistory.js'
-import { logFileOperation } from 'src/utils/fileOperationAnalytics.js'
-import { readFileSyncWithMetadata } from 'src/utils/fs/fileRead.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+} from 'src/shared/fs/fileHistory.js'
+import { logFileOperation } from 'src/platform/fileOperationAnalytics.js'
+import { readFileSyncWithMetadata } from 'src/shared/fs/fileRead.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {
   fetchSingleFileGitDiff,
   type ToolUseDiff,
-} from 'src/services/git/gitDiff.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { logError } from 'src/utils/log.js'
-import { expandPath } from 'src/utils/fs/path.js'
+} from 'src/vcs/git/gitDiff.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { logError } from 'src/shared/log.js'
+import { expandPath } from 'src/shared/fs/path.js'
 import {
   checkWritePermissionForTool,
   matchingRuleForInput,
-} from 'src/services/permissions/filesystem.js'
-import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
-import { matchWildcardPattern } from 'src/services/permissions/shellRuleMatching.js'
+} from 'src/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
+import { matchWildcardPattern } from 'src/permissions/shellRuleMatching.js'
 import { FILE_UNEXPECTEDLY_MODIFIED_ERROR } from 'src/tools/FileEditTool/constants.js'
 import {
   needsWholeFileRead,
@@ -52,7 +52,7 @@ import {
   writeFamilyReadGateError,
 } from 'src/tools/shared/readBeforeEditMessages.js'
 import { gitDiffSchema, hunkSchema } from 'src/tools/FileEditTool/types.js'
-import { FILE_WRITE_TOOL_NAME, getWriteToolDescription } from './prompt.js'
+import { FILE_WRITE_TOOL_NAME, getWriteToolDescription } from 'src/tools/FileWriteTool/prompt.js'
 import {
   getToolUseSummary,
   isResultTruncated,
@@ -61,7 +61,7 @@ import {
   renderToolUseMessage,
   renderToolUseRejectedMessage,
   userFacingName,
-} from './UI.js'
+} from 'src/tools/FileWriteTool/UI.js'
 
 const inputSchema = lazySchema(() =>
   z.strictObject({

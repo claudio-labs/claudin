@@ -1,32 +1,32 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { z } from 'zod/v4';
-import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseErrorMessage.js';
-import { FallbackToolUseRejectedMessage } from 'src/components/FallbackToolUseRejectedMessage.js';
-import { MessageResponse } from 'src/components/MessageResponse.js';
-import { Box, Text } from 'src/ink.js';
-import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
-import type { TaskType } from 'src/Task.js';
-import type { Tool } from 'src/Tool.js';
-import { buildTool, type ToolDef } from 'src/Tool.js';
-import type { LocalAgentTaskState } from 'src/tasks/LocalAgentTask/LocalAgentTask.js';
-import type { LocalShellTaskState } from 'src/tasks/LocalShellTask/guards.js';
-import type { RemoteAgentTaskState } from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js';
-import type { TaskState } from 'src/tasks/types.js';
-import { AbortError } from 'src/utils/errors.js';
-import { lazySchema } from 'src/utils/data/lazySchema.js';
-import { extractTextContent } from 'src/services/messages/messages.js';
-import { semanticBoolean } from 'src/utils/data/semanticBoolean.js';
-import { sleep } from 'src/utils/sleep.js';
-import { jsonParse } from 'src/utils/slowOperations.js';
-import { countCharInString } from 'src/utils/text/stringUtils.js';
-import { getTaskOutput } from 'src/tasks/diskOutput.js';
-import { updateTaskState } from 'src/tasks/framework.js';
-import { formatTaskOutput } from 'src/tasks/outputFormatting.js';
-import type { ThemeName } from 'src/utils/theme.js';
+import { FallbackToolUseErrorMessage } from 'src/agent/ui/FallbackToolUseErrorMessage.js';
+import { FallbackToolUseRejectedMessage } from 'src/agent/ui/FallbackToolUseRejectedMessage.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
+import type { TaskType } from 'src/agent/Task.js';
+import type { Tool } from 'src/tools/Tool.js';
+import { buildTool, type ToolDef } from 'src/tools/Tool.js';
+import type { LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
+import type { LocalShellTaskState } from 'src/agent/tasks/LocalShellTask/guards.js';
+import type { RemoteAgentTaskState } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
+import type { TaskState } from 'src/agent/tasks/types.js';
+import { AbortError } from 'src/shared/errors.js';
+import { lazySchema } from 'src/shared/data/lazySchema.js';
+import { extractTextContent } from 'src/agent/messages/messages.js';
+import { semanticBoolean } from 'src/shared/data/semanticBoolean.js';
+import { sleep } from 'src/shared/sleep.js';
+import { jsonParse } from 'src/platform/slowOperations.js';
+import { countCharInString } from 'src/shared/text/stringUtils.js';
+import { getTaskOutput } from 'src/agent/tasks/diskOutput.js';
+import { updateTaskState } from 'src/agent/tasks/framework.js';
+import { formatTaskOutput } from 'src/agent/tasks/outputFormatting.js';
+import type { ThemeName } from 'src/terminal/theme/theme.js';
 import { AgentPromptDisplay, AgentResponseDisplay } from 'src/tools/AgentTool/UI.js';
 import BashToolResultMessage from 'src/tools/BashTool/BashToolResultMessage.js';
-import { TASK_OUTPUT_TOOL_NAME } from './constants.js';
+import { TASK_OUTPUT_TOOL_NAME } from 'src/tools/TaskOutputTool/constants.js';
 const inputSchema = lazySchema(() => z.strictObject({
   task_id: z.string().describe('The task ID to get output from'),
   block: semanticBoolean(z.boolean().default(true)).describe('Whether to wait for completion'),
@@ -54,7 +54,7 @@ type TaskOutputToolOutput = {
 };
 
 // Re-export Progress from centralized types to break import cycles
-export type { TaskOutputProgress as Progress } from 'src/types/tools.js';
+export type { TaskOutputProgress as Progress } from 'src/shared/types/tools.js';
 
 // Get output for any task type
 async function getTaskOutputData(task: TaskState): Promise<TaskOutput> {

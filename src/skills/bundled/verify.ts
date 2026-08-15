@@ -1,5 +1,5 @@
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
-import { VERIFY_EXAMPLE_FILES } from './verifyRunExamples.js'
+import { VERIFY_EXAMPLE_FILES } from 'src/skills/bundled/verifyRunExamples.js'
 
 /**
  * `/verify` — confirm a change works by running the app and observing behavior.

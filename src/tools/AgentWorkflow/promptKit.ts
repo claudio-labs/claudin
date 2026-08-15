@@ -7,7 +7,7 @@
  * can't blow up the main's context. Pure strings — no ink/runAgent, so tested
  * directly.
  */
-import { isTerminalStep, type RunState, type WorkflowDef, type WorkflowStep } from './types.js'
+import { isTerminalStep, type RunState, type WorkflowDef, type WorkflowStep } from 'src/tools/AgentWorkflow/types.js'
 
 /** Max chars of each worker output injected into the main's context. */
 export const MAX_WORKER_OUTPUT_CHARS = 4000

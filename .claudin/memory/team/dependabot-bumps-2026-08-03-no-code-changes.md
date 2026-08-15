@@ -17,11 +17,11 @@ re-audit them.
   `getRequestHeaders()`. Critically, the ADC failure is still a plain `Error`
   whose message starts `"Could not load the default credentials"` — that exact
   string is what `isGoogleAuthLibraryCredentialError` in
-  `src/services/api/withRetry.ts` matches to classify Vertex auth failures, and
+  `src/providers/transport/withRetry.ts` matches to classify Vertex auth failures, and
   it would fail silently if the wording ever changes.
 - **axios 1.18.1 → 1.19.0** — the interceptor change (a synchronous throw in a
   request interceptor now blocks dispatch) is inert here: both of our request
-  interceptors, in `src/services/api/proxy.ts`, only mutate `config` and return it. The
+  interceptors, in `src/providers/transport/proxy.ts`, only mutate `config` and return it. The
   `NO_PROXY` canonicalization change is also inert because we set
   `axios.defaults.proxy = false` and do our own bypass via `shouldBypassProxy`
   plus undici's `EnvHttpProxyAgent`. Its new nested dep did break the local
@@ -36,7 +36,7 @@ re-audit them.
 
 **Follow-up, RESOLVED 2026-08-03:** `@anthropic-ai/vertex-sdk` pins
 `google-auth-library: ^10.2.0`, so a nested 10.7.0 copy sat beside our top-level
-v11 while `src/services/api/client.ts` built a **v11** `GoogleAuth` and passed it
+v11 while `src/providers/transport/client.ts` built a **v11** `GoogleAuth` and passed it
 into `AnthropicVertex`. Deduped by adding `"google-auth-library":
 "$google-auth-library"` to `overrides` in `package.json` — the `$name` form
 (already used for `@anthropic-ai/sdk`) tracks our direct dep, so a future major
@@ -55,8 +55,9 @@ future-proofing, not size.
 
 **How to apply:** validation already run and green — `bun run build`,
 `bun run build:compile` (224 MB binary, `--version` OK), `node dist/cli.mjs
---version`, and 164 focused tests across `geminiAuth`, `proxy`, `services/mcp/`,
-`WebSearchTool/`, `WebFetchTool/`. `bun run typecheck` reported ~4,623 errors on
+--version`, and 164 focused tests across `geminiAuth`, `proxy`, `services/mcp/`
+(now `src/mcp/`), `WebSearchTool/`, `WebFetchTool/`. `bun run typecheck` reported
+~4,623 errors on
 2026-08-03 — a snapshot of that day, **not** a standing figure; it was 2820 by
 2026-08-07, and [[typecheck-backlog-shape]] says how to read it live. All of it
 is pre-existing backlog (MACRO, build-time stub modules, test globals), with

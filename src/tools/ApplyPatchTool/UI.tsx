@@ -1,14 +1,14 @@
 import * as React from 'react'
 import { useState } from 'react'
-import { FilePathLink } from 'src/components/FilePathLink.js'
-import { Box, Text } from 'src/ink.js'
-import { getDisplayPath } from 'src/utils/fs/file.js'
+import { FilePathLink } from 'src/terminal/FilePathLink.js'
+import { Box, Text } from 'src/terminal/ink.js'
+import { getDisplayPath } from 'src/shared/fs/file.js'
 import type {
   ApplyPatchChangeType,
   ApplyPatchFileResult,
   ApplyPatchOutput,
-} from './applyPatch.js'
-import { parsePatch } from './patchFormat.js'
+} from 'src/tools/ApplyPatchTool/applyPatch.js'
+import { parsePatch } from 'src/tools/ApplyPatchTool/patchFormat.js'
 
 const LABEL: Record<ApplyPatchChangeType, string> = {
   add: 'Write',

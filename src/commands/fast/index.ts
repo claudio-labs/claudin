@@ -1,9 +1,9 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import {
   FAST_MODE_MODEL_DISPLAY,
   isFastModeEnabled,
-} from 'src/utils/fastMode.js'
-import { shouldInferenceConfigCommandBeImmediate } from 'src/utils/immediateCommand.js'
+} from 'src/providers/fastMode.js'
+import { shouldInferenceConfigCommandBeImmediate } from 'src/commands/immediateCommand.js'
 
 const fast = {
   type: 'local-jsx',
@@ -20,7 +20,7 @@ const fast = {
   get immediate() {
     return shouldInferenceConfigCommandBeImmediate()
   },
-  load: () => import('./fast.js'),
+  load: () => import('src/commands/fast/fast.js'),
 } satisfies Command
 
 export default fast

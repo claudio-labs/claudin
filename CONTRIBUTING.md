@@ -28,7 +28,7 @@ For performance, efficiency, and cache changes an approach is not enough on its 
 - `scripts/measure-*.test.ts` — measurement tests that assert a budget/ROI (`measure-bash-filter-roi.test.ts`, `measure-token-budget.test.ts`, `measure-cache-invalidation-budget.test.ts`, etc.).
 - `bun run test:coverage` (+ `scripts/render-coverage-heatmap.ts`) for coverage deltas.
 
-A good performance PR states the before/after numbers, the exact command that produced them, and the machine/conditions — the way the write-ups in `docs/tech/` and `src/services/cache/README.md` do. Numbers without a reproducible command are hard to accept.
+A good performance PR states the before/after numbers, the exact command that produced them, and the machine/conditions — the way the write-ups in `docs/tech/` and `src/agent/cache/README.md` do. Numbers without a reproducible command are hard to accept.
 
 Discussing first is not a barrier — it is how we make sure your effort lands. Maintainers will engage with real dedication to help shape the change so it can merge.
 
@@ -57,6 +57,22 @@ Run the app locally:
 ```bash
 bun run dev
 ```
+
+### Two binaries: `claudin` and `claudindev`
+
+Keep the published release usable while you iterate on unreleased work by putting
+both on your `$PATH`:
+
+- **`claudin`** — the globally installed npm package (`@claudiolabs/claudin`),
+  updated only by `bun install -g @claudiolabs/claudin`.
+- **`claudindev`** — a symlink to `<repo>/bin/claudin`, created by
+  `bun run link:dev` (into `~/.bun/bin` or `~/.local/bin`). It always runs the
+  latest `bun run build` output (`dist/cli.mjs`) from your checkout.
+
+If a feature you just built "doesn't show up", check which one you launched:
+source changes only take effect under `claudindev`, and only after
+`bun run build`. `claudin` stays on the pinned release no matter what the repo
+looks like.
 
 If you are working on provider setup or saved profiles, configure profiles from inside the REPL with `/provider` and validate the active profile with `/provider doctor`. The provider integration tests run via:
 

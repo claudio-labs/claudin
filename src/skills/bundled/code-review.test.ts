@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
-import { setIsInteractive } from 'src/bootstrap/state.js'
+import { setIsInteractive } from 'src/platform/bootstrap/state.js'
 import { clearBundledSkills, getBundledSkills } from 'src/skills/bundledSkills.js'
 import {
   buildCodeReviewPrompt,
   parseCodeReviewArgs,
   registerCodeReviewSkill,
   resolveReviewLevel,
-} from './code-review.js'
+} from 'src/skills/bundled/code-review.js'
 
 afterEach(() => {
   clearBundledSkills()

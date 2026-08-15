@@ -2,7 +2,7 @@ import {
   FETCH_REFERENCED_CODE_HINT,
   PR_COMMENTS_FORMAT_INSTRUCTIONS,
   TRIAGE_INSTRUCTIONS,
-} from './shared.js'
+} from 'src/commands/autofix-pr/shared.js'
 
 export type AutofixPromptMode = 'default' | 'dry-run'
 

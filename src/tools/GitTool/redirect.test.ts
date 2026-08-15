@@ -1,12 +1,12 @@
 import { describe, expect, it, beforeEach } from 'bun:test'
-import { acceptsGitCommand } from './grammar.js'
+import { acceptsGitCommand } from 'src/tools/GitTool/grammar.js'
 import {
   isRedirectableGitCommand,
   renderGitRedirect,
   resetGitRedirectMemoForTesting,
   shouldRedirectToGit,
   stripOutputTrimTail,
-} from './redirect.js'
+} from 'src/tools/GitTool/redirect.js'
 
 beforeEach(() => {
   resetGitRedirectMemoForTesting()
@@ -318,7 +318,7 @@ const RECORDED_COMMANDS: readonly string[] = [
   'gh run view --job 92198424809 --repo claudio-labs/claudin --log-failed 2>&1 | tail -60',
   'git diff --stat | tail -5',
   'git diff main...HEAD --stat 2>&1 | tail -15',
-  'git diff src/components/workflows/RunningWorkflowsTab.tsx | grep "^@@"',
+  'git diff src/agent/ui/workflows/RunningWorkflowsTab.tsx | grep "^@@"',
   'git log --stat -1 d67e21a | head -50',
   'git show --stat b5a5edc 2>&1 | head -40',
   'git status --short | grep -i subtitle',
@@ -329,12 +329,12 @@ const RECORDED_COMMANDS: readonly string[] = [
   'gh pr diff 52',
   'gh run view --job 92198424809 --repo claudio-labs/claudin --log',
   'git diff',
-  'git diff -- src/components/explorer/ExplorerDialog.tsx',
+  'git diff -- src/terminal/explorer/ExplorerDialog.tsx',
   'git diff --stat ROADMAP.md',
   'git diff .claudin/memory/team/MEMORY.md',
   'git diff HEAD --stat',
   'git diff main...HEAD --stat',
-  'git diff src/constants/prompts.ts',
+  'git diff src/agent/prompts/prompts.ts',
   'git log --oneline -15',
   'git log --oneline -5',
   'git status --short',
@@ -353,7 +353,7 @@ const RECORDED_COMMANDS: readonly string[] = [
   // Quoted arguments — operators the shell never acts on.
   "git log -3 --format='%an|%s%n%b%n---'",
   "git log -20 --format='%h %s%n%b---' main..HEAD | head -200",
-  "git log --oneline -S\"strict: true\" -- src/services/api/codexShim.ts | tail -5",
+  "git log --oneline -S\"strict: true\" -- src/providers/shims/codexShim.ts | tail -5",
   "git show --stat --format='%b' eaabb20 | head -20",
   "gh pr view 51 --json comments,reviews --jq '.comments[] | .body' 2>&1 | head -50",
   "gh run view 31442130244 --json status,conclusion,jobs --jq '.status'",

@@ -87,14 +87,14 @@ function checkAutoModeClassifierPrompts(): void {
   const promptDir = join(
     __dirname,
     '..',
-    'src/services/permissions/yolo-classifier-prompts',
+    'src/permissions/yolo-classifier-prompts',
   )
   const required = ['auto_mode_system_prompt.txt', 'permissions_external.txt']
   const missing = required.filter(f => !existsSync(join(promptDir, f)))
   if (missing.length === 0) return
   console.warn(
     '\n[build] auto-mode classifier prompts missing:\n' +
-      missing.map(f => '  - src/services/permissions/yolo-classifier-prompts/' + f).join('\n') +
+      missing.map(f => '  - src/permissions/yolo-classifier-prompts/' + f).join('\n') +
       '\nAuto-mode will fall back to auto-allow at runtime ' +
       '(see isClassifierBundled() in yoloClassifier.ts).\n' +
       'Set TRANSCRIPT_CLASSIFIER:false above to silence, or add the files.\n',
@@ -219,7 +219,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
 try {
 
 const result = await Bun.build({
-  entrypoints: ['./src/entrypoints/cli.tsx'],
+  entrypoints: ['./src/platform/entrypoints/cli.tsx'],
   outdir: './dist',
   target: isCompile ? 'bun' : 'node',
   // Bun's bytecode compilation requires CommonJS output; the Node bundle
@@ -538,8 +538,8 @@ export const SeverityNumber = {};
                     .add(pathMod.relative(pathMod.resolve(__dirname, '..'), file))
                 }
 
-                // Check src/tasks/ non-relative imports
-                if (specifier.startsWith('src/tasks/')) {
+                // Check src/agent/tasks/ non-relative imports
+                if (specifier.startsWith('src/agent/tasks/')) {
                   const resolved = pathMod.resolve(__dirname, '..', specifier)
                   const candidates = [
                     resolved,
@@ -721,11 +721,11 @@ ${exports}
     // image paste + resizing silently no-op in the standalone binary.
     'sharp',
     // Prebuilt ripgrep binary — resolved from node_modules at runtime
-    // (src/utils/fs/ripgrep.ts). Externalised so Bun never inlines the package
+    // (src/shared/fs/ripgrep.ts). Externalised so Bun never inlines the package
     // and its internal per-platform binary path resolution stays intact.
     '@vscode/ripgrep',
     // AWS/Azure SDKs are "bring your own" — NOT declared in package.json and
-    // NOT installed (dynamically imported in src/utils/model/bedrock.ts for
+    // NOT installed (dynamically imported in src/providers/model/bedrock.ts for
     // AWS-native Bedrock model discovery, wrapped in try/catch). They can't be
     // bundled (not present), so they stay external for BOTH builds. Under the
     // compiled binary the dynamic import fails gracefully, exactly as it would

@@ -1,5 +1,5 @@
-import type { Command } from 'src/commands.js'
-import { isClaudeAISubscriber } from 'src/services/auth/auth.js'
+import type { Command } from 'src/commands/commands.js'
+import { isClaudeAISubscriber } from 'src/providers/auth/auth.js'
 
 const rateLimitOptions = {
   type: 'local-jsx',
@@ -13,7 +13,7 @@ const rateLimitOptions = {
     return true
   },
   isHidden: true, // Hidden from help - only used internally
-  load: () => import('./rate-limit-options.js'),
+  load: () => import('src/commands/rate-limit-options/rate-limit-options.js'),
 } satisfies Command
 
 export default rateLimitOptions

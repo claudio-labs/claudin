@@ -7,60 +7,60 @@ import {
   setHasExitedPlanMode,
   setNeedsAutoModeExitAttachment,
   setNeedsPlanModeExitAttachment,
-} from 'src/bootstrap/state.js'
-import { logEvent } from 'src/services/analytics/index.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/metadata.js'
+} from 'src/platform/bootstrap/state.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
 import {
   buildDossierFromMessages,
   serializeDossier,
-} from 'src/services/planDossier.js'
+} from 'src/agent/planDossier.js'
 import {
   buildTool,
   type Tool,
   type ToolDef,
   toolMatchesName,
-} from 'src/Tool.js'
-import { formatAgentId, generateRequestId } from 'src/coordinator/agentId.js'
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
-import { logForDebugging } from 'src/utils/debug.js'
+} from 'src/tools/Tool.js'
+import { formatAgentId, generateRequestId } from 'src/agent/coordinator/agentId.js'
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   findInProcessTeammateTaskId,
   setAwaitingPlanApproval,
-} from 'src/coordinator/inProcessTeammateHelpers.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { logError } from 'src/utils/log.js'
+} from 'src/agent/coordinator/inProcessTeammateHelpers.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { logError } from 'src/shared/log.js'
 import {
   getPlan,
   getPlanFilePath,
   getPlanSlug,
   persistFileSnapshotIfRemote,
-} from 'src/utils/plans.js'
-import { seedTasksFromPlan } from 'src/tasks/planTasks.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+} from 'src/agent/plans/plans.js'
+import { seedTasksFromPlan } from 'src/agent/tasks/planTasks.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   getAgentName,
   getTeamName,
   isPlanModeRequired,
   isTeammate,
-} from 'src/coordinator/teammate.js'
-import { writeToMailbox } from 'src/coordinator/teammateMailbox.js'
+} from 'src/agent/coordinator/teammate.js'
+import { writeToMailbox } from 'src/agent/coordinator/teammateMailbox.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { TASK_UPDATE_TOOL_NAME } from 'src/tools/TaskUpdateTool/constants.js'
 import { TEAM_CREATE_TOOL_NAME } from 'src/tools/TeamCreateTool/constants.js'
-import { EXIT_PLAN_MODE_V2_TOOL_NAME } from './constants.js'
-import { EXIT_PLAN_MODE_V2_TOOL_PROMPT } from './prompt.js'
+import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
+import { EXIT_PLAN_MODE_V2_TOOL_PROMPT } from 'src/tools/ExitPlanModeTool/prompt.js'
 import {
   renderToolResultMessage,
   renderToolUseMessage,
   renderToolUseRejectedMessage,
-} from './UI.js'
+} from 'src/tools/ExitPlanModeTool/UI.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER')
-  ? (require('src/services/permissions/autoModeState.js') as typeof import('src/services/permissions/autoModeState.js'))
+  ? (require('src/permissions/autoModeState.js') as typeof import('src/permissions/autoModeState.js'))
   : null
 const permissionSetupModule = feature('TRANSCRIPT_CLASSIFIER')
-  ? (require('src/services/permissions/permissionSetup.js') as typeof import('src/services/permissions/permissionSetup.js'))
+  ? (require('src/permissions/permissionSetup.js') as typeof import('src/permissions/permissionSetup.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

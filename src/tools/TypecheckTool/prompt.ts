@@ -5,7 +5,7 @@ export const TYPECHECK_TOOL_NAME = 'Typecheck'
  * description is part of the shared system prompt, so interpolating anything
  * environment-derived here would fragment the prompt cache for every user —
  * the constraint LSPTool was rebuilt around (see the header of
- * src/tools/LSPTool/LSPTool.ts) and the one src/tools.ts flags on
+ * src/tools/LSPTool/LSPTool.ts) and the one src/tools/tools.ts flags on
  * getAllBaseTools. Detection results belong in the tool RESULT, never here.
  */
 export const DESCRIPTION = `Type-check the project and get back only what your changes broke, instead of raw compiler output.

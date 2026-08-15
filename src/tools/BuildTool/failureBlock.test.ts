@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { extractFailureBlock } from './failureBlock.js'
-import { isUpToDate } from './noOp.js'
+import { extractFailureBlock } from 'src/tools/BuildTool/failureBlock.js'
+import { isUpToDate } from 'src/tools/BuildTool/noOp.js'
 
 describe('extractFailureBlock', () => {
   test('takes the gradle what-went-wrong block and drops the help boilerplate', () => {
@@ -78,7 +78,7 @@ describe('extractFailureBlock', () => {
   })
 
   test('the fallback leaves positioned lines to the diagnostic list', () => {
-    const log = ['src/main.rs:4:9: error: mismatched types'].join('\n')
+    const log = ['src/platform/main.rs:4:9: error: mismatched types'].join('\n')
     expect(extractFailureBlock('unknown', log)).toBeUndefined()
   })
 

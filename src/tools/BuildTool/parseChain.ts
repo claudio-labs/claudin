@@ -7,7 +7,7 @@ import { parseMixCompile } from 'src/tools/shared/diagnostics/mixCompile.js'
 import { parseMsvcStyle } from 'src/tools/shared/diagnostics/msvcStyle.js'
 import { parseSbtBracket } from 'src/tools/shared/diagnostics/sbtBracket.js'
 import type { DiagnosticParser } from 'src/tools/shared/diagnostics/types.js'
-import type { BuildSystem } from './types.js'
+import type { BuildSystem } from 'src/tools/BuildTool/types.js'
 
 /**
  * This tool's build-system → native-parser map. The chain itself, the ANSI

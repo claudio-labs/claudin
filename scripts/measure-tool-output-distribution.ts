@@ -50,9 +50,9 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
-} from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/services/config/config.js'
-import { MAX_OUTPUT_SIZE } from '../src/utils/fs/file.js'
+} from '../src/shared/tokenEstimation.js'
+import { enableConfigs } from '../src/platform/config/config.js'
+import { MAX_OUTPUT_SIZE } from '../src/shared/fs/file.js'
 
 type Profile = 'small' | 'typical' | 'large' | 'capped'
 
@@ -94,7 +94,7 @@ function bashOutput(profile: Profile): string {
     }
   }
   const raw = lines.join('\n')
-  // Apply the production cap (`src/utils/fs/file.ts:48`). Real Bash output
+  // Apply the production cap (`src/shared/fs/file.ts:48`). Real Bash output
   // gets truncated to `MAX_OUTPUT_SIZE` bytes plus a small "<truncated>"
   // notice. We mirror that so the distribution for `capped` matches what
   // the model actually receives (≤ ~0.25MB), not the unbounded synthetic.

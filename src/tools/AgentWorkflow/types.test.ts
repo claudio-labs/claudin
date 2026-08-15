@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { buildDecisionSchema, isTerminalStep, type WorkflowStep } from './types.js'
+import { buildDecisionSchema, isTerminalStep, type WorkflowStep } from 'src/tools/AgentWorkflow/types.js'
 
 const step = (over: Partial<WorkflowStep> = {}): WorkflowStep => ({
   name: 'phase',

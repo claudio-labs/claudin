@@ -130,4 +130,4 @@ progress with `WorkflowStatus`).
 persistence + `exportRunSummary`), `loadWorkflows.ts` (parse + validation), `orchestratorAgent.ts`
 (the built-in main), and `engine.ts` (drives `runAgent` per phase, forcing the decision via
 `createSyntheticOutputTool`). The three tools live under `WorkflowTool/`, `ListWorkflowsTool/`,
-`WorkflowStatusTool/`; the TUI under `src/components/workflows/`.
+`WorkflowStatusTool/`; the TUI under `src/agent/ui/workflows/`.

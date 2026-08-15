@@ -3,13 +3,13 @@ import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { basename, join } from 'path'
 
-import type { ToolUseContext } from 'src/Tool.js'
-import { getCwdState, setCwdState } from 'src/bootstrap/state.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
+import { getCwdState, setCwdState } from 'src/platform/bootstrap/state.js'
 // GlobTool/UI reuses GrepTool.renderToolResultMessage at module-eval time.
 // Import GlobTool first so its UI resolves GrepTool only once GrepTool has
 // fully initialized — importing GrepTool alone trips a TDZ in the cycle.
 import 'src/tools/GlobTool/GlobTool.js'
-import { GrepTool, RG_LINE_RE, relativizeRgLine } from './GrepTool.js'
+import { GrepTool, RG_LINE_RE, relativizeRgLine } from 'src/tools/GrepTool/GrepTool.js'
 
 // ---------------------------------------------------------------------------
 // Regression + feature suite for GrepTool.
@@ -636,7 +636,7 @@ describe('GrepTool relativizeRgLine', () => {
     const { data } = await GrepTool.call(
       {
         pattern: 'GREP_MAX_FILES',
-        path: `${root}/src/services/tools`,
+        path: `${root}/src/agent/tools`,
         output_mode: 'content',
         '-C': 1,
       } as never,
@@ -669,7 +669,7 @@ describe('GrepTool — blind spots', () => {
     )
     // A second buried symbol, searched by exactly one test below. The
     // tool-result cache keys on the input alone (wrapCallWithCache in
-    // src/Tool.ts), so a test that re-runs an earlier test's search replays
+    // src/tools/Tool.ts), so a test that re-runs an earlier test's search replays
     // that result and proves nothing about its own subject.
     writeFileSync(
       join(blindDir, 'hidden_from_vcs', 'other.ts'),

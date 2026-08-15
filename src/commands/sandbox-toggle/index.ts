@@ -1,6 +1,6 @@
 import figures from 'figures'
-import type { Command } from 'src/commands.js'
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
+import type { Command } from 'src/commands/commands.js'
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 
 const command = {
   name: 'sandbox',
@@ -44,7 +44,7 @@ const command = {
   },
   immediate: true,
   type: 'local-jsx',
-  load: () => import('./sandbox-toggle.js'),
+  load: () => import('src/commands/sandbox-toggle/sandbox-toggle.js'),
 } satisfies Command
 
 export default command

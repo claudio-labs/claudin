@@ -1,4 +1,4 @@
-import type { CheckResult, Diagnostic } from './types.js'
+import type { CheckResult, Diagnostic } from 'src/tools/TypecheckTool/types.js'
 
 /**
  * Token-economy formatter. Turns a CheckResult into the model-facing string,

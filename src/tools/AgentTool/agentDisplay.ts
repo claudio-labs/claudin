@@ -6,18 +6,18 @@
 import {
   checkIsClaudeNativeProvider,
   getDefaultSubagentModel,
-} from 'src/utils/model/agent.js'
-import { isModelAllowed } from 'src/utils/model/modelAllowlist.js'
-import { logError } from 'src/utils/log.js'
+} from 'src/providers/model/agent.js'
+import { isModelAllowed } from 'src/providers/model/modelAllowlist.js'
+import { logError } from 'src/shared/log.js'
 import {
   getSourceDisplayName,
   type SettingSource,
-} from 'src/services/settings/constants.js'
+} from 'src/platform/settings/constants.js'
 import {
   getAvailableModelIdsForActiveProfile,
   resolveModelOverride,
-} from './agentModelResolver.js'
-import type { AgentDefinition } from './loadAgentsDir.js'
+} from 'src/tools/AgentTool/agentModelResolver.js'
+import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 
 type AgentSource = SettingSource | 'built-in' | 'plugin'
 

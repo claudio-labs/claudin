@@ -1,12 +1,12 @@
-import { getGlobalConfig } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logError } from 'src/utils/log.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logError } from 'src/shared/log.js'
 import {
   defaultResolveOverrideDeps,
   getAvailableModelIdsForActiveProfile,
   resolveModelOverride,
   type ResolveOverrideDeps,
-} from './agentModelResolver.js'
+} from 'src/tools/AgentTool/agentModelResolver.js'
 
 type AgentLike = { agentType: string; model?: string }
 

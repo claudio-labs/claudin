@@ -8,10 +8,10 @@ import { createHash } from 'crypto'
 
 import type { StructuredPatchHunk } from 'diff'
 
-import type { ToolUseContext, ValidationResult } from 'src/Tool.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { checkBatchWritePermission } from 'src/services/permissions/filesystem.js'
-import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
+import type { ToolUseContext, ValidationResult } from 'src/tools/Tool.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { checkBatchWritePermission } from 'src/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import {
   BATCH_CONFIRM_THRESHOLD,
   commitStagedChanges,
@@ -20,9 +20,9 @@ import {
   type StagedChange,
   stageContentReplacement,
 } from 'src/tools/shared/stagedWrite/stagedWrite.js'
-import { findSites, isValidIdentifier, type RenameSite } from './findSites.js'
-import { RENAME_TOOL_NAME } from './prompt.js'
-import { renderPreview } from './renderPreview.js'
+import { findSites, isValidIdentifier, type RenameSite } from 'src/tools/RenameTool/findSites.js'
+import { RENAME_TOOL_NAME } from 'src/tools/RenameTool/prompt.js'
+import { renderPreview } from 'src/tools/RenameTool/renderPreview.js'
 
 export type RenameInput = {
   symbol: string

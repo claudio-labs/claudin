@@ -2,7 +2,7 @@
 // extracted body builder, and the simple-prompt rendering.
 //
 // Note on `ANTHROPIC_API_KEY` stubbing in the body tests: `getBashGitInstructionsBody()`
-// calls `getAttributionTexts()` (src/services/git/attribution.ts), which routes
+// calls `getAttributionTexts()` (src/vcs/git/attribution.ts), which routes
 // through model resolution and demands an API key even for these
 // read-only string assertions. The stub is load-bearing — without it the
 // tests blow up at import-resolution time.
@@ -13,8 +13,8 @@ import {
   getBashGitInstructionsBody,
   getSimplePrompt,
   shouldInjectBashGitInstructionsInMessages,
-} from './prompt.js'
-import { BASH_TOOL_NAME } from './toolName.js'
+} from 'src/tools/BashTool/prompt.js'
+import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 
 describe('shouldInjectBashGitInstructionsInMessages', () => {
   const originalEnv = process.env.CLAUDE_CODE_BASH_GIT_IN_MESSAGES

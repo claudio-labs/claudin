@@ -1,10 +1,10 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 
 const agents = {
   type: 'local-jsx',
   name: 'agents',
   description: 'Manage agent configurations',
-  load: () => import('./agents.js'),
+  load: () => import('src/commands/agents/agents.js'),
 } satisfies Command
 
 export default agents

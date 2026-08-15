@@ -18,7 +18,7 @@ Never use Bash `find`/`grep` for code search — use dedicated Grep/Glob tools.
 
 A content-mode Grep result over ~6 KB is regrouped by file before it reaches the
 model, and its `-A/-B/-C` context is clamped to ±3 lines around each match
-(`summarizeGrepOutput` in `src/services/tools/toolResultSummarizer.ts`). So asking for
+(`summarizeGrepOutput` in `src/agent/tools/toolResultSummarizer.ts`). So asking for
 `-C 30` on a wide search does not buy 30 lines of context — scope the search
 instead, or re-run against the one file you care about. Between ~3 KB and ~6 KB
 the same regrouping applies, but only when it costs no match line: a result
@@ -37,11 +37,11 @@ anyway, pass `head_limit` yourself or narrow with `path`/`glob`;
 does not re-answer a search it already served.
 
 `Glob` returns at most **100 paths per call**, ranked most-recently-modified
-first (`--sortr=modified` in `src/utils/fs/glob.ts`), so what the cap drops is the
+first (`--sortr=modified` in `src/shared/fs/glob.ts`), so what the cap drops is the
 files nobody has touched. That ranking is the same one Grep's
 `files_with_matches` mode applies, and it is load-bearing twice over: the
 summarizer trims the result again to the first 50 paths
-(`GLOB_MAX_PATHS` in `src/services/tools/toolResultSummarizer.ts`), so on a wide pattern
+(`GLOB_MAX_PATHS` in `src/agent/tools/toolResultSummarizer.ts`), so on a wide pattern
 the model sees the 50 newest matches and nothing else. A truncated result names
 the `offset` to pass for the next page — that is the way to reach the rest,
 narrowing the pattern being the other. Ordering is by mtime, not relevance: a
@@ -51,7 +51,7 @@ reaches it, so scope with `path` rather than paging.
 ## What a search does NOT cover
 
 The two tools disagree about `.gitignore`, on purpose, and the asymmetry is the
-thing to hold in your head. `Glob` passes `--no-ignore` (`src/utils/fs/glob.ts`),
+thing to hold in your head. `Glob` passes `--no-ignore` (`src/shared/fs/glob.ts`),
 so it lists ignored paths and walks `node_modules/`. `Grep` does not, so a
 pattern living only in `dist/`, in generated code or in a vendored tree is
 outside the files it reads.
@@ -85,7 +85,7 @@ open it. One label reaches three places — the search itself (ripgrep's
 so `output_mode: "symbols"` over UTF-16 returns real signatures instead of
 "(matched outside any symbol)"), and `Read(file_path, encoding: …)`, which
 covers a full read, a range, `view: "outline"` and `symbol:` alike. All three
-share `src/utils/fs/textEncoding.ts`, so an unknown label is refused the same way
+share `src/shared/fs/textEncoding.ts`, so an unknown label is refused the same way
 everywhere rather than degrading into mojibake. Note the map still prints a
 *signature* while `Read`'s `symbol` matches on a *name*, so the round trip
 means reading `makeWidget` out of `export function makeWidget(id: string)`.
@@ -93,7 +93,7 @@ means reading `makeWidget` out of `export function makeWidget(id: string)`.
 Finally, an empty result is no longer overloaded. ripgrep exits 2 both when it
 refuses an invocation and when it fails to read a path, and `ripGrep()` used to
 resolve both to `[]` — so an **invalid regex answered "No matches found"**.
-`ripGrepWithStatus()` (`src/utils/fs/ripgrep.ts`) separates them: a refusal is
+`ripGrepWithStatus()` (`src/shared/fs/ripgrep.ts`) separates them: a refusal is
 re-thrown carrying ripgrep's own message, an unreadable directory still returns
 results, and a run cut short by the 20s timeout or the 20 MB buffer comes back
 labelled INCOMPLETE instead of passing as a finished search. Grep and Glob both
@@ -198,96 +198,119 @@ the redirect.
 
 ## Module Map
 
-Approximate `.ts(x)` counts in `(N)`, measured 2026-08-14 — the big dirs
-(`services`, `components`, `tools`) are where most code lives, so always
+Approximate `.ts(x)` counts in `(N)`, measured 2026-08-15. Each top-level dir is
+a **feature slice** that owns its own logic, UI and tests — a slice's Ink
+components sit in its `ui/`, not in a shared component dump. The four big ones
+(`platform`, `tools`, `agent`, `terminal`) are where most code lives, so always
 Grep/Glob inside them rather than reading broadly. Cross-refs point to the rule
 that owns that subsystem.
 
 ```
 src/
-├── entrypoints/ (16)            ← cli.tsx: process entry — fast-paths --version, defers heavy imports
-├── QueryEngine.ts               ← agent loop: model drive, tool dispatch, streaming, compaction
-├── query.ts                     ← query helpers, SDKMessage types (see also query/ for config/deps)
-├── query/ (7)                   ← config.ts, deps.ts, stopHooks.ts, tokenBudget.ts
-├── context.ts                   ← getSystemContext/getUserContext: the memoized system-prompt
-│                                  context blocks (git status, dir structure). NOT src/context/,
-│                                  and NOT services/context/ (token accounting) — three different things
-├── Tool.ts                      ← central type system: Tool, Tools, ToolUseContext, buildTool()
-├── tools.ts                     ← dynamic tool registry (sandbox/plan/coordinator/MCP-aware)
-├── tools/ (469)                 ← built-in tools, one dir per tool
+├── agent/ (489)                 ← the agent loop and everything that renders it
+│   ├── QueryEngine.ts           ← model drive, tool dispatch, streaming, compaction
+│   ├── query.ts + query/ (8)    ← query helpers, SDKMessage types; config.ts, deps.ts, tokenBudget.ts
+│   ├── context.ts               ← getSystemContext/getUserContext: the memoized system-prompt
+│   │                              context blocks (git status, dir structure)
+│   ├── context/ (22)            ← token accounting + context-window math. Three things carry
+│   │                              this name: agent/context.ts (prompt blocks), agent/context/
+│   │                              (accounting), terminal/contexts/ (React providers)
+│   ├── prompts/ (25)            ← prompts.ts (the system prompt), familyAddendums/, steeringToggles
+│   ├── repl/ (35)               ← REPL.tsx (main loop), controllers/, replLauncher
+│   ├── ui/ (133)                ← the loop's Ink components: messages/, tasks/, agents/ (→ ink-tui.md)
+│   ├── tools/ (29)              ← toolExecution, toolResultCache, toolResultSummarizer (→ cache.md)
+│   ├── tasks/ (28)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
+│   ├── coordinator/ (42)        ← multi-agent coordinator + swarm backends (COORDINATOR_MODE)
+│   ├── compact/ (23)            ← compaction: autoCompact, microCompact, stableStubState
+│   ├── cache/ (4)               ← prompt-cache policy + profiles (→ cache.md)
+│   ├── messages/ attachments/   ← message normalization, attachment rendering
+│   ├── hooks/ (17)              ← React hooks for the loop (useCancelRequest, useTasksV2 …)
+│   └── plans/ goal/ autoFix/ ultraplan/ contextCollapse/  ← planning + self-correction
+├── providers/ (254)             ← provider abstraction (start here for provider issues)
+│   ├── presets/ (20)            ← activeProvider.ts (resolver), providerConfig.ts (presets, profile
+│   │                              schema), providerProfiles, discovery, validation
+│   ├── shims/ (48)              ← openaiShim.ts (Anthropic → OpenAI Chat Completions, ~2.2k lines),
+│   │                              codexShim.ts (ChatGPT OAuth), claude/ (native renderer → cache.md)
+│   ├── transport/ (35)          ← client.ts (SDK builder), withRetry.ts, errors.ts, proxy, h2Fallback
+│   ├── oauth/ (39)              ← per-provider OAuth + credential stores (codex, kimi, xai, gemini …)
+│   ├── model/ (42)              ← model.ts (getPrimaryModel, getContextWindowForModel),
+│   │                              providers.ts (getAPIProvider), modelOptions, catalogs
+│   ├── effort/ (7)              ← reasoning-effort levels + cycling (project-scoped)
+│   ├── usage/ (18)              ← cost, billing, quota, per-provider usage endpoints
+│   ├── ui/ (21)                 ← ProviderManager, ModelPicker, EffortPicker, OAuth flows
+│   └── (adding a preset? use the /add-provider-preset skill)
+├── tools/ (575)                 ← built-in tools, one dir per tool; entry is <Name>Tool.ts(x)
+│   ├── Tool.ts                  ← central type system: Tool, Tools, ToolUseContext, buildTool()
+│   ├── tools.ts                 ← dynamic registry (sandbox/plan/coordinator/MCP-aware)
 │   ├── BashTool/                ← shell execution, permissions, sandbox
 │   ├── FileReadTool/ FileEditTool/ FileWriteTool/ NotebookEditTool/  ← file IO
 │   ├── GrepTool/ GlobTool/      ← ripgrep + glob wrappers
 │   ├── GitTool/                 ← git + gh, batched; permissions delegate to BashTool's
 │   ├── AgentTool/               ← sub-agent spawning (built-in agents in built-in/)
-│   ├── TaskCreateTool/ …        ← task tool surface (runtime backends live in src/tasks/)
+│   ├── TaskCreateTool/ …        ← task tool surface (runtime backends are src/agent/tasks/)
+│   ├── BuildTool/ RunTestsTool/ ← build + test runners with diagnostic parsing
 │   ├── WebFetchTool/ WebSearchTool/  ← Firecrawl or DuckDuckGo/raw
-│   ├── LSPTool/                 ← read-only LSP ops (plugin-only; backend in services/lsp/)
-│   ├── EnterPlanModeTool/ ExitPlanModeTool/ VerifyPlanExecutionTool/  ← planning
+│   ├── LSPTool/                 ← read-only LSP ops (plugin-only; backend in platform/lsp/)
+│   ├── EnterPlanModeTool/ ExitPlanModeTool/  ← planning
 │   ├── WorkflowTool/ SkillTool/ MonitorTool/ ScheduleCronTool/  ← workflow
 │   ├── EnterWorktreeTool/ ExitWorktreeTool/  ← worktree (safety → agent-safety.md)
-│   └── shared/                  ← cross-tool helpers
-├── services/ (832)              ← one dir per subsystem; the reorg moved most of src/utils here
-│   ├── api/                     ← provider abstraction (start here for provider issues)
-│   │   ├── client.ts            ← SDK builder for all providers
-│   │   ├── activeProvider.ts    ← active provider resolver
-│   │   ├── openaiShim.ts        ← Anthropic → OpenAI Chat Completions (~2.2k lines)
-│   │   ├── codexShim.ts         ← ChatGPT/Codex OAuth adapter
-│   │   ├── providerConfig.ts    ← presets, profile schema, credential/OAuth storage
-│   │   ├── claude/              ← Anthropic renderer, paramBuilders, cacheControl (→ cache.md)
-│   │   ├── withRetry.ts errors.ts errorUtils.ts  ← retry + error classification
-│   │   └── (adding a preset? use the /add-provider-preset skill)
-│   ├── cache/                   ← prompt/tool-result cache policy (→ cache.md)
-│   ├── tools/                   ← toolExecution, toolResultCache, cacheInvalidation (→ cache.md)
-│   ├── mcp/                     ← MCP client + server connection mgmt; mcpServerApproval trust dialog
-│   ├── session/                 ← sessionStorage, resume/restore, conversationRecovery, spill dirs
-│   ├── config/                  ← config.ts (getGlobalConfig/saveGlobalConfig), claudinMigration
-│   ├── permissions/             ← permission rules, always-allow, classifier approvals
-│   ├── plugins/                 ← plugin discovery, install, marketplace
-│   ├── bash/                    ← bash parsing, command splitting, shell snapshots
-│   ├── lifecycleHooks/          ← Claude Code lifecycle hooks (PreToolUse …) — NOT src/hooks/, which is React
-│   ├── context/                 ← token accounting + context-window math — NOT src/context/, which is React
-│   ├── instructions/            ← claudemd.ts: AGENTS.md/CLAUDE.md + .claudin/rules/*.md loader
-│   ├── git/ shell/ messages/ attachments/ settings/ install/ computerUse/  ← moved subsystems
-│   ├── compact/                 ← conversation compaction + sessionMemoryCompact
-│   ├── extractMemories/ SessionMemory/ teamMemorySync/  ← auto-memory subsystem
-│   ├── oauth/                   ← token store, PKCE, callback server (reused by all OAuth providers)
-│   ├── lsp/                     ← LSP client service
-│   ├── github/ settingsSync/ policyLimits/ tips/ wiki/  ← misc services
-│   └── analytics/               ← GrowthBook, logEvent (telemetry stubbed at build time)
-├── commands/ (224)             ← slash commands (/provider, /review, /plan, /resume, /mcp …); registry in src/commands.ts
-├── components/ (481)           ← Ink React TUI components (→ ink-tui.md; some are committed React-Compiler output)
-├── ink/ (109)                  ← the forked Ink renderer: screen.ts, log-update, stringWidth, ScrollBox (→ ink-tui.md)
-├── native-ts/ (5)              ← TS ports to avoid native addons: yoga-layout, color-diff, file-index
-├── screens/ (36)               ← REPL.tsx (main loop), ResumeConversation, StartupScreen
-├── hooks/ (117)                ← React hooks only (use*) — lifecycle hooks are services/lifecycleHooks/
-├── context/ (9) state/ (8)     ← React context providers + AppState store (getState/selectors).
-│                                 The TUI providers only — the system-prompt context is src/context.ts
-│                                 and the token accounting is services/context/
-├── keybindings/ (15)           ← keybinding parser, defaultBindings, loadUserBindings, match
-├── outputFilter/ (51)          ← command-aware Bash output filter (noise stripping/rewrites)
-├── main/ (44)                  ← boot sequence: bootContext, argvPreparse, action, commands
-├── cli/ (51)                   ← headless -p / print mode, ndjson, exit handling
-├── coordinator/ (39)           ← multi-agent coordinator (COORDINATOR_MODE flag)
-├── tasks/ (27)                 ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
-├── memdir/ (20)                ← auto-memory dir I/O (project-local <repo>/.claudin/memory/ by default)
-├── skills/ (27)                ← user-invocable skills (/<name>); bundled/ + /create authoring
-├── migrations/ (11)            ← one-time settings/model migrations (migrateFennecToOpus …)
-├── bridge/ (32)                ← bridge mode (BRIDGE_MODE flag; largely gated/stubbed)
-├── constants/ (40) types/ (22) ← shared constants + types
-├── utils/ (292)                ← primitives only since the reorg — a subsystem here is a bug:
-│   ├── data/ (26)              ← pure data helpers
-│   ├── fs/ (35)                ← path.ts, glob.ts, ripgrep.ts, textEncoding.ts, file IO
-│   ├── proc/ (19)              ← Shell.ts, execFileNoThrow, process helpers
-│   ├── text/ (14)              ← string/format helpers
-│   ├── model/ (42)             ← model.ts (getPrimaryModel, getContextWindowForModel),
-│   │                             providers.ts (getAPIProvider). Stays here on purpose — see testing.md
-│   ├── errors.ts               ← ClaudeError, AbortError, isAbortError, isENOENT, isSdk* guards
-│   ├── log.ts theme.ts envUtils.ts  ← logError/logForDebugging, theme, env helpers
-│   └── (~121 loose files left at the root — the next slice of the same cleanup)
-└── bootstrap/
-    └── state.ts                ← getSessionId, getIsNonInteractiveSession, cwd helpers
+│   ├── constants/               ← toolLimits.ts, tools.ts (names/descriptions)
+│   └── shared/                  ← outputFilter/ (Bash noise stripping), diagnostics/ (shared
+│                                  Build+Typecheck parsers), codeOutline/ (scanSymbols), stagedWrite/
+├── platform/ (584)              ← the host: process, config, OS integration, telemetry
+│   ├── entrypoints/ (16)        ← cli.tsx: process entry — fast-paths --version, defers heavy imports
+│   ├── main/ (44)               ← boot sequence: bootContext, argvPreparse, action, commands
+│   ├── headless/ (54)           ← headless -p / print mode, ndjson, exit handling
+│   ├── config/ (14)             ← config.ts (getGlobalConfig/saveGlobalConfig), claudinMigration
+│   ├── settings/ (33)           ← settings.json layers, precedence, remote-managed
+│   ├── lifecycleHooks/ (43)     ← Claude Code lifecycle hooks (PreToolUse …). React hooks live in
+│   │                              each slice's own hooks/ — these are the harness's
+│   ├── bash/ (32)               ← bash parsing, command splitting, shell snapshots
+│   ├── analytics/ (9)           ← GrowthBook, logEvent (telemetry stubbed at build time)
+│   ├── bootstrap/state.ts       ← getSessionId, getIsNonInteractiveSession, cwd helpers
+│   ├── lsp/ ide/ install/ shell/ computerUse/ notifications/ secureStorage/
+│   ├── migrations/ (11)         ← one-time settings/model migrations (migrateFennecToOpus …)
+│   ├── bridge/ (37)             ← bridge mode (BRIDGE_MODE flag; largely gated/stubbed)
+│   └── privacy/ billing/ teams/ telemetry/ policyLimits/ wiki/ github/  ← misc host services
+├── terminal/ (384)              ← the TUI shell: renderer, input, chrome (→ ink-tui.md)
+│   ├── ink/ (114)               ← the forked Ink renderer: screen.ts, log-update, stringWidth, ScrollBox
+│   ├── prompt-input/ (23)       ← the input box, its modes and suggestions
+│   ├── hooks/ (24)              ← terminal-level React hooks (useTextInput …)
+│   ├── design-system/ (17)      ← shared primitives; logo/ spinner/ image/ theme/ markdown/
+│   ├── keybindings/ (15)        ← keybinding parser, defaultBindings, loadUserBindings, match
+│   ├── contexts/ (9) state/ (8) ← React context providers + AppState store (getState/selectors).
+│   │                              TUI state only — system-prompt context is agent/context.ts
+│   └── explorer/ voice/ vim/ wizard/ custom-select/  ← dialogs and input modes
+├── commands/ (251)              ← slash commands (/provider, /review, /plan, /resume, /mcp …),
+│                                  one dir or file per command; registry in commands/commands.ts
+├── permissions/ (116)           ← rules, classifiers, always-allow, and every permission dialog
+│   ├── yoloClassifier.ts        ← the auto-mode classifier (prompts in yolo-classifier-prompts/)
+│   ├── toolPermission/          ← per-mode handlers (interactive, coordinator, swarm worker)
+│   └── ui/                      ← one request component per tool + rules/ editor
+├── mcp/ (67)                    ← MCP client, connection mgmt, mcpServerApproval trust dialog, ui/
+├── sessions/ (61)               ← persistence/, resume/, indexing/, conversationRecovery, ui/
+├── vcs/ (59)                    ← git/ (wrapper, worktree, gh PR status) + diff/ (the /diff reviewer)
+├── plugins/ (51)                ← plugin discovery, install, marketplace, dxt/
+├── memory/ (50)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
+│                                  extract/, session/, teamSync/, instructions/ (claudemd.ts loads
+│                                  AGENTS.md/CLAUDE.md + .claudin/rules/*.md), ui/
+├── skills/ (35)                 ← user-invocable skills (/<name>); bundled/ + /create authoring
+├── shared/ (175)                ← cross-cutting primitives ONLY — a subsystem here is a bug
+│   ├── fs/ (35)                 ← path.ts, glob.ts, ripgrep.ts, textEncoding.ts, file IO
+│   ├── data/ proc/ text/        ← pure data helpers, Shell.ts/execFileNoThrow, string/format
+│   ├── constants/ types/        ← the genuinely shared ones; feature constants live in their slice
+│   ├── schemas/                 ← shared zod schemas
+│   └── errors.ts log.ts env*.ts ← ClaudeError/isAbortError/isSdk* guards, logError, env helpers
+├── native-ts/ (5)               ← TS ports to avoid native addons: yoga-layout, color-diff, file-index
+├── stubs/ (3) vendor/ (1)       ← build-time stubs and vendored code
+└── __tests__/ (6)               ← cross-cutting tests: bugfixes, moduleBoundaries, security-hardening
 ```
+
+The seven catch-all directories the reorg retired — `components/`, `services/`,
+`utils/`, `screens/`, `constants/`, `hooks/`, `types/` — are gone, and
+`src/__tests__/moduleBoundaries.test.ts` fails if one comes back. If you are
+about to create one, the file belongs in the slice that owns it, or in
+`shared/` when it genuinely has no owner.
 
 ### Root files worth knowing
 
@@ -298,7 +321,7 @@ Not under `src/`, but among the most-opened files in practice:
 | `package.json` | the script names (`build`, `smoke`, `verify:*`, `typecheck:ci`) and which deps are real vs stubbed |
 | `tsconfig.json` | the `src/…` path aliases and the compiler settings the typecheck backlog is measured against |
 | `bunfig.toml` | the test runner's preload/config — start here when a test behaves differently under `bun test` than standalone |
-| `AGENTS.md` | repo orientation; the toggle table for on-by-default runtime behaviors |
+| `AGENTS.md` | repo orientation, loaded every turn: the slice layout, where a new file goes, the import convention. On-by-default runtime behaviors are NOT here — each is documented at the top of the module that implements it |
 | `typecheck-baseline.json` | the ratchet's recorded backlog (`bun run typecheck:baseline` regenerates) |
 
 ## Common Search Patterns
@@ -327,10 +350,10 @@ Grep pattern="export function myFunction\|export const myFunction" type="ts"
 
 ```
 # Start at activeProvider.ts — it's the central resolver
-Read src/services/api/activeProvider.ts
+Read src/providers/presets/activeProvider.ts
 
 # For shim logic:
-Grep pattern="'openai_compat'\|'gemini'\|'mistral'" path="src/services/api/openaiShim.ts"
+Grep pattern="'openai_compat'\|'gemini'\|'mistral'" path="src/providers/shims/openaiShim.ts"
 ```
 
 ### "Which feature flags exist?"
@@ -349,15 +372,15 @@ Grep pattern="logEvent\|_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS" type="ts"
 
 ```
 # Command-aware filters + pre-exec rewrites live here
-Glob pattern="src/outputFilter/Bash/*.ts"
-Grep pattern="rewrite\|canonicaliz" path="src/outputFilter/"
+Glob pattern="src/tools/shared/outputFilter/Bash/*.ts"
+Grep pattern="rewrite\|canonicaliz" path="src/tools/shared/outputFilter/"
 ```
 
 ### "Where does a task/agent actually run (the backend behind TaskCreate)?"
 
 ```
 # The tool surface is src/tools/TaskCreateTool/; the runtime backends are:
-Glob pattern="src/tasks/**/*.ts"   # LocalAgentTask, MonitorMcpTask, DreamTask, …
+Glob pattern="src/agent/tasks/**/*.ts"   # LocalAgentTask, MonitorMcpTask, DreamTask, …
 ```
 
 ### "Which files have tests?"
@@ -376,30 +399,38 @@ Grep pattern="z\.object\(\|z\.string\(\|z\.union\(" type="ts" output_mode="files
 
 ### Adding a new tool
 
-1. Check `src/Tool.ts` for `buildTool` signature
+1. Check `src/tools/Tool.ts` for `buildTool` signature
 2. Copy structure from a similar tool (e.g. `src/tools/GrepTool/GrepTool.ts` for search tools); the entry file is `<Name>Tool.ts(x)`, not `index.ts`
-3. Register in the dynamic registry `src/tools.ts` (built per-context: sandbox/plan/coordinator/MCP)
+3. Register in the dynamic registry `src/tools/tools.ts` (built per-context: sandbox/plan/coordinator/MCP)
 4. Add zod schema, `execute`, and a colocated `.test.ts`
 
 ### Debugging provider issues
 
-1. Start at `src/services/api/activeProvider.ts` → `tryGetActiveProvider()`
-2. Check `src/services/config/config.ts` → `getGlobalConfig()` for stored profile
-3. Check `src/services/api/providerConfig.ts` for preset definitions
+1. Start at `src/providers/presets/activeProvider.ts` → `tryGetActiveProvider()`
+2. Check `src/platform/config/config.ts` → `getGlobalConfig()` for stored profile
+3. Check `src/providers/presets/providerConfig.ts` for preset definitions
 4. Run `/provider doctor` from inside the REPL after `bun run dev`
 
-### "This used to be in src/utils/ — where is it now?"
+### "This used to be in src/utils/ (or services/, components/, screens/) — where is it now?"
 
-`scripts/reorg/manifest.ts` records every one of the 708 destinations the reorg
-used, so it answers the question directly. Failing that, `git log --follow
---diff-filter=R -- <old-path>` finds the rename.
+`scripts/reorg/manifest.ts` records every destination the reorg used, grouped by
+the batch that moved it and annotated with why, so it answers the question
+directly. Failing that, `git log --follow --diff-filter=R -- <old-path>` finds
+the rename — every group was committed as pure renames, so `--follow` works
+across the whole reorg.
+
+A search that comes back empty may be looking for something that left the repo
+rather than moved. The headless gRPC service was **removed** in #22 — `src/grpc/`
+and `src/proto/claudin.proto` no longer exist, nor do the `dev:grpc*` scripts —
+and the bundled VS Code extension was **deleted** in #90 (fcbcbc11). Older docs
+and commit messages still mention both.
 
 ### Debugging tool output
 
 1. Find tool dir: `src/tools/<ToolName>/`
 2. Look at `execute()` in the entry file `<ToolName>Tool.ts(x)` (tools don't use `index.ts`)
 3. Check `src/tools/shared/` for shared helpers
-4. Check `src/services/tools/toolResultStorage.ts` for large output persistence
+4. Check `src/agent/tools/toolResultStorage.ts` for large output persistence
 
 ### Build issues (feature() preprocessing)
 
@@ -411,7 +442,7 @@ used, so it answers the question directly. Failing that, `git log --follow
 ### Configuration issues
 
 1. Config file: `~/.claudin/settings.json`
-2. `src/services/config/config.ts` → `getGlobalConfig()` / `saveGlobalConfig()`
+2. `src/platform/config/config.ts` → `getGlobalConfig()` / `saveGlobalConfig()`
 3. Config dir override: `CLAUDIN_CONFIG_DIR` env var
 4. V8 cache: `~/.claudin/v8cache/` — delete to force cold-start if caching issues
 
@@ -419,7 +450,7 @@ used, so it answers the question directly. Failing that, `git log --follow
 
 ❌ **Don't** read all `*.test.ts` files to find a pattern — Grep for `describe\|test\b`
 ❌ **Don't** use Bash `find src -name "*.ts"` — use Glob
-❌ **Don't** read `QueryEngine.ts` entirely — it's large; Grep for the specific method
+❌ **Don't** read `src/agent/QueryEngine.ts` entirely — it's large; Grep for the specific method
 ❌ **Don't** look for model names as strings — they're resolved dynamically via `getPrimaryModel()`
 
 ## Dependency Check
@@ -429,7 +460,7 @@ used, so it answers the question directly. Failing that, `git log --follow
 Grep pattern="\"zod\"\|\"@anthropic-ai" path="package.json"
 
 # Find all places a utility is used
-Grep pattern="from 'src/utils/errors.js'" type="ts"
+Grep pattern="from 'src/shared/errors.js'" type="ts"
 
 # Find feature-gated code paths
 Grep pattern="feature\('MY_FLAG'\)" type="ts"

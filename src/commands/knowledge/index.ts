@@ -1,4 +1,4 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 
 const knowledge: Command = {
   type: 'local',
@@ -6,7 +6,7 @@ const knowledge: Command = {
   description: 'Manage native Knowledge Graph',
   supportsNonInteractive: true,
   argumentHint: 'enable <yes|no> | clear | status | list',
-  load: () => import('./knowledge.js'),
+  load: () => import('src/commands/knowledge/knowledge.js'),
 }
 
 export default knowledge

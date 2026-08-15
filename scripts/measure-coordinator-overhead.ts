@@ -54,10 +54,10 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
-} from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/services/config/config.js'
-import { getCoordinatorSystemPrompt } from '../src/coordinator/coordinatorMode.js'
-import { ASYNC_AGENT_ALLOWED_TOOLS } from '../src/constants/tools.js'
+} from '../src/shared/tokenEstimation.js'
+import { enableConfigs } from '../src/platform/config/config.js'
+import { getCoordinatorSystemPrompt } from '../src/agent/coordinator/coordinatorMode.js'
+import { ASYNC_AGENT_ALLOWED_TOOLS } from '../src/tools/constants/tools.js'
 import { AGENT_TOOL_NAME } from '../src/tools/AgentTool/constants.js'
 import { SEND_MESSAGE_TOOL_NAME } from '../src/tools/SendMessageTool/constants.js'
 import { TEAM_CREATE_TOOL_NAME } from '../src/tools/TeamCreateTool/constants.js'

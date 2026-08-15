@@ -1,9 +1,9 @@
 # BootContext — campos compartilhados de `run()`
 
-> Sub-item da Fase 0 do ROADMAP 11g (split de `src/main.tsx`).
+> Sub-item da Fase 0 do ROADMAP 11g (split de `src/platform/main.tsx`).
 >
 > Inventário das variáveis que vivem hoje na closure léxica da função
-> default-action (a partir de `src/main.tsx:1005`) e dos 3 slots
+> default-action (a partir de `src/platform/main.tsx:1005`) e dos 3 slots
 > top-level mutáveis. Todas viram **campos do `BootContext`** quando a
 > Fase 4 do split for executada — o objetivo é tornar explícita a
 > superfície que cada modo (Fase 5b) precisa receber.

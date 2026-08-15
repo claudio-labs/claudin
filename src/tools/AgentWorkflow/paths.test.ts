@@ -2,19 +2,19 @@ import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { existsSync, mkdtempSync, rmSync, statSync, symlinkSync } from 'fs'
 import { tmpdir } from 'os'
 import { join, sep } from 'path'
-import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
+import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 
-// paths.ts reports gitignore additions via src/services/git/gitignore.js; mock it
+// paths.ts reports gitignore additions via src/vcs/git/gitignore.js; mock it
 // at the module boundary so the real implementation never appends to the
 // developer's actual ~/.config/git/ignore. Everything else (mkdirSync/
 // realpathSync/chmodSync, symlinks, cwd, config-home resolution) is real.
-const realGitignore = { ...(await import('src/services/git/gitignore.js')) }
+const realGitignore = { ...(await import('src/vcs/git/gitignore.js')) }
 const originalConfigDirEnv = process.env.CLAUDIN_CONFIG_DIR
 
 let gitignoreCalls: Array<{ filename: string; cwd: string }> = []
 
 afterAll(() => {
-  mock.module('src/services/git/gitignore.js', () => realGitignore)
+  mock.module('src/vcs/git/gitignore.js', () => realGitignore)
   if (originalConfigDirEnv === undefined) delete process.env.CLAUDIN_CONFIG_DIR
   else process.env.CLAUDIN_CONFIG_DIR = originalConfigDirEnv
 })
@@ -26,7 +26,7 @@ afterAll(() => {
  */
 async function importFreshPaths() {
   gitignoreCalls = []
-  mock.module('src/services/git/gitignore.js', () => ({
+  mock.module('src/vcs/git/gitignore.js', () => ({
     ...realGitignore,
     addFileGlobRuleToGitignore: async (filename: string, cwd: string) => {
       gitignoreCalls.push({ filename, cwd })

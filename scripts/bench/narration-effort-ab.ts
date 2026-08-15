@@ -15,7 +15,7 @@
  *   Variante A = adaptive  (servidor escala per-request; nenhum campo effort)
  *   Variante B = xhigh     (effort=xhigh fixo; Opus 4.8 suporta)
  *
- * Precedencia confirmada em src/utils/effort.ts:234,243 — a env var domina
+ * Precedencia confirmada em src/providers/effort/effort.ts:234,243 — a env var domina
  * (env -> appState -> model default). adaptive -> resolveAppliedEffort retorna
  * undefined -> request sem campo effort (effort.ts:250).
  *
@@ -58,15 +58,15 @@ const EFFORT_B = process.env.CLAUDIN_BENCH_EFFORT_B ?? 'xhigh'
 const PROMPTS: { id: string; text: string }[] = [
   {
     id: 'explain-openai-shim',
-    text: 'Explique como o openaiShim traduz tool calls do formato Anthropic para o formato OpenAI Chat Completions. Leia os arquivos relevantes em src/services/api/openaiShim/ e me de uma explicacao final coesa.',
+    text: 'Explique como o openaiShim traduz tool calls do formato Anthropic para o formato OpenAI Chat Completions. Leia os arquivos relevantes em src/providers/shims/openaiShim/ e me de uma explicacao final coesa.',
   },
   {
     id: 'explain-auto-memory',
-    text: 'Como funciona o sistema de auto-memory deste repositorio? Descreva o fluxo de ponta a ponta lendo o codigo relevante (src/memdir, src/services/extractMemories, src/services/SessionMemory).',
+    text: 'Como funciona o sistema de auto-memory deste repositorio? Descreva o fluxo de ponta a ponta lendo o codigo relevante (src/memory/memdir, src/memory/extract, src/memory/session).',
   },
   {
     id: 'explain-provider-resolution',
-    text: 'Como o Claudin resolve qual provider/SDK usar a partir do profile ativo? Leia src/services/api/activeProvider.ts e client.ts e explique o caminho de decisao.',
+    text: 'Como o Claudin resolve qual provider/SDK usar a partir do profile ativo? Leia src/providers/presets/activeProvider.ts e client.ts e explique o caminho de decisao.',
   },
 ]
 

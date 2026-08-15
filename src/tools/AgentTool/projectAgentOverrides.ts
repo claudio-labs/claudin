@@ -1,12 +1,12 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { dirname, join } from 'path'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logError } from 'src/utils/log.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logError } from 'src/shared/log.js'
 import {
   defaultResolveOverrideDeps,
   resolveModelOverride,
   type ResolveOverrideDeps,
-} from './agentModelResolver.js'
+} from 'src/tools/AgentTool/agentModelResolver.js'
 
 /**
  * Per-`.md`-agent model overrides live next to the agents directory so

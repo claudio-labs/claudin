@@ -3,8 +3,8 @@ import {
   fingerprintDiagnostic,
   normalizeDiagnosticPath,
   partitionAgainstBaseline,
-} from './fingerprint.js'
-import type { RawDiagnostic } from './types.js'
+} from 'src/tools/TypecheckTool/fingerprint.js'
+import type { RawDiagnostic } from 'src/tools/TypecheckTool/types.js'
 
 const CWD = '/home/dev/project'
 
@@ -27,7 +27,7 @@ describe('fingerprintDiagnostic', () => {
     // tsc names an arbitrary sibling export of the broken module. Hashing that
     // reported 63 new AND 63 fixed on a tree nobody had touched.
     const message = (exportedAs: string) =>
-      `Module '"src/entrypoints/agentSdkTypes.js"' declares 'SDKMessage' locally, but it is exported as '${exportedAs}'.`
+      `Module '"src/platform/entrypoints/agentSdkTypes.js"' declares 'SDKMessage' locally, but it is exported as '${exportedAs}'.`
     const first = fingerprintDiagnostic(
       diag({ code: 'TS2460', message: message('ForkSessionOptions') }),
       CWD,

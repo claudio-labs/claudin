@@ -4,6 +4,10 @@ description: Ranked roadmap for the next dev-loop token savings (Grep budget, gi
 type: project
 ---
 
+**Scope:** this file owns the ranked QUEUE and the measurements that rank it. The
+tools themselves are owned elsewhere — D2's design, citable numbers and traps are
+[[git-tool-design]]; do not restate them here.
+
 Roadmap decided 2026-08-04, after RunTests and Typecheck shipped. Ranks what to
 wrap NEXT in the detect/parse/budget/redirect family, using measured spend rather
 than intuition.
@@ -76,8 +80,7 @@ Two traps this work exposed, both live outside the Grep code:
 
 ### D2 — Git tool — DONE 2026-08-04 (branch `feat/git-tool`)
 Landed much wider than "a `git diff` wrapper": one `Git({commands: [...]})` tool
-covering **all** of git and gh, reads and mutations, with the list as the input
-so a burst is one call.
+covering **all** of git and gh, reads and mutations.
 
 **Re-measured first, over 760 sessions** (`scripts/profile/git-tool-baseline.ts`,
 which is the reusable measurement) — the 34-session numbers this roadmap was
@@ -88,26 +91,10 @@ chars** (1.70M of 33.98M). `git diff` 162 calls/428k chars, `git status`
 (26%) ran any git command** — the number that decides whether an always-present
 tool pays for its description.
 
-Numbers to cite:
-- **Replay** (`git-summarizer-replay.ts` over the recorded corpus): **30.6%
-  take** on the 230 addressable calls; 27.4% projected with output-trim tails
-  stripped. `git diff` 37%, `gh run` 42%, `gh pr` 34%. `git log` got **no
-  summarizer** — the Bash filter's `--oneline` rewrite already took it, and the
-  replay proved there was nothing left.
-- **Live A/B** (1 run/arm, 15 turns, Sonnet 5, one build with
-  `CLAUDIN_DISABLE_GIT_TOOL=1` as the "before" arm): cost **−11.5%**,
-  cache_creation **−24.6%**, cache_read −10.6%, input −7.4%.
-
-**The batching claim did NOT survive.** Bash already batches with `&&` at 1.50
-git commands per call vs the tool's 1.46, and calls-per-burst rose 4.00 → 4.33
-because the one-shot redirect refusal costs an extra call. Cite payload and
-cache, never call count.
-
-Design notes worth keeping: permissions delegate to `bashToolHasPermission`
-verbatim (so `Bash(git push:*)` rules still apply and the ~900-line security
-pipeline is not reimplemented); `isReadOnly` is per-command and fails closed,
-which is what lets `git diff` run inside plan mode; the diff pivot is at 6 KB
-because file-count pivots are useless (43 of 83 recorded diffs are single-file).
+Outcome: **30.6% replay take** on addressable calls, **−11.5% cost** in the live
+A/B. The full citable set, the batching justification that measurement killed,
+the design decisions and the four traps are [[git-tool-design]] — read it there
+rather than re-deriving any of it from this entry.
 
 ### D3 — Read re-read dedup (effort M, delicate) — NOW THE BIGGEST ITEM BY FAR
 196 of 429 Read calls (639,163 chars) re-read a path already read in the same
@@ -195,7 +182,7 @@ dependency). `scripts/profile/preload-stubs.ts` is the preload —
 The grep replay harness had been silently unrunnable for the same reason.
 
 ## Out of scope for now
-`PowerShellTool` has no output filter (the `src/outputFilter/Bash/` pipeline is
+`PowerShellTool` has no output filter (the `src/tools/shared/outputFilter/Bash/` pipeline is
 Bash-only), and that filter's roadmap still defers `aws`/cloud CLIs, DB/secrets
 and task runners. Related: [[tool-result-nudges-benched-zero-adoption]] — land any
 new nudge flag-OFF as bench instrumentation, and

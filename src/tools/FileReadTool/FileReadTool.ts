@@ -1,15 +1,15 @@
 import * as path from 'path'
-import { PDF_MAX_PAGES_PER_READ } from 'src/constants/apiLimits.js'
-import { hasBinaryExtension } from 'src/constants/files.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import { logEvent } from 'src/services/analytics/index.js'
-import { getFileExtensionForAnalytics } from 'src/services/analytics/metadata.js'
+import { PDF_MAX_PAGES_PER_READ } from 'src/shared/constants/apiLimits.js'
+import { hasBinaryExtension } from 'src/shared/constants/files.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import { getFileExtensionForAnalytics } from 'src/platform/analytics/metadata.js'
 import {
   checkReadPermissionForTool,
   matchingRuleForInput,
-} from 'src/services/permissions/filesystem.js'
-import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
-import { matchWildcardPattern } from 'src/services/permissions/shellRuleMatching.js'
+} from 'src/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
+import { matchWildcardPattern } from 'src/permissions/shellRuleMatching.js'
 import {
   exceedsPinnedResultCeiling,
   getStandDownEpoch,
@@ -17,47 +17,47 @@ import {
   isPinShielding,
   pinToolResult,
   retirePinAfterUse,
-} from 'src/services/compact/stableStubState.js'
+} from 'src/agent/compact/stableStubState.js'
 import {
   activateConditionalSkillsForPaths,
   addSkillDirectories,
   discoverSkillDirsForPaths,
 } from 'src/skills/loadSkillsDir.js'
-import type { ToolUseContext } from 'src/Tool.js'
-import { buildTool, type ToolDef } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { renderOutline } from 'src/tools/shared/codeOutline/renderOutline.js'
 import { detectOutlineLangFromPath } from 'src/tools/shared/codeOutline/scanSymbols.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { getErrnoCode, isENOENT } from 'src/utils/errors.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { getErrnoCode, isENOENT } from 'src/shared/errors.js'
 import {
   FILE_NOT_FOUND_CWD_NOTE,
   findSimilarFile,
   getFileModificationTimeAsync,
   suggestPathUnderCwd,
-} from 'src/utils/fs/file.js'
-import { expandPath } from 'src/utils/fs/path.js'
-import { isPDFExtension, parsePDFPageRange } from 'src/utils/fs/pdfUtils.js'
-import { assertKnownEncoding } from 'src/utils/fs/textEncoding.js'
-import { logError } from 'src/utils/log.js'
-import { formatFileSize } from 'src/utils/text/format.js'
-import { isPriorReadClippedOrMissing } from './clientClippingDetection.js'
+} from 'src/shared/fs/file.js'
+import { expandPath } from 'src/shared/fs/path.js'
+import { isPDFExtension, parsePDFPageRange } from 'src/shared/fs/pdfUtils.js'
+import { assertKnownEncoding } from 'src/shared/fs/textEncoding.js'
+import { logError } from 'src/shared/log.js'
+import { formatFileSize } from 'src/shared/text/format.js'
+import { isPriorReadClippedOrMissing } from 'src/tools/FileReadTool/clientClippingDetection.js'
 import {
   clipPinEnabled,
   renderClipPinHeadSlice,
   STAND_DOWN_STRIKES,
   STICKY_REPLAY_BUDGET,
-} from './clipPin.js'
+} from 'src/tools/FileReadTool/clipPin.js'
 import {
   getAlternateScreenshotPath,
   IMAGE_EXTENSIONS,
   isBlockedDevicePath,
-} from './guards.js'
-import { getDefaultFileReadingLimits } from './limits.js'
+} from 'src/tools/FileReadTool/guards.js'
+import { getDefaultFileReadingLimits } from 'src/tools/FileReadTool/limits.js'
 import {
   READ_AUTO_OUTLINE_MIN_SYMBOLS,
   scanFile,
-} from './outlineView.js'
+} from 'src/tools/FileReadTool/outlineView.js'
 import {
   DESCRIPTION,
   FILE_READ_TOOL_NAME,
@@ -67,20 +67,20 @@ import {
   renderPromptTemplate,
   renderClipPinFallbackFooter,
   renderClipPinFallbackStub,
-} from './prompt.js'
-import { callInner } from './readDispatch.js'
+} from 'src/tools/FileReadTool/prompt.js'
+import { callInner } from 'src/tools/FileReadTool/readDispatch.js'
 import {
   mapReadResultToToolResultBlock,
   maybeFlagSerialReadNudge,
-} from './resultContent.js'
+} from 'src/tools/FileReadTool/resultContent.js'
 import {
   inputSchema,
   outputSchema,
   type InputSchema,
   type Output,
   type OutputSchema,
-} from './schemas.js'
-import { hasServerClearedToolUses } from './serverClearingDetection.js'
+} from 'src/tools/FileReadTool/schemas.js'
+import { hasServerClearedToolUses } from 'src/tools/FileReadTool/serverClearingDetection.js'
 import {
   getToolUseSummary,
   renderToolResultMessage,
@@ -88,16 +88,16 @@ import {
   renderToolUseMessage,
   renderToolUseTag,
   userFacingName,
-} from './UI.js'
+} from 'src/tools/FileReadTool/UI.js'
 
 // The public surface of this module predates the split into siblings: seventeen
-// modules and the directory's tests import these names from './FileReadTool.js'.
-export type { Input, Output } from './schemas.js'
-export { MaxFileReadTokenExceededError } from './guards.js'
-export { readImageWithTokenBudget } from './imageRead.js'
-export { STAND_DOWN_STRIKES, STICKY_REPLAY_BUDGET } from './clipPin.js'
-export { AUTO_OUTLINE_PIVOT_FOOTER, scanFile } from './outlineView.js'
-export { CYBER_RISK_MITIGATION_REMINDER } from './resultContent.js'
+// modules and the directory's tests import these names from 'src/tools/FileReadTool/FileReadTool.js'.
+export type { Input, Output } from 'src/tools/FileReadTool/schemas.js'
+export { MaxFileReadTokenExceededError } from 'src/tools/FileReadTool/guards.js'
+export { readImageWithTokenBudget } from 'src/tools/FileReadTool/imageRead.js'
+export { STAND_DOWN_STRIKES, STICKY_REPLAY_BUDGET } from 'src/tools/FileReadTool/clipPin.js'
+export { AUTO_OUTLINE_PIVOT_FOOTER, scanFile } from 'src/tools/FileReadTool/outlineView.js'
+export { CYBER_RISK_MITIGATION_REMINDER } from 'src/tools/FileReadTool/resultContent.js'
 
 export const FileReadTool = buildTool({
   name: FILE_READ_TOOL_NAME,

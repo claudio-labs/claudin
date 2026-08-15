@@ -22,7 +22,7 @@ required. Four other files looped the same way in that one session.
   originally-optional property so the model has a legal way to decline it
   (`type: [t,'null']`; for an enum, `null` joins BOTH the type union and the
   value list), and `stripPlaceholderOptionalFields`
-  (`src/services/tools/toolInputPlaceholders.ts`) turns the resulting `""`/`null` back
+  (`src/agent/tools/toolInputPlaceholders.ts`) turns the resulting `""`/`null` back
   into an absent key.
 - **The two halves must walk the same depth.** `enforceStrictSchema` recurses
   into nested objects, array `items` and combinators, so it widens optionals at
@@ -33,7 +33,7 @@ required. Four other files looped the same way in that one session.
   from the SAME JSON Schema (`inputJSONSchema`, else
   `zodToJsonSchema(inputSchema)`), so they cannot drift.
 - **The strip is gated on the transport of the request being made**, via
-  `transportSendsStrictToolSchemas(model)` (`src/services/api/providerConfig.ts`).
+  `transportSendsStrictToolSchemas(model)` (`src/providers/presets/providerConfig.ts`).
   Three traps that gate has to survive, all found in review: (1) reading the
   ACTIVE PROFILE's model is wrong — `/model`, a sub-agent `model:` override and
   `--fallback-model` all change the request model without touching the profile,

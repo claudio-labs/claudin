@@ -1,4 +1,4 @@
-// One-shot script to regenerate src/main/__tests__/__snapshots__/help-subcommands.txt
+// One-shot script to regenerate src/platform/main/__tests__/__snapshots__/help-subcommands.txt
 // using the exact same formatting as bootSnapshot.test.ts (so they match).
 // Run with: bun run scripts/regen-help-snapshots.ts
 import { spawnSync } from 'node:child_process'
@@ -44,6 +44,6 @@ for (const sub of subcommands) {
   parts.push('')
 }
 
-const outPath = join(import.meta.dir, '..', 'src/main/__tests__/__snapshots__/help-subcommands.txt')
+const outPath = join(import.meta.dir, '..', 'src/platform/main/__tests__/__snapshots__/help-subcommands.txt')
 writeFileSync(outPath, parts.join('\n'))
 console.log(`wrote ${parts.length} parts to ${outPath}`)

@@ -1,6 +1,6 @@
 /**
  * Project-local directory resolution for agent workflows, hardened the same way
- * as the plans directory (`src/utils/plans.ts`): definitions live in
+ * as the plans directory (`src/agent/plans/plans.ts`): definitions live in
  * `<cwd>/.claudin/workflows/`, run state under `<cwd>/.claudin/workflows/.runs/`.
  * A symlink-containment check falls back to the global config dir if the project
  * `.claudin` escapes the repo root; `.runs/` is kept out of git.
@@ -8,10 +8,10 @@
 import { chmodSync, mkdirSync, realpathSync } from 'fs'
 import memoize from 'lodash-es/memoize.js'
 import { join, relative, sep } from 'path'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { addFileGlobRuleToGitignore } from 'src/services/git/gitignore.js'
-import { logError } from 'src/utils/log.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
+import { addFileGlobRuleToGitignore } from 'src/vcs/git/gitignore.js'
+import { logError } from 'src/shared/log.js'
 
 const WORKFLOWS_DIRNAME = 'workflows'
 const RUNS_DIRNAME = '.runs'

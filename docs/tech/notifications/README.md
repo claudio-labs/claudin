@@ -1,6 +1,6 @@
 # Notifications
 
-Claudin surfaces "needs attention" events (input required, long task finished, hook-driven custom events) through whatever channel the host environment supports. The router lives in `src/services/notifier.ts`; the in-band terminal sequences live in `src/ink/useTerminalNotification.ts`; pure helpers are in `src/services/notifierHelpers.ts`.
+Claudin surfaces "needs attention" events (input required, long task finished, hook-driven custom events) through whatever channel the host environment supports. The router lives in `src/platform/notifications/notifier.ts`; the in-band terminal sequences live in `src/terminal/ink/useTerminalNotification.ts`; pure helpers are in `src/platform/notifications/notifierHelpers.ts`.
 
 ## Channels
 

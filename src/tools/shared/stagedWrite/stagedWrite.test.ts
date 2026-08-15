@@ -9,7 +9,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 
-import { setOriginalFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { setOriginalFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {
   isUnexpectedlyModified,
   readFileForStaging,
@@ -17,7 +17,7 @@ import {
   type StagedChange,
   stageContentReplacement,
   writeChange,
-} from './stagedWrite.js'
+} from 'src/tools/shared/stagedWrite/stagedWrite.js'
 
 beforeAll(() => {
   // Defend against an fs mock leaked from another test file in the shard.

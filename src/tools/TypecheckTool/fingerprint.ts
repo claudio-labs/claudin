@@ -1,6 +1,6 @@
 import { createHash } from 'crypto'
 import { isAbsolute, relative, sep } from 'path'
-import type { RawDiagnostic } from './types.js'
+import type { RawDiagnostic } from 'src/tools/TypecheckTool/types.js'
 
 /**
  * Diagnostic identity, for comparing one run against a recorded baseline.
@@ -51,7 +51,7 @@ const VOLATILE_EXPORT_NAME_RE = /but it is exported as '[^']*'/g
  * Measured on this repo: a two-line probe file importing `SDKMessage` re-worded
  * four diagnostics in `runHeadless.ts` and `matching.characterization.test.ts`,
  * which the ratchet then reported as newly introduced. It had already happened
- * three times for real — twice while adding `src/Tool.types.test.ts` and once
+ * three times for real — twice while adding `src/tools/Tool.types.test.ts` and once
  * while removing an inert intersection from `NonNullableUsage`.
  *
  * Eliding the printed constituent is NOT enough, because the whole explanation

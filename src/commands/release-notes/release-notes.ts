@@ -1,10 +1,10 @@
-import type { LocalCommandResult } from 'src/types/command.js'
+import type { LocalCommandResult } from 'src/shared/types/command.js'
 import {
   CHANGELOG_URL,
   fetchAndStoreChangelog,
   getAllReleaseNotes,
   getStoredChangelog,
-} from 'src/services/install/releaseNotes.js'
+} from 'src/platform/install/releaseNotes.js'
 
 function formatReleaseNotes(notes: Array<[string, string[]]>): string {
   return notes

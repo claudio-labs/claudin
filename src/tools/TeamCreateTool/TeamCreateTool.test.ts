@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
-import { TeamCreateTool } from './TeamCreateTool.js'
+import { TeamCreateTool } from 'src/tools/TeamCreateTool/TeamCreateTool.js'
 
 afterEach(() => {
   delete process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS

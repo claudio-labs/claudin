@@ -1,20 +1,20 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { feature } from 'bun:bundle'
-import { memoryFreshnessNote } from 'src/memdir/memoryAge.js'
-import type { ToolUseContext } from 'src/Tool.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { addLineNumbers } from 'src/utils/fs/file.js'
-import { mapNotebookCellsToToolResult } from 'src/utils/fs/notebook.js'
-import { getCanonicalName, getMainLoopModel } from 'src/utils/model/model.js'
-import { formatFileSize } from 'src/utils/text/format.js'
-import { AUTO_OUTLINE_PIVOT_FOOTER } from './outlineView.js'
-import { FILE_UNCHANGED_STUB } from './prompt.js'
-import type { Output } from './schemas.js'
+import { memoryFreshnessNote } from 'src/memory/memdir/memoryAge.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { addLineNumbers } from 'src/shared/fs/file.js'
+import { mapNotebookCellsToToolResult } from 'src/shared/fs/notebook.js'
+import { getCanonicalName, getMainLoopModel } from 'src/providers/model/model.js'
+import { formatFileSize } from 'src/shared/text/format.js'
+import { AUTO_OUTLINE_PIVOT_FOOTER } from 'src/tools/FileReadTool/outlineView.js'
+import { FILE_UNCHANGED_STUB } from 'src/tools/FileReadTool/prompt.js'
+import type { Output } from 'src/tools/FileReadTool/schemas.js'
 import {
   detectSerialReadPattern,
   markFiredAndCheck,
   SERIAL_READ_NUDGE_REMINDER,
-} from './serialReadNudge.js'
+} from 'src/tools/FileReadTool/serialReadNudge.js'
 
 /** Format file content with line numbers. */
 function formatFileLines(file: {

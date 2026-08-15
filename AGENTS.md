@@ -36,47 +36,44 @@ Use Issues for confirmed bugs and actionable feature work; use Discussions for s
 
 ```bash
 bun install                 # install deps (uses bun.lock)
-bun run build               # bundle src/entrypoints/cli.tsx → dist/cli.mjs
+bun run build               # bundle src/platform/entrypoints/cli.tsx → dist/cli.mjs
 bun run dev                 # build + node dist/cli.mjs
 bun run smoke               # build + --version sanity check
 bun run typecheck           # tsc --noEmit
-bun test                    # full Bun test runner suite (~198 test files)
+bun test                    # full Bun test runner suite (~605 test files)
 bun test path/to/file.test.ts  # focused single-file test
 bun run verify:privacy      # scan dist/cli.mjs for banned phone-home patterns
 ```
 
-Those are the *human* invocations. An agent should run tests through the **RunTests tool**, which wraps the same command and answers failures-first; BashTool refuses a bare test command once and points there (see the toggle table below).
+Those are the *human* invocations. An agent should run tests through the **RunTests tool**, which wraps the same command and answers failures-first; BashTool refuses a bare test command once and points there.
 
 More test targets (`test:provider`, `test:coverage`, invariant tests) are documented in [testing.md](.claudin/rules/testing.md). After install or local build, the launcher is `bin/claudin` — it requires `dist/cli.mjs` to exist. There is no dev runner that bypasses the bundle, so **always `bun run build` after a source change**.
 
-### `claudin` vs `claudindev` (dev convention)
+If a just-built feature "doesn't show up", check which binary was launched: contributors keep the released `claudin` and a `claudindev` symlink to this checkout side by side, and only the second one runs what you just built. `CONTRIBUTING.md` sets that up under "Local Setup".
 
-To keep the published release usable while iterating on unreleased features, contributors should use two binaries on `$PATH`:
+## Architecture — Screaming Architecture + Vertical Slice
 
-- **`claudin`** → globally installed npm package (`@claudiolabs/claudin`) — stable release, only updated via `bun install -g @claudiolabs/claudin`.
-- **`claudindev`** → symlink to `<repo>/bin/claudin`, created by `bun run link:dev` (into `~/.bun/bin` or `~/.local/bin`) — always runs the latest local `bun run build` output (`dist/cli.mjs`) from your checkout.
+Single entrypoint, single-file bundle: `src/platform/entrypoints/cli.tsx` → `dist/cli.mjs`, launched by `bin/claudin`. The [search-strategy.md](.claudin/rules/search-strategy.md) rule has the full navigable module map.
 
-Implication: if a user reports a just-built feature "doesn't show up", check which binary they launched. Source-tree changes only take effect under `claudindev` (after `bun run build`); `claudin` keeps the pinned release version regardless of repo state.
+The two patterns this tree commits to, by name: **Screaming Architecture** — the top level of `src/` names the *domain* (`providers/ tools/ permissions/ sessions/ skills/`), never the framework or the technical layer — and **Vertical Slice Architecture** — each of those owns its whole stack (logic, UI, hooks, types, constants, tests) instead of one feature being smeared across layer directories. New work follows both. The rest of this section is what they mean concretely here, and `src/__tests__/moduleBoundaries.test.ts` is the only thing enforcing them.
 
-## Architecture
+Every directory under `src/` is a **feature slice** that owns its own logic, UI and tests: `agent/` (the loop, its prompts, its REPL, its tasks), `providers/`, `tools/`, `commands/`, `permissions/`, `mcp/`, `sessions/`, `memory/`, `vcs/`, `plugins/`, `skills/`, plus `platform/` (the host — process, config, settings, OS integration) and `terminal/` (the TUI shell). `shared/` is for primitives with no owner, grouped into `data/` `fs/` `proc/` `text/` `constants/` `types/`; a subsystem appearing there is a bug. Four more directories exist and are **not** slices, so don't file features in them: `__tests__/` (repo-wide invariants only — everything else is colocated), `stubs/`, `vendor/` and `native-ts/`.
 
-Single entrypoint, single-file bundle: `src/entrypoints/cli.tsx` → `dist/cli.mjs`, launched by `bin/claudin`. The [search-strategy.md](.claudin/rules/search-strategy.md) rule has the full navigable module map; the high-level shape:
+That replaced seven catch-all directories — `components/`, `services/`, `utils/`, `screens/`, `constants/`, `hooks/`, `types/` — the layer names Screaming Architecture rules out, which had grown by accretion because "where does this go?" had no answer, and which once forced `/diff` to reach across eleven top-level dirs. `scripts/reorg/manifest.ts` records every destination and why, and `git log --follow` works across the move (each group was committed as pure renames).
 
-- `src/entrypoints/cli.tsx` — process entrypoint. Fast-paths `--version`, then dynamically imports the rest (cold paths don't pay full module-eval cost).
-- `src/QueryEngine.ts` + `src/query.ts` — the agent loop: model drive, tool dispatch, streaming SDK messages (`src/entrypoints/agentSdkTypes.ts`), usage, compaction/permission/coordination.
-- `src/Tool.ts` — central tool type system (`Tool`, `ToolUseContext`, `buildTool`). Tools live under `src/tools/<Name>/` (zod schema + prompt + execute); the registry is built dynamically per context.
-- `src/services/api/` — provider abstraction. `client.ts` builds the right SDK from `activeProvider.ts`; `openaiShim.ts` (~2.2k lines) translates to OpenAI Chat Completions; `codexShim.ts` is ChatGPT OAuth; `providerConfig.ts` holds presets/profile schema/OAuth; `withRetry.ts`/`errors.ts` do retry + error classification.
-- `src/commands/` — slash commands (`/provider`, `/review`, `/plan`, `/resume`, `/mcp`, `/skills`, …), discovered via `src/commands.ts`.
-- `src/tools/` — built-in tools: file IO, search (`GrepTool`/`GlobTool`), shell (`BashTool`), version control (`GitTool`), agents/tasks, MCP, planning, web, workflow, worktree.
-- `src/services/mcp/` — MCP client + server connection management; `src/services/mcpServerApproval.tsx` is the trust dialog.
-- `src/coordinator/` — multi-agent coordinator (active when `COORDINATOR_MODE` is on).
-- `src/components/` + `src/screens/` + `src/ink/` — Ink React TUI; `src/main.tsx` mounts, `src/screens/REPL.tsx` is the main loop; `src/native-ts/yoga-layout` avoids a native-addon dep.
-- `src/memdir/`, `src/services/extractMemories/`, `src/services/SessionMemory/` — auto-memory: for git projects defaults to project-local `<repo>/.claudin/memory/`, `.md` files indexed by `MEMORY.md`. `memory/team/` is meant to be git-tracked (carve it out of `.gitignore`, which blanket-ignores `.claudin/`); private `memory/*.md` stays ignored.
-- `src/skills/` — skills (`/<skill-name>`); bundled ones in `src/skills/bundled/`, `/create` authors new skills/rules/agents in the `.claudin/` structure.
-- `src/services/config/claudinMigration.ts` + `claudinStartupMigrations.ts` — one-time migration of legacy `~/.claude/` into `~/.claudin/`; rerunnable via `/provider migrate`; override the config dir with `CLAUDIN_CONFIG_DIR`. (The `~/.openclaude/` half of this was dropped in 0a1d4ff2 — `legacyClaudeDir()` reads `~/.claude` and nothing else.)
-- `src/utils/` — primitives only, grouped into `data/` `fs/` `proc/` `text/` (plus `log.ts`, `theme.ts` and `model/` at the root). It used to be the catch-all; the subsystems that lived there now sit under `src/services/<name>/` — `config/`, `auth/`, `session/`, `context/`, `instructions/`, `permissions/`, `lifecycleHooks/`, `messages/`, `attachments/`, `plugins/`, `install/`, `git/`, `ide/`, `bash/`, `shell/`, `settings/`, `secureStorage/`, `telemetry/`, `sandbox/`, `computerUse/`. Two of those names matter: `services/lifecycleHooks/` is the Claude Code hook system (`src/hooks/` is React hooks), and `services/context/` is context-window/token accounting (`src/context/` is React providers). Destinations are recorded in `scripts/reorg/manifest.ts`, which also explains why `src/utils/model/` stayed behind.
+### Where a new file goes
 
-Note: an earlier headless gRPC service (`src/grpc/`, `src/proto/claudin.proto`, `dev:grpc*` scripts) was removed (#22) — it no longer exists despite lingering mentions in older docs.
+Ask which slice **owns** the behavior, and put it there — including its UI (`<slice>/ui/`), its React hooks (`<slice>/hooks/`), its tests (colocated `*.test.ts(x)`) and its test harnesses (`<slice>/__testutils__/`). Reach for `src/shared/` only for a primitive with genuinely no owner; if the thing you are adding has a subsystem's name on it, it belongs to that subsystem. When no slice fits, the answer is a new slice, never a bucket.
+
+Cross-slice imports use the **`src/…` alias** (`tsconfig.json` maps `src/*` → `./src/*`), not a `../` chain: a relative one compiles and bundles fine while encoding the distance between two slices, so the next move of *either* file silently re-derives the chain. The tree is 17k aliased imports against 8 relative `from` specifiers. The **exception is load-bearing**: an import of a module this fork never received (a `.d.ts` with no `.ts`/`.tsx` beside it) must stay relative, because `scripts/build.ts` only stubs a missing module when the specifier starts with `./` or `../` — aliasing one trades a green build for a hard resolver failure. All 109 cross-slice relative specifiers left in `src/` are that case; see [build-system.md](.claudin/rules/build-system.md).
+
+`src/__tests__/moduleBoundaries.test.ts` is what keeps this true, and it is the whole enforcement: it fails if a retired bucket comes back, if the slices that absorbed them stop being where the tree says, or if a cross-slice relative import appears that *does* resolve to a real module (the missing-module case is resolved, not pattern-matched, so the exception survives). When it fails, move the file or alias the import — never widen the list.
+
+### Finding your way in
+
+Most code lives in four slices — `platform/` (the host), `tools/`, `agent/` and `terminal/` — so Grep inside one rather than across `src/`. Two names repeat with different owners: the Claude Code lifecycle hooks (`PreToolUse`, …) are `src/platform/lifecycleHooks/` while React hooks sit in each slice's own `hooks/`; and `src/agent/context/` is token accounting, `src/terminal/contexts/` is the React providers, `src/agent/context.ts` (singular) is the memoized system-prompt blocks.
+
+What every directory holds — with file counts and a cross-ref to the rule that owns each subsystem — is the Module Map in [search-strategy.md](.claudin/rules/search-strategy.md). Read it before a broad search; it is scoped to `src/**`, so it loads as soon as you open a source file.
 
 ## Configuration & Credentials
 
@@ -85,18 +82,7 @@ Note: an earlier headless gRPC service (`src/grpc/`, `src/proto/claudin.proto`, 
 - Provider profiles are the source of truth; env vars are mostly fallbacks. The historical `--provider` CLI flag is removed — users get redirected to `/provider`.
 - `FIRECRAWL_API_KEY` (optional) upgrades `WebSearch`/`WebFetch` from the DuckDuckGo+raw-HTTP defaults to Firecrawl.
 
-Several runtime behaviors are **on by default** with their own docs and toggles:
-
-| Behavior | Toggle / override | Docs |
-|----------|-------------------|------|
-| Bash output filter | `/config` → "Bash output filter"; `bashOutputFilterEnabled: false` | `docs/tech/bash-output-filter/` |
-| Cache policy (clip-frontier + per-provider profile) | `CLAUDIN_CLIP_FRONTIER=0`, `CLAUDIN_CACHE_PROFILE=aggressive\|retain` | `src/services/cache/README.md`, `docs/tech/cache/` |
-| Fork-subagent default spawn (no `subagent_type` → child inherits the parent's context + prompt cache, and runs **inline**) | always on (build flag `FORK_SUBAGENT`); backgrounding is a separate opt-in — `/config` → "Auto-background agents" / `autoBackgroundAgentsEnabled: true`, default **off** | AGENTS memory + `scripts/profile/agent-bg-token-bench.ts` |
-| Streaming-highlight deferral | `CLAUDIN_DEFER_HIGHLIGHT=0` | `scripts/profile/streaming-bench.ts` |
-| V8 bytecode cache (`~/.claudin/v8cache/`) | `NODE_DISABLE_COMPILE_CACHE=1` | invalidated on every `bun run build` |
-| Read clip-pin stand-down (re-sent Read body survives the clip paths; if it is clipped anyway the range serves a **sticky** outline, budgeted by `STICKY_REPLAY_BUDGET` so it re-arms with a real body instead of refusing forever). It bounds the **body rate and the permanent refusal**, not the cycle: the counters live on the readFileState entry and both reset per cycle, so a file that keeps getting clipped settles at two bodies every six-to-seven reads rather than stopping. **Reach** — only an entry a prior full Read wrote enters the stand-down (`offset` set, no `isPartialView`), so the auto-outline pivot's entries never do; in practice that means explicit-range reads, non-code files and code files under the pivot's ≥250-line / 10k-char threshold | `CLAUDIN_DISABLE_READ_CLIP_PIN=1` — legacy alias `CLAUDIN_DISABLE_READ_RERUN_BREAKER=1` still honored. Scope: the **pin** only. The dedup stand-down, Read's tool-result-cache bypass, the `STAND_DOWN_STRIKES` bound and the sticky marker are correctness paths and stay on — the killswitch must not hand back an unbounded re-send loop. Separately, the GrowthBook flag `tengu_read_dedup_killswitch` disables the whole dedup lane **including** the sticky marker, so it *can* restore unbounded re-sends; that is the one to reach for only in an emergency | `src/tools/FileReadTool/FileReadTool.ts`, `src/services/compact/stableStubState.ts` |
-| Repeated-failure hint (a `<system-reminder>` on an errored `tool_result` after 3 identical failures — applies to **every** tool) | `/config` → "Repeated-failure hint"; `repeatedFailureHintEnabled: false` | `src/services/tools/toolExecution.ts`, `src/services/extractMemories/loopDetector.ts` |
-| Bash → RunTests redirect (a bare test command in Bash is refused **once** with a pointer to `RunTests`; re-sending the identical command runs it, which is the only way to get raw runner output). Narrow by design: single command only, must *start* with the runner, no quotes, and raw-output/non-run flags (`-s`, `--nocapture`, `--watch`, `--reporter`, `--no-run`, …) opt out | `CLAUDIN_DISABLE_RUNTESTS_REDIRECT=1`; also skipped when `RunTests` is absent from the agent's toolset or `run_in_background` is set | `src/tools/RunTestsTool/redirect.ts` |
+Claudin ships several behaviors that are **on by default** — the Bash output filter, the cache policy, the Read clip-pin, the Bash→RunTests and Bash→Typecheck redirects, the repeated-failure hint, fork-by-default sub-agents. Each is documented at the top of the module that implements it, where its `CLAUDIN_*` killswitch is named; `/config` is the surface users get. They are deliberately not tabulated here: every agent harness that opens this repo reads this file, and a Claudin-only behavior described here reads as an instruction the others cannot honor.
 
 ## Build & Tests
 
@@ -104,8 +90,4 @@ Several runtime behaviors are **on by default** with their own docs and toggles:
 - **Tests** — Bun's runner, colocated `*.test.ts(x)`; targets, mocking policy, coverage, and the Pre-PR checklist are in [testing.md](.claudin/rules/testing.md). Run [/pre-pr](.claudin/skills/pre-pr/SKILL.md) before opening a PR. When changing provider behavior, exercise the actual provider/model path (`/provider doctor` after `bun run dev`) and name the tested provider in the PR description.
 - **Typecheck** — `bun run typecheck` (`tsc --noEmit`) **reaches zero**, and `typecheck-baseline.json` is `count: 0`. CI still runs the `bun run typecheck:ci` ratchet (`scripts/typecheck-ci.ts`), which fails a PR only for errors it **adds** against the committed baseline by a line-independent fingerprint — against an empty baseline that is simply "no new errors". Refresh it with `bun run typecheck:baseline` when a change legitimately moves existing errors; fixing errors never fails the run.
 
-  Getting there took two things worth knowing before you read old notes:
-  - The `src/components/*.tsx` files checked in as **React-Compiler output** (`const $ = _c(N)`, `$[i]` bookkeeping) *are* hand-fixable, despite a long-standing claim here that they were not. The transform strips the parameter type but leaves the props type declared a few lines above, so annotating the `t0` parameter clears whole clusters at once.
-  - The ~107 TS2307 for subsystems this fork never received are retired by the `.d.ts` files sitting next to each missing module. **Every export in them is `any` on purpose**: a concrete invented shape lets tsc walk into the caller and raise TS2339 on properties the invention lacks, which is why an earlier attempt measured worse. These declarations buy **no** type safety — an unresolved import is already `any` — they only retire the diagnostic. They also do not mean the code is unreachable: `src/commands.ts` imports 19 of these eagerly and does hit the `() => null` build stub at runtime.
-
-  Three files keep this signal readable and should be kept current: `src/globals.d.ts` (the `MACRO.*` constants `scripts/build.ts` inlines — a member here that is missing from the `define` map ships as a `ReferenceError`), `src/stubbed-modules.d.ts` (the packages and `.md`/`.txt` assets the build replaces with stubs), and the per-module `.d.ts` files above. When a large drop looks too good, check for `TS1xxx` first: one syntax error in a generated `.d.ts` makes tsc skip semantic analysis entirely and report near-zero.
+  Reaching zero left two counter-intuitive facts behind, and old notes contradict both: the `.tsx` checked in as React-Compiler output **are** hand-fixable ([ink-tui.md](.claudin/rules/ink-tui.md)), and every export in the fork's `.d.ts` files is `any` **on purpose** ([build-system.md](.claudin/rules/build-system.md)).

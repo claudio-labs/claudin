@@ -10,48 +10,48 @@ import {
   getOriginalCwd,
   getSessionId,
   regenerateSessionId,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import type { AppState } from 'src/state/AppState.js'
-import { isInProcessTeammateTask } from 'src/tasks/InProcessTeammateTask/types.js'
+} from 'src/platform/analytics/index.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
+import { isInProcessTeammateTask } from 'src/agent/tasks/InProcessTeammateTask/types.js'
 import {
   isLocalAgentTask,
   type LocalAgentTaskState,
-} from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
-import { isLocalShellTask } from 'src/tasks/LocalShellTask/guards.js'
-import { asAgentId } from 'src/types/ids.js'
-import type { Message } from 'src/types/message.js'
+} from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
+import { isLocalShellTask } from 'src/agent/tasks/LocalShellTask/guards.js'
+import { asAgentId } from 'src/shared/types/ids.js'
+import type { Message } from 'src/shared/types/message.js'
 import {
   resetCostState,
   saveCurrentSessionCosts,
-} from 'src/cost-tracker.js'
-import { createEmptyAttributionState } from 'src/services/git/commitAttribution.js'
-import type { FileStateCache } from 'src/utils/fs/fileStateCache.js'
+} from 'src/agent/cost-tracker.js'
+import { createEmptyAttributionState } from 'src/vcs/git/commitAttribution.js'
+import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import {
   executeSessionEndHooks,
   getSessionEndHookTimeoutMs,
-} from 'src/services/lifecycleHooks/hooks.js'
-import { logError } from 'src/utils/log.js'
-import { resetLoopSentinelState } from 'src/utils/loopSentinels.js'
-import { clearAllPlanSlugs } from 'src/utils/plans.js'
-import { setCwd } from 'src/utils/proc/Shell.js'
-import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
+} from 'src/platform/lifecycleHooks/hooks.js'
+import { logError } from 'src/shared/log.js'
+import { resetLoopSentinelState } from 'src/agent/loopSentinels.js'
+import { clearAllPlanSlugs } from 'src/agent/plans/plans.js'
+import { setCwd } from 'src/shared/proc/Shell.js'
+import { processSessionStartHooks } from 'src/sessions/sessionStart.js'
 import {
   clearSessionMetadata,
   getAgentTranscriptPath,
   resetSessionFilePointer,
   saveWorktreeState,
-} from 'src/services/session/sessionStorage.js'
+} from 'src/sessions/sessionStorage.js'
 import {
   evictTaskOutput,
   initTaskOutputAsSymlink,
-} from 'src/tasks/diskOutput.js'
-import { unlinkSessionSpillDir } from 'src/services/tools/toolResultStorage.js'
-import { getCurrentWorktreeSession } from 'src/services/git/worktree.js'
-import { clearSessionCaches } from './caches.js'
+} from 'src/agent/tasks/diskOutput.js'
+import { unlinkSessionSpillDir } from 'src/agent/tools/toolResultStorage.js'
+import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js'
+import { clearSessionCaches } from 'src/commands/clear/caches.js'
 
 export async function clearConversation({
   setMessages,
@@ -118,7 +118,7 @@ export async function clearConversation({
   // Clear context-blocked flag so proactive ticks resume after /clear
   if (feature('PROACTIVE') || feature('KAIROS')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
-    const { setContextBlocked } = require('../../proactive/index.js')
+    const { setContextBlocked } = require('../../platform/proactive/index.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
     setContextBlocked(false)
   }
@@ -266,10 +266,10 @@ export async function clearConversation({
   // and (if applicable) the same worktree directory.
   if (feature('COORDINATOR_MODE')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
-    const { saveMode } = require('src/services/session/sessionStorage.js')
+    const { saveMode } = require('src/sessions/sessionStorage.js')
     const {
       isCoordinatorMode,
-    } = require('src/coordinator/coordinatorMode.js')
+    } = require('src/agent/coordinator/coordinatorMode.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
     saveMode(isCoordinatorMode() ? 'coordinator' : 'normal')
   }

@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import {
   renderOutline,
   type OutlineReason,
@@ -10,10 +10,10 @@ import {
   type OutlineLang,
   type SymbolEntry,
 } from 'src/tools/shared/codeOutline/scanSymbols.js'
-import { isAbortError } from 'src/utils/errors.js'
-import { readFileInRange } from 'src/utils/fs/readFileInRange.js'
-import { logError } from 'src/utils/log.js'
-import type { Output } from './schemas.js'
+import { isAbortError } from 'src/shared/errors.js'
+import { readFileInRange } from 'src/shared/fs/readFileInRange.js'
+import { logError } from 'src/shared/log.js'
+import type { Output } from 'src/tools/FileReadTool/schemas.js'
 
 /**
  * Footer appended to outline tool_results produced by AUTO_OUTLINE_ON_ELISION

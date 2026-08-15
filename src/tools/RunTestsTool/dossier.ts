@@ -1,7 +1,7 @@
 import { existsSync } from 'fs'
 import { isAbsolute, resolve } from 'path'
 import { readSourceExcerpt } from 'src/tools/shared/sourceExcerpt.js'
-import type { TestFailure } from './types.js'
+import type { TestFailure } from 'src/tools/RunTestsTool/types.js'
 
 /**
  * The failure dossier. For each failure that resolved to a `file:line`, read a

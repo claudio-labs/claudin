@@ -1,4 +1,4 @@
-import type { ParseInput } from './types.js'
+import type { ParseInput } from 'src/tools/shared/diagnostics/types.js'
 
 /**
  * Last-resort text scrape, used only when no parser recognised the output.

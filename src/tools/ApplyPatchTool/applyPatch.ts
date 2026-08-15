@@ -8,15 +8,15 @@
 import type { UUID } from 'crypto'
 import { extname, relative } from 'path'
 import type { StructuredPatchHunk } from 'diff'
-import type { ToolUseContext, ValidationResult } from 'src/Tool.js'
-import { checkTeamMemSecrets } from 'src/services/teamMemorySync/teamMemSecretGuard.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { getPatchFromContents } from 'src/services/git/diff.js'
-import { getFileModificationTime } from 'src/utils/fs/file.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { expandPath } from 'src/utils/fs/path.js'
-import { checkBatchWritePermission } from 'src/services/permissions/filesystem.js'
-import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
+import type { ToolUseContext, ValidationResult } from 'src/tools/Tool.js'
+import { checkTeamMemSecrets } from 'src/memory/teamSync/teamMemSecretGuard.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { getPatchFromContents } from 'src/vcs/git/diff.js'
+import { getFileModificationTime } from 'src/shared/fs/file.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { expandPath } from 'src/shared/fs/path.js'
+import { checkBatchWritePermission } from 'src/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import {
   needsWholeFileRead,
   readGateMessage,
@@ -39,8 +39,8 @@ import {
   deriveNewContentsFromChunks,
   type Hunk,
   parsePatch,
-} from './patchFormat.js'
-import { APPLY_PATCH_TOOL_NAME } from './prompt.js'
+} from 'src/tools/ApplyPatchTool/patchFormat.js'
+import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 
 export type ApplyPatchInput = { patchText: string }
 

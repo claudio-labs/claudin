@@ -1,19 +1,19 @@
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { getMaxOutputLength } from 'src/services/shell/outputLimits.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { getMaxOutputLength } from 'src/platform/shell/outputLimits.js'
 import {
   getPowerShellEdition,
   type PowerShellEdition,
-} from 'src/services/shell/powershellDetection.js'
+} from 'src/platform/shell/powershellDetection.js'
 import {
   getDefaultBashTimeoutMs,
   getMaxBashTimeoutMs,
-} from 'src/utils/timeouts.js'
+} from 'src/shared/timeouts.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
-import { POWERSHELL_TOOL_NAME } from './toolName.js'
+import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js'
 
 export function getDefaultTimeoutMs(): number {
   return getDefaultBashTimeoutMs()

@@ -24,8 +24,8 @@ process.env.FORCE_COLOR ??= '3'
 //   bun run scripts/profile/transcript-bench.ts --counts=100,500,1000
 
 import { performance } from 'node:perf_hooks'
-import { applyMarkdown } from '../../src/utils/text/markdown.js'
-import { getCliHighlightPromise } from '../../src/utils/text/cliHighlight.js'
+import { applyMarkdown } from '../../src/shared/text/markdown.js'
+import { getCliHighlightPromise } from '../../src/shared/text/cliHighlight.js'
 
 type Args = {
   counts: number[]

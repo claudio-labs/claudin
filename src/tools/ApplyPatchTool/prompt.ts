@@ -2,11 +2,11 @@ export const APPLY_PATCH_TOOL_NAME = 'apply_patch'
 
 // IMPORTANT — cache safety: this description is serialized into the `tools`
 // block, which is the head of the cached request prefix and carries no
-// cache_control marker of its own. toolToAPISchema (src/services/api/api.ts) freezes
+// cache_control marker of its own. toolToAPISchema (src/providers/transport/api.ts) freezes
 // it per session, so it MUST be a static module-level constant — never
 // interpolate dates, cwd, model id, git state, or per-turn flags. Any byte
 // change here invalidates the whole downstream prompt cache.
-// See docs/tech/cache/clip-frontier-breakpoint.md + src/services/tools/toolSchemaCache.ts.
+// See docs/tech/cache/clip-frontier-breakpoint.md + src/agent/tools/toolSchemaCache.ts.
 export const DESCRIPTION = `Apply a patch to one or more files in a single, atomic call. Use this to create, modify, delete, or rename several files at once.
 
 The patch is a stripped-down, file-oriented diff format (the Codex "apply_patch" envelope). The whole patch goes in the single \`patchText\` parameter. Paths may be relative to the working directory or absolute.
@@ -41,7 +41,7 @@ Example:
 *** Add File: hello.txt
 +Hello world
 *** Update File: src/app.py
-*** Move to: src/main.py
+*** Move to: src/platform/main.py
 @@ def greet():
 -    print("Hi")
 +    print("Hello, world!")

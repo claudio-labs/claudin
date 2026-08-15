@@ -7,7 +7,7 @@
 // guard.
 //
 // The outputFilter internals (pipeline stages, individual filters, markers)
-// are covered by src/outputFilter/Bash/bashFilter.test.ts. This suite tests
+// are covered by src/tools/shared/outputFilter/Bash/bashFilter.test.ts. This suite tests
 // only the BashTool integration boundary.
 //
 // Mocking strategy — follows the project convention (no mock.module()):
@@ -17,15 +17,15 @@
 //   • ExecResult → plain object literals (no shell subprocess needed here).
 
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { getGlobalConfig, resetGlobalConfigForTests, saveGlobalConfig } from 'src/services/config/config.js'
-import type { ExecResult } from 'src/utils/proc/ShellCommand.js'
+import { getGlobalConfig, resetGlobalConfigForTests, saveGlobalConfig } from 'src/platform/config/config.js'
+import type { ExecResult } from 'src/shared/proc/ShellCommand.js'
 import {
   applyBashOutputFilter,
   type BashToolInput,
   planBashFilterForExecution,
   shouldFilterOutput,
-} from './BashTool.js'
-import { getBytesSaved, resetBytesSaved } from 'src/services/context/tokensSaved.js'
+} from 'src/tools/BashTool/BashTool.js'
+import { getBytesSaved, resetBytesSaved } from 'src/agent/context/tokensSaved.js'
 
 // ---------------------------------------------------------------------------
 // Fixtures

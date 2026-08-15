@@ -15,9 +15,9 @@ import {
   measureGrepShape,
   pivotWins,
   shouldAutoPivot,
-} from './autoPivot.js'
-import { GREP_TOOL_NAME } from './prompt.js'
-import { maybeSummarizeToolResult } from 'src/services/tools/toolResultSummarizer.js'
+} from 'src/tools/GrepTool/autoPivot.js'
+import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
+import { maybeSummarizeToolResult } from 'src/agent/tools/toolResultSummarizer.js'
 
 /** Defaults for the non-shape half of the decision: nothing suppressing. */
 function decide(

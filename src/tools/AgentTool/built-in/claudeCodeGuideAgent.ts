@@ -5,10 +5,10 @@ import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
 import { WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
 import { WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
-import { isUsing3PServices } from 'src/services/auth/auth.js'
-import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { isUsing3PServices } from 'src/providers/auth/auth.js'
+import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import type {
   AgentDefinition,
   BuiltInAgentDefinition,

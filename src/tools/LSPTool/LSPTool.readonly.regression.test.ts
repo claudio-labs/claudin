@@ -19,8 +19,8 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
 
-import type { ToolUseContext } from 'src/Tool.js'
-import { setCwdState } from 'src/bootstrap/state.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
+import { setCwdState } from 'src/platform/bootstrap/state.js'
 
 // ---------------------------------------------------------------------------
 // Mock the LSP server manager + the execFile path used by gitignore filtering.
@@ -56,7 +56,7 @@ const fakeManager = {
   },
 }
 
-mock.module('src/services/lsp/manager.js', () => ({
+mock.module('src/platform/lsp/manager.js', () => ({
   isLspConnected: () => true,
   getLspServerManager: () => fakeManager,
   reinitializeLspServerManager: () => {},
@@ -71,21 +71,21 @@ mock.module('src/services/lsp/manager.js', () => ({
 // and put it back in afterAll: mock.module is process-global and mock.restore()
 // does not revert it, so an unrestored stub here answers every other file's
 // exec for the rest of the run — it was returning `{code: 1}` with no `error`
-// to src/utils/proc/execFileNoThrow.test.ts, whose assertions are about the
+// to src/shared/proc/execFileNoThrow.test.ts, whose assertions are about the
 // real validation messages.
-const realExecFileNoThrow = { ...(await import('src/utils/proc/execFileNoThrow.js')) }
+const realExecFileNoThrow = { ...(await import('src/shared/proc/execFileNoThrow.js')) }
 
-mock.module('src/utils/proc/execFileNoThrow.js', () => ({
+mock.module('src/shared/proc/execFileNoThrow.js', () => ({
   execFileNoThrow: async () => ({ code: 1, stdout: '', stderr: '' }),
   execFileNoThrowWithCwd: async () => ({ code: 1, stdout: '', stderr: '' }),
   execSyncWithDefaults_DEPRECATED: () => ({ code: 0, stdout: '', stderr: '' }),
 }))
 
 afterAll(() => {
-  mock.module('src/utils/proc/execFileNoThrow.js', () => realExecFileNoThrow)
+  mock.module('src/shared/proc/execFileNoThrow.js', () => realExecFileNoThrow)
 })
 
-const { LSPTool } = await import('./LSPTool.js')
+const { LSPTool } = await import('src/tools/LSPTool/LSPTool.js')
 
 // ---------------------------------------------------------------------------
 // Filesystem setup — one .ts file per test, cwd-rooted relative paths so the

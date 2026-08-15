@@ -3,33 +3,33 @@ import { extname, isAbsolute, resolve } from 'path'
 import {
   fileHistoryEnabled,
   fileHistoryTrackEdit,
-} from 'src/utils/fs/fileHistory.js'
+} from 'src/shared/fs/fileHistory.js'
 import { z } from 'zod/v4'
-import { buildTool, type ToolDef, type ToolUseContext } from 'src/Tool.js'
-import type { NotebookCell, NotebookContent } from 'src/types/notebook.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { isENOENT } from 'src/utils/errors.js'
-import { getFileModificationTime, writeTextContent } from 'src/utils/fs/file.js'
-import { readFileSyncWithMetadata } from 'src/utils/fs/fileRead.js'
-import { safeParseJSON } from 'src/utils/data/json.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { parseCellId } from 'src/utils/fs/notebook.js'
-import { checkWritePermissionForTool } from 'src/services/permissions/filesystem.js'
-import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
-import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+import { buildTool, type ToolDef, type ToolUseContext } from 'src/tools/Tool.js'
+import type { NotebookCell, NotebookContent } from 'src/shared/types/notebook.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { isENOENT } from 'src/shared/errors.js'
+import { getFileModificationTime, writeTextContent } from 'src/shared/fs/file.js'
+import { readFileSyncWithMetadata } from 'src/shared/fs/fileRead.js'
+import { safeParseJSON } from 'src/shared/data/json.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { parseCellId } from 'src/shared/fs/notebook.js'
+import { checkWritePermissionForTool } from 'src/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
+import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import {
   satisfiesReadGate,
   writeFamilyReadGateError,
 } from 'src/tools/shared/readBeforeEditMessages.js'
-import { NOTEBOOK_EDIT_TOOL_NAME } from './constants.js'
-import { DESCRIPTION, PROMPT } from './prompt.js'
+import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
+import { DESCRIPTION, PROMPT } from 'src/tools/NotebookEditTool/prompt.js'
 import {
   getToolUseSummary,
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
   renderToolUseRejectedMessage,
-} from './UI.js'
+} from 'src/tools/NotebookEditTool/UI.js'
 
 export const inputSchema = lazySchema(() =>
   z.strictObject({

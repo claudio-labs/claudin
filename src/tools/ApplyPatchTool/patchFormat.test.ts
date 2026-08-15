@@ -3,7 +3,7 @@ import {
   deriveNewContentsFromChunks,
   parsePatch,
   type UpdateFileChunk,
-} from './patchFormat.js'
+} from 'src/tools/ApplyPatchTool/patchFormat.js'
 
 function envelope(body: string): string {
   return `*** Begin Patch\n${body}\n*** End Patch`
@@ -52,13 +52,13 @@ describe('parsePatch', () => {
   test('parses an Update File hunk with a Move to directive', () => {
     const { hunks } = parsePatch(
       envelope(
-        '*** Update File: src/app.py\n*** Move to: src/main.py\n@@ x\n-a\n+b',
+        '*** Update File: src/app.py\n*** Move to: src/platform/main.py\n@@ x\n-a\n+b',
       ),
     )
     expect(hunks[0]).toMatchObject({
       type: 'update',
       path: 'src/app.py',
-      movePath: 'src/main.py',
+      movePath: 'src/platform/main.py',
     })
   })
 

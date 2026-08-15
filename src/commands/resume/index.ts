@@ -1,4 +1,4 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 
 const resume: Command = {
   type: 'local-jsx',
@@ -6,7 +6,7 @@ const resume: Command = {
   description: 'Resume a previous conversation',
   aliases: ['continue'],
   argumentHint: '[conversation id or search term]',
-  load: () => import('./resume.js'),
+  load: () => import('src/commands/resume/resume.js'),
 }
 
 export default resume

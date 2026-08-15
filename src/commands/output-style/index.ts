@@ -1,11 +1,11 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 
 const outputStyle = {
   type: 'local-jsx',
   name: 'output-style',
   description: 'Deprecated: use /config to change output style',
   isHidden: true,
-  load: () => import('./output-style.js'),
+  load: () => import('src/commands/output-style/output-style.js'),
 } satisfies Command
 
 export default outputStyle

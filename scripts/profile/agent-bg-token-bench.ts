@@ -40,16 +40,16 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const TEN_FILES = [
-  'src/utils/errors.ts',
-  'src/utils/log.ts',
-  'src/utils/fs/path.ts',
-  'src/utils/envUtils.ts',
-  'src/utils/proc/Shell.ts',
-  'src/services/config/config.ts',
-  'src/bootstrap/state.ts',
-  'src/Tool.ts',
-  'src/utils/model/model.ts',
-  'src/services/api/providerModels.ts',
+  'src/shared/errors.ts',
+  'src/shared/log.ts',
+  'src/shared/fs/path.ts',
+  'src/shared/envUtils.ts',
+  'src/shared/proc/Shell.ts',
+  'src/platform/config/config.ts',
+  'src/platform/bootstrap/state.ts',
+  'src/tools/Tool.ts',
+  'src/providers/model/model.ts',
+  'src/providers/presets/providerModels.ts',
 ]
 
 const SENTINEL = 'BENCH_AGENT_REPORT'

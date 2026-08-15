@@ -1,11 +1,11 @@
-import type { ParseInput, ParsedDiagnostics, RawDiagnostic } from './types.js'
+import type { ParseInput, ParsedDiagnostics, RawDiagnostic } from 'src/tools/shared/diagnostics/types.js'
 
 /**
  * The Kotlin compiler's own line format, as it reaches you through Gradle:
  *
- *   e: file:///p/src/main/kotlin/Foo.kt:10:20 Unresolved reference: bar
- *   w: file:///p/src/main/kotlin/Foo.kt:3:5 Variable 'x' is never used
- *   e: /p/src/main/kotlin/Foo.kt: (10, 20): Unresolved reference: bar
+ *   e: file:///p/src/platform/main/kotlin/Foo.kt:10:20 Unresolved reference: bar
+ *   w: file:///p/src/platform/main/kotlin/Foo.kt:3:5 Variable 'x' is never used
+ *   e: /p/src/platform/main/kotlin/Foo.kt: (10, 20): Unresolved reference: bar
  *
  * Both shapes ship: the `file://` URI is what Kotlin 1.7+ prints, the
  * parenthesised one is what older Gradle plugins still emit, and a repo pinned

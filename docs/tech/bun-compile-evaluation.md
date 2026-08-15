@@ -65,7 +65,7 @@ Bytecode made things *worse*, not better.
 
 A few effects compound here, in rough order of impact:
 
-1. **The `--version` fast-path is Node-specific.** `src/entrypoints/cli.tsx`
+1. **The `--version` fast-path is Node-specific.** `src/platform/entrypoints/cli.tsx`
    checks `process.argv[2] === '--version'` and `process.exit()`s before any
    real import. On `node`, that path completes in ~25 ms because v8's
    startup-snapshot machinery is heavily optimized for the CLI use case.

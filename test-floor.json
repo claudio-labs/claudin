@@ -1,17 +1,17 @@
 {
   "//": "Written by `bun run test:floor:update`. The ratio is a ratchet against loss, not a target — see scripts/test-floor.ts.",
-  "ratioPct": 18.87,
-  "testLoc": 121294,
-  "sourceLoc": 642852,
-  "testFiles": 589,
+  "ratioPct": 19.43,
+  "testLoc": 126925,
+  "sourceLoc": 653286,
+  "testFiles": 605,
   "requiredSuites": [
-    "src/services/compact/requestDeterminism.invariant.test.ts",
-    "src/services/compact/stableStubState.stub-byte-stability.test.ts",
-    "src/outputFilter/Bash/phase12Report.test.ts",
+    "src/agent/compact/requestDeterminism.invariant.test.ts",
+    "src/agent/compact/stableStubState.stub-byte-stability.test.ts",
+    "src/tools/shared/outputFilter/Bash/phase12Report.test.ts",
     "scripts/feature-flags-source-guard.test.ts",
     "scripts/measure-tool-schemas.test.ts",
     "scripts/no-telemetry-growthbook-stub.test.ts",
     "scripts/pr-intent-scan.test.ts"
   ],
-  "capturedAt": "2026-08-07"
+  "capturedAt": "2026-08-15"
 }

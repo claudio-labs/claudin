@@ -16,7 +16,7 @@ const {
   validateWorkflowAgents,
   loadWorkflowDefs,
   loadWorkflowDef,
-} = await import('./loadWorkflows.js')
+} = await import('src/tools/AgentWorkflow/loadWorkflows.js')
 
 afterAll(async () => {
   mock.restore()

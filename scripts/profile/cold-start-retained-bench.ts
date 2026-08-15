@@ -57,27 +57,27 @@ const PROBES: Probe[] = [
   },
   {
     name: 'Tool.ts',
-    importExpr: `await import('./src/Tool.ts')`,
+    importExpr: `await import('./src/tools/Tool.ts')`,
     description: 'Tool type module — what every tool re-exports.',
   },
   {
-    name: 'src/utils/log.ts',
-    importExpr: `await import('./src/utils/log.ts')`,
+    name: 'src/shared/log.ts',
+    importExpr: `await import('./src/shared/log.ts')`,
     description: 'Logger.',
   },
   {
-    name: 'src/services/tools/toolResultCache',
-    importExpr: `await import('./src/services/tools/toolResultCache.ts')`,
+    name: 'src/agent/tools/toolResultCache',
+    importExpr: `await import('./src/agent/tools/toolResultCache.ts')`,
     description: 'Imported directly by Tool.ts.',
   },
   {
     name: 'tools.ts (full registry)',
-    importExpr: `await import('./src/tools.ts')`,
+    importExpr: `await import('./src/tools/tools.ts')`,
     description: '~30 statically-imported tools.',
   },
   {
     name: 'bash parser (utils/bash/*)',
-    importExpr: `await import('./src/services/bash/bashParser.ts')`,
+    importExpr: `await import('./src/platform/bash/bashParser.ts')`,
     description: '~12.3k LoC: bashParser + ast + heredoc + treeSitter.',
   },
   {
@@ -169,17 +169,17 @@ const PROBES: Probe[] = [
   },
   {
     name: 'openaiShim',
-    importExpr: `await import('./src/services/api/openaiShim.ts')`,
+    importExpr: `await import('./src/providers/shims/openaiShim.ts')`,
     description: 'OpenAI-compatible translator (~2.2k LoC).',
   },
   {
     name: 'Markdown',
-    importExpr: `await import('./src/components/Markdown.tsx')`,
+    importExpr: `await import('./src/terminal/markdown/Markdown.tsx')`,
     description: 'Streaming markdown renderer.',
   },
   {
     name: 'QueryEngine',
-    importExpr: `await import('./src/QueryEngine.ts')`,
+    importExpr: `await import('./src/agent/QueryEngine.ts')`,
     description: 'Core agent loop driver.',
   },
 ]

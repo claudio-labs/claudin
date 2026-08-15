@@ -1,20 +1,20 @@
 import axios, { type AxiosResponse } from 'axios'
 import { LRUCache } from 'lru-cache'
-import { queryHaiku } from 'src/services/api/claude.js'
-import { AbortError } from 'src/utils/errors.js'
-import { getWebFetchUserAgent } from 'src/utils/http.js'
-import { logError } from 'src/utils/log.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+import { queryHaiku } from 'src/providers/shims/claude.js'
+import { AbortError } from 'src/shared/errors.js'
+import { getWebFetchUserAgent } from 'src/shared/http.js'
+import { logError } from 'src/shared/log.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 import {
   isBinaryContentType,
   persistBinaryContent,
-} from 'src/services/mcp/mcpOutputStorage.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
-import { asSystemPrompt } from 'src/utils/systemPromptType.js'
-import { ssrfGuardedLookup } from 'src/services/lifecycleHooks/ssrfGuard.js'
+} from 'src/mcp/mcpOutputStorage.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
+import { asSystemPrompt } from 'src/agent/systemPromptType.js'
+import { ssrfGuardedLookup } from 'src/platform/lifecycleHooks/ssrfGuard.js'
 import { createTwoTierCache } from 'src/tools/shared/twoTierCache.js'
-import { isPreapprovedHost } from './preapproved.js'
-import { makeSecondaryModelPrompt } from './prompt.js'
+import { isPreapprovedHost } from 'src/tools/WebFetchTool/preapproved.js'
+import { makeSecondaryModelPrompt } from 'src/tools/WebFetchTool/prompt.js'
 
 // Custom error classes for domain blocking
 class DomainBlockedError extends Error {

@@ -2,11 +2,11 @@
 
 > Sub-item final do ROADMAP 11g (main.tsx split).
 >
-> **Meta:** reduzir `src/main.tsx` de **2711 → <600 linhas** mantendo
+> **Meta:** reduzir `src/platform/main.tsx` de **2711 → <600 linhas** mantendo
 > ordem de boot, `profileCheckpoint`s e snapshots verdes.
 >
 > **Estado de entrada:** Fase 1→6 já mergeadas. `main.tsx` em 2711
-> linhas, 24 módulos novos em `src/main/`.
+> linhas, 24 módulos novos em `src/platform/main/`.
 
 ---
 
@@ -16,11 +16,11 @@
 |---|---|---|---|
 | 1–221 | imports (~150 módulos) | 221 | Permanece (reduz com extrações) |
 | 222–288 | side-effects: debug guard, `_pending*` slots, re-exports | 67 | Slots → `bootContext`, resto fica |
-| 289–549 | **`main()`** — argv pre-parse (cc://, deep link, KAIROS assistant, SSH_REMOTE) + `clientType`/`isInteractive` | 260 | **7a** → `src/main/argvPreparse.ts` + `src/main/clientType.ts` |
-| 551–639 | `run()` — Commander init + **preAction hook** (init, sinks, plugin-dir, migrations, remote settings) | 89 | **7b** → `src/main/preActionHook.ts` |
-| 640–678 + 2608–2658 | root `.option/.addOption` (root flags + worktree/advisor/kairos/teammate/sdk-url/teleport) | ~90 | **7b** → `src/main/rootOptions.ts` |
+| 289–549 | **`main()`** — argv pre-parse (cc://, deep link, KAIROS assistant, SSH_REMOTE) + `clientType`/`isInteractive` | 260 | **7a** → `src/platform/main/argvPreparse.ts` + `src/platform/main/clientType.ts` |
+| 551–639 | `run()` — Commander init + **preAction hook** (init, sinks, plugin-dir, migrations, remote settings) | 89 | **7b** → `src/platform/main/preActionHook.ts` |
+| 640–678 + 2608–2658 | root `.option/.addOption` (root flags + worktree/advisor/kairos/teammate/sdk-url/teleport) | ~90 | **7b** → `src/platform/main/rootOptions.ts` |
 | **679–2607** | **`.action(async (prompt, options) => {...})`** | **🐘 1929** | **7c.1–7c.6** (ver abaixo) |
-| 2659–2701 | subcommand registration + `parseAsync` | 43 | **7b** → `src/main/registerSubcommands.ts` |
+| 2659–2701 | subcommand registration + `parseAsync` | 43 | **7b** → `src/platform/main/registerSubcommands.ts` |
 | 2702–2711 | rodapé `run()` + `profileReport` | 9 | Permanece |
 
 ---
@@ -47,12 +47,12 @@
 
 **Novos módulos:**
 
-- `src/main/argvPreparse.ts`
+- `src/platform/main/argvPreparse.ts`
   - `runDirectConnectArgvRewrite(argv): string[]` — DIRECT_CONNECT cc:// rewriting
   - `runDeepLinkArgvHandling(argv): { argv, pendingConnect } | null`
   - `runAssistantArgvStash(argv): boolean` — KAIROS assistant flag prefetch
   - `runSshArgvStash(argv): boolean` — SSH_REMOTE flag prefetch
-- `src/main/clientType.ts`
+- `src/platform/main/clientType.ts`
   - `resolveClientType(): { clientType, sessionSource, previewFormat, isInteractive }`
 
 **Pós-corte:** `main()` em ~30 linhas (sequência de helpers + try/catch existente).
@@ -65,9 +65,9 @@
 
 **Novos módulos:**
 
-- `src/main/preActionHook.ts` — `registerPreActionHook(program, deps)` retorna o `program` para encadear.
-- `src/main/rootOptions.ts` — `registerRootOptions(program)` (root + worktree + advisor + kairos + teammate + sdk-url + teleport/remote/remote-control + hard-fail).
-- `src/main/registerSubcommands.ts` — `registerSubcommands(program, { pendingConnect })` chama os 14 registers já extraídos na Fase 5a.
+- `src/platform/main/preActionHook.ts` — `registerPreActionHook(program, deps)` retorna o `program` para encadear.
+- `src/platform/main/rootOptions.ts` — `registerRootOptions(program)` (root + worktree + advisor + kairos + teammate + sdk-url + teleport/remote/remote-control + hard-fail).
+- `src/platform/main/registerSubcommands.ts` — `registerSubcommands(program, { pendingConnect })` chama os 14 registers já extraídos na Fase 5a.
 
 **Risco de tipos:** `extra-typings` perde inferência ao quebrar cadeia
 `.option().option()`. Mitigação: retornar `program` tipado intermediário
@@ -93,12 +93,12 @@ ordem exata — `bootSnapshot.test.ts` trava 21 checkpoints.
 
 | Sub | Bloco | Saída | Corte |
 |---|---|---|---|
-| 7c.1 | A          | `src/main/action/parseOptions.ts` | ~250 |
-| 7c.2 | B          | `src/main/action/mcpAndPerms.ts` | ~520 |
-| 7c.3 | C + D      | `src/main/action/setupAgent.ts` | ~310 |
-| 7c.4 | E          | `src/main/action/trustAndOnboarding.ts` | ~110 |
-| 7c.5 | F + H      | `src/main/action/startupSequence.ts` | ~410 |
-| 7c.6 | I          | `src/main/defaultAction/dispatch.ts` | ~150 |
+| 7c.1 | A          | `src/platform/main/action/parseOptions.ts` | ~250 |
+| 7c.2 | B          | `src/platform/main/action/mcpAndPerms.ts` | ~520 |
+| 7c.3 | C + D      | `src/platform/main/action/setupAgent.ts` | ~310 |
+| 7c.4 | E          | `src/platform/main/action/trustAndOnboarding.ts` | ~110 |
+| 7c.5 | F + H      | `src/platform/main/action/startupSequence.ts` | ~410 |
+| 7c.6 | I          | `src/platform/main/defaultAction/dispatch.ts` | ~150 |
 
 **Validação por sub-fase:** build + smoke + `bootSnapshot.test.ts` +
 typecheck (net ≤0 vs entrada) + commit isolado.
@@ -162,11 +162,11 @@ Fecha meta <600 linhas. Foco em trust/onboarding/dispatch
 
 - [ ] `bun run build`
 - [ ] `bun run smoke`
-- [ ] `bun test src/main/__tests__/bootSnapshot.test.ts`
-- [ ] `bun test src/main/__tests__/` (suite completa do split)
+- [ ] `bun test src/platform/main/__tests__/bootSnapshot.test.ts`
+- [ ] `bun test src/platform/main/__tests__/` (suite completa do split)
 - [ ] `bun run typecheck` (net Δerros ≤ 0 vs entrada)
 - [ ] `bun run verify:privacy` (PR 2 e PR 3 — tocam telemetria adjacente)
-- [ ] `wc -l src/main.tsx` reportado no PR description
+- [ ] `wc -l src/platform/main.tsx` reportado no PR description
 - [ ] Smoke manual de pelo menos 2 branches do default action por PR
 
 ---
@@ -174,14 +174,14 @@ Fecha meta <600 linhas. Foco em trust/onboarding/dispatch
 ## Estado final esperado
 
 ```
-src/main.tsx               ~560 linhas (de 4379 originais, −87%)
-src/main/                  ~33 módulos
-src/main/action/           6 módulos novos (Fase 7c)
-src/main/argvPreparse.ts   novo (Fase 7a)
-src/main/clientType.ts     novo (Fase 7a)
-src/main/preActionHook.ts  novo (Fase 7b)
-src/main/rootOptions.ts    novo (Fase 7b)
-src/main/registerSubcommands.ts  novo (Fase 7b)
+src/platform/main.tsx               ~560 linhas (de 4379 originais, −87%)
+src/platform/main/                  ~33 módulos
+src/platform/main/action/           6 módulos novos (Fase 7c)
+src/platform/main/argvPreparse.ts   novo (Fase 7a)
+src/platform/main/clientType.ts     novo (Fase 7a)
+src/platform/main/preActionHook.ts  novo (Fase 7b)
+src/platform/main/rootOptions.ts    novo (Fase 7b)
+src/platform/main/registerSubcommands.ts  novo (Fase 7b)
 ```
 
 **ROADMAP 11g concluído** após Fase 7.

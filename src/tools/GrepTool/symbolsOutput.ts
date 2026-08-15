@@ -1,8 +1,8 @@
 import { readFile, stat } from 'fs/promises'
 
-import { logError } from 'src/utils/log.js'
-import { toRelativePath } from 'src/utils/fs/path.js'
-import { createTextDecoder, encodingOverride } from 'src/utils/fs/textEncoding.js'
+import { logError } from 'src/shared/log.js'
+import { toRelativePath } from 'src/shared/fs/path.js'
+import { createTextDecoder, encodingOverride } from 'src/shared/fs/textEncoding.js'
 import {
   detectOutlineLangFromPath,
   enclosingSymbol,
@@ -10,7 +10,7 @@ import {
   scanSymbols,
   type SymbolEntry,
 } from 'src/tools/shared/codeOutline/scanSymbols.js'
-import { RG_LINE_RE } from './relativize.js'
+import { RG_LINE_RE } from 'src/tools/GrepTool/relativize.js'
 
 // Cap on files scanned in 'symbols' mode — scanning is per-file work and a
 // broad pattern can match thousands of files; this bounds the cost.

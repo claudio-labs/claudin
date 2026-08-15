@@ -1,25 +1,25 @@
 import chokidar, { type FSWatcher } from 'chokidar'
 import * as platformPath from 'path'
-import { getAdditionalDirectoriesForClaudeMd } from 'src/bootstrap/state.js'
+import { getAdditionalDirectoriesForClaudeMd } from 'src/platform/bootstrap/state.js'
 import {
   clearCommandMemoizationCaches,
   clearCommandsCache,
-} from 'src/commands.js'
+} from 'src/commands/commands.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import {
   clearSkillCaches,
   getSkillsPath,
   onDynamicSkillsLoaded,
 } from 'src/skills/loadSkillsDir.js'
-import { resetSentSkillNames } from 'src/services/attachments/attachments.js'
-import { registerCleanup } from 'src/utils/cleanupRegistry.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { executeConfigChangeHooks, hasBlockingResult } from 'src/services/lifecycleHooks/hooks.js'
-import { createSignal } from 'src/utils/signal.js'
+import { resetSentSkillNames } from 'src/agent/attachments/attachments.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { executeConfigChangeHooks, hasBlockingResult } from 'src/platform/lifecycleHooks/hooks.js'
+import { createSignal } from 'src/shared/signal.js'
 
 /**
  * Time in milliseconds to wait for file writes to stabilize before processing.

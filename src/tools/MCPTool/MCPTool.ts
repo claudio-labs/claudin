@@ -1,18 +1,18 @@
 import { Ajv } from 'ajv'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { z } from 'zod/v4'
-import { buildTool, type ToolDef, type ValidationResult } from 'src/Tool.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import type { PermissionResult } from 'src/types/permissions.js'
-import { isOutputLineTruncated } from 'src/utils/terminal.js'
-import { logError } from 'src/utils/log.js'
-import { DESCRIPTION, PROMPT } from './prompt.js'
-import { buildMcpValidationError } from './validationMessage.js'
+import { buildTool, type ToolDef, type ValidationResult } from 'src/tools/Tool.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import type { PermissionResult } from 'src/shared/types/permissions.js'
+import { isOutputLineTruncated } from 'src/terminal/terminal.js'
+import { logError } from 'src/shared/log.js'
+import { DESCRIPTION, PROMPT } from 'src/tools/MCPTool/prompt.js'
+import { buildMcpValidationError } from 'src/tools/MCPTool/validationMessage.js'
 import {
   renderToolResultMessage,
   renderToolUseMessage,
   renderToolUseProgressMessage,
-} from './UI.js'
+} from 'src/tools/MCPTool/UI.js'
 
 // Allow any input object since MCP tools define their own schemas
 export const inputSchema = lazySchema(() => z.object({}).passthrough())
@@ -39,7 +39,7 @@ type OutputSchema = ReturnType<typeof outputSchema>
 export type Output = z.infer<OutputSchema>
 
 // Re-export MCPProgress from centralized types to break import cycles
-export type { MCPProgress } from 'src/types/tools.js'
+export type { MCPProgress } from 'src/shared/types/tools.js'
 
 // allErrors: report every violation at once (not just the first) so the model
 // can fix all bad/missing args in a single retry instead of one per round-trip.

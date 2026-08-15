@@ -8,8 +8,8 @@ import {
   detectChecker,
   detectCheckerFor,
   detectCheckerFromCommand,
-} from './detect.js'
-import type { Checker } from './types.js'
+} from 'src/tools/TypecheckTool/detect.js'
+import type { Checker } from 'src/tools/TypecheckTool/types.js'
 
 const roots: string[] = []
 

@@ -6,7 +6,7 @@
  * set matches the recorded baseline.
  *
  * Why this exists:
- *   Lazy-gating a tool inside `src/tools.ts` only saves heap if NO other
+ *   Lazy-gating a tool inside `src/tools/tools.ts` only saves heap if NO other
  *   eagerly-loaded module also value-imports the tool. The previous review
  *   pass found that ~half the candidates are pulled into the boot path by
  *   `PermissionRequest.tsx` / `messages.ts` / `main.tsx` / `REPL.tsx` etc.,
@@ -36,7 +36,7 @@ type Candidate = {
    *  own subdirectory and any *.test.ts(x) / __tests__ paths. */
   current: string[]
   /** Post-refactor target: the only file that should value-import this
-   *  module. For most candidates this is `src/tools.ts` (the registry). */
+   *  module. For most candidates this is `src/tools/tools.ts` (the registry). */
   goal: string[]
 }
 
@@ -77,36 +77,36 @@ const CANDIDATES: Candidate[] = [
   // One extra value importer (ToolSelector). Easy refactor — name-constant swap.
   {
     modulePath: 'src/tools/TaskOutputTool/TaskOutputTool',
-    current: ['src/components/agents/ToolSelector.tsx'],
-    goal: ['src/tools.ts'],
+    current: ['src/agent/ui/agents/ToolSelector.tsx'],
+    goal: ['src/tools/tools.ts'],
   },
   {
     modulePath: 'src/tools/TaskStopTool/TaskStopTool',
-    current: ['src/components/agents/ToolSelector.tsx'],
-    goal: ['src/tools.ts'],
+    current: ['src/agent/ui/agents/ToolSelector.tsx'],
+    goal: ['src/tools/tools.ts'],
   },
   {
     modulePath: 'src/tools/WebSearchTool/WebSearchTool',
-    current: ['src/components/agents/ToolSelector.tsx'],
-    goal: ['src/tools.ts'],
+    current: ['src/agent/ui/agents/ToolSelector.tsx'],
+    goal: ['src/tools/tools.ts'],
   },
   // ToolSearch is pulled by compact.ts as a value import — needs audit.
   {
     modulePath: 'src/tools/ToolSearchTool/ToolSearchTool',
-    current: ['src/services/compact/compact.ts'],
-    goal: ['src/tools.ts'],
+    current: ['src/agent/compact/compact.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   {
     modulePath: 'src/tools/BriefTool/BriefTool',
     current: ['src/commands/brief.ts'],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   // AgentTool: only one cross-importer beyond tools.ts — REPLTool's
   // primitiveTools (REPL VM exposes Agent for inline calls).
   {
     modulePath: 'src/tools/AgentTool/AgentTool',
     current: ['src/tools/REPLTool/primitiveTools.ts'],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   // Permission-request candidates: PermissionRequest.tsx uses identity-
   // checks (`case WebFetchTool:`). Pre-req PR: convert to name-based
@@ -116,65 +116,66 @@ const CANDIDATES: Candidate[] = [
   {
     modulePath: 'src/tools/WebFetchTool/WebFetchTool',
     current: [
-      'src/components/agents/ToolSelector.tsx',
-      'src/components/permissions/PermissionRequest.tsx',
-      'src/components/permissions/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx',
-      'src/components/permissions/rules/PermissionRuleInput.tsx',    ],
-    goal: ['src/tools.ts'],
+      'src/agent/ui/agents/ToolSelector.tsx',
+      'src/permissions/ui/PermissionRequest.tsx',
+      'src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx',
+      'src/permissions/ui/rules/PermissionRuleInput.tsx',    ],
+    goal: ['src/tools/tools.ts'],
   },
   {
     modulePath: 'src/tools/NotebookEditTool/NotebookEditTool',
     current: [
-      'src/components/agents/ToolSelector.tsx',
-      'src/components/permissions/NotebookEditPermissionRequest/NotebookEditPermissionRequest.tsx',
-      'src/components/permissions/PermissionRequest.tsx',      'src/tools/REPLTool/primitiveTools.ts',
+      'src/agent/ui/agents/ToolSelector.tsx',
+      'src/permissions/ui/NotebookEditPermissionRequest/NotebookEditPermissionRequest.tsx',
+      'src/permissions/ui/PermissionRequest.tsx',      'src/tools/REPLTool/primitiveTools.ts',
     ],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   {
     modulePath: 'src/tools/SkillTool/SkillTool',
     current: [
-      'src/components/permissions/PermissionRequest.tsx',
-      'src/components/permissions/SkillPermissionRequest/SkillPermissionRequest.tsx',    ],
-    goal: ['src/tools.ts'],
+      'src/permissions/ui/PermissionRequest.tsx',
+      'src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.tsx',    ],
+    goal: ['src/tools/tools.ts'],
   },
   {
     modulePath: 'src/tools/AskUserQuestionTool/AskUserQuestionTool',
     current: [
-      'src/components/permissions/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.tsx',
-      'src/components/permissions/PermissionRequest.tsx',    ],
-    goal: ['src/tools.ts'],
+      'src/permissions/ui/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.tsx',
+      'src/permissions/ui/PermissionRequest.tsx',    ],
+    goal: ['src/tools/tools.ts'],
   },
   {
     modulePath: 'src/tools/EnterPlanModeTool/EnterPlanModeTool',
-    current: ['src/components/permissions/PermissionRequest.tsx'],
-    goal: ['src/tools.ts'],
+    current: ['src/permissions/ui/PermissionRequest.tsx'],
+    goal: ['src/tools/tools.ts'],
   },
   // ExitPlanModeV2Tool — `ToolSelector.tsx` and `messages/*.ts` use
   // `${X.name}` only; both could swap to EXIT_PLAN_MODE_V2_TOOL_NAME.
   {
     modulePath: 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool',
     current: [
-      'src/components/agents/ToolSelector.tsx',
-      'src/components/permissions/PermissionRequest.tsx',      'src/services/messages/attachments.ts',
-      'src/services/messages/planMode.ts',
+      'src/agent/messages/attachments.ts',
+      'src/agent/messages/planMode.ts',
+      'src/agent/ui/agents/ToolSelector.tsx',
+      'src/permissions/ui/PermissionRequest.tsx',
     ],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   // MCP listing — pulled by mcp/client/fetchCapabilities.ts and ToolSelector.tsx.
   {
     modulePath: 'src/tools/ListMcpResourcesTool/ListMcpResourcesTool',
     current: [
-      'src/components/agents/ToolSelector.tsx',
-      'src/services/mcp/client/fetchCapabilities.ts',    ],
-    goal: ['src/tools.ts'],
+      'src/agent/ui/agents/ToolSelector.tsx',
+      'src/mcp/client/fetchCapabilities.ts',    ],
+    goal: ['src/tools/tools.ts'],
   },
   {
     modulePath: 'src/tools/ReadMcpResourceTool/ReadMcpResourceTool',
     current: [
-      'src/components/agents/ToolSelector.tsx',
-      'src/services/mcp/client/fetchCapabilities.ts',    ],
-    goal: ['src/tools.ts'],
+      'src/agent/ui/agents/ToolSelector.tsx',
+      'src/mcp/client/fetchCapabilities.ts',    ],
+    goal: ['src/tools/tools.ts'],
   },
 ]
 

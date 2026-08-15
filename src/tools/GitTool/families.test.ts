@@ -2,8 +2,8 @@ import { afterAll, describe, expect, test } from 'bun:test'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
-import { invalidateSessionEnvCache } from 'src/services/session/sessionEnvironment.js'
+import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
+import { invalidateSessionEnvCache } from 'src/sessions/sessionEnvironment.js'
 import {
   cleanupAllFakeGh,
   GH_NOT_AUTHENTICATED,
@@ -11,7 +11,7 @@ import {
   ghPrListRule,
   ghPrViewRule,
   installFakeGh,
-} from './__fixtures__/fakeGh.js'
+} from 'src/tools/GitTool/__fixtures__/fakeGh.js'
 import {
   cleanupAllRepos,
   conflictingBranches,
@@ -25,9 +25,9 @@ import {
   repoWithUnreachableOrigin,
   stagedRepo,
   writeRepoFile,
-} from './__fixtures__/repo.js'
-import { formatGitBatchResult, runGitBatch } from './run.js'
-import type { GitBatchResult } from './types.js'
+} from 'src/tools/GitTool/__fixtures__/repo.js'
+import { formatGitBatchResult, runGitBatch } from 'src/tools/GitTool/run.js'
+import type { GitBatchResult } from 'src/tools/GitTool/types.js'
 
 /**
  * End-to-end, one family at a time: real temporary repositories, the real
@@ -113,7 +113,7 @@ type Ran = {
  * Drive the real executor with `pwd()` pointing at `cwd`.
  *
  * `exec()` resolves the working directory from `pwd()`
- * (`src/utils/proc/Shell.ts:221`), never from an argument, so this override is the
+ * (`src/shared/proc/Shell.ts:221`), never from an argument, so this override is the
  * ONLY supported way to aim the tool at a fixture — and it is the same
  * mechanism a worktree-isolated sub-agent uses.
  */

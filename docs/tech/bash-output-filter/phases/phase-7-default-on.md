@@ -20,9 +20,9 @@ Flip `bashOutputFilterEnabled` para `true` por default. Última fase da feature.
 
 | Arquivo | Mudança | LoC |
 |---|---|---|
-| `src/services/config/config.ts` (ou wherever defaults live) | Default value de `bashOutputFilterEnabled` flips de `false`/`undefined` pra `true` | +1 |
-| `src/services/config/config.ts` | Same para `bashOutputFilterRewriteEnabled: true` e `bashOutputFilterUserEnabled: true` | +2 |
-| `src/services/tools/toolResultStorage.test.ts` (se existir, senão criar) | Test confirmando que filter + summarizer interaction não quebra (output >8KB com markers passa pelo summarizer sem corte) | +30 |
+| `src/platform/config/config.ts` (ou wherever defaults live) | Default value de `bashOutputFilterEnabled` flips de `false`/`undefined` pra `true` | +1 |
+| `src/platform/config/config.ts` | Same para `bashOutputFilterRewriteEnabled: true` e `bashOutputFilterUserEnabled: true` | +2 |
+| `src/agent/tools/toolResultStorage.test.ts` (se existir, senão criar) | Test confirmando que filter + summarizer interaction não quebra (output >8KB com markers passa pelo summarizer sem corte) | +30 |
 | `src/tools/BashTool/BashTool.test.ts` | Snapshot updates onde markers agora aparecem por default | (snapshot diffs) |
 
 ### Não-arquivos
@@ -32,7 +32,7 @@ Flip `bashOutputFilterEnabled` para `true` por default. Última fase da feature.
 
 ## Steps
 
-1. **Localize default config** — provavelmente em `src/services/config/config.ts` em algum `DEFAULT_GLOBAL_CONFIG` object (verificar durante implementação). Se não tem default explicit, ler-side `getGlobalConfig().bashOutputFilterEnabled !== false` é o approach (qualquer valor exceto explicit `false` = on).
+1. **Localize default config** — provavelmente em `src/platform/config/config.ts` em algum `DEFAULT_GLOBAL_CONFIG` object (verificar durante implementação). Se não tem default explicit, ler-side `getGlobalConfig().bashOutputFilterEnabled !== false` é o approach (qualquer valor exceto explicit `false` = on).
 
    Decisão preferida: **explicit default de `true`** num default object — mais auditável.
 
@@ -46,7 +46,7 @@ Flip `bashOutputFilterEnabled` para `true` por default. Última fase da feature.
 
 3. **Add `processToolResultBlock` interaction test:**
    ```ts
-   // src/services/tools/toolResultStorage.test.ts
+   // src/agent/tools/toolResultStorage.test.ts
    test('filtered output >8KB does not get re-summarized by toolResultSummarizer', () => {
      const filteredStdout = '<bash-output-filtered name="cargo-build" reduction="55%">\n' + 'x'.repeat(15_000)
      const block = processToolResultBlock({...}, filteredStdout, ...)
@@ -103,11 +103,11 @@ bun run typecheck
 ## Acceptance criteria
 
 - [ ] `bun run build` clean
-- [ ] `bun test src/outputFilter/Bash` 100% pass
+- [ ] `bun test src/tools/shared/outputFilter/Bash` 100% pass
 - [ ] `bun run verify:privacy` clean (3 new event names with suffix proof)
 - [ ] `scripts/regex-redos-scan.test.ts` passes
 - [ ] `bun run typecheck` zero errors
-- [ ] Coverage ≥80% on `src/outputFilter/Bash`
+- [ ] Coverage ≥80% on `src/tools/shared/outputFilter/Bash`
 - [ ] Smoke test all 9+ commands above produces correct markers
 - [ ] Compound bypass: `git log -5 | wc -l` → no marker
 - [ ] Error-exit: `cargo build` fail shows `<bash-output-rewritten>` marker
@@ -155,7 +155,7 @@ O spec previa flip via `createDefaultGlobalConfig` + snapshots no BashTool. A im
 
 1. **`shouldFilterOutput`** — mudança de `=== true` para `!== false`. Isso torna `undefined` (instalação nova sem config explícita) equivalente a `true`. Não há default hardcoded em nenhum objeto de config — o "default-on" é expresso diretamente na lógica de gate.
 
-2. **Toggle em `/config`** — em vez de só flipar o default silenciosamente, adicionamos um toggle "Bash output filter" na UI de configurações (`src/components/Settings/Config.tsx`). O toggle sincroniza `bashOutputFilterEnabled` e `bashOutputFilterUserEnabled` ao mesmo tempo. Padrão visual: "on" para instalações novas.
+2. **Toggle em `/config`** — em vez de só flipar o default silenciosamente, adicionamos um toggle "Bash output filter" na UI de configurações (`src/platform/settings/ui/Config.tsx`). O toggle sincroniza `bashOutputFilterEnabled` e `bashOutputFilterUserEnabled` ao mesmo tempo. Padrão visual: "on" para instalações novas.
 
 3. **Tip de performance** — adicionada entrada `bash-output-filter-token-saving` em `src/services/tipRegistry.ts`. Aparece após 5 startups, cooldown de 20 sessões, só quando o filtro está ativo. Informa o usuário sobre o ganho de tokens sem ser intrusivo.
 

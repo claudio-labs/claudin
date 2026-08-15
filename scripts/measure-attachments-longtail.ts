@@ -44,10 +44,10 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
-} from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/services/config/config.js'
-import type { Attachment } from '../src/services/attachments/attachments.js'
-import { normalizeAttachmentForAPI } from '../src/services/messages/messages.js'
+} from '../src/shared/tokenEstimation.js'
+import { enableConfigs } from '../src/platform/config/config.js'
+import type { Attachment } from '../src/agent/attachments/attachments.js'
+import { normalizeAttachmentForAPI } from '../src/agent/messages/messages.js'
 
 const LOREM =
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'

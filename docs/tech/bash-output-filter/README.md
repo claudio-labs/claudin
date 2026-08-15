@@ -5,7 +5,7 @@
 
 ## Resumo de uma frase
 
-`src/outputFilter/Bash/` é um módulo puro, fail-open e command-aware de compressão de saída — registry de ~20 `FilterSpec` escaneadas linearmente, chamadas de `BashTool.call()` pra (a) reescrever `input.command` antes do `runShellCommand` e (b) aplicar pipeline declarativo + prepend de markers `<bash-output-rewritten>`/`<bash-output-filtered>` diretamente no `result.stdout` — protegido por kill-switches via env var, defesas ReDoS (length cap + denylist + build-time scan) e o `toolResultSummarizer` existente (com extensão de 2 linhas em `isAlreadyCompacted`) como safety net.
+`src/tools/shared/outputFilter/Bash/` é um módulo puro, fail-open e command-aware de compressão de saída — registry de ~20 `FilterSpec` escaneadas linearmente, chamadas de `BashTool.call()` pra (a) reescrever `input.command` antes do `runShellCommand` e (b) aplicar pipeline declarativo + prepend de markers `<bash-output-rewritten>`/`<bash-output-filtered>` diretamente no `result.stdout` — protegido por kill-switches via env var, defesas ReDoS (length cap + denylist + build-time scan) e o `toolResultSummarizer` existente (com extensão de 2 linhas em `isAlreadyCompacted`) como safety net.
 
 ## Documentos
 
@@ -23,14 +23,14 @@
 | **Drop `Promise.race` 200ms timeout** | Não interrompe sync regex backtracking — era teatro (review §"Misalignments #5") |
 | **Drop `verb: string` field** | Linear scan de 20 filtros é sub-microsegundo; hash hashmap optimization deferida pra v2 |
 | **Drop 4 arquivos** (safety/analytics/debug/parse) | Cada <30 LoC, single-digit callers — inline (review §"Over-engineering #2-6") |
-| **Reusar `escapeXmlAttr`** de `src/utils/data/xml.ts` | Já existe, evita reinvenção (review §"Over-engineering #1") |
+| **Reusar `escapeXmlAttr`** de `src/shared/data/xml.ts` | Já existe, evita reinvenção (review §"Over-engineering #1") |
 | **Reusar `collapseIdenticalRuns`/`collapseDigitTemplates`** de `toolResultSummarizer.ts` | Saves ~80 LoC duplicação (review §"Over-engineering #3") |
 | **Tests colocados** ao invés de `__tests__/` | Viola `.claudin/rules/testing.md` (review §"Misalignments #7") |
 | **Config keys flat** (`bashOutputFilterEnabled`) | Match `toolResultSummarizerEnabled` precedent (review §"Missed conventions #4") |
 | **Drop `extractBaseCommand` reuse claim** | Função é private + não tem redaction (review §"Misalignments #4") |
 | **Single integration harness**, não per-filter test files | Duplica assertions (review §"Testing strategy") |
 | **Drop ruff/cargo/kubectl rewrite v1** | Requer JSON parsing — move pra v2 native parsers |
-| **`logError` 1-arg** | Match assinatura real em `src/utils/log.ts:159` (review §"Misalignments #6") |
+| **`logError` 1-arg** | Match assinatura real em `src/shared/log.ts:159` (review §"Misalignments #6") |
 | **Mention `processToolResultBlock` test surface** | Coverage gap (review §"Recommended changes #14") |
 
 ## Sequenciamento de PRs (rev 2)
@@ -79,7 +79,7 @@ Movidos pra v2 (precisam native parser):
 ## Acceptance criteria (rev 2)
 
 - ✅ `bun run build` clean
-- ✅ `bun test src/outputFilter/Bash` — 100% pass (single harness + 5 unit test files)
+- ✅ `bun test src/tools/shared/outputFilter/Bash` — 100% pass (single harness + 5 unit test files)
 - ✅ `bun run verify:privacy` clean
 - ✅ `scripts/regex-redos-scan.test.ts` — no denylisted patterns
 - ✅ Smoke: 5 comandos com `CLAUDIN_BASH_FILTER_DEBUG=1`

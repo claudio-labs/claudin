@@ -52,8 +52,8 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
-} from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/services/config/config.js'
+} from '../src/shared/tokenEstimation.js'
+import { enableConfigs } from '../src/platform/config/config.js'
 
 type Fixture = {
   name: string
@@ -71,7 +71,7 @@ const PROSE = `The agent loop drives the model through a series of tool dispatch
 
 Many of the surfaces that consume tokens are invisible from the outside: the system prompt, tool schemas, environment metadata, and a memory block that varies per project. When something invalidates the prompt cache, that bootstrap cost is paid in full again, even though nothing the user did appears to have changed.`
 
-const TYPESCRIPT = `import type { Tool, ToolUseContext } from 'src/Tool.js'
+const TYPESCRIPT = `import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
 import { z } from 'zod/v4'
 
 export const fileReadInputSchema = z.object({

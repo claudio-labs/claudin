@@ -1,11 +1,11 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import type { CommandResultDisplay } from 'src/commands.js';
-import { Pane } from 'src/components/design-system/Pane.js';
-import { ThemePicker } from 'src/components/ThemePicker.js';
-import { useTheme } from 'src/ink.js';
-import type { LocalJSXCommandCall } from 'src/types/command.js';
-import type { ThemeSetting } from 'src/utils/theme.js';
+import type { CommandResultDisplay } from 'src/commands/commands.js';
+import { Pane } from 'src/terminal/design-system/Pane.js';
+import { ThemePicker } from 'src/platform/ThemePicker.js';
+import { useTheme } from 'src/terminal/ink.js';
+import type { LocalJSXCommandCall } from 'src/shared/types/command.js';
+import type { ThemeSetting } from 'src/terminal/theme/theme.js';
 type Props = {
   onDone: (result?: string, options?: {
     display?: CommandResultDisplay;

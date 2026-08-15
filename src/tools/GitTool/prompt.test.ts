@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test'
-import { DESCRIPTION } from './prompt.js'
+import { DESCRIPTION } from 'src/tools/GitTool/prompt.js'
 
 /**
  * The description sits in the system prompt of EVERY request, while the payload

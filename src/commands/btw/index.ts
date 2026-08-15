@@ -1,4 +1,4 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 
 const btw = {
   type: 'local-jsx',
@@ -7,7 +7,7 @@ const btw = {
     'Ask a quick side question without interrupting the main conversation',
   immediate: true,
   argumentHint: '<question>',
-  load: () => import('./btw.js'),
+  load: () => import('src/commands/btw/btw.js'),
 } satisfies Command
 
 export default btw

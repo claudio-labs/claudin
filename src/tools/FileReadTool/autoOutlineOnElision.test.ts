@@ -10,15 +10,15 @@ import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import {
   createFileStateCacheWithSizeLimit,
   READ_FILE_STATE_CACHE_SIZE,
-} from 'src/utils/fs/fileStateCache.js'
+} from 'src/shared/fs/fileStateCache.js'
 import {
   AUTO_OUTLINE_PIVOT_FOOTER,
   FileReadTool,
-} from './FileReadTool.js'
+} from 'src/tools/FileReadTool/FileReadTool.js'
 
 // ---------------------------------------------------------------------------
 // AUTO_OUTLINE_ON_ELISION coverage.

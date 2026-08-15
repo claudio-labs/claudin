@@ -1,5 +1,5 @@
-import type { Command } from 'src/commands.js'
-import { shouldInferenceConfigCommandBeImmediate } from 'src/utils/immediateCommand.js'
+import type { Command } from 'src/commands/commands.js'
+import { shouldInferenceConfigCommandBeImmediate } from 'src/commands/immediateCommand.js'
 
 export default {
   type: 'local-jsx',
@@ -9,5 +9,5 @@ export default {
   get immediate() {
     return shouldInferenceConfigCommandBeImmediate()
   },
-  load: () => import('./effort.js'),
+  load: () => import('src/commands/effort/effort.js'),
 } satisfies Command

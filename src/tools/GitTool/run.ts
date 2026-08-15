@@ -1,27 +1,27 @@
 import {
   applyBashFilterToStdout,
   planBashFilter,
-} from 'src/outputFilter/Bash/index.js'
-import { stripOutputMarkers } from 'src/outputFilter/Bash/markers.js'
-import { exec } from 'src/utils/proc/Shell.js'
-import { formatDuration } from 'src/utils/text/format.js'
-import { GIT_NO_PROMPT_ENV } from 'src/services/git/noPromptEnv.js'
-import { logError } from 'src/utils/log.js'
-import { readFullShellOutput } from 'src/services/shell/fullOutput.js'
-import { TaskOutput } from 'src/tasks/TaskOutput.js'
+} from 'src/tools/shared/outputFilter/Bash/index.js'
+import { stripOutputMarkers } from 'src/tools/shared/outputFilter/Bash/markers.js'
+import { exec } from 'src/shared/proc/Shell.js'
+import { formatDuration } from 'src/shared/text/format.js'
+import { GIT_NO_PROMPT_ENV } from 'src/vcs/git/noPromptEnv.js'
+import { logError } from 'src/shared/log.js'
+import { readFullShellOutput } from 'src/platform/shell/fullOutput.js'
+import { TaskOutput } from 'src/agent/tasks/TaskOutput.js'
 import { trimShellStdout } from 'src/tools/shellToolResultMappers.js'
 import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js'
-import { summarizeGitOutput } from './budget.js'
-import { applyGitDelta } from './delta.js'
-import { oneLineCommand } from './display.js'
-import { diagnoseGitFailure } from './errors.js'
-import { ghCommandPair, isWatchGitCommand } from './grammar.js'
+import { summarizeGitOutput } from 'src/tools/GitTool/budget.js'
+import { applyGitDelta } from 'src/tools/GitTool/delta.js'
+import { oneLineCommand } from 'src/tools/GitTool/display.js'
+import { diagnoseGitFailure } from 'src/tools/GitTool/errors.js'
+import { ghCommandPair, isWatchGitCommand } from 'src/tools/GitTool/grammar.js'
 import type {
   GitBatchResult,
   GitCommandOutcome,
   GitProgress,
   GitStall,
-} from './types.js'
+} from 'src/tools/GitTool/types.js'
 
 /**
  * Sequential batch execution.

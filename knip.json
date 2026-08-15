@@ -1,10 +1,10 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
-    "src/entrypoints/cli.tsx",
-    "src/entrypoints/mcp.ts",
-    "src/entrypoints/init.ts",
-    "src/main.tsx",
+    "src/platform/entrypoints/cli.tsx",
+    "src/platform/entrypoints/mcp.ts",
+    "src/platform/entrypoints/init.ts",
+    "src/platform/main.tsx",
     "scripts/**/*.{ts,mjs}",
     "bin/claudin",
     "src/**/*.test.{ts,tsx}",
@@ -12,8 +12,8 @@
   ],
   "project": ["src/**/*.{ts,tsx}", "scripts/**/*.ts"],
   "ignore": [
-    "src/types/generated/**",
-    "src/entrypoints/sdk/coreTypes.generated.ts",
+    "src/shared/types/generated/**",
+    "src/platform/entrypoints/sdk/coreTypes.generated.ts",
     "src/stubs/growthbook-stub.ts",
     "src/stubs/sandbox-runtime-stub.ts"
   ],

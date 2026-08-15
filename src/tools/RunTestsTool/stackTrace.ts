@@ -1,4 +1,4 @@
-import type { Framework, TestFailure } from './types.js'
+import type { Framework, TestFailure } from 'src/tools/RunTestsTool/types.js'
 
 /**
  * Best-effort `file:line` extraction from a stack trace / failure body, for the

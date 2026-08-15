@@ -4,7 +4,7 @@
 // `Read(file_path, symbol=…)` without translating anything.
 
 import { rangeLabel } from 'src/tools/shared/codeOutline/renderOutline.js'
-import type { FindSitesResult, RenameSite } from './findSites.js'
+import type { FindSitesResult, RenameSite } from 'src/tools/RenameTool/findSites.js'
 
 /** Sites listed before the tail is summarized instead of enumerated. */
 const MAX_SITES_SHOWN = 200

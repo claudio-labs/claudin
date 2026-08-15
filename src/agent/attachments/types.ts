@@ -1,0 +1,513 @@
+// Pure-type module: zero runtime imports. All imports below must be `import type`
+// so this file participates in no module cycles and is erased at compile time.
+import type { Output as FileReadToolOutput } from 'src/tools/FileReadTool/FileReadTool.js'
+import type { TodoList } from 'src/tools/TodoWriteTool/types.js'
+import type { Task } from 'src/agent/tasks/tasks.js'
+import type { MemoryFileInfo } from 'src/memory/instructions/claudemd.js'
+import type { DiagnosticFile } from 'src/platform/diagnosticTracking.js'
+import type { MessageOrigin } from 'src/shared/types/message.js'
+import type { UUID } from 'crypto'
+import type {
+  ContentBlockParam,
+} from '@anthropic-ai/sdk/resources/messages.mjs'
+import type { ReadResourceResult } from '@modelcontextprotocol/sdk/types.js'
+// DiscoverySignal lives in a stubbed/feature-gated module on external builds;
+// inline the structural shape used by the Attachment union to avoid an
+// unresolved-module error during typecheck.
+type DiscoverySignal = unknown
+import type {
+  HookEvent,
+  SyncHookJSONOutput,
+} from 'src/platform/entrypoints/agentSdkTypes.js'
+import type { HookBlockingError } from 'src/platform/lifecycleHooks/hooks.js'
+import type { TaskType, TaskStatus } from 'src/agent/Task.js'
+
+export type FileAttachment = {
+  type: 'file'
+  filename: string
+  content: FileReadToolOutput
+  /**
+   * Whether the file was truncated due to size limits
+   */
+  truncated?: boolean
+  /** Path relative to CWD at creation time, for stable display */
+  displayPath: string
+}
+
+export type CompactFileReferenceAttachment = {
+  type: 'compact_file_reference'
+  filename: string
+  /** Path relative to CWD at creation time, for stable display */
+  displayPath: string
+}
+
+export type PDFReferenceAttachment = {
+  type: 'pdf_reference'
+  filename: string
+  pageCount: number
+  fileSize: number
+  /** Path relative to CWD at creation time, for stable display */
+  displayPath: string
+}
+
+export type AlreadyReadFileAttachment = {
+  type: 'already_read_file'
+  filename: string
+  content: FileReadToolOutput
+  /**
+   * Whether the file was truncated due to size limits
+   */
+  truncated?: boolean
+  /** Path relative to CWD at creation time, for stable display */
+  displayPath: string
+}
+
+export type AgentMentionAttachment = {
+  type: 'agent_mention'
+  agentType: string
+}
+
+export type AsyncHookResponseAttachment = {
+  type: 'async_hook_response'
+  processId: string
+  hookName: string
+  hookEvent: HookEvent | 'StatusLine' | 'FileSuggestion'
+  toolName?: string
+  response: SyncHookJSONOutput
+  stdout: string
+  stderr: string
+  exitCode?: number
+}
+
+export type HookAttachment =
+  | HookCancelledAttachment
+  | {
+      type: 'hook_blocking_error'
+      blockingError: HookBlockingError
+      hookName: string
+      toolUseID: string
+      hookEvent: HookEvent
+    }
+  | HookNonBlockingErrorAttachment
+  | HookErrorDuringExecutionAttachment
+  | {
+      type: 'hook_stopped_continuation'
+      message: string
+      hookName: string
+      toolUseID: string
+      hookEvent: HookEvent
+    }
+  | HookSuccessAttachment
+  | {
+      type: 'hook_additional_context'
+      content: string[]
+      hookName: string
+      toolUseID: string
+      hookEvent: HookEvent
+    }
+  | HookSystemMessageAttachment
+  | HookPermissionDecisionAttachment
+
+export type HookPermissionDecisionAttachment = {
+  type: 'hook_permission_decision'
+  decision: 'allow' | 'deny'
+  toolUseID: string
+  hookEvent: HookEvent
+}
+
+export type HookSystemMessageAttachment = {
+  type: 'hook_system_message'
+  content: string
+  hookName: string
+  toolUseID: string
+  hookEvent: HookEvent
+}
+
+export type HookCancelledAttachment = {
+  type: 'hook_cancelled'
+  hookName: string
+  toolUseID: string
+  hookEvent: HookEvent
+  command?: string
+  durationMs?: number
+}
+
+export type HookErrorDuringExecutionAttachment = {
+  type: 'hook_error_during_execution'
+  content: string
+  hookName: string
+  toolUseID: string
+  hookEvent: HookEvent
+  command?: string
+  durationMs?: number
+}
+
+export type HookSuccessAttachment = {
+  type: 'hook_success'
+  content: string
+  hookName: string
+  toolUseID: string
+  hookEvent: HookEvent
+  stdout?: string
+  stderr?: string
+  exitCode?: number
+  command?: string
+  durationMs?: number
+}
+
+export type HookNonBlockingErrorAttachment = {
+  type: 'hook_non_blocking_error'
+  hookName: string
+  stderr: string
+  stdout: string
+  exitCode: number
+  toolUseID: string
+  hookEvent: HookEvent
+  command?: string
+  durationMs?: number
+}
+
+export type Attachment =
+  /**
+   * User at-mentioned the file
+   */
+  | FileAttachment
+  | CompactFileReferenceAttachment
+  | PDFReferenceAttachment
+  | AlreadyReadFileAttachment
+  /**
+   * An at-mentioned file was edited
+   */
+  | {
+      type: 'edited_text_file'
+      filename: string
+      snippet: string
+    }
+  | {
+      type: 'edited_image_file'
+      filename: string
+      content: FileReadToolOutput
+    }
+  | {
+      type: 'directory'
+      path: string
+      content: string
+      /** Path relative to CWD at creation time, for stable display */
+      displayPath: string
+    }
+  | {
+      type: 'selected_lines_in_ide'
+      ideName: string
+      lineStart: number
+      lineEnd: number
+      filename: string
+      content: string
+      /** Path relative to CWD at creation time, for stable display */
+      displayPath: string
+    }
+  | {
+      type: 'opened_file_in_ide'
+      filename: string
+    }
+  | {
+      type: 'todo_reminder'
+      content: TodoList
+      itemCount: number
+    }
+  | {
+      type: 'task_reminder'
+      content: Task[]
+      itemCount: number
+    }
+  | {
+      type: 'nested_memory'
+      path: string
+      content: MemoryFileInfo
+      /** Path relative to CWD at creation time, for stable display */
+      displayPath: string
+    }
+  | {
+      type: 'relevant_memories'
+      memories: {
+        path: string
+        content: string
+        mtimeMs: number
+        /**
+         * Pre-computed header string (age + path prefix).  Computed once
+         * at attachment-creation time so the rendered bytes are stable
+         * across turns — recomputing memoryAge(mtimeMs) at render time
+         * calls Date.now(), so "saved 3 days ago" becomes "saved 4 days
+         * ago" across turns → different bytes → prompt cache bust.
+         * Optional for backward compat with resumed sessions; render
+         * path falls back to recomputing if missing.
+         */
+        header?: string
+        /**
+         * lineCount when the file was truncated by readMemoriesForSurfacing,
+         * else undefined. Threaded to the readFileState write so
+         * getChangedFiles skips truncated memories (partial content would
+         * yield a misleading diff).
+         */
+        limit?: number
+      }[]
+    }
+  | {
+      type: 'dynamic_skill'
+      skillDir: string
+      skillNames: string[]
+      /** Path relative to CWD at creation time, for stable display */
+      displayPath: string
+    }
+  | {
+      type: 'skill_listing'
+      content: string
+      skillCount: number
+      isInitial: boolean
+    }
+  | {
+      type: 'bash_git_instructions'
+      content: string
+    }
+  | {
+      type: 'skill_discovery'
+      skills: { name: string; description: string; shortId?: string }[]
+      signal: DiscoverySignal
+      source: 'native' | 'aki' | 'both'
+    }
+  | {
+      type: 'queued_command'
+      prompt: string | Array<ContentBlockParam>
+      source_uuid?: UUID
+      imagePasteIds?: number[]
+      /** Original queue mode — 'prompt' for user messages, 'task-notification' for system events */
+      commandMode?: string
+      /** Provenance carried from QueuedCommand so mid-turn drains preserve it */
+      origin?: MessageOrigin
+      /** Carried from QueuedCommand.isMeta — distinguishes human-typed from system-injected */
+      isMeta?: boolean
+    }
+  | {
+      type: 'output_style'
+      style: string
+    }
+  | {
+      type: 'diagnostics'
+      files: DiagnosticFile[]
+      isNew: boolean
+    }
+  | {
+      type: 'plan_mode'
+      reminderType: 'full' | 'sparse'
+      isSubAgent?: boolean
+      planFilePath: string
+      planExists: boolean
+    }
+  | {
+      type: 'plan_mode_reentry'
+      planFilePath: string
+    }
+  | {
+      type: 'plan_mode_exit'
+      planFilePath: string
+      planExists: boolean
+    }
+  | {
+      type: 'auto_mode'
+      reminderType: 'full' | 'sparse'
+    }
+  | {
+      type: 'auto_mode_exit'
+    }
+  | {
+      type: 'critical_system_reminder'
+      content: string
+    }
+  | {
+      type: 'plan_file_reference'
+      planFilePath: string
+      planContent: string
+    }
+  | {
+      type: 'mcp_resource'
+      server: string
+      uri: string
+      name: string
+      description?: string
+      content: ReadResourceResult
+    }
+  | {
+      type: 'command_permissions'
+      allowedTools: string[]
+      model?: string
+    }
+  | AgentMentionAttachment
+  | {
+      type: 'task_status'
+      taskId: string
+      taskType: TaskType
+      status: TaskStatus
+      description: string
+      deltaSummary: string | null
+      outputFilePath?: string
+      command?: string
+    }
+  | AsyncHookResponseAttachment
+  | {
+      type: 'token_usage'
+      used: number
+      total: number
+      remaining: number
+    }
+  | {
+      type: 'budget_usd'
+      used: number
+      total: number
+      remaining: number
+    }
+  | {
+      type: 'output_token_usage'
+      turn: number
+      session: number
+      budget: number | null
+    }
+  | {
+      type: 'structured_output'
+      data: unknown
+    }
+  | TeammateMailboxAttachment
+  | TeamContextAttachment
+  | HookAttachment
+  | {
+      type: 'invoked_skills'
+      skills: Array<{
+        name: string
+        path: string
+        content: string
+      }>
+    }
+  | {
+      type: 'verify_plan_reminder'
+    }
+  | {
+      type: 'max_turns_reached'
+      maxTurns: number
+      turnCount: number
+    }
+  | {
+      type: 'current_session_memory'
+      content: string
+      path: string
+      tokenCount: number
+    }
+  | {
+      type: 'teammate_shutdown_batch'
+      count: number
+    }
+  | {
+      type: 'compaction_reminder'
+    }
+  | {
+      type: 'context_efficiency'
+    }
+  | {
+      type: 'date_change'
+      newDate: string
+    }
+  | {
+      type: 'ultrathink_effort'
+      level: 'high'
+    }
+  | {
+      type: 'deferred_tools_delta'
+      addedNames: string[]
+      addedLines: string[]
+      removedNames: string[]
+    }
+  | {
+      type: 'agent_listing_delta'
+      addedTypes: string[]
+      addedLines: string[]
+      removedTypes: string[]
+      /** True when this is the first announcement in the conversation */
+      isInitial: boolean
+      /** Whether to include the "launch multiple agents concurrently" note (non-pro subscriptions) */
+      showConcurrencyNote: boolean
+    }
+  | {
+      type: 'mcp_instructions_delta'
+      addedNames: string[]
+      addedBlocks: string[]
+      removedNames: string[]
+    }
+  | {
+      // Phase 2 static-dedup: emit CLAUDE.md body once (or when changed)
+      // instead of re-prepending the full content every turn. See
+      // src/memory/instructions/claudeMdDelta.ts for the scan+diff rationale.
+      type: 'claude_md_delta'
+      addedContent: string
+      contentHash: string
+      isInitial: boolean
+    }
+  | {
+      // Phase 2 static-dedup: emit gitStatus on turn 1 only. The
+      // snapshot is immutable by design (see getGitStatus in
+      // src/agent/context.ts). See src/vcs/git/gitStatusDelta.ts.
+      type: 'git_status_delta'
+      content: string
+    }
+  | {
+      // Phase 2 static-dedup: todo/task reminder diff. See
+      // src/agent/todoReminderDelta.ts.
+      type: 'todo_reminder_delta'
+      added: Array<{ id: string; status: string; text: string }>
+      statusChanged: Array<{
+        id: string
+        priorStatus: string
+        newStatus: string
+        text: string
+      }>
+      removedIds: string[]
+      isInitial: boolean
+      snapshot: Array<{ id: string; status: string }>
+    }
+  | {
+      // End-of-turn task-list reconciliation nudge. See
+      // src/agent/query/taskReconcile.ts for the trigger rules and for why this is
+      // an attachment rather than a loop continuation.
+      type: 'task_reconcile'
+      reason: 'orphan_in_progress' | 'untouched_list'
+      stale: Array<{ id: string; subject: string; status: string }>
+      /** Open-task state this fired for; the repeat-cap compares against it. */
+      signature: string
+    }
+  | {
+      type: 'companion_intro'
+      name: string
+      species: string
+    }
+  | {
+      type: 'bagel_console'
+      errorCount: number
+      warningCount: number
+      sample: string
+    }
+
+export type TeammateMailboxAttachment = {
+  type: 'teammate_mailbox'
+  messages: Array<{
+    from: string
+    text: string
+    timestamp: string
+    color?: string
+    summary?: string
+  }>
+}
+
+export type TeamContextAttachment = {
+  type: 'team_context'
+  agentId: string
+  agentName: string
+  teamName: string
+  teamConfigPath: string
+  taskListPath: string
+}

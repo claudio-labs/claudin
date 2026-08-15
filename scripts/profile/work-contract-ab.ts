@@ -16,7 +16,7 @@
 // alone could not do this: `feature()` folds to a literal, so reaching both
 // arms through it means building twice and comparing two bundles — the mistake
 // that made the clip-pin A/B uncitable. `CLAUDIN_WORK_CONTRACT`
-// (src/constants/steeringToggles.ts) exists for exactly this run. Both arms set
+// (src/agent/prompts/steeringToggles.ts) exists for exactly this run. Both arms set
 // it EXPLICITLY; neither relies on unset, so the two differ in that variable
 // and nothing else.
 //
@@ -63,7 +63,7 @@
 //
 // The system prompt is NOT observable from `--output-format stream-json`: the
 // `init` event carries tools, model, betas and slash commands, but no prompt
-// text (src/services/messages/systemInit.ts). So the in-run prompt shape is
+// text (src/agent/messages/systemInit.ts). So the in-run prompt shape is
 // asserted INDIRECTLY, at startup, against the same bundle the arms will run:
 //
 //   1. the current build generation's chunks must contain the literal
@@ -827,8 +827,8 @@ type Sizes = { chars: number; tokens: number; sections: string[] }
 function measureSizes(): Sizes {
   const script = `
     globalThis.MACRO ??= new Proxy({}, { get: (_t, p) => '<' + String(p) + '>' })
-    const p = await import('./src/constants/prompts.ts')
-    const t = await import('./src/services/tokenEstimation.ts')
+    const p = await import('./src/agent/prompts/prompts.ts')
+    const t = await import('./src/shared/tokenEstimation.ts')
     const on = p.buildWorkContractSections(true)
     const joined = on.join('\\n\\n')
     console.log(JSON.stringify({
@@ -911,7 +911,7 @@ function assertBundleHonorsKillswitch(): { generation: string; chunk: string } {
     throw new Error(
       `dist/ carries the env resolver but not the folded call site \`${FOLDED_CALL_SITE}\` — the\n` +
         'gate compiled to a constant, so the killswitch is inert and both arms are identical.\n' +
-        'Check src/constants/prompts.ts, then run `bun run build`.',
+        'Check src/agent/prompts/prompts.ts, then run `bun run build`.',
     )
   }
   return { generation, chunk: callSite[0] }

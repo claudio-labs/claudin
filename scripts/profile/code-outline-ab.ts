@@ -39,7 +39,7 @@ import { Glob } from 'bun'
 import {
   detectCodeLang,
   stripLineNumberPrefix,
-} from '../../src/utils/fs/detectCodeLang.js'
+} from '../../src/shared/fs/detectCodeLang.js'
 import { scanSymbols } from '../../src/tools/shared/codeOutline/scanSymbols.js'
 import { renderOutlineBody } from '../../src/tools/shared/codeOutline/renderOutline.js'
 

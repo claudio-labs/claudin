@@ -2,10 +2,10 @@ import { afterAll, describe, expect, test } from 'bun:test'
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
-import { formatBuildResult } from './budget.js'
-import { BuildTool, resolveBuildCommand } from './BuildTool.js'
-import type { BuildProgress, BuildResult } from './types.js'
+import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
+import { formatBuildResult } from 'src/tools/BuildTool/budget.js'
+import { BuildTool, resolveBuildCommand } from 'src/tools/BuildTool/BuildTool.js'
+import type { BuildProgress, BuildResult } from 'src/tools/BuildTool/types.js'
 
 const roots: string[] = []
 

@@ -4,19 +4,19 @@ import { z } from 'zod/v4'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import {
   buildTool,
   findToolByName,
   type Tool,
   type ToolDef,
   type Tools,
-} from 'src/Tool.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { escapeRegExp } from 'src/utils/text/stringUtils.js'
-import { isToolSearchEnabledOptimistic } from 'src/services/tools/toolSearch.js'
-import { getPrompt, isDeferredTool, TOOL_SEARCH_TOOL_NAME } from './prompt.js'
+} from 'src/tools/Tool.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { escapeRegExp } from 'src/shared/text/stringUtils.js'
+import { isToolSearchEnabledOptimistic } from 'src/agent/tools/toolSearch.js'
+import { getPrompt, isDeferredTool, TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/prompt.js'
 
 export const inputSchema = lazySchema(() =>
   z.object({

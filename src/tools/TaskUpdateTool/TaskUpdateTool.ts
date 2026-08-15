@@ -1,11 +1,11 @@
 import { z } from 'zod/v4'
-import { buildTool, type ToolDef } from 'src/Tool.js'
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import {
   executeTaskCompletedHooks,
   getTaskCompletedHookMessage,
-} from 'src/services/lifecycleHooks/hooks.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+} from 'src/platform/lifecycleHooks/hooks.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   blockTask,
   deleteTask,
@@ -16,16 +16,16 @@ import {
   type TaskStatus,
   TaskStatusSchema,
   updateTask,
-} from 'src/tasks/tasks.js'
+} from 'src/agent/tasks/tasks.js'
 import {
   getAgentId,
   getAgentName,
   getTeammateColor,
   getTeamName,
-} from 'src/coordinator/teammate.js'
-import { writeToMailbox } from 'src/coordinator/teammateMailbox.js'
-import { TASK_UPDATE_TOOL_NAME } from './constants.js'
-import { DESCRIPTION, PROMPT } from './prompt.js'
+} from 'src/agent/coordinator/teammate.js'
+import { writeToMailbox } from 'src/agent/coordinator/teammateMailbox.js'
+import { TASK_UPDATE_TOOL_NAME } from 'src/tools/TaskUpdateTool/constants.js'
+import { DESCRIPTION, PROMPT } from 'src/tools/TaskUpdateTool/prompt.js'
 
 const inputSchema = lazySchema(() => {
   // Extended status schema that includes 'deleted' as a special action

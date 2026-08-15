@@ -1,11 +1,11 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import { getTaskOutputPath } from 'src/tasks/diskOutput.js'
+import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
 import {
   buildLargeToolResultMessage,
   generatePreview,
   PREVIEW_SIZE_BYTES,
-} from 'src/services/tools/toolResultStorage.js'
-import { buildImageToolResult } from './BashTool/utils.js'
+} from 'src/agent/tools/toolResultStorage.js'
+import { buildImageToolResult } from 'src/tools/BashTool/utils.js'
 
 /**
  * Shared model-facing result mapper for the shell-family tools.

@@ -1,4 +1,4 @@
-import type { BuildSystem } from './types.js'
+import type { BuildSystem } from 'src/tools/BuildTool/types.js'
 
 /**
  * The half of build failures no diagnostic parser can read.

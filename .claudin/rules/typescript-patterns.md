@@ -15,8 +15,8 @@ These override general TypeScript conventions:
 2. **No silent error swallowing** — Always log via `logError()` or re-throw. Never `catch (e) {}`.
 3. **Regex at module level** — Never compile regex inside a function. Define as module-level `const`.
 4. **Fallback pattern** — If a tool/filter fails, return the raw result unchanged. Never block the user.
-5. **No hardcoded model names** — Always use `getPrimaryModel()` / `getSmallFastModel()` from `src/utils/model/`.
-6. **No hardcoded provider logic** — Always use `tryGetActiveProvider()` from `src/services/api/activeProvider.ts`.
+5. **No hardcoded model names** — Always use `getPrimaryModel()` / `getSmallFastModel()` from `src/providers/model/`.
+6. **No hardcoded provider logic** — Always use `tryGetActiveProvider()` from `src/providers/presets/activeProvider.ts`.
 7. **Privacy enforcement** — Any analytics event name containing code/paths must use the `_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS` suffix. Run `bun run verify:privacy` before every PR.
 8. **Feature flags over conditionals** — New Anthropic-internal features go behind `feature('FLAG')` in `scripts/build.ts`. Never use runtime env vars for build-time feature gating.
 
@@ -26,7 +26,7 @@ These override general TypeScript conventions:
 
 ```typescript
 // ✅ Correct — typed, loggable, descriptive
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 
 async function readConfig(path: string): Promise<Config> {
   try {
@@ -52,8 +52,8 @@ async function readConfig(path: string): Promise<Config> {
 ### Custom error classes (use existing ones)
 
 ```typescript
-// Existing classes in src/utils/errors.ts — prefer these over new Error()
-import { ClaudeError, AbortError, isAbortError, isENOENT } from 'src/utils/errors.js'
+// Existing classes in src/shared/errors.ts — prefer these over new Error()
+import { ClaudeError, AbortError, isAbortError, isENOENT } from 'src/shared/errors.js'
 
 // ✅ Check abort before logging — abort is not an error
 try {
@@ -109,7 +109,7 @@ function execute(input: any) { ... }
 Every tool in `src/tools/<Name>/` follows this pattern:
 
 ```typescript
-import { buildTool, type ToolDef } from 'src/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { z } from 'zod/v4'
 
 // 1. Input schema (zod)
@@ -167,8 +167,8 @@ function isErrorLine(line: string): boolean {
 ## Provider — Never Hardcode
 
 ```typescript
-import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { getPrimaryModel, getSmallFastModel } from 'src/services/api/providerModels.js'
+import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
+import { getPrimaryModel, getSmallFastModel } from 'src/providers/presets/providerModels.js'
 
 // ✅ Correct — respects user's active provider
 const provider = tryGetActiveProvider()
@@ -182,18 +182,30 @@ const model = 'claude-opus-4-7-20251101'
 
 ```typescript
 // ✅ Correct — tsconfig alias, works everywhere
-import { logError } from 'src/utils/log.js'
-import { buildTool } from 'src/Tool.js'
+import { logError } from 'src/shared/log.js'
+import { buildTool } from 'src/tools/Tool.js'
 
-// ❌ Wrong — breaks when file moves, hard to read
-import { logError } from '../../../utils/log.js'
+// ❌ Wrong — encodes the distance between two slices, breaks on the next move
+import { logError } from '../../shared/log.js'
 ```
+
+Within one slice a relative import to a sibling file is fine; the rule is about
+**crossing** slices. One exception, and it is load-bearing:
+an import of a module this fork never received — a `.d.ts` with no `.ts`/`.tsx`
+beside it — **keeps its `../`**, because `scripts/build.ts` only stubs a missing
+module when the specifier starts with `./` or `../`. Aliasing one turns a green
+build into a hard resolver failure; see [build-system.md](build-system.md).
+Those declarations export `any` deliberately — don't "improve" them with a
+concrete shape, which makes tsc walk into the caller and raise `TS2339`.
+`src/__tests__/moduleBoundaries.test.ts` enforces exactly this split: it resolves
+every cross-slice relative specifier and fails only on the ones backed by a real
+module.
 
 ## Privacy — No Phone-Home
 
 ```typescript
 // ✅ Correct — suffix proves manual review
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 logEvent('tool_executed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {})
 
 // ❌ Wrong — could leak user code/paths
@@ -237,8 +249,8 @@ when you edit `scripts/build.ts`). The two that bite while editing `src/`:
 | `catch (e) {}` | Silent failure, user gets nothing | `logError()` + re-throw or fallback |
 | `/regex/` inside function | Recompiles every call | Module-level `const RE = /pattern/` |
 | Hardcoded model string | Breaks non-Anthropic providers | `getPrimaryModel(provider)` |
-| `../../` relative imports | Breaks on file moves | `src/...` path aliases |
+| `../../` import crossing a slice | Encodes the distance between slices, breaks on the next move | `src/...` path alias (except a declaration-only module, which must stay relative) |
 | `console.log` in production | Pollutes TUI output | `logError()` / `logForDebugging()` |
-| Raw `new Error(msg)` | No typed catch | Subclass from `src/utils/errors.ts` |
+| Raw `new Error(msg)` | No typed catch | Subclass from `src/shared/errors.ts` |
 | `process.exit(0)` without cleanup | Skips graceful shutdown | Use abort signals |
 | local var named `jsx`/`jsxs` | minifier → `$jsx`, shadows JSX runtime factory → `$jsx is not a function` at runtime (build + typecheck pass) | rename (e.g. `backgroundJsx`) |

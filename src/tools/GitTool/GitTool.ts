@@ -1,32 +1,32 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { z } from 'zod/v4'
-import { buildTool, type ToolCallProgress, type ToolDef } from 'src/Tool.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { isReadOnlyGitBatch, parseGitCommand } from './grammar.js'
-import { checkGitBatchPermission } from './permissions.js'
-import { DESCRIPTION, GIT_TOOL_NAME } from './prompt.js'
+import { buildTool, type ToolCallProgress, type ToolDef } from 'src/tools/Tool.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { isReadOnlyGitBatch, parseGitCommand } from 'src/tools/GitTool/grammar.js'
+import { checkGitBatchPermission } from 'src/tools/GitTool/permissions.js'
+import { DESCRIPTION, GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js'
 import {
   batchFailed,
   DEFAULT_TIMEOUT_MS,
   formatGitBatchResult,
   runGitBatch,
   WATCH_DEFAULT_TIMEOUT_MS,
-} from './run.js'
-import type { GitBatchResult, GitProgress } from './types.js'
+} from 'src/tools/GitTool/run.js'
+import type { GitBatchResult, GitProgress } from 'src/tools/GitTool/types.js'
 import {
   renderToolResultMessage,
   renderToolUseErrorMessage,
   renderToolUseMessage,
   renderToolUseProgressMessage,
   userFacingName,
-} from './UI.js'
+} from 'src/tools/GitTool/UI.js'
 
 /**
  * `Git` — run git and gh commands with a budgeted result instead of raw shell
  * output.
  *
  * Killswitch: `CLAUDIN_DISABLE_GIT_TOOL=1` drops the tool from the toolset
- * (applied in `src/tools.ts`, where the rest of the registry lives).
+ * (applied in `src/tools/tools.ts`, where the rest of the registry lives).
  *
  * Three deliberate design points, each of which has a test:
  *
@@ -39,7 +39,7 @@ import {
  *    `git diff` run inside plan mode while `git commit` does not.
  *
  * NOT added to `isCacheableTool`'s whitelist in
- * `src/services/tools/toolResultCache.ts`: git state changes faster than that
+ * `src/agent/tools/toolResultCache.ts`: git state changes faster than that
  * cache's 30s TTL, and a replayed `git status` is a wrong answer.
  *
  * The rest of the subsystem, and the two killswitches that do not live here:
@@ -140,7 +140,7 @@ export const GitTool = buildTool({
   },
   isEnabled() {
     // Constant, never a per-project answer: the tool list is pinned to a shared
-    // system-prompt cache config (see getAllBaseTools in src/tools.ts), so
+    // system-prompt cache config (see getAllBaseTools in src/tools/tools.ts), so
     // "is this a git repo" answered here would fragment that cache. A
     // non-repository is answered at call time by git itself.
     return true

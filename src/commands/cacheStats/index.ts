@@ -10,7 +10,7 @@
  * Lazy-loaded (implementation in cacheStats.ts) to keep startup time
  * minimal — same pattern used by /cost and /cache-probe.
  */
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 
 const cacheStats = {
   type: 'local',
@@ -18,7 +18,7 @@ const cacheStats = {
   description:
     'Show per-turn and session cache hit/miss stats (works across all providers)',
   supportsNonInteractive: true,
-  load: () => import('./cacheStats.js'),
+  load: () => import('src/commands/cacheStats/cacheStats.js'),
 } satisfies Command
 
 export default cacheStats

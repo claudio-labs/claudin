@@ -3,7 +3,7 @@ paths:
   - "scripts/build.ts"
   - "scripts/no-telemetry-plugin.ts"
   - "scripts/feature-flags-source-guard.test.ts"
-  - "src/constants/prompts.ts"
+  - "src/agent/prompts/prompts.ts"
   - "scripts/profile/dump-system-prompt.ts"
 ---
 # Build System — Claudin Development Rules
@@ -12,7 +12,7 @@ paths:
 constants, and stubs modules — so it affects every change. Read this before
 touching the build, the feature-flag set, or the telemetry stubs.
 
-The CLI is a **single-file bundle**: `src/entrypoints/cli.tsx` → `dist/cli.mjs`,
+The CLI is a **single-file bundle**: `src/platform/entrypoints/cli.tsx` → `dist/cli.mjs`,
 launched by `bin/claudin`. There is no dev runner that bypasses the bundle —
 **always `bun run build` after a source change**; the launcher runs `dist/cli.mjs`,
 not source.
@@ -36,7 +36,7 @@ not source.
    (`@ant/computer-use-mcp`, `daemon/*`, `cli/bg`, `self-hosted-runner`, …),
    `.md`/`.txt` imports, and `react/compiler-runtime` are redirected to inline
    stubs. A pre-scan walks `src/` for unresolved `.js` relative imports /
-   `src/tasks/*` paths / dynamic `require`/`import` and stubs them automatically.
+   `src/agent/tasks/*` paths / dynamic `require`/`import` and stubs them automatically.
    > A new top-level Anthropic-internal import still builds (the pre-scan stubs
    > it) but is a **no-op at runtime**. Gate it behind `feature()` so it only
    > loads when intentionally enabled.
@@ -52,6 +52,13 @@ not source.
 89 files under `src/` are a `.d.ts` with no `.ts`/`.tsx` beside them — 85 of them
 added by #87 to retire the fork's `TS2307`. They declare modules this fork never
 received, and they resolve **for tsc and for nothing else**.
+
+**Every export in them is `any` on purpose.** A concrete invented shape lets tsc
+walk into the caller and raise `TS2339` on properties the invention lacks — an
+earlier attempt measured worse than the diagnostic it was replacing. They buy
+**no** type safety (an unresolved import is already `any`), they only retire the
+error. Nor do they mean the code is unreachable: `src/commands/commands.ts`
+imports 19 of them eagerly and does hit the `() => null` stub at runtime.
 
 The pre-scan in #3 is what keeps the build green over them, and it fires on
 exactly one shape: `scripts/build.ts:561` registers a module as missing when the
@@ -70,13 +77,31 @@ it looks — the specifier silently stops naming the declaration and becomes a r
 before the move either (742 of them in PR #88, from a single directory move).
 
 `bun run build:strict` pins the set: `scripts/missing-imports-baseline.json`
-records the 104 specifiers this fork legitimately stubs, and the build fails on
+records the 103 specifiers this fork legitimately stubs, and the build fails on
 any new one, naming the file that referenced it. It is what tells a deliberate
 stub apart from an import that broke. A plain `bun run build` prints the count
 and, when it matches the baseline exactly, says so — that line is the expected
 steady state, not a warning. `*.test.ts(x)` is skipped by the scan: a fixture
 string such as `'import { cfg } from "./a.js"'` is indistinguishable from a real
 import to the regex scanner, and a test file never reaches the bundle anyway.
+
+**Re-capture the baseline as part of any tree-wide move**
+(`CLAUDIN_STRICT_IMPORTS=capture bun run build`). It records *resolved*
+specifiers, so moving an importer invalidates its entry: the 2026-08 reorg
+captured at group 3 of N and left `build:strict` failing on 53 unbaselined
+specifiers and 55 baselined ones that no longer existed, while a plain
+`bun run build` stayed green and merely printed the counts. Diff the old and new
+sets by module **basename** before trusting a re-capture — an identical set means
+paths moved, a new name means an import actually broke.
+
+### Two declaration files to keep current
+
+`src/globals.d.ts` declares the `MACRO.*` constants item 2 inlines: a member
+here that is missing from the `define` map ships as a `ReferenceError`.
+`src/stubbed-modules.d.ts` declares the packages and `.md`/`.txt` assets item 3
+replaces with stubs. And when a typecheck drop looks too good to be true, check
+for `TS1xxx` first — one syntax error in a generated `.d.ts` makes tsc skip
+semantic analysis for the whole program and report near-zero.
 
 ## Feature Flags
 

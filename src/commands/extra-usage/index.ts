@@ -1,7 +1,7 @@
-import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
-import type { Command } from 'src/commands.js'
-import { isOverageProvisioningAllowed } from 'src/services/auth/auth.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
+import type { Command } from 'src/commands/commands.js'
+import { isOverageProvisioningAllowed } from 'src/providers/auth/auth.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 
 function isExtraUsageAllowed(): boolean {
   if (isEnvTruthy(process.env.DISABLE_EXTRA_USAGE_COMMAND)) {
@@ -15,7 +15,7 @@ export const extraUsage = {
   name: 'extra-usage',
   description: 'Configure extra usage to keep working when limits are hit',
   isEnabled: () => isExtraUsageAllowed() && !getIsNonInteractiveSession(),
-  load: () => import('./extra-usage.js'),
+  load: () => import('src/commands/extra-usage/extra-usage.js'),
 } satisfies Command
 
 export const extraUsageNonInteractive = {
@@ -27,5 +27,5 @@ export const extraUsageNonInteractive = {
   get isHidden() {
     return !getIsNonInteractiveSession()
   },
-  load: () => import('./extra-usage-noninteractive.js'),
+  load: () => import('src/commands/extra-usage/extra-usage-noninteractive.js'),
 } satisfies Command

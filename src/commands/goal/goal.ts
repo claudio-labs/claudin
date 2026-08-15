@@ -1,26 +1,26 @@
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import type { ToolUseContext } from 'src/Tool.js'
+} from 'src/platform/analytics/index.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
-} from 'src/types/command.js'
-import { formatDuration } from 'src/utils/text/format.js'
+} from 'src/shared/types/command.js'
+import { formatDuration } from 'src/shared/text/format.js'
 import {
   buildGoalDirective,
   clearActiveGoal,
   GOAL_MAX_CONDITION_LENGTH,
   getGoalTokenCount,
   setActiveGoal,
-} from 'src/services/goal/goal.js'
+} from 'src/agent/goal/goal.js'
 import {
   shouldAllowManagedHooksOnly,
   shouldDisableAllHooksIncludingManaged,
-} from 'src/services/lifecycleHooks/hooksConfigSnapshot.js'
-import { shouldSkipHookDueToTrust } from 'src/services/lifecycleHooks/shared.js'
+} from 'src/platform/lifecycleHooks/hooksConfigSnapshot.js'
+import { shouldSkipHookDueToTrust } from 'src/platform/lifecycleHooks/shared.js'
 
 const USAGE = [
   'No active goal.',

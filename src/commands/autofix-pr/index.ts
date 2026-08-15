@@ -1,9 +1,9 @@
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import type { Command } from 'src/commands.js'
-import type { ToolUseContext } from 'src/Tool.js'
-import { executeShellCommandsInPrompt } from 'src/utils/proc/promptShellExecution.js'
-import { buildAutofixPrompt } from './prompt.js'
-import { assertAutofixPreconditions } from './shared.js'
+import type { Command } from 'src/commands/commands.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
+import { executeShellCommandsInPrompt } from 'src/shared/proc/promptShellExecution.js'
+import { buildAutofixPrompt } from 'src/commands/autofix-pr/prompt.js'
+import { assertAutofixPreconditions } from 'src/commands/autofix-pr/shared.js'
 
 const WHITESPACE_RE = /\s+/
 

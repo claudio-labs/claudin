@@ -1,4 +1,4 @@
-import type { BuildSystem } from './types.js'
+import type { BuildSystem } from 'src/tools/BuildTool/types.js'
 
 /**
  * Did this build actually rebuild anything?

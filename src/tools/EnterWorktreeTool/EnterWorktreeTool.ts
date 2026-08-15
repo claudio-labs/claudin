@@ -1,25 +1,25 @@
 import { z } from 'zod/v4'
-import { getSessionId, setOriginalCwd } from 'src/bootstrap/state.js'
-import { clearSystemPromptSections } from 'src/constants/systemPromptSections.js'
-import { logEvent } from 'src/services/analytics/index.js'
-import type { Tool } from 'src/Tool.js'
-import { buildTool, type ToolDef } from 'src/Tool.js'
-import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { findCanonicalGitRoot } from 'src/services/git/git.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { getPlanSlug, getPlansDirectory } from 'src/utils/plans.js'
-import { setCwd } from 'src/utils/proc/Shell.js'
-import { saveWorktreeState } from 'src/services/session/sessionStorage.js'
+import { getSessionId, setOriginalCwd } from 'src/platform/bootstrap/state.js'
+import { clearSystemPromptSections } from 'src/agent/prompts/systemPromptSections.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import type { Tool } from 'src/tools/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
+import { clearMemoryFileCaches } from 'src/memory/instructions/claudemd.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { findCanonicalGitRoot } from 'src/vcs/git/git.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { getPlanSlug, getPlansDirectory } from 'src/agent/plans/plans.js'
+import { setCwd } from 'src/shared/proc/Shell.js'
+import { saveWorktreeState } from 'src/sessions/sessionStorage.js'
 import {
   attachExistingWorktree,
   createWorktreeForSession,
   getCurrentWorktreeSession,
   validateWorktreeSlug,
-} from 'src/services/git/worktree.js'
-import { ENTER_WORKTREE_TOOL_NAME } from './constants.js'
-import { getEnterWorktreeToolPrompt } from './prompt.js'
-import { renderToolResultMessage, renderToolUseMessage } from './UI.js'
+} from 'src/vcs/git/worktree.js'
+import { ENTER_WORKTREE_TOOL_NAME } from 'src/tools/EnterWorktreeTool/constants.js'
+import { getEnterWorktreeToolPrompt } from 'src/tools/EnterWorktreeTool/prompt.js'
+import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/EnterWorktreeTool/UI.js'
 
 const inputSchema = lazySchema(() =>
   z

@@ -11,7 +11,7 @@
  * scanSymbols a dependency-light leaf usable from scripts and benches.
  */
 export function logScanError(e: unknown): void {
-  void import('src/utils/log.js')
+  void import('src/shared/log.js')
     .then(m => m.logError(e))
     .catch(() => {})
 }

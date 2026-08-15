@@ -3,9 +3,9 @@ import { describe, expect, test } from 'bun:test'
 import {
   buildClipStub,
   buildClipStubWithHead,
-} from 'src/services/compact/stableStubState.js'
-import { userWithToolResult } from './__test-helpers__/contextManagementFixtures.js'
-import { isPriorReadClippedOrMissing } from './clientClippingDetection.js'
+} from 'src/agent/compact/stableStubState.js'
+import { userWithToolResult } from 'src/tools/FileReadTool/__test-helpers__/contextManagementFixtures.js'
+import { isPriorReadClippedOrMissing } from 'src/tools/FileReadTool/clientClippingDetection.js'
 
 const ID = 'toolu_read_1'
 

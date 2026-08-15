@@ -13,12 +13,12 @@ import { afterEach, describe, expect, test } from 'bun:test'
 }
 
 import { clearBundledSkills, getBundledSkills } from 'src/skills/bundledSkills.js'
-import { registerFewerPermissionPromptsSkill } from './fewerPermissionPrompts.js'
-import { registerRefreshRulesSkill } from './refreshRules.js'
-import { registerRunSkill } from './run.js'
-import { registerSimplifySkill } from './simplify.js'
-import { registerVerifySkill } from './verify.js'
-import { RUN_EXAMPLE_FILES, VERIFY_EXAMPLE_FILES } from './verifyRunExamples.js'
+import { registerFewerPermissionPromptsSkill } from 'src/skills/bundled/fewerPermissionPrompts.js'
+import { registerRefreshRulesSkill } from 'src/skills/bundled/refreshRules.js'
+import { registerRunSkill } from 'src/skills/bundled/run.js'
+import { registerSimplifySkill } from 'src/skills/bundled/simplify.js'
+import { registerVerifySkill } from 'src/skills/bundled/verify.js'
+import { RUN_EXAMPLE_FILES, VERIFY_EXAMPLE_FILES } from 'src/skills/bundled/verifyRunExamples.js'
 
 afterEach(() => {
   clearBundledSkills()
@@ -132,7 +132,9 @@ describe('refresh-rules skill', () => {
     registerRefreshRulesSkill()
     const text = await promptText('refresh-rules')
     expect(text).toContain('rule file(s)')
-    expect(text).toMatch(/Always-loaded rules: \d+/)
+    // Root context files count too — AGENTS.md is unconditional by construction
+    // and is normally the largest thing in this number.
+    expect(text).toMatch(/Always-loaded context: \d+ file\(s\)/)
   })
 
   test('states the create threshold and the supported frontmatter key', async () => {

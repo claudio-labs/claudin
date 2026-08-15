@@ -13,7 +13,7 @@ import {
   AUTONOMOUS_LOOP_DYNAMIC_SENTINEL,
   AUTONOMOUS_LOOP_SENTINEL,
   MAINTENANCE_PROMPT,
-} from 'src/utils/loopSentinels.js'
+} from 'src/agent/loopSentinels.js'
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 type LoopMode =

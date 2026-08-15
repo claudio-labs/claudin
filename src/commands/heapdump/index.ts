@@ -1,4 +1,4 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 
 const heapDump = {
   type: 'local',
@@ -6,7 +6,7 @@ const heapDump = {
   description: 'Dump the JS heap to ~/Desktop',
   isHidden: true,
   supportsNonInteractive: true,
-  load: () => import('./heapdump.js'),
+  load: () => import('src/commands/heapdump/heapdump.js'),
 } satisfies Command
 
 export default heapDump

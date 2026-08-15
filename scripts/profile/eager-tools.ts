@@ -11,11 +11,11 @@
 const fmt = (n: number) => n.toLocaleString('en-US')
 
 async function main() {
-  const { getAllBaseTools } = await import('../../src/tools.js')
+  const { getAllBaseTools } = await import('../../src/tools/tools.js')
   const { isDeferredTool } = await import('../../src/tools/ToolSearchTool/prompt.js')
-  const { getToolSearchMode } = await import('../../src/services/tools/toolSearch.js')
+  const { getToolSearchMode } = await import('../../src/agent/tools/toolSearch.js')
   const { measureToolSchemas } = await import('../measure-tool-schemas.ts')
-  const { enableConfigs } = await import('../../src/services/config/config.js')
+  const { enableConfigs } = await import('../../src/platform/config/config.js')
   try { enableConfigs() } catch {}
   process.env.NODE_ENV = 'production'
 

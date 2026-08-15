@@ -1,4 +1,4 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 
 const buddy = {
   type: 'local-jsx',
@@ -6,7 +6,7 @@ const buddy = {
   description: 'Hatch, pet, and manage your Claudin companion',
   immediate: true,
   argumentHint: '[status|mute|unmute|help]',
-  load: () => import('./buddy.js'),
+  load: () => import('src/commands/buddy/buddy.js'),
 } satisfies Command
 
 export default buddy

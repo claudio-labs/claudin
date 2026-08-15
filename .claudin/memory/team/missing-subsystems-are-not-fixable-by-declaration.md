@@ -5,9 +5,11 @@ type: project
 ---
 
 `tsc` reports ~107 TS2307 ("cannot find module") against 70 relative paths that
-do not exist in this fork: most of `src/server/`, and all of `src/daemon/`,
-`src/proactive/`, `src/ssh/`, `src/login/`, `src/skillSearch/`,
-`src/sessionTranscript/`, `src/agents-platform/`.
+do not exist in this fork: most of `src/platform/server/`, and all of `src/platform/daemon/`,
+`src/platform/proactive/`, `src/platform/ssh/`, `src/commands/login/`,
+`src/skills/search/`, and `src/sessions/transcript/`. (`src/agents-platform/` was on
+this list too; that surface was deleted outright in the dead-code sweep rather than
+declared, so no stub for it exists today.)
 
 **CORRECTION, 2026-08-13: the old headline "declaring them away does not work"
 was too broad**, and stood here for six days as a reason not to try. It works if
@@ -30,15 +32,15 @@ Two consequences matter more than the win:
 it was ("every call site is behind a `feature()` flag that is off, so the stub is
 never reached"). Measured across the 85: 9 call sites are type-only (erased at
 emit), ~57 are `await import()` on gated paths, and **19 are eager value imports
-in `src/commands.ts`** that genuinely do hit the `() => null` stub at runtime —
+in `src/commands/commands.ts`** that genuinely do hit the `() => null` stub at runtime —
 which is exactly why `/upgrade` and `/extra-usage` hang (see
 [[upsell-commands-missing-login]]). A generator cannot assert "never reached at
 runtime" per file; do not let it.
 
 Watch the generator itself. It harvests names off adjacent import blocks and
 invented six exports nobody imports (`ToolResultBlockParam`/`ToolUseBlock` in
-`query/transitions.d.ts`, `LocalJSXCommandContext`/`ReactNode` in
-`commands/login/login.d.ts`, `c` in `components/ui/option.d.ts`, and a literal
+`src/agent/query/transitions.d.ts`, `LocalJSXCommandContext`/`ReactNode` in
+`src/commands/login/login.d.ts`, `c` in `src/terminal/ui/option.d.ts`, and a literal
 `js` fragment), plus three whole files for modules nothing imports. Verify call
 sites before trusting a generated export list.
 

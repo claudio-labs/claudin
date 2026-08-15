@@ -2,12 +2,12 @@ import { execFile } from 'child_process'
 import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { join, sep } from 'path'
 import { promisify } from 'util'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { addFileGlobRuleToGitignore } from 'src/services/git/gitignore.js'
-import { logError } from 'src/utils/log.js'
-import { partitionAgainstBaseline } from './fingerprint.js'
-import type { BaselineState, Checker } from './types.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { addFileGlobRuleToGitignore } from 'src/vcs/git/gitignore.js'
+import { logError } from 'src/shared/log.js'
+import { partitionAgainstBaseline } from 'src/tools/TypecheckTool/fingerprint.js'
+import type { BaselineState, Checker } from 'src/tools/TypecheckTool/types.js'
 
 /**
  * The pre-existing-diagnostic baseline: what makes this tool usable in a

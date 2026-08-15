@@ -6,7 +6,7 @@ import {
   readProjectAgentOverrides,
   writeProjectAgentOverride,
   type ProjectAgentOverridesIO,
-} from './projectAgentOverrides.js'
+} from 'src/tools/AgentTool/projectAgentOverrides.js'
 
 type Agent = {
   agentType: string

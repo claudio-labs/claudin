@@ -1,18 +1,18 @@
-import type { Command } from 'src/commands.js'
-import type { LocalCommandCall } from 'src/types/command.js'
+import type { Command } from 'src/commands/commands.js'
+import type { LocalCommandCall } from 'src/shared/types/command.js'
 import {
   canUserConfigureAdvisor,
   isValidAdvisorModel,
   modelSupportsAdvisor,
-} from 'src/utils/advisor.js'
+} from 'src/platform/doctor/advisor.js'
 import {
   getDefaultMainLoopModelSetting,
   normalizeModelStringForAPI,
   getUserSpecifiedModelSetting,
   parseUserSpecifiedModel,
-} from 'src/utils/model/model.js'
-import { validateModel } from 'src/utils/model/validateModel.js'
-import { updateSettingsForSource } from 'src/services/settings/settings.js'
+} from 'src/providers/model/model.js'
+import { validateModel } from 'src/providers/model/validateModel.js'
+import { updateSettingsForSource } from 'src/platform/settings/settings.js'
 
 const call: LocalCommandCall = async (args, context) => {
   const arg = args.trim().toLowerCase()

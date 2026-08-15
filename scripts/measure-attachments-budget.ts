@@ -10,7 +10,7 @@
  * trim.
  *
  * What it covers:
- *   - All branches of the `Attachment` union from `src/services/attachments/attachments.ts`
+ *   - All branches of the `Attachment` union from `src/agent/attachments/attachments.ts`
  *     that have a fixed-shape renderer (file/IDE attachments depend on
  *     reading real files; we simulate those bodies inline).
  *   - Two profile sizes ("typical" and "heavy") so we can see how the
@@ -45,11 +45,11 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
-} from '../src/services/tokenEstimation.js'
+} from '../src/shared/tokenEstimation.js'
 import { getBashGitInstructionsBody } from '../src/tools/BashTool/prompt.js'
-import type { Attachment } from '../src/services/attachments/attachments.js'
-import { normalizeAttachmentForAPI } from '../src/services/messages/messages.js'
-import { enableConfigs } from '../src/services/config/config.js'
+import type { Attachment } from '../src/agent/attachments/attachments.js'
+import { normalizeAttachmentForAPI } from '../src/agent/messages/messages.js'
+import { enableConfigs } from '../src/platform/config/config.js'
 
 export type AttachmentRow = {
   kind: string

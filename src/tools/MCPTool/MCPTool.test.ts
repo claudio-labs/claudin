@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
-import type { ToolUseContext } from 'src/Tool.js'
-import { stripPlaceholderOptionalFields } from 'src/services/tools/toolInputPlaceholders.js'
-import { MCPTool } from './MCPTool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
+import { stripPlaceholderOptionalFields } from 'src/agent/tools/toolInputPlaceholders.js'
+import { MCPTool } from 'src/tools/MCPTool/MCPTool.js'
 
 function makeCtx(): ToolUseContext {
   return {
