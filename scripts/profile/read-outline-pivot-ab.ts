@@ -78,7 +78,7 @@ const FIXTURES = [
   'src/tools/BashTool/sedValidation.ts',
   'src/platform/lifecycleHooks/events.ts',
   'src/services/mcp/doctor.ts',
-  'src/services/session/sessionRestore.ts',
+  'src/sessions/sessionRestore.ts',
 ]
 
 /**

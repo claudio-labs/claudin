@@ -7,7 +7,7 @@ import { extractAgentMcpServers, filterToolsByServer } from 'src/services/mcp/ut
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { useAppState } from 'src/terminal/state/AppState.js';
 import type { Tool } from 'src/Tool.js';
-import { getSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js';
+import { getSessionIngressAuthToken } from 'src/sessions/sessionIngressAuth.js';
 import { MCPAgentServerMenu } from 'src/components/mcp/MCPAgentServerMenu.js';
 import { MCPListPanel } from 'src/components/mcp/MCPListPanel.js';
 import { MCPRemoteServerMenu } from 'src/components/mcp/MCPRemoteServerMenu.js';

@@ -299,7 +299,7 @@ re-parse o caminho limpo é expor uma versão estruturada:
   branch `invalidateCacheForWrite` (`toolExecution.ts:1768/1777`); são
   do `twoTierCache` ou do file-history. Reusar mesmo padrão.
 - Content hash: NÃO existe helper centralizado em `src/utils/` para
-  hash de arquivo. Há `sha256` espalhado (`src/services/session/`,
+  hash de arquivo. Há `sha256` espalhado (`src/sessions/`,
   vários sites). Para LSP cache vale `Bun.hash` (instantâneo) ou
   `crypto.createHash('sha1')` em conteúdo já-em-memória — content é
   lido no `LSPServerManager` quando notifica `textDocument/didChange`

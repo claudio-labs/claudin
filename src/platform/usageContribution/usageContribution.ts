@@ -22,8 +22,8 @@ import { isFsInaccessible } from 'src/shared/errors.js'
 import {
   getProjectsDir,
   MAX_TRANSCRIPT_READ_BYTES,
-} from 'src/services/session/pure/paths.js'
-import { getSessionFilesWithMtime } from 'src/services/session/indexing/liteMetadata.js'
+} from 'src/sessions/pure/paths.js'
+import { getSessionFilesWithMtime } from 'src/sessions/indexing/liteMetadata.js'
 
 export type UsageWindow = 'day' | 'week'
 

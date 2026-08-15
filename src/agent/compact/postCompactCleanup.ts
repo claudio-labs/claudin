@@ -14,7 +14,7 @@ import {
 import { resetPromptCacheBreakDetection } from 'src/providers/cache/promptCacheBreakDetection.js'
 import { clearAllSessions } from 'src/providers/transport/sessionIngress.js'
 import { diagnosticTracker } from 'src/platform/diagnosticTracking.js'
-import { clearSessionMessagesCache } from 'src/services/session/sessionStorage.js'
+import { clearSessionMessagesCache } from 'src/sessions/sessionStorage.js'
 import { clearBetaTracingState } from 'src/platform/telemetry/betaSessionTracing.js'
 import { resetMicrocompactState } from 'src/agent/compact/microCompact.js'
 import {

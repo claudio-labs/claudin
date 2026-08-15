@@ -70,7 +70,7 @@ import type { Attachment } from 'src/agent/attachments/types.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const sessionTranscriptModule = feature('KAIROS')
-  ? (require('../../services/sessionTranscript/sessionTranscript.js') as typeof import('../../services/sessionTranscript/sessionTranscript.js'))
+  ? (require('../../sessions/transcript/sessionTranscript.js') as typeof import('../../sessions/transcript/sessionTranscript.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

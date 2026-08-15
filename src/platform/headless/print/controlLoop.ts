@@ -31,7 +31,7 @@ import {
   enqueue,
   hasCommandsInQueue,
 } from 'src/agent/messageQueueManager.js'
-import { notifySessionMetadataChanged } from 'src/services/session/sessionState.js'
+import { notifySessionMetadataChanged } from 'src/sessions/sessionState.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { collectContextData } from 'src/commands/context/context-noninteractive.js'
@@ -46,8 +46,8 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import { toInternalMessages } from 'src/agent/messages/mappers.js'
 import { resolveAndPrepend } from 'src/platform/bridge/inboundAttachments.js'
-import { doesMessageExistInSession } from 'src/services/session/sessionStorage.js'
-import { recordAttributionSnapshot } from 'src/services/session/sessionStorage.js'
+import { doesMessageExistInSession } from 'src/sessions/sessionStorage.js'
+import { recordAttributionSnapshot } from 'src/sessions/sessionStorage.js'
 import { incrementPromptCount } from 'src/vcs/git/commitAttribution.js'
 import { stopTask } from 'src/agent/tasks/stopTask.js'
 import type { SDKUserMessageReplay } from 'src/platform/entrypoints/agentSdkTypes.js'

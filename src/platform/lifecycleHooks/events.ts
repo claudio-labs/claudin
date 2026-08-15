@@ -11,7 +11,7 @@
  * instructions, display messages, parsed elicitation response, env-cache
  * invalidation, etc).
  */
-import { invalidateSessionEnvCache } from 'src/services/session/sessionEnvironment.js'
+import { invalidateSessionEnvCache } from 'src/sessions/sessionEnvironment.js'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { getRegisteredHooks } from 'src/platform/bootstrap/state.js'
 import { getHooksConfigFromSnapshot } from 'src/platform/lifecycleHooks/hooksConfigSnapshot.js'

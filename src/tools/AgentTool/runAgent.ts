@@ -69,7 +69,7 @@ import {
   recordSidechainTranscript,
   setAgentTranscriptSubdir,
   writeAgentMetadata,
-} from 'src/services/session/sessionStorage.js'
+} from 'src/sessions/sessionStorage.js'
 import {
   isRestrictedToPluginOnly,
   isSourceAdminTrusted,

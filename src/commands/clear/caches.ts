@@ -31,7 +31,7 @@ import { clearRepositoryCaches } from 'src/vcs/git/detectRepository.js'
 import { clearResolveGitDirCache } from 'src/vcs/git/gitFilesystem.js'
 import { fileReadCache } from 'src/shared/fs/fileReadCache.js'
 import { clearStoredImagePaths } from 'src/terminal/image/imageStore.js'
-import { clearSessionEnvVars } from 'src/services/session/sessionEnvVars.js'
+import { clearSessionEnvVars } from 'src/sessions/sessionEnvVars.js'
 
 /**
  * Clear all session-related caches.

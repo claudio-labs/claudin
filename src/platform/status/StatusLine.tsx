@@ -23,7 +23,7 @@ import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { createBaseHookInput, executeStatusLineCommand } from 'src/platform/lifecycleHooks/hooks.js';
 import { getLastAssistantMessage } from 'src/agent/messages/messages.js';
 import { getRuntimeMainLoopModel, type ModelName, renderModelName } from 'src/utils/model/model.js';
-import { getCurrentSessionTitle } from 'src/services/session/sessionStorage.js';
+import { getCurrentSessionTitle } from 'src/sessions/sessionStorage.js';
 import { doesMostRecentAssistantMessageExceed200k, getCurrentUsage } from 'src/agent/context/tokens.js';
 import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js';
 import { isVimModeEnabled } from 'src/terminal/prompt-input/utils.js';

@@ -20,7 +20,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { getErrnoCode, toError } from 'src/shared/errors.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 import { logError } from 'src/shared/log.js'
-import { getProjectDir } from 'src/services/session/sessionStorage.js'
+import { getProjectDir } from 'src/sessions/sessionStorage.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   TOOL_RESULT_SUMMARY_TAG,

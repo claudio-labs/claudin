@@ -59,7 +59,7 @@ const { processToolResultBlock, processPreMappedToolResultBlock } =
   await import('src/agent/tools/toolResultStorage.js')
 const summarizer = await import('src/agent/tools/toolResultSummarizer.js')
 const { setOriginalCwd, getOriginalCwd, getSessionId } = await import('src/platform/bootstrap/state.js')
-const { getProjectDir } = await import('src/services/session/sessionStorage.js')
+const { getProjectDir } = await import('src/sessions/sessionStorage.js')
 const { saveGlobalConfig, resetGlobalConfigForTests } = await import('src/platform/config/config.js')
 const { compressJsonArray } = await import('src/agent/tools/jsonArrayCompress.js')
 

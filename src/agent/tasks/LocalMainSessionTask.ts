@@ -42,7 +42,7 @@ import { emitTaskTerminatedSdk } from 'src/agent/sdkEventQueue.js'
 import {
   getAgentTranscriptPath,
   recordSidechainTranscript,
-} from 'src/services/session/sessionStorage.js'
+} from 'src/sessions/sessionStorage.js'
 import {
   evictTaskOutput,
   getTaskOutputPath,

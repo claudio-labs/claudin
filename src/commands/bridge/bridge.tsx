@@ -486,7 +486,7 @@ async function checkBridgePrerequisites(): Promise<string | null> {
   if (feature('KAIROS') && useV2) {
     const {
       isAssistantMode
-    } = await import('../../assistant/index.js');
+    } = await import('../../sessions/assistant/index.js');
     if (isAssistantMode()) {
       useV2 = false;
     }

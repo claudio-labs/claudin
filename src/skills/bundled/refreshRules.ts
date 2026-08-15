@@ -1,6 +1,6 @@
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { lintRuleFiles, relativeFindingPath } from 'src/memory/instructions/rulesLint.js'
-import { getProjectDir } from 'src/services/session/pure/paths.js'
+import { getProjectDir } from 'src/sessions/pure/paths.js'
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 /**

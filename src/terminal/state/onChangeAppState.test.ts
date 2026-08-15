@@ -26,7 +26,7 @@ const realProviderProfiles = {
   ...(await import('src/providers/presets/providerProfiles.js')),
 }
 const realSettings = { ...(await import('src/platform/settings/settings.js')) }
-const realSessionState = { ...(await import('src/services/session/sessionState.js')) }
+const realSessionState = { ...(await import('src/sessions/sessionState.js')) }
 const realAuth = { ...(await import('src/providers/auth/auth.js')) }
 const realManagedEnv = { ...(await import('src/platform/config/managedEnv.js')) }
 const realBootstrapState = { ...(await import('src/platform/bootstrap/state.js')) }
@@ -60,7 +60,7 @@ function installMocks(): void {
       updateSettingsForSourceCalls += 1
     },
   }))
-  mock.module('src/services/session/sessionState.js', () => ({
+  mock.module('src/sessions/sessionState.js', () => ({
     ...realSessionState,
     notifySessionMetadataChanged: () => {},
     notifyPermissionModeChanged: () => {},
@@ -119,7 +119,7 @@ afterAll(() => {
   mock.module('src/platform/config/config.js', () => realConfig)
   mock.module('src/providers/presets/providerProfiles.js', () => realProviderProfiles)
   mock.module('src/platform/settings/settings.js', () => realSettings)
-  mock.module('src/services/session/sessionState.js', () => realSessionState)
+  mock.module('src/sessions/sessionState.js', () => realSessionState)
   mock.module('src/providers/auth/auth.js', () => realAuth)
   mock.module('src/platform/config/managedEnv.js', () => realManagedEnv)
   mock.module('src/platform/bootstrap/state.js', () => realBootstrapState)

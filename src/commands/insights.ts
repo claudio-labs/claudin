@@ -26,7 +26,7 @@ import {
   getSessionFilesWithMtime,
   getSessionIdFromLog,
   loadAllLogsFromSessionFile,
-} from 'src/services/session/sessionStorage.js'
+} from 'src/sessions/sessionStorage.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { countCharInString } from 'src/shared/text/stringUtils.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'

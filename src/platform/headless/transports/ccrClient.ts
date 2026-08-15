@@ -12,15 +12,15 @@ import { createAxiosInstance } from 'src/providers/transport/proxy.js'
 import {
   registerSessionActivityCallback,
   unregisterSessionActivityCallback,
-} from 'src/services/session/sessionActivity.js'
+} from 'src/sessions/sessionActivity.js'
 import {
   getSessionIngressAuthHeaders,
   getSessionIngressAuthToken,
-} from 'src/services/session/sessionIngressAuth.js'
+} from 'src/sessions/sessionIngressAuth.js'
 import type {
   RequiresActionDetails,
   SessionState,
-} from 'src/services/session/sessionState.js'
+} from 'src/sessions/sessionState.js'
 import { sleep } from 'src/shared/sleep.js'
 import { getClaudeCodeUserAgent } from 'src/providers/transport/userAgent.js'
 import {

@@ -82,7 +82,7 @@ import {
   flushSessionStorage,
   recordTranscript,
   removeTranscriptMessage,
-} from 'src/services/session/sessionStorage.js'
+} from 'src/sessions/sessionStorage.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { resolveThemeSetting } from 'src/terminal/theme/systemTheme.js'
 import {

@@ -25,7 +25,7 @@ import {
   getWebSocketProxyAgent,
   getWebSocketProxyUrl,
 } from 'src/providers/transport/proxy.js'
-import { getSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js'
+import { getSessionIngressAuthToken } from 'src/sessions/sessionIngressAuth.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { subprocessEnv } from 'src/shared/proc/subprocessEnv.js'
 import { ClaudeAuthProvider, wrapFetchWithStepUpDetection } from 'src/services/mcp/auth.js'

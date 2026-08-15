@@ -8,7 +8,7 @@ import { errorMessage, isENOENT } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { readJSONLFile } from 'src/shared/data/json.js'
 import { SYNTHETIC_MODEL } from 'src/agent/messages/messages.js'
-import { getProjectsDir, isTranscriptMessage } from 'src/services/session/sessionStorage.js'
+import { getProjectsDir, isTranscriptMessage } from 'src/sessions/sessionStorage.js'
 import { SHELL_TOOL_NAMES } from 'src/platform/shell/shellToolUtils.js'
 import { jsonParse } from 'src/platform/slowOperations.js'
 import {

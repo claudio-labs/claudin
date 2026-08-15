@@ -13,7 +13,7 @@ import {
 import {
   registerSessionActivityCallback,
   unregisterSessionActivityCallback,
-} from 'src/services/session/sessionActivity.js'
+} from 'src/sessions/sessionActivity.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { Transport } from './Transport.js'
 

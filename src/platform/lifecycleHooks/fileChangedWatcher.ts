@@ -8,7 +8,7 @@ import {
   executeFileChangedHooks,
 } from 'src/platform/lifecycleHooks/events.js'
 import type { HookOutsideReplResult } from 'src/platform/lifecycleHooks/types.js'
-import { clearCwdEnvFiles } from 'src/services/session/sessionEnvironment.js'
+import { clearCwdEnvFiles } from 'src/sessions/sessionEnvironment.js'
 import { getHooksConfigFromSnapshot } from 'src/platform/lifecycleHooks/hooksConfigSnapshot.js'
 
 let watcher: FSWatcher | null = null

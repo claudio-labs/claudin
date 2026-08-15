@@ -5,24 +5,24 @@ import type { Message } from 'src/types/message.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type {
   SessionExternalMetadata,
-} from 'src/services/session/sessionState.js'
+} from 'src/sessions/sessionState.js'
 import {
   loadConversationForResume,
   type TurnInterruptionState,
-} from 'src/services/session/conversationRecovery.js'
+} from 'src/sessions/conversationRecovery.js'
 import { externalMetadataToAppState } from 'src/terminal/state/onChangeAppState.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import { logError } from 'src/shared/log.js'
 import { isPolicyAllowed } from 'src/platform/policyLimits/index.js'
-import { parseSessionIdentifier } from 'src/services/session/sessionUrl.js'
+import { parseSessionIdentifier } from 'src/sessions/sessionUrl.js'
 import {
   hydrateRemoteSession,
   hydrateFromCCRv2InternalEvents,
   resetSessionFilePointer,
   restoreSessionMetadata,
   saveMode,
-} from 'src/services/session/sessionStorage.js'
-import { restoreSessionStateFromLog } from 'src/services/session/sessionRestore.js'
+} from 'src/sessions/sessionStorage.js'
+import { restoreSessionStateFromLog } from 'src/sessions/sessionRestore.js'
 import {
   getSessionId,
   setMainLoopModelOverride,
@@ -30,7 +30,7 @@ import {
   isSessionPersistenceDisabled,
 } from 'src/platform/bootstrap/state.js'
 import { asSessionId } from 'src/types/ids.js'
-import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
+import { processSessionStartHooks } from 'src/sessions/sessionStart.js'
 import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js'
 import { EMPTY_USAGE } from 'src/providers/transport/logging.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'

@@ -158,7 +158,7 @@ export function setupReplMocks(): void {
   }))
 
   // Remote session — opens a CCR session when --remote is set.
-  mock.module('src/hooks/useRemoteSession.js', () => ({
+  mock.module('src/sessions/hooks/useRemoteSession.js', () => ({
     useRemoteSession: () => ({ state: 'idle', error: null }),
   }))
   mock.module('../../../screens/hooks/useRemoteSession.js', () => ({
@@ -174,7 +174,7 @@ export function setupReplMocks(): void {
   }))
 
   // SSH session.
-  mock.module('src/hooks/useSSHSession.js', () => ({
+  mock.module('src/sessions/hooks/useSSHSession.js', () => ({
     useSSHSession: () => ({ state: 'idle', error: null }),
   }))
   mock.module('../../../screens/hooks/useSSHSession.js', () => ({
@@ -232,7 +232,7 @@ export function setupReplMocks(): void {
   }))
 
   // File history snapshot init — writes to ~/.claudin.
-  mock.module('src/hooks/useFileHistorySnapshotInit.js', () => ({
+  mock.module('src/sessions/hooks/useFileHistorySnapshotInit.js', () => ({
     useFileHistorySnapshotInit: noop,
   }))
   mock.module('../../../screens/hooks/useFileHistorySnapshotInit.js', () => ({
@@ -264,7 +264,7 @@ export function setupReplMocks(): void {
   // notifier.platform.test.ts, which imports the real ./notifier.js as its SUT.
 
   // Session start hooks — runs user-defined commands.
-  mock.module('src/services/session/sessionStart.js', () => ({
+  mock.module('src/sessions/sessionStart.js', () => ({
     processSessionStartHooks: async () => [],
   }))
   mock.module('../../../screens/utils/sessionStart.js', () => ({

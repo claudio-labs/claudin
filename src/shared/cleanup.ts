@@ -12,7 +12,7 @@ import { logError } from 'src/shared/log.js'
 import { cleanupOldVersions } from 'src/platform/install/index.js'
 import { cleanupOldPastes } from 'src/terminal/input/pasteStore.js'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
-import { getProjectsDir } from 'src/services/session/sessionStorage.js'
+import { getProjectsDir } from 'src/sessions/sessionStorage.js'
 import { getSettingsWithAllErrors } from 'src/platform/settings/allErrors.js'
 import { getTaskListId, sanitizePathComponent } from 'src/agent/tasks/tasks.js'
 import {

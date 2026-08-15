@@ -38,13 +38,13 @@ import { logError } from 'src/shared/log.js'
 import { resetLoopSentinelState } from 'src/agent/loopSentinels.js'
 import { clearAllPlanSlugs } from 'src/agent/plans/plans.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
-import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
+import { processSessionStartHooks } from 'src/sessions/sessionStart.js'
 import {
   clearSessionMetadata,
   getAgentTranscriptPath,
   resetSessionFilePointer,
   saveWorktreeState,
-} from 'src/services/session/sessionStorage.js'
+} from 'src/sessions/sessionStorage.js'
 import {
   evictTaskOutput,
   initTaskOutputAsSymlink,
@@ -266,7 +266,7 @@ export async function clearConversation({
   // and (if applicable) the same worktree directory.
   if (feature('COORDINATOR_MODE')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
-    const { saveMode } = require('src/services/session/sessionStorage.js')
+    const { saveMode } = require('src/sessions/sessionStorage.js')
     const {
       isCoordinatorMode,
     } = require('src/agent/coordinator/coordinatorMode.js')

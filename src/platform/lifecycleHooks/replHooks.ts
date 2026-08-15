@@ -46,7 +46,7 @@ import type {
 import type { Message } from 'src/types/message.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { AgentId } from 'src/types/ids.js'
-import { getAgentTranscriptPath } from 'src/services/session/sessionStorage.js'
+import { getAgentTranscriptPath } from 'src/sessions/sessionStorage.js'
 import {
   getLastAssistantMessage,
   extractTextContent,

@@ -45,7 +45,7 @@ import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs
 import { evaluateTimeBasedTrigger } from 'src/agent/compact/microCompact.js';
 import { evictOldStubbedMessages, evictToMaxSize, MAX_DISPLAY_MESSAGES, type AnyMessage } from 'src/agent/compact/stableStubState.js';
 import { incrementPromptCount } from 'src/vcs/git/commitAttribution.js';
-import { recordAttributionSnapshot } from 'src/services/session/sessionStorage.js';
+import { recordAttributionSnapshot } from 'src/sessions/sessionStorage.js';
 import { type SetAppState } from 'src/agent/messageQueueManager.js';
 import { getCurrentLocalJSXGeneration } from 'src/terminal/toolJSXStore.js';
 import { handleSpeculationAccept, type ActiveSpeculationState } from 'src/terminal/prompt-suggestion/speculation.js';
@@ -59,9 +59,9 @@ import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.j
 import type { EffortValue } from 'src/utils/effort.js';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js';
-import type { useRemoteSession } from 'src/hooks/useRemoteSession.js';
+import type { useRemoteSession } from 'src/sessions/hooks/useRemoteSession.js';
 import type { useDirectConnect } from 'src/providers/hooks/useDirectConnect.js';
-import type { useSSHSession } from 'src/hooks/useSSHSession.js';
+import type { useSSHSession } from 'src/sessions/hooks/useSSHSession.js';
 import type { useNotifications } from 'src/terminal/contexts/notifications.js';
 import type { useDeferredHookMessages } from 'src/agent/hooks/useDeferredHookMessages.js';
 

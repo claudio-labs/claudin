@@ -4,7 +4,7 @@ import uniqBy from 'lodash-es/uniqBy.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const sessionTranscriptModule = feature('KAIROS')
-  ? (require('../../services/sessionTranscript/sessionTranscript.js') as typeof import('../../services/sessionTranscript/sessionTranscript.js'))
+  ? (require('../../sessions/transcript/sessionTranscript.js') as typeof import('../../sessions/transcript/sessionTranscript.js'))
   : null
 
 import { APIUserAbortError } from '@anthropic-ai/sdk'
@@ -75,12 +75,12 @@ import { getProjectInstructionFilePaths } from 'src/memory/instructions/projectI
 import {
   isSessionActivityTrackingActive,
   sendSessionActivitySignal,
-} from 'src/services/session/sessionActivity.js'
-import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
+} from 'src/sessions/sessionActivity.js'
+import { processSessionStartHooks } from 'src/sessions/sessionStart.js'
 import {
   getTranscriptPath,
   reAppendSessionMetadata,
-} from 'src/services/session/sessionStorage.js'
+} from 'src/sessions/sessionStorage.js'
 import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 /* eslint-enable @typescript-eslint/no-require-imports */

@@ -31,7 +31,7 @@ import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { applyGrouping } from 'src/agent/tools/groupToolUses.js';
 import { buildMessageLookups, createAssistantMessage, deriveUUID, getMessagesAfterCompactBoundary, getToolUseID, getToolUseIDs, hasUnresolvedHooksFromLookup, isNotEmptyMessage, normalizeMessages, reorderMessagesInUI, type StreamingThinking, type StreamingToolUse, shouldShowUserMessage } from 'src/agent/messages/messages.js';
 import { plural } from 'src/shared/text/stringUtils.js';
-import { renderableSearchText } from 'src/services/session/transcriptSearch.js';
+import { renderableSearchText } from 'src/sessions/transcriptSearch.js';
 import { Divider } from 'src/terminal/design-system/Divider.js';
 import type { UnseenDivider } from 'src/terminal/FullscreenLayout.js';
 import { LogoV2 } from 'src/terminal/logo/LogoV2.js';

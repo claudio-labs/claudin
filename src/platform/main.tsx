@@ -57,8 +57,8 @@ const coordinatorModeModule = feature('COORDINATOR_MODE') ? require('src/agent/c
 /* eslint-enable @typescript-eslint/no-require-imports */
 // Dead code elimination: conditional import for KAIROS (assistant mode)
 /* eslint-disable @typescript-eslint/no-require-imports */
-const assistantModule = feature('KAIROS') ? require('../assistant/index.js') as typeof import('../assistant/index.js') : null;
-const kairosGate = feature('KAIROS') ? require('../assistant/gate.js') as typeof import('../assistant/gate.js') : null;
+const assistantModule = feature('KAIROS') ? require('../sessions/assistant/index.js') as typeof import('../sessions/assistant/index.js') : null;
+const kairosGate = feature('KAIROS') ? require('../sessions/assistant/gate.js') as typeof import('../sessions/assistant/gate.js') : null;
 import { resolve } from 'path';
 import type { StatsStore } from 'src/terminal/contexts/stats.js';
 // renderAndRun is loaded lazily inside the default action — it pulls React,
@@ -90,9 +90,9 @@ type AnalyticsMetadata = import('src/platform/analytics/index.js').AnalyticsMeta
 const getInitializeVersionedPlugins = () => require('src/services/plugins/installedPluginsManager.js').initializeVersionedPlugins as typeof import('src/services/plugins/installedPluginsManager.js').initializeVersionedPlugins
 const getCleanupOrphanedPluginVersionsInBackground = () => require('src/services/plugins/cacheUtils.js').cleanupOrphanedPluginVersionsInBackground as typeof import('src/services/plugins/cacheUtils.js').cleanupOrphanedPluginVersionsInBackground
 const getGlobExclusionsForPluginCacheFn = () => require('src/services/plugins/orphanedPluginFilter.js').getGlobExclusionsForPluginCache as typeof import('src/services/plugins/orphanedPluginFilter.js').getGlobExclusionsForPluginCache
-const getProcessSessionStartHooks = () => require('src/services/session/sessionStart.js').processSessionStartHooks as typeof import('src/services/session/sessionStart.js').processSessionStartHooks
-const getProcessSetupHooks = () => require('src/services/session/sessionStart.js').processSetupHooks as typeof import('src/services/session/sessionStart.js').processSetupHooks
-const getSaveMode = () => require('src/services/session/sessionStorage.js').saveMode as typeof import('src/services/session/sessionStorage.js').saveMode
+const getProcessSessionStartHooks = () => require('src/sessions/sessionStart.js').processSessionStartHooks as typeof import('src/sessions/sessionStart.js').processSessionStartHooks
+const getProcessSetupHooks = () => require('src/sessions/sessionStart.js').processSetupHooks as typeof import('src/sessions/sessionStart.js').processSetupHooks
+const getSaveMode = () => require('src/sessions/sessionStorage.js').saveMode as typeof import('src/sessions/sessionStorage.js').saveMode
 const getGracefulShutdownSync = () => require('src/shared/proc/gracefulShutdown.js').gracefulShutdownSync as typeof import('src/shared/proc/gracefulShutdown.js').gracefulShutdownSync
 /* eslint-enable @typescript-eslint/no-require-imports */
 

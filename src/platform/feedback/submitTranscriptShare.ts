@@ -11,7 +11,7 @@ import {
   getTranscriptPath,
   loadSubagentTranscripts,
   MAX_TRANSCRIPT_READ_BYTES,
-} from 'src/services/session/sessionStorage.js'
+} from 'src/sessions/sessionStorage.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { redactSensitiveInfo } from 'src/platform/Feedback.js'
 

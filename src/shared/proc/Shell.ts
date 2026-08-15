@@ -29,7 +29,7 @@ import { onCwdChangedForHooks } from 'src/platform/lifecycleHooks/fileChangedWat
 import { getClaudeTempDirName } from 'src/permissions/filesystem.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
-import { invalidateSessionEnvCache } from 'src/services/session/sessionEnvironment.js'
+import { invalidateSessionEnvCache } from 'src/sessions/sessionEnvironment.js'
 import { createBashShellProvider } from 'src/platform/shell/bashProvider.js'
 import { getCachedPowerShellPath } from 'src/platform/shell/powershellDetection.js'
 import { createPowerShellProvider } from 'src/platform/shell/powershellProvider.js'

@@ -18,7 +18,7 @@ import { Spinner } from 'src/terminal/spinner/Spinner.js';
 function recordWorktreeExit(): void {
   /* eslint-disable @typescript-eslint/no-require-imports */
   ;
-  (require('src/services/session/sessionStorage.js') as typeof import('src/services/session/sessionStorage.js')).saveWorktreeState(null);
+  (require('src/sessions/sessionStorage.js') as typeof import('src/sessions/sessionStorage.js')).saveWorktreeState(null);
   /* eslint-enable @typescript-eslint/no-require-imports */
   // Every dialog exit path has already process.chdir()'d back to originalCwd by
   // the time this runs, so relative-path read-cache keys (Read/Glob/Grep/LSP)

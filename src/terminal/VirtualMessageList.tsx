@@ -16,7 +16,7 @@ import { ScrollChromeContext } from 'src/terminal/FullscreenLayout.js';
 const HEADROOM = 3;
 import { logForDebugging } from 'src/shared/debug.js';
 import { sleep } from 'src/shared/sleep.js';
-import { renderableSearchText } from 'src/services/session/transcriptSearch.js';
+import { renderableSearchText } from 'src/sessions/transcriptSearch.js';
 import { isNavigableMessage, type MessageActionsNav, type MessageActionsState, type NavigableMessage, type NavigableType, stripSystemReminders, toolCallOf } from 'src/agent/ui/messageActions.js';
 
 // Fallback extractor: lower + cache here for callers without the

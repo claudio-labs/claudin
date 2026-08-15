@@ -358,7 +358,7 @@ in `ignore` by hand, and the external CLI tools the code shells out to
 ## Verifying attachments/system-reminders at runtime
 
 **Do not grep the session `.jsonl` to check whether an attachment fired.** For
-non-`ant` users `isLoggableMessage` (`src/services/session/pure/logging.ts`)
+non-`ant` users `isLoggableMessage` (`src/sessions/pure/logging.ts`)
 drops **every** attachment from the transcript except `hook_additional_context`
 and `deferred_tools_delta`. A `todo_reminder_delta`, a memory delta, a plan-mode
 attachment — none of them are written. Absence in the log is not evidence the

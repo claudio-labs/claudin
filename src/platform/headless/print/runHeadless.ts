@@ -29,7 +29,7 @@ import {
 import {
   notifySessionStateChanged,
   type RequiresActionDetails,
-} from 'src/services/session/sessionState.js'
+} from 'src/sessions/sessionState.js'
 import {
   writeToStdout,
   registerProcessOutputErrorHandlers,
@@ -46,11 +46,11 @@ import {
   processSessionStartHooks,
   processSetupHooks,
   takeInitialUserMessage,
-} from 'src/services/session/sessionStart.js'
+} from 'src/sessions/sessionStart.js'
 import { settingsChangeDetector } from 'src/platform/settings/changeDetector.js'
 import { applySettingsChange } from 'src/platform/settings/applySettingsChange.js'
 import { isFastModeEnabled } from 'src/providers/fastMode.js'
-import { restoreAgentFromSession } from 'src/services/session/sessionRestore.js'
+import { restoreAgentFromSession } from 'src/sessions/sessionRestore.js'
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import {
   headlessProfilerStartTurn,
@@ -61,7 +61,7 @@ import {
   isQualifiedForGrove,
   checkGroveForNonInteractive,
 } from 'src/platform/privacy/grove.js'
-import { saveAgentSetting } from 'src/services/session/sessionStorage.js'
+import { saveAgentSetting } from 'src/sessions/sessionStorage.js'
 import { getMainThreadAgentType } from 'src/platform/bootstrap/state.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type { UUID } from 'crypto'

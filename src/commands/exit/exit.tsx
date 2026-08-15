@@ -4,7 +4,7 @@ import sample from 'lodash-es/sample.js';
 import * as React from 'react';
 import { ExitFlow } from 'src/platform/ExitFlow.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
-import { isBgSession } from 'src/services/session/concurrentSessions.js';
+import { isBgSession } from 'src/sessions/concurrentSessions.js';
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';
 import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js';
 const GOODBYE_MESSAGES = ['Goodbye!', 'See ya!', 'Bye!', 'Catch you later!'];

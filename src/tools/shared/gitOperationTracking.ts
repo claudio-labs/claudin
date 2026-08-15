@@ -243,7 +243,7 @@ export function trackGitOperations(
       const prInfo = findPrInStdout(stdout)
       if (prInfo) {
         // Import is done dynamically to avoid circular dependency
-        void import('src/services/session/sessionStorage.js').then(
+        void import('src/sessions/sessionStorage.js').then(
           ({ linkSessionToPR }) => {
             void import('src/platform/bootstrap/state.js').then(({ getSessionId }) => {
               const sessionId = getSessionId()

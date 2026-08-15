@@ -11,7 +11,7 @@ import {
 } from 'src/shared/text/format.js'
 import { getStoredChangelogFromMemory, parseChangelog } from 'src/platform/install/releaseNotes.js'
 import { gt } from 'src/shared/semver.js'
-import { loadMessageLogs } from 'src/services/session/sessionStorage.js'
+import { loadMessageLogs } from 'src/sessions/sessionStorage.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 
 // Layout constants

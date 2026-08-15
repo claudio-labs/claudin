@@ -211,7 +211,7 @@ describe('maybeLatchLegacyDeferredAnnouncement', () => {
   // and every warm resume of a delta session latches legacy → prepend onto
   // a prepend-less warm cache → the exact break A2 fixes.
   test('persistence premise: deferred_tools_delta attachments are loggable for external users', async () => {
-    const { isLoggableMessage } = await import('src/services/session/sessionStorage.js')
+    const { isLoggableMessage } = await import('src/sessions/sessionStorage.js')
     expect(
       isLoggableMessage({
         type: 'attachment',

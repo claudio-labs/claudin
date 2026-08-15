@@ -74,7 +74,7 @@ This carves out `memory/team/` (git-tracked, reaches teammates via ordinary
 ## Verified unaffected
 
 - Permission carve-outs (`isAutoMemPath()`/`isTeamMemFile()` in
-  `src/permissions/filesystem.ts`, `src/services/session/sessionFileAccessHooks.ts`)
+  `src/permissions/filesystem.ts`, `src/sessions/sessionFileAccessHooks.ts`)
   are computed dynamically from `getAutoMemPath()`/`getTeamMemPath()`, so
   reads/writes are still auto-approved with no prompt after relocation.
   `.claudin` was already in `DANGEROUS_DIRECTORIES`

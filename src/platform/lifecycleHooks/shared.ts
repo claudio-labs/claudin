@@ -16,7 +16,7 @@ import {
   getMainThreadAgentType,
 } from 'src/platform/bootstrap/state.js'
 import { checkHasTrustDialogAccepted } from 'src/platform/config/config.js'
-import { getTranscriptPathForSession } from 'src/services/session/sessionStorage.js'
+import { getTranscriptPathForSession } from 'src/sessions/sessionStorage.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { createAssistantMessage } from 'src/agent/messages/messages.js'

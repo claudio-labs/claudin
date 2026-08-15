@@ -11,8 +11,8 @@ import { launchRepl } from 'src/agent/repl/replLauncher.js';
 import { logError } from 'src/shared/log.js';
 import { errorMessage } from 'src/shared/errors.js';
 import { logEvent } from 'src/platform/analytics/index.js';
-import { loadConversationForResume } from 'src/services/session/conversationRecovery.js';
-import { processResumedConversation } from 'src/services/session/sessionRestore.js';
+import { loadConversationForResume } from 'src/sessions/conversationRecovery.js';
+import { processResumedConversation } from 'src/sessions/sessionRestore.js';
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';
 import { maybeActivateBrief, maybeActivateProactive } from 'src/platform/main/lifecycle.js';
 

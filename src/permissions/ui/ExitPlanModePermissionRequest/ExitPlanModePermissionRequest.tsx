@@ -31,7 +31,7 @@ import { isAutoModeGateEnabled, restoreDangerousPermissions, stripDangerousPermi
 import { getPewterLedgerVariant, isPlanModeInterviewPhaseEnabled } from 'src/agent/plans/planModeV2.js';
 import { getPlan, getPlanFilePath } from 'src/agent/plans/plans.js';
 import { editFileInEditor, editPromptInEditor } from 'src/terminal/input/promptEditor.js';
-import { getCurrentSessionTitle, getTranscriptPath, saveCustomTitle } from 'src/services/session/sessionStorage.js';
+import { getCurrentSessionTitle, getTranscriptPath, saveCustomTitle } from 'src/sessions/sessionStorage.js';
 import { getInitialSettings } from 'src/platform/settings/settings.js';
 import { type OptionWithDescription, Select } from 'src/terminal/custom-select/index.js';
 import { Markdown } from 'src/terminal/markdown/Markdown.js';

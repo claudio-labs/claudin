@@ -34,7 +34,7 @@ import type {
   outputSchema as permissionToolOutputSchema,
 } from 'src/permissions/PermissionPromptToolResultSchema.js'
 import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.js'
-import { recordTranscript } from 'src/services/session/sessionStorage.js'
+import { recordTranscript } from 'src/sessions/sessionStorage.js'
 
 export type PermissionPromptTool = Tool<
   ReturnType<typeof permissionToolInputSchema>,

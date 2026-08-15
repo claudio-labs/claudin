@@ -5,7 +5,7 @@ import type {
 } from 'src/platform/entrypoints/agentSdkTypes.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { ShellCommand } from 'src/shared/proc/ShellCommand.js'
-import { invalidateSessionEnvCache } from 'src/services/session/sessionEnvironment.js'
+import { invalidateSessionEnvCache } from 'src/sessions/sessionEnvironment.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { emitHookResponse, startHookProgressInterval } from 'src/platform/lifecycleHooks/hookEvents.js'
 

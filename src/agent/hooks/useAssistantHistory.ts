@@ -12,7 +12,7 @@ import {
   fetchOlderEvents,
   type HistoryAuthCtx,
   type HistoryPage,
-} from 'src/assistant/sessionHistory.js'
+} from 'src/sessions/assistant/sessionHistory.js'
 import type { ScrollBoxHandle } from 'src/terminal/ink/components/ScrollBox.js'
 import type { RemoteSessionConfig } from 'src/platform/remote/RemoteSessionManager.js'
 import { convertSDKMessage } from 'src/platform/remote/sdkMessageAdapter.js'

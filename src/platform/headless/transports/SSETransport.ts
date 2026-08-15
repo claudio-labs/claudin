@@ -3,7 +3,7 @@ import type { StdoutMessage } from 'src/platform/entrypoints/sdk/controlTypes.js
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { errorMessage } from 'src/shared/errors.js'
-import { getSessionIngressAuthHeaders } from 'src/services/session/sessionIngressAuth.js'
+import { getSessionIngressAuthHeaders } from 'src/sessions/sessionIngressAuth.js'
 import { sleep } from 'src/shared/sleep.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { getClaudeCodeUserAgent } from 'src/providers/transport/userAgent.js'

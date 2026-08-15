@@ -12,15 +12,15 @@ import { errorMessage } from 'src/shared/errors.js'
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js'
 import { logError } from 'src/shared/log.js'
 import { writeToStdout } from 'src/shared/proc/process.js'
-import { getSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js'
+import { getSessionIngressAuthToken } from 'src/sessions/sessionIngressAuth.js'
 import {
   setSessionMetadataChangedListener,
   setSessionStateChangedListener,
-} from 'src/services/session/sessionState.js'
+} from 'src/sessions/sessionState.js'
 import {
   setInternalEventReader,
   setInternalEventWriter,
-} from 'src/services/session/sessionStorage.js'
+} from 'src/sessions/sessionStorage.js'
 import { ndjsonSafeStringify } from 'src/platform/headless/ndjsonSafeStringify.js'
 import { StructuredIO } from 'src/platform/headless/structuredIO.js'
 import { CCRClient, CCRInitError } from 'src/platform/headless/transports/ccrClient.js'

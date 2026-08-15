@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
-import { invalidateSessionEnvCache } from 'src/services/session/sessionEnvironment.js'
+import { invalidateSessionEnvCache } from 'src/sessions/sessionEnvironment.js'
 import {
   cleanupAllFakeGh,
   GH_NOT_AUTHENTICATED,

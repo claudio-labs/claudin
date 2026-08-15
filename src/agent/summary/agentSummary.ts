@@ -21,7 +21,7 @@ import {
 } from 'src/agent/coordinator/forkedAgent.js'
 import { logError } from 'src/shared/log.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
-import { getAgentTranscript } from 'src/services/session/sessionStorage.js'
+import { getAgentTranscript } from 'src/sessions/sessionStorage.js'
 
 const SUMMARY_INTERVAL_MS = 30_000
 

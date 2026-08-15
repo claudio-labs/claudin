@@ -7,20 +7,20 @@
  * perf/extract-interactive-helpers and perf/launch-repl.
  */
 import React from 'react';
-import type { AssistantSession } from 'src/assistant/sessionDiscovery.js';
+import type { AssistantSession } from 'src/sessions/assistant/sessionDiscovery.js';
 import type { StatsStore } from 'src/terminal/contexts/stats.js';
 import type { Root } from 'src/terminal/ink.js';
 import { renderAndRun, showSetupDialog } from 'src/terminal/interactiveHelpers.js';
 import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import type { AgentMemoryScope } from 'src/tools/AgentTool/agentMemory.js';
-import type { TeleportRemoteResponse } from 'src/services/session/conversationRecovery.js';
+import type { TeleportRemoteResponse } from 'src/sessions/conversationRecovery.js';
 import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
 import type { ValidationError } from 'src/platform/settings/validation.js';
 
 // Type-only access to ResumeConversation's Props via the module type.
 // No runtime cost - erased at compile time.
-type ResumeConversationProps = React.ComponentProps<typeof import('src/screens/ResumeConversation.js').ResumeConversation>;
+type ResumeConversationProps = React.ComponentProps<typeof import('src/sessions/ui/ResumeConversation.js').ResumeConversation>;
 
 /**
  * Site ~3173: SnapshotUpdateDialog (agent memory snapshot update prompt).
@@ -70,7 +70,7 @@ export async function launchAssistantSessionChooser(root: Root, props: {
 }): Promise<string | null> {
   const {
     AssistantSessionChooser
-  } = await import('src/assistant/AssistantSessionChooser.js');
+  } = await import('src/sessions/assistant/AssistantSessionChooser.js');
   return showSetupDialog<string | null>(root, done => <AssistantSessionChooser sessions={props.sessions} onSelect={id => done(id)} onCancel={() => done(null)} />);
 }
 
@@ -133,7 +133,7 @@ export async function launchResumeChooser(root: Root, appProps: {
     ResumeConversation
   }, {
     App
-  }] = await Promise.all([worktreePathsPromise, import('src/screens/ResumeConversation.js'), import('src/agent/ui/App.js')]);
+  }] = await Promise.all([worktreePathsPromise, import('src/sessions/ui/ResumeConversation.js'), import('src/agent/ui/App.js')]);
   await renderAndRun(root, <App getFpsMetrics={appProps.getFpsMetrics} stats={appProps.stats} initialState={appProps.initialState}>
       <KeybindingSetup>
         <ResumeConversation {...resumeProps} worktreePaths={worktreePaths} />

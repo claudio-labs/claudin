@@ -40,7 +40,7 @@ import { runCleanupFunctions } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { getCurrentSessionTitle, sessionIdExists } from 'src/services/session/sessionStorage.js'
+import { getCurrentSessionTitle, sessionIdExists } from 'src/sessions/sessionStorage.js'
 import { sleep } from 'src/shared/sleep.js'
 import { profileReport } from 'src/platform/startupProfiler.js'
 

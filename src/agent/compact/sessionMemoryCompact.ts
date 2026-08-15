@@ -12,8 +12,8 @@ import {
 } from 'src/agent/messages/messages.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
 import { getSessionMemoryPath } from 'src/permissions/filesystem.js'
-import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
-import { getTranscriptPath } from 'src/services/session/sessionStorage.js'
+import { processSessionStartHooks } from 'src/sessions/sessionStart.js'
+import { getTranscriptPath } from 'src/sessions/sessionStorage.js'
 import { tokenCountFromLastAPIResponse } from 'src/agent/context/tokens.js'
 import { extractDiscoveredToolNames } from 'src/agent/tools/toolSearch.js'
 import {

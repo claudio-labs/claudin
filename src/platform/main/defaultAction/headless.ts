@@ -24,7 +24,7 @@ import { isBareMode } from 'src/shared/envUtils.js';
 import { getInitialFastModeSetting, isFastModeEnabled } from 'src/providers/fastMode.js';
 import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js';
 import { checkAndDisableBypassPermissions, verifyAutoModeGateAccess } from 'src/permissions/permissionSetup.js';
-import { processSessionStartHooks } from 'src/services/session/sessionStart.js';
+import { processSessionStartHooks } from 'src/sessions/sessionStart.js';
 import { profileCheckpoint } from 'src/platform/startupProfiler.js';
 import type { ThinkingConfig } from 'src/agent/context/thinking.js';
 import { startDeferredPrefetches } from 'src/platform/main/deferredPrefetches.js';

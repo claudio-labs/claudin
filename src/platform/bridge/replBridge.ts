@@ -29,7 +29,7 @@ import {
   sameSessionId,
 } from 'src/platform/bridge/workSecret.js'
 import { toCompatSessionId, toInfraSessionId } from 'src/platform/bridge/sessionIdCompat.js'
-import { updateSessionBridgeId } from 'src/services/session/concurrentSessions.js'
+import { updateSessionBridgeId } from 'src/sessions/concurrentSessions.js'
 import { getTrustedDeviceToken } from 'src/platform/bridge/trustedDevice.js'
 import { HybridTransport } from 'src/platform/headless/transports/HybridTransport.js'
 import {
@@ -37,7 +37,7 @@ import {
   createV1ReplTransport,
   createV2ReplTransport,
 } from 'src/platform/bridge/replBridgeTransport.js'
-import { updateSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js'
+import { updateSessionIngressAuthToken } from 'src/sessions/sessionIngressAuth.js'
 import { isEnvTruthy, isInProtectedNamespace } from 'src/shared/envUtils.js'
 import { validateBridgeId } from 'src/platform/bridge/bridgeApi.js'
 import {

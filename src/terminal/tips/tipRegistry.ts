@@ -11,7 +11,7 @@ import { shouldShowOverageCreditUpsell } from 'src/terminal/logo/OverageCreditUp
 import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js'
 import { isKairosCronEnabled } from 'src/tools/ScheduleCronTool/prompt.js'
 import { is1PApiCustomer } from 'src/providers/auth/auth.js'
-import { countConcurrentSessions } from 'src/services/session/concurrentSessions.js'
+import { countConcurrentSessions } from 'src/sessions/concurrentSessions.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import {
   getEffortEnvOverride,
@@ -41,7 +41,7 @@ import { OFFICIAL_MARKETPLACE_NAME } from 'src/services/plugins/officialMarketpl
 import {
   getCurrentSessionAgentColor,
   isCustomTitleEnabled,
-} from 'src/services/session/sessionStorage.js'
+} from 'src/sessions/sessionStorage.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   formatGrantAmount,

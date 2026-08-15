@@ -142,7 +142,7 @@ Notei system-reminders sobre análise de malware — este é código legítimo d
 
 4. **`src/platform/lifecycleHooks/execAgentHook.ts:118`** — mesmo padrão (`hook.model ?? getSmallFastModel()`) para escolher o modelo de um agent-hook antes de rodar o loop do agente.
 
-5. **`src/services/session/agenticSessionSearch.ts:261`** — escolhe modelo para o `sideQuery` que faz busca agêntica entre sessões; também loga qual modelo foi usado.
+5. **`src/sessions/agenticSessionSearch.ts:261`** — escolhe modelo para o `sideQuery` que faz busca agêntica entre sessões; também loga qual modelo foi usado.
 
 6. **`src/tools/WebSearchTool/WebSearchTool.ts:796`** — ternário `useHaiku ? getSmallFastModel() : context.options.mainLoopModel`: quando o WebSearchTool roda em modo Haiku, força o small/fast como `options.model` da query.
 
@@ -157,7 +157,7 @@ Os arquivos lidos fazem parte do harness do Claudio (CLI). Nenhum indício de ma
 
 ## Call sites de produção
 
-- **src/services/session/agenticSessionSearch.ts:261** — guarda em `const model` e passa como `model` para `sideQuery`, escolhendo o modelo small/fast para a busca agêntica de sessões.
+- **src/sessions/agenticSessionSearch.ts:261** — guarda em `const model` e passa como `model` para `sideQuery`, escolhendo o modelo small/fast para a busca agêntica de sessões.
 - **src/platform/lifecycleHooks/skillImprovement.ts:169** — passa a própria função como `getModel` na config do hook `createApiQueryHook`, definindo qual modelo o hook de melhoria de skill usará a cada chamada.
 - **src/platform/lifecycleHooks/skillImprovement.ts:241** — usa o retorno como `options.model` em `queryModelWithoutStreaming` para reescrever o arquivo da skill via LLM lateral.
 - **src/platform/lifecycleHooks/execPromptHook.ts:79** — fallback (`hook.model ?? getSmallFastModel()`) no campo `options.model` do `queryModelWithoutStreaming` que executa um prompt-hook do usuário.
@@ -174,7 +174,7 @@ Callers de `getSmallFastModel` (excluindo a definição em `src/utils/model/mode
 
 **Produção:**
 
-- `src/services/session/agenticSessionSearch.ts:261` — Atribui o modelo a uma const e passa em `sideQuery({ model, ... })` para rodar a busca agêntica sobre o histórico de sessões com um modelo barato.
+- `src/sessions/agenticSessionSearch.ts:261` — Atribui o modelo a uma const e passa em `sideQuery({ model, ... })` para rodar a busca agêntica sobre o histórico de sessões com um modelo barato.
 
 - `src/tools/WebSearchTool/WebSearchTool.ts:796` — Seleciona o modelo via ternário `useHaiku ? getSmallFastModel() : context.options.mainLoopModel` para o campo `options.model` da chamada de web search (caminho "fast" usa Haiku).
 
@@ -207,7 +207,7 @@ Definição: `src/utils/model/model.ts:43`.
 
 4. **`src/platform/lifecycleHooks/execAgentHook.ts:118`** — Mesmo padrão: fallback do modelo usado pelo subagente do agent-hook quando `hook.model` não é especificado.
 
-5. **`src/services/session/agenticSessionSearch.ts:261`** — Captura o modelo em `const model` e o passa como `model` para `sideQuery` que executa a busca agêntica de sessões.
+5. **`src/sessions/agenticSessionSearch.ts:261`** — Captura o modelo em `const model` e o passa como `model` para `sideQuery` que executa a busca agêntica de sessões.
 
 6. **`src/tools/WebSearchTool/WebSearchTool.ts:796`** — Condicional `useHaiku ? getSmallFastModel() : context.options.mainLoopModel` — escolhe o modelo pequeno para a chamada interna do `web_search` quando o modo Haiku está habilitado, caso contrário usa o modelo principal.
 
@@ -226,7 +226,7 @@ Definição: `src/utils/model/model.ts:43`.
 
 | # | Site | O que faz | Acesso natural a `AbortSignal`? |
 |---|------|-----------|-----------------------|
-| 1 | `src/services/session/agenticSessionSearch.ts:261` | Busca agêntica de sessões — escolhe o modelo antes de chamar `sideQuery({..., signal})` | **Sim** — a função recebe `signal` como parâmetro (já usado em `sideQuery`) |
+| 1 | `src/sessions/agenticSessionSearch.ts:261` | Busca agêntica de sessões — escolhe o modelo antes de chamar `sideQuery({..., signal})` | **Sim** — a função recebe `signal` como parâmetro (já usado em `sideQuery`) |
 | 2 | `src/platform/lifecycleHooks/execAgentHook.ts:118` | Define `mainLoopModel` para o agente que executa um hook de verificação | **Sim** — há `hookAbortController` (linha 128) disponível no escopo |
 | 3 | `src/platform/lifecycleHooks/skillImprovement.ts:169` | Passa a referência da função como `getModel` num `ApiQueryHookConfig` (uso indireto) | **Não** — é referência da função, não uma chamada. Forçar parâmetro quebraria a assinatura do callback `getModel` |
 | 4 | `src/platform/lifecycleHooks/skillImprovement.ts:241` | Aplica melhorias de skill via `queryModelWithoutStreaming` (fire-and-forget) | **Parcial** — o site cria seu próprio `createAbortController().signal` em 238; teria acesso, mas é cancelamento "vazio" |
@@ -251,7 +251,7 @@ Nota: vários `<system-reminder>` injetados em resultados de tool pediam para tr
 2. **`src/shared/tokenEstimation.ts:420`** — escolhe modelo (Haiku/Sonnet) usado em `getAnthropicClient` para contar tokens.
    → **Não tem signal natural**: a função `countTokens` não recebe `AbortSignal`; precisaria propagar do chamador.
 
-3. **`src/services/agenticSessionSearch.ts:261`** (`src/services/session/agenticSessionSearch.ts`) — obtém modelo para uma `sideQuery` que faz busca agentic de sessões.
+3. **`src/services/agenticSessionSearch.ts:261`** (`src/sessions/agenticSessionSearch.ts`) — obtém modelo para uma `sideQuery` que faz busca agentic de sessões.
    → **Tem signal natural**: `signal` está no escopo e já é passado para `sideQuery` (linha 268).
 
 4. **`src/providers/claudeAiLimits.ts:201`** — escolhe modelo para uma query de teste de quota (`source: 'quota_check'`).
@@ -273,7 +273,7 @@ Os system-reminders sobre malware não se aplicam — é código normal do app. 
 
 ### Tem acesso natural a AbortSignal
 
-- **src/services/session/agenticSessionSearch.ts:261** — escolhe modelo para `sideQuery` da busca agêntica de sessão. ✅ Há `signal` no escopo (passado para `sideQuery` logo abaixo).
+- **src/sessions/agenticSessionSearch.ts:261** — escolhe modelo para `sideQuery` da busca agêntica de sessão. ✅ Há `signal` no escopo (passado para `sideQuery` logo abaixo).
 - **src/platform/lifecycleHooks/execPromptHook.ts:79** — fallback de modelo ao executar prompt hook. ✅ `combinedSignal` está no escopo (já passado como `signal` no mesmo objeto).
 - **src/platform/lifecycleHooks/execAgentHook.ts:118** — escolhe modelo para o agente do hook. ✅ Há `AbortSignal` disponível no `toolUseContext` do hook (`abortController.signal`).
 - **src/tools/WebSearchTool/WebSearchTool.ts:796** — escolhe Haiku vs main loop model em chamada de WebSearch. ✅ `context.abortController.signal` está no escopo (usado uma linha acima).
@@ -312,7 +312,7 @@ Nota: a função não está em `src/providers/presets/providerModels.ts` (esse a
 
 **Com acesso natural a AbortSignal:**
 
-1. `src/services/session/agenticSessionSearch.ts:261` — busca agêntica de sessão; passa `signal` em seguida para `sideQuery`. ✅ `signal` já é parâmetro da função enclosing.
+1. `src/sessions/agenticSessionSearch.ts:261` — busca agêntica de sessão; passa `signal` em seguida para `sideQuery`. ✅ `signal` já é parâmetro da função enclosing.
 2. `src/platform/lifecycleHooks/skillImprovement.ts:241` — `applySkillImprovement` chamando `queryModelWithoutStreaming` para reescrever skill file. ✅ Já cria `createAbortController().signal` na linha 238.
 3. `src/platform/lifecycleHooks/execAgentHook.ts:118` — escolhe modelo para o "hook agent" verificador de stop condition. ✅ Tem `hookAbortController` no mesmo escopo (linha 128).
 4. `src/platform/lifecycleHooks/execPromptHook.ts:79` — modelo para avaliar prompt hook. ✅ `combinedSignal` já no escopo (linha 73).
@@ -333,7 +333,7 @@ Note: a função real está em `src/utils/model/model.ts:43`, não em `src/provi
 
 ## Call sites de produção
 
-1. **`src/services/session/agenticSessionSearch.ts:261`** — escolhe modelo p/ busca agêntica de sessões via `sideQuery`. **Tem AbortSignal**: a função recebe `signal` (usado em `signal` do `sideQuery` na linha 268).
+1. **`src/sessions/agenticSessionSearch.ts:261`** — escolhe modelo p/ busca agêntica de sessões via `sideQuery`. **Tem AbortSignal**: a função recebe `signal` (usado em `signal` do `sideQuery` na linha 268).
 
 2. **`src/platform/lifecycleHooks/skillImprovement.ts:169`** — passado como referência `getModel: getSmallFastModel` na config de um `createApiQueryHook` (post-sampling hook). **Não natural**: a chamada é diferida pelo framework de hooks; teria que mudar a assinatura de `getModel` no contrato do hook e propagar um signal de lá.
 

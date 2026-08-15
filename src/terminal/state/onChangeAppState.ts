@@ -21,7 +21,7 @@ import {
   notifyPermissionModeChanged,
   notifySessionMetadataChanged,
   type SessionExternalMetadata,
-} from 'src/services/session/sessionState.js'
+} from 'src/sessions/sessionState.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 
 // One-shot flag: when set, the next `mainLoopModel` diff handled by

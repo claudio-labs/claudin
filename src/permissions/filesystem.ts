@@ -30,7 +30,7 @@ import {
 } from 'src/shared/fs/path.js'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
-import { getProjectDir } from 'src/services/session/sessionStorage.js'
+import { getProjectDir } from 'src/sessions/sessionStorage.js'
 import { SETTING_SOURCES } from 'src/platform/settings/constants.js'
 import {
   getSettingsFilePathForSource,

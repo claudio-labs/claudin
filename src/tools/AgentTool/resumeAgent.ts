@@ -23,7 +23,7 @@ import { getQuerySourceForAgent } from 'src/agent/promptCategory.js'
 import {
   getAgentTranscript,
   readAgentMetadata,
-} from 'src/services/session/sessionStorage.js'
+} from 'src/sessions/sessionStorage.js'
 import { buildEffectiveSystemPrompt } from 'src/agent/systemPrompt.js'
 import type { SystemPrompt } from 'src/agent/systemPromptType.js'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'

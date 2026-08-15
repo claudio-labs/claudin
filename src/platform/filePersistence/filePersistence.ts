@@ -20,7 +20,7 @@ import {
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
-import { getSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js'
+import { getSessionIngressAuthToken } from 'src/sessions/sessionIngressAuth.js'
 import {
   findModifiedFiles,
   getEnvironmentKind,

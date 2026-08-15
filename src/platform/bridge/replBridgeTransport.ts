@@ -4,8 +4,8 @@ import type { HybridTransport } from 'src/platform/headless/transports/HybridTra
 import { SSETransport } from 'src/platform/headless/transports/SSETransport.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
-import { updateSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js'
-import type { SessionState } from 'src/services/session/sessionState.js'
+import { updateSessionIngressAuthToken } from 'src/sessions/sessionIngressAuth.js'
+import type { SessionState } from 'src/sessions/sessionState.js'
 import { registerWorker } from 'src/platform/bridge/workSecret.js'
 
 /**

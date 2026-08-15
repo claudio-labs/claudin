@@ -24,9 +24,9 @@ import type { SetAppState } from 'src/agent/messageQueueManager.js'
 import type { Message as MessageType } from 'src/types/message.js'
 
 import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
-import { deserializeMessages } from 'src/services/session/conversationRecovery.js'
+import { deserializeMessages } from 'src/sessions/conversationRecovery.js'
 import { createSystemMessage } from 'src/agent/messages/messages.js'
-import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
+import { processSessionStartHooks } from 'src/sessions/sessionStart.js'
 import { executeSessionEndHooks, getSessionEndHookTimeoutMs } from 'src/platform/lifecycleHooks/hooks.js'
 import { copyPlanForFork, copyPlanForResume } from 'src/agent/plans/plans.js'
 import {
@@ -35,8 +35,8 @@ import {
   restoreAgentFromSession,
   restoreSessionStateFromLog,
   restoreWorktreeForResume,
-} from 'src/services/session/sessionRestore.js'
-import { updateSessionName } from 'src/services/session/concurrentSessions.js'
+} from 'src/sessions/sessionRestore.js'
+import { updateSessionName } from 'src/sessions/concurrentSessions.js'
 import { copyFileHistoryForResume } from 'src/shared/fs/fileHistory.js'
 import {
   adoptResumedSessionFile,
@@ -44,7 +44,7 @@ import {
   resetSessionFilePointer,
   restoreSessionMetadata,
   saveWorktreeState,
-} from 'src/services/session/sessionStorage.js'
+} from 'src/sessions/sessionStorage.js'
 import { restoreRemoteAgentTasks } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js'
 import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js'
 import {
@@ -307,7 +307,7 @@ export async function resumeSession(
       /* eslint-disable @typescript-eslint/no-require-imports */
       const {
         saveMode,
-      } = require('src/services/session/sessionStorage.js')
+      } = require('src/sessions/sessionStorage.js')
       const {
         isCoordinatorMode,
       } = require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js')

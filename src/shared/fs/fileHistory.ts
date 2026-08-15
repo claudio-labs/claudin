@@ -26,7 +26,7 @@ import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import { getErrnoCode, isENOENT } from 'src/shared/errors.js'
 import { pathExists } from 'src/shared/fs/file.js'
 import { logError } from 'src/shared/log.js'
-import { recordFileHistorySnapshot } from 'src/services/session/sessionStorage.js'
+import { recordFileHistorySnapshot } from 'src/sessions/sessionStorage.js'
 
 type BackupFileName = string | null // The null value means the file does not exist in this version
 

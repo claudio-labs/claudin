@@ -7,7 +7,7 @@ import { openBrowser } from 'src/shared/browser.js';
 import { getDesktopInstallStatus, openCurrentSessionInDesktop } from 'src/platform/ide/desktopDeepLink.js';
 import { errorMessage } from 'src/shared/errors.js';
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';
-import { flushSessionStorage } from 'src/services/session/sessionStorage.js';
+import { flushSessionStorage } from 'src/sessions/sessionStorage.js';
 import { LoadingState } from 'src/terminal/design-system/LoadingState.js';
 const DESKTOP_DOCS_URL = 'https://clau.de/desktop';
 export function getDownloadUrl(): string {

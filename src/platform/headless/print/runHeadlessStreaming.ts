@@ -33,7 +33,7 @@ import type { Message } from 'src/types/message.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
-import type { TurnInterruptionState } from 'src/services/session/conversationRecovery.js'
+import type { TurnInterruptionState } from 'src/sessions/conversationRecovery.js'
 import type {
   MCPServerConnection,
   McpSdkServerConfig,
@@ -52,7 +52,7 @@ import { enqueue, subscribeToCommandQueue, getCommandsByMaxPriority } from 'src/
 import {
   getSessionState,
   setPermissionModeChangedListener,
-} from 'src/services/session/sessionState.js'
+} from 'src/sessions/sessionState.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import {

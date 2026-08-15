@@ -11,7 +11,7 @@ import { logError } from 'src/shared/log.js';
 import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js';
 import { extractTag, extractTextContent } from 'src/agent/messages/messages.js';
 import { emitTaskTerminatedSdk } from 'src/agent/sdkEventQueue.js';
-import { deleteRemoteAgentMetadata, listRemoteAgentMetadata, type RemoteAgentMetadata, writeRemoteAgentMetadata } from 'src/services/session/sessionStorage.js';
+import { deleteRemoteAgentMetadata, listRemoteAgentMetadata, type RemoteAgentMetadata, writeRemoteAgentMetadata } from 'src/sessions/sessionStorage.js';
 import { jsonStringify } from 'src/platform/slowOperations.js';
 import { appendTaskOutput, evictTaskOutput, getTaskOutputPath, initTaskOutput } from 'src/agent/tasks/diskOutput.js';
 import { registerTask, updateTaskState } from 'src/agent/tasks/framework.js';

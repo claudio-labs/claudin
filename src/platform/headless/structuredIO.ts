@@ -49,7 +49,7 @@ import {
   notifySessionStateChanged,
   type RequiresActionDetails,
   type SessionExternalMetadata,
-} from 'src/services/session/sessionState.js'
+} from 'src/sessions/sessionState.js'
 import { jsonParse } from 'src/platform/slowOperations.js'
 import { Stream } from 'src/shared/stream.js'
 import { ndjsonSafeStringify } from 'src/platform/headless/ndjsonSafeStringify.js'

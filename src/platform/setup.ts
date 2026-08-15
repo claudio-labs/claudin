@@ -44,7 +44,7 @@ import { getRecentActivity } from 'src/terminal/logoV2Utils.js'
 import { lockCurrentVersion } from 'src/platform/install/index.js'
 import type { PermissionMode } from 'src/permissions/PermissionMode.js'
 import { getPlanSlug } from 'src/agent/plans/plans.js'
-import { saveWorktreeState } from 'src/services/session/sessionStorage.js'
+import { saveWorktreeState } from 'src/sessions/sessionStorage.js'
 import { profileCheckpoint } from 'src/platform/startupProfiler.js'
 import {
   createTmuxSessionForWorktree,
@@ -346,7 +346,7 @@ export async function setup(
         )
       })
     }
-    void import('src/services/session/sessionFileAccessHooks.js').then(m =>
+    void import('src/sessions/sessionFileAccessHooks.js').then(m =>
       m.registerSessionFileAccessHooks(),
     ) // Register session file access analytics hooks
     if (feature('TEAMMEM')) {

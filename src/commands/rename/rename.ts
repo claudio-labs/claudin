@@ -14,7 +14,7 @@ import {
   getTranscriptPath,
   saveAgentName,
   saveCustomTitle,
-} from 'src/services/session/sessionStorage.js'
+} from 'src/sessions/sessionStorage.js'
 import { isTeammate } from 'src/agent/coordinator/teammate.js'
 import { generateSessionName } from 'src/commands/rename/generateSessionName.js'
 

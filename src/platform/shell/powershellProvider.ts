@@ -1,7 +1,7 @@
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { join as posixJoin } from 'path/posix'
-import { getSessionEnvVars } from 'src/services/session/sessionEnvVars.js'
+import { getSessionEnvVars } from 'src/sessions/sessionEnvVars.js'
 import type { ShellProvider } from 'src/platform/shell/shellProvider.js'
 
 /**

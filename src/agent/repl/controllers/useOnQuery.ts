@@ -55,7 +55,7 @@ import { logEvent } from 'src/platform/analytics/index.js';
 import { handleMessageFromStream, type StreamingToolUse, type StreamingThinking, isCompactBoundaryMessage, getMessagesAfterCompactBoundary, getContentText, createTurnDurationMessage, createSystemMessage } from 'src/agent/messages/messages.js';
 import { getCurrentTurnCacheMetrics, resetCurrentTurn } from 'src/providers/cache/cacheStatsTracker.js';
 import { formatCacheMetricsCompact, formatCacheMetricsFull } from 'src/providers/cache/cacheMetrics.js';
-import { generateSessionTitle } from 'src/services/session/sessionTitle.js';
+import { generateSessionTitle } from 'src/sessions/sessionTitle.js';
 import { BASH_INPUT_TAG, COMMAND_MESSAGE_TAG, COMMAND_NAME_TAG, LOCAL_COMMAND_STDOUT_TAG } from 'src/constants/xml.js';
 import { queryCheckpoint, logQueryProfileReport } from 'src/agent/queryProfiler.js';
 import type { Message as MessageType, UserMessage } from 'src/types/message.js';
@@ -66,7 +66,7 @@ import { maybeMarkProjectOnboardingComplete } from 'src/platform/projectOnboardi
 import { randomUUID } from 'crypto';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.js';
-import { removeTranscriptMessage, isEphemeralToolProgress, isLoggableMessage } from 'src/services/session/sessionStorage.js';
+import { removeTranscriptMessage, isEphemeralToolProgress, isLoggableMessage } from 'src/sessions/sessionStorage.js';
 import { applyStableStubs, pruneOldToolResults, pruneToolResultsByBytes, evictOldStubbedMessages, evictToMaxSize, pruneContentReplacementState, stubToolResultForDisplay, EVICT_MIN_BATCH, EVICT_TRIGGER_AT, MAX_DISPLAY_MESSAGES, type AnyMessage } from 'src/agent/compact/stableStubState.js';
 import { notifyCacheDeletion } from 'src/providers/cache/promptCacheBreakDetection.js';
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js';

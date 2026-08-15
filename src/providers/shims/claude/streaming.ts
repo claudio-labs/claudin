@@ -171,7 +171,7 @@ import {
 import {
   startSessionActivity,
   stopSessionActivity,
-} from "src/services/session/sessionActivity.js";
+} from "src/sessions/sessionActivity.js";
 import { jsonStringify } from "src/platform/slowOperations.js";
 import {
   isBetaTracingEnabled,

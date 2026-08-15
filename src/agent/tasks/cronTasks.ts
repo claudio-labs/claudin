@@ -52,7 +52,7 @@ export type CronTask = {
    * System escape hatch for assistant mode's built-in tasks (catch-up/
    * morning-checkin/dream) — the installer's writeIfMissing() skips existing
    * files so re-install can't recreate them. Not settable via CronCreateTool;
-   * only written directly to scheduled_tasks.json by src/assistant/install.ts.
+   * only written directly to scheduled_tasks.json by src/sessions/assistant/install.ts.
    */
   permanent?: boolean
   /**

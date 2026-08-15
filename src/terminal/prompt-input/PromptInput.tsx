@@ -30,7 +30,7 @@ import { formatImageRef, formatPastedTextRef, getPastedTextRefNumLines, parseRef
 import type { VerificationStatus } from 'src/providers/hooks/useApiKeyVerification.js';
 import { type HistoryMode, useArrowKeyHistory } from 'src/terminal/hooks/useArrowKeyHistory.js';
 import { useDoublePress } from 'src/terminal/hooks/useDoublePress.js';
-import { useHistorySearch } from 'src/hooks/useHistorySearch.js';
+import { useHistorySearch } from 'src/sessions/hooks/useHistorySearch.js';
 import type { IDESelection } from 'src/platform/ide/useIdeSelection.js';
 import { useInputBuffer } from 'src/terminal/hooks/useInputBuffer.js';
 import { useMainLoopModel } from 'src/agent/hooks/useMainLoopModel.js';
@@ -114,7 +114,7 @@ import { useTheme } from 'src/terminal/design-system/ThemeProvider.js';
 import { getFastIconString } from 'src/terminal/FastIcon.js';
 import { ProviderModelIndicator } from 'src/providers/ui/ProviderModelIndicator.js';
 import { GlobalSearchDialog } from 'src/terminal/GlobalSearchDialog.js';
-import { HistorySearchDialog } from 'src/components/HistorySearchDialog.js';
+import { HistorySearchDialog } from 'src/sessions/ui/HistorySearchDialog.js';
 import { ModelPicker } from 'src/providers/ui/ModelPicker.js';
 import { QuickOpenDialog } from 'src/terminal/QuickOpenDialog.js';
 import TextInput from 'src/terminal/text-input/TextInput.js';

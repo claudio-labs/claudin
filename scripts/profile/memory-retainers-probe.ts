@@ -299,7 +299,7 @@ async function main(): Promise<void> {
 
   // --- #9 agentTranscriptSubdirs -----------------------------------------
   try {
-    const mod = await import('../../src/services/session/sessionStorage.js')
+    const mod = await import('../../src/sessions/sessionStorage.js')
     if (typeof mod.__TEST_ONLY_getAgentTranscriptSubdirsSize === 'function') {
       results.push({
         name: '#9 agentTranscriptSubdirs (observed)',

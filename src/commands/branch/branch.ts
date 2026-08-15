@@ -19,7 +19,7 @@ import {
   isTranscriptMessage,
   saveCustomTitle,
   searchSessionsByCustomTitle,
-} from 'src/services/session/sessionStorage.js'
+} from 'src/sessions/sessionStorage.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { escapeRegExp } from 'src/shared/text/stringUtils.js'
 

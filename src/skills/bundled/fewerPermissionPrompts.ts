@@ -1,4 +1,4 @@
-import { getProjectsDir } from 'src/services/session/pure/paths.js'
+import { getProjectsDir } from 'src/sessions/pure/paths.js'
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 /**

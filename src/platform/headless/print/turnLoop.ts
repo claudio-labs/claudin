@@ -28,7 +28,7 @@ import {
   peek,
 } from 'src/agent/messageQueueManager.js'
 import { notifyCommandLifecycle } from 'src/utils/commandLifecycle.js'
-import { notifySessionStateChanged } from 'src/services/session/sessionState.js'
+import { notifySessionStateChanged } from 'src/sessions/sessionState.js'
 import { getInMemoryErrors, logError } from 'src/shared/log.js'
 import { EMPTY_USAGE } from 'src/providers/transport/logging.js'
 import { logEvent } from 'src/platform/analytics/index.js'

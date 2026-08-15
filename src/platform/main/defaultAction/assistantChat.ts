@@ -37,7 +37,7 @@ export type AssistantChatBranchDeps = {
 export async function runAssistantChatBranch(deps: AssistantChatBranchDeps): Promise<void> {
   const { root, ctx, debug, debugToStderr, commands, ide, mainThreadAgentDefinition, thinkingConfig, getFpsMetrics, stats, initialState } = deps;
   const pending = ctx.pending.assistantChat!;
-  const { discoverAssistantSessions } = await import('../../../assistant/sessionDiscovery.js');
+  const { discoverAssistantSessions } = await import('../../../sessions/assistant/sessionDiscovery.js');
   let targetSessionId = pending.sessionId;
 
   // Discovery flow — list bridge environments, filter sessions

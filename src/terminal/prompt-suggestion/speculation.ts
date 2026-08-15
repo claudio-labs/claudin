@@ -38,7 +38,7 @@ import {
 } from 'src/agent/messages/messages.js'
 import { getClaudeTempDir } from 'src/permissions/filesystem.js'
 import { extractReadFilesFromMessages } from 'src/agent/queryHelpers.js'
-import { getTranscriptPath } from 'src/services/session/sessionStorage.js'
+import { getTranscriptPath } from 'src/sessions/sessionStorage.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,

@@ -743,7 +743,7 @@ export function maybeLatchLegacyDeferredAnnouncement(
  * its first request, so absence reliably means pre-flip/legacy.)
  *
  * PREMISE: this only holds because isLoggableMessage
- * (src/services/session/pure/logging.ts) whitelists
+ * (src/sessions/pure/logging.ts) whitelists
  * deferred_tools_delta attachments for persistence — resumed transcripts
  * must round-trip them, both as this marker and as the bytes the warm
  * cache prefix expects. Removing that whitelist silently re-breaks every

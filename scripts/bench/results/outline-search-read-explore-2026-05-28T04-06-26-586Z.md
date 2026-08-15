@@ -82,7 +82,7 @@
 ```
 Call sites de `getSmallFastModel` (excluindo a definição e os imports):
 
-- src/services/session/agenticSessionSearch.ts:261
+- src/sessions/agenticSessionSearch.ts:261
 - src/platform/lifecycleHooks/skillImprovement.ts:169
 - src/platform/lifecycleHooks/skillImprovement.ts:241
 - src/platform/lifecycleHooks/execPromptHook.ts:79
@@ -106,7 +106,7 @@ Em testes:
 ```
 Call sites de `getSmallFastModel` (excluindo a definição e imports):
 
-- src/services/session/agenticSessionSearch.ts:261
+- src/sessions/agenticSessionSearch.ts:261
 - src/tools/WebSearchTool/WebSearchTool.ts:796
 - src/platform/lifecycleHooks/skillImprovement.ts:169
 - src/platform/lifecycleHooks/skillImprovement.ts:241
@@ -133,7 +133,7 @@ Definição: src/utils/model/model.ts:43
 ```
 Callers de `getSmallFastModel` (excluindo a definição em `src/utils/model/model.ts:43` e os testes):
 
-- src/services/session/agenticSessionSearch.ts:261
+- src/sessions/agenticSessionSearch.ts:261
 - src/platform/lifecycleHooks/execAgentHook.ts:118
 - src/platform/lifecycleHooks/execPromptHook.ts:79
 - src/platform/lifecycleHooks/skillImprovement.ts:169
@@ -164,7 +164,7 @@ Call sites de `getSmallFastModel` (excluindo a definição em `src/utils/model/m
 - src/tools/WebSearchTool/WebSearchTool.ts:796
 - src/shared/tokenEstimation.ts:404
 - src/shared/tokenEstimation.ts:420
-- src/services/session/agenticSessionSearch.ts:261
+- src/sessions/agenticSessionSearch.ts:261
 - src/providers/claudeAiLimits.ts:201
 - src/agent/awaySummary.ts:49
 - src/providers/transport/client.ts:351

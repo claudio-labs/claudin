@@ -41,14 +41,14 @@ const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all
     // `import(spec)` over the array, so no codemod that scans call sites can
     // see them and the build's missing-import scan cannot either. A stale entry
     // here fails at runtime as "Cannot find module", between tests.
-    'src/services/session/conversationRecovery.js',
-    'src/services/session/sessionStart.js',
+    'src/sessions/conversationRecovery.js',
+    'src/sessions/sessionStart.js',
     'src/platform/lifecycleHooks/hooks.js',
     'src/agent/plans/plans.js',
-    'src/services/session/sessionRestore.js',
-    'src/services/session/concurrentSessions.js',
+    'src/sessions/sessionRestore.js',
+    'src/sessions/concurrentSessions.js',
     'src/shared/fs/fileHistory.js',
-    'src/services/session/sessionStorage.js',
+    'src/sessions/sessionStorage.js',
     'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js',
     'src/vcs/git/worktree.js',
     'src/platform/bootstrap/state.js',
@@ -64,14 +64,14 @@ const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all
   ),
 )
 
-mock.module('src/services/session/conversationRecovery.js', () => ({
+mock.module('src/sessions/conversationRecovery.js', () => ({
   deserializeMessages: mock((m: unknown[]) => {
     calls.push('deserializeMessages')
     return [...m]
   }),
 }))
 
-mock.module('src/services/session/sessionStart.js', () => ({
+mock.module('src/sessions/sessionStart.js', () => ({
   processSessionStartHooks: mock(async () => {
     calls.push('processSessionStartHooks')
     return []
@@ -94,7 +94,7 @@ mock.module('src/agent/plans/plans.js', () => ({
   }),
 }))
 
-mock.module('src/services/session/sessionRestore.js', () => ({
+mock.module('src/sessions/sessionRestore.js', () => ({
   restoreSessionStateFromLog: mock(() => {
     calls.push('restoreSessionStateFromLog')
   }),
@@ -111,7 +111,7 @@ mock.module('src/services/session/sessionRestore.js', () => ({
   }),
 }))
 
-mock.module('src/services/session/concurrentSessions.js', () => ({
+mock.module('src/sessions/concurrentSessions.js', () => ({
   updateSessionName: mock(async () => {
     calls.push('updateSessionName')
   }),
@@ -124,7 +124,7 @@ mock.module('src/shared/fs/fileHistory.js', () => ({
   }),
 }))
 
-mock.module('src/services/session/sessionStorage.js', () => ({
+mock.module('src/sessions/sessionStorage.js', () => ({
   adoptResumedSessionFile: mock(() => {
     calls.push('adoptResumedSessionFile')
   }),

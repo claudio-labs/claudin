@@ -21,7 +21,7 @@ import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.j
 import { generateProgressiveArgumentHint, parseArguments } from 'src/utils/argumentSubstitution.js';
 import { getShellCompletions, type ShellCompletionType } from 'src/platform/bash/shellCompletion.js';
 import { formatLogMetadata } from 'src/shared/text/format.js';
-import { getSessionIdFromLog, searchSessionsByCustomTitle } from 'src/services/session/sessionStorage.js';
+import { getSessionIdFromLog, searchSessionsByCustomTitle } from 'src/sessions/sessionStorage.js';
 import { applyCommandSuggestion, findMidInputSlashCommand, generateCommandSuggestions, getBestCommandMatch, isCommandInput } from 'src/terminal/suggestions/commandSuggestions.js';
 import { getDirectoryCompletions, getPathCompletions, isPathLikeToken } from 'src/terminal/suggestions/directoryCompletion.js';
 import { getShellHistoryCompletion } from 'src/terminal/suggestions/shellHistoryCompletion.js';

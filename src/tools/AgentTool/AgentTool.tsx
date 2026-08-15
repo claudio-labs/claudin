@@ -32,7 +32,7 @@ import { permissionModeSchema } from 'src/permissions/PermissionMode.js';
 import type { PermissionResult } from 'src/permissions/PermissionResult.js';
 import { filterDeniedAgents, getDenyRuleForAgent } from 'src/permissions/permissions.js';
 import { enqueueSdkEvent } from 'src/agent/sdkEventQueue.js';
-import { writeAgentMetadata } from 'src/services/session/sessionStorage.js';
+import { writeAgentMetadata } from 'src/sessions/sessionStorage.js';
 import { sleep } from 'src/shared/sleep.js';
 import { buildEffectiveSystemPrompt } from 'src/agent/systemPrompt.js';
 import { asSystemPrompt } from 'src/agent/systemPromptType.js';

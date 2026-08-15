@@ -165,7 +165,7 @@ export function useReplBridge(messages: Message[], setMessages: (action: React.S
           if (feature('KAIROS')) {
             const {
               isAssistantMode
-            } = await import('../../assistant/index.js');
+            } = await import('../../sessions/assistant/index.js');
             perpetual = isAssistantMode();
           }
 

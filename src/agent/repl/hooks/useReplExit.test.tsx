@@ -66,7 +66,7 @@ beforeAll(() => {
       return { status: 0 }
     },
   }))
-  mock.module('src/services/session/concurrentSessions.js', () => ({
+  mock.module('src/sessions/concurrentSessions.js', () => ({
     isBgSession: () => mocks.isBgSessionResult,
     updateSessionName: () => {},
     updateSessionActivity: () => {},

@@ -10,7 +10,7 @@ import { findCanonicalGitRoot } from 'src/vcs/git/git.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { getPlanSlug, getPlansDirectory } from 'src/agent/plans/plans.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
-import { saveWorktreeState } from 'src/services/session/sessionStorage.js'
+import { saveWorktreeState } from 'src/sessions/sessionStorage.js'
 import {
   attachExistingWorktree,
   createWorktreeForSession,

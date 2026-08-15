@@ -8,7 +8,7 @@ import { useIsInsideModal } from 'src/terminal/contexts/modalContext.js';
 import { Box, Text, useTheme } from 'src/terminal/ink.js';
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
-import { getCurrentSessionTitle } from 'src/services/session/sessionStorage.js';
+import { getCurrentSessionTitle } from 'src/sessions/sessionStorage.js';
 import { buildAccountProperties, buildAPIProviderProperties, buildIDEProperties, buildInstallationDiagnostics, buildInstallationHealthDiagnostics, buildMcpProperties, buildMemoryDiagnostics, buildSandboxProperties, buildSettingSourcesProperties, type Diagnostic, getModelDisplayLabel, type Property } from 'src/platform/status/status.js';
 import type { ThemeName } from 'src/terminal/theme/theme.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';

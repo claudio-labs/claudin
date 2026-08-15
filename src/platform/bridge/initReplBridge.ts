@@ -42,11 +42,11 @@ import {
   isSyntheticMessage,
 } from 'src/agent/messages/messages.js'
 import type { PermissionMode } from 'src/permissions/PermissionMode.js'
-import { getCurrentSessionTitle } from 'src/services/session/sessionStorage.js'
+import { getCurrentSessionTitle } from 'src/sessions/sessionStorage.js'
 import {
   extractConversationText,
   generateSessionTitle,
-} from 'src/services/session/sessionTitle.js'
+} from 'src/sessions/sessionTitle.js'
 import { generateShortWordSlug } from 'src/shared/text/words.js'
 import {
   getBridgeAccessToken,
@@ -474,7 +474,7 @@ export async function initReplBridge(
   if (feature('KAIROS')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const { isAssistantMode } =
-      require('../../assistant/index.js') as typeof import('../../assistant/index.js')
+      require('../../sessions/assistant/index.js') as typeof import('../../sessions/assistant/index.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
     if (isAssistantMode()) {
       workerType = 'claude_code_assistant'

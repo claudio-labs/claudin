@@ -4,7 +4,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { safeParseJSON } from 'src/shared/data/json.js'
 import { extractTextContent } from 'src/agent/messages/messages.js'
-import { extractConversationText } from 'src/services/session/sessionTitle.js'
+import { extractConversationText } from 'src/sessions/sessionTitle.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 
 export async function generateSessionName(

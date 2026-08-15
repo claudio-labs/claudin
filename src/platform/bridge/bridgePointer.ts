@@ -8,7 +8,7 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   getProjectsDir,
   sanitizePath,
-} from 'src/services/session/sessionStoragePortable.js'
+} from 'src/sessions/sessionStoragePortable.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 
 /**

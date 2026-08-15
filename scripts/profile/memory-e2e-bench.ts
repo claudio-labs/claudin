@@ -183,7 +183,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #9 agentTranscriptSubdirs
   try {
-    const mod = await import('../../src/services/session/sessionStorage.js')
+    const mod = await import('../../src/sessions/sessionStorage.js')
     if (typeof mod.__TEST_ONLY_getAgentTranscriptSubdirsSize === 'function') {
       out['sessionStorage.agentTranscriptSubdirs'] =
         mod.__TEST_ONLY_getAgentTranscriptSubdirsSize()

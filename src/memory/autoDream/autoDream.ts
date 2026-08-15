@@ -27,7 +27,7 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/grow
 import { isAutoMemoryEnabled, getAutoMemPath } from 'src/memory/memdir/paths.js'
 import { isAutoDreamEnabled } from 'src/memory/autoDream/config.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
-import { getProjectDir } from 'src/services/session/sessionStorage.js'
+import { getProjectDir } from 'src/sessions/sessionStorage.js'
 import {
   getOriginalCwd,
   getKairosActive,

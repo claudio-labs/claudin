@@ -35,7 +35,7 @@ import {
 } from 'src/agent/messages/messages.js'
 import { createDenialTrackingState } from 'src/permissions/denialTracking.js'
 import { parseToolListFromCLI } from 'src/permissions/permissionSetup.js'
-import { recordSidechainTranscript } from 'src/services/session/sessionStorage.js'
+import { recordSidechainTranscript } from 'src/sessions/sessionStorage.js'
 import type { SystemPrompt } from 'src/agent/systemPromptType.js'
 import {
   type ContentReplacementState,

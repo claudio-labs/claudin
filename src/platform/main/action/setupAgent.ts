@@ -31,7 +31,7 @@ import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.
 import { getDefaultMainLoopModel, getUserSpecifiedModelSetting, normalizeModelStringForAPI, parseUserSpecifiedModel } from 'src/utils/model/model.js';
 import { ensureModelStringsInitialized } from 'src/utils/model/modelStrings.js';
 import { getIsNonInteractiveSession, getUserMsgOptIn } from 'src/platform/bootstrap/state.js';
-import { cacheSessionTitle, saveAgentSetting } from 'src/services/session/sessionStorage.js';
+import { cacheSessionTitle, saveAgentSetting } from 'src/sessions/sessionStorage.js';
 import { getInitialSettings } from 'src/platform/settings/settings.js';
 import { validateUuid } from 'src/shared/data/uuid.js';
 import { initBuiltinPlugins } from 'src/plugins/bundled/index.js';
