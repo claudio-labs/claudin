@@ -4,7 +4,7 @@
 > **LoC:** ~330 (filters: 5 jest/vitest/bun-test/mocha/playwright + tsc + 2 git extensions)
 > **PR:** _(preencher)_
 > **Parent spec:** [`../architecture.md`](../architecture.md)
-> **Roadmap entry:** [6.2 — Bash output filter — tier-1 follow-ups](../../../../ROADMAP.md)
+> **Roadmap entry:** 6.2 — Bash output filter — tier-1 follow-ups (the repo-root `ROADMAP.md` this numbered was deleted in `367058c2`)
 
 Expansão do bash-output-filter para os comandos de **maior frequência** numa sessão de coding agent que ainda não estavam cobertos pelo 6.1 — derivada de auditoria de gaps post-6.1 (ver `bench scripts/profile/bash-filter-gain.test.ts` + tabela em [`README.md`](../README.md#status)).
 
