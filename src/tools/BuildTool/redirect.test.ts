@@ -97,6 +97,22 @@ describe('isRedirectableBuildCommand', () => {
     expect(isRedirectableBuildCommand(command)).toBe(false)
   })
 
+  test.each([
+    'make lint',
+    'make fmt',
+    'make test',
+    'make docs',
+    'make check',
+    './gradlew lint',
+    'mvn checkstyle:check',
+  ])('never refuses %s, whose target is not a build', command => {
+    // The make/gradle/mvn/sbt entries accept ANY target, so before the
+    // non-build exclusion a linter's output went through the compiler
+    // diagnostic parsers. `make test` lands here rather than in the RunTests
+    // lane: that lane's head regex has no `make` token.
+    expect(isRedirectableBuildCommand(command)).toBe(false)
+  })
+
   test('a composed command stays in Bash — the tool cannot run the other half', () => {
     expect(isRedirectableBuildCommand('cargo build && ./target/debug/app')).toBe(false)
     expect(isRedirectableBuildCommand('cd sub; make all')).toBe(false)

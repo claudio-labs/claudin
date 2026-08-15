@@ -13,6 +13,8 @@ IMPORTANT: Avoid running \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\
  - Edit files: Use Edit (NOT sed/awk)
  - Write files: Use Write (NOT echo >/cat <<EOF)
  - Run tests: Use RunTests (NOT npm test/pytest/go test)
+ - Build the project: Use Build (NOT make/cargo build/gradle)
+ - Type-check: Use Typecheck (NOT tsc --noEmit/cargo check/mypy)
  - git and gh: Use Git, several commands per call (NOT one shell call each)
  - Communication: Output text directly (NOT echo/printf)
 
@@ -50,6 +52,8 @@ IMPORTANT: Avoid running \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\
  - Edit files: Use Edit (NOT sed/awk)
  - Write files: Use Write (NOT echo >/cat <<EOF)
  - Run tests: Use RunTests (NOT npm test/pytest/go test)
+ - Build the project: Use Build (NOT make/cargo build/gradle)
+ - Type-check: Use Typecheck (NOT tsc --noEmit/cargo check/mypy)
  - git and gh: Use Git, several commands per call (NOT one shell call each)
  - Communication: Output text directly (NOT echo/printf)
 
