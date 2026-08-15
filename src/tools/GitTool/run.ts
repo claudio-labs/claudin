@@ -1,5 +1,6 @@
 import {
   applyBashFilterToStdout,
+  exitCodeAfterRewrite,
   planBashFilter,
 } from 'src/tools/shared/outputFilter/Bash/index.js'
 import { stripOutputMarkers } from 'src/tools/shared/outputFilter/Bash/markers.js'
@@ -286,10 +287,13 @@ export async function runGitBatch(
       // A stall is the one way a non-zero exit is NOT an error: the command was
       // stopped mid-poll, or reported pending checks. Its output still goes
       // through the summarizer, which is what collapses the stack of refreshes.
-      const isError = !stall && (run.code !== 0 || run.interrupted)
+      // A stripped trailing `| tail -N` is the other way: the pipeline the model
+      // sent would have exited with the reducer's status, not the base's.
+      const effectiveCode = exitCodeAfterRewrite(plan, run.code)
+      const isError = !stall && (effectiveCode !== 0 || run.interrupted)
       const filtered = full
         ? rawStdout
-        : applyBashFilterToStdout(rawStdout, isError, plan)
+        : applyBashFilterToStdout(rawStdout, isError, plan, run.code)
       // This branch IS the guarantee that errors are never budgeted and never
       // delta'd — both lanes are unreachable from a non-zero exit.
       // `full` skips the summarizer but still goes THROUGH the delta lane,
@@ -306,7 +310,7 @@ export async function runGitBatch(
       outcome = {
         command,
         effectiveCommand: plan.effectiveCommand,
-        exitCode: run.code,
+        exitCode: effectiveCode,
         output: rendered,
         interrupted: run.interrupted,
         ...(stall ? { stall } : {}),

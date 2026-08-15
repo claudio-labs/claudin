@@ -14,6 +14,7 @@ import { resetCommandQueue } from 'src/agent/messageQueueManager.js'
 import { drainSdkEvents } from 'src/agent/sdkEventQueue.js'
 import type { ExecResult } from 'src/shared/proc/ShellCommand.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
+import { exitCodeAfterRewrite } from 'src/tools/shared/outputFilter/Bash/index.js'
 import {
   applyBashOutputFilter,
   planBashFilterForExecution,
@@ -199,6 +200,48 @@ describe('bash output filter — pre-exec rewrite integration', () => {
         applyBashOutputFilter(result, input.command, plan)
         expect(result.stdout).toContain('original="git log"')
         expect(result.stdout).toContain('actual="git log --oneline"')
+      } finally {
+        saveGlobalConfig(c => ({ ...c, bashOutputFilterEnabled: savedFlag }))
+      }
+    },
+    TEST_TIMEOUT_MS,
+  )
+
+  test(
+    'a failing command whose `| tail -N` was stripped stays a success, capped and with the real code disclosed',
+    async () => {
+      // Reproduces the sequence call() runs — the tool entry is a .tsx and so
+      // unimportable here (it reaches ink), which is why the rewrite test above
+      // is written the same way. What this pins is the OUTCOME the wiring has to
+      // produce: `git log --bogus-flag | tail -5` exits 0 as a pipeline, so the
+      // verdict must be a success, the filter must run, and git's real 129 must
+      // survive as an attribute rather than as a tool error.
+      const savedFlag = getGlobalConfig().bashOutputFilterEnabled
+      saveGlobalConfig(c => ({ ...c, bashOutputFilterEnabled: true }))
+      try {
+        const input: BashToolInput = { command: 'git log --bogus-flag | tail -5' }
+        const plan = planBashFilterForExecution(input)
+        expect(plan.effectiveCommand).toBe('git log --bogus-flag')
+        expect(plan.droppedReducer).toEqual({ text: 'tail -5', lines: 5 })
+
+        const harness = makeStateHarness()
+        const gen = runShellCommand({
+          input: { ...input, command: plan.effectiveCommand },
+          abortController: new AbortController(),
+          setAppState: harness.setAppState,
+          setToolJSX: () => {},
+          isMainThread: true,
+        })
+        const result = await consume(gen)
+        expect(result.code).not.toBe(0)
+
+        const verdictCode = exitCodeAfterRewrite(plan, result.code)
+        expect(verdictCode).toBe(0)
+        const realCode = result.code
+        applyBashOutputFilter(result, input.command, plan, verdictCode !== 0)
+        // Not an error → wrapped, not noted, and the failure is still visible.
+        expect(result.stdout).toContain('<bash-output-')
+        expect(result.stdout).toContain(`exit="${realCode}"`)
       } finally {
         saveGlobalConfig(c => ({ ...c, bashOutputFilterEnabled: savedFlag }))
       }

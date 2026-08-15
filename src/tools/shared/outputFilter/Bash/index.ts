@@ -15,7 +15,7 @@ import { findFilterForCommand } from "src/tools/shared/outputFilter/Bash/registr
 import type { PipelineResult, PreExecPlan } from "src/tools/shared/outputFilter/Bash/types.js";
 
 export type { MatchOutputRule, ReplaceRule, RewriteContext } from "src/tools/shared/outputFilter/types.js";
-export type { FilterSpec, PipelineResult, PreExecPlan } from "src/tools/shared/outputFilter/Bash/types.js";
+export type { DroppedReducer, FilterSpec, PipelineResult, PreExecPlan } from "src/tools/shared/outputFilter/Bash/types.js";
 
 // ---------------------------------------------------------------------------
 // Safe apply — fail-open wrapper (architecture §13)
@@ -28,6 +28,15 @@ function safeApply<T>(label: string, fn: () => T, fallback: T): T {
     logError(new ClaudeError(`bash-output-filter: ${label} failed, falling back`, { cause: e }));
     return fallback;
   }
+}
+
+/** Last `n` lines of `body`, preserving a trailing newline if there was one. */
+function keepLastLines(body: string, n: number): string {
+  const lines = body.split("\n");
+  const trailingNewline = lines.at(-1) === "";
+  if (trailingNewline) lines.pop();
+  if (lines.length <= n) return body;
+  return lines.slice(-n).join("\n") + (trailingNewline ? "\n" : "");
 }
 
 // ---------------------------------------------------------------------------
@@ -60,6 +69,7 @@ export function planBashFilter(
           effectiveCommand: reducer.base,
           filter,
           rewrite: { from: command, to: reducer.base },
+          droppedReducer: reducer.reducer,
           isCompound: hasCompound(reducer.base),
         };
       }
@@ -88,11 +98,25 @@ export function planBashFilter(
   );
 }
 
-/** Applies the planned filter pipeline to raw stdout and wraps the result with markers. Returns raw stdout unchanged on empty output, errors, no-filter, or already-wrapped input. Fail-open: any exception returns `rawStdout`. */
+/** The exit status the command the model actually sent would have reported.
+ *
+ * Stripping a trailing `| tail -N` changes it: a pipeline's status is its LAST
+ * command's — nothing in the bash provider sets `pipefail` — so `make lint |
+ * tail -40` exits 0 while the `make lint` we ran in its place exits 2. Reporting
+ * the base's code turns a run the model wrote as a success into a tool error,
+ * and an error skips the filter pipeline, so it also gets the full output
+ * instead of the 40 lines it asked for. The real code is not swallowed: it is
+ * disclosed as `exit="N"` on the marker. */
+export function exitCodeAfterRewrite(plan: PreExecPlan, code: number): number {
+  return plan.droppedReducer ? 0 : code;
+}
+
+/** Applies the planned filter pipeline to raw stdout and wraps the result with markers. Returns raw stdout unchanged on empty output, errors, no-filter, or already-wrapped input. Fail-open: any exception returns `rawStdout`. `exitCode` is the RAW status of what ran, disclosed on the marker when a reducer strip hid it from the caller. */
 export function applyBashFilterToStdout(
   rawStdout: string,
   isError: boolean,
   plan: PreExecPlan,
+  exitCode?: number,
 ): string {
   return safeApply(
     "applyBashFilterToStdout",
@@ -107,9 +131,18 @@ export function applyBashFilterToStdout(
       // rewrite still has to be disclosed — as a plain note (see
       // prependRewriteNote for why the wrapper cannot be used here).
       if (isError) {
-        return plan.rewrite
-          ? prependRewriteNote(rawStdout, plan.rewrite.to)
-          : rawStdout;
+        if (!plan.rewrite) return rawStdout;
+        // Stripping the reducer was justified by the pipeline doing a better job
+        // than a blind line cap — and the pipeline is exactly what does not run
+        // here. Apply the cap the model asked for rather than handing back
+        // everything the command printed.
+        const cap = plan.droppedReducer?.lines ?? null;
+        const capped = cap === null ? rawStdout : keepLastLines(rawStdout, cap);
+        return prependRewriteNote(
+          capped,
+          plan.rewrite.to,
+          capped === rawStdout ? undefined : plan.droppedReducer?.text,
+        );
       }
       // Already wrapped — don't double-wrap
       if (ALREADY_WRAPPED_RE.test(rawStdout)) {
@@ -117,15 +150,19 @@ export function applyBashFilterToStdout(
       }
       // Rewrite-only (no filter) — wrap raw with rewrite marker, skip pipeline
       if (!plan.filter) {
-        return wrapStdoutWithMarkers(rawStdout, plan, null);
+        return wrapStdoutWithMarkers(rawStdout, plan, null, exitCode);
       }
 
       const pipelineResult: PipelineResult = applyPipeline(
         plan.filter,
         rawStdout,
-        { allowShortCircuit: !plan.isCompound },
+        {
+          allowShortCircuit: !plan.isCompound,
+          // What the model asked for with the `| tail -N` this plan stripped.
+          capLines: plan.droppedReducer?.lines ?? null,
+        },
       );
-      return wrapStdoutWithMarkers(rawStdout, plan, pipelineResult);
+      return wrapStdoutWithMarkers(rawStdout, plan, pipelineResult, exitCode);
     },
     rawStdout,
   );

@@ -5,7 +5,7 @@ import {
   collapseIdenticalRuns,
 } from "src/agent/tools/toolResultSummarizer.js";
 import type { RewriteContext } from "src/tools/shared/outputFilter/types.js";
-import type { FilterSpec, PipelineResult } from "src/tools/shared/outputFilter/Bash/types.js";
+import type { DroppedReducer, FilterSpec, PipelineResult } from "src/tools/shared/outputFilter/Bash/types.js";
 
 // ---------------------------------------------------------------------------
 // Private helpers
@@ -397,6 +397,11 @@ export function splitTopLevelSegments(command: string): string[] | null {
  * (no args). Anything else (`tail -f`, `tail file`, `cat -A`, `cat file`) disqualifies.
  */
 const PURE_TAIL_ARGS_RE = /^(?:-n\s*\d+|-\d+|-c\s*\d+)?$/;
+/** The line-count forms of the above: `-40`, `-n40`, `-n 40`. `-c N` counts
+ * bytes, which we do not emulate. */
+const TAIL_LINE_COUNT_RE = /^(?:-n\s*|-)(\d+)$/;
+/** `tail` with no arguments keeps the last 10 lines. */
+const BARE_TAIL_LINES = 10;
 
 function isPureReducer(segment: string): boolean {
   const trimmed = segment.trim();
@@ -407,16 +412,34 @@ function isPureReducer(segment: string): boolean {
   return false;
 }
 
+/** How many lines the reducer would have let through, or null when it caps
+ * nothing we can reproduce (`cat`, or `tail -c` counting bytes). Only ever
+ * called on a segment `isPureReducer` accepted. */
+function reducerLineCap(segment: string): number | null {
+  const trimmed = segment.trim();
+  const verb = trimmed.split(WHITESPACE_RE, 1)[0] ?? "";
+  if (verb !== "tail") return null;
+  const rest = trimmed.slice(verb.length).trim();
+  if (rest === "") return BARE_TAIL_LINES;
+  const match = TAIL_LINE_COUNT_RE.exec(rest);
+  return match ? Number(match[1]) : null;
+}
+
 /**
  * Detects a command shaped exactly as `BASE | <pure reducer>` at the top level and returns
- * `{ base }` (the command without the trailing reducer pipe), or `null` otherwise.
+ * the command without the trailing reducer pipe plus what that reducer was, or `null`
+ * otherwise. The caller needs the reducer back: dropping it changes both the exit status
+ * of the pipeline and the number of lines the model asked for, and it has to make good on
+ * each (see `exitCodeAfterRewrite` and the error path of `applyBashFilterToStdout`).
  *
  * Reuses the same quote-/escape-/redirection-aware scan as `splitTopLevelSegments` and bails
  * on every construct that function bails on. Unlike it, a *single* top-level `|` is captured
  * as a split point instead of aborting. Any other top-level operator (`&&`, `||`, `;`, newline,
  * background, a second `|`) disqualifies, keeping this strictly to the `BASE | REDUCER` shape.
  */
-export function splitTrailingReducerPipe(command: string): { base: string } | null {
+export function splitTrailingReducerPipe(
+  command: string,
+): { base: string; reducer: DroppedReducer } | null {
   const segments: string[] = [];
   let buf = "";
   let inSingle = false;
@@ -492,7 +515,7 @@ export function splitTrailingReducerPipe(command: string): { base: string } | nu
   const reducer = buf.trim();
   if (base === "" || reducer === "") return null;
   if (!isPureReducer(reducer)) return null;
-  return { base };
+  return { base, reducer: { text: reducer, lines: reducerLineCap(reducer) } };
 }
 
 // ---------------------------------------------------------------------------
@@ -545,13 +568,21 @@ const PIPELINE_INPUT_MAX_BYTES = 8 * 1024 * 1024;
  *
  * `allowShortCircuit: false` skips the matchOutput stage — used for compound commands,
  * where the output interleaves several commands and a single-command sentinel
- * ("✓ already up to date") would swallow the other segments' output. */
+ * ("✓ already up to date") would swallow the other segments' output.
+ *
+ * `capLines` is the line cap of a reducer the plan stripped (`BASE | tail -N` → `BASE`).
+ * It runs LAST, on what the filter selected: stripping the pipe is only defensible
+ * because the filter trims better than a blind line count, and when the filter turns
+ * out to trim nothing — a `make` failure has no `Entering directory` noise to strip —
+ * the model would otherwise receive the whole output in place of the N lines it asked
+ * for. Measured on a failing `make lint 2>&1 | tail -5`: 14 lines back, 0 stages applied. */
 export function applyPipeline(
   filter: FilterSpec,
   raw: string,
-  opts?: { allowShortCircuit?: boolean },
+  opts?: { allowShortCircuit?: boolean; capLines?: number | null },
 ): PipelineResult {
   const allowShortCircuit = opts?.allowShortCircuit ?? true;
+  const capLines = opts?.capLines ?? null;
   if (raw.length > PIPELINE_INPUT_MAX_BYTES) {
     debug("input exceeds cap, bypassing pipeline", {
       length: raw.length,
@@ -728,6 +759,22 @@ export function applyPipeline(
           ...tailPart,
         ];
         applied.push("headTailLines");
+      }
+    }
+
+    // 11b. The stripped reducer's own cap, applied to whatever survived above.
+    // A short-circuited body never reaches here, and it is a one-line sentinel
+    // anyway, so the cap could not bite it.
+    if (capLines !== null) {
+      // `tail -N` counts newline-terminated lines, so the empty element a
+      // trailing newline leaves behind is not one of them — counting it cost a
+      // line (a `| tail -5` came back with 4) the first time this shipped.
+      const trailingBlank = lines.at(-1) === "";
+      const content = trailingBlank ? lines.slice(0, -1) : lines;
+      if (content.length > capLines) {
+        const kept = content.slice(-capLines);
+        lines = trailingBlank ? [...kept, ""] : kept;
+        applied.push(`reducerCap:${capLines}`);
       }
     }
 
