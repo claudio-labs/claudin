@@ -1,7 +1,7 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import React from 'react'
 import { z } from 'zod/v4'
-import { buildTool, type ToolDef } from 'src/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { spawnShellTask } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { exec } from 'src/shared/proc/Shell.js'

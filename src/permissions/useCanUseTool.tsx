@@ -6,7 +6,7 @@ import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEve
 import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js';
 import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js';
 import { Text } from 'src/terminal/ink.js';
-import type { ToolPermissionContext, Tool as ToolType, ToolUseContext } from 'src/Tool.js';
+import type { ToolPermissionContext, Tool as ToolType, ToolUseContext } from 'src/tools/Tool.js';
 import { consumeSpeculativeClassifierCheck, peekSpeculativeClassifierCheck } from 'src/tools/BashTool/bashPermissions.js';
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
 import type { AssistantMessage } from 'src/types/message.js';

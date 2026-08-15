@@ -27,7 +27,7 @@ import { useCallback } from 'react';
 import { feature } from 'bun:bundle';
 import { getTotalInputTokens, getOriginalCwd } from 'src/platform/bootstrap/state.js';
 import { logForDebugging } from 'src/shared/debug.js';
-import { type Command, type CommandResultDisplay, getCommandName, isCommandEnabled } from 'src/commands.js';
+import { type Command, type CommandResultDisplay, getCommandName, isCommandEnabled } from 'src/commands/commands.js';
 import type { PromptInputMode } from 'src/types/textInputTypes.js';
 import { addToHistory, expandPastedTextRefs, parseReferences } from 'src/agent/history.js';
 import { prependModeCharacterToInput } from 'src/terminal/prompt-input/inputModes.js';

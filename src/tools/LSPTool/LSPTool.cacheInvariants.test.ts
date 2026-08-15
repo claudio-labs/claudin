@@ -13,7 +13,7 @@
  */
 import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
 
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 
 // Swappable manager handle. It lives on globalThis rather than a module-scope
 // `let` because bun's mock.module factory does not observe later reassignments

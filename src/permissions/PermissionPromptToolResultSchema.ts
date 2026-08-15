@@ -1,4 +1,4 @@
-import type { Tool, ToolUseContext } from 'src/Tool.js'
+import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
 import z from 'zod/v4'
 import { logForDebugging } from 'src/shared/debug.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'

@@ -16,7 +16,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { HookEvent } from 'src/platform/entrypoints/agentSdkTypes.js';
 import { useAppState, useAppStateStore } from 'src/terminal/state/AppState.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
-import type { CommandResultDisplay } from 'src/commands.js';
+import type { CommandResultDisplay } from 'src/commands/commands.js';
 import { useSettingsChange } from 'src/platform/useSettingsChange.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';

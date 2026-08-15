@@ -57,8 +57,8 @@ const TWELVE_FILES = [
   'src/providers/transport/client.ts',
   'src/providers/presets/providerConfig.ts',
   'src/agent/QueryEngine.ts',
-  'src/commands.ts',
-  'src/Tool.ts',
+  'src/commands/commands.ts',
+  'src/tools/Tool.ts',
   // medium
   'src/agent/messages/messages.ts',
   'src/platform/config/config.ts',

@@ -8,7 +8,7 @@
 import type { UUID } from 'crypto'
 import { extname, relative } from 'path'
 import type { StructuredPatchHunk } from 'diff'
-import type { ToolUseContext, ValidationResult } from 'src/Tool.js'
+import type { ToolUseContext, ValidationResult } from 'src/tools/Tool.js'
 import { checkTeamMemSecrets } from 'src/memory/teamSync/teamMemSecretGuard.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getPatchFromContents } from 'src/vcs/git/diff.js'

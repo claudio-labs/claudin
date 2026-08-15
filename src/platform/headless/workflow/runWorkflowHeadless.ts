@@ -16,7 +16,7 @@ import { join } from 'node:path'
 
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import { getDefaultAppState } from 'src/terminal/state/AppStateStore.js'
-import type { ToolPermissionContext, ToolUseContext } from 'src/Tool.js'
+import type { ToolPermissionContext, ToolUseContext } from 'src/tools/Tool.js'
 import { getKnownAgentTypes } from 'src/tools/AgentWorkflow/agentTypes.js'
 import { runWorkflow } from 'src/tools/AgentWorkflow/engine.js'
 import {
@@ -25,7 +25,7 @@ import {
   validateWorkflowStructure,
 } from 'src/tools/AgentWorkflow/loadWorkflows.js'
 import { exportRunSummary } from 'src/tools/AgentWorkflow/runStore.js'
-import { getTools } from 'src/tools.js'
+import { getTools } from 'src/tools/tools.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js'

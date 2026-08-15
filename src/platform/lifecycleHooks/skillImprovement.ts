@@ -7,7 +7,7 @@ import {
   logEvent,
 } from 'src/platform/analytics/index.js'
 import { queryModelWithoutStreaming } from 'src/providers/shims/claude.js'
-import { getEmptyToolPermissionContext } from 'src/Tool.js'
+import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
 import type { Message } from 'src/types/message.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import { count } from 'src/shared/data/array.js'

@@ -1,12 +1,12 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useEffect, useMemo } from 'react';
-import type { CommandResultDisplay } from 'src/commands.js';
+import type { CommandResultDisplay } from 'src/commands/commands.js';
 import { ClaudeAuthProvider } from 'src/mcp/auth.js';
 import type { MCPServerConnection, McpClaudeAIProxyServerConfig, McpHTTPServerConfig, McpSSEServerConfig, McpStdioServerConfig } from 'src/mcp/types.js';
 import { extractAgentMcpServers, filterToolsByServer } from 'src/mcp/utils.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { useAppState } from 'src/terminal/state/AppState.js';
-import type { Tool } from 'src/Tool.js';
+import type { Tool } from 'src/tools/Tool.js';
 import { getSessionIngressAuthToken } from 'src/sessions/sessionIngressAuth.js';
 import { MCPAgentServerMenu } from 'src/mcp/ui/MCPAgentServerMenu.js';
 import { MCPListPanel } from 'src/mcp/ui/MCPListPanel.js';

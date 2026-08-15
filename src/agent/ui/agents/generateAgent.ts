@@ -1,7 +1,7 @@
 import type { ContentBlock } from '@anthropic-ai/sdk/resources/index.mjs'
 import { getUserContext } from 'src/agent/context.js'
 import { queryModelWithoutStreaming } from 'src/providers/shims/claude.js'
-import { getEmptyToolPermissionContext } from 'src/Tool.js'
+import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { prependUserContext } from 'src/providers/transport/api.js'
 import {

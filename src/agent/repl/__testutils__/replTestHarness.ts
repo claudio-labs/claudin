@@ -23,7 +23,7 @@ import {
   setCwdState,
   setOriginalCwd,
 } from 'src/platform/bootstrap/state.js'
-import type { Tool } from 'src/Tool.js'
+import type { Tool } from 'src/tools/Tool.js'
 import type { Props as REPLProps } from 'src/agent/repl/REPL.js'
 import type { ThinkingConfig } from 'src/agent/context/thinking.js'
 

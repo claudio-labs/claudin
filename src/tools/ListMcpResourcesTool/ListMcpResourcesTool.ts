@@ -3,7 +3,7 @@ import {
   ensureConnectedClient,
   fetchResourcesForClient,
 } from 'src/mcp/client.js'
-import { buildTool, type ToolDef } from 'src/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logMCPError } from 'src/shared/log.js'

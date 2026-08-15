@@ -23,7 +23,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import type { ToolPermissionContext } from 'src/Tool.js'
+import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import type { Message } from 'src/types/message.js'
 import { enableConfigs } from 'src/platform/config/config.js'
 import {

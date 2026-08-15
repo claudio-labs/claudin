@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import chalk from 'chalk';
 import * as React from 'react';
-import type { CommandResultDisplay } from 'src/commands.js';
+import type { CommandResultDisplay } from 'src/commands/commands.js';
 import { ModelPicker } from 'src/providers/ui/ModelPicker.js';
 import { COMMON_HELP_ARGS, COMMON_INFO_ARGS } from 'src/constants/xml.js';
 import { fetchBootstrapData } from 'src/providers/transport/bootstrap.js';

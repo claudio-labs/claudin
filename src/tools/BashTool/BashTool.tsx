@@ -10,8 +10,8 @@ import { TOOL_SUMMARY_MAX_LENGTH } from 'src/constants/toolLimits.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { logError } from 'src/shared/log.js';
 import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js';
-import type { SetToolJSXFn, ToolCallProgress, ToolUseContext, ValidationResult } from 'src/Tool.js';
-import { buildTool, findToolByName, type ToolDef } from 'src/Tool.js';
+import type { SetToolJSXFn, ToolCallProgress, ToolUseContext, ValidationResult } from 'src/tools/Tool.js';
+import { buildTool, findToolByName, type ToolDef } from 'src/tools/Tool.js';
 import { backgroundExistingForegroundTask, markTaskNotified, registerForeground, spawnShellTask, unregisterForeground } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js';
 import type { AgentId } from 'src/types/ids.js';
 import type { AssistantMessage } from 'src/types/message.js';
@@ -54,7 +54,7 @@ import {
   applyBashFilterToStdout,
   planBashFilter,
   type PreExecPlan,
-} from 'src/outputFilter/Bash/index.js';
+} from 'src/tools/shared/outputFilter/Bash/index.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { recordBytesSaved } from 'src/agent/context/tokensSaved.js';
 import { bashToolHasPermission, commandHasAnyCd, matchWildcardPattern, permissionRuleExtractPrefix } from 'src/tools/BashTool/bashPermissions.js';

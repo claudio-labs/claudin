@@ -18,7 +18,7 @@ const fmt = (n: number) => n.toLocaleString('en-US')
 
 async function main() {
   // Dynamic imports AFTER the MACRO polyfill so module-eval-time reads succeed.
-  const { getAllBaseTools } = await import('../../src/tools.js')
+  const { getAllBaseTools } = await import('../../src/tools/tools.js')
   const { getSystemPrompt } = await import('../../src/constants/prompts.js')
   const { roughTokenCountEstimation } = await import('../../src/shared/tokenEstimation.js')
   const { enableConfigs } = await import('../../src/platform/config/config.js')

@@ -109,7 +109,7 @@ function execute(input: any) { ... }
 Every tool in `src/tools/<Name>/` follows this pattern:
 
 ```typescript
-import { buildTool, type ToolDef } from 'src/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { z } from 'zod/v4'
 
 // 1. Input schema (zod)
@@ -183,7 +183,7 @@ const model = 'claude-opus-4-7-20251101'
 ```typescript
 // ✅ Correct — tsconfig alias, works everywhere
 import { logError } from 'src/shared/log.js'
-import { buildTool } from 'src/Tool.js'
+import { buildTool } from 'src/tools/Tool.js'
 
 // ❌ Wrong — breaks when file moves, hard to read
 import { logError } from '../../../utils/log.js'

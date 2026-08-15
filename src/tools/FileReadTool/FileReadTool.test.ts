@@ -10,7 +10,7 @@ import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { READ_FILE_STATE_CACHE_SIZE } from 'src/shared/fs/fileStateCache.js'
 import {
   cloneFileStateCache,

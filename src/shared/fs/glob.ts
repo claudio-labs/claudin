@@ -1,5 +1,5 @@
 import { basename, dirname, isAbsolute, join, sep } from 'path'
-import type { ToolPermissionContext } from 'src/Tool.js'
+import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   getFileReadIgnorePatterns,

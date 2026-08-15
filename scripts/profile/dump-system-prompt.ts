@@ -116,7 +116,7 @@ function dumpFromBundle(): number {
 }
 
 async function dumpFromSource(): Promise<void> {
-  const { getAllBaseTools } = await import('../../src/tools.js')
+  const { getAllBaseTools } = await import('../../src/tools/tools.js')
   const { getSystemPrompt, enhanceSystemPromptWithEnvDetails, DEFAULT_AGENT_PROMPT } =
     await import('../../src/constants/prompts.js')
   const { enableConfigs } = await import('../../src/platform/config/config.js')

@@ -3,7 +3,7 @@
 // the open build. Extracted from src/platform/main.tsx (ROADMAP 11g Fase 5b).
 
 import { getOriginalCwd, setCwdState, setDirectConnectServerUrl, setOriginalCwd } from 'src/platform/bootstrap/state.js';
-import type { Command } from 'src/commands.js';
+import type { Command } from 'src/commands/commands.js';
 import type { Root } from 'src/terminal/ink.js';
 import { exitWithError, renderAndRun } from 'src/terminal/interactiveHelpers.js';
 import { launchRepl } from 'src/agent/repl/replLauncher.js';

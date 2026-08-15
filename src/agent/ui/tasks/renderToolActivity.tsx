@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text } from 'src/terminal/ink.js';
-import type { Tools } from 'src/Tool.js';
-import { findToolByName } from 'src/Tool.js';
+import type { Tools } from 'src/tools/Tool.js';
+import { findToolByName } from 'src/tools/Tool.js';
 import type { ToolActivity } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
 import type { ThemeName } from 'src/terminal/theme/theme.js';
 export function renderToolActivity(activity: ToolActivity, tools: Tools, theme: ThemeName): React.ReactNode {

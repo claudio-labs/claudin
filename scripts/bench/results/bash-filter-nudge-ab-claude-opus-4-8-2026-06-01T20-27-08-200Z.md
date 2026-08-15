@@ -98,7 +98,7 @@ Sim — a compilação terminou limpa, sem erro (exit 0, `✓ Built claudio v0.5
 
 ### test-bash-suite
 
-> Rode `bun test src/outputFilter/Bash/` e me diga o veredito: a suite esta saudavel? Quantos testes passaram e algum falhou?
+> Rode `bun test src/tools/shared/outputFilter/Bash/` e me diga o veredito: a suite esta saudavel? Quantos testes passaram e algum falhou?
 
 **Variant A run#1:**
 
@@ -195,7 +195,7 @@ O `src/` é organizado por **domínio funcional em ~50 subpastas de primeiro ní
 
 ### build-then-test
 
-> Rode `bun run build` e depois `bun test src/outputFilter/Bash/markers.test.ts`. Me diga se os dois passaram sem erro — um sim/nao para cada, e o erro se algo falhou.
+> Rode `bun run build` e depois `bun test src/tools/shared/outputFilter/Bash/markers.test.ts`. Me diga se os dois passaram sem erro — um sim/nao para cada, e o erro se algo falhou.
 
 **Variant A run#1:**
 
@@ -203,7 +203,7 @@ O `src/` é organizado por **domínio funcional em ~50 subpastas de primeiro ní
 Os dois passaram:
 
 - **`bun run build`** → **sim**, sem erro (`✓ Built claudio v0.5.2 → dist/cli.mjs`).
-- **`bun test src/outputFilter/Bash/markers.test.ts`** → **sim**, sem erro (9 pass / 0 fail).
+- **`bun test src/tools/shared/outputFilter/Bash/markers.test.ts`** → **sim**, sem erro (9 pass / 0 fail).
 ```
 
 ### diff-biggest-file

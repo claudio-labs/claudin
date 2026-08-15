@@ -5,7 +5,7 @@
 import {
   toolMatchesName,
   type ToolUseContext,
-} from 'src/Tool.js'
+} from 'src/tools/Tool.js'
 import {
   TODO_WRITE_TOOL_NAME,
 } from 'src/tools/TodoWriteTool/constants.js'

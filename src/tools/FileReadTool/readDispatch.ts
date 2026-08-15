@@ -13,7 +13,7 @@ import {
   getFileExtensionForAnalytics,
 } from 'src/platform/analytics/metadata.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { detectOutlineLangFromPath } from 'src/tools/shared/codeOutline/scanSymbols.js'
 import { logFileOperation } from 'src/platform/fileOperationAnalytics.js'

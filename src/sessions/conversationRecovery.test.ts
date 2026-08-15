@@ -12,7 +12,7 @@ import {
   getBashGitInstructionsAttachment,
   resetSentBashGitInstructions,
 } from 'src/agent/attachments/attachments.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 
 const tempDirs: string[] = []

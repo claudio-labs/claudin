@@ -10,7 +10,7 @@ Auditoria comparativa Claudin vs **rtk** (Rust CLI proxy de filtragem) revelou ~
 
 ## Resumo agregado (medido)
 
-Tabela canônica gerada por `src/outputFilter/Bash/phase12Report.test.ts` (1 teste por (filter × sample), com floors de regressão):
+Tabela canônica gerada por `src/tools/shared/outputFilter/Bash/phase12Report.test.ts` (1 teste por (filter × sample), com floors de regressão):
 
 ```
 Phase | Filter           | Sample                | Raw B | Out B | Reduction
@@ -129,7 +129,7 @@ Sample raw (21KB) é composto quase inteiramente de barras de progresso CR-colap
 
 ### Fase 1 — JS package managers (commit 1) ✅
 
-Arquivo novo: `src/outputFilter/Bash/filters/js-pkg.ts` (9 filters).
+Arquivo novo: `src/tools/shared/outputFilter/Bash/filters/js-pkg.ts` (9 filters).
 
 | Filter | Comando | Estratégia | LOC |
 |---|---|---|---|
@@ -165,7 +165,7 @@ Notes:
 
 ### Fase 2 — Linters universais (commit 2) ✅
 
-Extensão de `src/outputFilter/Bash/filters/linters.ts` (5 filters).
+Extensão de `src/tools/shared/outputFilter/Bash/filters/linters.ts` (5 filters).
 
 | Filter | Comando | Estratégia | Sample |
 |---|---|---|---|

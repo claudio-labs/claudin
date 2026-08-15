@@ -79,7 +79,7 @@ Failure mode at every layer: return raw stdout unchanged. The filter must never 
 ## 3. Module layout
 
 ```
-src/outputFilter/Bash/
+src/tools/shared/outputFilter/Bash/
 ├── index.ts                    # public API: planFilter, applyFilter, types
 ├── pipeline.ts                 # 11 stages (port of validation/pipeline.ts)
 ├── registry.ts                 # findFilterForCommand: linear scan
@@ -122,7 +122,7 @@ src/outputFilter/Bash/
 The authoring shape, final:
 
 ```ts
-// src/outputFilter/Bash/filters/git.ts
+// src/tools/shared/outputFilter/Bash/filters/git.ts
 import type { FilterSpec } from '../index.js'
 
 const LOG_MATCH = /^git(\s+-[^\s]+)*\s+log\b/
@@ -155,7 +155,7 @@ export const gitLog: FilterSpec = {
 - `rewriteCommand` is sync, deterministic, pure of `RewriteContext` (the `{ command, verb, args }` shape).
 - No async filters. A filter that calls out is by definition not safe in the BashTool hot path.
 
-**Spec interface** (`src/outputFilter/Bash/index.ts`):
+**Spec interface** (`src/tools/shared/outputFilter/Bash/index.ts`):
 
 ```ts
 export interface RewriteContext {
@@ -218,7 +218,7 @@ parse + match → rewrite (pre-exec) ──► runShellCommand ──► result.
 **Implementation surface:**
 
 ```ts
-// src/outputFilter/Bash/pipeline.ts
+// src/tools/shared/outputFilter/Bash/pipeline.ts
 export interface PipelineResult {
   readonly body: string
   readonly applied: readonly string[]
@@ -244,7 +244,7 @@ Each stage is a private top-level function in `pipeline.ts`, takes `string[]` (l
 The orchestration lives in **two functions** in `index.ts` that `BashTool.call` invokes:
 
 ```ts
-// src/outputFilter/Bash/index.ts
+// src/tools/shared/outputFilter/Bash/index.ts
 
 export interface PreExecPlan {
   readonly effectiveCommand: string
@@ -354,7 +354,7 @@ User filters are second priority after built-ins. Same-name conflicts: built-in 
 `~/.claudin/filters.json` is the v1 surface. Schema validated with zod (zod/v4, the standard import in this codebase per ~112 occurrences).
 
 ```ts
-// src/outputFilter/Bash/userFilters.ts
+// src/tools/shared/outputFilter/Bash/userFilters.ts
 import { z } from 'zod/v4'
 
 const REGEX_MAX_LEN = 500
@@ -606,7 +606,7 @@ No silent swallow. Every catch calls `logError(e)`.
 Tests **colocated** per `.claudin/rules/testing.md`. Layout:
 
 ```
-src/outputFilter/Bash/
+src/tools/shared/outputFilter/Bash/
 ├── bashFilter.test.ts     # the integration harness — port of validate.ts
 ├── pipeline.test.ts             # unit tests for each stage (pure)
 ├── registry.test.ts             # canonicalization, lookup, sudo/env prefix, compound bypass
@@ -636,7 +636,7 @@ src/outputFilter/Bash/
 **Running:**
 
 ```bash
-bun test src/outputFilter/Bash
+bun test src/tools/shared/outputFilter/Bash
 bun run verify:privacy   # required (3 new event names with the suffix proof)
 ```
 
@@ -726,7 +726,7 @@ The earlier rev 1 estimate (~4675) over-counted by ~50% via duplicated tests, in
 - No behavior change yet.
 
 **Phase 1 — Skeleton + harness port (1 PR, ~700 LoC).**
-- Create `src/outputFilter/Bash/` with `pipeline.ts`, `registry.ts`, `markers.ts`, `userFilters.ts`, `index.ts`.
+- Create `src/tools/shared/outputFilter/Bash/` with `pipeline.ts`, `registry.ts`, `markers.ts`, `userFilters.ts`, `index.ts`.
 - Copy fixtures from `docs/discovery/bash-output-filter/validation/samples/` to `__fixtures__/samples/`.
 - Port `validation/validate.ts` to `bashFilter.test.ts`.
 - Add `scripts/regex-redos-scan.test.ts`.
@@ -811,7 +811,7 @@ When you write a new filter (built-in or PR):
 ## 21. Acceptance criteria for v1
 
 - [ ] `bun run build` clean.
-- [ ] `bun test src/outputFilter/Bash` — 100% pass (~20 filter cases + safety + rewrite + harness).
+- [ ] `bun test src/tools/shared/outputFilter/Bash` — 100% pass (~20 filter cases + safety + rewrite + harness).
 - [ ] `bun run verify:privacy` — passes (3 new event names with the suffix proof).
 - [ ] `bun run typecheck` — zero errors.
 - [ ] `scripts/regex-redos-scan.test.ts` — passes (no built-in filter has a denylisted pattern).
@@ -829,4 +829,4 @@ When you write a new filter (built-in or PR):
 
 ## 22. One-line summary
 
-`src/outputFilter/Bash/` is a pure, fail-open, command-aware compression module: a registry of ~20 `FilterSpec` objects scanned linearly, called from `BashTool.call()` to (a) rewrite `input.command` before `runShellCommand` and (b) apply a declarative pipeline + prepend `<bash-output-rewritten>`/`<bash-output-filtered>` markers directly into `result.stdout` — bounded by env-var kill-switches, length-cap and denylist defenses against ReDoS, and the existing `toolResultSummarizer` (with a 2-line `isAlreadyCompacted` extension) as the threshold-based safety net.
+`src/tools/shared/outputFilter/Bash/` is a pure, fail-open, command-aware compression module: a registry of ~20 `FilterSpec` objects scanned linearly, called from `BashTool.call()` to (a) rewrite `input.command` before `runShellCommand` and (b) apply a declarative pipeline + prepend `<bash-output-rewritten>`/`<bash-output-filtered>` markers directly into `result.stdout` — bounded by env-var kill-switches, length-cap and denylist defenses against ReDoS, and the existing `toolResultSummarizer` (with a 2-line `isAlreadyCompacted` extension) as the threshold-based safety net.

@@ -7,7 +7,7 @@ Snapshot: 2026-05-25. Repo omp em `/home/dev/projects/oh-my-pi`.
 | | oh-my-pi | Claudin |
 |---|---|---|
 | Total | 32 built-in | ~25 built-in |
-| Interface | `Tool` em `packages/agent/src/types.ts:390-433` | `buildTool` em `src/Tool.ts` |
+| Interface | `Tool` em `packages/agent/src/types.ts:390-433` | `buildTool` em `src/tools/Tool.ts` |
 | Schemas | Zod | Zod v4 |
 | Tool discovery | **BM25 dinâmico** (`tool-discovery/tool-index.ts`) | Tudo carregado sempre |
 | Self-feedback | `report_tool_issue` com enum dinâmico | — |

@@ -6,7 +6,7 @@ import type { Framework } from 'src/tools/RunTestsTool/types.js'
 /**
  * Framework detection. Two entry points:
  *   - `detectFrameworkFromCommand` maps an explicit command to a Framework
- *     (mirrors the command matchers in src/outputFilter/Bash/filters/).
+ *     (mirrors the command matchers in src/tools/shared/outputFilter/Bash/filters/).
  *   - `detectTestRunner` inspects project files in `cwd` to synthesize a bare
  *     runner command when the model didn't pass one.
  *

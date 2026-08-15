@@ -8,9 +8,9 @@ import { FallbackToolUseErrorMessage } from 'src/agent/ui/FallbackToolUseErrorMe
 import { FilePathLink } from 'src/terminal/FilePathLink.js';
 import { HighlightedCode } from 'src/terminal/highlighted-code/HighlightedCode.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
-import { NotebookEditToolUseRejectedMessage } from 'src/components/NotebookEditToolUseRejectedMessage.js';
+import { NotebookEditToolUseRejectedMessage } from 'src/tools/NotebookEditTool/ui/NotebookEditToolUseRejectedMessage.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import type { Tools } from 'src/Tool.js';
+import type { Tools } from 'src/tools/Tool.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
 import type { inputSchema, Output } from 'src/tools/NotebookEditTool/NotebookEditTool.js';
 export function getToolUseSummary(input: Partial<z.infer<ReturnType<typeof inputSchema>>> | undefined): string | null {

@@ -6,7 +6,7 @@
 import chalk from 'chalk';
 import { getRemoteSessionUrl } from 'src/constants/product.js';
 import { getOriginalCwd, setIsRemoteMode, setOriginalCwd, setTeleportedSessionInfo, switchSession } from 'src/platform/bootstrap/state.js';
-import { filterCommandsForRemoteMode } from 'src/commands.js';
+import { filterCommandsForRemoteMode } from 'src/commands/commands.js';
 import { launchResumeChooser, launchTeleportRepoMismatchDialog, launchTeleportResumeWrapper } from 'src/terminal/dialogLaunchers.js';
 import type { Root } from 'src/terminal/ink.js';
 import { exitWithError, renderAndRun } from 'src/terminal/interactiveHelpers.js';

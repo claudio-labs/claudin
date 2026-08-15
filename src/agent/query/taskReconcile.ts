@@ -37,7 +37,7 @@
 
 import type { Attachment } from 'src/agent/attachments/types.js'
 import type { Message } from 'src/types/message.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import {
   getTaskListId,
   isTodoV2Enabled,

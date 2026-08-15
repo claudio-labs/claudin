@@ -14,7 +14,7 @@ import type { UUID } from 'crypto'
 import { dirname } from 'path'
 import type { StructuredPatchHunk } from 'diff'
 
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { diagnosticTracker } from 'src/platform/diagnosticTracking.js'
 import {
   armFileForLateDiagnostics,

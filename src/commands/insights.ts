@@ -9,7 +9,7 @@ import {
   writeFile,
 } from 'fs/promises'
 import { extname, join } from 'path'
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import { queryWithModel } from 'src/providers/shims/claude.js'
 import {
   AGENT_TOOL_NAME,

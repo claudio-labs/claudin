@@ -4,7 +4,7 @@ import { basename } from 'path';
 import React, { useRef } from 'react';
 import { useMinDisplayTime } from 'src/terminal/hooks/useMinDisplayTime.js';
 import { Ansi, Box, Text, useTheme } from 'src/terminal/ink.js';
-import { findToolByName, type Tools } from 'src/Tool.js';
+import { findToolByName, type Tools } from 'src/tools/Tool.js';
 import { getReplPrimitiveTools } from 'src/tools/REPLTool/primitiveTools.js';
 import type { CollapsedReadSearchGroup, NormalizedAssistantMessage } from 'src/types/message.js';
 import type { WriteFileStat } from 'src/types/message.js';
@@ -18,7 +18,7 @@ import type { ThemeName } from 'src/terminal/theme/theme.js';
 import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
 import { useSelectedMessageBg } from 'src/agent/ui/messageActions.js';
 import { PrBadge } from 'src/platform/status/PrBadge.js';
-import { SHELL_PROGRESS_MIN_SECONDS, ShellGroupElapsedTime } from 'src/components/shell/ShellElapsedTime.js';
+import { SHELL_PROGRESS_MIN_SECONDS, ShellGroupElapsedTime } from 'src/tools/BashTool/ui/ShellElapsedTime.js';
 import { ToolUseLoader } from 'src/agent/ui/ToolUseLoader.js';
 
 /* eslint-disable @typescript-eslint/no-require-imports */

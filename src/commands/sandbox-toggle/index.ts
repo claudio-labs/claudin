@@ -1,5 +1,5 @@
 import figures from 'figures'
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 
 const command = {

@@ -5,7 +5,7 @@ Model: claude-opus-4-8.
 
 **Read files:**
 - `src/agent/repl/REPL.tsx` (220K)
-- `src/Tool.ts` (32K)
+- `src/tools/Tool.ts` (32K)
 - `src/agent/QueryEngine.ts` (48K)
 
 **Edit files** (copied to scratch dir; real files untouched):

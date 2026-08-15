@@ -9,7 +9,7 @@
  * It always passes; the value is the console output.
  */
 import { test } from 'bun:test'
-import { getAllBaseTools } from '../../src/tools.js'
+import { getAllBaseTools } from '../../src/tools/tools.js'
 import { getSystemPrompt } from '../../src/constants/prompts.js'
 import { roughTokenCountEstimation } from '../../src/shared/tokenEstimation.js'
 import { measureToolSchemas } from '../measure-tool-schemas.ts'

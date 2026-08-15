@@ -10,7 +10,7 @@ fell to a direct check, so verify them explicitly in any new bench.
 
 **`--allowedTools` does not remove tools — use `--tools X --strict-mcp-config`.**
 It only ever produces *allow* rules, and registry filtering happens exclusively
-through *deny* rules (`getTools` → `filterToolsByDenyRules`, src/tools.ts:383).
+through *deny* rules (`getTools` → `filterToolsByDenyRules`, src/tools/tools.ts:383).
 Measured on one prompt: **40 tools visible** under `--allowedTools Read,Glob`,
 with Grep, Bash and Agent present and callable, versus **exactly 2** under
 `--tools Read,Glob --strict-mcp-config`. `--tools` inverts the list into deny

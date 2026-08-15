@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useInterval } from 'usehooks-ts';
-import type { CommandResultDisplay } from 'src/commands.js';
+import type { CommandResultDisplay } from 'src/commands/commands.js';
 import { Markdown } from 'src/terminal/markdown/Markdown.js';
 import { SpinnerGlyph } from 'src/terminal/spinner/SpinnerGlyph.js';
 import { DOWN_ARROW, UP_ARROW } from 'src/constants/figures.js';

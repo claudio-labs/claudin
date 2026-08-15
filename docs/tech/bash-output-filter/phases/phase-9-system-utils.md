@@ -80,11 +80,11 @@ Justificativa completa: [§5 do system-coverage-detail](../../../archive/discove
 
 | Arquivo | Mudança |
 |---|---|
-| `src/outputFilter/Bash/filters/system.ts` | + 9 specs (`ping`, `rsync`, `tree`, `ssh`, `df`, `du`, `dmesg`, `stat`, `jq`) + ~25 const regex no topo |
-| `src/outputFilter/Bash/filters/network.ts` | + 1 spec (`curlPlain`) + 3 const regex (`CURL_ANY`, `CURL_BODY_REJECT`, `CURL_PROGRESS_*`) |
-| `src/outputFilter/Bash/filters/index.ts` | + 10 entradas no `builtInFilters` |
-| `src/outputFilter/Bash/bashFilter.test.ts` | + 10 `describe('phase 9 — <filter>')` blocks |
-| `src/outputFilter/Bash/__fixtures__/samples/*` | + ~10 fixtures realistas (uma por spec) |
+| `src/tools/shared/outputFilter/Bash/filters/system.ts` | + 9 specs (`ping`, `rsync`, `tree`, `ssh`, `df`, `du`, `dmesg`, `stat`, `jq`) + ~25 const regex no topo |
+| `src/tools/shared/outputFilter/Bash/filters/network.ts` | + 1 spec (`curlPlain`) + 3 const regex (`CURL_ANY`, `CURL_BODY_REJECT`, `CURL_PROGRESS_*`) |
+| `src/tools/shared/outputFilter/Bash/filters/index.ts` | + 10 entradas no `builtInFilters` |
+| `src/tools/shared/outputFilter/Bash/bashFilter.test.ts` | + 10 `describe('phase 9 — <filter>')` blocks |
+| `src/tools/shared/outputFilter/Bash/__fixtures__/samples/*` | + ~10 fixtures realistas (uma por spec) |
 | `docs/discovery/bash-output-filter/validation/samples/*` | mirror das fixtures (harness lê desse path) |
 | `scripts/profile/bash-filter-gain.test.ts` | + 10 entradas no `SCENARIOS` array |
 
@@ -261,8 +261,8 @@ export const curlPlain: FilterSpec = {
 ## Tests
 
 ```bash
-bun test src/outputFilter/Bash/bashFilter.test.ts          # +10 describe blocks
-bun test src/outputFilter/Bash                              # full suite — verificar zero regressões
+bun test src/tools/shared/outputFilter/Bash/bashFilter.test.ts          # +10 describe blocks
+bun test src/tools/shared/outputFilter/Bash                              # full suite — verificar zero regressões
 CLAUDIN_BENCH=1 bun test scripts/profile/bash-filter-gain.test.ts   # gain table — +10 linhas
 bun run typecheck
 ```

@@ -180,7 +180,7 @@ resume, so pass timestamps via `args` and vary randomness by index. No filesyste
 ## How it would land in claudin
 
 - **Flag.** Add `WORKFLOW_SCRIPTS: true` to `featureFlags` in `scripts/build.ts`; gate the tool
-  registration in `src/tools.ts` (`getAllBaseTools`) behind it, matching the existing
+  registration in `src/tools/tools.ts` (`getAllBaseTools`) behind it, matching the existing
   `feature()`-gated tools.
 - **Tool.** Flesh out `src/tools/WorkflowTool/` (currently the stub `constants.ts`): the tool
   schema (`script` / `scriptPath` / `name` / `args` / `resumeFromRunId`), the prompt (this

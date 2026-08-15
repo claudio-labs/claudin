@@ -2,7 +2,7 @@ import { relative } from 'path';
 import React, { useMemo } from 'react';
 import { useDiffInIDE } from 'src/vcs/diff/hooks/useDiffInIDE.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import type { ToolUseContext } from 'src/Tool.js';
+import type { ToolUseContext } from 'src/tools/Tool.js';
 import { getLanguageName } from 'src/shared/text/cliHighlight.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { getFsImplementation, safeResolvePath } from 'src/shared/fs/fsOperations.js';

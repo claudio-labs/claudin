@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import type { CommandResultDisplay } from 'src/commands.js';
+import type { CommandResultDisplay } from 'src/commands/commands.js';
 import { Pane } from 'src/terminal/design-system/Pane.js';
 import { ThemePicker } from 'src/platform/ThemePicker.js';
 import { useTheme } from 'src/terminal/ink.js';

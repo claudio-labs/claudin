@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle'
 import { microcompactMessages } from 'src/agent/compact/microCompact.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
-import type { Tools, ToolUseContext } from 'src/Tool.js'
+import type { Tools, ToolUseContext } from 'src/tools/Tool.js'
 import type { AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { Message } from 'src/types/message.js'
 import {

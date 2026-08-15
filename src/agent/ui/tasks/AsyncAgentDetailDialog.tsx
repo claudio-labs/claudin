@@ -6,9 +6,9 @@ import type { ExitState } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybinding
 import type { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js';
 import { Box, Text, useTheme } from 'src/terminal/ink.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
-import { getEmptyToolPermissionContext } from 'src/Tool.js';
+import { getEmptyToolPermissionContext } from 'src/tools/Tool.js';
 import type { LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
-import { getTools } from 'src/tools.js';
+import { getTools } from 'src/tools/tools.js';
 import { formatNumber } from 'src/shared/text/format.js';
 import { extractTag } from 'src/agent/messages/messages.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';

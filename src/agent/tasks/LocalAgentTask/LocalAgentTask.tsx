@@ -4,8 +4,8 @@ import { abortSpeculation } from 'src/terminal/prompt-suggestion/speculation.js'
 import type { AppState } from 'src/terminal/state/AppState.js';
 import type { SetAppState, Task, TaskStateBase } from 'src/agent/Task.js';
 import { createTaskStateBase } from 'src/agent/Task.js';
-import type { Tools } from 'src/Tool.js';
-import { findToolByName } from 'src/Tool.js';
+import type { Tools } from 'src/tools/Tool.js';
+import { findToolByName } from 'src/tools/Tool.js';
 import type { AgentToolResult } from 'src/tools/AgentTool/agentToolUtils.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { SYNTHETIC_OUTPUT_TOOL_NAME } from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js';

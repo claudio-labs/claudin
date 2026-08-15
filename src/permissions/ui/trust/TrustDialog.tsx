@@ -3,7 +3,7 @@ import { homedir } from 'os';
 import React from 'react';
 import { logEvent } from 'src/platform/analytics/index.js';
 import { setSessionTrustAccepted } from 'src/platform/bootstrap/state.js';
-import type { Command } from 'src/commands.js';
+import type { Command } from 'src/commands/commands.js';
 import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { Box, Link, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';

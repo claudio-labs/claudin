@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto'
 import uniqBy from 'lodash-es/uniqBy.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getProjectRoot, getSessionId } from 'src/platform/bootstrap/state.js'
-import { getCommand, getSkillToolCommands, hasCommand } from 'src/commands.js'
+import { getCommand, getSkillToolCommands, hasCommand } from 'src/commands/commands.js'
 import {
   DEFAULT_AGENT_PROMPT,
   enhanceSystemPromptWithEnvDetails,
@@ -24,7 +24,7 @@ import type {
   MCPServerConnection,
   ScopedMcpServerConfig,
 } from 'src/mcp/types.js'
-import type { Tool, Tools, ToolUseContext } from 'src/Tool.js'
+import type { Tool, Tools, ToolUseContext } from 'src/tools/Tool.js'
 import { killShellTasksForAgent } from 'src/agent/tasks/LocalShellTask/killShellTasks.js'
 import type { Command } from 'src/types/command.js'
 import type { AgentId } from 'src/types/ids.js'

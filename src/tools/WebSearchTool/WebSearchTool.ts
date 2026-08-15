@@ -15,7 +15,7 @@ import {
   resolveCodexApiCredentials,
   resolveProviderRequest,
 } from 'src/providers/presets/providerConfig.js'
-import { buildTool, type ToolDef } from 'src/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logError } from 'src/shared/log.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'

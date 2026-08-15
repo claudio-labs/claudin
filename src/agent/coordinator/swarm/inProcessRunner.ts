@@ -31,7 +31,7 @@ import {
 } from 'src/agent/compact/compact.js'
 import { resetMicrocompactState } from 'src/agent/compact/microCompact.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
-import type { Tool, ToolUseContext } from 'src/Tool.js'
+import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
 import { appendTeammateMessage } from 'src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js'
 import type {
   InProcessTeammateTaskState,

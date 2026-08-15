@@ -40,7 +40,7 @@ import {
   findToolByName,
   toolMatchesName,
   type Tools,
-} from 'src/Tool.js'
+} from 'src/tools/Tool.js'
 import type {
   AssistantMessage,
   AttachmentMessage,

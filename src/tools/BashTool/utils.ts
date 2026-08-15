@@ -6,7 +6,7 @@ import type {
 import { readFile, stat } from 'fs/promises'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { logEvent } from 'src/platform/analytics/index.js'
-import type { ToolPermissionContext } from 'src/Tool.js'
+import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { pathInAllowedWorkingPath } from 'src/permissions/filesystem.js'
 import { setCwd } from 'src/shared/proc/Shell.js'

@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Box, Text, useInput } from 'src/terminal/ink.js'
-import type { CommandResultDisplay } from 'src/commands.js'
+import type { CommandResultDisplay } from 'src/commands/commands.js'
 import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js'
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js'
-import type { Tools } from 'src/Tool.js'
+import type { Tools } from 'src/tools/Tool.js'
 import { AgentsMenu } from 'src/agent/ui/agents/AgentsMenu.js'
 import { RunningAgentsTab } from 'src/agent/ui/agents/RunningAgentsTab.js'
 

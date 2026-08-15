@@ -8,7 +8,7 @@ import {
 } from 'src/platform/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import { getCodeEditToolDecisionCounter } from 'src/platform/bootstrap/state.js'
-import type { Tool as ToolType, ToolUseContext } from 'src/Tool.js'
+import type { Tool as ToolType, ToolUseContext } from 'src/tools/Tool.js'
 import { getLanguageName } from 'src/shared/text/cliHighlight.js'
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import { logOTelEvent } from 'src/platform/telemetry/events.js'

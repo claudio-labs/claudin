@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto'
-import type { Tool, ToolUseContext } from 'src/Tool.js'
+import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage, MalformedCommandError, ShellError } from 'src/shared/errors.js'

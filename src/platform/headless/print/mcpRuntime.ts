@@ -18,9 +18,9 @@ import { uniq } from 'src/shared/data/array.js'
 import { cwd } from 'process'
 import { downloadUserSettings } from 'src/platform/settingsSync/index.js'
 import { waitForRemoteManagedSettingsToLoad } from 'src/platform/remoteManagedSettings/index.js'
-import { assembleToolPool } from 'src/tools.js'
+import { assembleToolPool } from 'src/tools/tools.js'
 import { mergeAndFilterTools } from 'src/agent/tools/toolPool.js'
-import { toolMatchesName, type Tools } from 'src/Tool.js'
+import { toolMatchesName, type Tools } from 'src/tools/Tool.js'
 import {
   logEvent,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -60,7 +60,7 @@ import {
 import { createSyntheticOutputTool } from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js'
 import { randomUUID } from 'crypto'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { getCommands } from 'src/commands.js'
+import { getCommands } from 'src/commands/commands.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { installPluginsForHeadless } from 'src/plugins/headlessPluginInstall.js'
 import { refreshActivePlugins } from 'src/plugins/refresh.js'

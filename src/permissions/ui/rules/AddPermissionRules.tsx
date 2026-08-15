@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useCallback } from 'react';
 import { Select } from 'src/terminal/custom-select/select.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import type { ToolPermissionContext } from 'src/Tool.js';
+import type { ToolPermissionContext } from 'src/tools/Tool.js';
 import type { PermissionBehavior, PermissionRule, PermissionRuleValue } from 'src/permissions/PermissionRule.js';
 import { applyPermissionUpdate, persistPermissionUpdate } from 'src/permissions/PermissionUpdate.js';
 import { permissionRuleValueToString } from 'src/permissions/permissionRuleParser.js';

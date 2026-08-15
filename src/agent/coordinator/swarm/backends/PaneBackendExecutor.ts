@@ -1,5 +1,5 @@
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { formatAgentId, parseAgentId } from 'src/agent/coordinator/agentId.js'
 import { quote } from 'src/platform/bash/shellQuote.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'

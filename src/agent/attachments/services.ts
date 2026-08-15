@@ -12,7 +12,7 @@ import {
 import {
   toolMatchesName,
   type ToolUseContext,
-} from 'src/Tool.js'
+} from 'src/tools/Tool.js'
 import {
   FileReadTool,
   readImageWithTokenBudget,

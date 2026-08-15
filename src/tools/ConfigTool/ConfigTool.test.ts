@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import { ConfigTool } from 'src/tools/ConfigTool/ConfigTool.js'
 
 function makeCtx(): {
-  ctx: import('src/Tool.js').ToolUseContext
+  ctx: import('src/tools/Tool.js').ToolUseContext
   state: Record<string, unknown>
 } {
   const state: Record<string, unknown> = {}
@@ -14,7 +14,7 @@ function makeCtx(): {
       updater: (prev: Record<string, unknown>) => Record<string, unknown>,
     ) => Object.assign(state, updater(state)),
     options: {},
-  } as unknown as import('src/Tool.js').ToolUseContext
+  } as unknown as import('src/tools/Tool.js').ToolUseContext
   return { ctx, state }
 }
 

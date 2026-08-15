@@ -4,7 +4,7 @@
  */
 
 import { resolve } from 'path'
-import type { ToolPermissionContext, ToolUseContext } from 'src/Tool.js'
+import type { ToolPermissionContext, ToolUseContext } from 'src/tools/Tool.js'
 import type {
   PermissionDecisionReason,
   PermissionResult,

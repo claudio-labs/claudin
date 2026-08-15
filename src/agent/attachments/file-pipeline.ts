@@ -20,7 +20,7 @@ import {
   getFileModificationTimeAsync,
   isFileWithinReadSizeLimit,
 } from 'src/shared/fs/file.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import type {
   FileAttachment,
   CompactFileReferenceAttachment,

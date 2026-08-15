@@ -10,7 +10,7 @@
 
 import type { UUID } from 'crypto'
 import { randomUUID } from 'crypto'
-import type { PromptCommand } from 'src/commands.js'
+import type { PromptCommand } from 'src/commands/commands.js'
 import type { QuerySource } from 'src/constants/querySource.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { query } from 'src/agent/query.js'
@@ -20,7 +20,7 @@ import {
 } from 'src/platform/analytics/index.js'
 import { accumulateUsage, updateUsage } from 'src/providers/shims/claude.js'
 import { EMPTY_USAGE, type NonNullableUsage } from 'src/providers/transport/logging.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { AgentId } from 'src/types/ids.js'
 import type { Message } from 'src/types/message.js'

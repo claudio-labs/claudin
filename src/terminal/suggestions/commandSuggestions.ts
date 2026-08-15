@@ -4,7 +4,7 @@ import {
   formatDescriptionWithSource,
   getCommand,
   getCommandName,
-} from 'src/commands.js'
+} from 'src/commands/commands.js'
 import type { SuggestionItem } from 'src/terminal/prompt-input/PromptInputFooterSuggestions.js'
 import { getSkillUsageScore } from 'src/terminal/suggestions/skillUsageTracking.js'
 

@@ -21,7 +21,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { createAssistantMessage } from 'src/agent/messages/messages.js'
 import { getAgentName, getTeamName, getTeammateColor } from 'src/agent/coordinator/teammate.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type {
   HookChainOutcome,

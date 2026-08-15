@@ -10,7 +10,7 @@
  * Lazy-loaded (implementation in cacheStats.ts) to keep startup time
  * minimal — same pattern used by /cost and /cache-probe.
  */
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 
 const cacheStats = {
   type: 'local',

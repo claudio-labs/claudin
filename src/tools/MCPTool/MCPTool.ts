@@ -1,7 +1,7 @@
 import { Ajv } from 'ajv'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { z } from 'zod/v4'
-import { buildTool, type ToolDef, type ValidationResult } from 'src/Tool.js'
+import { buildTool, type ToolDef, type ValidationResult } from 'src/tools/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import type { PermissionResult } from 'src/types/permissions.js'
 import { isOutputLineTruncated } from 'src/terminal/terminal.js'

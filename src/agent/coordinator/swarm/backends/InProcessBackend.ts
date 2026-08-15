@@ -1,4 +1,4 @@
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import {
   findTeammateTaskByAgentId,
   requestTeammateShutdown,

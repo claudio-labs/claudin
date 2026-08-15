@@ -1,5 +1,5 @@
 import { join } from 'path'
-import type { LocalCommandResult } from 'src/commands.js'
+import type { LocalCommandResult } from 'src/commands/commands.js'
 import { loadInstalledPluginsV2 } from 'src/plugins/installedPluginsManager.js'
 import { OFFICIAL_MARKETPLACE_NAME } from 'src/plugins/officialMarketplace.js'
 import { playAnimation } from 'src/commands/thinkback/thinkback.js'

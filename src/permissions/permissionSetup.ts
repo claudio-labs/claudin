@@ -10,7 +10,7 @@ import {
 import type {
   ToolPermissionContext,
   ToolPermissionRulesBySource,
-} from 'src/Tool.js'
+} from 'src/tools/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import type { SettingSource } from 'src/platform/settings/constants.js'
@@ -53,7 +53,7 @@ import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js'
-import { getToolsForDefaultPreset, parseToolPreset } from 'src/tools.js'
+import { getToolsForDefaultPreset, parseToolPreset } from 'src/tools/tools.js'
 import {
   getFsImplementation,
   safeResolvePath,

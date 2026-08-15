@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import type { SDKControlPermissionRequest } from 'src/platform/entrypoints/sdk/controlTypes.js'
-import type { Tool } from 'src/Tool.js'
+import type { Tool } from 'src/tools/Tool.js'
 import type { AssistantMessage } from 'src/types/message.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 

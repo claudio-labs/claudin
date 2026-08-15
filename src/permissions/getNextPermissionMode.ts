@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import type { ToolPermissionContext } from 'src/Tool.js'
+import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { PermissionMode } from 'src/permissions/PermissionMode.js'
 import {

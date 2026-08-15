@@ -48,7 +48,7 @@ _Nenhuma decisão de produto/escopo. Mas achados empíricos já refinaram a Tier
 
 - **46 cases pipeline** validados empiricamente (100% passing)
 - **3 safety tests** (errors não engolidos por `match_output`)
-- **30+ samples reais** capturados então em `validation/samples/` — o corpus foi depois unificado em `src/outputFilter/Bash/__fixtures__/samples/`
+- **30+ samples reais** capturados então em `validation/samples/` — o corpus foi depois unificado em `src/tools/shared/outputFilter/Bash/__fixtures__/samples/`
 - **35 arquivos `commands/*.md`** com análise de cada comando candidato
 - **3 estágios novos de dedup** prototipados (`collapseRuns`, `collapseDigitTemplates`, `dedupGlobal`)
 - **Pipeline reference implementation** em TypeScript (~250 linhas) — seed do MVP

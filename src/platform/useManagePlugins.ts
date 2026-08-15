@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react'
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import { useNotifications } from 'src/terminal/contexts/notifications.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import { reinitializeLspServerManager } from 'src/platform/lsp/manager.js'

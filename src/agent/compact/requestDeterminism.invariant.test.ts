@@ -78,8 +78,8 @@ const { clearBetaHeaderLatches, isLspDeferLatched, latchLspDefer } =
   await import('src/platform/bootstrap/state.js')
 
 import type { Message } from 'src/types/message.js'
-import type { Tool } from 'src/Tool.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { Tool } from 'src/tools/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 
 const MAIN_THREAD = 'repl_main_thread' as never
 

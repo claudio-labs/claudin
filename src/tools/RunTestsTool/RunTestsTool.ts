@@ -1,7 +1,7 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { z } from 'zod/v4'
 import { bashToolHasPermission } from 'src/tools/BashTool/bashPermissions.js'
-import { buildTool, type ToolCallProgress, type ToolDef } from 'src/Tool.js'
+import { buildTool, type ToolCallProgress, type ToolDef } from 'src/tools/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { formatTestResult } from 'src/tools/RunTestsTool/budget.js'

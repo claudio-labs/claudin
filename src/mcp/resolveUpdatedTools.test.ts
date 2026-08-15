@@ -13,7 +13,7 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { Tool } from 'src/Tool.js'
+import type { Tool } from 'src/tools/Tool.js'
 import { resolveUpdatedTools } from 'src/mcp/useManageMCPConnections.js'
 
 type ToolDouble = { name: string; description: string }

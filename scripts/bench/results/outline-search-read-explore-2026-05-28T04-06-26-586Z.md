@@ -416,12 +416,12 @@ src/components/St
 
 ### find-implementations
 
-> No arquivo `src/Tool.ts` existe um tipo `Tool` (interface ou type). Liste todos os locais no codebase que implementam/satisfazem esse tipo `Tool` — ou seja, arquivos que exportam algo do tipo `Tool` (uma instancia concreta de tool builtin). Quero arquivo:linha de cada implementacao. Nao edite nada.
+> No arquivo `src/tools/Tool.ts` existe um tipo `Tool` (interface ou type). Liste todos os locais no codebase que implementam/satisfazem esse tipo `Tool` — ou seja, arquivos que exportam algo do tipo `Tool` (uma instancia concreta de tool builtin). Quero arquivo:linha de cada implementacao. Nao edite nada.
 
 **Variant A run#1:**
 
 ```
-Aqui está a lista completa de todas as implementações concretas do tipo `Tool` (construídas via `buildTool(...)` em `src/Tool.ts:798`):
+Aqui está a lista completa de todas as implementações concretas do tipo `Tool` (construídas via `buildTool(...)` em `src/tools/Tool.ts:798`):
 
 **Tools de filesystem/edição:**
 - `src/tools/FileReadTool/FileReadTool.ts:337`

@@ -30,7 +30,7 @@ import type { UUID } from 'crypto';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { createCoalescedUpdater } from 'src/platform/install/coalescedUpdater.js';
 import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js';
-import type { ToolPermissionContext } from 'src/Tool.js';
+import type { ToolPermissionContext } from 'src/tools/Tool.js';
 import type { MCPServerConnection } from 'src/mcp/types.js';
 import type { useAppStateStore } from 'src/terminal/state/AppState.js';
 import type { provisionContentReplacementState } from 'src/agent/tools/toolResultStorage.js';

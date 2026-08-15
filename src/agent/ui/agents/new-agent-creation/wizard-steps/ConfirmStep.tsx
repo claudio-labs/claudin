@@ -4,7 +4,7 @@ import type { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js';
-import type { Tools } from 'src/Tool.js';
+import type { Tools } from 'src/tools/Tool.js';
 import { getMemoryScopeDisplay } from 'src/tools/AgentTool/agentMemory.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { truncateToWidth } from 'src/shared/text/format.js';

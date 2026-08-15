@@ -21,7 +21,7 @@
 //
 // `--tools`, NOT `--allowedTools`. The latter is a permission allowlist that
 // never reaches the registry (`getTools` filters on DENY rules only, see
-// src/tools.ts:383), so Grep and Bash stay in the toolset and the first run of
+// src/tools/tools.ts:383), so Grep and Bash stay in the toolset and the first run of
 // this bench had arm A reach for Grep twice while arm B never did. `--tools`
 // inverts the list into deny rules (permissionSetup.ts:866-876) and the tools
 // are genuinely absent; `--strict-mcp-config` is required alongside it because

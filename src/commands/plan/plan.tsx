@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { handlePlanModeTransition } from 'src/platform/bootstrap/state.js';
-import type { LocalJSXCommandContext } from 'src/commands.js';
+import type { LocalJSXCommandContext } from 'src/commands/commands.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import { getExternalEditor } from 'src/shared/editor.js';

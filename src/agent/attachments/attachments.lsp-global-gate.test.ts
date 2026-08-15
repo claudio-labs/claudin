@@ -9,7 +9,7 @@
  * leaks no-ops into every later test that imports them.
  */
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import {
   registerPendingLSPDiagnostic,

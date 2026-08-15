@@ -6,7 +6,7 @@ import {
   suppressNextBashGitInstructions,
 } from 'src/agent/attachments/attachments.js'
 import { enableConfigs } from 'src/platform/config/config.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 
 // Build the smallest ToolUseContext shape getBashGitInstructionsAttachment

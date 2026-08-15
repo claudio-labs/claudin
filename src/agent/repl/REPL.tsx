@@ -55,7 +55,7 @@ import { registerLeaderToolUseConfirmQueue, unregisterLeaderToolUseConfirmQueue 
 import { endInteractionSpan } from 'src/platform/telemetry/sessionTracing.js';
 import { useLogMessages } from 'src/agent/hooks/useLogMessages.js';
 import { useReplBridge } from 'src/platform/bridge/useReplBridge.js';
-import { type Command, type ResumeEntrypoint } from 'src/commands.js';
+import { type Command, type ResumeEntrypoint } from 'src/commands/commands.js';
 import type { PromptInputMode, QueuedCommand, VimMode } from 'src/types/textInputTypes.js';
 import { MessageSelector } from 'src/agent/ui/MessageSelector.js';
 import { useIdeLogging } from 'src/platform/ide/useIdeLogging.js';
@@ -132,7 +132,7 @@ const getCoordinatorUserContext: (mcpClients: ReadonlyArray<{
 } = feature('COORDINATOR_MODE') ? require('src/agent/coordinator/coordinatorMode.js').getCoordinatorUserContext : () => ({});
 /* eslint-enable custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports */
 import useCanUseTool from 'src/permissions/useCanUseTool.js';
-import type { Tool } from 'src/Tool.js';
+import type { Tool } from 'src/tools/Tool.js';
 import { applyPermissionUpdate, applyPermissionUpdates, persistPermissionUpdate } from 'src/permissions/PermissionUpdate.js';
 import { buildPermissionUpdates } from 'src/permissions/ui/ExitPlanModePermissionRequest/ExitPlanModePermissionRequest.js';
 import { stripDangerousPermissionsForAutoMode } from 'src/permissions/permissionSetup.js';
@@ -169,7 +169,7 @@ import { randomUUID, type UUID } from 'crypto';
 import { processSessionStartHooks } from 'src/sessions/sessionStart.js';
 import { executeSessionEndHooks, getSessionEndHookTimeoutMs } from 'src/platform/lifecycleHooks/hooks.js';
 import { type IDESelection, useIdeSelection } from 'src/platform/ide/useIdeSelection.js';
-import { getTools } from 'src/tools.js';
+import { getTools } from 'src/tools/tools.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { resolveAgentTools } from 'src/tools/AgentTool/agentToolUtils.js';
 import { resumeAgentBackground } from 'src/tools/AgentTool/resumeAgent.js';
@@ -273,7 +273,7 @@ import { CompanionSprite, CompanionFloatingBubble, MIN_COLS_FOR_FULL_SPRITE } fr
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
 // Session manager removed - using AppState now
 import type { RemoteSessionConfig } from 'src/platform/remote/RemoteSessionManager.js';
-import { REMOTE_SAFE_COMMANDS } from 'src/commands.js';
+import { REMOTE_SAFE_COMMANDS } from 'src/commands/commands.js';
 import { FullscreenLayout, useUnseenDivider, computeUnseenDivider } from 'src/terminal/FullscreenLayout.js';
 import { StartupBanner } from 'src/platform/StartupBanner.js';
 import { isFullscreenEnvEnabled, maybeGetTmuxMouseHint, isMouseTrackingEnabled } from 'src/terminal/render/fullscreen.js';

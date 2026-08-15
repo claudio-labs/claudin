@@ -1,7 +1,7 @@
 import { join } from 'path';
 import React from 'react';
 import { ExportDialog } from 'src/platform/ExportDialog.js';
-import type { ToolUseContext } from 'src/Tool.js';
+import type { ToolUseContext } from 'src/tools/Tool.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import type { Message } from 'src/types/message.js';
 import { getCwd } from 'src/shared/fs/cwd.js';

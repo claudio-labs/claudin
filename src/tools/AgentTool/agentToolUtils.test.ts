@@ -4,7 +4,7 @@ import { describe, expect, it } from 'bun:test'
 // agentToolUtils). Loading AgentTool first orders the graph so the schema is
 // initialized before the eager build runs.
 import 'src/tools/AgentTool/AgentTool.js'
-import type { Tool, Tools } from 'src/Tool.js'
+import type { Tool, Tools } from 'src/tools/Tool.js'
 import { WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
 import { WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
 import {

@@ -6,7 +6,7 @@ import {
 } from 'src/constants/prompts.js'
 import { microcompactMessages } from 'src/agent/compact/microCompact.js'
 import { getSdkBetas } from 'src/platform/bootstrap/state.js'
-import { getCommandName } from 'src/commands.js'
+import { getCommandName } from 'src/commands/commands.js'
 import { getSystemContext } from 'src/agent/context.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
@@ -29,7 +29,7 @@ import {
   type Tools,
   type ToolUseContext,
   toolMatchesName,
-} from 'src/Tool.js'
+} from 'src/tools/Tool.js'
 import type {
   AgentDefinition,
   AgentDefinitionsResult,

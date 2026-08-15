@@ -24,7 +24,7 @@
  * a different attachment shape would still be a second copy.
  */
 import { describe, expect, test } from 'bun:test'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { MemoryFileInfo } from 'src/memory/instructions/claudemd.js'
 import { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import { normalizeAttachmentForAPI } from 'src/agent/messages/messages.js'

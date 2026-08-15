@@ -9,12 +9,12 @@
  * import from here (QueryEngine.ts, cli/print.ts).
  */
 
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import { getSystemPrompt } from 'src/constants/prompts.js'
 import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import type { MCPServerConnection } from 'src/mcp/types.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
-import type { Tools, ToolUseContext } from 'src/Tool.js'
+import type { Tools, ToolUseContext } from 'src/tools/Tool.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { Message } from 'src/types/message.js'
 import { createAbortController } from 'src/shared/abortController.js'

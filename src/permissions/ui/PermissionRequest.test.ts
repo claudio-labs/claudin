@@ -69,7 +69,7 @@ import { PowerShellPermissionRequest } from 'src/permissions/ui/PowerShellPermis
 import { SkillPermissionRequest } from 'src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.js'
 import { WebFetchPermissionRequest } from 'src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.js'
 
-import type { Tool } from 'src/Tool.js'
+import type { Tool } from 'src/tools/Tool.js'
 
 type Component = unknown // React.ComponentType — unused at runtime; opaque is fine.
 

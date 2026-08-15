@@ -9,7 +9,7 @@ import {
 } from 'bun:test'
 
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
-import { getEmptyToolPermissionContext } from 'src/Tool.js'
+import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
 import type { ProjectConfig } from 'src/platform/config/config.js'
 
 // These tests verify two contracts of the `mainLoopModel` diff handler:

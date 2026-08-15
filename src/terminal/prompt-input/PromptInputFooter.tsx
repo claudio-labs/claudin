@@ -11,7 +11,7 @@ import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { MCPServerConnection } from 'src/mcp/types.js';
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
-import type { ToolPermissionContext } from 'src/Tool.js';
+import type { ToolPermissionContext } from 'src/tools/Tool.js';
 import type { Message } from 'src/types/message.js';
 import type { PromptInputMode, VimMode } from 'src/types/textInputTypes.js';
 import type { AutoUpdaterResult } from 'src/platform/install/autoUpdater.js';

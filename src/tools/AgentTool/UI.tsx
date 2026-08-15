@@ -16,7 +16,7 @@ import type { Props as MessageComponentProps } from 'src/agent/ui/Message.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { ToolUseLoader } from 'src/agent/ui/ToolUseLoader.js';
 import { Box, Text, useAnimationFrame } from 'src/terminal/ink.js';
-import { findToolByName, type Tools } from 'src/Tool.js';
+import { findToolByName, type Tools } from 'src/tools/Tool.js';
 import type { Message, ProgressMessage } from 'src/types/message.js';
 import type { AgentToolProgress } from 'src/types/tools.js';
 import { count } from 'src/shared/data/array.js';

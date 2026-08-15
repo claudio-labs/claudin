@@ -15,7 +15,7 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import type { QuerySource } from 'src/constants/querySource.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
-import type { Tool, ToolUseContext } from 'src/Tool.js'
+import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
 import type { LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
 import {

@@ -16,12 +16,12 @@
 
 import { feature } from 'bun:bundle'
 import { downloadUserSettings } from 'src/platform/settingsSync/index.js'
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import { createStreamlinedTransformer } from 'src/agent/tools/streamlinedTransform.js'
 import { installStreamJsonStdoutGuard } from 'src/terminal/render/streamJsonStdoutGuard.js'
 import type { ThinkingConfig } from 'src/agent/context/thinking.js'
-import { filterToolsByDenyRules } from 'src/tools.js'
-import { toolMatchesName, type Tools } from 'src/Tool.js'
+import { filterToolsByDenyRules } from 'src/tools/tools.js'
+import { toolMatchesName, type Tools } from 'src/tools/Tool.js'
 import {
   type AgentDefinition,
   isBuiltInAgent,

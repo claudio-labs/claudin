@@ -1,8 +1,8 @@
 import { feature } from 'bun:bundle'
 import { useCallback, useEffect, useRef } from 'react'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import type { Command } from 'src/commands.js'
-import type { Tool } from 'src/Tool.js'
+import type { Command } from 'src/commands/commands.js'
+import type { Tool } from 'src/tools/Tool.js'
 import {
   clearServerCache,
   fetchCommandsForClient,

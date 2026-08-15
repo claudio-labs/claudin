@@ -21,7 +21,7 @@ validation/
 ```
 
 > As samples **não vivem mais aqui**. O corpus é único e fica em
-> `src/outputFilter/Bash/__fixtures__/samples/` — esta era a segunda cópia e
+> `src/tools/shared/outputFilter/Bash/__fixtures__/samples/` — esta era a segunda cópia e
 > ficou uma rebrand inteira para trás. `validate.ts` lê de lá.
 
 ## O que valida
@@ -40,7 +40,7 @@ Plus **safety tests** sintéticos:
 
 1. Capturar sample real:
    ```bash
-   <comando> > src/outputFilter/Bash/__fixtures__/samples/<nome>.txt 2>&1
+   <comando> > src/tools/shared/outputFilter/Bash/__fixtures__/samples/<nome>.txt 2>&1
    ```
 2. Adicionar entrada em `CASES` array em `validate.ts`:
    ```ts

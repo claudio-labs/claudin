@@ -4,9 +4,9 @@ import { removeSandboxViolationTags } from 'src/platform/sandbox/sandbox-ui-util
 import FullWidthRow from 'src/terminal/design-system/FullWidthRow.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
-import { stripOutputMarkers } from 'src/outputFilter/Bash/markers.js';
-import { OutputLine } from 'src/components/shell/OutputLine.js';
-import { ShellTimeDisplay } from 'src/components/shell/ShellTimeDisplay.js';
+import { stripOutputMarkers } from 'src/tools/shared/outputFilter/Bash/markers.js';
+import { OutputLine } from 'src/tools/BashTool/ui/OutputLine.js';
+import { ShellTimeDisplay } from 'src/tools/BashTool/ui/ShellTimeDisplay.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { Out as BashOut } from 'src/tools/BashTool/BashTool.js';
 type Props = {

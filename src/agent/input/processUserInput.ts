@@ -13,10 +13,10 @@ import {
   getCommandName,
   isBridgeSafeCommand,
   type LocalJSXCommandContext,
-} from 'src/commands.js'
+} from 'src/commands/commands.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { IDESelection } from 'src/platform/ide/useIdeSelection.js'
-import type { SetToolJSXFn, ToolUseContext } from 'src/Tool.js'
+import type { SetToolJSXFn, ToolUseContext } from 'src/tools/Tool.js'
 import type {
   AssistantMessage,
   AttachmentMessage,
@@ -53,7 +53,7 @@ import {
   createUserMessage,
 } from 'src/agent/messages/messages.js'
 import { queryCheckpoint } from 'src/agent/queryProfiler.js'
-import { parseSlashCommand } from 'src/utils/slashCommandParsing.js'
+import { parseSlashCommand } from 'src/commands/slashCommandParsing.js'
 import {
   hasUltraplanKeyword,
   replaceUltraplanKeyword,

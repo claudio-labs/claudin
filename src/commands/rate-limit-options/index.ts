@@ -1,4 +1,4 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import { isClaudeAISubscriber } from 'src/providers/auth/auth.js'
 
 const rateLimitOptions = {

@@ -30,7 +30,7 @@ Two consequences matter more than the win:
 it was ("every call site is behind a `feature()` flag that is off, so the stub is
 never reached"). Measured across the 85: 9 call sites are type-only (erased at
 emit), ~57 are `await import()` on gated paths, and **19 are eager value imports
-in `src/commands.ts`** that genuinely do hit the `() => null` stub at runtime —
+in `src/commands/commands.ts`** that genuinely do hit the `() => null` stub at runtime —
 which is exactly why `/upgrade` and `/extra-usage` hang (see
 [[upsell-commands-missing-login]]). A generator cannot assert "never reached at
 runtime" per file; do not let it.

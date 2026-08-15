@@ -32,7 +32,7 @@ import { getMcpStartupTimeoutMs, raceConnectTimeout } from 'src/platform/main/de
 import { logSessionTelemetry } from 'src/platform/main/lifecycle.js';
 import type { BootContext } from 'src/platform/main/bootContext.js';
 import type { Command } from 'src/types/command.js';
-import type { ToolPermissionContext, Tools } from 'src/Tool.js';
+import type { ToolPermissionContext, Tools } from 'src/tools/Tool.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 
 export type HeadlessBranchDeps = {

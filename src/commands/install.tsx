@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import React, { useEffect, useState } from 'react';
-import type { CommandResultDisplay } from 'src/commands.js';
+import type { CommandResultDisplay } from 'src/commands/commands.js';
 import { logEvent } from 'src/platform/analytics/index.js';
 import { StatusIcon } from 'src/terminal/design-system/StatusIcon.js';
 import { Box, render, Text } from 'src/terminal/ink.js';

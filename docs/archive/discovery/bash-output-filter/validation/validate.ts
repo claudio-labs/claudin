@@ -25,10 +25,10 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 // The sample corpus lives in the source tree — this directory used to hold a
-// second, drifting copy. See src/outputFilter/Bash/__fixtures__/samples/README.md.
+// second, drifting copy. See src/tools/shared/outputFilter/Bash/__fixtures__/samples/README.md.
 const SAMPLES = join(
   __dirname,
-  '../../../../../src/outputFilter/Bash/__fixtures__/samples',
+  '../../../../../src/tools/shared/outputFilter/Bash/__fixtures__/samples',
 )
 
 interface TestCase {

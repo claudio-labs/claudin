@@ -22,7 +22,7 @@ import {
   getAttributionHeader,
   getCLISyspromptPrefix,
 } from "src/constants/system.js";
-import { type Tool, type Tools, toolMatchesName } from "src/Tool.js";
+import { type Tool, type Tools, toolMatchesName } from "src/tools/Tool.js";
 import type {
   ConnectorTextBlock,
   ConnectorTextDelta,

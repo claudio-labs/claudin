@@ -37,7 +37,7 @@ import type {
 } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type { AssistantMessage } from 'src/types/message.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import type {
   ConfigChangeSource,
   ElicitationHookResult,

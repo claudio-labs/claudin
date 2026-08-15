@@ -73,7 +73,7 @@ Claude Code's `LSP` tool exposes 9 operations: `goToDefinition`, `findReferences
 port: the plumbing already exists.
 
 ### `PushNotification` — **referenced but stubbed → no-op**
-`src/tools.ts:52` does `require('./tools/PushNotificationTool/PushNotificationTool.js')`,
+`src/tools/tools.ts:52` does `require('./tools/PushNotificationTool/PushNotificationTool.js')`,
 but `src/tools/PushNotificationTool/` does not exist in the repo. It's an
 Anthropic-internal module, so the build pre-scan stubs it → the tool is a no-op in
 the open build. Desktop/phone notification when a long task finishes or a decision

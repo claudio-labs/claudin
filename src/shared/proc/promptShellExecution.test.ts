@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'bun:test'
-import { getEmptyToolPermissionContext } from 'src/Tool.js'
+import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
 import { executeShellCommandsInPrompt } from 'src/shared/proc/promptShellExecution.js'
 

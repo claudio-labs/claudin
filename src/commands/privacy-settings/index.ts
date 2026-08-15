@@ -1,4 +1,4 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import { isConsumerSubscriber } from 'src/providers/auth/auth.js'
 
 const privacySettings = {

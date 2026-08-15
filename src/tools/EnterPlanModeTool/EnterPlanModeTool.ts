@@ -5,8 +5,8 @@ import {
   handlePlanModeTransition,
 } from 'src/platform/bootstrap/state.js'
 import { clearRevalidateCache, deleteDossier } from 'src/agent/planDossier.js'
-import type { Tool } from 'src/Tool.js'
-import { buildTool, type ToolDef } from 'src/Tool.js'
+import type { Tool } from 'src/tools/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { applyPermissionUpdate } from 'src/permissions/PermissionUpdate.js'
 import { prepareContextForPlanMode } from 'src/permissions/permissionSetup.js'

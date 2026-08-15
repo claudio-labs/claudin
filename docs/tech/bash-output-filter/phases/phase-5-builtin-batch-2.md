@@ -37,18 +37,18 @@ Cobre o long-tail de filters validados empiricamente: git family completo (sem r
 
 | Arquivo | LoC est. | Specs |
 |---|---|---|
-| `src/outputFilter/Bash/filters/git.ts` (NEW or EXTEND from Phase 4) | ~150 | `gitStatus`, `gitLog`, `gitBlame`, `gitPull`, `gitAdd`, `gitCommit`, `gitPush` |
-| `src/outputFilter/Bash/filters/containers.ts` | ~80 | `dockerPs`, `dockerImages`, `dockerLogs` |
-| `src/outputFilter/Bash/filters/network.ts` | ~70 | `curl`, `wget`, `dig` |
+| `src/tools/shared/outputFilter/Bash/filters/git.ts` (NEW or EXTEND from Phase 4) | ~150 | `gitStatus`, `gitLog`, `gitBlame`, `gitPull`, `gitAdd`, `gitCommit`, `gitPush` |
+| `src/tools/shared/outputFilter/Bash/filters/containers.ts` | ~80 | `dockerPs`, `dockerImages`, `dockerLogs` |
+| `src/tools/shared/outputFilter/Bash/filters/network.ts` | ~70 | `curl`, `wget`, `dig` |
 
 ### Arquivos modificados
 
 | Arquivo | Mudança |
 |---|---|
-| `src/outputFilter/Bash/filters/system.ts` (Phase 2) | Adicionar spec `journalctl` |
-| `src/outputFilter/Bash/filters/index.ts` | Importar e re-exportar todos os novos specs |
-| `src/outputFilter/Bash/bashFilter.test.ts` | Trocar inline filter definitions pelos imports reais (mesma operação que Phase 2) |
-| `src/outputFilter/Bash/__fixtures__/samples/` | Confirmar que samples desses comandos foram copiados em Phase 1 |
+| `src/tools/shared/outputFilter/Bash/filters/system.ts` (Phase 2) | Adicionar spec `journalctl` |
+| `src/tools/shared/outputFilter/Bash/filters/index.ts` | Importar e re-exportar todos os novos specs |
+| `src/tools/shared/outputFilter/Bash/bashFilter.test.ts` | Trocar inline filter definitions pelos imports reais (mesma operação que Phase 2) |
+| `src/tools/shared/outputFilter/Bash/__fixtures__/samples/` | Confirmar que samples desses comandos foram copiados em Phase 1 |
 
 ## Steps
 
@@ -117,7 +117,7 @@ export const dockerLogs: FilterSpec = {
 ## Tests
 
 ```bash
-bun test src/outputFilter/Bash
+bun test src/tools/shared/outputFilter/Bash
 bun test scripts/regex-redos-scan.test.ts
 bun run typecheck
 ```

@@ -1,6 +1,6 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { z } from 'zod/v4'
-import { buildTool, type ToolCallProgress, type ToolDef } from 'src/Tool.js'
+import { buildTool, type ToolCallProgress, type ToolDef } from 'src/tools/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { isReadOnlyGitBatch, parseGitCommand } from 'src/tools/GitTool/grammar.js'
 import { checkGitBatchPermission } from 'src/tools/GitTool/permissions.js'
@@ -26,7 +26,7 @@ import {
  * output.
  *
  * Killswitch: `CLAUDIN_DISABLE_GIT_TOOL=1` drops the tool from the toolset
- * (applied in `src/tools.ts`, where the rest of the registry lives).
+ * (applied in `src/tools/tools.ts`, where the rest of the registry lives).
  *
  * Three deliberate design points, each of which has a test:
  *
@@ -140,7 +140,7 @@ export const GitTool = buildTool({
   },
   isEnabled() {
     // Constant, never a per-project answer: the tool list is pinned to a shared
-    // system-prompt cache config (see getAllBaseTools in src/tools.ts), so
+    // system-prompt cache config (see getAllBaseTools in src/tools/tools.ts), so
     // "is this a git repo" answered here would fragment that cache. A
     // non-repository is answered at call time by git itself.
     return true

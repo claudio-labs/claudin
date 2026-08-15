@@ -17,7 +17,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import { getDefaultAppState } from 'src/terminal/state/AppStateStore.js'
 import review from 'src/commands/review.js'
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import { getMcpToolsCommandsAndResources } from 'src/mcp/client.js'
 import type { MCPServerConnection } from 'src/mcp/types.js'
 import {
@@ -25,8 +25,8 @@ import {
   getEmptyToolPermissionContext,
   type Tool as InternalTool,
   type ToolUseContext,
-} from 'src/Tool.js'
-import { getTools } from 'src/tools.js'
+} from 'src/tools/Tool.js'
+import { getTools } from 'src/tools/tools.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js'
 import { logError } from 'src/shared/log.js'

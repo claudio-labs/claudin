@@ -1,4 +1,4 @@
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { REPORT_FINDINGS_TOOL_NAME } from 'src/tools/ReportFindingsTool/constants.js'

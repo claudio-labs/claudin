@@ -13,7 +13,7 @@
  * marketplace plugins (`{name}@{marketplace}`).
  */
 
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import type { BundledSkillDefinition } from 'src/skills/bundledSkills.js'
 import type { BuiltinPluginDefinition, LoadedPlugin } from 'src/types/plugin.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'

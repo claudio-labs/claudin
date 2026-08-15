@@ -2,7 +2,7 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 import React from 'react'
 import { FallbackToolUseErrorMessage } from 'src/agent/ui/FallbackToolUseErrorMessage.js'
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js'
-import { ShellElapsedTime } from 'src/components/shell/ShellElapsedTime.js'
+import { ShellElapsedTime } from 'src/tools/BashTool/ui/ShellElapsedTime.js'
 import { Text } from 'src/terminal/ink.js'
 import { formatDuration } from 'src/tools/BuildTool/budget.js'
 import type { Input, Output } from 'src/tools/BuildTool/BuildTool.js'

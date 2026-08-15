@@ -1,4 +1,4 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { isPolicyAllowed } from 'src/platform/policyLimits/index.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'

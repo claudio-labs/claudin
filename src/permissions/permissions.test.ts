@@ -6,7 +6,7 @@ import {
   type Tool,
   type ToolPermissionContext,
   type ToolUseContext,
-} from 'src/Tool.js'
+} from 'src/tools/Tool.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
 import {
   checkRuleBasedPermissions,

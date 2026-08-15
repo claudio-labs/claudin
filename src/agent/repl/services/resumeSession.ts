@@ -16,7 +16,7 @@ import type { UUID } from 'crypto'
 import type { MutableRefObject } from 'react'
 
 import { asSessionId } from 'src/types/ids.js'
-import { type ResumeEntrypoint } from 'src/commands.js'
+import { type ResumeEntrypoint } from 'src/commands/commands.js'
 import type { LogOption } from 'src/types/logs.js'
 import type { AgentDefinition, AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { AppStateStore } from 'src/terminal/state/AppStateStore.js'

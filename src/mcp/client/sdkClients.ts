@@ -1,7 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
 import { PRODUCT_URL } from 'src/constants/product.js'
-import type { Tool } from 'src/Tool.js'
+import type { Tool } from 'src/tools/Tool.js'
 import { logMCPError } from 'src/shared/log.js'
 import { SdkControlClientTransport } from 'src/mcp/SdkControlTransport.js'
 import type { McpSdkServerConfig, MCPServerConnection } from 'src/mcp/types.js'

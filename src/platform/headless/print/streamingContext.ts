@@ -37,8 +37,8 @@
 
 import type { StructuredIO } from 'src/platform/headless/structuredIO.js'
 import type { Stream } from 'src/shared/stream.js'
-import type { Command } from 'src/commands.js'
-import type { Tools } from 'src/Tool.js'
+import type { Command } from 'src/commands/commands.js'
+import type { Tools } from 'src/tools/Tool.js'
 import type { Message } from 'src/types/message.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'

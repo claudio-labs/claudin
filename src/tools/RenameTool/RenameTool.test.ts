@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 
-import { getEmptyToolPermissionContext, type ToolUseContext } from 'src/Tool.js'
+import { getEmptyToolPermissionContext, type ToolUseContext } from 'src/tools/Tool.js'
 import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 import { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import {

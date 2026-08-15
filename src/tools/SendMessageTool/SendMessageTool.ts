@@ -2,8 +2,8 @@ import { feature } from 'bun:bundle'
 import { z } from 'zod/v4'
 import { isReplBridgeActive } from 'src/platform/bootstrap/state.js'
 import { getReplBridgeHandle } from 'src/platform/bridge/replBridgeHandle.js'
-import type { Tool, ToolUseContext } from 'src/Tool.js'
-import { buildTool, type ToolDef } from 'src/Tool.js'
+import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { findTeammateTaskByAgentId } from 'src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js'
 import {
   isLocalAgentTask,

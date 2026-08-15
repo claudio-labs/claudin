@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
-import { getAllBaseTools } from 'src/tools.js'
+import { getAllBaseTools } from 'src/tools/tools.js'
 import { GitTool, MAX_COMMANDS } from 'src/tools/GitTool/GitTool.js'
 import { batchFailed, formatGitBatchResult, runGitBatch } from 'src/tools/GitTool/run.js'
 

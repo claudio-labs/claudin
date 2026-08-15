@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useMemo } from 'react';
-import { type Command, formatDescriptionWithSource } from 'src/commands.js';
+import { type Command, formatDescriptionWithSource } from 'src/commands/commands.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { truncate } from 'src/shared/text/format.js';
 import { Select } from 'src/terminal/custom-select/select.js';

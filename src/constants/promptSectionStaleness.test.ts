@@ -50,7 +50,7 @@ const { invalidateActiveProviderCache } = await import(
 const { applyPermissionUpdate } = await import(
   'src/permissions/PermissionUpdate.js'
 )
-const { getEmptyToolPermissionContext } = await import('src/Tool.js')
+const { getEmptyToolPermissionContext } = await import('src/tools/Tool.js')
 
 const originalSimpleEnv = process.env.CLAUDE_CODE_SIMPLE
 delete process.env.CLAUDE_CODE_SIMPLE

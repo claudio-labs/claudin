@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync, utimesSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { basename, join } from 'path'
 
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { getCwdState, setCwdState } from 'src/platform/bootstrap/state.js'
 // GlobTool/UI reuses GrepTool.renderToolResultMessage at module-eval time.
 // Import GlobTool first so its UI resolves GrepTool only once GrepTool has
@@ -669,7 +669,7 @@ describe('GrepTool — blind spots', () => {
     )
     // A second buried symbol, searched by exactly one test below. The
     // tool-result cache keys on the input alone (wrapCallWithCache in
-    // src/Tool.ts), so a test that re-runs an earlier test's search replays
+    // src/tools/Tool.ts), so a test that re-runs an earlier test's search replays
     // that result and proves nothing about its own subject.
     writeFileSync(
       join(blindDir, 'hidden_from_vcs', 'other.ts'),

@@ -20,7 +20,7 @@ import type {
   StdoutMessage,
 } from 'src/platform/entrypoints/sdk/controlTypes.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
-import type { Tool, ToolUseContext } from 'src/Tool.js'
+import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
 import { type HookCallback, hookJSONOutputSchema } from 'src/types/hooks.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
@@ -38,7 +38,7 @@ import { hasPermissionsToUseTool } from 'src/permissions/permissions.js'
 import { writeToStdout } from 'src/shared/proc/process.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { z } from 'zod/v4'
-import { notifyCommandLifecycle } from 'src/utils/commandLifecycle.js'
+import { notifyCommandLifecycle } from 'src/commands/commandLifecycle.js'
 import { normalizeControlMessageKeys } from 'src/shared/controlMessageCompat.js'
 import { executePermissionRequestHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import {

@@ -25,7 +25,7 @@ import type { UUID } from 'crypto'
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
-import { notifyCommandLifecycle } from 'src/utils/commandLifecycle.js'
+import { notifyCommandLifecycle } from 'src/commands/commandLifecycle.js'
 import {
   dequeueAllMatching,
   enqueue,

@@ -6,7 +6,7 @@ import { getLastAPIRequest } from 'src/platform/bootstrap/state.js';
 import { logEventTo1P } from 'src/platform/analytics/firstPartyEventLogger.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { getLastAssistantMessage, normalizeMessagesForAPI } from 'src/agent/messages/messages.js';
-import type { CommandResultDisplay } from 'src/commands.js';
+import type { CommandResultDisplay } from 'src/commands/commands.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { Box, Text, useInput } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';

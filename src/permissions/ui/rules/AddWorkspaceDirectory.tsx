@@ -9,7 +9,7 @@ import type { ExitState } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybinding
 import type { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
-import type { ToolPermissionContext } from 'src/Tool.js';
+import type { ToolPermissionContext } from 'src/tools/Tool.js';
 import { getDirectoryCompletions } from 'src/terminal/suggestions/directoryCompletion.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
 import { Select } from 'src/terminal/custom-select/select.js';

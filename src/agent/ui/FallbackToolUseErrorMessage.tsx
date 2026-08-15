@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/messages/messages.mjs';
 import * as React from 'react';
-import { stripUnderlineAnsi } from 'src/components/shell/OutputLine.js';
+import { stripUnderlineAnsi } from 'src/tools/BashTool/ui/OutputLine.js';
 import { extractTag } from 'src/agent/messages/messages.js';
 import { removeSandboxViolationTags } from 'src/platform/sandbox/sandbox-ui-utils.js';
 import { Box, Text } from 'src/terminal/ink.js';

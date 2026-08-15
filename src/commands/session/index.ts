@@ -1,5 +1,5 @@
 import { getIsRemoteMode } from 'src/platform/bootstrap/state.js'
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 
 const session = {
   type: 'local-jsx',

@@ -1,6 +1,6 @@
 import figures from 'figures';
 import React, { useState } from 'react';
-import type { CommandResultDisplay } from 'src/commands.js';
+import type { CommandResultDisplay } from 'src/commands/commands.js';
 import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { Box, color, Text, useTheme } from 'src/terminal/ink.js';
 import { getMcpConfigByName } from 'src/mcp/config.js';

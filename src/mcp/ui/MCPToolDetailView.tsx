@@ -3,7 +3,7 @@ import React from 'react';
 import type { ExitState } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { extractMcpToolDisplayName, getMcpDisplayName } from 'src/mcp/mcpStringUtils.js';
-import type { Tool } from 'src/Tool.js';
+import type { Tool } from 'src/tools/Tool.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import type { ServerInfo } from 'src/mcp/ui/types.js';

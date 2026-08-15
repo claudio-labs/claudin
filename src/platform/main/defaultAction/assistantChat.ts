@@ -4,7 +4,7 @@
 // Fase 5b).
 
 import { setIsRemoteMode, setKairosActive, setUserMsgOptIn } from 'src/platform/bootstrap/state.js';
-import { filterCommandsForRemoteMode } from 'src/commands.js';
+import { filterCommandsForRemoteMode } from 'src/commands/commands.js';
 import { launchAssistantInstallWizard, launchAssistantSessionChooser } from 'src/terminal/dialogLaunchers.js';
 import type { Root } from 'src/terminal/ink.js';
 import { exitWithError, exitWithMessage, renderAndRun } from 'src/terminal/interactiveHelpers.js';

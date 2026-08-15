@@ -105,7 +105,7 @@ function blockLocators(body: string): { matches: string[]; context: string[] } {
 // is load-bearing for at least one row — clamp (context-*), dedupe (dup-heavy),
 // per-file cap (dup-heavy), file cap (multi-file), literal bucket
 // (legacy-mixed-paths) — so disabling any one of them fails a row here.
-// Modelled on src/outputFilter/Bash/phase13Report.test.ts.
+// Modelled on src/tools/shared/outputFilter/Bash/phase13Report.test.ts.
 // ---------------------------------------------------------------------------
 type Row = {
   fixture: string

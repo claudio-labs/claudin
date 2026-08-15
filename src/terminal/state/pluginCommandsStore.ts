@@ -1,4 +1,4 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import { createStore } from 'src/terminal/state/store.js'
 
 const pluginCommandsStore = createStore<Command[]>([])

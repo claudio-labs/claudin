@@ -1,4 +1,4 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import type { LocalCommandCall } from 'src/types/command.js'
 import {
   canUserConfigureAdvisor,

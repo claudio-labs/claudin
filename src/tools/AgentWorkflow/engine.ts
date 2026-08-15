@@ -11,7 +11,7 @@
 import os from 'os'
 import pMap from 'p-map'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
-import { assembleToolPool } from 'src/tools.js'
+import { assembleToolPool } from 'src/tools/tools.js'
 import {
   type AgentDefinition,
   getAgentDefinitionsWithOverrides,
@@ -20,7 +20,7 @@ import {
 import { countToolUses } from 'src/tools/AgentTool/agentToolUtils.js'
 import { runAgent } from 'src/tools/AgentTool/runAgent.js'
 import { createSyntheticOutputTool } from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js'
-import type { Tool, Tools, ToolUseContext } from 'src/Tool.js'
+import type { Tool, Tools, ToolUseContext } from 'src/tools/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isAbortError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'

@@ -279,7 +279,7 @@ it drops more than 0.5pp, or when one of the named invariant suites disappears:
 ```
 src/agent/compact/requestDeterminism.invariant.test.ts
 src/agent/compact/stableStubState.stub-byte-stability.test.ts
-src/outputFilter/Bash/phase12Report.test.ts
+src/tools/shared/outputFilter/Bash/phase12Report.test.ts
 scripts/feature-flags-source-guard.test.ts
 scripts/measure-tool-schemas.test.ts
 scripts/no-telemetry-growthbook-stub.test.ts
@@ -310,7 +310,7 @@ two pinning the runtime half of the same invariant.
 They exist where a type is load-bearing and documented only in prose:
 `src/types/utils.types.test.ts` (the three `DeepImmutable` carve-outs),
 `src/platform/entrypoints/sdk/sdkUtilityTypes.types.test.ts` (`NonNullableUsage`'s
-deviation from the SDK shape) and `src/Tool.types.test.ts` (`BuiltTool<D>`
+deviation from the SDK shape) and `src/tools/Tool.types.test.ts` (`BuiltTool<D>`
 versus what `buildTool` actually spreads, including the fail-closed defaults).
 
 Writing them is what surfaced two defects worth more than the assertions: the

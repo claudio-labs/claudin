@@ -255,7 +255,7 @@ src/
 │   ├── lsp/                     ← LSP client service
 │   ├── github/ settingsSync/ policyLimits/ tips/ wiki/  ← misc services
 │   └── analytics/               ← GrowthBook, logEvent (telemetry stubbed at build time)
-├── commands/ (224)             ← slash commands (/provider, /review, /plan, /resume, /mcp …); registry in src/commands.ts
+├── commands/ (224)             ← slash commands (/provider, /review, /plan, /resume, /mcp …); registry in src/commands/commands.ts
 ├── components/ (481)           ← Ink React TUI components (→ ink-tui.md; some are committed React-Compiler output)
 ├── ink/ (109)                  ← the forked Ink renderer: screen.ts, log-update, stringWidth, ScrollBox (→ ink-tui.md)
 ├── native-ts/ (5)              ← TS ports to avoid native addons: yoga-layout, color-diff, file-index
@@ -349,8 +349,8 @@ Grep pattern="logEvent\|_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS" type="ts"
 
 ```
 # Command-aware filters + pre-exec rewrites live here
-Glob pattern="src/outputFilter/Bash/*.ts"
-Grep pattern="rewrite\|canonicaliz" path="src/outputFilter/"
+Glob pattern="src/tools/shared/outputFilter/Bash/*.ts"
+Grep pattern="rewrite\|canonicaliz" path="src/tools/shared/outputFilter/"
 ```
 
 ### "Where does a task/agent actually run (the backend behind TaskCreate)?"
@@ -376,9 +376,9 @@ Grep pattern="z\.object\(\|z\.string\(\|z\.union\(" type="ts" output_mode="files
 
 ### Adding a new tool
 
-1. Check `src/Tool.ts` for `buildTool` signature
+1. Check `src/tools/Tool.ts` for `buildTool` signature
 2. Copy structure from a similar tool (e.g. `src/tools/GrepTool/GrepTool.ts` for search tools); the entry file is `<Name>Tool.ts(x)`, not `index.ts`
-3. Register in the dynamic registry `src/tools.ts` (built per-context: sandbox/plan/coordinator/MCP)
+3. Register in the dynamic registry `src/tools/tools.ts` (built per-context: sandbox/plan/coordinator/MCP)
 4. Add zod schema, `execute`, and a colocated `.test.ts`
 
 ### Debugging provider issues

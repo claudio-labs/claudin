@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test'
-import type { Tools } from 'src/Tool.js'
+import type { Tools } from 'src/tools/Tool.js'
 import type {
   CollapsedReadSearchGroup,
   RenderableMessage,

@@ -19,8 +19,8 @@ import type {
   ToolPermissionContext,
   Tools,
   ToolUseContext,
-} from 'src/Tool.js'
-import { toolMatchesName } from 'src/Tool.js'
+} from 'src/tools/Tool.js'
+import { toolMatchesName } from 'src/tools/Tool.js'
 import {
   completeAgentTask as completeAsyncAgent,
   createActivityDescriptionResolver,

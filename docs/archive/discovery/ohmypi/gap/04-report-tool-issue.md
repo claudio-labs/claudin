@@ -91,7 +91,7 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 
 **Vale pra Claudin?**
 - **Sim, baixíssimo custo.** Defensiva contra OpenAI-compat providers que loop mais.
-- Aplicável em `src/outputFilter/Bash/` e streaming text.
+- Aplicável em `src/tools/shared/outputFilter/Bash/` e streaming text.
 
 **Encaixe**: util genérico `src/utils/textDedupe.ts`. Aplicar em streaming pipe ou antes de `QueryEngine.ts` consumir. Sem flag — mitigação defensiva direta.
 

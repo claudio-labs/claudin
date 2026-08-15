@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
-import type { ToolProgressData } from 'src/Tool.js';
+import type { ToolProgressData } from 'src/tools/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';
 import type { ThemeName } from 'src/terminal/theme/theme.js';
 import type { Output } from 'src/tools/ExitWorktreeTool/ExitWorktreeTool.js';

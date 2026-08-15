@@ -1,8 +1,8 @@
 import {
   applyBashFilterToStdout,
   planBashFilter,
-} from 'src/outputFilter/Bash/index.js'
-import { stripOutputMarkers } from 'src/outputFilter/Bash/markers.js'
+} from 'src/tools/shared/outputFilter/Bash/index.js'
+import { stripOutputMarkers } from 'src/tools/shared/outputFilter/Bash/markers.js'
 import { exec } from 'src/shared/proc/Shell.js'
 import { formatDuration } from 'src/shared/text/format.js'
 import { GIT_NO_PROMPT_ENV } from 'src/vcs/git/noPromptEnv.js'

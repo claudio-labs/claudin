@@ -12,7 +12,7 @@ import {
   toolMatchesName,
   type Tools,
   type ToolUseContext,
-} from 'src/Tool.js'
+} from 'src/tools/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import {
   formatAgentLine,

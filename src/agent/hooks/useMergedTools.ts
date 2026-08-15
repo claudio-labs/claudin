@@ -1,7 +1,7 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { useMemo } from 'react'
-import type { Tools, ToolPermissionContext } from 'src/Tool.js'
-import { assembleToolPool } from 'src/tools.js'
+import type { Tools, ToolPermissionContext } from 'src/tools/Tool.js'
+import { assembleToolPool } from 'src/tools/tools.js'
 import { useAppState } from 'src/terminal/state/AppState.js'
 import { mergeAndFilterTools } from 'src/agent/tools/toolPool.js'
 

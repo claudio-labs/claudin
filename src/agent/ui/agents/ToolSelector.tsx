@@ -3,7 +3,7 @@ import figures from 'figures';
 import React, { useCallback, useMemo, useState } from 'react';
 import { mcpInfoFromString } from 'src/mcp/mcpStringUtils.js';
 import { isMcpTool } from 'src/mcp/utils.js';
-import type { Tool, Tools } from 'src/Tool.js';
+import type { Tool, Tools } from 'src/tools/Tool.js';
 import { filterToolsForAgent } from 'src/tools/AgentTool/agentToolUtils.js';
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js';
 import { BashTool } from 'src/tools/BashTool/BashTool.js';

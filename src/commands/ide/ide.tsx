@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import * as path from 'path';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { logEvent } from 'src/platform/analytics/index.js';
-import type { CommandResultDisplay, LocalJSXCommandContext } from 'src/commands.js';
+import type { CommandResultDisplay, LocalJSXCommandContext } from 'src/commands/commands.js';
 import { Select } from 'src/terminal/custom-select/index.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import { IdeAutoConnectDialog, IdeDisableAutoConnectDialog, shouldShowAutoConnectDialog, shouldShowDisableAutoConnectDialog } from 'src/platform/ide/IdeAutoConnectDialog.js';

@@ -25,7 +25,7 @@ import {
 } from 'src/platform/analytics/index.js'
 import { ImageSizeError } from 'src/terminal/image/imageValidation.js'
 import { ImageResizeError } from 'src/terminal/image/imageResizer.js'
-import { findToolByName, type ToolUseContext } from 'src/Tool.js'
+import { findToolByName, type ToolUseContext } from 'src/tools/Tool.js'
 import { asSystemPrompt, type SystemPrompt } from 'src/agent/systemPromptType.js'
 import type {
   AssistantMessage,
@@ -86,7 +86,7 @@ import {
   getCommandsByMaxPriority,
   isSlashCommand,
 } from 'src/agent/messageQueueManager.js'
-import { notifyCommandLifecycle } from 'src/utils/commandLifecycle.js'
+import { notifyCommandLifecycle } from 'src/commands/commandLifecycle.js'
 import { headlessProfilerCheckpoint } from 'src/platform/headlessProfiler.js'
 import {
   getDefaultMainLoopModelSetting,

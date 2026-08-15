@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle';
 import * as React from 'react';
-import type { LocalJSXCommandContext } from 'src/commands.js';
+import type { LocalJSXCommandContext } from 'src/commands/commands.js';
 import { Box, Text, useInput } from 'src/terminal/ink.js';
 import { ContextVisualization } from 'src/agent/ui/ContextVisualization.js';
 import { DOWN_ARROW, UP_ARROW } from 'src/constants/figures.js';

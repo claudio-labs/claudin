@@ -3,10 +3,10 @@ import figures from 'figures';
 import * as React from 'react';
 import { useCallback, useEffect } from 'react';
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
-import type { CommandResultDisplay } from 'src/commands.js';
+import type { CommandResultDisplay } from 'src/commands/commands.js';
 import { Select } from 'src/terminal/custom-select/select.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import type { ToolPermissionContext } from 'src/Tool.js';
+import type { ToolPermissionContext } from 'src/tools/Tool.js';
 import { useTabHeaderFocus } from 'src/terminal/design-system/Tabs.js';
 type Props = {
   onExit: (result?: string, options?: {

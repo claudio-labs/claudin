@@ -14,7 +14,7 @@ import {
 import type { z } from 'zod/v4'
 import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
 import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import type { AnyObject, Tool, ToolPermissionContext } from 'src/Tool.js'
+import type { AnyObject, Tool, ToolPermissionContext } from 'src/tools/Tool.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'

@@ -44,7 +44,7 @@ import type {
   PromptResponse,
 } from 'src/types/hooks.js'
 import type { Message } from 'src/types/message.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { AgentId } from 'src/types/ids.js'
 import { getAgentTranscriptPath } from 'src/sessions/sessionStorage.js'
 import {

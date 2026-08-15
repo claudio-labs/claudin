@@ -27,7 +27,7 @@ describe('eraseCheckoutPath', () => {
     // Measured at 38 diagnostics in this repo: each was reported as newly
     // introduced and the one it replaced as fixed, from an identical tree.
     const line = (root: string) =>
-      `src/commands.ts(4,15): error TS7016: Could not find a declaration file for module './x.js'. '${root}/src/x.js' implicitly has an 'any' type.`
+      `src/commands/commands.ts(4,15): error TS7016: Could not find a declaration file for module './x.js'. '${root}/src/x.js' implicitly has an 'any' type.`
     expect(eraseCheckoutPath(line(CHECKOUT), CHECKOUT, PROJECT)).toBe(line(PROJECT))
   })
 
@@ -41,7 +41,7 @@ describe('eraseCheckoutPath', () => {
   test('makes the two runs agree on the fingerprint, which is the point', () => {
     const message = (root: string) => `'${root}/src/x.js' implicitly has an 'any' type.`
     const rebuilt = eraseCheckoutPath(message(CHECKOUT), CHECKOUT, PROJECT)
-    const shape = { file: 'src/commands.ts', line: 4, column: 15, severity: 'error' } as const
+    const shape = { file: 'src/commands/commands.ts', line: 4, column: 15, severity: 'error' } as const
     expect(fingerprintDiagnostic({ ...shape, code: 'TS7016', message: rebuilt }, PROJECT)).toBe(
       fingerprintDiagnostic({ ...shape, code: 'TS7016', message: message(PROJECT) }, PROJECT),
     )

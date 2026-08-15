@@ -11,7 +11,7 @@ import {
   type Tool,
   type ToolDef,
   type Tools,
-} from 'src/Tool.js'
+} from 'src/tools/Tool.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { escapeRegExp } from 'src/shared/text/stringUtils.js'

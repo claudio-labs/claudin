@@ -1,7 +1,7 @@
 import { afterAll, afterEach, describe, expect, it, mock } from 'bun:test'
 
 import { invalidateClientCache } from 'src/providers/transport/clientCache.js'
-import type { Tool } from 'src/Tool.js'
+import type { Tool } from 'src/tools/Tool.js'
 
 const realClient = { ...(await import('src/providers/transport/client.js')) }
 const realModel = { ...(await import('src/utils/model/model.js')) }

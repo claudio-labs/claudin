@@ -3,15 +3,15 @@ import type { ToolResultBlockParam, ToolUseBlockParam } from '@anthropic-ai/sdk/
 import type { StructuredPatchHunk } from 'diff';
 import * as React from 'react';
 import { Suspense, use, useState } from 'react';
-import { FileEditToolUseRejectedMessage } from 'src/components/FileEditToolUseRejectedMessage.js';
+import { FileEditToolUseRejectedMessage } from 'src/tools/FileEditTool/ui/FileEditToolUseRejectedMessage.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { extractTag } from 'src/agent/messages/messages.js';
 import { FallbackToolUseErrorMessage } from 'src/agent/ui/FallbackToolUseErrorMessage.js';
-import { FileEditToolUpdatedMessage } from 'src/components/FileEditToolUpdatedMessage.js';
+import { FileEditToolUpdatedMessage } from 'src/tools/FileEditTool/ui/FileEditToolUpdatedMessage.js';
 import { FilePathLink } from 'src/terminal/FilePathLink.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { ToolUseLoader } from 'src/agent/ui/ToolUseLoader.js';
-import type { Tools } from 'src/Tool.js';
+import type { Tools } from 'src/tools/Tool.js';
 import type { Message, ProgressMessage } from 'src/types/message.js';
 import { adjustHunkLineNumbers, CONTEXT_LINES } from 'src/vcs/git/diff.js';
 import { FILE_NOT_FOUND_CWD_NOTE, getDisplayPath } from 'src/shared/fs/file.js';

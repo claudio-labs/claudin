@@ -4,7 +4,7 @@ import {
   getBridgeBaseUrlOverride,
   getBridgeTokenOverride,
 } from 'src/platform/bridge/bridgeConfig.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,

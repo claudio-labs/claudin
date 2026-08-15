@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
-import { builtInCommandNames, type Command, type CommandResultDisplay } from 'src/commands.js';
+import { builtInCommandNames, type Command, type CommandResultDisplay } from 'src/commands/commands.js';
 import { useIsInsideModal } from 'src/terminal/contexts/modalContext.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { Box, Link, Text } from 'src/terminal/ink.js';

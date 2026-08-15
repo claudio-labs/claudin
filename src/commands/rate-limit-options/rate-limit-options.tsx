@@ -1,12 +1,12 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useMemo, useState } from 'react';
-import type { CommandResultDisplay, LocalJSXCommandContext } from 'src/commands.js';
+import type { CommandResultDisplay, LocalJSXCommandContext } from 'src/commands/commands.js';
 import { type OptionWithDescription, Select } from 'src/terminal/custom-select/select.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { logEvent } from 'src/platform/analytics/index.js';
 import { useClaudeAiLimits } from 'src/providers/claudeAiLimitsHook.js';
-import type { ToolUseContext } from 'src/Tool.js';
+import type { ToolUseContext } from 'src/tools/Tool.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import { getOauthAccountInfo, getRateLimitTier, getSubscriptionType } from 'src/providers/auth/auth.js';
 import { hasClaudeAiBillingAccess } from 'src/providers/usage/billing.js';

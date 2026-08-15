@@ -1,11 +1,11 @@
 ---
 name: Bash filter samples live in ONE dir since 2026-08-06
-description: The docs/discovery sample copy was merged into src/outputFilter/Bash/__fixtures__/samples/; don't recreate the mirror, and mind the byte-length constraint
+description: The docs/discovery sample copy was merged into src/tools/shared/outputFilter/Bash/__fixtures__/samples/; don't recreate the mirror, and mind the byte-length constraint
 type: project
 ---
 
 The bash output filter's sample corpus is **one directory**:
-`src/outputFilter/Bash/__fixtures__/samples/` (142 `.txt` + a README).
+`src/tools/shared/outputFilter/Bash/__fixtures__/samples/` (142 `.txt` + a README).
 
 Until 2026-08-06 (commit e3b730b8) it existed twice, and the split was
 load-bearing in both directions — which is why neither copy could just be
@@ -22,7 +22,7 @@ differed were not rival measurements: all 21 were `claudio` → `claudin` drift,
 and `find.txt`/`npm-ls.txt` still described the gRPC service deleted in #22.
 
 **Do not recreate the mirror.** `docs/.../validation/validate.ts` now reads the
-src corpus via `../../../../src/outputFilter/Bash/__fixtures__/samples`.
+src corpus via `../../../../src/tools/shared/outputFilter/Bash/__fixtures__/samples`.
 
 Two traps when touching samples:
 

@@ -5,7 +5,7 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/platform/analytics/index.js'
-import type { ToolPermissionContext, ToolUseContext } from 'src/Tool.js'
+import type { ToolPermissionContext, ToolUseContext } from 'src/tools/Tool.js'
 import type { PendingClassifierCheck } from 'src/types/permissions.js'
 import { count } from 'src/shared/data/array.js'
 import {

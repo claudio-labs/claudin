@@ -10,14 +10,14 @@ implementação, sem modificar código.**
 
 `src/tools/ReportToolIssueTool/ReportToolIssueTool.ts` (mesma convenção
 que `BashTool`, `GrepTool`, etc.: um diretório por tool, factory que
-usa `buildTool(def)` de `src/Tool.ts:810`).
+usa `buildTool(def)` de `src/tools/Tool.ts:810`).
 
 Tipo do retorno é `BuiltTool<D>` (`Tool.ts:762-768`). O contrato exige
 `name`, `inputSchema`, `prompt`, `execute(input, ctx)` retornando
 `ToolResult<T>` (`Tool.ts:348-363`). Cabe sem qualquer adaptação — omp
 já é AsyncIterable-style também.
 
-### Ponto de injeção: `src/tools.ts`
+### Ponto de injeção: `src/tools/tools.ts`
 
 `getAllBaseTools()` (não mostrado nas linhas lidas, mas o assembly
 canônico) é a lista de built-ins. O patch seria importar
@@ -30,7 +30,7 @@ canônico) é a lista de built-ins. O patch seria importar
   promover para `true`).
 
 A injeção no sub-agente acontece sozinha via `assembleToolPool()`
-(`src/tools.ts:365-387`) — Explore/Plan workers chamam
+(`src/tools/tools.ts:365-387`) — Explore/Plan workers chamam
 `AgentTool.tsx:527` que reusa `assembleToolPool`. Não precisa ponto de
 injeção extra: built-in significa "todos os agentes herdam".
 

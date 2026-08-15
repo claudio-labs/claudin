@@ -1,4 +1,4 @@
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { PermissionResult } from 'src/types/permissions.js'
 import { bashToolHasPermission } from 'src/tools/BashTool/bashPermissions.js'
 

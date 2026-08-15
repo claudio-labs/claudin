@@ -7,7 +7,7 @@ import type {
   McpServerConfigForProcessTransport,
 } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type { SDKControlMcpSetServersResponse } from 'src/platform/entrypoints/sdk/controlTypes.js'
-import type { Tools } from 'src/Tool.js'
+import type { Tools } from 'src/tools/Tool.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import {
   areMcpConfigsEqual,

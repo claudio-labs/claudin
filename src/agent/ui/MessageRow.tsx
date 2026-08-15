@@ -1,9 +1,9 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import type { Command } from 'src/commands.js';
+import type { Command } from 'src/commands/commands.js';
 import { Box } from 'src/terminal/ink.js';
 import type { Screen } from 'src/agent/repl/REPL.js';
-import type { Tools } from 'src/Tool.js';
+import type { Tools } from 'src/tools/Tool.js';
 import type { BetaContentBlock } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs';
 import type { NormalizedAssistantMessage, ProgressMessage, RenderableMessage } from 'src/types/message.js';
 import { getDisplayMessageFromCollapsed, getToolSearchOrReadInfo, getToolUseIdsFromCollapsedGroup, hasAnyToolInProgress } from 'src/agent/tools/collapseReadSearch.js';

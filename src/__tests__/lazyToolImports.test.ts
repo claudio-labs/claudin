@@ -6,7 +6,7 @@
  * set matches the recorded baseline.
  *
  * Why this exists:
- *   Lazy-gating a tool inside `src/tools.ts` only saves heap if NO other
+ *   Lazy-gating a tool inside `src/tools/tools.ts` only saves heap if NO other
  *   eagerly-loaded module also value-imports the tool. The previous review
  *   pass found that ~half the candidates are pulled into the boot path by
  *   `PermissionRequest.tsx` / `messages.ts` / `main.tsx` / `REPL.tsx` etc.,
@@ -36,7 +36,7 @@ type Candidate = {
    *  own subdirectory and any *.test.ts(x) / __tests__ paths. */
   current: string[]
   /** Post-refactor target: the only file that should value-import this
-   *  module. For most candidates this is `src/tools.ts` (the registry). */
+   *  module. For most candidates this is `src/tools/tools.ts` (the registry). */
   goal: string[]
 }
 
@@ -78,35 +78,35 @@ const CANDIDATES: Candidate[] = [
   {
     modulePath: 'src/tools/TaskOutputTool/TaskOutputTool',
     current: ['src/agent/ui/agents/ToolSelector.tsx'],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   {
     modulePath: 'src/tools/TaskStopTool/TaskStopTool',
     current: ['src/agent/ui/agents/ToolSelector.tsx'],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   {
     modulePath: 'src/tools/WebSearchTool/WebSearchTool',
     current: ['src/agent/ui/agents/ToolSelector.tsx'],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   // ToolSearch is pulled by compact.ts as a value import — needs audit.
   {
     modulePath: 'src/tools/ToolSearchTool/ToolSearchTool',
     current: ['src/agent/compact/compact.ts'],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   {
     modulePath: 'src/tools/BriefTool/BriefTool',
     current: ['src/commands/brief.ts'],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   // AgentTool: only one cross-importer beyond tools.ts — REPLTool's
   // primitiveTools (REPL VM exposes Agent for inline calls).
   {
     modulePath: 'src/tools/AgentTool/AgentTool',
     current: ['src/tools/REPLTool/primitiveTools.ts'],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   // Permission-request candidates: PermissionRequest.tsx uses identity-
   // checks (`case WebFetchTool:`). Pre-req PR: convert to name-based
@@ -120,7 +120,7 @@ const CANDIDATES: Candidate[] = [
       'src/permissions/ui/PermissionRequest.tsx',
       'src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx',
       'src/permissions/ui/rules/PermissionRuleInput.tsx',    ],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   {
     modulePath: 'src/tools/NotebookEditTool/NotebookEditTool',
@@ -129,26 +129,26 @@ const CANDIDATES: Candidate[] = [
       'src/permissions/ui/NotebookEditPermissionRequest/NotebookEditPermissionRequest.tsx',
       'src/permissions/ui/PermissionRequest.tsx',      'src/tools/REPLTool/primitiveTools.ts',
     ],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   {
     modulePath: 'src/tools/SkillTool/SkillTool',
     current: [
       'src/permissions/ui/PermissionRequest.tsx',
       'src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.tsx',    ],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   {
     modulePath: 'src/tools/AskUserQuestionTool/AskUserQuestionTool',
     current: [
       'src/permissions/ui/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.tsx',
       'src/permissions/ui/PermissionRequest.tsx',    ],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   {
     modulePath: 'src/tools/EnterPlanModeTool/EnterPlanModeTool',
     current: ['src/permissions/ui/PermissionRequest.tsx'],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   // ExitPlanModeV2Tool — `ToolSelector.tsx` and `messages/*.ts` use
   // `${X.name}` only; both could swap to EXIT_PLAN_MODE_V2_TOOL_NAME.
@@ -160,7 +160,7 @@ const CANDIDATES: Candidate[] = [
       'src/agent/ui/agents/ToolSelector.tsx',
       'src/permissions/ui/PermissionRequest.tsx',
     ],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   // MCP listing — pulled by mcp/client/fetchCapabilities.ts and ToolSelector.tsx.
   {
@@ -168,14 +168,14 @@ const CANDIDATES: Candidate[] = [
     current: [
       'src/agent/ui/agents/ToolSelector.tsx',
       'src/mcp/client/fetchCapabilities.ts',    ],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
   {
     modulePath: 'src/tools/ReadMcpResourceTool/ReadMcpResourceTool',
     current: [
       'src/agent/ui/agents/ToolSelector.tsx',
       'src/mcp/client/fetchCapabilities.ts',    ],
-    goal: ['src/tools.ts'],
+    goal: ['src/tools/tools.ts'],
   },
 ]
 

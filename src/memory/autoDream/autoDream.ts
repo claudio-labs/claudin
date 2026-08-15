@@ -21,7 +21,7 @@ import {
 } from 'src/agent/messages/messages.js'
 import type { Message } from 'src/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { isAutoMemoryEnabled, getAutoMemPath } from 'src/memory/memdir/paths.js'

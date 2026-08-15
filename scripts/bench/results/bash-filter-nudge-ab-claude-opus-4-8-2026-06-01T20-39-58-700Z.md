@@ -92,7 +92,7 @@ Sim — a compilação terminou limpa, sem erro. Gerou `dist/cli.mjs` (claudio v
 
 ### test-bash-suite
 
-> Rode `bun test src/outputFilter/Bash/` e me diga o veredito: a suite esta saudavel? Quantos testes passaram e algum falhou?
+> Rode `bun test src/tools/shared/outputFilter/Bash/` e me diga o veredito: a suite esta saudavel? Quantos testes passaram e algum falhou?
 
 **Variant A run#1:**
 
@@ -191,7 +191,7 @@ Os temas das mudanças recentes:
 
 ### build-then-test
 
-> Rode `bun run build` e depois `bun test src/outputFilter/Bash/markers.test.ts`. Me diga se os dois passaram sem erro — um sim/nao para cada, e o erro se algo falhou.
+> Rode `bun run build` e depois `bun test src/tools/shared/outputFilter/Bash/markers.test.ts`. Me diga se os dois passaram sem erro — um sim/nao para cada, e o erro se algo falhou.
 
 **Variant A run#1:**
 
@@ -199,7 +199,7 @@ Os temas das mudanças recentes:
 Resultado:
 
 - **`bun run build`** → ✅ **Sim**, passou sem erro (`✓ Built claudio v0.5.2 → dist/cli.mjs`).
-- **`bun test src/outputFilter/Bash/markers.test.ts`** → ✅ **Sim**, passou sem erro (`✓ bun test: all tests passed`).
+- **`bun test src/tools/shared/outputFilter/Bash/markers.test.ts`** → ✅ **Sim**, passou sem erro (`✓ bun test: all tests passed`).
 
 Os dois passaram.
 ```
@@ -210,7 +210,7 @@ Os dois passaram.
 Ambos passaram:
 
 - **`bun run build`** → ✅ sim (exit 0, `Built claudio v0.5.2 → dist/cli.mjs`)
-- **`bun test src/outputFilter/Bash/markers.test.ts`** → ✅ sim (todos os testes passaram)
+- **`bun test src/tools/shared/outputFilter/Bash/markers.test.ts`** → ✅ sim (todos os testes passaram)
 
 Nenhum erro em nenhum dos dois.
 ```

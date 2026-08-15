@@ -4,7 +4,7 @@ import type { CommandResultDisplay, LocalJSXCommandContext } from 'src/types/com
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js'
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { logError } from 'src/shared/log.js'
 import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js'
 import { runWorkflow } from 'src/tools/AgentWorkflow/engine.js'

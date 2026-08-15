@@ -1,4 +1,4 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import { env } from 'src/shared/env.js'
 
 // Terminals that natively support CSI u / Kitty keyboard protocol

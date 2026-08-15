@@ -1,4 +1,4 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import { getSubscriptionType } from 'src/providers/auth/auth.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 

@@ -1,10 +1,10 @@
 import { z } from 'zod/v4'
-import type { Tool } from 'src/Tool.js'
+import type { Tool } from 'src/tools/Tool.js'
 import {
   SYNTHETIC_OUTPUT_TOOL_NAME,
   SyntheticOutputTool,
 } from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js'
-import { substituteArguments } from 'src/utils/argumentSubstitution.js'
+import { substituteArguments } from 'src/commands/argumentSubstitution.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import type { SetAppState } from 'src/agent/messageQueueManager.js'
 import { hasSuccessfulToolCall } from 'src/agent/messages/messages.js'

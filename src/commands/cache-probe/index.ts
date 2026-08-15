@@ -1,4 +1,4 @@
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 
 const cacheProbe: Command = {

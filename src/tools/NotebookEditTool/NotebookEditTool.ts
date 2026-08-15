@@ -5,7 +5,7 @@ import {
   fileHistoryTrackEdit,
 } from 'src/shared/fs/fileHistory.js'
 import { z } from 'zod/v4'
-import { buildTool, type ToolDef, type ToolUseContext } from 'src/Tool.js'
+import { buildTool, type ToolDef, type ToolUseContext } from 'src/tools/Tool.js'
 import type { NotebookCell, NotebookContent } from 'src/types/notebook.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isENOENT } from 'src/shared/errors.js'

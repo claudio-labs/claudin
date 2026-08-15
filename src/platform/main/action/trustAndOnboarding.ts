@@ -35,7 +35,7 @@ import type { AgentDefinitionsBundle } from 'src/platform/main/action/setupAgent
 export type RunTrustAndOnboardingInput = {
   permissionMode: InternalPermissionMode;
   allowDangerouslySkipPermissions: boolean;
-  commands: Awaited<ReturnType<typeof import('src/commands.js').getCommands>>;
+  commands: Awaited<ReturnType<typeof import('src/commands/commands.js').getCommands>>;
   devChannels: ChannelEntry[] | undefined;
   remoteControlOption: boolean | string | undefined;
   mainThreadAgentDefinition: AgentDefinitionsBundle['activeAgents'][number] | undefined;

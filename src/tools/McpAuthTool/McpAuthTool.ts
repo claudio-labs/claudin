@@ -14,7 +14,7 @@ import type {
   McpSSEServerConfig,
   ScopedMcpServerConfig,
 } from 'src/mcp/types.js'
-import type { Tool } from 'src/Tool.js'
+import type { Tool } from 'src/tools/Tool.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logMCPDebug, logMCPError } from 'src/shared/log.js'

@@ -2,13 +2,13 @@
 
 > Última atualização: 2026-05-13
 
-Escopo: comparativo focado entre o conjunto declarativo do [rtk](../../../../rtk/) (handlers Rust em `src/cmds/**/*.rs` + specs TOML em `src/filters/*.toml`) e o output-filter do Claudin em [`src/outputFilter/Bash/`](../../../../src/outputFilter/Bash/). Recorte explícito em 6 famílias: system utils, .NET, IaC, JVM/mobile, JS toolchain (não-teste) e linters genéricos. Test runners, git/gh, containers, rede e linters já cobertos (`ruff`, `rubocop`) ficam fora deste documento — ver [`rtk-comparison.md`](./rtk-comparison.md) para o panorama geral.
+Escopo: comparativo focado entre o conjunto declarativo do [rtk](../../../../rtk/) (handlers Rust em `src/cmds/**/*.rs` + specs TOML em `src/filters/*.toml`) e o output-filter do Claudin em [`src/tools/shared/outputFilter/Bash/`](../../../../src/tools/shared/outputFilter/Bash/). Recorte explícito em 6 famílias: system utils, .NET, IaC, JVM/mobile, JS toolchain (não-teste) e linters genéricos. Test runners, git/gh, containers, rede e linters já cobertos (`ruff`, `rubocop`) ficam fora deste documento — ver [`rtk-comparison.md`](./rtk-comparison.md) para o panorama geral.
 
 Objetivo: identificar gaps concretos onde o Claudin ainda paga tokens por output verboso e priorizar 8–12 alvos de maior ROI. Não há código novo aqui — apenas inventário, links e impacto qualitativo.
 
 Referências cruzadas:
-- Registry atual do Claudin: [`src/outputFilter/Bash/filters/index.ts`](../../../../src/outputFilter/Bash/filters/index.ts)
-- Exemplos de spec idiomática: [`filters/linters.ts`](../../../../src/outputFilter/Bash/filters/linters.ts), [`filters/network.ts`](../../../../src/outputFilter/Bash/filters/network.ts)
+- Registry atual do Claudin: [`src/tools/shared/outputFilter/Bash/filters/index.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/index.ts)
+- Exemplos de spec idiomática: [`filters/linters.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/linters.ts), [`filters/network.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/network.ts)
 - Regras de implementação: [`.claudin/rules/typescript-patterns.md`](../../../../.claudin/rules/typescript-patterns.md)
 
 ---
@@ -29,7 +29,7 @@ Specs TOML declarativas (pipeline-only, modelo idêntico ao Claudin):
 
 ### Cobertura Claudin
 
-Em [`filters/system.ts`](../../../../src/outputFilter/Bash/filters/system.ts): `psAux`, `top`, `journalctl`. Em [`filters/ls.ts`](../../../../src/outputFilter/Bash/filters/ls.ts): `lsLa`. Em [`filters/grep-rg.ts`](../../../../src/outputFilter/Bash/filters/grep-rg.ts): `grepRg`. Em [`filters/network.ts`](../../../../src/outputFilter/Bash/filters/network.ts): `curlV`, `dig`. Nenhum filter para `find`, `tree`, `wc`, `jq`, `df`, `du`, `stat`, `ping`, `rsync`, `ssh`, `dmesg`, `env`, `cat`, `head`, `tail`.
+Em [`filters/system.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/system.ts): `psAux`, `top`, `journalctl`. Em [`filters/ls.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/ls.ts): `lsLa`. Em [`filters/grep-rg.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/grep-rg.ts): `grepRg`. Em [`filters/network.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/network.ts): `curlV`, `dig`. Nenhum filter para `find`, `tree`, `wc`, `jq`, `df`, `du`, `stat`, `ping`, `rsync`, `ssh`, `dmesg`, `env`, `cat`, `head`, `tail`.
 
 Docs já redigidos: [`commands/find.md`](./commands/find.md), [`commands/tree.md`](./commands/tree.md), [`commands/cat.md`](./commands/cat.md).
 
@@ -74,7 +74,7 @@ Spec TOML adicional (modo declarativo simples):
 
 ### Cobertura Claudin
 
-Zero. Nenhum filtro em [`filters/index.ts`](../../../../src/outputFilter/Bash/filters/index.ts) cobre `dotnet`. Nenhum doc em [`commands/`](./commands/).
+Zero. Nenhum filtro em [`filters/index.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/index.ts) cobre `dotnet`. Nenhum doc em [`commands/`](./commands/).
 
 ### Matriz
 
@@ -89,7 +89,7 @@ Zero. Nenhum filtro em [`filters/index.ts`](../../../../src/outputFilter/Bash/fi
 
 ### Impacto qualitativo
 
-`dotnet build` no caso clean é caso clássico de short-circuit declarativo (mesma estrutura do `cargo build` que o Claudin já tem em [`filters/cargo.ts`](../../../../src/outputFilter/Bash/filters/cargo.ts)) — viável em pipeline puro. `dotnet test` e `dotnet format` ganham muito com parser estruturado, mas isso quebra a regra "TS puro / declarativo" da v1 do Claudin — análogo à decisão de não fazer command-rewrite (ver [`rtk-comparison.md`](./rtk-comparison.md) §Por que rtk reporta % maior). Recomendação: implementar apenas o `dotnet build` declarativo no curto prazo; `test/format` ficam para v2 se a base de usuários .NET justificar.
+`dotnet build` no caso clean é caso clássico de short-circuit declarativo (mesma estrutura do `cargo build` que o Claudin já tem em [`filters/cargo.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/cargo.ts)) — viável em pipeline puro. `dotnet test` e `dotnet format` ganham muito com parser estruturado, mas isso quebra a regra "TS puro / declarativo" da v1 do Claudin — análogo à decisão de não fazer command-rewrite (ver [`rtk-comparison.md`](./rtk-comparison.md) §Por que rtk reporta % maior). Recomendação: implementar apenas o `dotnet build` declarativo no curto prazo; `test/format` ficam para v2 se a base de usuários .NET justificar.
 
 ---
 
@@ -176,7 +176,7 @@ Mix de handler + spec:
 
 ### Cobertura Claudin
 
-[`filters/tsc.ts`](../../../../src/outputFilter/Bash/filters/tsc.ts) cobre TypeScript. ESLint é parcialmente coberto via doc [`commands/eslint.md`](./commands/eslint.md) (estimate ~40%). Sem filtros para `npm`/`pnpm`/`yarn`/`prettier`/`biome`/`oxlint`/`prisma`/`next`/`turbo`/`nx`. Docs `npm-install.md`/`npm-test.md` existem.
+[`filters/tsc.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/tsc.ts) cobre TypeScript. ESLint é parcialmente coberto via doc [`commands/eslint.md`](./commands/eslint.md) (estimate ~40%). Sem filtros para `npm`/`pnpm`/`yarn`/`prettier`/`biome`/`oxlint`/`prisma`/`next`/`turbo`/`nx`. Docs `npm-install.md`/`npm-test.md` existem.
 
 ### Matriz
 
@@ -214,7 +214,7 @@ Specs TOML puras (modelo idêntico ao Claudin):
 
 ### Cobertura Claudin
 
-Em [`filters/linters.ts`](../../../../src/outputFilter/Bash/filters/linters.ts): `rubocop`, `ruffCheck`. Doc separado para [`commands/mypy.md`](./commands/mypy.md) (Python type-checker do mesmo nicho que `basedpyright`). Sem cobertura para `shellcheck`/`hadolint`/`yamllint`/`markdownlint`/`basedpyright`.
+Em [`filters/linters.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/linters.ts): `rubocop`, `ruffCheck`. Doc separado para [`commands/mypy.md`](./commands/mypy.md) (Python type-checker do mesmo nicho que `basedpyright`). Sem cobertura para `shellcheck`/`hadolint`/`yamllint`/`markdownlint`/`basedpyright`.
 
 ### Matriz
 
@@ -228,7 +228,7 @@ Em [`filters/linters.ts`](../../../../src/outputFilter/Bash/filters/linters.ts):
 
 ### Impacto qualitativo
 
-ROI individual baixo-a-médio — esses linters já emitem output relativamente denso. O ganho real é uniformidade: usuário roda `basedpyright` em CI grande e paga 5–10 linhas de banner por execução; `shellcheck` em script-heavy repos repete blank lines entre cada diagnostic. Implementação é a mais barata do documento — cinco filtros idênticos em estrutura ao [`ruffCheck`](../../../../src/outputFilter/Bash/filters/linters.ts) atual.
+ROI individual baixo-a-médio — esses linters já emitem output relativamente denso. O ganho real é uniformidade: usuário roda `basedpyright` em CI grande e paga 5–10 linhas de banner por execução; `shellcheck` em script-heavy repos repete blank lines entre cada diagnostic. Implementação é a mais barata do documento — cinco filtros idênticos em estrutura ao [`ruffCheck`](../../../../src/tools/shared/outputFilter/Bash/filters/linters.ts) atual.
 
 ---
 
@@ -256,12 +256,12 @@ Ordem por ROI estimado × custo de implementação. Todos viáveis como spec dec
 2. **`mvn` (compile/package/install)** — ALTO. Maven é caso clássico de output verboso; rtk estima 80–90% via [`mvn-build.toml`](../../../../rtk/src/filters/mvn-build.toml). Doc Claudin: [`commands/mvn.md`](./commands/mvn.md).
 3. **`ansible-playbook`** — ALTO. N×M linhas `ok: [host]` em playbooks reais; spec curta em [`ansible-playbook.toml`](../../../../rtk/src/filters/ansible-playbook.toml). Sem doc no Claudin.
 4. **`gradle` / `gradlew`** — ALTO. `> Task :…UP-TO-DATE` repete por dezenas de tasks em monorepos; [`gradle.toml`](../../../../rtk/src/filters/gradle.toml) cobre todos os padrões. Doc Claudin: [`commands/gradle.md`](./commands/gradle.md).
-5. **`biome` + `oxlint`** — MÉDIO (par). Wins independentes, baratos, estrutura idêntica a [`ruffCheck`](../../../../src/outputFilter/Bash/filters/linters.ts). Refs: [`biome.toml`](../../../../rtk/src/filters/biome.toml), [`oxlint.toml`](../../../../rtk/src/filters/oxlint.toml). Sem doc no Claudin.
+5. **`biome` + `oxlint`** — MÉDIO (par). Wins independentes, baratos, estrutura idêntica a [`ruffCheck`](../../../../src/tools/shared/outputFilter/Bash/filters/linters.ts). Refs: [`biome.toml`](../../../../rtk/src/filters/biome.toml), [`oxlint.toml`](../../../../rtk/src/filters/oxlint.toml). Sem doc no Claudin.
 6. **`ping`** — MÉDIO. Per-packet flood é alto-volume em troubleshoot; `tail_lines=4` reduz drasticamente. Ref: [`ping.toml`](../../../../rtk/src/filters/ping.toml). Sem doc.
 7. **`rsync`** — MÉDIO. `ok (synced)` short-circuit + per-file strip; padrão pronto em [`rsync.toml`](../../../../rtk/src/filters/rsync.toml). Sem doc.
 8. **`turbo` + `nx`** — MÉDIO (par). `cache hit/miss, replaying logs <hash>` por package vira pure ruído em monorepos; specs prontas em [`turbo.toml`](../../../../rtk/src/filters/turbo.toml), [`nx.toml`](../../../../rtk/src/filters/nx.toml). Sem doc.
 9. **`dotnet build`** — MÉDIO. Versão declarativa (sem binlog) já tem 80%+ do valor; ref: [`dotnet-build.toml`](../../../../rtk/src/filters/dotnet-build.toml). Sem doc no Claudin. Versão com parser binlog fica para v2.
-10. **`shellcheck` + `hadolint` + `yamllint` + `markdownlint` + `basedpyright`** — MÉDIO (pacote único). Cinco filtros declarativos quase idênticos, implementáveis em uma única PR seguindo o template de [`filters/linters.ts`](../../../../src/outputFilter/Bash/filters/linters.ts). Refs nos `.toml` correspondentes.
+10. **`shellcheck` + `hadolint` + `yamllint` + `markdownlint` + `basedpyright`** — MÉDIO (pacote único). Cinco filtros declarativos quase idênticos, implementáveis em uma única PR seguindo o template de [`filters/linters.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/linters.ts). Refs nos `.toml` correspondentes.
 11. **`spring-boot` (`mvn spring-boot:run` / `java -jar …jar` / `bootRun`)** — MÉDIO. `keep_lines_matching` reduz boot log a 5–10 linhas relevantes; ref: [`spring-boot.toml`](../../../../rtk/src/filters/spring-boot.toml). Sem doc.
 12. **`prisma generate` / `migrate dev`** — MÉDIO-BAIXO. ASCII art + decoração; alvo bonus se o usuário-base usa Prisma. Ref: [`prisma_cmd.rs`](../../../../rtk/src/cmds/js/prisma_cmd.rs) (handler — em TS daria spec declarativa simples). Sem doc.
 
@@ -273,14 +273,14 @@ Adiar para v2 ou descartar: `next build` (precisa de extração estruturada de b
 
 Todos os filtros priorizados acima cabem no mesmo molde declarativo já validado no Claudin. Como template, ver:
 
-- [`src/outputFilter/Bash/filters/linters.ts`](../../../../src/outputFilter/Bash/filters/linters.ts) — `rubocop`/`ruffCheck` exemplificam: regex `MATCH` ao topo, `stripLinesMatching` lista, `matchOutput` com `unless` para não engolir erros, `matchCommandReject` para passthrough quando o usuário pediu output estruturado.
-- [`src/outputFilter/Bash/filters/network.ts`](../../../../src/outputFilter/Bash/filters/network.ts) — `curlV`/`dig` exemplificam: regex modular, `matchCommandReject` para flags incompatíveis, `maxLines` como teto duro.
+- [`src/tools/shared/outputFilter/Bash/filters/linters.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/linters.ts) — `rubocop`/`ruffCheck` exemplificam: regex `MATCH` ao topo, `stripLinesMatching` lista, `matchOutput` com `unless` para não engolir erros, `matchCommandReject` para passthrough quando o usuário pediu output estruturado.
+- [`src/tools/shared/outputFilter/Bash/filters/network.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/network.ts) — `curlV`/`dig` exemplificam: regex modular, `matchCommandReject` para flags incompatíveis, `maxLines` como teto duro.
 
 Regras obrigatórias (de [`.claudin/rules/typescript-patterns.md`](../../../../.claudin/rules/typescript-patterns.md)):
 
 - Regex sempre em nível de módulo (`const FOO_RE = /…/`), nunca dentro de função.
-- Sem `any`; usar `FilterSpec` tipado de [`../types.js`](../../../../src/outputFilter/Bash/types.ts).
+- Sem `any`; usar `FilterSpec` tipado de [`../types.js`](../../../../src/tools/shared/outputFilter/Bash/types.ts).
 - Fallback pattern obrigatório no pipeline: falha no filter retorna raw output, nunca bloqueia o usuário.
 - Toda spec nova exige spec test colocada (Bun runner, snapshot ou expect direto). Modelo: snapshots ao redor de cada `filters/*.ts` no diretório.
-- Registrar em [`filters/index.ts`](../../../../src/outputFilter/Bash/filters/index.ts) respeitando ordem (mais específico antes do mais genérico onde houver risco de overlap de `matchCommand`).
+- Registrar em [`filters/index.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/index.ts) respeitando ordem (mais específico antes do mais genérico onde houver risco de overlap de `matchCommand`).
 - `matchCommandReject` é obrigatório para qualquer filter que possa colidir com flags machine-readable (`--json`, `--output-format=json`, `--quiet`, `--silent`).

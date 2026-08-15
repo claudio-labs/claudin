@@ -82,7 +82,7 @@ describe('parseMsvcStyle — tsc compact output', () => {
     const fixture = readFileSync(
       join(
         import.meta.dir,
-        '../../../outputFilter/Bash/__fixtures__/samples/tsc-errors.txt',
+        '../outputFilter/Bash/__fixtures__/samples/tsc-errors.txt',
       ),
       'utf8',
     )

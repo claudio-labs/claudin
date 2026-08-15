@@ -172,7 +172,7 @@ export async function runPostHeadlessGuards(
   }
   if (!isNonInteractiveSession) {
     // Pre-fetch example commands (runs git log, no API call)
-    const { refreshExampleCommands } = await import('src/utils/exampleCommands.js');
+    const { refreshExampleCommands } = await import('src/commands/exampleCommands.js');
     void refreshExampleCommands();
   }
 

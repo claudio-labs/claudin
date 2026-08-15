@@ -1,4 +1,4 @@
-import type { Tools } from 'src/Tool.js'
+import type { Tools } from 'src/tools/Tool.js'
 import { resolveAgentTools } from 'src/tools/AgentTool/agentToolUtils.js'
 import type {
   AgentDefinition,

@@ -9,7 +9,7 @@ import { getDefaultMainLoopModel } from 'src/utils/model/model.js';
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js';
 import type { SettingSource } from 'src/platform/settings/constants.js';
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
-import type { CommandResultDisplay } from 'src/commands.js';
+import type { CommandResultDisplay } from 'src/commands/commands.js';
 import { Pane } from 'src/terminal/design-system/Pane.js';
 import { PressEnterToContinue } from 'src/terminal/PressEnterToContinue.js';
 import { SandboxDoctorSection } from 'src/permissions/ui/sandbox/SandboxDoctorSection.js';

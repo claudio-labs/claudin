@@ -71,7 +71,7 @@ Critério de ship: nos PRs grandes, novo `/review` precisa achar ≥1 issue extr
 - **`gh pr diff` parser.** Parser de hunks robusto não é trivial; bordas: renames, binary, diff truncado. Mais código para manter.
 
 **e) Failure modes.**
-- PR que toca tipos exportados (`src/Tool.ts`): `findReferences` numa interface central retorna centenas. Tabela injetada estoura janela.
+- PR que toca tipos exportados (`src/tools/Tool.ts`): `findReferences` numa interface central retorna centenas. Tabela injetada estoura janela.
 - PR só de docs/markdown: zero símbolos, risk score = 0 em tudo, ferramenta degenera para o caminho velho.
 - LSP server crasha no meio do score → metade dos símbolos sem callers → score enviesado pra baixo → "GO" indevido.
 - **Concorrência LSP**: hoje cada `LSPTool` call é serial. Disparar 30 em sequência num `/review` é lento (talvez 30-60s de overhead só de orquestração). Paralelizar exige cuidado com o protocolo LSP (1 server, requests concorrentes).

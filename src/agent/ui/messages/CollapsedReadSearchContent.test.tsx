@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import React from 'react'
 import stripAnsi from 'strip-ansi'
 import { AppStateProvider } from 'src/terminal/state/AppState.js'
-import type { Tools } from 'src/Tool.js'
+import type { Tools } from 'src/tools/Tool.js'
 import type {
   CollapsedReadSearchGroup,
   WriteFileStat,

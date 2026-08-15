@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { createContext, type ReactNode, useContext, useMemo } from 'react';
-import type { Command } from 'src/commands.js';
-import type { Tool } from 'src/Tool.js';
+import type { Command } from 'src/commands/commands.js';
+import type { Tool } from 'src/tools/Tool.js';
 import type { MCPServerConnection, ScopedMcpServerConfig, ServerResource } from 'src/mcp/types.js';
 import { useManageMCPConnections } from 'src/mcp/useManageMCPConnections.js';
 interface MCPConnectionContextValue {

@@ -9,7 +9,7 @@
 import {
   toolMatchesName,
   type ToolUseContext,
-} from 'src/Tool.js'
+} from 'src/tools/Tool.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import {
@@ -20,7 +20,7 @@ import { shouldIncludeGitInstructions } from 'src/platform/config/gitSettings.js
 import {
   getSkillToolCommands,
   getMcpSkillCommands,
-} from 'src/commands.js'
+} from 'src/commands/commands.js'
 import type { Command } from 'src/types/command.js'
 import uniqBy from 'lodash-es/uniqBy.js'
 import { getProjectRoot } from 'src/platform/bootstrap/state.js'

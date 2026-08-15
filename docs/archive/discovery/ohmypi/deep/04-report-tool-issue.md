@@ -323,7 +323,7 @@ omp:
 - `/home/dev/projects/oh-my-pi/packages/coding-agent/test/tools/report-tool-issue-consent.test.ts`
 
 Claudin (onde encaixar):
-- `/home/dev/projects/claudin/src/Tool.ts` — `buildTool`, `ToolDef`, `ToolUseContext` (símbolos linhas 748-823)
+- `/home/dev/projects/claudin/src/tools/Tool.ts` — `buildTool`, `ToolDef`, `ToolUseContext` (símbolos linhas 748-823)
 - `/home/dev/projects/claudin/src/memory/memdir/paths.ts` — `getAutoMemPath()` para destino do JSONL
 - `/home/dev/projects/claudin/src/memory/memdir/memoryTypes.ts:14-19` — taxonomia de memória (porque NÃO usar `.md`)
 - `/home/dev/projects/claudin/src/memory/memdir/memoryScan.ts` — confirma filtragem por extensão (`.jsonl` não é ingerido como memória)

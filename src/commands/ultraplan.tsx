@@ -1,5 +1,5 @@
 import { REMOTE_CONTROL_DISCONNECTED_MSG } from 'src/platform/bridge/types.js';
-import type { Command } from 'src/commands.js';
+import type { Command } from 'src/commands/commands.js';
 import { DIAMOND_OPEN } from 'src/constants/figures.js';
 import { getRemoteSessionUrl } from 'src/constants/product.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';

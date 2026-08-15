@@ -1,5 +1,5 @@
 import { z } from 'zod/v4'
-import { buildTool, type ToolDef } from 'src/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
 import { getGlobalConfig, isConfigReadingAllowed } from 'src/platform/config/config.js'
 import { getCwd } from 'src/shared/fs/cwd.js'

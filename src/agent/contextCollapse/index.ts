@@ -9,7 +9,7 @@
 // real subsystem ever lands, a mismatch is a compile error rather than a crash.
 import type { QuerySource } from 'src/constants/querySource.js'
 import type { AssistantMessage, Message } from 'src/types/message.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 
 /** Counters behind the "Context strategy: collapse (…)" legend line. */
 export type CollapseHealth = {

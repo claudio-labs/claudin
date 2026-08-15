@@ -11,7 +11,7 @@ import { Box, Text, useInput } from 'src/terminal/ink.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
-import { getEmptyToolPermissionContext } from 'src/Tool.js';
+import { getEmptyToolPermissionContext } from 'src/tools/Tool.js';
 import { AGENT_COLOR_TO_THEME_COLOR } from 'src/tools/AgentTool/agentColorManager.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js';

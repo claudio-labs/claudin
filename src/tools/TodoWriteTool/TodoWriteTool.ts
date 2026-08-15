@@ -1,6 +1,6 @@
 import { z } from 'zod/v4'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import { buildTool, type ToolDef } from 'src/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { isTodoV2Enabled } from 'src/agent/tasks/tasks.js'
 import { TodoListSchema } from 'src/tools/TodoWriteTool/types.js'

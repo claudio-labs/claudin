@@ -34,7 +34,7 @@ import {
   type ToolProgress,
   type ToolProgressData,
   type ToolUseContext,
-} from 'src/Tool.js'
+} from 'src/tools/Tool.js'
 import type { BashToolInput } from 'src/tools/BashTool/BashTool.js'
 import { startSpeculativeClassifierCheck } from 'src/tools/BashTool/bashPermissions.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
@@ -50,7 +50,7 @@ import {
   isDeferredTool,
   TOOL_SEARCH_TOOL_NAME,
 } from 'src/tools/ToolSearchTool/prompt.js'
-import { getAllBaseTools } from 'src/tools.js'
+import { getAllBaseTools } from 'src/tools/tools.js'
 import type { HookProgress } from 'src/types/hooks.js'
 import type {
   AssistantMessage,

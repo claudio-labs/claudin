@@ -7,7 +7,7 @@
  * hash matches what was marked, so the dedup LRU swallows it.
  */
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import type { DiagnosticFile } from 'src/platform/diagnosticTracking.js'
 import {

@@ -4,7 +4,7 @@ import React from 'react';
 import { logEvent } from 'src/platform/analytics/index.js';
 import { gracefulShutdown, gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js';
 import { type ChannelEntry, getAllowedChannels, setAllowedChannels, setHasDevChannels, setSessionTrustAccepted, setStatsStore } from 'src/platform/bootstrap/state.js';
-import type { Command } from 'src/commands.js';
+import type { Command } from 'src/commands/commands.js';
 import { createStatsStore, type StatsStore } from 'src/terminal/contexts/stats.js';
 import { getSystemContext } from 'src/agent/context.js';
 import { initializeTelemetryAfterTrust } from 'src/platform/entrypoints/init.js';

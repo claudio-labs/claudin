@@ -7,7 +7,7 @@
 // guard.
 //
 // The outputFilter internals (pipeline stages, individual filters, markers)
-// are covered by src/outputFilter/Bash/bashFilter.test.ts. This suite tests
+// are covered by src/tools/shared/outputFilter/Bash/bashFilter.test.ts. This suite tests
 // only the BashTool integration boundary.
 //
 // Mocking strategy — follows the project convention (no mock.module()):

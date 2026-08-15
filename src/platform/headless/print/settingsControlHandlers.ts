@@ -24,8 +24,8 @@ import { expandPath } from 'src/shared/fs/path.js'
 import {
   getCommandName,
   formatDescriptionWithSource,
-} from 'src/commands.js'
-import { getCommands } from 'src/commands.js'
+} from 'src/commands/commands.js'
+import { getCommands } from 'src/commands/commands.js'
 import { loadAllPluginsCacheOnly } from 'src/plugins/pluginLoader.js'
 import { refreshActivePlugins } from 'src/plugins/refresh.js'
 import { redownloadUserSettings } from 'src/platform/settingsSync/index.js'

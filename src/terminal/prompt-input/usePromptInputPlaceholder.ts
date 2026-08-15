@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCommandQueue } from 'src/agent/hooks/useCommandQueue.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
-import { getExampleCommandPool } from 'src/utils/exampleCommands.js'
+import { getExampleCommandPool } from 'src/commands/exampleCommands.js'
 import { isQueuedCommandEditable } from 'src/agent/messageQueueManager.js'
 
 // Dead code elimination: conditional import for proactive mode

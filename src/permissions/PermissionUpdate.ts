@@ -1,6 +1,6 @@
 import { posix } from 'path'
 import { clearSystemPromptSections } from 'src/constants/systemPromptSections.js'
-import type { ToolPermissionContext } from 'src/Tool.js'
+import type { ToolPermissionContext } from 'src/tools/Tool.js'
 // Types extracted to src/types/permissions.ts to break import cycles
 import type {
   AdditionalWorkingDirectory,

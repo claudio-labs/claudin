@@ -51,15 +51,15 @@ import {
   roughTokenCountEstimation,
 } from '../src/shared/tokenEstimation.js'
 import { enableConfigs } from '../src/platform/config/config.js'
-import { getEmptyToolPermissionContext } from '../src/Tool.js'
+import { getEmptyToolPermissionContext } from '../src/tools/Tool.js'
 import { toolToAPISchema } from '../src/providers/transport/api.js'
-import { getAllBaseTools } from '../src/tools.js'
+import { getAllBaseTools } from '../src/tools/tools.js'
 import { getBuiltInAgents } from '../src/tools/AgentTool/builtInAgents.js'
 import { resolveAgentTools } from '../src/tools/AgentTool/agentToolUtils.js'
 import { convertTools } from '../src/providers/shims/openaiShim.js'
 import { convertToolsToResponsesTools } from '../src/providers/shims/codexShim.js'
 import { clearToolSchemaCache } from '../src/agent/tools/toolSchemaCache.js'
-import type { Tool } from '../src/Tool.js'
+import type { Tool } from '../src/tools/Tool.js'
 
 type Engine = 'anthropic' | 'openai' | 'codex'
 

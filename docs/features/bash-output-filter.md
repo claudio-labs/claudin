@@ -15,7 +15,7 @@ Measured across a typical 30-minute session (after Phase 12 covering JS/Python/G
 - **~75 000 tokens saved**
 - **~75% reduction in input cost across 60+ commands**
 
-Aggregate measurement across 30 Phase 12 sample fixtures: **75.1%** byte reduction (36 170 B → 8 999 B). Reproducible via `bun test src/outputFilter/Bash/phase12Report.test.ts`.
+Aggregate measurement across 30 Phase 12 sample fixtures: **75.1%** byte reduction (36 170 B → 8 999 B). Reproducible via `bun test src/tools/shared/outputFilter/Bash/phase12Report.test.ts`.
 
 ---
 

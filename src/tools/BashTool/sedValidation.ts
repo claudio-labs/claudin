@@ -1,4 +1,4 @@
-import type { ToolPermissionContext } from 'src/Tool.js'
+import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import { splitCommand_DEPRECATED } from 'src/platform/bash/commands.js'
 import { tryParseShellCommand } from 'src/platform/bash/shellQuote.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'

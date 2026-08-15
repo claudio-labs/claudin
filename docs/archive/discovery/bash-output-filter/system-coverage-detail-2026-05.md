@@ -1,6 +1,6 @@
 # System Utils — Cobertura Detalhada Claudin × RTK (2026-05)
 
-Documento de refinamento para o roadmap de filtros de comandos de sistema. Comparação comando-a-comando entre o que o **Claudin** (`src/outputFilter/Bash/filters/`) já implementa e o que o **RTK** (`rtk/src/cmds/system/` + `rtk/src/filters/*.toml`) cobre. Cada seção tem detalhes suficientes para um implementador pegar e executar sem precisar re-explorar os dois repos.
+Documento de refinamento para o roadmap de filtros de comandos de sistema. Comparação comando-a-comando entre o que o **Claudin** (`src/tools/shared/outputFilter/Bash/filters/`) já implementa e o que o **RTK** (`rtk/src/cmds/system/` + `rtk/src/filters/*.toml`) cobre. Cada seção tem detalhes suficientes para um implementador pegar e executar sem precisar re-explorar os dois repos.
 
 Documentos relacionados:
 - [`system-utils-deep-dive-2026-05.md`](./system-utils-deep-dive-2026-05.md) — análise de cada comando isoladamente com FilterSpec proposta
@@ -10,7 +10,7 @@ Documentos relacionados:
 
 ## 0. Limites estruturais do framework Claudin
 
-Levantamento confirmado pelo agente em `src/outputFilter/Bash/types.ts` (34 LOC) e `pipeline.ts` (587 LOC):
+Levantamento confirmado pelo agente em `src/tools/shared/outputFilter/Bash/types.ts` (34 LOC) e `pipeline.ts` (587 LOC):
 
 **Knobs disponíveis no `FilterSpec`:**
 
@@ -65,7 +65,7 @@ truncateLineAt, headLines, tailLines, maxLines, onEmpty
 
 ## 2. Comandos JÁ cobertos — detalhe e gap residual
 
-### 2.1 `ls -la` — `src/outputFilter/Bash/filters/ls.ts` (37 LOC)
+### 2.1 `ls -la` — `src/tools/shared/outputFilter/Bash/filters/ls.ts` (37 LOC)
 
 **Claudin:**
 - `matchCommand`: `/^ls\b/`
@@ -81,7 +81,7 @@ truncateLineAt, headLines, tailLines, maxLines, onEmpty
 
 ---
 
-### 2.2 `grep` / `rg` — `src/outputFilter/Bash/filters/grep-rg.ts` (36 LOC)
+### 2.2 `grep` / `rg` — `src/tools/shared/outputFilter/Bash/filters/grep-rg.ts` (36 LOC)
 
 **Claudin:**
 - `matchCommand`: `/^(?:grep|rg)\b/`
@@ -98,7 +98,7 @@ truncateLineAt, headLines, tailLines, maxLines, onEmpty
 
 ---
 
-### 2.3 `ps aux` — `src/outputFilter/Bash/filters/system.ts` (compartilhado, 69 LOC)
+### 2.3 `ps aux` — `src/tools/shared/outputFilter/Bash/filters/system.ts` (compartilhado, 69 LOC)
 
 **Claudin:**
 - Strip de kernel threads (linhas com `[kthreadd]`, `[ksoftirqd/N]`, etc.)
@@ -110,7 +110,7 @@ truncateLineAt, headLines, tailLines, maxLines, onEmpty
 
 ---
 
-### 2.4 `top` — `src/outputFilter/Bash/filters/system.ts`
+### 2.4 `top` — `src/tools/shared/outputFilter/Bash/filters/system.ts`
 
 **Claudin:**
 - Strip de kthreads
@@ -122,7 +122,7 @@ truncateLineAt, headLines, tailLines, maxLines, onEmpty
 
 ---
 
-### 2.5 `journalctl` — `src/outputFilter/Bash/filters/system.ts`
+### 2.5 `journalctl` — `src/tools/shared/outputFilter/Bash/filters/system.ts`
 
 **Claudin:**
 - `replace` que normaliza hostname para `<host>`
@@ -134,7 +134,7 @@ truncateLineAt, headLines, tailLines, maxLines, onEmpty
 
 ---
 
-### 2.6 `curl -v` — `src/outputFilter/Bash/filters/network.ts` (77 LOC compartilhado)
+### 2.6 `curl -v` — `src/tools/shared/outputFilter/Bash/filters/network.ts` (77 LOC compartilhado)
 
 **Claudin:**
 - `matchCommand`: `/^curl\b.*(?:-v|--verbose)\b/`
@@ -154,7 +154,7 @@ truncateLineAt, headLines, tailLines, maxLines, onEmpty
 
 ---
 
-### 2.7 `dig` — `src/outputFilter/Bash/filters/network.ts`
+### 2.7 `dig` — `src/tools/shared/outputFilter/Bash/filters/network.ts`
 
 **Claudin:**
 - `stripAnsi: true`
@@ -575,18 +575,18 @@ Para o próximo implementador não perder tempo:
 
 | Spec(s) | Arquivo destino | Justificativa |
 |---|---|---|
-| `ping`, `tree`, `df`, `du`, `ssh`, `stat`, `dmesg` | `src/outputFilter/Bash/filters/system.ts` (estender) | mesma família do `psAux`/`journalctl` |
-| `rsync` | `src/outputFilter/Bash/filters/system.ts` ou criar `filesync.ts` | rsync é transferência, mas só uma spec — manter em `system.ts` |
-| `jq` | `src/outputFilter/Bash/filters/system.ts` | utilitário de sistema-CLI |
-| `curl-plain` | `src/outputFilter/Bash/filters/network.ts` (junto com `curlV` e `dig`) | já é o módulo de rede |
+| `ping`, `tree`, `df`, `du`, `ssh`, `stat`, `dmesg` | `src/tools/shared/outputFilter/Bash/filters/system.ts` (estender) | mesma família do `psAux`/`journalctl` |
+| `rsync` | `src/tools/shared/outputFilter/Bash/filters/system.ts` ou criar `filesync.ts` | rsync é transferência, mas só uma spec — manter em `system.ts` |
+| `jq` | `src/tools/shared/outputFilter/Bash/filters/system.ts` | utilitário de sistema-CLI |
+| `curl-plain` | `src/tools/shared/outputFilter/Bash/filters/network.ts` (junto com `curlV` e `dig`) | já é o módulo de rede |
 
-Registry: `src/outputFilter/Bash/filters/index.ts` — adicionar cada export na lista de 35 specs.
+Registry: `src/tools/shared/outputFilter/Bash/filters/index.ts` — adicionar cada export na lista de 35 specs.
 
 Tests: como confirmado pelo agente, **não há colocation**. Todos os testes vivem em:
-- `src/outputFilter/Bash/bashFilter.test.ts` (testes por spec, agrupados em `describe("phase X — name")`)
-- `src/outputFilter/Bash/registry.test.ts`
-- `src/outputFilter/Bash/pipeline.test.ts`
-- `src/outputFilter/Bash/cornerCases.test.ts`
+- `src/tools/shared/outputFilter/Bash/bashFilter.test.ts` (testes por spec, agrupados em `describe("phase X — name")`)
+- `src/tools/shared/outputFilter/Bash/registry.test.ts`
+- `src/tools/shared/outputFilter/Bash/pipeline.test.ts`
+- `src/tools/shared/outputFilter/Bash/cornerCases.test.ts`
 
 Cada nova spec deve adicionar um `describe()` em `bashFilter.test.ts` com no mínimo:
 - `ROI: sample ≥X% reduction` (medição empírica)

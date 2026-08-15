@@ -12,7 +12,7 @@ import {
   type McpServerConfig,
   McpServerConfigSchema,
 } from 'src/mcp/types.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import {
   EFFORT_LEVELS,

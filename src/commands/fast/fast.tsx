@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useState } from 'react';
-import type { CommandResultDisplay, LocalJSXCommandContext } from 'src/commands.js';
+import type { CommandResultDisplay, LocalJSXCommandContext } from 'src/commands/commands.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import { FastIcon, getFastIconString } from 'src/terminal/FastIcon.js';
 import type { ExitState } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';

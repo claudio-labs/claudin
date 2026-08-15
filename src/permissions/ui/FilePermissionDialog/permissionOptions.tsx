@@ -3,7 +3,7 @@ import { type ReactNode } from 'react';
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
 import { Text } from 'src/terminal/ink.js';
 import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js';
-import type { ToolPermissionContext } from 'src/Tool.js';
+import type { ToolPermissionContext } from 'src/tools/Tool.js';
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js';
 import { expandPath, getDirectoryForPath } from 'src/shared/fs/path.js';
 import { normalizeCaseForComparison, pathInAllowedWorkingPath } from 'src/permissions/filesystem.js';

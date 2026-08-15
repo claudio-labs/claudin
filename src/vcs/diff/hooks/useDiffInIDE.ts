@@ -10,7 +10,7 @@ import type {
   McpSSEIDEServerConfig,
   McpWebSocketIDEServerConfig,
 } from 'src/mcp/types.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { FileEdit } from 'src/tools/FileEditTool/types.js'
 import {
   getEditsForPatch,

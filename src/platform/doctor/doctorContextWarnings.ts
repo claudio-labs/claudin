@@ -1,6 +1,6 @@
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
-import type { Tool, ToolPermissionContext } from 'src/Tool.js'
+import type { Tool, ToolPermissionContext } from 'src/tools/Tool.js'
 import type { AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { countMcpToolTokens } from 'src/agent/context/analyzeContext.js'
 import {

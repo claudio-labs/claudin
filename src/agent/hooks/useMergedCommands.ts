@@ -1,6 +1,6 @@
 import uniqBy from 'lodash-es/uniqBy.js'
 import { useMemo } from 'react'
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 
 export function useMergedCommands(
   initialCommands: Command[],

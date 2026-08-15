@@ -19,7 +19,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
 
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { setCwdState } from 'src/platform/bootstrap/state.js'
 
 // ---------------------------------------------------------------------------

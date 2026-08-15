@@ -4,7 +4,7 @@ import { getCwd } from 'src/shared/fs/cwd.js'
 import {
   type ToolUseContext,
   type ToolPermissionContext,
-} from 'src/Tool.js'
+} from 'src/tools/Tool.js'
 import type { Message } from 'src/types/message.js'
 import type { Attachment } from 'src/agent/attachments/types.js'
 import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'

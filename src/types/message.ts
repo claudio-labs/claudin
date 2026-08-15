@@ -40,7 +40,7 @@ import type { UUID } from 'crypto'
 // the name it is nominally exported under does not actually resolve.
 import type { SDKAssistantMessageErrorSchema } from 'src/platform/entrypoints/sdk/coreSchemas.js'
 import type { z } from 'zod/v4'
-import type { Progress } from 'src/Tool.js'
+import type { Progress } from 'src/tools/Tool.js'
 import type { PermissionMode } from 'src/types/permissions.js'
 import type { Attachment } from 'src/agent/attachments/types.js'
 import type {

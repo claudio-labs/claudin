@@ -27,7 +27,7 @@
  * `measure-tool-schemas.ts`).
  */
 
-import { getAllBaseTools } from '../src/tools.js'
+import { getAllBaseTools } from '../src/tools/tools.js'
 import { getSystemPrompt, computeSimpleEnvInfo } from '../src/constants/prompts.js'
 import { loadMemoryPrompt } from '../src/memory/memdir/memdir.js'
 import {

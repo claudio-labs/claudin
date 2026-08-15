@@ -8,15 +8,15 @@ import {
   findCommand,
   getCommands,
   type PromptCommand,
-} from 'src/commands.js'
+} from 'src/commands/commands.js'
 import type {
   Tool,
   ToolCallProgress,
   ToolResult,
   ToolUseContext,
   ValidationResult,
-} from 'src/Tool.js'
-import { buildTool, type ToolDef } from 'src/Tool.js'
+} from 'src/tools/Tool.js'
+import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import type { Command } from 'src/types/command.js'
 import type {
   AssistantMessage,

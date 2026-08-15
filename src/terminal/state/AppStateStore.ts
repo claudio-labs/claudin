@@ -1,7 +1,7 @@
 import type { Notification } from 'src/terminal/contexts/notifications.js'
 import type { TodoList } from 'src/tools/TodoWriteTool/types.js'
 import type { BridgePermissionCallbacks } from 'src/platform/bridge/bridgePermissionCallbacks.js'
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import type { ChannelPermissionCallbacks } from 'src/mcp/channelPermissions.js'
 import type { ElicitationRequestEvent } from 'src/mcp/elicitationHandler.js'
 import type {
@@ -13,7 +13,7 @@ import {
   getEmptyToolPermissionContext,
   type Tool,
   type ToolPermissionContext,
-} from 'src/Tool.js'
+} from 'src/tools/Tool.js'
 import type { TaskState } from 'src/agent/tasks/types.js'
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
 import type { AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js'

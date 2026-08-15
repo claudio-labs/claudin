@@ -7,8 +7,8 @@ import { BLACK_CIRCLE } from 'src/constants/figures.js';
 import { getModeColor } from 'src/permissions/PermissionMode.js';
 import { z } from 'zod/v4';
 import { Box, Text } from 'src/terminal/ink.js';
-import type { Tool } from 'src/Tool.js';
-import { buildTool, type ToolDef } from 'src/Tool.js';
+import type { Tool } from 'src/tools/Tool.js';
+import { buildTool, type ToolDef } from 'src/tools/Tool.js';
 import { lazySchema } from 'src/shared/data/lazySchema.js';
 import { ASK_USER_QUESTION_TOOL_CHIP_WIDTH, ASK_USER_QUESTION_TOOL_NAME, ASK_USER_QUESTION_TOOL_PROMPT, DESCRIPTION, PREVIEW_FEATURE_PROMPT } from 'src/tools/AskUserQuestionTool/prompt.js';
 const questionOptionSchema = lazySchema(() => z.object({

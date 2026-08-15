@@ -16,7 +16,7 @@ import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 
 import { getCacheControl } from 'src/providers/shims/claude.js'
 import { parsePromptTooLongTokenCounts } from 'src/providers/transport/errors.js'
 import { getDefaultMaxRetries } from 'src/providers/transport/withRetry.js'
-import type { Tool, ToolPermissionContext, Tools } from 'src/Tool.js'
+import type { Tool, ToolPermissionContext, Tools } from 'src/tools/Tool.js'
 import type { Message } from 'src/types/message.js'
 import type {
   ClassifierUsage,

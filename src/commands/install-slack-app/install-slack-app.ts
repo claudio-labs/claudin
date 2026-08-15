@@ -1,4 +1,4 @@
-import type { LocalCommandResult } from 'src/commands.js'
+import type { LocalCommandResult } from 'src/commands/commands.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import { openBrowser } from 'src/shared/browser.js'
 import { saveGlobalConfig } from 'src/platform/config/config.js'

@@ -1,11 +1,11 @@
 import { randomUUID } from 'crypto'
 import type {
   Command,
-} from 'src/commands.js'
+} from 'src/commands/commands.js'
 import {
   formatDescriptionWithSource,
   getCommandName,
-} from 'src/commands.js'
+} from 'src/commands/commands.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import {
   isBuiltInAgent,

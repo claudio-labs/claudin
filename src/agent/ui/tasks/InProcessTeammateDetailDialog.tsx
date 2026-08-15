@@ -6,9 +6,9 @@ import type { ExitState } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybinding
 import type { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js';
 import { Box, Text, useTheme } from 'src/terminal/ink.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
-import { getEmptyToolPermissionContext } from 'src/Tool.js';
+import { getEmptyToolPermissionContext } from 'src/tools/Tool.js';
 import type { InProcessTeammateTaskState } from 'src/agent/tasks/InProcessTeammateTask/types.js';
-import { getTools } from 'src/tools.js';
+import { getTools } from 'src/tools/tools.js';
 import { formatNumber, truncateToWidth } from 'src/shared/text/format.js';
 import { toInkColor } from 'src/terminal/render/ink.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';

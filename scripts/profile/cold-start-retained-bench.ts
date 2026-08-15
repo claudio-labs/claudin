@@ -57,7 +57,7 @@ const PROBES: Probe[] = [
   },
   {
     name: 'Tool.ts',
-    importExpr: `await import('./src/Tool.ts')`,
+    importExpr: `await import('./src/tools/Tool.ts')`,
     description: 'Tool type module — what every tool re-exports.',
   },
   {
@@ -72,7 +72,7 @@ const PROBES: Probe[] = [
   },
   {
     name: 'tools.ts (full registry)',
-    importExpr: `await import('./src/tools.ts')`,
+    importExpr: `await import('./src/tools/tools.ts')`,
     description: '~30 statically-imported tools.',
   },
   {

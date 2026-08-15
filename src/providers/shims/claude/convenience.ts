@@ -1,5 +1,5 @@
 import type { BetaJSONOutputFormat } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
-import { getEmptyToolPermissionContext } from 'src/Tool.js'
+import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
 import type { AssistantMessage } from 'src/types/message.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'

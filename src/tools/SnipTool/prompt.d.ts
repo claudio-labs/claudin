@@ -6,7 +6,7 @@
 // binding. Reachability varies and is NOT uniform: some call sites are
 // type-only (erased at emit), most sit behind a `feature()` flag that is off
 // or inside an `await import()` on a gated path, but the eager imports in
-// `src/commands.ts` DO hit the no-op stub at runtime -- which is why
+// `src/commands/commands.ts` DO hit the no-op stub at runtime -- which is why
 // /upgrade and /extra-usage hang on the Login stub.
 //
 // Same two conventions as `src/stubbed-modules.d.ts`: every export is `any`

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import { SkillTool } from 'src/tools/SkillTool/SkillTool.js'
 import { renderToolUseMessage } from 'src/tools/SkillTool/UI.js'
 

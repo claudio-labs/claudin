@@ -7,7 +7,7 @@ import {
 import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { runTools } from 'src/agent/tools/toolOrchestration.js'
-import { findToolByName, type Tool, type Tools } from 'src/Tool.js'
+import { findToolByName, type Tool, type Tools } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import type { Input as FileReadInput } from 'src/tools/FileReadTool/FileReadTool.js'

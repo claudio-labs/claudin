@@ -1,5 +1,5 @@
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs'
-import type { Command } from 'src/commands.js'
+import type { Command } from 'src/commands/commands.js'
 import { isAutoMemoryEnabled, getAutoMemPath } from 'src/memory/memdir/paths.js'
 import { getProjectDir } from 'src/sessions/sessionStorage.js'
 import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'

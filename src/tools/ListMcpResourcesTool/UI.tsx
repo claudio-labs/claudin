@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
-import { OutputLine } from 'src/components/shell/OutputLine.js';
+import { OutputLine } from 'src/tools/BashTool/ui/OutputLine.js';
 import { Text } from 'src/terminal/ink.js';
-import type { ToolProgressData } from 'src/Tool.js';
+import type { ToolProgressData } from 'src/tools/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';
 import { jsonStringify } from 'src/platform/slowOperations.js';
 import type { Output } from 'src/tools/ListMcpResourcesTool/ListMcpResourcesTool.js';

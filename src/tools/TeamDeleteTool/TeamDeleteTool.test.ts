@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import { TeamDeleteTool } from 'src/tools/TeamDeleteTool/TeamDeleteTool.js'
 
 afterEach(() => {

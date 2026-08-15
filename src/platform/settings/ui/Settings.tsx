@@ -11,7 +11,7 @@ import { Tabs, Tab } from 'src/terminal/design-system/Tabs.js';
 import { Status, buildDiagnostics } from 'src/platform/settings/ui/Status.js';
 import { Config } from 'src/platform/settings/ui/Config.js';
 import { Usage } from 'src/platform/settings/ui/Usage.js';
-import type { LocalJSXCommandContext, CommandResultDisplay } from 'src/commands.js';
+import type { LocalJSXCommandContext, CommandResultDisplay } from 'src/commands/commands.js';
 type Props = {
   onClose: (result?: string, options?: {
     display?: CommandResultDisplay;

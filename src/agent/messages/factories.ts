@@ -15,7 +15,7 @@ import {
   LOCAL_COMMAND_CAVEAT_TAG,
   LOCAL_COMMAND_STDOUT_TAG,
 } from 'src/constants/xml.js'
-import type { Progress } from 'src/Tool.js'
+import type { Progress } from 'src/tools/Tool.js'
 import type {
   AssistantMessage,
   MessageOrigin,

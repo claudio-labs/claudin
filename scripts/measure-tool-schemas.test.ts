@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { getAllBaseTools } from '../src/tools.ts'
+import { getAllBaseTools } from '../src/tools/tools.ts'
 import { measureToolSchemas } from './measure-tool-schemas.ts'
 
 describe('measureToolSchemas', () => {

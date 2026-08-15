@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import type { HookEvent } from 'src/platform/entrypoints/agentSdkTypes.js'
 import { queryModelWithoutStreaming } from 'src/providers/shims/claude.js'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { Message } from 'src/types/message.js'
 import { createAttachmentMessage } from 'src/agent/attachments/attachments.js'
 import { createCombinedAbortSignal } from 'src/shared/combinedAbortSignal.js'

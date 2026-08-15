@@ -19,7 +19,7 @@ import {
   type Tool,
   type ToolDef,
   toolMatchesName,
-} from 'src/Tool.js'
+} from 'src/tools/Tool.js'
 import { formatAgentId, generateRequestId } from 'src/agent/coordinator/agentId.js'
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import { logForDebugging } from 'src/shared/debug.js'

@@ -136,7 +136,7 @@ export type BridgeCoreParams = {
    * code paths are unreachable.
    *
    * Injected rather than imported because mappers.ts transitively pulls in
-   * src/commands.ts via messages.ts → api.ts → prompts.ts, dragging the
+   * src/commands/commands.ts via messages.ts → api.ts → prompts.ts, dragging the
    * entire command registry + React tree into the Agent SDK bundle.
    */
   toSDKMessages?: (messages: Message[]) => SDKMessage[]

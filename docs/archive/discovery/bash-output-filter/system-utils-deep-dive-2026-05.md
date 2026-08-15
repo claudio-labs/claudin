@@ -4,7 +4,7 @@
 
 Documento de contexto pai: [`./rtk-refinement-2026-05.md`](./rtk-refinement-2026-05.md) — esta nota foca **apenas** na família *system utils*, que dominam o volume de Bash em sessões reais (`cat`, `find`, `tail`, `ls`, `wc`, `jq`, `df`, `du`, `stat`, `ping`, `rsync`, `ssh`, `dmesg`, `env`, mais `tree`/`head`).
 
-Escopo: 15 comandos. Sem implementação — só decisão e estrutura sugerida de [`FilterSpec`](../../../../src/outputFilter/Bash/types.ts).
+Escopo: 15 comandos. Sem implementação — só decisão e estrutura sugerida de [`FilterSpec`](../../../../src/tools/shared/outputFilter/Bash/types.ts).
 
 Sumário rápido:
 
@@ -540,7 +540,7 @@ total size is 98,765  speedup is 77.31
 
 **Estratégia RTK:** [`rsync.toml`](../../../../rtk/src/filters/rsync.toml) — combina `strip_lines_matching` + `match_output` com `unless="error|failed|No such file"` (short-circuit para `ok (synced)`). Os testes confirmam que erros **não** são engolidos pelo short-circuit graças ao `unless`.
 
-**Recomendação Claudin:** **ADAPT**. O Claudin já suporta `matchOutput` com `unless` (ver [`linters.ts`](../../../../src/outputFilter/Bash/filters/linters.ts) — `ruffCheck` usa o mesmo padrão). Adaptar para usar a regex `unless` reforçada (incluir também `Permission denied` e `code \d+`).
+**Recomendação Claudin:** **ADAPT**. O Claudin já suporta `matchOutput` com `unless` (ver [`linters.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/linters.ts) — `ruffCheck` usa o mesmo padrão). Adaptar para usar a regex `unless` reforçada (incluir também `Permission denied` e `code \d+`).
 
 **matchCommandReject obrigatório:** `(?:^|\s)(?:--progress|-P|--info=progress2|-v{2,}|--itemize-changes|-i)\b` — `--progress` muda o formato (carriage returns, percentuais), e `-i`/`--itemize-changes` produz output estruturado que vale preservar.
 
@@ -698,7 +698,7 @@ sudo dmesg -T --level=err,warn
 
 **Estratégia RTK:** **sem TOML dedicado**. RTK não tem `dmesg.toml` — passthrough nativo. Há overlap parcial com `log_cmd.rs` (handler `rtk log`) que faz dedup via normalização de timestamp/UUID/HEX/NUM/PATH, mas só quando o usuário invoca `rtk log` explicitamente.
 
-**Recomendação Claudin:** **ADAPT** — não há referência RTK direta, mas o padrão de `journalctl` em [`system.ts`](../../../../src/outputFilter/Bash/filters/system.ts) serve de molde. Strip do prefixo de timestamp `^\[ *\d+\.\d+\] ` via `replace` ajuda dedup downstream e economiza ~20 chars/linha, mas perde info temporal. Decisão conservadora: **só strip blank + cap por linhas**, sem mexer no timestamp.
+**Recomendação Claudin:** **ADAPT** — não há referência RTK direta, mas o padrão de `journalctl` em [`system.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/system.ts) serve de molde. Strip do prefixo de timestamp `^\[ *\d+\.\d+\] ` via `replace` ajuda dedup downstream e economiza ~20 chars/linha, mas perde info temporal. Decisão conservadora: **só strip blank + cap por linhas**, sem mexer no timestamp.
 
 **matchCommandReject obrigatório:** `(?:^|\s)(?:--follow|-w|--json\b|-J)\b` — modo follow é stream, JSON é estruturado.
 
@@ -814,7 +814,7 @@ LOC total estimado: ~202 linhas de spec TS (sem testes), distribuíveis em 4 PRs
 
 ## Anexo — `curl` (cobertura atual vs RTK)
 
-Mantemos hoje só o caminho `curl -v` (TLS/handshake stripping em [`network.ts`](../../../../src/outputFilter/Bash/filters/network.ts)). O RTK ([`curl_cmd.rs`](../../../../rtk/src/cmds/cloud/curl_cmd.rs)) é um *runner* (substitui o binário) e cobre dimensões que um filtro post-hoc não alcança sem extensão do framework.
+Mantemos hoje só o caminho `curl -v` (TLS/handshake stripping em [`network.ts`](../../../../src/tools/shared/outputFilter/Bash/filters/network.ts)). O RTK ([`curl_cmd.rs`](../../../../rtk/src/cmds/cloud/curl_cmd.rs)) é um *runner* (substitui o binário) e cobre dimensões que um filtro post-hoc não alcança sem extensão do framework.
 
 ### Cobertura
 
@@ -881,7 +881,7 @@ Antes de implementar `curlBody`, abrir RFC no framework para essas extensões. S
 
 Seguir [`.claudin/rules/testing.md`](../../../../.claudin/rules/testing.md):
 
-- Spec test colocada: `src/outputFilter/Bash/filters/system.test.ts` (cobre `tree`, `df`, `du`, `stat`, `ping`, `rsync`, `ssh`, `dmesg`) e `system.test.ts` deve crescer com cada port.
+- Spec test colocada: `src/tools/shared/outputFilter/Bash/filters/system.test.ts` (cobre `tree`, `df`, `du`, `stat`, `ping`, `rsync`, `ssh`, `dmesg`) e `system.test.ts` deve crescer com cada port.
 - Para `jq` considerar arquivo próprio `jq.test.ts` por causa do `matchCommandReject` extenso.
 - Padrão Arrange/Act/Assert com `toMatchSnapshot()` para outputs filtrados; assertions diretas para `matchCommandReject` (caminho de passthrough).
 - Cada caso de teste do TOML RTK ([`ping.toml`](../../../../rtk/src/filters/ping.toml), [`rsync.toml`](../../../../rtk/src/filters/rsync.toml), [`stat.toml`](../../../../rtk/src/filters/stat.toml) etc.) vira um `test()` no Bun.
@@ -890,7 +890,7 @@ Seguir [`.claudin/rules/testing.md`](../../../../.claudin/rules/testing.md):
 Execução focada:
 
 ```bash
-bun test src/outputFilter/Bash/filters/system.test.ts
+bun test src/tools/shared/outputFilter/Bash/filters/system.test.ts
 ```
 
 Sweep completo antes da PR:
@@ -898,6 +898,6 @@ Sweep completo antes da PR:
 ```bash
 bun run build
 bun run smoke
-bun test src/outputFilter/Bash/
+bun test src/tools/shared/outputFilter/Bash/
 bun run typecheck
 ```

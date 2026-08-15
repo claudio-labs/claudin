@@ -23,7 +23,7 @@ import { findBuddyTriggerPositions, useBuddyNotification } from 'src/terminal/bu
 import { FastModePicker } from 'src/commands/fast/fast.js';
 import { isUltrareviewEnabled } from 'src/commands/review/ultrareviewEnabled.js';
 import { getNativeCSIuTerminalDisplayName } from 'src/commands/terminalSetup/terminalSetup.js';
-import { type Command, hasCommand } from 'src/commands.js';
+import { type Command, hasCommand } from 'src/commands/commands.js';
 import { useIsModalOverlayActive } from 'src/terminal/contexts/overlayContext.js';
 import { useSetPromptOverlayDialog } from 'src/terminal/contexts/promptOverlayContext.js';
 import { formatImageRef, formatPastedTextRef, getPastedTextRefNumLines, parseReferences } from 'src/agent/history.js';
@@ -48,7 +48,7 @@ import { abortPromptSuggestion, logSuggestionSuppressed } from 'src/terminal/pro
 import { type ActiveSpeculationState, abortSpeculation } from 'src/terminal/prompt-suggestion/speculation.js';
 import { getActiveAgentForInput, getViewedTeammateTask } from 'src/terminal/state/selectors.js';
 import { enterTeammateView, exitTeammateView, stopOrDismissAgent } from 'src/terminal/state/teammateViewHelpers.js';
-import type { ToolPermissionContext } from 'src/Tool.js';
+import type { ToolPermissionContext } from 'src/tools/Tool.js';
 import { getRunningTeammatesSorted } from 'src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js';
 import type { InProcessTeammateTaskState } from 'src/agent/tasks/InProcessTeammateTask/types.js';
 import { isPanelAgentTask, type LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';

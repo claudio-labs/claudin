@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
-import type { ToolUseContext } from 'src/Tool.js'
+import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { PromptHook } from 'src/platform/settings/types.js'
 import { markStopConditionJudge } from 'src/platform/lifecycleHooks/stopConditionJudge.js'
 

@@ -6,7 +6,7 @@ import {
   useAppStateStore,
   useSetAppState,
 } from 'src/terminal/state/AppState.js'
-import type { ToolPermissionContext } from 'src/Tool.js'
+import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import { getIsRemoteMode } from 'src/platform/bootstrap/state.js'
 import {
   createDisabledBypassPermissionsContext,

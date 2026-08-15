@@ -44,7 +44,7 @@ const PROMPTS: { id: string; text: string }[] = [
   },
   {
     id: 'test-bash-suite',
-    text: 'Rode `bun test src/outputFilter/Bash/` e me diga o veredito: a suite esta saudavel? Quantos testes passaram e algum falhou?',
+    text: 'Rode `bun test src/tools/shared/outputFilter/Bash/` e me diga o veredito: a suite esta saudavel? Quantos testes passaram e algum falhou?',
   },
   {
     id: 'bigfile-summary',
@@ -60,7 +60,7 @@ const PROMPTS: { id: string; text: string }[] = [
   },
   {
     id: 'build-then-test',
-    text: 'Rode `bun run build` e depois `bun test src/outputFilter/Bash/markers.test.ts`. Me diga se os dois passaram sem erro — um sim/nao para cada, e o erro se algo falhou.',
+    text: 'Rode `bun run build` e depois `bun test src/tools/shared/outputFilter/Bash/markers.test.ts`. Me diga se os dois passaram sem erro — um sim/nao para cada, e o erro se algo falhou.',
   },
   {
     id: 'diff-biggest-file',
@@ -100,7 +100,7 @@ function projectDirForCwd(cwd: string): string {
 }
 
 /**
- * Heuristica leve (alinhada com src/outputFilter/Bash/pipeline.ts:hasCompound):
+ * Heuristica leve (alinhada com src/tools/shared/outputFilter/Bash/pipeline.ts:hasCompound):
  * marca como composto qualquer comando com pipe nao-quotado, &&, ||, ; ou & top-level.
  * Quote-aware basico para single/double quotes; nao tenta lidar com subshells/heredocs
  * (esses tambem sao compostos no filtro real, entao a classificacao casa).

@@ -27,8 +27,8 @@ import type { Root } from 'src/terminal/ink.js';
 // paths (--help/--version/subcommands) never need them. (Phase D.)
 import type * as ReplLauncherMod from 'src/agent/repl/replLauncher.js';
 import type { McpSdkServerConfig, ScopedMcpServerConfig } from 'src/mcp/types.js';
-import type { ToolInputJSONSchema } from 'src/Tool.js';
-import type * as ToolsMod from 'src/tools.js';
+import type { ToolInputJSONSchema } from 'src/tools/Tool.js';
+import type * as ToolsMod from 'src/tools/tools.js';
 import type * as InitMod from 'src/platform/entrypoints/init.js';
 import type { AssistantHandles } from 'src/platform/main/action/parseOptions.js';
 import type { AssistantModule as SetupAgentAssistantModule } from 'src/platform/main/action/setupAgent.js';
@@ -38,7 +38,7 @@ const getLaunchRepl = async (): Promise<typeof ReplLauncherMod.launchRepl> =>
 const getSetPreloadedChunks = async (): Promise<typeof ReplLauncherMod.setPreloadedChunks> =>
   (await import('src/agent/repl/replLauncher.js')).setPreloadedChunks;
 const getGetTools = async (): Promise<typeof ToolsMod.getTools> =>
-  (await import('src/tools.js')).getTools;
+  (await import('src/tools/tools.js')).getTools;
 const getInitBootstrap = async (): Promise<typeof InitMod.init> =>
   (await import('src/platform/entrypoints/init.js')).init;
 import { stopCapturingEarlyInput } from 'src/terminal/input/earlyInput.js';

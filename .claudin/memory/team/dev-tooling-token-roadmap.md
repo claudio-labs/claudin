@@ -195,7 +195,7 @@ dependency). `scripts/profile/preload-stubs.ts` is the preload —
 The grep replay harness had been silently unrunnable for the same reason.
 
 ## Out of scope for now
-`PowerShellTool` has no output filter (the `src/outputFilter/Bash/` pipeline is
+`PowerShellTool` has no output filter (the `src/tools/shared/outputFilter/Bash/` pipeline is
 Bash-only), and that filter's roadmap still defers `aws`/cloud CLIs, DB/secrets
 and task runners. Related: [[tool-result-nudges-benched-zero-adoption]] — land any
 new nudge flag-OFF as bench instrumentation, and

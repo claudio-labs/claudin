@@ -8,7 +8,7 @@ import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js'
 import { getSessionStartDate } from 'src/constants/common.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
-import type { Tools } from 'src/Tool.js'
+import type { Tools } from 'src/tools/Tool.js'
 import type { Command } from 'src/types/command.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import {
@@ -16,7 +16,7 @@ import {
   getMarketingNameForModel,
 } from 'src/utils/model/model.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import { getSkillToolCommands } from 'src/commands.js'
+import { getSkillToolCommands } from 'src/commands/commands.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import { getOutputStyleConfig } from 'src/constants/outputStyles.js'
 import {

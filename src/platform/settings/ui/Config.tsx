@@ -40,7 +40,7 @@ import { getInitialSettings, getSettingsForSource, updateSettingsForSource } fro
 import { getUserMsgOptIn, setUserMsgOptIn } from 'src/platform/bootstrap/state.js';
 import { DEFAULT_OUTPUT_STYLE_NAME } from 'src/constants/outputStyles.js';
 import { isEnvTruthy, isRunningOnHomespace } from 'src/shared/envUtils.js';
-import type { LocalJSXCommandContext, CommandResultDisplay } from 'src/commands.js';
+import type { LocalJSXCommandContext, CommandResultDisplay } from 'src/commands/commands.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { getCliTeammateModeOverride, clearCliTeammateModeOverride } from 'src/agent/coordinator/swarm/backends/teammateModeSnapshot.js';

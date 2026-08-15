@@ -1,6 +1,6 @@
 // Per-command gain report for the Bash output filter (Roadmap 6.1).
 //
-// Loads each fixture in src/outputFilter/Bash/__fixtures__/samples,
+// Loads each fixture in src/tools/shared/outputFilter/Bash/__fixtures__/samples,
 // runs it through the public pipeline, and prints byte/token reduction
 // per filter — same shape as `rtk gain --history`.
 //
@@ -20,11 +20,11 @@ import { resolve } from 'node:path'
 import {
   applyBashFilterToStdout,
   planBashFilter,
-} from '../../src/outputFilter/Bash/index.js'
+} from '../../src/tools/shared/outputFilter/Bash/index.js'
 
 const SAMPLES_DIR = resolve(
   import.meta.dir,
-  '../../src/outputFilter/Bash/__fixtures__/samples',
+  '../../src/tools/shared/outputFilter/Bash/__fixtures__/samples',
 )
 
 const WRAPPER_RE =
