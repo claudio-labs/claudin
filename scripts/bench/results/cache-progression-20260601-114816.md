@@ -1,7 +1,7 @@
 # Cache progression — 20260601-114816
 
 Model: claude-opus-4-8
-Read file: `src/screens/REPL.tsx` (6 sequential turns, identical prompt)
+Read file: `src/agent/repl/REPL.tsx` (6 sequential turns, identical prompt)
 Edit file: `src/platform/bridge/bridgeEnabled.ts` (0 sequential turns, file reset between each)
 
 Cache TTL is 5 min — turn 1 may be cold or warm depending on prior activity.

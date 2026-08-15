@@ -40,7 +40,7 @@ import { useAppState } from 'src/terminal/state/AppState.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import { getEffortSuffix } from 'src/utils/effort.js';
 import { getAPIProvider } from 'src/utils/model/providers.js';
-import { useMainLoopModel } from 'src/hooks/useMainLoopModel.js';
+import { useMainLoopModel } from 'src/agent/hooks/useMainLoopModel.js';
 import { renderModelSetting } from 'src/utils/model/model.js';
 const LEFT_PANEL_MAX_WIDTH = 50;
 export function LogoV2() {

@@ -35,8 +35,8 @@ import {
   createUserMessage,
 } from 'src/agent/messages/messages.js'
 import type { SystemPrompt } from 'src/agent/systemPromptType.js'
-import { getTaskListId, listTasks } from 'src/tasks/tasks.js'
-import { getAgentName, getTeamName, isTeammate } from 'src/coordinator/teammate.js'
+import { getTaskListId, listTasks } from 'src/agent/tasks/tasks.js'
+import { getAgentName, getTeamName, isTeammate } from 'src/agent/coordinator/teammate.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const extractMemoriesModule = feature('EXTRACT_MEMORIES')
@@ -60,7 +60,7 @@ import { isBareMode, isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import {
   createCacheSafeParams,
   saveCacheSafeParams,
-} from 'src/coordinator/forkedAgent.js'
+} from 'src/agent/coordinator/forkedAgent.js'
 
 type StopHookResult = {
   blockingErrors: Message[]

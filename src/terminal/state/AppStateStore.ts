@@ -14,7 +14,7 @@ import {
   type Tool,
   type ToolPermissionContext,
 } from 'src/Tool.js'
-import type { TaskState } from 'src/tasks/types.js'
+import type { TaskState } from 'src/agent/tasks/types.js'
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
 import type { AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { AllowedPrompt } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js'
@@ -503,7 +503,7 @@ export function getDefaultAppState(): AppState {
   // Use lazy require to avoid circular dependency with teammate.ts
   /* eslint-disable @typescript-eslint/no-require-imports */
   const teammateUtils =
-    require('src/coordinator/teammate.js') as typeof import('src/coordinator/teammate.js')
+    require('src/agent/coordinator/teammate.js') as typeof import('src/agent/coordinator/teammate.js')
   /* eslint-enable @typescript-eslint/no-require-imports */
   const initialMode: PermissionMode =
     teammateUtils.isTeammate() && teammateUtils.isPlanModeRequired()

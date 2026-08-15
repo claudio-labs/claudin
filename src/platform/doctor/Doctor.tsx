@@ -29,7 +29,7 @@ import { pathExists } from 'src/shared/fs/file.js';
 import { cleanupStaleLocks, getAllLockInfo, isPidBasedLockingEnabled, type LockInfo } from 'src/platform/install/pidLock.js';
 import { getInitialSettings } from 'src/platform/settings/settings.js';
 import { BASH_MAX_OUTPUT_DEFAULT, BASH_MAX_OUTPUT_UPPER_LIMIT } from 'src/platform/shell/outputLimits.js';
-import { TASK_MAX_OUTPUT_DEFAULT, TASK_MAX_OUTPUT_UPPER_LIMIT } from 'src/tasks/outputFormatting.js';
+import { TASK_MAX_OUTPUT_DEFAULT, TASK_MAX_OUTPUT_UPPER_LIMIT } from 'src/agent/tasks/outputFormatting.js';
 import { getXDGStateHome } from 'src/shared/fs/xdg.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';

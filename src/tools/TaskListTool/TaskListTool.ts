@@ -6,7 +6,7 @@ import {
   isTodoV2Enabled,
   listTasks,
   TaskStatusSchema,
-} from 'src/tasks/tasks.js'
+} from 'src/agent/tasks/tasks.js'
 import { TASK_LIST_TOOL_NAME } from 'src/tools/TaskListTool/constants.js'
 import { DESCRIPTION, getPrompt } from 'src/tools/TaskListTool/prompt.js'
 

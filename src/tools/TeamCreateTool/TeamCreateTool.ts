@@ -4,8 +4,8 @@ import { logEvent } from 'src/platform/analytics/index.js'
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
 import type { Tool } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { formatAgentId } from 'src/coordinator/agentId.js'
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
+import { formatAgentId } from 'src/agent/coordinator/agentId.js'
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
@@ -13,22 +13,22 @@ import {
   parseUserSpecifiedModel,
 } from 'src/utils/model/model.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { getResolvedTeammateMode } from 'src/coordinator/swarm/backends/registry.js'
-import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js'
-import type { TeamFile } from 'src/coordinator/swarm/teamHelpers.js'
+import { getResolvedTeammateMode } from 'src/agent/coordinator/swarm/backends/registry.js'
+import { TEAM_LEAD_NAME } from 'src/agent/coordinator/swarm/constants.js'
+import type { TeamFile } from 'src/agent/coordinator/swarm/teamHelpers.js'
 import {
   getTeamFilePath,
   readTeamFile,
   registerTeamForSessionCleanup,
   sanitizeName,
   writeTeamFileAsync,
-} from 'src/coordinator/swarm/teamHelpers.js'
-import { assignTeammateColor } from 'src/coordinator/swarm/teammateLayoutManager.js'
+} from 'src/agent/coordinator/swarm/teamHelpers.js'
+import { assignTeammateColor } from 'src/agent/coordinator/swarm/teammateLayoutManager.js'
 import {
   ensureTasksDir,
   resetTaskList,
   setLeaderTeamName,
-} from 'src/tasks/tasks.js'
+} from 'src/agent/tasks/tasks.js'
 import { generateWordSlug } from 'src/shared/text/words.js'
 import { TEAM_CREATE_TOOL_NAME } from 'src/tools/TeamCreateTool/constants.js'
 import { getPrompt } from 'src/tools/TeamCreateTool/prompt.js'

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Box, RawAnsi } from 'src/terminal/ink.js'
-import { useMainLoopModel } from 'src/hooks/useMainLoopModel.js'
+import { useMainLoopModel } from 'src/agent/hooks/useMainLoopModel.js'
 import { eagerParseCliFlag } from 'src/platform/cliArgs.js'
 import { subscribeLatestVersion } from 'src/platform/install/latestVersionCache.js'
 import {

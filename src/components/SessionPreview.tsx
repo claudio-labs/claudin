@@ -14,7 +14,7 @@ import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.
 import { Byline } from 'src/terminal/design-system/Byline.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 import { LoadingState } from 'src/terminal/design-system/LoadingState.js';
-import { Messages } from 'src/components/Messages.js';
+import { Messages } from 'src/agent/ui/Messages.js';
 type Props = {
   log: LogOption;
   onExit: () => void;

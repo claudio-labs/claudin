@@ -122,7 +122,7 @@ import {
   isValidAdvisorModel,
   modelSupportsAdvisor,
 } from "src/platform/doctor/advisor.js";
-import { getAgentContext } from "src/coordinator/agentContext.js";
+import { getAgentContext } from "src/agent/coordinator/agentContext.js";
 import { isClaudeAISubscriber } from "src/services/auth/auth.js";
 import { createCombinedAbortSignal } from "src/shared/combinedAbortSignal.js";
 import {

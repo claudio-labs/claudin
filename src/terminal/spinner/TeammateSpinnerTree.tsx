@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Box, Text, type TextProps } from 'src/terminal/ink.js';
 import { useAppState } from 'src/terminal/state/AppState.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
-import { getRunningTeammatesSorted } from 'src/tasks/InProcessTeammateTask/InProcessTeammateTask.js';
+import { getRunningTeammatesSorted } from 'src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js';
 import { formatNumber } from 'src/shared/text/format.js';
 import { TeammateSpinnerLine } from 'src/terminal/spinner/TeammateSpinnerLine.js';
 import { TEAMMATE_SELECT_HINT } from 'src/terminal/spinner/teammateSelectHint.js';

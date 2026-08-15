@@ -9,7 +9,7 @@ import { launchAssistantInstallWizard, launchAssistantSessionChooser } from 'src
 import type { Root } from 'src/terminal/ink.js';
 import { exitWithError, exitWithMessage, renderAndRun } from 'src/terminal/interactiveHelpers.js';
 import { createRemoteSessionConfig } from 'src/platform/remote/RemoteSessionManager.js';
-import { launchRepl } from 'src/replLauncher.js';
+import { launchRepl } from 'src/agent/repl/replLauncher.js';
 import { type AppState } from 'src/terminal/state/AppStateStore.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';

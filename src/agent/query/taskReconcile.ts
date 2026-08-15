@@ -43,11 +43,11 @@ import {
   isTodoV2Enabled,
   listTasks,
   type Task,
-} from 'src/tasks/tasks.js'
+} from 'src/agent/tasks/tasks.js'
 import { TASK_CREATE_TOOL_NAME } from 'src/tools/TaskCreateTool/constants.js'
 import { TASK_UPDATE_TOOL_NAME } from 'src/tools/TaskUpdateTool/constants.js'
 import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'
-import { isTeammate } from 'src/coordinator/teammate.js'
+import { isTeammate } from 'src/agent/coordinator/teammate.js'
 
 /**
  * How much work a turn has to do before an untouched list counts as neglect.

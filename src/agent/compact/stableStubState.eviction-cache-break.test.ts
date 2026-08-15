@@ -1,8 +1,8 @@
 /**
  * S1 regression — display eviction is amortized and announced.
  *
- * The REPL's post-turn pipeline (src/screens/repl/controllers/useOnQuery.ts,
- * extracted from src/screens/REPL.tsx by ROADMAP 11e) runs
+ * The REPL's post-turn pipeline (src/agent/repl/controllers/useOnQuery.ts,
+ * extracted from src/agent/repl/REPL.tsx by ROADMAP 11e) runs
  * evictOldStubbedMessages / evictToMaxSize on messagesRef.current — the
  * SAME array that seeds the next turn's API request. getClipFrontierIndex
  * treats already-applied pure stubs as byte-stable, so the cache_control
@@ -273,15 +273,15 @@ describe('S1 regression: evictToMaxSize hysteresis band', () => {
 })
 
 describe('S1 regression: REPL wiring', () => {
-  // The wiring this guards used to live in src/screens/REPL.tsx. ROADMAP 11e's
-  // deferred half moved the controllers into src/screens/repl/controllers/, so
+  // The wiring this guards used to live in src/agent/repl/REPL.tsx. ROADMAP 11e's
+  // deferred half moved the controllers into src/agent/repl/controllers/, so
   // the guard follows them: the post-turn pipeline is now onQueryImpl's tail in
   // useOnQuery.ts and the idle-gap sweep is onSubmit's in useOnSubmit.ts. Each
   // assertion is checked against the file that actually owns the call, rather
   // than a concatenation, so a failure still names where to look.
   const controllerSource = (name: string) =>
     readFileSync(
-      join(import.meta.dir, '../../screens/repl/controllers/', name),
+      join(import.meta.dir, '../repl/controllers/', name),
       'utf8',
     )
 

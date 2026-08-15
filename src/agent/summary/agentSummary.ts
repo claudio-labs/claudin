@@ -11,14 +11,14 @@
  */
 
 import type { TaskContext } from 'src/agent/Task.js'
-import { updateAgentSummary } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
+import { updateAgentSummary } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import { filterIncompleteToolCalls } from 'src/tools/AgentTool/runAgent.js'
 import type { AgentId } from 'src/types/ids.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import {
   type CacheSafeParams,
   runForkedAgent,
-} from 'src/coordinator/forkedAgent.js'
+} from 'src/agent/coordinator/forkedAgent.js'
 import { logError } from 'src/shared/log.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import { getAgentTranscript } from 'src/services/session/sessionStorage.js'

@@ -8,7 +8,7 @@ import { getIsRemoteMode, getKairosActive, getMainThreadAgentType, getOriginalCw
 import { DEFAULT_OUTPUT_STYLE_NAME } from 'src/constants/outputStyles.js';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { getTotalAPIDuration, getTotalCost, getTotalDuration, getTotalInputTokens, getTotalLinesAdded, getTotalLinesRemoved, getTotalOutputTokens } from 'src/agent/cost-tracker.js';
-import { useMainLoopModel } from 'src/hooks/useMainLoopModel.js';
+import { useMainLoopModel } from 'src/agent/hooks/useMainLoopModel.js';
 import { type ReadonlySettings, useSettings } from 'src/platform/useSettings.js';
 import { Ansi, Box, Text } from 'src/terminal/ink.js';
 import { getRawUtilization } from 'src/services/claudeAiLimits.js';

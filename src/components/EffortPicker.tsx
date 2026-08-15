@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Box, Text, useAnimationFrame, useInput } from 'src/terminal/ink.js'
-import { useMainLoopModel } from 'src/hooks/useMainLoopModel.js'
+import { useMainLoopModel } from 'src/agent/hooks/useMainLoopModel.js'
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js'
 import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js'
 import type { Theme } from 'src/terminal/theme/theme.js'

@@ -11,7 +11,7 @@ import { launchResumeChooser, launchTeleportRepoMismatchDialog, launchTeleportRe
 import type { Root } from 'src/terminal/ink.js';
 import { exitWithError, renderAndRun } from 'src/terminal/interactiveHelpers.js';
 import { createRemoteSessionConfig } from 'src/platform/remote/RemoteSessionManager.js';
-import { launchRepl } from 'src/replLauncher.js';
+import { launchRepl } from 'src/agent/repl/replLauncher.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { logEvent } from 'src/platform/analytics/index.js';
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js';
@@ -39,7 +39,7 @@ import { validateUuid } from 'src/shared/data/uuid.js';
 import { isPolicyAllowed, waitForPolicyLimitsToLoad } from 'src/platform/policyLimits/index.js';
 import { maybeActivateBrief, maybeActivateProactive } from 'src/platform/main/lifecycle.js';
 import type { BootContext } from 'src/platform/main/bootContext.js';
-import type { Props as REPLProps } from 'src/screens/REPL.js';
+import type { Props as REPLProps } from 'src/agent/repl/REPL.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
 import type { StatsStore } from 'src/terminal/contexts/stats.js';

@@ -245,23 +245,23 @@ src/agent/cost-tracker.ts:238
 src/agent/cost-tracker.ts:241
 src/platform/status/status.tsx:11 (import)
 src/platform/status/status.tsx:211 (2 occurrences)
-src/components/AgentProgressLine.tsx:3 (import)
-src/components/AgentProgressLine.tsx:87
-src/components/CoordinatorAgentStatus.tsx:19 (import)
-src/components/CoordinatorAgentStatus.tsx:173
-src/components/tasks/InProcessTeammateDetailDialog.tsx:11 (import)
-src/components/tasks/InProcessTeammateDetailDialog.tsx:162
-src/components/Stats.tsx:17 (import)
-src/components/Stats.tsx:453
-src/components/Stats.tsx:463
-src/components/Stats.tsx:897
-src/components/Stats.tsx:905
-src/components/Stats.tsx:1136
-src/components/Stats.tsx:1141
-src/components/Stats.tsx:1215
-src/components/Stats.tsx:1224 (2 occurrences)
-src/components/tasks/AsyncAgentDetailDialog.tsx:11 (import)
-src/components/tasks/AsyncAgentDetailDialog.tsx:124
+src/agent/ui/AgentProgressLine.tsx:3 (import)
+src/agent/ui/AgentProgressLine.tsx:87
+src/agent/ui/CoordinatorAgentStatus.tsx:19 (import)
+src/agent/ui/CoordinatorAgentStatus.tsx:173
+src/agent/ui/tasks/InProcessTeammateDetailDialog.tsx:11 (import)
+src/agent/ui/tasks/InProcessTeammateDetailDialog.tsx:162
+src/agent/ui/Stats.tsx:17 (import)
+src/agent/ui/Stats.tsx:453
+src/agent/ui/Stats.tsx:463
+src/agent/ui/Stats.tsx:897
+src/agent/ui/Stats.tsx:905
+src/agent/ui/Stats.tsx:1136
+src/agent/ui/Stats.tsx:1141
+src/agent/ui/Stats.tsx:1215
+src/agent/ui/Stats.tsx:1224 (2 occurrences)
+src/agent/ui/tasks/AsyncAgentDetailDialog.tsx:11 (import)
+src/agent/ui/tasks/AsyncAgentDetailDialog.tsx:124
 src/terminal/spinner/Spinner.tsx:13 (import)
 src/terminal/spinner/Spinner.tsx:268 (2 occurrences)
 src/terminal/spinner/Spinner.tsx:276 (2 occurrences)
@@ -287,20 +287,20 @@ src/agent/cost-tracker.ts:233
 src/agent/cost-tracker.ts:235
 src/agent/cost-tracker.ts:238
 src/agent/cost-tracker.ts:241
-src/components/AgentProgressLine.tsx:3
-src/components/AgentProgressLine.tsx:87
-src/components/CoordinatorAgentStatus.tsx:19
-src/components/CoordinatorAgentStatus.tsx:173
-src/components/tasks/InProcessTeammateDetailDialog.tsx:11
-src/components/tasks/InProcessTeammateDetailDialog.tsx:162
-src/components/tasks/AsyncAgentDetailDialog.tsx:11
-src/components/tasks/AsyncAgentDetailDialog.tsx:124
+src/agent/ui/AgentProgressLine.tsx:3
+src/agent/ui/AgentProgressLine.tsx:87
+src/agent/ui/CoordinatorAgentStatus.tsx:19
+src/agent/ui/CoordinatorAgentStatus.tsx:173
+src/agent/ui/tasks/InProcessTeammateDetailDialog.tsx:11
+src/agent/ui/tasks/InProcessTeammateDetailDialog.tsx:162
+src/agent/ui/tasks/AsyncAgentDetailDialog.tsx:11
+src/agent/ui/tasks/AsyncAgentDetailDialog.tsx:124
 src/platform/status/status.tsx:11
 src/platform/status/status.tsx:211 (2x)
 src/platform/deepLink/banner.ts:18
 src/platform/deepLink/banner.ts:70
-src/components/messages/SystemTextMessage.tsx:21
-src/components/messages/SystemTextMessage.tsx:544 (4x)
+src/agent/ui/messages/SystemTextMessage.tsx:21
+src/agent/ui/messages/SystemTextMessage.tsx:544 (4x)
 src/tools/MCPTool/UI.tsx:14
 src/tools/MCPTool/UI.tsx:112
 src/agent/messages/messages.ts:86
@@ -317,10 +317,10 @@ src/tools/AgentTool/UI.tsx:376
 src/tools/AgentTool/UI.tsx:499
 src/terminal/prompt-suggestion/speculation.ts:32
 src/terminal/prompt-suggestion/speculation.ts:295
-src/components/Stats.tsx:17
-src/components/Stats.tsx:453
-src/components/Stats.tsx:463
-src/components/Stats.tsx:897
+src/agent/ui/Stats.tsx:17
+src/agent/ui/Stats.tsx:453
+src/agent/ui/Stats.tsx:463
+src/agent/ui/Stats.tsx:897
 src/components/
 ...[truncado]
 ```
@@ -338,12 +338,12 @@ src/agent/cost-tracker.ts:238
 src/agent/cost-tracker.ts:241
 src/platform/status/status.tsx:11 (import)
 src/platform/status/status.tsx:211 (2 calls)
-src/components/AgentProgressLine.tsx:3 (import)
-src/components/AgentProgressLine.tsx:87
-src/components/tasks/InProcessTeammateDetailDialog.tsx:11 (import)
-src/components/tasks/InProcessTeammateDetailDialog.tsx:162
-src/components/tasks/AsyncAgentDetailDialog.tsx:11 (import)
-src/components/tasks/AsyncAgentDetailDialog.tsx:124
+src/agent/ui/AgentProgressLine.tsx:3 (import)
+src/agent/ui/AgentProgressLine.tsx:87
+src/agent/ui/tasks/InProcessTeammateDetailDialog.tsx:11 (import)
+src/agent/ui/tasks/InProcessTeammateDetailDialog.tsx:162
+src/agent/ui/tasks/AsyncAgentDetailDialog.tsx:11 (import)
+src/agent/ui/tasks/AsyncAgentDetailDialog.tsx:124
 src/platform/deepLink/banner.ts:18 (import)
 src/platform/deepLink/banner.ts:70
 src/agent/messages/messages.ts:86 (import)
@@ -355,18 +355,18 @@ src/platform/status/statusNoticeDefinitions.tsx:44
 src/platform/status/statusNoticeDefinitions.tsx:45
 src/platform/status/statusNoticeDefinitions.tsx:153
 src/platform/status/statusNoticeDefinitions.tsx:154
-src/components/messages/SystemTextMessage.tsx:21 (import)
-src/components/messages/SystemTextMessage.tsx:544 (4 calls)
-src/components/CoordinatorAgentStatus.tsx:19 (import)
-src/components/CoordinatorAgentStatus.tsx:173
-src/components/Stats.tsx:17 (import)
-src/components/Stats.tsx:453
-src/components/Stats.tsx:463
-src/components/Stats.tsx:897
-src/components/Stats.tsx:905
-src/components/Stats.tsx:1136
-src/components/Stats.tsx:1141
-src/components/Stats.tsx:1215
+src/agent/ui/messages/SystemTextMessage.tsx:21 (import)
+src/agent/ui/messages/SystemTextMessage.tsx:544 (4 calls)
+src/agent/ui/CoordinatorAgentStatus.tsx:19 (import)
+src/agent/ui/CoordinatorAgentStatus.tsx:173
+src/agent/ui/Stats.tsx:17 (import)
+src/agent/ui/Stats.tsx:453
+src/agent/ui/Stats.tsx:463
+src/agent/ui/Stats.tsx:897
+src/agent/ui/Stats.tsx:905
+src/agent/ui/Stats.tsx:1136
+src/agent/ui/Stats.tsx:1141
+src/agent/ui/Stats.tsx:1215
 sr
 ...[truncado]
 ```
@@ -382,18 +382,18 @@ src/agent/cost-tracker.ts:233
 src/agent/cost-tracker.ts:235
 src/agent/cost-tracker.ts:238
 src/agent/cost-tracker.ts:241
-src/components/CoordinatorAgentStatus.tsx:19 — import
-src/components/CoordinatorAgentStatus.tsx:173
-src/components/AgentProgressLine.tsx:3 — import
-src/components/AgentProgressLine.tsx:87
+src/agent/ui/CoordinatorAgentStatus.tsx:19 — import
+src/agent/ui/CoordinatorAgentStatus.tsx:173
+src/agent/ui/AgentProgressLine.tsx:3 — import
+src/agent/ui/AgentProgressLine.tsx:87
 src/platform/status/status.tsx:11 — import
 src/platform/status/status.tsx:211 (two occurrences on this line)
-src/components/tasks/InProcessTeammateDetailDialog.tsx:11 — import
-src/components/tasks/InProcessTeammateDetailDialog.tsx:162
+src/agent/ui/tasks/InProcessTeammateDetailDialog.tsx:11 — import
+src/agent/ui/tasks/InProcessTeammateDetailDialog.tsx:162
 src/platform/deepLink/banner.ts:18 — import
 src/platform/deepLink/banner.ts:70
-src/components/tasks/AsyncAgentDetailDialog.tsx:11 — import
-src/components/tasks/AsyncAgentDetailDialog.tsx:124
+src/agent/ui/tasks/AsyncAgentDetailDialog.tsx:11 — import
+src/agent/ui/tasks/AsyncAgentDetailDialog.tsx:124
 src/agent/messages/messages.ts:86 — import
 src/agent/messages/messages.ts:4091 (two occurrences)
 src/agent/messages/messages.ts:4092
@@ -403,13 +403,13 @@ src/platform/status/statusNoticeDefinitions.tsx:44
 src/platform/status/statusNoticeDefinitions.tsx:45
 src/platform/status/statusNoticeDefinitions.tsx:153
 src/platform/status/statusNoticeDefinitions.tsx:154
-src/components/Stats.tsx:17 — import
-src/components/Stats.tsx:453
-src/components/Stats.tsx:463
-src/components/Stats.tsx:897
-src/components/Stats.tsx:905
-src/components/Stats.tsx:1136
-src/components/Stats.tsx:1141
+src/agent/ui/Stats.tsx:17 — import
+src/agent/ui/Stats.tsx:453
+src/agent/ui/Stats.tsx:463
+src/agent/ui/Stats.tsx:897
+src/agent/ui/Stats.tsx:905
+src/agent/ui/Stats.tsx:1136
+src/agent/ui/Stats.tsx:1141
 src/components/St
 ...[truncado]
 ```

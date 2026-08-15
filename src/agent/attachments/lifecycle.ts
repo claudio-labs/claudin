@@ -16,7 +16,7 @@ import {
   listTasks,
   getTaskListId,
   isTodoV2Enabled,
-} from 'src/tasks/tasks.js'
+} from 'src/agent/tasks/tasks.js'
 import { getPlanFilePath, getPlan } from 'src/agent/plans/plans.js'
 import {
   hasExitedPlanModeInSession,
@@ -48,10 +48,10 @@ import { tokenCountWithEstimation } from 'src/agent/context/tokens.js'
 import {
   generateTaskAttachments,
   applyTaskOffsetsAndEvictions,
-} from 'src/tasks/framework.js'
-import { getTaskOutputPath } from 'src/tasks/diskOutput.js'
-import type { LocalShellTaskState } from 'src/tasks/LocalShellTask/guards.js'
-import type { LocalAgentTaskState } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
+} from 'src/agent/tasks/framework.js'
+import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
+import type { LocalShellTaskState } from 'src/agent/tasks/LocalShellTask/guards.js'
+import type { LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import type { Attachment } from 'src/agent/attachments/types.js'
 import {
   PLAN_MODE_ATTACHMENT_CONFIG,

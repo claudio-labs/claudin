@@ -7,8 +7,8 @@ import { formatDuration } from 'src/shared/text/format.js'
 import {
   MAX_TASK_OUTPUT_BYTES,
   MAX_TASK_OUTPUT_BYTES_DISPLAY,
-} from 'src/tasks/diskOutput.js'
-import { TaskOutput } from 'src/tasks/TaskOutput.js'
+} from 'src/agent/tasks/diskOutput.js'
+import { TaskOutput } from 'src/agent/tasks/TaskOutput.js'
 
 export type ExecResult = {
   stdout: string

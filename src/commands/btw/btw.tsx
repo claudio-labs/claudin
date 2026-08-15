@@ -18,7 +18,7 @@ import type { Message } from 'src/types/message.js';
 import { createAbortController } from 'src/shared/abortController.js';
 import { saveGlobalConfig } from 'src/platform/config/config.js';
 import { errorMessage } from 'src/shared/errors.js';
-import { type CacheSafeParams, getLastCacheSafeParams } from 'src/coordinator/forkedAgent.js';
+import { type CacheSafeParams, getLastCacheSafeParams } from 'src/agent/coordinator/forkedAgent.js';
 import { getMessagesAfterCompactBoundary } from 'src/agent/messages/messages.js';
 import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.js';
 import { runSideQuestion } from 'src/agent/sideQuestion.js';

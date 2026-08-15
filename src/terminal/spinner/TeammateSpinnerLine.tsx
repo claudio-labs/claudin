@@ -8,7 +8,7 @@ import { useElapsedTime } from 'src/terminal/hooks/useElapsedTime.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { stringWidth } from 'src/terminal/ink/stringWidth.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js';
+import type { InProcessTeammateTaskState } from 'src/agent/tasks/InProcessTeammateTask/types.js';
 import { summarizeRecentActivities } from 'src/agent/tools/collapseReadSearch.js';
 import { formatDuration, formatNumber, truncateToWidth } from 'src/shared/text/format.js';
 import { toInkColor } from 'src/terminal/render/ink.js';

@@ -20,7 +20,7 @@ import { getTranscriptPathForSession } from 'src/services/session/sessionStorage
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { createAssistantMessage } from 'src/agent/messages/messages.js'
-import { getAgentName, getTeamName, getTeammateColor } from 'src/coordinator/teammate.js'
+import { getAgentName, getTeamName, getTeammateColor } from 'src/agent/coordinator/teammate.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import type {

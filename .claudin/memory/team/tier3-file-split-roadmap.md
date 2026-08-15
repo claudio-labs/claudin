@@ -22,7 +22,7 @@ were worth more than the entries themselves:
 
 **Both were executed 2026-08-07** — `runHeadless.ts` 4197→604 across 9 siblings in
 `src/platform/headless/print/`, `REPL.tsx` 4369→3145 across 5 hooks in
-`src/screens/repl/controllers/`. No non-test source file is above 4k any more; the
+`src/agent/repl/controllers/`. No non-test source file is above 4k any more; the
 largest remaining are `openaiShim.test.ts` (4618) and `bashFilter.test.ts` (3966),
 both tests.
 

@@ -2,16 +2,16 @@ import { z } from 'zod/v4'
 import { setScheduledTasksEnabled } from 'src/platform/bootstrap/state.js'
 import type { ValidationResult } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { cronToHuman, parseCronExpression } from 'src/tasks/cron.js'
+import { cronToHuman, parseCronExpression } from 'src/agent/tasks/cron.js'
 import {
   addCronTask,
   getCronFilePath,
   listAllCronTasks,
   nextCronRunMs,
-} from 'src/tasks/cronTasks.js'
+} from 'src/agent/tasks/cronTasks.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
-import { getTeammateContext } from 'src/coordinator/teammateContext.js'
+import { getTeammateContext } from 'src/agent/coordinator/teammateContext.js'
 import {
   buildCronCreateDescription,
   buildCronCreatePrompt,

@@ -4,15 +4,15 @@ import { isReplBridgeActive } from 'src/platform/bootstrap/state.js'
 import { getReplBridgeHandle } from 'src/platform/bridge/replBridgeHandle.js'
 import type { Tool, ToolUseContext } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { findTeammateTaskByAgentId } from 'src/tasks/InProcessTeammateTask/InProcessTeammateTask.js'
+import { findTeammateTaskByAgentId } from 'src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js'
 import {
   isLocalAgentTask,
   queuePendingMessage,
-} from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
-import { isMainSessionTask } from 'src/tasks/LocalMainSessionTask.js'
+} from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
+import { isMainSessionTask } from 'src/agent/tasks/LocalMainSessionTask.js'
 import { toAgentId } from 'src/types/ids.js'
-import { generateRequestId } from 'src/coordinator/agentId.js'
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
+import { generateRequestId } from 'src/agent/coordinator/agentId.js'
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { truncate } from 'src/shared/text/format.js'
@@ -21,9 +21,9 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { parseAddress } from 'src/shared/peerAddress.js'
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import type { BackendType } from 'src/coordinator/swarm/backends/types.js'
-import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js'
-import { readTeamFileAsync } from 'src/coordinator/swarm/teamHelpers.js'
+import type { BackendType } from 'src/agent/coordinator/swarm/backends/types.js'
+import { TEAM_LEAD_NAME } from 'src/agent/coordinator/swarm/constants.js'
+import { readTeamFileAsync } from 'src/agent/coordinator/swarm/teamHelpers.js'
 import {
   getAgentId,
   getAgentName,
@@ -31,13 +31,13 @@ import {
   getTeamName,
   isTeamLead,
   isTeammate,
-} from 'src/coordinator/teammate.js'
+} from 'src/agent/coordinator/teammate.js'
 import {
   createShutdownApprovedMessage,
   createShutdownRejectedMessage,
   createShutdownRequestMessage,
   writeToMailbox,
-} from 'src/coordinator/teammateMailbox.js'
+} from 'src/agent/coordinator/teammateMailbox.js'
 import { resumeAgentBackground } from 'src/tools/AgentTool/resumeAgent.js'
 import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
 import { DESCRIPTION, getPrompt } from 'src/tools/SendMessageTool/prompt.js'

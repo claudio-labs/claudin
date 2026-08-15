@@ -1,6 +1,6 @@
 import * as React from 'react';
 import type { z } from 'zod/v4';
-import { MessageResponse } from 'src/components/MessageResponse.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { OutputLine } from 'src/components/shell/OutputLine.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { ToolProgressData } from 'src/Tool.js';

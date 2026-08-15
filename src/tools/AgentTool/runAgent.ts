@@ -25,7 +25,7 @@ import type {
   ScopedMcpServerConfig,
 } from 'src/services/mcp/types.js'
 import type { Tool, Tools, ToolUseContext } from 'src/Tool.js'
-import { killShellTasksForAgent } from 'src/tasks/LocalShellTask/killShellTasks.js'
+import { killShellTasksForAgent } from 'src/agent/tasks/LocalShellTask/killShellTasks.js'
 import type { Command } from 'src/types/command.js'
 import type { AgentId } from 'src/types/ids.js'
 import type {
@@ -49,7 +49,7 @@ import {
 import {
   type CacheSafeParams,
   createSubagentContext,
-} from 'src/coordinator/forkedAgent.js'
+} from 'src/agent/coordinator/forkedAgent.js'
 import { registerFrontmatterHooks } from 'src/platform/lifecycleHooks/registerFrontmatterHooks.js'
 import { clearSessionHooks } from 'src/platform/lifecycleHooks/sessionHooks.js'
 import { executeSubagentStartHooks } from 'src/platform/lifecycleHooks/hooks.js'
@@ -918,7 +918,7 @@ export async function* runAgent({
     /* eslint-disable @typescript-eslint/no-require-imports */
     if (feature('MONITOR_TOOL')) {
       const mcpMod =
-        require('src/tasks/MonitorMcpTask/MonitorMcpTask.js') as typeof import('src/tasks/MonitorMcpTask/MonitorMcpTask.js')
+        require('src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js') as typeof import('src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js')
       mcpMod.killMonitorMcpTasksForAgent(
         agentId,
         toolUseContext.getAppState,

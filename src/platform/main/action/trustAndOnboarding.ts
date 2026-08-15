@@ -132,7 +132,7 @@ export async function runTrustAndOnboarding(
     if (choice === 'merge') {
       // SnapshotUpdateDialog is build-time stubbed in this fork; the real
       // module (upstream) exports buildMergePrompt, so we look it up dynamically.
-      const mod = (await import('src/components/agents/SnapshotUpdateDialog.js')) as {
+      const mod = (await import('src/agent/ui/agents/SnapshotUpdateDialog.js')) as {
         buildMergePrompt?: (agentType: string, memory: typeof agentDef.memory) => string;
       };
       const mergePrompt = mod.buildMergePrompt?.(agentDef.agentType, agentDef.memory) ?? '';

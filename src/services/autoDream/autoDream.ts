@@ -14,7 +14,7 @@ import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHo
 import {
   createCacheSafeParams,
   runForkedAgent,
-} from 'src/coordinator/forkedAgent.js'
+} from 'src/agent/coordinator/forkedAgent.js'
 import {
   createUserMessage,
   createMemorySavedMessage,
@@ -48,7 +48,7 @@ import {
   completeDreamTask,
   failDreamTask,
   isDreamTask,
-} from 'src/tasks/DreamTask/DreamTask.js'
+} from 'src/agent/tasks/DreamTask/DreamTask.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
 

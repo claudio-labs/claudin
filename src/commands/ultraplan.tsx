@@ -5,14 +5,14 @@ import { getRemoteSessionUrl } from 'src/constants/product.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
-import { checkRemoteAgentEligibility, formatPreconditionError, RemoteAgentTask, type RemoteAgentTaskState, registerRemoteAgentTask } from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js';
+import { checkRemoteAgentEligibility, formatPreconditionError, RemoteAgentTask, type RemoteAgentTaskState, registerRemoteAgentTask } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import type { LocalJSXCommandCall } from 'src/types/command.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { errorMessage } from 'src/shared/errors.js';
 import { logError } from 'src/shared/log.js';
 import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js';
 import { ALL_MODEL_CONFIGS } from 'src/utils/model/configs.js';
-import { updateTaskState } from 'src/tasks/framework.js';
+import { updateTaskState } from 'src/agent/tasks/framework.js';
 import { archiveRemoteSession, teleportToRemote } from 'src/platform/teleport/teleport.js';
 import { pollForApprovedExitPlanMode, UltraplanPollError } from 'src/agent/ultraplan/ccrSession.js';
 

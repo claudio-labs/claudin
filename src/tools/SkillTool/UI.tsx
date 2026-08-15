@@ -1,13 +1,13 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import * as React from 'react';
 import { SubAgentProvider } from 'src/terminal/CtrlOToExpand.js';
-import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseErrorMessage.js';
-import { FallbackToolUseRejectedMessage } from 'src/components/FallbackToolUseRejectedMessage.js';
+import { FallbackToolUseErrorMessage } from 'src/agent/ui/FallbackToolUseErrorMessage.js';
+import { FallbackToolUseRejectedMessage } from 'src/agent/ui/FallbackToolUseRejectedMessage.js';
 import type { z } from 'zod/v4';
 import type { Command } from 'src/commands.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';
-import { Message as MessageComponent } from 'src/components/Message.js';
-import { MessageResponse } from 'src/components/MessageResponse.js';
+import { Message as MessageComponent } from 'src/agent/ui/Message.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { Tools } from 'src/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';

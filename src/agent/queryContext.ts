@@ -19,7 +19,7 @@ import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { Message } from 'src/types/message.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
-import type { CacheSafeParams } from 'src/coordinator/forkedAgent.js'
+import type { CacheSafeParams } from 'src/agent/coordinator/forkedAgent.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import {

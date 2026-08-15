@@ -23,7 +23,7 @@ import { enqueue } from 'src/agent/messageQueueManager.js';
 import { buildSystemInitMessage } from 'src/agent/messages/systemInit.js';
 import { createBridgeStatusMessage, createSystemMessage } from 'src/agent/messages/messages.js';
 import { getAutoModeUnavailableNotification, getAutoModeUnavailableReason, isAutoModeGateEnabled, isBypassPermissionsModeDisabled, transitionPermissionMode } from 'src/services/permissions/permissionSetup.js';
-import { getLeaderToolUseConfirmQueue } from 'src/coordinator/swarm/leaderPermissionBridge.js';
+import { getLeaderToolUseConfirmQueue } from 'src/agent/coordinator/swarm/leaderPermissionBridge.js';
 
 /** How long after a failure before replBridgeEnabled is auto-cleared (stops retries). */
 export const BRIDGE_FAILURE_DISMISS_MS = 10_000;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageResponse } from 'src/components/MessageResponse.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { Text } from 'src/terminal/ink.js';
 import { truncate } from 'src/shared/text/format.js';
 import type { CreateOutput } from 'src/tools/ScheduleCronTool/CronCreateTool.js';

@@ -19,7 +19,7 @@ export function parseMemorySubcommand(args: string): 'tidy' | null {
  * permission prompt on each `rm` is the human gate). Returns null because no
  * JSX is rendered — the same pattern as /goal set.
  *
- * Latent trap: the REPL's immediate-command dispatcher (src/screens/REPL.tsx)
+ * Latent trap: the REPL's immediate-command dispatcher (src/agent/repl/REPL.tsx)
  * ignores `shouldQuery` — it would inject the metaMessages but never fire the
  * query. Unreachable today (`/memory` is not `immediate: true`), but if that
  * ever changes, tidy would print "Running memory tidy…" and silently no-op.

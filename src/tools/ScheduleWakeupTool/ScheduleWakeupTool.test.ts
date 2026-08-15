@@ -10,12 +10,12 @@ import {
   switchSession,
 } from 'src/platform/bootstrap/state.js'
 import type { SessionId } from 'src/types/ids.js'
-import { takeDueSessionWakeup } from 'src/tasks/cronScheduler.js'
+import { takeDueSessionWakeup } from 'src/agent/tasks/cronScheduler.js'
 import { resetLoopSentinelState } from 'src/agent/loopSentinels.js'
 import {
   createTeammateContext,
   runWithTeammateContext,
-} from 'src/coordinator/teammateContext.js'
+} from 'src/agent/coordinator/teammateContext.js'
 import {
   clampWakeupDelaySeconds,
   WAKEUP_MAX_DELAY_SECONDS,

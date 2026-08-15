@@ -4,7 +4,7 @@ import figures from 'figures';
 import React, { useEffect } from 'react';
 import { getAdditionalDirectoriesForClaudeMd, setAdditionalDirectoriesForClaudeMd } from 'src/platform/bootstrap/state.js';
 import type { LocalJSXCommandContext } from 'src/commands.js';
-import { MessageResponse } from 'src/components/MessageResponse.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { AddWorkspaceDirectory } from 'src/components/permissions/rules/AddWorkspaceDirectory.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';

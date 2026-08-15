@@ -6,7 +6,7 @@ import * as React from 'react';
 import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js';
 import type { CommandResultDisplay, ResumeEntrypoint } from 'src/commands.js';
 import { LogSelector } from 'src/platform/LogSelector.js';
-import { MessageResponse } from 'src/components/MessageResponse.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { Spinner } from 'src/terminal/spinner/Spinner.js';
 import { useIsInsideModal } from 'src/terminal/contexts/modalContext.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';

@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useMemo, useRef } from 'react';
 import { stringWidth } from 'src/terminal/ink/stringWidth.js';
 import { Box, Text, useAnimationFrame } from 'src/terminal/ink.js';
-import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js';
+import type { InProcessTeammateTaskState } from 'src/agent/tasks/InProcessTeammateTask/types.js';
 import { formatDuration, formatNumber } from 'src/shared/text/format.js';
 import { toInkColor } from 'src/terminal/render/ink.js';
 import type { Theme } from 'src/terminal/theme/theme.js';

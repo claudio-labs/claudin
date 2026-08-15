@@ -2,7 +2,13 @@ import { afterEach, describe, expect, mock, test } from 'bun:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import * as realOs from 'node:os'
+
+// Plain-object copies, not the live `import * as` namespace: `mock.module()`
+// rewrites a namespace in place, so restoring to one re-applies the stub.
+const realOs = { ...(await import('node:os')) }
+const realCodexCredentials = {
+  ...(await import('src/services/api/codexCredentials.js')),
+}
 
 function makeJwt(payload: Record<string, unknown>): string {
   const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' }))
@@ -13,8 +19,15 @@ function makeJwt(payload: Record<string, unknown>): string {
 
 describe('resolveCodexApiCredentials with secure storage', () => {
   afterEach(() => {
-    mock.module('src/services/api/codexCredentials.js', () => ({}))
-    mock.module('node:os', () => ({}))
+    // Restore the real modules. Resetting these to `{}` (as this used to) does
+    // not undo the mock — `mock.module` is never undone — it swaps one stub for
+    // an emptier one that every later file in the run then reads. The `node:os`
+    // case is the dangerous one: the tests below point `homedir()` at a temp
+    // dir they delete on the way out, so the rest of the suite resolved `~` to
+    // a path that no longer exists. That is what stopped the 15
+    // `<REPL> * baseline` snapshots from abbreviating the cwd to `~`.
+    mock.module('src/services/api/codexCredentials.js', () => realCodexCredentials)
+    mock.module('node:os', () => realOs)
   })
 
   test('loads Codex credentials from Claudin secure storage', async () => {

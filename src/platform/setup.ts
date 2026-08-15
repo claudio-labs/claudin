@@ -21,7 +21,7 @@ import {
 import { getCommands } from 'src/commands.js'
 import { initSessionMemory } from 'src/services/SessionMemory/sessionMemory.js'
 import { asSessionId } from 'src/types/ids.js'
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import { checkAndRestoreTerminalBackup } from 'src/platform/ide/appleTerminalBackup.js'
 import { prefetchApiKeyFromApiKeyHelperIfSafe } from 'src/services/auth/auth.js'
 import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
@@ -104,7 +104,7 @@ export async function setup(
   // Teammate snapshot — SIMPLE-only gate (no escape hatch, swarm not used in bare)
   if (!isBareMode() && isAgentSwarmsEnabled()) {
     const { captureTeammateModeSnapshot } = await import(
-      'src/coordinator/swarm/backends/teammateModeSnapshot.js'
+      'src/agent/coordinator/swarm/backends/teammateModeSnapshot.js'
     )
     captureTeammateModeSnapshot()
   }

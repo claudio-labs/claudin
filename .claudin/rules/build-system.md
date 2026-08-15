@@ -36,7 +36,7 @@ not source.
    (`@ant/computer-use-mcp`, `daemon/*`, `cli/bg`, `self-hosted-runner`, …),
    `.md`/`.txt` imports, and `react/compiler-runtime` are redirected to inline
    stubs. A pre-scan walks `src/` for unresolved `.js` relative imports /
-   `src/tasks/*` paths / dynamic `require`/`import` and stubs them automatically.
+   `src/agent/tasks/*` paths / dynamic `require`/`import` and stubs them automatically.
    > A new top-level Anthropic-internal import still builds (the pre-scan stubs
    > it) but is a **no-op at runtime**. Gate it behind `feature()` so it only
    > loads when intentionally enabled.

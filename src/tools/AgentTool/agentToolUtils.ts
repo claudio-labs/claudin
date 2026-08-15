@@ -34,14 +34,14 @@ import {
   type ProgressTracker,
   updateAgentProgress as updateAsyncAgentProgress,
   updateProgressFromMessage,
-} from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
+} from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import { asAgentId } from 'src/types/ids.js'
 import type { Message as MessageType } from 'src/types/message.js'
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isInProtectedNamespace } from 'src/shared/envUtils.js'
 import { AbortError, errorMessage } from 'src/shared/errors.js'
-import type { CacheSafeParams } from 'src/coordinator/forkedAgent.js'
+import type { CacheSafeParams } from 'src/agent/coordinator/forkedAgent.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   extractTextContent,
@@ -53,8 +53,8 @@ import {
   buildTranscriptForClassifier,
   classifyYoloAction,
 } from 'src/services/permissions/yoloClassifier.js'
-import { emitTaskProgress as emitTaskProgressEvent } from 'src/tasks/sdkProgress.js'
-import { isInProcessTeammate } from 'src/coordinator/teammateContext.js'
+import { emitTaskProgress as emitTaskProgressEvent } from 'src/agent/tasks/sdkProgress.js'
+import { isInProcessTeammate } from 'src/agent/coordinator/teammateContext.js'
 import { getTokenCountFromUsage } from 'src/agent/context/tokens.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
 import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'

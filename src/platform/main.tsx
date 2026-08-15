@@ -25,7 +25,7 @@ import type { Root } from 'src/terminal/ink.js';
 // launch path. getTools pulls every tool's transitive graph. initBootstrap
 // pulls undici/growthbook/OAuth populate. All three are gated by argv: cold
 // paths (--help/--version/subcommands) never need them. (Phase D.)
-import type * as ReplLauncherMod from 'src/replLauncher.js';
+import type * as ReplLauncherMod from 'src/agent/repl/replLauncher.js';
 import type { McpSdkServerConfig, ScopedMcpServerConfig } from 'src/services/mcp/types.js';
 import type { ToolInputJSONSchema } from 'src/Tool.js';
 import type * as ToolsMod from 'src/tools.js';
@@ -34,9 +34,9 @@ import type { AssistantHandles } from 'src/platform/main/action/parseOptions.js'
 import type { AssistantModule as SetupAgentAssistantModule } from 'src/platform/main/action/setupAgent.js';
 import type { RunMcpHooksAndTelemetryDeps } from 'src/platform/main/action/startupSequence.js';
 const getLaunchRepl = async (): Promise<typeof ReplLauncherMod.launchRepl> =>
-  (await import('src/replLauncher.js')).launchRepl;
+  (await import('src/agent/repl/replLauncher.js')).launchRepl;
 const getSetPreloadedChunks = async (): Promise<typeof ReplLauncherMod.setPreloadedChunks> =>
-  (await import('src/replLauncher.js')).setPreloadedChunks;
+  (await import('src/agent/repl/replLauncher.js')).setPreloadedChunks;
 const getGetTools = async (): Promise<typeof ToolsMod.getTools> =>
   (await import('src/tools.js')).getTools;
 const getInitBootstrap = async (): Promise<typeof InitMod.init> =>
@@ -47,13 +47,13 @@ import { installLifecycleHandlers } from 'src/platform/main/lifecycleHandlers.js
 
 // Lazy require to avoid circular dependency: teammate.ts -> AppState.tsx -> ... -> main.tsx
 /* eslint-disable @typescript-eslint/no-require-imports */
-const getTeammateUtils = () => require('src/coordinator/teammate.js') as typeof import('src/coordinator/teammate.js');
-const getTeammatePromptAddendum = () => require('src/coordinator/swarm/teammatePromptAddendum.js') as typeof import('src/coordinator/swarm/teammatePromptAddendum.js');
-const getTeammateModeSnapshot = () => require('src/coordinator/swarm/backends/teammateModeSnapshot.js') as typeof import('src/coordinator/swarm/backends/teammateModeSnapshot.js');
+const getTeammateUtils = () => require('src/agent/coordinator/teammate.js') as typeof import('src/agent/coordinator/teammate.js');
+const getTeammatePromptAddendum = () => require('src/agent/coordinator/swarm/teammatePromptAddendum.js') as typeof import('src/agent/coordinator/swarm/teammatePromptAddendum.js');
+const getTeammateModeSnapshot = () => require('src/agent/coordinator/swarm/backends/teammateModeSnapshot.js') as typeof import('src/agent/coordinator/swarm/backends/teammateModeSnapshot.js');
 /* eslint-enable @typescript-eslint/no-require-imports */
 // Dead code elimination: conditional import for COORDINATOR_MODE
 /* eslint-disable @typescript-eslint/no-require-imports */
-const coordinatorModeModule = feature('COORDINATOR_MODE') ? require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js') : null;
+const coordinatorModeModule = feature('COORDINATOR_MODE') ? require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js') : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
 // Dead code elimination: conditional import for KAIROS (assistant mode)
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -219,11 +219,11 @@ export async function main() {
     a === '--help' || a === '-h' || a === '--version' || a === '-V',
   );
   if (!looksHelpOrVersion) {
-    const replChunkPromise = import('src/screens/REPL.js');
-    const appChunkPromise = import('src/components/App.js');
+    const replChunkPromise = import('src/agent/repl/REPL.js');
+    const appChunkPromise = import('src/agent/ui/App.js');
     void getSetPreloadedChunks().then(set => set(
-      appChunkPromise as Promise<typeof import('src/components/App.js')>,
-      replChunkPromise as Promise<typeof import('src/screens/REPL.js')>,
+      appChunkPromise as Promise<typeof import('src/agent/ui/App.js')>,
+      replChunkPromise as Promise<typeof import('src/agent/repl/REPL.js')>,
     ));
   }
 

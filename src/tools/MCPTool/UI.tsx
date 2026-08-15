@@ -4,7 +4,7 @@ import figures from 'figures';
 import * as React from 'react';
 import type { z } from 'zod/v4';
 import { ProgressBar } from 'src/terminal/design-system/ProgressBar.js';
-import { MessageResponse } from 'src/components/MessageResponse.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { linkifyUrlsInText, OutputLine } from 'src/components/shell/OutputLine.js';
 import { stringWidth } from 'src/terminal/ink/stringWidth.js';
 import { Ansi, Box, Text } from 'src/terminal/ink.js';

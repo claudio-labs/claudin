@@ -15,7 +15,7 @@ import { isAutoDreamEnabled } from 'src/services/autoDream/config.js';
 import { readLastConsolidatedAt } from 'src/services/autoDream/consolidationLock.js';
 import { useAppState } from 'src/terminal/state/AppState.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
-import type { TaskState } from 'src/tasks/types.js';
+import type { TaskState } from 'src/agent/tasks/types.js';
 import { getAgentMemoryDir } from 'src/tools/AgentTool/agentMemory.js';
 import { openPath } from 'src/shared/browser.js';
 import { getMemoryFiles, type MemoryFileInfo } from 'src/services/instructions/claudemd.js';

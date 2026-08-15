@@ -1,8 +1,8 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import * as React from 'react';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
-import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseErrorMessage.js';
-import { MessageResponse } from 'src/components/MessageResponse.js';
+import { FallbackToolUseErrorMessage } from 'src/agent/ui/FallbackToolUseErrorMessage.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { OutputLine } from 'src/components/shell/OutputLine.js';
 import { ShellElapsedTime } from 'src/components/shell/ShellElapsedTime.js';
 import { ShellProgressMessage } from 'src/components/shell/ShellProgressMessage.js';

@@ -6,12 +6,12 @@ import { useAppState } from 'src/terminal/state/AppState.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { STATUS_TAG, SUMMARY_TAG, TASK_NOTIFICATION_TAG } from 'src/constants/xml.js';
 import { QueuedMessageProvider } from 'src/terminal/contexts/QueuedMessageContext.js';
-import { useCommandQueue } from 'src/hooks/useCommandQueue.js';
+import { useCommandQueue } from 'src/agent/hooks/useCommandQueue.js';
 import type { QueuedCommand } from 'src/types/textInputTypes.js';
 import { isQueuedCommandEditable, isQueuedCommandVisible } from 'src/agent/messageQueueManager.js';
 import { createUserMessage, EMPTY_LOOKUPS, normalizeMessages } from 'src/agent/messages/messages.js';
 import { jsonParse } from 'src/platform/slowOperations.js';
-import { Message } from 'src/components/Message.js';
+import { Message } from 'src/agent/ui/Message.js';
 const EMPTY_SET = new Set<string>();
 
 /**

@@ -1,5 +1,5 @@
 import type React from 'react'
-import { WorkflowsMenuWithTabs } from 'src/components/workflows/WorkflowsMenuWithTabs.js'
+import { WorkflowsMenuWithTabs } from 'src/agent/ui/workflows/WorkflowsMenuWithTabs.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { LocalJSXCommandContext, LocalJSXCommandOnDone } from 'src/types/command.js'
 

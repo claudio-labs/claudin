@@ -77,17 +77,17 @@ const CANDIDATES: Candidate[] = [
   // One extra value importer (ToolSelector). Easy refactor — name-constant swap.
   {
     modulePath: 'src/tools/TaskOutputTool/TaskOutputTool',
-    current: ['src/components/agents/ToolSelector.tsx'],
+    current: ['src/agent/ui/agents/ToolSelector.tsx'],
     goal: ['src/tools.ts'],
   },
   {
     modulePath: 'src/tools/TaskStopTool/TaskStopTool',
-    current: ['src/components/agents/ToolSelector.tsx'],
+    current: ['src/agent/ui/agents/ToolSelector.tsx'],
     goal: ['src/tools.ts'],
   },
   {
     modulePath: 'src/tools/WebSearchTool/WebSearchTool',
-    current: ['src/components/agents/ToolSelector.tsx'],
+    current: ['src/agent/ui/agents/ToolSelector.tsx'],
     goal: ['src/tools.ts'],
   },
   // ToolSearch is pulled by compact.ts as a value import — needs audit.
@@ -116,7 +116,7 @@ const CANDIDATES: Candidate[] = [
   {
     modulePath: 'src/tools/WebFetchTool/WebFetchTool',
     current: [
-      'src/components/agents/ToolSelector.tsx',
+      'src/agent/ui/agents/ToolSelector.tsx',
       'src/components/permissions/PermissionRequest.tsx',
       'src/components/permissions/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx',
       'src/components/permissions/rules/PermissionRuleInput.tsx',    ],
@@ -125,7 +125,7 @@ const CANDIDATES: Candidate[] = [
   {
     modulePath: 'src/tools/NotebookEditTool/NotebookEditTool',
     current: [
-      'src/components/agents/ToolSelector.tsx',
+      'src/agent/ui/agents/ToolSelector.tsx',
       'src/components/permissions/NotebookEditPermissionRequest/NotebookEditPermissionRequest.tsx',
       'src/components/permissions/PermissionRequest.tsx',      'src/tools/REPLTool/primitiveTools.ts',
     ],
@@ -157,7 +157,7 @@ const CANDIDATES: Candidate[] = [
     current: [
       'src/agent/messages/attachments.ts',
       'src/agent/messages/planMode.ts',
-      'src/components/agents/ToolSelector.tsx',
+      'src/agent/ui/agents/ToolSelector.tsx',
       'src/components/permissions/PermissionRequest.tsx',
     ],
     goal: ['src/tools.ts'],
@@ -166,14 +166,14 @@ const CANDIDATES: Candidate[] = [
   {
     modulePath: 'src/tools/ListMcpResourcesTool/ListMcpResourcesTool',
     current: [
-      'src/components/agents/ToolSelector.tsx',
+      'src/agent/ui/agents/ToolSelector.tsx',
       'src/services/mcp/client/fetchCapabilities.ts',    ],
     goal: ['src/tools.ts'],
   },
   {
     modulePath: 'src/tools/ReadMcpResourceTool/ReadMcpResourceTool',
     current: [
-      'src/components/agents/ToolSelector.tsx',
+      'src/agent/ui/agents/ToolSelector.tsx',
       'src/services/mcp/client/fetchCapabilities.ts',    ],
     goal: ['src/tools.ts'],
   },

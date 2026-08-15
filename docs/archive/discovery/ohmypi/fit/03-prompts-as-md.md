@@ -32,7 +32,7 @@ Top 13 por tamanho (file:size:interp_count):
 | File | chars | linhas | `${…}` |
 |---|---:|---:|---:|
 | `src/services/extractMemories/extractMemories.ts` | 21 501 | 609 | 21 |
-| `src/coordinator/coordinatorMode.ts` | 19 038 | 369 | 34 |
+| `src/agent/coordinator/coordinatorMode.ts` | 19 038 | 369 | 34 |
 | `src/tools/BashTool/prompt.ts` | 18 040 | 326 | 25 |
 | `src/tools/AgentTool/prompt.ts` | 14 797 | 255 | 29 |
 | `src/tools/PowerShellTool/prompt.ts` | 9 826 | 145 | 15 |

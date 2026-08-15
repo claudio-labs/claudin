@@ -6,7 +6,7 @@ import { join } from 'path'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { Message } from 'src/types/message.js'
 import { getAttachments } from 'src/agent/attachments/attachments.js'
-import { createTask, getTaskListId, resetTaskList } from 'src/tasks/tasks.js'
+import { createTask, getTaskListId, resetTaskList } from 'src/agent/tasks/tasks.js'
 
 const TASK_LIST_ID = 'reconcile-pipeline-test'
 let configDir: string

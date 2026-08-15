@@ -1,5 +1,5 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import { getTaskOutputPath } from 'src/tasks/diskOutput.js'
+import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
 import {
   buildLargeToolResultMessage,
   generatePreview,

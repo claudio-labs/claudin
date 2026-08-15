@@ -89,7 +89,7 @@ const TWELVE_FILES = [
   // 50-file extension (mixed sizes) for longer-session workloads
   'src/services/api/openaiShim.ts',
   'src/services/api/codexShim.ts',
-  'src/screens/REPL.tsx',
+  'src/agent/repl/REPL.tsx',
   'src/services/api/claude/streaming.ts',
   'src/services/api/claude/paramBuilders.ts',
   'src/agent/messages/normalize.ts',

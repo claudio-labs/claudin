@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { createContext, useContext, useMemo } from 'react';
-import { Mailbox } from 'src/coordinator/mailbox.js';
+import { Mailbox } from 'src/agent/coordinator/mailbox.js';
 const MailboxContext = createContext<Mailbox | undefined>(undefined);
 type Props = {
   children: React.ReactNode;

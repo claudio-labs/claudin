@@ -20,13 +20,13 @@ import {
   type ToolDef,
   toolMatchesName,
 } from 'src/Tool.js'
-import { formatAgentId, generateRequestId } from 'src/coordinator/agentId.js'
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
+import { formatAgentId, generateRequestId } from 'src/agent/coordinator/agentId.js'
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import {
   findInProcessTeammateTaskId,
   setAwaitingPlanApproval,
-} from 'src/coordinator/inProcessTeammateHelpers.js'
+} from 'src/agent/coordinator/inProcessTeammateHelpers.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logError } from 'src/shared/log.js'
 import {
@@ -35,15 +35,15 @@ import {
   getPlanSlug,
   persistFileSnapshotIfRemote,
 } from 'src/agent/plans/plans.js'
-import { seedTasksFromPlan } from 'src/tasks/planTasks.js'
+import { seedTasksFromPlan } from 'src/agent/tasks/planTasks.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   getAgentName,
   getTeamName,
   isPlanModeRequired,
   isTeammate,
-} from 'src/coordinator/teammate.js'
-import { writeToMailbox } from 'src/coordinator/teammateMailbox.js'
+} from 'src/agent/coordinator/teammate.js'
+import { writeToMailbox } from 'src/agent/coordinator/teammateMailbox.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { TASK_UPDATE_TOOL_NAME } from 'src/tools/TaskUpdateTool/constants.js'
 import { TEAM_CREATE_TOOL_NAME } from 'src/tools/TeamCreateTool/constants.js'

@@ -143,7 +143,7 @@ describe('findUnguardedStubComponentRenders', () => {
 
   test('flags an unguarded render of a missing module behind an enabled flag', () => {
     const risks = findUnguardedStubComponentRenders(
-      [{ path: 'src/components/messages/UserTextMessage.tsx', code: compilerOutputShape }],
+      [{ path: 'src/agent/ui/messages/UserTextMessage.tsx', code: compilerOutputShape }],
       { FORK_SUBAGENT: true },
       missingEverything,
     )
@@ -156,7 +156,7 @@ describe('findUnguardedStubComponentRenders', () => {
   test('ignores the same shape when the feature flag is off', () => {
     expect(
       findUnguardedStubComponentRenders(
-        [{ path: 'src/components/messages/UserTextMessage.tsx', code: compilerOutputShape }],
+        [{ path: 'src/agent/ui/messages/UserTextMessage.tsx', code: compilerOutputShape }],
         { FORK_SUBAGENT: false },
         missingEverything,
       ),
@@ -166,7 +166,7 @@ describe('findUnguardedStubComponentRenders', () => {
   test('treats an undeclared flag as off, like the build does', () => {
     expect(
       findUnguardedStubComponentRenders(
-        [{ path: 'src/components/messages/UserTextMessage.tsx', code: compilerOutputShape }],
+        [{ path: 'src/agent/ui/messages/UserTextMessage.tsx', code: compilerOutputShape }],
         {},
         missingEverything,
       ),
@@ -176,7 +176,7 @@ describe('findUnguardedStubComponentRenders', () => {
   test('ignores a module that resolves on disk', () => {
     expect(
       findUnguardedStubComponentRenders(
-        [{ path: 'src/components/messages/UserTextMessage.tsx', code: compilerOutputShape }],
+        [{ path: 'src/agent/ui/messages/UserTextMessage.tsx', code: compilerOutputShape }],
         { FORK_SUBAGENT: true },
         () => true,
       ),
@@ -193,7 +193,7 @@ describe('findUnguardedStubComponentRenders', () => {
 
     expect(
       findUnguardedStubComponentRenders(
-        [{ path: 'src/components/tasks/BackgroundTasksDialog.tsx', code: guarded }],
+        [{ path: 'src/agent/ui/tasks/BackgroundTasksDialog.tsx', code: guarded }],
         { MONITOR_TOOL: true },
         missingEverything,
       ),
@@ -209,7 +209,7 @@ describe('findUnguardedStubComponentRenders', () => {
 
     expect(
       findUnguardedStubComponentRenders(
-        [{ path: 'src/components/tasks/BackgroundTasksDialog.tsx', code: unguarded }],
+        [{ path: 'src/agent/ui/tasks/BackgroundTasksDialog.tsx', code: unguarded }],
         { MONITOR_TOOL: true },
         missingEverything,
       ),

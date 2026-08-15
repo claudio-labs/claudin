@@ -93,8 +93,8 @@ import {
 // Lazy: MessageSelector.tsx pulls React/ink; only needed for message filtering at query time
 /* eslint-disable @typescript-eslint/no-require-imports */
 const messageSelector =
-  (): typeof import('src/components/MessageSelector.js') =>
-    require('src/components/MessageSelector.js')
+  (): typeof import('src/agent/ui/MessageSelector.js') =>
+    require('src/agent/ui/MessageSelector.js')
 
 import {
   localCommandOutputToSDKAssistantMessage,
@@ -121,7 +121,7 @@ const getCoordinatorUserContext: (
   mcpClients: ReadonlyArray<{ name: string }>,
   scratchpadDir?: string,
 ) => { [k: string]: string } = feature('COORDINATOR_MODE')
-  ? require('src/coordinator/coordinatorMode.js').getCoordinatorUserContext
+  ? require('src/agent/coordinator/coordinatorMode.js').getCoordinatorUserContext
   : () => ({})
 /* eslint-enable @typescript-eslint/no-require-imports */
 

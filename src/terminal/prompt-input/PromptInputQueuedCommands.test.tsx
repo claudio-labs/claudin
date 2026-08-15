@@ -14,11 +14,11 @@ import { renderToString } from 'src/terminal/render/staticRender.js'
 // started timing out on `useSettings().syntaxHighlightingDisabled` once the
 // reorg changed which file the directory walk reaches first.
 const realAppState = { ...(await import('src/terminal/state/AppState.js')) }
-const realCommandQueue = { ...(await import('src/hooks/useCommandQueue.js')) }
+const realCommandQueue = { ...(await import('src/agent/hooks/useCommandQueue.js')) }
 
 describe('PromptInputQueuedCommands', () => {
   beforeEach(() => {
-    mock.module('src/hooks/useCommandQueue.js', () => ({
+    mock.module('src/agent/hooks/useCommandQueue.js', () => ({
       ...realCommandQueue,
       useCommandQueue: () => [
         {
@@ -38,7 +38,7 @@ describe('PromptInputQueuedCommands', () => {
 
   afterEach(() => {
     mock.restore()
-    mock.module('src/hooks/useCommandQueue.js', () => realCommandQueue)
+    mock.module('src/agent/hooks/useCommandQueue.js', () => realCommandQueue)
     mock.module('src/terminal/state/AppState.js', () => realAppState)
   })
 

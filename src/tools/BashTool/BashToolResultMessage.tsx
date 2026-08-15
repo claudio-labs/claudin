@@ -3,7 +3,7 @@ import React from 'react';
 import { removeSandboxViolationTags } from 'src/platform/sandbox/sandbox-ui-utils.js';
 import FullWidthRow from 'src/terminal/design-system/FullWidthRow.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
-import { MessageResponse } from 'src/components/MessageResponse.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { stripOutputMarkers } from 'src/outputFilter/Bash/markers.js';
 import { OutputLine } from 'src/components/shell/OutputLine.js';
 import { ShellTimeDisplay } from 'src/components/shell/ShellTimeDisplay.js';

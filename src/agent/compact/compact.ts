@@ -16,7 +16,7 @@ import {
 import type { QuerySource } from 'src/constants/querySource.js'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import type { Tool, ToolUseContext } from 'src/Tool.js'
-import type { LocalAgentTaskState } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
+import type { LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
 import {
   FILE_READ_TOOL_NAME,
@@ -53,7 +53,7 @@ import { cacheToObject } from 'src/shared/fs/fileStateCache.js'
 import {
   type CacheSafeParams,
   runForkedAgent,
-} from 'src/coordinator/forkedAgent.js'
+} from 'src/agent/coordinator/forkedAgent.js'
 import {
   executePostCompactHooks,
   executePreCompactHooks,
@@ -85,7 +85,7 @@ import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
-import { getTaskOutputPath } from 'src/tasks/diskOutput.js'
+import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
 import {
   getTokenUsage,
   tokenCountFromLastAPIResponse,

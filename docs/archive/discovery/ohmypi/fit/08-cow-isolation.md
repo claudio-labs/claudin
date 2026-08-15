@@ -67,7 +67,7 @@ o GB de `node_modules`.
 
 ## 2. Sub-agents paralelos em Claudin
 
-`src/coordinator/workerAgent.ts` existe mas é minúsculo (`WORKER_AGENT`,
+`src/agent/coordinator/workerAgent.ts` existe mas é minúsculo (`WORKER_AGENT`,
 14 linhas) — define uma agent built-in para o `COORDINATOR_MODE`. O motor
 de paralelismo de fato é `AgentTool` (`src/tools/AgentTool/AgentTool.tsx`)
 que aceita `multiAgent` / lista de prompts em paralelo.

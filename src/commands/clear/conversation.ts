@@ -16,12 +16,12 @@ import {
   logEvent,
 } from 'src/platform/analytics/index.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
-import { isInProcessTeammateTask } from 'src/tasks/InProcessTeammateTask/types.js'
+import { isInProcessTeammateTask } from 'src/agent/tasks/InProcessTeammateTask/types.js'
 import {
   isLocalAgentTask,
   type LocalAgentTaskState,
-} from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
-import { isLocalShellTask } from 'src/tasks/LocalShellTask/guards.js'
+} from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
+import { isLocalShellTask } from 'src/agent/tasks/LocalShellTask/guards.js'
 import { asAgentId } from 'src/types/ids.js'
 import type { Message } from 'src/types/message.js'
 import {
@@ -48,7 +48,7 @@ import {
 import {
   evictTaskOutput,
   initTaskOutputAsSymlink,
-} from 'src/tasks/diskOutput.js'
+} from 'src/agent/tasks/diskOutput.js'
 import { unlinkSessionSpillDir } from 'src/agent/tools/toolResultStorage.js'
 import { getCurrentWorktreeSession } from 'src/services/git/worktree.js'
 import { clearSessionCaches } from 'src/commands/clear/caches.js'
@@ -269,7 +269,7 @@ export async function clearConversation({
     const { saveMode } = require('src/services/session/sessionStorage.js')
     const {
       isCoordinatorMode,
-    } = require('src/coordinator/coordinatorMode.js')
+    } = require('src/agent/coordinator/coordinatorMode.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
     saveMode(isCoordinatorMode() ? 'coordinator' : 'normal')
   }

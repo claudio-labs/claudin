@@ -5,7 +5,7 @@
  * launched in the background, I'll report back") without ever emitting the
  * `Agent` tool call — so nothing actually runs and the user is left waiting for
  * results that never arrive. The prompt edits in src/tools/AgentTool/prompt.ts
- * and src/coordinator/coordinatorMode.ts reduce how often this happens; the
+ * and src/agent/coordinator/coordinatorMode.ts reduce how often this happens; the
  * runtime guard in query.ts is the deterministic floor that catches the rest.
  *
  * `claimsAgentLaunch` answers one narrow question: does this assistant text read

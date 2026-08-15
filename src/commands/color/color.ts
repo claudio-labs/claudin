@@ -13,7 +13,7 @@ import {
   getTranscriptPath,
   saveAgentColor,
 } from 'src/services/session/sessionStorage.js'
-import { isTeammate } from 'src/coordinator/teammate.js'
+import { isTeammate } from 'src/agent/coordinator/teammate.js'
 
 const RESET_ALIASES = ['default', 'reset', 'none', 'gray', 'grey'] as const
 

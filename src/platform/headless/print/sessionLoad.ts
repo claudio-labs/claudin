@@ -39,7 +39,7 @@ import { isEnvTruthy } from 'src/shared/envUtils.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const coordinatorModeModule = feature('COORDINATOR_MODE')
-  ? (require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js'))
+  ? (require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

@@ -18,7 +18,7 @@ import { getSessionId, getIsNonInteractiveSession, setKairosActive } from 'src/p
 import { downloadSessionFiles, type FilesApiConfig, parseFileSpecs } from 'src/services/api/filesApi.js';
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
 import { logEvent } from 'src/platform/analytics/index.js';
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { checkHasTrustDialogAccepted, getGlobalConfig } from 'src/platform/config/config.js';
 import { seedEarlyInput } from 'src/terminal/input/earlyInput.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
@@ -35,9 +35,9 @@ import type { BootContext } from 'src/platform/main/bootContext.js';
 
 /** Lazy-require accessors for teammate utils (circular-dep workarounds in main.tsx). */
 export type TeammateAccessors = {
-  getTeammateUtils: () => typeof import('src/coordinator/teammate.js');
-  getTeammatePromptAddendum: () => typeof import('src/coordinator/swarm/teammatePromptAddendum.js');
-  getTeammateModeSnapshot: () => typeof import('src/coordinator/swarm/backends/teammateModeSnapshot.js');
+  getTeammateUtils: () => typeof import('src/agent/coordinator/teammate.js');
+  getTeammatePromptAddendum: () => typeof import('src/agent/coordinator/swarm/teammatePromptAddendum.js');
+  getTeammateModeSnapshot: () => typeof import('src/agent/coordinator/swarm/backends/teammateModeSnapshot.js');
 };
 
 /**

@@ -318,7 +318,7 @@ const RECORDED_COMMANDS: readonly string[] = [
   'gh run view --job 92198424809 --repo claudio-labs/claudin --log-failed 2>&1 | tail -60',
   'git diff --stat | tail -5',
   'git diff main...HEAD --stat 2>&1 | tail -15',
-  'git diff src/components/workflows/RunningWorkflowsTab.tsx | grep "^@@"',
+  'git diff src/agent/ui/workflows/RunningWorkflowsTab.tsx | grep "^@@"',
   'git log --stat -1 d67e21a | head -50',
   'git show --stat b5a5edc 2>&1 | head -40',
   'git status --short | grep -i subtitle',

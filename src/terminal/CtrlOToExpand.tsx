@@ -5,7 +5,7 @@ import { Text } from 'src/terminal/ink.js';
 import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
-import { InVirtualListContext } from 'src/components/messageActions.js';
+import { InVirtualListContext } from 'src/agent/ui/messageActions.js';
 
 // Context to track if we're inside a sub agent
 // Similar to MessageResponseContext, this helps us avoid showing

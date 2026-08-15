@@ -9,7 +9,7 @@ import {
   isTodoV2Enabled,
   listTasks,
   resetTaskList,
-} from 'src/tasks/tasks.js'
+} from 'src/agent/tasks/tasks.js'
 import { TaskCreateTool } from 'src/tools/TaskCreateTool/TaskCreateTool.js'
 
 // Pin task list ID + isolated config dir so each test sees a clean store.

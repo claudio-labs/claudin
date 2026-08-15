@@ -220,7 +220,7 @@ src/
 │   ├── GrepTool/ GlobTool/      ← ripgrep + glob wrappers
 │   ├── GitTool/                 ← git + gh, batched; permissions delegate to BashTool's
 │   ├── AgentTool/               ← sub-agent spawning (built-in agents in built-in/)
-│   ├── TaskCreateTool/ …        ← task tool surface (runtime backends live in src/tasks/)
+│   ├── TaskCreateTool/ …        ← task tool surface (runtime backends live in src/agent/tasks/)
 │   ├── WebFetchTool/ WebSearchTool/  ← Firecrawl or DuckDuckGo/raw
 │   ├── LSPTool/                 ← read-only LSP ops (plugin-only; backend in services/lsp/)
 │   ├── EnterPlanModeTool/ ExitPlanModeTool/ VerifyPlanExecutionTool/  ← planning
@@ -357,7 +357,7 @@ Grep pattern="rewrite\|canonicaliz" path="src/outputFilter/"
 
 ```
 # The tool surface is src/tools/TaskCreateTool/; the runtime backends are:
-Glob pattern="src/tasks/**/*.ts"   # LocalAgentTask, MonitorMcpTask, DreamTask, …
+Glob pattern="src/agent/tasks/**/*.ts"   # LocalAgentTask, MonitorMcpTask, DreamTask, …
 ```
 
 ### "Which files have tests?"

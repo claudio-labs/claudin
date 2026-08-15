@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { count } from 'src/shared/data/array.js';
-import { MessageResponse } from 'src/components/MessageResponse.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { StructuredDiffList } from 'src/components/StructuredDiffList.js';
 type Props = {
   filePath: string;

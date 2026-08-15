@@ -98,7 +98,7 @@ the right one.
 
 ## 6. Some committed `.tsx` are React-Compiler output, not JSX
 
-- At least `src/components/TokenWarning.tsx` is checked in **already
+- At least `src/agent/ui/TokenWarning.tsx` is checked in **already
   React-Compiler-transformed**: `import { c as _c } from 'react-compiler-runtime'`,
   `const $ = _c(13)` fixed-slot cache, `$[i]` bookkeeping,
   `Symbol.for("react.memo_cache_sentinel")` guards — this is the real source, not

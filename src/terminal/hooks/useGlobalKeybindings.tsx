@@ -8,7 +8,7 @@ import { feature } from 'bun:bundle';
 import { useCallback } from 'react';
 import instances from 'src/terminal/ink/instances.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
-import type { Screen } from 'src/screens/REPL.js';
+import type { Screen } from 'src/agent/repl/REPL.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
@@ -57,7 +57,7 @@ export function GlobalKeybindingHandlers({
         getAllInProcessTeammateTasks
       } =
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('src/tasks/InProcessTeammateTask/InProcessTeammateTask.js') as typeof import('src/tasks/InProcessTeammateTask/InProcessTeammateTask.js');
+      require('src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js') as typeof import('src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js');
       const hasTeammates = count(getAllInProcessTeammateTasks(prev.tasks), t => t.status === 'running') > 0;
       if (hasTeammates) {
         // Both exist: none → tasks → teammates → none

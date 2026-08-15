@@ -3,12 +3,12 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const realTeammate = { ...(await import('src/coordinator/teammate.js')) }
-const realTeammateMailbox = { ...(await import('src/coordinator/teammateMailbox.js')) }
+const realTeammate = { ...(await import('src/agent/coordinator/teammate.js')) }
+const realTeammateMailbox = { ...(await import('src/agent/coordinator/teammateMailbox.js')) }
 const realAnalyticsIndex = { ...(await import('src/platform/analytics/index.js')) }
 const realTelemetryEvents = { ...(await import('src/platform/telemetry/events.js')) }
 const realPolicyLimits = { ...(await import('src/platform/policyLimits/index.js')) }
-const realTeamHelpers = { ...(await import('src/coordinator/swarm/teamHelpers.js')) }
+const realTeamHelpers = { ...(await import('src/agent/coordinator/swarm/teamHelpers.js')) }
 const realReplBridgeHandle = { ...(await import('src/platform/bridge/replBridgeHandle.js')) }
 const realAgentTool = { ...(await import('src/tools/AgentTool/AgentTool.js')) }
 const realEnvUtils = { ...(await import('src/shared/envUtils.js')) }
@@ -85,15 +85,15 @@ async function importHookChainsHarness(
     isPolicyAllowed: () => allowRemoteSessions,
   }))
 
-  mock.module('src/coordinator/swarm/teamHelpers.js', () => ({
+  mock.module('src/agent/coordinator/swarm/teamHelpers.js', () => ({
     readTeamFileAsync: async () => options.teamFile ?? null,
   }))
 
-  mock.module('src/coordinator/teammateMailbox.js', () => ({
+  mock.module('src/agent/coordinator/teammateMailbox.js', () => ({
     writeToMailbox: writeToMailboxSpy,
   }))
 
-  mock.module('src/coordinator/teammate.js', () => ({
+  mock.module('src/agent/coordinator/teammate.js', () => ({
     getAgentName: () => senderName,
     getTeamName: () => teamName,
     getTeammateColor: () => 'blue',
@@ -377,10 +377,10 @@ describe('hookChains integration dispatch', () => {
 })
 
 afterAll(() => {
-  mock.module('src/coordinator/teammate.js', () => realTeammate)
-  mock.module('src/coordinator/teammate.js', () => realTeammate)
-  mock.module('src/coordinator/teammateMailbox.js', () => realTeammateMailbox)
-  mock.module('src/coordinator/teammateMailbox.js', () => realTeammateMailbox)
+  mock.module('src/agent/coordinator/teammate.js', () => realTeammate)
+  mock.module('src/agent/coordinator/teammate.js', () => realTeammate)
+  mock.module('src/agent/coordinator/teammateMailbox.js', () => realTeammateMailbox)
+  mock.module('src/agent/coordinator/teammateMailbox.js', () => realTeammateMailbox)
   mock.module('src/shared/envUtils.js', () => realEnvUtils)
   mock.module('src/shared/envUtils.js', () => realEnvUtils)
   mock.module('src/platform/analytics/index.js', () => realAnalyticsIndex)
@@ -389,8 +389,8 @@ afterAll(() => {
   mock.module('src/platform/telemetry/events.js', () => realTelemetryEvents)
   mock.module('src/platform/policyLimits/index.js', () => realPolicyLimits)
   mock.module('src/platform/policyLimits/index.js', () => realPolicyLimits)
-  mock.module('src/coordinator/swarm/teamHelpers.js', () => realTeamHelpers)
-  mock.module('src/coordinator/swarm/teamHelpers.js', () => realTeamHelpers)
+  mock.module('src/agent/coordinator/swarm/teamHelpers.js', () => realTeamHelpers)
+  mock.module('src/agent/coordinator/swarm/teamHelpers.js', () => realTeamHelpers)
   mock.module('src/platform/bridge/replBridgeHandle.js', () => realReplBridgeHandle)
   mock.module('src/platform/bridge/replBridgeHandle.js', () => realReplBridgeHandle)
   mock.module('src/tools/AgentTool/AgentTool.js', () => realAgentTool)

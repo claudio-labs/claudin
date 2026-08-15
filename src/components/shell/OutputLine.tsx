@@ -6,8 +6,8 @@ import { Ansi, Text } from 'src/terminal/ink.js';
 import { createHyperlink } from 'src/shared/text/hyperlink.js';
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js';
 import { renderTruncatedContent } from 'src/terminal/terminal.js';
-import { MessageResponse } from 'src/components/MessageResponse.js';
-import { InVirtualListContext } from 'src/components/messageActions.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
+import { InVirtualListContext } from 'src/agent/ui/messageActions.js';
 import { useExpandShellOutput } from 'src/components/shell/ExpandShellOutputContext.js';
 export function tryFormatJson(line: string): string {
   try {

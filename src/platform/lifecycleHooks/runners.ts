@@ -10,7 +10,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'child_process'
 import { pathExists } from 'src/shared/fs/file.js'
 import { wrapSpawn, type ShellCommand } from 'src/shared/proc/ShellCommand.js'
-import { TaskOutput } from 'src/tasks/TaskOutput.js'
+import { TaskOutput } from 'src/agent/tasks/TaskOutput.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { formatShellPrefixCommand } from 'src/platform/bash/shellPrefix.js'
 import { getHookEnvFilePath } from 'src/services/session/sessionEnvironment.js'

@@ -8,7 +8,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import { getDefaultAppState } from 'src/terminal/state/AppStateStore.js'
-import { isLocalShellTask } from 'src/tasks/LocalShellTask/guards.js'
+import { isLocalShellTask } from 'src/agent/tasks/LocalShellTask/guards.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { resetCommandQueue } from 'src/agent/messageQueueManager.js'
 import { drainSdkEvents } from 'src/agent/sdkEventQueue.js'

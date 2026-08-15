@@ -9,7 +9,7 @@ import { type VoiceState, useVoiceState } from 'src/terminal/contexts/voice.js';
 import type { VerificationStatus } from 'src/hooks/useApiKeyVerification.js';
 import { useIdeConnectionStatus } from 'src/platform/ide/useIdeConnectionStatus.js';
 import type { IDESelection } from 'src/platform/ide/useIdeSelection.js';
-import { useMainLoopModel } from 'src/hooks/useMainLoopModel.js';
+import { useMainLoopModel } from 'src/agent/hooks/useMainLoopModel.js';
 import { useVoiceEnabled } from 'src/terminal/voice/useVoiceEnabled.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useClaudeAiLimits } from 'src/services/claudeAiLimitsHook.js';
@@ -29,7 +29,7 @@ import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.
 import { IdeStatusIndicator } from 'src/platform/ide/IdeStatusIndicator.js';
 import { SessionTokensIndicator } from 'src/components/SessionTokensIndicator.js';
 import { SentryErrorBoundary } from 'src/platform/SentryErrorBoundary.js';
-import { TokenWarning } from 'src/components/TokenWarning.js';
+import { TokenWarning } from 'src/agent/ui/TokenWarning.js';
 import { SandboxPromptFooterHint } from 'src/terminal/prompt-input/SandboxPromptFooterHint.js';
 
 /* eslint-disable @typescript-eslint/no-require-imports */

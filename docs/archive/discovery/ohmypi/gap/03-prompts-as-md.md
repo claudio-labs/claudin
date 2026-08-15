@@ -110,7 +110,7 @@ function buildAgentContent(def) {
 - Bonus: `scripts/prompts-source-guard.test.ts` — falha se template literal > 500 chars sob `src/tools/*/prompt.ts`.
 
 ### 3.6 Coordinator: **não migrar**
-`src/coordinator/coordinatorMode.ts:1-369` (19038 chars, 34 `${}`, feature-flag interpolations) confirma veredito do fit.
+`src/agent/coordinator/coordinatorMode.ts:1-369` (19038 chars, 34 `${}`, feature-flag interpolations) confirma veredito do fit.
 
 ## Referências
 - omp engine: `/oh-my-pi/packages/utils/src/prompt.ts:226-471`

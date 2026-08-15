@@ -27,7 +27,7 @@ import {
   type CacheSafeParams,
   createCacheSafeParams,
   runForkedAgent,
-} from 'src/coordinator/forkedAgent.js'
+} from 'src/agent/coordinator/forkedAgent.js'
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import { logError } from 'src/shared/log.js'
 import type { SetAppState } from 'src/agent/messageQueueManager.js'

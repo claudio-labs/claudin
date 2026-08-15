@@ -81,7 +81,7 @@ import { runHeadlessStreaming } from 'src/platform/headless/print/runHeadlessStr
 // Dead code elimination: conditional imports
 /* eslint-disable @typescript-eslint/no-require-imports */
 const coordinatorModeModule = feature('COORDINATOR_MODE')
-  ? (require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js'))
+  ? (require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js'))
   : null
 const extractMemoriesModule = feature('EXTRACT_MEMORIES')
   ? (require('src/services/extractMemories/extractMemories.js') as typeof import('src/services/extractMemories/extractMemories.js'))

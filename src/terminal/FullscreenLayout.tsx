@@ -12,7 +12,7 @@ import type { Message } from 'src/types/message.js';
 import { openBrowser, openPath } from 'src/shared/browser.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { plural } from 'src/shared/text/stringUtils.js';
-import { isNullRenderingAttachment } from 'src/components/messages/nullRenderingAttachments.js';
+import { isNullRenderingAttachment } from 'src/agent/ui/messages/nullRenderingAttachments.js';
 import PromptInputFooterSuggestions from 'src/terminal/prompt-input/PromptInputFooterSuggestions.js';
 import type { StickyPrompt } from 'src/terminal/VirtualMessageList.js';
 

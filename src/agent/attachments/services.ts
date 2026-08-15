@@ -45,22 +45,22 @@ import {
 } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
 import { isLspGloballyEnabled } from 'src/platform/lsp/userSettings.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import {
   readUnreadMessages,
   markMessagesAsReadByPredicate,
   isShutdownApproved,
   isStructuredProtocolMessage,
   isIdleNotification,
-} from 'src/coordinator/teammateMailbox.js'
+} from 'src/agent/coordinator/teammateMailbox.js'
 import {
   getAgentName,
   getTeamName,
   isTeamLead,
-} from 'src/coordinator/teammate.js'
-import { isInProcessTeammate } from 'src/coordinator/teammateContext.js'
-import { removeTeammateFromTeamFile } from 'src/coordinator/swarm/teamHelpers.js'
-import { unassignTeammateTasks } from 'src/tasks/tasks.js'
+} from 'src/agent/coordinator/teammate.js'
+import { isInProcessTeammate } from 'src/agent/coordinator/teammateContext.js'
+import { removeTeammateFromTeamFile } from 'src/agent/coordinator/swarm/teamHelpers.js'
+import { unassignTeammateTasks } from 'src/agent/tasks/tasks.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { Attachment } from 'src/agent/attachments/types.js'
 import { isFileReadDenied } from 'src/agent/attachments/shared.js'

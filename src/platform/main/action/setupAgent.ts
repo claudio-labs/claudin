@@ -20,7 +20,7 @@ import { getCommands } from 'src/commands.js';
 import { getSystemContext, getUserContext } from 'src/agent/context.js';
 import { getActiveAgentsFromList, getAgentDefinitionsWithOverrides, isBuiltInAgent, parseAgentsFromJson } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { canUserConfigureAdvisor, getInitialAdvisorSetting, isAdvisorEnabled, isValidAdvisorModel, modelSupportsAdvisor } from 'src/platform/doctor/advisor.js';
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { logForDebugging } from 'src/shared/debug.js';

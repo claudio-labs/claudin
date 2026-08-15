@@ -33,7 +33,7 @@ import { computeStandaloneAgentContext, restoreAgentFromSession, restoreWorktree
 import { adoptResumedSessionFile, enrichLogs, isCustomTitleEnabled, loadAllProjectsMessageLogsProgressive, loadSameRepoMessageLogsProgressive, recordContentReplacement, resetSessionFilePointer, restoreSessionMetadata, type SessionLogResult } from 'src/services/session/sessionStorage.js';
 import type { ThinkingConfig } from 'src/agent/context/thinking.js';
 import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js';
-import { REPL } from 'src/screens/REPL.js';
+import { REPL } from 'src/agent/repl/REPL.js';
 function parsePrIdentifier(value: string): number | null {
   const directNumber = parseInt(value, 10);
   if (!isNaN(directNumber) && directNumber > 0) {
@@ -197,7 +197,7 @@ export function ResumeConversation({
       }
       if (feature('COORDINATOR_MODE')) {
         /* eslint-disable @typescript-eslint/no-require-imports */
-        const coordinatorModule = require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js');
+        const coordinatorModule = require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js');
         /* eslint-enable @typescript-eslint/no-require-imports */
         const warning = coordinatorModule.matchSessionMode(result_3.mode);
         if (warning) {
@@ -242,7 +242,7 @@ export function ResumeConversation({
         } = require('src/services/session/sessionStorage.js');
         const {
           isCoordinatorMode
-        } = require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js');
+        } = require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js');
         /* eslint-enable @typescript-eslint/no-require-imports */
         saveMode(isCoordinatorMode() ? 'coordinator' : 'normal');
       }

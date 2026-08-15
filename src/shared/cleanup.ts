@@ -14,7 +14,7 @@ import { cleanupOldPastes } from 'src/terminal/input/pasteStore.js'
 import { getPlansDirectory } from 'src/agent/plans/plans.js'
 import { getProjectsDir } from 'src/services/session/sessionStorage.js'
 import { getSettingsWithAllErrors } from 'src/platform/settings/allErrors.js'
-import { getTaskListId, sanitizePathComponent } from 'src/tasks/tasks.js'
+import { getTaskListId, sanitizePathComponent } from 'src/agent/tasks/tasks.js'
 import {
   getInitialSettings,
   rawSettingsContainsKey,

@@ -10,8 +10,8 @@ import {
   deleteTask,
   getTaskListId,
   isTodoV2Enabled,
-} from 'src/tasks/tasks.js'
-import { getAgentName, getTeamName } from 'src/coordinator/teammate.js'
+} from 'src/agent/tasks/tasks.js'
+import { getAgentName, getTeamName } from 'src/agent/coordinator/teammate.js'
 import { TASK_CREATE_TOOL_NAME } from 'src/tools/TaskCreateTool/constants.js'
 import { DESCRIPTION, getPrompt } from 'src/tools/TaskCreateTool/prompt.js'
 

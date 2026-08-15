@@ -28,7 +28,7 @@ import type {
   MessageOrigin,
   UserMessage,
 } from 'src/types/message.js'
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import {
   type Attachment,
   memoryHeader,
@@ -39,7 +39,7 @@ import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { formatFileSize, formatNumber } from 'src/shared/text/format.js'
 import { logMCPDebug } from 'src/shared/log.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { isTodoV2Enabled } from 'src/tasks/tasks.js'
+import { isTodoV2Enabled } from 'src/agent/tasks/tasks.js'
 import type { Tool } from 'src/Tool.js'
 import { createUserMessage } from 'src/agent/messages/factories.js'
 import { getAutoModeInstructions } from 'src/agent/messages/autoMode.js'
@@ -51,9 +51,9 @@ import {
 } from 'src/agent/messages/text.js'
 
 // Lazy import to avoid circular dependency (teammateMailbox -> teammate -> ... -> messages)
-function getTeammateMailbox(): typeof import('src/coordinator/teammateMailbox.js') {
+function getTeammateMailbox(): typeof import('src/agent/coordinator/teammateMailbox.js') {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require('src/coordinator/teammateMailbox.js')
+  return require('src/agent/coordinator/teammateMailbox.js')
 }
 
 export function normalizeAttachmentForAPI(

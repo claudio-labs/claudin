@@ -1,7 +1,7 @@
 import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { Message } from 'src/types/message.js'
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import { count } from 'src/shared/data/array.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { toError } from 'src/shared/errors.js'
@@ -9,7 +9,7 @@ import {
   type CacheSafeParams,
   createCacheSafeParams,
   runForkedAgent,
-} from 'src/coordinator/forkedAgent.js'
+} from 'src/agent/coordinator/forkedAgent.js'
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logError } from 'src/shared/log.js'
@@ -19,7 +19,7 @@ import {
   getLastAssistantMessage,
 } from 'src/agent/messages/messages.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
-import { isTeammate } from 'src/coordinator/teammate.js'
+import { isTeammate } from 'src/agent/coordinator/teammate.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,

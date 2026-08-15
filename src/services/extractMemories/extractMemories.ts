@@ -47,7 +47,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import {
   createCacheSafeParams,
   runForkedAgent,
-} from 'src/coordinator/forkedAgent.js'
+} from 'src/agent/coordinator/forkedAgent.js'
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import {

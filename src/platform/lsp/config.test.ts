@@ -22,8 +22,13 @@ type AnyAsyncFn = (...args: any[]) => Promise<any>
 // on first import, so a partial mock here would leak missing-export errors
 // into every later test file that pulls pluginLoader transitively (e.g.
 // tools.lsp-gate, diagnosticsForToolResult).
-const realPluginLoader = await import('src/services/plugins/pluginLoader.js')
-const mockLoadPlugins = mock<AnyAsyncFn>(async () => ({ enabled: [] }))
+const realPluginLoader = { ...(await import('src/services/plugins/pluginLoader.js')) }
+// `errors` is not optional padding: `getClaudeCodeMcpConfigs` and
+// `loadPluginOutputStyles` both read `.errors.length` off this result, and a
+// module-scope `mock.module` is live for the WHOLE run — so a stub missing the
+// key is a TypeError in any later file that reaches those, not just here. It
+// took out all 15 `<REPL> * baseline` tests once the reorg moved them.
+const mockLoadPlugins = mock<AnyAsyncFn>(async () => ({ enabled: [], errors: [] }))
 mock.module('src/services/plugins/pluginLoader.js', () => ({
   ...realPluginLoader,
   loadAllPluginsCacheOnly: mockLoadPlugins,
@@ -121,10 +126,22 @@ describe('getAllLspServers — plugin-only', () => {
 // ---------------------------------------------------------------------------
 // Restore module mocks so leaks don't bleed into subsequent test files.
 // In particular, debug.js and errors.js leaks have caused SyntaxError missing
-// exports in later files (e.g. tools.lsp-gate tests). We do NOT restore
-// pluginLoader.js / lspPluginIntegration.js — those have many exports the
-// existing partial mock already covers for downstream tests, and replacing
-// them here with our own incomplete stub regresses things further.
+// exports in later files (e.g. tools.lsp-gate tests).
+//
+// pluginLoader.js is the exception, and it is pinned rather than restored. The
+// tests above drive `mockLoadPlugins` through `mockReset()` and
+// `mockImplementation(... throw ...)`, and `mock.module` is never undone — so
+// whatever implementation the last test happened to leave is what every later
+// file calls. That is how `pluginResult.errors` came back undefined inside the
+// real `getClaudeCodeMcpConfigs` and took out all 15 `<REPL> * baseline` tests.
+// Handing the REAL module back is not the fix either: those baselines then do
+// genuine plugin discovery mid-render, which changes their committed frames and
+// costs 3s apiece. So pin an inert stub with the full namespace and a plain
+// function (not a `mock()`, which `mockReset` can gut) — the no-plugins state
+// the rest of the suite has always run under, minus the nondeterminism.
+//
+// lspPluginIntegration.js is still deliberately left stubbed: capturing a real
+// copy of it means importing the deep plugin chain this file exists to avoid.
 // ---------------------------------------------------------------------------
 afterAll(() => {
   mock.module('src/shared/debug.js', () => realDebugConfigTest)
@@ -133,4 +150,8 @@ afterAll(() => {
   mock.module('src/shared/errors.js', () => realErrorsConfigTest)
   mock.module('src/shared/log.js', () => realLogConfig)
   mock.module('src/shared/log.js', () => realLogConfig)
+  mock.module('src/services/plugins/pluginLoader.js', () => ({
+    ...realPluginLoader,
+    loadAllPluginsCacheOnly: async () => ({ enabled: [], errors: [] }),
+  }))
 })

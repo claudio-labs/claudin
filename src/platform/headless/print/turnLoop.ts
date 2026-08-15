@@ -51,7 +51,7 @@ import {
   logSuggestionOutcome,
   logSuggestionSuppressed,
 } from 'src/terminal/prompt-suggestion/promptSuggestion.js'
-import { getLastCacheSafeParams } from 'src/coordinator/forkedAgent.js'
+import { getLastCacheSafeParams } from 'src/agent/coordinator/forkedAgent.js'
 import { getInitJsonSchema, getSessionId } from 'src/platform/bootstrap/state.js'
 import {
   headlessProfilerStartTurn,
@@ -67,16 +67,16 @@ import {
   hasActiveInProcessTeammates,
   hasWorkingInProcessTeammates,
   waitForTeammatesToBecomeIdle,
-} from 'src/coordinator/teammate.js'
+} from 'src/agent/coordinator/teammate.js'
 import {
   readUnreadMessages,
   markMessagesAsRead,
   isShutdownApproved,
-} from 'src/coordinator/teammateMailbox.js'
-import { removeTeammateFromTeamFile } from 'src/coordinator/swarm/teamHelpers.js'
-import { unassignTeammateTasks } from 'src/tasks/tasks.js'
-import { getRunningTasks } from 'src/tasks/framework.js'
-import { isBackgroundTask } from 'src/tasks/types.js'
+} from 'src/agent/coordinator/teammateMailbox.js'
+import { removeTeammateFromTeamFile } from 'src/agent/coordinator/swarm/teamHelpers.js'
+import { unassignTeammateTasks } from 'src/agent/tasks/tasks.js'
+import { getRunningTasks } from 'src/agent/tasks/framework.js'
+import { isBackgroundTask } from 'src/agent/tasks/types.js'
 import { drainSdkEvents } from 'src/agent/sdkEventQueue.js'
 import { errorMessage, toError } from 'src/shared/errors.js'
 import { sleep } from 'src/shared/sleep.js'

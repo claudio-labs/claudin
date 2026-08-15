@@ -5,7 +5,7 @@ import {
   FORK_BOILERPLATE_TAG,
   FORK_DIRECTIVE_PREFIX,
 } from 'src/constants/xml.js'
-import { isCoordinatorMode } from 'src/coordinator/coordinatorMode.js'
+import { isCoordinatorMode } from 'src/agent/coordinator/coordinatorMode.js'
 import type {
   AssistantMessage,
   Message as MessageType,

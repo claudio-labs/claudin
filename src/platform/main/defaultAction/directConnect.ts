@@ -6,7 +6,7 @@ import { getOriginalCwd, setCwdState, setDirectConnectServerUrl, setOriginalCwd 
 import type { Command } from 'src/commands.js';
 import type { Root } from 'src/terminal/ink.js';
 import { exitWithError, renderAndRun } from 'src/terminal/interactiveHelpers.js';
-import { launchRepl } from 'src/replLauncher.js';
+import { launchRepl } from 'src/agent/repl/replLauncher.js';
 import { createDirectConnectSession, DirectConnectError } from 'src/platform/server/createDirectConnectSession.js';
 import { type AppState } from 'src/terminal/state/AppStateStore.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';

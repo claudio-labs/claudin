@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle';
 import * as React from 'react';
 import type { LocalJSXCommandContext } from 'src/commands.js';
 import { Box, Text, useInput } from 'src/terminal/ink.js';
-import { ContextVisualization } from 'src/components/ContextVisualization.js';
+import { ContextVisualization } from 'src/agent/ui/ContextVisualization.js';
 import { DOWN_ARROW, UP_ARROW } from 'src/constants/figures.js';
 import { useModalOrTerminalSize } from 'src/terminal/contexts/modalContext.js';
 import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';

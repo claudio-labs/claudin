@@ -53,7 +53,7 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 - Forces "MUST identify root causes", "MUST consider 2+ hypotheses".
 
 **Vale pra Claudin?**
-- **Médio-alto.** `src/coordinator/` é multi-agent mas sem consultor explícito. Encaixa em `AgentTool/`.
+- **Médio-alto.** `src/agent/coordinator/` é multi-agent mas sem consultor explícito. Encaixa em `AgentTool/`.
 - Útil em fallback chain (primário + escalation a modelo mais forte).
 
 **Encaixe**: `src/prompts/agents/oracle.md`. Registrar via `AgentTool/`. Preset adicional `getPrimaryModel`/`getSlowModel` em `src/services/api/providerModels.ts`.

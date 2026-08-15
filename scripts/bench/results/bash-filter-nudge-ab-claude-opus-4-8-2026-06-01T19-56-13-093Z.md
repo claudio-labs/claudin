@@ -268,7 +268,7 @@ As últimas 5 revisões (`HEAD~5..HEAD`) **não são todas do mesmo tema** — h
    - `631f667 fix(model): always annotate "(1M context)"...`
    - `31128c9 feat(model): offer 200k + 1M context variants...`
    - `bd8150d style(context): draw connected tree spine...`
-   - Isso bate com os arquivos `src/utils/model/*`, `src/commands/model/model.tsx`, `src/components/ContextVisualization.tsx`.
+   - Isso bate com os arquivos `src/utils/model/*`, `src/commands/model/model.tsx`, `src/agent/ui/ContextVisualization.tsx`.
 
 2. **Benchmark de tokens** (tema separa
 …[truncado]
@@ -304,7 +304,7 @@ Vale uma ressalva: se você considerar só **código de produção** (ignorando 
 
 **Arquivo mais alterado:** `scripts/bench/cli-token-footprint.sh`, com **158 linhas** de churn — é o maior número absoluto na coluna do `--stat`.
 
-Vale a ressalva: esse é um script de benchmark. Se você quiser dizer "código de produção", o líder é `src/utils/model/modelOptions.ts` (**111 linhas**), seguido de perto por `src/components/ContextVisualization.tsx` (60). O total geral foi 19 arquivos, +1173/−119.
+Vale a ressalva: esse é um script de benchmark. Se você quiser dizer "código de produção", o líder é `src/utils/model/modelOptions.ts` (**111 linhas**), seguido de perto por `src/agent/ui/ContextVisualization.tsx` (60). O total geral foi 19 arquivos, +1173/−119.
 
 ## Os 5 commits são do mesmo tema?
 

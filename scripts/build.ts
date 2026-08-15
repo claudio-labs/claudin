@@ -538,8 +538,8 @@ export const SeverityNumber = {};
                     .add(pathMod.relative(pathMod.resolve(__dirname, '..'), file))
                 }
 
-                // Check src/tasks/ non-relative imports
-                if (specifier.startsWith('src/tasks/')) {
+                // Check src/agent/tasks/ non-relative imports
+                if (specifier.startsWith('src/agent/tasks/')) {
                   const resolved = pathMod.resolve(__dirname, '..', specifier)
                   const candidates = [
                     resolved,

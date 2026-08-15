@@ -137,7 +137,7 @@ describe('WebFetch SSRF guard', () => {
 describe('Swarm permission file polling removed', () => {
   test('useSwarmPermissionPoller hook no longer exists', async () => {
     const content = await file(
-      'src/hooks/useSwarmPermissionPoller.ts',
+      'src/agent/coordinator/hooks/useSwarmPermissionPoller.ts',
     ).text()
     // The file-based polling hook must not exist — it read from an
     // unauthenticated resolved/ directory where any local process could
@@ -149,7 +149,7 @@ describe('Swarm permission file polling removed', () => {
 
   test('poller does not import from permissionSync', async () => {
     const content = await file(
-      'src/hooks/useSwarmPermissionPoller.ts',
+      'src/agent/coordinator/hooks/useSwarmPermissionPoller.ts',
     ).text()
     // Must not import anything from permissionSync — all file-based
     // functions have been removed from this module's dependencies
@@ -158,7 +158,7 @@ describe('Swarm permission file polling removed', () => {
 
   test('file-based permission functions are marked deprecated', async () => {
     const content = await file(
-      'src/coordinator/swarm/permissionSync.ts',
+      'src/agent/coordinator/swarm/permissionSync.ts',
     ).text()
     // All file-based functions must have @deprecated JSDoc
     const deprecatedFns = [
@@ -182,7 +182,7 @@ describe('Swarm permission file polling removed', () => {
 
   test('mailbox-based functions are NOT deprecated', async () => {
     const content = await file(
-      'src/coordinator/swarm/permissionSync.ts',
+      'src/agent/coordinator/swarm/permissionSync.ts',
     ).text()
     // These are the active path — must not be deprecated
     const activeFns = [

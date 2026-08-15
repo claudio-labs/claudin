@@ -45,7 +45,7 @@ import { notifySessionMetadataChanged } from 'src/services/session/sessionState.
 import { createAbortController } from 'src/shared/abortController.js'
 import { generateSessionTitle } from 'src/services/session/sessionTitle.js'
 import { saveAiGeneratedTitle } from 'src/services/session/sessionStorage.js'
-import { getLastCacheSafeParams } from 'src/coordinator/forkedAgent.js'
+import { getLastCacheSafeParams } from 'src/agent/coordinator/forkedAgent.js'
 import { buildSideQuestionFallbackParams } from 'src/agent/queryContext.js'
 import { runSideQuestion } from 'src/agent/sideQuestion.js'
 import { getRemoteSessionUrl } from 'src/constants/product.js'

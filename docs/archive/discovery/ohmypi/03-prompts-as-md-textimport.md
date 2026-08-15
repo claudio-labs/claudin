@@ -18,7 +18,7 @@ Vantagens observadas:
 
 Mistura:
 - `src/tools/*/prompt.ts` exportando string literal
-- Prompts coordenador inline em `src/coordinator/`
+- Prompts coordenador inline em `src/agent/coordinator/`
 - System prompts montados via template TS em vários lugares
 
 Build system já tem stub para `.md`/`.txt` imports (`scripts/build.ts`) — mas atualmente eles viram stub. Bastaria deixar passar via `loader: { '.md': 'text' }`.

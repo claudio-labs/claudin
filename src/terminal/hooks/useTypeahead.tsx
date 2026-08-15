@@ -17,7 +17,7 @@ import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.
 import { useAppState, useAppStateStore } from 'src/terminal/state/AppState.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import type { InlineGhostText, PromptInputMode } from 'src/types/textInputTypes.js';
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { generateProgressiveArgumentHint, parseArguments } from 'src/utils/argumentSubstitution.js';
 import { getShellCompletions, type ShellCompletionType } from 'src/platform/bash/shellCompletion.js';
 import { formatLogMetadata } from 'src/shared/text/format.js';
@@ -26,7 +26,7 @@ import { applyCommandSuggestion, findMidInputSlashCommand, generateCommandSugges
 import { getDirectoryCompletions, getPathCompletions, isPathLikeToken } from 'src/terminal/suggestions/directoryCompletion.js';
 import { getShellHistoryCompletion } from 'src/terminal/suggestions/shellHistoryCompletion.js';
 import { getSlackChannelSuggestions, hasSlackMcpServer } from 'src/terminal/suggestions/slackChannelSuggestions.js';
-import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js';
+import { TEAM_LEAD_NAME } from 'src/agent/coordinator/swarm/constants.js';
 import { applyFileSuggestion, findLongestCommonPrefix, onIndexBuildComplete, startBackgroundCacheRefresh } from 'src/terminal/prompt-suggestion/fileSuggestions.js';
 import { generateUnifiedSuggestions } from 'src/terminal/prompt-suggestion/unifiedSuggestions.js';
 

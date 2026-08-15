@@ -13,7 +13,7 @@ import { errorMessage, isFsInaccessible } from 'src/shared/errors.js'
 import { isProcessRunning } from 'src/shared/proc/genericProcessUtils.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
-import { getAgentId } from 'src/coordinator/teammate.js'
+import { getAgentId } from 'src/agent/coordinator/teammate.js'
 
 export type SessionKind = 'interactive' | 'bg' | 'daemon' | 'daemon-worker'
 export type SessionStatus = 'busy' | 'idle' | 'waiting'

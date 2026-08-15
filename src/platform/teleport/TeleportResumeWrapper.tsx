@@ -6,7 +6,7 @@ import type { CodeSession } from 'src/platform/teleport/api.js';
 import { type TeleportSource, useTeleportResume } from 'src/hooks/useTeleportResume.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
-import { ResumeTask } from 'src/components/ResumeTask.js';
+import { ResumeTask } from 'src/agent/ui/ResumeTask.js';
 import { Spinner } from 'src/terminal/spinner/Spinner.js';
 interface TeleportResumeWrapperProps {
   onComplete: (result: TeleportRemoteResponse) => void;

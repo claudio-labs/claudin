@@ -6,7 +6,7 @@ import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { HighlightedCode } from 'src/terminal/highlighted-code/HighlightedCode.js';
-import { MessageResponse } from 'src/components/MessageResponse.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { StructuredDiffList } from 'src/components/StructuredDiffList.js';
 const MAX_LINES_TO_RENDER = 10;
 type Props = {

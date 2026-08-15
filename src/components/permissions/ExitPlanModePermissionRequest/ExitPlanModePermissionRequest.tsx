@@ -15,7 +15,7 @@ import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js';
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js';
 import type { AllowedPrompt } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js';
 import { TEAM_CREATE_TOOL_NAME } from 'src/tools/TeamCreateTool/constants.js';
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { calculateContextPercentages, getContextWindowForModel } from 'src/agent/context/context.js';
 import { getExternalEditor } from 'src/shared/editor.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';

@@ -237,7 +237,7 @@ export type HeadlessStreamingContext = {
   currentCommands: Command[]
   /** Hot-reloadable agent list (the REPL uses AppState for this instead). */
   currentAgents: AgentDefinition[]
-  cronScheduler: import('src/tasks/cronScheduler.js').CronScheduler | null
+  cronScheduler: import('src/agent/tasks/cronScheduler.js').CronScheduler | null
   /**
    * In-flight Anthropic OAuth flow (`claude_authenticate`). Single-slot: a
    * second authenticate request cleans up the first.

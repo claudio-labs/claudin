@@ -33,7 +33,7 @@ export async function launchSnapshotUpdateDialog(root: Root, props: {
 }): Promise<'merge' | 'keep' | 'replace'> {
   const {
     SnapshotUpdateDialog
-  } = await import('src/components/agents/SnapshotUpdateDialog.js');
+  } = await import('src/agent/ui/agents/SnapshotUpdateDialog.js');
   // SnapshotUpdateDialog.tsx is a stub (`(_props: unknown) => null`) — cast
   // to the real props shape its call site (and the original inline JSX)
   // expects.
@@ -133,7 +133,7 @@ export async function launchResumeChooser(root: Root, appProps: {
     ResumeConversation
   }, {
     App
-  }] = await Promise.all([worktreePathsPromise, import('src/screens/ResumeConversation.js'), import('src/components/App.js')]);
+  }] = await Promise.all([worktreePathsPromise, import('src/screens/ResumeConversation.js'), import('src/agent/ui/App.js')]);
   await renderAndRun(root, <App getFpsMetrics={appProps.getFpsMetrics} stats={appProps.stats} initialState={appProps.initialState}>
       <KeybindingSetup>
         <ResumeConversation {...resumeProps} worktreePaths={worktreePaths} />

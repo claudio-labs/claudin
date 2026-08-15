@@ -53,7 +53,7 @@ import {
   saveMode,
   saveWorktreeState,
 } from 'src/services/session/sessionStorage.js'
-import { isTodoV2Enabled } from 'src/tasks/tasks.js'
+import { isTodoV2Enabled } from 'src/agent/tasks/tasks.js'
 import type { TodoList } from 'src/tools/TodoWriteTool/types.js'
 import { TodoListSchema } from 'src/tools/TodoWriteTool/types.js'
 import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'

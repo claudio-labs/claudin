@@ -49,7 +49,7 @@ import { resolveAndPrepend } from 'src/platform/bridge/inboundAttachments.js'
 import { doesMessageExistInSession } from 'src/services/session/sessionStorage.js'
 import { recordAttributionSnapshot } from 'src/services/session/sessionStorage.js'
 import { incrementPromptCount } from 'src/services/git/commitAttribution.js'
-import { stopTask } from 'src/tasks/stopTask.js'
+import { stopTask } from 'src/agent/tasks/stopTask.js'
 import type { SDKUserMessageReplay } from 'src/platform/entrypoints/agentSdkTypes.js'
 import {
   handleRewindFiles,

@@ -7,7 +7,7 @@ import type { StatsStore } from 'src/terminal/contexts/stats.js';
 import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { exitWithError, renderAndRun } from 'src/terminal/interactiveHelpers.js';
-import { launchRepl } from 'src/replLauncher.js';
+import { launchRepl } from 'src/agent/repl/replLauncher.js';
 import { logError } from 'src/shared/log.js';
 import { errorMessage } from 'src/shared/errors.js';
 import { logEvent } from 'src/platform/analytics/index.js';

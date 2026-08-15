@@ -69,8 +69,8 @@ Single entrypoint, single-file bundle: `src/platform/entrypoints/cli.tsx` → `d
 - `src/commands/` — slash commands (`/provider`, `/review`, `/plan`, `/resume`, `/mcp`, `/skills`, …), discovered via `src/commands.ts`.
 - `src/tools/` — built-in tools: file IO, search (`GrepTool`/`GlobTool`), shell (`BashTool`), version control (`GitTool`), agents/tasks, MCP, planning, web, workflow, worktree.
 - `src/services/mcp/` — MCP client + server connection management; `src/services/mcpServerApproval.tsx` is the trust dialog.
-- `src/coordinator/` — multi-agent coordinator (active when `COORDINATOR_MODE` is on).
-- `src/components/` + `src/screens/` + `src/terminal/ink/` — Ink React TUI; `src/platform/main.tsx` mounts, `src/screens/REPL.tsx` is the main loop; `src/native-ts/yoga-layout` avoids a native-addon dep.
+- `src/agent/coordinator/` — multi-agent coordinator (active when `COORDINATOR_MODE` is on).
+- `src/components/` + `src/screens/` + `src/terminal/ink/` — Ink React TUI; `src/platform/main.tsx` mounts, `src/agent/repl/REPL.tsx` is the main loop; `src/native-ts/yoga-layout` avoids a native-addon dep.
 - `src/memdir/`, `src/services/extractMemories/`, `src/services/SessionMemory/` — auto-memory: for git projects defaults to project-local `<repo>/.claudin/memory/`, `.md` files indexed by `MEMORY.md`. `memory/team/` is meant to be git-tracked (carve it out of `.gitignore`, which blanket-ignores `.claudin/`); private `memory/*.md` stays ignored.
 - `src/skills/` — skills (`/<skill-name>`); bundled ones in `src/skills/bundled/`, `/create` authors new skills/rules/agents in the `.claudin/` structure.
 - `src/platform/config/claudinMigration.ts` + `claudinStartupMigrations.ts` — one-time migration of legacy `~/.claude/` into `~/.claudin/`; rerunnable via `/provider migrate`; override the config dir with `CLAUDIN_CONFIG_DIR`. (The `~/.openclaude/` half of this was dropped in 0a1d4ff2 — `legacyClaudeDir()` reads `~/.claude` and nothing else.)

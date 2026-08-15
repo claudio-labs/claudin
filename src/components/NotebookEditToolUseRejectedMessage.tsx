@@ -4,7 +4,7 @@ import * as React from 'react';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { HighlightedCode } from 'src/terminal/highlighted-code/HighlightedCode.js';
-import { MessageResponse } from 'src/components/MessageResponse.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 type Props = {
   notebook_path: string;
   cell_id: string | undefined;

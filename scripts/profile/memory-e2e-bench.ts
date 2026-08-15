@@ -362,7 +362,7 @@ async function measureStages(): Promise<BootstrapStage[]> {
     await import('../../src/agent/QueryEngine.js')
   })
   await stage('15 screens/REPL', async () => {
-    await import('../../src/screens/REPL.js').catch(() => {})
+    await import('../../src/agent/repl/REPL.js').catch(() => {})
   })
 
   // Phase B: actually construct a QueryEngine

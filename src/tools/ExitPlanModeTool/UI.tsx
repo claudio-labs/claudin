@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Markdown } from 'src/terminal/markdown/Markdown.js';
-import { MessageResponse } from 'src/components/MessageResponse.js';
-import { RejectedPlanMessage } from 'src/components/messages/UserToolResultMessage/RejectedPlanMessage.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
+import { RejectedPlanMessage } from 'src/agent/ui/messages/UserToolResultMessage/RejectedPlanMessage.js';
 import { BLACK_CIRCLE } from 'src/constants/figures.js';
 import { getModeColor } from 'src/services/permissions/PermissionMode.js';
 import { Box, Text } from 'src/terminal/ink.js';

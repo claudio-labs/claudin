@@ -3,7 +3,7 @@ import {
   SUMMARY_TAG,
   TASK_NOTIFICATION_TAG,
 } from 'src/constants/xml.js'
-import { BACKGROUND_BASH_SUMMARY_PREFIX } from 'src/tasks/LocalShellTask/LocalShellTask.js'
+import { BACKGROUND_BASH_SUMMARY_PREFIX } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js'
 import type {
   NormalizedUserMessage,
   RenderableMessage,

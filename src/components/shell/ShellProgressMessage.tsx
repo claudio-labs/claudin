@@ -3,7 +3,7 @@ import React from 'react';
 import stripAnsi from 'strip-ansi';
 import { Box, Text } from 'src/terminal/ink.js';
 import { formatFileSize } from 'src/shared/text/format.js';
-import { MessageResponse } from 'src/components/MessageResponse.js';
+import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { OffscreenFreeze } from 'src/terminal/render/OffscreenFreeze.js';
 import { ShellElapsedTime } from 'src/components/shell/ShellElapsedTime.js';
 type Props = {

@@ -20,7 +20,7 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 ### 3. Copy/paste do user prompt `>` vaza no clipboard
 - **Issue:** quando usuário seleciona/copia transcript, o caractere `>` do prompt user vem junto.
 - **Estado:** sistema `<NoSelect>` existe e já cobre o assistant prefix `●`.
-- **Falta:** wrap do `>` em `src/components/messages/UserCommandMessage.tsx:47,84` e dos blocos de thinking em `HighlightedThinkingText.tsx:91,145`.
+- **Falta:** wrap do `>` em `src/agent/ui/messages/UserCommandMessage.tsx:47,84` e dos blocos de thinking em `HighlightedThinkingText.tsx:91,145`.
 - **Esforço:** 4 linhas.
 
 ### 4. Per-model context window override
@@ -39,7 +39,7 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 
 ### 6. `/agents` mostrar e trocar agent ativo da sessão
 - **Issue:** openclaude #526 — hoje `/agents` só gerencia sub-agents do Task tool.
-- **Estado:** `src/commands/agents/agents.tsx`, `src/components/agents/AgentsMenuWithTabs.tsx`.
+- **Estado:** `src/commands/agents/agents.tsx`, `src/agent/ui/agents/AgentsMenuWithTabs.tsx`.
 - **Falta:** header mostrando agent ativo + ação "switch active agent".
 - **Esforço:** ~80 linhas no menu existente.
 

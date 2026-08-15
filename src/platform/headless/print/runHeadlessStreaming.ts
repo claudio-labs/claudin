@@ -86,8 +86,8 @@ import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { skillChangeDetector } from 'src/skills/skillChangeDetector.js'
 import { getCommands, clearCommandsCache } from 'src/commands.js'
 import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'
-import { getRunningTasks } from 'src/tasks/framework.js'
-import { isBackgroundTask } from 'src/tasks/types.js'
+import { getRunningTasks } from 'src/agent/tasks/framework.js'
+import { isBackgroundTask } from 'src/agent/tasks/types.js'
 import { removeInterruptedMessage } from 'src/platform/headless/print/messageOps.js'
 import { handleOrphanedPermissionResponse } from 'src/platform/headless/print/orphanPermission.js'
 import { proactiveModule } from 'src/platform/headless/print/headlessOptionalModules.js'
@@ -112,8 +112,8 @@ import type {
 
 // Dead code elimination: conditional imports
 /* eslint-disable @typescript-eslint/no-require-imports */
-const cronSchedulerModule = require('src/tasks/cronScheduler.js') as typeof import('src/tasks/cronScheduler.js')
-const cronJitterConfigModule = require('src/tasks/cronJitterConfig.js') as typeof import('src/tasks/cronJitterConfig.js')
+const cronSchedulerModule = require('src/agent/tasks/cronScheduler.js') as typeof import('src/agent/tasks/cronScheduler.js')
+const cronJitterConfigModule = require('src/agent/tasks/cronJitterConfig.js') as typeof import('src/agent/tasks/cronJitterConfig.js')
 const cronGate = require('src/tools/ScheduleCronTool/prompt.js') as typeof import('src/tools/ScheduleCronTool/prompt.js')
 /* eslint-enable @typescript-eslint/no-require-imports */
 

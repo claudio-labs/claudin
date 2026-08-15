@@ -67,7 +67,7 @@ export function buildEffectiveSystemPrompt({
     // Lazy require to avoid circular dependency at module load time
     const { getCoordinatorSystemPrompt } =
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js')
+      require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js')
     return asSystemPrompt([
       getCoordinatorSystemPrompt(),
       ...(appendSystemPrompt ? [appendSystemPrompt] : []),

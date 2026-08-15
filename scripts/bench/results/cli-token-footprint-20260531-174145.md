@@ -2,7 +2,7 @@
 
 Workload: read + 3-sentence summary, one turn per file.
 Model: each CLI default. Files:
-- `src/screens/REPL.tsx` (220K)
+- `src/agent/repl/REPL.tsx` (220K)
 - `src/terminal/image/ansiToPng.ts` (212K)
 - `src/platform/headless/print/runHeadless.ts` (160K)
 

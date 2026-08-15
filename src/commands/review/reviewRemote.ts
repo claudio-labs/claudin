@@ -23,7 +23,7 @@ import {
   formatPreconditionError,
   getRemoteTaskSessionUrl,
   registerRemoteAgentTask,
-} from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js'
+} from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js'
 import { isEnterpriseSubscriber, isTeamSubscriber } from 'src/services/auth/auth.js'
 import { detectCurrentRepositoryWithHost } from 'src/services/git/detectRepository.js'
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'

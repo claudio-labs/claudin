@@ -2,7 +2,7 @@
 // so this file participates in no module cycles and is erased at compile time.
 import type { Output as FileReadToolOutput } from 'src/tools/FileReadTool/FileReadTool.js'
 import type { TodoList } from 'src/tools/TodoWriteTool/types.js'
-import type { Task } from 'src/tasks/tasks.js'
+import type { Task } from 'src/agent/tasks/tasks.js'
 import type { MemoryFileInfo } from 'src/services/instructions/claudemd.js'
 import type { DiagnosticFile } from 'src/platform/diagnosticTracking.js'
 import type { MessageOrigin } from 'src/types/message.js'

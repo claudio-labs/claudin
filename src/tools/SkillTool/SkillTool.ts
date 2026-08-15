@@ -46,12 +46,12 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
   logEvent,
 } from 'src/platform/analytics/index.js'
-import { getAgentContext } from 'src/coordinator/agentContext.js'
+import { getAgentContext } from 'src/agent/coordinator/agentContext.js'
 import { errorMessage } from 'src/shared/errors.js'
 import {
   extractResultText,
   prepareForkedCommandContext,
-} from 'src/coordinator/forkedAgent.js'
+} from 'src/agent/coordinator/forkedAgent.js'
 import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { createUserMessage, normalizeMessages } from 'src/agent/messages/messages.js'

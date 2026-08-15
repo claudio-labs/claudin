@@ -20,7 +20,7 @@ import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { getClippedIds } from 'src/agent/compact/stableStubState.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { logError } from 'src/shared/log.js'
-import { getAgentId } from 'src/coordinator/teammate.js'
+import { getAgentId } from 'src/agent/coordinator/teammate.js'
 import { detectGitOperation } from 'src/tools/shared/gitOperationTracking.js'
 import { gitSubcommandOf } from 'src/tools/GitTool/grammar.js'
 

@@ -12,14 +12,14 @@ import {
   useSetAppState,
 } from 'src/terminal/state/AppState.js'
 import { findToolByName } from 'src/Tool.js'
-import { isInProcessTeammateTask } from 'src/tasks/InProcessTeammateTask/types.js'
+import { isInProcessTeammateTask } from 'src/agent/tasks/InProcessTeammateTask/types.js'
 import { getAllBaseTools } from 'src/tools.js'
 import type { PermissionUpdate } from 'src/types/permissions.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import {
   findInProcessTeammateTaskId,
   handlePlanApprovalResponse,
-} from 'src/coordinator/inProcessTeammateHelpers.js'
+} from 'src/agent/coordinator/inProcessTeammateHelpers.js'
 import { createAssistantMessage } from 'src/agent/messages/messages.js'
 import {
   permissionModeFromString,
@@ -27,27 +27,27 @@ import {
 } from 'src/services/permissions/PermissionMode.js'
 import { applyPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { isInsideTmux } from 'src/coordinator/swarm/backends/detection.js'
+import { isInsideTmux } from 'src/agent/coordinator/swarm/backends/detection.js'
 import {
   ensureBackendsRegistered,
   getBackendByType,
-} from 'src/coordinator/swarm/backends/registry.js'
-import type { PaneBackendType } from 'src/coordinator/swarm/backends/types.js'
-import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js'
-import { getLeaderToolUseConfirmQueue } from 'src/coordinator/swarm/leaderPermissionBridge.js'
-import { sendPermissionResponseViaMailbox } from 'src/coordinator/swarm/permissionSync.js'
+} from 'src/agent/coordinator/swarm/backends/registry.js'
+import type { PaneBackendType } from 'src/agent/coordinator/swarm/backends/types.js'
+import { TEAM_LEAD_NAME } from 'src/agent/coordinator/swarm/constants.js'
+import { getLeaderToolUseConfirmQueue } from 'src/agent/coordinator/swarm/leaderPermissionBridge.js'
+import { sendPermissionResponseViaMailbox } from 'src/agent/coordinator/swarm/permissionSync.js'
 import {
   removeTeammateFromTeamFile,
   setMemberMode,
-} from 'src/coordinator/swarm/teamHelpers.js'
-import { unassignTeammateTasks } from 'src/tasks/tasks.js'
+} from 'src/agent/coordinator/swarm/teamHelpers.js'
+import { unassignTeammateTasks } from 'src/agent/tasks/tasks.js'
 import {
   getAgentName,
   isPlanModeRequired,
   isTeamLead,
   isTeammate,
-} from 'src/coordinator/teammate.js'
-import { isInProcessTeammate } from 'src/coordinator/teammateContext.js'
+} from 'src/agent/coordinator/teammate.js'
+import { isInProcessTeammate } from 'src/agent/coordinator/teammateContext.js'
 import {
   isModeSetRequest,
   isPermissionRequest,
@@ -63,13 +63,13 @@ import {
   readUnreadMessages,
   type TeammateMessage,
   writeToMailbox,
-} from 'src/coordinator/teammateMailbox.js'
+} from 'src/agent/coordinator/teammateMailbox.js'
 import {
   hasPermissionCallback,
   hasSandboxPermissionCallback,
   processMailboxPermissionResponse,
   processSandboxPermissionResponse,
-} from 'src/hooks/useSwarmPermissionPoller.js'
+} from 'src/agent/coordinator/hooks/useSwarmPermissionPoller.js'
 
 /**
  * Get the agent name to poll for messages.

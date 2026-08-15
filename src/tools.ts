@@ -139,7 +139,7 @@ const WebBrowserTool = feature('WEB_BROWSER_TOOL')
   ? require('./tools/WebBrowserTool/WebBrowserTool.js').WebBrowserTool
   : null
 const coordinatorModeModule = feature('COORDINATOR_MODE')
-  ? (require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js'))
+  ? (require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js'))
   : null
 const SnipTool = feature('HISTORY_SNIP')
   ? require('./tools/SnipTool/SnipTool.js').SnipTool
@@ -168,13 +168,13 @@ const getPowerShellTool = () => {
 import { feature } from 'bun:bundle'
 import uniqBy from 'lodash-es/uniqBy.js'
 import { isToolSearchEnabledOptimistic } from 'src/agent/tools/toolSearch.js'
-import { isTodoV2Enabled } from 'src/tasks/tasks.js'
+import { isTodoV2Enabled } from 'src/agent/tasks/tasks.js'
 import type { ToolPermissionContext } from 'src/Tool.js'
 import { getDenyRuleForTool } from 'src/services/permissions/permissions.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { isPowerShellToolEnabled } from 'src/platform/shell/shellToolUtils.js'
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import { isWorktreeModeEnabled } from 'src/services/git/worktreeModeEnabled.js'
 import { onGlobalConfigChange } from 'src/platform/config/config.js'
 import { onRuntimeStateChange } from 'src/platform/bootstrap/state.js'

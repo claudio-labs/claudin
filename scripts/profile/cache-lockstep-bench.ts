@@ -52,7 +52,7 @@ const ALL_FILES = [
   'src/shared/data/objectGroupBy.ts',
   'src/services/api/openaiShim.ts',
   'src/services/api/codexShim.ts',
-  'src/screens/REPL.tsx',
+  'src/agent/repl/REPL.tsx',
   'src/services/api/claude/streaming.ts',
   'src/services/api/claude/paramBuilders.ts',
   'src/agent/messages/normalize.ts',

@@ -3,7 +3,7 @@ import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
 // Dead code elimination: conditional import for COORDINATOR_MODE
 /* eslint-disable @typescript-eslint/no-require-imports */
-const coordinatorModule = feature('COORDINATOR_MODE') ? require('src/coordinator/coordinatorMode.js') as typeof import('src/coordinator/coordinatorMode.js') : undefined;
+const coordinatorModule = feature('COORDINATOR_MODE') ? require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js') : undefined;
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { Box, Text, Link } from 'src/terminal/ink.js';
 import * as React from 'react';
@@ -14,16 +14,16 @@ import type { ToolPermissionContext } from 'src/Tool.js';
 import { isVimModeEnabled } from 'src/terminal/prompt-input/utils.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
 import { isDefaultMode, permissionModeSymbol, permissionModeTitle, getModeColor } from 'src/services/permissions/PermissionMode.js';
-import { BackgroundTaskStatus } from 'src/components/tasks/BackgroundTaskStatus.js';
-import { footerTreeBaseIndex, getVisibleAgentTasks } from 'src/components/tasks/footerTaskGeometry.js';
-import { isPanelAgentTask } from 'src/tasks/LocalAgentTask/LocalAgentTask.js';
-import { isBackgroundTask } from 'src/tasks/types.js';
+import { BackgroundTaskStatus } from 'src/agent/ui/tasks/BackgroundTaskStatus.js';
+import { footerTreeBaseIndex, getVisibleAgentTasks } from 'src/agent/ui/tasks/footerTaskGeometry.js';
+import { isPanelAgentTask } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
+import { isBackgroundTask } from 'src/agent/tasks/types.js';
 import { count } from 'src/shared/data/array.js';
-import { shouldHideTasksFooter } from 'src/components/tasks/taskStatusUtils.js';
-import { resolveFooterTreeRow } from 'src/components/tasks/footerSelection.js';
-import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
+import { shouldHideTasksFooter } from 'src/agent/ui/tasks/taskStatusUtils.js';
+import { resolveFooterTreeRow } from 'src/agent/ui/tasks/footerSelection.js';
+import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { TeamStatus } from 'src/platform/teams/TeamStatus.js';
-import { isInProcessEnabled } from 'src/coordinator/swarm/backends/registry.js';
+import { isInProcessEnabled } from 'src/agent/coordinator/swarm/backends/registry.js';
 import { type AppState, useAppState, useAppStateStore } from 'src/terminal/state/AppState.js';
 
 /** One entry of AppState.teamContext.teammates. */
@@ -36,7 +36,7 @@ import { usePrStatus } from 'src/hooks/usePrStatus.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
-import { useTasksV2 } from 'src/hooks/useTasksV2.js';
+import { useTasksV2 } from 'src/agent/hooks/useTasksV2.js';
 import { formatDuration } from 'src/shared/text/format.js';
 import { VoiceWarmupHint } from 'src/terminal/prompt-input/VoiceIndicator.js';
 import { useVoiceEnabled } from 'src/terminal/voice/useVoiceEnabled.js';

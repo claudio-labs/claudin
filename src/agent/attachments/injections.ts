@@ -58,7 +58,7 @@ import {
   getAgentName,
   getAgentId,
   getTeamName,
-} from 'src/coordinator/teammate.js'
+} from 'src/agent/coordinator/teammate.js'
 import {
   tokenCountFromLastAPIResponse,
 } from 'src/agent/context/tokens.js'
