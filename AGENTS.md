@@ -9,6 +9,7 @@ them rather than repeating them.
 
 Rules in `.claudin/rules/` (auto-loaded into context by path):
 
+- [code-design.md](.claudin/rules/code-design.md) — read-before-you-edit order, SOLID/Clean Code as this tree spells them (barrels, `…Deps` injection, split-by-churn), design anti-patterns.
 - [typescript-patterns.md](.claudin/rules/typescript-patterns.md) — TS idioms, error handling, zod schemas, provider abstraction, privacy rules, `feature()`/`--compile` coding gotchas.
 - [build-system.md](.claudin/rules/build-system.md) — `feature()` preprocessing, `MACRO.*`, stub modules, telemetry stubs, feature-flag catalog (scoped to `scripts/build.ts`).
 - [testing.md](.claudin/rules/testing.md) — Bun runner, snapshots, provider tests, cross-file mock leaks, known full-suite flakes, the Pre-PR checklist.
