@@ -10,7 +10,7 @@ import { isAnalyticsDisabled } from 'src/platform/analytics/config.js';
 import { checkHasTrustDialogAccepted, getGlobalConfig, isAutoUpdaterDisabled, saveGlobalConfig } from 'src/platform/config/config.js';
 import { getContextWindowForModel } from 'src/agent/context/context.js';
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js';
-import { hasNodeOption, isBareMode, isEnvTruthy, isInProtectedNamespace } from 'src/shared/envUtils.js';
+import { hasNodeOption, isBareMode, isEnvTruthy } from 'src/shared/envUtils.js';
 import { getIsGit, getWorktreeCount } from 'src/vcs/git/git.js';
 import { getGhAuthStatus } from 'src/platform/github/ghAuthStatus.js';
 import { logError } from 'src/shared/log.js';
@@ -292,7 +292,6 @@ export async function logTenguInit({
       dangerouslySkipPermissionsPassed,
       permissionMode: permissionMode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
       modeIsBypass,
-      inProtectedNamespace: isInProtectedNamespace(),
       allowDangerouslySkipPermissionsPassed,
       thinkingType: thinkingConfig.type as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
       ...(systemPromptFlag && {

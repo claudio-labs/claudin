@@ -126,28 +126,6 @@ export function shouldMaintainProjectWorkingDir(): boolean {
   return isEnvTruthy(process.env.CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR)
 }
 
-/**
- * Check if running on Homespace (ant-internal cloud environment)
- */
-export function isRunningOnHomespace(): boolean {
-  return false
-}
-
-/**
- * Conservative check for whether Claude Code is running inside a protected
- * (privileged or ASL3+) COO namespace or cluster.
- *
- * Conservative means: when signals are ambiguous, assume protected. We would
- * rather over-report protected usage than miss it. Unprotected environments
- * are homespace, namespaces on the open allowlist, and no k8s/COO signals
- * at all (laptop/local dev).
- *
- * Used for telemetry to measure auto-mode usage in sensitive environments.
- */
-export function isInProtectedNamespace(): boolean {
-  return false
-}
-
 // @[MODEL LAUNCH]: Add a Vertex region override env var for the new model.
 /**
  * Model prefix → env var for Vertex region overrides.

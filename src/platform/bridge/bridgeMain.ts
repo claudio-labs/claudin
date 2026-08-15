@@ -14,7 +14,7 @@ import {
 import { isInBundledMode } from 'src/platform/install/bundledMode.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
-import { isEnvTruthy, isInProtectedNamespace } from 'src/shared/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { truncateToWidth } from 'src/shared/text/format.js'
 import { logError } from 'src/shared/log.js'
@@ -1086,7 +1086,6 @@ export async function runBridgeLoop(
             in_worktree: sessionWorktrees.has(sessionId),
             spawn_duration_ms: spawnDurationMs,
             worktree_create_ms: worktreeCreateMs,
-            inProtectedNamespace: isInProtectedNamespace(),
           })
           logForDiagnosticsNoPII('info', 'bridge_session_started', {
             spawn_mode: spawnModeAtDecision,

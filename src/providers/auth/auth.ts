@@ -53,7 +53,6 @@ import {
   getClaudinConfigHomeDir,
   isBareMode,
   isEnvTruthy,
-  isRunningOnHomespace,
 } from 'src/shared/envUtils.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { execSyncWithDefaults_DEPRECATED } from 'src/shared/proc/execFileNoThrow.js'
@@ -267,9 +266,7 @@ export function getAnthropicApiKeyWithSource(
     return { key: null, source: 'none' }
   }
 
-  // On homespace, don't use the profile's API key (use Console key instead)
-  // https://anthropic.slack.com/archives/C08428WSLKV/p1747331773214779
-  const apiKeyEnv = isRunningOnHomespace() ? undefined : profileForAnthropic
+  const apiKeyEnv = profileForAnthropic
 
   // Always check for direct environment variable when the user ran claude --print.
   // This is useful for CI, etc.

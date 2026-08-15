@@ -22,7 +22,7 @@ import { getExternalClaudeMdIncludes, getMemoryFiles, shouldShowClaudeMdExternal
 import { checkHasTrustDialogAccepted, getCustomApiKeyStatus, getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { shouldShowMigrationBanner } from 'src/platform/config/claudinMigration.js';
 import { updateDeepLinkTerminalPreference } from 'src/platform/deepLink/terminalPreference.js';
-import { isEnvTruthy, isRunningOnHomespace } from 'src/shared/envUtils.js';
+import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { type FpsMetrics, FpsTracker } from 'src/terminal/render/fpsTracker.js';
 import { updateGithubRepoPathMapping } from 'src/vcs/git/githubRepoPathMapping.js';
 import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js';
@@ -229,7 +229,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
     profileCheckpoint('setupScreens_after_tryGetActiveProvider');
     const profileKey =
       profile?.transport === 'anthropic' ? profile.apiKey?.trim() : undefined;
-    if (profileKey && !isRunningOnHomespace()) {
+    if (profileKey) {
       const customApiKeyTruncated = normalizeApiKeyForConfig(profileKey);
       const keyStatus = getCustomApiKeyStatus(customApiKeyTruncated);
       profileCheckpoint('setupScreens_after_keyStatus');

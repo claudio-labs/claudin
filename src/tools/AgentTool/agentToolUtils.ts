@@ -39,7 +39,6 @@ import { asAgentId } from 'src/shared/types/ids.js'
 import type { Message as MessageType } from 'src/shared/types/message.js'
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { isInProtectedNamespace } from 'src/shared/envUtils.js'
 import { AbortError, errorMessage } from 'src/shared/errors.js'
 import type { CacheSafeParams } from 'src/agent/coordinator/forkedAgent.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
@@ -469,7 +468,6 @@ export async function classifyHandoffIfNeeded({
       toolName:
         // Use legacy name for analytics continuity across the Task→Agent rename
         LEGACY_AGENT_TOOL_NAME as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      inProtectedNamespace: isInProtectedNamespace(),
       classifierModel:
         classifierResult.model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
       agentType:
