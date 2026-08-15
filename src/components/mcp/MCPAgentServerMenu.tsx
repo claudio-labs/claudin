@@ -1,16 +1,16 @@
 import figures from 'figures';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { CommandResultDisplay } from 'src/commands.js';
-import { Box, color, Link, Text, useTheme } from 'src/ink.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import { Box, color, Link, Text, useTheme } from 'src/terminal/ink.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { AuthenticationCancelledError, performMCPOAuthFlow } from 'src/services/mcp/auth.js';
 import { capitalize } from 'src/shared/text/stringUtils.js';
-import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
-import { Select } from 'src/components/CustomSelect/index.js';
-import { Byline } from 'src/components/design-system/Byline.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
-import { Spinner } from 'src/components/Spinner.js';
+import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
+import { Select } from 'src/terminal/custom-select/index.js';
+import { Byline } from 'src/terminal/design-system/Byline.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
+import { Spinner } from 'src/terminal/spinner/Spinner.js';
 import type { AgentMcpServerInfo } from 'src/components/mcp/types.js';
 type Props = {
   agentServer: AgentMcpServerInfo;

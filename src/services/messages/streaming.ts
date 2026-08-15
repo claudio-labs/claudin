@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle'
 import type { BetaToolUseBlock } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
-import type { SpinnerMode } from 'src/components/Spinner.js'
+import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js'
 import { isConnectorTextBlock } from 'src/types/connectorText.js'
 import type {
   Message,

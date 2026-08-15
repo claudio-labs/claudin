@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { Text } from 'src/ink.js';
+import { Text } from 'src/terminal/ink.js';
 import { BashTool } from 'src/tools/BashTool/BashTool.js';
 import type { PermissionRuleValue } from 'src/services/permissions/PermissionRule.js';
 type RuleSubtitleProps = {

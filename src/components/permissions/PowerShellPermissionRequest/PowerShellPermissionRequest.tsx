@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Text, useTheme } from 'src/ink.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import { Box, Text, useTheme } from 'src/terminal/ink.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js';
@@ -9,7 +9,7 @@ import { PowerShellTool } from 'src/tools/PowerShellTool/PowerShellTool.js';
 import { isAllowlistedCommand } from 'src/tools/PowerShellTool/readOnlyValidation.js';
 import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js';
 import { getCompoundCommandPrefixesStatic } from 'src/services/shell/powershell/staticPrefix.js';
-import { Select } from 'src/components/CustomSelect/select.js';
+import { Select } from 'src/terminal/custom-select/select.js';
 import { type UnaryEvent, usePermissionRequestLogging } from 'src/components/permissions/hooks.js';
 import { PermissionDecisionDebugInfo } from 'src/components/permissions/PermissionDecisionDebugInfo.js';
 import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';

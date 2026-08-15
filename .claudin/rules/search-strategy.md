@@ -210,7 +210,7 @@ src/
 ├── query.ts                     ← query helpers, SDKMessage types (see also query/ for config/deps)
 ├── query/ (7)                   ← config.ts, deps.ts, stopHooks.ts, tokenBudget.ts
 ├── context.ts                   ← getSystemContext/getUserContext: the memoized system-prompt
-│                                  context blocks (git status, dir structure). NOT src/context/,
+│                                  context blocks (git status, dir structure). NOT src/terminal/contexts/,
 │                                  and NOT services/context/ (token accounting) — three different things
 ├── Tool.ts                      ← central type system: Tool, Tools, ToolUseContext, buildTool()
 ├── tools.ts                     ← dynamic tool registry (sandbox/plan/coordinator/MCP-aware)
@@ -246,7 +246,7 @@ src/
 │   ├── plugins/                 ← plugin discovery, install, marketplace
 │   ├── bash/                    ← bash parsing, command splitting, shell snapshots
 │   ├── lifecycleHooks/          ← Claude Code lifecycle hooks (PreToolUse …) — NOT src/hooks/, which is React
-│   ├── context/                 ← token accounting + context-window math — NOT src/context/, which is React
+│   ├── context/                 ← token accounting + context-window math — NOT src/terminal/contexts/, which is React
 │   ├── instructions/            ← claudemd.ts: AGENTS.md/CLAUDE.md + .claudin/rules/*.md loader
 │   ├── git/ shell/ messages/ attachments/ settings/ install/ computerUse/  ← moved subsystems
 │   ├── compact/                 ← conversation compaction + sessionMemoryCompact

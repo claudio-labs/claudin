@@ -1,9 +1,9 @@
-import { Box, Text } from 'src/ink.js'
-import { useAppState } from 'src/state/AppState.js'
-import type { AppState } from 'src/state/AppStateStore.js'
+import { Box, Text } from 'src/terminal/ink.js'
+import { useAppState } from 'src/terminal/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type { LocalAgentTaskState } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
 import { formatTokens } from 'src/shared/text/format.js'
-import { Divider } from 'src/components/design-system/Divider.js'
+import { Divider } from 'src/terminal/design-system/Divider.js'
 
 export function RunningAgentsTab() {
   const tasks: AppState['tasks'] = useAppState((s: AppState) => s.tasks)

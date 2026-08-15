@@ -1,13 +1,13 @@
 import React, { useRef } from 'react';
 import stripAnsi from 'strip-ansi';
 import { Messages } from 'src/components/Messages.js';
-import { KeybindingProvider } from 'src/keybindings/KeybindingContext.js';
-import { loadKeybindingsSyncWithWarnings } from 'src/keybindings/loadUserBindings.js';
-import type { KeybindingContextName } from 'src/keybindings/types.js';
-import { AppStateProvider } from 'src/state/AppState.js';
+import { KeybindingProvider } from 'src/terminal/keybindings/KeybindingContext.js';
+import { loadKeybindingsSyncWithWarnings } from 'src/terminal/keybindings/loadUserBindings.js';
+import type { KeybindingContextName } from 'src/terminal/keybindings/types.js';
+import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import type { Tools } from 'src/Tool.js';
 import type { Message } from 'src/types/message.js';
-import { renderToAnsiString } from 'src/components/staticRender.js';
+import { renderToAnsiString } from 'src/terminal/render/staticRender.js';
 
 /**
  * Minimal keybinding provider for static/headless renders.

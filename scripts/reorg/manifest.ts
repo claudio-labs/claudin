@@ -271,8 +271,8 @@ export const GROUPS: readonly Group[] = [
         ],
       },
       {
-        // `src/utils/ink.ts` (colour → TextProps) lands beside the render helpers;
-        // the render ENTRY is `src/ink.ts`, which goes to `src/terminal/ink.ts`.
+        // `src/terminal/render/ink.ts` (colour → TextProps) lands beside the render helpers;
+        // the render ENTRY is `src/terminal/ink.ts`, which goes to `src/terminal/ink.ts`.
         from: 'src/utils',
         to: 'src/terminal/render',
         files: [

@@ -6,7 +6,7 @@ import { resolveTidyTeamRoot } from 'src/commands/memory/tidyTeam.js'
 /**
  * Dispatch logic for `/memory` subcommands, kept in a pure module (no ink
  * imports) so it stays unit-testable — memory.tsx's import chain reaches
- * src/ink.js, which cannot load under `bun test`.
+ * src/terminal/ink.js, which cannot load under `bun test`.
  */
 
 export function parseMemorySubcommand(args: string): 'tidy' | null {

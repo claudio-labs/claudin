@@ -7,7 +7,7 @@ import {
   mock,
   test,
 } from 'bun:test'
-import type { TerminalNotification } from 'src/ink/useTerminalNotification.js'
+import type { TerminalNotification } from 'src/terminal/ink/useTerminalNotification.js'
 import { resetGlobalConfigForTests, saveGlobalConfig } from 'src/services/config/config.js'
 
 // Capture the real modules before mocking so afterAll can restore them.

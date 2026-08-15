@@ -8,7 +8,7 @@ import type {
 } from 'src/entrypoints/agentSdkTypes.js'
 import type { SDKControlMcpSetServersResponse } from 'src/entrypoints/sdk/controlTypes.js'
 import type { Tools } from 'src/Tool.js'
-import type { AppState } from 'src/state/AppStateStore.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import {
   areMcpConfigsEqual,
   clearServerCache,

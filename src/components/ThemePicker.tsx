@@ -1,20 +1,20 @@
 import { feature } from 'bun:bundle';
 import type { StructuredPatchHunk } from 'diff';
 import * as React from 'react';
-import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js'
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import { Box, Text, usePreviewTheme, useTheme, useThemeSetting } from 'src/ink.js';
-import { useRegisterKeybindingContext } from 'src/keybindings/KeybindingContext.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
-import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
-import { useAppState, useSetAppState } from 'src/state/AppState.js';
-import type { AppState } from 'src/state/AppStateStore.js';
+import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js'
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import { Box, Text, usePreviewTheme, useTheme, useThemeSetting } from 'src/terminal/ink.js';
+import { useRegisterKeybindingContext } from 'src/terminal/keybindings/KeybindingContext.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
+import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
+import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
+import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';
 import { updateSettingsForSource } from 'src/services/settings/settings.js';
-import type { ThemeSetting } from 'src/utils/theme.js';
-import { Select } from 'src/components/CustomSelect/index.js';
-import { Byline } from 'src/components/design-system/Byline.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import type { ThemeSetting } from 'src/terminal/theme/theme.js';
+import { Select } from 'src/terminal/custom-select/index.js';
+import { Byline } from 'src/terminal/design-system/Byline.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 import { getColorModuleUnavailableReason, getSyntaxTheme } from 'src/components/StructuredDiff/colorDiff.js';
 import { StructuredDiff } from 'src/components/StructuredDiff.js';
 

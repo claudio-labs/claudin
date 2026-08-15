@@ -177,7 +177,7 @@ prose (no code):  ~3 ms in all strategies
 
 ### What this measures
 
-The harness simulates `StreamingMarkdown` (`src/components/Markdown.tsx:186-235`):
+The harness simulates `StreamingMarkdown` (`src/terminal/markdown/Markdown.tsx:186-235`):
 on every line-buffered snapshot it lexes only the unstable suffix and renders
 both `<Markdown>{stablePrefix}</Markdown>` + `<Markdown>{unstableSuffix}</Markdown>`.
 By default it **models the React Compiler memoization** that

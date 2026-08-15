@@ -1,14 +1,14 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { type ReactNode, useCallback, useState } from 'react';
-import { Box, Text } from 'src/ink.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
-import { editPromptInEditor } from 'src/utils/promptEditor.js';
-import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
-import { Byline } from 'src/components/design-system/Byline.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
-import TextInput from 'src/components/TextInput.js';
-import { useWizard } from 'src/components/wizard/index.js';
-import { WizardDialogLayout } from 'src/components/wizard/WizardDialogLayout.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
+import { editPromptInEditor } from 'src/terminal/input/promptEditor.js';
+import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
+import { Byline } from 'src/terminal/design-system/Byline.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
+import TextInput from 'src/terminal/text-input/TextInput.js';
+import { useWizard } from 'src/terminal/wizard/index.js';
+import { WizardDialogLayout } from 'src/terminal/wizard/WizardDialogLayout.js';
 import type { AgentWizardData } from 'src/components/agents/new-agent-creation/types.js';
 export function DescriptionStep() {
   const $ = _c(18);

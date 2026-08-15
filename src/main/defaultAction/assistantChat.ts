@@ -5,20 +5,20 @@
 
 import { setIsRemoteMode, setKairosActive, setUserMsgOptIn } from 'src/bootstrap/state.js';
 import { filterCommandsForRemoteMode } from 'src/commands.js';
-import { launchAssistantInstallWizard, launchAssistantSessionChooser } from 'src/dialogLaunchers.js';
-import type { Root } from 'src/ink.js';
-import { exitWithError, exitWithMessage, renderAndRun } from 'src/interactiveHelpers.js';
+import { launchAssistantInstallWizard, launchAssistantSessionChooser } from 'src/terminal/dialogLaunchers.js';
+import type { Root } from 'src/terminal/ink.js';
+import { exitWithError, exitWithMessage, renderAndRun } from 'src/terminal/interactiveHelpers.js';
 import { createRemoteSessionConfig } from 'src/remote/RemoteSessionManager.js';
 import { launchRepl } from 'src/replLauncher.js';
-import { type AppState } from 'src/state/AppStateStore.js';
+import { type AppState } from 'src/terminal/state/AppStateStore.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';
-import type { FpsMetrics } from 'src/utils/fpsTracker.js';
+import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
 import { createSystemMessage } from 'src/services/messages/messages.js';
 import { prepareApiRequest } from 'src/services/teleport/api.js';
 import type { ThinkingConfig } from 'src/services/context/thinking.js';
 import type { BootContext } from 'src/main/bootContext.js';
-import type { StatsStore } from 'src/context/stats.js';
+import type { StatsStore } from 'src/terminal/contexts/stats.js';
 
 export type AssistantChatBranchDeps = {
   root: Root;

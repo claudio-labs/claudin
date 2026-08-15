@@ -8,10 +8,10 @@ import {
   resetGlobalConfigForTests,
   resetProjectConfigForTests,
 } from 'src/services/config/config.js'
-import { createRoot } from 'src/ink.js'
-import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js'
+import { createRoot } from 'src/terminal/ink.js'
+import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js'
 import { parseCustomHeaders } from 'src/components/ProviderManager.js'
-import { AppStateProvider } from 'src/state/AppState.js'
+import { AppStateProvider } from 'src/terminal/state/AppState.js'
 import { getDefaultMainLoopModel } from 'src/utils/model/model.js'
 
 // Snapshot the real providerDiscovery module so the per-test mock can keep its
@@ -399,7 +399,7 @@ function isRowFocused(getOutput: () => string, label: string): boolean {
 }
 
 // Ink registers a Select's key listener in a PASSIVE effect (`useInput`'s
-// `useEffect` in src/ink/hooks/use-input.ts), which React flushes only after
+// `useEffect` in src/terminal/ink/hooks/use-input.ts), which React flushes only after
 // the frame that first paints that Select has already been written to stdout.
 // A navigation key written the instant the test sees that frame is therefore
 // dispatched to no listener at all — the app drains stdin, nothing buffers it —

@@ -1,9 +1,9 @@
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js'
-import { Box, Text } from 'src/ink.js'
-import { useKeybinding } from 'src/keybindings/useKeybinding.js'
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js'
+import { Box, Text } from 'src/terminal/ink.js'
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js'
 import {
   buildCodexUsageRows,
   fetchCodexUsage,
@@ -13,9 +13,9 @@ import {
 } from 'src/services/api/codexUsage.js'
 import { formatResetText } from 'src/shared/text/format.js'
 import { logError } from 'src/shared/log.js'
-import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js'
-import { Byline } from 'src/components/design-system/Byline.js'
-import { ProgressBar } from 'src/components/design-system/ProgressBar.js'
+import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js'
+import { Byline } from 'src/terminal/design-system/Byline.js'
+import { ProgressBar } from 'src/terminal/design-system/ProgressBar.js'
 
 type CodexUsageLimitBarProps = {
   label: string

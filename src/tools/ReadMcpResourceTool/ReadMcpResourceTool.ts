@@ -11,7 +11,7 @@ import {
   persistBinaryContent,
 } from 'src/services/mcp/mcpOutputStorage.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { isOutputLineTruncated } from 'src/utils/terminal.js'
+import { isOutputLineTruncated } from 'src/terminal/terminal.js'
 import { DESCRIPTION, PROMPT } from 'src/tools/ReadMcpResourceTool/prompt.js'
 import {
   renderToolResultMessage,

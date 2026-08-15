@@ -30,8 +30,8 @@ import { logForDebugging } from 'src/shared/debug.js';
 import { type Command, type CommandResultDisplay, getCommandName, isCommandEnabled } from 'src/commands.js';
 import type { PromptInputMode } from 'src/types/textInputTypes.js';
 import { addToHistory, expandPastedTextRefs, parseReferences } from 'src/history.js';
-import { prependModeCharacterToInput } from 'src/components/PromptInput/inputModes.js';
-import { prependToShellHistoryCache } from 'src/services/suggestions/shellHistoryCompletion.js';
+import { prependModeCharacterToInput } from 'src/terminal/prompt-input/inputModes.js';
+import { prependToShellHistoryCache } from 'src/terminal/suggestions/shellHistoryCompletion.js';
 import { getGlobalConfig, type PastedContent } from 'src/services/config/config.js';
 import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/index.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
@@ -47,14 +47,14 @@ import { evictOldStubbedMessages, evictToMaxSize, MAX_DISPLAY_MESSAGES, type Any
 import { incrementPromptCount } from 'src/services/git/commitAttribution.js';
 import { recordAttributionSnapshot } from 'src/services/session/sessionStorage.js';
 import { type SetAppState } from 'src/utils/messageQueueManager.js';
-import { getCurrentLocalJSXGeneration } from 'src/utils/toolJSXStore.js';
-import { handleSpeculationAccept, type ActiveSpeculationState } from 'src/services/PromptSuggestion/speculation.js';
+import { getCurrentLocalJSXGeneration } from 'src/terminal/toolJSXStore.js';
+import { handleSpeculationAccept, type ActiveSpeculationState } from 'src/terminal/prompt-suggestion/speculation.js';
 import { createAbortController } from 'src/shared/abortController.js';
 import type { RemoteMessageContent } from 'src/services/teleport/api.js';
-import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
+import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import type { QueryGuard } from 'src/utils/QueryGuard.js';
 import type { IDESelection } from 'src/hooks/useIdeSelection.js';
-import type { SpinnerMode } from 'src/components/Spinner.js';
+import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js';
 import type { ProcessUserInputContext } from 'src/services/input/processUserInput.js';
 import type { EffortValue } from 'src/utils/effort.js';
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js';
@@ -62,7 +62,7 @@ import type { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateC
 import type { useRemoteSession } from 'src/hooks/useRemoteSession.js';
 import type { useDirectConnect } from 'src/hooks/useDirectConnect.js';
 import type { useSSHSession } from 'src/hooks/useSSHSession.js';
-import type { useNotifications } from 'src/context/notifications.js';
+import type { useNotifications } from 'src/terminal/contexts/notifications.js';
 import type { useDeferredHookMessages } from 'src/hooks/useDeferredHookMessages.js';
 
 // Mirrors the module-level binding in REPL.tsx. `feature()` must sit DIRECTLY in

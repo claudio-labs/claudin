@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { isTaskAssignment, type TaskAssignmentMessage } from 'src/coordinator/teammateMailbox.js';
 type Props = {
   assignment: TaskAssignmentMessage;

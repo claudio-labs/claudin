@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 import chalk from 'chalk'
-import { stringWidth } from 'src/ink/stringWidth.js'
+import { stringWidth } from 'src/terminal/ink/stringWidth.js'
 import { buildDiffStatSegment, type DiffStatInput } from 'src/services/git/format-branch.js'
-import { getTheme } from 'src/utils/theme.js'
+import { getTheme } from 'src/terminal/theme/theme.js'
 
 const theme = getTheme('dark')
 const ANSI_SGR = /\u001b\[[0-9;]*m/

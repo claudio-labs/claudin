@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { SandboxManager, shouldAllowManagedSandboxDomainsOnly } from 'src/services/sandbox/sandbox-adapter.js';
 export function SandboxConfigTab() {
   const $ = _c(3);

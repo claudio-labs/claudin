@@ -2,8 +2,8 @@ import { c as _c } from "react-compiler-runtime";
 import { relative } from 'path';
 import * as React from 'react';
 import { getCwd } from 'src/shared/fs/cwd.js';
-import { Box, Text } from 'src/ink.js';
-import { HighlightedCode } from 'src/components/HighlightedCode.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { HighlightedCode } from 'src/terminal/highlighted-code/HighlightedCode.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 type Props = {
   notebook_path: string;

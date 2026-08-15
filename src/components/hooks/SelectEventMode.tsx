@@ -12,10 +12,10 @@ import figures from 'figures';
 import * as React from 'react';
 import type { HookEvent } from 'src/entrypoints/agentSdkTypes.js';
 import type { HookEventMetadata } from 'src/services/lifecycleHooks/hooksConfigManager.js';
-import { Box, Link, Text } from 'src/ink.js';
+import { Box, Link, Text } from 'src/terminal/ink.js';
 import { plural } from 'src/shared/text/stringUtils.js';
-import { Select } from 'src/components/CustomSelect/select.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
+import { Select } from 'src/terminal/custom-select/select.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
 type Props = {
   hookEventMetadata: Record<HookEvent, HookEventMetadata>;
   hooksByEvent: Partial<Record<HookEvent, number>>;

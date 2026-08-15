@@ -15,7 +15,7 @@ import {
   getUserContext,
   setSystemPromptInjection,
 } from 'src/context.js'
-import { clearFileSuggestionCaches } from 'src/hooks/fileSuggestions.js'
+import { clearFileSuggestionCaches } from 'src/terminal/prompt-suggestion/fileSuggestions.js'
 import { clearAllPendingCallbacks } from 'src/hooks/useSwarmPermissionPoller.js'
 import { clearAllDumpState } from 'src/services/api/dumpPrompts.js'
 import { resetPromptCacheBreakDetection } from 'src/services/api/promptCacheBreakDetection.js'
@@ -30,7 +30,7 @@ import { resetGetMemoryFilesCache } from 'src/services/instructions/claudemd.js'
 import { clearRepositoryCaches } from 'src/services/git/detectRepository.js'
 import { clearResolveGitDirCache } from 'src/services/git/gitFilesystem.js'
 import { fileReadCache } from 'src/shared/fs/fileReadCache.js'
-import { clearStoredImagePaths } from 'src/utils/imageStore.js'
+import { clearStoredImagePaths } from 'src/terminal/image/imageStore.js'
 import { clearSessionEnvVars } from 'src/services/session/sessionEnvVars.js'
 
 /**

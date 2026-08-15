@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, mock, test } from 'bun:test'
-import type { AppState } from 'src/state/AppStateStore.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type {
   LocalJSXCommandContext,

@@ -1,21 +1,21 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import { installOAuthTokens } from 'src/cli/handlers/auth.js';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import { setClipboard } from 'src/ink/termio/osc.js';
-import { useTerminalNotification } from 'src/ink/useTerminalNotification.js';
-import { Box, Link, Text } from 'src/ink.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import { setClipboard } from 'src/terminal/ink/termio/osc.js';
+import { useTerminalNotification } from 'src/terminal/ink/useTerminalNotification.js';
+import { Box, Link, Text } from 'src/terminal/ink.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { getSSLErrorHint } from 'src/services/api/errorUtils.js';
 import { sendNotification } from 'src/services/notifier.js';
 import { OAuthService } from 'src/services/oauth/index.js';
 import { getOauthAccountInfo, validateForceLoginOrg } from 'src/services/auth/auth.js';
 import { logError } from 'src/shared/log.js';
 import { getInitialSettings } from 'src/services/settings/settings.js';
-import { Select } from 'src/components/CustomSelect/select.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
-import { Spinner } from 'src/components/Spinner.js';
-import TextInput from 'src/components/TextInput.js';
+import { Select } from 'src/terminal/custom-select/select.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
+import { Spinner } from 'src/terminal/spinner/Spinner.js';
+import TextInput from 'src/terminal/text-input/TextInput.js';
 export type ConsoleOAuthFlowResult = {
   type: 'oauth';
 } | {

@@ -1,5 +1,5 @@
 import { HOOK_EVENTS, type HookEvent } from 'src/entrypoints/agentSdkTypes.js'
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import type { Message } from 'src/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { AggregatedHookResult } from 'src/services/lifecycleHooks/types.js'

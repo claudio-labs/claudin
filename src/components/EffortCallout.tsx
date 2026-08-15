@@ -1,13 +1,13 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { isMaxSubscriber, isProSubscriber, isTeamSubscriber } from 'src/services/auth/auth.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import type { EffortLevel } from 'src/utils/effort.js';
 import { convertEffortValueToLevel, getDefaultEffortForModel, getOpusDefaultEffortConfig, persistEffortForProject, pinProjectEffortAuto } from 'src/utils/effort.js';
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js';
-import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
-import { Select } from 'src/components/CustomSelect/select.js';
+import type { OptionWithDescription } from 'src/terminal/custom-select/select.js';
+import { Select } from 'src/terminal/custom-select/select.js';
 import { effortLevelToSymbol } from 'src/components/EffortIndicator.js';
 import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
 type EffortCalloutSelection = EffortLevel | undefined | 'dismiss';

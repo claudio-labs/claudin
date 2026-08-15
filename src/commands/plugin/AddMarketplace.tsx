@@ -1,12 +1,12 @@
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
-import { Byline } from 'src/components/design-system/Byline.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
-import { Spinner } from 'src/components/Spinner.js';
-import TextInput from 'src/components/TextInput.js';
-import { Box, Text } from 'src/ink.js';
+import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
+import { Byline } from 'src/terminal/design-system/Byline.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
+import { Spinner } from 'src/terminal/spinner/Spinner.js';
+import TextInput from 'src/terminal/text-input/TextInput.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { toError } from 'src/shared/errors.js';
 import { logError } from 'src/shared/log.js';
 import { clearAllCaches } from 'src/services/plugins/cacheUtils.js';

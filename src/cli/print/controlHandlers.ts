@@ -7,7 +7,7 @@ import type {
 import type { StdoutMessage } from 'src/entrypoints/sdk/controlTypes.js'
 import type { PermissionMode as InternalPermissionMode } from 'src/types/permissions.js'
 import type { ToolPermissionContext } from 'src/Tool.js'
-import type { AppState } from 'src/state/AppStateStore.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type { Stream } from 'src/shared/stream.js'
 import {
   ChannelMessageNotificationSchema,

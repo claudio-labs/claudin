@@ -3,7 +3,7 @@ import { getIsRemoteMode } from 'src/bootstrap/state.js'
 import {
   type Notification,
   useNotifications,
-} from 'src/context/notifications.js'
+} from 'src/terminal/contexts/notifications.js'
 import { logError } from 'src/shared/log.js'
 
 type Result = Notification | Notification[] | null

@@ -4,8 +4,8 @@ import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 import React from 'react'
 import stripAnsi from 'strip-ansi'
 
-import { render } from 'src/ink.js'
-import { AppStateProvider } from 'src/state/AppState.js'
+import { render } from 'src/terminal/ink.js'
+import { AppStateProvider } from 'src/terminal/state/AppState.js'
 import type { ProviderProfile } from 'src/services/config/config.js'
 import { buildProviderManagerCompletion } from 'src/commands/provider/provider.js'
 

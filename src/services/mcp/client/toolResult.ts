@@ -9,7 +9,7 @@ import type {
 } from '@modelcontextprotocol/sdk/types.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/shared/errors.js'
-import { maybeResizeAndDownsampleImageBuffer } from 'src/utils/imageResizer.js'
+import { maybeResizeAndDownsampleImageBuffer } from 'src/terminal/image/imageResizer.js'
 import { logMCPError } from 'src/shared/log.js'
 import {
   getBinaryBlobSavedMessage,

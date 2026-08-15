@@ -1,13 +1,13 @@
 import type * as React from 'react';
 import { useEffect, useState } from 'react';
-import { Box, Text } from 'src/ink.js';
-import { useTheme } from 'src/components/design-system/ThemeProvider.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useTheme } from 'src/terminal/design-system/ThemeProvider.js';
 import { onGlobalConfigChange } from 'src/services/config/config.js';
 import type { ProviderProfile } from 'src/services/config/config.js';
 import { getActiveProviderProfile } from 'src/services/api/providerProfiles.js';
 import { getMainLoopModel, renderModelName } from 'src/utils/model/model.js';
 import { buildModelPill, buildProviderPill, resolveBranchBg } from 'src/services/git/format-branch.js';
-import { getTheme } from 'src/utils/theme.js';
+import { getTheme } from 'src/terminal/theme/theme.js';
 import { logError } from 'src/shared/log.js';
 import { toError } from 'src/shared/errors.js';
 

@@ -1,7 +1,7 @@
 import * as React from 'react'
 
-import { Box, Text } from 'src/ink.js'
-import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js'
+import { Box, Text } from 'src/terminal/ink.js'
+import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js'
 
 type UnsupportedUsageProps = {
   providerLabel: string

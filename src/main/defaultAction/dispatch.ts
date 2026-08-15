@@ -14,9 +14,9 @@ import { runDirectConnectBranch } from 'src/main/defaultAction/directConnect.js'
 import { runSshRemoteBranch } from 'src/main/defaultAction/sshRemote.js';
 import { runAssistantChatBranch } from 'src/main/defaultAction/assistantChat.js';
 import { runResumeBranch } from 'src/main/defaultAction/resume.js';
-import type { Root } from 'src/ink.js';
-import type { FpsMetrics } from 'src/utils/fpsTracker.js';
-import type { StatsStore } from 'src/context/stats.js';
+import type { Root } from 'src/terminal/ink.js';
+import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
+import type { StatsStore } from 'src/terminal/contexts/stats.js';
 import type { ThinkingConfig } from 'src/services/context/thinking.js';
 import type { BootContext } from 'src/main/bootContext.js';
 import type { ActionOptions } from 'src/main/action/parseOptions.js';

@@ -2,10 +2,10 @@ import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import React, { useEffect, useState } from 'react';
 import type { CommandResultDisplay } from 'src/commands.js';
-import { Box, color, Text, useTheme } from 'src/ink.js';
+import { Box, color, Text, useTheme } from 'src/terminal/ink.js';
 import { useMcpReconnect } from 'src/services/mcp/MCPConnectionManager.js';
-import { useAppStateStore } from 'src/state/AppState.js';
-import { Spinner } from 'src/components/Spinner.js';
+import { useAppStateStore } from 'src/terminal/state/AppState.js';
+import { Spinner } from 'src/terminal/spinner/Spinner.js';
 type Props = {
   serverName: string;
   onComplete: (result?: string, options?: {

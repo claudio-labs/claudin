@@ -18,12 +18,12 @@
 // React identity: a single React element wraps the three rows in a fragment
 // so the parent layout's child-array length and order is unchanged.
 
-import { Box } from 'src/ink.js'
+import { Box } from 'src/terminal/ink.js'
 import * as React from 'react'
-import type { Theme } from 'src/utils/theme.js'
-import { SpinnerWithVerb, BriefIdleStatus, type SpinnerMode } from 'src/components/Spinner.js'
-import { PromptInputQueuedCommands } from 'src/components/PromptInput/PromptInputQueuedCommands.js'
-import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js'
+import type { Theme } from 'src/terminal/theme/theme.js'
+import { SpinnerWithVerb, BriefIdleStatus, type SpinnerMode } from 'src/terminal/spinner/Spinner.js'
+import { PromptInputQueuedCommands } from 'src/terminal/prompt-input/PromptInputQueuedCommands.js'
+import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js'
 
 export type REPLStatusProps = {
   showSpinner: boolean

@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { AppState } from 'src/state/AppStateStore.js';
+import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import type { BackgroundTaskState } from 'src/tasks/types.js';
 
 // Capture the real LocalAgentTask module *before* the mocks below land. The

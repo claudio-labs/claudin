@@ -2,9 +2,9 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { logError } from 'src/shared/log.js';
 import { useEffect } from 'react';
-import { useNotifications } from 'src/context/notifications.js';
+import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { getIsRemoteMode } from 'src/bootstrap/state.js';
-import { Text } from 'src/ink.js';
+import { Text } from 'src/terminal/ink.js';
 import { hasClaudeAiMcpEverConnected } from 'src/services/mcp/claudeai.js';
 import type { MCPServerConnection } from 'src/services/mcp/types.js';
 type Props = {

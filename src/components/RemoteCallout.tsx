@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { isBridgeEnabled } from 'src/bridge/bridgeEnabled.js';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { getClaudeAIOAuthTokens } from 'src/services/auth/auth.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
-import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
-import { Select } from 'src/components/CustomSelect/select.js';
+import type { OptionWithDescription } from 'src/terminal/custom-select/select.js';
+import { Select } from 'src/terminal/custom-select/select.js';
 import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
 type RemoteCalloutSelection = 'enable' | 'dismiss';
 type Props = {

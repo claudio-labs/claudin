@@ -7,8 +7,8 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import * as React from 'react'
 
-import { renderToString } from 'src/components/staticRender.js'
-import { AppStateProvider } from 'src/state/AppState.js'
+import { renderToString } from 'src/terminal/render/staticRender.js'
+import { AppStateProvider } from 'src/terminal/state/AppState.js'
 import { REPL } from 'src/screens/REPL.js'
 import {
   mockReplProps,

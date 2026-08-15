@@ -1,14 +1,14 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import { Box, render, Text } from 'src/ink.js';
-import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js';
-import { AppStateProvider } from 'src/state/AppState.js';
+import { Box, render, Text } from 'src/terminal/ink.js';
+import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js';
+import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import type { ConfigParseError } from 'src/shared/errors.js';
-import { getBaseRenderOptions } from 'src/utils/renderOptions.js';
+import { getBaseRenderOptions } from 'src/terminal/render/renderOptions.js';
 import { jsonStringify, writeFileSync_DEPRECATED } from 'src/utils/slowOperations.js';
-import type { ThemeName } from 'src/utils/theme.js';
-import { Select } from 'src/components/CustomSelect/index.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
+import type { ThemeName } from 'src/terminal/theme/theme.js';
+import { Select } from 'src/terminal/custom-select/index.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
 interface InvalidConfigHandlerProps {
   error: ConfigParseError;
 }

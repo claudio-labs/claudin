@@ -2,11 +2,11 @@ import { c as _c } from "react-compiler-runtime";
 import type { StructuredPatchHunk } from 'diff';
 import * as React from 'react';
 import { useMemo } from 'react';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import { Box, NoSelect, Text } from 'src/ink.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import { Box, NoSelect, Text } from 'src/terminal/ink.js';
 import { intersperse } from 'src/shared/data/array.js';
 import { getPatchForDisplay } from 'src/services/git/diff.js';
-import { HighlightedCode } from 'src/components/HighlightedCode.js';
+import { HighlightedCode } from 'src/terminal/highlighted-code/HighlightedCode.js';
 import { StructuredDiff } from 'src/components/StructuredDiff.js';
 type Props = {
   file_path: string;

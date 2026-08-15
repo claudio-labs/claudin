@@ -10,15 +10,15 @@ import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js';
 import type { SettingSource } from 'src/services/settings/constants.js';
 import { getOriginalCwd } from 'src/bootstrap/state.js';
 import type { CommandResultDisplay } from 'src/commands.js';
-import { Pane } from 'src/components/design-system/Pane.js';
-import { PressEnterToContinue } from 'src/components/PressEnterToContinue.js';
+import { Pane } from 'src/terminal/design-system/Pane.js';
+import { PressEnterToContinue } from 'src/terminal/PressEnterToContinue.js';
 import { SandboxDoctorSection } from 'src/components/sandbox/SandboxDoctorSection.js';
 import { ValidationErrorsList } from 'src/components/ValidationErrorsList.js';
 import { useSettingsErrors } from 'src/hooks/notifs/useSettingsErrors.js';
-import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
-import { Box, Text } from 'src/ink.js';
-import { useKeybindings } from 'src/keybindings/useKeybinding.js';
-import { useAppState } from 'src/state/AppState.js';
+import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
+import { useAppState } from 'src/terminal/state/AppState.js';
 import { getPluginErrorMessage } from 'src/types/plugin.js';
 import type { PluginError } from 'src/types/plugin.js';
 import { getGcsDistTags, getNpmDistTags, type NpmDistTags } from 'src/services/install/autoUpdater.js';
@@ -32,7 +32,7 @@ import { BASH_MAX_OUTPUT_DEFAULT, BASH_MAX_OUTPUT_UPPER_LIMIT } from 'src/servic
 import { TASK_MAX_OUTPUT_DEFAULT, TASK_MAX_OUTPUT_UPPER_LIMIT } from 'src/tasks/outputFormatting.js';
 import { getXDGStateHome } from 'src/shared/fs/xdg.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
-import type { AppState } from 'src/state/AppStateStore.js';
+import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import type { ValidationError } from 'src/services/settings/validation.js';
 type Props = {
   onDone: (result?: string, options?: {

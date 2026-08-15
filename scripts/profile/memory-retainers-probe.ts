@@ -335,7 +335,7 @@ async function main(): Promise<void> {
 
   // --- #11 markdownTokenCache --------------------------------------------
   try {
-    const mod = await import('../../src/components/markdownTokenCache.js')
+    const mod = await import('../../src/terminal/markdown/markdownTokenCache.js')
     // Use cache hot path (cachedLexer) to fill it
     results.push(
       await measure(

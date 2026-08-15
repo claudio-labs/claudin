@@ -1,6 +1,6 @@
 // Width-aware truncation/wrapping — needs ink/stringWidth (not leaf-safe).
 
-import { stringWidth } from 'src/ink/stringWidth.js'
+import { stringWidth } from 'src/terminal/ink/stringWidth.js'
 import { getGraphemeSegmenter } from 'src/shared/text/intl.js'
 
 /**

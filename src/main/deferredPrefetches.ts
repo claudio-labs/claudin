@@ -8,7 +8,7 @@
 import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js';
 import { initUser } from 'src/shared/user.js';
 import { getUserContext } from 'src/context.js';
-import { getRelevantTips } from 'src/services/tips/tipRegistry.js';
+import { getRelevantTips } from 'src/terminal/tips/tipRegistry.js';
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
 import {
   prefetchAwsCredentialsAndBedRockInfoIfSafe,

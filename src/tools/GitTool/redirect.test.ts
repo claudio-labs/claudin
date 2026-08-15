@@ -329,7 +329,7 @@ const RECORDED_COMMANDS: readonly string[] = [
   'gh pr diff 52',
   'gh run view --job 92198424809 --repo claudio-labs/claudin --log',
   'git diff',
-  'git diff -- src/components/explorer/ExplorerDialog.tsx',
+  'git diff -- src/terminal/explorer/ExplorerDialog.tsx',
   'git diff --stat ROADMAP.md',
   'git diff .claudin/memory/team/MEMORY.md',
   'git diff HEAD --stat',

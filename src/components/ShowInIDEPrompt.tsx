@@ -1,11 +1,11 @@
 import { c as _c } from "react-compiler-runtime";
 import { basename, relative } from 'path';
 import React from 'react';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { isSupportedVSCodeTerminal } from 'src/services/ide/ide.js';
-import { Select } from 'src/components/CustomSelect/index.js';
-import { Pane } from 'src/components/design-system/Pane.js';
+import { Select } from 'src/terminal/custom-select/index.js';
+import { Pane } from 'src/terminal/design-system/Pane.js';
 import type { PermissionOption, PermissionOptionWithLabel } from 'src/components/permissions/FilePermissionDialog/permissionOptions.js';
 type Props<A> = {
   filePath: string;

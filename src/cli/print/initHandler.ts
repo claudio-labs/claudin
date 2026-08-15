@@ -11,7 +11,7 @@ import {
   isBuiltInAgent,
   parseAgentsFromJson,
 } from 'src/tools/AgentTool/loadAgentsDir.js'
-import type { AppState } from 'src/state/AppStateStore.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type {
   ModelInfo,
   HookEvent,

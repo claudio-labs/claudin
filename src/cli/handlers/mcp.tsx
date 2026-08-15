@@ -8,8 +8,8 @@ import pMap from 'p-map';
 import { cwd } from 'process';
 import React from 'react';
 import { MCPServerDesktopImportDialog } from 'src/components/MCPServerDesktopImportDialog.js';
-import { render } from 'src/ink.js';
-import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js';
+import { render } from 'src/terminal/ink.js';
+import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import {
   clearMcpClientConfig,
@@ -22,7 +22,7 @@ import { connectToServer, getMcpServerConnectionBatchSize } from 'src/services/m
 import { addMcpConfig, getAllMcpConfigs, getMcpConfigByName, getMcpConfigsByScope, removeMcpConfig } from 'src/services/mcp/config.js';
 import type { ConfigScope, ScopedMcpServerConfig } from 'src/services/mcp/types.js';
 import { describeMcpConfigFilePath, ensureConfigScope, getScopeLabel } from 'src/services/mcp/utils.js';
-import { AppStateProvider } from 'src/state/AppState.js';
+import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import { getCurrentProjectConfig, getGlobalConfig, saveCurrentProjectConfig } from 'src/services/config/config.js';
 import { isFsInaccessible } from 'src/shared/errors.js';
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';

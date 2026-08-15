@@ -1,14 +1,14 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
-import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
+import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
+import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
 import { builtInCommandNames, type Command, type CommandResultDisplay } from 'src/commands.js';
-import { useIsInsideModal } from 'src/context/modalContext.js';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import { Box, Link, Text } from 'src/ink.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
-import { Pane } from 'src/components/design-system/Pane.js';
-import { Tab, Tabs } from 'src/components/design-system/Tabs.js';
+import { useIsInsideModal } from 'src/terminal/contexts/modalContext.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import { Box, Link, Text } from 'src/terminal/ink.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
+import { Pane } from 'src/terminal/design-system/Pane.js';
+import { Tab, Tabs } from 'src/terminal/design-system/Tabs.js';
 import { Commands } from 'src/components/HelpV2/Commands.js';
 import { General } from 'src/components/HelpV2/General.js';
 type Props = {

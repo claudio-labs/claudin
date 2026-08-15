@@ -3,7 +3,7 @@ import { PassThrough } from 'node:stream'
 import { afterEach, expect, mock, test } from 'bun:test'
 import React from 'react'
 
-import { createRoot, Text } from 'src/ink.js'
+import { createRoot, Text } from 'src/terminal/ink.js'
 import type { XaiDeviceCodeResponse } from 'src/services/api/xaiOAuth.js'
 
 const SYNC_START = '\x1B[?2026h'

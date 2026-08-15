@@ -1,9 +1,9 @@
 import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import React, { useState } from 'react';
-import { Box, Text } from 'src/ink.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
-import TextInput from 'src/components/TextInput.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
+import TextInput from 'src/terminal/text-input/TextInput.js';
 type Props = {
   initialLanguage: string | undefined;
   onComplete: (language: string | undefined) => void;

@@ -183,20 +183,51 @@ function collectMoves(scope: Scope = 'group'): {
  * These survived normalizeImports precisely because they do not traverse
  * upward — which was safe right up until the directory beside them moved.
  *
- * This pass resolves each relative specifier against its own file and, when the
- * result lands under something the manifest moved, replaces it with the alias
- * of where it went. Resolving is what makes it precise: `./foo/` in two
- * different directories are two different modules.
+ * This pass repairs them from BOTH sides: a file that stayed and names one that
+ * moved, a file that moved and names one that stayed, or both moving to
+ * different places. Each specifier is resolved against its file's PRE-move
+ * directory, so the target it originally meant is unambiguous; where that target
+ * went is then read off the rewrite map.
+ *
+ * What it writes back depends on what the target turns out to be, and the
+ * distinction is not cosmetic:
+ *
+ *  - a real module gets the `src/…` alias, which every later group maintains for
+ *    free through the substring rewrite.
+ *  - a `.d.ts`-only target — one of the ~107 ambient declarations standing in for
+ *    subsystems this fork never received — gets a corrected RELATIVE path.
+ *    `scripts/build.ts` stubs a relative specifier it cannot resolve to a noop
+ *    and fails outright on an aliased one, so aliasing
+ *    `require('../../proactive/index.js')` turns a working stub into a broken
+ *    build. tsc still resolves the relative form to the declaration, which is
+ *    what keeps the TS2307 retired.
+ *  - `mock.module` always gets the relative form. Bun keys a module mock by the
+ *    specifier STRING, so aliasing one merges it with every other registration
+ *    for the same file and silently changes which mock wins.
  */
-function repairRelativeSpecifiers(rewrites: Map<string, string>): number {
-  const patterns = [
-    /\bfrom\s*(['"])(\.[^'"]*)\1/g,
-    /\bimport\s*(['"])(\.[^'"]*)\1/g,
-    /\bimport\s*\(\s*(['"])(\.[^'"]*)\1/g,
-    /\brequire\s*\(\s*(['"])(\.[^'"]*)\1/g,
-    /\bmock\.module\s*\(\s*(['"])(\.[^'"]*)\1/g,
+function repairRelativeSpecifiers(rewrites: Map<string, string>, moves: Move[]): number {
+  const patterns: { re: RegExp; mock: boolean }[] = [
+    { re: /\bfrom\s*(['"])(\.[^'"]*)\1/g, mock: false },
+    { re: /\bimport\s*(['"])(\.[^'"]*)\1/g, mock: false },
+    { re: /\bimport\s*\(\s*(['"])(\.[^'"]*)\1/g, mock: false },
+    { re: /\brequire\s*\(\s*(['"])(\.[^'"]*)\1/g, mock: false },
+    { re: /\bmock\.module\s*\(\s*(['"])(\.[^'"]*)\1/g, mock: true },
   ]
   const ordered = [...rewrites.entries()].sort((a, b) => b[0].length - a[0].length)
+  /** New path → old path, so a moved file can resolve its own specifiers. */
+  const cameFrom = new Map(moves.map(m => [m.to, m.from]))
+
+  /** Where a pre-move path ended up, or itself when the manifest left it alone. */
+  const landedAt = (path: string): string => {
+    const hit = ordered.find(([from]) => path.startsWith(from))
+    return hit ? hit[1] + path.slice(hit[0].length) : path
+  }
+
+  /** True when something the bundler can actually load sits at this path. */
+  const isRealModule = (rel: string): boolean => {
+    const stem = join(REPO_ROOT, rel).replace(/\.(js|jsx|ts|tsx)$/, '')
+    return ['.ts', '.tsx', '.js', '.json'].some(ext => existsSync(stem + ext))
+  }
 
   const targets: string[] = []
   for (const root of ['src', 'scripts']) {
@@ -208,12 +239,22 @@ function repairRelativeSpecifiers(rewrites: Map<string, string>): number {
   for (const file of targets) {
     const original = readFileSync(file, 'utf8')
     let next = original
-    for (const pattern of patterns) {
-      next = next.replace(pattern, (match, quote: string, specifier: string) => {
-        const resolved = relative(REPO_ROOT, resolve(dirname(file), specifier))
-        const hit = ordered.find(([from]) => resolved.startsWith(from))
-        if (!hit) return match
-        const replacement = hit[1] + resolved.slice(hit[0].length)
+    const here = relative(REPO_ROOT, file)
+    const wasHere = cameFrom.get(here) ?? here
+    for (const { re, mock } of patterns) {
+      next = next.replace(re, (match, quote: string, specifier: string) => {
+        const wasTarget = relative(
+          REPO_ROOT,
+          resolve(dirname(join(REPO_ROOT, wasHere)), specifier),
+        )
+        const nowTarget = landedAt(wasTarget)
+        // Nothing at either end moved — the specifier is still correct.
+        if (nowTarget === wasTarget && wasHere === here) return match
+        const replacement =
+          mock || !isRealModule(nowTarget)
+            ? relative(dirname(here), nowTarget).replace(/^(?!\.)/, './')
+            : nowTarget
+        if (replacement === specifier) return match
         return match.replace(`${quote}${specifier}${quote}`, `${quote}${replacement}${quote}`)
       })
     }
@@ -278,7 +319,7 @@ function main(): void {
   const touched = applyRewrites(rewrites)
   console.log(`${DRY ? 'would rewrite' : 'rewrote'} paths in ${touched} files`)
 
-  const repaired = repairRelativeSpecifiers(collectMoves('through').rewrites)
+  const repaired = repairRelativeSpecifiers(collectMoves('through').rewrites, moves)
   console.log(`${DRY ? 'would repair' : 'repaired'} ./-relative specifiers in ${repaired} files`)
 
   if (DRY) {

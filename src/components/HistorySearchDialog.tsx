@@ -1,15 +1,15 @@
 import * as React from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { useRegisterOverlay } from 'src/context/overlayContext.js';
+import { useRegisterOverlay } from 'src/terminal/contexts/overlayContext.js';
 import { getTimestampedHistory, type TimestampedHistoryEntry } from 'src/history.js';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import { stringWidth } from 'src/ink/stringWidth.js';
-import { wrapAnsi } from 'src/ink/wrapAnsi.js';
-import { Box, Text } from 'src/ink.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import { stringWidth } from 'src/terminal/ink/stringWidth.js';
+import { wrapAnsi } from 'src/terminal/ink/wrapAnsi.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import type { HistoryEntry } from 'src/services/config/config.js';
 import { formatRelativeTimeAgo, truncateToWidth } from 'src/shared/text/format.js';
-import { FuzzyPicker } from 'src/components/design-system/FuzzyPicker.js';
+import { FuzzyPicker } from 'src/terminal/design-system/FuzzyPicker.js';
 type Props = {
   initialQuery?: string;
   onSelect: (entry: HistoryEntry) => void;

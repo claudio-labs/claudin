@@ -314,7 +314,7 @@ function runOnce(
 
   let stablePrefix = ''
   // Models <Markdown>{stablePrefix}</Markdown>'s memoization in
-  // src/components/Markdown.tsx:133 — when `children` doesn't change between
+  // src/terminal/markdown/Markdown.tsx:133 — when `children` doesn't change between
   // renders, MarkdownBody returns its cached output and no formatToken runs.
   // The stablePrefix only advances forward, so a single previousStable
   // comparison is sufficient.

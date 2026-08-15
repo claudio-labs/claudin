@@ -1,4 +1,4 @@
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { updateHooksConfigSnapshot } from 'src/services/lifecycleHooks/hooksConfigSnapshot.js'
 import {

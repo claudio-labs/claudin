@@ -4,13 +4,13 @@ import type { BetaContentBlock } from '@anthropic-ai/sdk/resources/beta/messages
 import type { ContentBlockParam, ImageBlockParam, TextBlockParam, ThinkingBlockParam, ToolResultBlockParam, ToolUseBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import * as React from 'react';
 import type { Command } from 'src/commands.js';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import { Box } from 'src/ink.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import { Box } from 'src/terminal/ink.js';
 import type { Tools } from 'src/Tool.js';
 import { type ConnectorTextBlock, isConnectorTextBlock } from 'src/types/connectorText.js';
 import type { AssistantMessage, AttachmentMessage as AttachmentMessageType, CollapsedReadSearchGroup as CollapsedReadSearchGroupType, GroupedToolUseMessage as GroupedToolUseMessageType, NormalizedUserMessage, ProgressMessage, SystemMessage } from 'src/types/message.js';
 import { type AdvisorBlock, isAdvisorBlock } from 'src/utils/advisor.js';
-import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
+import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { logError } from 'src/shared/log.js';
 import type { buildMessageLookups } from 'src/services/messages/messages.js';
 import { CompactSummary } from 'src/components/CompactSummary.js';
@@ -27,7 +27,7 @@ import { SystemTextMessage } from 'src/components/messages/SystemTextMessage.js'
 import { UserImageMessage } from 'src/components/messages/UserImageMessage.js';
 import { UserTextMessage } from 'src/components/messages/UserTextMessage.js';
 import { UserToolResultMessage } from 'src/components/messages/UserToolResultMessage/UserToolResultMessage.js';
-import { OffscreenFreeze } from 'src/components/OffscreenFreeze.js';
+import { OffscreenFreeze } from 'src/terminal/render/OffscreenFreeze.js';
 import { ExpandShellOutputProvider } from 'src/components/shell/ExpandShellOutputContext.js';
 export type Props = {
   message: NormalizedUserMessage | AssistantMessage | AttachmentMessageType | SystemMessage | GroupedToolUseMessageType | CollapsedReadSearchGroupType;

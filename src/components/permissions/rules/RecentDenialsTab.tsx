@@ -2,12 +2,12 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- 'r' is a view-specific key, not a global keybinding
-import { Box, Text, useInput } from 'src/ink.js';
-import type { Key } from 'src/ink/events/input-event.js';
+import { Box, Text, useInput } from 'src/terminal/ink.js';
+import type { Key } from 'src/terminal/ink/events/input-event.js';
 import { type AutoModeDenial, getAutoModeDenials } from 'src/utils/autoModeDenials.js';
-import { Select } from 'src/components/CustomSelect/select.js';
-import { StatusIcon } from 'src/components/design-system/StatusIcon.js';
-import { useTabHeaderFocus } from 'src/components/design-system/Tabs.js';
+import { Select } from 'src/terminal/custom-select/select.js';
+import { StatusIcon } from 'src/terminal/design-system/StatusIcon.js';
+import { useTabHeaderFocus } from 'src/terminal/design-system/Tabs.js';
 type Props = {
   onHeaderFocusChange?: (focused: boolean) => void;
   /** Called when approved/retry state changes so parent can act on exit */

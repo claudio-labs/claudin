@@ -3,7 +3,7 @@ import type { StructuredPatchHunk } from 'diff';
 import { relative } from 'path';
 import * as React from 'react';
 import { Suspense, use, useMemo } from 'react';
-import { Box, NoSelect, Text } from 'src/ink.js';
+import { Box, NoSelect, Text } from 'src/terminal/ink.js';
 import type { NotebookCell, NotebookCellType, NotebookContent } from 'src/types/notebook.js';
 import { intersperse } from 'src/shared/data/array.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
@@ -11,7 +11,7 @@ import { getPatchForDisplay } from 'src/services/git/diff.js';
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js';
 import { safeParseJSON } from 'src/shared/data/json.js';
 import { parseCellId } from 'src/shared/fs/notebook.js';
-import { HighlightedCode } from 'src/components/HighlightedCode.js';
+import { HighlightedCode } from 'src/terminal/highlighted-code/HighlightedCode.js';
 import { StructuredDiff } from 'src/components/StructuredDiff.js';
 type Props = {
   notebook_path: string;

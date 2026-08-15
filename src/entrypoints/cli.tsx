@@ -268,7 +268,7 @@ async function main(): Promise<void> {
     process.stdout.isTTY &&
     process.env.CLAUDIN_CLEAR_ON_START === '1'
   ) {
-    const { clearTerminal } = await import('src/ink/clearTerminal.js')
+    const { clearTerminal } = await import('src/terminal/ink/clearTerminal.js')
     process.stdout.write(clearTerminal)
   }
 
@@ -510,7 +510,7 @@ async function main(): Promise<void> {
   if (process.env.CLAUDIN_DISABLE_EARLY_INPUT !== '1') {
     const {
       startCapturingEarlyInput
-    } = await import('src/utils/earlyInput.js');
+    } = await import('src/terminal/input/earlyInput.js');
     startCapturingEarlyInput();
   }
   profileCheckpoint('cli_before_main_import');

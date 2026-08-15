@@ -5,12 +5,12 @@ Model: claude-opus-4-8.
 
 **Read files:**
 - `src/screens/REPL.tsx` (220K)
-- `src/utils/ansiToPng.ts` (212K)
+- `src/terminal/image/ansiToPng.ts` (212K)
 - `src/cli/print/runHeadless.ts` (160K)
 - `src/bridge/bridgeMain.ts` (112K)
 - `src/services/bash/ast.ts` (112K)
 - `src/services/plugins/pluginLoader.ts` (112K)
-- `src/components/PromptInput/PromptInput.tsx` (104K)
+- `src/terminal/prompt-input/PromptInput.tsx` (104K)
 - `src/commands/insights.ts` (104K)
 - `src/tools/BashTool/bashSecurity.ts` (104K)
 - `src/bridge/replBridge.ts` (96K)

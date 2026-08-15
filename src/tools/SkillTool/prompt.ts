@@ -6,7 +6,7 @@ import {
   getSlashCommandToolSkills,
 } from 'src/commands.js'
 import { COMMAND_NAME_TAG } from 'src/constants/xml.js'
-import { stringWidth } from 'src/ink/stringWidth.js'
+import { stringWidth } from 'src/terminal/ink/stringWidth.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { toError } from 'src/shared/errors.js'
 import { truncate } from 'src/shared/text/format.js'

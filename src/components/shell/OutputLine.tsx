@@ -1,11 +1,11 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useMemo } from 'react';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import { Ansi, Text } from 'src/ink.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import { Ansi, Text } from 'src/terminal/ink.js';
 import { createHyperlink } from 'src/shared/text/hyperlink.js';
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js';
-import { renderTruncatedContent } from 'src/utils/terminal.js';
+import { renderTruncatedContent } from 'src/terminal/terminal.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { InVirtualListContext } from 'src/components/messageActions.js';
 import { useExpandShellOutput } from 'src/components/shell/ExpandShellOutputContext.js';

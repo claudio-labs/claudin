@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Box, Text, useAnimationFrame, useInput } from 'src/ink.js'
+import { Box, Text, useAnimationFrame, useInput } from 'src/terminal/ink.js'
 import { useMainLoopModel } from 'src/hooks/useMainLoopModel.js'
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js'
-import { useAppState, useSetAppState } from 'src/state/AppState.js'
-import type { Theme } from 'src/utils/theme.js'
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js'
+import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js'
+import type { Theme } from 'src/terminal/theme/theme.js'
 import {
   type EffortValue,
   getAvailableEffortLevels,
@@ -15,8 +15,8 @@ import {
 } from 'src/utils/effort.js'
 import { getReasoningEffortForModel } from 'src/services/api/providerConfig.js'
 import { getRainbowColor } from 'src/services/context/thinking.js'
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js'
-import { Byline } from 'src/components/design-system/Byline.js'
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js'
+import { Byline } from 'src/terminal/design-system/Byline.js'
 import {
   fitSliderLayout,
   SLIDER_MARKER,

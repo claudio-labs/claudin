@@ -1,7 +1,7 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { feature } from 'bun:bundle';
 import { stopUltraplan } from 'src/commands/ultraplan.js';
-import type { AppState } from 'src/state/AppStateStore.js';
+import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import { DreamTask } from 'src/tasks/DreamTask/DreamTask.js';
 import { InProcessTeammateTask } from 'src/tasks/InProcessTeammateTask/InProcessTeammateTask.js';
 import { LocalAgentTask } from 'src/tasks/LocalAgentTask/LocalAgentTask.js';

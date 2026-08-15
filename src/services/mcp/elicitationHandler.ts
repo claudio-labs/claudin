@@ -5,7 +5,7 @@ import {
   ElicitRequestSchema,
   type ElicitResult,
 } from '@modelcontextprotocol/sdk/types.js'
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import {
   executeElicitationHooks,
   executeElicitationResultHooks,

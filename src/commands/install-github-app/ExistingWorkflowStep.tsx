@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import { Select } from 'src/components/CustomSelect/index.js';
-import { Box, Text } from 'src/ink.js';
+import { Select } from 'src/terminal/custom-select/index.js';
+import { Box, Text } from 'src/terminal/ink.js';
 interface ExistingWorkflowStepProps {
   repoName: string;
   onSelectAction: (action: 'update' | 'skip' | 'exit') => void;

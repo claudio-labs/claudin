@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import { getShortcutDisplay } from 'src/keybindings/shortcutFormat.js'
+import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js'
 import { isExtractModeActive } from 'src/memdir/paths.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -55,7 +55,7 @@ import {
   shouldWarnGoalCheckIncomplete,
 } from 'src/services/goal/goal.js'
 import { executeAutoDream } from 'src/services/autoDream/autoDream.js'
-import { executePromptSuggestion } from 'src/services/PromptSuggestion/promptSuggestion.js'
+import { executePromptSuggestion } from 'src/terminal/prompt-suggestion/promptSuggestion.js'
 import { isBareMode, isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import {
   createCacheSafeParams,

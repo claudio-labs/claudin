@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { BLACK_CIRCLE } from 'src/constants/figures.js';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { useDebouncedDigitInput } from 'src/components/FeedbackSurvey/useDebouncedDigitInput.js';
 export type TranscriptShareResponse = 'yes' | 'no' | 'dont_ask_again';
 type Props = {

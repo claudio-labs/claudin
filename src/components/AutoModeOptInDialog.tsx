@@ -1,10 +1,10 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { logEvent } from 'src/services/analytics/index.js';
-import { Box, Link, Text } from 'src/ink.js';
+import { Box, Link, Text } from 'src/terminal/ink.js';
 import { updateSettingsForSource } from 'src/services/settings/settings.js';
-import { Select } from 'src/components/CustomSelect/index.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
+import { Select } from 'src/terminal/custom-select/index.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
 
 // NOTE: This copy is legally reviewed — do not modify without Legal team approval.
 export const AUTO_MODE_DESCRIPTION = "Auto mode lets Claudin handle permission prompts automatically — Claudin checks each tool call for risky actions and prompt injection before executing. Actions Claudin identifies as safe are executed, while actions Claudin identifies as risky are blocked and Claudin may try a different approach. Ideal for long-running tasks. Sessions are slightly more expensive. Claudin can make mistakes that allow harmful commands to run, it's recommended to only use in isolated environments. Shift+Tab to change mode.";

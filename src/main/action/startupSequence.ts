@@ -55,11 +55,11 @@ import { prefetchOpenAICompatibleModels } from 'src/utils/model/openaiModelDisco
 import { getInitialSettings, getSettingsWithErrors } from 'src/services/settings/settings.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import { computeInitialTeamContext } from 'src/coordinator/swarm/reconnection.js';
-import { shouldEnablePromptSuggestion } from 'src/services/PromptSuggestion/promptSuggestion.js';
+import { shouldEnablePromptSuggestion } from 'src/terminal/prompt-suggestion/promptSuggestion.js';
 import { shouldEnableThinkingByDefault, type ThinkingConfig } from 'src/services/context/thinking.js';
-import { launchInvalidSettingsDialog } from 'src/dialogLaunchers.js';
-import { type AppState, IDLE_SPECULATION_STATE } from 'src/state/AppStateStore.js';
-import type { Root } from 'src/ink.js';
+import { launchInvalidSettingsDialog } from 'src/terminal/dialogLaunchers.js';
+import { type AppState, IDLE_SPECULATION_STATE } from 'src/terminal/state/AppStateStore.js';
+import type { Root } from 'src/terminal/ink.js';
 import type { InternalPermissionMode } from 'src/types/permissions.js';
 import type { BootContext } from 'src/main/bootContext.js';
 import type { ActionOptions } from 'src/main/action/parseOptions.js';

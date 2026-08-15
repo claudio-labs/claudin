@@ -38,7 +38,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { logError } from 'src/shared/log.js'
 import { createCombinedAbortSignal } from 'src/shared/combinedAbortSignal.js'
 import { execHttpHook } from 'src/services/lifecycleHooks/execHttpHook.js'
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {

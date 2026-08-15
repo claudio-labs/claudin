@@ -50,12 +50,12 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 ### 7. Clean copy/paste (ver #3 acima)
 
 ### 8. Auto theme follow system
-- **Estado:** `src/utils/systemTheme.ts` e `theme.ts` têm código de detecção (COLORFGBG, OSC 11 query). Está **dormente**.
+- **Estado:** `src/terminal/theme/systemTheme.ts` e `theme.ts` têm código de detecção (COLORFGBG, OSC 11 query). Está **dormente**.
 - **Falta:** criar `systemThemeWatcher.ts` (watch loop), adicionar flag `AUTO_THEME` em `featureFlags` (`scripts/build.ts`), expor em `/config`.
 - **Esforço:** médio (~150 linhas + plumbing).
 
 ### 9. Voice / STT input
-- **Estado:** stack inteira existe em `src/voice/` e `src/services/voiceStreamSTT.ts`. Flag `VOICE_MODE: false` em `scripts/build.ts:28`.
+- **Estado:** stack inteira existe em `src/terminal/voice/` e `src/terminal/voice/voiceStreamSTT.ts`. Flag `VOICE_MODE: false` em `scripts/build.ts:28`.
 - **Falta (estrutural):** requer infra Anthropic (claude.ai OAuth + voice_stream WebSocket). **Não é Whisper local.**
 - **Caminho aberto possível:** trocar backend pra Whisper local (whisper.cpp) ou OpenAI Whisper API — exige re-arquitetura do `voiceStreamSTT.ts`.
 - **Esforço:** alto se for trocar backend.

@@ -1,10 +1,10 @@
 import figures from 'figures';
 import { useEffect, useMemo } from 'react';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { type BackgroundTaskState, isBackgroundTask, type TaskState } from 'src/tasks/types.js';
-import { useAppState, useSetAppState } from 'src/state/AppState.js';
-import type { AppState } from 'src/state/AppStateStore.js';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
+import type { AppState } from 'src/terminal/state/AppStateStore.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { truncate } from 'src/shared/text/format.js';
 import { footerTreeBaseIndex } from 'src/components/tasks/footerTaskGeometry.js';
 

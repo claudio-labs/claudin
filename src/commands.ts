@@ -54,7 +54,7 @@ import usage from 'src/commands/usage/index.js'
 import theme from 'src/commands/theme/index.js'
 import vim from 'src/commands/vim/index.js'
 import { feature } from 'bun:bundle'
-import { isBuddyEnabled } from 'src/buddy/feature.js'
+import { isBuddyEnabled } from 'src/terminal/buddy/feature.js'
 // Dead code elimination: conditional imports
 /* eslint-disable @typescript-eslint/no-require-imports */
 const proactive =

@@ -8,7 +8,7 @@ import {
   countMessagesTokensWithAPI,
   roughTokenCountEstimation,
 } from 'src/services/tokenEstimation.js'
-import { compressImageBlock } from 'src/utils/imageResizer.js'
+import { compressImageBlock } from 'src/terminal/image/imageResizer.js'
 import { logError } from 'src/shared/log.js'
 
 export const MCP_TOKEN_COUNT_THRESHOLD_FACTOR = 0.5

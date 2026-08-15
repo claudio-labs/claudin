@@ -174,7 +174,7 @@ const PROBES: Probe[] = [
   },
   {
     name: 'Markdown',
-    importExpr: `await import('./src/components/Markdown.tsx')`,
+    importExpr: `await import('./src/terminal/markdown/Markdown.tsx')`,
     description: 'Streaming markdown renderer.',
   },
   {

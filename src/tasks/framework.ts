@@ -7,7 +7,7 @@ import {
   TASK_TYPE_TAG,
   TOOL_USE_ID_TAG,
 } from 'src/constants/xml.js'
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import {
   isTerminalTaskStatus,
   type TaskStatus,

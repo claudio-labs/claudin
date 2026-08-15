@@ -2,15 +2,15 @@ import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { memo, useCallback, useEffect, useRef } from 'react';
 import { logEvent } from 'src/services/analytics/index.js';
-import { type AppState, useAppState, useSetAppState } from 'src/state/AppState.js';
+import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js';
 import { getIsRemoteMode, getKairosActive, getMainThreadAgentType, getOriginalCwd, getSdkBetas, getSessionId } from 'src/bootstrap/state.js';
 import { DEFAULT_OUTPUT_STYLE_NAME } from 'src/constants/outputStyles.js';
-import { useNotifications } from 'src/context/notifications.js';
+import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { getTotalAPIDuration, getTotalCost, getTotalDuration, getTotalInputTokens, getTotalLinesAdded, getTotalLinesRemoved, getTotalOutputTokens } from 'src/cost-tracker.js';
 import { useMainLoopModel } from 'src/hooks/useMainLoopModel.js';
 import { type ReadonlySettings, useSettings } from 'src/hooks/useSettings.js';
-import { Ansi, Box, Text } from 'src/ink.js';
+import { Ansi, Box, Text } from 'src/terminal/ink.js';
 import { getRawUtilization } from 'src/services/claudeAiLimits.js';
 import type { Message } from 'src/types/message.js';
 import type { StatusLineCommandInput } from 'src/types/statusLine.js';
@@ -19,14 +19,14 @@ import { checkHasTrustDialogAccepted } from 'src/services/config/config.js';
 import { calculateContextPercentages, getContextWindowForModel } from 'src/services/context/context.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { logForDebugging } from 'src/shared/debug.js';
-import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
+import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { createBaseHookInput, executeStatusLineCommand } from 'src/services/lifecycleHooks/hooks.js';
 import { getLastAssistantMessage } from 'src/services/messages/messages.js';
 import { getRuntimeMainLoopModel, type ModelName, renderModelName } from 'src/utils/model/model.js';
 import { getCurrentSessionTitle } from 'src/services/session/sessionStorage.js';
 import { doesMostRecentAssistantMessageExceed200k, getCurrentUsage } from 'src/services/context/tokens.js';
 import { getCurrentWorktreeSession } from 'src/services/git/worktree.js';
-import { isVimModeEnabled } from 'src/components/PromptInput/utils.js';
+import { isVimModeEnabled } from 'src/terminal/prompt-input/utils.js';
 export function statusLineShouldDisplay(settings: ReadonlySettings): boolean {
   // Assistant mode: statusline fields (model, permission mode, cwd) reflect the
   // REPL/daemon process, not what the agent child is actually running. Hide it.

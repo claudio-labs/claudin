@@ -1,16 +1,16 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useCallback, useState } from 'react';
-import { useDoublePress } from 'src/hooks/useDoublePress.js';
-import { Box, Text } from 'src/ink.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
-import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
-import { useAppState, useAppStateStore, useSetAppState } from 'src/state/AppState.js';
+import { useDoublePress } from 'src/terminal/hooks/useDoublePress.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
+import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
+import { useAppState, useAppStateStore, useSetAppState } from 'src/terminal/state/AppState.js';
 import { backgroundAll, hasForegroundTasks } from 'src/tasks/LocalShellTask/LocalShellTask.js';
 import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import { env } from 'src/shared/env.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 type Props = {
   onBackgroundSession: () => void;
   isLoading: boolean;

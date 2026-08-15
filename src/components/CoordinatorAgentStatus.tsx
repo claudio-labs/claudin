@@ -8,16 +8,16 @@
 
 import figures from 'figures';
 import * as React from 'react';
-import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 import { BLACK_CIRCLE, PAUSE_ICON, PLAY_ICON } from 'src/constants/figures.js';
-import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import { stringWidth } from 'src/ink/stringWidth.js';
-import { Box, Text, wrapText } from 'src/ink.js';
-import { useAppState, useSetAppState } from 'src/state/AppState.js';
-import type { AppState } from 'src/state/AppStateStore.js';
-import { enterTeammateView, exitTeammateView } from 'src/state/teammateViewHelpers.js';
+import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import { stringWidth } from 'src/terminal/ink/stringWidth.js';
+import { Box, Text, wrapText } from 'src/terminal/ink.js';
+import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
+import type { AppState } from 'src/terminal/state/AppStateStore.js';
+import { enterTeammateView, exitTeammateView } from 'src/terminal/state/teammateViewHelpers.js';
 import { isPanelAgentTask, type LocalAgentTaskState } from 'src/tasks/LocalAgentTask/LocalAgentTask.js';
 import { getAgentColor } from 'src/tools/AgentTool/agentColorManager.js';
 import { formatDuration, formatNumber } from 'src/shared/text/format.js';

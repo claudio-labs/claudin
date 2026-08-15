@@ -2,10 +2,10 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 import * as React from 'react';
 import { extractTag } from 'src/services/messages/messages.js';
 import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseErrorMessage.js';
-import { FilePathLink } from 'src/components/FilePathLink.js';
-import { InlineImage } from 'src/components/InlineImage.js';
+import { FilePathLink } from 'src/terminal/FilePathLink.js';
+import { InlineImage } from 'src/terminal/image/InlineImage.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
-import { Text } from 'src/ink.js';
+import { Text } from 'src/terminal/ink.js';
 import { FILE_NOT_FOUND_CWD_NOTE, getDisplayPath } from 'src/shared/fs/file.js';
 import { formatFileSize } from 'src/shared/text/format.js';
 import { getPlansDirectory } from 'src/utils/plans.js';

@@ -1,16 +1,16 @@
 import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import * as React from 'react';
-import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
-import { Box, Text } from 'src/ink.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import type { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import type { Tools } from 'src/Tool.js';
 import { getAgentColor } from 'src/tools/AgentTool/agentColorManager.js';
 import { getMemoryScopeDisplay } from 'src/tools/AgentTool/agentMemory.js';
 import { resolveAgentTools } from 'src/tools/AgentTool/agentToolUtils.js';
 import { type AgentDefinition, isBuiltInAgent } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { getAgentModelDisplay } from 'src/utils/model/agent.js';
-import { Markdown } from 'src/components/Markdown.js';
+import { Markdown } from 'src/terminal/markdown/Markdown.js';
 import { getActualRelativeAgentFilePath } from 'src/components/agents/agentFileUtils.js';
 type Props = {
   agent: AgentDefinition;

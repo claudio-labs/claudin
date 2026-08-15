@@ -1,13 +1,13 @@
 import { c as _c } from "react-compiler-runtime";
 import type { ToolUseBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import React, { useMemo } from 'react';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import type { ThemeName } from 'src/utils/theme.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import type { ThemeName } from 'src/terminal/theme/theme.js';
 import type { Command } from 'src/commands.js';
 import { BLACK_CIRCLE } from 'src/constants/figures.js';
-import { stringWidth } from 'src/ink/stringWidth.js';
-import { Box, Text, useTheme } from 'src/ink.js';
-import { type AppState, useAppStateMaybeOutsideOfProvider } from 'src/state/AppState.js';
+import { stringWidth } from 'src/terminal/ink/stringWidth.js';
+import { Box, Text, useTheme } from 'src/terminal/ink.js';
+import { type AppState, useAppStateMaybeOutsideOfProvider } from 'src/terminal/state/AppState.js';
 import { findToolByName, type Tool, type ToolProgressData, type Tools } from 'src/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';
 import { useIsClassifierChecking } from 'src/utils/classifierApprovalsHook.js';

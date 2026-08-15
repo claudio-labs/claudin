@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { FeedbackSurveyView, isValidResponseInput } from 'src/components/FeedbackSurvey/FeedbackSurveyView.js';
 import type { TranscriptShareResponse } from 'src/components/FeedbackSurvey/TranscriptSharePrompt.js';
 import { TranscriptSharePrompt } from 'src/components/FeedbackSurvey/TranscriptSharePrompt.js';

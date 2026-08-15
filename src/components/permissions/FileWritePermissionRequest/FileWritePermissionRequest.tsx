@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import { basename, relative } from 'path';
 import React, { useMemo } from 'react';
 import type { z } from 'zod/v4';
-import { Text } from 'src/ink.js';
+import { Text } from 'src/terminal/ink.js';
 import { FileWriteTool } from 'src/tools/FileWriteTool/FileWriteTool.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { isENOENT } from 'src/shared/errors.js';

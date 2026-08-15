@@ -32,7 +32,7 @@ import { getGlobalConfig } from 'src/services/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { countAddDel } from 'src/services/git/diffStat.js'
 import { getDisplayPath } from 'src/shared/fs/file.js'
-import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js'
+import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js'
 import {
   isAutoManagedMemoryFile,
   isAutoManagedMemoryPattern,

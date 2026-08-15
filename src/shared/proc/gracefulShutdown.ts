@@ -10,32 +10,32 @@ import {
   getSessionId,
   isSessionPersistenceDisabled,
 } from 'src/bootstrap/state.js'
-import instances from 'src/ink/instances.js'
+import instances from 'src/terminal/ink/instances.js'
 import {
   DISABLE_KITTY_KEYBOARD,
   DISABLE_MODIFY_OTHER_KEYS,
-} from 'src/ink/termio/csi.js'
+} from 'src/terminal/ink/termio/csi.js'
 import {
   DBP,
   DFE,
   DISABLE_MOUSE_TRACKING,
   EXIT_ALT_SCREEN,
   SHOW_CURSOR,
-} from 'src/ink/termio/dec.js'
+} from 'src/terminal/ink/termio/dec.js'
 import {
   CLEAR_ITERM2_PROGRESS,
   CLEAR_TAB_STATUS,
   CLEAR_TERMINAL_TITLE,
   supportsTabStatus,
   wrapForMultiplexer,
-} from 'src/ink/termio/osc.js'
+} from 'src/terminal/ink/termio/osc.js'
 import { shutdownDatadog } from 'src/services/analytics/datadog.js'
 import { shutdown1PEventLogging } from 'src/services/analytics/firstPartyEventLogger.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import { runCleanupFunctions } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'

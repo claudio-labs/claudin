@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import * as React from 'react'
 import { useRef } from 'react'
-import { renderToString } from 'src/components/staticRender.js'
-import type { JumpHandle } from 'src/components/VirtualMessageList.js'
+import { renderToString } from 'src/terminal/render/staticRender.js'
+import type { JumpHandle } from 'src/terminal/VirtualMessageList.js'
 import { TranscriptSearchBar } from 'src/screens/repl/components/TranscriptSearchBar.js'
 
 // `TranscriptSearchBar` initialises `indexStatus` to `'building'`, so the

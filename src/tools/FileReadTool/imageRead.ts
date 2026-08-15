@@ -6,7 +6,7 @@ import {
   type ImageDimensions,
   ImageResizeError,
   maybeResizeAndDownsampleImageBuffer,
-} from 'src/utils/imageResizer.js'
+} from 'src/terminal/image/imageResizer.js'
 import { logError } from 'src/shared/log.js'
 import { getDefaultFileReadingLimits } from 'src/tools/FileReadTool/limits.js'
 

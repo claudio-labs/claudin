@@ -3,12 +3,12 @@ import figures from 'figures';
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
-import { Byline } from 'src/components/design-system/Byline.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
+import { Byline } from 'src/terminal/design-system/Byline.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- useInput needed for marketplace-specific u/r shortcuts and y/n confirmation not in keybinding schema
-import { Box, Text, useInput } from 'src/ink.js';
-import { useKeybinding, useKeybindings } from 'src/keybindings/useKeybinding.js';
+import { Box, Text, useInput } from 'src/terminal/ink.js';
+import { useKeybinding, useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import type { LoadedPlugin } from 'src/types/plugin.js';
 import { count } from 'src/shared/data/array.js';
 import { shouldSkipPluginAutoupdate } from 'src/services/config/config.js';

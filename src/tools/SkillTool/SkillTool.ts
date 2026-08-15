@@ -57,7 +57,7 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { createUserMessage, normalizeMessages } from 'src/services/messages/messages.js'
 import type { ModelAlias } from 'src/utils/model/aliases.js'
 import { resolveSkillModelOverride } from 'src/utils/model/model.js'
-import { recordSkillUsage } from 'src/services/suggestions/skillUsageTracking.js'
+import { recordSkillUsage } from 'src/terminal/suggestions/skillUsageTracking.js'
 import { createAgentId } from 'src/shared/data/uuid.js'
 import { runAgent } from 'src/tools/AgentTool/runAgent.js'
 import {

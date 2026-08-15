@@ -9,13 +9,13 @@ import { every } from 'src/shared/data/set.js';
 import { getIsRemoteMode } from 'src/bootstrap/state.js';
 import type { Command } from 'src/commands.js';
 import { BLACK_CIRCLE } from 'src/constants/figures.js';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import type { ScrollBoxHandle } from 'src/ink/components/ScrollBox.js';
-import { useTerminalNotification } from 'src/ink/useTerminalNotification.js';
-import { Box, Text } from 'src/ink.js';
-import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import type { ScrollBoxHandle } from 'src/terminal/ink/components/ScrollBox.js';
+import { useTerminalNotification } from 'src/terminal/ink/useTerminalNotification.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
 import type { Screen } from 'src/screens/REPL.js';
-import { useAppState } from 'src/state/AppState.js';
+import { useAppState } from 'src/terminal/state/AppState.js';
 import type { Tools } from 'src/Tool.js';
 import { findToolByName } from 'src/Tool.js';
 import type { AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js';
@@ -27,24 +27,24 @@ import { collapseReadSearchGroups } from 'src/services/tools/collapseReadSearch.
 import { collapseTeammateShutdowns } from 'src/utils/collapseTeammateShutdowns.js';
 import { getGlobalConfig } from 'src/services/config/config.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
-import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
+import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { applyGrouping } from 'src/services/tools/groupToolUses.js';
 import { buildMessageLookups, createAssistantMessage, deriveUUID, getMessagesAfterCompactBoundary, getToolUseID, getToolUseIDs, hasUnresolvedHooksFromLookup, isNotEmptyMessage, normalizeMessages, reorderMessagesInUI, type StreamingThinking, type StreamingToolUse, shouldShowUserMessage } from 'src/services/messages/messages.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import { renderableSearchText } from 'src/services/session/transcriptSearch.js';
-import { Divider } from 'src/components/design-system/Divider.js';
-import type { UnseenDivider } from 'src/components/FullscreenLayout.js';
-import { LogoV2 } from 'src/components/LogoV2/LogoV2.js';
-import { StreamingMarkdown } from 'src/components/Markdown.js';
+import { Divider } from 'src/terminal/design-system/Divider.js';
+import type { UnseenDivider } from 'src/terminal/FullscreenLayout.js';
+import { LogoV2 } from 'src/terminal/logo/LogoV2.js';
+import { StreamingMarkdown } from 'src/terminal/markdown/Markdown.js';
 import { useStreamingTextValue } from 'src/hooks/useStreamingTextStore.js';
 import { hasContentAfterIndex, MessageRow } from 'src/components/MessageRow.js';
 import { InVirtualListContext, type MessageActionsNav, MessageActionsSelectedContext, type MessageActionsState } from 'src/components/messageActions.js';
 import { AssistantThinkingMessage } from 'src/components/messages/AssistantThinkingMessage.js';
 import { isNullRenderingAttachment } from 'src/components/messages/nullRenderingAttachments.js';
-import { OffscreenFreeze } from 'src/components/OffscreenFreeze.js';
+import { OffscreenFreeze } from 'src/terminal/render/OffscreenFreeze.js';
 import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';
 import { StatusNotices } from 'src/components/StatusNotices.js';
-import type { JumpHandle } from 'src/components/VirtualMessageList.js';
+import type { JumpHandle } from 'src/terminal/VirtualMessageList.js';
 
 /** LogoHeader only consumes the agent definitions, not the full Messages props. */
 type LogoHeaderProps = {
@@ -89,7 +89,7 @@ const BRIEF_TOOL_NAME: string | null = feature('KAIROS') || feature('KAIROS_BRIE
 const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS') ? (require('../tools/SendUserFileTool/prompt.js') as typeof import('../tools/SendUserFileTool/prompt.js')).SEND_USER_FILE_TOOL_NAME : null;
 
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { VirtualMessageList } from 'src/components/VirtualMessageList.js';
+import { VirtualMessageList } from 'src/terminal/VirtualMessageList.js';
 
 /**
  * In brief-only mode, filter messages to show ONLY Brief tool_use blocks,
@@ -259,11 +259,11 @@ type Props = {
   onSearchMatchesChange?: (count: number, current: number) => void;
   /** Paint an existing DOM subtree to fresh Screen, scan. Element comes
    *  from the main tree (all real providers). Message-relative positions. */
-  scanElement?: (el: import('src/ink/dom.js').DOMElement) => import('src/ink/render-to-screen.js').MatchPosition[];
+  scanElement?: (el: import('src/terminal/ink/dom.js').DOMElement) => import('src/terminal/ink/render-to-screen.js').MatchPosition[];
   /** Position-based CURRENT highlight. positions stable (msg-relative),
    *  rowOffset tracks scroll. null clears. */
   setPositions?: (state: {
-    positions: import('src/ink/render-to-screen.js').MatchPosition[];
+    positions: import('src/terminal/ink/render-to-screen.js').MatchPosition[];
     rowOffset: number;
     currentIdx: number;
   } | null) => void;

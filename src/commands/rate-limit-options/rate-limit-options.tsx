@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useMemo, useState } from 'react';
 import type { CommandResultDisplay, LocalJSXCommandContext } from 'src/commands.js';
-import { type OptionWithDescription, Select } from 'src/components/CustomSelect/select.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
+import { type OptionWithDescription, Select } from 'src/terminal/custom-select/select.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import { useClaudeAiLimits } from 'src/services/claudeAiLimitsHook.js';

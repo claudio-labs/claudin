@@ -547,7 +547,7 @@ Quer que eu verifique o nome correto? Posso procurar testes relacionados a `log`
 ```
 Não existe `src/shared/log.test.ts` — então não tem resultado de passou/falhou nem tempo a reportar.
 
-O teste de log que existe no repo é `src/ink/log-update.test.ts`. Quer que eu rode esse no lugar?
+O teste de log que existe no repo é `src/terminal/ink/log-update.test.ts`. Quer que eu rode esse no lugar?
 ```
 
 **Variant B run#1:**

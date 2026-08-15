@@ -12,9 +12,9 @@ import { clearServerCache, getMcpToolsCommandsAndResources } from 'src/services/
 import { dedupClaudeAiMcpServers, getMcpServerSignature } from 'src/services/mcp/config.js';
 import type { McpSdkServerConfig, ScopedMcpServerConfig } from 'src/services/mcp/types.js';
 import { excludeCommandsByServer, excludeResourcesByServer } from 'src/services/mcp/utils.js';
-import { type AppState, getDefaultAppState } from 'src/state/AppStateStore.js';
-import { onChangeAppState } from 'src/state/onChangeAppState.js';
-import { createStore } from 'src/state/store.js';
+import { type AppState, getDefaultAppState } from 'src/terminal/state/AppStateStore.js';
+import { onChangeAppState } from 'src/terminal/state/onChangeAppState.js';
+import { createStore } from 'src/terminal/state/store.js';
 import { isAdvisorEnabled } from 'src/utils/advisor.js';
 import { validateForceLoginOrg } from 'src/services/auth/auth.js';
 import { filterAllowedSdkBetas } from 'src/services/api/betas.js';

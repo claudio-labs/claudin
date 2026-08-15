@@ -40,7 +40,7 @@ import {
 import { hasWorktreeCreateHook } from 'src/services/lifecycleHooks/hooks.js'
 import { checkAndRestoreITerm2Backup } from 'src/services/ide/iTermBackup.js'
 import { logError } from 'src/shared/log.js'
-import { getRecentActivity } from 'src/utils/logoV2Utils.js'
+import { getRecentActivity } from 'src/terminal/logoV2Utils.js'
 import { lockCurrentVersion } from 'src/services/install/index.js'
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import { getPlanSlug } from 'src/utils/plans.js'

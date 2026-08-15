@@ -7,7 +7,7 @@
  *
  * Used to hand React components a view of state they must not mutate —
  * `AppState` is declared as `DeepImmutable<{...}>` in
- * `src/state/AppStateStore.ts`, and the task dialogs take
+ * `src/terminal/state/AppStateStore.ts`, and the task dialogs take
  * `DeepImmutable<LocalAgentTaskState>` and friends.
  *
  * Three carve-outs, each forced by a real call site:

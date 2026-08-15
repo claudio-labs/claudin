@@ -1,8 +1,8 @@
 import * as React from 'react';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import type { ToolProgressData } from 'src/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';
-import type { ThemeName } from 'src/utils/theme.js';
+import type { ThemeName } from 'src/terminal/theme/theme.js';
 import type { Output } from 'src/tools/ExitWorktreeTool/ExitWorktreeTool.js';
 export function renderToolUseMessage(): React.ReactNode {
   return 'Exiting worktree…';

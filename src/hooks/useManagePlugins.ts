@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import type { Command } from 'src/commands.js'
-import { useNotifications } from 'src/context/notifications.js'
+import { useNotifications } from 'src/terminal/contexts/notifications.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import { reinitializeLspServerManager } from 'src/services/lsp/manager.js'
-import { useAppState, useSetAppState } from 'src/state/AppState.js'
+import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js'
 import {
   getPluginCommandsState,
   setPluginCommandsState,
   subscribePluginCommands,
-} from 'src/state/pluginCommandsStore.js'
+} from 'src/terminal/state/pluginCommandsStore.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { count } from 'src/shared/data/array.js'
 import { logForDebugging } from 'src/shared/debug.js'

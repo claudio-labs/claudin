@@ -1,5 +1,5 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
-import type { Theme } from 'src/utils/theme.js'
+import type { Theme } from 'src/terminal/theme/theme.js'
 import { feature } from 'bun:bundle'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import { getCanonicalName } from 'src/utils/model/model.js'

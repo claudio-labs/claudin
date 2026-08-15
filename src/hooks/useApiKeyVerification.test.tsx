@@ -2,7 +2,7 @@ import { PassThrough } from 'node:stream'
 
 import { afterEach, expect, mock, test } from 'bun:test'
 import React from 'react'
-import { createRoot, Text } from 'src/ink.js'
+import { createRoot, Text } from 'src/terminal/ink.js'
 
 // Capture real modules before the per-test mock.module() calls. mock.restore()
 // (afterEach) only resets mock()/spyOn spies — it does NOT revert mock.module().

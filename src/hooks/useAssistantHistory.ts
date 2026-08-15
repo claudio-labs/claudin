@@ -13,7 +13,7 @@ import {
   type HistoryAuthCtx,
   type HistoryPage,
 } from 'src/assistant/sessionHistory.js'
-import type { ScrollBoxHandle } from 'src/ink/components/ScrollBox.js'
+import type { ScrollBoxHandle } from 'src/terminal/ink/components/ScrollBox.js'
 import type { RemoteSessionConfig } from 'src/remote/RemoteSessionManager.js'
 import { convertSDKMessage } from 'src/remote/sdkMessageAdapter.js'
 import type { Message, SystemInformationalMessage } from 'src/types/message.js'

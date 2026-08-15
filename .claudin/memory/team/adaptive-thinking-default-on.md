@@ -12,4 +12,4 @@ Claudin now sends `thinking: {type:'adaptive'}` by default for models that suppo
 
 Verify the emitted block by capturing `/v1/messages` through mitmproxy (see mitmproxy-rust-binary-recipe): `bun run build` then `claudindev -p "olá"` with HTTPS_PROXY + NODE_EXTRA_CA_CERTS → expect `{"type":"adaptive"}`; with `CLAUDE_CODE_ENABLE_ADAPTIVE_THINKING=0` → `{"budget_tokens":8192,"type":"enabled"}`.
 
-Related: the spinner's live token counter (`↓ N tokens`) is gated behind `SHOW_TOKENS_AFTER_MS = 3_000` AND `totalTokens>0` (visible response text only) in `src/components/Spinner/SpinnerAnimationRow.tsx` — it counts visible answer chars/4, not thinking tokens, so short turns never show it. Cosmetic, untouched by this change.
+Related: the spinner's live token counter (`↓ N tokens`) is gated behind `SHOW_TOKENS_AFTER_MS = 3_000` AND `totalTokens>0` (visible response text only) in `src/terminal/spinner/SpinnerAnimationRow.tsx` — it counts visible answer chars/4, not thinking tokens, so short turns never show it. Cosmetic, untouched by this change.

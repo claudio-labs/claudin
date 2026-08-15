@@ -6,7 +6,7 @@ import { MessageResponse } from 'src/components/MessageResponse.js';
 import { BLACK_CIRCLE } from 'src/constants/figures.js';
 import { getModeColor } from 'src/services/permissions/PermissionMode.js';
 import { z } from 'zod/v4';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import type { Tool } from 'src/Tool.js';
 import { buildTool, type ToolDef } from 'src/Tool.js';
 import { lazySchema } from 'src/shared/data/lazySchema.js';

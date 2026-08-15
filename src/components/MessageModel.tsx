@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import { stringWidth } from 'src/ink/stringWidth.js';
-import { Box, Text } from 'src/ink.js';
+import { stringWidth } from 'src/terminal/ink/stringWidth.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import type { NormalizedMessage } from 'src/types/message.js';
 type Props = {
   message: NormalizedMessage;

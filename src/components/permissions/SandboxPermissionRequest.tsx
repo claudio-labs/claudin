@@ -1,9 +1,9 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { type NetworkHostPattern, shouldAllowManagedSandboxDomainsOnly } from 'src/services/sandbox/sandbox-adapter.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import { Select } from 'src/components/CustomSelect/select.js';
+import { Select } from 'src/terminal/custom-select/select.js';
 import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
 export type SandboxPermissionRequestProps = {
   hostPattern: NetworkHostPattern;

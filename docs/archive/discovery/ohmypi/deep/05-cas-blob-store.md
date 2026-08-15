@@ -177,7 +177,7 @@ Comportamento concreto:
 - Nenhum dedupe **dentro** da mesma sessão. Se o agente lê o mesmo arquivo
   grande duas vezes (`Read` com offsets diferentes que se sobrepõem),
   cada call gera arquivo separado.
-- Imagens (`src/utils/imageStore.ts`) não usam content-addressing — verifiquei
+- Imagens (`src/terminal/image/imageStore.ts`) não usam content-addressing — verifiquei
   acima, sem `createHash` no arquivo.
 
 ### Compaction: o que sobrevive entre turnos
@@ -357,7 +357,7 @@ Não precisa de script de migração one-shot. Em ~30 dias o último arquivo de
    blobs órfãos, bytes recuperados.
 4. (Opcional, depois de dados de campo) Mudar mensagem para incluir
    `blob:sha256:` ref se houver UX claro para reuso entre turnos.
-5. (Mais tarde, se imagens migrarem) `src/utils/imageStore.ts` adota o mesmo
+5. (Mais tarde, se imagens migrarem) `src/terminal/image/imageStore.ts` adota o mesmo
    blob store. Ganho de dedupe real para screenshots repetidos.
 
 ## Riscos

@@ -3,7 +3,7 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 import { copyFile, stat as fsStat, truncate as fsTruncate, link } from 'fs/promises';
 import * as React from 'react';
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js';
-import type { AppState } from 'src/state/AppState.js';
+import type { AppState } from 'src/terminal/state/AppState.js';
 import { z } from 'zod/v4';
 import { getKairosActive } from 'src/bootstrap/state.js';
 import { TOOL_SUMMARY_MAX_LENGTH } from 'src/constants/toolLimits.js';
@@ -38,7 +38,7 @@ import { semanticBoolean } from 'src/shared/data/semanticBoolean.js';
 import { semanticNumber } from 'src/shared/data/semanticNumber.js';
 import { EndTruncatingAccumulator } from 'src/shared/text/stringUtils.js';
 import { TaskOutput } from 'src/tasks/TaskOutput.js';
-import { isOutputLineTruncated } from 'src/utils/terminal.js';
+import { isOutputLineTruncated } from 'src/terminal/terminal.js';
 import { ensureToolResultsDir, getToolResultPath } from 'src/services/tools/toolResultStorage.js';
 import { userFacingName as fileEditUserFacingName } from 'src/tools/FileEditTool/UI.js';
 import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js';

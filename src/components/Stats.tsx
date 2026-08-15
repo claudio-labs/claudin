@@ -6,25 +6,25 @@ import figures from 'figures';
 import React, { Suspense, use, useCallback, useEffect, useMemo, useState } from 'react';
 import stripAnsi from 'strip-ansi';
 import type { CommandResultDisplay } from 'src/commands.js';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import { applyColor } from 'src/ink/colorize.js';
-import { stringWidth as getStringWidth } from 'src/ink/stringWidth.js';
-import type { Color } from 'src/ink/styles.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import { applyColor } from 'src/terminal/ink/colorize.js';
+import { stringWidth as getStringWidth } from 'src/terminal/ink/stringWidth.js';
+import type { Color } from 'src/terminal/ink/styles.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- raw j/k/arrow stats navigation
-import { Ansi, Box, type Key, Text, useInput } from 'src/ink.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import { Ansi, Box, type Key, Text, useInput } from 'src/terminal/ink.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { getGlobalConfig } from 'src/services/config/config.js';
 import { formatDuration, formatNumber } from 'src/shared/text/format.js';
-import { generateHeatmap } from 'src/utils/heatmap.js';
+import { generateHeatmap } from 'src/terminal/render/heatmap.js';
 import { renderModelName } from 'src/utils/model/model.js';
 import { copyAnsiToClipboard } from 'src/services/ide/screenshotClipboard.js';
 import { aggregateClaudeCodeStatsForRange, type ClaudeCodeStats, type DailyModelTokens, type StatsDateRange } from 'src/utils/stats.js';
 import type { ModelUsage } from 'src/entrypoints/agentSdkTypes.js';
-import { resolveThemeSetting } from 'src/utils/systemTheme.js';
-import { getTheme, themeColorToAnsi } from 'src/utils/theme.js';
-import { Pane } from 'src/components/design-system/Pane.js';
-import { Tab, Tabs, useTabHeaderFocus } from 'src/components/design-system/Tabs.js';
-import { Spinner } from 'src/components/Spinner.js';
+import { resolveThemeSetting } from 'src/terminal/theme/systemTheme.js';
+import { getTheme, themeColorToAnsi } from 'src/terminal/theme/theme.js';
+import { Pane } from 'src/terminal/design-system/Pane.js';
+import { Tab, Tabs, useTabHeaderFocus } from 'src/terminal/design-system/Tabs.js';
+import { Spinner } from 'src/terminal/spinner/Spinner.js';
 function formatPeakDay(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-US', {

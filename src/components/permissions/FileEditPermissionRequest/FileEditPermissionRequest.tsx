@@ -4,7 +4,7 @@ import React from 'react';
 import { FileEditToolDiff } from 'src/components/FileEditToolDiff.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import type { z } from 'zod/v4';
-import { Text } from 'src/ink.js';
+import { Text } from 'src/terminal/ink.js';
 import { FileEditTool } from 'src/tools/FileEditTool/FileEditTool.js';
 import { FilePermissionDialog } from 'src/components/permissions/FilePermissionDialog/FilePermissionDialog.js';
 import { createSingleEditDiffConfig, type FileEdit, type IDEDiffSupport } from 'src/components/permissions/FilePermissionDialog/ideDiffConfig.js';

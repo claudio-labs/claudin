@@ -6,8 +6,8 @@
 // (isBackgroundTask filters out isBackgrounded:false).
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import type { AppState } from 'src/state/AppStateStore.js'
-import { getDefaultAppState } from 'src/state/AppStateStore.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
+import { getDefaultAppState } from 'src/terminal/state/AppStateStore.js'
 import { isLocalShellTask } from 'src/tasks/LocalShellTask/guards.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { resetCommandQueue } from 'src/utils/messageQueueManager.js'

@@ -1,6 +1,6 @@
 // Reconstructed from its use sites: the original module was not carried into
 // this fork. The shape comes from the construction in
-// `generateFileSuggestions` (`src/hooks/fileSuggestions.ts`) and is consumed by
+// `generateFileSuggestions` (`src/terminal/prompt-suggestion/fileSuggestions.ts`) and is consumed by
 // `executeFileSuggestionCommand` (`src/services/lifecycleHooks/replHooks.ts`).
 //
 // Like the statusLine payload this is JSON-serialised onto a user command's

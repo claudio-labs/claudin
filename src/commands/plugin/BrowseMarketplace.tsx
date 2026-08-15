@@ -1,10 +1,10 @@
 import figures from 'figures';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
-import { Byline } from 'src/components/design-system/Byline.js';
-import { Box, Text } from 'src/ink.js';
-import { useKeybinding, useKeybindings } from 'src/keybindings/useKeybinding.js';
+import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
+import { Byline } from 'src/terminal/design-system/Byline.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useKeybinding, useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import type { LoadedPlugin } from 'src/types/plugin.js';
 import { count } from 'src/shared/data/array.js';
 import { openBrowser } from 'src/shared/browser.js';

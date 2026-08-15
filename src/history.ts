@@ -12,7 +12,7 @@ import {
   hashPastedText,
   retrievePastedText,
   storePastedText,
-} from 'src/utils/pasteStore.js'
+} from 'src/terminal/input/pasteStore.js'
 import { sleep } from 'src/shared/sleep.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 

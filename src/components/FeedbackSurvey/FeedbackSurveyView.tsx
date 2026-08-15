@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { useDebouncedDigitInput } from 'src/components/FeedbackSurvey/useDebouncedDigitInput.js';
 import type { FeedbackSurveyResponse } from 'src/components/FeedbackSurvey/utils.js';
 type Props = {

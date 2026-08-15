@@ -1,14 +1,14 @@
 import { relative } from 'path';
 import React, { useMemo } from 'react';
 import { useDiffInIDE } from 'src/hooks/useDiffInIDE.js';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import type { ToolUseContext } from 'src/Tool.js';
 import { getLanguageName } from 'src/shared/text/cliHighlight.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { getFsImplementation, safeResolvePath } from 'src/shared/fs/fsOperations.js';
 import { expandPath } from 'src/shared/fs/path.js';
 import type { CompletionType } from 'src/services/api/unaryLogging.js';
-import { Select } from 'src/components/CustomSelect/index.js';
+import { Select } from 'src/terminal/custom-select/index.js';
 import { ShowInIDEPrompt } from 'src/components/ShowInIDEPrompt.js';
 import { usePermissionRequestLogging } from 'src/components/permissions/hooks.js';
 import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';

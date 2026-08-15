@@ -31,7 +31,7 @@ const realCacheStatsTracker = { ...(await import('src/services/api/cacheStatsTra
 const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) };
 const realCacheMetrics = { ...(await import('src/services/api/cacheMetrics.js')) };
 const realProviders = { ...(await import('src/utils/model/providers.js')) };
-const realInk = { ...(await import('src/ink.js')) };
+const realInk = { ...(await import('src/terminal/ink.js')) };
 
 mock.module('src/cost-tracker.js', () => ({
   getTotalInputTokens: () => totalInput,
@@ -73,7 +73,7 @@ mock.module('src/services/api/cacheMetrics.js', () => ({
 // conversationRecovery) got 'anthropic', a value that is not even in the
 // APIProvider union, no matter what they mocked afterwards.
 
-mock.module('src/ink.js', () => ({
+mock.module('src/terminal/ink.js', () => ({
   Box: () => null,
   Text: () => null,
 }));
@@ -169,6 +169,6 @@ afterAll(() => {
   mock.module('src/services/api/cacheMetrics.js', () => realCacheMetrics);
   mock.module('src/utils/model/providers.js', () => realProviders);
   mock.module('src/utils/model/providers.js', () => realProviders);
-  mock.module('src/ink.js', () => realInk);
-  mock.module('src/ink.js', () => realInk);
+  mock.module('src/terminal/ink.js', () => realInk);
+  mock.module('src/terminal/ink.js', () => realInk);
 });

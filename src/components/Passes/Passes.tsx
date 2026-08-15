@@ -2,17 +2,17 @@ import * as React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import type { CommandResultDisplay } from 'src/commands.js';
 import { TEARDROP_ASTERISK } from 'src/constants/figures.js';
-import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
-import { setClipboard } from 'src/ink/termio/osc.js';
+import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
+import { setClipboard } from 'src/terminal/ink/termio/osc.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- enter to copy link
-import { Box, Link, Text, useInput } from 'src/ink.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import { Box, Link, Text, useInput } from 'src/terminal/ink.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import { fetchReferralRedemptions, formatCreditAmount, getCachedOrFetchPassesEligibility } from 'src/services/api/referral.js';
 import type { ReferralRedemptionsResponse, ReferrerRewardInfo } from 'src/services/oauth/types.js';
 import { count } from 'src/shared/data/array.js';
 import { logError } from 'src/shared/log.js';
-import { Pane } from 'src/components/design-system/Pane.js';
+import { Pane } from 'src/terminal/design-system/Pane.js';
 type PassStatus = {
   passNumber: number;
   isAvailable: boolean;

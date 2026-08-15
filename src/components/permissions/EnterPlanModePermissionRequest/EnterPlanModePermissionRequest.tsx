@@ -1,11 +1,11 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { handlePlanModeTransition } from 'src/bootstrap/state.js';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import { type AppState, useAppState } from 'src/state/AppState.js';
+import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
 import { isPlanModeInterviewPhaseEnabled } from 'src/utils/planModeV2.js';
-import { Select } from 'src/components/CustomSelect/index.js';
+import { Select } from 'src/terminal/custom-select/index.js';
 import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
 import type { PermissionRequestProps } from 'src/components/permissions/PermissionRequest.js';
 export function EnterPlanModePermissionRequest(t0: PermissionRequestProps) {

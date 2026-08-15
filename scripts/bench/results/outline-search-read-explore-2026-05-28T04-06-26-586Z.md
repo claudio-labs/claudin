@@ -262,15 +262,15 @@ src/components/Stats.tsx:1215
 src/components/Stats.tsx:1224 (2 occurrences)
 src/components/tasks/AsyncAgentDetailDialog.tsx:11 (import)
 src/components/tasks/AsyncAgentDetailDialog.tsx:124
-src/components/Spinner.tsx:13 (import)
-src/components/Spinner.tsx:268 (2 occurrences)
-src/components/Spinner.tsx:276 (2 occurrences)
-src/components/Spinner/TeammateSpinnerTree.tsx:7 (import)
-src/components/Spinner/TeammateSpinnerTree.tsx:111
-src/components/Spinner/TeammateSpinnerLine.tsx:13 (import)
-src/components/Spinner/TeammateSpinnerLine.tsx:130
-src/components/Spinner/TeammateSpinnerLine.tsx:219
-src/components/Spinner/SpinnerAnimationRow.tsx:8 (import)
+src/terminal/spinner/Spinner.tsx:13 (import)
+src/terminal/spinner/Spinner.tsx:268 (2 occurrences)
+src/terminal/spinner/Spinner.tsx:276 (2 occurrences)
+src/terminal/spinner/TeammateSpinnerTree.tsx:7 (import)
+src/terminal/spinner/TeammateSpinnerTree.tsx:111
+src/terminal/spinner/TeammateSpinnerLine.tsx:13 (import)
+src/terminal/spinner/TeammateSpinnerLine.tsx:130
+src/terminal/spinner/TeammateSpinnerLine.tsx:219
+src/terminal/spinner/SpinnerAnimationRow.tsx:8 (import)
 src/components/S
 ...[truncado]
 ```
@@ -315,8 +315,8 @@ src/components/statusNoticeDefinitions.tsx:154
 src/tools/AgentTool/UI.tsx:24
 src/tools/AgentTool/UI.tsx:376
 src/tools/AgentTool/UI.tsx:499
-src/services/PromptSuggestion/speculation.ts:32
-src/services/PromptSuggestion/speculation.ts:295
+src/terminal/prompt-suggestion/speculation.ts:32
+src/terminal/prompt-suggestion/speculation.ts:295
 src/components/Stats.tsx:17
 src/components/Stats.tsx:453
 src/components/Stats.tsx:463

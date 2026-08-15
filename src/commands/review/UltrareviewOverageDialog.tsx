@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useCallback, useRef, useState } from 'react';
-import { Select } from 'src/components/CustomSelect/select.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
-import { Box, Text } from 'src/ink.js';
+import { Select } from 'src/terminal/custom-select/select.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
+import { Box, Text } from 'src/terminal/ink.js';
 type Props = {
   onProceed: (signal: AbortSignal) => Promise<void>;
   onCancel: () => void;

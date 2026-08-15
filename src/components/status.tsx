@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import figures from 'figures';
 import * as React from 'react';
-import { color, Text } from 'src/ink.js';
+import { color, Text } from 'src/terminal/ink.js';
 import type { MCPServerConnection } from 'src/services/mcp/types.js';
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
 import { getAccountInformation, isClaudeAISubscriber } from 'src/services/auth/auth.js';
@@ -20,7 +20,7 @@ import { getProxyUrl } from 'src/services/api/proxy.js';
 import { getSettingsWithAllErrors } from 'src/services/settings/allErrors.js';
 import { getEnabledSettingSources, getSettingSourceDisplayNameCapitalized } from 'src/services/settings/constants.js';
 import { getManagedFileSettingsPresence, getPolicySettingsOrigin, getSettingsForSource } from 'src/services/settings/settings.js';
-import type { ThemeName } from 'src/utils/theme.js';
+import type { ThemeName } from 'src/terminal/theme/theme.js';
 import { redactSecretValueForDisplay } from 'src/services/api/providerProfile.js';
 export type Property = {
   label?: string;

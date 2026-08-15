@@ -3,9 +3,9 @@ import { PassThrough } from 'node:stream'
 import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 import stripAnsi from 'strip-ansi'
 
-import { createRoot } from 'src/ink.js'
-import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js'
-import { AppStateProvider } from 'src/state/AppState.js'
+import { createRoot } from 'src/terminal/ink.js'
+import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js'
+import { AppStateProvider } from 'src/terminal/state/AppState.js'
 
 // Capture the real claudinMigration module before installing the partial
 // mock so afterAll can restore it cleanly. Bun's mock.module is process-global

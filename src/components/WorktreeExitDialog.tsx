@@ -2,15 +2,15 @@ import React, { useEffect, useState } from 'react';
 import type { CommandResultDisplay } from 'src/commands.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import { logForDebugging } from 'src/shared/debug.js';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js';
 import { getPlansDirectory } from 'src/utils/plans.js';
 import { invalidateAll as invalidateToolResultCache } from 'src/services/tools/toolResultCache.js';
 import { setCwd } from 'src/shared/proc/Shell.js';
 import { cleanupWorktree, getCurrentWorktreeSession, keepWorktree, killTmuxSession } from 'src/services/git/worktree.js';
-import { Select } from 'src/components/CustomSelect/select.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
-import { Spinner } from 'src/components/Spinner.js';
+import { Select } from 'src/terminal/custom-select/select.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
+import { Spinner } from 'src/terminal/spinner/Spinner.js';
 
 // Inline require breaks the cycle this file would otherwise close:
 // sessionStorage → commands → exit → ExitFlow → here. All call sites

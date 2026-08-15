@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
-import { Text } from 'src/ink.js';
+import { Text } from 'src/terminal/ink.js';
 import { saveGlobalConfig } from 'src/services/config/config.js';
-import { Select } from 'src/components/CustomSelect/index.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
+import { Select } from 'src/terminal/custom-select/index.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
 type Props = {
   customApiKeyTruncated: string;
   onDone(approved: boolean): void;

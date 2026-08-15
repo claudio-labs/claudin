@@ -213,7 +213,7 @@ when A executes first, regardless of `--max-concurrency=1`.
 
 ### Ink/React components are unimportable under `bun test`
 
-Any module whose import chain reaches `src/ink.js` fails to load under `bun test`
+Any module whose import chain reaches `src/terminal/ink.js` fails to load under `bun test`
 (or `bun -e`) with `Cannot find module '@growthbook/growthbook'` — that package is
 a build-time stub from `scripts/no-telemetry-plugin.ts` that never applies outside
 the bundler. So a `.tsx` component generally can't be imported by a colocated unit

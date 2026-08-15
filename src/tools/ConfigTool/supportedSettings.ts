@@ -10,7 +10,7 @@ import {
 } from 'src/services/config/configConstants.js'
 import { getModelOptions } from 'src/utils/model/modelOptions.js'
 import { validateModel } from 'src/utils/model/validateModel.js'
-import { THEME_NAMES, THEME_SETTINGS } from 'src/utils/theme.js'
+import { THEME_NAMES, THEME_SETTINGS } from 'src/terminal/theme/theme.js'
 
 /** AppState keys that can be synced for immediate UI effect */
 type SyncableAppStateKey =

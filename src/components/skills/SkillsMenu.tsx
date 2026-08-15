@@ -3,15 +3,15 @@ import capitalize from 'lodash-es/capitalize.js';
 import * as React from 'react';
 import { useMemo } from 'react';
 import { type Command, type CommandBase, type CommandResultDisplay, getCommandName, type PromptCommand } from 'src/commands.js';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { estimateSkillFrontmatterTokens, getSkillsPath } from 'src/skills/loadSkillsDir.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
 import { formatTokens } from 'src/shared/text/format.js';
 import { getSettingSourceName, type SettingSource } from 'src/services/settings/constants.js';
 import { plural } from 'src/shared/text/stringUtils.js';
-import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
-import FullWidthRow from 'src/components/design-system/FullWidthRow.js';
+import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
+import FullWidthRow from 'src/terminal/design-system/FullWidthRow.js';
 
 // Skills are always PromptCommands with CommandBase properties
 type SkillCommand = CommandBase & PromptCommand;

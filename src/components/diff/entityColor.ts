@@ -1,4 +1,4 @@
-import type { Theme } from 'src/utils/theme.js'
+import type { Theme } from 'src/terminal/theme/theme.js'
 
 /**
  * Shared 8-entity palette for color-coding distinct things in the diff reviewer

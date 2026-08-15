@@ -11,7 +11,7 @@ import {
 } from 'src/bootstrap/state.js'
 import { clearSystemPromptSections } from 'src/constants/systemPromptSections.js'
 import { recomputeCostStateFromMessages, restoreCostStateForSession } from 'src/cost-tracker.js'
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
 import {
   type AgentDefinition,
@@ -28,7 +28,7 @@ import type {
   PersistedWorktreeSession,
 } from 'src/types/logs.js'
 import type { Message } from 'src/types/message.js'
-import { renameRecordingForSession } from 'src/utils/asciicast.js'
+import { renameRecordingForSession } from 'src/terminal/image/asciicast.js'
 import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
 import {
   type AttributionState,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { MessageResponse } from 'src/components/MessageResponse.js';
-import { Text } from 'src/ink.js';
+import { Text } from 'src/terminal/ink.js';
 import { truncate } from 'src/shared/text/format.js';
 import type { WakeupOutput } from 'src/tools/ScheduleWakeupTool/ScheduleWakeupTool.js';
 

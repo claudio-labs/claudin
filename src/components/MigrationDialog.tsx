@@ -1,9 +1,9 @@
 import * as React from 'react'
 
-import { Box } from 'src/ink.js'
+import { Box } from 'src/terminal/ink.js'
 import { shouldShowMigrationBanner } from 'src/services/config/claudinMigration.js'
-import { Pane } from 'src/components/design-system/Pane.js'
-import { WelcomeV2 } from 'src/components/LogoV2/WelcomeV2.js'
+import { Pane } from 'src/terminal/design-system/Pane.js'
+import { WelcomeV2 } from 'src/terminal/logo/WelcomeV2.js'
 import { MigrationBanner } from 'src/components/MigrationBanner.js'
 
 type Props = {

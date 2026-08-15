@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import type { UUID } from 'crypto';
 import React, { useCallback } from 'react';
-import { Box, Text } from 'src/ink.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { getAllBaseTools } from 'src/tools.js';
 import type { LogOption } from 'src/types/logs.js';
 import { formatRelativeTimeAgo } from 'src/shared/text/format.js';
@@ -10,10 +10,10 @@ import { getSessionIdFromLog, isLiteLog, loadFullLog } from 'src/services/sessio
 import type { Command } from 'src/commands.js';
 import type { StreamingToolUse } from 'src/services/messages/messages.js';
 import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';
-import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
-import { Byline } from 'src/components/design-system/Byline.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
-import { LoadingState } from 'src/components/design-system/LoadingState.js';
+import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
+import { Byline } from 'src/terminal/design-system/Byline.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
+import { LoadingState } from 'src/terminal/design-system/LoadingState.js';
 import { Messages } from 'src/components/Messages.js';
 type Props = {
   log: LogOption;

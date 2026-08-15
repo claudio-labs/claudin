@@ -6,11 +6,11 @@
  * /goal clear hint. Renders nothing when no goal is active.
  */
 import * as React from 'react'
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js'
-import { Box, Text } from 'src/ink.js'
-import { stringWidth } from 'src/ink/stringWidth.js'
-import { useAppState } from 'src/state/AppState.js'
-import type { AppState } from 'src/state/AppStateStore.js'
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js'
+import { Box, Text } from 'src/terminal/ink.js'
+import { stringWidth } from 'src/terminal/ink/stringWidth.js'
+import { useAppState } from 'src/terminal/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type { Message } from 'src/types/message.js'
 import { formatDuration } from 'src/shared/text/format.js'
 import { getGoalTokenCount } from 'src/services/goal/goal.js'

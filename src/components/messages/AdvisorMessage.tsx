@@ -1,11 +1,11 @@
 import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import React from 'react';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import type { AdvisorBlock } from 'src/utils/advisor.js';
 import { renderModelName } from 'src/utils/model/model.js';
 import { jsonStringify } from 'src/utils/slowOperations.js';
-import { CtrlOToExpand } from 'src/components/CtrlOToExpand.js';
+import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { ToolUseLoader } from 'src/components/ToolUseLoader.js';
 type Props = {

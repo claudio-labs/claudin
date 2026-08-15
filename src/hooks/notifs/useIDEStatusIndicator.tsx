@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useEffect, useRef } from 'react';
-import type { Notification } from 'src/context/notifications.js';
-import { useNotifications } from 'src/context/notifications.js';
-import { Text } from 'src/ink.js';
+import type { Notification } from 'src/terminal/contexts/notifications.js';
+import { useNotifications } from 'src/terminal/contexts/notifications.js';
+import { Text } from 'src/terminal/ink.js';
 import type { MCPServerConnection } from 'src/services/mcp/types.js';
 import type { GlobalConfig } from 'src/services/config/config.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';

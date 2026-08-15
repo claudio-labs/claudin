@@ -60,7 +60,7 @@ import { getRuntimeMainLoopModel } from 'src/utils/model/model.js'
 import type { SettingSource } from 'src/services/settings/constants.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { buildEffectiveSystemPrompt } from 'src/utils/systemPrompt.js'
-import type { Theme } from 'src/utils/theme.js'
+import type { Theme } from 'src/terminal/theme/theme.js'
 import { getCurrentUsage } from 'src/services/context/tokens.js'
 
 const RESERVED_CATEGORY_NAME = 'Autocompact buffer'

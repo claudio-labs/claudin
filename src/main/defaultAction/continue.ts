@@ -2,11 +2,11 @@
 // and launches the REPL with it. Extracted from src/main.tsx (ROADMAP 11g
 // Fase 5b). Pure code-motion: signatures match the original closure variables.
 
-import type { Root } from 'src/ink.js';
-import type { StatsStore } from 'src/context/stats.js';
-import type { FpsMetrics } from 'src/utils/fpsTracker.js';
+import type { Root } from 'src/terminal/ink.js';
+import type { StatsStore } from 'src/terminal/contexts/stats.js';
+import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
-import { exitWithError, renderAndRun } from 'src/interactiveHelpers.js';
+import { exitWithError, renderAndRun } from 'src/terminal/interactiveHelpers.js';
 import { launchRepl } from 'src/replLauncher.js';
 import { logError } from 'src/shared/log.js';
 import { errorMessage } from 'src/shared/errors.js';

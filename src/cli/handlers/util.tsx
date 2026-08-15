@@ -7,15 +7,15 @@ import { c as _c } from "react-compiler-runtime";
 
 import { cwd } from 'process';
 import React from 'react';
-import { WelcomeV2 } from 'src/components/LogoV2/WelcomeV2.js';
+import { WelcomeV2 } from 'src/terminal/logo/WelcomeV2.js';
 import { useManagePlugins } from 'src/hooks/useManagePlugins.js';
-import type { Root } from 'src/ink.js';
-import { Box, Text } from 'src/ink.js';
-import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js';
+import type { Root } from 'src/terminal/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import { MCPConnectionManager } from 'src/services/mcp/MCPConnectionManager.js';
-import { AppStateProvider } from 'src/state/AppState.js';
-import { onChangeAppState } from 'src/state/onChangeAppState.js';
+import { AppStateProvider } from 'src/terminal/state/AppState.js';
+import { onChangeAppState } from 'src/terminal/state/onChangeAppState.js';
 import { isAnthropicAuthEnabled } from 'src/services/auth/auth.js';
 import type { CommandResultDisplay } from 'src/types/command.js';
 export async function setupTokenHandler(root: Root): Promise<void> {

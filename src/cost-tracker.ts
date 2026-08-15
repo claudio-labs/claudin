@@ -54,7 +54,7 @@ import {
 import { isFastModeEnabled } from 'src/utils/fastMode.js'
 import { formatDuration, formatNumber } from 'src/shared/text/format.js'
 import { resetBytesSaved } from 'src/services/context/tokensSaved.js'
-import type { FpsMetrics } from 'src/utils/fpsTracker.js'
+import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js'
 import { getCanonicalName } from 'src/utils/model/model.js'
 import { calculateUSDCost } from 'src/services/api/modelCost.js'
 export {

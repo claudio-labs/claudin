@@ -1,12 +1,12 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { type ReactNode, useCallback, useMemo, useState } from 'react';
-import { Box, Text } from 'src/ink.js';
-import type { KeybindingAction } from 'src/keybindings/types.js';
-import { useKeybindings } from 'src/keybindings/useKeybinding.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import type { KeybindingAction } from 'src/terminal/keybindings/types.js';
+import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import { useSetAppState } from 'src/state/AppState.js';
-import type { AppState } from 'src/state/AppState.js';
-import { type OptionWithDescription, Select } from 'src/components/CustomSelect/select.js';
+import { useSetAppState } from 'src/terminal/state/AppState.js';
+import type { AppState } from 'src/terminal/state/AppState.js';
+import { type OptionWithDescription, Select } from 'src/terminal/custom-select/select.js';
 export type FeedbackType = 'accept' | 'reject';
 export type PermissionPromptOption<T extends string> = {
   value: T;

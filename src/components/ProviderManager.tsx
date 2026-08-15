@@ -5,10 +5,10 @@ import {
   DEFAULT_CODEX_BASE_URL,
   DEFAULT_XAI_BASE_URL,
 } from 'src/services/api/providerConfig.js'
-import { Box, Text } from 'src/ink.js'
-import { useKeybinding } from 'src/keybindings/useKeybinding.js'
-import { useSetAppState } from 'src/state/AppState.js'
-import { suppressNextMainLoopModelPersist } from 'src/state/onChangeAppState.js'
+import { Box, Text } from 'src/terminal/ink.js'
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js'
+import { useSetAppState } from 'src/terminal/state/AppState.js'
+import { suppressNextMainLoopModelPersist } from 'src/terminal/state/onChangeAppState.js'
 import type { ProviderProfile } from 'src/services/config/config.js'
 import {
   clearCodexCredentials,
@@ -50,10 +50,10 @@ import { redactUrlForDisplay } from 'src/shared/urlRedaction.js'
 import {
   type OptionWithDescription,
   Select,
-} from 'src/components/CustomSelect/index.js'
-import { Pane } from 'src/components/design-system/Pane.js'
+} from 'src/terminal/custom-select/index.js'
+import { Pane } from 'src/terminal/design-system/Pane.js'
 import { MigrationBanner } from 'src/components/MigrationBanner.js'
-import TextInput from 'src/components/TextInput.js'
+import TextInput from 'src/terminal/text-input/TextInput.js'
 import { useCodexOAuthFlow } from 'src/components/useCodexOAuthFlow.js'
 import { useXaiOAuthFlow } from 'src/components/useXaiOAuthFlow.js'
 import { useKimiOAuthFlow } from 'src/components/useKimiOAuthFlow.js'

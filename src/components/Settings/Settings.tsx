@@ -2,12 +2,12 @@ import { c as _c } from "react-compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import * as React from 'react';
 import { Suspense, useState } from 'react';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
-import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import { useIsInsideModal, useModalOrTerminalSize } from 'src/context/modalContext.js';
-import { Pane } from 'src/components/design-system/Pane.js';
-import { Tabs, Tab } from 'src/components/design-system/Tabs.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
+import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import { useIsInsideModal, useModalOrTerminalSize } from 'src/terminal/contexts/modalContext.js';
+import { Pane } from 'src/terminal/design-system/Pane.js';
+import { Tabs, Tab } from 'src/terminal/design-system/Tabs.js';
 import { Status, buildDiagnostics } from 'src/components/Settings/Status.js';
 import { Config } from 'src/components/Settings/Config.js';
 import { Usage } from 'src/components/Settings/Usage.js';

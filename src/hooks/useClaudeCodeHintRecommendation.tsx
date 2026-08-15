@@ -10,7 +10,7 @@ import { c as _c } from "react-compiler-runtime";
  */
 
 import * as React from 'react';
-import { useNotifications } from 'src/context/notifications.js';
+import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED, logEvent } from 'src/services/analytics/index.js';
 import { clearPendingHint, getPendingHintSnapshot, markShownThisSession, subscribeToPendingHint } from 'src/utils/claudeCodeHints.js';
 import { logForDebugging } from 'src/shared/debug.js';

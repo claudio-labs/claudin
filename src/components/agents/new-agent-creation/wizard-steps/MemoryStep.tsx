@@ -1,15 +1,15 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { type ReactNode } from 'react';
-import { Box } from 'src/ink.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import { Box } from 'src/terminal/ink.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { isAutoMemoryEnabled } from 'src/memdir/paths.js';
 import { type AgentMemoryScope, loadAgentMemoryPrompt } from 'src/tools/AgentTool/agentMemory.js';
-import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
-import { Select } from 'src/components/CustomSelect/select.js';
-import { Byline } from 'src/components/design-system/Byline.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
-import { useWizard } from 'src/components/wizard/index.js';
-import { WizardDialogLayout } from 'src/components/wizard/WizardDialogLayout.js';
+import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
+import { Select } from 'src/terminal/custom-select/select.js';
+import { Byline } from 'src/terminal/design-system/Byline.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
+import { useWizard } from 'src/terminal/wizard/index.js';
+import { WizardDialogLayout } from 'src/terminal/wizard/WizardDialogLayout.js';
 import type { AgentWizardData } from 'src/components/agents/new-agent-creation/types.js';
 type MemoryOption = {
   label: string;

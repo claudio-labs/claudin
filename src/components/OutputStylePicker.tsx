@@ -2,12 +2,12 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { getAllOutputStyles, OUTPUT_STYLE_CONFIG, type OutputStyleConfig } from 'src/constants/outputStyles.js';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import type { OutputStyle } from 'src/services/config/config.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
-import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
-import { Select } from 'src/components/CustomSelect/select.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
+import type { OptionWithDescription } from 'src/terminal/custom-select/select.js';
+import { Select } from 'src/terminal/custom-select/select.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
 const DEFAULT_OUTPUT_STYLE_LABEL = 'Default';
 const DEFAULT_OUTPUT_STYLE_DESCRIPTION = 'Claudin completes coding tasks efficiently and provides concise responses';
 function mapConfigsToOptions(styles: {

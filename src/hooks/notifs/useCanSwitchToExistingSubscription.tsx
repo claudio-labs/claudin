@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { getOauthProfileFromApiKey } from 'src/services/oauth/getOauthProfile.js';
 import { isClaudeAISubscriber } from 'src/services/auth/auth.js';
-import type { Notification } from 'src/context/notifications.js';
-import { Text } from 'src/ink.js';
+import type { Notification } from 'src/terminal/contexts/notifications.js';
+import { Text } from 'src/terminal/ink.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import type { GlobalConfig } from 'src/services/config/config.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';

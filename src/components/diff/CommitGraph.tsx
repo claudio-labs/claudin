@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { Box, Text } from 'src/ink.js'
+import { Box, Text } from 'src/terminal/ink.js'
 import type { GitLogRow } from 'src/services/git/gitLog.js'
 import { entityColor } from 'src/components/diff/entityColor.js'
 

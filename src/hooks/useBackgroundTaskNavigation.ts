@@ -1,16 +1,16 @@
 import { useEffect, useRef } from 'react'
-import { KeyboardEvent } from 'src/ink/events/keyboard-event.js'
+import { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js'
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- backward-compat bridge until REPL wires handleKeyDown to <Box onKeyDown>
-import { useInput } from 'src/ink.js'
+import { useInput } from 'src/terminal/ink.js'
 import {
   type AppState,
   useAppState,
   useSetAppState,
-} from 'src/state/AppState.js'
+} from 'src/terminal/state/AppState.js'
 import {
   enterTeammateView,
   exitTeammateView,
-} from 'src/state/teammateViewHelpers.js'
+} from 'src/terminal/state/teammateViewHelpers.js'
 import {
   getRunningTeammatesSorted,
   InProcessTeammateTask,

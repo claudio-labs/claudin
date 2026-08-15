@@ -1,7 +1,7 @@
 import { mkdir, unlink, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { type AnsiToPngOptions, ansiToPng } from 'src/utils/ansiToPng.js'
+import { type AnsiToPngOptions, ansiToPng } from 'src/terminal/image/ansiToPng.js'
 import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
 import { logError } from 'src/shared/log.js'
 import { getPlatform } from 'src/shared/proc/platform.js'

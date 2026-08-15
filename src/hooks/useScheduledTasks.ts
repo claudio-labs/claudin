@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useAppStateStore, useSetAppState } from 'src/state/AppState.js'
+import { useAppStateStore, useSetAppState } from 'src/terminal/state/AppState.js'
 import { isTerminalTaskStatus } from 'src/Task.js'
 import {
   findTeammateTaskByAgentId,

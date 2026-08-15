@@ -9,7 +9,7 @@
 
 import chalk from 'chalk'
 import { readFileSync } from 'node:fs'
-import { SHOW_CURSOR } from 'src/ink/termio/dec.js'
+import { SHOW_CURSOR } from 'src/terminal/ink/termio/dec.js'
 import { setAllowedSettingSources, setFlagSettingsPath } from 'src/bootstrap/state.js'
 import { isRunningWithBun } from 'src/services/install/bundledMode.js'
 import { errorMessage, isENOENT } from 'src/shared/errors.js'

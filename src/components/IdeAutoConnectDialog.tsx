@@ -1,10 +1,10 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useCallback } from 'react';
-import { Text } from 'src/ink.js';
+import { Text } from 'src/terminal/ink.js';
 import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import { isSupportedTerminal } from 'src/services/ide/ide.js';
-import { Select } from 'src/components/CustomSelect/index.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
+import { Select } from 'src/terminal/custom-select/index.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
 type IdeAutoConnectDialogProps = {
   onComplete: () => void;
 };

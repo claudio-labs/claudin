@@ -1,7 +1,7 @@
 import React from 'react';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { TOOL_SUMMARY_MAX_LENGTH } from 'src/constants/toolLimits.js';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import type { ProgressMessage } from 'src/types/message.js';
 import { truncate } from 'src/shared/text/format.js';
 import type { Output, SearchResult, WebSearchProgress } from 'src/tools/WebSearchTool/WebSearchTool.js';

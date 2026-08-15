@@ -1,19 +1,19 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useMemo } from 'react';
 import type { DeepImmutable } from 'src/types/utils.js';
-import { useElapsedTime } from 'src/hooks/useElapsedTime.js';
-import type { ExitState } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
-import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
-import { Box, Text, useTheme } from 'src/ink.js';
-import { useKeybindings } from 'src/keybindings/useKeybinding.js';
+import { useElapsedTime } from 'src/terminal/hooks/useElapsedTime.js';
+import type { ExitState } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
+import type { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js';
+import { Box, Text, useTheme } from 'src/terminal/ink.js';
+import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import { getEmptyToolPermissionContext } from 'src/Tool.js';
 import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js';
 import { getTools } from 'src/tools.js';
 import { formatNumber, truncateToWidth } from 'src/shared/text/format.js';
-import { toInkColor } from 'src/utils/ink.js';
-import { Byline } from 'src/components/design-system/Byline.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { toInkColor } from 'src/terminal/render/ink.js';
+import { Byline } from 'src/terminal/design-system/Byline.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 import { renderToolActivity } from 'src/components/tasks/renderToolActivity.js';
 import { describeTeammateActivity } from 'src/components/tasks/taskStatusUtils.js';
 type Props = {

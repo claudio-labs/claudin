@@ -11,7 +11,7 @@ import { getCwd } from 'src/shared/fs/cwd.js'
 import { pathInAllowedWorkingPath } from 'src/services/permissions/filesystem.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
 import { shouldMaintainProjectWorkingDir } from 'src/shared/envUtils.js'
-import { maybeResizeAndDownsampleImageBuffer } from 'src/utils/imageResizer.js'
+import { maybeResizeAndDownsampleImageBuffer } from 'src/terminal/image/imageResizer.js'
 import { getMaxOutputLength } from 'src/services/shell/outputLimits.js'
 import { countCharInString, plural } from 'src/shared/text/stringUtils.js'
 /**

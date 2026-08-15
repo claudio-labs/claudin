@@ -20,7 +20,7 @@ import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
 import { checkHasTrustDialogAccepted, getGlobalConfig } from 'src/services/config/config.js';
-import { seedEarlyInput } from 'src/utils/earlyInput.js';
+import { seedEarlyInput } from 'src/terminal/input/earlyInput.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { errorMessage, getErrnoCode } from 'src/shared/errors.js';
 import { setAllHookEventsEnabled } from 'src/services/lifecycleHooks/hookEvents.js';

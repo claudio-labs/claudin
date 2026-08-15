@@ -13,7 +13,7 @@ import type { ValidationResult } from 'src/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getErrnoCode } from 'src/shared/errors.js'
-import { IMAGE_EXTENSION_REGEX } from 'src/utils/imagePaste.js'
+import { IMAGE_EXTENSION_REGEX } from 'src/terminal/image/imagePaste.js'
 import { expandPath } from 'src/shared/fs/path.js'
 
 export type ResolvedAttachment = {

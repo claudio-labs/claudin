@@ -9,10 +9,10 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import type { HookEvent } from 'src/entrypoints/agentSdkTypes.js';
 import type { HookEventMetadata } from 'src/services/lifecycleHooks/hooksConfigManager.js';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { getHookDisplayText, hookSourceHeaderDisplayString, type IndividualHookConfig } from 'src/services/lifecycleHooks/hooksSettings.js';
-import { Select } from 'src/components/CustomSelect/select.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
+import { Select } from 'src/terminal/custom-select/select.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
 type Props = {
   selectedEvent: HookEvent;
   selectedMatcher: string | null;

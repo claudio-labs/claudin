@@ -1,4 +1,4 @@
-import type { TerminalNotification } from 'src/ink/useTerminalNotification.js'
+import type { TerminalNotification } from 'src/terminal/ink/useTerminalNotification.js'
 import { getGlobalConfig } from 'src/services/config/config.js'
 import { env } from 'src/shared/env.js'
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'

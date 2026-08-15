@@ -33,7 +33,7 @@ import {
 import {
   createImageMetadataText,
   maybeResizeAndDownsampleImageBuffer,
-} from 'src/utils/imageResizer.js'
+} from 'src/terminal/image/imageResizer.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 import {

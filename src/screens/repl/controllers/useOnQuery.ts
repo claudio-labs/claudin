@@ -29,10 +29,10 @@ import { useCallback } from 'react';
 import type { UUID } from 'crypto';
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js';
 import type { createCoalescedUpdater } from 'src/services/install/coalescedUpdater.js';
-import type { SpinnerMode } from 'src/components/Spinner.js';
+import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js';
 import type { ToolPermissionContext } from 'src/Tool.js';
 import type { MCPServerConnection } from 'src/services/mcp/types.js';
-import type { useAppStateStore } from 'src/state/AppState.js';
+import type { useAppStateStore } from 'src/terminal/state/AppState.js';
 import type { provisionContentReplacementState } from 'src/services/tools/toolResultStorage.js';
 import { feature } from 'bun:bundle';
 import { snapshotOutputTokensForTurn, getCurrentTurnTokenBudget, getTurnOutputTokens, getBudgetContinuationCount } from 'src/bootstrap/state.js';
@@ -76,9 +76,9 @@ import { enqueue, type SetAppState, getCommandQueueLength } from 'src/utils/mess
 import { diagnosticTracker } from 'src/services/diagnosticTracking.js';
 import type { EffortValue } from 'src/utils/effort.js';
 import { checkAndDisableBypassPermissionsIfNeeded, checkAndDisableAutoModeIfNeeded } from 'src/services/permissions/bypassPermissionsKillswitch.js';
-import { isBuddyEnabled } from 'src/buddy/feature.js';
-import { fireCompanionObserver } from 'src/buddy/observer.js';
-import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
+import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
+import { fireCompanionObserver } from 'src/terminal/buddy/observer.js';
+import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 
 // Mirrors the module-level bindings in REPL.tsx. `feature()` must sit DIRECTLY in
 // a ternary condition - the build folds it in place and any other form throws.

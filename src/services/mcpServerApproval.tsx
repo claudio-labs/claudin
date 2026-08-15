@@ -1,9 +1,9 @@
 import React from 'react';
 import { MCPServerApprovalDialog } from 'src/components/MCPServerApprovalDialog.js';
 import { MCPServerMultiselectDialog } from 'src/components/MCPServerMultiselectDialog.js';
-import type { Root } from 'src/ink.js';
-import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js';
-import { AppStateProvider } from 'src/state/AppState.js';
+import type { Root } from 'src/terminal/ink.js';
+import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js';
+import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import { getMcpConfigsByScope } from 'src/services/mcp/config.js';
 import { getProjectMcpServerStatus } from 'src/services/mcp/utils.js';
 

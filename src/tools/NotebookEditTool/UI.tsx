@@ -2,14 +2,14 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 import * as React from 'react';
 import type { Message, ProgressMessage } from 'src/types/message.js';
 import { extractTag } from 'src/services/messages/messages.js';
-import type { ThemeName } from 'src/utils/theme.js';
+import type { ThemeName } from 'src/terminal/theme/theme.js';
 import type { z } from 'zod/v4';
 import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseErrorMessage.js';
-import { FilePathLink } from 'src/components/FilePathLink.js';
-import { HighlightedCode } from 'src/components/HighlightedCode.js';
+import { FilePathLink } from 'src/terminal/FilePathLink.js';
+import { HighlightedCode } from 'src/terminal/highlighted-code/HighlightedCode.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { NotebookEditToolUseRejectedMessage } from 'src/components/NotebookEditToolUseRejectedMessage.js';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import type { Tools } from 'src/Tool.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
 import type { inputSchema, Output } from 'src/tools/NotebookEditTool/NotebookEditTool.js';

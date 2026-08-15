@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useCallback } from 'react';
-import { Select } from 'src/components/CustomSelect/select.js';
-import { Box, Text } from 'src/ink.js';
+import { Select } from 'src/terminal/custom-select/select.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import type { ToolPermissionContext } from 'src/Tool.js';
 import type { PermissionBehavior, PermissionRule, PermissionRuleValue } from 'src/services/permissions/PermissionRule.js';
 import { applyPermissionUpdate, persistPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js';
@@ -12,8 +12,8 @@ import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
 import { type EditableSettingSource, SOURCES } from 'src/services/settings/constants.js';
 import { getRelativeSettingsFilePathForSource } from 'src/services/settings/settings.js';
 import { plural } from 'src/shared/text/stringUtils.js';
-import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
+import type { OptionWithDescription } from 'src/terminal/custom-select/select.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import { PermissionRuleDescription } from 'src/components/permissions/rules/PermissionRuleDescription.js';
 export function optionForPermissionSaveDestination(saveDestination: EditableSettingSource): OptionWithDescription {
   switch (saveDestination) {

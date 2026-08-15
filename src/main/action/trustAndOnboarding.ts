@@ -22,13 +22,13 @@ import { isCustomAgent } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { validateForceLoginOrg } from 'src/services/auth/auth.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { resetUserCache } from 'src/shared/user.js';
-import type { Root } from 'src/ink.js';
-import type { FpsMetrics } from 'src/utils/fpsTracker.js';
-import type { StatsStore } from 'src/context/stats.js';
+import type { Root } from 'src/terminal/ink.js';
+import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
+import type { StatsStore } from 'src/terminal/contexts/stats.js';
 import type { ChannelEntry } from 'src/bootstrap/state.js';
 import type { InternalPermissionMode } from 'src/types/permissions.js';
-import { launchSnapshotUpdateDialog } from 'src/dialogLaunchers.js';
-import { exitWithError, getRenderContext, showSetupScreens } from 'src/interactiveHelpers.js';
+import { launchSnapshotUpdateDialog } from 'src/terminal/dialogLaunchers.js';
+import { exitWithError, getRenderContext, showSetupScreens } from 'src/terminal/interactiveHelpers.js';
 import { profileCheckpoint } from 'src/utils/startupProfiler.js';
 import type { AgentDefinitionsBundle } from 'src/main/action/setupAgent.js';
 
@@ -79,7 +79,7 @@ export async function runTrustAndOnboarding(
   const getFpsMetrics = renderCtx.getFpsMetrics;
   const stats = renderCtx.stats;
   profileCheckpoint('trust_render_ctx_ready');
-  const { createRoot } = await import('src/ink.js');
+  const { createRoot } = await import('src/terminal/ink.js');
   profileCheckpoint('trust_ink_imported');
   const root = await createRoot(renderCtx.renderOptions);
   profileCheckpoint('trust_ink_root_created');
@@ -174,7 +174,7 @@ export async function runTrustAndOnboarding(
     const { getActiveProviderProfile, getProviderProfiles } = await import('src/services/api/providerProfiles.js');
     const hasProfiles = getProviderProfiles().length > 0 || Boolean(getActiveProviderProfile());
     if (!hasProfiles && !onboardingShown) {
-      const { showSetupDialog } = await import('src/interactiveHelpers.js');
+      const { showSetupDialog } = await import('src/terminal/interactiveHelpers.js');
       const { ProviderManager } = await import('src/components/ProviderManager.js');
       await showSetupDialog<void>(root, done => (
         React.createElement(ProviderManager, {
@@ -194,7 +194,7 @@ export async function runTrustAndOnboarding(
   try {
     const { tryGetActiveProvider } = await import('src/services/api/activeProvider.js');
     if (tryGetActiveProvider() && process.stdout.isTTY && process.env.CLAUDIN_CLEAR_ON_START === '1') {
-      const { clearTerminal } = await import('src/ink/clearTerminal.js');
+      const { clearTerminal } = await import('src/terminal/ink/clearTerminal.js');
       process.stdout.write(clearTerminal);
     }
   } catch (e) {

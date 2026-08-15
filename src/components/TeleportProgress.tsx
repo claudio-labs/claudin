@@ -2,9 +2,9 @@ import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import * as React from 'react';
 import { useState } from 'react';
-import type { Root } from 'src/ink.js';
-import { Box, Text, useAnimationFrame } from 'src/ink.js';
-import { AppStateProvider } from 'src/state/AppState.js';
+import type { Root } from 'src/terminal/ink.js';
+import { Box, Text, useAnimationFrame } from 'src/terminal/ink.js';
+import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import { checkOutTeleportedSessionBranch, processMessagesForTeleportResume, type TeleportProgressStep, type TeleportResult, teleportResumeCodeSession } from 'src/components/teleport.js';
 type Props = {
   currentStep: TeleportProgressStep;

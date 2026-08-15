@@ -41,7 +41,7 @@ import { hasAutoMemPathOverride } from 'src/memdir/paths.js'
 import { query } from 'src/query.js'
 import { categorizeRetryableAPIError } from 'src/services/api/errors.js'
 import type { MCPServerConnection } from 'src/services/mcp/types.js'
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import { type Tools, type ToolUseContext, toolMatchesName } from 'src/Tool.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { SYNTHETIC_OUTPUT_TOOL_NAME } from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js'
@@ -84,7 +84,7 @@ import {
   removeTranscriptMessage,
 } from 'src/services/session/sessionStorage.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
-import { resolveThemeSetting } from 'src/utils/systemTheme.js'
+import { resolveThemeSetting } from 'src/terminal/theme/systemTheme.js'
 import {
   shouldEnableThinkingByDefault,
   type ThinkingConfig,

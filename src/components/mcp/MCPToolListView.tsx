@@ -1,18 +1,18 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import { type ExitState } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
-import { Text } from 'src/ink.js';
+import { type ExitState } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
+import { Text } from 'src/terminal/ink.js';
 import { extractMcpToolDisplayName, getMcpDisplayName } from 'src/services/mcp/mcpStringUtils.js';
 import { filterToolsByServer } from 'src/services/mcp/utils.js';
-import type { AppState } from 'src/state/AppState.js';
-import { useAppState } from 'src/state/AppState.js';
+import type { AppState } from 'src/terminal/state/AppState.js';
+import { useAppState } from 'src/terminal/state/AppState.js';
 import type { Tool } from 'src/Tool.js';
 import { plural } from 'src/shared/text/stringUtils.js';
-import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
-import { Select } from 'src/components/CustomSelect/index.js';
-import { Byline } from 'src/components/design-system/Byline.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
+import { Select } from 'src/terminal/custom-select/index.js';
+import { Byline } from 'src/terminal/design-system/Byline.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 import type { ServerInfo } from 'src/components/mcp/types.js';
 type Props = {
   server: ServerInfo;

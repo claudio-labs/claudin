@@ -5,29 +5,29 @@ import figures from 'figures';
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import { useAppState } from 'src/state/AppState.js';
+import { useAppState } from 'src/terminal/state/AppState.js';
 import { type DiffStats, fileHistoryCanRestore, fileHistoryEnabled, fileHistoryGetDiffStats } from 'src/shared/fs/fileHistory.js';
 import { logError } from 'src/shared/log.js';
-import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
-import { Box, Text } from 'src/ink.js';
-import { useKeybinding, useKeybindings } from 'src/keybindings/useKeybinding.js';
+import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useKeybinding, useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import type { Message, PartialCompactDirection, UserMessage } from 'src/types/message.js';
 import { stripDisplayTags } from 'src/shared/text/displayTags.js';
 import { createUserMessage, extractTag, isEmptyMessageText, isSyntheticMessage, isToolUseResultMessage } from 'src/services/messages/messages.js';
-import { type OptionWithDescription, Select } from 'src/components/CustomSelect/select.js';
-import { Spinner } from 'src/components/Spinner.js';
+import { type OptionWithDescription, Select } from 'src/terminal/custom-select/select.js';
+import { Spinner } from 'src/terminal/spinner/Spinner.js';
 function isTextBlock(block: ContentBlockParam): block is TextBlockParam {
   return block.type === 'text';
 }
 import * as path from 'path';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import type { FileEditOutput } from 'src/tools/FileEditTool/types.js';
 import type { Output as FileWriteToolOutput } from 'src/tools/FileWriteTool/FileWriteTool.js';
 import { BASH_STDERR_TAG, BASH_STDOUT_TAG, COMMAND_MESSAGE_TAG, LOCAL_COMMAND_STDERR_TAG, LOCAL_COMMAND_STDOUT_TAG, TASK_NOTIFICATION_TAG, TEAMMATE_MESSAGE_TAG, TICK_TAG } from 'src/constants/xml.js';
 import { count } from 'src/shared/data/array.js';
 import { formatRelativeTimeAgo, truncate } from 'src/shared/text/format.js';
-import type { Theme } from 'src/utils/theme.js';
-import { Divider } from 'src/components/design-system/Divider.js';
+import type { Theme } from 'src/terminal/theme/theme.js';
+import { Divider } from 'src/terminal/design-system/Divider.js';
 type RestoreOption = 'both' | 'conversation' | 'code' | 'summarize' | 'summarize_up_to' | 'nevermind';
 function isSummarizeOption(option: RestoreOption | null): option is 'summarize' | 'summarize_up_to' {
   return option === 'summarize' || option === 'summarize_up_to';

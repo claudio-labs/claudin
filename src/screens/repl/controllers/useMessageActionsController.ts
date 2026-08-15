@@ -38,7 +38,7 @@ import type { MessageActionCaps } from 'src/components/messageActions.js';
 import type { FileHistoryState } from 'src/shared/fs/fileHistory.js';
 import type { PromptInputMode } from 'src/types/textInputTypes.js';
 import type { SetAppState } from 'src/utils/messageQueueManager.js';
-import type { useNotifications } from 'src/context/notifications.js';
+import type { useNotifications } from 'src/terminal/contexts/notifications.js';
 import {
   selectableUserMessagesFilter,
   messagesAfterAreOnlySynthetic,
@@ -46,7 +46,7 @@ import {
 import { textForResubmit } from 'src/services/messages/messages.js';
 import { resetMicrocompactState } from 'src/services/compact/microCompact.js';
 import { fileHistoryHasAnyChanges } from 'src/shared/fs/fileHistory.js';
-import { setClipboard } from 'src/ink/termio/osc.js';
+import { setClipboard } from 'src/terminal/ink/termio/osc.js';
 import { logEvent } from 'src/services/analytics/index.js';
 
 export interface UseMessageActionsControllerDeps {

@@ -1,10 +1,10 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import stripAnsi from 'strip-ansi';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { formatFileSize } from 'src/shared/text/format.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
-import { OffscreenFreeze } from 'src/components/OffscreenFreeze.js';
+import { OffscreenFreeze } from 'src/terminal/render/OffscreenFreeze.js';
 import { ShellElapsedTime } from 'src/components/shell/ShellElapsedTime.js';
 type Props = {
   output: string;

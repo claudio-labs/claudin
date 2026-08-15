@@ -3,9 +3,9 @@ import { PassThrough } from 'node:stream'
 import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
 import stripAnsi from 'strip-ansi'
 
-import { createRoot } from 'src/ink.js'
-import { AppStateProvider } from 'src/state/AppState.js'
-import { renderToString } from 'src/components/staticRender.js'
+import { createRoot } from 'src/terminal/ink.js'
+import { AppStateProvider } from 'src/terminal/state/AppState.js'
+import { renderToString } from 'src/terminal/render/staticRender.js'
 
 // MACRO is a build-time replacement; in unit tests there's no bundler, so the
 // banner reads from globalThis.MACRO at runtime. Mirror what other tests do.

@@ -51,7 +51,7 @@ import { type AttributionState } from 'src/services/git/commitAttribution.js';
 import { type IDEExtensionInstallationStatus, type IdeType } from 'src/services/ide/ide.js';
 import { type SetAppState, removeByFilter } from 'src/utils/messageQueueManager.js';
 import { startBackgroundSession } from 'src/tasks/LocalMainSessionTask.js';
-import type { Theme } from 'src/utils/theme.js';
+import type { Theme } from 'src/terminal/theme/theme.js';
 import { createAttachmentMessage, getQueuedCommandAttachments } from 'src/services/attachments/attachments.js';
 
 export interface UseToolUseContextDeps {
@@ -71,12 +71,12 @@ export interface UseToolUseContextDeps {
   // `useTheme()` yields the theme NAME, not the palette. The palette type
   // (`Theme`) is only used for the `keyof Theme` spinner colours below.
   theme: ProcessUserInputContext['options']['theme'];
-  terminal: ReturnType<typeof import('src/ink/useTerminalNotification.js').useTerminalNotification>;
+  terminal: ReturnType<typeof import('src/terminal/ink/useTerminalNotification.js').useTerminalNotification>;
   terminalTitle: string;
   mainLoopModel: string;
   toolPermissionContext: ToolPermissionContext;
   abortController: AbortController | null;
-  store: ReturnType<typeof import('src/state/AppState.js').useAppStateStore>;
+  store: ReturnType<typeof import('src/terminal/state/AppState.js').useAppStateStore>;
   // --- refs
   messagesRef: React.RefObject<MessageType[]>;
   readFileState: React.RefObject<ReturnType<typeof import('src/shared/fs/fileStateCache.js').createFileStateCacheWithSizeLimit>>;
@@ -89,7 +89,7 @@ export interface UseToolUseContextDeps {
   reverify: () => void;
   onChangeDynamicMcpConfig: (config: Record<string, ScopedMcpServerConfig>) => void;
   syncToolResultReplacements: (replacements: ReadonlyMap<string, string>) => void;
-  addNotification: ReturnType<typeof import('src/context/notifications.js').useNotifications>['addNotification'];
+  addNotification: ReturnType<typeof import('src/terminal/contexts/notifications.js').useNotifications>['addNotification'];
   setToolJSX: (args: {
     jsx: React.ReactNode | null;
     shouldHidePromptInput: boolean;
@@ -116,7 +116,7 @@ export interface UseToolUseContextDeps {
   setIDEToInstallExtension: React.Dispatch<React.SetStateAction<IdeType | null>>;
   setInProgressToolUseIDs: React.Dispatch<React.SetStateAction<Set<string>>>;
   setResponseLength: (f: (prev: number) => number) => void;
-  setStreamMode: React.Dispatch<React.SetStateAction<import('src/components/Spinner.js').SpinnerMode>>;
+  setStreamMode: React.Dispatch<React.SetStateAction<import('src/terminal/spinner/Spinner.js').SpinnerMode>>;
   setSpinnerColor: React.Dispatch<React.SetStateAction<keyof Theme | null>>;
   setSpinnerShimmerColor: React.Dispatch<React.SetStateAction<keyof Theme | null>>;
   setSpinnerMessage: React.Dispatch<React.SetStateAction<string | null>>;

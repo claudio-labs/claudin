@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react'
 import {
   getTerminalFocusState,
   subscribeTerminalFocus,
-} from 'src/ink/terminal-focus-state.js'
+} from 'src/terminal/ink/terminal-focus-state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import { generateAwaySummary } from 'src/services/awaySummary.js'
 import type { Message } from 'src/types/message.js'

@@ -1,13 +1,13 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useCallback, useState } from 'react';
 import type { Workflow } from 'src/commands/install-github-app/types.js';
-import type { ExitState } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
-import { Box, Link, Text } from 'src/ink.js';
-import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
-import { SelectMulti } from 'src/components/CustomSelect/SelectMulti.js';
-import { Byline } from 'src/components/design-system/Byline.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import type { ExitState } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
+import { Box, Link, Text } from 'src/terminal/ink.js';
+import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
+import { SelectMulti } from 'src/terminal/custom-select/SelectMulti.js';
+import { Byline } from 'src/terminal/design-system/Byline.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 type WorkflowOption = {
   value: Workflow;
   label: string;

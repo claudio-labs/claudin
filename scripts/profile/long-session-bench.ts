@@ -139,7 +139,7 @@ async function exerciseTokenCache(cycles: number): Promise<CacheResult> {
     cachedLexer,
     __TEST_ONLY_resetTokenCache,
     __TEST_ONLY_getTokenCacheSize,
-  } = await import('../../src/components/markdownTokenCache.js')
+  } = await import('../../src/terminal/markdown/markdownTokenCache.js')
 
   return measure(
     'Markdown.tokenCache',
@@ -221,7 +221,7 @@ async function exerciseImageStore(cycles: number): Promise<CacheResult> {
     cacheImagePath,
     clearStoredImagePaths,
     __TEST_ONLY_getStoredImagePathsSize,
-  } = await import('../../src/utils/imageStore.js')
+  } = await import('../../src/terminal/image/imageStore.js')
 
   return measure(
     'imageStore.storedImagePaths',
@@ -371,7 +371,7 @@ async function exerciseMixedSession(turns: number): Promise<MixedResult> {
     cachedLexer,
     __TEST_ONLY_resetTokenCache,
     __TEST_ONLY_getTokenCacheSize,
-  } = await import('../../src/components/markdownTokenCache.js')
+  } = await import('../../src/terminal/markdown/markdownTokenCache.js')
   const {
     __TEST_ONLY_recordToolProgress,
     __TEST_ONLY_resetToolProgressMap,
@@ -381,7 +381,7 @@ async function exerciseMixedSession(turns: number): Promise<MixedResult> {
     cacheImagePath,
     clearStoredImagePaths,
     __TEST_ONLY_getStoredImagePathsSize,
-  } = await import('../../src/utils/imageStore.js')
+  } = await import('../../src/terminal/image/imageStore.js')
   const {
     markDiagnosticsAsDelivered,
     _resetDeliveredDiagnosticsForTesting,

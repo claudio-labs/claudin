@@ -2,8 +2,8 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { getIsRemoteMode } from 'src/bootstrap/state.js';
-import { useNotifications } from 'src/context/notifications.js';
-import { Text } from 'src/ink.js';
+import { useNotifications } from 'src/terminal/contexts/notifications.js';
+import { Text } from 'src/terminal/ink.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { onPluginsAutoUpdated } from 'src/services/plugins/pluginAutoupdate.js';
 

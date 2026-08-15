@@ -1,7 +1,7 @@
 import * as React from 'react'
 
-import { useAnchoredElapsedSeconds } from 'src/hooks/useElapsedTime.js'
-import { Text } from 'src/ink.js'
+import { useAnchoredElapsedSeconds } from 'src/terminal/hooks/useElapsedTime.js'
+import { Text } from 'src/terminal/ink.js'
 import { formatDuration } from 'src/shared/text/format.js'
 
 /**

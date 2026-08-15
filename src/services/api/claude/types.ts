@@ -14,7 +14,7 @@ import type {
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { AgentId } from 'src/types/ids.js'
 import type { QuerySource } from 'src/constants/querySource.js'
-import type { Notification } from 'src/context/notifications.js'
+import type { Notification } from 'src/terminal/contexts/notifications.js'
 import type { EffortValue } from 'src/utils/effort.js'
 
 // output_config.task_budget — API-side token budget awareness for the model.

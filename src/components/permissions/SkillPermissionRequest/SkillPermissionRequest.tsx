@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import React, { useCallback, useMemo } from 'react';
 import { logError } from 'src/shared/log.js';
 import { getOriginalCwd } from 'src/bootstrap/state.js';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js';
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js';
 import { SkillTool } from 'src/tools/SkillTool/SkillTool.js';

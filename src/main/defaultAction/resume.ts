@@ -7,15 +7,15 @@ import chalk from 'chalk';
 import { getRemoteSessionUrl } from 'src/constants/product.js';
 import { getOriginalCwd, setIsRemoteMode, setOriginalCwd, setTeleportedSessionInfo, switchSession } from 'src/bootstrap/state.js';
 import { filterCommandsForRemoteMode } from 'src/commands.js';
-import { launchResumeChooser, launchTeleportRepoMismatchDialog, launchTeleportResumeWrapper } from 'src/dialogLaunchers.js';
-import type { Root } from 'src/ink.js';
-import { exitWithError, renderAndRun } from 'src/interactiveHelpers.js';
+import { launchResumeChooser, launchTeleportRepoMismatchDialog, launchTeleportResumeWrapper } from 'src/terminal/dialogLaunchers.js';
+import type { Root } from 'src/terminal/ink.js';
+import { exitWithError, renderAndRun } from 'src/terminal/interactiveHelpers.js';
 import { createRemoteSessionConfig } from 'src/remote/RemoteSessionManager.js';
 import { launchRepl } from 'src/replLauncher.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/index.js';
-import type { AppState } from 'src/state/AppStateStore.js';
+import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';
 import { asSessionId } from 'src/types/ids.js';
 import type { LogOption } from 'src/types/logs.js';
@@ -41,8 +41,8 @@ import { maybeActivateBrief, maybeActivateProactive } from 'src/main/lifecycle.j
 import type { BootContext } from 'src/main/bootContext.js';
 import type { Props as REPLProps } from 'src/screens/REPL.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
-import type { FpsMetrics } from 'src/utils/fpsTracker.js';
-import type { StatsStore } from 'src/context/stats.js';
+import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
+import type { StatsStore } from 'src/terminal/contexts/stats.js';
 
 export type ResumeBranchDeps = {
   root: Root;

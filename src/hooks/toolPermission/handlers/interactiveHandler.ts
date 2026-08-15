@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getAllowedChannels } from 'src/bootstrap/state.js'
 import type { BridgePermissionCallbacks } from 'src/bridge/bridgePermissionCallbacks.js'
-import { getTerminalFocused } from 'src/ink/terminal-focus-state.js'
+import { getTerminalFocused } from 'src/terminal/ink/terminal-focus-state.js'
 import {
   CHANNEL_PERMISSION_REQUEST_METHOD,
   type ChannelPermissionRequestParams,

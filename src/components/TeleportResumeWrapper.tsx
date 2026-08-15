@@ -4,10 +4,10 @@ import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEve
 import type { TeleportRemoteResponse } from 'src/services/session/conversationRecovery.js';
 import type { CodeSession } from 'src/services/teleport/api.js';
 import { type TeleportSource, useTeleportResume } from 'src/hooks/useTeleportResume.js';
-import { Box, Text } from 'src/ink.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { ResumeTask } from 'src/components/ResumeTask.js';
-import { Spinner } from 'src/components/Spinner.js';
+import { Spinner } from 'src/terminal/spinner/Spinner.js';
 interface TeleportResumeWrapperProps {
   onComplete: (result: TeleportRemoteResponse) => void;
   onCancel: () => void;

@@ -1,9 +1,9 @@
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { Select } from 'src/components/CustomSelect/select.js'
-import { Spinner } from 'src/components/Spinner.js'
-import TextInput from 'src/components/TextInput.js'
-import { Box, Text } from 'src/ink.js'
+import { Select } from 'src/terminal/custom-select/select.js'
+import { Spinner } from 'src/terminal/spinner/Spinner.js'
+import TextInput from 'src/terminal/text-input/TextInput.js'
+import { Box, Text } from 'src/terminal/ink.js'
 import {
   exchangeForCopilotToken,
   normalizeGithubEnterpriseDomain,

@@ -32,7 +32,7 @@ import {
   getExplicitEssentialTrafficOnlyReason,
 } from 'src/services/config/privacyLevel.js'
 import { getManagedFilePath } from 'src/services/settings/managedPath.js'
-import type { ThemeSetting } from 'src/utils/theme.js'
+import type { ThemeSetting } from 'src/terminal/theme/theme.js'
 import { PRIMARY_PROJECT_INSTRUCTION_FILE } from 'src/services/instructions/projectInstructions.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -44,7 +44,7 @@ const ccrAutoConnect = feature('CCR_AUTO_CONNECT')
   : null
 
 /* eslint-enable @typescript-eslint/no-require-imports */
-import type { ImageDimensions } from 'src/utils/imageResizer.js'
+import type { ImageDimensions } from 'src/terminal/image/imageResizer.js'
 import type { ModelOption } from 'src/utils/model/modelOptions.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 
@@ -370,8 +370,8 @@ export type GlobalConfig = {
     [tipId: string]: number // Key is tipId, value is the numStartups when tip was last shown
   }
 
-  // /buddy companion soul — bones regenerated from userId on read. See src/buddy/.
-  companion?: import('src/buddy/types.js').StoredCompanion
+  // /buddy companion soul — bones regenerated from userId on read. See src/terminal/buddy/.
+  companion?: import('src/terminal/buddy/types.js').StoredCompanion
   companionMuted?: boolean
 
   // Feedback survey tracking

@@ -2,10 +2,10 @@ import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useMemo } from 'react';
 import { type Command, formatDescriptionWithSource } from 'src/commands.js';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { truncate } from 'src/shared/text/format.js';
-import { Select } from 'src/components/CustomSelect/select.js';
-import { useTabHeaderFocus } from 'src/components/design-system/Tabs.js';
+import { Select } from 'src/terminal/custom-select/select.js';
+import { useTabHeaderFocus } from 'src/terminal/design-system/Tabs.js';
 type Props = {
   commands: Command[];
   maxHeight: number;

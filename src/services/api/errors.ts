@@ -36,8 +36,8 @@ import {
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { formatFileSize } from 'src/shared/text/format.js'
-import { ImageResizeError } from 'src/utils/imageResizer.js'
-import { ImageSizeError } from 'src/utils/imageValidation.js'
+import { ImageResizeError } from 'src/terminal/image/imageResizer.js'
+import { ImageSizeError } from 'src/terminal/image/imageValidation.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,

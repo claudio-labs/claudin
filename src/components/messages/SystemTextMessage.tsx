@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
-import { Box, Text, type TextProps } from 'src/ink.js';
+import { Box, Text, type TextProps } from 'src/terminal/ink.js';
 import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { useState } from 'react';
@@ -9,22 +9,22 @@ import { BLACK_CIRCLE, REFERENCE_MARK, TEARDROP_ASTERISK } from 'src/constants/f
 import figures from 'figures';
 import { basename } from 'path';
 import { MessageResponse } from 'src/components/MessageResponse.js';
-import { FilePathLink } from 'src/components/FilePathLink.js';
+import { FilePathLink } from 'src/terminal/FilePathLink.js';
 import { openPath } from 'src/shared/browser.js';
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemSaved = feature('TEAMMEM') ? require('src/components/messages/teamMemSaved.js') as typeof import('src/components/messages/teamMemSaved.js') : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { TURN_COMPLETION_VERBS } from 'src/constants/turnCompletionVerbs.js';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import type { SystemMessage, SystemStopHookSummaryMessage, SystemBridgeStatusMessage, SystemTurnDurationMessage, SystemThinkingMessage, SystemMemorySavedMessage } from 'src/types/message.js';
 import type { StopHookInfo } from 'src/types/message.js';
 import { SystemAPIErrorMessage } from 'src/components/messages/SystemAPIErrorMessage.js';
 import { formatDuration, formatNumber, formatSecondsShort } from 'src/shared/text/format.js';
 import { getGlobalConfig } from 'src/services/config/config.js';
-import Link from 'src/ink/components/Link.js';
-import ThemedText from 'src/components/design-system/ThemedText.js';
-import { CtrlOToExpand } from 'src/components/CtrlOToExpand.js';
-import { useAppStateStore } from 'src/state/AppState.js';
+import Link from 'src/terminal/ink/components/Link.js';
+import ThemedText from 'src/terminal/design-system/ThemedText.js';
+import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
+import { useAppStateStore } from 'src/terminal/state/AppState.js';
 import { isBackgroundTask, type TaskState } from 'src/tasks/types.js';
 import { getPillLabel } from 'src/tasks/pillLabel.js';
 import { useSelectedMessageBg } from 'src/components/messageActions.js';

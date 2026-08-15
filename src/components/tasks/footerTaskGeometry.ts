@@ -1,7 +1,7 @@
 // Leaf shared by the agent panel and the footer task tree. Must stay free of
 // panel/tree imports so both renderers can import from here without cycling.
 
-import type { AppState } from 'src/state/AppStateStore.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import { isPanelAgentTask, type LocalAgentTaskState } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
 
 /** One panel row: the agent plus the tree geometry needed to draw it. */

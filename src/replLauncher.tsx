@@ -1,9 +1,9 @@
 import React from 'react';
-import type { StatsStore } from 'src/context/stats.js';
-import type { Root } from 'src/ink.js';
+import type { StatsStore } from 'src/terminal/contexts/stats.js';
+import type { Root } from 'src/terminal/ink.js';
 import type { Props as REPLProps } from 'src/screens/REPL.js';
-import type { AppState } from 'src/state/AppStateStore.js';
-import type { FpsMetrics } from 'src/utils/fpsTracker.js';
+import type { AppState } from 'src/terminal/state/AppStateStore.js';
+import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
 type AppWrapperProps = {
   getFpsMetrics: () => FpsMetrics | undefined;
   stats?: StatsStore;

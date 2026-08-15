@@ -1,9 +1,9 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { Suspense, use, useMemo } from 'react';
 import { useSettings } from 'src/hooks/useSettings.js';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import { stringWidth } from 'src/ink/stringWidth.js';
-import { Ansi, Box, Text, useTheme } from 'src/ink.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import { stringWidth } from 'src/terminal/ink/stringWidth.js';
+import { Ansi, Box, Text, useTheme } from 'src/terminal/ink.js';
 import { type CliHighlight, getCliHighlightPromise } from 'src/shared/text/cliHighlight.js';
 import { applyMarkdown } from 'src/shared/text/markdown.js';
 import sliceAnsi from 'src/shared/text/sliceAnsi.js';

@@ -1,4 +1,4 @@
-import type { Notification } from 'src/context/notifications.js';
+import type { Notification } from 'src/terminal/contexts/notifications.js';
 import { type GlobalConfig, getGlobalConfig } from 'src/services/config/config.js';
 import { useStartupNotification } from 'src/hooks/notifs/useStartupNotification.js';
 

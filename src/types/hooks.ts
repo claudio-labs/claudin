@@ -16,7 +16,7 @@ import type { Message } from 'src/types/message.js'
 import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
 import { permissionBehaviorSchema } from 'src/services/permissions/PermissionRule.js'
 import { permissionUpdateSchema } from 'src/services/permissions/PermissionUpdateSchema.js'
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import type { AttributionState } from 'src/services/git/commitAttribution.js'
 
 

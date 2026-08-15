@@ -4,10 +4,10 @@ import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 import React from 'react'
 import stripAnsi from 'strip-ansi'
 
-import { createRoot, Text, useTheme } from 'src/ink.js'
-import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js'
-import { AppStateProvider } from 'src/state/AppState.js'
-import { ThemeProvider } from 'src/components/design-system/ThemeProvider.js'
+import { createRoot, Text, useTheme } from 'src/terminal/ink.js'
+import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js'
+import { AppStateProvider } from 'src/terminal/state/AppState.js'
+import { ThemeProvider } from 'src/terminal/design-system/ThemeProvider.js'
 
 const realStructuredDiff = { ...(await import('src/components/StructuredDiff.js')) }
 const realColorDiff = { ...(await import('src/components/StructuredDiff/colorDiff.js')) }

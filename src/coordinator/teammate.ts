@@ -22,7 +22,7 @@ export {
   type TeammateContext,
 } from 'src/coordinator/teammateContext.js'
 
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getTeammateContext } from 'src/coordinator/teammateContext.js'
 

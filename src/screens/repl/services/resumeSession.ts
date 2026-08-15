@@ -19,7 +19,7 @@ import { asSessionId } from 'src/types/ids.js'
 import { type ResumeEntrypoint } from 'src/commands.js'
 import type { LogOption } from 'src/types/logs.js'
 import type { AgentDefinition, AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js'
-import type { AppStateStore } from 'src/state/AppStateStore.js'
+import type { AppStateStore } from 'src/terminal/state/AppStateStore.js'
 import type { SetAppState } from 'src/utils/messageQueueManager.js'
 import type { Message as MessageType } from 'src/types/message.js'
 
@@ -258,7 +258,7 @@ export async function resumeSession(
     // Rename asciicast recording to match the resumed session ID
     const {
       renameRecordingForSession,
-    } = await import('src/utils/asciicast.js')
+    } = await import('src/terminal/image/asciicast.js')
     await renameRecordingForSession()
     await resetSessionFilePointer()
 

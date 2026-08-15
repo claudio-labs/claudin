@@ -15,7 +15,7 @@
 //   bun run scripts/profile/input-bench.ts --json
 
 import { performance } from 'node:perf_hooks'
-import { Cursor } from '../../src/utils/Cursor.js'
+import { Cursor } from '../../src/terminal/input/Cursor.js'
 
 type Args = {
   sizes: number[]

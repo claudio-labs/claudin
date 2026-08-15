@@ -1,5 +1,5 @@
 import { HOOK_EVENTS } from 'src/entrypoints/agentSdkTypes.js'
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { HooksSettings } from 'src/services/settings/types.js'
 import { addSessionHook, removeSessionHook } from 'src/services/lifecycleHooks/sessionHooks.js'

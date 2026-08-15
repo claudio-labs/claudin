@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle'
 import { randomUUID } from 'crypto'
 import { dirname } from 'path'
 import type { Message } from 'src/types/message.js'
-import type { AppState } from 'src/state/AppStateStore.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type {
   SessionExternalMetadata,
 } from 'src/services/session/sessionState.js'
@@ -10,7 +10,7 @@ import {
   loadConversationForResume,
   type TurnInterruptionState,
 } from 'src/services/session/conversationRecovery.js'
-import { externalMetadataToAppState } from 'src/state/onChangeAppState.js'
+import { externalMetadataToAppState } from 'src/terminal/state/onChangeAppState.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import { logError } from 'src/shared/log.js'
 import { isPolicyAllowed } from 'src/services/policyLimits/index.js'

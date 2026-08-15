@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import { basename } from 'path';
 import React from 'react';
 import type { z } from 'zod/v4';
-import { Text } from 'src/ink.js';
+import { Text } from 'src/terminal/ink.js';
 import { NotebookEditTool } from 'src/tools/NotebookEditTool/NotebookEditTool.js';
 import { logError } from 'src/shared/log.js';
 import { FilePermissionDialog } from 'src/components/permissions/FilePermissionDialog/FilePermissionDialog.js';

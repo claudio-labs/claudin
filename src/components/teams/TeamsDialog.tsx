@@ -4,13 +4,13 @@ import figures from 'figures';
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useInterval } from 'usehooks-ts';
-import { useRegisterOverlay } from 'src/context/overlayContext.js';
-import { stringWidth } from 'src/ink/stringWidth.js';
+import { useRegisterOverlay } from 'src/terminal/contexts/overlayContext.js';
+import { stringWidth } from 'src/terminal/ink/stringWidth.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- raw j/k/arrow dialog navigation
-import { Box, Text, useInput } from 'src/ink.js';
-import { useKeybindings } from 'src/keybindings/useKeybinding.js';
-import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
-import { type AppState, useAppState, useSetAppState } from 'src/state/AppState.js';
+import { Box, Text, useInput } from 'src/terminal/ink.js';
+import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
+import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
+import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import { getEmptyToolPermissionContext } from 'src/Tool.js';
 import { AGENT_COLOR_TO_THEME_COLOR } from 'src/tools/AgentTool/agentColorManager.js';
 import { logForDebugging } from 'src/shared/debug.js';
@@ -27,8 +27,8 @@ import { addHiddenPaneId, removeHiddenPaneId, removeMemberFromTeam, setMemberMod
 import { listTasks, type Task, unassignTeammateTasks } from 'src/tasks/tasks.js';
 import { getTeammateStatuses, type TeammateStatus, type TeamSummary } from 'src/coordinator/teamDiscovery.js';
 import { createModeSetRequestMessage, sendShutdownRequestToMailbox, writeToMailbox } from 'src/coordinator/teammateMailbox.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
-import ThemedText from 'src/components/design-system/ThemedText.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
+import ThemedText from 'src/terminal/design-system/ThemedText.js';
 type Props = {
   initialTeams?: TeamSummary[];
   onDone: () => void;

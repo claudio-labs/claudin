@@ -53,7 +53,7 @@ const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all
     'src/services/git/worktree.js',
     'src/bootstrap/state.js',
     'src/cost-tracker.js',
-    'src/utils/asciicast.js',
+    'src/terminal/image/asciicast.js',
     'src/services/tools/toolResultStorage.js',
     'src/services/analytics/index.js',
     'src/services/messages/messages.js',
@@ -175,7 +175,7 @@ mock.module('src/cost-tracker.js', () => ({
   }),
 }))
 
-mock.module('src/utils/asciicast.js', () => ({
+mock.module('src/terminal/image/asciicast.js', () => ({
   renameRecordingForSession: mock(async () => {
     calls.push('renameRecordingForSession')
   }),

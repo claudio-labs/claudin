@@ -1,12 +1,12 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useCallback, useEffect, useState } from 'react';
-import { type OptionWithDescription, Select } from 'src/components/CustomSelect/index.js';
-import { Pane } from 'src/components/design-system/Pane.js';
-import { Spinner } from 'src/components/Spinner.js';
-import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
+import { type OptionWithDescription, Select } from 'src/terminal/custom-select/index.js';
+import { Pane } from 'src/terminal/design-system/Pane.js';
+import { Spinner } from 'src/terminal/spinner/Spinner.js';
+import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- enter to proceed through setup steps
-import { Box, type Key, Text, useInput } from 'src/ink.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import { Box, type Key, Text, useInput } from 'src/terminal/ink.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { detectPythonPackageManager, getPythonApiInstructions, installIt2, markIt2SetupComplete, type PythonPackageManager, setPreferTmuxOverIterm2, verifyIt2Setup } from 'src/coordinator/swarm/backends/it2Setup.js';
 type SetupStep = 'initial' | 'installing' | 'install-failed' | 'verify-api' | 'api-instructions' | 'verifying' | 'success' | 'failed';
 type Props = {

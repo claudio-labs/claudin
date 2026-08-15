@@ -6,7 +6,7 @@ import { getCwd } from 'src/shared/fs/cwd.js';
 import { isENOENT } from 'src/shared/errors.js';
 import { detectEncodingForResolvedPath } from 'src/shared/fs/fileRead.js';
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js';
-import { Text } from 'src/ink.js';
+import { Text } from 'src/terminal/ink.js';
 import { BashTool } from 'src/tools/BashTool/BashTool.js';
 import { applySedSubstitution, type SedEditInfo } from 'src/tools/BashTool/sedEditParser.js';
 import type { FileEdit } from 'src/tools/FileEditTool/types.js';

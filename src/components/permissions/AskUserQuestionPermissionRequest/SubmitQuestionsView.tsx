@@ -1,11 +1,11 @@
 import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import React from 'react';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import type { Question } from 'src/tools/AskUserQuestionTool/AskUserQuestionTool.js';
 import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js';
-import { Select } from 'src/components/CustomSelect/index.js';
-import { Divider } from 'src/components/design-system/Divider.js';
+import { Select } from 'src/terminal/custom-select/index.js';
+import { Divider } from 'src/terminal/design-system/Divider.js';
 import { PermissionRequestTitle } from 'src/components/permissions/PermissionRequestTitle.js';
 import { PermissionRuleExplanation } from 'src/components/permissions/PermissionRuleExplanation.js';
 import { QuestionNavigationBar } from 'src/components/permissions/AskUserQuestionPermissionRequest/QuestionNavigationBar.js';

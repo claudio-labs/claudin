@@ -50,7 +50,7 @@ import {
   tryGenerateSuggestion,
   logSuggestionOutcome,
   logSuggestionSuppressed,
-} from 'src/services/PromptSuggestion/promptSuggestion.js'
+} from 'src/terminal/prompt-suggestion/promptSuggestion.js'
 import { getLastCacheSafeParams } from 'src/coordinator/forkedAgent.js'
 import { getInitJsonSchema, getSessionId } from 'src/bootstrap/state.js'
 import {

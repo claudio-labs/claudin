@@ -4,18 +4,18 @@
 
 import { getOriginalCwd, setCwdState, setDirectConnectServerUrl, setOriginalCwd } from 'src/bootstrap/state.js';
 import type { Command } from 'src/commands.js';
-import type { Root } from 'src/ink.js';
-import { exitWithError, renderAndRun } from 'src/interactiveHelpers.js';
+import type { Root } from 'src/terminal/ink.js';
+import { exitWithError, renderAndRun } from 'src/terminal/interactiveHelpers.js';
 import { launchRepl } from 'src/replLauncher.js';
 import { createDirectConnectSession, DirectConnectError } from 'src/server/createDirectConnectSession.js';
-import { type AppState } from 'src/state/AppStateStore.js';
+import { type AppState } from 'src/terminal/state/AppStateStore.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';
-import type { FpsMetrics } from 'src/utils/fpsTracker.js';
+import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
 import { createSystemMessage } from 'src/services/messages/messages.js';
 import type { ThinkingConfig } from 'src/services/context/thinking.js';
 import type { BootContext } from 'src/main/bootContext.js';
-import type { StatsStore } from 'src/context/stats.js';
+import type { StatsStore } from 'src/terminal/contexts/stats.js';
 
 export type DirectConnectBranchDeps = {
   root: Root;

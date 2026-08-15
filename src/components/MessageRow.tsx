@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import type { Command } from 'src/commands.js';
-import { Box } from 'src/ink.js';
+import { Box } from 'src/terminal/ink.js';
 import type { Screen } from 'src/screens/REPL.js';
 import type { Tools } from 'src/Tool.js';
 import type { BetaContentBlock } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs';
@@ -12,7 +12,7 @@ import { hasThinkingContent, Message } from 'src/components/Message.js';
 import { MessageModel } from 'src/components/MessageModel.js';
 import { shouldRenderStatically } from 'src/components/Messages.js';
 import { MessageTimestamp } from 'src/components/MessageTimestamp.js';
-import { OffscreenFreeze } from 'src/components/OffscreenFreeze.js';
+import { OffscreenFreeze } from 'src/terminal/render/OffscreenFreeze.js';
 export type Props = {
   // Messages.tsx filters progress messages out of renderableMessages before
   // ever constructing a MessageRow, so this is narrower than RenderableMessage.

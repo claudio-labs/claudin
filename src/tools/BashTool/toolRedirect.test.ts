@@ -718,7 +718,7 @@ describe('renderToolRedirect', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Wiring. BashTool.tsx reaches src/ink.js through its import chain, so it
+// Wiring. BashTool.tsx reaches src/terminal/ink.js through its import chain, so it
 // cannot be imported under `bun test` (see .claudin/rules/testing.md). Without
 // this block, deleting the call from validateInput leaves every test above
 // green while the redirect never fires in production.

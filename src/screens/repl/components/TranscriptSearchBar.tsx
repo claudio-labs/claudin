@@ -8,9 +8,9 @@
 
 import * as React from 'react'
 import { useEffect, type RefObject } from 'react'
-import { Box, Text } from 'src/ink.js'
-import type { JumpHandle } from 'src/components/VirtualMessageList.js'
-import { useSearchInput } from 'src/hooks/useSearchInput.js'
+import { Box, Text } from 'src/terminal/ink.js'
+import type { JumpHandle } from 'src/terminal/VirtualMessageList.js'
+import { useSearchInput } from 'src/terminal/hooks/useSearchInput.js'
 
 export type TranscriptSearchBarProps = {
   jumpRef: RefObject<JumpHandle | null>

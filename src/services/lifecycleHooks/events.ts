@@ -36,7 +36,7 @@ import type {
   StopFailureHookInput,
 } from 'src/entrypoints/agentSdkTypes.js'
 import type { AssistantMessage } from 'src/types/message.js'
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type {
   ConfigChangeSource,

@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNotifications } from 'src/context/notifications.js';
-import { Text } from 'src/ink.js';
+import { useNotifications } from 'src/terminal/contexts/notifications.js';
+import { Text } from 'src/terminal/ink.js';
 import { getRateLimitWarning, getUsingOverageText } from 'src/services/claudeAiLimits.js';
 import { useClaudeAiLimits } from 'src/services/claudeAiLimitsHook.js';
 import { getSubscriptionType } from 'src/services/auth/auth.js';

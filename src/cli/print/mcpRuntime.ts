@@ -37,7 +37,7 @@ import type {
   McpServerConfigForProcessTransport,
   McpServerStatus,
 } from 'src/entrypoints/agentSdkTypes.js'
-import type { AppState } from 'src/state/AppStateStore.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import { setupSdkMcpClients } from 'src/services/mcp/client.js'
 import { getAllMcpConfigs } from 'src/services/mcp/config.js'
 import {

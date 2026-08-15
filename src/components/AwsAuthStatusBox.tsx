@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useEffect, useState } from 'react';
-import { Box, Link, Text } from 'src/ink.js';
+import { Box, Link, Text } from 'src/terminal/ink.js';
 import { type AwsAuthStatus, AwsAuthStatusManager } from 'src/services/api/awsAuthStatusManager.js';
 const URL_RE = /https?:\/\/\S+/;
 export function AwsAuthStatusBox() {

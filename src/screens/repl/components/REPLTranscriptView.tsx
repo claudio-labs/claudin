@@ -22,22 +22,22 @@
 // table: every callback below resolves from the bag, never from a
 // destructured closure that could drift if React batched a re-render.
 
-import { Box } from 'src/ink.js'
+import { Box } from 'src/terminal/ink.js'
 import * as React from 'react'
-import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js'
-import { GlobalKeybindingHandlers } from 'src/hooks/useGlobalKeybindings.js'
-import { CommandKeybindingHandlers } from 'src/hooks/useCommandKeybindings.js'
+import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js'
+import { GlobalKeybindingHandlers } from 'src/terminal/hooks/useGlobalKeybindings.js'
+import { CommandKeybindingHandlers } from 'src/terminal/hooks/useCommandKeybindings.js'
 import { CancelRequestHandler } from 'src/hooks/useCancelRequest.js'
-import { ScrollKeybindingHandler } from 'src/components/ScrollKeybindingHandler.js'
+import { ScrollKeybindingHandler } from 'src/terminal/ScrollKeybindingHandler.js'
 import { Messages } from 'src/components/Messages.js'
-import { FullscreenLayout } from 'src/components/FullscreenLayout.js'
-import { AlternateScreen } from 'src/ink/components/AlternateScreen.js'
+import { FullscreenLayout } from 'src/terminal/FullscreenLayout.js'
+import { AlternateScreen } from 'src/terminal/ink/components/AlternateScreen.js'
 import { SandboxViolationExpandedView } from 'src/components/SandboxViolationExpandedView.js'
-import { isFullscreenEnvEnabled, isMouseTrackingEnabled } from 'src/utils/fullscreen.js'
+import { isFullscreenEnvEnabled, isMouseTrackingEnabled } from 'src/terminal/render/fullscreen.js'
 import { AnimatedTerminalTitle } from 'src/screens/repl/components/AnimatedTerminalTitle.js'
 import { TranscriptSearchBar } from 'src/screens/repl/components/TranscriptSearchBar.js'
 import { TranscriptModeFooter } from 'src/screens/repl/components/TranscriptModeFooter.js'
-import type { JumpHandle } from 'src/components/VirtualMessageList.js'
+import type { JumpHandle } from 'src/terminal/VirtualMessageList.js'
 
 export type REPLTranscriptViewProps = {
   // identity-critical refs (see header)

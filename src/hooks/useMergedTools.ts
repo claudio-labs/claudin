@@ -2,7 +2,7 @@
 import { useMemo } from 'react'
 import type { Tools, ToolPermissionContext } from 'src/Tool.js'
 import { assembleToolPool } from 'src/tools.js'
-import { useAppState } from 'src/state/AppState.js'
+import { useAppState } from 'src/terminal/state/AppState.js'
 import { mergeAndFilterTools } from 'src/services/tools/toolPool.js'
 
 /**

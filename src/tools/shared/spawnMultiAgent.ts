@@ -11,7 +11,7 @@ import {
   getSessionBypassPermissionsMode,
   getSessionId,
 } from 'src/bootstrap/state.js'
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import { createTaskStateBase, generateTaskId } from 'src/Task.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js'

@@ -4,7 +4,7 @@ import * as React from 'react';
 import { EnterPlanModeTool } from 'src/tools/EnterPlanModeTool/EnterPlanModeTool.js';
 import { ExitPlanModeV2Tool } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js';
 import { useNotifyAfterTimeout } from 'src/hooks/useNotifyAfterTimeout.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import type { AnyObject, Tool, ToolUseContext } from 'src/Tool.js';
 import { AskUserQuestionTool } from 'src/tools/AskUserQuestionTool/AskUserQuestionTool.js';
 import { BashTool } from 'src/tools/BashTool/BashTool.js';

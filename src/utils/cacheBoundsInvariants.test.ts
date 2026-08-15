@@ -68,7 +68,7 @@ describe('cache bounds invariants', () => {
       cachedLexer,
       __TEST_ONLY_getTokenCacheSize,
       __TEST_ONLY_resetTokenCache,
-    } = await import('src/components/markdownTokenCache.js')
+    } = await import('src/terminal/markdown/markdownTokenCache.js')
 
     __TEST_ONLY_resetTokenCache()
     // Use markdown syntax (header marker) so cachedLexer takes the cache
@@ -115,7 +115,7 @@ describe('cache bounds invariants', () => {
       cacheImagePath,
       __TEST_ONLY_getStoredImagePathsSize,
       clearStoredImagePaths,
-    } = await import('src/utils/imageStore.js')
+    } = await import('src/terminal/image/imageStore.js')
 
     clearStoredImagePaths()
     for (let i = 0; i < 1000; i++) {

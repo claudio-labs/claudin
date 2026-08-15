@@ -27,7 +27,7 @@ export type ToolInputJSONSchema = {
   }
 }
 
-import type { Notification } from 'src/context/notifications.js'
+import type { Notification } from 'src/terminal/contexts/notifications.js'
 import type {
   MCPServerConnection,
   ServerResource,
@@ -79,10 +79,10 @@ export type {
   WebSearchProgress,
 }
 
-import type { SpinnerMode } from 'src/components/Spinner.js'
+import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js'
 import type { QuerySource } from 'src/constants/querySource.js'
 import type { SDKStatus } from 'src/entrypoints/agentSdkTypes.js'
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import type {
   HookProgress,
   PromptRequest,
@@ -92,7 +92,7 @@ import type { AgentId } from 'src/types/ids.js'
 import type { DeepImmutable } from 'src/types/utils.js'
 import type { AttributionState } from 'src/services/git/commitAttribution.js'
 import type { FileHistoryState } from 'src/shared/fs/fileHistory.js'
-import type { Theme, ThemeName } from 'src/utils/theme.js'
+import type { Theme, ThemeName } from 'src/terminal/theme/theme.js'
 
 export type QueryChainTracking = {
   chainId: string

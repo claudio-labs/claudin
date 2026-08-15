@@ -14,8 +14,8 @@
 
 - `src/tools/FileReadTool/FileReadTool.ts:705-712` empacota imagem como Anthropic multimodal block (`type:'image', source:{base64,media_type}`); só vai pro modelo.
 - UI para o usuário (`src/components/FileReadTool/UI.tsx:80-89`) é literal `Read image (size)`.
-- `src/components/ClickableImageRef.tsx` gera OSC 8 hyperlink para `file://` — terceiriza o display para o viewer do SO.
-- `src/ink/terminal.ts:120-167` já tem **XTVERSION probe assíncrona** — ponto de extensão natural para adicionar capability gráfica.
+- `src/terminal/image/ClickableImageRef.tsx` gera OSC 8 hyperlink para `file://` — terceiriza o display para o viewer do SO.
+- `src/terminal/ink/terminal.ts:120-167` já tem **XTVERSION probe assíncrona** — ponto de extensão natural para adicionar capability gráfica.
 - Sem nenhuma renderização pixel-art em qualquer `<Component>` de `src/components/`.
 - `sharp` (via `imageProcessor.ts`) e `imageResizer.ts` reaproveitáveis para encoders Kitty/iTerm2.
 
@@ -32,7 +32,7 @@ Prioridade BAIXA — esperar sinal de demanda interno. Quando implementar:
 1. Atrás de feature flag `INLINE_IMAGES` (default off).
 2. Começar com `ink-picture` (não reimplementar parsers PNG/JPEG/GIF próprios — não vale o custo de manutenção).
 3. Restringir a **Kitty + iTerm2** na v1; sair com **Sixel** pelo risco de scrollback corrompido em terminais que falsamente declaram suporte.
-4. Ponto de extensão: estender `src/ink/terminal.ts` `XTVERSION probe` para gravar `imageProtocol` na capability struct.
+4. Ponto de extensão: estender `src/terminal/ink/terminal.ts` `XTVERSION probe` para gravar `imageProtocol` na capability struct.
 5. Hook em `FileReadTool` UI: se capability presente, render inline via `ink-picture`; senão, fallback atual (OSC 8 hyperlink).
 
 ## Não fazer

@@ -1,5 +1,5 @@
 import { getAgentColorMap } from 'src/bootstrap/state.js'
-import type { Theme } from 'src/utils/theme.js'
+import type { Theme } from 'src/terminal/theme/theme.js'
 
 export type AgentColorName =
   | 'red'

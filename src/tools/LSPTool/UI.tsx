@@ -1,10 +1,10 @@
 import { c as _c } from "react-compiler-runtime";
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import React from 'react';
-import { CtrlOToExpand } from 'src/components/CtrlOToExpand.js';
+import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
 import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseErrorMessage.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
 import { extractTag } from 'src/services/messages/messages.js';
 import type { Input, Output } from 'src/tools/LSPTool/LSPTool.js';

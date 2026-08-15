@@ -1,15 +1,15 @@
 import chalk from 'chalk'
 import { marked, type Token, type Tokens } from 'marked'
 import stripAnsi from 'strip-ansi'
-import { color } from 'src/components/design-system/color.js'
+import { color } from 'src/terminal/design-system/color.js'
 import { BLOCKQUOTE_BAR } from 'src/constants/figures.js'
-import { stringWidth } from 'src/ink/stringWidth.js'
-import { supportsHyperlinks } from 'src/ink/supports-hyperlinks.js'
+import { stringWidth } from 'src/terminal/ink/stringWidth.js'
+import { supportsHyperlinks } from 'src/terminal/ink/supports-hyperlinks.js'
 import type { CliHighlight } from 'src/shared/text/cliHighlight.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { createHyperlink } from 'src/shared/text/hyperlink.js'
 import { stripPromptXMLTags } from 'src/services/messages/messages.js'
-import type { ThemeName } from 'src/utils/theme.js'
+import type { ThemeName } from 'src/terminal/theme/theme.js'
 
 // Use \n unconditionally — os.EOL is \r\n on Windows, and the extra \r
 // breaks the character-to-segment mapping in applyStylesToWrappedText,

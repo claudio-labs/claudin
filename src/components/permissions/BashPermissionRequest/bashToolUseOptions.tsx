@@ -4,7 +4,7 @@ import { isClassifierPermissionsEnabled } from 'src/services/permissions/bashCla
 import type { PermissionDecisionReason } from 'src/services/permissions/PermissionResult.js';
 import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js';
 import { shouldShowAlwaysAllowOptions } from 'src/services/permissions/permissionsLoader.js';
-import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
+import type { OptionWithDescription } from 'src/terminal/custom-select/select.js';
 import { generateShellSuggestionsLabel } from 'src/components/permissions/shellPermissionHelpers.js';
 export type BashToolUseOption = 'yes' | 'yes-apply-suggestions' | 'yes-prefix-edited' | 'yes-classifier-reviewed' | 'no';
 

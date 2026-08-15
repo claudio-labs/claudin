@@ -70,7 +70,7 @@ afterAll(() => {
 
 // Import AFTER mocks are installed.
 const { useReplExit } = await import('src/screens/repl/hooks/useReplExit.js')
-const { render } = await import('src/ink.js')
+const { render } = await import('src/terminal/ink.js')
 
 type HookResult = ReturnType<typeof useReplExit>
 

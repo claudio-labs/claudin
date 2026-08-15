@@ -1,10 +1,10 @@
 import { c as _c } from "react-compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import React, { useMemo } from 'react';
-import { Ansi, Box, Text } from 'src/ink.js';
+import { Ansi, Box, Text } from 'src/terminal/ink.js';
 import type { Attachment } from 'src/services/attachments/attachments.js';
 import type { NullRenderingAttachmentType } from 'src/components/messages/nullRenderingAttachments.js';
-import { useAppState } from 'src/state/AppState.js';
+import { useAppState } from 'src/terminal/state/AppState.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
 import { formatFileSize } from 'src/shared/text/format.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
@@ -12,9 +12,9 @@ import { basename, sep } from 'path';
 import { UserTextMessage } from 'src/components/messages/UserTextMessage.js';
 import { DiagnosticsDisplay } from 'src/components/DiagnosticsDisplay.js';
 import { getContentText } from 'src/services/messages/messages.js';
-import type { Theme } from 'src/utils/theme.js';
+import type { Theme } from 'src/terminal/theme/theme.js';
 import { UserImageMessage } from 'src/components/messages/UserImageMessage.js';
-import { toInkColor } from 'src/utils/ink.js';
+import { toInkColor } from 'src/terminal/render/ink.js';
 import { jsonParse } from 'src/utils/slowOperations.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
@@ -23,13 +23,13 @@ import { tryRenderPlanApprovalMessage, formatTeammateMessageContent } from 'src/
 import { BLACK_CIRCLE } from 'src/constants/figures.js';
 import { TeammateMessageContent } from 'src/components/messages/UserTeammateMessage.js';
 import { isShutdownApproved } from 'src/coordinator/teammateMailbox.js';
-import { CtrlOToExpand } from 'src/components/CtrlOToExpand.js';
-import FullWidthRow from 'src/components/design-system/FullWidthRow.js';
-import { FilePathLink } from 'src/components/FilePathLink.js';
+import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
+import FullWidthRow from 'src/terminal/design-system/FullWidthRow.js';
+import { FilePathLink } from 'src/terminal/FilePathLink.js';
 import { feature } from 'bun:bundle';
 import { useSelectedMessageBg } from 'src/components/messageActions.js';
-import type { AppState } from 'src/state/AppStateStore.js';
-import type { Color } from 'src/ink/styles.js';
+import type { AppState } from 'src/terminal/state/AppStateStore.js';
+import type { Color } from 'src/terminal/ink/styles.js';
 import type { TaskState } from 'src/tasks/types.js';
 type Props = {
   addMargin: boolean;

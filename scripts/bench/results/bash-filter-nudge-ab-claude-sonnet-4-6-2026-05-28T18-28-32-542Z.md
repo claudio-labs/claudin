@@ -356,7 +356,7 @@ Quer que eu rode outro arquivo? `src/utils/` tem outros testes — posso listar 
 **Variant B run#2:**
 
 ```
-Não existe `src/shared/log.test.ts` no repo — só `src/shared/log.ts` (sem teste colocated) e `src/utils/logoV2Utils.ts`. O Bun confirmou: "filters did not match any test files".
+Não existe `src/shared/log.test.ts` no repo — só `src/shared/log.ts` (sem teste colocated) e `src/terminal/logoV2Utils.ts`. O Bun confirmou: "filters did not match any test files".
 
 Resumo:
 - **Passaram:** 0

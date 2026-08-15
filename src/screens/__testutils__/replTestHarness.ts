@@ -240,7 +240,7 @@ export function setupReplMocks(): void {
   }))
 
   // Inbox poller — interval that reads the inbox dir.
-  mock.module('src/hooks/useInboxPoller.js', () => ({
+  mock.module('src/terminal/voice/useInboxPoller.js', () => ({
     useInboxPoller: noop,
   }))
   mock.module('../hooks/useInboxPoller.js', () => ({

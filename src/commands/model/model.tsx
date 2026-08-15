@@ -6,7 +6,7 @@ import { ModelPicker } from 'src/components/ModelPicker.js';
 import { COMMON_HELP_ARGS, COMMON_INFO_ARGS } from 'src/constants/xml.js';
 import { fetchBootstrapData } from 'src/services/api/bootstrap.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import { type AppState, useAppState, useSetAppState } from 'src/state/AppState.js';
+import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { LocalJSXCommandCall, LocalJSXCommandOnDone } from 'src/types/command.js';
 import { getCurrentProjectConfig } from 'src/services/config/config.js';
 import type { EffortLevel } from 'src/utils/effort.js';

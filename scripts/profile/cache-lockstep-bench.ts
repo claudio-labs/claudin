@@ -42,7 +42,7 @@ const ALL_FILES = [
   'src/bootstrap/state.ts',
   'src/constants/messages.ts',
   'src/constants/keys.ts',
-  'src/ink/constants.ts',
+  'src/terminal/ink/constants.ts',
   'src/utils/protectedNamespace.ts',
   'src/shared/data/array.ts',
   'src/shared/withResolvers.ts',

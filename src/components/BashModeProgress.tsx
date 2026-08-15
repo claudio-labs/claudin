@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import { Box } from 'src/ink.js';
+import { Box } from 'src/terminal/ink.js';
 import { BashTool } from 'src/tools/BashTool/BashTool.js';
 import type { ShellProgress } from 'src/types/tools.js';
 import { UserBashInputMessage } from 'src/components/messages/UserBashInputMessage.js';

@@ -17,7 +17,7 @@ import sample from 'lodash-es/sample.js'
 import { getSessionId } from 'src/bootstrap/state.js'
 import { getSpinnerVerbs } from 'src/constants/spinnerVerbs.js'
 import { TURN_COMPLETION_VERBS } from 'src/constants/turnCompletionVerbs.js'
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import { createTaskStateBase, generateTaskId } from 'src/Task.js'
 import type {
   InProcessTeammateTaskState,

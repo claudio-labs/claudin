@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import setWith from 'lodash-es/setWith.js';
 import * as React from 'react';
-import { Box, Text, useTheme } from 'src/ink.js';
+import { Box, Text, useTheme } from 'src/terminal/ink.js';
 import type { ValidationError } from 'src/services/settings/validation.js';
 import { type TreeNode, treeify } from 'src/shared/text/treeify.js';
 type Props = {

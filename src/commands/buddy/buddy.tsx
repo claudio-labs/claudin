@@ -1,7 +1,7 @@
 import type { LocalJSXCommandContext, LocalJSXCommandOnDone } from 'src/types/command.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
-import { companionUserId, getCompanion, rollWithSeed } from 'src/buddy/companion.js'
-import type { StoredCompanion } from 'src/buddy/types.js'
+import { companionUserId, getCompanion, rollWithSeed } from 'src/terminal/buddy/companion.js'
+import type { StoredCompanion } from 'src/terminal/buddy/types.js'
 import { COMMON_HELP_ARGS, COMMON_INFO_ARGS } from 'src/constants/xml.js'
 
 const NAME_PREFIXES = [

@@ -3,7 +3,7 @@ import chalk from 'chalk'
 import { markPostCompaction } from 'src/bootstrap/state.js'
 import { getSystemPrompt } from 'src/constants/prompts.js'
 import { getSystemContext, getUserContext } from 'src/context.js'
-import { getShortcutDisplay } from 'src/keybindings/shortcutFormat.js'
+import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js'
 import { notifyCompaction } from 'src/services/api/promptCacheBreakDetection.js'
 import {
   buildPostCompactMessages,

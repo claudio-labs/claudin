@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import { Box, Text, useTheme } from 'src/ink.js';
+import { Box, Text, useTheme } from 'src/terminal/ink.js';
 import { FallbackPermissionRequest } from 'src/components/permissions/FallbackPermissionRequest.js';
 import { FilePermissionDialog } from 'src/components/permissions/FilePermissionDialog/FilePermissionDialog.js';
 import type { ToolInput } from 'src/components/permissions/FilePermissionDialog/useFilePermissionDialog.js';

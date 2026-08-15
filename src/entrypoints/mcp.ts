@@ -15,7 +15,7 @@ import {
   type ListToolsResult,
   type Tool,
 } from '@modelcontextprotocol/sdk/types.js'
-import { getDefaultAppState } from 'src/state/AppStateStore.js'
+import { getDefaultAppState } from 'src/terminal/state/AppStateStore.js'
 import review from 'src/commands/review.js'
 import type { Command } from 'src/commands.js'
 import { getMcpToolsCommandsAndResources } from 'src/services/mcp/client.js'

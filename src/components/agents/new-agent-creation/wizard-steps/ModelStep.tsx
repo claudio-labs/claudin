@@ -1,10 +1,10 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { type ReactNode } from 'react';
-import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
-import { Byline } from 'src/components/design-system/Byline.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
-import { useWizard } from 'src/components/wizard/index.js';
-import { WizardDialogLayout } from 'src/components/wizard/WizardDialogLayout.js';
+import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
+import { Byline } from 'src/terminal/design-system/Byline.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
+import { useWizard } from 'src/terminal/wizard/index.js';
+import { WizardDialogLayout } from 'src/terminal/wizard/WizardDialogLayout.js';
 import { ModelSelector } from 'src/components/agents/ModelSelector.js';
 import type { AgentWizardData } from 'src/components/agents/new-agent-creation/types.js';
 export function ModelStep() {

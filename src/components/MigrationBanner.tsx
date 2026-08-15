@@ -1,13 +1,13 @@
 import * as React from 'react'
 
-import { Box, Text } from 'src/ink.js'
+import { Box, Text } from 'src/terminal/ink.js'
 import {
   formatMigrationReport,
   markMigrationSkipped,
   migrateLegacyClaudeDir,
   type MigrationReport,
 } from 'src/services/config/claudinMigration.js'
-import { Select } from 'src/components/CustomSelect/index.js'
+import { Select } from 'src/terminal/custom-select/index.js'
 
 type Phase =
   | { kind: 'prompt' }

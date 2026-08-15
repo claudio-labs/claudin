@@ -1,12 +1,12 @@
 import figures from 'figures';
 import React, { useEffect, useState } from 'react';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import type { GitFileStatus } from 'src/services/git/git.js';
 import { getFileStatus, stashToCleanState } from 'src/services/git/git.js';
-import { Select } from 'src/components/CustomSelect/index.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
-import { Spinner } from 'src/components/Spinner.js';
+import { Select } from 'src/terminal/custom-select/index.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
+import { Spinner } from 'src/terminal/spinner/Spinner.js';
 type TeleportStashProps = {
   onStashAndContinue: () => void;
   onCancel: () => void;

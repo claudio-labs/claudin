@@ -1,4 +1,4 @@
-import type { Notification } from 'src/context/notifications.js';
+import type { Notification } from 'src/terminal/contexts/notifications.js';
 import { checkInstall } from 'src/services/install/index.js';
 import { useStartupNotification } from 'src/hooks/notifs/useStartupNotification.js';
 // The barrel (src/services/install/index.js) deliberately re-exports

@@ -6,7 +6,7 @@ import { getAdditionalDirectoriesForClaudeMd, setAdditionalDirectoriesForClaudeM
 import type { LocalJSXCommandContext } from 'src/commands.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { AddWorkspaceDirectory } from 'src/components/permissions/rules/AddWorkspaceDirectory.js';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import { applyPermissionUpdate, persistPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js';
 import type { PermissionUpdateDestination } from 'src/services/permissions/PermissionUpdateSchema.js';

@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useState } from 'react'
-import { FilePathLink } from 'src/components/FilePathLink.js'
-import { Box, Text } from 'src/ink.js'
+import { FilePathLink } from 'src/terminal/FilePathLink.js'
+import { Box, Text } from 'src/terminal/ink.js'
 import { getDisplayPath } from 'src/shared/fs/file.js'
 import type {
   ApplyPatchChangeType,

@@ -209,7 +209,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #11 markdown token cache
   try {
-    const mod = await import('../../src/components/markdownTokenCache.js')
+    const mod = await import('../../src/terminal/markdown/markdownTokenCache.js')
     if (typeof mod.__TEST_ONLY_getTokenCacheSize === 'function') {
       out['markdownTokenCache'] = mod.__TEST_ONLY_getTokenCacheSize()
     }

@@ -20,7 +20,7 @@ import { startKeychainPrefetch } from 'src/services/secureStorage/keychainPrefet
 startKeychainPrefetch();
 import { feature } from 'bun:bundle';
 import { Command as CommanderCommand, InvalidArgumentError, Option } from '@commander-js/extra-typings';
-import type { Root } from 'src/ink.js';
+import type { Root } from 'src/terminal/ink.js';
 // launchRepl/setPreloadedChunks pull React+Ink — only needed for interactive
 // launch path. getTools pulls every tool's transitive graph. initBootstrap
 // pulls undici/growthbook/OAuth populate. All three are gated by argv: cold
@@ -41,7 +41,7 @@ const getGetTools = async (): Promise<typeof ToolsMod.getTools> =>
   (await import('src/tools.js')).getTools;
 const getInitBootstrap = async (): Promise<typeof InitMod.init> =>
   (await import('src/entrypoints/init.js')).init;
-import { stopCapturingEarlyInput } from 'src/utils/earlyInput.js';
+import { stopCapturingEarlyInput } from 'src/terminal/input/earlyInput.js';
 import { applyConfigEnvironmentVariables } from 'src/services/config/managedEnv.js';
 import { installLifecycleHandlers } from 'src/main/lifecycleHandlers.js';
 
@@ -60,17 +60,17 @@ const coordinatorModeModule = feature('COORDINATOR_MODE') ? require('src/coordin
 const assistantModule = feature('KAIROS') ? require('./assistant/index.js') as typeof import('./assistant/index.js') : null;
 const kairosGate = feature('KAIROS') ? require('./assistant/gate.js') as typeof import('./assistant/gate.js') : null;
 import { resolve } from 'path';
-import type { StatsStore } from 'src/context/stats.js';
+import type { StatsStore } from 'src/terminal/contexts/stats.js';
 // renderAndRun is loaded lazily inside the default action — it pulls React,
 // Ink, KeybindingSetup, AppStateProvider, growthbook, mcpServerApproval, and
 // ~20 transitive utilities. None of those are needed for `--help`, `--version`,
 // or any non-interactive subcommand path, so deferring this single import
 // keeps that whole graph out of `main_tsx_entry`. (Phase B of cold-start plan.)
 const getRenderAndRun = async () =>
-  (await import('src/interactiveHelpers.js')).renderAndRun;
+  (await import('src/terminal/interactiveHelpers.js')).renderAndRun;
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js';
-import type { FpsMetrics } from 'src/utils/fpsTracker.js';
+import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
 // Plugin startup checks are now handled non-blockingly in REPL.tsx
 
 import { getCwd } from 'src/shared/fs/cwd.js';
@@ -130,7 +130,7 @@ if (isBeingDebugged()) {
 
 // logSessionTelemetry, logStartupTelemetry, runMigrations, prefetchSystemContextIfSafe moved to src/main/lifecycle.ts (ROADMAP 11g Fase 2)
 // startDeferredPrefetches moved to src/main/deferredPrefetches.ts (ROADMAP 11g Fase 3)
-// Re-exported below to preserve the public surface for src/interactiveHelpers.tsx.
+// Re-exported below to preserve the public surface for src/terminal/interactiveHelpers.tsx.
 import { startDeferredPrefetches } from 'src/main/deferredPrefetches.js';
 export { startDeferredPrefetches };
 import { buildBootContext } from 'src/main/bootContext.js';

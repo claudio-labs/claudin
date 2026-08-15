@@ -1,14 +1,14 @@
 ---
 paths:
-  - "src/ink/**"
+  - "src/terminal/ink/**"
   - "src/components/**"
   - "src/screens/**"
   - "src/native-ts/**"
-  - "src/hooks/useTextInput.ts"
+  - "src/terminal/hooks/useTextInput.ts"
 ---
 # Ink / TUI Renderer — Claudin Development Rules
 
-Claudin ships a **forked Ink** (`src/ink/`): a grid-based renderer that measures
+Claudin ships a **forked Ink** (`src/terminal/ink/`): a grid-based renderer that measures
 every node's height from `\n`-line count and paints each row at an absolute
 `(x,y)` via `setCellAt`. These constraints follow from that design — verify
 file:line against current code before relying on an anchor.
@@ -23,7 +23,7 @@ file:line against current code before relying on an anchor.
 ## 2. Inline images are Kitty-only by design — do not "just add" iTerm2/sixel
 
 - `INLINE_IMAGES` renders only for the **Kitty family** (kitty, Ghostty, WezTerm)
-  via `src/ink/terminal.ts::getInlineImageProtocol` (`InlineImageProtocol =
+  via `src/terminal/ink/terminal.ts::getInlineImageProtocol` (`InlineImageProtocol =
   'kitty' | null`); everything else falls back to the `[Image #N]` label.
 - Kitty fits because it uses the **Unicode Placeholder** variant: `stringWidth.ts`
   is patched so each `U+10EEEE` cluster counts as exactly 1 cell → strict
@@ -32,7 +32,7 @@ file:line against current code before relying on an anchor.
 - iTerm2 OSC 1337 and sixel are **0-width** to `stringWidth` (stripped as ANSI)
   but the terminal advances N rows on paint → Ink reserves 0–1 rows and paints
   following content on top → corruption. Adding them is NOT a small change: it
-  needs a new leaf node analogous to `src/ink/components/RawAnsi.tsx` that
+  needs a new leaf node analogous to `src/terminal/ink/components/RawAnsi.tsx` that
   declares a fixed `rawHeight` AND reconciles the terminal's real cursor advance
   with that height (explicit newline/cursor-down padding). RawAnsi alone doesn't
   solve it — its height contract is still `lines.length`. (User decided to leave
@@ -51,13 +51,13 @@ Damage bounds are computed from cells **written** to the `next` frame, so cells
 `prev` had but `next` leaves empty can leak. There are TWO different causes; fix
 the right one.
 
-- **(a) Damage-bounds miss (`src/ink/screen.ts` `diffEach`, model width == terminal
+- **(a) Damage-bounds miss (`src/terminal/ink/screen.ts` `diffEach`, model width == terminal
   width).** Row shrinks or a subtree unmounts with no new content reflowing into
   its rectangle → stale glyphs to the right / orphan rows above the status bar.
   Fix: in the same-width path, scan the full screen —
   `diffSameWidth(prev, next, 0, maxWidth, 0, maxHeight, cb)`. `findNextDiff` skips
   equal cells with integer compares, so full-screen scan stays sub-millisecond.
-  Regressions live in `src/ink/screen.test.ts` (shrinking-row + orphan-row).
+  Regressions live in `src/terminal/ink/screen.test.ts` (shrinking-row + orphan-row).
 - **(b) Ambiguous-width drift (`stringWidth` model width ≠ terminal width).** With
   `ambiguousIsNarrow: true`, East-Asian-Ambiguous glyphs (`←→☒☐`) measure width 1
   but some terminals (Ghostty + Nerd Font) render them width 2. When a row is
@@ -73,7 +73,7 @@ the right one.
 
 ## 4. ScrollBox only clips inside a real alt-screen fullscreen root
 
-- `src/ink/components/ScrollBox.tsx` relies on viewport culling that engages only
+- `src/terminal/ink/components/ScrollBox.tsx` relies on viewport culling that engages only
   inside an alt-screen fullscreen root. In inline mode AND main-screen-rewrite
   mode (Ghostty via `shouldUseMainScreenRewrite()`) it renders EVERY child row —
   `height={N}` does not clip. A tall body grows the whole dialog instead of
@@ -88,7 +88,7 @@ the right one.
 ## 5. LegacyRoot is vestigial — assume ConcurrentMode + auto-batching
 
 - react-reconciler 0.33 (React 19) ignores the `LegacyRoot` tag Ink passes at
-  `src/ink/ink.tsx` — roots run in ConcurrentMode (legacy mode compiled out). A
+  `src/terminal/ink/ink.tsx` — roots run in ConcurrentMode (legacy mode compiled out). A
   `useSyncExternalStore` notify + a `setState` in the same task produce **1 render
   / 1 commit**, flushed async — normal auto-batching, NOT two sync commits.
 - When reasoning about commit/paint atomicity, assume ConcurrentMode +
@@ -116,7 +116,7 @@ the right one.
 
 ## 7. `useTextInput`'s local mirror only re-syncs on a PROP change
 
-- `src/hooks/useTextInput.ts` keeps a **local text/cursor mirror**
+- `src/terminal/hooks/useTextInput.ts` keeps a **local text/cursor mirror**
   (`renderState`/`liveValueRef`/`liveOffsetRef`) so consecutive keystrokes advance
   immediately even before the controlled parent's `value` commits. It re-syncs FROM
   the parent **only when the `value` or `externalOffset` prop actually changes** —
@@ -178,7 +178,7 @@ the right one.
   Our own writes are unaffected — `RunTestsTool/run.ts` passes `FORCE_COLOR=0` to
   the child and the profile scripts pass `3`, both of which mean the same thing in
   either version.
-- Don't re-raise the level in `src/ink/colorize.ts` to restore the old behavior:
+- Don't re-raise the level in `src/terminal/ink/colorize.ts` to restore the old behavior:
   the level-2→3 (vscode) and >2→2 (tmux) fixups there correct a *detection* miss,
   whereas a numeric `FORCE_COLOR` is an explicit user request that chalk now
   honors literally. Overriding it would make the env var unable to select 16-color
@@ -210,7 +210,7 @@ the right one.
   default 80 columns often cannot: the split `⎿` row rendered **identically** at 80
   and 34 columns, and only started eating the path at 26 (`M /repo/one.t  +28 −4`).
   Sweep two or three widths — `renderToString(node, columns)`
-  (`src/components/staticRender.tsx`) takes one.
+  (`src/terminal/render/staticRender.tsx`) takes one.
 - This is invisible to a code review and to a unit test that only asserts
   `toContain`, because the words are all still present — just interleaved across
   rows. Assert **contiguity and order** of the fragments over the

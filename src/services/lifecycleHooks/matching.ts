@@ -37,7 +37,7 @@ import {
   type SessionDerivedHookMatcher,
   type FunctionHook,
 } from 'src/services/lifecycleHooks/sessionHooks.js'
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import { DEFAULT_HOOK_SHELL } from 'src/services/shell/shellProvider.js'
 import type { MatchedHook } from 'src/services/lifecycleHooks/types.js'
 import { hookDedupKey } from 'src/services/lifecycleHooks/shared.js'

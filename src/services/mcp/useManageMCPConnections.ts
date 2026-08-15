@@ -48,16 +48,16 @@ import {
   isMcpServerDisabled,
   setMcpServerEnabled,
 } from 'src/services/mcp/config.js'
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import type { PluginError } from 'src/types/plugin.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getAllowedChannels } from 'src/bootstrap/state.js'
-import { useNotifications } from 'src/context/notifications.js'
+import { useNotifications } from 'src/terminal/contexts/notifications.js'
 import {
   useAppState,
   useAppStateStore,
   useSetAppState,
-} from 'src/state/AppState.js'
+} from 'src/terminal/state/AppState.js'
 import { errorMessage } from 'src/shared/errors.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { logMCPDebug, logMCPError } from 'src/shared/log.js'

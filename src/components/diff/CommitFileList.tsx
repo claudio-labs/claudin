@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { Box, Text } from 'src/ink.js'
+import { Box, Text } from 'src/terminal/ink.js'
 import type { CommitFile } from 'src/services/git/gitLog.js'
 import { getDiffGlyphs } from 'src/components/diff/glyphs.js'
 

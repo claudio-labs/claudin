@@ -1,23 +1,21 @@
 #!/usr/bin/env bun
 /**
- * Reports every relative module specifier the manifest is about to break.
+ * Reports every cache-busting TEMPLATE import the manifest is about to break.
  *
- * `apply.ts` rewrites the `src/…` alias everywhere it appears, and repairs
- * relative specifiers that point AT something being moved. Neither pass can see
- * the third case: a relative specifier inside a file that moves, aimed at a file
- * that moves somewhere ELSE (or stays). `./providerConfig.js` in
- * `services/api/codexShim.test.ts` is the shape — the test goes to
- * `providers/shims/`, its target to `providers/presets/`, and nothing complains
- * until the assertion that depends on it runs.
+ * `apply.ts` covers the quoted forms — it rewrites the `src/…` alias everywhere
+ * it appears and repairs `from`/`import`/`require`/`mock.module` relatives from
+ * both sides of a move. What it cannot cover is a specifier inside a template
+ * literal:
  *
- * Two of the forms checked here are invisible to tsc AND to the build's
- * pre-scan, so the suite is their only gate (see .claudin/rules/testing.md):
+ *     import(`./providerConfig.js?ts=${Date.now()}`)
  *
- *  - `mock.module('./x.js')`, which `normalizeImports.ts` leaves relative on
- *    purpose — aliasing it merges registrations and changes which mock wins.
- *  - a cache-busting template import, `` import(`./x.js?t=${Date.now()}`) ``,
- *    which an alias codemod skips because a computed specifier cannot be
- *    rewritten safely.
+ * Tests use that shape to force a fresh module instance, and every codemod in
+ * the repo skips it on purpose: a computed specifier cannot be rewritten
+ * blindly. It is also invisible to tsc AND to the build's pre-scan, so the suite
+ * is its only gate (see .claudin/rules/testing.md) — and it only fails when the
+ * file and the module it re-imports land in different directories, which is
+ * exactly what splitting `services/api/` seven ways does to
+ * `codexShim.test.ts` → `./providerConfig.js`.
  *
  * Usage:
  *   bun scripts/reorg/moveSafety.ts            # report breakages
@@ -26,7 +24,9 @@
  *
  * `--fix` aliases the specifier to the target's CURRENT path, not its
  * destination: from there `apply.ts` carries it forward on every later group,
- * which is the whole point of the alias.
+ * which is the whole point of the alias. Only a target that is a real module is
+ * ever aliased — a `.d.ts`-only stub has to stay relative or the build stops
+ * stubbing it and fails outright.
  */
 
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
@@ -38,13 +38,8 @@ const SRC_ROOT = join(REPO_ROOT, 'src')
 const VERBOSE = process.argv.includes('--all')
 const FIX = process.argv.includes('--fix')
 
-/** Static specifiers, then the computed one. Group 2 is always the specifier. */
+/** Only the computed form; apply.ts owns the quoted ones. Group 2 is the path. */
 const PATTERNS: readonly RegExp[] = [
-  /\bfrom\s*(['"])(\.\.?\/[^'"]*)\1/g,
-  /\bimport\s*(['"])(\.\.?\/[^'"]*)\1/g,
-  /\bimport\s*\(\s*(['"])(\.\.?\/[^'"]*)\1/g,
-  /\brequire\s*\(\s*(['"])(\.\.?\/[^'"]*)\1/g,
-  /\bmock\.module\s*\(\s*(['"])(\.\.?\/[^'"]*)\1/g,
   /\b(?:import|require)\s*\(\s*(`)(\.\.?\/[^`?]*)/g,
 ]
 
@@ -104,17 +99,26 @@ function buildDestinations(): Map<string, string> {
   return dest
 }
 
-/** A `.js` specifier names a `.ts`/`.tsx` on disk; a bare directory its index. */
+/**
+ * A `.js` specifier names a `.ts`/`.tsx` on disk; a bare directory its index.
+ *
+ * `.d.ts` counts, and has to: the fork carries ~107 ambient declarations for
+ * subsystems it never received, and a `import type … from './x.js'` against one
+ * of those resolves for tsc while the build erases it. Leave them out and the
+ * checker reports nothing while the move breaks the typecheck.
+ */
 function resolveTarget(abs: string): string | null {
   const stripped = abs.replace(/\.(js|jsx|ts|tsx)$/, '')
   for (const candidate of [
     abs,
     `${stripped}.ts`,
     `${stripped}.tsx`,
+    `${stripped}.d.ts`,
     `${stripped}.js`,
     `${stripped}.json`,
     join(abs, 'index.ts'),
     join(abs, 'index.tsx'),
+    join(abs, 'index.d.ts'),
     join(abs, 'index.js'),
   ]) {
     if (existsSync(candidate) && statSync(candidate).isFile()) return candidate

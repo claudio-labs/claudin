@@ -2,18 +2,18 @@ import { c as _c } from "react-compiler-runtime";
 import React, { Suspense, use, useDeferredValue, useEffect, useState } from 'react';
 import type { DeepImmutable } from 'src/types/utils.js';
 import type { CommandResultDisplay } from 'src/commands.js';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import type { ExitState } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
-import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
-import { Box, Text } from 'src/ink.js';
-import { useKeybindings } from 'src/keybindings/useKeybinding.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import type { ExitState } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
+import type { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import type { LocalShellTaskState } from 'src/tasks/LocalShellTask/guards.js';
 import { formatDuration, formatFileSize, truncateToWidth } from 'src/shared/text/format.js';
 import { tailFile } from 'src/shared/fs/fsOperations.js';
 import { getTaskOutputPath } from 'src/tasks/diskOutput.js';
-import { Byline } from 'src/components/design-system/Byline.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
-import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
+import { Byline } from 'src/terminal/design-system/Byline.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
+import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 type Props = {
   shell: DeepImmutable<LocalShellTaskState>;
   onDone: (result?: string, options?: {

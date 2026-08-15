@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import React from 'react'
 import stripAnsi from 'strip-ansi'
-import { AppStateProvider } from 'src/state/AppState.js'
-import { renderToString } from 'src/components/staticRender.js'
+import { AppStateProvider } from 'src/terminal/state/AppState.js'
+import { renderToString } from 'src/terminal/render/staticRender.js'
 import { UserBashInputMessage } from 'src/components/messages/UserBashInputMessage.js'
 
 function render(text: string): Promise<string> {

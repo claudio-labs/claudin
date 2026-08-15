@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
-import { type AppState, useAppState } from 'src/state/AppState.js'
-import { useKeybindings } from 'src/keybindings/useKeybinding.js'
+import { type AppState, useAppState } from 'src/terminal/state/AppState.js'
+import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,

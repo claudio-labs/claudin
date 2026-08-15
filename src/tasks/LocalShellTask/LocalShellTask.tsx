@@ -1,8 +1,8 @@
 import { feature } from 'bun:bundle';
 import { stat } from 'fs/promises';
 import { OUTPUT_FILE_TAG, STATUS_TAG, SUMMARY_TAG, TASK_ID_TAG, TASK_NOTIFICATION_TAG, TOOL_USE_ID_TAG } from 'src/constants/xml.js';
-import { abortSpeculation } from 'src/services/PromptSuggestion/speculation.js';
-import type { AppState } from 'src/state/AppState.js';
+import { abortSpeculation } from 'src/terminal/prompt-suggestion/speculation.js';
+import type { AppState } from 'src/terminal/state/AppState.js';
 import type { LocalShellSpawnInput, SetAppState, Task, TaskContext, TaskHandle } from 'src/Task.js';
 import { createTaskStateBase } from 'src/Task.js';
 import type { AgentId } from 'src/types/ids.js';

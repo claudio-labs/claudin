@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import sample from 'lodash-es/sample.js';
 import * as React from 'react';
 import { useMemo } from 'react';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { extractTag } from 'src/services/messages/messages.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 function getSavingMessage(): string {

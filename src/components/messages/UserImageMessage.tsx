@@ -1,10 +1,10 @@
 import type * as React from 'react'
 import { pathToFileURL } from 'node:url'
-import Link from 'src/ink/components/Link.js'
-import { supportsHyperlinks } from 'src/ink/supports-hyperlinks.js'
-import { Box, Text } from 'src/ink.js'
-import { getStoredImagePath } from 'src/utils/imageStore.js'
-import { InlineImage } from 'src/components/InlineImage.js'
+import Link from 'src/terminal/ink/components/Link.js'
+import { supportsHyperlinks } from 'src/terminal/ink/supports-hyperlinks.js'
+import { Box, Text } from 'src/terminal/ink.js'
+import { getStoredImagePath } from 'src/terminal/image/imageStore.js'
+import { InlineImage } from 'src/terminal/image/InlineImage.js'
 import { MessageResponse } from 'src/components/MessageResponse.js'
 
 type Props = {

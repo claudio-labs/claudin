@@ -22,12 +22,12 @@ import { TodoWriteTool } from 'src/tools/TodoWriteTool/TodoWriteTool.js';
 import { TungstenTool } from 'src/tools/TungstenTool/TungstenTool.js';
 import { WebFetchTool } from 'src/tools/WebFetchTool/WebFetchTool.js';
 import { WebSearchTool } from 'src/tools/WebSearchTool/WebSearchTool.js';
-import type { KeyboardEvent } from 'src/ink/events/keyboard-event.js';
-import { Box, Text } from 'src/ink.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
+import type { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { count } from 'src/shared/data/array.js';
 import { plural } from 'src/shared/text/stringUtils.js';
-import { Divider } from 'src/components/design-system/Divider.js';
+import { Divider } from 'src/terminal/design-system/Divider.js';
 type Props = {
   tools: Tools;
   initialTools: string[] | undefined;

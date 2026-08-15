@@ -1,5 +1,5 @@
 import React from 'react'
-import { Box, RawAnsi, Text } from 'src/ink.js'
+import { Box, RawAnsi, Text } from 'src/terminal/ink.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 import { expectColorDiff } from 'src/components/StructuredDiff/colorDiff.js'
 import type { DiffSegment } from 'src/components/diff/types.js'

@@ -1,8 +1,8 @@
 import chalk, { type ChalkInstance } from 'chalk'
-import { supportsHyperlinks } from 'src/ink/supports-hyperlinks.js'
+import { supportsHyperlinks } from 'src/terminal/ink/supports-hyperlinks.js'
 import { OSC8_START, OSC8_END } from 'src/shared/text/hyperlink.js'
-import { hasNerdFontGlyphs } from 'src/utils/terminalFont.js'
-import type { Theme } from 'src/utils/theme.js'
+import { hasNerdFontGlyphs } from 'src/terminal/terminalFont.js'
+import type { Theme } from 'src/terminal/theme/theme.js'
 
 const SEP = '\uE0B0'         // Powerline right-arrow filled — closes path segment as cap
 const BRANCH_ICON = '\uE725' // Nerd Font devicon git-branch (pairs with PR_ICON)

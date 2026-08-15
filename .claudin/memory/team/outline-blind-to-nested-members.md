@@ -12,7 +12,7 @@ Census of 528 transcripts / 280 sessions plus a scan of all 3,057 TS/TSX files i
 regex I used to count "hidden members" was over-inclusive: it counted every
 `const x =` at any depth, so most of the 26,336 were **local variable bindings and
 React hook calls** (`const tasks = useAppState(…)`), which nobody wants in an
-outline. `src/components/PromptInput/PromptInput.tsx` has 139 such 2-space `const`
+outline. `src/terminal/prompt-input/PromptInput.tsx` has 139 such 2-space `const`
 bindings — that is the bulk of its "157 hidden". The repo's "body noise" policy is
 correct and deliberately tested. The genuine hidden API surface is **~1,030 symbols
 (+5%)**, not 26,336, and it is almost entirely one shape: object-literal members.
@@ -27,7 +27,7 @@ the parent is a `const` and every member is discarded. Verified examples:
   itself is one `const` spanning 224-827. `call`, `validateInput`, `isEnabled` are
   all absent. Every tool in this repo is `export const XTool = buildTool({…})`, so
   this is the shape of `src/tools/` entirely.
-- `src/components/PromptInput/PromptInput.tsx` — 2,566 lines → **5 symbols**,
+- `src/terminal/prompt-input/PromptInput.tsx` — 2,566 lines → **5 symbols**,
   157 members hidden.
 
 **Why it bites by default.** `AUTO_OUTLINE_ON_ELISION` replaces a full-body Read at

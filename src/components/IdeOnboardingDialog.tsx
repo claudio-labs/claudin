@@ -1,12 +1,12 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { envDynamic } from 'src/shared/envDynamic.js';
-import { Box, Text } from 'src/ink.js';
-import { useKeybindings } from 'src/keybindings/useKeybinding.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import { env } from 'src/shared/env.js';
 import { getTerminalIdeType, type IDEExtensionInstallationStatus, isJetBrainsIde, toIDEDisplayName } from 'src/services/ide/ide.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
 interface Props {
   onDone: () => void;
   installationStatus: IDEExtensionInstallationStatus | null;

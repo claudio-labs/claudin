@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import { homedir } from 'os';
 import { relative } from 'path';
 import React from 'react';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 export function getRelativeMemoryPath(path: string): string {
   const homeDir = homedir();

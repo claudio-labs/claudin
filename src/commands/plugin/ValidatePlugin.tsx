@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import * as React from 'react';
 import { useEffect } from 'react';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { errorMessage } from 'src/shared/errors.js';
 import { logError } from 'src/shared/log.js';
 import { validateManifest } from 'src/services/plugins/validatePlugin.js';

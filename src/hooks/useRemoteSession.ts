@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { BoundedUUIDSet } from 'src/bridge/bridgeMessaging.js'
 import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
-import type { SpinnerMode } from 'src/components/Spinner/types.js'
+import type { SpinnerMode } from 'src/terminal/spinner/types.js'
 import {
   type RemotePermissionResponse,
   type RemoteSessionConfig,
@@ -15,8 +15,8 @@ import {
   convertSDKMessage,
   isSessionEndMessage,
 } from 'src/remote/sdkMessageAdapter.js'
-import { useSetAppState } from 'src/state/AppState.js'
-import type { AppState } from 'src/state/AppStateStore.js'
+import { useSetAppState } from 'src/terminal/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type { Tool } from 'src/Tool.js'
 import { findToolByName } from 'src/Tool.js'
 import type { Message as MessageType } from 'src/types/message.js'

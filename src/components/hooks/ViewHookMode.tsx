@@ -6,9 +6,9 @@ import { c as _c } from "react-compiler-runtime";
  * confirmation screen and directs users to settings.json or Claude for edits.
  */
 import * as React from 'react';
-import { Box, Text } from 'src/ink.js';
+import { Box, Text } from 'src/terminal/ink.js';
 import { hookSourceDescriptionDisplayString, type IndividualHookConfig } from 'src/services/lifecycleHooks/hooksSettings.js';
-import { Dialog } from 'src/components/design-system/Dialog.js';
+import { Dialog } from 'src/terminal/design-system/Dialog.js';
 type Props = {
   selectedHook: IndividualHookConfig;
   eventSupportsMatcher: boolean;

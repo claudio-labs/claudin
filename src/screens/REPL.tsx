@@ -6,10 +6,10 @@ import { count } from 'src/shared/data/array.js';
 import { dirname, join } from 'path';
 import { tmpdir } from 'os';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- / n N Esc [ v are bare letters in transcript modal context, same class as g/G/j/k in ScrollKeybindingHandler
-import { useInput } from 'src/ink.js';
-import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
-import { useSearchHighlight } from 'src/ink/hooks/use-search-highlight.js';
-import type { JumpHandle } from 'src/components/VirtualMessageList.js';
+import { useInput } from 'src/terminal/ink.js';
+import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import { useSearchHighlight } from 'src/terminal/ink/hooks/use-search-highlight.js';
+import type { JumpHandle } from 'src/terminal/VirtualMessageList.js';
 import { median } from 'src/screens/repl/utils/math.js';
 import { TranscriptModeFooter } from 'src/screens/repl/components/TranscriptModeFooter.js';
 import { TranscriptSearchBar } from 'src/screens/repl/components/TranscriptSearchBar.js';
@@ -29,16 +29,16 @@ import { useOnSubmit } from 'src/screens/repl/controllers/useOnSubmit.js';
 import { renderMessagesToPlainText } from 'src/components/exportRenderer.js';
 import { openFileInExternalEditor } from 'src/shared/editor.js';
 import { writeFile } from 'fs/promises';
-import { Box, Text, useStdin, useTheme, useTerminalFocus, useTabStatus } from 'src/ink.js';
+import { Box, Text, useStdin, useTheme, useTerminalFocus, useTabStatus } from 'src/terminal/ink.js';
 import { CostThresholdDialog } from 'src/components/CostThresholdDialog.js';
 import { IdleReturnDialog } from 'src/components/IdleReturnDialog.js';
 import * as React from 'react';
 import { useEffect, useMemo, useRef, useState, useCallback, useDeferredValue, useLayoutEffect } from 'react';
-import { useNotifications } from 'src/context/notifications.js';
+import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { sendNotification } from 'src/services/notifier.js';
-import { useTerminalNotification } from 'src/ink/useTerminalNotification.js';
-import { hasCursorUpViewportYankBug } from 'src/ink/terminal.js';
-import instances from 'src/ink/instances.js';
+import { useTerminalNotification } from 'src/terminal/ink/useTerminalNotification.js';
+import { hasCursorUpViewportYankBug } from 'src/terminal/ink/terminal.js';
+import instances from 'src/terminal/ink/instances.js';
 import { createFileStateCacheWithSizeLimit, mergeReplacingLiveCache, READ_FILE_STATE_CACHE_SIZE } from 'src/shared/fs/fileStateCache.js';
 import { updateLastInteractionTime, getLastInteractionTime, getOriginalCwd, getProjectRoot, getSessionId, switchSession, setCostStateForRestore, markTurnEnd, getTurnHookDurationMs, getTurnHookCount, getTurnToolDurationMs, getTurnToolCount, getTurnClassifierDurationMs, getTurnClassifierCount } from 'src/bootstrap/state.js';
 import { asSessionId, asAgentId } from 'src/types/ids.js';
@@ -46,7 +46,7 @@ import { logForDebugging } from 'src/shared/debug.js';
 import { QueryGuard } from 'src/utils/QueryGuard.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { formatTokens, truncateToWidth } from 'src/shared/text/format.js';
-import { consumeEarlyInput } from 'src/utils/earlyInput.js';
+import { consumeEarlyInput } from 'src/terminal/input/earlyInput.js';
 import { sendSandboxPermissionResponseViaMailbox } from 'src/coordinator/swarm/permissionSync.js';
 import { WorkerPendingPermission } from 'src/components/permissions/WorkerPendingPermission.js';
 import { injectUserMessageToTeammate, getAllInProcessTeammateTasks } from 'src/tasks/InProcessTeammateTask/InProcessTeammateTask.js';
@@ -63,8 +63,8 @@ import { PermissionRequest, type ToolUseConfirm } from 'src/components/permissio
 import { ElicitationDialog } from 'src/components/mcp/ElicitationDialog.js';
 import { PromptDialog } from 'src/components/hooks/PromptDialog.js';
 import type { PromptRequest, PromptResponse } from 'src/types/hooks.js';
-import PromptInput from 'src/components/PromptInput/PromptInput.js';
-import { PromptInputQueuedCommands } from 'src/components/PromptInput/PromptInputQueuedCommands.js';
+import PromptInput from 'src/terminal/prompt-input/PromptInput.js';
+import { PromptInputQueuedCommands } from 'src/terminal/prompt-input/PromptInputQueuedCommands.js';
 import { useRemoteSession } from 'src/hooks/useRemoteSession.js';
 import { streamingTextStore, useStreamingTextPresence } from 'src/hooks/useStreamingTextStore.js';
 import { createCoalescedUpdater } from 'src/services/install/coalescedUpdater.js';
@@ -73,8 +73,8 @@ import type { DirectConnectConfig } from 'src/server/directConnectManager.js';
 import { useSSHSession } from 'src/hooks/useSSHSession.js';
 import { useAssistantHistory } from 'src/hooks/useAssistantHistory.js';
 import type { SSHSession } from '../ssh/createSSHSession.js';
-import { useMoreRight } from 'src/moreright/useMoreRight.js';
-import { SpinnerWithVerb, BriefIdleStatus, type SpinnerMode } from 'src/components/Spinner.js';
+import { useMoreRight } from 'src/terminal/moreright/useMoreRight.js';
+import { SpinnerWithVerb, BriefIdleStatus, type SpinnerMode } from 'src/terminal/spinner/Spinner.js';
 import { getSystemPrompt } from 'src/constants/prompts.js';
 import { buildEffectiveSystemPrompt } from 'src/utils/systemPrompt.js';
 import { getSystemContext, getUserContext } from 'src/context.js';
@@ -82,16 +82,16 @@ import { getMemoryFiles } from 'src/services/instructions/claudemd.js';
 import { startBackgroundHousekeeping } from 'src/utils/backgroundHousekeeping.js';
 import { getTotalCost, saveCurrentSessionCosts, resetCostState, getStoredSessionCosts } from 'src/cost-tracker.js';
 import { useCostSummary } from 'src/costHook.js';
-import { useFpsMetrics } from 'src/context/fpsMetrics.js';
-import { useAfterFirstRender } from 'src/hooks/useAfterFirstRender.js';
+import { useFpsMetrics } from 'src/terminal/contexts/fpsMetrics.js';
+import { useAfterFirstRender } from 'src/terminal/hooks/useAfterFirstRender.js';
 import { useDeferredHookMessages } from 'src/hooks/useDeferredHookMessages.js';
 import { useApiKeyVerification } from 'src/hooks/useApiKeyVerification.js';
-import { GlobalKeybindingHandlers } from 'src/hooks/useGlobalKeybindings.js';
-import { CommandKeybindingHandlers } from 'src/hooks/useCommandKeybindings.js';
-import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js';
-import { getShortcutDisplay } from 'src/keybindings/shortcutFormat.js';
+import { GlobalKeybindingHandlers } from 'src/terminal/hooks/useGlobalKeybindings.js';
+import { CommandKeybindingHandlers } from 'src/terminal/hooks/useCommandKeybindings.js';
+import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js';
+import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js';
 import { CancelRequestHandler } from 'src/hooks/useCancelRequest.js';
-import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKeybindings.js';
+import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { useBackgroundTaskNavigation } from 'src/hooks/useBackgroundTaskNavigation.js';
 import { useSwarmInitialization } from 'src/hooks/useSwarmInitialization.js';
 import { useTeammateViewAutoExit } from 'src/hooks/useTeammateViewAutoExit.js';
@@ -105,12 +105,12 @@ import { isHumanTurn } from 'src/services/messages/messagePredicates.js';
 import { logError } from 'src/shared/log.js';
 // Dead code elimination: conditional imports
 /* eslint-disable custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports */
-const useVoiceIntegration: typeof import('src/hooks/useVoiceIntegration.js').useVoiceIntegration = feature('VOICE_MODE') ? require('src/hooks/useVoiceIntegration.js').useVoiceIntegration : () => ({
+const useVoiceIntegration: typeof import('src/terminal/voice/useVoiceIntegration.js').useVoiceIntegration = feature('VOICE_MODE') ? require('src/terminal/voice/useVoiceIntegration.js').useVoiceIntegration : () => ({
   stripTrailing: () => 0,
   handleKeyEvent: () => { },
   resetAnchor: () => { }
 });
-const VoiceKeybindingHandler: typeof import('src/hooks/useVoiceIntegration.js').VoiceKeybindingHandler = feature('VOICE_MODE') ? require('src/hooks/useVoiceIntegration.js').VoiceKeybindingHandler : () => null;
+const VoiceKeybindingHandler: typeof import('src/terminal/voice/useVoiceIntegration.js').VoiceKeybindingHandler = feature('VOICE_MODE') ? require('src/terminal/voice/useVoiceIntegration.js').VoiceKeybindingHandler : () => null;
 // The real modules behind these two imports were never carried into this
 // fork (see the .d.ts stub comments in their directories); `typeof
 // import(...)` can't type them since the stub exports a placeholder name,
@@ -174,7 +174,7 @@ import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { resolveAgentTools } from 'src/tools/AgentTool/agentToolUtils.js';
 import { resumeAgentBackground } from 'src/tools/AgentTool/resumeAgent.js';
 import { useMainLoopModel } from 'src/hooks/useMainLoopModel.js';
-import { useAppState, useSetAppState, useAppStateStore } from 'src/state/AppState.js';
+import { useAppState, useSetAppState, useAppStateStore } from 'src/terminal/state/AppState.js';
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
 import type { PastedContent } from 'src/services/config/config.js';
 import { copyPlanForFork, copyPlanForResume, getPlanSlug, setPlanSlug } from 'src/utils/plans.js';
@@ -191,7 +191,7 @@ import { computeStandaloneAgentContext, restoreAgentFromSession, restoreSessionS
 import { updateSessionName } from 'src/services/session/concurrentSessions.js';
 import { isInProcessTeammateTask, type InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js';
 import { restoreRemoteAgentTasks } from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js';
-import { useInboxPoller } from 'src/hooks/useInboxPoller.js';
+import { useInboxPoller } from 'src/terminal/voice/useInboxPoller.js';
 // Dead code elimination: conditional import for loop mode
 /* eslint-disable @typescript-eslint/no-require-imports */
 const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../proactive/index.js') : null;
@@ -208,12 +208,12 @@ import { type IDEExtensionInstallationStatus, type IdeType } from 'src/services/
 import { useIDEIntegration } from 'src/hooks/useIDEIntegration.js';
 import { getCurrentWorktreeSession } from 'src/services/git/worktree.js';
 import { popAllEditable, getCommandQueue, getCommandQueueLength } from 'src/utils/messageQueueManager.js';
-import { bindToolJSXStore, dispatchToolJSX, getCurrentLocalJSXGeneration } from 'src/utils/toolJSXStore.js';
+import { bindToolJSXStore, dispatchToolJSX, getCurrentLocalJSXGeneration } from 'src/terminal/toolJSXStore.js';
 import { useCommandQueue } from 'src/hooks/useCommandQueue.js';
 import { SessionBackgroundHint } from 'src/components/SessionBackgroundHint.js';
 import { useSessionBackgrounding } from 'src/hooks/useSessionBackgrounding.js';
 import { diagnosticTracker } from 'src/services/diagnosticTracking.js';
-import { handleSpeculationAccept } from 'src/services/PromptSuggestion/speculation.js';
+import { handleSpeculationAccept } from 'src/terminal/prompt-suggestion/speculation.js';
 import { IdeOnboardingDialog } from 'src/components/IdeOnboardingDialog.js';
 import { EffortCallout, shouldShowEffortCallout } from 'src/components/EffortCallout.js';
 import { RemoteCallout } from 'src/components/RemoteCallout.js';
@@ -231,8 +231,8 @@ import type { TranscriptShareResponse } from 'src/components/FeedbackSurvey/Tran
 import { useInstallMessages } from 'src/hooks/notifs/useInstallMessages.js';
 import { useAwaySummary } from 'src/hooks/useAwaySummary.js';
 import { useOfficialMarketplaceNotification } from 'src/hooks/useOfficialMarketplaceNotification.js';
-import { getTipToShowOnSpinner, recordShownTip } from 'src/services/tips/tipScheduler.js';
-import type { Theme } from 'src/utils/theme.js';
+import { getTipToShowOnSpinner, recordShownTip } from 'src/terminal/tips/tipScheduler.js';
+import type { Theme } from 'src/terminal/theme/theme.js';
 import { isPromptTypingSuppressionActive } from 'src/screens/replInputSuppression.js';
 import { shouldRunStartupChecks } from 'src/screens/replStartupGates.js';
 import { useKickOffCheckAndDisableBypassPermissionsIfNeeded, useKickOffCheckAndDisableAutoModeIfNeeded } from 'src/services/permissions/bypassPermissionsKillswitch.js';
@@ -267,20 +267,20 @@ import { TungstenLiveMonitor } from 'src/tools/TungstenTool/TungstenLiveMonitor.
 /* eslint-disable @typescript-eslint/no-require-imports */
 const WebBrowserPanelModule = feature('WEB_BROWSER_TOOL') ? require('../tools/WebBrowserTool/WebBrowserPanel.js') as typeof import('../tools/WebBrowserTool/WebBrowserPanel.js') : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { IssueFlagBanner } from 'src/components/PromptInput/IssueFlagBanner.js';
+import { IssueFlagBanner } from 'src/terminal/prompt-input/IssueFlagBanner.js';
 import { useIssueFlagBanner } from 'src/hooks/useIssueFlagBanner.js';
-import { CompanionSprite, CompanionFloatingBubble, MIN_COLS_FOR_FULL_SPRITE } from 'src/buddy/CompanionSprite.js';
-import { isBuddyEnabled } from 'src/buddy/feature.js';
+import { CompanionSprite, CompanionFloatingBubble, MIN_COLS_FOR_FULL_SPRITE } from 'src/terminal/buddy/CompanionSprite.js';
+import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
 // Session manager removed - using AppState now
 import type { RemoteSessionConfig } from 'src/remote/RemoteSessionManager.js';
 import { REMOTE_SAFE_COMMANDS } from 'src/commands.js';
-import { FullscreenLayout, useUnseenDivider, computeUnseenDivider } from 'src/components/FullscreenLayout.js';
+import { FullscreenLayout, useUnseenDivider, computeUnseenDivider } from 'src/terminal/FullscreenLayout.js';
 import { StartupBanner } from 'src/components/StartupBanner.js';
-import { isFullscreenEnvEnabled, maybeGetTmuxMouseHint, isMouseTrackingEnabled } from 'src/utils/fullscreen.js';
-import { AlternateScreen } from 'src/ink/components/AlternateScreen.js';
-import { ScrollKeybindingHandler } from 'src/components/ScrollKeybindingHandler.js';
+import { isFullscreenEnvEnabled, maybeGetTmuxMouseHint, isMouseTrackingEnabled } from 'src/terminal/render/fullscreen.js';
+import { AlternateScreen } from 'src/terminal/ink/components/AlternateScreen.js';
+import { ScrollKeybindingHandler } from 'src/terminal/ScrollKeybindingHandler.js';
 import { useMessageActions, MessageActionsKeybindings, MessageActionsBar, type MessageActionsState, type MessageActionsNav } from 'src/components/messageActions.js';
-import type { ScrollBoxHandle } from 'src/ink/components/ScrollBox.js';
+import type { ScrollBoxHandle } from 'src/terminal/ink/components/ScrollBox.js';
 
 // Stable empty array for hooks that accept MCPServerConnection[] — avoids
 // creating a new [] literal on every render in remote mode, which would
@@ -830,7 +830,7 @@ export function REPL({
   } | null>(null);
 
   // toolJSXStore is a module singleton wrapping a pure reducer (see
-  // src/utils/setToolJSXReducer.ts). It exists so async call sites
+  // src/terminal/setToolJSXReducer.ts). It exists so async call sites
   // (processSlashCommand, handlePromptSubmit) can capture a generation token
   // before they start awaiting, and have late writes from a stale chain
   // dropped automatically. Without this, a clearLocalJSX:true firing between

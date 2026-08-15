@@ -2,9 +2,9 @@ import { c as _c } from "react-compiler-runtime";
 import { diffWordsWithSpace, type StructuredPatchHunk } from 'diff';
 import * as React from 'react';
 import { useMemo } from 'react';
-import type { ThemeName } from 'src/utils/theme.js';
-import { stringWidth } from 'src/ink/stringWidth.js';
-import { Box, NoSelect, Text, useTheme, wrapText } from 'src/ink.js';
+import type { ThemeName } from 'src/terminal/theme/theme.js';
+import { stringWidth } from 'src/terminal/ink/stringWidth.js';
+import { Box, NoSelect, Text, useTheme, wrapText } from 'src/terminal/ink.js';
 
 /*
  * StructuredDiffFallback Component: Word-Level Diff Highlighting Example

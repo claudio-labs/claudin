@@ -7,7 +7,7 @@
 // provides killMonitorMcpTasksForAgent for agent-scoped cleanup of
 // monitor-kind shell tasks.
 
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import type { SetAppState, Task, TaskStateBase } from 'src/Task.js'
 import type { AgentId } from 'src/types/ids.js'
 import { logForDebugging } from 'src/shared/debug.js'

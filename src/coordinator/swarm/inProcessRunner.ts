@@ -30,7 +30,7 @@ import {
   ERROR_MESSAGE_USER_ABORT,
 } from 'src/services/compact/compact.js'
 import { resetMicrocompactState } from 'src/services/compact/microCompact.js'
-import type { AppState } from 'src/state/AppState.js'
+import type { AppState } from 'src/terminal/state/AppState.js'
 import type { Tool, ToolUseContext } from 'src/Tool.js'
 import { appendTeammateMessage } from 'src/tasks/InProcessTeammateTask/InProcessTeammateTask.js'
 import type {

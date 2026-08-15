@@ -3,7 +3,7 @@ import { feature } from 'bun:bundle';
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import * as React from 'react';
 import { BULLET_OPERATOR } from 'src/constants/figures.js';
-import { Text } from 'src/ink.js';
+import { Text } from 'src/terminal/ink.js';
 import { filterToolProgressMessages, type Tool, type Tools } from 'src/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';
 import { INTERRUPT_MESSAGE_FOR_TOOL_USE, isClassifierDenial, PLAN_REJECTION_PREFIX, REJECT_MESSAGE_WITH_REASON_PREFIX } from 'src/services/messages/messages.js';

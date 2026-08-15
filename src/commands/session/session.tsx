@@ -2,10 +2,10 @@ import { c as _c } from "react-compiler-runtime";
 import { toString as qrToString } from 'qrcode';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { Pane } from 'src/components/design-system/Pane.js';
-import { Box, Text } from 'src/ink.js';
-import { useKeybinding } from 'src/keybindings/useKeybinding.js';
-import { type AppState, useAppState } from 'src/state/AppState.js';
+import { Pane } from 'src/terminal/design-system/Pane.js';
+import { Box, Text } from 'src/terminal/ink.js';
+import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
+import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
 import type { LocalJSXCommandCall } from 'src/types/command.js';
 import { logForDebugging } from 'src/shared/debug.js';
 type Props = {
