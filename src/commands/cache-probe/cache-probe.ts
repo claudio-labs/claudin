@@ -4,7 +4,7 @@ import { resolveProviderRequest } from 'src/providers/presets/providerConfig.js'
 import type { LocalCommandCall } from 'src/shared/types/command.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { hydrateGithubModelsTokenFromSecureStorage } from 'src/providers/oauth/githubModelsCredentials.js'
-import { getMainLoopModel } from 'src/utils/model/model.js'
+import { getMainLoopModel } from 'src/providers/model/model.js'
 
 const COPILOT_HEADERS: Record<string, string> = {
   'User-Agent': 'GitHubCopilotChat/0.26.7',

@@ -34,7 +34,7 @@ import { PLAN_AGENT } from 'src/tools/AgentTool/built-in/planAgent.js'
 //
 // The Claude-family recommendation + "Fast mode" env lines are gated on
 // getAPIProvider() === 'firstParty', so this file used to mock.module
-// 'src/utils/model/providers.js' to 'firstParty' before every test, on the
+// 'src/providers/model/providers.js' to 'firstParty' before every test, on the
 // theory that doing so would win over whatever leaked from a file that ran
 // earlier.
 //

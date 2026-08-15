@@ -17,7 +17,7 @@ import { getKimiUserAgent } from 'src/providers/oauth/kimiUserAgent.js'
 import { getKimiDeviceHeaders } from 'src/providers/oauth/kimiDeviceHeaders.js'
 import { getCurrentProjectConfig } from 'src/platform/config/config.js'
 import { modelSupportsAutoMode } from 'src/providers/transport/betas.js'
-import { getMainLoopModel } from 'src/utils/model/model.js'
+import { getMainLoopModel } from 'src/providers/model/model.js'
 import {
   getClassifierProbeKey,
   probeClassifierCapability,

@@ -50,7 +50,7 @@ Hardcode de provider específico violaria a regra "no hardcoded provider logic" 
 
 ### Override de modelo (importante para non-Anthropic providers)
 
-Em providers que não são Claude-native (qualquer coisa que passe pelo `openaiShim`: OpenRouter, Gemini, DeepSeek, Mistral, LM Studio, Together, etc.), `resolveAgentModel` em `src/utils/model/agent.ts` (procure pela checagem `checkIsClaudeNativeProvider`) faz fallback do alias `'haiku'` para o modelo do pai. Ou seja: se você está em OpenRouter+Opus sem override, o WebResearcher também roda em Opus — anulando a economia.
+Em providers que não são Claude-native (qualquer coisa que passe pelo `openaiShim`: OpenRouter, Gemini, DeepSeek, Mistral, LM Studio, Together, etc.), `resolveAgentModel` em `src/providers/model/agent.ts` (procure pela checagem `checkIsClaudeNativeProvider`) faz fallback do alias `'haiku'` para o modelo do pai. Ou seja: se você está em OpenRouter+Opus sem override, o WebResearcher também roda em Opus — anulando a economia.
 
 **Solução**: defina um override explícito em `~/.claudin/settings.json`:
 

@@ -12,7 +12,7 @@ import { createRoot } from 'src/terminal/ink.js'
 import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js'
 import { parseCustomHeaders } from 'src/providers/ui/ProviderManager.js'
 import { AppStateProvider } from 'src/terminal/state/AppState.js'
-import { getDefaultMainLoopModel } from 'src/utils/model/model.js'
+import { getDefaultMainLoopModel } from 'src/providers/model/model.js'
 
 // Snapshot the real providerDiscovery module so the per-test mock can keep its
 // pure helpers (rankOllamaModels / recommendOllamaModel — used by the Ollama

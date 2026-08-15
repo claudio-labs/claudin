@@ -17,7 +17,7 @@ import {
   activeTransportUsesOpenAiShim,
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
-} from "src/utils/model/providers.js";
+} from "src/providers/model/providers.js";
 import {
   getAttributionHeader,
   getCLISyspromptPrefix,
@@ -40,7 +40,7 @@ import {
 } from "src/providers/transport/betas.js";
 import { getGlobalConfig } from "src/platform/config/config.js";
 import { getSonnet1mExpTreatmentEnabled } from "src/agent/context/context.js";
-import { getThinkingBudgetForEffort, resolveAppliedEffort } from "src/utils/effort.js";
+import { getThinkingBudgetForEffort, resolveAppliedEffort } from "src/providers/effort/effort.js";
 import { isEnvDefinedFalsy, isEnvTruthy } from "src/shared/envUtils.js";
 import {
   errorMessage,
@@ -61,7 +61,7 @@ import {
   stripCallerFieldFromAssistantMessage,
   stripToolReferenceBlocksFromUserMessage,
 } from "src/agent/messages/messages.js";
-import { isNonCustomOpusModel } from "src/utils/model/model.js";
+import { isNonCustomOpusModel } from "src/providers/model/model.js";
 import {
   asSystemPrompt,
   type SystemPrompt,
@@ -163,11 +163,11 @@ import {
   TOOL_SEARCH_TOOL_NAME,
 } from "src/tools/ToolSearchTool/prompt.js";
 import { count } from "src/shared/data/array.js";
-import { getInferenceProfileBackingModel } from "src/utils/model/bedrock.js";
+import { getInferenceProfileBackingModel } from "src/providers/model/bedrock.js";
 import {
   normalizeModelStringForAPI,
   parseUserSpecifiedModel,
-} from "src/utils/model/model.js";
+} from "src/providers/model/model.js";
 import {
   startSessionActivity,
   stopSessionActivity,

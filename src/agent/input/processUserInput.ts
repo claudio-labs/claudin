@@ -36,7 +36,7 @@ import {
   getAttachmentMessages,
 } from 'src/agent/attachments/attachments.js'
 import type { PastedContent } from 'src/platform/config/config.js'
-import type { EffortValue } from 'src/utils/effort.js'
+import type { EffortValue } from 'src/providers/effort/effort.js'
 import { toArray } from 'src/shared/generators.js'
 import {
   executeUserPromptSubmitHooks,

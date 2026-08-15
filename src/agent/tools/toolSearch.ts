@@ -43,7 +43,7 @@ import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
-} from 'src/utils/model/providers.js'
+} from 'src/providers/model/providers.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 

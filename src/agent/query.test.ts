@@ -6,7 +6,7 @@ import {
   getDefaultOpusModel,
   isNative1mModel,
   parseUserSpecifiedModel,
-} from 'src/utils/model/model.js'
+} from 'src/providers/model/model.js'
 
 /**
  * Regression tests for the alias-resolution chain that runs in

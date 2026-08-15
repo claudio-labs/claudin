@@ -18,7 +18,7 @@ import {
   filterUnresolvedToolUses,
   filterWhitespaceOnlyAssistantMessages,
 } from 'src/agent/messages/messages.js'
-import { getAgentModel } from 'src/utils/model/agent.js'
+import { getAgentModel } from 'src/providers/model/agent.js'
 import { getQuerySourceForAgent } from 'src/agent/promptCategory.js'
 import {
   getAgentTranscript,

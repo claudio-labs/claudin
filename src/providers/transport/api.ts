@@ -49,7 +49,7 @@ import { createUserMessage } from 'src/agent/messages/messages.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
-} from 'src/utils/model/providers.js'
+} from 'src/providers/model/providers.js'
 import {
   getFileReadIgnorePatterns,
   normalizePatternsToPath,

@@ -2,7 +2,7 @@ import type {
   BetaContentBlock,
   BetaWebSearchTool20250305,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 
 import { z } from 'zod/v4'
@@ -19,7 +19,7 @@ import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logError } from 'src/shared/log.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
-import { getMainLoopModel, getSmallFastModel } from 'src/utils/model/model.js'
+import { getMainLoopModel, getSmallFastModel } from 'src/providers/model/model.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { getWebSearchPrompt, WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'

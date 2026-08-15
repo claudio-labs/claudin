@@ -74,7 +74,7 @@ import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.j
 import { closeOpenDiffs, getConnectedIdeClient } from 'src/platform/ide/ide.js';
 import { enqueue, type SetAppState, getCommandQueueLength } from 'src/agent/messageQueueManager.js';
 import { diagnosticTracker } from 'src/platform/diagnosticTracking.js';
-import type { EffortValue } from 'src/utils/effort.js';
+import type { EffortValue } from 'src/providers/effort/effort.js';
 import { checkAndDisableBypassPermissionsIfNeeded, checkAndDisableAutoModeIfNeeded } from 'src/permissions/bypassPermissionsKillswitch.js';
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
 import { fireCompanionObserver } from 'src/terminal/buddy/observer.js';

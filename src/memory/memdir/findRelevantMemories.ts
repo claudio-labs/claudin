@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
-import { getDefaultSonnetModel } from 'src/utils/model/model.js'
+import { getDefaultSonnetModel } from 'src/providers/model/model.js'
 import { sideQuery } from 'src/agent/sideQuery.js'
 import { jsonParse } from 'src/platform/slowOperations.js'
 import {

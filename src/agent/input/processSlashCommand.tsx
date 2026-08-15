@@ -31,7 +31,7 @@ import { logError } from 'src/shared/log.js';
 import { getCurrentLocalJSXGeneration } from 'src/terminal/toolJSXStore.js';
 import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js';
 import { createCommandInputMessage, createSyntheticUserCaveatMessage, createSystemMessage, createUserInterruptionMessage, createUserMessage, formatCommandInputTags, isCompactBoundaryMessage, isSystemLocalCommandMessage, normalizeMessages, prepareUserContent } from 'src/agent/messages/messages.js';
-import type { ModelAlias } from 'src/utils/model/aliases.js';
+import type { ModelAlias } from 'src/providers/model/aliases.js';
 import { parseToolListFromCLI } from 'src/permissions/permissionSetup.js';
 import { hasPermissionsToUseTool } from 'src/permissions/permissions.js';
 import { isOfficialMarketplaceName, parsePluginIdentifier } from 'src/plugins/pluginIdentifier.js';

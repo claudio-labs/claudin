@@ -15,7 +15,7 @@ import {
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
-} from 'src/utils/model/providers.js'
+} from 'src/providers/model/providers.js'
 import { isEssentialTrafficOnly } from 'src/platform/config/privacyLevel.js'
 
 import {

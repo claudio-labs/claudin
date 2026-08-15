@@ -5,7 +5,7 @@ import {
   isNative1mModel,
   isOpus1mMergeEnabled,
   parseUserSpecifiedModel,
-} from 'src/utils/model/model.js'
+} from 'src/providers/model/model.js'
 import {
   getSettingsForSource,
   updateSettingsForSource,

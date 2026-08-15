@@ -11,8 +11,8 @@ import { getAWSRegion, getDefaultVertexRegion, isEnvTruthy } from 'src/shared/en
 import { getDisplayPath } from 'src/shared/fs/file.js';
 import { formatNumber } from 'src/shared/text/format.js';
 import { getIdeClientName, type IDEExtensionInstallationStatus, isJetBrainsIde, toIDEDisplayName } from 'src/platform/ide/ide.js';
-import { getClaudeAiUserDefaultModelDescription, modelDisplayString } from 'src/utils/model/model.js';
-import { getAPIProvider } from 'src/utils/model/providers.js';
+import { getClaudeAiUserDefaultModelDescription, modelDisplayString } from 'src/providers/model/model.js';
+import { getAPIProvider } from 'src/providers/model/providers.js';
 import { resolveProviderRequest } from 'src/providers/presets/providerConfig.js';
 import { getMTLSConfig } from 'src/providers/transport/mtls.js';
 import { checkInstall } from 'src/platform/install/index.js';

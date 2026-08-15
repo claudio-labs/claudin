@@ -13,8 +13,8 @@ const realBootstrapStateForFastMode = { ...(await import('src/platform/bootstrap
 const realAnalyticsForFastMode = { ...(await import('src/platform/analytics/index.js')) }
 const realGrowthbookForFastMode = { ...(await import('src/platform/analytics/growthbook.js')) }
 const realBundledModeForFastMode = { ...(await import('src/platform/install/bundledMode.js')) }
-const realModelForFastMode = { ...(await import('src/utils/model/model.js')) }
-const realProvidersForFastMode = { ...(await import('src/utils/model/providers.js')) }
+const realModelForFastMode = { ...(await import('src/providers/model/model.js')) }
+const realProvidersForFastMode = { ...(await import('src/providers/model/providers.js')) }
 const realPrivacyLevelForFastMode = { ...(await import('src/platform/config/privacyLevel.js')) }
 const realSettingsForFastMode = { ...(await import('src/platform/settings/settings.js')) }
 const realSignalForFastMode = { ...(await import('src/shared/signal.js')) }
@@ -92,13 +92,13 @@ function installCommonMocks(options?: {
       !!value && value !== '0' && value.toLowerCase() !== 'false',
   }))
 
-  mock.module('../utils/model/model.js', () => ({
+  mock.module('./model/model.js', () => ({
     getDefaultMainLoopModelSetting: () => 'claude-sonnet-4-6',
     isOpus1mMergeEnabled: () => false,
     parseUserSpecifiedModel: (model: string) => model,
   }))
 
-  mock.module('../utils/model/providers.js', () => ({
+  mock.module('./model/providers.js', () => ({
     getAPIProvider: () => 'firstParty',
   }))
 
@@ -138,8 +138,8 @@ afterAll(() => {
   mock.module('src/platform/analytics/index.js', () => realAnalyticsForFastMode)
   mock.module('src/platform/analytics/growthbook.js', () => realGrowthbookForFastMode)
   mock.module('src/platform/install/bundledMode.js', () => realBundledModeForFastMode)
-  mock.module('../utils/model/model.js', () => realModelForFastMode)
-  mock.module('../utils/model/providers.js', () => realProvidersForFastMode)
+  mock.module('./model/model.js', () => realModelForFastMode)
+  mock.module('./model/providers.js', () => realProvidersForFastMode)
   mock.module('src/platform/config/privacyLevel.js', () => realPrivacyLevelForFastMode)
   mock.module('src/platform/settings/settings.js', () => realSettingsForFastMode)
   mock.module('src/shared/signal.js', () => realSignalForFastMode)

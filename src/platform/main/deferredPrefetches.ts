@@ -18,7 +18,7 @@ import { countFilesRoundedRg } from 'src/shared/fs/ripgrep.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { initializeAnalyticsGates } from 'src/platform/analytics/sink.js';
 import { prefetchOfficialMcpUrls } from 'src/mcp/officialRegistry.js';
-import { refreshModelCapabilities } from 'src/utils/model/modelCapabilities.js';
+import { refreshModelCapabilities } from 'src/providers/model/modelCapabilities.js';
 import { settingsChangeDetector } from 'src/platform/settings/changeDetector.js';
 import { skillChangeDetector } from 'src/skills/skillChangeDetector.js';
 import { prefetchSystemContextIfSafe } from 'src/platform/main/lifecycle.js';

@@ -54,7 +54,7 @@ import { registerFrontmatterHooks } from 'src/platform/lifecycleHooks/registerFr
 import { clearSessionHooks } from 'src/platform/lifecycleHooks/sessionHooks.js'
 import { executeSubagentStartHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
-import { getAgentModel } from 'src/utils/model/agent.js'
+import { getAgentModel } from 'src/providers/model/agent.js'
 import {
   clearAgentPlanSlug,
   loadDossier,
@@ -62,7 +62,7 @@ import {
   revalidateDossier,
   setAgentPlanSlug,
 } from 'src/agent/planDossier.js'
-import type { ModelAlias } from 'src/utils/model/aliases.js'
+import type { ModelAlias } from 'src/providers/model/aliases.js'
 import { getPlan, getPlanSlug } from 'src/agent/plans/plans.js'
 import {
   clearAgentTranscriptSubdir,

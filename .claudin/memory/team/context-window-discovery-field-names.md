@@ -4,7 +4,7 @@ description: openaiModelDiscovery consumes only OpenRouter-style context_length;
 type: project
 ---
 
-Runtime model discovery (`src/utils/model/openaiModelDiscovery.ts`, startup prefetch for provider tag `openai`) feeds `discoveredContextWindows`, which `getOpenAIContextWindow` consults before the 128k fallback — but the parser only reads the **`context_length`** field (OpenRouter style). The map is in-memory per session (re-prefetched each startup, 5s timeout; a failed `/models` silently reverts that session to the table/128k fallback).
+Runtime model discovery (`src/providers/model/openaiModelDiscovery.ts`, startup prefetch for provider tag `openai`) feeds `discoveredContextWindows`, which `getOpenAIContextWindow` consults before the 128k fallback — but the parser only reads the **`context_length`** field (OpenRouter style). The map is in-memory per session (re-prefetched each startup, 5s timeout; a failed `/models` silently reverts that session to the table/128k fallback).
 
 **Why:** On 2026-07-02 a user-run proxy started returning `context_length` and the 1M window resolved with zero client changes — proving the plumbing works; only field-name coverage is missing for other backends.
 

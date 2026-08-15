@@ -11,7 +11,7 @@ import { logForDebugging } from 'src/shared/debug.js';
 import { errorMessage } from 'src/shared/errors.js';
 import { logError } from 'src/shared/log.js';
 import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js';
-import { ALL_MODEL_CONFIGS } from 'src/utils/model/configs.js';
+import { ALL_MODEL_CONFIGS } from 'src/providers/model/configs.js';
 import { updateTaskState } from 'src/agent/tasks/framework.js';
 import { archiveRemoteSession, teleportToRemote } from 'src/platform/teleport/teleport.js';
 import { pollForApprovedExitPlanMode, UltraplanPollError } from 'src/agent/ultraplan/ccrSession.js';

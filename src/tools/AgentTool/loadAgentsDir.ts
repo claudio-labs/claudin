@@ -18,7 +18,7 @@ import {
   EFFORT_LEVELS,
   type EffortValue,
   parseEffortValue,
-} from 'src/utils/effort.js'
+} from 'src/providers/effort/effort.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { parsePositiveIntFromFrontmatter } from 'src/shared/frontmatterParser.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'

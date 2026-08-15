@@ -4,7 +4,7 @@ import { queryHaiku } from 'src/providers/shims/claude.js'
 import { AbortError } from 'src/shared/errors.js'
 import { getWebFetchUserAgent } from 'src/shared/http.js'
 import { logError } from 'src/shared/log.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 import {
   isBinaryContentType,
   persistBinaryContent,

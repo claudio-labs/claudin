@@ -20,7 +20,7 @@ import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
 import { extractTextContent } from 'src/agent/messages/messages.js'
-import { getDefaultOpusModel } from 'src/utils/model/model.js'
+import { getDefaultOpusModel } from 'src/providers/model/model.js'
 import {
   getProjectsDir,
   getSessionFilesWithMtime,

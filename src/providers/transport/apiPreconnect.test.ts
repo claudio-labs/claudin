@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'b
 
 const originalEnv = { ...process.env }
 const originalFetch = globalThis.fetch
-const realProviders = { ...(await import('src/utils/model/providers.js')) }
+const realProviders = { ...(await import('src/providers/model/providers.js')) }
 
 async function importFreshModule() {
   return import(`./apiPreconnect.ts?ts=${Date.now()}-${Math.random()}`)
@@ -20,7 +20,7 @@ afterEach(() => {
 describe('preconnectAnthropicApi', () => {
   test('does not fetch when OpenAI mode is enabled', async () => {
     process.env.CLAUDE_CODE_USE_OPENAI = '1'
-    mock.module('src/utils/model/providers.js', () => ({
+    mock.module('src/providers/model/providers.js', () => ({
       getAPIProvider: () => 'openai',
     }))
     const fetchMock = mock(() => Promise.resolve(new Response(null, { status: 200 })))
@@ -34,7 +34,7 @@ describe('preconnectAnthropicApi', () => {
 
   test('does not fetch when Gemini mode is enabled', async () => {
     process.env.CLAUDE_CODE_USE_GEMINI = '1'
-    mock.module('src/utils/model/providers.js', () => ({
+    mock.module('src/providers/model/providers.js', () => ({
       getAPIProvider: () => 'gemini',
     }))
     const fetchMock = mock(() => Promise.resolve(new Response(null, { status: 200 })))
@@ -48,7 +48,7 @@ describe('preconnectAnthropicApi', () => {
 
   test('does not fetch when GitHub mode is enabled', async () => {
     process.env.CLAUDE_CODE_USE_GITHUB = '1'
-    mock.module('src/utils/model/providers.js', () => ({
+    mock.module('src/providers/model/providers.js', () => ({
       getAPIProvider: () => 'github',
     }))
     const fetchMock = mock(() => Promise.resolve(new Response(null, { status: 200 })))
@@ -68,7 +68,7 @@ describe('preconnectAnthropicApi', () => {
     delete process.env.CLAUDE_CODE_USE_VERTEX
     delete process.env.CLAUDE_CODE_USE_FOUNDRY
 
-    mock.module('src/utils/model/providers.js', () => ({
+    mock.module('src/providers/model/providers.js', () => ({
       getAPIProvider: () => 'firstParty',
     }))
     const fetchMock = mock(() => Promise.resolve(new Response(null, { status: 200 })))
@@ -82,6 +82,6 @@ describe('preconnectAnthropicApi', () => {
 })
 
 afterAll(() => {
-  mock.module('src/utils/model/providers.js', () => realProviders)
-  mock.module('src/utils/model/providers.js', () => realProviders)
+  mock.module('src/providers/model/providers.js', () => realProviders)
+  mock.module('src/providers/model/providers.js', () => realProviders)
 })

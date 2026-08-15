@@ -16,7 +16,7 @@ import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { formatDuration, formatNumber } from 'src/shared/text/format.js';
 import { generateHeatmap } from 'src/terminal/render/heatmap.js';
-import { renderModelName } from 'src/utils/model/model.js';
+import { renderModelName } from 'src/providers/model/model.js';
 import { copyAnsiToClipboard } from 'src/platform/ide/screenshotClipboard.js';
 import { aggregateClaudeCodeStatsForRange, type ClaudeCodeStats, type DailyModelTokens, type StatsDateRange } from 'src/platform/stats.js';
 import type { ModelUsage } from 'src/platform/entrypoints/agentSdkTypes.js';

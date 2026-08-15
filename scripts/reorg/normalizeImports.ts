@@ -28,9 +28,9 @@
  * load-bearing. Bun keys a module mock by the SPECIFIER STRING, not by the file
  * it resolves to, which is why testing.md prescribes restoring "both the
  * relative form the file uses AND the `src/...` alias". Aliasing `./providers.js`
- * inside `src/utils/model/` therefore does not merely rename a string: it merges
+ * inside `src/providers/model/` therefore does not merely rename a string: it merges
  * that registration with the one every outside file already writes under
- * `src/utils/model/providers.js`, so the model tests' 'firstParty' pin starts
+ * `src/providers/model/providers.js`, so the model tests' 'firstParty' pin starts
  * reaching production code it never used to touch. That is a real pre-existing
  * defect — 22 tests across effort/fastMode/withRetry fail the moment the two
  * forms collide — but it is not a rename's to fix, and fixing it belongs with

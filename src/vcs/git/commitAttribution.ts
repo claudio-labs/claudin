@@ -14,7 +14,7 @@ import { isGeneratedFile } from 'src/shared/fs/generatedFiles.js'
 import { getRemoteUrlForDir, resolveGitDir } from 'src/vcs/git/gitFilesystem.js'
 import { findGitRoot, gitExe } from 'src/vcs/git/git.js'
 import { logError } from 'src/shared/log.js'
-import { getCanonicalName, type ModelName } from 'src/utils/model/model.js'
+import { getCanonicalName, type ModelName } from 'src/providers/model/model.js'
 import { sequential } from 'src/shared/sequential.js'
 
 /**

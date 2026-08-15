@@ -56,7 +56,7 @@ async function writeJsonl(entry: unknown): Promise<string> {
 
 afterEach(async () => {
   mock.module('./sessionStart.js', () => ({}))
-  mock.module('src/utils/model/providers.js', () => ({}))
+  mock.module('src/providers/model/providers.js', () => ({}))
   process.env.CLAUDE_CODE_SIMPLE = originalSimple
   await Promise.all(tempDirs.splice(0).map(dir => rm(dir, { recursive: true, force: true })))
 })
@@ -116,7 +116,7 @@ test('deserializeMessagesWithInterruptDetection strips thinking blocks only for 
     user(id(13), 'follow up'),
   ]
 
-  mock.module('src/utils/model/providers.js', () => ({
+  mock.module('src/providers/model/providers.js', () => ({
     getAPIProvider: () => 'openai',
     isOpenAICompatibleProvider: (provider: string) =>
       provider === 'openai' ||
@@ -142,7 +142,7 @@ test('deserializeMessagesWithInterruptDetection strips thinking blocks only for 
     JSON.stringify(thirdPartyAssistantMessages.map(message => message.message?.content)),
   ).not.toContain('only hidden reasoning')
 
-  mock.module('src/utils/model/providers.js', () => ({
+  mock.module('src/providers/model/providers.js', () => ({
     getAPIProvider: () => 'bedrock',
     isOpenAICompatibleProvider: (provider: string) =>
       provider === 'openai' ||

@@ -8,9 +8,9 @@ import { FAST_MODE_MODEL_DISPLAY, isFastModeAvailable, isFastModeCooldown, isFas
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
-import { convertEffortValueToLevel, type EffortLevel, getDefaultEffortForModel, getPriorPersistedEffort, modelSupportsEffort, modelSupportsMaxEffort, persistEffortForProject, resolvePickerEffortPersistence } from 'src/utils/effort.js';
-import { getCanonicalName, getDefaultMainLoopModel, type ModelSetting, modelDisplayString, parseUserSpecifiedModel } from 'src/utils/model/model.js';
-import { getModelOptions, type ModelOption } from 'src/utils/model/modelOptions.js';
+import { convertEffortValueToLevel, type EffortLevel, getDefaultEffortForModel, getPriorPersistedEffort, modelSupportsEffort, modelSupportsMaxEffort, persistEffortForProject, resolvePickerEffortPersistence } from 'src/providers/effort/effort.js';
+import { getCanonicalName, getDefaultMainLoopModel, type ModelSetting, modelDisplayString, parseUserSpecifiedModel } from 'src/providers/model/model.js';
+import { getModelOptions, type ModelOption } from 'src/providers/model/modelOptions.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
 import { Select } from 'src/terminal/custom-select/index.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';

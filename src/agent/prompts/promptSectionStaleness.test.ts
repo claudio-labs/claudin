@@ -15,7 +15,7 @@ import type { ProviderProfile } from 'src/platform/config/config.js'
 
 // Capture the real modules first so we can spread them and restore at teardown.
 // Following CLAUDE.md mock.module rules — never narrow the namespace shape.
-const realProviders = { ...(await import('src/utils/model/providers.js')) }
+const realProviders = { ...(await import('src/providers/model/providers.js')) }
 
 const state: { activeProfile: ProviderProfile | undefined } = {
   activeProfile: undefined,
@@ -31,7 +31,7 @@ const state: { activeProfile: ProviderProfile | undefined } = {
 // tests exercise). Re-assert before each test to win the last-install-wins
 // race, independent of whatever ran before this file.
 const pinFromState = (): void => {
-  mock.module('src/utils/model/providers.js', () => ({
+  mock.module('src/providers/model/providers.js', () => ({
     ...realProviders,
     getAPIProvider: () =>
       state.activeProfile ? state.activeProfile.provider : 'firstParty',
@@ -67,7 +67,7 @@ afterEach(() => {
 
 afterAll(() => {
   process.env.CLAUDE_CODE_SIMPLE = originalSimpleEnv
-  mock.module('src/utils/model/providers.js', () => realProviders)
+  mock.module('src/providers/model/providers.js', () => realProviders)
   clearSystemPromptSections()
 })
 

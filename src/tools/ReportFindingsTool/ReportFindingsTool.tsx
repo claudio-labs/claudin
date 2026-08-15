@@ -4,7 +4,7 @@ import { BLACK_CIRCLE } from 'src/shared/constants/figures.js'
 import { getModeColor } from 'src/permissions/PermissionMode.js'
 import { Box, Text } from 'src/terminal/ink.js'
 import { buildTool, type Tool, type ToolDef } from 'src/tools/Tool.js'
-import { EFFORT_LEVELS } from 'src/utils/effort.js'
+import { EFFORT_LEVELS } from 'src/providers/effort/effort.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   MAX_CATEGORY_CHARS,

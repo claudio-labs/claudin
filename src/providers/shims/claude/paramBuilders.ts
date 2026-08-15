@@ -21,7 +21,7 @@ import {
   CAPPED_DEFAULT_MAX_TOKENS,
   getModelMaxOutputTokens,
 } from "src/agent/context/context.js";
-import { type EffortValue, isAdaptiveEffort, modelSupportsEffort } from "src/utils/effort.js";
+import { type EffortValue, isAdaptiveEffort, modelSupportsEffort } from "src/providers/effort/effort.js";
 import { isEnvTruthy } from "src/shared/envUtils.js";
 import { validateBoundedIntEnvVar } from "src/shared/envValidation.js";
 import { errorMessage } from "src/shared/errors.js";
@@ -31,11 +31,11 @@ import {
   getDefaultOpusModel,
   getDefaultSonnetModel,
   getSmallFastModel,
-} from "src/utils/model/model.js";
+} from "src/providers/model/model.js";
 import {
   getAPIProvider,
   isGithubNativeAnthropicMode,
-} from "src/utils/model/providers.js";
+} from "src/providers/model/providers.js";
 import type { SystemPrompt } from "src/agent/systemPromptType.js";
 import { roughTokenCountEstimationForMessage } from "src/shared/tokenEstimation.js";
 import type { AssistantMessage, UserMessage } from "src/shared/types/message.js";

@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 import { isEssentialTrafficOnly } from 'src/platform/config/privacyLevel.js'
 
 type RegistryServer = {

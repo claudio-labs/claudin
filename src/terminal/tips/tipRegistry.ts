@@ -17,7 +17,7 @@ import {
   getEffortEnvOverride,
   getInitialEffortSetting,
   modelSupportsEffort,
-} from 'src/utils/effort.js'
+} from 'src/providers/effort/effort.js'
 import { env } from 'src/shared/env.js'
 import { cacheKeys } from 'src/shared/fs/fileStateCache.js'
 import { getIsGit, getWorktreeCount } from 'src/vcs/git/git.js'
@@ -33,7 +33,7 @@ import {
 import {
   getMainLoopModel,
   getUserSpecifiedModelSetting,
-} from 'src/utils/model/model.js'
+} from 'src/providers/model/model.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import { isPluginInstalled } from 'src/plugins/installedPluginsManager.js'
 import { loadKnownMarketplacesConfigSafe } from 'src/plugins/marketplaceManager.js'

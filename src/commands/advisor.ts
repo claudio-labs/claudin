@@ -10,8 +10,8 @@ import {
   normalizeModelStringForAPI,
   getUserSpecifiedModelSetting,
   parseUserSpecifiedModel,
-} from 'src/utils/model/model.js'
-import { validateModel } from 'src/utils/model/validateModel.js'
+} from 'src/providers/model/model.js'
+import { validateModel } from 'src/providers/model/validateModel.js'
 import { updateSettingsForSource } from 'src/platform/settings/settings.js'
 
 const call: LocalCommandCall = async (args, context) => {

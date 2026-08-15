@@ -40,12 +40,12 @@ const { _resetCacheProfileForTesting } = await import('src/agent/cache/cacheProf
 _resetCacheProfileForTesting()
 
 const realAutoCompact = { ...(await import('src/agent/compact/autoCompact.js')) }
-const realModel = { ...(await import('src/utils/model/model.js')) }
+const realModel = { ...(await import('src/providers/model/model.js')) }
 mock.module('./autoCompact.js', () => ({
   ...realAutoCompact,
   getEffectiveContextWindowSize: () => 1_000_000,
 }))
-mock.module('src/utils/model/model.js', () => ({
+mock.module('src/providers/model/model.js', () => ({
   ...realModel,
   getMainLoopModel: () => 'claude-sonnet-4',
 }))
@@ -247,6 +247,6 @@ afterAll(() => {
   _resetCacheProfileForTesting()
   _resetDeferCacheMarkerForTesting()
   mock.module('./autoCompact.js', () => realAutoCompact)
-  mock.module('src/utils/model/model.js', () => realModel)
+  mock.module('src/providers/model/model.js', () => realModel)
   mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
 })

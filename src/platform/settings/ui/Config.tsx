@@ -20,7 +20,7 @@ import { isBridgeEnabled } from 'src/platform/bridge/bridgeEnabled.js';
 import { ThemePicker } from 'src/platform/ThemePicker.js';
 import { useAppState, useSetAppState, useAppStateStore } from 'src/terminal/state/AppState.js';
 import { ModelPicker } from 'src/providers/ui/ModelPicker.js';
-import { modelDisplayString, isOpus1mMergeEnabled } from 'src/utils/model/model.js';
+import { modelDisplayString, isOpus1mMergeEnabled } from 'src/providers/model/model.js';
 import { isBilledAsExtraUsage } from 'src/providers/usage/extraUsage.js';
 import { ClaudeMdExternalIncludesDialog } from 'src/platform/ClaudeMdExternalIncludesDialog.js';
 import { ChannelDowngradeDialog, type ChannelDowngradeChoice } from 'src/platform/ChannelDowngradeDialog.js';

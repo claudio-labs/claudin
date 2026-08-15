@@ -27,8 +27,8 @@ import {
   isOpus1mMergeEnabled,
   type ModelSetting,
   parseUserSpecifiedModel,
-} from 'src/utils/model/model.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+} from 'src/providers/model/model.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 import { isEssentialTrafficOnly } from 'src/platform/config/privacyLevel.js'
 import {
   getInitialSettings,

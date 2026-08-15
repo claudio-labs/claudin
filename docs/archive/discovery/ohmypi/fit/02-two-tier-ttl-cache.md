@@ -31,7 +31,7 @@ abaixo, exceto `authCachePromise` que coalesce *leitura* do mesmo arquivo).
 
 | Site | file:line | Storage | TTL | In-flight coalescing |
 |---|---|---|---|---|
-| Model lists | `src/utils/model/modelCache.ts:20,47` | JSON-per-provider em `model-cache/` | 24 h hard, versionado | não |
+| Model lists | `src/providers/model/modelCache.ts:20,47` | JSON-per-provider em `model-cache/` | 24 h hard, versionado | não |
 | Latest version banner | `src/platform/install/latestVersionCache.ts:38,53` | JSON único `latest-version.json` | sem TTL próprio (caller decide via `checkedAt`) | não |
 | MCP auth-required cache | `src/mcp/client/authCache.ts:6,29` | JSON único `mcp-needs-auth-cache.json` | 15 min hard | parcial (leitura memoizada via `authCachePromise`) |
 | Paste store | `src/terminal/input/pasteStore.ts:8` | files in `paste-cache/` | sem TTL (cleanup por `cutoffDate`) | n/a (content-addressed) |

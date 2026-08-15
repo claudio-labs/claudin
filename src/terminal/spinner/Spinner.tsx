@@ -29,8 +29,8 @@ import { isInProcessTeammateTask } from 'src/agent/tasks/InProcessTeammateTask/t
 import { describeTeammateActivity } from 'src/agent/ui/tasks/taskStatusUtils.js';
 import { isBackgroundTask } from 'src/agent/tasks/types.js';
 import { getAllInProcessTeammateTasks } from 'src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js';
-import { getEffortSuffix, isAdaptiveEffort } from 'src/utils/effort.js';
-import { getMainLoopModel } from 'src/utils/model/model.js';
+import { getEffortSuffix, isAdaptiveEffort } from 'src/providers/effort/effort.js';
+import { getMainLoopModel } from 'src/providers/model/model.js';
 import { getViewedTeammateTask } from 'src/terminal/state/selectors.js';
 import { TEARDROP_ASTERISK } from 'src/shared/constants/figures.js';
 import figures from 'figures';

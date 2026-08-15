@@ -3,7 +3,7 @@ import figures from 'figures';
 import React from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { AdvisorBlock } from 'src/platform/doctor/advisor.js';
-import { renderModelName } from 'src/utils/model/model.js';
+import { renderModelName } from 'src/providers/model/model.js';
 import { jsonStringify } from 'src/platform/slowOperations.js';
 import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';

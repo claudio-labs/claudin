@@ -38,7 +38,7 @@ import { collectContextData } from 'src/commands/context/context-noninteractive.
 import {
   getDefaultMainLoopModel,
   getMainLoopModel,
-} from 'src/utils/model/model.js'
+} from 'src/providers/model/model.js'
 import {
   setMainLoopModelOverride,
   setSdkAgentProgressSummariesEnabled,

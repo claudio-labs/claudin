@@ -217,7 +217,7 @@ import { handleSpeculationAccept } from 'src/terminal/prompt-suggestion/speculat
 import { IdeOnboardingDialog } from 'src/platform/ide/IdeOnboardingDialog.js';
 import { EffortCallout, shouldShowEffortCallout } from 'src/providers/ui/EffortCallout.js';
 import { RemoteCallout } from 'src/platform/remote/RemoteCallout.js';
-import { getAPIProvider } from 'src/utils/model/providers.js';
+import { getAPIProvider } from 'src/providers/model/providers.js';
 const AntModelSwitchCallout = null;
 const shouldShowAntModelSwitch = (): boolean => false;
 import { activityManager } from 'src/agent/coordinator/activityManager.js';

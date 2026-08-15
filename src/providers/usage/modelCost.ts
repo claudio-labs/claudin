@@ -20,13 +20,13 @@ import {
   CLAUDE_SONNET_4_6_CONFIG,
   CLAUDE_SONNET_4_CONFIG,
   CLAUDE_SONNET_5_CONFIG,
-} from 'src/utils/model/configs.js'
+} from 'src/providers/model/configs.js'
 import {
   firstPartyNameToCanonical,
   getCanonicalName,
   getDefaultMainLoopModelSetting,
   type ModelShortName,
-} from 'src/utils/model/model.js'
+} from 'src/providers/model/model.js'
 
 // @see https://platform.claude.com/docs/en/about-claude/pricing
 export type ModelCosts = {

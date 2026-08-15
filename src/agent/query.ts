@@ -94,7 +94,7 @@ import {
   getRuntimeMainLoopModel,
   parseUserSpecifiedModel,
   renderModelName,
-} from 'src/utils/model/model.js'
+} from 'src/providers/model/model.js'
 import {
   doesMostRecentAssistantMessageExceed200k,
   finalContextTokensFromLastResponse,

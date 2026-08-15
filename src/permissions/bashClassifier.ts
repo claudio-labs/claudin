@@ -27,7 +27,7 @@ import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { getMainLoopModel } from 'src/utils/model/model.js'
+import { getMainLoopModel } from 'src/providers/model/model.js'
 import { permissionRuleValueFromString } from 'src/permissions/permissionRuleParser.js'
 import { sideQuery } from 'src/agent/sideQuery.js'
 import {

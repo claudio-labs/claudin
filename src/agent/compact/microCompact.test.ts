@@ -135,14 +135,14 @@ const mockSizeState = {
 }
 
 const realAutoCompact = { ...(await import('src/agent/compact/autoCompact.js')) }
-const realModel = { ...(await import('src/utils/model/model.js')) }
+const realModel = { ...(await import('src/providers/model/model.js')) }
 
 mock.module('./autoCompact.js', () => ({
   ...realAutoCompact,
   getEffectiveContextWindowSize: () => mockSizeState.effectiveWindow,
 }))
 
-mock.module('src/utils/model/model.js', () => ({
+mock.module('src/providers/model/model.js', () => ({
   ...realModel,
   getMainLoopModel: () => 'claude-sonnet-4',
 }))
@@ -259,5 +259,5 @@ describe('size-driven stable-stub trigger', () => {
 
 afterAll(() => {
   mock.module('./autoCompact.js', () => realAutoCompact)
-  mock.module('src/utils/model/model.js', () => realModel)
+  mock.module('src/providers/model/model.js', () => realModel)
 })

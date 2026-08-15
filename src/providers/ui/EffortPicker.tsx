@@ -12,7 +12,7 @@ import {
   isAdaptiveEffort,
   modelSupportsEffort,
   modelUsesOpenAIEffort,
-} from 'src/utils/effort.js'
+} from 'src/providers/effort/effort.js'
 import { getReasoningEffortForModel } from 'src/providers/presets/providerConfig.js'
 import { getRainbowColor } from 'src/agent/context/thinking.js'
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js'

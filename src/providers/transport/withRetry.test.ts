@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { APIError } from '@anthropic-ai/sdk'
 
-const realProviders = { ...(await import('src/utils/model/providers.js')) }
+const realProviders = { ...(await import('src/providers/model/providers.js')) }
 
 // Helper to build a mock APIError with specific headers
 function makeError(headers: Record<string, string>): APIError {
@@ -44,7 +44,7 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  mock.module('src/utils/model/providers.js', () => realProviders)
+  mock.module('src/providers/model/providers.js', () => realProviders)
 })
 
 async function importFreshWithRetryModule(
@@ -58,7 +58,7 @@ async function importFreshWithRetryModule(
     | 'codex'
     | 'foundry' = 'firstParty',
 ) {
-  mock.module('src/utils/model/providers.js', () => ({
+  mock.module('src/providers/model/providers.js', () => ({
     getAPIProvider: () => provider,
     getAPIProviderForStatsig: () => provider,
     // Other consumers in the dependency graph (claude.ts, client.ts) import

@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import { getModelOptions } from 'src/utils/model/modelOptions.js'
+import { getModelOptions } from 'src/providers/model/modelOptions.js'
 import { isVoiceGrowthBookEnabled } from 'src/terminal/voice/voiceModeEnabled.js'
 import {
   getOptionsForSetting,

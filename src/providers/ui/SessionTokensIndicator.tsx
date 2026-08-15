@@ -11,7 +11,7 @@ import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';
 import { resolveCacheProvider } from 'src/providers/cache/cacheMetrics.js';
 import { getSessionCacheMetrics } from 'src/providers/cache/cacheStatsTracker.js';
 import { formatTokens } from 'src/shared/text/format.js';
-import { getAPIProvider, isGithubNativeAnthropicMode } from 'src/utils/model/providers.js';
+import { getAPIProvider, isGithubNativeAnthropicMode } from 'src/providers/model/providers.js';
 import { hasNerdFontGlyphs } from 'src/terminal/terminalFont.js';
 import { getCurrentUsage } from 'src/agent/context/tokens.js';
 import type { Message } from 'src/shared/types/message.js';

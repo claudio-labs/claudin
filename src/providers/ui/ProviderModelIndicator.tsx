@@ -5,7 +5,7 @@ import { useTheme } from 'src/terminal/design-system/ThemeProvider.js';
 import { onGlobalConfigChange } from 'src/platform/config/config.js';
 import type { ProviderProfile } from 'src/platform/config/config.js';
 import { getActiveProviderProfile } from 'src/providers/presets/providerProfiles.js';
-import { getMainLoopModel, renderModelName } from 'src/utils/model/model.js';
+import { getMainLoopModel, renderModelName } from 'src/providers/model/model.js';
 import { buildModelPill, buildProviderPill, resolveBranchBg } from 'src/vcs/git/format-branch.js';
 import { getTheme } from 'src/terminal/theme/theme.js';
 import { logError } from 'src/shared/log.js';

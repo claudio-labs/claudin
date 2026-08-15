@@ -12,8 +12,8 @@ import { enableConfigs } from 'src/platform/config/config.js'
 let mainLoopModel = 'claude-fable-5'
 let capturedOpts: Array<Record<string, unknown>> = []
 
-const actualModel = await import('src/utils/model/model.js')
-mock.module('src/utils/model/model.js', () => ({
+const actualModel = await import('src/providers/model/model.js')
+mock.module('src/providers/model/model.js', () => ({
   ...actualModel,
   getMainLoopModel: () => mainLoopModel,
 }))

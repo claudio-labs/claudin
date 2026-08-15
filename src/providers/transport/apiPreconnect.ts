@@ -25,7 +25,7 @@
 
 import { getOauthConfig } from 'src/shared/constants/oauth.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 
 let fired = false
 

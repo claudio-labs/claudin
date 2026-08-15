@@ -14,7 +14,7 @@ import { hasNodeOption, isBareMode, isEnvTruthy, isInProtectedNamespace } from '
 import { getIsGit, getWorktreeCount } from 'src/vcs/git/git.js';
 import { getGhAuthStatus } from 'src/platform/github/ghAuthStatus.js';
 import { logError } from 'src/shared/log.js';
-import { getDefaultMainLoopModel, parseUserSpecifiedModel } from 'src/utils/model/model.js';
+import { getDefaultMainLoopModel, parseUserSpecifiedModel } from 'src/providers/model/model.js';
 import { getManagedPluginNames } from 'src/plugins/managedPlugins.js';
 import { getPluginSeedDirs } from 'src/plugins/pluginDirectories.js';
 import { loadAllPluginsCacheOnly } from 'src/plugins/pluginLoader.js';

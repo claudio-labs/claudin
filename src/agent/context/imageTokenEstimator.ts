@@ -3,7 +3,7 @@ import {
   type APIProvider,
   getAPIProvider,
   isGithubNativeAnthropicMode,
-} from 'src/utils/model/providers.js'
+} from 'src/providers/model/providers.js'
 
 // Conservative default kept identical to the previous hard-coded value so
 // every fallback path (URL source, unknown provider, unparsable header,

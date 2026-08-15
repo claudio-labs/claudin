@@ -98,7 +98,7 @@ Call sites de `getSmallFastModel` (excluindo a definição e os imports):
 - src/providers/shims/claude.ts:3293
 
 Em testes:
-- src/utils/model/model.openai-shim-providers.test.ts:196, :207, :216, :226 (mais usos como referência nas linhas 313, 319, 336, 342)
+- src/providers/model/model.openai-shim-providers.test.ts:196, :207, :216, :226 (mais usos como referência nas linhas 313, 319, 336, 342)
 ```
 
 **Variant A run#2:**
@@ -121,17 +121,17 @@ Call sites de `getSmallFastModel` (excluindo a definição e imports):
 - src/providers/shims/claude.ts:550
 - src/providers/shims/claude.ts:3293
 
-Testes (src/utils/model/model.openai-shim-providers.test.ts):
+Testes (src/providers/model/model.openai-shim-providers.test.ts):
 - :196, :207, :216, :226 (chamadas diretas)
 - :313, :319, :336, :342 (referências em mocks)
 
-Definição: src/utils/model/model.ts:43
+Definição: src/providers/model/model.ts:43
 ```
 
 **Variant B run#1:**
 
 ```
-Callers de `getSmallFastModel` (excluindo a definição em `src/utils/model/model.ts:43` e os testes):
+Callers de `getSmallFastModel` (excluindo a definição em `src/providers/model/model.ts:43` e os testes):
 
 - src/sessions/agenticSessionSearch.ts:261
 - src/platform/lifecycleHooks/execAgentHook.ts:118
@@ -148,13 +148,13 @@ Callers de `getSmallFastModel` (excluindo a definição em `src/utils/model/mode
 - src/providers/shims/claude.ts:550
 - src/providers/shims/claude.ts:3293
 
-Call sites em testes (`src/utils/model/model.openai-shim-providers.test.ts`): linhas 196, 207, 216, 226.
+Call sites em testes (`src/providers/model/model.openai-shim-providers.test.ts`): linhas 196, 207, 216, 226.
 ```
 
 **Variant B run#2:**
 
 ```
-Call sites de `getSmallFastModel` (excluindo a definição em `src/utils/model/model.ts:43` e os imports):
+Call sites de `getSmallFastModel` (excluindo a definição em `src/providers/model/model.ts:43` e os imports):
 
 **Produção:**
 - src/platform/lifecycleHooks/skillImprovement.ts:169
@@ -173,10 +173,10 @@ Call sites de `getSmallFastModel` (excluindo a definição em `src/utils/model/m
 - src/providers/shims/claude.ts:3293
 
 **Testes:**
-- src/utils/model/model.openai-shim-providers.test.ts:196
-- src/utils/model/model.openai-shim-providers.test.ts:207
-- src/utils/model/model.openai-shim-providers.test.ts:216
-- src/utils/model/model.openai-shim-providers.test.ts:226
+- src/providers/model/model.openai-shim-providers.test.ts:196
+- src/providers/model/model.openai-shim-providers.test.ts:207
+- src/providers/model/model.openai-shim-providers.test.ts:216
+- src/providers/model/model.openai-shim-providers.test.ts:226
 ```
 
 ### find-definition

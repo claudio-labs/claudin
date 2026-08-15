@@ -13,7 +13,7 @@ import {
   getDisplayedEffortLabel,
   isAdaptiveEffort,
   modelSupportsEffort,
-} from 'src/utils/effort.js'
+} from 'src/providers/effort/effort.js'
 import { buildEffortPill } from 'src/vcs/git/format-branch.js'
 import type { Theme } from 'src/terminal/theme/theme.js'
 

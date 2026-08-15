@@ -9,7 +9,7 @@ import {
   resetSessionCacheStats,
 } from 'src/providers/cache/cacheStatsTracker.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
-import { getAPIProvider, isGithubNativeAnthropicMode } from 'src/utils/model/providers.js'
+import { getAPIProvider, isGithubNativeAnthropicMode } from 'src/providers/model/providers.js'
 import {
   addToTotalCostState,
   addToTotalLinesChanged,
@@ -55,7 +55,7 @@ import { isFastModeEnabled } from 'src/providers/fastMode.js'
 import { formatDuration, formatNumber } from 'src/shared/text/format.js'
 import { resetBytesSaved } from 'src/agent/context/tokensSaved.js'
 import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js'
-import { getCanonicalName } from 'src/utils/model/model.js'
+import { getCanonicalName } from 'src/providers/model/model.js'
 import { calculateUSDCost } from 'src/providers/usage/modelCost.js'
 export {
   getTotalCostUSD as getTotalCost,

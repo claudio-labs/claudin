@@ -41,7 +41,7 @@ import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js'
 import type { SDKStatus, SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type { StdoutMessage } from 'src/platform/entrypoints/sdk/controlTypes.js'
 import { getIsRemoteMode, getSessionId } from 'src/platform/bootstrap/state.js'
-import { ensureModelStringsInitialized } from 'src/utils/model/modelStrings.js'
+import { ensureModelStringsInitialized } from 'src/providers/model/modelStrings.js'
 import {
   processSessionStartHooks,
   processSetupHooks,

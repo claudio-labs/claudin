@@ -27,12 +27,12 @@ import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'
 import { resolveGeminiCredential } from 'src/providers/oauth/geminiAuth.js'
 import { hydrateGeminiAccessTokenFromSecureStorage } from 'src/providers/oauth/geminiCredentials.js'
 import { hydrateGithubModelsTokenFromSecureStorage } from 'src/providers/oauth/githubModelsCredentials.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 import {
   modelUsesKimiEffort,
   resolveAppliedEffort,
   type EffortValue,
-} from 'src/utils/effort.js'
+} from 'src/providers/effort/effort.js'
 import { redactSecretValueForDisplay } from 'src/providers/presets/providerProfile.js'
 import { logApiCallEnd, logApiCallStart } from 'src/providers/transport/requestLogging.js'
 import { stableStringify } from 'src/shared/data/stableStringify.js'

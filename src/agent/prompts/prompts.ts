@@ -14,8 +14,8 @@ import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import {
   getCanonicalName,
   getMarketingNameForModel,
-} from 'src/utils/model/model.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+} from 'src/providers/model/model.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 import { getSkillToolCommands } from 'src/commands/commands.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import { getOutputStyleConfig } from 'src/shared/constants/outputStyles.js'

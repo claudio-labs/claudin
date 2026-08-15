@@ -27,7 +27,7 @@ import { isEnvTruthy, isRunningOnHomespace } from 'src/shared/envUtils.js';
 import { type FpsMetrics, FpsTracker } from 'src/terminal/render/fpsTracker.js';
 import { updateGithubRepoPathMapping } from 'src/vcs/git/githubRepoPathMapping.js';
 import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js';
-import { usesAnthropicAccountFlow } from 'src/utils/model/providers.js';
+import { usesAnthropicAccountFlow } from 'src/providers/model/providers.js';
 import type { PermissionMode } from 'src/permissions/PermissionMode.js';
 import { getBaseRenderOptions } from 'src/terminal/render/renderOptions.js';
 import { applyRenderCadence } from 'src/terminal/render/renderCadence.js';

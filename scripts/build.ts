@@ -725,7 +725,7 @@ ${exports}
     // and its internal per-platform binary path resolution stays intact.
     '@vscode/ripgrep',
     // AWS/Azure SDKs are "bring your own" — NOT declared in package.json and
-    // NOT installed (dynamically imported in src/utils/model/bedrock.ts for
+    // NOT installed (dynamically imported in src/providers/model/bedrock.ts for
     // AWS-native Bedrock model discovery, wrapped in try/catch). They can't be
     // bundled (not present), so they stay external for BOTH builds. Under the
     // compiled binary the dynamic import fails gracefully, exactly as it would

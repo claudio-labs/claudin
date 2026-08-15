@@ -7,7 +7,7 @@ import type { Message } from 'src/shared/types/message.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { getLastAssistantMessage } from 'src/agent/messages/messages.js';
-import { getMainLoopModel } from 'src/utils/model/model.js';
+import { getMainLoopModel } from 'src/providers/model/model.js';
 import { getInitialSettings } from 'src/platform/settings/settings.js';
 import { logOTelEvent } from 'src/platform/telemetry/events.js';
 import { submitTranscriptShare, type TranscriptShareTrigger } from 'src/platform/feedback/submitTranscriptShare.js';

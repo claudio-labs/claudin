@@ -11,7 +11,7 @@ const realActiveProviderSnapshot = { ...realActiveProvider }
 // `openaiContextWindows.ts` reads `getDiscoveredContextWindow` from it and
 // silently fell back to the hardcoded table for the rest of the run.
 const realOpenaiModelDiscovery = {
-  ...(await import('src/utils/model/openaiModelDiscovery.js')),
+  ...(await import('src/providers/model/openaiModelDiscovery.js')),
 }
 
 mock.module('src/providers/presets/activeProvider.js', () => ({
@@ -33,13 +33,13 @@ mock.module('src/providers/presets/activeProvider.js', () => ({
 afterAll(() => {
   mock.module('src/providers/presets/activeProvider.js', () => realActiveProviderSnapshot)
   mock.module(
-    'src/utils/model/openaiModelDiscovery.js',
+    'src/providers/model/openaiModelDiscovery.js',
     () => realOpenaiModelDiscovery,
   )
 })
 
 const { getAdditionalModelOptionsCacheScope } = await import('src/providers/presets/providerConfig.js')
-const { getAPIProvider } = await import('src/utils/model/providers.js')
+const { getAPIProvider } = await import('src/providers/model/providers.js')
 void getAPIProvider
 
 const originalEnv = {
@@ -89,7 +89,7 @@ test('opens the model picker without awaiting local model discovery refresh', as
       }),
   )
 
-  mock.module('src/utils/model/openaiModelDiscovery.js', () => ({
+  mock.module('src/providers/model/openaiModelDiscovery.js', () => ({
     ...realOpenaiModelDiscovery,
     discoverOpenAICompatibleModelOptions,
   }))

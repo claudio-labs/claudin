@@ -308,7 +308,7 @@ const BASE_PROVIDER_POOL: Omit<ProviderPoolConfig, 'allowH2'> = {
 }
 
 // Keys must match the canonical values returned by getAPIProvider() in
-// src/utils/model/providers.ts. Adding a new APIProvider variant? Add it here
+// src/providers/model/providers.ts. Adding a new APIProvider variant? Add it here
 // (or accept the optimistic default below).
 //
 // Intentionally absent: 'bedrock', 'vertex', 'foundry'. These transports use

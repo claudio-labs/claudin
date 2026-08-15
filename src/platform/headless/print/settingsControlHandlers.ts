@@ -39,8 +39,8 @@ import {
   getIsRemoteMode,
   getSessionId,
 } from 'src/platform/bootstrap/state.js'
-import { getMainLoopModel } from 'src/utils/model/model.js'
-import { modelSupportsEffort, resolveAppliedEffort } from 'src/utils/effort.js'
+import { getMainLoopModel } from 'src/providers/model/model.js'
+import { modelSupportsEffort, resolveAppliedEffort } from 'src/providers/effort/effort.js'
 import { notifySessionMetadataChanged } from 'src/sessions/sessionState.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import { generateSessionTitle } from 'src/sessions/sessionTitle.js'
@@ -52,7 +52,7 @@ import { getRemoteSessionUrl } from 'src/shared/constants/product.js'
 import { buildBridgeConnectUrl } from 'src/platform/bridge/bridgeStatusUtil.js'
 import { extractInboundMessageFields } from 'src/platform/bridge/inboundMessages.js'
 import { enqueue } from 'src/agent/messageQueueManager.js'
-import { getDefaultMainLoopModel } from 'src/utils/model/model.js'
+import { getDefaultMainLoopModel } from 'src/providers/model/model.js'
 import type {
   StdoutMessage,
   SDKControlRequest,

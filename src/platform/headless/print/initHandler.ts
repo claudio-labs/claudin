@@ -32,7 +32,7 @@ import {
   registerHookCallbacks,
   setInitJsonSchema,
 } from 'src/platform/bootstrap/state.js'
-import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
+import { parseUserSpecifiedModel } from 'src/providers/model/model.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import {
   DEFAULT_OUTPUT_STYLE_NAME,
@@ -40,7 +40,7 @@ import {
 } from 'src/shared/constants/outputStyles.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getAccountInformation } from 'src/providers/auth/auth.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 import {
   isFastModeAvailable,
   isFastModeEnabled,

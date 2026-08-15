@@ -27,11 +27,11 @@ import {
   createEmptyAttributionState,
 } from 'src/vcs/git/commitAttribution.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
-import type { EffortValue } from 'src/utils/effort.js'
+import type { EffortValue } from 'src/providers/effort/effort.js'
 import type { FileHistoryState } from 'src/shared/fs/fileHistory.js'
 import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import type { SessionHooksState } from 'src/platform/lifecycleHooks/sessionHooks.js'
-import type { ModelSetting } from 'src/utils/model/model.js'
+import type { ModelSetting } from 'src/providers/model/model.js'
 import type { DenialTrackingState } from 'src/permissions/denialTracking.js'
 import type { PermissionMode } from 'src/permissions/PermissionMode.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'

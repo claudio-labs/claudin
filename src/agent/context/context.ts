@@ -3,9 +3,9 @@ import { CONTEXT_1M_BETA_HEADER } from 'src/shared/constants/betas.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { getCanonicalName } from 'src/utils/model/model.js'
-import { getModelCapability } from 'src/utils/model/modelCapabilities.js'
-import { getOpenAIContextWindow, getOpenAIMaxOutputTokens } from 'src/utils/model/openaiContextWindows.js'
+import { getCanonicalName } from 'src/providers/model/model.js'
+import { getModelCapability } from 'src/providers/model/modelCapabilities.js'
+import { getOpenAIContextWindow, getOpenAIMaxOutputTokens } from 'src/providers/model/openaiContextWindows.js'
 
 function isOpenAIShimTransport(): boolean {
   const transport = tryGetActiveProvider()?.transport
@@ -100,7 +100,7 @@ export function getContextWindowForModel(
     }
     console.error(
       `[context] Warning: model "${model}" not in context window table — using conservative 128k default. ` +
-      'Add it to src/utils/model/openaiContextWindows.ts for accurate compaction.',
+      'Add it to src/providers/model/openaiContextWindows.ts for accurate compaction.',
     )
     return OPENAI_FALLBACK_CONTEXT_WINDOW
   }
@@ -127,7 +127,7 @@ export function getContextWindowForModel(
   // this branch they'd fall through to the 200k default and auto-compact at
   // 200k despite the picker advertising 1M. (is1mContextDisabled() still wins,
   // for HIPAA-style opt-outs.)
-  // Keep this list in sync with isNative1mModel (src/utils/model/model.ts),
+  // Keep this list in sync with isNative1mModel (src/providers/model/model.ts),
   // which strips the meaningless [1m] suffix for these same models.
   if (
     !is1mContextDisabled() &&

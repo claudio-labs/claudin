@@ -68,7 +68,7 @@ Padrões adicionais de cache no omp que não entraram em `02-*` insight/deep/fit
 ## 3. Encaixe Claudin (caches relacionados)
 
 - **Negative cache + path-prefix invalidate** → `src/agent/tools/toolResultCache.ts:63` (Grep/Glob/Read). Não tem invalidate por write-em-vizinho; hoje só mtime do file próprio.
-- **Config-hash invalidation** → `src/utils/model/modelCache.ts:20,47` (hoje só `version` numérico) e `src/platform/settings/settingsCache.ts`.
+- **Config-hash invalidation** → `src/providers/model/modelCache.ts:20,47` (hoje só `version` numérico) e `src/platform/settings/settingsCache.ts`.
 - **Atomic staging-rename / path whitelist** → `src/plugins/zipCache.ts`, `src/plugins/cacheUtils.ts`.
 - **`getStale()` durable retention** → `src/platform/install/latestVersionCache.ts:38,53` (banner serve último valor bom indefinidamente, refresh em background).
 - **Empty-result fast recheck** → `src/tools/GlobTool/` + `src/tools/GrepTool/`.

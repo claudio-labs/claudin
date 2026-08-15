@@ -1,15 +1,15 @@
 import { afterAll, afterEach, describe, expect, it, mock } from 'bun:test'
 
-import { renderModelName } from 'src/utils/model/model.js'
-import { getModelStrings } from 'src/utils/model/modelStrings.js'
+import { renderModelName } from 'src/providers/model/model.js'
+import { getModelStrings } from 'src/providers/model/modelStrings.js'
 import type { ProviderProfile } from 'src/platform/config/config.js'
 import { readSnapshot } from 'src/providers/ui/ProviderModelIndicator.js'
 
-const realModel = { ...(await import('src/utils/model/model.js')) }
+const realModel = { ...(await import('src/providers/model/model.js')) }
 const realProfiles = { ...(await import('src/providers/presets/providerProfiles.js')) }
 
 function setActiveModel(name: string): void {
-  mock.module('src/utils/model/model.js', () => ({
+  mock.module('src/providers/model/model.js', () => ({
     ...realModel,
     getMainLoopModel: () => name,
   }))
@@ -23,12 +23,12 @@ function setProfile(profile: Partial<ProviderProfile> | undefined): void {
 }
 
 afterEach(() => {
-  mock.module('src/utils/model/model.js', () => realModel)
+  mock.module('src/providers/model/model.js', () => realModel)
   mock.module('src/providers/presets/providerProfiles.js', () => realProfiles)
 })
 
 afterAll(() => {
-  mock.module('src/utils/model/model.js', () => realModel)
+  mock.module('src/providers/model/model.js', () => realModel)
   mock.module('src/providers/presets/providerProfiles.js', () => realProfiles)
 })
 
@@ -61,7 +61,7 @@ describe('ProviderModelIndicator readSnapshot', () => {
   it('falls back to the profile model when no main-loop model resolves', () => {
     const raw = getModelStrings().opus48
     setProfile({ provider: 'anthropic', name: 'Anthropic', model: raw })
-    mock.module('src/utils/model/model.js', () => ({
+    mock.module('src/providers/model/model.js', () => ({
       ...realModel,
       getMainLoopModel: () => '',
     }))

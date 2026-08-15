@@ -1,7 +1,7 @@
 import type { QuerySource } from "src/agent/prompts/querySource.js";
 import type { CacheScope } from "src/providers/transport/api.js";
 import { isEnvTruthy } from "src/shared/envUtils.js";
-import { getAPIProvider } from "src/utils/model/providers.js";
+import { getAPIProvider } from "src/providers/model/providers.js";
 
 export function getCacheControl({
   scope,

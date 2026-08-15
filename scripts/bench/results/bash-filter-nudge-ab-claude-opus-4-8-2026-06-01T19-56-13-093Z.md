@@ -235,7 +235,7 @@ Pronto. Resultado:
 
 Por linhas modificadas, o campeão entre arquivos de **código-fonte** é:
 
-- **`src/utils/model/modelOptions.ts`** — 111 linhas (`+58/−53`, é uma reescrita substancial da lógica de opções de modelo).
+- **`src/providers/model/modelOptions.ts`** — 111 linhas (`+58/−53`, é uma reescrita substancial da lógica de opções de modelo).
 
 Se contarmos linhas brutas no diff inteiro, o topo absoluto é `scripts/bench/cli-token-footprint.sh` (158) e os arquivos de resultado de bench, mas esses são scripts/artefatos de benchmark, não a mudança "real". Entre os fontes que importam, `modelOptions.ts` lidera, seguido de perto por `ContextVisualization.tsx` (60) e os testes novos `modelOptions.dualcontext.test.ts` (99) e `modelProjectPersistence.test.ts` (73).
 
@@ -258,7 +258,7 @@ Se contarmos linhas brutas no diff inteiro, o topo absoluto é `scripts/bench/cl
 
 O arquivo mais alterado em volume de linhas é **`scripts/bench/cli-token-footprint.sh`** com **158 linhas** modificadas (o maior `churn` entre todos). Logo atrás vêm `scripts/bench/cache-progression.sh` (149, arquivo novo) e os arquivos de resultado de bench gerados (~120 linhas cada).
 
-Entre os arquivos de **código-fonte** (não-bench), o mais alterado é **`src/utils/model/modelOptions.ts`** com 111 linhas.
+Entre os arquivos de **código-fonte** (não-bench), o mais alterado é **`src/providers/model/modelOptions.ts`** com 111 linhas.
 
 ## `git log --oneline -20` — confirmação de tema
 
@@ -268,7 +268,7 @@ As últimas 5 revisões (`HEAD~5..HEAD`) **não são todas do mesmo tema** — h
    - `631f667 fix(model): always annotate "(1M context)"...`
    - `31128c9 feat(model): offer 200k + 1M context variants...`
    - `bd8150d style(context): draw connected tree spine...`
-   - Isso bate com os arquivos `src/utils/model/*`, `src/commands/model/model.tsx`, `src/agent/ui/ContextVisualization.tsx`.
+   - Isso bate com os arquivos `src/providers/model/*`, `src/commands/model/model.tsx`, `src/agent/ui/ContextVisualization.tsx`.
 
 2. **Benchmark de tokens** (tema separa
 …[truncado]
@@ -281,7 +281,7 @@ As últimas 5 revisões (`HEAD~5..HEAD`) **não são todas do mesmo tema** — h
 
 **Arquivo mais alterado:** `scripts/bench/cli-token-footprint.sh`, com **158 linhas** modificadas — o maior número de mudanças de qualquer arquivo no intervalo `HEAD~5..HEAD`.
 
-Vale uma ressalva: se você considerar só **código de produção** (ignorando scripts de bench e os arquivos `results/*.md`, que são quase todos puramente adicionados), o líder é `src/utils/model/modelOptions.ts` com **111 linhas** (e foi um refactor real: 56 adições / 55 remoções, não só inserção).
+Vale uma ressalva: se você considerar só **código de produção** (ignorando scripts de bench e os arquivos `results/*.md`, que são quase todos puramente adicionados), o líder é `src/providers/model/modelOptions.ts` com **111 linhas** (e foi um refactor real: 56 adições / 55 remoções, não só inserção).
 
 ## Os commits estão no mesmo tema?
 
@@ -304,7 +304,7 @@ Vale uma ressalva: se você considerar só **código de produção** (ignorando 
 
 **Arquivo mais alterado:** `scripts/bench/cli-token-footprint.sh`, com **158 linhas** de churn — é o maior número absoluto na coluna do `--stat`.
 
-Vale a ressalva: esse é um script de benchmark. Se você quiser dizer "código de produção", o líder é `src/utils/model/modelOptions.ts` (**111 linhas**), seguido de perto por `src/agent/ui/ContextVisualization.tsx` (60). O total geral foi 19 arquivos, +1173/−119.
+Vale a ressalva: esse é um script de benchmark. Se você quiser dizer "código de produção", o líder é `src/providers/model/modelOptions.ts` (**111 linhas**), seguido de perto por `src/agent/ui/ContextVisualization.tsx` (60). O total geral foi 19 arquivos, +1173/−119.
 
 ## Os 5 commits são do mesmo tema?
 

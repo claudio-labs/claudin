@@ -21,7 +21,7 @@ import { errorMessage } from 'src/shared/errors.js'
 import { OAuthService } from 'src/providers/oauth/index.js'
 import { installOAuthTokens } from 'src/platform/headless/handlers/auth.js'
 import { getAccountInformation } from 'src/providers/auth/auth.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 import type {
   HeadlessStreamingContext,
   ControlRequestWith,

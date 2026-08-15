@@ -20,7 +20,7 @@ import type { Message } from 'src/shared/types/message.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import type { CacheSafeParams } from 'src/agent/coordinator/forkedAgent.js'
-import { getMainLoopModel } from 'src/utils/model/model.js'
+import { getMainLoopModel } from 'src/providers/model/model.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import {
   shouldEnableThinkingByDefault,

@@ -16,7 +16,7 @@ import {
   readGithubModelsToken,
   saveGithubModelsToken,
 } from 'src/providers/oauth/githubModelsCredentials.js'
-import { prefetchCopilotModelCatalog } from 'src/utils/model/copilotModelCatalog.js'
+import { prefetchCopilotModelCatalog } from 'src/providers/model/copilotModelCatalog.js'
 import {
   addProviderProfile,
   getProviderProfiles,

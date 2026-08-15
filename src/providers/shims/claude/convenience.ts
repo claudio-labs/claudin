@@ -2,7 +2,7 @@ import type { BetaJSONOutputFormat } from '@anthropic-ai/sdk/resources/beta/mess
 import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
 import type { AssistantMessage } from 'src/shared/types/message.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
-import { getSmallFastModel } from 'src/utils/model/model.js'
+import { getSmallFastModel } from 'src/providers/model/model.js'
 import { asSystemPrompt, type SystemPrompt } from 'src/agent/systemPromptType.js'
 import { withVCR } from 'src/providers/vcr.js'
 import { queryModelWithoutStreaming } from 'src/providers/shims/claude/nonStreaming.js'

@@ -23,7 +23,7 @@ import { toIDEDisplayName } from 'src/platform/ide/ide.js';
 import { logError } from 'src/shared/log.js';
 import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js';
 import { createUserMessage } from 'src/agent/messages/messages.js';
-import { getMainLoopModel, getRuntimeMainLoopModel } from 'src/utils/model/model.js';
+import { getMainLoopModel, getRuntimeMainLoopModel } from 'src/providers/model/model.js';
 import { createPromptRuleContent, isClassifierPermissionsEnabled, PROMPT_PREFIX } from 'src/permissions/bashClassifier.js';
 import { type PermissionMode, toExternalPermissionMode } from 'src/permissions/PermissionMode.js';
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js';

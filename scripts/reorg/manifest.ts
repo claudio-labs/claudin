@@ -23,7 +23,7 @@
  *     before `constants-rest`.
  *
  * `model-and-effort` is deliberately LAST and deliberately droppable. Moving
- * `src/utils/model/` makes it load earlier than it does today, and the previous
+ * `src/providers/model/` makes it load earlier than it does today, and the previous
  * reorg measured that at 13 unrelated failures across withRetry, apiPreconnect,
  * officialRegistry and the model tests: `utils/model/{sonnet5,opus5}.test.ts` pin
  * `providers.js` to 'firstParty' late in the walk, which is what contains

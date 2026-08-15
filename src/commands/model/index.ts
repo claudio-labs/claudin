@@ -1,6 +1,6 @@
 import type { Command } from 'src/commands/commands.js'
 import { shouldInferenceConfigCommandBeImmediate } from 'src/commands/immediateCommand.js'
-import { getMainLoopModel, renderModelName } from 'src/utils/model/model.js'
+import { getMainLoopModel, renderModelName } from 'src/providers/model/model.js'
 
 export default {
   type: 'local-jsx',

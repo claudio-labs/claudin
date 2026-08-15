@@ -6,7 +6,7 @@ import {
   createUserMessage,
   getAssistantMessageText,
 } from 'src/agent/messages/messages.js'
-import { getSmallFastModel } from 'src/utils/model/model.js'
+import { getSmallFastModel } from 'src/providers/model/model.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { queryModelWithoutStreaming } from 'src/providers/shims/claude.js'
 import { getSessionMemoryContent } from 'src/memory/session/sessionMemoryUtils.js'

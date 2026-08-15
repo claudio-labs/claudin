@@ -25,9 +25,9 @@ import {
   isSdkApiConnectionTimeoutError,
   isSdkApiError,
 } from 'src/shared/errors.js'
-import { isNonCustomOpusModel } from 'src/utils/model/model.js'
-import { getModelStrings } from 'src/utils/model/modelStrings.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+import { isNonCustomOpusModel } from 'src/providers/model/model.js'
+import { getModelStrings } from 'src/providers/model/modelStrings.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
 import {
   API_PDF_MAX_PAGES,

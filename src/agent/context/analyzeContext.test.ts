@@ -4,7 +4,7 @@ import { invalidateClientCache } from 'src/providers/transport/clientCache.js'
 import type { Tool } from 'src/tools/Tool.js'
 
 const realClient = { ...(await import('src/providers/transport/client.js')) }
-const realModel = { ...(await import('src/utils/model/model.js')) }
+const realModel = { ...(await import('src/providers/model/model.js')) }
 
 const {
   countToolDefinitionTokens,
@@ -27,7 +27,7 @@ function mockShimClient(): void {
       },
     }),
   }))
-  mock.module('src/utils/model/model.js', () => ({
+  mock.module('src/providers/model/model.js', () => ({
     ...realModel,
     getMainLoopModel: () => 'claude-opus-4-8-high',
     getSmallFastModel: () => 'claude-opus-4-8-high',
@@ -50,13 +50,13 @@ const getToolPermissionContext = async () =>
 
 afterEach(() => {
   mock.module('src/providers/transport/client.js', () => realClient)
-  mock.module('src/utils/model/model.js', () => realModel)
+  mock.module('src/providers/model/model.js', () => realModel)
   invalidateClientCache()
 })
 
 afterAll(() => {
   mock.module('src/providers/transport/client.js', () => realClient)
-  mock.module('src/utils/model/model.js', () => realModel)
+  mock.module('src/providers/model/model.js', () => realModel)
   invalidateClientCache()
 })
 

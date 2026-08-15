@@ -60,7 +60,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { validateImagesForAPI } from 'src/terminal/image/imageValidation.js'
 import { safeParseJSON } from 'src/shared/data/json.js'
 import { logError } from 'src/shared/log.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 import { normalizeLegacyToolName } from 'src/permissions/permissionRuleParser.js'
 import { getStrictToolResultPairing } from 'src/platform/bootstrap/state.js'
 import {

@@ -19,7 +19,7 @@ import { isAdvisorEnabled } from 'src/platform/doctor/advisor.js';
 import { validateForceLoginOrg } from 'src/providers/auth/auth.js';
 import { filterAllowedSdkBetas } from 'src/providers/transport/betas.js';
 import { logForDebugging, setHasFormattedOutput } from 'src/shared/debug.js';
-import { getInitialEffortSetting, parseEffortValue } from 'src/utils/effort.js';
+import { getInitialEffortSetting, parseEffortValue } from 'src/providers/effort/effort.js';
 import { isBareMode } from 'src/shared/envUtils.js';
 import { getInitialFastModeSetting, isFastModeEnabled } from 'src/providers/fastMode.js';
 import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js';

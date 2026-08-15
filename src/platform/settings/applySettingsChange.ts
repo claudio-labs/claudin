@@ -10,7 +10,7 @@ import { syncPermissionRulesFromDisk } from 'src/permissions/permissions.js'
 import { loadAllPermissionRulesFromDisk } from 'src/permissions/permissionsLoader.js'
 import type { SettingSource } from 'src/platform/settings/constants.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
-import { getProjectEffortPin } from 'src/utils/effort.js'
+import { getProjectEffortPin } from 'src/providers/effort/effort.js'
 
 /**
  * Apply a settings change to app state. Re-reads settings from disk,

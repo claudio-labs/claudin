@@ -5,7 +5,7 @@ import React, { Suspense, use, useCallback, useEffect, useMemo, useState } from 
 import { KeybindingWarnings } from 'src/platform/KeybindingWarnings.js';
 import { McpParsingWarnings } from 'src/mcp/ui/McpParsingWarnings.js';
 import { getModelMaxOutputTokens } from 'src/agent/context/context.js';
-import { getDefaultMainLoopModel } from 'src/utils/model/model.js';
+import { getDefaultMainLoopModel } from 'src/providers/model/model.js';
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js';
 import type { SettingSource } from 'src/platform/settings/constants.js';
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js';

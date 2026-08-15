@@ -15,7 +15,7 @@
  *   Variante A = adaptive  (servidor escala per-request; nenhum campo effort)
  *   Variante B = xhigh     (effort=xhigh fixo; Opus 4.8 suporta)
  *
- * Precedencia confirmada em src/utils/effort.ts:234,243 — a env var domina
+ * Precedencia confirmada em src/providers/effort/effort.ts:234,243 — a env var domina
  * (env -> appState -> model default). adaptive -> resolveAppliedEffort retorna
  * undefined -> request sem campo effort (effort.ts:250).
  *

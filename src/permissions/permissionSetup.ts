@@ -61,7 +61,7 @@ import {
 import { modelSupportsAutoMode } from 'src/providers/transport/betas.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js'
-import { getMainLoopModel } from 'src/utils/model/model.js'
+import { getMainLoopModel } from 'src/providers/model/model.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import {
   getCachedClassifierProbe,

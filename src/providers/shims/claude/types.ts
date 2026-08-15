@@ -15,7 +15,7 @@ import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { AgentId } from 'src/shared/types/ids.js'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import type { Notification } from 'src/terminal/contexts/notifications.js'
-import type { EffortValue } from 'src/utils/effort.js'
+import type { EffortValue } from 'src/providers/effort/effort.js'
 
 // output_config.task_budget — API-side token budget awareness for the model.
 // Stainless SDK types don't yet include task_budget on BetaOutputConfig, so we

@@ -30,7 +30,7 @@ const realCostTracker = { ...(await import('src/agent/cost-tracker.js')) };
 const realCacheStatsTracker = { ...(await import('src/providers/cache/cacheStatsTracker.js')) };
 const realActiveProvider = { ...(await import('src/providers/presets/activeProvider.js')) };
 const realCacheMetrics = { ...(await import('src/providers/cache/cacheMetrics.js')) };
-const realProviders = { ...(await import('src/utils/model/providers.js')) };
+const realProviders = { ...(await import('src/providers/model/providers.js')) };
 const realInk = { ...(await import('src/terminal/ink.js')) };
 
 mock.module('src/agent/cost-tracker.js', () => ({
@@ -167,8 +167,8 @@ afterAll(() => {
   mock.module('src/providers/presets/activeProvider.js', () => realActiveProvider);
   mock.module('src/providers/cache/cacheMetrics.js', () => realCacheMetrics);
   mock.module('src/providers/cache/cacheMetrics.js', () => realCacheMetrics);
-  mock.module('src/utils/model/providers.js', () => realProviders);
-  mock.module('src/utils/model/providers.js', () => realProviders);
+  mock.module('src/providers/model/providers.js', () => realProviders);
+  mock.module('src/providers/model/providers.js', () => realProviders);
   mock.module('src/terminal/ink.js', () => realInk);
   mock.module('src/terminal/ink.js', () => realInk);
 });

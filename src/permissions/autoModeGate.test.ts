@@ -5,7 +5,7 @@ import { join } from 'path'
 import type { ResolvedProvider } from 'src/providers/presets/activeProvider.js'
 
 const realActiveProviderNS = { ...(await import('src/providers/presets/activeProvider.js')) }
-const realModelNS = { ...(await import('src/utils/model/model.js')) }
+const realModelNS = { ...(await import('src/providers/model/model.js')) }
 const realBetasNS = { ...(await import('src/providers/transport/betas.js')) }
 
 const state: { provider: ResolvedProvider | null; model: string } = {
@@ -21,11 +21,11 @@ mock.module('src/providers/presets/activeProvider.js', () => ({
   ...realActiveProviderNS,
   tryGetActiveProvider: () => state.provider,
 }))
-mock.module('src/utils/model/model.js', () => ({
+mock.module('src/providers/model/model.js', () => ({
   ...realModelNS,
   getMainLoopModel: () => state.model,
 }))
-mock.module('src/utils/model/model.js', () => ({
+mock.module('src/providers/model/model.js', () => ({
   ...realModelNS,
   getMainLoopModel: () => state.model,
 }))
@@ -33,8 +33,8 @@ mock.module('src/utils/model/model.js', () => ({
 afterAll(() => {
   mock.module('src/providers/presets/activeProvider.js', () => realActiveProviderNS)
   mock.module('src/providers/presets/activeProvider.js', () => realActiveProviderNS)
-  mock.module('src/utils/model/model.js', () => realModelNS)
-  mock.module('src/utils/model/model.js', () => realModelNS)
+  mock.module('src/providers/model/model.js', () => realModelNS)
+  mock.module('src/providers/model/model.js', () => realModelNS)
 })
 
 const { __setAutoModeEnabledForTests } = await import('src/providers/transport/betas.js')

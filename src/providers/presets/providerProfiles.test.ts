@@ -11,7 +11,7 @@ import type { ProviderProfile } from 'src/platform/config/config.js'
 const realConfig = { ...(await import('src/platform/config/config.js')) }
 
 async function importFreshProvidersModule() {
-  return import(`src/utils/model/providers.js?ts=${Date.now()}-${Math.random()}`)
+  return import(`src/providers/model/providers.js?ts=${Date.now()}-${Math.random()}`)
 }
 
 const originalEnv = { ...process.env }
@@ -123,7 +123,7 @@ async function importFreshProviderProfileModules() {
     },
   }))
   const nonce = `${Date.now()}-${Math.random()}`
-  const providers = await import(`src/utils/model/providers.js?ts=${nonce}`)
+  const providers = await import(`src/providers/model/providers.js?ts=${nonce}`)
   const providerProfiles = await import(`./providerProfiles.js?ts=${nonce}`)
 
   return {

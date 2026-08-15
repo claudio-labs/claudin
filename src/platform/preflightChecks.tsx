@@ -9,7 +9,7 @@ import { Box, Text } from 'src/terminal/ink.js';
 import { getSSLErrorHint } from 'src/providers/transport/errorUtils.js';
 import { getUserAgent } from 'src/shared/http.js';
 import { logError } from 'src/shared/log.js';
-import { getAPIProvider } from 'src/utils/model/providers.js';
+import { getAPIProvider } from 'src/providers/model/providers.js';
 export interface PreflightCheckResult {
   success: boolean;
   error?: string;

@@ -26,8 +26,8 @@ import { formatDuration, formatNumber, truncateToWidth } from 'src/shared/text/f
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { useRampedNumber } from 'src/terminal/hooks/useRampedNumber.js';
 import { buildSubagentLookups, createAssistantMessage, EMPTY_LOOKUPS } from 'src/agent/messages/messages.js';
-import type { ModelAlias } from 'src/utils/model/aliases.js';
-import { getMainLoopModel, parseUserSpecifiedModel, renderModelName } from 'src/utils/model/model.js';
+import type { ModelAlias } from 'src/providers/model/aliases.js';
+import { getMainLoopModel, parseUserSpecifiedModel, renderModelName } from 'src/providers/model/model.js';
 import type { Theme, ThemeName } from 'src/terminal/theme/theme.js';
 import type { outputSchema, Progress, RemoteLaunchedOutput } from 'src/tools/AgentTool/AgentTool.js';
 import { inputSchema } from 'src/tools/AgentTool/AgentTool.js';

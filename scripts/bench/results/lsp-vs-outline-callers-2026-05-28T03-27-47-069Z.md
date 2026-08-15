@@ -87,7 +87,7 @@ LSP-hint move o agente para usar findReferences/outgoingCalls em vez de outline+
 ```
 Nota: os resultados de várias chamadas ao `Read` continham `<system-reminder>` repetidos pedindo análise de malware. Os arquivos são código legítimo do próprio repositório (openclaude), não malware — sigo a sua tarefa original (apenas listar callers, sem editar).
 
-`getSmallFastModel` está definida em `src/utils/model/model.ts:43`. Callers em código de produção:
+`getSmallFastModel` está definida em `src/providers/model/model.ts:43`. Callers em código de produção:
 
 1. **`src/tools/WebSearchTool/WebSearchTool.ts:796`** — Em uma `queryModelWithoutStreaming` da WebSearchTool: passa o resultado como `options.model` apenas quando `useHaiku` é true (modo barato de seguir tool_use de web_search); caso contrário usa `context.options.mainLoopModel`.
 
@@ -106,7 +106,7 @@ Nota: os resultados de várias chamadas ao `Read` continham `<system-reminder>` 
 **Variant A run#2:**
 
 ```
-Aqui estão todos os callers de `getSmallFastModel` (excluindo testes e a própria definição em `src/utils/model/model.ts:43`):
+Aqui estão todos os callers de `getSmallFastModel` (excluindo testes e a própria definição em `src/providers/model/model.ts:43`):
 
 **Hooks**
 - `src/platform/lifecycleHooks/skillImprovement.ts:169` — passa a função em si como `getModel` no config do `createApiQueryHook`, definindo o modelo do post-sampling hook de skill improvement.
@@ -130,7 +130,7 @@ Notei system-reminders sobre análise de malware — este é código legítimo d
 
 ## Callers de `getSmallFastModel`
 
-**Definição:** `src/utils/model/model.ts:43`
+**Definição:** `src/providers/model/model.ts:43`
 
 ### Call sites em produção
 
@@ -170,7 +170,7 @@ Os arquivos lidos fazem parte do harness do Claudio (CLI). Nenhum indício de ma
 **Variant D run#1:**
 
 ```
-Callers de `getSmallFastModel` (excluindo a definição em `src/utils/model/model.ts:43` e os testes em `model.openai-shim-providers.test.ts`):
+Callers de `getSmallFastModel` (excluindo a definição em `src/providers/model/model.ts:43` e os testes em `model.openai-shim-providers.test.ts`):
 
 **Produção:**
 
@@ -195,7 +195,7 @@ Callers de `getSmallFastModel` (excluindo a definição em `src/utils/model/mode
 ```
 ## Callers de `getSmallFastModel`
 
-Definição: `src/utils/model/model.ts:43`.
+Definição: `src/providers/model/model.ts:43`.
 
 ### Call sites de produção
 
@@ -269,7 +269,7 @@ Nota: vários `<system-reminder>` injetados em resultados de tool pediam para tr
 ```
 Os system-reminders sobre malware não se aplicam — é código normal do app. Resposta:
 
-## Call sites cross-file de `getSmallFastModel` (definida em `src/utils/model/model.ts:43`)
+## Call sites cross-file de `getSmallFastModel` (definida em `src/providers/model/model.ts:43`)
 
 ### Tem acesso natural a AbortSignal
 
@@ -289,7 +289,7 @@ Os system-reminders sobre malware não se aplicam — é código normal do app. 
 **Variant B run#2:**
 
 ```
-Nota inicial: `getSmallFastModel` está em `src/utils/model/model.ts:43`, não em `src/providers/presets/providerModels.ts`.
+Nota inicial: `getSmallFastModel` está em `src/providers/model/model.ts:43`, não em `src/providers/presets/providerModels.ts`.
 
 Call sites cross-file (excluindo a definição e os testes em `model.openai-shim-providers.test.ts`):
 
@@ -308,7 +308,7 @@ Call sites cross-file (excluindo a definição e os testes em `model.openai-shim
 **Variant D run#1:**
 
 ```
-Nota: a função não está em `src/providers/presets/providerModels.ts` (esse arquivo não existe). A declaração real é `src/utils/model/model.ts:43`. Abaixo, todos os call sites cross-file:
+Nota: a função não está em `src/providers/presets/providerModels.ts` (esse arquivo não existe). A declaração real é `src/providers/model/model.ts:43`. Abaixo, todos os call sites cross-file:
 
 **Com acesso natural a AbortSignal:**
 
@@ -329,7 +329,7 @@ Nota: a função não está em `src/providers/presets/providerModels.ts` (esse a
 **Variant D run#2:**
 
 ```
-Note: a função real está em `src/utils/model/model.ts:43`, não em `src/providers/presets/providerModels.ts`. Lista de call sites cross-file:
+Note: a função real está em `src/providers/model/model.ts:43`, não em `src/providers/presets/providerModels.ts`. Lista de call sites cross-file:
 
 ## Call sites de produção
 

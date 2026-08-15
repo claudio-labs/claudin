@@ -20,7 +20,7 @@ import { env } from 'src/shared/env.js';
 import { type GitRepoState, getGitState, getIsGit } from 'src/vcs/git/git.js';
 import { getAuthHeaders, getUserAgent } from 'src/shared/http.js';
 import { getInMemoryErrors, logError } from 'src/shared/log.js';
-import { getAPIProvider } from 'src/utils/model/providers.js';
+import { getAPIProvider } from 'src/providers/model/providers.js';
 import { isEssentialTrafficOnly } from 'src/platform/config/privacyLevel.js';
 import { extractTeammateTranscriptsFromTasks, getTranscriptPath, loadAllSubagentTranscriptsFromDisk, MAX_TRANSCRIPT_READ_BYTES } from 'src/sessions/sessionStorage.js';
 import { jsonStringify } from 'src/platform/slowOperations.js';

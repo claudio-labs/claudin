@@ -7,7 +7,7 @@ import {
   type ProjectConfig,
   type ProviderProfile,
 } from 'src/platform/config/config.js'
-import type { ModelOption } from 'src/utils/model/modelOptions.js'
+import type { ModelOption } from 'src/providers/model/modelOptions.js'
 import { parseModelList } from 'src/providers/presets/providerModels.js'
 
 export type ProviderPreset =

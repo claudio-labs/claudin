@@ -26,7 +26,7 @@ import { hasExactErrorMessage } from 'src/shared/errors.js'
 import { executePreCompactHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import { logError } from 'src/shared/log.js'
 import { getMessagesAfterCompactBoundary } from 'src/agent/messages/messages.js'
-import { getUpgradeMessage } from 'src/utils/model/contextWindowUpgradeCheck.js'
+import { getUpgradeMessage } from 'src/providers/model/contextWindowUpgradeCheck.js'
 import {
   buildEffectiveSystemPrompt,
   type SystemPrompt,

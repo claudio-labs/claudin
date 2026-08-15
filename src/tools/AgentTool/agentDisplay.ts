@@ -6,8 +6,8 @@
 import {
   checkIsClaudeNativeProvider,
   getDefaultSubagentModel,
-} from 'src/utils/model/agent.js'
-import { isModelAllowed } from 'src/utils/model/modelAllowlist.js'
+} from 'src/providers/model/agent.js'
+import { isModelAllowed } from 'src/providers/model/modelAllowlist.js'
 import { logError } from 'src/shared/log.js'
 import {
   getSourceDisplayName,

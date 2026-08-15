@@ -8,7 +8,7 @@ import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { isSdkApiUserAbortError } from 'src/shared/errors.js'
 import { isFastModeEnabled } from 'src/providers/fastMode.js'
-import { normalizeModelStringForAPI } from 'src/utils/model/model.js'
+import { normalizeModelStringForAPI } from 'src/providers/model/model.js'
 import type { ThinkingConfig } from 'src/agent/context/thinking.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,

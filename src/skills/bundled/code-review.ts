@@ -8,7 +8,7 @@ import {
   type EffortLevel,
   convertEffortValueToLevel,
   resolveAppliedEffort,
-} from 'src/utils/effort.js'
+} from 'src/providers/effort/effort.js'
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 /**

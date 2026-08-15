@@ -45,7 +45,7 @@ const ccrAutoConnect = feature('CCR_AUTO_CONNECT')
 
 /* eslint-enable @typescript-eslint/no-require-imports */
 import type { ImageDimensions } from 'src/terminal/image/imageResizer.js'
-import type { ModelOption } from 'src/utils/model/modelOptions.js'
+import type { ModelOption } from 'src/providers/model/modelOptions.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 
 // Re-entrancy guard: prevents getConfig → logEvent → getGlobalConfig → getConfig

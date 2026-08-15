@@ -3,7 +3,7 @@ import {
   isGlmCompatibleBaseUrl,
   isMoonshotCompatibleBaseUrl,
 } from 'src/providers/shims/openaiShim/providerModes.js'
-import { getAPIProvider, type APIProvider } from 'src/utils/model/providers.js'
+import { getAPIProvider, type APIProvider } from 'src/providers/model/providers.js'
 import { getAnthropicAddendum } from 'src/agent/prompts/familyAddendums/anthropic.js'
 import { CODEX_ADDENDUM } from 'src/agent/prompts/familyAddendums/codex.js'
 import { DEFAULT_ADDENDUM } from 'src/agent/prompts/familyAddendums/default.js'

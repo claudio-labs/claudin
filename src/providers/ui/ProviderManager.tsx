@@ -16,7 +16,7 @@ import {
 } from 'src/providers/oauth/codexCredentials.js'
 import { isBareMode } from 'src/shared/envUtils.js'
 import { getPrimaryModel, parseModelList } from 'src/providers/presets/providerModels.js'
-import { getDefaultMainLoopModel } from 'src/utils/model/model.js'
+import { getDefaultMainLoopModel } from 'src/providers/model/model.js'
 import { deleteProfileFile } from 'src/providers/presets/providerProfile.js'
 import {
   addProviderProfile,

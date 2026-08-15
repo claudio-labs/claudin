@@ -41,7 +41,7 @@ import { logError } from 'src/shared/log.js'
 import { getSecureStorage } from 'src/platform/secureStorage/index.js'
 import { clearToolSchemaCache } from 'src/agent/tools/toolSchemaCache.js'
 import { resetUserCache } from 'src/shared/user.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import {

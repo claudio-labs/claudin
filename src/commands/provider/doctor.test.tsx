@@ -12,7 +12,7 @@ import type { ResolvedProvider } from 'src/providers/presets/activeProvider.js'
 const realActiveProviderNS = { ...(await import('src/providers/presets/activeProvider.js')) }
 const realGeminiAuthNS = { ...(await import('src/providers/oauth/geminiAuth.js')) }
 const realProviderDiscoveryNS = { ...(await import('src/providers/presets/providerDiscovery.js')) }
-const realModelNS = { ...(await import('src/utils/model/model.js')) }
+const realModelNS = { ...(await import('src/providers/model/model.js')) }
 const realSideQueryNS = { ...(await import('src/agent/sideQuery.js')) }
 
 const realActiveProvider = { ...realActiveProviderNS }
@@ -76,11 +76,11 @@ mock.module('src/providers/presets/activeProvider.js', () => ({
   tryGetActiveProvider: () => state.activeProvider,
 }))
 
-mock.module('src/utils/model/model.js', () => ({
+mock.module('src/providers/model/model.js', () => ({
   ...realModel,
   getMainLoopModel: () => state.mainLoopModel,
 }))
-mock.module('src/utils/model/model.js', () => ({
+mock.module('src/providers/model/model.js', () => ({
   ...realModel,
   getMainLoopModel: () => state.mainLoopModel,
 }))
@@ -121,8 +121,8 @@ afterAll(() => {
   mock.module('src/providers/presets/activeProvider.js', () => realActiveProvider)
   mock.module('src/providers/oauth/geminiAuth.js', () => realGeminiAuth)
   mock.module('src/providers/presets/providerDiscovery.js', () => realProviderDiscovery)
-  mock.module('src/utils/model/model.js', () => realModel)
-  mock.module('src/utils/model/model.js', () => realModel)
+  mock.module('src/providers/model/model.js', () => realModel)
+  mock.module('src/providers/model/model.js', () => realModel)
   mock.module('src/agent/sideQuery.js', () => realSideQuery)
   mock.module('src/agent/sideQuery.js', () => realSideQuery)
 })

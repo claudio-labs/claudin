@@ -8,7 +8,7 @@ import {
   substituteArguments,
 } from 'src/commands/argumentSubstitution.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { EFFORT_LEVELS, parseEffortValue } from 'src/utils/effort.js'
+import { EFFORT_LEVELS, parseEffortValue } from 'src/providers/effort/effort.js'
 import { isBareMode } from 'src/shared/envUtils.js'
 import { isENOENT } from 'src/shared/errors.js'
 import {
@@ -23,7 +23,7 @@ import {
   extractDescriptionFromMarkdown,
   parseSlashCommandToolsFromFrontmatter,
 } from 'src/memory/instructions/markdownConfigLoader.js'
-import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
+import { parseUserSpecifiedModel } from 'src/providers/model/model.js'
 import { executeShellCommandsInPrompt } from 'src/shared/proc/promptShellExecution.js'
 import { loadAllPluginsCacheOnly } from 'src/plugins/pluginLoader.js'
 import {

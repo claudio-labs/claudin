@@ -50,7 +50,7 @@ import { getGithubRepo } from 'src/vcs/git/git.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
-} from 'src/utils/model/providers.js'
+} from 'src/providers/model/providers.js'
 import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getClaudeCodeUserAgent } from 'src/providers/transport/userAgent.js'

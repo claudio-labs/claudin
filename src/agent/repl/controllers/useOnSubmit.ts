@@ -56,7 +56,7 @@ import type { QueryGuard } from 'src/agent/QueryGuard.js';
 import type { IDESelection } from 'src/platform/ide/useIdeSelection.js';
 import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js';
 import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.js';
-import type { EffortValue } from 'src/utils/effort.js';
+import type { EffortValue } from 'src/providers/effort/effort.js';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js';
 import type { useRemoteSession } from 'src/sessions/hooks/useRemoteSession.js';

@@ -24,7 +24,7 @@ let resolvedOverride: ResolvedProvider = null
 // Anthropic-transport effort is driven by the /effort slider setting
 // (getInitialEffortSetting), not provider.extras — see #61. Override it here
 // so the "effort token" test can exercise a non-default level deterministically.
-const realEffort = { ...(await import('src/utils/effort.js')) }
+const realEffort = { ...(await import('src/providers/effort/effort.js')) }
 const realEffortSnapshot = { ...realEffort }
 let effortOverride: ReturnType<typeof realEffort.getInitialEffortSetting> | undefined
 
@@ -33,7 +33,7 @@ mock.module('src/providers/presets/activeProvider.js', () => ({
   tryGetActiveProvider: () => resolvedOverride,
 }))
 
-mock.module('src/utils/effort.js', () => ({
+mock.module('src/providers/effort/effort.js', () => ({
   ...realEffortSnapshot,
   getInitialEffortSetting: () =>
     effortOverride ?? realEffortSnapshot.getInitialEffortSetting(),
@@ -41,8 +41,8 @@ mock.module('src/utils/effort.js', () => ({
 
 afterAll(() => {
   mock.module('src/providers/presets/activeProvider.js', () => realActiveProviderSnapshot)
-  mock.module('src/utils/effort.js', () => realEffortSnapshot)
-  mock.module('src/utils/effort.js', () => realEffortSnapshot)
+  mock.module('src/providers/effort/effort.js', () => realEffortSnapshot)
+  mock.module('src/providers/effort/effort.js', () => realEffortSnapshot)
 })
 
 describe('buildStartupBannerLines', () => {

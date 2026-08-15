@@ -9,18 +9,18 @@ import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEve
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { LocalJSXCommandCall, LocalJSXCommandOnDone } from 'src/shared/types/command.js';
 import { getCurrentProjectConfig } from 'src/platform/config/config.js';
-import type { EffortLevel } from 'src/utils/effort.js';
+import type { EffortLevel } from 'src/providers/effort/effort.js';
 import { isBilledAsExtraUsage } from 'src/providers/usage/extraUsage.js';
 import { clearFastModeCooldown, isFastModeAvailable, isFastModeEnabled, isFastModeSupportedByModel } from 'src/providers/fastMode.js';
-import { MODEL_ALIASES } from 'src/utils/model/aliases.js';
-import { checkOpus1mAccess, checkSonnet1mAccess } from 'src/utils/model/check1mAccess.js';
-import type { ModelOption } from 'src/utils/model/modelOptions.js';
-import { discoverOpenAICompatibleModelOptions } from 'src/utils/model/openaiModelDiscovery.js';
-import { getAPIProvider } from 'src/utils/model/providers.js';
+import { MODEL_ALIASES } from 'src/providers/model/aliases.js';
+import { checkOpus1mAccess, checkSonnet1mAccess } from 'src/providers/model/check1mAccess.js';
+import type { ModelOption } from 'src/providers/model/modelOptions.js';
+import { discoverOpenAICompatibleModelOptions } from 'src/providers/model/openaiModelDiscovery.js';
+import { getAPIProvider } from 'src/providers/model/providers.js';
 import { getActiveOpenAIModelOptionsCache, getActiveProviderProfile, setActiveOpenAIModelOptionsCache } from 'src/providers/presets/providerProfiles.js';
-import { getDefaultMainLoopModelSetting, isOpus1mMergeEnabled, renderDefaultModelSetting } from 'src/utils/model/model.js';
-import { isModelAllowed } from 'src/utils/model/modelAllowlist.js';
-import { validateModel } from 'src/utils/model/validateModel.js';
+import { getDefaultMainLoopModelSetting, isOpus1mMergeEnabled, renderDefaultModelSetting } from 'src/providers/model/model.js';
+import { isModelAllowed } from 'src/providers/model/modelAllowlist.js';
+import { validateModel } from 'src/providers/model/validateModel.js';
 import { getAdditionalModelOptionsCacheScope } from 'src/providers/presets/providerConfig.js';
 function ModelPickerWrapper(t0: {
   onDone: LocalJSXCommandOnDone;

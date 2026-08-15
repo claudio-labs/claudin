@@ -28,7 +28,7 @@ import {
   EFFORT_LEVELS,
   type EffortValue,
   parseEffortValue,
-} from 'src/utils/effort.js'
+} from 'src/providers/effort/effort.js'
 import {
   getClaudinConfigHomeDir,
   isBareMode,
@@ -54,7 +54,7 @@ import {
   type MarkdownFile,
   parseSlashCommandToolsFromFrontmatter,
 } from 'src/memory/instructions/markdownConfigLoader.js'
-import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
+import { parseUserSpecifiedModel } from 'src/providers/model/model.js'
 import { executeShellCommandsInPrompt } from 'src/shared/proc/promptShellExecution.js'
 import type { SettingSource } from 'src/platform/settings/constants.js'
 import { isSettingSourceEnabled } from 'src/platform/settings/constants.js'

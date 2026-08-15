@@ -68,17 +68,17 @@ import {
 import { toSDKRateLimitInfo } from 'src/agent/messages/mappers.js'
 import { createModelSwitchBreadcrumbs } from 'src/agent/messages/messages.js'
 import { LOCAL_COMMAND_STDOUT_TAG, TICK_TAG } from 'src/shared/constants/xml.js'
-import { getModelOptions } from 'src/utils/model/modelOptions.js'
+import { getModelOptions } from 'src/providers/model/modelOptions.js'
 import {
   getDefaultMainLoopModel,
   modelDisplayString,
   parseUserSpecifiedModel,
-} from 'src/utils/model/model.js'
+} from 'src/providers/model/model.js'
 import {
   modelSupportsEffort,
   modelSupportsMaxEffort,
   EFFORT_LEVELS,
-} from 'src/utils/effort.js'
+} from 'src/providers/effort/effort.js'
 import { modelSupportsAdaptiveThinking } from 'src/agent/context/thinking.js'
 import { modelSupportsAutoMode } from 'src/providers/transport/betas.js'
 import { isFastModeSupportedByModel } from 'src/providers/fastMode.js'

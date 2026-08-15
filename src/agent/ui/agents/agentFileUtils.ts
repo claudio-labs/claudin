@@ -9,7 +9,7 @@ import {
   isPluginAgent,
 } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
-import type { EffortValue } from 'src/utils/effort.js'
+import type { EffortValue } from 'src/providers/effort/effort.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { getErrnoCode } from 'src/shared/errors.js'
 import { AGENT_PATHS } from 'src/agent/ui/agents/types.js'

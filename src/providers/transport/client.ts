@@ -11,12 +11,12 @@ import {
   refreshGcpCredentialsIfNeeded,
 } from 'src/providers/auth/auth.js'
 import { getUserAgent } from 'src/shared/http.js'
-import { getSmallFastModel } from 'src/utils/model/model.js'
+import { getSmallFastModel } from 'src/providers/model/model.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
   isGithubNativeAnthropicMode,
-} from 'src/utils/model/providers.js'
+} from 'src/providers/model/providers.js'
 import { getProxyFetchOptions } from 'src/providers/transport/proxy.js'
 import { withH2Fallback } from 'src/providers/transport/h2Fallback.js'
 import { pickFetch } from 'src/providers/transport/pickFetch.js'

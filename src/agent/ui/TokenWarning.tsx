@@ -6,7 +6,7 @@ import { Box, Text } from 'src/terminal/ink.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { calculateTokenWarningState, getEffectiveContextWindowSize, isAutoCompactEnabled } from 'src/agent/compact/autoCompact.js';
 import { useCompactWarningSuppression } from 'src/agent/compact/compactWarningHook.js';
-import { getUpgradeMessage } from 'src/utils/model/contextWindowUpgradeCheck.js';
+import { getUpgradeMessage } from 'src/providers/model/contextWindowUpgradeCheck.js';
 type Props = {
   tokenUsage: number;
   model: string;

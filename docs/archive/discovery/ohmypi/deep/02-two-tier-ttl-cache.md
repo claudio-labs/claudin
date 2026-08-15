@@ -57,7 +57,7 @@ Caches exist; the soft/hard tier does not. Inventory:
 
 Verified present on this host:
 
-- `~/.claudin/model-cache/` — `src/utils/model/modelCache.ts`. Per-provider JSON file. `CACHE_TTL_HOURS = 24`, version stamped. Binary: valid or invalid, no stale-serve.
+- `~/.claudin/model-cache/` — `src/providers/model/modelCache.ts`. Per-provider JSON file. `CACHE_TTL_HOURS = 24`, version stamped. Binary: valid or invalid, no stale-serve.
 - `~/.claudin/latest-version.json` — `src/platform/install/latestVersionCache.ts`. Synchronous read at banner time (`readLatestVersion`, `:36-46`); written by `writeLatestVersion`. No TTL on disk — caller (`startupUpdateCheck.ts`) gates by `checkedAt`.
 - `~/.claudin/image-cache/`, `~/.claudin/paste-cache/`, `~/.claudin/file-history/` — caches but content-addressed (not TTL-bound).
 - `~/.claudin/v8cache/` — V8 bytecode, invalidated by build, not in scope.
@@ -148,7 +148,7 @@ so concurrent callers in the soft/hard window only spawn one background refresh.
      up to `hardTtlMs` stale; recommend providers that handle freshness
      server-side (Firecrawl) keep their own ETag layer untouched.
 
-3. **`modelCache.ts`** (`src/utils/model/modelCache.ts`).
+3. **`modelCache.ts`** (`src/providers/model/modelCache.ts`).
    - Today: 24h hard TTL, binary. After 24h startup blocks on the model
      list endpoint.
    - Two-tier: `softTtlMs = 24 h`, `hardTtlMs = 7 d`. Startup never waits
@@ -235,7 +235,7 @@ so users can see whether the cache is actually helping their workflow.
 - omp call sites: `/home/dev/projects/oh-my-pi/packages/coding-agent/src/tools/gh.ts:2520, :2547, :2841`
 - Claudin WebFetch cache: `/home/dev/projects/claudin/src/tools/WebFetchTool/utils.ts:48-81, :415-534`
 - Claudin WebSearch (no cache): `/home/dev/projects/claudin/src/tools/WebSearchTool/WebSearchTool.ts`
-- Claudin model cache: `/home/dev/projects/claudin/src/utils/model/modelCache.ts`
+- Claudin model cache: `/home/dev/projects/claudin/src/providers/model/modelCache.ts`
 - Claudin latest-version cache: `/home/dev/projects/claudin/src/platform/install/latestVersionCache.ts`
 - Claudin provider metadata: `/home/dev/projects/claudin/src/providers/presets/providerConfig.ts:592`
 - Config-dir helper: `/home/dev/projects/claudin/src/shared/envUtils.ts` (`getClaudinConfigHomeDir`)

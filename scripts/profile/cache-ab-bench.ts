@@ -65,7 +65,7 @@ const TWELVE_FILES = [
   'src/providers/transport/withRetry.ts',
   'src/providers/transport/errors.ts',
   'src/mcp/client.ts',
-  'src/utils/model/model.ts',
+  'src/providers/model/model.ts',
   'src/providers/presets/providerModels.ts',
   'src/agent/context.ts',
   'src/agent/query.ts',
@@ -98,7 +98,7 @@ const TWELVE_FILES = [
   'src/agent/cache/cacheProfile.ts',
   'src/agent/cost-tracker.ts',
   'src/providers/usage/modelCost.ts',
-  'src/utils/model/modelAllowlist.ts',
+  'src/providers/model/modelAllowlist.ts',
   'src/providers/cache/promptCacheBreakDetection.ts',
   'src/agent/compact/autoCompact.ts',
   'src/providers/transport/api.ts',
@@ -120,7 +120,7 @@ const REVISIT_FILES = [
   'src/agent/messages/messages.ts',           // medium
   'src/platform/config/config.ts',             // medium
   'src/providers/transport/withRetry.ts',   // medium
-  'src/utils/model/model.ts',        // medium
+  'src/providers/model/model.ts',        // medium
   'src/shared/constants/keys.ts',           // small
   'src/shared/data/array.ts',              // small
 ]

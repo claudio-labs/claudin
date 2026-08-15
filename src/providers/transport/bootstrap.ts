@@ -12,9 +12,9 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { withOAuth401Retry } from 'src/shared/http.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logError } from 'src/shared/log.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 import { isEssentialTrafficOnly } from 'src/platform/config/privacyLevel.js'
-import type { ModelOption } from 'src/utils/model/modelOptions.js'
+import type { ModelOption } from 'src/providers/model/modelOptions.js'
 import {
   getLocalOpenAICompatibleProviderLabel,
   listOpenAICompatibleModels,

@@ -20,7 +20,7 @@ import { computeFingerprint } from 'src/shared/data/fingerprint.js'
 import {
   modelRejectsSamplingParams,
   normalizeModelStringForAPI,
-} from 'src/utils/model/model.js'
+} from 'src/providers/model/model.js'
 import { modelRequiresAdaptiveThinking } from 'src/agent/context/thinking.js'
 
 type MessageParam = Anthropic.MessageParam

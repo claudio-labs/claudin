@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import { normalizeModelStringForAPI } from 'src/utils/model/model.js'
+import { normalizeModelStringForAPI } from 'src/providers/model/model.js'
 import { DENIAL_WORKAROUND_GUIDANCE } from 'src/agent/messages/constants.js'
 
 export function AUTO_REJECT_MESSAGE(toolName: string): string {

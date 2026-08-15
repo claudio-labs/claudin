@@ -3,7 +3,7 @@ import {
   setMainLoopModelOverride,
 } from 'src/platform/bootstrap/state.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 import {
   getSettingsForSource,
   updateSettingsForSource,

@@ -48,7 +48,7 @@ const TEN_FILES = [
   'src/platform/config/config.ts',
   'src/platform/bootstrap/state.ts',
   'src/tools/Tool.ts',
-  'src/utils/model/model.ts',
+  'src/providers/model/model.ts',
   'src/providers/presets/providerModels.ts',
 ]
 

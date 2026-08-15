@@ -1,8 +1,8 @@
 import {
   CLAUDE_OPUS_4_6_CONFIG,
   CLAUDE_OPUS_5_CONFIG,
-} from 'src/utils/model/configs.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+} from 'src/providers/model/configs.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 
 // @[MODEL LAUNCH]: Update the fallback model below.
 // When the user has never set teammateDefaultModel in /config, new teammates

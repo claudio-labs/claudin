@@ -11,7 +11,7 @@ import memoize from 'lodash-es/memoize.js'
 import { env, getHostPlatformForAnalytics } from 'src/shared/env.js'
 import { envDynamic } from 'src/shared/envDynamic.js'
 import { getModelBetas } from 'src/providers/transport/betas.js'
-import { getMainLoopModel } from 'src/utils/model/model.js'
+import { getMainLoopModel } from 'src/providers/model/model.js'
 import {
   getSessionId,
   getIsInteractive,

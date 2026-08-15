@@ -10,7 +10,7 @@ import {
   createUserMessage,
   isCompactBoundaryMessage,
 } from 'src/agent/messages/messages.js'
-import { getMainLoopModel } from 'src/utils/model/model.js'
+import { getMainLoopModel } from 'src/providers/model/model.js'
 import { getSessionMemoryPath } from 'src/permissions/filesystem.js'
 import { processSessionStartHooks } from 'src/sessions/sessionStart.js'
 import { getTranscriptPath } from 'src/sessions/sessionStorage.js'

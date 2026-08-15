@@ -73,8 +73,8 @@ Recurring touch-set (rename `<vendor>` per provider):
   `<XxxOAuthSetup>` clone in `ProviderManager.tsx`; `src/commands/provider/doctor.tsx`
   (doctor check); `src/platform/config/config.ts`; `README.md`.
 - **Models (if the provider exposes a catalog):** a catalog like
-  `src/utils/model/copilotModelCatalog.ts` (dc28c35) + context-window entries in
-  `src/utils/model/openaiContextWindows.ts` / `model.ts` / `providers.ts`. Dynamic
+  `src/providers/model/copilotModelCatalog.ts` (dc28c35) + context-window entries in
+  `src/providers/model/openaiContextWindows.ts` / `model.ts` / `providers.ts`. Dynamic
   discovery lives in `src/providers/presets/providerDiscovery.ts`.
 
 Backlog of OAuth providers opencode ships that Claudin lacks (re-verify against the

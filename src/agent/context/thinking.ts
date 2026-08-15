@@ -2,9 +2,9 @@
 import type { Theme } from 'src/terminal/theme/theme.js'
 import { feature } from 'bun:bundle'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { getCanonicalName } from 'src/utils/model/model.js'
-import { get3PModelCapabilityOverride } from 'src/utils/model/modelSupportOverrides.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+import { getCanonicalName } from 'src/providers/model/model.js'
+import { get3PModelCapabilityOverride } from 'src/providers/model/modelSupportOverrides.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 import { getSettingsWithErrors } from 'src/platform/settings/settings.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 

@@ -27,7 +27,7 @@ import {
   type FileHistorySnapshot,
 } from 'src/shared/fs/fileHistory.js'
 import { logError } from 'src/shared/log.js'
-import { getAPIProvider } from 'src/utils/model/providers.js'
+import { getAPIProvider } from 'src/providers/model/providers.js'
 import {
   createAssistantMessage,
   createUserMessage,

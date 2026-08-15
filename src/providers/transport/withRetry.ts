@@ -7,7 +7,7 @@ import { isAwsCredentialsProviderError } from 'src/providers/oauth/aws.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logError } from 'src/shared/log.js'
 import { createSystemAPIErrorMessage } from 'src/agent/messages/messages.js'
-import { getAPIProvider, getAPIProviderForStatsig } from 'src/utils/model/providers.js'
+import { getAPIProvider, getAPIProviderForStatsig } from 'src/providers/model/providers.js'
 import {
   clearApiKeyHelperCache,
   clearAwsCredentialsCache,
@@ -37,7 +37,7 @@ import {
   triggerFastModeCooldown,
 } from 'src/providers/fastMode.js'
 import { extractOpenAICategoryMarker } from 'src/providers/shims/openaiErrorClassification.js'
-import { isNonCustomOpusModel } from 'src/utils/model/model.js'
+import { isNonCustomOpusModel } from 'src/providers/model/model.js'
 import { disableKeepAlive } from 'src/providers/transport/proxy.js'
 import { sleep } from 'src/shared/sleep.js'
 import type { ThinkingConfig } from 'src/agent/context/thinking.js'

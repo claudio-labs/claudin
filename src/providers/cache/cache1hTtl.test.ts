@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'b
 
 const ORIGINAL_ENV = { ...process.env }
 
-const realProviders = { ...(await import('src/utils/model/providers.js')) }
+const realProviders = { ...(await import('src/providers/model/providers.js')) }
 
 type Provider =
   | 'firstParty'
@@ -24,7 +24,7 @@ function setProvider(p: Provider) {
 }
 
 async function importFresh() {
-  mock.module('src/utils/model/providers.js', () => ({
+  mock.module('src/providers/model/providers.js', () => ({
     getAPIProvider: () => mockedProvider,
     isFirstPartyAnthropicBaseUrl: () => mockedProvider === 'firstParty',
     isGithubNativeAnthropicMode: () => false,
@@ -50,7 +50,7 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  mock.module('src/utils/model/providers.js', () => realProviders)
+  mock.module('src/providers/model/providers.js', () => realProviders)
 })
 
 describe('getCacheControl — 1h TTL gating', () => {

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { UP_ARROW } from 'src/shared/constants/figures.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
-import { isOpus1mMergeEnabled } from 'src/utils/model/model.js';
+import { isOpus1mMergeEnabled } from 'src/providers/model/model.js';
 import { AnimatedAsterisk } from 'src/terminal/logo/AnimatedAsterisk.js';
 const MAX_SHOW_COUNT = 6;
 export function shouldShowOpus1mMergeNotice(): boolean {

@@ -11,7 +11,7 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   getDefaultMainLoopModel,
   parseUserSpecifiedModel,
-} from 'src/utils/model/model.js'
+} from 'src/providers/model/model.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getResolvedTeammateMode } from 'src/agent/coordinator/swarm/backends/registry.js'
 import { TEAM_LEAD_NAME } from 'src/agent/coordinator/swarm/constants.js'
