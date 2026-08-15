@@ -3,7 +3,7 @@ import { Markdown } from 'src/terminal/markdown/Markdown.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { RejectedPlanMessage } from 'src/agent/ui/messages/UserToolResultMessage/RejectedPlanMessage.js';
 import { BLACK_CIRCLE } from 'src/constants/figures.js';
-import { getModeColor } from 'src/services/permissions/PermissionMode.js';
+import { getModeColor } from 'src/permissions/PermissionMode.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { ToolProgressData } from 'src/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';

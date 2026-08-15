@@ -24,7 +24,7 @@ import {
   getOpus5CostTier,
 } from 'src/providers/usage/modelCost.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
-import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
+import type { PermissionMode } from 'src/permissions/PermissionMode.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import { LIGHTNING_BOLT } from 'src/constants/figures.js'
 import { isModelAllowed } from 'src/utils/model/modelAllowlist.js'

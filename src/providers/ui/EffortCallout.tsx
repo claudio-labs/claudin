@@ -9,7 +9,7 @@ import { parseUserSpecifiedModel } from 'src/utils/model/model.js';
 import type { OptionWithDescription } from 'src/terminal/custom-select/select.js';
 import { Select } from 'src/terminal/custom-select/select.js';
 import { effortLevelToSymbol } from 'src/providers/ui/EffortIndicator.js';
-import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
+import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js';
 type EffortCalloutSelection = EffortLevel | undefined | 'dismiss';
 type Props = {
   model: string;

@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { useCallback, useEffect, useRef } from 'react'
 import { useInterval } from 'usehooks-ts'
-import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
+import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js'
 import { TEAMMATE_MESSAGE_TAG } from 'src/constants/xml.js'
 import { useTerminalNotification } from 'src/terminal/ink/useTerminalNotification.js'
 import { sendNotification } from 'src/platform/notifications/notifier.js'
@@ -24,8 +24,8 @@ import { createAssistantMessage } from 'src/agent/messages/messages.js'
 import {
   permissionModeFromString,
   toExternalPermissionMode,
-} from 'src/services/permissions/PermissionMode.js'
-import { applyPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js'
+} from 'src/permissions/PermissionMode.js'
+import { applyPermissionUpdate } from 'src/permissions/PermissionUpdate.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { isInsideTmux } from 'src/agent/coordinator/swarm/backends/detection.js'
 import {

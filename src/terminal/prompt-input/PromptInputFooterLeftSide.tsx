@@ -13,7 +13,7 @@ import type { VimMode, PromptInputMode } from 'src/types/textInputTypes.js';
 import type { ToolPermissionContext } from 'src/Tool.js';
 import { isVimModeEnabled } from 'src/terminal/prompt-input/utils.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
-import { isDefaultMode, permissionModeSymbol, permissionModeTitle, getModeColor } from 'src/services/permissions/PermissionMode.js';
+import { isDefaultMode, permissionModeSymbol, permissionModeTitle, getModeColor } from 'src/permissions/PermissionMode.js';
 import { BackgroundTaskStatus } from 'src/agent/ui/tasks/BackgroundTaskStatus.js';
 import { footerTreeBaseIndex, getVisibleAgentTasks } from 'src/agent/ui/tasks/footerTaskGeometry.js';
 import { isPanelAgentTask } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';

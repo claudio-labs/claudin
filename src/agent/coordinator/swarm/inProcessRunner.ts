@@ -13,7 +13,7 @@ import { feature } from 'bun:bundle'
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs'
 import { getSystemPrompt } from 'src/constants/prompts.js'
 import { TEAMMATE_MESSAGE_TAG } from 'src/constants/xml.js'
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import {
   processMailboxPermissionResponse,
   registerPermissionCallback,
@@ -77,9 +77,9 @@ import type { ModelAlias } from 'src/utils/model/aliases.js'
 import {
   applyPermissionUpdates,
   persistPermissionUpdates,
-} from 'src/services/permissions/PermissionUpdate.js'
-import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
-import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js'
+} from 'src/permissions/PermissionUpdate.js'
+import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
+import { hasPermissionsToUseTool } from 'src/permissions/permissions.js'
 import { emitTaskTerminatedSdk } from 'src/agent/sdkEventQueue.js'
 import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'

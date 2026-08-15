@@ -11,7 +11,7 @@
 
 import { randomUUID } from 'crypto'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
+import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js'
 import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type { SDKControlPermissionRequest } from 'src/platform/entrypoints/sdk/controlTypes.js'
 import {

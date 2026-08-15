@@ -3,7 +3,7 @@ import type {
   ToolResultBlockParam,
   ToolUseBlock,
 } from '@anthropic-ai/sdk/resources/index.mjs'
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { FallbackTriggeredError } from 'src/providers/transport/withRetry.js'
 import {
   calculateTokenWarningState,

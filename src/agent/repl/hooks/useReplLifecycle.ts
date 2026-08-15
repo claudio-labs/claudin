@@ -33,7 +33,7 @@ import type { TabStatusKind } from 'src/terminal/ink/hooks/use-tab-status.js';
 import { feature } from 'bun:bundle';
 import { startPreventSleep, stopPreventSleep } from 'src/platform/preventSleep.js';
 import { updateSessionActivity } from 'src/services/session/concurrentSessions.js';
-import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';
+import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js';
 
 export interface UseReplLifecycleDeps {
   // Boot signals — whether the agent is mid-turn and what kind of attention

@@ -9,9 +9,9 @@ import {
   ParsedCommand,
 } from 'src/platform/bash/ParsedCommand.js'
 import { type Node, PARSE_ABORTED } from 'src/platform/bash/parser.js'
-import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
-import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
-import { createPermissionRequestMessage } from 'src/services/permissions/permissions.js'
+import type { PermissionResult } from 'src/permissions/PermissionResult.js'
+import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
+import { createPermissionRequestMessage } from 'src/permissions/permissions.js'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
 import { bashCommandIsSafeAsync_DEPRECATED } from 'src/tools/BashTool/bashSecurity.js'
 

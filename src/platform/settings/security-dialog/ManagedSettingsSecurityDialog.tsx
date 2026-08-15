@@ -5,7 +5,7 @@ import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import type { SettingsJson } from 'src/platform/settings/types.js';
 import { Select } from 'src/terminal/custom-select/index.js';
-import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
+import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js';
 import { extractDangerousSettings, formatDangerousSettingsList } from 'src/platform/settings/security-dialog/utils.js';
 type Props = {
   settings: SettingsJson;

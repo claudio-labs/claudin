@@ -32,7 +32,7 @@ import type { Tools } from 'src/Tool.js'
 import type { Message } from 'src/types/message.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { TurnInterruptionState } from 'src/services/session/conversationRecovery.js'
 import type {
   MCPServerConnection,

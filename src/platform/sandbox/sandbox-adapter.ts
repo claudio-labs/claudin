@@ -53,8 +53,8 @@ import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { WEB_FETCH_TOOL_NAME } from 'src/tools/WebFetchTool/prompt.js'
 import { errorMessage } from 'src/shared/errors.js'
-import { getClaudeTempDir } from 'src/services/permissions/filesystem.js'
-import type { PermissionRuleValue } from 'src/services/permissions/PermissionRule.js'
+import { getClaudeTempDir } from 'src/permissions/filesystem.js'
+import type { PermissionRuleValue } from 'src/permissions/PermissionRule.js'
 import { ripgrepCommand } from 'src/shared/fs/ripgrep.js'
 
 // Local copies to avoid circular dependency

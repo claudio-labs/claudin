@@ -16,7 +16,7 @@
 import { feature } from 'bun:bundle'
 import { basename } from 'path'
 import { getIsRemoteMode } from 'src/platform/bootstrap/state.js'
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { ENTRYPOINT_NAME } from 'src/memory/memdir/memdir.js'
 import {
   formatMemoryManifest,

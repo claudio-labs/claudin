@@ -34,7 +34,7 @@ import {
   isAsyncHookJSONOutput,
   isSyncHookJSONOutput,
 } from 'src/types/hooks.js'
-import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
+import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import chalk from 'chalk'
 import { errorMessage } from 'src/shared/errors.js'
 import { getSessionHookCallback } from 'src/platform/lifecycleHooks/sessionHooks.js'

@@ -1,16 +1,16 @@
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { PermissionPromptTool } from 'src/agent/queryHelpers.js'
 import type { Tool } from 'src/Tool.js'
 import { toolMatchesName } from 'src/Tool.js'
 import type { StructuredIO } from 'src/platform/headless/structuredIO.js'
 import type { RequiresActionDetails } from 'src/services/session/sessionState.js'
-import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js'
+import { hasPermissionsToUseTool } from 'src/permissions/permissions.js'
 import { createCombinedAbortSignal } from 'src/shared/combinedAbortSignal.js'
 import { safeParseJSON } from 'src/shared/data/json.js'
 import {
   outputSchema as permissionToolOutputSchema,
   permissionPromptToolResultToPermissionDecision,
-} from 'src/services/permissions/PermissionPromptToolResultSchema.js'
+} from 'src/permissions/PermissionPromptToolResultSchema.js'
 import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js'
 
 /**

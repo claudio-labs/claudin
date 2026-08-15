@@ -13,7 +13,7 @@ import {
   buildDefaultExternalSystemPrompt,
   getDefaultExternalAutoModeRules,
   isClassifierBundled,
-} from 'src/services/permissions/yoloClassifier.js'
+} from 'src/permissions/yoloClassifier.js'
 import { getAutoModeConfig } from 'src/platform/settings/settings.js'
 import { sideQuery } from 'src/agent/sideQuery.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
@@ -25,7 +25,7 @@ function writeRules(rules: AutoModeRules): void {
 const CLASSIFIER_NOT_BUNDLED_MSG =
   'Auto-mode classifier prompts are not bundled in this build.\n' +
   'Effective behavior at runtime: auto-allow for non-allowlisted tools.\n' +
-  'Add prompt templates at src/services/permissions/yolo-classifier-prompts/ ' +
+  'Add prompt templates at src/permissions/yolo-classifier-prompts/ ' +
   'and rebuild to enable.\n'
 
 export function autoModeDefaultsHandler(): void {

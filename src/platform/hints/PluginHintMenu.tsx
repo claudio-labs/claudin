@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import { Select } from 'src/terminal/custom-select/select.js';
-import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
+import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js';
 type Props = {
   pluginName: string;
   pluginDescription?: string;

@@ -28,7 +28,7 @@ import {
   normalizeLegacyToolName,
   getLegacyToolNames,
   permissionRuleValueFromString,
-} from 'src/services/permissions/permissionRuleParser.js'
+} from 'src/permissions/permissionRuleParser.js'
 import { findToolByName, type Tools } from 'src/Tool.js'
 import type { HookCallbackMatcher } from 'src/types/hooks.js'
 import {

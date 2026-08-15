@@ -16,7 +16,7 @@ import { normalizePathForComparison } from 'src/shared/fs/file.js'
 import type { FrontmatterData } from 'src/shared/frontmatterParser.js'
 import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
 import { findCanonicalGitRoot, findGitRoot } from 'src/vcs/git/git.js'
-import { parseToolListFromCLI } from 'src/services/permissions/permissionSetup.js'
+import { parseToolListFromCLI } from 'src/permissions/permissionSetup.js'
 import { ripGrep, RipgrepUnavailableError } from 'src/shared/fs/ripgrep.js'
 import {
   isSettingSourceEnabled,

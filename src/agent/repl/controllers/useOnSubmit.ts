@@ -57,7 +57,7 @@ import type { IDESelection } from 'src/platform/ide/useIdeSelection.js';
 import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js';
 import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.js';
 import type { EffortValue } from 'src/utils/effort.js';
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js';
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js';
 import type { useRemoteSession } from 'src/hooks/useRemoteSession.js';
 import type { useDirectConnect } from 'src/providers/hooks/useDirectConnect.js';

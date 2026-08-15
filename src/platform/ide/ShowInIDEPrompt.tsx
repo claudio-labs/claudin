@@ -6,7 +6,7 @@ import { getCwd } from 'src/shared/fs/cwd.js';
 import { isSupportedVSCodeTerminal } from 'src/platform/ide/ide.js';
 import { Select } from 'src/terminal/custom-select/index.js';
 import { Pane } from 'src/terminal/design-system/Pane.js';
-import type { PermissionOption, PermissionOptionWithLabel } from 'src/components/permissions/FilePermissionDialog/permissionOptions.js';
+import type { PermissionOption, PermissionOptionWithLabel } from 'src/permissions/ui/FilePermissionDialog/permissionOptions.js';
 type Props<A> = {
   filePath: string;
   input: A;

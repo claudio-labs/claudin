@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Box, Text, useInput } from 'src/terminal/ink.js'
 import type { CommandResultDisplay, LocalJSXCommandContext } from 'src/types/command.js'
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js'
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js'
 import type { ToolUseContext } from 'src/Tool.js'

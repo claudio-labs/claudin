@@ -9,7 +9,7 @@ import { formatRelativeTimeAgo } from 'src/shared/text/format.js';
 import { getSessionIdFromLog, isLiteLog, loadFullLog } from 'src/services/session/sessionStorage.js';
 import type { Command } from 'src/commands.js';
 import type { StreamingToolUse } from 'src/agent/messages/messages.js';
-import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';
+import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';

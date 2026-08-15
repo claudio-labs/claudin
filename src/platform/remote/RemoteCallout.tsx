@@ -5,7 +5,7 @@ import { getClaudeAIOAuthTokens } from 'src/providers/auth/auth.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import type { OptionWithDescription } from 'src/terminal/custom-select/select.js';
 import { Select } from 'src/terminal/custom-select/select.js';
-import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
+import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js';
 type RemoteCalloutSelection = 'enable' | 'dismiss';
 type Props = {
   onDone: (selection: RemoteCalloutSelection) => void;

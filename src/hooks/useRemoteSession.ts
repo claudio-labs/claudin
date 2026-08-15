@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { BoundedUUIDSet } from 'src/platform/bridge/bridgeMessaging.js'
-import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
+import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js'
 import type { SpinnerMode } from 'src/terminal/spinner/types.js'
 import {
   type RemotePermissionResponse,

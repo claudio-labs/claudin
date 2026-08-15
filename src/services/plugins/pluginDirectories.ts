@@ -17,7 +17,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import { errorMessage, isFsInaccessible } from 'src/shared/errors.js'
 import { formatFileSize } from 'src/shared/text/format.js'
-import { expandTilde } from 'src/services/permissions/pathValidation.js'
+import { expandTilde } from 'src/permissions/pathValidation.js'
 
 const PLUGINS_DIR = 'plugins'
 const COWORK_PLUGINS_DIR = 'cowork_plugins'

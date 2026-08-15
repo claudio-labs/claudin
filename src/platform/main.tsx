@@ -84,7 +84,7 @@ const getIsSyntheticOutputToolEnabled = () => require('src/tools/SyntheticOutput
 const getJsonParse = () => require('src/platform/slowOperations.js').jsonParse as typeof import('src/platform/slowOperations.js').jsonParse
 const getCreateSystemMessage = () => require('src/agent/messages/messages.js').createSystemMessage as typeof import('src/agent/messages/messages.js').createSystemMessage
 const getBuildDeepLinkBanner = () => require('src/platform/deepLink/banner.js').buildDeepLinkBanner as typeof import('src/platform/deepLink/banner.js').buildDeepLinkBanner
-const getPermissionModes = () => require('src/services/permissions/PermissionMode.js').PERMISSION_MODES as typeof import('src/services/permissions/PermissionMode.js').PERMISSION_MODES
+const getPermissionModes = () => require('src/permissions/PermissionMode.js').PERMISSION_MODES as typeof import('src/permissions/PermissionMode.js').PERMISSION_MODES
 const getLogEvent = () => require('src/platform/analytics/index.js').logEvent as typeof import('src/platform/analytics/index.js').logEvent
 type AnalyticsMetadata = import('src/platform/analytics/index.js').AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
 const getInitializeVersionedPlugins = () => require('src/services/plugins/installedPluginsManager.js').initializeVersionedPlugins as typeof import('src/services/plugins/installedPluginsManager.js').initializeVersionedPlugins
@@ -97,7 +97,7 @@ const getGracefulShutdownSync = () => require('src/shared/proc/gracefulShutdown.
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER') ? require('src/services/permissions/autoModeState.js') as typeof import('src/services/permissions/autoModeState.js') : null;
+const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER') ? require('src/permissions/autoModeState.js') as typeof import('src/permissions/autoModeState.js') : null;
 
 // TeleportRepoMismatchDialog, TeleportResumeWrapper dynamically imported at call sites
 /* eslint-enable @typescript-eslint/no-require-imports */

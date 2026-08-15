@@ -4,7 +4,7 @@ import { GitTool } from 'src/tools/GitTool/GitTool.js'
 /**
  * `isReadOnly` is the gate plan mode calls
  * (`planModeHardDenyIfApplicable` → `tool.isReadOnly(input)`,
- * `src/services/permissions/permissions.ts:1079`), and it fails closed there: a
+ * `src/permissions/permissions.ts:1079`), and it fails closed there: a
  * throw is treated as NOT read-only. So the contract this file pins is exactly
  * what decides whether a command can run inside a plan.
  */

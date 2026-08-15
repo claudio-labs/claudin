@@ -5,7 +5,7 @@ import { MailboxProvider } from 'src/terminal/contexts/mailbox.js';
 import { useEffectEventCompat } from 'src/terminal/hooks/useEffectEventCompat.js';
 import { useSettingsChange } from 'src/platform/useSettingsChange.js';
 import { logForDebugging } from 'src/shared/debug.js';
-import { createDisabledBypassPermissionsContext, isBypassPermissionsModeDisabled } from 'src/services/permissions/permissionSetup.js';
+import { createDisabledBypassPermissionsContext, isBypassPermissionsModeDisabled } from 'src/permissions/permissionSetup.js';
 import { applySettingsChange } from 'src/platform/settings/applySettingsChange.js';
 import type { SettingSource } from 'src/platform/settings/constants.js';
 import { createStore } from 'src/terminal/state/store.js';

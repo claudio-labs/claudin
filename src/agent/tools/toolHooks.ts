@@ -4,7 +4,7 @@ import {
 } from 'src/platform/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type z from 'zod/v4'
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { AnyObject, Tool, ToolUseContext } from 'src/Tool.js'
 import type { HookProgress } from 'src/types/hooks.js'
 import type {
@@ -27,8 +27,8 @@ import {
   getRuleBehaviorDescription,
   type PermissionDecisionReason,
   type PermissionResult,
-} from 'src/services/permissions/PermissionResult.js'
-import { checkRuleBasedPermissions } from 'src/services/permissions/permissions.js'
+} from 'src/permissions/PermissionResult.js'
+import { checkRuleBasedPermissions } from 'src/permissions/permissions.js'
 import { formatError } from 'src/agent/tools/toolErrors.js'
 import { getAutoFixConfig } from 'src/agent/autoFix/autoFixConfig.js'
 import { shouldRunAutoFix, buildAutoFixContext } from 'src/agent/autoFix/autoFixHook.js'

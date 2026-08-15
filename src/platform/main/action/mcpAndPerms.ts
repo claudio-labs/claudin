@@ -39,7 +39,7 @@ import {
   isDefaultPermissionModeAuto,
   parseToolListFromCLI,
   stripDangerousPermissionsForAutoMode,
-} from 'src/services/permissions/permissionSetup.js';
+} from 'src/permissions/permissionSetup.js';
 import { getPlatform } from 'src/shared/proc/platform.js';
 import { writeToStderr } from 'src/shared/proc/process.js';
 import { setSessionBypassPermissionsMode } from 'src/platform/bootstrap/state.js';

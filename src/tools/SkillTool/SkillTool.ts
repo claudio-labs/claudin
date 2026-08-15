@@ -26,8 +26,8 @@ import type {
   UserMessage,
 } from 'src/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
-import { getRuleByContentsForTool } from 'src/services/permissions/permissions.js'
+import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
+import { getRuleByContentsForTool } from 'src/permissions/permissions.js'
 import {
   isOfficialMarketplaceName,
   parsePluginIdentifier,
@@ -40,7 +40,7 @@ import {
   getSessionId,
 } from 'src/platform/bootstrap/state.js'
 import { COMMAND_MESSAGE_TAG } from 'src/constants/xml.js'
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,

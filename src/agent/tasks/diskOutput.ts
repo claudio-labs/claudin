@@ -12,7 +12,7 @@ import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { getErrnoCode } from 'src/shared/errors.js'
 import { readFileRange, tailFile } from 'src/shared/fs/fsOperations.js'
 import { logError } from 'src/shared/log.js'
-import { getProjectTempDir } from 'src/services/permissions/filesystem.js'
+import { getProjectTempDir } from 'src/permissions/filesystem.js'
 
 // SECURITY: O_NOFOLLOW prevents following symlinks when opening task output files.
 // Without this, an attacker in the sandbox could create symlinks in the tasks directory

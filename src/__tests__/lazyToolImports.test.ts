@@ -117,37 +117,37 @@ const CANDIDATES: Candidate[] = [
     modulePath: 'src/tools/WebFetchTool/WebFetchTool',
     current: [
       'src/agent/ui/agents/ToolSelector.tsx',
-      'src/components/permissions/PermissionRequest.tsx',
-      'src/components/permissions/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx',
-      'src/components/permissions/rules/PermissionRuleInput.tsx',    ],
+      'src/permissions/ui/PermissionRequest.tsx',
+      'src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.tsx',
+      'src/permissions/ui/rules/PermissionRuleInput.tsx',    ],
     goal: ['src/tools.ts'],
   },
   {
     modulePath: 'src/tools/NotebookEditTool/NotebookEditTool',
     current: [
       'src/agent/ui/agents/ToolSelector.tsx',
-      'src/components/permissions/NotebookEditPermissionRequest/NotebookEditPermissionRequest.tsx',
-      'src/components/permissions/PermissionRequest.tsx',      'src/tools/REPLTool/primitiveTools.ts',
+      'src/permissions/ui/NotebookEditPermissionRequest/NotebookEditPermissionRequest.tsx',
+      'src/permissions/ui/PermissionRequest.tsx',      'src/tools/REPLTool/primitiveTools.ts',
     ],
     goal: ['src/tools.ts'],
   },
   {
     modulePath: 'src/tools/SkillTool/SkillTool',
     current: [
-      'src/components/permissions/PermissionRequest.tsx',
-      'src/components/permissions/SkillPermissionRequest/SkillPermissionRequest.tsx',    ],
+      'src/permissions/ui/PermissionRequest.tsx',
+      'src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.tsx',    ],
     goal: ['src/tools.ts'],
   },
   {
     modulePath: 'src/tools/AskUserQuestionTool/AskUserQuestionTool',
     current: [
-      'src/components/permissions/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.tsx',
-      'src/components/permissions/PermissionRequest.tsx',    ],
+      'src/permissions/ui/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.tsx',
+      'src/permissions/ui/PermissionRequest.tsx',    ],
     goal: ['src/tools.ts'],
   },
   {
     modulePath: 'src/tools/EnterPlanModeTool/EnterPlanModeTool',
-    current: ['src/components/permissions/PermissionRequest.tsx'],
+    current: ['src/permissions/ui/PermissionRequest.tsx'],
     goal: ['src/tools.ts'],
   },
   // ExitPlanModeV2Tool — `ToolSelector.tsx` and `messages/*.ts` use
@@ -158,7 +158,7 @@ const CANDIDATES: Candidate[] = [
       'src/agent/messages/attachments.ts',
       'src/agent/messages/planMode.ts',
       'src/agent/ui/agents/ToolSelector.tsx',
-      'src/components/permissions/PermissionRequest.tsx',
+      'src/permissions/ui/PermissionRequest.tsx',
     ],
     goal: ['src/tools.ts'],
   },

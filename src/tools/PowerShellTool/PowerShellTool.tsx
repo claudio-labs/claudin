@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle';
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import { copyFile, stat as fsStat, truncate as fsTruncate, link } from 'fs/promises';
 import * as React from 'react';
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js';
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { z } from 'zod/v4';
 import { getKairosActive } from 'src/platform/bootstrap/state.js';
@@ -19,7 +19,7 @@ import { errorMessage as getErrorMessage, ShellError } from 'src/shared/errors.j
 import { truncate } from 'src/shared/text/format.js';
 import { lazySchema } from 'src/shared/data/lazySchema.js';
 import { logError } from 'src/shared/log.js';
-import type { PermissionResult } from 'src/services/permissions/PermissionResult.js';
+import type { PermissionResult } from 'src/permissions/PermissionResult.js';
 import { getPlatform } from 'src/shared/proc/platform.js';
 import { maybeRecordPluginHint } from 'src/services/plugins/hintRecommendation.js';
 import { exec } from 'src/shared/proc/Shell.js';

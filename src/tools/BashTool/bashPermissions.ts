@@ -31,29 +31,29 @@ import { AbortError, isSdkApiUserAbortError } from 'src/shared/errors.js'
 import type {
   ClassifierBehavior,
   ClassifierResult,
-} from 'src/services/permissions/bashClassifier.js'
+} from 'src/permissions/bashClassifier.js'
 import {
   classifyBashCommand,
   getBashPromptAllowDescriptions,
   getBashPromptAskDescriptions,
   getBashPromptDenyDescriptions,
   isClassifierPermissionsEnabled,
-} from 'src/services/permissions/bashClassifier.js'
+} from 'src/permissions/bashClassifier.js'
 import type {
   PermissionDecisionReason,
   PermissionResult,
-} from 'src/services/permissions/PermissionResult.js'
+} from 'src/permissions/PermissionResult.js'
 import type {
   PermissionRule,
   PermissionRuleValue,
-} from 'src/services/permissions/PermissionRule.js'
-import { extractRules } from 'src/services/permissions/PermissionUpdate.js'
-import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
-import { permissionRuleValueToString } from 'src/services/permissions/permissionRuleParser.js'
+} from 'src/permissions/PermissionRule.js'
+import { extractRules } from 'src/permissions/PermissionUpdate.js'
+import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
+import { permissionRuleValueToString } from 'src/permissions/permissionRuleParser.js'
 import {
   createPermissionRequestMessage,
   getRuleByContentsForTool,
-} from 'src/services/permissions/permissions.js'
+} from 'src/permissions/permissions.js'
 import {
   parsePermissionRule,
   type ShellPermissionRule,
@@ -61,7 +61,7 @@ import {
   permissionRuleExtractPrefix as sharedPermissionRuleExtractPrefix,
   suggestionForExactCommand as sharedSuggestionForExactCommand,
   suggestionForPrefix as sharedSuggestionForPrefix,
-} from 'src/services/permissions/shellRuleMatching.js'
+} from 'src/permissions/shellRuleMatching.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'

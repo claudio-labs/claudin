@@ -57,10 +57,10 @@ import {
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER')
-  ? (require('src/services/permissions/autoModeState.js') as typeof import('src/services/permissions/autoModeState.js'))
+  ? (require('src/permissions/autoModeState.js') as typeof import('src/permissions/autoModeState.js'))
   : null
 const permissionSetupModule = feature('TRANSCRIPT_CLASSIFIER')
-  ? (require('src/services/permissions/permissionSetup.js') as typeof import('src/services/permissions/permissionSetup.js'))
+  ? (require('src/permissions/permissionSetup.js') as typeof import('src/permissions/permissionSetup.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

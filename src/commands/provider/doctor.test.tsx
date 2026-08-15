@@ -129,7 +129,7 @@ afterAll(() => {
 
 const { runProviderDoctor } = await import('src/commands/provider/doctor.js')
 const { __setClassifierProbeStoreDirForTests } = await import(
-  'src/services/permissions/classifierProbeStore.js'
+  'src/permissions/classifierProbeStore.js'
 )
 
 const ORIGINAL_FETCH = globalThis.fetch

@@ -5,9 +5,9 @@ import {
   createDisabledBypassPermissionsContext,
   isBypassPermissionsModeDisabled,
   transitionPlanAutoMode,
-} from 'src/services/permissions/permissionSetup.js'
-import { syncPermissionRulesFromDisk } from 'src/services/permissions/permissions.js'
-import { loadAllPermissionRulesFromDisk } from 'src/services/permissions/permissionsLoader.js'
+} from 'src/permissions/permissionSetup.js'
+import { syncPermissionRulesFromDisk } from 'src/permissions/permissions.js'
+import { loadAllPermissionRulesFromDisk } from 'src/permissions/permissionsLoader.js'
 import type { SettingSource } from 'src/platform/settings/constants.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { getProjectEffortPin } from 'src/utils/effort.js'

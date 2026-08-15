@@ -8,7 +8,7 @@
 import type { AppState } from 'src/terminal/state/AppState.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { addFunctionHook } from 'src/platform/lifecycleHooks/sessionHooks.js'
-import { applyPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js'
+import { applyPermissionUpdate } from 'src/permissions/PermissionUpdate.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getTeammateColor } from 'src/agent/coordinator/teammate.js'
 import {

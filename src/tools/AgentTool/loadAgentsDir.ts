@@ -31,7 +31,7 @@ import {
 import {
   PERMISSION_MODES,
   type PermissionMode,
-} from 'src/services/permissions/PermissionMode.js'
+} from 'src/permissions/PermissionMode.js'
 import {
   clearPluginAgentCache,
   loadPluginAgents,

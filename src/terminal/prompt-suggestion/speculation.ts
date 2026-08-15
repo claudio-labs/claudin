@@ -36,7 +36,7 @@ import {
   INTERRUPT_MESSAGE,
   INTERRUPT_MESSAGE_FOR_TOOL_USE,
 } from 'src/agent/messages/messages.js'
-import { getClaudeTempDir } from 'src/services/permissions/filesystem.js'
+import { getClaudeTempDir } from 'src/permissions/filesystem.js'
 import { extractReadFilesFromMessages } from 'src/agent/queryHelpers.js'
 import { getTranscriptPath } from 'src/services/session/sessionStorage.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'

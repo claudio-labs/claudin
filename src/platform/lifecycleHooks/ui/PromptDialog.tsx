@@ -4,7 +4,7 @@ import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import type { PromptRequest } from 'src/types/hooks.js';
 import { Select } from 'src/terminal/custom-select/select.js';
-import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
+import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js';
 type Props = {
   title: string;
   toolInputSummary?: string | null;

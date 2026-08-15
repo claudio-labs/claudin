@@ -7,7 +7,7 @@ import type { AttachmentMessage } from 'src/types/message.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { logError } from 'src/shared/log.js'
 import { logAntError } from 'src/shared/debug.js'
-import { matchingRuleForInput } from 'src/services/permissions/filesystem.js'
+import { matchingRuleForInput } from 'src/permissions/filesystem.js'
 import type { ToolPermissionContext } from 'src/Tool.js'
 import type { Attachment } from 'src/agent/attachments/types.js'
 

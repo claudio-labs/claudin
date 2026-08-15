@@ -71,7 +71,7 @@ import {
 } from 'src/platform/lifecycleHooks/hooks.js'
 import type { MemoryType } from 'src/memory/memdir/types.js'
 import { expandPath } from 'src/shared/fs/path.js'
-import { pathInWorkingPath } from 'src/services/permissions/filesystem.js'
+import { pathInWorkingPath } from 'src/permissions/filesystem.js'
 import {
   getProjectInstructionFilePath,
   isProjectInstructionFileName,

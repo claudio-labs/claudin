@@ -15,8 +15,8 @@ import { getPatchFromContents } from 'src/vcs/git/diff.js'
 import { getFileModificationTime } from 'src/shared/fs/file.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { expandPath } from 'src/shared/fs/path.js'
-import { checkBatchWritePermission } from 'src/services/permissions/filesystem.js'
-import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
+import { checkBatchWritePermission } from 'src/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import {
   needsWholeFileRead,
   readGateMessage,

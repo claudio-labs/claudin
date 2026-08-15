@@ -26,8 +26,8 @@ import {
 import {
   buildCodeEditToolAttributes,
   isCodeEditingTool,
-} from 'src/hooks/toolPermission/permissionLogging.js'
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+} from 'src/permissions/toolPermission/permissionLogging.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import {
   findToolByName,
   type Tool,
@@ -95,7 +95,7 @@ import {
 import type {
   PermissionDecisionReason,
   PermissionResult,
-} from 'src/services/permissions/PermissionResult.js'
+} from 'src/permissions/PermissionResult.js'
 import {
   startSessionActivity,
   stopSessionActivity,

@@ -1,7 +1,7 @@
 import { relative } from 'path';
 import React from 'react';
 import { getCwdState } from 'src/platform/bootstrap/state.js';
-import { SandboxSettings } from 'src/components/sandbox/SandboxSettings.js';
+import { SandboxSettings } from 'src/permissions/ui/sandbox/SandboxSettings.js';
 import { color } from 'src/terminal/ink.js';
 import { getPlatform } from 'src/shared/proc/platform.js';
 import { addToExcludedCommands, SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';

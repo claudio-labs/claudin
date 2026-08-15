@@ -3,7 +3,7 @@ import * as React from 'react';
 import { memo, useCallback, useEffect, useRef } from 'react';
 import { logEvent } from 'src/platform/analytics/index.js';
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
-import type { PermissionMode } from 'src/services/permissions/PermissionMode.js';
+import type { PermissionMode } from 'src/permissions/PermissionMode.js';
 import { getIsRemoteMode, getKairosActive, getMainThreadAgentType, getOriginalCwd, getSdkBetas, getSessionId } from 'src/platform/bootstrap/state.js';
 import { DEFAULT_OUTPUT_STYLE_NAME } from 'src/constants/outputStyles.js';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';

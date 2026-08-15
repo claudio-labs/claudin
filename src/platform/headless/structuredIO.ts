@@ -19,7 +19,7 @@ import type {
   StdinMessage,
   StdoutMessage,
 } from 'src/platform/entrypoints/sdk/controlTypes.js'
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { Tool, ToolUseContext } from 'src/Tool.js'
 import { type HookCallback, hookJSONOutputSchema } from 'src/types/hooks.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -29,12 +29,12 @@ import {
   type Output as PermissionToolOutput,
   permissionPromptToolResultToPermissionDecision,
   outputSchema as permissionToolOutputSchema,
-} from 'src/services/permissions/PermissionPromptToolResultSchema.js'
+} from 'src/permissions/PermissionPromptToolResultSchema.js'
 import type {
   PermissionDecision,
   PermissionDecisionReason,
-} from 'src/services/permissions/PermissionResult.js'
-import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js'
+} from 'src/permissions/PermissionResult.js'
+import { hasPermissionsToUseTool } from 'src/permissions/permissions.js'
 import { writeToStdout } from 'src/shared/proc/process.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { z } from 'zod/v4'
@@ -44,7 +44,7 @@ import { executePermissionRequestHooks } from 'src/platform/lifecycleHooks/hooks
 import {
   applyPermissionUpdates,
   persistPermissionUpdates,
-} from 'src/services/permissions/PermissionUpdate.js'
+} from 'src/permissions/PermissionUpdate.js'
 import {
   notifySessionStateChanged,
   type RequiresActionDetails,

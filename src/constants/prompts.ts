@@ -39,7 +39,7 @@ import { areExplorePlanAgentsEnabled } from 'src/tools/AgentTool/builtInAgents.j
 import {
   isScratchpadEnabled,
   getScratchpadDir,
-} from 'src/services/permissions/filesystem.js'
+} from 'src/permissions/filesystem.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { feature } from 'bun:bundle'
 import { shouldUseGlobalCacheScope } from 'src/providers/transport/betas.js'

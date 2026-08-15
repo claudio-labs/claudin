@@ -47,12 +47,12 @@ import {
   extractTextContent,
   getLastAssistantMessage,
 } from 'src/agent/messages/messages.js'
-import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
-import { permissionRuleValueFromString } from 'src/services/permissions/permissionRuleParser.js'
+import type { PermissionMode } from 'src/permissions/PermissionMode.js'
+import { permissionRuleValueFromString } from 'src/permissions/permissionRuleParser.js'
 import {
   buildTranscriptForClassifier,
   classifyYoloAction,
-} from 'src/services/permissions/yoloClassifier.js'
+} from 'src/permissions/yoloClassifier.js'
 import { emitTaskProgress as emitTaskProgressEvent } from 'src/agent/tasks/sdkProgress.js'
 import { isInProcessTeammate } from 'src/agent/coordinator/teammateContext.js'
 import { getTokenCountFromUsage } from 'src/agent/context/tokens.js'

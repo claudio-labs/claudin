@@ -9,8 +9,8 @@ import {
   MAX_MEMORY_CHARACTER_COUNT,
 } from 'src/memory/instructions/claudemd.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
-import { permissionRuleValueToString } from 'src/services/permissions/permissionRuleParser.js'
-import { detectUnreachableRules } from 'src/services/permissions/shadowedRuleDetection.js'
+import { permissionRuleValueToString } from 'src/permissions/permissionRuleParser.js'
+import { detectUnreachableRules } from 'src/permissions/shadowedRuleDetection.js'
 import { lintRuleFiles, relativeFindingPath } from 'src/memory/instructions/rulesLint.js'
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import {

@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { z } from 'zod/v4'
 import { BLACK_CIRCLE } from 'src/constants/figures.js'
-import { getModeColor } from 'src/services/permissions/PermissionMode.js'
+import { getModeColor } from 'src/permissions/PermissionMode.js'
 import { Box, Text } from 'src/terminal/ink.js'
 import { buildTool, type Tool, type ToolDef } from 'src/Tool.js'
 import { EFFORT_LEVELS } from 'src/utils/effort.js'

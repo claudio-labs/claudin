@@ -6,7 +6,7 @@ import { Box, Text, useTheme } from 'src/terminal/ink.js';
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
 import { filterToolProgressMessages, type Tool, type Tools } from 'src/Tool.js';
 import type { NormalizedUserMessage, ProgressMessage } from 'src/types/message.js';
-import { deleteClassifierApproval, getClassifierApproval, getYoloClassifierApproval } from 'src/utils/classifierApprovals.js';
+import { deleteClassifierApproval, getClassifierApproval, getYoloClassifierApproval } from 'src/permissions/classifierApprovals.js';
 import { extractTag, type buildMessageLookups } from 'src/agent/messages/messages.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { HookProgressMessage } from 'src/agent/ui/messages/HookProgressMessage.js';

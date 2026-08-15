@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle'
 import { logEvent } from 'src/platform/analytics/index.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logError } from 'src/shared/log.js'
-import { getAutoModeEnabledState } from 'src/services/permissions/permissionSetup.js'
+import { getAutoModeEnabledState } from 'src/permissions/permissionSetup.js'
 import {
   getSettingsForSource,
   updateSettingsForSource,

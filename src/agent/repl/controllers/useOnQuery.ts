@@ -27,7 +27,7 @@
 
 import { useCallback } from 'react';
 import type { UUID } from 'crypto';
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js';
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { createCoalescedUpdater } from 'src/platform/install/coalescedUpdater.js';
 import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js';
 import type { ToolPermissionContext } from 'src/Tool.js';
@@ -49,7 +49,7 @@ import { getSystemPrompt } from 'src/constants/prompts.js';
 import { buildEffectiveSystemPrompt } from 'src/agent/systemPrompt.js';
 import { getSystemContext, getUserContext } from 'src/agent/context.js';
 import { removeLastFromHistory } from 'src/agent/history.js';
-import { getScratchpadDir, isScratchpadEnabled } from 'src/services/permissions/filesystem.js';
+import { getScratchpadDir, isScratchpadEnabled } from 'src/permissions/filesystem.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { logEvent } from 'src/platform/analytics/index.js';
 import { handleMessageFromStream, type StreamingToolUse, type StreamingThinking, isCompactBoundaryMessage, getMessagesAfterCompactBoundary, getContentText, createTurnDurationMessage, createSystemMessage } from 'src/agent/messages/messages.js';
@@ -75,7 +75,7 @@ import { closeOpenDiffs, getConnectedIdeClient } from 'src/platform/ide/ide.js';
 import { enqueue, type SetAppState, getCommandQueueLength } from 'src/agent/messageQueueManager.js';
 import { diagnosticTracker } from 'src/platform/diagnosticTracking.js';
 import type { EffortValue } from 'src/utils/effort.js';
-import { checkAndDisableBypassPermissionsIfNeeded, checkAndDisableAutoModeIfNeeded } from 'src/services/permissions/bypassPermissionsKillswitch.js';
+import { checkAndDisableBypassPermissionsIfNeeded, checkAndDisableAutoModeIfNeeded } from 'src/permissions/bypassPermissionsKillswitch.js';
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
 import { fireCompanionObserver } from 'src/terminal/buddy/observer.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';

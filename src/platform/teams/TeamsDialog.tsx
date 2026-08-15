@@ -16,8 +16,8 @@ import { AGENT_COLOR_TO_THEME_COLOR } from 'src/tools/AgentTool/agentColorManage
 import { logForDebugging } from 'src/shared/debug.js';
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js';
 import { truncateToWidth } from 'src/shared/text/format.js';
-import { getNextPermissionMode } from 'src/services/permissions/getNextPermissionMode.js';
-import { getModeColor, type PermissionMode, permissionModeFromString, permissionModeSymbol } from 'src/services/permissions/PermissionMode.js';
+import { getNextPermissionMode } from 'src/permissions/getNextPermissionMode.js';
+import { getModeColor, type PermissionMode, permissionModeFromString, permissionModeSymbol } from 'src/permissions/PermissionMode.js';
 import { jsonStringify } from 'src/platform/slowOperations.js';
 import { IT2_COMMAND, isInsideTmuxSync } from 'src/agent/coordinator/swarm/backends/detection.js';
 import { ensureBackendsRegistered, getBackendByType, getCachedBackend } from 'src/agent/coordinator/swarm/backends/registry.js';

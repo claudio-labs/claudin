@@ -40,7 +40,7 @@ import { configureGlobalMTLS } from 'src/providers/transport/mtls.js'
 import {
   ensureScratchpadDir,
   isScratchpadEnabled,
-} from 'src/services/permissions/filesystem.js'
+} from 'src/permissions/filesystem.js'
 // initializeTelemetry is loaded lazily via import() in setMeterState() to defer
 // ~400KB of OpenTelemetry + protobuf modules until telemetry is actually initialized.
 import { configureGlobalAgents } from 'src/providers/transport/proxy.js'

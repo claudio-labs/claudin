@@ -32,7 +32,7 @@ import { ScrollKeybindingHandler } from 'src/terminal/ScrollKeybindingHandler.js
 import { Messages } from 'src/agent/ui/Messages.js'
 import { FullscreenLayout } from 'src/terminal/FullscreenLayout.js'
 import { AlternateScreen } from 'src/terminal/ink/components/AlternateScreen.js'
-import { SandboxViolationExpandedView } from 'src/components/SandboxViolationExpandedView.js'
+import { SandboxViolationExpandedView } from 'src/permissions/ui/SandboxViolationExpandedView.js'
 import { isFullscreenEnvEnabled, isMouseTrackingEnabled } from 'src/terminal/render/fullscreen.js'
 import { AnimatedTerminalTitle } from 'src/agent/repl/components/AnimatedTerminalTitle.js'
 import { TranscriptSearchBar } from 'src/agent/repl/components/TranscriptSearchBar.js'

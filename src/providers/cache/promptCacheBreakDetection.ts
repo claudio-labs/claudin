@@ -8,7 +8,7 @@ import type { Message } from 'src/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { djb2Hash } from 'src/shared/data/hash.js'
 import { logError } from 'src/shared/log.js'
-import { getClaudeTempDir } from 'src/services/permissions/filesystem.js'
+import { getClaudeTempDir } from 'src/permissions/filesystem.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { QuerySource } from 'src/constants/querySource.js'
 import {

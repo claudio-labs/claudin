@@ -47,7 +47,7 @@ import {
 } from 'src/platform/bridge/debugUtils.js'
 import type { Message } from 'src/types/message.js'
 import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
-import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
+import type { PermissionMode } from 'src/permissions/PermissionMode.js'
 import type {
   SDKControlRequest,
   SDKControlResponse,

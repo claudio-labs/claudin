@@ -7,9 +7,9 @@ import { getFileExtensionForAnalytics } from 'src/platform/analytics/metadata.js
 import {
   checkReadPermissionForTool,
   matchingRuleForInput,
-} from 'src/services/permissions/filesystem.js'
-import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
-import { matchWildcardPattern } from 'src/services/permissions/shellRuleMatching.js'
+} from 'src/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
+import { matchWildcardPattern } from 'src/permissions/shellRuleMatching.js'
 import {
   exceedsPinnedResultCeiling,
   getStandDownEpoch,

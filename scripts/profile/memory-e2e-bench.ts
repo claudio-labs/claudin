@@ -201,7 +201,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #13 classifierApprovals
   try {
-    const mod = await import('../../src/utils/classifierApprovalsHook.js')
+    const mod = await import('../../src/permissions/classifierApprovalsHook.js')
     if (typeof mod.__TEST_ONLY_getClassifierApprovalsSize === 'function') {
       out['classifierApprovals.size'] = mod.__TEST_ONLY_getClassifierApprovalsSize()
     }

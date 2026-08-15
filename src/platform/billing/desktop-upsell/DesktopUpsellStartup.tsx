@@ -7,7 +7,7 @@ import { logEvent } from 'src/platform/analytics/index.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { Select } from 'src/terminal/custom-select/select.js';
 import { DesktopHandoff } from 'src/platform/remote/DesktopHandoff.js';
-import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
+import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js';
 import type { GlobalConfig } from 'src/platform/config/config.js';
 type DesktopUpsellConfig = {
   enable_shortcut_tip: boolean;

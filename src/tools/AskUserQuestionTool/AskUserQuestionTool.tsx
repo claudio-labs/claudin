@@ -4,7 +4,7 @@ import * as React from 'react';
 import { getAllowedChannels, getQuestionPreviewFormat } from 'src/platform/bootstrap/state.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { BLACK_CIRCLE } from 'src/constants/figures.js';
-import { getModeColor } from 'src/services/permissions/PermissionMode.js';
+import { getModeColor } from 'src/permissions/PermissionMode.js';
 import { z } from 'zod/v4';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { Tool } from 'src/Tool.js';

@@ -28,7 +28,7 @@ import { type FpsMetrics, FpsTracker } from 'src/terminal/render/fpsTracker.js';
 import { updateGithubRepoPathMapping } from 'src/vcs/git/githubRepoPathMapping.js';
 import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js';
 import { usesAnthropicAccountFlow } from 'src/utils/model/providers.js';
-import type { PermissionMode } from 'src/services/permissions/PermissionMode.js';
+import type { PermissionMode } from 'src/permissions/PermissionMode.js';
 import { getBaseRenderOptions } from 'src/terminal/render/renderOptions.js';
 import { applyRenderCadence } from 'src/terminal/render/renderCadence.js';
 import { getSettingsWithAllErrors } from 'src/platform/settings/allErrors.js';
@@ -159,7 +159,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
     if (usesAnthropicSetup && !checkHasTrustDialogAccepted()) {
       const {
         TrustDialog
-      } = await import('src/components/TrustDialog/TrustDialog.js');
+      } = await import('src/permissions/ui/trust/TrustDialog.js');
       await showSetupDialog(root, done => <TrustDialog commands={commands} onDone={done} />);
     }
 
@@ -262,7 +262,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
   if ((permissionMode === 'bypassPermissions' || allowDangerouslySkipPermissions) && !hasSkipDangerousModePermissionPrompt()) {
     const {
       BypassPermissionsModeDialog
-    } = await import('src/components/BypassPermissionsModeDialog.js');
+    } = await import('src/permissions/ui/BypassPermissionsModeDialog.js');
     await showSetupDialog(root, done => <BypassPermissionsModeDialog onAccept={done} />);
   }
   if (feature('TRANSCRIPT_CLASSIFIER')) {
@@ -273,7 +273,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
     if (permissionMode === 'auto' && !hasAutoModeOptIn()) {
       const {
         AutoModeOptInDialog
-      } = await import('src/components/AutoModeOptInDialog.js');
+      } = await import('src/permissions/ui/AutoModeOptInDialog.js');
       await showSetupDialog(root, done => <AutoModeOptInDialog onAccept={done} onDecline={() => gracefulShutdownSync(1)} declineExits />);
     }
   }

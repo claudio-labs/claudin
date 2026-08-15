@@ -3,7 +3,7 @@ import type {
   BetaWebSearchTool20250305,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
+import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 
 import { z } from 'zod/v4'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'

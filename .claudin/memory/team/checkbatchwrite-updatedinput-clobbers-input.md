@@ -4,7 +4,7 @@ description: Why a tool wiring checkBatchWritePermission as checkPermissions get
 type: project
 ---
 
-`checkBatchWritePermission` (src/services/permissions/filesystem.ts) returns `{ behavior:'allow', updatedInput: {} }` on its allow paths (~line 1442 bypassPermissions, ~1512 batch allow). It validates a SYNTHETIC per-path `{file_path}` input, so it has no single real input to echo — `{}` is a placeholder.
+`checkBatchWritePermission` (src/permissions/filesystem.ts) returns `{ behavior:'allow', updatedInput: {} }` on its allow paths (~line 1442 bypassPermissions, ~1512 batch allow). It validates a SYNTHETIC per-path `{file_path}` input, so it has no single real input to echo — `{}` is a placeholder.
 
 The tool-execution harness (src/agent/tools/toolExecution.ts ~1142) does `if (permissionDecision.updatedInput !== undefined) processedInput = permissionDecision.updatedInput`, then `callInput = processedInput` → `tool.call(callInput, ...)`. So that empty `{}` OVERWRITES the model's real, schema-parsed input before call().
 

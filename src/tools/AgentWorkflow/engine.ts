@@ -10,7 +10,7 @@
  */
 import os from 'os'
 import pMap from 'p-map'
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { assembleToolPool } from 'src/tools.js'
 import {
   type AgentDefinition,

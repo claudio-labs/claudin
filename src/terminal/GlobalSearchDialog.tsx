@@ -10,7 +10,7 @@ import { getCwd } from 'src/shared/fs/cwd.js';
 import { openFileInExternalEditor } from 'src/shared/editor.js';
 import { truncatePathMiddle, truncateToWidth } from 'src/shared/text/format.js';
 import { highlightMatch } from 'src/terminal/highlightMatch.js';
-import { relativePath } from 'src/services/permissions/filesystem.js';
+import { relativePath } from 'src/permissions/filesystem.js';
 import { readFileInRange } from 'src/shared/fs/readFileInRange.js';
 import { ripGrepStream } from 'src/shared/fs/ripgrep.js';
 import { FuzzyPicker } from 'src/terminal/design-system/FuzzyPicker.js';

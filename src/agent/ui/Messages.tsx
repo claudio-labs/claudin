@@ -42,7 +42,7 @@ import { InVirtualListContext, type MessageActionsNav, MessageActionsSelectedCon
 import { AssistantThinkingMessage } from 'src/agent/ui/messages/AssistantThinkingMessage.js';
 import { isNullRenderingAttachment } from 'src/agent/ui/messages/nullRenderingAttachments.js';
 import { OffscreenFreeze } from 'src/terminal/render/OffscreenFreeze.js';
-import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';
+import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js';
 import { StatusNotices } from 'src/platform/status/StatusNotices.js';
 import type { JumpHandle } from 'src/terminal/VirtualMessageList.js';
 

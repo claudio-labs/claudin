@@ -7,7 +7,7 @@ import {
 import { tryParseShellCommand } from 'src/platform/bash/shellQuote.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isCurrentDirectoryBareGitRepo } from 'src/vcs/git/git.js'
-import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
+import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import {

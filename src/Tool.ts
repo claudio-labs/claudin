@@ -9,7 +9,7 @@ import type {
 import type { UUID } from 'crypto'
 import type { z } from 'zod/v4'
 import type { Command } from 'src/commands.js'
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import {
   getCached,
   isCacheDisabled,
@@ -64,7 +64,7 @@ import type {
   WebSearchProgress,
 } from 'src/types/tools.js'
 import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
-import type { DenialTrackingState } from 'src/services/permissions/denialTracking.js'
+import type { DenialTrackingState } from 'src/permissions/denialTracking.js'
 import type { SystemPrompt } from 'src/agent/systemPromptType.js'
 import type { ContentReplacementState } from 'src/agent/tools/toolResultStorage.js'
 

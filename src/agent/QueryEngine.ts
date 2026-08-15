@@ -35,7 +35,7 @@ import {
   getTotalAPIDuration,
   getTotalCost,
 } from 'src/agent/cost-tracker.js'
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { loadMemoryPrompt } from 'src/memory/memdir/memdir.js'
 import { hasAutoMemPathOverride } from 'src/memory/memdir/paths.js'
 import { query } from 'src/agent/query.js'
@@ -107,7 +107,7 @@ import {
 import {
   getScratchpadDir,
   isScratchpadEnabled,
-} from 'src/services/permissions/filesystem.js'
+} from 'src/permissions/filesystem.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import {
   handleOrphanedPermission,

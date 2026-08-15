@@ -3,11 +3,11 @@ import { useEffect, useRef } from 'react'
 import { useNotifications } from 'src/terminal/contexts/notifications.js'
 import { getIsRemoteMode } from 'src/platform/bootstrap/state.js'
 import { useAppState } from 'src/terminal/state/AppState.js'
-import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
+import type { PermissionMode } from 'src/permissions/PermissionMode.js'
 import {
   getAutoModeUnavailableNotification,
   getAutoModeUnavailableReason,
-} from 'src/services/permissions/permissionSetup.js'
+} from 'src/permissions/permissionSetup.js'
 import { hasAutoModeOptIn } from 'src/platform/settings/settings.js'
 
 /**

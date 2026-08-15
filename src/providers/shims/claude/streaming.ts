@@ -83,7 +83,7 @@ import { getCacheProfile } from "src/agent/cache/cacheProfile.js";
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const autoModeStateModule = feature("TRANSCRIPT_CLASSIFIER")
-  ? (require("src/services/permissions/autoModeState.js") as typeof import("src/services/permissions/autoModeState.js"))
+  ? (require("src/permissions/autoModeState.js") as typeof import("src/permissions/autoModeState.js"))
   : null;
 
 import { feature } from "bun:bundle";

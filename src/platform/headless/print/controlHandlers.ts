@@ -40,7 +40,7 @@ import {
   getAutoModeUnavailableReason,
   isBypassPermissionsModeDisabled,
   transitionPermissionMode,
-} from 'src/services/permissions/permissionSetup.js'
+} from 'src/permissions/permissionSetup.js'
 import { enqueue } from 'src/agent/messageQueueManager.js'
 
 export async function handleRewindFiles(

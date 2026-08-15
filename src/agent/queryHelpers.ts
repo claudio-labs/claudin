@@ -5,7 +5,7 @@ import {
   isSessionPersistenceDisabled,
 } from 'src/platform/bootstrap/state.js'
 import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { runTools } from 'src/agent/tools/toolOrchestration.js'
 import { findToolByName, type Tool, type Tools } from 'src/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
@@ -32,7 +32,7 @@ import { expandPath } from 'src/shared/fs/path.js'
 import type {
   inputSchema as permissionToolInputSchema,
   outputSchema as permissionToolOutputSchema,
-} from 'src/services/permissions/PermissionPromptToolResultSchema.js'
+} from 'src/permissions/PermissionPromptToolResultSchema.js'
 import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.js'
 import { recordTranscript } from 'src/services/session/sessionStorage.js'
 

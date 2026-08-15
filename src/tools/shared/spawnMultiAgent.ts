@@ -24,7 +24,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
 import { parseUserSpecifiedModel , getUserSpecifiedModelSetting } from 'src/utils/model/model.js'
-import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
+import type { PermissionMode } from 'src/permissions/PermissionMode.js'
 import { isTmuxAvailable } from 'src/agent/coordinator/swarm/backends/detection.js'
 import {
   detectAndGetBackend,

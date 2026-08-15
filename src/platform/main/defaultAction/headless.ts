@@ -23,7 +23,7 @@ import { getInitialEffortSetting, parseEffortValue } from 'src/utils/effort.js';
 import { isBareMode } from 'src/shared/envUtils.js';
 import { getInitialFastModeSetting, isFastModeEnabled } from 'src/providers/fastMode.js';
 import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js';
-import { checkAndDisableBypassPermissions, verifyAutoModeGateAccess } from 'src/services/permissions/permissionSetup.js';
+import { checkAndDisableBypassPermissions, verifyAutoModeGateAccess } from 'src/permissions/permissionSetup.js';
 import { processSessionStartHooks } from 'src/services/session/sessionStart.js';
 import { profileCheckpoint } from 'src/platform/startupProfiler.js';
 import type { ThinkingConfig } from 'src/agent/context/thinking.js';

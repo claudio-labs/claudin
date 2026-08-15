@@ -48,7 +48,7 @@ const { invalidateActiveProviderCache } = await import(
   'src/providers/presets/activeProvider.js'
 )
 const { applyPermissionUpdate } = await import(
-  'src/services/permissions/PermissionUpdate.js'
+  'src/permissions/PermissionUpdate.js'
 )
 const { getEmptyToolPermissionContext } = await import('src/Tool.js')
 

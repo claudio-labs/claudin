@@ -9,7 +9,7 @@ import memoize from 'lodash-es/memoize.js'
 import { getIsRemoteMode } from 'src/platform/bootstrap/state.js'
 import { getSystemPrompt } from 'src/constants/prompts.js'
 import { getSystemContext, getUserContext } from 'src/agent/context.js'
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { Tool, ToolUseContext } from 'src/Tool.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import {
@@ -35,7 +35,7 @@ import {
 import {
   getSessionMemoryDir,
   getSessionMemoryPath,
-} from 'src/services/permissions/filesystem.js'
+} from 'src/permissions/filesystem.js'
 import { sequential } from 'src/shared/sequential.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { getTokenUsage, tokenCountWithEstimation } from 'src/agent/context/tokens.js'

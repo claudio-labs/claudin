@@ -24,7 +24,7 @@ import { normalizeControlMessageKeys } from 'src/shared/controlMessageCompat.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { stripDisplayTagsAllowEmpty } from 'src/shared/text/displayTags.js'
 import { errorMessage } from 'src/shared/errors.js'
-import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
+import type { PermissionMode } from 'src/permissions/PermissionMode.js'
 import { jsonParse } from 'src/platform/slowOperations.js'
 import type { ReplBridgeTransport } from 'src/platform/bridge/replBridgeTransport.js'
 

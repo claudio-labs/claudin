@@ -28,8 +28,8 @@ import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logError } from 'src/shared/log.js'
 import { expandPath } from 'src/shared/fs/path.js'
-import { checkReadPermissionForTool } from 'src/services/permissions/filesystem.js'
-import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
+import { checkReadPermissionForTool } from 'src/permissions/filesystem.js'
+import type { PermissionDecision } from 'src/permissions/PermissionResult.js'
 import {
   formatDocumentSymbolResult,
   formatFindReferencesResult,

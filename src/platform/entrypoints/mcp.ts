@@ -32,7 +32,7 @@ import { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.
 import { logError } from 'src/shared/log.js'
 import { createAssistantMessage } from 'src/agent/messages/messages.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
-import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js'
+import { hasPermissionsToUseTool } from 'src/permissions/permissions.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getErrorParts } from 'src/agent/tools/toolErrors.js'

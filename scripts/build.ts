@@ -87,14 +87,14 @@ function checkAutoModeClassifierPrompts(): void {
   const promptDir = join(
     __dirname,
     '..',
-    'src/services/permissions/yolo-classifier-prompts',
+    'src/permissions/yolo-classifier-prompts',
   )
   const required = ['auto_mode_system_prompt.txt', 'permissions_external.txt']
   const missing = required.filter(f => !existsSync(join(promptDir, f)))
   if (missing.length === 0) return
   console.warn(
     '\n[build] auto-mode classifier prompts missing:\n' +
-      missing.map(f => '  - src/services/permissions/yolo-classifier-prompts/' + f).join('\n') +
+      missing.map(f => '  - src/permissions/yolo-classifier-prompts/' + f).join('\n') +
       '\nAuto-mode will fall back to auto-allow at runtime ' +
       '(see isClassifierBundled() in yoloClassifier.ts).\n' +
       'Set TRANSCRIPT_CLASSIFIER:false above to silence, or add the files.\n',

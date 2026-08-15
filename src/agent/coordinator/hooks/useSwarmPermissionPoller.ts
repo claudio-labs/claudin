@@ -14,7 +14,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import {
   type PermissionUpdate,
   permissionUpdateSchema,
-} from 'src/services/permissions/PermissionUpdateSchema.js'
+} from 'src/permissions/PermissionUpdateSchema.js'
 
 /**
  * Validate permissionUpdates from external sources (mailbox IPC).

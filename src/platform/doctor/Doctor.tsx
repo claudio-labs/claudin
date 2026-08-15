@@ -12,7 +12,7 @@ import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
 import type { CommandResultDisplay } from 'src/commands.js';
 import { Pane } from 'src/terminal/design-system/Pane.js';
 import { PressEnterToContinue } from 'src/terminal/PressEnterToContinue.js';
-import { SandboxDoctorSection } from 'src/components/sandbox/SandboxDoctorSection.js';
+import { SandboxDoctorSection } from 'src/permissions/ui/sandbox/SandboxDoctorSection.js';
 import { ValidationErrorsList } from 'src/platform/ValidationErrorsList.js';
 import { useSettingsErrors } from 'src/platform/notifications/useSettingsErrors.js';
 import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';

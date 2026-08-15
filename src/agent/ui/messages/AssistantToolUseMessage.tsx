@@ -10,7 +10,7 @@ import { Box, Text, useTheme } from 'src/terminal/ink.js';
 import { type AppState, useAppStateMaybeOutsideOfProvider } from 'src/terminal/state/AppState.js';
 import { findToolByName, type Tool, type ToolProgressData, type Tools } from 'src/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';
-import { useIsClassifierChecking } from 'src/utils/classifierApprovalsHook.js';
+import { useIsClassifierChecking } from 'src/permissions/classifierApprovalsHook.js';
 import { logError } from 'src/shared/log.js';
 import type { buildMessageLookups } from 'src/agent/messages/messages.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';

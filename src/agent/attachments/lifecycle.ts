@@ -69,7 +69,7 @@ const BRIEF_TOOL_NAME: string | null =
       ).BRIEF_TOOL_NAME
     : null
 const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER')
-  ? (require('src/services/permissions/autoModeState.js') as typeof import('src/services/permissions/autoModeState.js'))
+  ? (require('src/permissions/autoModeState.js') as typeof import('src/permissions/autoModeState.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

@@ -20,7 +20,7 @@ import {
   executeInstructionsLoadedHooks,
   type InstructionsMemoryType,
 } from 'src/platform/lifecycleHooks/hooks.js'
-import { pathInAllowedWorkingPath } from 'src/services/permissions/filesystem.js'
+import { pathInAllowedWorkingPath } from 'src/permissions/filesystem.js'
 import { logError } from 'src/shared/log.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import { isAbortError } from 'src/shared/errors.js'

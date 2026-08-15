@@ -19,7 +19,7 @@
 import { bindSessionContext, type ComputerUseSessionContext, type CuCallToolResult, type CuPermissionRequest, type CuPermissionResponse, DEFAULT_GRANT_FLAGS, type ScreenshotDims } from '@ant/computer-use-mcp';
 import * as React from 'react';
 import { getSessionId } from 'src/platform/bootstrap/state.js';
-import { ComputerUseApproval } from 'src/components/permissions/ComputerUseApproval/ComputerUseApproval.js';
+import { ComputerUseApproval } from 'src/permissions/ui/ComputerUseApproval/ComputerUseApproval.js';
 import type { Tool, ToolUseContext } from 'src/Tool.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { checkComputerUseLock, tryAcquireComputerUseLock } from 'src/platform/computerUse/computerUseLock.js';

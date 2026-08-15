@@ -21,7 +21,7 @@ import { getMainLoopModel } from 'src/utils/model/model.js'
 import {
   getClassifierProbeKey,
   probeClassifierCapability,
-} from 'src/services/permissions/classifierProbe.js'
+} from 'src/permissions/classifierProbe.js'
 import { parseModelList } from 'src/providers/presets/providerModels.js'
 import {
   type OllamaGenerationReadiness,

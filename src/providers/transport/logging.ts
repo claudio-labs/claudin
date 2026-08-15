@@ -21,7 +21,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import type { EffortLevel } from 'src/utils/effort.js'
 import { logError } from 'src/shared/log.js'
 import { getAPIProviderForStatsig } from 'src/utils/model/providers.js'
-import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
+import type { PermissionMode } from 'src/permissions/PermissionMode.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { logOTelEvent } from 'src/platform/telemetry/events.js'
 import {

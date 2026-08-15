@@ -11,18 +11,18 @@ import type {
 } from 'src/types/permissions.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isCurrentDirectoryBareGitRepo } from 'src/vcs/git/git.js'
-import type { PermissionRule } from 'src/services/permissions/PermissionRule.js'
-import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
+import type { PermissionRule } from 'src/permissions/PermissionRule.js'
+import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
 import {
   createPermissionRequestMessage,
   getRuleByContentsForToolName,
-} from 'src/services/permissions/permissions.js'
+} from 'src/permissions/permissions.js'
 import {
   matchWildcardPattern,
   parsePermissionRule,
   type ShellPermissionRule,
   suggestionForExactCommand as sharedSuggestionForExactCommand,
-} from 'src/services/permissions/shellRuleMatching.js'
+} from 'src/permissions/shellRuleMatching.js'
 import {
   classifyCommandName,
   deriveSecurityFlags,

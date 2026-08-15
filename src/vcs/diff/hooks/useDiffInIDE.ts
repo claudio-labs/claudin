@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { logEvent } from 'src/platform/analytics/index.js'
 import { readFileSync } from 'src/shared/fs/fileRead.js'
 import { expandPath } from 'src/shared/fs/path.js'
-import type { PermissionOption } from 'src/components/permissions/FilePermissionDialog/permissionOptions.js'
+import type { PermissionOption } from 'src/permissions/ui/FilePermissionDialog/permissionOptions.js'
 import type {
   MCPServerConnection,
   McpSSEIDEServerConfig,

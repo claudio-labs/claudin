@@ -16,7 +16,7 @@ import { getActiveProviderProfile } from 'src/providers/presets/providerProfiles
 import {
   permissionModeFromString,
   toExternalPermissionMode,
-} from 'src/services/permissions/PermissionMode.js'
+} from 'src/permissions/PermissionMode.js'
 import {
   notifyPermissionModeChanged,
   notifySessionMetadataChanged,

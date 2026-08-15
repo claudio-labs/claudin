@@ -5,7 +5,7 @@
 
 import { isFsInaccessible } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import { getSessionMemoryPath } from 'src/services/permissions/filesystem.js'
+import { getSessionMemoryPath } from 'src/permissions/filesystem.js'
 import { sleep } from 'src/shared/sleep.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 

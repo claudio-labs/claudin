@@ -4,7 +4,7 @@ import {
   REJECT_MESSAGE,
   withMemoryCorrectionHint,
 } from 'src/agent/messages/messages.js'
-import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
+import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { findToolByName, type Tools, type ToolUseContext } from 'src/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import type { AssistantMessage, Message } from 'src/types/message.js'

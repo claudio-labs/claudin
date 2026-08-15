@@ -9,17 +9,17 @@ import {
 } from 'src/platform/bash/commands.js'
 import { tryParseShellCommand } from 'src/platform/bash/shellQuote.js'
 import { getDirectoryForPath } from 'src/shared/fs/path.js'
-import { allWorkingDirectories } from 'src/services/permissions/filesystem.js'
-import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
-import { createReadRuleSuggestion } from 'src/services/permissions/PermissionUpdate.js'
-import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
+import { allWorkingDirectories } from 'src/permissions/filesystem.js'
+import type { PermissionResult } from 'src/permissions/PermissionResult.js'
+import { createReadRuleSuggestion } from 'src/permissions/PermissionUpdate.js'
+import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
 import {
   expandTilde,
   type FileOperationType,
   formatDirectoryList,
   isDangerousRemovalPath,
   validatePath,
-} from 'src/services/permissions/pathValidation.js'
+} from 'src/permissions/pathValidation.js'
 import type { BashTool } from 'src/tools/BashTool/BashTool.js'
 import { stripSafeWrappers } from 'src/tools/BashTool/bashPermissions.js'
 import { sedCommandIsAllowedByAllowlist } from 'src/tools/BashTool/sedValidation.js'

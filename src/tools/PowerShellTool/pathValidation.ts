@@ -23,14 +23,14 @@ import {
   checkReadableInternalPath,
   matchingRuleForInput,
   pathInAllowedWorkingPath,
-} from 'src/services/permissions/filesystem.js'
-import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
-import { createReadRuleSuggestion } from 'src/services/permissions/PermissionUpdate.js'
-import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
+} from 'src/permissions/filesystem.js'
+import type { PermissionResult } from 'src/permissions/PermissionResult.js'
+import { createReadRuleSuggestion } from 'src/permissions/PermissionUpdate.js'
+import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
 import {
   isDangerousRemovalPath,
   isPathInSandboxWriteAllowlist,
-} from 'src/services/permissions/pathValidation.js'
+} from 'src/permissions/pathValidation.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import type {
   ParsedCommandElement,
@@ -53,7 +53,7 @@ type FileOperationType = 'read' | 'write' | 'create'
 
 type PathCheckResult = {
   allowed: boolean
-  decisionReason?: import('src/services/permissions/PermissionResult.js').PermissionDecisionReason
+  decisionReason?: import('src/permissions/PermissionResult.js').PermissionDecisionReason
 }
 
 type ResolvedPathCheckResult = PathCheckResult & {

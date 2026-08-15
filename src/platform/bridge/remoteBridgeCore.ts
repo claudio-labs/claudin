@@ -69,7 +69,7 @@ import type {
   SDKControlRequest,
   SDKControlResponse,
 } from 'src/platform/entrypoints/sdk/controlTypes.js'
-import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
+import type { PermissionMode } from 'src/permissions/PermissionMode.js'
 
 const ANTHROPIC_VERSION = '2023-06-01'
 

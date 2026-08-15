@@ -13,7 +13,7 @@ import {
   useSetAppState,
 } from 'src/terminal/state/AppState.js'
 import { isVimModeEnabled } from 'src/terminal/prompt-input/utils.js'
-import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
+import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js'
 import type { SpinnerMode } from 'src/terminal/spinner/types.js'
 import { useNotifications } from 'src/terminal/contexts/notifications.js'
 import { useIsOverlayActive } from 'src/terminal/contexts/overlayContext.js'
