@@ -371,7 +371,12 @@ export const getContainerId = async () => null;
 
 	// ─── Deleted Anthropic-internal modules ───────────────────────────────
 
-	'src/services/api/dumpPrompts': `
+	// These keys are PATH-PINNED: `onLoad` matches the resolved file path, so
+	// moving a stubbed module silently disarms its stub. Nothing errors, and the
+	// count logged below still includes it — it counts registered stubs, not
+	// applied ones. The reorg moved this one out of `src/services/api/` and the
+	// stub sat dead until `stubs-resolve.test.ts` was written to catch it.
+	'src/providers/transport/dumpPrompts': `
 export function createDumpPromptsFetch() { return undefined; }
 export function getDumpPromptsPath() { return ''; }
 export function getLastApiRequests() { return []; }

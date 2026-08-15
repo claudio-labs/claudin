@@ -1,10 +1,15 @@
 ---
 paths:
   - "src/terminal/ink/**"
-  - "src/components/**"
-  - "src/screens/**"
   - "src/native-ts/**"
   - "src/terminal/hooks/useTextInput.ts"
+  # The React-Compiler output this rule warns about is no longer in one place:
+  # the reorg spread it across each feature's own `ui/` directory. `src/**/ui/**`
+  # covers agent/ui, permissions/ui, mcp/ui, providers/ui, memory/ui, vcs/diff/ui,
+  # sessions/ui and skills/ui; the two `src/terminal/` entries catch the rest.
+  - "src/**/ui/**"
+  - "src/terminal/design-system/**"
+  - "src/terminal/prompt-input/**"
 ---
 # Ink / TUI Renderer — Claudin Development Rules
 
