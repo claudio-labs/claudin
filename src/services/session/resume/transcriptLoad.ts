@@ -41,9 +41,9 @@ import {
   type PersistedWorktreeSession,
   type TranscriptMessage,
 } from 'src/types/logs.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import type { FileHistorySnapshot } from 'src/utils/fs/fileHistory.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import type { FileHistorySnapshot } from 'src/shared/fs/fileHistory.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { isCompactBoundaryMessage } from 'src/services/messages/messages.js'
 import {
   SKIP_PRECOMPACT_THRESHOLD,

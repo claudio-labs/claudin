@@ -9,7 +9,7 @@ import { useKeybinding } from 'src/keybindings/useKeybinding.js';
 import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
 import { useAppState, useSetAppState } from 'src/state/AppState.js';
 import type { AppState } from 'src/state/AppStateStore.js';
-import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js';
+import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';
 import { updateSettingsForSource } from 'src/services/settings/settings.js';
 import type { ThemeSetting } from 'src/utils/theme.js';
 import { Select } from 'src/components/CustomSelect/index.js';

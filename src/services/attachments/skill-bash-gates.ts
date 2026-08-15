@@ -27,7 +27,7 @@ import { getProjectRoot } from 'src/bootstrap/state.js'
 import { formatCommandsWithinBudget } from 'src/tools/SkillTool/prompt.js'
 import { getContextWindowForModel } from 'src/services/context/context.js'
 import { getSdkBetas } from 'src/bootstrap/state.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { feature } from 'bun:bundle'
 import type { Attachment } from 'src/services/attachments/types.js'
 

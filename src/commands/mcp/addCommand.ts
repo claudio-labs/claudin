@@ -24,7 +24,7 @@ import {
   getXaaIdpSettings,
   isXaaEnabled,
 } from 'src/services/mcp/xaaIdpLogin.js'
-import { parseEnvVars } from 'src/utils/envUtils.js'
+import { parseEnvVars } from 'src/shared/envUtils.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 
 /**

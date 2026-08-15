@@ -10,7 +10,7 @@ import * as React from 'react';
 import { getIsRemoteMode } from 'src/bootstrap/state.js';
 import type { useNotifications } from 'src/context/notifications.js';
 import { Text } from 'src/ink.js';
-import { logError } from 'src/utils/log.js';
+import { logError } from 'src/shared/log.js';
 import { getPluginById } from 'src/services/plugins/marketplaceManager.js';
 type AddNotification = ReturnType<typeof useNotifications>['addNotification'];
 type PluginData = NonNullable<Awaited<ReturnType<typeof getPluginById>>>;

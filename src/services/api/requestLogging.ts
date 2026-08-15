@@ -5,7 +5,7 @@
  */
 
 import { randomUUID } from 'crypto'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 
 
 export function createCorrelationId(): string {

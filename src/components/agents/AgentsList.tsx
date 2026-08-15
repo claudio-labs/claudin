@@ -11,7 +11,7 @@ import {
   resolveAgentModelDisplay,
 } from 'src/tools/AgentTool/agentDisplay.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
-import { count } from 'src/utils/data/array.js';
+import { count } from 'src/shared/data/array.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
 import { Divider } from 'src/components/design-system/Divider.js';
 import { getAgentSourceDisplayName } from 'src/components/agents/utils.js';

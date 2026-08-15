@@ -9,7 +9,7 @@
  * - outputLimits are in outputLimits.ts
  */
 
-import { getPlatform } from 'src/utils/proc/platform.js'
+import { getPlatform } from 'src/shared/proc/platform.js'
 
 // ---------------------------------------------------------------------------
 // Types

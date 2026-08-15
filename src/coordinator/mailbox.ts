@@ -1,4 +1,4 @@
-import { createSignal } from 'src/utils/signal.js'
+import { createSignal } from 'src/shared/signal.js'
 
 export type MessageSource = 'user' | 'teammate' | 'system' | 'tick' | 'task'
 

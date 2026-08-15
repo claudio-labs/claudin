@@ -18,22 +18,22 @@ import {
   readImageWithTokenBudget,
 } from 'src/tools/FileReadTool/FileReadTool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
-import { expandPath } from 'src/utils/fs/path.js'
-import { getFsImplementation as _unusedGetFs } from 'src/utils/fs/fsOperations.js'
+import { expandPath } from 'src/shared/fs/path.js'
+import { getFsImplementation as _unusedGetFs } from 'src/shared/fs/fsOperations.js'
 import { readdir, stat } from 'fs/promises'
 import type { IDESelection } from 'src/hooks/useIdeSelection.js'
 import { getConnectedIdeName } from 'src/services/ide/ide.js'
 import { relative, resolve } from 'path'
-import { getCwd } from 'src/utils/fs/cwd.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import { getViewedTeammateTask } from 'src/state/selectors.js'
-import { logError } from 'src/utils/log.js'
-import { isENOENT, toError } from 'src/utils/errors.js'
+import { logError } from 'src/shared/log.js'
+import { isENOENT, toError } from 'src/shared/errors.js'
 import { diagnosticTracker } from 'src/services/diagnosticTracking.js'
 import { getSnippetForTwoFileDiff } from 'src/tools/FileEditTool/utils.js'
-import { cacheKeys } from 'src/utils/fs/fileStateCache.js'
+import { cacheKeys } from 'src/shared/fs/fileStateCache.js'
 import {
   getFileModificationTimeAsync,
-} from 'src/utils/fs/file.js'
+} from 'src/shared/fs/file.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import {
   checkForAsyncHookResponses,
@@ -44,7 +44,7 @@ import {
   clearAllLSPDiagnostics,
 } from 'src/services/lsp/LSPDiagnosticRegistry.js'
 import { isLspGloballyEnabled } from 'src/services/lsp/userSettings.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
 import {
   readUnreadMessages,

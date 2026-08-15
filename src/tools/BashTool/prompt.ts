@@ -3,7 +3,7 @@ import { prependBullets } from 'src/constants/prompts.js'
 import { isLeanToolPromptFamily } from 'src/constants/toolPromptTier.js'
 import { getAttributionTexts } from 'src/services/git/attribution.js'
 import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { shouldIncludeGitInstructions } from 'src/services/config/gitSettings.js'
 import { getClaudeTempDir } from 'src/services/permissions/filesystem.js'
 import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
@@ -11,7 +11,7 @@ import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   getDefaultBashTimeoutMs,
   getMaxBashTimeoutMs,
-} from 'src/utils/timeouts.js'
+} from 'src/shared/timeouts.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'

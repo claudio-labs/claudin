@@ -6,7 +6,7 @@
 // Keeping them split lets tests assert the resolved value without mutating
 // global state.
 
-import { isEnvTruthy } from 'src/utils/envUtils.js';
+import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { setClientType, setIsInteractive, setQuestionPreviewFormat, setSessionSource } from 'src/bootstrap/state.js';
 
 export type ClientType =

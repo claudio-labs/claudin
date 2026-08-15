@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle'
 import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { CLAUDE_CODE_GUIDE_AGENT } from 'src/tools/AgentTool/built-in/claudeCodeGuideAgent.js'
 import { EXPLORE_AGENT } from 'src/tools/AgentTool/built-in/exploreAgent.js'
 import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js'

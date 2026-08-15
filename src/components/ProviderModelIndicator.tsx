@@ -8,8 +8,8 @@ import { getActiveProviderProfile } from 'src/services/api/providerProfiles.js';
 import { getMainLoopModel, renderModelName } from 'src/utils/model/model.js';
 import { buildModelPill, buildProviderPill, resolveBranchBg } from 'src/services/git/format-branch.js';
 import { getTheme } from 'src/utils/theme.js';
-import { logError } from 'src/utils/log.js';
-import { toError } from 'src/utils/errors.js';
+import { logError } from 'src/shared/log.js';
+import { toError } from 'src/shared/errors.js';
 
 type Snapshot = {
   provider: string;

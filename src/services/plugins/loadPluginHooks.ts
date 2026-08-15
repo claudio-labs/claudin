@@ -6,7 +6,7 @@ import {
   registerHookCallbacks,
 } from 'src/bootstrap/state.js'
 import type { LoadedPlugin } from 'src/types/plugin.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { settingsChangeDetector } from 'src/services/settings/changeDetector.js'
 import {
   getInitialSettings,

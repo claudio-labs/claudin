@@ -4,11 +4,11 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 import type { ToolUseContext } from 'src/Tool.js'
-import { getFileModificationTimeAsync } from 'src/utils/fs/file.js'
+import { getFileModificationTimeAsync } from 'src/shared/fs/file.js'
 import {
   createFileStateCacheWithSizeLimit,
   READ_FILE_STATE_CACHE_SIZE,
-} from 'src/utils/fs/fileStateCache.js'
+} from 'src/shared/fs/fileStateCache.js'
 import { generateFileAttachment } from 'src/services/attachments/file-pipeline.js'
 
 // Skill discovery touches the real filesystem and is irrelevant here.

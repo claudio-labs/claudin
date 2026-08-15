@@ -26,7 +26,7 @@
 import { useCallback } from 'react';
 import { feature } from 'bun:bundle';
 import { getTotalInputTokens, getOriginalCwd } from 'src/bootstrap/state.js';
-import { logForDebugging } from 'src/utils/debug.js';
+import { logForDebugging } from 'src/shared/debug.js';
 import { type Command, type CommandResultDisplay, getCommandName, isCommandEnabled } from 'src/commands.js';
 import type { PromptInputMode } from 'src/types/textInputTypes.js';
 import { addToHistory, expandPastedTextRefs, parseReferences } from 'src/history.js';
@@ -37,7 +37,7 @@ import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPAT
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
 import { createUserMessage, createCommandInputMessage, formatCommandInputTags } from 'src/services/messages/messages.js';
 import { LOCAL_COMMAND_STDOUT_TAG } from 'src/constants/xml.js';
-import { escapeXml } from 'src/utils/data/xml.js';
+import { escapeXml } from 'src/shared/data/xml.js';
 import { handlePromptSubmit, type PromptInputHelpers } from 'src/utils/handlePromptSubmit.js';
 import type { Message as MessageType } from 'src/types/message.js';
 import { getQuerySourceForREPL } from 'src/utils/promptCategory.js';
@@ -49,7 +49,7 @@ import { recordAttributionSnapshot } from 'src/services/session/sessionStorage.j
 import { type SetAppState } from 'src/utils/messageQueueManager.js';
 import { getCurrentLocalJSXGeneration } from 'src/utils/toolJSXStore.js';
 import { handleSpeculationAccept, type ActiveSpeculationState } from 'src/services/PromptSuggestion/speculation.js';
-import { createAbortController } from 'src/utils/abortController.js';
+import { createAbortController } from 'src/shared/abortController.js';
 import type { RemoteMessageContent } from 'src/services/teleport/api.js';
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
 import type { QueryGuard } from 'src/utils/QueryGuard.js';
@@ -58,7 +58,7 @@ import type { SpinnerMode } from 'src/components/Spinner.js';
 import type { ProcessUserInputContext } from 'src/services/input/processUserInput.js';
 import type { EffortValue } from 'src/utils/effort.js';
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js';
-import type { createFileStateCacheWithSizeLimit } from 'src/utils/fs/fileStateCache.js';
+import type { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js';
 import type { useRemoteSession } from 'src/hooks/useRemoteSession.js';
 import type { useDirectConnect } from 'src/hooks/useDirectConnect.js';
 import type { useSSHSession } from 'src/hooks/useSSHSession.js';

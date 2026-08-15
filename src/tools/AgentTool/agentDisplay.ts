@@ -8,7 +8,7 @@ import {
   getDefaultSubagentModel,
 } from 'src/utils/model/agent.js'
 import { isModelAllowed } from 'src/utils/model/modelAllowlist.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import {
   getSourceDisplayName,
   type SettingSource,

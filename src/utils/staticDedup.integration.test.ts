@@ -36,7 +36,7 @@ import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
 import { appendSystemContext, prependUserContext } from 'src/services/api/api.js'
 import { getClaudeMdDelta } from 'src/services/instructions/claudeMdDelta.js'
 import { getGitStatusDelta } from 'src/services/git/gitStatusDelta.js'
-import { stableStringify } from 'src/utils/data/stableStringify.js'
+import { stableStringify } from 'src/shared/data/stableStringify.js'
 import {
   getTodoReminderDelta,
   type TodoSnapshotItem,

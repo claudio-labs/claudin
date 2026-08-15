@@ -10,8 +10,8 @@ import { useKeybinding } from 'src/keybindings/useKeybinding.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import { fetchReferralRedemptions, formatCreditAmount, getCachedOrFetchPassesEligibility } from 'src/services/api/referral.js';
 import type { ReferralRedemptionsResponse, ReferrerRewardInfo } from 'src/services/oauth/types.js';
-import { count } from 'src/utils/data/array.js';
-import { logError } from 'src/utils/log.js';
+import { count } from 'src/shared/data/array.js';
+import { logError } from 'src/shared/log.js';
 import { Pane } from 'src/components/design-system/Pane.js';
 type PassStatus = {
   passNumber: number;

@@ -16,9 +16,9 @@ import {
   LEGACY_AGENT_TOOL_NAME,
 } from 'src/tools/AgentTool/constants.js'
 import type { LogOption } from 'src/types/logs.js'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { toError } from 'src/utils/errors.js'
-import { logError } from 'src/utils/log.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
+import { toError } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 import { extractTextContent } from 'src/services/messages/messages.js'
 import { getDefaultOpusModel } from 'src/utils/model/model.js'
 import {
@@ -28,9 +28,9 @@ import {
   loadAllLogsFromSessionFile,
 } from 'src/services/session/sessionStorage.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
-import { countCharInString } from 'src/utils/text/stringUtils.js'
+import { countCharInString } from 'src/shared/text/stringUtils.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
-import { escapeXmlAttr as escapeHtml } from 'src/utils/data/xml.js'
+import { escapeXmlAttr as escapeHtml } from 'src/shared/data/xml.js'
 
 // Model for facet extraction and summarization (Opus - best quality)
 function getAnalysisModel(): string {

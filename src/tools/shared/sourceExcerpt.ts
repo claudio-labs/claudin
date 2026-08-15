@@ -1,5 +1,5 @@
 import { readFileSync, statSync } from 'fs'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 
 /**
  * A few source lines around a reported position, with a `>` gutter marking the

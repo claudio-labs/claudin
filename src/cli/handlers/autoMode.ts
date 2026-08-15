@@ -3,7 +3,7 @@
  * critique user-written rules. Dynamically imported when `claude auto-mode ...` runs.
  */
 
-import { errorMessage } from 'src/utils/errors.js'
+import { errorMessage } from 'src/shared/errors.js'
 import {
   getMainLoopModel,
   parseUserSpecifiedModel,

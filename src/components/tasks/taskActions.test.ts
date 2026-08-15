@@ -45,7 +45,7 @@ mock.module('src/tasks/RemoteAgentTask/RemoteAgentTask.js', () => ({
 mock.module('src/commands/ultraplan.js', () => ({
   stopUltraplan: stopUltraplanMock,
 }));
-mock.module('src/utils/debug.js', () => ({
+mock.module('src/shared/debug.js', () => ({
   logForDebugging: debugMock,
 }));
 

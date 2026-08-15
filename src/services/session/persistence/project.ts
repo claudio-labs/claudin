@@ -59,20 +59,20 @@ import type {
   UserMessage,
 } from 'src/types/message.js'
 import type { QueueOperationMessage } from 'src/types/messageQueueTypes.js'
-import { registerCleanup } from 'src/utils/cleanupRegistry.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { isFsInaccessible } from 'src/utils/errors.js'
-import type { FileHistorySnapshot } from 'src/utils/fs/fileHistory.js'
-import { formatFileSize } from 'src/utils/text/format.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isFsInaccessible } from 'src/shared/errors.js'
+import type { FileHistorySnapshot } from 'src/shared/fs/fileHistory.js'
+import { formatFileSize } from 'src/shared/text/format.js'
 import { getBranch } from 'src/services/git/git.js'
 import {
   gracefulShutdownSync,
   isShuttingDown,
-} from 'src/utils/proc/gracefulShutdown.js'
-import { logError } from 'src/utils/log.js'
+} from 'src/shared/proc/gracefulShutdown.js'
+import { logError } from 'src/shared/log.js'
 import { isCompactBoundaryMessage } from 'src/services/messages/messages.js'
 import {
   getFirstMeaningfulUserMessageTextContent,

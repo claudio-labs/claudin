@@ -6,7 +6,7 @@
 import os from 'os'
 
 import { readLatestVersion } from 'src/services/install/latestVersionCache.js'
-import { gt } from 'src/utils/semver.js'
+import { gt } from 'src/shared/semver.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { isLocalProviderUrl, resolveProviderRequest } from 'src/services/api/providerConfig.js'
 import { getLocalOpenAICompatibleProviderLabel } from 'src/services/api/providerDiscovery.js'

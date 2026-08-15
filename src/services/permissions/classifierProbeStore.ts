@@ -17,9 +17,9 @@ import { createHash } from 'crypto'
 import { readFileSync, statSync, writeFileSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { z } from 'zod/v4'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { isENOENT } from 'src/utils/errors.js'
-import { logError } from 'src/utils/log.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
+import { isENOENT } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 
 const STORE_FILENAME = 'classifier-probes.json'
 

@@ -10,7 +10,7 @@ import {
   type MiniMaxUsageData,
   type MiniMaxUsageRow,
 } from 'src/services/api/minimaxUsage.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js'
 import { Byline } from 'src/components/design-system/Byline.js'
 import { ProgressBar } from 'src/components/design-system/ProgressBar.js'

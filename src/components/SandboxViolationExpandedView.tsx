@@ -16,7 +16,7 @@ function formatTime(date: Date): string {
   const ampm = date.getHours() < 12 ? 'am' : 'pm';
   return `${h}:${m}:${s}${ampm}`;
 }
-import { getPlatform } from 'src/utils/proc/platform.js';
+import { getPlatform } from 'src/shared/proc/platform.js';
 export function SandboxViolationExpandedView() {
   const $ = _c(15);
   let t0: SandboxViolationEvent[];

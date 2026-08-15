@@ -23,7 +23,7 @@ import {
   parseArgumentNames,
   substituteArguments,
 } from 'src/utils/argumentSubstitution.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   EFFORT_LEVELS,
   type EffortValue,
@@ -33,8 +33,8 @@ import {
   getClaudinConfigHomeDir,
   isBareMode,
   isEnvTruthy,
-} from 'src/utils/envUtils.js'
-import { isENOENT, isFsInaccessible } from 'src/utils/errors.js'
+} from 'src/shared/envUtils.js'
+import { isENOENT, isFsInaccessible } from 'src/shared/errors.js'
 import {
   coerceDescriptionToString,
   type FrontmatterData,
@@ -43,10 +43,10 @@ import {
   parseFrontmatter,
   parseShellFrontmatter,
   splitPathInFrontmatter,
-} from 'src/utils/frontmatterParser.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+} from 'src/shared/frontmatterParser.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { isPathGitignored } from 'src/services/git/gitignore.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import {
   extractDescriptionFromMarkdown,
   getProjectDirsUpToHome,
@@ -55,13 +55,13 @@ import {
   parseSlashCommandToolsFromFrontmatter,
 } from 'src/services/instructions/markdownConfigLoader.js'
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
-import { executeShellCommandsInPrompt } from 'src/utils/proc/promptShellExecution.js'
+import { executeShellCommandsInPrompt } from 'src/shared/proc/promptShellExecution.js'
 import type { SettingSource } from 'src/services/settings/constants.js'
 import { isSettingSourceEnabled } from 'src/services/settings/constants.js'
 import { getManagedFilePath } from 'src/services/settings/managedPath.js'
 import { isRestrictedToPluginOnly } from 'src/services/settings/pluginOnlyPolicy.js'
 import { HooksSchema, type HooksSettings } from 'src/services/settings/types.js'
-import { createSignal } from 'src/utils/signal.js'
+import { createSignal } from 'src/shared/signal.js'
 import { registerMCPSkillBuilders } from 'src/skills/mcpSkillBuilders.js'
 
 export type LoadedFrom =

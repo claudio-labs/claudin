@@ -1,6 +1,6 @@
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
 import { IT2_COMMAND, isInITerm2, isIt2CliAvailable } from 'src/coordinator/swarm/backends/detection.js'
 import { registerITermBackend } from 'src/coordinator/swarm/backends/registry.js'
 import type { CreatePaneResult, PaneBackend, PaneId } from 'src/coordinator/swarm/backends/types.js'

@@ -11,9 +11,9 @@ import {
   getRemoteControlAtStartup,
   saveGlobalConfig,
 } from 'src/services/config/config.js'
-import { errorMessage } from 'src/utils/errors.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { logError } from 'src/utils/log.js'
+import { errorMessage } from 'src/shared/errors.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { logError } from 'src/shared/log.js'
 import {
   getInitialSettings,
   updateSettingsForSource,

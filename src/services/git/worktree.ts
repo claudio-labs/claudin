@@ -14,10 +14,10 @@ import {
 import ignore from 'ignore'
 import { basename, dirname, join } from 'path'
 import { saveCurrentProjectConfig } from 'src/services/config/config.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage, getErrnoCode } from 'src/utils/errors.js'
-import { execFileNoThrow, execFileNoThrowWithCwd } from 'src/utils/proc/execFileNoThrow.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage, getErrnoCode } from 'src/shared/errors.js'
+import { execFileNoThrow, execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
 import { parseGitConfigValue } from 'src/services/git/gitConfigParser.js'
 import { GIT_NO_PROMPT_ENV } from 'src/services/git/noPromptEnv.js'
 import {
@@ -38,13 +38,13 @@ import {
   executeWorktreeRemoveHook,
   hasWorktreeCreateHook,
 } from 'src/services/lifecycleHooks/hooks.js'
-import { containsPathTraversal } from 'src/utils/fs/path.js'
-import { getPlatform } from 'src/utils/proc/platform.js'
+import { containsPathTraversal } from 'src/shared/fs/path.js'
+import { getPlatform } from 'src/shared/proc/platform.js'
 import {
   getInitialSettings,
   getRelativeSettingsFilePathForSource,
 } from 'src/services/settings/settings.js'
-import { sleep } from 'src/utils/sleep.js'
+import { sleep } from 'src/shared/sleep.js'
 import { isInITerm2 } from 'src/coordinator/swarm/backends/detection.js'
 
 const VALID_WORKTREE_SLUG_SEGMENT = /^[a-zA-Z0-9._-]+$/

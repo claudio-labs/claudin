@@ -7,8 +7,8 @@ import { getOauthConfig } from 'src/constants/oauth.js';
 import { useTimeout } from 'src/hooks/useTimeout.js';
 import { Box, Text } from 'src/ink.js';
 import { getSSLErrorHint } from 'src/services/api/errorUtils.js';
-import { getUserAgent } from 'src/utils/http.js';
-import { logError } from 'src/utils/log.js';
+import { getUserAgent } from 'src/shared/http.js';
+import { logError } from 'src/shared/log.js';
 import { getAPIProvider } from 'src/utils/model/providers.js';
 export interface PreflightCheckResult {
   success: boolean;

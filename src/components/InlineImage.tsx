@@ -9,7 +9,7 @@ import {
 } from 'src/ink/terminal.js'
 import { getImageProcessor } from 'src/tools/FileReadTool/imageProcessor.js'
 import { getGlobalConfig } from 'src/services/config/config.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import {
   deleteKittyImage,
   MAX_CELLS as MAX_PLACEHOLDER_CELLS,

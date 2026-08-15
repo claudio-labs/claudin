@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle'
 import type { UUID } from 'crypto'
 import { relative } from 'path'
-import { getCwd } from 'src/utils/fs/cwd.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import { addInvokedSkill } from 'src/bootstrap/state.js'
 import { asSessionId } from 'src/types/ids.js'
 import type {
@@ -25,8 +25,8 @@ import {
 import {
   copyFileHistoryForResume,
   type FileHistorySnapshot,
-} from 'src/utils/fs/fileHistory.js'
-import { logError } from 'src/utils/log.js'
+} from 'src/shared/fs/fileHistory.js'
+import { logError } from 'src/shared/log.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import {
   createAssistantMessage,

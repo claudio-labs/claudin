@@ -17,8 +17,8 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getPerformance } from 'src/utils/profilerBase.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 

@@ -21,15 +21,15 @@ import {
   getAnthropicApiKeyWithSource,
   getClaudeAIOAuthTokens,
 } from 'src/services/auth/auth.js'
-import { registerCleanup } from 'src/utils/cleanupRegistry.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { classifyAxiosError, getErrnoCode } from 'src/utils/errors.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { classifyAxiosError, getErrnoCode } from 'src/shared/errors.js'
 import { settingsChangeDetector } from 'src/services/settings/changeDetector.js'
 import {
   type SettingsJson,
   SettingsSchema,
 } from 'src/services/settings/types.js'
-import { sleep } from 'src/utils/sleep.js'
+import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 import { getRetryDelay } from 'src/services/api/withRetry.js'

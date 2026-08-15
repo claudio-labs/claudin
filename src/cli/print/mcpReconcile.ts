@@ -16,8 +16,8 @@ import {
   fetchToolsForClient,
 } from 'src/services/mcp/client.js'
 import { filterMcpServersByPolicy } from 'src/services/mcp/config.js'
-import { logError } from 'src/utils/log.js'
-import { toError } from 'src/utils/errors.js'
+import { logError } from 'src/shared/log.js'
+import { toError } from 'src/shared/errors.js'
 
 export type DynamicMcpState = {
   clients: MCPServerConnection[]

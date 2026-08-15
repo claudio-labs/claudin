@@ -1,5 +1,5 @@
 import type { Command } from 'src/commands.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 
 const doctor: Command = {
   name: 'doctor',

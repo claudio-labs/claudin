@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle'
 import { logEvent } from 'src/services/analytics/index.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   ensureParserInitialized,
   getParserModule,

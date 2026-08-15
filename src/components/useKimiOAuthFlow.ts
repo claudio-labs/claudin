@@ -5,8 +5,8 @@ import {
   type KimiDeviceCodeResponse,
   type KimiOAuthTokens,
 } from 'src/services/api/kimiOAuth.js'
-import { openBrowser } from 'src/utils/browser.js'
-import { isBareMode } from 'src/utils/envUtils.js'
+import { openBrowser } from 'src/shared/browser.js'
+import { isBareMode } from 'src/shared/envUtils.js'
 import { saveKimiCredentials } from 'src/services/api/kimiCredentials.js'
 
 export type KimiOAuthFlowStatus =

@@ -14,8 +14,8 @@ import { join } from 'path'
 import { getOriginalCwd } from 'src/bootstrap/state.js'
 import type { LogOption } from 'src/types/logs.js'
 import { sortLogs } from 'src/types/logs.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { sanitizePath } from 'src/utils/fs/path.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { sanitizePath } from 'src/shared/fs/path.js'
 import {
   deduplicateLogsBySessionId,
   enrichLogs,

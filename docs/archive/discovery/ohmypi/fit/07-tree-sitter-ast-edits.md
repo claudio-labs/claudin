@@ -25,7 +25,7 @@ Mapeamento heurística → arquivo:linha.
 - Não existe tolerância real de whitespace inter-linha. `findActualString` só desempata aspas.
   Trailing whitespace é endereçado via `stripTrailingWhitespace` (`utils.ts:44-65`) em outro
   caminho (display/diff), não no match.
-- Há `convertLeadingTabsToSpaces` (`src/utils/fs/file.ts`, usado em `utils.ts:13`) — mas é
+- Há `convertLeadingTabsToSpaces` (`src/shared/fs/file.ts`, usado em `utils.ts:13`) — mas é
   aplicado ao output do `Read`, não ao matching do edit. Logo, **tabs vs spaces no arquivo
   real continuam string-sensitive** apesar de o modelo ver o arquivo já normalizado.
 - Resultado prático: prefixo de número-de-linha do `Read` colado em `old_string` quebra; tabs

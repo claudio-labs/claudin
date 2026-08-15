@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { isENOENT } from 'src/utils/errors.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
+import { isENOENT } from 'src/shared/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
 
 const CACHE_FILENAME = 'latest-version.json'
 

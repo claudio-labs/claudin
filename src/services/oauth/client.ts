@@ -19,7 +19,7 @@ import {
 } from 'src/services/auth/auth.js'
 import type { AccountInfo } from 'src/services/config/config.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { getOauthProfileFromOauthToken } from 'src/services/oauth/getOauthProfile.js'
 import type {
   BillingType,

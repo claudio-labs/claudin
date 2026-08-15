@@ -11,12 +11,12 @@
 
 import { basename, join } from 'path'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
-import { isENOENT, toError } from 'src/utils/errors.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { getProcessCommand } from 'src/utils/proc/genericProcessUtils.js'
-import { logError } from 'src/utils/log.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
+import { isENOENT, toError } from 'src/shared/errors.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { getProcessCommand } from 'src/shared/proc/genericProcessUtils.js'
+import { logError } from 'src/shared/log.js'
 import {
   jsonParse,
   jsonStringify,

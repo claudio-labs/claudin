@@ -22,10 +22,10 @@ import type {
   ClassifierUsage,
   YoloClassifierResult,
 } from 'src/types/permissions.js'
-import { isDebugMode, logForDebugging } from 'src/utils/debug.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
-import { errorMessage, isSdkApiError } from 'src/utils/errors.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { isDebugMode, logForDebugging } from 'src/shared/debug.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
+import { errorMessage, isSdkApiError } from 'src/shared/errors.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { extractTextContent } from 'src/services/messages/messages.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
 import { getAutoModeConfig } from 'src/services/settings/settings.js'

@@ -1,4 +1,4 @@
-import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 
 // Terminals that ship with (or are commonly paired with) a Nerd Font in
 // their default install / quick-start docs. This is a *heuristic* — users

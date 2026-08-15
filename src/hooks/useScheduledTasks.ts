@@ -10,7 +10,7 @@ import type { Message } from 'src/types/message.js'
 import { getCronJitterConfig } from 'src/tasks/cronJitterConfig.js'
 import { createCronScheduler } from 'src/tasks/cronScheduler.js'
 import { removeCronTasks } from 'src/tasks/cronTasks.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js'
 import { createScheduledTaskFireMessage } from 'src/services/messages/messages.js'
 

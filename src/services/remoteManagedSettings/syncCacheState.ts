@@ -22,9 +22,9 @@
  */
 
 import { join } from 'path'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { readFileSync } from 'src/utils/fs/fileRead.js'
-import { stripBOM } from 'src/utils/data/jsonRead.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
+import { readFileSync } from 'src/shared/fs/fileRead.js'
+import { stripBOM } from 'src/shared/data/jsonRead.js'
 import { resetSettingsCache } from 'src/services/settings/settingsCache.js'
 import type { SettingsJson } from 'src/services/settings/types.js'
 import { jsonParse } from 'src/utils/slowOperations.js'

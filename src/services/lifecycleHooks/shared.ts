@@ -9,7 +9,7 @@
  * - Hook identity helpers: isInternalHook, hookDedupKey
  */
 import { feature } from 'bun:bundle'
-import { getCwd } from 'src/utils/fs/cwd.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import {
   getSessionId,
   getIsNonInteractiveSession,
@@ -17,8 +17,8 @@ import {
 } from 'src/bootstrap/state.js'
 import { checkHasTrustDialogAccepted } from 'src/services/config/config.js'
 import { getTranscriptPathForSession } from 'src/services/session/sessionStorage.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage } from 'src/utils/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage } from 'src/shared/errors.js'
 import { createAssistantMessage } from 'src/services/messages/messages.js'
 import { getAgentName, getTeamName, getTeammateColor } from 'src/coordinator/teammate.js'
 import type { ToolUseContext } from 'src/Tool.js'

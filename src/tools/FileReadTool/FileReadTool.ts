@@ -27,20 +27,20 @@ import type { ToolUseContext } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { renderOutline } from 'src/tools/shared/codeOutline/renderOutline.js'
 import { detectOutlineLangFromPath } from 'src/tools/shared/codeOutline/scanSymbols.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { getErrnoCode, isENOENT } from 'src/utils/errors.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { getErrnoCode, isENOENT } from 'src/shared/errors.js'
 import {
   FILE_NOT_FOUND_CWD_NOTE,
   findSimilarFile,
   getFileModificationTimeAsync,
   suggestPathUnderCwd,
-} from 'src/utils/fs/file.js'
-import { expandPath } from 'src/utils/fs/path.js'
-import { isPDFExtension, parsePDFPageRange } from 'src/utils/fs/pdfUtils.js'
-import { assertKnownEncoding } from 'src/utils/fs/textEncoding.js'
-import { logError } from 'src/utils/log.js'
-import { formatFileSize } from 'src/utils/text/format.js'
+} from 'src/shared/fs/file.js'
+import { expandPath } from 'src/shared/fs/path.js'
+import { isPDFExtension, parsePDFPageRange } from 'src/shared/fs/pdfUtils.js'
+import { assertKnownEncoding } from 'src/shared/fs/textEncoding.js'
+import { logError } from 'src/shared/log.js'
+import { formatFileSize } from 'src/shared/text/format.js'
 import { isPriorReadClippedOrMissing } from 'src/tools/FileReadTool/clientClippingDetection.js'
 import {
   clipPinEnabled,

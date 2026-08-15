@@ -37,7 +37,7 @@ import type {
 } from 'src/entrypoints/agentSdkTypes.js'
 import type { StatusLineCommandInput } from 'src/types/statusLine.js'
 import type { FileSuggestionCommandInput } from 'src/types/fileSuggestion.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import type {
   HookCallback,
   PromptRequest,

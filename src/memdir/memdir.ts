@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle'
 import { join } from 'path'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memdir/paths.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -17,10 +17,10 @@ import {
 } from 'src/services/analytics/index.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { isReplModeEnabled } from 'src/tools/REPLTool/constants.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { formatFileSize } from 'src/utils/text/format.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { formatFileSize } from 'src/shared/text/format.js'
 import { getProjectDir } from 'src/services/session/sessionStorage.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
 import {

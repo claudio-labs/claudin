@@ -20,7 +20,7 @@ import type { AppState } from 'src/state/AppStateStore.js';
 import { enterTeammateView, exitTeammateView } from 'src/state/teammateViewHelpers.js';
 import { isPanelAgentTask, type LocalAgentTaskState } from 'src/tasks/LocalAgentTask/LocalAgentTask.js';
 import { getAgentColor } from 'src/tools/AgentTool/agentColorManager.js';
-import { formatDuration, formatNumber } from 'src/utils/text/format.js';
+import { formatDuration, formatNumber } from 'src/shared/text/format.js';
 import { evictTerminalTask } from 'src/tasks/framework.js';
 import { isTerminalStatus } from 'src/components/tasks/taskStatusUtils.js';
 import { countFooterTaskRows } from 'src/components/tasks/footerSelection.js';

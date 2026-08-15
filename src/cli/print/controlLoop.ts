@@ -23,8 +23,8 @@ import { feature } from 'bun:bundle'
 import { randomUUID } from 'crypto'
 import type { UUID } from 'crypto'
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { notifyCommandLifecycle } from 'src/utils/commandLifecycle.js'
 import {
   dequeueAllMatching,
@@ -32,7 +32,7 @@ import {
   hasCommandsInQueue,
 } from 'src/utils/messageQueueManager.js'
 import { notifySessionMetadataChanged } from 'src/services/session/sessionState.js'
-import { errorMessage } from 'src/utils/errors.js'
+import { errorMessage } from 'src/shared/errors.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import { collectContextData } from 'src/commands/context/context-noninteractive.js'
 import {

@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { feature } from 'bun:bundle';
 import { snapshotOutputTokensForTurn, getTotalInputTokens } from 'src/bootstrap/state.js';
-import { count } from 'src/utils/data/array.js';
+import { count } from 'src/shared/data/array.js';
 import { dirname, join } from 'path';
 import { tmpdir } from 'os';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- / n N Esc [ v are bare letters in transcript modal context, same class as g/G/j/k in ScrollKeybindingHandler
@@ -27,7 +27,7 @@ import { useToolUseContext } from 'src/screens/repl/controllers/useToolUseContex
 import { useOnQuery } from 'src/screens/repl/controllers/useOnQuery.js';
 import { useOnSubmit } from 'src/screens/repl/controllers/useOnSubmit.js';
 import { renderMessagesToPlainText } from 'src/components/exportRenderer.js';
-import { openFileInExternalEditor } from 'src/utils/editor.js';
+import { openFileInExternalEditor } from 'src/shared/editor.js';
 import { writeFile } from 'fs/promises';
 import { Box, Text, useStdin, useTheme, useTerminalFocus, useTabStatus } from 'src/ink.js';
 import { CostThresholdDialog } from 'src/components/CostThresholdDialog.js';
@@ -39,13 +39,13 @@ import { sendNotification } from 'src/services/notifier.js';
 import { useTerminalNotification } from 'src/ink/useTerminalNotification.js';
 import { hasCursorUpViewportYankBug } from 'src/ink/terminal.js';
 import instances from 'src/ink/instances.js';
-import { createFileStateCacheWithSizeLimit, mergeReplacingLiveCache, READ_FILE_STATE_CACHE_SIZE } from 'src/utils/fs/fileStateCache.js';
+import { createFileStateCacheWithSizeLimit, mergeReplacingLiveCache, READ_FILE_STATE_CACHE_SIZE } from 'src/shared/fs/fileStateCache.js';
 import { updateLastInteractionTime, getLastInteractionTime, getOriginalCwd, getProjectRoot, getSessionId, switchSession, setCostStateForRestore, markTurnEnd, getTurnHookDurationMs, getTurnHookCount, getTurnToolDurationMs, getTurnToolCount, getTurnClassifierDurationMs, getTurnClassifierCount } from 'src/bootstrap/state.js';
 import { asSessionId, asAgentId } from 'src/types/ids.js';
-import { logForDebugging } from 'src/utils/debug.js';
+import { logForDebugging } from 'src/shared/debug.js';
 import { QueryGuard } from 'src/utils/QueryGuard.js';
-import { isEnvTruthy } from 'src/utils/envUtils.js';
-import { formatTokens, truncateToWidth } from 'src/utils/text/format.js';
+import { isEnvTruthy } from 'src/shared/envUtils.js';
+import { formatTokens, truncateToWidth } from 'src/shared/text/format.js';
 import { consumeEarlyInput } from 'src/utils/earlyInput.js';
 import { sendSandboxPermissionResponseViaMailbox } from 'src/coordinator/swarm/permissionSync.js';
 import { WorkerPendingPermission } from 'src/components/permissions/WorkerPendingPermission.js';
@@ -95,14 +95,14 @@ import { useExitOnCtrlCDWithKeybindings } from 'src/hooks/useExitOnCtrlCDWithKey
 import { useBackgroundTaskNavigation } from 'src/hooks/useBackgroundTaskNavigation.js';
 import { useSwarmInitialization } from 'src/hooks/useSwarmInitialization.js';
 import { useTeammateViewAutoExit } from 'src/hooks/useTeammateViewAutoExit.js';
-import { errorMessage } from 'src/utils/errors.js';
+import { errorMessage } from 'src/shared/errors.js';
 import { profileCheckpoint } from 'src/utils/startupProfiler.js';
 
 // Wave 6 audit — module-level guard so repl_first_paint fires exactly once,
 // even under StrictMode double-invoke or HMR remounts. Not exported.
 let _replFirstPaintMarked = false;
 import { isHumanTurn } from 'src/services/messages/messagePredicates.js';
-import { logError } from 'src/utils/log.js';
+import { logError } from 'src/shared/log.js';
 // Dead code elimination: conditional imports
 /* eslint-disable custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports */
 const useVoiceIntegration: typeof import('src/hooks/useVoiceIntegration.js').useVoiceIntegration = feature('VOICE_MODE') ? require('src/hooks/useVoiceIntegration.js').useVoiceIntegration : () => ({
@@ -145,9 +145,9 @@ import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPAT
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
 import { textForResubmit, handleMessageFromStream, type StreamingToolUse, type StreamingThinking, getMessagesAfterCompactBoundary, createUserMessage, createAssistantMessage, createTurnDurationMessage, createAgentsKilledMessage, createApiMetricsMessage, createSystemMessage, createCommandInputMessage, formatCommandInputTags } from 'src/services/messages/messages.js';
 import { LOCAL_COMMAND_STDOUT_TAG } from 'src/constants/xml.js';
-import { escapeXml } from 'src/utils/data/xml.js';
+import { escapeXml } from 'src/shared/data/xml.js';
 import type { ThinkingConfig } from 'src/services/context/thinking.js';
-import { gracefulShutdownSync, isShuttingDown } from 'src/utils/proc/gracefulShutdown.js';
+import { gracefulShutdownSync, isShuttingDown } from 'src/shared/proc/gracefulShutdown.js';
 import { handlePromptSubmit, type PromptInputHelpers } from 'src/utils/handlePromptSubmit.js';
 import { useQueueProcessor } from 'src/hooks/useQueueProcessor.js';
 import { useMailboxBridge } from 'src/hooks/useMailboxBridge.js';
@@ -186,7 +186,7 @@ import { applyToolResultReplacementsToMessages, provisionContentReplacementState
 import { partialCompactConversation } from 'src/services/compact/compact.js';
 import type { LogOption } from 'src/types/logs.js';
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';
-import { fileHistoryMakeSnapshot, type FileHistoryState, fileHistoryRewind, type FileHistorySnapshot, copyFileHistoryForResume, fileHistoryEnabled } from 'src/utils/fs/fileHistory.js';
+import { fileHistoryMakeSnapshot, type FileHistoryState, fileHistoryRewind, type FileHistorySnapshot, copyFileHistoryForResume, fileHistoryEnabled } from 'src/shared/fs/fileHistory.js';
 import { computeStandaloneAgentContext, restoreAgentFromSession, restoreSessionStateFromLog, restoreWorktreeForResume, exitRestoredWorktree } from 'src/services/session/sessionRestore.js';
 import { updateSessionName } from 'src/services/session/concurrentSessions.js';
 import { isInProcessTeammateTask, type InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js';
@@ -221,7 +221,7 @@ import { getAPIProvider } from 'src/utils/model/providers.js';
 const AntModelSwitchCallout = null;
 const shouldShowAntModelSwitch = (): boolean => false;
 import { activityManager } from 'src/coordinator/activityManager.js';
-import { createAbortController } from 'src/utils/abortController.js';
+import { createAbortController } from 'src/shared/abortController.js';
 import { MCPConnectionManager } from 'src/services/mcp/MCPConnectionManager.js';
 import { useFeedbackSurvey } from 'src/components/FeedbackSurvey/useFeedbackSurvey.js';
 import { useMemorySurvey } from 'src/components/FeedbackSurvey/useMemorySurvey.js';

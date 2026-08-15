@@ -15,14 +15,14 @@ mock.module('src/services/config/config.js', () => ({
   } as unknown as GlobalConfig),
 }))
 
-mock.module('./providerProfiles.js', () => ({
+mock.module('src/services/api/providerProfiles.js', () => ({
   ...realProviderProfiles,
   getActiveProviderProfile: () => mockProviderProfile ?? undefined,
 }))
 
 afterAll(() => {
   mock.module('src/services/config/config.js', () => realConfig)
-  mock.module('./providerProfiles.js', () => realProviderProfiles)
+  mock.module('src/services/api/providerProfiles.js', () => realProviderProfiles)
 })
 
 import { invalidateActiveProviderCache } from 'src/services/api/activeProvider.js'

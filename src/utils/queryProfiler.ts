@@ -27,8 +27,8 @@
  * - query_end: End of query
  */
 
-import { logForDebugging } from 'src/utils/debug.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { formatMs, formatTimelineLine, getPerformance } from 'src/utils/profilerBase.js'
 
 // Module-level state - initialized once when the module loads

@@ -14,7 +14,7 @@ import type { Color } from 'src/ink/styles.js';
 import { Ansi, Box, type Key, Text, useInput } from 'src/ink.js';
 import { useKeybinding } from 'src/keybindings/useKeybinding.js';
 import { getGlobalConfig } from 'src/services/config/config.js';
-import { formatDuration, formatNumber } from 'src/utils/text/format.js';
+import { formatDuration, formatNumber } from 'src/shared/text/format.js';
 import { generateHeatmap } from 'src/utils/heatmap.js';
 import { renderModelName } from 'src/utils/model/model.js';
 import { copyAnsiToClipboard } from 'src/services/ide/screenshotClipboard.js';

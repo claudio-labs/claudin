@@ -1,4 +1,4 @@
-import { env } from 'src/utils/env.js'
+import { env } from 'src/shared/env.js'
 
 // The former is better vertically aligned, but isn't usually supported on Windows/Linux
 export const BLACK_CIRCLE = env.platform === 'darwin' ? '⏺' : '●'

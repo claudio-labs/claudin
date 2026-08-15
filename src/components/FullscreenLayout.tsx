@@ -9,9 +9,9 @@ import ScrollBox, { type ScrollBoxHandle } from 'src/ink/components/ScrollBox.js
 import instances from 'src/ink/instances.js';
 import { Box, Text } from 'src/ink.js';
 import type { Message } from 'src/types/message.js';
-import { openBrowser, openPath } from 'src/utils/browser.js';
+import { openBrowser, openPath } from 'src/shared/browser.js';
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
-import { plural } from 'src/utils/text/stringUtils.js';
+import { plural } from 'src/shared/text/stringUtils.js';
 import { isNullRenderingAttachment } from 'src/components/messages/nullRenderingAttachments.js';
 import PromptInputFooterSuggestions from 'src/components/PromptInput/PromptInputFooterSuggestions.js';
 import type { StickyPrompt } from 'src/components/VirtualMessageList.js';

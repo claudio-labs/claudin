@@ -8,22 +8,22 @@ import {
 } from 'src/services/analytics/index.js'
 import { getLauncherPath } from 'src/services/install/bundledMode.js'
 import { type ReleaseChannel, saveGlobalConfig } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { env } from 'src/utils/env.js'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { ClaudeError, getErrnoCode, isENOENT } from 'src/utils/errors.js'
-import { execFileNoThrowWithCwd } from 'src/utils/proc/execFileNoThrow.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { logError } from 'src/utils/log.js'
-import { getPlatform } from 'src/utils/proc/platform.js'
-import { gte } from 'src/utils/semver.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { env } from 'src/shared/env.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
+import { ClaudeError, getErrnoCode, isENOENT } from 'src/shared/errors.js'
+import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { logError } from 'src/shared/log.js'
+import { getPlatform } from 'src/shared/proc/platform.js'
+import { gte } from 'src/shared/semver.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
 import {
   filterClaudeAliases,
   getShellConfigPaths,
   readFileLines,
   writeFileLines,
-} from 'src/utils/proc/shellConfig.js'
+} from 'src/shared/proc/shellConfig.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
 
 class AutoUpdaterError extends ClaudeError {}

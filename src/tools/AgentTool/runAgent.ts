@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle'
 import type { UUID } from 'crypto'
 import { randomUUID } from 'crypto'
 import uniqBy from 'lodash-es/uniqBy.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { getProjectRoot, getSessionId } from 'src/bootstrap/state.js'
 import { getCommand, getSkillToolCommands, hasCommand } from 'src/commands.js'
 import {
@@ -40,12 +40,12 @@ import type {
   UserMessage,
 } from 'src/types/message.js'
 import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
-import { AbortError } from 'src/utils/errors.js'
+import { AbortError } from 'src/shared/errors.js'
 import {
   cloneFileStateCache,
   createFileStateCacheWithSizeLimit,
   READ_FILE_STATE_CACHE_SIZE,
-} from 'src/utils/fs/fileStateCache.js'
+} from 'src/shared/fs/fileStateCache.js'
 import {
   type CacheSafeParams,
   createSubagentContext,
@@ -84,7 +84,7 @@ import {
   unregisterAgent as unregisterPerfettoAgent,
 } from 'src/services/telemetry/perfettoTracing.js'
 import type { ContentReplacementState } from 'src/services/tools/toolResultStorage.js'
-import { createAgentId } from 'src/utils/data/uuid.js'
+import { createAgentId } from 'src/shared/data/uuid.js'
 import {
   resolveAgentTools,
   scopeChildAgentDefinitions,

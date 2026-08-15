@@ -4,7 +4,7 @@ import * as React from 'react';
 import { CHANNEL_ARROW } from 'src/constants/figures.js';
 import { CHANNEL_TAG } from 'src/constants/xml.js';
 import { Box, Text } from 'src/ink.js';
-import { truncateToWidth } from 'src/utils/text/format.js';
+import { truncateToWidth } from 'src/shared/text/format.js';
 type Props = {
   addMargin: boolean;
   param: TextBlockParam;

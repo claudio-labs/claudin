@@ -11,7 +11,7 @@
  * 3. stopCapturingEarlyInput() is called automatically when input is consumed
  */
 
-import { lastGrapheme } from 'src/utils/text/intl.js'
+import { lastGrapheme } from 'src/shared/text/intl.js'
 
 // Buffer for early input characters
 let earlyInputBuffer = ''

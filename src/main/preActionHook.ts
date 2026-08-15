@@ -18,8 +18,8 @@ const getInit = async (): Promise<typeof import('src/entrypoints/init.js').init>
   (await import('src/entrypoints/init.js')).init;
 import { loadPolicyLimits } from 'src/services/policyLimits/index.js';
 import { loadRemoteManagedSettings } from 'src/services/remoteManagedSettings/index.js';
-import { logForDebugging } from 'src/utils/debug.js';
-import { isEnvTruthy } from 'src/utils/envUtils.js';
+import { logForDebugging } from 'src/shared/debug.js';
+import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { clearPluginCache } from 'src/services/plugins/pluginLoader.js';
 import { ensureKeychainPrefetchCompleted } from 'src/services/secureStorage/keychainPrefetch.js';
 import { ensureMdmSettingsLoaded } from 'src/services/settings/mdm/settings.js';
@@ -51,7 +51,7 @@ export function registerPreActionHook(program: CommanderCommand<any, any, any>):
     // a sink attaches. setup() attaches sinks for the default command, but
     // subcommands (doctor, mcp, plugin, auth) never call setup() and would
     // silently drop events on process.exit(). Both inits are idempotent.
-    const { initSinks } = await import('src/utils/sinks.js');
+    const { initSinks } = await import('src/shared/sinks.js');
     initSinks();
     profileCheckpoint('preAction_after_sinks');
 

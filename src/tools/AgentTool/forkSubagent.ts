@@ -10,7 +10,7 @@ import type {
   AssistantMessage,
   Message as MessageType,
 } from 'src/types/message.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { createUserMessage } from 'src/services/messages/messages.js'
 import {
   WORKTREE_STASH_WARNING,

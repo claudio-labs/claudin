@@ -17,7 +17,7 @@
 import { createHash } from 'crypto'
 import { userInfo } from 'os'
 import { getOauthConfig } from 'src/constants/oauth.js'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import type { SecureStorageData } from 'src/services/secureStorage/index.js'
 
 // Suffix distinguishing the OAuth credentials keychain entry from the legacy

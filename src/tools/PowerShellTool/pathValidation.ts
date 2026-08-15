@@ -10,12 +10,12 @@ import { homedir } from 'os'
 import { isAbsolute, resolve } from 'path'
 import type { ToolPermissionContext } from 'src/Tool.js'
 import type { PermissionRule } from 'src/types/permissions.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import {
   getFsImplementation,
   safeResolvePath,
-} from 'src/utils/fs/fsOperations.js'
-import { containsPathTraversal, getDirectoryForPath } from 'src/utils/fs/path.js'
+} from 'src/shared/fs/fsOperations.js'
+import { containsPathTraversal, getDirectoryForPath } from 'src/shared/fs/path.js'
 import {
   allWorkingDirectories,
   checkEditableInternalPath,
@@ -31,7 +31,7 @@ import {
   isDangerousRemovalPath,
   isPathInSandboxWriteAllowlist,
 } from 'src/services/permissions/pathValidation.js'
-import { getPlatform } from 'src/utils/proc/platform.js'
+import { getPlatform } from 'src/shared/proc/platform.js'
 import type {
   ParsedCommandElement,
   ParsedPowerShellCommand,

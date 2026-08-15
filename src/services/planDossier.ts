@@ -6,10 +6,10 @@ import { ENTER_PLAN_MODE_TOOL_NAME } from 'src/tools/EnterPlanModeTool/constants
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
-import { isENOENT } from 'src/utils/errors.js'
-import { getFileModificationTimeAsync } from 'src/utils/fs/file.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { logError } from 'src/utils/log.js'
+import { isENOENT } from 'src/shared/errors.js'
+import { getFileModificationTimeAsync } from 'src/shared/fs/file.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { logError } from 'src/shared/log.js'
 import { getPlanFilePath } from 'src/utils/plans.js'
 
 const DOSSIER_VERSION = 1 as const

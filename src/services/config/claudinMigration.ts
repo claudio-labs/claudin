@@ -17,7 +17,7 @@ import {
   getGlobalConfig,
   saveGlobalConfig,
 } from 'src/services/config/config.js'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import {
   addProviderProfile,
   getProviderPresetDefaults,

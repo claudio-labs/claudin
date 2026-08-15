@@ -20,7 +20,7 @@ import type { InlineGhostText, PromptInputMode } from 'src/types/textInputTypes.
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
 import { generateProgressiveArgumentHint, parseArguments } from 'src/utils/argumentSubstitution.js';
 import { getShellCompletions, type ShellCompletionType } from 'src/services/bash/shellCompletion.js';
-import { formatLogMetadata } from 'src/utils/text/format.js';
+import { formatLogMetadata } from 'src/shared/text/format.js';
 import { getSessionIdFromLog, searchSessionsByCustomTitle } from 'src/services/session/sessionStorage.js';
 import { applyCommandSuggestion, findMidInputSlashCommand, generateCommandSuggestions, getBestCommandMatch, isCommandInput } from 'src/services/suggestions/commandSuggestions.js';
 import { getDirectoryCompletions, getPathCompletions, isPathLikeToken } from 'src/services/suggestions/directoryCompletion.js';

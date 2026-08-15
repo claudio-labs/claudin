@@ -10,7 +10,7 @@ import figures from 'figures';
 import { basename } from 'path';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { FilePathLink } from 'src/components/FilePathLink.js';
-import { openPath } from 'src/utils/browser.js';
+import { openPath } from 'src/shared/browser.js';
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemSaved = feature('TEAMMEM') ? require('src/components/messages/teamMemSaved.js') as typeof import('src/components/messages/teamMemSaved.js') : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
@@ -19,7 +19,7 @@ import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
 import type { SystemMessage, SystemStopHookSummaryMessage, SystemBridgeStatusMessage, SystemTurnDurationMessage, SystemThinkingMessage, SystemMemorySavedMessage } from 'src/types/message.js';
 import type { StopHookInfo } from 'src/types/message.js';
 import { SystemAPIErrorMessage } from 'src/components/messages/SystemAPIErrorMessage.js';
-import { formatDuration, formatNumber, formatSecondsShort } from 'src/utils/text/format.js';
+import { formatDuration, formatNumber, formatSecondsShort } from 'src/shared/text/format.js';
 import { getGlobalConfig } from 'src/services/config/config.js';
 import Link from 'src/ink/components/Link.js';
 import ThemedText from 'src/components/design-system/ThemedText.js';

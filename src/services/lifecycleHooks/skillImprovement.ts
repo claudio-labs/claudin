@@ -9,11 +9,11 @@ import {
 import { queryModelWithoutStreaming } from 'src/services/api/claude.js'
 import { getEmptyToolPermissionContext } from 'src/Tool.js'
 import type { Message } from 'src/types/message.js'
-import { createAbortController } from 'src/utils/abortController.js'
-import { count } from 'src/utils/data/array.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { toError } from 'src/utils/errors.js'
-import { logError } from 'src/utils/log.js'
+import { createAbortController } from 'src/shared/abortController.js'
+import { count } from 'src/shared/data/array.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { toError } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 import {
   createUserMessage,
   extractTag,

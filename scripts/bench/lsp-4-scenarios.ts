@@ -48,7 +48,7 @@ const PROMPTS = [
   },
   {
     id: 'rename-impact',
-    text: 'Sem editar nenhum arquivo: quero renomear `formatNumber` (em src/utils/text/format.ts) para `formatTokenCount` em todo o codebase. Liste cada arquivo:linha onde a mudanca precisa acontecer (incluindo a declaracao, todos os imports e todos os call sites). Output cru: uma linha por ocorrencia.',
+    text: 'Sem editar nenhum arquivo: quero renomear `formatNumber` (em src/shared/text/format.ts) para `formatTokenCount` em todo o codebase. Liste cada arquivo:linha onde a mudanca precisa acontecer (incluindo a declaracao, todos os imports e todos os call sites). Output cru: uma linha por ocorrencia.',
   },
   {
     id: 'find-implementations',

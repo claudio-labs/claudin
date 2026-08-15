@@ -26,8 +26,8 @@ import {
 } from 'src/services/auth/auth.js'
 import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
 import { getMemoryPath } from 'src/services/config/config.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
-import { classifyAxiosError } from 'src/utils/errors.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
+import { classifyAxiosError } from 'src/shared/errors.js'
 import { getRepoRemoteHash } from 'src/services/git/git.js'
 import {
   getAPIProvider,
@@ -36,7 +36,7 @@ import {
 import { markInternalWrite } from 'src/services/settings/internalWrites.js'
 import { getSettingsFilePathForSource } from 'src/services/settings/settings.js'
 import { resetSettingsCache } from 'src/services/settings/settingsCache.js'
-import { sleep } from 'src/utils/sleep.js'
+import { sleep } from 'src/shared/sleep.js'
 import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import { logEvent } from 'src/services/analytics/index.js'

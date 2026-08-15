@@ -16,8 +16,8 @@ import {
   resolveProviderRequest,
 } from 'src/services/api/providerConfig.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { logError } from 'src/utils/log.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { logError } from 'src/shared/log.js'
 import { createUserMessage } from 'src/services/messages/messages.js'
 import { getMainLoopModel, getSmallFastModel } from 'src/utils/model/model.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'

@@ -21,7 +21,7 @@ import { TASK_STOP_TOOL_NAME } from 'src/tools/TaskStopTool/prompt.js'
 import { WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
 import { extractTextContent } from 'src/services/messages/messages.js'
 import { SHELL_TOOL_NAMES } from 'src/services/shell/shellToolUtils.js'
-import { capitalize } from 'src/utils/text/stringUtils.js'
+import { capitalize } from 'src/shared/text/stringUtils.js'
 
 type ToolCounts = {
   searches: number

@@ -61,11 +61,11 @@ const ALLOWED_TOOLS = 'Bash(git:*),Git,Read,Edit,Write,Grep,Glob'
  * learn which tool the bench is measuring.
  */
 const FIXTURE_FILES = [
-  'src/utils/errors.ts',
-  'src/utils/log.ts',
-  'src/utils/fs/cwd.ts',
-  'src/utils/fs/path.ts',
-  'src/utils/envUtils.ts',
+  'src/shared/errors.ts',
+  'src/shared/log.ts',
+  'src/shared/fs/cwd.ts',
+  'src/shared/fs/path.ts',
+  'src/shared/envUtils.ts',
 ] as const
 
 /** Fixed so both arms get identical commit hashes. */

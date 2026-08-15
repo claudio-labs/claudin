@@ -1,6 +1,6 @@
 import { execa } from 'execa'
-import { logForDebugging } from 'src/utils/debug.js'
-import { memoizeWithLRU } from 'src/utils/data/memoize.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { memoizeWithLRU } from 'src/shared/data/memoize.js'
 import { getCachedPowerShellPath } from 'src/services/shell/powershellDetection.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
 

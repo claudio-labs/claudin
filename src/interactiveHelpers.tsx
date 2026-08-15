@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle';
 import { appendFileSync } from 'fs';
 import React from 'react';
 import { logEvent } from 'src/services/analytics/index.js';
-import { gracefulShutdown, gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js';
+import { gracefulShutdown, gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js';
 import { type ChannelEntry, getAllowedChannels, setAllowedChannels, setHasDevChannels, setSessionTrustAccepted, setStatsStore } from 'src/bootstrap/state.js';
 import type { Command } from 'src/commands.js';
 import { createStatsStore, type StatsStore } from 'src/context/stats.js';
@@ -23,7 +23,7 @@ import { getExternalClaudeMdIncludes, getMemoryFiles, shouldShowClaudeMdExternal
 import { checkHasTrustDialogAccepted, getCustomApiKeyStatus, getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import { shouldShowMigrationBanner } from 'src/services/config/claudinMigration.js';
 import { updateDeepLinkTerminalPreference } from 'src/services/deepLink/terminalPreference.js';
-import { isEnvTruthy, isRunningOnHomespace } from 'src/utils/envUtils.js';
+import { isEnvTruthy, isRunningOnHomespace } from 'src/shared/envUtils.js';
 import { type FpsMetrics, FpsTracker } from 'src/utils/fpsTracker.js';
 import { updateGithubRepoPathMapping } from 'src/services/git/githubRepoPathMapping.js';
 import { applyConfigEnvironmentVariables } from 'src/services/config/managedEnv.js';

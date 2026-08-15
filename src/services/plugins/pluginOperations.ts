@@ -15,9 +15,9 @@ import { dirname, join } from 'path'
 import { getOriginalCwd } from 'src/bootstrap/state.js'
 import { isBuiltinPluginId } from 'src/plugins/builtinPlugins.js'
 import type { LoadedPlugin, PluginManifest } from 'src/types/plugin.js'
-import { isENOENT, toError } from 'src/utils/errors.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { logError } from 'src/utils/log.js'
+import { isENOENT, toError } from 'src/shared/errors.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { logError } from 'src/shared/log.js'
 import {
   clearAllCaches,
   markPluginVersionOrphaned,
@@ -66,7 +66,7 @@ import {
   getSettingsForSource,
   updateSettingsForSource,
 } from 'src/services/settings/settings.js'
-import { plural } from 'src/utils/text/stringUtils.js'
+import { plural } from 'src/shared/text/stringUtils.js'
 
 /** Valid installable scopes (excludes 'managed' which can only be installed from managed-settings.json) */
 export const VALID_INSTALLABLE_SCOPES = ['user', 'project', 'local'] as const

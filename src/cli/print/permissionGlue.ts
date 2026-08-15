@@ -5,13 +5,13 @@ import { toolMatchesName } from 'src/Tool.js'
 import type { StructuredIO } from 'src/cli/structuredIO.js'
 import type { RequiresActionDetails } from 'src/services/session/sessionState.js'
 import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js'
-import { createCombinedAbortSignal } from 'src/utils/combinedAbortSignal.js'
-import { safeParseJSON } from 'src/utils/data/json.js'
+import { createCombinedAbortSignal } from 'src/shared/combinedAbortSignal.js'
+import { safeParseJSON } from 'src/shared/data/json.js'
 import {
   outputSchema as permissionToolOutputSchema,
   permissionPromptToolResultToPermissionDecision,
 } from 'src/services/permissions/PermissionPromptToolResultSchema.js'
-import { gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js'
+import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js'
 
 /**
  * Creates a CanUseToolFn that incorporates a custom permission prompt tool.

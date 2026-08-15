@@ -1,6 +1,6 @@
 import { z } from 'zod/v4'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { semanticBoolean } from 'src/utils/data/semanticBoolean.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
 
 // The input schema with optional replace_all
 const inputSchema = lazySchema(() =>

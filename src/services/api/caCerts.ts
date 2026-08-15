@@ -1,7 +1,7 @@
 import memoize from 'lodash-es/memoize.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { hasNodeOption } from 'src/utils/envUtils.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { hasNodeOption } from 'src/shared/envUtils.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 
 /**
  * Load CA certificates for TLS connections.

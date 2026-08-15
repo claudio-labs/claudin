@@ -4,8 +4,8 @@ import { type APIError, APIUserAbortError } from '@anthropic-ai/sdk'
 import type { QuerySource } from 'src/constants/querySource.js'
 import type { SystemAPIErrorMessage } from 'src/types/message.js'
 import { isAwsCredentialsProviderError } from 'src/services/api/aws.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logError } from 'src/utils/log.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logError } from 'src/shared/log.js'
 import { createSystemAPIErrorMessage } from 'src/services/messages/messages.js'
 import { getAPIProvider, getAPIProviderForStatsig } from 'src/utils/model/providers.js'
 import {
@@ -17,7 +17,7 @@ import {
   isClaudeAISubscriber,
   isEnterpriseSubscriber,
 } from 'src/services/auth/auth.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { invalidateClientCache } from 'src/services/api/clientCache.js'
 import { refreshGithubModelsTokenIfNeeded } from 'src/services/api/githubModelsCredentials.js'
@@ -27,7 +27,7 @@ import {
   errorMessage,
   isSdkApiConnectionError,
   isSdkApiError,
-} from 'src/utils/errors.js'
+} from 'src/shared/errors.js'
 import {
   type CooldownReason,
   handleFastModeOverageRejection,
@@ -39,7 +39,7 @@ import {
 import { extractOpenAICategoryMarker } from 'src/services/api/openaiErrorClassification.js'
 import { isNonCustomOpusModel } from 'src/utils/model/model.js'
 import { disableKeepAlive } from 'src/services/api/proxy.js'
-import { sleep } from 'src/utils/sleep.js'
+import { sleep } from 'src/shared/sleep.js'
 import type { ThinkingConfig } from 'src/services/context/thinking.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import {

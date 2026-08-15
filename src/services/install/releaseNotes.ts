@@ -4,11 +4,11 @@ import { dirname, join } from 'path'
 import { coerce } from 'semver'
 import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { toError } from 'src/utils/errors.js'
-import { logError } from 'src/utils/log.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
+import { toError } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
-import { gt } from 'src/utils/semver.js'
+import { gt } from 'src/shared/semver.js'
 
 const MAX_RELEASE_NOTES_SHOWN = 5
 

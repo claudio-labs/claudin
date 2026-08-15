@@ -24,7 +24,7 @@
  *     queryGuard.getSnapshot,
  *   )
  */
-import { createSignal } from 'src/utils/signal.js'
+import { createSignal } from 'src/shared/signal.js'
 
 export class QueryGuard {
   private _status: 'idle' | 'dispatching' | 'running' = 'idle'

@@ -15,8 +15,8 @@ import { type AgentDefinition, clearAgentDefinitionsCache, getActiveAgentsFromLi
 import { builtInOverrideKey } from 'src/tools/AgentTool/builtInModelOverrides.js';
 import { writeProjectAgentOverride } from 'src/tools/AgentTool/projectAgentOverrides.js';
 import { saveGlobalConfig } from 'src/services/config/config.js';
-import { toError } from 'src/utils/errors.js';
-import { logError } from 'src/utils/log.js';
+import { toError } from 'src/shared/errors.js';
+import { logError } from 'src/shared/log.js';
 import { Select } from 'src/components/CustomSelect/select.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
 import { AgentDetail } from 'src/components/agents/AgentDetail.js';
@@ -25,7 +25,7 @@ import { AgentNavigationFooter } from 'src/components/agents/AgentNavigationFoot
 import { AgentsList } from 'src/components/agents/AgentsList.js';
 import { ModelSelector } from 'src/components/agents/ModelSelector.js';
 import { deleteAgentFromFile } from 'src/components/agents/agentFileUtils.js';
-import { getCwd } from 'src/utils/fs/cwd.js';
+import { getCwd } from 'src/shared/fs/cwd.js';
 import { CreateAgentWizard } from 'src/components/agents/new-agent-creation/CreateAgentWizard.js';
 import type { ModeState } from 'src/components/agents/types.js';
 type Props = {

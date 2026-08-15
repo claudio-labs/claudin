@@ -8,7 +8,7 @@ import {
   isSdkApiError,
   isSdkAuthenticationError,
   isSdkNotFoundError,
-} from 'src/utils/errors.js'
+} from 'src/shared/errors.js'
 import { getModelStrings } from 'src/utils/model/modelStrings.js'
 import { getCachedOllamaModelOptions, isOllamaProvider } from 'src/utils/model/ollamaModels.js'
 import { getCachedNvidiaNimModelOptions, isNvidiaNimProvider } from 'src/utils/model/nvidiaNimModels.js'

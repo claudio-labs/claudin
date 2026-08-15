@@ -48,18 +48,18 @@ import {
   getGlobalConfig,
   saveGlobalConfig,
 } from 'src/services/config/config.js'
-import { logAntError, logForDebugging } from 'src/utils/debug.js'
+import { logAntError, logForDebugging } from 'src/shared/debug.js'
 import {
   getClaudinConfigHomeDir,
   isBareMode,
   isEnvTruthy,
   isRunningOnHomespace,
-} from 'src/utils/envUtils.js'
-import { errorMessage } from 'src/utils/errors.js'
-import { execSyncWithDefaults_DEPRECATED } from 'src/utils/proc/execFileNoThrow.js'
-import * as lockfile from 'src/utils/fs/lockfile.js'
-import { logError } from 'src/utils/log.js'
-import { memoizeWithTTLAsync } from 'src/utils/data/memoize.js'
+} from 'src/shared/envUtils.js'
+import { errorMessage } from 'src/shared/errors.js'
+import { execSyncWithDefaults_DEPRECATED } from 'src/shared/proc/execFileNoThrow.js'
+import * as lockfile from 'src/shared/fs/lockfile.js'
+import { logError } from 'src/shared/log.js'
+import { memoizeWithTTLAsync } from 'src/shared/data/memoize.js'
 import { getSecureStorage } from 'src/services/secureStorage/index.js'
 import {
   clearLegacyApiKeyPrefetch,
@@ -74,7 +74,7 @@ import {
   getInitialSettings,
   getSettingsForSource,
 } from 'src/services/settings/settings.js'
-import { sleep } from 'src/utils/sleep.js'
+import { sleep } from 'src/shared/sleep.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
 import { clearToolSchemaCache } from 'src/services/tools/toolSchemaCache.js'
 

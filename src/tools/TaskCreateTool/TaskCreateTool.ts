@@ -4,7 +4,7 @@ import {
   executeTaskCreatedHooks,
   getTaskCreatedHookMessage,
 } from 'src/services/lifecycleHooks/hooks.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   createTask,
   deleteTask,

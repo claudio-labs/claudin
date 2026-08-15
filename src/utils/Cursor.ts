@@ -4,7 +4,7 @@ import {
   firstGrapheme,
   getGraphemeSegmenter,
   getWordSegmenter,
-} from 'src/utils/text/intl.js'
+} from 'src/shared/text/intl.js'
 
 /**
  * Kill ring for storing killed (cut) text that can be yanked (pasted) with Ctrl+Y.

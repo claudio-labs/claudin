@@ -7,7 +7,7 @@ import {
 import { clearRevalidateCache, deleteDossier } from 'src/services/planDossier.js'
 import type { Tool } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { applyPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js'
 import { prepareContextForPlanMode } from 'src/services/permissions/permissionSetup.js'
 import { isPlanModeInterviewPhaseEnabled } from 'src/utils/planModeV2.js'

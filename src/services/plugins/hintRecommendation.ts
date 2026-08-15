@@ -21,7 +21,7 @@ import {
   setPendingHint,
 } from 'src/utils/claudeCodeHints.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { isPluginInstalled } from 'src/services/plugins/installedPluginsManager.js'
 import { getPluginById } from 'src/services/plugins/marketplaceManager.js'
 import {

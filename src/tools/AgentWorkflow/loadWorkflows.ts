@@ -8,9 +8,9 @@
  */
 import { readdir, readFile } from 'fs/promises'
 import { join } from 'path'
-import { isENOENT } from 'src/utils/errors.js'
-import { parseFrontmatter } from 'src/utils/frontmatterParser.js'
-import { logError } from 'src/utils/log.js'
+import { isENOENT } from 'src/shared/errors.js'
+import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
+import { logError } from 'src/shared/log.js'
 import { WORKFLOW_ORCHESTRATOR_AGENT_TYPE } from 'src/tools/AgentWorkflow/orchestratorAgent.js'
 import { getWorkflowsDir } from 'src/tools/AgentWorkflow/paths.js'
 import { type WorkflowDef, WorkflowDefSchema } from 'src/tools/AgentWorkflow/types.js'

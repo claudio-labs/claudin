@@ -2,8 +2,8 @@ import {
   readCodexCredentialsAsync,
   refreshCodexAccessTokenIfNeeded,
 } from 'src/services/api/codexCredentials.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isBareMode } from 'src/utils/envUtils.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isBareMode } from 'src/shared/envUtils.js'
 import {
   DEFAULT_CODEX_BASE_URL,
   isCodexBaseUrl,

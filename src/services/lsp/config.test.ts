@@ -33,11 +33,11 @@ mock.module('src/services/plugins/pluginLoader.js', () => ({
 // returns a live namespace that mock.module() rewrites in place, so restoring to
 // the namespace would re-apply the stub (e.g. a stripped errors.js missing
 // isENOENT, which broke GlobTool/FileReadTool in later files).
-const realLogConfig = { ...(await import('src/utils/log.js')) }
-mock.module('src/utils/log.js', () => ({ ...realLogConfig, logError: mock(() => {}) }))
-const realDebugConfigTest = { ...(await import('src/utils/debug.js')) }
-mock.module('src/utils/debug.js', () => ({ ...realDebugConfigTest, logForDebugging: mock(() => {}), logAntError: mock(() => {}) }))
-const realErrorsConfigTest = { ...(await import('src/utils/errors.js')) }
+const realLogConfig = { ...(await import('src/shared/log.js')) }
+mock.module('src/shared/log.js', () => ({ ...realLogConfig, logError: mock(() => {}) }))
+const realDebugConfigTest = { ...(await import('src/shared/debug.js')) }
+mock.module('src/shared/debug.js', () => ({ ...realDebugConfigTest, logForDebugging: mock(() => {}), logAntError: mock(() => {}) }))
+const realErrorsConfigTest = { ...(await import('src/shared/errors.js')) }
 class _ClaudeError extends Error {}
 class _MalformedCommandError extends Error {}
 class _AbortError extends Error {}
@@ -45,7 +45,7 @@ class _ConfigParseError extends Error {}
 class _ShellError extends Error {}
 class _TeleportOperationError extends Error {}
 class _TelemetrySafeError extends Error {}
-mock.module('src/utils/errors.js', () => ({
+mock.module('src/shared/errors.js', () => ({
   ClaudeError: _ClaudeError,
   MalformedCommandError: _MalformedCommandError,
   AbortError: _AbortError,
@@ -127,10 +127,10 @@ describe('getAllLspServers — plugin-only', () => {
 // them here with our own incomplete stub regresses things further.
 // ---------------------------------------------------------------------------
 afterAll(() => {
-  mock.module('src/utils/debug.js', () => realDebugConfigTest)
-  mock.module('src/utils/debug.js', () => realDebugConfigTest)
-  mock.module('src/utils/errors.js', () => realErrorsConfigTest)
-  mock.module('src/utils/errors.js', () => realErrorsConfigTest)
-  mock.module('src/utils/log.js', () => realLogConfig)
-  mock.module('src/utils/log.js', () => realLogConfig)
+  mock.module('src/shared/debug.js', () => realDebugConfigTest)
+  mock.module('src/shared/debug.js', () => realDebugConfigTest)
+  mock.module('src/shared/errors.js', () => realErrorsConfigTest)
+  mock.module('src/shared/errors.js', () => realErrorsConfigTest)
+  mock.module('src/shared/log.js', () => realLogConfig)
+  mock.module('src/shared/log.js', () => realLogConfig)
 })

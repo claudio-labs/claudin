@@ -1,8 +1,8 @@
 import { chmodSync } from 'fs'
 import { join } from 'path'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { getErrnoCode } from 'src/utils/errors.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
+import { getErrnoCode } from 'src/shared/errors.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {
   jsonParse,
   jsonStringify,

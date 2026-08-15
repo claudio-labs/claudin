@@ -1,4 +1,4 @@
-import sliceAnsi from 'src/utils/text/sliceAnsi.js'
+import sliceAnsi from 'src/shared/text/sliceAnsi.js'
 import { stringWidth } from 'src/ink/stringWidth.js'
 import type { Styles } from 'src/ink/styles.js'
 import { wrapAnsi } from 'src/ink/wrapAnsi.js'

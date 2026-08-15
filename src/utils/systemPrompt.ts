@@ -6,7 +6,7 @@ import {
 import type { ToolUseContext } from 'src/Tool.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { isBuiltInAgent } from 'src/tools/AgentTool/loadAgentsDir.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { asSystemPrompt, type SystemPrompt } from 'src/utils/systemPromptType.js'
 
 export { asSystemPrompt, type SystemPrompt } from 'src/utils/systemPromptType.js'

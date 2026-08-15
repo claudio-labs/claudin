@@ -26,7 +26,7 @@
 import { describe, expect, test } from 'bun:test'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { MemoryFileInfo } from 'src/services/instructions/claudemd.js'
-import { FileStateCache } from 'src/utils/fs/fileStateCache.js'
+import { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import { normalizeAttachmentForAPI } from 'src/services/messages/messages.js'
 import type { Attachment } from 'src/services/attachments/types.js'
 import { memoryFilesToAttachments } from 'src/services/attachments/memory.js'

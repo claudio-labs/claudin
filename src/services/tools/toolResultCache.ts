@@ -17,7 +17,7 @@
 import { LRUCache } from 'lru-cache'
 import { statSync } from 'fs'
 import { normalize } from 'path'
-import { stableStringify } from 'src/utils/data/stableStringify.js'
+import { stableStringify } from 'src/shared/data/stableStringify.js'
 
 export type ToolResultCacheEntry = {
   data: unknown

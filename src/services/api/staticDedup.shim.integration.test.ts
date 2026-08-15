@@ -27,7 +27,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, tes
 }
 import { convertAnthropicMessagesToResponsesInput } from 'src/services/api/codexShim.js'
 import { createOpenAIShimClient } from 'src/services/api/openaiShim.js'
-import { stableStringify } from 'src/utils/data/stableStringify.js'
+import { stableStringify } from 'src/shared/data/stableStringify.js'
 
 type FetchType = typeof globalThis.fetch
 const originalFetch = globalThis.fetch

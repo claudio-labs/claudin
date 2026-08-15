@@ -1,7 +1,7 @@
 import type * as React from 'react';
 import { useCallback, useEffect } from 'react';
 import { useAppStateStore, useSetAppState } from 'src/state/AppState.js';
-import { logError } from 'src/utils/log.js';
+import { logError } from 'src/shared/log.js';
 import type { Theme } from 'src/utils/theme.js';
 type Priority = 'low' | 'medium' | 'high' | 'immediate';
 type BaseNotification = {

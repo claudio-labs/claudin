@@ -9,15 +9,15 @@ import {
   logEvent,
 } from 'src/services/analytics/index.js'
 import { getProjectRoot } from 'src/bootstrap/state.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/utils/envUtils.js'
-import { isFsInaccessible } from 'src/utils/errors.js'
-import { normalizePathForComparison } from 'src/utils/fs/file.js'
-import type { FrontmatterData } from 'src/utils/frontmatterParser.js'
-import { parseFrontmatter } from 'src/utils/frontmatterParser.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
+import { isFsInaccessible } from 'src/shared/errors.js'
+import { normalizePathForComparison } from 'src/shared/fs/file.js'
+import type { FrontmatterData } from 'src/shared/frontmatterParser.js'
+import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
 import { findCanonicalGitRoot, findGitRoot } from 'src/services/git/git.js'
 import { parseToolListFromCLI } from 'src/services/permissions/permissionSetup.js'
-import { ripGrep, RipgrepUnavailableError } from 'src/utils/fs/ripgrep.js'
+import { ripGrep, RipgrepUnavailableError } from 'src/shared/fs/ripgrep.js'
 import {
   isSettingSourceEnabled,
   type SettingSource,

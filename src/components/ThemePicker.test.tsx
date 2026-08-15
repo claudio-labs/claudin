@@ -12,14 +12,14 @@ import { ThemeProvider } from 'src/components/design-system/ThemeProvider.js'
 const realStructuredDiff = { ...(await import('src/components/StructuredDiff.js')) }
 const realColorDiff = { ...(await import('src/components/StructuredDiff/colorDiff.js')) }
 
-mock.module('./StructuredDiff.js', () => ({
+mock.module('src/components/StructuredDiff.js', () => ({
   StructuredDiff: function StructuredDiffPreview(): React.ReactNode {
     const [theme] = useTheme()
     return <Text>{`Preview theme: ${theme}`}</Text>
   },
 }))
 
-mock.module('./StructuredDiff/colorDiff.js', () => ({
+mock.module('src/components/StructuredDiff/colorDiff.js', () => ({
   getColorModuleUnavailableReason: () => 'env',
   getSyntaxTheme: () => null,
 }))
@@ -123,8 +123,8 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  mock.module('./StructuredDiff.js', () => realStructuredDiff)
-  mock.module('./StructuredDiff/colorDiff.js', () => realColorDiff)
+  mock.module('src/components/StructuredDiff.js', () => realStructuredDiff)
+  mock.module('src/components/StructuredDiff/colorDiff.js', () => realColorDiff)
 })
 
 test('updates the preview when keyboard focus moves to another theme', async () => {

@@ -238,4 +238,4 @@ so users can see whether the cache is actually helping their workflow.
 - Claudin model cache: `/home/dev/projects/claudin/src/utils/model/modelCache.ts`
 - Claudin latest-version cache: `/home/dev/projects/claudin/src/services/install/latestVersionCache.ts`
 - Claudin provider metadata: `/home/dev/projects/claudin/src/services/api/providerConfig.ts:592`
-- Config-dir helper: `/home/dev/projects/claudin/src/utils/envUtils.ts` (`getClaudinConfigHomeDir`)
+- Config-dir helper: `/home/dev/projects/claudin/src/shared/envUtils.ts` (`getClaudinConfigHomeDir`)

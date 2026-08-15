@@ -9,7 +9,7 @@ import { useKeybindings } from 'src/keybindings/useKeybinding.js';
 import { getEmptyToolPermissionContext } from 'src/Tool.js';
 import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js';
 import { getTools } from 'src/tools.js';
-import { formatNumber, truncateToWidth } from 'src/utils/text/format.js';
+import { formatNumber, truncateToWidth } from 'src/shared/text/format.js';
 import { toInkColor } from 'src/utils/ink.js';
 import { Byline } from 'src/components/design-system/Byline.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';

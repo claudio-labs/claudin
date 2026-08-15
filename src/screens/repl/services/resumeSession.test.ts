@@ -47,7 +47,7 @@ const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all
     'src/utils/plans.js',
     'src/services/session/sessionRestore.js',
     'src/services/session/concurrentSessions.js',
-    'src/utils/fs/fileHistory.js',
+    'src/shared/fs/fileHistory.js',
     'src/services/session/sessionStorage.js',
     'src/tasks/RemoteAgentTask/RemoteAgentTask.js',
     'src/services/git/worktree.js',
@@ -118,7 +118,7 @@ mock.module('src/services/session/concurrentSessions.js', () => ({
   updateSessionActivity: () => {},
 }))
 
-mock.module('src/utils/fs/fileHistory.js', () => ({
+mock.module('src/shared/fs/fileHistory.js', () => ({
   copyFileHistoryForResume: mock(() => {
     calls.push('copyFileHistoryForResume')
   }),

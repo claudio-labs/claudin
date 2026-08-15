@@ -24,21 +24,21 @@ import { clearDeliveredDiagnosticsForFile } from 'src/services/lsp/LSPDiagnostic
 import { getLspServerManager } from 'src/services/lsp/manager.js'
 import { notifyVscodeFileUpdated } from 'src/services/mcp/vscodeSdkMcp.js'
 import { checkTeamMemSecrets } from 'src/services/teamMemorySync/teamMemSecretGuard.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { countLinesChanged, getPatchFromContents } from 'src/services/git/diff.js'
 import { countAddDel } from 'src/services/git/diffStat.js'
-import { AbortError, isENOENT } from 'src/utils/errors.js'
-import { getFileModificationTime, writeTextContent } from 'src/utils/fs/file.js'
+import { AbortError, isENOENT } from 'src/shared/errors.js'
+import { getFileModificationTime, writeTextContent } from 'src/shared/fs/file.js'
 import {
   fileHistoryEnabled,
   fileHistoryTrackEdit,
-} from 'src/utils/fs/fileHistory.js'
+} from 'src/shared/fs/fileHistory.js'
 import {
   type LineEndingType,
   readFileSyncWithMetadata,
-} from 'src/utils/fs/fileRead.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { logError } from 'src/utils/log.js'
+} from 'src/shared/fs/fileRead.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { logError } from 'src/shared/log.js'
 import { FILE_UNEXPECTEDLY_MODIFIED_ERROR } from 'src/tools/FileEditTool/constants.js'
 
 // A batch touching this many files prompts once even under acceptEdits — a

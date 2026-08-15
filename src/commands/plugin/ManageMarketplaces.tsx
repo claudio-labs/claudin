@@ -10,9 +10,9 @@ import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShort
 import { Box, Text, useInput } from 'src/ink.js';
 import { useKeybinding, useKeybindings } from 'src/keybindings/useKeybinding.js';
 import type { LoadedPlugin } from 'src/types/plugin.js';
-import { count } from 'src/utils/data/array.js';
+import { count } from 'src/shared/data/array.js';
 import { shouldSkipPluginAutoupdate } from 'src/services/config/config.js';
-import { errorMessage } from 'src/utils/errors.js';
+import { errorMessage } from 'src/shared/errors.js';
 import { clearAllCaches } from 'src/services/plugins/cacheUtils.js';
 import { createPluginId, formatMarketplaceLoadingErrors, getMarketplaceSourceDisplay, loadMarketplacesWithGracefulDegradation } from 'src/services/plugins/marketplaceHelpers.js';
 import { loadKnownMarketplacesConfig, refreshMarketplace, removeMarketplaceSource, setMarketplaceAutoUpdate } from 'src/services/plugins/marketplaceManager.js';
@@ -20,7 +20,7 @@ import { updatePluginsForMarketplaces } from 'src/services/plugins/pluginAutoupd
 import { loadAllPlugins } from 'src/services/plugins/pluginLoader.js';
 import { isMarketplaceAutoUpdate } from 'src/services/plugins/schemas.js';
 import { getSettingsForSource, updateSettingsForSource } from 'src/services/settings/settings.js';
-import { plural } from 'src/utils/text/stringUtils.js';
+import { plural } from 'src/shared/text/stringUtils.js';
 import type { ViewState } from 'src/commands/plugin/types.js';
 type Props = {
   setViewState: (state: ViewState) => void;

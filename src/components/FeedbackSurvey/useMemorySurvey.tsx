@@ -7,7 +7,7 @@ import { isPolicyAllowed } from 'src/services/policyLimits/index.js';
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js';
 import type { Message } from 'src/types/message.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
-import { isEnvTruthy } from 'src/utils/envUtils.js';
+import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { isAutoManagedMemoryFile } from 'src/memdir/memoryFileDetection.js';
 import { extractTextContent, getLastAssistantMessage } from 'src/services/messages/messages.js';
 import { logOTelEvent } from 'src/services/telemetry/events.js';

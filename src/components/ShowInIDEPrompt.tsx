@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import { basename, relative } from 'path';
 import React from 'react';
 import { Box, Text } from 'src/ink.js';
-import { getCwd } from 'src/utils/fs/cwd.js';
+import { getCwd } from 'src/shared/fs/cwd.js';
 import { isSupportedVSCodeTerminal } from 'src/services/ide/ide.js';
 import { Select } from 'src/components/CustomSelect/index.js';
 import { Pane } from 'src/components/design-system/Pane.js';

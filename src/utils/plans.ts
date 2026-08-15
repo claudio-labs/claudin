@@ -13,16 +13,16 @@ import type {
 } from 'src/types/message.js'
 import { getPlanSlugCache, getSessionId } from 'src/bootstrap/state.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
-import { getSessionRootCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { isENOENT } from 'src/utils/errors.js'
+import { getSessionRootCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
+import { isENOENT } from 'src/shared/errors.js'
 import { getEnvironmentKind } from 'src/services/filePersistence/outputsScanner.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { addFileGlobRuleToGitignore } from 'src/services/git/gitignore.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
-import { generateWordSlug } from 'src/utils/text/words.js'
+import { generateWordSlug } from 'src/shared/text/words.js'
 
 const MAX_SLUG_RETRIES = 10
 

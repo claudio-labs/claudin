@@ -5,10 +5,10 @@
 //   - `HookEvent` / `HookInput` are the SDK-facing types, generated from the
 //     Zod schemas behind `src/entrypoints/agentSdkTypes.js`.
 //   - `HookMatcher` is inferred from `HookMatcherSchema` in
-//     `src/schemas/hooks.ts`, which is also what `HooksSettings` is built from
+//     `src/shared/schemas/hooks.ts`, which is also what `HooksSettings` is built from
 //     — the settings snapshot the only consumer stubs out.
 //
 // Its one consumer is `src/services/lifecycleHooks/matching.characterization.test.ts`.
 
 export type { HookEvent, HookInput } from 'src/entrypoints/agentSdkTypes.js'
-export type { HookMatcher } from 'src/schemas/hooks.js'
+export type { HookMatcher } from 'src/shared/schemas/hooks.js'

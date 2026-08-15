@@ -1,7 +1,7 @@
 /**
  * Diagnostics URL redaction for the openaiShim modules.
  *
- * Distinct from `src/utils/urlRedaction.ts` (which is purely lexical) — this
+ * Distinct from `src/shared/urlRedaction.ts` (which is purely lexical) — this
  * variant also runs the URL through `redactSecretValueForDisplay`, replacing
  * any substring that matches a known environment-stored secret (api keys,
  * OAuth tokens) with `***`. Required because some local providers embed the

@@ -22,7 +22,7 @@
 // "migrations" from the roadmap correspond to compat readers distributed
 // across the natural modules (stripPersistedToolUseResults* in
 // pure/jsonlStripping.ts, <persisted-output> reader in
-// resume/transcriptLoad.ts, parseJSONL tolerance in src/utils/data/json.ts).
+// resume/transcriptLoad.ts, parseJSONL tolerance in src/shared/data/json.ts).
 //
 // External consumers (32 importers) keep importing from this path; the
 // barrel re-exports preserve every public name unchanged. The barrel

@@ -105,7 +105,7 @@ real é o campo `report` (free-text 500ch) vazar:
    `/home/dev/...` ao descrever "tool X retornou erro lendo arquivo".
    Sanitização: regex que substitui paths absolutos por placeholders
    antes do write. Já existe utilitário relacionado em
-   `src/utils/fs/path.ts` (`sanitizePath`) mas é para sanitizar nome de
+   `src/shared/fs/path.ts` (`sanitizePath`) mas é para sanitizar nome de
    diretório no projects-dir, não conteúdo livre.
 2. **Conteúdo de arquivos lidos** — se modelo cola um snippet "para
    contexto". Mitigação: hard cap de 500 chars no schema (omp já faz)

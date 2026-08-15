@@ -1,4 +1,4 @@
-import type { FileStateCache } from 'src/utils/fs/fileStateCache.js'
+import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 
 /**
  * Install `incoming` as the session's live read-file cache and drain

@@ -1,10 +1,10 @@
 import type { TerminalNotification } from 'src/ink/useTerminalNotification.js'
 import { getGlobalConfig } from 'src/services/config/config.js'
-import { env } from 'src/utils/env.js'
-import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
+import { env } from 'src/shared/env.js'
+import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
 import { executeNotificationHooks } from 'src/services/lifecycleHooks/hooks.js'
-import { logError } from 'src/utils/log.js'
-import { which } from 'src/utils/proc/which.js'
+import { logError } from 'src/shared/log.js'
+import { which } from 'src/shared/proc/which.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,

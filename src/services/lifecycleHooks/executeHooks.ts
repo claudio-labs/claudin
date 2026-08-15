@@ -36,7 +36,7 @@ import {
 } from 'src/types/hooks.js'
 import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
 import chalk from 'chalk'
-import { errorMessage } from 'src/utils/errors.js'
+import { errorMessage } from 'src/shared/errors.js'
 import { getSessionHookCallback } from 'src/services/lifecycleHooks/sessionHooks.js'
 import {
   emitHookStarted,
@@ -48,11 +48,11 @@ import type {
   HookInput,
 } from 'src/entrypoints/agentSdkTypes.js'
 import { getHookDisplayText } from 'src/services/lifecycleHooks/hooksSettings.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logError } from 'src/utils/log.js'
-import { createCombinedAbortSignal } from 'src/utils/combinedAbortSignal.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logError } from 'src/shared/log.js'
+import { createCombinedAbortSignal } from 'src/shared/combinedAbortSignal.js'
 import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
-import { all } from 'src/utils/generators.js'
+import { all } from 'src/shared/generators.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { execPromptHook } from 'src/services/lifecycleHooks/execPromptHook.js'
 import type { Message } from 'src/types/message.js'
@@ -60,7 +60,7 @@ import { execAgentHook } from 'src/services/lifecycleHooks/execAgentHook.js'
 import { execHttpHook } from 'src/services/lifecycleHooks/execHttpHook.js'
 import type { FunctionHook } from 'src/services/lifecycleHooks/sessionHooks.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   TOOL_HOOK_EXECUTION_TIMEOUT_MS,
   shouldSkipHookDueToTrust,

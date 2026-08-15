@@ -6,8 +6,8 @@ import {
   checkGate_CACHED_OR_BLOCKING,
   getFeatureValue_CACHED_MAY_BE_STALE,
 } from 'src/services/analytics/growthbook.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage } from 'src/utils/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage } from 'src/shared/errors.js'
 import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
 import { getSecureStorage } from 'src/services/secureStorage/index.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'

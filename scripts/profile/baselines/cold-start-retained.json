@@ -56,7 +56,7 @@
     "importMs": 9.892537
   },
   {
-    "name": "src/utils/log.ts",
+    "name": "src/shared/log.ts",
     "description": "Logger.",
     "rssBytes": 130535424,
     "heapUsedBytes": 11988256,

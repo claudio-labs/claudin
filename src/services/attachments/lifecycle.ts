@@ -30,7 +30,7 @@ import {
 } from 'src/bootstrap/state.js'
 import { isHumanTurn } from 'src/services/messages/messagePredicates.js'
 import { isThinkingMessage } from 'src/services/messages/messages.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { feature } from 'bun:bundle'
 import type { Message } from 'src/types/message.js'
 import type { TodoList } from 'src/tools/TodoWriteTool/types.js'

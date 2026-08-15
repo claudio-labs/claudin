@@ -2,8 +2,8 @@
 
 import { feature } from 'bun:bundle'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isEnvDefinedFalsy } from 'src/utils/envUtils.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 
 const DEFAULT_PREFIX =

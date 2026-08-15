@@ -9,8 +9,8 @@ import {
   saveCurrentProjectConfig,
   saveGlobalConfig,
 } from 'src/services/config/config.js'
-import { toError } from 'src/utils/errors.js'
-import { logError } from 'src/utils/log.js'
+import { toError } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 import { applyConfigEnvironmentVariables } from 'src/services/config/managedEnv.js'
 import { getActiveProviderProfile } from 'src/services/api/providerProfiles.js'
 import {

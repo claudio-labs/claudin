@@ -9,7 +9,7 @@ import { getClipboardPath } from 'src/ink/termio/osc.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- Esc needs conditional propagation based on selection state
 import { type Key, useInput } from 'src/ink.js';
 import { useKeybindings } from 'src/keybindings/useKeybinding.js';
-import { logForDebugging } from 'src/utils/debug.js';
+import { logForDebugging } from 'src/shared/debug.js';
 type Props = {
   scrollRef: RefObject<ScrollBoxHandle | null>;
   isActive: boolean;

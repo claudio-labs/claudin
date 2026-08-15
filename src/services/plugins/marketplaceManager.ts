@@ -24,19 +24,19 @@ import isEqual from 'lodash-es/isEqual.js'
 import memoize from 'lodash-es/memoize.js'
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'path'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   ConfigParseError,
   errorMessage,
   getErrnoCode,
   isENOENT,
   toError,
-} from 'src/utils/errors.js'
-import { execFileNoThrow, execFileNoThrowWithCwd } from 'src/utils/proc/execFileNoThrow.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+} from 'src/shared/errors.js'
+import { execFileNoThrow, execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { gitExe } from 'src/services/git/git.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import {
   getInitialSettings,
   getSettingsForSource,

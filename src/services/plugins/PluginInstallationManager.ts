@@ -6,9 +6,9 @@
  */
 
 import type { AppState } from 'src/state/AppState.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
-import { logError } from 'src/utils/log.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
+import { logError } from 'src/shared/log.js'
 import {
   clearMarketplacesCache,
   getDeclaredMarketplaces,

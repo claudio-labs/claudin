@@ -1,11 +1,11 @@
 import { afterAll, beforeEach, describe, expect, it, mock } from 'bun:test'
 import * as React from 'react'
 
-const realLog = { ...(await import('src/utils/log.js')) }
+const realLog = { ...(await import('src/shared/log.js')) }
 const logErrorSpy = mock((_error: unknown) => {})
-mock.module('src/utils/log.js', () => ({ ...realLog, logError: logErrorSpy }))
+mock.module('src/shared/log.js', () => ({ ...realLog, logError: logErrorSpy }))
 afterAll(() => {
-  mock.module('src/utils/log.js', () => realLog)
+  mock.module('src/shared/log.js', () => realLog)
 })
 
 import { ErrorBoundary } from 'src/components/ErrorBoundary.js'

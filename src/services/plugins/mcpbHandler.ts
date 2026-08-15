@@ -7,19 +7,19 @@ import { createHash } from 'crypto'
 import { chmod, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
 import type { McpServerConfig } from 'src/services/mcp/types.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { parseAndValidateManifestFromBytes } from 'src/services/plugins/dxt/helpers.js'
 import { parseZipModes, unzipFile } from 'src/services/plugins/dxt/zip.js'
-import { errorMessage, getErrnoCode, isENOENT, toError } from 'src/utils/errors.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { logError } from 'src/utils/log.js'
+import { errorMessage, getErrnoCode, isENOENT, toError } from 'src/shared/errors.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { logError } from 'src/shared/log.js'
 import { getSecureStorage } from 'src/services/secureStorage/index.js'
 import {
   getInitialSettings,
   updateSettingsForSource,
 } from 'src/services/settings/settings.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
-import { getSystemDirectories } from 'src/utils/fs/systemDirectories.js'
+import { getSystemDirectories } from 'src/shared/fs/systemDirectories.js'
 import { classifyFetchError, logPluginFetch } from 'src/services/plugins/fetchTelemetry.js'
 /**
  * User configuration values for MCPB

@@ -10,7 +10,7 @@
  *     names a file that was never there. The rewrite only knew how to follow
  *     references INTO moved files, not references FROM them.
  *  2. A specifier carrying no extension. `import … from 'src/utils/stableStringify'`
- *     never matched the `src/utils/data/stableStringify.` key, whose trailing dot is
+ *     never matched the `src/shared/data/stableStringify.` key, whose trailing dot is
  *     what stops it from swallowing a longer sibling name.
  *  3. A target that exists only as a `.d.ts` — a subsystem this fork never
  *     received, declared next to where it would live. It resolves for tsc and

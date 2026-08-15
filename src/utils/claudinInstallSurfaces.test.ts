@@ -5,8 +5,8 @@ import { join } from 'path'
 
 const originalEnv = { ...process.env }
 const originalMacro = (globalThis as Record<string, unknown>).MACRO
-const realEnvUtils = { ...(await import('src/utils/envUtils.js')) }
-const realExecFileNoThrowInstall = { ...(await import('src/utils/proc/execFileNoThrow.js')) }
+const realEnvUtils = { ...(await import('src/shared/envUtils.js')) }
+const realExecFileNoThrowInstall = { ...(await import('src/shared/proc/execFileNoThrow.js')) }
 // Plain snapshot of the real fs/promises taken BEFORE any mock.module runs.
 // `fsPromises` above is a live namespace view — once the rm stub is installed
 // it reflects the mock (fsPromises.rm === the no-op), so restoring with the
@@ -27,8 +27,8 @@ async function importFreshInstaller() {
 }
 
 test('install command displays ~/.local/bin/claudin on non-Windows', async () => {
-  const realEnv = await import('src/utils/env.js')
-  mock.module('src/utils/env.js', () => ({
+  const realEnv = await import('src/shared/env.js')
+  mock.module('src/shared/env.js', () => ({
     ...realEnv,
     env: { platform: 'darwin' },
   }))
@@ -39,8 +39,8 @@ test('install command displays ~/.local/bin/claudin on non-Windows', async () =>
 })
 
 test('install command displays claudin.exe path on Windows', async () => {
-  const realEnv = await import('src/utils/env.js')
-  mock.module('src/utils/env.js', () => ({
+  const realEnv = await import('src/shared/env.js')
+  mock.module('src/shared/env.js', () => ({
     ...realEnv,
     env: { platform: 'win32' },
   }))
@@ -65,7 +65,7 @@ test('cleanupNpmInstallations removes both claudin and legacy claude local insta
     },
   }))
 
-  mock.module('src/utils/proc/execFileNoThrow.js', () => ({
+  mock.module('src/shared/proc/execFileNoThrow.js', () => ({
     execFileNoThrowWithCwd: async () => ({
       code: 1,
       stderr: 'npm ERR! code E404',
@@ -76,8 +76,8 @@ test('cleanupNpmInstallations removes both claudin and legacy claude local insta
   // (isEnvDefinedFalsy, hasNodeOption, etc.) — Bun locks shape on first
   // mock.module call and leaks the partial shape into every later test
   // file that imports those symbols transitively.
-  const realEnvUtilsForCleanup = await import('src/utils/envUtils.js')
-  mock.module('./envUtils.js', () => ({
+  const realEnvUtilsForCleanup = await import('src/shared/envUtils.js')
+  mock.module('src/shared/envUtils.js', () => ({
     ...realEnvUtilsForCleanup,
     getClaudinConfigHomeDir: () => join(homedir(), '.claudin'),
     // Note: no isEnvTruthy override — the previous `value === '1'` was
@@ -93,10 +93,10 @@ test('cleanupNpmInstallations removes both claudin and legacy claude local insta
 })
 
 afterAll(() => {
-  mock.module('./envUtils.js', () => realEnvUtils)
-  mock.module('src/utils/envUtils.js', () => realEnvUtils)
-  mock.module('src/utils/proc/execFileNoThrow.js', () => realExecFileNoThrowInstall)
-  mock.module('src/utils/proc/execFileNoThrow.js', () => realExecFileNoThrowInstall)
+  mock.module('src/shared/envUtils.js', () => realEnvUtils)
+  mock.module('src/shared/envUtils.js', () => realEnvUtils)
+  mock.module('src/shared/proc/execFileNoThrow.js', () => realExecFileNoThrowInstall)
+  mock.module('src/shared/proc/execFileNoThrow.js', () => realExecFileNoThrowInstall)
   // The `rm` stub above (records paths instead of deleting) is process-global
   // and mock.restore() does not revert mock.module(); left installed it turns
   // rm() into a no-op for every sibling file, e.g. unlinkSessionSpillDir's

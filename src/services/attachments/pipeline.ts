@@ -9,7 +9,7 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from 'src/services/analytics/index.js'
 import type { ToolUseContext } from 'src/Tool.js'
-import { createAbortController } from 'src/utils/abortController.js'
+import { createAbortController } from 'src/shared/abortController.js'
 import type { IDESelection } from 'src/hooks/useIdeSelection.js'
 import type {
   AttachmentMessage,
@@ -30,7 +30,7 @@ import type { PastedContent } from 'src/services/config/config.js'
 import { drainPendingMessages } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
 import type { QuerySource } from 'src/constants/querySource.js'
 import { extractTextContent } from 'src/services/messages/messages.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { feature } from 'bun:bundle'
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
 import { isBuddyEnabled } from 'src/buddy/feature.js'

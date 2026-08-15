@@ -4,7 +4,7 @@ import { useTerminalSize } from 'src/hooks/useTerminalSize.js'
 import { stringWidth } from 'src/ink/stringWidth.js'
 import { Box, Text } from 'src/ink.js'
 import { getFileTypeIcon } from 'src/utils/fileIcons.js'
-import { truncatePathMiddle, truncateToWidth } from 'src/utils/text/format.js'
+import { truncatePathMiddle, truncateToWidth } from 'src/shared/text/format.js'
 import { hasNerdFontGlyphs } from 'src/utils/terminalFont.js'
 import type { Theme } from 'src/utils/theme.js'
 

@@ -1,5 +1,5 @@
-import { logForDebugging } from 'src/utils/debug.js'
-import { withResolvers } from 'src/utils/withResolvers.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { withResolvers } from 'src/shared/withResolvers.js'
 import { requireComputerUseSwift } from 'src/services/computerUse/swiftLoader.js'
 
 /**

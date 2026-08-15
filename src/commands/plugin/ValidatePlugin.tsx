@@ -3,10 +3,10 @@ import figures from 'figures';
 import * as React from 'react';
 import { useEffect } from 'react';
 import { Box, Text } from 'src/ink.js';
-import { errorMessage } from 'src/utils/errors.js';
-import { logError } from 'src/utils/log.js';
+import { errorMessage } from 'src/shared/errors.js';
+import { logError } from 'src/shared/log.js';
 import { validateManifest } from 'src/services/plugins/validatePlugin.js';
-import { plural } from 'src/utils/text/stringUtils.js';
+import { plural } from 'src/shared/text/stringUtils.js';
 type Props = {
   onComplete: (result?: string) => void;
   path?: string;

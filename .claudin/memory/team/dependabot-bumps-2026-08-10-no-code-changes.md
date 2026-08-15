@@ -13,7 +13,7 @@ source changes**. Validated with `bun install`, `bun run build`,
 
 - **marked 18.0.7 → 18.0.9** — 18.0.8 fixes a *custom checkbox renderer*
   returning `false`; we have no renderer extension. Our only `marked.use()` is
-  in `src/utils/text/markdown.ts:41`, a **tokenizer** override (`del()` → `undefined`
+  in `src/shared/text/markdown.ts:41`, a **tokenizer** override (`del()` → `undefined`
   to kill strikethrough so `~100` stays literal). 18.0.9's three parser fixes
   (unmatched `**` run before emphasis, blockquote continuation nesting, pedantic
   `**foo:**`) can change rendered output at the edges. Re-verified live on

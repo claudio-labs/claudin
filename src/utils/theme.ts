@@ -1,5 +1,5 @@
 import chalk, { Chalk } from 'chalk'
-import { env } from 'src/utils/env.js'
+import { env } from 'src/shared/env.js'
 
 export type Theme = {
   autoAccept: string

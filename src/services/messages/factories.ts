@@ -40,8 +40,8 @@ import type {
   ToolUseSummaryMessage,
   UserMessage,
 } from 'src/types/message.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { formatTokens } from 'src/utils/text/format.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { formatTokens } from 'src/shared/text/format.js'
 import type { PermissionMode } from 'src/types/permissions.js'
 import {
   CANCEL_MESSAGE,

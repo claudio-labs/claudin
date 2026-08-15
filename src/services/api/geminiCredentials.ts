@@ -1,5 +1,5 @@
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { isBareMode } from 'src/utils/envUtils.js'
+import { isBareMode } from 'src/shared/envUtils.js'
 import { getGeminiAuthMode } from 'src/services/api/geminiAuth.js'
 import { getSecureStorage } from 'src/services/secureStorage/index.js'
 

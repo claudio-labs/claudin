@@ -24,10 +24,10 @@ import {
   getClaudeAIOAuthTokens,
   getSubscriptionType,
 } from 'src/services/auth/auth.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { parsePluginIdentifier } from 'src/services/plugins/pluginIdentifier.js'
 import { getSettingsForSource } from 'src/services/settings/settings.js'
-import { escapeXmlAttr } from 'src/utils/data/xml.js'
+import { escapeXmlAttr } from 'src/shared/data/xml.js'
 import {
   type ChannelAllowlistEntry,
   getChannelAllowlist,

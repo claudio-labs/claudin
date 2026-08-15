@@ -12,7 +12,7 @@
 // Kept as a single `installLifecycleHandlers()` so main.tsx remains a
 // linear boot sequence: install → checkpoint → continue.
 
-import { initializeWarningHandler } from 'src/utils/warningHandler.js';
+import { initializeWarningHandler } from 'src/shared/warningHandler.js';
 import { resetCursor } from 'src/main/helpers.js';
 
 export function installLifecycleHandlers(): void {

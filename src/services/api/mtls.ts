@@ -4,8 +4,8 @@ import memoize from 'lodash-es/memoize.js'
 import type * as tls from 'tls'
 import type * as undici from 'undici'
 import { getCACertificates } from 'src/services/api/caCerts.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 
 export type MTLSConfig = {
   cert?: string

@@ -1,7 +1,7 @@
 import { StructuredIO } from 'src/cli/structuredIO.js'
 import { RemoteIO } from 'src/cli/remoteIO.js'
 import type { SDKUserMessage } from 'src/entrypoints/agentSdkTypes.js'
-import { fromArray } from 'src/utils/generators.js'
+import { fromArray } from 'src/shared/generators.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 
 /**

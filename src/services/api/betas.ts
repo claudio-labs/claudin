@@ -23,7 +23,7 @@ import {
 import { OAUTH_BETA_HEADER } from 'src/constants/oauth.js'
 import { isClaudeAISubscriber } from 'src/services/auth/auth.js'
 import { has1mContext } from 'src/services/context/context.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { getCanonicalName } from 'src/utils/model/model.js'
 import { get3PModelCapabilityOverride } from 'src/utils/model/modelSupportOverrides.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'

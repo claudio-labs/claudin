@@ -26,14 +26,14 @@ import {
 } from 'src/tools/AgentWorkflow/loadWorkflows.js'
 import { exportRunSummary } from 'src/tools/AgentWorkflow/runStore.js'
 import { getTools } from 'src/tools.js'
-import { createAbortController } from 'src/utils/abortController.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { createFileStateCacheWithSizeLimit } from 'src/utils/fs/fileStateCache.js'
-import { logError } from 'src/utils/log.js'
+import { createAbortController } from 'src/shared/abortController.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js'
+import { logError } from 'src/shared/log.js'
 import { ensureModelStringsInitialized } from 'src/utils/model/modelStrings.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
 import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js'
-import { setCwd } from 'src/utils/proc/Shell.js'
+import { setCwd } from 'src/shared/proc/Shell.js'
 import {
   createAgentWorktree,
   removeAgentWorktree,
@@ -253,7 +253,7 @@ async function openPullRequest(
 }
 
 async function currentBranch(): Promise<string | null> {
-  const { execFileNoThrow } = await import('src/utils/proc/execFileNoThrow.js')
+  const { execFileNoThrow } = await import('src/shared/proc/execFileNoThrow.js')
   const { stdout, code } = await execFileNoThrow('git', [
     'rev-parse',
     '--abbrev-ref',

@@ -11,7 +11,7 @@
  */
 
 import { tryParseShellCommand } from 'src/services/bash/shellQuote.js'
-import { escapeRegExp } from 'src/utils/text/stringUtils.js'
+import { escapeRegExp } from 'src/shared/text/stringUtils.js'
 
 /**
  * Parse an arguments string into an array of individual arguments.

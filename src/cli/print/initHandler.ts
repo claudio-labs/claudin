@@ -23,7 +23,7 @@ import type {
 } from 'src/entrypoints/sdk/controlTypes.js'
 import type { HookCallbackMatcher } from 'src/types/hooks.js'
 import type { StructuredIO } from 'src/cli/structuredIO.js'
-import type { Stream } from 'src/utils/stream.js'
+import type { Stream } from 'src/shared/stream.js'
 import {
   getMainThreadAgentType,
   setMainThreadAgentType,
@@ -38,7 +38,7 @@ import {
   DEFAULT_OUTPUT_STYLE_NAME,
   getAllOutputStyles,
 } from 'src/constants/outputStyles.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import { getAccountInformation } from 'src/services/auth/auth.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import {

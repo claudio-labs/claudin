@@ -7,7 +7,7 @@ import {
 } from 'src/services/analytics/index.js'
 import type { ToolPermissionContext, ToolUseContext } from 'src/Tool.js'
 import type { PendingClassifierCheck } from 'src/types/permissions.js'
-import { count } from 'src/utils/data/array.js'
+import { count } from 'src/shared/data/array.js'
 import {
   checkSemantics,
   nodeTypeId,
@@ -24,10 +24,10 @@ import {
 } from 'src/services/bash/commands.js'
 import { parseCommandRaw } from 'src/services/bash/parser.js'
 import { tryParseShellCommand } from 'src/services/bash/shellQuote.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { AbortError, isSdkApiUserAbortError } from 'src/utils/errors.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { AbortError, isSdkApiUserAbortError } from 'src/shared/errors.js'
 import type {
   ClassifierBehavior,
   ClassifierResult,
@@ -62,10 +62,10 @@ import {
   suggestionForExactCommand as sharedSuggestionForExactCommand,
   suggestionForPrefix as sharedSuggestionForPrefix,
 } from 'src/services/permissions/shellRuleMatching.js'
-import { getPlatform } from 'src/utils/proc/platform.js'
+import { getPlatform } from 'src/shared/proc/platform.js'
 import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { windowsPathToPosixPath } from 'src/utils/fs/windowsPaths.js'
+import { windowsPathToPosixPath } from 'src/shared/fs/windowsPaths.js'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
 import { checkCommandOperatorPermissions } from 'src/tools/BashTool/bashCommandHelpers.js'
 import {

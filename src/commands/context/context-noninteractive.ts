@@ -8,10 +8,10 @@ import {
   analyzeContextUsage,
   type ContextData,
 } from 'src/services/context/analyzeContext.js'
-import { formatTokens } from 'src/utils/text/format.js'
+import { formatTokens } from 'src/shared/text/format.js'
 import { getMessagesAfterCompactBoundary } from 'src/services/messages/messages.js'
 import { getSourceDisplayName } from 'src/services/settings/constants.js'
-import { plural } from 'src/utils/text/stringUtils.js'
+import { plural } from 'src/shared/text/stringUtils.js'
 
 /**
  * Shared data-collection path for `/context` (slash command) and the SDK

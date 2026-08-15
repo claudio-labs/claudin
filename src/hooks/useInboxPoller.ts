@@ -15,7 +15,7 @@ import { findToolByName } from 'src/Tool.js'
 import { isInProcessTeammateTask } from 'src/tasks/InProcessTeammateTask/types.js'
 import { getAllBaseTools } from 'src/tools.js'
 import type { PermissionUpdate } from 'src/types/permissions.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   findInProcessTeammateTaskId,
   handlePlanApprovalResponse,

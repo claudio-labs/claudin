@@ -59,9 +59,9 @@ import type {
   ProgressMessage,
   StopHookInfo,
 } from 'src/types/message.js'
-import { count } from 'src/utils/data/array.js'
+import { count } from 'src/shared/data/array.js'
 import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   AbortError,
   errorMessage,
@@ -69,11 +69,11 @@ import {
   isAbortError,
   ShellError,
   TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from 'src/utils/errors.js'
+} from 'src/shared/errors.js'
 import { executePermissionDeniedHooks } from 'src/services/lifecycleHooks/hooks.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { getGlobalConfig } from 'src/services/config/config.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   detectSerialEditStreak,
   EDIT_TOOL_NAMES,
@@ -101,7 +101,7 @@ import {
   stopSessionActivity,
 } from 'src/services/session/sessionActivity.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { Stream } from 'src/utils/stream.js'
+import { Stream } from 'src/shared/stream.js'
 import { stripPlaceholderOptionalFields } from 'src/services/tools/toolInputPlaceholders.js'
 import { transportSendsStrictToolSchemas } from 'src/services/api/providerConfig.js'
 import { logOTelEvent } from 'src/services/telemetry/events.js'

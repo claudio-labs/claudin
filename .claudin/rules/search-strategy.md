@@ -37,7 +37,7 @@ anyway, pass `head_limit` yourself or narrow with `path`/`glob`;
 does not re-answer a search it already served.
 
 `Glob` returns at most **100 paths per call**, ranked most-recently-modified
-first (`--sortr=modified` in `src/utils/fs/glob.ts`), so what the cap drops is the
+first (`--sortr=modified` in `src/shared/fs/glob.ts`), so what the cap drops is the
 files nobody has touched. That ranking is the same one Grep's
 `files_with_matches` mode applies, and it is load-bearing twice over: the
 summarizer trims the result again to the first 50 paths
@@ -51,7 +51,7 @@ reaches it, so scope with `path` rather than paging.
 ## What a search does NOT cover
 
 The two tools disagree about `.gitignore`, on purpose, and the asymmetry is the
-thing to hold in your head. `Glob` passes `--no-ignore` (`src/utils/fs/glob.ts`),
+thing to hold in your head. `Glob` passes `--no-ignore` (`src/shared/fs/glob.ts`),
 so it lists ignored paths and walks `node_modules/`. `Grep` does not, so a
 pattern living only in `dist/`, in generated code or in a vendored tree is
 outside the files it reads.
@@ -85,7 +85,7 @@ open it. One label reaches three places — the search itself (ripgrep's
 so `output_mode: "symbols"` over UTF-16 returns real signatures instead of
 "(matched outside any symbol)"), and `Read(file_path, encoding: …)`, which
 covers a full read, a range, `view: "outline"` and `symbol:` alike. All three
-share `src/utils/fs/textEncoding.ts`, so an unknown label is refused the same way
+share `src/shared/fs/textEncoding.ts`, so an unknown label is refused the same way
 everywhere rather than degrading into mojibake. Note the map still prints a
 *signature* while `Read`'s `symbol` matches on a *name*, so the round trip
 means reading `makeWidget` out of `export function makeWidget(id: string)`.
@@ -93,7 +93,7 @@ means reading `makeWidget` out of `export function makeWidget(id: string)`.
 Finally, an empty result is no longer overloaded. ripgrep exits 2 both when it
 refuses an invocation and when it fails to read a path, and `ripGrep()` used to
 resolve both to `[]` — so an **invalid regex answered "No matches found"**.
-`ripGrepWithStatus()` (`src/utils/fs/ripgrep.ts`) separates them: a refusal is
+`ripGrepWithStatus()` (`src/shared/fs/ripgrep.ts`) separates them: a refusal is
 re-thrown carrying ripgrep's own message, an unreadable directory still returns
 results, and a run cut short by the 20s timeout or the 20 MB buffer comes back
 labelled INCOMPLETE instead of passing as a finished search. Grep and Glob both
@@ -429,7 +429,7 @@ used, so it answers the question directly. Failing that, `git log --follow
 Grep pattern="\"zod\"\|\"@anthropic-ai" path="package.json"
 
 # Find all places a utility is used
-Grep pattern="from 'src/utils/errors.js'" type="ts"
+Grep pattern="from 'src/shared/errors.js'" type="ts"
 
 # Find feature-gated code paths
 Grep pattern="feature\('MY_FLAG'\)" type="ts"

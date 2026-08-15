@@ -2,7 +2,7 @@ import type { StructuredPatchHunk } from 'diff'
 import {
   execFileNoThrow,
   execFileNoThrowWithCwd,
-} from 'src/utils/proc/execFileNoThrow.js'
+} from 'src/shared/proc/execFileNoThrow.js'
 import { getIsGit, gitExe } from 'src/services/git/git.js'
 import { parseGitDiff, parseGitNumstat, type PerFileStats } from 'src/services/git/gitDiff.js'
 

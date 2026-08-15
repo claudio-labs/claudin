@@ -29,7 +29,7 @@
  */
 
 import { logEvent } from 'src/services/analytics/index.js'
-import { djb2Hash } from 'src/utils/data/hash.js'
+import { djb2Hash } from 'src/shared/data/hash.js'
 
 /**
  * Key inside the system/user-context object (see `getUserContext` in

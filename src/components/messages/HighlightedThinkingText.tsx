@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useContext } from 'react';
 import { useQueuedMessage } from 'src/context/QueuedMessageContext.js';
 import { Box, Text } from 'src/ink.js';
-import { formatBriefTimestamp } from 'src/utils/text/formatBriefTimestamp.js';
+import { formatBriefTimestamp } from 'src/shared/text/formatBriefTimestamp.js';
 import { findThinkingTriggerPositions, getRainbowColor, isUltrathinkEnabled } from 'src/services/context/thinking.js';
 import { MessageActionsSelectedContext } from 'src/components/messageActions.js';
 type Props = {

@@ -47,9 +47,9 @@ import {
   analyzeContext,
   tokenStatsToStatsigMetrics,
 } from 'src/services/context/contextAnalysis.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { hasExactErrorMessage } from 'src/utils/errors.js'
-import { cacheToObject } from 'src/utils/fs/fileStateCache.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { hasExactErrorMessage } from 'src/shared/errors.js'
+import { cacheToObject } from 'src/shared/fs/fileStateCache.js'
 import {
   type CacheSafeParams,
   runForkedAgent,
@@ -58,7 +58,7 @@ import {
   executePostCompactHooks,
   executePreCompactHooks,
 } from 'src/services/lifecycleHooks/hooks.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { MEMORY_TYPE_VALUES } from 'src/memdir/types.js'
 import {
   createCompactBoundaryMessage,
@@ -69,7 +69,7 @@ import {
   isCompactBoundaryMessage,
   normalizeMessagesForAPI,
 } from 'src/services/messages/messages.js'
-import { expandPath } from 'src/utils/fs/path.js'
+import { expandPath } from 'src/shared/fs/path.js'
 import { getPlan, getPlanFilePath } from 'src/utils/plans.js'
 import { getProjectInstructionFilePaths } from 'src/services/instructions/projectInstructions.js'
 import {
@@ -81,7 +81,7 @@ import {
   getTranscriptPath,
   reAppendSessionMetadata,
 } from 'src/services/session/sessionStorage.js'
-import { sleep } from 'src/utils/sleep.js'
+import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'

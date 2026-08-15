@@ -12,7 +12,7 @@ import { exec } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { promisify } from 'node:util'
 
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 
 import {
   commentOnIssue,

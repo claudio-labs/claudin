@@ -5,7 +5,7 @@
  * imports — so it loads and tests cleanly under `bun test`, matching the
  * loader's constraint.
  */
-import { stringifyYaml } from 'src/utils/data/yaml.js'
+import { stringifyYaml } from 'src/shared/data/yaml.js'
 import type { WorkflowDef, WorkflowStep } from 'src/tools/AgentWorkflow/types.js'
 
 /** Frontmatter keys owned by the structured editor / WorkflowDefSchema. */

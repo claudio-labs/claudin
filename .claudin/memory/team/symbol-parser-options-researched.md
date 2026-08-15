@@ -29,7 +29,7 @@ pre-warming a synchronous singleton at startup. Decide that before anything else
 wild is **Web Workers**, not WASM — opentui/opencode's tree-sitter silently degraded
 under brew install because `--compile` does not auto-bundle worker entrypoints
 (opentui#807). Parse on the main thread and that class of bug disappears. The
-vendor-beside-`execPath` pattern already exists and is proven (`src/utils/fs/ripgrep.ts:109-120`,
+vendor-beside-`execPath` pattern already exists and is proven (`src/shared/fs/ripgrep.ts:109-120`,
 `scripts/vendor-sharp.ts`, gated in `scripts/assemble-packages.ts:103-137`).
 
 **Upstream tags.scm already fixes our exact blind spot.** Both tree-sitter-javascript's

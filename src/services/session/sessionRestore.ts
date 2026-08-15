@@ -36,15 +36,15 @@ import {
   restoreAttributionStateFromSnapshots,
 } from 'src/services/git/commitAttribution.js'
 import { updateSessionName } from 'src/services/session/concurrentSessions.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import type { FileHistorySnapshot } from 'src/utils/fs/fileHistory.js'
-import { fileHistoryRestoreStateFromLog } from 'src/utils/fs/fileHistory.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import type { FileHistorySnapshot } from 'src/shared/fs/fileHistory.js'
+import { fileHistoryRestoreStateFromLog } from 'src/shared/fs/fileHistory.js'
 import { createSystemMessage } from 'src/services/messages/messages.js'
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
 import { getPlansDirectory } from 'src/utils/plans.js'
 import { invalidateAll as invalidateToolResultCache } from 'src/services/tools/toolResultCache.js'
-import { setCwd } from 'src/utils/proc/Shell.js'
+import { setCwd } from 'src/shared/proc/Shell.js'
 import {
   adoptResumedSessionFile,
   recordContentReplacement,

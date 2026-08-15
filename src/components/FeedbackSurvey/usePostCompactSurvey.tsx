@@ -5,7 +5,7 @@ import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/services/analyt
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import { shouldUseSessionMemoryCompaction } from 'src/services/compact/sessionMemoryCompact.js';
 import type { Message } from 'src/types/message.js';
-import { isEnvTruthy } from 'src/utils/envUtils.js';
+import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { isCompactBoundaryMessage } from 'src/services/messages/messages.js';
 import { logOTelEvent } from 'src/services/telemetry/events.js';
 import { useSurveyState } from 'src/components/FeedbackSurvey/useSurveyState.js';

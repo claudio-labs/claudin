@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'fs'
 import * as path from 'path'
-import { logError } from 'src/utils/log.js'
-import { whichSync } from 'src/utils/proc/which.js'
+import { logError } from 'src/shared/log.js'
+import { whichSync } from 'src/shared/proc/which.js'
 import type { Checker } from 'src/tools/TypecheckTool/types.js'
 
 /**

@@ -1,6 +1,6 @@
 import chalk from 'chalk'
-import { logForDebugging } from 'src/utils/debug.js'
-import { fileHistoryEnabled } from 'src/utils/fs/fileHistory.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { fileHistoryEnabled } from 'src/shared/fs/fileHistory.js'
 import {
   getInitialSettings,
   getSettingsForSource,
@@ -18,8 +18,8 @@ import {
   getInitialEffortSetting,
   modelSupportsEffort,
 } from 'src/utils/effort.js'
-import { env } from 'src/utils/env.js'
-import { cacheKeys } from 'src/utils/fs/fileStateCache.js'
+import { env } from 'src/shared/env.js'
+import { cacheKeys } from 'src/shared/fs/fileStateCache.js'
 import { getIsGit, getWorktreeCount } from 'src/services/git/git.js'
 import {
   detectRunningIDEsCached,
@@ -34,7 +34,7 @@ import {
   getMainLoopModel,
   getUserSpecifiedModelSetting,
 } from 'src/utils/model/model.js'
-import { getPlatform } from 'src/utils/proc/platform.js'
+import { getPlatform } from 'src/shared/proc/platform.js'
 import { isPluginInstalled } from 'src/services/plugins/installedPluginsManager.js'
 import { loadKnownMarketplacesConfigSafe } from 'src/services/plugins/marketplaceManager.js'
 import { OFFICIAL_MARKETPLACE_NAME } from 'src/services/plugins/officialMarketplace.js'

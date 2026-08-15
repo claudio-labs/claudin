@@ -7,8 +7,8 @@ import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShort
 import { Spinner } from 'src/components/Spinner.js';
 import TextInput from 'src/components/TextInput.js';
 import { Box, Text } from 'src/ink.js';
-import { toError } from 'src/utils/errors.js';
-import { logError } from 'src/utils/log.js';
+import { toError } from 'src/shared/errors.js';
+import { logError } from 'src/shared/log.js';
 import { clearAllCaches } from 'src/services/plugins/cacheUtils.js';
 import { addMarketplaceSource, saveMarketplaceToSettings } from 'src/services/plugins/marketplaceManager.js';
 import { parseMarketplaceInput } from 'src/services/plugins/parseMarketplaceInput.js';

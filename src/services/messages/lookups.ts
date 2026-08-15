@@ -12,7 +12,7 @@ import type {
   NormalizedUserMessage,
   ProgressMessage,
 } from 'src/types/message.js'
-import { count } from 'src/utils/data/array.js'
+import { count } from 'src/shared/data/array.js'
 import {
   type HookAttachment,
   type HookPermissionDecisionAttachment,

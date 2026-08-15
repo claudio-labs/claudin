@@ -100,7 +100,7 @@
 
 **test-output-summary run#1** (atomic=0, compound=1):
 
-- [C] `bun test src/utils/log.test.ts 2>&1 | tail -15`
+- [C] `bun test src/shared/log.test.ts 2>&1 | tail -15`
 
 **build-tail-warnings run#2** (atomic=0, compound=1):
 
@@ -120,7 +120,7 @@
 
 **test-output-summary run#2** (atomic=0, compound=1):
 
-- [C] `bun test src/utils/log.test.ts 2>&1 | tail -n 15`
+- [C] `bun test src/shared/log.test.ts 2>&1 | tail -n 15`
 
 ### Variante B
 
@@ -142,7 +142,7 @@
 
 **test-output-summary run#1** (atomic=0, compound=1):
 
-- [C] `bun test src/utils/log.test.ts 2>&1 | tail -15`
+- [C] `bun test src/shared/log.test.ts 2>&1 | tail -15`
 
 **build-tail-warnings run#2** (atomic=0, compound=1):
 
@@ -162,7 +162,7 @@
 
 **test-output-summary run#2** (atomic=0, compound=1):
 
-- [C] `bun test src/utils/log.test.ts 2>&1 | tail -20`
+- [C] `bun test src/shared/log.test.ts 2>&1 | tail -20`
 
 ## Outputs (resultText) lado a lado
 
@@ -530,12 +530,12 @@ Os 5 commits mais recentes:
 
 ### test-output-summary
 
-> Rode `bun test src/utils/log.test.ts` e me diga so as ultimas linhas do resultado: quantos passaram/falharam e o tempo total.
+> Rode `bun test src/shared/log.test.ts` e me diga so as ultimas linhas do resultado: quantos passaram/falharam e o tempo total.
 
 **Variant A run#1:**
 
 ```
-O comando não rodou nenhum teste — **o arquivo `src/utils/log.test.ts` não existe**.
+O comando não rodou nenhum teste — **o arquivo `src/shared/log.test.ts` não existe**.
 
 O Bun procurou por esse filtro em 10137 arquivos (97ms) e não encontrou nenhum teste correspondente, então não há passou/falhou nem tempo total de execução para reportar.
 
@@ -545,7 +545,7 @@ Quer que eu verifique o nome correto? Posso procurar testes relacionados a `log`
 **Variant A run#2:**
 
 ```
-Não existe `src/utils/log.test.ts` — então não tem resultado de passou/falhou nem tempo a reportar.
+Não existe `src/shared/log.test.ts` — então não tem resultado de passou/falhou nem tempo a reportar.
 
 O teste de log que existe no repo é `src/ink/log-update.test.ts`. Quer que eu rode esse no lugar?
 ```
@@ -561,11 +561,11 @@ Se quiser, me diga o módulo certo (ou posso listar os `*.test.ts` de `src/utils
 **Variant B run#2:**
 
 ```
-O arquivo `src/utils/log.test.ts` não existe — o Bun não encontrou nenhum teste com esse filtro:
+O arquivo `src/shared/log.test.ts` não existe — o Bun não encontrou nenhum teste com esse filtro:
 
 ```
 The following filters did not match any test files in --cwd="/home/dev/projects/claudio":
- src/utils/log.test.ts
+ src/shared/log.test.ts
 10137 files were searched [82.00ms]
 ```
 

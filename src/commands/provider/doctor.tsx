@@ -36,7 +36,7 @@ import {
   getRawProjectActiveProviderProfileId,
   hasProjectProviderProfileOverride,
 } from 'src/services/api/providerProfiles.js'
-import { redactUrlForDisplay } from 'src/utils/urlRedaction.js'
+import { redactUrlForDisplay } from 'src/shared/urlRedaction.js'
 
 type CheckResult = {
   ok: boolean

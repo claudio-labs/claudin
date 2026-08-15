@@ -1,12 +1,12 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useCallback, useMemo } from 'react';
-import { logError } from 'src/utils/log.js';
+import { logError } from 'src/shared/log.js';
 import { getOriginalCwd } from 'src/bootstrap/state.js';
 import { Box, Text } from 'src/ink.js';
 import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js';
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js';
 import { SkillTool } from 'src/tools/SkillTool/SkillTool.js';
-import { env } from 'src/utils/env.js';
+import { env } from 'src/shared/env.js';
 import { shouldShowAlwaysAllowOptions } from 'src/services/permissions/permissionsLoader.js';
 import { logUnaryEvent } from 'src/services/api/unaryLogging.js';
 import { type UnaryEvent, usePermissionRequestLogging } from 'src/components/permissions/hooks.js';

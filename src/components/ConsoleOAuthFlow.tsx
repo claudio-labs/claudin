@@ -10,7 +10,7 @@ import { getSSLErrorHint } from 'src/services/api/errorUtils.js';
 import { sendNotification } from 'src/services/notifier.js';
 import { OAuthService } from 'src/services/oauth/index.js';
 import { getOauthAccountInfo, validateForceLoginOrg } from 'src/services/auth/auth.js';
-import { logError } from 'src/utils/log.js';
+import { logError } from 'src/shared/log.js';
 import { getInitialSettings } from 'src/services/settings/settings.js';
 import { Select } from 'src/components/CustomSelect/select.js';
 import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';

@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'fs'
 import * as path from 'path'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import type { Framework } from 'src/tools/RunTestsTool/types.js'
 
 /**

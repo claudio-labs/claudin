@@ -7,10 +7,10 @@ import { computeGlimmerIndex, computeShimmerSegments, SHIMMER_INTERVAL_MS } from
 import { feature } from 'bun:bundle';
 import { getKairosActive, getUserMsgOptIn } from 'src/bootstrap/state.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
-import { isEnvTruthy } from 'src/utils/envUtils.js';
-import { count } from 'src/utils/data/array.js';
+import { isEnvTruthy } from 'src/shared/envUtils.js';
+import { count } from 'src/shared/data/array.js';
 import sample from 'lodash-es/sample.js';
-import { formatDuration, formatNumber, formatSecondsShort, truncateToWidth } from 'src/utils/text/format.js';
+import { formatDuration, formatNumber, formatSecondsShort, truncateToWidth } from 'src/shared/text/format.js';
 import type { Theme } from 'src/utils/theme.js';
 import { activityManager } from 'src/coordinator/activityManager.js';
 import { getSpinnerVerbs } from 'src/constants/spinnerVerbs.js';

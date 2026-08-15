@@ -46,19 +46,19 @@ import type {
 import {
   createFileStateCacheWithSizeLimit,
   READ_FILE_STATE_CACHE_SIZE,
-} from 'src/utils/fs/fileStateCache.js'
+} from 'src/shared/fs/fileStateCache.js'
 import { extractReadFilesFromMessages } from 'src/utils/queryHelpers.js'
 import { enqueue, subscribeToCommandQueue, getCommandsByMaxPriority } from 'src/utils/messageQueueManager.js'
 import {
   getSessionState,
   setPermissionModeChangedListener,
 } from 'src/services/session/sessionState.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import {
   gracefulShutdown,
-} from 'src/utils/proc/gracefulShutdown.js'
-import { registerCleanup } from 'src/utils/cleanupRegistry.js'
+} from 'src/shared/proc/gracefulShutdown.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { createIdleTimeoutManager } from 'src/utils/idleTimeout.js'
 import { AwsAuthStatusManager } from 'src/services/api/awsAuthStatusManager.js'
 import {
@@ -85,7 +85,7 @@ import { isFastModeSupportedByModel } from 'src/utils/fastMode.js'
 import { getSessionId } from 'src/bootstrap/state.js'
 import { skillChangeDetector } from 'src/skills/skillChangeDetector.js'
 import { getCommands, clearCommandsCache } from 'src/commands.js'
-import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js'
+import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'
 import { getRunningTasks } from 'src/tasks/framework.js'
 import { isBackgroundTask } from 'src/tasks/types.js'
 import { removeInterruptedMessage } from 'src/cli/print/messageOps.js'

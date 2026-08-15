@@ -25,13 +25,13 @@ import { _resetAllClippedIdsForTesting } from 'src/services/compact/stableStubSt
 // Capture real modules before mocking so afterAll can restore them
 const realGrowthbook = { ...(await import('src/services/analytics/growthbook.js')) }
 const realAnalytics = { ...(await import('src/services/analytics/index.js')) }
-const realDebug = { ...(await import('src/utils/debug.js')) }
+const realDebug = { ...(await import('src/shared/debug.js')) }
 const realBootstrapState = { ...(await import('src/bootstrap/state.js')) }
-const realEnvUtils = { ...(await import('src/utils/envUtils.js')) }
-const realFsOperations = { ...(await import('src/utils/fs/fsOperations.js')) }
-const realLog = { ...(await import('src/utils/log.js')) }
+const realEnvUtils = { ...(await import('src/shared/envUtils.js')) }
+const realFsOperations = { ...(await import('src/shared/fs/fsOperations.js')) }
+const realLog = { ...(await import('src/shared/log.js')) }
 const realSlowOperations = { ...(await import('src/utils/slowOperations.js')) }
-const realFile = { ...(await import('src/utils/fs/file.js')) }
+const realFile = { ...(await import('src/shared/fs/file.js')) }
 
 // ── Shared mocks: silence telemetry/analytics/growthbook used by deep imports ──
 mock.module('src/services/analytics/growthbook.js', () => ({
@@ -94,16 +94,16 @@ describe('cache bounds invariants', () => {
   })
 
   test('imageStore storedImagePaths FIFO cap = 200', async () => {
-    mock.module('./debug.js', () => ({ logForDebugging: () => {} }))
+    mock.module('src/shared/debug.js', () => ({ logForDebugging: () => {} }))
     mock.module('src/bootstrap/state.js', () => ({
       ...realBootstrapState,
       getSessionId: () => 'test-session',
     }))
-    mock.module('./envUtils.js', () => ({
+    mock.module('src/shared/envUtils.js', () => ({
       getClaudinConfigHomeDir: () => '/tmp/test-claudin',
       isEnvTruthy: () => false,
     }))
-    mock.module('src/utils/fs/fsOperations.js', () => ({
+    mock.module('src/shared/fs/fsOperations.js', () => ({
       getFsImplementation: () => ({
         readdir: async () => [],
         rm: async () => {},
@@ -162,7 +162,7 @@ describe('cache bounds invariants', () => {
 
   test('fileReadCache cap = 1000', async () => {
     let mtimeCounter = 1000
-    mock.module('src/utils/fs/fsOperations.js', () => ({
+    mock.module('src/shared/fs/fsOperations.js', () => ({
       getFsImplementation: () => ({
         statSync: (_path: string) => ({
           mtimeMs: mtimeCounter++,
@@ -172,11 +172,11 @@ describe('cache bounds invariants', () => {
         readFileSync: (_path: string, _opts: unknown) => 'fixture',
       }),
     }))
-    mock.module('src/utils/fs/file.js', () => ({
+    mock.module('src/shared/fs/file.js', () => ({
       detectFileEncoding: () => 'utf8' as const,
     }))
 
-    const { fileReadCache } = await import('src/utils/fs/fileReadCache.js')
+    const { fileReadCache } = await import('src/shared/fs/fileReadCache.js')
     fileReadCache.clear()
     for (let i = 0; i < 2000; i++) {
       fileReadCache.readFile(`/tmp/fake_${i}.txt`)
@@ -192,20 +192,20 @@ afterAll(() => {
   mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
   mock.module('src/services/analytics/index.js', () => realAnalytics)
   mock.module('src/services/analytics/index.js', () => realAnalytics)
-  mock.module('./debug.js', () => realDebug)
-  mock.module('src/utils/debug.js', () => realDebug)
+  mock.module('src/shared/debug.js', () => realDebug)
+  mock.module('src/shared/debug.js', () => realDebug)
   mock.module('src/bootstrap/state.js', () => realBootstrapState)
   mock.module('src/bootstrap/state.js', () => realBootstrapState)
-  mock.module('./envUtils.js', () => realEnvUtils)
-  mock.module('src/utils/envUtils.js', () => realEnvUtils)
-  mock.module('src/utils/fs/fsOperations.js', () => realFsOperations)
-  mock.module('src/utils/fs/fsOperations.js', () => realFsOperations)
-  mock.module('./log.js', () => realLog)
-  mock.module('src/utils/log.js', () => realLog)
-  mock.module('./slowOperations.js', () => realSlowOperations)
+  mock.module('src/shared/envUtils.js', () => realEnvUtils)
+  mock.module('src/shared/envUtils.js', () => realEnvUtils)
+  mock.module('src/shared/fs/fsOperations.js', () => realFsOperations)
+  mock.module('src/shared/fs/fsOperations.js', () => realFsOperations)
+  mock.module('src/shared/log.js', () => realLog)
+  mock.module('src/shared/log.js', () => realLog)
   mock.module('src/utils/slowOperations.js', () => realSlowOperations)
-  mock.module('src/utils/fs/file.js', () => realFile)
-  mock.module('src/utils/fs/file.js', () => realFile)
+  mock.module('src/utils/slowOperations.js', () => realSlowOperations)
+  mock.module('src/shared/fs/file.js', () => realFile)
+  mock.module('src/shared/fs/file.js', () => realFile)
   // Reset after restoring so getSessionId() returns the real session ID,
   // keeping lastSeenSessionId in sync for downstream tests.
   _resetAllClippedIdsForTesting()

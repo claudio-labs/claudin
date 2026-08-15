@@ -1,18 +1,18 @@
 import { type StructuredPatchHunk, structuredPatch } from 'diff'
-import { logError } from 'src/utils/log.js'
-import { expandPath } from 'src/utils/fs/path.js'
-import { countCharInString } from 'src/utils/text/stringUtils.js'
+import { logError } from 'src/shared/log.js'
+import { expandPath } from 'src/shared/fs/path.js'
+import { countCharInString } from 'src/shared/text/stringUtils.js'
 import {
   DIFF_TIMEOUT_MS,
   getPatchForDisplay,
   getPatchFromContents,
 } from 'src/services/git/diff.js'
-import { errorMessage, isENOENT } from 'src/utils/errors.js'
+import { errorMessage, isENOENT } from 'src/shared/errors.js'
 import {
   addLineNumbers,
   convertLeadingTabsToSpaces,
   readFileSyncCached,
-} from 'src/utils/fs/file.js'
+} from 'src/shared/fs/file.js'
 import {
   findAllMatches,
   ignoreSurroundingWs,

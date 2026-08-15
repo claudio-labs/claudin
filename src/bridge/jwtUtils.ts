@@ -1,7 +1,7 @@
 import { logEvent } from 'src/services/analytics/index.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
-import { errorMessage } from 'src/utils/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
+import { errorMessage } from 'src/shared/errors.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
 
 /** Format a millisecond duration as a human-readable string (e.g. "5m 30s"). */

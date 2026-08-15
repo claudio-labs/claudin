@@ -5,7 +5,7 @@ import { Box, Text } from 'src/ink.js';
 import { useKeybinding } from 'src/keybindings/useKeybinding.js';
 import { getAllBaseTools } from 'src/tools.js';
 import type { LogOption } from 'src/types/logs.js';
-import { formatRelativeTimeAgo } from 'src/utils/text/format.js';
+import { formatRelativeTimeAgo } from 'src/shared/text/format.js';
 import { getSessionIdFromLog, isLiteLog, loadFullLog } from 'src/services/session/sessionStorage.js';
 import type { Command } from 'src/commands.js';
 import type { StreamingToolUse } from 'src/services/messages/messages.js';

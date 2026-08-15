@@ -10,13 +10,13 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 import { getEmptyToolPermissionContext, type ToolUseContext } from 'src/Tool.js'
-import { FileStateCache } from 'src/utils/fs/fileStateCache.js'
-import { getFileModificationTime } from 'src/utils/fs/file.js'
+import { FileStateCache } from 'src/shared/fs/fileStateCache.js'
+import { getFileModificationTime } from 'src/shared/fs/file.js'
 import {
   getFsImplementation,
   setFsImplementation,
   setOriginalFsImplementation,
-} from 'src/utils/fs/fsOperations.js'
+} from 'src/shared/fs/fsOperations.js'
 import {
   applyPatchCacheInvalidationPaths,
   runApplyPatch,

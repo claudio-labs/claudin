@@ -80,7 +80,7 @@ test('custom handlers that do not end the response are closed automatically and 
     stripProtoFields: <T,>(m: T) => m,
   }))
 
-  mock.module('src/utils/log.js', () => ({
+  mock.module('src/shared/log.js', () => ({
     logError: () => {},
   }))
 
@@ -139,7 +139,7 @@ test('custom handlers that throw are logged, converted to a fallback response, a
     stripProtoFields: <T,>(m: T) => m,
   }))
 
-  mock.module('src/utils/log.js', () => ({
+  mock.module('src/shared/log.js', () => ({
     logError: (error: unknown) => {
       loggedErrors.push(error)
     },

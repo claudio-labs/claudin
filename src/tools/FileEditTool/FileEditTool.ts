@@ -17,35 +17,35 @@ import {
 } from 'src/skills/loadSkillsDir.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { countLinesChanged } from 'src/services/git/diff.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { isENOENT } from 'src/utils/errors.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { isENOENT } from 'src/shared/errors.js'
 import {
   FILE_NOT_FOUND_CWD_NOTE,
   findSimilarFile,
   getFileModificationTime,
   suggestPathUnderCwd,
   writeTextContent,
-} from 'src/utils/fs/file.js'
+} from 'src/shared/fs/file.js'
 import {
   fileHistoryEnabled,
   fileHistoryTrackEdit,
-} from 'src/utils/fs/fileHistory.js'
+} from 'src/shared/fs/fileHistory.js'
 import { logFileOperation } from 'src/utils/fileOperationAnalytics.js'
 import {
   type LineEndingType,
   readFileSyncWithMetadata,
-} from 'src/utils/fs/fileRead.js'
-import { formatFileSize } from 'src/utils/text/format.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+} from 'src/shared/fs/fileRead.js'
+import { formatFileSize } from 'src/shared/text/format.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {
   fetchSingleFileGitDiff,
   type ToolUseDiff,
 } from 'src/services/git/gitDiff.js'
-import { logError } from 'src/utils/log.js'
-import { expandPath } from 'src/utils/fs/path.js'
+import { logError } from 'src/shared/log.js'
+import { expandPath } from 'src/shared/fs/path.js'
 import {
   checkWritePermissionForTool,
   matchingRuleForInput,

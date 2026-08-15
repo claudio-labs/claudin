@@ -240,7 +240,7 @@ async function main(): Promise<void> {
 
   // --- #5 fileReadCache ----------------------------------------------------
   try {
-    const mod = await import('../../src/utils/fs/fileReadCache.js')
+    const mod = await import('../../src/shared/fs/fileReadCache.js')
     const cache = mod.fileReadCache
     results.push({
       name: '#5 fileReadCache (observed)',

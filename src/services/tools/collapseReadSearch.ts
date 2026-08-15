@@ -29,9 +29,9 @@ import type {
   WriteKind,
 } from 'src/types/message.js'
 import { getGlobalConfig } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { countAddDel } from 'src/services/git/diffStat.js'
-import { getDisplayPath } from 'src/utils/fs/file.js'
+import { getDisplayPath } from 'src/shared/fs/file.js'
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js'
 import {
   isAutoManagedMemoryFile,
@@ -39,7 +39,7 @@ import {
   isMemoryDirectory,
   isShellCommandTargetingMemory,
 } from 'src/memdir/memoryFileDetection.js'
-import { expandPath } from 'src/utils/fs/path.js'
+import { expandPath } from 'src/shared/fs/path.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemOps = feature('TEAMMEM')

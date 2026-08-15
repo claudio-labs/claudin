@@ -1,4 +1,4 @@
-import { escapeXmlAttr } from "src/utils/data/xml.js";
+import { escapeXmlAttr } from "src/shared/data/xml.js";
 import type { PipelineResult, PreExecPlan } from "src/outputFilter/Bash/types.js";
 
 const MAX_ATTR_LEN = 200;

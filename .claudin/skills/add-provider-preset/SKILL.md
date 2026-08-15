@@ -55,7 +55,7 @@ Much bigger than a menu clone. The canonical template is **xAI** (9425ad9, b7a78
 loopback PKCE); **copilot** (dc28c35) is the GitHub-style **device-code** variant.
 Decide loopback PKCE vs device-code (RFC 8628) up front — xAI switched once (479e78f).
 Reuse — do NOT re-port — the token store / PKCE / callback server in
-`src/services/oauth/` + `src/utils/browser.ts`. Device-code providers reuse
+`src/services/oauth/` + `src/shared/browser.ts`. Device-code providers reuse
 `src/commands/provider/GithubDeviceFlowStep.tsx` + `src/services/github/deviceFlow.ts`.
 (The declarative `Method`/`Authorization`/`prompts` two-step from opencode's
 `provider/auth.ts` was explicitly deferred — don't build it unless asked.)

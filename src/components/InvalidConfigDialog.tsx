@@ -3,7 +3,7 @@ import React from 'react';
 import { Box, render, Text } from 'src/ink.js';
 import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js';
 import { AppStateProvider } from 'src/state/AppState.js';
-import type { ConfigParseError } from 'src/utils/errors.js';
+import type { ConfigParseError } from 'src/shared/errors.js';
 import { getBaseRenderOptions } from 'src/utils/renderOptions.js';
 import { jsonStringify, writeFileSync_DEPRECATED } from 'src/utils/slowOperations.js';
 import type { ThemeName } from 'src/utils/theme.js';

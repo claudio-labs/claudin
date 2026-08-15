@@ -20,8 +20,8 @@ import {
   getFileStatus,
   resolveWorkspaceRoots,
 } from 'src/services/git/git.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { readFileSafe } from 'src/utils/fs/file.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { readFileSafe } from 'src/shared/fs/file.js'
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js'
 import { buildAddedFileHunks } from 'src/services/git/gitDiff.js'
 import { Dialog } from 'src/components/design-system/Dialog.js'

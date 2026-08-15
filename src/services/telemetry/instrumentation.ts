@@ -39,13 +39,13 @@ import {
   is1PApiCustomer,
   isClaudeAISubscriber,
 } from 'src/services/auth/auth.js'
-import { getPlatform, getWslVersion } from 'src/utils/proc/platform.js'
+import { getPlatform, getWslVersion } from 'src/shared/proc/platform.js'
 
 import { getCACertificates } from 'src/services/api/caCerts.js'
-import { registerCleanup } from 'src/utils/cleanupRegistry.js'
-import { getHasFormattedOutput, logForDebugging } from 'src/utils/debug.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { errorMessage } from 'src/utils/errors.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
+import { getHasFormattedOutput, logForDebugging } from 'src/shared/debug.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { errorMessage } from 'src/shared/errors.js'
 import { getMTLSConfig } from 'src/services/api/mtls.js'
 import { getProxyUrl, shouldBypassProxy } from 'src/services/api/proxy.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'

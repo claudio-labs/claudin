@@ -8,8 +8,8 @@ import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
 import { useAppState, useAppStateStore, useSetAppState } from 'src/state/AppState.js';
 import { backgroundAll, hasForegroundTasks } from 'src/tasks/LocalShellTask/LocalShellTask.js';
 import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
-import { env } from 'src/utils/env.js';
-import { isEnvTruthy } from 'src/utils/envUtils.js';
+import { env } from 'src/shared/env.js';
+import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
 type Props = {
   onBackgroundSession: () => void;

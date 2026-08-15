@@ -4,7 +4,7 @@ import {
   type SearchResult,
 } from 'src/native-ts/file-index/index.js'
 import { Box, Text } from 'src/ink.js'
-import { truncateStartToWidth } from 'src/utils/text/format.js'
+import { truncateStartToWidth } from 'src/shared/text/format.js'
 
 /** Build a fzf-style index over a flat path list (used by the / quick-open). */
 export function buildFileIndex(paths: string[]): FileIndex {

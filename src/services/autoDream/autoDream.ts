@@ -20,7 +20,7 @@ import {
   createMemorySavedMessage,
 } from 'src/services/messages/messages.js'
 import type { Message } from 'src/types/message.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'

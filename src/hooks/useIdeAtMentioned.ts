@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { z } from 'zod/v4'
 import type {
   ConnectedMCPServer,
@@ -7,7 +7,7 @@ import type {
 } from 'src/services/mcp/types.js'
 import { asMcpSchema } from 'src/services/mcp/zodCompat.js'
 import { getConnectedIdeClient } from 'src/services/ide/ide.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 export type IDEAtMentioned = {
   filePath: string
   lineStart?: number

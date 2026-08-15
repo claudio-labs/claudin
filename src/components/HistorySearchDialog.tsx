@@ -8,7 +8,7 @@ import { wrapAnsi } from 'src/ink/wrapAnsi.js';
 import { Box, Text } from 'src/ink.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import type { HistoryEntry } from 'src/services/config/config.js';
-import { formatRelativeTimeAgo, truncateToWidth } from 'src/utils/text/format.js';
+import { formatRelativeTimeAgo, truncateToWidth } from 'src/shared/text/format.js';
 import { FuzzyPicker } from 'src/components/design-system/FuzzyPicker.js';
 type Props = {
   initialQuery?: string;

@@ -9,8 +9,8 @@
  */
 
 import { uninstallPluginOp } from 'src/services/plugins/pluginOperations.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage } from 'src/utils/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage } from 'src/shared/errors.js'
 import { loadInstalledPluginsV2 } from 'src/services/plugins/installedPluginsManager.js'
 import {
   getMarketplace,

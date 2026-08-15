@@ -6,8 +6,8 @@
 
 import { readdir } from 'fs/promises'
 import { basename, join } from 'path'
-import { parseFrontmatter } from 'src/utils/frontmatterParser.js'
-import { readFileInRange } from 'src/utils/fs/readFileInRange.js'
+import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
+import { readFileInRange } from 'src/shared/fs/readFileInRange.js'
 import { type MemoryType, parseMemoryType } from 'src/memdir/memoryTypes.js'
 
 export type MemoryHeader = {

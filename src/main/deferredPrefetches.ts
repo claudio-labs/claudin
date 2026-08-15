@@ -5,8 +5,8 @@
 // (main → interactiveHelpers → main). Hoisting the function here breaks the
 // cycle: both callers now import from this leaf module.
 
-import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js';
-import { initUser } from 'src/utils/user.js';
+import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js';
+import { initUser } from 'src/shared/user.js';
 import { getUserContext } from 'src/context.js';
 import { getRelevantTips } from 'src/services/tips/tipRegistry.js';
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
@@ -14,8 +14,8 @@ import {
   prefetchAwsCredentialsAndBedRockInfoIfSafe,
   prefetchGcpCredentialsIfSafe,
 } from 'src/services/auth/auth.js';
-import { countFilesRoundedRg } from 'src/utils/fs/ripgrep.js';
-import { getCwd } from 'src/utils/fs/cwd.js';
+import { countFilesRoundedRg } from 'src/shared/fs/ripgrep.js';
+import { getCwd } from 'src/shared/fs/cwd.js';
 import { initializeAnalyticsGates } from 'src/services/analytics/sink.js';
 import { prefetchOfficialMcpUrls } from 'src/services/mcp/officialRegistry.js';
 import { refreshModelCapabilities } from 'src/utils/model/modelCapabilities.js';

@@ -17,10 +17,10 @@ import type { AllowedPrompt } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Too
 import { TEAM_CREATE_TOOL_NAME } from 'src/tools/TeamCreateTool/constants.js';
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
 import { calculateContextPercentages, getContextWindowForModel } from 'src/services/context/context.js';
-import { getExternalEditor } from 'src/utils/editor.js';
-import { getDisplayPath } from 'src/utils/fs/file.js';
+import { getExternalEditor } from 'src/shared/editor.js';
+import { getDisplayPath } from 'src/shared/fs/file.js';
 import { toIDEDisplayName } from 'src/services/ide/ide.js';
-import { logError } from 'src/utils/log.js';
+import { logError } from 'src/shared/log.js';
 import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js';
 import { createUserMessage } from 'src/services/messages/messages.js';
 import { getMainLoopModel, getRuntimeMainLoopModel } from 'src/utils/model/model.js';

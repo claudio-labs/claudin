@@ -17,7 +17,7 @@ import {
 } from 'src/bootstrap/state.js'
 import { type AgentId, asAgentId } from 'src/types/ids.js'
 import type { Message } from 'src/types/message.js'
-import { uniq } from 'src/utils/data/array.js'
+import { uniq } from 'src/shared/data/array.js'
 import {
   buildConversationChain,
   findLatestMessage,

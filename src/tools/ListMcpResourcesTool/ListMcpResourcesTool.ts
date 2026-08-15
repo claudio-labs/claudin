@@ -4,9 +4,9 @@ import {
   fetchResourcesForClient,
 } from 'src/services/mcp/client.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { errorMessage } from 'src/utils/errors.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { logMCPError } from 'src/utils/log.js'
+import { errorMessage } from 'src/shared/errors.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { logMCPError } from 'src/shared/log.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { isOutputLineTruncated } from 'src/utils/terminal.js'
 import { DESCRIPTION, LIST_MCP_RESOURCES_TOOL_NAME, PROMPT } from 'src/tools/ListMcpResourcesTool/prompt.js'

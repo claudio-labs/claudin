@@ -2,7 +2,7 @@ import { execa } from 'execa'
 import { readFile, realpath } from 'fs/promises'
 import { homedir } from 'os'
 import { delimiter, join, posix, win32 } from 'path'
-import { isInvokedFromSourceTree as isInvokedFromSourceTreeImpl } from 'src/utils/fs/sourceTreeDetect.js'
+import { isInvokedFromSourceTree as isInvokedFromSourceTreeImpl } from 'src/shared/fs/sourceTreeDetect.js'
 import {
   checkGlobalInstallPermissions,
   getBunGlobalPackageDir,
@@ -14,10 +14,10 @@ import {
   getGlobalConfig,
   type InstallMethod,
 } from 'src/services/config/config.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/utils/envUtils.js'
-import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
+import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {
   getDetectedLocalInstallDir,
   getShellType,
@@ -35,12 +35,12 @@ import {
   detectWinget,
   getPackageManager,
 } from 'src/services/install/packageManagers.js'
-import { getPlatform } from 'src/utils/proc/platform.js'
+import { getPlatform } from 'src/shared/proc/platform.js'
 import {
   ensureRipgrepTested,
   getRipgrepInstallHint,
   getRipgrepStatus,
-} from 'src/utils/fs/ripgrep.js'
+} from 'src/shared/fs/ripgrep.js'
 import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
 import { getManagedFilePath } from 'src/services/settings/managedPath.js'
 import { CUSTOMIZATION_SURFACES } from 'src/services/settings/types.js'
@@ -48,9 +48,9 @@ import {
   findClaudeAlias,
   findValidClaudeAlias,
   getShellConfigPaths,
-} from 'src/utils/proc/shellConfig.js'
+} from 'src/shared/proc/shellConfig.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
-import { which } from 'src/utils/proc/which.js'
+import { which } from 'src/shared/proc/which.js'
 
 function getCliBinaryName(): string {
   return MACRO.PACKAGE_URL === '@anthropic-ai/claude-code'

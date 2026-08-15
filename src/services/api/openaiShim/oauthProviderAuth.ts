@@ -17,7 +17,7 @@
  * a different path (`resolveRuntimeCodexCredentials`).
  */
 
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   readKimiCredentialsAsync,
   refreshKimiAccessTokenIfNeeded,

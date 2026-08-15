@@ -12,12 +12,12 @@ import type { ToolUseContext } from 'src/Tool.js';
 import type { LocalJSXCommandContext, LocalJSXCommandOnDone } from 'src/types/command.js';
 import { backupTerminalPreferences, checkAndRestoreTerminalBackup, getTerminalPlistPath, markTerminalSetupComplete } from 'src/services/ide/appleTerminalBackup.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
-import { env } from 'src/utils/env.js';
-import { isFsInaccessible } from 'src/utils/errors.js';
-import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js';
-import { addItemToJSONCArray, safeParseJSONC } from 'src/utils/data/json.js';
-import { logError } from 'src/utils/log.js';
-import { getPlatform } from 'src/utils/proc/platform.js';
+import { env } from 'src/shared/env.js';
+import { isFsInaccessible } from 'src/shared/errors.js';
+import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js';
+import { addItemToJSONCArray, safeParseJSONC } from 'src/shared/data/json.js';
+import { logError } from 'src/shared/log.js';
+import { getPlatform } from 'src/shared/proc/platform.js';
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js';
 const EOL = '\n';
 

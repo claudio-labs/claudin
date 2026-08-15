@@ -14,7 +14,7 @@ type ResolvedProvider = {
 
 let resolvedOverride: ResolvedProvider = null
 
-mock.module('./activeProvider.js', () => ({
+mock.module('src/services/api/activeProvider.js', () => ({
   ...realActiveProviderSnapshot,
   tryGetActiveProvider: () => resolvedOverride,
 }))
@@ -29,7 +29,7 @@ mock.module('src/services/config/config.js', () => ({
 }))
 
 afterAll(() => {
-  mock.module('./activeProvider.js', () => realActiveProviderSnapshot)
+  mock.module('src/services/api/activeProvider.js', () => realActiveProviderSnapshot)
   mock.module('src/services/config/config.js', () => realConfigSnapshot)
 })
 

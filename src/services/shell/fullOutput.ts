@@ -1,6 +1,6 @@
-import { readFileRange } from 'src/utils/fs/fsOperations.js'
-import { logError } from 'src/utils/log.js'
-import type { ExecResult } from 'src/utils/proc/ShellCommand.js'
+import { readFileRange } from 'src/shared/fs/fsOperations.js'
+import { logError } from 'src/shared/log.js'
+import type { ExecResult } from 'src/shared/proc/ShellCommand.js'
 
 /**
  * `exec` does NOT hand back everything a command printed.

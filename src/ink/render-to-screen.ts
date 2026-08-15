@@ -1,7 +1,7 @@
 import noop from 'lodash-es/noop.js'
 import type { ReactElement } from 'react'
 import { LegacyRoot } from 'react-reconciler/constants.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { createNode, type DOMElement } from 'src/ink/dom.js'
 import { FocusManager } from 'src/ink/focus.js'
 import Output from 'src/ink/output.js'

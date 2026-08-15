@@ -63,7 +63,7 @@ import {
   tokenCountFromLastAPIResponse,
 } from 'src/services/context/tokens.js'
 import { getEffectiveContextWindowSize } from 'src/services/compact/autoCompact.js'
-import { isEnvTruthy, getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
+import { isEnvTruthy, getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { feature } from 'bun:bundle'
 import type { Message } from 'src/types/message.js'
 import type { Attachment } from 'src/services/attachments/types.js'

@@ -2,7 +2,7 @@ import { getSessionId } from 'src/bootstrap/state.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { resolveProviderRequest } from 'src/services/api/providerConfig.js'
 import type { LocalCommandCall } from 'src/types/command.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { hydrateGithubModelsTokenFromSecureStorage } from 'src/services/api/githubModelsCredentials.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
 

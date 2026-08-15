@@ -1,5 +1,5 @@
-import { logForDebugging } from "src/utils/debug.js";
-import { isEnvTruthy } from "src/utils/envUtils.js";
+import { logForDebugging } from "src/shared/debug.js";
+import { isEnvTruthy } from "src/shared/envUtils.js";
 import {
   collapseDigitTemplates,
   collapseIdenticalRuns,

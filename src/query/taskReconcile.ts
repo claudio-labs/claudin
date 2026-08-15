@@ -46,7 +46,7 @@ import {
 } from 'src/tasks/tasks.js'
 import { TASK_CREATE_TOOL_NAME } from 'src/tools/TaskCreateTool/constants.js'
 import { TASK_UPDATE_TOOL_NAME } from 'src/tools/TaskUpdateTool/constants.js'
-import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js'
+import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'
 import { isTeammate } from 'src/coordinator/teammate.js'
 
 /**

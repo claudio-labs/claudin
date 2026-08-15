@@ -5,7 +5,7 @@ import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEve
 import { isPolicyAllowed } from 'src/services/policyLimits/index.js';
 import type { Message } from 'src/types/message.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
-import { isEnvTruthy } from 'src/utils/envUtils.js';
+import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { getLastAssistantMessage } from 'src/services/messages/messages.js';
 import { getMainLoopModel } from 'src/utils/model/model.js';
 import { getInitialSettings } from 'src/services/settings/settings.js';

@@ -4,11 +4,11 @@ import { open, readdir, readFile, realpath, stat } from 'fs/promises'
 import memoize from 'lodash-es/memoize.js'
 import { basename, dirname, join, resolve, sep } from 'path'
 import { hasBinaryExtension, isBinaryContent } from 'src/constants/files.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
-import { execFileNoThrow, execFileNoThrowWithCwd } from 'src/utils/proc/execFileNoThrow.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
+import { execFileNoThrow, execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {
   getCachedBranch,
   getCachedDefaultBranch,
@@ -18,9 +18,9 @@ import {
   isShallowClone as isShallowCloneFs,
   resolveGitDir,
 } from 'src/services/git/gitFilesystem.js'
-import { logError } from 'src/utils/log.js'
-import { memoizeWithLRU } from 'src/utils/data/memoize.js'
-import { whichSync } from 'src/utils/proc/which.js'
+import { logError } from 'src/shared/log.js'
+import { memoizeWithLRU } from 'src/shared/data/memoize.js'
+import { whichSync } from 'src/shared/proc/which.js'
 
 const GIT_ROOT_NOT_FOUND = Symbol('git-root-not-found')
 

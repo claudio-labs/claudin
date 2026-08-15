@@ -27,17 +27,17 @@ import {
   getAnthropicApiKeyWithSource,
   getClaudeAIOAuthTokens,
 } from 'src/services/auth/auth.js'
-import { registerCleanup } from 'src/utils/cleanupRegistry.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { classifyAxiosError } from 'src/utils/errors.js'
-import { safeParseJSON } from 'src/utils/data/json.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
+import { classifyAxiosError } from 'src/shared/errors.js'
+import { safeParseJSON } from 'src/shared/data/json.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
 } from 'src/utils/model/providers.js'
 import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
-import { sleep } from 'src/utils/sleep.js'
+import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 import { getRetryDelay } from 'src/services/api/withRetry.js'

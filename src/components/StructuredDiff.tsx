@@ -5,7 +5,7 @@ import { memo } from 'react';
 import { useSettings } from 'src/hooks/useSettings.js';
 import { Box, NoSelect, RawAnsi, useTheme } from 'src/ink.js';
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
-import sliceAnsi from 'src/utils/text/sliceAnsi.js';
+import sliceAnsi from 'src/shared/text/sliceAnsi.js';
 import { expectColorDiff } from 'src/components/StructuredDiff/colorDiff.js';
 import { StructuredDiffFallback } from 'src/components/StructuredDiff/Fallback.js';
 type Props = {

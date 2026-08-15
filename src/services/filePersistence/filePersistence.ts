@@ -17,9 +17,9 @@ import {
   type FilesApiConfig,
   uploadSessionFiles,
 } from 'src/services/api/filesApi.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { errorMessage } from 'src/utils/errors.js'
-import { logError } from 'src/utils/log.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { errorMessage } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 import { getSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js'
 import {
   findModifiedFiles,

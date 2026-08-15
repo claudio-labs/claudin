@@ -24,7 +24,7 @@ import { getHookEventMetadata, getHooksForMatcher, getMatcherMetadata, getSorted
 import type { IndividualHookConfig } from 'src/services/lifecycleHooks/hooksSettings.js';
 import type { SettingSource } from 'src/services/settings/constants.js';
 import { getInitialSettings, getSettingsForSource } from 'src/services/settings/settings.js';
-import { plural } from 'src/utils/text/stringUtils.js';
+import { plural } from 'src/shared/text/stringUtils.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
 import { SelectEventMode } from 'src/components/hooks/SelectEventMode.js';
 import { SelectHookMode } from 'src/components/hooks/SelectHookMode.js';

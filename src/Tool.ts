@@ -16,7 +16,7 @@ import {
   isCacheableTool,
   setCached,
 } from 'src/services/tools/toolResultCache.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import type { ThinkingConfig } from 'src/services/context/thinking.js'
 
 export type ToolInputJSONSchema = {
@@ -63,7 +63,7 @@ import type {
   ToolProgressData,
   WebSearchProgress,
 } from 'src/types/tools.js'
-import type { FileStateCache } from 'src/utils/fs/fileStateCache.js'
+import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import type { DenialTrackingState } from 'src/services/permissions/denialTracking.js'
 import type { SystemPrompt } from 'src/utils/systemPromptType.js'
 import type { ContentReplacementState } from 'src/services/tools/toolResultStorage.js'
@@ -91,7 +91,7 @@ import type {
 import type { AgentId } from 'src/types/ids.js'
 import type { DeepImmutable } from 'src/types/utils.js'
 import type { AttributionState } from 'src/services/git/commitAttribution.js'
-import type { FileHistoryState } from 'src/utils/fs/fileHistory.js'
+import type { FileHistoryState } from 'src/shared/fs/fileHistory.js'
 import type { Theme, ThemeName } from 'src/utils/theme.js'
 
 export type QueryChainTracking = {

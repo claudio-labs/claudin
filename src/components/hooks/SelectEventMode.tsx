@@ -13,7 +13,7 @@ import * as React from 'react';
 import type { HookEvent } from 'src/entrypoints/agentSdkTypes.js';
 import type { HookEventMetadata } from 'src/services/lifecycleHooks/hooksConfigManager.js';
 import { Box, Link, Text } from 'src/ink.js';
-import { plural } from 'src/utils/text/stringUtils.js';
+import { plural } from 'src/shared/text/stringUtils.js';
 import { Select } from 'src/components/CustomSelect/select.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
 type Props = {

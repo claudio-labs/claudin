@@ -229,14 +229,14 @@ Os demais resultados (`providerProfiles.ts`, `provider.tsx`, scripts) são apena
 
 ### rename-impact
 
-> Sem editar nenhum arquivo: quero renomear `formatNumber` (em src/utils/text/format.ts) para `formatTokenCount` em todo o codebase. Liste cada arquivo:linha onde a mudanca precisa acontecer (incluindo a declaracao, todos os imports e todos os call sites). Output cru: uma linha por ocorrencia.
+> Sem editar nenhum arquivo: quero renomear `formatNumber` (em src/shared/text/format.ts) para `formatTokenCount` em todo o codebase. Liste cada arquivo:linha onde a mudanca precisa acontecer (incluindo a declaracao, todos os imports e todos os call sites). Output cru: uma linha por ocorrencia.
 
 **Variant A run#1:**
 
 ```
 ```
-src/utils/text/format.ts:124 (declaration)
-src/utils/text/format.ts:134 (internal call)
+src/shared/text/format.ts:124 (declaration)
+src/shared/text/format.ts:134 (internal call)
 src/cost-tracker.ts:52 (import)
 src/cost-tracker.ts:232
 src/cost-tracker.ts:233
@@ -279,8 +279,8 @@ src/components/S
 
 ```
 ```
-src/utils/text/format.ts:124
-src/utils/text/format.ts:134
+src/shared/text/format.ts:124
+src/shared/text/format.ts:134
 src/cost-tracker.ts:52
 src/cost-tracker.ts:232
 src/cost-tracker.ts:233
@@ -328,8 +328,8 @@ src/components/
 **Variant B run#1:**
 
 ```
-src/utils/text/format.ts:124 (declaration)
-src/utils/text/format.ts:134 (internal call)
+src/shared/text/format.ts:124 (declaration)
+src/shared/text/format.ts:134 (internal call)
 src/cost-tracker.ts:52 (import)
 src/cost-tracker.ts:232
 src/cost-tracker.ts:233
@@ -374,8 +374,8 @@ sr
 **Variant B run#2:**
 
 ```
-src/utils/text/format.ts:124 — declaration `export function formatNumber(number: number): string {`
-src/utils/text/format.ts:134 — internal call `return formatNumber(count).replace('.0', '')`
+src/shared/text/format.ts:124 — declaration `export function formatNumber(number: number): string {`
+src/shared/text/format.ts:134 — internal call `return formatNumber(count).replace('.0', '')`
 src/cost-tracker.ts:52 — import
 src/cost-tracker.ts:232
 src/cost-tracker.ts:233

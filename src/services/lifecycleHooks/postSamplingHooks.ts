@@ -1,8 +1,8 @@
 import type { QuerySource } from 'src/constants/querySource.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { Message } from 'src/types/message.js'
-import { toError } from 'src/utils/errors.js'
-import { logError } from 'src/utils/log.js'
+import { toError } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 import type { SystemPrompt } from 'src/utils/systemPromptType.js'
 
 // Post-sampling hook - not exposed in settings.json config (yet), only used programmatically

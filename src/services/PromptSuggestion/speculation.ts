@@ -14,22 +14,22 @@ import { commandHasAnyCd } from 'src/tools/BashTool/bashPermissions.js'
 import { checkReadOnlyConstraints } from 'src/tools/BashTool/readOnlyValidation.js'
 import type { SpeculationAcceptMessage } from 'src/types/logs.js'
 import type { Message } from 'src/types/message.js'
-import { createChildAbortController } from 'src/utils/abortController.js'
-import { count } from 'src/utils/data/array.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage } from 'src/utils/errors.js'
+import { createChildAbortController } from 'src/shared/abortController.js'
+import { count } from 'src/shared/data/array.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage } from 'src/shared/errors.js'
 import {
   type FileStateCache,
   mergeReplacingLiveCache,
   READ_FILE_STATE_CACHE_SIZE,
-} from 'src/utils/fs/fileStateCache.js'
+} from 'src/shared/fs/fileStateCache.js'
 import {
   type CacheSafeParams,
   createCacheSafeParams,
   runForkedAgent,
 } from 'src/coordinator/forkedAgent.js'
 import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import type { SetAppState } from 'src/utils/messageQueueManager.js'
 import {
   createUserMessage,

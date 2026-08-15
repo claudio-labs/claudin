@@ -4,8 +4,8 @@ import { mkdtempSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { setCwd } from 'src/utils/proc/Shell.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { setCwd } from 'src/shared/proc/Shell.js'
 import {
   _resetGitWorktreeMutationLocksForTesting,
   attachExistingWorktree,

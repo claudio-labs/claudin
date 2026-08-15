@@ -1,6 +1,6 @@
 import { API_IMAGE_MAX_BASE64_SIZE } from 'src/constants/apiLimits.js'
 import { logEvent } from 'src/services/analytics/index.js'
-import { formatFileSize } from 'src/utils/text/format.js'
+import { formatFileSize } from 'src/shared/text/format.js'
 
 /**
  * Information about an oversized image.

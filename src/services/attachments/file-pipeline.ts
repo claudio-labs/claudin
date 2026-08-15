@@ -7,19 +7,19 @@ import {
   FileReadTool,
   MaxFileReadTokenExceededError,
 } from 'src/tools/FileReadTool/FileReadTool.js'
-import { FileTooLargeError } from 'src/utils/fs/readFileInRange.js'
+import { FileTooLargeError } from 'src/shared/fs/readFileInRange.js'
 import { MAX_LINES_TO_READ } from 'src/tools/FileReadTool/prompt.js'
 import { getDefaultFileReadingLimits } from 'src/tools/FileReadTool/limits.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { getPDFPageCount } from 'src/utils/fs/pdf.js'
-import { isPDFExtension } from 'src/utils/fs/pdfUtils.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { getPDFPageCount } from 'src/shared/fs/pdf.js'
+import { isPDFExtension } from 'src/shared/fs/pdfUtils.js'
 import { PDF_AT_MENTION_INLINE_THRESHOLD } from 'src/constants/apiLimits.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { countCharInString } from 'src/utils/text/stringUtils.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { countCharInString } from 'src/shared/text/stringUtils.js'
 import {
   getFileModificationTimeAsync,
   isFileWithinReadSizeLimit,
-} from 'src/utils/fs/file.js'
+} from 'src/shared/fs/file.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type {
   FileAttachment,

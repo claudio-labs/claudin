@@ -14,7 +14,7 @@ import { getGlobalConfig, getAutoUpdaterDisabledReason, formatAutoUpdaterDisable
 import chalk from 'chalk';
 import { permissionModeTitle, permissionModeFromString, toExternalPermissionMode, isExternalPermissionMode, EXTERNAL_PERMISSION_MODES, PERMISSION_MODES, type ExternalPermissionMode, type PermissionMode } from 'src/services/permissions/PermissionMode.js';
 import { transitionPlanAutoMode } from 'src/services/permissions/permissionSetup.js';
-import { logError } from 'src/utils/log.js';
+import { logError } from 'src/shared/log.js';
 import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/index.js';
 import { isBridgeEnabled } from 'src/bridge/bridgeEnabled.js';
 import { ThemePicker } from 'src/components/ThemePicker.js';
@@ -39,7 +39,7 @@ import { isSupportedTerminal, hasAccessToIDEExtensionDiffFeature } from 'src/ser
 import { getInitialSettings, getSettingsForSource, updateSettingsForSource } from 'src/services/settings/settings.js';
 import { getUserMsgOptIn, setUserMsgOptIn } from 'src/bootstrap/state.js';
 import { DEFAULT_OUTPUT_STYLE_NAME } from 'src/constants/outputStyles.js';
-import { isEnvTruthy, isRunningOnHomespace } from 'src/utils/envUtils.js';
+import { isEnvTruthy, isRunningOnHomespace } from 'src/shared/envUtils.js';
 import type { LocalJSXCommandContext, CommandResultDisplay } from 'src/commands.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';

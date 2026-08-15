@@ -3,7 +3,7 @@
  * Uses GitHub Copilot's official OAuth app for device authentication.
  */
 
-import { openBrowser } from 'src/utils/browser.js'
+import { openBrowser } from 'src/shared/browser.js'
 
 export const DEFAULT_GITHUB_DEVICE_FLOW_CLIENT_ID = 'Iv1.b507a08c87ecfe98'
 

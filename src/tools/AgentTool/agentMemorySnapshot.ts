@@ -1,9 +1,9 @@
 import { mkdir, readdir, readFile, unlink, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { z } from 'zod/v4'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 import { type AgentMemoryScope, getAgentMemoryDir } from 'src/tools/AgentTool/agentMemory.js'
 

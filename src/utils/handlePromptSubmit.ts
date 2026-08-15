@@ -17,13 +17,13 @@ import {
   type PromptInputMode,
   type QueuedCommand,
 } from 'src/types/textInputTypes.js'
-import { createAbortController } from 'src/utils/abortController.js'
+import { createAbortController } from 'src/shared/abortController.js'
 import type { PastedContent } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import type { EffortValue } from 'src/utils/effort.js'
-import type { FileHistoryState } from 'src/utils/fs/fileHistory.js'
-import { fileHistoryEnabled, fileHistoryMakeSnapshot } from 'src/utils/fs/fileHistory.js'
-import { gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js'
+import type { FileHistoryState } from 'src/shared/fs/fileHistory.js'
+import { fileHistoryEnabled, fileHistoryMakeSnapshot } from 'src/shared/fs/fileHistory.js'
+import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js'
 import { enqueue } from 'src/utils/messageQueueManager.js'
 import { resolveSkillModelOverride } from 'src/utils/model/model.js'
 import { getCurrentLocalJSXGeneration } from 'src/utils/toolJSXStore.js'

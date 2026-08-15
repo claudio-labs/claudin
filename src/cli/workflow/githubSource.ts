@@ -7,8 +7,8 @@
 // falsy/empty value) so the watcher loop never crashes on a transient forge
 // error.
 
-import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
-import { logError } from 'src/utils/log.js'
+import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
+import { logError } from 'src/shared/log.js'
 
 /** An open issue that carries the trigger label. */
 export type TriggerIssue = {

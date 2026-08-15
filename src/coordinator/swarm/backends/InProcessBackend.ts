@@ -4,7 +4,7 @@ import {
   requestTeammateShutdown,
 } from 'src/tasks/InProcessTeammateTask/InProcessTeammateTask.js'
 import { parseAgentId } from 'src/coordinator/agentId.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   createShutdownRequestMessage,

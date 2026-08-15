@@ -8,9 +8,9 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import type { AppState } from 'src/state/AppState.js'
 import type { AssistantMessage } from 'src/types/message.js'
-import { detectCodeIndexingFromMcpServerName } from 'src/utils/fs/codeIndexing.js'
-import { TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/utils/errors.js'
-import { logMCPDebug, logMCPError } from 'src/utils/log.js'
+import { detectCodeIndexingFromMcpServerName } from 'src/shared/fs/codeIndexing.js'
+import { TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/shared/errors.js'
+import { logMCPDebug, logMCPError } from 'src/shared/log.js'
 import type { MCPToolResult } from 'src/services/mcp/mcpValidation.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import {

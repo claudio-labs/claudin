@@ -1,10 +1,10 @@
 import React, { PureComponent, type ReactNode } from 'react';
 import { updateLastInteractionTime } from 'src/bootstrap/state.js';
 import { stopCapturingEarlyInput } from 'src/utils/earlyInput.js';
-import { isEnvTruthy } from 'src/utils/envUtils.js';
+import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { isMouseClicksDisabled } from 'src/utils/fullscreen.js';
-import { logError } from 'src/utils/log.js';
-import { logForDebugging } from 'src/utils/debug.js';
+import { logError } from 'src/shared/log.js';
+import { logForDebugging } from 'src/shared/debug.js';
 import { EventEmitter } from 'src/ink/events/emitter.js';
 import { InputEvent } from 'src/ink/events/input-event.js';
 import { TerminalFocusEvent } from 'src/ink/events/terminal-focus-event.js';

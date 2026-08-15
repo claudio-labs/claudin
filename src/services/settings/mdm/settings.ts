@@ -19,11 +19,11 @@
  */
 
 import { join } from 'path'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
-import { readFileSync } from 'src/utils/fs/fileRead.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { safeParseJSON } from 'src/utils/data/json.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
+import { readFileSync } from 'src/shared/fs/fileRead.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { safeParseJSON } from 'src/shared/data/json.js'
 import { profileCheckpoint } from 'src/utils/startupProfiler.js'
 import {
   getManagedFilePath,

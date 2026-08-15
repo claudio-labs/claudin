@@ -36,7 +36,7 @@
 // attached as thunks that dereference `ctx` lazily. See `runHeadlessStreaming.ts`.
 
 import type { StructuredIO } from 'src/cli/structuredIO.js'
-import type { Stream } from 'src/utils/stream.js'
+import type { Stream } from 'src/shared/stream.js'
 import type { Command } from 'src/commands.js'
 import type { Tools } from 'src/Tool.js'
 import type { Message } from 'src/types/message.js'
@@ -44,7 +44,7 @@ import type { AppState } from 'src/state/AppStateStore.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import type { ThinkingConfig } from 'src/services/context/thinking.js'
-import type { FileStateCache } from 'src/utils/fs/fileStateCache.js'
+import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import type { ReplBridgeHandle } from 'src/bridge/replBridge.js'
 import type { OAuthService } from 'src/services/oauth/index.js'
 import type { PromptVariant } from 'src/services/PromptSuggestion/promptSuggestion.js'

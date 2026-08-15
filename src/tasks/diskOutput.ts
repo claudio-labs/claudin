@@ -9,9 +9,9 @@ import {
 } from 'fs/promises'
 import { join } from 'path'
 import { getSessionId } from 'src/bootstrap/state.js'
-import { getErrnoCode } from 'src/utils/errors.js'
-import { readFileRange, tailFile } from 'src/utils/fs/fsOperations.js'
-import { logError } from 'src/utils/log.js'
+import { getErrnoCode } from 'src/shared/errors.js'
+import { readFileRange, tailFile } from 'src/shared/fs/fsOperations.js'
+import { logError } from 'src/shared/log.js'
 import { getProjectTempDir } from 'src/services/permissions/filesystem.js'
 
 // SECURITY: O_NOFOLLOW prevents following symlinks when opening task output files.

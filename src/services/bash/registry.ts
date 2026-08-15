@@ -1,4 +1,4 @@
-import { memoizeWithLRU } from 'src/utils/data/memoize.js'
+import { memoizeWithLRU } from 'src/shared/data/memoize.js'
 import specs from 'src/services/bash/specs/index.js'
 
 export type CommandSpec = {

@@ -6,10 +6,10 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/grow
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import { get3PModelCapabilityOverride } from 'src/utils/model/modelSupportOverrides.js'
 import { supportsCodexReasoningEffort } from 'src/services/api/providerConfig.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import type { EffortLevel } from 'src/entrypoints/sdk/runtimeTypes.js'
 import { getCurrentProjectConfig, saveCurrentProjectConfig } from 'src/services/config/config.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 
 export type { EffortLevel }
 

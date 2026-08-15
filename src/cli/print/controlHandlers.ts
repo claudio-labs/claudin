@@ -8,7 +8,7 @@ import type { StdoutMessage } from 'src/entrypoints/sdk/controlTypes.js'
 import type { PermissionMode as InternalPermissionMode } from 'src/types/permissions.js'
 import type { ToolPermissionContext } from 'src/Tool.js'
 import type { AppState } from 'src/state/AppStateStore.js'
-import type { Stream } from 'src/utils/stream.js'
+import type { Stream } from 'src/shared/stream.js'
 import {
   ChannelMessageNotificationSchema,
   gateChannelServer,
@@ -26,10 +26,10 @@ import {
   fileHistoryCanRestore,
   fileHistoryEnabled,
   fileHistoryGetDiffStats,
-} from 'src/utils/fs/fileHistory.js'
+} from 'src/shared/fs/fileHistory.js'
 import { parsePluginIdentifier } from 'src/services/plugins/pluginIdentifier.js'
-import { errorMessage } from 'src/utils/errors.js'
-import { logMCPDebug } from 'src/utils/log.js'
+import { errorMessage } from 'src/shared/errors.js'
+import { logMCPDebug } from 'src/shared/log.js'
 import {
   logEvent,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,

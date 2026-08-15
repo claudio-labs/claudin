@@ -23,7 +23,7 @@ import type {
   PluginHookMatcher,
   SkillHookMatcher,
 } from 'src/services/settings/types.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   normalizeLegacyToolName,
   getLegacyToolNames,

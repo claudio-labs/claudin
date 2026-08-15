@@ -6,7 +6,7 @@
  */
 
 import type { AppState } from 'src/state/AppState.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { addFunctionHook } from 'src/services/lifecycleHooks/sessionHooks.js'
 import { applyPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'

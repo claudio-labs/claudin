@@ -2,15 +2,15 @@ import { getDirectConnectServerUrl, getSessionId } from 'src/bootstrap/state.js'
 import { stringWidth } from 'src/ink/stringWidth.js'
 import type { LogOption } from 'src/types/logs.js'
 import { getSubscriptionName, isClaudeAISubscriber } from 'src/services/auth/auth.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { getDisplayPath } from 'src/utils/fs/file.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { getDisplayPath } from 'src/shared/fs/file.js'
 import {
   truncate,
   truncateToWidth,
   truncateToWidthNoEllipsis,
-} from 'src/utils/text/format.js'
+} from 'src/shared/text/format.js'
 import { getStoredChangelogFromMemory, parseChangelog } from 'src/services/install/releaseNotes.js'
-import { gt } from 'src/utils/semver.js'
+import { gt } from 'src/shared/semver.js'
 import { loadMessageLogs } from 'src/services/session/sessionStorage.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
 

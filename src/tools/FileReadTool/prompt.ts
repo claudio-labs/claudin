@@ -1,4 +1,4 @@
-import { isPDFSupported } from 'src/utils/fs/pdfUtils.js'
+import { isPDFSupported } from 'src/shared/fs/pdfUtils.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 
 // Use a string constant for tool names to avoid circular dependencies

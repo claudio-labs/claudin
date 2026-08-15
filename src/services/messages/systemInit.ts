@@ -12,7 +12,7 @@ import {
   LEGACY_AGENT_TOOL_NAME,
 } from 'src/tools/AgentTool/constants.js'
 import { getAnthropicApiKeyWithSource } from 'src/services/auth/auth.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import { getFastModeState } from 'src/utils/fastMode.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
 

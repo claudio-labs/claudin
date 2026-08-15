@@ -69,11 +69,11 @@ import type { StatsStore } from 'src/context/stats.js';
 const getRenderAndRun = async () =>
   (await import('src/interactiveHelpers.js')).renderAndRun;
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js';
+import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js';
 import type { FpsMetrics } from 'src/utils/fpsTracker.js';
 // Plugin startup checks are now handled non-blockingly in REPL.tsx
 
-import { getCwd } from 'src/utils/fs/cwd.js';
+import { getCwd } from 'src/shared/fs/cwd.js';
 
 // Action-handler-only imports: these are needed after commander parse and action
 // dispatch, not during module evaluation. Lazy-loading them defers their
@@ -93,7 +93,7 @@ const getGlobExclusionsForPluginCacheFn = () => require('src/services/plugins/or
 const getProcessSessionStartHooks = () => require('src/services/session/sessionStart.js').processSessionStartHooks as typeof import('src/services/session/sessionStart.js').processSessionStartHooks
 const getProcessSetupHooks = () => require('src/services/session/sessionStart.js').processSetupHooks as typeof import('src/services/session/sessionStart.js').processSetupHooks
 const getSaveMode = () => require('src/services/session/sessionStorage.js').saveMode as typeof import('src/services/session/sessionStorage.js').saveMode
-const getGracefulShutdownSync = () => require('src/utils/proc/gracefulShutdown.js').gracefulShutdownSync as typeof import('src/utils/proc/gracefulShutdown.js').gracefulShutdownSync
+const getGracefulShutdownSync = () => require('src/shared/proc/gracefulShutdown.js').gracefulShutdownSync as typeof import('src/shared/proc/gracefulShutdown.js').gracefulShutdownSync
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 /* eslint-disable @typescript-eslint/no-require-imports */

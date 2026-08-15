@@ -29,22 +29,22 @@ import {
 } from 'src/utils/messageQueueManager.js'
 import { notifyCommandLifecycle } from 'src/utils/commandLifecycle.js'
 import { notifySessionStateChanged } from 'src/services/session/sessionState.js'
-import { getInMemoryErrors, logError } from 'src/utils/log.js'
+import { getInMemoryErrors, logError } from 'src/shared/log.js'
 import { EMPTY_USAGE } from 'src/services/api/logging.js'
 import { logEvent } from 'src/services/analytics/index.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { mergeFileStateCaches } from 'src/utils/fs/fileStateCache.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { mergeFileStateCaches } from 'src/shared/fs/fileStateCache.js'
 import { installLiveReadFileCache } from 'src/cli/print/readFileCacheHandover.js'
 import { executeFilePersistence } from 'src/services/filePersistence/filePersistence.js'
 import { finalizePendingAsyncHooks } from 'src/services/lifecycleHooks/AsyncHookRegistry.js'
 import {
   gracefulShutdownSync,
   isShuttingDown,
-} from 'src/utils/proc/gracefulShutdown.js'
+} from 'src/shared/proc/gracefulShutdown.js'
 import type {
   SDKUserMessageReplay,
 } from 'src/entrypoints/agentSdkTypes.js'
-import { createAbortController } from 'src/utils/abortController.js'
+import { createAbortController } from 'src/shared/abortController.js'
 import { TEAMMATE_MESSAGE_TAG } from 'src/constants/xml.js'
 import {
   tryGenerateSuggestion,
@@ -78,9 +78,9 @@ import { unassignTeammateTasks } from 'src/tasks/tasks.js'
 import { getRunningTasks } from 'src/tasks/framework.js'
 import { isBackgroundTask } from 'src/tasks/types.js'
 import { drainSdkEvents } from 'src/utils/sdkEventQueue.js'
-import { errorMessage, toError } from 'src/utils/errors.js'
-import { sleep } from 'src/utils/sleep.js'
-import { isEnvDefinedFalsy } from 'src/utils/envUtils.js'
+import { errorMessage, toError } from 'src/shared/errors.js'
+import { sleep } from 'src/shared/sleep.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { reregisterChannelHandlerAfterReconnect } from 'src/cli/print/controlHandlers.js'
 import { canBatchWith, joinPromptValues } from 'src/cli/print/promptBatching.js'
 import { proactiveModule } from 'src/cli/print/headlessOptionalModules.js'

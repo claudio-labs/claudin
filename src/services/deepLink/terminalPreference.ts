@@ -7,7 +7,7 @@
  */
 
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 
 /**
  * Map TERM_PROGRAM env var values (lowercased) to the `app` name used by

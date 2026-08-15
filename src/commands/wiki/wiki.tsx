@@ -7,7 +7,7 @@ import type {
   LocalJSXCommandCall,
   LocalJSXCommandOnDone,
 } from 'src/types/command.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 
 function renderHelp(): string {
   return `Usage: /wiki [init|status|ingest <path>]

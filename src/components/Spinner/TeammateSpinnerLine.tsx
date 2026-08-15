@@ -10,7 +10,7 @@ import { stringWidth } from 'src/ink/stringWidth.js';
 import { Box, Text } from 'src/ink.js';
 import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js';
 import { summarizeRecentActivities } from 'src/services/tools/collapseReadSearch.js';
-import { formatDuration, formatNumber, truncateToWidth } from 'src/utils/text/format.js';
+import { formatDuration, formatNumber, truncateToWidth } from 'src/shared/text/format.js';
 import { toInkColor } from 'src/utils/ink.js';
 import { TEAMMATE_SELECT_HINT } from 'src/components/Spinner/teammateSelectHint.js';
 type Props = {

@@ -7,9 +7,9 @@ import { getRelativeMemoryPath } from 'src/components/memory/MemoryUpdateNotific
 import { Box, Link, Text } from 'src/ink.js';
 import type { LocalJSXCommandCall } from 'src/types/command.js';
 import { clearMemoryFileCaches, getMemoryFiles } from 'src/services/instructions/claudemd.js';
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js';
-import { getErrnoCode } from 'src/utils/errors.js';
-import { logError } from 'src/utils/log.js';
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js';
+import { getErrnoCode } from 'src/shared/errors.js';
+import { logError } from 'src/shared/log.js';
 import { editFileInEditor } from 'src/utils/promptEditor.js';
 import { parseMemorySubcommand, runMemoryTidy } from 'src/commands/memory/tidy.js';
 function MemoryCommand({

@@ -11,7 +11,7 @@ const realPolicyLimits = { ...(await import('src/services/policyLimits/index.js'
 const realTeamHelpers = { ...(await import('src/coordinator/swarm/teamHelpers.js')) }
 const realReplBridgeHandle = { ...(await import('src/bridge/replBridgeHandle.js')) }
 const realAgentTool = { ...(await import('src/tools/AgentTool/AgentTool.js')) }
-const realEnvUtils = { ...(await import('src/utils/envUtils.js')) }
+const realEnvUtils = { ...(await import('src/shared/envUtils.js')) }
 
 type HookChainsModule = typeof import('src/services/lifecycleHooks/hookChains.js')
 
@@ -61,7 +61,7 @@ async function importHookChainsHarness(
 
   // Inline the real isEnvTruthy and getClaudinConfigHomeDir to avoid stale
   // captures from other files that may have mocked envUtils.js in the same worker.
-  mock.module('src/utils/envUtils.js', () => ({
+  mock.module('src/shared/envUtils.js', () => ({
     ...realEnvUtils,
     isEnvTruthy: (v: string | boolean | undefined) => {
       if (!v) return false
@@ -381,8 +381,8 @@ afterAll(() => {
   mock.module('src/coordinator/teammate.js', () => realTeammate)
   mock.module('src/coordinator/teammateMailbox.js', () => realTeammateMailbox)
   mock.module('src/coordinator/teammateMailbox.js', () => realTeammateMailbox)
-  mock.module('src/utils/envUtils.js', () => realEnvUtils)
-  mock.module('src/utils/envUtils.js', () => realEnvUtils)
+  mock.module('src/shared/envUtils.js', () => realEnvUtils)
+  mock.module('src/shared/envUtils.js', () => realEnvUtils)
   mock.module('src/services/analytics/index.js', () => realAnalyticsIndex)
   mock.module('src/services/analytics/index.js', () => realAnalyticsIndex)
   mock.module('src/services/telemetry/events.js', () => realTelemetryEvents)

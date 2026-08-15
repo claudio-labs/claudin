@@ -18,7 +18,7 @@
  * use (terminalLauncher.ts) — that escaping is the injection boundary.
  */
 
-import { partiallySanitizeUnicode } from 'src/utils/data/sanitization.js'
+import { partiallySanitizeUnicode } from 'src/shared/data/sanitization.js'
 
 export const DEEP_LINK_PROTOCOL = 'claude-cli'
 

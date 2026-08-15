@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { getIsRemoteMode } from 'src/bootstrap/state.js';
 import { useNotifications } from 'src/context/notifications.js';
 import { Text } from 'src/ink.js';
-import { logForDebugging } from 'src/utils/debug.js';
+import { logForDebugging } from 'src/shared/debug.js';
 import { onPluginsAutoUpdated } from 'src/services/plugins/pluginAutoupdate.js';
 
 /**

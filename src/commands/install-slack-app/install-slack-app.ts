@@ -1,6 +1,6 @@
 import type { LocalCommandResult } from 'src/commands.js'
 import { logEvent } from 'src/services/analytics/index.js'
-import { openBrowser } from 'src/utils/browser.js'
+import { openBrowser } from 'src/shared/browser.js'
 import { saveGlobalConfig } from 'src/services/config/config.js'
 
 const SLACK_APP_URL = 'https://slack.com/marketplace/A08SF47R6P4-claude'

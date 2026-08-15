@@ -11,7 +11,7 @@
 
 import { isTerminalTaskStatus, type SetAppState, type Task, type TaskStateBase } from 'src/Task.js';
 import type { Message } from 'src/types/message.js';
-import { logForDebugging } from 'src/utils/debug.js';
+import { logForDebugging } from 'src/shared/debug.js';
 import { createUserMessage } from 'src/services/messages/messages.js';
 import { killInProcessTeammate } from 'src/coordinator/swarm/spawnInProcess.js';
 import { updateTaskState } from 'src/tasks/framework.js';

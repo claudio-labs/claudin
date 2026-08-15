@@ -10,7 +10,7 @@
 import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
 import type { Message } from 'src/types/message.js'
 import { getContextWindowForModel } from 'src/services/context/context.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { createUserMessage } from 'src/services/messages/messages.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 

@@ -22,8 +22,8 @@ import {
   VALID_UPDATE_SCOPES,
 } from 'src/services/plugins/pluginCliCommands.js'
 import { getPluginErrorMessage } from 'src/types/plugin.js'
-import { errorMessage } from 'src/utils/errors.js'
-import { logError } from 'src/utils/log.js'
+import { errorMessage } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 import { clearAllCaches } from 'src/services/plugins/cacheUtils.js'
 import { getInstallCounts } from 'src/services/plugins/installCounts.js'
 import {
@@ -56,7 +56,7 @@ import {
   validatePluginContents,
 } from 'src/services/plugins/validatePlugin.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { plural } from 'src/utils/text/stringUtils.js'
+import { plural } from 'src/shared/text/stringUtils.js'
 import { cliError, cliOk } from 'src/cli/exit.js'
 
 // Re-export for main.tsx to reference in option definitions

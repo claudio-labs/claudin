@@ -35,17 +35,17 @@ import {
   countToolDefinitionTokens,
   TOOL_TOKEN_COUNT_OVERHEAD,
 } from 'src/services/context/analyzeContext.js'
-import { count } from 'src/utils/data/array.js'
+import { count } from 'src/shared/data/array.js'
 import { getMergedBetas } from 'src/services/api/betas.js'
 import { getContextWindowForModel } from 'src/services/context/context.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
 } from 'src/utils/model/providers.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { zodToJsonSchema } from 'src/utils/data/zodToJsonSchema.js'
+import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 
 /**
  * Default percentage of context window at which to auto-enable tool search.

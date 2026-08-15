@@ -4,9 +4,9 @@ import { join } from 'path'
 import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 
 import { getEmptyToolPermissionContext, type ToolUseContext } from 'src/Tool.js'
-import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
-import { FileStateCache } from 'src/utils/fs/fileStateCache.js'
-import { setOriginalFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
+import { FileStateCache } from 'src/shared/fs/fileStateCache.js'
+import { setOriginalFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {
   checkRenamePermissions,
   type RenameInput,

@@ -11,7 +11,7 @@ afterAll(() => {
   mock.module('src/services/auth/auth.js', () => realAuth)
   mock.module('src/services/context/thinking.js', () => realThinking)
   mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
-  mock.module('./model/providers.js', () => realProviders)
+  mock.module('src/utils/model/providers.js', () => realProviders)
 })
 
 async function importFreshEffortModule(options: {
@@ -41,7 +41,7 @@ async function importFreshEffortModule(options: {
       enabled: options.greyStep2Enabled ?? false,
     }),
   }))
-  mock.module('./model/providers.js', () => ({
+  mock.module('src/utils/model/providers.js', () => ({
     getAPIProvider: () => options.provider ?? 'firstParty',
     isFirstPartyAnthropicBaseUrl: () => true,
   }))

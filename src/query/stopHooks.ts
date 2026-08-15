@@ -17,8 +17,8 @@ import type {
   ToolUseSummaryMessage,
 } from 'src/types/message.js'
 import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage } from 'src/utils/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage } from 'src/shared/errors.js'
 import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
 import {
   executeStopHooks,
@@ -56,7 +56,7 @@ import {
 } from 'src/services/goal/goal.js'
 import { executeAutoDream } from 'src/services/autoDream/autoDream.js'
 import { executePromptSuggestion } from 'src/services/PromptSuggestion/promptSuggestion.js'
-import { isBareMode, isEnvDefinedFalsy } from 'src/utils/envUtils.js'
+import { isBareMode, isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import {
   createCacheSafeParams,
   saveCacheSafeParams,

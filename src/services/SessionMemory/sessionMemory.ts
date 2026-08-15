@@ -17,13 +17,13 @@ import {
   type Output as FileReadToolOutput,
 } from 'src/tools/FileReadTool/FileReadTool.js'
 import type { Message } from 'src/types/message.js'
-import { count } from 'src/utils/data/array.js'
+import { count } from 'src/shared/data/array.js'
 import {
   createCacheSafeParams,
   createSubagentContext,
   runForkedAgent,
 } from 'src/coordinator/forkedAgent.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {
   type REPLHookContext,
   registerPostSamplingHook,
@@ -36,7 +36,7 @@ import {
   getSessionMemoryDir,
   getSessionMemoryPath,
 } from 'src/services/permissions/filesystem.js'
-import { sequential } from 'src/utils/sequential.js'
+import { sequential } from 'src/shared/sequential.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
 import { getTokenUsage, tokenCountWithEstimation } from 'src/services/context/tokens.js'
 import { logEvent } from 'src/services/analytics/index.js'
@@ -67,7 +67,7 @@ import {
 // These functions return cached values from disk immediately without blocking
 // on GrowthBook initialization. Values may be stale but are updated in background.
 
-import { errorMessage, getErrnoCode } from 'src/utils/errors.js'
+import { errorMessage, getErrnoCode } from 'src/shared/errors.js'
 import {
   getDynamicConfig_CACHED_MAY_BE_STALE,
   getFeatureValue_CACHED_MAY_BE_STALE,

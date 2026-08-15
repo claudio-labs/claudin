@@ -14,7 +14,7 @@ import { SYNTHETIC_OUTPUT_TOOL_NAME } from 'src/tools/SyntheticOutputTool/Synthe
 import { TASK_STOP_TOOL_NAME } from 'src/tools/TaskStopTool/prompt.js'
 import { TEAM_CREATE_TOOL_NAME } from 'src/tools/TeamCreateTool/constants.js'
 import { TEAM_DELETE_TOOL_NAME } from 'src/tools/TeamDeleteTool/constants.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 
 // Checks the same gate as isScratchpadEnabled() in
 // utils/permissions/filesystem.ts. Duplicated here because importing

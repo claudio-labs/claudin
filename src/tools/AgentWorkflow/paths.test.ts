@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { existsSync, mkdtempSync, rmSync, statSync, symlinkSync } from 'fs'
 import { tmpdir } from 'os'
 import { join, sep } from 'path'
-import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
+import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 
 // paths.ts reports gitignore additions via src/services/git/gitignore.js; mock it
 // at the module boundary so the real implementation never appends to the

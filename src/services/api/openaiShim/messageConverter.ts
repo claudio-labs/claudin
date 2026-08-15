@@ -17,7 +17,7 @@
  *    coalescing pass so OpenAI/vLLM/Ollama see strict role alternation.
  */
 
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { isGeminiMode } from 'src/services/api/openaiShim/providerModes.js'
 import type { OpenAIMessage } from 'src/services/api/openaiShim/types.js'
 

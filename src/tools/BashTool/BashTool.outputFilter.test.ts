@@ -18,7 +18,7 @@
 
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { getGlobalConfig, resetGlobalConfigForTests, saveGlobalConfig } from 'src/services/config/config.js'
-import type { ExecResult } from 'src/utils/proc/ShellCommand.js'
+import type { ExecResult } from 'src/shared/proc/ShellCommand.js'
 import {
   applyBashOutputFilter,
   type BashToolInput,

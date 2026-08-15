@@ -1,5 +1,5 @@
-import { logForDebugging } from 'src/utils/debug.js'
-import { gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js'
 
 /**
  * Creates an idle timeout manager for SDK mode.

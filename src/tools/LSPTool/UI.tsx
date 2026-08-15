@@ -5,7 +5,7 @@ import { CtrlOToExpand } from 'src/components/CtrlOToExpand.js';
 import { FallbackToolUseErrorMessage } from 'src/components/FallbackToolUseErrorMessage.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { Box, Text } from 'src/ink.js';
-import { getDisplayPath } from 'src/utils/fs/file.js';
+import { getDisplayPath } from 'src/shared/fs/file.js';
 import { extractTag } from 'src/services/messages/messages.js';
 import type { Input, Output } from 'src/tools/LSPTool/LSPTool.js';
 import { getSymbolAtPosition } from 'src/tools/LSPTool/symbolContext.js';

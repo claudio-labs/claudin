@@ -5,7 +5,7 @@ import { Box, Text, useInput } from 'src/ink.js';
 import { type AppState, useAppState } from 'src/state/AppState.js';
 import type { Question, QuestionOption } from 'src/tools/AskUserQuestionTool/AskUserQuestionTool.js';
 import type { PastedContent } from 'src/services/config/config.js';
-import { getExternalEditor } from 'src/utils/editor.js';
+import { getExternalEditor } from 'src/shared/editor.js';
 import { toIDEDisplayName } from 'src/services/ide/ide.js';
 import type { ImageDimensions } from 'src/utils/imageResizer.js';
 import { editPromptInEditor } from 'src/utils/promptEditor.js';

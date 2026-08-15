@@ -13,8 +13,8 @@ const GREP_PASSTHROUGH =
   /(?:^|\s)(?:-c|--count|-l|--files-with-matches|-L|--files-without-match|--json|--only-matching|-o)\b/
 
 // Absolute-path collapser: capture the last three path segments and keep them.
-//   /home/user/projects/repo/src/utils/errors.ts:42:foo
-// → src/utils/errors.ts:42:foo
+//   /home/user/projects/repo/src/shared/errors.ts:42:foo
+// → src/shared/errors.ts:42:foo
 //
 // The regex is anchored at line start, requires at least four path segments
 // before the final one, and stops at the first `:` (grep/rg's file:line separator)

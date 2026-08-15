@@ -1,7 +1,7 @@
 import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
 import type { Command } from 'src/commands.js'
 import { isOverageProvisioningAllowed } from 'src/services/auth/auth.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 
 function isExtraUsageAllowed(): boolean {
   if (isEnvTruthy(process.env.DISABLE_EXTRA_USAGE_COMMAND)) {

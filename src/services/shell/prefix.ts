@@ -16,7 +16,7 @@ import {
 } from 'src/services/analytics/index.js'
 import { queryHaiku } from 'src/services/api/claude.js'
 import { startsWithApiErrorPrefix } from 'src/services/api/errors.js'
-import { memoizeWithLRU } from 'src/utils/data/memoize.js'
+import { memoizeWithLRU } from 'src/shared/data/memoize.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
 

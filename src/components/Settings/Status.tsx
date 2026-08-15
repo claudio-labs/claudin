@@ -7,7 +7,7 @@ import type { LocalJSXCommandContext } from 'src/commands.js';
 import { useIsInsideModal } from 'src/context/modalContext.js';
 import { Box, Text, useTheme } from 'src/ink.js';
 import { type AppState, useAppState } from 'src/state/AppState.js';
-import { getCwd } from 'src/utils/fs/cwd.js';
+import { getCwd } from 'src/shared/fs/cwd.js';
 import { getCurrentSessionTitle } from 'src/services/session/sessionStorage.js';
 import { buildAccountProperties, buildAPIProviderProperties, buildIDEProperties, buildInstallationDiagnostics, buildInstallationHealthDiagnostics, buildMcpProperties, buildMemoryDiagnostics, buildSandboxProperties, buildSettingSourcesProperties, type Diagnostic, getModelDisplayLabel, type Property } from 'src/components/status.js';
 import type { ThemeName } from 'src/utils/theme.js';

@@ -5,7 +5,7 @@ import {
 import { z } from 'zod/v4'
 import { ensureConnectedClient } from 'src/services/mcp/client.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   getBinaryBlobSavedMessage,
   persistBinaryContent,

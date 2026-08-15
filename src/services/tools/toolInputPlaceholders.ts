@@ -1,5 +1,5 @@
-import { logError } from 'src/utils/log.js'
-import { zodToJsonSchema } from 'src/utils/data/zodToJsonSchema.js'
+import { logError } from 'src/shared/log.js'
+import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 
 /**
  * Drops the placeholder values a strict-schema provider forces the model to

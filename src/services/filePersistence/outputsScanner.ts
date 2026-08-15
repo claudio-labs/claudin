@@ -10,7 +10,7 @@
 import * as fs from 'fs/promises'
 import type { Dirent } from 'fs'
 import * as path from 'path'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import type { EnvironmentKind } from 'src/services/teleport/environments.js'
 import type { TurnStartTime } from 'src/services/filePersistence/types.js'
 

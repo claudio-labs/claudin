@@ -1,9 +1,9 @@
 import { promises as fsp } from 'fs'
 import * as path from 'path'
 import { pathToFileURL } from 'url'
-import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage } from 'src/utils/errors.js'
-import { logError } from 'src/utils/log.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 import { getAllLspServers } from 'src/services/lsp/config.js'
 import {
   createLSPServerInstance,

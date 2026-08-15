@@ -16,7 +16,7 @@ import { getAPIMetadata } from 'src/services/api/claude.js'
 import { getAnthropicClient } from 'src/services/api/client.js'
 import { getCachedAnthropicClient } from 'src/services/api/clientCache.js'
 import { getModelBetas, modelSupportsStructuredOutputs } from 'src/services/api/betas.js'
-import { computeFingerprint } from 'src/utils/data/fingerprint.js'
+import { computeFingerprint } from 'src/shared/data/fingerprint.js'
 import {
   modelRejectsSamplingParams,
   normalizeModelStringForAPI,

@@ -2,10 +2,10 @@ import { c as _c } from "react-compiler-runtime";
 import { extname } from 'path';
 import React, { Suspense, use, useMemo } from 'react';
 import { Ansi, Text } from 'src/ink.js';
-import { getCliHighlightPromise, type CliHighlight } from 'src/utils/text/cliHighlight.js';
-import { logForDebugging } from 'src/utils/debug.js';
-import { convertLeadingTabsToSpaces } from 'src/utils/fs/file.js';
-import { hashPair } from 'src/utils/data/hash.js';
+import { getCliHighlightPromise, type CliHighlight } from 'src/shared/text/cliHighlight.js';
+import { logForDebugging } from 'src/shared/debug.js';
+import { convertLeadingTabsToSpaces } from 'src/shared/fs/file.js';
+import { hashPair } from 'src/shared/data/hash.js';
 type Props = {
   code: string;
   filePath: string;

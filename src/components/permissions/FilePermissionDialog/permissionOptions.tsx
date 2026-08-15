@@ -4,8 +4,8 @@ import { getOriginalCwd } from 'src/bootstrap/state.js';
 import { Text } from 'src/ink.js';
 import { getShortcutDisplay } from 'src/keybindings/shortcutFormat.js';
 import type { ToolPermissionContext } from 'src/Tool.js';
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js';
-import { expandPath, getDirectoryForPath } from 'src/utils/fs/path.js';
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js';
+import { expandPath, getDirectoryForPath } from 'src/shared/fs/path.js';
 import { normalizeCaseForComparison, pathInAllowedWorkingPath } from 'src/services/permissions/filesystem.js';
 import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
 /**

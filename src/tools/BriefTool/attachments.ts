@@ -10,11 +10,11 @@ import { stat } from 'fs/promises'
 
 import type { ValidationResult } from 'src/Tool.js'
 
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { getErrnoCode } from 'src/utils/errors.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { getErrnoCode } from 'src/shared/errors.js'
 import { IMAGE_EXTENSION_REGEX } from 'src/utils/imagePaste.js'
-import { expandPath } from 'src/utils/fs/path.js'
+import { expandPath } from 'src/shared/fs/path.js'
 
 export type ResolvedAttachment = {
   path: string

@@ -24,7 +24,7 @@ const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 
 // Representative files spanning size + density. All TS (codebase is TS-only).
 const FILES = [
-  'src/utils/fs/fileRead.ts', // ~102 LoC, tiny
+  'src/shared/fs/fileRead.ts', // ~102 LoC, tiny
   'src/tools/GrepTool/GrepTool.ts', // ~700 LoC, medium
   'src/tools/FileReadTool/FileReadTool.ts', // ~1300 LoC, large
   'src/services/config/config.ts', // ~2059 LoC, very large

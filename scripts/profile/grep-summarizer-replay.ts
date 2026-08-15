@@ -33,7 +33,7 @@ import {
   pivotWins,
   shouldAutoPivot,
 } from '../../src/tools/GrepTool/autoPivot.js'
-import { getCwd } from '../../src/utils/fs/cwd.js'
+import { getCwd } from '../../src/shared/fs/cwd.js'
 
 type Sample = { input: Record<string, unknown>; text: string }
 

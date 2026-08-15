@@ -27,17 +27,17 @@ import {
   type ToolUseContext,
 } from 'src/Tool.js'
 import { getTools } from 'src/tools.js'
-import { createAbortController } from 'src/utils/abortController.js'
-import { createFileStateCacheWithSizeLimit } from 'src/utils/fs/fileStateCache.js'
-import { logError } from 'src/utils/log.js'
+import { createAbortController } from 'src/shared/abortController.js'
+import { createFileStateCacheWithSizeLimit } from 'src/shared/fs/fileStateCache.js'
+import { logError } from 'src/shared/log.js'
 import { createAssistantMessage } from 'src/services/messages/messages.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
 import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js'
-import { setCwd } from 'src/utils/proc/Shell.js'
+import { setCwd } from 'src/shared/proc/Shell.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { getErrorParts } from 'src/services/tools/toolErrors.js'
 import { stripPlaceholderOptionalFields } from 'src/services/tools/toolInputPlaceholders.js'
-import { zodToJsonSchema } from 'src/utils/data/zodToJsonSchema.js'
+import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 
 type ToolInput = Tool['inputSchema']
 type ToolOutput = Tool['outputSchema']

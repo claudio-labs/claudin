@@ -8,10 +8,10 @@ import { registerAsyncAgent } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
 import { assembleToolPool } from 'src/tools.js'
 import { asAgentId } from 'src/types/ids.js'
 import { runWithAgentContext } from 'src/coordinator/agentContext.js'
-import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
+import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 import { getAgentPlanSlug } from 'src/services/planDossier.js'
 import { getPlan, getPlanSlug } from 'src/utils/plans.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   createUserMessage,
   filterOrphanedThinkingOnlyMessages,

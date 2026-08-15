@@ -7,9 +7,9 @@ import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEve
 import type { AppState } from 'src/state/AppStateStore.js';
 import { checkRemoteAgentEligibility, formatPreconditionError, RemoteAgentTask, type RemoteAgentTaskState, registerRemoteAgentTask } from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import type { LocalJSXCommandCall } from 'src/types/command.js';
-import { logForDebugging } from 'src/utils/debug.js';
-import { errorMessage } from 'src/utils/errors.js';
-import { logError } from 'src/utils/log.js';
+import { logForDebugging } from 'src/shared/debug.js';
+import { errorMessage } from 'src/shared/errors.js';
+import { logError } from 'src/shared/log.js';
 import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js';
 import { ALL_MODEL_CONFIGS } from 'src/utils/model/configs.js';
 import { updateTaskState } from 'src/tasks/framework.js';

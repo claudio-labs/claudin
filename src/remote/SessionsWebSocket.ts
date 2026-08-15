@@ -7,9 +7,9 @@ import type {
   SDKControlRequestInner,
   SDKControlResponse,
 } from 'src/entrypoints/sdk/controlTypes.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage } from 'src/utils/errors.js'
-import { logError } from 'src/utils/log.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 import { getWebSocketTLSOptions } from 'src/services/api/mtls.js'
 import { getWebSocketProxyAgent, getWebSocketProxyUrl } from 'src/services/api/proxy.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'

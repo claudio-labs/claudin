@@ -4,7 +4,7 @@ import React, { type ReactNode, useEffect, useRef, useState } from 'react';
 import { useDeclaredCursor } from 'src/ink/hooks/use-declared-cursor.js';
 import { stringWidth } from 'src/ink/stringWidth.js';
 import { Ansi, Box, Text } from 'src/ink.js';
-import { count } from 'src/utils/data/array.js';
+import { count } from 'src/shared/data/array.js';
 import type { PastedContent } from 'src/services/config/config.js';
 import type { ImageDimensions } from 'src/utils/imageResizer.js';
 import { SelectInputOption } from 'src/components/CustomSelect/select-input-option.js';

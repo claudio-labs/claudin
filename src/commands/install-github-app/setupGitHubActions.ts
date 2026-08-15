@@ -9,9 +9,9 @@ import {
   PR_TITLE,
   WORKFLOW_CONTENT,
 } from 'src/constants/github-app.js'
-import { openBrowser } from 'src/utils/browser.js'
-import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
-import { logError } from 'src/utils/log.js'
+import { openBrowser } from 'src/shared/browser.js'
+import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
+import { logError } from 'src/shared/log.js'
 import type { Workflow } from 'src/commands/install-github-app/types.js'
 
 async function createWorkflowFile(

@@ -1,6 +1,6 @@
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import { getRateLimitTier, getSubscriptionType } from 'src/services/auth/auth.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 
 export function getPlanModeV2AgentCount(): number {
   // Environment variable override takes precedence

@@ -15,7 +15,7 @@
 import { stat } from 'fs/promises'
 import { homedir } from 'os'
 import { join, sep } from 'path'
-import { formatNumber, formatRelativeTimeAgo } from 'src/utils/text/format.js'
+import { formatNumber, formatRelativeTimeAgo } from 'src/shared/text/format.js'
 import { getCommonDir } from 'src/services/git/gitFilesystem.js'
 import { getGitDir } from 'src/services/git/git.js'
 

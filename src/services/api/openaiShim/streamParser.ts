@@ -21,7 +21,7 @@
  * stream loop and its tool-argument finalization path.
  */
 
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   createStreamState,
   processStreamChunk,
@@ -40,7 +40,7 @@ import {
 import {
   getBytesPerTokenForModel,
 } from 'src/services/tokenEstimation.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { makeMessageId } from 'src/services/api/openaiShim/helpers.js'
 import { extractReasoningDelta } from 'src/services/api/openaiShim/reasoningNormalizer.js'
 import type { OpenAIStreamChunk } from 'src/services/api/openaiShim/types.js'

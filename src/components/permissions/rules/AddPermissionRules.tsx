@@ -11,7 +11,7 @@ import { detectUnreachableRules, type UnreachableRule } from 'src/services/permi
 import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
 import { type EditableSettingSource, SOURCES } from 'src/services/settings/constants.js';
 import { getRelativeSettingsFilePathForSource } from 'src/services/settings/settings.js';
-import { plural } from 'src/utils/text/stringUtils.js';
+import { plural } from 'src/shared/text/stringUtils.js';
 import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';
 import { PermissionRuleDescription } from 'src/components/permissions/rules/PermissionRuleDescription.js';

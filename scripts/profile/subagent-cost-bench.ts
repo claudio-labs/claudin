@@ -18,8 +18,8 @@ import { spawnSync } from 'node:child_process'
 import { performance } from 'node:perf_hooks'
 
 const FILES = [
-  'src/utils/errors.ts', 'src/utils/log.ts', 'src/utils/fs/path.ts', 'src/utils/envUtils.ts',
-  'src/utils/proc/Shell.ts', 'src/services/config/config.ts', 'src/bootstrap/state.ts', 'src/Tool.ts',
+  'src/shared/errors.ts', 'src/shared/log.ts', 'src/shared/fs/path.ts', 'src/shared/envUtils.ts',
+  'src/shared/proc/Shell.ts', 'src/services/config/config.ts', 'src/bootstrap/state.ts', 'src/Tool.ts',
   'src/utils/model/model.ts', 'src/services/api/providerModels.ts', 'src/context.ts', 'src/query.ts',
 ]
 const MODEL = 'claude-sonnet-4-6'

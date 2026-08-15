@@ -9,7 +9,7 @@ import { LocalShellTask } from 'src/tasks/LocalShellTask/LocalShellTask.js';
 import { MonitorMcpTask } from 'src/tasks/MonitorMcpTask/MonitorMcpTask.js';
 import { RemoteAgentTask } from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import type { BackgroundTaskState } from 'src/tasks/types.js';
-import { logForDebugging } from 'src/utils/debug.js';
+import { logForDebugging } from 'src/shared/debug.js';
 
 type SetAppState = (updater: (prev: AppState) => AppState) => void;
 

@@ -1,9 +1,9 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { getGlobalConfig } from "src/services/config/config.js";
-import { getClaudinConfigHomeDir } from "src/utils/envUtils.js";
-import { ClaudeError } from "src/utils/errors.js";
-import { logError } from "src/utils/log.js";
+import { getClaudinConfigHomeDir } from "src/shared/envUtils.js";
+import { ClaudeError } from "src/shared/errors.js";
+import { logError } from "src/shared/log.js";
 import { z } from "zod/v4";
 import type { FilterSpec } from "src/outputFilter/Bash/types.js";
 

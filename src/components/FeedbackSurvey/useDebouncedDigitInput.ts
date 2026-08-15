@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { normalizeFullWidthDigits } from 'src/utils/text/stringUtils.js'
+import { normalizeFullWidthDigits } from 'src/shared/text/stringUtils.js'
 
 // Delay before accepting a digit as a response, to prevent accidental
 // submissions when users start messages with numbers (e.g., numbered lists).

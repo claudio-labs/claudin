@@ -12,7 +12,7 @@ import type { Screen } from 'src/screens/REPL.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import { useAppState, useSetAppState } from 'src/state/AppState.js';
-import { count } from 'src/utils/data/array.js';
+import { count } from 'src/shared/data/array.js';
 import { getTerminalPanel } from 'src/utils/terminalPanel.js';
 type Props = {
   screen: Screen;

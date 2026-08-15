@@ -1,5 +1,5 @@
-import { env } from 'src/utils/env.js'
-import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
+import { env } from 'src/shared/env.js'
+import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
 import { TMUX_COMMAND } from 'src/coordinator/swarm/constants.js'
 
 /**

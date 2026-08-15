@@ -1,5 +1,5 @@
 import { afterAll, afterEach, expect, mock, test } from 'bun:test'
-import type { DebugLogLevel } from 'src/utils/debug.js'
+import type { DebugLogLevel } from 'src/shared/debug.js'
 
 /**
  * Stand-in for `logForDebugging`. Declaring the parameters is what gives
@@ -22,7 +22,7 @@ function makeDebugSpy() {
 const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
 
-mock.module('./activeProvider.js', () => ({
+mock.module('src/services/api/activeProvider.js', () => ({
   ...realActiveProviderSnapshot,
   tryGetActiveProvider: () => {
     if (!process.env.OPENAI_BASE_URL && !process.env.OPENAI_API_KEY && !process.env.OPENAI_MODEL) {
@@ -38,7 +38,7 @@ mock.module('./activeProvider.js', () => ({
 }))
 
 afterAll(() => {
-  mock.module('./activeProvider.js', () => realActiveProviderSnapshot)
+  mock.module('src/services/api/activeProvider.js', () => realActiveProviderSnapshot)
 })
 
 const originalFetch = globalThis.fetch
@@ -61,12 +61,12 @@ afterEach(() => {
   restoreEnv('OPENAI_BASE_URL', originalEnv.OPENAI_BASE_URL)
   restoreEnv('OPENAI_API_KEY', originalEnv.OPENAI_API_KEY)
   restoreEnv('OPENAI_MODEL', originalEnv.OPENAI_MODEL)
-  mock.module('src/utils/debug.js', () => ({}))
+  mock.module('src/shared/debug.js', () => ({}))
 })
 
 test('logs classified transport diagnostics with category and code', async () => {
   const debugSpy = makeDebugSpy()
-  mock.module('src/utils/debug.js', () => ({
+  mock.module('src/shared/debug.js', () => ({
     logForDebugging: debugSpy,
   }))
 
@@ -113,7 +113,7 @@ test('logs classified transport diagnostics with category and code', async () =>
 
 test('redacts credentials in transport diagnostic URL logs', async () => {
   const debugSpy = makeDebugSpy()
-  mock.module('src/utils/debug.js', () => ({
+  mock.module('src/shared/debug.js', () => ({
     logForDebugging: debugSpy,
   }))
 
@@ -160,7 +160,7 @@ test('redacts credentials in transport diagnostic URL logs', async () => {
 })
 test('logs self-heal localhost fallback with redacted from/to URLs', async () => {
   const debugSpy = makeDebugSpy()
-  mock.module('src/utils/debug.js', () => ({
+  mock.module('src/shared/debug.js', () => ({
     logForDebugging: debugSpy,
   }))
 
@@ -237,7 +237,7 @@ test('logs self-heal localhost fallback with redacted from/to URLs', async () =>
 
 test('logs self-heal toolless retry for local tool-call incompatibility', async () => {
   const debugSpy = makeDebugSpy()
-  mock.module('src/utils/debug.js', () => ({
+  mock.module('src/shared/debug.js', () => ({
     logForDebugging: debugSpy,
   }))
 

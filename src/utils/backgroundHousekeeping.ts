@@ -14,7 +14,7 @@ const registerProtocolModule = feature('LODESTONE')
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 import { getIsInteractive, getLastInteractionTime } from 'src/bootstrap/state.js'
-import { cleanupOldMessageFilesInBackground } from 'src/utils/cleanup.js'
+import { cleanupOldMessageFilesInBackground } from 'src/shared/cleanup.js'
 import { cleanupOldVersions } from 'src/services/install/index.js'
 import { autoUpdateMarketplacesAndPluginsInBackground } from 'src/services/plugins/pluginAutoupdate.js'
 

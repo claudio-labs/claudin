@@ -8,7 +8,7 @@
  * real git in a real fixture repo.
  */
 import { afterAll, describe, expect, test } from 'bun:test'
-import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
+import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 import {
   cleanupAllRepos,
   git,

@@ -11,20 +11,20 @@ import {
 // Capture real modules before mocking so afterAll can restore them — otherwise
 // the partial fsOperations mock (only `stat`, and reset to return undefined by
 // afterEach) leaks into every later test file that calls getFsImplementation().
-const realPdf = { ...(await import('src/utils/fs/pdf.js')) }
-const realFsOperations = { ...(await import('src/utils/fs/fsOperations.js')) }
+const realPdf = { ...(await import('src/shared/fs/pdf.js')) }
+const realFsOperations = { ...(await import('src/shared/fs/fsOperations.js')) }
 
 const pdfPageCountFake = mock(async (_: string) => null as number | null)
 const fsStatFake = mock(async (_: string) =>
   ({ size: 0, mtimeMs: 0 } as { size: number; mtimeMs: number }),
 )
 
-mock.module('src/utils/fs/pdf.js', () => ({
+mock.module('src/shared/fs/pdf.js', () => ({
   getPDFPageCount: pdfPageCountFake,
   isAvailable: () => false,
 }))
 
-mock.module('src/utils/fs/fsOperations.js', () => ({
+mock.module('src/shared/fs/fsOperations.js', () => ({
   getFsImplementation: () => ({
     stat: fsStatFake,
   }),
@@ -110,8 +110,8 @@ describe('tryGetPDFReference', () => {
 })
 
 afterAll(() => {
-  mock.module('src/utils/fs/pdf.js', () => realPdf)
-  mock.module('src/utils/fs/pdf.js', () => realPdf)
-  mock.module('src/utils/fs/fsOperations.js', () => realFsOperations)
-  mock.module('src/utils/fs/fsOperations.js', () => realFsOperations)
+  mock.module('src/shared/fs/pdf.js', () => realPdf)
+  mock.module('src/shared/fs/pdf.js', () => realPdf)
+  mock.module('src/shared/fs/fsOperations.js', () => realFsOperations)
+  mock.module('src/shared/fs/fsOperations.js', () => realFsOperations)
 })

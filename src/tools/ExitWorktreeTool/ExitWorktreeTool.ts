@@ -9,13 +9,13 @@ import { clearSystemPromptSections } from 'src/constants/systemPromptSections.js
 import { logEvent } from 'src/services/analytics/index.js'
 import type { Tool } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { count } from 'src/utils/data/array.js'
+import { count } from 'src/shared/data/array.js'
 import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
-import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
+import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
 import { updateHooksConfigSnapshot } from 'src/services/lifecycleHooks/hooksConfigSnapshot.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { getPlansDirectory } from 'src/utils/plans.js'
-import { setCwd } from 'src/utils/proc/Shell.js'
+import { setCwd } from 'src/shared/proc/Shell.js'
 import { saveWorktreeState } from 'src/services/session/sessionStorage.js'
 import {
   cleanupWorktree,

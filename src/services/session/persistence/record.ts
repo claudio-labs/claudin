@@ -14,7 +14,7 @@ import type { AgentId } from 'src/types/ids.js'
 import type { AttributionSnapshotMessage } from 'src/types/logs.js'
 import type { Message } from 'src/types/message.js'
 import type { QueueOperationMessage } from 'src/types/messageQueueTypes.js'
-import type { FileHistorySnapshot } from 'src/utils/fs/fileHistory.js'
+import type { FileHistorySnapshot } from 'src/shared/fs/fileHistory.js'
 import { getProject } from 'src/services/session/persistence/project.js'
 import {
   cleanMessagesForLogging,

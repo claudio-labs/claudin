@@ -61,8 +61,8 @@ const PROBES: Probe[] = [
     description: 'Tool type module — what every tool re-exports.',
   },
   {
-    name: 'src/utils/log.ts',
-    importExpr: `await import('./src/utils/log.ts')`,
+    name: 'src/shared/log.ts',
+    importExpr: `await import('./src/shared/log.ts')`,
     description: 'Logger.',
   },
   {

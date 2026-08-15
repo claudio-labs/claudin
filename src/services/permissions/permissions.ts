@@ -13,16 +13,16 @@ import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js'
 import { REPL_TOOL_NAME } from 'src/tools/REPLTool/constants.js'
 import type { AssistantMessage } from 'src/types/message.js'
 import { extractOutputRedirections } from 'src/services/bash/commands.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { AbortError, isSdkApiUserAbortError, toError } from 'src/utils/errors.js'
-import { logError } from 'src/utils/log.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { AbortError, isSdkApiUserAbortError, toError } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 import { getPlanFilePath } from 'src/utils/plans.js'
 import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
 import {
   getSettingSourceDisplayNameLowercase,
   SETTING_SOURCES,
 } from 'src/services/settings/constants.js'
-import { plural } from 'src/utils/text/stringUtils.js'
+import { plural } from 'src/shared/text/stringUtils.js'
 import { permissionModeTitle } from 'src/services/permissions/PermissionMode.js'
 import type {
   PermissionAskDecision,
@@ -81,7 +81,7 @@ import {
   clearClassifierChecking,
   setClassifierChecking,
 } from 'src/utils/classifierApprovals.js'
-import { isInProtectedNamespace } from 'src/utils/envUtils.js'
+import { isInProtectedNamespace } from 'src/shared/envUtils.js'
 import { executePermissionRequestHooks } from 'src/services/lifecycleHooks/hooks.js'
 import {
   AUTO_REJECT_MESSAGE,

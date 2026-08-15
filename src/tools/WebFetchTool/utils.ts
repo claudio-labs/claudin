@@ -1,9 +1,9 @@
 import axios, { type AxiosResponse } from 'axios'
 import { LRUCache } from 'lru-cache'
 import { queryHaiku } from 'src/services/api/claude.js'
-import { AbortError } from 'src/utils/errors.js'
-import { getWebFetchUserAgent } from 'src/utils/http.js'
-import { logError } from 'src/utils/log.js'
+import { AbortError } from 'src/shared/errors.js'
+import { getWebFetchUserAgent } from 'src/shared/http.js'
+import { logError } from 'src/shared/log.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import {
   isBinaryContentType,

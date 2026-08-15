@@ -11,8 +11,8 @@ import type {
   ToolPermissionContext,
   ToolPermissionRulesBySource,
 } from 'src/Tool.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import type { SettingSource } from 'src/services/settings/constants.js'
 import { SETTING_SOURCES } from 'src/services/settings/constants.js'
 import {
@@ -57,10 +57,10 @@ import { getToolsForDefaultPreset, parseToolPreset } from 'src/tools.js'
 import {
   getFsImplementation,
   safeResolvePath,
-} from 'src/utils/fs/fsOperations.js'
+} from 'src/shared/fs/fsOperations.js'
 import { modelSupportsAutoMode } from 'src/services/api/betas.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import {

@@ -68,13 +68,13 @@ function profileFromEnv(env: NodeJS.ProcessEnv): {
   return null
 }
 
-mock.module('./activeProvider.js', () => ({
+mock.module('src/services/api/activeProvider.js', () => ({
   ...realActiveProviderSnapshot,
   tryGetActiveProvider: () => profileFromEnv(process.env),
 }))
 
 afterAll(() => {
-  mock.module('./activeProvider.js', () => realActiveProviderSnapshot)
+  mock.module('src/services/api/activeProvider.js', () => realActiveProviderSnapshot)
 })
 
 const { createOpenAIShimClient } = await import('src/services/api/openaiShim.js')

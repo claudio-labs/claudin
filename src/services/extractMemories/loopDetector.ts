@@ -11,7 +11,7 @@
  * be unit-tested without importing the ink/agent stack.
  */
 
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import {
   CANCEL_MESSAGE,
   INTERRUPT_MESSAGE_FOR_TOOL_USE,

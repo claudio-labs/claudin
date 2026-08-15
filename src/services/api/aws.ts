@@ -1,4 +1,4 @@
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 
 /** AWS short-term credentials format. */
 export type AwsCredentials = {

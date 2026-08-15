@@ -37,15 +37,15 @@ function restoreModelModule(): void {
 
 afterEach(() => {
   restoreModelModule()
-  mock.module('./api/client.js', () => realClient)
-  mock.module('./api/activeProvider.js', () => realActiveProvider)
+  mock.module('src/services/api/client.js', () => realClient)
+  mock.module('src/services/api/activeProvider.js', () => realActiveProvider)
   __resetMemoizedRatiosForTests()
 })
 
 afterAll(() => {
   mock.module('src/utils/model/model.js', () => realModel)
-  mock.module('./api/client.js', () => realClient)
-  mock.module('./api/activeProvider.js', () => realActiveProvider)
+  mock.module('src/services/api/client.js', () => realClient)
+  mock.module('src/services/api/activeProvider.js', () => realActiveProvider)
 })
 
 describe('roughTokenCountEstimation — model-aware', () => {
@@ -185,7 +185,7 @@ describe('countTokensViaHaikuFallback — uses free countTokens, not paid messag
     const createSpy = mock(async () => {
       throw new Error('messages.create must NOT be called for token counting')
     })
-    mock.module('./api/client.js', () => ({
+    mock.module('src/services/api/client.js', () => ({
       getAnthropicClient: async () => ({
         beta: {
           messages: {
@@ -195,7 +195,7 @@ describe('countTokensViaHaikuFallback — uses free countTokens, not paid messag
         },
       }),
     }))
-    mock.module('./api/activeProvider.js', () => ({
+    mock.module('src/services/api/activeProvider.js', () => ({
       ...realActiveProvider,
       tryGetActiveProvider: () => ({ transport: 'anthropic' }),
       getAPIProvider: () => 'anthropic',
@@ -219,7 +219,7 @@ describe('countTokensViaHaikuFallback — client without a counting endpoint', (
       throw new Error('messages.create must NOT be called for token counting')
     })
     // Shim-shaped client: beta.messages exists but has no countTokens method.
-    mock.module('./api/client.js', () => ({
+    mock.module('src/services/api/client.js', () => ({
       getAnthropicClient: async () => ({
         beta: {
           messages: {
@@ -228,7 +228,7 @@ describe('countTokensViaHaikuFallback — client without a counting endpoint', (
         },
       }),
     }))
-    mock.module('./api/activeProvider.js', () => ({
+    mock.module('src/services/api/activeProvider.js', () => ({
       ...realActiveProvider,
       tryGetActiveProvider: () => ({ transport: 'openai_compat' }),
       getAPIProvider: () => 'openai',

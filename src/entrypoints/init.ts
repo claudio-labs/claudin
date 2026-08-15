@@ -19,19 +19,19 @@ import {
 } from 'src/services/remoteManagedSettings/index.js'
 import { preconnectAnthropicApi } from 'src/services/api/apiPreconnect.js'
 import { applyExtraCACertsFromConfig } from 'src/services/api/caCertsConfig.js'
-import { registerCleanup } from 'src/utils/cleanupRegistry.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { enableConfigs, recordFirstStartTime } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { detectCurrentRepository } from 'src/services/git/detectRepository.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
-import { initJetBrainsDetection } from 'src/utils/envDynamic.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { ConfigParseError, errorMessage } from 'src/utils/errors.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
+import { initJetBrainsDetection } from 'src/shared/envDynamic.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { ConfigParseError, errorMessage } from 'src/shared/errors.js'
 // showInvalidConfigDialog is dynamically imported in the error path to avoid loading React at init
 import {
   gracefulShutdownSync,
   setupGracefulShutdown,
-} from 'src/utils/proc/gracefulShutdown.js'
+} from 'src/shared/proc/gracefulShutdown.js'
 import {
   applyConfigEnvironmentVariables,
   applySafeConfigEnvironmentVariables,
@@ -46,7 +46,7 @@ import {
 import { configureGlobalAgents } from 'src/services/api/proxy.js'
 import { isBetaTracingEnabled } from 'src/services/telemetry/betaSessionTracing.js'
 import { getTelemetryAttributes } from 'src/utils/telemetryAttributes.js'
-import { setShellIfWindows } from 'src/utils/fs/windowsPaths.js'
+import { setShellIfWindows } from 'src/shared/fs/windowsPaths.js'
 
 // initialize1PEventLogging is dynamically imported to defer OpenTelemetry sdk-logs/resources
 
@@ -169,7 +169,7 @@ export const init = memoize(async (): Promise<void> => {
           'src/upstreamproxy/upstreamproxy.js'
         )
         const { registerUpstreamProxyEnvFn } = await import(
-          'src/utils/proc/subprocessEnv.js'
+          'src/shared/proc/subprocessEnv.js'
         )
         registerUpstreamProxyEnvFn(getUpstreamProxyEnv)
         await initUpstreamProxy()

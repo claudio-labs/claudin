@@ -20,8 +20,8 @@
  * incapable provider in would deny-loop the session, not just annoy.
  */
 
-import { isAbortError } from 'src/utils/errors.js'
-import { logError } from 'src/utils/log.js'
+import { isAbortError } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 import { sideQuery } from 'src/utils/sideQuery.js'
 import { extractToolUseBlock } from 'src/services/permissions/classifierShared.js'
 import {

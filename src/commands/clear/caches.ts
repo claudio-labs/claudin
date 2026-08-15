@@ -29,7 +29,7 @@ import { clearCommandPrefixCaches } from 'src/services/bash/commands.js'
 import { resetGetMemoryFilesCache } from 'src/services/instructions/claudemd.js'
 import { clearRepositoryCaches } from 'src/services/git/detectRepository.js'
 import { clearResolveGitDirCache } from 'src/services/git/gitFilesystem.js'
-import { fileReadCache } from 'src/utils/fs/fileReadCache.js'
+import { fileReadCache } from 'src/shared/fs/fileReadCache.js'
 import { clearStoredImagePaths } from 'src/utils/imageStore.js'
 import { clearSessionEnvVars } from 'src/services/session/sessionEnvVars.js'
 

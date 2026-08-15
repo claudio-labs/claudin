@@ -17,9 +17,9 @@ import { mkdir, writeFile } from 'fs/promises'
 import { basename, join } from 'path'
 import { z } from 'zod/v4'
 import { getSessionId } from 'src/bootstrap/state.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { getBridgeAccessToken, getBridgeBaseUrl } from 'src/bridge/bridgeConfig.js'
 
 const DOWNLOAD_TIMEOUT_MS = 30_000

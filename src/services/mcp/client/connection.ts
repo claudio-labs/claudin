@@ -11,16 +11,16 @@ import memoize from 'lodash-es/memoize.js'
 import { getOriginalCwd } from 'src/bootstrap/state.js'
 import { PRODUCT_URL } from 'src/constants/product.js'
 import { type Tool } from 'src/Tool.js'
-import { registerCleanup } from 'src/utils/cleanupRegistry.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   errorMessage,
   TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from 'src/utils/errors.js'
+} from 'src/shared/errors.js'
 import { maybeNotifyIDEConnected } from 'src/services/ide/ide.js'
-import { logMCPDebug, logMCPError } from 'src/utils/log.js'
+import { logMCPDebug, logMCPError } from 'src/shared/log.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { sleep } from 'src/utils/sleep.js'
+import { sleep } from 'src/shared/sleep.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,

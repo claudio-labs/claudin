@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import { basename, relative } from 'path';
 import React from 'react';
 import { FileEditToolDiff } from 'src/components/FileEditToolDiff.js';
-import { getCwd } from 'src/utils/fs/cwd.js';
+import { getCwd } from 'src/shared/fs/cwd.js';
 import type { z } from 'zod/v4';
 import { Text } from 'src/ink.js';
 import { FileEditTool } from 'src/tools/FileEditTool/FileEditTool.js';

@@ -39,19 +39,19 @@ import {
   PathTraversalError,
   validateTeamMemKey,
 } from 'src/memdir/teamMemPaths.js'
-import { count } from 'src/utils/data/array.js'
+import { count } from 'src/shared/data/array.js'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
 } from 'src/services/auth/auth.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { classifyAxiosError } from 'src/utils/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { classifyAxiosError } from 'src/shared/errors.js'
 import { getGithubRepo } from 'src/services/git/git.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
 } from 'src/utils/model/providers.js'
-import { sleep } from 'src/utils/sleep.js'
+import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 import { logEvent } from 'src/services/analytics/index.js'

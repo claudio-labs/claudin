@@ -9,7 +9,7 @@ import {
   FILE_EDIT_TOOL_NAME,
   GLOBAL_CLAUDE_FOLDER_PERMISSION_PATTERN,
 } from 'src/tools/FileEditTool/constants.js'
-import { env } from 'src/utils/env.js'
+import { env } from 'src/shared/env.js'
 import { generateSuggestions } from 'src/services/permissions/filesystem.js'
 import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
 import {

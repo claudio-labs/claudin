@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os'
 const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
 const realActiveProviderSnapshot = { ...realActiveProvider }
 
-mock.module('./activeProvider.js', () => ({
+mock.module('src/services/api/activeProvider.js', () => ({
   ...realActiveProviderSnapshot,
   tryGetActiveProvider: () => {
     const env = process.env
@@ -41,7 +41,7 @@ mock.module('./activeProvider.js', () => ({
 }))
 
 afterAll(() => {
-  mock.module('./activeProvider.js', () => realActiveProviderSnapshot)
+  mock.module('src/services/api/activeProvider.js', () => realActiveProviderSnapshot)
 })
 
 const {
@@ -105,7 +105,7 @@ async function collectStreamEventTypes(responseText: string): Promise<string[]> 
 }
 
 async function importFreshProviderConfigModule() {
-  return import(`./providerConfig.js?ts=${Date.now()}-${Math.random()}`)
+  return import(`src/services/api/providerConfig.js?ts=${Date.now()}-${Math.random()}`)
 }
 
 describe('Codex provider config', () => {

@@ -4,7 +4,7 @@ import { z } from 'zod/v4'
 import type { MCPServerConnection } from 'src/services/mcp/types.js'
 import { asMcpSchema } from 'src/services/mcp/zodCompat.js'
 import { getConnectedIdeClient } from 'src/services/ide/ide.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 
 const LogEventSchema = lazySchema(() =>
   z.object({

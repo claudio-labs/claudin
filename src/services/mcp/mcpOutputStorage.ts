@@ -5,9 +5,9 @@ import {
   logEvent,
 } from 'src/services/analytics/index.js'
 import type { MCPResultType } from 'src/services/mcp/client.js'
-import { toError } from 'src/utils/errors.js'
-import { formatFileSize } from 'src/utils/text/format.js'
-import { logError } from 'src/utils/log.js'
+import { toError } from 'src/shared/errors.js'
+import { formatFileSize } from 'src/shared/text/format.js'
+import { logError } from 'src/shared/log.js'
 import { ensureToolResultsDir, getToolResultsDir } from 'src/services/tools/toolResultStorage.js'
 
 /**

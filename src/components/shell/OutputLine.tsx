@@ -3,7 +3,7 @@ import * as React from 'react';
 import { useMemo } from 'react';
 import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
 import { Ansi, Text } from 'src/ink.js';
-import { createHyperlink } from 'src/utils/text/hyperlink.js';
+import { createHyperlink } from 'src/shared/text/hyperlink.js';
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js';
 import { renderTruncatedContent } from 'src/utils/terminal.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';

@@ -8,9 +8,9 @@ import { VERTEX_COUNT_TOKENS_ALLOWED_BETAS } from 'src/constants/betas.js'
 import type { Attachment } from 'src/services/attachments/attachments.js'
 import { getModelBetas } from 'src/services/api/betas.js'
 import { estimateImageTokens } from 'src/services/context/imageTokenEstimator.js'
-import { getVertexRegionForModel, isEnvTruthy } from 'src/utils/envUtils.js'
+import { getVertexRegionForModel, isEnvTruthy } from 'src/shared/envUtils.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { normalizeAttachmentForAPI } from 'src/services/messages/messages.js'
 import {
   createBedrockRuntimeClient,

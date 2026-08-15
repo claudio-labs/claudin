@@ -26,7 +26,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from 'bu
   VERSION: '99.0.0',
   DISPLAY_VERSION: '0.0.0-test',
 }
-import { stableStringify } from 'src/utils/data/stableStringify.js'
+import { stableStringify } from 'src/shared/data/stableStringify.js'
 
 type FetchType = typeof globalThis.fetch
 const originalFetch = globalThis.fetch

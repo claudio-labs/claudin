@@ -58,21 +58,21 @@ import type {
   PluginLoadResult,
   PluginManifest,
 } from 'src/types/plugin.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   errorMessage,
   getErrnoPath,
   isENOENT,
   isFsInaccessible,
   toError,
-} from 'src/utils/errors.js'
-import { execFileNoThrow, execFileNoThrowWithCwd } from 'src/utils/proc/execFileNoThrow.js'
-import { pathExists } from 'src/utils/fs/file.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+} from 'src/shared/errors.js'
+import { execFileNoThrow, execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
+import { pathExists } from 'src/shared/fs/file.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { gitExe } from 'src/services/git/git.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { logError } from 'src/utils/log.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { logError } from 'src/shared/log.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
 import {
   clearPluginSettingsBase,

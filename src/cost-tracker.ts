@@ -52,7 +52,7 @@ import {
   getModelMaxOutputTokens,
 } from 'src/services/context/context.js'
 import { isFastModeEnabled } from 'src/utils/fastMode.js'
-import { formatDuration, formatNumber } from 'src/utils/text/format.js'
+import { formatDuration, formatNumber } from 'src/shared/text/format.js'
 import { resetBytesSaved } from 'src/services/context/tokensSaved.js'
 import type { FpsMetrics } from 'src/utils/fpsTracker.js'
 import { getCanonicalName } from 'src/utils/model/model.js'

@@ -41,9 +41,9 @@ import type {
   SystemLocalCommandMessage,
   SystemMessage,
 } from 'src/types/message.js'
-import { createAbortController } from 'src/utils/abortController.js'
-import { count, uniq } from 'src/utils/data/array.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { createAbortController } from 'src/shared/abortController.js'
+import { count, uniq } from 'src/shared/data/array.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   createCacheSafeParams,
   runForkedAgent,
@@ -57,7 +57,7 @@ import {
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import { logEvent } from 'src/services/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
-import { isEnvDefinedFalsy } from 'src/utils/envUtils.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { detectRepeatedErrorLoop } from 'src/services/extractMemories/loopDetector.js'
 import {
   buildExtractAutoOnlyPrompt,

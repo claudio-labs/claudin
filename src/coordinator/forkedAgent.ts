@@ -24,9 +24,9 @@ import type { ToolUseContext } from 'src/Tool.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import type { AgentId } from 'src/types/ids.js'
 import type { Message } from 'src/types/message.js'
-import { createChildAbortController } from 'src/utils/abortController.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { cloneFileStateCache } from 'src/utils/fs/fileStateCache.js'
+import { createChildAbortController } from 'src/shared/abortController.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { cloneFileStateCache } from 'src/shared/fs/fileStateCache.js'
 import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
 import {
   createUserMessage,
@@ -41,7 +41,7 @@ import {
   type ContentReplacementState,
   cloneContentReplacementState,
 } from 'src/services/tools/toolResultStorage.js'
-import { createAgentId } from 'src/utils/data/uuid.js'
+import { createAgentId } from 'src/shared/data/uuid.js'
 
 /**
  * Parameters that must be identical between the fork and parent API requests

@@ -10,7 +10,7 @@ import { Box, Text } from 'src/ink.js';
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
 import { resolveCacheProvider } from 'src/services/api/cacheMetrics.js';
 import { getSessionCacheMetrics } from 'src/services/api/cacheStatsTracker.js';
-import { formatTokens } from 'src/utils/text/format.js';
+import { formatTokens } from 'src/shared/text/format.js';
 import { getAPIProvider, isGithubNativeAnthropicMode } from 'src/utils/model/providers.js';
 import { hasNerdFontGlyphs } from 'src/utils/terminalFont.js';
 import { getCurrentUsage } from 'src/services/context/tokens.js';

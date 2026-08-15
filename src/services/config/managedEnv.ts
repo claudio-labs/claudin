@@ -1,7 +1,7 @@
 import { isRemoteManagedSettingsEligible } from 'src/services/remoteManagedSettings/syncCache.js'
 import { clearCACertsCache } from 'src/services/api/caCerts.js'
 import { getGlobalConfig } from 'src/services/config/config.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   isProviderManagedEnvVar,
   SAFE_ENV_VARS,

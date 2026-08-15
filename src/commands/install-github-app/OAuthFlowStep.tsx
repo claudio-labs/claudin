@@ -9,7 +9,7 @@ import { setClipboard } from 'src/ink/termio/osc.js';
 import { Box, Link, Text } from 'src/ink.js';
 import { OAuthService } from 'src/services/oauth/index.js';
 import { saveOAuthTokensIfNeeded } from 'src/services/auth/auth.js';
-import { logError } from 'src/utils/log.js';
+import { logError } from 'src/shared/log.js';
 interface OAuthFlowStepProps {
   onSuccess: (token: string) => void;
   onCancel: () => void;

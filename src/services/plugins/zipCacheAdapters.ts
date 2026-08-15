@@ -12,7 +12,7 @@
 
 import { readFile } from 'fs/promises'
 import { join } from 'path'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 import { loadKnownMarketplacesConfigSafe } from 'src/services/plugins/marketplaceManager.js'
 import {

@@ -1,4 +1,4 @@
-import { isEnvDefinedFalsy } from 'src/utils/envUtils.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 
 // Runtime opt-outs for the two static steering blocks with enough mass in the
 // cacheable prefix to be worth measuring: the WORK_CONTRACT sections (~885

@@ -1,6 +1,6 @@
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isBareMode } from 'src/utils/envUtils.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isBareMode } from 'src/shared/envUtils.js'
 import { getSecureStorage } from 'src/services/secureStorage/index.js'
 import {
   asTrimmedString,

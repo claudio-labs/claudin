@@ -1,10 +1,10 @@
 import { mkdir, readdir, readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { getSessionId } from 'src/bootstrap/state.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { errorMessage, getErrnoCode } from 'src/utils/errors.js'
-import { getPlatform } from 'src/utils/proc/platform.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
+import { errorMessage, getErrnoCode } from 'src/shared/errors.js'
+import { getPlatform } from 'src/shared/proc/platform.js'
 
 // Cache states:
 // undefined = not yet loaded (need to check disk)

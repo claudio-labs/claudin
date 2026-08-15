@@ -10,7 +10,7 @@ import { z } from 'zod/v4'
 import {
   parseFrontmatter,
   splitPathInFrontmatter,
-} from 'src/utils/frontmatterParser.js'
+} from 'src/shared/frontmatterParser.js'
 
 /**
  * The only frontmatter key a rule file may set. Anything else is ignored by the

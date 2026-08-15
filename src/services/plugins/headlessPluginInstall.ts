@@ -10,11 +10,11 @@
  */
 
 import { logEvent } from 'src/services/analytics/index.js'
-import { registerCleanup } from 'src/utils/cleanupRegistry.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { withDiagnosticsTiming } from 'src/utils/diagLogs.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { logError } from 'src/utils/log.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { withDiagnosticsTiming } from 'src/shared/diagLogs.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { logError } from 'src/shared/log.js'
 import {
   clearMarketplacesCache,
   getDeclaredMarketplaces,

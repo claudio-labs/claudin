@@ -12,7 +12,7 @@
  */
 import { closeSync, fstatSync, openSync, readSync } from 'fs'
 import { dirname } from 'path'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { LITE_READ_BUF_SIZE } from 'src/services/session/sessionStoragePortable.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 

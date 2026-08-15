@@ -127,9 +127,9 @@ Strips `RUNS ...` carousel lines and indented `✓ test name (Nms)` per-test lin
 
 **Before**
 ```
- RUNS  src/utils/text/format.test.ts
+ RUNS  src/shared/text/format.test.ts
  RUNS  src/api/client.test.ts
- PASS  src/utils/text/format.test.ts
+ PASS  src/shared/text/format.test.ts
   ✓ formats currency correctly (3ms)
   ✓ handles null input (1ms)
   ✓ rounds to 2 decimal places (1ms)
@@ -184,7 +184,7 @@ Strips the `bun test v...` banner and per-test `✓ name [Nms]` lines. Collapses
 ```
 bun test v1.1.8 (9f27a12)
 
-src/utils/data/hash.test.ts:
+src/shared/data/hash.test.ts:
 ✓ hashes a string [0.82ms]
 ✓ returns consistent results [0.11ms]
 ✓ handles empty input [0.09ms]

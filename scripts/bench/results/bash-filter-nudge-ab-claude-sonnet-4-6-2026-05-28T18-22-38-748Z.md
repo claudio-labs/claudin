@@ -68,8 +68,8 @@
 
 **test-failure-triage run#1** (atomic=1, compound=1):
 
-- [A] `bun test src/utils/log.test.ts`
-- [C] `bun test src/utils/log.test.ts 2>&1 | tail -30`
+- [A] `bun test src/shared/log.test.ts`
+- [C] `bun test src/shared/log.test.ts 2>&1 | tail -30`
 
 ### Variante B
 
@@ -79,8 +79,8 @@
 
 **test-failure-triage run#1** (atomic=1, compound=1):
 
-- [A] `bun test src/utils/log.test.ts`
-- [C] `bun test src/utils/log.test.ts 2>&1 | tail -40`
+- [A] `bun test src/shared/log.test.ts`
+- [C] `bun test src/shared/log.test.ts 2>&1 | tail -40`
 
 ## Outputs (resultText) lado a lado
 
@@ -117,21 +117,21 @@ Tudo informativo — nenhum warning do bundler nem do TypeScript.
 
 ### test-failure-triage
 
-> Rode `bun test src/utils/log.test.ts` e me resuma o resultado: quantos testes passaram, quantos falharam, e qual o tempo total.
+> Rode `bun test src/shared/log.test.ts` e me resuma o resultado: quantos testes passaram, quantos falharam, e qual o tempo total.
 
 **Variant A run#1:**
 
 ```
-O arquivo `src/utils/log.test.ts` não existe — Bun não achou nenhum teste correspondente (8433 arquivos varridos em 117ms). Não há resultado de passa/falha para reportar.
+O arquivo `src/shared/log.test.ts` não existe — Bun não achou nenhum teste correspondente (8433 arquivos varridos em 117ms). Não há resultado de passa/falha para reportar.
 
-Quer que eu rode contra outro caminho? `src/utils/log.ts` existe, mas sem `.test.ts` companheiro. Posso listar os testes em `src/utils/` se ajudar.
+Quer que eu rode contra outro caminho? `src/shared/log.ts` existe, mas sem `.test.ts` companheiro. Posso listar os testes em `src/utils/` se ajudar.
 ```
 
 **Variant B run#1:**
 
 ```
-O arquivo `src/utils/log.test.ts` não existe — Bun varreu 8433 arquivos e não encontrou nada com esse nome. Nenhum teste rodou, então não há resultado de passou/falhou para reportar. Tempo da busca: 111 ms.
+O arquivo `src/shared/log.test.ts` não existe — Bun varreu 8433 arquivos e não encontrou nada com esse nome. Nenhum teste rodou, então não há resultado de passou/falhou para reportar. Tempo da busca: 111 ms.
 
-Quer que eu procure o teste correto para `src/utils/log.ts` (se existir) ou rode outro arquivo?
+Quer que eu procure o teste correto para `src/shared/log.ts` (se existir) ou rode outro arquivo?
 ```
 

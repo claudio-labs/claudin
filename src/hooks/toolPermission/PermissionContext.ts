@@ -21,7 +21,7 @@ import type {
   PermissionDenyDecision,
 } from 'src/types/permissions.js'
 import { setClassifierApproval } from 'src/utils/classifierApprovals.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { executePermissionRequestHooks } from 'src/services/lifecycleHooks/hooks.js'
 import {
   REJECT_MESSAGE,

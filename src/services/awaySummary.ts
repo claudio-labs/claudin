@@ -1,7 +1,7 @@
 import { getEmptyToolPermissionContext } from 'src/Tool.js'
 import type { Message } from 'src/types/message.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isSdkApiUserAbortError } from 'src/utils/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isSdkApiUserAbortError } from 'src/shared/errors.js'
 import {
   createUserMessage,
   getAssistantMessageText,

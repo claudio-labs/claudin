@@ -22,8 +22,8 @@ import {
   type TranscriptMessage,
 } from 'src/types/logs.js'
 import type { AssistantMessage } from 'src/types/message.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import type { FileHistorySnapshot } from 'src/utils/fs/fileHistory.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import type { FileHistorySnapshot } from 'src/shared/fs/fileHistory.js'
 import {
   extractFirstPrompt,
   extractFirstPromptFromChunk,
@@ -53,7 +53,7 @@ import {
 } from 'src/services/session/sessionStoragePortable.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
 import type { ContentReplacementRecord } from 'src/services/tools/toolResultStorage.js'
-import { validateUuid } from 'src/utils/data/uuid.js'
+import { validateUuid } from 'src/shared/data/uuid.js'
 
 // exported for testing
 export function getNodeEnv(): string {

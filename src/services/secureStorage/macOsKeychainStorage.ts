@@ -1,7 +1,7 @@
 import { execaSync } from 'execa'
-import { logForDebugging } from 'src/utils/debug.js'
-import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
-import { execSyncWithDefaults_DEPRECATED } from 'src/utils/proc/execFileNoThrowPortable.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
+import { execSyncWithDefaults_DEPRECATED } from 'src/shared/proc/execFileNoThrowPortable.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 import {
   CREDENTIALS_SERVICE_SUFFIX,

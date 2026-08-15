@@ -9,7 +9,7 @@ import type {
   SyncHookJSONOutput,
 } from 'src/entrypoints/agentSdkTypes.js'
 import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 import type {
   ElicitationResponse,

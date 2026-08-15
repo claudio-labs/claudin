@@ -1,6 +1,6 @@
-import { parseFrontmatter } from 'src/utils/frontmatterParser.js'
+import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
 import { parseSlashCommandToolsFromFrontmatter } from 'src/services/instructions/markdownConfigLoader.js'
-import { executeShellCommandsInPrompt } from 'src/utils/proc/promptShellExecution.js'
+import { executeShellCommandsInPrompt } from 'src/shared/proc/promptShellExecution.js'
 import { createMovedToPluginCommand } from 'src/commands/createMovedToPluginCommand.js'
 
 const SECURITY_REVIEW_MARKDOWN = `---

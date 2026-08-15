@@ -16,10 +16,10 @@ import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/grow
 import { logEvent } from 'src/services/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
 import type { Message } from 'src/types/message.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { getErrnoCode, toError } from 'src/utils/errors.js'
-import { formatFileSize } from 'src/utils/text/format.js'
-import { logError } from 'src/utils/log.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { getErrnoCode, toError } from 'src/shared/errors.js'
+import { formatFileSize } from 'src/shared/text/format.js'
+import { logError } from 'src/shared/log.js'
 import { getProjectDir } from 'src/services/session/sessionStorage.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
@@ -141,7 +141,7 @@ export async function ensureToolResultsDir(): Promise<void> {
  *
  * Called by `/clear` right after `regenerateSessionId` so the outgoing
  * session's on-disk tool_result files are unlinked instead of waiting for
- * the 30-day time-based cleanup in `src/utils/cleanup.ts`. The session ID
+ * the 30-day time-based cleanup in `src/shared/cleanup.ts`. The session ID
  * is captured by the caller before regeneration; by definition no live
  * code path can still reference these files (the session no longer exists).
  *

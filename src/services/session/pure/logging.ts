@@ -10,7 +10,7 @@ import type {
   SystemMessage,
   UserMessage,
 } from 'src/types/message.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 
 type Transcript = (
   | UserMessage

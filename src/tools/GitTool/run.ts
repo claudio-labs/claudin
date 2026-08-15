@@ -3,10 +3,10 @@ import {
   planBashFilter,
 } from 'src/outputFilter/Bash/index.js'
 import { stripOutputMarkers } from 'src/outputFilter/Bash/markers.js'
-import { exec } from 'src/utils/proc/Shell.js'
-import { formatDuration } from 'src/utils/text/format.js'
+import { exec } from 'src/shared/proc/Shell.js'
+import { formatDuration } from 'src/shared/text/format.js'
 import { GIT_NO_PROMPT_ENV } from 'src/services/git/noPromptEnv.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { readFullShellOutput } from 'src/services/shell/fullOutput.js'
 import { TaskOutput } from 'src/tasks/TaskOutput.js'
 import { trimShellStdout } from 'src/tools/shellToolResultMappers.js'

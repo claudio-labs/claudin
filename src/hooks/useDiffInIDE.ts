@@ -2,8 +2,8 @@ import { randomUUID } from 'crypto'
 import { basename } from 'path'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { logEvent } from 'src/services/analytics/index.js'
-import { readFileSync } from 'src/utils/fs/fileRead.js'
-import { expandPath } from 'src/utils/fs/path.js'
+import { readFileSync } from 'src/shared/fs/fileRead.js'
+import { expandPath } from 'src/shared/fs/path.js'
 import type { PermissionOption } from 'src/components/permissions/FilePermissionDialog/permissionOptions.js'
 import type {
   MCPServerConnection,
@@ -18,7 +18,7 @@ import {
 } from 'src/tools/FileEditTool/utils.js'
 import { getGlobalConfig } from 'src/services/config/config.js'
 import { getPatchFromContents } from 'src/services/git/diff.js'
-import { isENOENT } from 'src/utils/errors.js'
+import { isENOENT } from 'src/shared/errors.js'
 import {
   callIdeRpc,
   getConnectedIdeClient,
@@ -26,8 +26,8 @@ import {
   hasAccessToIDEExtensionDiffFeature,
 } from 'src/services/ide/ide.js'
 import { WindowsToWSLConverter } from 'src/services/ide/idePathConversion.js'
-import { logError } from 'src/utils/log.js'
-import { getPlatform } from 'src/utils/proc/platform.js'
+import { logError } from 'src/shared/log.js'
+import { getPlatform } from 'src/shared/proc/platform.js'
 
 type Props = {
   onChange(

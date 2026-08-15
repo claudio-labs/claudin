@@ -3,12 +3,12 @@ import { resolve } from 'node:path'
 
 const realActiveProvider_minimax = { ...(await import('src/services/api/activeProvider.js')) }
 const realActiveProviderSnapshot_minimax = { ...realActiveProvider_minimax }
-mock.module('./activeProvider.js', () => ({
+mock.module('src/services/api/activeProvider.js', () => ({
   ...realActiveProviderSnapshot_minimax,
   tryGetActiveProvider: () => null,
 }))
 afterAll(() => {
-  mock.module('./activeProvider.js', () => realActiveProviderSnapshot_minimax)
+  mock.module('src/services/api/activeProvider.js', () => realActiveProviderSnapshot_minimax)
 })
 
 import {

@@ -1,19 +1,19 @@
 import { appendFile, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { getProjectRoot, getSessionId } from 'src/bootstrap/state.js'
-import { registerCleanup } from 'src/utils/cleanupRegistry.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import type { HistoryEntry, PastedContent } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/utils/envUtils.js'
-import { getErrnoCode } from 'src/utils/errors.js'
-import { readLinesReverse } from 'src/utils/fs/fsOperations.js'
-import { lock } from 'src/utils/fs/lockfile.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
+import { getErrnoCode } from 'src/shared/errors.js'
+import { readLinesReverse } from 'src/shared/fs/fsOperations.js'
+import { lock } from 'src/shared/fs/lockfile.js'
 import {
   hashPastedText,
   retrievePastedText,
   storePastedText,
 } from 'src/utils/pasteStore.js'
-import { sleep } from 'src/utils/sleep.js'
+import { sleep } from 'src/shared/sleep.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 
 const MAX_HISTORY_ITEMS = 100

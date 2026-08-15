@@ -5,7 +5,7 @@ import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
 import { setClipboard } from 'src/ink/termio/osc.js';
 import { Box, Text } from 'src/ink.js';
 import { useKeybinding } from 'src/keybindings/useKeybinding.js';
-import { getCwd } from 'src/utils/fs/cwd.js';
+import { getCwd } from 'src/shared/fs/cwd.js';
 import { writeFileSync_DEPRECATED } from 'src/utils/slowOperations.js';
 import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
 import { Select } from 'src/components/CustomSelect/select.js';

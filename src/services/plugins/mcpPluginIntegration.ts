@@ -6,9 +6,9 @@ import {
   type ScopedMcpServerConfig,
 } from 'src/services/mcp/types.js'
 import type { LoadedPlugin, PluginError } from 'src/types/plugin.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage, isENOENT } from 'src/utils/errors.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage, isENOENT } from 'src/shared/errors.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
 import {
   isMcpbSource,

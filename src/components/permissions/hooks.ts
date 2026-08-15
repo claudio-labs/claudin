@@ -14,7 +14,7 @@ import { permissionRuleValueToString } from 'src/services/permissions/permission
 import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
 import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
 import { useSetAppState } from 'src/state/AppState.js'
-import { env } from 'src/utils/env.js'
+import { env } from 'src/shared/env.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { type CompletionType, logUnaryEvent } from 'src/services/api/unaryLogging.js'
 

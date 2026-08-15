@@ -17,25 +17,25 @@ import type { ToolUseContext } from 'src/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { detectOutlineLangFromPath } from 'src/tools/shared/codeOutline/scanSymbols.js'
 import { logFileOperation } from 'src/utils/fileOperationAnalytics.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { readNotebook } from 'src/utils/fs/notebook.js'
-import { extractPDFPages, getPDFPageCount, readPDF } from 'src/utils/fs/pdf.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { readNotebook } from 'src/shared/fs/notebook.js'
+import { extractPDFPages, getPDFPageCount, readPDF } from 'src/shared/fs/pdf.js'
 import {
   isPDFExtension,
   isPDFSupported,
   parsePDFPageRange,
-} from 'src/utils/fs/pdfUtils.js'
+} from 'src/shared/fs/pdfUtils.js'
 import {
   FileTooLargeError,
   type ReadFileRangeResult,
   readFileInRange,
-} from 'src/utils/fs/readFileInRange.js'
+} from 'src/shared/fs/readFileInRange.js'
 import {
   createImageMetadataText,
   maybeResizeAndDownsampleImageBuffer,
 } from 'src/utils/imageResizer.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { formatFileSize } from 'src/utils/text/format.js'
+import { formatFileSize } from 'src/shared/text/format.js'
 import {
   detectSessionFileType,
   IMAGE_EXTENSIONS,

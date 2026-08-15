@@ -1,10 +1,10 @@
 import { mkdir, readFile, stat, unlink, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
 import { z } from 'zod/v4'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isENOENT } from 'src/utils/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isENOENT } from 'src/shared/errors.js'
 import { getWorktreePathsPortable } from 'src/services/git/getWorktreePathsPortable.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   getProjectsDir,
   sanitizePath,

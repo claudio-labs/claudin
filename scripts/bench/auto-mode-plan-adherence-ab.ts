@@ -67,7 +67,7 @@ const PROMPTS: { id: string; kind: PromptKind; text: string }[] = [
   {
     id: 'control-direct-action',
     kind: 'control',
-    text: 'adicione um console.log em src/utils/log.ts pra debugar',
+    text: 'adicione um console.log em src/shared/log.ts pra debugar',
   },
   {
     // Guarda anti-trigger-happy: pergunta factual sobre como o codigo JA funciona.

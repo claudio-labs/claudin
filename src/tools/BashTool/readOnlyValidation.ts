@@ -5,10 +5,10 @@ import {
   splitCommand_DEPRECATED,
 } from 'src/services/bash/commands.js'
 import { tryParseShellCommand } from 'src/services/bash/shellQuote.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import { isCurrentDirectoryBareGitRepo } from 'src/services/git/git.js'
 import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
-import { getPlatform } from 'src/utils/proc/platform.js'
+import { getPlatform } from 'src/shared/proc/platform.js'
 import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
 import {
   containsVulnerableUncPath,

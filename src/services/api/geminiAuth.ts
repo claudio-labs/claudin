@@ -3,8 +3,8 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { isBareMode } from 'src/utils/envUtils.js'
-import { memoizeWithTTLAsync } from 'src/utils/data/memoize.js'
+import { isBareMode } from 'src/shared/envUtils.js'
+import { memoizeWithTTLAsync } from 'src/shared/data/memoize.js'
 import { getSecureStorage } from 'src/services/secureStorage/index.js'
 
 function readGeminiAccessTokenFromSecureStorage(): string | undefined {

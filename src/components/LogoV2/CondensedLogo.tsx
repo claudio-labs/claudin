@@ -8,7 +8,7 @@ import { Box, Text } from 'src/ink.js';
 import { useAppState } from 'src/state/AppState.js';
 import type { AppState } from 'src/state/AppStateStore.js';
 import { getEffortSuffix } from 'src/utils/effort.js';
-import { truncate } from 'src/utils/text/format.js';
+import { truncate } from 'src/shared/text/format.js';
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
 import { formatModelAndBilling, getLogoDisplayData, truncatePath } from 'src/utils/logoV2Utils.js';
 import { renderModelSetting } from 'src/utils/model/model.js';

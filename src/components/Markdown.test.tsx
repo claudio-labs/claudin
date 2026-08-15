@@ -5,7 +5,7 @@ import React from 'react'
 import stripAnsi from 'strip-ansi'
 import { createRoot } from 'src/ink.js'
 import { AppStateProvider } from 'src/state/AppState.js'
-import { getCliHighlightPromise } from 'src/utils/text/cliHighlight.js'
+import { getCliHighlightPromise } from 'src/shared/text/cliHighlight.js'
 import { renderToString } from 'src/components/staticRender.js'
 import { Markdown, StreamingMarkdown } from 'src/components/Markdown.js'
 import {

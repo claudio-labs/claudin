@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync, symlinkSync } from 'fs'
 import { tmpdir } from 'os'
 import { join, sep } from 'path'
-import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
+import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 
 // getPlansDirectory() reads settings via ./settings/settings.js and reports
 // gitignore additions via ./git/gitignore.js. Both are mocked at the module

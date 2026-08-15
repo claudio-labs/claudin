@@ -11,9 +11,9 @@
  * Diagnostic logging always fires to help diagnose idle gaps.
  */
 
-import { registerCleanup } from 'src/utils/cleanupRegistry.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 
 const SESSION_ACTIVITY_INTERVAL_MS = 30_000
 

@@ -22,9 +22,9 @@ import type {
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import type { Tool, ToolUseContext } from 'src/Tool.js'
 import { type HookCallback, hookJSONOutputSchema } from 'src/types/hooks.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
-import { AbortError } from 'src/utils/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
+import { AbortError } from 'src/shared/errors.js'
 import {
   type Output as PermissionToolOutput,
   permissionPromptToolResultToPermissionDecision,
@@ -35,11 +35,11 @@ import type {
   PermissionDecisionReason,
 } from 'src/services/permissions/PermissionResult.js'
 import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js'
-import { writeToStdout } from 'src/utils/proc/process.js'
+import { writeToStdout } from 'src/shared/proc/process.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { z } from 'zod/v4'
 import { notifyCommandLifecycle } from 'src/utils/commandLifecycle.js'
-import { normalizeControlMessageKeys } from 'src/utils/controlMessageCompat.js'
+import { normalizeControlMessageKeys } from 'src/shared/controlMessageCompat.js'
 import { executePermissionRequestHooks } from 'src/services/lifecycleHooks/hooks.js'
 import {
   applyPermissionUpdates,
@@ -51,7 +51,7 @@ import {
   type SessionExternalMetadata,
 } from 'src/services/session/sessionState.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
-import { Stream } from 'src/utils/stream.js'
+import { Stream } from 'src/shared/stream.js'
 import { ndjsonSafeStringify } from 'src/cli/ndjsonSafeStringify.js'
 
 /**

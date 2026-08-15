@@ -14,7 +14,7 @@
 
 import { getCommandSpec } from 'src/services/bash/registry.js'
 import { buildPrefix, DEPTH_RULES } from 'src/services/shell/specPrefix.js'
-import { countCharInString } from 'src/utils/text/stringUtils.js'
+import { countCharInString } from 'src/shared/text/stringUtils.js'
 import { NEVER_SUGGEST } from 'src/services/shell/powershell/dangerousCmdlets.js'
 import {
   getAllCommands,

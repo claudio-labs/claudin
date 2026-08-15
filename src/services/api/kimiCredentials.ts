@@ -1,8 +1,8 @@
-import { logForDebugging } from 'src/utils/debug.js'
-import { isBareMode } from 'src/utils/envUtils.js'
-import { isENOENT } from 'src/utils/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isBareMode } from 'src/shared/envUtils.js'
+import { isENOENT } from 'src/shared/errors.js'
 import { getKimiDeviceHeaders } from 'src/services/api/kimiDeviceHeaders.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { getSecureStorage } from 'src/services/secureStorage/index.js'
 import {
   asTrimmedString,

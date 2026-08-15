@@ -11,7 +11,7 @@ import { type ConnectorTextBlock, isConnectorTextBlock } from 'src/types/connect
 import type { AssistantMessage, AttachmentMessage as AttachmentMessageType, CollapsedReadSearchGroup as CollapsedReadSearchGroupType, GroupedToolUseMessage as GroupedToolUseMessageType, NormalizedUserMessage, ProgressMessage, SystemMessage } from 'src/types/message.js';
 import { type AdvisorBlock, isAdvisorBlock } from 'src/utils/advisor.js';
 import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
-import { logError } from 'src/utils/log.js';
+import { logError } from 'src/shared/log.js';
 import type { buildMessageLookups } from 'src/services/messages/messages.js';
 import { CompactSummary } from 'src/components/CompactSummary.js';
 import { AdvisorMessage } from 'src/components/messages/AdvisorMessage.js';

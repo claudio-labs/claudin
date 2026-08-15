@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import { isSdkApiError } from 'src/utils/errors.js'
+import { isSdkApiError } from 'src/shared/errors.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import type {
   BetaStopReason,
@@ -17,9 +17,9 @@ import {
 import type { QueryChainTracking } from 'src/Tool.js'
 import { isConnectorTextBlock } from 'src/types/connectorText.js'
 import type { AssistantMessage } from 'src/types/message.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import type { EffortLevel } from 'src/utils/effort.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { getAPIProviderForStatsig } from 'src/utils/model/providers.js'
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'

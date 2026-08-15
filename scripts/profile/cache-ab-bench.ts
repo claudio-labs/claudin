@@ -69,23 +69,23 @@ const TWELVE_FILES = [
   'src/services/api/providerModels.ts',
   'src/context.ts',
   'src/query.ts',
-  'src/utils/errors.ts',
-  'src/utils/log.ts',
-  'src/utils/fs/path.ts',
-  'src/utils/envUtils.ts',
-  'src/utils/proc/Shell.ts',
+  'src/shared/errors.ts',
+  'src/shared/log.ts',
+  'src/shared/fs/path.ts',
+  'src/shared/envUtils.ts',
+  'src/shared/proc/Shell.ts',
   'src/bootstrap/state.ts',
   // small (constants / tiny utils)
   'src/constants/messages.ts',
   'src/constants/keys.ts',
   'src/ink/constants.ts',
   'src/utils/protectedNamespace.ts',
-  'src/utils/data/array.ts',
-  'src/utils/withResolvers.ts',
-  'src/utils/data/lazySchema.ts',
-  'src/utils/data/yaml.ts',
+  'src/shared/data/array.ts',
+  'src/shared/withResolvers.ts',
+  'src/shared/data/lazySchema.ts',
+  'src/shared/data/yaml.ts',
   'src/services/compact/snipCompact.ts',
-  'src/utils/data/objectGroupBy.ts',
+  'src/shared/data/objectGroupBy.ts',
   // 50-file extension (mixed sizes) for longer-session workloads
   'src/services/api/openaiShim.ts',
   'src/services/api/codexShim.ts',
@@ -105,8 +105,8 @@ const TWELVE_FILES = [
   'src/services/api/betas.ts',
   'src/services/api/activeProvider.ts',
   'src/services/context/thinking.ts',
-  'src/utils/debug.ts',
-  'src/utils/data/json.ts',
+  'src/shared/debug.ts',
+  'src/shared/data/json.ts',
 ]
 
 // Revisit set for --revisits=N: files re-read a second time AFTER the full
@@ -122,7 +122,7 @@ const REVISIT_FILES = [
   'src/services/api/withRetry.ts',   // medium
   'src/utils/model/model.ts',        // medium
   'src/constants/keys.ts',           // small
-  'src/utils/data/array.ts',              // small
+  'src/shared/data/array.ts',              // small
 ]
 
 const SENTINEL = 'BENCH_DONE'

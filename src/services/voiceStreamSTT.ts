@@ -19,9 +19,9 @@ import {
   getClaudeAIOAuthTokens,
   isAnthropicAuthEnabled,
 } from 'src/services/auth/auth.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { getUserAgent } from 'src/utils/http.js'
-import { logError } from 'src/utils/log.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { getUserAgent } from 'src/shared/http.js'
+import { logError } from 'src/shared/log.js'
 import { getWebSocketTLSOptions } from 'src/services/api/mtls.js'
 import { getWebSocketProxyAgent, getWebSocketProxyUrl } from 'src/services/api/proxy.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'

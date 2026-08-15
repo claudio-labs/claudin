@@ -27,7 +27,7 @@ Other rev 2 changes:
 - Drop `Promise.race` 200ms timeout (theatre against sync regex backtracking)
 - Drop `verb: string` required field on FilterSpec (linear scan of 20 filters is fine)
 - Drop 4 standalone files (safety/analytics/debug/parse) — inline at callers
-- Reuse `escapeXmlAttr` from `src/utils/data/xml.ts`, `collapseIdenticalRuns`/`collapseDigitTemplates` from `toolResultSummarizer.ts`
+- Reuse `escapeXmlAttr` from `src/shared/data/xml.ts`, `collapseIdenticalRuns`/`collapseDigitTemplates` from `toolResultSummarizer.ts`
 - Phase 0 added: extend `isAlreadyCompacted` in summarizer + register config keys
 - Tests colocated (not `__tests__/`); samples in `__fixtures__/`
 - Flat config keys (`bashOutputFilterEnabled`), registered in `GLOBAL_CONFIG_KEYS`
@@ -83,7 +83,7 @@ src/outputFilter/Bash/
 ├── index.ts                    # public API: planFilter, applyFilter, types
 ├── pipeline.ts                 # 11 stages (port of validation/pipeline.ts)
 ├── registry.ts                 # findFilterForCommand: linear scan
-├── markers.ts                  # wrapStdoutWithMarkers, uses escapeXmlAttr from src/utils/data/xml.ts
+├── markers.ts                  # wrapStdoutWithMarkers, uses escapeXmlAttr from src/shared/data/xml.ts
 ├── userFilters.ts              # zod schema + safe loader for ~/.claudin/filters.json
 ├── filters/
 │   ├── index.ts                # builtInFilters: FilterSpec[] (alphabetized export)
@@ -430,7 +430,7 @@ When both apply (rewrite fired AND pipeline reduced):
 **`markers.ts` shape** (~50 LoC, uses existing helpers):
 
 ```ts
-import { escapeXmlAttr } from 'src/utils/data/xml.js'
+import { escapeXmlAttr } from 'src/shared/data/xml.js'
 
 const MAX_ATTR_LEN = 200
 
@@ -468,7 +468,7 @@ function truncate(s: string): string {
 }
 ```
 
-**Reuse:** `escapeXmlAttr` from `src/utils/data/xml.ts` (already in use at `src/commands/insights.ts:32`). Spec rev 1 invented this; rev 2 imports.
+**Reuse:** `escapeXmlAttr` from `src/shared/data/xml.ts` (already in use at `src/commands/insights.ts:32`). Spec rev 1 invented this; rev 2 imports.
 
 **Truncation:** `original`/`actual` capped at 200 chars to prevent a 10 KB heredoc-bearing command from blowing up the marker. The model already saw the full command in the `tool_use` block.
 
@@ -565,7 +565,7 @@ No new GrowthBook flags. Future opt-out is the env var or config (§12).
 
 ## 13. Error handling — fail-open
 
-`logError` accepts a single argument (`src/utils/log.ts:159`). All call sites use `logError(error)`, not `logError(message, error)`. The spec's prior two-arg example was wrong.
+`logError` accepts a single argument (`src/shared/log.ts:159`). All call sites use `logError(error)`, not `logError(message, error)`. The spec's prior two-arg example was wrong.
 
 **Fail-open touchpoints:**
 
@@ -686,7 +686,7 @@ bun run verify:privacy   # required (3 new event names with the suffix proof)
 16. **`__tests__/` subdir layout.** Rejected: violates `.claudin/rules/testing.md` colocation rule. Only `src/__tests__/` (cross-cutting) exists in this repo.
 17. **Per-filter `.test.ts` smoke files.** Rejected: duplicates the harness. One harness is the source of truth.
 18. **Nested config keys (`bashOutputFilter.{enabled, ...}`).** Rejected: every existing key in `GLOBAL_CONFIG_KEYS` is flat.
-19. **Inventing `escapeXml` in `markers.ts`.** Rejected: `escapeXmlAttr` already exists at `src/utils/data/xml.ts`.
+19. **Inventing `escapeXml` in `markers.ts`.** Rejected: `escapeXmlAttr` already exists at `src/shared/data/xml.ts`.
 20. **Porting `collapseIdenticalRuns`/`collapseDigitTemplates`.** Rejected: they live in `toolResultSummarizer.ts:475/500`; export and import.
 
 ---
@@ -804,7 +804,7 @@ When you write a new filter (built-in or PR):
    - Returns string (or null/undefined). Validation enforces non-empty + verb prefix.
    - You don't need to handle compound — `hasCompound` skips you.
 6. Spec file size: aim for <80 LoC per spec. Larger means you're either doing too much or you need a v2 native parser.
-7. Don't import from outside `bashOutputFilter/` except: `escapeXmlAttr` from `src/utils/data/xml.js`, `collapseIdenticalRuns`/`collapseDigitTemplates` from `src/services/tools/toolResultSummarizer.js`, `logForDebugging` from `src/utils/debug.js`, `logError` from `src/utils/log.js`, `isEnvTruthy` from `src/utils/envUtils.js`.
+7. Don't import from outside `bashOutputFilter/` except: `escapeXmlAttr` from `src/shared/data/xml.js`, `collapseIdenticalRuns`/`collapseDigitTemplates` from `src/services/tools/toolResultSummarizer.js`, `logForDebugging` from `src/shared/debug.js`, `logError` from `src/shared/log.js`, `isEnvTruthy` from `src/shared/envUtils.js`.
 
 ---
 

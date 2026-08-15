@@ -10,8 +10,8 @@ import type {
 } from '@anthropic-ai/sdk/resources'
 import type { SDKMessage } from 'src/entrypoints/agentSdkTypes.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { sleep } from 'src/utils/sleep.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { sleep } from 'src/shared/sleep.js'
 import { isTransientNetworkError } from 'src/services/teleport/api.js'
 import {
   type PollRemoteSessionResponse,

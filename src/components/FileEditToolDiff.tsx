@@ -7,9 +7,9 @@ import { Box, Text } from 'src/ink.js';
 import type { FileEdit } from 'src/tools/FileEditTool/types.js';
 import { findActualString, preserveQuoteStyle } from 'src/tools/FileEditTool/utils.js';
 import { adjustHunkLineNumbers, CONTEXT_LINES, getPatchForDisplay } from 'src/services/git/diff.js';
-import { logError } from 'src/utils/log.js';
-import { CHUNK_SIZE, openForScan, readCapped, scanForContext } from 'src/utils/fs/readEditContext.js';
-import { firstLineOf } from 'src/utils/text/stringUtils.js';
+import { logError } from 'src/shared/log.js';
+import { CHUNK_SIZE, openForScan, readCapped, scanForContext } from 'src/shared/fs/readEditContext.js';
+import { firstLineOf } from 'src/shared/text/stringUtils.js';
 import { StructuredDiffList } from 'src/components/StructuredDiffList.js';
 type Props = {
   file_path: string;

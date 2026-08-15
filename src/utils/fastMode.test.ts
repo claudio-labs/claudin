@@ -5,10 +5,10 @@ const originalEnv = { ...process.env }
 // to spread the full namespace shape into the partial mock, preventing
 // cross-file leaks of missing exports. Spread into snapshots so afterAll
 // restores see the original bindings, not a later mock factory's exports.
-const realEnvUtilsForFastMode = { ...(await import('src/utils/envUtils.js')) }
+const realEnvUtilsForFastMode = { ...(await import('src/shared/envUtils.js')) }
 const realConfigForFastMode = { ...(await import('src/services/config/config.js')) }
 const realAuthForFastMode = { ...(await import('src/services/auth/auth.js')) }
-const realDebugForFastMode = { ...(await import('src/utils/debug.js')) }
+const realDebugForFastMode = { ...(await import('src/shared/debug.js')) }
 const realBootstrapStateForFastMode = { ...(await import('src/bootstrap/state.js')) }
 const realAnalyticsForFastMode = { ...(await import('src/services/analytics/index.js')) }
 const realGrowthbookForFastMode = { ...(await import('src/services/analytics/growthbook.js')) }
@@ -17,7 +17,7 @@ const realModelForFastMode = { ...(await import('src/utils/model/model.js')) }
 const realProvidersForFastMode = { ...(await import('src/utils/model/providers.js')) }
 const realPrivacyLevelForFastMode = { ...(await import('src/services/config/privacyLevel.js')) }
 const realSettingsForFastMode = { ...(await import('src/services/settings/settings.js')) }
-const realSignalForFastMode = { ...(await import('src/utils/signal.js')) }
+const realSignalForFastMode = { ...(await import('src/shared/signal.js')) }
 
 async function importFreshFastModeModule() {
   return import(`./fastMode.ts?ts=${Date.now()}-${Math.random()}`)
@@ -82,11 +82,11 @@ function installCommonMocks(options?: {
       updater({ penguinModeOrgEnabled: options?.cachedEnabled === true }),
   }))
 
-  mock.module('./debug.js', () => ({
+  mock.module('src/shared/debug.js', () => ({
     logForDebugging: () => {},
   }))
 
-  mock.module('./envUtils.js', () => ({
+  mock.module('src/shared/envUtils.js', () => ({
     ...realEnvUtilsForFastMode,
     isEnvTruthy: (value: string | undefined) =>
       !!value && value !== '0' && value.toLowerCase() !== 'false',
@@ -112,7 +112,7 @@ function installCommonMocks(options?: {
     updateSettingsForSource: () => {},
   }))
 
-  mock.module('./signal.js', () => ({
+  mock.module('src/shared/signal.js', () => ({
     createSignal: () => {
       const subscribe = () => () => {}
       const emit = () => {}
@@ -131,9 +131,9 @@ afterEach(() => {
 // `./config.js` partial that breaks `toolResultSummarizer.*.test.ts`).
 afterAll(() => {
   mock.module('src/services/config/config.js', () => realConfigForFastMode)
-  mock.module('./envUtils.js', () => realEnvUtilsForFastMode)
+  mock.module('src/shared/envUtils.js', () => realEnvUtilsForFastMode)
   mock.module('src/services/auth/auth.js', () => realAuthForFastMode)
-  mock.module('./debug.js', () => realDebugForFastMode)
+  mock.module('src/shared/debug.js', () => realDebugForFastMode)
   mock.module('src/bootstrap/state.js', () => realBootstrapStateForFastMode)
   mock.module('src/services/analytics/index.js', () => realAnalyticsForFastMode)
   mock.module('src/services/analytics/growthbook.js', () => realGrowthbookForFastMode)
@@ -142,7 +142,7 @@ afterAll(() => {
   mock.module('./model/providers.js', () => realProvidersForFastMode)
   mock.module('src/services/config/privacyLevel.js', () => realPrivacyLevelForFastMode)
   mock.module('src/services/settings/settings.js', () => realSettingsForFastMode)
-  mock.module('./signal.js', () => realSignalForFastMode)
+  mock.module('src/shared/signal.js', () => realSignalForFastMode)
   realConfigForFastMode.resetGlobalConfigForTests?.()
 })
 

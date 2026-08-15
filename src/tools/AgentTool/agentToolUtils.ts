@@ -38,11 +38,11 @@ import {
 import { asAgentId } from 'src/types/ids.js'
 import type { Message as MessageType } from 'src/types/message.js'
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isInProtectedNamespace } from 'src/utils/envUtils.js'
-import { AbortError, errorMessage } from 'src/utils/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isInProtectedNamespace } from 'src/shared/envUtils.js'
+import { AbortError, errorMessage } from 'src/shared/errors.js'
 import type { CacheSafeParams } from 'src/coordinator/forkedAgent.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   extractTextContent,
   getLastAssistantMessage,

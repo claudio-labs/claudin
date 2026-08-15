@@ -10,7 +10,7 @@
 import type { AppState } from 'src/state/AppState.js'
 import type { SetAppState, Task, TaskStateBase } from 'src/Task.js'
 import type { AgentId } from 'src/types/ids.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { dequeueAllMatching } from 'src/utils/messageQueueManager.js'
 import { evictTaskOutput } from 'src/tasks/diskOutput.js'
 import { updateTaskState } from 'src/tasks/framework.js'

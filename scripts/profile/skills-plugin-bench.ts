@@ -181,7 +181,7 @@ async function runReal(skills: number, bodyKb: number) {
   const t0 = performance.now()
 
   // Use the real frontmatterParser (same one loadSkillsFromSkillsDir uses).
-  const { parseFrontmatter } = await import('../../src/utils/frontmatterParser.js')
+  const { parseFrontmatter } = await import('../../src/shared/frontmatterParser.js')
   const { readFileSync, readdirSync } = await import('node:fs')
   // biome-ignore lint/suspicious/noExplicitAny: dynamic shape
   const retained: any[] = []

@@ -10,7 +10,7 @@ import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
 } from 'src/services/auth/auth.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { DESCRIPTION, PROMPT, REMOTE_TRIGGER_TOOL_NAME } from 'src/tools/RemoteTriggerTool/prompt.js'
 import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/RemoteTriggerTool/UI.js'

@@ -18,7 +18,15 @@
  *   bun scripts/reorg/apply.ts                    # everything
  */
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmdirSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 import { GROUPS } from './manifest.ts'
 
@@ -49,6 +57,25 @@ function git(args: string[]): void {
     throw new Error(`git ${args.join(' ')} failed: ${res.stderr.toString()}`)
   }
 }
+/**
+ * git tracks files, not directories, so a directory emptied by `git mv` stays on
+ * disk — and an empty `src/utils/fs/` still reads as "not moved yet" to anyone
+ * checking the tree. Prunes bottom-up so a parent emptied by its children goes
+ * too.
+ */
+function pruneEmptyDirs(dir: string): boolean {
+  let empty = true
+  for (const entry of readdirSync(dir)) {
+    if (entry === 'node_modules' || entry === 'dist' || entry === '.git') continue
+    const full = join(dir, entry)
+    if (statSync(full).isDirectory()) {
+      if (!pruneEmptyDirs(full)) empty = false
+    } else empty = false
+  }
+  if (empty && dir !== join(REPO_ROOT, 'src')) rmdirSync(dir)
+  return empty
+}
+
 
 /**
  * Every test that belongs to `basename.ts`: `basename.test.ts` and the
@@ -245,6 +272,7 @@ function main(): void {
       if (!existsSync(destDir)) mkdirSync(destDir, { recursive: true })
       git(['mv', move.from, move.to])
     }
+    pruneEmptyDirs(join(REPO_ROOT, 'src'))
   }
 
   const touched = applyRewrites(rewrites)

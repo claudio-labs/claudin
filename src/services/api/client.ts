@@ -10,7 +10,7 @@ import {
   refreshAndGetAwsCredentials,
   refreshGcpCredentialsIfNeeded,
 } from 'src/services/auth/auth.js'
-import { getUserAgent } from 'src/utils/http.js'
+import { getUserAgent } from 'src/shared/http.js'
 import { getSmallFastModel } from 'src/utils/model/model.js'
 import {
   getAPIProvider,
@@ -24,12 +24,12 @@ import {
   getIsNonInteractiveSession,
   getSessionId,
 } from 'src/bootstrap/state.js'
-import { isDebugToStdErr, logForDebugging } from 'src/utils/debug.js'
+import { isDebugToStdErr, logForDebugging } from 'src/shared/debug.js'
 import {
   getAWSRegion,
   getVertexRegionForModel,
   isEnvTruthy,
-} from 'src/utils/envUtils.js'
+} from 'src/shared/envUtils.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 
 const importRuntimeModule = new Function(

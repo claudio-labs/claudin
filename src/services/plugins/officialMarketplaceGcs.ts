@@ -14,9 +14,9 @@ import { dirname, join, resolve, sep } from 'path'
 import { waitForScrollIdle } from 'src/bootstrap/state.js'
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/index.js'
 import { logEvent } from 'src/services/analytics/index.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { parseZipModes, unzipFile } from 'src/services/plugins/dxt/zip.js'
-import { errorMessage, getErrnoCode } from 'src/utils/errors.js'
+import { errorMessage, getErrnoCode } from 'src/shared/errors.js'
 
 type SafeString = AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
 

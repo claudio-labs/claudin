@@ -40,9 +40,9 @@ import {
   modelSupportsStructuredOutputs,
   shouldUseGlobalCacheScope,
 } from 'src/services/api/betas.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { CLAUDE_MD_CONTEXT_KEY } from 'src/services/instructions/claudeMdDelta.js'
 import { GIT_STATUS_CONTEXT_KEY } from 'src/services/git/gitStatusDelta.js'
 import { createUserMessage } from 'src/services/messages/messages.js'
@@ -59,13 +59,13 @@ import {
   getPlanFilePath,
   persistFileSnapshotIfRemote,
 } from 'src/utils/plans.js'
-import { getPlatform } from 'src/utils/proc/platform.js'
-import { countFilesRoundedRg } from 'src/utils/fs/ripgrep.js'
+import { getPlatform } from 'src/shared/proc/platform.js'
+import { countFilesRoundedRg } from 'src/shared/fs/ripgrep.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import type { SystemPrompt } from 'src/utils/systemPromptType.js'
 import { getToolSchemaCache } from 'src/services/tools/toolSchemaCache.js'
-import { windowsPathToPosixPath } from 'src/utils/fs/windowsPaths.js'
-import { zodToJsonSchema } from 'src/utils/data/zodToJsonSchema.js'
+import { windowsPathToPosixPath } from 'src/shared/fs/windowsPaths.js'
+import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 
 // Extended BetaTool type with strict mode and defer_loading support
 type BetaToolWithExtras = BetaTool & {

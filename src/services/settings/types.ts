@@ -1,8 +1,8 @@
 import { feature } from 'bun:bundle'
 import { z } from 'zod/v4'
 import { SandboxSettingsSchema } from 'src/entrypoints/sandboxTypes.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   EXTERNAL_PERMISSION_MODES,
   PERMISSION_MODES,
@@ -20,12 +20,12 @@ export {
   type HooksSettings,
   type HttpHook,
   type PromptHook,
-} from 'src/schemas/hooks.js'
+} from 'src/shared/schemas/hooks.js'
 
 // Also import for use within this file
-import { type HookCommand, HooksSchema } from 'src/schemas/hooks.js'
+import { type HookCommand, HooksSchema } from 'src/shared/schemas/hooks.js'
 import { AutoFixConfigSchema } from 'src/services/autoFix/autoFixConfig.js'
-import { count } from 'src/utils/data/array.js'
+import { count } from 'src/shared/data/array.js'
 
 /**
  * Schema for environment variables

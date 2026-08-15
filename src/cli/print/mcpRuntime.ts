@@ -14,7 +14,7 @@
 
 import { feature } from 'bun:bundle'
 import uniqBy from 'lodash-es/uniqBy.js'
-import { uniq } from 'src/utils/data/array.js'
+import { uniq } from 'src/shared/data/array.js'
 import { cwd } from 'process'
 import { downloadUserSettings } from 'src/services/settingsSync/index.js'
 import { waitForRemoteManagedSettingsToLoad } from 'src/services/remoteManagedSettings/index.js'
@@ -25,9 +25,9 @@ import {
   logEvent,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from 'src/services/analytics/index.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { withDiagnosticsTiming } from 'src/utils/diagLogs.js'
-import { logError, logMCPDebug } from 'src/utils/log.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { withDiagnosticsTiming } from 'src/shared/diagLogs.js'
+import { logError, logMCPDebug } from 'src/shared/log.js'
 import type { MCPServerConnection } from 'src/services/mcp/types.js'
 import {
   isChannelAllowlisted,
@@ -61,7 +61,7 @@ import { createSyntheticOutputTool } from 'src/tools/SyntheticOutputTool/Synthet
 import { randomUUID } from 'crypto'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { getCommands } from 'src/commands.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { installPluginsForHeadless } from 'src/services/plugins/headlessPluginInstall.js'
 import { refreshActivePlugins } from 'src/services/plugins/refresh.js'
 import { handleMcpSetServers } from 'src/cli/print/mcpReconcile.js'

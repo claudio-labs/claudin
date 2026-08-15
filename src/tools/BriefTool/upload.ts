@@ -25,8 +25,8 @@ import {
 } from 'src/bridge/bridgeConfig.js'
 import { getOauthConfig } from 'src/constants/oauth.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 
 // Matches the private_api backend limit

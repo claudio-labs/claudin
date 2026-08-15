@@ -1,6 +1,6 @@
 /* eslint-disable eslint-plugin-n/no-unsupported-features/node-builtins */
 
-import { errorMessage } from 'src/utils/errors.js'
+import { errorMessage } from 'src/shared/errors.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import type { DirectConnectConfig } from 'src/server/directConnectManager.js'
 import { connectResponseSchema } from 'src/server/types.js'

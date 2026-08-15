@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Box, Text } from 'src/ink.js'
-import { formatTokens, truncate } from 'src/utils/text/format.js'
+import { formatTokens, truncate } from 'src/shared/text/format.js'
 import { useElapsedTime } from 'src/hooks/useElapsedTime.js'
 import { useTerminalSize } from 'src/hooks/useTerminalSize.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { listRuns } from 'src/tools/AgentWorkflow/runStore.js'
 import type { RunState } from 'src/tools/AgentWorkflow/types.js'
 

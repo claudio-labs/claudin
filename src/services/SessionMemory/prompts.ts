@@ -4,9 +4,9 @@ import {
   getActiveModelBytesPerToken,
   roughTokenCountEstimation,
 } from 'src/services/tokenEstimation.js'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
-import { getErrnoCode, toError } from 'src/utils/errors.js'
-import { logError } from 'src/utils/log.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
+import { getErrnoCode, toError } from 'src/shared/errors.js'
+import { logError } from 'src/shared/log.js'
 
 const MAX_SECTION_LENGTH = 2000
 const MAX_TOTAL_SESSION_MEMORY_TOKENS = 12000

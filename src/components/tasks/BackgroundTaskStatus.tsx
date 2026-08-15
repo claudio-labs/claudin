@@ -17,7 +17,7 @@ import { AGENT_COLOR_TO_THEME_COLOR, AGENT_COLORS, type AgentColorName } from 's
 import type { Theme } from 'src/utils/theme.js';
 import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShortcutHint.js';
 import { shouldHideTasksFooter } from 'src/components/tasks/taskStatusUtils.js';
-import { formatNumber } from 'src/utils/text/format.js';
+import { formatNumber } from 'src/shared/text/format.js';
 import { useRampedNumber } from 'src/hooks/useRampedNumber.js';
 type Props = {
   tasksSelected: boolean;

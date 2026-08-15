@@ -1,5 +1,5 @@
 import { URL } from 'url'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { HybridTransport } from 'src/cli/transports/HybridTransport.js'
 import { SSETransport } from 'src/cli/transports/SSETransport.js'
 import { WebSocketTransport } from 'src/cli/transports/WebSocketTransport.js'

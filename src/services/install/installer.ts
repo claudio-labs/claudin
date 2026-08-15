@@ -35,32 +35,32 @@ import {
   logEvent,
 } from 'src/services/analytics/index.js'
 import { getMaxVersion, shouldSkipVersion } from 'src/services/install/autoUpdater.js'
-import { registerCleanup } from 'src/utils/cleanupRegistry.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { getCurrentInstallationType } from 'src/utils/doctorDiagnostic.js'
-import { env } from 'src/utils/env.js'
-import { envDynamic } from 'src/utils/envDynamic.js'
-import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/utils/envUtils.js'
-import { errorMessage, getErrnoCode, isENOENT, toError } from 'src/utils/errors.js'
-import { execFileNoThrowWithCwd } from 'src/utils/proc/execFileNoThrow.js'
+import { env } from 'src/shared/env.js'
+import { envDynamic } from 'src/shared/envDynamic.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
+import { errorMessage, getErrnoCode, isENOENT, toError } from 'src/shared/errors.js'
+import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
 import { getShellType } from 'src/services/install/localInstaller.js'
-import * as lockfile from 'src/utils/fs/lockfile.js'
-import { logError } from 'src/utils/log.js'
-import { gt, gte } from 'src/utils/semver.js'
+import * as lockfile from 'src/shared/fs/lockfile.js'
+import { logError } from 'src/shared/log.js'
+import { gt, gte } from 'src/shared/semver.js'
 import {
   filterClaudeAliases,
   getShellConfigPaths,
   readFileLines,
   writeFileLines,
-} from 'src/utils/proc/shellConfig.js'
-import { sleep } from 'src/utils/sleep.js'
+} from 'src/shared/proc/shellConfig.js'
+import { sleep } from 'src/shared/sleep.js'
 import {
   getUserBinDir,
   getXDGCacheHome,
   getXDGDataHome,
   getXDGStateHome,
-} from 'src/utils/fs/xdg.js'
+} from 'src/shared/fs/xdg.js'
 import { downloadVersion, getLatestVersion } from 'src/services/install/download.js'
 import {
   acquireProcessLifetimeLock,

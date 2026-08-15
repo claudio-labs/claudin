@@ -157,9 +157,9 @@ import perfIssue from 'src/commands/perf-issue/index.js'
 import sandboxToggle from 'src/commands/sandbox-toggle/index.js'
 import stickers from 'src/commands/stickers/index.js'
 import advisor from 'src/commands/advisor.js'
-import { logError } from 'src/utils/log.js'
-import { toError } from 'src/utils/errors.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logError } from 'src/shared/log.js'
+import { toError } from 'src/shared/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   getSkillDirCommands,
   clearSkillCaches,

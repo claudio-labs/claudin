@@ -17,8 +17,8 @@
 import type { Dirent } from 'fs'
 import { readdir, readFile } from 'fs/promises'
 import { join } from 'path'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isFsInaccessible } from 'src/utils/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isFsInaccessible } from 'src/shared/errors.js'
 import {
   getProjectsDir,
   MAX_TRANSCRIPT_READ_BYTES,

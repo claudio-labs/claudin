@@ -1,6 +1,6 @@
 import { cpSync, readFileSync, readdirSync } from 'fs'
 import { join } from 'path'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 
 const ENTRYPOINT_NAME = 'MEMORY.md'
 

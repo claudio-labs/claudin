@@ -91,9 +91,9 @@ export async function runStartupUpdateCheck(argv: string[]): Promise<void> {
       import('src/services/config/config.js'),
       import('src/utils/doctorDiagnostic.js'),
       import('src/services/install/autoUpdater.js'),
-      import('src/utils/debug.js'),
-      import('src/utils/envUtils.js'),
-      import('src/utils/errors.js'),
+      import('src/shared/debug.js'),
+      import('src/shared/envUtils.js'),
+      import('src/shared/errors.js'),
       import('src/services/install/latestVersionCache.js'),
       import('src/services/settings/settings.js'),
     ])
@@ -220,8 +220,8 @@ export async function runStartupUpdateCheck(argv: string[]): Promise<void> {
     // Fail-open: never block startup because of an update bug. Use dynamic
     // imports here in case the failure was in the bulk import above.
     try {
-      const { logError } = await import('src/utils/log.js')
-      const { logForDebugging } = await import('src/utils/debug.js')
+      const { logError } = await import('src/shared/log.js')
+      const { logForDebugging } = await import('src/shared/debug.js')
       logError(err as Error)
       logForDebugging(`startup-update: unhandled error, continuing: ${err}`)
     } catch {

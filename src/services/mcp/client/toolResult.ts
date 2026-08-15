@@ -7,10 +7,10 @@ import type {
   PromptMessage,
   ResourceLink,
 } from '@modelcontextprotocol/sdk/types.js'
-import { isEnvDefinedFalsy } from 'src/utils/envUtils.js'
-import { TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/utils/errors.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
+import { TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/shared/errors.js'
 import { maybeResizeAndDownsampleImageBuffer } from 'src/utils/imageResizer.js'
-import { logMCPError } from 'src/utils/log.js'
+import { logMCPError } from 'src/shared/log.js'
 import {
   getBinaryBlobSavedMessage,
   getFormatDescription,
@@ -23,7 +23,7 @@ import {
   mcpContentNeedsTruncation,
   truncateMcpContentIfNeeded,
 } from 'src/services/mcp/mcpValidation.js'
-import { recursivelySanitizeUnicode } from 'src/utils/data/sanitization.js'
+import { recursivelySanitizeUnicode } from 'src/shared/data/sanitization.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   isPersistError,

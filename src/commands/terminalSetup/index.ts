@@ -1,5 +1,5 @@
 import type { Command } from 'src/commands.js'
-import { env } from 'src/utils/env.js'
+import { env } from 'src/shared/env.js'
 
 // Terminals that natively support CSI u / Kitty keyboard protocol
 const NATIVE_CSIU_TERMINALS: Record<string, string> = {

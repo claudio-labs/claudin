@@ -37,7 +37,7 @@ import {
   releaseSchedulerLock,
   tryAcquireSchedulerLock,
 } from 'src/tasks/cronTasksLock.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { expandLoopSentinelPrompt } from 'src/utils/loopSentinels.js'
 
 const CHECK_INTERVAL_MS = 1000

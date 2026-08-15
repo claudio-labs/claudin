@@ -17,7 +17,7 @@
  */
 import type { ActiveGoalState, AppState } from 'src/state/AppStateStore.js'
 import type { Message } from 'src/types/message.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { getCurrentUsage } from 'src/services/context/tokens.js'
 import type { HookBlockingError, AggregatedHookResult } from 'src/services/lifecycleHooks/types.js'
 import { addSessionHook, removeGoalStopHooks } from 'src/services/lifecycleHooks/sessionHooks.js'

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getAllOutputStyles, OUTPUT_STYLE_CONFIG, type OutputStyleConfig } from 'src/constants/outputStyles.js';
 import { Box, Text } from 'src/ink.js';
 import type { OutputStyle } from 'src/services/config/config.js';
-import { getCwd } from 'src/utils/fs/cwd.js';
+import { getCwd } from 'src/shared/fs/cwd.js';
 import type { OptionWithDescription } from 'src/components/CustomSelect/select.js';
 import { Select } from 'src/components/CustomSelect/select.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';

@@ -4,7 +4,7 @@ import { setTeleportedSessionInfo } from 'src/bootstrap/state.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
 import type { TeleportRemoteResponse } from 'src/services/session/conversationRecovery.js';
 import type { CodeSession } from 'src/services/teleport/api.js';
-import { errorMessage, TeleportOperationError } from 'src/utils/errors.js';
+import { errorMessage, TeleportOperationError } from 'src/shared/errors.js';
 import { teleportResumeCodeSession } from 'src/components/teleport.js';
 
 export type TeleportSource = 'cliArg' | 'localCommand';

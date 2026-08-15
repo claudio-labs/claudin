@@ -6,10 +6,10 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import { checkForReleaseNotes } from 'src/services/install/releaseNotes.js'
-import { setCwd } from 'src/utils/proc/Shell.js'
-import { initSinks } from 'src/utils/sinks.js'
+import { setCwd } from 'src/shared/proc/Shell.js'
+import { initSinks } from 'src/shared/sinks.js'
 import {
   getIsNonInteractiveSession,
   getProjectRoot,
@@ -26,11 +26,11 @@ import { checkAndRestoreTerminalBackup } from 'src/services/ide/appleTerminalBac
 import { prefetchApiKeyFromApiKeyHelperIfSafe } from 'src/services/auth/auth.js'
 import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
 import { getCurrentProjectConfig, getGlobalConfig } from 'src/services/config/config.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
-import { env } from 'src/utils/env.js'
-import { envDynamic } from 'src/utils/envDynamic.js'
-import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js'
-import { errorMessage } from 'src/utils/errors.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
+import { env } from 'src/shared/env.js'
+import { envDynamic } from 'src/shared/envDynamic.js'
+import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'
+import { errorMessage } from 'src/shared/errors.js'
 import { findCanonicalGitRoot, findGitRoot, getIsGit } from 'src/services/git/git.js'
 import { initializeFileChangedWatcher } from 'src/services/lifecycleHooks/fileChangedWatcher.js'
 import {
@@ -39,7 +39,7 @@ import {
 } from 'src/services/lifecycleHooks/hooksConfigSnapshot.js'
 import { hasWorktreeCreateHook } from 'src/services/lifecycleHooks/hooks.js'
 import { checkAndRestoreITerm2Backup } from 'src/services/ide/iTermBackup.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { getRecentActivity } from 'src/utils/logoV2Utils.js'
 import { lockCurrentVersion } from 'src/services/install/index.js'
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'

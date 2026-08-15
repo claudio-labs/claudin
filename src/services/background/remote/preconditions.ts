@@ -7,10 +7,10 @@ import {
   getClaudeAIOAuthTokens,
   isClaudeAISubscriber,
 } from 'src/services/auth/auth.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { detectCurrentRepository } from 'src/services/git/detectRepository.js'
-import { errorMessage } from 'src/utils/errors.js'
+import { errorMessage } from 'src/shared/errors.js'
 import { findGitRoot, getIsClean } from 'src/services/git/git.js'
 import { getOAuthHeaders } from 'src/services/teleport/api.js'
 import { fetchEnvironments } from 'src/services/teleport/environments.js'

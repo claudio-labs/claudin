@@ -6,8 +6,8 @@ import type { Tool } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { formatAgentId } from 'src/coordinator/agentId.js'
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   getDefaultMainLoopModel,
   parseUserSpecifiedModel,
@@ -29,7 +29,7 @@ import {
   resetTaskList,
   setLeaderTeamName,
 } from 'src/tasks/tasks.js'
-import { generateWordSlug } from 'src/utils/text/words.js'
+import { generateWordSlug } from 'src/shared/text/words.js'
 import { TEAM_CREATE_TOOL_NAME } from 'src/tools/TeamCreateTool/constants.js'
 import { getPrompt } from 'src/tools/TeamCreateTool/prompt.js'
 import { renderToolUseMessage } from 'src/tools/TeamCreateTool/UI.js'

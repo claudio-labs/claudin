@@ -5,8 +5,8 @@ import type {
   SDKControlRequest,
   SDKControlResponse,
 } from 'src/entrypoints/sdk/controlTypes.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logError } from 'src/utils/log.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logError } from 'src/shared/log.js'
 import {
   type RemoteMessageContent,
   sendEventToRemoteSession,

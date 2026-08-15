@@ -47,25 +47,25 @@ import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { SYNTHETIC_OUTPUT_TOOL_NAME } from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js'
 import type { Message } from 'src/types/message.js'
 import type { OrphanedPermission } from 'src/types/textInputTypes.js'
-import { createAbortController } from 'src/utils/abortController.js'
+import { createAbortController } from 'src/shared/abortController.js'
 import type { AttributionState } from 'src/services/git/commitAttribution.js'
 import { getGlobalConfig } from 'src/services/config/config.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { getFastModeState } from 'src/utils/fastMode.js'
 import {
   type FileHistoryState,
   fileHistoryEnabled,
   fileHistoryMakeSnapshot,
-} from 'src/utils/fs/fileHistory.js'
+} from 'src/shared/fs/fileHistory.js'
 import {
   cloneFileStateCache,
   type FileStateCache,
-} from 'src/utils/fs/fileStateCache.js'
+} from 'src/shared/fs/fileStateCache.js'
 import { headlessProfilerCheckpoint } from 'src/utils/headlessProfiler.js'
 import { registerStructuredOutputEnforcement } from 'src/services/lifecycleHooks/hookHelpers.js'
-import { getInMemoryErrors } from 'src/utils/log.js'
+import { getInMemoryErrors } from 'src/shared/log.js'
 import { countToolCalls, SYNTHETIC_MESSAGES } from 'src/services/messages/messages.js'
 import {
   getMainLoopModel,
@@ -77,7 +77,7 @@ import {
   processUserInput,
 } from 'src/services/input/processUserInput.js'
 import { fetchSystemPromptParts } from 'src/utils/queryContext.js'
-import { setCwd } from 'src/utils/proc/Shell.js'
+import { setCwd } from 'src/shared/proc/Shell.js'
 import {
   flushSessionStorage,
   recordTranscript,

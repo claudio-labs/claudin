@@ -5,7 +5,7 @@ import { extractDangerousSettings, hasDangerousSettings, hasDangerousSettingsCha
 import { render } from 'src/ink.js';
 import { KeybindingSetup } from 'src/keybindings/KeybindingProviderSetup.js';
 import { AppStateProvider } from 'src/state/AppState.js';
-import { gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js';
+import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js';
 import { getBaseRenderOptions } from 'src/utils/renderOptions.js';
 import type { SettingsJson } from 'src/services/settings/types.js';
 import { logEvent } from 'src/services/analytics/index.js';

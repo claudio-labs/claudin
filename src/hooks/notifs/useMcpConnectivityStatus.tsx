@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { logError } from 'src/utils/log.js';
+import { logError } from 'src/shared/log.js';
 import { useEffect } from 'react';
 import { useNotifications } from 'src/context/notifications.js';
 import { getIsRemoteMode } from 'src/bootstrap/state.js';

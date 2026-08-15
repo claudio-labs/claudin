@@ -6,15 +6,15 @@ import {
   installGlobalPackage,
   repairBunGlobalBinary,
 } from 'src/services/install/autoUpdater.js'
-import { regenerateCompletionCache } from 'src/utils/completionCache.js'
+import { regenerateCompletionCache } from 'src/shared/completionCache.js'
 import {
   getGlobalConfig,
   type InstallMethod,
   saveGlobalConfig,
 } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { getDoctorDiagnostic } from 'src/utils/doctorDiagnostic.js'
-import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js'
+import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js'
 import {
   installOrUpdateClaudePackage,
   localInstallationExists,
@@ -24,8 +24,8 @@ import {
   removeInstalledSymlink,
 } from 'src/services/install/index.js'
 import { getPackageManager } from 'src/services/install/packageManagers.js'
-import { writeToStdout } from 'src/utils/proc/process.js'
-import { gte } from 'src/utils/semver.js'
+import { writeToStdout } from 'src/shared/proc/process.js'
+import { gte } from 'src/shared/semver.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
 
 export async function update() {

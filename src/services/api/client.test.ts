@@ -31,13 +31,13 @@ type ResolvedProvider = ReturnType<typeof realActiveProvider.getActiveProvider> 
 
 let resolvedOverride: ResolvedProvider = null
 
-mock.module('./activeProvider.js', () => ({
+mock.module('src/services/api/activeProvider.js', () => ({
   ...realActiveProviderSnapshot,
   tryGetActiveProvider: () => resolvedOverride,
 }))
 
 afterAll(() => {
-  mock.module('./activeProvider.js', () => realActiveProviderSnapshot)
+  mock.module('src/services/api/activeProvider.js', () => realActiveProviderSnapshot)
 })
 
 const { getAnthropicClient } = await import('src/services/api/client.js')

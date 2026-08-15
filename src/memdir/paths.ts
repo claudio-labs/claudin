@@ -11,15 +11,15 @@ import {
   getClaudinConfigHomeDir,
   isEnvDefinedFalsy,
   isEnvTruthy,
-} from 'src/utils/envUtils.js'
+} from 'src/shared/envUtils.js'
 import { findCanonicalGitRoot } from 'src/services/git/git.js'
-import { logError } from 'src/utils/log.js'
-import { sanitizePath } from 'src/utils/fs/path.js'
+import { logError } from 'src/shared/log.js'
+import { sanitizePath } from 'src/shared/fs/path.js'
 import {
   getInitialSettings,
   getSettingsForSource,
 } from 'src/services/settings/settings.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { migrateGlobalMemoryIfNeeded } from 'src/memdir/memoryMigration.js'
 
 /**

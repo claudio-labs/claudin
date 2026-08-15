@@ -176,7 +176,7 @@ mock.module('src/services/api/client.js', () => ({
 }))
 
 // ❌ Wrong — mocking internal logic hides real bugs
-mock.module('src/utils/errors.js', () => ({
+mock.module('src/shared/errors.js', () => ({
   isAbortError: () => false  // this hides real abort-handling bugs
 }))
 ```

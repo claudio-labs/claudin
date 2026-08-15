@@ -22,9 +22,9 @@ import { setLastSummarizedMessageId } from 'src/services/SessionMemory/sessionMe
 import type { ToolUseContext } from 'src/Tool.js'
 import type { LocalCommandCall } from 'src/types/command.js'
 import type { Message } from 'src/types/message.js'
-import { hasExactErrorMessage } from 'src/utils/errors.js'
+import { hasExactErrorMessage } from 'src/shared/errors.js'
 import { executePreCompactHooks } from 'src/services/lifecycleHooks/hooks.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { getMessagesAfterCompactBoundary } from 'src/services/messages/messages.js'
 import { getUpgradeMessage } from 'src/utils/model/contextWindowUpgradeCheck.js'
 import {

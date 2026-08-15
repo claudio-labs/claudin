@@ -22,9 +22,9 @@ import type {
   Message,
 } from 'src/types/message.js'
 import type { TranscriptMessage } from 'src/types/logs.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
-import { logError } from 'src/utils/log.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
+import { logError } from 'src/shared/log.js'
 import { isCompactBoundaryMessage } from 'src/services/messages/messages.js'
 
 /**

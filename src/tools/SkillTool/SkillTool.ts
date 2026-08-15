@@ -25,7 +25,7 @@ import type {
   SystemMessage,
   UserMessage,
 } from 'src/types/message.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
 import { getRuleByContentsForTool } from 'src/services/permissions/permissions.js'
 import {
@@ -47,18 +47,18 @@ import {
   logEvent,
 } from 'src/services/analytics/index.js'
 import { getAgentContext } from 'src/coordinator/agentContext.js'
-import { errorMessage } from 'src/utils/errors.js'
+import { errorMessage } from 'src/shared/errors.js'
 import {
   extractResultText,
   prepareForkedCommandContext,
 } from 'src/coordinator/forkedAgent.js'
-import { parseFrontmatter } from 'src/utils/frontmatterParser.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { createUserMessage, normalizeMessages } from 'src/services/messages/messages.js'
 import type { ModelAlias } from 'src/utils/model/aliases.js'
 import { resolveSkillModelOverride } from 'src/utils/model/model.js'
 import { recordSkillUsage } from 'src/services/suggestions/skillUsageTracking.js'
-import { createAgentId } from 'src/utils/data/uuid.js'
+import { createAgentId } from 'src/shared/data/uuid.js'
 import { runAgent } from 'src/tools/AgentTool/runAgent.js'
 import {
   getToolUseIDFromParentMessage,

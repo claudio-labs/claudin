@@ -7,12 +7,12 @@ import { BashTool } from 'src/tools/BashTool/BashTool.js';
 import type { AttachmentMessage, SystemMessage, UserMessage } from 'src/types/message.js';
 import type { ShellProgress } from 'src/types/tools.js';
 import { logEvent } from 'src/services/analytics/index.js';
-import { errorMessage, ShellError } from 'src/utils/errors.js';
+import { errorMessage, ShellError } from 'src/shared/errors.js';
 import { createSyntheticUserCaveatMessage, createUserInterruptionMessage, createUserMessage, prepareUserContent } from 'src/services/messages/messages.js';
 import { resolveDefaultShell } from 'src/services/shell/resolveDefaultShell.js';
 import { isPowerShellToolEnabled } from 'src/services/shell/shellToolUtils.js';
 import { processToolResultBlock } from 'src/services/tools/toolResultStorage.js';
-import { escapeXml } from 'src/utils/data/xml.js';
+import { escapeXml } from 'src/shared/data/xml.js';
 import type { ProcessUserInputContext } from 'src/services/input/processUserInput.js';
 export async function processBashCommand(inputString: string, precedingInputBlocks: ContentBlockParam[], attachmentMessages: AttachmentMessage[], context: ProcessUserInputContext, setToolJSX: SetToolJSXFn): Promise<{
   messages: (UserMessage | AttachmentMessage | SystemMessage)[];

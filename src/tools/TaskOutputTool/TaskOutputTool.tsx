@@ -13,13 +13,13 @@ import type { LocalAgentTaskState } from 'src/tasks/LocalAgentTask/LocalAgentTas
 import type { LocalShellTaskState } from 'src/tasks/LocalShellTask/guards.js';
 import type { RemoteAgentTaskState } from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import type { TaskState } from 'src/tasks/types.js';
-import { AbortError } from 'src/utils/errors.js';
-import { lazySchema } from 'src/utils/data/lazySchema.js';
+import { AbortError } from 'src/shared/errors.js';
+import { lazySchema } from 'src/shared/data/lazySchema.js';
 import { extractTextContent } from 'src/services/messages/messages.js';
-import { semanticBoolean } from 'src/utils/data/semanticBoolean.js';
-import { sleep } from 'src/utils/sleep.js';
+import { semanticBoolean } from 'src/shared/data/semanticBoolean.js';
+import { sleep } from 'src/shared/sleep.js';
 import { jsonParse } from 'src/utils/slowOperations.js';
-import { countCharInString } from 'src/utils/text/stringUtils.js';
+import { countCharInString } from 'src/shared/text/stringUtils.js';
 import { getTaskOutput } from 'src/tasks/diskOutput.js';
 import { updateTaskState } from 'src/tasks/framework.js';
 import { formatTaskOutput } from 'src/tasks/outputFormatting.js';

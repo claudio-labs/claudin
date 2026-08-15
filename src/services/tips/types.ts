@@ -2,7 +2,7 @@
 // this fork. `Tip`'s fields are the four keys every entry of `externalTips` in
 // `tipRegistry.ts` sets; `TipContext` is the object REPL.tsx passes to
 // `getTipToShowOnSpinner`.
-import type { FileStateCache } from 'src/utils/fs/fileStateCache.js'
+import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import type { ThemeName } from 'src/utils/theme.js'
 
 /** What the registry gets to decide whether a tip is worth showing right now. */

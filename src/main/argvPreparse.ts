@@ -11,7 +11,7 @@
 
 import { feature } from 'bun:bundle';
 
-import { gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js';
+import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js';
 
 import type { PendingAssistantChat, PendingConnect, PendingSSH } from 'src/main/bootContext.js';
 

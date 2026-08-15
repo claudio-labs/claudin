@@ -1,6 +1,6 @@
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
-import { capitalize } from 'src/utils/text/stringUtils.js'
-import { logError } from 'src/utils/log.js'
+import { capitalize } from 'src/shared/text/stringUtils.js'
+import { logError } from 'src/shared/log.js'
 import { MODEL_ALIASES, type ModelAlias } from 'src/utils/model/aliases.js'
 import { getModelOptions } from 'src/utils/model/modelOptions.js'
 import { applyBedrockRegionPrefix, getBedrockRegionPrefix } from 'src/utils/model/bedrock.js'

@@ -155,7 +155,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #5 fileReadCache
   try {
-    const mod = await import('../../src/utils/fs/fileReadCache.js')
+    const mod = await import('../../src/shared/fs/fileReadCache.js')
     out['fileReadCache.size'] = mod.fileReadCache.size
   } catch {}
 
@@ -318,7 +318,7 @@ async function measureStages(): Promise<BootstrapStage[]> {
   // Each stage imports a subgraph and measures the cost.
   await stage('00 baseline', async () => {})
   await stage('01 utils/log', async () => {
-    await import('../../src/utils/log.js')
+    await import('../../src/shared/log.js')
   })
   await stage('02 utils/config', async () => {
     await import('../../src/services/config/config.js')
@@ -369,7 +369,7 @@ async function measureStages(): Promise<BootstrapStage[]> {
   await stage('16 new QueryEngine()', async () => {
     const [{ QueryEngine }, fileStateCacheMod] = await Promise.all([
       import('../../src/QueryEngine.js'),
-      import('../../src/utils/fs/fileStateCache.js'),
+      import('../../src/shared/fs/fileStateCache.js'),
     ])
     const {
       createFileStateCacheWithSizeLimit,
@@ -418,7 +418,7 @@ async function runBench(args: Args): Promise<{
   const {
     createFileStateCacheWithSizeLimit,
     READ_FILE_STATE_CACHE_SIZE,
-  } = await import('../../src/utils/fs/fileStateCache.js')
+  } = await import('../../src/shared/fs/fileStateCache.js')
 
   // --- Phase 2: construct config with fake deps ---
   const script = buildScript(args.mode, args.turns, args.toolOutputKb)

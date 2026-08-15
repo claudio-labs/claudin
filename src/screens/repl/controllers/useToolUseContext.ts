@@ -46,7 +46,7 @@ import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { resolveAgentTools } from 'src/tools/AgentTool/agentToolUtils.js';
 import type { ProcessUserInputContext } from 'src/services/input/processUserInput.js';
 import type { LogOption } from 'src/types/logs.js';
-import { type FileHistoryState } from 'src/utils/fs/fileHistory.js';
+import { type FileHistoryState } from 'src/shared/fs/fileHistory.js';
 import { type AttributionState } from 'src/services/git/commitAttribution.js';
 import { type IDEExtensionInstallationStatus, type IdeType } from 'src/services/ide/ide.js';
 import { type SetAppState, removeByFilter } from 'src/utils/messageQueueManager.js';
@@ -79,7 +79,7 @@ export interface UseToolUseContextDeps {
   store: ReturnType<typeof import('src/state/AppState.js').useAppStateStore>;
   // --- refs
   messagesRef: React.RefObject<MessageType[]>;
-  readFileState: React.RefObject<ReturnType<typeof import('src/utils/fs/fileStateCache.js').createFileStateCacheWithSizeLimit>>;
+  readFileState: React.RefObject<ReturnType<typeof import('src/shared/fs/fileStateCache.js').createFileStateCacheWithSizeLimit>>;
   discoveredSkillNamesRef: React.RefObject<Set<string>>;
   loadedNestedMemoryPathsRef: React.RefObject<Set<string>>;
   contentReplacementStateRef: { current: ReturnType<typeof import('src/services/tools/toolResultStorage.js').provisionContentReplacementState> };

@@ -617,7 +617,7 @@ Verifies that `match_output` rules don't swallow errors / warnings / conflict ma
 
 ### bun test (já compacto)
 
-- **Command:** `bun test ./src/utils/text/truncate.test.ts`
+- **Command:** `bun test ./src/shared/text/truncate.test.ts`
 - **Sample:** `bun-test.txt` (100 bytes)
 - **Filter:** `bun-test-NOOP`
 - **Match command:** ✓

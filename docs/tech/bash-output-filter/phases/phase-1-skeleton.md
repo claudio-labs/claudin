@@ -21,7 +21,7 @@ Cria o módulo `src/outputFilter/Bash/` com toda a infraestrutura, mas **dead co
 | `src/outputFilter/Bash/index.ts` | ~120 | Public API: `planFilter`, `applyFilterToStdout`, types (`FilterSpec`, `RewriteContext`, `PreExecPlan`, `PipelineResult`), inline `safeApply` |
 | `src/outputFilter/Bash/pipeline.ts` | ~200 | 11-stage pure pipeline (port direto de [`validation/pipeline.ts`](../../../archive/discovery/bash-output-filter/validation/pipeline.ts)) |
 | `src/outputFilter/Bash/registry.ts` | ~70 | `findFilterForCommand`, `canonicalizeForMatching` (strip `sudo`, env vars), `matchesCommand` |
-| `src/outputFilter/Bash/markers.ts` | ~40 | `wrapStdoutWithMarkers` reusando `escapeXmlAttr` de `src/utils/data/xml.ts` |
+| `src/outputFilter/Bash/markers.ts` | ~40 | `wrapStdoutWithMarkers` reusando `escapeXmlAttr` de `src/shared/data/xml.ts` |
 | `src/outputFilter/Bash/userFilters.ts` | ~140 | Stub: zod schema + safe loader. Carregamento real em Phase 6. |
 | `src/outputFilter/Bash/filters/index.ts` | ~10 | `export const builtInFilters: FilterSpec[] = []` (vazio, populado em Phase 2/5) |
 | `src/outputFilter/Bash/bashFilter.test.ts` | ~500 | Port direto de `validation/validate.ts` — 67 cases + 3 safety + 1 rewrite test, todos rodando contra `builtInFilters: []` (vão ficar como skipped até Phase 2) |
@@ -83,7 +83,7 @@ Nenhum. O módulo é dead code — não tem importer ainda.
    ```
 
 4. **Implementar `markers.ts`:**
-   - Importar `escapeXmlAttr` de `src/utils/data/xml.js`
+   - Importar `escapeXmlAttr` de `src/shared/data/xml.js`
    - `wrapStdoutWithMarkers(rawStdout, plan, pipelineResult)` retorna stdout com markers prepend
    - Idempotência: skip se starts with `<persisted-output>`, `<tool-result-summary`, `<bash-output-rewritten`, `<bash-output-filtered`
    - Truncar `original`/`actual` em 200 chars com ellipsis
@@ -136,7 +136,7 @@ bun run test:coverage
 - [ ] Coverage ≥80% no novo módulo
 - [ ] `scripts/regex-redos-scan.test.ts` passa (vacuously — sem filters ainda)
 - [ ] Pipeline reusa `collapseIdenticalRuns`/`collapseDigitTemplates` de `toolResultSummarizer.ts` (Phase 0 done)
-- [ ] `markers.ts` reusa `escapeXmlAttr` de `src/utils/data/xml.ts`
+- [ ] `markers.ts` reusa `escapeXmlAttr` de `src/shared/data/xml.ts`
 - [ ] Nenhum import de fora do módulo exceto: `escapeXmlAttr`, `collapseIdenticalRuns`, `collapseDigitTemplates`, `logForDebugging`, `logError`, `isEnvTruthy`, `getGlobalConfig`, `z` (zod)
 - [ ] **Locale degrade graceful test** em `pipeline.test.ts`: filter cujo `matchCommand` regex não casa (simula non-EN locale) retorna raw stdout sem exception, sem marker. Confirma fail-open natural.
 - [ ] **Empty stdout early-return test** em `pipeline.test.ts`: `applyFilterToStdout('', false, plan)` retorna `''` sem marker, mesmo com filter matched. Idem `applyFilterToStdout('   \n  \n', ...)` (whitespace-only).
@@ -163,7 +163,7 @@ Creates `src/outputFilter/Bash/` with the full pipeline + registry + markers + z
 - New module at `src/outputFilter/Bash/`: `index.ts`, `pipeline.ts` (port of validation/pipeline.ts), `registry.ts`, `markers.ts`, `userFilters.ts` (stub)
 - New test files: `bashFilter.test.ts` (the harness), `pipeline.test.ts`, `registry.test.ts`, `markers.test.ts`
 - New `scripts/regex-redos-scan.test.ts` to gate built-in regex against ReDoS-prone shapes
-- Reuses `escapeXmlAttr` from `src/utils/data/xml.ts`, `collapseIdenticalRuns`/`collapseDigitTemplates` from `toolResultSummarizer.ts` (Phase 0)
+- Reuses `escapeXmlAttr` from `src/shared/data/xml.ts`, `collapseIdenticalRuns`/`collapseDigitTemplates` from `toolResultSummarizer.ts` (Phase 0)
 
 ### Tests
 - 67 cases of integration harness pass (ROI ≥ predicted-5pp for each filter+sample)

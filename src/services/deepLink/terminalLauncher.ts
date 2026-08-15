@@ -14,9 +14,9 @@
 import { spawn } from 'child_process'
 import { basename } from 'path'
 import { getGlobalConfig } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
-import { which } from 'src/utils/proc/which.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
+import { which } from 'src/shared/proc/which.js'
 
 export type TerminalInfo = {
   name: string

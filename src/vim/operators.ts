@@ -5,8 +5,8 @@
  */
 
 import { Cursor } from 'src/utils/Cursor.js'
-import { firstGrapheme, lastGrapheme } from 'src/utils/text/intl.js'
-import { countCharInString } from 'src/utils/text/stringUtils.js'
+import { firstGrapheme, lastGrapheme } from 'src/shared/text/intl.js'
+import { countCharInString } from 'src/shared/text/stringUtils.js'
 import {
   isInclusiveMotion,
   isLinewiseMotion,

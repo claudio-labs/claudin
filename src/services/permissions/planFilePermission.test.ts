@@ -8,7 +8,7 @@ import {
   setCwdState,
   setOriginalCwd,
 } from 'src/bootstrap/state.js'
-import { runWithCwdOverride } from 'src/utils/fs/cwd.js'
+import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 import { getPlansDirectory, setPlanSlug } from 'src/utils/plans.js'
 import { getSessionId } from 'src/bootstrap/state.js'
 import { checkEditableInternalPath } from 'src/services/permissions/filesystem.js'

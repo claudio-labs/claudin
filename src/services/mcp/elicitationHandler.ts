@@ -11,7 +11,7 @@ import {
   executeElicitationResultHooks,
   executeNotificationHooks,
 } from 'src/services/lifecycleHooks/hooks.js'
-import { logMCPDebug, logMCPError } from 'src/utils/log.js'
+import { logMCPDebug, logMCPError } from 'src/shared/log.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,

@@ -7,8 +7,8 @@ import { Text } from 'src/ink.js';
 import { getInitializationStatus, getLspServerManager } from 'src/services/lsp/manager.js';
 import type { PluginError } from 'src/types/plugin.js';
 import { useSetAppState } from 'src/state/AppState.js';
-import { logForDebugging } from 'src/utils/debug.js';
-import { isEnvTruthy } from 'src/utils/envUtils.js';
+import { logForDebugging } from 'src/shared/debug.js';
+import { isEnvTruthy } from 'src/shared/envUtils.js';
 const LSP_POLL_INTERVAL_MS = 5000;
 
 /**

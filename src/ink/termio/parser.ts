@@ -11,7 +11,7 @@
  * - Style tracking: maintains current text style state
  */
 
-import { getGraphemeSegmenter } from 'src/utils/text/intl.js'
+import { getGraphemeSegmenter } from 'src/shared/text/intl.js'
 import { C0 } from 'src/ink/termio/ansi.js'
 import { CSI, CURSOR_STYLES, ERASE_DISPLAY, ERASE_LINE_REGION } from 'src/ink/termio/csi.js'
 import { DEC } from 'src/ink/termio/dec.js'

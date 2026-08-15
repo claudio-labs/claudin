@@ -11,8 +11,8 @@ import { Box, Text } from 'src/ink.js';
 import { clearServerCache } from 'src/services/mcp/client.js';
 import type { ScopedMcpServerConfig } from 'src/services/mcp/types.js';
 import { useAppState, useSetAppState } from 'src/state/AppState.js';
-import { getCwd } from 'src/utils/fs/cwd.js';
-import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js';
+import { getCwd } from 'src/shared/fs/cwd.js';
+import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js';
 import { type DetectedIDEInfo, detectIDEs, detectRunningIDEs, type IdeType, isJetBrainsIde, isSupportedJetBrainsTerminal, isSupportedTerminal, toIDEDisplayName } from 'src/services/ide/ide.js';
 import { getCurrentWorktreeSession } from 'src/services/git/worktree.js';
 type IDEScreenProps = {

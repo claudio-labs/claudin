@@ -7,8 +7,8 @@ import { useSettings } from 'src/hooks/useSettings.js';
 import { useTextInput } from 'src/hooks/useTextInput.js';
 import { Box, color, useAnimationFrame, useTerminalFocus, useTheme } from 'src/ink.js';
 import type { BaseTextInputProps } from 'src/types/textInputTypes.js';
-import { isEnvTruthy } from 'src/utils/envUtils.js';
-import type { TextHighlight } from 'src/utils/text/textHighlighting.js';
+import { isEnvTruthy } from 'src/shared/envUtils.js';
+import type { TextHighlight } from 'src/shared/text/textHighlighting.js';
 import { BaseTextInput } from 'src/components/BaseTextInput.js';
 import { hueToRgb } from 'src/components/Spinner/utils.js';
 

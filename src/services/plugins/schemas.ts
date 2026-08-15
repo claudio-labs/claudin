@@ -1,7 +1,7 @@
 import { z } from 'zod/v4'
-import { HooksSchema } from 'src/schemas/hooks.js'
+import { HooksSchema } from 'src/shared/schemas/hooks.js'
 import { McpServerConfigSchema } from 'src/services/mcp/types.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 
 /**
  * First-layer defense against official marketplace impersonation.

@@ -14,14 +14,14 @@ import {
   FileReadTool,
   type Output as FileReadToolOutput,
 } from 'src/tools/FileReadTool/FileReadTool.js'
-import { isFsInaccessible } from 'src/utils/errors.js'
-import { cloneFileStateCache } from 'src/utils/fs/fileStateCache.js'
+import { isFsInaccessible } from 'src/shared/errors.js'
+import { cloneFileStateCache } from 'src/shared/fs/fileStateCache.js'
 import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
 import {
   createUserMessage,
   hasToolCallsInLastAssistantTurn,
 } from 'src/services/messages/messages.js'
-import { sequential } from 'src/utils/sequential.js'
+import { sequential } from 'src/shared/sequential.js'
 import { buildMagicDocsUpdatePrompt } from 'src/services/MagicDocs/prompts.js'
 
 // Magic Doc header pattern: # MAGIC DOC: [title]

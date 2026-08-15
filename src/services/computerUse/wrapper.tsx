@@ -21,7 +21,7 @@ import * as React from 'react';
 import { getSessionId } from 'src/bootstrap/state.js';
 import { ComputerUseApproval } from 'src/components/permissions/ComputerUseApproval/ComputerUseApproval.js';
 import type { Tool, ToolUseContext } from 'src/Tool.js';
-import { logForDebugging } from 'src/utils/debug.js';
+import { logForDebugging } from 'src/shared/debug.js';
 import { checkComputerUseLock, tryAcquireComputerUseLock } from 'src/services/computerUse/computerUseLock.js';
 import { registerEscHotkey } from 'src/services/computerUse/escHotkey.js';
 import { getChicagoCoordinateMode } from 'src/services/computerUse/gates.js';

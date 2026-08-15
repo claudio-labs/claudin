@@ -29,14 +29,14 @@ import type {
 } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { asAgentId } from 'src/types/ids.js'
 import type { Message } from 'src/types/message.js'
-import { createAbortController } from 'src/utils/abortController.js'
+import { createAbortController } from 'src/shared/abortController.js'
 import {
   runWithAgentContext,
   type SubagentContext,
 } from 'src/coordinator/agentContext.js'
-import { registerCleanup } from 'src/utils/cleanupRegistry.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logError } from 'src/utils/log.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logError } from 'src/shared/log.js'
 import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js'
 import { emitTaskTerminatedSdk } from 'src/utils/sdkEventQueue.js'
 import {

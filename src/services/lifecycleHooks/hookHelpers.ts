@@ -5,7 +5,7 @@ import {
   SyntheticOutputTool,
 } from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js'
 import { substituteArguments } from 'src/utils/argumentSubstitution.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import type { SetAppState } from 'src/utils/messageQueueManager.js'
 import { hasSuccessfulToolCall } from 'src/services/messages/messages.js'
 import { addFunctionHook } from 'src/services/lifecycleHooks/sessionHooks.js'

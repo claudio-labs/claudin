@@ -24,7 +24,7 @@ import {
   isSdkApiConnectionError,
   isSdkApiConnectionTimeoutError,
   isSdkApiError,
-} from 'src/utils/errors.js'
+} from 'src/shared/errors.js'
 import { isNonCustomOpusModel } from 'src/utils/model/model.js'
 import { getModelStrings } from 'src/utils/model/modelStrings.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
@@ -33,9 +33,9 @@ import {
   API_PDF_MAX_PAGES,
   PDF_TARGET_RAW_SIZE,
 } from 'src/constants/apiLimits.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { formatFileSize } from 'src/utils/text/format.js'
+import { formatFileSize } from 'src/shared/text/format.js'
 import { ImageResizeError } from 'src/utils/imageResizer.js'
 import { ImageSizeError } from 'src/utils/imageValidation.js'
 import {

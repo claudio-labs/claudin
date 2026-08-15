@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import * as React from 'react';
 import { Box, color, Text, useTheme } from 'src/ink.js';
-import { plural } from 'src/utils/text/stringUtils.js';
+import { plural } from 'src/shared/text/stringUtils.js';
 import type { UnifiedInstalledItem } from 'src/commands/plugin/unifiedTypes.js';
 type Props = {
   item: UnifiedInstalledItem;

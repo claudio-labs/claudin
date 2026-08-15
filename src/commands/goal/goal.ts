@@ -8,7 +8,7 @@ import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
 } from 'src/types/command.js'
-import { formatDuration } from 'src/utils/text/format.js'
+import { formatDuration } from 'src/shared/text/format.js'
 import {
   buildGoalDirective,
   clearActiveGoal,

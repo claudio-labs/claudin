@@ -1,7 +1,7 @@
 import type { ConfigScope } from 'src/services/mcp/types.js'
 import type { ZodError, ZodIssue } from 'zod/v4'
 import { jsonParse } from 'src/utils/slowOperations.js'
-import { plural } from 'src/utils/text/stringUtils.js'
+import { plural } from 'src/shared/text/stringUtils.js'
 import { validatePermissionRule } from 'src/services/settings/permissionValidation.js'
 import { generateSettingsJSONSchema } from 'src/services/settings/schemaOutput.js'
 import type { SettingsJson } from 'src/services/settings/types.js'

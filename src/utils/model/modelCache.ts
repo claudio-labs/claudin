@@ -9,7 +9,7 @@ import { access, readFile, writeFile, mkdir, unlink } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 
 function getActiveBaseUrl(): string {

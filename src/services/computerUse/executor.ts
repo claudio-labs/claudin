@@ -38,10 +38,10 @@ import type {
 } from '@ant/computer-use-mcp'
 
 import { API_RESIZE_PARAMS, targetImageSize } from '@ant/computer-use-mcp'
-import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage } from 'src/utils/errors.js'
-import { execFileNoThrow } from 'src/utils/proc/execFileNoThrow.js'
-import { sleep } from 'src/utils/sleep.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage } from 'src/shared/errors.js'
+import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
+import { sleep } from 'src/shared/sleep.js'
 import {
   CLI_CU_CAPABILITIES,
   CLI_HOST_BUNDLE_ID,

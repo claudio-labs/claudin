@@ -22,8 +22,8 @@ import {
   readCodexCredentialsAsync,
   refreshCodexAccessTokenIfNeeded,
 } from 'src/services/api/codexCredentials.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isBareMode, isEnvTruthy } from 'src/utils/envUtils.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'
 import { resolveGeminiCredential } from 'src/services/api/geminiAuth.js'
 import { hydrateGeminiAccessTokenFromSecureStorage } from 'src/services/api/geminiCredentials.js'
 import { hydrateGithubModelsTokenFromSecureStorage } from 'src/services/api/githubModelsCredentials.js'
@@ -35,7 +35,7 @@ import {
 } from 'src/utils/effort.js'
 import { redactSecretValueForDisplay } from 'src/services/api/providerProfile.js'
 import { logApiCallEnd, logApiCallStart } from 'src/services/api/requestLogging.js'
-import { stableStringify } from 'src/utils/data/stableStringify.js'
+import { stableStringify } from 'src/shared/data/stableStringify.js'
 import {
   roughTokenCountEstimation,
   roughTokenCountEstimationForContent,

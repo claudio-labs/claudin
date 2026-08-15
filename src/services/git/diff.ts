@@ -3,8 +3,8 @@ import { logEvent } from 'src/services/analytics/index.js'
 import { getLocCounter } from 'src/bootstrap/state.js'
 import { addToTotalLinesChanged } from 'src/cost-tracker.js'
 import type { FileEdit } from 'src/tools/FileEditTool/types.js'
-import { count } from 'src/utils/data/array.js'
-import { convertLeadingTabsToSpaces } from 'src/utils/fs/file.js'
+import { count } from 'src/shared/data/array.js'
+import { convertLeadingTabsToSpaces } from 'src/shared/fs/file.js'
 
 export const CONTEXT_LINES = 3
 export const DIFF_TIMEOUT_MS = 5_000

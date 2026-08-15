@@ -34,13 +34,13 @@ import {
   isSyncHookJSONOutput,
 } from 'src/types/hooks.js'
 import type { HookEvent, HookInput } from 'src/entrypoints/agentSdkTypes.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logError } from 'src/utils/log.js'
-import { createCombinedAbortSignal } from 'src/utils/combinedAbortSignal.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logError } from 'src/shared/log.js'
+import { createCombinedAbortSignal } from 'src/shared/combinedAbortSignal.js'
 import { execHttpHook } from 'src/services/lifecycleHooks/execHttpHook.js'
 import type { AppState } from 'src/state/AppState.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   TOOL_HOOK_EXECUTION_TIMEOUT_MS,
   isInternalHook,

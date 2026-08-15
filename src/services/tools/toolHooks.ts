@@ -14,15 +14,15 @@ import type {
 } from 'src/types/message.js'
 import type { PermissionDecision } from 'src/types/permissions.js'
 import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   executePostToolHooks,
   executePostToolUseFailureHooks,
   executePreToolHooks,
   getPreToolHookBlockingMessage,
 } from 'src/services/lifecycleHooks/hooks.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import {
   getRuleBehaviorDescription,
   type PermissionDecisionReason,

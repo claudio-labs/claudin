@@ -14,21 +14,21 @@ import {
 import { logEvent } from 'src/services/analytics/index.js'
 import type { FileSuggestionCommandInput } from 'src/types/fileSuggestion.js'
 import { getGlobalConfig } from 'src/services/config/config.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage } from 'src/utils/errors.js'
-import { execFileNoThrowWithCwd } from 'src/utils/proc/execFileNoThrow.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage } from 'src/shared/errors.js'
+import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { findGitRoot, gitExe } from 'src/services/git/git.js'
 import {
   createBaseHookInput,
   executeFileSuggestionCommand,
 } from 'src/services/lifecycleHooks/hooks.js'
-import { logError } from 'src/utils/log.js'
-import { expandPath } from 'src/utils/fs/path.js'
-import { ripGrep } from 'src/utils/fs/ripgrep.js'
+import { logError } from 'src/shared/log.js'
+import { expandPath } from 'src/shared/fs/path.js'
+import { ripGrep } from 'src/shared/fs/ripgrep.js'
 import { getInitialSettings } from 'src/services/settings/settings.js'
-import { createSignal } from 'src/utils/signal.js'
+import { createSignal } from 'src/shared/signal.js'
 
 // Lazily constructed singleton
 let fileIndex: FileIndex | null = null

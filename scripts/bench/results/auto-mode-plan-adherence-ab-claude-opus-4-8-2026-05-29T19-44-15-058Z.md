@@ -97,7 +97,7 @@
 
 ### control-direct-action (control)
 
-> adicione um console.log em src/utils/log.ts pra debugar
+> adicione um console.log em src/shared/log.ts pra debugar
 
 ### control-howworks (control)
 

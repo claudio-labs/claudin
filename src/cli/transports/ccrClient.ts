@@ -5,9 +5,9 @@ import type {
   StdoutMessage,
 } from 'src/entrypoints/sdk/controlTypes.js'
 import { decodeJwtExpiry } from 'src/bridge/jwtUtils.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
-import { errorMessage, getErrnoCode } from 'src/utils/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
+import { errorMessage, getErrnoCode } from 'src/shared/errors.js'
 import { createAxiosInstance } from 'src/services/api/proxy.js'
 import {
   registerSessionActivityCallback,
@@ -21,7 +21,7 @@ import type {
   RequiresActionDetails,
   SessionState,
 } from 'src/services/session/sessionState.js'
-import { sleep } from 'src/utils/sleep.js'
+import { sleep } from 'src/shared/sleep.js'
 import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 import {
   RetryableError,

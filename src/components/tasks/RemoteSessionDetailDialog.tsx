@@ -15,12 +15,12 @@ import { getRemoteTaskSessionUrl } from 'src/tasks/RemoteAgentTask/RemoteAgentTa
 import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js';
 import { ASK_USER_QUESTION_TOOL_NAME } from 'src/tools/AskUserQuestionTool/prompt.js';
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js';
-import { openBrowser } from 'src/utils/browser.js';
-import { errorMessage } from 'src/utils/errors.js';
-import { formatDuration, truncateToWidth } from 'src/utils/text/format.js';
+import { openBrowser } from 'src/shared/browser.js';
+import { errorMessage } from 'src/shared/errors.js';
+import { formatDuration, truncateToWidth } from 'src/shared/text/format.js';
 import { toInternalMessages } from 'src/services/messages/mappers.js';
 import { EMPTY_LOOKUPS, normalizeMessages } from 'src/services/messages/messages.js';
-import { plural } from 'src/utils/text/stringUtils.js';
+import { plural } from 'src/shared/text/stringUtils.js';
 import { teleportResumeCodeSession } from 'src/components/teleport.js';
 import { Select } from 'src/components/CustomSelect/select.js';
 import { Byline } from 'src/components/design-system/Byline.js';

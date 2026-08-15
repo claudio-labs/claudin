@@ -13,10 +13,10 @@ import type {
   SystemAPIErrorMessage,
   UserMessage,
 } from 'src/types/message.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { env } from 'src/utils/env.js'
-import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/utils/envUtils.js'
-import { getErrnoCode } from 'src/utils/errors.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { env } from 'src/shared/env.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
+import { getErrnoCode } from 'src/shared/errors.js'
 import { normalizeMessagesForAPI } from 'src/services/messages/messages.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 

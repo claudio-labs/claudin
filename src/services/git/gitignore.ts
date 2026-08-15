@@ -1,11 +1,11 @@
 import { appendFile, mkdir, readFile, writeFile } from 'fs/promises'
 import { homedir } from 'os'
 import { dirname, join } from 'path'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { getErrnoCode } from 'src/utils/errors.js'
-import { execFileNoThrowWithCwd } from 'src/utils/proc/execFileNoThrow.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { getErrnoCode } from 'src/shared/errors.js'
+import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
 import { dirIsInGitRepo } from 'src/services/git/git.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 
 /**
  * Checks if a path is ignored by git (via `git check-ignore`).

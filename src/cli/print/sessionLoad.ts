@@ -12,7 +12,7 @@ import {
 } from 'src/services/session/conversationRecovery.js'
 import { externalMetadataToAppState } from 'src/state/onChangeAppState.js'
 import { logEvent } from 'src/services/analytics/index.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { isPolicyAllowed } from 'src/services/policyLimits/index.js'
 import { parseSessionIdentifier } from 'src/services/session/sessionUrl.js'
 import {
@@ -31,11 +31,11 @@ import {
 } from 'src/bootstrap/state.js'
 import { asSessionId } from 'src/types/ids.js'
 import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
-import { gracefulShutdownSync } from 'src/utils/proc/gracefulShutdown.js'
+import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js'
 import { EMPTY_USAGE } from 'src/services/api/logging.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const coordinatorModeModule = feature('COORDINATOR_MODE')

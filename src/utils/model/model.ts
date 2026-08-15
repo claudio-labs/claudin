@@ -15,7 +15,7 @@ import {
   is1mContextDisabled,
   modelSupports1M,
 } from 'src/services/context/context.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getPrimaryModel } from 'src/services/api/providerModels.js'
 import { getModelStrings, resolveOverriddenModel } from 'src/utils/model/modelStrings.js'
 import {
@@ -29,7 +29,7 @@ import { getAPIProvider } from 'src/utils/model/providers.js'
 import { LIGHTNING_BOLT } from 'src/constants/figures.js'
 import { isModelAllowed } from 'src/utils/model/modelAllowlist.js'
 import { type ModelAlias, isModelAlias } from 'src/utils/model/aliases.js'
-import { capitalize } from 'src/utils/text/stringUtils.js'
+import { capitalize } from 'src/shared/text/stringUtils.js'
 import { COPILOT_DISPLAY_NAMES } from 'src/utils/model/copilotModels.js'
 
 export type ModelShortName = string

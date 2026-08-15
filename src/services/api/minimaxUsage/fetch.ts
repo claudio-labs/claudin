@@ -1,5 +1,5 @@
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { getClaudinUserAgent } from 'src/services/api/userAgent.js'
 import {
   DEFAULT_MINIMAX_BASE_URL,

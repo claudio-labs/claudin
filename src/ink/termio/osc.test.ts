@@ -12,16 +12,16 @@ const execFileNoThrowMock = mock(
 )
 
 // Capture the real modules before mocking so afterAll can restore them.
-const realExecFileNoThrowOsc = { ...(await import('src/utils/proc/execFileNoThrow.js')) }
-const realTempfileOsc = { ...(await import('src/utils/fs/tempfile.js')) }
+const realExecFileNoThrowOsc = { ...(await import('src/shared/proc/execFileNoThrow.js')) }
+const realTempfileOsc = { ...(await import('src/shared/fs/tempfile.js')) }
 
 function installOscMocks(): void {
-  mock.module('src/utils/proc/execFileNoThrow.js', () => ({
+  mock.module('src/shared/proc/execFileNoThrow.js', () => ({
     execFileNoThrow: execFileNoThrowMock,
     execFileNoThrowWithCwd: execFileNoThrowMock,
   }))
 
-  mock.module('src/utils/fs/tempfile.js', () => ({
+  mock.module('src/shared/fs/tempfile.js', () => ({
     generateTempFilePath: generateTempFilePathMock,
   }))
 }
@@ -154,6 +154,6 @@ describe('clipboard path behavior remains stable', () => {
 })
 
 afterAll(() => {
-  mock.module('src/utils/proc/execFileNoThrow.js', () => realExecFileNoThrowOsc)
-  mock.module('src/utils/fs/tempfile.js', () => realTempfileOsc)
+  mock.module('src/shared/proc/execFileNoThrow.js', () => realExecFileNoThrowOsc)
+  mock.module('src/shared/fs/tempfile.js', () => realTempfileOsc)
 })

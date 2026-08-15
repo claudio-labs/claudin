@@ -4,9 +4,9 @@ import {
   styledCharsFromTokens,
   tokenize,
 } from '@alcalzone/ansi-tokenize'
-import { logForDebugging } from 'src/utils/debug.js'
-import { getGraphemeSegmenter } from 'src/utils/text/intl.js'
-import sliceAnsi from 'src/utils/text/sliceAnsi.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { getGraphemeSegmenter } from 'src/shared/text/intl.js'
+import sliceAnsi from 'src/shared/text/sliceAnsi.js'
 import { reorderBidi } from 'src/ink/bidi.js'
 import { type Rectangle, unionRect } from 'src/ink/layout/geometry.js'
 import {

@@ -24,10 +24,10 @@ import type { ConfigScope, ScopedMcpServerConfig } from 'src/services/mcp/types.
 import { describeMcpConfigFilePath, ensureConfigScope, getScopeLabel } from 'src/services/mcp/utils.js';
 import { AppStateProvider } from 'src/state/AppState.js';
 import { getCurrentProjectConfig, getGlobalConfig, saveCurrentProjectConfig } from 'src/services/config/config.js';
-import { isFsInaccessible } from 'src/utils/errors.js';
-import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js';
-import { safeParseJSON } from 'src/utils/data/json.js';
-import { getPlatform } from 'src/utils/proc/platform.js';
+import { isFsInaccessible } from 'src/shared/errors.js';
+import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';
+import { safeParseJSON } from 'src/shared/data/json.js';
+import { getPlatform } from 'src/shared/proc/platform.js';
 import { cliError, cliOk } from 'src/cli/exit.js';
 
 function formatDoctorReport(report: McpDoctorReport): string {

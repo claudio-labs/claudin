@@ -22,11 +22,11 @@ import {
   getModelMaxOutputTokens,
 } from "src/services/context/context.js";
 import { type EffortValue, isAdaptiveEffort, modelSupportsEffort } from "src/utils/effort.js";
-import { isEnvTruthy } from "src/utils/envUtils.js";
-import { validateBoundedIntEnvVar } from "src/utils/envValidation.js";
-import { errorMessage } from "src/utils/errors.js";
-import { safeParseJSON } from "src/utils/data/json.js";
-import { logForDebugging } from "src/utils/debug.js";
+import { isEnvTruthy } from "src/shared/envUtils.js";
+import { validateBoundedIntEnvVar } from "src/shared/envValidation.js";
+import { errorMessage } from "src/shared/errors.js";
+import { safeParseJSON } from "src/shared/data/json.js";
+import { logForDebugging } from "src/shared/debug.js";
 import {
   getDefaultOpusModel,
   getDefaultSonnetModel,

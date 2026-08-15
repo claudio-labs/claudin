@@ -23,10 +23,10 @@ import type {
   InProcessTeammateTaskState,
   TeammateIdentity,
 } from 'src/tasks/InProcessTeammateTask/types.js'
-import { createAbortController } from 'src/utils/abortController.js'
+import { createAbortController } from 'src/shared/abortController.js'
 import { formatAgentId } from 'src/coordinator/agentId.js'
-import { registerCleanup } from 'src/utils/cleanupRegistry.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { emitTaskTerminatedSdk } from 'src/utils/sdkEventQueue.js'
 import { evictTaskOutput } from 'src/tasks/diskOutput.js'
 import {

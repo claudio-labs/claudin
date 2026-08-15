@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useCallback, useState } from 'react';
 import { Box, Text } from 'src/ink.js';
-import { getDisplayPath } from 'src/utils/fs/file.js';
+import { getDisplayPath } from 'src/shared/fs/file.js';
 import { removePathFromRepo, validateRepoAtPath } from 'src/services/git/githubRepoPathMapping.js';
 import { Select } from 'src/components/CustomSelect/index.js';
 import { Dialog } from 'src/components/design-system/Dialog.js';

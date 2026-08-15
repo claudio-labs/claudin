@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 
 interface Props {
   children: React.ReactNode

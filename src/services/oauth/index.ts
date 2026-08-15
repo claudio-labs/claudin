@@ -1,5 +1,5 @@
 import { logEvent } from 'src/services/analytics/index.js'
-import { openBrowser } from 'src/utils/browser.js'
+import { openBrowser } from 'src/shared/browser.js'
 import { AuthCodeListener } from 'src/services/oauth/auth-code-listener.js'
 import * as client from 'src/services/oauth/client.js'
 import * as crypto from 'src/services/oauth/crypto.js'

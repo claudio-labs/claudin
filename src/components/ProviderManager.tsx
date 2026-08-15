@@ -14,7 +14,7 @@ import {
   clearCodexCredentials,
   readCodexCredentialsAsync,
 } from 'src/services/api/codexCredentials.js'
-import { isBareMode } from 'src/utils/envUtils.js'
+import { isBareMode } from 'src/shared/envUtils.js'
 import { getPrimaryModel, parseModelList } from 'src/services/api/providerModels.js'
 import { getDefaultMainLoopModel } from 'src/utils/model/model.js'
 import { deleteProfileFile } from 'src/services/api/providerProfile.js'
@@ -46,7 +46,7 @@ import {
   rankOllamaModels,
   recommendOllamaModel,
 } from 'src/services/api/providerRecommendation.js'
-import { redactUrlForDisplay } from 'src/utils/urlRedaction.js'
+import { redactUrlForDisplay } from 'src/shared/urlRedaction.js'
 import {
   type OptionWithDescription,
   Select,

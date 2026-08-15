@@ -11,22 +11,22 @@ import type {
   BillingType,
   ReferralEligibilityResponse,
 } from 'src/services/oauth/types.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { registerCleanup } from 'src/utils/cleanupRegistry.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
-import { getGlobalClaudeFile } from 'src/utils/env.js'
-import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/utils/envUtils.js'
-import { ConfigParseError, getErrnoCode } from 'src/utils/errors.js'
-import { writeFileSyncAndFlush } from 'src/utils/fs/file.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
+import { getGlobalClaudeFile } from 'src/shared/env.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
+import { ConfigParseError, getErrnoCode } from 'src/shared/errors.js'
+import { writeFileSyncAndFlush } from 'src/shared/fs/file.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { findCanonicalGitRoot } from 'src/services/git/git.js'
-import { safeParseJSON } from 'src/utils/data/json.js'
-import { stripBOM } from 'src/utils/data/jsonRead.js'
-import * as lockfile from 'src/utils/fs/lockfile.js'
-import { logError } from 'src/utils/log.js'
+import { safeParseJSON } from 'src/shared/data/json.js'
+import { stripBOM } from 'src/shared/data/jsonRead.js'
+import * as lockfile from 'src/shared/fs/lockfile.js'
+import { logError } from 'src/shared/log.js'
 import type { MemoryType } from 'src/memdir/types.js'
-import { normalizePathForConfigKey } from 'src/utils/fs/path.js'
+import { normalizePathForConfigKey } from 'src/shared/fs/path.js'
 import {
   getEssentialTrafficOnlyReason,
   getExplicitEssentialTrafficOnlyReason,
@@ -755,7 +755,7 @@ export type GlobalConfig = {
   // Preferred browser binary used by OAuth flows (Anthropic sign-in, Codex,
   // GitHub Copilot, MCP). Overrides Linux auto-detection but is overridden by
   // $BROWSER. Path or bare binary name (e.g. "brave-browser"). undefined → use
-  // detection chain in src/utils/browser.ts.
+  // detection chain in src/shared/browser.ts.
   oauthBrowser?: string
 
   // Inline terminal images (T5.29). 'auto' (default) detects Kitty-family

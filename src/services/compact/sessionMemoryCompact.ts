@@ -4,7 +4,7 @@
 
 import type { AgentId } from 'src/types/ids.js'
 import type { HookResultMessage, Message } from 'src/types/message.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   createCompactBoundaryMessage,
   createUserMessage,

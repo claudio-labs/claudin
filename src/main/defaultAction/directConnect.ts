@@ -10,7 +10,7 @@ import { launchRepl } from 'src/replLauncher.js';
 import { createDirectConnectSession, DirectConnectError } from 'src/server/createDirectConnectSession.js';
 import { type AppState } from 'src/state/AppStateStore.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
-import { gracefulShutdown } from 'src/utils/proc/gracefulShutdown.js';
+import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';
 import type { FpsMetrics } from 'src/utils/fpsTracker.js';
 import { createSystemMessage } from 'src/services/messages/messages.js';
 import type { ThinkingConfig } from 'src/services/context/thinking.js';

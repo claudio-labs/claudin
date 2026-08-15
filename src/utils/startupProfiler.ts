@@ -15,9 +15,9 @@ import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
 } from 'src/services/analytics/index.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/utils/envUtils.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { formatMs, formatTimelineLine, getPerformance } from 'src/utils/profilerBase.js'
 import { writeFileSync_DEPRECATED } from 'src/utils/slowOperations.js'
 

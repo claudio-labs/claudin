@@ -27,15 +27,15 @@ import { mkdirSync, writeFileSync } from 'fs'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
 import { getSessionId } from 'src/bootstrap/state.js'
-import { registerCleanup } from 'src/utils/cleanupRegistry.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { registerCleanup } from 'src/shared/cleanupRegistry.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   getClaudinConfigHomeDir,
   isEnvDefinedFalsy,
   isEnvTruthy,
-} from 'src/utils/envUtils.js'
-import { errorMessage } from 'src/utils/errors.js'
-import { djb2Hash } from 'src/utils/data/hash.js'
+} from 'src/shared/envUtils.js'
+import { errorMessage } from 'src/shared/errors.js'
+import { djb2Hash } from 'src/shared/data/hash.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { getAgentId, getAgentName, getParentSessionId } from 'src/coordinator/teammate.js'
 

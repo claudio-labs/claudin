@@ -4,7 +4,7 @@ import React, { useContext, useEffect, useState, useSyncExternalStore } from 're
 import { MailboxProvider } from 'src/context/mailbox.js';
 import { useEffectEventCompat } from 'src/hooks/useEffectEventCompat.js';
 import { useSettingsChange } from 'src/hooks/useSettingsChange.js';
-import { logForDebugging } from 'src/utils/debug.js';
+import { logForDebugging } from 'src/shared/debug.js';
 import { createDisabledBypassPermissionsContext, isBypassPermissionsModeDisabled } from 'src/services/permissions/permissionSetup.js';
 import { applySettingsChange } from 'src/services/settings/applySettingsChange.js';
 import type { SettingSource } from 'src/services/settings/constants.js';

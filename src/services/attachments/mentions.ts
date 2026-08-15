@@ -1,4 +1,4 @@
-import { uniq } from 'src/utils/data/array.js'
+import { uniq } from 'src/shared/data/array.js'
 
 // Two patterns: quoted paths and regular paths. Hoisted to module level so the
 // regexes compile once at import time instead of on every call (Claudin rule:

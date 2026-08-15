@@ -1,15 +1,15 @@
 import { z } from 'zod/v4'
 import type { ValidationResult } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { isENOENT } from 'src/utils/errors.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { isENOENT } from 'src/shared/errors.js'
 import {
   FILE_NOT_FOUND_CWD_NOTE,
   suggestPathUnderCwd,
-} from 'src/utils/fs/file.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { expandPath, toRelativePath } from 'src/utils/fs/path.js'
+} from 'src/shared/fs/file.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { expandPath, toRelativePath } from 'src/shared/fs/path.js'
 import { relativizeRgLine, RG_LINE_RE } from 'src/tools/GrepTool/relativize.js'
 import {
   checkReadPermissionForTool,
@@ -19,10 +19,10 @@ import {
 import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
 import { matchWildcardPattern } from 'src/services/permissions/shellRuleMatching.js'
 import { getGlobExclusionsForPluginCache } from 'src/services/plugins/orphanedPluginFilter.js'
-import { ripGrepWithStatus } from 'src/utils/fs/ripgrep.js'
-import { semanticBoolean } from 'src/utils/data/semanticBoolean.js'
-import { semanticNumber } from 'src/utils/data/semanticNumber.js'
-import { plural } from 'src/utils/text/stringUtils.js'
+import { ripGrepWithStatus } from 'src/shared/fs/ripgrep.js'
+import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
+import { semanticNumber } from 'src/shared/data/semanticNumber.js'
+import { plural } from 'src/shared/text/stringUtils.js'
 import { buildSymbolsOutput } from 'src/tools/GrepTool/symbolsOutput.js'
 import { GREP_TOOL_NAME, getDescription } from 'src/tools/GrepTool/prompt.js'
 import {

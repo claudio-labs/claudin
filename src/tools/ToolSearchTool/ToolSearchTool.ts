@@ -12,9 +12,9 @@ import {
   type ToolDef,
   type Tools,
 } from 'src/Tool.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { escapeRegExp } from 'src/utils/text/stringUtils.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { escapeRegExp } from 'src/shared/text/stringUtils.js'
 import { isToolSearchEnabledOptimistic } from 'src/services/tools/toolSearch.js'
 import { getPrompt, isDeferredTool, TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/prompt.js'
 

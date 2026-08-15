@@ -1,13 +1,13 @@
 // biome-ignore-all assist/source/organizeImports: keep grouped by domain
 import { dirname, parse, relative, resolve } from 'path'
-import { getCwd } from 'src/utils/fs/cwd.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import {
   type ToolUseContext,
   type ToolPermissionContext,
 } from 'src/Tool.js'
 import type { Message } from 'src/types/message.js'
 import type { Attachment } from 'src/services/attachments/types.js'
-import type { FileStateCache } from 'src/utils/fs/fileStateCache.js'
+import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import {
   type MemoryFileInfo,
@@ -21,10 +21,10 @@ import {
   type InstructionsMemoryType,
 } from 'src/services/lifecycleHooks/hooks.js'
 import { pathInAllowedWorkingPath } from 'src/services/permissions/filesystem.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { logEvent } from 'src/services/analytics/index.js'
-import { isAbortError } from 'src/utils/errors.js'
-import { createChildAbortController } from 'src/utils/abortController.js'
+import { isAbortError } from 'src/shared/errors.js'
+import { createChildAbortController } from 'src/shared/abortController.js'
 import { getOriginalCwd } from 'src/bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
 import { findRelevantMemories } from 'src/memdir/findRelevantMemories.js'
@@ -32,7 +32,7 @@ import { memoryAge, memoryFreshnessText } from 'src/memdir/memoryAge.js'
 import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memdir/paths.js'
 import { getAgentMemoryDir } from 'src/tools/AgentTool/agentMemory.js'
 import { extractAgentMentions } from 'src/services/attachments/mentions.js'
-import { readFileInRange } from 'src/utils/fs/readFileInRange.js'
+import { readFileInRange } from 'src/shared/fs/readFileInRange.js'
 import { getUserMessageText } from 'src/services/messages/messages.js'
 import { isHumanTurn } from 'src/services/messages/messagePredicates.js'
 import { MAX_MEMORY_LINES, MAX_MEMORY_BYTES, RELEVANT_MEMORIES_CONFIG } from 'src/services/attachments/config.js'

@@ -15,7 +15,7 @@ import type {
   SystemMessage,
 } from 'src/types/message.js'
 import type { UUID } from 'crypto'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { fromSDKCompactMetadata } from 'src/services/messages/mappers.js'
 import { createUserMessage } from 'src/services/messages/messages.js'
 

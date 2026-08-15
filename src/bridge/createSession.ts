@@ -1,6 +1,6 @@
 import type { SDKMessage } from 'src/entrypoints/agentSdkTypes.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage } from 'src/utils/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage } from 'src/shared/errors.js'
 import { extractErrorDetail } from 'src/bridge/debugUtils.js'
 import { toCompatSessionId } from 'src/bridge/sessionIdCompat.js'
 

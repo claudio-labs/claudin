@@ -14,12 +14,12 @@ import { resetGlobalConfigForTests, saveGlobalConfig } from 'src/services/config
 // Otherwise the partial hooks.js / execFileNoThrow.js / which.js / env.js /
 // log.js stubs leak into later test files in the same Bun worker (e.g. the
 // hooks public-surface characterization test sees the stripped hooks surface).
-const realExecFileNoThrow = { ...(await import('src/utils/proc/execFileNoThrow.js')) }
-const realWhich = { ...(await import('src/utils/proc/which.js')) }
-const realEnv = { ...(await import('src/utils/env.js')) }
+const realExecFileNoThrow = { ...(await import('src/shared/proc/execFileNoThrow.js')) }
+const realWhich = { ...(await import('src/shared/proc/which.js')) }
+const realEnv = { ...(await import('src/shared/env.js')) }
 const realHooks = { ...(await import('src/services/lifecycleHooks/hooks.js')) }
 const realAnalyticsIndex = { ...(await import('src/services/analytics/index.js')) }
-const realLog = { ...(await import('src/utils/log.js')) }
+const realLog = { ...(await import('src/shared/log.js')) }
 
 // -- Top-level mocks (must run before importing the SUT) --------------------
 
@@ -33,7 +33,7 @@ const execFileNoThrowImpl = mock<
   ) => Promise<{ code: number; stdout: string; stderr: string; error?: string }>
 >(async () => ({ code: 0, stdout: '', stderr: '' }))
 
-mock.module('src/utils/proc/execFileNoThrow.js', () => ({
+mock.module('src/shared/proc/execFileNoThrow.js', () => ({
   execFileNoThrow: async (cmd: string, args: string[]) => {
     execCalls.push({ cmd, args })
     return execFileNoThrowImpl(cmd, args)
@@ -48,7 +48,7 @@ mock.module('src/utils/proc/execFileNoThrow.js', () => ({
 const whichImpl = mock<(name: string) => Promise<string | null>>(
   async name => `/usr/bin/${name}`,
 )
-mock.module('src/utils/proc/which.js', () => ({
+mock.module('src/shared/proc/which.js', () => ({
   which: (name: string) => whichImpl(name),
   whichSync: () => null,
 }))
@@ -65,7 +65,7 @@ const envState: EnvShape = {
   isSSH: () => false,
   isWslEnvironment: () => false,
 }
-mock.module('src/utils/env.js', () => ({
+mock.module('src/shared/env.js', () => ({
   env: new Proxy({} as EnvShape, {
     get(_t, prop: keyof EnvShape) {
       return envState[prop]
@@ -105,11 +105,11 @@ mock.module('src/services/lifecycleHooks/hooks.js', () => ({
   executeInstructionsLoadedHooks: async () => ({ decision: 'allow' as const }),
 }))
 
-mock.module('./analytics/index.js', () => ({
+mock.module('src/services/analytics/index.js', () => ({
   logEvent: () => {},
 }))
 
-mock.module('src/utils/log.js', () => ({
+mock.module('src/shared/log.js', () => ({
   logError: () => {},
   logForDebugging: () => {},
 }))
@@ -153,18 +153,18 @@ afterEach(() => {
 
 afterAll(() => {
   resetGlobalConfigForTests()
-  mock.module('src/utils/proc/execFileNoThrow.js', () => realExecFileNoThrow)
-  mock.module('src/utils/proc/execFileNoThrow.js', () => realExecFileNoThrow)
-  mock.module('src/utils/proc/which.js', () => realWhich)
-  mock.module('src/utils/proc/which.js', () => realWhich)
-  mock.module('src/utils/env.js', () => realEnv)
-  mock.module('src/utils/env.js', () => realEnv)
+  mock.module('src/shared/proc/execFileNoThrow.js', () => realExecFileNoThrow)
+  mock.module('src/shared/proc/execFileNoThrow.js', () => realExecFileNoThrow)
+  mock.module('src/shared/proc/which.js', () => realWhich)
+  mock.module('src/shared/proc/which.js', () => realWhich)
+  mock.module('src/shared/env.js', () => realEnv)
+  mock.module('src/shared/env.js', () => realEnv)
   mock.module('src/services/lifecycleHooks/hooks.js', () => realHooks)
   mock.module('src/services/lifecycleHooks/hooks.js', () => realHooks)
-  mock.module('./analytics/index.js', () => realAnalyticsIndex)
   mock.module('src/services/analytics/index.js', () => realAnalyticsIndex)
-  mock.module('src/utils/log.js', () => realLog)
-  mock.module('src/utils/log.js', () => realLog)
+  mock.module('src/services/analytics/index.js', () => realAnalyticsIndex)
+  mock.module('src/shared/log.js', () => realLog)
+  mock.module('src/shared/log.js', () => realLog)
 })
 
 

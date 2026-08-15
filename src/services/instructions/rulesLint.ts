@@ -19,9 +19,9 @@ import ignore from 'ignore'
 import { execFile } from 'child_process'
 import { isAbsolute, join, relative, sep } from 'path'
 import { promisify } from 'util'
-import { logForDebugging } from 'src/utils/debug.js'
-import { getErrnoCode } from 'src/utils/errors.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { getErrnoCode } from 'src/shared/errors.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { inspectRuleFrontmatter } from 'src/services/instructions/ruleFrontmatter.js'
 
 /** Root-level context files that are loaded without any `paths:` gating. */

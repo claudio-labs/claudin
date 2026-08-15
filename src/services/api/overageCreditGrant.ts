@@ -2,7 +2,7 @@ import axios from 'axios'
 import { getOauthConfig } from 'src/constants/oauth.js'
 import { getOauthAccountInfo } from 'src/services/auth/auth.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
 import { getOAuthHeaders, prepareApiRequest } from 'src/services/teleport/api.js'
 

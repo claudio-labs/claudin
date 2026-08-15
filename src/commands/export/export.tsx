@@ -4,7 +4,7 @@ import { ExportDialog } from 'src/components/ExportDialog.js';
 import type { ToolUseContext } from 'src/Tool.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import type { Message } from 'src/types/message.js';
-import { getCwd } from 'src/utils/fs/cwd.js';
+import { getCwd } from 'src/shared/fs/cwd.js';
 import { renderMessagesToPlainText } from 'src/components/exportRenderer.js';
 import { writeFileSync_DEPRECATED } from 'src/utils/slowOperations.js';
 function formatTimestamp(date: Date): string {

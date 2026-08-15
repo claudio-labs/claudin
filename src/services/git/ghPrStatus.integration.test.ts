@@ -3,7 +3,7 @@ import { afterAll, describe, expect, mock, test } from 'bun:test'
 // Mock at the process/git/config boundary, restore in afterAll, and re-import
 // the module fresh per test (?ts=...) to avoid mock.module cross-file leak.
 const realGit = { ...(await import('src/services/git/git.js')) }
-const realExec = { ...(await import('src/utils/proc/execFileNoThrow.js')) }
+const realExec = { ...(await import('src/shared/proc/execFileNoThrow.js')) }
 const realConfig = { ...(await import('src/services/config/config.js')) }
 
 type GitState = {
@@ -34,7 +34,7 @@ function setup(opts: {
     ...realConfig,
     getGlobalConfig: () => ({ prStatusHosts: opts.hosts }),
   }))
-  mock.module('src/utils/proc/execFileNoThrow.js', () => ({
+  mock.module('src/shared/proc/execFileNoThrow.js', () => ({
     ...realExec,
     execFileNoThrow: async (cmd: string, args: string[]) => {
       const r = opts.exec ? opts.exec(cmd, args) : {}
@@ -50,7 +50,7 @@ async function importFresh() {
 afterAll(() => {
   mock.module('./git.js', () => realGit)
   mock.module('src/services/config/config.js', () => realConfig)
-  mock.module('src/utils/proc/execFileNoThrow.js', () => realExec)
+  mock.module('src/shared/proc/execFileNoThrow.js', () => realExec)
 })
 
 const GH_PR = JSON.stringify({

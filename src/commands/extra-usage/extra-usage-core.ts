@@ -7,9 +7,9 @@ import { invalidateOverageCreditGrantCache } from 'src/services/api/overageCredi
 import { type ExtraUsage, fetchUtilization } from 'src/services/api/usage.js'
 import { getSubscriptionType } from 'src/services/auth/auth.js'
 import { hasClaudeAiBillingAccess } from 'src/services/api/billing.js'
-import { openBrowser } from 'src/utils/browser.js'
+import { openBrowser } from 'src/shared/browser.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 
 type ExtraUsageResult =
   | { type: 'message'; value: string }

@@ -64,11 +64,11 @@ import {
 import { evictTaskOutput } from 'src/tasks/diskOutput.js'
 import { evictTerminalTask } from 'src/tasks/framework.js'
 import { tokenCountWithEstimation } from 'src/services/context/tokens.js'
-import { createAbortController } from 'src/utils/abortController.js'
+import { createAbortController } from 'src/shared/abortController.js'
 import { type AgentContext, runWithAgentContext } from 'src/coordinator/agentContext.js'
-import { count } from 'src/utils/data/array.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { cloneFileStateCache } from 'src/utils/fs/fileStateCache.js'
+import { count } from 'src/shared/data/array.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { cloneFileStateCache } from 'src/shared/fs/fileStateCache.js'
 import {
   SUBAGENT_REJECT_MESSAGE,
   SUBAGENT_REJECT_MESSAGE_WITH_REASON_PREFIX,
@@ -81,7 +81,7 @@ import {
 import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
 import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js'
 import { emitTaskTerminatedSdk } from 'src/utils/sdkEventQueue.js'
-import { sleep } from 'src/utils/sleep.js'
+import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
 import { claimTask, listTasks, type Task, updateTask } from 'src/tasks/tasks.js'

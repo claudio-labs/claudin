@@ -18,7 +18,7 @@
  * `scripts/profile/git-summarizer-replay.ts` replays the recorded corpus
  * through this module; every threshold below was chosen from that run.
  */
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { renderDiff } from 'src/tools/GitTool/parsers/diff.js'
 import { renderIssueView, renderRunLog } from 'src/tools/GitTool/parsers/gh.js'
 import { renderStatusShort } from 'src/tools/GitTool/parsers/status.js'

@@ -1,12 +1,12 @@
 import { realpath } from 'fs/promises'
 import { getOriginalCwd } from 'src/bootstrap/state.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   detectCurrentRepository,
   parseGitHubRepository,
 } from 'src/services/git/detectRepository.js'
-import { pathExists } from 'src/utils/fs/file.js'
+import { pathExists } from 'src/shared/fs/file.js'
 import { getRemoteUrlForDir } from 'src/services/git/gitFilesystem.js'
 import { findGitRoot } from 'src/services/git/git.js'
 

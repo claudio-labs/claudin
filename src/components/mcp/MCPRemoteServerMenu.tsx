@@ -15,10 +15,10 @@ import { useMcpReconnect, useMcpToggleEnabled } from 'src/services/mcp/MCPConnec
 import { describeMcpConfigFilePath, excludeCommandsByServer, excludeResourcesByServer, excludeToolsByServer, filterMcpPromptsByServer } from 'src/services/mcp/utils.js';
 import { type AppState, useAppState, useSetAppState } from 'src/state/AppState.js';
 import { getOauthAccountInfo } from 'src/services/auth/auth.js';
-import { openBrowser } from 'src/utils/browser.js';
-import { errorMessage } from 'src/utils/errors.js';
-import { logMCPDebug } from 'src/utils/log.js';
-import { capitalize } from 'src/utils/text/stringUtils.js';
+import { openBrowser } from 'src/shared/browser.js';
+import { errorMessage } from 'src/shared/errors.js';
+import { logMCPDebug } from 'src/shared/log.js';
+import { capitalize } from 'src/shared/text/stringUtils.js';
 import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
 import { Select } from 'src/components/CustomSelect/index.js';
 import { Byline } from 'src/components/design-system/Byline.js';

@@ -349,7 +349,7 @@ async function main(): Promise<void> {
     } = await import('src/bridge/bridgeMain.js');
     const {
       exitWithError
-    } = await import('src/utils/proc/process.js');
+    } = await import('src/shared/proc/process.js');
 
     // Auth check must come before the GrowthBook gate check — without auth,
     // GrowthBook has no user context and would return a stale/default false.
@@ -392,7 +392,7 @@ async function main(): Promise<void> {
     enableConfigs();
     const {
       initSinks
-    } = await import('src/utils/sinks.js');
+    } = await import('src/shared/sinks.js');
     initSinks();
     const {
       daemonMain
@@ -489,7 +489,7 @@ async function main(): Promise<void> {
       if (result.error) {
         const {
           exitWithError
-        } = await import('src/utils/proc/process.js');
+        } = await import('src/shared/proc/process.js');
         exitWithError(result.error);
       }
     }

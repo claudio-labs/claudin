@@ -55,13 +55,13 @@ import {
   getMemoryPath,
   getUserClaudeRulesDir,
 } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { logForDiagnosticsNoPII } from 'src/utils/diagLogs.js'
-import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/utils/envUtils.js'
-import { getErrnoCode } from 'src/utils/errors.js'
-import { normalizePathForComparison } from 'src/utils/fs/file.js'
-import { cacheKeys, type FileStateCache } from 'src/utils/fs/fileStateCache.js'
-import { getFsImplementation, safeResolvePath } from 'src/utils/fs/fsOperations.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
+import { getErrnoCode } from 'src/shared/errors.js'
+import { normalizePathForComparison } from 'src/shared/fs/file.js'
+import { cacheKeys, type FileStateCache } from 'src/shared/fs/fileStateCache.js'
+import { getFsImplementation, safeResolvePath } from 'src/shared/fs/fsOperations.js'
 import { findCanonicalGitRoot, findGitRoot } from 'src/services/git/git.js'
 import {
   executeInstructionsLoadedHooks,
@@ -70,7 +70,7 @@ import {
   type InstructionsMemoryType,
 } from 'src/services/lifecycleHooks/hooks.js'
 import type { MemoryType } from 'src/memdir/types.js'
-import { expandPath } from 'src/utils/fs/path.js'
+import { expandPath } from 'src/shared/fs/path.js'
 import { pathInWorkingPath } from 'src/services/permissions/filesystem.js'
 import {
   getProjectInstructionFilePath,

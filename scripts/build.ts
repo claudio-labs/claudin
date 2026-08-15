@@ -721,7 +721,7 @@ ${exports}
     // image paste + resizing silently no-op in the standalone binary.
     'sharp',
     // Prebuilt ripgrep binary — resolved from node_modules at runtime
-    // (src/utils/fs/ripgrep.ts). Externalised so Bun never inlines the package
+    // (src/shared/fs/ripgrep.ts). Externalised so Bun never inlines the package
     // and its internal per-platform binary path resolution stays intact.
     '@vscode/ripgrep',
     // AWS/Azure SDKs are "bring your own" — NOT declared in package.json and

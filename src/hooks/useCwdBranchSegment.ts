@@ -1,7 +1,7 @@
 import chalk from 'chalk'
 import { useEffect, useState } from 'react'
 import { useTheme } from 'src/components/design-system/ThemeProvider.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import {
   buildBranchBorderSegment,
   buildBranchPill,

@@ -18,7 +18,7 @@ import { BackgroundTaskStatus } from 'src/components/tasks/BackgroundTaskStatus.
 import { footerTreeBaseIndex, getVisibleAgentTasks } from 'src/components/tasks/footerTaskGeometry.js';
 import { isPanelAgentTask } from 'src/tasks/LocalAgentTask/LocalAgentTask.js';
 import { isBackgroundTask } from 'src/tasks/types.js';
-import { count } from 'src/utils/data/array.js';
+import { count } from 'src/shared/data/array.js';
 import { shouldHideTasksFooter } from 'src/components/tasks/taskStatusUtils.js';
 import { resolveFooterTreeRow } from 'src/components/tasks/footerSelection.js';
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
@@ -37,7 +37,7 @@ import { KeyboardShortcutHint } from 'src/components/design-system/KeyboardShort
 import { Byline } from 'src/components/design-system/Byline.js';
 import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
 import { useTasksV2 } from 'src/hooks/useTasksV2.js';
-import { formatDuration } from 'src/utils/text/format.js';
+import { formatDuration } from 'src/shared/text/format.js';
 import { VoiceWarmupHint } from 'src/components/PromptInput/VoiceIndicator.js';
 import { useVoiceEnabled } from 'src/hooks/useVoiceEnabled.js';
 import { type VoiceState, useVoiceState } from 'src/context/voice.js';
@@ -45,7 +45,7 @@ import { isFullscreenEnvEnabled } from 'src/utils/fullscreen.js';
 import { isXtermJs } from 'src/ink/terminal.js';
 import { useHasSelection, useSelection } from 'src/ink/hooks/use-selection.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
-import { getPlatform } from 'src/utils/proc/platform.js';
+import { getPlatform } from 'src/shared/proc/platform.js';
 import { PrBadge } from 'src/components/PrBadge.js';
 
 // Dead code elimination: conditional import for proactive mode

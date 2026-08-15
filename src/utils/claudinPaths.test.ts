@@ -6,7 +6,7 @@ const originalEnv = { ...process.env }
 const originalArgv = [...process.argv]
 
 async function importFreshEnvUtils() {
-  return import(`./envUtils.ts?ts=${Date.now()}-${Math.random()}`)
+  return import(`src/shared/envUtils.ts?ts=${Date.now()}-${Math.random()}`)
 }
 
 afterEach(() => {

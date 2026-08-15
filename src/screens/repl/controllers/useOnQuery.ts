@@ -37,7 +37,7 @@ import type { provisionContentReplacementState } from 'src/services/tools/toolRe
 import { feature } from 'bun:bundle';
 import { snapshotOutputTokensForTurn, getCurrentTurnTokenBudget, getTurnOutputTokens, getBudgetContinuationCount } from 'src/bootstrap/state.js';
 import { parseTokenBudget } from 'src/services/context/tokenBudget.js';
-import { count } from 'src/utils/data/array.js';
+import { count } from 'src/shared/data/array.js';
 import { markTurnStart, markTurnEnd, resetTurnHookDuration, resetTurnToolDuration, resetTurnClassifierDuration } from 'src/bootstrap/state.js';
 import { QueryGuard } from 'src/utils/QueryGuard.js';
 import { setMemberActive } from 'src/coordinator/swarm/teamHelpers.js';

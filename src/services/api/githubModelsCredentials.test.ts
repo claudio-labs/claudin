@@ -9,7 +9,7 @@ afterAll(() => {
   mock.module('src/services/secureStorage/index.js', () => realSecureStorage)
   mock.module('src/services/api/activeProvider.js', () => realActiveProvider)
   mock.module('src/services/github/deviceFlow.js', () => realDeviceFlow)
-  mock.module('./providerProfiles.js', () => realProviderProfiles)
+  mock.module('src/services/api/providerProfiles.js', () => realProviderProfiles)
 })
 
 describe('readGithubModelsToken', () => {
@@ -191,7 +191,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
         endpoints: { api: 'https://api.githubcopilot.com' },
       })),
     }))
-    mock.module('./providerProfiles.js', () => ({
+    mock.module('src/services/api/providerProfiles.js', () => ({
       getProviderProfiles: () => [
         {
           id: 'profile_copilot',
@@ -295,7 +295,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
         }
       }),
     }))
-    mock.module('./providerProfiles.js', () => ({
+    mock.module('src/services/api/providerProfiles.js', () => ({
       getProviderProfiles: () => [],
       updateProviderProfile: mock(() => ({ success: true })),
     }))
@@ -368,7 +368,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
         }
       }),
     }))
-    mock.module('./providerProfiles.js', () => ({
+    mock.module('src/services/api/providerProfiles.js', () => ({
       getProviderProfiles: () => [],
       updateProviderProfile: mock(() => ({ success: true })),
     }))

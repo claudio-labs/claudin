@@ -742,7 +742,7 @@ describe("phase 6.1.2 — grepRg", () => {
   });
 
   test("safety: relative paths are left untouched (idempotent)", () => {
-    const raw = "src/utils/errors.ts:42:throw new Error\n";
+    const raw = "src/shared/errors.ts:42:throw new Error\n";
     const body = runFilterBody("grep-rg", "rg 'new Error' src/", raw);
     expect(body).toBe(raw);
   });

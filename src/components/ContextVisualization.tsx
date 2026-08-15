@@ -4,10 +4,10 @@ import * as React from 'react';
 import { Box, Text } from 'src/ink.js';
 import type { ContextData } from 'src/services/context/analyzeContext.js';
 import { generateContextSuggestions } from 'src/services/context/contextSuggestions.js';
-import { getDisplayPath } from 'src/utils/fs/file.js';
-import { formatTokens } from 'src/utils/text/format.js';
+import { getDisplayPath } from 'src/shared/fs/file.js';
+import { formatTokens } from 'src/shared/text/format.js';
 import { getSourceDisplayName, type SettingSource } from 'src/services/settings/constants.js';
-import { plural } from 'src/utils/text/stringUtils.js';
+import { plural } from 'src/shared/text/stringUtils.js';
 import { ContextSuggestions } from 'src/components/ContextSuggestions.js';
 
 // The element types behind ContextData's collections are not exported from

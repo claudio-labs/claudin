@@ -9,10 +9,10 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import type { AppState } from 'src/state/AppStateStore.js'
 import { getDefaultAppState } from 'src/state/AppStateStore.js'
 import { isLocalShellTask } from 'src/tasks/LocalShellTask/guards.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { resetCommandQueue } from 'src/utils/messageQueueManager.js'
 import { drainSdkEvents } from 'src/utils/sdkEventQueue.js'
-import type { ExecResult } from 'src/utils/proc/ShellCommand.js'
+import type { ExecResult } from 'src/shared/proc/ShellCommand.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
 import {
   applyBashOutputFilter,

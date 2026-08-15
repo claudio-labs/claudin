@@ -31,9 +31,9 @@ import {
   handleOAuth401Error,
 } from 'src/services/auth/auth.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { stripDisplayTagsAllowEmpty } from 'src/utils/text/displayTags.js'
-import { errorMessage } from 'src/utils/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { stripDisplayTagsAllowEmpty } from 'src/shared/text/displayTags.js'
+import { errorMessage } from 'src/shared/errors.js'
 import { getBranch, getRemoteUrl } from 'src/services/git/git.js'
 import { toSDKMessages } from 'src/services/messages/mappers.js'
 import {
@@ -47,7 +47,7 @@ import {
   extractConversationText,
   generateSessionTitle,
 } from 'src/services/session/sessionTitle.js'
-import { generateShortWordSlug } from 'src/utils/text/words.js'
+import { generateShortWordSlug } from 'src/shared/text/words.js'
 import {
   getBridgeAccessToken,
   getBridgeBaseUrl,

@@ -5,7 +5,7 @@ import {
   resolveCodexApiCredentials,
   resolveProviderRequest,
 } from 'src/services/api/providerConfig.js'
-import { isBareMode } from 'src/utils/envUtils.js'
+import { isBareMode } from 'src/shared/envUtils.js'
 import {
   type GeminiResolvedCredential,
   resolveGeminiCredential,

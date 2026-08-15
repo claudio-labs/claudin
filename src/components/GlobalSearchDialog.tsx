@@ -6,13 +6,13 @@ import { useRegisterOverlay } from 'src/context/overlayContext.js';
 import { useTerminalSize } from 'src/hooks/useTerminalSize.js';
 import { Text } from 'src/ink.js';
 import { logEvent } from 'src/services/analytics/index.js';
-import { getCwd } from 'src/utils/fs/cwd.js';
-import { openFileInExternalEditor } from 'src/utils/editor.js';
-import { truncatePathMiddle, truncateToWidth } from 'src/utils/text/format.js';
+import { getCwd } from 'src/shared/fs/cwd.js';
+import { openFileInExternalEditor } from 'src/shared/editor.js';
+import { truncatePathMiddle, truncateToWidth } from 'src/shared/text/format.js';
 import { highlightMatch } from 'src/components/highlightMatch.js';
 import { relativePath } from 'src/services/permissions/filesystem.js';
-import { readFileInRange } from 'src/utils/fs/readFileInRange.js';
-import { ripGrepStream } from 'src/utils/fs/ripgrep.js';
+import { readFileInRange } from 'src/shared/fs/readFileInRange.js';
+import { ripGrepStream } from 'src/shared/fs/ripgrep.js';
 import { FuzzyPicker } from 'src/components/design-system/FuzzyPicker.js';
 import { LoadingState } from 'src/components/design-system/LoadingState.js';
 type Props = {

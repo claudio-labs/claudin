@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { getAdditionalModelOptionsCacheScope } from 'src/services/api/providerConfig.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import type { ModelOption } from 'src/utils/model/modelOptions.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import { setActiveOpenAIModelOptionsCache } from 'src/services/api/providerProfiles.js'

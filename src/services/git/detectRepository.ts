@@ -1,5 +1,5 @@
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { getRemoteUrl } from 'src/services/git/git.js'
 
 export type ParsedRepository = {

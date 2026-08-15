@@ -11,8 +11,8 @@ import {
   type CodexUsageData,
   type CodexUsageRow,
 } from 'src/services/api/codexUsage.js'
-import { formatResetText } from 'src/utils/text/format.js'
-import { logError } from 'src/utils/log.js'
+import { formatResetText } from 'src/shared/text/format.js'
+import { logError } from 'src/shared/log.js'
 import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js'
 import { Byline } from 'src/components/design-system/Byline.js'
 import { ProgressBar } from 'src/components/design-system/ProgressBar.js'

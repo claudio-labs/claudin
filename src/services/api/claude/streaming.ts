@@ -41,14 +41,14 @@ import {
 import { getGlobalConfig } from "src/services/config/config.js";
 import { getSonnet1mExpTreatmentEnabled } from "src/services/context/context.js";
 import { getThinkingBudgetForEffort, resolveAppliedEffort } from "src/utils/effort.js";
-import { isEnvDefinedFalsy, isEnvTruthy } from "src/utils/envUtils.js";
+import { isEnvDefinedFalsy, isEnvTruthy } from "src/shared/envUtils.js";
 import {
   errorMessage,
   isSdkApiError,
   isSdkApiUserAbortError,
-} from "src/utils/errors.js";
-import { computeFingerprintFromMessages } from "src/utils/data/fingerprint.js";
-import { captureAPIRequest } from "src/utils/log.js";
+} from "src/shared/errors.js";
+import { computeFingerprintFromMessages } from "src/shared/data/fingerprint.js";
+import { captureAPIRequest } from "src/shared/log.js";
 import {
   createAssistantAPIErrorMessage,
   createUserMessage,
@@ -124,15 +124,15 @@ import {
 } from "src/utils/advisor.js";
 import { getAgentContext } from "src/coordinator/agentContext.js";
 import { isClaudeAISubscriber } from "src/services/auth/auth.js";
-import { createCombinedAbortSignal } from "src/utils/combinedAbortSignal.js";
+import { createCombinedAbortSignal } from "src/shared/combinedAbortSignal.js";
 import {
   getToolSearchBetaHeader,
   modelSupportsStructuredOutputs,
   shouldIncludeFirstPartyOnlyBetas,
   shouldUseGlobalCacheScope,
 } from "src/services/api/betas.js";
-import { logForDebugging } from "src/utils/debug.js";
-import { logForDiagnosticsNoPII } from "src/utils/diagLogs.js";
+import { logForDebugging } from "src/shared/debug.js";
+import { logForDiagnosticsNoPII } from "src/shared/diagLogs.js";
 import {
   isFastModeAvailable,
   isFastModeCooldown,
@@ -162,7 +162,7 @@ import {
   isDeferredTool,
   TOOL_SEARCH_TOOL_NAME,
 } from "src/tools/ToolSearchTool/prompt.js";
-import { count } from "src/utils/data/array.js";
+import { count } from "src/shared/data/array.js";
 import { getInferenceProfileBackingModel } from "src/utils/model/bedrock.js";
 import {
   normalizeModelStringForAPI,

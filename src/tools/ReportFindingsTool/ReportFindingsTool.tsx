@@ -5,7 +5,7 @@ import { getModeColor } from 'src/services/permissions/PermissionMode.js'
 import { Box, Text } from 'src/ink.js'
 import { buildTool, type Tool, type ToolDef } from 'src/Tool.js'
 import { EFFORT_LEVELS } from 'src/utils/effort.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   MAX_CATEGORY_CHARS,
   MAX_FINDINGS,

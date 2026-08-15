@@ -14,7 +14,7 @@
  */
 import memoize from 'lodash-es/memoize.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import { MAX_OUTPUT_SIZE } from 'src/utils/fs/file.js'
+import { MAX_OUTPUT_SIZE } from 'src/shared/fs/file.js'
 export const DEFAULT_MAX_OUTPUT_TOKENS = 25000
 
 /**

@@ -16,8 +16,8 @@
 //     which cannot be read while we are parked on it.
 
 import { logEvent } from 'src/services/analytics/index.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage } from 'src/utils/errors.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage } from 'src/shared/errors.js'
 import { OAuthService } from 'src/services/oauth/index.js'
 import { installOAuthTokens } from 'src/cli/handlers/auth.js'
 import { getAccountInformation } from 'src/services/auth/auth.js'

@@ -22,13 +22,13 @@ import {
 } from 'src/Tool.js'
 import { formatAgentId, generateRequestId } from 'src/coordinator/agentId.js'
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import {
   findInProcessTeammateTaskId,
   setAwaitingPlanApproval,
 } from 'src/coordinator/inProcessTeammateHelpers.js'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
-import { logError } from 'src/utils/log.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { logError } from 'src/shared/log.js'
 import {
   getPlan,
   getPlanFilePath,

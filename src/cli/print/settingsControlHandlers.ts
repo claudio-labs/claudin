@@ -17,10 +17,10 @@ import { readFile, stat } from 'fs/promises'
 import { cwd } from 'process'
 import { randomUUID } from 'crypto'
 import type { UUID } from 'crypto'
-import { logError } from 'src/utils/log.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { errorMessage } from 'src/utils/errors.js'
-import { expandPath } from 'src/utils/fs/path.js'
+import { logError } from 'src/shared/log.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { errorMessage } from 'src/shared/errors.js'
+import { expandPath } from 'src/shared/fs/path.js'
 import {
   getCommandName,
   formatDescriptionWithSource,
@@ -31,7 +31,7 @@ import { refreshActivePlugins } from 'src/services/plugins/refresh.js'
 import { redownloadUserSettings } from 'src/services/settingsSync/index.js'
 import { settingsChangeDetector } from 'src/services/settings/changeDetector.js'
 import { getSettingsWithSources } from 'src/services/settings/settings.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   getFlagSettingsInline,
   setFlagSettingsInline,
@@ -42,7 +42,7 @@ import {
 import { getMainLoopModel } from 'src/utils/model/model.js'
 import { modelSupportsEffort, resolveAppliedEffort } from 'src/utils/effort.js'
 import { notifySessionMetadataChanged } from 'src/services/session/sessionState.js'
-import { createAbortController } from 'src/utils/abortController.js'
+import { createAbortController } from 'src/shared/abortController.js'
 import { generateSessionTitle } from 'src/services/session/sessionTitle.js'
 import { saveAiGeneratedTitle } from 'src/services/session/sessionStorage.js'
 import { getLastCacheSafeParams } from 'src/coordinator/forkedAgent.js'

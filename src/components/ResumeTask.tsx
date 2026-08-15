@@ -5,9 +5,9 @@ import { type CodeSession, fetchCodeSessionsFromSessionsAPI } from 'src/services
 import { Box, Text, useInput } from 'src/ink.js';
 import { useKeybinding } from 'src/keybindings/useKeybinding.js';
 import { useShortcutDisplay } from 'src/keybindings/useShortcutDisplay.js';
-import { logForDebugging } from 'src/utils/debug.js';
+import { logForDebugging } from 'src/shared/debug.js';
 import { detectCurrentRepository } from 'src/services/git/detectRepository.js';
-import { formatRelativeTime } from 'src/utils/text/format.js';
+import { formatRelativeTime } from 'src/shared/text/format.js';
 import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
 import { Select } from 'src/components/CustomSelect/index.js';
 import { Byline } from 'src/components/design-system/Byline.js';

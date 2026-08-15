@@ -799,7 +799,7 @@ const CASES: TestCase[] = [
   },
   {
     name: 'bun test (já compacto)',
-    command: 'bun test ./src/utils/text/truncate.test.ts',
+    command: 'bun test ./src/shared/text/truncate.test.ts',
     sampleFile: 'bun-test.txt',
     predictedReductionPct: 0,
     notes: '100 bytes pra 3 testes — bun test é minimal by design. Passthrough confirma análise prévia.',

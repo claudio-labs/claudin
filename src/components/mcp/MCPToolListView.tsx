@@ -7,7 +7,7 @@ import { filterToolsByServer } from 'src/services/mcp/utils.js';
 import type { AppState } from 'src/state/AppState.js';
 import { useAppState } from 'src/state/AppState.js';
 import type { Tool } from 'src/Tool.js';
-import { plural } from 'src/utils/text/stringUtils.js';
+import { plural } from 'src/shared/text/stringUtils.js';
 import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
 import { Select } from 'src/components/CustomSelect/index.js';
 import { Byline } from 'src/components/design-system/Byline.js';

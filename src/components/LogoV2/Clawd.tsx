@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { Box, Text } from 'src/ink.js';
-import { env } from 'src/utils/env.js';
+import { env } from 'src/shared/env.js';
 export type ClawdPose = 'default' | 'arms-up' // both arms raised (used during jump)
 | 'look-left' // both pupils shifted left
 | 'look-right'; // both pupils shifted right

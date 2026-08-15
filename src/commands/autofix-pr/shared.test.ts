@@ -1,7 +1,7 @@
 import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
 
 const realGit = { ...(await import('src/services/git/git.js')) }
-const realExecFileNoThrow = { ...(await import('src/utils/proc/execFileNoThrow.js')) }
+const realExecFileNoThrow = { ...(await import('src/shared/proc/execFileNoThrow.js')) }
 
 type MockGit = {
   isGit?: boolean
@@ -25,7 +25,7 @@ function setup({ git = {}, gh = {} }: { git?: MockGit; gh?: MockGh }) {
     getBranch: async () => git.branch ?? 'feature/x',
     getDefaultBranch: async () => git.defaultBranch ?? 'main',
   }))
-  mock.module('src/utils/proc/execFileNoThrow.js', () => ({
+  mock.module('src/shared/proc/execFileNoThrow.js', () => ({
     ...realExecFileNoThrow,
     execFileNoThrow: async (_cmd: string, args: string[]) => {
       const isAuth = args[0] === 'auth'
@@ -67,7 +67,7 @@ async function importFreshShared() {
 
 afterAll(() => {
   mock.module('src/services/git/git.js', () => realGit)
-  mock.module('src/utils/proc/execFileNoThrow.js', () => realExecFileNoThrow)
+  mock.module('src/shared/proc/execFileNoThrow.js', () => realExecFileNoThrow)
 })
 
 describe('assertAutofixPreconditions', () => {

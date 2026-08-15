@@ -15,7 +15,7 @@ import {
   getActiveAgentsFromList,
   getAgentDefinitionsWithOverrides,
 } from 'src/tools/AgentTool/loadAgentsDir.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 
 function formatAgent(agent: ResolvedAgent): string {
   const model = resolveAgentModelDisplay(agent)

@@ -6,7 +6,7 @@ import { getCanonicalName } from 'src/utils/model/model.js'
 import { get3PModelCapabilityOverride } from 'src/utils/model/modelSupportOverrides.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import { getSettingsWithErrors } from 'src/services/settings/settings.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 
 export type ThinkingConfig =
   | { type: 'adaptive' }

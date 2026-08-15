@@ -1,4 +1,4 @@
-import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'

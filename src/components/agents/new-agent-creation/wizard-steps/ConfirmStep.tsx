@@ -7,7 +7,7 @@ import { isAutoMemoryEnabled } from 'src/memdir/paths.js';
 import type { Tools } from 'src/Tool.js';
 import { getMemoryScopeDisplay } from 'src/tools/AgentTool/agentMemory.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
-import { truncateToWidth } from 'src/utils/text/format.js';
+import { truncateToWidth } from 'src/shared/text/format.js';
 import { getAgentModelDisplay } from 'src/utils/model/agent.js';
 import { ConfigurableShortcutHint } from 'src/components/ConfigurableShortcutHint.js';
 import { Byline } from 'src/components/design-system/Byline.js';

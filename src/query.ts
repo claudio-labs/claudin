@@ -37,13 +37,13 @@ import type {
   UserMessage,
   TombstoneMessage,
 } from 'src/types/message.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import {
   PROMPT_TOO_LONG_ERROR_MESSAGE,
   isPromptTooLongMessage,
 } from 'src/services/api/errors.js'
-import { logAntError, logForDebugging } from 'src/utils/debug.js'
-import { claimsAgentLaunch } from 'src/utils/proc/phantomLaunchGuard.js'
+import { logAntError, logForDebugging } from 'src/shared/debug.js'
+import { claimsAgentLaunch } from 'src/shared/proc/phantomLaunchGuard.js'
 import {
   isStructurallyIncomplete,
   signalsCompletion,
@@ -122,7 +122,7 @@ import {
   incrementBudgetContinuationCount,
 } from 'src/bootstrap/state.js'
 import { createBudgetTracker, checkTokenBudget } from 'src/query/tokenBudget.js'
-import { count } from 'src/utils/data/array.js'
+import { count } from 'src/shared/data/array.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const snipModule = feature('HISTORY_SNIP')

@@ -6,9 +6,9 @@ import type { CommandResultDisplay } from 'src/commands.js';
 import { logEvent } from 'src/services/analytics/index.js';
 import { StatusIcon } from 'src/components/design-system/StatusIcon.js';
 import { Box, render, Text } from 'src/ink.js';
-import { logForDebugging } from 'src/utils/debug.js';
-import { env } from 'src/utils/env.js';
-import { errorMessage } from 'src/utils/errors.js';
+import { logForDebugging } from 'src/shared/debug.js';
+import { env } from 'src/shared/env.js';
+import { errorMessage } from 'src/shared/errors.js';
 import { checkInstall, cleanupNpmInstallations, cleanupShellAliases, installLatest } from 'src/services/install/index.js';
 import { getInitialSettings, updateSettingsForSource } from 'src/services/settings/settings.js';
 interface InstallProps {

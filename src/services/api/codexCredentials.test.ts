@@ -479,7 +479,7 @@ describe('codexCredentials', () => {
     }))
 
     const debugCalls: Array<{ message: unknown; meta: unknown }> = []
-    mock.module('src/utils/debug.js', () => ({
+    mock.module('src/shared/debug.js', () => ({
       logForDebugging: (message: unknown, meta: unknown) => {
         debugCalls.push({ message, meta })
       },

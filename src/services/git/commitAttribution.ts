@@ -6,16 +6,16 @@ import type {
   AttributionSnapshotMessage,
   FileAttributionState,
 } from 'src/types/logs.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { execFileNoThrowWithCwd } from 'src/utils/proc/execFileNoThrow.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { isGeneratedFile } from 'src/utils/fs/generatedFiles.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { isGeneratedFile } from 'src/shared/fs/generatedFiles.js'
 import { getRemoteUrlForDir, resolveGitDir } from 'src/services/git/gitFilesystem.js'
 import { findGitRoot, gitExe } from 'src/services/git/git.js'
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { getCanonicalName, type ModelName } from 'src/utils/model/model.js'
-import { sequential } from 'src/utils/sequential.js'
+import { sequential } from 'src/shared/sequential.js'
 
 /**
  * List of repos where internal model names are allowed in trailers.

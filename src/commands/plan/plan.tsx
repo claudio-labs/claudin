@@ -4,7 +4,7 @@ import { handlePlanModeTransition } from 'src/bootstrap/state.js';
 import type { LocalJSXCommandContext } from 'src/commands.js';
 import { Box, Text } from 'src/ink.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
-import { getExternalEditor } from 'src/utils/editor.js';
+import { getExternalEditor } from 'src/shared/editor.js';
 import { toIDEDisplayName } from 'src/services/ide/ide.js';
 import { applyPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js';
 import { prepareContextForPlanMode } from 'src/services/permissions/permissionSetup.js';

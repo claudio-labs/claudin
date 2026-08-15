@@ -7,7 +7,7 @@ import { getModeColor } from 'src/services/permissions/PermissionMode.js';
 import { Box, Text } from 'src/ink.js';
 import type { ToolProgressData } from 'src/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';
-import { getDisplayPath } from 'src/utils/fs/file.js';
+import { getDisplayPath } from 'src/shared/fs/file.js';
 import { getPlan } from 'src/utils/plans.js';
 import type { ThemeName } from 'src/utils/theme.js';
 import type { Output } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js';

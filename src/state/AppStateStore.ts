@@ -28,7 +28,7 @@ import {
 } from 'src/services/git/commitAttribution.js'
 import { getGlobalConfig } from 'src/services/config/config.js'
 import type { EffortValue } from 'src/utils/effort.js'
-import type { FileHistoryState } from 'src/utils/fs/fileHistory.js'
+import type { FileHistoryState } from 'src/shared/fs/fileHistory.js'
 import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
 import type { SessionHooksState } from 'src/services/lifecycleHooks/sessionHooks.js'
 import type { ModelSetting } from 'src/utils/model/model.js'

@@ -1,8 +1,8 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { type as osType, version as osVersion, release as osRelease } from 'os'
-import { env } from 'src/utils/env.js'
+import { env } from 'src/shared/env.js'
 import { getIsGit } from 'src/services/git/git.js'
-import { getCwd } from 'src/utils/fs/cwd.js'
+import { getCwd } from 'src/shared/fs/cwd.js'
 import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
 import { getCurrentWorktreeSession } from 'src/services/git/worktree.js'
 import { getSessionStartDate } from 'src/constants/common.js'
@@ -40,7 +40,7 @@ import {
   isScratchpadEnabled,
   getScratchpadDir,
 } from 'src/services/permissions/filesystem.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { feature } from 'bun:bundle'
 import { shouldUseGlobalCacheScope } from 'src/services/api/betas.js'
 import { isForkSubagentEnabled } from 'src/tools/AgentTool/forkSubagent.js'
@@ -51,7 +51,7 @@ import {
 } from 'src/constants/systemPromptSections.js'
 import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js'
 import { TICK_TAG } from 'src/constants/xml.js'
-import { logForDebugging } from 'src/utils/debug.js'
+import { logForDebugging } from 'src/shared/debug.js'
 import { loadMemoryPrompt } from 'src/memdir/memdir.js'
 import { isMcpInstructionsDeltaEnabled } from 'src/services/mcp/mcpInstructionsDelta.js'
 import {

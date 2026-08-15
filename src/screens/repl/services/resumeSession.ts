@@ -37,7 +37,7 @@ import {
   restoreWorktreeForResume,
 } from 'src/services/session/sessionRestore.js'
 import { updateSessionName } from 'src/services/session/concurrentSessions.js'
-import { copyFileHistoryForResume } from 'src/utils/fs/fileHistory.js'
+import { copyFileHistoryForResume } from 'src/shared/fs/fileHistory.js'
 import {
   adoptResumedSessionFile,
   clearSessionMetadata,

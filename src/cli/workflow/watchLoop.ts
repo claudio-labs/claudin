@@ -11,7 +11,7 @@
 
 import { spawn } from 'node:child_process'
 
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 
 import {
   CommandSource,

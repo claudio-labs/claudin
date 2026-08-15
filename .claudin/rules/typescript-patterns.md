@@ -26,7 +26,7 @@ These override general TypeScript conventions:
 
 ```typescript
 // ✅ Correct — typed, loggable, descriptive
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 
 async function readConfig(path: string): Promise<Config> {
   try {
@@ -52,8 +52,8 @@ async function readConfig(path: string): Promise<Config> {
 ### Custom error classes (use existing ones)
 
 ```typescript
-// Existing classes in src/utils/errors.ts — prefer these over new Error()
-import { ClaudeError, AbortError, isAbortError, isENOENT } from 'src/utils/errors.js'
+// Existing classes in src/shared/errors.ts — prefer these over new Error()
+import { ClaudeError, AbortError, isAbortError, isENOENT } from 'src/shared/errors.js'
 
 // ✅ Check abort before logging — abort is not an error
 try {
@@ -182,7 +182,7 @@ const model = 'claude-opus-4-7-20251101'
 
 ```typescript
 // ✅ Correct — tsconfig alias, works everywhere
-import { logError } from 'src/utils/log.js'
+import { logError } from 'src/shared/log.js'
 import { buildTool } from 'src/Tool.js'
 
 // ❌ Wrong — breaks when file moves, hard to read
@@ -239,6 +239,6 @@ when you edit `scripts/build.ts`). The two that bite while editing `src/`:
 | Hardcoded model string | Breaks non-Anthropic providers | `getPrimaryModel(provider)` |
 | `../../` relative imports | Breaks on file moves | `src/...` path aliases |
 | `console.log` in production | Pollutes TUI output | `logError()` / `logForDebugging()` |
-| Raw `new Error(msg)` | No typed catch | Subclass from `src/utils/errors.ts` |
+| Raw `new Error(msg)` | No typed catch | Subclass from `src/shared/errors.ts` |
 | `process.exit(0)` without cleanup | Skips graceful shutdown | Use abort signals |
 | local var named `jsx`/`jsxs` | minifier → `$jsx`, shadows JSX runtime factory → `$jsx is not a function` at runtime (build + typecheck pass) | rename (e.g. `backgroundJsx`) |

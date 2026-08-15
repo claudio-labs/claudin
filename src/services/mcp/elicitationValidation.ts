@@ -6,7 +6,7 @@ import type {
 } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod/v4'
 import { jsonStringify } from 'src/utils/slowOperations.js'
-import { plural } from 'src/utils/text/stringUtils.js'
+import { plural } from 'src/shared/text/stringUtils.js'
 import {
   looksLikeISO8601,
   parseNaturalLanguageDateTime,

@@ -5,9 +5,9 @@ import { getKairosActive, getUserMsgOptIn } from 'src/bootstrap/state.js';
 import { Box } from 'src/ink.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
 import { type AppState, useAppState } from 'src/state/AppState.js';
-import { isEnvTruthy } from 'src/utils/envUtils.js';
-import { logError } from 'src/utils/log.js';
-import { countCharInString } from 'src/utils/text/stringUtils.js';
+import { isEnvTruthy } from 'src/shared/envUtils.js';
+import { logError } from 'src/shared/log.js';
+import { countCharInString } from 'src/shared/text/stringUtils.js';
 import { MessageActionsSelectedContext } from 'src/components/messageActions.js';
 import { HighlightedThinkingText } from 'src/components/messages/HighlightedThinkingText.js';
 type Props = {

@@ -5,7 +5,7 @@ import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
 import { GrepTool } from 'src/tools/GrepTool/GrepTool.js'
 import { ReportFindingsTool } from 'src/tools/ReportFindingsTool/ReportFindingsTool.js'
 import { stripPlaceholderOptionalFields } from 'src/services/tools/toolInputPlaceholders.js'
-import { zodToJsonSchema } from 'src/utils/data/zodToJsonSchema.js'
+import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 import { convertToolsToResponsesTools } from 'src/services/api/codexShim.js'
 
 /**

@@ -40,11 +40,11 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const TEN_FILES = [
-  'src/utils/errors.ts',
-  'src/utils/log.ts',
-  'src/utils/fs/path.ts',
-  'src/utils/envUtils.ts',
-  'src/utils/proc/Shell.ts',
+  'src/shared/errors.ts',
+  'src/shared/log.ts',
+  'src/shared/fs/path.ts',
+  'src/shared/envUtils.ts',
+  'src/shared/proc/Shell.ts',
   'src/services/config/config.ts',
   'src/bootstrap/state.ts',
   'src/Tool.ts',

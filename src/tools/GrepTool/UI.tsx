@@ -8,8 +8,8 @@ import { TOOL_SUMMARY_MAX_LENGTH } from 'src/constants/toolLimits.js';
 import { Box, Text } from 'src/ink.js';
 import type { ToolProgressData } from 'src/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';
-import { FILE_NOT_FOUND_CWD_NOTE, getDisplayPath } from 'src/utils/fs/file.js';
-import { truncate } from 'src/utils/text/format.js';
+import { FILE_NOT_FOUND_CWD_NOTE, getDisplayPath } from 'src/shared/fs/file.js';
+import { truncate } from 'src/shared/text/format.js';
 import { extractTag } from 'src/services/messages/messages.js';
 
 // Reusable component for search result summaries

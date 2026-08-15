@@ -18,8 +18,8 @@ import {
 } from 'src/services/auth/auth.js'
 import { isInBundledMode } from 'src/services/install/bundledMode.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   getDefaultMainLoopModelSetting,
   getDefaultOpusModel,
@@ -35,7 +35,7 @@ import {
   getSettingsForSource,
   updateSettingsForSource,
 } from 'src/services/settings/settings.js'
-import { createSignal } from 'src/utils/signal.js'
+import { createSignal } from 'src/shared/signal.js'
 
 export function isFastModeEnabled(): boolean {
   if (getAPIProvider() !== 'firstParty') {

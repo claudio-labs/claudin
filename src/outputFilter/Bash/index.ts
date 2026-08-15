@@ -1,5 +1,5 @@
-import { ClaudeError } from "src/utils/errors.js";
-import { logError } from "src/utils/log.js";
+import { ClaudeError } from "src/shared/errors.js";
+import { logError } from "src/shared/log.js";
 import { ALREADY_WRAPPED_RE, wrapStdoutWithMarkers } from "src/outputFilter/Bash/markers.js";
 import {
   applyPipeline,

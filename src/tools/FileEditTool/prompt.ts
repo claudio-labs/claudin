@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle'
 import { isLeanToolPromptFamily } from 'src/constants/toolPromptTier.js'
-import { isCompactLinePrefixEnabled } from 'src/utils/fs/file.js'
+import { isCompactLinePrefixEnabled } from 'src/shared/fs/file.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 
 function getPreReadInstruction(): string {

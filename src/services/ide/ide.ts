@@ -11,18 +11,18 @@ import type {
   MCPServerConnection,
 } from 'src/services/mcp/types.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
-import { env } from 'src/utils/env.js'
-import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/utils/envUtils.js'
+import { env } from 'src/shared/env.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   execFileNoThrow,
   execFileNoThrowWithCwd,
   execSyncWithDefaults_DEPRECATED,
-} from 'src/utils/proc/execFileNoThrow.js'
-import { getFsImplementation } from 'src/utils/fs/fsOperations.js'
-import { getAncestorPidsAsync } from 'src/utils/proc/genericProcessUtils.js'
+} from 'src/shared/proc/execFileNoThrow.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
+import { getAncestorPidsAsync } from 'src/shared/proc/genericProcessUtils.js'
 import { isJetBrainsPluginInstalledCached } from 'src/services/ide/jetbrains.js'
-import { logError } from 'src/utils/log.js'
-import { getPlatform } from 'src/utils/proc/platform.js'
+import { logError } from 'src/shared/log.js'
+import { getPlatform } from 'src/shared/proc/platform.js'
 
 // Lazy: IdeOnboardingDialog.tsx pulls React/ink; only needed in interactive onboarding path
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -30,16 +30,16 @@ const ideOnboardingDialog =
   (): typeof import('src/components/IdeOnboardingDialog.js') =>
     require('src/components/IdeOnboardingDialog.js')
 
-import { createAbortController } from 'src/utils/abortController.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { envDynamic } from 'src/utils/envDynamic.js'
-import { errorMessage, isFsInaccessible } from 'src/utils/errors.js'
+import { createAbortController } from 'src/shared/abortController.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { envDynamic } from 'src/shared/envDynamic.js'
+import { errorMessage, isFsInaccessible } from 'src/shared/errors.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import {
   checkWSLDistroMatch,
   WindowsToWSLConverter,
 } from 'src/services/ide/idePathConversion.js'
-import { sleep } from 'src/utils/sleep.js'
+import { sleep } from 'src/shared/sleep.js'
 import { jsonParse } from 'src/utils/slowOperations.js'
 
 function isProcessRunning(pid: number): boolean {

@@ -20,7 +20,7 @@ import type { AssistantMessage, Message } from 'src/types/message.js';
 import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
 import type { GlobalConfig } from 'src/services/config/config.js';
 import { extractTextContent, stripPromptXMLTags } from 'src/services/messages/messages.js';
-import { countCharInString } from 'src/utils/text/stringUtils.js';
+import { countCharInString } from 'src/shared/text/stringUtils.js';
 const COPY_DIR = join(tmpdir(), 'claude');
 const RESPONSE_FILENAME = 'response.md';
 const MAX_LOOKBACK = 20;

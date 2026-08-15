@@ -13,8 +13,8 @@ Filtrado de `feature-viability-2026-05.md` — só o que falta.
 
 ### 2. XDG Base Directory fallback
 - **Issue:** usuários Linux pedem `$XDG_CONFIG_HOME/claudin` em vez de `~/.claudin`.
-- **Estado:** helpers XDG **já existem** em `src/utils/fs/xdg.ts` mas não são consumidos.
-- **Falta:** plugar em `resolveClaudinConfigHomeDir` (`src/utils/envUtils.ts:5-28`).
+- **Estado:** helpers XDG **já existem** em `src/shared/fs/xdg.ts` mas não são consumidos.
+- **Falta:** plugar em `resolveClaudinConfigHomeDir` (`src/shared/envUtils.ts:5-28`).
 - **Esforço:** ~10 linhas.
 
 ### 3. Copy/paste do user prompt `>` vaza no clipboard

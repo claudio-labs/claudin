@@ -1,6 +1,6 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { z } from 'zod/v4'
-import { lazySchema } from 'src/utils/data/lazySchema.js'
+import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   type HookEvent,
   HOOK_EVENTS,

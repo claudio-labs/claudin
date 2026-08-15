@@ -8,8 +8,8 @@
 
 import { extname } from 'path'
 import memoize from 'lodash-es/memoize.js'
-import { env, getHostPlatformForAnalytics } from 'src/utils/env.js'
-import { envDynamic } from 'src/utils/envDynamic.js'
+import { env, getHostPlatformForAnalytics } from 'src/shared/env.js'
+import { envDynamic } from 'src/shared/envDynamic.js'
 import { getModelBetas } from 'src/services/api/betas.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
 import {
@@ -19,7 +19,7 @@ import {
   getClientType,
   getParentSessionId as getParentSessionIdFromState,
 } from 'src/bootstrap/state.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { isOfficialMcpUrl } from 'src/services/mcp/officialRegistry.js'
 import { isClaudeAISubscriber, getSubscriptionType } from 'src/services/auth/auth.js'
 import { getRepoRemoteHash } from 'src/services/git/git.js'
@@ -27,8 +27,8 @@ import {
   getWslVersion,
   getLinuxDistroInfo,
   detectVcs,
-} from 'src/utils/proc/platform.js'
-import type { CoreUserData } from 'src/utils/user.js'
+} from 'src/shared/proc/platform.js'
+import type { CoreUserData } from 'src/shared/user.js'
 import { getAgentContext } from 'src/coordinator/agentContext.js'
 import type { EnvironmentMetadata } from 'src/types/generated/events_mono/claude_code/v1/claude_code_internal_event.js'
 import type { PublicApiAuth } from 'src/types/generated/events_mono/common/v1/auth.js'
@@ -933,7 +933,7 @@ export function to1PEventFormat(
   }
 
   // Map userMetadata to output fields.
-  // Based on src/utils/user.ts getUser(), but with fields present in other
+  // Based on src/shared/user.ts getUser(), but with fields present in other
   // parts of ClaudeCodeInternalEvent deduplicated.
   // Convert camelCase GitHubActionsMetadata to snake_case for 1P API
   // Note: github_actions_metadata is placed inside env (EnvironmentMetadata)

@@ -11,16 +11,16 @@ import {
   getGlobalConfig,
   saveGlobalConfig,
 } from 'src/services/config/config.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { toError } from 'src/utils/errors.js'
-import { getAuthHeaders } from 'src/utils/http.js'
-import { logError } from 'src/utils/log.js'
-import { createSignal } from 'src/utils/signal.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { toError } from 'src/shared/errors.js'
+import { getAuthHeaders } from 'src/shared/http.js'
+import { logError } from 'src/shared/log.js'
+import { createSignal } from 'src/shared/signal.js'
 import { jsonStringify } from 'src/utils/slowOperations.js'
 import {
   type GitHubActionsMetadata,
   getUserForGrowthBook,
-} from 'src/utils/user.js'
+} from 'src/shared/user.js'
 import {
   is1PEventLoggingEnabled,
   logGrowthBookExperimentTo1P,

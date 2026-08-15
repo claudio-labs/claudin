@@ -9,8 +9,8 @@ import { HttpsProxyAgent, type HttpsProxyAgentOptions } from 'https-proxy-agent'
 import memoize from 'lodash-es/memoize.js'
 import type * as undici from 'undici'
 import { getCACertificates } from 'src/services/api/caCerts.js'
-import { logForDebugging } from 'src/utils/debug.js'
-import { isEnvTruthy } from 'src/utils/envUtils.js'
+import { logForDebugging } from 'src/shared/debug.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   getMTLSAgent,
   getMTLSConfig,

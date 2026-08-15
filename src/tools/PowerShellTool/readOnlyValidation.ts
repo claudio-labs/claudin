@@ -11,7 +11,7 @@ import type {
 
 type ParsedStatement = ParsedPowerShellCommand['statements'][number]
 
-import { getPlatform } from 'src/utils/proc/platform.js'
+import { getPlatform } from 'src/shared/proc/platform.js'
 import {
   COMMON_ALIASES,
   deriveSecurityFlags,

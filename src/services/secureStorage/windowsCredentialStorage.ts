@@ -1,6 +1,6 @@
 import { execaSync } from 'execa'
 import { join } from 'path'
-import { getClaudinConfigHomeDir } from 'src/utils/envUtils.js'
+import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
 import {
   CREDENTIALS_SERVICE_SUFFIX,
