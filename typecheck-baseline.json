@@ -2,8 +2,8 @@
   "//": "Generated — do not hand-edit. Refresh with `bun run typecheck:baseline`.",
   "checker": "tsc",
   "command": "tsc --noEmit --pretty false",
-  "capturedAt": "2026-08-14",
-  "capturedFrom": "4621165055c393fdd7b6b254f3f1c467a5ddf5c7",
+  "capturedAt": "2026-08-15",
+  "capturedFrom": "fcdd3e4ce6fe316b908dbc70e5707bd2a2678668",
   "count": 0,
   "fingerprints": [
   ]
