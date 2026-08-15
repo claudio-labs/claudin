@@ -26,7 +26,7 @@
 // The historical monolith (2275 lines) was split into focused submodules
 // under ./openaiShim/. This file preserves the public surface so the
 // callers across the codebase continue to import from
-// 'src/services/api/openaiShim'.
+// 'src/providers/shims/openaiShim'.
 //
 // New code should prefer importing directly from the relevant submodule.
 //

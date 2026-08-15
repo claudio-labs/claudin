@@ -147,7 +147,8 @@ export async function runTrustAndOnboarding(
   }
   if (onboardingShown) {
     // Refresh auth-dependent services now that the user has logged in during onboarding.
-    // Keep in sync with the post-login logic in src/commands/login.tsx
+    // Keep in sync with the post-login logic in src/commands/login/ — this fork
+    // only received the declaration (login.d.ts), not the implementation.
     void refreshRemoteManagedSettings();
     void refreshPolicyLimits();
     // Clear user data cache BEFORE GrowthBook refresh so it picks up fresh credentials

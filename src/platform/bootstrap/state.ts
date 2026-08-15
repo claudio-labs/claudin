@@ -935,7 +935,7 @@ export function getIsScrollDraining(): boolean {
  *  polls at the idle interval until the flag clears. */
 export async function waitForScrollIdle(): Promise<void> {
   while (scrollDraining) {
-    // bootstrap-isolation forbids importing sleep() from src/utils/
+    // bootstrap-isolation forbids importing sleep() from src/shared/sleep.ts
     // eslint-disable-next-line no-restricted-syntax
     await new Promise(r => setTimeout(r, SCROLL_DRAIN_IDLE_MS).unref?.())
   }

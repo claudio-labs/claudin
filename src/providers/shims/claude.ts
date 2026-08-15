@@ -2,7 +2,7 @@
 //
 // The historical monolith (3218 lines) was split into focused submodules
 // under ./claude/. This file preserves the public surface so the ~20
-// callers across the codebase continue to import from 'src/services/api/claude'.
+// callers across the codebase continue to import from 'src/providers/shims/claude'.
 //
 // New code should prefer importing directly from the relevant submodule.
 //

@@ -26,7 +26,7 @@
  * reflect what a provider actually sees on the wire.
  *
  * Mirrors the integration-style of src/agent/cost-tracker.cacheIntegration
- * and src/services/api/cacheMetricsIntegration: real production
+ * and src/providers/cache/cacheMetricsIntegration: real production
  * functions, no module mocking, scenario-driven assertions. Fewer
  * moving parts, and the test fails for the right reason if anyone
  * breaks the dedup path.
