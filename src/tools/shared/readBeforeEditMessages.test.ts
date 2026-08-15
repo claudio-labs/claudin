@@ -5,6 +5,7 @@ import {
   FILE_CLIPPED_VIEW_ERROR,
   FILE_NOT_READ_ERROR,
   FILE_PARTIAL_VIEW_ERROR,
+  coveredSegments,
   isWholeFileView,
   needsWholeFileRead,
   readGateMessage,
@@ -227,6 +228,125 @@ describe('coverage messages', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// The accumulated lane: several reads of ONE version of a file.
+//
+// The entry carries the earlier slices (`carrySeenRanges`, fileStateCache.ts)
+// and this module decides what they add up to. What is pinned here is that they
+// add up to CONTIGUOUS runs and nothing more: joining two slices across a gap
+// would invent adjacency the model never saw and wave through a patch whose
+// context spans lines nobody read.
+// ---------------------------------------------------------------------------
+
+type Slice = { offset: number; content: string }
+
+/** `count` lines named l<n>, starting at `offset`. */
+function slice(offset: number, count: number): Slice {
+  return {
+    offset,
+    content: Array.from({ length: count }, (_, i) => `l${offset + i}`).join(
+      '\n',
+    ),
+  }
+}
+
+/** An entry whose newest read is `head`, carrying `rest` from earlier reads. */
+function walked(head: Slice, ...rest: Slice[]): FileState {
+  return state({
+    content: head.content,
+    offset: head.offset,
+    limit: head.content.split('\n').length,
+    seenRanges: rest,
+  } as Partial<FileState>)
+}
+
+describe('coveredSegments', () => {
+  test('slices that touch become one run', () => {
+    const segments = coveredSegments(walked(slice(11, 5), slice(1, 10)))
+    expect(segments).toHaveLength(1)
+    expect(segments[0]!.offset).toBe(1)
+    expect(segments[0]!.lines).toHaveLength(15)
+  })
+
+  test('slices that overlap are not double-counted', () => {
+    // l8-l10 arrive twice. Appending blindly would make the run 15 lines long
+    // and shift every line after the seam, so a hunk anchored past it would be
+    // matched against text at the wrong place.
+    const segments = coveredSegments(walked(slice(8, 5), slice(1, 10)))
+    expect(segments).toHaveLength(1)
+    expect(segments[0]!.lines).toHaveLength(12)
+    expect(segments[0]!.lines[11]).toBe('l12')
+  })
+
+  test('a gap stays a gap', () => {
+    const segments = coveredSegments(walked(slice(40, 6), slice(1, 10)))
+    expect(segments.map(s => s.offset)).toEqual([1, 40])
+  })
+
+  test('a slice entirely inside another contributes nothing', () => {
+    const segments = coveredSegments(walked(slice(3, 2), slice(1, 10)))
+    expect(segments).toHaveLength(1)
+    expect(segments[0]!.lines).toHaveLength(10)
+  })
+})
+
+describe('seenRegionCovers — across accumulated reads', () => {
+  test('an EARLIER read still covers, after a narrower one replaced it', () => {
+    // 9 of the 37 unseen-region refusals in the session corpus were hunks
+    // sitting whole inside a slice the model had read, which a later, narrower
+    // Read had evicted from the entry.
+    const entry = walked(slice(40, 6), slice(1, 10))
+    expect(seenRegionCovers(entry, ['l3', 'l4'])).toBe(true)
+    expect(seenRegionCovers(entry, ['l41'])).toBe(true)
+  })
+
+  test('a hunk spanning the seam of two adjacent reads is covered', () => {
+    // The other 19: no single read contains the hunk, the union does.
+    const entry = walked(slice(11, 5), slice(1, 10))
+    expect(seenRegionCovers(entry, ['l9', 'l10', 'l11', 'l12'])).toBe(true)
+  })
+
+  test('a hunk inside the gap is still refused', () => {
+    const entry = walked(slice(40, 6), slice(1, 10))
+    expect(seenRegionCovers(entry, ['l20'])).toBe(false)
+  })
+
+  test('a hunk spanning the gap is refused, however the slices are arranged', () => {
+    // The failure a naive concatenation would ship: l10 and l40 are both in the
+    // entry and adjacent in the concatenated text, 29 lines apart in the file.
+    // A patch anchored on that pair must not be authorized.
+    const entry = walked(slice(40, 6), slice(1, 10))
+    expect(seenRegionCovers(entry, ['l10', 'l40'])).toBe(false)
+  })
+
+  test('the killswitch disables the accumulated lane too', () => {
+    process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE = '1'
+    try {
+      expect(
+        seenRegionCovers(walked(slice(40, 6), slice(1, 10)), ['l20']),
+      ).toBe(true)
+    } finally {
+      delete process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE
+    }
+  })
+})
+
+describe('seenRangeLabel — accumulated', () => {
+  test('names every segment, not just the newest read', () => {
+    // The refusal tells the model what it has already been shown. Naming only
+    // the newest slice sends it to re-read lines it is holding — the ritual
+    // re-read these messages exist to prevent.
+    expect(seenRangeLabel(walked(slice(40, 6), slice(1, 10)))).toBe(
+      'lines 1-10, 40-45',
+    )
+  })
+
+  test('merged slices read as one span', () => {
+    expect(seenRangeLabel(walked(slice(11, 5), slice(1, 10)))).toBe(
+      'lines 1-15',
+    )
+  })
+})
 // ---------------------------------------------------------------------------
 // Wiring. The four call sites live in tool `validateInput` bodies that cannot
 // be driven under `bun test` — sibling files in the shard globally mock `fs`

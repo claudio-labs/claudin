@@ -1,6 +1,12 @@
 import { LRUCache } from 'lru-cache'
 import { normalize } from 'path'
 
+/**
+ * One earlier Read of the same file version: the lines the model actually saw,
+ * and the 1-based line the slice starts at.
+ */
+export type SeenRange = { offset: number; content: string }
+
 export type FileState = {
   content: string
   timestamp: number
@@ -76,6 +82,23 @@ export type FileState = {
     // marker is spent and Read falls back to delete-and-re-arm.
     replays: number
   }
+  // Earlier reads of THIS same version of the file, carried forward by
+  // `carrySeenRanges` when one Read replaces another. Without it an entry
+  // stands for the LAST read alone, so walking a file in N slices accumulates
+  // no coverage at all, and a narrow Read on top of a full one silently
+  // destroys what the full one proved. Measured over 683 sessions: 28 of 37
+  // `coverage:unseen-region` refusals were for hunks whose old side sat
+  // verbatim in lines the model had already been shown.
+  //
+  // Consumed only by the coverage lane (`coveredSegments` in
+  // readBeforeEditMessages.ts), which merges these with the entry's own slice
+  // into CONTIGUOUS segments — a run of lines nobody read is never covered,
+  // however the slices are arranged around it.
+  //
+  // Correctness rests on one rule, enforced in `carrySeenRanges`: the list is
+  // dropped the moment `timestamp` changes, so bytes from a previous version
+  // of the file can never authorize a write.
+  seenRanges?: SeenRange[]
 }
 
 /**
@@ -110,6 +133,79 @@ export const READ_FILE_STATE_CACHE_SIZE = 100
 const DEFAULT_MAX_CACHE_SIZE_BYTES = 25 * 1024 * 1024
 
 /**
+ * Bounds on the accumulated slice list, per entry.
+ *
+ * 64 KB is 8x the slice-walk the session corpus actually shows (~8 reads of
+ * 2-4 KB of one file before the write) and, more to the point, it is well
+ * inside the cache's own budget: 25 MB over 100 entries leaves ~256 KB per
+ * entry, so capping at the per-read ceiling (MAX_OUTPUT_SIZE, also 256 KB)
+ * would start evicting by SIZE in sessions that walk many files. That trades a
+ * coverage refusal for a "has not been read yet" one, which is the worse of
+ * the two.
+ *
+ * The newest slice is never dropped to fit: it was legally this entry's whole
+ * `content` a moment earlier, so keeping it costs nothing the cache was not
+ * already paying. That is what lets the clobber case — a narrow Read landing
+ * on top of a full one — survive on a file larger than the budget.
+ */
+export const SEEN_RANGES_MAX_BYTES = 64 * 1024
+export const SEEN_RANGES_MAX_COUNT = 32
+
+/**
+ * What `next` carries forward from the entry it replaces. Pure — it returns
+ * the list and writes nothing; `set` is what stores it.
+ *
+ * `undefined` means "carry nothing", which is the answer in three cases:
+ *
+ * 1. there is no predecessor;
+ * 2. `timestamp` moved — a different mtime means different bytes, so every
+ *    earlier slice describes a file that no longer exists. This is also what
+ *    makes Edit/Write/apply_patch drop the history for free: they write the
+ *    post-write mtime;
+ * 3. `next` stands for the whole file, where `seenRegionCovers` short-circuits
+ *    anyway — holding slices there would be pure memory.
+ */
+export function carrySeenRanges(
+  prev: FileState | undefined,
+  next: FileState,
+): SeenRange[] | undefined {
+  if (!prev || prev.timestamp !== next.timestamp) return undefined
+  // Same predicate as isWholeFileView (readBeforeEditMessages.ts), inlined to
+  // keep this module a leaf — see the note on setPinReleaseHandler. Keep the
+  // two in step.
+  if (
+    (next.offset === undefined || next.offset === 1) &&
+    next.limit === undefined
+  ) {
+    return undefined
+  }
+  const incoming: SeenRange = { offset: prev.offset ?? 1, content: prev.content }
+  // Re-reading the same slice must not duplicate it.
+  const carried = (prev.seenRanges ?? []).filter(
+    r => r.offset !== incoming.offset || r.content !== incoming.content,
+  )
+  carried.push(incoming)
+  let bytes = carried.reduce((n, r) => n + Buffer.byteLength(r.content), 0)
+  while (
+    carried.length > 1 &&
+    (carried.length > SEEN_RANGES_MAX_COUNT || bytes > SEEN_RANGES_MAX_BYTES)
+  ) {
+    bytes -= Buffer.byteLength(carried[0]!.content)
+    carried.shift()
+  }
+  return carried
+}
+
+/** Bytes an entry retains, including what it carries for the coverage lane. */
+function entryBytes(value: FileState): number {
+  let bytes = Buffer.byteLength(value.content)
+  for (const range of value.seenRanges ?? []) {
+    bytes += Buffer.byteLength(range.content)
+  }
+  return bytes
+}
+
+/**
  * A file state cache that normalizes all path keys before access.
  * This ensures consistent cache hits regardless of whether callers pass
  * relative vs absolute paths with redundant segments (e.g. /foo/../bar)
@@ -140,7 +236,9 @@ export class FileStateCache {
     this.cache = new LRUCache<string, FileState>({
       max: maxEntries,
       maxSize: maxSizeBytes,
-      sizeCalculation: value => Math.max(1, Buffer.byteLength(value.content)),
+      // Counts the carried slices too: they are real retained bytes, and a
+      // size cap blind to them stops bounding the cache.
+      sizeCalculation: value => Math.max(1, entryBytes(value)),
       // A clip-pin protects the tool_result this entry points at, for exactly
       // as long as the entry vouches that the model still needs that content.
       // The moment the entry stops pointing at it — replaced by a different
@@ -172,7 +270,15 @@ export class FileStateCache {
    */
   set(key: string, value: FileState, options?: { adopt?: boolean }): this {
     const normalized = normalize(key)
-    const prevId = this.cache.peek(normalized)?.toolUseId
+    const prev = this.cache.peek(normalized)
+    const prevId = prev?.toolUseId
+    // Mutated rather than replaced by a copy, like setStandDownStrikes: the
+    // ownership check below tests IDENTITY against `value`, so storing a copy
+    // here would silently stop this cache claiming pins. Only assigned when
+    // there is something to carry, so an entry arriving from another cache
+    // (mergeFileStateCaches) keeps its own list.
+    const carried = carrySeenRanges(prev, value)
+    if (carried) value.seenRanges = carried
     this.handingOver =
       prevId !== undefined && prevId === value.toolUseId ? prevId : undefined
     // Overwriting disposes the previous value first, releasing its pin; only
