@@ -47,6 +47,17 @@ That is the one gate whose whole job is catching a path gone stale after a move.
 Re-captured 2026-08-15; the module set was identical, so nothing had actually
 broken, only the guard.
 
+A path-pinned mechanism also lives outside the repo, and that one cannot be
+fixed in the same commit: **CodeQL keys a dismissal to a file path**, so every
+move resurrects the finding. PR #93 re-raised the same five high alerts that
+were already reviewed and dismissed as false positives twice — the sanitizer
+fixpoint loop in `toolResultSummarizer.ts` (×3), and the two opaque-ID hashes in
+`classifierProbeStore.ts` / `betaSessionTracing.ts`. Their dismissal comments on
+main literally read "Rename re-raise (PR #88); was #12", because #88 did it the
+time before. Expect one red CodeQL check per reorg, do not "fix" the code for
+it, and re-dismiss on main after the merge with the same reasons plus the new
+alert numbers.
+
 **Why:** these all sit downstream of the file walk. A generator, a plugin filter
 and a comment are *about* paths rather than *containing* imports, so nothing
 type-checks them and no test covered the pinning itself.
