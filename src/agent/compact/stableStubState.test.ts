@@ -47,6 +47,33 @@ afterEach(() => {
   _resetAllClippedIdsForTesting()
 })
 
+// Every eviction assertion in this file rides on the listener stableStubState
+// subscribes at module load (`onSessionSwitch`, stableStubState.ts:663). That
+// wiring is process-global and this file does not own it: any test file running
+// earlier in the same bun process can replace bootstrap/state.js with a
+// `switchSession` that never emits, and from then on nothing here evicts.
+//
+// The failure that produces is silent and misleading — the assertions come back
+// as plain "expected 0, received 1" size mismatches, which read as a bug in the
+// eviction logic rather than as a disarmed signal. That is what CI reported on
+// PR #93 (run 31887736615) for five tests here while the other 132 passed, and
+// it has never reproduced locally: not in isolation, not replaying the runner's
+// own file order, not under a CI-like env. So assert the wiring itself once, up
+// front, where a break says what it is. Declared as the first test rather than
+// in beforeAll on purpose: a throwing beforeAll aborts the whole file, and the
+// other 132 tests here do not depend on the signal.
+test('the session-switch listener is still wired (guards every eviction test below)', () => {
+  const original = getSessionId()
+  addClippedIds(['toolu_switch_wiring_probe'])
+  const tracked = _getClippedIdsMapSizeForTesting()
+  switchSession('stable-stub-state-wiring-probe' as SessionId)
+  expect({ tracked, afterSwitch: _getClippedIdsMapSizeForTesting() }).toEqual({
+    tracked: 1,
+    afterSwitch: 0,
+  })
+  switchSession(original)
+})
+
 function userToolResult(id: string, content: unknown, extra: Block = {}): Msg {
   return {
     role: 'user',

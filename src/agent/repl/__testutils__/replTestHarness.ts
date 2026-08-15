@@ -26,6 +26,7 @@
 import { mock } from 'bun:test'
 import { homedir } from 'os'
 import { join } from 'path'
+import { resetCostState } from 'src/agent/cost-tracker.js'
 import {
   getCwdState,
   getOriginalCwd,
@@ -89,6 +90,24 @@ const realUseApiKeyVerification = {
 }
 
 export function setupReplMocks(): void {
+  // Two footer widgets render session-wide counters that live in process-global
+  // state, so they show whatever an EARLIER test file in the same bun process
+  // accumulated — and bun's file order is filesystem order, which differs per
+  // machine. Left unpinned this is a snapshot that passes locally and fails on
+  // CI (PR #93, run 31887736615): `src/tools/ApplyPatchTool/applyPatch.test.ts`
+  // and the stagedWrite tests run applyPatch for real, and every
+  // `commitStagedChanges` feeds `countLinesChanged` — +11/-11 in total, which
+  // the prompt-input rule then renders as a diff-stat pill
+  // (`──[ +11 -11 ■■■■ ]──`). Any test that records cache metrics does the same
+  // to SessionTokensIndicator, which stops returning null the moment the totals
+  // go non-zero and appends `in: 0  out: 0` to the shortcuts line.
+  //
+  // `resetCostState()` is what `/clear` calls: it zeroes the cost counters and
+  // lines-changed in bootstrap STATE plus the cache-stats tracker, which is
+  // exactly the two sources behind those widgets. Teardown resets again so this
+  // harness cannot become the leaker for whatever file runs next.
+  resetCostState()
+
   savedEffortEnv = process.env.CLAUDE_CODE_EFFORT_LEVEL
   effortEnvWasSet = true
   process.env.CLAUDE_CODE_EFFORT_LEVEL = REPL_SNAPSHOT_EFFORT
@@ -340,6 +359,7 @@ export function setupReplMocks(): void {
 
 export function teardownReplMocks(): void {
   mock.restore()
+  resetCostState()
   // mock.restore() does not revert mock.module(); restore the pinned hook.
   mock.module('src/agent/hooks/useMainLoopModel.js', () => realUseMainLoopModel)
   mock.module('src/providers/hooks/useApiKeyVerification.js', () => realUseApiKeyVerification)
