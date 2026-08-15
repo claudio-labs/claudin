@@ -19,7 +19,7 @@
 
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
-import { getUserAgent } from 'src/shared/http.ts'
+import { getUserAgent, getWebFetchUserAgent } from 'src/shared/http.ts'
 
 const ENV_KEYS = [
   'CLAUDE_CODE_ENTRYPOINT',
@@ -59,5 +59,17 @@ describe('getUserAgent', () => {
     const ua = getUserAgent()
     expect(ua).toContain('agent-sdk/1.2.3')
     expect(ua).toContain('client-app/my-app/1.0.0')
+  })
+})
+
+describe('getWebFetchUserAgent', () => {
+  // This string goes to arbitrary third-party sites. It used to claim to be
+  // `Claude-User`, the fetcher identity Anthropic publishes for site operators
+  // to match in robots.txt, whenever the active provider was first-party.
+  test('never claims to be the first-party fetcher, whatever the provider', () => {
+    const ua = getWebFetchUserAgent()
+    expect(ua.startsWith('Claudin-User')).toBe(true)
+    expect(ua).not.toContain('Claude-User')
+    expect(ua).not.toContain('anthropic.com')
   })
 })

@@ -20,6 +20,8 @@ import {
 import { getProxyFetchOptions } from 'src/providers/transport/proxy.js'
 import { withH2Fallback } from 'src/providers/transport/h2Fallback.js'
 import { pickFetch } from 'src/providers/transport/pickFetch.js'
+import { buildIdentityHeaders } from 'src/providers/transport/identityHeaders.js'
+import { getClaudinUserAgent } from 'src/providers/transport/userAgent.js'
 import {
   getIsNonInteractiveSession,
   getSessionId,
@@ -111,9 +113,15 @@ export async function getAnthropicClient({
   const clientApp = process.env.CLAUDE_AGENT_SDK_CLIENT_APP
   const customHeaders = getCustomHeaders()
   const defaultHeaders: { [key: string]: string } = {
-    'x-app': 'cli',
-    'User-Agent': getUserAgent(),
-    'X-Claude-Code-Session-Id': getSessionId(),
+    // Who we tell the endpoint we are. Upstream's identity only on the
+    // first-party lane — this object also reaches the OpenAI-compat shim,
+    // Copilot and bedrock/vertex/foundry. See identityHeaders.ts.
+    ...buildIdentityHeaders({
+      firstParty: isFirstPartyAnthropicBaseUrl(),
+      sessionId: getSessionId(),
+      firstPartyUserAgent: getUserAgent(),
+      claudinUserAgent: getClaudinUserAgent(),
+    }),
     ...customHeaders,
     ...(containerId ? { 'x-claude-remote-container-id': containerId } : {}),
     ...(remoteSessionId
