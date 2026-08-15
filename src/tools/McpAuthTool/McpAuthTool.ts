@@ -173,7 +173,7 @@ export function createMcpAuthTool(
 
       try {
         // Race: get the URL, or the flow completes without needing one
-        // (e.g. XAA with cached IdP token — silent auth).
+        // (e.g. credentials already cached — silent auth).
         const authUrl = await Promise.race([
           authUrlPromise,
           oauthPromise.then(() => null as string | null),

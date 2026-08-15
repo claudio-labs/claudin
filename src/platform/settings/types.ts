@@ -1,7 +1,6 @@
 import { feature } from 'bun:bundle'
 import { z } from 'zod/v4'
 import { SandboxSettingsSchema } from 'src/platform/entrypoints/sandboxTypes.js'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   EXTERNAL_PERMISSION_MODES,
@@ -281,37 +280,6 @@ export const SettingsSchema = lazySchema(() =>
         .describe(
           'Command to refresh GCP authentication (e.g., gcloud auth application-default login)',
         ),
-      // Gated so the SDK generator (which runs without CLAUDE_CODE_ENABLE_XAA)
-      // doesn't surface this in GlobalClaudeSettings. Read via getXaaIdpSettings().
-      // .passthrough() on the outer object keeps an existing settings.json key
-      // alive across env-var-off sessions — it's just not schema-validated then.
-      ...(isEnvTruthy(process.env.CLAUDE_CODE_ENABLE_XAA)
-        ? {
-            xaaIdp: z
-              .object({
-                issuer: z
-                  .string()
-                  .url()
-                  .describe('IdP issuer URL for OIDC discovery'),
-                clientId: z
-                  .string()
-                  .describe("Claude Code's client_id registered at the IdP"),
-                callbackPort: z
-                  .number()
-                  .int()
-                  .positive()
-                  .optional()
-                  .describe(
-                    'Fixed loopback callback port for the IdP OIDC login. ' +
-                      'Only needed if the IdP does not honor RFC 8252 port-any matching.',
-                  ),
-              })
-              .optional()
-              .describe(
-                'XAA (SEP-990) IdP connection. Configure once; all XAA-enabled MCP servers reuse this.',
-              ),
-          }
-        : {}),
       fileSuggestion: z
         .object({
           type: z.literal('command'),

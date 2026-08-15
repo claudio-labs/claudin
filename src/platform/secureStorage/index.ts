@@ -61,13 +61,6 @@ export interface SecureStorageData {
     }
   >
   mcpOAuthClientConfig?: Record<string, { clientSecret: string }>
-  /**
-   * Cached IdP `id_token`s for MCP cross-app access, keyed by normalized IdP
-   * issuer. Written by `services/mcp/xaaIdpLogin.ts`.
-   */
-  mcpXaaIdp?: Record<string, { idToken: string; expiresAt: number }>
-  /** IdP client secrets for MCP cross-app access, keyed by the same issuer. */
-  mcpXaaIdpConfig?: Record<string, { clientSecret: string }>
   trustedDeviceToken?: string
   pluginSecrets?: Record<string, Record<string, string>>
 }
