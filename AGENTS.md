@@ -51,13 +51,15 @@ More test targets (`test:provider`, `test:coverage`, invariant tests) are docume
 
 If a just-built feature "doesn't show up", check which binary was launched: contributors keep the released `claudin` and a `claudindev` symlink to this checkout side by side, and only the second one runs what you just built. `CONTRIBUTING.md` sets that up under "Local Setup".
 
-## Architecture
+## Architecture — Screaming Architecture + Vertical Slice
 
 Single entrypoint, single-file bundle: `src/platform/entrypoints/cli.tsx` → `dist/cli.mjs`, launched by `bin/claudin`. The [search-strategy.md](.claudin/rules/search-strategy.md) rule has the full navigable module map.
 
+The two patterns this tree commits to, by name: **Screaming Architecture** — the top level of `src/` names the *domain* (`providers/ tools/ permissions/ sessions/ skills/`), never the framework or the technical layer — and **Vertical Slice Architecture** — each of those owns its whole stack (logic, UI, hooks, types, constants, tests) instead of one feature being smeared across layer directories. New work follows both. The rest of this section is what they mean concretely here, and `src/__tests__/moduleBoundaries.test.ts` is the only thing enforcing them.
+
 Every directory under `src/` is a **feature slice** that owns its own logic, UI and tests: `agent/` (the loop, its prompts, its REPL, its tasks), `providers/`, `tools/`, `commands/`, `permissions/`, `mcp/`, `sessions/`, `memory/`, `vcs/`, `plugins/`, `skills/`, plus `platform/` (the host — process, config, settings, OS integration) and `terminal/` (the TUI shell). `shared/` is for primitives with no owner, grouped into `data/` `fs/` `proc/` `text/` `constants/` `types/`; a subsystem appearing there is a bug. Four more directories exist and are **not** slices, so don't file features in them: `__tests__/` (repo-wide invariants only — everything else is colocated), `stubs/`, `vendor/` and `native-ts/`.
 
-That replaced seven catch-all directories — `components/`, `services/`, `utils/`, `screens/`, `constants/`, `hooks/`, `types/` — which had grown by accretion because "where does this go?" had no answer, and which once forced `/diff` to reach across eleven top-level dirs. `scripts/reorg/manifest.ts` records every destination and why, and `git log --follow` works across the move (each group was committed as pure renames).
+That replaced seven catch-all directories — `components/`, `services/`, `utils/`, `screens/`, `constants/`, `hooks/`, `types/` — the layer names Screaming Architecture rules out, which had grown by accretion because "where does this go?" had no answer, and which once forced `/diff` to reach across eleven top-level dirs. `scripts/reorg/manifest.ts` records every destination and why, and `git log --follow` works across the move (each group was committed as pure renames).
 
 ### Where a new file goes
 

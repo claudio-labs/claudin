@@ -55,8 +55,17 @@ fixpoint loop in `toolResultSummarizer.ts` (×3), and the two opaque-ID hashes i
 `classifierProbeStore.ts` / `betaSessionTracing.ts`. Their dismissal comments on
 main literally read "Rename re-raise (PR #88); was #12", because #88 did it the
 time before. Expect one red CodeQL check per reorg, do not "fix" the code for
-it, and re-dismiss on main after the merge with the same reasons plus the new
-alert numbers.
+it, and re-dismiss with the same reasons plus the new alert numbers. The third
+generation is `#26`–`#30` (`src/permissions/classifierProbeStore.ts:43`,
+`src/platform/telemetry/betaSessionTracing.ts:119`,
+`src/agent/tools/toolResultSummarizer.ts:1250` ×3), dismissed 2026-08-15 while
+PR #93 was still open — the check run flipped to success without a merge, so
+dismissing pre-merge works once the branch's paths are final. Two mechanics
+worth knowing before the next round: the repo is on CodeQL **default setup** (no
+workflow, no `.github/codeql*` config), so there is no query filter to add and
+inline `// codeql[…]` suppression is not a documented code-scanning feature —
+the API dismissal is the only lever; and `dismissed_comment` is capped at **280
+characters**, which a 422 tells you only after the PATCH.
 
 **Why:** these all sit downstream of the file walk. A generator, a plugin filter
 and a comment are *about* paths rather than *containing* imports, so nothing

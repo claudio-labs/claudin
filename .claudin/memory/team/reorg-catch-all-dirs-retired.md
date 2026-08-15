@@ -29,6 +29,11 @@ The manifest of every move is `scripts/reorg/manifest.ts`.
 **Why:** the trigger was `/diff` needing to reach across eleven top-level
 directories to do one feature's work.
 
+Since 2026-08-15 the two patterns are named in `AGENTS.md` under
+"Architecture — Screaming Architecture + Vertical Slice": the top level names the
+domain, each slice owns its whole stack. Before that the rule existed only as
+prose about "feature slices", which is why older notes never use either term.
+
 **How to apply:** new file goes in the slice that owns it; genuinely
 cross-cutting primitives go in `src/shared/`. If `moduleBoundaries.test.ts`
 fails, move the file — do not add the directory to its list. The navigable map
