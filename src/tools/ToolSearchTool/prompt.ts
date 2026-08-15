@@ -2,8 +2,8 @@ import { feature } from 'bun:bundle'
 import {
   getDeferredDeltaLegacySession,
   isReplBridgeActive,
-} from 'src/bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+} from 'src/platform/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import type { Tool } from 'src/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 

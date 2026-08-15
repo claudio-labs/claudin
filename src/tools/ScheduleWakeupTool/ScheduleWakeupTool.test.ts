@@ -8,7 +8,7 @@ import {
   regenerateSessionId,
   setScheduledTasksEnabled,
   switchSession,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import type { SessionId } from 'src/types/ids.js'
 import { takeDueSessionWakeup } from 'src/tasks/cronScheduler.js'
 import { resetLoopSentinelState } from 'src/utils/loopSentinels.js'

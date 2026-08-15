@@ -13,7 +13,7 @@ import {
   type Transport,
 } from '@modelcontextprotocol/sdk/shared/transport.js'
 import mapValues from 'lodash-es/mapValues.js'
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { getOauthConfig } from 'src/constants/oauth.js'
 import { getClaudeAIOAuthTokens } from 'src/services/auth/auth.js'
 import { getMCPUserAgent } from 'src/shared/http.js'
@@ -26,7 +26,7 @@ import {
   getWebSocketProxyUrl,
 } from 'src/services/api/proxy.js'
 import { getSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { subprocessEnv } from 'src/shared/proc/subprocessEnv.js'
 import { ClaudeAuthProvider, wrapFetchWithStepUpDetection } from 'src/services/mcp/auth.js'
 import { getMcpServerHeaders } from 'src/services/mcp/headersHelper.js'
@@ -42,12 +42,12 @@ import {
 // (@ant/computer-use-input + @ant/computer-use-swift). Runtime-gated by
 // GrowthBook tengu_malort_pedway (see gates.ts).
 export const computerUseWrapper = feature('CHICAGO_MCP')
-  ? (): typeof import('src/services/computerUse/wrapper.js') =>
-    require('src/services/computerUse/wrapper.js')
+  ? (): typeof import('src/platform/computerUse/wrapper.js') =>
+    require('src/platform/computerUse/wrapper.js')
   : undefined
 export const isComputerUseMCPServer = feature('CHICAGO_MCP')
   ? (
-    require('src/services/computerUse/common.js') as typeof import('src/services/computerUse/common.js')
+    require('src/platform/computerUse/common.js') as typeof import('src/platform/computerUse/common.js')
   ).isComputerUseMCPServer
   : undefined
 /* eslint-enable @typescript-eslint/no-require-imports */
@@ -394,7 +394,7 @@ export async function createTransport(
     // Chrome above. The package's CallTool handler is a stub; real
     // dispatch goes through wrapper.tsx's .call() override.
     const { createComputerUseMcpServerForCli } = await import(
-      'src/services/computerUse/mcpServer.js'
+      'src/platform/computerUse/mcpServer.js'
     )
     const { createLinkedTransportPair } = await import(
       'src/services/mcp/InProcessTransport.js'

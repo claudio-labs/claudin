@@ -5,15 +5,15 @@ import * as React from 'react';
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { z } from 'zod/v4';
-import { getKairosActive } from 'src/bootstrap/state.js';
+import { getKairosActive } from 'src/platform/bootstrap/state.js';
 import { TOOL_SUMMARY_MAX_LENGTH } from 'src/constants/toolLimits.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import type { SetToolJSXFn, Tool, ToolCallProgress, ValidationResult } from 'src/Tool.js';
 import { buildTool, type ToolDef } from 'src/Tool.js';
 import { backgroundExistingForegroundTask, markTaskNotified, registerForeground, spawnShellTask, unregisterForeground } from 'src/tasks/LocalShellTask/LocalShellTask.js';
 import type { AgentId } from 'src/types/ids.js';
 import type { AssistantMessage } from 'src/types/message.js';
-import { extractClaudeCodeHints } from 'src/utils/claudeCodeHints.js';
+import { extractClaudeCodeHints } from 'src/platform/claudeCodeHints.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { errorMessage as getErrorMessage, ShellError } from 'src/shared/errors.js';
 import { truncate } from 'src/shared/text/format.js';
@@ -24,10 +24,10 @@ import { getPlatform } from 'src/shared/proc/platform.js';
 import { maybeRecordPluginHint } from 'src/services/plugins/hintRecommendation.js';
 import { exec } from 'src/shared/proc/Shell.js';
 import type { ExecResult } from 'src/shared/proc/ShellCommand.js';
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js';
 import { semanticNumber } from 'src/shared/data/semanticNumber.js';
-import { getCachedPowerShellPath } from 'src/services/shell/powershellDetection.js';
+import { getCachedPowerShellPath } from 'src/platform/shell/powershellDetection.js';
 import { EndTruncatingAccumulator } from 'src/shared/text/stringUtils.js';
 import { TaskOutput } from 'src/tasks/TaskOutput.js';
 import { isOutputLineTruncated } from 'src/terminal/terminal.js';
@@ -192,7 +192,7 @@ export function detectBlockedSleepPattern(command: string): string | null {
   // `&`/`&&`/`||` (pwsh 7+), and newline (PS's primary separator). This is
   // intentionally shallow — sleep inside script blocks, subshells, or later
   // pipeline stages is fine. Matches BashTool's splitCommandWithOperators
-  // intent (src/services/bash/commands.ts) without a full PS parser.
+  // intent (src/platform/bash/commands.ts) without a full PS parser.
   const first = command.trim().split(/[;|&\r\n]/)[0]?.trim() ?? '';
   // Match: Start-Sleep N, Start-Sleep -Seconds N, Start-Sleep -s N, sleep N
   // (case-insensitive; -Seconds can be abbreviated to -s per PS convention)

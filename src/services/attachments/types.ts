@@ -4,7 +4,7 @@ import type { Output as FileReadToolOutput } from 'src/tools/FileReadTool/FileRe
 import type { TodoList } from 'src/tools/TodoWriteTool/types.js'
 import type { Task } from 'src/tasks/tasks.js'
 import type { MemoryFileInfo } from 'src/services/instructions/claudemd.js'
-import type { DiagnosticFile } from 'src/services/diagnosticTracking.js'
+import type { DiagnosticFile } from 'src/platform/diagnosticTracking.js'
 import type { MessageOrigin } from 'src/types/message.js'
 import type { UUID } from 'crypto'
 import type {
@@ -18,8 +18,8 @@ type DiscoverySignal = unknown
 import type {
   HookEvent,
   SyncHookJSONOutput,
-} from 'src/entrypoints/agentSdkTypes.js'
-import type { HookBlockingError } from 'src/services/lifecycleHooks/hooks.js'
+} from 'src/platform/entrypoints/agentSdkTypes.js'
+import type { HookBlockingError } from 'src/platform/lifecycleHooks/hooks.js'
 import type { TaskType, TaskStatus } from 'src/Task.js'
 
 export type FileAttachment = {

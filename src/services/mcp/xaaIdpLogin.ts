@@ -24,9 +24,9 @@ import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { toError } from 'src/shared/errors.js'
 import { logMCPDebug } from 'src/shared/log.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
-import { getSecureStorage } from 'src/services/secureStorage/index.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
-import { jsonParse } from 'src/utils/slowOperations.js'
+import { getSecureStorage } from 'src/platform/secureStorage/index.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
+import { jsonParse } from 'src/platform/slowOperations.js'
 import { buildRedirectUri, findAvailablePort } from 'src/services/mcp/oauthPort.js'
 
 export function isXaaEnabled(): boolean {

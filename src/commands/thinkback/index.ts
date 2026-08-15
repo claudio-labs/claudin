@@ -1,5 +1,5 @@
 import type { Command } from 'src/commands.js'
-import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 
 const thinkback = {
   type: 'local-jsx',

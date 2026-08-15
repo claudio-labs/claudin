@@ -7,11 +7,11 @@
  * Extracted in Wave 3 of the 11c sessionStorage split.
  */
 import type { UUID } from 'crypto'
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import type { SessionId } from 'src/types/ids.js'
 import type { PersistedWorktreeSession } from 'src/types/logs.js'
 import { updateSessionName } from 'src/services/session/concurrentSessions.js'

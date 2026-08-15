@@ -3,14 +3,14 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import React, { useEffect, useState } from 'react';
 import type { CommandResultDisplay } from 'src/commands.js';
-import { logEvent } from 'src/services/analytics/index.js';
+import { logEvent } from 'src/platform/analytics/index.js';
 import { StatusIcon } from 'src/terminal/design-system/StatusIcon.js';
 import { Box, render, Text } from 'src/terminal/ink.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { env } from 'src/shared/env.js';
 import { errorMessage } from 'src/shared/errors.js';
-import { checkInstall, cleanupNpmInstallations, cleanupShellAliases, installLatest } from 'src/services/install/index.js';
-import { getInitialSettings, updateSettingsForSource } from 'src/services/settings/settings.js';
+import { checkInstall, cleanupNpmInstallations, cleanupShellAliases, installLatest } from 'src/platform/install/index.js';
+import { getInitialSettings, updateSettingsForSource } from 'src/platform/settings/settings.js';
 interface InstallProps {
   onDone: (result: string, options?: {
     display?: CommandResultDisplay;

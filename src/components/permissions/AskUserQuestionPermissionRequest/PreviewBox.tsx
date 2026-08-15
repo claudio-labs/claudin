@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { Suspense, use, useMemo } from 'react';
-import { useSettings } from 'src/hooks/useSettings.js';
+import { useSettings } from 'src/platform/useSettings.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { stringWidth } from 'src/terminal/ink/stringWidth.js';
 import { Ansi, Box, Text, useTheme } from 'src/terminal/ink.js';

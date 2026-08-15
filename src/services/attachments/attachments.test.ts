@@ -5,7 +5,7 @@ import {
   resetSentBashGitInstructions,
   suppressNextBashGitInstructions,
 } from 'src/services/attachments/attachments.js'
-import { enableConfigs } from 'src/services/config/config.js'
+import { enableConfigs } from 'src/platform/config/config.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 

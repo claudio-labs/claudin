@@ -42,8 +42,8 @@ const originalEnv = {
 // Keep the shim path deterministic — no compression noise.
 // Spread into a plain object so afterAll restores the original bindings, not
 // the live ESM namespace (which mock.module mutates after the fact).
-const realConfig_staticDedup = { ...(await import('src/services/config/config.js')) }
-mock.module('src/services/config/config.js', () => ({
+const realConfig_staticDedup = { ...(await import('src/platform/config/config.js')) }
+mock.module('src/platform/config/config.js', () => ({
   ...realConfig_staticDedup,
   getGlobalConfig: () => ({
     autoCompactEnabled: false,
@@ -127,7 +127,7 @@ afterAll(() => {
   if (originalEnv.CLAUDIN_STATIC_DEDUP === undefined)
     delete process.env.CLAUDIN_STATIC_DEDUP
   else process.env.CLAUDIN_STATIC_DEDUP = originalEnv.CLAUDIN_STATIC_DEDUP
-  mock.module('src/services/config/config.js', () => realConfig_staticDedup)
+  mock.module('src/platform/config/config.js', () => realConfig_staticDedup)
   mock.module('src/services/compact/autoCompact.js', () => realAutoCompact_staticDedup)
 })
 

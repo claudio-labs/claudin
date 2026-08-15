@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from 'bun:test'
 
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
 import { PowerShellTool } from 'src/tools/PowerShellTool/PowerShellTool.js'
 import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js'

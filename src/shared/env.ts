@@ -1,7 +1,7 @@
 import memoize from 'lodash-es/memoize.js'
 import { dirname, join } from 'path'
 import { fileSuffixForOauthConfig } from 'src/constants/oauth.js'
-import { isRunningWithBun } from 'src/services/install/bundledMode.js'
+import { isRunningWithBun } from 'src/platform/install/bundledMode.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import { findExecutable } from 'src/shared/proc/findExecutable.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'

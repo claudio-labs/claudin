@@ -8,13 +8,13 @@ import { feature } from "bun:bundle";
 import {
   getLargeSystemPromptDetected,
   setLargeSystemPromptDetected,
-} from "src/bootstrap/state.js";
+} from "src/platform/bootstrap/state.js";
 import {
   EFFORT_BETA_HEADER,
   TASK_BUDGETS_BETA_HEADER,
 } from "src/constants/betas.js";
 import type { QuerySource } from "src/constants/querySource.js";
-import { getFeatureValue_CACHED_MAY_BE_STALE } from "src/services/analytics/growthbook.js";
+import { getFeatureValue_CACHED_MAY_BE_STALE } from "src/platform/analytics/growthbook.js";
 import { type CacheScope, splitSysPromptPrefix } from "src/services/api/api.js";
 import { shouldIncludeFirstPartyOnlyBetas } from "src/services/api/betas.js";
 import {
@@ -39,7 +39,7 @@ import {
 import type { SystemPrompt } from "src/utils/systemPromptType.js";
 import { roughTokenCountEstimationForMessage } from "src/services/tokenEstimation.js";
 import type { AssistantMessage, UserMessage } from "src/types/message.js";
-import { logEvent } from "src/services/analytics/index.js";
+import { logEvent } from "src/platform/analytics/index.js";
 import { getCacheControl } from "src/services/api/claude/cacheControl.js";
 import {
   assistantMessageToMessageParam,

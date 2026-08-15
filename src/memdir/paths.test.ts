@@ -17,15 +17,15 @@ import { join, sep } from 'path'
 // module boundary so each test can control them without touching real global
 // state. Everything else (mkdirSync/realpathSync/chmodSync, symlinks, and
 // git-root detection via a real `.git` marker dir) is real.
-const realSettings = { ...(await import('src/services/settings/settings.js')) }
-const realState = { ...(await import('src/bootstrap/state.js')) }
+const realSettings = { ...(await import('src/platform/settings/settings.js')) }
+const realState = { ...(await import('src/platform/bootstrap/state.js')) }
 const originalConfigDirEnv = process.env.CLAUDIN_CONFIG_DIR
 const originalCoworkOverrideEnv =
   process.env.CLAUDE_COWORK_MEMORY_PATH_OVERRIDE
 
 afterAll(() => {
-  mock.module('src/services/settings/settings.js', () => realSettings)
-  mock.module('src/bootstrap/state.js', () => realState)
+  mock.module('src/platform/settings/settings.js', () => realSettings)
+  mock.module('src/platform/bootstrap/state.js', () => realState)
   if (originalConfigDirEnv === undefined) {
     delete process.env.CLAUDIN_CONFIG_DIR
   } else {
@@ -48,7 +48,7 @@ async function importFreshPathsModule(options: {
   autoMemoryDirectory?: string
   autoMemoryProjectLocal?: boolean
 }) {
-  mock.module('src/services/settings/settings.js', () => ({
+  mock.module('src/platform/settings/settings.js', () => ({
     ...realSettings,
     getInitialSettings: () => ({}),
     getSettingsForSource: (source: string) =>
@@ -59,7 +59,7 @@ async function importFreshPathsModule(options: {
           }
         : undefined,
   }))
-  mock.module('src/bootstrap/state.js', () => ({
+  mock.module('src/platform/bootstrap/state.js', () => ({
     ...realState,
     getProjectRoot: () => options.projectRoot,
   }))

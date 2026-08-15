@@ -9,7 +9,7 @@ import { createRoot, Text } from 'src/terminal/ink.js'
 // The bootstrap/state.js stub here exposes only getIsNonInteractiveSession, so
 // without restoring it later files lose switchSession/getSessionId (e.g.
 // cost-tracker.projectTotals's switchSession→getSessionId round-trip).
-const realBootstrapStateForApiKey = { ...(await import('src/bootstrap/state.js')) }
+const realBootstrapStateForApiKey = { ...(await import('src/platform/bootstrap/state.js')) }
 const realClaudeForApiKey = { ...(await import('src/services/api/claude.js')) }
 const realAuthForApiKey = { ...(await import('src/services/auth/auth.js')) }
 
@@ -65,8 +65,8 @@ async function waitForCondition(
 afterEach(() => {
   mock.restore()
   // mock.restore() does not revert mock.module(); re-install the real modules.
-  mock.module('src/bootstrap/state.js', () => realBootstrapStateForApiKey)
-  mock.module('src/bootstrap/state.js', () => realBootstrapStateForApiKey)
+  mock.module('src/platform/bootstrap/state.js', () => realBootstrapStateForApiKey)
+  mock.module('src/platform/bootstrap/state.js', () => realBootstrapStateForApiKey)
   mock.module('src/services/api/claude.js', () => realClaudeForApiKey)
   mock.module('src/services/auth/auth.js', () => realAuthForApiKey)
 })
@@ -88,7 +88,7 @@ test('useApiKeyVerification resets stale missing status when the session switche
     isClaudeAISubscriber: () => authState.claudeSubscriber,
   }))
 
-  mock.module('src/bootstrap/state.js', () => ({
+  mock.module('src/platform/bootstrap/state.js', () => ({
     getIsNonInteractiveSession: () => false,
   }))
 

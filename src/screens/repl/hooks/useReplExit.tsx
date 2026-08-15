@@ -26,7 +26,7 @@ import { spawnSync } from 'child_process'
 import { feature } from 'bun:bundle'
 import { isBgSession } from 'src/services/session/concurrentSessions.js'
 import { getCurrentWorktreeSession } from 'src/services/git/worktree.js'
-import { ExitFlow } from 'src/components/ExitFlow.js'
+import { ExitFlow } from 'src/platform/ExitFlow.js'
 import exit from 'src/commands/exit/index.js'
 
 type ExitState = 'idle' | 'requested' | 'forced'

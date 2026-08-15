@@ -92,7 +92,7 @@ import {
 } from 'src/services/api/openaiShim/providerModes.js'
 import { extractReasoningMessage } from 'src/services/api/openaiShim/reasoningNormalizer.js'
 import { openaiStreamToAnthropic, OpenAIShimStream } from 'src/services/api/openaiShim/streamParser.js'
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 
 // api.openai.com (and the chatgpt.com backend) honor prompt_cache_key /
 // prompt_cache_retention; everything else gets the params withheld.

@@ -1,5 +1,5 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
-import { getInitialMainLoopModel } from 'src/bootstrap/state.js'
+import { getInitialMainLoopModel } from 'src/platform/bootstrap/state.js'
 import { getAdditionalModelOptionsCacheScope, isDirectOpenAIProvider } from 'src/services/api/providerConfig.js'
 import {
   isClaudeAISubscriber,
@@ -14,7 +14,7 @@ import {
   COST_HAIKU_45,
   formatModelPricing,
 } from 'src/services/api/modelCost.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { checkOpus1mAccess, checkSonnet1mAccess } from 'src/utils/model/check1mAccess.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import { isModelAllowed } from 'src/utils/model/modelAllowlist.js'
@@ -35,7 +35,7 @@ import {
 } from 'src/utils/model/model.js'
 import { has1mContext } from 'src/services/context/context.js'
 import { getFilteredCodexCatalog } from 'src/utils/model/codexModelCatalog.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import {
   getActiveOpenAIModelOptionsCache,
   getActiveProviderProfile,

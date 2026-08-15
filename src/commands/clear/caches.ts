@@ -6,7 +6,7 @@ import { feature } from 'bun:bundle'
 import {
   clearInvokedSkills,
   setLastEmittedDate,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { clearCommandsCache } from 'src/commands.js'
 import { getSessionStartDate } from 'src/constants/common.js'
 import {
@@ -21,11 +21,11 @@ import { clearAllDumpState } from 'src/services/api/dumpPrompts.js'
 import { resetPromptCacheBreakDetection } from 'src/services/api/promptCacheBreakDetection.js'
 import { clearAllSessions } from 'src/services/api/sessionIngress.js'
 import { runPostCompactCleanup } from 'src/services/compact/postCompactCleanup.js'
-import { resetAllLSPDiagnosticState } from 'src/services/lsp/LSPDiagnosticRegistry.js'
-import { clearTrackedMagicDocs } from 'src/services/MagicDocs/magicDocs.js'
+import { resetAllLSPDiagnosticState } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
+import { clearTrackedMagicDocs } from 'src/platform/MagicDocs/magicDocs.js'
 import { clearDynamicSkills } from 'src/skills/loadSkillsDir.js'
 import { resetSentSkillNames } from 'src/services/attachments/attachments.js'
-import { clearCommandPrefixCaches } from 'src/services/bash/commands.js'
+import { clearCommandPrefixCaches } from 'src/platform/bash/commands.js'
 import { resetGetMemoryFilesCache } from 'src/services/instructions/claudemd.js'
 import { clearRepositoryCaches } from 'src/services/git/detectRepository.js'
 import { clearResolveGitDirCache } from 'src/services/git/gitFilesystem.js'

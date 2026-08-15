@@ -24,7 +24,7 @@
 
 import { useCallback, useEffect } from 'react';
 import { feature } from 'bun:bundle';
-import { sendNotification } from 'src/services/notifier.js';
+import { sendNotification } from 'src/platform/notifications/notifier.js';
 import { registerLeaderSetToolPermissionContext, unregisterLeaderSetToolPermissionContext } from 'src/coordinator/swarm/leaderPermissionBridge.js';
 import { type ResumeEntrypoint } from 'src/commands.js';
 import { type ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';
@@ -40,7 +40,7 @@ import { mergeClients } from 'src/hooks/useMergedClients.js';
 import { getQuerySourceForREPL } from 'src/utils/promptCategory.js';
 import { mergeAndFilterTools } from 'src/services/tools/toolPool.js';
 import type { ScopedMcpServerConfig } from 'src/services/mcp/types.js';
-import { type IDESelection } from 'src/hooks/useIdeSelection.js';
+import { type IDESelection } from 'src/platform/ide/useIdeSelection.js';
 import { assembleToolPool } from 'src/tools.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { resolveAgentTools } from 'src/tools/AgentTool/agentToolUtils.js';
@@ -48,7 +48,7 @@ import type { ProcessUserInputContext } from 'src/services/input/processUserInpu
 import type { LogOption } from 'src/types/logs.js';
 import { type FileHistoryState } from 'src/shared/fs/fileHistory.js';
 import { type AttributionState } from 'src/services/git/commitAttribution.js';
-import { type IDEExtensionInstallationStatus, type IdeType } from 'src/services/ide/ide.js';
+import { type IDEExtensionInstallationStatus, type IdeType } from 'src/platform/ide/ide.js';
 import { type SetAppState, removeByFilter } from 'src/utils/messageQueueManager.js';
 import { startBackgroundSession } from 'src/tasks/LocalMainSessionTask.js';
 import type { Theme } from 'src/terminal/theme/theme.js';

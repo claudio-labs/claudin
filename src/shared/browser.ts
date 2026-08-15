@@ -3,7 +3,7 @@ import { homedir } from 'node:os'
 import path from 'node:path'
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 
 function validateUrl(url: string): void {
   let parsedUrl: URL

@@ -26,9 +26,9 @@ import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 // flags loads — flag reads must fall through to cache-profile defaults
 // regardless of what earlier test files left in the module registry.
 const realGrowthbook = {
-  ...(await import('src/services/analytics/growthbook.js')),
+  ...(await import('src/platform/analytics/growthbook.js')),
 }
-mock.module('src/services/analytics/growthbook.js', () => ({
+mock.module('src/platform/analytics/growthbook.js', () => ({
   ...realGrowthbook,
   getFeatureValue_CACHED_MAY_BE_STALE: (_key: string, def: unknown) => def,
 }))
@@ -75,7 +75,7 @@ const { resolveUpdatedTools } = await import(
   'src/services/mcp/useManageMCPConnections.js'
 )
 const { clearBetaHeaderLatches, isLspDeferLatched, latchLspDefer } =
-  await import('src/bootstrap/state.js')
+  await import('src/platform/bootstrap/state.js')
 
 import type { Message } from 'src/types/message.js'
 import type { Tool } from 'src/Tool.js'
@@ -248,5 +248,5 @@ afterAll(() => {
   _resetDeferCacheMarkerForTesting()
   mock.module('./autoCompact.js', () => realAutoCompact)
   mock.module('src/utils/model/model.js', () => realModel)
-  mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
+  mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
 })

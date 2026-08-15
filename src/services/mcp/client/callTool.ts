@@ -12,11 +12,11 @@ import { detectCodeIndexingFromMcpServerName } from 'src/shared/fs/codeIndexing.
 import { TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/shared/errors.js'
 import { logMCPDebug, logMCPError } from 'src/shared/log.js'
 import type { MCPToolResult } from 'src/services/mcp/mcpValidation.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import type { MCPProgress } from 'src/tools/MCPTool/MCPTool.js'
 import {
   type ElicitationWaitingState,

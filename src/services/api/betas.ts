@@ -3,8 +3,8 @@ import memoize from 'lodash-es/memoize.js'
 import {
   checkStatsigFeatureGate_CACHED_MAY_BE_STALE,
   getFeatureValue_CACHED_MAY_BE_STALE,
-} from 'src/services/analytics/growthbook.js'
-import { getIsNonInteractiveSession, getSdkBetas } from 'src/bootstrap/state.js'
+} from 'src/platform/analytics/growthbook.js'
+import { getIsNonInteractiveSession, getSdkBetas } from 'src/platform/bootstrap/state.js'
 import {
   BEDROCK_EXTRA_PARAMS_HEADERS,
   CLAUDE_CODE_20250219_BETA_HEADER,
@@ -27,7 +27,7 @@ import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 import { getCanonicalName } from 'src/utils/model/model.js'
 import { get3PModelCapabilityOverride } from 'src/utils/model/modelSupportOverrides.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 
 /**
  * SDK-provided betas that are allowed for API key users.

@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { errorMessage, getErrnoCode } from 'src/shared/errors.js'

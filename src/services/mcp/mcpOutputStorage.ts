@@ -3,7 +3,7 @@ import { join } from 'path'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import type { MCPResultType } from 'src/services/mcp/client.js'
 import { toError } from 'src/shared/errors.js'
 import { formatFileSize } from 'src/shared/text/format.js'

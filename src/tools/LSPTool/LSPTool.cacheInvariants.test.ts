@@ -43,7 +43,7 @@ const noServerManager = {
   sendRequest: async () => undefined,
 }
 
-mock.module('src/services/lsp/manager.js', () => ({
+mock.module('src/platform/lsp/manager.js', () => ({
   isLspConnected: () => getManager() !== undefined,
   getLspServerManager: () => getManager(),
   reinitializeLspServerManager: () => {},

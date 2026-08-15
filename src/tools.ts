@@ -173,12 +173,12 @@ import type { ToolPermissionContext } from 'src/Tool.js'
 import { getDenyRuleForTool } from 'src/services/permissions/permissions.js'
 import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { isPowerShellToolEnabled } from 'src/services/shell/shellToolUtils.js'
+import { isPowerShellToolEnabled } from 'src/platform/shell/shellToolUtils.js'
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
 import { isWorktreeModeEnabled } from 'src/services/git/worktreeModeEnabled.js'
-import { onGlobalConfigChange } from 'src/services/config/config.js'
-import { onRuntimeStateChange } from 'src/bootstrap/state.js'
-import { onGrowthBookRefresh } from 'src/services/analytics/growthbook.js'
+import { onGlobalConfigChange } from 'src/platform/config/config.js'
+import { onRuntimeStateChange } from 'src/platform/bootstrap/state.js'
+import { onGrowthBookRefresh } from 'src/platform/analytics/growthbook.js'
 import {
   REPL_TOOL_NAME,
   REPL_ONLY_TOOLS,

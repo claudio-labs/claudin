@@ -14,7 +14,7 @@ import { closeSync, fstatSync, openSync, readSync } from 'fs'
 import { dirname } from 'path'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { LITE_READ_BUF_SIZE } from 'src/services/session/sessionStoragePortable.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 
 /**
  * Append an entry to a session file. Creates the parent dir if missing.

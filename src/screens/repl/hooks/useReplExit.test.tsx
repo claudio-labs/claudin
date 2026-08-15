@@ -21,7 +21,33 @@ const mocks: Mocks = {
   exitCallResult: null,
 }
 
+// Captured BEFORE `beforeAll` installs the stub below. `mock.restore()` does not
+// undo `mock.module()`, so without an explicit re-install the stubbed
+// `child_process` stays in place for every test file that runs after this one in
+// the same worker — and it is stdlib, so the victim need not import anything of
+// ours to be hit. It cost a day here: the stub returns `{ status: 0 }` with no
+// `stdout`, which made `bootSnapshot.test.ts` read `String(undefined)` as the
+// output of `bin/claudin --help` and report the entire help text as changed.
+const realChildProcess = { ...(await import('node:child_process')) }
+
+// `handleExit()` arms a 10s failsafe that runs
+// `process.kill(process.pid, 'SIGKILL')`, and the branches exercised below (the
+// worktree prompt, the collapsed double-press) return with it still ticking —
+// the timer is deliberately not unref'd in production. `afterAll` hands
+// `process.kill` back to the real one long before those 10s elapse, so the bomb
+// goes off inside whatever file bun is running by then and takes the whole run
+// down with exit 137 and no output to explain it. Record every timer armed
+// while this file owns the globals and disarm them at teardown.
+const armedTimers = new Set<ReturnType<typeof setTimeout>>()
+const realSetTimeout = globalThis.setTimeout
+
 beforeAll(() => {
+  globalThis.setTimeout = ((...args: Parameters<typeof setTimeout>) => {
+    const handle = realSetTimeout(...args)
+    armedTimers.add(handle)
+    return handle
+  }) as typeof setTimeout
+
   // Replace `process.kill` so SIGKILL paths don't actually terminate bun.
   const realKill = process.kill.bind(process)
   ;(process as unknown as { kill: typeof process.kill }).kill = ((
@@ -48,7 +74,7 @@ beforeAll(() => {
   mock.module('src/services/git/worktree.js', () => ({
     getCurrentWorktreeSession: () => mocks.currentWorktreeSession,
   }))
-  mock.module('src/components/ExitFlow.js', () => ({
+  mock.module('src/platform/ExitFlow.js', () => ({
     ExitFlow: () => null,
   }))
   mock.module('src/commands/exit/index.js', () => ({
@@ -62,6 +88,10 @@ beforeAll(() => {
 
 afterAll(() => {
   mock.restore()
+  mock.module('child_process', () => realChildProcess)
+  globalThis.setTimeout = realSetTimeout
+  for (const handle of armedTimers) clearTimeout(handle)
+  armedTimers.clear()
   const realKill = (globalThis as unknown as { __realProcessKill?: typeof process.kill }).__realProcessKill
   if (realKill) {
     ;(process as unknown as { kill: typeof process.kill }).kill = realKill

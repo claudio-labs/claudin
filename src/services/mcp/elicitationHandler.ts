@@ -10,13 +10,13 @@ import {
   executeElicitationHooks,
   executeElicitationResultHooks,
   executeNotificationHooks,
-} from 'src/services/lifecycleHooks/hooks.js'
+} from 'src/platform/lifecycleHooks/hooks.js'
 import { logMCPDebug, logMCPError } from 'src/shared/log.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 
 /** Configuration for the waiting state shown after the user opens a URL. */
 export type ElicitationWaitingState = {

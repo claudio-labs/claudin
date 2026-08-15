@@ -1,5 +1,5 @@
 import React, { PureComponent, type ReactNode } from 'react';
-import { updateLastInteractionTime } from 'src/bootstrap/state.js';
+import { updateLastInteractionTime } from 'src/platform/bootstrap/state.js';
 import { stopCapturingEarlyInput } from 'src/terminal/input/earlyInput.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { isMouseClicksDisabled } from 'src/terminal/render/fullscreen.js';

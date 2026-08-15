@@ -3,7 +3,7 @@ import {
   DEFAULT_OUTPUT_STYLE_NAME,
   OUTPUT_STYLE_CONFIG,
 } from 'src/constants/outputStyles.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 
 /**
  * Determines the prompt category for agent usage.

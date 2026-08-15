@@ -17,7 +17,7 @@
 //   • ExecResult → plain object literals (no shell subprocess needed here).
 
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { getGlobalConfig, resetGlobalConfigForTests, saveGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig, resetGlobalConfigForTests, saveGlobalConfig } from 'src/platform/config/config.js'
 import type { ExecResult } from 'src/shared/proc/ShellCommand.js'
 import {
   applyBashOutputFilter,

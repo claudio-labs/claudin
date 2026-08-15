@@ -4,7 +4,7 @@ import { isExtractModeActive } from 'src/memdir/paths.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { HookProgress } from 'src/types/hooks.js'
 import type {
@@ -19,7 +19,7 @@ import type {
 import { createAttachmentMessage } from 'src/services/attachments/attachments.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
-import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
+import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import {
   executeStopHooks,
   executeTaskCompletedHooks,
@@ -27,7 +27,7 @@ import {
   getStopHookMessage,
   getTaskCompletedHookMessage,
   getTeammateIdleHookMessage,
-} from 'src/services/lifecycleHooks/hooks.js'
+} from 'src/platform/lifecycleHooks/hooks.js'
 import {
   createStopHookSummaryMessage,
   createSystemMessage,
@@ -43,13 +43,13 @@ const extractMemoriesModule = feature('EXTRACT_MEMORIES')
   ? (require('src/services/extractMemories/extractMemories.js') as typeof import('src/services/extractMemories/extractMemories.js'))
   : null
 const jobClassifierModule = feature('TEMPLATES')
-  ? (require('../jobs/classifier.js') as typeof import('../jobs/classifier.js'))
+  ? (require('../platform/jobs/classifier.js') as typeof import('../platform/jobs/classifier.js'))
   : null
 
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 import type { QuerySource } from 'src/constants/querySource.js'
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import {
   handleGoalBlockingError,
   shouldWarnGoalCheckIncomplete,
@@ -169,7 +169,7 @@ export async function* handleStopHooks(
   if (feature('CHICAGO_MCP') && !toolUseContext.agentId) {
     try {
       const { cleanupComputerUseAfterTurn } = await import(
-        'src/services/computerUse/cleanup.js'
+        'src/platform/computerUse/cleanup.js'
       )
       await cleanupComputerUseAfterTurn(toolUseContext)
     } catch {

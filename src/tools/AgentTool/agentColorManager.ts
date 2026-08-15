@@ -1,4 +1,4 @@
-import { getAgentColorMap } from 'src/bootstrap/state.js'
+import { getAgentColorMap } from 'src/platform/bootstrap/state.js'
 import type { Theme } from 'src/terminal/theme/theme.js'
 
 export type AgentColorName =

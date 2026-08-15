@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCommandQueue } from 'src/hooks/useCommandQueue.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getExampleCommandPool } from 'src/utils/exampleCommands.js'
 import { isQueuedCommandEditable } from 'src/utils/messageQueueManager.js'
 
@@ -9,7 +9,7 @@ import { isQueuedCommandEditable } from 'src/utils/messageQueueManager.js'
 /* eslint-disable @typescript-eslint/no-require-imports */
 const proactiveModule =
   feature('PROACTIVE') || feature('KAIROS')
-    ? require('../../proactive/index.js')
+    ? require('../../platform/proactive/index.js')
     : null
 
 type Props = {

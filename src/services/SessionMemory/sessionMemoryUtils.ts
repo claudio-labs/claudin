@@ -7,7 +7,7 @@ import { isFsInaccessible } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { getSessionMemoryPath } from 'src/services/permissions/filesystem.js'
 import { sleep } from 'src/shared/sleep.js'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 
 const EXTRACTION_WAIT_TIMEOUT_MS = 15000
 const EXTRACTION_STALE_THRESHOLD_MS = 60000 // 1 minute

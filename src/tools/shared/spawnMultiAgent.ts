@@ -10,15 +10,15 @@ import {
   getMainLoopModelOverride,
   getSessionBypassPermissionsMode,
   getSessionId,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import { createTaskStateBase, generateTaskId } from 'src/Task.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { InProcessTeammateTaskState } from 'src/tasks/InProcessTeammateTask/types.js'
 import { formatAgentId } from 'src/coordinator/agentId.js'
-import { quote } from 'src/services/bash/shellQuote.js'
-import { isInBundledMode } from 'src/services/install/bundledMode.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
+import { quote } from 'src/platform/bash/shellQuote.js'
+import { isInBundledMode } from 'src/platform/install/bundledMode.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'

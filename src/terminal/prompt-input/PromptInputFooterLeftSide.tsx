@@ -22,7 +22,7 @@ import { count } from 'src/shared/data/array.js';
 import { shouldHideTasksFooter } from 'src/components/tasks/taskStatusUtils.js';
 import { resolveFooterTreeRow } from 'src/components/tasks/footerSelection.js';
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
-import { TeamStatus } from 'src/components/teams/TeamStatus.js';
+import { TeamStatus } from 'src/platform/teams/TeamStatus.js';
 import { isInProcessEnabled } from 'src/coordinator/swarm/backends/registry.js';
 import { type AppState, useAppState, useAppStateStore } from 'src/terminal/state/AppState.js';
 
@@ -30,7 +30,7 @@ import { type AppState, useAppState, useAppStateStore } from 'src/terminal/state
 type Teammate = NonNullable<AppState['teamContext']>['teammates'][string];
 /** One entry of AppState.tasks. */
 type AppTask = AppState['tasks'][string];
-import { getIsRemoteMode } from 'src/bootstrap/state.js';
+import { getIsRemoteMode } from 'src/platform/bootstrap/state.js';
 import HistorySearchInput from 'src/terminal/prompt-input/HistorySearchInput.js';
 import { usePrStatus } from 'src/hooks/usePrStatus.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
@@ -44,13 +44,13 @@ import { type VoiceState, useVoiceState } from 'src/terminal/contexts/voice.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { isXtermJs } from 'src/terminal/ink/terminal.js';
 import { useHasSelection, useSelection } from 'src/terminal/ink/hooks/use-selection.js';
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { getPlatform } from 'src/shared/proc/platform.js';
-import { PrBadge } from 'src/components/PrBadge.js';
+import { PrBadge } from 'src/platform/status/PrBadge.js';
 
 // Dead code elimination: conditional import for proactive mode
 /* eslint-disable @typescript-eslint/no-require-imports */
-const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../../proactive/index.js') : null;
+const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../../platform/proactive/index.js') : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
 const NO_OP_SUBSCRIBE = (_cb: () => void) => () => {};
 const NULL = () => null;

@@ -1,4 +1,4 @@
-import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
+import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
 import type { Command } from 'src/commands.js'
 import { isOverageProvisioningAllowed } from 'src/services/auth/auth.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'

@@ -1,14 +1,14 @@
 import { dirname, sep } from 'path'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import { z } from 'zod/v4'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import { diagnosticTracker } from 'src/services/diagnosticTracking.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
+import { diagnosticTracker } from 'src/platform/diagnosticTracking.js'
 import {
   armFileForLateDiagnostics,
   buildPostEditDiagnosticsMessages,
-} from 'src/services/lsp/diagnosticsForToolResult.js'
-import { clearDeliveredDiagnosticsForFile } from 'src/services/lsp/LSPDiagnosticRegistry.js'
-import { getLspServerManager } from 'src/services/lsp/manager.js'
+} from 'src/platform/lsp/diagnosticsForToolResult.js'
+import { clearDeliveredDiagnosticsForFile } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
+import { getLspServerManager } from 'src/platform/lsp/manager.js'
 import { notifyVscodeFileUpdated } from 'src/services/mcp/vscodeSdkMcp.js'
 import { checkTeamMemSecrets } from 'src/services/teamMemorySync/teamMemSecretGuard.js'
 import {
@@ -28,7 +28,7 @@ import {
   fileHistoryEnabled,
   fileHistoryTrackEdit,
 } from 'src/shared/fs/fileHistory.js'
-import { logFileOperation } from 'src/utils/fileOperationAnalytics.js'
+import { logFileOperation } from 'src/platform/fileOperationAnalytics.js'
 import { readFileSyncWithMetadata } from 'src/shared/fs/fileRead.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {

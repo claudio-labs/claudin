@@ -17,7 +17,7 @@ import type { buildMessageLookups } from 'src/services/messages/messages.js';
 import type { ThemeName } from 'src/terminal/theme/theme.js';
 import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
 import { useSelectedMessageBg } from 'src/components/messageActions.js';
-import { PrBadge } from 'src/components/PrBadge.js';
+import { PrBadge } from 'src/platform/status/PrBadge.js';
 import { SHELL_PROGRESS_MIN_SECONDS, ShellGroupElapsedTime } from 'src/components/shell/ShellElapsedTime.js';
 import { ToolUseLoader } from 'src/components/ToolUseLoader.js';
 

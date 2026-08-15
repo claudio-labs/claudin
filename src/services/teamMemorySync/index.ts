@@ -52,10 +52,10 @@ import {
   isFirstPartyAnthropicBaseUrl,
 } from 'src/utils/model/providers.js'
 import { sleep } from 'src/shared/sleep.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
-import { logEvent } from 'src/services/analytics/index.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/metadata.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
 import { getRetryDelay } from 'src/services/api/withRetry.js'
 import { scanForSecrets } from 'src/services/teamMemorySync/secretScanner.js'
 import {

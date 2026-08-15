@@ -13,8 +13,8 @@ import { isAutoMemoryEnabled } from 'src/memdir/paths.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import { jsonParse } from 'src/utils/slowOperations.js'
+} from 'src/platform/analytics/index.js'
+import { jsonParse } from 'src/platform/slowOperations.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
 
 type GeneratedAgent = {

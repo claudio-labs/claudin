@@ -1,7 +1,7 @@
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { loadKeybindingsSync } from 'src/terminal/keybindings/loadUserBindings.js'
 import { getBindingDisplayText } from 'src/terminal/keybindings/resolver.js'
 import type { KeybindingContextName } from 'src/terminal/keybindings/types.js'

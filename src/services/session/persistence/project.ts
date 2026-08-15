@@ -32,7 +32,7 @@ import { dirname } from 'path'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import {
   getOriginalCwd,
   getPlanSlugCache,
@@ -40,7 +40,7 @@ import {
   getSessionId,
   isSessionPersistenceDisabled,
   switchSession,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import * as sessionIngress from 'src/services/api/sessionIngress.js'
 import { asAgentId, type AgentId, asSessionId } from 'src/types/ids.js'
 import type { AttributionSnapshotMessage } from 'src/types/logs.js'
@@ -95,8 +95,8 @@ import {
   extractLastJsonStringField,
   LITE_READ_BUF_SIZE,
 } from 'src/services/session/sessionStoragePortable.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
-import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
+import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import type { ContentReplacementRecord } from 'src/services/tools/toolResultStorage.js'
 import {
   appendEntryToFile,

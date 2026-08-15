@@ -6,7 +6,7 @@ import type {
 } from '@anthropic-ai/sdk/resources/messages.mjs'
 import { randomUUID } from 'crypto'
 import type { QuerySource } from 'src/constants/querySource.js'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import { getContentText } from 'src/services/messages/messages.js'
 import {
   findCommand,
@@ -15,7 +15,7 @@ import {
   type LocalJSXCommandContext,
 } from 'src/commands.js'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
-import type { IDESelection } from 'src/hooks/useIdeSelection.js'
+import type { IDESelection } from 'src/platform/ide/useIdeSelection.js'
 import type { SetToolJSXFn, ToolUseContext } from 'src/Tool.js'
 import type {
   AssistantMessage,
@@ -35,13 +35,13 @@ import {
   createAttachmentMessage,
   getAttachmentMessages,
 } from 'src/services/attachments/attachments.js'
-import type { PastedContent } from 'src/services/config/config.js'
+import type { PastedContent } from 'src/platform/config/config.js'
 import type { EffortValue } from 'src/utils/effort.js'
 import { toArray } from 'src/shared/generators.js'
 import {
   executeUserPromptSubmitHooks,
   getUserPromptSubmitHookBlockingMessage,
-} from 'src/services/lifecycleHooks/hooks.js'
+} from 'src/platform/lifecycleHooks/hooks.js'
 import {
   createImageMetadataText,
   maybeResizeAndDownsampleImageBlock,

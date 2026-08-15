@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { getOauthConfig } from 'src/constants/oauth.js'
 import { getOrganizationUUID } from 'src/services/oauth/client.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   checkAndRefreshOAuthTokenIfNeeded,
   getClaudeAIOAuthTokens,
@@ -12,8 +12,8 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { detectCurrentRepository } from 'src/services/git/detectRepository.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { findGitRoot, getIsClean } from 'src/services/git/git.js'
-import { getOAuthHeaders } from 'src/services/teleport/api.js'
-import { fetchEnvironments } from 'src/services/teleport/environments.js'
+import { getOAuthHeaders } from 'src/platform/teleport/api.js'
+import { fetchEnvironments } from 'src/platform/teleport/environments.js'
 
 /**
  * Checks if user needs to log in with Claude.ai

@@ -8,7 +8,7 @@ import {
   test,
 } from 'bun:test'
 import * as terminalMod from 'src/terminal/ink/terminal.js'
-import * as configMod from 'src/services/config/config.js'
+import * as configMod from 'src/platform/config/config.js'
 
 // Snapshot the real exports BEFORE mock.module() runs. `import * as` namespaces
 // are live, so restoring to the namespace itself would just re-apply the stub.
@@ -22,7 +22,7 @@ let mockYankBug = false
 let mockXtversion: string | undefined
 let mockConfig: { renderFrameRate?: string } = {}
 
-mock.module('src/services/config/config.js', () => ({
+mock.module('src/platform/config/config.js', () => ({
   ...configMod,
   getGlobalConfig: () => mockConfig as ReturnType<typeof configMod.getGlobalConfig>,
 }))
@@ -66,8 +66,8 @@ afterEach(() => {
 // Restore the reals so the partial config.js mock (getGlobalConfig returning a
 // bare object) does not leak into later test files in the same run.
 afterAll(() => {
-  mock.module('src/services/config/config.js', () => realConfig)
-  mock.module('src/services/config/config.js', () => realConfig)
+  mock.module('src/platform/config/config.js', () => realConfig)
+  mock.module('src/platform/config/config.js', () => realConfig)
   mock.module('src/terminal/ink/terminal.js', () => realTerminal)
   mock.module('src/terminal/ink/terminal.js', () => realTerminal)
 })

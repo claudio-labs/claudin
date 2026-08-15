@@ -24,9 +24,9 @@ import { afterAll, beforeEach, describe, expect, mock, test } from 'bun:test'
 // through to the cache-profile defaults regardless of what earlier test
 // files left in the module registry.
 const realGrowthbook = {
-  ...(await import('src/services/analytics/growthbook.js')),
+  ...(await import('src/platform/analytics/growthbook.js')),
 }
-mock.module('src/services/analytics/growthbook.js', () => ({
+mock.module('src/platform/analytics/growthbook.js', () => ({
   ...realGrowthbook,
   getFeatureValue_CACHED_MAY_BE_STALE: (_key: string, def: unknown) => def,
 }))
@@ -247,5 +247,5 @@ afterAll(() => {
   _resetCacheProfileForTesting()
   mock.module('./autoCompact.js', () => realAutoCompact)
   mock.module('src/utils/model/model.js', () => realModel)
-  mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
+  mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
 })

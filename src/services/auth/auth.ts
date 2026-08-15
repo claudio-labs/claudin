@@ -8,13 +8,13 @@ import { CLAUDE_AI_PROFILE_SCOPE } from 'src/constants/oauth.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { getModelStrings } from 'src/utils/model/modelStrings.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import {
   getIsNonInteractiveSession,
   preferThirdPartyAuthentication,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import {
   getMockSubscriptionType,
@@ -47,7 +47,7 @@ import {
   checkHasTrustDialogAccepted,
   getGlobalConfig,
   saveGlobalConfig,
-} from 'src/services/config/config.js'
+} from 'src/platform/config/config.js'
 import { logAntError, logForDebugging } from 'src/shared/debug.js'
 import {
   getClaudinConfigHomeDir,
@@ -60,22 +60,22 @@ import { execSyncWithDefaults_DEPRECATED } from 'src/shared/proc/execFileNoThrow
 import * as lockfile from 'src/shared/fs/lockfile.js'
 import { logError } from 'src/shared/log.js'
 import { memoizeWithTTLAsync } from 'src/shared/data/memoize.js'
-import { getSecureStorage } from 'src/services/secureStorage/index.js'
+import { getSecureStorage } from 'src/platform/secureStorage/index.js'
 import {
   clearLegacyApiKeyPrefetch,
   getLegacyApiKeyPrefetchResult,
-} from 'src/services/secureStorage/keychainPrefetch.js'
+} from 'src/platform/secureStorage/keychainPrefetch.js'
 import {
   clearKeychainCache,
   getMacOsKeychainStorageServiceName,
   getUsername,
-} from 'src/services/secureStorage/macOsKeychainHelpers.js'
+} from 'src/platform/secureStorage/macOsKeychainHelpers.js'
 import {
   getInitialSettings,
   getSettingsForSource,
-} from 'src/services/settings/settings.js'
+} from 'src/platform/settings/settings.js'
 import { sleep } from 'src/shared/sleep.js'
-import { jsonParse } from 'src/utils/slowOperations.js'
+import { jsonParse } from 'src/platform/slowOperations.js'
 import { clearToolSchemaCache } from 'src/services/tools/toolSchemaCache.js'
 
 /** Default TTL for API key helper cache in milliseconds (5 minutes) */
@@ -108,7 +108,7 @@ export function isAnthropicAuthEnabled(): boolean {
   // oauth-2025 beta header to match what the proxy will inject). The remote's
   // ~/.claudin settings (apiKeyHelper, settings.env.ANTHROPIC_API_KEY) MUST NOT
   // flip this — they'd cause a header mismatch with the proxy and a bogus
-  // "invalid x-api-key" from the API. See src/ssh/sshAuthProxy.ts.
+  // "invalid x-api-key" from the API. See src/platform/ssh/sshAuthProxy.ts.
   if (process.env.ANTHROPIC_UNIX_SOCKET) {
     return !!process.env.CLAUDE_CODE_OAUTH_TOKEN
   }

@@ -1,7 +1,7 @@
 import type { BetaUsage as Usage } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/index.js'
-import { logEvent } from 'src/services/analytics/index.js'
-import { setHasUnknownModelCost } from 'src/bootstrap/state.js'
+import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import { setHasUnknownModelCost } from 'src/platform/bootstrap/state.js'
 import { isFastModeEnabled } from 'src/utils/fastMode.js'
 import {
   CLAUDE_3_5_HAIKU_CONFIG,

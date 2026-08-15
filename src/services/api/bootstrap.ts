@@ -7,13 +7,13 @@ import {
 } from 'src/services/auth/auth.js'
 import { z } from 'zod/v4'
 import { getOauthConfig, OAUTH_BETA_HEADER } from 'src/constants/oauth.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { withOAuth401Retry } from 'src/shared/http.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logError } from 'src/shared/log.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
+import { isEssentialTrafficOnly } from 'src/platform/config/privacyLevel.js'
 import type { ModelOption } from 'src/utils/model/modelOptions.js'
 import {
   getLocalOpenAICompatibleProviderLabel,

@@ -7,16 +7,16 @@ import {
   PDF_MAX_PAGES_PER_READ,
 } from 'src/constants/apiLimits.js'
 import { isAutoMemFile } from 'src/memdir/memoryFileDetection.js'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   getFileExtensionForAnalytics,
-} from 'src/services/analytics/metadata.js'
+} from 'src/platform/analytics/metadata.js'
 import { createUserMessage } from 'src/services/messages/messages.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { detectOutlineLangFromPath } from 'src/tools/shared/codeOutline/scanSymbols.js'
-import { logFileOperation } from 'src/utils/fileOperationAnalytics.js'
+import { logFileOperation } from 'src/platform/fileOperationAnalytics.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { readNotebook } from 'src/shared/fs/notebook.js'
 import { extractPDFPages, getPDFPageCount, readPDF } from 'src/shared/fs/pdf.js'
@@ -34,7 +34,7 @@ import {
   createImageMetadataText,
   maybeResizeAndDownsampleImageBuffer,
 } from 'src/terminal/image/imageResizer.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 import {
   detectSessionFileType,

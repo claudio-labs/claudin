@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { CommandResultDisplay } from 'src/commands.js';
-import { logEvent } from 'src/services/analytics/index.js';
+import { logEvent } from 'src/platform/analytics/index.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js';

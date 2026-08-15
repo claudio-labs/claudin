@@ -20,12 +20,20 @@
 
 import type { BunPlugin } from 'bun'
 
-// Module path (relative to src/, without extension) → stub source
+// Repo-relative module path, without extension → stub source.
+//
+// The `src/` prefix is load-bearing even though the regex below only needs a
+// path SUFFIX: it is what `scripts/reorg/apply.ts` matches when a move rewrites
+// module paths across the tree, so these keys follow the files instead of
+// silently ceasing to match. A key that stops matching does not fail loudly —
+// the real module gets bundled, and the build dies on whatever un-installed
+// package it imports (`@growthbook/growthbook`) or, worse, ships a live
+// phone-home path.
 const stubs: Record<string, string> = {
 
 	// ─── Analytics core ─────────────────────────────────────────────
 
-	'services/analytics/index': `
+	'src/platform/analytics/index': `
 export function stripProtoFields(metadata) { return metadata; }
 export function attachAnalyticsSink() {}
 export function logEvent() {}
@@ -33,7 +41,7 @@ export async function logEventAsync() {}
 export function _resetForTesting() {}
 `,
 
-	'services/analytics/growthbook': `
+	'src/platform/analytics/growthbook': `
 import _fs from 'node:fs';
 import _path from 'node:path';
 import _os from 'node:os';
@@ -231,23 +239,23 @@ export async function getDynamicConfig_BLOCKS_ON_INIT(configName, defaultValue) 
 export function getDynamicConfig_CACHED_MAY_BE_STALE(configName, defaultValue) { return _getFlagValue(configName, defaultValue); }
 `,
 
-	'services/analytics/sink': `
+	'src/platform/analytics/sink': `
 export function initializeAnalyticsGates() {}
 export function initializeAnalyticsSink() {}
 `,
 
-	'services/analytics/config': `
+	'src/platform/analytics/config': `
 export function isAnalyticsDisabled() { return true; }
 export function isFeedbackSurveyDisabled() { return true; }
 `,
 
-	'services/analytics/datadog': `
+	'src/platform/analytics/datadog': `
 export const initializeDatadog = async () => false;
 export async function shutdownDatadog() {}
 export async function trackDatadogEvent() {}
 `,
 
-	'services/analytics/firstPartyEventLogger': `
+	'src/platform/analytics/firstPartyEventLogger': `
 export function getEventSamplingConfig() { return {}; }
 export function shouldSampleEvent() { return null; }
 export async function shutdown1PEventLogging() {}
@@ -258,7 +266,7 @@ export function initialize1PEventLogging() {}
 export async function reinitialize1PEventLoggingIfConfigChanged() {}
 `,
 
-	'services/analytics/firstPartyEventLoggingExporter': `
+	'src/platform/analytics/firstPartyEventLoggingExporter': `
 export class FirstPartyEventLoggingExporter {
 	constructor() {}
 	async export(logs, resultCallback) { resultCallback({ code: 0 }); }
@@ -268,7 +276,7 @@ export class FirstPartyEventLoggingExporter {
 }
 `,
 
-	'services/analytics/metadata': `
+	'src/platform/analytics/metadata': `
 export function sanitizeToolNameForAnalytics(toolName) { return toolName; }
 export function isToolDetailsLoggingEnabled() { return false; }
 export function isAnalyticsToolDetailsLoggingEnabled() { return false; }
@@ -284,7 +292,7 @@ export function to1PEventFormat() { return {}; }
 
 	// ─── Telemetry subsystems ───────────────────────────────────────
 
-	'services/telemetry/bigqueryExporter': `
+	'src/platform/telemetry/bigqueryExporter': `
 export class BigQueryMetricsExporter {
 	constructor() {}
 	async export(metrics, resultCallback) { resultCallback({ code: 0 }); }
@@ -294,7 +302,7 @@ export class BigQueryMetricsExporter {
 }
 `,
 
-	'services/telemetry/perfettoTracing': `
+	'src/platform/telemetry/perfettoTracing': `
 export function initializePerfettoTracing() {}
 export function isPerfettoTracingEnabled() { return false; }
 export function registerAgent() {}
@@ -317,7 +325,7 @@ export const MAX_EVENTS_FOR_TESTING = 0;
 export function evictOldestEventsForTesting() {}
 `,
 
-	'services/telemetry/sessionTracing': `
+	'src/platform/telemetry/sessionTracing': `
 const noopSpan = {
 	end() {}, setAttribute() {}, setStatus() {},
 	recordException() {}, addEvent() {}, isRecording() { return false; },
@@ -343,27 +351,27 @@ export function endHookSpan() {}
 
 	// ─── Plugin fetch telemetry (not the marketplace itself) ───────
 
-	'services/plugins/fetchTelemetry': `
+	'src/services/plugins/fetchTelemetry': `
 export function logPluginFetch() {}
 export function classifyFetchError() { return 'disabled'; }
 `,
 
 	// ─── Transcript / feedback sharing ─────────────────────────────
 
-	'components/FeedbackSurvey/submitTranscriptShare': `
+	'src/platform/feedback/submitTranscriptShare': `
 export async function submitTranscriptShare() { return { success: false }; }
 `,
 
 	// ─── Internal employee logging (not needed in the external build) ─────
 
-	'services/internalLogging': `
+	'src/services/internalLogging': `
 export async function logPermissionContextForAnts() {}
 export const getContainerId = async () => null;
 `,
 
 	// ─── Deleted Anthropic-internal modules ───────────────────────────────
 
-	'services/api/dumpPrompts': `
+	'src/services/api/dumpPrompts': `
 export function createDumpPromptsFetch() { return undefined; }
 export function getDumpPromptsPath() { return ''; }
 export function getLastApiRequests() { return []; }
@@ -373,13 +381,13 @@ export function clearAllDumpState() {}
 export function addApiRequestToCache() {}
 `,
 
-	'utils/undercover': `
+	'src/utils/undercover': `
 export function isUndercover() { return false; }
 export function getUndercoverInstructions() { return ''; }
 export function shouldShowUndercoverAutoNotice() { return false; }
 `,
 
-	'types/generated/events_mono/claude_code/v1/claude_code_internal_event': `
+	'src/types/generated/events_mono/claude_code/v1/claude_code_internal_event': `
 export const ClaudeCodeInternalEvent = {
   fromJSON: value => value,
   toJSON: value => value,
@@ -388,7 +396,7 @@ export const ClaudeCodeInternalEvent = {
 };
 `,
 
-	'types/generated/events_mono/growthbook/v1/growthbook_experiment_event': `
+	'src/types/generated/events_mono/growthbook/v1/growthbook_experiment_event': `
 export const GrowthbookExperimentEvent = {
   fromJSON: value => value,
   toJSON: value => value,
@@ -397,7 +405,7 @@ export const GrowthbookExperimentEvent = {
 };
 `,
 
-	'types/generated/events_mono/common/v1/auth': `
+	'src/types/generated/events_mono/common/v1/auth': `
 export const PublicApiAuth = {
   fromJSON: value => value,
   toJSON: value => value,
@@ -406,7 +414,7 @@ export const PublicApiAuth = {
 };
 `,
 
-	'services/telemetry/instrumentation': `
+	'src/platform/telemetry/instrumentation': `
 export function bootstrapTelemetry() {}
 export function parseExporterTypes() { return []; }
 export function isTelemetryEnabled() { return false; }
@@ -414,7 +422,7 @@ export async function initializeTelemetry() { return undefined; }
 export async function flushTelemetry() {}
 `,
 
-	'types/generated/google/protobuf/timestamp': `
+	'src/types/generated/google/protobuf/timestamp': `
 export const Timestamp = {
   fromJSON: value => value,
   toJSON: value => value,

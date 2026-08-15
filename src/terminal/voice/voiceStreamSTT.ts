@@ -24,12 +24,12 @@ import { getUserAgent } from 'src/shared/http.js'
 import { logError } from 'src/shared/log.js'
 import { getWebSocketTLSOptions } from 'src/services/api/mtls.js'
 import { getWebSocketProxyAgent, getWebSocketProxyUrl } from 'src/services/api/proxy.js'
-import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 
 const KEEPALIVE_MSG = '{"type":"KeepAlive"}'
 const CLOSE_STREAM_MSG = '{"type":"CloseStream"}'
 
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 
 // ─── Constants ───────────────────────────────────────────────────────
 

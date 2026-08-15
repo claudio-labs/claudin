@@ -1,4 +1,4 @@
-import type { ValidationError } from 'src/services/settings/validation.js'
+import type { ValidationError } from 'src/platform/settings/validation.js'
 import { clearServerCache, connectToServer } from 'src/services/mcp/client.js'
 import {
   getAllMcpConfigs,

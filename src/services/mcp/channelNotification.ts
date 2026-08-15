@@ -18,7 +18,7 @@
 
 import type { ServerCapabilities } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod/v4'
-import { type ChannelEntry, getAllowedChannels } from 'src/bootstrap/state.js'
+import { type ChannelEntry, getAllowedChannels } from 'src/platform/bootstrap/state.js'
 import { CHANNEL_TAG } from 'src/constants/xml.js'
 import {
   getClaudeAIOAuthTokens,
@@ -26,7 +26,7 @@ import {
 } from 'src/services/auth/auth.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { parsePluginIdentifier } from 'src/services/plugins/pluginIdentifier.js'
-import { getSettingsForSource } from 'src/services/settings/settings.js'
+import { getSettingsForSource } from 'src/platform/settings/settings.js'
 import { escapeXmlAttr } from 'src/shared/data/xml.js'
 import {
   type ChannelAllowlistEntry,

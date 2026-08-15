@@ -1,6 +1,6 @@
 import React, { type PropsWithChildren, type Ref, useImperativeHandle, useRef, useState } from 'react';
 import type { Except } from 'type-fest';
-import { markScrollActivity } from 'src/bootstrap/state.js';
+import { markScrollActivity } from 'src/platform/bootstrap/state.js';
 import type { DOMElement } from 'src/terminal/ink/dom.js';
 import { markDirty, scheduleRenderFrom } from 'src/terminal/ink/dom.js';
 import { markCommitStart } from 'src/terminal/ink/reconciler.js';

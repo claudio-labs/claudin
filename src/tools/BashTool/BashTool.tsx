@@ -5,9 +5,9 @@ import * as React from 'react';
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { z } from 'zod/v4';
-import { getKairosActive } from 'src/bootstrap/state.js';
+import { getKairosActive } from 'src/platform/bootstrap/state.js';
 import { TOOL_SUMMARY_MAX_LENGTH } from 'src/constants/toolLimits.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { logError } from 'src/shared/log.js';
 import { notifyVscodeFileUpdated } from 'src/services/mcp/vscodeSdkMcp.js';
 import type { SetToolJSXFn, ToolCallProgress, ToolUseContext, ValidationResult } from 'src/Tool.js';
@@ -15,10 +15,10 @@ import { buildTool, findToolByName, type ToolDef } from 'src/Tool.js';
 import { backgroundExistingForegroundTask, markTaskNotified, registerForeground, spawnShellTask, unregisterForeground } from 'src/tasks/LocalShellTask/LocalShellTask.js';
 import type { AgentId } from 'src/types/ids.js';
 import type { AssistantMessage } from 'src/types/message.js';
-import { parseForSecurity } from 'src/services/bash/ast.js';
-import { splitCommand_DEPRECATED, splitCommandWithOperators } from 'src/services/bash/commands.js';
-import { SEMANTIC_NEUTRAL_COMMANDS, walkCommandSegments } from 'src/services/bash/segments.js';
-import { extractClaudeCodeHints } from 'src/utils/claudeCodeHints.js';
+import { parseForSecurity } from 'src/platform/bash/ast.js';
+import { splitCommand_DEPRECATED, splitCommandWithOperators } from 'src/platform/bash/commands.js';
+import { SEMANTIC_NEUTRAL_COMMANDS, walkCommandSegments } from 'src/platform/bash/segments.js';
+import { extractClaudeCodeHints } from 'src/platform/claudeCodeHints.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { detectCodeIndexingFromCommand } from 'src/shared/fs/codeIndexing.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
@@ -33,7 +33,7 @@ import type { PermissionResult } from 'src/services/permissions/PermissionResult
 import { maybeRecordPluginHint } from 'src/services/plugins/hintRecommendation.js';
 import { exec } from 'src/shared/proc/Shell.js';
 import type { ExecResult } from 'src/shared/proc/ShellCommand.js';
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js';
 import { semanticNumber } from 'src/shared/data/semanticNumber.js';
 import { EndTruncatingAccumulator } from 'src/shared/text/stringUtils.js';
@@ -55,7 +55,7 @@ import {
   planBashFilter,
   type PreExecPlan,
 } from 'src/outputFilter/Bash/index.js';
-import { getGlobalConfig } from 'src/services/config/config.js';
+import { getGlobalConfig } from 'src/platform/config/config.js';
 import { recordBytesSaved } from 'src/services/context/tokensSaved.js';
 import { bashToolHasPermission, commandHasAnyCd, matchWildcardPattern, permissionRuleExtractPrefix } from 'src/tools/BashTool/bashPermissions.js';
 import { interpretCommandResult } from 'src/tools/BashTool/commandSemantics.js';

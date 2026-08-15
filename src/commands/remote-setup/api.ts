@@ -1,8 +1,8 @@
 import axios from 'axios'
 import { getOauthConfig } from 'src/constants/oauth.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { getOAuthHeaders, prepareApiRequest } from 'src/services/teleport/api.js'
-import { fetchEnvironments } from 'src/services/teleport/environments.js'
+import { getOAuthHeaders, prepareApiRequest } from 'src/platform/teleport/api.js'
+import { fetchEnvironments } from 'src/platform/teleport/environments.js'
 
 const CCR_BYOC_BETA_HEADER = 'ccr-byoc-2025-07-29'
 

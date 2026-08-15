@@ -17,12 +17,12 @@ import { writeToStdout } from 'src/shared/proc/process.js'
 import {
   buildPluginTelemetryFields,
   classifyPluginCommandError,
-} from 'src/services/telemetry/pluginTelemetry.js'
+} from 'src/platform/telemetry/pluginTelemetry.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import {
   disableAllPluginsOp,
   disablePluginOp,

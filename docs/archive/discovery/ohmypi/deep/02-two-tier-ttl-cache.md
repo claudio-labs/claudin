@@ -58,7 +58,7 @@ Caches exist; the soft/hard tier does not. Inventory:
 Verified present on this host:
 
 - `~/.claudin/model-cache/` — `src/utils/model/modelCache.ts`. Per-provider JSON file. `CACHE_TTL_HOURS = 24`, version stamped. Binary: valid or invalid, no stale-serve.
-- `~/.claudin/latest-version.json` — `src/services/install/latestVersionCache.ts`. Synchronous read at banner time (`readLatestVersion`, `:36-46`); written by `writeLatestVersion`. No TTL on disk — caller (`startupUpdateCheck.ts`) gates by `checkedAt`.
+- `~/.claudin/latest-version.json` — `src/platform/install/latestVersionCache.ts`. Synchronous read at banner time (`readLatestVersion`, `:36-46`); written by `writeLatestVersion`. No TTL on disk — caller (`startupUpdateCheck.ts`) gates by `checkedAt`.
 - `~/.claudin/image-cache/`, `~/.claudin/paste-cache/`, `~/.claudin/file-history/` — caches but content-addressed (not TTL-bound).
 - `~/.claudin/v8cache/` — V8 bytecode, invalidated by build, not in scope.
 
@@ -156,7 +156,7 @@ so concurrent callers in the soft/hard window only spawn one background refresh.
      background refresh updates the list before next launch.
    - `createJsonStore` reuses the existing per-provider JSON layout.
 
-4. **(Lower priority) `latestVersionCache`** (`src/services/install/latestVersionCache.ts`).
+4. **(Lower priority) `latestVersionCache`** (`src/platform/install/latestVersionCache.ts`).
    - Today: synchronous read at banner time; the caller decides freshness.
    - Two-tier would let the banner always render instantly from disk
      while a background fetch updates the file. Already close to that
@@ -236,6 +236,6 @@ so users can see whether the cache is actually helping their workflow.
 - Claudin WebFetch cache: `/home/dev/projects/claudin/src/tools/WebFetchTool/utils.ts:48-81, :415-534`
 - Claudin WebSearch (no cache): `/home/dev/projects/claudin/src/tools/WebSearchTool/WebSearchTool.ts`
 - Claudin model cache: `/home/dev/projects/claudin/src/utils/model/modelCache.ts`
-- Claudin latest-version cache: `/home/dev/projects/claudin/src/services/install/latestVersionCache.ts`
+- Claudin latest-version cache: `/home/dev/projects/claudin/src/platform/install/latestVersionCache.ts`
 - Claudin provider metadata: `/home/dev/projects/claudin/src/services/api/providerConfig.ts:592`
 - Config-dir helper: `/home/dev/projects/claudin/src/shared/envUtils.ts` (`getClaudinConfigHomeDir`)

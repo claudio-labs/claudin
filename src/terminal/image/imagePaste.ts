@@ -7,7 +7,7 @@ import {
   IMAGE_MAX_WIDTH,
   IMAGE_TARGET_RAW_SIZE,
 } from 'src/constants/apiLimits.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getImageProcessor } from 'src/tools/FileReadTool/imageProcessor.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'

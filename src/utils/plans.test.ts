@@ -10,12 +10,12 @@ import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 // touching the real ~/.claudin/settings.json, and gitignore because the real
 // implementation appends to the developer's actual ~/.config/git/ignore.
 // Everything else (mkdirSync/realpathSync/chmodSync, symlinks, cwd) is real.
-const realSettings = { ...(await import('src/services/settings/settings.js')) }
+const realSettings = { ...(await import('src/platform/settings/settings.js')) }
 const realGitignore = { ...(await import('src/services/git/gitignore.js')) }
 const originalConfigDirEnv = process.env.CLAUDIN_CONFIG_DIR
 
 afterAll(() => {
-  mock.module('src/services/settings/settings.js', () => realSettings)
+  mock.module('src/platform/settings/settings.js', () => realSettings)
   mock.module('src/services/git/gitignore.js', () => realGitignore)
   if (originalConfigDirEnv === undefined) {
     delete process.env.CLAUDIN_CONFIG_DIR
@@ -28,12 +28,12 @@ let gitignoreCalls: Array<{ filename: string; cwd: string }> = []
 
 /**
  * Re-imports plans.js with a cache-busting query so its top-level
- * `import { getInitialSettings } from 'src/services/settings/settings.js'` binding
+ * `import { getInitialSettings } from 'src/platform/settings/settings.js'` binding
  * picks up whatever we've just mocked (mirrors utils/effort.xhighDefault.test.ts).
  */
 async function importFreshPlansModule(options: { plansDirectory?: string } = {}) {
   gitignoreCalls = []
-  mock.module('src/services/settings/settings.js', () => ({
+  mock.module('src/platform/settings/settings.js', () => ({
     ...realSettings,
     getInitialSettings: () => ({ plansDirectory: options.plansDirectory }),
   }))
@@ -207,7 +207,7 @@ describe('getPlansDirectory', () => {
     mkdirSync(subDir)
     const { getPlansDirectory } = await importFreshPlansModule()
     const { getCwdState, getOriginalCwd, setCwdState, setOriginalCwd } =
-      await import('src/bootstrap/state.js')
+      await import('src/platform/bootstrap/state.js')
     const previousCwd = getCwdState()
     const previousOriginalCwd = getOriginalCwd()
 

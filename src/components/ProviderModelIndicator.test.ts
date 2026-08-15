@@ -2,7 +2,7 @@ import { afterAll, afterEach, describe, expect, it, mock } from 'bun:test'
 
 import { renderModelName } from 'src/utils/model/model.js'
 import { getModelStrings } from 'src/utils/model/modelStrings.js'
-import type { ProviderProfile } from 'src/services/config/config.js'
+import type { ProviderProfile } from 'src/platform/config/config.js'
 import { readSnapshot } from 'src/components/ProviderModelIndicator.js'
 
 const realModel = { ...(await import('src/utils/model/model.js')) }

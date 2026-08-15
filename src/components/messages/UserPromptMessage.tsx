@@ -1,9 +1,9 @@
 import { feature } from 'bun:bundle';
 import type { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import React, { useContext, useMemo } from 'react';
-import { getKairosActive, getUserMsgOptIn } from 'src/bootstrap/state.js';
+import { getKairosActive, getUserMsgOptIn } from 'src/platform/bootstrap/state.js';
 import { Box } from 'src/terminal/ink.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { logError } from 'src/shared/log.js';

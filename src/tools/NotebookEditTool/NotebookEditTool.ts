@@ -16,7 +16,7 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { parseCellId } from 'src/shared/fs/notebook.js'
 import { checkWritePermissionForTool } from 'src/services/permissions/filesystem.js'
 import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
-import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import {
   satisfiesReadGate,
   writeFamilyReadGateError,

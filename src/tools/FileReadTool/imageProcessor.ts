@@ -2,7 +2,7 @@ import type { Buffer } from 'buffer'
 import { existsSync, readFileSync, realpathSync } from 'fs'
 import { createRequire } from 'module'
 import { dirname, join } from 'path'
-import { isInBundledMode } from 'src/services/install/bundledMode.js'
+import { isInBundledMode } from 'src/platform/install/bundledMode.js'
 import { logError } from 'src/shared/log.js'
 
 export type SharpInstance = {

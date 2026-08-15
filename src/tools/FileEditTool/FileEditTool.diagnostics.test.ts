@@ -20,12 +20,12 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import type { AttachmentMessage } from 'src/types/message.js'
 
-const realDiagnosticsEdit = { ...(await import('src/services/lsp/diagnosticsForToolResult.js')) }
+const realDiagnosticsEdit = { ...(await import('src/platform/lsp/diagnosticsForToolResult.js')) }
 
 const mockBuildPostEdit = mock(
   async (_path: string) => [] as AttachmentMessage[],
 )
-mock.module('src/services/lsp/diagnosticsForToolResult.js', () => ({
+mock.module('src/platform/lsp/diagnosticsForToolResult.js', () => ({
   buildPostEditDiagnosticsMessages: mockBuildPostEdit,
 }))
 
@@ -39,13 +39,13 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  mock.module('src/services/lsp/diagnosticsForToolResult.js', () => realDiagnosticsEdit)
+  mock.module('src/platform/lsp/diagnosticsForToolResult.js', () => realDiagnosticsEdit)
 })
 
 // Mirror of the production return shape at FileEditTool.ts:574.
 async function returnWithDiagnostics(absoluteFilePath: string, data: unknown) {
   const { buildPostEditDiagnosticsMessages } = await import(
-    'src/services/lsp/diagnosticsForToolResult.js'
+    'src/platform/lsp/diagnosticsForToolResult.js'
   )
   const diagnosticMessages =
     await buildPostEditDiagnosticsMessages(absoluteFilePath)
@@ -95,7 +95,7 @@ describe('FileEditTool — per-edit diagnostic injection wiring contract', () =>
     const here = path.dirname(fileURLToPath(import.meta.url))
     const src = fs.readFileSync(path.join(here, 'FileEditTool.ts'), 'utf8')
     expect(src).toContain('buildPostEditDiagnosticsMessages')
-    expect(src).toContain("from 'src/services/lsp/diagnosticsForToolResult.js'")
+    expect(src).toContain("from 'src/platform/lsp/diagnosticsForToolResult.js'")
     expect(src).toContain('await buildPostEditDiagnosticsMessages(absoluteFilePath)')
     expect(src).toContain('armFileForLateDiagnostics(absoluteFilePath, agentId)')
     expect(src).toContain(

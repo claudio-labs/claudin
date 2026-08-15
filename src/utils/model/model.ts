@@ -1,7 +1,7 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
-import { getMainLoopModelOverride } from 'src/bootstrap/state.js'
+import { getMainLoopModelOverride } from 'src/platform/bootstrap/state.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { getCurrentProjectConfig } from 'src/services/config/config.js'
+import { getCurrentProjectConfig } from 'src/platform/config/config.js'
 import { getActiveProviderProfile } from 'src/services/api/providerProfiles.js'
 import {
   getSubscriptionType,
@@ -23,7 +23,7 @@ import {
   getOpus46CostTier,
   getOpus5CostTier,
 } from 'src/services/api/modelCost.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import { LIGHTNING_BOLT } from 'src/constants/figures.js'

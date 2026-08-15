@@ -1,4 +1,4 @@
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getSubscriptionType } from 'src/services/auth/auth.js'
 import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'

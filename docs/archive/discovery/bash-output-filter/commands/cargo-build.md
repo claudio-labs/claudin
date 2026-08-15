@@ -32,7 +32,7 @@ Trecho típico:
    Compiling rtk v0.28.2 (/home/dev/projects/rtk)
 
 warning: direct cast of function item into an integer
-    --> src/main.rs:2231:64
+    --> src/platform/main.rs:2231:64
      |
 2231 |                     libc::signal(libc::SIGINT, handle_signal as libc::sighandler_t);
      |                                                              ^^^^^^^^^^^^^^^^^^^^^
@@ -117,7 +117,7 @@ Mesmo padrão, mas com 28 linhas extras de Downloading/Downloaded no início.
 
 ```
 warning: direct cast of function item into an integer
-    --> src/main.rs:2231:64
+    --> src/platform/main.rs:2231:64
      |
 2231 |                     libc::signal(libc::SIGINT, handle_signal as libc::sighandler_t);
      |                                                              ^^^^^^^^^^^^^^^^^^^^^

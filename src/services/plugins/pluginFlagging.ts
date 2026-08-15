@@ -18,7 +18,7 @@ import { join } from 'path'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { logError } from 'src/shared/log.js'
-import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { getPluginsDirectory } from 'src/services/plugins/pluginDirectories.js'
 
 const FLAGGED_PLUGINS_FILENAME = 'flagged-plugins.json'

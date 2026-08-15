@@ -2,7 +2,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { isBareMode } from 'src/shared/envUtils.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
-import { getSecureStorage } from 'src/services/secureStorage/index.js'
+import { getSecureStorage } from 'src/platform/secureStorage/index.js'
 import { getXaiUserAgent } from 'src/services/api/xaiUserAgent.js'
 import {
   asTrimmedString,

@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle'
 import { z } from 'zod/v4'
-import { isReplBridgeActive } from 'src/bootstrap/state.js'
-import { getReplBridgeHandle } from 'src/bridge/replBridgeHandle.js'
+import { isReplBridgeActive } from 'src/platform/bootstrap/state.js'
+import { getReplBridgeHandle } from 'src/platform/bridge/replBridgeHandle.js'
 import type { Tool, ToolUseContext } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { findTeammateTaskByAgentId } from 'src/tasks/InProcessTeammateTask/InProcessTeammateTask.js'
@@ -20,7 +20,7 @@ import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { parseAddress } from 'src/shared/peerAddress.js'
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { BackendType } from 'src/coordinator/swarm/backends/types.js'
 import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js'
 import { readTeamFileAsync } from 'src/coordinator/swarm/teamHelpers.js'
@@ -756,7 +756,7 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
           }
           /* eslint-disable @typescript-eslint/no-require-imports */
           const { postInterClaudeMessage } =
-            require('../../bridge/peerSessions.js') as typeof import('../../bridge/peerSessions.js')
+            require('../../platform/bridge/peerSessions.js') as typeof import('../../platform/bridge/peerSessions.js')
           /* eslint-enable @typescript-eslint/no-require-imports */
           const result = await postInterClaudeMessage(
             addr.target,
@@ -775,7 +775,7 @@ export const SendMessageTool: Tool<InputSchema, SendMessageToolOutput> =
         if (addr.scheme === 'uds') {
           /* eslint-disable @typescript-eslint/no-require-imports */
           const { sendToUdsSocket } =
-            require('../../utils/udsClient.js') as typeof import('../../utils/udsClient.js')
+            require('../../platform/udsClient.js') as typeof import('../../platform/udsClient.js')
           /* eslint-enable @typescript-eslint/no-require-imports */
           try {
             await sendToUdsSocket(addr.target, input.message)

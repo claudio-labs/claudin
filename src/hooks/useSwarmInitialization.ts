@@ -8,7 +8,7 @@
  */
 
 import { useEffect } from 'react'
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { Message } from 'src/types/message.js'
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'

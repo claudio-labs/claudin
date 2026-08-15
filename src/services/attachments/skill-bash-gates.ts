@@ -16,17 +16,17 @@ import {
   getBashGitInstructionsBody,
   shouldInjectBashGitInstructionsInMessages,
 } from 'src/tools/BashTool/prompt.js'
-import { shouldIncludeGitInstructions } from 'src/services/config/gitSettings.js'
+import { shouldIncludeGitInstructions } from 'src/platform/config/gitSettings.js'
 import {
   getSkillToolCommands,
   getMcpSkillCommands,
 } from 'src/commands.js'
 import type { Command } from 'src/types/command.js'
 import uniqBy from 'lodash-es/uniqBy.js'
-import { getProjectRoot } from 'src/bootstrap/state.js'
+import { getProjectRoot } from 'src/platform/bootstrap/state.js'
 import { formatCommandsWithinBudget } from 'src/tools/SkillTool/prompt.js'
 import { getContextWindowForModel } from 'src/services/context/context.js'
-import { getSdkBetas } from 'src/bootstrap/state.js'
+import { getSdkBetas } from 'src/platform/bootstrap/state.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { feature } from 'bun:bundle'
 import type { Attachment } from 'src/services/attachments/types.js'

@@ -189,7 +189,7 @@ Worse, Bun pre-applies every `mock.module()` specifier override for the WHOLE
 when A executes first, regardless of `--max-concurrency=1`.
 
 - **Don't** write a test asserting on the REAL exports of a module any sibling file
-  `mock.module`s (`src/services/config/config.js` is the known case — mocked by
+  `mock.module`s (`src/platform/config/config.js` is the known case — mocked by
   `startupUpdateCheck.test.ts`). Extract the logic under test into a module nobody
   mocks (e.g. `privacyLevel.ts`) and test that.
 - **Canonical teardown when you must mock a module:** snapshot the reals BEFORE
@@ -274,7 +274,7 @@ two pinning the runtime half of the same invariant.
 
 They exist where a type is load-bearing and documented only in prose:
 `src/types/utils.types.test.ts` (the three `DeepImmutable` carve-outs),
-`src/entrypoints/sdk/sdkUtilityTypes.types.test.ts` (`NonNullableUsage`'s
+`src/platform/entrypoints/sdk/sdkUtilityTypes.types.test.ts` (`NonNullableUsage`'s
 deviation from the SDK shape) and `src/Tool.types.test.ts` (`BuiltTool<D>`
 versus what `buildTool` actually spreads, including the fail-closed defaults).
 

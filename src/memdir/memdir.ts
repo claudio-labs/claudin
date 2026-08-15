@@ -8,13 +8,13 @@ const teamMemPaths = feature('TEAMMEM')
   ? (require('src/memdir/teamMemPaths.js') as typeof import('src/memdir/teamMemPaths.js'))
   : null
 
-import { getKairosActive, getOriginalCwd } from 'src/bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getKairosActive, getOriginalCwd } from 'src/platform/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { isReplModeEnabled } from 'src/tools/REPLTool/constants.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -22,7 +22,7 @@ import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 import { getProjectDir } from 'src/services/session/sessionStorage.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 import {
   MEMORY_FRONTMATTER_EXAMPLE,
   WHAT_NOT_TO_SAVE_SECTION,

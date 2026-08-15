@@ -1,4 +1,4 @@
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/index.js'
+import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import type { Transport } from 'src/services/api/activeProvider.js'
 

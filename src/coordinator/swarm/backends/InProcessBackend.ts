@@ -5,7 +5,7 @@ import {
 } from 'src/tasks/InProcessTeammateTask/InProcessTeammateTask.js'
 import { parseAgentId } from 'src/coordinator/agentId.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   createShutdownRequestMessage,
   writeToMailbox,

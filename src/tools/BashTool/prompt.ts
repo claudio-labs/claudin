@@ -4,10 +4,10 @@ import { isLeanToolPromptFamily } from 'src/constants/toolPromptTier.js'
 import { getAttributionTexts } from 'src/services/git/attribution.js'
 import { hasEmbeddedSearchTools } from 'src/services/tools/embeddedTools.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
-import { shouldIncludeGitInstructions } from 'src/services/config/gitSettings.js'
+import { shouldIncludeGitInstructions } from 'src/platform/config/gitSettings.js'
 import { getClaudeTempDir } from 'src/services/permissions/filesystem.js'
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   getDefaultBashTimeoutMs,
   getMaxBashTimeoutMs,

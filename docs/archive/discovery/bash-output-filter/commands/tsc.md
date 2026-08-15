@@ -19,8 +19,8 @@ Estrutura:
 
 ```
 $ tsc --noEmit
-src/QueryEngine.ts(10,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'PermissionMode'.
-src/QueryEngine.ts(11,3): error TS2305: Module '"src/entrypoints/agentSdkTypes.js"' has no exported member 'SDKCompactBoundaryMessage'.
+src/QueryEngine.ts(10,3): error TS2305: Module '"src/platform/entrypoints/agentSdkTypes.js"' has no exported member 'PermissionMode'.
+src/QueryEngine.ts(11,3): error TS2305: Module '"src/platform/entrypoints/agentSdkTypes.js"' has no exported member 'SDKCompactBoundaryMessage'.
 ...
 src/QueryEngine.ts(726,50): error TS2550: Property 'findLastIndex' does not exist on type 'Message[]'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2023' or later.
 src/QueryEngine.ts(727,15): error TS7006: Parameter 'm' implicitly has an 'any' type.

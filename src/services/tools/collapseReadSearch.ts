@@ -28,7 +28,7 @@ import type {
   WriteFileStat,
   WriteKind,
 } from 'src/types/message.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { countAddDel } from 'src/services/git/diffStat.js'
 import { getDisplayPath } from 'src/shared/fs/file.js'

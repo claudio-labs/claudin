@@ -18,14 +18,14 @@ import {
   getProjectRoot,
   getSessionCronTasks,
   removeSessionCronTasks,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { computeNextCronRun, parseCronExpression } from 'src/tasks/cron.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isFsInaccessible } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { safeParseJSON } from 'src/shared/data/json.js'
 import { logError } from 'src/shared/log.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 
 export type CronTask = {
   id: string

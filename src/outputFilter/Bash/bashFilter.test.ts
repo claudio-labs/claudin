@@ -764,7 +764,7 @@ describe("phase 6.1.2 — cargoBuild", () => {
     const raw = [
       "   Compiling foo v0.1.0 (/work/foo)",
       "error[E0308]: mismatched types",
-      "  --> src/main.rs:5:9",
+      "  --> src/platform/main.rs:5:9",
       "   |",
       "5  |     let x: u32 = \"\";",
       "   |                  ^^ expected u32, found &str",
@@ -806,7 +806,7 @@ describe("phase 6.1.2 — cargoCheck", () => {
     const raw = [
       "    Checking foo v0.1.0 (/work/foo)",
       "warning: function `helper` is never used",
-      "  --> src/main.rs:10:4",
+      "  --> src/platform/main.rs:10:4",
       "warning: `foo` (lib) generated 1 warning",
       "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.30s",
     ].join("\n");

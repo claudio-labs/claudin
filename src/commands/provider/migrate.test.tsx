@@ -23,10 +23,10 @@ const ORIGINAL_HOME = process.env.HOME
 
 // Spread into a plain object so afterAll restores the original bindings, not
 // the live ESM namespace (which mock.module mutates after the fact).
-const realConfig = { ...(await import('src/services/config/config.js')) }
+const realConfig = { ...(await import('src/platform/config/config.js')) }
 let testConfigState: Record<string, unknown> = {}
 
-mock.module('src/services/config/config.js', () => ({
+mock.module('src/platform/config/config.js', () => ({
   ...realConfig,
   getGlobalConfig: () => testConfigState,
   saveGlobalConfig: (updater: (prev: Record<string, unknown>) => Record<string, unknown>) => {
@@ -35,7 +35,7 @@ mock.module('src/services/config/config.js', () => ({
 }))
 
 afterAll(() => {
-  mock.module('src/services/config/config.js', () => realConfig)
+  mock.module('src/platform/config/config.js', () => realConfig)
   realConfig.resetGlobalConfigForTests?.()
 })
 

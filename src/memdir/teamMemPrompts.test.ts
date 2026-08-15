@@ -9,7 +9,7 @@ import { afterAll, describe, expect, test, mock } from 'bun:test'
 // .gitignore guidance paragraph is included. Real modules are spread first
 // since other code transitively imported by teamMemPrompts.js relies on
 // unrelated exports (e.g. getSessionId) from these same modules.
-const realState = { ...(await import('src/bootstrap/state.js')) }
+const realState = { ...(await import('src/platform/bootstrap/state.js')) }
 const realGit = { ...(await import('src/services/git/git.js')) }
 const realPaths = { ...(await import('src/memdir/paths.js')) }
 const realTeamMemPaths = { ...(await import('src/memdir/teamMemPaths.js')) }
@@ -21,7 +21,7 @@ const realTeamMemPaths = { ...(await import('src/memdir/teamMemPaths.js')) }
 // otherwise bleed into sibling files (paths.test.ts, teamMemPaths.test.ts).
 // Re-install the real modules once the file finishes.
 afterAll(() => {
-  mock.module('src/bootstrap/state.js', () => realState)
+  mock.module('src/platform/bootstrap/state.js', () => realState)
   mock.module('src/services/git/git.js', () => realGit)
   mock.module('./paths.js', () => realPaths)
   mock.module('./teamMemPaths.js', () => realTeamMemPaths)
@@ -42,7 +42,7 @@ async function importFreshTeamMemPrompts(options: {
     getTeamMemPath: () => options.teamDir,
     isTeamMemLikelyGitIgnored: () => options.likelyIgnored,
   }))
-  mock.module('src/bootstrap/state.js', () => ({
+  mock.module('src/platform/bootstrap/state.js', () => ({
     ...realState,
     getProjectRoot: () => '/fake/project',
   }))

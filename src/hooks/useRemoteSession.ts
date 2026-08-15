@@ -1,20 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { BoundedUUIDSet } from 'src/bridge/bridgeMessaging.js'
+import { BoundedUUIDSet } from 'src/platform/bridge/bridgeMessaging.js'
 import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
 import type { SpinnerMode } from 'src/terminal/spinner/types.js'
 import {
   type RemotePermissionResponse,
   type RemoteSessionConfig,
   RemoteSessionManager,
-} from 'src/remote/RemoteSessionManager.js'
+} from 'src/platform/remote/RemoteSessionManager.js'
 import {
   createSyntheticAssistantMessage,
   createToolStub,
-} from 'src/remote/remotePermissionBridge.js'
+} from 'src/platform/remote/remotePermissionBridge.js'
 import {
   convertSDKMessage,
   isSessionEndMessage,
-} from 'src/remote/sdkMessageAdapter.js'
+} from 'src/platform/remote/sdkMessageAdapter.js'
 import { useSetAppState } from 'src/terminal/state/AppState.js'
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import type { Tool } from 'src/Tool.js'
@@ -30,8 +30,8 @@ import {
   type StreamingToolUse,
 } from 'src/services/messages/messages.js'
 import { generateSessionTitle } from 'src/services/session/sessionTitle.js'
-import type { RemoteMessageContent } from 'src/services/teleport/api.js'
-import { updateSessionTitle } from 'src/services/teleport/api.js'
+import type { RemoteMessageContent } from 'src/platform/teleport/api.js'
+import { updateSessionTitle } from 'src/platform/teleport/api.js'
 
 // How long to wait for a response before showing a warning
 const RESPONSE_TIMEOUT_MS = 60000 // 60 seconds

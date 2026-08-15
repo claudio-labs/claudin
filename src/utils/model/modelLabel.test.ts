@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test, mock } from 'bun:test'
 
-import { resetModelStringsForTestingOnly } from 'src/bootstrap/state.js'
+import { resetModelStringsForTestingOnly } from 'src/platform/bootstrap/state.js'
 
 // Regression: the picker offers both 200k and 1M flavors of each Opus/Sonnet
 // generation, so labels (the "Set model to X" confirmation and the status chip,

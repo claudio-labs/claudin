@@ -43,7 +43,7 @@ const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all
     // here fails at runtime as "Cannot find module", between tests.
     'src/services/session/conversationRecovery.js',
     'src/services/session/sessionStart.js',
-    'src/services/lifecycleHooks/hooks.js',
+    'src/platform/lifecycleHooks/hooks.js',
     'src/utils/plans.js',
     'src/services/session/sessionRestore.js',
     'src/services/session/concurrentSessions.js',
@@ -51,11 +51,11 @@ const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all
     'src/services/session/sessionStorage.js',
     'src/tasks/RemoteAgentTask/RemoteAgentTask.js',
     'src/services/git/worktree.js',
-    'src/bootstrap/state.js',
+    'src/platform/bootstrap/state.js',
     'src/cost-tracker.js',
     'src/terminal/image/asciicast.js',
     'src/services/tools/toolResultStorage.js',
-    'src/services/analytics/index.js',
+    'src/platform/analytics/index.js',
     'src/services/messages/messages.js',
     'src/types/ids.js',
   ].map(
@@ -78,7 +78,7 @@ mock.module('src/services/session/sessionStart.js', () => ({
   }),
 }))
 
-mock.module('src/services/lifecycleHooks/hooks.js', () => ({
+mock.module('src/platform/lifecycleHooks/hooks.js', () => ({
   executeSessionEndHooks: mock(async () => {
     calls.push('executeSessionEndHooks')
   }),
@@ -152,7 +152,7 @@ mock.module('src/services/git/worktree.js', () => ({
   getCurrentWorktreeSession: () => null,
 }))
 
-mock.module('src/bootstrap/state.js', () => ({
+mock.module('src/platform/bootstrap/state.js', () => ({
   getOriginalCwd: () => '/tmp/test',
   setCostStateForRestore: mock(() => {
     calls.push('setCostStateForRestore')
@@ -190,7 +190,7 @@ mock.module('src/services/tools/toolResultStorage.js', () => ({
   provisionContentReplacementState: () => undefined,
 }))
 
-mock.module('src/services/analytics/index.js', () => ({
+mock.module('src/platform/analytics/index.js', () => ({
   logEvent: mock((evt: string, payload: Record<string, unknown>) => {
     calls.push(`logEvent:${evt}:${payload.success}`)
   }),

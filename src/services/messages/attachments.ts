@@ -5,7 +5,7 @@ import type {
 } from '@anthropic-ai/sdk/resources/index.mjs'
 import { companionIntroText } from 'src/terminal/buddy/prompt.js'
 import { OUTPUT_STYLE_CONFIG } from 'src/constants/outputStyles.js'
-import { DiagnosticTrackingService } from 'src/services/diagnosticTracking.js'
+import { DiagnosticTrackingService } from 'src/platform/diagnosticTracking.js'
 import type { AnyObject } from 'src/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
@@ -33,12 +33,12 @@ import {
   type Attachment,
   memoryHeader,
 } from 'src/services/attachments/attachments.js'
-import { quote } from 'src/services/bash/shellQuote.js'
+import { quote } from 'src/platform/bash/shellQuote.js'
 import { logAntError } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { formatFileSize, formatNumber } from 'src/shared/text/format.js'
 import { logMCPDebug } from 'src/shared/log.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { isTodoV2Enabled } from 'src/tasks/tasks.js'
 import type { Tool } from 'src/Tool.js'
 import { createUserMessage } from 'src/services/messages/factories.js'

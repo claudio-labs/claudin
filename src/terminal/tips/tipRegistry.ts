@@ -4,7 +4,7 @@ import { fileHistoryEnabled } from 'src/shared/fs/fileHistory.js'
 import {
   getInitialSettings,
   getSettingsForSource,
-} from 'src/services/settings/settings.js'
+} from 'src/platform/settings/settings.js'
 import { shouldOfferTerminalSetup } from 'src/commands/terminalSetup/terminalSetup.js'
 import { color } from 'src/terminal/design-system/color.js'
 import { shouldShowOverageCreditUpsell } from 'src/terminal/logo/OverageCreditUpsell.js'
@@ -12,7 +12,7 @@ import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js'
 import { isKairosCronEnabled } from 'src/tools/ScheduleCronTool/prompt.js'
 import { is1PApiCustomer } from 'src/services/auth/auth.js'
 import { countConcurrentSessions } from 'src/services/session/concurrentSessions.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import {
   getEffortEnvOverride,
   getInitialEffortSetting,
@@ -29,7 +29,7 @@ import {
   isSupportedVSCodeTerminal,
   isVSCodeInstalled,
   isWindsurfInstalled,
-} from 'src/services/ide/ide.js'
+} from 'src/platform/ide/ide.js'
 import {
   getMainLoopModel,
   getUserSpecifiedModelSetting,
@@ -42,7 +42,7 @@ import {
   getCurrentSessionAgentColor,
   isCustomTitleEnabled,
 } from 'src/services/session/sessionStorage.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   formatGrantAmount,
   getCachedOverageCreditGrant,

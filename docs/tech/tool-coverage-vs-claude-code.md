@@ -63,7 +63,7 @@ sentinel, etc.). claudin's only scheduling primitive is cron (`ScheduleCronTool`
 which fires on wall-clock, not model-paced self-resume.
 
 ### `LSP` — **service exists, tool not exposed**
-claudin ships a full LSP layer at `src/services/lsp/` (LSPClient, server manager,
+claudin ships a full LSP layer at `src/platform/lsp/` (LSPClient, server manager,
 diagnostic registry) but uses it only for **passive diagnostics** appended to tool
 results (`diagnosticsForToolResult.ts`, `passiveFeedback.ts`). There is **no
 `src/tools/LSPTool/`** — the model cannot actively query the language server.

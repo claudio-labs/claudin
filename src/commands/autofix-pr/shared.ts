@@ -3,7 +3,7 @@ import { ClaudeError } from 'src/shared/errors.js'
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
 import { getBranch, getDefaultBranch, getIsGit } from 'src/services/git/git.js'
 import { logError } from 'src/shared/log.js'
-import { jsonParse } from 'src/utils/slowOperations.js'
+import { jsonParse } from 'src/platform/slowOperations.js'
 
 export class AutofixPreconditionError extends ClaudeError {
   override name = 'Autofix PR failed'

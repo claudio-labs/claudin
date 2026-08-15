@@ -7,7 +7,7 @@
  * specifier, so `./which.js` and `src/shared/proc/which.js` are two different
  * entries. Rewriting a sibling import to the alias merges them, and a stub
  * registered in one test file starts intercepting for the whole run —
- * src/utils/claudinInstallSurfaces.test.ts's execFileNoThrow stub reaching
+ * src/platform/claudinInstallSurfaces.test.ts's execFileNoThrow stub reaching
  * src/shared/proc/execFileNoThrow.test.ts is the case that motivated this.
  * Rewriting the other way is just as wrong: it silently unhooks a pin other
  * files depend on.

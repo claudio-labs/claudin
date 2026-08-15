@@ -9,8 +9,8 @@ import { logError } from 'src/shared/log.js'
 import { sequential } from 'src/shared/sequential.js'
 import { getSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js'
 import { sleep } from 'src/shared/sleep.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
-import { getOAuthHeaders } from 'src/services/teleport/api.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
+import { getOAuthHeaders } from 'src/platform/teleport/api.js'
 
 interface SessionIngressError {
   error?: {

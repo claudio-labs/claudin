@@ -46,7 +46,7 @@ import {
 } from 'fs/promises'
 import memoize from 'lodash-es/memoize.js'
 import { basename, dirname, join, relative, resolve, sep } from 'path'
-import { getInlinePlugins } from 'src/bootstrap/state.js'
+import { getInlinePlugins } from 'src/platform/bootstrap/state.js'
 import {
   BUILTIN_MARKETPLACE_NAME,
   getBuiltinPlugins,
@@ -73,16 +73,16 @@ import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { gitExe } from 'src/services/git/git.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logError } from 'src/shared/log.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 import {
   clearPluginSettingsBase,
   getPluginSettingsBase,
   resetSettingsCache,
   setPluginSettingsBase,
-} from 'src/services/settings/settingsCache.js'
-import type { HooksSettings } from 'src/services/settings/types.js'
-import { SettingsSchema } from 'src/services/settings/types.js'
-import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+} from 'src/platform/settings/settingsCache.js'
+import type { HooksSettings } from 'src/platform/settings/types.js'
+import { SettingsSchema } from 'src/platform/settings/types.js'
+import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { getAddDirEnabledPlugins } from 'src/services/plugins/addDirPluginSettings.js'
 import { verifyAndDemote } from 'src/services/plugins/dependencyResolver.js'
 import { classifyFetchError, logPluginFetch } from 'src/services/plugins/fetchTelemetry.js'

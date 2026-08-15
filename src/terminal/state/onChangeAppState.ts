@@ -1,4 +1,4 @@
-import { setMainLoopModelOverride } from 'src/bootstrap/state.js'
+import { setMainLoopModelOverride } from 'src/platform/bootstrap/state.js'
 import {
   clearApiKeyHelperCache,
   clearAwsCredentialsCache,
@@ -8,10 +8,10 @@ import {
   getGlobalConfig,
   saveCurrentProjectConfig,
   saveGlobalConfig,
-} from 'src/services/config/config.js'
+} from 'src/platform/config/config.js'
 import { toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
-import { applyConfigEnvironmentVariables } from 'src/services/config/managedEnv.js'
+import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js'
 import { getActiveProviderProfile } from 'src/services/api/providerProfiles.js'
 import {
   permissionModeFromString,

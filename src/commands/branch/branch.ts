@@ -1,8 +1,8 @@
 import { randomUUID, type UUID } from 'crypto'
 import { mkdir, readFile, writeFile } from 'fs/promises'
-import { getOriginalCwd, getSessionId } from 'src/bootstrap/state.js'
+import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
 import type { LocalJSXCommandContext } from 'src/commands.js'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import type { LocalJSXCommandOnDone } from 'src/types/command.js'
 import type {
   ContentReplacementEntry,
@@ -20,7 +20,7 @@ import {
   saveCustomTitle,
   searchSessionsByCustomTitle,
 } from 'src/services/session/sessionStorage.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { escapeRegExp } from 'src/shared/text/stringUtils.js'
 
 type TranscriptEntry = TranscriptMessage & {

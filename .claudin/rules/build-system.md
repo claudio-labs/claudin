@@ -12,7 +12,7 @@ paths:
 constants, and stubs modules — so it affects every change. Read this before
 touching the build, the feature-flag set, or the telemetry stubs.
 
-The CLI is a **single-file bundle**: `src/entrypoints/cli.tsx` → `dist/cli.mjs`,
+The CLI is a **single-file bundle**: `src/platform/entrypoints/cli.tsx` → `dist/cli.mjs`,
 launched by `bin/claudin`. There is no dev runner that bypasses the bundle —
 **always `bun run build` after a source change**; the launcher runs `dist/cli.mjs`,
 not source.

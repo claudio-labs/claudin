@@ -28,7 +28,7 @@ type PromptShellTool = Tool & {
   ): Promise<{ data: ShellOut }>
 }
 
-import { isPowerShellToolEnabled } from 'src/services/shell/shellToolUtils.js'
+import { isPowerShellToolEnabled } from 'src/platform/shell/shellToolUtils.js'
 
 // Lazy: this file is on the startup import chain (main → commands →
 // loadSkillsDir → here). A static import would load PowerShellTool.ts

@@ -1,9 +1,9 @@
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { getMaxOutputLength } from 'src/services/shell/outputLimits.js'
+import { getMaxOutputLength } from 'src/platform/shell/outputLimits.js'
 import {
   getPowerShellEdition,
   type PowerShellEdition,
-} from 'src/services/shell/powershellDetection.js'
+} from 'src/platform/shell/powershellDetection.js'
 import {
   getDefaultBashTimeoutMs,
   getMaxBashTimeoutMs,

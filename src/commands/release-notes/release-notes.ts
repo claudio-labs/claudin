@@ -4,7 +4,7 @@ import {
   fetchAndStoreChangelog,
   getAllReleaseNotes,
   getStoredChangelog,
-} from 'src/services/install/releaseNotes.js'
+} from 'src/platform/install/releaseNotes.js'
 
 function formatReleaseNotes(notes: Array<[string, string[]]>): string {
   return notes

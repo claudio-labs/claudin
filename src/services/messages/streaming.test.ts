@@ -8,7 +8,7 @@
  */
 import { afterAll, describe, expect, test } from 'bun:test'
 import { handleMessageFromStream } from 'src/services/messages/messages.js'
-import { resetGlobalConfigForTests } from 'src/services/config/config.js'
+import { resetGlobalConfigForTests } from 'src/platform/config/config.js'
 
 afterAll(() => {
   resetGlobalConfigForTests()

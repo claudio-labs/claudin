@@ -1,12 +1,12 @@
 import axios from 'axios'
 import { hasProfileScope, isClaudeAISubscriber } from 'src/services/auth/auth.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { getAuthHeaders, withOAuth401Retry } from 'src/shared/http.js'
 import { logError } from 'src/shared/log.js'
 import { memoizeWithTTLAsync } from 'src/shared/data/memoize.js'
-import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
+import { isEssentialTrafficOnly } from 'src/platform/config/privacyLevel.js'
 import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'
 
 type MetricsEnabledResponse = {

@@ -2,12 +2,12 @@ import { join } from 'path'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logError } from 'src/shared/log.js'
-import type { SettingSource } from 'src/services/settings/constants.js'
+import type { SettingSource } from 'src/platform/settings/constants.js'
 import {
   getInitialSettings,
   getSettingsForSource,
   updateSettingsForSource,
-} from 'src/services/settings/settings.js'
+} from 'src/platform/settings/settings.js'
 import { getAddDirEnabledPlugins } from 'src/services/plugins/addDirPluginSettings.js'
 import {
   getInMemoryInstalledPlugins,

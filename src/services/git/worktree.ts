@@ -13,7 +13,7 @@ import {
 } from 'fs/promises'
 import ignore from 'ignore'
 import { basename, dirname, join } from 'path'
-import { saveCurrentProjectConfig } from 'src/services/config/config.js'
+import { saveCurrentProjectConfig } from 'src/platform/config/config.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage, getErrnoCode } from 'src/shared/errors.js'
@@ -37,13 +37,13 @@ import {
   executeWorktreeCreateHook,
   executeWorktreeRemoveHook,
   hasWorktreeCreateHook,
-} from 'src/services/lifecycleHooks/hooks.js'
+} from 'src/platform/lifecycleHooks/hooks.js'
 import { containsPathTraversal } from 'src/shared/fs/path.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import {
   getInitialSettings,
   getRelativeSettingsFilePathForSource,
-} from 'src/services/settings/settings.js'
+} from 'src/platform/settings/settings.js'
 import { sleep } from 'src/shared/sleep.js'
 import { isInITerm2 } from 'src/coordinator/swarm/backends/detection.js'
 

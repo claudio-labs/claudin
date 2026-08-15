@@ -3,7 +3,7 @@ import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { useSyncExternalStore } from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { calculateTokenWarningState, getEffectiveContextWindowSize, isAutoCompactEnabled } from 'src/services/compact/autoCompact.js';
 import { useCompactWarningSuppression } from 'src/services/compact/compactWarningHook.js';
 import { getUpgradeMessage } from 'src/utils/model/contextWindowUpgradeCheck.js';

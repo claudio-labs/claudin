@@ -15,7 +15,7 @@ import { logError } from 'src/shared/log.js';
 import type { buildMessageLookups } from 'src/services/messages/messages.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { useSelectedMessageBg } from 'src/components/messageActions.js';
-import { SentryErrorBoundary } from 'src/components/SentryErrorBoundary.js';
+import { SentryErrorBoundary } from 'src/platform/SentryErrorBoundary.js';
 import { ToolUseLoader } from 'src/components/ToolUseLoader.js';
 import { HookProgressMessage } from 'src/components/messages/HookProgressMessage.js';
 type Props = {

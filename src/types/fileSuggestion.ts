@@ -1,7 +1,7 @@
 // Reconstructed from its use sites: the original module was not carried into
 // this fork. The shape comes from the construction in
 // `generateFileSuggestions` (`src/terminal/prompt-suggestion/fileSuggestions.ts`) and is consumed by
-// `executeFileSuggestionCommand` (`src/services/lifecycleHooks/replHooks.ts`).
+// `executeFileSuggestionCommand` (`src/platform/lifecycleHooks/replHooks.ts`).
 //
 // Like the statusLine payload this is JSON-serialised onto a user command's
 // stdin, so the snake_case names from `createBaseHookInput()` are part of the
@@ -9,7 +9,7 @@
 
 /**
  * Fields every hook payload carries, produced by `createBaseHookInput()`
- * in `src/services/lifecycleHooks/shared.ts`.
+ * in `src/platform/lifecycleHooks/shared.ts`.
  */
 type BaseHookInput = {
   session_id: string

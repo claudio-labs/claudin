@@ -6,7 +6,7 @@ import stripAnsi from 'strip-ansi'
 
 import { render } from 'src/terminal/ink.js'
 import { AppStateProvider } from 'src/terminal/state/AppState.js'
-import type { ProviderProfile } from 'src/services/config/config.js'
+import type { ProviderProfile } from 'src/platform/config/config.js'
 import { buildProviderManagerCompletion } from 'src/commands/provider/provider.js'
 
 const SYNC_START = '\x1B[?2026h'

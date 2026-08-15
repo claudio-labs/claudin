@@ -49,16 +49,16 @@ make: Nothing to be done for 'all'.
 export const PIO_ERR = `Verbose mode can be enabled via \`-v, --verbose\` option
 CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32dev.html
 LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
-Compiling .pio/build/esp32dev/src/main.cpp.o
+Compiling .pio/build/esp32dev/src/platform/main.cpp.o
 Building .pio/build/esp32dev/firmware.elf
 Linking .pio/build/esp32dev/firmware.elf
 Checking size .pio/build/esp32dev/firmware.elf
-src/main.cpp:10:3: error: 'LED_BUILTINN' was not declared
+src/platform/main.cpp:10:3: error: 'LED_BUILTINN' was not declared
 `;
 
 // source: ../rtk/src/filters/pio-run.toml [[tests.pio-run]] "on_empty clean build"
 export const PIO_OK = `Verbose mode can be enabled via \`-v, --verbose\` option
-Compiling .pio/build/esp32dev/src/main.cpp.o
+Compiling .pio/build/esp32dev/src/platform/main.cpp.o
 Linking .pio/build/esp32dev/firmware.elf
 `;
 
@@ -76,7 +76,7 @@ make: *** [Makefile:3: all] Error 2
 // source: PlatformIO docs build output (docs.platformio.org "build" — the
 // memory-usage report printed after a successful link). The RAM/Flash table
 // is signal and must NOT be stripped as build ceremony.
-export const PIO_SIZE = `Compiling .pio/build/esp32dev/src/main.cpp.o
+export const PIO_SIZE = `Compiling .pio/build/esp32dev/src/platform/main.cpp.o
 Linking .pio/build/esp32dev/firmware.elf
 Checking size .pio/build/esp32dev/firmware.elf
 Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"

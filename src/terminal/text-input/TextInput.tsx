@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import React, { useMemo, useRef } from 'react';
 import { type VoiceState, useVoiceState } from 'src/terminal/contexts/voice.js';
 import { useClipboardImageHint } from 'src/terminal/hooks/useClipboardImageHint.js';
-import { useSettings } from 'src/hooks/useSettings.js';
+import { useSettings } from 'src/platform/useSettings.js';
 import { useTextInput } from 'src/terminal/hooks/useTextInput.js';
 import { Box, color, useAnimationFrame, useTerminalFocus, useTheme } from 'src/terminal/ink.js';
 import type { BaseTextInputProps } from 'src/types/textInputTypes.js';

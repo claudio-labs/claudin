@@ -9,18 +9,18 @@
  * marketplace filtering is hardcoded for v1.
  */
 
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import {
   type ClaudeCodeHint,
   hasShownHintThisSession,
   setPendingHint,
-} from 'src/utils/claudeCodeHints.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+} from 'src/platform/claudeCodeHints.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isPluginInstalled } from 'src/services/plugins/installedPluginsManager.js'
 import { getPluginById } from 'src/services/plugins/marketplaceManager.js'

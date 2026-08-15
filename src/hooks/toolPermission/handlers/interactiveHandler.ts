@@ -2,8 +2,8 @@ import { feature } from 'bun:bundle'
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs'
 import { randomUUID } from 'crypto'
 import { logForDebugging } from 'src/shared/debug.js'
-import { getAllowedChannels } from 'src/bootstrap/state.js'
-import type { BridgePermissionCallbacks } from 'src/bridge/bridgePermissionCallbacks.js'
+import { getAllowedChannels } from 'src/platform/bootstrap/state.js'
+import type { BridgePermissionCallbacks } from 'src/platform/bridge/bridgePermissionCallbacks.js'
 import { getTerminalFocused } from 'src/terminal/ink/terminal-focus-state.js'
 import {
   CHANNEL_PERMISSION_REQUEST_METHOD,

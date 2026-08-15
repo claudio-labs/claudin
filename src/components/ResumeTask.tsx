@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
-import { type CodeSession, fetchCodeSessionsFromSessionsAPI } from 'src/services/teleport/api.js';
+import { type CodeSession, fetchCodeSessionsFromSessionsAPI } from 'src/platform/teleport/api.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- raw j/k/arrow list navigation
 import { Box, Text, useInput } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
@@ -13,7 +13,7 @@ import { Select } from 'src/terminal/custom-select/index.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 import { Spinner } from 'src/terminal/spinner/Spinner.js';
-import { TeleportError } from 'src/components/TeleportError.js';
+import { TeleportError } from 'src/platform/teleport/TeleportError.js';
 type Props = {
   onSelect: (session: CodeSession) => void;
   onCancel: () => void;

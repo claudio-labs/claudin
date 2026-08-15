@@ -7,7 +7,7 @@
 // Extracted from src/services/attachments/attachments.ts as part of the attachments split.
 import {
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import {
   toolMatchesName,
   type Tools,
@@ -22,7 +22,7 @@ import { filterAgentsByMcpRequirements } from 'src/tools/AgentTool/loadAgentsDir
 import { filterDeniedAgents } from 'src/services/permissions/permissions.js'
 import { getSubscriptionType } from 'src/services/auth/auth.js'
 import { mcpInfoFromString } from 'src/services/mcp/mcpStringUtils.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { getLocalISODate } from 'src/constants/common.js'
 import {
   getLastEmittedDate,
@@ -32,7 +32,7 @@ import {
   getTotalOutputTokens,
   getTurnOutputTokens,
   getTotalCostUSD,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import {
   hasUltrathinkKeyword,
   isUltrathinkEnabled,

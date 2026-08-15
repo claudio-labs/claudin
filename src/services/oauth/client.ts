@@ -3,7 +3,7 @@ import axios from 'axios'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import {
   ALL_OAUTH_SCOPES,
   CLAUDE_AI_INFERENCE_SCOPE,
@@ -17,8 +17,8 @@ import {
   isClaudeAISubscriber,
   saveApiKey,
 } from 'src/services/auth/auth.js'
-import type { AccountInfo } from 'src/services/config/config.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+import type { AccountInfo } from 'src/platform/config/config.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getOauthProfileFromOauthToken } from 'src/services/oauth/getOauthProfile.js'
 import type {

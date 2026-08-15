@@ -87,7 +87,7 @@ describe("phase 13 — make", () => {
 describe("phase 13 — pio run", () => {
   test("strips build ceremony, keeps the compiler error", () => {
     const body = runFilterBody("pio-run", "pio run", PIO_ERR).trim();
-    expect(body).toBe("src/main.cpp:10:3: error: 'LED_BUILTINN' was not declared");
+    expect(body).toBe("src/platform/main.cpp:10:3: error: 'LED_BUILTINN' was not declared");
     expect(body).not.toContain("Compiling");
     expect(body).not.toContain("Linking");
   });

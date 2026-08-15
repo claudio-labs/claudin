@@ -4,11 +4,11 @@ import { join } from 'node:path'
 
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 
-import type { ProviderProfile } from 'src/services/config/config.js'
+import type { ProviderProfile } from 'src/platform/config/config.js'
 
 // Spread into a plain object so afterAll restores the original bindings, not
 // the live ESM namespace (which mock.module mutates after the fact).
-const realConfig = { ...(await import('src/services/config/config.js')) }
+const realConfig = { ...(await import('src/platform/config/config.js')) }
 
 async function importFreshProvidersModule() {
   return import(`src/utils/model/providers.js?ts=${Date.now()}-${Math.random()}`)
@@ -87,7 +87,7 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  mock.module('src/services/config/config.js', () => realConfig)
+  mock.module('src/platform/config/config.js', () => realConfig)
   realConfig.resetGlobalConfigForTests?.()
 })
 
@@ -107,7 +107,7 @@ afterEach(() => {
 })
 
 async function importFreshProviderProfileModules() {
-  mock.module('src/services/config/config.js', () => ({
+  mock.module('src/platform/config/config.js', () => ({
     ...realConfig,
     getGlobalConfig: () => mockConfigState,
     saveGlobalConfig: (

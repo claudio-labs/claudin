@@ -1,5 +1,5 @@
 import { sep } from 'path'
-import { getProjectRoot } from 'src/bootstrap/state.js'
+import { getProjectRoot } from 'src/platform/bootstrap/state.js'
 import { findCanonicalGitRoot } from 'src/services/git/git.js'
 import {
   buildSearchingPastContextSection,

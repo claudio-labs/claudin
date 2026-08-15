@@ -9,7 +9,7 @@ import { getFsImplementation, safeResolvePath } from 'src/shared/fs/fsOperations
 import { expandPath } from 'src/shared/fs/path.js';
 import type { CompletionType } from 'src/services/api/unaryLogging.js';
 import { Select } from 'src/terminal/custom-select/index.js';
-import { ShowInIDEPrompt } from 'src/components/ShowInIDEPrompt.js';
+import { ShowInIDEPrompt } from 'src/platform/ide/ShowInIDEPrompt.js';
 import { usePermissionRequestLogging } from 'src/components/permissions/hooks.js';
 import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
 import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';

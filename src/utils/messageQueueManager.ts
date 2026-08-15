@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle'
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs'
 import type { Permutations } from 'src/types/utils.js'
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type {
   QueueOperation,
@@ -13,7 +13,7 @@ import type {
   QueuedCommand,
   QueuePriority,
 } from 'src/types/textInputTypes.js'
-import type { PastedContent } from 'src/services/config/config.js'
+import type { PastedContent } from 'src/platform/config/config.js'
 import { extractTextContent } from 'src/services/messages/messages.js'
 import { objectGroupBy } from 'src/shared/data/objectGroupBy.js'
 import { recordQueueOperation } from 'src/services/session/sessionStorage.js'

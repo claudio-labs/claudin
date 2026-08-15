@@ -16,7 +16,7 @@
  * Disable with `CLAUDIN_DISABLE_GIT_DELTA=1`.
  */
 import { createHash } from 'crypto'
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { getClippedIds } from 'src/services/compact/stableStubState.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { logError } from 'src/shared/log.js'

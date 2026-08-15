@@ -77,7 +77,7 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 - `:513-527` `#injectLateDiagnostics` — enfileira `lsp-late-diagnostic` (`role: custom, display: false`) no histórico. **Modelo recebe feedback automático sem chamar tool.**
 
 **Vale pra Claudin?**
-- **Sim, 80% da infra existe.** `src/services/lsp/diagnosticsForToolResult.ts` + `awaitDiagnosticsForFile.ts` + `diagnosticTracking.ts:30-40` (baseline).
+- **Sim, 80% da infra existe.** `src/platform/lsp/diagnosticsForToolResult.ts` + `awaitDiagnosticsForFile.ts` + `diagnosticTracking.ts:30-40` (baseline).
 - **Falta:** canal de injeção *deferred* (mensagens que chegam depois do tool result ter retornado).
 
 **Encaixe**: `src/QueryEngine.ts` adicionar `queueDeferredMessage` entre turnos. `src/tools/FileEditTool/FileEditTool.ts` caller-side wiring.
@@ -127,7 +127,7 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 
 **Targets concretos:**
 - `src/QueryEngine.ts` — hook `queueDeferredMessage` (#6) + history mutation hooks (#2).
-- `src/services/lsp/diagnosticsForToolResult.ts` — extender com path "deferred" (#6).
+- `src/platform/lsp/diagnosticsForToolResult.ts` — extender com path "deferred" (#6).
 - `src/tools/FileEditTool/FileEditTool.ts` — caller-side wiring (#6).
 - `scripts/build.ts` featureFlags — `CHECKPOINT_REWIND`, `HINDSIGHT_REFLECT`, `REVIEWER_FINDINGS`.
 - `scripts/verify-no-phone-home.ts` — sem novos entries; tudo local.

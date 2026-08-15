@@ -1,4 +1,4 @@
-import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
+import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import {

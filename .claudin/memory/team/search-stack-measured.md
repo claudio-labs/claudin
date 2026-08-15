@@ -31,7 +31,7 @@ Grep `output_mode:"symbols"` takes a *text pattern* and returns each match's
 enclosing symbol — it answers "what contains this text", not "where is X". LSPTool
 has `goToDefinition`/`findReferences`/`workspaceSymbol`, but servers come
 **exclusively from enabled plugins** with no built-in registry
-(`src/services/lsp/config.ts:48-51`), so for a default user the tool is permanently
+(`src/platform/lsp/config.ts:48-51`), so for a default user the tool is permanently
 present and permanently returns `LSP_UNAVAILABLE_MESSAGE`. `workspaceSymbol` also
 requires a `filePath` anyway. The accidental best repo-wide identifier lookup is
 `Rename mode:"preview"` — a rename tool used as a query.

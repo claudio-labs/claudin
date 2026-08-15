@@ -51,7 +51,7 @@ const {
   convertToolsToResponsesTools,
   performCodexRequest,
 } = await import('src/services/api/codexShim.js')
-const { getSessionId } = await import('src/bootstrap/state.js')
+const { getSessionId } = await import('src/platform/bootstrap/state.js')
 const { __test: webSearchToolTest } = await import('src/tools/WebSearchTool/WebSearchTool.js')
 
 const tempDirs: string[] = []

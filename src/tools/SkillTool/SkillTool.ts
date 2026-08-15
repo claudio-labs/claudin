@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import uniqBy from 'lodash-es/uniqBy.js'
 import { dirname } from 'path'
-import { getProjectRoot } from 'src/bootstrap/state.js'
+import { getProjectRoot } from 'src/platform/bootstrap/state.js'
 import {
   builtInCommandNames,
   findCommand,
@@ -32,20 +32,20 @@ import {
   isOfficialMarketplaceName,
   parsePluginIdentifier,
 } from 'src/services/plugins/pluginIdentifier.js'
-import { buildPluginCommandTelemetryFields } from 'src/services/telemetry/pluginTelemetry.js'
+import { buildPluginCommandTelemetryFields } from 'src/platform/telemetry/pluginTelemetry.js'
 import { z } from 'zod/v4'
 import {
   addInvokedSkill,
   clearInvokedSkillsForAgent,
   getSessionId,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { COMMAND_MESSAGE_TAG } from 'src/constants/xml.js'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { getAgentContext } from 'src/coordinator/agentContext.js'
 import { errorMessage } from 'src/shared/errors.js'
 import {

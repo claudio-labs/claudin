@@ -9,7 +9,7 @@ import type { LoadedPlugin, PluginError } from 'src/types/plugin.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage, isENOENT } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import { jsonParse } from 'src/utils/slowOperations.js'
+import { jsonParse } from 'src/platform/slowOperations.js'
 import {
   isMcpbSource,
   loadMcpbFile,

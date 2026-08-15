@@ -17,7 +17,7 @@ import { query } from 'src/query.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { accumulateUsage, updateUsage } from 'src/services/api/claude.js'
 import { EMPTY_USAGE, type NonNullableUsage } from 'src/services/api/logging.js'
 import type { ToolUseContext } from 'src/Tool.js'
@@ -27,7 +27,7 @@ import type { Message } from 'src/types/message.js'
 import { createChildAbortController } from 'src/shared/abortController.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { cloneFileStateCache } from 'src/shared/fs/fileStateCache.js'
-import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
+import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import {
   createUserMessage,
   extractTextContent,

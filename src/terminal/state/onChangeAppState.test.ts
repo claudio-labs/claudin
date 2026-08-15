@@ -10,7 +10,7 @@ import {
 
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import { getEmptyToolPermissionContext } from 'src/Tool.js'
-import type { ProjectConfig } from 'src/services/config/config.js'
+import type { ProjectConfig } from 'src/platform/config/config.js'
 
 // These tests verify two contracts of the `mainLoopModel` diff handler:
 //  1. `/model` is ALWAYS project-scoped — a write persists to
@@ -21,15 +21,15 @@ import type { ProjectConfig } from 'src/services/config/config.js'
 //     provider-switch consequence flows.
 // They exercise `onChangeAppState` directly with mocked persistence boundaries.
 
-const realConfig = { ...(await import('src/services/config/config.js')) }
+const realConfig = { ...(await import('src/platform/config/config.js')) }
 const realProviderProfiles = {
   ...(await import('src/services/api/providerProfiles.js')),
 }
-const realSettings = { ...(await import('src/services/settings/settings.js')) }
+const realSettings = { ...(await import('src/platform/settings/settings.js')) }
 const realSessionState = { ...(await import('src/services/session/sessionState.js')) }
 const realAuth = { ...(await import('src/services/auth/auth.js')) }
-const realManagedEnv = { ...(await import('src/services/config/managedEnv.js')) }
-const realBootstrapState = { ...(await import('src/bootstrap/state.js')) }
+const realManagedEnv = { ...(await import('src/platform/config/managedEnv.js')) }
+const realBootstrapState = { ...(await import('src/platform/bootstrap/state.js')) }
 
 let activeProfileId: string | undefined
 let savedProjectConfigs: Partial<ProjectConfig>[]
@@ -39,7 +39,7 @@ let updateSettingsForSourceCalls: number
 let setMainLoopModelOverrideCalls: Array<unknown>
 
 function installMocks(): void {
-  mock.module('src/services/config/config.js', () => ({
+  mock.module('src/platform/config/config.js', () => ({
     ...realConfig,
     getGlobalConfig: () => ({}),
     saveGlobalConfig: () => {},
@@ -54,7 +54,7 @@ function installMocks(): void {
     getActiveProviderProfile: () =>
       activeProfileId ? { id: activeProfileId } : undefined,
   }))
-  mock.module('src/services/settings/settings.js', () => ({
+  mock.module('src/platform/settings/settings.js', () => ({
     ...realSettings,
     updateSettingsForSource: () => {
       updateSettingsForSourceCalls += 1
@@ -71,11 +71,11 @@ function installMocks(): void {
     clearAwsCredentialsCache: () => {},
     clearGcpCredentialsCache: () => {},
   }))
-  mock.module('src/services/config/managedEnv.js', () => ({
+  mock.module('src/platform/config/managedEnv.js', () => ({
     ...realManagedEnv,
     applyConfigEnvironmentVariables: () => {},
   }))
-  mock.module('src/bootstrap/state.js', () => ({
+  mock.module('src/platform/bootstrap/state.js', () => ({
     ...realBootstrapState,
     setMainLoopModelOverride: (value: unknown) => {
       setMainLoopModelOverrideCalls.push(value)
@@ -116,13 +116,13 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  mock.module('src/services/config/config.js', () => realConfig)
+  mock.module('src/platform/config/config.js', () => realConfig)
   mock.module('src/services/api/providerProfiles.js', () => realProviderProfiles)
-  mock.module('src/services/settings/settings.js', () => realSettings)
+  mock.module('src/platform/settings/settings.js', () => realSettings)
   mock.module('src/services/session/sessionState.js', () => realSessionState)
   mock.module('src/services/auth/auth.js', () => realAuth)
-  mock.module('src/services/config/managedEnv.js', () => realManagedEnv)
-  mock.module('src/bootstrap/state.js', () => realBootstrapState)
+  mock.module('src/platform/config/managedEnv.js', () => realManagedEnv)
+  mock.module('src/platform/bootstrap/state.js', () => realBootstrapState)
 })
 
 describe('mainLoopModel persistence is always project-scoped', () => {

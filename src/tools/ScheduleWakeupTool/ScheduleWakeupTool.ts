@@ -4,10 +4,10 @@ import {
   getPendingSessionWakeup,
   setPendingSessionWakeup,
   setScheduledTasksEnabled,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import type { ToolUseContext, ValidationResult } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
 import { getTeammateContext } from 'src/coordinator/teammateContext.js'

@@ -4,15 +4,15 @@ import type {
   ToolResultBlockParam,
 } from '@anthropic-ai/sdk/resources/index.mjs'
 import { readFile, stat } from 'fs/promises'
-import { getOriginalCwd } from 'src/bootstrap/state.js'
-import { logEvent } from 'src/services/analytics/index.js'
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import type { ToolPermissionContext } from 'src/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { pathInAllowedWorkingPath } from 'src/services/permissions/filesystem.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
 import { shouldMaintainProjectWorkingDir } from 'src/shared/envUtils.js'
 import { maybeResizeAndDownsampleImageBuffer } from 'src/terminal/image/imageResizer.js'
-import { getMaxOutputLength } from 'src/services/shell/outputLimits.js'
+import { getMaxOutputLength } from 'src/platform/shell/outputLimits.js'
 import { countCharInString, plural } from 'src/shared/text/stringUtils.js'
 /**
  * Strips leading and trailing lines that contain only whitespace/newlines.

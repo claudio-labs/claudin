@@ -77,7 +77,7 @@ const PROBES: Probe[] = [
   },
   {
     name: 'bash parser (utils/bash/*)',
-    importExpr: `await import('./src/services/bash/bashParser.ts')`,
+    importExpr: `await import('./src/platform/bash/bashParser.ts')`,
     description: '~12.3k LoC: bashParser + ast + heredoc + treeSitter.',
   },
   {

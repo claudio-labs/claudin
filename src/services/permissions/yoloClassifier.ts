@@ -9,10 +9,10 @@ import {
   getLastClassifierRequests,
   getSessionId,
   setLastClassifierRequests,
-} from 'src/bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import { logEvent } from 'src/services/analytics/index.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/metadata.js'
+} from 'src/platform/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
 import { getCacheControl } from 'src/services/api/claude.js'
 import { parsePromptTooLongTokenCounts } from 'src/services/api/errors.js'
 import { getDefaultMaxRetries } from 'src/services/api/withRetry.js'
@@ -28,9 +28,9 @@ import { errorMessage, isSdkApiError } from 'src/shared/errors.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { extractTextContent } from 'src/services/messages/messages.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
-import { getAutoModeConfig } from 'src/services/settings/settings.js'
+import { getAutoModeConfig } from 'src/platform/settings/settings.js'
 import { sideQuery } from 'src/utils/sideQuery.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { modelRequiresAdaptiveThinking } from 'src/services/context/thinking.js'
 import { tokenCountWithEstimation } from 'src/services/context/tokens.js'
 import {

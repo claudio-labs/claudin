@@ -1,5 +1,5 @@
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
-import { extractOutputRedirections } from 'src/services/bash/commands.js';
+import { extractOutputRedirections } from 'src/platform/bash/commands.js';
 import { isClassifierPermissionsEnabled } from 'src/services/permissions/bashClassifier.js';
 import type { PermissionDecisionReason } from 'src/services/permissions/PermissionResult.js';
 import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js';

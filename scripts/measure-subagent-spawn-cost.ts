@@ -50,7 +50,7 @@ import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
 } from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/services/config/config.js'
+import { enableConfigs } from '../src/platform/config/config.js'
 import { getEmptyToolPermissionContext } from '../src/Tool.js'
 import { toolToAPISchema } from '../src/services/api/api.js'
 import { getAllBaseTools } from '../src/tools.js'

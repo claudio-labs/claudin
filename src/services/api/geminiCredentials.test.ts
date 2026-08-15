@@ -9,10 +9,10 @@ let storageState: MockStorageData = {}
 // Plain-object copy, NOT the live ESM namespace: mock.module below mutates the
 // namespace in place, so restoring it verbatim would re-apply the stub and leak
 // the in-memory secure storage into every later file's real getSecureStorage().
-const realSecureStorage = { ...(await import('src/services/secureStorage/index.js')) }
+const realSecureStorage = { ...(await import('src/platform/secureStorage/index.js')) }
 
 async function importFreshModule() {
-  mock.module('src/services/secureStorage/index.js', () => ({
+  mock.module('src/platform/secureStorage/index.js', () => ({
     getSecureStorage: () => ({
       name: 'mock-secure-storage',
       read: () => storageState,
@@ -45,8 +45,8 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  mock.module('src/services/secureStorage/index.js', () => realSecureStorage)
-  mock.module('src/services/secureStorage/index.js', () => realSecureStorage)
+  mock.module('src/platform/secureStorage/index.js', () => realSecureStorage)
+  mock.module('src/platform/secureStorage/index.js', () => realSecureStorage)
 })
 
 test('saveGeminiAccessToken stores and reads back the token', async () => {

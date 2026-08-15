@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import type { HookEvent } from 'src/entrypoints/agentSdkTypes.js';
+import type { HookEvent } from 'src/platform/entrypoints/agentSdkTypes.js';
 import type { buildMessageLookups } from 'src/services/messages/messages.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';

@@ -12,8 +12,8 @@ import {
   GLOBAL_CLAUDE_FOLDER_PERMISSION_PATTERN,
 } from 'src/tools/FileEditTool/constants.js'
 import type { z } from 'zod/v4'
-import { getOriginalCwd, getSessionId } from 'src/bootstrap/state.js'
-import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
+import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import type { AnyObject, Tool, ToolPermissionContext } from 'src/Tool.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
@@ -31,12 +31,12 @@ import {
 import { getPlansDirectory } from 'src/utils/plans.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import { getProjectDir } from 'src/services/session/sessionStorage.js'
-import { SETTING_SOURCES } from 'src/services/settings/constants.js'
+import { SETTING_SOURCES } from 'src/platform/settings/constants.js'
 import {
   getSettingsFilePathForSource,
   getSettingsRootPathForSource,
-} from 'src/services/settings/settings.js'
-import { containsVulnerableUncPath } from 'src/services/shell/readOnlyCommandValidation.js'
+} from 'src/platform/settings/settings.js'
+import { containsVulnerableUncPath } from 'src/platform/shell/readOnlyCommandValidation.js'
 import { getToolResultsDir } from 'src/services/tools/toolResultStorage.js'
 import { windowsPathToPosixPath } from 'src/shared/fs/windowsPaths.js'
 import type {

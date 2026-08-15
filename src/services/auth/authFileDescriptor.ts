@@ -4,7 +4,7 @@ import {
   getOauthTokenFromFd,
   setApiKeyFromFd,
   setOauthTokenFromFd,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { errorMessage, isENOENT } from 'src/shared/errors.js'

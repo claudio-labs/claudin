@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import { CACHE_PATHS } from 'src/shared/fs/cachePaths.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
@@ -9,16 +9,16 @@ import { type FsOperations, getFsImplementation } from 'src/shared/fs/fsOperatio
 import { cleanupOldImageCaches } from 'src/terminal/image/imageStore.js'
 import * as lockfile from 'src/shared/fs/lockfile.js'
 import { logError } from 'src/shared/log.js'
-import { cleanupOldVersions } from 'src/services/install/index.js'
+import { cleanupOldVersions } from 'src/platform/install/index.js'
 import { cleanupOldPastes } from 'src/terminal/input/pasteStore.js'
 import { getPlansDirectory } from 'src/utils/plans.js'
 import { getProjectsDir } from 'src/services/session/sessionStorage.js'
-import { getSettingsWithAllErrors } from 'src/services/settings/allErrors.js'
+import { getSettingsWithAllErrors } from 'src/platform/settings/allErrors.js'
 import { getTaskListId, sanitizePathComponent } from 'src/tasks/tasks.js'
 import {
   getInitialSettings,
   rawSettingsContainsKey,
-} from 'src/services/settings/settings.js'
+} from 'src/platform/settings/settings.js'
 import { TOOL_RESULTS_SUBDIR } from 'src/services/tools/toolResultStorage.js'
 import { cleanupStaleAgentWorktrees } from 'src/services/git/worktree.js'
 

@@ -1,13 +1,13 @@
 import { dirname, isAbsolute, sep } from 'path'
-import { logEvent } from 'src/services/analytics/index.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import { diagnosticTracker } from 'src/services/diagnosticTracking.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
+import { diagnosticTracker } from 'src/platform/diagnosticTracking.js'
 import {
   armFileForLateDiagnostics,
   buildPostEditDiagnosticsMessages,
-} from 'src/services/lsp/diagnosticsForToolResult.js'
-import { clearDeliveredDiagnosticsForFile } from 'src/services/lsp/LSPDiagnosticRegistry.js'
-import { getLspServerManager } from 'src/services/lsp/manager.js'
+} from 'src/platform/lsp/diagnosticsForToolResult.js'
+import { clearDeliveredDiagnosticsForFile } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
+import { getLspServerManager } from 'src/platform/lsp/manager.js'
 import { notifyVscodeFileUpdated } from 'src/services/mcp/vscodeSdkMcp.js'
 import { checkTeamMemSecrets } from 'src/services/teamMemorySync/teamMemSecretGuard.js'
 import {
@@ -33,7 +33,7 @@ import {
   fileHistoryEnabled,
   fileHistoryTrackEdit,
 } from 'src/shared/fs/fileHistory.js'
-import { logFileOperation } from 'src/utils/fileOperationAnalytics.js'
+import { logFileOperation } from 'src/platform/fileOperationAnalytics.js'
 import {
   type LineEndingType,
   readFileSyncWithMetadata,
@@ -52,7 +52,7 @@ import {
 } from 'src/services/permissions/filesystem.js'
 import type { PermissionDecision } from 'src/services/permissions/PermissionResult.js'
 import { matchWildcardPattern } from 'src/services/permissions/shellRuleMatching.js'
-import { validateInputForSettingsFileEdit } from 'src/services/settings/validateEditTool.js'
+import { validateInputForSettingsFileEdit } from 'src/platform/settings/validateEditTool.js'
 import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
 import {
   FILE_EDIT_TOOL_NAME,

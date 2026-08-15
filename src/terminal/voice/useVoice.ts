@@ -12,7 +12,7 @@ import { useTerminalFocus } from 'src/terminal/ink/hooks/use-terminal-focus.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { getVoiceKeyterms } from 'src/terminal/voice/voiceKeyterms.js'
 import {
   connectVoiceStream,
@@ -24,7 +24,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { toError } from 'src/shared/errors.js'
 import { getSystemLocaleLanguage } from 'src/shared/text/intl.js'
 import { logError } from 'src/shared/log.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { sleep } from 'src/shared/sleep.js'
 
 // ─── Language normalization ─────────────────────────────────────────────

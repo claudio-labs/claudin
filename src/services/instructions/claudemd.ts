@@ -41,20 +41,20 @@ import {
   sep,
 } from 'path'
 import picomatch from 'picomatch'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import {
   getAdditionalDirectoriesForClaudeMd,
   getOriginalCwd,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { truncateEntrypointContent } from 'src/memdir/memdir.js'
 import { getAutoMemEntrypoint, isAutoMemoryEnabled } from 'src/memdir/paths.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   getCurrentProjectConfig,
   getManagedClaudeRulesDir,
   getMemoryPath,
   getUserClaudeRulesDir,
-} from 'src/services/config/config.js'
+} from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
@@ -68,7 +68,7 @@ import {
   hasInstructionsLoadedHook,
   type InstructionsLoadReason,
   type InstructionsMemoryType,
-} from 'src/services/lifecycleHooks/hooks.js'
+} from 'src/platform/lifecycleHooks/hooks.js'
 import type { MemoryType } from 'src/memdir/types.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { pathInWorkingPath } from 'src/services/permissions/filesystem.js'
@@ -77,8 +77,8 @@ import {
   isProjectInstructionFileName,
 } from 'src/services/instructions/projectInstructions.js'
 import { inspectRuleFrontmatter } from 'src/services/instructions/ruleFrontmatter.js'
-import { isSettingSourceEnabled } from 'src/services/settings/constants.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import { isSettingSourceEnabled } from 'src/platform/settings/constants.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemPaths = feature('TEAMMEM')

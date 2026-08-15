@@ -3,7 +3,7 @@ import { useTerminalFocus } from 'src/terminal/ink/hooks/use-terminal-focus.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { abortSpeculation } from 'src/terminal/prompt-suggestion/speculation.js'
 import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js'
 import { computeGhostRemainder } from 'src/terminal/prompt-suggestion/promptSuggestionGhost.js'

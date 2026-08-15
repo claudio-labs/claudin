@@ -76,7 +76,7 @@ const ALLOWED_TOOLS = 'Read,Glob'
 const FIXTURES = [
   'src/services/api/modelCost.ts',
   'src/tools/BashTool/sedValidation.ts',
-  'src/services/lifecycleHooks/events.ts',
+  'src/platform/lifecycleHooks/events.ts',
   'src/services/mcp/doctor.ts',
   'src/services/session/sessionRestore.ts',
 ]

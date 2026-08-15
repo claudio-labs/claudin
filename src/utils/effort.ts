@@ -1,14 +1,14 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { isUltrathinkEnabled } from 'src/services/context/thinking.js'
-import { getInitialSettings, getSettingsForSource } from 'src/services/settings/settings.js'
+import { getInitialSettings, getSettingsForSource } from 'src/platform/settings/settings.js'
 import { isProSubscriber, isMaxSubscriber, isTeamSubscriber } from 'src/services/auth/auth.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import { get3PModelCapabilityOverride } from 'src/utils/model/modelSupportOverrides.js'
 import { supportsCodexReasoningEffort } from 'src/services/api/providerConfig.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import type { EffortLevel } from 'src/entrypoints/sdk/runtimeTypes.js'
-import { getCurrentProjectConfig, saveCurrentProjectConfig } from 'src/services/config/config.js'
+import type { EffortLevel } from 'src/platform/entrypoints/sdk/runtimeTypes.js'
+import { getCurrentProjectConfig, saveCurrentProjectConfig } from 'src/platform/config/config.js'
 import { logError } from 'src/shared/log.js'
 
 export type { EffortLevel }

@@ -1,8 +1,8 @@
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
+} from 'src/platform/analytics/index.js'
+import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type z from 'zod/v4'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import type { AnyObject, Tool, ToolUseContext } from 'src/Tool.js'
@@ -21,7 +21,7 @@ import {
   executePostToolUseFailureHooks,
   executePreToolHooks,
   getPreToolHookBlockingMessage,
-} from 'src/services/lifecycleHooks/hooks.js'
+} from 'src/platform/lifecycleHooks/hooks.js'
 import { logError } from 'src/shared/log.js'
 import {
   getRuleBehaviorDescription,

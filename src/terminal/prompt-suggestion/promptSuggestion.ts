@@ -1,4 +1,4 @@
-import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
+import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { Message } from 'src/types/message.js'
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
@@ -10,7 +10,7 @@ import {
   createCacheSafeParams,
   runForkedAgent,
 } from 'src/coordinator/forkedAgent.js'
-import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
+import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logError } from 'src/shared/log.js'
 import {
@@ -18,12 +18,12 @@ import {
   extractTextContent,
   getLastAssistantMessage,
 } from 'src/services/messages/messages.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { isTeammate } from 'src/coordinator/teammate.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { currentLimits } from 'src/services/claudeAiLimits.js'
 import { endsWithFollowupOffer } from 'src/terminal/prompt-suggestion/followupOffer.js'
 import { isSpeculationEnabled, startSpeculation } from 'src/terminal/prompt-suggestion/speculation.js'

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
+import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
 import { verifyApiKey } from 'src/services/api/claude.js'
 import {
   getAnthropicApiKeyWithSource,

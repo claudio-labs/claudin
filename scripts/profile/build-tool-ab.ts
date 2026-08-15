@@ -88,7 +88,7 @@ const WORKSPACE: Record<string, Fixture> = {
     toolchain: 'cargo',
     files: {
       'Cargo.toml': '[package]\nname = "core"\nversion = "0.1.0"\nedition = "2021"\n',
-      'src/main.rs': 'fn main() {\n    let retries: u32 = "three";\n    println!("{retries}");\n}\n',
+      'src/platform/main.rs': 'fn main() {\n    let retries: u32 = "three";\n    println!("{retries}");\n}\n',
     },
   },
   native: {

@@ -12,8 +12,8 @@ import {
   resolve,
   sep,
 } from 'path'
-import { logEvent } from 'src/services/analytics/index.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isENOENT, isFsInaccessible } from 'src/shared/errors.js'

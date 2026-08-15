@@ -1,8 +1,8 @@
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
+} from 'src/platform/analytics/index.js'
+import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type { ToolPermissionContext } from 'src/Tool.js'
 import {
   CLAUDE_FOLDER_PERMISSION_PATTERN,

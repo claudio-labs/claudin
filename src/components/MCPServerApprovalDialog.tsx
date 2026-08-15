@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import { getInitialSettings, updateSettingsForSource } from 'src/services/settings/settings.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
+import { getInitialSettings, updateSettingsForSource } from 'src/platform/settings/settings.js';
 import { Select } from 'src/terminal/custom-select/index.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import { MCPServerDialogCopy } from 'src/components/MCPServerDialogCopy.js';

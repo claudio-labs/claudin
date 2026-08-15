@@ -6,8 +6,8 @@ import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { stringWidth } from 'src/terminal/ink/stringWidth.js';
 import { wrapAnsi } from 'src/terminal/ink/wrapAnsi.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import { logEvent } from 'src/services/analytics/index.js';
-import type { HistoryEntry } from 'src/services/config/config.js';
+import { logEvent } from 'src/platform/analytics/index.js';
+import type { HistoryEntry } from 'src/platform/config/config.js';
 import { formatRelativeTimeAgo, truncateToWidth } from 'src/shared/text/format.js';
 import { FuzzyPicker } from 'src/terminal/design-system/FuzzyPicker.js';
 type Props = {

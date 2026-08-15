@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { isBuiltInAgent } from 'src/tools/AgentTool/loadAgentsDir.js'
@@ -17,7 +17,7 @@ export { asSystemPrompt, type SystemPrompt } from 'src/utils/systemPromptType.js
 /* eslint-disable @typescript-eslint/no-require-imports */
 const proactiveModule =
   feature('PROACTIVE') || feature('KAIROS')
-    ? (require('../proactive/index.js') as typeof import('../proactive/index.js'))
+    ? (require('../platform/proactive/index.js') as typeof import('../platform/proactive/index.js'))
     : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

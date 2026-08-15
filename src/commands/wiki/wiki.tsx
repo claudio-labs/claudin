@@ -1,8 +1,8 @@
 import React from 'react'
 import { COMMON_HELP_ARGS, COMMON_INFO_ARGS } from 'src/constants/xml.js'
-import { ingestLocalWikiSource } from 'src/services/wiki/ingest.js'
-import { initializeWiki } from 'src/services/wiki/init.js'
-import { getWikiStatus } from 'src/services/wiki/status.js'
+import { ingestLocalWikiSource } from 'src/platform/wiki/ingest.js'
+import { initializeWiki } from 'src/platform/wiki/init.js'
+import { getWikiStatus } from 'src/platform/wiki/status.js'
 import type {
   LocalJSXCommandCall,
   LocalJSXCommandOnDone,

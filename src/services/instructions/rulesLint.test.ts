@@ -147,8 +147,8 @@ describe('lintRuleFiles', () => {
 
   test('resolves a `.js` specifier to the TypeScript file on disk', async () => {
     const root = makeProject({
-      'AGENTS.md': 'Import from `src/services/config/config.js`.\n',
-      'src/services/config/config.ts': 'export {}\n',
+      'AGENTS.md': 'Import from `src/platform/config/config.js`.\n',
+      'src/platform/config/config.ts': 'export {}\n',
     })
     const result = await lintRuleFiles({ root, trackedFiles: [] })
     expect(result.findings).toEqual([])

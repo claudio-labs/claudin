@@ -28,17 +28,17 @@
 import { useCallback } from 'react';
 import type { UUID } from 'crypto';
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js';
-import type { createCoalescedUpdater } from 'src/services/install/coalescedUpdater.js';
+import type { createCoalescedUpdater } from 'src/platform/install/coalescedUpdater.js';
 import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js';
 import type { ToolPermissionContext } from 'src/Tool.js';
 import type { MCPServerConnection } from 'src/services/mcp/types.js';
 import type { useAppStateStore } from 'src/terminal/state/AppState.js';
 import type { provisionContentReplacementState } from 'src/services/tools/toolResultStorage.js';
 import { feature } from 'bun:bundle';
-import { snapshotOutputTokensForTurn, getCurrentTurnTokenBudget, getTurnOutputTokens, getBudgetContinuationCount } from 'src/bootstrap/state.js';
+import { snapshotOutputTokensForTurn, getCurrentTurnTokenBudget, getTurnOutputTokens, getBudgetContinuationCount } from 'src/platform/bootstrap/state.js';
 import { parseTokenBudget } from 'src/services/context/tokenBudget.js';
 import { count } from 'src/shared/data/array.js';
-import { markTurnStart, markTurnEnd, resetTurnHookDuration, resetTurnToolDuration, resetTurnClassifierDuration } from 'src/bootstrap/state.js';
+import { markTurnStart, markTurnEnd, resetTurnHookDuration, resetTurnToolDuration, resetTurnClassifierDuration } from 'src/platform/bootstrap/state.js';
 import { QueryGuard } from 'src/utils/QueryGuard.js';
 import { setMemberActive } from 'src/coordinator/swarm/teamHelpers.js';
 import { getTeamName, getAgentName } from 'src/coordinator/teammate.js';
@@ -50,8 +50,8 @@ import { buildEffectiveSystemPrompt } from 'src/utils/systemPrompt.js';
 import { getSystemContext, getUserContext } from 'src/context.js';
 import { removeLastFromHistory } from 'src/history.js';
 import { getScratchpadDir, isScratchpadEnabled } from 'src/services/permissions/filesystem.js';
-import { getGlobalConfig } from 'src/services/config/config.js';
-import { logEvent } from 'src/services/analytics/index.js';
+import { getGlobalConfig } from 'src/platform/config/config.js';
+import { logEvent } from 'src/platform/analytics/index.js';
 import { handleMessageFromStream, type StreamingToolUse, type StreamingThinking, isCompactBoundaryMessage, getMessagesAfterCompactBoundary, getContentText, createTurnDurationMessage, createSystemMessage } from 'src/services/messages/messages.js';
 import { getCurrentTurnCacheMetrics, resetCurrentTurn } from 'src/services/api/cacheStatsTracker.js';
 import { formatCacheMetricsCompact, formatCacheMetricsFull } from 'src/services/api/cacheMetrics.js';
@@ -62,7 +62,7 @@ import type { Message as MessageType, UserMessage } from 'src/types/message.js';
 import { query } from 'src/query.js';
 import { mergeClients } from 'src/hooks/useMergedClients.js';
 import { getQuerySourceForREPL } from 'src/utils/promptCategory.js';
-import { maybeMarkProjectOnboardingComplete } from 'src/projectOnboardingState.js';
+import { maybeMarkProjectOnboardingComplete } from 'src/platform/projectOnboardingState.js';
 import { randomUUID } from 'crypto';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import type { ProcessUserInputContext } from 'src/services/input/processUserInput.js';
@@ -71,9 +71,9 @@ import { applyStableStubs, pruneOldToolResults, pruneToolResultsByBytes, evictOl
 import { notifyCacheDeletion } from 'src/services/api/promptCacheBreakDetection.js';
 import { getCacheProfile } from 'src/services/cache/cacheProfile.js';
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
-import { closeOpenDiffs, getConnectedIdeClient } from 'src/services/ide/ide.js';
+import { closeOpenDiffs, getConnectedIdeClient } from 'src/platform/ide/ide.js';
 import { enqueue, type SetAppState, getCommandQueueLength } from 'src/utils/messageQueueManager.js';
-import { diagnosticTracker } from 'src/services/diagnosticTracking.js';
+import { diagnosticTracker } from 'src/platform/diagnosticTracking.js';
 import type { EffortValue } from 'src/utils/effort.js';
 import { checkAndDisableBypassPermissionsIfNeeded, checkAndDisableAutoModeIfNeeded } from 'src/services/permissions/bypassPermissionsKillswitch.js';
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
@@ -83,7 +83,7 @@ import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 // Mirrors the module-level bindings in REPL.tsx. `feature()` must sit DIRECTLY in
 // a ternary condition - the build folds it in place and any other form throws.
 /* eslint-disable @typescript-eslint/no-require-imports */
-const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../../../proactive/index.js') : null;
+const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../../../platform/proactive/index.js') : null;
 const getCoordinatorUserContext: (mcpClients: ReadonlyArray<{
   name: string;
 }>, scratchpadDir?: string) => {

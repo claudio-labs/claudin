@@ -36,7 +36,7 @@ Use Issues for confirmed bugs and actionable feature work; use Discussions for s
 
 ```bash
 bun install                 # install deps (uses bun.lock)
-bun run build               # bundle src/entrypoints/cli.tsx → dist/cli.mjs
+bun run build               # bundle src/platform/entrypoints/cli.tsx → dist/cli.mjs
 bun run dev                 # build + node dist/cli.mjs
 bun run smoke               # build + --version sanity check
 bun run typecheck           # tsc --noEmit
@@ -60,20 +60,20 @@ Implication: if a user reports a just-built feature "doesn't show up", check whi
 
 ## Architecture
 
-Single entrypoint, single-file bundle: `src/entrypoints/cli.tsx` → `dist/cli.mjs`, launched by `bin/claudin`. The [search-strategy.md](.claudin/rules/search-strategy.md) rule has the full navigable module map; the high-level shape:
+Single entrypoint, single-file bundle: `src/platform/entrypoints/cli.tsx` → `dist/cli.mjs`, launched by `bin/claudin`. The [search-strategy.md](.claudin/rules/search-strategy.md) rule has the full navigable module map; the high-level shape:
 
-- `src/entrypoints/cli.tsx` — process entrypoint. Fast-paths `--version`, then dynamically imports the rest (cold paths don't pay full module-eval cost).
-- `src/QueryEngine.ts` + `src/query.ts` — the agent loop: model drive, tool dispatch, streaming SDK messages (`src/entrypoints/agentSdkTypes.ts`), usage, compaction/permission/coordination.
+- `src/platform/entrypoints/cli.tsx` — process entrypoint. Fast-paths `--version`, then dynamically imports the rest (cold paths don't pay full module-eval cost).
+- `src/QueryEngine.ts` + `src/query.ts` — the agent loop: model drive, tool dispatch, streaming SDK messages (`src/platform/entrypoints/agentSdkTypes.ts`), usage, compaction/permission/coordination.
 - `src/Tool.ts` — central tool type system (`Tool`, `ToolUseContext`, `buildTool`). Tools live under `src/tools/<Name>/` (zod schema + prompt + execute); the registry is built dynamically per context.
 - `src/services/api/` — provider abstraction. `client.ts` builds the right SDK from `activeProvider.ts`; `openaiShim.ts` (~2.2k lines) translates to OpenAI Chat Completions; `codexShim.ts` is ChatGPT OAuth; `providerConfig.ts` holds presets/profile schema/OAuth; `withRetry.ts`/`errors.ts` do retry + error classification.
 - `src/commands/` — slash commands (`/provider`, `/review`, `/plan`, `/resume`, `/mcp`, `/skills`, …), discovered via `src/commands.ts`.
 - `src/tools/` — built-in tools: file IO, search (`GrepTool`/`GlobTool`), shell (`BashTool`), version control (`GitTool`), agents/tasks, MCP, planning, web, workflow, worktree.
 - `src/services/mcp/` — MCP client + server connection management; `src/services/mcpServerApproval.tsx` is the trust dialog.
 - `src/coordinator/` — multi-agent coordinator (active when `COORDINATOR_MODE` is on).
-- `src/components/` + `src/screens/` + `src/terminal/ink/` — Ink React TUI; `src/main.tsx` mounts, `src/screens/REPL.tsx` is the main loop; `src/native-ts/yoga-layout` avoids a native-addon dep.
+- `src/components/` + `src/screens/` + `src/terminal/ink/` — Ink React TUI; `src/platform/main.tsx` mounts, `src/screens/REPL.tsx` is the main loop; `src/native-ts/yoga-layout` avoids a native-addon dep.
 - `src/memdir/`, `src/services/extractMemories/`, `src/services/SessionMemory/` — auto-memory: for git projects defaults to project-local `<repo>/.claudin/memory/`, `.md` files indexed by `MEMORY.md`. `memory/team/` is meant to be git-tracked (carve it out of `.gitignore`, which blanket-ignores `.claudin/`); private `memory/*.md` stays ignored.
 - `src/skills/` — skills (`/<skill-name>`); bundled ones in `src/skills/bundled/`, `/create` authors new skills/rules/agents in the `.claudin/` structure.
-- `src/services/config/claudinMigration.ts` + `claudinStartupMigrations.ts` — one-time migration of legacy `~/.claude/` into `~/.claudin/`; rerunnable via `/provider migrate`; override the config dir with `CLAUDIN_CONFIG_DIR`. (The `~/.openclaude/` half of this was dropped in 0a1d4ff2 — `legacyClaudeDir()` reads `~/.claude` and nothing else.)
+- `src/platform/config/claudinMigration.ts` + `claudinStartupMigrations.ts` — one-time migration of legacy `~/.claude/` into `~/.claudin/`; rerunnable via `/provider migrate`; override the config dir with `CLAUDIN_CONFIG_DIR`. (The `~/.openclaude/` half of this was dropped in 0a1d4ff2 — `legacyClaudeDir()` reads `~/.claude` and nothing else.)
 - `src/utils/` — primitives only, grouped into `data/` `fs/` `proc/` `text/` (plus `log.ts`, `theme.ts` and `model/` at the root). It used to be the catch-all; the subsystems that lived there now sit under `src/services/<name>/` — `config/`, `auth/`, `session/`, `context/`, `instructions/`, `permissions/`, `lifecycleHooks/`, `messages/`, `attachments/`, `plugins/`, `install/`, `git/`, `ide/`, `bash/`, `shell/`, `settings/`, `secureStorage/`, `telemetry/`, `sandbox/`, `computerUse/`. Two of those names matter: `services/lifecycleHooks/` is the Claude Code hook system (`src/hooks/` is React hooks), and `services/context/` is context-window/token accounting (`src/terminal/contexts/` is React providers). Destinations are recorded in `scripts/reorg/manifest.ts`, which also explains why `src/utils/model/` stayed behind.
 
 Note: an earlier headless gRPC service (`src/grpc/`, `src/proto/claudin.proto`, `dev:grpc*` scripts) was removed (#22) — it no longer exists despite lingering mentions in older docs.

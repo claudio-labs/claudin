@@ -7,9 +7,9 @@ import {
   setHasExitedPlanMode,
   setNeedsAutoModeExitAttachment,
   setNeedsPlanModeExitAttachment,
-} from 'src/bootstrap/state.js'
-import { logEvent } from 'src/services/analytics/index.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/metadata.js'
+} from 'src/platform/bootstrap/state.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
 import {
   buildDossierFromMessages,
   serializeDossier,
@@ -36,7 +36,7 @@ import {
   persistFileSnapshotIfRemote,
 } from 'src/utils/plans.js'
 import { seedTasksFromPlan } from 'src/tasks/planTasks.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   getAgentName,
   getTeamName,

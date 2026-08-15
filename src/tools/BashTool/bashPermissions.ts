@@ -1,10 +1,10 @@
 import { feature } from 'bun:bundle'
 import type { z } from 'zod/v4'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import type { ToolPermissionContext, ToolUseContext } from 'src/Tool.js'
 import type { PendingClassifierCheck } from 'src/types/permissions.js'
 import { count } from 'src/shared/data/array.js'
@@ -15,15 +15,15 @@ import {
   parseForSecurityFromAst,
   type Redirect,
   type SimpleCommand,
-} from 'src/services/bash/ast.js'
+} from 'src/platform/bash/ast.js'
 import {
   type CommandPrefixResult,
   extractOutputRedirections,
   getCommandSubcommandPrefix,
   splitCommand_DEPRECATED,
-} from 'src/services/bash/commands.js'
-import { parseCommandRaw } from 'src/services/bash/parser.js'
-import { tryParseShellCommand } from 'src/services/bash/shellQuote.js'
+} from 'src/platform/bash/commands.js'
+import { parseCommandRaw } from 'src/platform/bash/parser.js'
+import { tryParseShellCommand } from 'src/platform/bash/shellQuote.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
@@ -63,8 +63,8 @@ import {
   suggestionForPrefix as sharedSuggestionForPrefix,
 } from 'src/services/permissions/shellRuleMatching.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { windowsPathToPosixPath } from 'src/shared/fs/windowsPaths.js'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
 import { checkCommandOperatorPermissions } from 'src/tools/BashTool/bashCommandHelpers.js'
@@ -168,7 +168,7 @@ export function getSimpleCommandPrefix(command: string): string | null {
 // `env` is NOT in SAFE_WRAPPER_PATTERNS, so `env bash -c "evil"` survives
 // stripSafeWrappers unchanged and hits the startsWith("env ") check at
 // the prefix-rule matcher. Shell list mirrors DANGEROUS_SHELL_PREFIXES in
-// src/services/shell/prefix.ts which guarded the old Haiku extractor.
+// src/platform/shell/prefix.ts which guarded the old Haiku extractor.
 const BARE_SHELL_PREFIXES = new Set([
   'sh',
   'bash',
@@ -2505,7 +2505,7 @@ export function isNormalizedGitCommand(command: string): boolean {
  * Also matches pushd/popd — they change cwd just like cd, so
  *   pushd /tmp/bare-repo && git status
  * must trigger the same cd+git guard. Mirrors PowerShell's
- * DIRECTORY_CHANGE_ALIASES (src/services/shell/powershell/parser.ts).
+ * DIRECTORY_CHANGE_ALIASES (src/platform/shell/powershell/parser.ts).
  */
 export function isNormalizedCdCommand(command: string): boolean {
   const stripped = stripSafeWrappers(command)

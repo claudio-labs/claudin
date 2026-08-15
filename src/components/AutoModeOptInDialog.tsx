@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import { logEvent } from 'src/services/analytics/index.js';
+import { logEvent } from 'src/platform/analytics/index.js';
 import { Box, Link, Text } from 'src/terminal/ink.js';
-import { updateSettingsForSource } from 'src/services/settings/settings.js';
+import { updateSettingsForSource } from 'src/platform/settings/settings.js';
 import { Select } from 'src/terminal/custom-select/index.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';
 

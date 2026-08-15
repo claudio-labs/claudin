@@ -8,7 +8,7 @@ import {
   collapseReadSearchGroups,
   summarizeRecentActivities,
 } from 'src/services/tools/collapseReadSearch.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 
 let counter = 0
 const uid = (): string => `uuid-${counter++}`

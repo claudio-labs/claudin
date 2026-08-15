@@ -17,11 +17,11 @@ import { join } from 'path'
 // touching the developer's real ~/.claudin settings or plans. All the actual
 // sweep behavior under test (readdir/stat/unlink) runs against real fs.
 const realPlans = { ...(await import('src/utils/plans.js')) }
-const realSettings = { ...(await import('src/services/settings/settings.js')) }
+const realSettings = { ...(await import('src/platform/settings/settings.js')) }
 
 afterAll(() => {
   mock.module('src/utils/plans.js', () => realPlans)
-  mock.module('src/services/settings/settings.js', () => realSettings)
+  mock.module('src/platform/settings/settings.js', () => realSettings)
 })
 
 async function importFreshCleanupModule(options: {
@@ -32,7 +32,7 @@ async function importFreshCleanupModule(options: {
     ...realPlans,
     getPlansDirectory: () => options.plansDir,
   }))
-  mock.module('src/services/settings/settings.js', () => ({
+  mock.module('src/platform/settings/settings.js', () => ({
     ...realSettings,
     getInitialSettings: () => ({}),
   }))

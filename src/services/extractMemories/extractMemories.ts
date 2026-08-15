@@ -15,7 +15,7 @@
 
 import { feature } from 'bun:bundle'
 import { basename } from 'path'
-import { getIsRemoteMode } from 'src/bootstrap/state.js'
+import { getIsRemoteMode } from 'src/platform/bootstrap/state.js'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import { ENTRYPOINT_NAME } from 'src/memdir/memdir.js'
 import {
@@ -48,15 +48,15 @@ import {
   createCacheSafeParams,
   runForkedAgent,
 } from 'src/coordinator/forkedAgent.js'
-import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
+import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import {
   createMemorySavedMessage,
   createUserMessage,
 } from 'src/services/messages/messages.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import { logEvent } from 'src/services/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { detectRepeatedErrorLoop } from 'src/services/extractMemories/loopDetector.js'
 import {

@@ -24,7 +24,7 @@ import {
   truncateMcpContentIfNeeded,
 } from 'src/services/mcp/mcpValidation.js'
 import { recursivelySanitizeUnicode } from 'src/shared/data/sanitization.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   isPersistError,
   persistToolResult,
@@ -32,7 +32,7 @@ import {
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { normalizeNameForMCP } from 'src/services/mcp/normalization.js'
 
 const IMAGE_MIME_TYPES = new Set([

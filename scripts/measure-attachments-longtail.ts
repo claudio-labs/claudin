@@ -45,7 +45,7 @@ import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
 } from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/services/config/config.js'
+import { enableConfigs } from '../src/platform/config/config.js'
 import type { Attachment } from '../src/services/attachments/attachments.js'
 import { normalizeAttachmentForAPI } from '../src/services/messages/messages.js'
 

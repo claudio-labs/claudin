@@ -4,12 +4,12 @@
  * Also tracks memdir file access via Read, Grep, Glob, Edit, and Write tools.
  */
 import { feature } from 'bun:bundle'
-import { registerHookCallbacks } from 'src/bootstrap/state.js'
-import type { HookInput, HookJSONOutput } from 'src/entrypoints/agentSdkTypes.js'
+import { registerHookCallbacks } from 'src/platform/bootstrap/state.js'
+import type { HookInput, HookJSONOutput } from 'src/platform/entrypoints/agentSdkTypes.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { inputSchema as editInputSchema } from 'src/tools/FileEditTool/types.js'
 import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'

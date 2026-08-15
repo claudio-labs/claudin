@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
-import type { ProviderProfile } from 'src/services/config/config.js'
+import type { ProviderProfile } from 'src/platform/config/config.js'
 
 // Mock only `getActiveProviderProfile` and rely on the real config module.
 // Capturing `realProviderProfiles` here is safe because no earlier test file

@@ -3,8 +3,8 @@ import type { ParseInput, ParsedDiagnostics, RawDiagnostic } from 'src/tools/sha
 /**
  * The severity-prefixed lines sbt and mill print around scalac:
  *
- *   [error] /p/src/main/scala/Foo.scala:12:5: not found: value bar
- *   [warn] /p/src/main/scala/Foo.scala:3:1: unused import
+ *   [error] /p/src/platform/main/scala/Foo.scala:12:5: not found: value bar
+ *   [warn] /p/src/platform/main/scala/Foo.scala:3:1: unused import
  *   [error] -- [E006] Not Found Error: /p/Foo.scala:12:4 ------------
  *
  * The prefix is why this cannot be left to `gnuStyle`: that parser's file group

@@ -11,7 +11,7 @@
 
 import { statSync } from 'fs'
 import { join } from 'path'
-import { getProjectRoot, onSessionSwitch } from 'src/bootstrap/state.js'
+import { getProjectRoot, onSessionSwitch } from 'src/platform/bootstrap/state.js'
 import {
   SCHEDULE_WAKEUP_TOOL_NAME,
 } from 'src/tools/ScheduleWakeupTool/prompt.js'

@@ -18,7 +18,7 @@
 import { z } from 'zod/v4'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { parsePluginIdentifier } from 'src/services/plugins/pluginIdentifier.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 
 export type ChannelAllowlistEntry = {
   marketplace: string

@@ -7,7 +7,7 @@ import { Box, Text } from 'src/terminal/ink.js';
 import { estimateSkillFrontmatterTokens, getSkillsPath } from 'src/skills/loadSkillsDir.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
 import { formatTokens } from 'src/shared/text/format.js';
-import { getSettingSourceName, type SettingSource } from 'src/services/settings/constants.js';
+import { getSettingSourceName, type SettingSource } from 'src/platform/settings/constants.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';

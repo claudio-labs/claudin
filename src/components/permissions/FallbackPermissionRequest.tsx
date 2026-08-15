@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import React, { useCallback, useMemo } from 'react';
-import { getOriginalCwd } from 'src/bootstrap/state.js';
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
 import { Box, Text, useTheme } from 'src/terminal/ink.js';
-import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js';
+import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js';
 import { env } from 'src/shared/env.js';
 import { shouldShowAlwaysAllowOptions } from 'src/services/permissions/permissionsLoader.js';
 import { truncateToLines } from 'src/shared/text/stringUtils.js';

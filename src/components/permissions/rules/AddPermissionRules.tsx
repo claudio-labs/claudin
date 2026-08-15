@@ -8,9 +8,9 @@ import type { PermissionBehavior, PermissionRule, PermissionRuleValue } from 'sr
 import { applyPermissionUpdate, persistPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js';
 import { permissionRuleValueToString } from 'src/services/permissions/permissionRuleParser.js';
 import { detectUnreachableRules, type UnreachableRule } from 'src/services/permissions/shadowedRuleDetection.js';
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
-import { type EditableSettingSource, SOURCES } from 'src/services/settings/constants.js';
-import { getRelativeSettingsFilePathForSource } from 'src/services/settings/settings.js';
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';
+import { type EditableSettingSource, SOURCES } from 'src/platform/settings/constants.js';
+import { getRelativeSettingsFilePathForSource } from 'src/platform/settings/settings.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import type { OptionWithDescription } from 'src/terminal/custom-select/select.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';

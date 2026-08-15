@@ -3,7 +3,7 @@ import type { UUID } from 'crypto'
 import { randomUUID } from 'crypto'
 import uniqBy from 'lodash-es/uniqBy.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { getProjectRoot, getSessionId } from 'src/bootstrap/state.js'
+import { getProjectRoot, getSessionId } from 'src/platform/bootstrap/state.js'
 import { getCommand, getSkillToolCommands, hasCommand } from 'src/commands.js'
 import {
   DEFAULT_AGENT_PROMPT,
@@ -13,7 +13,7 @@ import type { QuerySource } from 'src/constants/querySource.js'
 import { getSystemContext, getUserContext } from 'src/context.js'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import { query } from 'src/query.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { cleanupAgentTracking } from 'src/services/api/promptCacheBreakDetection.js'
 import {
   connectToServer,
@@ -50,9 +50,9 @@ import {
   type CacheSafeParams,
   createSubagentContext,
 } from 'src/coordinator/forkedAgent.js'
-import { registerFrontmatterHooks } from 'src/services/lifecycleHooks/registerFrontmatterHooks.js'
-import { clearSessionHooks } from 'src/services/lifecycleHooks/sessionHooks.js'
-import { executeSubagentStartHooks } from 'src/services/lifecycleHooks/hooks.js'
+import { registerFrontmatterHooks } from 'src/platform/lifecycleHooks/registerFrontmatterHooks.js'
+import { clearSessionHooks } from 'src/platform/lifecycleHooks/sessionHooks.js'
+import { executeSubagentStartHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import { createUserMessage } from 'src/services/messages/messages.js'
 import { getAgentModel } from 'src/utils/model/agent.js'
 import {
@@ -73,7 +73,7 @@ import {
 import {
   isRestrictedToPluginOnly,
   isSourceAdminTrusted,
-} from 'src/services/settings/pluginOnlyPolicy.js'
+} from 'src/platform/settings/pluginOnlyPolicy.js'
 import {
   asSystemPrompt,
   type SystemPrompt,
@@ -82,7 +82,7 @@ import {
   isPerfettoTracingEnabled,
   registerAgent as registerPerfettoAgent,
   unregisterAgent as unregisterPerfettoAgent,
-} from 'src/services/telemetry/perfettoTracing.js'
+} from 'src/platform/telemetry/perfettoTracing.js'
 import type { ContentReplacementState } from 'src/services/tools/toolResultStorage.js'
 import { createAgentId } from 'src/shared/data/uuid.js'
 import {

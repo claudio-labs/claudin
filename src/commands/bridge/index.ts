@@ -1,5 +1,5 @@
 import { feature } from 'bun:bundle'
-import { isBridgeEnabled } from 'src/bridge/bridgeEnabled.js'
+import { isBridgeEnabled } from 'src/platform/bridge/bridgeEnabled.js'
 import type { Command } from 'src/commands.js'
 
 function isEnabled(): boolean {

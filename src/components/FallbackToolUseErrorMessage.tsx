@@ -3,7 +3,7 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/messages/
 import * as React from 'react';
 import { stripUnderlineAnsi } from 'src/components/shell/OutputLine.js';
 import { extractTag } from 'src/services/messages/messages.js';
-import { removeSandboxViolationTags } from 'src/services/sandbox/sandbox-ui-utils.js';
+import { removeSandboxViolationTags } from 'src/platform/sandbox/sandbox-ui-utils.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
 import { countCharInString } from 'src/shared/text/stringUtils.js';

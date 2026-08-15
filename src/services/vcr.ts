@@ -18,7 +18,7 @@ import { env } from 'src/shared/env.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import { getErrnoCode } from 'src/shared/errors.js'
 import { normalizeMessagesForAPI } from 'src/services/messages/messages.js'
-import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 
 function shouldUseVCR(): boolean {
   if (process.env.NODE_ENV === 'test') {

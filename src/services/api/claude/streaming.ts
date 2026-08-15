@@ -38,7 +38,7 @@ import {
   getBedrockExtraBodyParamsBetas,
   getMergedBetas,
 } from "src/services/api/betas.js";
-import { getGlobalConfig } from "src/services/config/config.js";
+import { getGlobalConfig } from "src/platform/config/config.js";
 import { getSonnet1mExpTreatmentEnabled } from "src/services/context/context.js";
 import { getThinkingBudgetForEffort, resolveAppliedEffort } from "src/utils/effort.js";
 import { isEnvDefinedFalsy, isEnvTruthy } from "src/shared/envUtils.js";
@@ -67,7 +67,7 @@ import {
   type SystemPrompt,
 } from "src/utils/systemPromptType.js";
 import { tokenCountFromLastAPIResponse } from "src/services/context/tokens.js";
-import { getDynamicConfig_BLOCKS_ON_INIT } from "src/services/analytics/growthbook.js";
+import { getDynamicConfig_BLOCKS_ON_INIT } from "src/platform/analytics/growthbook.js";
 import {
   currentLimits,
   extractQuotaStatusFromError,
@@ -102,7 +102,7 @@ import {
   setFastModeHeaderLatched,
   setLastMainRequestId,
   setThinkingClearLatched,
-} from "src/bootstrap/state.js";
+} from "src/platform/bootstrap/state.js";
 import {
   AFK_MODE_BETA_HEADER,
   CONTEXT_1M_BETA_HEADER,
@@ -114,14 +114,14 @@ import {
   STRUCTURED_OUTPUTS_BETA_HEADER,
 } from "src/constants/betas.js";
 import { addToTotalSessionCost } from "src/cost-tracker.js";
-import { getFeatureValue_CACHED_MAY_BE_STALE } from "src/services/analytics/growthbook.js";
+import { getFeatureValue_CACHED_MAY_BE_STALE } from "src/platform/analytics/growthbook.js";
 import {
   ADVISOR_TOOL_INSTRUCTIONS,
   getExperimentAdvisorModels,
   isAdvisorEnabled,
   isValidAdvisorModel,
   modelSupportsAdvisor,
-} from "src/utils/advisor.js";
+} from "src/platform/doctor/advisor.js";
 import { getAgentContext } from "src/coordinator/agentContext.js";
 import { isClaudeAISubscriber } from "src/services/auth/auth.js";
 import { createCombinedAbortSignal } from "src/shared/combinedAbortSignal.js";
@@ -139,7 +139,7 @@ import {
   isFastModeEnabled,
   isFastModeSupportedByModel,
 } from "src/utils/fastMode.js";
-import { headlessProfilerCheckpoint } from "src/utils/headlessProfiler.js";
+import { headlessProfilerCheckpoint } from "src/platform/headlessProfiler.js";
 import { calculateUSDCost } from "src/services/api/modelCost.js";
 import { endQueryProfile, queryCheckpoint } from "src/utils/queryProfiler.js";
 import {
@@ -172,18 +172,18 @@ import {
   startSessionActivity,
   stopSessionActivity,
 } from "src/services/session/sessionActivity.js";
-import { jsonStringify } from "src/utils/slowOperations.js";
+import { jsonStringify } from "src/platform/slowOperations.js";
 import {
   isBetaTracingEnabled,
   type LLMRequestNewContext,
   startLLMRequestSpan,
-} from "src/services/telemetry/sessionTracing.js";
+} from "src/platform/telemetry/sessionTracing.js";
 /* eslint-enable @typescript-eslint/no-require-imports */
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from "src/services/analytics/index.js";
-import { getInitializationStatus } from "src/services/lsp/manager.js";
+} from "src/platform/analytics/index.js";
+import { getInitializationStatus } from "src/platform/lsp/manager.js";
 import { withStreamingVCR } from "src/services/vcr.js";
 import { CLIENT_REQUEST_ID_HEADER, getAnthropicClient } from "src/services/api/client.js";
 import { getCachedAnthropicClient, invalidateClientCache } from "src/services/api/clientCache.js";
@@ -1589,7 +1589,7 @@ export async function* queryModel(
           case "message_delta": {
             usage = updateUsage(usage, part.usage);
             // NonNullableUsage deliberately omits `fallback_credit`
-            // (src/entrypoints/sdk/sdkUtilityTypes.ts) but the SDK's
+            // (src/platform/entrypoints/sdk/sdkUtilityTypes.ts) but the SDK's
             // BetaUsage — what these downstream sinks are typed against —
             // now requires it; null is the honest "not applicable" value.
             const usageForSdk: BetaUsage = { ...usage, fallback_credit: null };

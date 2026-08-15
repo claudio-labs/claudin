@@ -33,7 +33,7 @@ import { feature } from 'bun:bundle';
 import { randomUUID, type UUID } from 'crypto';
 import type { ImageBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
 import type { Message as MessageType, UserMessage } from 'src/types/message.js';
-import type { PastedContent } from 'src/services/config/config.js';
+import type { PastedContent } from 'src/platform/config/config.js';
 import type { MessageActionCaps } from 'src/components/messageActions.js';
 import type { FileHistoryState } from 'src/shared/fs/fileHistory.js';
 import type { PromptInputMode } from 'src/types/textInputTypes.js';
@@ -47,7 +47,7 @@ import { textForResubmit } from 'src/services/messages/messages.js';
 import { resetMicrocompactState } from 'src/services/compact/microCompact.js';
 import { fileHistoryHasAnyChanges } from 'src/shared/fs/fileHistory.js';
 import { setClipboard } from 'src/terminal/ink/termio/osc.js';
-import { logEvent } from 'src/services/analytics/index.js';
+import { logEvent } from 'src/platform/analytics/index.js';
 
 export interface UseMessageActionsControllerDeps {
   messages: MessageType[];

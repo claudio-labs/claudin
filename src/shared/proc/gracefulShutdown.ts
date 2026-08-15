@@ -2,14 +2,14 @@ import chalk from 'chalk'
 import { writeSync } from 'fs'
 import memoize from 'lodash-es/memoize.js'
 import { onExit } from 'signal-exit'
-import type { ExitReason } from 'src/entrypoints/agentSdkTypes.js'
+import type { ExitReason } from 'src/platform/entrypoints/agentSdkTypes.js'
 import {
   getIsInteractive,
   getIsScrollDraining,
   getLastMainRequestId,
   getSessionId,
   isSessionPersistenceDisabled,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import instances from 'src/terminal/ink/instances.js'
 import {
   DISABLE_KITTY_KEYBOARD,
@@ -29,12 +29,12 @@ import {
   supportsTabStatus,
   wrapForMultiplexer,
 } from 'src/terminal/ink/termio/osc.js'
-import { shutdownDatadog } from 'src/services/analytics/datadog.js'
-import { shutdown1PEventLogging } from 'src/services/analytics/firstPartyEventLogger.js'
+import { shutdownDatadog } from 'src/platform/analytics/datadog.js'
+import { shutdown1PEventLogging } from 'src/platform/analytics/firstPartyEventLogger.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import { runCleanupFunctions } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -42,7 +42,7 @@ import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getCurrentSessionTitle, sessionIdExists } from 'src/services/session/sessionStorage.js'
 import { sleep } from 'src/shared/sleep.js'
-import { profileReport } from 'src/utils/startupProfiler.js'
+import { profileReport } from 'src/platform/startupProfiler.js'
 
 /**
  * Clean up terminal modes synchronously before process exit.
@@ -394,7 +394,7 @@ export async function gracefulShutdown(
   // failsafe can scale with it. Without this, a user-configured 10s hook
   // budget is silently truncated by the 5s failsafe (gh-32712 follow-up).
   const { executeSessionEndHooks, getSessionEndHookTimeoutMs } = await import(
-    'src/services/lifecycleHooks/hooks.js'
+    'src/platform/lifecycleHooks/hooks.js'
   )
   const sessionEndTimeoutMs = getSessionEndHookTimeoutMs()
 

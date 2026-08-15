@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import { basename } from 'path'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import { readFileSync } from 'src/shared/fs/fileRead.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import type { PermissionOption } from 'src/components/permissions/FilePermissionDialog/permissionOptions.js'
@@ -16,7 +16,7 @@ import {
   getEditsForPatch,
   getPatchForEdits,
 } from 'src/tools/FileEditTool/utils.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getPatchFromContents } from 'src/services/git/diff.js'
 import { isENOENT } from 'src/shared/errors.js'
 import {
@@ -24,8 +24,8 @@ import {
   getConnectedIdeClient,
   getConnectedIdeName,
   hasAccessToIDEExtensionDiffFeature,
-} from 'src/services/ide/ide.js'
-import { WindowsToWSLConverter } from 'src/services/ide/idePathConversion.js'
+} from 'src/platform/ide/ide.js'
+import { WindowsToWSLConverter } from 'src/platform/ide/idePathConversion.js'
 import { logError } from 'src/shared/log.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 

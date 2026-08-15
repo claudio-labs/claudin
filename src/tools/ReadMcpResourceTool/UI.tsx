@@ -5,7 +5,7 @@ import { OutputLine } from 'src/components/shell/OutputLine.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { ToolProgressData } from 'src/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';
-import { jsonStringify } from 'src/utils/slowOperations.js';
+import { jsonStringify } from 'src/platform/slowOperations.js';
 import type { inputSchema, Output } from 'src/tools/ReadMcpResourceTool/ReadMcpResourceTool.js';
 export function renderToolUseMessage(input: Partial<z.infer<ReturnType<typeof inputSchema>>>): React.ReactNode {
   if (!input.uri || !input.server) {

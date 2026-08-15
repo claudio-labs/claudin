@@ -4,15 +4,15 @@ import {
   getProjectRoot,
   setOriginalCwd,
   setProjectRoot,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { clearSystemPromptSections } from 'src/constants/systemPromptSections.js'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import type { Tool } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { count } from 'src/shared/data/array.js'
 import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
-import { updateHooksConfigSnapshot } from 'src/services/lifecycleHooks/hooksConfigSnapshot.js'
+import { updateHooksConfigSnapshot } from 'src/platform/lifecycleHooks/hooksConfigSnapshot.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { getPlansDirectory } from 'src/utils/plans.js'
 import { setCwd } from 'src/shared/proc/Shell.js'

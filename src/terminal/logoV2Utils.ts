@@ -1,4 +1,4 @@
-import { getDirectConnectServerUrl, getSessionId } from 'src/bootstrap/state.js'
+import { getDirectConnectServerUrl, getSessionId } from 'src/platform/bootstrap/state.js'
 import { stringWidth } from 'src/terminal/ink/stringWidth.js'
 import type { LogOption } from 'src/types/logs.js'
 import { getSubscriptionName, isClaudeAISubscriber } from 'src/services/auth/auth.js'
@@ -9,10 +9,10 @@ import {
   truncateToWidth,
   truncateToWidthNoEllipsis,
 } from 'src/shared/text/format.js'
-import { getStoredChangelogFromMemory, parseChangelog } from 'src/services/install/releaseNotes.js'
+import { getStoredChangelogFromMemory, parseChangelog } from 'src/platform/install/releaseNotes.js'
 import { gt } from 'src/shared/semver.js'
 import { loadMessageLogs } from 'src/services/session/sessionStorage.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 
 // Layout constants
 const MAX_LEFT_WIDTH = 50

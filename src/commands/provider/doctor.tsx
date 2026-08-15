@@ -15,7 +15,7 @@ import {
 } from 'src/services/api/kimiCredentials.js'
 import { getKimiUserAgent } from 'src/services/api/kimiUserAgent.js'
 import { getKimiDeviceHeaders } from 'src/services/api/kimiDeviceHeaders.js'
-import { getCurrentProjectConfig } from 'src/services/config/config.js'
+import { getCurrentProjectConfig } from 'src/platform/config/config.js'
 import { modelSupportsAutoMode } from 'src/services/api/betas.js'
 import { getMainLoopModel } from 'src/utils/model/model.js'
 import {

@@ -41,7 +41,7 @@ Example:
 *** Add File: hello.txt
 +Hello world
 *** Update File: src/app.py
-*** Move to: src/main.py
+*** Move to: src/platform/main.py
 @@ def greet():
 -    print("Hi")
 +    print("Hello, world!")

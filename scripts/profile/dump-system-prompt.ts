@@ -35,7 +35,7 @@
 //
 // Network: the source mode makes none. `--flags=ship` runs the real CLI, which
 // fires two Grove prefetch GETs before the fast path when the active profile is
-// on the anthropic transport (src/entrypoints/cli.tsx) — nothing is sent, but
+// on the anthropic transport (src/platform/entrypoints/cli.tsx) — nothing is sent, but
 // it is not an offline command.
 
 import { existsSync, statSync } from 'fs'
@@ -119,7 +119,7 @@ async function dumpFromSource(): Promise<void> {
   const { getAllBaseTools } = await import('../../src/tools.js')
   const { getSystemPrompt, enhanceSystemPromptWithEnvDetails, DEFAULT_AGENT_PROMPT } =
     await import('../../src/constants/prompts.js')
-  const { enableConfigs } = await import('../../src/services/config/config.js')
+  const { enableConfigs } = await import('../../src/platform/config/config.js')
   try { enableConfigs() } catch {}
   process.env.NODE_ENV = 'production'
   const model = modelArg ?? 'claude-sonnet-4-6'

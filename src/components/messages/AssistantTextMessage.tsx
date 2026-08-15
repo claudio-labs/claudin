@@ -9,7 +9,7 @@ import { API_ERROR_MESSAGE_PREFIX, API_TIMEOUT_ERROR_MESSAGE, CREDIT_BALANCE_TOO
 import { isEmptyMessageText, NO_RESPONSE_REQUESTED } from 'src/services/messages/messages.js';
 import { getUpgradeMessage } from 'src/utils/model/contextWindowUpgradeCheck.js';
 import { getDefaultSonnetModel, renderModelName } from 'src/utils/model/model.js';
-import { isMacOsKeychainLocked } from 'src/services/secureStorage/macOsKeychainStorage.js';
+import { isMacOsKeychainLocked } from 'src/platform/secureStorage/macOsKeychainStorage.js';
 import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
 import { InterruptedByUser } from 'src/components/InterruptedByUser.js';
 import { Markdown } from 'src/terminal/markdown/Markdown.js';

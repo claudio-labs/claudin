@@ -1,15 +1,15 @@
 import { afterAll, afterEach, expect, mock, test } from 'bun:test'
-import type { GlobalConfig, ProviderProfile } from 'src/services/config/config.js'
+import type { GlobalConfig, ProviderProfile } from 'src/platform/config/config.js'
 import type { ResolvedProvider } from 'src/services/api/activeProvider.js'
 
 let mockProviderProfile: ProviderProfile | null = null
 
 // Spread into plain objects so afterAll restores the original bindings, not
 // the live ESM namespaces (which mock.module mutates after the fact).
-const realConfig = { ...(await import('src/services/config/config.js')) }
+const realConfig = { ...(await import('src/platform/config/config.js')) }
 const realProviderProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
 
-mock.module('src/services/config/config.js', () => ({
+mock.module('src/platform/config/config.js', () => ({
   ...realConfig,
   getGlobalConfig: () => ({
     providerProfiles: mockProviderProfile ? [mockProviderProfile] : [],
@@ -23,7 +23,7 @@ mock.module('src/services/api/providerProfiles.js', () => ({
 }))
 
 afterAll(() => {
-  mock.module('src/services/config/config.js', () => realConfig)
+  mock.module('src/platform/config/config.js', () => realConfig)
   mock.module('src/services/api/providerProfiles.js', () => realProviderProfiles)
 })
 

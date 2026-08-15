@@ -25,16 +25,16 @@
 
 import { useCallback } from 'react';
 import { feature } from 'bun:bundle';
-import { getTotalInputTokens, getOriginalCwd } from 'src/bootstrap/state.js';
+import { getTotalInputTokens, getOriginalCwd } from 'src/platform/bootstrap/state.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { type Command, type CommandResultDisplay, getCommandName, isCommandEnabled } from 'src/commands.js';
 import type { PromptInputMode } from 'src/types/textInputTypes.js';
 import { addToHistory, expandPastedTextRefs, parseReferences } from 'src/history.js';
 import { prependModeCharacterToInput } from 'src/terminal/prompt-input/inputModes.js';
 import { prependToShellHistoryCache } from 'src/terminal/suggestions/shellHistoryCompletion.js';
-import { getGlobalConfig, type PastedContent } from 'src/services/config/config.js';
-import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/index.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
+import { getGlobalConfig, type PastedContent } from 'src/platform/config/config.js';
+import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js';
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { createUserMessage, createCommandInputMessage, formatCommandInputTags } from 'src/services/messages/messages.js';
 import { LOCAL_COMMAND_STDOUT_TAG } from 'src/constants/xml.js';
 import { escapeXml } from 'src/shared/data/xml.js';
@@ -50,10 +50,10 @@ import { type SetAppState } from 'src/utils/messageQueueManager.js';
 import { getCurrentLocalJSXGeneration } from 'src/terminal/toolJSXStore.js';
 import { handleSpeculationAccept, type ActiveSpeculationState } from 'src/terminal/prompt-suggestion/speculation.js';
 import { createAbortController } from 'src/shared/abortController.js';
-import type { RemoteMessageContent } from 'src/services/teleport/api.js';
+import type { RemoteMessageContent } from 'src/platform/teleport/api.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import type { QueryGuard } from 'src/utils/QueryGuard.js';
-import type { IDESelection } from 'src/hooks/useIdeSelection.js';
+import type { IDESelection } from 'src/platform/ide/useIdeSelection.js';
 import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js';
 import type { ProcessUserInputContext } from 'src/services/input/processUserInput.js';
 import type { EffortValue } from 'src/utils/effort.js';
@@ -68,7 +68,7 @@ import type { useDeferredHookMessages } from 'src/hooks/useDeferredHookMessages.
 // Mirrors the module-level binding in REPL.tsx. `feature()` must sit DIRECTLY in
 // a ternary condition - the build folds it in place and any other form throws.
 /* eslint-disable @typescript-eslint/no-require-imports */
-const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../../../proactive/index.js') : null;
+const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../../../platform/proactive/index.js') : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 export type ActiveRemote =

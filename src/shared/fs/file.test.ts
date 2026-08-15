@@ -6,13 +6,13 @@ import { afterEach, describe, expect, mock, test } from 'bun:test'
 // any transitive named import from growthbook.js then failed with
 // "Export named ... not found".
 const realGrowthbook = {
-  ...(await import('src/services/analytics/growthbook.js')),
+  ...(await import('src/platform/analytics/growthbook.js')),
 }
 
 async function importFileModuleWithKillswitchEnabled(
   killswitchEnabled: boolean,
 ) {
-  mock.module('src/services/analytics/growthbook.js', () => ({
+  mock.module('src/platform/analytics/growthbook.js', () => ({
     ...realGrowthbook,
     getFeatureValue_CACHED_MAY_BE_STALE: () => killswitchEnabled,
   }))
@@ -21,7 +21,7 @@ async function importFileModuleWithKillswitchEnabled(
 }
 
 afterEach(() => {
-  mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
+  mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
 })
 
 describe('addLineNumbers', () => {

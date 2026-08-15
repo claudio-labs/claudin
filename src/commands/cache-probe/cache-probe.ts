@@ -1,4 +1,4 @@
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { resolveProviderRequest } from 'src/services/api/providerConfig.js'
 import type { LocalCommandCall } from 'src/types/command.js'

@@ -22,7 +22,7 @@ Roadmap decided 2026-07-17. Method: 3 web-research passes (coding-CLI tool lands
 `getSmallFastModel()` (`src/utils/model/model.ts:47`) already routes ~15 internal call sites, but there is no user-configurable `compactModel` nor a provider fallback chain. Both are already identified Tier-1 ports from the openclaude sibling fork (`openclaude-sibling-fork-reference.md`). Implements the 2026 cost playbook (routing after caching, which we already lead on). First step: port `compactModel` setting + `providerFallbackChain` from `../openclaude`.
 
 ### R2 — Real sandbox backend (effort M, strategic unlock)
-The full sandbox adapter EXISTS (`src/services/sandbox/sandbox-adapter.ts`, ~994 lines, wired into BashTool via `shouldUseSandbox.ts`), but `scripts/build.ts` (~lines 383–420) stubs `@anthropic-ai/sandbox-runtime` with a no-op Proxy — net effect today is permission-prompts only. Writing a real Linux backend (bubblewrap/landlock) reuses all existing plumbing. This is Codex CLI's headline differentiator and the autonomy unlocker both research passes point at (guardrail gap = biggest quantified whitespace).
+The full sandbox adapter EXISTS (`src/platform/sandbox/sandbox-adapter.ts`, ~994 lines, wired into BashTool via `shouldUseSandbox.ts`), but `scripts/build.ts` (~lines 383–420) stubs `@anthropic-ai/sandbox-runtime` with a no-op Proxy — net effect today is permission-prompts only. Writing a real Linux backend (bubblewrap/landlock) reuses all existing plumbing. This is Codex CLI's headline differentiator and the autonomy unlocker both research passes point at (guardrail gap = biggest quantified whitespace).
 
 ### R3 — Self-hosted background agent — ✅ IMPLEMENTED 2026-07-17
 Shipped (branch `feat/self-hosted-background-agent`, uncommitted at time of note):
@@ -38,7 +38,7 @@ in an isolated worktree → PR + report loop.
 All raw pieces exist: per-session JSONL transcripts (+ per-subagent), `--fork-session`, `scripts/profile/fakeProviderE2E.ts`, ~25 benches + A/B harnesses. Missing: the seam — "replay this recorded session against a new build/model and diff behavior/cost". Research says deterministic replay is becoming its own product category; here it doubles as our own regression harness (trace→eval pipeline, the other named whitespace).
 
 ### R5 — MCP Apps / 2026-07-28 spec (effort M, speculative)
-We are already MCP client AND server (`mcp serve` in `src/main/lifecycle.ts:201`). MCP Apps (`ui://`) support is minimal (touched only in `useManageMCPConnections.ts` + doctor). Spec RC is ~3 weeks old — early-adopter window for Tasks + stateless HTTP core + Apps rendering in the TUI.
+We are already MCP client AND server (`mcp serve` in `src/platform/main/lifecycle.ts:201`). MCP Apps (`ui://`) support is minimal (touched only in `useManageMCPConnections.ts` + doctor). Spec RC is ~3 weeks old — early-adopter window for Tasks + stateless HTTP core + Apps rendering in the TUI.
 
 ## Não fazer (with recorded reasons)
 - **Session observability/telemetry export for third parties** — conflicts with the no-telemetry positioning; local `/stats`/`/usage` covers the user's own need.

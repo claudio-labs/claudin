@@ -219,7 +219,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
 try {
 
 const result = await Bun.build({
-  entrypoints: ['./src/entrypoints/cli.tsx'],
+  entrypoints: ['./src/platform/entrypoints/cli.tsx'],
   outdir: './dist',
   target: isCompile ? 'bun' : 'node',
   // Bun's bytecode compilation requires CommonJS output; the Node bundle

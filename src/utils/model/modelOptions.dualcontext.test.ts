@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test, mock } from 'bun:test'
 
-import { resetModelStringsForTestingOnly } from 'src/bootstrap/state.js'
+import { resetModelStringsForTestingOnly } from 'src/platform/bootstrap/state.js'
 
 const realProviders = await import('src/utils/model/providers.js')
 const realAuth = await import('src/services/auth/auth.js')

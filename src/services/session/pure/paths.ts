@@ -4,7 +4,7 @@ import {
   getOriginalCwd,
   getSessionId,
   getSessionProjectDir,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import type { AgentId } from 'src/types/ids.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { sanitizePath } from 'src/shared/fs/path.js'

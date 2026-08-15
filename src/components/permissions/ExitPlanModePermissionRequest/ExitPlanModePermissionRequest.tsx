@@ -3,9 +3,9 @@ import type { UUID } from 'crypto';
 import figures from 'figures';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { useAppState, useAppStateStore, useSetAppState } from 'src/terminal/state/AppState.js';
-import { getSdkBetas, getSessionId, isSessionPersistenceDisabled, setHasExitedPlanMode, setNeedsAutoModeExitAttachment, setNeedsPlanModeExitAttachment } from 'src/bootstrap/state.js';
+import { getSdkBetas, getSessionId, isSessionPersistenceDisabled, setHasExitedPlanMode, setNeedsAutoModeExitAttachment, setNeedsPlanModeExitAttachment } from 'src/platform/bootstrap/state.js';
 import { generateSessionName } from 'src/commands/rename/generateSessionName.js';
 import { launchUltraplan } from 'src/commands/ultraplan.js';
 import type { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js';
@@ -19,7 +19,7 @@ import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
 import { calculateContextPercentages, getContextWindowForModel } from 'src/services/context/context.js';
 import { getExternalEditor } from 'src/shared/editor.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
-import { toIDEDisplayName } from 'src/services/ide/ide.js';
+import { toIDEDisplayName } from 'src/platform/ide/ide.js';
 import { logError } from 'src/shared/log.js';
 import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js';
 import { createUserMessage } from 'src/services/messages/messages.js';
@@ -32,7 +32,7 @@ import { getPewterLedgerVariant, isPlanModeInterviewPhaseEnabled } from 'src/uti
 import { getPlan, getPlanFilePath } from 'src/utils/plans.js';
 import { editFileInEditor, editPromptInEditor } from 'src/terminal/input/promptEditor.js';
 import { getCurrentSessionTitle, getTranscriptPath, saveCustomTitle } from 'src/services/session/sessionStorage.js';
-import { getInitialSettings } from 'src/services/settings/settings.js';
+import { getInitialSettings } from 'src/platform/settings/settings.js';
 import { type OptionWithDescription, Select } from 'src/terminal/custom-select/index.js';
 import { Markdown } from 'src/terminal/markdown/Markdown.js';
 import { PermissionDialog } from 'src/components/permissions/PermissionDialog.js';
@@ -43,7 +43,7 @@ import { PermissionRuleExplanation } from 'src/components/permissions/Permission
 const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER') ? require('src/services/permissions/autoModeState.js') as typeof import('src/services/permissions/autoModeState.js') : null;
 import type { Base64ImageSource, ImageBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
 /* eslint-enable @typescript-eslint/no-require-imports */
-import type { PastedContent } from 'src/services/config/config.js';
+import type { PastedContent } from 'src/platform/config/config.js';
 import type { ImageDimensions } from 'src/terminal/image/imageResizer.js';
 import { maybeResizeAndDownsampleImageBlock } from 'src/terminal/image/imageResizer.js';
 import { cacheImagePath, storeImage } from 'src/terminal/image/imageStore.js';

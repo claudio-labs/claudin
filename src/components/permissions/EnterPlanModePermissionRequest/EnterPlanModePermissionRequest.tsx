@@ -1,8 +1,8 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import { handlePlanModeTransition } from 'src/bootstrap/state.js';
+import { handlePlanModeTransition } from 'src/platform/bootstrap/state.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
 import { isPlanModeInterviewPhaseEnabled } from 'src/utils/planModeV2.js';
 import { Select } from 'src/terminal/custom-select/index.js';

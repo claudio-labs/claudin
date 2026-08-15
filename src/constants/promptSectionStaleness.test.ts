@@ -11,7 +11,7 @@ import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
   NATIVE_PACKAGE_URL: undefined,
 }
 
-import type { ProviderProfile } from 'src/services/config/config.js'
+import type { ProviderProfile } from 'src/platform/config/config.js'
 
 // Capture the real modules first so we can spread them and restore at teardown.
 // Following CLAUDE.md mock.module rules — never narrow the namespace shape.

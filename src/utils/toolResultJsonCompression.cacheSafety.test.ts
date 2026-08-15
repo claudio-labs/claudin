@@ -13,9 +13,9 @@
 import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 
-const realAnalyticsMetadata = { ...(await import('src/services/analytics/metadata.js')) }
-const realAnalyticsIndex = { ...(await import('src/services/analytics/index.js')) }
-const realConfig = { ...(await import('src/services/config/config.js')) }
+const realAnalyticsMetadata = { ...(await import('src/platform/analytics/metadata.js')) }
+const realAnalyticsIndex = { ...(await import('src/platform/analytics/index.js')) }
+const realConfig = { ...(await import('src/platform/config/config.js')) }
 
 // Guard 2 of maybeSummarizeToolResult reads
 // getGlobalConfig().toolResultSummarizerEnabled (default true). The test-config
@@ -32,10 +32,10 @@ const forceSummarizerOn = () => ({
     toolResultSummarizerEnabled: true,
   }),
 })
-mock.module('src/services/config/config.js', forceSummarizerOn)
-mock.module('src/services/config/config.js', forceSummarizerOn)
+mock.module('src/platform/config/config.js', forceSummarizerOn)
+mock.module('src/platform/config/config.js', forceSummarizerOn)
 
-mock.module('src/services/analytics/metadata.js', () => ({
+mock.module('src/platform/analytics/metadata.js', () => ({
   sanitizeToolNameForAnalytics: (name: string) =>
     name.startsWith('mcp__') ? 'mcp_tool' : name,
   isToolDetailsLoggingEnabled: () => false,
@@ -49,7 +49,7 @@ mock.module('src/services/analytics/metadata.js', () => ({
   getEventMetadata: async () => ({}),
   to1PEventFormat: () => ({}),
 }))
-mock.module('src/services/analytics/index.js', () => ({
+mock.module('src/platform/analytics/index.js', () => ({
   logEvent: () => {},
   logEventAsync: () => Promise.resolve(),
   stripProtoFields: <T,>(m: T) => m,
@@ -60,10 +60,10 @@ const { maybeSummarizeToolResult, isSummarizedContent, TOOL_RESULT_SUMMARY_TAG }
 const { injectEnvelopeAttr } = await import('src/services/tools/toolResultStorage.js')
 
 afterAll(() => {
-  mock.module('src/services/analytics/metadata.js', () => realAnalyticsMetadata)
-  mock.module('src/services/analytics/index.js', () => realAnalyticsIndex)
-  mock.module('src/services/config/config.js', () => realConfig)
-  mock.module('src/services/config/config.js', () => realConfig)
+  mock.module('src/platform/analytics/metadata.js', () => realAnalyticsMetadata)
+  mock.module('src/platform/analytics/index.js', () => realAnalyticsIndex)
+  mock.module('src/platform/config/config.js', () => realConfig)
+  mock.module('src/platform/config/config.js', () => realConfig)
 })
 
 beforeEach(() => {

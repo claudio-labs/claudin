@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { useOptionalKeybindingContext } from 'src/terminal/keybindings/KeybindingContext.js'
 import type { KeybindingContextName } from 'src/terminal/keybindings/types.js'
 

@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { useSettings } from 'src/hooks/useSettings.js';
+import { useSettings } from 'src/platform/useSettings.js';
 import { Ansi, Box, type DOMElement, measureElement, NoSelect, Text, useTheme } from 'src/terminal/ink.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import sliceAnsi from 'src/shared/text/sliceAnsi.js';

@@ -1,11 +1,11 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import type { Theme } from 'src/terminal/theme/theme.js'
 import { feature } from 'bun:bundle'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getCanonicalName } from 'src/utils/model/model.js'
 import { get3PModelCapabilityOverride } from 'src/utils/model/modelSupportOverrides.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import { getSettingsWithErrors } from 'src/services/settings/settings.js'
+import { getSettingsWithErrors } from 'src/platform/settings/settings.js'
 import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 
 export type ThinkingConfig =

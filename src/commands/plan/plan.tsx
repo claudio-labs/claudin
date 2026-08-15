@@ -1,11 +1,11 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
-import { handlePlanModeTransition } from 'src/bootstrap/state.js';
+import { handlePlanModeTransition } from 'src/platform/bootstrap/state.js';
 import type { LocalJSXCommandContext } from 'src/commands.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import { getExternalEditor } from 'src/shared/editor.js';
-import { toIDEDisplayName } from 'src/services/ide/ide.js';
+import { toIDEDisplayName } from 'src/platform/ide/ide.js';
 import { applyPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js';
 import { prepareContextForPlanMode } from 'src/services/permissions/permissionSetup.js';
 import { getPlan, getPlanFilePath } from 'src/utils/plans.js';

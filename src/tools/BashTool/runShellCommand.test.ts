@@ -13,7 +13,7 @@ import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { resetCommandQueue } from 'src/utils/messageQueueManager.js'
 import { drainSdkEvents } from 'src/utils/sdkEventQueue.js'
 import type { ExecResult } from 'src/shared/proc/ShellCommand.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import {
   applyBashOutputFilter,
   planBashFilterForExecution,

@@ -3,7 +3,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { getDefaultSonnetModel } from 'src/utils/model/model.js'
 import { sideQuery } from 'src/utils/sideQuery.js'
-import { jsonParse } from 'src/utils/slowOperations.js'
+import { jsonParse } from 'src/platform/slowOperations.js'
 import {
   formatMemoryManifest,
   type MemoryHeader,

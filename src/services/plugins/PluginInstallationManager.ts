@@ -20,7 +20,7 @@ import {
   reconcileMarketplaces,
 } from 'src/services/plugins/reconciler.js'
 import { refreshActivePlugins } from 'src/services/plugins/refresh.js'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 
 type SetAppState = (f: (prevState: AppState) => AppState) => void
 

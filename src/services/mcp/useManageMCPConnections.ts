@@ -1,6 +1,6 @@
 import { feature } from 'bun:bundle'
 import { useCallback, useEffect, useRef } from 'react'
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import type { Command } from 'src/commands.js'
 import type { Tool } from 'src/Tool.js'
 import {
@@ -39,7 +39,7 @@ import reject from 'lodash-es/reject.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import {
   dedupClaudeAiMcpServers,
   doesEnterpriseMcpConfigExist,
@@ -51,7 +51,7 @@ import {
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type { PluginError } from 'src/types/plugin.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { getAllowedChannels } from 'src/bootstrap/state.js'
+import { getAllowedChannels } from 'src/platform/bootstrap/state.js'
 import { useNotifications } from 'src/terminal/contexts/notifications.js'
 import {
   useAppState,

@@ -10,11 +10,11 @@ import {
   getOriginalCwd,
   getSessionId,
   regenerateSessionId,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import { isInProcessTeammateTask } from 'src/tasks/InProcessTeammateTask/types.js'
 import {
@@ -33,7 +33,7 @@ import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import {
   executeSessionEndHooks,
   getSessionEndHookTimeoutMs,
-} from 'src/services/lifecycleHooks/hooks.js'
+} from 'src/platform/lifecycleHooks/hooks.js'
 import { logError } from 'src/shared/log.js'
 import { resetLoopSentinelState } from 'src/utils/loopSentinels.js'
 import { clearAllPlanSlugs } from 'src/utils/plans.js'
@@ -118,7 +118,7 @@ export async function clearConversation({
   // Clear context-blocked flag so proactive ticks resume after /clear
   if (feature('PROACTIVE') || feature('KAIROS')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
-    const { setContextBlocked } = require('../../proactive/index.js')
+    const { setContextBlocked } = require('../../platform/proactive/index.js')
     /* eslint-enable @typescript-eslint/no-require-imports */
     setContextBlocked(false)
   }

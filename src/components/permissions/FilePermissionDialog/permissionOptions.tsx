@@ -1,6 +1,6 @@
 import { basename, sep } from 'path';
 import { type ReactNode } from 'react';
-import { getOriginalCwd } from 'src/bootstrap/state.js';
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
 import { Text } from 'src/terminal/ink.js';
 import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js';
 import type { ToolPermissionContext } from 'src/Tool.js';

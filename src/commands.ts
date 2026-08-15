@@ -207,7 +207,7 @@ const usageReport: Command = {
 }
 import oauthRefresh from 'src/commands/oauth-refresh/index.js'
 import debugToolCall from 'src/commands/debug-tool-call/index.js'
-import { getSettingSourceName } from 'src/services/settings/constants.js'
+import { getSettingSourceName } from 'src/platform/settings/constants.js'
 import {
   type Command,
   getCommandName,

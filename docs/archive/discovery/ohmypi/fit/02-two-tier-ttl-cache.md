@@ -19,7 +19,7 @@ abaixo, exceto `authCachePromise` que coalesce *leitura* do mesmo arquivo).
 | WebFetch domain preflight | `src/tools/WebFetchTool/utils.ts:73` | `LRUCache` `max=128` | 5 min hard | não |
 | Tool result cache (Read/Glob/Grep/LSP) | `src/services/tools/toolResultCache.ts:63` | `LRUCache` `max=500` `maxSize=10MB` | por-tool: 15-60 s + mtime check | não |
 | Directory completion | `src/terminal/suggestions/directoryCompletion.ts:41,47` | `LRUCache` `max=500` | 5 min hard | não |
-| LSP delivered-diagnostics dedup | `src/services/lsp/LSPDiagnosticRegistry.ts:54` | `LRUCache` `max=500` | sem TTL (LRU only) | n/a |
+| LSP delivered-diagnostics dedup | `src/platform/lsp/LSPDiagnosticRegistry.ts:54` | `LRUCache` `max=500` | sem TTL (LRU only) | n/a |
 | Markdown token cache | `src/terminal/markdown/markdownTokenCache.ts:10` | `Map` (LRU manual, cap 500) | sem TTL | n/a |
 | File-read cache | `src/shared/fs/fileReadCache.ts` (via `cacheBoundsInvariants.test.ts:163-185`) | FIFO cap 1000 | mtime-gated | não |
 | File state cache | `src/shared/fs/fileStateCache.ts:34` | `LRUCache` cap configurável (default ~25 MB) | sem TTL | n/a |
@@ -32,7 +32,7 @@ abaixo, exceto `authCachePromise` que coalesce *leitura* do mesmo arquivo).
 | Site | file:line | Storage | TTL | In-flight coalescing |
 |---|---|---|---|---|
 | Model lists | `src/utils/model/modelCache.ts:20,47` | JSON-per-provider em `model-cache/` | 24 h hard, versionado | não |
-| Latest version banner | `src/services/install/latestVersionCache.ts:38,53` | JSON único `latest-version.json` | sem TTL próprio (caller decide via `checkedAt`) | não |
+| Latest version banner | `src/platform/install/latestVersionCache.ts:38,53` | JSON único `latest-version.json` | sem TTL próprio (caller decide via `checkedAt`) | não |
 | MCP auth-required cache | `src/services/mcp/client/authCache.ts:6,29` | JSON único `mcp-needs-auth-cache.json` | 15 min hard | parcial (leitura memoizada via `authCachePromise`) |
 | Paste store | `src/terminal/input/pasteStore.ts:8` | files in `paste-cache/` | sem TTL (cleanup por `cutoffDate`) | n/a (content-addressed) |
 | File history | `src/shared/fs/fileHistory.ts:54` | `file-history/` por sessão | cap 100 snapshots | n/a |

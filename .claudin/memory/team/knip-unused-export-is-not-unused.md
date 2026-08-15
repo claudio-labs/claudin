@@ -24,7 +24,7 @@ Three guards are mandatory before deleting anything from that list:
    `HookJSONOutputSchema` — genuinely imported by nothing — dropped the exported
    `OutputFormat` and `HookJSONOutput` types, 125 to 123. Caught by CI, not
    locally: `bun run verify:sdk-types` gates in `pr-checks.yml` and was missing
-   from the pre-PR skill. Before deleting from `src/entrypoints/sdk/`, grep
+   from the pre-PR skill. Before deleting from `src/platform/entrypoints/sdk/`, grep
    `scripts/` for the symbol.
 
 **Regenerating is not the fix when that check goes red.** It always makes the

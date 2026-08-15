@@ -16,7 +16,7 @@ import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import type { AgentMemoryScope } from 'src/tools/AgentTool/agentMemory.js';
 import type { TeleportRemoteResponse } from 'src/services/session/conversationRecovery.js';
 import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
-import type { ValidationError } from 'src/services/settings/validation.js';
+import type { ValidationError } from 'src/platform/settings/validation.js';
 
 // Type-only access to ResumeConversation's Props via the module type.
 // No runtime cost - erased at compile time.
@@ -57,7 +57,7 @@ export async function launchInvalidSettingsDialog(root: Root, props: {
 }): Promise<void> {
   const {
     InvalidSettingsDialog
-  } = await import('src/components/InvalidSettingsDialog.js');
+  } = await import('src/platform/InvalidSettingsDialog.js');
   return showSetupDialog(root, done => <InvalidSettingsDialog settingsErrors={props.settingsErrors} onContinue={done} onExit={props.onExit} />);
 }
 
@@ -101,7 +101,7 @@ export async function launchAssistantInstallWizard(root: Root): Promise<string |
 export async function launchTeleportResumeWrapper(root: Root): Promise<TeleportRemoteResponse | null> {
   const {
     TeleportResumeWrapper
-  } = await import('src/components/TeleportResumeWrapper.js');
+  } = await import('src/platform/teleport/TeleportResumeWrapper.js');
   return showSetupDialog<TeleportRemoteResponse | null>(root, done => <TeleportResumeWrapper onComplete={done} onCancel={() => done(null)} source="cliArg" />);
 }
 
@@ -115,7 +115,7 @@ export async function launchTeleportRepoMismatchDialog(root: Root, props: {
 }): Promise<string | null> {
   const {
     TeleportRepoMismatchDialog
-  } = await import('src/components/TeleportRepoMismatchDialog.js');
+  } = await import('src/platform/teleport/TeleportRepoMismatchDialog.js');
   return showSetupDialog<string | null>(root, done => <TeleportRepoMismatchDialog targetRepo={props.targetRepo} initialPaths={props.initialPaths} onSelectPath={done} onCancel={() => done(null)} />);
 }
 

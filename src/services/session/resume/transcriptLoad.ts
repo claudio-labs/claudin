@@ -25,12 +25,12 @@ import { join } from 'path'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+} from 'src/platform/analytics/index.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   getOriginalCwd,
   getSessionProjectDir,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import type { AgentId } from 'src/types/ids.js'
 import type { AttributionSnapshotMessage } from 'src/types/logs.js'
 import {

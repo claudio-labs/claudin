@@ -1,14 +1,14 @@
 import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
 
-const realSecureStorage = { ...(await import('src/services/secureStorage/index.js')) }
+const realSecureStorage = { ...(await import('src/platform/secureStorage/index.js')) }
 const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
-const realDeviceFlow = { ...(await import('src/services/github/deviceFlow.js')) }
+const realDeviceFlow = { ...(await import('src/platform/github/deviceFlow.js')) }
 const realProviderProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
 
 afterAll(() => {
-  mock.module('src/services/secureStorage/index.js', () => realSecureStorage)
+  mock.module('src/platform/secureStorage/index.js', () => realSecureStorage)
   mock.module('src/services/api/activeProvider.js', () => realActiveProvider)
-  mock.module('src/services/github/deviceFlow.js', () => realDeviceFlow)
+  mock.module('src/platform/github/deviceFlow.js', () => realDeviceFlow)
   mock.module('src/services/api/providerProfiles.js', () => realProviderProfiles)
 })
 
@@ -131,7 +131,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
     mock.module('src/services/api/activeProvider.js', () => ({
       tryGetActiveProvider: () => ({ transport: 'github_copilot' }),
     }))
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,
@@ -173,7 +173,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
     mock.module('src/services/api/activeProvider.js', () => ({
       tryGetActiveProvider: () => ({ transport: 'github_copilot' }),
     }))
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,
@@ -183,7 +183,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
         },
       }),
     }))
-    mock.module('src/services/github/deviceFlow.js', () => ({
+    mock.module('src/platform/github/deviceFlow.js', () => ({
       exchangeForCopilotToken: mock(async () => ({
         token: freshToken,
         expires_at: Math.floor((Date.now() + 3_600_000) / 1000),
@@ -227,7 +227,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
     mock.module('src/services/api/activeProvider.js', () => ({
       tryGetActiveProvider: () => ({ transport: 'github_copilot' }),
     }))
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,
@@ -273,7 +273,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
     mock.module('src/services/api/activeProvider.js', () => ({
       tryGetActiveProvider: () => ({ transport: 'github_copilot' }),
     }))
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,
@@ -283,7 +283,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
         },
       }),
     }))
-    mock.module('src/services/github/deviceFlow.js', () => ({
+    mock.module('src/platform/github/deviceFlow.js', () => ({
       exchangeForCopilotToken: mock(async () => {
         exchangeAttempts += 1
         await exchangeGate
@@ -347,7 +347,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
     mock.module('src/services/api/activeProvider.js', () => ({
       tryGetActiveProvider: () => ({ transport: 'github_copilot' }),
     }))
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,
@@ -357,7 +357,7 @@ describe('refreshGithubModelsTokenIfNeeded', () => {
         },
       }),
     }))
-    mock.module('src/services/github/deviceFlow.js', () => ({
+    mock.module('src/platform/github/deviceFlow.js', () => ({
       exchangeForCopilotToken: mock(async () => {
         exchangeCalls += 1
         return {

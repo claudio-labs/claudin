@@ -27,8 +27,8 @@ const FILES = [
   'src/shared/fs/fileRead.ts', // ~102 LoC, tiny
   'src/tools/GrepTool/GrepTool.ts', // ~700 LoC, medium
   'src/tools/FileReadTool/FileReadTool.ts', // ~1300 LoC, large
-  'src/services/config/config.ts', // ~2059 LoC, very large
-  'src/cli/print/runHeadless.ts', // ~4094 LoC, huge
+  'src/platform/config/config.ts', // ~2059 LoC, very large
+  'src/platform/headless/print/runHeadless.ts', // ~4094 LoC, huge
   'src/services/auth/auth.ts', // ~2019 LoC, large dense
   'src/tools/BashTool/bashSecurity.ts', // ~2592 LoC, large dense
 ]

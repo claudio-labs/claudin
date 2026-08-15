@@ -5,7 +5,7 @@ import { useDeclaredCursor } from 'src/terminal/ink/hooks/use-declared-cursor.js
 import { stringWidth } from 'src/terminal/ink/stringWidth.js';
 import { Ansi, Box, Text } from 'src/terminal/ink.js';
 import { count } from 'src/shared/data/array.js';
-import type { PastedContent } from 'src/services/config/config.js';
+import type { PastedContent } from 'src/platform/config/config.js';
 import type { ImageDimensions } from 'src/terminal/image/imageResizer.js';
 import { SelectInputOption } from 'src/terminal/custom-select/select-input-option.js';
 import { SelectOption } from 'src/terminal/custom-select/select-option.js';

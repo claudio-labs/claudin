@@ -27,7 +27,7 @@ import { randomUUID } from 'crypto';
 import type {
   SandboxAskCallback,
   NetworkHostPattern,
-} from 'src/services/sandbox/sandbox-adapter.js';
+} from 'src/platform/sandbox/sandbox-adapter.js';
 import {
   isSwarmWorker,
   generateSandboxRequestId,
@@ -35,7 +35,7 @@ import {
 } from 'src/coordinator/swarm/permissionSync.js';
 import { registerSandboxPermissionCallback } from 'src/hooks/useSwarmPermissionPoller.js';
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js';
-import { SANDBOX_NETWORK_ACCESS_TOOL_NAME } from 'src/cli/structuredIO.js';
+import { SANDBOX_NETWORK_ACCESS_TOOL_NAME } from 'src/platform/headless/structuredIO.js';
 import { useAppStateStore } from 'src/terminal/state/AppState.js';
 import type { SetAppState } from 'src/utils/messageQueueManager.js';
 

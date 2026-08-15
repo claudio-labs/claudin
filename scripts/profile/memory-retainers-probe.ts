@@ -121,7 +121,7 @@ async function main(): Promise<void> {
 
   // Silence heavy analytics/growthbook that some retainers import
   const { mock } = await import('bun:test')
-  mock.module('../../src/services/analytics/growthbook.js', () => ({
+  mock.module('../../src/platform/analytics/growthbook.js', () => ({
     getFeatureValue_CACHED_MAY_BE_STALE: () => false,
     getFeatureValue_CACHED_WITH_REFRESH: () => false,
     getFeatureValue_DEPRECATED: async () => false,
@@ -141,7 +141,7 @@ async function main(): Promise<void> {
     initializeGrowthBook: async () => null,
     getAllGrowthBookFeatures: () => ({}),
   }))
-  mock.module('../../src/services/analytics/index.js', () => ({
+  mock.module('../../src/platform/analytics/index.js', () => ({
     logEvent: () => {},
     logEventAsync: async () => {},
     attachAnalyticsSink: () => {},
@@ -277,7 +277,7 @@ async function main(): Promise<void> {
 
   // --- #8 diagnosticTracker -----------------------------------------------
   try {
-    const mod = await import('../../src/services/diagnosticTracking.js')
+    const mod = await import('../../src/platform/diagnosticTracking.js')
     if (typeof mod.__TEST_ONLY_getDiagnosticTrackerSizes === 'function') {
       const sizes = mod.__TEST_ONLY_getDiagnosticTrackerSizes()
       let i = 0

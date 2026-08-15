@@ -1,4 +1,4 @@
-import { getGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import {
   type Companion,
   type CompanionBones,

@@ -22,7 +22,7 @@ import {
   getOriginalCwd,
   setCwdState,
   setOriginalCwd,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import type { Tool } from 'src/Tool.js'
 import type { Props as REPLProps } from 'src/screens/REPL.js'
 import type { ThinkingConfig } from 'src/services/context/thinking.js'
@@ -128,7 +128,7 @@ export function setupReplMocks(): void {
   }))
 
   // Side-effecting service: starts an interval that keeps the OS awake.
-  mock.module('src/services/preventSleep.js', () => ({
+  mock.module('src/platform/preventSleep.js', () => ({
     startPreventSleep: noop,
     stopPreventSleep: noop,
   }))
@@ -140,7 +140,7 @@ export function setupReplMocks(): void {
 
   // Bridge to the REPL transport (websocket/IPC). Returns a handle object
   // in real code; we just need the hook to be a no-op for mount.
-  mock.module('src/hooks/useReplBridge.js', () => ({
+  mock.module('src/platform/bridge/useReplBridge.js', () => ({
     useReplBridge: () => ({ sendBridgeResult: noop }),
     BRIDGE_FAILURE_DISMISS_MS: 10_000,
   }))
@@ -150,7 +150,7 @@ export function setupReplMocks(): void {
   }))
 
   // Mailbox bridge — polls the on-disk mailbox for cross-session messages.
-  mock.module('src/hooks/useMailboxBridge.js', () => ({
+  mock.module('src/platform/bridge/useMailboxBridge.js', () => ({
     useMailboxBridge: noop,
   }))
   mock.module('../hooks/useMailboxBridge.js', () => ({
@@ -199,26 +199,26 @@ export function setupReplMocks(): void {
 
   // Feedback surveys — read/write survey state on disk.
   mock.module(
-    'src/components/FeedbackSurvey/useFeedbackSurvey.js',
+    'src/platform/feedback/useFeedbackSurvey.js',
     () => ({
       useFeedbackSurvey: () => ({ state: 'closed' }),
     }),
   )
   mock.module(
-    'src/components/FeedbackSurvey/useMemorySurvey.js',
+    'src/platform/feedback/useMemorySurvey.js',
     () => ({
       useMemorySurvey: () => ({ state: 'closed' }),
     }),
   )
   mock.module(
-    'src/components/FeedbackSurvey/usePostCompactSurvey.js',
+    'src/platform/feedback/usePostCompactSurvey.js',
     () => ({
       usePostCompactSurvey: () => ({ state: 'closed' }),
     }),
   )
 
   // IDE integration — opens a websocket to the IDE plugin.
-  mock.module('src/hooks/useIDEIntegration.js', () => ({
+  mock.module('src/platform/ide/useIDEIntegration.js', () => ({
     useIDEIntegration: () => ({
       ideInstallationStatus: null,
       mcpClientState: { type: 'idle' },
@@ -248,7 +248,7 @@ export function setupReplMocks(): void {
   }))
 
   // Background housekeeping — interval that GCs caches.
-  mock.module('src/utils/backgroundHousekeeping.js', () => ({
+  mock.module('src/platform/backgroundHousekeeping.js', () => ({
     startBackgroundHousekeeping: () => () => undefined,
   }))
   mock.module('../utils/backgroundHousekeeping.js', () => ({
@@ -281,7 +281,7 @@ export function setupReplMocks(): void {
   const noopHook = (): unknown => undefined
   const closedSurvey = (): { state: string } => ({ state: 'closed' })
   mock.module(
-    'src/hooks/notifs/useInstallMessages.js',
+    'src/platform/notifications/useInstallMessages.js',
     () => ({ useInstallMessages: noopHook }),
   )
   mock.module(
@@ -289,27 +289,27 @@ export function setupReplMocks(): void {
     () => ({ useAwaySummary: noopHook }),
   )
   mock.module(
-    'src/hooks/useOfficialMarketplaceNotification.js',
+    'src/platform/useOfficialMarketplaceNotification.js',
     () => ({ useOfficialMarketplaceNotification: noopHook }),
   )
   mock.module(
-    'src/hooks/notifs/useSettingsErrors.js',
+    'src/platform/notifications/useSettingsErrors.js',
     () => ({ useSettingsErrors: noopHook }),
   )
   mock.module(
-    'src/hooks/notifs/useMcpConnectivityStatus.js',
+    'src/platform/notifications/useMcpConnectivityStatus.js',
     () => ({ useMcpConnectivityStatus: noopHook }),
   )
   mock.module(
-    'src/hooks/notifs/useAutoModeUnavailableNotification.js',
+    'src/platform/notifications/useAutoModeUnavailableNotification.js',
     () => ({ useAutoModeUnavailableNotification: noopHook }),
   )
   mock.module(
-    'src/hooks/notifs/useLspInitializationNotification.js',
+    'src/platform/notifications/useLspInitializationNotification.js',
     () => ({ useLspInitializationNotification: noopHook }),
   )
   mock.module(
-    'src/hooks/useClaudeCodeHintRecommendation.js',
+    'src/platform/useClaudeCodeHintRecommendation.js',
     () => ({
       useClaudeCodeHintRecommendation: () => ({
         recommendation: null,
@@ -318,43 +318,43 @@ export function setupReplMocks(): void {
     }),
   )
   mock.module(
-    'src/hooks/notifs/usePluginInstallationStatus.js',
+    'src/platform/notifications/usePluginInstallationStatus.js',
     () => ({ usePluginInstallationStatus: noopHook }),
   )
   mock.module(
-    'src/hooks/notifs/usePluginAutoupdateNotification.js',
+    'src/platform/notifications/usePluginAutoupdateNotification.js',
     () => ({ usePluginAutoupdateNotification: noopHook }),
   )
   mock.module(
-    'src/hooks/notifs/useRateLimitWarningNotification.js',
+    'src/platform/notifications/useRateLimitWarningNotification.js',
     () => ({ useRateLimitWarningNotification: noopHook }),
   )
   mock.module(
-    'src/hooks/notifs/useDeprecationWarningNotification.js',
+    'src/platform/notifications/useDeprecationWarningNotification.js',
     () => ({ useDeprecationWarningNotification: noopHook }),
   )
   mock.module(
-    'src/hooks/notifs/useNpmDeprecationNotification.js',
+    'src/platform/notifications/useNpmDeprecationNotification.js',
     () => ({ useNpmDeprecationNotification: noopHook }),
   )
   mock.module(
-    'src/hooks/notifs/useIDEStatusIndicator.js',
+    'src/platform/notifications/useIDEStatusIndicator.js',
     () => ({ useIDEStatusIndicator: noopHook }),
   )
   mock.module(
-    'src/hooks/notifs/useModelMigrationNotifications.js',
+    'src/platform/notifications/useModelMigrationNotifications.js',
     () => ({ useModelMigrationNotifications: noopHook }),
   )
   mock.module(
-    'src/hooks/notifs/useCanSwitchToExistingSubscription.js',
+    'src/platform/notifications/useCanSwitchToExistingSubscription.js',
     () => ({ useCanSwitchToExistingSubscription: noopHook }),
   )
   mock.module(
-    'src/hooks/notifs/useTeammateShutdownNotification.js',
+    'src/platform/notifications/useTeammateShutdownNotification.js',
     () => ({ useTeammateLifecycleNotification: noopHook }),
   )
   mock.module(
-    'src/hooks/notifs/useFastModeNotification.js',
+    'src/platform/notifications/useFastModeNotification.js',
     () => ({ useFastModeNotification: noopHook }),
   )
   mock.module(
@@ -368,7 +368,7 @@ export function setupReplMocks(): void {
   // is configured under a test env. Ink turns the throw into a full-screen
   // error overlay, which would swallow the entire REPL tree in our
   // snapshots and defeat their purpose. Stub to render nothing.
-  mock.module('src/components/StatusNotices.js', () => ({
+  mock.module('src/platform/status/StatusNotices.js', () => ({
     StatusNotices: () => null,
   }))
   mock.module('../components/StatusNotices.js', () => ({

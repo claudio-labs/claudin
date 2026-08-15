@@ -34,7 +34,7 @@ import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
 } from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/services/config/config.js'
+import { enableConfigs } from '../src/platform/config/config.js'
 import { measureToolSchemas } from './measure-tool-schemas.ts'
 
 // Polyfill MACRO globals normally injected by `scripts/build.ts` via `define`.

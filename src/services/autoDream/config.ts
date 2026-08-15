@@ -2,8 +2,8 @@
 // can read the auto-dream enabled state without dragging in the forked
 // agent / task registry / message builder chain that autoDream.ts pulls in.
 
-import { getInitialSettings } from 'src/services/settings/settings.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 
 /**
  * Whether background memory consolidation should run. User setting

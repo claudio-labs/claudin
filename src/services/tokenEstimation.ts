@@ -23,7 +23,7 @@ import {
   getSmallFastModel,
   normalizeModelStringForAPI,
 } from 'src/utils/model/model.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { isToolReferenceBlock } from 'src/services/tools/toolSearch.js'
 import { getAnthropicClient } from 'src/services/api/client.js'
 import { getCachedAnthropicClient } from 'src/services/api/clientCache.js'

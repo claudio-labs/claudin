@@ -22,13 +22,13 @@ import last from 'lodash-es/last.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
+} from 'src/platform/analytics/index.js'
+import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type { AgentId } from 'src/types/ids.js'
 import { NO_CONTENT_MESSAGE } from 'src/constants/messages.js'
 import {
   checkStatsigFeatureGate_CACHED_MAY_BE_STALE,
-} from 'src/services/analytics/growthbook.js'
+} from 'src/platform/analytics/growthbook.js'
 import {
   getImageTooLargeErrorMessage,
   getPdfInvalidErrorMessage,
@@ -53,7 +53,7 @@ import type {
   UserMessage,
 } from 'src/types/message.js'
 import type { HookAttachment } from 'src/services/attachments/attachments.js'
-import { isAdvisorBlock } from 'src/utils/advisor.js'
+import { isAdvisorBlock } from 'src/platform/doctor/advisor.js'
 import { isConnectorTextBlock } from 'src/types/connectorText.js'
 import { normalizeToolInput, normalizeToolInputForAPI } from 'src/services/api/api.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -62,7 +62,7 @@ import { safeParseJSON } from 'src/shared/data/json.js'
 import { logError } from 'src/shared/log.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
 import { normalizeLegacyToolName } from 'src/services/permissions/permissionRuleParser.js'
-import { getStrictToolResultPairing } from 'src/bootstrap/state.js'
+import { getStrictToolResultPairing } from 'src/platform/bootstrap/state.js'
 import {
   isToolReferenceBlock,
   isToolSearchEnabledOptimistic,

@@ -4,7 +4,7 @@
  */
 
 import { logForDebugging } from 'src/shared/debug.js'
-import type { HooksSettings } from 'src/services/settings/types.js'
+import type { HooksSettings } from 'src/platform/settings/types.js'
 import { parseYaml } from 'src/shared/data/yaml.js'
 
 export type FrontmatterData = {

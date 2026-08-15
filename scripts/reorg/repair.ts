@@ -5,8 +5,8 @@
  *
  * Two cases the manifest-driven rewrite in apply.ts cannot see:
  *
- *  1. A file MOVED and its `./sibling.js` did not. `src/services/install/autoUpdater.ts`
- *     imported `./semver.js`; now at `src/services/install/`, that specifier
+ *  1. A file MOVED and its `./sibling.js` did not. `src/platform/install/autoUpdater.ts`
+ *     imported `./semver.js`; now at `src/platform/install/`, that specifier
  *     names a file that was never there. The rewrite only knew how to follow
  *     references INTO moved files, not references FROM them.
  *  2. A specifier carrying no extension. `import … from 'src/utils/stableStringify'`
@@ -139,7 +139,7 @@ function main(): void {
         // the same new directory must come back out as `./sibling.js`, not as
         // the alias: the two are DIFFERENT keys to Bun's mock registry, and
         // collapsing them silently widens every stub's blast radius. That is
-        // what made src/services/notifier.platform.test.ts's module-scope stub
+        // what made src/platform/notifications/notifier.platform.test.ts's module-scope stub
         // of execFileNoThrow start intercepting utils/proc/which.js for the
         // whole run. Only a target that would need `../` gets the alias, since
         // an upward specifier is the failure mode this reorg exists to remove.

@@ -10,9 +10,9 @@ import { afterEach, beforeEach, expect, test, mock } from 'bun:test'
 // mutates in place — so without a snapshot + explicit re-install these mocks leak
 // (getCurrentProjectConfig / providerProfiles / state) into every later test file
 // (e.g. modelOptions.dualcontext). See CLAUDE.md mock.module rules.
-const realState = { ...(await import('src/bootstrap/state.js')) }
+const realState = { ...(await import('src/platform/bootstrap/state.js')) }
 const realProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
-const realConfig = { ...(await import('src/services/config/config.js')) }
+const realConfig = { ...(await import('src/platform/config/config.js')) }
 const realAllowlist = { ...(await import('src/utils/model/modelAllowlist.js')) }
 
 const origDisable1m = process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT
@@ -20,7 +20,7 @@ const origDisable1m = process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT
 // Load model.ts fresh with the project branch forced: a per-project pin with no
 // pinned profile id (matches an env with no provider profiles → guard passes).
 async function importWithProjectModel(activeModelForProject: string | undefined) {
-  mock.module('src/bootstrap/state.js', () => ({
+  mock.module('src/platform/bootstrap/state.js', () => ({
     ...realState,
     getMainLoopModelOverride: () => undefined, // no session/CLI override → read project config
   }))
@@ -28,7 +28,7 @@ async function importWithProjectModel(activeModelForProject: string | undefined)
     ...realProfiles,
     getActiveProviderProfile: () => undefined, // effective id undefined → matches undefined pin
   }))
-  mock.module('src/services/config/config.js', () => ({
+  mock.module('src/platform/config/config.js', () => ({
     ...realConfig,
     getCurrentProjectConfig: () => ({ activeModelForProject }),
   }))
@@ -48,9 +48,9 @@ afterEach(() => {
   mock.restore()
   // Re-install the real modules — mock.restore() leaves mock.module() overrides
   // in place, which would otherwise leak into later test files.
-  mock.module('src/bootstrap/state.js', () => realState)
+  mock.module('src/platform/bootstrap/state.js', () => realState)
   mock.module('src/services/api/providerProfiles.js', () => realProfiles)
-  mock.module('src/services/config/config.js', () => realConfig)
+  mock.module('src/platform/config/config.js', () => realConfig)
   mock.module('./modelAllowlist.js', () => realAllowlist)
   if (origDisable1m === undefined) delete process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT
   else process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT = origDisable1m

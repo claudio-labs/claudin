@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import React, { useMemo, useState } from 'react';
-import type { SDKMessage } from 'src/entrypoints/agentSdkTypes.js';
+import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js';
 import type { ToolUseContext } from 'src/Tool.js';
 import type { DeepImmutable } from 'src/types/utils.js';
 import type { CommandResultDisplay } from 'src/commands.js';
@@ -21,7 +21,7 @@ import { formatDuration, truncateToWidth } from 'src/shared/text/format.js';
 import { toInternalMessages } from 'src/services/messages/mappers.js';
 import { EMPTY_LOOKUPS, normalizeMessages } from 'src/services/messages/messages.js';
 import { plural } from 'src/shared/text/stringUtils.js';
-import { teleportResumeCodeSession } from 'src/components/teleport.js';
+import { teleportResumeCodeSession } from 'src/platform/teleport/teleport.js';
 import { Select } from 'src/terminal/custom-select/select.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';

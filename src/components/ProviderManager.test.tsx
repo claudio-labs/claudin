@@ -7,7 +7,7 @@ import stripAnsi from 'strip-ansi'
 import {
   resetGlobalConfigForTests,
   resetProjectConfigForTests,
-} from 'src/services/config/config.js'
+} from 'src/platform/config/config.js'
 import { createRoot } from 'src/terminal/ink.js'
 import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js'
 import { parseCustomHeaders } from 'src/components/ProviderManager.js'
@@ -167,8 +167,8 @@ async function navigateToPreset(
 // whatever the most recent mock factory installed instead of the real exports.
 const realProviderProfilesForPm = { ...(await import('src/services/api/providerProfiles.js')) }
 const realProviderProfileForPm = { ...(await import('src/services/api/providerProfile.js')) }
-const realSettingsForPm = { ...(await import('src/services/settings/settings.js')) }
-const realClaudinMigrationForPm = { ...(await import('src/services/config/claudinMigration.js')) }
+const realSettingsForPm = { ...(await import('src/platform/settings/settings.js')) }
+const realClaudinMigrationForPm = { ...(await import('src/platform/config/claudinMigration.js')) }
 const realProviderDiscoveryForPm = { ...(await import('src/services/api/providerDiscovery.js')) }
 const realGithubModelsCredentialsForPm = { ...(await import('src/services/api/githubModelsCredentials.js')) }
 const realCodexCredentialsForPm = { ...(await import('src/services/api/codexCredentials.js')) }
@@ -340,7 +340,7 @@ function mockProviderManagerDependencies(
     ...realProviderProfileForPm,
   }))
 
-  mock.module('src/services/settings/settings.js', () => ({
+  mock.module('src/platform/settings/settings.js', () => ({
     ...realSettingsForPm,
     updateSettingsForSource: () => ({ error: null }),
   }))
@@ -359,7 +359,7 @@ function mockProviderManagerDependencies(
   // compete with the preset / menu Select for stdin in tests. Individual tests
   // that exercise the migration option override this mock after calling
   // mockProviderManagerDependencies().
-  mock.module('src/services/config/claudinMigration.js', () => ({
+  mock.module('src/platform/config/claudinMigration.js', () => ({
     ...realClaudinMigrationForPm,
     shouldShowMigrationBanner: () => false,
     legacyClaudeDirExists: () => false,
@@ -534,10 +534,10 @@ afterEach(() => {
 afterAll(() => {
   // Restore module mocks so they don't bleed into other test files.
   // mock.restore() does not reset mock.module() calls.
-  mock.module('src/services/config/claudinMigration.js', () => realClaudinMigrationForPm)
+  mock.module('src/platform/config/claudinMigration.js', () => realClaudinMigrationForPm)
   mock.module('src/services/api/providerProfiles.js', () => realProviderProfilesForPm)
   mock.module('src/services/api/providerProfile.js', () => realProviderProfileForPm)
-  mock.module('src/services/settings/settings.js', () => realSettingsForPm)
+  mock.module('src/platform/settings/settings.js', () => realSettingsForPm)
   mock.module('src/services/api/providerDiscovery.js', () => realProviderDiscoveryForPm)
   mock.module('src/services/api/githubModelsCredentials.js', () => realGithubModelsCredentialsForPm)
   mock.module('src/services/api/codexCredentials.js', () => realCodexCredentialsForPm)
@@ -1463,7 +1463,7 @@ test('ProviderManager menu shows Import from Claude Code when ~/.claude/ is unmi
   // Override only legacyClaudeDirExists; do NOT replace migrateLegacyClaudeDir
   // (binding leaks to commands/provider/migrate.test.tsx) and do NOT mock
   // config.js (that mock leaks into toolResultSummarizer.test.ts).
-  mock.module('src/services/config/claudinMigration.js', () => ({
+  mock.module('src/platform/config/claudinMigration.js', () => ({
     ...realClaudinMigrationForPm,
     legacyClaudeDirExists: () => true,
     shouldShowMigrationBanner: () => false,
@@ -1488,7 +1488,7 @@ test('ProviderManager menu hides Import from Claude Code when ~/.claude/ is abse
 
   mockProviderManagerDependencies()
 
-  mock.module('src/services/config/claudinMigration.js', () => ({
+  mock.module('src/platform/config/claudinMigration.js', () => ({
     ...realClaudinMigrationForPm,
     legacyClaudeDirExists: () => false,
     shouldShowMigrationBanner: () => false,

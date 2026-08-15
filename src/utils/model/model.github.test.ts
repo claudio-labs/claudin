@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeEach, expect, test } from 'bun:test'
 
-import { resetGlobalConfigForTests, saveGlobalConfig } from 'src/services/config/config.js'
+import { resetGlobalConfigForTests, saveGlobalConfig } from 'src/platform/config/config.js'
 import { getDefaultMainLoopModelSetting, getUserSpecifiedModelSetting } from 'src/utils/model/model.js'
 
 const env = {

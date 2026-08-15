@@ -6,7 +6,7 @@ import type {
   LocalJSXCommandOnDone,
 } from 'src/types/command.js'
 import { GOAL_MAX_CONDITION_LENGTH } from 'src/services/goal/goal.js'
-import type { SessionStore } from 'src/services/lifecycleHooks/sessionHooks.js'
+import type { SessionStore } from 'src/platform/lifecycleHooks/sessionHooks.js'
 
 // The /goal set path consults process-global gates (hook policy snapshot +
 // workspace trust). In a full-suite run, earlier test files can leave those
@@ -14,15 +14,15 @@ import type { SessionStore } from 'src/services/lifecycleHooks/sessionHooks.js'
 // bail with a policy message. Pin the gates to their permissive defaults so
 // this file is deterministic regardless of run order.
 const realHooksConfigSnapshot = await import(
-  'src/services/lifecycleHooks/hooksConfigSnapshot.js'
+  'src/platform/lifecycleHooks/hooksConfigSnapshot.js'
 )
-mock.module('src/services/lifecycleHooks/hooksConfigSnapshot.js', () => ({
+mock.module('src/platform/lifecycleHooks/hooksConfigSnapshot.js', () => ({
   ...realHooksConfigSnapshot,
   shouldDisableAllHooksIncludingManaged: () => false,
   shouldAllowManagedHooksOnly: () => false,
 }))
-const realHooksShared = await import('src/services/lifecycleHooks/shared.js')
-mock.module('src/services/lifecycleHooks/shared.js', () => ({
+const realHooksShared = await import('src/platform/lifecycleHooks/shared.js')
+mock.module('src/platform/lifecycleHooks/shared.js', () => ({
   ...realHooksShared,
   shouldSkipHookDueToTrust: () => false,
 }))
@@ -34,10 +34,10 @@ const { call, parseGoalArgs } = await import('src/commands/goal/goal.js')
 // without this every later test file would inherit this file's stubs.
 afterAll(() => {
   mock.module(
-    'src/services/lifecycleHooks/hooksConfigSnapshot.js',
+    'src/platform/lifecycleHooks/hooksConfigSnapshot.js',
     () => realHooksConfigSnapshot,
   )
-  mock.module('src/services/lifecycleHooks/shared.js', () => realHooksShared)
+  mock.module('src/platform/lifecycleHooks/shared.js', () => realHooksShared)
 })
 
 describe('parseGoalArgs', () => {

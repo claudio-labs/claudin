@@ -200,15 +200,15 @@ with report-back; a committed GitHub Action template.
 
 ## Where the code lives
 
-- `src/main/commands/workflow.ts` — the `workflow run|watch` subcommands
-  (registered in `src/main/registerSubcommands.ts`).
-- `src/cli/workflow/runWorkflowHeadless.ts` — builds a headless
-  `ToolUseContext` (mirroring `src/entrypoints/mcp.ts`) and calls `runWorkflow`
+- `src/platform/main/commands/workflow.ts` — the `workflow run|watch` subcommands
+  (registered in `src/platform/main/registerSubcommands.ts`).
+- `src/platform/headless/workflow/runWorkflowHeadless.ts` — builds a headless
+  `ToolUseContext` (mirroring `src/platform/entrypoints/mcp.ts`) and calls `runWorkflow`
   directly; owns the worktree lifecycle + report + PR + exit code.
-- `src/cli/workflow/sources.ts` — the `TriggerSource` abstraction and its
+- `src/platform/headless/workflow/sources.ts` — the `TriggerSource` abstraction and its
   `github` / `url` / `command` implementations (incl. the pure `parseFeed`).
-- `src/cli/workflow/githubSource.ts` — `gh`/git glue (list issues, push, PR,
+- `src/platform/headless/workflow/githubSource.ts` — `gh`/git glue (list issues, push, PR,
   comment) with pure parse helpers.
-- `src/cli/workflow/watchLoop.ts` — the source-agnostic poll loop, `--match`
+- `src/platform/headless/workflow/watchLoop.ts` — the source-agnostic poll loop, `--match`
   filter (`compileMatcher`/`itemMatches`), and the run-subprocess dispatcher.
-- `src/cli/workflow/watchState.ts` — the atomic processed-id dedup store.
+- `src/platform/headless/workflow/watchState.ts` — the atomic processed-id dedup store.

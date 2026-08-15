@@ -19,10 +19,10 @@ import type { ActiveGoalState, AppState } from 'src/terminal/state/AppStateStore
 import type { Message } from 'src/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getCurrentUsage } from 'src/services/context/tokens.js'
-import type { HookBlockingError, AggregatedHookResult } from 'src/services/lifecycleHooks/types.js'
-import { addSessionHook, removeGoalStopHooks } from 'src/services/lifecycleHooks/sessionHooks.js'
-import { markStopConditionJudge } from 'src/services/lifecycleHooks/stopConditionJudge.js'
-import type { PromptHook } from 'src/services/settings/types.js'
+import type { HookBlockingError, AggregatedHookResult } from 'src/platform/lifecycleHooks/types.js'
+import { addSessionHook, removeGoalStopHooks } from 'src/platform/lifecycleHooks/sessionHooks.js'
+import { markStopConditionJudge } from 'src/platform/lifecycleHooks/stopConditionJudge.js'
+import type { PromptHook } from 'src/platform/settings/types.js'
 
 export const GOAL_MAX_CONDITION_LENGTH = 4000
 
@@ -200,7 +200,7 @@ export function clearActiveGoal(
 /**
  * Session-end reset: clear the goal app state (activeGoal + lastGoalResult)
  * without touching the hooks registry. Called from executeSessionEndHooks
- * (src/services/lifecycleHooks/events.ts) right where clearSessionHooks deletes the judge
+ * (src/platform/lifecycleHooks/events.ts) right where clearSessionHooks deletes the judge
  * hook — /clear and in-process /resume both end the outgoing session through
  * that path. Without this reset they orphan activeGoal: the footer keeps
  * showing "Goal active" in the new/resumed session and, with the judge hook

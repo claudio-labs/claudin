@@ -1,8 +1,8 @@
 import { appendFile, writeFile } from 'fs/promises'
 import { join } from 'path'
-import { getProjectRoot, getSessionId } from 'src/bootstrap/state.js'
+import { getProjectRoot, getSessionId } from 'src/platform/bootstrap/state.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
-import type { HistoryEntry, PastedContent } from 'src/services/config/config.js'
+import type { HistoryEntry, PastedContent } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import { getErrnoCode } from 'src/shared/errors.js'
@@ -14,7 +14,7 @@ import {
   storePastedText,
 } from 'src/terminal/input/pasteStore.js'
 import { sleep } from 'src/shared/sleep.js'
-import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 
 const MAX_HISTORY_ITEMS = 100
 const MAX_PASTED_CONTENT_LENGTH = 1024

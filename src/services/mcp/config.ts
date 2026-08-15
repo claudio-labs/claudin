@@ -11,7 +11,7 @@ import {
   getGlobalConfig,
   saveCurrentProjectConfig,
   saveGlobalConfig,
-} from 'src/services/config/config.js'
+} from 'src/platform/config/config.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getErrnoCode } from 'src/shared/errors.js'
@@ -20,25 +20,25 @@ import { safeParseJSON } from 'src/shared/data/json.js'
 import { logError } from 'src/shared/log.js'
 import { getPluginMcpServers } from 'src/services/plugins/mcpPluginIntegration.js'
 import { loadAllPluginsCacheOnly } from 'src/services/plugins/pluginLoader.js'
-import { isSettingSourceEnabled } from 'src/services/settings/constants.js'
-import { getManagedFilePath } from 'src/services/settings/managedPath.js'
-import { isRestrictedToPluginOnly } from 'src/services/settings/pluginOnlyPolicy.js'
+import { isSettingSourceEnabled } from 'src/platform/settings/constants.js'
+import { getManagedFilePath } from 'src/platform/settings/managedPath.js'
+import { isRestrictedToPluginOnly } from 'src/platform/settings/pluginOnlyPolicy.js'
 import {
   getInitialSettings,
   getSettingsForSource,
-} from 'src/services/settings/settings.js'
+} from 'src/platform/settings/settings.js'
 import {
   isMcpServerCommandEntry,
   isMcpServerNameEntry,
   isMcpServerUrlEntry,
   type SettingsJson,
-} from 'src/services/settings/types.js'
-import type { ValidationError } from 'src/services/settings/validation.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+} from 'src/platform/settings/types.js'
+import type { ValidationError } from 'src/platform/settings/validation.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { fetchClaudeAIMcpConfigsIfEligible } from 'src/services/mcp/claudeai.js'
 import { expandEnvVarsInString } from 'src/services/mcp/envExpansion.js'
 import { isClaudeAIMcpServerName } from 'src/services/mcp/normalization.js'
@@ -635,7 +635,7 @@ export async function addMcpConfig(
 
   if (feature('CHICAGO_MCP')) {
     const { isComputerUseMCPServer } = await import(
-      'src/services/computerUse/common.js'
+      'src/platform/computerUse/common.js'
     )
     if (isComputerUseMCPServer(name)) {
       throw new Error(`Cannot add MCP server "${name}": this name is reserved.`)
@@ -1506,7 +1506,7 @@ export function areMcpConfigsAllowedWithEnterpriseMcpConfig(
 /* eslint-disable @typescript-eslint/no-require-imports */
 const DEFAULT_DISABLED_BUILTIN = feature('CHICAGO_MCP')
   ? (
-      require('src/services/computerUse/common.js') as typeof import('src/services/computerUse/common.js')
+      require('src/platform/computerUse/common.js') as typeof import('src/platform/computerUse/common.js')
     ).COMPUTER_USE_MCP_SERVER_NAME
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */

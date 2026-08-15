@@ -5,7 +5,7 @@ import last from 'lodash-es/last.js'
 import {
   getSessionId,
   isSessionPersistenceDisabled,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import type {
   PermissionMode,
   SDKCompactBoundaryMessage,
@@ -13,7 +13,7 @@ import type {
   SDKPermissionDenial,
   SDKStatus,
   SDKUserMessageReplay,
-} from 'src/entrypoints/agentSdkTypes.js'
+} from 'src/platform/entrypoints/agentSdkTypes.js'
 import { accumulateUsage, updateUsage } from 'src/services/api/claude.js'
 import {
   applyStableStubs,
@@ -49,7 +49,7 @@ import type { Message } from 'src/types/message.js'
 import type { OrphanedPermission } from 'src/types/textInputTypes.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import type { AttributionState } from 'src/services/git/commitAttribution.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -63,8 +63,8 @@ import {
   cloneFileStateCache,
   type FileStateCache,
 } from 'src/shared/fs/fileStateCache.js'
-import { headlessProfilerCheckpoint } from 'src/utils/headlessProfiler.js'
-import { registerStructuredOutputEnforcement } from 'src/services/lifecycleHooks/hookHelpers.js'
+import { headlessProfilerCheckpoint } from 'src/platform/headlessProfiler.js'
+import { registerStructuredOutputEnforcement } from 'src/platform/lifecycleHooks/hookHelpers.js'
 import { getInMemoryErrors } from 'src/shared/log.js'
 import { countToolCalls, SYNTHETIC_MESSAGES } from 'src/services/messages/messages.js'
 import {
@@ -922,7 +922,7 @@ export class QueryEngine {
               // (see StreamEvent in types/message.ts); SDKMessage's
               // stream_event arm expects the non-beta RawMessageStreamEvent.
               // Same beta/non-beta divergence handled the same way in
-              // src/remote/sdkMessageAdapter.ts.
+              // src/platform/remote/sdkMessageAdapter.ts.
               event: message.event as unknown as RawMessageStreamEvent,
               session_id: getSessionId(),
               parent_tool_use_id: null,

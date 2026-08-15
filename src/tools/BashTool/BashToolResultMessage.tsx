@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import { removeSandboxViolationTags } from 'src/services/sandbox/sandbox-ui-utils.js';
+import { removeSandboxViolationTags } from 'src/platform/sandbox/sandbox-ui-utils.js';
 import FullWidthRow from 'src/terminal/design-system/FullWidthRow.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';

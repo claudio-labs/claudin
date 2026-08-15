@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { Ansi, Text } from 'src/terminal/ink.js';
 import { createHyperlink } from 'src/shared/text/hyperlink.js';
-import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js';
+import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js';
 import { renderTruncatedContent } from 'src/terminal/terminal.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { InVirtualListContext } from 'src/components/messageActions.js';

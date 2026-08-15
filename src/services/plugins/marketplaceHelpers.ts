@@ -1,7 +1,7 @@
 import isEqual from 'lodash-es/isEqual.js'
 import { toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
-import { getSettingsForSource } from 'src/services/settings/settings.js'
+import { getSettingsForSource } from 'src/platform/settings/settings.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 import { checkGitAvailable } from 'src/services/plugins/gitAvailability.js'
 import { getMarketplace } from 'src/services/plugins/marketplaceManager.js'

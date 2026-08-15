@@ -3,18 +3,18 @@ import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { resetGlobalConfigForTests } from 'src/services/config/config.js'
+import { resetGlobalConfigForTests } from 'src/platform/config/config.js'
 
-const realAnalyticsMetadata = { ...(await import('src/services/analytics/metadata.js')) }
-const realAnalyticsIndex = { ...(await import('src/services/analytics/index.js')) }
+const realAnalyticsMetadata = { ...(await import('src/platform/analytics/metadata.js')) }
+const realAnalyticsIndex = { ...(await import('src/platform/analytics/index.js')) }
 
 afterAll(() => {
-  mock.module('src/services/analytics/metadata.js', () => realAnalyticsMetadata)
-  mock.module('src/services/analytics/index.js', () => realAnalyticsIndex)
+  mock.module('src/platform/analytics/metadata.js', () => realAnalyticsMetadata)
+  mock.module('src/platform/analytics/index.js', () => realAnalyticsIndex)
   resetGlobalConfigForTests()
 })
 
-mock.module('src/services/analytics/metadata.js', () => ({
+mock.module('src/platform/analytics/metadata.js', () => ({
   sanitizeToolNameForAnalytics: (name: string) =>
     name.startsWith('mcp__') ? 'mcp_tool' : name,
   isToolDetailsLoggingEnabled: () => false,
@@ -29,7 +29,7 @@ mock.module('src/services/analytics/metadata.js', () => ({
   to1PEventFormat: () => ({}),
 }))
 
-mock.module('src/services/analytics/index.js', () => ({
+mock.module('src/platform/analytics/index.js', () => ({
   logEvent: () => {},
   logEventAsync: () => Promise.resolve(),
   stripProtoFields: <T,>(m: T) => m,

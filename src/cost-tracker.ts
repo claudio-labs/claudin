@@ -36,17 +36,17 @@ import {
   resetStateForTests,
   setCostStateForRestore,
   setHasUnknownModelCost,
-} from 'src/bootstrap/state.js'
-import type { ModelUsage } from 'src/entrypoints/agentSdkTypes.js'
+} from 'src/platform/bootstrap/state.js'
+import type { ModelUsage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import { getAdvisorUsage } from 'src/utils/advisor.js'
+} from 'src/platform/analytics/index.js'
+import { getAdvisorUsage } from 'src/platform/doctor/advisor.js'
 import {
   getCurrentProjectConfig,
   saveCurrentProjectConfig,
-} from 'src/services/config/config.js'
+} from 'src/platform/config/config.js'
 import {
   getContextWindowForModel,
   getModelMaxOutputTokens,

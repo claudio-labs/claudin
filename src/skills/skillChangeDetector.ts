@@ -1,6 +1,6 @@
 import chokidar, { type FSWatcher } from 'chokidar'
 import * as platformPath from 'path'
-import { getAdditionalDirectoriesForClaudeMd } from 'src/bootstrap/state.js'
+import { getAdditionalDirectoriesForClaudeMd } from 'src/platform/bootstrap/state.js'
 import {
   clearCommandMemoizationCaches,
   clearCommandsCache,
@@ -8,7 +8,7 @@ import {
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import {
   clearSkillCaches,
   getSkillsPath,
@@ -18,7 +18,7 @@ import { resetSentSkillNames } from 'src/services/attachments/attachments.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import { executeConfigChangeHooks, hasBlockingResult } from 'src/services/lifecycleHooks/hooks.js'
+import { executeConfigChangeHooks, hasBlockingResult } from 'src/platform/lifecycleHooks/hooks.js'
 import { createSignal } from 'src/shared/signal.js'
 
 /**

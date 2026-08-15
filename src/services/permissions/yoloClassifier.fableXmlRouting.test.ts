@@ -7,7 +7,7 @@
  * capture the request options and assert the routing + max_tokens headroom.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test'
-import { enableConfigs } from 'src/services/config/config.js'
+import { enableConfigs } from 'src/platform/config/config.js'
 
 let mainLoopModel = 'claude-fable-5'
 let capturedOpts: Array<Record<string, unknown>> = []

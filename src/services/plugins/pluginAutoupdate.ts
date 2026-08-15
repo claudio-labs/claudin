@@ -11,7 +11,7 @@
  */
 
 import { updatePluginOp } from 'src/services/plugins/pluginOperations.js'
-import { shouldSkipPluginAutoupdate } from 'src/services/config/config.js'
+import { shouldSkipPluginAutoupdate } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'

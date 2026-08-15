@@ -12,16 +12,16 @@ import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constant
 import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js'
 import { REPL_TOOL_NAME } from 'src/tools/REPLTool/constants.js'
 import type { AssistantMessage } from 'src/types/message.js'
-import { extractOutputRedirections } from 'src/services/bash/commands.js'
+import { extractOutputRedirections } from 'src/platform/bash/commands.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { AbortError, isSdkApiUserAbortError, toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
 import { getPlanFilePath } from 'src/utils/plans.js'
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import {
   getSettingSourceDisplayNameLowercase,
   SETTING_SOURCES,
-} from 'src/services/settings/constants.js'
+} from 'src/platform/settings/constants.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 import { permissionModeTitle } from 'src/services/permissions/PermissionMode.js'
 import type {
@@ -70,19 +70,19 @@ import {
   getTotalCacheReadInputTokens,
   getTotalInputTokens,
   getTotalOutputTokens,
-} from 'src/bootstrap/state.js'
-import { getFeatureValue_CACHED_WITH_REFRESH } from 'src/services/analytics/growthbook.js'
+} from 'src/platform/bootstrap/state.js'
+import { getFeatureValue_CACHED_WITH_REFRESH } from 'src/platform/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
+} from 'src/platform/analytics/index.js'
+import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import {
   clearClassifierChecking,
   setClassifierChecking,
 } from 'src/utils/classifierApprovals.js'
 import { isInProtectedNamespace } from 'src/shared/envUtils.js'
-import { executePermissionRequestHooks } from 'src/services/lifecycleHooks/hooks.js'
+import { executePermissionRequestHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import {
   AUTO_REJECT_MESSAGE,
   buildClassifierUnavailableMessage,
@@ -91,7 +91,7 @@ import {
 } from 'src/services/messages/messages.js'
 import { calculateCostFromTokens } from 'src/services/api/modelCost.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   createDenialTrackingState,
   DENIAL_LIMITS,

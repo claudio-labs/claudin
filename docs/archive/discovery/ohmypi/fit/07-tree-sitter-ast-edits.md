@@ -92,9 +92,9 @@ Deep-dive estava certo: "quase não tem teste". Confirmado em 1 arquivo.
 
 - `package.json` — **zero** ocorrências de `tree-sitter` ou `web-tree-sitter`.
 - `bun.lock` — idem.
-- `src/services/bash/treeSitterAnalysis.ts` define tipos `TreeSitterNode`, `QuoteContext`,
+- `src/platform/bash/treeSitterAnalysis.ts` define tipos `TreeSitterNode`, `QuoteContext`,
   `CompoundStructure`, `DangerousPatterns` — mas o produtor desses nodes é um parser **TypeScript
-  puro**: `src/services/bash/bashParser.ts` (cabeçalho: *"Pure-TypeScript bash parser producing
+  puro**: `src/platform/bash/bashParser.ts` (cabeçalho: *"Pure-TypeScript bash parser producing
   tree-sitter-bash-compatible ASTs… Validated against a 3449-input golden set"*).
 - Não há NAPI, não há WASM, não há binding tree-sitter real. O nome "tree-sitter" é convenção
   de schema do AST emitido (a grammar tree-sitter-bash foi a referência de design, não a

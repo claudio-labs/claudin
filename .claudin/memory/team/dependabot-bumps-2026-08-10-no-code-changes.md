@@ -35,7 +35,7 @@ source changes**. Validated with `bun install`, `bun run build`,
   configured `clientMaxWindowBits`. Inert here: nothing in the repo sets
   `perMessageDeflate`/`*MaxWindowBits`, and our ws use is client-side
   (`src/terminal/voice/voiceStreamSTT.ts`, `src/services/mcp/mcpWebSocketTransport.ts`,
-  `src/cli/transports/WebSocketTransport.ts`).
+  `src/platform/headless/transports/WebSocketTransport.ts`).
 
 **Superseded 2026-08-14:** this note used to flag that `.github/dependabot.yml`
 only watches `directory: "/"`, leaving the nested `vscode-extension/claudin-vscode/`

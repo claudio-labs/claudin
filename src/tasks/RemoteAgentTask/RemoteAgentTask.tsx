@@ -1,7 +1,7 @@
 import type { ToolUseBlock } from '@anthropic-ai/sdk/resources';
 import { getRemoteSessionUrl } from 'src/constants/product.js';
 import { OUTPUT_FILE_TAG, REMOTE_REVIEW_PROGRESS_TAG, REMOTE_REVIEW_TAG, STATUS_TAG, SUMMARY_TAG, TASK_ID_TAG, TASK_NOTIFICATION_TAG, TASK_TYPE_TAG, TOOL_USE_ID_TAG, ULTRAPLAN_TAG } from 'src/constants/xml.js';
-import type { SDKAssistantMessage, SDKMessage } from 'src/entrypoints/agentSdkTypes.js';
+import type { SDKAssistantMessage, SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js';
 import type { SetAppState, Task, TaskContext, TaskStateBase } from 'src/Task.js';
 import { createTaskStateBase, generateTaskId } from 'src/Task.js';
 import { TodoWriteTool } from 'src/tools/TodoWriteTool/TodoWriteTool.js';
@@ -12,11 +12,11 @@ import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js';
 import { extractTag, extractTextContent } from 'src/services/messages/messages.js';
 import { emitTaskTerminatedSdk } from 'src/utils/sdkEventQueue.js';
 import { deleteRemoteAgentMetadata, listRemoteAgentMetadata, type RemoteAgentMetadata, writeRemoteAgentMetadata } from 'src/services/session/sessionStorage.js';
-import { jsonStringify } from 'src/utils/slowOperations.js';
+import { jsonStringify } from 'src/platform/slowOperations.js';
 import { appendTaskOutput, evictTaskOutput, getTaskOutputPath, initTaskOutput } from 'src/tasks/diskOutput.js';
 import { registerTask, updateTaskState } from 'src/tasks/framework.js';
-import { fetchSession } from 'src/services/teleport/api.js';
-import { archiveRemoteSession, pollRemoteSessionEvents } from 'src/components/teleport.js';
+import { fetchSession } from 'src/platform/teleport/api.js';
+import { archiveRemoteSession, pollRemoteSessionEvents } from 'src/platform/teleport/teleport.js';
 import type { TodoList } from 'src/tools/TodoWriteTool/types.js';
 import type { UltraplanPhase } from 'src/services/ultraplan/ccrSession.js';
 export type RemoteAgentTaskState = TaskStateBase & {

@@ -78,7 +78,7 @@ describe('extractFailureBlock', () => {
   })
 
   test('the fallback leaves positioned lines to the diagnostic list', () => {
-    const log = ['src/main.rs:4:9: error: mismatched types'].join('\n')
+    const log = ['src/platform/main.rs:4:9: error: mismatched types'].join('\n')
     expect(extractFailureBlock('unknown', log)).toBeUndefined()
   })
 

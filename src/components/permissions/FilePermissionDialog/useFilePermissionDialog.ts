@@ -4,8 +4,8 @@ import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
+} from 'src/platform/analytics/index.js'
+import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
 import type { CompletionType } from 'src/services/api/unaryLogging.js'
 import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'

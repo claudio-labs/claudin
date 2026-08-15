@@ -5,7 +5,7 @@ import * as React from 'react';
 import { TEAMMATE_MESSAGE_TAG } from 'src/constants/xml.js';
 import { Ansi, Box, Text, type TextProps } from 'src/terminal/ink.js';
 import { toInkColor } from 'src/terminal/render/ink.js';
-import { jsonParse } from 'src/utils/slowOperations.js';
+import { jsonParse } from 'src/platform/slowOperations.js';
 import { isShutdownApproved } from 'src/coordinator/teammateMailbox.js';
 import { MessageResponse } from 'src/components/MessageResponse.js';
 import { tryRenderPlanApprovalMessage } from 'src/components/messages/PlanApprovalMessage.js';

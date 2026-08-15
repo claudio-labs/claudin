@@ -6,7 +6,7 @@ import {
 import type WsWebSocket from 'ws'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { toError } from 'src/shared/errors.js'
-import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 
 // WebSocket readyState constants (same for both native and ws)
 const WS_CONNECTING = 0

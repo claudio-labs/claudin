@@ -41,16 +41,16 @@ if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {
   })
 }
 
-import { DiagnosticTrackingService } from '../src/services/diagnosticTracking.js'
+import { DiagnosticTrackingService } from '../src/platform/diagnosticTracking.js'
 import type {
   Diagnostic,
   DiagnosticFile,
-} from '../src/services/diagnosticTracking.js'
+} from '../src/platform/diagnosticTracking.js'
 import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
 } from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/services/config/config.js'
+import { enableConfigs } from '../src/platform/config/config.js'
 
 // Hard cap inside formatDiagnosticsSummary. We don't import the constant
 // because it's not exported — we mirror its value here so the bench can

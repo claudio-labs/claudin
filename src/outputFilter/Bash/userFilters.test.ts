@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:tes
 import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { getGlobalConfig, resetGlobalConfigForTests, saveGlobalConfig } from "src/services/config/config.js";
+import { getGlobalConfig, resetGlobalConfigForTests, saveGlobalConfig } from "src/platform/config/config.js";
 import {
   clearUserFiltersCache,
   compileUserFilters,

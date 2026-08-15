@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import { useEffect, useRef, useState } from 'react';
 import { Box } from 'src/terminal/ink.js';
-import { getInitialSettings } from 'src/services/settings/settings.js';
+import { getInitialSettings } from 'src/platform/settings/settings.js';
 import { Clawd, type ClawdPose } from 'src/terminal/logo/Clawd.js';
 type Frame = {
   pose: ClawdPose;

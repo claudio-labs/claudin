@@ -9,15 +9,15 @@ import { truncate } from 'src/shared/text/format.js';
 import { Clawd } from 'src/terminal/logo/Clawd.js';
 import { FeedColumn } from 'src/terminal/logo/FeedColumn.js';
 import { createRecentActivityFeed, createWhatsNewFeed, createProjectOnboardingFeed, createGuestPassesFeed } from 'src/terminal/logo/feedConfigs.js';
-import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
+import { type GlobalConfig, getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { resolveThemeSetting } from 'src/terminal/theme/systemTheme.js';
-import { getInitialSettings } from 'src/services/settings/settings.js';
+import { getInitialSettings } from 'src/platform/settings/settings.js';
 import { isDebugMode, isDebugToStdErr, getDebugLogPath } from 'src/shared/debug.js';
 import { useEffect, useState } from 'react';
-import { getSteps, shouldShowProjectOnboarding, incrementProjectOnboardingSeenCount } from 'src/projectOnboardingState.js';
+import { getSteps, shouldShowProjectOnboarding, incrementProjectOnboardingSeenCount } from 'src/platform/projectOnboardingState.js';
 import { CondensedLogo } from 'src/terminal/logo/CondensedLogo.js';
 import { OffscreenFreeze } from 'src/terminal/render/OffscreenFreeze.js';
-import { checkForReleaseNotesSync } from 'src/services/install/releaseNotes.js';
+import { checkForReleaseNotesSync } from 'src/platform/install/releaseNotes.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { EmergencyTip } from 'src/terminal/logo/EmergencyTip.js';
 import { VoiceModeNotice } from 'src/terminal/logo/VoiceModeNotice.js';
@@ -32,7 +32,7 @@ import { feature } from 'bun:bundle';
 /* eslint-disable @typescript-eslint/no-require-imports */
 const ChannelsNoticeModule = feature('KAIROS') || feature('KAIROS_CHANNELS') ? require('src/terminal/logo/ChannelsNotice.js') as typeof import('src/terminal/logo/ChannelsNotice.js') : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';
 import { useShowGuestPassesUpsell, incrementGuestPassesSeenCount } from 'src/terminal/logo/GuestPassesUpsell.js';
 import { useShowOverageCreditUpsell, incrementOverageCreditUpsellSeenCount, createOverageCreditFeed } from 'src/terminal/logo/OverageCreditUpsell.js';
 import { plural } from 'src/shared/text/stringUtils.js';

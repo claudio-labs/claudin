@@ -1,7 +1,7 @@
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isBareMode } from 'src/shared/envUtils.js'
-import { getSecureStorage } from 'src/services/secureStorage/index.js'
+import { getSecureStorage } from 'src/platform/secureStorage/index.js'
 import {
   asTrimmedString,
   CODEX_REFRESH_URL,

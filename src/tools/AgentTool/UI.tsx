@@ -20,7 +20,7 @@ import { findToolByName, type Tools } from 'src/Tool.js';
 import type { Message, ProgressMessage } from 'src/types/message.js';
 import type { AgentToolProgress } from 'src/types/tools.js';
 import { count } from 'src/shared/data/array.js';
-import { getGlobalConfig } from 'src/services/config/config.js';
+import { getGlobalConfig } from 'src/platform/config/config.js';
 import { countWriteFiles, getSearchOrReadFromContent, getSearchReadSummaryText, summarizeRecentActivities } from 'src/services/tools/collapseReadSearch.js';
 import { formatDuration, formatNumber, truncateToWidth } from 'src/shared/text/format.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';

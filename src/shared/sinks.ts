@@ -1,4 +1,4 @@
-import { initializeAnalyticsSink } from 'src/services/analytics/sink.js'
+import { initializeAnalyticsSink } from 'src/platform/analytics/sink.js'
 import { initializeErrorLogSink } from 'src/shared/errorLogSink.js'
 
 /**

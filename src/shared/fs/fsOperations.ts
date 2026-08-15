@@ -14,7 +14,7 @@ import {
 import { homedir } from 'os'
 import * as nodePath from 'path'
 import { getErrnoCode } from 'src/shared/errors.js'
-import { slowLogging } from 'src/utils/slowOperations.js'
+import { slowLogging } from 'src/platform/slowOperations.js'
 
 /**
  * Simplified filesystem operations interface based on Node.js fs module.

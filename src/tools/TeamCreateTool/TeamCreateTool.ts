@@ -1,7 +1,7 @@
 import { z } from 'zod/v4'
-import { getSessionId } from 'src/bootstrap/state.js'
-import { logEvent } from 'src/services/analytics/index.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/metadata.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
 import type { Tool } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { formatAgentId } from 'src/coordinator/agentId.js'
@@ -12,7 +12,7 @@ import {
   getDefaultMainLoopModel,
   parseUserSpecifiedModel,
 } from 'src/utils/model/model.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getResolvedTeammateMode } from 'src/coordinator/swarm/backends/registry.js'
 import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js'
 import type { TeamFile } from 'src/coordinator/swarm/teamHelpers.js'

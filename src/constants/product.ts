@@ -59,7 +59,7 @@ export function getClaudeAiBaseUrl(
  * TagSession). Same UUID body, different tag prefix. Once the server tags by
  * environment_kind and the frontend accepts `cse_*` directly, flip the gate
  * off. No-op for IDs already in `session_*` form. See toCompatSessionId in
- * src/bridge/sessionIdCompat.ts for the canonical helper (lazy-required here
+ * src/platform/bridge/sessionIdCompat.ts for the canonical helper (lazy-required here
  * to keep constants/ leaf-of-DAG at module-load time).
  */
 export function getRemoteSessionUrl(
@@ -68,7 +68,7 @@ export function getRemoteSessionUrl(
 ): string {
   /* eslint-disable @typescript-eslint/no-require-imports */
   const { toCompatSessionId } =
-    require('src/bridge/sessionIdCompat.js') as typeof import('src/bridge/sessionIdCompat.js')
+    require('src/platform/bridge/sessionIdCompat.js') as typeof import('src/platform/bridge/sessionIdCompat.js')
   /* eslint-enable @typescript-eslint/no-require-imports */
   const compatId = toCompatSessionId(sessionId)
   const baseUrl = getClaudeAiBaseUrl(compatId, ingressUrl)

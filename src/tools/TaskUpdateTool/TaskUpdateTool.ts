@@ -4,7 +4,7 @@ import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
 import {
   executeTaskCompletedHooks,
   getTaskCompletedHookMessage,
-} from 'src/services/lifecycleHooks/hooks.js'
+} from 'src/platform/lifecycleHooks/hooks.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   blockTask,

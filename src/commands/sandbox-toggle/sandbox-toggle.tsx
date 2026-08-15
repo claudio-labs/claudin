@@ -1,11 +1,11 @@
 import { relative } from 'path';
 import React from 'react';
-import { getCwdState } from 'src/bootstrap/state.js';
+import { getCwdState } from 'src/platform/bootstrap/state.js';
 import { SandboxSettings } from 'src/components/sandbox/SandboxSettings.js';
 import { color } from 'src/terminal/ink.js';
 import { getPlatform } from 'src/shared/proc/platform.js';
-import { addToExcludedCommands, SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
-import { getInitialSettings, getSettingsFilePathForSource } from 'src/services/settings/settings.js';
+import { addToExcludedCommands, SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';
+import { getInitialSettings, getSettingsFilePathForSource } from 'src/platform/settings/settings.js';
 import type { ThemeName } from 'src/terminal/theme/theme.js';
 export async function call(onDone: (result?: string) => void, _context: unknown, args?: string): Promise<React.ReactNode | null> {
   const settings = getInitialSettings();

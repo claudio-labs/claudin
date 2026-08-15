@@ -1,10 +1,10 @@
 import {
   getModelStrings as getModelStringsState,
   setModelStrings as setModelStringsState,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { logError } from 'src/shared/log.js'
 import { sequential } from 'src/shared/sequential.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { findFirstMatch, getBedrockInferenceProfiles } from 'src/utils/model/bedrock.js'
 import {
   ALL_MODEL_CONFIGS,

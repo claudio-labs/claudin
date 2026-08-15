@@ -7,7 +7,7 @@ import {
 import { stripBOM } from 'src/shared/data/jsonRead.js'
 import { logError } from 'src/shared/log.js'
 import { memoizeWithLRU } from 'src/shared/data/memoize.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 
 type CachedParse = { ok: true; value: unknown } | { ok: false }
 

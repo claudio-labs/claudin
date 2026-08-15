@@ -1,6 +1,6 @@
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import type { MCPServerConnection } from 'src/services/mcp/types.js'
-import { isPolicyAllowed } from 'src/services/policyLimits/index.js'
+import { isPolicyAllowed } from 'src/platform/policyLimits/index.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { ASK_USER_QUESTION_TOOL_NAME } from 'src/tools/AskUserQuestionTool/prompt.js'
 import { REMOTE_TRIGGER_TOOL_NAME } from 'src/tools/RemoteTriggerTool/prompt.js'
@@ -12,12 +12,12 @@ import {
   parseGitRemote,
 } from 'src/services/git/detectRepository.js'
 import { getRemoteUrl } from 'src/services/git/git.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   createDefaultCloudEnvironment,
   type EnvironmentResource,
   fetchEnvironments,
-} from 'src/services/teleport/environments.js'
+} from 'src/platform/teleport/environments.js'
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
 
 // Base58 alphabet (Bitcoin-style) used by the tagged ID system

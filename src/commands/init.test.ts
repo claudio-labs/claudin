@@ -5,7 +5,7 @@ async function importInitCommand() {
 }
 
 test('init prompt preserves existing root CLAUDE.md by default', async () => {
-  mock.module('src/projectOnboardingState.js', () => ({
+  mock.module('src/platform/projectOnboardingState.js', () => ({
     maybeMarkProjectOnboardingComplete: () => {},
   }))
 
@@ -23,7 +23,7 @@ test('init prompt preserves existing root CLAUDE.md by default', async () => {
 })
 
 test('init prompt asks about subagents and guardrails in Phase 1', async () => {
-  mock.module('src/projectOnboardingState.js', () => ({
+  mock.module('src/platform/projectOnboardingState.js', () => ({
     maybeMarkProjectOnboardingComplete: () => {},
   }))
 
@@ -36,7 +36,7 @@ test('init prompt asks about subagents and guardrails in Phase 1', async () => {
 })
 
 test('init prompt includes Phase 5.5 subagent creation flow', async () => {
-  mock.module('src/projectOnboardingState.js', () => ({
+  mock.module('src/platform/projectOnboardingState.js', () => ({
     maybeMarkProjectOnboardingComplete: () => {},
   }))
 
@@ -50,7 +50,7 @@ test('init prompt includes Phase 5.5 subagent creation flow', async () => {
 })
 
 test('init prompt includes guardrail categories and addPermissionRulesToSettings', async () => {
-  mock.module('src/projectOnboardingState.js', () => ({
+  mock.module('src/platform/projectOnboardingState.js', () => ({
     maybeMarkProjectOnboardingComplete: () => {},
   }))
 
@@ -71,7 +71,7 @@ test('init prompt includes guardrail categories and addPermissionRulesToSettings
 })
 
 test('init prompt instructs final AGENTS.md pass to add Subagents / Skills / Guardrails sections', async () => {
-  mock.module('src/projectOnboardingState.js', () => ({
+  mock.module('src/platform/projectOnboardingState.js', () => ({
     maybeMarkProjectOnboardingComplete: () => {},
   }))
 

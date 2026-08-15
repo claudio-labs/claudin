@@ -6,7 +6,7 @@ import type { RefObject } from 'react';
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { every } from 'src/shared/data/set.js';
-import { getIsRemoteMode } from 'src/bootstrap/state.js';
+import { getIsRemoteMode } from 'src/platform/bootstrap/state.js';
 import type { Command } from 'src/commands.js';
 import { BLACK_CIRCLE } from 'src/constants/figures.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
@@ -20,12 +20,12 @@ import type { Tools } from 'src/Tool.js';
 import { findToolByName } from 'src/Tool.js';
 import type { AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js';
 import type { Message as MessageType, NormalizedMessage, ProgressMessage as ProgressMessageType, RenderableMessage } from 'src/types/message.js';
-import { type AdvisorBlock, isAdvisorBlock } from 'src/utils/advisor.js';
+import { type AdvisorBlock, isAdvisorBlock } from 'src/platform/doctor/advisor.js';
 import { collapseBackgroundBashNotifications } from 'src/utils/collapseBackgroundBashNotifications.js';
 import { collapseHookSummaries } from 'src/utils/collapseHookSummaries.js';
 import { collapseReadSearchGroups } from 'src/services/tools/collapseReadSearch.js';
 import { collapseTeammateShutdowns } from 'src/utils/collapseTeammateShutdowns.js';
-import { getGlobalConfig } from 'src/services/config/config.js';
+import { getGlobalConfig } from 'src/platform/config/config.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { applyGrouping } from 'src/services/tools/groupToolUses.js';
@@ -43,7 +43,7 @@ import { AssistantThinkingMessage } from 'src/components/messages/AssistantThink
 import { isNullRenderingAttachment } from 'src/components/messages/nullRenderingAttachments.js';
 import { OffscreenFreeze } from 'src/terminal/render/OffscreenFreeze.js';
 import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';
-import { StatusNotices } from 'src/components/StatusNotices.js';
+import { StatusNotices } from 'src/platform/status/StatusNotices.js';
 import type { JumpHandle } from 'src/terminal/VirtualMessageList.js';
 
 /** LogoHeader only consumes the agent definitions, not the full Messages props. */
@@ -84,7 +84,7 @@ const LogoHeader = React.memo(function LogoHeader(t0: LogoHeaderProps) {
 
 // Dead code elimination: conditional import for proactive mode
 /* eslint-disable @typescript-eslint/no-require-imports */
-const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../proactive/index.js') : null;
+const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../platform/proactive/index.js') : null;
 const BRIEF_TOOL_NAME: string | null = feature('KAIROS') || feature('KAIROS_BRIEF') ? (require('src/tools/BriefTool/prompt.js') as typeof import('src/tools/BriefTool/prompt.js')).BRIEF_TOOL_NAME : null;
 const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS') ? (require('../tools/SendUserFileTool/prompt.js') as typeof import('../tools/SendUserFileTool/prompt.js')).SEND_USER_FILE_TOOL_NAME : null;
 

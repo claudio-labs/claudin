@@ -23,7 +23,7 @@ import { writeFile } from 'fs/promises'
 import isEqual from 'lodash-es/isEqual.js'
 import memoize from 'lodash-es/memoize.js'
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'path'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
@@ -41,13 +41,13 @@ import {
   getInitialSettings,
   getSettingsForSource,
   updateSettingsForSource,
-} from 'src/services/settings/settings.js'
-import type { SettingsJson } from 'src/services/settings/types.js'
+} from 'src/platform/settings/settings.js'
+import type { SettingsJson } from 'src/platform/settings/types.js'
 import {
   jsonParse,
   jsonStringify,
   writeFileSync_DEPRECATED,
-} from 'src/utils/slowOperations.js'
+} from 'src/platform/slowOperations.js'
 import {
   getAddDirEnabledPlugins,
   getAddDirExtraMarketplaces,

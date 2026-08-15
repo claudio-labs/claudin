@@ -3,7 +3,7 @@ import React, { type ReactNode, useEffect, useRef, useState } from 'react';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- UP arrow exit not in Attachments bindings
 import { Box, type Key, Text, useInput } from 'src/terminal/ink.js';
 import { useKeybinding, useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
-import type { PastedContent } from 'src/services/config/config.js';
+import type { PastedContent } from 'src/platform/config/config.js';
 import { getImageFromClipboard } from 'src/terminal/image/imagePaste.js';
 import type { ImageDimensions } from 'src/terminal/image/imageResizer.js';
 import { ClickableImageRef } from 'src/terminal/image/ClickableImageRef.js';

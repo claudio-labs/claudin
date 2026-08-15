@@ -3,19 +3,19 @@ import { useEffect, useRef } from 'react'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
+} from 'src/platform/analytics/index.js'
+import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type {
   PermissionDecisionReason,
   PermissionResult,
 } from 'src/services/permissions/PermissionResult.js'
 import { extractRules } from 'src/services/permissions/PermissionUpdate.js'
 import { permissionRuleValueToString } from 'src/services/permissions/permissionRuleParser.js'
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
 import { useSetAppState } from 'src/terminal/state/AppState.js'
 import { env } from 'src/shared/env.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { type CompletionType, logUnaryEvent } from 'src/services/api/unaryLogging.js'
 
 export type UnaryEvent = {

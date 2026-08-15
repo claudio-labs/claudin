@@ -4,7 +4,7 @@ import { afterAll, describe, expect, mock, test } from 'bun:test'
 // the module fresh per test (?ts=...) to avoid mock.module cross-file leak.
 const realGit = { ...(await import('src/services/git/git.js')) }
 const realExec = { ...(await import('src/shared/proc/execFileNoThrow.js')) }
-const realConfig = { ...(await import('src/services/config/config.js')) }
+const realConfig = { ...(await import('src/platform/config/config.js')) }
 
 type GitState = {
   isGit?: boolean
@@ -30,7 +30,7 @@ function setup(opts: {
       git.remoteUrl === undefined ? 'git@github.com:o/r.git' : git.remoteUrl,
   }))
   // fetchPrStatus only reads getGlobalConfig().prStatusHosts.
-  mock.module('src/services/config/config.js', () => ({
+  mock.module('src/platform/config/config.js', () => ({
     ...realConfig,
     getGlobalConfig: () => ({ prStatusHosts: opts.hosts }),
   }))
@@ -49,7 +49,7 @@ async function importFresh() {
 
 afterAll(() => {
   mock.module('./git.js', () => realGit)
-  mock.module('src/services/config/config.js', () => realConfig)
+  mock.module('src/platform/config/config.js', () => realConfig)
   mock.module('src/shared/proc/execFileNoThrow.js', () => realExec)
 })
 

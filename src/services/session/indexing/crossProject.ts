@@ -11,7 +11,7 @@
 import type { Dirent } from 'fs'
 import { readdir } from 'fs/promises'
 import { join } from 'path'
-import { getOriginalCwd } from 'src/bootstrap/state.js'
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import type { LogOption } from 'src/types/logs.js'
 import { sortLogs } from 'src/types/logs.js'
 import { logForDebugging } from 'src/shared/debug.js'

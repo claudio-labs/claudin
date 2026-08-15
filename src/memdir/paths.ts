@@ -5,8 +5,8 @@ import { isAbsolute, join, normalize, sep } from 'path'
 import {
   getIsNonInteractiveSession,
   getProjectRoot,
-} from 'src/bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+} from 'src/platform/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   getClaudinConfigHomeDir,
   isEnvDefinedFalsy,
@@ -18,7 +18,7 @@ import { sanitizePath } from 'src/shared/fs/path.js'
 import {
   getInitialSettings,
   getSettingsForSource,
-} from 'src/services/settings/settings.js'
+} from 'src/platform/settings/settings.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { migrateGlobalMemoryIfNeeded } from 'src/memdir/memoryMigration.js'
 

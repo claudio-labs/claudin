@@ -49,7 +49,7 @@ import {
 import { getBashGitInstructionsBody } from '../src/tools/BashTool/prompt.js'
 import type { Attachment } from '../src/services/attachments/attachments.js'
 import { normalizeAttachmentForAPI } from '../src/services/messages/messages.js'
-import { enableConfigs } from '../src/services/config/config.js'
+import { enableConfigs } from '../src/platform/config/config.js'
 
 export type AttachmentRow = {
   kind: string

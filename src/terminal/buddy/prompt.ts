@@ -1,6 +1,6 @@
 import type { Message } from 'src/types/message.js'
 import type { Attachment } from 'src/services/attachments/attachments.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getCompanion } from 'src/terminal/buddy/companion.js'
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js'
 

@@ -19,7 +19,7 @@ import type { PermissionBehavior, PermissionRule, PermissionRuleValue } from 'sr
 import { permissionRuleValueToString } from 'src/services/permissions/permissionRuleParser.js';
 import { deletePermissionRule, getAllowRules, getAskRules, getDenyRules, permissionRuleSourceDisplayString } from 'src/services/permissions/permissions.js';
 import type { UnreachableRule } from 'src/services/permissions/shadowedRuleDetection.js';
-import { jsonStringify } from 'src/utils/slowOperations.js';
+import { jsonStringify } from 'src/platform/slowOperations.js';
 import { Pane } from 'src/terminal/design-system/Pane.js';
 import { Tab, Tabs, useTabHeaderFocus, useTabsWidth } from 'src/terminal/design-system/Tabs.js';
 import { SearchBox } from 'src/terminal/SearchBox.js';

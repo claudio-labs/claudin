@@ -15,11 +15,11 @@ import {
   registerPendingLSPDiagnostic,
   resetAllLSPDiagnosticState,
   getPendingLSPDiagnosticCount,
-} from 'src/services/lsp/LSPDiagnosticRegistry.js'
+} from 'src/platform/lsp/LSPDiagnosticRegistry.js'
 
 const mockIsLspGloballyEnabled = mock(() => true)
-const realUserSettingsAttachGate = { ...(await import('src/services/lsp/userSettings.js')) }
-mock.module('src/services/lsp/userSettings.js', () => ({
+const realUserSettingsAttachGate = { ...(await import('src/platform/lsp/userSettings.js')) }
+mock.module('src/platform/lsp/userSettings.js', () => ({
   ...realUserSettingsAttachGate,
   isLspGloballyEnabled: mockIsLspGloballyEnabled,
 }))
@@ -42,8 +42,8 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  mock.module('src/services/lsp/userSettings.js', () => realUserSettingsAttachGate)
-  mock.module('src/services/lsp/userSettings.js', () => realUserSettingsAttachGate)
+  mock.module('src/platform/lsp/userSettings.js', () => realUserSettingsAttachGate)
+  mock.module('src/platform/lsp/userSettings.js', () => realUserSettingsAttachGate)
 })
 
 const sampleFile = {

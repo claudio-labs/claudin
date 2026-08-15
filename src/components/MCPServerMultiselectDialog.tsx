@@ -1,9 +1,9 @@
 import { c as _c } from "react-compiler-runtime";
 import partition from 'lodash-es/partition.js';
 import React, { useCallback } from 'react';
-import { logEvent } from 'src/services/analytics/index.js';
+import { logEvent } from 'src/platform/analytics/index.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import { getInitialSettings, updateSettingsForSource } from 'src/services/settings/settings.js';
+import { getInitialSettings, updateSettingsForSource } from 'src/platform/settings/settings.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
 import { SelectMulti } from 'src/terminal/custom-select/SelectMulti.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';

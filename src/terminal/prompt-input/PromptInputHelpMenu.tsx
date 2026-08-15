@@ -5,7 +5,7 @@ import { Box, Text } from 'src/terminal/ink.js';
 import { getPlatform } from 'src/shared/proc/platform.js';
 import { isKeybindingCustomizationEnabled } from 'src/terminal/keybindings/loadUserBindings.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { isFastModeAvailable, isFastModeEnabled } from 'src/utils/fastMode.js';
 import { getNewlineInstructions } from 'src/terminal/prompt-input/utils.js';
 

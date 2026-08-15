@@ -8,8 +8,8 @@
  * - Strips tool list and model info from init messages
  */
 
-import type { SDKAssistantMessage } from 'src/entrypoints/agentSdkTypes.js'
-import type { StdoutMessage } from 'src/entrypoints/sdk/controlTypes.js'
+import type { SDKAssistantMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
+import type { StdoutMessage } from 'src/platform/entrypoints/sdk/controlTypes.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
@@ -20,7 +20,7 @@ import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js
 import { TASK_STOP_TOOL_NAME } from 'src/tools/TaskStopTool/prompt.js'
 import { WEB_SEARCH_TOOL_NAME } from 'src/tools/WebSearchTool/prompt.js'
 import { extractTextContent } from 'src/services/messages/messages.js'
-import { SHELL_TOOL_NAMES } from 'src/services/shell/shellToolUtils.js'
+import { SHELL_TOOL_NAMES } from 'src/platform/shell/shellToolUtils.js'
 import { capitalize } from 'src/shared/text/stringUtils.js'
 
 type ToolCounts = {

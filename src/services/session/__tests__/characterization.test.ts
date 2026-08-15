@@ -19,9 +19,9 @@ import {
   resetStateForTests,
   setOriginalCwd,
   switchSession,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { asSessionId } from 'src/types/ids.js'
-import { resetGlobalConfigForTests } from 'src/services/config/config.js'
+import { resetGlobalConfigForTests } from 'src/platform/config/config.js'
 import {
   flushSessionStorage,
   getProjectDir,

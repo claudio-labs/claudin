@@ -10,12 +10,12 @@ import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 // success. The subject is the cache/refresh/JWT logic, not the platform vault,
 // so pin an in-memory backend the way every sibling credential test does.
 const realSecureStorage = {
-  ...(await import('src/services/secureStorage/index.js')),
+  ...(await import('src/platform/secureStorage/index.js')),
 }
 
 let storageState: Record<string, unknown> = {}
 
-mock.module('src/services/secureStorage/index.js', () => ({
+mock.module('src/platform/secureStorage/index.js', () => ({
   ...realSecureStorage,
   getSecureStorage: () => ({
     name: 'in-memory-secure-storage',
@@ -58,7 +58,7 @@ afterEach(() => {
 // mock.restore() does not revert mock.module(), and Bun applies the override for
 // the whole run — hand the real module back so no later file inherits this fake.
 afterAll(() => {
-  mock.module('src/services/secureStorage/index.js', () => realSecureStorage)
+  mock.module('src/platform/secureStorage/index.js', () => realSecureStorage)
 })
 
 function jsonResponse(body: unknown, status = 200): Response {

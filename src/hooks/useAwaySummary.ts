@@ -4,7 +4,7 @@ import {
   getTerminalFocusState,
   subscribeTerminalFocus,
 } from 'src/terminal/ink/terminal-focus-state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { generateAwaySummary } from 'src/services/awaySummary.js'
 import type { Message } from 'src/types/message.js'
 import { createAwaySummaryMessage } from 'src/services/messages/messages.js'

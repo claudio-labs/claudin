@@ -7,9 +7,9 @@ import {
   getInlinePlugins,
   getMainLoopModelOverride,
   getSessionBypassPermissionsMode,
-} from 'src/bootstrap/state.js'
-import { quote } from 'src/services/bash/shellQuote.js'
-import { isInBundledMode } from 'src/services/install/bundledMode.js'
+} from 'src/platform/bootstrap/state.js'
+import { quote } from 'src/platform/bash/shellQuote.js'
+import { isInBundledMode } from 'src/platform/install/bundledMode.js'
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
 import { getTeammateModeFromSnapshot } from 'src/coordinator/swarm/backends/teammateModeSnapshot.js'
 import { TEAMMATE_COMMAND_ENV_VAR } from 'src/coordinator/swarm/constants.js'

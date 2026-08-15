@@ -11,9 +11,9 @@ import {
   FileIndex,
   yieldToEventLoop,
 } from 'src/native-ts/file-index/index.js'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import type { FileSuggestionCommandInput } from 'src/types/fileSuggestion.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
@@ -23,11 +23,11 @@ import { findGitRoot, gitExe } from 'src/services/git/git.js'
 import {
   createBaseHookInput,
   executeFileSuggestionCommand,
-} from 'src/services/lifecycleHooks/hooks.js'
+} from 'src/platform/lifecycleHooks/hooks.js'
 import { logError } from 'src/shared/log.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { ripGrep } from 'src/shared/fs/ripgrep.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { createSignal } from 'src/shared/signal.js'
 
 // Lazily constructed singleton

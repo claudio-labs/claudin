@@ -4,10 +4,10 @@
  */
 import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
 
-const realSecureStorage = { ...(await import('src/services/secureStorage/index.js')) }
+const realSecureStorage = { ...(await import('src/platform/secureStorage/index.js')) }
 
 afterAll(() => {
-  mock.module('src/services/secureStorage/index.js', () => realSecureStorage)
+  mock.module('src/platform/secureStorage/index.js', () => realSecureStorage)
 })
 
 function makeJwt(payload: Record<string, unknown>): string {
@@ -50,7 +50,7 @@ describe('xaiCredentials', () => {
     delete process.env.CLAUDE_CODE_SIMPLE
 
     let lastWritten: unknown
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: (options?: { allowPlainTextFallback?: boolean }) => {
         expect(options?.allowPlainTextFallback).toBe(true)
         return {
@@ -95,7 +95,7 @@ describe('xaiCredentials', () => {
       },
     }
 
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,
@@ -147,7 +147,7 @@ describe('xaiCredentials', () => {
       exp: Math.floor((Date.now() + 3_600_000) / 1000),
     })
 
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => ({
           xai: { accessToken: freshToken, refreshToken: 'refresh' },
@@ -186,7 +186,7 @@ describe('xaiCredentials', () => {
       },
     }
 
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,
@@ -233,7 +233,7 @@ describe('xaiCredentials', () => {
       },
     }
 
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,
@@ -275,7 +275,7 @@ describe('xaiCredentials', () => {
     delete process.env.CLAUDE_CODE_SIMPLE
 
     const enoent = Object.assign(new Error('not found'), { code: 'ENOENT' })
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => {
           throw enoent
@@ -294,7 +294,7 @@ describe('xaiCredentials', () => {
   test('clearXaiCredentials surfaces secure-storage failure cause', async () => {
     delete process.env.CLAUDE_CODE_SIMPLE
 
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => ({ xai: { accessToken: 'token' } }),
         readAsync: async () => ({ xai: { accessToken: 'token' } }),
@@ -318,7 +318,7 @@ describe('xaiCredentials', () => {
       other: { keep: true },
     }
 
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,

@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import { marked, type Token, type Tokens } from 'marked';
 import React, { Suspense, use, useMemo, useRef } from 'react';
-import { useSettings } from 'src/hooks/useSettings.js';
+import { useSettings } from 'src/platform/useSettings.js';
 import { Ansi, Box, useTheme } from 'src/terminal/ink.js';
 import { type CliHighlight, getCliHighlightPromise } from 'src/shared/text/cliHighlight.js';
 import { configureMarked, formatToken } from 'src/shared/text/markdown.js';

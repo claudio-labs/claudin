@@ -8,7 +8,7 @@ import type { QuerySource } from 'src/constants/querySource.js'
 import {
   setLastAPIRequest,
   setLastAPIRequestMessages,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { TICK_TAG } from 'src/constants/xml.js'
 import {
@@ -20,8 +20,8 @@ import { CACHE_PATHS } from 'src/shared/fs/cachePaths.js'
 import { stripDisplayTags, stripDisplayTagsAllowEmpty } from 'src/shared/text/displayTags.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { toError } from 'src/shared/errors.js'
-import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
-import { jsonParse } from 'src/utils/slowOperations.js'
+import { isEssentialTrafficOnly } from 'src/platform/config/privacyLevel.js'
+import { jsonParse } from 'src/platform/slowOperations.js'
 
 /**
  * Gets the display title for a log/session with fallback logic.

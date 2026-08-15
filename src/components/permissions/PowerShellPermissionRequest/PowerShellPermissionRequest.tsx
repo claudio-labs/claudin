@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Text, useTheme } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
-import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js';
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
+import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js';
 import { getDestructiveCommandWarning } from 'src/tools/PowerShellTool/destructiveCommandWarning.js';
 import { PowerShellTool } from 'src/tools/PowerShellTool/PowerShellTool.js';
 import { isAllowlistedCommand } from 'src/tools/PowerShellTool/readOnlyValidation.js';
 import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js';
-import { getCompoundCommandPrefixesStatic } from 'src/services/shell/powershell/staticPrefix.js';
+import { getCompoundCommandPrefixesStatic } from 'src/platform/shell/powershell/staticPrefix.js';
 import { Select } from 'src/terminal/custom-select/select.js';
 import { type UnaryEvent, usePermissionRequestLogging } from 'src/components/permissions/hooks.js';
 import { PermissionDecisionDebugInfo } from 'src/components/permissions/PermissionDecisionDebugInfo.js';

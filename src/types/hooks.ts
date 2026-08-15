@@ -6,12 +6,12 @@ import {
   HOOK_EVENTS,
   type HookInput,
   type PermissionUpdate,
-} from 'src/entrypoints/agentSdkTypes.js'
+} from 'src/platform/entrypoints/agentSdkTypes.js'
 import type {
   HookJSONOutput,
   AsyncHookJSONOutput,
   SyncHookJSONOutput,
-} from 'src/entrypoints/agentSdkTypes.js'
+} from 'src/platform/entrypoints/agentSdkTypes.js'
 import type { Message } from 'src/types/message.js'
 import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
 import { permissionBehaviorSchema } from 'src/services/permissions/PermissionRule.js'

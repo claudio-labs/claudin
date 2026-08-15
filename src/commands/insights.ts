@@ -27,7 +27,7 @@ import {
   getSessionIdFromLog,
   loadAllLogsFromSessionFile,
 } from 'src/services/session/sessionStorage.js'
-import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { countCharInString } from 'src/shared/text/stringUtils.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
 import { escapeXmlAttr as escapeHtml } from 'src/shared/data/xml.js'

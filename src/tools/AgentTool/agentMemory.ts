@@ -1,5 +1,5 @@
 import { join, normalize, sep } from 'path'
-import { getProjectRoot } from 'src/bootstrap/state.js'
+import { getProjectRoot } from 'src/platform/bootstrap/state.js'
 import {
   buildMemoryPrompt,
   ensureMemoryDirExists,

@@ -126,7 +126,7 @@ re-parse o caminho limpo é expor uma versão estruturada:
 - `LSPTool.execute` hoje retorna `{ formatted, resultCount, fileCount }`
   (via `formatResult`). Para uso programático interno (fora do tool
   registry) pode-se chamar diretamente `sendRequest<T>` do
-  `LSPServerManager` (`src/services/lsp/LSPServerManager.ts:27` /
+  `LSPServerManager` (`src/platform/lsp/LSPServerManager.ts:27` /
   `:265-274`) — bypassa permission gate e formato textual.
 - `GitDiffResult` (`src/services/git/gitDiff.ts:29-33`) e
   `PerFileStats` (`:22-27`) já existem e devem ser mantidos; um wrapper
@@ -145,7 +145,7 @@ re-parse o caminho limpo é expor uma versão estruturada:
   `parseSlashCommandToolsFromFrontmatter` (`:2`) — padrão de comando
   markdown com `allowed-tools`. `/review` hoje NÃO usa esse padrão (é
   prompt puro); para `--minimal` mode vale migrar.
-- `LSPServerManager.sendRequest<T>` — `src/services/lsp/LSPServerManager.ts:27`,
+- `LSPServerManager.sendRequest<T>` — `src/platform/lsp/LSPServerManager.ts:27`,
   implementação `:265-274`.
 - `scanSymbols(source, lang)` — `src/tools/shared/codeOutline/scanSymbols.ts:104`
   + `detectOutlineLang(ext)` em `:73`. Útil para resolver "qual símbolo
@@ -153,7 +153,7 @@ re-parse o caminho limpo é expor uma versão estruturada:
 
 ### 4. Tests to copy patterns from
 
-- `src/services/wiki/init.test.ts` — boa referência de teste de
+- `src/platform/wiki/init.test.ts` — boa referência de teste de
   comando/serviço com fs.
 - Não há teste para `/review` (`src/commands/review*.test.ts` não
   existe). Criar `src/commands/review.test.ts` do zero, mirroring
@@ -185,19 +185,19 @@ re-parse o caminho limpo é expor uma versão estruturada:
 
 ### 1. Files to touch
 
-- `src/services/wiki/init.ts:6-37` — `buildSchemaTemplate(projectName)`;
+- `src/platform/wiki/init.ts:6-37` — `buildSchemaTemplate(projectName)`;
   template estático genérico.
-- `src/services/wiki/init.ts:39-56` — `buildIndexTemplate(projectName)`;
+- `src/platform/wiki/init.ts:39-56` — `buildIndexTemplate(projectName)`;
   hoje cita só `Architecture` page.
-- `src/services/wiki/init.ts:58-63` — `buildLogTemplate(timestamp)`.
-- `src/services/wiki/init.ts:65-89` — `buildArchitectureTemplate(projectName)`;
+- `src/platform/wiki/init.ts:58-63` — `buildLogTemplate(timestamp)`.
+- `src/platform/wiki/init.ts:65-89` — `buildArchitectureTemplate(projectName)`;
   placeholder com "What are the most important runtime subsystems?"
   literal.
-- `src/services/wiki/init.ts:112-140` — `initializeWiki(cwd)`; orquestra
+- `src/platform/wiki/init.ts:112-140` — `initializeWiki(cwd)`; orquestra
   mkdir + ensureFile. É o entrypoint chamado pelo comando.
-- `src/services/wiki/indexBuilder.ts:31-68` — `rebuildWikiIndex(cwd)`;
+- `src/platform/wiki/indexBuilder.ts:31-68` — `rebuildWikiIndex(cwd)`;
   hoje só listMarkdownFiles + getPageTitle, sem análise de código.
-- `src/services/wiki/ingest.ts:49-93` — `ingestLocalWikiSource(...)`;
+- `src/platform/wiki/ingest.ts:49-93` — `ingestLocalWikiSource(...)`;
   base para o "summarizer per module".
 - `src/commands/wiki/wiki.tsx:76-114` — `runWikiCommand(...)`; dispatcher
   do slash (`init`/`ingest`/`status`).
@@ -207,11 +207,11 @@ re-parse o caminho limpo é expor uma versão estruturada:
 ### 2. APIs/types to extend
 
 - `WikiInitResult` (importado em `init.ts:4`, definido em
-  `src/services/wiki/types.ts`) — hoje carrega só
+  `src/platform/wiki/types.ts`) — hoje carrega só
   `{ root, createdFiles, createdDirectories, alreadyExisted }`. Para
   geração automática adicionar campos: `modulesAnalyzed`, `summariesGenerated`.
 - Novo type `ModuleSummary { dir: string; files: string[]; symbols: SymbolEntry[]; importsTo: string[]; }`
-  ao lado de `src/services/wiki/types.ts`.
+  ao lado de `src/platform/wiki/types.ts`.
 
 ### 3. Existing helpers to reuse
 
@@ -229,15 +229,15 @@ re-parse o caminho limpo é expor uma versão estruturada:
   regex sobre `^import .* from ['"](.+)['"]` aplicado por arquivo,
   resolvendo via `tsconfig.json` paths (alias `src/*` documentado em
   `CLAUDE.md`).
-- `paths.ts` (em `src/services/wiki/paths.ts`) já centraliza
+- `paths.ts` (em `src/platform/wiki/paths.ts`) já centraliza
   `.claudin/wiki/` paths; cache de output cabe lá.
 
 ### 4. Tests to copy patterns from
 
-- `src/services/wiki/init.test.ts` — happy path + idempotência (EEXIST
+- `src/platform/wiki/init.test.ts` — happy path + idempotência (EEXIST
   handling em `init.ts:99-107`).
-- `src/services/wiki/ingest.test.ts` — fs interaction.
-- `src/services/wiki/status.test.ts` — leitura/parsing.
+- `src/platform/wiki/ingest.test.ts` — fs interaction.
+- `src/platform/wiki/status.test.ts` — leitura/parsing.
 
 ### 5. Hidden coupling risks
 
@@ -260,7 +260,7 @@ re-parse o caminho limpo é expor uma versão estruturada:
 
 ### 1. Files to touch
 
-- `src/services/lsp/LSPServerManager.ts:265-274` — `sendRequest<T>`,
+- `src/platform/lsp/LSPServerManager.ts:265-274` — `sendRequest<T>`,
   ponto único de dispatch onde a memoização envolve.
 - `src/tools/LSPTool/LSPTool.ts:671-763` — `getMethodAndParams(input, absolutePath)`;
   gera a tupla `(method, params)` que vira chave de cache junto com
@@ -281,7 +281,7 @@ re-parse o caminho limpo é expor uma versão estruturada:
 
 ### 2. APIs/types to extend
 
-- `LSPServerManager.sendRequest<T>` (`src/services/lsp/LSPServerManager.ts:27`)
+- `LSPServerManager.sendRequest<T>` (`src/platform/lsp/LSPServerManager.ts:27`)
   não muda assinatura. Wrap pode ser feito do lado de fora (no LSPTool)
   ou interno opcionalmente.
 - Novo type `LSPCacheKey = \`${operation}:${absolutePath}:${line}:${character}:${contentHash}\``

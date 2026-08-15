@@ -9,9 +9,9 @@
  */
 
 import { join } from 'path'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import { logEvent } from 'src/services/analytics/index.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { toError } from 'src/shared/errors.js'

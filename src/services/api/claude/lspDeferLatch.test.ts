@@ -19,7 +19,7 @@ import {
   clearBetaHeaderLatches,
   isLspDeferLatched,
   latchLspDefer,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 
 afterEach(() => {
   clearBetaHeaderLatches()

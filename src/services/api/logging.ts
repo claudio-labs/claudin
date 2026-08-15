@@ -13,7 +13,7 @@ import {
   getTeleportedSessionInfo,
   markFirstTeleportMessageLogged,
   setLastApiCompletionTimestamp,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import type { QueryChainTracking } from 'src/Tool.js'
 import { isConnectorTextBlock } from 'src/types/connectorText.js'
 import type { AssistantMessage } from 'src/types/message.js'
@@ -22,20 +22,20 @@ import type { EffortLevel } from 'src/utils/effort.js'
 import { logError } from 'src/shared/log.js'
 import { getAPIProviderForStatsig } from 'src/utils/model/providers.js'
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
-import { logOTelEvent } from 'src/services/telemetry/events.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
+import { logOTelEvent } from 'src/platform/telemetry/events.js'
 import {
   endLLMRequestSpan,
   isBetaTracingEnabled,
   type Span,
-} from 'src/services/telemetry/sessionTracing.js'
-import type { NonNullableUsage } from 'src/entrypoints/sdk/sdkUtilityTypes.js'
+} from 'src/platform/telemetry/sessionTracing.js'
+import type { NonNullableUsage } from 'src/platform/entrypoints/sdk/sdkUtilityTypes.js'
 import { consumeInvokingRequestId } from 'src/coordinator/agentContext.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
+} from 'src/platform/analytics/index.js'
+import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import { EMPTY_USAGE } from 'src/services/api/emptyUsage.js'
 import { classifyAPIError } from 'src/services/api/errors.js'
 import { extractConnectionErrorDetails } from 'src/services/api/errorUtils.js'

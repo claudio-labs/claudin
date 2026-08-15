@@ -4,7 +4,7 @@ import { COMMAND_NAME_TAG, TICK_TAG } from 'src/constants/xml.js'
 import type { TranscriptMessage } from 'src/types/logs.js'
 import type { Message } from 'src/types/message.js'
 import { extractTag } from 'src/services/messages/messages.js'
-import { jsonParse } from 'src/utils/slowOperations.js'
+import { jsonParse } from 'src/platform/slowOperations.js'
 
 /**
  * Pre-compiled regex to skip non-meaningful messages when extracting first prompt.

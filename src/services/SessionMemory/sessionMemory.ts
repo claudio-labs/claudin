@@ -6,7 +6,7 @@
 
 import { writeFile } from 'fs/promises'
 import memoize from 'lodash-es/memoize.js'
-import { getIsRemoteMode } from 'src/bootstrap/state.js'
+import { getIsRemoteMode } from 'src/platform/bootstrap/state.js'
 import { getSystemPrompt } from 'src/constants/prompts.js'
 import { getSystemContext, getUserContext } from 'src/context.js'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
@@ -27,7 +27,7 @@ import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {
   type REPLHookContext,
   registerPostSamplingHook,
-} from 'src/services/lifecycleHooks/postSamplingHooks.js'
+} from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import {
   createUserMessage,
   hasToolCallsInLastAssistantTurn,
@@ -39,7 +39,7 @@ import {
 import { sequential } from 'src/shared/sequential.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
 import { getTokenUsage, tokenCountWithEstimation } from 'src/services/context/tokens.js'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import { isAutoCompactEnabled } from 'src/services/compact/autoCompact.js'
 import {
   buildSessionMemoryUpdatePrompt,
@@ -71,7 +71,7 @@ import { errorMessage, getErrnoCode } from 'src/shared/errors.js'
 import {
   getDynamicConfig_CACHED_MAY_BE_STALE,
   getFeatureValue_CACHED_MAY_BE_STALE,
-} from 'src/services/analytics/growthbook.js'
+} from 'src/platform/analytics/growthbook.js'
 
 /**
  * Check if session memory feature is enabled.

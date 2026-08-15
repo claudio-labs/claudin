@@ -6,7 +6,7 @@ import type { ContextData } from 'src/services/context/analyzeContext.js';
 import { generateContextSuggestions } from 'src/services/context/contextSuggestions.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
 import { formatTokens } from 'src/shared/text/format.js';
-import { getSourceDisplayName, type SettingSource } from 'src/services/settings/constants.js';
+import { getSourceDisplayName, type SettingSource } from 'src/platform/settings/constants.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import { ContextSuggestions } from 'src/components/ContextSuggestions.js';
 

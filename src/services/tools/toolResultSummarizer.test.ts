@@ -1,13 +1,13 @@
 import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import { resetGlobalConfigForTests } from 'src/services/config/config.js'
+import { resetGlobalConfigForTests } from 'src/platform/config/config.js'
 
-const realAnalyticsMetadata = { ...(await import('src/services/analytics/metadata.js')) }
-const realAnalyticsIndex = { ...(await import('src/services/analytics/index.js')) }
+const realAnalyticsMetadata = { ...(await import('src/platform/analytics/metadata.js')) }
+const realAnalyticsIndex = { ...(await import('src/platform/analytics/index.js')) }
 
 afterAll(() => {
-  mock.module('src/services/analytics/metadata.js', () => realAnalyticsMetadata)
-  mock.module('src/services/analytics/index.js', () => realAnalyticsIndex)
+  mock.module('src/platform/analytics/metadata.js', () => realAnalyticsMetadata)
+  mock.module('src/platform/analytics/index.js', () => realAnalyticsIndex)
   resetGlobalConfigForTests()
 })
 
@@ -17,7 +17,7 @@ afterAll(() => {
 // DEFAULT_GLOBAL_CONFIG.toolResultSummarizerEnabled === true. Tests flip it via
 // saveGlobalConfig. This avoids mock.module pollution across test files in the
 // same run (config.js has 60+ exports; stubbing them all is fragile).
-mock.module('src/services/analytics/metadata.js', () => ({
+mock.module('src/platform/analytics/metadata.js', () => ({
   sanitizeToolNameForAnalytics: (name: string) =>
     name.startsWith('mcp__') ? 'mcp_tool' : name,
   // Stubs for transitive importers (firstPartyEventLoggingExporter etc.)
@@ -36,7 +36,7 @@ mock.module('src/services/analytics/metadata.js', () => ({
 
 const loggedEvents: Array<{ name: string; metadata: Record<string, unknown> }> =
   []
-mock.module('src/services/analytics/index.js', () => ({
+mock.module('src/platform/analytics/index.js', () => ({
   logEvent: (name: string, metadata: Record<string, unknown>) => {
     loggedEvents.push({ name, metadata })
   },
@@ -52,7 +52,7 @@ const {
   collapseIdenticalRuns,
   collapseDigitTemplates,
 } = await import('src/services/tools/toolResultSummarizer.js')
-const { saveGlobalConfig } = await import('src/services/config/config.js')
+const { saveGlobalConfig } = await import('src/platform/config/config.js')
 const { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } = await import('src/tools/AgentTool/constants.js')
 
 const AGENT_SUMMARIZE_THRESHOLD = 8_000
@@ -315,7 +315,7 @@ test('bash: cargo error[E0308] in middle preserved (case-insensitive `error:` + 
   )
   const errorBlock = [
     'error[E0308]: mismatched types',
-    '   --> src/main.rs:42:9',
+    '   --> src/platform/main.rs:42:9',
     '    |',
     '42  |     let x: u32 = "hello";',
     '    |            ---   ^^^^^^^ expected `u32`, found `&str`',

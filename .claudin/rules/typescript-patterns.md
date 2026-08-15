@@ -193,7 +193,7 @@ import { logError } from '../../../utils/log.js'
 
 ```typescript
 // ✅ Correct — suffix proves manual review
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 logEvent('tool_executed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {})
 
 // ❌ Wrong — could leak user code/paths

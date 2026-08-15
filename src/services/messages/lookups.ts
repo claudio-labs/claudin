@@ -2,7 +2,7 @@ import type {
   ToolUseBlockParam,
 } from '@anthropic-ai/sdk/resources/index.mjs'
 import type { BetaToolUseBlock } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
-import type { HookEvent } from 'src/entrypoints/agentSdkTypes.js'
+import type { HookEvent } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type {
   AssistantMessage,
   AttachmentMessage,

@@ -25,7 +25,7 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import type { ToolPermissionContext } from 'src/Tool.js'
 import type { Message } from 'src/types/message.js'
-import { enableConfigs } from 'src/services/config/config.js'
+import { enableConfigs } from 'src/platform/config/config.js'
 import {
   __setClassifierPromptsForTests,
   classifyYoloAction,

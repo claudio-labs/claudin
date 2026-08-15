@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import React, { useEffect } from 'react';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { Text } from 'src/terminal/ink.js';
-import { getGlobalConfig } from 'src/services/config/config.js';
+import { getGlobalConfig } from 'src/platform/config/config.js';
 import { getRainbowColor } from 'src/services/context/thinking.js';
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
 

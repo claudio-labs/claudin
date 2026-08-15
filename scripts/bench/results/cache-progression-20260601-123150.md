@@ -1,7 +1,7 @@
 # Cache progression (per-call) — 20260601-123150
 
 Model: `claude-opus-4-8` · STRICT_MCP=1
-Read file: `src/screens/REPL.tsx` · Edit file: `src/bridge/bridgeEnabled.ts`
+Read file: `src/screens/REPL.tsx` · Edit file: `src/platform/bridge/bridgeEnabled.ts`
 
 Cache TTL is 1h on first-party. The per-call table is the signal:
 a healthy cache shows the SAME cache_read at a fixed Call # across

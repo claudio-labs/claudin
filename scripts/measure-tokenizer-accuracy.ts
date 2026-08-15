@@ -53,7 +53,7 @@ import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
 } from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/services/config/config.js'
+import { enableConfigs } from '../src/platform/config/config.js'
 
 type Fixture = {
   name: string

@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import * as React from 'react';
 import { useCallback, useEffect } from 'react';
-import { getOriginalCwd } from 'src/bootstrap/state.js';
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
 import type { CommandResultDisplay } from 'src/commands.js';
 import { Select } from 'src/terminal/custom-select/select.js';
 import { Box, Text } from 'src/terminal/ink.js';

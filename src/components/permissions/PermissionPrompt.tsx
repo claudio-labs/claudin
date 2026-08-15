@@ -3,7 +3,7 @@ import React, { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { KeybindingAction } from 'src/terminal/keybindings/types.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { useSetAppState } from 'src/terminal/state/AppState.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { type OptionWithDescription, Select } from 'src/terminal/custom-select/select.js';

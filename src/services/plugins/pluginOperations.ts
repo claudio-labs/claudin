@@ -12,7 +12,7 @@
  * - Can throw errors for unexpected failures
  */
 import { dirname, join } from 'path'
-import { getOriginalCwd } from 'src/bootstrap/state.js'
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { isBuiltinPluginId } from 'src/plugins/builtinPlugins.js'
 import type { LoadedPlugin, PluginManifest } from 'src/types/plugin.js'
 import { isENOENT, toError } from 'src/shared/errors.js'
@@ -65,7 +65,7 @@ import type {
 import {
   getSettingsForSource,
   updateSettingsForSource,
-} from 'src/services/settings/settings.js'
+} from 'src/platform/settings/settings.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 
 /** Valid installable scopes (excludes 'managed' which can only be installed from managed-settings.json) */
@@ -510,7 +510,7 @@ export async function uninstallPluginOp(
   }
   newEnabledPlugins[pluginId] = undefined
   updateSettingsForSource(settingSource, {
-    // The zod schema (src/services/settings/types.ts) types enabledPlugins'
+    // The zod schema (src/platform/settings/types.ts) types enabledPlugins'
     // values as `boolean | string[]` — it doesn't model the `undefined`
     // deletion sentinel this function's own doc comment above describes
     // (mergeWith-detected key removal), so this boundary needs a cast.

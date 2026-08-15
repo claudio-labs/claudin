@@ -4,7 +4,7 @@ import {
   canUserConfigureAdvisor,
   isValidAdvisorModel,
   modelSupportsAdvisor,
-} from 'src/utils/advisor.js'
+} from 'src/platform/doctor/advisor.js'
 import {
   getDefaultMainLoopModelSetting,
   normalizeModelStringForAPI,
@@ -12,7 +12,7 @@ import {
   parseUserSpecifiedModel,
 } from 'src/utils/model/model.js'
 import { validateModel } from 'src/utils/model/validateModel.js'
-import { updateSettingsForSource } from 'src/services/settings/settings.js'
+import { updateSettingsForSource } from 'src/platform/settings/settings.js'
 
 const call: LocalCommandCall = async (args, context) => {
   const arg = args.trim().toLowerCase()

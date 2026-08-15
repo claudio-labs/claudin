@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle';
 import { spawnSync } from 'child_process';
 import sample from 'lodash-es/sample.js';
 import * as React from 'react';
-import { ExitFlow } from 'src/components/ExitFlow.js';
+import { ExitFlow } from 'src/platform/ExitFlow.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import { isBgSession } from 'src/services/session/concurrentSessions.js';
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';

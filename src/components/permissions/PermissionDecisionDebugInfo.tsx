@@ -14,8 +14,8 @@ import type { PermissionRuleValue } from 'src/services/permissions/PermissionRul
 import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js';
 import { permissionRuleValueToString } from 'src/services/permissions/permissionRuleParser.js';
 import { detectUnreachableRules, type UnreachableRule } from 'src/services/permissions/shadowedRuleDetection.js';
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
-import { getSettingSourceDisplayNameLowercase } from 'src/services/settings/constants.js';
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';
+import { getSettingSourceDisplayNameLowercase } from 'src/platform/settings/constants.js';
 type PermissionDecisionInfoItemProps = {
   title?: string;
   decisionReason: PermissionDecisionReason;

@@ -10,7 +10,7 @@ import {
 } from 'src/services/context/analyzeContext.js'
 import { formatTokens } from 'src/shared/text/format.js'
 import { getMessagesAfterCompactBoundary } from 'src/services/messages/messages.js'
-import { getSourceDisplayName } from 'src/services/settings/constants.js'
+import { getSourceDisplayName } from 'src/platform/settings/constants.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 
 /**

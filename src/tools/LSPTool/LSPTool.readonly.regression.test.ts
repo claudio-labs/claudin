@@ -20,7 +20,7 @@ import { join } from 'path'
 import { pathToFileURL } from 'url'
 
 import type { ToolUseContext } from 'src/Tool.js'
-import { setCwdState } from 'src/bootstrap/state.js'
+import { setCwdState } from 'src/platform/bootstrap/state.js'
 
 // ---------------------------------------------------------------------------
 // Mock the LSP server manager + the execFile path used by gitignore filtering.
@@ -56,7 +56,7 @@ const fakeManager = {
   },
 }
 
-mock.module('src/services/lsp/manager.js', () => ({
+mock.module('src/platform/lsp/manager.js', () => ({
   isLspConnected: () => true,
   getLspServerManager: () => fakeManager,
   reinitializeLspServerManager: () => {},

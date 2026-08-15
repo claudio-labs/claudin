@@ -12,8 +12,8 @@
 import { describe, test, expect } from 'bun:test'
 import { resolve } from 'path'
 
-const SRC = resolve(import.meta.dir, '..')
-const file = (relative: string) => Bun.file(resolve(SRC, relative))
+const REPO_ROOT = resolve(import.meta.dir, '..', '..')
+const file = (relative: string) => Bun.file(resolve(REPO_ROOT, relative))
 
 // ---------------------------------------------------------------------------
 // Fix 1: MCP tool result Unicode sanitization
@@ -22,12 +22,12 @@ describe('MCP tool result sanitization', () => {
   test('transformResultContent sanitizes text content', async () => {
     // Tool definitions are already sanitized in fetchCapabilities.ts
     const fetchContent = await file(
-      'services/mcp/client/fetchCapabilities.ts',
+      'src/services/mcp/client/fetchCapabilities.ts',
     ).text()
     expect(fetchContent).toContain('recursivelySanitizeUnicode(result.tools)')
     // Tool results must also be sanitized in toolResult.ts
     const toolResultContent = await file(
-      'services/mcp/client/toolResult.ts',
+      'src/services/mcp/client/toolResult.ts',
     ).text()
     expect(toolResultContent).toMatch(
       /case 'text':[\s\S]*?recursivelySanitizeUnicode\(resultContent\.text\)/,
@@ -35,7 +35,7 @@ describe('MCP tool result sanitization', () => {
   })
 
   test('resource text content is also sanitized', async () => {
-    const content = await file('services/mcp/client/toolResult.ts').text()
+    const content = await file('src/services/mcp/client/toolResult.ts').text()
     expect(content).toMatch(
       /recursivelySanitizeUnicode\(\s*`\$\{prefix\}\$\{resource\.text\}`/,
     )
@@ -47,7 +47,7 @@ describe('MCP tool result sanitization', () => {
 // ---------------------------------------------------------------------------
 describe('Sandbox settings trust boundary', () => {
   test('getSandboxEnabledSetting does not use getInitialSettings', async () => {
-    const content = await file('services/sandbox/sandbox-adapter.ts').text()
+    const content = await file('src/platform/sandbox/sandbox-adapter.ts').text()
     // Extract the getSandboxEnabledSetting function body
     const fnMatch = content.match(
       /function getSandboxEnabledSetting\(\)[^{]*\{([\s\S]*?)\n\}/,
@@ -69,7 +69,7 @@ describe('Sandbox settings trust boundary', () => {
 // ---------------------------------------------------------------------------
 describe('Plugin git operations disable hooks', () => {
   test('gitClone includes core.hooksPath=/dev/null', async () => {
-    const content = await file('services/plugins/marketplaceManager.ts').text()
+    const content = await file('src/services/plugins/marketplaceManager.ts').text()
     // The clone args must disable hooks
     const cloneSection = content.slice(
       content.indexOf('export async function gitClone('),
@@ -79,7 +79,7 @@ describe('Plugin git operations disable hooks', () => {
   })
 
   test('gitPull includes core.hooksPath=/dev/null', async () => {
-    const content = await file('services/plugins/marketplaceManager.ts').text()
+    const content = await file('src/services/plugins/marketplaceManager.ts').text()
     const pullSection = content.slice(
       content.indexOf('export async function gitPull('),
       content.indexOf('export async function gitPull(') + 2000,
@@ -88,7 +88,7 @@ describe('Plugin git operations disable hooks', () => {
   })
 
   test('gitSubmoduleUpdate includes core.hooksPath=/dev/null', async () => {
-    const content = await file('services/plugins/marketplaceManager.ts').text()
+    const content = await file('src/services/plugins/marketplaceManager.ts').text()
     const subSection = content.slice(
       content.indexOf('async function gitSubmoduleUpdate('),
       content.indexOf('async function gitSubmoduleUpdate(') + 1000,
@@ -102,7 +102,7 @@ describe('Plugin git operations disable hooks', () => {
 // ---------------------------------------------------------------------------
 describe('SAFE_ENV_VARS excludes credentials', () => {
   test('ANTHROPIC_FOUNDRY_API_KEY is not in SAFE_ENV_VARS', async () => {
-    const content = await file('services/config/managedEnvConstants.ts').text()
+    const content = await file('src/platform/config/managedEnvConstants.ts').text()
     // Extract the SAFE_ENV_VARS set definition
     const safeStart = content.indexOf('export const SAFE_ENV_VARS')
     const safeEnd = content.indexOf('])', safeStart)
@@ -116,11 +116,11 @@ describe('SAFE_ENV_VARS excludes credentials', () => {
 // ---------------------------------------------------------------------------
 describe('WebFetch SSRF guard', () => {
   test('getWithPermittedRedirects uses ssrfGuardedLookup', async () => {
-    const content = await file('tools/WebFetchTool/utils.ts').text()
+    const content = await file('src/tools/WebFetchTool/utils.ts').text()
     // Matched on the module, not the specifier form, so a path normalization
     // does not read as an SSRF regression.
     expect(content).toContain('import { ssrfGuardedLookup } from')
-    expect(content).toContain('services/lifecycleHooks/ssrfGuard.js')
+    expect(content).toContain('src/platform/lifecycleHooks/ssrfGuard.js')
     // The axios.get call in getWithPermittedRedirects must include lookup
     const fnSection = content.slice(
       content.indexOf('export async function getWithPermittedRedirects('),
@@ -137,7 +137,7 @@ describe('WebFetch SSRF guard', () => {
 describe('Swarm permission file polling removed', () => {
   test('useSwarmPermissionPoller hook no longer exists', async () => {
     const content = await file(
-      'hooks/useSwarmPermissionPoller.ts',
+      'src/hooks/useSwarmPermissionPoller.ts',
     ).text()
     // The file-based polling hook must not exist — it read from an
     // unauthenticated resolved/ directory where any local process could
@@ -149,7 +149,7 @@ describe('Swarm permission file polling removed', () => {
 
   test('poller does not import from permissionSync', async () => {
     const content = await file(
-      'hooks/useSwarmPermissionPoller.ts',
+      'src/hooks/useSwarmPermissionPoller.ts',
     ).text()
     // Must not import anything from permissionSync — all file-based
     // functions have been removed from this module's dependencies
@@ -158,7 +158,7 @@ describe('Swarm permission file polling removed', () => {
 
   test('file-based permission functions are marked deprecated', async () => {
     const content = await file(
-      'coordinator/swarm/permissionSync.ts',
+      'src/coordinator/swarm/permissionSync.ts',
     ).text()
     // All file-based functions must have @deprecated JSDoc
     const deprecatedFns = [
@@ -182,7 +182,7 @@ describe('Swarm permission file polling removed', () => {
 
   test('mailbox-based functions are NOT deprecated', async () => {
     const content = await file(
-      'coordinator/swarm/permissionSync.ts',
+      'src/coordinator/swarm/permissionSync.ts',
     ).text()
     // These are the active path — must not be deprecated
     const activeFns = [

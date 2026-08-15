@@ -12,8 +12,8 @@
  */
 
 import type { LoadedPlugin, PluginError } from 'src/types/plugin.js'
-import type { EditableSettingSource } from 'src/services/settings/constants.js'
-import { getSettingsForSource } from 'src/services/settings/settings.js'
+import type { EditableSettingSource } from 'src/platform/settings/constants.js'
+import { getSettingsForSource } from 'src/platform/settings/settings.js'
 import { parsePluginIdentifier } from 'src/services/plugins/pluginIdentifier.js'
 import type { PluginId } from 'src/services/plugins/schemas.js'
 

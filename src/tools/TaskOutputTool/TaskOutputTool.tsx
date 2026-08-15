@@ -18,7 +18,7 @@ import { lazySchema } from 'src/shared/data/lazySchema.js';
 import { extractTextContent } from 'src/services/messages/messages.js';
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js';
 import { sleep } from 'src/shared/sleep.js';
-import { jsonParse } from 'src/utils/slowOperations.js';
+import { jsonParse } from 'src/platform/slowOperations.js';
 import { countCharInString } from 'src/shared/text/stringUtils.js';
 import { getTaskOutput } from 'src/tasks/diskOutput.js';
 import { updateTaskState } from 'src/tasks/framework.js';

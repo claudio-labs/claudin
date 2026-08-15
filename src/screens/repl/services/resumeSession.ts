@@ -23,11 +23,11 @@ import type { AppStateStore } from 'src/terminal/state/AppStateStore.js'
 import type { SetAppState } from 'src/utils/messageQueueManager.js'
 import type { Message as MessageType } from 'src/types/message.js'
 
-import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/index.js'
+import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
 import { deserializeMessages } from 'src/services/session/conversationRecovery.js'
 import { createSystemMessage } from 'src/services/messages/messages.js'
 import { processSessionStartHooks } from 'src/services/session/sessionStart.js'
-import { executeSessionEndHooks, getSessionEndHookTimeoutMs } from 'src/services/lifecycleHooks/hooks.js'
+import { executeSessionEndHooks, getSessionEndHookTimeoutMs } from 'src/platform/lifecycleHooks/hooks.js'
 import { copyPlanForFork, copyPlanForResume } from 'src/utils/plans.js'
 import {
   computeStandaloneAgentContext,
@@ -51,7 +51,7 @@ import {
   getOriginalCwd,
   setCostStateForRestore,
   switchSession,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import {
   getStoredSessionCosts,
   resetCostState,

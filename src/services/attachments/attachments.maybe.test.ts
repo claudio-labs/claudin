@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 type LogCall = { eventName: string; metadata: Record<string, unknown> }
 const logCalls: LogCall[] = []
 
-mock.module('src/services/analytics/index.js', () => ({
+mock.module('src/platform/analytics/index.js', () => ({
   logEvent: (eventName: string, metadata: Record<string, unknown>) => {
     logCalls.push({ eventName, metadata })
   },

@@ -9,7 +9,7 @@ import { Box } from 'src/terminal/ink.js';
 import type { Tools } from 'src/Tool.js';
 import { type ConnectorTextBlock, isConnectorTextBlock } from 'src/types/connectorText.js';
 import type { AssistantMessage, AttachmentMessage as AttachmentMessageType, CollapsedReadSearchGroup as CollapsedReadSearchGroupType, GroupedToolUseMessage as GroupedToolUseMessageType, NormalizedUserMessage, ProgressMessage, SystemMessage } from 'src/types/message.js';
-import { type AdvisorBlock, isAdvisorBlock } from 'src/utils/advisor.js';
+import { type AdvisorBlock, isAdvisorBlock } from 'src/platform/doctor/advisor.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { logError } from 'src/shared/log.js';
 import type { buildMessageLookups } from 'src/services/messages/messages.js';

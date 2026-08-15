@@ -41,11 +41,11 @@ import { isNonCustomOpusModel } from 'src/utils/model/model.js'
 import { disableKeepAlive } from 'src/services/api/proxy.js'
 import { sleep } from 'src/shared/sleep.js'
 import type { ThinkingConfig } from 'src/services/context/thinking.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { isMockRateLimitError } from 'src/services/rateLimitMocking.js'
 import { REPEATED_529_ERROR_MESSAGE } from 'src/services/api/errors.js'
 import { extractConnectionErrorDetails } from 'src/services/api/errorUtils.js'

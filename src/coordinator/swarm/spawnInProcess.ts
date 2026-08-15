@@ -14,7 +14,7 @@
  */
 
 import sample from 'lodash-es/sample.js'
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { getSpinnerVerbs } from 'src/constants/spinnerVerbs.js'
 import { TURN_COMPLETION_VERBS } from 'src/constants/turnCompletionVerbs.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
@@ -39,7 +39,7 @@ import {
   isPerfettoTracingEnabled,
   registerAgent as registerPerfettoAgent,
   unregisterAgent as unregisterPerfettoAgent,
-} from 'src/services/telemetry/perfettoTracing.js'
+} from 'src/platform/telemetry/perfettoTracing.js'
 import { removeMemberByAgentId } from 'src/coordinator/swarm/teamHelpers.js'
 
 type SetAppStateFn = (updater: (prev: AppState) => AppState) => void

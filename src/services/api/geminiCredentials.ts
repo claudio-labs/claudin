@@ -1,7 +1,7 @@
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { isBareMode } from 'src/shared/envUtils.js'
 import { getGeminiAuthMode } from 'src/services/api/geminiAuth.js'
-import { getSecureStorage } from 'src/services/secureStorage/index.js'
+import { getSecureStorage } from 'src/platform/secureStorage/index.js'
 
 export const GEMINI_TOKEN_STORAGE_KEY = 'gemini' as const
 

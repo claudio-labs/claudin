@@ -78,7 +78,7 @@ afterAll(() => {
 })
 
 const { createOpenAIShimClient } = await import('src/services/api/openaiShim.js')
-const { getSessionId } = await import('src/bootstrap/state.js')
+const { getSessionId } = await import('src/platform/bootstrap/state.js')
 
 type FetchType = typeof globalThis.fetch
 

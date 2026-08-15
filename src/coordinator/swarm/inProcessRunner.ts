@@ -22,7 +22,7 @@ import {
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { getAutoCompactThreshold } from 'src/services/compact/autoCompact.js'
 import {
   buildPostCompactMessages,
@@ -82,7 +82,7 @@ import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdate
 import { hasPermissionsToUseTool } from 'src/services/permissions/permissions.js'
 import { emitTaskTerminatedSdk } from 'src/utils/sdkEventQueue.js'
 import { sleep } from 'src/shared/sleep.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
 import { claimTask, listTasks, type Task, updateTask } from 'src/tasks/tasks.js'
 import type { TeammateContext } from 'src/coordinator/teammateContext.js'
@@ -96,7 +96,7 @@ import {
   readMailbox,
   writeToMailbox,
 } from 'src/coordinator/teammateMailbox.js'
-import { unregisterAgent as unregisterPerfettoAgent } from 'src/services/telemetry/perfettoTracing.js'
+import { unregisterAgent as unregisterPerfettoAgent } from 'src/platform/telemetry/perfettoTracing.js'
 import { createContentReplacementState } from 'src/services/tools/toolResultStorage.js'
 import { TEAM_LEAD_NAME } from 'src/coordinator/swarm/constants.js'
 import {

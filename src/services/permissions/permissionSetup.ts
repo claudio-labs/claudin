@@ -6,22 +6,22 @@ import {
   handlePlanModeTransition,
   setHasExitedPlanMode,
   setNeedsAutoModeExitAttachment,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import type {
   ToolPermissionContext,
   ToolPermissionRulesBySource,
 } from 'src/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import type { SettingSource } from 'src/services/settings/constants.js'
-import { SETTING_SOURCES } from 'src/services/settings/constants.js'
+import type { SettingSource } from 'src/platform/settings/constants.js'
+import { SETTING_SOURCES } from 'src/platform/settings/constants.js'
 import {
   getInitialSettings,
   getSettingsFilePathForSource,
   getUseAutoModeDuringPlan,
   hasAllowBypassPermissionsMode,
   hasAutoModeOptIn,
-} from 'src/services/settings/settings.js'
+} from 'src/platform/settings/settings.js'
 import {
   type PermissionMode,
   permissionModeFromString,
@@ -40,7 +40,7 @@ import {
   checkStatsigFeatureGate_CACHED_MAY_BE_STALE,
   getDynamicConfig_BLOCKS_ON_INIT,
   getFeatureValue_CACHED_MAY_BE_STALE,
-} from 'src/services/analytics/growthbook.js'
+} from 'src/platform/analytics/growthbook.js'
 import {
   addDirHelpMessage,
   validateDirectoryForWorkspace,
@@ -48,7 +48,7 @@ import {
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 /* eslint-enable @typescript-eslint/no-require-imports */

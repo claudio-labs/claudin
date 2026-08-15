@@ -10,7 +10,7 @@ import {
   openVerificationUri,
   pollAccessToken,
   requestDeviceCode,
-} from 'src/services/github/deviceFlow.js'
+} from 'src/platform/github/deviceFlow.js'
 import type { LocalJSXCommandOnDone } from 'src/types/command.js'
 import {
   readGithubModelsToken,

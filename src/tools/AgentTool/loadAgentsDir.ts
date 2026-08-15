@@ -1,13 +1,13 @@
 import { feature } from 'bun:bundle'
 import memoize from 'lodash-es/memoize.js'
 import { basename } from 'path'
-import type { SettingSource } from 'src/services/settings/constants.js'
+import type { SettingSource } from 'src/platform/settings/constants.js'
 import { z } from 'zod/v4'
 import { isAutoMemoryEnabled } from 'src/memdir/paths.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import {
   type McpServerConfig,
   McpServerConfigSchema,
@@ -36,8 +36,8 @@ import {
   clearPluginAgentCache,
   loadPluginAgents,
 } from 'src/services/plugins/loadPluginAgents.js'
-import { HooksSchema, type HooksSettings } from 'src/services/settings/types.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { HooksSchema, type HooksSettings } from 'src/platform/settings/types.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'

@@ -38,7 +38,7 @@ import type { UUID } from 'crypto'
 // Sourced from the zod schema rather than `agentSdkTypes.js`: that barrel
 // re-exports `coreTypes.generated.ts`, which is an empty stub in this fork, so
 // the name it is nominally exported under does not actually resolve.
-import type { SDKAssistantMessageErrorSchema } from 'src/entrypoints/sdk/coreSchemas.js'
+import type { SDKAssistantMessageErrorSchema } from 'src/platform/entrypoints/sdk/coreSchemas.js'
 import type { z } from 'zod/v4'
 import type { Progress } from 'src/Tool.js'
 import type { PermissionMode } from 'src/types/permissions.js'

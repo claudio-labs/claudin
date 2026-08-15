@@ -8,7 +8,7 @@ import {
   unlink,
 } from 'fs/promises'
 import { join } from 'path'
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import { getErrnoCode } from 'src/shared/errors.js'
 import { readFileRange, tailFile } from 'src/shared/fs/fsOperations.js'
 import { logError } from 'src/shared/log.js'

@@ -1,16 +1,16 @@
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources'
 import { randomUUID } from 'crypto'
-import { setPromptId } from 'src/bootstrap/state.js'
+import { setPromptId } from 'src/platform/bootstrap/state.js'
 import type {
   AttachmentMessage,
   SystemMessage,
   UserMessage,
 } from 'src/types/message.js'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import type { PermissionMode } from 'src/types/permissions.js'
 import { createUserMessage } from 'src/services/messages/messages.js'
-import { logOTelEvent, redactIfDisabled } from 'src/services/telemetry/events.js'
-import { startInteractionSpan } from 'src/services/telemetry/sessionTracing.js'
+import { logOTelEvent, redactIfDisabled } from 'src/platform/telemetry/events.js'
+import { startInteractionSpan } from 'src/platform/telemetry/sessionTracing.js'
 import {
   matchesKeepGoingKeyword,
   matchesNegativeKeyword,

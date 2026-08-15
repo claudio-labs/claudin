@@ -8,12 +8,12 @@
 
 import type { ToolPermissionContext } from 'src/Tool.js'
 import type { PermissionResult } from 'src/services/permissions/PermissionResult.js'
-import type { ParsedPowerShellCommand } from 'src/services/shell/powershell/parser.js'
+import type { ParsedPowerShellCommand } from 'src/platform/shell/powershell/parser.js'
 import {
   deriveSecurityFlags,
   getPipelineSegments,
   PS_TOKENIZER_DASH_CHARS,
-} from 'src/services/shell/powershell/parser.js'
+} from 'src/platform/shell/powershell/parser.js'
 import {
   argLeaksValue,
   isAllowlistedPipelineTail,

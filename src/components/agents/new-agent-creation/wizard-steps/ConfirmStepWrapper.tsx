@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { dirname } from 'path';
 import React, { type ReactNode, useCallback, useState } from 'react';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { useSetAppState } from 'src/terminal/state/AppState.js';
 import type { Tools } from 'src/Tool.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';

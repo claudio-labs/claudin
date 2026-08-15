@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import {
   getBytesSaved,
   recordBytesSaved,

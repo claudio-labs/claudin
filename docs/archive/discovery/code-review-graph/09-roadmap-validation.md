@@ -27,7 +27,7 @@
 
 **b) Baseline é straw-man?** **Sim, parcialmente.** O baseline real do Claudin já é:
 - `LSPTool` 13 ops registrado e descrito em `src/tools/LSPTool/prompt.ts:1-14` (`04 §1`, `05 §1.1`).
-- 12 servers embarcados auto-instaláveis (`src/services/lsp/builtinServers.ts:461-609`, `05 §1.1`).
+- 12 servers embarcados auto-instaláveis (`src/platform/lsp/builtinServers.ts:461-609`, `05 §1.1`).
 - `GrepTool` com `output_mode="symbols"` cobre TS/JS/Py/Go (`src/tools/GrepTool/GrepTool.ts:408-419`, `06`).
 - Read `view='outline'` para esqueleto de arquivo (`06`).
 
@@ -86,7 +86,7 @@ Outro alternative menor: **bloco de prompt** que **instrui** a LLM a, durante o 
 
 ### Eixo 3 — Wiki auto-gerada
 
-**a) Ganho claimado.** Substituir `src/services/wiki/init.ts:6-37` (template vazio com placeholders) por geração automática: walk dirs → Read `view='outline'` → import graph regex → LLM summarizer per module.
+**a) Ganho claimado.** Substituir `src/platform/wiki/init.ts:6-37` (template vazio com placeholders) por geração automática: walk dirs → Read `view='outline'` → import graph regex → LLM summarizer per module.
 
 **b) Baseline é straw-man?** **Sim, fortemente.** A premissa "template vazio = dor" não foi validada. `init.ts` produz `index.md`, `log.md`, `pages/architecture.md` e `wiki-schema.md` — um **scaffold deliberado** para o usuário preencher. É um sistema de notas append-only, não um gerador de doc. Comparar com `claude-code-guide` agent (mencionado em `06 §6`) que já fala do produto, e com `docs/` humano (que `05 §veredito` cita como melhor que qualquer wiki autogen).
 

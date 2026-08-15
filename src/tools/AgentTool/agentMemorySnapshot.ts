@@ -4,7 +4,7 @@ import { z } from 'zod/v4'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
-import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { type AgentMemoryScope, getAgentMemoryDir } from 'src/tools/AgentTool/agentMemory.js'
 
 const SNAPSHOT_BASE = 'agent-memory-snapshots'

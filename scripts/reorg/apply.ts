@@ -9,8 +9,8 @@
  *
  * Two properties keep it honest:
  *  - a destination that already exists aborts the whole run before any file moves
- *  - the replacement keys carry a trailing `/` or `.`, so `src/services/config/config.`
- *    cannot swallow `src/services/config/configConstants.ts`
+ *  - the replacement keys carry a trailing `/` or `.`, so `src/platform/config/config.`
+ *    cannot swallow `src/platform/config/configConstants.ts`
  *
  * Usage:
  *   bun scripts/reorg/apply.ts --dry              # plan only
@@ -277,8 +277,8 @@ function applyRewrites(rewrites: Map<string, string>): number {
     if (existsSync(abs)) targets.push(abs)
   }
 
-  // Longest key first: `src/services/shell/powershell/` must win over
-  // `src/services/shell/`, which would otherwise claim the same text.
+  // Longest key first: `src/platform/shell/powershell/` must win over
+  // `src/platform/shell/`, which would otherwise claim the same text.
   const ordered = [...rewrites.entries()].sort((a, b) => b[0].length - a[0].length)
 
   let touched = 0

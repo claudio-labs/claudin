@@ -15,13 +15,13 @@ import { dirname } from 'path'
 import type { StructuredPatchHunk } from 'diff'
 
 import type { ToolUseContext } from 'src/Tool.js'
-import { diagnosticTracker } from 'src/services/diagnosticTracking.js'
+import { diagnosticTracker } from 'src/platform/diagnosticTracking.js'
 import {
   armFileForLateDiagnostics,
   buildPostEditDiagnosticsMessages,
-} from 'src/services/lsp/diagnosticsForToolResult.js'
-import { clearDeliveredDiagnosticsForFile } from 'src/services/lsp/LSPDiagnosticRegistry.js'
-import { getLspServerManager } from 'src/services/lsp/manager.js'
+} from 'src/platform/lsp/diagnosticsForToolResult.js'
+import { clearDeliveredDiagnosticsForFile } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
+import { getLspServerManager } from 'src/platform/lsp/manager.js'
 import { notifyVscodeFileUpdated } from 'src/services/mcp/vscodeSdkMcp.js'
 import { checkTeamMemSecrets } from 'src/services/teamMemorySync/teamMemSecretGuard.js'
 import { logForDebugging } from 'src/shared/debug.js'

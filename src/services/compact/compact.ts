@@ -8,11 +8,11 @@ const sessionTranscriptModule = feature('KAIROS')
   : null
 
 import { APIUserAbortError } from '@anthropic-ai/sdk'
-import { markPostCompaction } from 'src/bootstrap/state.js'
+import { markPostCompaction } from 'src/platform/bootstrap/state.js'
 import {
   getInvokedSkillsForAgent,
   getOriginalCwd,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import type { QuerySource } from 'src/constants/querySource.js'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import type { Tool, ToolUseContext } from 'src/Tool.js'
@@ -41,7 +41,7 @@ import {
   getDeferredToolsDeltaAttachment,
   getMcpInstructionsDeltaAttachment,
 } from 'src/services/attachments/attachments.js'
-import { getMemoryPath } from 'src/services/config/config.js'
+import { getMemoryPath } from 'src/platform/config/config.js'
 import { COMPACT_MAX_OUTPUT_TOKENS } from 'src/services/context/context.js'
 import {
   analyzeContext,
@@ -57,7 +57,7 @@ import {
 import {
   executePostCompactHooks,
   executePreCompactHooks,
-} from 'src/services/lifecycleHooks/hooks.js'
+} from 'src/platform/lifecycleHooks/hooks.js'
 import { logError } from 'src/shared/log.js'
 import { MEMORY_TYPE_VALUES } from 'src/memdir/types.js'
 import {
@@ -82,7 +82,7 @@ import {
   reAppendSessionMetadata,
 } from 'src/services/session/sessionStorage.js'
 import { sleep } from 'src/shared/sleep.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { asSystemPrompt } from 'src/utils/systemPromptType.js'
 import { getTaskOutputPath } from 'src/tasks/diskOutput.js'
@@ -95,11 +95,11 @@ import {
   extractDiscoveredToolNames,
   isToolSearchEnabled,
 } from 'src/services/tools/toolSearch.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import {
   getMaxOutputTokensForModel,
   queryModelWithStreaming,

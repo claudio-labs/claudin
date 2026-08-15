@@ -8,7 +8,7 @@ import {
   getSessionCronTasks,
   removeSessionCronTasks,
   setScheduledTasksEnabled,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { CronCreateTool } from 'src/tools/ScheduleCronTool/CronCreateTool.js'
 
 let configDir: string

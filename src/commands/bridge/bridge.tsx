@@ -3,17 +3,17 @@ import { feature } from 'bun:bundle';
 import { toString as qrToString } from 'qrcode';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { getBridgeAccessToken } from 'src/bridge/bridgeConfig.js';
-import { checkBridgeMinVersion, getBridgeDisabledReason, isEnvLessBridgeEnabled } from 'src/bridge/bridgeEnabled.js';
-import { checkEnvLessBridgeMinVersion } from 'src/bridge/envLessBridgeConfig.js';
-import { BRIDGE_LOGIN_INSTRUCTION, REMOTE_CONTROL_DISCONNECTED_MSG } from 'src/bridge/types.js';
+import { getBridgeAccessToken } from 'src/platform/bridge/bridgeConfig.js';
+import { checkBridgeMinVersion, getBridgeDisabledReason, isEnvLessBridgeEnabled } from 'src/platform/bridge/bridgeEnabled.js';
+import { checkEnvLessBridgeMinVersion } from 'src/platform/bridge/envLessBridgeConfig.js';
+import { BRIDGE_LOGIN_INSTRUCTION, REMOTE_CONTROL_DISCONNECTED_MSG } from 'src/platform/bridge/types.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import { ListItem } from 'src/terminal/design-system/ListItem.js';
-import { shouldShowRemoteCallout } from 'src/components/RemoteCallout.js';
+import { shouldShowRemoteCallout } from 'src/platform/remote/RemoteCallout.js';
 import { useRegisterOverlay } from 'src/terminal/contexts/overlayContext.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { ToolUseContext } from 'src/Tool.js';
 import type { LocalJSXCommandContext, LocalJSXCommandOnDone } from 'src/types/command.js';
@@ -468,7 +468,7 @@ async function checkBridgePrerequisites(): Promise<string | null> {
   const {
     waitForPolicyLimitsToLoad,
     isPolicyAllowed
-  } = await import('src/services/policyLimits/index.js');
+  } = await import('src/platform/policyLimits/index.js');
   await waitForPolicyLimitsToLoad();
   if (!isPolicyAllowed('allow_remote_control')) {
     return "Remote Control is disabled by your organization's policy.";

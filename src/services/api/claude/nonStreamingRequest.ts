@@ -13,7 +13,7 @@ import type { ThinkingConfig } from 'src/services/context/thinking.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { getAnthropicClient } from 'src/services/api/client.js'
 import { getCachedAnthropicClient } from 'src/services/api/clientCache.js'
 import { type RetryContext, withRetry } from 'src/services/api/withRetry.js'

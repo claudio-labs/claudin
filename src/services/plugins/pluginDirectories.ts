@@ -12,7 +12,7 @@
 import { mkdirSync } from 'fs'
 import { readdir, rm, stat } from 'fs/promises'
 import { delimiter, join } from 'path'
-import { getUseCoworkPlugins } from 'src/bootstrap/state.js'
+import { getUseCoworkPlugins } from 'src/platform/bootstrap/state.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import { errorMessage, isFsInaccessible } from 'src/shared/errors.js'

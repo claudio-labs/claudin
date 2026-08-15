@@ -7,13 +7,13 @@ import { FastIcon, getFastIconString } from 'src/terminal/FastIcon.js';
 import type { ExitState } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { Box, Link, Text } from 'src/terminal/ink.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import { clearFastModeCooldown, FAST_MODE_MODEL_DISPLAY, getFastModeModel, getFastModeRuntimeState, getFastModeUnavailableReason, isFastModeEnabled, isFastModeSupportedByModel, prefetchFastModeStatus } from 'src/utils/fastMode.js';
 import { formatDuration } from 'src/shared/text/format.js';
 import { formatModelPricing, getOpus46CostTier } from 'src/services/api/modelCost.js';
-import { updateSettingsForSource } from 'src/services/settings/settings.js';
+import { updateSettingsForSource } from 'src/platform/settings/settings.js';
 function applyFastMode(enable: boolean, setAppState: (f: (prev: AppState) => AppState) => void): void {
   clearFastModeCooldown();
   updateSettingsForSource('userSettings', {

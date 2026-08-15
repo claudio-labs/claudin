@@ -1,15 +1,15 @@
 import { c as _c } from "react-compiler-runtime";
 import { homedir } from 'os';
 import React from 'react';
-import { logEvent } from 'src/services/analytics/index.js';
-import { setSessionTrustAccepted } from 'src/bootstrap/state.js';
+import { logEvent } from 'src/platform/analytics/index.js';
+import { setSessionTrustAccepted } from 'src/platform/bootstrap/state.js';
 import type { Command } from 'src/commands.js';
 import { useExitOnCtrlCDWithKeybindings } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { Box, Link, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { getMcpConfigsByScope } from 'src/services/mcp/config.js';
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
-import { checkHasTrustDialogAccepted, type ProjectConfig, saveCurrentProjectConfig } from 'src/services/config/config.js';
+import { checkHasTrustDialogAccepted, type ProjectConfig, saveCurrentProjectConfig } from 'src/platform/config/config.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js';
 import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js';

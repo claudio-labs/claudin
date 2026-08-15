@@ -9,18 +9,18 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import type { ToolUseContext } from 'src/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
-import type { DiagnosticFile } from 'src/services/diagnosticTracking.js'
+import type { DiagnosticFile } from 'src/platform/diagnosticTracking.js'
 import {
   _resetFileWaitersForTesting,
   markDiagnosticsAsDelivered,
   registerPendingLSPDiagnostic,
   resetAllLSPDiagnosticState,
-} from 'src/services/lsp/LSPDiagnosticRegistry.js'
+} from 'src/platform/lsp/LSPDiagnosticRegistry.js'
 
 // Force-enable the LSP master toggle so this suite is deterministic regardless
 // of the local user's ~/.claudin/settings.json (lsp.enabled may be false).
-const realUserSettings = { ...(await import('src/services/lsp/userSettings.js')) }
-mock.module('src/services/lsp/userSettings.js', () => ({
+const realUserSettings = { ...(await import('src/platform/lsp/userSettings.js')) }
+mock.module('src/platform/lsp/userSettings.js', () => ({
   ...realUserSettings,
   isLspGloballyEnabled: () => true,
 }))
@@ -58,7 +58,7 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  mock.module('src/services/lsp/userSettings.js', () => realUserSettings)
+  mock.module('src/platform/lsp/userSettings.js', () => realUserSettings)
 })
 
 describe('LSP dedup: per-edit + turn-level share the LRU', () => {
@@ -85,10 +85,10 @@ describe('LSP dedup: per-edit + turn-level share the LRU', () => {
       armFileForLateDiagnostics,
       awaitLateDiagnosticsForTurn,
       clearArmedFiles,
-    } = await import('src/services/lsp/diagnosticsForToolResult.js')
+    } = await import('src/platform/lsp/diagnosticsForToolResult.js')
     // Mock the lsp manager so arm() doesn't reject due to no server.
-    const realManager = { ...(await import('src/services/lsp/manager.js')) }
-    mock.module('src/services/lsp/manager.js', () => ({
+    const realManager = { ...(await import('src/platform/lsp/manager.js')) }
+    mock.module('src/platform/lsp/manager.js', () => ({
       ...realManager,
       getLspServerManager: () => ({ getServerForFile: () => ({}) }),
     }))
@@ -110,7 +110,7 @@ describe('LSP dedup: per-edit + turn-level share the LRU', () => {
       expect(result).toEqual([])
     } finally {
       // Restore manager mock so the rest of the suite is unaffected.
-      mock.module('src/services/lsp/manager.js', () => realManager)
+      mock.module('src/platform/lsp/manager.js', () => realManager)
     }
   })
 
@@ -152,6 +152,6 @@ describe('LSP dedup: per-edit + turn-level share the LRU', () => {
 })
 
 afterAll(() => {
-  mock.module('src/services/lsp/userSettings.js', () => realUserSettings)
-  mock.module('src/services/lsp/userSettings.js', () => realUserSettings)
+  mock.module('src/platform/lsp/userSettings.js', () => realUserSettings)
+  mock.module('src/platform/lsp/userSettings.js', () => realUserSettings)
 })

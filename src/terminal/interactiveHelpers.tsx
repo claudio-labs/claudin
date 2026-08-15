@@ -1,18 +1,18 @@
 import { feature } from 'bun:bundle';
 import { appendFileSync } from 'fs';
 import React from 'react';
-import { logEvent } from 'src/services/analytics/index.js';
+import { logEvent } from 'src/platform/analytics/index.js';
 import { gracefulShutdown, gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js';
-import { type ChannelEntry, getAllowedChannels, setAllowedChannels, setHasDevChannels, setSessionTrustAccepted, setStatsStore } from 'src/bootstrap/state.js';
+import { type ChannelEntry, getAllowedChannels, setAllowedChannels, setHasDevChannels, setSessionTrustAccepted, setStatsStore } from 'src/platform/bootstrap/state.js';
 import type { Command } from 'src/commands.js';
 import { createStatsStore, type StatsStore } from 'src/terminal/contexts/stats.js';
 import { getSystemContext } from 'src/context.js';
-import { initializeTelemetryAfterTrust } from 'src/entrypoints/init.js';
+import { initializeTelemetryAfterTrust } from 'src/platform/entrypoints/init.js';
 import { isSynchronizedOutputSupported } from 'src/terminal/ink/terminal.js';
 import type { RenderOptions, Root, TextProps } from 'src/terminal/ink.js';
 import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js';
-import { startDeferredPrefetches } from 'src/main/deferredPrefetches.js';
-import { checkGate_CACHED_OR_BLOCKING, initializeGrowthBook, resetGrowthBook } from 'src/services/analytics/growthbook.js';
+import { startDeferredPrefetches } from 'src/platform/main/deferredPrefetches.js';
+import { checkGate_CACHED_OR_BLOCKING, initializeGrowthBook, resetGrowthBook } from 'src/platform/analytics/growthbook.js';
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js';
 import { isQualifiedForGrove } from 'src/services/api/grove.js';
 import { handleMcpjsonServerApprovals } from 'src/services/mcpServerApproval.js';
@@ -20,20 +20,20 @@ import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import { onChangeAppState } from 'src/terminal/state/onChangeAppState.js';
 import { normalizeApiKeyForConfig } from 'src/services/auth/authPortable.js';
 import { getExternalClaudeMdIncludes, getMemoryFiles, shouldShowClaudeMdExternalIncludesWarning } from 'src/services/instructions/claudemd.js';
-import { checkHasTrustDialogAccepted, getCustomApiKeyStatus, getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
-import { shouldShowMigrationBanner } from 'src/services/config/claudinMigration.js';
-import { updateDeepLinkTerminalPreference } from 'src/services/deepLink/terminalPreference.js';
+import { checkHasTrustDialogAccepted, getCustomApiKeyStatus, getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
+import { shouldShowMigrationBanner } from 'src/platform/config/claudinMigration.js';
+import { updateDeepLinkTerminalPreference } from 'src/platform/deepLink/terminalPreference.js';
 import { isEnvTruthy, isRunningOnHomespace } from 'src/shared/envUtils.js';
 import { type FpsMetrics, FpsTracker } from 'src/terminal/render/fpsTracker.js';
 import { updateGithubRepoPathMapping } from 'src/services/git/githubRepoPathMapping.js';
-import { applyConfigEnvironmentVariables } from 'src/services/config/managedEnv.js';
+import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js';
 import { usesAnthropicAccountFlow } from 'src/utils/model/providers.js';
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js';
 import { getBaseRenderOptions } from 'src/terminal/render/renderOptions.js';
 import { applyRenderCadence } from 'src/terminal/render/renderCadence.js';
-import { getSettingsWithAllErrors } from 'src/services/settings/allErrors.js';
-import { hasAutoModeOptIn, hasSkipDangerousModePermissionPrompt } from 'src/services/settings/settings.js';
-import { profileCheckpoint } from 'src/utils/startupProfiler.js';
+import { getSettingsWithAllErrors } from 'src/platform/settings/allErrors.js';
+import { hasAutoModeOptIn, hasSkipDangerousModePermissionPrompt } from 'src/platform/settings/settings.js';
+import { profileCheckpoint } from 'src/platform/startupProfiler.js';
 export function completeOnboarding(): void {
   saveGlobalConfig(current => ({
     ...current,
@@ -123,7 +123,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
   // the regular Onboarding (welcome + theme + trust + provider).
   if (shouldShowMigrationBanner()) {
     const { MigrationDialog } = await import(
-      'src/components/MigrationDialog.js'
+      'src/platform/MigrationDialog.js'
     );
     await showSetupDialog(root, done => (
       <MigrationDialog onDone={() => void done()} />
@@ -138,7 +138,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
     onboardingShown = true;
     const {
       Onboarding
-    } = await import('src/components/Onboarding.js');
+    } = await import('src/platform/Onboarding.js');
     await showSetupDialog(root, done => <Onboarding onDone={() => {
       completeOnboarding();
       void done();
@@ -198,7 +198,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
         const externalIncludes = getExternalClaudeMdIncludes(await getMemoryFiles(true));
         const {
           ClaudeMdExternalIncludesDialog
-        } = await import('src/components/ClaudeMdExternalIncludesDialog.js');
+        } = await import('src/platform/ClaudeMdExternalIncludesDialog.js');
         await showSetupDialog(root, done => <ClaudeMdExternalIncludesDialog onDone={done} isStandaloneDialog externalIncludes={externalIncludes} />);
       }
     }
@@ -229,7 +229,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
     profileCheckpoint('setupScreens_grove_block_enter');
     const {
       GroveDialog
-    } = await import('src/components/grove/Grove.js');
+    } = await import('src/platform/privacy/Grove.js');
     const decision = await showSetupDialog<string>(root, done => <GroveDialog showIfAlreadyViewed={false} location={onboardingShown ? 'onboarding' : 'policy_update_modal'} onDone={done} />);
     if (decision === 'escape') {
       logEvent('tengu_grove_policy_exited', {});
@@ -316,7 +316,7 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
       } else {
         const {
           DevChannelsDialog
-        } = await import('src/components/DevChannelsDialog.js');
+        } = await import('src/platform/DevChannelsDialog.js');
         await showSetupDialog(root, done => <DevChannelsDialog channels={devChannels} onAccept={() => {
           // Mark dev entries per-entry so the allowlist bypass doesn't leak
           // to --channels entries when both flags are passed.

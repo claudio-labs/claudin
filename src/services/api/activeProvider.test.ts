@@ -1,11 +1,11 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
-import type { GlobalConfig, ProviderProfile } from 'src/services/config/config.js'
+import type { GlobalConfig, ProviderProfile } from 'src/platform/config/config.js'
 
 // Capture real modules first so we can spread them and restore at teardown.
 // Following CLAUDE.md mock.module rules — never narrow the namespace shape.
 // Spread into plain objects so afterAll restores the original bindings, not
 // the live ESM namespaces (which mock.module mutates after the fact).
-const realConfig = { ...(await import('src/services/config/config.js')) }
+const realConfig = { ...(await import('src/platform/config/config.js')) }
 const realProviderProfiles = { ...(await import('src/services/api/providerProfiles.js')) }
 const realActiveProvider = { ...(await import('src/services/api/activeProvider.js')) }
 
@@ -30,7 +30,7 @@ const state: ConfigState = {
   activeProfile: undefined,
 }
 
-mock.module('src/services/config/config.js', () => ({
+mock.module('src/platform/config/config.js', () => ({
   ...realConfig,
   getGlobalConfig: () => state.globalConfig,
 }))
@@ -47,7 +47,7 @@ mock.module('src/services/api/providerProfiles.js', () => ({
 }))
 
 afterAll(() => {
-  mock.module('src/services/config/config.js', () => realConfig)
+  mock.module('src/platform/config/config.js', () => realConfig)
   mock.module('src/services/api/providerProfiles.js', () => realProviderProfiles)
 })
 

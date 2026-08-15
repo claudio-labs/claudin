@@ -1,6 +1,6 @@
 # Structured Extraction — taxonomia fechada + skip-routine + tool_choice
 
-> **Fonte:** `claude-mem` repo, `plugin/modes/code.json`, `src/sdk/parser.ts`, `src/services/worker/agents/ResponseProcessor.ts`, `src/server/generation/providers/ClaudeObservationProvider.ts`.
+> **Fonte:** `claude-mem` repo, `plugin/modes/code.json`, `src/sdk/parser.ts`, `src/services/worker/agents/ResponseProcessor.ts`, `src/platform/server/generation/providers/ClaudeObservationProvider.ts`.
 > **Verificado contra o repo em 2026-05-19** — ver "Correções pós-verificação".
 
 ## Contexto
@@ -110,5 +110,5 @@ Alinha com a regra do projeto "fallback pattern — nunca bloquear o usuário" (
 | Parser XML + TODO de schema | `src/sdk/parser.ts:5, 41-151` (concept dedup :119) |
 | Política discard total | `src/services/worker/agents/ResponseProcessor.ts:37-47` |
 | Fallback de campo | `src/sdk/parser.ts:108-117` |
-| Provider sem tool_choice | `src/server/generation/providers/ClaudeObservationProvider.ts:76-81` |
+| Provider sem tool_choice | `src/platform/server/generation/providers/ClaudeObservationProvider.ts:76-81` |
 | Schema zod persistido | `src/core/schemas/memory-item.ts:8-26` |

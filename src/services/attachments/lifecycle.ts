@@ -27,7 +27,7 @@ import {
   setNeedsAutoModeExitAttachment,
   getSessionId,
   getSdkBetas,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { isHumanTurn } from 'src/services/messages/messagePredicates.js'
 import { isThinkingMessage } from 'src/services/messages/messages.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
@@ -39,7 +39,7 @@ import {
   type TodoSnapshotItem,
 } from 'src/utils/todoReminderDelta.js'
 import { getContextWindowForModel } from 'src/services/context/context.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   getEffectiveContextWindowSize,
   isAutoCompactEnabled,

@@ -51,7 +51,7 @@ import {
   getBytesPerTokenForModel,
   roughTokenCountEstimation,
 } from '../src/services/tokenEstimation.js'
-import { enableConfigs } from '../src/services/config/config.js'
+import { enableConfigs } from '../src/platform/config/config.js'
 import { MAX_OUTPUT_SIZE } from '../src/shared/fs/file.js'
 
 type Profile = 'small' | 'typical' | 'large' | 'capped'

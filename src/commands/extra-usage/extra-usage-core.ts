@@ -8,7 +8,7 @@ import { type ExtraUsage, fetchUtilization } from 'src/services/api/usage.js'
 import { getSubscriptionType } from 'src/services/auth/auth.js'
 import { hasClaudeAiBillingAccess } from 'src/services/api/billing.js'
 import { openBrowser } from 'src/shared/browser.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logError } from 'src/shared/log.js'
 
 type ExtraUsageResult =

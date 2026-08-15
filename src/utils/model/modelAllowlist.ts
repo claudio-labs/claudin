@@ -1,4 +1,4 @@
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { isModelAlias, isModelFamilyAlias } from 'src/utils/model/aliases.js'
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
 import { resolveOverriddenModel } from 'src/utils/model/modelStrings.js'

@@ -10,7 +10,7 @@ import type {
   UserMessage,
 } from 'src/types/message.js'
 import { normalizeMessagesForAPI } from 'src/services/messages/messages.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 
 type TokenStats = {
   toolRequests: Map<string, number>

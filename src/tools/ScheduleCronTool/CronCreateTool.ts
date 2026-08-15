@@ -1,5 +1,5 @@
 import { z } from 'zod/v4'
-import { setScheduledTasksEnabled } from 'src/bootstrap/state.js'
+import { setScheduledTasksEnabled } from 'src/platform/bootstrap/state.js'
 import type { ValidationResult } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { cronToHuman, parseCronExpression } from 'src/tasks/cron.js'

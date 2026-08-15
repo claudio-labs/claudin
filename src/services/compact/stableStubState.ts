@@ -24,7 +24,7 @@
  */
 
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import { getSessionId, onSessionSwitch } from 'src/bootstrap/state.js'
+import { getSessionId, onSessionSwitch } from 'src/platform/bootstrap/state.js'
 import { getAgentId } from 'src/coordinator/teammate.js'
 import { setPinReleaseHandler } from 'src/shared/fs/fileStateCache.js'
 import { estimateImageTokens } from 'src/services/context/imageTokenEstimator.js'

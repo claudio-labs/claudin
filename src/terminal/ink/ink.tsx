@@ -6,7 +6,7 @@ import React, { type ReactNode } from 'react';
 import type { FiberRoot } from 'react-reconciler';
 import { LegacyRoot } from 'react-reconciler/constants.js';
 import { onExit } from 'signal-exit';
-import { flushInteractionTime } from 'src/bootstrap/state.js';
+import { flushInteractionTime } from 'src/platform/bootstrap/state.js';
 import { getYogaCounters } from 'src/native-ts/yoga-layout/index.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { logError } from 'src/shared/log.js';

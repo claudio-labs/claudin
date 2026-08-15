@@ -3,15 +3,15 @@ import type { BetaToolUnion } from '@anthropic-ai/sdk/resources/beta/messages.js
 import {
   getLastApiCompletionTimestamp,
   setLastApiCompletionTimestamp,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { STRUCTURED_OUTPUTS_BETA_HEADER } from 'src/constants/betas.js'
 import type { QuerySource } from 'src/constants/querySource.js'
 import {
   getAttributionHeader,
   getCLISyspromptPrefix,
 } from 'src/constants/system.js'
-import { logEvent } from 'src/services/analytics/index.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/services/analytics/metadata.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
 import { getAPIMetadata } from 'src/services/api/claude.js'
 import { getAnthropicClient } from 'src/services/api/client.js'
 import { getCachedAnthropicClient } from 'src/services/api/clientCache.js'

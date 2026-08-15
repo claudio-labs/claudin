@@ -8,7 +8,7 @@
 import {
   logEvent,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import {
   toolMatchesName,
   type ToolUseContext,
@@ -21,14 +21,14 @@ import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { getFsImplementation as _unusedGetFs } from 'src/shared/fs/fsOperations.js'
 import { readdir, stat } from 'fs/promises'
-import type { IDESelection } from 'src/hooks/useIdeSelection.js'
-import { getConnectedIdeName } from 'src/services/ide/ide.js'
+import type { IDESelection } from 'src/platform/ide/useIdeSelection.js'
+import { getConnectedIdeName } from 'src/platform/ide/ide.js'
 import { relative, resolve } from 'path'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getViewedTeammateTask } from 'src/terminal/state/selectors.js'
 import { logError } from 'src/shared/log.js'
 import { isENOENT, toError } from 'src/shared/errors.js'
-import { diagnosticTracker } from 'src/services/diagnosticTracking.js'
+import { diagnosticTracker } from 'src/platform/diagnosticTracking.js'
 import { getSnippetForTwoFileDiff } from 'src/tools/FileEditTool/utils.js'
 import { cacheKeys } from 'src/shared/fs/fileStateCache.js'
 import {
@@ -38,12 +38,12 @@ import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import {
   checkForAsyncHookResponses,
   removeDeliveredAsyncHooks,
-} from 'src/services/lifecycleHooks/AsyncHookRegistry.js'
+} from 'src/platform/lifecycleHooks/AsyncHookRegistry.js'
 import {
   checkForLSPDiagnostics,
   clearAllLSPDiagnostics,
-} from 'src/services/lsp/LSPDiagnosticRegistry.js'
-import { isLspGloballyEnabled } from 'src/services/lsp/userSettings.js'
+} from 'src/platform/lsp/LSPDiagnosticRegistry.js'
+import { isLspGloballyEnabled } from 'src/platform/lsp/userSettings.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isAgentSwarmsEnabled } from 'src/coordinator/agentSwarmsEnabled.js'
 import {
@@ -61,7 +61,7 @@ import {
 import { isInProcessTeammate } from 'src/coordinator/teammateContext.js'
 import { removeTeammateFromTeamFile } from 'src/coordinator/swarm/teamHelpers.js'
 import { unassignTeammateTasks } from 'src/tasks/tasks.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { Attachment } from 'src/services/attachments/types.js'
 import { isFileReadDenied } from 'src/services/attachments/shared.js'
 import {

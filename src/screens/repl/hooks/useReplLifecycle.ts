@@ -31,7 +31,7 @@
 import { useEffect } from 'react';
 import type { TabStatusKind } from 'src/terminal/ink/hooks/use-tab-status.js';
 import { feature } from 'bun:bundle';
-import { startPreventSleep, stopPreventSleep } from 'src/services/preventSleep.js';
+import { startPreventSleep, stopPreventSleep } from 'src/platform/preventSleep.js';
 import { updateSessionActivity } from 'src/services/session/concurrentSessions.js';
 import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js';
 

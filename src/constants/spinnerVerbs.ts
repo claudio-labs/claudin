@@ -1,4 +1,4 @@
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 
 export function getSpinnerVerbs(): string[] {
   const settings = getInitialSettings()

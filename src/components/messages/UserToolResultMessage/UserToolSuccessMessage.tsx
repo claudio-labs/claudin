@@ -1,7 +1,7 @@
 import { feature } from 'bun:bundle';
 import figures from 'figures';
 import * as React from 'react';
-import { SentryErrorBoundary } from 'src/components/SentryErrorBoundary.js';
+import { SentryErrorBoundary } from 'src/platform/SentryErrorBoundary.js';
 import { Box, Text, useTheme } from 'src/terminal/ink.js';
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
 import { filterToolProgressMessages, type Tool, type Tools } from 'src/Tool.js';

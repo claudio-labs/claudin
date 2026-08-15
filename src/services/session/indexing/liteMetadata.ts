@@ -13,8 +13,8 @@ import type { UUID } from 'crypto'
 import type { Dirent } from 'fs'
 import { readdir, readFile, stat } from 'fs/promises'
 import { basename, join } from 'path'
-import { logEvent } from 'src/services/analytics/index.js'
-import { getOriginalCwd } from 'src/bootstrap/state.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import type { AttributionSnapshotMessage } from 'src/types/logs.js'
 import {
   type LogOption,
@@ -51,7 +51,7 @@ import {
   LITE_READ_BUF_SIZE,
   readHeadAndTail,
 } from 'src/services/session/sessionStoragePortable.js'
-import { jsonParse } from 'src/utils/slowOperations.js'
+import { jsonParse } from 'src/platform/slowOperations.js'
 import type { ContentReplacementRecord } from 'src/services/tools/toolResultStorage.js'
 import { validateUuid } from 'src/shared/data/uuid.js'
 

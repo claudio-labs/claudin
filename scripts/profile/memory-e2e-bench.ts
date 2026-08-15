@@ -172,7 +172,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #8 diagnosticTracker
   try {
-    const mod = await import('../../src/services/diagnosticTracking.js')
+    const mod = await import('../../src/platform/diagnosticTracking.js')
     if (typeof mod.__TEST_ONLY_getDiagnosticTrackerSizes === 'function') {
       const sizes = mod.__TEST_ONLY_getDiagnosticTrackerSizes()
       for (const [k, v] of Object.entries(sizes)) {
@@ -321,7 +321,7 @@ async function measureStages(): Promise<BootstrapStage[]> {
     await import('../../src/shared/log.js')
   })
   await stage('02 utils/config', async () => {
-    await import('../../src/services/config/config.js')
+    await import('../../src/platform/config/config.js')
   })
   await stage('03 services/api/providerConfig', async () => {
     await import('../../src/services/api/providerConfig.js')

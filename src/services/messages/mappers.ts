@@ -1,6 +1,6 @@
 import type { BetaContentBlock } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { randomUUID, type UUID } from 'crypto'
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import {
   LOCAL_COMMAND_STDERR_TAG,
   LOCAL_COMMAND_STDOUT_TAG,
@@ -10,7 +10,7 @@ import type {
   SDKCompactBoundaryMessage,
   SDKMessage,
   SDKRateLimitInfo,
-} from 'src/entrypoints/agentSdkTypes.js'
+} from 'src/platform/entrypoints/agentSdkTypes.js'
 import type { ClaudeAILimits } from 'src/services/claudeAiLimits.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
 import type {

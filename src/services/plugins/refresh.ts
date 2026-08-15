@@ -17,9 +17,9 @@
  * - /plugin menu — sets needsRefresh, user runs /reload-plugins (PR 5b)
  */
 
-import { getOriginalCwd } from 'src/bootstrap/state.js'
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import type { Command } from 'src/commands.js'
-import { reinitializeLspServerManager } from 'src/services/lsp/manager.js'
+import { reinitializeLspServerManager } from 'src/platform/lsp/manager.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import { setPluginCommandsState } from 'src/terminal/state/pluginCommandsStore.js'
 import type { AgentDefinitionsResult } from 'src/tools/AgentTool/loadAgentsDir.js'

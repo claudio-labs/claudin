@@ -11,13 +11,13 @@ import {
   getDeferredDeltaLegacySession,
   getSessionEpochMs,
   setDeferredDeltaLegacySession,
-} from 'src/bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+} from 'src/platform/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import type { Tool } from 'src/Tool.js'
 import {
   type ToolPermissionContext,
@@ -44,7 +44,7 @@ import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
 } from 'src/utils/model/providers.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { zodToJsonSchema } from 'src/shared/data/zodToJsonSchema.js'
 
 /**

@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
 import * as React from 'react';
-import { useSettings } from 'src/hooks/useSettings.js';
+import { useSettings } from 'src/platform/useSettings.js';
 import { Box, Text, useAnimationFrame } from 'src/terminal/ink.js';
 import { interpolateColor, toRGBColor } from 'src/terminal/spinner/utils.js';
 type Props = {

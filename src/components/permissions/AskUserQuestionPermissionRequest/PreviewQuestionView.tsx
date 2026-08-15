@@ -7,7 +7,7 @@ import { useKeybinding, useKeybindings } from 'src/terminal/keybindings/useKeybi
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
 import type { Question } from 'src/tools/AskUserQuestionTool/AskUserQuestionTool.js';
 import { getExternalEditor } from 'src/shared/editor.js';
-import { toIDEDisplayName } from 'src/services/ide/ide.js';
+import { toIDEDisplayName } from 'src/platform/ide/ide.js';
 import { editPromptInEditor } from 'src/terminal/input/promptEditor.js';
 import { Divider } from 'src/terminal/design-system/Divider.js';
 import TextInput from 'src/terminal/text-input/TextInput.js';

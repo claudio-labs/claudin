@@ -143,7 +143,7 @@ async function runRaw(skills: number, bodyKb: number) {
 async function runReal(skills: number, bodyKb: number) {
   // Mock heavy deps so we don't pull analytics/growthbook/etc.
   const { mock } = await import('bun:test')
-  mock.module('../../src/services/analytics/growthbook.js', () => ({
+  mock.module('../../src/platform/analytics/growthbook.js', () => ({
     getFeatureValue_CACHED_MAY_BE_STALE: () => false,
     getFeatureValue_CACHED_WITH_REFRESH: () => false,
     getFeatureValue_DEPRECATED: async () => false,
@@ -163,7 +163,7 @@ async function runReal(skills: number, bodyKb: number) {
     initializeGrowthBook: async () => null,
     getAllGrowthBookFeatures: () => ({}),
   }))
-  mock.module('../../src/services/analytics/index.js', () => ({
+  mock.module('../../src/platform/analytics/index.js', () => ({
     logEvent: () => {},
     logEventAsync: async () => {},
     attachAnalyticsSink: () => {},

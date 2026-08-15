@@ -7,8 +7,8 @@ import { dirname, join, resolve, sep } from 'path'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import { getProjectRoot } from 'src/bootstrap/state.js'
+} from 'src/platform/analytics/index.js'
+import { getProjectRoot } from 'src/platform/bootstrap/state.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import { isFsInaccessible } from 'src/shared/errors.js'
@@ -21,9 +21,9 @@ import { ripGrep, RipgrepUnavailableError } from 'src/shared/fs/ripgrep.js'
 import {
   isSettingSourceEnabled,
   type SettingSource,
-} from 'src/services/settings/constants.js'
-import { getManagedFilePath } from 'src/services/settings/managedPath.js'
-import { isRestrictedToPluginOnly } from 'src/services/settings/pluginOnlyPolicy.js'
+} from 'src/platform/settings/constants.js'
+import { getManagedFilePath } from 'src/platform/settings/managedPath.js'
+import { isRestrictedToPluginOnly } from 'src/platform/settings/pluginOnlyPolicy.js'
 
 // Claude configuration directory names
 export const CLAUDE_CONFIG_DIRECTORIES = [

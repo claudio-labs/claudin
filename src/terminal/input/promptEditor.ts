@@ -4,12 +4,12 @@ import {
   getPastedTextRefNumLines,
 } from 'src/history.js'
 import instances from 'src/terminal/ink/instances.js'
-import type { PastedContent } from 'src/services/config/config.js'
+import type { PastedContent } from 'src/platform/config/config.js'
 import { classifyGuiEditor, getExternalEditor } from 'src/shared/editor.js'
 import { execSync_DEPRECATED } from 'src/shared/proc/execSyncWrapper.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import { toIDEDisplayName } from 'src/services/ide/ide.js'
-import { writeFileSync_DEPRECATED } from 'src/utils/slowOperations.js'
+import { toIDEDisplayName } from 'src/platform/ide/ide.js'
+import { writeFileSync_DEPRECATED } from 'src/platform/slowOperations.js'
 import { generateTempFilePath } from 'src/shared/fs/tempfile.js'
 
 // Map of editor command overrides (e.g., to add wait flags)

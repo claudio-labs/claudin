@@ -3,7 +3,7 @@ import { isBareMode } from 'src/shared/envUtils.js'
 import { isENOENT } from 'src/shared/errors.js'
 import { getKimiDeviceHeaders } from 'src/services/api/kimiDeviceHeaders.js'
 import { logError } from 'src/shared/log.js'
-import { getSecureStorage } from 'src/services/secureStorage/index.js'
+import { getSecureStorage } from 'src/platform/secureStorage/index.js'
 import {
   asTrimmedString,
   decodeJwtPayload,

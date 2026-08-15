@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import type { PastedContent } from 'src/services/config/config.js'
+import type { PastedContent } from 'src/platform/config/config.js'
 
 export type BufferEntry = {
   text: string

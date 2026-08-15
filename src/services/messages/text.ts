@@ -6,7 +6,7 @@ import {
   COMMAND_NAME_TAG,
 } from 'src/constants/xml.js'
 import { isAutoMemoryEnabled } from 'src/memdir/paths.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import type {
   Message,
   MessageOrigin,

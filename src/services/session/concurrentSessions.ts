@@ -5,14 +5,14 @@ import {
   getOriginalCwd,
   getSessionId,
   onSessionSwitch,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { errorMessage, isFsInaccessible } from 'src/shared/errors.js'
 import { isProcessRunning } from 'src/shared/proc/genericProcessUtils.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
-import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { getAgentId } from 'src/coordinator/teammate.js'
 
 export type SessionKind = 'interactive' | 'bg' | 'daemon' | 'daemon-worker'

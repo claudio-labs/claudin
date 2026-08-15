@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it, beforeEach } from 'bun:test'
 import { call as knowledgeCall } from 'src/commands/knowledge/knowledge.js'
-import { getGlobalConfig, saveGlobalConfig, resetGlobalConfigForTests } from 'src/services/config/config.js'
+import { getGlobalConfig, saveGlobalConfig, resetGlobalConfigForTests } from 'src/platform/config/config.js'
 import { getArc, addEntity, resetArc } from 'src/services/context/conversationArc.js'
 
 describe('knowledge command', () => {

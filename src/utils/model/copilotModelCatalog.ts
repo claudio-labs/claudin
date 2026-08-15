@@ -13,7 +13,7 @@
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { COPILOT_HEADERS } from 'src/services/api/openaiShim/constants.js'
 import { getGithubEndpointType } from 'src/services/api/providerConfig.js'
-import { onGlobalConfigChange } from 'src/services/config/config.js'
+import { onGlobalConfigChange } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import {
   COPILOT_MODELS,

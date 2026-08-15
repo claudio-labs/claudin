@@ -19,9 +19,9 @@ import {
   resetStateForTests,
   setOriginalCwd,
   switchSession,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { asSessionId } from 'src/types/ids.js'
-import { resetGlobalConfigForTests } from 'src/services/config/config.js'
+import { resetGlobalConfigForTests } from 'src/platform/config/config.js'
 import {
   buildConversationChain,
   findLatestMessage,
@@ -161,7 +161,7 @@ function mkAsst(
 
 // TODO(11c): full-suite pollution — passes in isolation, fails when
 // toolResultSummarizer.integration.test.ts runs earlier in the same worker.
-// That file re-aliases ../services/analytics/* AND src/services/analytics/*
+// That file re-aliases ../services/analytics/* AND src/platform/analytics/*
 // via mock.module (relative + absolute paths), which forks the Project
 // singleton instance for the remainder of the worker. mock.restore() does
 // NOT unwind mock.module aliases. Production code is unchanged from main

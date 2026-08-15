@@ -12,7 +12,7 @@
  *    `globs:` (the Cursor convention) gets no patterns and falls into the
  *    unconditional lane, loading into every session, every turn.
  *
- * Consumed by `/doctor` (src/utils/doctorContextWarnings.ts), the
+ * Consumed by `/doctor` (src/platform/doctor/doctorContextWarnings.ts), the
  * `/refresh-rules` skill, and `scripts/rules-check.ts` for CI.
  */
 import ignore from 'ignore'
@@ -69,7 +69,7 @@ const REMOVAL_CONTEXT_RE =
 
 /**
  * TypeScript source imports itself with `.js` specifiers. A citation of
- * `src/services/config/config.js` names a real file whose extension on disk is `.ts`.
+ * `src/platform/config/config.js` names a real file whose extension on disk is `.ts`.
  */
 const JS_SPECIFIER_RE = /\.js$/
 

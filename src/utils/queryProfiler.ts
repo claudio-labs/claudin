@@ -29,7 +29,7 @@
 
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { formatMs, formatTimelineLine, getPerformance } from 'src/utils/profilerBase.js'
+import { formatMs, formatTimelineLine, getPerformance } from 'src/platform/profilerBase.js'
 
 // Module-level state - initialized once when the module loads
 // eslint-disable-next-line custom-rules/no-process-env-top-level

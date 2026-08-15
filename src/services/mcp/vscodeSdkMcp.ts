@@ -4,8 +4,8 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   checkStatsigFeatureGate_CACHED_MAY_BE_STALE,
   getFeatureValue_CACHED_MAY_BE_STALE,
-} from 'src/services/analytics/growthbook.js'
-import { logEvent } from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/growthbook.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import type { ConnectedMCPServer, MCPServerConnection } from 'src/services/mcp/types.js'
 import { asMcpSchema } from 'src/services/mcp/zodCompat.js'
 

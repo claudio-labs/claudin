@@ -6,7 +6,7 @@
 
 import { mkdir, readFile, stat, unlink, utimes, writeFile } from 'fs/promises'
 import { join } from 'path'
-import { getOriginalCwd } from 'src/bootstrap/state.js'
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { getAutoMemPath } from 'src/memdir/paths.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isProcessRunning } from 'src/shared/proc/genericProcessUtils.js'

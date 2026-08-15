@@ -4,13 +4,13 @@ import { getOauthConfig } from 'src/constants/oauth.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { getClaudeAIOAuthTokens } from 'src/services/auth/auth.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
+import { isEssentialTrafficOnly } from 'src/platform/config/privacyLevel.js'
 import { clearMcpAuthCache } from 'src/services/mcp/client.js'
 import { normalizeNameForMCP } from 'src/services/mcp/normalization.js'
 import type { ScopedMcpServerConfig } from 'src/services/mcp/types.js'

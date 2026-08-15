@@ -5,7 +5,7 @@ import type {
   BetaStopReason,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { AFK_MODE_BETA_HEADER } from 'src/constants/betas.js'
-import type { SDKAssistantMessageError } from 'src/entrypoints/agentSdkTypes.js'
+import type { SDKAssistantMessageError } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type {
   AssistantMessage,
   Message,
@@ -28,7 +28,7 @@ import {
 import { isNonCustomOpusModel } from 'src/utils/model/model.js'
 import { getModelStrings } from 'src/utils/model/modelStrings.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
+import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
 import {
   API_PDF_MAX_PAGES,
   PDF_TARGET_RAW_SIZE,
@@ -41,7 +41,7 @@ import { ImageSizeError } from 'src/terminal/image/imageValidation.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import {
   type ClaudeAILimits,
   getRateLimitErrorMessage,

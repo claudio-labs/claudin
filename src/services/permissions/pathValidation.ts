@@ -9,8 +9,8 @@ import {
   safeResolvePath,
 } from 'src/shared/fs/fsOperations.js'
 import { containsPathTraversal } from 'src/shared/fs/path.js'
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
-import { containsVulnerableUncPath } from 'src/services/shell/readOnlyCommandValidation.js'
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
+import { containsVulnerableUncPath } from 'src/platform/shell/readOnlyCommandValidation.js'
 import {
   checkEditableInternalPath,
   checkPathSafetyForAutoEdit,

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRegisterOverlay } from 'src/terminal/contexts/overlayContext.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { Text } from 'src/terminal/ink.js';
-import { logEvent } from 'src/services/analytics/index.js';
+import { logEvent } from 'src/platform/analytics/index.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { openFileInExternalEditor } from 'src/shared/editor.js';
 import { truncatePathMiddle, truncateToWidth } from 'src/shared/text/format.js';

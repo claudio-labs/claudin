@@ -57,7 +57,7 @@ Failure mode at every layer: return raw stdout unchanged. The filter must never 
 | File | Change | LoC |
 |---|---|---|
 | `src/services/tools/toolResultSummarizer.ts:242-248` (`isAlreadyCompacted`) | Add 2 string startsWith checks for `<bash-output-rewritten` and `<bash-output-filtered` | +2 |
-| `src/services/config/config.ts:705+` (`GLOBAL_CONFIG_KEYS`) | Register `bashOutputFilterEnabled`, `bashOutputFilterRewriteEnabled`, `bashOutputFilterUserEnabled` | +3 |
+| `src/platform/config/config.ts:705+` (`GLOBAL_CONFIG_KEYS`) | Register `bashOutputFilterEnabled`, `bashOutputFilterRewriteEnabled`, `bashOutputFilterUserEnabled` | +3 |
 | `src/tools/BashTool/BashTool.tsx` | Two ~7-line insertions: rewrite hook before `runShellCommand` (~line 656); pipeline + marker injection on `result.stdout` after capture, before error/success branching (~line 720) | +15 |
 
 **Files NOT modified:**
@@ -520,7 +520,7 @@ Three events. All names use the privacy convention from `BashTool.tsx:766` (suff
 | `claudin_bash_rewrite_applied` | Rewrite fired and changed the command | `filter_name: string` |
 | `claudin_bash_filter_skipped` | Filter matched but errored or yielded zero reduction | `filter_name: string`, `reason_code: number` (1=no-reduction, 2=error, 3=json-passthrough) |
 
-`logEvent` only accepts `boolean | number | undefined` metadata values (`src/services/analytics/index.ts:60-61`); the spec's payload uses only those types. No string values except via the suffix-cast pattern, which is reserved for IDs in our enumerated set.
+`logEvent` only accepts `boolean | number | undefined` metadata values (`src/platform/analytics/index.ts:60-61`); the spec's payload uses only those types. No string values except via the suffix-cast pattern, which is reserved for IDs in our enumerated set.
 
 **Privacy:**
 

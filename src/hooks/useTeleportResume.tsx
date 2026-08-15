@@ -1,11 +1,11 @@
 import { c as _c } from "react-compiler-runtime";
 import { useCallback, useState } from 'react';
-import { setTeleportedSessionInfo } from 'src/bootstrap/state.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { setTeleportedSessionInfo } from 'src/platform/bootstrap/state.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import type { TeleportRemoteResponse } from 'src/services/session/conversationRecovery.js';
-import type { CodeSession } from 'src/services/teleport/api.js';
+import type { CodeSession } from 'src/platform/teleport/api.js';
 import { errorMessage, TeleportOperationError } from 'src/shared/errors.js';
-import { teleportResumeCodeSession } from 'src/components/teleport.js';
+import { teleportResumeCodeSession } from 'src/platform/teleport/teleport.js';
 
 export type TeleportSource = 'cliArg' | 'localCommand';
 type TeleportResumeError = {

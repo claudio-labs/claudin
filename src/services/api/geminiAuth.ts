@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
 import { isBareMode } from 'src/shared/envUtils.js'
 import { memoizeWithTTLAsync } from 'src/shared/data/memoize.js'
-import { getSecureStorage } from 'src/services/secureStorage/index.js'
+import { getSecureStorage } from 'src/platform/secureStorage/index.js'
 
 function readGeminiAccessTokenFromSecureStorage(): string | undefined {
   if (isBareMode()) return undefined

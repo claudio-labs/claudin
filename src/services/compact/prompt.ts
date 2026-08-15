@@ -5,7 +5,7 @@ import type { PartialCompactDirection } from 'src/types/message.js'
 /* eslint-disable @typescript-eslint/no-require-imports */
 const proactiveModule =
   feature('PROACTIVE') || feature('KAIROS')
-    ? (require('../../proactive/index.js') as typeof import('../../proactive/index.js'))
+    ? (require('../../platform/proactive/index.js') as typeof import('../../platform/proactive/index.js'))
     : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 

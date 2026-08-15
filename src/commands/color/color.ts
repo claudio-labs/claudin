@@ -1,5 +1,5 @@
 import type { UUID } from 'crypto'
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import {
   AGENT_COLORS,

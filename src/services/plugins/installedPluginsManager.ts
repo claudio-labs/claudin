@@ -22,7 +22,7 @@ import {
   jsonParse,
   jsonStringify,
   writeFileSync_DEPRECATED,
-} from 'src/utils/slowOperations.js'
+} from 'src/platform/slowOperations.js'
 import { getPluginsDirectory } from 'src/services/plugins/pluginDirectories.js'
 import {
   type InstalledPlugin,
@@ -40,14 +40,14 @@ type InstalledPluginsMapV2 = Record<string, PluginInstallationEntry[]>
 // Type for persistable scopes (excludes 'flag' which is session-only)
 export type PersistableScope = Exclude<PluginScope, never> // All scopes are persistable in the schema
 
-import { getOriginalCwd } from 'src/bootstrap/state.js'
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getHeadForDir } from 'src/services/git/gitFilesystem.js'
-import type { EditableSettingSource } from 'src/services/settings/constants.js'
+import type { EditableSettingSource } from 'src/platform/settings/constants.js'
 import {
   getInitialSettings,
   getSettingsForSource,
-} from 'src/services/settings/settings.js'
+} from 'src/platform/settings/settings.js'
 import { getPluginById } from 'src/services/plugins/marketplaceManager.js'
 import {
   parsePluginIdentifier,

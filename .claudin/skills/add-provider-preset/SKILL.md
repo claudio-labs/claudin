@@ -30,7 +30,7 @@ The common case. `provider: 'openai'`, `requiresApiKey: true`. Recurring touch-s
    `DEEPSEEK_API_HOSTS` (~line 22/30), or that family's tool-calling/format addendum
    silently won't apply. Then add a case to
    `src/services/api/openaiShim/__tests__/regression.test.ts` (opencode-zen 4a4e619).
-6. **`src/components/StartupScreen.ts`** — ONLY if the default model name collides
+6. **`src/platform/StartupScreen.ts`** — ONLY if the default model name collides
    with a vendor regex in the pill name-detection (see gotcha below).
 
 **Base URL is passed verbatim:** `resolveProviderRequest` + `asEnvUrl` only trim a
@@ -56,7 +56,7 @@ loopback PKCE); **copilot** (dc28c35) is the GitHub-style **device-code** varian
 Decide loopback PKCE vs device-code (RFC 8628) up front — xAI switched once (479e78f).
 Reuse — do NOT re-port — the token store / PKCE / callback server in
 `src/services/oauth/` + `src/shared/browser.ts`. Device-code providers reuse
-`src/commands/provider/GithubDeviceFlowStep.tsx` + `src/services/github/deviceFlow.ts`.
+`src/commands/provider/GithubDeviceFlowStep.tsx` + `src/platform/github/deviceFlow.ts`.
 (The declarative `Method`/`Authorization`/`prompts` two-step from opencode's
 `provider/auth.ts` was explicitly deferred — don't build it unless asked.)
 
@@ -64,14 +64,14 @@ Recurring touch-set (rename `<vendor>` per provider):
 - **Flow:** `src/services/api/<vendor>OAuth.ts` (+`.test.ts`) and a
   `<vendor>OAuthShared.ts` for shared consts.
 - **Credentials:** `src/utils/<vendor>Credentials.ts` (+`.test.ts`) AND register the
-  key in `src/services/secureStorage/index.ts`. UA header in `src/utils/<vendor>UserAgent.ts`.
+  key in `src/platform/secureStorage/index.ts`. UA header in `src/utils/<vendor>UserAgent.ts`.
 - **Wire:** inject the auth header in `src/services/api/openaiShim/messagesClient.ts`;
   handle 401/refresh in `src/services/api/withRetry.ts`.
 - **Schema:** `src/services/api/providerConfig.ts` (+`providerConfig.test.ts`) — profile
   + credential schema.
 - **UI:** `src/components/use<Vendor>OAuthFlow.ts` (+`.test.tsx`) and the
   `<XxxOAuthSetup>` clone in `ProviderManager.tsx`; `src/commands/provider/doctor.tsx`
-  (doctor check); `src/services/config/config.ts`; `README.md`.
+  (doctor check); `src/platform/config/config.ts`; `README.md`.
 - **Models (if the provider exposes a catalog):** a catalog like
   `src/utils/model/copilotModelCatalog.ts` (dc28c35) + context-window entries in
   `src/utils/model/openaiContextWindows.ts` / `model.ts` / `providers.ts`. Dynamic

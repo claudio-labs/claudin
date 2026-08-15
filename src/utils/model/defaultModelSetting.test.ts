@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 
-import { resetModelStringsForTestingOnly } from 'src/bootstrap/state.js'
+import { resetModelStringsForTestingOnly } from 'src/platform/bootstrap/state.js'
 
 // Regression: getDefaultMainLoopModelSetting() appends the Opus 1M-merge [1m]
 // suffix for first-party Max / Team-Premium subscribers. Now that the 1P Opus

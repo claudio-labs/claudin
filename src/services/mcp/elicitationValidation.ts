@@ -5,7 +5,7 @@ import type {
   StringSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod/v4'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 import {
   looksLikeISO8601,

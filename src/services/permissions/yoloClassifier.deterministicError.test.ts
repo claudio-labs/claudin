@@ -9,7 +9,7 @@
  */
 import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
 import { APIError } from '@anthropic-ai/sdk'
-import { enableConfigs } from 'src/services/config/config.js'
+import { enableConfigs } from 'src/platform/config/config.js'
 
 let thrown: unknown = new Error('not configured')
 

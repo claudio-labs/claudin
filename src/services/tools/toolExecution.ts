@@ -7,7 +7,7 @@ import type {
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import {
   extractMcpToolDetails,
   extractSkillName,
@@ -17,12 +17,12 @@ import {
   isToolDetailsLoggingEnabled,
   mcpToolDetailsForAnalytics,
   sanitizeToolNameForAnalytics,
-} from 'src/services/analytics/metadata.js'
+} from 'src/platform/analytics/metadata.js'
 import {
   addToToolDuration,
   getCodeEditToolDecisionCounter,
   getStatsStore,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import {
   buildCodeEditToolAttributes,
   isCodeEditingTool,
@@ -70,9 +70,9 @@ import {
   ShellError,
   TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from 'src/shared/errors.js'
-import { executePermissionDeniedHooks } from 'src/services/lifecycleHooks/hooks.js'
+import { executePermissionDeniedHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import { logError } from 'src/shared/log.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
   detectSerialEditStreak,
@@ -100,11 +100,11 @@ import {
   startSessionActivity,
   stopSessionActivity,
 } from 'src/services/session/sessionActivity.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { Stream } from 'src/shared/stream.js'
 import { stripPlaceholderOptionalFields } from 'src/services/tools/toolInputPlaceholders.js'
 import { transportSendsStrictToolSchemas } from 'src/services/api/providerConfig.js'
-import { logOTelEvent } from 'src/services/telemetry/events.js'
+import { logOTelEvent } from 'src/platform/telemetry/events.js'
 import {
   addToolContentEvent,
   endToolBlockedOnUserSpan,
@@ -114,7 +114,7 @@ import {
   startToolBlockedOnUserSpan,
   startToolExecutionSpan,
   startToolSpan,
-} from 'src/services/telemetry/sessionTracing.js'
+} from 'src/platform/telemetry/sessionTracing.js'
 import {
   formatError,
   formatZodValidationError,

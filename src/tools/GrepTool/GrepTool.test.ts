@@ -4,7 +4,7 @@ import { tmpdir } from 'os'
 import { basename, join } from 'path'
 
 import type { ToolUseContext } from 'src/Tool.js'
-import { getCwdState, setCwdState } from 'src/bootstrap/state.js'
+import { getCwdState, setCwdState } from 'src/platform/bootstrap/state.js'
 // GlobTool/UI reuses GrepTool.renderToolResultMessage at module-eval time.
 // Import GlobTool first so its UI resolves GrepTool only once GrepTool has
 // fully initialized — importing GrepTool alone trips a TDZ in the cycle.

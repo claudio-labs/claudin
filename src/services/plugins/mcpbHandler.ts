@@ -13,12 +13,12 @@ import { parseZipModes, unzipFile } from 'src/services/plugins/dxt/zip.js'
 import { errorMessage, getErrnoCode, isENOENT, toError } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { logError } from 'src/shared/log.js'
-import { getSecureStorage } from 'src/services/secureStorage/index.js'
+import { getSecureStorage } from 'src/platform/secureStorage/index.js'
 import {
   getInitialSettings,
   updateSettingsForSource,
-} from 'src/services/settings/settings.js'
-import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+} from 'src/platform/settings/settings.js'
+import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { getSystemDirectories } from 'src/shared/fs/systemDirectories.js'
 import { classifyFetchError, logPluginFetch } from 'src/services/plugins/fetchTelemetry.js'
 /**

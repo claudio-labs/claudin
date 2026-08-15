@@ -4,7 +4,7 @@ import {
   getSubscriptionType,
   isClaudeAISubscriber,
 } from 'src/services/auth/auth.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 
 export function hasConsoleBillingAccess(): boolean {

@@ -1,7 +1,7 @@
 import {
   logEvent,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { parse, relative } from 'path'
 import {
   FileReadTool,

@@ -1,23 +1,23 @@
 import axios from 'axios'
 import { getOauthConfig, OAUTH_BETA_HEADER } from 'src/constants/oauth.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   getIsNonInteractiveSession,
   getKairosActive,
   preferThirdPartyAuthentication,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import {
   getAnthropicApiKey,
   getClaudeAIOAuthTokens,
   handleOAuth401Error,
   hasProfileScope,
 } from 'src/services/auth/auth.js'
-import { isInBundledMode } from 'src/services/install/bundledMode.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+import { isInBundledMode } from 'src/platform/install/bundledMode.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import {
@@ -29,12 +29,12 @@ import {
   parseUserSpecifiedModel,
 } from 'src/utils/model/model.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'
-import { isEssentialTrafficOnly } from 'src/services/config/privacyLevel.js'
+import { isEssentialTrafficOnly } from 'src/platform/config/privacyLevel.js'
 import {
   getInitialSettings,
   getSettingsForSource,
   updateSettingsForSource,
-} from 'src/services/settings/settings.js'
+} from 'src/platform/settings/settings.js'
 import { createSignal } from 'src/shared/signal.js'
 
 export function isFastModeEnabled(): boolean {

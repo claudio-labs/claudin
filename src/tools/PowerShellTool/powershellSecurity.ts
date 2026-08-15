@@ -12,11 +12,11 @@ import {
   DANGEROUS_SCRIPT_BLOCK_CMDLETS,
   FILEPATH_EXECUTION_CMDLETS,
   MODULE_LOADING_CMDLETS,
-} from 'src/services/shell/powershell/dangerousCmdlets.js'
+} from 'src/platform/shell/powershell/dangerousCmdlets.js'
 import type {
   ParsedCommandElement,
   ParsedPowerShellCommand,
-} from 'src/services/shell/powershell/parser.js'
+} from 'src/platform/shell/powershell/parser.js'
 import {
   COMMON_ALIASES,
   commandHasArgAbbreviation,
@@ -24,7 +24,7 @@ import {
   getAllCommands,
   getVariablesByScope,
   hasCommandNamed,
-} from 'src/services/shell/powershell/parser.js'
+} from 'src/platform/shell/powershell/parser.js'
 import { isClmAllowedType } from 'src/tools/PowerShellTool/clmTypes.js'
 
 type PowerShellSecurityResult = {

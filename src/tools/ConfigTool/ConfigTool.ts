@@ -3,22 +3,22 @@ import { z } from 'zod/v4'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import {
   type GlobalConfig,
   getGlobalConfig,
   getRemoteControlAtStartup,
   saveGlobalConfig,
-} from 'src/services/config/config.js'
+} from 'src/platform/config/config.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { logError } from 'src/shared/log.js'
 import {
   getInitialSettings,
   updateSettingsForSource,
-} from 'src/services/settings/settings.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+} from 'src/platform/settings/settings.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { CONFIG_TOOL_NAME } from 'src/tools/ConfigTool/constants.js'
 import { DESCRIPTION, generatePrompt } from 'src/tools/ConfigTool/prompt.js'
 import {
@@ -347,7 +347,7 @@ export const ConfigTool = buildTool({
       // and the settings cache resets for the next /voice read.
       if (feature('VOICE_MODE') && setting === 'voiceEnabled') {
         const { settingsChangeDetector } = await import(
-          'src/services/settings/changeDetector.js'
+          'src/platform/settings/changeDetector.js'
         )
         settingsChangeDetector.notifyChange('userSettings')
       }

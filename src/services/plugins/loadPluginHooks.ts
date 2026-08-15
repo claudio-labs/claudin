@@ -1,19 +1,19 @@
 import memoize from 'lodash-es/memoize.js'
-import type { HookEvent } from 'src/entrypoints/agentSdkTypes.js'
+import type { HookEvent } from 'src/platform/entrypoints/agentSdkTypes.js'
 import {
   clearRegisteredPluginHooks,
   getRegisteredHooks,
   registerHookCallbacks,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import type { LoadedPlugin } from 'src/types/plugin.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { settingsChangeDetector } from 'src/services/settings/changeDetector.js'
+import { settingsChangeDetector } from 'src/platform/settings/changeDetector.js'
 import {
   getInitialSettings,
   getSettingsForSource,
-} from 'src/services/settings/settings.js'
-import type { PluginHookMatcher } from 'src/services/settings/types.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+} from 'src/platform/settings/settings.js'
+import type { PluginHookMatcher } from 'src/platform/settings/types.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { clearPluginCache, loadAllPluginsCacheOnly } from 'src/services/plugins/pluginLoader.js'
 
 // Track if hot reload subscription is set up

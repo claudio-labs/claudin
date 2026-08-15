@@ -10,7 +10,7 @@
  * Arguments are parsed using shell-quote for proper shell argument handling.
  */
 
-import { tryParseShellCommand } from 'src/services/bash/shellQuote.js'
+import { tryParseShellCommand } from 'src/platform/bash/shellQuote.js'
 import { escapeRegExp } from 'src/shared/text/stringUtils.js'
 
 /**

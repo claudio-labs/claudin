@@ -18,7 +18,7 @@ Output é igual a `cargo build` (Compiling X v1.2.3 lines + warnings + Finished)
 ```
 warning: `rtk` (bin "rtk" test) generated 2 warnings (run `cargo fix --bin "rtk" -p rtk --tests` to apply 2 suggestions)
     Finished `test` profile [unoptimized + debuginfo] target(s) in 11.57s
-  Executable unittests src/main.rs (target/debug/deps/rtk-b7f584a7b0aace80)
+  Executable unittests src/platform/main.rs (target/debug/deps/rtk-b7f584a7b0aace80)
 ```
 
 ### Amostra 2 — `cargo test` com testes rodando (estimado, ~3-15KB)
@@ -26,7 +26,7 @@ warning: `rtk` (bin "rtk" test) generated 2 warnings (run `cargo fix --bin "rtk"
 ```
    Compiling rtk v0.28.2 (...)
     Finished `test` profile [unoptimized + debuginfo] target(s) in 12.34s
-     Running unittests src/main.rs (target/debug/deps/rtk-abc123)
+     Running unittests src/platform/main.rs (target/debug/deps/rtk-abc123)
 
 running 47 tests
 test cmds::git::tests::test_normalize_diff ... ok
@@ -58,7 +58,7 @@ error: test failed, to rerun pass `--bin rtk`
 ```
    Compiling rtk v0.28.2 (...)
     Finished `test` profile [unoptimized + debuginfo] target(s) in 12.34s
-     Running unittests src/main.rs (target/debug/deps/rtk-abc123)
+     Running unittests src/platform/main.rs (target/debug/deps/rtk-abc123)
 
 running 47 tests
 test cmds::git::tests::test_normalize_diff ... ok
@@ -80,7 +80,7 @@ test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 **Ruído:**
 - `Compiling X v1.2.3` (lines de build dep, igual ao `cargo-build.md`)
 - **`test foo::bar ... ok`** — uma linha por test que passou. Em 100 testes, ocupa 100 linhas. **Alvo principal.**
-- `Running unittests src/main.rs (target/debug/deps/rtk-<hash>)` — path com binary hash que varia
+- `Running unittests src/platform/main.rs (target/debug/deps/rtk-<hash>)` — path com binary hash que varia
 - `note: run with RUST_BACKTRACE=1...` — repete em cada panic
 - Linhas em branco redundantes
 

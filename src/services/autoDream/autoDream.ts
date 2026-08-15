@@ -10,7 +10,7 @@
 // State is closure-scoped inside initAutoDream() rather than module-level
 // (tests call initAutoDream() in beforeEach for a fresh closure).
 
-import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
+import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import {
   createCacheSafeParams,
   runForkedAgent,
@@ -22,18 +22,18 @@ import {
 import type { Message } from 'src/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import type { ToolUseContext } from 'src/Tool.js'
-import { logEvent } from 'src/services/analytics/index.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { isAutoMemoryEnabled, getAutoMemPath } from 'src/memdir/paths.js'
 import { isAutoDreamEnabled } from 'src/services/autoDream/config.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getProjectDir } from 'src/services/session/sessionStorage.js'
 import {
   getOriginalCwd,
   getKairosActive,
   getIsRemoteMode,
   getSessionId,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { createAutoMemCanUseTool } from 'src/services/extractMemories/extractMemories.js'
 import { buildConsolidationPrompt } from 'src/services/autoDream/consolidationPrompt.js'
 import {

@@ -2,7 +2,7 @@ import axios from 'axios'
 import { getOauthConfig, OAUTH_BETA_HEADER } from 'src/constants/oauth.js'
 import type { OAuthProfileResponse } from 'src/services/oauth/types.js'
 import { getAnthropicApiKey } from 'src/services/auth/auth.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import { logError } from 'src/shared/log.js'
 export async function getOauthProfileFromApiKey(): Promise<
   OAuthProfileResponse | undefined

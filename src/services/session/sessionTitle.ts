@@ -13,8 +13,8 @@
  */
 
 import { z } from 'zod/v4'
-import { getIsNonInteractiveSession } from 'src/bootstrap/state.js'
-import { logEvent } from 'src/services/analytics/index.js'
+import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import { queryHaiku } from 'src/services/api/claude.js'
 import type { Message } from 'src/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'

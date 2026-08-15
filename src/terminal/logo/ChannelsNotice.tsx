@@ -7,14 +7,14 @@ import { c as _c } from "react-compiler-runtime";
 
 import * as React from 'react';
 import { useState } from 'react';
-import { type ChannelEntry, getAllowedChannels, getHasDevChannels } from 'src/bootstrap/state.js';
+import { type ChannelEntry, getAllowedChannels, getHasDevChannels } from 'src/platform/bootstrap/state.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { isChannelsEnabled } from 'src/services/mcp/channelAllowlist.js';
 import { getEffectiveChannelAllowlist } from 'src/services/mcp/channelNotification.js';
 import { getMcpConfigsByScope } from 'src/services/mcp/config.js';
 import { getClaudeAIOAuthTokens, getSubscriptionType } from 'src/services/auth/auth.js';
 import { loadInstalledPluginsV2 } from 'src/services/plugins/installedPluginsManager.js';
-import { getSettingsForSource } from 'src/services/settings/settings.js';
+import { getSettingsForSource } from 'src/platform/settings/settings.js';
 export function ChannelsNotice() {
   const $ = _c(32);
   const [t0] = useState(_temp);

@@ -3,7 +3,7 @@ import type { ElicitRequestFormParams, ElicitRequestURLParams, ElicitResult, Pri
 import figures from 'figures';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRegisterOverlay } from 'src/terminal/contexts/overlayContext.js';
-import { useNotifyAfterTimeout } from 'src/hooks/useNotifyAfterTimeout.js';
+import { useNotifyAfterTimeout } from 'src/platform/notifications/useNotifyAfterTimeout.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- raw text input for elicitation form
 import { Box, Text, useInput } from 'src/terminal/ink.js';

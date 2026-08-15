@@ -19,7 +19,7 @@
  * TODO: consolidate against `toolResultStorage.ts` as the canonical source.
  */
 
-import { jsonParse } from 'src/utils/slowOperations.js'
+import { jsonParse } from 'src/platform/slowOperations.js'
 
 export const PERSISTED_OUTPUT_TAG = Buffer.from('<persisted-output>')
 export const TOOL_USE_RESULT_KEY = Buffer.from('"toolUseResult":')

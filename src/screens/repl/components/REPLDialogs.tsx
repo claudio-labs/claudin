@@ -33,15 +33,15 @@
 
 import * as React from 'react'
 import { feature } from 'bun:bundle'
-import { saveGlobalConfig } from 'src/services/config/config.js'
-import { logEvent } from 'src/services/analytics/index.js'
+import { saveGlobalConfig } from 'src/platform/config/config.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import { logError } from 'src/shared/log.js'
 import { CostThresholdDialog } from 'src/components/CostThresholdDialog.js'
-import { IdleReturnDialog } from 'src/components/IdleReturnDialog.js'
+import { IdleReturnDialog } from 'src/platform/IdleReturnDialog.js'
 import { ElicitationDialog } from 'src/components/mcp/ElicitationDialog.js'
-import { PromptDialog } from 'src/components/hooks/PromptDialog.js'
+import { PromptDialog } from 'src/platform/lifecycleHooks/ui/PromptDialog.js'
 import { WorkerPendingPermission } from 'src/components/permissions/WorkerPendingPermission.js'
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js'
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import { applyPermissionUpdate, persistPermissionUpdate } from 'src/services/permissions/PermissionUpdate.js'
 import {
   sendSandboxPermissionResponseViaMailbox,

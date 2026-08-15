@@ -1,9 +1,9 @@
-import { REMOTE_CONTROL_DISCONNECTED_MSG } from 'src/bridge/types.js';
+import { REMOTE_CONTROL_DISCONNECTED_MSG } from 'src/platform/bridge/types.js';
 import type { Command } from 'src/commands.js';
 import { DIAMOND_OPEN } from 'src/constants/figures.js';
 import { getRemoteSessionUrl } from 'src/constants/product.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import { checkRemoteAgentEligibility, formatPreconditionError, RemoteAgentTask, type RemoteAgentTaskState, registerRemoteAgentTask } from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import type { LocalJSXCommandCall } from 'src/types/command.js';
@@ -13,7 +13,7 @@ import { logError } from 'src/shared/log.js';
 import { enqueuePendingNotification } from 'src/utils/messageQueueManager.js';
 import { ALL_MODEL_CONFIGS } from 'src/utils/model/configs.js';
 import { updateTaskState } from 'src/tasks/framework.js';
-import { archiveRemoteSession, teleportToRemote } from 'src/components/teleport.js';
+import { archiveRemoteSession, teleportToRemote } from 'src/platform/teleport/teleport.js';
 import { pollForApprovedExitPlanMode, UltraplanPollError } from 'src/services/ultraplan/ccrSession.js';
 
 // TODO(prod-hardening): OAuth token may go stale over the 30min poll;

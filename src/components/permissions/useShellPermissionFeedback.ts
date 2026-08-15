@@ -2,8 +2,8 @@ import { useState } from 'react'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
+} from 'src/platform/analytics/index.js'
+import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import { useSetAppState } from 'src/terminal/state/AppState.js'
 import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
 import { logUnaryPermissionEvent } from 'src/components/permissions/utils.js'

@@ -7,10 +7,10 @@
 import {
   logEvent,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { createAbortController } from 'src/shared/abortController.js'
-import type { IDESelection } from 'src/hooks/useIdeSelection.js'
+import type { IDESelection } from 'src/platform/ide/useIdeSelection.js'
 import type {
   AttachmentMessage,
   Message,
@@ -26,7 +26,7 @@ import type {
   Base64ImageSource,
 } from '@anthropic-ai/sdk/resources/messages.mjs'
 import { maybeResizeAndDownsampleImageBlock } from 'src/terminal/image/imageResizer.js'
-import type { PastedContent } from 'src/services/config/config.js'
+import type { PastedContent } from 'src/platform/config/config.js'
 import { drainPendingMessages } from 'src/tasks/LocalAgentTask/LocalAgentTask.js'
 import type { QuerySource } from 'src/constants/querySource.js'
 import { extractTextContent } from 'src/services/messages/messages.js'

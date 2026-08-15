@@ -22,7 +22,7 @@
  */
 import Anthropic, { type ClientOptions } from '@anthropic-ai/sdk'
 import { tryGetActiveProvider } from 'src/services/api/activeProvider.js'
-import { onGlobalConfigChange } from 'src/services/config/config.js'
+import { onGlobalConfigChange } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 
 // ---------------------------------------------------------------------------

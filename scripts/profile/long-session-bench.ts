@@ -159,7 +159,7 @@ async function exerciseToolProgress(cycles: number): Promise<CacheResult> {
   // pulls in tools/, sessionStorage, analytics, etc. We only need
   // recordToolProgress + size accessor.
   const { mock } = await import('bun:test')
-  mock.module('../../src/services/analytics/growthbook.js', () => ({
+  mock.module('../../src/platform/analytics/growthbook.js', () => ({
     getFeatureValue_CACHED_MAY_BE_STALE: () => false,
     getFeatureValue_CACHED_WITH_REFRESH: () => false,
     getFeatureValue_DEPRECATED: async () => false,
@@ -179,7 +179,7 @@ async function exerciseToolProgress(cycles: number): Promise<CacheResult> {
     initializeGrowthBook: async () => null,
     getAllGrowthBookFeatures: () => ({}),
   }))
-  mock.module('../../src/services/analytics/index.js', () => ({
+  mock.module('../../src/platform/analytics/index.js', () => ({
     logEvent: () => {},
     logEventAsync: async () => {},
     attachAnalyticsSink: () => {},
@@ -208,7 +208,7 @@ async function exerciseToolProgress(cycles: number): Promise<CacheResult> {
 async function exerciseImageStore(cycles: number): Promise<CacheResult> {
   const { mock } = await import('bun:test')
   mock.module('../../src/shared/debug.js', () => ({ logForDebugging: () => {} }))
-  mock.module('../../src/bootstrap/state.js', () => ({
+  mock.module('../../src/platform/bootstrap/state.js', () => ({
     getSessionId: () => 'bench-session',
   }))
   mock.module('../../src/shared/envUtils.js', () => ({
@@ -245,7 +245,7 @@ async function exerciseLSPDelivered(cycles: number): Promise<CacheResult> {
   const { mock } = await import('bun:test')
   mock.module('../../src/shared/debug.js', () => ({ logForDebugging: () => {} }))
   mock.module('../../src/shared/log.js', () => ({ logError: () => {} }))
-  mock.module('../../src/utils/slowOperations.js', () => ({
+  mock.module('../../src/platform/slowOperations.js', () => ({
     jsonStringify: (x: unknown) => JSON.stringify(x),
   }))
 
@@ -253,7 +253,7 @@ async function exerciseLSPDelivered(cycles: number): Promise<CacheResult> {
     markDiagnosticsAsDelivered,
     _resetDeliveredDiagnosticsForTesting,
     _getDeliveredDiagnosticsCountForTesting,
-  } = await import('../../src/services/lsp/LSPDiagnosticRegistry.js')
+  } = await import('../../src/platform/lsp/LSPDiagnosticRegistry.js')
 
   return measure(
     'LSPDiagnosticRegistry.deliveredDiagnostics',
@@ -386,7 +386,7 @@ async function exerciseMixedSession(turns: number): Promise<MixedResult> {
     markDiagnosticsAsDelivered,
     _resetDeliveredDiagnosticsForTesting,
     _getDeliveredDiagnosticsCountForTesting,
-  } = await import('../../src/services/lsp/LSPDiagnosticRegistry.js')
+  } = await import('../../src/platform/lsp/LSPDiagnosticRegistry.js')
 
   // Real fs fixtures for fileReadCache: create a pool of files larger than
   // the cap so we trigger evictions (turns × 5 reads / 1000 cap = many evictions).

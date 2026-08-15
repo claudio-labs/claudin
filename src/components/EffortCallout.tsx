@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import React, { useCallback, useEffect, useRef } from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import { isMaxSubscriber, isProSubscriber, isTeamSubscriber } from 'src/services/auth/auth.js';
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import type { EffortLevel } from 'src/utils/effort.js';
 import { convertEffortValueToLevel, getDefaultEffortForModel, getOpusDefaultEffortConfig, persistEffortForProject, pinProjectEffortAuto } from 'src/utils/effort.js';
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js';

@@ -6,7 +6,7 @@ import {
   saveGlobalConfig,
   type ProjectConfig,
   type ProviderProfile,
-} from 'src/services/config/config.js'
+} from 'src/platform/config/config.js'
 import type { ModelOption } from 'src/utils/model/modelOptions.js'
 import { parseModelList } from 'src/services/api/providerModels.js'
 

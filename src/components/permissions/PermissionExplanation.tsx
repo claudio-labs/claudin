@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import React, { Suspense, use, useState } from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
-import { logEvent } from 'src/services/analytics/index.js';
+import { logEvent } from 'src/platform/analytics/index.js';
 import type { Message } from 'src/types/message.js';
 import { generatePermissionExplanation, isPermissionExplainerEnabled, type PermissionExplanation as PermissionExplanationType, type RiskLevel } from 'src/services/permissions/permissionExplainer.js';
 import { ShimmerChar } from 'src/terminal/spinner/ShimmerChar.js';

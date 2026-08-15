@@ -4,7 +4,7 @@ import type { BuildDiagnostic, BuildResult } from 'src/tools/BuildTool/types.js'
 
 function diagnostic(overrides: Partial<BuildDiagnostic> = {}): BuildDiagnostic {
   return {
-    file: 'src/main.rs',
+    file: 'src/platform/main.rs',
     line: 4,
     column: 9,
     severity: 'error',
@@ -72,7 +72,7 @@ describe('formatBuildResult', () => {
     const rendered = formatBuildResult(
       result({ exitCode: 1, errors: 50, diagnostics: many }),
     )
-    expect(rendered.split('✗ src/main.rs')).toHaveLength(11)
+    expect(rendered.split('✗ src/platform/main.rs')).toHaveLength(11)
     expect(rendered).toContain('+40 more distinct diagnostics')
   })
 

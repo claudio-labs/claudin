@@ -1,12 +1,12 @@
 import { feature } from 'bun:bundle'
 import { randomUUID } from 'crypto'
-import { getSdkBetas, getSessionId } from 'src/bootstrap/state.js'
+import { getSdkBetas, getSessionId } from 'src/platform/bootstrap/state.js'
 import { DEFAULT_OUTPUT_STYLE_NAME } from 'src/constants/outputStyles.js'
 import type {
   ApiKeySource,
   PermissionMode,
   SDKMessage,
-} from 'src/entrypoints/agentSdkTypes.js'
+} from 'src/platform/entrypoints/agentSdkTypes.js'
 import {
   AGENT_TOOL_NAME,
   LEGACY_AGENT_TOOL_NAME,
@@ -14,7 +14,7 @@ import {
 import { getAnthropicApiKeyWithSource } from 'src/services/auth/auth.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getFastModeState } from 'src/utils/fastMode.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 
 // TODO(next-minor): remove this translation once SDK consumers have migrated
 // to the 'Agent' tool name. The wire name was renamed Task → Agent in #19647,
@@ -88,7 +88,7 @@ export function buildSystemInitMessage(inputs: SystemInitInputs): SDKMessage {
   if (feature('UDS_INBOX')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     ;(initMessage as Record<string, unknown>).messaging_socket_path =
-      require('../../utils/udsMessaging.js').getUdsMessagingSocketPath()
+      require('../../platform/udsMessaging.js').getUdsMessagingSocketPath()
     /* eslint-enable @typescript-eslint/no-require-imports */
   }
   initMessage.fast_mode_state = getFastModeState(inputs.model, inputs.fastMode)

@@ -16,7 +16,7 @@
 ```
 /home/dev/projects/claudin/src/services/api/openaiShim.ts:1909:        const isAbortError =
 /home/dev/projects/claudin/src/services/api/openaiShim.ts:1919:        if (isAbortError) {
-/home/dev/projects/claudin/src/services/lsp/config.test.ts:69:  isAbortError: (_e: unknown) => false,
+/home/dev/projects/claudin/src/platform/lsp/config.test.ts:69:  isAbortError: (_e: unknown) => false,
 /home/dev/projects/claudin/src/shared/errors.ts:27:export function isAbortError(e: unknown): boolean {
 /home/dev/projects/claudin/src/services/attachments/attachments.ts:122:import { isAbortError } from './errors.js'
 /home/dev/projects/claudin/src/services/attachments/attachments.ts:2627:    if (!isAbortError(e)) {
@@ -28,7 +28,7 @@
 ```
 src/services/attachments/attachments.ts:import { isAbortError } from './errors.js'
 src/services/attachments/attachments.ts:    if (!isAbortError(e)) {
-src/services/lsp/config.test.ts:  isAbortError: (_e: unknown) => false,
+src/platform/lsp/config.test.ts:  isAbortError: (_e: unknown) => false,
 src/services/api/openaiShim.ts:        const isAbortError =
 src/services/api/openaiShim.ts:        if (isAbortError) {
 src/shared/errors.ts:export function isAbortError(e: unknown): boolean {

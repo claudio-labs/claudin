@@ -17,7 +17,7 @@ test('custom error responses log the error redirect analytics event', async () =
     metadata: Record<string, boolean | number | undefined>
   }> = []
 
-  mock.module('src/services/analytics/index.js', () => ({
+  mock.module('src/platform/analytics/index.js', () => ({
     logEvent: (
       name: string,
       metadata: Record<string, boolean | number | undefined>,
@@ -70,7 +70,7 @@ test('custom handlers that do not end the response are closed automatically and 
     },
   }
 
-  mock.module('src/services/analytics/index.js', () => ({
+  mock.module('src/platform/analytics/index.js', () => ({
     logEvent: (
       name: string,
       metadata: Record<string, boolean | number | undefined>,
@@ -129,7 +129,7 @@ test('custom handlers that throw are logged, converted to a fallback response, a
     },
   }
 
-  mock.module('src/services/analytics/index.js', () => ({
+  mock.module('src/platform/analytics/index.js', () => ({
     logEvent: (
       name: string,
       metadata: Record<string, boolean | number | undefined>,

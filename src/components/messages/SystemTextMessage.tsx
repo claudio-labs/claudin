@@ -20,7 +20,7 @@ import type { SystemMessage, SystemStopHookSummaryMessage, SystemBridgeStatusMes
 import type { StopHookInfo } from 'src/types/message.js';
 import { SystemAPIErrorMessage } from 'src/components/messages/SystemAPIErrorMessage.js';
 import { formatDuration, formatNumber, formatSecondsShort } from 'src/shared/text/format.js';
-import { getGlobalConfig } from 'src/services/config/config.js';
+import { getGlobalConfig } from 'src/platform/config/config.js';
 import Link from 'src/terminal/ink/components/Link.js';
 import ThemedText from 'src/terminal/design-system/ThemedText.js';
 import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';

@@ -12,7 +12,7 @@ import { logError } from 'src/shared/log.js'
 import {
   getSourceDisplayName,
   type SettingSource,
-} from 'src/services/settings/constants.js'
+} from 'src/platform/settings/constants.js'
 import {
   getAvailableModelIdsForActiveProfile,
   resolveModelOverride,

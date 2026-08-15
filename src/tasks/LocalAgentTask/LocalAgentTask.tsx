@@ -1,4 +1,4 @@
-import { getSdkAgentProgressSummariesEnabled } from 'src/bootstrap/state.js';
+import { getSdkAgentProgressSummariesEnabled } from 'src/platform/bootstrap/state.js';
 import { OUTPUT_FILE_TAG, STATUS_TAG, SUMMARY_TAG, TASK_ID_TAG, TASK_NOTIFICATION_TAG, TOOL_USE_ID_TAG, WORKTREE_BRANCH_TAG, WORKTREE_PATH_TAG, WORKTREE_TAG } from 'src/constants/xml.js';
 import { abortSpeculation } from 'src/terminal/prompt-suggestion/speculation.js';
 import type { AppState } from 'src/terminal/state/AppState.js';

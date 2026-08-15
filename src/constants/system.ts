@@ -1,7 +1,7 @@
 // Critical system constants extracted to break circular dependencies
 
 import { feature } from 'bun:bundle'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { getAPIProvider } from 'src/utils/model/providers.js'

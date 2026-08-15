@@ -9,7 +9,7 @@ import { Box, Text } from 'src/terminal/ink.js'
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js'
 import { useSetAppState } from 'src/terminal/state/AppState.js'
 import { suppressNextMainLoopModelPersist } from 'src/terminal/state/onChangeAppState.js'
-import type { ProviderProfile } from 'src/services/config/config.js'
+import type { ProviderProfile } from 'src/platform/config/config.js'
 import {
   clearCodexCredentials,
   readCodexCredentialsAsync,
@@ -52,7 +52,7 @@ import {
   Select,
 } from 'src/terminal/custom-select/index.js'
 import { Pane } from 'src/terminal/design-system/Pane.js'
-import { MigrationBanner } from 'src/components/MigrationBanner.js'
+import { MigrationBanner } from 'src/platform/MigrationBanner.js'
 import TextInput from 'src/terminal/text-input/TextInput.js'
 import { useCodexOAuthFlow } from 'src/components/useCodexOAuthFlow.js'
 import { useXaiOAuthFlow } from 'src/components/useXaiOAuthFlow.js'
@@ -71,7 +71,7 @@ import {
   legacyClaudeDirExists,
   migrateLegacyClaudeDir,
   shouldShowMigrationBanner,
-} from 'src/services/config/claudinMigration.js'
+} from 'src/platform/config/claudinMigration.js'
 
 export type ProviderManagerResult = {
   action: 'saved' | 'cancelled' | 'activated'

@@ -8,11 +8,11 @@
  * external binaries with the same argv syntax).
  */
 
-import { getCommitCounter, getPrCounter } from 'src/bootstrap/state.js'
+import { getCommitCounter, getPrCounter } from 'src/platform/bootstrap/state.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 
 /**
  * Build a regex that matches `git <subcmd>` while tolerating git's global
@@ -245,7 +245,7 @@ export function trackGitOperations(
         // Import is done dynamically to avoid circular dependency
         void import('src/services/session/sessionStorage.js').then(
           ({ linkSessionToPR }) => {
-            void import('src/bootstrap/state.js').then(({ getSessionId }) => {
+            void import('src/platform/bootstrap/state.js').then(({ getSessionId }) => {
               const sessionId = getSessionId()
               if (sessionId) {
                 void linkSessionToPR(

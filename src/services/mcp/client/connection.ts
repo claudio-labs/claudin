@@ -8,7 +8,7 @@ import {
   ListRootsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 import memoize from 'lodash-es/memoize.js'
-import { getOriginalCwd } from 'src/bootstrap/state.js'
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { PRODUCT_URL } from 'src/constants/product.js'
 import { type Tool } from 'src/Tool.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
@@ -17,14 +17,14 @@ import {
   errorMessage,
   TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
 } from 'src/shared/errors.js'
-import { maybeNotifyIDEConnected } from 'src/services/ide/ide.js'
+import { maybeNotifyIDEConnected } from 'src/platform/ide/ide.js'
 import { logMCPDebug, logMCPError } from 'src/shared/log.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { sleep } from 'src/shared/sleep.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,

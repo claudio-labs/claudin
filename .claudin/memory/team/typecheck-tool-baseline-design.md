@@ -41,7 +41,7 @@ full text stays on disk at `result.outputFilePath`
 (`utils/ShellCommand.ts:306-315`). Anything that PARSES shell output must read
 that file or it silently summarises a large run from its first few hundred
 lines. RunTests had the same latent bug on its text-scrape path; both now use
-`readFullShellOutput()` in `src/services/shell/fullOutput.ts`.
+`readFullShellOutput()` in `src/platform/shell/fullOutput.ts`.
 
 **Three traps that only a LIVE run against the real binary exposes** (unit
 fixtures written from memory passed for all three):

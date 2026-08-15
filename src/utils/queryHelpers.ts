@@ -3,8 +3,8 @@ import last from 'lodash-es/last.js'
 import {
   getSessionId,
   isSessionPersistenceDisabled,
-} from 'src/bootstrap/state.js'
-import type { SDKMessage } from 'src/entrypoints/agentSdkTypes.js'
+} from 'src/platform/bootstrap/state.js'
+import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type { CanUseToolFn } from 'src/hooks/useCanUseTool.js'
 import { runTools } from 'src/services/tools/toolOrchestration.js'
 import { findToolByName, type Tool, type Tools } from 'src/Tool.js'

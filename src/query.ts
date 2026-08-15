@@ -22,7 +22,7 @@ const contextCollapse = feature('CONTEXT_COLLAPSE')
 import {
   logEvent,
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { ImageSizeError } from 'src/terminal/image/imageValidation.js'
 import { ImageResizeError } from 'src/terminal/image/imageResizer.js'
 import { findToolByName, type ToolUseContext } from 'src/Tool.js'
@@ -70,15 +70,15 @@ import {
 import {
   awaitLateDiagnosticsForTurn,
   clearArmedFiles,
-} from 'src/services/lsp/diagnosticsForToolResult.js'
-import { markDiagnosticsAsDelivered } from 'src/services/lsp/LSPDiagnosticRegistry.js'
-import { getGlobalConfig } from 'src/services/config/config.js'
+} from 'src/platform/lsp/diagnosticsForToolResult.js'
+import { markDiagnosticsAsDelivered } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 /* eslint-disable @typescript-eslint/no-require-imports */
 const skillPrefetch = feature('EXPERIMENTAL_SKILL_SEARCH')
   ? (require('./services/skillSearch/prefetch.js') as typeof import('./services/skillSearch/prefetch.js'))
   : null
 const jobClassifier = feature('TEMPLATES')
-  ? (require('./jobs/classifier.js') as typeof import('./jobs/classifier.js'))
+  ? (require('./platform/jobs/classifier.js') as typeof import('./platform/jobs/classifier.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 import {
@@ -87,7 +87,7 @@ import {
   isSlashCommand,
 } from 'src/utils/messageQueueManager.js'
 import { notifyCommandLifecycle } from 'src/utils/commandLifecycle.js'
-import { headlessProfilerCheckpoint } from 'src/utils/headlessProfiler.js'
+import { headlessProfilerCheckpoint } from 'src/platform/headlessProfiler.js'
 import {
   getDefaultMainLoopModelSetting,
   getUserSpecifiedModelSetting,
@@ -101,10 +101,10 @@ import {
   tokenCountWithEstimation,
 } from 'src/services/context/tokens.js'
 import { ESCALATED_MAX_TOKENS } from 'src/services/context/context.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js'
-import { executePostSamplingHooks } from 'src/services/lifecycleHooks/postSamplingHooks.js'
-import { executeStopFailureHooks } from 'src/services/lifecycleHooks/hooks.js'
+import { executePostSamplingHooks } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
+import { executeStopFailureHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import type { QuerySource } from 'src/constants/querySource.js'
 import { StreamingToolExecutor } from 'src/services/tools/StreamingToolExecutor.js'
 import { queryCheckpoint } from 'src/utils/queryProfiler.js'
@@ -120,7 +120,7 @@ import {
   getCurrentTurnTokenBudget,
   getTurnOutputTokens,
   incrementBudgetContinuationCount,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { createBudgetTracker, checkTokenBudget } from 'src/query/tokenBudget.js'
 import { count } from 'src/shared/data/array.js'
 
@@ -1102,7 +1102,7 @@ async function* queryLoop(
       if (feature('CHICAGO_MCP') && !toolUseContext.agentId) {
         try {
           const { cleanupComputerUseAfterTurn } = await import(
-            'src/services/computerUse/cleanup.js'
+            'src/platform/computerUse/cleanup.js'
           )
           await cleanupComputerUseAfterTurn(toolUseContext)
         } catch {
@@ -1731,7 +1731,7 @@ async function* queryLoop(
       if (feature('CHICAGO_MCP') && !toolUseContext.agentId) {
         try {
           const { cleanupComputerUseAfterTurn } = await import(
-            'src/services/computerUse/cleanup.js'
+            'src/platform/computerUse/cleanup.js'
           )
           await cleanupComputerUseAfterTurn(toolUseContext)
         } catch {

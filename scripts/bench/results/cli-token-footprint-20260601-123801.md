@@ -9,7 +9,7 @@ Model: claude-opus-4-8.
 - `src/QueryEngine.ts` (48K)
 
 **Edit files** (copied to scratch dir; real files untouched):
-- `src/bridge/bridgeEnabled.ts` (12K)
+- `src/platform/bridge/bridgeEnabled.ts` (12K)
 - `src/services/api/betas.ts` (16K)
 
 ## claudiodev

@@ -33,7 +33,7 @@ async function importFresh() {
   }))
   // Use the unstamped state module so we share the singleton STATE that
   // claude.ts uses internally. Reset the latch manually.
-  const state = await import('src/bootstrap/state.js')
+  const state = await import('src/platform/bootstrap/state.js')
   state.setLargeSystemPromptDetected(null)
   const claude = await import('src/services/api/claude.js')
   return { claude, state }

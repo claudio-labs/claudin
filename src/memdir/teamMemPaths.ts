@@ -2,7 +2,7 @@ import { readFileSync } from 'fs'
 import { lstat, realpath } from 'fs/promises'
 import memoize from 'lodash-es/memoize.js'
 import { dirname, join, resolve, sep } from 'path'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getErrnoCode } from 'src/shared/errors.js'
 import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memdir/paths.js'
 

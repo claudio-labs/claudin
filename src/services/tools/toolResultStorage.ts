@@ -5,23 +5,23 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { mkdir, rm, writeFile } from 'fs/promises'
 import { join } from 'path'
-import { getOriginalCwd, getSessionId } from 'src/bootstrap/state.js'
+import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
 import {
   BYTES_PER_TOKEN,
   DEFAULT_MAX_RESULT_SIZE_CHARS,
   MAX_TOOL_RESULT_BYTES,
   MAX_TOOL_RESULTS_PER_MESSAGE_CHARS,
 } from 'src/constants/toolLimits.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
-import { logEvent } from 'src/services/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
+import { logEvent } from 'src/platform/analytics/index.js'
+import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type { Message } from 'src/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getErrnoCode, toError } from 'src/shared/errors.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 import { logError } from 'src/shared/log.js'
 import { getProjectDir } from 'src/services/session/sessionStorage.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   TOOL_RESULT_SUMMARY_TAG,
   isSummarizedContent,

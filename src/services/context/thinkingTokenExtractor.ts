@@ -6,7 +6,7 @@
  */
 
 import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { AssistantMessage, Message } from 'src/types/message.js'
 
 export interface ThinkingBlock {

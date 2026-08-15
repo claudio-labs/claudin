@@ -1,7 +1,7 @@
 import { appendFile, mkdir, symlink, unlink } from 'fs/promises'
 import memoize from 'lodash-es/memoize.js'
 import { dirname, join } from 'path'
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 
 import { type BufferedWriter, createBufferedWriter } from 'src/shared/bufferedWriter.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
@@ -13,7 +13,7 @@ import {
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { writeToStderr } from 'src/shared/proc/process.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 
 export type DebugLogLevel = 'verbose' | 'debug' | 'info' | 'warn' | 'error'
 

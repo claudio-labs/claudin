@@ -1,10 +1,10 @@
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import type { ToolUseContext } from 'src/Tool.js'
 import { formatAgentId, parseAgentId } from 'src/coordinator/agentId.js'
-import { quote } from 'src/services/bash/shellQuote.js'
+import { quote } from 'src/platform/bash/shellQuote.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { writeToMailbox } from 'src/coordinator/teammateMailbox.js'
 import {
   buildInheritedCliFlags,

@@ -2,7 +2,7 @@ import { feature } from 'bun:bundle'
 import type { UUID } from 'crypto'
 import { relative } from 'path'
 import { getCwd } from 'src/shared/fs/cwd.js'
-import { addInvokedSkill } from 'src/bootstrap/state.js'
+import { addInvokedSkill } from 'src/platform/bootstrap/state.js'
 import { asSessionId } from 'src/types/ids.js'
 import type {
   AttributionSnapshotMessage,
@@ -51,7 +51,7 @@ import {
   loadTranscriptFile,
   removeExtraFields,
 } from 'src/services/session/sessionStorage.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { ContentReplacementRecord } from 'src/services/tools/toolResultStorage.js'
 
 // Dead code elimination: internal-only tool names are conditionally required so
@@ -572,7 +572,7 @@ export async function loadConversationForResume(
       let skip = new Set<string>()
       if (feature('BG_SESSIONS')) {
         try {
-          const { listAllLiveSessions } = await import('../../utils/udsClient.js')
+          const { listAllLiveSessions } = await import('../../platform/udsClient.js')
           // udsClient is a stub module (`any`-typed exports) — annotate the
           // shape actually used here rather than importing `any`.
           const live: Array<{ kind?: string; sessionId?: string }> =

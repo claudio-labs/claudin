@@ -12,11 +12,11 @@ import {
 import {
   getAdditionalDirectoriesForClaudeMd,
   getSessionId,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { roughTokenCountEstimation } from 'src/services/tokenEstimation.js'
 import type { Command, PromptCommand } from 'src/types/command.js'
 import {
@@ -56,11 +56,11 @@ import {
 } from 'src/services/instructions/markdownConfigLoader.js'
 import { parseUserSpecifiedModel } from 'src/utils/model/model.js'
 import { executeShellCommandsInPrompt } from 'src/shared/proc/promptShellExecution.js'
-import type { SettingSource } from 'src/services/settings/constants.js'
-import { isSettingSourceEnabled } from 'src/services/settings/constants.js'
-import { getManagedFilePath } from 'src/services/settings/managedPath.js'
-import { isRestrictedToPluginOnly } from 'src/services/settings/pluginOnlyPolicy.js'
-import { HooksSchema, type HooksSettings } from 'src/services/settings/types.js'
+import type { SettingSource } from 'src/platform/settings/constants.js'
+import { isSettingSourceEnabled } from 'src/platform/settings/constants.js'
+import { getManagedFilePath } from 'src/platform/settings/managedPath.js'
+import { isRestrictedToPluginOnly } from 'src/platform/settings/pluginOnlyPolicy.js'
+import { HooksSchema, type HooksSettings } from 'src/platform/settings/types.js'
 import { createSignal } from 'src/shared/signal.js'
 import { registerMCPSkillBuilders } from 'src/skills/mcpSkillBuilders.js'
 

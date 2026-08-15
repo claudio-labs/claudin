@@ -1,12 +1,12 @@
 import figures from 'figures'
 import memoize from 'lodash-es/memoize.js'
 import { getOutputStyleDirStyles } from 'src/outputStyles/loadOutputStylesDir.js'
-import type { OutputStyle } from 'src/services/config/config.js'
+import type { OutputStyle } from 'src/platform/config/config.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { loadPluginOutputStyles } from 'src/services/plugins/loadPluginOutputStyles.js'
-import type { SettingSource } from 'src/services/settings/constants.js'
-import { getInitialSettings } from 'src/services/settings/settings.js'
+import type { SettingSource } from 'src/platform/settings/constants.js'
+import { getInitialSettings } from 'src/platform/settings/settings.js'
 
 export type OutputStyleConfig = {
   name: string

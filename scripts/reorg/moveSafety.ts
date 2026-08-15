@@ -134,6 +134,60 @@ type Finding = {
   targetTo: string
 }
 
+/**
+ * The other blind spot: a path written as a BARE string, without the `src/`
+ * prefix that `apply.ts`'s substring rewrite keys on.
+ *
+ *   file('services/config/managedEnvConstants.ts')                  // fs read
+ *   join(import.meta.dir, '../../services/config/config.ts')        // fs read
+ *   pluginSource.match(/'services\/analytics\/growthbook': `…`/)    // assertion
+ *   expect(content).toContain('services/lifecycleHooks/ssrfGuard.js')
+ *
+ * None of these is a module specifier, so tsc and the build pre-scan are both
+ * blind and the suite is the only gate — which is exactly how the platform group
+ * broke nine tests across four files. Reported, never auto-fixed: whether the
+ * right repair is a new prefix, a repo-root anchor or a different assertion is a
+ * judgement call each time.
+ *
+ * Known gap: a path split across arguments — `join(ROOT, 'src', 'main.tsx')` —
+ * is invisible here too. Prefer writing those as one string.
+ */
+function reportBareStringPaths(dest: Map<string, string>): number {
+  // Longest first so `services/analytics/growthbook` wins over `services/`.
+  const prefixes = [...new Set([...dest.keys()].map(k => k.replace(/^src\//, '')))]
+    .filter(p => p.includes('/'))
+    .sort((a, b) => b.length - a.length)
+
+  const STRING = /(['"`])([^'"`\n]{6,200})\1/g
+  const hits: { file: string; literal: string; movesTo: string }[] = []
+
+  for (const file of [
+    ...walk(SRC_ROOT),
+    ...walk(join(REPO_ROOT, 'scripts')),
+  ].filter(f => /\.(ts|tsx)$/.test(f))) {
+    const relFile = relative(REPO_ROOT, file)
+    const text = readFileSync(file, 'utf8')
+    for (const match of text.matchAll(STRING)) {
+      const literal = match[2]!
+      // Unescape the `\/` a regex literal uses, so both spellings are seen.
+      const probe = literal.replaceAll('\\/', '/')
+      if (probe.includes('src/')) continue // apply.ts owns those
+      const hit = prefixes.find(p => probe.includes(p))
+      if (!hit) continue
+      hits.push({ file: relFile, literal, movesTo: dest.get(`src/${hit}`) ?? '' })
+    }
+  }
+
+  if (hits.length === 0) return 0
+  console.log(`\n${hits.length} bare-string path(s) no rewrite can reach:\n`)
+  for (const h of hits) {
+    console.log(`${h.file}`)
+    console.log(`   "${h.literal}"`)
+    console.log(`   moves to ${h.movesTo}\n`)
+  }
+  return hits.length
+}
+
 function main(): void {
   const dest = buildDestinations()
   const at = (rel: string): string => dest.get(rel) ?? rel
@@ -203,7 +257,8 @@ function main(): void {
     console.log(`   fix: '${f.alias}'\n`)
   }
   if (VERBOSE) console.log(`(${intact} specifiers keep the same relative offset)`)
-  process.exitCode = broken.length > 0 ? 1 : 0
+  const bare = reportBareStringPaths(dest)
+  process.exitCode = broken.length + bare > 0 ? 1 : 0
 }
 
 main()

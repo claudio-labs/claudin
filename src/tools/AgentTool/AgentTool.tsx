@@ -6,13 +6,13 @@ import { getQuerySourceForAgent } from 'src/utils/promptCategory.js';
 import { getAgentPlanSlug } from 'src/services/planDossier.js';
 import { getPlan, getPlanSlug, getPlansDirectory } from 'src/utils/plans.js';
 import { z } from 'zod/v4';
-import { clearInvokedSkillsForAgent, getSdkAgentProgressSummariesEnabled, getIsNonInteractiveSession } from 'src/bootstrap/state.js';
+import { clearInvokedSkillsForAgent, getSdkAgentProgressSummariesEnabled, getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js';
 import { enhanceSystemPromptWithEnvDetails, getSystemPrompt } from 'src/constants/prompts.js';
 import { isCoordinatorMode } from 'src/coordinator/coordinatorMode.js';
 import { startAgentSummarization, summarizeAgentResult } from 'src/services/AgentSummary/agentSummary.js';
-import { getGlobalConfig } from 'src/services/config/config.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { getGlobalConfig } from 'src/platform/config/config.js';
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { clearDumpState } from 'src/services/api/dumpPrompts.js';
 import { completeAgentTask as completeAsyncAgent, createActivityDescriptionResolver, createProgressTracker, enqueueAgentNotification, failAgentTask as failAsyncAgent, getProgressUpdate, getTokenCountFromTracker, isLocalAgentTask, killAsyncAgent, registerAgentForeground, registerAsyncAgent, unregisterAgentForeground, updateAgentProgress as updateAsyncAgentProgress, updateProgressFromMessage } from 'src/tasks/LocalAgentTask/LocalAgentTask.js';
 import { checkRemoteAgentEligibility, formatPreconditionError, getRemoteTaskSessionUrl, registerRemoteAgentTask } from 'src/tasks/RemoteAgentTask/RemoteAgentTask.js';
@@ -39,7 +39,7 @@ import { asSystemPrompt } from 'src/utils/systemPromptType.js';
 import { getTaskOutputPath } from 'src/tasks/diskOutput.js';
 import { getParentSessionId, isTeammate } from 'src/coordinator/teammate.js';
 import { isInProcessTeammate } from 'src/coordinator/teammateContext.js';
-import { teleportToRemote } from 'src/components/teleport.js';
+import { teleportToRemote } from 'src/platform/teleport/teleport.js';
 import { getAssistantMessageContentLength } from 'src/services/context/tokens.js';
 import { createAgentId } from 'src/shared/data/uuid.js';
 import { createAgentWorktree, hasWorktreeChanges, removeAgentWorktree } from 'src/services/git/worktree.js';
@@ -60,7 +60,7 @@ import { runAgent } from 'src/tools/AgentTool/runAgent.js';
 import { renderGroupedAgentToolUse, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseRejectedMessage, renderToolUseTag, userFacingName, userFacingNameBackgroundColor } from 'src/tools/AgentTool/UI.js';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../../proactive/index.js') as typeof import('../../proactive/index.js') : null;
+const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../../platform/proactive/index.js') as typeof import('../../platform/proactive/index.js') : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 // Progress display constants (for showing background hint)

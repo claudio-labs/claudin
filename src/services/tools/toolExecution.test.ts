@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 import type { ToolUseContext } from 'src/Tool.js'
 import { SkillTool } from 'src/tools/SkillTool/SkillTool.js'
 import { INTERRUPT_MESSAGE_FOR_TOOL_USE } from 'src/services/messages/constants.js'
-import { saveGlobalConfig } from 'src/services/config/config.js'
+import { saveGlobalConfig } from 'src/platform/config/config.js'
 import {
   getSchemaValidationErrorOverride,
   getSchemaValidationToolUseResult,

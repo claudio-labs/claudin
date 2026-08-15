@@ -6,17 +6,17 @@ const originalEnv = { ...process.env }
 // cross-file leaks of missing exports. Spread into snapshots so afterAll
 // restores see the original bindings, not a later mock factory's exports.
 const realEnvUtilsForFastMode = { ...(await import('src/shared/envUtils.js')) }
-const realConfigForFastMode = { ...(await import('src/services/config/config.js')) }
+const realConfigForFastMode = { ...(await import('src/platform/config/config.js')) }
 const realAuthForFastMode = { ...(await import('src/services/auth/auth.js')) }
 const realDebugForFastMode = { ...(await import('src/shared/debug.js')) }
-const realBootstrapStateForFastMode = { ...(await import('src/bootstrap/state.js')) }
-const realAnalyticsForFastMode = { ...(await import('src/services/analytics/index.js')) }
-const realGrowthbookForFastMode = { ...(await import('src/services/analytics/growthbook.js')) }
-const realBundledModeForFastMode = { ...(await import('src/services/install/bundledMode.js')) }
+const realBootstrapStateForFastMode = { ...(await import('src/platform/bootstrap/state.js')) }
+const realAnalyticsForFastMode = { ...(await import('src/platform/analytics/index.js')) }
+const realGrowthbookForFastMode = { ...(await import('src/platform/analytics/growthbook.js')) }
+const realBundledModeForFastMode = { ...(await import('src/platform/install/bundledMode.js')) }
 const realModelForFastMode = { ...(await import('src/utils/model/model.js')) }
 const realProvidersForFastMode = { ...(await import('src/utils/model/providers.js')) }
-const realPrivacyLevelForFastMode = { ...(await import('src/services/config/privacyLevel.js')) }
-const realSettingsForFastMode = { ...(await import('src/services/settings/settings.js')) }
+const realPrivacyLevelForFastMode = { ...(await import('src/platform/config/privacyLevel.js')) }
+const realSettingsForFastMode = { ...(await import('src/platform/settings/settings.js')) }
 const realSignalForFastMode = { ...(await import('src/shared/signal.js')) }
 
 async function importFreshFastModeModule() {
@@ -46,18 +46,18 @@ function installCommonMocks(options?: {
     OAUTH_BETA_HEADER: 'test-beta',
   }))
 
-  mock.module('src/services/analytics/growthbook.js', () => ({
+  mock.module('src/platform/analytics/growthbook.js', () => ({
     getFeatureValue_CACHED_MAY_BE_STALE: (_name: string, defaultValue: unknown) =>
       defaultValue,
   }))
 
-  mock.module('src/bootstrap/state.js', () => ({
+  mock.module('src/platform/bootstrap/state.js', () => ({
     getIsNonInteractiveSession: () => false,
     getKairosActive: () => false,
     preferThirdPartyAuthentication: () => false,
   }))
 
-  mock.module('src/services/analytics/index.js', () => ({
+  mock.module('src/platform/analytics/index.js', () => ({
     logEvent: () => {},
   }))
 
@@ -69,11 +69,11 @@ function installCommonMocks(options?: {
     hasProfileScope: () => options?.hasProfileScope ?? false,
   }))
 
-  mock.module('src/services/install/bundledMode.js', () => ({
+  mock.module('src/platform/install/bundledMode.js', () => ({
     isInBundledMode: () => true,
   }))
 
-  mock.module('src/services/config/config.js', () => ({
+  mock.module('src/platform/config/config.js', () => ({
     ...realConfigForFastMode,
     getGlobalConfig: () => ({
       penguinModeOrgEnabled: options?.cachedEnabled === true,
@@ -102,11 +102,11 @@ function installCommonMocks(options?: {
     getAPIProvider: () => 'firstParty',
   }))
 
-  mock.module('src/services/config/privacyLevel.js', () => ({
+  mock.module('src/platform/config/privacyLevel.js', () => ({
     isEssentialTrafficOnly: () => false,
   }))
 
-  mock.module('src/services/settings/settings.js', () => ({
+  mock.module('src/platform/settings/settings.js', () => ({
     getInitialSettings: () => ({ fastMode: true }),
     getSettingsForSource: () => ({}),
     updateSettingsForSource: () => {},
@@ -130,18 +130,18 @@ afterEach(() => {
 // without this every later test file inherits this file's stubs (notably the
 // `./config.js` partial that breaks `toolResultSummarizer.*.test.ts`).
 afterAll(() => {
-  mock.module('src/services/config/config.js', () => realConfigForFastMode)
+  mock.module('src/platform/config/config.js', () => realConfigForFastMode)
   mock.module('src/shared/envUtils.js', () => realEnvUtilsForFastMode)
   mock.module('src/services/auth/auth.js', () => realAuthForFastMode)
   mock.module('src/shared/debug.js', () => realDebugForFastMode)
-  mock.module('src/bootstrap/state.js', () => realBootstrapStateForFastMode)
-  mock.module('src/services/analytics/index.js', () => realAnalyticsForFastMode)
-  mock.module('src/services/analytics/growthbook.js', () => realGrowthbookForFastMode)
-  mock.module('src/services/install/bundledMode.js', () => realBundledModeForFastMode)
+  mock.module('src/platform/bootstrap/state.js', () => realBootstrapStateForFastMode)
+  mock.module('src/platform/analytics/index.js', () => realAnalyticsForFastMode)
+  mock.module('src/platform/analytics/growthbook.js', () => realGrowthbookForFastMode)
+  mock.module('src/platform/install/bundledMode.js', () => realBundledModeForFastMode)
   mock.module('./model/model.js', () => realModelForFastMode)
   mock.module('./model/providers.js', () => realProvidersForFastMode)
-  mock.module('src/services/config/privacyLevel.js', () => realPrivacyLevelForFastMode)
-  mock.module('src/services/settings/settings.js', () => realSettingsForFastMode)
+  mock.module('src/platform/config/privacyLevel.js', () => realPrivacyLevelForFastMode)
+  mock.module('src/platform/settings/settings.js', () => realSettingsForFastMode)
   mock.module('src/shared/signal.js', () => realSignalForFastMode)
   realConfigForFastMode.resetGlobalConfigForTests?.()
 })

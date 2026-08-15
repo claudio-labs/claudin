@@ -110,7 +110,7 @@ unless = "(?i)\\b(error|warning|deprecated)\\b"
 
 | Peça | Onde | Pra que serve |
 |---|---|---|
-| Parser de comando bash | `src/services/bash/commands.ts:265` (`splitCommand_DEPRECATED`) | Decompor `cd foo && git status -s` em verbos individuais |
+| Parser de comando bash | `src/platform/bash/commands.ts:265` (`splitCommand_DEPRECATED`) | Decompor `cd foo && git status -s` em verbos individuais |
 | `strip-ansi` | `package.json` (já dep) | Remover ANSI escapes |
 | `commandSemantics.ts` | `src/tools/BashTool/commandSemantics.ts:31-77` | Mapa "exit≠0 não é necessariamente erro" (grep/rg/find/diff/test) |
 | Chokepoint de tool result | `src/services/tools/toolResultStorage.ts:225` | Local provider-agnóstico onde plugar |

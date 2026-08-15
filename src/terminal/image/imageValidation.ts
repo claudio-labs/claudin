@@ -1,5 +1,5 @@
 import { API_IMAGE_MAX_BASE64_SIZE } from 'src/constants/apiLimits.js'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 
 /**

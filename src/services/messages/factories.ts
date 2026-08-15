@@ -6,7 +6,7 @@ import type {
   ToolResultBlockParam,
 } from '@anthropic-ai/sdk/resources/index.mjs'
 import { randomUUID, type UUID } from 'crypto'
-import type { SDKAssistantMessageError } from 'src/entrypoints/agentSdkTypes.js'
+import type { SDKAssistantMessageError } from 'src/platform/entrypoints/agentSdkTypes.js'
 import { NO_CONTENT_MESSAGE } from 'src/constants/messages.js'
 import {
   COMMAND_ARGS_TAG,

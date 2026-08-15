@@ -384,7 +384,7 @@ Grep pattern="z\.object\(\|z\.string\(\|z\.union\(" type="ts" output_mode="files
 ### Debugging provider issues
 
 1. Start at `src/services/api/activeProvider.ts` → `tryGetActiveProvider()`
-2. Check `src/services/config/config.ts` → `getGlobalConfig()` for stored profile
+2. Check `src/platform/config/config.ts` → `getGlobalConfig()` for stored profile
 3. Check `src/services/api/providerConfig.ts` for preset definitions
 4. Run `/provider doctor` from inside the REPL after `bun run dev`
 
@@ -411,7 +411,7 @@ used, so it answers the question directly. Failing that, `git log --follow
 ### Configuration issues
 
 1. Config file: `~/.claudin/settings.json`
-2. `src/services/config/config.ts` → `getGlobalConfig()` / `saveGlobalConfig()`
+2. `src/platform/config/config.ts` → `getGlobalConfig()` / `saveGlobalConfig()`
 3. Config dir override: `CLAUDIN_CONFIG_DIR` env var
 4. V8 cache: `~/.claudin/v8cache/` — delete to force cold-start if caching issues
 

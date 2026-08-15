@@ -1,16 +1,16 @@
 import { afterAll, afterEach, expect, mock, test } from 'bun:test'
 
-const realSettings = { ...(await import('src/services/settings/settings.js')) }
+const realSettings = { ...(await import('src/platform/settings/settings.js')) }
 const realAuth = { ...(await import('src/services/auth/auth.js')) }
 const realThinking = { ...(await import('src/services/context/thinking.js')) }
-const realGrowthbook = { ...(await import('src/services/analytics/growthbook.js')) }
+const realGrowthbook = { ...(await import('src/platform/analytics/growthbook.js')) }
 const realProviders = { ...(await import('src/utils/model/providers.js')) }
 
 afterAll(() => {
-  mock.module('src/services/settings/settings.js', () => realSettings)
+  mock.module('src/platform/settings/settings.js', () => realSettings)
   mock.module('src/services/auth/auth.js', () => realAuth)
   mock.module('src/services/context/thinking.js', () => realThinking)
-  mock.module('src/services/analytics/growthbook.js', () => realGrowthbook)
+  mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
   mock.module('src/utils/model/providers.js', () => realProviders)
 })
 
@@ -22,7 +22,7 @@ afterEach(() => {
 async function importFreshEffortModule(options: {
   provider?: string
 } = {}) {
-  mock.module('src/services/settings/settings.js', () => ({
+  mock.module('src/platform/settings/settings.js', () => ({
     getInitialSettings: () => ({}),
   }))
   mock.module('src/services/auth/auth.js', () => ({
@@ -33,7 +33,7 @@ async function importFreshEffortModule(options: {
   mock.module('src/services/context/thinking.js', () => ({
     isUltrathinkEnabled: () => false,
   }))
-  mock.module('src/services/analytics/growthbook.js', () => ({
+  mock.module('src/platform/analytics/growthbook.js', () => ({
     getFeatureValue_CACHED_MAY_BE_STALE: () => ({ enabled: false }),
   }))
   mock.module('src/utils/model/providers.js', () => ({

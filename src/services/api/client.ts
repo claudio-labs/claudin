@@ -23,7 +23,7 @@ import { pickFetch } from 'src/services/api/pickFetch.js'
 import {
   getIsNonInteractiveSession,
   getSessionId,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { isDebugToStdErr, logForDebugging } from 'src/shared/debug.js'
 import {
   getAWSRegion,

@@ -19,14 +19,14 @@ import {
   hasInstructionsLoadedHook,
   executeInstructionsLoadedHooks,
   type InstructionsMemoryType,
-} from 'src/services/lifecycleHooks/hooks.js'
+} from 'src/platform/lifecycleHooks/hooks.js'
 import { pathInAllowedWorkingPath } from 'src/services/permissions/filesystem.js'
 import { logError } from 'src/shared/log.js'
-import { logEvent } from 'src/services/analytics/index.js'
+import { logEvent } from 'src/platform/analytics/index.js'
 import { isAbortError } from 'src/shared/errors.js'
 import { createChildAbortController } from 'src/shared/abortController.js'
-import { getOriginalCwd } from 'src/bootstrap/state.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { findRelevantMemories } from 'src/memdir/findRelevantMemories.js'
 import { memoryAge, memoryFreshnessText } from 'src/memdir/memoryAge.js'
 import { getAutoMemPath, isAutoMemoryEnabled } from 'src/memdir/paths.js'

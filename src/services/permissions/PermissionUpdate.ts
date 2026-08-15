@@ -7,12 +7,12 @@ import type {
   WorkingDirectorySource,
 } from 'src/types/permissions.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import type { EditableSettingSource } from 'src/services/settings/constants.js'
+import type { EditableSettingSource } from 'src/platform/settings/constants.js'
 import {
   getSettingsForSource,
   updateSettingsForSource,
-} from 'src/services/settings/settings.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+} from 'src/platform/settings/settings.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { toPosixPath } from 'src/services/permissions/filesystem.js'
 import type { PermissionRuleValue } from 'src/services/permissions/PermissionRule.js'
 import type {

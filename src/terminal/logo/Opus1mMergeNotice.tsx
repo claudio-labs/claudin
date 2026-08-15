@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import { useEffect, useState } from 'react';
 import { UP_ARROW } from 'src/constants/figures.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js';
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { isOpus1mMergeEnabled } from 'src/utils/model/model.js';
 import { AnimatedAsterisk } from 'src/terminal/logo/AnimatedAsterisk.js';
 const MAX_SHOW_COUNT = 6;

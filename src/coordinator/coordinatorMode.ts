@@ -1,10 +1,10 @@
 import { feature } from 'bun:bundle'
 import { ASYNC_AGENT_ALLOWED_TOOLS } from 'src/constants/tools.js'
-import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'

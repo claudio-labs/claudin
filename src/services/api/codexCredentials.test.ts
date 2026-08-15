@@ -4,10 +4,10 @@
  */
 import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
 
-const realSecureStorage = { ...(await import('src/services/secureStorage/index.js')) }
+const realSecureStorage = { ...(await import('src/platform/secureStorage/index.js')) }
 
 afterAll(() => {
-  mock.module('src/services/secureStorage/index.js', () => realSecureStorage)
+  mock.module('src/platform/secureStorage/index.js', () => realSecureStorage)
 })
 
 function makeJwt(payload: Record<string, unknown>): string {
@@ -59,7 +59,7 @@ describe('codexCredentials', () => {
     delete process.env.CLAUDE_CODE_SIMPLE
 
     let lastWritten: unknown
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: (options?: { allowPlainTextFallback?: boolean }) => {
         expect(options?.allowPlainTextFallback).toBe(true)
         return {
@@ -93,7 +93,7 @@ describe('codexCredentials', () => {
     delete process.env.CLAUDE_CODE_SIMPLE
 
     const flagCalls: Array<boolean | undefined> = []
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: (options?: { allowPlainTextFallback?: boolean }) => {
         flagCalls.push(options?.allowPlainTextFallback)
         return {
@@ -146,7 +146,7 @@ describe('codexCredentials', () => {
       },
     }
 
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,
@@ -232,7 +232,7 @@ describe('codexCredentials', () => {
       },
     }
 
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,
@@ -302,7 +302,7 @@ describe('codexCredentials', () => {
       },
     }
 
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,
@@ -377,7 +377,7 @@ describe('codexCredentials', () => {
       },
     }
 
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,
@@ -467,7 +467,7 @@ describe('codexCredentials', () => {
       },
     }
 
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,
@@ -560,7 +560,7 @@ describe('codexCredentials', () => {
       },
     }
 
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,
@@ -648,7 +648,7 @@ describe('codexCredentials', () => {
       },
     }
 
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,
@@ -685,7 +685,7 @@ describe('codexCredentials', () => {
       },
     }
 
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,
@@ -728,7 +728,7 @@ describe('codexCredentials', () => {
       },
     }
 
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => {
           throw new Error(
@@ -770,7 +770,7 @@ describe('codexCredentials', () => {
       },
     }
 
-    mock.module('src/services/secureStorage/index.js', () => ({
+    mock.module('src/platform/secureStorage/index.js', () => ({
       getSecureStorage: () => ({
         read: () => storageState,
         readAsync: async () => storageState,

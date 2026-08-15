@@ -1,4 +1,4 @@
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 
 /**
  * Whether inference-config commands (/model, /fast, /effort) should execute

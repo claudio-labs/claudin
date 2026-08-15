@@ -8,7 +8,7 @@ import {
   setMainThreadAgentType,
   setOriginalCwd,
   switchSession,
-} from 'src/bootstrap/state.js'
+} from 'src/platform/bootstrap/state.js'
 import { clearSystemPromptSections } from 'src/constants/systemPromptSections.js'
 import { recomputeCostStateFromMessages, restoreCostStateForSession } from 'src/cost-tracker.js'
 import type { AppState } from 'src/terminal/state/AppState.js'

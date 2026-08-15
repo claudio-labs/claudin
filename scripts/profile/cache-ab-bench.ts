@@ -61,7 +61,7 @@ const TWELVE_FILES = [
   'src/Tool.ts',
   // medium
   'src/services/messages/messages.ts',
-  'src/services/config/config.ts',
+  'src/platform/config/config.ts',
   'src/services/api/withRetry.ts',
   'src/services/api/errors.ts',
   'src/services/mcp/client.ts',
@@ -74,7 +74,7 @@ const TWELVE_FILES = [
   'src/shared/fs/path.ts',
   'src/shared/envUtils.ts',
   'src/shared/proc/Shell.ts',
-  'src/bootstrap/state.ts',
+  'src/platform/bootstrap/state.ts',
   // small (constants / tiny utils)
   'src/constants/messages.ts',
   'src/constants/keys.ts',
@@ -118,7 +118,7 @@ const REVISIT_FILES = [
   'src/services/api/client.ts',      // large
   'src/QueryEngine.ts',              // large
   'src/services/messages/messages.ts',           // medium
-  'src/services/config/config.ts',             // medium
+  'src/platform/config/config.ts',             // medium
   'src/services/api/withRetry.ts',   // medium
   'src/utils/model/model.ts',        // medium
   'src/constants/keys.ts',           // small

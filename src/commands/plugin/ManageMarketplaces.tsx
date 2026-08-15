@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
@@ -11,7 +11,7 @@ import { Box, Text, useInput } from 'src/terminal/ink.js';
 import { useKeybinding, useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import type { LoadedPlugin } from 'src/types/plugin.js';
 import { count } from 'src/shared/data/array.js';
-import { shouldSkipPluginAutoupdate } from 'src/services/config/config.js';
+import { shouldSkipPluginAutoupdate } from 'src/platform/config/config.js';
 import { errorMessage } from 'src/shared/errors.js';
 import { clearAllCaches } from 'src/services/plugins/cacheUtils.js';
 import { createPluginId, formatMarketplaceLoadingErrors, getMarketplaceSourceDisplay, loadMarketplacesWithGracefulDegradation } from 'src/services/plugins/marketplaceHelpers.js';
@@ -19,7 +19,7 @@ import { loadKnownMarketplacesConfig, refreshMarketplace, removeMarketplaceSourc
 import { updatePluginsForMarketplaces } from 'src/services/plugins/pluginAutoupdate.js';
 import { loadAllPlugins } from 'src/services/plugins/pluginLoader.js';
 import { isMarketplaceAutoUpdate } from 'src/services/plugins/schemas.js';
-import { getSettingsForSource, updateSettingsForSource } from 'src/services/settings/settings.js';
+import { getSettingsForSource, updateSettingsForSource } from 'src/platform/settings/settings.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import type { ViewState } from 'src/commands/plugin/types.js';
 type Props = {

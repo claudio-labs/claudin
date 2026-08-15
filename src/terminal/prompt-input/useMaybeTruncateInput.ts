@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { PastedContent } from 'src/services/config/config.js'
+import type { PastedContent } from 'src/platform/config/config.js'
 import { maybeTruncateInput } from 'src/terminal/prompt-input/inputPaste.js'
 
 type Props = {

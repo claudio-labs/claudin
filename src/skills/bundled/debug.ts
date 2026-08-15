@@ -1,6 +1,6 @@
 import { open, stat } from 'fs/promises'
 import { CLAUDE_CODE_GUIDE_AGENT_TYPE } from 'src/tools/AgentTool/built-in/claudeCodeGuideAgent.js'
-import { getSettingsFilePathForSource } from 'src/services/settings/settings.js'
+import { getSettingsFilePathForSource } from 'src/platform/settings/settings.js'
 import { enableDebugLogging, getDebugLogPath } from 'src/shared/debug.js'
 import { errorMessage, isENOENT } from 'src/shared/errors.js'
 import { formatFileSize } from 'src/shared/text/format.js'

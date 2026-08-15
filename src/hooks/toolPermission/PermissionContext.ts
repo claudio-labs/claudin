@@ -3,8 +3,8 @@ import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/services/analytics/metadata.js'
+} from 'src/platform/analytics/index.js'
+import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type { ToolUseConfirm } from 'src/components/permissions/PermissionRequest.js'
 import type {
   ToolPermissionContext,
@@ -22,7 +22,7 @@ import type {
 } from 'src/types/permissions.js'
 import { setClassifierApproval } from 'src/utils/classifierApprovals.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { executePermissionRequestHooks } from 'src/services/lifecycleHooks/hooks.js'
+import { executePermissionRequestHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import {
   REJECT_MESSAGE,
   REJECT_MESSAGE_WITH_REASON_PREFIX,

@@ -8,15 +8,15 @@ import type {
   ToolResultBlockParam,
   ToolUseBlock,
 } from '@anthropic-ai/sdk/resources'
-import type { SDKMessage } from 'src/entrypoints/agentSdkTypes.js'
+import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import { EXIT_PLAN_MODE_V2_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { sleep } from 'src/shared/sleep.js'
-import { isTransientNetworkError } from 'src/services/teleport/api.js'
+import { isTransientNetworkError } from 'src/platform/teleport/api.js'
 import {
   type PollRemoteSessionResponse,
   pollRemoteSessionEvents,
-} from 'src/components/teleport.js'
+} from 'src/platform/teleport/teleport.js'
 
 const POLL_INTERVAL_MS = 3000
 // pollRemoteSessionEvents doesn't retry. A 30min poll makes ~600 calls;

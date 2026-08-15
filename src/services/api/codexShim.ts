@@ -4,7 +4,7 @@ import { buildAnthropicUsageFromRawUsage } from 'src/services/api/cacheMetrics.j
 import { applyStableStubs } from 'src/services/compact/stableStubState.js'
 import { fetchWithProxyRetry } from 'src/services/api/fetchWithProxyRetry.js'
 import { stableStringify } from 'src/shared/data/stableStringify.js'
-import { getSessionId } from 'src/bootstrap/state.js'
+import { getSessionId } from 'src/platform/bootstrap/state.js'
 import type {
   ResolvedCodexCredentials,
   ResolvedProviderRequest,

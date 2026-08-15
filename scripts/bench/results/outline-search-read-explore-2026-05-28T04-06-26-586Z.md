@@ -83,10 +83,10 @@
 Call sites de `getSmallFastModel` (excluindo a definição e os imports):
 
 - src/services/session/agenticSessionSearch.ts:261
-- src/services/lifecycleHooks/skillImprovement.ts:169
-- src/services/lifecycleHooks/skillImprovement.ts:241
-- src/services/lifecycleHooks/execPromptHook.ts:79
-- src/services/lifecycleHooks/execAgentHook.ts:118
+- src/platform/lifecycleHooks/skillImprovement.ts:169
+- src/platform/lifecycleHooks/skillImprovement.ts:241
+- src/platform/lifecycleHooks/execPromptHook.ts:79
+- src/platform/lifecycleHooks/execAgentHook.ts:118
 - src/tools/WebSearchTool/WebSearchTool.ts:796
 - src/services/claudeAiLimits.ts:201
 - src/services/awaySummary.ts:49
@@ -108,10 +108,10 @@ Call sites de `getSmallFastModel` (excluindo a definição e imports):
 
 - src/services/session/agenticSessionSearch.ts:261
 - src/tools/WebSearchTool/WebSearchTool.ts:796
-- src/services/lifecycleHooks/skillImprovement.ts:169
-- src/services/lifecycleHooks/skillImprovement.ts:241
-- src/services/lifecycleHooks/execPromptHook.ts:79
-- src/services/lifecycleHooks/execAgentHook.ts:118
+- src/platform/lifecycleHooks/skillImprovement.ts:169
+- src/platform/lifecycleHooks/skillImprovement.ts:241
+- src/platform/lifecycleHooks/execPromptHook.ts:79
+- src/platform/lifecycleHooks/execAgentHook.ts:118
 - src/services/tokenEstimation.ts:404
 - src/services/tokenEstimation.ts:420
 - src/services/claudeAiLimits.ts:201
@@ -134,10 +134,10 @@ Definição: src/utils/model/model.ts:43
 Callers de `getSmallFastModel` (excluindo a definição em `src/utils/model/model.ts:43` e os testes):
 
 - src/services/session/agenticSessionSearch.ts:261
-- src/services/lifecycleHooks/execAgentHook.ts:118
-- src/services/lifecycleHooks/execPromptHook.ts:79
-- src/services/lifecycleHooks/skillImprovement.ts:169
-- src/services/lifecycleHooks/skillImprovement.ts:241
+- src/platform/lifecycleHooks/execAgentHook.ts:118
+- src/platform/lifecycleHooks/execPromptHook.ts:79
+- src/platform/lifecycleHooks/skillImprovement.ts:169
+- src/platform/lifecycleHooks/skillImprovement.ts:241
 - src/tools/WebSearchTool/WebSearchTool.ts:796
 - src/services/tokenEstimation.ts:404
 - src/services/tokenEstimation.ts:420
@@ -157,10 +157,10 @@ Call sites em testes (`src/utils/model/model.openai-shim-providers.test.ts`): li
 Call sites de `getSmallFastModel` (excluindo a definição em `src/utils/model/model.ts:43` e os imports):
 
 **Produção:**
-- src/services/lifecycleHooks/skillImprovement.ts:169
-- src/services/lifecycleHooks/skillImprovement.ts:241
-- src/services/lifecycleHooks/execAgentHook.ts:118
-- src/services/lifecycleHooks/execPromptHook.ts:79
+- src/platform/lifecycleHooks/skillImprovement.ts:169
+- src/platform/lifecycleHooks/skillImprovement.ts:241
+- src/platform/lifecycleHooks/execAgentHook.ts:118
+- src/platform/lifecycleHooks/execPromptHook.ts:79
 - src/tools/WebSearchTool/WebSearchTool.ts:796
 - src/services/tokenEstimation.ts:404
 - src/services/tokenEstimation.ts:420
@@ -189,7 +189,7 @@ Call sites de `getSmallFastModel` (excluindo a definição em `src/utils/model/m
 Duas declarações encontradas:
 
 - `src/services/api/providerProfile.ts:122` — `export type ProviderProfile = ...`
-- `src/services/config/config.ts:191` — `export type ProviderProfile = { ... }`
+- `src/platform/config/config.ts:191` — `export type ProviderProfile = { ... }`
 
 As demais ocorrências são imports/re-exports.
 ```
@@ -200,7 +200,7 @@ As demais ocorrências são imports/re-exports.
 Encontrei 2 declarações do tipo `ProviderProfile`:
 
 - `src/services/api/providerProfile.ts:122` — `export type ProviderProfile = …`
-- `src/services/config/config.ts:191` — `export type ProviderProfile = { … }`
+- `src/platform/config/config.ts:191` — `export type ProviderProfile = { … }`
 
 As demais ocorrências são importações (linhas com `import { type ProviderProfile, … }` ou re-exports com alias).
 ```
@@ -211,7 +211,7 @@ As demais ocorrências são importações (linhas com `import { type ProviderPro
 Há **2 declarações** do tipo `ProviderProfile` no codebase:
 
 1. `src/services/api/providerProfile.ts:122` — `export type ProviderProfile = ...`
-2. `src/services/config/config.ts:191` — `export type ProviderProfile = { ... }`
+2. `src/platform/config/config.ts:191` — `export type ProviderProfile = { ... }`
 
 As demais ocorrências (`src/services/api/providerProfiles.ts`, `scripts/*.ts`, `src/commands/provider/provider.tsx`) são apenas re-exportações/importações com `type ProviderProfile`, não declarações.
 ```
@@ -222,7 +222,7 @@ As demais ocorrências (`src/services/api/providerProfiles.ts`, `scripts/*.ts`, 
 Existem **2 declarações** do tipo `ProviderProfile` no codebase:
 
 - `src/services/api/providerProfile.ts:122` — `export type ProviderProfile = ...`
-- `src/services/config/config.ts:191` — `export type ProviderProfile = { ... }`
+- `src/platform/config/config.ts:191` — `export type ProviderProfile = { ... }`
 
 Os demais resultados (`providerProfiles.ts`, `provider.tsx`, scripts) são apenas re-imports/aliases.
 ```
@@ -243,8 +243,8 @@ src/cost-tracker.ts:233
 src/cost-tracker.ts:235
 src/cost-tracker.ts:238
 src/cost-tracker.ts:241
-src/components/status.tsx:11 (import)
-src/components/status.tsx:211 (2 occurrences)
+src/platform/status/status.tsx:11 (import)
+src/platform/status/status.tsx:211 (2 occurrences)
 src/components/AgentProgressLine.tsx:3 (import)
 src/components/AgentProgressLine.tsx:87
 src/components/CoordinatorAgentStatus.tsx:19 (import)
@@ -295,10 +295,10 @@ src/components/tasks/InProcessTeammateDetailDialog.tsx:11
 src/components/tasks/InProcessTeammateDetailDialog.tsx:162
 src/components/tasks/AsyncAgentDetailDialog.tsx:11
 src/components/tasks/AsyncAgentDetailDialog.tsx:124
-src/components/status.tsx:11
-src/components/status.tsx:211 (2x)
-src/services/deepLink/banner.ts:18
-src/services/deepLink/banner.ts:70
+src/platform/status/status.tsx:11
+src/platform/status/status.tsx:211 (2x)
+src/platform/deepLink/banner.ts:18
+src/platform/deepLink/banner.ts:70
 src/components/messages/SystemTextMessage.tsx:21
 src/components/messages/SystemTextMessage.tsx:544 (4x)
 src/tools/MCPTool/UI.tsx:14
@@ -307,11 +307,11 @@ src/services/messages/messages.ts:86
 src/services/messages/messages.ts:4091 (2x)
 src/services/messages/messages.ts:4092
 src/services/messages/messages.ts:4096
-src/components/statusNoticeDefinitions.tsx:8
-src/components/statusNoticeDefinitions.tsx:44
-src/components/statusNoticeDefinitions.tsx:45
-src/components/statusNoticeDefinitions.tsx:153
-src/components/statusNoticeDefinitions.tsx:154
+src/platform/status/statusNoticeDefinitions.tsx:8
+src/platform/status/statusNoticeDefinitions.tsx:44
+src/platform/status/statusNoticeDefinitions.tsx:45
+src/platform/status/statusNoticeDefinitions.tsx:153
+src/platform/status/statusNoticeDefinitions.tsx:154
 src/tools/AgentTool/UI.tsx:24
 src/tools/AgentTool/UI.tsx:376
 src/tools/AgentTool/UI.tsx:499
@@ -336,25 +336,25 @@ src/cost-tracker.ts:233
 src/cost-tracker.ts:235
 src/cost-tracker.ts:238
 src/cost-tracker.ts:241
-src/components/status.tsx:11 (import)
-src/components/status.tsx:211 (2 calls)
+src/platform/status/status.tsx:11 (import)
+src/platform/status/status.tsx:211 (2 calls)
 src/components/AgentProgressLine.tsx:3 (import)
 src/components/AgentProgressLine.tsx:87
 src/components/tasks/InProcessTeammateDetailDialog.tsx:11 (import)
 src/components/tasks/InProcessTeammateDetailDialog.tsx:162
 src/components/tasks/AsyncAgentDetailDialog.tsx:11 (import)
 src/components/tasks/AsyncAgentDetailDialog.tsx:124
-src/services/deepLink/banner.ts:18 (import)
-src/services/deepLink/banner.ts:70
+src/platform/deepLink/banner.ts:18 (import)
+src/platform/deepLink/banner.ts:70
 src/services/messages/messages.ts:86 (import)
 src/services/messages/messages.ts:4091 (2 calls)
 src/services/messages/messages.ts:4092
 src/services/messages/messages.ts:4096
-src/components/statusNoticeDefinitions.tsx:8 (import)
-src/components/statusNoticeDefinitions.tsx:44
-src/components/statusNoticeDefinitions.tsx:45
-src/components/statusNoticeDefinitions.tsx:153
-src/components/statusNoticeDefinitions.tsx:154
+src/platform/status/statusNoticeDefinitions.tsx:8 (import)
+src/platform/status/statusNoticeDefinitions.tsx:44
+src/platform/status/statusNoticeDefinitions.tsx:45
+src/platform/status/statusNoticeDefinitions.tsx:153
+src/platform/status/statusNoticeDefinitions.tsx:154
 src/components/messages/SystemTextMessage.tsx:21 (import)
 src/components/messages/SystemTextMessage.tsx:544 (4 calls)
 src/components/CoordinatorAgentStatus.tsx:19 (import)
@@ -386,23 +386,23 @@ src/components/CoordinatorAgentStatus.tsx:19 — import
 src/components/CoordinatorAgentStatus.tsx:173
 src/components/AgentProgressLine.tsx:3 — import
 src/components/AgentProgressLine.tsx:87
-src/components/status.tsx:11 — import
-src/components/status.tsx:211 (two occurrences on this line)
+src/platform/status/status.tsx:11 — import
+src/platform/status/status.tsx:211 (two occurrences on this line)
 src/components/tasks/InProcessTeammateDetailDialog.tsx:11 — import
 src/components/tasks/InProcessTeammateDetailDialog.tsx:162
-src/services/deepLink/banner.ts:18 — import
-src/services/deepLink/banner.ts:70
+src/platform/deepLink/banner.ts:18 — import
+src/platform/deepLink/banner.ts:70
 src/components/tasks/AsyncAgentDetailDialog.tsx:11 — import
 src/components/tasks/AsyncAgentDetailDialog.tsx:124
 src/services/messages/messages.ts:86 — import
 src/services/messages/messages.ts:4091 (two occurrences)
 src/services/messages/messages.ts:4092
 src/services/messages/messages.ts:4096
-src/components/statusNoticeDefinitions.tsx:8 — import
-src/components/statusNoticeDefinitions.tsx:44
-src/components/statusNoticeDefinitions.tsx:45
-src/components/statusNoticeDefinitions.tsx:153
-src/components/statusNoticeDefinitions.tsx:154
+src/platform/status/statusNoticeDefinitions.tsx:8 — import
+src/platform/status/statusNoticeDefinitions.tsx:44
+src/platform/status/statusNoticeDefinitions.tsx:45
+src/platform/status/statusNoticeDefinitions.tsx:153
+src/platform/status/statusNoticeDefinitions.tsx:154
 src/components/Stats.tsx:17 — import
 src/components/Stats.tsx:453
 src/components/Stats.tsx:463

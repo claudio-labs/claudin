@@ -3,7 +3,7 @@ import { buildTool, type ToolDef } from 'src/Tool.js'
 import {
   executeTaskCreatedHooks,
   getTaskCreatedHookMessage,
-} from 'src/services/lifecycleHooks/hooks.js'
+} from 'src/platform/lifecycleHooks/hooks.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   createTask,

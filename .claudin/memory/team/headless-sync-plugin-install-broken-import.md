@@ -4,10 +4,10 @@ description: CLAUDE_CODE_SYNC_PLUGIN_INSTALL=true HUNG headless -p for months on
 type: project
 ---
 
-`src/cli/print/turnLoop.ts` imported `'../utils/plugins/loadPluginHooks.js'`, which
-resolves to `src/cli/utils/plugins/` — a directory that does not exist. The real
+`src/platform/headless/print/turnLoop.ts` imported `'../utils/plugins/loadPluginHooks.js'`, which
+resolves to `src/platform/headless/utils/plugins/` — a directory that does not exist. The real
 module is `src/services/plugins/loadPluginHooks.ts`. The specifier had been one level
-short since `2e178cf7` moved `runHeadless` from `src/cli/` into `src/cli/print/`
+short since `2e178cf7` moved `runHeadless` from `src/platform/headless/` into `src/platform/headless/print/`
 without re-basing it. **Fixed 2026-08-07 in PR #57** (`2e0d4ecc`), using the `src/`
 path alias rather than `../../`.
 
@@ -36,7 +36,7 @@ This sat inside the ~107-entry `TS2307` cluster that
 expected shape, which is exactly why nobody looked at it. The discriminator that
 separates a real bug from that backlog is two questions, both cheap:
 
-1. **Does the target exist somewhere in the tree?** A sweep of `src/cli/print/`
+1. **Does the target exist somewhere in the tree?** A sweep of `src/platform/headless/print/`
    found three unresolvable relative specifiers. `../../proactive/index.js` and
    `../../utils/udsMessaging.js` have no target anywhere — expected. This one's
    target existed.

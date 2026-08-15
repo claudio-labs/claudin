@@ -5,10 +5,10 @@ import {
   SYSTEM_PROMPT_DYNAMIC_BOUNDARY,
 } from 'src/constants/prompts.js'
 import { microcompactMessages } from 'src/services/compact/microCompact.js'
-import { getSdkBetas } from 'src/bootstrap/state.js'
+import { getSdkBetas } from 'src/platform/bootstrap/state.js'
 import { getCommandName } from 'src/commands.js'
 import { getSystemContext } from 'src/context.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   AUTOCOMPACT_BUFFER_TOKENS,
   getEffectiveContextWindowSize,
@@ -57,8 +57,8 @@ import { errorMessage, toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
 import { normalizeMessagesForAPI } from 'src/services/messages/messages.js'
 import { getRuntimeMainLoopModel } from 'src/utils/model/model.js'
-import type { SettingSource } from 'src/services/settings/constants.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import type { SettingSource } from 'src/platform/settings/constants.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import { buildEffectiveSystemPrompt } from 'src/utils/systemPrompt.js'
 import type { Theme } from 'src/terminal/theme/theme.js'
 import { getCurrentUsage } from 'src/services/context/tokens.js'

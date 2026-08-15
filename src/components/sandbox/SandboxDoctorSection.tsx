@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';
 export function SandboxDoctorSection() {
   const $ = _c(2);
   if (!SandboxManager.isSupportedPlatform()) {

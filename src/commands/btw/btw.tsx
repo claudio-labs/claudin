@@ -16,7 +16,7 @@ import { Box, Text } from 'src/terminal/ink.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import type { Message } from 'src/types/message.js';
 import { createAbortController } from 'src/shared/abortController.js';
-import { saveGlobalConfig } from 'src/services/config/config.js';
+import { saveGlobalConfig } from 'src/platform/config/config.js';
 import { errorMessage } from 'src/shared/errors.js';
 import { type CacheSafeParams, getLastCacheSafeParams } from 'src/coordinator/forkedAgent.js';
 import { getMessagesAfterCompactBoundary } from 'src/services/messages/messages.js';

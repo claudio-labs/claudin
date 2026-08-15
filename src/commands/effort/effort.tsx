@@ -1,7 +1,7 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useMainLoopModel } from 'src/hooks/useMainLoopModel.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/services/analytics/index.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import { type EffortValue, clearProjectEffortPin, effortEnvOverrideConflictsWith, getDisplayedEffortLabel, getEffortEnvOverride, getEffortValueDescription, getInitialEffortSetting, getProjectEffortOrigin, isEffortLevel, isOpenAIEffortLevel, modelUsesOpenAIEffort, persistEffortForProject, pinProjectEffortAuto, toPersistableEffort } from 'src/utils/effort.js';

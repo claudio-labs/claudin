@@ -13,9 +13,9 @@
  * env var at CLI startup. Only `init.ts` imports this file.
  */
 
-import { getGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { getSettingsForSource } from 'src/services/settings/settings.js'
+import { getSettingsForSource } from 'src/platform/settings/settings.js'
 
 /**
  * Apply NODE_EXTRA_CA_CERTS from settings.json to process.env early in init,

@@ -3,7 +3,7 @@ import * as React from 'react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
-import { SandboxManager } from 'src/services/sandbox/sandbox-adapter.js';
+import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';
 export function SandboxPromptFooterHint() {
   const $ = _c(6);
   const [recentViolationCount, setRecentViolationCount] = useState(0);

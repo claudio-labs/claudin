@@ -2,16 +2,16 @@
  * Hook Zod schemas extracted to break import cycles.
  *
  * This file contains hook-related schema definitions that were originally
- * in src/services/settings/types.ts. By extracting them here, we break the
+ * in src/platform/settings/types.ts. By extracting them here, we break the
  * circular dependency between settings/types.ts and plugins/schemas.ts.
  *
  * Both files now import from this shared location instead of each other.
  */
 
-import { HOOK_EVENTS, type HookEvent } from 'src/entrypoints/agentSdkTypes.js'
+import { HOOK_EVENTS, type HookEvent } from 'src/platform/entrypoints/agentSdkTypes.js'
 import { z } from 'zod/v4'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
-import { SHELL_TYPES } from 'src/services/shell/shellProvider.js'
+import { SHELL_TYPES } from 'src/platform/shell/shellProvider.js'
 
 // Shared schema for the `if` condition field.
 // Uses permission rule syntax (e.g., "Bash(git *)", "Read(*.ts)") to filter hooks

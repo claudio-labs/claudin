@@ -5,8 +5,8 @@ type: project
 ---
 
 `tsc` reports ~107 TS2307 ("cannot find module") against 70 relative paths that
-do not exist in this fork: most of `src/server/`, and all of `src/daemon/`,
-`src/proactive/`, `src/ssh/`, `src/login/`, `src/skillSearch/`,
+do not exist in this fork: most of `src/platform/server/`, and all of `src/platform/daemon/`,
+`src/platform/proactive/`, `src/platform/ssh/`, `src/login/`, `src/skillSearch/`,
 `src/sessionTranscript/`, `src/agents-platform/`.
 
 **CORRECTION, 2026-08-13: the old headline "declaring them away does not work"

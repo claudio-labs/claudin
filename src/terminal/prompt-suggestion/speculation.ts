@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import { rm } from 'fs'
 import { appendFile, copyFile, mkdir } from 'fs/promises'
 import { dirname, isAbsolute, join, relative } from 'path'
-import { getCwdState } from 'src/bootstrap/state.js'
+import { getCwdState } from 'src/platform/bootstrap/state.js'
 import type { CompletionBoundary } from 'src/terminal/state/AppStateStore.js'
 import {
   type AppState,
@@ -28,7 +28,7 @@ import {
   createCacheSafeParams,
   runForkedAgent,
 } from 'src/coordinator/forkedAgent.js'
-import type { REPLHookContext } from 'src/services/lifecycleHooks/postSamplingHooks.js'
+import type { REPLHookContext } from 'src/platform/lifecycleHooks/postSamplingHooks.js'
 import { logError } from 'src/shared/log.js'
 import type { SetAppState } from 'src/utils/messageQueueManager.js'
 import {
@@ -39,11 +39,11 @@ import {
 import { getClaudeTempDir } from 'src/services/permissions/filesystem.js'
 import { extractReadFilesFromMessages } from 'src/utils/queryHelpers.js'
 import { getTranscriptPath } from 'src/services/session/sessionStorage.js'
-import { jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
-} from 'src/services/analytics/index.js'
+} from 'src/platform/analytics/index.js'
 import {
   generateSuggestion,
   getPromptVariant,

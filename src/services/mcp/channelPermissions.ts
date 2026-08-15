@@ -23,8 +23,8 @@
  * See PR discussion 2956440848.
  */
 
-import { jsonStringify } from 'src/utils/slowOperations.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/services/analytics/growthbook.js'
+import { jsonStringify } from 'src/platform/slowOperations.js'
+import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 
 /**
  * GrowthBook runtime gate — separate from the channels gate (tengu_harbor)

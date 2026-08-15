@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { getOauthConfig } from 'src/constants/oauth.js'
-import { getGlobalConfig, saveGlobalConfig } from 'src/services/config/config.js'
+import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { getAuthHeaders } from 'src/shared/http.js'
 import { logError } from 'src/shared/log.js'
 import { getClaudeCodeUserAgent } from 'src/services/api/userAgent.js'

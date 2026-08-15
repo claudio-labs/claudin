@@ -1,7 +1,7 @@
 import { mkdir, readFile, unlink, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
-import { jsonParse, jsonStringify } from 'src/utils/slowOperations.js'
+import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 
 const MCP_AUTH_CACHE_TTL_MS = 15 * 60 * 1000 // 15 min
 

@@ -1,7 +1,7 @@
 // Reconstructed from its use sites: the original module was not carried into
 // this fork. The shape is taken from `buildStatusLineCommandInput` in
-// `src/components/StatusLine.tsx`, which builds the whole object, and is
-// consumed by `executeStatusLineCommand` in `src/services/lifecycleHooks/replHooks.ts`.
+// `src/platform/status/StatusLine.tsx`, which builds the whole object, and is
+// consumed by `executeStatusLineCommand` in `src/platform/lifecycleHooks/replHooks.ts`.
 //
 // This is a public contract: the object is JSON-serialised and handed to the
 // user's `statusLine` command on stdin, so the snake_case field names are part
@@ -9,7 +9,7 @@
 
 /**
  * Fields every hook payload carries, produced by `createBaseHookInput()`
- * in `src/services/lifecycleHooks/shared.ts`.
+ * in `src/platform/lifecycleHooks/shared.ts`.
  */
 type BaseHookInput = {
   session_id: string
