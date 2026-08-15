@@ -35,7 +35,7 @@ import {
 } from 'src/shared/errors.js'
 import { execFileNoThrow, execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import { gitExe } from 'src/services/git/git.js'
+import { gitExe } from 'src/vcs/git/git.js'
 import { logError } from 'src/shared/log.js'
 import {
   getInitialSettings,

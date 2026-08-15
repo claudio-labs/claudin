@@ -19,7 +19,7 @@ import { errorMessage } from 'src/shared/errors.js'
 import { truncateToWidth } from 'src/shared/text/format.js'
 import { logError } from 'src/shared/log.js'
 import { sleep } from 'src/shared/sleep.js'
-import { createAgentWorktree, removeAgentWorktree } from 'src/services/git/worktree.js'
+import { createAgentWorktree, removeAgentWorktree } from 'src/vcs/git/worktree.js'
 import {
   BridgeFatalError,
   createBridgeApiClient,
@@ -2184,7 +2184,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
     process.env.CLAUDE_BRIDGE_SESSION_INGRESS_URL || baseUrl
 
   const { getBranch, getRemoteUrl, findGitRoot } = await import(
-    'src/services/git/git.js'
+    'src/vcs/git/git.js'
   )
 
   // Precheck worktree availability for the first-run dialog and the `w`
@@ -2571,7 +2571,7 @@ export async function bridgeMain(args: string[]): Promise<void> {
   })
 
   const logger = createBridgeLogger({ verbose })
-  const { parseGitHubRepository } = await import('src/services/git/detectRepository.js')
+  const { parseGitHubRepository } = await import('src/vcs/git/detectRepository.js')
   const ownerRepo = gitRepoUrl ? parseGitHubRepository(gitRepoUrl) : null
   // Use the repo name from the parsed owner/repo, or fall back to the dir basename
   const repoName = ownerRepo ? ownerRepo.split('/').pop()! : basename(dir)
@@ -2834,7 +2834,7 @@ export async function runBridgeHeadless(
     process.env.CLAUDE_BRIDGE_SESSION_INGRESS_URL || baseUrl
 
   const { getBranch, getRemoteUrl, findGitRoot } = await import(
-    'src/services/git/git.js'
+    'src/vcs/git/git.js'
   )
   const { hasWorktreeCreateHook } = await import('src/platform/lifecycleHooks/hooks.js')
 

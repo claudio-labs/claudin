@@ -10,7 +10,7 @@ import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import { getAnthropicApiKey, isAnthropicAuthEnabled } from 'src/providers/auth/auth.js';
 import { openBrowser } from 'src/shared/browser.js';
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js';
-import { getGithubRepo } from 'src/services/git/git.js';
+import { getGithubRepo } from 'src/vcs/git/git.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import { ApiKeyStep } from 'src/commands/install-github-app/ApiKeyStep.js';
 import { CheckExistingSecretStep } from 'src/commands/install-github-app/CheckExistingSecretStep.js';

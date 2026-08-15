@@ -13,7 +13,7 @@ import {
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
-import { getBranch, getDefaultBranch, getIsGit, gitExe } from 'src/services/git/git.js'
+import { getBranch, getDefaultBranch, getIsGit, gitExe } from 'src/vcs/git/git.js'
 import { shouldIncludeGitInstructions } from 'src/platform/config/gitSettings.js'
 import { logError } from 'src/shared/log.js'
 

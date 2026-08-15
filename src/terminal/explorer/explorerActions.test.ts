@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import type { DiffFile } from 'src/hooks/useDiffData.js'
-import type { TreeRow } from 'src/components/diff/fileTree.js'
+import type { DiffFile } from 'src/vcs/diff/hooks/useDiffData.js'
+import type { TreeRow } from 'src/vcs/diff/ui/fileTree.js'
 import { createPrefill, resolveNewFilePath } from 'src/terminal/explorer/explorerActions.js'
 
 const ROOT = '/repo'

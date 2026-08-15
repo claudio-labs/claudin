@@ -22,7 +22,7 @@ import { applyExtraCACertsFromConfig } from 'src/providers/transport/caCertsConf
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { enableConfigs, recordFirstStartTime } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { detectCurrentRepository } from 'src/services/git/detectRepository.js'
+import { detectCurrentRepository } from 'src/vcs/git/detectRepository.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { initJetBrainsDetection } from 'src/shared/envDynamic.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'

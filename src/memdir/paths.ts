@@ -12,7 +12,7 @@ import {
   isEnvDefinedFalsy,
   isEnvTruthy,
 } from 'src/shared/envUtils.js'
-import { findCanonicalGitRoot } from 'src/services/git/git.js'
+import { findCanonicalGitRoot } from 'src/vcs/git/git.js'
 import { logError } from 'src/shared/log.js'
 import { sanitizePath } from 'src/shared/fs/path.js'
 import {

@@ -52,7 +52,7 @@ import {
 } from 'src/services/mcp/mcpInstructionsDelta.js'
 import type { MCPServerConnection } from 'src/services/mcp/types.js'
 import { getClaudeMdDelta } from 'src/services/instructions/claudeMdDelta.js'
-import { getGitStatusDelta } from 'src/services/git/gitStatusDelta.js'
+import { getGitStatusDelta } from 'src/vcs/git/gitStatusDelta.js'
 import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import {
   getAgentName,
@@ -286,7 +286,7 @@ export async function getClaudeMdDeltaAttachment(
 /**
  * gitStatus delta attachment — emits the snapshot only on the turn that
  * has no prior git_status_delta attachment. See
- * src/services/git/gitStatusDelta.ts for rationale (snapshot is immutable by
+ * src/vcs/git/gitStatusDelta.ts for rationale (snapshot is immutable by
  * design per getGitStatus in src/agent/context.ts).
  */
 export async function getGitStatusDeltaAttachment(

@@ -44,7 +44,7 @@ import { getQuerySourceForREPL } from 'src/agent/promptCategory.js';
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
 import { evaluateTimeBasedTrigger } from 'src/agent/compact/microCompact.js';
 import { evictOldStubbedMessages, evictToMaxSize, MAX_DISPLAY_MESSAGES, type AnyMessage } from 'src/agent/compact/stableStubState.js';
-import { incrementPromptCount } from 'src/services/git/commitAttribution.js';
+import { incrementPromptCount } from 'src/vcs/git/commitAttribution.js';
 import { recordAttributionSnapshot } from 'src/services/session/sessionStorage.js';
 import { type SetAppState } from 'src/agent/messageQueueManager.js';
 import { getCurrentLocalJSXGeneration } from 'src/terminal/toolJSXStore.js';

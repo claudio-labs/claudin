@@ -10,7 +10,7 @@ in lockstep as each feature lands.
 
 As of 2026-06-18 it covers (recent additions this session):
 - **Multi-repo / nested-repo discovery** for monorepos of independent repos: `findNestedGitRoots`
-  in `src/services/git/git.ts` (bounded async scan — depth ≤3, ≤1500 dirs, skips node_modules/dot-dirs,
+  in `src/vcs/git/git.ts` (bounded async scan — depth ≤3, ≤1500 dirs, skips node_modules/dot-dirs,
   fail-open), wired through `useWorkspaceDiff(roots, scanBases)`; `noRepo` now means "scan settled
   with zero groups", not "no explicit root".
 - **Per-repo group headers**: colored Nerd-Font square swatch (`entityColorByIndex`, siblings
@@ -19,7 +19,7 @@ As of 2026-06-18 it covers (recent additions this session):
 - **Log tab project selector** for monorepos: `[` / `]` cycle the repo whose `git log` is shown
   (`logRepoIndex` over `workspace.groups`); `useGitLog` reloads when its `cwd` changes.
 - **Commit-node glyph**: Log graph swaps git's ASCII `*` for a green nerd dot (`commitIcon`).
-- Shared `src/components/diff/entityColor.ts` palette used for both commit authors and repo groups.
+- Shared `src/vcs/diff/ui/entityColor.ts` palette used for both commit authors and repo groups.
 
 **Why:** the doc is the source of truth and several existing team memories already touch
 diff/ internals (fileTree, ScrollBox clipping, gitdiff prefix parsing) — they cohere around this

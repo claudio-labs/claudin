@@ -6,7 +6,7 @@ import { onGlobalConfigChange } from 'src/platform/config/config.js';
 import type { ProviderProfile } from 'src/platform/config/config.js';
 import { getActiveProviderProfile } from 'src/providers/presets/providerProfiles.js';
 import { getMainLoopModel, renderModelName } from 'src/utils/model/model.js';
-import { buildModelPill, buildProviderPill, resolveBranchBg } from 'src/services/git/format-branch.js';
+import { buildModelPill, buildProviderPill, resolveBranchBg } from 'src/vcs/git/format-branch.js';
 import { getTheme } from 'src/terminal/theme/theme.js';
 import { logError } from 'src/shared/log.js';
 import { toError } from 'src/shared/errors.js';

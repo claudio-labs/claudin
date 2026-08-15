@@ -476,11 +476,11 @@ async function main(): Promise<void> {
     enableConfigs();
     const {
       isWorktreeModeEnabled
-    } = await import('src/services/git/worktreeModeEnabled.js');
+    } = await import('src/vcs/git/worktreeModeEnabled.js');
     if (isWorktreeModeEnabled()) {
       const {
         execIntoTmuxWorktree
-      } = await import('src/services/git/worktree.js');
+      } = await import('src/vcs/git/worktree.js');
       const result = await execIntoTmuxWorktree(args);
       if (result.handled) {
         return;

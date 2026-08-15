@@ -1,6 +1,6 @@
 import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test'
 
-const realGit = { ...(await import('src/services/git/git.js')) }
+const realGit = { ...(await import('src/vcs/git/git.js')) }
 const realExecFileNoThrow = { ...(await import('src/shared/proc/execFileNoThrow.js')) }
 
 type MockGit = {
@@ -19,7 +19,7 @@ type MockGh = {
 }
 
 function setup({ git = {}, gh = {} }: { git?: MockGit; gh?: MockGh }) {
-  mock.module('src/services/git/git.js', () => ({
+  mock.module('src/vcs/git/git.js', () => ({
     ...realGit,
     getIsGit: async () => git.isGit ?? true,
     getBranch: async () => git.branch ?? 'feature/x',
@@ -66,7 +66,7 @@ async function importFreshShared() {
 }
 
 afterAll(() => {
-  mock.module('src/services/git/git.js', () => realGit)
+  mock.module('src/vcs/git/git.js', () => realGit)
   mock.module('src/shared/proc/execFileNoThrow.js', () => realExecFileNoThrow)
 })
 

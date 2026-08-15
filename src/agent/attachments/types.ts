@@ -451,7 +451,7 @@ export type Attachment =
   | {
       // Phase 2 static-dedup: emit gitStatus on turn 1 only. The
       // snapshot is immutable by design (see getGitStatus in
-      // src/agent/context.ts). See src/services/git/gitStatusDelta.ts.
+      // src/agent/context.ts). See src/vcs/git/gitStatusDelta.ts.
       type: 'git_status_delta'
       content: string
     }

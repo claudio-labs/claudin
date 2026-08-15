@@ -20,7 +20,7 @@ import {
 } from 'src/utils/effort.js'
 import { env } from 'src/shared/env.js'
 import { cacheKeys } from 'src/shared/fs/fileStateCache.js'
-import { getIsGit, getWorktreeCount } from 'src/services/git/git.js'
+import { getIsGit, getWorktreeCount } from 'src/vcs/git/git.js'
 import {
   detectRunningIDEsCached,
   getSortedIdeLockfiles,

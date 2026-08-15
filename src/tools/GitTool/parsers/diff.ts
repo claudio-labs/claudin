@@ -22,7 +22,7 @@
  *     Hunks are never cut in half: a truncated hunk is unreadable, and the
  *     model would just re-request the file.
  *
- * `parseGitDiff` (src/services/git/gitDiff.ts) supplies the hunk structure. The
+ * `parseGitDiff` (src/vcs/git/gitDiff.ts) supplies the hunk structure. The
  * add/remove counts are counted here from the raw section instead of from its
  * hunks, because it caps at 400 lines per file — counts derived from capped
  * hunks would silently understate a large file, and a WRONG stat table is worse
@@ -30,7 +30,7 @@
  */
 import type { StructuredPatchHunk } from 'diff'
 
-import { parseGitDiff } from 'src/services/git/gitDiff.js'
+import { parseGitDiff } from 'src/vcs/git/gitDiff.js'
 
 /** Bodies at or above this many chars lose their hunks. */
 export const DIFF_PIVOT_CHARS = 6_000

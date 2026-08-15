@@ -62,7 +62,7 @@ import { getErrnoCode } from 'src/shared/errors.js'
 import { normalizePathForComparison } from 'src/shared/fs/file.js'
 import { cacheKeys, type FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import { getFsImplementation, safeResolvePath } from 'src/shared/fs/fsOperations.js'
-import { findCanonicalGitRoot, findGitRoot } from 'src/services/git/git.js'
+import { findCanonicalGitRoot, findGitRoot } from 'src/vcs/git/git.js'
 import {
   executeInstructionsLoadedHooks,
   hasInstructionsLoadedHook,

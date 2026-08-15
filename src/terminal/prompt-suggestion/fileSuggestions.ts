@@ -19,7 +19,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import { findGitRoot, gitExe } from 'src/services/git/git.js'
+import { findGitRoot, gitExe } from 'src/vcs/git/git.js'
 import {
   createBaseHookInput,
   executeFileSuggestionCommand,

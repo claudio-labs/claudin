@@ -25,9 +25,9 @@ import {
   registerRemoteAgentTask,
 } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js'
 import { isEnterpriseSubscriber, isTeamSubscriber } from 'src/providers/auth/auth.js'
-import { detectCurrentRepositoryWithHost } from 'src/services/git/detectRepository.js'
+import { detectCurrentRepositoryWithHost } from 'src/vcs/git/detectRepository.js'
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
-import { getDefaultBranch, gitExe } from 'src/services/git/git.js'
+import { getDefaultBranch, gitExe } from 'src/vcs/git/git.js'
 import { teleportToRemote } from 'src/platform/teleport/teleport.js'
 
 // One-time session flag: once the user confirms overage billing via the

@@ -6,8 +6,8 @@ import { Activity, useCallback, useEffect, useMemo, useRef, useState, useSyncExt
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { useCommandQueue } from 'src/agent/hooks/useCommandQueue.js';
 import { type IDEAtMentioned, useIdeAtMentioned } from 'src/platform/ide/useIdeAtMentioned.js';
-import { useSessionDiffStat } from 'src/hooks/useSessionDiffStat.js';
-import { useGitDiffStat } from 'src/hooks/useGitDiffStat.js';
+import { useSessionDiffStat } from 'src/vcs/diff/hooks/useSessionDiffStat.js';
+import { useGitDiffStat } from 'src/vcs/diff/hooks/useGitDiffStat.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { type AppState, useAppState, useAppStateStore, useSetAppState } from 'src/terminal/state/AppState.js';
 
@@ -38,7 +38,7 @@ import { usePromptSuggestion } from 'src/terminal/prompt-suggestion/usePromptSug
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { useTypeahead } from 'src/terminal/hooks/useTypeahead.js';
 import { stringWidth } from 'src/terminal/ink/stringWidth.js';
-import { useCwdBranchSegment } from 'src/hooks/useCwdBranchSegment.js';
+import { useCwdBranchSegment } from 'src/vcs/hooks/useCwdBranchSegment.js';
 import { Box, type ClickEvent, type Key, Text, useInput } from 'src/terminal/ink.js';
 import { useOptionalKeybindingContext } from 'src/terminal/keybindings/KeybindingContext.js';
 import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js';
@@ -71,7 +71,7 @@ import { env } from 'src/shared/env.js';
 import { errorMessage } from 'src/shared/errors.js';
 import { isBilledAsExtraUsage } from 'src/providers/usage/extraUsage.js';
 import { getFastModeUnavailableReason, isFastModeAvailable, isFastModeCooldown, isFastModeEnabled, isFastModeSupportedByModel } from 'src/providers/fastMode.js';
-import { buildDiffStatSegment } from 'src/services/git/format-branch.js';
+import { buildDiffStatSegment } from 'src/vcs/git/format-branch.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import type { PromptInputHelpers } from 'src/agent/handlePromptSubmit.js';
 import { extractDraggedFilePaths } from 'src/terminal/input/dragDropPaths.js';

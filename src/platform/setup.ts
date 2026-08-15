@@ -31,7 +31,7 @@ import { env } from 'src/shared/env.js'
 import { envDynamic } from 'src/shared/envDynamic.js'
 import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'
 import { errorMessage } from 'src/shared/errors.js'
-import { findCanonicalGitRoot, findGitRoot, getIsGit } from 'src/services/git/git.js'
+import { findCanonicalGitRoot, findGitRoot, getIsGit } from 'src/vcs/git/git.js'
 import { initializeFileChangedWatcher } from 'src/platform/lifecycleHooks/fileChangedWatcher.js'
 import {
   captureHooksConfigSnapshot,
@@ -51,7 +51,7 @@ import {
   createWorktreeForSession,
   generateTmuxSessionName,
   worktreeBranchName,
-} from 'src/services/git/worktree.js'
+} from 'src/vcs/git/worktree.js'
 
 export async function setup(
   cwd: string,

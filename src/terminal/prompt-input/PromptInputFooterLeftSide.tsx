@@ -32,7 +32,7 @@ type Teammate = NonNullable<AppState['teamContext']>['teammates'][string];
 type AppTask = AppState['tasks'][string];
 import { getIsRemoteMode } from 'src/platform/bootstrap/state.js';
 import HistorySearchInput from 'src/terminal/prompt-input/HistorySearchInput.js';
-import { usePrStatus } from 'src/hooks/usePrStatus.js';
+import { usePrStatus } from 'src/vcs/hooks/usePrStatus.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';

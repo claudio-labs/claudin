@@ -28,7 +28,7 @@ import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
 import { getMemoryPath } from 'src/platform/config/config.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { classifyAxiosError } from 'src/shared/errors.js'
-import { getRepoRemoteHash } from 'src/services/git/git.js'
+import { getRepoRemoteHash } from 'src/vcs/git/git.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,

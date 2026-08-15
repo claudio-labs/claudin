@@ -48,7 +48,7 @@ import type { ImageDimensions } from 'src/terminal/image/imageResizer.js';
 import { maybeResizeAndDownsampleImageBlock } from 'src/terminal/image/imageResizer.js';
 import { cacheImagePath, storeImage } from 'src/terminal/image/imageStore.js';
 import type { BorderTextOptions } from 'src/terminal/ink/render-border.js';
-import { useCwdBranchSegment } from 'src/hooks/useCwdBranchSegment.js';
+import { useCwdBranchSegment } from 'src/vcs/hooks/useCwdBranchSegment.js';
 type ResponseValue ='yes-bypass-permissions' | 'yes-accept-edits' | 'yes-accept-edits-keep-context' | 'yes-default-keep-context' | 'yes-resume-auto-mode' | 'yes-auto-clear-context' | 'ultraplan' | 'no';
 
 /**

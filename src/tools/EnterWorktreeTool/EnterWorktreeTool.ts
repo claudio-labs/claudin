@@ -6,7 +6,7 @@ import type { Tool } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { clearMemoryFileCaches } from 'src/services/instructions/claudemd.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
-import { findCanonicalGitRoot } from 'src/services/git/git.js'
+import { findCanonicalGitRoot } from 'src/vcs/git/git.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { getPlanSlug, getPlansDirectory } from 'src/agent/plans/plans.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
@@ -16,7 +16,7 @@ import {
   createWorktreeForSession,
   getCurrentWorktreeSession,
   validateWorktreeSlug,
-} from 'src/services/git/worktree.js'
+} from 'src/vcs/git/worktree.js'
 import { ENTER_WORKTREE_TOOL_NAME } from 'src/tools/EnterWorktreeTool/constants.js'
 import { getEnterWorktreeToolPrompt } from 'src/tools/EnterWorktreeTool/prompt.js'
 import { renderToolResultMessage, renderToolUseMessage } from 'src/tools/EnterWorktreeTool/UI.js'

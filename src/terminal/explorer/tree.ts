@@ -8,9 +8,9 @@
  * Framework-free (no React/Ink) → unit-testable under `bun test`.
  */
 
-import type { DiffFile } from 'src/hooks/useDiffData.js'
-import { buildTreeRows, type TreeRow } from 'src/components/diff/fileTree.js'
-import type { RepoGroup } from 'src/components/diff/types.js'
+import type { DiffFile } from 'src/vcs/diff/hooks/useDiffData.js'
+import { buildTreeRows, type TreeRow } from 'src/vcs/diff/ui/fileTree.js'
+import type { RepoGroup } from 'src/vcs/diff/ui/types.js'
 import { basename, relative, resolve } from 'path'
 
 /** Wrap a flat list of project-relative paths as one synthetic RepoGroup. */

@@ -42,7 +42,7 @@ import { isInProcessTeammate } from 'src/agent/coordinator/teammateContext.js';
 import { teleportToRemote } from 'src/platform/teleport/teleport.js';
 import { getAssistantMessageContentLength } from 'src/agent/context/tokens.js';
 import { createAgentId } from 'src/shared/data/uuid.js';
-import { createAgentWorktree, hasWorktreeChanges, removeAgentWorktree } from 'src/services/git/worktree.js';
+import { createAgentWorktree, hasWorktreeChanges, removeAgentWorktree } from 'src/vcs/git/worktree.js';
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
 import { BackgroundHint } from 'src/tools/BashTool/UI.js';
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js';

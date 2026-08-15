@@ -6,7 +6,7 @@ import { ExitFlow } from 'src/platform/ExitFlow.js';
 import type { LocalJSXCommandOnDone } from 'src/types/command.js';
 import { isBgSession } from 'src/services/session/concurrentSessions.js';
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';
-import { getCurrentWorktreeSession } from 'src/services/git/worktree.js';
+import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js';
 const GOODBYE_MESSAGES = ['Goodbye!', 'See ya!', 'Bye!', 'Catch you later!'];
 function getRandomGoodbyeMessage(): string {
   return sample(GOODBYE_MESSAGES) ?? 'Goodbye!';

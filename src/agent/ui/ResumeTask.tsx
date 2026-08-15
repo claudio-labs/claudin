@@ -6,7 +6,7 @@ import { Box, Text, useInput } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
 import { logForDebugging } from 'src/shared/debug.js';
-import { detectCurrentRepository } from 'src/services/git/detectRepository.js';
+import { detectCurrentRepository } from 'src/vcs/git/detectRepository.js';
 import { formatRelativeTime } from 'src/shared/text/format.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
 import { Select } from 'src/terminal/custom-select/index.js';

@@ -37,7 +37,7 @@ import { setCwd } from 'src/shared/proc/Shell.js'
 import {
   createAgentWorktree,
   removeAgentWorktree,
-} from 'src/services/git/worktree.js'
+} from 'src/vcs/git/worktree.js'
 
 import {
   commitAllChanges,

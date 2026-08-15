@@ -12,7 +12,7 @@ Referências: `docs/archive/discovery/ohmypi/08-cow-filesystem-isolation.md`,
 
 ## 1. Worktree hoje em Claudin
 
-`src/services/git/worktree.ts:744` `createWorktreeForSession(sessionId, slug, ...)`:
+`src/vcs/git/worktree.ts:744` `createWorktreeForSession(sessionId, slug, ...)`:
 
 1. `validateWorktreeSlug` (segmento alfanumérico, max 64 chars).
 2. Se `hasWorktreeCreateHook()` → executa hook do usuário e adota

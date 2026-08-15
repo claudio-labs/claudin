@@ -10,7 +10,7 @@ import type { UUID } from 'crypto'
 import { open as fsOpen, readdir, realpath, stat } from 'fs/promises'
 import { join } from 'path'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
-import { getWorktreePathsPortable } from 'src/services/git/getWorktreePathsPortable.js'
+import { getWorktreePathsPortable } from 'src/vcs/git/getWorktreePathsPortable.js'
 import { djb2Hash } from 'src/shared/data/hash.js'
 
 /** Size of the head/tail buffer for lite metadata reads. */

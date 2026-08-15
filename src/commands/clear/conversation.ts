@@ -28,7 +28,7 @@ import {
   resetCostState,
   saveCurrentSessionCosts,
 } from 'src/agent/cost-tracker.js'
-import { createEmptyAttributionState } from 'src/services/git/commitAttribution.js'
+import { createEmptyAttributionState } from 'src/vcs/git/commitAttribution.js'
 import type { FileStateCache } from 'src/shared/fs/fileStateCache.js'
 import {
   executeSessionEndHooks,
@@ -50,7 +50,7 @@ import {
   initTaskOutputAsSymlink,
 } from 'src/agent/tasks/diskOutput.js'
 import { unlinkSessionSpillDir } from 'src/agent/tools/toolResultStorage.js'
-import { getCurrentWorktreeSession } from 'src/services/git/worktree.js'
+import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js'
 import { clearSessionCaches } from 'src/commands/clear/caches.js'
 
 export async function clearConversation({

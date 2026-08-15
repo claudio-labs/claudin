@@ -12,7 +12,7 @@
 
 import { createHash } from 'crypto'
 import { logForDebugging } from 'src/shared/debug.js'
-import { getHeadForDir } from 'src/services/git/gitFilesystem.js'
+import { getHeadForDir } from 'src/vcs/git/gitFilesystem.js'
 import type { PluginManifest, PluginSource } from 'src/services/plugins/schemas.js'
 
 /**

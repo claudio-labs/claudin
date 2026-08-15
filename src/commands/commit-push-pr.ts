@@ -2,8 +2,8 @@ import type { Command } from 'src/commands.js'
 import {
   getAttributionTexts,
   getEnhancedPRAttribution,
-} from 'src/services/git/attribution.js'
-import { getDefaultBranch } from 'src/services/git/git.js'
+} from 'src/vcs/git/attribution.js'
+import { getDefaultBranch } from 'src/vcs/git/git.js'
 import { executeShellCommandsInPrompt } from 'src/shared/proc/promptShellExecution.js'
 
 const ALLOWED_TOOLS = [

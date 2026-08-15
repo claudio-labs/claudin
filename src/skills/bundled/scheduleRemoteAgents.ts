@@ -10,8 +10,8 @@ import { logForDebugging } from 'src/shared/debug.js'
 import {
   detectCurrentRepositoryWithHost,
   parseGitRemote,
-} from 'src/services/git/detectRepository.js'
-import { getRemoteUrl } from 'src/services/git/git.js'
+} from 'src/vcs/git/detectRepository.js'
+import { getRemoteUrl } from 'src/vcs/git/git.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
   createDefaultCloudEnvironment,

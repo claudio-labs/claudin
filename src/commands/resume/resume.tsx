@@ -16,7 +16,7 @@ import type { LocalJSXCommandCall } from 'src/types/command.js';
 import type { LogOption } from 'src/types/logs.js';
 import { agenticSessionSearch } from 'src/services/session/agenticSessionSearch.js';
 import { checkCrossProjectResume } from 'src/services/session/crossProjectResume.js';
-import { getWorktreePaths } from 'src/services/git/getWorktreePaths.js';
+import { getWorktreePaths } from 'src/vcs/git/getWorktreePaths.js';
 import { logError } from 'src/shared/log.js';
 import { getLastSessionLog, getSessionIdFromLog, isCustomTitleEnabled, isLiteLog, loadAllProjectsMessageLogs, loadFullLog, loadSameRepoMessageLogs, searchSessionsByCustomTitle } from 'src/services/session/sessionStorage.js';
 import { validateUuid } from 'src/shared/data/uuid.js';

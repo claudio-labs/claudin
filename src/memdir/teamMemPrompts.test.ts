@@ -10,7 +10,7 @@ import { afterAll, describe, expect, test, mock } from 'bun:test'
 // since other code transitively imported by teamMemPrompts.js relies on
 // unrelated exports (e.g. getSessionId) from these same modules.
 const realState = { ...(await import('src/platform/bootstrap/state.js')) }
-const realGit = { ...(await import('src/services/git/git.js')) }
+const realGit = { ...(await import('src/vcs/git/git.js')) }
 const realPaths = { ...(await import('src/memdir/paths.js')) }
 const realTeamMemPaths = { ...(await import('src/memdir/teamMemPaths.js')) }
 
@@ -22,7 +22,7 @@ const realTeamMemPaths = { ...(await import('src/memdir/teamMemPaths.js')) }
 // Re-install the real modules once the file finishes.
 afterAll(() => {
   mock.module('src/platform/bootstrap/state.js', () => realState)
-  mock.module('src/services/git/git.js', () => realGit)
+  mock.module('src/vcs/git/git.js', () => realGit)
   mock.module('./paths.js', () => realPaths)
   mock.module('./teamMemPaths.js', () => realTeamMemPaths)
 })
@@ -46,7 +46,7 @@ async function importFreshTeamMemPrompts(options: {
     ...realState,
     getProjectRoot: () => '/fake/project',
   }))
-  mock.module('src/services/git/git.js', () => ({
+  mock.module('src/vcs/git/git.js', () => ({
     ...realGit,
     findCanonicalGitRoot: () => options.gitRoot,
   }))

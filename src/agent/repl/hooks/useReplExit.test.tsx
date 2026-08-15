@@ -71,7 +71,7 @@ beforeAll(() => {
     updateSessionName: () => {},
     updateSessionActivity: () => {},
   }))
-  mock.module('src/services/git/worktree.js', () => ({
+  mock.module('src/vcs/git/worktree.js', () => ({
     getCurrentWorktreeSession: () => mocks.currentWorktreeSession,
   }))
   mock.module('src/platform/ExitFlow.js', () => ({

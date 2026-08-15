@@ -12,7 +12,7 @@ import { Box, Text, useInput } from 'src/terminal/ink.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import { type GlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
-import { getBranch } from 'src/services/git/git.js';
+import { getBranch } from 'src/vcs/git/git.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';
 type Props = {
   onDone: () => void;

@@ -1,10 +1,10 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { type as osType, version as osVersion, release as osRelease } from 'os'
 import { env } from 'src/shared/env.js'
-import { getIsGit } from 'src/services/git/git.js'
+import { getIsGit } from 'src/vcs/git/git.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
-import { getCurrentWorktreeSession } from 'src/services/git/worktree.js'
+import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js'
 import { getSessionStartDate } from 'src/constants/common.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'

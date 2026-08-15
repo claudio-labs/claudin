@@ -34,7 +34,7 @@ import {
   type AttributionState,
   attributionRestoreStateFromLog,
   restoreAttributionStateFromSnapshots,
-} from 'src/services/git/commitAttribution.js'
+} from 'src/vcs/git/commitAttribution.js'
 import { updateSessionName } from 'src/services/session/concurrentSessions.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -60,7 +60,7 @@ import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage
 import {
   getCurrentWorktreeSession,
   restoreWorktreeSession,
-} from 'src/services/git/worktree.js'
+} from 'src/vcs/git/worktree.js'
 
 type ResumeResult = {
   messages?: Message[]

@@ -17,7 +17,7 @@ import { checkAndRefreshOAuthTokenIfNeeded } from 'src/providers/auth/auth.js';
 import { openBrowser } from 'src/shared/browser.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { env } from 'src/shared/env.js';
-import { type GitRepoState, getGitState, getIsGit } from 'src/services/git/git.js';
+import { type GitRepoState, getGitState, getIsGit } from 'src/vcs/git/git.js';
 import { getAuthHeaders, getUserAgent } from 'src/shared/http.js';
 import { getInMemoryErrors, logError } from 'src/shared/log.js';
 import { getAPIProvider } from 'src/utils/model/providers.js';

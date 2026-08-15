@@ -11,12 +11,12 @@ import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
 // implementation appends to the developer's actual ~/.config/git/ignore.
 // Everything else (mkdirSync/realpathSync/chmodSync, symlinks, cwd) is real.
 const realSettings = { ...(await import('src/platform/settings/settings.js')) }
-const realGitignore = { ...(await import('src/services/git/gitignore.js')) }
+const realGitignore = { ...(await import('src/vcs/git/gitignore.js')) }
 const originalConfigDirEnv = process.env.CLAUDIN_CONFIG_DIR
 
 afterAll(() => {
   mock.module('src/platform/settings/settings.js', () => realSettings)
-  mock.module('src/services/git/gitignore.js', () => realGitignore)
+  mock.module('src/vcs/git/gitignore.js', () => realGitignore)
   if (originalConfigDirEnv === undefined) {
     delete process.env.CLAUDIN_CONFIG_DIR
   } else {
@@ -37,7 +37,7 @@ async function importFreshPlansModule(options: { plansDirectory?: string } = {})
     ...realSettings,
     getInitialSettings: () => ({ plansDirectory: options.plansDirectory }),
   }))
-  mock.module('src/services/git/gitignore.js', () => ({
+  mock.module('src/vcs/git/gitignore.js', () => ({
     ...realGitignore,
     addFileGlobRuleToGitignore: async (filename: string, cwd: string) => {
       gitignoreCalls.push({ filename, cwd })

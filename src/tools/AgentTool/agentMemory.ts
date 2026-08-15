@@ -6,7 +6,7 @@ import {
 } from 'src/memdir/memdir.js'
 import { getMemoryBaseDir } from 'src/memdir/paths.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
-import { findCanonicalGitRoot } from 'src/services/git/git.js'
+import { findCanonicalGitRoot } from 'src/vcs/git/git.js'
 import { sanitizePath } from 'src/shared/fs/path.js'
 
 // Persistent agent memory scope: 'user' (~/.claudin/agent-memory/), 'project' (.claudin/agent-memory/), or 'local' (.claudin/agent-memory-local/)

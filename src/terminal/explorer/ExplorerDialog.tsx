@@ -6,15 +6,15 @@ import {
   clearFileSuggestionCaches,
   getProjectFilePaths,
 } from 'src/terminal/prompt-suggestion/fileSuggestions.js'
-import type { DiffFile } from 'src/hooks/useDiffData.js'
+import type { DiffFile } from 'src/vcs/diff/hooks/useDiffData.js'
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js'
-import { useWorkspaceDiff } from 'src/hooks/useWorkspaceDiff.js'
+import { useWorkspaceDiff } from 'src/vcs/diff/hooks/useWorkspaceDiff.js'
 import { Box, Text, useInput, useTheme } from 'src/terminal/ink.js'
 import type {
   LocalJSXCommandContext,
   LocalJSXCommandOnDone,
 } from 'src/types/command.js'
-import type { TreeRow } from 'src/components/diff/fileTree.js'
+import type { TreeRow } from 'src/vcs/diff/ui/fileTree.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { writeFileSyncAndFlush, writeTextContent } from 'src/shared/fs/file.js'
 import { readFileSyncWithMetadata } from 'src/shared/fs/fileRead.js'
@@ -23,8 +23,8 @@ import { logError } from 'src/shared/log.js'
 import { hasNerdFontGlyphs } from 'src/terminal/terminalFont.js'
 import type { Theme } from 'src/terminal/theme/theme.js'
 import { Dialog } from 'src/terminal/design-system/Dialog.js'
-import { DiffFileList, INLINE_LIST_WIDTH } from 'src/components/diff/DiffFileList.js'
-import { expectEditorHighlighter } from 'src/components/StructuredDiff/colorDiff.js'
+import { DiffFileList, INLINE_LIST_WIDTH } from 'src/vcs/diff/ui/DiffFileList.js'
+import { expectEditorHighlighter } from 'src/vcs/diff/structured/colorDiff.js'
 import {
   backspace,
   createEditorState,

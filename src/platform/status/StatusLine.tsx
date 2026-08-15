@@ -25,7 +25,7 @@ import { getLastAssistantMessage } from 'src/agent/messages/messages.js';
 import { getRuntimeMainLoopModel, type ModelName, renderModelName } from 'src/utils/model/model.js';
 import { getCurrentSessionTitle } from 'src/services/session/sessionStorage.js';
 import { doesMostRecentAssistantMessageExceed200k, getCurrentUsage } from 'src/agent/context/tokens.js';
-import { getCurrentWorktreeSession } from 'src/services/git/worktree.js';
+import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js';
 import { isVimModeEnabled } from 'src/terminal/prompt-input/utils.js';
 export function statusLineShouldDisplay(settings: ReadonlySettings): boolean {
   // Assistant mode: statusline fields (model, permission mode, cwd) reflect the

@@ -30,7 +30,7 @@ import type {
 } from 'src/types/message.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { countAddDel } from 'src/services/git/diffStat.js'
+import { countAddDel } from 'src/vcs/git/diffStat.js'
 import { getDisplayPath } from 'src/shared/fs/file.js'
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js'
 import {

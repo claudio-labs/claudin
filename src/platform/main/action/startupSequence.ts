@@ -39,7 +39,7 @@ import { uniq } from 'src/shared/data/array.js';
 import { getUserMsgOptIn } from 'src/platform/bootstrap/state.js';
 import { countConcurrentSessions, registerSession, updateSessionName } from 'src/services/session/concurrentSessions.js';
 import { registerCleanup } from 'src/shared/cleanupRegistry.js';
-import { createEmptyAttributionState } from 'src/services/git/commitAttribution.js';
+import { createEmptyAttributionState } from 'src/vcs/git/commitAttribution.js';
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js';
 import { getModelDeprecationWarning } from 'src/utils/model/deprecation.js';
 import { getInitialEffortSetting, parseEffortValue } from 'src/utils/effort.js';

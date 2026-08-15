@@ -45,7 +45,7 @@ import {
   splitPathInFrontmatter,
 } from 'src/shared/frontmatterParser.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import { isPathGitignored } from 'src/services/git/gitignore.js'
+import { isPathGitignored } from 'src/vcs/git/gitignore.js'
 import { logError } from 'src/shared/log.js'
 import {
   extractDescriptionFromMarkdown,

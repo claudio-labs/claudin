@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useState } from 'react'
 import { FilePathLink } from 'src/terminal/FilePathLink.js'
-import { StructuredDiffList } from 'src/components/StructuredDiffList.js'
+import { StructuredDiffList } from 'src/vcs/diff/structured/StructuredDiffList.js'
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js'
 import { Box, Text } from 'src/terminal/ink.js'
 import { getDisplayPath } from 'src/shared/fs/file.js'

@@ -17,7 +17,7 @@ import type { PermissionResult } from 'src/services/permissions/PermissionResult
 import { permissionBehaviorSchema } from 'src/services/permissions/PermissionRule.js'
 import { permissionUpdateSchema } from 'src/services/permissions/PermissionUpdateSchema.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
-import type { AttributionState } from 'src/services/git/commitAttribution.js'
+import type { AttributionState } from 'src/vcs/git/commitAttribution.js'
 
 
 // Prompt elicitation protocol types. The `prompt` key acts as discriminator

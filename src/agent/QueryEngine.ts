@@ -48,7 +48,7 @@ import { SYNTHETIC_OUTPUT_TOOL_NAME } from 'src/tools/SyntheticOutputTool/Synthe
 import type { Message } from 'src/types/message.js'
 import type { OrphanedPermission } from 'src/types/textInputTypes.js'
 import { createAbortController } from 'src/shared/abortController.js'
-import type { AttributionState } from 'src/services/git/commitAttribution.js'
+import type { AttributionState } from 'src/vcs/git/commitAttribution.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'

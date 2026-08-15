@@ -90,7 +90,7 @@ import type {
 } from 'src/types/hooks.js'
 import type { AgentId } from 'src/types/ids.js'
 import type { DeepImmutable } from 'src/types/utils.js'
-import type { AttributionState } from 'src/services/git/commitAttribution.js'
+import type { AttributionState } from 'src/vcs/git/commitAttribution.js'
 import type { FileHistoryState } from 'src/shared/fs/fileHistory.js'
 import type { Theme, ThemeName } from 'src/terminal/theme/theme.js'
 

@@ -206,7 +206,7 @@ import { useTaskListWatcher } from 'src/agent/hooks/useTaskListWatcher.js';
 import type { NetworkHostPattern } from 'src/platform/sandbox/sandbox-adapter.js';
 import { type IDEExtensionInstallationStatus, type IdeType } from 'src/platform/ide/ide.js';
 import { useIDEIntegration } from 'src/platform/ide/useIDEIntegration.js';
-import { getCurrentWorktreeSession } from 'src/services/git/worktree.js';
+import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js';
 import { popAllEditable, getCommandQueue, getCommandQueueLength } from 'src/agent/messageQueueManager.js';
 import { bindToolJSXStore, dispatchToolJSX, getCurrentLocalJSXGeneration } from 'src/terminal/toolJSXStore.js';
 import { useCommandQueue } from 'src/agent/hooks/useCommandQueue.js';

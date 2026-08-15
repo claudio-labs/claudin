@@ -23,12 +23,12 @@ import { checkGithubAppInstalled } from 'src/agent/background/remote/preconditio
 import { deserializeMessages, type TeleportRemoteResponse } from 'src/services/session/conversationRecovery.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { logForDebugging } from 'src/shared/debug.js';
-import { detectCurrentRepositoryWithHost, parseGitHubRepository, parseGitRemote } from 'src/services/git/detectRepository.js';
+import { detectCurrentRepositoryWithHost, parseGitHubRepository, parseGitRemote } from 'src/vcs/git/detectRepository.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { TeleportOperationError, toError } from 'src/shared/errors.js';
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js';
 import { truncateToWidth } from 'src/shared/text/format.js';
-import { findGitRoot, getDefaultBranch, getIsClean, gitExe } from 'src/services/git/git.js';
+import { findGitRoot, getDefaultBranch, getIsClean, gitExe } from 'src/vcs/git/git.js';
 import { safeParseJSON } from 'src/shared/data/json.js';
 import { logError } from 'src/shared/log.js';
 import { createSystemMessage, createUserMessage } from 'src/agent/messages/messages.js';

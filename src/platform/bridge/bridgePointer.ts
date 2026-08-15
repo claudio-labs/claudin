@@ -3,7 +3,7 @@ import { dirname, join } from 'path'
 import { z } from 'zod/v4'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isENOENT } from 'src/shared/errors.js'
-import { getWorktreePathsPortable } from 'src/services/git/getWorktreePathsPortable.js'
+import { getWorktreePathsPortable } from 'src/vcs/git/getWorktreePathsPortable.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   getProjectsDir,

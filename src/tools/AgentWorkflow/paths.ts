@@ -10,7 +10,7 @@ import memoize from 'lodash-es/memoize.js'
 import { join, relative, sep } from 'path'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
-import { addFileGlobRuleToGitignore } from 'src/services/git/gitignore.js'
+import { addFileGlobRuleToGitignore } from 'src/vcs/git/gitignore.js'
 import { logError } from 'src/shared/log.js'
 
 const WORKFLOWS_DIRNAME = 'workflows'

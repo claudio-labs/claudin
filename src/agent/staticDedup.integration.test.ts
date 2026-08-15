@@ -35,7 +35,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
 import { appendSystemContext, prependUserContext } from 'src/providers/transport/api.js'
 import { getClaudeMdDelta } from 'src/services/instructions/claudeMdDelta.js'
-import { getGitStatusDelta } from 'src/services/git/gitStatusDelta.js'
+import { getGitStatusDelta } from 'src/vcs/git/gitStatusDelta.js'
 import { stableStringify } from 'src/shared/data/stableStringify.js'
 import {
   getTodoReminderDelta,

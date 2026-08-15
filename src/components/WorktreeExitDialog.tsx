@@ -7,7 +7,7 @@ import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js';
 import { getPlansDirectory } from 'src/agent/plans/plans.js';
 import { invalidateAll as invalidateToolResultCache } from 'src/agent/tools/toolResultCache.js';
 import { setCwd } from 'src/shared/proc/Shell.js';
-import { cleanupWorktree, getCurrentWorktreeSession, keepWorktree, killTmuxSession } from 'src/services/git/worktree.js';
+import { cleanupWorktree, getCurrentWorktreeSession, keepWorktree, killTmuxSession } from 'src/vcs/git/worktree.js';
 import { Select } from 'src/terminal/custom-select/select.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import { Spinner } from 'src/terminal/spinner/Spinner.js';

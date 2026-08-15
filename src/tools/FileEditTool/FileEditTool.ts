@@ -19,7 +19,7 @@ import type { ToolUseContext } from 'src/Tool.js'
 import { buildTool, type ToolDef } from 'src/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { countLinesChanged } from 'src/services/git/diff.js'
+import { countLinesChanged } from 'src/vcs/git/diff.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { isENOENT } from 'src/shared/errors.js'
 import {
@@ -43,7 +43,7 @@ import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {
   fetchSingleFileGitDiff,
   type ToolUseDiff,
-} from 'src/services/git/gitDiff.js'
+} from 'src/vcs/git/gitDiff.js'
 import { logError } from 'src/shared/log.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import {

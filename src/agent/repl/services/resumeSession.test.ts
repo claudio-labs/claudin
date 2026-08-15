@@ -50,7 +50,7 @@ const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all
     'src/shared/fs/fileHistory.js',
     'src/services/session/sessionStorage.js',
     'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js',
-    'src/services/git/worktree.js',
+    'src/vcs/git/worktree.js',
     'src/platform/bootstrap/state.js',
     'src/agent/cost-tracker.js',
     'src/terminal/image/asciicast.js',
@@ -148,7 +148,7 @@ mock.module('src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js', () => ({
   }),
 }))
 
-mock.module('src/services/git/worktree.js', () => ({
+mock.module('src/vcs/git/worktree.js', () => ({
   getCurrentWorktreeSession: () => null,
 }))
 

@@ -20,7 +20,7 @@ import {
   rawSettingsContainsKey,
 } from 'src/platform/settings/settings.js'
 import { TOOL_RESULTS_SUBDIR } from 'src/agent/tools/toolResultStorage.js'
-import { cleanupStaleAgentWorktrees } from 'src/services/git/worktree.js'
+import { cleanupStaleAgentWorktrees } from 'src/vcs/git/worktree.js'
 
 const DEFAULT_CLEANUP_PERIOD_DAYS = 30
 

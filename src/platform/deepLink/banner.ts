@@ -16,8 +16,8 @@ import { stat } from 'fs/promises'
 import { homedir } from 'os'
 import { join, sep } from 'path'
 import { formatNumber, formatRelativeTimeAgo } from 'src/shared/text/format.js'
-import { getCommonDir } from 'src/services/git/gitFilesystem.js'
-import { getGitDir } from 'src/services/git/git.js'
+import { getCommonDir } from 'src/vcs/git/gitFilesystem.js'
+import { getGitDir } from 'src/vcs/git/git.js'
 
 const STALE_FETCH_WARN_MS = 7 * 24 * 60 * 60 * 1000
 

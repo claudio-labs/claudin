@@ -10,7 +10,7 @@ import type {
   PermissionResult,
 } from 'src/types/permissions.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
-import { isCurrentDirectoryBareGitRepo } from 'src/services/git/git.js'
+import { isCurrentDirectoryBareGitRepo } from 'src/vcs/git/git.js'
 import type { PermissionRule } from 'src/services/permissions/PermissionRule.js'
 import type { PermissionUpdate } from 'src/services/permissions/PermissionUpdateSchema.js'
 import {

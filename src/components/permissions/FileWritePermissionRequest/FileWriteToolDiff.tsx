@@ -5,9 +5,9 @@ import { useMemo } from 'react';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { Box, NoSelect, Text } from 'src/terminal/ink.js';
 import { intersperse } from 'src/shared/data/array.js';
-import { getPatchForDisplay } from 'src/services/git/diff.js';
+import { getPatchForDisplay } from 'src/vcs/git/diff.js';
 import { HighlightedCode } from 'src/terminal/highlighted-code/HighlightedCode.js';
-import { StructuredDiff } from 'src/components/StructuredDiff.js';
+import { StructuredDiff } from 'src/vcs/diff/structured/StructuredDiff.js';
 type Props = {
   file_path: string;
   content: string;

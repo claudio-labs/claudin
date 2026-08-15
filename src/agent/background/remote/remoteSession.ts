@@ -1,7 +1,7 @@
 import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import { checkGate_CACHED_OR_BLOCKING } from 'src/platform/analytics/growthbook.js'
 import { isPolicyAllowed } from 'src/platform/policyLimits/index.js'
-import { detectCurrentRepositoryWithHost } from 'src/services/git/detectRepository.js'
+import { detectCurrentRepositoryWithHost } from 'src/vcs/git/detectRepository.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import type { TodoList } from 'src/tools/TodoWriteTool/types.js'
 import {

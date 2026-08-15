@@ -15,8 +15,8 @@ import type { ThemeSetting } from 'src/terminal/theme/theme.js';
 import { Select } from 'src/terminal/custom-select/index.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
-import { getColorModuleUnavailableReason, getSyntaxTheme } from 'src/components/StructuredDiff/colorDiff.js';
-import { StructuredDiff } from 'src/components/StructuredDiff.js';
+import { getColorModuleUnavailableReason, getSyntaxTheme } from 'src/vcs/diff/structured/colorDiff.js';
+import { StructuredDiff } from 'src/vcs/diff/structured/StructuredDiff.js';
 
 type StructuredDiffComponent = React.ComponentType<{
   patch: StructuredPatchHunk

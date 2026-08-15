@@ -46,7 +46,7 @@ import {
   saveWorktreeState,
 } from 'src/services/session/sessionStorage.js'
 import { restoreRemoteAgentTasks } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js'
-import { getCurrentWorktreeSession } from 'src/services/git/worktree.js'
+import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js'
 import {
   getOriginalCwd,
   setCostStateForRestore,

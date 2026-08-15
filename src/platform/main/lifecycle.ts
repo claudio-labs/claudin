@@ -11,7 +11,7 @@ import { checkHasTrustDialogAccepted, getGlobalConfig, isAutoUpdaterDisabled, sa
 import { getContextWindowForModel } from 'src/agent/context/context.js';
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js';
 import { hasNodeOption, isBareMode, isEnvTruthy, isInProtectedNamespace } from 'src/shared/envUtils.js';
-import { getIsGit, getWorktreeCount } from 'src/services/git/git.js';
+import { getIsGit, getWorktreeCount } from 'src/vcs/git/git.js';
 import { getGhAuthStatus } from 'src/platform/github/ghAuthStatus.js';
 import { logError } from 'src/shared/log.js';
 import { getDefaultMainLoopModel, parseUserSpecifiedModel } from 'src/utils/model/model.js';

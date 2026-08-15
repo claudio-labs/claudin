@@ -14,7 +14,7 @@ import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js';
 import { type DetectedIDEInfo, detectIDEs, detectRunningIDEs, type IdeType, isJetBrainsIde, isSupportedJetBrainsTerminal, isSupportedTerminal, toIDEDisplayName } from 'src/platform/ide/ide.js';
-import { getCurrentWorktreeSession } from 'src/services/git/worktree.js';
+import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js';
 type IDEScreenProps = {
   availableIDEs: DetectedIDEInfo[];
   unavailableIDEs: DetectedIDEInfo[];

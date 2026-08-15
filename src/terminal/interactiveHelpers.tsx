@@ -25,7 +25,7 @@ import { shouldShowMigrationBanner } from 'src/platform/config/claudinMigration.
 import { updateDeepLinkTerminalPreference } from 'src/platform/deepLink/terminalPreference.js';
 import { isEnvTruthy, isRunningOnHomespace } from 'src/shared/envUtils.js';
 import { type FpsMetrics, FpsTracker } from 'src/terminal/render/fpsTracker.js';
-import { updateGithubRepoPathMapping } from 'src/services/git/githubRepoPathMapping.js';
+import { updateGithubRepoPathMapping } from 'src/vcs/git/githubRepoPathMapping.js';
 import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js';
 import { usesAnthropicAccountFlow } from 'src/utils/model/providers.js';
 import type { PermissionMode } from 'src/services/permissions/PermissionMode.js';

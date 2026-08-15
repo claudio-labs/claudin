@@ -6,7 +6,7 @@ import {
   DIFF_TIMEOUT_MS,
   getPatchForDisplay,
   getPatchFromContents,
-} from 'src/services/git/diff.js'
+} from 'src/vcs/git/diff.js'
 import { errorMessage, isENOENT } from 'src/shared/errors.js'
 import {
   addLineNumbers,

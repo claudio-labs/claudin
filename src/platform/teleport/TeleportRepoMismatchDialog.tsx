@@ -2,7 +2,7 @@ import { c as _c } from "react-compiler-runtime";
 import React, { useCallback, useState } from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
-import { removePathFromRepo, validateRepoAtPath } from 'src/services/git/githubRepoPathMapping.js';
+import { removePathFromRepo, validateRepoAtPath } from 'src/vcs/git/githubRepoPathMapping.js';
 import { Select } from 'src/terminal/custom-select/index.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import { Spinner } from 'src/terminal/spinner/Spinner.js';

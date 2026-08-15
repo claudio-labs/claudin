@@ -254,7 +254,7 @@ a build-time stub from `scripts/no-telemetry-plugin.ts` that never applies outsi
 the bundler. So a `.tsx` component generally can't be imported by a colocated unit
 test. Put pure logic (tree building, parsing, formatting, selection math) in a
 separate module importing only libs + type-only + other pure modules, and re-export
-it from the `.tsx` (e.g. `src/components/diff/fileTree.ts` split out of
+it from the `.tsx` (e.g. `src/vcs/diff/ui/fileTree.ts` split out of
 `DiffFileList.tsx` for `fileTree.test.ts`).
 
 > **`bun -e "import(...)"` is a FALSE NEGATIVE for importability** — it skips

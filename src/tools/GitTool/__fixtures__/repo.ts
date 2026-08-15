@@ -11,7 +11,7 @@
  * the ambient environment makes these depend on whatever the rest of the run
  * did to it. `GIT_CONFIG_NOSYSTEM` + `GIT_CONFIG_GLOBAL=/dev/null` + explicit
  * identity means the outcome depends on nothing but this module, and the
- * no-prompt vars from `src/services/git/worktree.ts` keep a credential prompt from
+ * no-prompt vars from `src/vcs/git/worktree.ts` keep a credential prompt from
  * hanging the suite.
  */
 import { execFileSync } from 'child_process'
@@ -69,7 +69,7 @@ export function gitFixtureEnv(home: string): NodeJS.ProcessEnv {
     GIT_COMMITTER_EMAIL: 'fixture@example.invalid',
     GIT_AUTHOR_DATE: FIXTURE_DATE,
     GIT_COMMITTER_DATE: FIXTURE_DATE,
-    // src/services/git/worktree.ts:236 — a credential prompt would hang the suite.
+    // src/vcs/git/worktree.ts:236 — a credential prompt would hang the suite.
     GIT_TERMINAL_PROMPT: '0',
     GIT_ASKPASS: '',
   }

@@ -5,7 +5,7 @@
 //     (src/shared/fs/fileRead.ts / writeTextContent), so this module operates on
 //     plain LF-normalized text and never touches a BOM.
 //   - No `generateUnifiedDiff` (opencode's is a naive placeholder and unused
-//     for display) — the tool computes diffs via src/services/git/diff.ts.
+//     for display) — the tool computes diffs via src/vcs/git/diff.ts.
 //   - No `maybeParseApplyPatch` (Bash-invocation detection) — out of scope.
 // The parse + fuzzy-match behavior is otherwise identical to the source.
 

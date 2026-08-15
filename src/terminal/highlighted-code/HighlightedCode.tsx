@@ -7,7 +7,7 @@ import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import sliceAnsi from 'src/shared/text/sliceAnsi.js';
 import { countCharInString } from 'src/shared/text/stringUtils.js';
 import { HighlightedCodeFallback } from 'src/terminal/highlighted-code/Fallback.js';
-import { expectColorFile } from 'src/components/StructuredDiff/colorDiff.js';
+import { expectColorFile } from 'src/vcs/diff/structured/colorDiff.js';
 type Props = {
   code: string;
   filePath: string;

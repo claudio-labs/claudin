@@ -28,8 +28,8 @@ import { getPlatform } from 'src/shared/proc/platform.js';
 import { getSessionIngressAuthToken } from 'src/services/session/sessionIngressAuth.js';
 import { sessionIdExists } from 'src/services/session/sessionStorage.js';
 import { validateUuid } from 'src/shared/data/uuid.js';
-import { getTmuxInstallInstructions, isTmuxAvailable, parsePRReference } from 'src/services/git/worktree.js';
-import { isWorktreeModeEnabled } from 'src/services/git/worktreeModeEnabled.js';
+import { getTmuxInstallInstructions, isTmuxAvailable, parsePRReference } from 'src/vcs/git/worktree.js';
+import { isWorktreeModeEnabled } from 'src/vcs/git/worktreeModeEnabled.js';
 import { extractTeammateOptions } from 'src/platform/main/helpers.js';
 import type { BootContext } from 'src/platform/main/bootContext.js';
 

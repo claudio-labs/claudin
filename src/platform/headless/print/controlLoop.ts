@@ -48,7 +48,7 @@ import { toInternalMessages } from 'src/agent/messages/mappers.js'
 import { resolveAndPrepend } from 'src/platform/bridge/inboundAttachments.js'
 import { doesMessageExistInSession } from 'src/services/session/sessionStorage.js'
 import { recordAttributionSnapshot } from 'src/services/session/sessionStorage.js'
-import { incrementPromptCount } from 'src/services/git/commitAttribution.js'
+import { incrementPromptCount } from 'src/vcs/git/commitAttribution.js'
 import { stopTask } from 'src/agent/tasks/stopTask.js'
 import type { SDKUserMessageReplay } from 'src/platform/entrypoints/agentSdkTypes.js'
 import {

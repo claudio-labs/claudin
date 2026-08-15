@@ -25,7 +25,7 @@ import type { DeepImmutable } from 'src/types/utils.js'
 import {
   type AttributionState,
   createEmptyAttributionState,
-} from 'src/services/git/commitAttribution.js'
+} from 'src/vcs/git/commitAttribution.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import type { EffortValue } from 'src/utils/effort.js'
 import type { FileHistoryState } from 'src/shared/fs/fileHistory.js'

@@ -4,7 +4,7 @@ import { getCwd } from 'src/shared/fs/cwd.js'
 import { getCurrentProjectConfig, saveCurrentProjectConfig } from 'src/platform/config/config.js'
 import { env } from 'src/shared/env.js'
 import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
-import { getIsGit, gitExe } from 'src/services/git/git.js'
+import { getIsGit, gitExe } from 'src/vcs/git/git.js'
 import { logError } from 'src/shared/log.js'
 import { getGitEmail } from 'src/shared/user.js'
 

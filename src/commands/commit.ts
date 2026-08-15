@@ -1,5 +1,5 @@
 import type { Command } from 'src/commands.js'
-import { getAttributionTexts } from 'src/services/git/attribution.js'
+import { getAttributionTexts } from 'src/vcs/git/attribution.js'
 import { executeShellCommandsInPrompt } from 'src/shared/proc/promptShellExecution.js'
 
 const ALLOWED_TOOLS = [

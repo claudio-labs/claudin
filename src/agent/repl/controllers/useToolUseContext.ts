@@ -47,7 +47,7 @@ import { resolveAgentTools } from 'src/tools/AgentTool/agentToolUtils.js';
 import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.js';
 import type { LogOption } from 'src/types/logs.js';
 import { type FileHistoryState } from 'src/shared/fs/fileHistory.js';
-import { type AttributionState } from 'src/services/git/commitAttribution.js';
+import { type AttributionState } from 'src/vcs/git/commitAttribution.js';
 import { type IDEExtensionInstallationStatus, type IdeType } from 'src/platform/ide/ide.js';
 import { type SetAppState, removeByFilter } from 'src/agent/messageQueueManager.js';
 import { startBackgroundSession } from 'src/agent/tasks/LocalMainSessionTask.js';

@@ -13,7 +13,7 @@ import { Box, Text } from 'src/terminal/ink.js';
 import { ToolUseLoader } from 'src/agent/ui/ToolUseLoader.js';
 import type { Tools } from 'src/Tool.js';
 import type { Message, ProgressMessage } from 'src/types/message.js';
-import { adjustHunkLineNumbers, CONTEXT_LINES } from 'src/services/git/diff.js';
+import { adjustHunkLineNumbers, CONTEXT_LINES } from 'src/vcs/git/diff.js';
 import { FILE_NOT_FOUND_CWD_NOTE, getDisplayPath } from 'src/shared/fs/file.js';
 import { logError } from 'src/shared/log.js';
 import { getPlansDirectory } from 'src/agent/plans/plans.js';

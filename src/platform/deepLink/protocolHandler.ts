@@ -16,7 +16,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import {
   filterExistingPaths,
   getKnownPathsForRepo,
-} from 'src/services/git/githubRepoPathMapping.js'
+} from 'src/vcs/git/githubRepoPathMapping.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { readLastFetchTime } from 'src/platform/deepLink/banner.js'
 import { parseDeepLink } from 'src/platform/deepLink/parseDeepLink.js'

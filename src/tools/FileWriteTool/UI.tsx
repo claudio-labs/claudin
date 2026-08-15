@@ -17,7 +17,7 @@ import { Box, Text } from 'src/terminal/ink.js';
 import type { ToolProgressData } from 'src/Tool.js';
 import type { ProgressMessage } from 'src/types/message.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
-import { getPatchForDisplay } from 'src/services/git/diff.js';
+import { getPatchForDisplay } from 'src/vcs/git/diff.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
 import { logError } from 'src/shared/log.js';
 import { getPlansDirectory } from 'src/agent/plans/plans.js';

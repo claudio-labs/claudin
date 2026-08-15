@@ -1,7 +1,7 @@
 import { z } from 'zod/v4'
 import { ClaudeError } from 'src/shared/errors.js'
 import { execFileNoThrow } from 'src/shared/proc/execFileNoThrow.js'
-import { getBranch, getDefaultBranch, getIsGit } from 'src/services/git/git.js'
+import { getBranch, getDefaultBranch, getIsGit } from 'src/vcs/git/git.js'
 import { logError } from 'src/shared/log.js'
 import { jsonParse } from 'src/platform/slowOperations.js'
 

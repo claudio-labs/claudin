@@ -46,7 +46,7 @@ import {
 } from 'src/providers/auth/auth.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { classifyAxiosError } from 'src/shared/errors.js'
-import { getGithubRepo } from 'src/services/git/git.js'
+import { getGithubRepo } from 'src/vcs/git/git.js'
 import {
   getAPIProvider,
   isFirstPartyAnthropicBaseUrl,
