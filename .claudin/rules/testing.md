@@ -212,6 +212,28 @@ when A executes first, regardless of `--max-concurrency=1`.
   are asserting on by name (`events.filter(e => e.name.startsWith('tengu_oauth'))`),
   which keeps "logged nothing" meaningful instead of merely lucky.
 
+### A reset that clears a signal disarms production wiring for the rest of the run
+
+`resetStateForTests()` used to end with `sessionSwitched.clear()`. Every
+subscriber of that signal — `stableStubState`'s clipped-id map, `loopSentinels`,
+`concurrentSessions`' PID file — subscribes ONCE at module load and never
+re-subscribes, so one call unsubscribed all three for the remainder of the
+process. Nothing failed at the call site; five eviction tests failed ~400 files
+later, reading like a bug in the eviction logic.
+
+The tell is that it splits on **import order, not file order**: the reset only
+disarms a module that was already loaded when it ran, so replaying the runner's
+exact file order locally stays green while CI is red (the four callers sit at
+positions 79-82, the victim at 474). Don't bisect that by file list alone.
+
+- A shared `Signal`'s `clear()` is not a reset — it destroys subscriptions the
+  clearing module does not own. If a subscriber can register more than once, it
+  keeps its own unsubscribe and drops the previous listener (`registerSession`
+  does this); the global reset stays out of it.
+- Pin it where the damage is. A wiring test in the victim file only fires when
+  the poisoning file happens to run first, so the load-bearing guard is
+  `state.sessionSwitch.test.ts`, next to the reset itself.
+
 ### A leaked stdlib mock, and the timer that outlives it
 
 Both of these came out of one test file (`useReplExit.test.tsx`) and cost a day
