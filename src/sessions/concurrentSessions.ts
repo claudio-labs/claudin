@@ -45,6 +45,13 @@ export function isBgSession(): boolean {
   return envSessionKind() === 'bg'
 }
 
+// registerSession() runs once per process in production but many times over a
+// test file, and every call subscribes to sessionSwitched. Holding the
+// unsubscribe lets a later call drop the previous listener, so the signal does
+// not accumulate PID-file writers. resetStateForTests() used to cover this by
+// clearing the whole signal, which took the other subscribers down with it.
+let unsubscribeSessionSwitch: (() => void) | undefined
+
 /**
  * Write a PID file for this session and register cleanup.
  *
@@ -98,7 +105,8 @@ export async function registerSession(): Promise<boolean> {
     // --resume / /resume mutates getSessionId() via switchSession. Without
     // this, the PID file's sessionId goes stale and `claude ps` sparkline
     // reads the wrong transcript.
-    onSessionSwitch(id => {
+    unsubscribeSessionSwitch?.()
+    unsubscribeSessionSwitch = onSessionSwitch(id => {
       void updatePidFile({ sessionId: id })
     })
     return true

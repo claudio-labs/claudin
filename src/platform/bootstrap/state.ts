@@ -1046,7 +1046,14 @@ export function resetStateForTests(): void {
   outputTokensAtTurnStart = 0
   currentTurnTokenBudget = null
   budgetContinuationCount = 0
-  sessionSwitched.clear()
+  // Deliberately NOT sessionSwitched.clear(). Its three subscribers —
+  // stableStubState's clipped-id map, loopSentinels' first-fire memory,
+  // concurrentSessions' PID file — subscribe at module load and never
+  // re-subscribe, so clearing here unsubscribed them for the REST of the
+  // process: every later file in the same runner then asserted eviction
+  // against a dead signal, and whether it broke depended on whether the
+  // module happened to load before this call. registerSession() drops its
+  // own previous listener now, which is the leak the clear was really for.
 }
 
 // You shouldn't use this directly. See src/providers/model/modelStrings.ts::getModelStrings()
@@ -1887,4 +1894,3 @@ export function isReplBridgeActive(): boolean {
 export function getReplBridgeHandle(): null {
   return null
 }
-
