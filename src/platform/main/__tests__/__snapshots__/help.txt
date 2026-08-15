@@ -1,6 +1,6 @@
-Usage: claude [options] [command] [prompt]
+Usage: claudin [options] [command] [prompt]
 
-Claude Code - starts an interactive session by default, use -p/--print for
+Claudin - starts an interactive session by default, use -p/--print for
 non-interactive output
 
 Arguments:
@@ -42,7 +42,6 @@ Options:
   --permission-mode <mode>                          Permission mode to use for the session (choices: "acceptEdits", "bypassPermissions", "default", "dontAsk", "plan", "auto")
   --plugin-dir <path>                               Load plugins from a directory for this session only (repeatable: --plugin-dir A --plugin-dir B) (default: [])
   -p, --print                                       Print response and exit (useful for pipes). Note: The workspace trust dialog is skipped when Claude is run with the -p mode. Only use this flag in directories you trust.
-  --provider <provider>                             AI provider to use (anthropic, openai, gemini, github, bedrock, vertex, ollama). Reads API keys from environment variables.
   --replay-user-messages                            Re-emit user messages from stdin back on stdout for acknowledgment (only works with --input-format=stream-json and --output-format=stream-json)
   -r, --resume [value]                              Resume a conversation by session ID, or open interactive picker with optional search term
   --session-id <uuid>                               Use a specific session ID for the conversation (must be a valid UUID)
