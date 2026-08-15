@@ -27,7 +27,7 @@
 
 **b) Baseline é straw-man?** **Sim, parcialmente.** O baseline real do Claudin já é:
 - `LSPTool` 13 ops registrado e descrito em `src/tools/LSPTool/prompt.ts:1-14` (`04 §1`, `05 §1.1`).
-- 12 servers embarcados auto-instaláveis (`src/platform/lsp/builtinServers.ts:461-609`, `05 §1.1`).
+- 12 servers embarcados auto-instaláveis (`src/services/lsp/builtinServers.ts:461-609`, `05 §1.1`).
 - `GrepTool` com `output_mode="symbols"` cobre TS/JS/Py/Go (`src/tools/GrepTool/GrepTool.ts:408-419`, `06`).
 - Read `view='outline'` para esqueleto de arquivo (`06`).
 
@@ -36,7 +36,7 @@ Um usuário "atento" do Claudin que sabe que LSPTool existe já chama `findRefer
 **c) Medição mínima.** A/B controlado de 1-2 semanas comparando log de tool-calls em sessões reais (não synthetic). Métrica: ratio `LSP-symbol-ops / (LSP-symbol-ops + Grep-symbol-queries + Read-on-symbol-target)`. Hipótese: tem que subir ≥15 pontos percentuais sem aumentar `total-tokens-per-task` em >5%. Sem essa medida, o eixo é prompt-engineering de fé.
 
 **d) Custos escondidos.**
-- **Prompt bloat.** `src/agent/systemPrompt.ts:41-119` + `src/agent/prompts/prompts.ts:230-275` (`08 §1`) já é grande. Adicionar tabela "Tool | Use when" + bloco "use LSP first, fallback to Grep only if Z" mexe no system prompt **de toda** invocação do agente principal e dos Explore/Plan. Inflate de ~200-400 tokens × N turnos × N sessões.
+- **Prompt bloat.** `src/utils/systemPrompt.ts:41-119` + `src/constants/prompts.ts:230-275` (`08 §1`) já é grande. Adicionar tabela "Tool | Use when" + bloco "use LSP first, fallback to Grep only if Z" mexe no system prompt **de toda** invocação do agente principal e dos Explore/Plan. Inflate de ~200-400 tokens × N turnos × N sessões.
 - **Latência cold-start LSP.** `typescript-language-server` em repo grande leva segundos para indexar antes de responder. Em `Grep` o usuário paga ~80ms; o nudge "prefira LSP" pode trocar 80ms por 3-8s no primeiro símbolo. Roadmap não menciona.
 - **Servidor LSP indisponível.** Em um repo poliglota onde só TS tem server rodando, o agente nudgeado tenta LSP, falha, cai pra Grep — mas perdeu 1 tool call no caminho. Sem detecção up-front, custo é negativo.
 - **Manutenção.** Mais um lugar para sincronizar quando a lista de tools muda (já há `embeddedTools.ts` branch em `exploreAgent.ts:16-22`).
@@ -71,7 +71,7 @@ Critério de ship: nos PRs grandes, novo `/review` precisa achar ≥1 issue extr
 - **`gh pr diff` parser.** Parser de hunks robusto não é trivial; bordas: renames, binary, diff truncado. Mais código para manter.
 
 **e) Failure modes.**
-- PR que toca tipos exportados (`src/tools/Tool.ts`): `findReferences` numa interface central retorna centenas. Tabela injetada estoura janela.
+- PR que toca tipos exportados (`src/Tool.ts`): `findReferences` numa interface central retorna centenas. Tabela injetada estoura janela.
 - PR só de docs/markdown: zero símbolos, risk score = 0 em tudo, ferramenta degenera para o caminho velho.
 - LSP server crasha no meio do score → metade dos símbolos sem callers → score enviesado pra baixo → "GO" indevido.
 - **Concorrência LSP**: hoje cada `LSPTool` call é serial. Disparar 30 em sequência num `/review` é lento (talvez 30-60s de overhead só de orquestração). Paralelizar exige cuidado com o protocolo LSP (1 server, requests concorrentes).
@@ -86,7 +86,7 @@ Outro alternative menor: **bloco de prompt** que **instrui** a LLM a, durante o 
 
 ### Eixo 3 — Wiki auto-gerada
 
-**a) Ganho claimado.** Substituir `src/platform/wiki/init.ts:6-37` (template vazio com placeholders) por geração automática: walk dirs → Read `view='outline'` → import graph regex → LLM summarizer per module.
+**a) Ganho claimado.** Substituir `src/services/wiki/init.ts:6-37` (template vazio com placeholders) por geração automática: walk dirs → Read `view='outline'` → import graph regex → LLM summarizer per module.
 
 **b) Baseline é straw-man?** **Sim, fortemente.** A premissa "template vazio = dor" não foi validada. `init.ts` produz `index.md`, `log.md`, `pages/architecture.md` e `wiki-schema.md` — um **scaffold deliberado** para o usuário preencher. É um sistema de notas append-only, não um gerador de doc. Comparar com `claude-code-guide` agent (mencionado em `06 §6`) que já fala do produto, e com `docs/` humano (que `05 §veredito` cita como melhor que qualquer wiki autogen).
 
@@ -167,7 +167,7 @@ Outro alternative menor: **bloco de prompt** que **instrui** a LLM a, durante o 
 Provável: tabela de risk score injeta 200-400 tokens, mas como são 3 arquivos pequenos a LLM já lia todos. **Valor agregado próximo de zero.** Pior: tempo do review aumenta 5-15s (LSP queries). Casa com o cenário CRG do `02 §9`: graph_tokens > naive_tokens em PRs pequenos.
 
 ### 4.2 `/wiki` no próprio Claudin (200+ TS files)
-Provável: gera 100-150 páginas. Maioria descreve módulos triviais (`src/shared/fs/path.ts`, `src/shared/envUtils.ts`). Top-10 páginas (`QueryEngine`, `openaiShim`, `Tool`, `providerConfig`, `LSPTool`) duplica conteúdo já em `CLAUDE.md` + `.claudin/rules/search-strategy.md`. Output: **ruidoso**. Maintainer abre 2-3 páginas, fecha, deleta a pasta.
+Provável: gera 100-150 páginas. Maioria descreve módulos triviais (`src/utils/fs/path.ts`, `src/utils/envUtils.ts`). Top-10 páginas (`QueryEngine`, `openaiShim`, `Tool`, `providerConfig`, `LSPTool`) duplica conteúdo já em `CLAUDE.md` + `.claudin/rules/search-strategy.md`. Output: **ruidoso**. Maintainer abre 2-3 páginas, fecha, deleta a pasta.
 
 ### 4.3 Repo polyglot Rust+TS
 Eixo 1: `rust-analyzer` cold-start lento (`builtinServers.ts:461-609` lista mas warmup é caro) → nudge LSP-first faz primeira query Rust travar. Eixo 2: risk score só usa LSP no que tem server rodando — se Rust LSP não estiver up, o subgraph Rust fica com risk=0 falso (sem callers detectados). Eixo 3: regex import scanner só pega TS (regra `import` JS); módulos Rust ficam fora ou geram placeholders. Eixo 4: cache funciona em ambas, neutro. **Gains são TS-heavy.**
@@ -232,7 +232,7 @@ Concretamente, em ordem:
 
 1. **Eixo 1 minimal:** editar 2 strings — `src/tools/LSPTool/prompt.ts` e `src/tools/GrepTool/prompt.ts` — para incluir "for symbol queries prefer the other when applicable" cruzado. Instrumentar tool-call counters por 1-2 semanas. Custo: ~1 dia + medida.
 
-2. **Eixo 4 reduzido:** cache in-memory **só de `documentSymbol`**, com LRU cap, invalidação por path em FileEdit/FileWrite. Toca `src/tools/LSPTool/LSPTool.ts` + `src/agent/tools/toolExecution.ts` (`08 Eixo 4`). Custo: ~3 dias.
+2. **Eixo 4 reduzido:** cache in-memory **só de `documentSymbol`**, com LRU cap, invalidação por path em FileEdit/FileWrite. Toca `src/tools/LSPTool/LSPTool.ts` + `src/services/tools/toolExecution.ts` (`08 Eixo 4`). Custo: ~3 dias.
 
 3. **Eixo 2a:** parser de hunks + tabela estática (sem LSP), substitui o prompt de `src/commands/review.ts:9-31`. Bloco `## Verdict` ao final. Custo: ~2-3 dias.
 

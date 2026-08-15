@@ -46,7 +46,7 @@ A tabela do `search` carrega uma coluna **`Read`** com o custo estimado de fazer
 
 ## Como o Claudin faz hoje
 
-`src/memory/memdir/` injeta `MEMORY.md` **inteiro** no system prompt + os arquivos `.md` julgados relevantes. Funciona bem com poucas memórias, mas:
+`src/memdir/` injeta `MEMORY.md` **inteiro** no system prompt + os arquivos `.md` julgados relevantes. Funciona bem com poucas memórias, mas:
 
 - `MEMORY.md` cresce linearmente — o próprio system prompt avisa "linhas após 200 serão truncadas"
 - Truncamento é cego: corta por ordem de arquivo, não por relevância

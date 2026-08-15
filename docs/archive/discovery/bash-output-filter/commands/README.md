@@ -79,7 +79,7 @@ Filter speccado mas **sem sample real capturado**. ROI é estimativa baseada em 
 ## Como promover Tier 1.5 → Tier 1
 
 1. Capturar sample real do comando (rodar localmente ou via colaborador)
-2. Salvar em `src/tools/shared/outputFilter/Bash/__fixtures__/samples/<nome>.txt` (corpus único)
+2. Salvar em `src/outputFilter/Bash/__fixtures__/samples/<nome>.txt` (corpus único)
 3. Adicionar test case em `validation/validate.ts` com filter spec do `.md`
 4. Rodar `bun run validation/validate.ts` — ajustar predição se delta > 15pp
 5. Atualizar `<comando>.md` com nota "VALIDATED" + ROI medido

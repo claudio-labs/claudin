@@ -51,14 +51,14 @@ Caches exist; the soft/hard tier does not. Inventory:
 - `src/tools/WebFetchTool/utils.ts:64` — `URL_CACHE = new LRUCache<string, CacheEntry>` with `ttl = 15 min` (`:61`), `maxSize = 50 MB` (`:62`), entry shape at `:49-57` (bytes/code/content/contentType/persistedPath). Single TTL, hard eviction. Hit path at `:415-426`, write path at `:522-534`.
 - `src/tools/WebFetchTool/utils.ts:73` — `DOMAIN_CHECK_CACHE` (hostname → `true`) with `ttl = 5 min`, `max = 128`. Caches only "allowed"; failures re-checked.
 - `src/tools/WebSearchTool/WebSearchTool.ts` — **no result cache**. Each query hits the search provider every time. Only growthbook feature flags are cached upstream (`getFeatureValue_CACHED_MAY_BE_STALE`, `:9, :706`).
-- `src/providers/presets/providerConfig.ts:592` — `getAdditionalModelOptionsCacheScope()` returns a scope key used by *other* caches; preset metadata itself is computed per call. No persisted provider-metadata cache.
+- `src/services/api/providerConfig.ts:592` — `getAdditionalModelOptionsCacheScope()` returns a scope key used by *other* caches; preset metadata itself is computed per call. No persisted provider-metadata cache.
 
 ### Persisted under `~/.claudin/`
 
 Verified present on this host:
 
-- `~/.claudin/model-cache/` — `src/providers/model/modelCache.ts`. Per-provider JSON file. `CACHE_TTL_HOURS = 24`, version stamped. Binary: valid or invalid, no stale-serve.
-- `~/.claudin/latest-version.json` — `src/platform/install/latestVersionCache.ts`. Synchronous read at banner time (`readLatestVersion`, `:36-46`); written by `writeLatestVersion`. No TTL on disk — caller (`startupUpdateCheck.ts`) gates by `checkedAt`.
+- `~/.claudin/model-cache/` — `src/utils/model/modelCache.ts`. Per-provider JSON file. `CACHE_TTL_HOURS = 24`, version stamped. Binary: valid or invalid, no stale-serve.
+- `~/.claudin/latest-version.json` — `src/services/install/latestVersionCache.ts`. Synchronous read at banner time (`readLatestVersion`, `:36-46`); written by `writeLatestVersion`. No TTL on disk — caller (`startupUpdateCheck.ts`) gates by `checkedAt`.
 - `~/.claudin/image-cache/`, `~/.claudin/paste-cache/`, `~/.claudin/file-history/` — caches but content-addressed (not TTL-bound).
 - `~/.claudin/v8cache/` — V8 bytecode, invalidated by build, not in scope.
 
@@ -148,7 +148,7 @@ so concurrent callers in the soft/hard window only spawn one background refresh.
      up to `hardTtlMs` stale; recommend providers that handle freshness
      server-side (Firecrawl) keep their own ETag layer untouched.
 
-3. **`modelCache.ts`** (`src/providers/model/modelCache.ts`).
+3. **`modelCache.ts`** (`src/utils/model/modelCache.ts`).
    - Today: 24h hard TTL, binary. After 24h startup blocks on the model
      list endpoint.
    - Two-tier: `softTtlMs = 24 h`, `hardTtlMs = 7 d`. Startup never waits
@@ -156,7 +156,7 @@ so concurrent callers in the soft/hard window only spawn one background refresh.
      background refresh updates the list before next launch.
    - `createJsonStore` reuses the existing per-provider JSON layout.
 
-4. **(Lower priority) `latestVersionCache`** (`src/platform/install/latestVersionCache.ts`).
+4. **(Lower priority) `latestVersionCache`** (`src/services/install/latestVersionCache.ts`).
    - Today: synchronous read at banner time; the caller decides freshness.
    - Two-tier would let the banner always render instantly from disk
      while a background fetch updates the file. Already close to that
@@ -235,7 +235,7 @@ so users can see whether the cache is actually helping their workflow.
 - omp call sites: `/home/dev/projects/oh-my-pi/packages/coding-agent/src/tools/gh.ts:2520, :2547, :2841`
 - Claudin WebFetch cache: `/home/dev/projects/claudin/src/tools/WebFetchTool/utils.ts:48-81, :415-534`
 - Claudin WebSearch (no cache): `/home/dev/projects/claudin/src/tools/WebSearchTool/WebSearchTool.ts`
-- Claudin model cache: `/home/dev/projects/claudin/src/providers/model/modelCache.ts`
-- Claudin latest-version cache: `/home/dev/projects/claudin/src/platform/install/latestVersionCache.ts`
-- Claudin provider metadata: `/home/dev/projects/claudin/src/providers/presets/providerConfig.ts:592`
-- Config-dir helper: `/home/dev/projects/claudin/src/shared/envUtils.ts` (`getClaudinConfigHomeDir`)
+- Claudin model cache: `/home/dev/projects/claudin/src/utils/model/modelCache.ts`
+- Claudin latest-version cache: `/home/dev/projects/claudin/src/services/install/latestVersionCache.ts`
+- Claudin provider metadata: `/home/dev/projects/claudin/src/services/api/providerConfig.ts:592`
+- Config-dir helper: `/home/dev/projects/claudin/src/utils/envUtils.ts` (`getClaudinConfigHomeDir`)

@@ -23,7 +23,7 @@ Não encontrado em omp: AST diff/merge, dead-code analyzer, complexity metrics, 
 
 | Sistema | Vale? | Razão |
 |---|---|---|
-| **Structural summary no FileReadTool** | **Sim, alto valor** | Read hoje devolve arquivo inteiro até `MAX_OUTPUT_CHARS`. Dobrar bodies grandes (>4 linhas) economiza tokens em arquivos como `src/providers/shims/openaiShim.ts` (~2.2k linhas, citado em CLAUDE.md). Independente do FileEditTool — não introduz tool novo, só enriquece Read. Maior ROI da lista. |
+| **Structural summary no FileReadTool** | **Sim, alto valor** | Read hoje devolve arquivo inteiro até `MAX_OUTPUT_CHARS`. Dobrar bodies grandes (>4 linhas) economiza tokens em arquivos como `src/services/api/openaiShim.ts` (~2.2k linhas, citado em CLAUDE.md). Independente do FileEditTool — não introduz tool novo, só enriquece Read. Maior ROI da lista. |
 | **AstGrep como busca** | **Talvez** | GrepTool (ripgrep) cobre 95% das buscas. AstGrep só ganha quando "shape" importa (calls, decls). Mas omp manteve os dois separados — sinal de que coexistem bem. Custo: mesmo pipeline WASM do AstEdit, então piggyback no mesmo investimento. |
 | **MatchStrictness 6-níveis** | Só se AstEdit existir | Detalhe interno. Default Smart resolve. Expor no schema do tool inflaria sem ganho mensurável. |
 | **Selector contextual** | Sim, se AstEdit existir | Truque do `fn __rwp_wrapper` é a diferença entre "pattern não compila" e "funciona". Sem isso AstEdit fica frágil em Rust/TS. |

@@ -56,7 +56,7 @@
     "importMs": 9.892537
   },
   {
-    "name": "src/shared/log.ts",
+    "name": "src/utils/log.ts",
     "description": "Logger.",
     "rssBytes": 130535424,
     "heapUsedBytes": 11988256,
@@ -64,7 +64,7 @@
     "importMs": 171.78260799999998
   },
   {
-    "name": "src/agent/tools/toolResultCache",
+    "name": "src/services/tools/toolResultCache",
     "description": "Imported directly by Tool.ts.",
     "rssBytes": 43638784,
     "heapUsedBytes": 1150443,

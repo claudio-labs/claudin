@@ -71,7 +71,7 @@ Em sessão longa de 4-5h: hoje sobe monotonicamente; com fork, sawtooth previsí
 | Fase | Esforço inicial | **Esforço real auditado** | LoC novo + mod | Conteúdo |
 |---|---|---|---|---|
 | ~~**F5**~~ | S (1d) | **CANCELADA** | — | Auditoria mostrou que client.ts já usa `await import()` em Bedrock/Vertex/Foundry/openaiShim. Anthropic SDK eager custa só 18 MB — baixo valor pelo trabalho. |
-| **F1** | S (1d) | **S+ (1.5d)** | ~500-700 LoC novo, ~25 mod | `ChildProcessPool` primitive + `src/platform/entrypoints/agent-worker.ts` + ajustar `build.ts` (dual entries) + verify-no-phone-home contemplar 2º bundle. |
+| **F1** | S (1d) | **S+ (1.5d)** | ~500-700 LoC novo, ~25 mod | `ChildProcessPool` primitive + `src/entrypoints/agent-worker.ts` + ajustar `build.ts` (dual entries) + verify-no-phone-home contemplar 2º bundle. |
 | **F3** | M (2d) | **M (2-3d)** | ~700-900 LoC novo | MCP broker + Permission RPC. 134 callsites de `canUseTool` no codebase (a maioria só passa o ref, sem mudança). 13.7k LoC em `services/mcp/` mas só protocolo de transport precisa wrapper IPC. **Risco:** elicitation com `AbortSignal` cruzando processo. |
 | **F2** | M (2-3d) | **M+ (3-4d)** | ~700-1000 LoC novo + 200 mod em runAgent | `runAgent.ts` dispatch via pool. **AppState: 1298 callsites no codebase, 29 só em runAgent**, ~156 campos no STATE singleton — cada precisa decisão (read-only no child? mutate-report? IPC sync?). Snapshot+delta strategy é a única viável. |
 
@@ -180,7 +180,7 @@ Para considerar F2 done:
 
 ## Pontos delicados surgidos na auditoria (não estavam no plano original)
 
-1. **Build pipeline tem 1 entrypoint hoje.** `scripts/build.ts:162` é literal `['./src/platform/entrypoints/cli.tsx']` e `naming.entry: 'cli.mjs'` é string fixa. F1 precisa virar template `[name].mjs` ou functional. `verify-no-phone-home.ts` e `.sh` também hardcodam `cli.mjs` — precisa scan de ambos os bundles.
+1. **Build pipeline tem 1 entrypoint hoje.** `scripts/build.ts:162` é literal `['./src/entrypoints/cli.tsx']` e `naming.entry: 'cli.mjs'` é string fixa. F1 precisa virar template `[name].mjs` ou functional. `verify-no-phone-home.ts` e `.sh` também hardcodam `cli.mjs` — precisa scan de ambos os bundles.
 2. **`STATE` tem ~156 campos** (`bootstrap/state.ts`, contagem real). A whitelist de "campos com mutação válida no child" precisa cobrir todos — a maioria é read-only no agent, mas omitir um campo de mutate quebra silenciosamente (cost tracking, agent colors, plan slugs). Auditoria sistemática é parte do trabalho da F2.
 3. **`claude.ts` é 3179 LoC com 25 callsites.** Importa eager `log.ts` (linha 75) que é o que puxa 94 MB. **F5 cancelada não significa que log.ts foi atacado** — esse é tema separado (ROADMAP 5.9 ainda vale).
 4. **MCP elicitation com AbortSignal** atravessando boundary é o item mais técnico da F3. Race quando child morre enquanto request elicitation está em vôo. Precisa map `{requestId → AbortController}` no main e cleanup ordenado.

@@ -4,13 +4,13 @@ Workload: 3 read turns + 2 edit turns per CLI.
 Model: claude-opus-4-8.
 
 **Read files:**
-- `src/agent/repl/REPL.tsx` (220K)
-- `src/tools/Tool.ts` (32K)
-- `src/agent/QueryEngine.ts` (48K)
+- `src/screens/REPL.tsx` (220K)
+- `src/Tool.ts` (32K)
+- `src/QueryEngine.ts` (48K)
 
 **Edit files** (copied to scratch dir; real files untouched):
-- `src/platform/bridge/bridgeEnabled.ts` (12K)
-- `src/providers/transport/betas.ts` (16K)
+- `src/bridge/bridgeEnabled.ts` (12K)
+- `src/services/api/betas.ts` (16K)
 
 ## claudiodev
 

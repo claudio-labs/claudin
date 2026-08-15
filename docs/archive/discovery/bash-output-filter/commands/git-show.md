@@ -29,7 +29,7 @@ Date:   Tue May 5 15:11:45 2026 -0300
     OpenAI-compat providers sometimes return transient 404s (model loading,
     routing blip). ...
 
-diff --git a/src/providers/shims/claude.ts b/src/providers/shims/claude.ts
+diff --git a/src/services/api/claude.ts b/src/services/api/claude.ts
 index abc123..def456 100644
 ... (diff body)
 ```

@@ -90,14 +90,14 @@
 
 ### control-direct-action (control)
 
-> adicione um console.log em src/shared/log.ts pra debugar
+> adicione um console.log em src/utils/log.ts pra debugar
 
 **Variant A run#1** (plan=no):
 
 ```
 Duas questões antes de mexer:
 
-1. **`console.log` é anti-pattern aqui** — a regra do projeto (`typescript-patterns.md`) diz que `console.log` polui o TUI; o caminho certo é `logForDebugging()`, que inclusive já está importado nesse arquivo (`src/shared/log.ts:20`). Ele só emite quando o debug está ligado, então não suja a saída normal.
+1. **`console.log` é anti-pattern aqui** — a regra do projeto (`typescript-patterns.md`) diz que `console.log` polui o TUI; o caminho certo é `logForDebugging()`, que inclusive já está importado nesse arquivo (`src/utils/log.ts:20`). Ele só emite quando o debug está ligado, então não suja a saída normal.
 
 2. **O que você quer debugar?** O arquivo tem várias funções (`getLogDisplayTitle`, `logError`, `logMCPDebug`, `captureAPIRequest`...). Preciso saber qual ponto/variável inspecionar pra colocar o log no lugar útil.
 

@@ -28,6 +28,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { basename, dirname, join, relative, resolve } from 'node:path'
+import { sep } from 'node:path'
 import { GROUPS } from './manifest.ts'
 
 const REPO_ROOT = resolve(import.meta.dir, '..', '..')
@@ -38,6 +39,31 @@ const ONLY = process.argv.find(a => a.startsWith('--group='))?.slice('--group='.
 const REWRITE_ROOTS = ['src', 'scripts', 'docs', '.claudin']
 const REWRITE_FILES = ['package.json', 'AGENTS.md', 'README.md', 'knip.json']
 const REWRITE_EXT = /\.(ts|tsx|json|md|mjs|cjs|js)$/
+
+/**
+ * Recorded results, which are not living text. A bench transcript, a captured
+ * baseline or an archived discovery note describes what a run SAW on the day it
+ * ran, so rewriting a path inside one does not update it — it falsifies it.
+ *
+ * This exclusion did not exist for the 2026-08 reorg, which edited 106 of them:
+ * verbatim model output now cited slice paths nobody could have typed at the
+ * time, and `scripts/profile/baselines/cold-start-retained.json` filed its
+ * measured RSS and import-time numbers under module names that were never
+ * measured. Both were reverted; this is what keeps a re-run from redoing it.
+ *
+ * The PRODUCERS stay in scope on purpose: `scripts/profile/*.ts` and
+ * `scripts/bench/*.ts` are ordinary code and DO have to follow a move.
+ */
+const RECORD_TREES = ['scripts/bench/results', 'scripts/profile/baselines', 'docs/archive']
+
+function isRecordedArtifact(abs: string): boolean {
+  const rel = relative(REPO_ROOT, abs).split(sep).join('/')
+  if (RECORD_TREES.some(tree => rel.startsWith(`${tree}/`))) return true
+  // Result files dropped beside the bench that produced them.
+  return (
+    /^scripts\/profile\/[^/]+\.(json|md)$/.test(rel) && rel !== 'scripts/profile/README.md'
+  )
+}
 
 type Move = { from: string; to: string }
 
@@ -270,7 +296,11 @@ function applyRewrites(rewrites: Map<string, string>): number {
   const targets: string[] = []
   for (const root of REWRITE_ROOTS) {
     const abs = join(REPO_ROOT, root)
-    if (existsSync(abs)) targets.push(...walk(abs).filter(f => REWRITE_EXT.test(f)))
+    if (existsSync(abs)) {
+      targets.push(
+        ...walk(abs).filter(f => REWRITE_EXT.test(f) && !isRecordedArtifact(f)),
+      )
+    }
   }
   for (const file of REWRITE_FILES) {
     const abs = join(REPO_ROOT, file)

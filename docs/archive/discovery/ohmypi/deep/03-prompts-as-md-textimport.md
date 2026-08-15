@@ -75,7 +75,7 @@ build.onLoad({ filter: /.*/, namespace: 'text-stub' }, (args) => {
 Já em uso por:
 - `src/skills/bundled/verifyContent.ts` (3 imports `.md` — incluindo `SKILL.md` + exemplos).
 - `src/skills/bundled/claudeApiContent.ts` (~25 imports `.md` da árvore `claude-api/`).
-- Runtime txt: `src/permissions/yolo-classifier-prompts/{auto_mode_system_prompt,permissions_external}.txt` é lido com `readFileSync` no test mas inlinado no bundle.
+- Runtime txt: `src/services/permissions/yolo-classifier-prompts/{auto_mode_system_prompt,permissions_external}.txt` é lido com `readFileSync` no test mas inlinado no bundle.
 
 Conclusão: o caminho omp-style **já funciona hoje** no Claudin. Não precisa mudar o build.
 
@@ -116,7 +116,7 @@ Ordenados por relação valor/risco (impacto na legibilidade × estabilidade do 
 | 2 | `src/tools/BashTool/prompt.ts` | 326 | 2.831 chars | Baixo | Tool description longa. 21 ocorrências de `${...}` — interpolação de plataforma/flags. Migrável com Handlebars-lite. |
 | 3 | `src/tools/SkillTool/prompt.ts` | 205 | 1.287 chars | Baixo | Igual ao acima, menos vars. |
 | 4 | `src/tools/AgentTool/prompt.ts` | 255 | 2.349 chars | Médio | 26 `${...}` incluindo branches por `forkEnabled` (feature flag). Precisa de templating com condicional. |
-| 5 | `src/agent/coordinator/coordinatorMode.ts` | 369 | 14.225 chars | Médio | Maior prompt do projeto, gated em `feature('COORDINATOR_MODE')`. 32 `${...}`. Migração rende a maior diff-reduction, mas precisa de condicionais. |
+| 5 | `src/coordinator/coordinatorMode.ts` | 369 | 14.225 chars | Médio | Maior prompt do projeto, gated em `feature('COORDINATOR_MODE')`. 32 `${...}`. Migração rende a maior diff-reduction, mas precisa de condicionais. |
 
 Candidatos secundários (não recomendados na 1ª onda — são mais "código gerador de texto" do que prompt):
 - `src/commands/init.ts` (18k chars) — gera CLAUDE.md interativo, lógica forte.
@@ -166,7 +166,7 @@ Recomendação: começar com placeholder simples + fragmentos `.md` separados po
 
 ### 2. Feature flags dentro de prompt
 
-`src/agent/coordinator/coordinatorMode.ts` e `src/tools/AgentTool/prompt.ts` usam `feature('FLAG') ? 'A' : 'B'` para gatear seções do prompt. O preprocessor de `scripts/build.ts:93-129` substitui `feature(...)` por boolean literal **antes** do bundle, então o template literal final é fixo no build.
+`src/coordinator/coordinatorMode.ts` e `src/tools/AgentTool/prompt.ts` usam `feature('FLAG') ? 'A' : 'B'` para gatear seções do prompt. O preprocessor de `scripts/build.ts:93-129` substitui `feature(...)` por boolean literal **antes** do bundle, então o template literal final é fixo no build.
 
 Se migrarmos para `.md`, a condicional sai do .md e vira composição no caller:
 
@@ -230,7 +230,7 @@ test('coordinator prompt has no leftover ${ interpolation', () => {
 })
 ```
 
-Bonus: guard de build invariant análogo a `scripts/feature-flags-source-guard.test.ts` — varrer `src/**/*.ts` por template literals com `>500` chars sob `src/tools/` ou `src/agent/coordinator/` e falhar o test, pressionando a migração progressiva.
+Bonus: guard de build invariant análogo a `scripts/feature-flags-source-guard.test.ts` — varrer `src/**/*.ts` por template literals com `>500` chars sob `src/tools/` ou `src/coordinator/` e falhar o test, pressionando a migração progressiva.
 
 ## Próximos passos sugeridos (fora deste documento)
 
@@ -244,4 +244,4 @@ Bonus: guard de build invariant análogo a `scripts/feature-flags-source-guard.t
 
 - omp: `packages/coding-agent/src/task/agents.ts:9-18`, `AGENTS.md:31`, `packages/coding-agent/DEVELOPMENT.md:886`, `packages/coding-agent/src/prompts/{agents,system,tools,commands,memories,goals}/`
 - Claudin: `scripts/build.ts:397-431` (loader), `src/skills/bundled/verifyContent.ts:1-13` (uso atual), `src/skills/bundled/claudeApiContent.ts:1-29` (uso em escala)
-- Inline-prompt candidatos: `src/agent/coordinator/coordinatorMode.ts:116`, `src/tools/AgentTool/prompt.ts:108`, `src/tools/BashTool/prompt.ts:70`, `src/tools/SkillTool/prompt.ts:138`, `src/tools/AgentTool/built-in/claudeCodeGuideAgent.ts:30`
+- Inline-prompt candidatos: `src/coordinator/coordinatorMode.ts:116`, `src/tools/AgentTool/prompt.ts:108`, `src/tools/BashTool/prompt.ts:70`, `src/tools/SkillTool/prompt.ts:138`, `src/tools/AgentTool/built-in/claudeCodeGuideAgent.ts:30`

@@ -35,7 +35,7 @@ Pontos de integração possíveis:
 ### 1. Estender `FilterSpec` com `rewriteCommand`
 
 ```ts
-// validation/pipeline.ts (futuro src/tools/shared/outputFilter/Bash/pipeline.ts)
+// validation/pipeline.ts (futuro src/outputFilter/Bash/pipeline.ts)
 export interface FilterSpec {
   name: string
   matchCommand: RegExp
@@ -181,7 +181,7 @@ cd foo && git log -10      # mesmo
 git log -10 ; date         # mesmo
 ```
 
-claudin já tem `splitCommandWithOperators` em `src/platform/bash/commands.ts`. Approach:
+claudin já tem `splitCommandWithOperators` em `src/services/bash/commands.ts`. Approach:
 - Rewrite **só o componente que casa**, recompõe o pipe
 - Se output do `git log` vai pra `wc -l`, rewrite ainda funciona (oneline tem N linhas vs verbose tem M linhas — wc count muda!)
 
@@ -198,7 +198,7 @@ git log -10 --grep="hello world"
 git log -10 --pretty='%h %s'
 ```
 
-Já temos parsing em `src/platform/bash/`. Rewrite preserva args do user. Não tocar em `--grep`, `--pretty` etc.
+Já temos parsing em `src/services/bash/`. Rewrite preserva args do user. Não tocar em `--grep`, `--pretty` etc.
 
 ### Flags que invalidam o rewrite
 
@@ -292,11 +292,11 @@ Mudanças concretas:
 
 | Arquivo | Mudança | LoC |
 |---|---|---|
-| `src/tools/shared/outputFilter/Bash/pipeline.ts` (NEW) | Pipeline + types + rewriteCommand | ~300 |
-| `src/tools/shared/outputFilter/Bash/filters/index.ts` (NEW) | Built-in filter specs | ~250 |
+| `src/outputFilter/Bash/pipeline.ts` (NEW) | Pipeline + types + rewriteCommand | ~300 |
+| `src/outputFilter/Bash/filters/index.ts` (NEW) | Built-in filter specs | ~250 |
 | `src/tools/BashTool/BashTool.tsx` | Hook em `call()` | ~15 |
 | `src/tools/BashTool/BashTool.tsx` | Marker em `mapToolResult` | ~10 |
-| `src/platform/config/config.ts` | Toggle `bashOutputFilter` | ~5 |
+| `src/services/config/config.ts` | Toggle `bashOutputFilter` | ~5 |
 | Tests | Cobertura dos 6 filtros R + safety | ~400 |
 | **Total** | | **~980 LoC** |
 

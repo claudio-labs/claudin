@@ -1,6 +1,6 @@
 # Tiered Memory Rendering — two-tier render (+ proposta de token budget)
 
-> **Fonte:** `claude-mem` repo, `src/agent/context/TimelineRenderer.ts`, `src/agent/context/ObservationCompiler.ts`, `src/agent/context/ContextBuilder.ts`, `src/agent/context/TokenCalculator.ts`.
+> **Fonte:** `claude-mem` repo, `src/services/context/TimelineRenderer.ts`, `src/services/context/ObservationCompiler.ts`, `src/services/context/ContextBuilder.ts`, `src/services/context/TokenCalculator.ts`.
 > **Verificado contra o repo em 2026-05-19** — o "token budget com auto-degradação" que o rascunho anterior atribuía ao claude-mem **NÃO existe lá**. Ver "Correções pós-verificação".
 
 ## O que o claude-mem REALMENTE faz
@@ -43,7 +43,7 @@ O que vale copiar do claude-mem aqui é **modesto**: o conceito de renderizar me
 
 ## Como o Claudin faz hoje
 
-`src/memory/memdir/` injeta o `MEMORY.md` inteiro (já é one-liner por entrada — isso já é "tier compacto" de fato) **mais** os arquivos `.md` de memória julgados relevantes, em conteúdo completo.
+`src/memdir/` injeta o `MEMORY.md` inteiro (já é one-liner por entrada — isso já é "tier compacto" de fato) **mais** os arquivos `.md` de memória julgados relevantes, em conteúdo completo.
 
 O que falta:
 
@@ -53,7 +53,7 @@ O que falta:
 
 ## Proposta (vai além do claude-mem)
 
-Renderer de memória com 3 tiers e budget explícito, em `src/memory/memdir/` (renderer):
+Renderer de memória com 3 tiers e budget explícito, em `src/memdir/` (renderer):
 
 | Tier | Conteúdo | Custo/item |
 |---|---|---|
@@ -96,7 +96,7 @@ Budget configurável, default conservador (ex: ~4-6k tokens para o bloco de mem�
 
 | Tema | Arquivo:linha |
 |---|---|
-| Two-tier switch | `src/agent/context/TimelineRenderer.ts:64-71` |
-| Set de IDs expandidos (por contagem) | `src/agent/context/ObservationCompiler.ts:288-294` |
+| Two-tier switch | `src/services/context/TimelineRenderer.ts:64-71` |
+| Set de IDs expandidos (por contagem) | `src/services/context/ObservationCompiler.ts:288-294` |
 | Settings de contagem | `src/shared/SettingsDefaultsManager.ts:83,109` |
-| Estimador de tokens (só cosmético) | `src/agent/context/TokenCalculator.ts:6-12`; `types.ts:99` |
+| Estimador de tokens (só cosmético) | `src/services/context/TokenCalculator.ts:6-12`; `types.ts:99` |

@@ -25,10 +25,10 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 // The sample corpus lives in the source tree — this directory used to hold a
-// second, drifting copy. See src/tools/shared/outputFilter/Bash/__fixtures__/samples/README.md.
+// second, drifting copy. See src/outputFilter/Bash/__fixtures__/samples/README.md.
 const SAMPLES = join(
   __dirname,
-  '../../../../../src/tools/shared/outputFilter/Bash/__fixtures__/samples',
+  '../../../../../src/outputFilter/Bash/__fixtures__/samples',
 )
 
 interface TestCase {
@@ -799,7 +799,7 @@ const CASES: TestCase[] = [
   },
   {
     name: 'bun test (já compacto)',
-    command: 'bun test ./src/shared/text/truncate.test.ts',
+    command: 'bun test ./src/utils/text/truncate.test.ts',
     sampleFile: 'bun-test.txt',
     predictedReductionPct: 0,
     notes: '100 bytes pra 3 testes — bun test é minimal by design. Passthrough confirma análise prévia.',

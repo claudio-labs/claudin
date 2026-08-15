@@ -14,11 +14,11 @@
 ### Amostra 1 — `git diff --stat` (291 bytes)
 
 ```
- src/providers/shims/claude.ts     | 15 +++++++++++----
- src/providers/shims/codexShim.ts  |  2 ++
- src/providers/shims/openaiShim.ts |  3 +++
- src/providers/transport/withRetry.ts  | 19 +++++++++++++++++--
- src/providers/transport/userAgent.ts         | 11 +++++++++++
+ src/services/api/claude.ts     | 15 +++++++++++----
+ src/services/api/codexShim.ts  |  2 ++
+ src/services/api/openaiShim.ts |  3 +++
+ src/services/api/withRetry.ts  | 19 +++++++++++++++++--
+ src/services/api/userAgent.ts         | 11 +++++++++++
  5 files changed, 44 insertions(+), 6 deletions(-)
 ```
 
@@ -29,10 +29,10 @@ Já compacto, **passthrough**.
 Trecho representativo de um arquivo:
 
 ```
-diff --git i/src/providers/shims/claude.ts w/src/providers/shims/claude.ts
+diff --git i/src/services/api/claude.ts w/src/services/api/claude.ts
 index c0da81f..2c4ed0c 100644
---- i/src/providers/shims/claude.ts
-+++ w/src/providers/shims/claude.ts
+--- i/src/services/api/claude.ts
++++ w/src/services/api/claude.ts
 @@ -227,6 +227,7 @@ import {
    getAssistantMessageFromError,
    getErrorMessageIfRefusal,

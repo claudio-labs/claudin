@@ -52,7 +52,7 @@ Os 6 restantes (community clustering, hub/bridge centrality, surprising connecti
 
 ### Gap 2 — Wiki é template vazio
 
-**Hoje** (`src/platform/wiki/init.ts:6-37`, `src/commands/wiki/wiki.tsx`): `/wiki` gera placeholder; usuário preenche manual. `claude-code-guide` agent fala do produto Claudin, não do repo do usuário.
+**Hoje** (`src/services/wiki/init.ts:6-37`, `src/commands/wiki/wiki.tsx`): `/wiki` gera placeholder; usuário preenche manual. `claude-code-guide` agent fala do produto Claudin, não do repo do usuário.
 
 **O que o CRG faz que falta:** `generate_wiki_tool` (`main.py:693`) percorre communities Leiden e gera markdown por subsistema com membros + relações.
 

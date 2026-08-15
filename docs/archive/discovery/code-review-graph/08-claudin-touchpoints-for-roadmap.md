@@ -39,8 +39,8 @@ Tool descriptions (o que o modelo lê quando decide qual chamar):
 
 Builder central do system prompt do agente principal:
 
-- `src/agent/systemPrompt.ts:41-119` — `buildEffectiveSystemPrompt(...)`.
-- `src/agent/prompts/prompts.ts:384-501` — `getSystemPrompt()` (a fonte que
+- `src/utils/systemPrompt.ts:41-119` — `buildEffectiveSystemPrompt(...)`.
+- `src/constants/prompts.ts:384-501` — `getSystemPrompt()` (a fonte que
   o builder envolve). Seção `getUsingYourToolsSection(enabledTools)` em
   `:230-275` é onde uma "policy" tipo "para perguntas tipo X, prefira LSP
   antes de Grep" se encaixa.
@@ -68,7 +68,7 @@ no set" entra sem mudança de assinatura.
 
 ### 4. Tests to copy patterns from
 
-- `src/agent/prompts/promptIdentity.test.ts` — testa identity/wording dos
+- `src/constants/promptIdentity.test.ts` — testa identity/wording dos
   prompts; padrão de regression test para alterações verbais.
 - `src/tools/AgentTool/built-in/webResearcherAgent.test.ts` — único
   teste colocado ao lado de um built-in agent; usar como template para
@@ -84,7 +84,7 @@ no set" entra sem mudança de assinatura.
   como agentes disponíveis no modo coordinator (flag `COORDINATOR_MODE`
   ligada em `scripts/build.ts:45`). Qualquer mudança nos prompts dos
   três últimos afeta também o coordinator worker.
-- `DEFAULT_AGENT_PROMPT` em `src/agent/prompts/prompts.ts:658-659` é usado
+- `DEFAULT_AGENT_PROMPT` em `src/constants/prompts.ts:658-659` é usado
   pelo loop principal quando nada mais especifica. Não confundir com os
   prompts de built-in agents.
 - `getUsingYourToolsSection` (`constants/prompts.ts:230-275`) é
@@ -105,11 +105,11 @@ no set" entra sem mudança de assinatura.
   inlines. Processado por `executeShellCommandsInPrompt` em `:215`.
   Padrão alternativo a copiar para o `/review` se quisermos `git diff`
   pré-executado.
-- `src/vcs/git/gitDiff.ts:114-135` — `fetchGitDiffHunks()` já existe e
+- `src/services/git/gitDiff.ts:114-135` — `fetchGitDiffHunks()` já existe e
   retorna hunks parseados (!).
-- `src/vcs/git/gitDiff.ts:200-298` — `parseGitDiff(...)`.
-- `src/vcs/git/gitDiff.ts:148-189` — `parseGitNumstat(stdout)`.
-- `src/vcs/git/gitDiff.ts:405-441` — `fetchSingleFileGitDiff(...)` retorna
+- `src/services/git/gitDiff.ts:200-298` — `parseGitDiff(...)`.
+- `src/services/git/gitDiff.ts:148-189` — `parseGitNumstat(stdout)`.
+- `src/services/git/gitDiff.ts:405-441` — `fetchSingleFileGitDiff(...)` retorna
   `ToolUseDiff` (definido `:386-395`).
 
 ### 2. APIs/types to extend
@@ -126,15 +126,15 @@ re-parse o caminho limpo é expor uma versão estruturada:
 - `LSPTool.execute` hoje retorna `{ formatted, resultCount, fileCount }`
   (via `formatResult`). Para uso programático interno (fora do tool
   registry) pode-se chamar diretamente `sendRequest<T>` do
-  `LSPServerManager` (`src/platform/lsp/LSPServerManager.ts:27` /
+  `LSPServerManager` (`src/services/lsp/LSPServerManager.ts:27` /
   `:265-274`) — bypassa permission gate e formato textual.
-- `GitDiffResult` (`src/vcs/git/gitDiff.ts:29-33`) e
+- `GitDiffResult` (`src/services/git/gitDiff.ts:29-33`) e
   `PerFileStats` (`:22-27`) já existem e devem ser mantidos; um wrapper
   que cruze isso com `findReferences` produzirá `RiskScoreEntry[]`.
 
 ### 3. Existing helpers to reuse
 
-- `fetchGitDiffHunks()` — `src/vcs/git/gitDiff.ts:114-135` (NÃO é só
+- `fetchGitDiffHunks()` — `src/services/git/gitDiff.ts:114-135` (NÃO é só
   numstat; retorna hunks).
 - `parseGitDiff` — `:200-298`. Hunk parser pronto.
 - `parseRawDiffToToolUseDiff` — `:448-481`.
@@ -145,7 +145,7 @@ re-parse o caminho limpo é expor uma versão estruturada:
   `parseSlashCommandToolsFromFrontmatter` (`:2`) — padrão de comando
   markdown com `allowed-tools`. `/review` hoje NÃO usa esse padrão (é
   prompt puro); para `--minimal` mode vale migrar.
-- `LSPServerManager.sendRequest<T>` — `src/platform/lsp/LSPServerManager.ts:27`,
+- `LSPServerManager.sendRequest<T>` — `src/services/lsp/LSPServerManager.ts:27`,
   implementação `:265-274`.
 - `scanSymbols(source, lang)` — `src/tools/shared/codeOutline/scanSymbols.ts:104`
   + `detectOutlineLang(ext)` em `:73`. Útil para resolver "qual símbolo
@@ -153,12 +153,12 @@ re-parse o caminho limpo é expor uma versão estruturada:
 
 ### 4. Tests to copy patterns from
 
-- `src/platform/wiki/init.test.ts` — boa referência de teste de
+- `src/services/wiki/init.test.ts` — boa referência de teste de
   comando/serviço com fs.
 - Não há teste para `/review` (`src/commands/review*.test.ts` não
   existe). Criar `src/commands/review.test.ts` do zero, mirroring
   `init.test.ts`.
-- `src/vcs/git/gitDiff.ts` tem testes? `Grep` mostra suíte ausente para
+- `src/services/git/gitDiff.ts` tem testes? `Grep` mostra suíte ausente para
   esse arquivo no momento desta pesquisa — pode ser oportunidade.
 - `src/tools/LSPTool/LSPTool.readonly.regression.test.ts` — padrão de
   smoke test que sobe o LSP de verdade; pesado, evitar em tests do
@@ -185,19 +185,19 @@ re-parse o caminho limpo é expor uma versão estruturada:
 
 ### 1. Files to touch
 
-- `src/platform/wiki/init.ts:6-37` — `buildSchemaTemplate(projectName)`;
+- `src/services/wiki/init.ts:6-37` — `buildSchemaTemplate(projectName)`;
   template estático genérico.
-- `src/platform/wiki/init.ts:39-56` — `buildIndexTemplate(projectName)`;
+- `src/services/wiki/init.ts:39-56` — `buildIndexTemplate(projectName)`;
   hoje cita só `Architecture` page.
-- `src/platform/wiki/init.ts:58-63` — `buildLogTemplate(timestamp)`.
-- `src/platform/wiki/init.ts:65-89` — `buildArchitectureTemplate(projectName)`;
+- `src/services/wiki/init.ts:58-63` — `buildLogTemplate(timestamp)`.
+- `src/services/wiki/init.ts:65-89` — `buildArchitectureTemplate(projectName)`;
   placeholder com "What are the most important runtime subsystems?"
   literal.
-- `src/platform/wiki/init.ts:112-140` — `initializeWiki(cwd)`; orquestra
+- `src/services/wiki/init.ts:112-140` — `initializeWiki(cwd)`; orquestra
   mkdir + ensureFile. É o entrypoint chamado pelo comando.
-- `src/platform/wiki/indexBuilder.ts:31-68` — `rebuildWikiIndex(cwd)`;
+- `src/services/wiki/indexBuilder.ts:31-68` — `rebuildWikiIndex(cwd)`;
   hoje só listMarkdownFiles + getPageTitle, sem análise de código.
-- `src/platform/wiki/ingest.ts:49-93` — `ingestLocalWikiSource(...)`;
+- `src/services/wiki/ingest.ts:49-93` — `ingestLocalWikiSource(...)`;
   base para o "summarizer per module".
 - `src/commands/wiki/wiki.tsx:76-114` — `runWikiCommand(...)`; dispatcher
   do slash (`init`/`ingest`/`status`).
@@ -207,11 +207,11 @@ re-parse o caminho limpo é expor uma versão estruturada:
 ### 2. APIs/types to extend
 
 - `WikiInitResult` (importado em `init.ts:4`, definido em
-  `src/platform/wiki/types.ts`) — hoje carrega só
+  `src/services/wiki/types.ts`) — hoje carrega só
   `{ root, createdFiles, createdDirectories, alreadyExisted }`. Para
   geração automática adicionar campos: `modulesAnalyzed`, `summariesGenerated`.
 - Novo type `ModuleSummary { dir: string; files: string[]; symbols: SymbolEntry[]; importsTo: string[]; }`
-  ao lado de `src/platform/wiki/types.ts`.
+  ao lado de `src/services/wiki/types.ts`.
 
 ### 3. Existing helpers to reuse
 
@@ -229,15 +229,15 @@ re-parse o caminho limpo é expor uma versão estruturada:
   regex sobre `^import .* from ['"](.+)['"]` aplicado por arquivo,
   resolvendo via `tsconfig.json` paths (alias `src/*` documentado em
   `CLAUDE.md`).
-- `paths.ts` (em `src/platform/wiki/paths.ts`) já centraliza
+- `paths.ts` (em `src/services/wiki/paths.ts`) já centraliza
   `.claudin/wiki/` paths; cache de output cabe lá.
 
 ### 4. Tests to copy patterns from
 
-- `src/platform/wiki/init.test.ts` — happy path + idempotência (EEXIST
+- `src/services/wiki/init.test.ts` — happy path + idempotência (EEXIST
   handling em `init.ts:99-107`).
-- `src/platform/wiki/ingest.test.ts` — fs interaction.
-- `src/platform/wiki/status.test.ts` — leitura/parsing.
+- `src/services/wiki/ingest.test.ts` — fs interaction.
+- `src/services/wiki/status.test.ts` — leitura/parsing.
 
 ### 5. Hidden coupling risks
 
@@ -260,7 +260,7 @@ re-parse o caminho limpo é expor uma versão estruturada:
 
 ### 1. Files to touch
 
-- `src/platform/lsp/LSPServerManager.ts:265-274` — `sendRequest<T>`,
+- `src/services/lsp/LSPServerManager.ts:265-274` — `sendRequest<T>`,
   ponto único de dispatch onde a memoização envolve.
 - `src/tools/LSPTool/LSPTool.ts:671-763` — `getMethodAndParams(input, absolutePath)`;
   gera a tupla `(method, params)` que vira chave de cache junto com
@@ -269,7 +269,7 @@ re-parse o caminho limpo é expor uma versão estruturada:
   (TTL 5min, max 200, in-memory `Map<string, CachedCodeAction>`). Padrão
   já estabelecido; expandir com novo módulo irmão
   `src/tools/LSPTool/symbolCache.ts` ou refatorar para genérico.
-- `src/agent/tools/toolExecution.ts:1762-1779` —
+- `src/services/tools/toolExecution.ts:1762-1779` —
   `invalidateCacheForWrite(toolName, input)`; já invalida path-by-path
   para `FileEditTool`/`FileWriteTool`/`NotebookEditTool` e `invalidateAll()`
   para Bash/PowerShell. **Esse é o hook de invalidação que precisamos
@@ -281,7 +281,7 @@ re-parse o caminho limpo é expor uma versão estruturada:
 
 ### 2. APIs/types to extend
 
-- `LSPServerManager.sendRequest<T>` (`src/platform/lsp/LSPServerManager.ts:27`)
+- `LSPServerManager.sendRequest<T>` (`src/services/lsp/LSPServerManager.ts:27`)
   não muda assinatura. Wrap pode ser feito do lado de fora (no LSPTool)
   ou interno opcionalmente.
 - Novo type `LSPCacheKey = \`${operation}:${absolutePath}:${line}:${character}:${contentHash}\``
@@ -299,7 +299,7 @@ re-parse o caminho limpo é expor uma versão estruturada:
   branch `invalidateCacheForWrite` (`toolExecution.ts:1768/1777`); são
   do `twoTierCache` ou do file-history. Reusar mesmo padrão.
 - Content hash: NÃO existe helper centralizado em `src/utils/` para
-  hash de arquivo. Há `sha256` espalhado (`src/sessions/`,
+  hash de arquivo. Há `sha256` espalhado (`src/services/session/`,
   vários sites). Para LSP cache vale `Bun.hash` (instantâneo) ou
   `crypto.createHash('sha1')` em conteúdo já-em-memória — content é
   lido no `LSPServerManager` quando notifica `textDocument/didChange`

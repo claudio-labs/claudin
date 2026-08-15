@@ -10,14 +10,14 @@ implementação, sem modificar código.**
 
 `src/tools/ReportToolIssueTool/ReportToolIssueTool.ts` (mesma convenção
 que `BashTool`, `GrepTool`, etc.: um diretório por tool, factory que
-usa `buildTool(def)` de `src/tools/Tool.ts:810`).
+usa `buildTool(def)` de `src/Tool.ts:810`).
 
 Tipo do retorno é `BuiltTool<D>` (`Tool.ts:762-768`). O contrato exige
 `name`, `inputSchema`, `prompt`, `execute(input, ctx)` retornando
 `ToolResult<T>` (`Tool.ts:348-363`). Cabe sem qualquer adaptação — omp
 já é AsyncIterable-style também.
 
-### Ponto de injeção: `src/tools/tools.ts`
+### Ponto de injeção: `src/tools.ts`
 
 `getAllBaseTools()` (não mostrado nas linhas lidas, mas o assembly
 canônico) é a lista de built-ins. O patch seria importar
@@ -30,7 +30,7 @@ canônico) é a lista de built-ins. O patch seria importar
   promover para `true`).
 
 A injeção no sub-agente acontece sozinha via `assembleToolPool()`
-(`src/tools/tools.ts:365-387`) — Explore/Plan workers chamam
+(`src/tools.ts:365-387`) — Explore/Plan workers chamam
 `AgentTool.tsx:527` que reusa `assembleToolPool`. Não precisa ponto de
 injeção extra: built-in significa "todos os agentes herdam".
 
@@ -47,7 +47,7 @@ mexer no contrato de `Tool.ts`.
 
 ### Prompt do agente
 
-Ponto de injeção: `src/memory/extract/prompts.ts` é prompt
+Ponto de injeção: `src/services/extractMemories/prompts.ts` é prompt
 de subagente extractor, não serve. O system prompt do agente principal
 está montado em outro lugar (não tocou nesta análise, mas é onde uma
 seção `<reporting-tool-issues>` ~3 linhas deveria entrar — análoga ao
@@ -55,7 +55,7 @@ seção `<reporting-tool-issues>` ~3 linhas deveria entrar — análoga ao
 
 ### Por que JSONL, não memory
 
-`src/memory/memdir/memoryTypes.ts:14-19` define **4 tipos** de memory:
+`src/memdir/memoryTypes.ts:14-19` define **4 tipos** de memory:
 `user | feedback | project | reference`. Relatos de tool issue
 **não se encaixam** em nenhum:
 
@@ -105,7 +105,7 @@ real é o campo `report` (free-text 500ch) vazar:
    `/home/dev/...` ao descrever "tool X retornou erro lendo arquivo".
    Sanitização: regex que substitui paths absolutos por placeholders
    antes do write. Já existe utilitário relacionado em
-   `src/shared/fs/path.ts` (`sanitizePath`) mas é para sanitizar nome de
+   `src/utils/fs/path.ts` (`sanitizePath`) mas é para sanitizar nome de
    diretório no projects-dir, não conteúdo livre.
 2. **Conteúdo de arquivos lidos** — se modelo cola um snippet "para
    contexto". Mitigação: hard cap de 500 chars no schema (omp já faz)
@@ -210,7 +210,7 @@ Em tese poderia ser ensinado a extrair tool issues, mas:
 Cobre debug do componente, não agregação cross-session indexada por
 tool name. Dev teria que `grep` em STDERR de N sessões. Inferior.
 
-### `src/memory/extract/`
+### `src/services/extractMemories/`
 
 Conforme acima, não cobre direção agent→tool feedback.
 

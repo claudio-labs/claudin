@@ -48,18 +48,18 @@ omp **não tem mecânica de prompt-cache da Anthropic** no caminho de discovery 
 
 Claudin implementou um equivalente quase 1:1 da ideia — não é "BM25" mas é a mesma topologia "deferred tools + search tool":
 
-- **Categoria por tool** (`/home/dev/projects/claudin/src/tools/Tool.ts:466‑476`): `shouldDefer?: boolean` e `alwaysLoad?: boolean`. `searchHint?: string` em `:405` é o equivalente do `summary` ponderado do omp.
+- **Categoria por tool** (`/home/dev/projects/claudin/src/Tool.ts:466‑476`): `shouldDefer?: boolean` e `alwaysLoad?: boolean`. `searchHint?: string` em `:405` é o equivalente do `summary` ponderado do omp.
 - **Critério de deferir** (`/home/dev/projects/claudin/src/tools/ToolSearchTool/prompt.ts:63‑109`, `isDeferredTool`): MCP tools são sempre deferred, mais qualquer `shouldDefer: true`; tools com `alwaysLoad: true` ou `name === TOOL_SEARCH_TOOL_NAME` nunca são deferred. Várias hard-exceptions para Brief/SendUserFile/Agent.
 - **Ranking** (`/home/dev/projects/claudin/src/tools/ToolSearchTool/ToolSearchTool.ts:186‑302`, `searchToolsWithKeywords`): **NÃO é BM25** — é scoring linear ad-hoc com pesos manuais (10/12 para match exato em parte do nome, 5/6 para substring, 4 para searchHint, 2 para descrição, 3 para fallback full‑name) e suporte a `+term` required, `select:` direto e prefix MCP. Tokenização: lowercase + split por whitespace, sem normalização Unicode.
-- **Gating de ativação por threshold** (`/home/dev/projects/claudin/src/agent/tools/toolSearch.ts:711‑755`, `checkAutoThreshold`): em modo `tst-auto`, conta tokens de schemas deferred e só ativa o modo se passar de `DEFAULT_AUTO_TOOL_SEARCH_PERCENTAGE = 10` (linha 50) do context window. Threshold ajustável via `ENABLE_TOOL_SEARCH=auto:N`.
+- **Gating de ativação por threshold** (`/home/dev/projects/claudin/src/services/tools/toolSearch.ts:711‑755`, `checkAutoThreshold`): em modo `tst-auto`, conta tokens de schemas deferred e só ativa o modo se passar de `DEFAULT_AUTO_TOOL_SEARCH_PERCENTAGE = 10` (linha 50) do context window. Threshold ajustável via `ENABLE_TOOL_SEARCH=auto:N`.
 - **Wire mechanism**: usa o content block `tool_reference` da Anthropic (`/home/dev/projects/claudin/src/tools/ToolSearchTool/ToolSearchTool.ts:444‑469`). É aqui que tudo emperra em provedores não‑Anthropic.
-- **Optimistic disable em terceiros** (`/home/dev/projects/claudin/src/agent/tools/toolSearch.ts:271‑313`): se `getAPIProvider() === 'firstParty' && !isFirstPartyAnthropicBaseUrl()` e `ENABLE_TOOL_SEARCH` não está setado, devolve `false`. Comentário inline (`:288‑294`) confirma que isso desliga defer_loading para a maioria dos usuários OpenAI-compat.
+- **Optimistic disable em terceiros** (`/home/dev/projects/claudin/src/services/tools/toolSearch.ts:271‑313`): se `getAPIProvider() === 'firstParty' && !isFirstPartyAnthropicBaseUrl()` e `ENABLE_TOOL_SEARCH` não está setado, devolve `false`. Comentário inline (`:288‑294`) confirma que isso desliga defer_loading para a maioria dos usuários OpenAI-compat.
 
 ### Onde injetar a versão BM25 (provider-agnostic)
 
 A pergunta do brief — "QueryEngine.ts ou buildSystemPromptAndContext?" — leva à resposta correta: **nenhum dos dois**. `buildSystemPromptAndContext` não existe no codebase (`grep` confirma). O ponto de injeção certo é:
 
-1. **`src/tools/tools.ts:assembleToolPool`** (linhas 365‑387): hoje devolve `[builtIns sorted, ...mcpSorted]` deduplicado. Esse é o `Tools` que termina virando schema na request.
+1. **`src/tools.ts:assembleToolPool`** (linhas 365‑387): hoje devolve `[builtIns sorted, ...mcpSorted]` deduplicado. Esse é o `Tools` que termina virando schema na request.
    - Para BM25 provider-agnostic, **filtre antes do retorno**: dado o último user message + um session-state de "discovered tools", devolva apenas `alwaysLoad + ToolSearchTool + activeSet ∪ topK(BM25(query, deferredPool))`.
    - Vantagem: já é o único ponto consumido por `QueryEngine.ts:137` e `:1274` (achados via grep). Não toca o agent loop.
 2. **Cache do índice + ativação persistente**: novo módulo `src/utils/bm25ToolIndex.ts` mantém:
@@ -125,9 +125,9 @@ Sub‑configuração via `~/.claudin/settings.json`:
 
 **PR 2 — Wire-up `search-only` em `ToolSearchTool` para provedores não-Anthropic.**
 - Quando `BM25_TOOL_GATING` flag está on **e** o provider não suporta `tool_reference`, `ToolSearchTool.call` retorna o tool-result como **texto** (não `tool_reference` blocks) descrevendo as tools ativadas, **e mutates** o tool-set da sessão (novo `sessionActivatedTools: Set<string>` em algum lugar acessível ao `assembleToolPool`).
-- Modificar `assembleToolPool` (`src/tools/tools.ts:365‑387`) para excluir deferred tools que **não** estão em `alwaysLoad ∪ sessionActivatedTools`. Continua devolvendo a forma ordenada/dedupada.
-- `isToolSearchEnabledOptimistic` (`src/agent/tools/toolSearch.ts:271‑313`) passa a devolver `true` para non‑Anthropic quando a flag está on, sem exigir `ENABLE_TOOL_SEARCH=true` (o flag é o explicit opt‑in).
-- Teste: extender `src/agent/tools/toolSearch.test.ts` (ver se existe; senão criar) com cenário non-firstParty + flag on.
+- Modificar `assembleToolPool` (`src/tools.ts:365‑387`) para excluir deferred tools que **não** estão em `alwaysLoad ∪ sessionActivatedTools`. Continua devolvendo a forma ordenada/dedupada.
+- `isToolSearchEnabledOptimistic` (`src/services/tools/toolSearch.ts:271‑313`) passa a devolver `true` para non‑Anthropic quando a flag está on, sem exigir `ENABLE_TOOL_SEARCH=true` (o flag é o explicit opt‑in).
+- Teste: extender `src/services/tools/toolSearch.test.ts` (ver se existe; senão criar) com cenário non-firstParty + flag on.
 
 **PR 3 — Opcional: `auto-rerank` por user-turn.**
 - Hook em `QueryEngine.ts` (ponto onde tools são montadas para a request): se modo é `auto-rerank` E é um user turn (não tool turn), pega o user message, roda BM25 sobre `deferredPool`, junta top‑K com `alwaysLoad ∪ sessionActivatedTools` para essa request.
@@ -156,9 +156,9 @@ Sub‑configuração via `~/.claudin/settings.json`:
 - `loadMode` declarações: `:essential` em `tools/bash.ts:228`, `tools/read.ts:679`, `edit/index.ts:278`, `tools/search-tool-bm25.ts:211`. Resto é `discoverable`.
 
 ### claudin
-- `/home/dev/projects/claudin/src/tools/Tool.ts:405` (`searchHint`), `:466-476` (`shouldDefer`, `alwaysLoad`).
-- `/home/dev/projects/claudin/src/tools/tools.ts:365-387` (`assembleToolPool` — ponto de injeção primário).
+- `/home/dev/projects/claudin/src/Tool.ts:405` (`searchHint`), `:466-476` (`shouldDefer`, `alwaysLoad`).
+- `/home/dev/projects/claudin/src/tools.ts:365-387` (`assembleToolPool` — ponto de injeção primário).
 - `/home/dev/projects/claudin/src/tools/ToolSearchTool/ToolSearchTool.ts:132-302` (tokenizer + scoring linear atual), `:304-471` (tool wrapper, `tool_reference` output).
 - `/home/dev/projects/claudin/src/tools/ToolSearchTool/prompt.ts:55-109` (`isDeferredTool`).
-- `/home/dev/projects/claudin/src/agent/tools/toolSearch.ts:240-253` (`modelSupportsToolReference`), `:271-313` (optimistic disable para third-party), `:387-449` (`isToolSearchEnabled`), `:711-755` (`checkAutoThreshold`).
+- `/home/dev/projects/claudin/src/services/tools/toolSearch.ts:240-253` (`modelSupportsToolReference`), `:271-313` (optimistic disable para third-party), `:387-449` (`isToolSearchEnabled`), `:711-755` (`checkAutoThreshold`).
 - `/home/dev/projects/claudin/scripts/measure-tool-schemas.ts` + `.test.ts` (baseline mensurável).

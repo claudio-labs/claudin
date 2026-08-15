@@ -82,23 +82,23 @@
 ```
 Call sites de `getSmallFastModel` (excluindo a definição e os imports):
 
-- src/sessions/agenticSessionSearch.ts:261
-- src/platform/lifecycleHooks/skillImprovement.ts:169
-- src/platform/lifecycleHooks/skillImprovement.ts:241
-- src/platform/lifecycleHooks/execPromptHook.ts:79
-- src/platform/lifecycleHooks/execAgentHook.ts:118
+- src/services/session/agenticSessionSearch.ts:261
+- src/services/lifecycleHooks/skillImprovement.ts:169
+- src/services/lifecycleHooks/skillImprovement.ts:241
+- src/services/lifecycleHooks/execPromptHook.ts:79
+- src/services/lifecycleHooks/execAgentHook.ts:118
 - src/tools/WebSearchTool/WebSearchTool.ts:796
-- src/providers/claudeAiLimits.ts:201
-- src/agent/awaySummary.ts:49
-- src/shared/tokenEstimation.ts:404
-- src/shared/tokenEstimation.ts:420
-- src/providers/transport/client.ts:351
-- src/providers/shims/claude.ts:348
-- src/providers/shims/claude.ts:550
-- src/providers/shims/claude.ts:3293
+- src/services/claudeAiLimits.ts:201
+- src/services/awaySummary.ts:49
+- src/services/tokenEstimation.ts:404
+- src/services/tokenEstimation.ts:420
+- src/services/api/client.ts:351
+- src/services/api/claude.ts:348
+- src/services/api/claude.ts:550
+- src/services/api/claude.ts:3293
 
 Em testes:
-- src/providers/model/model.openai-shim-providers.test.ts:196, :207, :216, :226 (mais usos como referência nas linhas 313, 319, 336, 342)
+- src/utils/model/model.openai-shim-providers.test.ts:196, :207, :216, :226 (mais usos como referência nas linhas 313, 319, 336, 342)
 ```
 
 **Variant A run#2:**
@@ -106,77 +106,77 @@ Em testes:
 ```
 Call sites de `getSmallFastModel` (excluindo a definição e imports):
 
-- src/sessions/agenticSessionSearch.ts:261
+- src/services/session/agenticSessionSearch.ts:261
 - src/tools/WebSearchTool/WebSearchTool.ts:796
-- src/platform/lifecycleHooks/skillImprovement.ts:169
-- src/platform/lifecycleHooks/skillImprovement.ts:241
-- src/platform/lifecycleHooks/execPromptHook.ts:79
-- src/platform/lifecycleHooks/execAgentHook.ts:118
-- src/shared/tokenEstimation.ts:404
-- src/shared/tokenEstimation.ts:420
-- src/providers/claudeAiLimits.ts:201
-- src/agent/awaySummary.ts:49
-- src/providers/transport/client.ts:351
-- src/providers/shims/claude.ts:348
-- src/providers/shims/claude.ts:550
-- src/providers/shims/claude.ts:3293
+- src/services/lifecycleHooks/skillImprovement.ts:169
+- src/services/lifecycleHooks/skillImprovement.ts:241
+- src/services/lifecycleHooks/execPromptHook.ts:79
+- src/services/lifecycleHooks/execAgentHook.ts:118
+- src/services/tokenEstimation.ts:404
+- src/services/tokenEstimation.ts:420
+- src/services/claudeAiLimits.ts:201
+- src/services/awaySummary.ts:49
+- src/services/api/client.ts:351
+- src/services/api/claude.ts:348
+- src/services/api/claude.ts:550
+- src/services/api/claude.ts:3293
 
-Testes (src/providers/model/model.openai-shim-providers.test.ts):
+Testes (src/utils/model/model.openai-shim-providers.test.ts):
 - :196, :207, :216, :226 (chamadas diretas)
 - :313, :319, :336, :342 (referências em mocks)
 
-Definição: src/providers/model/model.ts:43
+Definição: src/utils/model/model.ts:43
 ```
 
 **Variant B run#1:**
 
 ```
-Callers de `getSmallFastModel` (excluindo a definição em `src/providers/model/model.ts:43` e os testes):
+Callers de `getSmallFastModel` (excluindo a definição em `src/utils/model/model.ts:43` e os testes):
 
-- src/sessions/agenticSessionSearch.ts:261
-- src/platform/lifecycleHooks/execAgentHook.ts:118
-- src/platform/lifecycleHooks/execPromptHook.ts:79
-- src/platform/lifecycleHooks/skillImprovement.ts:169
-- src/platform/lifecycleHooks/skillImprovement.ts:241
+- src/services/session/agenticSessionSearch.ts:261
+- src/services/lifecycleHooks/execAgentHook.ts:118
+- src/services/lifecycleHooks/execPromptHook.ts:79
+- src/services/lifecycleHooks/skillImprovement.ts:169
+- src/services/lifecycleHooks/skillImprovement.ts:241
 - src/tools/WebSearchTool/WebSearchTool.ts:796
-- src/shared/tokenEstimation.ts:404
-- src/shared/tokenEstimation.ts:420
-- src/providers/claudeAiLimits.ts:201
-- src/agent/awaySummary.ts:49
-- src/providers/transport/client.ts:351
-- src/providers/shims/claude.ts:348
-- src/providers/shims/claude.ts:550
-- src/providers/shims/claude.ts:3293
+- src/services/tokenEstimation.ts:404
+- src/services/tokenEstimation.ts:420
+- src/services/claudeAiLimits.ts:201
+- src/services/awaySummary.ts:49
+- src/services/api/client.ts:351
+- src/services/api/claude.ts:348
+- src/services/api/claude.ts:550
+- src/services/api/claude.ts:3293
 
-Call sites em testes (`src/providers/model/model.openai-shim-providers.test.ts`): linhas 196, 207, 216, 226.
+Call sites em testes (`src/utils/model/model.openai-shim-providers.test.ts`): linhas 196, 207, 216, 226.
 ```
 
 **Variant B run#2:**
 
 ```
-Call sites de `getSmallFastModel` (excluindo a definição em `src/providers/model/model.ts:43` e os imports):
+Call sites de `getSmallFastModel` (excluindo a definição em `src/utils/model/model.ts:43` e os imports):
 
 **Produção:**
-- src/platform/lifecycleHooks/skillImprovement.ts:169
-- src/platform/lifecycleHooks/skillImprovement.ts:241
-- src/platform/lifecycleHooks/execAgentHook.ts:118
-- src/platform/lifecycleHooks/execPromptHook.ts:79
+- src/services/lifecycleHooks/skillImprovement.ts:169
+- src/services/lifecycleHooks/skillImprovement.ts:241
+- src/services/lifecycleHooks/execAgentHook.ts:118
+- src/services/lifecycleHooks/execPromptHook.ts:79
 - src/tools/WebSearchTool/WebSearchTool.ts:796
-- src/shared/tokenEstimation.ts:404
-- src/shared/tokenEstimation.ts:420
-- src/sessions/agenticSessionSearch.ts:261
-- src/providers/claudeAiLimits.ts:201
-- src/agent/awaySummary.ts:49
-- src/providers/transport/client.ts:351
-- src/providers/shims/claude.ts:348
-- src/providers/shims/claude.ts:550
-- src/providers/shims/claude.ts:3293
+- src/services/tokenEstimation.ts:404
+- src/services/tokenEstimation.ts:420
+- src/services/session/agenticSessionSearch.ts:261
+- src/services/claudeAiLimits.ts:201
+- src/services/awaySummary.ts:49
+- src/services/api/client.ts:351
+- src/services/api/claude.ts:348
+- src/services/api/claude.ts:550
+- src/services/api/claude.ts:3293
 
 **Testes:**
-- src/providers/model/model.openai-shim-providers.test.ts:196
-- src/providers/model/model.openai-shim-providers.test.ts:207
-- src/providers/model/model.openai-shim-providers.test.ts:216
-- src/providers/model/model.openai-shim-providers.test.ts:226
+- src/utils/model/model.openai-shim-providers.test.ts:196
+- src/utils/model/model.openai-shim-providers.test.ts:207
+- src/utils/model/model.openai-shim-providers.test.ts:216
+- src/utils/model/model.openai-shim-providers.test.ts:226
 ```
 
 ### find-definition
@@ -188,8 +188,8 @@ Call sites de `getSmallFastModel` (excluindo a definição em `src/providers/mod
 ```
 Duas declarações encontradas:
 
-- `src/providers/presets/providerProfile.ts:122` — `export type ProviderProfile = ...`
-- `src/platform/config/config.ts:191` — `export type ProviderProfile = { ... }`
+- `src/services/api/providerProfile.ts:122` — `export type ProviderProfile = ...`
+- `src/services/config/config.ts:191` — `export type ProviderProfile = { ... }`
 
 As demais ocorrências são imports/re-exports.
 ```
@@ -199,8 +199,8 @@ As demais ocorrências são imports/re-exports.
 ```
 Encontrei 2 declarações do tipo `ProviderProfile`:
 
-- `src/providers/presets/providerProfile.ts:122` — `export type ProviderProfile = …`
-- `src/platform/config/config.ts:191` — `export type ProviderProfile = { … }`
+- `src/services/api/providerProfile.ts:122` — `export type ProviderProfile = …`
+- `src/services/config/config.ts:191` — `export type ProviderProfile = { … }`
 
 As demais ocorrências são importações (linhas com `import { type ProviderProfile, … }` ou re-exports com alias).
 ```
@@ -210,10 +210,10 @@ As demais ocorrências são importações (linhas com `import { type ProviderPro
 ```
 Há **2 declarações** do tipo `ProviderProfile` no codebase:
 
-1. `src/providers/presets/providerProfile.ts:122` — `export type ProviderProfile = ...`
-2. `src/platform/config/config.ts:191` — `export type ProviderProfile = { ... }`
+1. `src/services/api/providerProfile.ts:122` — `export type ProviderProfile = ...`
+2. `src/services/config/config.ts:191` — `export type ProviderProfile = { ... }`
 
-As demais ocorrências (`src/providers/presets/providerProfiles.ts`, `scripts/*.ts`, `src/commands/provider/provider.tsx`) são apenas re-exportações/importações com `type ProviderProfile`, não declarações.
+As demais ocorrências (`src/services/api/providerProfiles.ts`, `scripts/*.ts`, `src/commands/provider/provider.tsx`) são apenas re-exportações/importações com `type ProviderProfile`, não declarações.
 ```
 
 **Variant B run#2:**
@@ -221,56 +221,56 @@ As demais ocorrências (`src/providers/presets/providerProfiles.ts`, `scripts/*.
 ```
 Existem **2 declarações** do tipo `ProviderProfile` no codebase:
 
-- `src/providers/presets/providerProfile.ts:122` — `export type ProviderProfile = ...`
-- `src/platform/config/config.ts:191` — `export type ProviderProfile = { ... }`
+- `src/services/api/providerProfile.ts:122` — `export type ProviderProfile = ...`
+- `src/services/config/config.ts:191` — `export type ProviderProfile = { ... }`
 
 Os demais resultados (`providerProfiles.ts`, `provider.tsx`, scripts) são apenas re-imports/aliases.
 ```
 
 ### rename-impact
 
-> Sem editar nenhum arquivo: quero renomear `formatNumber` (em src/shared/text/format.ts) para `formatTokenCount` em todo o codebase. Liste cada arquivo:linha onde a mudanca precisa acontecer (incluindo a declaracao, todos os imports e todos os call sites). Output cru: uma linha por ocorrencia.
+> Sem editar nenhum arquivo: quero renomear `formatNumber` (em src/utils/text/format.ts) para `formatTokenCount` em todo o codebase. Liste cada arquivo:linha onde a mudanca precisa acontecer (incluindo a declaracao, todos os imports e todos os call sites). Output cru: uma linha por ocorrencia.
 
 **Variant A run#1:**
 
 ```
 ```
-src/shared/text/format.ts:124 (declaration)
-src/shared/text/format.ts:134 (internal call)
-src/agent/cost-tracker.ts:52 (import)
-src/agent/cost-tracker.ts:232
-src/agent/cost-tracker.ts:233
-src/agent/cost-tracker.ts:235
-src/agent/cost-tracker.ts:238
-src/agent/cost-tracker.ts:241
-src/platform/status/status.tsx:11 (import)
-src/platform/status/status.tsx:211 (2 occurrences)
-src/agent/ui/AgentProgressLine.tsx:3 (import)
-src/agent/ui/AgentProgressLine.tsx:87
-src/agent/ui/CoordinatorAgentStatus.tsx:19 (import)
-src/agent/ui/CoordinatorAgentStatus.tsx:173
-src/agent/ui/tasks/InProcessTeammateDetailDialog.tsx:11 (import)
-src/agent/ui/tasks/InProcessTeammateDetailDialog.tsx:162
-src/agent/ui/Stats.tsx:17 (import)
-src/agent/ui/Stats.tsx:453
-src/agent/ui/Stats.tsx:463
-src/agent/ui/Stats.tsx:897
-src/agent/ui/Stats.tsx:905
-src/agent/ui/Stats.tsx:1136
-src/agent/ui/Stats.tsx:1141
-src/agent/ui/Stats.tsx:1215
-src/agent/ui/Stats.tsx:1224 (2 occurrences)
-src/agent/ui/tasks/AsyncAgentDetailDialog.tsx:11 (import)
-src/agent/ui/tasks/AsyncAgentDetailDialog.tsx:124
-src/terminal/spinner/Spinner.tsx:13 (import)
-src/terminal/spinner/Spinner.tsx:268 (2 occurrences)
-src/terminal/spinner/Spinner.tsx:276 (2 occurrences)
-src/terminal/spinner/TeammateSpinnerTree.tsx:7 (import)
-src/terminal/spinner/TeammateSpinnerTree.tsx:111
-src/terminal/spinner/TeammateSpinnerLine.tsx:13 (import)
-src/terminal/spinner/TeammateSpinnerLine.tsx:130
-src/terminal/spinner/TeammateSpinnerLine.tsx:219
-src/terminal/spinner/SpinnerAnimationRow.tsx:8 (import)
+src/utils/text/format.ts:124 (declaration)
+src/utils/text/format.ts:134 (internal call)
+src/cost-tracker.ts:52 (import)
+src/cost-tracker.ts:232
+src/cost-tracker.ts:233
+src/cost-tracker.ts:235
+src/cost-tracker.ts:238
+src/cost-tracker.ts:241
+src/components/status.tsx:11 (import)
+src/components/status.tsx:211 (2 occurrences)
+src/components/AgentProgressLine.tsx:3 (import)
+src/components/AgentProgressLine.tsx:87
+src/components/CoordinatorAgentStatus.tsx:19 (import)
+src/components/CoordinatorAgentStatus.tsx:173
+src/components/tasks/InProcessTeammateDetailDialog.tsx:11 (import)
+src/components/tasks/InProcessTeammateDetailDialog.tsx:162
+src/components/Stats.tsx:17 (import)
+src/components/Stats.tsx:453
+src/components/Stats.tsx:463
+src/components/Stats.tsx:897
+src/components/Stats.tsx:905
+src/components/Stats.tsx:1136
+src/components/Stats.tsx:1141
+src/components/Stats.tsx:1215
+src/components/Stats.tsx:1224 (2 occurrences)
+src/components/tasks/AsyncAgentDetailDialog.tsx:11 (import)
+src/components/tasks/AsyncAgentDetailDialog.tsx:124
+src/components/Spinner.tsx:13 (import)
+src/components/Spinner.tsx:268 (2 occurrences)
+src/components/Spinner.tsx:276 (2 occurrences)
+src/components/Spinner/TeammateSpinnerTree.tsx:7 (import)
+src/components/Spinner/TeammateSpinnerTree.tsx:111
+src/components/Spinner/TeammateSpinnerLine.tsx:13 (import)
+src/components/Spinner/TeammateSpinnerLine.tsx:130
+src/components/Spinner/TeammateSpinnerLine.tsx:219
+src/components/Spinner/SpinnerAnimationRow.tsx:8 (import)
 src/components/S
 ...[truncado]
 ```
@@ -279,48 +279,48 @@ src/components/S
 
 ```
 ```
-src/shared/text/format.ts:124
-src/shared/text/format.ts:134
-src/agent/cost-tracker.ts:52
-src/agent/cost-tracker.ts:232
-src/agent/cost-tracker.ts:233
-src/agent/cost-tracker.ts:235
-src/agent/cost-tracker.ts:238
-src/agent/cost-tracker.ts:241
-src/agent/ui/AgentProgressLine.tsx:3
-src/agent/ui/AgentProgressLine.tsx:87
-src/agent/ui/CoordinatorAgentStatus.tsx:19
-src/agent/ui/CoordinatorAgentStatus.tsx:173
-src/agent/ui/tasks/InProcessTeammateDetailDialog.tsx:11
-src/agent/ui/tasks/InProcessTeammateDetailDialog.tsx:162
-src/agent/ui/tasks/AsyncAgentDetailDialog.tsx:11
-src/agent/ui/tasks/AsyncAgentDetailDialog.tsx:124
-src/platform/status/status.tsx:11
-src/platform/status/status.tsx:211 (2x)
-src/platform/deepLink/banner.ts:18
-src/platform/deepLink/banner.ts:70
-src/agent/ui/messages/SystemTextMessage.tsx:21
-src/agent/ui/messages/SystemTextMessage.tsx:544 (4x)
+src/utils/text/format.ts:124
+src/utils/text/format.ts:134
+src/cost-tracker.ts:52
+src/cost-tracker.ts:232
+src/cost-tracker.ts:233
+src/cost-tracker.ts:235
+src/cost-tracker.ts:238
+src/cost-tracker.ts:241
+src/components/AgentProgressLine.tsx:3
+src/components/AgentProgressLine.tsx:87
+src/components/CoordinatorAgentStatus.tsx:19
+src/components/CoordinatorAgentStatus.tsx:173
+src/components/tasks/InProcessTeammateDetailDialog.tsx:11
+src/components/tasks/InProcessTeammateDetailDialog.tsx:162
+src/components/tasks/AsyncAgentDetailDialog.tsx:11
+src/components/tasks/AsyncAgentDetailDialog.tsx:124
+src/components/status.tsx:11
+src/components/status.tsx:211 (2x)
+src/services/deepLink/banner.ts:18
+src/services/deepLink/banner.ts:70
+src/components/messages/SystemTextMessage.tsx:21
+src/components/messages/SystemTextMessage.tsx:544 (4x)
 src/tools/MCPTool/UI.tsx:14
 src/tools/MCPTool/UI.tsx:112
-src/agent/messages/messages.ts:86
-src/agent/messages/messages.ts:4091 (2x)
-src/agent/messages/messages.ts:4092
-src/agent/messages/messages.ts:4096
-src/platform/status/statusNoticeDefinitions.tsx:8
-src/platform/status/statusNoticeDefinitions.tsx:44
-src/platform/status/statusNoticeDefinitions.tsx:45
-src/platform/status/statusNoticeDefinitions.tsx:153
-src/platform/status/statusNoticeDefinitions.tsx:154
+src/services/messages/messages.ts:86
+src/services/messages/messages.ts:4091 (2x)
+src/services/messages/messages.ts:4092
+src/services/messages/messages.ts:4096
+src/components/statusNoticeDefinitions.tsx:8
+src/components/statusNoticeDefinitions.tsx:44
+src/components/statusNoticeDefinitions.tsx:45
+src/components/statusNoticeDefinitions.tsx:153
+src/components/statusNoticeDefinitions.tsx:154
 src/tools/AgentTool/UI.tsx:24
 src/tools/AgentTool/UI.tsx:376
 src/tools/AgentTool/UI.tsx:499
-src/terminal/prompt-suggestion/speculation.ts:32
-src/terminal/prompt-suggestion/speculation.ts:295
-src/agent/ui/Stats.tsx:17
-src/agent/ui/Stats.tsx:453
-src/agent/ui/Stats.tsx:463
-src/agent/ui/Stats.tsx:897
+src/services/PromptSuggestion/speculation.ts:32
+src/services/PromptSuggestion/speculation.ts:295
+src/components/Stats.tsx:17
+src/components/Stats.tsx:453
+src/components/Stats.tsx:463
+src/components/Stats.tsx:897
 src/components/
 ...[truncado]
 ```
@@ -328,45 +328,45 @@ src/components/
 **Variant B run#1:**
 
 ```
-src/shared/text/format.ts:124 (declaration)
-src/shared/text/format.ts:134 (internal call)
-src/agent/cost-tracker.ts:52 (import)
-src/agent/cost-tracker.ts:232
-src/agent/cost-tracker.ts:233
-src/agent/cost-tracker.ts:235
-src/agent/cost-tracker.ts:238
-src/agent/cost-tracker.ts:241
-src/platform/status/status.tsx:11 (import)
-src/platform/status/status.tsx:211 (2 calls)
-src/agent/ui/AgentProgressLine.tsx:3 (import)
-src/agent/ui/AgentProgressLine.tsx:87
-src/agent/ui/tasks/InProcessTeammateDetailDialog.tsx:11 (import)
-src/agent/ui/tasks/InProcessTeammateDetailDialog.tsx:162
-src/agent/ui/tasks/AsyncAgentDetailDialog.tsx:11 (import)
-src/agent/ui/tasks/AsyncAgentDetailDialog.tsx:124
-src/platform/deepLink/banner.ts:18 (import)
-src/platform/deepLink/banner.ts:70
-src/agent/messages/messages.ts:86 (import)
-src/agent/messages/messages.ts:4091 (2 calls)
-src/agent/messages/messages.ts:4092
-src/agent/messages/messages.ts:4096
-src/platform/status/statusNoticeDefinitions.tsx:8 (import)
-src/platform/status/statusNoticeDefinitions.tsx:44
-src/platform/status/statusNoticeDefinitions.tsx:45
-src/platform/status/statusNoticeDefinitions.tsx:153
-src/platform/status/statusNoticeDefinitions.tsx:154
-src/agent/ui/messages/SystemTextMessage.tsx:21 (import)
-src/agent/ui/messages/SystemTextMessage.tsx:544 (4 calls)
-src/agent/ui/CoordinatorAgentStatus.tsx:19 (import)
-src/agent/ui/CoordinatorAgentStatus.tsx:173
-src/agent/ui/Stats.tsx:17 (import)
-src/agent/ui/Stats.tsx:453
-src/agent/ui/Stats.tsx:463
-src/agent/ui/Stats.tsx:897
-src/agent/ui/Stats.tsx:905
-src/agent/ui/Stats.tsx:1136
-src/agent/ui/Stats.tsx:1141
-src/agent/ui/Stats.tsx:1215
+src/utils/text/format.ts:124 (declaration)
+src/utils/text/format.ts:134 (internal call)
+src/cost-tracker.ts:52 (import)
+src/cost-tracker.ts:232
+src/cost-tracker.ts:233
+src/cost-tracker.ts:235
+src/cost-tracker.ts:238
+src/cost-tracker.ts:241
+src/components/status.tsx:11 (import)
+src/components/status.tsx:211 (2 calls)
+src/components/AgentProgressLine.tsx:3 (import)
+src/components/AgentProgressLine.tsx:87
+src/components/tasks/InProcessTeammateDetailDialog.tsx:11 (import)
+src/components/tasks/InProcessTeammateDetailDialog.tsx:162
+src/components/tasks/AsyncAgentDetailDialog.tsx:11 (import)
+src/components/tasks/AsyncAgentDetailDialog.tsx:124
+src/services/deepLink/banner.ts:18 (import)
+src/services/deepLink/banner.ts:70
+src/services/messages/messages.ts:86 (import)
+src/services/messages/messages.ts:4091 (2 calls)
+src/services/messages/messages.ts:4092
+src/services/messages/messages.ts:4096
+src/components/statusNoticeDefinitions.tsx:8 (import)
+src/components/statusNoticeDefinitions.tsx:44
+src/components/statusNoticeDefinitions.tsx:45
+src/components/statusNoticeDefinitions.tsx:153
+src/components/statusNoticeDefinitions.tsx:154
+src/components/messages/SystemTextMessage.tsx:21 (import)
+src/components/messages/SystemTextMessage.tsx:544 (4 calls)
+src/components/CoordinatorAgentStatus.tsx:19 (import)
+src/components/CoordinatorAgentStatus.tsx:173
+src/components/Stats.tsx:17 (import)
+src/components/Stats.tsx:453
+src/components/Stats.tsx:463
+src/components/Stats.tsx:897
+src/components/Stats.tsx:905
+src/components/Stats.tsx:1136
+src/components/Stats.tsx:1141
+src/components/Stats.tsx:1215
 sr
 ...[truncado]
 ```
@@ -374,54 +374,54 @@ sr
 **Variant B run#2:**
 
 ```
-src/shared/text/format.ts:124 — declaration `export function formatNumber(number: number): string {`
-src/shared/text/format.ts:134 — internal call `return formatNumber(count).replace('.0', '')`
-src/agent/cost-tracker.ts:52 — import
-src/agent/cost-tracker.ts:232
-src/agent/cost-tracker.ts:233
-src/agent/cost-tracker.ts:235
-src/agent/cost-tracker.ts:238
-src/agent/cost-tracker.ts:241
-src/agent/ui/CoordinatorAgentStatus.tsx:19 — import
-src/agent/ui/CoordinatorAgentStatus.tsx:173
-src/agent/ui/AgentProgressLine.tsx:3 — import
-src/agent/ui/AgentProgressLine.tsx:87
-src/platform/status/status.tsx:11 — import
-src/platform/status/status.tsx:211 (two occurrences on this line)
-src/agent/ui/tasks/InProcessTeammateDetailDialog.tsx:11 — import
-src/agent/ui/tasks/InProcessTeammateDetailDialog.tsx:162
-src/platform/deepLink/banner.ts:18 — import
-src/platform/deepLink/banner.ts:70
-src/agent/ui/tasks/AsyncAgentDetailDialog.tsx:11 — import
-src/agent/ui/tasks/AsyncAgentDetailDialog.tsx:124
-src/agent/messages/messages.ts:86 — import
-src/agent/messages/messages.ts:4091 (two occurrences)
-src/agent/messages/messages.ts:4092
-src/agent/messages/messages.ts:4096
-src/platform/status/statusNoticeDefinitions.tsx:8 — import
-src/platform/status/statusNoticeDefinitions.tsx:44
-src/platform/status/statusNoticeDefinitions.tsx:45
-src/platform/status/statusNoticeDefinitions.tsx:153
-src/platform/status/statusNoticeDefinitions.tsx:154
-src/agent/ui/Stats.tsx:17 — import
-src/agent/ui/Stats.tsx:453
-src/agent/ui/Stats.tsx:463
-src/agent/ui/Stats.tsx:897
-src/agent/ui/Stats.tsx:905
-src/agent/ui/Stats.tsx:1136
-src/agent/ui/Stats.tsx:1141
+src/utils/text/format.ts:124 — declaration `export function formatNumber(number: number): string {`
+src/utils/text/format.ts:134 — internal call `return formatNumber(count).replace('.0', '')`
+src/cost-tracker.ts:52 — import
+src/cost-tracker.ts:232
+src/cost-tracker.ts:233
+src/cost-tracker.ts:235
+src/cost-tracker.ts:238
+src/cost-tracker.ts:241
+src/components/CoordinatorAgentStatus.tsx:19 — import
+src/components/CoordinatorAgentStatus.tsx:173
+src/components/AgentProgressLine.tsx:3 — import
+src/components/AgentProgressLine.tsx:87
+src/components/status.tsx:11 — import
+src/components/status.tsx:211 (two occurrences on this line)
+src/components/tasks/InProcessTeammateDetailDialog.tsx:11 — import
+src/components/tasks/InProcessTeammateDetailDialog.tsx:162
+src/services/deepLink/banner.ts:18 — import
+src/services/deepLink/banner.ts:70
+src/components/tasks/AsyncAgentDetailDialog.tsx:11 — import
+src/components/tasks/AsyncAgentDetailDialog.tsx:124
+src/services/messages/messages.ts:86 — import
+src/services/messages/messages.ts:4091 (two occurrences)
+src/services/messages/messages.ts:4092
+src/services/messages/messages.ts:4096
+src/components/statusNoticeDefinitions.tsx:8 — import
+src/components/statusNoticeDefinitions.tsx:44
+src/components/statusNoticeDefinitions.tsx:45
+src/components/statusNoticeDefinitions.tsx:153
+src/components/statusNoticeDefinitions.tsx:154
+src/components/Stats.tsx:17 — import
+src/components/Stats.tsx:453
+src/components/Stats.tsx:463
+src/components/Stats.tsx:897
+src/components/Stats.tsx:905
+src/components/Stats.tsx:1136
+src/components/Stats.tsx:1141
 src/components/St
 ...[truncado]
 ```
 
 ### find-implementations
 
-> No arquivo `src/tools/Tool.ts` existe um tipo `Tool` (interface ou type). Liste todos os locais no codebase que implementam/satisfazem esse tipo `Tool` — ou seja, arquivos que exportam algo do tipo `Tool` (uma instancia concreta de tool builtin). Quero arquivo:linha de cada implementacao. Nao edite nada.
+> No arquivo `src/Tool.ts` existe um tipo `Tool` (interface ou type). Liste todos os locais no codebase que implementam/satisfazem esse tipo `Tool` — ou seja, arquivos que exportam algo do tipo `Tool` (uma instancia concreta de tool builtin). Quero arquivo:linha de cada implementacao. Nao edite nada.
 
 **Variant A run#1:**
 
 ```
-Aqui está a lista completa de todas as implementações concretas do tipo `Tool` (construídas via `buildTool(...)` em `src/tools/Tool.ts:798`):
+Aqui está a lista completa de todas as implementações concretas do tipo `Tool` (construídas via `buildTool(...)` em `src/Tool.ts:798`):
 
 **Tools de filesystem/edição:**
 - `src/tools/FileReadTool/FileReadTool.ts:337`

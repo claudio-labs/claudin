@@ -84,8 +84,8 @@
 
 **test-failure-triage run#1** (atomic=1, compound=1):
 
-- [A] `bun test src/shared/log.test.ts`
-- [C] `bun test src/shared/log.test.ts 2>&1 | tail -30`
+- [A] `bun test src/utils/log.test.ts`
+- [C] `bun test src/utils/log.test.ts 2>&1 | tail -30`
 
 **build-output-inspect run#2** (atomic=0, compound=1):
 
@@ -93,8 +93,8 @@
 
 **test-failure-triage run#2** (atomic=1, compound=1):
 
-- [A] `bun test src/shared/log.test.ts`
-- [C] `bun test src/shared/log.test.ts 2>&1 | tail -40`
+- [A] `bun test src/utils/log.test.ts`
+- [C] `bun test src/utils/log.test.ts 2>&1 | tail -40`
 
 **build-output-inspect run#3** (atomic=0, compound=1):
 
@@ -102,7 +102,7 @@
 
 **test-failure-triage run#3** (atomic=0, compound=1):
 
-- [C] `bun test src/shared/log.test.ts 2>&1 | tail -30`
+- [C] `bun test src/utils/log.test.ts 2>&1 | tail -30`
 
 **build-output-inspect run#4** (atomic=0, compound=1):
 
@@ -110,8 +110,8 @@
 
 **test-failure-triage run#4** (atomic=1, compound=1):
 
-- [A] `bun test src/shared/log.test.ts`
-- [C] `bun test src/shared/log.test.ts 2>&1 | tail -30`
+- [A] `bun test src/utils/log.test.ts`
+- [C] `bun test src/utils/log.test.ts 2>&1 | tail -30`
 
 **build-output-inspect run#5** (atomic=0, compound=1):
 
@@ -119,8 +119,8 @@
 
 **test-failure-triage run#5** (atomic=1, compound=1):
 
-- [A] `bun test src/shared/log.test.ts`
-- [C] `bun test src/shared/log.test.ts 2>&1 | tail -50`
+- [A] `bun test src/utils/log.test.ts`
+- [C] `bun test src/utils/log.test.ts 2>&1 | tail -50`
 
 ### Variante B
 
@@ -130,7 +130,7 @@
 
 **test-failure-triage run#1** (atomic=0, compound=1):
 
-- [C] `bun test src/shared/log.test.ts 2>&1 | tail -30`
+- [C] `bun test src/utils/log.test.ts 2>&1 | tail -30`
 
 **build-output-inspect run#2** (atomic=0, compound=1):
 
@@ -138,8 +138,8 @@
 
 **test-failure-triage run#2** (atomic=1, compound=1):
 
-- [A] `bun test src/shared/log.test.ts`
-- [C] `bun test src/shared/log.test.ts 2>&1 | tail -50`
+- [A] `bun test src/utils/log.test.ts`
+- [C] `bun test src/utils/log.test.ts 2>&1 | tail -50`
 
 **build-output-inspect run#3** (atomic=0, compound=1):
 
@@ -147,8 +147,8 @@
 
 **test-failure-triage run#3** (atomic=1, compound=1):
 
-- [A] `bun test src/shared/log.test.ts`
-- [C] `bun test src/shared/log.test.ts 2>&1 | tail -50`
+- [A] `bun test src/utils/log.test.ts`
+- [C] `bun test src/utils/log.test.ts 2>&1 | tail -50`
 
 **build-output-inspect run#4** (atomic=0, compound=1):
 
@@ -156,8 +156,8 @@
 
 **test-failure-triage run#4** (atomic=1, compound=1):
 
-- [A] `bun test src/shared/log.test.ts`
-- [C] `bun test src/shared/log.test.ts 2>&1 | tail -40`
+- [A] `bun test src/utils/log.test.ts`
+- [C] `bun test src/utils/log.test.ts 2>&1 | tail -40`
 
 **build-output-inspect run#5** (atomic=0, compound=1):
 
@@ -165,8 +165,8 @@
 
 **test-failure-triage run#5** (atomic=1, compound=1):
 
-- [A] `bun test src/shared/log.test.ts`
-- [C] `bun test src/shared/log.test.ts 2>&1 | tail -30`
+- [A] `bun test src/utils/log.test.ts`
+- [C] `bun test src/utils/log.test.ts 2>&1 | tail -30`
 
 ## Outputs (resultText) lado a lado
 
@@ -291,12 +291,12 @@ Sim... não, sem warnings. Build limpo:
 
 ### test-failure-triage
 
-> Rode `bun test src/shared/log.test.ts` e me resuma o resultado: quantos testes passaram, quantos falharam, e qual o tempo total.
+> Rode `bun test src/utils/log.test.ts` e me resuma o resultado: quantos testes passaram, quantos falharam, e qual o tempo total.
 
 **Variant A run#1:**
 
 ```
-O arquivo `src/shared/log.test.ts` não existe — Bun não encontrou nenhum teste correspondente ao filtro. Tempo: 102ms na varredura, 0 testes executados (0 passaram, 0 falharam).
+O arquivo `src/utils/log.test.ts` não existe — Bun não encontrou nenhum teste correspondente ao filtro. Tempo: 102ms na varredura, 0 testes executados (0 passaram, 0 falharam).
 
 Quer que eu procure pelo arquivo de teste correto para `log.ts`?
 ```
@@ -304,15 +304,15 @@ Quer que eu procure pelo arquivo de teste correto para `log.ts`?
 **Variant A run#2:**
 
 ```
-O arquivo `src/shared/log.test.ts` não existe — Bun não encontrou nenhum test file correspondente (8435 arquivos varridos, zero matches).
+O arquivo `src/utils/log.test.ts` não existe — Bun não encontrou nenhum test file correspondente (8435 arquivos varridos, zero matches).
 
-Quer que eu procure o teste correto para `src/shared/log.ts` (talvez esteja em outro caminho), ou rodar outro arquivo?
+Quer que eu procure o teste correto para `src/utils/log.ts` (talvez esteja em outro caminho), ou rodar outro arquivo?
 ```
 
 **Variant A run#3:**
 
 ```
-O arquivo `src/shared/log.test.ts` não existe — o Bun não encontrou nenhum teste com esse caminho (8435 arquivos varridos, zero matches).
+O arquivo `src/utils/log.test.ts` não existe — o Bun não encontrou nenhum teste com esse caminho (8435 arquivos varridos, zero matches).
 
 Quer que eu procure o teste de `log` em outro caminho (ex.: `src/utils/log/*.test.ts`) ou rode outro arquivo?
 ```
@@ -320,17 +320,17 @@ Quer que eu procure o teste de `log` em outro caminho (ex.: `src/utils/log/*.tes
 **Variant A run#4:**
 
 ```
-O arquivo `src/shared/log.test.ts` não existe — Bun não encontrou nenhum teste que bata com esse filtro (8435 arquivos varridos, 0 matches). Sem testes rodados → 0 passaram, 0 falharam. Tempo da varredura: ~112 ms.
+O arquivo `src/utils/log.test.ts` não existe — Bun não encontrou nenhum teste que bata com esse filtro (8435 arquivos varridos, 0 matches). Sem testes rodados → 0 passaram, 0 falharam. Tempo da varredura: ~112 ms.
 
-Quer que eu procure o arquivo de teste correto para `src/shared/log.ts`?
+Quer que eu procure o arquivo de teste correto para `src/utils/log.ts`?
 ```
 
 **Variant A run#5:**
 
 ```
-O arquivo `src/shared/log.test.ts` não existe — o Bun não encontrou nenhum teste com esse caminho (8435 arquivos pesquisados em 122ms, zero matches).
+O arquivo `src/utils/log.test.ts` não existe — o Bun não encontrou nenhum teste com esse caminho (8435 arquivos pesquisados em 122ms, zero matches).
 
-Quer que eu procure o arquivo de testes correto para `src/shared/log.ts` (ex.: pode estar com outro nome ou em outro diretório)?
+Quer que eu procure o arquivo de testes correto para `src/utils/log.ts` (ex.: pode estar com outro nome ou em outro diretório)?
 ```
 
 **Variant B run#1:**
@@ -342,36 +342,36 @@ Nenhum `log*.test.ts` em `src/utils/`. Me confirma o caminho correto ou o que qu
 **Variant B run#2:**
 
 ```
-O arquivo `src/shared/log.test.ts` não existe — Bun procurou e não achou nenhum teste com esse caminho (8435 arquivos varridos em 132ms).
+O arquivo `src/utils/log.test.ts` não existe — Bun procurou e não achou nenhum teste com esse caminho (8435 arquivos varridos em 132ms).
 
 - Passaram: 0
 - Falharam: 0 (nenhum teste rodou)
 - Tempo total: 132ms (busca)
 
-Quer que eu procure o arquivo de teste correto para `src/shared/log.ts`?
+Quer que eu procure o arquivo de teste correto para `src/utils/log.ts`?
 ```
 
 **Variant B run#3:**
 
 ```
-O arquivo `src/shared/log.test.ts` não existe — Bun não encontrou nenhum teste que case com esse filtro (8435 arquivos varridos, 0 matches).
+O arquivo `src/utils/log.test.ts` não existe — Bun não encontrou nenhum teste que case com esse filtro (8435 arquivos varridos, 0 matches).
 
-Quer que eu procure o teste correto? `src/shared/log.ts` existe, mas sem `.test.ts` colocalizado. Posso rodar `Glob` por `**/log*.test.ts` se você quiser.
+Quer que eu procure o teste correto? `src/utils/log.ts` existe, mas sem `.test.ts` colocalizado. Posso rodar `Glob` por `**/log*.test.ts` se você quiser.
 ```
 
 **Variant B run#4:**
 
 ```
-O arquivo `src/shared/log.test.ts` não existe — o Bun procurou e não achou nenhum arquivo de teste com esse nome. Nada foi executado (0 passes, 0 falhas; ~107ms só de varredura).
+O arquivo `src/utils/log.test.ts` não existe — o Bun procurou e não achou nenhum arquivo de teste com esse nome. Nada foi executado (0 passes, 0 falhas; ~107ms só de varredura).
 
-Quer que eu procure o teste correto para `src/shared/log.ts` (talvez esteja em outro caminho) ou rode outro arquivo?
+Quer que eu procure o teste correto para `src/utils/log.ts` (talvez esteja em outro caminho) ou rode outro arquivo?
 ```
 
 **Variant B run#5:**
 
 ```
-O arquivo `src/shared/log.test.ts` não existe — o Bun procurou em 8435 arquivos e não encontrou nada com esse nome. Nada foi executado, então não há passes, falhas nem tempo de testes a relatar (busca em si levou ~137ms).
+O arquivo `src/utils/log.test.ts` não existe — o Bun procurou em 8435 arquivos e não encontrou nada com esse nome. Nada foi executado, então não há passes, falhas nem tempo de testes a relatar (busca em si levou ~137ms).
 
-Quer que eu procure o teste correto para `src/shared/log.ts`? Posso rodar um Glob para ver se há outro arquivo de teste cobrindo esse módulo.
+Quer que eu procure o teste correto para `src/utils/log.ts`? Posso rodar um Glob para ver se há outro arquivo de teste cobrindo esse módulo.
 ```
 

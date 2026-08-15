@@ -30,7 +30,7 @@ Claudin expõe um `LSPTool` único com 13 operações via discriminated union (`
 
 `LSP_WRITE_OPERATIONS = {rename, applyCodeAction, renameFile}` em `schemas.ts:318-322`.
 
-**Servidores embarcados** (`src/platform/lsp/builtinServers.ts:461-609`, registro `SERVER_DEFINITIONS`):
+**Servidores embarcados** (`src/services/lsp/builtinServers.ts:461-609`, registro `SERVER_DEFINITIONS`):
 
 | Servidor | Bin | Linguagens |
 |---|---|---|
@@ -47,7 +47,7 @@ Claudin expõe um `LSPTool` único com 13 operações via discriminated union (`
 | `kotlin-language-server` | GH release (java) | .kt/.kts |
 | `clangd` | GH release | .c/.cc/.cpp/.cxx/.h/.hpp/.hxx |
 
-Detecção via `which` (`builtinServers.ts:26-30`, `:818-849`), auto-install opcional. Gate global em `src/platform/lsp/userSettings.ts` (`isLspGloballyEnabled`). Diagnostics passivos via `LSPDiagnosticRegistry.ts` + `passiveFeedback.ts`.
+Detecção via `which` (`builtinServers.ts:26-30`, `:818-849`), auto-install opcional. Gate global em `src/services/lsp/userSettings.ts` (`isLspGloballyEnabled`). Diagnostics passivos via `LSPDiagnosticRegistry.ts` + `passiveFeedback.ts`.
 
 ### 1.2 Grep / Glob / Read
 
@@ -92,7 +92,7 @@ Explore tem `omitClaudeMd: true` + `omitGitStatus: true` para reduzir prompt (`e
 Outros:
 
 - `/diff` (`src/commands/diff/`), `/passes` (`src/commands/passes/`), `/wiki`, `/knowledge`, `/insights`, `/brief`.
-- `/wiki init|status|ingest` (`src/commands/wiki/wiki.tsx`, serviço `src/platform/wiki/`): cria `.claudin/wiki/` com `index.md`, `log.md`, `pages/`, `sources/`. **Knowledge base manual**, não derivada de grafo — template + ingestão de arquivos (`src/platform/wiki/init.ts:6-37`).
+- `/wiki init|status|ingest` (`src/commands/wiki/wiki.tsx`, serviço `src/services/wiki/`): cria `.claudin/wiki/` com `index.md`, `log.md`, `pages/`, `sources/`. **Knowledge base manual**, não derivada de grafo — template + ingestão de arquivos (`src/services/wiki/init.ts:6-37`).
 
 ### 1.5 Git / diff / risk
 
@@ -113,7 +113,7 @@ Outros:
 | Transitive impact radius BFS (`get_impact_radius`) | Parcial | `LSPTool.incomingCalls`+`outgoingCalls` 1-hop por call (`schemas.ts:146,165`) | **Sim** |
 | Flow detection (entry-point → call chain) | Parcial | Call hierarchy via LSP, sem entry-point classifier | Sim |
 | Community clustering (Leiden) | Não | — | Sim (baixa demanda) |
-| Architecture overview (cross-community edges) | Parcial | `/wiki` manual + LLM (`src/platform/wiki/init.ts`) | Sim (não automatizado) |
+| Architecture overview (cross-community edges) | Parcial | `/wiki` manual + LLM (`src/services/wiki/init.ts`) | Sim (não automatizado) |
 | Hub/Bridge nodes (centrality) | Não | — | Sim (baixa demanda) |
 | Knowledge gaps (untested hotspots) | Não | — | **Sim** |
 | Surprising connections | Não | — | Cosmético |
@@ -195,7 +195,7 @@ Avaliação por frequência (quão comum), severidade (quanto custa hoje em tool
 - **Só grafo daria:** mesma resposta.
 
 ### 4.4 Onboarding: "explica essa codebase"
-- **Hoje:** `/wiki` é template vazio (`src/platform/wiki/init.ts:6-37`). `claude-code-guide` fala do produto Claudin, não do repo do usuário.
+- **Hoje:** `/wiki` é template vazio (`src/services/wiki/init.ts:6-37`). `claude-code-guide` fala do produto Claudin, não do repo do usuário.
 - **Falta:** geração automática de "principais módulos + relações" partindo do grafo.
 - **Nativo TS:** **médio (1 semana)** — Read `view='outline'` + import graph simples + LLM summarizer. Funciona em TS/JS/Py/Go.
 - **Só grafo daria:** communities (Leiden) destacando subsistemas que não emergem só do file tree.

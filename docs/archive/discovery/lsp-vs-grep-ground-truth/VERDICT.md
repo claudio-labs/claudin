@@ -8,7 +8,7 @@
 
 Durante a tentativa de medir cobertura/ruído de LSP vs Grep nos 5 prompts canônicos do Tier 6.1, **descobrimos um bug crítico no roteamento de servidor LSP** que invalidava qualquer experimento prévio: o servidor `biome` (linter-only) shadowava o `typescript-language-server` em arquivos `.ts/.tsx`, fazendo `findReferences`, `hover`, `goToDefinition`, `documentSymbol` e `prepareCallHierarchy` retornarem `Method not found`.
 
-Após corrigir o bug (`src/platform/lsp/builtinServers.ts` — ordem determinística em `getBuiltinLspServers`), repetimos o bench A/B em openclaude com descriptions neutras nas duas variantes. Resultado: **LSP=0 em todas as 8 runs**. O agente não usa LSP organicamente sem incentivo explícito.
+Após corrigir o bug (`src/services/lsp/builtinServers.ts` — ordem determinística em `getBuiltinLspServers`), repetimos o bench A/B em openclaude com descriptions neutras nas duas variantes. Resultado: **LSP=0 em todas as 8 runs**. O agente não usa LSP organicamente sem incentivo explícito.
 
 ## Bug encontrado e corrigido
 
@@ -16,7 +16,7 @@ Após corrigir o bug (`src/platform/lsp/builtinServers.ts` — ordem determinís
 
 **Fix**: coletar `Promise.all` em um array indexado, iterar `SERVER_DEFINITIONS` em ordem fixa para popular o Record. Paralelismo preservado, ordem garantida.
 
-**Teste de regressão**: `src/platform/lsp/builtinServers.test.ts` — "preserves SERVER_DEFINITIONS order regardless of detection latency".
+**Teste de regressão**: `src/services/lsp/builtinServers.test.ts` — "preserves SERVER_DEFINITIONS order regardless of detection latency".
 
 ## Benches
 
@@ -43,7 +43,7 @@ B foi mais barato (menos turns: 4.3 vs 6.8) mas pelo motivo *errado*: convergiu 
 
 ## Conclusões
 
-1. **Bug LSP corrigido** independentemente do experimento (`getBuiltinLspServers` em `src/platform/lsp/builtinServers.ts` — ordem determinística). Ganho universal para qualquer usuário com `biome` global instalado em monorepos TS.
+1. **Bug LSP corrigido** independentemente do experimento (`getBuiltinLspServers` em `src/services/lsp/builtinServers.ts` — ordem determinística). Ganho universal para qualquer usuário com `biome` global instalado em monorepos TS.
 
 2. **Descriptions globais não movem o agente para LSP** — provado em 3 rodadas, $20+ gastos, com e sem o bug, com e sem tabela LSP-first explícita. T6.1 dropado do ROADMAP.
 

@@ -137,7 +137,7 @@ JSONL persistido fica compacto; runtime vê dados completos.
 
 ### O que existe
 
-`src/agent/tools/toolResultStorage.ts:171 persistToolResult()` — única função de
+`src/services/tools/toolResultStorage.ts:171 persistToolResult()` — única função de
 persistência de tool result no projeto.
 
 Comportamento concreto:
@@ -147,7 +147,7 @@ Comportamento concreto:
   declaredMax)` (`toolResultStorage.ts:59`) que aplica
   `Math.min(declared, DEFAULT_MAX_RESULT_SIZE_CHARS)`, com
   `DEFAULT_MAX_RESULT_SIZE_CHARS = 50_000`
-  (`src/tools/constants/toolLimits.ts:13`).
+  (`src/constants/toolLimits.ts:13`).
 - **Path** (`toolResultStorage.ts:118`):
   `~/.claudin/projects/<dir>/<sessionId>/tool-results/<toolUseId>.<ext>`
   com ext = `txt` para string, `json` para array de blocks.
@@ -162,7 +162,7 @@ Comportamento concreto:
   Preview é os primeiros ~2KB cortados em newline boundary
   (`toolResultStorage.ts:375 generatePreview`).
 - **Lifetime**: arquivo permanece até cleanup time-based em
-  `src/shared/cleanup.ts:155 cleanupOldSessionFiles` (default
+  `src/utils/cleanup.ts:155 cleanupOldSessionFiles` (default
   `cleanupPeriodDays`, geralmente 30 dias). `/clear` chama
   `unlinkSessionSpillDir(oldSessionId)` (`toolResultStorage.ts:146`) para o
   diretório inteiro da sessão antiga.
@@ -177,12 +177,12 @@ Comportamento concreto:
 - Nenhum dedupe **dentro** da mesma sessão. Se o agente lê o mesmo arquivo
   grande duas vezes (`Read` com offsets diferentes que se sobrepõem),
   cada call gera arquivo separado.
-- Imagens (`src/terminal/image/imageStore.ts`) não usam content-addressing — verifiquei
+- Imagens (`src/utils/imageStore.ts`) não usam content-addressing — verifiquei
   acima, sem `createHash` no arquivo.
 
 ### Compaction: o que sobrevive entre turnos
 
-`src/agent/compact/postCompactCleanup.ts:42 runPostCompactCleanup`:
+`src/services/compact/postCompactCleanup.ts:42 runPostCompactCleanup`:
 
 - Reseta caches in-memory (`microcompactState`, prompt cache break detection,
   session ingress, diagnostic tracker, skipped timestamps).
@@ -309,7 +309,7 @@ Refcount em SQLite seria correto teoricamente mas:
 
 **Mark-sweep periódico** é mais simples e mais robusto:
 
-1. Trigger: `cleanupOldSessionFiles` em `src/shared/cleanup.ts` já roda em
+1. Trigger: `cleanupOldSessionFiles` em `src/utils/cleanup.ts` já roda em
    background no startup. Adicionar uma fase nova depois da limpeza de sessões
    antigas.
 2. Mark: varre todos os JSONL de sessão sobreviventes em
@@ -357,7 +357,7 @@ Não precisa de script de migração one-shot. Em ~30 dias o último arquivo de
    blobs órfãos, bytes recuperados.
 4. (Opcional, depois de dados de campo) Mudar mensagem para incluir
    `blob:sha256:` ref se houver UX claro para reuso entre turnos.
-5. (Mais tarde, se imagens migrarem) `src/terminal/image/imageStore.ts` adota o mesmo
+5. (Mais tarde, se imagens migrarem) `src/utils/imageStore.ts` adota o mesmo
    blob store. Ganho de dedupe real para screenshots repetidos.
 
 ## Riscos
@@ -448,23 +448,23 @@ SHA-256 prático: 2^128 operations para colisão. Não é vetor.
 
 ### claudin
 
-- `/home/dev/projects/claudin/src/agent/tools/toolResultStorage.ts:118` —
+- `/home/dev/projects/claudin/src/services/tools/toolResultStorage.ts:118` —
   layout atual de tool-results.
-- `/home/dev/projects/claudin/src/agent/tools/toolResultStorage.ts:146` —
+- `/home/dev/projects/claudin/src/services/tools/toolResultStorage.ts:146` —
   `unlinkSessionSpillDir` (deletado no `/clear`).
-- `/home/dev/projects/claudin/src/agent/tools/toolResultStorage.ts:171` —
+- `/home/dev/projects/claudin/src/services/tools/toolResultStorage.ts:171` —
   `persistToolResult`.
-- `/home/dev/projects/claudin/src/agent/tools/toolResultStorage.ts:223` —
+- `/home/dev/projects/claudin/src/services/tools/toolResultStorage.ts:223` —
   formato `<persisted-output>` que o modelo vê.
-- `/home/dev/projects/claudin/src/agent/tools/toolResultStorage.ts:308–369` —
+- `/home/dev/projects/claudin/src/services/tools/toolResultStorage.ts:308–369` —
   trigger por threshold.
-- `/home/dev/projects/claudin/src/tools/constants/toolLimits.ts:13` —
+- `/home/dev/projects/claudin/src/constants/toolLimits.ts:13` —
   `DEFAULT_MAX_RESULT_SIZE_CHARS = 50_000`.
-- `/home/dev/projects/claudin/src/shared/cleanup.ts:155` —
+- `/home/dev/projects/claudin/src/utils/cleanup.ts:155` —
   `cleanupOldSessionFiles` (time-based, 30d default).
-- `/home/dev/projects/claudin/src/shared/cleanup.ts:196–203` —
+- `/home/dev/projects/claudin/src/utils/cleanup.ts:196–203` —
   varre tool-results dentro de session dirs.
-- `/home/dev/projects/claudin/src/agent/compact/postCompactCleanup.ts:42` —
+- `/home/dev/projects/claudin/src/services/compact/postCompactCleanup.ts:42` —
   `runPostCompactCleanup` (não toca em tool-results).
-- `/home/dev/projects/claudin/src/agent/compact/postCompactCleanup.ts:159–165` —
+- `/home/dev/projects/claudin/src/services/compact/postCompactCleanup.ts:159–165` —
   comentário explícito: arquivos persistidos sobrevivem ao compact.

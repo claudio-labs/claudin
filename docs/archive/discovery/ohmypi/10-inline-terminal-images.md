@@ -15,8 +15,8 @@ omp renderiza imagens diretamente no terminal via protocolos gráficos. Claudin 
 
 - `src/tools/FileReadTool/FileReadTool.ts:705-712` — hoje empacota imagem como Anthropic multimodal block (`{type:'image', source:{base64,media_type}}`); só vai pro modelo.
 - `src/components/FileReadTool/UI.tsx:80-89` — saída literal `Read image (size)`.
-- `src/terminal/image/ClickableImageRef.tsx` — OSC 8 hyperlink `file://` (terceiriza ao viewer).
-- `src/terminal/ink/terminal.ts:120-167` — XTVERSION probe async já existe (extensão natural pra adicionar capability gráfica).
+- `src/components/ClickableImageRef.tsx` — OSC 8 hyperlink `file://` (terceiriza ao viewer).
+- `src/ink/terminal.ts:120-167` — XTVERSION probe async já existe (extensão natural pra adicionar capability gráfica).
 - `imageProcessor.ts` (sharp) + `imageResizer.ts` reaproveitáveis pra encoders Kitty/iTerm2.
 
 ## Por que voltou

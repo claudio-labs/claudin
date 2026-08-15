@@ -12,7 +12,7 @@ Referências: `docs/archive/discovery/ohmypi/08-cow-filesystem-isolation.md`,
 
 ## 1. Worktree hoje em Claudin
 
-`src/vcs/git/worktree.ts:744` `createWorktreeForSession(sessionId, slug, ...)`:
+`src/services/git/worktree.ts:744` `createWorktreeForSession(sessionId, slug, ...)`:
 
 1. `validateWorktreeSlug` (segmento alfanumérico, max 64 chars).
 2. Se `hasWorktreeCreateHook()` → executa hook do usuário e adota
@@ -67,7 +67,7 @@ o GB de `node_modules`.
 
 ## 2. Sub-agents paralelos em Claudin
 
-`src/agent/coordinator/workerAgent.ts` existe mas é minúsculo (`WORKER_AGENT`,
+`src/coordinator/workerAgent.ts` existe mas é minúsculo (`WORKER_AGENT`,
 14 linhas) — define uma agent built-in para o `COORDINATOR_MODE`. O motor
 de paralelismo de fato é `AgentTool` (`src/tools/AgentTool/AgentTool.tsx`)
 que aceita `multiAgent` / lista de prompts em paralelo.

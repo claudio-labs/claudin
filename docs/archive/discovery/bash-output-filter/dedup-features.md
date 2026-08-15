@@ -2,7 +2,7 @@
 
 Comandos com erros/logs frequentemente têm **conteúdo duplicado** que regex command-aware não cobre — porque a duplicação depende do que aconteceu em runtime, não do comando em si. Esta página documenta as 3 features de dedup propostas para o filter pipeline.
 
-> **Status:** prototipadas em `validation/pipeline.ts`, validadas com 6 test cases. Já existem no claudin (`src/agent/tools/toolResultSummarizer.ts:475-533`) mas só ativam acima do threshold de 8KB. A proposta é **trazer pro filter declarativo** para aplicar mesmo em outputs pequenos.
+> **Status:** prototipadas em `validation/pipeline.ts`, validadas com 6 test cases. Já existem no claudin (`src/services/tools/toolResultSummarizer.ts:475-533`) mas só ativam acima do threshold de 8KB. A proposta é **trazer pro filter declarativo** para aplicar mesmo em outputs pequenos.
 
 ## 3 estratégias, do mais conservador ao mais agressivo
 
@@ -174,7 +174,7 @@ Implementação ~30 linhas. **Adiar pra v2** — não bloqueia o MVP.
 
 ## Comparativo com `toolResultSummarizer` atual
 
-claudin já tem `collapseIdenticalRuns` + `collapseDigitTemplates` em `src/agent/tools/toolResultSummarizer.ts:475-533`. Diferenças entre o existente e o proposto:
+claudin já tem `collapseIdenticalRuns` + `collapseDigitTemplates` em `src/services/tools/toolResultSummarizer.ts:475-533`. Diferenças entre o existente e o proposto:
 
 | Aspecto | Summarizer atual | Filter proposto |
 |---|---|---|

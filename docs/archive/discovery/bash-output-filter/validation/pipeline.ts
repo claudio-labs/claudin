@@ -299,7 +299,7 @@ export function matchesCommand(filter: FilterSpec, command: string): boolean {
  */
 export function parseBashCommand(command: string): RewriteContext {
   const trimmed = command.trim()
-  // Naive split — production version would use src/platform/bash/commands.ts
+  // Naive split — production version would use src/services/bash/commands.ts
   const tokens = trimmed.split(/\s+/)
   return {
     command: trimmed,

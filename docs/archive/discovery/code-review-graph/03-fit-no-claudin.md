@@ -93,7 +93,7 @@ Não rodei o `build` aqui (~25k LOC Python + tree-sitter language-pack instalado
 | **`/security-review`** | `src/commands/security-review.ts` (243 LOC) | Mesmo argumento: para auditar fluxo de tainted data, seguir edges `callers_of`/`callees_of` é mais barato que grep recursivo | Plausível mas não medido. |
 | **FileEditTool** | `src/tools/FileEditTool/FileEditTool.ts` (649 LOC) | Antes de renomear símbolo, listar callers para preview/guard | Valor real, mas o uso típico de FileEditTool é edição local; renames cross-file no Claudin hoje usam Grep e o usuário valida — o ganho é em UX, não em correctness. |
 | **Compaction** | `src/services/contextCompaction*` (não citei, evito over-claim) | Substituir "snapshot dos arquivos lidos" por "lista de qualified-names tocados" no resumo da compaction | Ideia atraente, mas o overhead de manter o grafo sincronizado durante uma sessão pode comer o ganho. **Não medido.** |
-| **MCP client nativo** | `src/mcp/client.ts` (66 LOC) — já fala MCP fora-da-caixa | Ponto óbvio: o projeto JÁ se serve como MCP server. Não precisa de código no Claudin para o usuário plugar. | **Sólido.** Zero esforço de engenharia. |
+| **MCP client nativo** | `src/services/mcp/client.ts` (66 LOC) — já fala MCP fora-da-caixa | Ponto óbvio: o projeto JÁ se serve como MCP server. Não precisa de código no Claudin para o usuário plugar. | **Sólido.** Zero esforço de engenharia. |
 
 ### B.5 Caminhos de integração — leve → pesado
 

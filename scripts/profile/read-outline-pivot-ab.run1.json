@@ -2,11 +2,11 @@
   "model": "claude-sonnet-5",
   "reps": 3,
   "fixtures": [
-    "src/providers/usage/modelCost.ts",
+    "src/services/api/modelCost.ts",
     "src/tools/BashTool/sedValidation.ts",
-    "src/platform/lifecycleHooks/events.ts",
-    "src/mcp/doctor.ts",
-    "src/sessions/sessionRestore.ts"
+    "src/services/lifecycleHooks/events.ts",
+    "src/services/mcp/doctor.ts",
+    "src/services/session/sessionRestore.ts"
   ],
   "A": [
     {

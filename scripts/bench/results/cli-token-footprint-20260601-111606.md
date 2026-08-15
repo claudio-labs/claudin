@@ -4,23 +4,23 @@ Workload: 10 read turns + 5 edit turns per CLI.
 Model: claude-opus-4-8.
 
 **Read files:**
-- `src/agent/repl/REPL.tsx` (220K)
-- `src/terminal/image/ansiToPng.ts` (212K)
-- `src/platform/headless/print/runHeadless.ts` (160K)
-- `src/platform/bridge/bridgeMain.ts` (112K)
-- `src/platform/bash/ast.ts` (112K)
-- `src/plugins/pluginLoader.ts` (112K)
-- `src/terminal/prompt-input/PromptInput.tsx` (104K)
+- `src/screens/REPL.tsx` (220K)
+- `src/utils/ansiToPng.ts` (212K)
+- `src/cli/print/runHeadless.ts` (160K)
+- `src/bridge/bridgeMain.ts` (112K)
+- `src/services/bash/ast.ts` (112K)
+- `src/services/plugins/pluginLoader.ts` (112K)
+- `src/components/PromptInput/PromptInput.tsx` (104K)
 - `src/commands/insights.ts` (104K)
 - `src/tools/BashTool/bashSecurity.ts` (104K)
-- `src/platform/bridge/replBridge.ts` (96K)
+- `src/bridge/replBridge.ts` (96K)
 
 **Edit files** (copied to scratch dir; real files untouched):
-- `src/platform/bridge/bridgeEnabled.ts` (12K)
-- `src/platform/bridge/bridgePointer.ts` (8.0K)
-- `src/platform/bridge/bridgeStatusUtil.ts` (8.0K)
-- `src/platform/bridge/createSession.ts` (16K)
-- `src/platform/bridge/envLessBridgeConfig.ts` (8.0K)
+- `src/bridge/bridgeEnabled.ts` (12K)
+- `src/bridge/bridgePointer.ts` (8.0K)
+- `src/bridge/bridgeStatusUtil.ts` (8.0K)
+- `src/bridge/createSession.ts` (16K)
+- `src/bridge/envLessBridgeConfig.ts` (8.0K)
 
 ## claudiodev
 

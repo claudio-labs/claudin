@@ -5,7 +5,7 @@
 
 ## Reavaliação 2026-05-20 — o que ainda faz sentido
 
-Revisão dos 6 docs contra o código atual do Claudin (`src/memory/memdir/`, `src/memory/extract/`, `src/tools/FileReadTool/`).
+Revisão dos 6 docs contra o código atual do Claudin (`src/memdir/`, `src/services/extractMemories/`, `src/tools/FileReadTool/`).
 
 | Doc | Situação | Veredito |
 |---|---|---|
@@ -22,7 +22,7 @@ Revisão dos 6 docs contra o código atual do Claudin (`src/memory/memdir/`, `sr
 
 O `claude-mem` é um plugin side-car focado em **memória persistente com economia de contexto**, claim central de ~10× redução de tokens vs. transcript no contexto. Roda como daemon HTTP local + MCP server + skills + SQLite + ChromaDB. Não é um fork, é plugin.
 
-Este discovery não propõe adotar o `claude-mem`. Propõe identificar **quais técnicas dele têm ganho de tokens real e poderiam ser portadas/adaptadas para o Claudin**, que já tem infra própria de memória (`src/memory/memdir/`, `src/memory/extract/`).
+Este discovery não propõe adotar o `claude-mem`. Propõe identificar **quais técnicas dele têm ganho de tokens real e poderiam ser portadas/adaptadas para o Claudin**, que já tem infra própria de memória (`src/memdir/`, `src/services/extractMemories/`).
 
 ## Escopo
 
@@ -63,7 +63,7 @@ A leitura inicial (feita por inspeção rápida) tinha vários erros que a verif
 
 Por razão valor/esforço:
 
-1. **`structured-extraction.md`** — skip-routine no prompt + enums fechados. Custo: ~50 linhas em `src/memory/extract/`. Ganho imediato em ruído de memórias.
+1. **`structured-extraction.md`** — skip-routine no prompt + enums fechados. Custo: ~50 linhas em `src/services/extractMemories/`. Ganho imediato em ruído de memórias.
 2. **`smart-explore.md`** — v1 com regex por linguagem (sem tree-sitter). Maior ganho por dólar; reutiliza filosofia do `BashOutputFilter`.
 3. **`progressive-memory-recall.md`** — `MemorySearchTool` MCP-like. Maior ganho potencial em sessões longevas; mais invasivo no fluxo de boot do REPL.
 4. **`tiered-memory-rendering.md`** — token budget no renderer. Independente, baixo risco.

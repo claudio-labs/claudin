@@ -27,7 +27,7 @@
 ... (50+ download lines em build cold)
 [INFO]
 [INFO] --- maven-resources-plugin:3.3.1:resources (default-resources) @ myapp ---
-[INFO] Copying 1 resource from src/platform/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
 [INFO]
 [INFO] --- maven-compiler-plugin:3.11.0:compile (default-compile) @ myapp ---
 [INFO] Changes detected - recompiling the module! :source
@@ -48,7 +48,7 @@
 
 ```
 [INFO] ...
-[ERROR] /src/platform/main/java/Main.java:[10,5] cannot find symbol
+[ERROR] /src/main/java/Main.java:[10,5] cannot find symbol
 [ERROR]   symbol:   method foo()
 [ERROR]   location: class Main
 [INFO] BUILD FAILURE
@@ -133,7 +133,7 @@ Output do Surefire plugin: `Tests run: 50, Failures: 0, Errors: 0, Skipped: 0`. 
 **Saída esperada (build com erro):**
 
 ```
-[ERROR] /src/platform/main/java/Main.java:[10,5] cannot find symbol
+[ERROR] /src/main/java/Main.java:[10,5] cannot find symbol
 [ERROR]   symbol:   method foo()
 [ERROR]   location: class Main
 [INFO] BUILD FAILURE

@@ -6,7 +6,7 @@
 
 - **omp** já roda em produção um par de tools complementares: `Replace` (string-edit clássico, fuzzy whitespace) e `AstEdit` (ast-grep nativo, codemods estruturais). As duas convivem; o prompt de `AstEdit` instrui explicitamente: *"For one-off local text edits, prefer the Edit tool."*
 - O motor AST mora em Rust (`crates/pi-ast` + `crates/pi-natives/src/ast.rs`), exposto a TS via NAPI (`@oh-my-pi/pi-natives`). 55 grammars tree-sitter linkadas estaticamente no `.node`.
-- **Claudin** só usa tree-sitter hoje para análise de segurança de Bash (`src/platform/bash/treeSitterAnalysis.ts`, via NAPI nativo). `FileEditTool` é 100% string match + normalização de aspas curvas + fuzzy whitespace via `findActualString` — nenhum AST.
+- **Claudin** só usa tree-sitter hoje para análise de segurança de Bash (`src/services/bash/treeSitterAnalysis.ts`, via NAPI nativo). `FileEditTool` é 100% string match + normalização de aspas curvas + fuzzy whitespace via `findActualString` — nenhum AST.
 - Conclusão pragmática: a posição correta para Claudin espelha omp — **adicionar um novo tool `AstEditTool` em vez de inflar `FileEditTool`**. Modelo continua escolhendo `Edit` para mudanças locais e `AstEdit` para codemods/refactors. Stack proposto: `web-tree-sitter` (WASM) com lazy-load por extensão, não napi.
 
 ---
@@ -66,7 +66,7 @@
 
 ### Tree-sitter atual em Claudin
 
-- Já existe binding NAPI tree-sitter consumido em `src/platform/bash/treeSitterAnalysis.ts` e `src/tools/BashTool/bashSecurity.ts` (~10 referências). Usado *exclusivamente* para análise de segurança de comandos Bash — não para edição.
+- Já existe binding NAPI tree-sitter consumido em `src/services/bash/treeSitterAnalysis.ts` e `src/tools/BashTool/bashSecurity.ts` (~10 referências). Usado *exclusivamente* para análise de segurança de comandos Bash — não para edição.
 - Não há dependência `tree-sitter`/`web-tree-sitter` em `package.json`. O backend tree-sitter Bash atual vem provavelmente como native addon stubado (pre-scan do `scripts/build.ts` substitui imports ausentes).
 
 ---
@@ -169,5 +169,5 @@ Cache por linguagem em `Map<string, Language>` no escopo do módulo. Não há TT
 - claudin: `/home/dev/projects/claudin/src/tools/FileEditTool/types.ts`
 - claudin: `/home/dev/projects/claudin/src/tools/FileEditTool/prompt.ts`
 - claudin: `/home/dev/projects/claudin/src/tools/FileEditTool/FileEditTool.diagnostics.test.ts` (única coverage local)
-- claudin: `/home/dev/projects/claudin/src/platform/bash/treeSitterAnalysis.ts` (uso atual NAPI tree-sitter, escopo Bash)
+- claudin: `/home/dev/projects/claudin/src/services/bash/treeSitterAnalysis.ts` (uso atual NAPI tree-sitter, escopo Bash)
 - spec original: `/home/dev/projects/claudin/docs/archive/discovery/ohmypi/07-tree-sitter-ast-edits.md`

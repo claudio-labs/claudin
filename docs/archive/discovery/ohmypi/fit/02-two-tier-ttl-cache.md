@@ -17,26 +17,26 @@ abaixo, exceto `authCachePromise` que coalesce *leitura* do mesmo arquivo).
 |---|---|---|---|---|
 | WebFetch URL cache | `src/tools/WebFetchTool/utils.ts:64` | `LRUCache` `maxSize=50MB` | 15 min hard | não |
 | WebFetch domain preflight | `src/tools/WebFetchTool/utils.ts:73` | `LRUCache` `max=128` | 5 min hard | não |
-| Tool result cache (Read/Glob/Grep/LSP) | `src/agent/tools/toolResultCache.ts:63` | `LRUCache` `max=500` `maxSize=10MB` | por-tool: 15-60 s + mtime check | não |
-| Directory completion | `src/terminal/suggestions/directoryCompletion.ts:41,47` | `LRUCache` `max=500` | 5 min hard | não |
-| LSP delivered-diagnostics dedup | `src/platform/lsp/LSPDiagnosticRegistry.ts:54` | `LRUCache` `max=500` | sem TTL (LRU only) | n/a |
-| Markdown token cache | `src/terminal/markdown/markdownTokenCache.ts:10` | `Map` (LRU manual, cap 500) | sem TTL | n/a |
-| File-read cache | `src/shared/fs/fileReadCache.ts` (via `cacheBoundsInvariants.test.ts:163-185`) | FIFO cap 1000 | mtime-gated | não |
-| File state cache | `src/shared/fs/fileStateCache.ts:34` | `LRUCache` cap configurável (default ~25 MB) | sem TTL | n/a |
-| Tool-progress dedup | `src/agent/queryHelpers.ts` (cap 100, FIFO) | `Map` | sem TTL | n/a |
-| Image-store dedup | `src/terminal/image/imageStore.ts` (cap 200, FIFO) | `Set` | sem TTL | n/a |
-| Memoize utility (genérico) | `src/shared/data/memoize.ts:242` | `LRUCache` | opcional | não |
+| Tool result cache (Read/Glob/Grep/LSP) | `src/services/tools/toolResultCache.ts:63` | `LRUCache` `max=500` `maxSize=10MB` | por-tool: 15-60 s + mtime check | não |
+| Directory completion | `src/services/suggestions/directoryCompletion.ts:41,47` | `LRUCache` `max=500` | 5 min hard | não |
+| LSP delivered-diagnostics dedup | `src/services/lsp/LSPDiagnosticRegistry.ts:54` | `LRUCache` `max=500` | sem TTL (LRU only) | n/a |
+| Markdown token cache | `src/components/markdownTokenCache.ts:10` | `Map` (LRU manual, cap 500) | sem TTL | n/a |
+| File-read cache | `src/utils/fs/fileReadCache.ts` (via `cacheBoundsInvariants.test.ts:163-185`) | FIFO cap 1000 | mtime-gated | não |
+| File state cache | `src/utils/fs/fileStateCache.ts:34` | `LRUCache` cap configurável (default ~25 MB) | sem TTL | n/a |
+| Tool-progress dedup | `src/utils/queryHelpers.ts` (cap 100, FIFO) | `Map` | sem TTL | n/a |
+| Image-store dedup | `src/utils/imageStore.ts` (cap 200, FIFO) | `Set` | sem TTL | n/a |
+| Memoize utility (genérico) | `src/utils/data/memoize.ts:242` | `LRUCache` | opcional | não |
 
 ### Persistido em disco (`~/.claudin/`)
 
 | Site | file:line | Storage | TTL | In-flight coalescing |
 |---|---|---|---|---|
-| Model lists | `src/providers/model/modelCache.ts:20,47` | JSON-per-provider em `model-cache/` | 24 h hard, versionado | não |
-| Latest version banner | `src/platform/install/latestVersionCache.ts:38,53` | JSON único `latest-version.json` | sem TTL próprio (caller decide via `checkedAt`) | não |
-| MCP auth-required cache | `src/mcp/client/authCache.ts:6,29` | JSON único `mcp-needs-auth-cache.json` | 15 min hard | parcial (leitura memoizada via `authCachePromise`) |
-| Paste store | `src/terminal/input/pasteStore.ts:8` | files in `paste-cache/` | sem TTL (cleanup por `cutoffDate`) | n/a (content-addressed) |
-| File history | `src/shared/fs/fileHistory.ts:54` | `file-history/` por sessão | cap 100 snapshots | n/a |
-| Tool result spill | `src/agent/tools/toolResultStorage.ts` | files in `cache/` | sem TTL | n/a |
+| Model lists | `src/utils/model/modelCache.ts:20,47` | JSON-per-provider em `model-cache/` | 24 h hard, versionado | não |
+| Latest version banner | `src/services/install/latestVersionCache.ts:38,53` | JSON único `latest-version.json` | sem TTL próprio (caller decide via `checkedAt`) | não |
+| MCP auth-required cache | `src/services/mcp/client/authCache.ts:6,29` | JSON único `mcp-needs-auth-cache.json` | 15 min hard | parcial (leitura memoizada via `authCachePromise`) |
+| Paste store | `src/utils/pasteStore.ts:8` | files in `paste-cache/` | sem TTL (cleanup por `cutoffDate`) | n/a (content-addressed) |
+| File history | `src/utils/fs/fileHistory.ts:54` | `file-history/` por sessão | cap 100 snapshots | n/a |
+| Tool result spill | `src/services/tools/toolResultStorage.ts` | files in `cache/` | sem TTL | n/a |
 | V8 bytecode | `~/.claudin/v8cache/` (via `bin/claudin`) | bytecode | invalidado por build | n/a |
 | Outros: `backups/`, `sessions/`, `plans/`, `projects/`, `tasks/`, `shell-snapshots/` | — | conteúdo persistente, não TTL-caches | — | — |
 
@@ -114,7 +114,7 @@ Estimativas, não medidas neste ambiente:
 ## 4. Onde NÃO ganha (e portanto NÃO encaixa)
 
 - **Provider presets** (`providerConfig.ts:592` e arredores): estáticos no build time. Recomputo é nanosegundos. `getAdditionalModelOptionsCacheScope()` é útil como `scope` para outros caches, NÃO como valor cacheado.
-- **MCP tool listings / capabilities** (`src/mcp/client/fetchCapabilities.ts`): mudam por conexão, e a conexão já é estável durante a sessão. TTL adicionaria invalidação que o ciclo de conexão MCP já governa.
+- **MCP tool listings / capabilities** (`src/services/mcp/client/fetchCapabilities.ts`): mudam por conexão, e a conexão já é estável durante a sessão. TTL adicionaria invalidação que o ciclo de conexão MCP já governa.
 - **MCP auth-cache** (`authCache.ts`): já é hard 15 min, JSON em disco, com leitura memoizada. Conceito = "ainda precisa de auth?" — não há ganho em servir stale; ou ainda precisa, ou não.
 - **Tool result cache (Read/Glob/Grep/LSP)** (`toolResultCache.ts`): já tem TTL curto (15-60 s) + mtime-check no path. Stale-while-revalidate seria perigoso — servir Read stale enquanto arquivo mudou no disco viola contrato. Mantém como está.
 - **File-read / file-state / file-history caches**: content-addressed ou mtime-gated. Soft/hard não acrescenta.

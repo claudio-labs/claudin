@@ -13,11 +13,11 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 - **Fail-open** (retain.ts:43-44) — batch failure vira UI warning, LLM não sabe.
 
 **Vale pra Claudin?**
-- **Parcial.** `src/memory/extract/` já cobre retain automático (extração pós-turno). `reflect` (forçar pausa pra introspecção) é o ganho novo.
+- **Parcial.** `src/services/extractMemories/` já cobre retain automático (extração pós-turno). `reflect` (forçar pausa pra introspecção) é o ganho novo.
 - **Privacy red flag**: `client.ts` é RPC HTTP. Portar exige backend 100% local (SQLite ou flat-file).
 - Risco de duplicar com infra existente.
 
-**Encaixe**: `src/services/hindsight/` paralelo a `extractMemories/`. Reuso `src/memory/memdir/paths.ts`. Tool `src/tools/ReflectTool/`. Flag `HINDSIGHT_REFLECT`.
+**Encaixe**: `src/services/hindsight/` paralelo a `extractMemories/`. Reuso `src/memdir/paths.ts`. Tool `src/tools/ReflectTool/`. Flag `HINDSIGHT_REFLECT`.
 
 ## 2. Checkpoint/Rewind — investigação sandbox com rollback
 
@@ -29,9 +29,9 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 **Vale pra Claudin?**
 - **Sim, alto valor.** Não há equivalente. Reduz drift em investigações longas.
 - 100% local, sem phone-home.
-- Sinergia com `src/agent/contextCollapse/` e `src/agent/compact/`.
+- Sinergia com `src/services/contextCollapse/` e `src/services/compact/`.
 
-**Encaixe**: `src/tools/CheckpointTool/` + `src/tools/RewindTool/`. History mutation hook em `src/agent/QueryEngine.ts` (`messages.length = checkpointCount` + push do report). Flag `CHECKPOINT_REWIND`. Compatível com plan mode hard-gate.
+**Encaixe**: `src/tools/CheckpointTool/` + `src/tools/RewindTool/`. History mutation hook em `src/QueryEngine.ts` (`messages.length = checkpointCount` + push do report). Flag `CHECKPOINT_REWIND`. Compatível com plan mode hard-gate.
 
 ## 3. Reviewer agent + `report_finding` (structured findings)
 
@@ -53,10 +53,10 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 - Forces "MUST identify root causes", "MUST consider 2+ hypotheses".
 
 **Vale pra Claudin?**
-- **Médio-alto.** `src/agent/coordinator/` é multi-agent mas sem consultor explícito. Encaixa em `AgentTool/`.
+- **Médio-alto.** `src/coordinator/` é multi-agent mas sem consultor explícito. Encaixa em `AgentTool/`.
 - Útil em fallback chain (primário + escalation a modelo mais forte).
 
-**Encaixe**: `src/prompts/agents/oracle.md`. Registrar via `AgentTool/`. Preset adicional `getPrimaryModel`/`getSlowModel` em `src/providers/presets/providerModels.ts`.
+**Encaixe**: `src/prompts/agents/oracle.md`. Registrar via `AgentTool/`. Preset adicional `getPrimaryModel`/`getSlowModel` em `src/services/api/providerModels.ts`.
 
 ## 5. Autoresearch — closed-loop self-eval com confidence
 
@@ -77,10 +77,10 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 - `:513-527` `#injectLateDiagnostics` — enfileira `lsp-late-diagnostic` (`role: custom, display: false`) no histórico. **Modelo recebe feedback automático sem chamar tool.**
 
 **Vale pra Claudin?**
-- **Sim, 80% da infra existe.** `src/platform/lsp/diagnosticsForToolResult.ts` + `awaitDiagnosticsForFile.ts` + `diagnosticTracking.ts:30-40` (baseline).
+- **Sim, 80% da infra existe.** `src/services/lsp/diagnosticsForToolResult.ts` + `awaitDiagnosticsForFile.ts` + `diagnosticTracking.ts:30-40` (baseline).
 - **Falta:** canal de injeção *deferred* (mensagens que chegam depois do tool result ter retornado).
 
-**Encaixe**: `src/agent/QueryEngine.ts` adicionar `queueDeferredMessage` entre turnos. `src/tools/FileEditTool/FileEditTool.ts` caller-side wiring.
+**Encaixe**: `src/QueryEngine.ts` adicionar `queueDeferredMessage` entre turnos. `src/tools/FileEditTool/FileEditTool.ts` caller-side wiring.
 
 ## 7. IRC dedupe — loop/stuck detection
 
@@ -91,7 +91,7 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 
 **Vale pra Claudin?**
 - **Sim, baixíssimo custo.** Defensiva contra OpenAI-compat providers que loop mais.
-- Aplicável em `src/tools/shared/outputFilter/Bash/` e streaming text.
+- Aplicável em `src/outputFilter/Bash/` e streaming text.
 
 **Encaixe**: util genérico `src/utils/textDedupe.ts`. Aplicar em streaming pipe ou antes de `QueryEngine.ts` consumir. Sem flag — mitigação defensiva direta.
 
@@ -126,8 +126,8 @@ Mecanismos meta-cognitivos do omp além do `report_tool_issue` já coberto. Filt
 | 8 | Confidence em schemas (convenção) | XS | Baixo | ✓ | **P3** |
 
 **Targets concretos:**
-- `src/agent/QueryEngine.ts` — hook `queueDeferredMessage` (#6) + history mutation hooks (#2).
-- `src/platform/lsp/diagnosticsForToolResult.ts` — extender com path "deferred" (#6).
+- `src/QueryEngine.ts` — hook `queueDeferredMessage` (#6) + history mutation hooks (#2).
+- `src/services/lsp/diagnosticsForToolResult.ts` — extender com path "deferred" (#6).
 - `src/tools/FileEditTool/FileEditTool.ts` — caller-side wiring (#6).
 - `scripts/build.ts` featureFlags — `CHECKPOINT_REWIND`, `HINDSIGHT_REFLECT`, `REVIEWER_FINDINGS`.
 - `scripts/verify-no-phone-home.ts` — sem novos entries; tudo local.
