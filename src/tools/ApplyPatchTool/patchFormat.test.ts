@@ -81,10 +81,44 @@ describe('parsePatch', () => {
     })
   })
 
-  test('throws when Begin/End markers are missing', () => {
-    expect(() => parsePatch('*** Add File: x\n+y')).toThrow(
+  test('throws when the text carries no section header at all', () => {
+    // Nothing here is a patch, so the original refusal stands.
+    expect(() => parsePatch('just some prose\nand more of it')).toThrow(
       'missing Begin/End markers',
     )
+  })
+
+  test('repairs a body that lost its Begin marker', () => {
+    // Measured over 682 sessions on 2026-08-15: 9 of 25 parse failures were
+    // exactly this — a valid body starting straight at the header. The envelope
+    // is synthesized rather than rejected, since a tool call always arrives as
+    // complete JSON (a truncated emit is not callable at all).
+    const { hunks } = parsePatch('*** Add File: x.txt\n+y\n*** End Patch')
+    expect(hunks).toEqual([{ type: 'add', path: 'x.txt', contents: 'y' }])
+  })
+
+  test('repairs a body that lost its End marker', () => {
+    // The other 5 of those 25.
+    const { hunks } = parsePatch(
+      '*** Begin Patch\n*** Update File: a.ts\n@@\n-a\n+b',
+    )
+    expect(hunks[0]).toMatchObject({
+      type: 'update',
+      path: 'a.ts',
+      chunks: [{ oldLines: ['a'], newLines: ['b'] }],
+    })
+  })
+
+  test('repairs a body carrying neither marker', () => {
+    const { hunks } = parsePatch('*** Delete File: gone.txt')
+    expect(hunks).toEqual([{ type: 'delete', path: 'gone.txt' }])
+  })
+
+  test('still throws when both markers are present but out of order', () => {
+    // A forgotten marker is repairable; a scrambled envelope is not.
+    expect(() =>
+      parsePatch('*** End Patch\n*** Add File: x.txt\n+y\n*** Begin Patch'),
+    ).toThrow('missing Begin/End markers')
   })
 
   test('returns an empty hunk list for an empty envelope', () => {
@@ -92,24 +126,62 @@ describe('parsePatch', () => {
   })
 
   test('throws when an Update section has no @@ chunks', () => {
-    // An Update body that is empty (or blank-only) reaches the no-@@-chunks
-    // guard. A body with non-blank diff lines but no `@@` now trips the
-    // "text before the first @@" guard first (also a loud failure) — see the
-    // dedicated test below — so use a genuinely empty body here.
+    // A genuinely empty (or blank-only) Update body is a no-op write dressed up
+    // as an edit. A body that HAS diff lines but no `@@` is an implicit bare
+    // chunk now (see below), so it never reaches this guard.
     expect(() => parsePatch(envelope('*** Update File: a.txt'))).toThrow(
       'no @@ chunks',
     )
   })
 
-  test('throws on a hunk body line with no recognized prefix (no silent drop)', () => {
-    // A context line that lost its leading space (here, tab-indented) used to be
-    // dropped silently — degrading the replacement into a pure insertion that
-    // lands at EOF while reporting success. It must throw instead.
+  test('collapses an Update header repeated for the same file', () => {
+    // The model names the path twice — absolute, then repo-relative — and the
+    // body belongs to the second. Rejecting the whole patch over a duplicated
+    // line cost a round-trip (2 of the 25 measured parse failures).
+    const { hunks } = parsePatch(
+      envelope(
+        '*** Update File: /repo/src/a.ts\n*** Update File: src/a.ts\n@@\n-a\n+b',
+      ),
+    )
+    expect(hunks).toHaveLength(1)
+    expect(hunks[0]).toMatchObject({ type: 'update', path: 'src/a.ts' })
+  })
+
+  test('collapses an Update header repeated verbatim', () => {
+    const { hunks } = parsePatch(
+      envelope('*** Update File: a.ts\n*** Update File: a.ts\n@@\n-a\n+b'),
+    )
+    expect(hunks).toHaveLength(1)
+    expect(hunks[0]).toMatchObject({ type: 'update', path: 'a.ts' })
+  })
+
+  test('still throws when a chunk-less header names a different file', () => {
+    // Only a repeat of the SAME file is a typo. Anything else is an empty
+    // section, which stays loud.
     expect(() =>
       parsePatch(
-        envelope('*** Update File: g.ts\n@@\n\treturn 1\n+\treturn 2'),
+        envelope('*** Update File: a.ts\n*** Update File: b.ts\n@@\n-a\n+b'),
       ),
-    ).toThrow("has a hunk line without a ' '/'+'/'-' prefix")
+    ).toThrow('no @@ chunks')
+  })
+
+  test('takes a hunk line with no prefix as context (whole line), not a drop', () => {
+    // The most common model slip: a context line loses its leading space — most
+    // often the `}` that closes the hunk (6 of the 25 measured parse failures).
+    // It used to reject the patch. The line is now kept WHOLE as context, so
+    // nothing is dropped and the applier still has to find it in the file.
+    const { hunks } = parsePatch(
+      envelope('*** Update File: g.ts\n@@\n\treturn 1\n+\treturn 2'),
+    )
+    expect(hunks[0]).toMatchObject({
+      type: 'update',
+      chunks: [
+        {
+          oldLines: ['\treturn 1'],
+          newLines: ['\treturn 1', '\treturn 2'],
+        },
+      ],
+    })
   })
 
   test('treats a stripped (empty) blank context line as context, not a drop', () => {
@@ -252,6 +324,34 @@ describe('parsePatch', () => {
     expect(hunks[0]).toMatchObject({
       type: 'update',
       chunks: [{ oldLines: ['a'], newLines: ['b'] }],
+    })
+  })
+
+  test('opens an implicit chunk for change lines before the first @@', () => {
+    // The model emits `-`/`+` lines straight after the header, then anchors the
+    // next hunk properly. The `@@` is only a search cursor, so a missing one is
+    // a bare `@@` — not a reason to reject the section.
+    const { hunks } = parsePatch(
+      envelope(
+        '*** Update File: g.ts\n-import { a } from "./a.js"\n+import { b } from "./b.js"\n@@ export function f(\n-  return a\n+  return b',
+      ),
+    )
+    expect(hunks[0]).toMatchObject({
+      type: 'update',
+      chunks: [
+        { oldLines: ['import { a } from "./a.js"'], changeContext: undefined },
+        { oldLines: ['  return a'], changeContext: 'export function f(' },
+      ],
+    })
+  })
+
+  test('takes an Update body with no @@ at all as one bare chunk', () => {
+    const { hunks } = parsePatch(
+      envelope('*** Update File: g.ts\n context\n-old\n+new'),
+    )
+    expect(hunks[0]).toMatchObject({
+      type: 'update',
+      chunks: [{ oldLines: ['context', 'old'], newLines: ['context', 'new'] }],
     })
   })
 
@@ -571,5 +671,28 @@ describe('deriveNewContentsFromChunks', () => {
     expect(() =>
       deriveFromPatch('*** Update File: f.py\n@@\n-nope\n+x', 'a\nb\n'),
     ).toThrow('none of the 1 line(s) below appear at or after line 1')
+  })
+
+  test('applies a hunk whose closing brace lost its leading space', () => {
+    // The shape behind 6 of the 25 measured parse failures, end to end.
+    const original = 'function f() {\n  return 1\n}\n'
+    const out = deriveFromPatch(
+      '*** Update File: f.ts\n@@ function f() {\n-  return 1\n+  return 2\n}',
+      original,
+    )
+    expect(out).toBe('function f() {\n  return 2\n}\n')
+  })
+
+  test('an unprefixed line the model meant as an addition fails at apply time', () => {
+    // The price of the parse-time leniency: a `+` the model forgot becomes a
+    // context line. That is not silent — the line has to exist in the file, so
+    // the applier refuses and names the divergence point. A strictly better
+    // error than rejecting an otherwise-correct N-file patch at parse time.
+    expect(() =>
+      deriveFromPatch(
+        '*** Update File: f.ts\n@@\n const a = 1\nconst b = 2\n-const c = 3\n+const c = 4',
+        'const a = 1\nconst c = 3\n',
+      ),
+    ).toThrow('Failed to find expected lines in f')
   })
 })
