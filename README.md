@@ -70,6 +70,13 @@ the footer, so you can tell at a glance which build and profile you are on:
 
 ![The Claudin welcome banner and footer, showing provider, model, effort, working directory, and git branch](docs/img/claudin-welcome.png)
 
+## Sponsor
+
+Claudin is independent and free, and stays that way. If it saves you time, you
+can tip the project over Lightning at
+[claudiolabs.ai/sponsor](https://www.claudiolabs.ai/sponsor) — entirely
+optional, and it unlocks nothing.
+
 ## License
 
 Released under the [MIT License](LICENSE). Claudin is an independent project and is not affiliated with or endorsed by any model provider.
