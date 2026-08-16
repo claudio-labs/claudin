@@ -13,9 +13,9 @@
  *    cannot swallow `src/platform/config/configConstants.ts`
  *
  * Usage:
- *   bun scripts/reorg/apply.ts --dry              # plan only
- *   bun scripts/reorg/apply.ts --group=session    # one group
- *   bun scripts/reorg/apply.ts                    # everything
+ *   bun scripts/migrations/reorg/apply.ts --dry              # plan only
+ *   bun scripts/migrations/reorg/apply.ts --group=session    # one group
+ *   bun scripts/migrations/reorg/apply.ts                    # everything
  */
 
 import {
@@ -28,10 +28,10 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { basename, dirname, join, relative, resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 import { sep } from 'node:path'
 import { GROUPS } from './manifest.ts'
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const DRY = process.argv.includes('--dry')
 const ONLY = process.argv.find(a => a.startsWith('--group='))?.slice('--group='.length)
 

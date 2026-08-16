@@ -1,4 +1,4 @@
-// One-shot codemod: applies scripts/env-rename-map.json to the tree.
+// One-shot codemod: applies scripts/migrations/env-rename-map.json to the tree.
 //
 // This is the CLAUDE_* -> CLAUDIN_* cut-over. It is committed rather than run
 // and thrown away so the next person can see exactly which names moved and,
@@ -20,10 +20,11 @@
 // and wanted: the two name-indexed lists in managedEnvConstants.ts, the --bare
 // help text, and the `${...SKILL_DIR}` placeholders are all string data.
 //
-// Run: bun scripts/apply-env-rename.ts [--dry]
+// Run: bun scripts/migrations/apply-env-rename.ts [--dry]
 
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'fs'
 import { join } from 'path'
+import { REPO_ROOT } from '../repoRoot'
 
 type RenameEntry = { from: string; to: string; bucket: string }
 type Map_ = {
@@ -32,9 +33,9 @@ type Map_ = {
   keep: { name: string; bucket: string }[]
 }
 
-const ROOT = join(import.meta.dir, '..')
+const ROOT = REPO_ROOT
 const map = JSON.parse(
-  readFileSync(join(ROOT, 'scripts/env-rename-map.json'), 'utf-8'),
+  readFileSync(join(import.meta.dir, 'env-rename-map.json'), 'utf-8'),
 ) as Map_
 const dryRun = process.argv.includes('--dry')
 

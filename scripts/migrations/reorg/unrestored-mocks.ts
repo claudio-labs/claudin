@@ -9,8 +9,8 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const only = process.argv[2]
 
 function walk(dir: string, out: string[] = []): string[] {

@@ -22,14 +22,14 @@
  * it ended up. Anything that still fails to resolve is reported rather than
  * guessed at — a wrong guess here builds green and returns null at runtime.
  *
- *   bun scripts/reorg/repair.ts --dry
- *   bun scripts/reorg/repair.ts
+ *   bun scripts/migrations/reorg/repair.ts --dry
+ *   bun scripts/migrations/reorg/repair.ts
  */
 
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const DRY = process.argv.includes('--dry')
 
 const SPECIFIER_PATTERNS = [

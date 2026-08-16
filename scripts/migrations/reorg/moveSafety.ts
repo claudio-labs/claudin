@@ -18,9 +18,9 @@
  * `codexShim.test.ts` → `./providerConfig.js`.
  *
  * Usage:
- *   bun scripts/reorg/moveSafety.ts            # report breakages
- *   bun scripts/reorg/moveSafety.ts --all      # also list what stays intact
- *   bun scripts/reorg/moveSafety.ts --fix      # rewrite each to the src/ alias
+ *   bun scripts/migrations/reorg/moveSafety.ts            # report breakages
+ *   bun scripts/migrations/reorg/moveSafety.ts --all      # also list what stays intact
+ *   bun scripts/migrations/reorg/moveSafety.ts --fix      # rewrite each to the src/ alias
  *
  * `--fix` aliases the specifier to the target's CURRENT path, not its
  * destination: from there `apply.ts` carries it forward on every later group,
@@ -31,9 +31,9 @@
 
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 import { GROUPS } from './manifest.ts'
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const SRC_ROOT = join(REPO_ROOT, 'src')
 const VERBOSE = process.argv.includes('--all')
 const FIX = process.argv.includes('--fix')

@@ -48,14 +48,14 @@
  *  - specifiers that escape `src/`
  *
  * Usage:
- *   bun scripts/reorg/normalizeImports.ts --dry     # report only
- *   bun scripts/reorg/normalizeImports.ts           # rewrite in place
+ *   bun scripts/migrations/reorg/normalizeImports.ts --dry     # report only
+ *   bun scripts/migrations/reorg/normalizeImports.ts           # rewrite in place
  */
 
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const SRC_ROOT = join(REPO_ROOT, 'src')
 const DRY = process.argv.includes('--dry')
 

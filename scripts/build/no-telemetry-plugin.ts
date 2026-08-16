@@ -23,7 +23,7 @@ import type { BunPlugin } from 'bun'
 // Repo-relative module path, without extension → stub source.
 //
 // The `src/` prefix is load-bearing even though the regex below only needs a
-// path SUFFIX: it is what `scripts/reorg/apply.ts` matches when a move rewrites
+// path SUFFIX: it is what `scripts/migrations/reorg/apply.ts` matches when a move rewrites
 // module paths across the tree, so these keys follow the files instead of
 // silently ceasing to match. A key that stops matching does not fail loudly —
 // the real module gets bundled, and the build dies on whatever un-installed

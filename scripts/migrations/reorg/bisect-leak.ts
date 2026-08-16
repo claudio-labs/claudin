@@ -3,12 +3,12 @@
  * Halving bisect for a cross-file mock leak: finds the smallest prefix of the
  * suite that, run before the victim, reproduces its failure.
  *
- *   bun scripts/reorg/bisect-leak.ts <victim.test.ts> <substring of failing test name>
+ *   bun scripts/migrations/reorg/bisect-leak.ts <victim.test.ts> <substring of failing test name>
  */
 import { readdirSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const [victim, needle] = process.argv.slice(2)
 if (!victim || !needle) throw new Error('usage: bisect-leak.ts <victim> <needle>')
 
