@@ -1,4 +1,4 @@
-// Modules that `scripts/build.ts` resolves to an inline stub instead of a real
+// Modules that `scripts/build/build.ts` resolves to an inline stub instead of a real
 // package, plus the non-code assets it inlines as strings. None of them are
 // installed, so without these declarations every import site is a TS2307 that
 // no `bun install` can fix — permanent noise that buries the errors worth
@@ -16,7 +16,7 @@
 //    them also means a newly-added import errors until someone consciously adds
 //    it here, which is the point — this list should not silently absorb things.
 //
-// Keep the list in sync with the stub tables in `scripts/build.ts`.
+// Keep the list in sync with the stub tables in `scripts/build/build.ts`.
 
 // ---------------------------------------------------------------------------
 // Text assets
@@ -39,7 +39,7 @@ declare module '*.txt' {
 // ---------------------------------------------------------------------------
 // Computer use (Anthropic-internal, `@ant/*`)
 //
-// Listed in the `missingModules` set in `scripts/build.ts`. The feature is off
+// Listed in the `missingModules` set in `scripts/build/build.ts`. The feature is off
 // in the open build.
 // ---------------------------------------------------------------------------
 
@@ -112,7 +112,7 @@ declare module 'cacache'
 // minimal, not faithful models of the real packages. Pointing tsc at them via
 // tsconfig `paths` was tried and rejected: it manufactures ~40 errors about
 // fields the shim declines to describe, in modules that
-// `scripts/no-telemetry-plugin.ts` and the native-stub plugin replace wholesale
+// `scripts/build/no-telemetry-plugin.ts` and the native-stub plugin replace wholesale
 // before they ship. (Those errors are real gaps in the shims, worth fixing on
 // their own terms — they are just not typecheck findings.)
 
@@ -157,7 +157,7 @@ declare module '@aws-sdk/client-bedrock-runtime' {
 //
 // Kept `external` by `build.ts` rather than stubbed (too many named exports),
 // and every call site is behind the telemetry stubs that
-// `scripts/no-telemetry-plugin.ts` installs, so nothing reaches them in the
+// `scripts/build/no-telemetry-plugin.ts` installs, so nothing reaches them in the
 // open build.
 // ---------------------------------------------------------------------------
 

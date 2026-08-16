@@ -1,9 +1,9 @@
 // Ambient declarations for identifiers the bundler injects rather than the
-// module graph. `scripts/build.ts` inlines every `MACRO.*` member through Bun's
+// module graph. `scripts/build/build.ts` inlines every `MACRO.*` member through Bun's
 // `define`, so nothing imports `MACRO` and `tsc` would otherwise report it as an
 // undefined name at all ~140 use sites.
 //
-// Keep this in sync with the `MACRO.*` keys in `scripts/build.ts` — a member
+// Keep this in sync with the `MACRO.*` keys in `scripts/build/build.ts` — a member
 // declared here but missing from `define` survives into the bundle verbatim and
 // throws `ReferenceError: MACRO is not defined` when that line runs.
 declare const MACRO: {

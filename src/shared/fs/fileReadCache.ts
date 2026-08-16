@@ -101,7 +101,7 @@ class FileReadCache {
 
   /**
    * Current number of cached entries. Used by memory profiling benches
-   * (scripts/profile/memory-turn-by-turn-bench.ts) to track cache growth
+   * (scripts/bench/perf/memory-turn-by-turn-bench.ts) to track cache growth
    * per turn without allocating the full entries array that getStats()
    * returns.
    */

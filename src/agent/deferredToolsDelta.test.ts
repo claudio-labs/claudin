@@ -17,10 +17,10 @@ import { join } from 'node:path'
 
 // ── Flag resolution in the open-build GrowthBook stub ──────────────────
 // The stub ships as a template string inside no-telemetry-plugin.ts; extract
-// and execute it the same way scripts/no-telemetry-growthbook-stub.test.ts
+// and execute it the same way scripts/build/no-telemetry-growthbook-stub.test.ts
 // does, then assert the new default.
 const pluginSource = readFileSync(
-  join(import.meta.dir, '..', '..', 'scripts', 'no-telemetry-plugin.ts'),
+  join(import.meta.dir, '..', '..', 'scripts', 'build', 'no-telemetry-plugin.ts'),
   'utf-8',
 )
 const stubMatch = pluginSource.match(

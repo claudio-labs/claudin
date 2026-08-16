@@ -239,7 +239,7 @@ export function buildHarnessItems(
 
 export function getHarnessSection(): string {
   // `feature()` must appear directly in an `if`/ternary so the build-time
-  // preprocessor (scripts/build.ts) can substitute it with a boolean literal.
+  // preprocessor (scripts/build/build.ts) can substitute it with a boolean literal.
   // The env resolver is the A/B killswitch on a single build; it can only
   // subtract, since with the flag off this whole branch folds to false.
   const antiNarration = feature('ANTI_NARRATION') ? isAntiNarrationEnabled() : false
@@ -884,7 +884,7 @@ export const VERBOSITY_STEERING_SECTION = `Default to the shortest response that
 // false/no/off) — mirrors the TOOL_RESULT_JSON_COMPRESSION precedent. The
 // VERBOSITY_STEERING build flag compiles the section path in; this env check
 // gates it at runtime (and lets the same binary be A/B'd per-side, e.g.
-// scripts/profile/cache-ab-bench.ts --workload=prose). Pure env read, no
+// scripts/bench/perf/cache-ab-bench.ts --workload=prose). Pure env read, no
 // feature() gate, so it stays testable under the feature()-stubbed preload.
 export function isVerbositySteeringEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_VERBOSITY_STEERING)

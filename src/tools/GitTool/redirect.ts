@@ -54,7 +54,7 @@ export { MEMO_LIMIT }
  * command: `| head -50`, `2>&1 | tail -40`, `| grep '^+++'`.
  *
  * This matters more here than in any sibling redirect. Measured over 760
- * recorded sessions (`scripts/profile/git-tool-baseline.ts`): 64 of 162
+ * recorded sessions (`scripts/bench/perf/git-tool-baseline.ts`): 64 of 162
  * `git diff` calls, 67 of 137 `git log` and 68 of 268 `git status` carry such a
  * tail. Counting them as shell composition would skip roughly a third of the
  * addressable surface — the same mistake that kept the RunTests redirect from

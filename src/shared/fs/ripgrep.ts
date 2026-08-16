@@ -82,7 +82,7 @@ export function resolveRipgrepConfig({
 /**
  * Resolve the ripgrep binary shipped by the `@vscode/ripgrep` dependency
  * (Microsoft-maintained, per-platform prebuilt `rg`). Resolved at runtime from
- * node_modules — the package is kept `external` in scripts/build.ts so it is
+ * node_modules — the package is kept `external` in scripts/build/build.ts so it is
  * never bundled and its own path resolution stays intact. Returns null if the
  * package (or its platform binary) is absent, so we fall back to the legacy
  * vendored path and finally the system `rg`.

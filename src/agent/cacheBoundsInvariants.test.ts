@@ -4,7 +4,7 @@
  * Each module-level Map/Set/LRUCache called from a per-turn or per-tool-call
  * hot path must respect its declared cap. If a future change drops or bypasses
  * the eviction call, this test fails before the regression reaches a user
- * session. Companion to scripts/profile/long-session-bench.ts which measures
+ * session. Companion to scripts/bench/perf/long-session-bench.ts which measures
  * the heap impact; this only asserts container size.
  *
  * Caches covered:

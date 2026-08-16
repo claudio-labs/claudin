@@ -2,7 +2,7 @@
 //
 // The open build replaces @anthropic-ai/sandbox-runtime with a Proxy whose
 // `get` trap returns `() => null` for every property — see
-// scripts/build.ts:339-356. Calling
+// scripts/build/build.ts:339-356. Calling
 // SandboxManager.annotateStderrWithSandboxFailures(command, rawOutput) on that
 // stub therefore returns `null`, not a string.
 //
@@ -50,7 +50,7 @@ describe('safeAnnotateStderrWithSandboxFailures', () => {
   })
 
   test('returns the rawOutput when SandboxManager stub returns a non-string object', () => {
-    // The Proxy-based stub in scripts/build.ts:356 routes every `get` to the
+    // The Proxy-based stub in scripts/build/build.ts:356 routes every `get` to the
     // same `() => null` noop, but a future stub could just as easily return
     // {} or a number — the fallback must hold for any non-string.
     SandboxManager.annotateStderrWithSandboxFailures = (() => ({} as unknown as string)) as unknown as typeof original

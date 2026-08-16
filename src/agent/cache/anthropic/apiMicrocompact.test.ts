@@ -1,5 +1,30 @@
-import { describe, test, expect } from 'bun:test'
+import { afterAll, beforeAll, describe, test, expect } from 'bun:test'
 import { getAPIContextManagement } from 'src/agent/cache/anthropic/apiMicrocompact.js'
+import { _resetCacheProfileForTesting } from 'src/agent/cache/cacheProfile.js'
+
+// Every assertion below is profile-gated: `clear_thinking` only appears under
+// `historyRedactionEnabled`, which is true for aggressive and false for retain.
+// Left unpinned, the mode is `auto`, which resolves through
+// `tryGetActiveProvider()` — so these tests passed or failed depending on
+// whether some EARLIER file in the run had loaded a real provider profile from
+// the developer's own ~/.claudin/settings.json. Six scripts under
+// scripts/bench/tokens/ do exactly that, and CI has no settings file to load,
+// which is why it only ever showed up locally.
+const originalProfile = process.env.CLAUDIN_CACHE_PROFILE
+
+beforeAll(() => {
+  process.env.CLAUDIN_CACHE_PROFILE = 'aggressive'
+  _resetCacheProfileForTesting()
+})
+
+afterAll(() => {
+  if (originalProfile === undefined) {
+    delete process.env.CLAUDIN_CACHE_PROFILE
+  } else {
+    process.env.CLAUDIN_CACHE_PROFILE = originalProfile
+  }
+  _resetCacheProfileForTesting()
+})
 
 describe('getAPIContextManagement', () => {
   test('returns undefined when thinking inactive', () => {

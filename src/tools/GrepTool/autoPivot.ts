@@ -11,7 +11,7 @@ import { RG_LINE_RE } from 'src/tools/GrepTool/relativize.js'
  * The gate here is a pure function on the shape of the result; the decision to
  * honour it lives in GrepTool.call(), which owns the map building. Splitting
  * them keeps the policy testable and lets the replay bench
- * (scripts/profile/grep-summarizer-replay.ts --pivot) evaluate candidate
+ * (scripts/bench/perf/grep-summarizer-replay.ts --pivot) evaluate candidate
  * thresholds over recorded results without booting the tool.
  *
  * Measured over every recorded session transcript in
@@ -34,7 +34,7 @@ import { RG_LINE_RE } from 'src/tools/GrepTool/relativize.js'
  *   admitted results whose map was not materially smaller.
  *
  * Re-measure with `NODE_ENV=test bun --preload ./src/stubs/test-preload.ts
- * scripts/profile/grep-summarizer-replay.ts --pivot`.
+ * scripts/bench/perf/grep-summarizer-replay.ts --pivot`.
  */
 
 /**

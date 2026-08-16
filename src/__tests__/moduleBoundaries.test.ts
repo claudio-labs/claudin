@@ -64,10 +64,10 @@ test('the slices that absorbed the catch-alls are where the tree says they are',
 //
 // This test resolves the target instead of banning the shape, because the
 // exception is load-bearing: an import of a module this fork never received (a
-// `.d.ts` with no `.ts`/`.tsx` beside it) MUST stay relative. `scripts/build.ts`
+// `.d.ts` with no `.ts`/`.tsx` beside it) MUST stay relative. `scripts/build/build.ts`
 // only stubs a missing module when the specifier starts with `./` or `../`, so
 // aliasing one trades a green build for a hard resolver failure — see
-// `.claudin/rules/build-system.md` and the note in `scripts/reorg/apply.ts`.
+// `.claudin/rules/build-system.md` and the note in `scripts/migrations/reorg/apply.ts`.
 // Every cross-slice relative specifier left in the tree is one of those.
 
 const RELATIVE_SPECIFIER =

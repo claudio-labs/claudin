@@ -12,8 +12,8 @@ import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 // but `feature()` folds to a literal at build time, so reaching both arms of
 // an A/B means building twice and comparing two bundles — the mistake that
 // made the clip-pin A/B uncitable (see the header of
-// scripts/profile/lean-tool-prompts-ab.ts). Every other A/B in
-// scripts/profile/ flips ONE killswitch on ONE build; this is that killswitch
+// scripts/bench/perf/lean-tool-prompts-ab.ts). Every other A/B in
+// scripts/bench/perf/ flips ONE killswitch on ONE build; this is that killswitch
 // for the steering lane, and `CLAUDIN_TOOL_PROMPT_TIER` in toolPromptTier.ts
 // is the precedent.
 //

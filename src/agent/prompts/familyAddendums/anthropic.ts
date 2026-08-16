@@ -21,7 +21,7 @@ import { isAntiNarrationEnabled } from 'src/agent/prompts/steeringToggles.js'
 //
 // Gated on the same flag as the universal bullets so flipping
 // ANTI_NARRATION=false fully restores the prior behavior (kill switch for
-// A/B benches; see scripts/build.ts:70).
+// A/B benches; see scripts/build/build.ts:70).
 //
 // If this proves too aggressive in practice, soften the wording in place
 // rather than reverting to null — the default Claudin install should

@@ -15,7 +15,7 @@
  * summarizer that fires for no gain is worse than none, because it is one more
  * thing that can be wrong.
  *
- * `scripts/profile/git-summarizer-replay.ts` replays the recorded corpus
+ * `scripts/bench/perf/git-summarizer-replay.ts` replays the recorded corpus
  * through this module; every threshold below was chosen from that run.
  */
 import { logError } from 'src/shared/log.js'

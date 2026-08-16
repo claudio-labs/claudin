@@ -10,7 +10,7 @@ import { jsonParse } from 'src/platform/slowOperations.js'
  * schemas.js and schemas-loose.js). Deferring the import keeps ~700KB of bound
  * closures out of the startup heap for sessions that never touch .dxt/.mcpb.
  */
-// @anthropic-ai/mcpb is one of scripts/build.ts's build-time-stubbed missing
+// @anthropic-ai/mcpb is one of scripts/build/build.ts's build-time-stubbed missing
 // modules (src/stubbed-modules.d.ts only declares its TYPES, not
 // McpbManifestSchema) — this codepath only runs where the real package is
 // actually installed, which this fork's stub never is. Shape the dynamic

@@ -44,10 +44,10 @@ let vendoredSharp: SharpFunction | null | undefined
 /**
  * Resolve the sharp runtime vendored beside a compiled standalone binary.
  *
- * The Bun-compiled binary keeps `sharp` external (scripts/build.ts) but has no
+ * The Bun-compiled binary keeps `sharp` external (scripts/build/build.ts) but has no
  * node_modules next to it, so the bare `import('sharp')` fails. The release
  * packages ship a self-contained sharp install at vendor/sharp/node_modules/
- * (scripts/vendor-sharp.ts), mirrored beside the executable at install time
+ * (scripts/build/vendor-sharp.ts), mirrored beside the executable at install time
  * (install.cjs). Probe it via dirname(process.execPath) — realpath-resolved
  * first, because the npm global bin is a symlink into node_modules and its
  * dirname has no vendor/ (same reasoning as src/shared/fs/ripgrep.ts). Returns null
@@ -73,7 +73,7 @@ function resolveVendoredSharp(): SharpFunction | null {
     // resolver ignores package.json `main` for external bare specifiers, so
     // `require('sharp')` would fail — but an explicit file path loads, and
     // sharp's own nested requires then resolve against the vendored tree
-    // (scripts/vendor-sharp.ts adds the index.js shims / native-addon redirect
+    // (scripts/build/vendor-sharp.ts adds the index.js shims / native-addon redirect
     // that Bun's resolver needs).
     const main =
       (JSON.parse(readFileSync(sharpPkgJson, 'utf8')) as { main?: string })

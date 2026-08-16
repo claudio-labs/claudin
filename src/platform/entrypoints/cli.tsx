@@ -107,7 +107,7 @@ if (feature('ABLATION_BASELINE') && process.env.CLAUDE_CODE_ABLATION_BASELINE) {
 }
 
 // Wave 12 — strict whitelist for subcommand names accepted by the
-// `<cmd> --help` fast-path. Must match the regex used in scripts/build.ts
+// `<cmd> --help` fast-path. Must match the regex used in scripts/build/build.ts
 // (capture loop) so a name accepted here is guaranteed to have a snapshot
 // (or the readFileSync falls through to the slow path). Keeping this
 // module-level avoids re-compiling the pattern on every CLI launch.
@@ -134,7 +134,7 @@ async function main(): Promise<void> {
   // all subcommands and their options still drags in providerValidation,
   // permission modes, command registries, and dialogs. The help text itself
   // is static given a build, so we capture it once during `bun run build`
-  // (see scripts/build.ts) into dist/help.txt and serve it here with a
+  // (see scripts/build/build.ts) into dist/help.txt and serve it here with a
   // single readFileSync + stdout write. Falls through to the slow path if
   // the snapshot file is missing or the user passes additional flags.
   // CLAUDIN_HELP_CAPTURE is set when build.ts is harvesting the help text
