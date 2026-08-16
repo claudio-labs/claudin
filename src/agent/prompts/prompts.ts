@@ -427,14 +427,9 @@ function getSessionSpecificGuidanceSection(
     // isForkSubagentEnabled() varies at runtime (coordinator mode) — must be
     // post-boundary or it fragments the static prefix.
     hasAgentTool ? getAgentToolSection() : null,
-    ...(hasAgentTool &&
-    areExplorePlanAgentsEnabled() &&
-    !isForkSubagentEnabled()
-      ? [
-          `For simple, directed codebase searches (e.g. for a specific file/class/function) use ${searchTools} directly.`,
-          `For broader codebase exploration and deep research, use the ${AGENT_TOOL_NAME} tool with subagent_type=${EXPLORE_AGENT.agentType}. This is slower than using ${searchTools} directly, so use this only when a simple, directed search proves to be insufficient or when your task will clearly require more than ${EXPLORE_AGENT_MIN_QUERIES} queries.`,
-        ]
-      : []),
+    hasAgentTool && areExplorePlanAgentsEnabled()
+      ? `Use ${searchTools} directly for a directed lookup (a specific file, class or function). Reach for the ${AGENT_TOOL_NAME} tool with subagent_type=${EXPLORE_AGENT.agentType} when the question needs more than ${EXPLORE_AGENT_MIN_QUERIES} dependent searches — tracing a feature, mapping a subsystem, finding every call site. It reports \`file:line\` anchors with verbatim excerpts, so don't re-read the files its report already covered.`
+      : null,
     hasSkills
       ? `/<skill-name> (e.g., /commit) is shorthand for users to invoke a user-invocable skill. When executed, the skill gets expanded to a full prompt. Use the ${SKILL_TOOL_NAME} tool to execute them. IMPORTANT: Only use ${SKILL_TOOL_NAME} for skills listed in its user-invocable skills section - do not guess or use built-in CLI commands.`
       : null,
