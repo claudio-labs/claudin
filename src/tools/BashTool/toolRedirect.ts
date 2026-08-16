@@ -719,8 +719,7 @@ function parseGrep(
   if (positional.length === 0) return null
   let pattern = positional[0]!
   const paths = positional.slice(1)
-  if (paths.length > 1) return null
-  if (paths.length === 1 && targetsExcludedVcsDir(paths[0]!)) return null
+  if (paths.some(targetsExcludedVcsDir)) return null
   // BRE and the dialect Grep speaks invert each other — `\|` is an alternation
   // to one and a literal pipe to the other — so a BRE pattern is TRANSLATED
   // rather than handed over (breToEre.ts), while an ERE one is already in the
@@ -758,42 +757,56 @@ function parseGrep(
   // `grep -rn TODO .` answers 3756 lines, `rg -n TODO .` 171 — 22x fewer;
   // over src/ the two agree exactly). The redirect still fires — the tree
   // form is the case the feature exists for — but the refusal message must
-  // say the file set differs, so the flag travels on the call.
-  let walksTree = false
-  let targetIsDirectory = false
-  let path: string | undefined
+  // say the file set differs, so the flag travels on the call, PER TARGET:
+  // `grep -rn PAT file.ts src/` diverges on the second path and not the first.
+  //
+  // Several paths become several calls, the way `cat a.ts b.ts` already becomes
+  // several Reads (parseCat). grep unions the files and prefixes every line
+  // with its name, which is what N Greps answer between them.
+  const targets: { path: string; walksTree: boolean }[] = []
+  let anyTargetIsDirectory = false
+  let walksTreeWithoutPath = false
   let readsStdin = false
-  if (paths.length === 1) {
+  for (const candidate of paths) {
     // Resolved only to prove it exists — Grep is happy with the relative form
     // the model already wrote, and echoing that keeps the suggestion readable.
     // A directory is a legal target only when the search is recursive: plain
     // `grep TODO src` prints `grep: src: Is a directory` and matches nothing,
     // so mapping it to a recursive Grep would invent results.
-    const abs = toAbsolute(paths[0]!, cwd)
+    const abs = toAbsolute(candidate, cwd)
+    let stats
     try {
-      const stats = statSync(abs)
-      if (!flags.recursive && !stats.isFile()) return null
-      targetIsDirectory = stats.isDirectory()
-      walksTree = divergesOnIgnoredFiles && flags.recursive && targetIsDirectory
+      stats = statSync(abs)
     } catch {
       return null
     }
-    path = paths[0]!
-  } else if (!flags.recursive) {
-    // Non-recursive grep with no path reads stdin — a filter on someone else's
-    // output. It maps only when an upstream segment named the file it is
-    // filtering, so the decision belongs to classifyPipeline.
-    readsStdin = true
-  } else {
-    walksTree = divergesOnIgnoredFiles
+    if (!flags.recursive && !stats.isFile()) return null
+    const isDirectory = stats.isDirectory()
+    if (isDirectory) anyTargetIsDirectory = true
+    targets.push({
+      path: candidate,
+      walksTree: divergesOnIgnoredFiles && flags.recursive && isDirectory,
+    })
+  }
+  if (paths.length === 0) {
+    if (flags.recursive) {
+      walksTreeWithoutPath = divergesOnIgnoredFiles
+    } else {
+      // Non-recursive grep with no path reads stdin — a filter on someone
+      // else's output. It maps only when an upstream segment named the file it
+      // is filtering, so the decision belongs to classifyPipeline.
+      readsStdin = true
+    }
   }
 
   // `-h` asked for output WITHOUT filenames and Grep always prefixes them, so
   // it is only accepted where the answer can name a single file anyway: one
-  // path, and that path a regular file. Over a tree — or over stdin-less
-  // recursion with no path at all — the suggestion would answer with the
-  // prefixes the model explicitly suppressed.
-  if (flags.noFilename && (paths.length !== 1 || targetIsDirectory)) return null
+  // path, and that path a regular file. Over a tree — or over several files,
+  // where the N calls reintroduce exactly the prefixes `-h` suppressed — the
+  // suggestion would not answer what was asked.
+  if (flags.noFilename && (paths.length !== 1 || anyTargetIsDirectory)) {
+    return null
+  }
 
   const glob = combineIncludes(flags.includes)
   if (glob === null) return null
@@ -805,10 +818,10 @@ function parseGrep(
   // grep prints the bare count either way.
   if (readsStdin && flags.filesOnly) return null
 
-  const call: Extract<SuggestedCall, { tool: 'Grep' }> = {
+  const base: Extract<SuggestedCall, { tool: 'Grep' }> = {
     tool: 'Grep',
     pattern,
-    path,
+    path: undefined,
     glob,
     output_mode: flags.countOnly
       ? 'count'
@@ -817,12 +830,24 @@ function parseGrep(
         : 'content',
     caseInsensitive: flags.caseInsensitive,
     context: flags.context,
-    walksTree: walksTree || undefined,
+    walksTree: undefined,
     ...(translated && { translated: true }),
   }
-  return readsStdin
-    ? { kind: 'filter', call }
-    : { kind: 'source', calls: [call] }
+  if (readsStdin) return { kind: 'filter', call: base }
+  if (targets.length === 0) {
+    return {
+      kind: 'source',
+      calls: [{ ...base, walksTree: walksTreeWithoutPath || undefined }],
+    }
+  }
+  return {
+    kind: 'source',
+    calls: targets.map(target => ({
+      ...base,
+      path: target.path,
+      walksTree: target.walksTree || undefined,
+    })),
+  }
 }
 
 /** `--flag=value` → ['--flag', 'value']; `--flag` → ['--flag', undefined]. */
