@@ -107,7 +107,7 @@ jobs:
           # Groups the commits by conventional-commit type under emoji headings
           # ("### ✨ Features", …) and neutralizes literal @mentions. Emits the
           # "_No user-facing commits…_" line itself when the range is empty.
-          COMMITS=$(bun run scripts/release-notes.ts --range "$RANGE")
+          COMMITS=$(bun run scripts/release/release-notes.ts --range "$RANGE")
           # Credit contributors by their real GitHub identity (avatar + @handle),
           # resolved from the commit authors' logins via the API. Fall back to the
           # git author name for any commit whose email isn't linked to a GitHub
@@ -398,7 +398,7 @@ jobs:
           cd dist/bin
           for d in bin-*; do mv "$d" "${d#bin-}"; done
       - name: Assemble packages
-        run: bun run scripts/assemble-packages.ts "${{ needs.version.outputs.version }}"
+        run: bun run scripts/release/assemble-packages.ts "${{ needs.version.outputs.version }}"
       - name: Publish per-platform packages, then the wrapper LAST
         run: |
           set -e

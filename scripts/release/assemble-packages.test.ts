@@ -3,8 +3,9 @@ import { execFileSync } from 'child_process'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
+import { REPO_ROOT } from '../repoRoot'
 
-const root = join(import.meta.dir, '..')
+const root = REPO_ROOT
 
 // The bin stub the wrapper publishes (bin/claudin.exe) is a Node shebang script
 // that runs whenever postinstall didn't hardlink the native binary over it
@@ -55,7 +56,7 @@ test('a .exe Node stub loads as CommonJS but crashes under type:module', () => {
 })
 
 test('assemble-packages publishes the wrapper as CommonJS, not module', () => {
-  const source = readFileSync(join(root, 'scripts', 'assemble-packages.ts'), 'utf8')
+  const source = readFileSync(join(import.meta.dir, 'assemble-packages.ts'), 'utf8')
   // The wrapper object still points its bin at the .exe stub…
   expect(source).toContain("bin: { claudin: './bin/claudin.exe' }")
   // …so it must pin type to commonjs and never inherit rootPkg.type ("module").

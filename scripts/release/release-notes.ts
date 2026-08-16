@@ -6,7 +6,7 @@
  * Used by .github/workflows/release-binaries.yml for both the GitHub release body
  * and the CHANGELOG.md section, so the two always agree.
  *
- * Usage: bun run scripts/release-notes.ts [--range v1.1.6..HEAD]
+ * Usage: bun run scripts/release/release-notes.ts [--range v1.1.6..HEAD]
  */
 import { execFileSync } from 'node:child_process'
 

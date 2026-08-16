@@ -14,7 +14,7 @@
  * stub. Per-platform packages declare os/cpu/(libc) so npm installs ONLY the
  * user's platform (avoids pulling all ~8 × ~212MB).
  *
- * Usage: bun run scripts/assemble-packages.ts [version]
+ * Usage: bun run scripts/release/assemble-packages.ts [version]
  *        (version defaults to the root package.json version)
  */
 
@@ -28,8 +28,9 @@ import {
   writeFileSync,
 } from 'fs'
 import { join } from 'path'
+import { REPO_ROOT } from '../repoRoot'
 
-const root = join(import.meta.dir, '..')
+const root = REPO_ROOT
 const rootPkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8'))
 const version = process.argv[2] || rootPkg.version
 const PREFIX = '@claudiolabs/claudin'
@@ -100,7 +101,7 @@ for (const platform of built) {
   const pkgName = `${PREFIX}-${platform}`
   optionalDependencies[pkgName] = version
 
-  // Every built platform must carry its vendored sharp (scripts/vendor-sharp.ts):
+  // Every built platform must carry its vendored sharp (scripts/build/vendor-sharp.ts):
   // the standalone binary loads image processing from vendor/sharp beside the
   // executable, and the --version/--help smoke test never exercises it, so a
   // missing/partial vendor would ship GREEN and silently break clipboard-image

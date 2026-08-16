@@ -13,7 +13,7 @@
 //
 // Usage (from a machine logged into npm as a claudiolabs org member):
 //   npm login                                 # interactive, needs your 2FA
-//   bun run scripts/bootstrap-platform-packages.ts
+//   bun run scripts/release/bootstrap-platform-packages.ts
 //
 // Idempotent: a name already on npm is skipped, so re-running is safe.
 
@@ -23,7 +23,7 @@ import { join } from 'node:path'
 
 const PREFIX = '@claudiolabs/claudin'
 
-// os/cpu/libc gating mirrors scripts/assemble-packages.ts::PLATFORMS so the
+// os/cpu/libc gating mirrors scripts/release/assemble-packages.ts::PLATFORMS so the
 // placeholder's shape matches the real per-platform package.
 const PLATFORMS: Record<
   string,
