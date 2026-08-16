@@ -19,6 +19,7 @@
     "dist/",
     "scripts/v8cache-gc.mjs",
     "scripts/postinstall-warmup.mjs",
+    "!scripts/README.md",
     "README.md"
   ],
   "scripts": {
