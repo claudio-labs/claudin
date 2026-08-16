@@ -46,6 +46,7 @@ Run `bun run profile` for the unified summary.
 | `cold-start-bench.ts`   | Wall time for the bundled CLI to launch + handle `--version` / `--help` and exit | `bun run profile:cold-start` |
 | `memory-bench.ts`       | `scanMemoryFiles` cost across N=10/50/100/200 synthetic memory files   | `bun run profile:memory`     |
 | `transcript-bench.ts`   | Un-cached `applyMarkdown` across long transcripts (50–1000 messages)   | `bun run profile:transcript` |
+| `turn-cpu-bench.ts`     | Main-thread CPU split across a steady-state turn — real `ripGrep`, `buildSymbolsOutput`/`scanSymbols`, `maybeSummarizeToolResult` and `applyMarkdown`. Deliberately runs WITHOUT `--expose-gc` (the shipped binary has none), and does **not** cover model stream parse — see the file header | `bun run profile:turn` |
 | `long-session-bench.ts` | Cap invariant + heap delta for module-level caches under N-cycle load (ROADMAP 5.3) | `bun run profile:long-session` |
 | `cache-ab-bench.ts`     | Prompt-cache read/write ratio across a synthetic tool-loop session, claudin vs. claude-code | `bun scripts/bench/ab/cache-ab-bench.ts` |
 | `agent-bg-token-bench.ts` | End-to-end token + $ cost of the SAME sub-agent workload (orchestrator spawns N agents, each reads M files), claudin vs. claude-code | `bun scripts/bench/ab/agent-bg-token-bench.ts` |
