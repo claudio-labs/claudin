@@ -1,11 +1,12 @@
 // One-shot script to regenerate src/platform/main/__tests__/__snapshots__/help-subcommands.txt
 // using the exact same formatting as bootSnapshot.test.ts (so they match).
-// Run with: bun run scripts/regen-help-snapshots.ts
+// Run with: bun run scripts/codegen/regen-help-snapshots.ts
 import { spawnSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { REPO_ROOT } from '../repoRoot'
 
-const BIN = join(import.meta.dir, '..', 'bin', 'claudin')
+const BIN = join(REPO_ROOT, 'bin', 'claudin')
 
 function runHelp(args: readonly string[]): string {
   const res = spawnSync(BIN, [...args, '--help'], {
@@ -44,6 +45,6 @@ for (const sub of subcommands) {
   parts.push('')
 }
 
-const outPath = join(import.meta.dir, '..', 'src/platform/main/__tests__/__snapshots__/help-subcommands.txt')
+const outPath = join(REPO_ROOT, 'src/platform/main/__tests__/__snapshots__/help-subcommands.txt')
 writeFileSync(outPath, parts.join('\n'))
 console.log(`wrote ${parts.length} parts to ${outPath}`)

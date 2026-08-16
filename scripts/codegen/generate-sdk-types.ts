@@ -27,18 +27,18 @@
  * without the override, `SDKAssistantMessage['message']` would infer as
  * `unknown` and take the whole transcript down with it.
  *
- * Usage: bun run scripts/generate-sdk-types.ts
- *        bun run scripts/generate-sdk-types.ts --check   # CI: fail if stale
+ * Usage: bun run scripts/codegen/generate-sdk-types.ts
+ *        bun run scripts/codegen/generate-sdk-types.ts --check   # CI: fail if stale
  */
 
 import { readFileSync, writeFileSync } from 'fs'
-import { dirname, join } from 'path'
-import { fileURLToPath } from 'url'
+import { join } from 'path'
+import { REPO_ROOT } from '../repoRoot'
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const ROOT = REPO_ROOT
 const SCHEMA_FILE = join(ROOT, 'src/platform/entrypoints/sdk/coreSchemas.ts')
 const OUTPUT_FILE = join(ROOT, 'src/platform/entrypoints/sdk/coreTypes.generated.ts')
-const SCRIPT_NAME = 'scripts/generate-sdk-types.ts'
+const SCRIPT_NAME = 'scripts/codegen/generate-sdk-types.ts'
 
 // Fields whose schema is a `*Placeholder` in coreSchemas.ts, mapped to the real
 // external type. Keep in sync with the "External Type Placeholders" section

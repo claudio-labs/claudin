@@ -11,7 +11,7 @@
  * base64-encoded so the markdown — which contains backticks and ${...}
  * template-literal syntax — survives bundling without escaping hazards.
  *
- * Run:  bun run scripts/gen-skill-examples.ts
+ * Run:  bun run scripts/codegen/gen-skill-examples.ts
  */
 import { readdirSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
@@ -47,7 +47,7 @@ const verify = encodeDir(`${CAPTURED}/verify-examples`)
 const run = encodeDir(`${CAPTURED}/run-examples`)
 
 const header = `// AUTO-GENERATED from src/skills/bundled/__fixtures__/skill-examples/{verify,run}-examples/.
-// Regenerate with scripts/gen-skill-examples.ts. Do not edit by hand.
+// Regenerate with scripts/codegen/gen-skill-examples.ts. Do not edit by hand.
 // Example files are carried as base64 so backticks/template-literals in the
 // captured markdown survive bundling without escaping hazards.
 

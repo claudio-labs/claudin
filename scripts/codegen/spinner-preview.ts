@@ -1,7 +1,7 @@
 /**
  * Side-by-side preview of candidate spinner animations.
  *
- *   bun scripts/spinner-preview.ts
+ *   bun scripts/codegen/spinner-preview.ts
  *
  * Renders every candidate at the same wall clock so they can be compared
  * directly, then prints the cycle length of each. Quit with q or ctrl-c.
