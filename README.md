@@ -19,6 +19,14 @@ Claudin brings a terminal-first agentic workflow — bash, file tools, grep, glo
 
 ## Install
 
+Install the native binary for your platform:
+
+```bash
+curl -fsSL https://claudiolabs.ai/install.sh | sh
+```
+
+Or install through npm (needs Node.js 22.12+):
+
 ```bash
 npm install -g @claudiolabs/claudin@latest
 ```
