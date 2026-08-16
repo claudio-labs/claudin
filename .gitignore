@@ -16,7 +16,7 @@ package-lock.json
 !/.claudin/memory/team/
 coverage/
 agent.log
-dist-baseline/
-dist-bench-baseline/
 __pycache__/
 *.pyc
+.mypy_cache/
+.ruff_cache/

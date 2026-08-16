@@ -95,6 +95,9 @@ Full documentation lives at **[claudiolabs.ai/docs](https://www.claudiolabs.ai/d
 - [Automation](https://www.claudiolabs.ai/docs/automation) — headless `claudin -p` for pipes and CI.
 - [Cache policy](https://www.claudiolabs.ai/docs/cache-policy) and the [bash output filter](https://www.claudiolabs.ai/docs/bash-output-filter) — the token and cost behavior that ships on by default.
 
+In this repository: [docs/playbook.md](docs/playbook.md) — a day-to-day guide to
+running Claudin against a local model with Ollama.
+
 Run `/help` inside the app for the full command list.
 
 ## Build from Source
