@@ -1,6 +1,6 @@
 ---
 name: bash-file-read-census-and-redirect-reach
-description: Measured 2026-08-09, 08-15 and 08-16 — 82-85% of Bash file-reads are Grep/Glob work, the refusal converts 84.7%, and the collector now SIZES an arm before it is built (reach 940 → 1,112; cd && measured at zero)
+description: Measured 2026-08-09, 08-15 and 08-16 — 82-85% of Bash file-reads are Grep/Glob work, the refusal converts 84.7%, the collector SIZES an arm before it is built (reach 940 → 1,112 → 1,217), and find's own round took its conversion 11.2% → 28.4% by growing Glob
 type: project
 ---
 
@@ -185,3 +185,64 @@ are deliberate; `unclassified` 1,285 is dominated by commands whose file is
 simply gone (`/tmp/*.log`), i.e. noise, not a gap; then `find` predicates 309
 (`-maxdepth`, `-type d`), expansions 275, grep flags with no Grep spelling 260,
 `wc` 176, grep-into-grep 172.
+
+## 2026-08-16 — the find round: overlapping arms need leave-one-out, not isolation
+
+`find` was the worst-converting command the redirect covers — **62 of 553 (11.2%)**
+against a 17% average — because `parseFind` took one `-name`/`-iname`, `-type f`
+and a root, and returned null for everything else. Sized, then built, then
+re-measured: **157 of 553 (28.4%)**, and overall reach **1,115 → 1,217 (18.6%)**.
+
+**The methodological finding, which outlives the numbers: sizing an arm in
+isolation is worthless when the arms overlap.** These commands carry two or three
+unsupported shapes at once (`find bazarr -maxdepth 2 -type d | sort` is three), so
+each arm alone converted almost nothing while the SET converted 86. The collector
+now reports two numbers per arm — isolated, and **leave-one-out marginal within
+the buildable set** — and the ship decision is made on the second.
+
+| arm | isolated | marginal | outcome |
+|---|---|---|---|
+| `\| sort` → `sort:"path"` | 31 | 45 | shipped |
+| `-maxdepth` → `max_depth` | 8 | 26 | shipped |
+| `-not -path` → `exclude` | 15 | 20 | shipped, **only** the whole-directory form |
+| `\| head -N` → `head_limit` | 6 | 14 | shipped, N ≤ 50 only |
+| `-type d` → `type:"dir"` | 1 | 16 | shipped |
+| `\| xargs grep` / `-exec grep` → Grep | 0 | 2 | **refused** |
+| `find A B` → N Globs | 0 | 0 | **refused** |
+| `-path`/`-regex`, `\| grep PAT` | 3 / 2 | — | **refused**, no faithful spelling |
+
+- **The arm this round led with was the one the data killed.** `find … | xargs
+  grep` looked like the obvious win (31 `| xargs` occurrences, and the `filter`
+  role already existed to fold it): it converts **2**. Those lines are
+  `xargs -I{} sh -c '…'`, or carry an `-iname`/`-path` the Grep rewrite cannot
+  express. Occurrence is not conversion — the same lesson `-o` taught at 109/3.
+- **A predicted 86 landed as 95.** The sizing rewrites only handle plain find
+  pipelines, so a compound carrying the same shape is invisible to them; the
+  measured gain is always a floor. Same direction as the 152 → 172 of 2026-08-16.
+- **Four of the five arms are one ripgrep flag** — `--max-depth`, `--sort=path`,
+  a negative `--glob`, and the existing cap. Only `-type d` needed code:
+  `rg --files` cannot list a directory, so `deriveDirectories`
+  (`src/shared/fs/glob.ts`) takes the ancestors of the files it DID find and
+  re-matches them with picomatch, because globset cannot say which segment
+  matched. Two things are consequently absent and both are stated in the result:
+  an EMPTY directory, and the search root itself.
+- **What bounds a fold is the summarizer, not the tool.** `| head -N` folds only
+  for N ≤ 50 — `summarizeGlobOutput` keeps the first 50 paths, so a larger fold
+  would promise a listing that is then trimmed. And `| head -5 | sort` does NOT
+  fold in either direction: the shell sorts the five it got, a Glob sorts
+  everything and then takes five.
+- **`-path` stays refused and that is the interesting half.** find's `-path` uses
+  fnmatch without FNM_PATHNAME so its `*` crosses `/`; ripgrep's `*` stops at one
+  segment and `**` is only special as a whole component. The two EXCLUSION shapes
+  people write (`*/X/*`, `./X/*`) do translate exactly, to `**/X/**`, and those
+  are the only ones accepted — `-not -path "*__pycache__*"` is still refused,
+  which is why arm F kept 3 commands in the shell after shipping.
+- **Cost, measured rather than estimated:** Glob's schema went 1,561 → 2,476 bytes
+  (445 → 706 tokens) for anthropic, i.e. **+915 B / +261 tokens in every request's
+  cached prefix**, against a 99 KB / 28.4k-token tool bundle. The first draft of
+  the descriptions cost +1,223 B; trimming them is worth doing before shipping a
+  parameter, and the number to quote is from `measure-tool-schemas`, not from a
+  guess (mine was 4× low).
+- **`~/.claude/projects` is a second corpus and it is too small to size anything**
+  — 62 sessions, 10 find rows. It stays in the collector as a sanity check on
+  whether a shape is Claudin-specific, not as evidence.

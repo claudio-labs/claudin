@@ -37,6 +37,30 @@ const inputSchema = lazySchema(() =>
     offset: semanticNumber(z.number().optional()).describe(
       'Skip the first N matching files before applying the 100-file cap. Pass the offset a truncated result reports to page through the rest. Defaults to 0.',
     ),
+    head_limit: semanticNumber(z.number().optional()).describe(
+      'Return at most N paths (`head -N`). Capped at 100 regardless.',
+    ),
+    max_depth: semanticNumber(z.number().optional()).describe(
+      'How deep to walk below the search directory (`find -maxdepth`). 1 means no recursion. Default: unlimited.',
+    ),
+    type: z
+      .enum(['file', 'dir'])
+      .optional()
+      .describe(
+        '"file" (default) or "dir" (`find -type d`). A directory is inferred from the files in it, so an empty one is not listed.',
+      ),
+    sort: z
+      .enum(['modified', 'path'])
+      .optional()
+      .describe(
+        '"modified" (default, newest first) or "path" (alphabetical, like `find | sort`), which makes a truncated listing a stable prefix.',
+      ),
+    exclude: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'Globs to leave out, e.g. ["**/node_modules/**"] — .gitignore is not applied, so this is how a vendored tree is kept out.',
+      ),
     '-i': semanticBoolean(z.boolean().optional()).describe(
       'Match the pattern case-insensitively (rg --iglob). Defaults to false — unlike Grep, which applies smart-case, this tool is case-sensitive unless you ask. Use it for the `find -iname` case: "*readme*" with -i finds README.md.',
     ),
@@ -60,6 +84,12 @@ const outputSchema = lazySchema(() =>
     truncated: z
       .boolean()
       .describe('Whether results were truncated (limited to 100 files per call)'),
+    listedDirectories: z
+      .boolean()
+      .optional()
+      .describe(
+        'Set when the listing is directories rather than files, which is what makes the empty-directory caveat apply.',
+      ),
     nextOffset: z
       .number()
       .optional()
@@ -115,11 +145,36 @@ export const GlobTool = buildTool({
   async preparePermissionMatcher({ pattern }) {
     return rulePattern => matchWildcardPattern(rulePattern, pattern)
   },
-  async validateInput({ path, offset }): Promise<ValidationResult> {
+  async validateInput({
+    path,
+    offset,
+    head_limit,
+    max_depth,
+  }): Promise<ValidationResult> {
     if (offset !== undefined && (offset < 0 || !Number.isFinite(offset))) {
       return {
         result: false,
         message: `offset must be a non-negative number, got: ${offset}`,
+        errorCode: 3,
+      }
+    }
+    if (
+      head_limit !== undefined &&
+      (head_limit < 1 || !Number.isFinite(head_limit))
+    ) {
+      return {
+        result: false,
+        message: `head_limit must be a positive number, got: ${head_limit}`,
+        errorCode: 3,
+      }
+    }
+    if (
+      max_depth !== undefined &&
+      (max_depth < 1 || !Number.isFinite(max_depth))
+    ) {
+      return {
+        result: false,
+        message: `max_depth must be a positive number, got: ${max_depth}`,
         errorCode: 3,
       }
     }
@@ -187,10 +242,19 @@ export const GlobTool = buildTool({
     const start = Date.now()
     const appState = getAppState()
     const offset = input.offset ?? 0
+    const limit = Math.min(input.head_limit ?? DEFAULT_GLOB_LIMIT, DEFAULT_GLOB_LIMIT)
     const { files, truncated, incomplete } = await glob(
       input.pattern,
       GlobTool.getPath(input),
-      { limit: DEFAULT_GLOB_LIMIT, offset, caseInsensitive: input['-i'] },
+      {
+        limit,
+        offset,
+        caseInsensitive: input['-i'],
+        maxDepth: input.max_depth,
+        sort: input.sort,
+        type: input.type,
+        exclude: input.exclude,
+      },
       abortController.signal,
       appState.toolPermissionContext,
     )
@@ -201,6 +265,7 @@ export const GlobTool = buildTool({
       durationMs: Date.now() - start,
       numFiles: filenames.length,
       truncated,
+      ...(input.type === 'dir' && { listedDirectories: true }),
       ...(truncated && { nextOffset: offset + filenames.length }),
       // An aborted walk is the caller's own cancellation and its result is
       // discarded, so it is not reported as incompleteness.
@@ -221,13 +286,20 @@ export const GlobTool = buildTool({
         : output.incomplete === 'buffer'
           ? '(INCOMPLETE: the walk produced more output than could be buffered. Any paths above are real but they are not all of them — search a narrower path.)'
           : undefined
+    // Said on every directory listing, including the empty one: "no matches"
+    // and "no directory holding a matching file" are different answers.
+    const directoryNote = output.listedDirectories
+      ? '(Directories are inferred from the files inside them, so an empty directory does not appear, and the search root itself is not listed.)'
+      : undefined
     if (output.filenames.length === 0) {
       return {
         tool_use_id: toolUseID,
         type: 'tool_result',
-        content: incompleteNote
-          ? `No files found\n${incompleteNote}`
-          : 'No files found',
+        content: [
+          output.listedDirectories ? 'No directories found' : 'No files found',
+          ...(directoryNote ? [directoryNote] : []),
+          ...(incompleteNote ? [incompleteNote] : []),
+        ].join('\n'),
       }
     }
     // Keep the "(Results are truncated" prefix: summarizeGlobOutput matches on
@@ -242,6 +314,7 @@ export const GlobTool = buildTool({
       content: [
         ...output.filenames,
         ...(output.truncated ? [truncationNote] : []),
+        ...(directoryNote ? [directoryNote] : []),
         ...(incompleteNote ? [incompleteNote] : []),
       ].join('\n'),
     }
