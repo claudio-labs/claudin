@@ -20,7 +20,7 @@
 // ---------------------------------------------------------------------------
 
 import { readFileSync } from 'node:fs'
-import { extname } from 'node:path'
+import { extname, join } from 'node:path'
 import { Glob } from 'bun'
 
 import { renderOutline } from '../../../src/tools/shared/codeOutline/renderOutline.js'
@@ -29,8 +29,8 @@ import {
   scanSymbols,
   type SymbolEntry,
 } from '../../../src/tools/shared/codeOutline/scanSymbols.js'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = new URL('../../', import.meta.url).pathname
 // The Read token cap (DEFAULT_MAX_OUTPUT_TOKENS in FileReadTool/limits.ts).
 const READ_TOKEN_CAP = 25_000
 // Always include this anchor file even if discovery order changes.
@@ -75,7 +75,7 @@ function measure(relPath: string): Row | null {
 
   let source: string
   try {
-    source = readFileSync(REPO_ROOT + relPath, 'utf8')
+    source = readFileSync(join(REPO_ROOT, relPath), 'utf8')
   } catch {
     return null
   }

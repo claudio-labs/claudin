@@ -43,6 +43,8 @@ import { createRequire } from 'module'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
+import { REPO_ROOT } from '../repoRoot'
+
 const require = createRequire(import.meta.url)
 const root = REPO_ROOT
 

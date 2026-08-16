@@ -35,6 +35,8 @@ import { tmpdir } from 'os'
 import { dirname, join } from 'path'
 import { createRequire } from 'module'
 
+import { REPO_ROOT } from '../repoRoot'
+
 const require = createRequire(import.meta.url)
 
 // Platform-package dir (matches build.ts: strip "bun-", windows→win32).

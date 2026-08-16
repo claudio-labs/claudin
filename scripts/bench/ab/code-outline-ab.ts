@@ -34,6 +34,7 @@
 // ---------------------------------------------------------------------------
 
 import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { Glob } from 'bun'
 
 import {
@@ -42,8 +43,7 @@ import {
 } from '../../../src/shared/fs/detectCodeLang.js'
 import { scanSymbols } from '../../../src/tools/shared/codeOutline/scanSymbols.js'
 import { renderOutlineBody } from '../../../src/tools/shared/codeOutline/renderOutline.js'
-
-const REPO_ROOT = new URL('../../', import.meta.url).pathname
+import { REPO_ROOT } from '../../repoRoot'
 
 // Mirrors toolResultSummarizer.ts: BASH_SUMMARIZE_THRESHOLD, BASH_HEAD/TAIL,
 // CODE_OUTLINE_MIN_SYMBOLS, CODE_MIN_SAVINGS. Kept in sync by the unit tests
@@ -134,7 +134,7 @@ async function main(): Promise<void> {
     if (rel.endsWith('.test.ts') || rel.endsWith('.test.tsx')) continue
     let source: string
     try {
-      source = readFileSync(REPO_ROOT + rel, 'utf8')
+      source = readFileSync(join(REPO_ROOT, rel), 'utf8')
     } catch {
       continue
     }
