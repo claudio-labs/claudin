@@ -1,6 +1,7 @@
 ---
 name: pre-pr
 description: Run Claudin's pre-PR validation gate (build, smoke, typecheck, test floor, unused-dependency check, rule health, focused tests, and — when the diff warrants — test:provider and verify:privacy) and report a pass/fail summary. Use before opening or updating a PR.
+description: Run Claudin's pre-PR validation gate (build, smoke, typecheck, test floor, unused-dependency check, rule health, PR-title format, focused tests, and — when the diff warrants — test:provider and verify:privacy) and report a pass/fail summary. Use before opening or updating a PR.
 allowed-tools: Bash, Typecheck, RunTests
 argument-hint: "[path/to/changed.test.ts ...]"
 arguments: testPaths
@@ -64,9 +65,17 @@ Run these in order. Stop and report on the first failure; otherwise continue.
    `globs:` (the rule loads into *every* session instead of the files it was
    scoped to). Stale path references in prose are reported as warnings and do
    not gate.
-   - It also prints how many characters the always-loaded rules cost per turn.
-     That number is informational — there is no threshold — but a jump means a
-     rule lost its `paths:`.
+   - It also gates the always-loaded cost — AGENTS.md plus every rule with no
+     `paths:` — at 20,000 characters per turn, and prints the running total.
+     When that ceiling fails, the fix is to scope the newest prose with
+     `paths:`, not to raise the number; a jump with no new rule means an
+     existing rule lost its `paths:`.
+9. **PR title** — check the title you are about to use against
+   `.claudin/rules/git-conventions.md`: `type(scope): summary`, with `type` one
+   of the ones `scripts/release/release-notes.ts` maps. This gates nothing in
+   CI, which is the point — a title that misses it is silently published under
+   **🔧 Miscellaneous** in the release notes, and correcting it after the merge
+   means rewriting published history.
 
 ## Conditional steps (only when the diff touches these areas)
 

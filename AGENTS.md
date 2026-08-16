@@ -17,6 +17,7 @@ Rules in `.claudin/rules/` (auto-loaded into context by path):
 - [cache.md](.claudin/rules/cache.md) — prompt-cache clip-frontier invariant, defer-cache-marker, tool-result cache cwd invalidation, TTL tiers.
 - [agent-safety.md](.claudin/rules/agent-safety.md) — sub-agent/worktree hazards: no git mutation in review agents, worktree stale-base/write-leak, empirical audit method (always-on).
 - [search-strategy.md](.claudin/rules/search-strategy.md) — module map + common Grep/Glob queries (start here to navigate the codebase).
+- [git-conventions.md](.claudin/rules/git-conventions.md) — commit/PR title format, and what a title that misses it costs in the release notes (always-on).
 
 Skills in `.claudin/skills/` (invoke with `/<name>`):
 

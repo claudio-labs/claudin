@@ -123,6 +123,29 @@ If the PR touches UI or terminal presentation, include screenshots when useful.
 
 If the PR changes provider behavior, mention which provider path was tested.
 
+### Title format
+
+PRs are squash-merged, so **the PR title becomes the commit subject on `main`,
+and that subject is the line published in `CHANGELOG.md`**. Write it as:
+
+```
+type(scope): imperative summary in lowercase (#PR)
+```
+
+- `type` is one of `feat`, `fix`, `perf`, `refactor`, `ci`, `build`, `docs`,
+  `test`, `chore`, `style`, `revert` — `scripts/release/release-notes.ts` maps
+  each one to a section of the release notes.
+- `scope` names the subsystem you touched (`bash-redirect`, `glob`, `explore`,
+  `provider`, `tui`, …). Optional, but nearly every commit here carries one.
+- Add `!` after the scope for a breaking change: `feat(sdk)!: …`.
+- No trailing period. GitHub appends the `(#PR)` suffix on squash merge.
+
+A title that misses the format is not rejected anywhere — it is silently filed
+under **🔧 Miscellaneous** in the release notes, which is how three feature PRs
+ended up there in v1.1.14. Correcting it after the merge means rewriting
+published history, so check the title before you open the PR and again before
+you merge it.
+
 ## Code Style
 
 - Follow the existing code style in the touched files.
