@@ -4,7 +4,12 @@ import { tmpdir } from 'os'
 import { basename, isAbsolute, join } from 'path'
 
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
-import { extractGlobBaseDirectory, glob } from 'src/shared/fs/glob.js'
+import {
+  deriveDirectories,
+  extractGlobBaseDirectory,
+  glob,
+  type GlobOptions,
+} from 'src/shared/fs/glob.js'
 
 const permissionContext = {
   mode: 'default',
@@ -26,6 +31,21 @@ function run(
     pattern,
     cwd,
     { limit, offset, caseInsensitive },
+    new AbortController().signal,
+    permissionContext,
+  )
+}
+
+/** The same call with the options the find-shaped parameters use. */
+function runWith(
+  pattern: string,
+  cwd: string,
+  options: Partial<GlobOptions>,
+): Promise<{ files: string[]; truncated: boolean }> {
+  return glob(
+    pattern,
+    cwd,
+    { limit: 100, offset: 0, ...options },
     new AbortController().signal,
     permissionContext,
   )
@@ -234,5 +254,134 @@ describe('glob — case-insensitive matching', () => {
     const insensitive = await run('*notes*', dir, 100, 0, true)
     expect(sensitive.files.map(f => basename(f))).toEqual(['notes.md'])
     expect(insensitive.files.map(f => basename(f))).toEqual(['notes.md'])
+  })
+})
+
+describe('deriveDirectories', () => {
+  const paths = ['a/keep.txt', 'a/deep/nested.txt', 'b/other.txt']
+
+  test('a pattern with no slash matches the segment name at any depth', () => {
+    expect(deriveDirectories(paths, 'deep', {})).toEqual(['a/deep'])
+  })
+
+  test('a pattern with a slash is anchored at the search root', () => {
+    // `deep` alone would match a/deep; `a/deep` must not match a bare `deep`
+    // somewhere else, which is the whole difference the anchoring makes.
+    expect(deriveDirectories(paths, 'a/deep', {})).toEqual(['a/deep'])
+    expect(deriveDirectories(['x/deep/f.txt'], 'a/deep', {})).toEqual([])
+  })
+
+  test('lists every ancestor once, in the order the walk produced them', () => {
+    expect(deriveDirectories(paths, '*', {})).toEqual(['a', 'a/deep', 'b'])
+  })
+
+  test('a ./ prefix is not an ancestor', () => {
+    // ripgrep writes `./a/f.txt` when it is given `.`, and `.` would otherwise
+    // come out as a directory matching every pattern.
+    expect(deriveDirectories(['./a/f.txt'], '*', {})).toEqual(['a'])
+  })
+
+  test('maxDepth cuts the ancestors, not the files', () => {
+    expect(deriveDirectories(paths, '*', { maxDepth: 1 })).toEqual(['a', 'b'])
+  })
+
+  test('matches either case only when asked', () => {
+    const files = ['Docs/readme.md']
+    expect(deriveDirectories(files, 'docs', {})).toEqual([])
+    expect(deriveDirectories(files, 'docs', { caseInsensitive: true })).toEqual([
+      'Docs',
+    ])
+  })
+})
+
+describe('glob — the find-shaped parameters', () => {
+  let dir: string
+
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'glob-find-'))
+    mkdirSync(join(dir, 'a', 'deep'), { recursive: true })
+    mkdirSync(join(dir, 'b'), { recursive: true })
+    mkdirSync(join(dir, 'empty'), { recursive: true })
+    // `a-b` sorts BEFORE `a/deep` (0x2D < 0x2F) while its file sorts before
+    // every file under `a`, so first-appearance order and path order disagree
+    // here — which is the only place the directory re-sort is observable.
+    mkdirSync(join(dir, 'a-b'), { recursive: true })
+    writeFileSync(join(dir, 'a-b', 'x.log'), 'x')
+    writeFileSync(join(dir, 'z.txt'), 'x')
+    writeFileSync(join(dir, 'a', 'keep.txt'), 'x')
+    writeFileSync(join(dir, 'a', 'deep', 'nested.txt'), 'x')
+    writeFileSync(join(dir, 'b', 'other.txt'), 'x')
+  })
+
+  afterAll(() => {
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  test('maxDepth stops the walk the way find -maxdepth does', async () => {
+    const { files } = await runWith('**/*.txt', dir, { maxDepth: 1 })
+    expect(files.map(f => basename(f))).toEqual(['z.txt'])
+  })
+
+  test('maxDepth 2 reaches one level of subdirectory', async () => {
+    const { files } = await runWith('**/*.txt', dir, { maxDepth: 2 })
+    expect(files.map(f => basename(f)).sort()).toEqual([
+      'keep.txt',
+      'other.txt',
+      'z.txt',
+    ])
+  })
+
+  test('sort:path returns alphabetical order, not mtime order', async () => {
+    const { files } = await runWith('**/*.txt', dir, { sort: 'path' })
+    expect(files.map(f => f.slice(dir.length + 1))).toEqual([
+      'a/deep/nested.txt',
+      'a/keep.txt',
+      'b/other.txt',
+      'z.txt',
+    ])
+  })
+
+  test('exclude drops a subtree', async () => {
+    const { files } = await runWith('**/*.txt', dir, {
+      exclude: ['**/a/**'],
+      sort: 'path',
+    })
+    expect(files.map(f => basename(f))).toEqual(['other.txt', 'z.txt'])
+  })
+
+  test('type:dir lists directories and skips the empty one', async () => {
+    const { files } = await runWith('*', dir, { type: 'dir', sort: 'path' })
+    expect(files.map(f => f.slice(dir.length + 1))).toEqual([
+      'a',
+      'a-b',
+      'a/deep',
+      'b',
+    ])
+  })
+
+  test('type:dir honors maxDepth against the DIRECTORY depth', async () => {
+    // a/deep is at depth 2 and its file at depth 3, so a naive pass-through of
+    // maxDepth to ripgrep would return nothing at all here.
+    const { files } = await runWith('*', dir, {
+      type: 'dir',
+      maxDepth: 1,
+      sort: 'path',
+    })
+    expect(files.map(f => f.slice(dir.length + 1))).toEqual(['a', 'a-b', 'b'])
+  })
+
+  test('type:dir with the default ordering follows the walk, not the alphabet', async () => {
+    // The mtime ranking reaches directories as "the one holding the most
+    // recently modified file first", so the listing is NOT sorted — and the
+    // path ordering above is a real re-sort rather than a coincidence of how
+    // ancestors come out of a path-sorted walk.
+    const { files } = await runWith('*', dir, { type: 'dir' })
+    const listed = files.map(f => f.slice(dir.length + 1))
+    expect(listed.sort()).not.toEqual(files.map(f => f.slice(dir.length + 1)))
+  })
+
+  test('type:dir filters by the pattern, like find -type d -name', async () => {
+    const { files } = await runWith('deep', dir, { type: 'dir' })
+    expect(files.map(f => f.slice(dir.length + 1))).toEqual(['a/deep'])
   })
 })

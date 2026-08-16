@@ -285,4 +285,144 @@ describe('GlobTool', () => {
       }),
     ).toBe('a.ts\nb.ts')
   })
+
+  test('head_limit caps the page below the 100 default', async () => {
+    const { data } = await GlobTool.call(
+      { pattern: '*.txt', path: manyDir, head_limit: 3 } as never,
+      makeCtx(),
+    )
+    expect(data.filenames.map(f => basename(f))).toEqual([
+      'f105.txt',
+      'f104.txt',
+      'f103.txt',
+    ])
+    expect(data.truncated).toBe(true)
+  })
+
+  test('head_limit above the cap does not raise it', async () => {
+    const { data } = await GlobTool.call(
+      { pattern: '*.txt', path: manyDir, head_limit: 500 } as never,
+      makeCtx(),
+    )
+    expect(data.numFiles).toBe(100)
+  })
+
+  test('validateInput rejects a head_limit or max_depth below 1', async () => {
+    const zeroLimit = await GlobTool.validateInput?.({
+      pattern: '**/*',
+      head_limit: 0,
+    } as never)
+    expect(zeroLimit?.result).toBe(false)
+    const zeroDepth = await GlobTool.validateInput?.({
+      pattern: '**/*',
+      max_depth: 0,
+    } as never)
+    expect(zeroDepth?.result).toBe(false)
+  })
+
+  test('type:"dir" lists directories and flags the result as such', async () => {
+    const { data } = await GlobTool.call(
+      { pattern: '*', path: workDir, type: 'dir' } as never,
+      makeCtx(),
+    )
+    expect(data.filenames.map(f => basename(f))).toEqual(['nested'])
+    expect(data.listedDirectories).toBe(true)
+  })
+
+  test('a file listing carries no directory flag', async () => {
+    const { data } = await GlobTool.call(
+      { pattern: '**/*.ts', path: workDir } as never,
+      makeCtx(),
+    )
+    expect(data.listedDirectories).toBeUndefined()
+  })
+
+  test('sort:"path" returns alphabetical order instead of mtime order', async () => {
+    const { data } = await GlobTool.call(
+      { pattern: '*.ts', path: orderedDir, sort: 'path' } as never,
+      makeCtx(),
+    )
+    expect(data.filenames.map(f => basename(f))).toEqual([
+      'a.ts',
+      'b.ts',
+      'c.ts',
+    ])
+  })
+
+  test('max_depth keeps the walk out of subdirectories', async () => {
+    const { data } = await GlobTool.call(
+      { pattern: '**/*.ts', path: workDir, max_depth: 1 } as never,
+      makeCtx(),
+    )
+    expect(data.filenames.some(f => basename(f) === 'd.ts')).toBe(false)
+    expect(data.filenames.some(f => basename(f) === 'a.ts')).toBe(true)
+  })
+
+  test('exclude drops a subtree from the listing', async () => {
+    const { data } = await GlobTool.call(
+      {
+        pattern: '**/*.ts',
+        path: workDir,
+        exclude: ['**/nested/**'],
+      } as never,
+      makeCtx(),
+    )
+    expect(data.filenames.some(f => basename(f) === 'd.ts')).toBe(false)
+  })
+
+  test('a directory listing carries its caveat, and a file listing does not', () => {
+    const map = GlobTool.mapToolResultToToolResultBlockParam
+    const listed = map?.(
+      {
+        durationMs: 1,
+        numFiles: 1,
+        filenames: ['src/tools'],
+        truncated: false,
+        listedDirectories: true,
+      },
+      'u',
+    )?.content as string
+    expect(listed).toContain('src/tools')
+    expect(listed).toContain('an empty directory does not appear')
+    expect(listed).toContain('the search root itself is not listed')
+
+    const files = map?.(
+      { durationMs: 1, numFiles: 1, filenames: ['a.ts'], truncated: false },
+      'u',
+    )?.content as string
+    expect(files).not.toContain('empty directory')
+  })
+
+  test('an empty directory listing says so in its own words', () => {
+    const content = GlobTool.mapToolResultToToolResultBlockParam?.(
+      {
+        durationMs: 1,
+        numFiles: 0,
+        filenames: [],
+        truncated: false,
+        listedDirectories: true,
+      },
+      'u',
+    )?.content as string
+    // "No files found" would be a wrong answer to a directory question, and
+    // the caveat is what tells an empty result from an unlisted empty tree.
+    expect(content).toContain('No directories found')
+    expect(content).toContain('an empty directory does not appear')
+  })
+
+  test('the full result parses against outputSchema', () => {
+    // A field the renderer reads but the schema omits arrives as undefined in
+    // the TUI only, silently — so every new one is pinned here.
+    const parsed = GlobTool.outputSchema.safeParse({
+      durationMs: 1,
+      numFiles: 1,
+      filenames: ['src/tools'],
+      truncated: true,
+      nextOffset: 100,
+      listedDirectories: true,
+      incomplete: 'timeout',
+    })
+    expect(parsed.success).toBe(true)
+    if (parsed.success) expect(parsed.data.listedDirectories).toBe(true)
+  })
 })

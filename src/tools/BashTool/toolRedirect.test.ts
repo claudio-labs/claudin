@@ -556,6 +556,162 @@ describe('discovery → Glob', () => {
   })
 })
 
+describe('find predicates that now have a Glob spelling', () => {
+  test('-maxdepth N becomes max_depth', () => {
+    expect(calls('find src -maxdepth 2 -name "*.ts"')).toEqual([
+      { tool: 'Glob', pattern: '**/*.ts', path: 'src', max_depth: 2 },
+    ])
+  })
+
+  test('-type d becomes type:"dir"', () => {
+    expect(calls('find src -type d')).toEqual([
+      { tool: 'Glob', pattern: '**/*', path: 'src', type: 'dir' },
+    ])
+  })
+
+  test('-type d -name PAT keeps the pattern', () => {
+    expect(calls('find src -type d -name "ui"')).toEqual([
+      { tool: 'Glob', pattern: '**/ui', path: 'src', type: 'dir' },
+    ])
+  })
+
+  test('-not -path over a directory becomes exclude', () => {
+    expect(calls('find src -name "*.ts" -not -path "*/node_modules/*"')).toEqual(
+      [
+        {
+          tool: 'Glob',
+          pattern: '**/*.ts',
+          path: 'src',
+          exclude: ['**/node_modules/**'],
+        },
+      ],
+    )
+  })
+
+  test('the ./X/* form of the same exclusion maps too', () => {
+    expect(calls('find . -name "*.ts" -not -path "./target/*"')).toMatchObject([
+      { exclude: ['**/target/**'] },
+    ])
+  })
+
+  test('`!` is the same predicate as -not', () => {
+    expect(calls('find src -name "*.ts" ! -path "*/dist/*"')).toMatchObject([
+      { exclude: ['**/dist/**'] },
+    ])
+  })
+
+  test('several exclusions accumulate', () => {
+    expect(
+      calls(
+        'find src -name "*.ts" -not -path "*/node_modules/*" -not -path "*/dist/*"',
+      ),
+    ).toMatchObject([{ exclude: ['**/node_modules/**', '**/dist/**'] }])
+  })
+
+  test('the predicates compose into one call', () => {
+    expect(calls('find src -maxdepth 3 -type d -not -path "*/dist/*"')).toEqual([
+      {
+        tool: 'Glob',
+        pattern: '**/*',
+        path: 'src',
+        max_depth: 3,
+        type: 'dir',
+        exclude: ['**/dist/**'],
+      },
+    ])
+  })
+
+  test('the rendered call spells every parameter', () => {
+    const analysis = analyze('find src -maxdepth 3 -type d -not -path "*/dist/*"')
+    expect(renderToolRedirect(analysis!)).toContain(
+      'Glob(pattern: "**/*", path: "src", type: "dir", max_depth: 3, exclude: ["**/dist/**"])',
+    )
+  })
+
+  test('a directory listing says what it cannot show', () => {
+    expect(renderToolRedirect(analyze('find src -type d')!)).toContain(
+      'an empty directory does not appear',
+    )
+  })
+})
+
+describe('a file listing piped into a selector', () => {
+  test('| head -N folds into head_limit', () => {
+    expect(calls('find src -name "*.ts" | head -20')).toEqual([
+      { tool: 'Glob', pattern: '**/*.ts', path: 'src', head_limit: 20 },
+    ])
+  })
+
+  test('| head above what the model receives does NOT fold', () => {
+    // summarizeGlobOutput keeps the first 50 paths, so folding a larger head
+    // would promise a listing that is then trimmed.
+    expect(analyze('find src -name "*.ts" | head -80')).toBeNull()
+  })
+
+  test('a sed range over the listing becomes offset + head_limit', () => {
+    expect(calls(`find src -name "*.ts" | sed -n '5,20p'`)).toEqual([
+      {
+        tool: 'Glob',
+        pattern: '**/*.ts',
+        path: 'src',
+        offset: 4,
+        head_limit: 16,
+      },
+    ])
+  })
+
+  test('| sort becomes sort:"path"', () => {
+    expect(calls('find src -name "*.ts" | sort')).toEqual([
+      { tool: 'Glob', pattern: '**/*.ts', path: 'src', sort: 'path' },
+    ])
+  })
+
+  test('| sort | head -N is both, in that order', () => {
+    expect(calls('find src -type f | sort | head -10')).toEqual([
+      {
+        tool: 'Glob',
+        pattern: '**/*',
+        path: 'src',
+        sort: 'path',
+        head_limit: 10,
+      },
+    ])
+  })
+
+  test('| head -N | sort does NOT fold — it sorts the five it got', () => {
+    // Glob would sort the whole listing and then take five, which is a
+    // different five.
+    expect(analyze('find src -type f | head -5 | sort')).toBeNull()
+  })
+
+  test('a sort with any flag stands down', () => {
+    expect(analyze('find src -type f | sort -u')).toBeNull()
+    expect(analyze('find src -type f | sort -r')).toBeNull()
+  })
+
+  test('| sort after a grep is not a listing to reorder', () => {
+    expect(analyze('grep -rn foo src | sort')).toBeNull()
+  })
+
+  test('a folded head is told the order it gets', () => {
+    expect(renderToolRedirect(analyze('find src -name "*.ts" | head -20')!)).toContain(
+      'most recently modified paths',
+    )
+  })
+
+  test('an unbounded listing is told about the cap', () => {
+    expect(renderToolRedirect(analyze('find src -name "*.ts"')!)).toContain(
+      'at most 100 paths per call',
+    )
+  })
+
+  test('a bounded listing is NOT told about the cap', () => {
+    expect(
+      renderToolRedirect(analyze('find src -name "*.ts" | head -20')!),
+    ).not.toContain('at most 100 paths per call')
+  })
+})
+
 describe('a file source piped into grep', () => {
   test('cat f | grep PAT is one Grep over f', () => {
     expect(calls(`cat ${FILE_A} | grep -n foo`)).toMatchObject([
@@ -739,8 +895,23 @@ describe('stands down', () => {
       'a list of paths is not a file to search',
     ],
     [`find . -name "*.ts" -delete`, 'destructive predicate'],
-    ['find src -type d', 'directories, which Glob does not return'],
-    ['find src -maxdepth 2 -name "*.ts"', 'depth limit'],
+    ['find src -mindepth 2 -name "*.ts"', '-mindepth has no ripgrep spelling'],
+    ['find src -maxdepth 0 -name "*.ts"', 'depth 0 is the root itself'],
+    ['find src -type l', 'a symlink is a file to ripgrep’s walk'],
+    ['find src -type f -type d', 'find answers a contradiction with nothing'],
+    ['find src', 'no -name and no -type prints files AND directories'],
+    [
+      'find src -not -name "*.ts"',
+      'the only negation with a spelling is an excluded directory',
+    ],
+    [
+      'find src -not -path "*/node_modules/*.ts"',
+      'an exclusion that is not a whole directory',
+    ],
+    [
+      'find src -not -path "*/*/node_modules/*"',
+      'a multi-segment exclusion, where `*` crossing `/` matters again',
+    ],
     [`find ${FILE_A} -type f`, 'a file is not a walkable root'],
     // find's -path wildcards cross `/`; ripgrep's globset `*` stops at one
     // segment, so the only honest Glob for -path is none at all.

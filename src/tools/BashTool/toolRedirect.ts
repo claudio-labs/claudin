@@ -119,6 +119,18 @@ export type SuggestedCall =
       path?: string
       /** `find -iname`. Glob is case-SENSITIVE by default, unlike Grep. */
       caseInsensitive?: boolean
+      /** `find -maxdepth`. */
+      max_depth?: number
+      /** `find -type d`. Glob lists files unless told otherwise. */
+      type?: 'dir'
+      /** `| sort` — name order instead of Glob's mtime ranking. */
+      sort?: 'path'
+      /** `-not -path '*\/X\/*'`, in the only two shapes that translate. */
+      exclude?: string[]
+      /** `| head -N`. Glob's own cap is 100, so this is only ever a narrowing. */
+      head_limit?: number
+      /** Glob's `offset`, from a `| sed -n 'A,Bp'` over the listing. */
+      offset?: number
     }
 
 /** One pipeline's worth of segments and the calls that replace them. */
@@ -133,6 +145,19 @@ export type RedirectAnalysis = {
   /** Every tool the suggestion needs — all must be in the agent's toolset. */
   targets: ToolTarget[]
 }
+
+/**
+ * How large a `| head -N` over a file listing may be and still fold into
+ * `head_limit`. Above it the fold would promise more paths than the model
+ * receives: `summarizeGlobOutput` keeps the first GLOB_MAX_PATHS (50) of a Glob
+ * result. Kept as its own constant rather than imported, for the same reason
+ * VCS_DIRECTORIES_GREP_EXCLUDES is: the summarizer drags the whole tool result
+ * pipeline in behind it.
+ */
+const GLOB_FOLDABLE_PATHS = 50
+
+/** What one Glob call returns before the model has to page (GlobTool's cap). */
+const GLOB_PATHS_PER_CALL = 100
 
 // ---------------------------------------------------------------------------
 // Segment → argv
@@ -293,6 +318,12 @@ function composeWindow(base: LineWindow, next: LineWindow): LineWindow {
 type SegmentRole =
   | { kind: 'source'; calls: SuggestedCall[]; window?: LineWindow }
   | { kind: 'selector'; window: LineWindow }
+  /**
+   * A bare `sort` reading stdin: it neither narrows nor searches, it REORDERS.
+   * Only a listing of paths can absorb that (Glob's `sort`), so it is usable
+   * exactly when the pipeline's head is a Glob.
+   */
+  | { kind: 'reorder' }
   /**
    * A `grep` reading stdin: it neither produces the file nor merely narrows
    * lines, it SEARCHES what came before it. Usable only when an upstream
@@ -876,16 +907,72 @@ function combineIncludes(includes: string[]): string | undefined | null {
 
 // --- find ------------------------------------------------------------------
 
+/**
+ * What of `find` maps onto Glob, and what deliberately does not.
+ *
+ * Measured over 2,084 recorded sessions (2026-08-16): find converted 62 of 553
+ * before this, 157 after. The predicates below were chosen by leave-one-out
+ * sizing, not by how often they appear — `-o` appears 66 times and converts 3,
+ * because those commands are stood down by something else anyway.
+ *
+ *   -name/-iname   → pattern (+ `-i`)
+ *   -type f        → the default listing
+ *   -type d        → type:"dir", which is DERIVED from the files in a directory:
+ *                    an empty directory and the search root are absent
+ *   -maxdepth N    → max_depth (N ≥ 1; `-maxdepth 0` is the root itself)
+ *   -not/! -path   → exclude, and ONLY for a whole directory (see
+ *                    EXCLUDE_PATH_RE) — every other -path is refused below
+ *
+ * Refused, each for a reason that is not "nobody wrote the code":
+ *   -mindepth      no ripgrep spelling at all
+ *   -type l        a symlink is a file to ripgrep's walk
+ *   a bare -path   `*` crosses `/` in fnmatch and stops at a segment in globset
+ *   -o / -a        one Glob takes one pattern (sized at 3 in 2026-08-16)
+ *   -exec, -delete an action, not a listing
+ *   -newer, -size, -mtime, -empty, -perm … metadata Glob cannot filter on
+ *   several roots  N Globs would spell it; sized at 0
+ */
+
+const FIND_DEPTH_RE = /^\d+$/
+
+/**
+ * find's `-path` matches with fnmatch and no FNM_PATHNAME, so its `*` crosses
+ * `/`; ripgrep's globset `*` stops at one segment and `**` is only special as a
+ * whole path component. That makes `-path` untranslatable in general — but the
+ * two shapes people actually write for an EXCLUSION name a directory and
+ * nothing else, and those two say exactly `**\/X\/**`.
+ */
+const EXCLUDE_PATH_RE = /^(?:\*\/|\.\/)([^*?/]+)\/\*$/
+
+function toExcludeGlob(pattern: string): string | null {
+  const match = EXCLUDE_PATH_RE.exec(pattern)
+  return match ? `**/${match[1]}/**` : null
+}
+
+// --- sort ------------------------------------------------------------------
+
+/**
+ * Only a bare `sort`. Every flag it takes changes what comes out — `-u`
+ * deduplicates, `-n` reads the lines as numbers, `-r` reverses, `-k` sorts by a
+ * field — and Glob's ordering has a spelling for none of them.
+ */
+function parseSort(argv: string[]): SegmentRole | null {
+  return argv.length === 1 ? { kind: 'reorder' } : null
+}
+
 function parseFind(argv: string[], cwd: string): SegmentRole | null {
   const args = argv.slice(1)
   const roots: string[] = []
   let namePattern: string | undefined
   let caseInsensitive = false
   let sawTypeFile = false
+  let listsDirectories = false
+  let maxDepth: number | undefined
+  const exclude: string[] = []
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!
-    if (!arg.startsWith('-')) {
+    if (!arg.startsWith('-') && arg !== '!') {
       // Positional roots only come before the predicates.
       if (namePattern !== undefined) return null
       roots.push(arg)
@@ -910,21 +997,47 @@ function parseFind(argv: string[], cwd: string): SegmentRole | null {
       }
       case '-type': {
         const value = args[++i]
-        // Glob returns files. `-type d` and `-type l` have no spelling.
-        if (value !== 'f') return null
-        sawTypeFile = true
+        // `-type l` still has no spelling: a symlink is a file to ripgrep's
+        // walk, and Glob has no way to say "only the links".
+        if (value === 'f') sawTypeFile = true
+        else if (value === 'd') listsDirectories = true
+        else return null
+        break
+      }
+      case '-maxdepth': {
+        const value = args[++i]
+        // `-maxdepth 0` is the root itself, which a Glob over its contents
+        // cannot return.
+        if (value === undefined || !FIND_DEPTH_RE.test(value)) return null
+        const depth = Number(value)
+        if (depth < 1 || maxDepth !== undefined) return null
+        maxDepth = depth
+        break
+      }
+      case '-not':
+      case '!': {
+        // The only negation with a spelling is an excluded directory.
+        if (args[++i] !== '-path') return null
+        const value = args[++i]
+        if (value === undefined) return null
+        const globbed = toExcludeGlob(value)
+        if (globbed === null) return null
+        exclude.push(globbed)
         break
       }
       default:
-        // -exec, -delete, -maxdepth, -mtime, -size, -newer, -o, -not …
-        // and -path, which LOOKS translatable and is not: its wildcards cross
-        // `/`, ripgrep's globset `*` stops at one segment, so `-path "./src/*"`
-        // would become a Glob over direct children only — silently narrower.
+        // -exec, -delete, -mindepth, -mtime, -size, -newer, -o, -prune …
+        // and a bare -path, which LOOKS translatable and is not: see
+        // EXCLUDE_PATH_RE for why only the negated directory form maps.
         return null
     }
   }
   if (roots.length > 1) return null
-  if (namePattern === undefined && !sawTypeFile) return null
+  // A find with no `-name` and no `-type` prints files AND directories, which
+  // is one listing Glob cannot produce either way.
+  if (namePattern === undefined && !sawTypeFile && !listsDirectories) return null
+  // `-type f -type d` is a contradiction find answers with nothing.
+  if (sawTypeFile && listsDirectories) return null
 
   const root = roots[0]
   if (root !== undefined && !resolveDirectory(root, cwd)) return null
@@ -940,6 +1053,9 @@ function parseFind(argv: string[], cwd: string): SegmentRole | null {
         pattern,
         path: root === undefined || root === '.' ? undefined : root,
         ...(caseInsensitive && { caseInsensitive: true }),
+        ...(maxDepth !== undefined && { max_depth: maxDepth }),
+        ...(listsDirectories && { type: 'dir' as const }),
+        ...(exclude.length > 0 && { exclude }),
       },
     ],
   }
@@ -964,6 +1080,8 @@ function classifySegment(
       return parseHead(argv, cwd)
     case 'sed':
       return parseSed(argv, cwd)
+    case 'sort':
+      return parseSort(argv)
     case 'grep':
       return parseGrep(argv, cwd, 'grep')
     case 'egrep':
@@ -1045,19 +1163,35 @@ function classifyPipeline(
   // spell it exactly.
   const only = head.calls.length === 1 ? head.calls[0] : undefined
   let windowable =
-    only && (only.tool === 'Read' || only.tool === 'Grep') ? only : undefined
+    only &&
+    (only.tool === 'Read' || only.tool === 'Grep' || only.tool === 'Glob')
+      ? only
+      : undefined
 
   let window: LineWindow = head.window ?? IDENTITY_WINDOW
   for (const segment of group.slice(1)) {
     if (!windowable) return null
     const role = classifySegment(segment, cwd)
     if (!role) return null
+    if (role.kind === 'reorder') {
+      // `find … | sort` is Glob's own ordering, switched. After a window it is
+      // NOT: `find … | head -5 | sort` sorts the five the shell happened to
+      // print, while a Glob sorts the whole listing and then takes five.
+      if (windowable.tool !== 'Glob') return null
+      if (window.offset !== 1 || window.limit !== undefined) return null
+      windowable = { ...windowable, sort: 'path' }
+      continue
+    }
     if (role.kind === 'filter') {
       // `cat f | grep PAT` is a search of f, and Grep spells it in one call.
       // Only when the source handed over the WHOLE file, though: with a window
       // upstream (`sed -n '1,400p' f | grep PAT`) the shell searched a slice,
       // and Grep has no way to say "only these lines" — standing down is the
       // honest answer rather than searching more than the command did.
+      //
+      // A Glob head lands here too and is refused for a different reason:
+      // `find … | grep PAT` filters the whole PATH by regex, where a Glob
+      // pattern matches one segment, so the fold would silently narrow.
       if (windowable.tool !== 'Read') return null
       if (window.offset !== 1 || window.limit !== undefined) return null
       windowable = { ...role.call, path: windowable.file_path }
@@ -1067,6 +1201,17 @@ function classifyPipeline(
     if (role.kind !== 'selector') return null
     window = composeWindow(window, role.window)
     if (window.limit !== undefined && window.limit < 1) return null
+  }
+
+  // A `| head -N` over a listing only maps while the model would actually
+  // receive N paths: the result summarizer keeps the first GLOB_MAX_PATHS of a
+  // Glob result, so folding a larger head promises a listing it then trims.
+  if (
+    windowable?.tool === 'Glob' &&
+    window.limit !== undefined &&
+    window.limit > GLOB_FOLDABLE_PATHS
+  ) {
+    return null
   }
 
   const calls = (windowable ? [applyWindow(windowable, window)] : head.calls).map(
@@ -1088,9 +1233,18 @@ function withFullBody(call: SuggestedCall): SuggestedCall {
 }
 
 function applyWindow(
-  call: Extract<SuggestedCall, { tool: 'Read' | 'Grep' }>,
+  call: Extract<SuggestedCall, { tool: 'Read' | 'Grep' | 'Glob' }>,
   window: LineWindow,
 ): SuggestedCall {
+  if (call.tool === 'Glob') {
+    // Glob counts PATHS where the window counts lines, which is the same
+    // arithmetic — one path per line — and its `offset` skips entries from 0
+    // like Grep's.
+    const next = { ...call }
+    if (window.offset > 1) next.offset = window.offset - 1
+    if (window.limit !== undefined) next.head_limit = window.limit
+    return next
+  }
   if (call.tool === 'Grep') {
     // Grep's `offset` skips entries and counts from 0; the window counts lines
     // from 1. The trim also lands on rg's ordering rather than grep's — for a
@@ -1206,6 +1360,26 @@ export function renderToolRedirect(analysis: RedirectAnalysis): string {
       "Note: the pattern above is not a typo — grep's default dialect is BRE and Grep speaks ripgrep's, so it was converted (`\\|` → `|`, and so on). It matches the same lines.",
     )
   }
+  const globCalls = analysis.units.flatMap(unit =>
+    unit.calls.filter(call => call.tool === 'Glob'),
+  )
+  // find prints every match; Glob answers a page of them. Said only when
+  // nothing in the command bounded the listing already.
+  if (globCalls.some(call => call.head_limit === undefined)) {
+    lines.push(
+      `Note: ${GLOB_TOOL_NAME} returns at most ${GLOB_PATHS_PER_CALL} paths per call where find printed every match, and a truncated result reports the offset to page through the rest.`,
+    )
+  }
+  if (globCalls.some(call => call.head_limit !== undefined && !call.sort)) {
+    lines.push(
+      `Note: those are the most recently modified paths, not the first ones find would have printed — ${GLOB_TOOL_NAME} ranks by mtime. Pass sort: "path" for name order.`,
+    )
+  }
+  if (globCalls.some(call => call.type === 'dir')) {
+    lines.push(
+      'Note: directories are inferred from the files inside them, so an empty directory does not appear, and the search root itself is not listed.',
+    )
+  }
   lines.push(
     'If you genuinely need the shell form, re-send this exact Bash command and it will run.',
   )
@@ -1245,6 +1419,16 @@ function renderCall(call: SuggestedCall): string {
       const args = [`pattern: ${JSON.stringify(call.pattern)}`]
       if (call.path !== undefined) args.push(`path: ${JSON.stringify(call.path)}`)
       if (call.caseInsensitive) args.push('"-i": true')
+      if (call.type !== undefined) args.push(`type: ${JSON.stringify(call.type)}`)
+      if (call.max_depth !== undefined) args.push(`max_depth: ${call.max_depth}`)
+      if (call.sort !== undefined) args.push(`sort: ${JSON.stringify(call.sort)}`)
+      if (call.exclude !== undefined) {
+        args.push(`exclude: ${JSON.stringify(call.exclude)}`)
+      }
+      if (call.offset !== undefined) args.push(`offset: ${call.offset}`)
+      if (call.head_limit !== undefined) {
+        args.push(`head_limit: ${call.head_limit}`)
+      }
       return `${GLOB_TOOL_NAME}(${args.join(', ')})`
     }
   }
