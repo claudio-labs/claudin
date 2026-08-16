@@ -2,6 +2,7 @@ import { existsSync } from 'fs'
 import { join } from 'path'
 import { expect, test } from 'bun:test'
 import { loadShippedFeatureFlags } from './parseFeatureFlags'
+import { REPO_ROOT } from '../repoRoot'
 
 // Regression guard for #856. Several build feature flags require source files
 // that are not mirrored into the open build. When such a flag is set to `true`
@@ -12,8 +13,6 @@ import { loadShippedFeatureFlags } from './parseFeatureFlags'
 //
 // This test fails fast at test-time if someone re-enables one of these flags
 // without first mirroring the corresponding source file.
-
-const REPO_ROOT = join(import.meta.dir, '..')
 
 type FlagGuard = {
   flag: string
@@ -35,7 +34,7 @@ test('build feature flags are not enabled without their source files', () => {
 
     if (isEnabled && !sourceExists) {
       throw new Error(
-        `Feature flag ${flag} is enabled in scripts/build.ts, but its required source file "${source}" does not exist. ` +
+        `Feature flag ${flag} is enabled in scripts/build/build.ts, but its required source file "${source}" does not exist. ` +
           `Enabling this flag without the source will cause runtime errors (missing named exports from the missing-module stub). ` +
           `Either mirror the source file or set ${flag}: false.`,
       )

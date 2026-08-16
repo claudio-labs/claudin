@@ -76,7 +76,7 @@ jobs:
       # No `bun run build` / `build:verified` step on purpose, and the reason is
       # not the one that used to be written here. That comment claimed a dev
       # build's chunks would survive into the tarball beside the release chunks;
-      # `scripts/build.ts` has since wiped `dist/chunks` on release builds
+      # `scripts/build/build.ts` has since wiped `dist/chunks` on release builds
       # (verified: 2754 dev chunks in, 459 release chunks out, zero survivors),
       # so they would not.
       #

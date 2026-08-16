@@ -2,7 +2,7 @@
  * Vendor the sharp image-processing runtime beside a compiled Claudin binary.
  *
  * A Bun-compiled standalone binary can't resolve `sharp` (kept `external` in
- * scripts/build.ts) from node_modules at runtime — there is no node_modules
+ * scripts/build/build.ts) from node_modules at runtime — there is no node_modules
  * next to the executable. So each per-platform package ships a self-contained
  * sharp install at vendor/sharp/node_modules/, which src/tools/FileReadTool/
  * imageProcessor.ts probes via dirname(process.execPath) when the bare
@@ -23,10 +23,10 @@
  * release matrix runs each leg on its own runner; a linux-x64 host also carries
  * the musl variant), they are copied directly. Otherwise the pinned version
  * from sharp's optionalDependencies is fetched via `npm pack` — same strategy
- * as scripts/vendor-ripgrep.ts.
+ * as scripts/build/vendor-ripgrep.ts.
  *
- * Usage: bun run scripts/vendor-sharp.ts               # host platform
- *        CLAUDIN_COMPILE_TARGET=bun-linux-arm64 bun run scripts/vendor-sharp.ts
+ * Usage: bun run scripts/build/vendor-sharp.ts               # host platform
+ *        CLAUDIN_COMPILE_TARGET=bun-linux-arm64 bun run scripts/build/vendor-sharp.ts
  */
 
 import { execFileSync } from 'child_process'
@@ -44,7 +44,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 
 const require = createRequire(import.meta.url)
-const root = join(import.meta.dir, '..')
+const root = REPO_ROOT
 
 // Platform-package dir (matches build.ts / assemble-packages.ts keys: strip
 // "bun-", windows→win32; keep the -musl suffix).

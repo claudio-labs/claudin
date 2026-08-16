@@ -17,8 +17,8 @@
  * vendor that rg instead. The vendored dir key + rg name always follow the
  * TARGET, matching what src/shared/fs/ripgrep.ts probes at runtime.
  *
- * Usage: bun run scripts/vendor-ripgrep.ts            # host platform
- *        CLAUDIN_COMPILE_TARGET=bun-linux-x64 bun run scripts/vendor-ripgrep.ts
+ * Usage: bun run scripts/build/vendor-ripgrep.ts            # host platform
+ *        CLAUDIN_COMPILE_TARGET=bun-linux-x64 bun run scripts/build/vendor-ripgrep.ts
  */
 
 import { execFileSync } from 'child_process'
@@ -105,8 +105,7 @@ function resolveRgPath(): string {
 const rgPath = resolveRgPath()
 
 const destDir = join(
-  import.meta.dir,
-  '..',
+  REPO_ROOT,
   'dist',
   'bin',
   compilePlatform,

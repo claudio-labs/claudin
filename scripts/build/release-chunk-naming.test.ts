@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { REPO_ROOT } from '../repoRoot'
 
 // ---------------------------------------------------------------------------
 // Guard: release builds (CLAUDIN_RELEASE_BUILD=1) embed the package version
@@ -8,7 +9,7 @@ import { join } from 'node:path'
 // identifies the published release without requiring sourcemaps. Local dev
 // builds keep the shorter `cli-abc123.mjs` form.
 //
-// Codifies the env-gated `naming.chunk` template in scripts/build.ts so a
+// Codifies the env-gated `naming.chunk` template in scripts/build/build.ts so a
 // future refactor of the build config doesn't silently revert the release
 // behavior. Pure source assertion — no rebuild needed.
 //
@@ -17,7 +18,7 @@ import { join } from 'node:path'
 
 const buildSrc = readFileSync(join(__dirname, 'build.ts'), 'utf-8')
 const pkg = JSON.parse(
-  readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'),
+  readFileSync(join(REPO_ROOT, 'package.json'), 'utf-8'),
 )
 
 describe('release chunk naming', () => {

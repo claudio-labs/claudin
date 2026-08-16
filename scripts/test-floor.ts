@@ -54,9 +54,9 @@ const REQUIRED_SUITES = [
   'src/agent/compact/requestDeterminism.invariant.test.ts',
   'src/agent/compact/stableStubState.stub-byte-stability.test.ts',
   'src/tools/shared/outputFilter/Bash/phase12Report.test.ts',
-  'scripts/feature-flags-source-guard.test.ts',
+  'scripts/build/feature-flags-source-guard.test.ts',
   'scripts/measure-tool-schemas.test.ts',
-  'scripts/no-telemetry-growthbook-stub.test.ts',
+  'scripts/build/no-telemetry-growthbook-stub.test.ts',
   'scripts/pr-intent-scan.test.ts',
 ]
 

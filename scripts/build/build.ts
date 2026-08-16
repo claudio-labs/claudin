@@ -11,6 +11,7 @@
 import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { noTelemetryPlugin } from './no-telemetry-plugin'
+import { REPO_ROOT } from '../repoRoot'
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 const version = pkg.version
@@ -85,8 +86,7 @@ checkAutoModeClassifierPrompts()
 function checkAutoModeClassifierPrompts(): void {
   if (!featureFlags.TRANSCRIPT_CLASSIFIER) return
   const promptDir = join(
-    __dirname,
-    '..',
+    REPO_ROOT,
     'src/permissions/yolo-classifier-prompts',
   )
   const required = ['auto_mode_system_prompt.txt', 'permissions_external.txt']
@@ -179,7 +179,7 @@ function restoreModifiedFiles() {
 // clean chunks dir: there's no long-running CLI to protect, and leaving
 // stale dev chunks behind would cause them to ship in the npm tarball
 // alongside fresh release chunks (duplicates observed in v0.2.5).
-const distDir = join(import.meta.dir, '..', 'dist')
+const distDir = join(REPO_ROOT, 'dist')
 const isReleaseBuild = process.env.CLAUDIN_RELEASE_BUILD === '1'
 const staleArtifacts = isReleaseBuild
   ? ['cli.mjs', 'cli.mjs.map', 'chunks']
@@ -229,7 +229,7 @@ const compileOutfile = join(
   isWindowsTarget ? 'claudin.exe' : 'claudin',
 )
 
-preProcessSources(join(import.meta.dir, '..', 'src'))
+preProcessSources(join(REPO_ROOT, 'src'))
 const numModified = modifiedFiles.size
 
 // Restore source files on abrupt termination (Ctrl+C, kill, etc.)
@@ -528,7 +528,7 @@ export const SeverityNumber = {};
         //  so we use exact-match resolvers instead of catch-all patterns)
         const fs = require('fs')
         const pathMod = require('path')
-        const srcDir = pathMod.resolve(__dirname, '..', 'src')
+        const srcDir = pathMod.resolve(REPO_ROOT, 'src')
         const missingModules = new Set<string>()
         const missingModuleExports = new Map<string, Set<string>>()
         // Specifier → the source files that referenced it. Only paths found by
@@ -559,12 +559,12 @@ export const SeverityNumber = {};
                   if (!missingImportSites.has(spec)) missingImportSites.set(spec, new Set())
                   missingImportSites
                     .get(spec)!
-                    .add(pathMod.relative(pathMod.resolve(__dirname, '..'), file))
+                    .add(pathMod.relative(REPO_ROOT, file))
                 }
 
                 // Check src/agent/tasks/ non-relative imports
                 if (specifier.startsWith('src/agent/tasks/')) {
-                  const resolved = pathMod.resolve(__dirname, '..', specifier)
+                  const resolved = pathMod.resolve(REPO_ROOT, specifier)
                   const candidates = [
                     resolved,
                     `${resolved}.ts`, `${resolved}.tsx`,
@@ -740,7 +740,7 @@ ${exports}
     // Native image processing. Kept external for BOTH builds: it has a native
     // addon + libvips, so Bun can't inline it. The Node bundle resolves it from
     // node_modules; the compiled binary loads a self-contained copy vendored
-    // beside the executable at vendor/sharp/ (scripts/vendor-sharp.ts, probed
+    // beside the executable at vendor/sharp/ (scripts/build/vendor-sharp.ts, probed
     // by src/tools/FileReadTool/imageProcessor.ts). Without the vendored copy,
     // image paste + resizing silently no-op in the standalone binary.
     'sharp',

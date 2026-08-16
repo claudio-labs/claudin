@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, statSync } from 'fs'
 import { basename, join } from 'path'
 import { expect, test } from 'bun:test'
+import { REPO_ROOT } from '../repoRoot'
 
 // Guard for a silent failure the 2026-08 reorg walked into.
 //
@@ -25,7 +26,6 @@ import { expect, test } from 'bun:test'
 //     of that name exists ELSEWHERE   → the module MOVED and took the stub out
 //                                       of the build with it. This fails.
 
-const REPO_ROOT = join(import.meta.dir, '..')
 const SRC = join(REPO_ROOT, 'src')
 
 function stubKeys(source: string): string[] {
@@ -56,7 +56,7 @@ function findByBasename(dir: string, name: string, out: string[]): void {
 
 test('every no-telemetry stub key still resolves, or names nothing at all', async () => {
   const plugin = await Bun.file(
-    join(REPO_ROOT, 'scripts', 'no-telemetry-plugin.ts'),
+    join(import.meta.dir, 'no-telemetry-plugin.ts'),
   ).text()
   const keys = stubKeys(plugin)
   expect(keys.length).toBeGreaterThan(10)

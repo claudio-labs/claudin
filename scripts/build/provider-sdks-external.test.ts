@@ -1,10 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { REPO_ROOT } from '../repoRoot'
 
 // ---------------------------------------------------------------------------
 // Guard: the three Anthropic provider SDKs (bedrock/vertex/foundry) must stay
-// `external` in scripts/build.ts so they are loaded at runtime from
+// `external` in scripts/build/build.ts so they are loaded at runtime from
 // node_modules instead of being bundled into a shared chunk. Without this,
 // Bun's chunk-deduplication co-mingles all three SDKs into the shared chunk
 // pulled by every dynamic-import branch — defeating per-provider isolation
@@ -13,7 +14,7 @@ import { join } from 'node:path'
 // See ROADMAP.md item 5.1.
 // ---------------------------------------------------------------------------
 
-const distDir = join(__dirname, '..', 'dist', 'chunks')
+const distDir = join(REPO_ROOT, 'dist', 'chunks')
 
 const SDKS = [
   '@anthropic-ai/bedrock-sdk',

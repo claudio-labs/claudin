@@ -2,11 +2,12 @@ import { existsSync, readdirSync, readFileSync } from 'fs'
 import { dirname, join, resolve } from 'path'
 import { describe, expect, test } from 'bun:test'
 import { loadShippedFeatureFlags } from './parseFeatureFlags'
+import { REPO_ROOT } from '../repoRoot'
 
 // Companion to feature-flags-source-guard.test.ts, for the variant of that bug
 // that takes the whole TUI down instead of throwing in one code path.
 //
-// `scripts/build.ts` stubs every unresolved relative `require()` with a module
+// `scripts/build/build.ts` stubs every unresolved relative `require()` with a module
 // that exports ONLY `default` (build.ts:602-616). Code that destructures a
 // NAMED export from such a stub gets `undefined`, and rendering `undefined` as
 // a component throws React error #130 ("Element type is invalid") — which the
@@ -19,7 +20,6 @@ import { loadShippedFeatureFlags } from './parseFeatureFlags'
 // `if (!X) return null` guard. This test fails on the unguarded shape whenever
 // the required module is missing and its feature gate is enabled.
 
-const REPO_ROOT = resolve(import.meta.dir, '..')
 const SRC_DIR = join(REPO_ROOT, 'src')
 
 type SourceFile = { path: string; code: string }

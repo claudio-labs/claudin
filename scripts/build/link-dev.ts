@@ -9,8 +9,9 @@
 import { existsSync, mkdirSync, symlinkSync, unlinkSync, chmodSync } from "fs";
 import { homedir } from "os";
 import { join, resolve } from "path";
+import { REPO_ROOT } from "../repoRoot";
 
-const repoRoot = resolve(import.meta.dir, "..");
+const repoRoot = REPO_ROOT;
 const target = join(repoRoot, "bin", "claudin");
 
 if (!existsSync(target)) {

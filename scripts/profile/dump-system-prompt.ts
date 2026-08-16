@@ -40,7 +40,7 @@
 
 import { existsSync, statSync } from 'fs'
 import { join } from 'path'
-import { loadShippedFeatureFlags } from '../parseFeatureFlags'
+import { loadShippedFeatureFlags } from '../build/parseFeatureFlags'
 
 ;(globalThis as any).MACRO ??= new Proxy({}, { get: (_t, p) => `<MACRO.${String(p)}>` })
 
@@ -52,7 +52,7 @@ const BUNDLE = join(REPO_ROOT, 'dist/cli.mjs')
 // context blocks, the AGENTS.md/rules loader, every per-tool prompt and the
 // sub-agent notices all land in one of the two dumps below.
 const PROMPT_SOURCE_GLOBS = [
-  'scripts/build.ts',
+  'scripts/build/build.ts',
   'src/shared/constants/**/*.ts',
   'src/agent/context.ts',
   'src/memory/instructions/claudemd.ts',

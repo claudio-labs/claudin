@@ -1,10 +1,10 @@
 /**
- * Reads the `featureFlags` map out of `scripts/build.ts`.
+ * Reads the `featureFlags` map out of `scripts/build/build.ts`.
  *
  * `build.ts` stays the single source of truth, and the three readers of that
  * map go through here: the two build-invariant guards
  * (feature-flags-source-guard, lazy-component-stub-guard) and
- * scripts/profile/dump-system-prompt.ts, which names the flags a source-side
+ * scripts/bench/perf/dump-system-prompt.ts, which names the flags a source-side
  * render reads as false. Importing build.ts instead is not an option — its
  * module body reads package.json, reads the IDE extension manifest, and warns
  * about missing classifier prompts.
@@ -23,7 +23,7 @@ export const BUILD_SCRIPT_PATH = join(import.meta.dir, 'build.ts')
 
 export function parseFeatureFlags(buildScript: string): Record<string, boolean> {
   const body = FLAGS_BLOCK_RE.exec(buildScript)
-  if (!body) throw new Error('could not find featureFlags in scripts/build.ts')
+  if (!body) throw new Error('could not find featureFlags in scripts/build/build.ts')
   const flags: Record<string, boolean> = {}
   for (const line of body[1]!.split('\n')) {
     const m = FLAG_LINE_RE.exec(line)

@@ -3,13 +3,13 @@
  *
  * The release pipeline builds each platform NATIVELY on its own runner (so the
  * binary + bytecode are host-native and can be smoke-tested), passing a single
- * `CLAUDIN_COMPILE_TARGET` into `scripts/build.ts`. This driver is the
+ * `CLAUDIN_COMPILE_TARGET` into `scripts/build/build.ts`. This driver is the
  * cross-compile-everything-on-one-host path — useful for local testing and as
  * the win-arm64 fallback when no native arm64 Windows runner is available.
  *
  * Usage:
- *   bun run scripts/build-compile-all.ts            # all 8 targets
- *   bun run scripts/build-compile-all.ts bun-linux-x64 bun-darwin-arm64
+ *   bun run scripts/build/build-compile-all.ts            # all 8 targets
+ *   bun run scripts/build/build-compile-all.ts bun-linux-x64 bun-darwin-arm64
  *
  * Output: dist/bin/<platform>/claudin[.exe] per target (layout owned by build.ts).
  * Note: cross-compiled (non-host) binaries cannot be smoke-tested here — only
@@ -35,7 +35,7 @@ const results: { target: string; ok: boolean; ms: number }[] = []
 for (const target of selected) {
   const t0 = Date.now()
   console.log(`\n▶ Compiling ${target} …`)
-  const proc = Bun.spawnSync(['bun', 'run', 'scripts/build.ts'], {
+  const proc = Bun.spawnSync(['bun', 'run', 'scripts/build/build.ts'], {
     stdio: ['inherit', 'inherit', 'inherit'],
     env: {
       ...process.env,
