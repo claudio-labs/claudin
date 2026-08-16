@@ -82,7 +82,13 @@ worth knowing before the next round: the repo is on CodeQL **default setup** (no
 workflow, no `.github/codeql*` config), so there is no query filter to add and
 inline `// codeql[…]` suppression is not a documented code-scanning feature —
 the API dismissal is the only lever; and `dismissed_comment` is capped at **280
-characters**, which a 422 tells you only after the PATCH.
+characters**, which a 422 tells you only after the PATCH. A **fourth**
+generation landed with PR #100, which moved `scripts/profile/` to
+`scripts/bench/perf/`: `#31` (`memory-e2e-bench.ts:490`, was `#17`) and `#32`
+(`take-heap-snapshot-cdp.ts:108`, was `#5`), both re-dismissed 2026-08-16. The
+mitigations were still in the code, comments and all — a re-raise says nothing
+about the fix, only about the path. Note this round came from a *scripts*
+reorg, not a `src/` one: any tree-wide move re-raises, not just slice moves.
 
 **Why:** these all sit downstream of the file walk. A generator, a plugin filter
 and a comment are *about* paths rather than *containing* imports, so nothing
