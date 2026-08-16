@@ -1,6 +1,6 @@
 ---
 name: bash-file-read-census-and-redirect-reach
-description: Measured 2026-08-09 and re-measured 2026-08-15 — 82-85% of Bash file-reads are Grep/Glob work, the refusal converts 84.7%, and the reach queue now has a standing collector; BRE translation alone is 40% of all redirects
+description: Measured 2026-08-09, 08-15 and 08-16 — 82-85% of Bash file-reads are Grep/Glob work, the refusal converts 84.7%, and the collector now SIZES an arm before it is built (reach 940 → 1,112; cd && measured at zero)
 type: project
 ---
 
@@ -129,8 +129,59 @@ the model *invented* to bound output — it asked to scan the top of a file, not
 to search lines 1-400. A tool the model would never reach for spontaneously does
 not pay for its schema.
 
-**Next queue** (non-redirecting, most frequent first): `ls` 1,236 and `tail` 643
-are deliberate; `unclassified` 1,217 is dominated by commands whose file is
-simply gone (`/tmp/*.log`), i.e. noise, not a gap; then shell
-operators/redirection 813, `find` predicates 308 (`-maxdepth`, `-type d`, `-o`),
-expansions 263, grep flags with no Grep spelling 267.
+## 2026-08-16 — the collector now SIZES an arm before it is built
+
+The reason buckets were triage; they said `redirection or a shell operator` 813
+and named no fix. The collector gained a second section that is not a heuristic:
+each candidate arm is sized by **rewriting the command into the shape that arm
+would produce and asking the real `analyzeCommandForRedirect` whether THAT
+redirects**. So the number is "rows this arm converts", not "rows that look like
+it" — and it is a **floor**, because the rewrites only handle single-segment
+commands, so a compound carrying the shape is invisible to them.
+
+Measured over 2,081 sessions / 6,528 read-search calls, reach 940 (14.4%):
+
+| arm | sized | shipped | why |
+|---|---|---|---|
+| `2>/dev/null` as a discard | 101 | yes | |
+| grep with 2+ paths → N Greps | 48 | yes | |
+| `find -name A -o -name B` | 3 | **no** | under the ~30 bar |
+| `cd D && <one command>` | **0** | **no** | measured refusal |
+
+Shipped reach: **940 → 1,112 (17.0%)**, +172 — *above* the 152 the sizing
+predicted, which is the floor effect above. Per-command attribution: 49 owed to
+multi-path, BRE translation 374 → 426 because it now reaches multi-path commands.
+
+- **`cd D && …` is not the lever, and now there is a number.** The 2026-08-09
+  note recorded 20 occurrences and refused it; re-measured it converts **zero** —
+  the rest of those commands (`| head`, `; echo`, `$(…)`) stands them down anyway.
+  Don't reopen it without re-running the sizing.
+- **`find -o` dies with it, and takes a `combineIncludes` widening with it.** The
+  3 (later 7) cases are all `-iname`, and generalising `*.{ts,tsx}` to
+  `{*.test.ts,*.spec.ts}` existed to serve them: repeated `--include` appears ~20
+  times in the whole corpus, nearly always already in `*.ext` form.
+- **`grep PAT f1 f2` is N Grep calls, not a `path: string[]`.** `parseCat` already
+  emitted N Reads and `renderToolRedirect` already said "Emit them as parallel
+  tool_use blocks", so the arm is a laço, not a schema change. `walksTree` had to
+  become **per target** — `grep -rn PAT file.ts src/` diverges on the second path
+  only, and one flag for the command would put a false claim in the refusal.
+- **What multi-path deliberately does NOT buy:** `grep PAT f1 f2 | head -20` still
+  runs in the shell. `head -20` caps the TOTAL and a per-call `head_limit` asks
+  for more than the command did; `classifyPipeline` only folds a window into a
+  single call, for exactly that reason.
+- **`2>/dev/null` belongs in `walkCommandSegments`, not in a regex on the raw
+  command.** shell-quote has already separated a quoted `"2>/dev/null"` (one
+  string token) from a real one (`2` + `>` + `/dev/null`). What the raw text is
+  still needed for is ADJACENCY: `cat f 2 > /dev/null` tokenizes identically and
+  sends stdout to the void, so it must stay flagged. Both halves are pinned by
+  mutation; so is the per-segment fd check, whose case is a SECOND redirection
+  later in a command that already discarded stderr somewhere.
+- Counters in that script must count **commands, not calls** — one command now
+  yields several, and the old per-call loop credited the BRE arm 515 instead of
+  426.
+
+**Next queue** (non-redirecting, most frequent first): `ls` 1,270 and `tail` 643
+are deliberate; `unclassified` 1,285 is dominated by commands whose file is
+simply gone (`/tmp/*.log`), i.e. noise, not a gap; then `find` predicates 309
+(`-maxdepth`, `-type d`), expansions 275, grep flags with no Grep spelling 260,
+`wc` 176, grep-into-grep 172.

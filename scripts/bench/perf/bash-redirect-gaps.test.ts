@@ -31,8 +31,10 @@
 
 import { describe, test } from 'bun:test'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { isAbsolute, join } from 'node:path'
 
+import { walkCommandSegments } from '../../../src/platform/bash/segments.js'
+import { tryParseShellCommand } from '../../../src/platform/bash/shellQuote.js'
 import { breToEre } from '../../../src/tools/BashTool/breToEre.js'
 import {
   analyzeCommandForRedirect,
@@ -58,6 +60,9 @@ function hasUntranslatableBre(command: string): boolean {
   if (pattern === undefined || pattern === '') return false
   return breToEre(pattern) === null
 }
+
+const STDERR_DISCARD_RE = /(?:^|\s)2>\s*\/dev\/null(?=\s|$)/
+const CD_PREFIX_RE = /^\s*cd\s+[^&|;]+&&/
 
 /**
  * Ordered: the first match wins, so the deliberate carve-outs come before the
@@ -112,10 +117,12 @@ const REASONS: Reason[] = [
     label: 'piped into a shell filter (sort, uniq, jq, xargs…)',
     test: c => /\|\s*(sort|uniq|jq|xargs|tr|cut|column|less)\b/.test(c),
   },
-  {
-    label: 'redirection or a shell operator',
-    test: c => /[><]|&&|\|\|/.test(c),
-  },
+  // The four below replace one `redirection or a shell operator` bucket that
+  // held 813 rows and named no fix. Ordered most-specific first.
+  { label: 'stderr discarded (2>/dev/null)', test: c => STDERR_DISCARD_RE.test(c) },
+  { label: 'cd <dir> && … (path rebase)', test: c => CD_PREFIX_RE.test(c) },
+  { label: 'redirection (a write, or an fd other than the above)', test: c => /[><]/.test(c) },
+  { label: 'a shell operator (&& or ||)', test: c => /&&|\|\|/.test(c) },
 ]
 
 function reasonFor(command: string): string {
@@ -128,6 +135,146 @@ function reasonFor(command: string): string {
   }
   return 'unclassified'
 }
+
+// --- Sizing the candidate arms ---------------------------------------------
+//
+// The reason buckets above are a triage heuristic. These are not: each arm is
+// sized by REWRITING the command into the shape that arm would produce and
+// asking the REAL analyzer whether that shape redirects. So the number is
+// "rows this arm would actually convert", not "rows that look like it".
+//
+// The arms overlap (`cd D && grep … 2>/dev/null` is two of them), so the counts
+// do not sum to a total.
+
+const STDERR_DISCARD_GLOBAL_RE = /(?:^|\s)2>\s*\/dev\/null(?=\s|$)/g
+const CD_SPLIT_RE = /^\s*cd\s+([^&|;]+?)\s*&&\s*([\s\S]+)$/
+const SHELL_SAFE_RE = /^[\w./*@:=+-]+$/
+const GREP_HEADS: ReadonlySet<string> = new Set(['grep', 'egrep', 'rg'])
+const FIND_HEADS: ReadonlySet<string> = new Set(['find'])
+
+/** Flags that consume the NEXT argv entry, which is therefore not a path. */
+const GREP_FLAGS_WITH_ARG: ReadonlySet<string> = new Set([
+  '-A', '-B', '-C', '-m', '-e', '-f', '-d', '-g', '-t',
+  '--after-context', '--before-context', '--context', '--max-count',
+  '--regexp', '--file', '--include', '--exclude', '--exclude-dir',
+  '--glob', '--type',
+])
+
+function argvOfSingleSegment(
+  command: string,
+  heads: ReadonlySet<string>,
+): string[] | null {
+  const walked = walkCommandSegments(command)
+  if (!walked || walked.hasOutputRedirection) return null
+  if (walked.segments.length !== 1) return null
+  const segment = walked.segments[0]!
+  if (!heads.has(segment.name)) return null
+  const parsed = tryParseShellCommand(segment.text, name => `$${name}`)
+  if (!parsed.success) return null
+  const argv: string[] = []
+  for (const token of parsed.tokens) {
+    if (typeof token === 'string') {
+      argv.push(token)
+    } else if (
+      token !== null &&
+      typeof token === 'object' &&
+      'op' in token &&
+      token.op === 'glob' &&
+      'pattern' in token
+    ) {
+      argv.push(String(token.pattern))
+    } else {
+      return null
+    }
+  }
+  return argv.length > 0 ? argv : null
+}
+
+function requote(argv: string[]): string {
+  return argv
+    .map(arg =>
+      SHELL_SAFE_RE.test(arg) ? arg : `'${arg.replaceAll("'", `'\\''`)}'`,
+    )
+    .join(' ')
+}
+
+/** Positional arguments of a grep argv, i.e. the pattern and its paths. */
+function grepPositionals(argv: string[]): string[] {
+  const out: string[] = []
+  for (let i = 1; i < argv.length; i++) {
+    const arg = argv[i]!
+    if (arg.startsWith('-') && arg !== '-') {
+      if (!arg.includes('=') && GREP_FLAGS_WITH_ARG.has(arg)) i++
+      continue
+    }
+    out.push(arg)
+  }
+  return out
+}
+
+/** The same grep, keeping only the FIRST path — what one of the N calls is. */
+function withFirstPathOnly(argv: string[]): string[] {
+  const out: string[] = [argv[0]!]
+  let positionals = 0
+  for (let i = 1; i < argv.length; i++) {
+    const arg = argv[i]!
+    if (arg.startsWith('-') && arg !== '-') {
+      out.push(arg)
+      if (!arg.includes('=') && GREP_FLAGS_WITH_ARG.has(arg)) {
+        const value = argv[++i]
+        if (value !== undefined) out.push(value)
+      }
+      continue
+    }
+    positionals++
+    if (positionals <= 2) out.push(arg)
+  }
+  return out
+}
+
+function convertsUnderStderrArm(row: Row): boolean {
+  if (!STDERR_DISCARD_RE.test(row.command)) return false
+  const stripped = row.command.replace(STDERR_DISCARD_GLOBAL_RE, ' ').trim()
+  return analyzeCommandForRedirect(stripped, row.cwd) !== null
+}
+
+function convertsUnderMultiPathArm(row: Row): boolean {
+  const command = row.command.replace(STDERR_DISCARD_GLOBAL_RE, ' ').trim()
+  const argv = argvOfSingleSegment(command, GREP_HEADS)
+  if (!argv) return false
+  // pattern + 2 paths at minimum.
+  if (grepPositionals(argv).length < 3) return false
+  return (
+    analyzeCommandForRedirect(requote(withFirstPathOnly(argv)), row.cwd) !== null
+  )
+}
+
+function convertsUnderFindAlternationArm(row: Row): boolean {
+  const argv = argvOfSingleSegment(row.command, FIND_HEADS)
+  if (!argv) return false
+  const alternation = argv.indexOf('-o')
+  if (alternation === -1) return false
+  return (
+    analyzeCommandForRedirect(requote(argv.slice(0, alternation)), row.cwd) !==
+    null
+  )
+}
+
+function convertsUnderCdRebaseArm(row: Row): boolean {
+  const match = CD_SPLIT_RE.exec(row.command)
+  if (!match) return false
+  const dir = match[1]!.replace(/^['"]|['"]$/g, '')
+  const base = isAbsolute(dir) ? dir : join(row.cwd, dir)
+  if (!existsSync(base)) return false
+  return analyzeCommandForRedirect(match[2]!, base) !== null
+}
+
+const ARMS: { label: string; converts: (row: Row) => boolean }[] = [
+  { label: 'grep with 2+ paths → N Grep calls', converts: convertsUnderMultiPathArm },
+  { label: '2>/dev/null treated as a discard', converts: convertsUnderStderrArm },
+  { label: 'find -name A -o -name B → one Glob', converts: convertsUnderFindAlternationArm },
+  { label: 'cd D && <one command> (out of scope, sized anyway)', converts: convertsUnderCdRebaseArm },
+]
 
 type Row = { command: string; cwd: string; units?: RedirectUnit[] }
 
@@ -228,31 +375,40 @@ describe.skipIf(!enabled)('Bash→tool redirect gaps', () => {
 
     // Which of the redirects only exist because of the arms added in this
     // round — the honest way to size them without replaying an old build.
+    // COMMANDS, not calls. One command can now produce several Grep calls, and
+    // counting those would inflate an arm's credit by however many paths the
+    // command happened to name.
     let viaTranslation = 0
     let viaIname = 0
     let viaFilter = 0
-    for (const { calls } of redirected.flatMap(r => r.units ?? [])) {
-      for (const call of calls) {
-        if (call.tool === 'Grep' && call.translated) viaTranslation++
-        if (call.tool === 'Glob' && call.caseInsensitive) viaIname++
-      }
-    }
+    let viaSeveralPaths = 0
     for (const row of redirected) {
-      for (const unit of row.units ?? []) {
-        if (
-          unit.text.includes('|') &&
-          unit.calls.length === 1 &&
-          unit.calls[0]?.tool === 'Grep' &&
-          /\|\s*e?grep\b/.test(unit.text)
-        ) {
-          viaFilter++
-        }
+      const units = row.units ?? []
+      const calls = units.flatMap(unit => unit.calls)
+      if (calls.some(call => call.tool === 'Grep' && call.translated)) {
+        viaTranslation++
       }
+      if (calls.some(call => call.tool === 'Glob' && call.caseInsensitive)) {
+        viaIname++
+      }
+      if (
+        units.some(
+          unit =>
+            unit.text.includes('|') &&
+            unit.calls.length === 1 &&
+            unit.calls[0]?.tool === 'Grep' &&
+            /\|\s*e?grep\b/.test(unit.text),
+        )
+      ) {
+        viaFilter++
+      }
+      if (units.some(unit => unit.calls.length > 1)) viaSeveralPaths++
     }
     console.log(`\nRedirects owed to the new arms:`)
     console.log(`  BRE pattern translated   ${viaTranslation}`)
     console.log(`  find -iname → Glob -i    ${viaIname}`)
     console.log(`  source | grep folded     ${viaFilter}`)
+    console.log(`  several paths → N calls  ${viaSeveralPaths}`)
 
     const byReason = new Map<string, Row[]>()
     for (const row of notRedirected) {
@@ -261,6 +417,35 @@ describe.skipIf(!enabled)('Bash→tool redirect gaps', () => {
       if (bucket) bucket.push(row)
       else byReason.set(reason, [row])
     }
+
+    console.log(
+      '\nWhat each candidate arm would convert (real analyzer, rewritten shape):\n',
+    )
+    const converted = new Set<Row>()
+    for (const { label, converts } of ARMS) {
+      const hits: Row[] = []
+      for (const row of notRedirected) {
+        try {
+          if (converts(row)) hits.push(row)
+        } catch {
+          // A sizing probe is best-effort; one throwing must not drop the run.
+        }
+      }
+      for (const row of hits) converted.add(row)
+      console.log(`${String(hits.length).padStart(5)}  ${label}`)
+      for (const row of hits.slice(0, SAMPLES_PER_REASON)) {
+        const oneLine = row.command.replace(/\s+/g, ' ').trim()
+        console.log(
+          `       ${oneLine.length > 120 ? `${oneLine.slice(0, 117)}…` : oneLine}`,
+        )
+      }
+    }
+    // The arms overlap, so this is the number that matters, not their sum.
+    console.log(
+      `${String(converted.size).padStart(5)}  = union, i.e. reach ${redirected.length} → ${
+        redirected.length + converted.size
+      } (${pct(redirected.length + converted.size, considered)} of read/search calls)`,
+    )
 
     console.log('\nWhy the shell won, most frequent first:\n')
     for (const [reason, rows] of [...byReason].sort(

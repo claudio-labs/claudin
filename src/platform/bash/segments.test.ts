@@ -81,6 +81,76 @@ describe('walkCommandSegments — output redirection', () => {
   })
 })
 
+describe('walkCommandSegments — 2>/dev/null discards stderr', () => {
+  test('it is not flagged, and the fd does not survive as an argument', () => {
+    const walked = walkCommandSegments('grep -rn foo src 2>/dev/null')
+    expect(walked?.hasOutputRedirection).toBe(false)
+    expect(walked?.segments.map(s => s.text)).toEqual(['grep -rn foo src'])
+  })
+
+  test('mid-pipeline, the segments either side survive', () => {
+    const walked = walkCommandSegments('grep -n foo a.ts 2>/dev/null | head -5')
+    expect(walked?.hasOutputRedirection).toBe(false)
+    expect(walked?.segments.map(s => s.text)).toEqual([
+      'grep -n foo a.ts',
+      'head -5',
+    ])
+  })
+
+  // The fd rides in glued to the previous segment, so the walk cannot tell
+  // these apart from the token stream alone — the raw text is what does it.
+  test('`cat f 2 > /dev/null` is still flagged: that is stdout going nowhere', () => {
+    const walked = walkCommandSegments('cat a.ts 2 > /dev/null')
+    expect(walked?.hasOutputRedirection).toBe(true)
+    expect(walked?.segments.map(s => s.text)).toEqual(['cat a.ts 2'])
+  })
+
+  test('2>&1 keeps the flag — stderr is merged INTO stdout, not dropped', () => {
+    expect(
+      walkCommandSegments('grep -rn foo src 2>&1')?.hasOutputRedirection,
+    ).toBe(true)
+  })
+
+  test('2>>/dev/null is a discard too — appending to the void is still the void', () => {
+    const walked = walkCommandSegments('grep -rn foo src 2>>/dev/null')
+    expect(walked?.hasOutputRedirection).toBe(false)
+    expect(walked?.segments.map(s => s.text)).toEqual(['grep -rn foo src'])
+  })
+
+  // The adjacency test reads the whole command, so once ANY segment discards
+  // stderr it stops being able to vouch for the others; the fd on the segment
+  // itself is what does. Without that check the second redirection here reads
+  // as a discard and the command looks like a plain read.
+  test('stdout to /dev/null later in the same command is still flagged', () => {
+    const walked = walkCommandSegments(
+      'grep -n foo a.ts 2>/dev/null && cat b.ts > /dev/null',
+    )
+    expect(walked?.hasOutputRedirection).toBe(true)
+    expect(walked?.segments.map(s => s.text)).toEqual([
+      'grep -n foo a.ts',
+      'cat b.ts',
+    ])
+  })
+
+  test('2>err.log keeps the flag — it writes a file', () => {
+    expect(
+      walkCommandSegments('grep -rn foo src 2>err.log')?.hasOutputRedirection,
+    ).toBe(true)
+  })
+
+  test('>/dev/null keeps the flag — that is the answer being thrown away', () => {
+    expect(
+      walkCommandSegments('grep -rn foo src >/dev/null')?.hasOutputRedirection,
+    ).toBe(true)
+  })
+
+  test('a quoted 2>/dev/null is an argument, not a redirection', () => {
+    const walked = walkCommandSegments('grep -n "2>/dev/null" a.ts')
+    expect(walked?.hasOutputRedirection).toBe(false)
+    expect(walked?.segments.map(s => s.name)).toEqual(['grep'])
+  })
+})
+
 describe('walkCommandSegments — nothing to walk', () => {
   const NOTHING: Array<[string, string]> = [
     ['', 'empty'],
