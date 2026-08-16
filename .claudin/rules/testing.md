@@ -140,13 +140,13 @@ test('resolves provider from config', () => {
 
 ## Build-System Invariant Tests
 
-These tests in `scripts/` enforce build correctness — always run when touching `scripts/build.ts`:
+These tests in `scripts/` enforce build correctness — always run when touching `scripts/build/build.ts`:
 
 ```bash
-bun test scripts/feature-flags-source-guard.test.ts   # feature() flag consistency
-bun test scripts/measure-tool-schemas.test.ts          # tool schema size
-bun test scripts/no-telemetry-growthbook-stub.test.ts  # no phone-home
-bun test scripts/pr-intent-scan.test.ts                # PR security scan
+bun test scripts/build/feature-flags-source-guard.test.ts    # feature() flag consistency
+bun test scripts/bench/tokens/measure-tool-schemas.test.ts   # tool schema size
+bun test scripts/build/no-telemetry-growthbook-stub.test.ts  # no phone-home
+bun test scripts/verify/pr-intent-scan.test.ts               # PR security scan
 ```
 
 ### A fake binary on PATH needs `CLAUDIN_ENV_FILE`, not `process.env.PATH`
@@ -273,7 +273,7 @@ during the `platform/` reorg. Neither announces itself as a mocking problem.
 
 Any module whose import chain reaches `src/terminal/ink.js` fails to load under `bun test`
 (or `bun -e`) with `Cannot find module '@growthbook/growthbook'` — that package is
-a build-time stub from `scripts/no-telemetry-plugin.ts` that never applies outside
+a build-time stub from `scripts/build/no-telemetry-plugin.ts` that never applies outside
 the bundler. So a `.tsx` component generally can't be imported by a colocated unit
 test. Put pure logic (tree building, parsing, formatting, selection math) in a
 separate module importing only libs + type-only + other pure modules, and re-export
@@ -303,10 +303,10 @@ it drops more than 0.5pp, or when one of the named invariant suites disappears:
 src/agent/compact/requestDeterminism.invariant.test.ts
 src/agent/compact/stableStubState.stub-byte-stability.test.ts
 src/tools/shared/outputFilter/Bash/phase12Report.test.ts
-scripts/feature-flags-source-guard.test.ts
-scripts/measure-tool-schemas.test.ts
-scripts/no-telemetry-growthbook-stub.test.ts
-scripts/pr-intent-scan.test.ts
+scripts/build/feature-flags-source-guard.test.ts
+scripts/bench/tokens/measure-tool-schemas.test.ts
+scripts/build/no-telemetry-growthbook-stub.test.ts
+scripts/verify/pr-intent-scan.test.ts
 ```
 
 Do **not** chase the percentage. It cannot tell a real assertion from
@@ -362,7 +362,7 @@ knip file finding as a question, not a verdict — "nothing imports this" and
 "this should not exist" are different claims.
 
 `unlisted` and `unresolved` are deliberately outside the gate. This fork
-resolves ~30 module names to stubs in `scripts/build.ts` and carries 138 imports
+resolves ~30 module names to stubs in `scripts/build/build.ts` and carries 138 imports
 of files the fork never received, so in this repo "undeclared" is overwhelmingly
 the intended state; gating on it would mean 30 hand-maintained ignores that
 silently drift from build.ts. Two narrower blind spots ARE configured around:
@@ -426,6 +426,22 @@ directory** and compare failure NAMES. Only a name not in main's set is a
 regression signal. (Older list — `ProviderManager.test.tsx` Ollama/Vertex TTY
 timeouts, `memory-turn-by-turn-bench` RSS flake — no longer reproduces on
 2026-07 main; keep it in mind if they resurface.)
+
+That comparison has to be **in the same directory**, and it has to be the full
+suite, because a third class of failure hides between the two: a test that reads
+ambient state resolved from the *developer's own* `~/.claudin/settings.json`.
+`apiMicrocompact.test.ts` asserted profile-gated behaviour without pinning the
+profile, so `getCacheProfile()` ran in `auto` mode and went through
+`tryGetActiveProvider()` — passing or failing on whether some earlier file in
+the run had loaded a real provider. Six scripts under `scripts/bench/tokens/`
+do exactly that. It reproduced as a **pair** (`bun test <one of them>
+<the victim>`) on main as well, so it was never a regression; what changed was
+the file order, when the 2026-08-16 `scripts/` reorg moved those files into
+subdirectories. CI never saw any of it, having no settings file to load.
+**How to apply:** a test whose subject reads a global resolver — cache profile,
+active provider, effort — must pin it in `beforeAll` and restore in `afterAll`,
+the way `cacheProfile.test.ts` does. And when a suite is green in CI but red on
+one machine, suspect the machine's config before the code.
 
 **Typecheck baseline:** `main` reaches **zero** `error TS` since #87, which
 retired the fork's ~107 `TS2307` by adding a `.d.ts` next to each absent module

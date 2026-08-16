@@ -837,7 +837,7 @@ function truncateLine(line: string): string {
 // shape it reliably makes worse. A body rg emitted with no filename at all (a
 // content search scoped to one file) groups headerless under GREP_NO_PATH.
 //
-// Measured over the recorded transcripts (scripts/profile/grep-summarizer-replay.ts,
+// Measured over the recorded transcripts (scripts/bench/perf/grep-summarizer-replay.ts,
 // 5,095 real content-mode results): 15.5% of all Grep chars and 33.5% of the
 // context-bearing ones, across 443 results. That is the two-tier gate above
 // (GREP_SUMMARIZE_FLOOR): 166 results from the ≥6,000 band and 277 lossless
@@ -1027,7 +1027,7 @@ function renderGrepSourceLine(
 }
 
 /**
- * Exported for the replay bench (scripts/profile/grep-summarizer-replay.ts) and
+ * Exported for the replay bench (scripts/bench/perf/grep-summarizer-replay.ts) and
  * the regression tests, which need the raw strategy body without the envelope
  * and without the dispatch threshold.
  */

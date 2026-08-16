@@ -18,7 +18,7 @@ These override general TypeScript conventions:
 5. **No hardcoded model names** — Always use `getPrimaryModel()` / `getSmallFastModel()` from `src/providers/model/`.
 6. **No hardcoded provider logic** — Always use `tryGetActiveProvider()` from `src/providers/presets/activeProvider.ts`.
 7. **Privacy enforcement** — Any analytics event name containing code/paths must use the `_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS` suffix. Run `bun run verify:privacy` before every PR.
-8. **Feature flags over conditionals** — New Anthropic-internal features go behind `feature('FLAG')` in `scripts/build.ts`. Never use runtime env vars for build-time feature gating.
+8. **Feature flags over conditionals** — New Anthropic-internal features go behind `feature('FLAG')` in `scripts/build/build.ts`. Never use runtime env vars for build-time feature gating.
 
 ## Error Handling
 
@@ -192,7 +192,7 @@ import { logError } from '../../shared/log.js'
 Within one slice a relative import to a sibling file is fine; the rule is about
 **crossing** slices. One exception, and it is load-bearing:
 an import of a module this fork never received — a `.d.ts` with no `.ts`/`.tsx`
-beside it — **keeps its `../`**, because `scripts/build.ts` only stubs a missing
+beside it — **keeps its `../`**, because `scripts/build/build.ts` only stubs a missing
 module when the specifier starts with `./` or `../`. Aliasing one turns a green
 build into a hard resolver failure; see [build-system.md](build-system.md).
 Those declarations export `any` deliberately — don't "improve" them with a
@@ -217,7 +217,7 @@ Run `bun run verify:privacy` to catch violations before push.
 ## Build System
 
 Full mechanics and rules live in **[build-system.md](build-system.md)** (auto-loads
-when you edit `scripts/build.ts`). The two that bite while editing `src/`:
+when you edit `scripts/build/build.ts`). The two that bite while editing `src/`:
 
 1. **Always `bun run build` after a change** — the launcher runs `dist/cli.mjs`, not source.
 2. **Never commit a literal `true`/`false` where `feature('X')` should be** — the

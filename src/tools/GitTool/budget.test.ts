@@ -174,15 +174,15 @@ describe('diff rendering', () => {
   test('parses a body whose `diff --git` header the output filter stripped', () => {
     // 13 of 95 recorded diff bodies arrive in exactly this shape.
     const diff = [
-      '--- a/scripts/build.ts',
-      '+++ b/scripts/build.ts',
+      '--- a/scripts/build/build.ts',
+      '+++ b/scripts/build/build.ts',
       '@@ -65,8 +65,9 @@',
       '+  ADDED: true,',
       ' const x = 1',
     ].join('\n')
     const files = summarizeDiffFiles(diff)
     expect(files).toHaveLength(1)
-    expect(files[0]?.path).toBe('scripts/build.ts')
+    expect(files[0]?.path).toBe('scripts/build/build.ts')
     expect(files[0]?.added).toBe(1)
   })
 

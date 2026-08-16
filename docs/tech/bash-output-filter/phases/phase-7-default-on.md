@@ -105,7 +105,7 @@ bun run typecheck
 - [ ] `bun run build` clean
 - [ ] `bun test src/tools/shared/outputFilter/Bash` 100% pass
 - [ ] `bun run verify:privacy` clean (3 new event names with suffix proof)
-- [ ] `scripts/regex-redos-scan.test.ts` passes
+- [ ] `scripts/verify/regex-redos-scan.test.ts` passes
 - [ ] `bun run typecheck` zero errors
 - [ ] Coverage ≥80% on `src/tools/shared/outputFilter/Bash`
 - [ ] Smoke test all 9+ commands above produces correct markers

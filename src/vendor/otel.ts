@@ -4,7 +4,7 @@
  * Claudin never emits telemetry: every module that value-imports OpenTelemetry
  * (`instrumentation`, `sessionTracing`, the first-party/BigQuery exporters,
  * `analytics/*`) is replaced with a no-op stub at build time by
- * `scripts/no-telemetry-plugin.ts`, and `bun run verify:privacy` enforces that
+ * `scripts/build/no-telemetry-plugin.ts`, and `bun run verify:privacy` enforces that
  * no `@opentelemetry/*` import survives into `dist/`. The remaining source
  * references are type-only annotations in files that ship (`bootstrap/state`,
  * `telemetryAttributes`, `events`, `init`, `logger`, `betaSessionTracing`).

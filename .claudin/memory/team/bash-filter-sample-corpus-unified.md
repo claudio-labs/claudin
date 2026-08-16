@@ -17,8 +17,8 @@ deleted:
 
 - `bashFilter.test.ts` (602 assertions) and `phase12Report.test.ts` (31) read
   `docs/discovery/bash-output-filter/validation/samples/`
-- `scripts/measure-bash-filter-roi.test.ts` and
-  `scripts/profile/bash-filter-gain.test.ts` read `__fixtures__/samples/`
+- `scripts/bench/tokens/measure-bash-filter-roi.test.ts` and
+  `scripts/bench/perf/bash-filter-gain.test.ts` read `__fixtures__/samples/`
 
 `phase12Report` loaded ~28 samples (shellcheck, hadolint, jj-log, prisma-*, the
 gradle/mvn/terraform sets) that existed only under `docs/`. The 21 files that

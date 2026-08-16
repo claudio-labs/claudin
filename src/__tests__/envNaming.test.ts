@@ -1,6 +1,7 @@
 // Pins the CLAUDE_* -> CLAUDIN_* env-var cut-over.
 //
-// The rename was a hard break with no dual read (scripts/env-rename-map.json),
+// The rename was a hard break with no dual read
+// (scripts/migrations/env-rename-map.json),
 // so a reintroduced old name is not a style slip: it is a knob that silently
 // stops working, because nothing reads it any more. This test fails if one
 // comes back.
@@ -23,7 +24,10 @@ import { describe, expect, test } from 'bun:test'
 
 const SRC = join(import.meta.dir, '..')
 const MAP = JSON.parse(
-  readFileSync(join(SRC, '..', 'scripts', 'env-rename-map.json'), 'utf-8'),
+  readFileSync(
+    join(SRC, '..', 'scripts', 'migrations', 'env-rename-map.json'),
+    'utf-8',
+  ),
 ) as {
   rename: { from: string; to: string }[]
   writeOnlyOutbound: { from: string; to: string }[]

@@ -6,7 +6,7 @@
 > **Parent spec:** [`../architecture.md`](../architecture.md)
 > **Roadmap entry:** 6.2 — Bash output filter — tier-1 follow-ups (the repo-root `ROADMAP.md` this numbered was deleted in `367058c2`)
 
-Expansão do bash-output-filter para os comandos de **maior frequência** numa sessão de coding agent que ainda não estavam cobertos pelo 6.1 — derivada de auditoria de gaps post-6.1 (ver `bench scripts/profile/bash-filter-gain.test.ts` + tabela em [`README.md`](../README.md#status)).
+Expansão do bash-output-filter para os comandos de **maior frequência** numa sessão de coding agent que ainda não estavam cobertos pelo 6.1 — derivada de auditoria de gaps post-6.1 (ver `bench scripts/bench/perf/bash-filter-gain.test.ts` + tabela em [`README.md`](../README.md#status)).
 
 A lista de gaps original cobre Linux **e** Windows. Esta fase implementa **somente o lado Linux** (8 specs); Windows/PowerShell (Get-ChildItem, Get-Process, dotnet build/test, msbuild) fica documentado abaixo como sub-fase futura.
 
@@ -55,7 +55,7 @@ A lista de gaps original cobre Linux **e** Windows. Esta fase implementa **somen
 | `src/tools/shared/outputFilter/Bash/filters/index.ts` | importa + registra os 8 specs novos no `builtInFilters` (test-runners JS/TS antes dos single-word `jest`/`vitest`/`mocha` p/ ordem específica primeiro; git-diff/show no bloco git) |
 | `src/tools/shared/outputFilter/Bash/__fixtures__/samples/git-diff.txt` | overwrite (era 0 bytes, agora 3.1 KB realista) |
 | `src/tools/shared/outputFilter/Bash/bashFilter.test.ts` | + 8 `describe()` blocks no final do arquivo (1 por filter) — assertReduction + match positivo + reject + safety guards |
-| `scripts/profile/bash-filter-gain.test.ts` | + 8 entradas no `SCENARIOS` array |
+| `scripts/bench/perf/bash-filter-gain.test.ts` | + 8 entradas no `SCENARIOS` array |
 
 ## Specs concretos
 
@@ -120,7 +120,7 @@ const GIT_SHOW_AUTHOR_DATE_RE =
 ```bash
 bun test src/tools/shared/outputFilter/Bash/bashFilter.test.ts          # +50 asserts em phase 6.2 blocks
 bun test src/tools/shared/outputFilter/Bash                              # full suite — 306 pass / 71 skip
-CLAUDIN_BENCH=1 bun test scripts/profile/bash-filter-gain.test.ts   # gain table — 31 filters total
+CLAUDIN_BENCH=1 bun test scripts/bench/perf/bash-filter-gain.test.ts   # gain table — 31 filters total
 bun run typecheck                                           # zero novos erros (TS errors pré-existentes não relacionados)
 ```
 
@@ -139,7 +139,7 @@ Cada `describe('phase 6.2 — <filter>')` cobre:
 - [x] git diff/show: hunks (`@@`), `+`/`-`, e headers `--- a/X`/`+++ b/X` nunca são tocados
 - [x] tsc: file:line:col + códigos TS preservados em todos os erros
 - [x] `regex-redos-scan.test.ts` passa (specs usam two-alternation forms onde aplicável)
-- [x] Bench atualizado (`scripts/profile/bash-filter-gain.test.ts` mostra +8 linhas)
+- [x] Bench atualizado (`scripts/bench/perf/bash-filter-gain.test.ts` mostra +8 linhas)
 - [x] Zero regressões nos 23 specs existentes
 
 ## PR description template

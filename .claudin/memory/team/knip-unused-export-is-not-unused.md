@@ -19,7 +19,7 @@ Three guards are mandatory before deleting anything from that list:
    [[missing-subsystems-are-not-fixable-by-declaration]].
 3. **Read by a code generator rather than by an import.** No import graph shows
    this, so both guards above pass and the symbol still looks dead.
-   `scripts/generate-sdk-types.ts` reads `coreSchemas.ts` as text and turns each
+   `scripts/codegen/generate-sdk-types.ts` reads `coreSchemas.ts` as text and turns each
    schema into a public SDK type. Deleting `OutputFormatSchema` and
    `HookJSONOutputSchema` — genuinely imported by nothing — dropped the exported
    `OutputFormat` and `HookJSONOutput` types, 125 to 123. Caught by CI, not

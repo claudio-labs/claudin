@@ -9,7 +9,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     // `tsc` is only ever run as `--noEmit` (there is no emit path — the bundle
-    // comes from scripts/build.ts), and test files import each other with
+    // comes from scripts/build/build.ts), and test files import each other with
     // explicit `.ts`/`.tsx` extensions, which bundler resolution allows.
     "noEmit": true,
     "allowImportingTsExtensions": true,

@@ -198,7 +198,7 @@ const LARGE_SYSTEM_PROMPT_TOKEN_THRESHOLD = 8000;
  * delta is large enough to justify the write, then advances. While it
  * lingers, the prior checkpoint stays valid and every turn reads it.
  *
- * Bench numbers (scripts/profile/cache-ab-bench.ts, 13 small tool turns):
+ * Bench numbers (scripts/bench/perf/cache-ab-bench.ts, 13 small tool turns):
  *   threshold=0    → r:w = 0.97:1, $0.50  (baseline, broken)
  *   threshold=2048 → r:w = 7.81:1, $0.37  (this default)
  *

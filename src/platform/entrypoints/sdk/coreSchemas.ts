@@ -4,7 +4,7 @@
  * These schemas are the single source of truth for SDK data types.
  * TypeScript types are generated from these schemas and committed for IDE support.
  *
- * @see scripts/generate-sdk-types.ts for type generation
+ * @see scripts/codegen/generate-sdk-types.ts for type generation
  */
 
 import { z } from 'zod/v4'
@@ -46,7 +46,7 @@ export const JsonSchemaOutputFormatSchema = lazySchema(() =>
   }),
 )
 
-// Consumed by scripts/generate-sdk-types.ts, not by any import in this repo:
+// Consumed by scripts/codegen/generate-sdk-types.ts, not by any import in this repo:
 // it is what emits the public `OutputFormat` type. Static unused-export
 // analysis cannot see the generator, so do not delete this as dead code.
 export const OutputFormatSchema = lazySchema(() =>

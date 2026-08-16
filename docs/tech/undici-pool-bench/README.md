@@ -1,6 +1,6 @@
 # undici 8 Pool Tuning — Benchmark Report
 
-> Roadmap item 11.5. Baseline gerado em 2026-05-16 contra mock servers locais (h2-capable + h1-only) com latência fixa de 50ms por request. Reprodução: `node --experimental-strip-types scripts/profile/undici-pool-bench.ts`.
+> Roadmap item 11.5. Baseline gerado em 2026-05-16 contra mock servers locais (h2-capable + h1-only) com latência fixa de 50ms por request. Reprodução: `node --experimental-strip-types scripts/bench/perf/undici-pool-bench.ts`.
 
 ## Contexto
 
@@ -78,14 +78,14 @@ Override per-provider apenas para providers comprovadamente h1-only com fallback
 
 ```bash
 # Full matrix (~5min)
-node --experimental-strip-types scripts/profile/undici-pool-bench.ts --json \
-  > scripts/profile/baselines/undici-pool.json
+node --experimental-strip-types scripts/bench/perf/undici-pool-bench.ts --json \
+  > scripts/bench/perf/baselines/undici-pool.json
 
 # Drift vs baseline salvo
-node --experimental-strip-types scripts/profile/undici-pool-bench.ts --compare
+node --experimental-strip-types scripts/bench/perf/undici-pool-bench.ts --compare
 
 # Quick smoke (1 cenário, 5 configs)
-node --experimental-strip-types scripts/profile/undici-pool-bench.ts --quick
+node --experimental-strip-types scripts/bench/perf/undici-pool-bench.ts --quick
 ```
 
 ## Limitações conhecidas
@@ -93,12 +93,12 @@ node --experimental-strip-types scripts/profile/undici-pool-bench.ts --quick
 - Mock server com latência **fixa** (50ms) → não modela jitter de rede real
 - TLS handshake local é mais rápido que internet (~5ms vs 100ms+) → vantagem de keep-alive subestimada
 - Apenas Node 25 com undici 8.3 — comportamento em outros runtimes (Bun, Deno) não testado
-- Bench mede latência, não throughput nem RSS. Para verificar custo de memória com `connections=64`, ver `scripts/profile/memory-bench.ts`
+- Bench mede latência, não throughput nem RSS. Para verificar custo de memória com `connections=64`, ver `scripts/bench/perf/memory-bench.ts`
 
 ## Arquivos relacionados
 
-- `scripts/profile/undici-pool-bench.ts` — bench executável
+- `scripts/bench/perf/undici-pool-bench.ts` — bench executável
 - `scripts/profile/undici-pool-bench.test.ts` — sanity dos hooks de diagnostic channel
-- `scripts/profile/baselines/undici-pool.json` — baseline 2026-05-16 (commit pinado)
+- `scripts/bench/perf/baselines/undici-pool.json` — baseline 2026-05-16 (commit pinado)
 - `scripts/profile/__fixtures__/undici-tls/` — cert+key self-signed
 - `src/providers/transport/proxy.ts` — alvo da mudança (não modificado ainda; aguarda decisão)

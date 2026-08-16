@@ -44,9 +44,9 @@ describe('isCheckableProsePath', () => {
 describe('extractProsePaths', () => {
   test('extracts backticked paths and strips line references', () => {
     const found = extractProsePaths(
-      'See `src/memory/instructions/claudemd.ts:259-284` and `scripts/build.ts`.',
+      'See `src/memory/instructions/claudemd.ts:259-284` and `scripts/build/build.ts`.',
     )
-    expect(found.sort()).toEqual(['scripts/build.ts', 'src/memory/instructions/claudemd.ts'])
+    expect(found.sort()).toEqual(['scripts/build/build.ts', 'src/memory/instructions/claudemd.ts'])
   })
 
   test('ignores unbackticked paths and placeholder citations', () => {

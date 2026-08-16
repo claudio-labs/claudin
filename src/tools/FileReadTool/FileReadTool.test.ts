@@ -171,7 +171,8 @@ describe('FileReadTool — baseline regression', () => {
     // path still throws — code files now degrade to an outline instead
     // (covered in the Smart Code Navigation suite below).
     // validateContentTokens calls countTokensWithAPI, which the VCR layer
-    // records under fixtures/token-count-*.json (keyed by this exact body).
+    // records under src/providers/__fixtures__/vcr/token-count-*.json (keyed
+    // by this exact body).
     // The fixture is committed; do not edit TOKEN_CAP_BODY without re-recording
     // via VCR_RECORD=1.
     const body = TOKEN_CAP_BODY
@@ -1813,7 +1814,8 @@ describe('FileReadTool — clip pin (forced on)', () => {
     // maxTokens raised on purpose. validateContentTokens calls the counting
     // API once the estimate passes maxTokens/4 — 6250 by default, which is
     // BELOW the 8k pin ceiling, so any fixture big enough to test this lane
-    // would drag the VCR layer in and record a fixtures/token-count-*.json.
+    // would drag the VCR layer in and record a
+    // src/providers/__fixtures__/vcr/token-count-*.json.
     // The read cap is not what is under test here; pin it out of the way.
     const ctx = makeContext({
       fileReadingLimits: { maxSizeBytes: 10 * 1024 * 1024, maxTokens: 100_000 },

@@ -4,7 +4,7 @@ export const GIT_TOOL_NAME = 'Git'
  * Deliberately short. This string is in the system prompt of EVERY request for
  * the life of the session, while the payload it saves only accrues on the ~26%
  * of sessions that touch git at all (measured over 760 recorded sessions,
- * `scripts/profile/git-tool-baseline.ts`). A RunTests-sized description would
+ * `scripts/bench/perf/git-tool-baseline.ts`). A RunTests-sized description would
  * cost more than the tool returns. `prompt.test.ts` pins the size.
  */
 export const DESCRIPTION = `Run git and gh commands and get back a compact result instead of raw shell output.

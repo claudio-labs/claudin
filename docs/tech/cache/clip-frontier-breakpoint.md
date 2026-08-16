@@ -103,7 +103,7 @@ block that is about to mutate.
 
 ## Measured (2026-06-09, claude-sonnet-4-6, real API)
 
-`bun run scripts/profile/cache-ab-bench.ts --skip-claude --sequential`
+`bun run scripts/bench/ab/cache-ab-bench.ts --skip-claude --sequential`
 (9 requests, 1 Read/turn over the repo's mixed-size files; 2 runs per side):
 
 | | cache_write total | r:w | cost/run | per-turn cW profile |
@@ -341,7 +341,7 @@ windows, server clear_thinking).
 
 ### Lockstep bench — the definitive equal-pacing comparison (2026-06-10)
 
-`scripts/profile/cache-lockstep-bench.ts` drives each CLI one user turn per
+`scripts/bench/ab/cache-lockstep-bench.ts` drives each CLI one user turn per
 file via `--input-format stream-json` (next turn only after the previous
 `result`), making batching impossible by construction — the prior
 sequential-prompt runs depended on the model obeying a pacing instruction

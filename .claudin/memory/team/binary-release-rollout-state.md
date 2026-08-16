@@ -41,7 +41,7 @@ NPM_TOKEN.**
 - **npm OIDC cannot do a package's FIRST publish** — npmjs.com requires the package
   to exist before a Trusted Publisher can be configured (unlike PyPI). New platform
   packages must be bootstrapped with a placeholder publish
-  (`scripts/bootstrap-platform-packages.ts`) before OIDC can take over. If you ever
+  (`scripts/release/bootstrap-platform-packages.ts`) before OIDC can take over. If you ever
   add a new `@claudiolabs/claudin-<platform>` name, bootstrap it first, then
   configure TP (provider GitHub Actions, owner `claudio-labs`, repo `claudin`,
   workflow `release-binaries.yml`).

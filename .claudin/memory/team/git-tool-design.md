@@ -45,7 +45,7 @@ When touching the tool, read the four traps before changing behaviour.
 
 ## What to cite (and what not to)
 
-- Replay over the recorded corpus (`scripts/profile/git-summarizer-replay.ts`):
+- Replay over the recorded corpus (`scripts/bench/tokens/git-summarizer-replay.ts`):
   **30.6% take** on addressable calls, 27.4% projected with trim tails stripped.
   `git diff` 37%, `gh run` 42%, `gh pr` 34%.
 - Live A/B (1 run/arm, 15 turns, Sonnet 5, one build with

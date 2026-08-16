@@ -13,7 +13,7 @@
  *    unconditional lane, loading into every session, every turn.
  *
  * Consumed by `/doctor` (src/platform/doctor/doctorContextWarnings.ts), the
- * `/refresh-rules` skill, and `scripts/rules-check.ts` for CI.
+ * `/refresh-rules` skill, and `scripts/verify/rules-check.ts` for CI.
  */
 import ignore from 'ignore'
 import { execFile } from 'child_process'

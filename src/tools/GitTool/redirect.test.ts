@@ -308,7 +308,7 @@ describe('renderGitRedirect', () => {
 
 /**
  * Real commands sampled from 1,608 distinct recorded Bash invocations
- * (`scripts/profile/git-tool-baseline.ts --json`). Committed rather than read
+ * (`scripts/bench/perf/git-tool-baseline.ts --json`). Committed rather than read
  * from the transcripts at test time so the invariant runs anywhere.
  */
 const RECORDED_COMMANDS: readonly string[] = [

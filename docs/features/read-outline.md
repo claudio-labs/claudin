@@ -39,7 +39,7 @@ And three automatic behaviors, so the model benefits even when it never asks:
 
 The win compounds with file size and with session length:
 
-- **Token cost**: reading one function from a ~2.3k-LoC file is ~2k tokens end-to-end (outline ≈ 1.5k + unfold ≈ 0.6k) vs ~26k for the full body. The bench is `scripts/profile/code-outline-bench.ts`.
+- **Token cost**: reading one function from a ~2.3k-LoC file is ~2k tokens end-to-end (outline ≈ 1.5k + unfold ≈ 0.6k) vs ~26k for the full body. The bench is `scripts/bench/perf/code-outline-bench.ts`.
 - **No blind slicing**: the outline carries real line ranges, so the follow-up read is surgical — one `symbol` call, not a binary search with `offset`/`limit`.
 - **Edits still work**: an unfold registers in `readFileState` as a partial read at the symbol's real `startLine`, so `Edit` freshness checks and line numbers behave exactly as after a normal partial read.
 - **It feeds the cache policy**: outlines keep the retained history prefix ~45% smaller, which is part of why the lockstep cache bench landed 24% under Claude Code on the identical workload (see `docs/features/cache-policy.md`) — every cached re-read and every eviction re-write is cheaper when what was read was a skeleton.
@@ -76,7 +76,7 @@ src/tools/shared/codeOutline/
 - **A depth-scanner, not an AST.** Strings, comments and regex literals are masked, then symbol bounds come from brace depth (C-like languages), indentation (Python), or heading level (Markdown). A symbol ends at the next sibling at the same depth or shallower. Both `outline` and `unfold` slice the *same* table, so their boundaries always agree.
 - **Languages**: TypeScript/TSX, JavaScript/JSX, Python, Go, Java, Kotlin, C#, Rust, Markdown (by extension, `EXT_TO_LANG` in `scanSymbols.ts`).
 - **Fails open.** Anything the scanner can't handle — unknown extension, file over the 10 MB scan cap, scan error — degrades to a normal `Read`. The feature can make a read cheaper; it can never block one.
-- **Grafted into `Read`/`Grep` instead of a new tool**, deliberately: the model reaches for `Read` by instinct and hits the wall — inside `Read`, the wall becomes a map automatically, with no "know to switch tools" step. It also costs two optional schema params (~190 tokens) instead of a whole always-on tool schema (~400+, budget enforced by `scripts/measure-tool-schemas.test.ts`).
+- **Grafted into `Read`/`Grep` instead of a new tool**, deliberately: the model reaches for `Read` by instinct and hits the wall — inside `Read`, the wall becomes a map automatically, with no "know to switch tools" step. It also costs two optional schema params (~190 tokens) instead of a whole always-on tool schema (~400+, budget enforced by `scripts/bench/tokens/measure-tool-schemas.test.ts`).
 
 ## How to activate / deactivate
 

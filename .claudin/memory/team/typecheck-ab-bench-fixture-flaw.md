@@ -8,7 +8,7 @@ type: project
 behind them. The mechanism those runs exercised is
 [[typecheck-tool-baseline-design]]; this file does not re-explain it.
 
-`scripts/bench/typecheck-multiturn-ab.ts` (10 turns, sonnet 5, claudin release
+`scripts/bench/ab/typecheck-multiturn-ab.ts` (10 turns, sonnet 5, claudin release
 vs the Typecheck build) was run twice: 120 errors in one file × 3 reps, then 600
 errors across 60 files × 1 rep. **The token thesis did not hold.**
 
@@ -23,7 +23,7 @@ errors across 60 files × 1 rep. **The token thesis did not hold.**
 Per-rep final context on the A side spanned 40.5k–48.7k, so a ~20% cost delta
 over 3 reps is suggestive, not conclusive.
 
-The single-shot bench `scripts/bench/typecheck-ab.ts` measured **21× smaller
+The single-shot bench `scripts/bench/ab/typecheck-ab.ts` measured **21× smaller
 payload than raw `tsc`** on a 40-error fixture (verified live against sonnet 5)
 — far more on this repo. That figure is the payload ceiling, not an end-to-end
 saving; the multi-turn runs below are what the tool is worth in a session.

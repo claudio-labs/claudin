@@ -1,6 +1,6 @@
 // Ambient declarations for a module this fork does not carry.
 //
-// `scripts/build.ts` pre-scans `src/` for unresolved relative imports and
+// `scripts/build/build.ts` pre-scans `src/` for unresolved relative imports and
 // redirects each one to the `missing-module-stub` namespace, whose payload is
 // `const noop = () => null` plus one `export const <name> = noop` per imported
 // binding. Reachability varies and is NOT uniform: some call sites are

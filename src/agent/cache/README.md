@@ -114,7 +114,7 @@ audit; integrated regression:
 
 ## Bench
 
-`scripts/profile/cache-lockstep-bench.ts` — one user turn per file via
+`scripts/bench/ab/cache-lockstep-bench.ts` — one user turn per file via
 `--input-format stream-json` (identical pacing by construction); the
 reliable harness for main-vs-branch comparisons. `cache-ab-bench.ts`
 remains for exploratory runs only — its extractTimeline rows are

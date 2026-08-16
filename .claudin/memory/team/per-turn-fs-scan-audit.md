@@ -23,7 +23,7 @@ any cwd-sensitive memo.
    `startRelevantMemoryPrefetch` (`src/agent/attachments/memory.ts:344-353`,
    from `query.ts:342`) returns `undefined` before touching the filesystem
    unless the GrowthBook flag **`tengu_moth_copse`** is true — and that key is
-   absent from `_openBuildDefaults` in `scripts/no-telemetry-plugin.ts:52-58`,
+   absent from `_openBuildDefaults` in `scripts/build/no-telemetry-plugin.ts:52-58`,
    so it resolves to `false` unless the user writes
    `~/.claudin/feature-flags.json`. The live per-session caller is
    `extractMemories.ts:448`, which sits **after** the `tengu_bramble_lintel`
@@ -37,8 +37,8 @@ any cwd-sensitive memo.
    all, with `maxBytes: undefined`. openclaude's counterpart (255 lines vs our
    101) already streams a generator through 8 workers and caps headers at 64 KB —
    see [[openclaude-sibling-fork-reference]].
-   **Measured, do not chase:** `scripts/profile/memory-bench.ts` (baseline in
-   `scripts/profile/README.md:234-253`) puts this at ~0.014 ms/file, flat —
+   **Measured, do not chase:** `scripts/bench/perf/memory-bench.ts` (baseline in
+   `scripts/bench/perf/README.md:234-253`) puts this at ~0.014 ms/file, flat —
    2.77 ms p50 at 200 files, ~1 ms at this repo's 72. The round-1 "concurrency
    cap" finding was explicitly debunked there. It is a tidiness fix with no
    measurable runtime win. The stale "once per turn" comments in

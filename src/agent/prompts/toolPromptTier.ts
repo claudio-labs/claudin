@@ -38,11 +38,11 @@ export function isLeanFamily(family: ModelFamily): boolean {
  * `CLAUDIN_TOOL_PROMPT_TIER=lean|verbose`. Anything else is ignored silently —
  * a typo must not get a vote on which prompt ships.
  *
- * This exists for the A/B bench (`scripts/profile/lean-tool-prompts-ab.ts`),
+ * This exists for the A/B bench (`scripts/bench/perf/lean-tool-prompts-ab.ts`),
  * which has to hold the model fixed while the prompt shape varies. Without it
  * the only ways to compare tiers are to change models (confounding the prompt
  * with the model) or to build twice and compare two bundles — the mistake that
- * made the clip-pin A/B uncitable. Every other A/B in `scripts/profile/` flips
+ * made the clip-pin A/B uncitable. Every other A/B in `scripts/bench/perf/` flips
  * one killswitch on ONE build; this is that killswitch for this lane.
  *
  * REACH: only where `feature('LEAN_TOOL_PROMPTS')` is on. The flag folds to a

@@ -73,7 +73,7 @@ describe('BriefTool', () => {
   })
 
   test('isBriefEntitled() and isBriefEnabled() are false in the open build', () => {
-    // KAIROS/KAIROS_BRIEF are off in scripts/build.ts for the open build,
+    // KAIROS/KAIROS_BRIEF are off in scripts/build/build.ts for the open build,
     // so both gates short-circuit to false regardless of env or app state.
     expect(isBriefEntitled()).toBe(false)
     expect(isBriefEnabled()).toBe(false)

@@ -129,7 +129,7 @@ export function PromptInputHelpMenu(props: Props) {
   const imagePasteShortcut = t19;
   // Effort cycle hint (shift+right / shift+left). Always shown — the help menu
   // doesn't know the active model. Un-memoized is fine: the _c cache is a
-  // runtime no-op in this build (see scripts/build.ts react-compiler-shim).
+  // runtime no-op in this build (see scripts/build/build.ts react-compiler-shim).
   const effortShortcut = formatShortcut(useShortcutDisplay("chat:increaseEffort", "Chat", "shift+right"));
   // /diff and /explorer quick-launch keys (ctrl+g / ctrl+e). Un-memoized for
   // the same reason as effortShortcut above — the _c cache is a runtime no-op.

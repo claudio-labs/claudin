@@ -76,7 +76,7 @@ o `BootContext` já construído.
 ## Gates de feature flag
 
 Branches 3, 4, 5 dependem de flags **build-time** (`DIRECT_CONNECT`,
-`SSH_REMOTE`, `KAIROS`). No build aberto atual (`scripts/build.ts`)
+`SSH_REMOTE`, `KAIROS`). No build aberto atual (`scripts/build/build.ts`)
 essas flags estão off, então:
 
 - Os arquivos `defaultAction/directConnect.ts`,

@@ -200,7 +200,7 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
 ## 5. Running cache perf experiments
 
 - Prototype as a `CLAUDIN_*` env toggle → A/B with
-  `scripts/profile/cache-ab-bench.ts` → promote to default only on a measured win.
+  `scripts/bench/ab/cache-ab-bench.ts` → promote to default only on a measured win.
 - **The bench is unreliable for head-to-head numbers**: `extractTimeline` rows are
   cumulative not delta, run-to-run variance is ~5×, and the `claude` binary exits
   1 under the harness. Cite the r:w direction/magnitude on the SAME harness run,

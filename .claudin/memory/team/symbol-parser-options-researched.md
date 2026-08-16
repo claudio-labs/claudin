@@ -9,7 +9,7 @@ Web research plus a local constraint audit, done to decide how to fix
 
 **The size objection is dead — check the numbers before repeating it.** The compiled
 binary is *already* **224 MB** (`dist/bin/linux-x64/claudin`, plus a 25 MB `vendor/`),
-and there is **no size assertion, budget, or CI gate anywhere** — `scripts/build.ts:698`
+and there is **no size assertion, budget, or CI gate anywhere** — `scripts/build/build.ts:698`
 only prints the MB. web-tree-sitter's runtime is 355 KB; a size-optimized
 `@vscode/tree-sitter-wasm` TypeScript grammar is 1.43 MB and JavaScript 385 KB. TS+TSX+JS
 is under 2% of the binary. The 22 MB figure only applies if you embed ~20 grammars
@@ -23,14 +23,14 @@ and `Language.load()` are async. A swap means either making that whole path asyn
 pre-warming a synchronous singleton at startup. Decide that before anything else.
 
 **Bun `--compile` does embed `.wasm`** via `import p from "./g.wasm" with { type: "file" }`
-(`/$bunfs/` path, readable through `Bun.file`/`fs`). Two traps: `scripts/build.ts` has
+(`/$bunfs/` path, readable through `Bun.file`/`fs`). Two traps: `scripts/build/build.ts` has
 **no `.wasm` loader** today (`.md`/`.txt` are inlined as JS string literals at
 `build.ts:472-506`, which a binary asset cannot ride), and the known failure mode in the
 wild is **Web Workers**, not WASM — opentui/opencode's tree-sitter silently degraded
 under brew install because `--compile` does not auto-bundle worker entrypoints
 (opentui#807). Parse on the main thread and that class of bug disappears. The
 vendor-beside-`execPath` pattern already exists and is proven (`src/shared/fs/ripgrep.ts:109-120`,
-`scripts/vendor-sharp.ts`, gated in `scripts/assemble-packages.ts:103-137`).
+`scripts/build/vendor-sharp.ts`, gated in `scripts/release/assemble-packages.ts:103-137`).
 
 **Upstream tags.scm already fixes our exact blind spot.** Both tree-sitter-javascript's
 and aider's `javascript-tags.scm` carry:

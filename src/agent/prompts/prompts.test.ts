@@ -69,7 +69,7 @@ describe('getHarnessSection', () => {
   test('flag-on / batching-off rendered section snapshot (A/B kill-switch path)', () => {
     // Guards the antiNarration=on, toolBatching=off combination — the
     // A/B bench path when TOOL_BATCHING_NUDGE is flipped off in
-    // scripts/build.ts. Without this snapshot a regression that only
+    // scripts/build/build.ts. Without this snapshot a regression that only
     // affects the kill-switch shape ships silently.
     const rendered = ['# Harness', ...prependBullets(buildHarnessItems(true, false))].join(`\n`)
     expect(rendered).toMatchSnapshot()
@@ -387,7 +387,7 @@ describe('steering killswitch wiring', () => {
   })
 
   test('both gates keep feature() directly in the ternary condition', () => {
-    // scripts/build.ts only folds `feature('X')` when it sits directly in an
+    // scripts/build/build.ts only folds `feature('X')` when it sits directly in an
     // if/ternary condition; an `&&` form throws under `bun test` and folds to
     // a literal in the build, so only a test can catch it.
     expect(src).not.toMatch(/feature\('(ANTI_NARRATION|WORK_CONTRACT)'\)\s*&&/)

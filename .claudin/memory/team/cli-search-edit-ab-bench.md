@@ -4,7 +4,7 @@ description: Graded cross-CLI A/B (claudindev vs claude) on one search-edit-buil
 type: project
 ---
 
-`scripts/profile/cli-search-edit-ab.ts`, built 2026-08-12. Compares the two
+`scripts/bench/ab/cli-search-edit-ab.ts`, built 2026-08-12. Compares the two
 CLIs on the everyday shape of agent work — find every call site of one function
 across a 10-file JS project, rewrite all five, get the build green — and
 **grades every run before believing its tokens**. It is the first bench here

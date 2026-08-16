@@ -978,7 +978,7 @@ These commands ship with a registered filter purely to apply ANSI stripping, col
 
 ## Per-command reduction summary
 
-Measured on the in-repo fixtures via `bun test scripts/measure-bash-filter-roi.test.ts`. Numbers are byte reduction of the filtered body (the `<bash-output-filtered …>` wrapper itself adds ~80 bytes, dominant only for very small fixtures).
+Measured on the in-repo fixtures via `bun test scripts/bench/tokens/measure-bash-filter-roi.test.ts`. Numbers are byte reduction of the filtered body (the `<bash-output-filtered …>` wrapper itself adds ~80 bytes, dominant only for very small fixtures).
 
 | Command | Reduction | What's stripped |
 |---|---|---|

@@ -6,7 +6,7 @@ type: project
 
 Decision (2026-06-04): turn on `FORK_SUBAGENT` so the default agent spawn (no `subagent_type`) **forks** — inherits the parent's full context + prompt cache — while a spawn WITH a `subagent_type` stays a fresh, zero-context, own-cache agent ("no bias"). The two types coexist; the model picks per-spawn by omitting vs naming the type.
 
-Three planned edits: (1) `scripts/build.ts` flip `FORK_SUBAGENT:true`; (2) `AgentTool.tsx` decouple `forceAsync` from fork so fork runs **inline** by default (background becomes orthogonal, governed by the existing `/config` "Auto-background agents" toggle / `autoBackgroundAgentsEnabled`); (3) `forkSubagent.ts` gate fork on that toggle AND remove the `getIsNonInteractiveSession()` line.
+Three planned edits: (1) `scripts/build/build.ts` flip `FORK_SUBAGENT:true`; (2) `AgentTool.tsx` decouple `forceAsync` from fork so fork runs **inline** by default (background becomes orthogonal, governed by the existing `/config` "Auto-background agents" toggle / `autoBackgroundAgentsEnabled`); (3) `forkSubagent.ts` gate fork on that toggle AND remove the `getIsNonInteractiveSession()` line.
 
 **Why:** fork was disabled because it forced ALL dispatches async (~15-30k tk/wave extra) and the headless gate blocked it under `-p`. User wants context+cache reuse as the default; decoupling async removes the disable's cost and the non-deterministic headless orphaning. Removing the headless gate is what unblocks measuring fork vs normal via the `-p` bench at all — fork had NEVER been measured because `-p` silently disabled it.
 

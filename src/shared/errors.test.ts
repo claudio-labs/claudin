@@ -17,7 +17,7 @@ import {
 
 /**
  * Mirrors the class hierarchy of a *second* @anthropic-ai/sdk copy — the
- * bedrock/vertex/foundry SDKs are externalized in scripts/build.ts and load
+ * bedrock/vertex/foundry SDKs are externalized in scripts/build/build.ts and load
  * their own copy from node_modules at runtime, so the errors they throw have
  * the same constructor names but are not instances of the bundled classes.
  */

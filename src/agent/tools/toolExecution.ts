@@ -600,7 +600,7 @@ export function withRepeatedFailureHint(
  * tool_result: the errored paths already carry withRepeatedFailureHint, and
  * stacking two <system-reminder>s on one failure buries both.
  *
- * Gated OFF by default (SERIAL_EDIT_NUDGE in scripts/build.ts). The sibling
+ * Gated OFF by default (SERIAL_EDIT_NUDGE in scripts/build/build.ts). The sibling
  * intervention, SERIAL_READ_NUDGE, was benched at zero adoption and killed, so
  * an appended reminder is not assumed to work — this exists to be measured. The
  * part of the same work that does not depend on persuasion (read-before-edit

@@ -28,7 +28,7 @@ export class AbortError extends Error {
  *
  * The core @anthropic-ai/sdk is inlined into the bundle, but the
  * bedrock/vertex/foundry SDKs are externalized (see `external` in
- * scripts/build.ts) and load their own copy of @anthropic-ai/sdk from
+ * scripts/build/build.ts) and load their own copy of @anthropic-ai/sdk from
  * node_modules at runtime. Errors thrown by those providers are instances
  * of a *different* class object, so a plain `instanceof APIError` never
  * matches them and they fall through error classification as "unknown".

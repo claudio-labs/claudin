@@ -91,6 +91,6 @@ that ran with it ON) drains them **non-deterministically** —
 sometimes the parent exits before they finish, so their token usage is absent from
 the parent's `usage` and the run looks artificially cheap. For any token/cost bench,
 only trust runs where the drain sentinel appeared (`drained=Y` in
-`scripts/profile/agent-bg-token-bench.ts`); for deterministic apples-to-apples vs
+`scripts/bench/ab/agent-bg-token-bench.ts`); for deterministic apples-to-apples vs
 inline Claude Code, run with `CLAUDIN_DISABLE_BACKGROUND_TASKS=1`. Always N≥3
 reps, take the median — single runs are noisy.

@@ -24,9 +24,12 @@ Some changes need alignment *before* code, because they affect everyone building
 
 For performance, efficiency, and cache changes an approach is not enough on its own: **bring benchmark evidence of the improvement, in the same style as the benches already in the repo.** Reuse or extend the existing harnesses instead of inventing an ad-hoc measurement:
 
-- `scripts/profile/` — runnable benchmarks (e.g. `cache-ab-bench.ts`, `cache-lockstep-bench.ts`, `cold-start-bench.ts`, `agent-bg-token-bench.ts`); see `scripts/profile/README.md`.
-- `scripts/measure-*.test.ts` — measurement tests that assert a budget/ROI (`measure-bash-filter-roi.test.ts`, `measure-token-budget.test.ts`, `measure-cache-invalidation-budget.test.ts`, etc.).
-- `bun run test:coverage` (+ `scripts/render-coverage-heatmap.ts`) for coverage deltas.
+- `scripts/bench/ab/` — head-to-head benchmarks, where two or more arms are compared (`cache-ab-bench.ts`, `cache-lockstep-bench.ts`, `agent-bg-token-bench.ts`, `typecheck-ab.ts`).
+- `scripts/bench/perf/` — latency, memory and heap (`cold-start-bench.ts`, `memory-turn-by-turn-bench.ts`); see `scripts/bench/perf/README.md`.
+- `scripts/bench/tokens/measure-*.test.ts` — measurement tests that assert a budget or ROI for a single state (`measure-bash-filter-roi.test.ts`, `measure-token-budget.test.ts`, `measure-cache-invalidation-budget.test.ts`, etc.).
+- `bun run test:coverage` (+ `scripts/codegen/render-coverage-heatmap.ts`) for coverage deltas.
+
+`scripts/README.md` has the directory-by-directory map, including which of the three a new bench belongs in.
 
 A good performance PR states the before/after numbers, the exact command that produced them, and the machine/conditions — the way the write-ups in `docs/tech/` and `src/agent/cache/README.md` do. Numbers without a reproducible command are hard to accept.
 

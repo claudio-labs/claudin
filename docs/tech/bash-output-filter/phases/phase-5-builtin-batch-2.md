@@ -118,7 +118,7 @@ export const dockerLogs: FilterSpec = {
 
 ```bash
 bun test src/tools/shared/outputFilter/Bash
-bun test scripts/regex-redos-scan.test.ts
+bun test scripts/verify/regex-redos-scan.test.ts
 bun run typecheck
 ```
 

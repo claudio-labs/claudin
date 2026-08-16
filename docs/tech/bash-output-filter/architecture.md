@@ -393,7 +393,7 @@ const UserFiltersFile = z.object({
 
 1. **Length cap** on every regex source (500 chars). Most catastrophic-backtracking patterns require contrived complexity that won't fit.
 2. **Pattern denylist** for known-bad shapes (`(.+)+`, `(.*)*`, `(a+)+b`). Vendored from `safe-regex` heuristics (~80 LoC inline in `userFilters.ts`).
-3. **Build-time test** (`scripts/regex-redos-scan.test.ts`) runs the same denylist against every `RegExp` literal in `filters/*.ts`. Catches built-in patterns at PR-review time.
+3. **Build-time test** (`scripts/verify/regex-redos-scan.test.ts`) runs the same denylist against every `RegExp` literal in `filters/*.ts`. Catches built-in patterns at PR-review time.
 
 **No `Promise.race` timeout.** It does not interrupt sync regex (review §"Misalignments #5"). If a regex genuinely backtracks, BashTool will appear to hang; the user can ctrl-C. The mitigation pyramid above prevents this from happening in practice.
 
@@ -510,7 +510,7 @@ Without this, a filtered output >8 KB (the `BASH_SUMMARIZE_THRESHOLD` at line 32
 
 ## 11. Telemetry events
 
-> **Status: not implemented (intentionally).** The module emits no analytics events — `logEvent` calls in the open build are no-op stubs (see `scripts/no-telemetry-plugin.ts`), and adding per-filter events would be dead code. This section is kept as the design that upstream-style telemetry *would* follow if a privacy-preserving local-stats variant (e.g. a `/filter stats` command) is ever built.
+> **Status: not implemented (intentionally).** The module emits no analytics events — `logEvent` calls in the open build are no-op stubs (see `scripts/build/no-telemetry-plugin.ts`), and adding per-filter events would be dead code. This section is kept as the design that upstream-style telemetry *would* follow if a privacy-preserving local-stats variant (e.g. a `/filter stats` command) is ever built.
 
 Three events. All names use the privacy convention from `BashTool.tsx:766` (suffix on metadata cast, not event name).
 
@@ -592,7 +592,7 @@ function safeApply<T>(label: string, raw: T, run: () => T): T {
 
 **Concrete answers:**
 
-- **Catastrophic backtracking on builtin regex:** prevented at PR time by `scripts/regex-redos-scan.test.ts`. If one slips through, BashTool appears to hang; user can ctrl-C; we log the offending filter on the next regex review.
+- **Catastrophic backtracking on builtin regex:** prevented at PR time by `scripts/verify/regex-redos-scan.test.ts`. If one slips through, BashTool appears to hang; user can ctrl-C; we log the offending filter on the next regex review.
 - **Catastrophic backtracking on user regex:** prevented by length cap + denylist. Same fallback as above.
 - **Filter spec malformed at load time:** zod validation rejects per-entry. Bad entry dropped, others load. One-line warning to stderr at startup.
 - **`rewriteCommand` returns garbage** (empty, command without verb): post-rewrite validation in `planFilter`: must be non-empty, must start with `verb` (the first token of the original). Validation failure → log → no rewrite.
@@ -649,7 +649,7 @@ bun run verify:privacy   # required (3 new event names with the suffix proof)
 | Risk | Severity | Mitigation |
 |---|---|---|
 | Engulfing a real error via `match_output` | **Critical** | `unless` clause is mandatory in every `matchOutput` rule. `bashFilter.test.ts` has a `safety` describe block with one assertion per `matchOutput` rule across all built-in filters. CI fails if a `matchOutput` is added without `unless`. |
-| Catastrophic backtracking on user regex | High | Length cap (500 chars) + `safe-regex`-style denylist + build-time test scanning all builtin regex (`scripts/regex-redos-scan.test.ts`). |
+| Catastrophic backtracking on user regex | High | Length cap (500 chars) + `safe-regex`-style denylist + build-time test scanning all builtin regex (`scripts/verify/regex-redos-scan.test.ts`). |
 | Catastrophic backtracking on built-in regex | Medium | Same build-time scan + PR review. |
 | Determinism break (rewrite varies across runs) | High | Spec contract: `rewriteCommand` is pure of `RewriteContext`. Test: each rewrite filter has a "determinism" assertion (call rewrite twice on same input, expect equality). Cache-key implications for any future cache layer: the **transcript** records the original command; the **effective command** is what runs. A cache keyed on either alone would desync. v2 cache must canonicalize. |
 | Filter strips a real warning the model needed | Medium | Per-filter safety case in the harness. Build-time invariant: `matchOutput` rules without `unless` rejected. |
@@ -708,7 +708,7 @@ After review-driven simplifications (rev 2 cuts ~60% from rev 1):
 | `BashTool.tsx` patches | ~20 | included in BashTool.test | Two ~10-line insertions; one-line `result.stdout = applyFilterToStdout(...)` |
 | `toolResultSummarizer.ts` patch | ~2 | included in summarizer.test | `isAlreadyCompacted` extension |
 | `config.ts` patch | ~3 | n/a | `GLOBAL_CONFIG_KEYS` registration |
-| `scripts/regex-redos-scan.test.ts` (build-time scan) | ~80 | n/a | One file |
+| `scripts/verify/regex-redos-scan.test.ts` (build-time scan) | ~80 | n/a | One file |
 | **Total** | **~1295** | **~910** | **~2200 LoC overall** |
 
 The earlier rev 1 estimate (~4675) over-counted by ~50% via duplicated tests, invented helpers, and unnecessary file boundaries.
@@ -729,7 +729,7 @@ The earlier rev 1 estimate (~4675) over-counted by ~50% via duplicated tests, in
 - Create `src/tools/shared/outputFilter/Bash/` with `pipeline.ts`, `registry.ts`, `markers.ts`, `userFilters.ts`, `index.ts`.
 - Copy fixtures from `docs/discovery/bash-output-filter/validation/samples/` to `__fixtures__/samples/`.
 - Port `validation/validate.ts` to `bashFilter.test.ts`.
-- Add `scripts/regex-redos-scan.test.ts`.
+- Add `scripts/verify/regex-redos-scan.test.ts`.
 - Module is dead code (not yet wired to BashTool). Tests pass against the empty registry.
 - Coverage gate: 80%.
 
@@ -814,7 +814,7 @@ When you write a new filter (built-in or PR):
 - [ ] `bun test src/tools/shared/outputFilter/Bash` — 100% pass (~20 filter cases + safety + rewrite + harness).
 - [ ] `bun run verify:privacy` — passes (3 new event names with the suffix proof).
 - [ ] `bun run typecheck` — zero errors.
-- [ ] `scripts/regex-redos-scan.test.ts` — passes (no built-in filter has a denylisted pattern).
+- [ ] `scripts/verify/regex-redos-scan.test.ts` — passes (no built-in filter has a denylisted pattern).
 - [ ] Smoke test (Phase 7): `bun run dev` then 5 commands across `git status`, `cargo build`, `pytest`, `ls -la`, `bundle install`. Debug logs (`CLAUDIN_BASH_FILTER_DEBUG=1`) show the right filter chosen for each. Marker injected. Reduction matches the matrix.
 - [ ] `git log -5 | wc -l` (compound) — no rewrite (no `<bash-output-rewritten>` marker), output count unchanged.
 - [ ] `cargo build` on intentionally broken code (exit 1) — `<bash-output-rewritten>` marker IS shown (rewrite committed pre-execution); pipeline skipped (errors preserved).

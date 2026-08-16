@@ -1,5 +1,5 @@
 // AUTO-GENERATED from src/skills/bundled/__fixtures__/skill-examples/{verify,run}-examples/.
-// Regenerate with scripts/gen-skill-examples.ts. Do not edit by hand.
+// Regenerate with scripts/codegen/gen-skill-examples.ts. Do not edit by hand.
 // Example files are carried as base64 so backticks/template-literals in the
 // captured markdown survive bundling without escaping hazards.
 

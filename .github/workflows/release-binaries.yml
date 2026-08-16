@@ -107,7 +107,7 @@ jobs:
           # Groups the commits by conventional-commit type under emoji headings
           # ("### ✨ Features", …) and neutralizes literal @mentions. Emits the
           # "_No user-facing commits…_" line itself when the range is empty.
-          COMMITS=$(bun run scripts/release-notes.ts --range "$RANGE")
+          COMMITS=$(bun run scripts/release/release-notes.ts --range "$RANGE")
           # Credit contributors by their real GitHub identity (avatar + @handle),
           # resolved from the commit authors' logins via the API. Fall back to the
           # git author name for any commit whose email isn't linked to a GitHub
@@ -294,17 +294,17 @@ jobs:
           CLAUDIN_COMPILE: '1'
           CLAUDIN_RELEASE_BUILD: '1'
           CLAUDIN_COMPILE_TARGET: ${{ matrix.target }}
-        run: bun run scripts/build.ts
+        run: bun run scripts/build/build.ts
       - name: Vendor ripgrep beside the binary
         shell: bash
         env:
           CLAUDIN_COMPILE_TARGET: ${{ matrix.target }}
-        run: bun run scripts/vendor-ripgrep.ts
+        run: bun run scripts/build/vendor-ripgrep.ts
       - name: Vendor sharp beside the binary
         shell: bash
         env:
           CLAUDIN_COMPILE_TARGET: ${{ matrix.target }}
-        run: bun run scripts/vendor-sharp.ts
+        run: bun run scripts/build/vendor-sharp.ts
       - name: Smoke test (native)
         if: ${{ !matrix.cross }}
         shell: bash
@@ -345,9 +345,9 @@ jobs:
               set -e
               apk add --no-cache bash tar
               bun install --frozen-lockfile
-              bun run scripts/build.ts
-              bun run scripts/vendor-ripgrep.ts
-              bun run scripts/vendor-sharp.ts
+              bun run scripts/build/build.ts
+              bun run scripts/build/vendor-ripgrep.ts
+              bun run scripts/build/vendor-sharp.ts
               BIN=dist/bin/linux-arm64-musl/claudin
               "$BIN" --version
               "$BIN" --help >/dev/null
@@ -382,7 +382,7 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
       - name: Build Node fallback bundle
-        run: CLAUDIN_RELEASE_BUILD=1 bun run scripts/build.ts
+        run: CLAUDIN_RELEASE_BUILD=1 bun run scripts/build/build.ts
       - name: Verify no phone-home (gates publish)
         # Scans dist/cli.mjs. The compiled binaries and this bundle are built from
         # the same src/ through the same noTelemetryPlugin, so a clean bundle is
@@ -398,7 +398,7 @@ jobs:
           cd dist/bin
           for d in bin-*; do mv "$d" "${d#bin-}"; done
       - name: Assemble packages
-        run: bun run scripts/assemble-packages.ts "${{ needs.version.outputs.version }}"
+        run: bun run scripts/release/assemble-packages.ts "${{ needs.version.outputs.version }}"
       - name: Publish per-platform packages, then the wrapper LAST
         run: |
           set -e

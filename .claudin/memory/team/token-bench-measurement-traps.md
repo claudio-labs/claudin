@@ -4,7 +4,7 @@ description: Traps that make a headless A/B token bench measure the wrong thing 
 type: project
 ---
 
-Learned 2026-08-09 building `scripts/profile/read-outline-pivot-ab.ts`. Each of
+Learned 2026-08-09 building `scripts/bench/ab/read-outline-pivot-ab.ts`. Each of
 these produced a confidently wrong number that survived a first review and only
 fell to a direct check, so verify them explicitly in any new bench.
 
@@ -61,7 +61,7 @@ rep 1, before paying for the reps. Corollary for the tooling: on a minified
 bundle prefer a ranged `Read` over `grep -c`, whose long-line omission is silent.
 
 **In a cross-CLI bench, the stream can under-report ONE arm's output.** Measured
-2026-08-12 building `scripts/profile/cli-search-edit-ab.ts` (claudindev vs
+2026-08-12 building `scripts/bench/ab/cli-search-edit-ab.ts` (claudindev vs
 claude, same task): summing max-per-`message.id` over `--output-format
 stream-json` gave claude **242** output tokens against its own transcript's
 **4,333** — 17.9x — while `input`, `cache_read` and `cache_creation` matched to

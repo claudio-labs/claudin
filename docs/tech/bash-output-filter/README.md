@@ -81,7 +81,7 @@ Movidos pra v2 (precisam native parser):
 - ✅ `bun run build` clean
 - ✅ `bun test src/tools/shared/outputFilter/Bash` — 100% pass (single harness + 5 unit test files)
 - ✅ `bun run verify:privacy` clean
-- ✅ `scripts/regex-redos-scan.test.ts` — no denylisted patterns
+- ✅ `scripts/verify/regex-redos-scan.test.ts` — no denylisted patterns
 - ✅ Smoke: 5 comandos com `CLAUDIN_BASH_FILTER_DEBUG=1`
 - ✅ Compound: `git log -5 | wc -l` — no rewrite
 - ✅ Error-exit: `cargo build` falha — rewrite marker shown (não pipeline)

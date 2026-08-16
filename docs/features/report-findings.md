@@ -82,7 +82,7 @@ So porting `ReportFindings` is **not new review logic** — it's promoting the e
 - **Tool.** Add `src/tools/ReportFindingsTool/` — a zod schema mirroring the table above and a
   short prompt (the contract). The `execute` handler is nearly a no-op: validate and return the
   list to the host for rendering. Budget the schema against
-  `scripts/measure-tool-schemas.test.ts`.
+  `scripts/bench/tokens/measure-tool-schemas.test.ts`.
 - **Wire the skill.** Change the `## Output` section of `src/skills/bundled/code-review.ts` from
   "return a JSON array" to "call `ReportFindings` once with the ranked list", keeping the field
   names and verdict ladder identical so behavior is unchanged.

@@ -44,7 +44,7 @@ Run these in order. Stop and report on the first failure; otherwise continue.
    verdict — one of the nineteen deleted turned out to be a migration nobody
    had wired up. The wider `bun run deadcode` also lists used-but-undeclared
    imports, which do NOT gate: this fork resolves ~30 module names to stubs in
-   `scripts/build.ts` that knip cannot see, so "undeclared" is the intended
+   `scripts/build/build.ts` that knip cannot see, so "undeclared" is the intended
    state there rather than a defect.
 7. **Generated SDK types** — `bun run verify:sdk-types`. Gates in CI, so a green
    local run without it ships a red PR. It fails when
@@ -73,7 +73,7 @@ Run these in order. Stop and report on the first failure; otherwise continue.
 - **Provider / context** (`src/providers/**`, `src/agent/context*`):
   `bun run test:provider`. Both trigger paths named directories the reorg
   retired, so this step had stopped firing on exactly the diffs it exists for.
-- **Build / telemetry / network** (`scripts/build.ts`, the bundle plugins,
+- **Build / telemetry / network** (`scripts/build/build.ts`, the bundle plugins,
   anything network-adjacent): `bun run verify:privacy`.
 - **Output-format changes**: re-run the affected snapshot tests and confirm the
   `.snap` diffs are intended (`bun test --update-snapshots <file>` only after

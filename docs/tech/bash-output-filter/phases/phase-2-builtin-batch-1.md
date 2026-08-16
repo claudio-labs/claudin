@@ -52,7 +52,7 @@ Implementa os 10 filters de maior ROI medido empiricamente no discovery. Sem rew
 |---|---|---|
 | `src/tools/shared/outputFilter/Bash/filters/index.ts` | Importar e exportar todos os specs no array `builtInFilters` | +14 |
 | `src/tools/shared/outputFilter/Bash/bashFilter.test.ts` | Trocar inline filter definitions nos `CASES[]` para imports dos specs reais | (replace ~14 entries) |
-| `scripts/regex-redos-scan.test.ts` | Não muda (auto-detecta novos arquivos) | n/a |
+| `scripts/verify/regex-redos-scan.test.ts` | Não muda (auto-detecta novos arquivos) | n/a |
 
 ## Steps
 
@@ -86,7 +86,7 @@ Os filter specs são portados das discovery files. Para cada:
 ```bash
 bun test src/tools/shared/outputFilter/Bash
 # Espera 67/67 harness cases passing (todos os specs Phase 2 + os Phase 5 ainda mockados)
-bun test scripts/regex-redos-scan.test.ts
+bun test scripts/verify/regex-redos-scan.test.ts
 # Espera pass — nenhum dos novos regex no denylist
 bun run typecheck
 ```

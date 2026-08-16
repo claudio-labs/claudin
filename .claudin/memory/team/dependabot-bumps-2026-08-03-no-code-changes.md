@@ -44,7 +44,7 @@ bump cannot silently re-split the tree. Install drops from 431 to 430 packages
 and vertex-sdk resolves to the single v11.
 
 **Correct the tempting assumption here:** the duplicate was *never* in the
-`--compile` binary, even though `scripts/build.ts` drops google-auth-library
+`--compile` binary, even though `scripts/build/build.ts` drops google-auth-library
 from `external` when compiling. Measured before/after the dedup, the binary came
 out **byte-identical** at 223,602,533 bytes (fresh mtime, so it really was
 relinked) — Bun's bundler already resolved vertex-sdk's

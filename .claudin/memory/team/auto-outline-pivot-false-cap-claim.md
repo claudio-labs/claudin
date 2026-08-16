@@ -79,7 +79,7 @@ redundant — not that moving the char threshold would change any outcome.
 
 ## Live A/B (2026-08-09, N=6, corrected) — the pivot buys context with latency
 
-`scripts/profile/read-outline-pivot-ab.ts`, claude-sonnet-5, five real files
+`scripts/bench/ab/read-outline-pivot-ab.ts`, claude-sonnet-5, five real files
 21.0-21.9 KB / >250 lines, comprehension task. Two independent N=3 runs pooled
 (`read-outline-pivot-ab.run1.json` + `.json`). Both clean: 0 toolset escapes,
 sentinel 3/3 both arms, arm order alternated per rep.
@@ -87,7 +87,7 @@ sentinel 3/3 both arms, arm order alternated per rep.
 **Where that data lives now.** A later N=4 run overwrote
 `read-outline-pivot-ab.json`, so the working copy holds the balanced N=4 run,
 not the N=3 half of this pool. The original is
-`git show 6cdbdadd:scripts/profile/read-outline-pivot-ab.json` (reps=3, cost A
+`git show 6cdbdadd:scripts/bench/ab/read-outline-pivot-ab.json` (reps=3, cost A
 .430/.331/.327, B .204/.255/.258). `run1.json` is untouched. The bench writes a
 per-condition filename now (`.wording.json`, `.shallow.json`), but the default
 `pivot` condition still overwrites the same file — pass `--keep`-style care or
