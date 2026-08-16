@@ -1315,7 +1315,11 @@ function summarizeGlobOutput(text: string): StrategyResult | null {
   // have to be here: counting a notice as a path inflates the total, and the
   // 50-path cap can then drop the INCOMPLETE line, which is the one saying the
   // listing is a prefix rather than the whole answer.
-  const NOTICE_RE = /^\((?:Results are truncated|INCOMPLETE:)/i
+  // `Directories are inferred` is the third of them: a `type: "dir"` listing is
+  // evidenced by the files inside each directory, so that note is what says an
+  // empty directory is missing from the ANSWER rather than from the tree.
+  const NOTICE_RE =
+    /^\((?:Results are truncated|INCOMPLETE:|Directories are inferred)/i
   const notices = allLines.filter(l => NOTICE_RE.test(l))
   const pathLines = allLines.filter(l => !NOTICE_RE.test(l))
 

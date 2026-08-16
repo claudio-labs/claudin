@@ -802,6 +802,26 @@ test('glob: the INCOMPLETE notice is metadata, not a path', () => {
   expect(body).toContain('INCOMPLETE:')
 })
 
+test('glob: the directory caveat is metadata, not a path', () => {
+  // Same reason as the INCOMPLETE line: a `type: "dir"` listing is derived from
+  // the files inside each directory, so the note is what tells "no empty
+  // directory here" from "this listing cannot show one". Counted as a path it
+  // would inflate the total and be dropped by the 50-path cap.
+  const paths = Array.from(
+    { length: 60 },
+    (_, i) => `src/${'deeply/nested/feature/module/'.repeat(7)}component${i}`,
+  )
+  const notice =
+    '(Directories are inferred from the files inside them, so an empty directory does not appear, and the search root itself is not listed.)'
+  const out = maybeSummarizeToolResult(
+    makeBlock([...paths, notice].join('\n')),
+    'Glob',
+  )
+  const body = asString(out)
+  expect(body).toContain('Glob summary: 60 paths found')
+  expect(body).toContain('an empty directory does not appear')
+})
+
 test('glob: snapshot — marker shape and strategy attribute', () => {
   const content = Array.from(
     { length: 120 },
