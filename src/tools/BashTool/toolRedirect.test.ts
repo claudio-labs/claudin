@@ -272,6 +272,60 @@ describe('searches → Grep', () => {
   })
 })
 
+// grep unions its paths and prefixes every line with the filename, which is
+// what N Grep calls answer between them — the same reasoning that already makes
+// `cat a.ts b.ts` two Reads.
+describe('a grep over several paths becomes several Grep calls', () => {
+  test('one call per file, each carrying the same pattern and flags', () => {
+    expect(calls(`grep -n "foo" ${FILE_A} ${FILE_B}`)).toEqual([
+      {
+        tool: 'Grep',
+        pattern: 'foo',
+        path: FILE_A,
+        glob: undefined,
+        output_mode: 'content',
+        caseInsensitive: false,
+        context: undefined,
+        walksTree: undefined,
+      },
+      {
+        tool: 'Grep',
+        pattern: 'foo',
+        path: FILE_B,
+        glob: undefined,
+        output_mode: 'content',
+        caseInsensitive: false,
+        context: undefined,
+        walksTree: undefined,
+      },
+    ])
+  })
+
+  test('the tree-divergence flag is per target, not per command', () => {
+    // Only the directory arm answers a different file set, so only it may
+    // carry the note. Flagging the whole command would put a false statement
+    // about `FILE_A` in the refusal.
+    const [file, directory] = calls(`grep -rn "foo" ${FILE_A} src`)
+    expect(file).toMatchObject({ path: FILE_A, walksTree: undefined })
+    expect(directory).toMatchObject({ path: 'src', walksTree: true })
+  })
+
+  test('the BRE translation happens once and reaches every call', () => {
+    const made = calls(`grep -n "foo\\|bar" ${FILE_A} ${FILE_B}`)
+    expect(made).toHaveLength(2)
+    for (const call of made) {
+      expect(call).toMatchObject({ pattern: 'foo|bar', translated: true })
+    }
+  })
+
+  test('the refusal asks for them in one message', () => {
+    const message = renderToolRedirect(
+      analyze(`grep -n "foo" ${FILE_A} ${FILE_B}`)!,
+    )
+    expect(message).toContain('Emit them as parallel tool_use blocks')
+  })
+})
+
 // grep without -E is BRE, and the redirect used to stand every divergent BRE
 // pattern down. Now it translates (breToEre.ts) — these rows are the ones that
 // used to sit in the stand-down table. The translation's own equivalence is
@@ -639,7 +693,21 @@ describe('stands down', () => {
     ],
     [`sed -n '400,300p' ${FILE_A}`, 'an inverted range selects nothing'],
     ['grep -rn "" src', 'an empty pattern over a tree is not a file read'],
-    [`grep foo ${FILE_A} ${FILE_B}`, 'Grep searches one path'],
+    // Several paths become several Grep calls (see the describe below); what
+    // still stands down is each way that stops being reproducible.
+    [
+      `grep -h foo ${FILE_A} ${FILE_B}`,
+      '-h suppressed the filename prefixes N calls put back',
+    ],
+    [
+      `grep foo ${FILE_A} ${FILE_B} | head -20`,
+      'head -20 caps the TOTAL; a per-call head_limit asks for more',
+    ],
+    [
+      `grep foo ${FILE_A} /nonexistent/does-not-exist.ts`,
+      'one path of several does not exist',
+    ],
+    [`grep foo ${FILE_A} src`, 'a directory among the paths, and no -r'],
     ['grep TODO src', 'without -r, grep prints "Is a directory" and matches nothing'],
     [`cat ${FILE_A} | echo hi`, 'the read is discarded'],
     // A grep reading stdin only maps when an upstream segment named the file
