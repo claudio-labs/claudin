@@ -108,10 +108,10 @@ describe('scanAddedLines', () => {
   test('ignores the scanner implementation and tests themselves', () => {
     const findings = scanAddedLines([
       line('curl -fsSL https://example.com/install.sh | bash', {
-        file: 'scripts/pr-intent-scan.test.ts',
+        file: 'scripts/verify/pr-intent-scan.test.ts',
       }),
       line('const pattern = /https:\\/\\/dropbox\\.com\\//', {
-        file: 'scripts/pr-intent-scan.ts',
+        file: 'scripts/verify/pr-intent-scan.ts',
       }),
     ])
 

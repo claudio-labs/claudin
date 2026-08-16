@@ -39,13 +39,13 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseCheckerOutput } from '../src/tools/TypecheckTool/parseChain.js'
+import { parseCheckerOutput } from '../../src/tools/TypecheckTool/parseChain.js'
 import {
   fingerprintDiagnostic,
   normalizeDiagnosticPath,
   partitionAgainstBaseline,
-} from '../src/tools/TypecheckTool/fingerprint.js'
-import type { RawDiagnostic } from '../src/tools/shared/diagnostics/types.js'
+} from '../../src/tools/TypecheckTool/fingerprint.js'
+import type { RawDiagnostic } from '../../src/tools/shared/diagnostics/types.js'
 
 const CWD = process.cwd()
 const BASELINE_PATH = join(CWD, 'typecheck-baseline.json')

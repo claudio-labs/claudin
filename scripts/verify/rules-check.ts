@@ -8,18 +8,17 @@
  * src/memory/instructions/rulesLint.ts; `/doctor` and `/refresh-rules` are the surfaces users
  * get, since a `scripts/` file only ever runs in this repo.
  *
- *   bun run scripts/rules-check.ts            # report + exit non-zero on error
- *   bun run scripts/rules-check.ts --quiet    # only print problems
+ *   bun run scripts/verify/rules-check.ts            # report + exit non-zero on error
+ *   bun run scripts/verify/rules-check.ts --quiet    # only print problems
  */
-import { dirname, join } from 'path'
-import { fileURLToPath } from 'url'
 import {
   lintRuleFiles,
   relativeFindingPath,
   type RuleLintFinding,
-} from '../src/memory/instructions/rulesLint.js'
+} from '../../src/memory/instructions/rulesLint.js'
+import { REPO_ROOT } from '../repoRoot'
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const ROOT = REPO_ROOT
 const QUIET = process.argv.includes('--quiet')
 
 /**

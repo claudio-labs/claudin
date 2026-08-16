@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'fs'
 import { join, relative } from 'path'
 import { expect, test } from 'bun:test'
+import { REPO_ROOT } from '../repoRoot'
 
 // Regression guard for ROADMAP item 10.1. `.claudin/rules/typescript-patterns.md`
 // mandates `from 'zod/v4'` everywhere because `@anthropic-ai/sdk@0.96.0`+
@@ -11,7 +12,6 @@ import { expect, test } from 'bun:test'
 // This test walks src/ and scripts/ and fails if anything imports `from 'zod'`
 // without the `/v4` subpath. Other subpaths (e.g. `zod/v4-mini`) are allowed.
 
-const REPO_ROOT = join(import.meta.dir, '..')
 const SCAN_DIRS = ['src', 'scripts']
 const SCAN_EXTS = new Set(['.ts', '.tsx'])
 const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', 'coverage'])

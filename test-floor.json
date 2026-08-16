@@ -1,5 +1,5 @@
 {
-  "//": "Written by `bun run test:floor:update`. The ratio is a ratchet against loss, not a target — see scripts/test-floor.ts.",
+  "//": "Written by `bun run test:floor:update`. The ratio is a ratchet against loss, not a target — see scripts/verify/test-floor.ts.",
   "ratioPct": 19.43,
   "testLoc": 126925,
   "sourceLoc": 653286,
@@ -11,7 +11,7 @@
     "scripts/build/feature-flags-source-guard.test.ts",
     "scripts/measure-tool-schemas.test.ts",
     "scripts/build/no-telemetry-growthbook-stub.test.ts",
-    "scripts/pr-intent-scan.test.ts"
+    "scripts/verify/pr-intent-scan.test.ts"
   ],
   "capturedAt": "2026-08-15"
 }

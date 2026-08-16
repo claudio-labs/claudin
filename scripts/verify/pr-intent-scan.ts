@@ -24,8 +24,8 @@ type CliOptions = {
 }
 
 const SELF_EXCLUDED_FILES = new Set([
-  'scripts/pr-intent-scan.ts',
-  'scripts/pr-intent-scan.test.ts',
+  'scripts/verify/pr-intent-scan.ts',
+  'scripts/verify/pr-intent-scan.test.ts',
 ])
 
 const SHORTENER_DOMAINS = [

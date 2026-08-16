@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { REPO_ROOT } from '../repoRoot'
 
 /**
  * `.node-version` and `.bun-version` are the toolchain pins. Six setup-bun
@@ -14,7 +15,7 @@ import { join } from 'node:path'
  *     is a valid setup-bun *input* but pins nothing.
  */
 describe('toolchain pins', () => {
-  const root = join(import.meta.dir, '..')
+  const root = REPO_ROOT
   const read = (name: string) => readFileSync(join(root, name), 'utf8')
   const bunVersion = read('.bun-version').trim()
   const nodeVersion = read('.node-version').trim()

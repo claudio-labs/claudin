@@ -1,10 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { REPO_ROOT } from '../repoRoot'
 
 /**
  * `typecheck-baseline.json` is the reference side of the CI ratchet
- * (`scripts/typecheck-ci.ts`), and a corrupted one fails OPEN in the direction
+ * (`scripts/verify/typecheck-ci.ts`), and a corrupted one fails OPEN in the direction
  * that matters: entries lost to a bad merge or a hand-edit come back as "new"
  * errors on the next PR, and the reflex fix for a wall of unexplained new
  * errors is to refresh the baseline — which launders them in permanently.
@@ -13,7 +14,7 @@ import { join } from 'node:path'
  * tsc: shape only, so they cost nothing in the suite.
  */
 describe('typecheck baseline', () => {
-  const raw = readFileSync(join(import.meta.dir, '..', 'typecheck-baseline.json'), 'utf8')
+  const raw = readFileSync(join(REPO_ROOT, 'typecheck-baseline.json'), 'utf8')
   const baseline = JSON.parse(raw) as {
     checker: string
     command: string

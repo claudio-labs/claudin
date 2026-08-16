@@ -21,7 +21,7 @@
  *
  * …plus the four build-system invariant suites in `scripts/`, which
  * .claudin/rules/testing.md already names as must-run when touching
- * scripts/build.ts. They live outside `src/`, so an earlier version of this
+ * scripts/build/build.ts. They live outside `src/`, so an earlier version of this
  * script could not see them at all: deleting every one of them left the floor
  * green. Both trees are walked now.
  *
@@ -57,7 +57,7 @@ const REQUIRED_SUITES = [
   'scripts/build/feature-flags-source-guard.test.ts',
   'scripts/measure-tool-schemas.test.ts',
   'scripts/build/no-telemetry-growthbook-stub.test.ts',
-  'scripts/pr-intent-scan.test.ts',
+  'scripts/verify/pr-intent-scan.test.ts',
 ]
 
 /** Trees the ratio is measured over. `scripts/` carries the build invariants. */
@@ -130,7 +130,7 @@ function readFloor(): Floor | null {
 
 function write(current: ReturnType<typeof measure>): void {
   const floor: Floor = {
-    '//': 'Written by `bun run test:floor:update`. The ratio is a ratchet against loss, not a target — see scripts/test-floor.ts.',
+    '//': 'Written by `bun run test:floor:update`. The ratio is a ratchet against loss, not a target — see scripts/verify/test-floor.ts.',
     ...current,
     requiredSuites: REQUIRED_SUITES,
     capturedAt: new Date().toISOString().slice(0, 10),
@@ -158,7 +158,7 @@ if (gone.length > 0) {
   for (const suite of gone) console.error(`    ${suite}`)
   console.error(
     '\n  These assert properties no coverage number would catch. If one is\n' +
-      '  genuinely obsolete, remove it from REQUIRED_SUITES in scripts/test-floor.ts\n' +
+      '  genuinely obsolete, remove it from REQUIRED_SUITES in scripts/verify/test-floor.ts\n' +
       '  in the same commit, so the deletion is on the record.',
   )
 }
