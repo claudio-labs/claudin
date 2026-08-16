@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.1.14 — 2026-08-16
+
+### 🧪 Tests
+
+- test(bash): put the Bash validators under test, verified by mutation (#101) (a13cf36b)
+
+### 🔧 Miscellaneous
+
+- Point a Sponsor button at the project's own tip jar. (#106) (e74cdead)
+- Give the Explore report an output contract, and a reading order to match (#105) (b19be669)
+- Teach Glob what find is reached for, and convert find with it (#104) (3d514739)
+- Widen the Bash→tool redirect where the corpus says it pays (#103) (71f2e727)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.13 — 2026-08-16
 
 ### ✨ Features
