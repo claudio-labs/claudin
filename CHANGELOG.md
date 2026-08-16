@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.1.15 — 2026-08-16
+
+### ✨ Features
+
+- feat(explore): give the report an output contract, and a reading order to match (#105) (36ab72a2)
+- feat(glob): teach Glob what find is reached for, and convert find with it (#104) (9e2e28c9)
+- feat(bash-redirect): widen the redirect where the corpus says it pays (#103) (07039e7b)
+
+### ⚡ Performance
+
+- perf: cut a duplicate markdown lex per frame and fix the no-op GC hint (#107) (8a7e68ae)
+
+### 📚 Documentation
+
+- docs(rules): pin the commit and PR title format the release notes depend on (85b20727)
+- docs(readme): offer the install script alongside the npm install (bff26498)
+
+### 🧪 Tests
+
+- test(bash): put the Bash validators under test, verified by mutation (#101) (a13cf36b)
+
+### 🔧 Miscellaneous
+
+- chore(funding): point a Sponsor button at the project's own tip jar (#106) (6f453b70)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.14 — 2026-08-16
 
 ### 🧪 Tests
