@@ -23,6 +23,7 @@ import {
   pruneOrphanClippedIds,
 } from 'src/agent/compact/stableStubState.js'
 import { clearSkippedTimestamps } from 'src/agent/history.js'
+import { hintGc } from 'src/shared/proc/gc.js'
 
 /**
  * Run cleanup of caches and tracking state after compaction.
@@ -194,11 +195,10 @@ export function runPostCompactCleanup(
   // history reads for new entries with coinciding timestamps.
   clearSkippedTimestamps()
 
-  // After clearing all the per-conversation caches above, hint V8 to mark-
-  // sweep so dropped messages/tool-results are released back to the OS now
-  // rather than waiting for the next allocation-driven GC. No-op unless
-  // launched with --expose-gc (default in bin/claudin's re-exec path).
-  // Safe to call on the main thread; subagent compacts share the heap so
-  // they benefit too.
-  globalThis.gc?.()
+  // After clearing all the per-conversation caches above, collect so dropped
+  // messages/tool-results are released back to the OS now rather than at the
+  // next allocation-driven GC. Synchronous: compaction is already a pause, and
+  // this runs once per compaction rather than in a loop. Safe on the main
+  // thread; subagent compacts share the heap so they benefit too.
+  hintGc(true)
 }

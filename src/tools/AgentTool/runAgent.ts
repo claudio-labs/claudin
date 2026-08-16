@@ -85,6 +85,7 @@ import {
 } from 'src/platform/telemetry/perfettoTracing.js'
 import type { ContentReplacementState } from 'src/agent/tools/toolResultStorage.js'
 import { createAgentId } from 'src/shared/data/uuid.js'
+import { hintGc } from 'src/shared/proc/gc.js'
 import {
   resolveAgentTools,
   scopeChildAgentDefinitions,
@@ -927,12 +928,13 @@ export async function* runAgent({
     }
     /* eslint-enable @typescript-eslint/no-require-imports */
 
-    // Hint V8 to release the just-cleared file state cache clone (up to
-    // 25 MB per agent) and other agent-scoped allocations now, instead of
-    // waiting for the next allocation-driven GC. Wide subagent fan-outs
-    // (10× concurrent) can otherwise leave 250 MB of clone bytes
-    // unreleased for seconds. No-op unless launched with --expose-gc.
-    globalThis.gc?.()
+    // Release the just-cleared file state cache clone (up to 25 MB per agent)
+    // and other agent-scoped allocations now, instead of waiting for the next
+    // allocation-driven GC. Wide subagent fan-outs (10× concurrent) can
+    // otherwise leave 250 MB of clone bytes unreleased for seconds.
+    // Deliberately NOT synchronous: this runs once per agent, so a fan-out of
+    // 10 would queue 10 blocking full collections through the render loop.
+    hintGc(false)
   }
 }
 
