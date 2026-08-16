@@ -47,21 +47,21 @@ const REWRITE_EXT = /\.(ts|tsx|json|md|mjs|cjs|js)$/
  *
  * This exclusion did not exist for the 2026-08 reorg, which edited 106 of them:
  * verbatim model output now cited slice paths nobody could have typed at the
- * time, and `scripts/profile/baselines/cold-start-retained.json` filed its
+ * time, and `scripts/bench/perf/baselines/cold-start-retained.json` filed its
  * measured RSS and import-time numbers under module names that were never
  * measured. Both were reverted; this is what keeps a re-run from redoing it.
  *
- * The PRODUCERS stay in scope on purpose: `scripts/profile/*.ts` and
- * `scripts/bench/*.ts` are ordinary code and DO have to follow a move.
+ * The PRODUCERS stay in scope on purpose: `scripts/bench/**/*.ts` are
+ * ordinary code and DO have to follow a move.
  */
-const RECORD_TREES = ['scripts/bench/results', 'scripts/profile/baselines', 'docs/archive']
+const RECORD_TREES = ['scripts/bench/results', 'scripts/bench/perf/baselines', 'docs/archive']
 
 function isRecordedArtifact(abs: string): boolean {
   const rel = relative(REPO_ROOT, abs).split(sep).join('/')
   if (RECORD_TREES.some(tree => rel.startsWith(`${tree}/`))) return true
   // Result files dropped beside the bench that produced them.
   return (
-    /^scripts\/profile\/[^/]+\.(json|md)$/.test(rel) && rel !== 'scripts/profile/README.md'
+    /^scripts\/profile\/[^/]+\.(json|md)$/.test(rel) && rel !== 'scripts/bench/perf/README.md'
   )
 }
 
