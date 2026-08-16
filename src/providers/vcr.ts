@@ -29,6 +29,14 @@ function shouldUseVCR(): boolean {
 }
 
 /**
+ * Where cassettes live, relative to the repo root. Colocated with the slice
+ * that owns the VCR rather than at the top of the tree, where a bare
+ * `fixtures/` said nothing about whose fixtures they were.
+ * `CLAUDIN_TEST_FIXTURES_ROOT` still overrides the root.
+ */
+const FIXTURE_DIR = 'src/providers/__fixtures__/vcr'
+
+/**
  * Generic fixture management helper
  * Handles caching, reading, writing fixtures for any data type
  */
@@ -48,7 +56,7 @@ async function withFixture<T>(
     .slice(0, 12)
   const filename = join(
     process.env.CLAUDIN_TEST_FIXTURES_ROOT ?? getCwd(),
-    `fixtures/${fixtureName}-${hash}.json`,
+    `${FIXTURE_DIR}/${fixtureName}-${hash}.json`,
   )
 
   // Fetch cached fixture
@@ -107,7 +115,7 @@ export async function withVCR(
   )
   const filename = join(
     process.env.CLAUDIN_TEST_FIXTURES_ROOT ?? getCwd(),
-    `fixtures/${dehydratedInput.map(_ => createHash('sha1').update(jsonStringify(_)).digest('hex').slice(0, 6)).join('-')}.json`,
+    `${FIXTURE_DIR}/${dehydratedInput.map(_ => createHash('sha1').update(jsonStringify(_)).digest('hex').slice(0, 6)).join('-')}.json`,
   )
 
   // Fetch cached fixture
