@@ -15,8 +15,6 @@
 
 Claudin brings a terminal-first agentic workflow — bash, file tools, grep, glob, agents, MCP, slash commands, streaming — to any model provider. Switch between OpenAI, Gemini, DeepSeek, Ollama, Mistral, GitHub Copilot, Bedrock, Vertex, and 200+ OpenAI-compatible endpoints without changing your workflow.
 
-Claudin began as a fork of Anthropic's [Claude Code](https://github.com/anthropics/claude-code) and keeps its agent loop, tool surface, and configuration format. It is developed and released independently, and is not affiliated with or endorsed by Anthropic.
-
 ---
 
 ## Install
