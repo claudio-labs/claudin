@@ -6,8 +6,8 @@
  * that means you already ran: `kill -USR1 <pid>` on the host.
  *
  * Usage:
- *   bun scripts/profile/take-heap-snapshot-cdp.ts --pid=46962 --out=/path/to/snapshot.heapsnapshot
- *   bun scripts/profile/take-heap-snapshot-cdp.ts --ws=ws://127.0.0.1:9229/<id> --out=/path/...
+ *   bun scripts/bench/perf/take-heap-snapshot-cdp.ts --pid=46962 --out=/path/to/snapshot.heapsnapshot
+ *   bun scripts/bench/perf/take-heap-snapshot-cdp.ts --ws=ws://127.0.0.1:9229/<id> --out=/path/...
  *
  * It connects to the inspector, calls HeapProfiler.takeHeapSnapshot with reportProgress,
  * streams the JSON chunks to disk, and prints final stats.

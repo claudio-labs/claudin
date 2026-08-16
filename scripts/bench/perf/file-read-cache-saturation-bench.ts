@@ -13,8 +13,8 @@
 //   (2) churn   — keep reading new files; LRU should evict, RSS should plateau
 //
 // Usage:
-//   bun --expose-gc run scripts/profile/file-read-cache-saturation-bench.ts
-//   bun --expose-gc run scripts/profile/file-read-cache-saturation-bench.ts --entries=2000 --size-kb=200
+//   bun --expose-gc run scripts/bench/perf/file-read-cache-saturation-bench.ts
+//   bun --expose-gc run scripts/bench/perf/file-read-cache-saturation-bench.ts --entries=2000 --size-kb=200
 
 import { performance } from 'node:perf_hooks'
 import { tmpdir } from 'node:os'
@@ -67,7 +67,7 @@ function snap(): Snap {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2))
   if (args.help) {
-    console.log(`Usage: bun --expose-gc run scripts/profile/file-read-cache-saturation-bench.ts [options]
+    console.log(`Usage: bun --expose-gc run scripts/bench/perf/file-read-cache-saturation-bench.ts [options]
 
 Options:
   --entries=N           total file pool to read (default 1500, > cap=1000)
@@ -111,7 +111,7 @@ Options:
     writeFileSync(join(dir, `f_${i}.txt`), lines.join(''))
   }
 
-  const { fileReadCache } = await import('../../src/shared/fs/fileReadCache.js')
+  const { fileReadCache } = await import('../../../src/shared/fs/fileReadCache.js')
   fileReadCache.clear()
 
   gc()

@@ -4,8 +4,8 @@
 // first" question with one command instead of three.
 //
 // Usage:
-//   bun run scripts/profile/run-all.ts
-//   bun run scripts/profile/run-all.ts --json
+//   bun run scripts/bench/perf/run-all.ts
+//   bun run scripts/bench/perf/run-all.ts --json
 
 import { spawnSync } from 'node:child_process'
 import { resolve } from 'node:path'

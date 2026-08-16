@@ -10,8 +10,8 @@
     "clearEvery": 200,
     "breakdown": true,
     "snapshotEvery": 0,
-    "output": "scripts/profile/baselines/memory-turn-by-turn.json",
-    "csv": "scripts/profile/baselines/memory-turn-by-turn.csv",
+    "output": "scripts/bench/perf/baselines/memory-turn-by-turn.json",
+    "csv": "scripts/bench/perf/baselines/memory-turn-by-turn.csv",
     "inflection": true,
     "json": false,
     "help": false

@@ -26,7 +26,7 @@
  */
 
 import { randomUUID } from 'crypto'
-import type { queryModelWithStreaming } from '../../src/providers/shims/claude.js'
+import type { queryModelWithStreaming } from '../../../src/providers/shims/claude.js'
 
 // --- TurnScript DSL ---
 

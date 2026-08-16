@@ -11,7 +11,7 @@
  * This registers the same shape the build would have produced, so a harness can
  * import real product code without pulling a package that does not exist:
  *
- *   bun --preload ./scripts/profile/preload-stubs.ts scripts/profile/<name>.ts
+ *   bun --preload ./scripts/bench/perf/preload-stubs.ts scripts/bench/<group>/<name>.ts
  */
 import { mock } from 'bun:test'
 

@@ -15,13 +15,14 @@
 // Requires `dist/cli.mjs` to exist (run `bun run build` first).
 //
 // Usage:
-//   bun run scripts/profile/cold-start-bench.ts
-//   bun run scripts/profile/cold-start-bench.ts --runs=20
+//   bun run scripts/bench/perf/cold-start-bench.ts
+//   bun run scripts/bench/perf/cold-start-bench.ts --runs=20
 
 import { spawnSync } from 'node:child_process'
 import { performance } from 'node:perf_hooks'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
 type Args = {
   runs: number
@@ -59,7 +60,7 @@ function findCliPath(): string {
   const candidates = [
     resolve(cwd, 'dist/cli.mjs'),
     resolve(cwd, '../dist/cli.mjs'),
-    resolve(import.meta.dir, '../../dist/cli.mjs'),
+    resolve(REPO_ROOT, 'dist/cli.mjs'),
   ]
   for (const p of candidates) {
     if (existsSync(p)) return p
@@ -73,7 +74,7 @@ function findCliPath(): string {
 function findLauncherPath(): string | null {
   const candidates = [
     resolve(process.cwd(), 'bin/claudin'),
-    resolve(import.meta.dir, '../../bin/claudin'),
+    resolve(REPO_ROOT, 'bin/claudin'),
   ]
   for (const p of candidates) {
     if (existsSync(p)) return p

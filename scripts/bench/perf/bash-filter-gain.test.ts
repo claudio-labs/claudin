@@ -9,9 +9,9 @@
 // runs; `bun run` does not apply that preload.
 //
 // Default behaviour: skipped on `bun test`. Run explicitly with:
-//   CLAUDIN_BENCH=1 bun test scripts/profile/bash-filter-gain.test.ts
-//   CLAUDIN_BENCH=1 CLAUDIN_BENCH_DIFF=git-blame bun test scripts/profile/bash-filter-gain.test.ts
-//   CLAUDIN_BENCH=1 CLAUDIN_BENCH_JSON=1 bun test scripts/profile/bash-filter-gain.test.ts
+//   CLAUDIN_BENCH=1 bun test scripts/bench/perf/bash-filter-gain.test.ts
+//   CLAUDIN_BENCH=1 CLAUDIN_BENCH_DIFF=git-blame bun test scripts/bench/perf/bash-filter-gain.test.ts
+//   CLAUDIN_BENCH=1 CLAUDIN_BENCH_JSON=1 bun test scripts/bench/perf/bash-filter-gain.test.ts
 
 import { describe, test } from 'bun:test'
 import { existsSync, readFileSync } from 'node:fs'
@@ -20,11 +20,11 @@ import { resolve } from 'node:path'
 import {
   applyBashFilterToStdout,
   planBashFilter,
-} from '../../src/tools/shared/outputFilter/Bash/index.js'
+} from '../../../src/tools/shared/outputFilter/Bash/index.js'
 
 const SAMPLES_DIR = resolve(
   import.meta.dir,
-  '../../src/tools/shared/outputFilter/Bash/__fixtures__/samples',
+  '../../../src/tools/shared/outputFilter/Bash/__fixtures__/samples',
 )
 
 const WRAPPER_RE =
@@ -269,7 +269,7 @@ describe('bash-filter-gain', () => {
     )
     console.log('        ✓ = meets target (within −5pp); ✗ = misses target.')
     console.log(
-      'Inspect a single filter:  CLAUDIN_BENCH=1 CLAUDIN_BENCH_DIFF=<filter> bun test scripts/profile/bash-filter-gain.test.ts',
+      'Inspect a single filter:  CLAUDIN_BENCH=1 CLAUDIN_BENCH_DIFF=<filter> bun test scripts/bench/perf/bash-filter-gain.test.ts',
     )
   })
 })

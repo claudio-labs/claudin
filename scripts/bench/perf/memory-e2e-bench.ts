@@ -13,15 +13,15 @@
  * identify which retainer is responsible.
  *
  * Usage:
- *   bun --expose-gc scripts/profile/memory-e2e-bench.ts --mode=text --turns=50
- *   bun --expose-gc scripts/profile/memory-e2e-bench.ts --mode=tool --turns=100
- *   bun --expose-gc scripts/profile/memory-e2e-bench.ts --mode=mixed --turns=500 --csv=out.csv --inflection
+ *   bun --expose-gc scripts/bench/perf/memory-e2e-bench.ts --mode=text --turns=50
+ *   bun --expose-gc scripts/bench/perf/memory-e2e-bench.ts --mode=tool --turns=100
+ *   bun --expose-gc scripts/bench/perf/memory-e2e-bench.ts --mode=mixed --turns=500 --csv=out.csv --inflection
  */
 
 import { performance } from 'node:perf_hooks'
 import { writeFileSync } from 'node:fs'
 
-import type { QueryDeps } from '../../src/agent/query/deps.js'
+import type { QueryDeps } from '../../../src/agent/query/deps.js'
 import {
   createFakeCallModel,
   fakeMicrocompact,
@@ -140,14 +140,14 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #1 perKeyClippedIds
   try {
-    const mod = await import('../../src/agent/compact/stableStubState.js')
+    const mod = await import('../../../src/agent/compact/stableStubState.js')
     out['perKeyClippedIds.keys'] = mod._getClippedIdsMapSizeForTesting()
     out['perKeyClippedIds.totalIds'] = mod._getClippedIdsTotalCountForTesting()
   } catch {}
 
   // #3 MCP memoize cache
   try {
-    const mod = await import('../../src/mcp/client.js')
+    const mod = await import('../../../src/mcp/client.js')
     if (typeof mod.__TEST_ONLY_getMemoizeCacheSize === 'function') {
       out['mcp.connectToServer.cache'] = mod.__TEST_ONLY_getMemoizeCacheSize()
     }
@@ -155,13 +155,13 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #5 fileReadCache
   try {
-    const mod = await import('../../src/shared/fs/fileReadCache.js')
+    const mod = await import('../../../src/shared/fs/fileReadCache.js')
     out['fileReadCache.size'] = mod.fileReadCache.size
   } catch {}
 
   // #7 sessionIngress
   try {
-    const mod = await import('../../src/providers/transport/sessionIngress.js')
+    const mod = await import('../../../src/providers/transport/sessionIngress.js')
     if (typeof mod._getLastUuidMapSize === 'function') {
       out['sessionIngress.lastUuidMap'] = mod._getLastUuidMapSize()
     }
@@ -172,7 +172,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #8 diagnosticTracker
   try {
-    const mod = await import('../../src/platform/diagnosticTracking.js')
+    const mod = await import('../../../src/platform/diagnosticTracking.js')
     if (typeof mod.__TEST_ONLY_getDiagnosticTrackerSizes === 'function') {
       const sizes = mod.__TEST_ONLY_getDiagnosticTrackerSizes()
       for (const [k, v] of Object.entries(sizes)) {
@@ -183,7 +183,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #9 agentTranscriptSubdirs
   try {
-    const mod = await import('../../src/sessions/sessionStorage.js')
+    const mod = await import('../../../src/sessions/sessionStorage.js')
     if (typeof mod.__TEST_ONLY_getAgentTranscriptSubdirsSize === 'function') {
       out['sessionStorage.agentTranscriptSubdirs'] =
         mod.__TEST_ONLY_getAgentTranscriptSubdirsSize()
@@ -192,7 +192,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #10 sentBashGitInstructions
   try {
-    const mod = await import('../../src/agent/attachments/attachments.js')
+    const mod = await import('../../../src/agent/attachments/attachments.js')
     if (typeof mod.__TEST_ONLY_getBashGitInstructionsSize === 'function') {
       out['attachments.sentBashGitInstructions'] =
         mod.__TEST_ONLY_getBashGitInstructionsSize()
@@ -201,7 +201,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #13 classifierApprovals
   try {
-    const mod = await import('../../src/permissions/classifierApprovalsHook.js')
+    const mod = await import('../../../src/permissions/classifierApprovalsHook.js')
     if (typeof mod.__TEST_ONLY_getClassifierApprovalsSize === 'function') {
       out['classifierApprovals.size'] = mod.__TEST_ONLY_getClassifierApprovalsSize()
     }
@@ -209,7 +209,7 @@ async function probeRetainers(): Promise<RetainerSnapshot> {
 
   // #11 markdown token cache
   try {
-    const mod = await import('../../src/terminal/markdown/markdownTokenCache.js')
+    const mod = await import('../../../src/terminal/markdown/markdownTokenCache.js')
     if (typeof mod.__TEST_ONLY_getTokenCacheSize === 'function') {
       out['markdownTokenCache'] = mod.__TEST_ONLY_getTokenCacheSize()
     }
@@ -318,58 +318,58 @@ async function measureStages(): Promise<BootstrapStage[]> {
   // Each stage imports a subgraph and measures the cost.
   await stage('00 baseline', async () => {})
   await stage('01 utils/log', async () => {
-    await import('../../src/shared/log.js')
+    await import('../../../src/shared/log.js')
   })
   await stage('02 utils/config', async () => {
-    await import('../../src/platform/config/config.js')
+    await import('../../../src/platform/config/config.js')
   })
   await stage('03 services/api/providerConfig', async () => {
-    await import('../../src/providers/presets/providerConfig.js')
+    await import('../../../src/providers/presets/providerConfig.js')
   })
   await stage('04 services/api/client', async () => {
-    await import('../../src/providers/transport/client.js')
+    await import('../../../src/providers/transport/client.js')
   })
   await stage('05 services/api/openaiShim', async () => {
-    await import('../../src/providers/shims/openaiShim.js')
+    await import('../../../src/providers/shims/openaiShim.js')
   })
   await stage('06 services/api/claude', async () => {
-    await import('../../src/providers/shims/claude.js')
+    await import('../../../src/providers/shims/claude.js')
   })
   await stage('07 services/mcp/client', async () => {
-    await import('../../src/mcp/client.js')
+    await import('../../../src/mcp/client.js')
   })
   await stage('08 tools/FileReadTool', async () => {
-    await import('../../src/tools/FileReadTool/index.js').catch(() => {})
+    await import('../../../src/tools/FileReadTool/index.js').catch(() => {})
   })
   await stage('09 tools/BashTool', async () => {
-    await import('../../src/tools/BashTool/index.js').catch(() => {})
+    await import('../../../src/tools/BashTool/index.js').catch(() => {})
   })
   await stage('10 tools/GrepTool', async () => {
-    await import('../../src/tools/GrepTool/index.js').catch(() => {})
+    await import('../../../src/tools/GrepTool/index.js').catch(() => {})
   })
   await stage('11 tools/AgentTool', async () => {
-    await import('../../src/tools/AgentTool/index.js').catch(() => {})
+    await import('../../../src/tools/AgentTool/index.js').catch(() => {})
   })
   await stage('12 services/compact/*', async () => {
-    await import('../../src/agent/compact/microCompact.js')
-    await import('../../src/agent/compact/autoCompact.js')
-    await import('../../src/agent/compact/stableStubState.js')
+    await import('../../../src/agent/compact/microCompact.js')
+    await import('../../../src/agent/compact/autoCompact.js')
+    await import('../../../src/agent/compact/stableStubState.js')
   })
   await stage('13 utils/toolResultStorage', async () => {
-    await import('../../src/agent/tools/toolResultStorage.js')
+    await import('../../../src/agent/tools/toolResultStorage.js')
   })
   await stage('14 QueryEngine', async () => {
-    await import('../../src/agent/QueryEngine.js')
+    await import('../../../src/agent/QueryEngine.js')
   })
   await stage('15 screens/REPL', async () => {
-    await import('../../src/agent/repl/REPL.js').catch(() => {})
+    await import('../../../src/agent/repl/REPL.js').catch(() => {})
   })
 
   // Phase B: actually construct a QueryEngine
   await stage('16 new QueryEngine()', async () => {
     const [{ QueryEngine }, fileStateCacheMod] = await Promise.all([
-      import('../../src/agent/QueryEngine.js'),
-      import('../../src/shared/fs/fileStateCache.js'),
+      import('../../../src/agent/QueryEngine.js'),
+      import('../../../src/shared/fs/fileStateCache.js'),
     ])
     const {
       createFileStateCacheWithSizeLimit,
@@ -397,7 +397,7 @@ async function measureStages(): Promise<BootstrapStage[]> {
 
   // Phase C: provoke heavy graphs — MCP connect server cache, skill loading etc.
   await stage('17 activeProvider resolve', async () => {
-    const mod = await import('../../src/providers/presets/activeProvider.js')
+    const mod = await import('../../../src/providers/presets/activeProvider.js')
     try {
       mod.tryGetActiveProvider()
     } catch {}
@@ -414,11 +414,11 @@ async function runBench(args: Args): Promise<{
   // --- Phase 1: bootstrap (heavy imports, real modules) ---
   console.error('[bootstrap] importing real QueryEngine modules...')
 
-  const { QueryEngine } = await import('../../src/agent/QueryEngine.js')
+  const { QueryEngine } = await import('../../../src/agent/QueryEngine.js')
   const {
     createFileStateCacheWithSizeLimit,
     READ_FILE_STATE_CACHE_SIZE,
-  } = await import('../../src/shared/fs/fileStateCache.js')
+  } = await import('../../../src/shared/fs/fileStateCache.js')
 
   // --- Phase 2: construct config with fake deps ---
   const script = buildScript(args.mode, args.turns, args.toolOutputKb)

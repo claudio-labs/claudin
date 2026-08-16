@@ -19,15 +19,16 @@
 // Requires `dist/cli.mjs` to exist (run `bun run build` first).
 //
 // Usage:
-//   bun run scripts/profile/startup-phases-bench.ts
-//   bun run scripts/profile/startup-phases-bench.ts --runs=10
-//   bun run scripts/profile/startup-phases-bench.ts --invocation=help
-//   bun run scripts/profile/startup-phases-bench.ts --json
+//   bun run scripts/bench/perf/startup-phases-bench.ts
+//   bun run scripts/bench/perf/startup-phases-bench.ts --runs=10
+//   bun run scripts/bench/perf/startup-phases-bench.ts --invocation=help
+//   bun run scripts/bench/perf/startup-phases-bench.ts --json
 
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
 type Args = {
   runs: number
@@ -78,7 +79,7 @@ function findCliPath(): string {
   const cwd = process.cwd()
   const candidates = [
     resolve(cwd, 'dist/cli.mjs'),
-    resolve(import.meta.dir, '../../dist/cli.mjs'),
+    resolve(REPO_ROOT, 'dist/cli.mjs'),
   ]
   for (const p of candidates) {
     if (existsSync(p)) return p

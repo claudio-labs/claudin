@@ -15,7 +15,7 @@
  *  3. Highlights known retainers from our 14-singleton inventory
  *
  * Usage:
- *   bun scripts/profile/analyze-heapsnapshot.ts /path/to/file.heapsnapshot [--top=30]
+ *   bun scripts/bench/perf/analyze-heapsnapshot.ts /path/to/file.heapsnapshot [--top=30]
  */
 
 import { readFileSync } from 'fs'
@@ -68,7 +68,7 @@ function main() {
   const top = topArg ? parseInt(topArg.split('=')[1]!, 10) : 30
 
   if (!filePath) {
-    console.error('Usage: bun scripts/profile/analyze-heapsnapshot.ts <path> [--top=30]')
+    console.error('Usage: bun scripts/bench/perf/analyze-heapsnapshot.ts <path> [--top=30]')
     process.exit(1)
   }
 

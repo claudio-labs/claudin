@@ -47,9 +47,9 @@ Run `bun run profile` for the unified summary.
 | `memory-bench.ts`       | `scanMemoryFiles` cost across N=10/50/100/200 synthetic memory files   | `bun run profile:memory`     |
 | `transcript-bench.ts`   | Un-cached `applyMarkdown` across long transcripts (50–1000 messages)   | `bun run profile:transcript` |
 | `long-session-bench.ts` | Cap invariant + heap delta for module-level caches under N-cycle load (ROADMAP 5.3) | `bun run profile:long-session` |
-| `cache-ab-bench.ts`     | Prompt-cache read/write ratio across a synthetic tool-loop session, claudin vs. claude-code | `bun scripts/profile/cache-ab-bench.ts` |
-| `agent-bg-token-bench.ts` | End-to-end token + $ cost of the SAME sub-agent workload (orchestrator spawns N agents, each reads M files), claudin vs. claude-code | `bun scripts/profile/agent-bg-token-bench.ts` |
-| `cli-search-edit-ab.ts` | Per-turn context, tokens, cache and $ for one search→edit→build task (find 5 call sites across 10 .js files, rewrite them, get the build green), claudin vs. claude-code — **graded**, so a cheap arm that skipped work is not a win | `bun scripts/profile/cli-search-edit-ab.ts` |
+| `cache-ab-bench.ts`     | Prompt-cache read/write ratio across a synthetic tool-loop session, claudin vs. claude-code | `bun scripts/bench/ab/cache-ab-bench.ts` |
+| `agent-bg-token-bench.ts` | End-to-end token + $ cost of the SAME sub-agent workload (orchestrator spawns N agents, each reads M files), claudin vs. claude-code | `bun scripts/bench/ab/agent-bg-token-bench.ts` |
+| `cli-search-edit-ab.ts` | Per-turn context, tokens, cache and $ for one search→edit→build task (find 5 call sites across 10 .js files, rewrite them, get the build green), claudin vs. claude-code — **graded**, so a cheap arm that skipped work is not a win | `bun scripts/bench/ab/cli-search-edit-ab.ts` |
 | `run-all.ts`            | All six back-to-back with a unified summary + verdict                  | `bun run profile`           |
 
 ### Comparing agents across CLIs (`agent-bg-token-bench.ts`)
@@ -59,8 +59,8 @@ default (claudin the active `/provider` profile, claude its own setting) and the
 column silently compares two different price tiers:
 
 ```bash
-bun run scripts/profile/agent-bg-token-bench.ts --probe --model=claude-sonnet-5   # 1st: is the run fair?
-bun run scripts/profile/agent-bg-token-bench.ts --agents=2 --files=10 --model=claude-sonnet-5 --reps=3
+bun run scripts/bench/ab/agent-bg-token-bench.ts --probe --model=claude-sonnet-5   # 1st: is the run fair?
+bun run scripts/bench/ab/agent-bg-token-bench.ts --agents=2 --files=10 --model=claude-sonnet-5 --reps=3
 ```
 
 Two accounting traps this harness now handles, worth knowing before you read any
@@ -85,8 +85,8 @@ search→edit→build task does, and the cheapest way to finish it is to do less
 it, so this bench grades every run before believing its numbers:
 
 ```bash
-bun scripts/profile/cli-search-edit-ab.ts --dry-run                 # 1st: is the fixture an oracle?
-bun scripts/profile/cli-search-edit-ab.ts --reps=3 --json
+bun scripts/bench/ab/cli-search-edit-ab.ts --dry-run                 # 1st: is the fixture an oracle?
+bun scripts/bench/ab/cli-search-edit-ab.ts --reps=3 --json
 ```
 
 The workspace is 10 plain-ESM `.js` files under `/tmp` with five call sites of
@@ -132,16 +132,16 @@ bun run profile:input
 bun run profile:cold-start     # requires `bun run build` first
 
 # Direct invocations with flags
-bun run scripts/profile/streaming-bench.ts --help
-bun run scripts/profile/streaming-bench.ts --compare --fixture=py50
-bun run scripts/profile/input-bench.ts --sizes=100,1000,10000 --iters=1000
-bun run scripts/profile/cold-start-bench.ts --runs=20
+bun run scripts/bench/perf/streaming-bench.ts --help
+bun run scripts/bench/perf/streaming-bench.ts --compare --fixture=py50
+bun run scripts/bench/perf/input-bench.ts --sizes=100,1000,10000 --iters=1000
+bun run scripts/bench/perf/cold-start-bench.ts --runs=20
 
 # Machine-readable
 bun run profile --json > /tmp/before.json
 
 # CPU profile (Bun → Chrome DevTools)
-bun --cpu-prof scripts/profile/streaming-bench.ts --runs=20
+bun --cpu-prof scripts/bench/perf/streaming-bench.ts --runs=20
 # → cpu-*.cpuprofile, open in Chrome DevTools › Performance
 ```
 

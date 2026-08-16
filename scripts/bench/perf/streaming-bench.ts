@@ -22,22 +22,22 @@ process.env.FORCE_COLOR ??= '3'
 //                 "growing-text cache won't hit" claim empirically
 //
 // Usage:
-//   bun run scripts/profile/streaming-bench.ts
-//   bun run scripts/profile/streaming-bench.ts --fixture=ts50 --strategy=defer-fence
-//   bun run scripts/profile/streaming-bench.ts --compare
-//   bun run scripts/profile/streaming-bench.ts --json
+//   bun run scripts/bench/perf/streaming-bench.ts
+//   bun run scripts/bench/perf/streaming-bench.ts --fixture=ts50 --strategy=defer-fence
+//   bun run scripts/bench/perf/streaming-bench.ts --compare
+//   bun run scripts/bench/perf/streaming-bench.ts --json
 //
 // CPU profile (Bun):
-//   bun --cpu-prof scripts/profile/streaming-bench.ts
+//   bun --cpu-prof scripts/bench/perf/streaming-bench.ts
 //   # → cpu-*.cpuprofile, open in Chrome DevTools Performance tab
 
 import { performance } from 'node:perf_hooks'
 import { marked, type Token, type Tokens } from 'marked'
-import { configureMarked, formatToken } from '../../src/shared/text/markdown.js'
+import { configureMarked, formatToken } from '../../../src/shared/text/markdown.js'
 import {
   getCliHighlightPromise,
   type CliHighlight,
-} from '../../src/shared/text/cliHighlight.js'
+} from '../../../src/shared/text/cliHighlight.js'
 import { getFixture, lineSnapshots, listFixtures } from './fixtures.js'
 
 type Strategy = 'status-quo' | 'defer-fence' | 'lru-text'

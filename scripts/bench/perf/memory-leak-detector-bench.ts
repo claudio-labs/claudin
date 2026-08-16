@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // Memory-leak detector bench.
 //
-// Complements scripts/profile/query-engine-mem-bench.ts (which measures
+// Complements scripts/bench/perf/query-engine-mem-bench.ts (which measures
 // raw mutableMessages growth). This bench simulates full use-cycles
 // (N turns followed by a synthetic /clear) and measures what does NOT
 // return to baseline after each clear. Whatever fails to drop back is,
@@ -23,8 +23,8 @@
 // is the whole point.
 //
 // Usage:
-//   bun --expose-gc run scripts/profile/memory-leak-detector-bench.ts
-//   bun --expose-gc run scripts/profile/memory-leak-detector-bench.ts --turns=100 --cycles=3 --json
+//   bun --expose-gc run scripts/bench/perf/memory-leak-detector-bench.ts
+//   bun --expose-gc run scripts/bench/perf/memory-leak-detector-bench.ts --turns=100 --cycles=3 --json
 //
 // Required: --expose-gc for honest heap deltas.
 
@@ -489,7 +489,7 @@ function printHuman(args: Args, res: { snapshots: Snapshot[]; wallMs: number }):
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2))
   if (args.help) {
-    console.log(`Usage: bun --expose-gc run scripts/profile/memory-leak-detector-bench.ts [options]
+    console.log(`Usage: bun --expose-gc run scripts/bench/perf/memory-leak-detector-bench.ts [options]
 
 Options:
   --turns=N          turns per cycle (default 100)

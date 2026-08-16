@@ -15,20 +15,20 @@
 //   typical   outline + unfold — the real "one function of a big file" flow
 //
 // Usage:
-//   bun run scripts/profile/code-outline-bench.ts
-//   bun run scripts/profile/code-outline-bench.ts --json
+//   bun run scripts/bench/perf/code-outline-bench.ts
+//   bun run scripts/bench/perf/code-outline-bench.ts --json
 // ---------------------------------------------------------------------------
 
 import { readFileSync } from 'node:fs'
 import { extname } from 'node:path'
 import { Glob } from 'bun'
 
-import { renderOutline } from '../../src/tools/shared/codeOutline/renderOutline.js'
+import { renderOutline } from '../../../src/tools/shared/codeOutline/renderOutline.js'
 import {
   detectOutlineLang,
   scanSymbols,
   type SymbolEntry,
-} from '../../src/tools/shared/codeOutline/scanSymbols.js'
+} from '../../../src/tools/shared/codeOutline/scanSymbols.js'
 
 const REPO_ROOT = new URL('../../', import.meta.url).pathname
 // The Read token cap (DEFAULT_MAX_OUTPUT_TOKENS in FileReadTool/limits.ts).

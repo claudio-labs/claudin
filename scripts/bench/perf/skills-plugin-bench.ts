@@ -16,8 +16,8 @@
 //               real loader's overhead (dedup, file identity, walk).
 //
 // Usage:
-//   bun --expose-gc run scripts/profile/skills-plugin-bench.ts
-//   bun --expose-gc run scripts/profile/skills-plugin-bench.ts --skills=500 --body-kb=8 --mode=raw
+//   bun --expose-gc run scripts/bench/perf/skills-plugin-bench.ts
+//   bun --expose-gc run scripts/bench/perf/skills-plugin-bench.ts --skills=500 --body-kb=8 --mode=raw
 
 import { performance } from 'node:perf_hooks'
 import { tmpdir } from 'node:os'
@@ -143,7 +143,7 @@ async function runRaw(skills: number, bodyKb: number) {
 async function runReal(skills: number, bodyKb: number) {
   // Mock heavy deps so we don't pull analytics/growthbook/etc.
   const { mock } = await import('bun:test')
-  mock.module('../../src/platform/analytics/growthbook.js', () => ({
+  mock.module('../../../src/platform/analytics/growthbook.js', () => ({
     getFeatureValue_CACHED_MAY_BE_STALE: () => false,
     getFeatureValue_CACHED_WITH_REFRESH: () => false,
     getFeatureValue_DEPRECATED: async () => false,
@@ -163,7 +163,7 @@ async function runReal(skills: number, bodyKb: number) {
     initializeGrowthBook: async () => null,
     getAllGrowthBookFeatures: () => ({}),
   }))
-  mock.module('../../src/platform/analytics/index.js', () => ({
+  mock.module('../../../src/platform/analytics/index.js', () => ({
     logEvent: () => {},
     logEventAsync: async () => {},
     attachAnalyticsSink: () => {},
@@ -181,7 +181,7 @@ async function runReal(skills: number, bodyKb: number) {
   const t0 = performance.now()
 
   // Use the real frontmatterParser (same one loadSkillsFromSkillsDir uses).
-  const { parseFrontmatter } = await import('../../src/shared/frontmatterParser.js')
+  const { parseFrontmatter } = await import('../../../src/shared/frontmatterParser.js')
   const { readFileSync, readdirSync } = await import('node:fs')
   // biome-ignore lint/suspicious/noExplicitAny: dynamic shape
   const retained: any[] = []
@@ -213,7 +213,7 @@ async function runReal(skills: number, bodyKb: number) {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2))
   if (args.help) {
-    console.log(`Usage: bun --expose-gc run scripts/profile/skills-plugin-bench.ts [options]
+    console.log(`Usage: bun --expose-gc run scripts/bench/perf/skills-plugin-bench.ts [options]
 
 Options:
   --skills=N      number of synthetic skills to load (default 200)

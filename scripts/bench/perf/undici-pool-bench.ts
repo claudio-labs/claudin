@@ -14,12 +14,12 @@
 //   mixed-providers   — interleave h2 + h1-only (cross-regression check)
 //
 // Usage:
-//   bun run scripts/profile/undici-pool-bench.ts              # full matrix
-//   bun run scripts/profile/undici-pool-bench.ts --quick      # default + 4 candidates
-//   bun run scripts/profile/undici-pool-bench.ts --scenario=sequential-burst
-//   bun run scripts/profile/undici-pool-bench.ts --json > baselines/undici-pool.json
-//   bun run scripts/profile/undici-pool-bench.ts --compare
-//   bun run scripts/profile/undici-pool-bench.ts --sanity     # harness sanity checks (needs Node)
+//   bun run scripts/bench/perf/undici-pool-bench.ts              # full matrix
+//   bun run scripts/bench/perf/undici-pool-bench.ts --quick      # default + 4 candidates
+//   bun run scripts/bench/perf/undici-pool-bench.ts --scenario=sequential-burst
+//   bun run scripts/bench/perf/undici-pool-bench.ts --json > baselines/undici-pool.json
+//   bun run scripts/bench/perf/undici-pool-bench.ts --compare
+//   bun run scripts/bench/perf/undici-pool-bench.ts --sanity     # harness sanity checks (needs Node)
 //
 // Required: bench needs --expose-gc only if you want clean heap deltas; not
 // used here (this bench is latency-only).

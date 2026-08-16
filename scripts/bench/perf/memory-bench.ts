@@ -11,14 +11,14 @@
 // amplification, and (best estimate) bytes read.
 //
 // Usage:
-//   bun run scripts/profile/memory-bench.ts
-//   bun run scripts/profile/memory-bench.ts --sizes=10,50,200,500
+//   bun run scripts/bench/perf/memory-bench.ts
+//   bun run scripts/bench/perf/memory-bench.ts --sizes=10,50,200,500
 
 import { performance } from 'node:perf_hooks'
 import { mkdir, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { scanMemoryFiles } from '../../src/memory/memdir/memoryScan.js'
+import { scanMemoryFiles } from '../../../src/memory/memdir/memoryScan.js'
 
 type Args = {
   sizes: number[]

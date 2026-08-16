@@ -16,8 +16,8 @@
 // would dwarf the signal we want to measure.
 //
 // Usage:
-//   bun --expose-gc run scripts/profile/query-engine-mem-bench.ts
-//   bun --expose-gc run scripts/profile/query-engine-mem-bench.ts --turns=2000 --payload-kb=100 --json
+//   bun --expose-gc run scripts/bench/perf/query-engine-mem-bench.ts
+//   bun --expose-gc run scripts/bench/perf/query-engine-mem-bench.ts --turns=2000 --payload-kb=100 --json
 //
 // Required: --expose-gc for honest heap deltas.
 
@@ -334,7 +334,7 @@ async function run(args: Args): Promise<{ snapshots: Snapshot[]; wallMs: number;
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2))
   if (args.help) {
-    console.log(`Usage: bun --expose-gc run scripts/profile/query-engine-mem-bench.ts [options]
+    console.log(`Usage: bun --expose-gc run scripts/bench/perf/query-engine-mem-bench.ts [options]
 
 Options:
   --turns=N            number of turns to simulate (default 1000)

@@ -10,12 +10,12 @@
 // see where the user actually starts to feel input latency.
 //
 // Usage:
-//   bun run scripts/profile/input-bench.ts
-//   bun run scripts/profile/input-bench.ts --sizes=100,1000,5000,10000
-//   bun run scripts/profile/input-bench.ts --json
+//   bun run scripts/bench/perf/input-bench.ts
+//   bun run scripts/bench/perf/input-bench.ts --sizes=100,1000,5000,10000
+//   bun run scripts/bench/perf/input-bench.ts --json
 
 import { performance } from 'node:perf_hooks'
-import { Cursor } from '../../src/terminal/input/Cursor.js'
+import { Cursor } from '../../../src/terminal/input/Cursor.js'
 
 type Args = {
   sizes: number[]

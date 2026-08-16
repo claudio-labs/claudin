@@ -11,8 +11,8 @@
 // --print/plan-mode/MCP-only sessions that never invoke it.
 //
 // Usage:
-//   bun --expose-gc run scripts/profile/cold-start-retained-bench.ts
-//   bun --expose-gc run scripts/profile/cold-start-retained-bench.ts --json
+//   bun --expose-gc run scripts/bench/perf/cold-start-retained-bench.ts
+//   bun --expose-gc run scripts/bench/perf/cold-start-retained-bench.ts --json
 
 import { spawnSync } from 'node:child_process'
 

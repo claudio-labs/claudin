@@ -20,12 +20,12 @@ process.env.FORCE_COLOR ??= '3'
 // an evicted message costs" in the live REPL.)
 //
 // Usage:
-//   bun run scripts/profile/transcript-bench.ts
-//   bun run scripts/profile/transcript-bench.ts --counts=100,500,1000
+//   bun run scripts/bench/perf/transcript-bench.ts
+//   bun run scripts/bench/perf/transcript-bench.ts --counts=100,500,1000
 
 import { performance } from 'node:perf_hooks'
-import { applyMarkdown } from '../../src/shared/text/markdown.js'
-import { getCliHighlightPromise } from '../../src/shared/text/cliHighlight.js'
+import { applyMarkdown } from '../../../src/shared/text/markdown.js'
+import { getCliHighlightPromise } from '../../../src/shared/text/cliHighlight.js'
 
 type Args = {
   counts: number[]

@@ -27,17 +27,17 @@
 // `bun run` does not apply that preload and cannot load the analyzer at all.
 //
 // Default behaviour: skipped on `bun test`. Run explicitly with:
-//   CLAUDIN_BENCH=1 bun test scripts/profile/bash-redirect-gaps.test.ts
+//   CLAUDIN_BENCH=1 bun test scripts/bench/perf/bash-redirect-gaps.test.ts
 
 import { describe, test } from 'bun:test'
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { breToEre } from '../../src/tools/BashTool/breToEre.js'
+import { breToEre } from '../../../src/tools/BashTool/breToEre.js'
 import {
   analyzeCommandForRedirect,
   type RedirectUnit,
-} from '../../src/tools/BashTool/toolRedirect.js'
+} from '../../../src/tools/BashTool/toolRedirect.js'
 
 const ROOT = `${process.env.HOME}/.claudin/projects`
 const SAMPLES_PER_REASON = 4

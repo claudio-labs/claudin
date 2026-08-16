@@ -11,8 +11,8 @@
 // Load Profile → diff against the second).
 //
 // Usage:
-//   bun --expose-gc run scripts/profile/heap-snapshot-diff-bench.ts
-//   bun --expose-gc run scripts/profile/heap-snapshot-diff-bench.ts --turns=2000 --out=/tmp/claudin-heap
+//   bun --expose-gc run scripts/bench/perf/heap-snapshot-diff-bench.ts
+//   bun --expose-gc run scripts/bench/perf/heap-snapshot-diff-bench.ts --turns=2000 --out=/tmp/claudin-heap
 
 import { mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -52,7 +52,7 @@ function fmtBytes(n: number): string {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2))
   if (args.help) {
-    console.log(`Usage: bun --expose-gc run scripts/profile/heap-snapshot-diff-bench.ts [options]
+    console.log(`Usage: bun --expose-gc run scripts/bench/perf/heap-snapshot-diff-bench.ts [options]
 
 Options:
   --turns=N    number of synthetic turns to simulate (default 1000)
@@ -75,8 +75,8 @@ that grew between the two checkpoints.
 
   // Pre-load everything we'll touch so the "before" snapshot already
   // contains the module graph — diff will highlight only data growth.
-  const { cachedLexer, __TEST_ONLY_resetTokenCache } = await import('../../src/terminal/markdown/markdownTokenCache.js')
-  const { fileReadCache } = await import('../../src/shared/fs/fileReadCache.js')
+  const { cachedLexer, __TEST_ONLY_resetTokenCache } = await import('../../../src/terminal/markdown/markdownTokenCache.js')
+  const { fileReadCache } = await import('../../../src/shared/fs/fileReadCache.js')
   __TEST_ONLY_resetTokenCache()
   fileReadCache.clear()
 

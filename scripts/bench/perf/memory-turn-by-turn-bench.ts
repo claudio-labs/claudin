@@ -30,8 +30,8 @@
 // need separate benches.
 //
 // Usage:
-//   bun --expose-gc scripts/profile/memory-turn-by-turn-bench.ts
-//   bun --expose-gc scripts/profile/memory-turn-by-turn-bench.ts \
+//   bun --expose-gc scripts/bench/perf/memory-turn-by-turn-bench.ts
+//   bun --expose-gc scripts/bench/perf/memory-turn-by-turn-bench.ts \
 //     --turns=500 --payload-kb=200 --payload-jitter=100 \
 //     --with-compact --with-clear --inflection \
 //     --output=mem.json --csv=mem.csv
