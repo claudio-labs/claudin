@@ -86,7 +86,7 @@ Justificativa completa: [§5 do system-coverage-detail](../../../archive/discove
 | `src/tools/shared/outputFilter/Bash/bashFilter.test.ts` | + 10 `describe('phase 9 — <filter>')` blocks |
 | `src/tools/shared/outputFilter/Bash/__fixtures__/samples/*` | + ~10 fixtures realistas (uma por spec) |
 | `docs/discovery/bash-output-filter/validation/samples/*` | mirror das fixtures (harness lê desse path) |
-| `scripts/profile/bash-filter-gain.test.ts` | + 10 entradas no `SCENARIOS` array |
+| `scripts/bench/perf/bash-filter-gain.test.ts` | + 10 entradas no `SCENARIOS` array |
 
 ### Fixtures necessárias
 
@@ -263,7 +263,7 @@ export const curlPlain: FilterSpec = {
 ```bash
 bun test src/tools/shared/outputFilter/Bash/bashFilter.test.ts          # +10 describe blocks
 bun test src/tools/shared/outputFilter/Bash                              # full suite — verificar zero regressões
-CLAUDIN_BENCH=1 bun test scripts/profile/bash-filter-gain.test.ts   # gain table — +10 linhas
+CLAUDIN_BENCH=1 bun test scripts/bench/perf/bash-filter-gain.test.ts   # gain table — +10 linhas
 bun run typecheck
 ```
 

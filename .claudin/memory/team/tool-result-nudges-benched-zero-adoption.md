@@ -10,7 +10,7 @@ changing what the tool *does* (or what its refusal message *says*) over adding
 another reminder. If a nudge is still worth having, land it with its
 `feature()` flag **OFF** as instrumentation for an A/B, not as shipped behavior.
 
-**Why:** `SERIAL_READ_NUDGE` (`scripts/build.ts`, detector in
+**Why:** `SERIAL_READ_NUDGE` (`scripts/build/build.ts`, detector in
 `src/tools/FileReadTool/serialReadNudge.ts`) shipped to nudge the model into
 parallel Reads / the Explore agent. The 2026-06-10 re-bench killed it: -6.3%
 narration against a -30% ship bar, and — the damning number — **adoption zero**
@@ -20,7 +20,7 @@ there but dead in the bundle. `SERIAL_EDIT_NUDGE` (2026-07-25,
 shipped OFF for that reason.
 
 **How to apply:** before proposing a reminder-style intervention, grep
-`scripts/build.ts` for the nearest flag and read its comment — several carry the
+`scripts/build/build.ts` for the nearest flag and read its comment — several carry the
 bench verdict that killed them. When the goal is to change model behavior, look
 first for the friction pushing it the wrong way. The 2026-07-25 case is the
 model: `apply_patch` refused an outline-read file with "has not been read yet",

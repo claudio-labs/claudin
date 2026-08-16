@@ -29,7 +29,7 @@ Cria o módulo `src/tools/shared/outputFilter/Bash/` com toda a infraestrutura, 
 | `src/tools/shared/outputFilter/Bash/registry.test.ts` | ~80 | Linear scan, sudo prefix, env prefix, compound bypass |
 | `src/tools/shared/outputFilter/Bash/markers.test.ts` | ~80 | Idempotency (don't double-wrap), XML escaping, length cap em `original`/`actual` |
 | `src/tools/shared/outputFilter/Bash/__fixtures__/samples/*.txt` | (copy) | ~30 fixture files copiados de `docs/discovery/bash-output-filter/validation/samples/` |
-| `scripts/regex-redos-scan.test.ts` | ~80 | Scan static de toda regex em `src/tools/shared/outputFilter/Bash/filters/` contra denylist (`safe-regex` heurística inline) |
+| `scripts/verify/regex-redos-scan.test.ts` | ~80 | Scan static de toda regex em `src/tools/shared/outputFilter/Bash/filters/` contra denylist (`safe-regex` heurística inline) |
 
 ### Arquivos modificados
 
@@ -106,7 +106,7 @@ Nenhum. O módulo é dead code — não tem importer ainda.
    - Os filters dentro de `CASES` ficam inline na test file (não importam de `filters/` — esses serão preenchidos Phase 2)
    - **Importante:** copiar as samples para `__fixtures__/samples/`; testes lêem de path relativo
 
-8. **Adicionar `scripts/regex-redos-scan.test.ts`:**
+8. **Adicionar `scripts/verify/regex-redos-scan.test.ts`:**
    - Walk `src/tools/shared/outputFilter/Bash/filters/*.ts`
    - Extract regex literals via AST (use `bun:test` ou simples regex sobre source)
    - Run safe-regex heurística inline (~80 LoC vendored): rejeita `(.+)+`, `(.*)*`, `(a+)+b` shapes
@@ -117,7 +117,7 @@ Nenhum. O módulo é dead code — não tem importer ainda.
 
 ```bash
 bun test src/tools/shared/outputFilter/Bash
-bun test scripts/regex-redos-scan.test.ts
+bun test scripts/verify/regex-redos-scan.test.ts
 bun run typecheck
 bun run build  # confirma que o módulo compila no bundle (mesmo dead)
 ```
@@ -134,7 +134,7 @@ bun run test:coverage
 - [ ] `bun run build` clean (módulo é dead code mas compila)
 - [ ] `bun run typecheck` zero errors
 - [ ] Coverage ≥80% no novo módulo
-- [ ] `scripts/regex-redos-scan.test.ts` passa (vacuously — sem filters ainda)
+- [ ] `scripts/verify/regex-redos-scan.test.ts` passa (vacuously — sem filters ainda)
 - [ ] Pipeline reusa `collapseIdenticalRuns`/`collapseDigitTemplates` de `toolResultSummarizer.ts` (Phase 0 done)
 - [ ] `markers.ts` reusa `escapeXmlAttr` de `src/shared/data/xml.ts`
 - [ ] Nenhum import de fora do módulo exceto: `escapeXmlAttr`, `collapseIdenticalRuns`, `collapseDigitTemplates`, `logForDebugging`, `logError`, `isEnvTruthy`, `getGlobalConfig`, `z` (zod)
@@ -162,7 +162,7 @@ Creates `src/tools/shared/outputFilter/Bash/` with the full pipeline + registry 
 ### Changes
 - New module at `src/tools/shared/outputFilter/Bash/`: `index.ts`, `pipeline.ts` (port of validation/pipeline.ts), `registry.ts`, `markers.ts`, `userFilters.ts` (stub)
 - New test files: `bashFilter.test.ts` (the harness), `pipeline.test.ts`, `registry.test.ts`, `markers.test.ts`
-- New `scripts/regex-redos-scan.test.ts` to gate built-in regex against ReDoS-prone shapes
+- New `scripts/verify/regex-redos-scan.test.ts` to gate built-in regex against ReDoS-prone shapes
 - Reuses `escapeXmlAttr` from `src/shared/data/xml.ts`, `collapseIdenticalRuns`/`collapseDigitTemplates` from `toolResultSummarizer.ts` (Phase 0)
 
 ### Tests

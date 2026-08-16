@@ -72,7 +72,7 @@ fixtures written from memory passed for all three):
 
 **All twelve parsers are now live-validated.** tsc, deno, go, cargo, pyright and
 mypy ran on this host; dart, dotnet, maven, gradle, phpstan and psalm ran inside
-their official containers via `scripts/bench/capture-checker-output.sh`, which
+their official containers via `scripts/bench/ab/capture-checker-output.sh`, which
 records each checker twice — once with the flags the tool injects, once without
 — and archives the verbatim output in `parsers/__fixtures__/`. That pairing is
 what exposes a flag that breaks the run rather than shaping it, and it found two:

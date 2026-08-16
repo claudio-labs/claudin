@@ -88,7 +88,7 @@ Corpus method: transcripts at `~/.claudin/projects/**/*.jsonl`; the replay needs
 
 ## 2026-08-15 — the queue has a standing collector, and the gaps were capability gaps
 
-`scripts/profile/bash-redirect-gaps.test.ts` (`CLAUDIN_BENCH=1 bun test …`)
+`scripts/bench/perf/bash-redirect-gaps.test.ts` (`CLAUDIN_BENCH=1 bun test …`)
 replaces the hand-run probe: it walks every transcript, asks the REAL
 `analyzeCommandForRedirect` for a verdict, and buckets the non-redirecting
 commands by a best-effort reason with samples. Over **2,032 sessions / 23,388

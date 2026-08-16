@@ -14,7 +14,7 @@ permissions/ sessions/ skills/ plugins/ vcs/ terminal/ platform/ shared/` plus
 `src/__tests__/moduleBoundaries.test.ts` is what keeps them gone. Nothing else
 is structural: one `src/utils/foo.ts` added in a hurry re-opens the bucket and
 the next twenty files follow it in, which is how they formed the first time.
-The manifest of every move is `scripts/reorg/manifest.ts`.
+The manifest of every move is `scripts/migrations/reorg/manifest.ts`.
 
 **Two things the reorg did NOT establish, so don't cite them as invariants:**
 

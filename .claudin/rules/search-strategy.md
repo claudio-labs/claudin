@@ -359,7 +359,7 @@ Grep pattern="'openai_compat'\|'gemini'\|'mistral'" path="src/providers/shims/op
 ### "Which feature flags exist?"
 
 ```
-Grep pattern="feature\('" path="scripts/build.ts"
+Grep pattern="feature\('" path="scripts/build/build.ts"
 ```
 
 ### "Where is analytics event X logged?"
@@ -413,7 +413,7 @@ Grep pattern="z\.object\(\|z\.string\(\|z\.union\(" type="ts" output_mode="files
 
 ### "This used to be in src/utils/ (or services/, components/, screens/) — where is it now?"
 
-`scripts/reorg/manifest.ts` records every destination the reorg used, grouped by
+`scripts/migrations/reorg/manifest.ts` records every destination the reorg used, grouped by
 the batch that moved it and annotated with why, so it answers the question
 directly. Failing that, `git log --follow --diff-filter=R -- <old-path>` finds
 the rename — every group was committed as pure renames, so `--follow` works
@@ -436,7 +436,7 @@ and commit messages still mention both.
 
 1. Run `git diff` immediately — check if source files were mutated by a killed build
 2. If files show `true`/`false` instead of `feature('X')` — restore with `git checkout`
-3. Check `scripts/build.ts` → `featureFlags` map for enabled/disabled flags
+3. Check `scripts/build/build.ts` → `featureFlags` map for enabled/disabled flags
 4. Run `bun run build` again cleanly
 
 ### Configuration issues

@@ -51,7 +51,7 @@ When a tool_result is stubbed, the first N chars survive (`aggressive` 1000 / `r
 
 ## The gain
 
-Measured on the lockstep bench (`scripts/profile/cache-lockstep-bench.ts` — one user turn per file via `--input-format stream-json`, so pacing is identical by construction; 58 turns, both sides verified serving claude-sonnet-4-6, 2026-06-10):
+Measured on the lockstep bench (`scripts/bench/ab/cache-lockstep-bench.ts` — one user turn per file via `--input-format stream-json`, so pacing is identical by construction; 58 turns, both sides verified serving claude-sonnet-4-6, 2026-06-10):
 
 | side | api reqs | cache read | cache write | cost |
 |---|---|---|---|---|
@@ -117,7 +117,7 @@ Key mechanism pointers (full list in `src/agent/cache/README.md`):
 - **Built-in break detection** (`src/providers/cache/promptCacheBreakDetection.ts`): every request's prompt state is hashed per-section (system, tools, per-message); when `cache_read` drops unexpectedly, the detector classifies the break — *client-side* (which section's bytes changed, with a diff written to disk) vs *likely server-side* ("prompt unchanged, <5min gap"). This is how the ~63k reset was root-caused to server eviction rather than a Claudin bug.
 - **Wire dumps for deep debugging**: `CLAUDIN_DUMP_CACHE_ANNOTATIONS` logs every `cache_control` annotation actually sent (marker position, TTL); `CLAUDIN_DUMP_PREFIX_HASHES` dumps block-level hashes per request to diff the exact mutating block across turns.
 - **In-session**: `/cost` prices cache reads/writes per the actually-served model.
-- **Reproducing the numbers**: `scripts/profile/cache-lockstep-bench.ts` is the reliable harness (one user turn per file via `--input-format stream-json` — identical pacing by construction). `cache-ab-bench.ts` exists but is exploratory-only; don't cite its numbers.
+- **Reproducing the numbers**: `scripts/bench/ab/cache-lockstep-bench.ts` is the reliable harness (one user turn per file via `--input-format stream-json` — identical pacing by construction). `cache-ab-bench.ts` exists but is exploratory-only; don't cite its numbers.
 
 ## Limitations & honest notes
 

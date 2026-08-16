@@ -58,7 +58,7 @@ The second half — the auto-pivot to the symbol map — landed the same day as
 over ≥5 files with ≥6k chars or ≥60 match lines, and no explicit
 `head_limit`/`offset`, returns `buildSymbolsOutput` instead of the lines, but
 only when the map is ≤70% of what it replaces. Measured by the new `--pivot`
-mode of `scripts/profile/grep-summarizer-replay.ts` over the whole recorded
+mode of `scripts/bench/tokens/grep-summarizer-replay.ts` over the whole recorded
 corpus: 64 pivots, **6.6% of all content-mode Grep chars saved outright and 3.7%
 on top of what the summarizer already saves losslessly** — that second number is
 the one that justifies a lossy mode change, and the one to re-derive before
@@ -82,7 +82,7 @@ Two traps this work exposed, both live outside the Grep code:
 Landed much wider than "a `git diff` wrapper": one `Git({commands: [...]})` tool
 covering **all** of git and gh, reads and mutations.
 
-**Re-measured first, over 760 sessions** (`scripts/profile/git-tool-baseline.ts`,
+**Re-measured first, over 760 sessions** (`scripts/bench/tokens/git-tool-baseline.ts`,
 which is the reusable measurement) — the 34-session numbers this roadmap was
 written from were off: git+gh is **22.6% of Bash chars, 5.0% of ALL tool-result
 chars** (1.70M of 33.98M). `git diff` 162 calls/428k chars, `git status`
@@ -177,8 +177,8 @@ themselves were NOT unified — each tool's budget is genuinely different.
 
 Also unblocked along the way: profile scripts that import `src/` died on the
 missing `@growthbook/growthbook` (the build stubs analytics, so it is not a
-dependency). `scripts/profile/preload-stubs.ts` is the preload —
-`bun --preload ./scripts/profile/preload-stubs.ts scripts/profile/<name>.ts`.
+dependency). `scripts/bench/perf/preload-stubs.ts` is the preload —
+`bun --preload ./scripts/bench/perf/preload-stubs.ts scripts/profile/<name>.ts`.
 The grep replay harness had been silently unrunnable for the same reason.
 
 ## Out of scope for now

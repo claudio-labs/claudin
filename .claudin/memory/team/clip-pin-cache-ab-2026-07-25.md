@@ -12,7 +12,7 @@ one Read per turn, n=1.
 Command (flags `--files/--passes/--file-list` were added to the bench for this):
 
 ```
-bun scripts/profile/cache-ab-bench.ts --a=claudin --b=claudindev \
+bun scripts/bench/ab/cache-ab-bench.ts --a=claudin --b=claudindev \
   --model=claude-sonnet-5 --sequential --files=10 --passes=3 --runs=1 \
   --a-env=CLAUDIN_CACHE_PROFILE=aggressive --b-env=CLAUDIN_CACHE_PROFILE=aggressive \
   --file-list=<10 files, each UNDER 250 lines>

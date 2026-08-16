@@ -1,14 +1,14 @@
 ---
 paths:
-  - "scripts/build.ts"
-  - "scripts/no-telemetry-plugin.ts"
-  - "scripts/feature-flags-source-guard.test.ts"
+  - "scripts/build/build.ts"
+  - "scripts/build/no-telemetry-plugin.ts"
+  - "scripts/build/feature-flags-source-guard.test.ts"
   - "src/agent/prompts/prompts.ts"
-  - "scripts/profile/dump-system-prompt.ts"
+  - "scripts/bench/tokens/dump-system-prompt.ts"
 ---
 # Build System — Claudin Development Rules
 
-`scripts/build.ts` is not a thin wrapper. It preprocesses source, inlines
+`scripts/build/build.ts` is not a thin wrapper. It preprocesses source, inlines
 constants, and stubs modules — so it affects every change. Read this before
 touching the build, the feature-flag set, or the telemetry stubs.
 
@@ -51,7 +51,7 @@ not source.
    > A new top-level Anthropic-internal import still builds (the pre-scan stubs
    > it) but is a **no-op at runtime**. Gate it behind `feature()` so it only
    > loads when intentionally enabled.
-5. **`noTelemetryPlugin`** (`scripts/no-telemetry-plugin.ts`) replaces analytics,
+5. **`noTelemetryPlugin`** (`scripts/build/no-telemetry-plugin.ts`) replaces analytics,
    GrowthBook, Datadog, BigQuery, OTel session tracing, the auto-updater, and
    feedback/transcript sharing with stubs. `bun run verify:privacy` enforces this
    on the bundle — run it for any build/telemetry/network change.
@@ -72,7 +72,7 @@ error. Nor do they mean the code is unreachable: `src/commands/commands.ts`
 imports 19 of them eagerly and does hit the `() => null` stub at runtime.
 
 The pre-scan in #4 is what keeps the build green over them, and it fires on
-exactly one shape: `scripts/build.ts:579` registers a module as missing when the
+exactly one shape: `scripts/build/build.ts:579` registers a module as missing when the
 specifier both ends in `.js` and starts with `./` or `../`, testing for a
 `.ts`/`.tsx` sibling that a `.d.ts` does not provide. So the relative form is
 stubbed to a noop and the bundle builds. The `src/…` alias form is never scanned
@@ -87,7 +87,7 @@ it looks — the specifier silently stops naming the declaration and becomes a r
 `TS2307`, a class that is invisible on any base where the target did not resolve
 before the move either (742 of them in PR #88, from a single directory move).
 
-`bun run build:strict` pins the set: `scripts/missing-imports-baseline.json`
+`bun run build:strict` pins the set: `scripts/build/missing-imports-baseline.json`
 records the 103 specifiers this fork legitimately stubs, and the build fails on
 any new one, naming the file that referenced it. It is what tells a deliberate
 stub apart from an import that broke. A plain `bun run build` prints the count
@@ -116,7 +116,7 @@ semantic analysis for the whole program and report near-zero.
 
 ## Feature Flags
 
-Build-time flags live in `featureFlags` in `scripts/build.ts`. Most
+Build-time flags live in `featureFlags` in `scripts/build/build.ts`. Most
 Anthropic-internal subsystems are **disabled** because their source isn't
 mirrored or they need Anthropic infrastructure: `VOICE_MODE`, `KAIROS`,
 `PROACTIVE`, `DAEMON`, `BG_SESSIONS`, `WEB_BROWSER_TOOL`, `MCP_SKILLS`, …
@@ -147,7 +147,7 @@ source is therefore the flag-off shape, not what the binary sends. The worked
 example is the system prompt: a source dump is missing ~800 tokens of steering
 (`WORK_CONTRACT`, `ANTI_NARRATION`, `LEAN_TOOL_PROMPTS`, …) and a parity pass has
 already reported shipped sections as missing because of it. To see the real
-thing, ask the built bundle: `bun scripts/profile/dump-system-prompt.ts
+thing, ask the built bundle: `bun scripts/bench/tokens/dump-system-prompt.ts
 --flags=ship` (after `bun run build`). Same trap for any other flag-gated
 construct you render in a script or a test.
 
@@ -175,9 +175,9 @@ construct you render in a script or a test.
 ## Invariant tests (run when touching the build)
 
 ```bash
-bun test scripts/feature-flags-source-guard.test.ts   # feature() flag consistency
-bun test scripts/measure-tool-schemas.test.ts          # tool schema size
-bun test scripts/no-telemetry-growthbook-stub.test.ts  # no phone-home
-bun test scripts/pr-intent-scan.test.ts                # PR security scan
-bun run verify:privacy                                 # scan dist/cli.mjs for phone-home
+bun test scripts/build/feature-flags-source-guard.test.ts    # feature() flag consistency
+bun test scripts/bench/tokens/measure-tool-schemas.test.ts   # tool schema size
+bun test scripts/build/no-telemetry-growthbook-stub.test.ts  # no phone-home
+bun test scripts/verify/pr-intent-scan.test.ts               # PR security scan
+bun run verify:privacy                                       # scan dist/ for phone-home
 ```

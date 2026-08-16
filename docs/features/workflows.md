@@ -3,7 +3,7 @@
 **Status: not yet in claudin.** `src/tools/WorkflowTool/constants.ts` is an explicit stub
 (`// Stub — WorkflowTool not included in source snapshot`) — only the tool name exists, there
 is no engine, no prompt, no `/workflows` command, and no `WORKFLOW_SCRIPTS` flag in
-`scripts/build.ts`. This doc specifies the feature as it ships in the upstream Claude Code
+`scripts/build/build.ts`. This doc specifies the feature as it ships in the upstream Claude Code
 2.1.201 reference, so it can be ported. Where it names a file, that path is **proposed**, not
 present.
 
@@ -179,7 +179,7 @@ resume, so pass timestamps via `args` and vary randomness by index. No filesyste
 
 ## How it would land in claudin
 
-- **Flag.** Add `WORKFLOW_SCRIPTS: true` to `featureFlags` in `scripts/build.ts`; gate the tool
+- **Flag.** Add `WORKFLOW_SCRIPTS: true` to `featureFlags` in `scripts/build/build.ts`; gate the tool
   registration in `src/tools/tools.ts` (`getAllBaseTools`) behind it, matching the existing
   `feature()`-gated tools.
 - **Tool.** Flesh out `src/tools/WorkflowTool/` (currently the stub `constants.ts`): the tool
@@ -197,6 +197,6 @@ resume, so pass timestamps via `args` and vary randomness by index. No filesyste
 
 - Upstream reference: Claude Code 2.1.201 `Workflow` tool (schema + prompt).
 - claudin building blocks: `src/agent/coordinator/coordinatorMode.ts`, `src/tools/AgentTool/`,
-  `src/tools/WorkflowTool/constants.ts` (stub), `scripts/build.ts` (`featureFlags`).
+  `src/tools/WorkflowTool/constants.ts` (stub), `scripts/build/build.ts` (`featureFlags`).
 - Related: `docs/features/report-findings.md` (a structured verifier output that pairs with the
   review/verify workflow shape).

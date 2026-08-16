@@ -140,13 +140,13 @@ test('resolves provider from config', () => {
 
 ## Build-System Invariant Tests
 
-These tests in `scripts/` enforce build correctness — always run when touching `scripts/build.ts`:
+These tests in `scripts/` enforce build correctness — always run when touching `scripts/build/build.ts`:
 
 ```bash
-bun test scripts/feature-flags-source-guard.test.ts   # feature() flag consistency
-bun test scripts/measure-tool-schemas.test.ts          # tool schema size
-bun test scripts/no-telemetry-growthbook-stub.test.ts  # no phone-home
-bun test scripts/pr-intent-scan.test.ts                # PR security scan
+bun test scripts/build/feature-flags-source-guard.test.ts    # feature() flag consistency
+bun test scripts/bench/tokens/measure-tool-schemas.test.ts   # tool schema size
+bun test scripts/build/no-telemetry-growthbook-stub.test.ts  # no phone-home
+bun test scripts/verify/pr-intent-scan.test.ts               # PR security scan
 ```
 
 ### A fake binary on PATH needs `CLAUDIN_ENV_FILE`, not `process.env.PATH`
@@ -273,7 +273,7 @@ during the `platform/` reorg. Neither announces itself as a mocking problem.
 
 Any module whose import chain reaches `src/terminal/ink.js` fails to load under `bun test`
 (or `bun -e`) with `Cannot find module '@growthbook/growthbook'` — that package is
-a build-time stub from `scripts/no-telemetry-plugin.ts` that never applies outside
+a build-time stub from `scripts/build/no-telemetry-plugin.ts` that never applies outside
 the bundler. So a `.tsx` component generally can't be imported by a colocated unit
 test. Put pure logic (tree building, parsing, formatting, selection math) in a
 separate module importing only libs + type-only + other pure modules, and re-export
@@ -303,10 +303,10 @@ it drops more than 0.5pp, or when one of the named invariant suites disappears:
 src/agent/compact/requestDeterminism.invariant.test.ts
 src/agent/compact/stableStubState.stub-byte-stability.test.ts
 src/tools/shared/outputFilter/Bash/phase12Report.test.ts
-scripts/feature-flags-source-guard.test.ts
-scripts/measure-tool-schemas.test.ts
-scripts/no-telemetry-growthbook-stub.test.ts
-scripts/pr-intent-scan.test.ts
+scripts/build/feature-flags-source-guard.test.ts
+scripts/bench/tokens/measure-tool-schemas.test.ts
+scripts/build/no-telemetry-growthbook-stub.test.ts
+scripts/verify/pr-intent-scan.test.ts
 ```
 
 Do **not** chase the percentage. It cannot tell a real assertion from
@@ -362,7 +362,7 @@ knip file finding as a question, not a verdict — "nothing imports this" and
 "this should not exist" are different claims.
 
 `unlisted` and `unresolved` are deliberately outside the gate. This fork
-resolves ~30 module names to stubs in `scripts/build.ts` and carries 138 imports
+resolves ~30 module names to stubs in `scripts/build/build.ts` and carries 138 imports
 of files the fork never received, so in this repo "undeclared" is overwhelmingly
 the intended state; gating on it would mean 30 hand-maintained ignores that
 silently drift from build.ts. Two narrower blind spots ARE configured around:

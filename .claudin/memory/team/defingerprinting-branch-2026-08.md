@@ -8,7 +8,7 @@ type: project
 four axes: network identity, dead Anthropic-account subsystems, the `tengu_*`
 event vocabulary, and the `CLAUDE_*` → `CLAUDIN_*` env-var cut-over. The
 mechanics live in the repo — `.claudin/rules/build-system.md` (the tengu strip),
-`scripts/env-rename-map.json` (every name, bucket, and reason), and
+`scripts/migrations/env-rename-map.json` (every name, bucket, and reason), and
 `src/__tests__/envNaming.test.ts` (the invariant). What is NOT in the repo is
 why some things were left alone.
 

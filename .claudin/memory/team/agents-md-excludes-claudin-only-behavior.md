@@ -35,7 +35,7 @@ documented at the top of its own module.
 The same pass gave the convention a gate. `rulesLint` was counting only rule
 files in the always-loaded budget, so AGENTS.md — 75% of that cost — was
 invisible to the check meant to police it; root context files now count, and
-`scripts/rules-check.ts` fails over `ALWAYS_LOADED_CHAR_BUDGET` (20,000 chars,
+`scripts/verify/rules-check.ts` fails over `ALWAYS_LOADED_CHAR_BUDGET` (20,000 chars,
 ~20% headroom over the measured 17,058). When it fires, the fix is to move the
 prose into a `paths:`-scoped rule, not to raise the number.
 

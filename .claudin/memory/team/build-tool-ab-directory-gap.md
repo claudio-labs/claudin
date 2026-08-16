@@ -4,7 +4,7 @@ description: Build tool A/B 2026-08-04 — cost −7.7% median of 3, but ONLY af
 type: project
 ---
 
-`scripts/profile/build-tool-ab.ts` — two arms on one build (`CLAUDIN_DISABLE_BUILD_TOOL=1`
+`scripts/bench/ab/build-tool-ab.ts` — two arms on one build (`CLAUDIN_DISABLE_BUILD_TOOL=1`
 vs on), Sonnet 5, 15 steps over a five-language workspace in `/tmp` (bun, go,
 cargo, make+cc, make+javac), one planted compile error per project.
 

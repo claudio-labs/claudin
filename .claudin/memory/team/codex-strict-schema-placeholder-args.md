@@ -85,7 +85,7 @@ Three things this settles:
    widening (giving the model an explicit `null` to send) is the part that
    works. Do not "simplify" this by removing `strict` and the widening.
 
-`scripts/profile/codex-strict-probe.ts` remains the reusable instrument for
+`scripts/bench/tokens/codex-strict-probe.ts` remains the reusable instrument for
 re-checking after a model or backend change (its header carries these results).
 It could not run here: on Linux the Codex OAuth blob lives in libsecret, not in
 `.credentials.json`, so the live check was done through `claudindev` instead —

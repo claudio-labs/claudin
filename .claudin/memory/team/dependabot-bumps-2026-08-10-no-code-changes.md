@@ -25,7 +25,7 @@ source changes**. Validated with `bun install`, `bun run build`,
   (`h2Options.settings.initialWindowSize` for the window one). `allowH2` itself
   is **not** deprecated. `src/providers/transport/proxy.ts` (`ProviderPoolConfig`, ~line 297)
   only passes `allowH2`/`connections`/`keepAliveTimeout`/`pipelining`, and
-  `scripts/profile/undici-pool-bench.ts` only `allowH2` — so nothing to change
+  `scripts/bench/perf/undici-pool-bench.ts` only `allowH2` — so nothing to change
   today. **Apply when tuning h2:** put any new stream/window/ping knob under
   `h2Options`, never at the top level. Also new in 8.10.0 and inert for us:
   `no_proxy` now matches bare IPv6, cache goes inert on a Client/Pool without
