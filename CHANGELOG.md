@@ -1,5 +1,45 @@
 # Changelog
 
+## v1.1.13 — 2026-08-16
+
+### ✨ Features
+
+- feat(bridge): turn Remote Control back on, credential-gated (cbfbed0a)
+- feat(bash-redirect): translate BRE to ERE, add Glob -i, fold `cat F | grep` (#96) (bfb2e933)
+
+### 🐛 Bug Fixes
+
+- fix(bash-filter): a stripped `| tail -N` must keep the promise it makes (#98) (401db339)
+- fix(build-redirect): stop refusing non-build targets like `make lint` (#97) (aa57c8a6)
+- fix(read-gate): carry seen ranges across reads, re-read changed files in full (#95) (cc888d9b)
+- fix(apply_patch): repair four unambiguous parse failures instead of rejecting the patch (#94) (4a0af3f9)
+- fix(build): stop baselining test fixture strings as missing imports (#89) (7b620924)
+- fix(typecheck): take tsc --noEmit to zero (#87) (7241b101)
+
+### ♻️ Refactoring
+
+- refactor(reorg): screaming architecture — retire the seven catch-all directories (#93) (cf0a5bbb)
+- refactor(read): split FileReadTool.ts into sibling modules (#92) (7e2c7c76)
+- refactor(outline): split scanSymbols.ts into a package (#91) (885a3d1e)
+- refactor: move the subsystems out of src/utils into their own domains (#88) (d5220e1c)
+
+### 📚 Documentation
+
+- docs(memory): cite the /create skill by commit — its (#98) is the retired remote's numbering, not GitHub's (8a437b37)
+- docs(rules): add code-design rule — read before you edit, SOLID/Clean Code as this tree spells them (34894400)
+
+### 🔧 Miscellaneous
+
+- chore(scripts): give scripts/ a shape, and fix the release lane it was hiding (#100) (6af3126f)
+- Remove upstream identity from wire, bundle, help and env vars (#99) (b8631a81)
+- chore(license): make LICENSE a plain MIT file (0c37342e)
+- chore(ide): drop the bundled VS Code extension and its build wiring (#90) (fcbcbc11)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.12 — 2026-08-13
 
 ### ✨ Features
