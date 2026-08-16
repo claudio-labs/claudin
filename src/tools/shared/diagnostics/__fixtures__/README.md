@@ -1,6 +1,6 @@
 # Verbatim checker output
 
-Captured by `scripts/bench/capture-checker-output.sh`, which runs each checker
+Captured by `scripts/bench/ab/capture-checker-output.sh`, which runs each checker
 for real inside its official container. Nothing here is hand-written — that is
 the entire point.
 
@@ -21,4 +21,4 @@ what exposed two flags we were adding that break the run rather than shape it:
   never runs on a fresh clone or in CI. Removed, along with gradle's
   `--offline`; neither shapes output.
 
-To refresh: `scripts/bench/capture-checker-output.sh [dart|dotnet|maven|gradle|phpstan|psalm]`
+To refresh: `scripts/bench/ab/capture-checker-output.sh [dart|dotnet|maven|gradle|phpstan|psalm]`

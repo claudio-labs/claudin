@@ -16,8 +16,8 @@ Everything now reads this directory:
 |---|---|
 | `src/tools/shared/outputFilter/Bash/bashFilter.test.ts` | the ROI + safety harness (most of the assertions) |
 | `src/tools/shared/outputFilter/Bash/phase12Report.test.ts` | Phase 12 per-filter report |
-| `scripts/measure-bash-filter-roi.test.ts` | prints the ROI table; reads the whole dir, maps names via `FIXTURE_MAP` |
-| `scripts/profile/bash-filter-gain.test.ts` | bench, opt-in with `CLAUDIN_BENCH=1` |
+| `scripts/bench/tokens/measure-bash-filter-roi.test.ts` | prints the ROI table; reads the whole dir, maps names via `FIXTURE_MAP` |
+| `scripts/bench/perf/bash-filter-gain.test.ts` | bench, opt-in with `CLAUDIN_BENCH=1` |
 | `docs/archive/discovery/bash-output-filter/validation/validate.ts` | the original discovery runner, kept as a research artifact |
 
 ## Adding a sample
@@ -28,7 +28,7 @@ Capture straight into this directory:
 <command> > src/tools/shared/outputFilter/Bash/__fixtures__/samples/<name>.txt 2>&1
 ```
 
-Then map it in `FIXTURE_MAP` (`scripts/measure-bash-filter-roi.test.ts`) if it
+Then map it in `FIXTURE_MAP` (`scripts/bench/tokens/measure-bash-filter-roi.test.ts`) if it
 should count toward the ROI table — an unmapped `.txt` is listed under "Skipped
 (no mapping)" instead of failing, and 87 of the 142 currently are.
 

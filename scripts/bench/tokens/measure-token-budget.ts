@@ -37,7 +37,7 @@ import {
 import { enableConfigs } from '../../../src/platform/config/config.js'
 import { measureToolSchemas } from './measure-tool-schemas.ts'
 
-// Polyfill MACRO globals normally injected by `scripts/build.ts` via `define`.
+// Polyfill MACRO globals normally injected by `scripts/build/build.ts` via `define`.
 // `getSystemPrompt()` references `MACRO.ISSUES_EXPLAINER` and crashes
 // otherwise. Idempotent — only assigns when undefined.
 if (typeof (globalThis as { MACRO?: unknown }).MACRO === 'undefined') {

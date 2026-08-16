@@ -145,7 +145,7 @@ function main(): void {
         // an upward specifier is the failure mode this reorg exists to remove.
         //
         // One target overrides all of that: a module that exists only as a
-        // declaration is absent at RUNTIME, and scripts/build.ts replaces it
+        // declaration is absent at RUNTIME, and scripts/build/build.ts replaces it
         // with a noop stub for a relative specifier only (build.ts:561). Alias
         // one and the build stops stubbing it and fails to resolve it instead,
         // so a declaration-only target stays relative, `../` and all.

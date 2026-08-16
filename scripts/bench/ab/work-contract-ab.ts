@@ -6,7 +6,7 @@
 // `WORK_CONTRACT` puts three static sections on the cacheable prefix, before
 // SYSTEM_PROMPT_DYNAMIC_BOUNDARY: "# Delivering work" (scope fidelity),
 // the act-on-what-you-know line, and "# Corrections". Its flag comment in
-// scripts/build.ts says the gate was "kept so the cost/benefit can be A/B'd" —
+// scripts/build/build.ts says the gate was "kept so the cost/benefit can be A/B'd" —
 // the bench was the plan, not the result. This is that bench.
 //
 //   A  contract  CLAUDIN_WORK_CONTRACT=1   the three sections present

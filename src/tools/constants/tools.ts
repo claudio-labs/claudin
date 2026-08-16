@@ -77,7 +77,7 @@ export const ASYNC_AGENT_ALLOWED_TOOLS = new Set([
   // via Bash (SHELL_TOOL_NAMES), but the structured summary is far cheaper on
   // tokens/cache over a long background run — so background agents (e.g. a
   // `tester` spawned with run_in_background) get the tool instead of scraping
-  // raw `bun test` stdout. See scripts/bench/run-tests-turns-ab.ts.
+  // raw `bun test` stdout. See scripts/bench/ab/run-tests-turns-ab.ts.
   RUN_TESTS_TOOL_NAME,
   // Same argument as RunTests above, and the saving is larger: a background
   // agent that scrapes raw compiler stdout in a project with a known error

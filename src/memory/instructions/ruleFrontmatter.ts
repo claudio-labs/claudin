@@ -3,7 +3,7 @@
  *
  * Deliberately a leaf module: the rule loader (src/memory/instructions/claudemd.ts) pulls in
  * analytics, settings and the fs abstraction, so anything that only needs to
- * understand rule frontmatter — the linter, `scripts/rules-check.ts` — imports
+ * understand rule frontmatter — the linter, `scripts/verify/rules-check.ts` — imports
  * this instead and stays cheap.
  */
 import { z } from 'zod/v4'

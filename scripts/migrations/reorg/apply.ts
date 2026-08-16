@@ -222,7 +222,7 @@ function collectMoves(scope: Scope = 'group'): {
  *    free through the substring rewrite.
  *  - a `.d.ts`-only target — one of the ~107 ambient declarations standing in for
  *    subsystems this fork never received — gets a corrected RELATIVE path.
- *    `scripts/build.ts` stubs a relative specifier it cannot resolve to a noop
+ *    `scripts/build/build.ts` stubs a relative specifier it cannot resolve to a noop
  *    and fails outright on an aliased one, so aliasing
  *    `require('../../proactive/index.js')` turns a working stub into a broken
  *    build. tsc still resolves the relative form to the declaration, which is

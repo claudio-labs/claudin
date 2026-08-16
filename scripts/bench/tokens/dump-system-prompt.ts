@@ -18,7 +18,7 @@
 // resolves `bun:bundle` natively before any plugin or `mock.module` sees it —
 // the `mock.module('bun:bundle', …)` in src/stubs/test-preload.ts is inert, and
 // verified so (2026-08-12). Under `bun run`, every flag reads false. Only the
-// build resolves them, by rewriting the source in place (scripts/build.ts), so
+// build resolves them, by rewriting the source in place (scripts/build/build.ts), so
 // the honest way to see the shipped prompt is to ask the built bundle for it.
 //
 // The default mode is therefore missing WORK_CONTRACT, ANTI_NARRATION,

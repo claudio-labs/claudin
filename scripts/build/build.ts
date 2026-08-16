@@ -640,7 +640,7 @@ export const SeverityNumber = {};
         // and a trap for everything else, so the set is pinned:
         //
         //   CLAUDIN_STRICT_IMPORTS=1        fail on any specifier not baselined
-        //   CLAUDIN_STRICT_IMPORTS=capture  re-record scripts/missing-imports-baseline.json
+        //   CLAUDIN_STRICT_IMPORTS=capture  re-record scripts/build/missing-imports-baseline.json
         //
         // Unset, the build only prints the count. Run the strict form after any
         // change that moves files, which is exactly when a path goes stale.

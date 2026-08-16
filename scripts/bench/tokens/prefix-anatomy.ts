@@ -7,7 +7,7 @@
 // Run WITH the test preload so internal/stubbed deps resolve:
 //   bun --preload ./src/stubs/test-preload.ts scripts/bench/tokens/prefix-anatomy.ts
 
-// MACRO.* are build-time defines (inlined by scripts/build.ts). Running the
+// MACRO.* are build-time defines (inlined by scripts/build/build.ts). Running the
 // source directly leaves them undefined, so polyfill before importing any module
 // that reads them. A proxy returns a short placeholder for any field — byte sizes
 // shift only trivially, which is fine for a prefix-size breakdown.

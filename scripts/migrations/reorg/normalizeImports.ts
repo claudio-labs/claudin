@@ -4,7 +4,7 @@
  * `'./sibling.js'` alike — to the `src/…` tsconfig alias (tsconfig.json
  * `paths`).
  *
- * Why this exists: `scripts/build.ts` pre-scans `src/` and replaces any
+ * Why this exists: `scripts/build/build.ts` pre-scans `src/` and replaces any
  * *relative* `.js` specifier that fails to resolve with a `missing-module-stub`
  * that exports `() => null` — silently, with no warning. Aliased specifiers get
  * no such treatment: they reach Bun's resolver and fail the build outright.

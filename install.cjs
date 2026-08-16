@@ -142,7 +142,7 @@ function main() {
   // NOTE: the wrapper package.json must be CommonJS (not "type":"module") — the
   // Node-stub fallback at this path only loads as CJS; under "module" Node's ESM
   // loader rejects the .exe extension (ERR_UNKNOWN_FILE_EXTENSION). See
-  // scripts/assemble-packages.ts. Same pattern as Bun's and Claude Code's npm
+  // scripts/release/assemble-packages.ts. Same pattern as Bun's and Claude Code's npm
   // packages.
   const dest = path.join(__dirname, 'bin', 'claudin.exe')
 

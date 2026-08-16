@@ -60,7 +60,7 @@ empty variable rather than an error. Swap the prefix and it works again.
 Names that something *outside* Claudin sets are deliberately unchanged, so the
 Claude Agent SDK, the IDE extension, and managed deployments keep working:
 `CLAUDE_CODE_ENTRYPOINT`, `CLAUDE_CODE_OAUTH_TOKEN`, the `CLAUDE_AGENT_SDK_*`
-family, and 15 more. `scripts/env-rename-map.json` is the full mapping, bucket
+family, and 15 more. `scripts/migrations/env-rename-map.json` is the full mapping, bucket
 by bucket, with the reason for every name that stayed.
 
 ## Quick Start

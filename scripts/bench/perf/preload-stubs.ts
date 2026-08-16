@@ -2,9 +2,9 @@
  * Preload for profile scripts that import from `src/`.
  *
  * `src/platform/analytics/growthbook.ts` imports `@growthbook/growthbook`,
- * which is NOT a dependency of this repo — `scripts/build.ts` replaces the
+ * which is NOT a dependency of this repo — `scripts/build/build.ts` replaces the
  * whole analytics surface with no-op stubs at bundle time (see
- * `scripts/no-telemetry-plugin.ts`). Running a script directly under `bun`
+ * `scripts/build/no-telemetry-plugin.ts`). Running a script directly under `bun`
  * skips that build step, so anything that transitively reaches `utils/log.js`
  * dies on a missing module before it prints a line.
  *
