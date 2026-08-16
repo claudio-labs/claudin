@@ -22,19 +22,19 @@
 // output and the tool result the model actually received.
 //
 // Usage:
-//   bun run scripts/bench/typecheck-ab.ts                 # 3 per variant, sonnet 5
-//   bun run scripts/bench/typecheck-ab.ts --runs=3
-//   bun run scripts/bench/typecheck-ab.ts --errors=40     # size of the backlog
-//   bun run scripts/bench/typecheck-ab.ts --probe         # 1 + 1 quick smoke
-//   bun run scripts/bench/typecheck-ab.ts --keep --json
+//   bun run scripts/bench/ab/typecheck-ab.ts                 # 3 per variant, sonnet 5
+//   bun run scripts/bench/ab/typecheck-ab.ts --runs=3
+//   bun run scripts/bench/ab/typecheck-ab.ts --errors=40     # size of the backlog
+//   bun run scripts/bench/ab/typecheck-ab.ts --probe         # 1 + 1 quick smoke
+//   bun run scripts/bench/ab/typecheck-ab.ts --keep --json
 
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const ENTRY = process.env.CLAUDIN_BENCH_ENTRY ?? join(REPO_ROOT, 'dist', 'cli.mjs')
 const CONFIG_DIR = process.env.CLAUDIN_CONFIG_DIR ?? join(homedir(), '.claudin')
 const TSC = join(REPO_ROOT, 'node_modules', '.bin', 'tsc')

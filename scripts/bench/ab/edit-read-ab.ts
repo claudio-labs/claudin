@@ -20,12 +20,12 @@
 //   * N>=3 reps + median is strongly recommended — single runs are noisy.
 //
 // Usage:
-//   bun run scripts/profile/edit-read-ab.ts --probe            # 2 read / 1 edit smoke both bins
-//   bun run scripts/profile/edit-read-ab.ts --reps=3           # full A/B, median of 3
-//   bun run scripts/profile/edit-read-ab.ts --only=claudin     # one side only
-//   bun run scripts/profile/edit-read-ab.ts --model=claude-sonnet-4-5
-//   bun run scripts/profile/edit-read-ab.ts --claude-model=sonnet --claudin-model=claude-sonnet-5
-//   bun run scripts/profile/edit-read-ab.ts --json
+//   bun run scripts/bench/ab/edit-read-ab.ts --probe            # 2 read / 1 edit smoke both bins
+//   bun run scripts/bench/ab/edit-read-ab.ts --reps=3           # full A/B, median of 3
+//   bun run scripts/bench/ab/edit-read-ab.ts --only=claudin     # one side only
+//   bun run scripts/bench/ab/edit-read-ab.ts --model=claude-sonnet-4-5
+//   bun run scripts/bench/ab/edit-read-ab.ts --claude-model=sonnet --claudin-model=claude-sonnet-5
+//   bun run scripts/bench/ab/edit-read-ab.ts --json
 
 import { spawnSync } from 'node:child_process'
 import { performance } from 'node:perf_hooks'

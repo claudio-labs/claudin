@@ -35,19 +35,20 @@
 //   5. --skip-claude lets you run claudin-only N≥3 without manually flipping flags.
 //
 // Usage:
-//   bun run scripts/profile/cache-ab-bench.ts                 # full A/B
-//   bun run scripts/profile/cache-ab-bench.ts --only=claudin  # one side
-//   bun run scripts/profile/cache-ab-bench.ts --runs=3        # median over 3 runs
-//   bun run scripts/profile/cache-ab-bench.ts --skip-claude   # claudin only
-//   bun run scripts/profile/cache-ab-bench.ts --model=claude-opus-4-7
-//   bun run scripts/profile/cache-ab-bench.ts --a=claude --b=claudindev
-//   bun run scripts/profile/cache-ab-bench.ts --json
+//   bun run scripts/bench/ab/cache-ab-bench.ts                 # full A/B
+//   bun run scripts/bench/ab/cache-ab-bench.ts --only=claudin  # one side
+//   bun run scripts/bench/ab/cache-ab-bench.ts --runs=3        # median over 3 runs
+//   bun run scripts/bench/ab/cache-ab-bench.ts --skip-claude   # claudin only
+//   bun run scripts/bench/ab/cache-ab-bench.ts --model=claude-opus-4-7
+//   bun run scripts/bench/ab/cache-ab-bench.ts --a=claude --b=claudindev
+//   bun run scripts/bench/ab/cache-ab-bench.ts --json
 
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { performance } from 'node:perf_hooks'
 import { join, resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
 // 50 files, mixed sizes (small <500B, medium 5-30KB, large 50KB+) to exercise
 // both small-pair walk-back and fat-tail short-circuit branches. NOTE: with
@@ -226,7 +227,7 @@ function parseArgs(argv: string[]): Args {
 // cited source= path (when present) so the measurement captures the NET cost
 // (compression minus retrieval), not just best-case.
 function buildJsonWorkloadPrompt(turns: number): string {
-  const fixture = 'scripts/profile/fixtures/big-json.sh'
+  const fixture = 'scripts/bench/perf/fixtures/big-json.sh'
   const readbackTurns = new Set(
     [Math.floor(turns / 3), Math.floor((2 * turns) / 3), turns].filter(n => n > 1),
   )
@@ -572,7 +573,7 @@ function run(
     encoding: 'utf8',
     timeout: timeoutMs,
     maxBuffer: 64 * 1024 * 1024,
-    cwd: resolve(import.meta.dir, '../..'),
+    cwd: REPO_ROOT,
     env: { ...process.env, ANTHROPIC_MODEL: model, ...extraEnv },
     // Explicitly close stdin. Without this, both `claude` and `claudin -p`
     // wait ~3s for stdin data on the open pipe before proceeding.
@@ -822,7 +823,7 @@ async function main() {
       const file = resolve(import.meta.dir, `verbosity-ab-${tag}.txt`)
       const body = med.finalText || '(no assistant text captured)'
       writeFileSync(file, `# ${side.label} (median run)\n# output tokens: ${med.output}\n\n${body}\n`)
-      console.log(`    ${tag}: ${body.length} chars, ${med.output} output tokens \u2192 scripts/profile/verbosity-ab-${tag}.txt`)
+      console.log(`    ${tag}: ${body.length} chars, ${med.output} output tokens \u2192 scripts/bench/ab/verbosity-ab-${tag}.txt`)
     })
   }
   console.log()

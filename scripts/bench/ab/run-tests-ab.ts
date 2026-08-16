@@ -18,20 +18,20 @@
 // suite, so each run starts from a fresh, byte-identical fixture outside the repo.
 //
 // Usage:
-//   bun run scripts/bench/run-tests-ab.ts                 # 3 pass + 3 fail, sonnet 5
-//   bun run scripts/bench/run-tests-ab.ts --runs=3        # N per variant
-//   bun run scripts/bench/run-tests-ab.ts --model=claude-sonnet-5
-//   bun run scripts/bench/run-tests-ab.ts --probe         # 1 + 1 quick smoke
-//   bun run scripts/bench/run-tests-ab.ts --keep          # keep sandboxes + print paths
-//   bun run scripts/bench/run-tests-ab.ts --json          # machine-readable dump
+//   bun run scripts/bench/ab/run-tests-ab.ts                 # 3 pass + 3 fail, sonnet 5
+//   bun run scripts/bench/ab/run-tests-ab.ts --runs=3        # N per variant
+//   bun run scripts/bench/ab/run-tests-ab.ts --model=claude-sonnet-5
+//   bun run scripts/bench/ab/run-tests-ab.ts --probe         # 1 + 1 quick smoke
+//   bun run scripts/bench/ab/run-tests-ab.ts --keep          # keep sandboxes + print paths
+//   bun run scripts/bench/ab/run-tests-ab.ts --json          # machine-readable dump
 
 import { spawnSync } from 'node:child_process'
 import { performance } from 'node:perf_hooks'
 import { mkdtempSync, writeFileSync, rmSync, readFileSync, existsSync, readdirSync } from 'node:fs'
 import { tmpdir, homedir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const ENTRY = process.env.CLAUDIN_BENCH_ENTRY ?? join(REPO_ROOT, 'dist', 'cli.mjs')
 const CONFIG_DIR = process.env.CLAUDIN_CONFIG_DIR ?? join(homedir(), '.claudin')
 const FILE_LINE_RE = /\.test\.ts:\d+/

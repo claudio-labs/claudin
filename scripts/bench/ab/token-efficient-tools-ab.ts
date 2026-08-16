@@ -17,7 +17,7 @@
  * - SECUNDARIO: tool use breakdown (qual tool, quantas vezes), turns, cost
  *
  * Uso:
- *   bun run scripts/bench/token-efficient-tools-ab.ts
+ *   bun run scripts/bench/ab/token-efficient-tools-ab.ts
  *
  * Vars:
  *   ANTHROPIC_MODEL=claude-opus-4-8   (default)
@@ -33,8 +33,8 @@ import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const ENTRY = process.env.CLAUDIN_BENCH_ENTRY ?? join(REPO_ROOT, 'dist', 'cli.mjs')
 const RUNS_PER_PROMPT = Number(process.env.CLAUDIN_BENCH_RUNS ?? '2')
 const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-opus-4-8'

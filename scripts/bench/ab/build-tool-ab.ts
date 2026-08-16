@@ -30,17 +30,17 @@
  * tokens — do not read the wall column as a result.
  *
  * Usage:
- *   bun scripts/profile/build-tool-ab.ts [--only=before|after] [--reps=N]
+ *   bun scripts/bench/ab/build-tool-ab.ts [--only=before|after] [--reps=N]
  *                                        [--timeout=ms] [--keep] [--json]
  */
 import { spawnSync } from 'child_process'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { homedir, tmpdir } from 'os'
 import { join, resolve } from 'path'
-import { detectBuild, detectBuildSystemFromCommand } from '../../src/tools/BuildTool/detect.js'
-import { BUILD_TOOL_NAME } from '../../src/tools/BuildTool/prompt.js'
+import { detectBuild, detectBuildSystemFromCommand } from '../../../src/tools/BuildTool/detect.js'
+import { BUILD_TOOL_NAME } from '../../../src/tools/BuildTool/prompt.js'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '../..')
 const SENTINEL = 'BENCH_DONE'
 const MODEL = 'claude-sonnet-5'
 const STEPS = 15
@@ -174,7 +174,7 @@ function buildPrompt(): string {
 // ---------------------------------------------------------------------------
 // Stream/transcript parsing.
 //
-// Copied from `scripts/profile/git-tool-ab.ts` (:242, :256, :282, :291, :302),
+// Copied from `scripts/bench/ab/git-tool-ab.ts` (:242, :256, :282, :291, :302),
 // which copied it from `cache-ab-bench.ts` — that file self-executes `main()`
 // on import and exports nothing, so it cannot be imported. The
 // dedupe-by-message-id, last-wins rule and the transcript fallback are

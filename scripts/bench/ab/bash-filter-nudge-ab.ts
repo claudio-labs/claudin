@@ -9,7 +9,7 @@
  * composto. KPI secundario: tokens / cost.
  *
  * Uso:
- *   bun run scripts/bench/bash-filter-nudge-ab.ts
+ *   bun run scripts/bench/ab/bash-filter-nudge-ab.ts
  *
  * Variaveis de ambiente:
  *   ANTHROPIC_MODEL=claude-sonnet-4-6  (default)
@@ -22,8 +22,8 @@ import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const BASELINE = process.env.CLAUDIN_BENCH_BASELINE ?? join(REPO_ROOT, 'dist', 'baseline', 'cli.mjs')
 const FEATURE = process.env.CLAUDIN_BENCH_FEATURE ?? join(REPO_ROOT, 'dist', 'cli.mjs')
 const RUNS_PER_PROMPT = Number(process.env.CLAUDIN_BENCH_RUNS ?? '5')

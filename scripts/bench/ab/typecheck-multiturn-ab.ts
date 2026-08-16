@@ -18,8 +18,8 @@
  * Usage is read from the session transcript rather than the CLI's final JSON so
  * that every request in a turn is counted, not just the last one.
  *
- *   bun scripts/bench/typecheck-multiturn-ab.ts --reps 3
- *   bun scripts/bench/typecheck-multiturn-ab.ts --reps 1 --turns 4 --keep
+ *   bun scripts/bench/ab/typecheck-multiturn-ab.ts --reps 3
+ *   bun scripts/bench/ab/typecheck-multiturn-ab.ts --reps 1 --turns 4 --keep
  *
  * Headless orphans auto-background sub-agents, which would drop their usage
  * from the totals — CLAUDIN_DISABLE_BACKGROUND_TASKS=1 is forced below.
@@ -28,8 +28,8 @@ import { spawnSync } from 'child_process'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'fs'
 import { homedir, tmpdir } from 'os'
 import { join, resolve } from 'path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const CONFIG_DIR = process.env.CLAUDIN_CONFIG_DIR ?? join(homedir(), '.claudin')
 const TSC = join(REPO_ROOT, 'node_modules', '.bin', 'tsc')
 

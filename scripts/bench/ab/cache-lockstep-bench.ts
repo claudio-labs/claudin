@@ -12,12 +12,13 @@
 // nonzero wins (both CLIs emit final same-id usage events).
 //
 // Usage:
-//   bun run scripts/profile/cache-lockstep-bench.ts --bin=claudindev --revisits=8
-//   bun run scripts/profile/cache-lockstep-bench.ts --bin=claude --files=10
+//   bun run scripts/bench/ab/cache-lockstep-bench.ts --bin=claudindev --revisits=8
+//   bun run scripts/bench/ab/cache-lockstep-bench.ts --bin=claude --files=10
 
 import { spawn } from 'node:child_process'
 import { createInterface } from 'node:readline'
 import { resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
 const ALL_FILES = [
   'src/providers/transport/client.ts',
@@ -111,7 +112,7 @@ async function main() {
       '--model', args.model,
       '--allowedTools', 'Read',
     ],
-    { cwd: resolve(import.meta.dir, '../..'), stdio: ['pipe', 'pipe', 'pipe'] },
+    { cwd: REPO_ROOT, stdio: ['pipe', 'pipe', 'pipe'] },
   )
 
   const rows = new Map<string, Row>()

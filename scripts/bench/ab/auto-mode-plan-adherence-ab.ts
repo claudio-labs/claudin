@@ -16,7 +16,7 @@
  *
  * Uso:
  *   CLAUDIN_BENCH_BASELINE=dist-baseline/cli.mjs \
- *   bun run scripts/bench/auto-mode-plan-adherence-ab.ts
+ *   bun run scripts/bench/ab/auto-mode-plan-adherence-ab.ts
  *
  * Variaveis de ambiente:
  *   ANTHROPIC_MODEL=claude-opus-4-8     (default)
@@ -30,8 +30,8 @@ import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const BASELINE = process.env.CLAUDIN_BENCH_BASELINE ?? join(REPO_ROOT, 'dist-baseline', 'cli.mjs')
 const FEATURE = process.env.CLAUDIN_BENCH_FEATURE ?? join(REPO_ROOT, 'dist', 'cli.mjs')
 const RUNS_PER_PROMPT = Number(process.env.CLAUDIN_BENCH_RUNS ?? '3')

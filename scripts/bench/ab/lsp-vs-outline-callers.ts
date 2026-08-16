@@ -18,8 +18,8 @@ import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const BASELINE_A = join(REPO_ROOT, 'dist', 'baseline-a', 'cli.mjs')
 const FEATURE_B = join(REPO_ROOT, 'dist', 'feature-b-shipped', 'cli.mjs')
 const FEATURE_D = join(REPO_ROOT, 'dist', 'feature-b', 'cli.mjs')

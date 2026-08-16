@@ -23,13 +23,13 @@
 // the probe says background agents are drained.
 //
 // Usage:
-//   bun run scripts/profile/agent-bg-token-bench.ts --probe         # validate harness + drain
-//   bun run scripts/profile/agent-bg-token-bench.ts --agents=2      # full run
-//   bun run scripts/profile/agent-bg-token-bench.ts --only=claudin  # one side only
-//   bun run scripts/profile/agent-bg-token-bench.ts --json
+//   bun run scripts/bench/ab/agent-bg-token-bench.ts --probe         # validate harness + drain
+//   bun run scripts/bench/ab/agent-bg-token-bench.ts --agents=2      # full run
+//   bun run scripts/bench/ab/agent-bg-token-bench.ts --only=claudin  # one side only
+//   bun run scripts/bench/ab/agent-bg-token-bench.ts --json
 //
 // Pin the model on BOTH sides for an apples-to-apples price comparison:
-//   bun run scripts/profile/agent-bg-token-bench.ts --model=claude-sonnet-5 --reps=3
+//   bun run scripts/bench/ab/agent-bg-token-bench.ts --model=claude-sonnet-5 --reps=3
 // Without --model each CLI uses its own default, which can differ (claudin
 // follows the active /provider profile, claude follows its own setting) and
 // then the cost column compares two different price tiers.
@@ -38,6 +38,7 @@ import { spawnSync } from 'node:child_process'
 import { performance } from 'node:perf_hooks'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
 const TEN_FILES = [
   'src/shared/errors.ts',
@@ -287,7 +288,7 @@ async function main() {
     return
   }
 
-  const repo = resolve(import.meta.dir, '..', '..')
+  const repo = REPO_ROOT
   if (!existsSync(resolve(repo, 'dist/cli.mjs'))) {
     console.error('dist/cli.mjs missing — run `bun run build` first.')
     process.exit(1)

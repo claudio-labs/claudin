@@ -56,7 +56,7 @@
 // runs, not tokens. A null on N=4 is inconclusive, not a clean bill of health.
 //
 // Usage:
-//   bun scripts/profile/lean-tool-prompts-ab.ts [--reps=N] [--only=A|B]
+//   bun scripts/bench/ab/lean-tool-prompts-ab.ts [--reps=N] [--only=A|B]
 //                                               [--timeout=ms] [--keep]
 //                                               [--sizes] [--dry-run]
 //
@@ -76,8 +76,8 @@ import {
 } from 'fs'
 import { tmpdir } from 'os'
 import { dirname, join, resolve } from 'path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '../..')
 const DEV_BIN = join(REPO_ROOT, 'bin', 'claudin')
 const BUNDLE = join(REPO_ROOT, 'dist', 'cli.mjs')
 const SENTINEL = 'BENCH_DONE'

@@ -17,18 +17,18 @@
 //   B (no-tool)   : --allowedTools Bash --disallowedTools RunTests → model runs `bun test` via Bash
 //
 // Usage:
-//   bun run scripts/bench/run-tests-turns-ab.ts               # 15 turns/arm, sonnet 5
-//   bun run scripts/bench/run-tests-turns-ab.ts --turns=15
-//   bun run scripts/bench/run-tests-turns-ab.ts --arm=A       # one arm only
-//   bun run scripts/bench/run-tests-turns-ab.ts --model=claude-sonnet-5
-//   bun run scripts/bench/run-tests-turns-ab.ts --json
+//   bun run scripts/bench/ab/run-tests-turns-ab.ts               # 15 turns/arm, sonnet 5
+//   bun run scripts/bench/ab/run-tests-turns-ab.ts --turns=15
+//   bun run scripts/bench/ab/run-tests-turns-ab.ts --arm=A       # one arm only
+//   bun run scripts/bench/ab/run-tests-turns-ab.ts --model=claude-sonnet-5
+//   bun run scripts/bench/ab/run-tests-turns-ab.ts --json
 
 import { spawnSync } from 'node:child_process'
 import { mkdtempSync, writeFileSync, rmSync, readFileSync, existsSync, readdirSync } from 'node:fs'
 import { tmpdir, homedir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const ENTRY = process.env.CLAUDIN_BENCH_ENTRY ?? join(REPO_ROOT, 'dist', 'cli.mjs')
 const CONFIG_DIR = process.env.CLAUDIN_CONFIG_DIR ?? join(homedir(), '.claudin')
 

@@ -30,7 +30,7 @@
 // so a regression here is visible rather than silent.
 //
 // Usage:
-//   bun run scripts/profile/read-outline-pivot-ab.ts \
+//   bun run scripts/bench/ab/read-outline-pivot-ab.ts \
 //     [--reps=N] [--depth=deep|shallow] [--compare=pivot|wording] [--keep] [--dry-run]
 //
 // --compare picks WHAT the two arms differ by:
@@ -66,8 +66,8 @@ import {
 } from 'fs'
 import { tmpdir } from 'os'
 import { basename, join, resolve } from 'path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '../..')
 const SENTINEL = 'BENCH_DONE'
 const MODEL = 'claude-sonnet-5'
 const ALLOWED_TOOLS = 'Read,Glob'
@@ -688,7 +688,7 @@ function main(): void {
     join(outDir, outName),
     JSON.stringify({ model: MODEL, reps, depth: DEPTH, compare, fixtures: FIXTURES, A, B }, null, 2),
   )
-  console.log(`\nfull results + both answers → scripts/profile/${outName}`)
+  console.log(`\nfull results + both answers → scripts/bench/ab/${outName}`)
   console.log('Token counts do not grade the ANSWERS. Read both before concluding.')
 }
 

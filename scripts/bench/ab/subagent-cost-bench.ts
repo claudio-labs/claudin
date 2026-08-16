@@ -11,8 +11,8 @@
 // usage IS captured in the parent's reported totals — the comparison is fair.
 // We also check a sentinel to confirm the subagents actually ran and reported.
 //
-//   bun run scripts/profile/subagent-cost-bench.ts
-//   bun run scripts/profile/subagent-cost-bench.ts --agents=3
+//   bun run scripts/bench/ab/subagent-cost-bench.ts
+//   bun run scripts/bench/ab/subagent-cost-bench.ts --agents=3
 
 import { spawnSync } from 'node:child_process'
 import { performance } from 'node:perf_hooks'

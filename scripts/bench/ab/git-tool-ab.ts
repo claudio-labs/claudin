@@ -25,7 +25,7 @@
  *    directory, and a bench run here would collide with the live session.
  *
  * Usage:
- *   bun scripts/profile/git-tool-ab.ts [--only=before|after] [--timeout=ms]
+ *   bun scripts/bench/ab/git-tool-ab.ts [--only=before|after] [--timeout=ms]
  *                                      [--keep] [--json]
  */
 import { spawnSync } from 'child_process'
@@ -41,8 +41,8 @@ import {
 } from 'fs'
 import { homedir, tmpdir } from 'os'
 import { join, resolve } from 'path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '../..')
 const SENTINEL = 'BENCH_DONE'
 const MODEL = 'claude-sonnet-5'
 const STEPS = 15
@@ -230,7 +230,7 @@ function buildPrompt(): string {
 // ---------------------------------------------------------------------------
 // Stream/transcript parsing.
 //
-// Copied from `scripts/profile/cache-ab-bench.ts` (:393, :421, :441, :488),
+// Copied from `scripts/bench/ab/cache-ab-bench.ts` (:393, :421, :441, :488),
 // which self-executes `main()` on import and exports nothing, so it cannot be
 // imported. The dedupe-by-message-id, last-wins rule and the
 // transcript-fallback are load-bearing and documented there; do not "simplify"

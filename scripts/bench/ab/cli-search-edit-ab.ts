@@ -31,18 +31,18 @@
  * before a single model token is spent.
  *
  * Usage:
- *   bun scripts/profile/cli-search-edit-ab.ts --dry-run          # validate the fixture
- *   bun scripts/profile/cli-search-edit-ab.ts --reps=3
- *   bun scripts/profile/cli-search-edit-ab.ts --only=claudin --keep
- *   bun scripts/profile/cli-search-edit-ab.ts --reps=3 --json
+ *   bun scripts/bench/ab/cli-search-edit-ab.ts --dry-run          # validate the fixture
+ *   bun scripts/bench/ab/cli-search-edit-ab.ts --reps=3
+ *   bun scripts/bench/ab/cli-search-edit-ab.ts --only=claudin --keep
+ *   bun scripts/bench/ab/cli-search-edit-ab.ts --reps=3 --json
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '../..')
 const SENTINEL = 'BENCH_DONE'
 const DEFAULT_MODEL = 'claude-sonnet-5'
 

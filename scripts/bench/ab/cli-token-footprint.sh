@@ -15,8 +15,8 @@
 # Output is a markdown report to stdout and to scripts/bench/results/.
 #
 # Usage:
-#   scripts/bench/cli-token-footprint.sh
-#   READ_FILES="src/a.ts src/b.ts" EDIT_FILES="src/c.ts" scripts/bench/cli-token-footprint.sh
+#   scripts/bench/ab/cli-token-footprint.sh
+#   READ_FILES="src/a.ts src/b.ts" EDIT_FILES="src/c.ts" scripts/bench/ab/cli-token-footprint.sh
 #
 # Env:
 #   CLIS="claudindev claude"   # which binaries to compare (space-separated)

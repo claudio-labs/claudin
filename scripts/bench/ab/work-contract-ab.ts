@@ -88,7 +88,7 @@
 // clean bill of health.
 //
 // Usage:
-//   bun scripts/profile/work-contract-ab.ts [--reps=N] [--only=A|B]
+//   bun scripts/bench/ab/work-contract-ab.ts [--reps=N] [--only=A|B]
 //                                           [--timeout=ms] [--keep]
 //                                           [--sizes] [--dry-run]
 //
@@ -109,8 +109,8 @@ import {
 } from 'fs'
 import { tmpdir } from 'os'
 import { dirname, join, relative, resolve } from 'path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '../..')
 const DEV_BIN = join(REPO_ROOT, 'bin', 'claudin')
 const BUNDLE = join(REPO_ROOT, 'dist', 'cli.mjs')
 const CHUNK_DIR = join(REPO_ROOT, 'dist', 'chunks')

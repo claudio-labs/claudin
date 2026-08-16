@@ -23,15 +23,15 @@
  *   CLAUDIN_BENCH_BASELINE=dist-bench-baseline/cli.mjs \
  *   CLAUDIN_BENCH_FEATURE=dist/cli.mjs \
  *   ANTHROPIC_MODEL=claude-opus-4-8 \
- *   bun run scripts/bench/serial-read-nudge-ab.ts
+ *   bun run scripts/bench/ab/serial-read-nudge-ab.ts
  */
 
 import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const BASELINE = process.env.CLAUDIN_BENCH_BASELINE ?? join(REPO_ROOT, 'dist-bench-baseline', 'cli.mjs')
 const FEATURE = process.env.CLAUDIN_BENCH_FEATURE ?? join(REPO_ROOT, 'dist', 'cli.mjs')
 const RUNS_PER_PROMPT = Number(process.env.CLAUDIN_BENCH_RUNS ?? '3')

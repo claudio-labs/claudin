@@ -14,7 +14,7 @@
 #                       a flag we add (`-o`, `--offline`, `--no-restore`) is
 #                       what broke the run rather than the code under test
 #
-# Usage: scripts/bench/capture-checker-output.sh [name …]   (default: all)
+# Usage: scripts/bench/ab/capture-checker-output.sh [name …]   (default: all)
 set -u
 
 OUT="${CAPTURE_DIR:-/tmp/checker-captures}"

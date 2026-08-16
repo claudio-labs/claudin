@@ -27,7 +27,7 @@
  * Uso:
  *   CLAUDIN_BENCH_FEATURE=dist/cli.mjs \
  *   ANTHROPIC_MODEL=claude-opus-4-8 \
- *   bun run scripts/bench/narration-effort-ab.ts
+ *   bun run scripts/bench/ab/narration-effort-ab.ts
  *
  * Variaveis de ambiente:
  *   ANTHROPIC_MODEL=claude-opus-4-8    (default — narracao e' Opus-4.8-specific)
@@ -43,8 +43,8 @@ import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { REPO_ROOT } from '../../repoRoot'
 
-const REPO_ROOT = resolve(import.meta.dir, '..', '..')
 const FEATURE = process.env.CLAUDIN_BENCH_FEATURE ?? join(REPO_ROOT, 'dist', 'cli.mjs')
 const RUNS_PER_PROMPT = Number(process.env.CLAUDIN_BENCH_RUNS ?? '3')
 const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-opus-4-8'

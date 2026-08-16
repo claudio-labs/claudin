@@ -29,8 +29,8 @@
 //   - negative corpus: every fixture detects as null (O == H byte-for-byte)
 //
 // Usage:
-//   bun run scripts/profile/code-outline-ab.ts
-//   bun run scripts/profile/code-outline-ab.ts > scripts/profile/code-outline-ab-results.txt
+//   bun run scripts/bench/ab/code-outline-ab.ts
+//   bun run scripts/bench/ab/code-outline-ab.ts > scripts/bench/results/code-outline-ab-results.txt
 // ---------------------------------------------------------------------------
 
 import { readFileSync } from 'node:fs'
@@ -39,9 +39,9 @@ import { Glob } from 'bun'
 import {
   detectCodeLang,
   stripLineNumberPrefix,
-} from '../../src/shared/fs/detectCodeLang.js'
-import { scanSymbols } from '../../src/tools/shared/codeOutline/scanSymbols.js'
-import { renderOutlineBody } from '../../src/tools/shared/codeOutline/renderOutline.js'
+} from '../../../src/shared/fs/detectCodeLang.js'
+import { scanSymbols } from '../../../src/tools/shared/codeOutline/scanSymbols.js'
+import { renderOutlineBody } from '../../../src/tools/shared/codeOutline/renderOutline.js'
 
 const REPO_ROOT = new URL('../../', import.meta.url).pathname
 
