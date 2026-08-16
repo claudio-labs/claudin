@@ -152,11 +152,18 @@ export function getFixture(name: string): Fixture {
 }
 
 /**
- * Slice the fixture text into the sequence of "current text" snapshots that
- * StreamingMarkdown would see, mimicking REPL.tsx:1506 which only advances the
- * displayed text on each `\n`. So each step ends in `\n` (except possibly the
- * last). This is the realistic chunk-arrival rate from the renderer's POV,
- * not the model's — sub-line tokens are coalesced upstream.
+ * Slice the fixture text into a sequence of "current text" snapshots, one per
+ * `\n`, so each step ends in a newline (except possibly the last).
+ *
+ * This is a LINE-GRANULAR APPROXIMATION, and a coarse one. It used to match
+ * the renderer exactly, back when the REPL clipped the displayed text to the
+ * last `\n`; that heuristic is gone (REPL.tsx:1280-1283 — it caused 2-3 s
+ * freezes whenever the model streamed a long paragraph with no newline).
+ * What the live path does now is coalesce on the store's frame interval
+ * (`FRAME_INTERVAL_MS = 16`, src/terminal/ink/constants.ts), so real
+ * streaming produces MANY more, much smaller steps than this — a 20 KB reply
+ * is thousands of frames, not dozens of lines. Per-frame costs measured here
+ * are therefore an under-count of a real turn; per-snapshot shape still holds.
  */
 export function lineSnapshots(fullText: string): string[] {
   const out: string[] = []

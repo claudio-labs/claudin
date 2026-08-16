@@ -23,6 +23,45 @@ const DOC = [
   'Closing paragraph.',
 ].join('\n\n')
 
+// Ordinary prose, paragraph breaks only. This is the shape that costs the
+// most while streaming — marked's block tokenizer runs ~718 ms/MB on prose
+// against ~2.6 ms/MB for an open fence — so it is the one the token memo
+// most affects, and the one whose cut points are most often re-evaluated.
+const PROSE = [
+  'The first paragraph carries enough words to span a couple of lines once it is wrapped.',
+  'A second paragraph follows it, so the segment cut has somewhere to land between blocks.',
+  'The third continues the run, keeping the unstable suffix small as the boundary advances.',
+  'A closing paragraph ends the reply.',
+].join('\n\n')
+
+// One long fenced code block. An unclosed fence lexes as a single `code`
+// token with no trailing `space`, so no safe cut exists and the boundary
+// never advances — the unstable suffix grows to the whole block, and every
+// frame re-lexes it. That makes this the shape where a shared token array is
+// handed back most often.
+const CODE = [
+  '```ts',
+  'export function collatz(n: number): number[] {',
+  '  const seen: number[] = [n]',
+  '  while (n !== 1) {',
+  '    n = n % 2 === 0 ? n / 2 : 3 * n + 1',
+  '    seen.push(n)',
+  '  }',
+  '  return seen',
+  '}',
+  '```',
+].join('\n')
+
+// Prose interleaved with fences — the realistic assistant reply, and the
+// only shape where cuts and a growing fence alternate.
+const MIXED = [
+  'Here is what the function does, described in a sentence long enough to wrap.',
+  '```ts\nconst doubled = xs.map(x => x * 2)\n```',
+  'And a paragraph after the block, so a cut lands on the far side of the fence.',
+  '```sh\nbun test src/terminal/markdown/\n```',
+  'A closing note.',
+].join('\n\n')
+
 function wrap(node: React.ReactNode): React.ReactElement {
   return <AppStateProvider>{node}</AppStateProvider>
 }
@@ -81,6 +120,18 @@ function blockSteps(doc: string, separator: string): string[] {
     const prefix = blocks.slice(0, i).join(separator)
     steps.push(prefix.slice(0, prefix.length - 5))
     steps.push(i < blocks.length ? `${prefix}${separator}` : prefix)
+  }
+  return steps
+}
+
+/** Reveals one line at a time. Needed for the single-fence shape, where
+ *  blockSteps would yield one step: an open fence has no top-level separator
+ *  inside it, so the whole block is a single "block". */
+function lineSteps(doc: string): string[] {
+  const lines = doc.split('\n')
+  const steps: string[] = []
+  for (let i = 1; i <= lines.length; i++) {
+    steps.push(lines.slice(0, i).join('\n'))
   }
   return steps
 }
@@ -151,5 +202,36 @@ describe('StreamingMarkdown', () => {
   test('non-streaming render still populates the markdown token cache', async () => {
     await renderToString(wrap(<Markdown>{DOC}</Markdown>))
     expect(__TEST_ONLY_getTokenCacheSize()).toBeGreaterThan(0)
+  })
+
+  describe('render equality under the one-slot token memo', () => {
+    // cachedLexer hands back the PREVIOUS call's token array whenever the
+    // same string arrives twice (markdownTokenCache.ts). StreamingMarkdown
+    // walks those tokens to choose its segment cut (Markdown.tsx:212-229),
+    // so a SHARED array must not move where the cuts land. These pin the
+    // rendered result against the one-shot path, byte for byte, on the three
+    // shapes whose cut behaviour differs.
+    const SHAPES: ReadonlyArray<{
+      name: string
+      doc: string
+      steps: (doc: string) => string[]
+    }> = [
+      { name: 'prose', doc: PROSE, steps: doc => blockSteps(doc, '\n\n') },
+      { name: 'code fence', doc: CODE, steps: lineSteps },
+      { name: 'mixed prose and code', doc: MIXED, steps: doc => blockSteps(doc, '\n\n') },
+    ]
+
+    for (const shape of SHAPES) {
+      test(`${shape.name}: streamed frames match the one-shot render`, async () => {
+        const lastFrame = await streamLastFrame(shape.steps(shape.doc))
+        // Cold both the memo slot and the LRU between the runs, so the
+        // one-shot render cannot be served anything the streaming run left
+        // behind — otherwise the two sides could agree by sharing state
+        // rather than by producing the same output.
+        __TEST_ONLY_resetTokenCache()
+        const full = await renderToString(wrap(<Markdown>{shape.doc}</Markdown>))
+        expect(lastFrame).toBe(full.trimEnd())
+      })
+    }
   })
 })

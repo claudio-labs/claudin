@@ -33,12 +33,58 @@ process.env.FORCE_COLOR ??= '3'
 
 import { performance } from 'node:perf_hooks'
 import { marked, type Token, type Tokens } from 'marked'
-import { configureMarked, formatToken } from '../../../src/shared/text/markdown.js'
-import {
-  getCliHighlightPromise,
-  type CliHighlight,
-} from '../../../src/shared/text/cliHighlight.js'
+import { mock } from 'bun:test'
+import type { CliHighlight } from '../../../src/shared/text/cliHighlight.js'
 import { getFixture, lineSnapshots, listFixtures } from './fixtures.js'
+
+// Build-time module replacement, reproduced for a source run. `@growthbook/
+// growthbook` is a bunfig.toml `[alias]` entry that only applies under
+// `bun test`, and scripts/build/build.ts swaps it at bundle time — so a plain
+// `bun run` of this file died on the missing package before printing a line,
+// reached through src/shared/text/markdown.js → platform/analytics/growthbook.
+// The src/ imports below must stay dynamic so they resolve after this lands.
+mock.module('@growthbook/growthbook', () => ({
+  GrowthBook: class {
+    async init(): Promise<void> {}
+    setAttributes(): void {}
+    getFeatureValue<T>(_key: string, fallback: T): T {
+      return fallback
+    }
+    isOn(): boolean {
+      return false
+    }
+    destroy(): void {}
+  },
+}))
+
+const sandboxRuntimeStub = await import(
+  '../../../src/stubs/sandbox-runtime-stub.js'
+)
+mock.module('@anthropic-ai/sandbox-runtime', () => sandboxRuntimeStub)
+
+const { configureMarked, formatToken } = await import(
+  '../../../src/shared/text/markdown.js'
+)
+const { getCliHighlightPromise } = await import(
+  '../../../src/shared/text/cliHighlight.js'
+)
+const { __TEST_ONLY_resetTokenCache, cachedLexer } = await import(
+  '../../../src/terminal/markdown/markdownTokenCache.js'
+)
+
+// Count REAL marked.lexer invocations, as distinct from lex REQUESTS that the
+// one-slot token memo in markdownTokenCache.ts answered without parsing.
+// Wrapping here rather than counting inside src/ keeps the instrumentation in
+// the bench, where it belongs. Installed once at module load, before any
+// fixture runs.
+type LexerFn = typeof marked.lexer
+const realLexer: LexerFn = marked.lexer.bind(marked)
+let realLexCalls = 0
+const countingLexer: LexerFn = (src, options) => {
+  realLexCalls++
+  return realLexer(src, options)
+}
+marked.lexer = countingLexer
 
 type Strategy = 'status-quo' | 'defer-fence' | 'lru-text'
 
@@ -50,6 +96,7 @@ type Args = {
   noHighlight: boolean
   compare: boolean
   noMemo: boolean
+  cachedBoundary: boolean
   json: boolean
   list: boolean
   help: boolean
@@ -66,6 +113,7 @@ function parseArgs(argv: string[]): Args {
     noHighlight: false,
     compare: false,
     noMemo: false,
+    cachedBoundary: true,
     json: false,
     list: false,
     help: false,
@@ -76,6 +124,7 @@ function parseArgs(argv: string[]): Args {
     else if (a === '--no-highlight') args.noHighlight = true
     else if (a === '--compare') args.compare = true
     else if (a === '--no-memo') args.noMemo = true
+    else if (a === '--direct-boundary') args.cachedBoundary = false
     else if (a === '--json') args.json = true
     else if (a.startsWith('--fixture=')) args.fixture = a.slice('--fixture='.length)
     else if (a.startsWith('--runs=')) args.runs = Number(a.slice('--runs='.length))
@@ -105,6 +154,13 @@ function printHelp(): void {
                     React Compiler memo on <Markdown>{stablePrefix}</Markdown>;
                     --no-memo recovers the un-memoized harness behavior for
                     apples-to-apples comparison with prior baselines)
+  --direct-boundary lex the segment-cut region with marked.lexer directly,
+                    bypassing cachedLexer. This is what Markdown.tsx:204 used
+                    to do, and it made the token memo a no-op: the parent's
+                    tokens never entered the slot, so the child re-lexed the
+                    same suffix every frame (1.98 lex/frame vs 1.03). Kept as
+                    the before-side of that A/B; production now routes through
+                    the cache, which is the default here.
   --json            emit machine-readable summary on stdout
   --list            list fixtures and exit
   --help            show this help`,
@@ -249,10 +305,16 @@ function advance(
   stripped: string,
   prevStable: string,
   counters: Counters,
+  cachedBoundary: boolean,
 ): { stablePrefix: string; unstableSuffix: string } {
   const startStable = stripped.startsWith(prevStable) ? prevStable : ''
   const boundary = startStable.length
-  const tokens = marked.lexer(stripped.substring(boundary))
+  // Mirrors Markdown.tsx:204, which routes the cut-arithmetic lex through
+  // cachedLexer so it shares the one-slot memo with the render lex below.
+  // --direct-boundary restores the older shape, where it called marked.lexer
+  // directly and the memo could never fire.
+  const region = stripped.substring(boundary)
+  const tokens = cachedBoundary ? cachedLexer(region, true) : marked.lexer(region)
   counters.lexCalls++
   let lastContentIdx = tokens.length - 1
   while (lastContentIdx >= 0 && tokens[lastContentIdx]!.type === 'space') {
@@ -278,7 +340,9 @@ function renderToAnsi(
   counters: Counters,
 ): number {
   if (!text) return 0
-  const tokens = marked.lexer(text)
+  // MarkdownBody (Markdown.tsx:93) lexes through cachedLexer with transient
+  // set — streaming strings are unique per frame and must not enter the LRU.
+  const tokens = cachedLexer(text, true)
   counters.lexCalls++
   let chars = 0
   for (const tok of tokens) {
@@ -292,6 +356,7 @@ type RunResult = {
   highlightCalls: number
   highlightChars: number
   lexCalls: number
+  realLexCalls: number
   formattedChars: number
   snapshotCount: number
   cacheHits: number
@@ -306,11 +371,16 @@ function runOnce(
   baseHl: CliHighlight | null,
   strategy: Strategy,
   memoizeStable = true,
+  cachedBoundary = true,
 ): RunResult {
   configureMarked()
   const snapshots = lineSnapshots(fixtureText)
   const counters = newCounters()
   const adapter = makeHighlightAdapter(baseHl, strategy, counters)
+  // Each run must start cold, or the previous run's memo slot and LRU would
+  // answer this one's first frames and undercount the real lexes.
+  __TEST_ONLY_resetTokenCache()
+  realLexCalls = 0
 
   let stablePrefix = ''
   // Models <Markdown>{stablePrefix}</Markdown>'s memoization in
@@ -329,6 +399,7 @@ function runOnce(
       snap,
       stablePrefix,
       counters,
+      cachedBoundary,
     )
     stablePrefix = nextStable
 
@@ -358,6 +429,7 @@ function runOnce(
     highlightCalls: counters.highlightCalls,
     highlightChars: counters.highlightChars,
     lexCalls: counters.lexCalls,
+    realLexCalls,
     formattedChars: counters.formattedChars,
     snapshotCount: snapshots.length,
     cacheHits: counters.cacheHits,
@@ -392,10 +464,15 @@ function runStrategy(
   warmup: number,
   runs: number,
   memoizeStable: boolean,
+  cachedBoundary: boolean,
 ): { strategy: Strategy; runs: RunResult[]; summary: ReturnType<typeof summarize> } {
-  for (let i = 0; i < warmup; i++) runOnce(fixtureText, hl, strategy, memoizeStable)
+  for (let i = 0; i < warmup; i++) {
+    runOnce(fixtureText, hl, strategy, memoizeStable, cachedBoundary)
+  }
   const out: RunResult[] = []
-  for (let i = 0; i < runs; i++) out.push(runOnce(fixtureText, hl, strategy, memoizeStable))
+  for (let i = 0; i < runs; i++) {
+    out.push(runOnce(fixtureText, hl, strategy, memoizeStable, cachedBoundary))
+  }
   return { strategy, runs: out, summary: summarize(out) }
 }
 
@@ -421,7 +498,13 @@ function printSingle(
     const hitPct = total > 0 ? (med.cacheHits / total) * 100 : 0
     console.log(`cache              hits=${med.cacheHits}  misses=${med.cacheMisses}  hitrate=${fmt(hitPct, 1)}%`)
   }
-  console.log(`marked.lexer calls ${med.lexCalls}`)
+  // The gap between the two is the token memo's whole contribution: requests
+  // are what the render path asked for, real is what actually reached marked.
+  const perFrame = med.realLexCalls / Math.max(1, med.snapshotCount)
+  console.log(
+    `marked.lexer       ${med.lexCalls} requested, ${med.realLexCalls} real ` +
+      `(${fmt(perFrame)}/frame, boundary lex ${args.cachedBoundary ? 'via cachedLexer — as shipped' : 'direct (pre-memo shape)'})`,
+  )
   console.log(`output bytes       ${med.formattedChars}`)
 }
 
@@ -435,7 +518,7 @@ function printCompare(
   console.log(`highlight          ${highlight ? 'on (cli-highlight)' : 'off'}`)
   console.log('')
   const baselineMs = results.find(r => r.strategy === 'status-quo')!.summary.median.totalMs
-  const header = ['strategy', 'total ms (med)', 'p95 ms', 'hl calls', 'hl chars', 'speedup', 'cache hit%']
+  const header = ['strategy', 'total ms (med)', 'p95 ms', 'hl calls', 'hl chars', 'real lex/frame', 'speedup', 'cache hit%']
   const rows: string[][] = [header]
   for (const r of results) {
     const m = r.summary.median
@@ -448,6 +531,7 @@ function printCompare(
       fmt(m.perSnapshotMsP95, 3),
       String(m.highlightCalls),
       String(m.highlightChars),
+      fmt(m.realLexCalls / Math.max(1, m.snapshotCount)),
       `${fmt(speedup, 2)}×`,
       hitPct,
     ])
@@ -481,7 +565,15 @@ async function main(): Promise<void> {
 
   if (args.compare) {
     const results = STRATEGIES.map(s =>
-      runStrategy(fixture.text, highlight, s, args.warmup, args.runs, !args.noMemo),
+      runStrategy(
+        fixture.text,
+        highlight,
+        s,
+        args.warmup,
+        args.runs,
+        !args.noMemo,
+        args.cachedBoundary,
+      ),
     )
     if (args.json) {
       process.stdout.write(JSON.stringify({ fixture: fixture.name, highlight: !!highlight, results }, null, 2) + '\n')
@@ -491,7 +583,15 @@ async function main(): Promise<void> {
     return
   }
 
-  const result = runStrategy(fixture.text, highlight, args.strategy, args.warmup, args.runs, !args.noMemo)
+  const result = runStrategy(
+    fixture.text,
+    highlight,
+    args.strategy,
+    args.warmup,
+    args.runs,
+    !args.noMemo,
+    args.cachedBoundary,
+  )
   if (args.json) {
     process.stdout.write(JSON.stringify({ fixture: fixture.name, highlight: !!highlight, ...result }, null, 2) + '\n')
     return

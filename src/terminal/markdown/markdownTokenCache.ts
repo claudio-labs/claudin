@@ -23,13 +23,46 @@ function hasMarkdownSyntax(s: string): boolean {
   return MD_SYNTAX_RE.test(s.length > 500 ? s.slice(0, 500) : s)
 }
 
+// One-slot memo for the same string lexed twice within one frame.
+// StreamingMarkdown lexes the unstable suffix at Markdown.tsx:204 purely to
+// find the segment cut point, throws those tokens away, then renders that same
+// suffix through <Markdown transient>, which arrives back here and lexes it
+// again — `transient` skips only the LRU insert, not the lex.
+//
+// Measured over a simulated 20 KB reply at the real 16 ms frame cadence: the
+// two strings are identical on 98.9% (prose) to 99.9% (code) of frames, the
+// misses being exactly the frames where the boundary advances.
+//
+// What the repo's bench reproduces is the call count — real lexer invocations
+// per frame drop from ~1.98 to ~1.03 with byte-identical output
+// (`scripts/bench/perf/streaming-bench.ts`; `--direct-boundary` is the
+// before-side). It does NOT resolve a wall-clock win, because its fixtures are
+// 1-1.5 KB over fewer than 60 frames while the saving scales with size ×
+// frame count. Don't quote a millisecond figure from it.
+//
+// Deliberately NOT the LRU above: streaming strings are unique per frame, so
+// inserting them is what the `transient` flag exists to prevent.
+let lastContent: string | null = null
+let lastTokens: Token[] | null = null
+
+function remember(content: string, tokens: Token[]): Token[] {
+  lastContent = content
+  lastTokens = tokens
+  return tokens
+}
+
 export function cachedLexer(content: string, transient = false): Token[] {
+  // Checked before everything else, including the plain-text fast path, since
+  // that path still rebuilds a token object on every call.
+  if (lastContent === content && lastTokens !== null) {
+    return lastTokens
+  }
   // Fast path: plain text with no markdown syntax → single paragraph token.
   // Skips marked.lexer's full GFM parse (~3ms on long content). Not cached —
   // reconstruction is a single object allocation, and caching would retain
   // 4× content in raw/text fields plus the hash key for zero benefit.
   if (!hasMarkdownSyntax(content)) {
-    return [
+    return remember(content, [
       {
         type: 'paragraph',
         raw: content,
@@ -42,7 +75,7 @@ export function cachedLexer(content: string, transient = false): Token[] {
           },
         ],
       } as Token,
-    ]
+    ])
   }
   const key = hashContent(content)
   const hit = tokenCache.get(key)
@@ -51,7 +84,7 @@ export function cachedLexer(content: string, transient = false): Token[] {
     // an early message evicts the very item you're looking at).
     tokenCache.delete(key)
     tokenCache.set(key, hit)
-    return hit
+    return remember(content, hit)
   }
   const tokens = marked.lexer(content)
   // Transient content (streaming suffix/segments) is a unique string on
@@ -59,7 +92,7 @@ export function cachedLexer(content: string, transient = false): Token[] {
   // reusable history entries out of the LRU during a long stream, forcing
   // re-parses when the user scrolls back. Lex without caching.
   if (transient) {
-    return tokens
+    return remember(content, tokens)
   }
   if (tokenCache.size >= TOKEN_CACHE_MAX) {
     // LRU-ish: drop oldest. Map preserves insertion order.
@@ -67,7 +100,7 @@ export function cachedLexer(content: string, transient = false): Token[] {
     if (first !== undefined) tokenCache.delete(first)
   }
   tokenCache.set(key, tokens)
-  return tokens
+  return remember(content, tokens)
 }
 
 /** Test-only accessor for the module-private tokenCache size. */
@@ -78,4 +111,6 @@ export function __TEST_ONLY_getTokenCacheSize(): number {
 /** Test-only reset for tokenCache. */
 export function __TEST_ONLY_resetTokenCache(): void {
   tokenCache.clear()
+  lastContent = null
+  lastTokens = null
 }
