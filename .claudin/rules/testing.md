@@ -427,6 +427,22 @@ regression signal. (Older list — `ProviderManager.test.tsx` Ollama/Vertex TTY
 timeouts, `memory-turn-by-turn-bench` RSS flake — no longer reproduces on
 2026-07 main; keep it in mind if they resurface.)
 
+That comparison has to be **in the same directory**, and it has to be the full
+suite, because a third class of failure hides between the two: a test that reads
+ambient state resolved from the *developer's own* `~/.claudin/settings.json`.
+`apiMicrocompact.test.ts` asserted profile-gated behaviour without pinning the
+profile, so `getCacheProfile()` ran in `auto` mode and went through
+`tryGetActiveProvider()` — passing or failing on whether some earlier file in
+the run had loaded a real provider. Six scripts under `scripts/bench/tokens/`
+do exactly that. It reproduced as a **pair** (`bun test <one of them>
+<the victim>`) on main as well, so it was never a regression; what changed was
+the file order, when the 2026-08-16 `scripts/` reorg moved those files into
+subdirectories. CI never saw any of it, having no settings file to load.
+**How to apply:** a test whose subject reads a global resolver — cache profile,
+active provider, effort — must pin it in `beforeAll` and restore in `afterAll`,
+the way `cacheProfile.test.ts` does. And when a suite is green in CI but red on
+one machine, suspect the machine's config before the code.
+
 **Typecheck baseline:** `main` reaches **zero** `error TS` since #87, which
 retired the fork's ~107 `TS2307` by adding a `.d.ts` next to each absent module
 — see [build-system.md](build-system.md) for the import trap that creates. The
