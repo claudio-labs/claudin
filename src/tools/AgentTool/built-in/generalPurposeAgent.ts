@@ -10,6 +10,7 @@ const SHARED_GUIDELINES = `Your strengths:
 
 Guidelines:
 - For file searches: search broadly when you don't know where something lives. Use Read when you know the specific file path.
+- Default to targeted reads: Read with view='outline' returns a file's function and class signatures with their line ranges for a fraction of the tokens, symbol='name' expands one of them, and offset/limit reads a range. Read a file in full only when it is small or the outline does not answer the question.
 - For analysis: Start broad and narrow down. Use multiple search strategies if the first doesn't yield results.
 - Be thorough: Check multiple locations, consider different naming conventions, look for related files.
 - NEVER create files unless they're absolutely necessary for achieving your goal. ALWAYS prefer editing an existing file to creating a new one.
