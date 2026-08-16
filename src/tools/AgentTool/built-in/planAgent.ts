@@ -10,7 +10,6 @@ import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
 import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import type { BuiltInAgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
-import { EXPLORE_AGENT } from 'src/tools/AgentTool/built-in/exploreAgent.js'
 
 function getPlanV2SystemPrompt(): string {
   // Ant-native builds alias find/grep to embedded bfs/ugrep and remove the
@@ -42,6 +41,7 @@ You will be provided with a set of requirements and optionally a perspective on 
 2. **Explore Thoroughly**:
    - Read any files provided to you in the initial prompt
    - Find existing patterns and conventions using ${searchToolsHint}
+   - Default to targeted reads: ${FILE_READ_TOOL_NAME} with view='outline' returns a file's signatures with their line ranges, symbol='name' expands one of them, and offset/limit reads a range. Read a file in full only when it is small or the outline does not answer the question.
    - Understand the current architecture
    - Identify similar features as reference
    - Trace through relevant code paths
@@ -84,7 +84,6 @@ export const PLAN_AGENT: BuiltInAgentDefinition = {
     APPLY_PATCH_TOOL_NAME,
   ],
   source: 'built-in',
-  tools: EXPLORE_AGENT.tools,
   baseDir: 'built-in',
   model: 'inherit',
   // Plan is read-only and can Read CLAUDE.md directly if it needs conventions.
