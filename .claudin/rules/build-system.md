@@ -114,6 +114,71 @@ replaces with stubs. And when a typecheck drop looks too good to be true, check
 for `TS1xxx` first — one syntax error in a generated `.d.ts` makes tsc skip
 semantic analysis for the whole program and report near-zero.
 
+## What the `--compile` binary is NOT
+
+`CLAUDIN_COMPILE=1` produces `bin/claudin.exe` via `bun --compile`, and that
+binary — not the Node bundle — is what a user runs. `install.cjs` hardlinks it
+over the wrapper package's bin stub, so `claudin` execs it directly;
+`cli-wrapper.cjs` states this at its own top (*"bin/claudin.exe, so this file is
+never invoked"*). Four consequences, each measured on the shipped binary, each
+of which has already produced code that reads as if it worked. A fifth entry
+below corrects one of them, because the first measurement was taken wrong:
+
+- **`bin/claudin` does not run.** Every knob in the launcher's heap-bump
+  re-exec — `--max-old-space-size`, `--expose-gc`, the jemalloc `LD_PRELOAD`,
+  the `MALLOC_*_THRESHOLD_` tuning — is absent from the binary's environment.
+  The launcher is not dead code (it still governs `node dist/cli.mjs`), but
+  nothing written there reaches the default install.
+- **`UV_THREADPOOL_SIZE` DOES size Bun's I/O pool.** An earlier revision of this
+  file said it was inert. That was measured on an *idle* process, where no pool
+  thread exists at any setting — the pool is created **lazily, on first file
+  I/O**. Under load it plainly works: `2`→13 threads, `4`→15, `8`→19, `24`→28
+  (the value `1` is ignored). Default size is `nproc`, so a 16-core box runs ~14
+  of them and the process shows ~26 threads in total. They cost **~4 MB RSS each**
+  (mimalloc per-thread arenas) and **zero CPU** — they are idle, because the tools
+  spawn child processes (`rg`) rather than queueing on a pool. Capping at `4` saved
+  ~50 MB of RSS with *no* CPU change across five reps; capping at `2` made
+  concurrent I/O ~1.8× slower. `BUN_JSC_numberOfGCMarkers=N` works the same way
+  and yields `N-1` `HeapHelper` threads (~410 KB each).
+- **Neither can be set from inside the process.** Both are read at VM init,
+  before any of our JS runs, so `process.env.X = …` is inert — and so is the
+  compiled binary's `.env` autoload (`autoloadDotenv` defaults to **true**,
+  `bun-types/bun.d.ts:3036`), which lands too late for threads. Since the binary
+  has no launcher to export them, a **re-exec of self** is the only lever it has —
+  and that was measured and **rejected**. Bun exposes no `process.execve`
+  (verified `undefined` on 1.3.11), so the parent cannot replace its own image:
+  it stays resident blocked in `spawnSync` for the whole session. Measured
+  parent 65 MB **plus** child 70 MB against 70 MB un-re-exec'd, which more than
+  erases the ~50 MB the cap saves. `bin/claudin:212-218` documents the same
+  trade from the other side — on the Node path `execve` exists, so there the
+  re-exec is free and the launcher takes it. Do not re-propose the cap for the
+  binary until Bun ships `execve`.
+- **`globalThis.gc` does not exist under Bun** unless started with
+  `bun --expose-gc`, which nothing does. Use `hintGc()` from
+  `src/shared/proc/gc.ts`; it picks `Bun.gc(sync)` or the exposed global per
+  runtime. A bare `globalThis.gc?.()` was a silent no-op on the binary at both
+  of the sites that used it, one of which exists to release ~250 MB after a
+  wide subagent fan-out. Note the trap when verifying this class of fix: almost
+  every `profile:*` script runs `bun --expose-gc`, which makes the global exist
+  and hides the bug — measure with a plain `bun run`.
+- **A worker cannot be loaded from a file.** The worker's source is not in the
+  binary's embedded VFS, so `new Worker(new URL('./w.ts', import.meta.url))`
+  hangs with no error, and `node:worker_threads` fails with
+  `ModuleNotFound resolving "/$bunfs/root/w.ts"` — both work fine under plain
+  `bun`, so this only shows up after `--compile`. Adding the worker as a second
+  entrypoint does not help. What works is a worker whose source is an inlined
+  string, loaded through a Blob or `data:` URL; that path measured 3.5× on four
+  workers with ~3 ms of spawn overhead and free structured-clone of 1 MB.
+  This is the same VFS limitation as the static-`require` rule in
+  [typescript-patterns.md](typescript-patterns.md).
+
+No such pool exists today, deliberately. The obvious candidate was `scanSymbols`,
+and it does not clear the bar: `SYMBOLS_MAX_FILES = 50`
+(`src/tools/GrepTool/symbolsOutput.ts`) caps a symbols-mode Grep at 50 files and
+the scanner measures **20.1 MB/s (0.413 ms/file)** over `src/`, so the worst case
+is ~21 ms and a pool would save ~15 ms of it. Re-open the question if that cap
+moves, not before.
+
 ## Feature Flags
 
 Build-time flags live in `featureFlags` in `scripts/build/build.ts`. Most

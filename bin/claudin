@@ -100,6 +100,17 @@ if (process.env[HEAP_BUMP_SENTINEL] && '_CLAUDIN_LD_PRELOAD_ORIG' in process.env
   delete process.env._CLAUDIN_LD_PRELOAD_ORIG
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// SCOPE: everything below governs the NODE path only — `node dist/cli.mjs`,
+// which is what `bun run dev` and the npm wrapper's Node fallback launch.
+// The default install is the native binary: `install.cjs` hardlinks
+// `bin/claudin.exe` (built by `bun --compile`) over the package's bin stub,
+// so `claudin` execs that binary directly and NONE of this file runs for it
+// — `cli-wrapper.cjs` says as much at its top. Anything that has to hold for
+// real users belongs in the source, not here; `.claudin/rules/build-system.md`
+// lists which of these knobs survive the binary and which are inert under it.
+// ─────────────────────────────────────────────────────────────────────────
+
 // Fast-path flags exit within milliseconds (cli.tsx short-circuits them
 // before loading the bundle proper) — the heap bump / allocator re-exec
 // would double their latency for zero benefit. Skip it. Worst case for a
@@ -181,6 +192,13 @@ if (
     // typical multi-tool dispatches without the overhead of unbounded
     // pools. Costs ~6 idle threads at ~100 KB native each (~600 KB).
     // Respects pre-existing UV_THREADPOOL_SIZE if user set their own.
+    // This block is the Node path, so this is libuv's pool. Bun honors the
+    // same variable for its OWN I/O pool (measured: 4→15 threads, 24→28), but
+    // it never sees this file, and it cannot cap itself: the variable is read
+    // at VM init, and Bun has no process.execve to re-exec cheaply — see the
+    // execve note below, and .claudin/rules/build-system.md. An earlier comment
+    // here claimed Bun ignored the variable outright; that was measured on an
+    // idle process, where the pool has no threads at any setting.
     UV_THREADPOOL_SIZE: process.env.UV_THREADPOOL_SIZE || '10',
     ...(ldPreload ? { LD_PRELOAD: ldPreload } : {}),
     // Remember the pre-injection value so the re-exec'd child can restore

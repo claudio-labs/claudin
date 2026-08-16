@@ -3,7 +3,8 @@
 > Durable coding gotchas now live in `.claudin/rules/` (auto-loaded by path):
 > **ink-tui.md** (renderer), **cache.md** (prompt/tool-result cache), **testing.md**
 > (mocking leaks + known flakes), **agent-safety.md** (sub-agent/worktree hazards,
-> always-on), **build-system.md** + **typescript-patterns.md** (feature()/compile).
+> always-on), **build-system.md** + **typescript-patterns.md** (feature()/compile),
+> **git-conventions.md** (commit/PR title format, always-on).
 > This index holds project state, decisions, and references that aren't coding rules.
 
 ## Conventions
