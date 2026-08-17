@@ -257,6 +257,14 @@ reverse p50 1 / p90 9. Those are small, informative, and already answered by a
 single `Grep` — either the import block of the file itself, or one exact-string
 search for its specifier.
 
+> **Corrected 2026-08-17.** The paragraph above overstates the result. It is true
+> of *closures*, and false of **bounded-depth** traversal, which is what the two
+> sibling implementations actually compute and which this study had not measured.
+> Directed depth 2 is a genuine middle ground — 272–286 distinct answer sizes, p50
+> 6–22 files, p90 answer ~1k tokens — so "there is nothing in between" was wrong.
+> The collapse into the core happens at **undirected** depth 3 (p50 2,089). Full
+> table and the effect on Lane A: [`prior-art.md` §2](prior-art.md#2-the-correction--bounded-depth-is-not-a-closure).
+
 ### Verdict — Camada 2
 
 Not viable, and the failure is deeper than the three operations. `impact_of` is
@@ -266,6 +274,11 @@ information in either direction**. The informative residue in both directions is
 the direct edges, which is one `Grep`. No implementation quality changes any of
 this — it is a property of a single-entrypoint bundled monolith, not of a parser
 or a database.
+
+**Scope of that verdict, after the correction above:** it holds for `impact_of` as
+specified (a closure), for the SQLite symbol table, and for the ranked global map.
+It does **not** cover a bounded-depth directed query, which
+[`prior-art.md`](prior-art.md) reinstates as an open question decided by Gate 1.
 
 ## 5. What survives: verify the map, don't generate it
 
@@ -307,13 +320,18 @@ error, and a decision for whoever owns that rule.
   a "focused neighbourhood" is either the whole core (~22k tokens, no signal) or
   the direct edges (one `Grep`). Nothing in between exists on this graph. The
   flag, the tool and Phases 1–5 are not worth writing.
+  **Superseded — see [`prior-art.md` §2](prior-art.md#2-the-correction--bounded-depth-is-not-a-closure).**
+  Lane A is partially reinstated in a simpler form: bounded directed depth ≤2, no
+  ranking at all. What stays withdrawn is the PageRank and the personalization
+  vector, not the idea of a focused neighbourhood.
 - Lane B (head injection) is unaffected — still rejected, now with a token budget
   measured against it as well as a ranking failure.
 - Camada 2 is recorded as rejected on measurement, so the SQLite symbol graph
   does not come back a third time without new topology.
-- The net result across both studies: **no graph-based repo index is worth
-  building on this repository.** What survives is the map verifier in §5, which is
-  not a graph and not an index.
+- The net result across these studies: **no ranked, global or closure-based repo
+  index is worth building on this repository.** What survives is the map verifier
+  in §5 (not a graph, not an index) and one open question — bounded directed depth
+  ≤2, unresolved until Gate 1 runs.
 
 ## 7. Not measured
 

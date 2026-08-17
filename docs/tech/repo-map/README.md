@@ -18,6 +18,12 @@
 > direction, which is what withdraws Lane A. What survives both studies is a
 > **map verifier** that costs zero prompt tokens
 > ([`two-layer-viability.md` §5](two-layer-viability.md#5-what-survives-verify-the-map-dont-generate-it)).
+>
+> **Prior art, 2026-08-17:** three sibling implementations were audited —
+> [`prior-art.md`](prior-art.md). One of them **corrected this study**:
+> bounded-depth traversal is not a closure, and at directed depth ≤2 it is not
+> degenerate here, so Lane A is partially reinstated **without any ranking**.
+> Four ideas are worth taking; none of the three publishes an honest measured win.
 
 ## 1. Why this doc exists
 
@@ -273,6 +279,18 @@ is exactly what the gate is for.
 > between on this graph, so the personalization vector has nothing to
 > discriminate. Phases 1–5 and the flag are not worth writing. Kept in place
 > because the reasoning that led here is the useful part.
+>
+> **PARTIALLY REINSTATED, same day.** The withdrawal above is right about
+> closures and wrong about neighbourhoods, which are not the same query.
+> [`prior-art.md` §2](prior-art.md#2-the-correction--bounded-depth-is-not-a-closure)
+> measures bounded depth: **directed depth 2 gives 272–286 distinct answer sizes,
+> p50 6–22 files, p90 ~1k tokens** — informative, and not one `Grep`. The collapse
+> into the core is at *undirected* depth 3. So what stays dead is the **ranking**
+> — PageRank, betweenness, the personalization vector — and what survives is a
+> neighbourhood where **depth is the budget and there is no ranking at all**. That
+> is a much smaller build than the one designed above: no `pagerank.ts`, no focus
+> vector, no score tie-break. Gate 1 (§11) still decides it and is still
+> unmeasured.
 
 ### Lane B — global map injected into the prompt head → **do not build**
 
@@ -451,6 +469,7 @@ module that ships.
 
 - [`measurements.md`](measurements.md) — the numbers, in full
 - [`two-layer-viability.md`](two-layer-viability.md) — the two-layer variant, measured
+- [`prior-art.md`](prior-art.md) — three sibling implementations audited; the bounded-depth correction
 - [`scripts/bench/repomap/`](../../../scripts/bench/repomap/) — the probe
 - `.claudin/memory/team/repo-map-rejected-orientation-measured.md` — the 2026-08-07 audit
 - `.claudin/memory/team/dev-tooling-token-roadmap.md` — where the tokens actually are (`Read` at 59.7% of tool-result chars)
