@@ -8,60 +8,10 @@
 //
 // Usage: bun scripts/bench/repomap/08-impact-of-answer-size.ts
 
-import { readFileSync } from 'fs'
-import { dirname, join, resolve, relative } from 'path'
-import { ROOT, gitFiles } from './lib.ts'
+import { ROOT, buildImportGraph, gitFiles, moduleFiles } from './lib.ts'
 
-const SPEC_RE =
-  /(?:import|export)\s[^'"`;]*?from\s*['"]([^'"]+)['"]|(?:import|require)\s*\(\s*['"]([^'"]+)['"]\s*\)|import\s*['"]([^'"]+)['"]/g
-
-const all = gitFiles(ROOT)
-const tsFiles = all.filter(p => /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/.test(p))
-const fileSet = new Set(tsFiles)
-const EXTS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.d.ts']
-
-function resolveSpec(fromFile: string, spec: string): string | null {
-  let base: string
-  if (spec.startsWith('src/')) base = spec
-  else if (spec.startsWith('.')) base = relative(ROOT, resolve(ROOT, dirname(fromFile), spec))
-  else return null
-  base = base.replace(/\\/g, '/')
-  const noExt = base.replace(/\.(js|jsx|mjs|cjs)$/, '')
-  const candidates = [base, ...EXTS.map(e => `${noExt}${e}`), ...EXTS.map(e => `${noExt}/index${e}`)]
-  for (const c of candidates) if (fileSet.has(c)) return c
-  return null
-}
-
-// forward edges: importer -> imported
-const fwd = new Map<string, Set<string>>()
-for (const p of tsFiles) {
-  let source: string
-  try {
-    source = readFileSync(join(ROOT, p), 'utf8')
-  } catch {
-    continue
-  }
-  const acc = new Set<string>()
-  SPEC_RE.lastIndex = 0
-  let m: RegExpExecArray | null
-  while ((m = SPEC_RE.exec(source))) {
-    const spec = m[1] ?? m[2] ?? m[3]
-    if (!spec) continue
-    const target = resolveSpec(p, spec)
-    if (target === null || target === p) continue
-    acc.add(target)
-  }
-  fwd.set(p, acc)
-}
-
-// reverse edges: imported -> importers
-const rev = new Map<string, Set<string>>()
-for (const [from, tos] of fwd) {
-  for (const to of tos) {
-    if (!rev.has(to)) rev.set(to, new Set())
-    rev.get(to)!.add(from)
-  }
-}
+const tsFiles = moduleFiles(gitFiles(ROOT))
+const { fwd, rev } = buildImportGraph(ROOT, tsFiles, { skipCommented: false })
 
 function closure(seed: string): Set<string> {
   const seen = new Set<string>()

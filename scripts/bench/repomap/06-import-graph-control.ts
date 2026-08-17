@@ -1,68 +1,12 @@
-import { existsSync, readFileSync } from 'fs'
-import { dirname, join, resolve, relative } from 'path'
-import { ROOT, gitFiles, rankFiles, type RepoGraph } from './lib.ts'
-import { detectOutlineLangFromPath } from '../../../src/tools/shared/codeOutline/detectLang.js'
-import { maskSourceForLang } from '../../../src/tools/shared/codeOutline/scanSymbols.js'
+import { join } from 'path'
+import { ROOT, buildImportGraph, gitFiles, moduleFiles, rankFiles, type RepoGraph } from './lib.ts'
 
-// Real module graph: parse import/require/export-from specifiers.
-const SPEC_RE =
-  /(?:import|export)\s[^'"`;]*?from\s*['"]([^'"]+)['"]|(?:import|require)\s*\(\s*['"]([^'"]+)['"]\s*\)|import\s*['"]([^'"]+)['"]/g
-
-const all = gitFiles(ROOT)
-const tsFiles = all.filter(p => /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/.test(p))
-const fileSet = new Set(tsFiles)
-
-const EXTS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.d.ts']
-
-function resolveSpec(fromFile: string, spec: string): string | null {
-  let base: string
-  if (spec.startsWith('src/')) base = spec
-  else if (spec.startsWith('.')) base = relative(ROOT, resolve(ROOT, dirname(fromFile), spec))
-  else return null // bare package
-  base = base.replace(/\\/g, '/')
-  // strip a .js extension that TS/ESM source writes for a .ts file
-  const noExt = base.replace(/\.(js|jsx|mjs|cjs)$/, '')
-  const candidates = [
-    base,
-    ...EXTS.map(e => `${noExt}${e}`),
-    ...EXTS.map(e => `${noExt}/index${e}`),
-  ]
-  for (const c of candidates) if (fileSet.has(c)) return c
-  return null
-}
-
-const edges = new Map<string, Map<string, number>>()
-let specs = 0
-let resolved = 0
-let bare = 0
-for (const p of tsFiles) {
-  const lang = detectOutlineLangFromPath(p)
-  let source: string
-  try {
-    source = readFileSync(join(ROOT, p), 'utf8')
-  } catch {
-    continue
-  }
-  const masked = lang ? (maskSourceForLang(source, lang) ?? source) : source
-  // masked blanks string contents, so parse specifiers off the RAW source
-  const acc = new Map<string, number>()
-  SPEC_RE.lastIndex = 0
-  let m: RegExpExecArray | null
-  while ((m = SPEC_RE.exec(source))) {
-    const spec = m[1] ?? m[2] ?? m[3]
-    if (!spec) continue
-    specs++
-    const target = resolveSpec(p, spec)
-    if (target === null) {
-      bare++
-      continue
-    }
-    if (target === p) continue
-    resolved++
-    acc.set(target, (acc.get(target) ?? 0) + 1)
-  }
-  if (acc.size > 0) edges.set(p, acc)
-}
+// Real module graph: parse import/require/export-from specifiers. The builder
+// lives in lib.ts so 10 measures the same graph this control ranks.
+const tsFiles = moduleFiles(gitFiles(ROOT))
+const { counts: edges, specs, resolved, unresolved: bare } = buildImportGraph(ROOT, tsFiles, {
+  skipCommented: false,
+})
 
 const nodes = [...tsFiles].sort()
 const graph: RepoGraph = { nodes, edges }

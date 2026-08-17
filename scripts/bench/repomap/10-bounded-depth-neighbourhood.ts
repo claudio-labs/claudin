@@ -18,74 +18,17 @@
 //
 // Usage: bun scripts/bench/repomap/10-bounded-depth-neighbourhood.ts
 
-import { readFileSync } from 'fs'
-import { dirname, join, resolve, relative } from 'path'
-import { ROOT, gitFiles } from './lib.ts'
+import { ROOT, ball, buildImportGraph, gitFiles, moduleFiles } from './lib.ts'
 
-const SPEC_RE =
-  /(?:import|export)\s[^'"`;]*?from\s*['"]([^'"]+)['"]|(?:import|require)\s*\(\s*['"]([^'"]+)['"]\s*\)|import\s*['"]([^'"]+)['"]/g
-
-const all = gitFiles(ROOT)
-const tsFiles = all.filter(p => /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/.test(p))
+const tsFiles = moduleFiles(gitFiles(ROOT))
 const fileSet = new Set(tsFiles)
-const EXTS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.d.ts']
+const { fwd, rev } = buildImportGraph(ROOT, tsFiles, { skipCommented: false })
 
-function resolveSpec(fromFile: string, spec: string): string | null {
-  let base: string
-  if (spec.startsWith('src/')) base = spec
-  else if (spec.startsWith('.')) base = relative(ROOT, resolve(ROOT, dirname(fromFile), spec))
-  else return null
-  base = base.replace(/\\/g, '/')
-  const noExt = base.replace(/\.(js|jsx|mjs|cjs)$/, '')
-  const candidates = [base, ...EXTS.map(e => `${noExt}${e}`), ...EXTS.map(e => `${noExt}/index${e}`)]
-  for (const c of candidates) if (fileSet.has(c)) return c
-  return null
-}
+const size = (seed: string, depth: number, adj: Array<Map<string, Set<string>>>): number =>
+  ball(seed, depth, adj).size
 
-const fwd = new Map<string, Set<string>>()
-const rev = new Map<string, Set<string>>()
-for (const p of tsFiles) {
-  let source: string
-  try {
-    source = readFileSync(join(ROOT, p), 'utf8')
-  } catch {
-    continue
-  }
-  SPEC_RE.lastIndex = 0
-  let m: RegExpExecArray | null
-  while ((m = SPEC_RE.exec(source))) {
-    const spec = m[1] ?? m[2] ?? m[3]
-    if (!spec) continue
-    const target = resolveSpec(p, spec)
-    if (target === null || target === p) continue
-    if (!fwd.has(p)) fwd.set(p, new Set())
-    fwd.get(p)!.add(target)
-    if (!rev.has(target)) rev.set(target, new Set())
-    rev.get(target)!.add(p)
-  }
-}
-
-/** Nodes within exactly `depth` hops of `seed`, following `adj`. Excludes seed. */
-function ball(seed: string, depth: number, adj: Array<Map<string, Set<string>>>): number {
-  const seen = new Set<string>([seed])
-  let frontier = [seed]
-  for (let d = 0; d < depth; d++) {
-    const next: string[] = []
-    for (const cur of frontier) {
-      for (const a of adj) {
-        for (const n of a.get(cur) ?? []) {
-          if (seen.has(n)) continue
-          seen.add(n)
-          next.push(n)
-        }
-      }
-    }
-    frontier = next
-    if (frontier.length === 0) break
-  }
-  return seen.size - 1
-}
-
+// Prices the answer as a bare LIST OF PATHS — the cheapest product this
+// neighbourhood could be. 11 measures the rendered-signature price instead.
 const tok = (n: number) => Math.ceil((n * 34) / 4) // ~34 chars per repo-relative path
 const pct = (arr: number[], p: number) => arr[Math.floor((arr.length - 1) * p)]!
 
@@ -102,7 +45,7 @@ console.log('(mode = the single most common size; share = how many files return 
 for (const [label, adj] of DIRECTIONS) {
   console.log(`${label}:`)
   for (const depth of [1, 2, 3]) {
-    const sizes = tsFiles.map(f => ball(f, depth, adj))
+    const sizes = tsFiles.map(f => size(f, depth, adj))
     const sorted = [...sizes].sort((a, b) => a - b)
     const hist = new Map<number, number>()
     for (const s of sizes) hist.set(s, (hist.get(s) ?? 0) + 1)
@@ -114,7 +57,7 @@ for (const [label, adj] of DIRECTIONS) {
         `max ${String(pct(sorted, 1)).padStart(5)}  ` +
         `| mode ${String(modeSize).padStart(5)} shared by ${((modeCount / sizes.length) * 100).toFixed(1).padStart(5)}% ` +
         `| ${String(distinct).padStart(4)} distinct sizes ` +
-        `| p90 answer ~${tok(pct(sorted, 0.9))} tok`,
+        `| p90 as a path list ~${tok(pct(sorted, 0.9))} tok`,
     )
   }
   console.log()
@@ -139,8 +82,8 @@ console.log(
   'churn  crg d2(undir)  capped  cg-mcp d3(rev)  capped  file',
 )
 for (const [p, n] of [...churn.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10)) {
-  const crg = ball(p, 2, [fwd, rev])
-  const mcp = ball(p, 3, [rev])
+  const crg = size(p, 2, [fwd, rev])
+  const mcp = size(p, 3, [rev])
   console.log(
     `${String(n).padStart(5)}  ${String(crg).padStart(12)}  ` +
       `${(crg > 500 ? 'YES' : 'no').padStart(6)}  ${String(mcp).padStart(14)}  ` +

@@ -24,6 +24,25 @@
 > bounded-depth traversal is not a closure, and at directed depth ≤2 it is not
 > degenerate here, so Lane A is partially reinstated **without any ranking**.
 > Four ideas are worth taking; none of the three publishes an honest measured win.
+>
+> **Repriced, same day:** the number that reinstated it — *"p90 ~1k tokens"* —
+> priced the answer as a **list of paths**, not as the rendered signatures this
+> doc's own §8 describes. Measured, the two units differ by **16–22×**
+> ([`measurements.md` §8](measurements.md#8-the-neighbourhood-repriced-2026-08-17)),
+> putting forward depth 2 at 22.6k tokens p90 and 33.9k–69.3k on the files people
+> actually edit. What is left of Lane A is a **path list**, and whether that beats
+> one `Grep` is the offline gate the next round runs. The import graph itself was
+> audited in the same pass and came back clean (§8.4–8.5).
+>
+> **GATE 1 RAN, AND FAILED — the study is closed.**
+> [`measurements.md` §9](measurements.md#9-gate-1-answered-offline-2026-08-17)
+> scores every arm against 96 real sessions: forward depth 2 has a **median
+> recall of zero** and loses to `ls` of the seed's own directory on every axis.
+> The two signals that do work — sibling files and direct importers — are already
+> answerable with `Glob` and `Grep`. **No lane survives.** What remains worth
+> building is the map verifier
+> ([`two-layer-viability.md` §5](two-layer-viability.md#5-what-survives-verify-the-map-dont-generate-it)),
+> which is not an index.
 
 ## 1. Why this doc exists
 
@@ -291,6 +310,33 @@ is exactly what the gate is for.
 > is a much smaller build than the one designed above: no `pagerank.ts`, no focus
 > vector, no score tie-break. Gate 1 (§11) still decides it and is still
 > unmeasured.
+>
+> **NARROWED TO A PATH LIST, 2026-08-17.** The "p90 ~1k tokens" above is the
+> answer priced as bare repo-relative paths. Rendered as the definition
+> signatures this section specifies, the same neighbourhood measures **5,728
+> tokens p50 and 22,639 p90** forward, **791 / 16,716** reverse — 16–22× the
+> quoted figure, and at p90 the same price as the whole core this lane was
+> withdrawn for costing. On the churn leaders it is 33.9k–69.3k
+> ([`measurements.md` §8.2–8.3](measurements.md#82-the-two-units-over-the-same-graph-and-every-file-as-a-seed)).
+> The bullet above — *"Output is the focus's ranked neighbourhood rendered as
+> budgeted definition signatures"* — is therefore dead as written. The only
+> affordable form is the **list of files**, at 187 tokens p50 / 1,012 p90, which
+> is a far weaker product than the one Gate 1 was written for. Gate 1 still
+> decides it; the next round runs it **offline**, against the transcript corpus,
+> before any tool is built.
+>
+> **WITHDRAWN FOR GOOD, 2026-08-17.** Gate 1 ran offline over 96 real sessions
+> ([`measurements.md` §9](measurements.md#9-gate-1-answered-offline-2026-08-17)).
+> Seeded with the first file a session touched and scored against everything it
+> touched afterwards, **forward depth 2 recalls a median of 0.0%** and hits
+> nothing at all in 58.3% of sessions, while `same-dir` — one `ls`, no graph —
+> returns fewer files (12 vs 29) at triple the recall and 4.3× the recall per
+> token. The graph does beat chance (2.7% mean), so this is not a broken
+> implementation; it is a real signal that is worth less than a free one. The
+> marginal test is the useful part: adding **reverse depth 1** to `same-dir`
+> lifts median recall 33.3% → 50.0%, and reverse depth 1 is what a single `Grep`
+> for importers already answers. So the two things that work here are `Glob` and
+> `Grep`, and neither needs an index. Lane A is closed.
 
 ### Lane B — global map injected into the prompt head → **do not build**
 
@@ -430,6 +476,16 @@ path (`Grep` for importers plus outline reads), following
 `--input-format stream-json`, identical pacing, N ≥ 3, median, alternating arm
 order:
 
+> **ANSWERED 2026-08-17, offline, and it fails.** The live A/B described here was
+> never run, because it does not need to be: the question *"does the
+> neighbourhood contain what the session went on to touch"* is already recorded
+> in 96 local transcripts, and probe `14` scores it directly against four
+> baselines ([`measurements.md` §9](measurements.md#9-gate-1-answered-offline-2026-08-17)).
+> Forward depth 2 recalls a median of 0.0%; `same-dir` recalls 33.3% from fewer
+> files. A live A/B can only measure whether a tool that loses on the data
+> changes behaviour anyway, which is not a reason to build it. The table below is
+> kept as the design the gate would have used.
+
 | Metric | Target |
 |---|---|
 | Tool calls before the first `Edit` | −30% |
@@ -451,7 +507,7 @@ is the outcome the branch exists to make cheap.
 
 | Risk | Mitigation |
 |---|---|
-| Lane A is also just re-deriving what `Grep` already answers | Gate 1 is exactly this question, measured before the tool surface is built |
+| Lane A is also just re-deriving what `Grep` already answers | **Confirmed 2026-08-17.** Gate 1, run offline, found the signal that works is reverse depth 1 plus directory locality — `Grep` and `Glob`. The risk was the outcome. |
 | Import resolution misses the 21% and the graph quietly loses a subsystem | Phase 0 characterises the unresolved set before anything is built on it |
 | Defs-on-demand does not actually save the 88% | Phase 0 splits the timing first; if mask dominates, the saving evaporates and Phase 3 changes shape |
 | Someone deletes the common-name denylist as redundant with IDF | Dedicated test naming the `× 0.1` factor, as proposal v1 asks — the measured 1.04× collapse is why it is not redundant |

@@ -332,6 +332,12 @@ error, and a decision for whoever owns that rule.
   index is worth building on this repository.** What survives is the map verifier
   in §5 (not a graph, not an index) and one open question — bounded directed depth
   ≤2, unresolved until Gate 1 runs.
+  **Gate 1 ran on 2026-08-17 and the question is closed**
+  ([`measurements.md` §9](measurements.md#9-gate-1-answered-offline-2026-08-17)):
+  forward depth 2 recalls a median of 0.0% of what a session goes on to touch,
+  losing to one `ls` of the seed's directory. Drop the qualifier — **no repo
+  index of any shape is worth building here.** The map verifier in §5 is the only
+  thing left standing.
 
 ## 7. Not measured
 

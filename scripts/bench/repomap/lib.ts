@@ -1,6 +1,6 @@
 import { execFileSync } from 'child_process'
 import { readFileSync, statSync } from 'fs'
-import { join } from 'path'
+import { dirname, join, relative, resolve } from 'path'
 import { REPO_ROOT } from '../../repoRoot'
 import { detectOutlineLangFromPath } from '../../../src/tools/shared/codeOutline/detectLang.js'
 import {
@@ -435,4 +435,189 @@ export function fileBytes(root: string, p: string): number {
   } catch {
     return 0
   }
+}
+
+// --------------------------------------------------------------------------
+// import graph
+// --------------------------------------------------------------------------
+//
+// The real module graph, as opposed to the identifier graph above: parse
+// import/require/export-from specifiers and resolve them to tracked files.
+// Shared by 06 (the V5 control) and 10 (bounded-depth neighbourhoods), which
+// each carried their own copy until the comment filter had to be added in one
+// place rather than two.
+
+export const SPEC_RE =
+  /(?:import|export)\s[^'"`;]*?from\s*['"]([^'"]+)['"]|(?:import|require)\s*\(\s*['"]([^'"]+)['"]\s*\)|import\s*['"]([^'"]+)['"]/g
+
+export const MODULE_FILE_RE = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/
+const MODULE_EXTS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.d.ts']
+
+export function moduleFiles(all: string[]): string[] {
+  return all.filter(p => MODULE_FILE_RE.test(p))
+}
+
+/** Repo-relative target of `spec` as written in `fromFile`, or null. */
+export function resolveSpec(
+  fileSet: ReadonlySet<string>,
+  fromFile: string,
+  spec: string,
+): string | null {
+  let base: string
+  if (spec.startsWith('src/')) base = spec
+  else if (spec.startsWith('.')) base = relative(ROOT, resolve(ROOT, dirname(fromFile), spec))
+  else return null // bare package
+  base = base.replace(/\\/g, '/')
+  // strip a .js extension that TS/ESM source writes for a .ts file
+  const noExt = base.replace(/\.(js|jsx|mjs|cjs)$/, '')
+  const candidates = [
+    base,
+    ...MODULE_EXTS.map(e => `${noExt}${e}`),
+    ...MODULE_EXTS.map(e => `${noExt}/index${e}`),
+  ]
+  for (const c of candidates) if (fileSet.has(c)) return c
+  return null
+}
+
+export type UnresolvedReason = 'builtin' | 'bare' | 'relative-miss' | 'src-miss'
+
+export function classifyUnresolved(spec: string): UnresolvedReason {
+  if (spec.startsWith('node:') || spec.startsWith('bun:')) return 'builtin'
+  if (spec.startsWith('src/')) return 'src-miss'
+  if (spec.startsWith('.')) return 'relative-miss'
+  return 'bare'
+}
+
+export type SpecSite = { from: string; spec: string; line: number }
+
+export type ImportGraph = {
+  files: string[]
+  fileSet: Set<string>
+  /** file → target → occurrences */
+  counts: Map<string, Map<string, number>>
+  fwd: Map<string, Set<string>>
+  rev: Map<string, Set<string>>
+  specs: number
+  resolved: number
+  unresolved: number
+  unresolvedSites: SpecSite[]
+  /** matches dropped because the keyword sat in a comment (skipCommented only) */
+  commentedSites: SpecSite[]
+  /** files whose language has no mask, so the comment filter could not run */
+  unmaskable: number
+}
+
+/**
+ * `skipCommented` drops a match whose `import`/`export`/`require` keyword is
+ * blanked in `maskSourceForLang`'s copy — i.e. the statement sits inside a
+ * comment or a string. The specifier itself is read from the RAW source,
+ * because masking blanks string contents and the specifier is a string.
+ */
+export function buildImportGraph(
+  root: string,
+  files: string[],
+  opts: { skipCommented?: boolean } = {},
+): ImportGraph {
+  const skipCommented = opts.skipCommented === true
+  const fileSet = new Set(files)
+  const counts = new Map<string, Map<string, number>>()
+  const fwd = new Map<string, Set<string>>()
+  const rev = new Map<string, Set<string>>()
+  const unresolvedSites: SpecSite[] = []
+  const commentedSites: SpecSite[] = []
+  let specs = 0
+  let resolved = 0
+  let unresolved = 0
+  let unmaskable = 0
+
+  for (const p of files) {
+    let source: string
+    try {
+      source = readFileSync(join(root, p), 'utf8')
+    } catch {
+      continue
+    }
+    let masked: string | null = null
+    if (skipCommented) {
+      const lang = detectOutlineLangFromPath(p)
+      masked = lang === null ? null : maskSourceForLang(source, lang)
+      if (masked === null || masked.length !== source.length) {
+        masked = null
+        unmaskable++
+      }
+    }
+
+    const acc = new Map<string, number>()
+    SPEC_RE.lastIndex = 0
+    let m: RegExpExecArray | null
+    while ((m = SPEC_RE.exec(source))) {
+      const spec = m[1] ?? m[2] ?? m[3]
+      if (spec === undefined) continue
+      if (masked !== null && masked[m.index] !== source[m.index]) {
+        commentedSites.push({ from: p, spec, line: lineOf(source, m.index) })
+        continue
+      }
+      specs++
+      const target = resolveSpec(fileSet, p, spec)
+      if (target === null) {
+        unresolved++
+        unresolvedSites.push({ from: p, spec, line: lineOf(source, m.index) })
+        continue
+      }
+      if (target === p) continue
+      resolved++
+      acc.set(target, (acc.get(target) ?? 0) + 1)
+      if (!fwd.has(p)) fwd.set(p, new Set())
+      fwd.get(p)!.add(target)
+      if (!rev.has(target)) rev.set(target, new Set())
+      rev.get(target)!.add(p)
+    }
+    if (acc.size > 0) counts.set(p, acc)
+  }
+
+  return {
+    files,
+    fileSet,
+    counts,
+    fwd,
+    rev,
+    specs,
+    resolved,
+    unresolved,
+    unresolvedSites,
+    commentedSites,
+    unmaskable,
+  }
+}
+
+function lineOf(source: string, index: number): number {
+  let line = 1
+  for (let i = 0; i < index; i++) if (source.charCodeAt(i) === 10) line++
+  return line
+}
+
+/** Nodes within `depth` hops of `seed` along `adj`. Excludes the seed. */
+export function ball(
+  seed: string,
+  depth: number,
+  adj: Array<Map<string, Set<string>>>,
+): Set<string> {
+  const seen = new Set<string>([seed])
+  let frontier = [seed]
+  for (let d = 0; d < depth; d++) {
+    const next: string[] = []
+    for (const cur of frontier) {
+      for (const a of adj) {
+        for (const n of a.get(cur) ?? []) {
+          if (seen.has(n)) continue
+          seen.add(n)
+          next.push(n)
+        }
+      }
+    }
+    frontier = next
+    if (frontier.length === 0) break
+  }
+  seen.delete(seed)
+  return seen
 }

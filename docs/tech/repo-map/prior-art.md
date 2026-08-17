@@ -24,7 +24,10 @@ Repos audited, all read-only, none built or run:
   is a different centrality with the same problem.
 - **One thing corrects this study:** both `code-graph-mcp` and `code-review-graph`
   compute **bounded-depth neighbourhoods**, never closures. That shape was never
-  measured here. It has been now (§2), and it survives at depth ≤2 directed.
+  measured here. It has been now (§2): the shape is real at depth ≤2 directed,
+  but it survives **only as a list of paths** — repriced as rendered signatures
+  ([`measurements.md` §8.2](measurements.md#82-the-two-units-over-the-same-graph-and-every-file-as-a-seed)),
+  forward depth 2 costs 22.6k tokens at p90, which is the whole core's price.
 - **Four ideas are worth taking** (§4), and only one of them is about graphs.
 - **None of the three publishes an honest measured win** (§3). That is the
   meta-finding, and it is the strongest argument in this whole study: three
@@ -48,21 +51,40 @@ bounded case, so it was measured
 3,361 nodes:
 
 | direction | depth | p50 | p90 | distinct sizes | p90 answer |
-|---|---|---|---|---|---|
-| forward (deps) | 1 | 3 | 13 | 58 | ~111 tok |
-| forward | **2** | **22** | **119** | **272** | ~1,012 tok |
-| forward | 3 | 79 | 405 | 632 | ~3,443 tok |
-| reverse (importers) | 1 | 1 | 9 | 88 | ~77 tok |
-| reverse | **2** | **6** | **122** | **286** | ~1,037 tok |
-| reverse | 3 | 22 | 559 | 549 | ~4,752 tok |
-| undirected | 1 | 5 | 22 | 103 | ~187 tok |
-| undirected | 2 | 353 | 1,044 | 1,126 | ~8,874 tok |
-| undirected | 3 | **2,089** | 2,731 | 1,634 | ~23,214 tok |
+| direction | depth | p50 | p90 | distinct sizes | p90 as a path list | p90 as signatures |
+|---|---|---|---|---|---|---|
+| forward (deps) | 1 | 3 | 13 | 58 | ~111 tok | 4,545 tok |
+| forward | **2** | **22** | **119** | **272** | ~1,012 tok | **22,639 tok** |
+| forward | 3 | 79 | 405 | 632 | ~3,443 tok | 60,635 tok |
+| reverse (importers) | 1 | 1 | 9 | 88 | ~77 tok | 1,649 tok |
+| reverse | **2** | **6** | **122** | **286** | ~1,037 tok | **16,716 tok** |
+| reverse | 3 | 22 | 559 | 549 | ~4,752 tok | 65,248 tok |
+| undirected | 1 | 5 | 22 | 103 | ~187 tok | 5,858 tok |
+| undirected | 2 | 353 | 1,044 | 1,126 | ~8,874 tok | 148,206 tok |
+| undirected | 3 | **2,089** | 2,731 | 1,634 | ~23,214 tok | 292,381 tok |
 
-**The claim was wrong.** Directed depth 2 is a genuine middle ground: 272–286
-distinct answer sizes, p50 of 6–22 files, p90 answer around 1k tokens. It is not
-a constant, and it is not one `Grep` either. Undirected depth 3 (p50 2,089) is
-where the answer falls back into the core, which is what §4.5 actually measured.
+**The claim was wrong.** Directed depth 2 is a genuine middle ground *by shape*:
+272–286 distinct answer sizes, p50 of 6–22 files. It is not a constant, and it is
+not one `Grep` either. Undirected depth 3 (p50 2,089) is where the answer falls
+back into the core, which is what §4.5 actually measured.
+
+> **The last two columns were added 2026-08-17 and they change the verdict.**
+> The `p90 answer` column above priced a member at ~34 chars — a bare path. The
+> product README §8 describes is rendered definition signatures, measured at a
+> mean of 105 tokens per file, and the two units differ by **16–22×**
+> ([`measurements.md` §8](measurements.md#8-the-neighbourhood-repriced-2026-08-17)).
+> Forward depth 2 at p90 is **22,639 tokens** — the same price as the whole
+> strongly-connected core the lane was withdrawn for costing. On the churn
+> leaders it is worse: 33.9k–69.3k tokens. What survives is the neighbourhood as
+> a **path list**, at 187 tokens p50 / 1,012 p90 — and whether *that* beats one
+> `Grep` is unmeasured, which is the offline gate the next round runs.
+>
+> **That gate ran, and the lane is closed.** Scored against 96 real sessions
+> ([`measurements.md` §9](measurements.md#9-gate-1-answered-offline-2026-08-17)),
+> forward depth 2 recalls a **median of 0.0%** of the files a session went on to
+> touch, against 33.3% for one `ls` of the seed's directory at fewer files. The
+> correction in this section stands — bounded depth is not a closure, and the
+> shape is real — but the shape is not worth building.
 
 **But the two shipped configurations both blow their caps on the files that
 matter.** Applying their real defaults to claudin's churn leaders:
@@ -258,7 +280,13 @@ of one codebase.
   reinstated**, in a much simpler form than originally designed: bounded-depth
   directed neighbourhood, **no PageRank, no personalization vector, no ranking at
   all** — depth is the budget. Gate 1 still decides it, and Gate 1 is still
-  unmeasured.
+  unmeasured. **Narrowed again 2026-08-17:** the repricing in §2 leaves only the
+  *path-list* form affordable, so the surviving candidate is a list of files,
+  not a rendered outline of them.
+  **Closed the same day:** Gate 1 ran offline and the path list loses to `ls`.
+  Lane A is withdrawn for good; the reusable finding is that this repo's
+  locate-next-file signal is **directory locality plus direct importers**, which
+  `Glob` and `Grep` already serve.
 - §4.2 (clamp with provenance) is worth doing whether or not any index is built,
   and does not belong to this feature.
 - Nothing here reopens Lane B, the global map, or the SQLite symbol graph.
