@@ -1,8 +1,16 @@
 ---
 name: repo-map-rejected-orientation-measured
-description: Porting an aider-style repo map (and generating a navigation rule from transcripts) was rejected on measured data 2026-08-07 — orientation is real but almost none of it is *locating*; the shipped answer was rule-upkeep instead
+description: Porting an aider-style repo map (and generating a navigation rule from transcripts) was rejected on transcript data 2026-08-07 — orientation is real but almost none of it is *locating*; the follow-up measurement demanded here was done 2026-08-17 and confirmed the no
 type: project
 ---
+
+> **Follow-up done.** The "do not re-open without new measurement" clause below
+> was honored on 2026-08-16/17: the algorithm was prototyped and measured, along
+> with two variants proposed since (a static prefix tree, and an on-demand SQLite
+> symbol graph). All rejected, for reasons independent of the transcript evidence
+> here — see [[repo-map-graph-topology-degenerate]] and `docs/tech/repo-map/`.
+> This memory remains the *demand-side* argument; that one is the *structural*
+> argument.
 
 Two related proposals were measured and settled on 2026-08-07: porting
 openclaude's aider-style `repoMap`, and generating a `search-strategy.md` from
@@ -41,3 +49,13 @@ as the live problem: the audit that produced these numbers found this repo's own
 `src/agent/context.ts` — which holds `getSystemContext` — went unnamed. A rule that
 misdirects is worse than no rule, and that class is invisible to every
 mechanical check, which is why `/refresh-rules` exists alongside the linter.
+
+**Two corrections, measured 2026-08-17.** The `context/` misdirection named above
+**was fixed**: `search-strategy.md:213–217` now names `context.ts` and explicitly
+disambiguates all three things called *context*. The file has also grown — 467
+lines / 28,745 chars, so ~7.2k tokens, not 4,462; re-measure before quoting a
+cost. And the closing claim above is **too strong**: a claim-by-claim audit put
+the map at **97.3% accurate**, and its 5 real errors turned out to be mechanical
+rather than semantic — they survived only because the linter cannot see inside
+fenced blocks ([[rule-files-two-silent-failure-modes]], Class C). Rule accuracy is
+still the live problem; more of it is checkable than this memory assumed.

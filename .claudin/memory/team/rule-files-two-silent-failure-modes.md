@@ -1,6 +1,6 @@
 ---
 name: rule-files-two-silent-failure-modes
-description: A .claudin/rules/ file can be silently inert or silently unconditional; both look identical to a working rule at runtime — this is what verify:rules, the /doctor line and /refresh-rules were built to catch (2026-08-07)
+description: A .claudin/rules/ file can be silently inert, silently unconditional, or carry wrong facts inside a fenced block the linter cannot see; all three look identical to a working rule at runtime (2026-08-07, extended 2026-08-17)
 type: project
 ---
 
@@ -43,6 +43,32 @@ no checker can see. Two things learned building it, worth keeping:
   analytics graph, which makes any module importing it unusable from
   `scripts/`). That last point is why rule-frontmatter parsing lives in the leaf
   module `src/memory/instructions/ruleFrontmatter.ts` rather than in `claudemd.ts`.
+
+**Class C — wrong facts inside a fenced block (found 2026-08-17).** The linter
+extracts citations with `INLINE_CODE_RE = /`([^`\n]+)`/g` (`rulesLint.ts:40`), so
+it scans **single-backtick spans only**. `search-strategy.md`'s Module Map is a
+*fenced* block (``` opens at line 208), and inside a fence the lines carry no
+backticks — so **none of that tree's 9,600 chars is checked**, 33% of a 28,745-char
+always-relevant rule. An audit of its 183 mechanically checkable claims scored
+**178 correct (97.3%)**, and all 5 errors sat in that blind region: a directory
+that no longer exists (`src/platform/privacy/`), two symbols attributed to the
+wrong file (`getPrimaryModel` is `src/providers/presets/providerModels.ts:25`,
+`getContextWindowForModel` is `src/agent/context/context.ts:82` — a different
+slice), a line count off by 40× (`openaiShim.ts` is 51 lines, a barrel; the impl
+is the sibling directory), and one file count (`transport/` is 37, not 35).
+
+**The lesson that changes the design:** part of what was filed as "the semantic
+half no checker can see" is in fact **mechanical** — path existence, `(N)` file
+counts, `file.ts (symA, symB)` attributions, `~N lines` claims. It only looked
+semantic because the extractor never reached it. So the fix for a stale map is a
+*verifier*, not a generator: it costs zero prompt tokens, has no staleness
+window, and preserves the 178 judgment claims no generator would write. That is
+the only surviving proposal from two rounds of repo-map evaluation
+([[repo-map-graph-topology-degenerate]]) — extend `lintRuleFiles` to walk fenced
+blocks, reusing `citationExists`/`hasProjectAnchor` (`rulesLint.ts:173,188`) and
+`scanSymbols`. Open design decision, not yet settled: the counts self-declare as
+"approximate" and 8 of 18 top-level ones already drift by 2–7 files, so the
+tolerance can be absolute, relative, or auto-updated by `/refresh-rules`.
 
 See [[repo-map-rejected-orientation-measured]] for why upkeep was built instead
 of an index generator.
