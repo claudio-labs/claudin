@@ -25,6 +25,26 @@ const TREE = [
 ].join('\n')
 
 describe('extractRuleClaims — the tree', () => {
+  test('reads a two-space tree at the depth it is actually written', () => {
+    // The entry regex accepts a two-space level, so dividing the indent by a
+    // fixed four halved every depth and hung the children off the root —
+    // reporting each of them as a path that does not exist.
+    const paths = extractRuleClaims(
+      [
+        '```',
+        'src/',
+        '├── agent/ (20)',
+        '  ├── ui/ (8)',
+        '  └── hooks/ (5)',
+        '```',
+      ].join('\n'),
+    ).dirCounts.map(claim => claim.path)
+    expect(paths).toContain('src/agent/')
+    expect(paths).toContain('src/agent/ui/')
+    expect(paths).toContain('src/agent/hooks/')
+    expect(paths).not.toContain('src/ui/')
+  })
+
   test('joins every entry to the parent its indentation puts it under', () => {
     const paths = extractRuleClaims(TREE).fencedPaths.map(c => c.path)
     expect(paths).toContain('src/agent/')
@@ -39,6 +59,27 @@ describe('extractRuleClaims — the tree', () => {
     // every nested entry in the map resolved under `src/agent/`.
     const paths = extractRuleClaims(TREE).fencedPaths.map(c => c.path)
     expect(paths).not.toContain('src/agent/model/')
+  })
+
+  test('a stale deeper prefix does not survive a return to a shallower level', () => {
+    // `e/` is over-indented, which hand-written trees do. Its level was last
+    // occupied by `src/a/b/`, two subtrees ago; without clearing the levels
+    // below the entry that just closed, it resolves as `src/a/b/e/` — a path
+    // that exists nowhere and gets reported as a defect in the map.
+    const paths = extractRuleClaims(
+      [
+        '```',
+        'src/',
+        '├── a/ (10)',
+        '│   └── b/ (5)',
+        '│       └── c/ (4)',
+        '├── d/ (10)',
+        '│   │   └── e/ (3)',
+        '```',
+      ].join('\n'),
+    ).fencedPaths.map(c => c.path)
+    expect(paths).toContain('src/a/b/c/')
+    expect(paths).not.toContain('src/a/b/e/')
   })
 
   test('siblings on one line are siblings, not a nesting', () => {
@@ -223,6 +264,18 @@ describe('dominantSourceExtensions', () => {
     expect(
       dominantSourceExtensions(tree({ '.go': 300, '.json': 90 })),
     ).toEqual(['.go'])
+  })
+
+  test('caps a polyglot repo instead of listing every language in it', () => {
+    // Ten languages at an even share: no single one reaches the coverage
+    // target and none is small enough to be noise, so the cap is the only
+    // thing standing between this and a `paths:` naming all ten.
+    const even = Object.fromEntries(
+      ['.ts', '.py', '.go', '.rb', '.rs', '.java', '.php', '.cs', '.kt', '.swift'].map(
+        extension => [extension, 100],
+      ),
+    )
+    expect(dominantSourceExtensions(tree(even))).toHaveLength(6)
   })
 
   test('keeps a genuinely bilingual repo bilingual', () => {

@@ -30,10 +30,15 @@ const FIX = process.argv.includes('--fix')
 /**
  * Rewrites the claims that are mechanically derivable, and only those.
  *
- * The same healer the session-start sync uses, so `--fix` and an automatic
- * refresh can never produce different bytes. A dead directory or a wrong symbol
- * attribution is deliberately NOT fixed here: where a directory belongs in a
- * curated tree is judgment, and this is the surface that must not guess.
+ * The same healer the session-start sync uses, with one deliberate difference:
+ * only this path supplies `fileLines`, because deriving it means reading every
+ * tracked file and startup will not pay that. So `~N lines` claims heal HERE
+ * and nowhere else, and `stale_line_count` stays reported until someone runs
+ * `--fix`. Directory counts and the tree itself are identical on both paths.
+ *
+ * A dead directory or a wrong symbol attribution is deliberately NOT fixed
+ * here: where a directory belongs in a curated tree is judgment, and this is
+ * the surface that must not guess.
  */
 async function fixInPlace(): Promise<void> {
   const trackedFiles = await listTrackedFiles(ROOT)

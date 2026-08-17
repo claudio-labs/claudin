@@ -109,14 +109,19 @@ the one it cannot: a rule that is *wrong* rather than broken. Concretely —
 4. **Propose; do not write anything.** \`.claudin/rules/\` is git-tracked and the
    user decides what lands in it. Print the proposed diff and stop.
 
-5. **Know which half of the map is yours.**
-   \`.claudin/rules/search-strategy.md\` is written and refreshed automatically
-   from the tracked file list, so its tree, its \`(N)\` counts and its \`paths:\`
-   frontmatter are regenerated — proposing an edit to them wastes the user's
-   review on a change the next session start discards. What survives, and what
-   your diff should be made of, is the \`←\` annotation on each entry: it is
-   keyed by directory and carried across every refresh. An entry nobody has
-   explained yet reads \`← TODO\`.
+5. **Know which half of \`.claudin/rules/search-strategy.md\` is yours**, which
+   depends on which kind of map it is.
+   - **Carries \`<!-- claudin:module-map -->\`** — generated. Its tree, its
+     \`(N)\` counts and its \`paths:\` frontmatter are refreshed automatically, so
+     proposing an edit to them spends the user's review on a change the next
+     session start discards. What survives is the \`←\` annotation on each entry:
+     keyed to the directory's full path, carried across every refresh, and
+     reading \`← TODO\` until somebody explains it.
+   - **No marker** — hand-written, like this repo's own. Only its numbers move
+     automatically; the tree is never restructured, because where a directory
+     belongs in a curated tree is judgment. A dead directory, a missing one, or
+     a described purpose that no longer matches the code are all yours to raise,
+     and they are the valuable part of this report.
 
 6. **Frontmatter, for any rule you propose.**
    \`paths\` is the ONLY supported key — \`globs:\`/\`alwaysApply:\` are silently

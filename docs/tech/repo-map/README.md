@@ -45,7 +45,7 @@
 > which is not an index.
 >
 > **Built on 2026-08-17, and it grew a generator.** The verifier ships and found
-> three real defects in this repo's map with no false positives. It also settled
+> the four defects §5.1 lists in this repo's map. It also settled
 > a question this study kept reopening: what was rejected is generated
 > *judgment*, not generated *structure*. A map containing only claims the
 > verifier re-derives — a tree, `(N)` counts, `TODO` where a purpose would go —

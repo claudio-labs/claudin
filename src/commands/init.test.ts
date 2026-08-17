@@ -47,11 +47,16 @@ test('init prompt annotates the navigation map without rewriting it', async () =
   const text = String(blocks[0]?.text)
 
   expect(text).toContain('Phase 4.5: Annotate the navigation map')
-  expect(text).toContain('.claudin/rules/search-strategy.md` already exists')
+  expect(text).toContain('.claudin/rules/search-strategy.md')
   expect(text).toContain('Only annotate what you actually read')
-  // The structural half is regenerated, so telling the model to edit it would
-  // hand it work that is discarded on the next session start.
-  expect(text).toContain('Change nothing else in that file')
+  // Four gates can skip the write, so the file is not guaranteed to be there
+  // and /init must not hand-write one when it is missing.
+  expect(text).toContain('CLAUDIN_DISABLE_RULE_MAP_SYNC')
+  expect(text).toContain('skip this phase')
+  // The two kinds behave differently, and the hand-written one is this repo's
+  // own case: telling the model its tree is regenerated would be false.
+  expect(text).toContain('A generated map')
+  expect(text).toContain('A hand-written map')
 })
 
 test('init prompt includes Phase 5.5 subagent creation flow', async () => {

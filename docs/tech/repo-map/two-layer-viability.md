@@ -323,7 +323,11 @@ error, and a decision for whoever owns that rule.
 reports them, `rulesMapSync.ts` rewrites them, `ruleMapAutoSync.ts` runs at
 session start. Findings are **warnings**, matching the existing `missing_path`
 severity, so CI still fails on errors only. Run against this tree it reported
-errors 1, 2, 3 and 4 with **no false positives**, and all four are fixed.
+errors 1, 2, 3 and 4, and all four are fixed. It produced **one** false
+positive on the way there — a prose size claim in `cache.md`, removed by the
+attachment rule below. The final run was clean, but that is now unreplayable:
+the tree is green, so "no false positives" describes a run nobody can reproduce
+rather than a property of the checker.
 
 **The generation verdict was narrower than this section assumed.** What was
 measured and rejected is a generator that writes *judgment*: an aider-style
@@ -360,11 +364,18 @@ Four things the plan above got wrong, all found by running it:
 
 Item 2's tolerance was the open decision and is settled as **relative, ±10% with
 a floor of 3** (`dirCountDrifted`), for both reporting and healing. Reason: 9 of
-55 counts had drifted within two days of being measured, none by more than 1.2%,
-so an exact ratchet over numbers nobody re-measures is a permanently red check —
-and a permanently red check gets deleted. Error 5 is therefore not reported
-today, by design; the threshold exists to catch a slice that died, moved or
-doubled.
+55 counts had drifted within two days of being measured, and the largest of them
+— `transport/`, error 5 above — was 5.7%. An exact ratchet over numbers nobody
+re-measures is a permanently red check, and a permanently red check gets
+deleted. Error 5 is therefore not reported today, by design; the threshold
+exists to catch a slice that died, moved or doubled.
+
+The tolerance also has to apply to **regeneration**, and the first cut missed
+that: only the hand-written path consulted it, so a generated map re-rendered
+exact counts and one added file rewrote the tracked file on every session start.
+That inverted the cost argument this whole section rests on. Counts inside
+tolerance are now carried over verbatim, so an unchanged structure re-renders
+byte-identical and nothing is written.
 
 Still unmeasured, and worth saying plainly: **no data exists on whether a
 generated map helps in a fresh project.** Every measurement in this study ran

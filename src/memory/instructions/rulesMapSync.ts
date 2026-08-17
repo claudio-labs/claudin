@@ -15,8 +15,14 @@
  *    worse than no rule, so a missing or dead directory is left for the verifier
  *    to report and a human to place.
  *  - **A map this module generated is regenerated whole**, preserving the
- *    annotations keyed by path. It carries {@link MAP_MARKER} to say so. We only
- *    restructure files we wrote.
+ *    annotations keyed by their full path. It carries {@link MAP_MARKER} to say
+ *    so. We only restructure files we wrote.
+ *
+ * Both modes are subject to the same drift tolerance, and that is what makes
+ * running this at every session start free: a count inside tolerance is carried
+ * over verbatim, so an unchanged structure re-renders byte-identical and no
+ * write happens. Regeneration without that carry-over rewrote the file on every
+ * single added file, which is the opposite of the intended cost.
  *
  * Pure: string in, string out. All I/O and every gate live at the call site.
  */
@@ -27,6 +33,7 @@ import {
   extractRuleClaims,
   lineCountDrifted,
   resolveUniqueBasename,
+  TREE_ANNOTATION_RE,
 } from 'src/memory/instructions/rulesClaims.js'
 
 /** Marks a map as generated, and therefore safe to restructure. */
@@ -53,16 +60,34 @@ export type RuleMapSyncInput = {
 /** A `dir/ (N)` occurrence located precisely enough to rewrite in place. */
 type CountEdit = { lineNumber: number; path: string; actual: number }
 
+/** `src/tools/` → `tools/`, the token as it appears in the tree line. */
+function lastSegment(dirPath: string): string {
+  const trimmed = dirPath.replace(/\/$/, '')
+  return `${trimmed.slice(trimmed.lastIndexOf('/') + 1)}/`
+}
+
 /**
  * Rewrites a number inside a tree line while keeping the annotation column
  * where it was. A count that grows eats the padding after it; one that shrinks
  * gives padding back — so healing `(140)` to `(20)` does not shear the `←` off
  * every line below it in the diff.
+ *
+ * The search starts at the token the count belongs to and never crosses into
+ * the annotation: `indexOf` alone rewrote the first `(5)` on
+ * `├── a/ (5)  ← mirrors b/ (5)`, which both healed the wrong number and left
+ * the real claim to be re-reported on every later run.
  */
-function replaceCount(line: string, claimed: number, actual: number): string {
+function replaceCount(
+  line: string,
+  token: string,
+  claimed: number,
+  actual: number,
+): string {
+  const entry = line.split(TREE_ANNOTATION_RE)[0] ?? line
+  const tokenAt = entry.indexOf(token)
   const from = `(${claimed})`
-  const at = line.indexOf(from)
-  if (at === -1) return line
+  const at = line.indexOf(from, tokenAt === -1 ? 0 : tokenAt + token.length)
+  if (at === -1 || at >= entry.length) return line
   const to = `(${actual})`
   const delta = to.length - from.length
   const head = line.slice(0, at) + to
@@ -109,12 +134,22 @@ export function healRuleMap(input: RuleMapSyncInput): string {
   const countEdits: CountEdit[] = []
   for (const claim of claims.dirCounts) {
     const actual = countTrackedSources(trackedFiles, claim.path, extensions)
+    // A directory that now holds nothing has died or moved, and where its
+    // replacement belongs in a curated tree is judgment. Healing it to `(0)`
+    // would launder that into a number nobody reads twice, so it is left for
+    // the verifier to report as a dead path.
+    if (actual === 0) continue
     if (!dirCountDrifted(claim.claimed, actual)) continue
     countEdits.push({ lineNumber: claim.lineNumber, path: claim.path, actual })
     const index = claim.lineNumber - 1
     const line = lines[index]
     if (line !== undefined) {
-      lines[index] = replaceCount(line, claim.claimed, actual)
+      lines[index] = replaceCount(
+        line,
+        lastSegment(claim.path),
+        claim.claimed,
+        actual,
+      )
     }
   }
 
@@ -156,16 +191,20 @@ function directoryCounts(
   return counts
 }
 
-/** The `←` gloss already written for each path, so it survives a regenerate. */
+/**
+ * The `←` gloss already written for each path, so it survives a regenerate.
+ *
+ * Keyed by the FULL path the tree parser reconstructs, not by the bare
+ * directory name printed on the line: `src/ui/` and `app/ui/` are both written
+ * `ui/`, so a name-keyed map gave whichever came second the other's annotation.
+ */
 export function existingAnnotations(content: string): Map<string, string> {
   const annotations = new Map<string, string>()
-  for (const line of content.split('\n')) {
-    const marker = /\s(?:←|<-)\s*(.*)$/.exec(line)
-    if (!marker?.[1]) continue
-    const entry = /(?:├──|└──)\s*([\w.@-]+\/)/.exec(line)
-    const name = entry?.[1]
-    if (name === undefined) continue
-    annotations.set(name, marker[1].trim())
+  for (const claim of extractRuleClaims(content).dirCounts) {
+    const gloss = claim.line.split(TREE_ANNOTATION_RE)[1]?.trim()
+    if (gloss !== undefined && gloss.length > 0) {
+      annotations.set(claim.path, gloss)
+    }
   }
   return annotations
 }
@@ -193,9 +232,12 @@ function renderEntry(
 export function renderModuleTree(
   trackedFiles: readonly string[],
   annotations: ReadonlyMap<string, string> = new Map(),
+  retained: ReadonlyMap<string, number> = new Map(),
 ): string[] {
   const extensions = dominantSourceExtensions(trackedFiles)
   const counts = directoryCounts(trackedFiles, extensions)
+  const shown = (dir: string): number =>
+    retained.get(dir) ?? counts.get(dir) ?? 0
 
   const tops = [...counts.keys()]
     .filter(dir => dir.split('/').length === 2)
@@ -210,7 +252,7 @@ export function renderModuleTree(
       renderEntry(
         isLastTop,
         1,
-        `${name}(${counts.get(top) ?? 0})`.replace('/(', '/ ('),
+        `${name}(${shown(top)})`.replace('/(', '/ ('),
         annotations.get(name) ?? TODO_ANNOTATION,
       ),
     )
@@ -222,7 +264,7 @@ export function renderModuleTree(
 
     children.forEach((child, childIndex) => {
       const childName = `${child.split('/')[1]}/`
-      const label = `${childName}(${counts.get(child) ?? 0})`.replace(
+      const label = `${childName}(${shown(child)})`.replace(
         '/(',
         '/ (',
       )
@@ -232,7 +274,7 @@ export function renderModuleTree(
       const body = `${prefix}${connector} ${label}`
       const padding = ' '.repeat(Math.max(1, ANNOTATION_COLUMN - body.length))
       lines.push(
-        `${body}${padding}← ${annotations.get(childName) ?? TODO_ANNOTATION}`,
+        `${body}${padding}← ${annotations.get(child) ?? TODO_ANNOTATION}`,
       )
     })
   })
@@ -300,23 +342,69 @@ export function syncRuleMap(input: RuleMapSyncInput): string | null {
   return healed === content ? null : healed
 }
 
+/**
+ * The fence holding the tree — not merely the first fence in the file.
+ *
+ * The file invites hand-editing, so a prose example above the tree is expected;
+ * targeting the first fence overwrote whatever that example was with the tree.
+ */
+function findTreeFence(
+  lines: readonly string[],
+): { open: number; close: number } | null {
+  let open = -1
+  for (let index = 0; index < lines.length; index++) {
+    if (!/^\s*```/.test(lines[index] ?? '')) continue
+    if (open === -1) {
+      open = index
+      continue
+    }
+    if (lines.slice(open + 1, index).some(line => /├──|└──/.test(line))) {
+      return { open, close: index }
+    }
+    open = -1
+  }
+  return null
+}
+
+/**
+ * The counts to carry over verbatim: every one still inside the tolerance.
+ *
+ * Without this a regenerate emits exact numbers, so one added file rewrites the
+ * map — and since this runs at session start, that is a write and a notice on
+ * essentially every session in a repo under development.
+ */
+function countsToRetain(
+  content: string,
+  trackedFiles: readonly string[],
+): Map<string, number> {
+  const extensions = dominantSourceExtensions(trackedFiles)
+  const retained = new Map<string, number>()
+  for (const claim of extractRuleClaims(content).dirCounts) {
+    const actual = countTrackedSources(trackedFiles, claim.path, extensions)
+    if (!dirCountDrifted(claim.claimed, actual)) {
+      retained.set(claim.path, claim.claimed)
+    }
+  }
+  return retained
+}
+
 /** Rewrites the fenced tree of a map this module wrote, keeping its prose. */
 function regenerateGeneratedMap(
   content: string,
   trackedFiles: readonly string[],
 ): string {
   const lines = content.split('\n')
-  const open = lines.findIndex(line => line.trim() === '```')
-  if (open === -1) return content
-  const close = lines.findIndex(
-    (line, index) => index > open && line.trim() === '```',
-  )
-  if (close === -1) return content
+  const fence = findTreeFence(lines)
+  if (fence === null) return content
 
-  const tree = renderModuleTree(trackedFiles, existingAnnotations(content))
+  const tree = renderModuleTree(
+    trackedFiles,
+    existingAnnotations(content),
+    countsToRetain(content, trackedFiles),
+  )
   return [
-    ...lines.slice(0, open + 1),
+    ...lines.slice(0, fence.open + 1),
     ...tree,
-    ...lines.slice(close),
+    ...lines.slice(fence.close),
   ].join('\n')
 }

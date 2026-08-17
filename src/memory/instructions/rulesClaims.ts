@@ -85,8 +85,8 @@ const FENCE_RE = /^\s*```(\S*)/
  * instead of becoming two children of whatever opened the level.
  */
 const TREE_ENTRY_RE = /^((?:[│|]\s{0,4}|\s{4}|\s{2})*)(?:├──|└──|├─|└─|\|--)\s*/
-/** Width of one indentation level in a box-drawing tree. */
-const TREE_INDENT_WIDTH = 4
+/** One indentation level, in the same alternation the entry regex consumes. */
+const TREE_INDENT_UNIT_RE = /[│|]\s{0,4}|\s{4}|\s{2}/g
 /** The `src/` line that opens a tree, before any marker appears. */
 const TREE_ROOT_RE = /^((?:[\w.@-]+\/)+)\s*$/
 /**
@@ -94,7 +94,7 @@ const TREE_ROOT_RE = /^((?:[\w.@-]+\/)+)\s*$/
  * files by their own name rather than relative to the tree, so tokenizing it
  * turns `← model.ts (…)` under `providers/` into `src/providers/model.ts`.
  */
-const ANNOTATION_RE = /\s*(?:←|<-|<--)\s*/
+export const TREE_ANNOTATION_RE = /\s*(?:←|<-|<--)\s*/
 
 /** A directory token inside a tree entry. */
 const DIR_TOKEN_RE = /^[\w.@-]+\/$/
@@ -153,6 +153,18 @@ function treeEntryTokens(entry: string): string[] {
 }
 
 /**
+ * How many levels an entry's indent represents.
+ *
+ * Counts the units the entry regex itself consumed rather than dividing by a
+ * fixed width: the alternation accepts a two-space level as readily as a
+ * four-space one, so a constant divisor halved the depth of every two-space
+ * tree and reported each of its children as a missing path.
+ */
+function indentDepth(indent: string): number {
+  return indent.match(TREE_INDENT_UNIT_RE)?.length ?? 0
+}
+
+/**
  * Walks the fenced trees, joining each entry to the parent its indentation puts
  * it under, and reading the `(N)` counts off the entry side.
  */
@@ -178,9 +190,10 @@ function collectTreeClaims(
     const entryMatch = TREE_ENTRY_RE.exec(text)
     if (!entryMatch) continue
 
-    const depth = Math.floor((entryMatch[1] ?? '').length / TREE_INDENT_WIDTH)
+    const depth = indentDepth(entryMatch[1] ?? '')
     const parent = prefixes[depth] ?? root
-    const entry = text.slice(entryMatch[0].length).split(ANNOTATION_RE)[0] ?? ''
+    const entry =
+      text.slice(entryMatch[0].length).split(TREE_ANNOTATION_RE)[0] ?? ''
 
     // Only the FIRST directory on an entry line becomes the parent of the
     // deeper lines under it: `contexts/ (9) state/ (8)` names two siblings, not

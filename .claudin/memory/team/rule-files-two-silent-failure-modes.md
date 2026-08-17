@@ -74,8 +74,9 @@ project and kept current, and it is allowed to say very little:
   `CLAUDIN_DISABLE_RULE_MAP_SYNC=1`.
 - **A hand-written map is healed, never restructured** (numbers only). **A
   generated one is regenerated whole**, with `←` annotations carried across by
-  directory. The marker `<!-- claudin:module-map -->` is what distinguishes them:
-  we only restructure files we wrote.
+  the directory's FULL path — keying them by bare name gave `src/ui/` and
+  `app/ui/` one shared gloss. The marker `<!-- claudin:module-map -->` is what
+  distinguishes the two: we only restructure files we wrote.
 - Counts follow a `git ls-files` extension histogram, so a Python repo counts
   `.py`. Nothing is hardcoded to TypeScript.
 
@@ -96,13 +97,33 @@ Four things the plan got wrong, all found by running it rather than reading it:
 - **Symbol lists need a code-shaped filter** (interior capital or `_`), or
   `activeProvider.ts (resolver)` reads as an attribution.
 
-The tolerance question is settled as **relative, ±10% with a floor of 3**, for
-both reporting and healing: 9 of 55 counts had drifted within two days of being
-measured, none by more than 1.2%, so an exact ratchet is a permanently red check
-and a permanently red check gets deleted. Small churn therefore produces no
-write at all, which is what makes running this at every session start free.
+The tolerance question is settled as **relative, ±10% with a floor of 3**: 9 of
+55 counts had drifted within two days of being measured, the largest by 5.7%, so
+an exact ratchet is a permanently red check and a permanently red check gets
+deleted. **It has to apply on the regeneration path too**, and the first cut
+missed that — only hand-written maps consulted it, so a generated map re-rendered
+exact counts and ONE added file rewrote the tracked file at every session start,
+inverting the entire cost argument. Counts inside tolerance are now carried over
+verbatim, so an unchanged structure re-renders byte-identical.
+
+Four more defects the review round caught, all of which produced a wrong path or
+a wrong number rather than a crash: the tree parser divided a variable-width
+indent by a fixed 4 (every two-space tree reported its children as missing);
+regeneration targeted the first fence in the file rather than the tree's (a
+prose example above it was overwritten); a dead directory healed to `(0)` instead
+of being reported; and a count rewrite searched from the start of the line, so
+two siblings sharing a number healed the wrong one.
 
 **Not measured:** whether a generated map helps in a fresh project. Every number
 above came from this repo, which already had a 467-line hand-written map. The
 case for shipping it everywhere is that its claims are verified, not that its
 value is proven.
+
+**Method note, because it nearly went the other way.** Two read-only review
+agents (the `agent-safety.md` §4 round) found the regeneration-tolerance bug and
+five others; the empirical break-and-restore pass that followed found one of the
+*new* tests was tautological — it pinned a duplicate-`(N)` line whose naive
+implementation happened to be correct for that input. Reproducing the bug needed
+two siblings sharing a number where only the second drifted. Read-only agents
+cannot run that pass, so budget for it separately rather than assuming a green
+suite means the guards hold.

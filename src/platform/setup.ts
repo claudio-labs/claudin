@@ -305,8 +305,12 @@ export async function setup(
     const mapNotice = describeRuleMapSync(mapSync)
     if (mapNotice !== null) {
       clearMemoryFileCaches()
+      // stderr, not stdout: setup() is awaited long before
+      // installStreamJsonStdoutGuard() runs in runHeadless, so a stdout write
+      // here puts a non-JSON line ahead of the payload of the first
+      // `-p --output-format json|stream-json` run in a repo.
       // biome-ignore lint/suspicious/noConsole:: intentional console output
-      console.log(chalk.dim(mapNotice))
+      console.error(chalk.dim(mapNotice))
     }
     if (feature('CONTEXT_COLLAPSE')) {
       /* eslint-disable @typescript-eslint/no-require-imports */
