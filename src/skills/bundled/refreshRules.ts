@@ -21,7 +21,14 @@ import { registerBundledSkill } from 'src/skills/bundledSkills.js'
  * list is a starting point to prune, which is why this proposes rather than
  * rewrites.
  */
-const MIN_SESSIONS_FOR_CREATE = 20
+/**
+ * The create branch is gone: `src/memory/instructions/ruleMapAutoSync.ts`
+ * writes `search-strategy.md` at session start in every project, so by the time
+ * anyone runs this skill the file exists. What is left for the model is the
+ * half a generator cannot do — whether each entry describes what the directory
+ * actually holds — and that is also the half that carries the risk, since a map
+ * which misdirects is worse than no map.
+ */
 
 async function buildPrompt(): Promise<string> {
   const root = getOriginalCwd()
@@ -33,13 +40,13 @@ async function buildPrompt(): Promise<string> {
       await lintRuleFiles({ root })
     const lines = findings.map(
       f =>
-        `- [${f.severity}] ${relativeFindingPath(root, f.file)} — ${f.message}\n  fix: ${f.fix}`,
+        `- [${f.severity}] ${relativeFindingPath(root, f.file)}${f.line === undefined ? '' : `:${f.line}`} — ${f.message}\n  fix: ${f.fix}`,
     )
     lintSection = [
       `Checked ${filesChecked} rule file(s).`,
       lines.length > 0
         ? `\nMechanical findings (already computed — do not re-derive these):\n${lines.join('\n')}`
-        : '\nNo mechanical findings: every `paths:` matches at least one tracked file, no unsupported frontmatter keys, no stale path references.',
+        : '\nNo mechanical findings: every `paths:` matches at least one tracked file, no unsupported frontmatter keys, no stale path references in prose or inside a fenced block, no symbol attributed to a file that does not define it, and no size or `(N)` count off by enough to matter.',
       `\nAlways-loaded context: ${unconditional.length} file(s) totalling ${unconditionalChars.toLocaleString()} chars, paid on every turn — the root AGENTS.md/CLAUDE.md plus every rule with no \`paths:\`.`,
     ].join('\n')
   } catch {
@@ -92,26 +99,34 @@ the one it cannot: a rule that is *wrong* rather than broken. Concretely —
      directly or via a directory it names.
    - **Wrong** — anything a rule describes inaccurately. This is the valuable
      list; verify each one by actually reading the file before claiming it.
+     Paths, symbol attributions and size/count claims are already covered
+     mechanically above, including inside fenced blocks — so spend your effort
+     on the half that is not: whether the *described purpose* of a module still
+     matches what it does.
    - **Dead** — paths a rule names that no longer exist. Cross-check against the
      mechanical findings above rather than re-deriving.
 
-4. **Decide create vs update.**
-   - If \`.claudin/rules/\` already contains a navigation/search rule:
-     **do not write anything.** Print the proposed diff and stop. That
-     directory is git-tracked, and the user decides what lands in it.
-   - If the project has **no** navigation rule, you may create one at
-     \`.claudin/rules/search-strategy.md\` — but only if step 2 found at least
-     ${MIN_SESSIONS_FOR_CREATE} sessions with an orientation prefix. Below that
-     there is not enough signal; say so and stop rather than writing a thin
-     file that will mislead.
+4. **Propose; do not write anything.** \`.claudin/rules/\` is git-tracked and the
+   user decides what lands in it. Print the proposed diff and stop.
 
-5. **Shape of a created rule.** Frontmatter with a \`paths:\` derived from where
-   this project's code actually lives (e.g. \`paths: src/**/*.ts, src/**/*.tsx\`)
-   — never unconditional, which would cost context on every turn of every
-   session. \`paths\` is the ONLY supported key; \`globs:\`/\`alwaysApply:\` are
-   silently ignored and would leave the rule unconditional. Open with a line
-   saying the file was generated from session history and is meant to be edited
-   by hand.
+5. **Know which half of \`.claudin/rules/search-strategy.md\` is yours**, which
+   depends on which kind of map it is.
+   - **Carries \`<!-- claudin:module-map -->\`** — generated. Its tree, its
+     \`(N)\` counts and its \`paths:\` frontmatter are refreshed automatically, so
+     proposing an edit to them spends the user's review on a change the next
+     session start discards. What survives is the \`←\` annotation on each entry:
+     keyed to the directory's full path, carried across every refresh, and
+     reading \`← TODO\` until somebody explains it.
+   - **No marker** — hand-written, like this repo's own. Only its numbers move
+     automatically; the tree is never restructured, because where a directory
+     belongs in a curated tree is judgment. A dead directory, a missing one, or
+     a described purpose that no longer matches the code are all yours to raise,
+     and they are the valuable part of this report.
+
+6. **Frontmatter, for any rule you propose.**
+   \`paths\` is the ONLY supported key — \`globs:\`/\`alwaysApply:\` are silently
+   ignored and would leave the rule unconditional, costing context on every
+   turn of every session.
 
 ## Reporting
 

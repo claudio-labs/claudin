@@ -282,6 +282,11 @@ It does **not** cover a bounded-depth directed query, which
 
 ## 5. What survives: verify the map, don't generate it
 
+> **BUILT 2026-08-17, and the title of this section is now half wrong.** All
+> four checks below ship, plus a generator the section argued against — under a
+> constraint that was not on the table when it was written. See
+> [§5.1](#51-what-shipped-and-what-the-plan-got-wrong).
+
 The measurements point somewhere neither layer does.
 
 | | prompt tokens | build | staleness | fixes the 5 errors |
@@ -311,6 +316,94 @@ it just stops being able to lie about paths, counts and symbols.
 Cheap follow-on, not required: the audit found `src/platform/` has ~20
 subdirectories the map never names (it covers 12 of ~32) — a coverage gap, not an
 error, and a decision for whoever owns that rule.
+
+### 5.1 What shipped, and what the plan got wrong
+
+`src/memory/instructions/rulesClaims.ts` extracts the claims, `rulesLint.ts`
+reports them, `rulesMapSync.ts` rewrites them, `ruleMapAutoSync.ts` runs at
+session start. Findings are **warnings**, matching the existing `missing_path`
+severity, so CI still fails on errors only. Run against this tree it reported
+errors 1, 2, 3 and 4, and all four are fixed. It produced **one** false
+positive on the way there — a prose size claim in `cache.md`, removed by the
+attachment rule below. The final run was clean, but that is now unreplayable:
+the tree is green, so "no false positives" describes a run nobody can reproduce
+rather than a property of the checker.
+
+**Portability, measured against six repo shapes.** The language choice is
+extension frequency against a denylist of non-code suffixes, with a fallback to
+the raw histogram, so nothing is configured and nothing is assumed: Rust, Go, C,
+Ruby, Python and a TypeScript monorepo each produce a sensible tree, and a
+docs-only repo gets counts rather than zeros. Generating against synthetic
+shapes — rather than reading the code — is what surfaced the two cases this
+repo's own layout can never reach. A **flat repo** (sources at the root, or
+every subdirectory under the three-file floor) rendered an empty fence and wrote
+it regardless: 347 bytes promising a tree, with a `paths:` that pulled the file
+into context on every matching edit. Generation is now gated on the tree being
+non-empty, while healing is not — a curated map in a flat repo can still carry
+counts worth keeping true. And **`.mod` counted as a language** in a
+multi-module Go workspace, where one manifest per service clears the 2% noise
+floor that a single-module repo keeps it under.
+
+**The generation verdict was narrower than this section assumed.** What was
+measured and rejected is a generator that writes *judgment*: an aider-style
+ranked map, and a `search-strategy.md` synthesised from session history. Both
+lose to a hand-written artifact that is already 97.3% accurate, and the
+standing warning is that "a rule that misdirects is worse than no rule". None
+of that constrains a generator whose output contains **only claims this
+verifier re-derives** — a tree, `(N)` counts, and `TODO` where a purpose would
+go. It cannot misdirect because it asserts nothing a checker cannot falsify.
+That is what now runs in every project, and the split is enforced rather than
+encouraged: a hand-written map is healed (numbers only, never restructured), a
+generated one is regenerated whole with its annotations carried across by path.
+
+Four things the plan above got wrong, all found by running it:
+
+- **Item 1 alone is not the product.** Path existence inside fenced blocks — the
+  cheap check, the one described as reusing `citationExists`/`hasProjectAnchor`
+  — catches **1 of the 3** misleading defects, and it is the item that needs the
+  tree parser. Items 3 and 4 catch the other two and need no tree at all: both
+  resolve their file by unique basename, ambiguous → skipped.
+- **A size claim must sit in the parenthetical its filename opens.** Associating
+  a count with the nearest filename to its left read *"eight lines of a
+  2,200-line file"* — a sentence about whatever file the agent had open — as a
+  claim about the `FileReadTool.ts` cited beside it. Requiring attachment costs
+  one correctly-written prose claim and removes the false one.
+- **The tree parser needs two guards, and both are load-bearing**: only lines
+  carrying a `├──`/`└──` marker are entries, and the `←` annotation is split off
+  before tokenizing. Dropping the second turns every annotated line into a
+  phantom — `← model.ts (…)` under `providers/` becomes `src/providers/model.ts`
+  — which produced 14 false findings in one run.
+- **A symbol list needs a code-shaped filter.** Requiring every member to carry
+  an interior capital or `_` is what separates `providers.ts (getAPIProvider)`
+  from the gloss `activeProvider.ts (resolver)`.
+
+Item 2's tolerance was the open decision and is settled as **relative, ±10% with
+a floor of 3** (`dirCountDrifted`), for both reporting and healing. Reason: 9 of
+55 counts had drifted within two days of being measured. An exact ratchet over
+numbers nobody re-measures is a permanently red check, and a permanently red
+check gets deleted.
+
+**Both halves of that threshold earn their place, and the same 9 show why.** The
+largest *absolute* drift was `transport/`, 35 → 37, or 5.7% — well inside ±10%,
+so the percentage is what keeps it quiet. The largest *relative* drift was
+`__tests__/`, 6 → 8, or **33.3%** — three times over the percentage, and silenced
+only by the floor. A small directory swings wildly in relative terms for reasons
+nobody should be asked to review, which is exactly the case the floor exists for.
+Error 5 is therefore not reported today, by design; the threshold is there to
+catch a slice that died, moved or doubled.
+
+The tolerance also has to apply to **regeneration**, and the first cut missed
+that: only the hand-written path consulted it, so a generated map re-rendered
+exact counts and one added file rewrote the tracked file on every session start.
+That inverted the cost argument this whole section rests on. Counts inside
+tolerance are now carried over verbatim, so an unchanged structure re-renders
+byte-identical and nothing is written.
+
+Still unmeasured, and worth saying plainly: **no data exists on whether a
+generated map helps in a fresh project.** Every measurement in this study ran
+against this repo, which had a 467-line hand-written map. The argument for
+shipping it everywhere is that its claims are verified rather than that its
+value is proven.
 
 ## 6. What this changes in the main doc
 

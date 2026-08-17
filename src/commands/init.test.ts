@@ -35,6 +35,30 @@ test('init prompt asks about subagents and guardrails in Phase 1', async () => {
   expect(text).toContain('Configure guardrails')
 })
 
+test('init prompt annotates the navigation map without rewriting it', async () => {
+  mock.module('src/platform/projectOnboardingState.js', () => ({
+    maybeMarkProjectOnboardingComplete: () => {},
+  }))
+
+  const command = await importInitCommand()
+  const blocks = await command.getPromptForCommand()
+  // The map is written at session start, so /init enriches rather than creates.
+  expect(blocks).toHaveLength(1)
+  const text = String(blocks[0]?.text)
+
+  expect(text).toContain('Phase 4.5: Annotate the navigation map')
+  expect(text).toContain('.claudin/rules/search-strategy.md')
+  expect(text).toContain('Only annotate what you actually read')
+  // Four gates can skip the write, so the file is not guaranteed to be there
+  // and /init must not hand-write one when it is missing.
+  expect(text).toContain('CLAUDIN_DISABLE_RULE_MAP_SYNC')
+  expect(text).toContain('skip this phase')
+  // The two kinds behave differently, and the hand-written one is this repo's
+  // own case: telling the model its tree is regenerated would be false.
+  expect(text).toContain('A generated map')
+  expect(text).toContain('A hand-written map')
+})
+
 test('init prompt includes Phase 5.5 subagent creation flow', async () => {
   mock.module('src/platform/projectOnboardingState.js', () => ({
     maybeMarkProjectOnboardingComplete: () => {},

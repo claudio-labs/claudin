@@ -1,6 +1,6 @@
 ---
 name: rule-files-two-silent-failure-modes
-description: A .claudin/rules/ file can be silently inert, silently unconditional, or carry wrong facts inside a fenced block the linter cannot see; all three look identical to a working rule at runtime (2026-08-07, extended 2026-08-17)
+description: A .claudin/rules/ file can be silently inert, silently unconditional, carry wrong facts inside a fenced block, or be a curated map whose structure drifts under a green verify:rules; all four look identical to a working rule at runtime (2026-08-07, shipped and audited 2026-08-17)
 type: project
 ---
 
@@ -57,18 +57,121 @@ wrong file (`getPrimaryModel` is `src/providers/presets/providerModels.ts:25`,
 slice), a line count off by 40× (`openaiShim.ts` is 51 lines, a barrel; the impl
 is the sibling directory), and one file count (`transport/` is 37, not 35).
 
-**The lesson that changes the design:** part of what was filed as "the semantic
+**The lesson that changed the design:** part of what was filed as "the semantic
 half no checker can see" is in fact **mechanical** — path existence, `(N)` file
 counts, `file.ts (symA, symB)` attributions, `~N lines` claims. It only looked
-semantic because the extractor never reached it. So the fix for a stale map is a
-*verifier*, not a generator: it costs zero prompt tokens, has no staleness
-window, and preserves the 178 judgment claims no generator would write. That is
-the only surviving proposal from two rounds of repo-map evaluation
-([[repo-map-graph-topology-degenerate]]) — extend `lintRuleFiles` to walk fenced
-blocks, reusing `citationExists`/`hasProjectAnchor` (`rulesLint.ts:173,188`) and
-`scanSymbols`. Open design decision, not yet settled: the counts self-declare as
-"approximate" and 8 of 18 top-level ones already drift by 2–7 files, so the
-tolerance can be absolute, relative, or auto-updated by `/refresh-rules`.
+semantic because the extractor never reached it.
 
-See [[repo-map-rejected-orientation-measured]] for why upkeep was built instead
-of an index generator.
+**Shipped 2026-08-17**, and it settled the generation question this project kept
+reopening ([[repo-map-graph-topology-degenerate]],
+[[repo-map-rejected-orientation-measured]]). What was rejected is generated
+**judgment**; generated **structure** is a different object, because every
+statement in it is one the checker re-derives. So a map is now written in every
+project and kept current, and it is allowed to say very little:
+
+- `rulesClaims.ts` — extraction, pure. `rulesLint.ts` — report. `rulesMapSync.ts`
+  — rewrite. `ruleMapAutoSync.ts` — run at session start, killswitch
+  `CLAUDIN_DISABLE_RULE_MAP_SYNC=1`.
+- **A hand-written map is healed, never restructured** (numbers only). **A
+  generated one is regenerated whole**, with `←` annotations carried across by
+  the directory's FULL path — keying them by bare name gave `src/ui/` and
+  `app/ui/` one shared gloss. The marker `<!-- claudin:module-map -->` is what
+  distinguishes the two: we only restructure files we wrote.
+- Counts follow a `git ls-files` extension histogram, so a Python repo counts
+  `.py`. Nothing is hardcoded to TypeScript.
+
+Four things the plan got wrong, all found by running it rather than reading it:
+
+- **The cheap check is not the product.** Fenced *path* existence catches 1 of
+  the 3 misleading defects and is the part that needs the tree parser. Size and
+  attribution catch the other two and need no tree — both resolve by **unique
+  basename**, ambiguous → skipped.
+- **A size claim must sit in the parenthetical its filename opens.** "Nearest
+  filename to the left" read *"eight lines of a 2,200-line file"* as a claim
+  about the `FileReadTool.ts` cited beside it — the only false positive, and it
+  was in `cache.md`, not the map.
+- **Two guards keep the tree parser honest**: only `├──`/`└──` lines are entries,
+  and the `←` annotation is split off before tokenizing. Without the second,
+  every annotated line invents a path (`← model.ts` under `providers/` →
+  `src/providers/model.ts`): 14 false findings in one run.
+- **Symbol lists need a code-shaped filter** (interior capital or `_`), or
+  `activeProvider.ts (resolver)` reads as an attribution.
+
+The tolerance question is settled as **relative, ±10% with a floor of 3**: 9 of
+55 counts had drifted within two days of being measured, so an exact ratchet is a
+permanently red check and a permanently red check gets deleted. Both halves earn
+their place on that same sample — the largest absolute drift was `transport/`
+(35→37, 5.7%, inside ±10%), the largest relative one was `__tests__/` (6→8,
+**33.3%**, three times over it and silenced only by the floor). Small directories
+swing wildly in relative terms; that is what the floor is for.
+**The tolerance has to apply on the regeneration path too**, and the first cut
+missed that — only hand-written maps consulted it, so a generated map re-rendered
+exact counts and ONE added file rewrote the tracked file at every session start,
+inverting the entire cost argument. Counts inside tolerance are now carried over
+verbatim, so an unchanged structure re-renders byte-identical.
+
+Four more defects the review round caught, all of which produced a wrong path or
+a wrong number rather than a crash: the tree parser divided a variable-width
+indent by a fixed 4 (every two-space tree reported its children as missing);
+regeneration targeted the first fence in the file rather than the tree's (a
+prose example above it was overwritten); a dead directory healed to `(0)` instead
+of being reported; and a count rewrite searched from the start of the line, so
+two siblings sharing a number healed the wrong one.
+
+**Not measured:** whether a generated map helps in a fresh project. Every number
+above came from this repo, which already had a 467-line hand-written map. The
+case for shipping it everywhere is that its claims are verified, not that its
+value is proven.
+
+**Method note, because it nearly went the other way.** Two read-only review
+agents (the `agent-safety.md` §4 round) found the regeneration-tolerance bug and
+five others; the empirical break-and-restore pass that followed found one of the
+*new* tests was tautological — it pinned a duplicate-`(N)` line whose naive
+implementation happened to be correct for that input. Reproducing the bug needed
+two siblings sharing a number where only the second drifted. Read-only agents
+cannot run that pass, so budget for it separately rather than assuming a green
+suite means the guards hold.
+
+**Class D — a curated map's structure drifts under a green `verify:rules`
+(audited 2026-08-17).** The automation deliberately does very little to a
+hand-written map: it moves numbers, and only past the ±10%/floor-3 tolerance. It
+never restructures one, because where a directory belongs in a curated tree is
+judgment. So the gate passing says nothing about whether the map is current.
+Audited this repo's own 470-line `search-strategy.md` against `git ls-files`: no
+dead directories, but **9 of 55 counts stale and 15 directories of 8+ files
+never named anywhere** — both invisible to the checker by design, and the second
+class is invisible to the healer forever.
+
+**How to apply:** re-audit a hand-written map on a schedule, not on a red check.
+Diff `extractRuleClaims` + `countTrackedSources` against `git ls-files` on three
+axes — dead paths, *exact* count drift, and real directories above a size floor
+that the file never names. The third axis must match on the **bare directory
+name**, not the full path: a curated map legitimately describes children in the
+`←` prose (`vcs/ (59) ← git/ … + diff/ …`), so a full-path check reports every
+one of them as missing. That false-positive round is what the 15 shrank from.
+The audit is also where the map earns its keep — the real finds were three name
+collisions (`providers/cache/` metrics vs `agent/cache/` policy, `terminal/input/`
+vs `prompt-input/`, `tools/AgentWorkflow/` engine vs `tools/WorkflowTool/`'s
+three `.d.ts` stubs), each of which sends a grep to the wrong directory.
+
+**Portability was checked by generating against six repo shapes, not by reading
+the code (2026-08-17).** Language choice is extension frequency against a
+*denylist* of non-code suffixes, with a fallback to the raw histogram, so Rust,
+Go, C, Ruby, Python and a TS monorepo all produce sensible trees with nothing
+configured, and a docs-only repo still gets counts instead of zeros. Two real
+defects only that exercise found:
+
+- **A flat repo generated an empty fence and wrote it anyway** — 347 bytes of
+  frontmatter and prose promising a tree, plus a `paths:` that pulled it into
+  context on every matching edit. Reachable by a Go binary with sources at the
+  root and by a small Python package whose only subdirectory is a two-file
+  `tests/`. Generation is now gated on the tree being non-empty; **healing is
+  not**, since a curated map in a flat repo can still carry counts worth fixing.
+- **`.mod` was treated as a language.** One `go.mod` in a single-module repo
+  never clears the 2% noise floor, which is why this hid; a multi-module Go
+  workspace carries one per service and does clear it, putting `**/*.mod` in the
+  frontmatter and counting manifests into every directory total.
+
+Both are the same lesson: the failure modes live in repo shapes this project
+does not have, so exercise the generator against synthetic ones before claiming
+it is portable.

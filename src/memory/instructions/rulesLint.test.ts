@@ -204,3 +204,153 @@ describe('lintRuleFiles', () => {
     expect(result.findings.map(f => f.kind)).not.toContain('inert_paths')
   })
 })
+
+describe('lintRuleFiles — claims inside fenced blocks', () => {
+  test('reports a directory the map lists but the tree does not have', async () => {
+    const root = makeProject({
+      'AGENTS.md': [
+        '# Map',
+        '',
+        '```',
+        'src/',
+        '├── agent/ (2)                 ← the loop',
+        '│   └── gone/                  ← retired slice',
+        '```',
+        '',
+      ].join('\n'),
+      'src/agent/model.ts': 'export {}\n',
+      'src/agent/other.ts': 'export {}\n',
+    })
+    const result = await lintRuleFiles({
+      root,
+      trackedFiles: ['src/agent/model.ts', 'src/agent/other.ts'],
+    })
+    const missing = result.findings.filter(f => f.kind === 'missing_path')
+    expect(missing).toHaveLength(1)
+    expect(missing[0]?.message).toContain('src/agent/gone/')
+    // The Module Map runs to a hundred lines; a finding without one is a search.
+    expect(missing[0]?.line).toBe(6)
+  })
+
+  test('accepts a symbol the named file defines, and reports one it imports', async () => {
+    const files = {
+      'AGENTS.md': '`model.ts (getPrimaryModel, getContextWindowForModel)`\n',
+      'src/agent/other.ts': 'export {}\n',
+    }
+    const trackedFiles = ['src/agent/model.ts', 'src/agent/other.ts']
+
+    const defines = await lintRuleFiles({
+      root: makeProject({
+        ...files,
+        'src/agent/model.ts':
+          'export function getPrimaryModel() {}\nexport const getContextWindowForModel = () => 0\n',
+      }),
+      trackedFiles,
+    })
+    expect(defines.findings.filter(f => f.kind === 'wrong_attribution')).toEqual(
+      [],
+    )
+
+    const imports = await lintRuleFiles({
+      root: makeProject({
+        ...files,
+        'src/agent/model.ts':
+          "import { getContextWindowForModel } from 'src/x.js'\nexport function getPrimaryModel() {}\n",
+      }),
+      trackedFiles,
+    })
+    const wrong = imports.findings.filter(f => f.kind === 'wrong_attribution')
+    expect(wrong).toHaveLength(1)
+    expect(wrong[0]?.message).toContain('getContextWindowForModel')
+    expect(wrong[0]?.message).not.toContain('`getPrimaryModel`,')
+  })
+
+  test('counts a re-exported name as defined', async () => {
+    const root = makeProject({
+      'AGENTS.md': '`barrel.ts (someHelper)`\n',
+      'src/barrel.ts': "export { someHelper } from 'src/impl.js'\n",
+    })
+    const result = await lintRuleFiles({ root, trackedFiles: ['src/barrel.ts'] })
+    expect(result.findings.filter(f => f.kind === 'wrong_attribution')).toEqual(
+      [],
+    )
+  })
+
+  test('says nothing about a barrel that re-exports the world', async () => {
+    const root = makeProject({
+      'AGENTS.md': '`barrel.ts (someHelper)`\n',
+      'src/barrel.ts': "export * from 'src/impl.js'\n",
+    })
+    const result = await lintRuleFiles({ root, trackedFiles: ['src/barrel.ts'] })
+    expect(result.findings.filter(f => f.kind === 'wrong_attribution')).toEqual(
+      [],
+    )
+  })
+
+  test('reports a size claim that is off by an order of magnitude', async () => {
+    const root = makeProject({
+      'AGENTS.md': '`shim.ts (the renderer, ~2.2k lines)`\n',
+      'src/shim.ts': 'export {}\n',
+    })
+    const result = await lintRuleFiles({ root, trackedFiles: ['src/shim.ts'] })
+    const stale = result.findings.filter(f => f.kind === 'stale_line_count')
+    expect(stale).toHaveLength(1)
+    expect(stale[0]?.message).toContain('is ~2,200 lines; it is 1')
+  })
+
+  test('reports a directory count only once the slice has really moved', async () => {
+    const trackedFiles = Array.from(
+      { length: 20 },
+      (_, i) => `src/agent/f${i}.ts`,
+    )
+    const files = Object.fromEntries(
+      trackedFiles.map(path => [path, 'export {}\n']),
+    )
+
+    const withinTolerance = await lintRuleFiles({
+      root: makeProject({
+        ...files,
+        'AGENTS.md': ['```', 'src/', '├── agent/ (22)', '```', ''].join('\n'),
+      }),
+      trackedFiles,
+    })
+    expect(
+      withinTolerance.findings.filter(f => f.kind === 'dir_count_drift'),
+    ).toEqual([])
+
+    const moved = await lintRuleFiles({
+      root: makeProject({
+        ...files,
+        'AGENTS.md': ['```', 'src/', '├── agent/ (140)', '```', ''].join('\n'),
+      }),
+      trackedFiles,
+    })
+    const drift = moved.findings.filter(f => f.kind === 'dir_count_drift')
+    expect(drift).toHaveLength(1)
+    expect(drift[0]?.message).toContain('holds 140 files; it holds 20')
+  })
+
+  test('skips every claim whose file the tracked list cannot identify', async () => {
+    const root = makeProject({
+      'AGENTS.md': '`shim.ts (the renderer, ~2.2k lines)`\n',
+      'src/a/shim.ts': 'export {}\n',
+      'src/b/shim.ts': 'export {}\n',
+    })
+    const result = await lintRuleFiles({
+      root,
+      trackedFiles: ['src/a/shim.ts', 'src/b/shim.ts'],
+    })
+    expect(result.findings).toEqual([])
+  })
+
+  test('checks nothing in a fenced block outside a git repo', async () => {
+    const root = makeProject({
+      'AGENTS.md': ['```', 'src/', '├── gone/ (9)', '```', ''].join('\n'),
+      'src/anchor.ts': 'export {}\n',
+    })
+    // No trackedFiles and no git: counts and basenames are unresolvable, so the
+    // whole fenced pass must stay silent rather than report the map as wrong.
+    const result = await lintRuleFiles({ root })
+    expect(result.findings).toEqual([])
+  })
+})
