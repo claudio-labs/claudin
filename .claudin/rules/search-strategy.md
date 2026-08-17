@@ -229,12 +229,15 @@ src/
 ├── providers/ (254)             ← provider abstraction (start here for provider issues)
 │   ├── presets/ (20)            ← activeProvider.ts (resolver), providerConfig.ts (presets, profile
 │   │                              schema), providerProfiles, discovery, validation
-│   ├── shims/ (48)              ← openaiShim.ts (Anthropic → OpenAI Chat Completions, ~2.2k lines),
+│   ├── shims/ (48)              ← openaiShim.ts is a BARREL; the Anthropic → OpenAI Chat
+│   │                              Completions renderer is openaiShim/ (~4.9k lines). Also
 │   │                              codexShim.ts (ChatGPT OAuth), claude/ (native renderer → cache.md)
 │   ├── transport/ (35)          ← client.ts (SDK builder), withRetry.ts, errors.ts, proxy, h2Fallback
 │   ├── oauth/ (39)              ← per-provider OAuth + credential stores (codex, kimi, xai, gemini …)
-│   ├── model/ (42)              ← model.ts (getPrimaryModel, getContextWindowForModel),
-│   │                              providers.ts (getAPIProvider), modelOptions, catalogs
+│   ├── model/ (42)              ← model.ts (getMainLoopModel, getSmallFastModel),
+│   │                              providers.ts (getAPIProvider), modelOptions, catalogs.
+│   │                              getPrimaryModel is presets/providerModels.ts and
+│   │                              getContextWindowForModel is agent/context/context.ts
 │   ├── effort/ (7)              ← reasoning-effort levels + cycling (project-scoped)
 │   ├── usage/ (18)              ← cost, billing, quota, per-provider usage endpoints
 │   ├── ui/ (21)                 ← ProviderManager, ModelPicker, EffortPicker, OAuth flows
@@ -271,7 +274,7 @@ src/
 │   ├── lsp/ ide/ install/ shell/ computerUse/ notifications/ secureStorage/
 │   ├── migrations/ (11)         ← one-time settings/model migrations (migrateFennecToOpus …)
 │   ├── bridge/ (37)             ← bridge mode (BRIDGE_MODE flag; largely gated/stubbed)
-│   └── privacy/ billing/ teams/ telemetry/ policyLimits/ wiki/ github/  ← misc host services
+│   └── billing/ teams/ telemetry/ policyLimits/ wiki/ github/  ← misc host services
 ├── terminal/ (384)              ← the TUI shell: renderer, input, chrome (→ ink-tui.md)
 │   ├── ink/ (114)               ← the forked Ink renderer: screen.ts, log-update, stringWidth, ScrollBox
 │   ├── prompt-input/ (23)       ← the input box, its modes and suggestions
