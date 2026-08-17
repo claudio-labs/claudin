@@ -98,9 +98,13 @@ Four things the plan got wrong, all found by running it rather than reading it:
   `activeProvider.ts (resolver)` reads as an attribution.
 
 The tolerance question is settled as **relative, ±10% with a floor of 3**: 9 of
-55 counts had drifted within two days of being measured, the largest by 5.7%, so
-an exact ratchet is a permanently red check and a permanently red check gets
-deleted. **It has to apply on the regeneration path too**, and the first cut
+55 counts had drifted within two days of being measured, so an exact ratchet is a
+permanently red check and a permanently red check gets deleted. Both halves earn
+their place on that same sample — the largest absolute drift was `transport/`
+(35→37, 5.7%, inside ±10%), the largest relative one was `__tests__/` (6→8,
+**33.3%**, three times over it and silenced only by the floor). Small directories
+swing wildly in relative terms; that is what the floor is for.
+**The tolerance has to apply on the regeneration path too**, and the first cut
 missed that — only hand-written maps consulted it, so a generated map re-rendered
 exact counts and ONE added file rewrote the tracked file at every session start,
 inverting the entire cost argument. Counts inside tolerance are now carried over

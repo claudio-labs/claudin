@@ -364,11 +364,18 @@ Four things the plan above got wrong, all found by running it:
 
 Item 2's tolerance was the open decision and is settled as **relative, ±10% with
 a floor of 3** (`dirCountDrifted`), for both reporting and healing. Reason: 9 of
-55 counts had drifted within two days of being measured, and the largest of them
-— `transport/`, error 5 above — was 5.7%. An exact ratchet over numbers nobody
-re-measures is a permanently red check, and a permanently red check gets
-deleted. Error 5 is therefore not reported today, by design; the threshold
-exists to catch a slice that died, moved or doubled.
+55 counts had drifted within two days of being measured. An exact ratchet over
+numbers nobody re-measures is a permanently red check, and a permanently red
+check gets deleted.
+
+**Both halves of that threshold earn their place, and the same 9 show why.** The
+largest *absolute* drift was `transport/`, 35 → 37, or 5.7% — well inside ±10%,
+so the percentage is what keeps it quiet. The largest *relative* drift was
+`__tests__/`, 6 → 8, or **33.3%** — three times over the percentage, and silenced
+only by the floor. A small directory swings wildly in relative terms for reasons
+nobody should be asked to review, which is exactly the case the floor exists for.
+Error 5 is therefore not reported today, by design; the threshold is there to
+catch a slice that died, moved or doubled.
 
 The tolerance also has to apply to **regeneration**, and the first cut missed
 that: only the hand-written path consulted it, so a generated map re-rendered
