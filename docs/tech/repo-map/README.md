@@ -9,6 +9,12 @@
 > §11 pass.
 > **Raw numbers and how to reproduce them:** [`measurements.md`](measurements.md),
 > probe at [`scripts/bench/repomap/`](../../../scripts/bench/repomap/).
+>
+> **Follow-up:** the two-layer variant (static prefix tree + SQLite symbol graph)
+> was proposed and measured separately — see
+> [`two-layer-viability.md`](two-layer-viability.md). Camada 1 is off by ~70× on
+> its token budget and replaces an artifact already 97.3% accurate; Camada 2's
+> `impact_of` is a constant function on this topology.
 
 ## 1. Why this doc exists
 
@@ -252,6 +258,13 @@ Lane A is a **hypothesis with a defined A/B** (§11), not a decided build. It is
 plausible that `Grep` plus an outline read already covers it at lower cost; that
 is exactly what the gate is for.
 
+**Sharpened 2026-08-17.** [`two-layer-viability.md`](two-layer-viability.md) §4.1
+measured the reverse-import closure and found it degenerate: p50, p90 and p99 are
+all ~2,462 files of 3,359, so "who transitively depends on X" returns the same
+~24,400-token answer for every file an agent edits. If Lane A is built, its query
+must be **forward** (what X depends on) or **direct-only** — never transitive
+reverse. Gate 1 stands and is harder to pass than when it was written.
+
 ### Lane B — global map injected into the prompt head → **do not build**
 
 Rejected twice over: no ranking signal (§5.4–5.6) and the wrong cache lane
@@ -424,6 +437,7 @@ ports no queries. Keep the attribution in the header of any graph or PageRank
 module that ships.
 
 - [`measurements.md`](measurements.md) — the numbers, in full
+- [`two-layer-viability.md`](two-layer-viability.md) — the two-layer variant, measured
 - [`scripts/bench/repomap/`](../../../scripts/bench/repomap/) — the probe
 - `.claudin/memory/team/repo-map-rejected-orientation-measured.md` — the 2026-08-07 audit
 - `.claudin/memory/team/dev-tooling-token-roadmap.md` — where the tokens actually are (`Read` at 59.7% of tool-result chars)
