@@ -121,6 +121,27 @@ For projects with multiple concerns, suggest organizing instructions into \`.cla
 
 For projects with distinct subdirectories (monorepos, multi-module projects, etc.): mention that subdirectory AGENTS.md files can be added for module-specific instructions (they're loaded automatically when Claude works in those directories). Offer to create them if the user wants.
 
+## Phase 4.5: Annotate the navigation map
+
+\`.claudin/rules/search-strategy.md\` already exists — it is written and kept
+current automatically from the tracked file list, so its tree and its \`(N)\`
+counts are not yours to maintain. What it cannot derive is what each directory
+is *for*, which is why every entry it has not been told about reads \`← TODO\`.
+
+Read it. For each \`TODO\`, replace it with a short phrase naming the
+directory's job — six or seven words, the kind of thing that saves a search
+("the HTTP handlers", "provider abstraction; start here for auth issues").
+
+Two rules, and they matter more than coverage:
+
+- **Only annotate what you actually read.** A guess here is worse than a
+  \`TODO\`: the map is what decides where the next agent greps, so an entry
+  describing the wrong thing sends every future session to the wrong
+  directory, and no checker can catch that. Leave the rest as \`TODO\`.
+- **Change nothing else in that file.** Not the tree, not the counts, not the
+  frontmatter. Those are regenerated, so an edit to them is discarded on the
+  next run — while your annotations are keyed by directory and survive.
+
 ## Phase 5: Write CLAUDE.local.md (if user chose personal or both)
 
 Write a minimal CLAUDE.local.md at the project root. This file is automatically loaded alongside AGENTS.md. After creating it, add \`CLAUDE.local.md\` to the project's .gitignore so it stays private.

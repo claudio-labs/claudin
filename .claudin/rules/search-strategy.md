@@ -294,7 +294,7 @@ src/
 ├── sessions/ (61)               ← persistence/, resume/, indexing/, conversationRecovery, ui/
 ├── vcs/ (59)                    ← git/ (wrapper, worktree, gh PR status) + diff/ (the /diff reviewer)
 ├── plugins/ (51)                ← plugin discovery, install, marketplace, dxt/
-├── memory/ (50)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
+├── memory/ (56)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
 │                                  extract/, session/, teamSync/, instructions/ (claudemd.ts loads
 │                                  AGENTS.md/CLAUDE.md + .claudin/rules/*.md), ui/
 ├── skills/ (35)                 ← user-invocable skills (/<name>); bundled/ + /create authoring

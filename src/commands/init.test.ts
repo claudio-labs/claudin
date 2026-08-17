@@ -35,6 +35,25 @@ test('init prompt asks about subagents and guardrails in Phase 1', async () => {
   expect(text).toContain('Configure guardrails')
 })
 
+test('init prompt annotates the navigation map without rewriting it', async () => {
+  mock.module('src/platform/projectOnboardingState.js', () => ({
+    maybeMarkProjectOnboardingComplete: () => {},
+  }))
+
+  const command = await importInitCommand()
+  const blocks = await command.getPromptForCommand()
+  // The map is written at session start, so /init enriches rather than creates.
+  expect(blocks).toHaveLength(1)
+  const text = String(blocks[0]?.text)
+
+  expect(text).toContain('Phase 4.5: Annotate the navigation map')
+  expect(text).toContain('.claudin/rules/search-strategy.md` already exists')
+  expect(text).toContain('Only annotate what you actually read')
+  // The structural half is regenerated, so telling the model to edit it would
+  // hand it work that is discarded on the next session start.
+  expect(text).toContain('Change nothing else in that file')
+})
+
 test('init prompt includes Phase 5.5 subagent creation flow', async () => {
   mock.module('src/platform/projectOnboardingState.js', () => ({
     maybeMarkProjectOnboardingComplete: () => {},

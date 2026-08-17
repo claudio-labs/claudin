@@ -43,6 +43,17 @@
 > building is the map verifier
 > ([`two-layer-viability.md` §5](two-layer-viability.md#5-what-survives-verify-the-map-dont-generate-it)),
 > which is not an index.
+>
+> **Built on 2026-08-17, and it grew a generator.** The verifier ships and found
+> three real defects in this repo's map with no false positives. It also settled
+> a question this study kept reopening: what was rejected is generated
+> *judgment*, not generated *structure*. A map containing only claims the
+> verifier re-derives — a tree, `(N)` counts, `TODO` where a purpose would go —
+> cannot misdirect, so Claudin now writes one in every project at session start
+> and keeps its numbers current. Two rounds of repo-map evaluation therefore
+> produced no index, one linter extension and one generator that is allowed to
+> say very little. What the plan got wrong on contact with the corpus is in
+> [`two-layer-viability.md` §5.1](two-layer-viability.md#51-what-shipped-and-what-the-plan-got-wrong).
 
 ## 1. Why this doc exists
 

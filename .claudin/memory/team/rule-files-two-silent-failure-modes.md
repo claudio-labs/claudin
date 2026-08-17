@@ -1,6 +1,6 @@
 ---
 name: rule-files-two-silent-failure-modes
-description: A .claudin/rules/ file can be silently inert, silently unconditional, or carry wrong facts inside a fenced block the linter cannot see; all three look identical to a working rule at runtime (2026-08-07, extended 2026-08-17)
+description: A .claudin/rules/ file can be silently inert, silently unconditional, or carry wrong facts inside a fenced block; all three look identical to a working rule at runtime — the third is now checked and auto-healed (2026-08-07, shipped 2026-08-17)
 type: project
 ---
 
@@ -57,18 +57,52 @@ wrong file (`getPrimaryModel` is `src/providers/presets/providerModels.ts:25`,
 slice), a line count off by 40× (`openaiShim.ts` is 51 lines, a barrel; the impl
 is the sibling directory), and one file count (`transport/` is 37, not 35).
 
-**The lesson that changes the design:** part of what was filed as "the semantic
+**The lesson that changed the design:** part of what was filed as "the semantic
 half no checker can see" is in fact **mechanical** — path existence, `(N)` file
 counts, `file.ts (symA, symB)` attributions, `~N lines` claims. It only looked
-semantic because the extractor never reached it. So the fix for a stale map is a
-*verifier*, not a generator: it costs zero prompt tokens, has no staleness
-window, and preserves the 178 judgment claims no generator would write. That is
-the only surviving proposal from two rounds of repo-map evaluation
-([[repo-map-graph-topology-degenerate]]) — extend `lintRuleFiles` to walk fenced
-blocks, reusing `citationExists`/`hasProjectAnchor` (`rulesLint.ts:173,188`) and
-`scanSymbols`. Open design decision, not yet settled: the counts self-declare as
-"approximate" and 8 of 18 top-level ones already drift by 2–7 files, so the
-tolerance can be absolute, relative, or auto-updated by `/refresh-rules`.
+semantic because the extractor never reached it.
 
-See [[repo-map-rejected-orientation-measured]] for why upkeep was built instead
-of an index generator.
+**Shipped 2026-08-17**, and it settled the generation question this project kept
+reopening ([[repo-map-graph-topology-degenerate]],
+[[repo-map-rejected-orientation-measured]]). What was rejected is generated
+**judgment**; generated **structure** is a different object, because every
+statement in it is one the checker re-derives. So a map is now written in every
+project and kept current, and it is allowed to say very little:
+
+- `rulesClaims.ts` — extraction, pure. `rulesLint.ts` — report. `rulesMapSync.ts`
+  — rewrite. `ruleMapAutoSync.ts` — run at session start, killswitch
+  `CLAUDIN_DISABLE_RULE_MAP_SYNC=1`.
+- **A hand-written map is healed, never restructured** (numbers only). **A
+  generated one is regenerated whole**, with `←` annotations carried across by
+  directory. The marker `<!-- claudin:module-map -->` is what distinguishes them:
+  we only restructure files we wrote.
+- Counts follow a `git ls-files` extension histogram, so a Python repo counts
+  `.py`. Nothing is hardcoded to TypeScript.
+
+Four things the plan got wrong, all found by running it rather than reading it:
+
+- **The cheap check is not the product.** Fenced *path* existence catches 1 of
+  the 3 misleading defects and is the part that needs the tree parser. Size and
+  attribution catch the other two and need no tree — both resolve by **unique
+  basename**, ambiguous → skipped.
+- **A size claim must sit in the parenthetical its filename opens.** "Nearest
+  filename to the left" read *"eight lines of a 2,200-line file"* as a claim
+  about the `FileReadTool.ts` cited beside it — the only false positive, and it
+  was in `cache.md`, not the map.
+- **Two guards keep the tree parser honest**: only `├──`/`└──` lines are entries,
+  and the `←` annotation is split off before tokenizing. Without the second,
+  every annotated line invents a path (`← model.ts` under `providers/` →
+  `src/providers/model.ts`): 14 false findings in one run.
+- **Symbol lists need a code-shaped filter** (interior capital or `_`), or
+  `activeProvider.ts (resolver)` reads as an attribution.
+
+The tolerance question is settled as **relative, ±10% with a floor of 3**, for
+both reporting and healing: 9 of 55 counts had drifted within two days of being
+measured, none by more than 1.2%, so an exact ratchet is a permanently red check
+and a permanently red check gets deleted. Small churn therefore produces no
+write at all, which is what makes running this at every session start free.
+
+**Not measured:** whether a generated map helps in a fresh project. Every number
+above came from this repo, which already had a 467-line hand-written map. The
+case for shipping it everywhere is that its claims are verified, not that its
+value is proven.

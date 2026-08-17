@@ -137,11 +137,21 @@ describe('refresh-rules skill', () => {
     expect(text).toMatch(/Always-loaded context: \d+ file\(s\)/)
   })
 
-  test('states the create threshold and the supported frontmatter key', async () => {
+  test('states the supported frontmatter key', async () => {
     registerRefreshRulesSkill()
     const text = await promptText('refresh-rules')
-    expect(text).toContain('20 sessions')
     expect(text).toContain('`paths` is the ONLY supported key')
     expect(text).toContain('globs:')
+  })
+
+  test('points the model at the annotations, not the generated structure', async () => {
+    // The map is written and refreshed at session start, so a proposed edit to
+    // its tree or its counts is discarded on the next run. Only the `←`
+    // annotations survive, and they are the half no generator can write.
+    registerRefreshRulesSkill()
+    const text = await promptText('refresh-rules')
+    expect(text).toContain('refreshed automatically')
+    expect(text).toContain('← TODO')
+    expect(text).not.toContain('you may create one at')
   })
 })

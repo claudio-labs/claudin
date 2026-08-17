@@ -59,3 +59,15 @@ the map at **97.3% accurate**, and its 5 real errors turned out to be mechanical
 rather than semantic — they survived only because the linter cannot see inside
 fenced blocks ([[rule-files-two-silent-failure-modes]], Class C). Rule accuracy is
 still the live problem; more of it is checkable than this memory assumed.
+
+**Third correction, shipped 2026-08-17: the scope of "do not generate".** The
+instruction above still holds for what it measured — an aider-style ranked map,
+and a `search-strategy.md` synthesised from session history. Both write
+*judgment*, and judgment is what makes a rule misdirect. It does **not** cover a
+generator whose every statement the linter re-derives: a directory tree, `(N)`
+counts, and `TODO` where a purpose would go. That cannot misdirect, so Claudin
+now writes such a map in **every** project at session start and keeps its numbers
+current ([[rule-files-two-silent-failure-modes]]). The annotations — the part
+this memory is about — are still written by hand, survive every refresh, and are
+what `/refresh-rules` and `/init` are pointed at. The 33.4%/59.5% numbers are
+unchanged and remain the reason the generated half stays this thin.
