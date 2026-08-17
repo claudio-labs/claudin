@@ -148,8 +148,8 @@ describe('buildStartupBannerLines', () => {
   it('returns a stable line count for snapshot-style assertions', async () => {
     const { buildStartupBannerLines } = await import('src/platform/StartupScreen.js')
     const lines = buildStartupBannerLines('claude-sonnet-4-6')
-    // Banner shape: 4 logo rows (no leading/trailing blank).
-    expect(lines.length).toBe(4)
+    // Banner shape: 3 logo rows (no leading/trailing blank).
+    expect(lines.length).toBe(3)
   })
 
   it('appends an update-available notice when one is passed', async () => {
@@ -161,7 +161,7 @@ describe('buildStartupBannerLines', () => {
     expect(text).toContain('▲ New version available (v9.9.9)')
     expect(text).toContain('claudin update')
     // Adds exactly one extra line vs. the no-notice case.
-    expect(lines.length).toBe(5)
+    expect(lines.length).toBe(4)
   })
 
   it('wraps only (vX.Y.Z) in green; the rest of the notice is DIM', async () => {
@@ -169,7 +169,7 @@ describe('buildStartupBannerLines', () => {
     const lines = buildStartupBannerLines('claude-sonnet-4-6', {
       latest: '9.9.9',
     })
-    const noticeLine = lines[4]
+    const noticeLine = lines[3]
     expect(noticeLine).toBeDefined()
     // GREEN = ESC[32m wraps "(v9.9.9)" exactly, terminated by RESET.
     expect(noticeLine).toMatch(/\x1b\[32m\(v9\.9\.9\)\x1b\[0m/)
