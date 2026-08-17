@@ -39,6 +39,9 @@ const KIND_LABEL: Record<RuleLintFinding['kind'], string> = {
   malformed_paths: 'malformed paths',
   inert_paths: 'inert rule',
   missing_path: 'stale path reference',
+  stale_line_count: 'stale size claim',
+  wrong_attribution: 'wrong symbol attribution',
+  dir_count_drift: 'stale directory count',
 }
 
 const result = await lintRuleFiles({ root: ROOT })
@@ -56,7 +59,7 @@ function print(findings: RuleLintFinding[], marker: string): void {
     console.error(`\n${file}`)
     for (const finding of fileFindings) {
       console.error(
-        `  ${marker} ${KIND_LABEL[finding.kind]}: ${finding.message}`,
+        `  ${marker} ${finding.line === undefined ? '' : `line ${finding.line}: `}${KIND_LABEL[finding.kind]}: ${finding.message}`,
       )
       console.error(`      fix: ${finding.fix}`)
     }

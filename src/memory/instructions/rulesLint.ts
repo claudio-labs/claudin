@@ -11,6 +11,10 @@
  *  - **silently unconditional** — only `paths` is read, so a rule authored with
  *    `globs:` (the Cursor convention) gets no patterns and falls into the
  *    unconditional lane, loading into every session, every turn.
+ *  - **wrong inside a fenced block** — the prose extractor below walks
+ *    single-backtick spans, and a Module Map is a fenced tree whose lines carry
+ *    none. `rulesClaims.ts` reads that region; the checks are at
+ *    {@link checkRuleClaims}.
  *
  * Consumed by `/doctor` (src/platform/doctor/doctorContextWarnings.ts), the
  * `/refresh-rules` skill, and `scripts/verify/rules-check.ts` for CI.
@@ -23,6 +27,17 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { getErrnoCode } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { inspectRuleFrontmatter } from 'src/memory/instructions/ruleFrontmatter.js'
+import {
+  type RuleClaims,
+  countTrackedSources,
+  dirCountDrifted,
+  dominantSourceExtensions,
+  extractRuleClaims,
+  lineCountDrifted,
+  resolveUniqueBasename,
+} from 'src/memory/instructions/rulesClaims.js'
+import { detectOutlineLangFromPath } from 'src/tools/shared/codeOutline/detectLang.js'
+import { scanSymbols } from 'src/tools/shared/codeOutline/scanSymbols.js'
 
 /** Root-level context files that are loaded without any `paths:` gating. */
 const ROOT_CONTEXT_FILES = ['AGENTS.md', 'CLAUDE.md'] as const
@@ -73,6 +88,14 @@ const REMOVAL_CONTEXT_RE =
  */
 const JS_SPECIFIER_RE = /\.js$/
 
+/**
+ * `export * from './x.js'` — a barrel surfaces names it never declares, so
+ * attributing a symbol to one is not wrong, merely unresolvable here.
+ */
+const STAR_REEXPORT_RE = /^\s*export\s+\*\s+from\s/m
+/** `export { a, b as c } from './x.js'` — a definition, as a reader sees it. */
+const NAMED_REEXPORT_RE = /^\s*export\s*\{([^}]*)\}/gm
+
 export type RuleLintFindingKind =
   /** Frontmatter key the loader ignores — the rule silently becomes unconditional. */
   | 'unsupported_key'
@@ -82,6 +105,12 @@ export type RuleLintFindingKind =
   | 'inert_paths'
   /** A path cited in prose that no longer exists. */
   | 'missing_path'
+  /** A `~N lines` claim off by enough to mislead. */
+  | 'stale_line_count'
+  /** A symbol attributed to a file that does not define it. */
+  | 'wrong_attribution'
+  /** A `dir/ (N)` count that no longer describes the directory. */
+  | 'dir_count_drift'
 
 export type RuleLintFinding = {
   /** Absolute path of the rule file the finding belongs to. */
@@ -90,6 +119,11 @@ export type RuleLintFinding = {
   severity: 'error' | 'warning'
   message: string
   fix: string
+  /**
+   * 1-based line inside the rule file, when the check knows it. A Module Map
+   * runs to a hundred lines, so a finding without one starts a search.
+   */
+  line?: number
 }
 
 export type RuleLintResult = {
@@ -228,6 +262,136 @@ export function extractProsePaths(content: string): string[] {
   return extractProsePathCitations(content).map(c => c.path)
 }
 
+/** Lines in a tracked file, counted as `wc -l` counts them. Null if unreadable. */
+async function countFileLines(
+  root: string,
+  relPath: string,
+): Promise<number | null> {
+  const fs = getFsImplementation()
+  try {
+    const source = await fs.readFile(join(root, relPath), { encoding: 'utf8' })
+    const lines = source.split('\n').length
+    return source.endsWith('\n') ? lines - 1 : lines
+  } catch (e: unknown) {
+    logForDebugging(`[rulesLint] unreadable source ${relPath}: ${String(e)}`)
+    return null
+  }
+}
+
+/**
+ * Names a file defines, as a reader of that file would list them: declared
+ * symbols plus the names it re-exports explicitly.
+ *
+ * Null means "cannot tell", and every caller treats that as "say nothing" — an
+ * unsupported language, an unreadable file, or a `export * from` barrel, which
+ * surfaces names it never declares.
+ */
+async function definedSymbols(
+  root: string,
+  relPath: string,
+): Promise<Set<string> | null> {
+  const lang = detectOutlineLangFromPath(relPath)
+  if (lang === null) return null
+
+  const fs = getFsImplementation()
+  let source: string
+  try {
+    source = await fs.readFile(join(root, relPath), { encoding: 'utf8' })
+  } catch (e: unknown) {
+    logForDebugging(`[rulesLint] unreadable source ${relPath}: ${String(e)}`)
+    return null
+  }
+  if (STAR_REEXPORT_RE.test(source)) return null
+
+  const names = new Set(scanSymbols(source, lang).map(entry => entry.name))
+  for (const match of source.matchAll(NAMED_REEXPORT_RE)) {
+    for (const clause of (match[1] ?? '').split(',')) {
+      // `a as b` publishes b; `type A` publishes A.
+      const published = clause.trim().split(/\s+as\s+/).pop()?.trim()
+      if (published) names.add(published.replace(/^type\s+/, ''))
+    }
+  }
+  return names
+}
+
+/**
+ * Checks the claims a rule makes inside its fenced blocks — the region the
+ * prose extractor above cannot see.
+ *
+ * Every check here is skip-on-doubt. A claim whose file cannot be identified
+ * uniquely, or whose language has no scanner, produces nothing: the map is
+ * shorthand written for humans, and a checker that guesses at what it meant
+ * reports its own guesses.
+ */
+async function checkRuleClaims(
+  root: string,
+  file: string,
+  claims: RuleClaims,
+  trackedFiles: readonly string[],
+  findings: RuleLintFinding[],
+): Promise<void> {
+  const extensions = dominantSourceExtensions(trackedFiles)
+
+  for (const { path: cited, lineNumber } of claims.fencedPaths) {
+    if (!hasProjectAnchor(root, cited)) continue
+    if (citationExists(root, cited)) continue
+    findings.push({
+      file,
+      line: lineNumber,
+      kind: 'missing_path',
+      severity: 'warning',
+      message: `names \`${cited}\` inside a fenced block, which does not exist`,
+      fix: 'Update or remove it — a map that lists a directory the tree no longer has sends the agent to search for nothing.',
+    })
+  }
+
+  for (const { path: dir, claimed, lineNumber } of claims.dirCounts) {
+    if (!citationExists(root, dir)) continue
+    const actual = countTrackedSources(trackedFiles, dir, extensions)
+    if (!dirCountDrifted(claimed, actual)) continue
+    findings.push({
+      file,
+      line: lineNumber,
+      kind: 'dir_count_drift',
+      severity: 'warning',
+      message: `says \`${dir}\` holds ${claimed} files; it holds ${actual}`,
+      fix: 'Re-count or run `bun run verify:rules --fix`. A gap this size means the slice moved, split or died, not that it grew.',
+    })
+  }
+
+  for (const { file: named, claimed, lineNumber } of claims.lineCounts) {
+    const resolved = resolveUniqueBasename(trackedFiles, named)
+    if (resolved === null) continue
+    const actual = await countFileLines(root, resolved)
+    if (actual === null || !lineCountDrifted(claimed, actual)) continue
+    findings.push({
+      file,
+      line: lineNumber,
+      kind: 'stale_line_count',
+      severity: 'warning',
+      message: `says \`${resolved}\` is ~${claimed.toLocaleString()} lines; it is ${actual.toLocaleString()}`,
+      fix: 'Re-measure, or point the claim at the directory — a barrel and its implementation siblings are the usual mix-up.',
+    })
+  }
+
+  for (const { file: named, symbols, lineNumber } of claims.attributions) {
+    const resolved = resolveUniqueBasename(trackedFiles, named)
+    if (resolved === null) continue
+    const defined = await definedSymbols(root, resolved)
+    if (defined === null) continue
+    const missing = symbols.filter(symbol => !defined.has(symbol))
+    if (missing.length === 0) continue
+    findings.push({
+      file,
+      line: lineNumber,
+      kind: 'wrong_attribution',
+      severity: 'warning',
+      message: `places ${missing.map(s => `\`${s}\``).join(', ')} in \`${resolved}\`, which does not define ${missing.length === 1 ? 'it' : 'them'}`,
+      fix: 'Attribute the symbol to the file that declares it — importing a name is not defining it, and the map is what decides where the agent greps.',
+    })
+  }
+}
+
 /** Recursively collects `.md` files under a directory. Missing dir → []. */
 async function collectMarkdownFiles(dir: string): Promise<string[]> {
   const fs = getFsImplementation()
@@ -361,6 +525,19 @@ export async function lintRuleFiles(
         message: `cites \`${cited}\`, which does not exist`,
         fix: 'Update or remove the reference — a rule that names a moved file sends the agent to the wrong place.',
       })
+    }
+
+    // The fenced region. Needs the tracked list to count and to resolve a
+    // basename, so outside a git repo these checks are skipped rather than
+    // guessed at.
+    if (trackedFiles) {
+      await checkRuleClaims(
+        root,
+        file,
+        extractRuleClaims(raw),
+        trackedFiles,
+        findings,
+      )
     }
   }
 

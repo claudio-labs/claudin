@@ -33,13 +33,13 @@ async function buildPrompt(): Promise<string> {
       await lintRuleFiles({ root })
     const lines = findings.map(
       f =>
-        `- [${f.severity}] ${relativeFindingPath(root, f.file)} — ${f.message}\n  fix: ${f.fix}`,
+        `- [${f.severity}] ${relativeFindingPath(root, f.file)}${f.line === undefined ? '' : `:${f.line}`} — ${f.message}\n  fix: ${f.fix}`,
     )
     lintSection = [
       `Checked ${filesChecked} rule file(s).`,
       lines.length > 0
         ? `\nMechanical findings (already computed — do not re-derive these):\n${lines.join('\n')}`
-        : '\nNo mechanical findings: every `paths:` matches at least one tracked file, no unsupported frontmatter keys, no stale path references.',
+        : '\nNo mechanical findings: every `paths:` matches at least one tracked file, no unsupported frontmatter keys, no stale path references in prose or inside a fenced block, no symbol attributed to a file that does not define it, and no size or `(N)` count off by enough to matter.',
       `\nAlways-loaded context: ${unconditional.length} file(s) totalling ${unconditionalChars.toLocaleString()} chars, paid on every turn — the root AGENTS.md/CLAUDE.md plus every rule with no \`paths:\`.`,
     ].join('\n')
   } catch {
@@ -92,6 +92,10 @@ the one it cannot: a rule that is *wrong* rather than broken. Concretely —
      directly or via a directory it names.
    - **Wrong** — anything a rule describes inaccurately. This is the valuable
      list; verify each one by actually reading the file before claiming it.
+     Paths, symbol attributions and size/count claims are already covered
+     mechanically above, including inside fenced blocks — so spend your effort
+     on the half that is not: whether the *described purpose* of a module still
+     matches what it does.
    - **Dead** — paths a rule names that no longer exist. Cross-check against the
      mechanical findings above rather than re-deriving.
 
