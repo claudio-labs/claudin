@@ -29,28 +29,26 @@ const rgb = (r: number, g: number, b: number) => `${ESC}38;2;${r};${g};${b}m`
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
-const PINK_LIGHT: RGB = [243, 145, 175]
 const PINK: RGB = [225, 95, 140]
 const PINK_DARK: RGB = [170, 65, 110]
 
 // ─── Pixel-art logo ───────────────────────────────────────────────────────────
 
 /**
- * 5-row pink pixel-art robot using half-block chars (█ ▜ ▝).
+ * 3-row pink pixel-art robot using half-block chars (█ ▜ ▝).
  * Each cell encodes two stacked pixel rows: foreground = pink,
  * terminal background fills eye/mouth holes.
  *
  * Rows are space-padded to the same width so the text column lines up.
- * See LOGO_LINES for the character layout (4 rows).
+ * See LOGO_LINES for the character layout (3 rows).
  */
 const LOGO_LINES: string[] = [
-  '       ',
   '▐▛███▜▌',
   '▐█████▌',
   ' ▘▘ ▝▝ ',
 ]
 
-const LOGO_SHADES: RGB[] = [PINK_LIGHT, PINK, PINK, PINK, PINK_DARK]
+const LOGO_SHADES: RGB[] = [PINK, PINK, PINK, PINK_DARK]
 
 /**
  * Visible width of the logo block (ANSI-stripped). Each character in
@@ -171,8 +169,8 @@ export const STARTUP_BANNER_WIDTH = 80
 
 /**
  * Build the ANSI-escaped lines for the startup banner. Pure function.
- * Layout: 4-row pink pixel-art robot on the left, three info lines on the
- * right (rows 0..2). Row 3 of the logo extends below the text.
+ * Layout: 3-row pink pixel-art robot on the left, three info lines on the
+ * right — one per logo row, so the banner opens on its first painted row.
  */
 export type UpdateNotice = {
   latest: string
@@ -195,7 +193,6 @@ export function buildStartupBannerLines(
   const cwdLine = `${DIM}${formatCwd()}${RESET}`
 
   const textRows: (string | undefined)[] = [
-    undefined,    // sparkle row, no text
     headerLine,   // top of head — Claudin vX.Y.Z
     providerLine, // face — Provider · model
     cwdLine,      // mouth — cwd
