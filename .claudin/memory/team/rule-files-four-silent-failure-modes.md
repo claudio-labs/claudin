@@ -1,12 +1,14 @@
 ---
-name: rule-files-two-silent-failure-modes
+name: rule-files-four-silent-failure-modes
 description: A .claudin/rules/ file can be silently inert, silently unconditional, carry wrong facts inside a fenced block, or be a curated map whose structure drifts under a green verify:rules; all four look identical to a working rule at runtime (2026-08-07, shipped and audited 2026-08-17)
 type: project
 ---
 
 Rule files are injected into context with **no validation of any kind** — no zod
 schema on the frontmatter, no glob check, no existence check on cited paths.
-Two failure modes follow, and neither produces any runtime signal.
+Four failure modes follow, and none produces any runtime signal. Classes A and B
+were found on 2026-08-07 and are the two a checker can catch; C and D were found
+on 2026-08-17 and are described further down, after the tooling built for A/B.
 
 **Class A — inert.** `parseFrontmatterPaths` (`src/memory/instructions/claudemd.ts`) hands
 patterns to `ignore().add(...)` — the *gitignore* library, not a glob matcher.

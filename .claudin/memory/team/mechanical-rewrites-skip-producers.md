@@ -107,5 +107,5 @@ the destination). Re-run every ratchet the move could have desynced —
 `build:strict`, `test:floor`, the typecheck baseline — as part of the move, not
 after someone notices. And decide up front which trees are records: a bench
 result, a captured baseline and an archive are evidence, and evidence is not
-maintained. See [[rule-files-two-silent-failure-modes]] for the same shape in
+maintained. See [[rule-files-four-silent-failure-modes]] for the same shape in
 rule frontmatter, and [[reorg-catch-all-dirs-retired]] for the reorg itself.

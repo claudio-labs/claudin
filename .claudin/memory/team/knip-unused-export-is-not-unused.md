@@ -16,7 +16,7 @@ Three guards are mandatory before deleting anything from that list:
 2. **Referenced in any other file at all**, by grep, whatever knip says. This
    fork has 165 unresolved imports, so knip's graph has holes, and from inside
    the report a hole and an unused symbol look identical. See
-   [[missing-subsystems-are-not-fixable-by-declaration]].
+   [[missing-subsystems-retired-by-all-any-declarations]].
 3. **Read by a code generator rather than by an import.** No import graph shows
    this, so both guards above pass and the symbol still looks dead.
    `scripts/codegen/generate-sdk-types.ts` reads `coreSchemas.ts` as text and turns each

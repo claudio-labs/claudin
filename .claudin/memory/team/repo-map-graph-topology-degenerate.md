@@ -114,7 +114,7 @@ with zero dependencies, and the real tree-sitter blocker is elsewhere
 ([[symbol-parser-options-researched]]).
 
 What survived both studies is not an index at all — see
-[[rule-files-two-silent-failure-modes]] for the map *verifier*. Three sibling
+[[rule-files-four-silent-failure-modes]] for the map *verifier*. Three sibling
 implementations were audited for anything that beats this: [[code-graph-siblings-audited]].
 
 **Limitation, so the next person can attack it properly:** Gate 1 is one user,

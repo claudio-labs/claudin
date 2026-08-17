@@ -20,7 +20,7 @@ newly added error fails CI outright rather than hiding under a large number.
 
 Where the 2820 went: ~2700 across 493 source files (mostly React-Compiler `t0`
 annotations, per the correction below), plus ~107 TS2307 retired by all-`any`
-declaration files — see [[missing-subsystems-are-not-fixable-by-declaration]],
+declaration files — see [[missing-subsystems-retired-by-all-any-declarations]],
 whose own "declaring them away does not work" headline was corrected the same
 day. Verify a large drop is real before believing it: the failure mode is tsc
 skipping semantic analysis after a parse error in a generated `.d.ts`.
@@ -72,7 +72,7 @@ Shape of the backlog, measured 2026-08-06 on branch `chore/repo-improvements`
 - **~107 unresolved modules are deliberate.** Superseded 2026-08-13: they ARE
   retired by declaring them, but only with all-`any` exports, and doing so buys
   no type safety — an unresolved import is already `any`. See
-  [[missing-subsystems-are-not-fixable-by-declaration]] for the current list,
+  [[missing-subsystems-retired-by-all-any-declarations]] for the current list,
   which is wider than the obvious optional subsystems. It is also spread wider
   than it was: the reorg dissolved `src/services/`, so the 87 declaration-only
   modules now sit in every slice, led by `src/platform/` (23), `src/commands/`

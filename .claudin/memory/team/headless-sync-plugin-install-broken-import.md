@@ -32,7 +32,7 @@ arming it there — plugin-hook hot reload was simply dead on that path too.
 ## The reusable part — triaging a TS2307 in this fork
 
 This sat inside the ~107-entry `TS2307` cluster that
-[[missing-subsystems-are-not-fixable-by-declaration]] correctly says is the fork's
+[[missing-subsystems-retired-by-all-any-declarations]] correctly says is the fork's
 expected shape, which is exactly why nobody looked at it. The discriminator that
 separates a real bug from that backlog is two questions, both cheap:
 
