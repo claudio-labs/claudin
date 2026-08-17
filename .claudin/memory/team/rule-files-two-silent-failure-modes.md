@@ -1,6 +1,6 @@
 ---
 name: rule-files-two-silent-failure-modes
-description: A .claudin/rules/ file can be silently inert, silently unconditional, or carry wrong facts inside a fenced block; all three look identical to a working rule at runtime — the third is now checked and auto-healed (2026-08-07, shipped 2026-08-17)
+description: A .claudin/rules/ file can be silently inert, silently unconditional, carry wrong facts inside a fenced block, or be a curated map whose structure drifts under a green verify:rules; all four look identical to a working rule at runtime (2026-08-07, shipped and audited 2026-08-17)
 type: project
 ---
 
@@ -131,3 +131,47 @@ implementation happened to be correct for that input. Reproducing the bug needed
 two siblings sharing a number where only the second drifted. Read-only agents
 cannot run that pass, so budget for it separately rather than assuming a green
 suite means the guards hold.
+
+**Class D — a curated map's structure drifts under a green `verify:rules`
+(audited 2026-08-17).** The automation deliberately does very little to a
+hand-written map: it moves numbers, and only past the ±10%/floor-3 tolerance. It
+never restructures one, because where a directory belongs in a curated tree is
+judgment. So the gate passing says nothing about whether the map is current.
+Audited this repo's own 470-line `search-strategy.md` against `git ls-files`: no
+dead directories, but **9 of 55 counts stale and 15 directories of 8+ files
+never named anywhere** — both invisible to the checker by design, and the second
+class is invisible to the healer forever.
+
+**How to apply:** re-audit a hand-written map on a schedule, not on a red check.
+Diff `extractRuleClaims` + `countTrackedSources` against `git ls-files` on three
+axes — dead paths, *exact* count drift, and real directories above a size floor
+that the file never names. The third axis must match on the **bare directory
+name**, not the full path: a curated map legitimately describes children in the
+`←` prose (`vcs/ (59) ← git/ … + diff/ …`), so a full-path check reports every
+one of them as missing. That false-positive round is what the 15 shrank from.
+The audit is also where the map earns its keep — the real finds were three name
+collisions (`providers/cache/` metrics vs `agent/cache/` policy, `terminal/input/`
+vs `prompt-input/`, `tools/AgentWorkflow/` engine vs `tools/WorkflowTool/`'s
+three `.d.ts` stubs), each of which sends a grep to the wrong directory.
+
+**Portability was checked by generating against six repo shapes, not by reading
+the code (2026-08-17).** Language choice is extension frequency against a
+*denylist* of non-code suffixes, with a fallback to the raw histogram, so Rust,
+Go, C, Ruby, Python and a TS monorepo all produce sensible trees with nothing
+configured, and a docs-only repo still gets counts instead of zeros. Two real
+defects only that exercise found:
+
+- **A flat repo generated an empty fence and wrote it anyway** — 347 bytes of
+  frontmatter and prose promising a tree, plus a `paths:` that pulled it into
+  context on every matching edit. Reachable by a Go binary with sources at the
+  root and by a small Python package whose only subdirectory is a two-file
+  `tests/`. Generation is now gated on the tree being non-empty; **healing is
+  not**, since a curated map in a flat repo can still carry counts worth fixing.
+- **`.mod` was treated as a language.** One `go.mod` in a single-module repo
+  never clears the 2% noise floor, which is why this hid; a multi-module Go
+  workspace carries one per service and does clear it, putting `**/*.mod` in the
+  frontmatter and counting manifests into every directory total.
+
+Both are the same lesson: the failure modes live in repo shapes this project
+does not have, so exercise the generator against synthetic ones before claiming
+it is portable.

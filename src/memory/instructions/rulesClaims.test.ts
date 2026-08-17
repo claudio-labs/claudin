@@ -284,6 +284,22 @@ describe('dominantSourceExtensions', () => {
     ).toEqual(['.py', '.ts'])
   })
 
+  test('a manifest is not a language, however many modules there are', () => {
+    // A multi-module Go workspace carries one go.mod per service, which is
+    // enough of a share to clear the noise floor and be named a language:
+    // `paths: **/*.mod` in the frontmatter, and every go.mod counted into its
+    // directory's total. A single-module repo hides this — one manifest in
+    // hundreds of files never clears 2%.
+    expect(
+      dominantSourceExtensions([
+        ...Array.from({ length: 30 }, (_, i) => `svc${i % 3}/pkg/f${i}.go`),
+        'svc0/go.mod',
+        'svc1/go.mod',
+        'svc2/go.mod',
+      ]),
+    ).toEqual(['.go'])
+  })
+
   test('drops a long tail instead of chasing the coverage target', () => {
     const chosen = dominantSourceExtensions(
       tree({ '.ts': 500, '.sh': 4, '.rb': 3, '.pl': 2, '.awk': 1 }),

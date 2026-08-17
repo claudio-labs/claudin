@@ -278,6 +278,61 @@ describe('syncRuleMap', () => {
     expect(next).toContain('rg --files src/agent')
     expect(next).toContain('agent/ (44)')
   })
+
+  test('writes nothing for a repo whose code does not group into directories', () => {
+    // A flat repo renders an empty fence, and the file around it is still 347
+    // bytes of prose promising a tree plus a `paths:` that pulls it into
+    // context on every matching edit. Measured shapes that land here: a Go
+    // binary with its sources at the root, and a small Python package whose
+    // only subdirectory is a two-file `tests/`.
+    expect(
+      syncRuleMap({
+        content: '',
+        trackedFiles: ['main.go', 'server.go', 'db.go', 'go.mod'],
+      }),
+    ).toBeNull()
+    expect(
+      syncRuleMap({
+        content: '',
+        trackedFiles: ['setup.py', 'cli.py', 'tests/a.py', 'tests/b.py'],
+      }),
+    ).toBeNull()
+  })
+
+  test('one directory over the floor is enough to be worth a map', () => {
+    // The boundary the previous test sits under, pinned from the other side so
+    // the guard cannot quietly grow into "never generate anything".
+    const next = syncRuleMap({
+      content: '',
+      trackedFiles: ['Gemfile', 'lib/a.rb', 'lib/b.rb', 'lib/c.rb'],
+    })
+    expect(next).not.toBeNull()
+    expect(next).toContain('lib/ (3)')
+  })
+
+  test('a generated map is left intact when its repo goes flat', () => {
+    // Emptying the fence would discard every annotation in it, which is worse
+    // than the map being stale — the annotations are the only part a human
+    // wrote.
+    const content = generateRuleMap(repo({ 'src/agent': 20 })).replace(
+      '← TODO',
+      '← the loop',
+    )
+    expect(
+      syncRuleMap({ content, trackedFiles: ['main.ts', 'util.ts'] }),
+    ).toBeNull()
+  })
+
+  test('a hand-written map in a flat repo still gets its counts healed', () => {
+    // The guard is about drawing a tree, not about touching numbers. A curated
+    // map can describe a layout the renderer would not have produced.
+    const content = ['```', '.', '├── lib/ (99)', '```', ''].join('\n')
+    const next = syncRuleMap({
+      content,
+      trackedFiles: ['main.ts', 'lib/a.ts', 'lib/b.ts'],
+    })
+    expect(next).toContain('lib/ (2)')
+  })
 })
 
 describe('existingAnnotations', () => {

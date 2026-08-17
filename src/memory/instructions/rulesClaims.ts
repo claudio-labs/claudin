@@ -333,6 +333,7 @@ const NON_CODE_EXTENSIONS = new Set([
   '.yml',
   '.yaml',
   '.toml',
+  '.mod',
   '.ini',
   '.cfg',
   '.lock',

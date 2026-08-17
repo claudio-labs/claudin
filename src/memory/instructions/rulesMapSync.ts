@@ -325,15 +325,33 @@ export function generateRuleMap(trackedFiles: readonly string[]): string {
  * Null is the common case and the reason this is cheap enough to run at every
  * session start.
  */
+/**
+ * Whether this repo's code groups into directories worth drawing.
+ *
+ * A flat repo — every source file at the root, or spread across directories
+ * below `MIN_DIR_FILES` — renders an empty fence. The surrounding prose still
+ * promises a tree and the generated `paths:` still pulls the file into context
+ * on every matching edit, so writing one costs a tracked file in somebody's
+ * repo and buys nothing. This gates only the two generating paths: a
+ * hand-written map in a flat repo may well carry counts worth keeping true, and
+ * healing it is still numbers-only.
+ */
+function hasRenderableTree(trackedFiles: readonly string[]): boolean {
+  return renderModuleTree(trackedFiles).length > 0
+}
+
 export function syncRuleMap(input: RuleMapSyncInput): string | null {
   const { content, trackedFiles } = input
   if (trackedFiles.length === 0) return null
 
   if (content.trim().length === 0) {
-    return generateRuleMap(trackedFiles)
+    return hasRenderableTree(trackedFiles) ? generateRuleMap(trackedFiles) : null
   }
 
   if (content.includes(MAP_MARKER)) {
+    // Gutting a map we wrote is worse than leaving it stale: the fence is where
+    // the annotations live, and emptying it discards every one of them.
+    if (!hasRenderableTree(trackedFiles)) return null
     const regenerated = regenerateGeneratedMap(content, trackedFiles)
     return regenerated === content ? null : regenerated
   }

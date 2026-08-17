@@ -143,7 +143,13 @@ export async function syncProjectRuleMap(
       : ''
     const next = syncRuleMap({ content, trackedFiles })
     if (next === null || next === content) {
-      return { status: 'skipped', reason: 'already current' }
+      // Distinguished because they debug differently: one means the map is
+      // fine, the other means this repo has no tree to draw and never will
+      // until its code groups into directories.
+      return {
+        status: 'skipped',
+        reason: existed ? 'already current' : 'nothing to map',
+      }
     }
 
     writeAtomically(absPath, next)

@@ -329,6 +329,21 @@ attachment rule below. The final run was clean, but that is now unreplayable:
 the tree is green, so "no false positives" describes a run nobody can reproduce
 rather than a property of the checker.
 
+**Portability, measured against six repo shapes.** The language choice is
+extension frequency against a denylist of non-code suffixes, with a fallback to
+the raw histogram, so nothing is configured and nothing is assumed: Rust, Go, C,
+Ruby, Python and a TypeScript monorepo each produce a sensible tree, and a
+docs-only repo gets counts rather than zeros. Generating against synthetic
+shapes — rather than reading the code — is what surfaced the two cases this
+repo's own layout can never reach. A **flat repo** (sources at the root, or
+every subdirectory under the three-file floor) rendered an empty fence and wrote
+it regardless: 347 bytes promising a tree, with a `paths:` that pulled the file
+into context on every matching edit. Generation is now gated on the tree being
+non-empty, while healing is not — a curated map in a flat repo can still carry
+counts worth keeping true. And **`.mod` counted as a language** in a
+multi-module Go workspace, where one manifest per service clears the 2% noise
+floor that a single-module repo keeps it under.
+
 **The generation verdict was narrower than this section assumed.** What was
 measured and rejected is a generator that writes *judgment*: an aider-style
 ranked map, and a `search-strategy.md` synthesised from session history. Both
