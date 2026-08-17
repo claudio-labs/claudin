@@ -228,11 +228,44 @@ location, an invalidation rule, and a staleness window that is wrong exactly whe
 the agent is mid-edit — the moment the answer matters. The 2026-08-08 audit's own
 benchmark had the graph **losing to reading the diff**.
 
+### 4.5 Both directions are degenerate — the graph is one giant core
+
+§4.1 measured the reverse closure and left the forward direction open, because
+"what does X depend on" was the last query with a plausible shape. It was then
+measured
+([`09-forward-closure-size.ts`](../../../scripts/bench/repomap/09-forward-closure-size.ts)):
+
+| forward closure | p10 | p50 | p90 | p99 | max |
+|---|---|---|---|---|---|
+| direct dependencies | 0 | **3** | **13** | 38 | 224 |
+| transitive dependencies | 0 | **2,361** | **2,361** | 2,369 | 2,532 |
+| answer size, paths only | — | ~22,411 tok | ~22,411 tok | — | ~24,050 tok |
+
+**67.8% of files (2,278 of 3,360) have a transitive closure of *exactly* 2,361**,
+and there are only **50 distinct closure sizes across 3,360 files**. 73.3% of
+files produce an answer over 2,000 tokens. Every churn-top file again returns the
+same number — `FileReadTool.ts`, `BashTool.tsx`, `GrepTool.ts`, `effort.tsx` all
+at 2,361 / ~22,411 tokens.
+
+So the import graph has **one giant strongly-connected core** that nearly every
+file both reaches and is reached by. Transitive reachability is therefore close to
+a constant relation in *either* direction, and no personalization, ranking or
+budget changes that: the set is the same before you rank it.
+
+What is left is the **direct** edges, and only those: forward p50 3 / p90 13,
+reverse p50 1 / p90 9. Those are small, informative, and already answered by a
+single `Grep` — either the import block of the file itself, or one exact-string
+search for its specifier.
+
 ### Verdict — Camada 2
 
-Not viable. `impact_of` is degenerate on this topology; `who_calls`/`defines`
-already ship with better semantics and no staleness; the informative residue is
-one `Grep`. No implementation quality changes these.
+Not viable, and the failure is deeper than the three operations. `impact_of` is
+degenerate; `who_calls`/`defines` already ship with better semantics and no
+staleness; and §4.5 shows that **no transitive query over this graph carries
+information in either direction**. The informative residue in both directions is
+the direct edges, which is one `Grep`. No implementation quality changes any of
+this — it is a property of a single-entrypoint bundled monolith, not of a parser
+or a database.
 
 ## 5. What survives: verify the map, don't generate it
 
@@ -268,23 +301,28 @@ error, and a decision for whoever owns that rule.
 
 ## 6. What this changes in the main doc
 
-- [README §8](README.md#8-revised-design--three-lanes) keeps Lane A (focused
-  neighbourhood, flag-gated, behind Gate 1). §4.1 here sharpens the prior against
-  it: the **reverse** direction is degenerate on this topology, so if Lane A is
-  ever built its query must be forward (what X depends on) or direct-only, never
-  transitive reverse. Gate 1 stands and gets harder to pass.
+- **Lane A is withdrawn.** [README §8](README.md#8-revised-design--three-lanes)
+  kept a focused dependency-neighbourhood tool as the one lane worth building
+  behind a flag. §4.5 removes its query: both closure directions are constants, so
+  a "focused neighbourhood" is either the whole core (~22k tokens, no signal) or
+  the direct edges (one `Grep`). Nothing in between exists on this graph. The
+  flag, the tool and Phases 1–5 are not worth writing.
 - Lane B (head injection) is unaffected — still rejected, now with a token budget
   measured against it as well as a ranking failure.
 - Camada 2 is recorded as rejected on measurement, so the SQLite symbol graph
   does not come back a third time without new topology.
+- The net result across both studies: **no graph-based repo index is worth
+  building on this repository.** What survives is the map verifier in §5, which is
+  not a graph and not an index.
 
 ## 7. Not measured
 
-- Whether a **forward** dependency closure is similarly degenerate. §4.1 measured
-  the reverse direction only. This is the open question with the most bearing on
-  Lane A, and the probe already has the forward edges to answer it.
 - Whether the ~2.1k-token depth-3 tree would change agent behaviour at all if it
   *were* generated. No A/B was run, because the accuracy argument (§3.3) removed
   the reason to run one.
 - Whether the count tolerance in §5 should be absolute, relative, or auto-updated
   by `/refresh-rules`. That is a design decision, not a measurement.
+- Whether the degeneracy in §4.5 is specific to this repo's single-entrypoint
+  bundle. It very likely does not hold for a multi-package monorepo, so this
+  conclusion should not be exported to other codebases without re-running the
+  probe there.

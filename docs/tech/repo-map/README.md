@@ -3,10 +3,10 @@
 > **Status:** measured on 2026-08-16 against this tree. The algorithm in
 > proposal v1 (reference graph by identifier tokenization + global PageRank,
 > injected into the prompt head) **does not rank this repository usefully** and
-> is not implementable as specified. One lane survives and is worth building
-> behind a flag; two are documented as rejected so they are not re-proposed.
-> **Branch:** `repo_index_map` — nothing merges to `main` until the gates in
-> §11 pass.
+> is not implementable as specified. **Revised 2026-08-17: the one lane this doc
+> kept alive is now withdrawn too** — see the follow-up below. Nothing here is
+> recommended for implementation; the doc is kept as the measured record of why.
+> **Branch:** `repo_index_map` — documentation and probe only, no `src/` changes.
 > **Raw numbers and how to reproduce them:** [`measurements.md`](measurements.md),
 > probe at [`scripts/bench/repomap/`](../../../scripts/bench/repomap/).
 >
@@ -14,7 +14,10 @@
 > was proposed and measured separately — see
 > [`two-layer-viability.md`](two-layer-viability.md). Camada 1 is off by ~70× on
 > its token budget and replaces an artifact already 97.3% accurate; Camada 2's
-> `impact_of` is a constant function on this topology.
+> `impact_of` is a constant function on this topology — and so is the forward
+> direction, which is what withdraws Lane A. What survives both studies is a
+> **map verifier** that costs zero prompt tokens
+> ([`two-layer-viability.md` §5](two-layer-viability.md#5-what-survives-verify-the-map-dont-generate-it)).
 
 ## 1. Why this doc exists
 
@@ -227,7 +230,7 @@ touch.
 
 ## 8. Revised design — three lanes
 
-### Lane A — focused dependency neighbourhood, on demand, as a tool → **build behind a flag**
+### Lane A — focused dependency neighbourhood, on demand, as a tool → ~~build behind a flag~~ **withdrawn**
 
 What survives measurement is not a *map* but a *query*. The import graph is
 cheap (11 ms to rank, 18k edges), resolves 79% of specifiers, and carries no
@@ -258,12 +261,18 @@ Lane A is a **hypothesis with a defined A/B** (§11), not a decided build. It is
 plausible that `Grep` plus an outline read already covers it at lower cost; that
 is exactly what the gate is for.
 
-**Sharpened 2026-08-17.** [`two-layer-viability.md`](two-layer-viability.md) §4.1
-measured the reverse-import closure and found it degenerate: p50, p90 and p99 are
-all ~2,462 files of 3,359, so "who transitively depends on X" returns the same
-~24,400-token answer for every file an agent edits. If Lane A is built, its query
-must be **forward** (what X depends on) or **direct-only** — never transitive
-reverse. Gate 1 stands and is harder to pass than when it was written.
+> **WITHDRAWN 2026-08-17.** Everything above was written before the closure sizes
+> were measured, and they remove the query.
+> [`two-layer-viability.md` §4.1 and §4.5](two-layer-viability.md#45-both-directions-are-degenerate--the-graph-is-one-giant-core)
+> show the import graph is one giant strongly-connected core: the transitive
+> closure is ~2,462 files in the reverse direction and ~2,361 forward, with p50,
+> p90 and p99 equal in both, and only 50 distinct forward closure sizes across
+> 3,360 files. A "focused neighbourhood" is therefore either the whole core
+> (~22–24k tokens, identical for every file an agent edits) or the direct edges
+> (forward p50 3, reverse p50 1) — which is one `Grep`. There is nothing in
+> between on this graph, so the personalization vector has nothing to
+> discriminate. Phases 1–5 and the flag are not worth writing. Kept in place
+> because the reasoning that led here is the useful part.
 
 ### Lane B — global map injected into the prompt head → **do not build**
 
@@ -367,6 +376,10 @@ statement or ternary condition"* under `bun test` and never under
 the engine's tests must import the engine directly rather than through the gate.
 
 ## 10. Phases
+
+> **Superseded 2026-08-17.** These phases implement Lane A, which §8 withdraws.
+> They are kept because Phase 0's two questions were the right ones to ask first —
+> and asking them is what produced the closure measurement that cancelled the rest.
 
 Each phase is one PR, all behind `feature('REPO_INDEX')` = `false`. Phases 0–1
 are cheap and answer the questions the design still has; **Phase 4 decides
