@@ -20,3 +20,4 @@ __pycache__/
 *.pyc
 .mypy_cache/
 .ruff_cache/
+scripts/bench/repomap/importRanks.json
