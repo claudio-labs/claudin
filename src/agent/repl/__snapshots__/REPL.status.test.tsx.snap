@@ -1,8 +1,7 @@
 // Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
 exports[`<REPL> status baseline idle status (default mount) 1`] = `
-"       
-▐▛███▜▌   Claudin vtest-version
+"▐▛███▜▌   Claudin vtest-version
 ▐█████▌   Not configured · claude-sonnet-4-6
  ▘▘ ▝▝    ~/projects/claudin
 
@@ -14,8 +13,7 @@ exports[`<REPL> status baseline idle status (default mount) 1`] = `
 `;
 
 exports[`<REPL> status baseline idle status, narrow terminal (40 cols) 1`] = `
-"       
-▐▛███▜▌   Claudin vtest-version
+"▐▛███▜▌   Claudin vtest-version
 ▐█████▌   Not configured · claude-sonnet
  ▘▘ ▝▝    ~/projects/claudin
 
@@ -27,8 +25,7 @@ exports[`<REPL> status baseline idle status, narrow terminal (40 cols) 1`] = `
 `;
 
 exports[`<REPL> status baseline idle status, wide terminal (160 cols) 1`] = `
-"       
-▐▛███▜▌   Claudin vtest-version
+"▐▛███▜▌   Claudin vtest-version
 ▐█████▌   Not configured · claude-sonnet-4-6
  ▘▘ ▝▝    ~/projects/claudin
 
