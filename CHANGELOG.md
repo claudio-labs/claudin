@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.1.16 — 2026-08-18
+
+### ✨ Features
+
+- feat(tui): repaint the startup banner blue and unify its model name (#114) (86c8250a)
+- feat(tui): wrap slash-command descriptions over two rows (#112) (86ba19b4)
+- feat(rules): keep a navigation map claims true, and create one in every project (#111) (fbe934c1)
+
+### 🐛 Bug Fixes
+
+- fix(tui): drop the blank leading row from the startup banner (#113) (e4f8b018)
+
+### 📦 Dependencies
+
+- chore(deps): bump the dev-dependencies group with 2 updates (#109) (9cab6cbf)
+- chore(deps): bump the production-dependencies group with 6 updates (#110) (f5d2e7a6)
+
+### 📚 Documentation
+
+- docs(memory): record the 2026-08-17 dependabot audit, no code changes needed (0f15cb89)
+- docs(memory): rename two memories whose filenames contradicted their own bodies (5fe615e6)
+- docs(repo-map): close the repo-map study, no index of any shape survives (#108) (069df04a)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.15 — 2026-08-16
 
 ### ✨ Features
