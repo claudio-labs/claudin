@@ -267,7 +267,7 @@ function ModeIndicator({
   // Cursor row kind drives the byline hint verbs. Without this, the hint
   // shows "enter/x expand/stop" on every engaged row, but: headers only
   // expand (no stop target), items only stop (no expand target), and the
-  // `● main` / agent rows have their own verbs ("enter view" / "x dismiss").
+  // agent rows have their own verbs ("enter view" / "x dismiss").
   // Reading the cursor + resolving its row here keeps the byline truthful.
   const cursorRowKind = useAppState((s_curkind: AppState) => {
     if (s_curkind.footerSelection !== 'tasks') return 'none' as const;
@@ -490,7 +490,7 @@ function ModeIndicator({
   // Tasks-tree nav hint. When the tree (or panel) has rows, surface the right
   // verbs for what the cursor is currently on:
   //   - not engaged          → "↓ navigate"   (enter the tree)
-  //   - on pill / main / agent → "enter view · x dismiss"
+  //   - on pill / agent      → "enter view · x dismiss"
   //   - on a group header    → "enter expand/collapse"
   //   - on a tree item       → "x stop"
   // We render the hint even with teammates present — the teammate row sits in

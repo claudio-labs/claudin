@@ -495,8 +495,8 @@ function PromptInput({
   // pill must stay navigable whenever the panel has rows — not just when
   // something is running.
   const hasPanelRows = useMemo(() => getVisibleAgentTasks(tasks).length > 0, [tasks]);
-  // Where the summary header / `● main` / agent rows / tree rows sit in the
-  // unified cursor. Derived in one place so no handler re-inlines the offsets.
+  // Where the summary header / agent rows / tree rows sit in the unified
+  // cursor. Derived in one place so no handler re-inlines the offsets.
   const footerLayout = useMemo(() => getFooterPanelLayout(tasks), [tasks]);
   const tasksFooterVisible = (runningTaskCount > 0 || hasPanelRows) && !shouldHideTasksFooter(tasks, showSpinnerTree);
   const teamsFooterVisible = cachedTeams.length > 0;
@@ -1886,7 +1886,7 @@ function PromptInput({
   // selected — its useInput is inactive, so this is the only path.
   useKeybindings({
     'footer:up': () => {
-      // ↑ walks back up the coordinator task rows (agents → main → pill)
+      // ↑ walks back up the coordinator task rows (agents → summary → pill)
       // before leaving the pill entirely.
       if (tasksSelected && !isTeammateMode && coordinatorTaskIndex > minCoordinatorIndex) {
         setCoordinatorTaskIndex(i => Math.max(minCoordinatorIndex, i - 1));
@@ -1962,11 +1962,6 @@ function PromptInput({
             // it is the ONLY row, so any cursor position maps to it. Enter folds
             // the agent panel + task tree open or shut.
             toggleFooterTasksCollapsed(setAppState);
-          } else if (footerLayout.mainIndex >= 0 && coordinatorTaskIndex === footerLayout.mainIndex) {
-            // `● main` exists only when an agent partition does. With no agents
-            // mainIndex is -1, which would otherwise collide with the pill's own
-            // -1 sentinel and swallow its "open the dialog" fallthrough.
-            exitTeammateView(setAppState);
           } else if (coordinatorTaskIndex >= footerLayout.treeBase) {
             // Cursor is on a grouped task-tree row (shells/monitors/etc.).
             // Enter toggles a group header's collapse; on an item it opens the
@@ -2013,7 +2008,8 @@ function PromptInput({
     'footer:close': () => {
       if (tasksSelected && footerTasksCollapsed) {
         // Collapsed, the summary header is the only row and it has nothing to
-        // stop. Fall through to type-to-exit, exactly as `x` does on `● main`.
+        // stop. Fall through to type-to-exit, exactly as `x` does on the
+        // expanded summary row.
         return false;
       }
       if (tasksSelected && coordinatorTaskIndex >= footerLayout.treeBase) {

@@ -19,8 +19,8 @@ const AUTO_COLLAPSE_THRESHOLD = 4;
 // the rows painted here.
 //
 // The agents group is skipped: local_agent tasks render in the full-width agent
-// panel (CoordinatorTaskPanel: `● main` + per-agent metric lines) above the
-// byline, not as a bare group here. Keeping them out also keeps the unified
+// panel (CoordinatorTaskPanel: an `Agents (N)` label + per-agent metric lines)
+// above the byline, not as a bare group here. Keeping them out also keeps the unified
 // footer cursor (coordinatorTaskIndex) single — agents are the panel's rows,
 // and tree rows come after them in the same index space.
 const TREE_GROUPS: readonly FooterGroupKey[] = FOOTER_GROUP_ORDER.filter(key => key !== 'agents');
@@ -109,11 +109,12 @@ export function BackgroundTaskGroupTree(): React.ReactNode {
   const seededTaskGroups = useAppState((s: AppState) => s.seededTaskGroups);
   // The footer cursor lives in coordinatorTaskIndex (shared with the agent
   // panel). A tree row i is highlighted when the cursor lands on its global
-  // index — treeBase (after main + agents) + i — and the tasks pill is focused.
+  // index — treeBase (after the summary + agents) + i — and the tasks pill is
+  // focused.
   const coordinatorTaskIndex = useAppState((s: AppState) => s.coordinatorTaskIndex);
   const tasksFocused = useAppState((s: AppState) => s.footerSelection === 'tasks');
-  // treeBase = the summary header + agent partition (main + agent rows) the
-  // cursor must skip before it lands on the first tree row.
+  // treeBase = the summary header + the agent rows the cursor must skip before
+  // it lands on the first tree row.
   const treeBase = useAppState((s: AppState) => getFooterPanelLayout(s.tasks).treeBase);
   const setAppState = useSetAppState();
   const { columns } = useTerminalSize();
