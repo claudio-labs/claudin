@@ -73,10 +73,10 @@ describe('computeUsageContribution', () => {
   })
 
   test('attributes tokens per agent type and flags subagent-heavy sessions', async () => {
-    // Session A: 100 main + 900 fork (+10 Explore) → subagent-heavy.
+    // Session A: 100 main + 900 fork (+10 Plan) → subagent-heavy.
     await writeSession('-proj-a', UUID_A, [{ ts: recent, input: 100 }], [
       { id: 'aaa', agentType: 'fork', records: [{ ts: recent, input: 900 }] },
-      { id: 'bbb', agentType: 'Explore', records: [{ ts: recent, input: 10 }] },
+      { id: 'bbb', agentType: 'Plan', records: [{ ts: recent, input: 10 }] },
     ])
     // Session B: 400 main, no subagents → not heavy. Plus an out-of-window rec.
     await writeSession('-proj-b', UUID_B, [
@@ -90,7 +90,7 @@ describe('computeUsageContribution', () => {
     expect(res.sessionCount).toBe(2)
     // 1010 of 1410 came from the subagent-heavy session A.
     expect(res.subagentHeavyPct).toBeCloseTo((1010 / 1410) * 100, 5)
-    // Explore (10/1410 = 0.7%) is below the 5% floor → only fork survives.
+    // Plan (10/1410 = 0.7%) is below the 5% floor → only fork survives.
     expect(res.agentBreakdown.map(a => a.agentType)).toEqual(['fork'])
     expect(res.agentBreakdown[0]!.tokens).toBe(900)
     expect(res.agentBreakdown[0]!.pct).toBeCloseTo((900 / 1410) * 100, 5)

@@ -255,7 +255,11 @@ Usage notes:
 - Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.)${forkEnabled ? '' : ", since it is not aware of the user's intent"}
 - If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
 - If the user specifies that they want you to run agents "in parallel", you MUST send a single message with multiple ${AGENT_TOOL_NAME} tool use content blocks. For example, if you need to launch both a build-validator agent and a test-runner agent in parallel, send a single message with both tool calls.
-- Dispatch \`Explore\` autonomously for any "investigate across N files" intent (tracing a feature, mapping a subsystem, finding all call sites). Don't wait for the user to ask — a single Explore call replaces a serial chain of Reads and costs less context than narrating between them.
+${
+    forkEnabled
+      ? `- Fork autonomously for any "investigate across N files" intent (tracing a feature, mapping a subsystem, finding all call sites). Don't wait for the user to ask — one fork replaces a serial chain of Reads and costs less context than narrating between them.\n`
+      : `- Delegate autonomously for any "investigate across N files" intent (tracing a feature, mapping a subsystem, finding all call sites). Don't wait for the user to ask — one agent replaces a serial chain of Reads and costs less context than narrating between them.\n`
+  }\
 - You can optionally set \`isolation: "worktree"\` to run the agent in a temporary git worktree, giving it an isolated copy of the repository. The worktree is automatically cleaned up if the agent makes no changes; if changes are made, the worktree path and branch are returned in the result.${
     isInProcessTeammate()
       ? `

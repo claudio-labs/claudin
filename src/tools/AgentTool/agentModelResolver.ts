@@ -59,7 +59,7 @@ export const defaultResolveOverrideDeps: ResolveOverrideDeps = {
  *  - the trimmed override value otherwise
  *
  * `contextLabel` is used only in the debug log so the orphan source is
- * identifiable (e.g. `built-in:Explore`, `project:product-strategist`).
+ * identifiable (e.g. `built-in:Plan`, `project:product-strategist`).
  */
 export function resolveModelOverride(
   rawOverride: string | undefined,

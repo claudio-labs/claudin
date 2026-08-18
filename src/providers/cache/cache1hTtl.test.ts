@@ -108,11 +108,11 @@ describe('getCacheControl — 1h TTL gating', () => {
     expect(claude.getCacheControl()).toEqual({ type: 'ephemeral' })
   })
 
-  test('firstParty + subagent querySource (agent:builtin:Explore) → no ttl (5m tier)', async () => {
+  test('firstParty + subagent querySource (agent:builtin:Plan) → no ttl (5m tier)', async () => {
     setProvider('firstParty')
     const { claude } = await importFresh()
     expect(
-      claude.getCacheControl({ querySource: 'agent:builtin:Explore' }),
+      claude.getCacheControl({ querySource: 'agent:builtin:Plan' }),
     ).toEqual({ type: 'ephemeral' })
   })
 

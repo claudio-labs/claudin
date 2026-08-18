@@ -1,5 +1,4 @@
 import type { BuiltInAgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
-import { EXPLORE_AGENT } from 'src/tools/AgentTool/built-in/exploreAgent.js'
 import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js'
 import { PLAN_AGENT } from 'src/tools/AgentTool/built-in/planAgent.js'
 
@@ -14,5 +13,5 @@ const WORKER_AGENT: BuiltInAgentDefinition = {
 }
 
 export function getCoordinatorAgents(): BuiltInAgentDefinition[] {
-  return [WORKER_AGENT, GENERAL_PURPOSE_AGENT, EXPLORE_AGENT, PLAN_AGENT]
+  return [WORKER_AGENT, GENERAL_PURPOSE_AGENT, PLAN_AGENT]
 }

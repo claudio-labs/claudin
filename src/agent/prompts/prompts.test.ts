@@ -314,7 +314,7 @@ describe('work contract sections (WORK_CONTRACT)', () => {
   })
 
   test('corrections keeps the subagent-skepticism clause', () => {
-    // claudin fans out to Agent/Explore/Plan and workflow workers whose
+    // claudin fans out to Agent/Plan and workflow workers whose
     // reports arrive as untagged prose; this clause is the only guard
     // against a confident wrong worker overwriting a correct conclusion.
     expect(CORRECTIONS_SECTION).toContain(
@@ -522,5 +522,30 @@ describe('worktree safety strings', () => {
     // The gate is the worktree, not the fork path — `isForkPath && worktreeInfo`
     // is what left named agents with no notice at all.
     expect(agentTool).not.toContain('if (isForkPath && worktreeInfo)')
+  })
+})
+
+describe('multi-hop delegation guidance', () => {
+  const src = readFileSync(new URL('./prompts.ts', import.meta.url), 'utf8')
+
+  test('the fork claim is gated on isForkSubagentEnabled', () => {
+    // The bullet replaced an ungated one that named the removed Explore agent.
+    // Its successor promises "inherits your context", which is only true when
+    // fork is on: with CLAUDIN_COORDINATOR_MODE=1 isForkSubagentEnabled() is
+    // false and an omitted subagent_type spawns a FRESH Code agent, so an
+    // ungated promise contradicts getAgentToolSection() in the same prompt.
+    const bullet = src.indexOf('dependent searches — tracing a feature')
+    expect(bullet).toBeGreaterThan(-1)
+    const gate = src.indexOf('isForkSubagentEnabled()', bullet)
+    expect(gate).toBeGreaterThan(-1)
+    // Same bullet, not some later use: no intervening array element.
+    expect(src.slice(bullet, gate)).not.toContain('      : null,')
+  })
+
+  test('both lanes ship guidance — neither renders empty', () => {
+    // The failure mode on the Agent-tool side was the opposite one: gating the
+    // replacement bullet meant a fork-off build got no multi-file advice at all.
+    expect(src).toContain('which inherits your context')
+    expect(src).toContain('it starts fresh, so give it a self-contained task description')
   })
 })

@@ -2,12 +2,24 @@ import { describe, expect, test } from 'bun:test'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { allowsImplicitAutoBackground } from 'src/tools/AgentTool/autoBackground.js'
+import { ONE_SHOT_BUILTIN_AGENT_TYPES } from 'src/tools/AgentTool/constants.js'
 import { FORK_SUBAGENT_TYPE } from 'src/tools/AgentTool/forkSubagent.js'
 
 describe('allowsImplicitAutoBackground', () => {
+  test('the one-shot set holds exactly the report-and-exit built-ins', () => {
+    // Membership is pinned as a whole, not sampled: the carve-out is what keeps
+    // a report the parent consumes THIS turn from being backgrounded, so an
+    // over-broad edit that drops a type is as damaging as one that adds a type
+    // the parent does SendMessage back to.
+    expect([...ONE_SHOT_BUILTIN_AGENT_TYPES].sort()).toEqual([
+      'Plan',
+      'WebResearcher',
+      'WebResearcherManager',
+    ])
+  })
+
   test('one-shot built-ins stay inline so the parent gets the report this turn', () => {
     for (const agentType of [
-      'Explore',
       'Plan',
       'WebResearcher',
       'WebResearcherManager',
@@ -32,7 +44,7 @@ describe('allowsImplicitAutoBackground', () => {
   test('run_in_background:true does not need the implicit path', () => {
     // shouldRunAsync has its own `run_in_background === true` term, so the
     // implicit toggle is irrelevant here — asserted to pin the semantics.
-    expect(allowsImplicitAutoBackground(true, 'Explore')).toBe(false)
+    expect(allowsImplicitAutoBackground(true, 'Plan')).toBe(false)
     expect(allowsImplicitAutoBackground(true, FORK_SUBAGENT_TYPE)).toBe(true)
   })
 })

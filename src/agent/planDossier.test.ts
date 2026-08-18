@@ -7,7 +7,14 @@ import {
   mock,
   test,
 } from 'bun:test'
-import { mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'fs'
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'fs'
 import { utimes, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -448,7 +455,7 @@ describe('revalidateDossier', () => {
   })
 })
 
-describe('renderDossierForSubagent — Explore + budget basics', () => {
+describe('renderDossierForSubagent — budget basics', () => {
   function smallDossier(filesToEdit: string[] = []): Dossier {
     return {
       version: 1,
@@ -460,8 +467,27 @@ describe('renderDossierForSubagent — Explore + budget basics', () => {
     }
   }
 
-  test('returns null for Explore subagent', () => {
-    expect(renderDossierForSubagent(smallDossier(), 'Explore', 'claude-opus-4-7')).toBeNull()
+  test('no subagent type is suppressed by name', () => {
+    // There used to be two Explore-specific suppressions here: an early return
+    // on `subagentType === 'Explore'` and a `SUBAGENT_BUDGET_PCT.Explore = 0`
+    // entry that tripped the `budgetTokens <= 0` branch on its own — so a test
+    // for the early return passed with that line deleted. Both are gone; every
+    // unlisted type now takes __customDefault.
+    const src = readFileSync(new URL('./planDossier.ts', import.meta.url), 'utf8')
+    // Narrow on purpose: an unrelated future `subagentType === '…'` comparison
+    // is not this bug, and a guard that trips on one gets deleted rather than read.
+    expect(src).not.toContain("subagentType === 'Explore'")
+    expect(src).not.toMatch(/^\s*Explore\s*:/m)
+  })
+
+  test('renders text for the Plan subagent', () => {
+    // Plan has no entry in SUBAGENT_BUDGET_PCT, so it takes __customDefault and
+    // DOES get a dossier. Pinned because Plan used to ride the same registry
+    // gate as Explore: an edit removing one must not take the other's budget.
+    const result = renderDossierForSubagent(smallDossier(), 'Plan', 'claude-opus-4-7')
+    expect(result).not.toBeNull()
+    expect(result!.text).toContain('<plan-dossier>')
+    expect(dossierBudgetTokens('Plan', 'claude-opus-4-7')).toBeGreaterThan(0)
   })
 
   test('renders text for code subagent', () => {
@@ -599,7 +625,6 @@ describe('dossierBudgetTokens — ALL_MODELS × SUBAGENT_TYPES matrix', () => {
     'claudin-dev',
     'Code',
     '__customDefault',
-    'Explore',
     'some-custom-name-not-in-table',
   ]
 
@@ -613,24 +638,6 @@ describe('dossierBudgetTokens — ALL_MODELS × SUBAGENT_TYPES matrix', () => {
         const expected = Math.floor(window * pct)
         const actual = dossierBudgetTokens(subagentType, model)
         expect(actual).toBe(expected)
-      })
-
-      test('Explore returns 0 budget and null render', () => {
-        if (subagentType !== 'Explore') return
-        expect(dossierBudgetTokens(subagentType, model)).toBe(0)
-        const result = renderDossierForSubagent(
-          {
-            version: 1,
-            planSlug: 's',
-            planContent: '#',
-            filesToEdit: [],
-            capturedAt: new Date().toISOString(),
-            entries: [],
-          },
-          subagentType,
-          model,
-        )
-        expect(result).toBeNull()
       })
 
       test('hard cap: budget never exceeds floor(window * 0.25)', () => {
@@ -652,12 +659,8 @@ describe('dossierBudgetTokens — ALL_MODELS × SUBAGENT_TYPES matrix', () => {
           subagentType,
           model,
         )
-        if (subagentType === 'Explore') {
-          expect(result).toBeNull()
-        } else {
-          expect(result).not.toBeNull()
-          expect(result!.text).toContain('<plan-dossier>')
-        }
+        expect(result).not.toBeNull()
+        expect(result!.text).toContain('<plan-dossier>')
       })
     })
   })

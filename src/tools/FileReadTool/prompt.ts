@@ -123,7 +123,7 @@ ${lineFormat}
 - Do NOT re-read a file you just edited to verify the change — Edit/Write would have errored if it failed, and the harness tracks file state for you.
 
 Multi-file investigations. When the task spans more than ~2 files (tracing a feature, mapping a subsystem, finding call sites), prefer one of these over a serial chain of single Reads:
-- Dispatch the Explore agent (via the Agent tool with subagent_type='Explore') with the question — it returns excerpts in one turn and keeps your context clean.
+- If the Agent tool is available, fork yourself (Agent with no subagent_type) and hand it the question — the fan-out of Grep and Read stays in the fork and you get back only its findings.
 - Otherwise, emit the Reads as parallel tool_use blocks in the same assistant message. Same-turn parallel Reads are first-class.
 A serial loop of Read → short comment → Read → short comment is the wrong shape.`
 }

@@ -28,7 +28,7 @@ function agent(
     type: 'local_agent',
     status: 'running',
     description: id,
-    agentType: 'Explore',
+    agentType: 'Plan',
     startTime: 1,
     isBackgrounded: true,
     ...extra,

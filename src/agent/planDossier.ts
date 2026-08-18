@@ -20,7 +20,6 @@ export const SUBAGENT_BUDGET_PCT: Record<string, number> = {
   'claudin-dev': 0.25,
   'Code': 0.2,
   __customDefault: 0.2,
-  Explore: 0,
 }
 
 const TIER1_BUDGET_PCT = 0.7
@@ -663,7 +662,6 @@ export function renderDossierForSubagent(
   subagentType: string,
   model: string,
 ): RenderResult | null {
-  if (subagentType === 'Explore') return null
   const budgetTokens = dossierBudgetTokens(subagentType, model)
   if (budgetTokens <= 0) return null
 

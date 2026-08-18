@@ -466,7 +466,7 @@ export function createSubagentContext(
     requireCanUseTool: overrides?.requireCanUseTool,
     // Inherit from parent when not overridden — forks continue the parent's
     // transcript, so its attachment omissions must carry over (a summary fork
-    // of an Explore agent must not start receiving the CLAUDE.md its
+    // of a read-only agent must not start receiving the CLAUDE.md its
     // transcript never had).
     omitClaudeMdAttachments:
       overrides?.omitClaudeMdAttachments ??

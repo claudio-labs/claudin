@@ -36,7 +36,7 @@ export type SubagentContext = {
   parentSessionId?: string
   /** Agent type - 'subagent' for Agent tool agents */
   agentType: 'subagent'
-  /** The subagent's type name (e.g., "Explore", "Bash", "code-reviewer") */
+  /** The subagent's type name (e.g., "Plan", "Code", "code-reviewer") */
   subagentName?: string
   /** Whether this is a built-in agent (vs user-defined custom agent) */
   isBuiltIn?: boolean

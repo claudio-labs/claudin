@@ -69,11 +69,11 @@ describe('resolveModelOverride', () => {
 
   test('orphan falls back to inherit and emits one debug log', () => {
     const deps = silentDeps(new Set(['claude-sonnet-4-6']))
-    expect(resolveModelOverride('gpt-5', 'built-in:Explore', deps)).toBe(
+    expect(resolveModelOverride('gpt-5', 'built-in:Plan', deps)).toBe(
       'inherit',
     )
     expect(deps.debugCalls).toHaveLength(1)
-    expect(deps.debugCalls[0]).toContain('built-in:Explore')
+    expect(deps.debugCalls[0]).toContain('built-in:Plan')
     expect(deps.debugCalls[0]).toContain('gpt-5')
   })
 

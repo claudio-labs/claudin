@@ -187,7 +187,7 @@ mirrored or they need Anthropic infrastructure: `VOICE_MODE`, `KAIROS`,
 `PROACTIVE`, `DAEMON`, `BG_SESSIONS`, `WEB_BROWSER_TOOL`, `MCP_SKILLS`, …
 
 Enabled flags drive real code paths in the open build: `COORDINATOR_MODE`,
-`BUILTIN_EXPLORE_PLAN_AGENTS`, `EXTRACT_MEMORIES`, `ULTRATHINK`, `TOKEN_BUDGET`,
+`BUILTIN_PLAN_AGENT`, `EXTRACT_MEMORIES`, `ULTRATHINK`, `TOKEN_BUDGET`,
 `HISTORY_PICKER`, `HOOK_PROMPTS`, `AGENT_WORKFLOWS`, …
 
 `BRIDGE_MODE` is the one enabled flag whose subsystem still needs a credential

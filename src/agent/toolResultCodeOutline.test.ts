@@ -125,6 +125,42 @@ function bigCodeNoSavings(): string {
   return Array.from({ length: 450 }, (_, i) => `export const A${i} = ${i}`).join('\n')
 }
 
+// What a research sub-agent actually returns: a markdown report, mostly prose,
+// carrying short verbatim excerpts under `path:line` headings. It is NOT one
+// source file — the code is quoted evidence and the prose around it is the
+// finding. Shaped after the 26 KB / 340-line Explore report observed in session
+// 84a654c9, which the outline reduced to 683 bytes of signatures.
+function agentProseReport(findings: number): string {
+  const parts = [
+    '# Research Report: subtitle acquisition & UI patterns',
+    '',
+    'Below is what I found, with a `path:line` anchor and a verbatim excerpt for',
+    'each finding, so you can act on this without re-opening the files.',
+    '',
+  ]
+  for (let i = 0; i < findings; i++) {
+    parts.push(
+      `### /repo/src/backend/providers/provider_${i}.py:${10 + i * 7}`,
+      '```python',
+      `class Provider${i}(SubtitleProvider):`,
+      `    def search(self, query: str) -> list[Result]:`,
+      `        return self._client.search(query, limit=${i})`,
+      '```',
+      `This is the ${i}th provider in the chain; it is the one that decides whether`,
+      'a manual search falls back to the embedded track, and it is the reason the',
+      'chain cannot be reordered without touching the scoring step as well.',
+      '',
+    )
+  }
+  parts.push(
+    '## Not found / not checked',
+    '',
+    'No existing "search" HTTP endpoint anywhere in the codebase — this would be',
+    'new. I did not open the migration files.',
+  )
+  return parts.join('\n')
+}
+
 // ============================================================
 // Happy path
 // ============================================================
@@ -318,30 +354,6 @@ describe('code-outline fires on all wired paths', () => {
     expect(s).toContain('strategy="code-outline"')
   })
 
-  test('Agent (array content)', () => {
-    const out = maybeSummarizeToolResult(
-      makeArrayBlock([{ type: 'text', text: CODE }]),
-      AGENT_TOOL_NAME,
-    )
-    expect(asString(out)).toContain('strategy="code-outline"')
-  })
-
-  test('Agent: code-outline preserves the agentId/<usage> trailer block', () => {
-    const trailer = 'agentId: abc123\n<usage>input=10 output=20</usage>'
-    const out = maybeSummarizeToolResult(
-      makeArrayBlock([
-        { type: 'text', text: CODE },
-        { type: 'text', text: trailer },
-      ]),
-      AGENT_TOOL_NAME,
-    )
-    const s = asString(out)
-    expect(s).toContain('strategy="code-outline"')
-    // The trailer must survive the outline (it is not part of the scanned code).
-    expect(s).toContain('agentId: abc123')
-    expect(s).toContain('<usage>input=10 output=20</usage>')
-  })
-
   test('MCP (array content)', () => {
     const out = maybeSummarizeToolResult(
       makeArrayBlock([{ type: 'text', text: CODE }]),
@@ -370,4 +382,90 @@ test('deterministic: same input → byte-identical marker across calls', () => {
   const a = asString(maybeSummarizeToolResult(makeBlock(CODE), 'Bash'))
   const b = asString(maybeSummarizeToolResult(makeBlock(CODE), 'Bash'))
   expect(a).toBe(b)
+})
+
+// ============================================================
+// An agent report is prose, not a source file
+// ============================================================
+
+describe('agent reports are never outlined', () => {
+  // A sub-agent's report is the deliverable, not a file dump: the prose IS the
+  // finding and the code is quoted evidence. Outlining it throws the finding
+  // away and keeps the signatures — measured in session 84a654c9, where a 26 KB
+  // report became 683 bytes and the parent immediately Read the 28 KB spill file
+  // back, then re-read 17 of the 35 files the report already covered.
+  const REPORT = agentProseReport(60)
+
+  test('the fixture is a realistic report: past the threshold, mostly prose', () => {
+    // Guards the test itself. If the fixture drops below the summarize bar, the
+    // assertions below pass by never engaging the summarizer at all.
+    expect(REPORT.length).toBeGreaterThan(8_000)
+    const fenced = (REPORT.match(/```/g)?.length ?? 0) / 2
+    const codeLines = fenced * 3
+    expect(codeLines).toBeLessThan(REPORT.split('\n').length / 2)
+  })
+
+  test('Agent: a prose report is not replaced by a symbol outline', () => {
+    const s = asString(
+      maybeSummarizeToolResult(
+        makeArrayBlock([{ type: 'text', text: REPORT }]),
+        AGENT_TOOL_NAME,
+      ),
+    )
+    expect(s).not.toContain('strategy="code-outline"')
+  })
+
+  test('Agent: the report keeps its prose findings, not just signatures', () => {
+    const s = asString(
+      maybeSummarizeToolResult(
+        makeArrayBlock([{ type: 'text', text: REPORT }]),
+        AGENT_TOOL_NAME,
+      ),
+    )
+    // The head of a report carries the framing the caller asked for. An outline
+    // drops every line that is not a signature, so this is the assertion that
+    // says what was lost, rather than only naming the strategy.
+    expect(s).toContain('# Research Report')
+  })
+
+  test('Agent: even a result that IS one source file is not outlined', () => {
+    // The carve-out is per TOOL, not per payload — an agent never returns a raw
+    // file, so there is no shape worth sniffing for. Pinned separately because
+    // "reports are prose" invites a narrower fix that re-outlines this case and
+    // brings the whole defect back for any report dense in excerpts.
+    const s = asString(
+      maybeSummarizeToolResult(
+        makeArrayBlock([{ type: 'text', text: CODE }]),
+        AGENT_TOOL_NAME,
+      ),
+    )
+    expect(s).not.toContain('strategy="code-outline"')
+  })
+
+  test('Agent: the agentId/<usage> trailer still survives summarization', () => {
+    const trailer = 'agentId: abc123\n<usage>input=10 output=20</usage>'
+    const s = asString(
+      maybeSummarizeToolResult(
+        makeArrayBlock([
+          { type: 'text', text: REPORT },
+          { type: 'text', text: trailer },
+        ]),
+        AGENT_TOOL_NAME,
+      ),
+    )
+    expect(s).toContain('agentId: abc123')
+    expect(s).toContain('<usage>input=10 output=20</usage>')
+  })
+
+  test('MCP keeps its code-outline arm — the carve-out is Agent-only', () => {
+    // An MCP tool CAN legitimately return one source file (a readFile server),
+    // so removing it there would be a different, unmeasured change.
+    const s = asString(
+      maybeSummarizeToolResult(
+        makeArrayBlock([{ type: 'text', text: CODE }]),
+        'mcp__srv__readFile',
+      ),
+    )
+    expect(s).toContain('strategy="code-outline"')
+  })
 })

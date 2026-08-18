@@ -3,17 +3,17 @@ import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { CLAUDE_CODE_GUIDE_AGENT } from 'src/tools/AgentTool/built-in/claudeCodeGuideAgent.js'
-import { EXPLORE_AGENT } from 'src/tools/AgentTool/built-in/exploreAgent.js'
 import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js'
 import { PLAN_AGENT } from 'src/tools/AgentTool/built-in/planAgent.js'
 import { WEB_RESEARCHER_AGENT } from 'src/tools/AgentTool/built-in/webResearcherAgent.js'
 import { WEB_RESEARCHER_MANAGER_AGENT } from 'src/tools/AgentTool/built-in/webResearcherManagerAgent.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 
-export function areExplorePlanAgentsEnabled(): boolean {
-  if (feature('BUILTIN_EXPLORE_PLAN_AGENTS')) {
-    // 3P default: true — Bedrock/Vertex keep agents enabled (matches pre-experiment
-    // external behavior). A/B test treatment sets false to measure impact of removal.
+export function isPlanAgentEnabled(): boolean {
+  if (feature('BUILTIN_PLAN_AGENT')) {
+    // 3P default: true — Bedrock/Vertex keep the agent enabled (matches
+    // pre-experiment external behavior). A/B test treatment sets false to
+    // measure impact of removal.
     return getFeatureValue_CACHED_MAY_BE_STALE('tengu_amber_stoat', true)
   }
   return false
@@ -44,8 +44,8 @@ export function getBuiltInAgents(): AgentDefinition[] {
 
   const agents: AgentDefinition[] = [GENERAL_PURPOSE_AGENT]
 
-  if (areExplorePlanAgentsEnabled()) {
-    agents.push(EXPLORE_AGENT, PLAN_AGENT)
+  if (isPlanAgentEnabled()) {
+    agents.push(PLAN_AGENT)
   }
 
   // Multi-page web research subagent — isolated context so the parent does not

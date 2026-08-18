@@ -88,7 +88,7 @@ describe('getAttachments — subagent context-omission gates', () => {
   // runAgent mirrors AgentDefinition.omitClaudeMd/omitGitStatus onto the
   // subagent's ToolUseContext; the pipeline must honor them so the global
   // CLAUDE.md/rules/memory/gitStatus content isn't re-injected into agents
-  // that deliberately stripped it (Explore, Plan, WebResearcher).
+  // that deliberately stripped it (Plan, WebResearcher).
   beforeEach(() => {
     // Same env hygiene as the block above. Either of these turns getAttachments
     // into an early return, and both are process-global — a sibling file that
@@ -115,7 +115,7 @@ describe('getAttachments — subagent context-omission gates', () => {
     return {
       ...makeContext(),
       agentId: 'agent-omit-test',
-      agentType: 'Explore',
+      agentType: 'Plan',
       omitClaudeMdAttachments: omitClaudeMd,
       omitGitStatusAttachments: omitGitStatus,
     } as unknown as ToolUseContext
