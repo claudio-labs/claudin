@@ -896,13 +896,15 @@ test('ProviderManager editing an active multi-model provider keeps app state on 
   )
 
   // Menu: Add(0), Set active Global(1), Set active Project(2), Edit(3),
-  // Delete(4), Done(5). Three j-presses move cursor from Add to Edit.
-  mounted.stdin.write('j')
-  await Bun.sleep(25)
-  mounted.stdin.write('j')
-  await Bun.sleep(25)
-  mounted.stdin.write('j')
-  await Bun.sleep(25)
+  // Delete(4), Done(5). Step down one confirmed press at a time: blind
+  // j-writes can land before Ink attaches the menu Select's key listener and
+  // leave the cursor short of Edit.
+  await pressUntilFocused(
+    mounted.stdin,
+    mounted.getOutput,
+    'j',
+    'Edit provider',
+  )
   mounted.stdin.write('\r')
 
   await waitForFrameOutput(
@@ -945,7 +947,19 @@ test('ProviderManager editing an active multi-model provider keeps app state on 
   )
 
   // "Enter manually" drops back to the model text step with the current
-  // multi-model value preserved.
+  // multi-model value preserved. "Enter manually" already starts focused, so
+  // there is no navigation key to confirm this Select is listening — step down
+  // to "Back" and back up, which both waits for the listener and restores the
+  // focus. A blind Enter on the frame that first paints this Select reaches no
+  // listener at all and the screen never advances, which is how this timed out
+  // on CI.
+  await pressUntilFocused(mounted.stdin, mounted.getOutput, 'j', 'Back')
+  await pressUntilFocused(
+    mounted.stdin,
+    mounted.getOutput,
+    'k',
+    'Enter manually',
+  )
   mounted.stdin.write('\r')
   await waitForFrameOutput(
     mounted.getOutput,
