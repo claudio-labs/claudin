@@ -6,6 +6,8 @@ import stripAnsi from 'strip-ansi'
 import { createRoot } from 'src/terminal/ink.js'
 import { AppStateProvider } from 'src/terminal/state/AppState.js'
 import { renderToString } from 'src/terminal/render/staticRender.js'
+import { resetModelStringsForTestingOnly } from 'src/platform/bootstrap/state.js'
+import type { APIProvider } from 'src/providers/model/providers.js'
 
 // MACRO is a build-time replacement; in unit tests there's no bundler, so the
 // banner reads from globalThis.MACRO at runtime. Mirror what other tests do.
@@ -28,6 +30,25 @@ const realEffort = { ...(await import('src/providers/effort/effort.js')) }
 const realEffortSnapshot = { ...realEffort }
 let effortOverride: ReturnType<typeof realEffort.getInitialEffortSetting> | undefined
 
+// The banner names the model through renderModelName, which resolves the
+// display name from TWO process-global sources: getAPIProvider() and the
+// memoized model-strings table. Both are clobbered by sibling test files — a
+// leaked `getAPIProvider: () => 'bedrock'` stub, or a table another file
+// cached while pinning its own provider — and either one makes
+// getPublicModelDisplayName() fall through to the raw id, which is exactly
+// what the assertions below exist to rule out. So pin the provider tag per
+// test and drop the cached table, the way modelLabel.test.ts does.
+const realProviders = { ...(await import('src/providers/model/providers.js')) }
+let apiProviderOverride: APIProvider = 'firstParty'
+
+function pinModelRegistry(): void {
+  mock.module('src/providers/model/providers.js', () => ({
+    ...realProviders,
+    getAPIProvider: () => apiProviderOverride,
+  }))
+  resetModelStringsForTestingOnly()
+}
+
 mock.module('src/providers/presets/activeProvider.js', () => ({
   ...realActiveProviderSnapshot,
   tryGetActiveProvider: () => resolvedOverride,
@@ -43,12 +64,16 @@ afterAll(() => {
   mock.module('src/providers/presets/activeProvider.js', () => realActiveProviderSnapshot)
   mock.module('src/providers/effort/effort.js', () => realEffortSnapshot)
   mock.module('src/providers/effort/effort.js', () => realEffortSnapshot)
+  mock.module('src/providers/model/providers.js', () => realProviders)
+  resetModelStringsForTestingOnly()
 })
 
 describe('buildStartupBannerLines', () => {
   beforeEach(() => {
     resolvedOverride = null
     effortOverride = undefined
+    apiProviderOverride = 'firstParty'
+    pinModelRegistry()
   })
 
   afterEach(() => {
@@ -64,7 +89,9 @@ describe('buildStartupBannerLines', () => {
     expect(text).toContain('Claudin')
     expect(text).toContain('vtest-version')
     expect(text).toContain('Not configured')
-    expect(text).toContain('claude-sonnet-4-6')
+    // The banner shows the same display name as the status bar, not the id.
+    expect(text).toContain('Sonnet 4.6')
+    expect(text).not.toContain('claude-sonnet-4-6')
   })
 
   it('uses the em-dash placeholder for the model when nothing is configured', async () => {
@@ -85,16 +112,17 @@ describe('buildStartupBannerLines', () => {
       apiKey: 'test',
       name: 'OpenAI',
     }
+    apiProviderOverride = 'openai'
 
     const { buildStartupBannerLines } = await import('src/platform/StartupScreen.js')
     const lines = buildStartupBannerLines()
     const text = stripAnsi(lines.join('\n'))
 
     expect(text).toContain('OpenAI')
-    expect(text).toContain('gpt-4o')
+    expect(text).toContain('GPT-4o')
   })
 
-  it('shows reasoning effort as a separate token when set', async () => {
+  it('appends the effort suffix when an effort is set', async () => {
     resolvedOverride = {
       transport: 'anthropic',
       baseUrl: 'https://api.anthropic.com',
@@ -111,8 +139,24 @@ describe('buildStartupBannerLines', () => {
     const text = stripAnsi(lines.join('\n'))
 
     expect(text).toContain('Anthropic')
-    expect(text).toContain('claude-sonnet-4-6')
-    expect(text).toContain('● high')
+    expect(text).toContain('Sonnet 4.6 with high effort')
+  })
+
+  it('omits the effort suffix when the provider reports no effort', async () => {
+    resolvedOverride = {
+      transport: 'openai_compat',
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-4o',
+      apiKey: 'test',
+      name: 'OpenAI',
+    }
+    apiProviderOverride = 'openai'
+
+    const { buildStartupBannerLines } = await import('src/platform/StartupScreen.js')
+    const lines = buildStartupBannerLines()
+    const text = stripAnsi(lines.join('\n'))
+
+    expect(text).not.toContain('effort')
   })
 
   it('still resolves local providers without crashing', async () => {
@@ -191,6 +235,8 @@ describe('<StartupBanner />', () => {
   beforeEach(() => {
     resolvedOverride = null
     effortOverride = undefined
+    apiProviderOverride = 'firstParty'
+    pinModelRegistry()
   })
 
   afterEach(() => {
@@ -209,7 +255,7 @@ describe('<StartupBanner />', () => {
 
     expect(output).toContain('Claudin')
     expect(output).toContain('Not configured')
-    expect(output).toContain('claude-sonnet-4-6')
+    expect(output).toContain('Sonnet 4.6')
   })
 
   it('calls subscribeLatestVersion on mount (kills "delete useEffect" mutation)', async () => {

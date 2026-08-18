@@ -2,13 +2,13 @@
 
 exports[`<REPL> dialogs baseline disabled prop (suppresses prompt, dialog container still mounts) 1`] = `
 "▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-sonnet-4-6
+▐█████▌   Not configured · Sonnet 4.6
  ▘▘ ▝▝    ~/projects/claudin"
 `;
 
 exports[`<REPL> dialogs baseline disableSlashCommands (alternate command path) 1`] = `
 "▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-sonnet-4-6
+▐█████▌   Not configured · Sonnet 4.6
  ▘▘ ▝▝    ~/projects/claudin
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -20,7 +20,7 @@ exports[`<REPL> dialogs baseline disableSlashCommands (alternate command path) 1
 
 exports[`<REPL> dialogs baseline mcpClients empty array (mcp dialog code path reachable) 1`] = `
 "▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-sonnet-4-6
+▐█████▌   Not configured · Sonnet 4.6
  ▘▘ ▝▝    ~/projects/claudin
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────

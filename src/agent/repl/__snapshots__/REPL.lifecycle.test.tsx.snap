@@ -2,7 +2,7 @@
 
 exports[`<REPL> lifecycle baseline mount + unmount without throwing (snapshot final frame) 1`] = `
 "▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-sonnet-4-6
+▐█████▌   Not configured · Sonnet 4.6
  ▘▘ ▝▝    ~/projects/claudin
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -14,7 +14,7 @@ exports[`<REPL> lifecycle baseline mount + unmount without throwing (snapshot fi
 
 exports[`<REPL> lifecycle baseline mount with non-empty initial tools (alternate path) 1`] = `
 "▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-sonnet-4-6
+▐█████▌   Not configured · Sonnet 4.6
  ▘▘ ▝▝    ~/projects/claudin
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────

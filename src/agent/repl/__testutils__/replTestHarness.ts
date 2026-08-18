@@ -30,6 +30,7 @@ import { resetCostState } from 'src/agent/cost-tracker.js'
 import {
   getCwdState,
   getOriginalCwd,
+  resetModelStringsForTestingOnly,
   setCwdState,
   setOriginalCwd,
 } from 'src/platform/bootstrap/state.js'
@@ -88,6 +89,13 @@ const realUseMainLoopModel = { ...(await import('src/agent/hooks/useMainLoopMode
 const realUseApiKeyVerification = {
   ...(await import('src/providers/hooks/useApiKeyVerification.js')),
 }
+// The banner names the model through renderModelName, whose display-name
+// lookup reads getAPIProvider() and the memoized model-strings table. Both are
+// process-global: the tag follows the developer's own active profile (an
+// OpenAI profile renders the raw id where a Claude one renders "Sonnet 4.6"),
+// and the table is whatever some earlier test file cached. Pin them the same
+// way this harness already pins the effort level, the cwd and MACRO.
+const realProviders = { ...(await import('src/providers/model/providers.js')) }
 
 export function setupReplMocks(): void {
   // Two footer widgets render session-wide counters that live in process-global
@@ -151,6 +159,14 @@ export function setupReplMocks(): void {
   mock.module('src/agent/hooks/useMainLoopModel.js', () => ({
     useMainLoopModel: () => REPL_SNAPSHOT_MODEL,
   }))
+
+  // …and pin the registry that turns REPL_SNAPSHOT_MODEL into a display name,
+  // so the banner line is identical on every machine and in every file order.
+  mock.module('src/providers/model/providers.js', () => ({
+    ...realProviders,
+    getAPIProvider: () => 'firstParty',
+  }))
+  resetModelStringsForTestingOnly()
 
   // Side-effecting service: starts an interval that keeps the OS awake.
   mock.module('src/platform/preventSleep.js', () => ({
@@ -363,6 +379,9 @@ export function teardownReplMocks(): void {
   // mock.restore() does not revert mock.module(); restore the pinned hook.
   mock.module('src/agent/hooks/useMainLoopModel.js', () => realUseMainLoopModel)
   mock.module('src/providers/hooks/useApiKeyVerification.js', () => realUseApiKeyVerification)
+  mock.module('src/providers/model/providers.js', () => realProviders)
+  // The table cached under the pinned tag must not outlive the pin.
+  resetModelStringsForTestingOnly()
   if (effortEnvWasSet) {
     if (savedEffortEnv === undefined) {
       delete process.env.CLAUDIN_EFFORT_LEVEL
