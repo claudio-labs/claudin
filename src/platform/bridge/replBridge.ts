@@ -60,6 +60,10 @@ import {
 } from 'src/platform/bridge/pollConfigDefaults.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { sleep } from 'src/shared/sleep.js'
+import {
+  retryWhileNull,
+  SESSION_CREATE_BACKOFF,
+} from 'src/platform/bridge/retryWhileNull.js'
 
 export type ReplBridgeHandle = {
   bridgeSessionId: string
@@ -445,13 +449,25 @@ export async function initBridgeCore(
       }
     }
   } else {
-    const createdSessionId = await createSession({
-      environmentId,
-      title,
-      gitRepoUrl,
-      branch,
-      signal: AbortSignal.timeout(15_000),
-    })
+    // Retried: a 5xx or a timed-out POST /v1/sessions is the most common
+    // way a connect dies, and one failure used to be fatal. The 15s timeout
+    // is rebuilt per attempt — an AbortSignal.timeout hoisted out of the
+    // callback would already be spent by attempt 2.
+    const createdSessionId = await retryWhileNull(
+      () =>
+        createSession({
+          environmentId,
+          title,
+          gitRepoUrl,
+          branch,
+          signal: AbortSignal.timeout(15_000),
+        }),
+      {
+        ...SESSION_CREATE_BACKOFF,
+        label: 'createSession',
+        logPrefix: '[bridge:repl]',
+      },
+    )
 
     if (!createdSessionId) {
       logForDebugging(
@@ -751,13 +767,26 @@ export async function initBridgeCore(
     const currentTitle = getCurrentTitle()
 
     // Create a new session on the now-registered environment
-    const newSessionId = await createSession({
-      environmentId,
-      title: currentTitle,
-      gitRepoUrl,
-      branch,
-      signal: AbortSignal.timeout(15_000),
-    })
+    // Same retry as the init path — the reconnect is already the recovery
+    // attempt, so a single transient failure here burns one of the three
+    // environment re-creations. Bound by pollController: teardown during
+    // the backoff stops the loop instead of sleeping through it.
+    const newSessionId = await retryWhileNull(
+      () =>
+        createSession({
+          environmentId,
+          title: currentTitle,
+          gitRepoUrl,
+          branch,
+          signal: AbortSignal.timeout(15_000),
+        }),
+      {
+        ...SESSION_CREATE_BACKOFF,
+        label: 'createSession (reconnect)',
+        logPrefix: '[bridge:repl]',
+        signal: pollController.signal,
+      },
+    )
 
     if (!newSessionId) {
       logForDebugging(
