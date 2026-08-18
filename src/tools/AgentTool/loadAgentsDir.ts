@@ -119,14 +119,14 @@ export type BaseAgentDefinition = {
   isolation?: 'worktree' | 'remote' // Run in an isolated git worktree, or remotely in CCR (internal-only)
   pendingSnapshotUpdate?: { snapshotTimestamp: string }
   /** Omit CLAUDE.md hierarchy from the agent's userContext. Read-only agents
-   * (Explore, Plan) don't need commit/PR/lint guidelines — the main agent has
-   * full CLAUDE.md and interprets their output. Saves ~5-15 Gtok/week across
-   * 34M+ Explore spawns. Kill-switch: tengu_slim_subagent_claudemd. */
+   * (Plan) don't need commit/PR/lint guidelines — the main agent has full
+   * CLAUDE.md and interprets their output.
+   * Kill-switch: tengu_slim_subagent_claudemd. */
   omitClaudeMd?: boolean
   /** Omit the parent-session gitStatus blob (up to 40KB, often stale) from the
    * agent's systemContext. Useful for agents that either don't touch git
    * (WebResearcher) or can run `git status` themselves for fresh data
-   * (Explore, Plan). */
+   * (Plan). */
   omitGitStatus?: boolean
 }
 

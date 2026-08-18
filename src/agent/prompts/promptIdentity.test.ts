@@ -27,7 +27,6 @@ import { KIMI_ADDENDUM } from 'src/agent/prompts/familyAddendums/kimi.js'
 import { OPENAI_REASONING_ADDENDUM } from 'src/agent/prompts/familyAddendums/openaiReasoning.js'
 import { CLAUDE_CODE_GUIDE_AGENT } from 'src/tools/AgentTool/built-in/claudeCodeGuideAgent.js'
 import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurposeAgent.js'
-import { EXPLORE_AGENT } from 'src/tools/AgentTool/built-in/exploreAgent.js'
 import { PLAN_AGENT } from 'src/tools/AgentTool/built-in/planAgent.js'
 
 // Provider isolation — and why this file no longer pins one.
@@ -180,13 +179,6 @@ test('built-in agent prompts describe Claudin instead of Claude Code', () => {
   expect(generalPrompt).toContain('Claudin')
   expect(generalPrompt).not.toContain('Claude Code')
   expect(generalPrompt).not.toContain("Anthropic's official CLI for Claude")
-
-  const explorePrompt = EXPLORE_AGENT.getSystemPrompt({
-    toolUseContext: { options: {} as never },
-  })
-  expect(explorePrompt).toContain('Claudin')
-  expect(explorePrompt).not.toContain('Claude Code')
-  expect(explorePrompt).not.toContain("Anthropic's official CLI for Claude")
 
   const planPrompt = PLAN_AGENT.getSystemPrompt({
     toolUseContext: { options: {} as never },

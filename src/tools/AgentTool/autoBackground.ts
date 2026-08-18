@@ -14,7 +14,7 @@ import { ONE_SHOT_BUILTIN_AGENT_TYPES } from 'src/tools/AgentTool/constants.js'
  * - `run_in_background: false` — an explicit request for inline. Before this
  *   guard the toggle silently overrode it, so the parameter had no `false`
  *   meaning at all.
- * - One-shot built-ins (Explore, Plan, WebResearcher, WebResearcherManager) —
+ * - One-shot built-ins (Plan, WebResearcher, WebResearcherManager) —
  *   they exist to hand a report back mid-turn. Backgrounded, the parent gets
  *   `async_launched`, abandons the work it planned around the report, and only
  *   sees the findings in the next turn's `<task-notification>` — after it has

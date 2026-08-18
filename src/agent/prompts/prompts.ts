@@ -32,11 +32,6 @@ import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
 import { ASK_USER_QUESTION_TOOL_NAME } from 'src/tools/AskUserQuestionTool/prompt.js'
 import {
-  EXPLORE_AGENT,
-  EXPLORE_AGENT_MIN_QUERIES,
-} from 'src/tools/AgentTool/built-in/exploreAgent.js'
-import { areExplorePlanAgentsEnabled } from 'src/tools/AgentTool/builtInAgents.js'
-import {
   isScratchpadEnabled,
   getScratchpadDir,
 } from 'src/permissions/filesystem.js'
@@ -325,7 +320,7 @@ export const PRONOUNS_SECTION =
 // treating a subagent report as ground truth.
 //
 // The subagent clause is load-bearing here specifically: claudin fans out to
-// Agent/Explore/Plan and (with AGENT_WORKFLOWS) to worker agents whose
+// forks, named agents and (with AGENT_WORKFLOWS) worker agents whose
 // reports arrive as plain text with no provenance, so "don't take them at
 // face value" is the only guard against a confident wrong worker rewriting
 // a correct main-loop conclusion.
@@ -397,6 +392,12 @@ function getDiscoverSkillsGuidance(): string | null {
 }
 
 /**
+ * How many dependent searches make a question worth delegating instead of
+ * running inline. Below this a direct Grep/Glob is cheaper than the round trip.
+ */
+const MULTI_HOP_SEARCH_MIN_QUERIES = 3
+
+/**
  * Session-variant guidance that would fragment the cacheScope:'global'
  * prefix if placed before SYSTEM_PROMPT_DYNAMIC_BOUNDARY. Each conditional
  * here is a runtime bit that would otherwise multiply the Blake2b prefix
@@ -427,8 +428,16 @@ function getSessionSpecificGuidanceSection(
     // isForkSubagentEnabled() varies at runtime (coordinator mode) — must be
     // post-boundary or it fragments the static prefix.
     hasAgentTool ? getAgentToolSection() : null,
-    hasAgentTool && areExplorePlanAgentsEnabled()
-      ? `Use ${searchTools} directly for a directed lookup (a specific file, class or function). Reach for the ${AGENT_TOOL_NAME} tool with subagent_type=${EXPLORE_AGENT.agentType} when the question needs more than ${EXPLORE_AGENT_MIN_QUERIES} dependent searches — tracing a feature, mapping a subsystem, finding every call site. It reports \`file:line\` anchors with verbatim excerpts, so don't re-read the files its report already covered.`
+    hasAgentTool
+      ? // The delegation lane depends on isForkSubagentEnabled(): with fork off
+        // (coordinator mode) omitting subagent_type spawns a FRESH agent, so
+        // promising inherited context here would contradict the Agent tool's
+        // own description in this same prompt.
+        `Use ${searchTools} directly for a directed lookup (a specific file, class or function). When the question needs more than ${MULTI_HOP_SEARCH_MIN_QUERIES} dependent searches — tracing a feature, mapping a subsystem, finding every call site — delegate instead${
+          isForkSubagentEnabled()
+            ? ` by forking (the ${AGENT_TOOL_NAME} tool with no subagent_type), which inherits your context`
+            : ` (the ${AGENT_TOOL_NAME} tool) — it starts fresh, so give it a self-contained task description`
+        }: the fan-out of Grep and Read stays there and you get back only its report.`
       : null,
     hasSkills
       ? `/<skill-name> (e.g., /commit) is shorthand for users to invoke a user-invocable skill. When executed, the skill gets expanded to a full prompt. Use the ${SKILL_TOOL_NAME} tool to execute them. IMPORTANT: Only use ${SKILL_TOOL_NAME} for skills listed in its user-invocable skills section - do not guess or use built-in CLI commands.`

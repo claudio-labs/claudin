@@ -27,7 +27,7 @@ A descrição (`whenToUse`) injetada no prompt do `AgentTool` deixa explícito:
 | Pesquisa em 3+ páginas, tópico amplo | `Agent(WebResearcher)` |
 | Buscar uma URL específica conhecida | `WebFetch` direto |
 | Descobrir links sobre um termo | `WebSearch` direto |
-| Algo no repo local | `Agent(Explore)` |
+| Algo no repo local | fork (`Agent` sem `subagent_type`) ou Grep/Glob direto |
 
 A escolha é do modelo pai — não há roteamento automático.
 

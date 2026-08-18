@@ -678,7 +678,7 @@ export type GlobalConfig = {
   activeProviderProfileId?: string
 
   // Per-agent model overrides keyed by agentType. Lets users pick a custom
-  // model for built-in agents (e.g. Explore, Plan) without producing a
+  // model for built-in agents (e.g. Plan, Code) without producing a
   // shadow .md file. Value 'inherit' is allowed and means "use the parent
   // conversation model" — same semantics as a missing entry, but stored
   // explicitly so the UI can show that the user has chosen inherit.

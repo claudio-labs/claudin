@@ -179,7 +179,7 @@ function AgentLine(t0: AgentLineProps) {
   // `@<name>` for teammate spawns), badge color is `getAgentColor(agentType)`
   // (teammates inherit the type's color, matching UI.tsx:682-687). The badge
   // text is always rendered in bold; only backgroundColor is gated on
-  // `badgeColor`, so built-ins without a registered color (Code, Explore, Plan)
+  // `badgeColor`, so built-ins without a registered color (Code, Plan)
   // still get a labeled badge — consistent with AgentProgressLine.
   // The paren label is capped at 30 chars so a long launch description doesn't
   // crowd out the live activity text.

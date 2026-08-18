@@ -303,7 +303,7 @@ export function getAskRuleForTool(
 
 /**
  * Check if a specific agent is denied via Agent(agentType) syntax.
- * For example, Agent(Explore) would deny the Explore agent.
+ * For example, Agent(Plan) would deny the Plan agent.
  */
 export function getDenyRuleForAgent(
   context: ToolPermissionContext,

@@ -28,20 +28,6 @@ export function getPlanModeV2AgentCount(): number {
   return 1
 }
 
-export function getPlanModeV2ExploreAgentCount(): number {
-  if (process.env.CLAUDIN_PLAN_V2_EXPLORE_AGENT_COUNT) {
-    const count = parseInt(
-      process.env.CLAUDIN_PLAN_V2_EXPLORE_AGENT_COUNT,
-      10,
-    )
-    if (!isNaN(count) && count > 0 && count <= 10) {
-      return count
-    }
-  }
-
-  return 3
-}
-
 /**
  * Check if plan mode interview phase is enabled.
  *

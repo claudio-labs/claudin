@@ -1039,7 +1039,7 @@ export const SlashCommandSchema = lazySchema(() =>
 export const AgentInfoSchema = lazySchema(() =>
   z
     .object({
-      name: z.string().describe('Agent type identifier (e.g., "Explore")'),
+      name: z.string().describe('Agent type identifier (e.g., "Plan")'),
       description: z.string().describe('Description of when to use this agent'),
       model: z
         .string()

@@ -388,9 +388,10 @@ export async function* runAgent({
   // Plan dossier injection: when a parent session has an accepted plan,
   // load + revalidate the dossier and surface it to the sub-agent so it
   // doesn't redundantly re-explore. Skip when:
-  //  - sub-agent is Explore (re-exploration is its job; renderDossierForSubagent returns null)
   //  - fork path is in use (forkContextMessages already carries full parent context)
   //  - no plan slug can be resolved (no active plan in the parent session)
+  // Every type now takes a non-zero budget (SUBAGENT_BUDGET_PCT.__customDefault);
+  // the zero-budget entry that used to suppress this went with the removed agent.
   const resolvedPlanSlug =
     inheritedPlanSlug ??
     (forkContextMessages === undefined && getPlan() !== null
@@ -399,11 +400,7 @@ export async function* runAgent({
   if (resolvedPlanSlug) {
     setAgentPlanSlug(agentId, resolvedPlanSlug)
   }
-  if (
-    resolvedPlanSlug &&
-    forkContextMessages === undefined &&
-    agentDefinition.agentType !== 'Explore'
-  ) {
+  if (resolvedPlanSlug && forkContextMessages === undefined) {
     const dossier = await loadDossier(resolvedPlanSlug)
     if (dossier) {
       const revalidated = await revalidateDossier(dossier)
@@ -436,9 +433,8 @@ export async function* runAgent({
     override?.systemContext ?? getSystemContext(),
   ])
 
-  // Read-only agents (Explore, Plan) don't act on commit/PR/lint rules from
+  // Read-only agents (Plan) don't act on commit/PR/lint rules from
   // CLAUDE.md — the main agent has full context and interprets their output.
-  // Dropping claudeMd here saves ~5-15 Gtok/week across 34M+ Explore spawns.
   // Explicit override.userContext from callers is preserved untouched.
   // Kill-switch defaults true; flip tengu_slim_subagent_claudemd=false to revert.
   const shouldOmitClaudeMd =
@@ -452,9 +448,9 @@ export async function* runAgent({
     : baseUserContext
 
   // Agents that don't need stale gitStatus (up to 40KB) opt out via
-  // omitGitStatus. Read-only search agents (Explore, Plan) can run
+  // omitGitStatus. Read-only search agents (Plan) can run
   // `git status` themselves for fresh data; web-only agents (WebResearcher)
-  // never touch git. Saves ~1-3 Gtok/week fleet-wide.
+  // never touch git.
   const { gitStatus: _omittedGitStatus, ...systemContextNoGit } =
     baseSystemContext
   const resolvedSystemContext = agentDefinition.omitGitStatus

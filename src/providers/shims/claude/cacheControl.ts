@@ -67,7 +67,7 @@ export function should1hCacheTTL(querySource?: QuerySource): boolean {
 
   if (provider !== "firstParty" && provider !== "vertex") return false;
 
-  // Subagents (agent:builtin:Explore, agent:custom, …) are short-lived and
+  // Subagents (agent:builtin:Plan, agent:custom, …) are short-lived and
   // their cache dies with them: reads refresh the 5m TTL for free within a
   // run, so the 5m tier (1.25x write) beats 1h (2x write) unless the agent
   // idles >5min mid-run — rare for read-only search/research agents. The

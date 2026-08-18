@@ -15,7 +15,7 @@ When in doubt about whether a task warrants a team, prefer spawning a team.
 
 When spawning teammates via the Agent tool, choose the \`subagent_type\` based on what tools the agent needs for its task. Each agent type has a different set of available tools — match the agent to the work:
 
-- **Read-only agents** (e.g., Explore, Plan) cannot edit or write files. Only assign them research, search, or planning tasks. Never assign them implementation work.
+- **Read-only agents** (e.g., Plan) cannot edit or write files. Only assign them research, search, or planning tasks. Never assign them implementation work.
 - **Full-capability agents** (e.g., Code) have access to all tools including file editing, writing, and bash. Use these for tasks that require making changes.
 - **Custom agents** defined in \`.claudin/agents/\` may have their own tool restrictions. Check their descriptions to understand what they can and cannot do.
 

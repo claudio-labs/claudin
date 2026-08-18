@@ -165,11 +165,11 @@ describe('applyProjectAgentOverrides', () => {
 
   test('passes through built-in agents (different override path)', () => {
     const agents: Agent[] = [
-      { agentType: 'Explore', source: 'built-in', baseDir: 'built-in' },
+      { agentType: 'Plan', source: 'built-in', baseDir: 'built-in' },
     ]
     const out = applyProjectAgentOverrides(
       agents,
-      mkDeps({ 'built-in': { Explore: 'haiku' } }),
+      mkDeps({ 'built-in': { Plan: 'haiku' } }),
     )
     expect(out[0]?.model).toBeUndefined()
   })

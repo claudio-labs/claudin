@@ -83,7 +83,7 @@ const _openBuildDefaults = {
  *
  * ── Agents & orchestration ────────────────────────────────────────────
  *   tengu_amber_flint              = true       Agent swarms coordination
- *   tengu_amber_stoat              = true       Built-in agent availability (Explore, Plan, etc.)
+ *   tengu_amber_stoat              = true       Built-in agent availability (Plan, etc.)
  *   tengu_agent_list_attach        = true       Attach file context to agent list
  *   tengu_auto_background_agents   = false      Auto-spawn background agents
  *   tengu_slim_subagent_claudemd   = true       Lighter ClaudeMD for subagents

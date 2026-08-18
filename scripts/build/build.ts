@@ -38,7 +38,7 @@ const featureFlags: Record<string, boolean> = {
 
   // ── Enabled: upstream defaults ──────────────────────────────────────
   COORDINATOR_MODE: true,             // Multi-agent coordinator with worker delegation
-  BUILTIN_EXPLORE_PLAN_AGENTS: true,  // Built-in Explore/Plan specialized subagents
+  BUILTIN_PLAN_AGENT: true,           // Built-in Plan specialized subagent
   BUDDY: true,                        // Buddy mode for paired programming
   MONITOR_TOOL: true,                 // MCP server monitoring/streaming tool
   TEAMMEM: true,                      // Team memory management

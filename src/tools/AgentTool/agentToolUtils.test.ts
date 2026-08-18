@@ -104,7 +104,7 @@ describe('scopeChildAgentDefinitions — recursion-cap threading', () => {
   })
 
   it('overrides an inherited restriction with the child-declared one', () => {
-    const restrictedParent = { ...parent, allowedAgentTypes: ['Explore'] }
+    const restrictedParent = { ...parent, allowedAgentTypes: ['Plan'] }
     const child = scopeChildAgentDefinitions(restrictedParent, ['WebResearcher'])
     expect(child.allowedAgentTypes).toEqual(['WebResearcher'])
   })

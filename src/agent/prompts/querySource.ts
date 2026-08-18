@@ -16,7 +16,7 @@
 /**
  * A call originating from an agent. `agent:custom` and `agent:default` are
  * built by `getQuerySourceForAgent`; `agent:builtin:<AgentType>` names a
- * built-in agent (`agent:builtin:Explore`, `agent:builtin:fork`).
+ * built-in agent (`agent:builtin:Plan`, `agent:builtin:fork`).
  * `agent:builtin` on its own is the prefix `promptCacheBreakDetection.ts` and
  * `withRetry.ts` match against.
  */

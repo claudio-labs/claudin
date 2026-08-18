@@ -1,7 +1,7 @@
 /**
  * "What's driving your token usage?" — a provider-agnostic, local-only analysis
  * that attributes recent token usage to subagent-heavy sessions and to named
- * subagent types (e.g. `fork`, `Explore`).
+ * subagent types (e.g. `fork`, `Plan`).
  *
  * Everything is derived from the on-disk session transcripts under
  * `~/.claudin/projects/` — nothing is sent anywhere. Token usage lives in each

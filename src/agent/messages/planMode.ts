@@ -1,6 +1,4 @@
-import { EXPLORE_AGENT } from 'src/tools/AgentTool/built-in/exploreAgent.js'
 import { PLAN_AGENT } from 'src/tools/AgentTool/built-in/planAgent.js'
-import { areExplorePlanAgentsEnabled } from 'src/tools/AgentTool/builtInAgents.js'
 import { ASK_USER_QUESTION_TOOL_NAME } from 'src/tools/AskUserQuestionTool/prompt.js'
 import { ExitPlanModeV2Tool } from 'src/tools/ExitPlanModeTool/ExitPlanModeV2Tool.js'
 import { FileEditTool } from 'src/tools/FileEditTool/FileEditTool.js'
@@ -14,7 +12,6 @@ import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
 import {
   getPewterLedgerVariant,
   getPlanModeV2AgentCount,
-  getPlanModeV2ExploreAgentCount,
   isPlanModeInterviewPhaseEnabled,
 } from 'src/agent/plans/planModeV2.js'
 import { createUserMessage } from 'src/agent/messages/factories.js'
@@ -113,7 +110,6 @@ export function getPlanModeV2Instructions(attachment: {
   }
 
   const agentCount = getPlanModeV2AgentCount()
-  const exploreAgentCount = getPlanModeV2ExploreAgentCount()
   const planFileInfo = attachment.planExists
     ? `A plan file already exists at ${attachment.planFilePath}. You can read it and make incremental edits using the ${FileEditTool.name} tool.`
     : `No plan file exists yet. You should create your plan at ${attachment.planFilePath} using the ${FileWriteTool.name} tool.`
@@ -127,15 +123,14 @@ You should build your plan incrementally by writing to or editing this file. NOT
 ## Plan Workflow
 
 ### Phase 1: Initial Understanding
-Goal: Gain a comprehensive understanding of the user's request by reading through code and asking them questions. Critical: In this phase you should only use the ${EXPLORE_AGENT.agentType} subagent type.
+Goal: Gain a comprehensive understanding of the user's request by reading through code and asking them questions. Critical: do this research yourself, in this session — do not delegate Phase 1 to a subagent.
 
 1. Focus on understanding the user's request and the code associated with their request. Actively search for existing functions, utilities, and patterns that can be reused — avoid proposing new code when suitable implementations already exist.
 
-2. **Launch up to ${exploreAgentCount} ${EXPLORE_AGENT.agentType} agents IN PARALLEL** (single message, multiple tool calls) to efficiently explore the codebase.
-   - Use 1 agent when the task is isolated to known files, the user provided specific file paths, or you're making a small targeted change.
-   - Use multiple agents when: the scope is uncertain, multiple areas of the codebase are involved, or you need to understand existing patterns before planning.
-   - Quality over quantity - ${exploreAgentCount} agents maximum, but you should try to use the minimum number of agents necessary (usually just 1)
-   - If using multiple agents: Provide each agent with a specific search focus or area to explore. Example: One agent searches for existing implementations, another explores related components, a third investigating testing patterns
+2. **Search with ${getReadOnlyToolNames()}, batching independent calls** into a single message rather than one call per turn.
+   - Map the target set first with a pattern search; open files only once you know which ones answer the question.
+   - Read a file you do not know structurally with view='outline', then expand the one symbol you care about — a full read of a large file to understand one function is the wrong shape.
+   - When the scope is uncertain and several areas are involved, widen the search before deepening it; the point of this phase is to find every place the change lands, not to finish reading any one file.
 
 ### Phase 2: Design
 Goal: Design an implementation approach.
@@ -210,7 +205,7 @@ export function getReadOnlyToolNames(): string {
 
 /**
  * Iterative interview-based plan mode workflow.
- * Instead of forcing Explore/Plan agents, this workflow has the model:
+ * Instead of forcing Plan agents, this workflow has the model:
  * 1. Read files and ask questions iteratively
  * 2. Build up the spec/plan file incrementally as understanding grows
  * 3. Use AskUserQuestion throughout to clarify and gather input
@@ -236,7 +231,7 @@ You are co-designing the plan WITH the user — a two-way discovery, not an inte
 
 Repeat this cycle until the plan is complete:
 
-1. **Explore** — Use ${getReadOnlyToolNames()} to read code. Look for existing functions, utilities, and patterns to reuse.${areExplorePlanAgentsEnabled() ? ` You can use the ${EXPLORE_AGENT.agentType} agent type to parallelize complex searches without filling your context, though for straightforward queries direct tools are simpler.` : ''}
+1. **Explore** — Use ${getReadOnlyToolNames()} to read code. Look for existing functions, utilities, and patterns to reuse.
 2. **Update the plan file** — After each discovery, immediately capture what you learned; don't wait until the end. Log settled choices under **Agreed Decisions** and anything unresolved (from EITHER side) under **Open Questions**. Keep the work continuously organized under **Tasks** — an ordered checklist you co-build WITH the user: surface your proposed breakdown as you go, let the user split/merge/reorder steps, and re-organize it as understanding changes. On approval these items are seeded verbatim into the live task list that tracks execution, so make each step small and independently verifiable, and write them in the exact format below.
 3. **Surface the points you see** — As you go, BRING THINGS UP rather than quizzing the user. Narrate what you notice: relevant code, an alternative, a dependency or ordering constraint ("if we do it this way, we'd need to handle X first"), a gotcha — each with file:line. State them as observations a senior engineer would think out loud, not as a barrage of questions.
 4. **Voice your own uncertainty** — If YOU are unsure or are assuming something the user didn't state, add it to **Open Questions** and resolve it (read the code, or surface it). Your doubts count as much as the user's.

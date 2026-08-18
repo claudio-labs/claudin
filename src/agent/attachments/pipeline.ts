@@ -128,8 +128,8 @@ export async function getAttachments(
 
   const isMainThread = !toolUseContext.agentId
 
-  // Subagents whose definition sets omitClaudeMd/omitGitStatus (Explore,
-  // Plan, WebResearcher…) get those flags mirrored onto their context by
+  // Subagents whose definition sets omitClaudeMd/omitGitStatus (Plan,
+  // WebResearcher…) get those flags mirrored onto their context by
   // runAgent. The delta producers below read GLOBAL context state, so
   // without these gates they re-inject CLAUDE.md/rules/memory/gitStatus
   // that runAgent deliberately stripped from the subagent's userContext.

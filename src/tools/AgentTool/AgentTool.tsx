@@ -882,7 +882,7 @@ export const AgentTool = buildTool({
         const summaryTaskId = foregroundTaskId;
         // Opt-in: summarize this foreground subagent's final result before
         // returning it to the parent, to shrink the tokens it occupies in the
-        // parent's context. Skip one-shot built-ins (Explore/Plan) — their
+        // parent's context. Skip one-shot built-ins (Plan, WebResearcher) — their
         // output is already condensed prose by design. Lossy; fallback to raw.
         const wantsResultSummary = getGlobalConfig().summarizeSubagentResult === true && !ONE_SHOT_BUILTIN_AGENT_TYPES.has(selectedAgent.agentType);
         // Cache-safe params captured for the result-summary fork (shares the
@@ -1404,10 +1404,10 @@ The agent is now running and will receive instructions via mailbox.`
         type: 'text' as const,
         text: '(Subagent completed but returned no output.)'
       }];
-      // One-shot built-ins (Explore, Plan) are never continued via SendMessage
-      // — the agentId hint and <usage> block are dead weight (~135 chars ×
-      // 34M Explore runs/week ≈ 1-2 Gtok/week). Telemetry doesn't parse this
-      // block (it uses logEvent in finalizeAgentTool), so dropping is safe.
+      // One-shot built-ins (Plan, WebResearcher…) are never continued via
+      // SendMessage — the agentId hint and <usage> block are dead weight
+      // (~135 chars per run). Telemetry doesn't parse this block (it uses
+      // logEvent in finalizeAgentTool), so dropping is safe.
       // agentType is optional for resume compat — missing means show trailer.
       if (data.agentType && ONE_SHOT_BUILTIN_AGENT_TYPES.has(data.agentType) && !worktreeInfoText) {
         return {

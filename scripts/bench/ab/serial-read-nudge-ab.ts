@@ -1,18 +1,18 @@
 #!/usr/bin/env bun
 /**
  * Bench A/B: mede se os nudges (tool-description + system-reminder JIT)
- * empurram o modelo do padrao "Read serial + narracao" para Explore-agent
+ * empurram o modelo do padrao "Read serial + narracao" para delegacao (fork)
  * ou parallel-Read tool_use blocks.
  *
  * Forked de narration-prompt-ab.ts. Mantem os 3 prompts de exploracao,
- * adiciona duas metricas: parallelReadFraction e exploreInvocations.
+ * adiciona duas metricas: parallelReadFraction e forkInvocations.
  *
  * Variante A = baseline (sem feature flag), Variante B = feature on
  * (tool descriptions atualizadas + system-reminder JIT em Read).
  *
  * Ship/kill criteria:
  *   SHIP se narrationChars cai >=30% rel
- *        E (parallelReadFraction sobe >=0.15 abs OU exploreInvocations >=1
+ *        E (parallelReadFraction sobe >=0.15 abs OU forkInvocations >=1
  *           em >=2/3 prompts)
  *        E answerChars nao cai >15%
  *        E cost nao sobe >+5%
@@ -74,7 +74,7 @@ interface RunResult {
   answerChars: number
   narrationSamples: string[]
   parallelReadFraction: number
-  exploreInvocations: number
+  forkInvocations: number
 }
 
 function projectDirForCwd(cwd: string): string {
@@ -88,14 +88,18 @@ interface SessionAnalysis {
   answerChars: number
   narrationSamples: string[]
   parallelReadFraction: number
-  exploreInvocations: number
+  forkInvocations: number
 }
 
 /**
  * Le o transcript .jsonl. Alem das metricas de narracao, conta:
  * - parallelReadFraction: # de mensagens assistant com >=2 Read tool_use
  *   dividido por # com qualquer Read (0 se denominador 0)
- * - exploreInvocations: # de tool_use Agent cujo input.subagent_type === 'Explore'
+ * - forkInvocations: # de tool_use Agent SEM subagent_type, ou seja forks.
+ *   Contava `subagent_type === 'Explore'` ate 2026-08-18, quando o agente foi
+ *   removido; o nudge agora sugere fork, entao esta e a delegacao a medir.
+ *   O campo foi renomeado junto com a definicao, para que um results.md antigo
+ *   nao se pareca com um novo: runs anteriores nao sao comparaveis aqui.
  */
 function analyzeSession(sessionId: string, cwd: string): SessionAnalysis {
   const empty: SessionAnalysis = {
@@ -105,7 +109,7 @@ function analyzeSession(sessionId: string, cwd: string): SessionAnalysis {
     answerChars: 0,
     narrationSamples: [],
     parallelReadFraction: 0,
-    exploreInvocations: 0,
+    forkInvocations: 0,
   }
   const projectDir = projectDirForCwd(cwd)
   const path = join(homedir(), '.claudin', 'projects', projectDir, `${sessionId}.jsonl`)
@@ -114,7 +118,7 @@ function analyzeSession(sessionId: string, cwd: string): SessionAnalysis {
   const counts: Record<string, number> = {}
   interface AsstMsg { texts: string[]; hasToolUse: boolean; readCount: number }
   const asstMsgs: AsstMsg[] = []
-  let exploreInvocations = 0
+  let forkInvocations = 0
 
   const lines = readFileSync(path, 'utf8').split('\n').filter(Boolean)
   for (const line of lines) {
@@ -142,7 +146,11 @@ function analyzeSession(sessionId: string, cwd: string): SessionAnalysis {
           if (typeof input === 'string') {
             try { input = JSON.parse(input) } catch { input = null }
           }
-          if (input && input.subagent_type === 'Explore') exploreInvocations++
+          // Exige o shape real de uma chamada Agent: um `{}` vindo de input
+          // malformado nao e um fork, e antes era contado como um.
+          if (input && typeof input === 'object' && 'prompt' in input && !input.subagent_type) {
+            forkInvocations++
+          }
         }
       } else if (block?.type === 'text' && typeof block?.text === 'string') {
         const t = block.text.trim()
@@ -183,7 +191,7 @@ function analyzeSession(sessionId: string, cwd: string): SessionAnalysis {
 
   const parallelReadFraction = anyReadTurns === 0 ? 0 : parallelReadTurns / anyReadTurns
 
-  return { toolCounts: counts, narrationBlocks, narrationChars, answerChars, narrationSamples, parallelReadFraction, exploreInvocations }
+  return { toolCounts: counts, narrationBlocks, narrationChars, answerChars, narrationSamples, parallelReadFraction, forkInvocations }
 }
 
 function runOnce(variant: 'A' | 'B', entryPath: string, prompt: { id: string; text: string }, runIdx: number): Promise<RunResult> {
@@ -215,10 +223,10 @@ function runOnce(variant: 'A' | 'B', entryPath: string, prompt: { id: string; te
       const usageEntry: any = Object.values(usageRecord)[0] ?? {}
       const a = sessionId ? analyzeSession(sessionId, TARGET_CWD) : {
         toolCounts: {}, narrationBlocks: 0, narrationChars: 0, answerChars: 0,
-        narrationSamples: [], parallelReadFraction: 0, exploreInvocations: 0,
+        narrationSamples: [], parallelReadFraction: 0, forkInvocations: 0,
       }
       if (ok) {
-        process.stdout.write(`OK ${(parsed.duration_ms / 1000).toFixed(1)}s narrChars=${a.narrationChars} parReadFrac=${a.parallelReadFraction.toFixed(2)} explore=${a.exploreInvocations}\n`)
+        process.stdout.write(`OK ${(parsed.duration_ms / 1000).toFixed(1)}s narrChars=${a.narrationChars} parReadFrac=${a.parallelReadFraction.toFixed(2)} fork=${a.forkInvocations}\n`)
       }
       resolvePromise({
         promptId: prompt.id,
@@ -240,7 +248,7 @@ function runOnce(variant: 'A' | 'B', entryPath: string, prompt: { id: string; te
         answerChars: a.answerChars,
         narrationSamples: a.narrationSamples,
         parallelReadFraction: a.parallelReadFraction,
-        exploreInvocations: a.exploreInvocations,
+        forkInvocations: a.forkInvocations,
       })
     })
   })
@@ -276,7 +284,7 @@ function summarize(results: RunResult[], variant: 'A' | 'B') {
     avgNarrationChars: avg((r) => r.narrationChars),
     avgAnswerChars: avg((r) => r.answerChars),
     avgParallelReadFraction: avg((r) => r.parallelReadFraction),
-    avgExploreInvocations: avg((r) => r.exploreInvocations),
+    avgForkInvocations: avg((r) => r.forkInvocations),
     totalToolCounts,
   }
 }
@@ -316,20 +324,20 @@ async function main() {
   const safeModel = MODEL.replace(/[^a-z0-9-]/gi, '_')
   const outPath = join(outDir, `serial-read-nudge-ab-${safeModel}-${ts}.md`)
 
-  let md = `# Bench A/B — serial-read nudge (Explore + parallel Reads)\n\n`
+  let md = `# Bench A/B — serial-read nudge (fork + parallel Reads)\n\n`
   md += `- Timestamp: ${new Date().toISOString()}\n`
   md += `- Model: \`${MODEL}\`\n`
   md += `- Baseline (A): \`${BASELINE}\`\n`
   md += `- Feature  (B): \`${FEATURE}\`\n`
   md += `- Runs por prompt: ${RUNS_PER_PROMPT}\n`
-  md += `- KPIs: narrationChars, parallelReadFraction, exploreInvocations\n\n`
+  md += `- KPIs: narrationChars, parallelReadFraction, forkInvocations\n\n`
 
   md += `## Tabela por invocacao\n\n`
-  md += `| Prompt | V | Run | OK | narr chars | answer chars | parRead frac | explore | out tok | cost $ | wall(s) | turns | tools |\n`
+  md += `| Prompt | V | Run | OK | narr chars | answer chars | parRead frac | fork | out tok | cost $ | wall(s) | turns | tools |\n`
   md += `|---|---|---:|:-:|---:|---:|---:|---:|---:|---:|---:|---:|---|\n`
   for (const r of results) {
     md += `| ${r.promptId} | ${r.variant} | ${r.runIdx + 1} | ${r.ok ? 'Y' : 'N'} `
-    md += `| ${r.narrationChars} | ${r.answerChars} | ${r.parallelReadFraction.toFixed(2)} | ${r.exploreInvocations} `
+    md += `| ${r.narrationChars} | ${r.answerChars} | ${r.parallelReadFraction.toFixed(2)} | ${r.forkInvocations} `
     md += `| ${r.outputTokens} | ${r.totalCostUsd.toFixed(4)} | ${(r.durationMs / 1000).toFixed(1)} | ${r.numTurns} `
     md += `| ${formatToolCounts(r.toolCounts)} |\n`
   }
@@ -341,7 +349,7 @@ async function main() {
     md += `- Avg narration chars: ${s.avgNarrationChars.toFixed(0)}\n`
     md += `- Avg answer chars: ${s.avgAnswerChars.toFixed(0)}\n`
     md += `- Avg parallelReadFraction: ${s.avgParallelReadFraction.toFixed(3)}\n`
-    md += `- Avg exploreInvocations: ${s.avgExploreInvocations.toFixed(2)}\n`
+    md += `- Avg forkInvocations: ${s.avgForkInvocations.toFixed(2)}\n`
     md += `- Avg output tokens: ${s.avgOutputTokens.toFixed(0)}\n`
     md += `- Avg cost: $${s.avgCost.toFixed(4)} (total $${s.totalCost.toFixed(4)})\n`
     md += `- Avg wall: ${(s.avgDurationMs / 1000).toFixed(1)}s\n`
@@ -357,32 +365,32 @@ async function main() {
     const wallDelta = rel(summaryA.avgDurationMs, summaryB.avgDurationMs)
     const parReadAbsDelta = summaryB.avgParallelReadFraction - summaryA.avgParallelReadFraction
 
-    // explore >=1 in >=2/3 prompts? compute per prompt for B
+    // fork >=1 in >=2/3 prompts? compute per prompt for B
     const promptIds = Array.from(new Set(results.map((r) => r.promptId)))
-    let promptsWithExplore = 0
+    let promptsWithFork = 0
     for (const pid of promptIds) {
       const b = results.filter((r) => r.promptId === pid && r.variant === 'B' && r.ok)
       if (b.length === 0) continue
-      const meanExplore = b.reduce((a, r) => a + r.exploreInvocations, 0) / b.length
-      if (meanExplore >= 1) promptsWithExplore++
+      const meanFork = b.reduce((a, r) => a + r.forkInvocations, 0) / b.length
+      if (meanFork >= 1) promptsWithFork++
     }
-    const exploreHitRate = promptsWithExplore / promptIds.length
+    const forkHitRate = promptsWithFork / promptIds.length
 
     md += `### Delta\n\n`
     md += `- Narration chars: ${summaryA.avgNarrationChars.toFixed(0)} -> ${summaryB.avgNarrationChars.toFixed(0)} (rel ${narrCharDelta.toFixed(1)}%)\n`
     md += `- ParallelReadFraction: ${summaryA.avgParallelReadFraction.toFixed(3)} -> ${summaryB.avgParallelReadFraction.toFixed(3)} (abs ${parReadAbsDelta.toFixed(3)})\n`
-    md += `- ExploreInvocations avg: ${summaryA.avgExploreInvocations.toFixed(2)} -> ${summaryB.avgExploreInvocations.toFixed(2)}\n`
-    md += `- Prompts com explore>=1 em B: ${promptsWithExplore}/${promptIds.length}\n`
+    md += `- ForkInvocations avg: ${summaryA.avgForkInvocations.toFixed(2)} -> ${summaryB.avgForkInvocations.toFixed(2)}\n`
+    md += `- Prompts com fork>=1 em B: ${promptsWithFork}/${promptIds.length}\n`
     md += `- Answer chars delta: ${answerDelta.toFixed(1)}%\n`
     md += `- Cost delta: ${costDelta.toFixed(1)}%\n`
     md += `- Wall delta: ${wallDelta.toFixed(1)}%\n\n`
 
     md += `### Kill criteria\n\n`
-    md += `- SHIP se narrationChars cai >=30% rel E (parallelReadFraction sobe >=0.15 abs OU explore>=1 em >=2/3 prompts) E answerChars nao cai >15% E cost nao sobe >+5% E wall nao sobe >+10%.\n`
+    md += `- SHIP se narrationChars cai >=30% rel E (parallelReadFraction sobe >=0.15 abs OU fork>=1 em >=2/3 prompts) E answerChars nao cai >15% E cost nao sobe >+5% E wall nao sobe >+10%.\n`
     md += `- KILL se narrationChars cai <20% rel OU wall sobe >+15%.\n\n`
 
     const narrShipOk = narrCharDelta <= -30
-    const adoptionOk = parReadAbsDelta >= 0.15 || exploreHitRate >= 2 / 3
+    const adoptionOk = parReadAbsDelta >= 0.15 || forkHitRate >= 2 / 3
     const answerOk = answerDelta >= -15
     const costOk = costDelta <= 5
     const wallOk = wallDelta <= 10
@@ -391,7 +399,7 @@ async function main() {
     const verdict = ship ? 'SHIP candidate' : (kill ? 'KILL' : 'INVESTIGAR')
     md += `- Veredito: **${verdict}**\n`
     md += `  - narrationChars: ${narrCharDelta.toFixed(1)}% (ship>=−30 ${narrShipOk ? 'OK' : 'fail'})\n`
-    md += `  - adoption (parallel >=0.15 abs OR explore>=1 em 2/3 prompts): par=${parReadAbsDelta.toFixed(3)} hit=${promptsWithExplore}/${promptIds.length} (${adoptionOk ? 'OK' : 'fail'})\n`
+    md += `  - adoption (parallel >=0.15 abs OR fork>=1 em 2/3 prompts): par=${parReadAbsDelta.toFixed(3)} hit=${promptsWithFork}/${promptIds.length} (${adoptionOk ? 'OK' : 'fail'})\n`
     md += `  - answerChars: ${answerDelta.toFixed(1)}% (${answerOk ? 'OK' : 'fail'})\n`
     md += `  - cost: ${costDelta.toFixed(1)}% (${costOk ? 'OK' : 'fail'})\n`
     md += `  - wall: ${wallDelta.toFixed(1)}% (${wallOk ? 'OK' : 'fail'})\n\n`

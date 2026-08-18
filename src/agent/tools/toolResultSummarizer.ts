@@ -445,13 +445,15 @@ function dispatchArray(
   blocks: Array<{ type: string; text?: string }>,
 ): StrategyResult | null {
   if (toolName === AGENT_TOOL_NAME || toolName === LEGACY_AGENT_TOOL_NAME) {
-    const { mainBlocks, trailerText } = splitAgentTrailer(blocks)
     const jc = maybeJsonStructural(blocks, AGENT_SUMMARIZE_THRESHOLD)
     if (jc) return jc
-    // Code-outline scans the main blocks only; re-append the agent trailer
-    // (agentId:/<usage>) so it survives, mirroring summarizeAgentOutput.
-    const code = maybeCodeOutline(joinTextBlocks(mainBlocks), AGENT_SUMMARIZE_THRESHOLD)
-    if (code) return { ...code, body: code.body + trailerText }
+    // No code-outline here, deliberately. An agent's result is a REPORT: the
+    // prose is the finding and the code in it is quoted evidence. `detectCodeLang`
+    // cannot tell that from a source file, so a report dense in excerpts was
+    // being replaced by its symbol signatures — measured once at 26 KB → 683 B,
+    // after which the parent Read the 28 KB spill file back and re-read 17 of the
+    // 35 files the report already covered. Head/tail keeps the head of the report,
+    // which is where a report puts its answer.
     return summarizeAgentOutput(blocks)
   }
   if (toolName.startsWith('mcp__')) {
