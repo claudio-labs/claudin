@@ -55,7 +55,7 @@ import { logBridgeSkip } from 'src/platform/bridge/debugUtils.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { errorMessage } from 'src/shared/errors.js'
-import { sleep } from 'src/shared/sleep.js'
+import { retryWhileNull } from 'src/platform/bridge/retryWhileNull.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -892,22 +892,14 @@ async function withRetry<T>(
   label: string,
   cfg: EnvLessBridgeConfig,
 ): Promise<T | null> {
-  const max = cfg.init_retry_max_attempts
-  for (let attempt = 1; attempt <= max; attempt++) {
-    const result = await fn()
-    if (result !== null) return result
-    if (attempt < max) {
-      const base = cfg.init_retry_base_delay_ms * 2 ** (attempt - 1)
-      const jitter =
-        base * cfg.init_retry_jitter_fraction * (2 * Math.random() - 1)
-      const delay = Math.min(base + jitter, cfg.init_retry_max_delay_ms)
-      logForDebugging(
-        `[remote-bridge] ${label} failed (attempt ${attempt}/${max}), retrying in ${Math.round(delay)}ms`,
-      )
-      await sleep(delay)
-    }
-  }
-  return null
+  return retryWhileNull(fn, {
+    label,
+    logPrefix: '[remote-bridge]',
+    maxAttempts: cfg.init_retry_max_attempts,
+    baseDelayMs: cfg.init_retry_base_delay_ms,
+    jitterFraction: cfg.init_retry_jitter_fraction,
+    maxDelayMs: cfg.init_retry_max_delay_ms,
+  })
 }
 
 // Moved to codeSessionApi.ts so the SDK /bridge subpath can bundle them
