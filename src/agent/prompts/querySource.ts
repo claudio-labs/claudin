@@ -39,6 +39,7 @@ type InternalQuerySource =
   | 'auto_dream'
   | 'auto_mode'
   | 'auto_mode_critique'
+  | 'auto_mode_setup'
   | 'away_summary'
   | 'bash_classifier'
   | 'bash_extract_prefix'

@@ -38,6 +38,10 @@ import {
   getBashPromptDenyDescriptions,
 } from 'src/permissions/bashClassifier.js'
 import {
+  parseBulletBlock,
+  renderRuleSection,
+} from 'src/permissions/autoModeRules.js'
+import {
   extractToolUseBlock,
   parseClassifierResponse,
 } from 'src/permissions/classifierShared.js'
@@ -159,11 +163,7 @@ function extractTaggedBullets(tagName: string): string[] {
     new RegExp(`<${tagName}>([\\s\\S]*?)</${tagName}>`),
   )
   if (!match) return []
-  return (match[1] ?? '')
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.startsWith('- '))
-    .map(line => line.slice(2))
+  return parseBulletBlock(match[1] ?? '')
 }
 
 /**
@@ -626,33 +626,28 @@ export async function buildYoloSystemPrompt(
   ]
 
   // All three sections use the same <foo_to_replace>...</foo_to_replace>
-  // delimiter pattern. The external template wraps its defaults inside the
-  // tags, so user-provided values REPLACE the defaults entirely. The
-  // anthropic template keeps its defaults outside the tags and uses an empty
-  // tag pair at the end of each section, so user-provided values are
-  // strictly ADDITIVE.
-  const userAllow = allowDescriptions.length
-    ? allowDescriptions.map(d => `- ${d}`).join('\n')
-    : undefined
-  const userDeny = denyDescriptions.length
-    ? denyDescriptions.map(d => `- ${d}`).join('\n')
-    : undefined
-  const userEnvironment = autoMode?.environment?.length
-    ? autoMode.environment.map(e => `- ${e}`).join('\n')
-    : undefined
+  // delimiter pattern, and renderRuleSection resolves each one: an empty
+  // section keeps the template's own block, a section carrying the
+  // `$defaults` sentinel splices those defaults in at that position, and a
+  // section without it replaces them. That last case is the historical
+  // behavior, so a hand-written config keeps working unchanged; the sentinel
+  // is what `/auto-mode-setup` writes so a generated config extends the
+  // shipped rules instead of overwriting them.
+  const environmentDescriptions = autoMode?.environment ?? []
 
   return systemPrompt
     .replace(
       /<user_allow_rules_to_replace>([\s\S]*?)<\/user_allow_rules_to_replace>/,
-      (_m, defaults: string) => userAllow ?? defaults,
+      (_m, defaults: string) => renderRuleSection(allowDescriptions, defaults),
     )
     .replace(
       /<user_deny_rules_to_replace>([\s\S]*?)<\/user_deny_rules_to_replace>/,
-      (_m, defaults: string) => userDeny ?? defaults,
+      (_m, defaults: string) => renderRuleSection(denyDescriptions, defaults),
     )
     .replace(
       /<user_environment_to_replace>([\s\S]*?)<\/user_environment_to_replace>/,
-      (_m, defaults: string) => userEnvironment ?? defaults,
+      (_m, defaults: string) =>
+        renderRuleSection(environmentDescriptions, defaults),
     )
 }
 // ============================================================================
