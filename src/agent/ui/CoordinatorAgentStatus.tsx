@@ -23,8 +23,7 @@ import { getAgentColor } from 'src/tools/AgentTool/agentColorManager.js';
 import { formatDuration, formatNumber } from 'src/shared/text/format.js';
 import { evictTerminalTask } from 'src/agent/tasks/framework.js';
 import { isTerminalStatus } from 'src/agent/ui/tasks/taskStatusUtils.js';
-import { countFooterTaskRows } from 'src/agent/ui/tasks/footerSelection.js';
-import { countVisibleAgentTasks, getAgentPanelRows } from 'src/agent/ui/tasks/footerTaskGeometry.js';
+import { countFooterTaskRows, getAgentPanelRows, getFooterPanelLayout } from 'src/agent/ui/tasks/footerTaskGeometry.js';
 export function CoordinatorTaskPanel(): React.ReactNode {
   const tasks: AppState['tasks'] = useAppState((s: AppState) => s.tasks);
   const viewingAgentTaskId: AppState['viewingAgentTaskId'] = useAppState((s_0: AppState) => s_0.viewingAgentTaskId);
@@ -34,6 +33,9 @@ export function CoordinatorTaskPanel(): React.ReactNode {
   const selectedIndex = tasksSelected ? coordinatorTaskIndex : undefined;
   const setAppState = useSetAppState();
   const rows = getAgentPanelRows(tasks);
+  // Cursor geometry: the summary header owns index 0, so `● main` and the
+  // agent rows sit one further down than the row order alone would suggest.
+  const layout = getFooterPanelLayout(tasks);
   const hasTasks = Object.values(tasks).some(isPanelAgentTask);
 
   // 1s tick: re-render for elapsed time + evict tasks past their deadline.
@@ -68,7 +70,8 @@ export function CoordinatorTaskPanel(): React.ReactNode {
   // (├─/└─). The label is purely visual (no collapse) — render it WITHOUT the
   // tree's chevron so users don't expect Enter to toggle it. The other tree
   // headers (Shells/Monitors) DO toggle and keep the chevron. Selection model:
-  // index 0 = main, 1..N = agents, in row order.
+  // index 0 = the summary header (FooterTaskSummary, rendered above this
+  // panel), 1 = main, 2..N+1 = agents, in row order.
   //
   // Rows are a tree, not a flat list: an agent spawned BY another agent
   // registers into the same root store (see setAppStateForTasks), so it is
@@ -76,13 +79,13 @@ export function CoordinatorTaskPanel(): React.ReactNode {
   // that is what made `Agents (4)` unexplainable next to a transcript block
   // that said `Running 3 agents…`.
   return <Box flexDirection="column">
-      <MainLine isSelected={selectedIndex === 0} isViewed={viewingAgentTaskId === undefined} onClick={() => exitTeammateView(setAppState)} />
+      <MainLine isSelected={selectedIndex === layout.mainIndex} isViewed={viewingAgentTaskId === undefined} onClick={() => exitTeammateView(setAppState)} />
       <Box flexDirection="row">
         <Text dimColor>{"    "}</Text>
         <Text bold>Agents</Text>
         <Text dimColor> ({rows.length})</Text>
       </Box>
-      {rows.map((row, i) => <AgentLine key={row.task.id} task={row.task} name={nameByAgentId.get(row.task.id)} connector={row.connector} isSelected={selectedIndex === i + 1} isViewed={viewingAgentTaskId === row.task.id} onClick={() => enterTeammateView(row.task.id, setAppState)} />)}
+      {rows.map((row, i) => <AgentLine key={row.task.id} task={row.task} name={nameByAgentId.get(row.task.id)} connector={row.connector} isSelected={selectedIndex === layout.agentStart + i} isViewed={viewingAgentTaskId === row.task.id} onClick={() => enterTeammateView(row.task.id, setAppState)} />)}
     </Box>;
 }
 
@@ -93,19 +96,21 @@ export function CoordinatorTaskPanel(): React.ReactNode {
  */
 export function useCoordinatorTaskCount() {
   // Total selectable footer rows under the tasks pill — the upper bound for the
-  // coordinatorTaskIndex cursor. Agent portion: index 0 = main, 1..N = agents,
-  // so N agents contribute N + 1 (0 when there are none, so the panel renders
-  // nothing). Tree portion: the grouped shells/monitors/etc. rows sit right
-  // after agents, so they're folded into the same count — this is what lets ↓
-  // walk the cursor into the tree (and keeps x/enter acting on tree rows).
+  // coordinatorTaskIndex cursor. Collapsed, the summary header is the only row
+  // there is, so the cursor cannot walk into a panel that isn't painted.
+  // Expanded, layout.treeBase already covers the header + main + agent rows,
+  // and the grouped shells/monitors/etc. rows follow — folding them into one
+  // count is what lets ↓ walk the cursor into the tree (and keeps x/enter
+  // acting on tree rows).
   return useAppState((s: AppState) => {
-    const n = countVisibleAgentTasks(s.tasks);
-    const agentPart = n === 0 ? 0 : n + 1;
     // countFooterTaskRows is a cheap counter — no row-list allocation. Hot path:
     // this selector runs on every AppState change AND on the panel's 1s tick,
     // so the previous buildFooterTaskRows().rows.length per call was wasteful.
     const treePart = countFooterTaskRows(s.tasks, s.foregroundedTaskId, s.collapsedTaskGroups);
-    return agentPart + treePart;
+    const layout = getFooterPanelLayout(s.tasks);
+    if (layout.agentCount === 0 && treePart === 0) return 0;
+    if (s.footerTasksCollapsed) return 1;
+    return layout.treeBase + treePart;
   });
 }
 function MainLine(t0: {

@@ -19,6 +19,7 @@ import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { CoordinatorTaskPanel, useCoordinatorTaskCount } from 'src/agent/ui/CoordinatorAgentStatus.js';
 import { GoalStatusIndicator } from 'src/agent/ui/GoalStatusIndicator.js';
 import { BackgroundTaskGroupTree } from 'src/agent/ui/tasks/BackgroundTaskGroupTree.js';
+import { FooterTaskSummary } from 'src/agent/ui/tasks/FooterTaskSummary.js';
 import { WorkflowRunStatusLine } from 'src/agent/ui/workflows/WorkflowRunStatusLine.js';
 import { getLastAssistantMessageId, StatusLine, statusLineShouldDisplay } from 'src/platform/status/StatusLine.js';
 import { SessionTokensIndicator } from 'src/providers/ui/SessionTokensIndicator.js';
@@ -121,6 +122,7 @@ function PromptInputFooter({
   // exist, pill is the only selectable item).
   const coordinatorTaskCount = useCoordinatorTaskCount();
   const coordinatorTaskIndex = useAppState((s: AppState) => s.coordinatorTaskIndex);
+  const footerTasksCollapsed = useAppState((s: AppState) => s.footerTasksCollapsed);
   const pillSelected = tasksSelected && (coordinatorTaskCount === 0 || coordinatorTaskIndex < 0);
 
   // Hide `? for shortcuts` if the user has a custom status line, or during ctrl-r
@@ -142,9 +144,11 @@ function PromptInputFooter({
   }
   // Footer stacking order (top → bottom): the single-line byline ("auto mode on
   // · … · shift+↓ to navigate" + right-side notifications/effort) ALWAYS first,
-  // then the agent panel (`● main` + per-agent metric lines), then the grouped
-  // background-task tree (shells/monitors/etc.). Panel and tree are multi-line
-  // and self-gate (render null when empty).
+  // then the one-line task summary (icon + count per group), and — only when
+  // the user has expanded it — the agent panel (`● main` + per-agent metric
+  // lines) followed by the grouped background-task tree (shells/monitors/etc.).
+  // All three self-gate (render null when empty); the summary is the permanent
+  // header whose Enter toggles the two below it.
   return <>
       <Box flexDirection={isNarrow ? 'column' : 'row'} justifyContent={isNarrow ? 'flex-start' : 'space-between'} paddingLeft={0} paddingRight={2} gap={isNarrow ? 0 : 1}>
         <Box flexDirection="column" flexShrink={isNarrow ? 0 : 1}>
@@ -158,10 +162,13 @@ function PromptInputFooter({
         </Box>
       </Box>
       <GoalStatusIndicator messages={messages} />
-      <CoordinatorTaskPanel />
-      <Box paddingX={2} flexDirection="column">
-        <BackgroundTaskGroupTree />
-      </Box>
+      <FooterTaskSummary />
+      {!footerTasksCollapsed && <>
+        <CoordinatorTaskPanel />
+        <Box paddingX={2} flexDirection="column">
+          <BackgroundTaskGroupTree />
+        </Box>
+      </>}
       {feature('AGENT_WORKFLOWS') ? <Box paddingX={2} flexDirection="column">
         <WorkflowRunStatusLine onOpen={onOpenWorkflowsDialog} />
       </Box> : null}

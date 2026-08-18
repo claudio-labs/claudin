@@ -64,6 +64,7 @@ export function BackgroundTaskStatus(t0: Props) {
   }
   const runningTasks = t3;
   const expandedView = useAppState(_temp4);
+  const footerTasksCollapsed = useAppState(_temp10);
   const showSpinnerTree = expandedView === "teammates";
   const allTeammates = !showSpinnerTree && runningTasks.length > 0 && runningTasks.every(_temp5);
   let t4;
@@ -204,7 +205,10 @@ export function BackgroundTaskStatus(t0: Props) {
     }
     return t16;
   }
-  if (shouldHideTasksFooter(tasks ?? {}, showSpinnerTree)) {
+  // While the footer task area is collapsed, FooterTaskSummary already prints
+  // every group's count as an icon line — keeping the pill too would print the
+  // shell count twice. It comes back with the expanded view.
+  if (footerTasksCollapsed || shouldHideTasksFooter(tasks ?? {}, showSpinnerTree)) {
     return null;
   }
   if (runningTasks.length === 0) {
@@ -280,6 +284,9 @@ function _temp6(t_1: TaskState): t_1 is InProcessTeammateTaskState {
 }
 function _temp5(t_0: TaskState) {
   return t_0.type === "in_process_teammate";
+}
+function _temp10(s_4: AppState) {
+  return s_4.footerTasksCollapsed;
 }
 function _temp4(s_1: AppState) {
   return s_1.expandedView;

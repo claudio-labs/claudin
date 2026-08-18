@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 import type { TaskState } from 'src/agent/tasks/types.js';
 import { buildFooterTaskRows } from 'src/agent/ui/tasks/BackgroundTaskGroupTree.js';
-import { footerTreeBaseIndex } from 'src/agent/ui/tasks/footerTaskGeometry.js';
 import {
   countFooterTaskRows,
-  resolveFooterTreeRow,
-} from 'src/agent/ui/tasks/footerSelection.js';
+  getFooterPanelLayout,
+} from 'src/agent/ui/tasks/footerTaskGeometry.js';
+import { resolveFooterTreeRow } from 'src/agent/ui/tasks/footerSelection.js';
 
 // Minimal fixtures — only the fields buildFooterTaskRows reads. Cast through
 // unknown so we don't have to satisfy every TaskStateBase field.
@@ -125,15 +125,36 @@ describe('buildFooterTaskRows', () => {
   });
 });
 
-describe('footerTreeBaseIndex', () => {
-  test('zero agents → tree starts at index 0', () => {
-    expect(footerTreeBaseIndex(asRecord(shell('s1', 'a')))).toBe(0);
+describe('getFooterPanelLayout', () => {
+  test('zero agents → only the summary header precedes the tree', () => {
+    const layout = getFooterPanelLayout(asRecord(shell('s1', 'a')));
+    expect(layout).toMatchObject({
+      summaryIndex: 0,
+      mainIndex: -1,
+      agentStart: -1,
+      agentCount: 0,
+      treeBase: 1,
+    });
   });
 
-  test('N agents → tree starts at N + 1 (main row + agent rows)', () => {
-    expect(
-      footerTreeBaseIndex(asRecord(agent('a1', 'one'), agent('a2', 'two'), shell('s1', 'a'))),
-    ).toBe(3);
+  test('N agents → summary, main, N agent rows, then the tree', () => {
+    const layout = getFooterPanelLayout(
+      asRecord(agent('a1', 'one'), agent('a2', 'two'), shell('s1', 'a')),
+    );
+    expect(layout).toMatchObject({
+      summaryIndex: 0,
+      mainIndex: 1,
+      agentStart: 2,
+      agentCount: 2,
+      treeBase: 4,
+    });
+  });
+
+  test('the agent rows exactly fill the gap between main and the tree', () => {
+    // agentStart + agentCount === treeBase is the invariant the footer cursor
+    // depends on: no gap, no overlap, so every index maps to one painted row.
+    const layout = getFooterPanelLayout(asRecord(agent('a1', 'one'), shell('s1', 'a')));
+    expect(layout.agentStart + layout.agentCount).toBe(layout.treeBase);
   });
 });
 
@@ -143,26 +164,44 @@ describe('resolveFooterTreeRow', () => {
     shell('s1', 'first', 'bash'),
     shell('s2', 'second', 'bash'),
   );
-  // Layout: index 0 = main, 1 = agent, 2 = shells header, 3 = first, 4 = second.
+  // Layout: 0 = summary, 1 = main, 2 = agent, 3 = shells header, 4 = first,
+  // 5 = second.
 
-  test('returns undefined for cursor positions before the tree (main / agent)', () => {
+  test('returns undefined for cursor positions before the tree (summary / main / agent)', () => {
     expect(resolveFooterTreeRow(tasks, undefined, [], 0)).toBeUndefined();
     expect(resolveFooterTreeRow(tasks, undefined, [], 1)).toBeUndefined();
+    expect(resolveFooterTreeRow(tasks, undefined, [], 2)).toBeUndefined();
   });
 
   test('returns the header at base index', () => {
-    const row = resolveFooterTreeRow(tasks, undefined, [], 2);
+    const row = resolveFooterTreeRow(tasks, undefined, [], 3);
     expect(row).toMatchObject({ kind: 'header', groupKey: 'shells', count: 2 });
   });
 
   test('returns the child items at the trailing indices', () => {
-    expect(resolveFooterTreeRow(tasks, undefined, [], 3)).toMatchObject({ kind: 'item', isLast: false });
-    expect(resolveFooterTreeRow(tasks, undefined, [], 4)).toMatchObject({ kind: 'item', isLast: true });
+    expect(resolveFooterTreeRow(tasks, undefined, [], 4)).toMatchObject({ kind: 'item', isLast: false });
+    expect(resolveFooterTreeRow(tasks, undefined, [], 5)).toMatchObject({ kind: 'item', isLast: true });
   });
 
   test('collapsed group hides items so out-of-range cursor returns undefined', () => {
-    // Only header rendered; index 3 has no row.
-    expect(resolveFooterTreeRow(tasks, undefined, ['shells'], 3)).toBeUndefined();
+    // Only the header is rendered; index 4 has no row.
+    expect(resolveFooterTreeRow(tasks, undefined, ['shells'], 4)).toBeUndefined();
+  });
+
+  test('with no agents the tree starts right after the summary header', () => {
+    // The shift this change introduced: treeBase went 0 -> 1 because the
+    // summary occupies index 0 even when there is no agent partition. Index 0
+    // must resolve to no tree row, and the header must sit at 1.
+    const shellsOnly = asRecord(shell('s1', 'only', 'bash'));
+    expect(resolveFooterTreeRow(shellsOnly, undefined, [], 0)).toBeUndefined();
+    expect(resolveFooterTreeRow(shellsOnly, undefined, [], 1)).toMatchObject({
+      kind: 'header',
+      groupKey: 'shells',
+    });
+    expect(resolveFooterTreeRow(shellsOnly, undefined, [], 2)).toMatchObject({
+      kind: 'item',
+      label: 'only',
+    });
   });
 });
 

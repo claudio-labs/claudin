@@ -137,8 +137,15 @@ export type AppState = DeepImmutable<{
   // collapsedTaskGroups because the user can later expand a seeded group; the
   // group still stays "seeded" and won't re-collapse on remount.
   seededTaskGroups: string[]
+  // Whether the whole footer task area is folded into the one-line icon
+  // summary (FooterTaskSummary). Distinct from collapsedTaskGroups, which
+  // hides ONE group's children inside the expanded view — this hides the agent
+  // panel and the tree wholesale. Defaults to collapsed, and is session-only:
+  // an expand is remembered until the process exits, never written to disk.
+  footerTasksCollapsed: boolean
   // CoordinatorTaskPanel + footer task tree selection. Index 0 = main (only
-  // when agents exist), 1..A = agent rows, then A.. = footer tree rows.
+  // when agents exist), 1..A = agent rows, then A.. = footer tree rows — all
+  // shifted down by the summary header row, see getFooterPanelLayout.
   // AppState (not local) so the panel can read it directly without prop-drilling
   // through PromptInput → PromptInputFooter.
   coordinatorTaskIndex: number
@@ -525,6 +532,7 @@ export function getDefaultAppState(): AppState {
     selectedIPAgentIndex: -1,
     collapsedTaskGroups: [],
     seededTaskGroups: [],
+    footerTasksCollapsed: true,
     coordinatorTaskIndex: -1,
     viewSelectionMode: 'none',
     footerSelection: null,
