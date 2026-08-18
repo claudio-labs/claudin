@@ -9,8 +9,7 @@
 // Global index layout (top → bottom, matching render order):
 //   -1            tasks pill (BackgroundTaskStatus), only while expanded
 //    0            the collapsed-summary header (FooterTaskSummary), always
-//    1            `● main`, only when at least one agent row exists
-//    2 .. A+1     agent rows (A = visible coordinator agents)
+//    1 .. A       agent rows (A = visible coordinator agents)
 //    base .. base+T-1   grouped tree rows (base = getFooterPanelLayout().treeBase)
 //
 // The whole layout is derived in ONE place, getFooterPanelLayout, so tree rows
@@ -24,7 +23,7 @@ import { buildFooterTaskRows, type FooterTaskRow } from 'src/agent/ui/tasks/Back
 import { getFooterPanelLayout } from 'src/agent/ui/tasks/footerTaskGeometry.js'
 
 /** Resolve a global cursor index to the tree row it points at, or undefined if
- * the cursor is on the pill / summary / main / an agent row (before the tree). */
+ * the cursor is on the pill / summary / an agent row (before the tree). */
 export function resolveFooterTreeRow(
   tasks: AppState['tasks'],
   foregroundedTaskId: string | undefined,

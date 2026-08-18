@@ -51,7 +51,7 @@ export function FooterTaskSummary(): React.ReactNode {
 
   const isSelected = tasksFocused && coordinatorTaskIndex === summaryIndex
   const highlighted = isSelected || hover
-  // 2-space prefix so the pointer column lines up with `● main` below
+  // 2-space prefix so the pointer column lines up with the agent panel below
   // (CoordinatorTaskPanel renders at paddingX=0 with the same prefix).
   const prefix = highlighted ? `${figures.pointer} ` : '  '
   // Same chevron the tree's own group headers use (BackgroundTaskGroupTree),

@@ -8,16 +8,13 @@
 
 import figures from 'figures';
 import * as React from 'react';
-import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
-import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 import { BLACK_CIRCLE, PAUSE_ICON, PLAY_ICON } from 'src/shared/constants/figures.js';
-import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { stringWidth } from 'src/terminal/ink/stringWidth.js';
 import { Box, Text, wrapText } from 'src/terminal/ink.js';
 import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
-import { enterTeammateView, exitTeammateView } from 'src/terminal/state/teammateViewHelpers.js';
+import { enterTeammateView } from 'src/terminal/state/teammateViewHelpers.js';
 import { isPanelAgentTask, type LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
 import { getAgentColor } from 'src/tools/AgentTool/agentColorManager.js';
 import { formatDuration, formatNumber } from 'src/shared/text/format.js';
@@ -33,8 +30,8 @@ export function CoordinatorTaskPanel(): React.ReactNode {
   const selectedIndex = tasksSelected ? coordinatorTaskIndex : undefined;
   const setAppState = useSetAppState();
   const rows = getAgentPanelRows(tasks);
-  // Cursor geometry: the summary header owns index 0, so `● main` and the
-  // agent rows sit one further down than the row order alone would suggest.
+  // Cursor geometry: the summary header owns index 0, so the agent rows start
+  // one further down than the row order alone would suggest.
   const layout = getFooterPanelLayout(tasks);
   const hasTasks = Object.values(tasks).some(isPanelAgentTask);
 
@@ -65,13 +62,18 @@ export function CoordinatorTaskPanel(): React.ReactNode {
   if (rows.length === 0) {
     return null;
   }
-  // Layout mirrors the BackgroundTaskGroupTree below: `● main` first, then an
-  // `Agents (N)` group label, then one connector-prefixed row per agent
-  // (├─/└─). The label is purely visual (no collapse) — render it WITHOUT the
-  // tree's chevron so users don't expect Enter to toggle it. The other tree
-  // headers (Shells/Monitors) DO toggle and keep the chevron. Selection model:
-  // index 0 = the summary header (FooterTaskSummary, rendered above this
-  // panel), 1 = main, 2..N+1 = agents, in row order.
+  // Layout mirrors the BackgroundTaskGroupTree below: an `Agents (N)` group
+  // label, then one connector-prefixed row per agent (├─/└─). The label is
+  // purely visual (no collapse) — render it WITHOUT the tree's chevron so users
+  // don't expect Enter to toggle it. The other tree headers (Shells/Monitors)
+  // DO toggle and keep the chevron. Selection model: index 0 = the summary
+  // header (FooterTaskSummary, rendered above this panel), 1..N = agents, in
+  // row order.
+  //
+  // There is NO `● main` row: the summary header above is what folds this panel
+  // away now, and leaving an agent's view is escape
+  // (useBackgroundTaskNavigation) or the leader entry in the background-tasks
+  // dialog.
   //
   // Rows are a tree, not a flat list: an agent spawned BY another agent
   // registers into the same root store (see setAppStateForTasks), so it is
@@ -79,7 +81,6 @@ export function CoordinatorTaskPanel(): React.ReactNode {
   // that is what made `Agents (4)` unexplainable next to a transcript block
   // that said `Running 3 agents…`.
   return <Box flexDirection="column">
-      <MainLine isSelected={selectedIndex === layout.mainIndex} isViewed={viewingAgentTaskId === undefined} onClick={() => exitTeammateView(setAppState)} />
       <Box flexDirection="row">
         <Text dimColor>{"    "}</Text>
         <Text bold>Agents</Text>
@@ -98,7 +99,7 @@ export function useCoordinatorTaskCount() {
   // Total selectable footer rows under the tasks pill — the upper bound for the
   // coordinatorTaskIndex cursor. Collapsed, the summary header is the only row
   // there is, so the cursor cannot walk into a panel that isn't painted.
-  // Expanded, layout.treeBase already covers the header + main + agent rows,
+  // Expanded, layout.treeBase already covers the summary header + agent rows,
   // and the grouped shells/monitors/etc. rows follow — folding them into one
   // count is what lets ↓ walk the cursor into the tree (and keeps x/enter
   // acting on tree rows).
@@ -112,38 +113,6 @@ export function useCoordinatorTaskCount() {
     if (s.footerTasksCollapsed) return 1;
     return layout.treeBase + treePart;
   });
-}
-function MainLine(t0: {
-  isSelected?: boolean;
-  isViewed?: boolean;
-  onClick?: () => void;
-}) {
-  const {
-    isSelected,
-    isViewed,
-    onClick
-  } = t0;
-  const { columns } = useTerminalSize();
-  const [hover, setHover] = React.useState(false);
-  const prefix = isSelected || hover ? figures.pointer + " " : "  ";
-  const bullet = isViewed ? BLACK_CIRCLE : figures.circle;
-  const dim = !isSelected && !isViewed && !hover;
-  // Persistent navigation hint on the main row. Render the live up/down
-  // bindings (Footer context, same mechanism as the neighboring view hint) so a
-  // remap is reflected here too, instead of a hardcoded ↑/↓.
-  const upKey = useShortcutDisplay('footer:up', 'Footer', '↑');
-  const downKey = useShortcutDisplay('footer:down', 'Footer', '↓');
-  const line = <Box width={columns} justifyContent="space-between">
-      <Text dimColor={dim} bold={isViewed}>{prefix}{bullet} main</Text>
-      <Text dimColor={true}>
-        <KeyboardShortcutHint shortcut={`${upKey}/${downKey}`} action="select" />{" · "}
-        <ConfigurableShortcutHint action="footer:openSelected" context="Footer" fallback="enter" description="view" />
-      </Text>
-    </Box>;
-  if (!onClick) {
-    return line;
-  }
-  return <Box onClick={onClick} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>{line}</Box>;
 }
 type AgentLineProps = {
   task: LocalAgentTaskState;

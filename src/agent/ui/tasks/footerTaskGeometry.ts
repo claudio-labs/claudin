@@ -198,12 +198,11 @@ export function countFooterTaskRows(
 
 /** Cursor geometry of the footer's panel portion. Single source of truth —
  * keep callers reading these fields instead of inlining the offsets, so the
- * summary/main/agents/tree partition stays consistent.
+ * summary/agents/tree partition stays consistent.
  *
  * Index layout (top → bottom, matching render order):
  *   -1                    tasks pill, only while expanded
  *    0                    the collapsed-summary header row (always present)
- *    mainIndex            `● main`, only when at least one agent row exists
  *    agentStart ..        agent rows
  *    treeBase ..          grouped tree rows
  */
@@ -211,8 +210,6 @@ export type FooterPanelLayout = {
   /** The summary header. It renders whenever the footer task area renders at
    * all, so it is the one row the cursor can always reach. */
   summaryIndex: number
-  /** `● main`, or -1 when there are no agents. */
-  mainIndex: number
   /** First agent row, or -1 when there are none. `agentCount` rows follow. */
   agentStart: number
   agentCount: number
@@ -225,9 +222,8 @@ export function getFooterPanelLayout(tasks: AppState['tasks']): FooterPanelLayou
   const hasAgents = agentCount > 0
   return {
     summaryIndex: 0,
-    mainIndex: hasAgents ? 1 : -1,
-    agentStart: hasAgents ? 2 : -1,
+    agentStart: hasAgents ? 1 : -1,
     agentCount,
-    treeBase: hasAgents ? agentCount + 2 : 1,
+    treeBase: agentCount + 1,
   }
 }

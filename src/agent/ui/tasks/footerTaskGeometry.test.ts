@@ -161,27 +161,27 @@ describe('getAgentPanelRows — nesting', () => {
     );
     expect(countVisibleAgentTasks(tasks)).toBe(4);
     expect(getAgentPanelRows(tasks)).toHaveLength(4);
-    expect(getFooterPanelLayout(tasks).treeBase).toBe(6);
+    expect(getFooterPanelLayout(tasks).treeBase).toBe(5);
   });
 });
 
 describe('getFooterPanelLayout', () => {
   // BackgroundTaskGroupTree.test.ts already covers the agents=0 and agents=N
   // cases for the tree-base offset. These tests pin the off-by-one *boundary*
-  // — the base is summary + (A===0 ? 0 : A+1), so the seam at A=1 (where the
-  // ● main row first appears) is the easiest place to silently regress.
-  test('one agent → tree starts at index 3 (summary + main + agent → tree)', () => {
-    expect(getFooterPanelLayout(asRecord(panelAgent('a1', 1))).treeBase).toBe(3);
+  // — the base is summary + A, so the seam at A=1 (where the first agent row
+  // appears) is the easiest place to silently regress.
+  test('one agent → tree starts at index 2 (summary + agent → tree)', () => {
+    expect(getFooterPanelLayout(asRecord(panelAgent('a1', 1))).treeBase).toBe(2);
   });
 
   test('evicted agents do not contribute to the offset', () => {
-    // A=1 visible + 1 evicted should still report base=3, not 4 — eviction
+    // A=1 visible + 1 evicted should still report base=2, not 3 — eviction
     // is the only way the cursor stays put when the panel shrinks.
     const tasks = asRecord(
       panelAgent('a1', 1),
       panelAgent('a2', 2, { evictAfter: 0 }),
     );
-    expect(getFooterPanelLayout(tasks).treeBase).toBe(3);
+    expect(getFooterPanelLayout(tasks).treeBase).toBe(2);
   });
 });
 

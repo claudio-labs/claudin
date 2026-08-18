@@ -145,7 +145,7 @@ function PromptInputFooter({
   // Footer stacking order (top → bottom): the single-line byline ("auto mode on
   // · … · shift+↓ to navigate" + right-side notifications/effort) ALWAYS first,
   // then the one-line task summary (icon + count per group), and — only when
-  // the user has expanded it — the agent panel (`● main` + per-agent metric
+  // the user has expanded it — the agent panel (`Agents (N)` + per-agent metric
   // lines) followed by the grouped background-task tree (shells/monitors/etc.).
   // All three self-gate (render null when empty); the summary is the permanent
   // header whose Enter toggles the two below it.
