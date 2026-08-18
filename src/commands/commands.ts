@@ -139,6 +139,7 @@ import hooks from 'src/commands/hooks/index.js'
 import branch from 'src/commands/branch/index.js'
 import agents from 'src/commands/agents/index.js'
 import autoFix from 'src/commands/auto-fix.js'
+import autoModeSetup from 'src/commands/auto-mode-setup/index.js'
 import plugin from 'src/commands/plugin/index.js'
 import reloadPlugins from 'src/commands/reload-plugins/index.js'
 import rewind from 'src/commands/rewind/index.js'
@@ -236,6 +237,7 @@ const COMMANDS = memoize((): Command[] => [
   agents,
   autoFix,
   autofixPr,
+  autoModeSetup,
   branch,
   btw,
   cacheProbe,

@@ -30,6 +30,11 @@ import {
 } from 'src/platform/settings/constants.js'
 import { markInternalWrite } from 'src/platform/settings/internalWrites.js'
 import {
+  type AutoModeSectionName,
+  describeDropReason,
+  sanitizeRuleEntries,
+} from 'src/permissions/autoModeRules.js'
+import {
   getManagedFilePath,
   getManagedSettingsDropInDir,
 } from 'src/platform/settings/managedPath.js'
@@ -944,52 +949,130 @@ export function getUseAutoModeDuringPlan(): boolean {
 /**
  * Returns the merged autoMode config from trusted settings sources.
  * Only available when TRANSCRIPT_CLASSIFIER is active; returns undefined otherwise.
- * projectSettings is intentionally excluded — a malicious project could
- * otherwise inject classifier allow/deny rules (RCE risk).
+ * projectSettings and localSettings are intentionally excluded — both live in
+ * the repository directory, so a malicious project could otherwise inject
+ * classifier allow/deny rules (RCE risk). settings.local.json is gitignored by
+ * convention only; nothing stops a repo from shipping one.
+ *
+ * Every entry is sanitized before it can reach the classifier prompt; see
+ * getAutoModeConfigWithNotes for what gets dropped and why.
  */
 export function getAutoModeConfig():
   | { allow?: string[]; soft_deny?: string[]; environment?: string[] }
   | undefined {
+  return getAutoModeConfigWithNotes().config
+}
+
+export type AutoModeConfigNotes = {
+  config:
+    | { allow?: string[]; soft_deny?: string[]; environment?: string[] }
+    | undefined
+  dropped: { section: AutoModeSectionName; entry: string; reason: string }[]
+  ignoredSources: SettingSource[]
+}
+
+/**
+ * getAutoModeConfig plus the bookkeeping the CLI and the startup notification
+ * need: which entries were dropped by sanitization, and which repo-controlled
+ * settings files carry an autoMode block that is being ignored.
+ */
+export function getAutoModeConfigWithNotes(): AutoModeConfigNotes {
   if (feature('TRANSCRIPT_CLASSIFIER')) {
-    const schema = z.object({
-      allow: z.array(z.string()).optional(),
-      soft_deny: z.array(z.string()).optional(),
-      deny: z.array(z.string()).optional(),
-      environment: z.array(z.string()).optional(),
-    })
+    return collectAutoModeConfig(getSettingsForSource)
+  }
+  return { config: undefined, dropped: [], ignoredSources: [] }
+}
 
-    const allow: string[] = []
-    const soft_deny: string[] = []
-    const environment: string[] = []
+/** Sources trusted to configure the classifier — none of them repo-controlled. */
+export const AUTO_MODE_TRUSTED_SOURCES = [
+  'userSettings',
+  'flagSettings',
+  'policySettings',
+] as const satisfies readonly SettingSource[]
 
-    for (const source of [
-      'userSettings',
-      'localSettings',
-      'flagSettings',
-      'policySettings',
-    ] as const) {
-      const settings = getSettingsForSource(source)
-      if (!settings) continue
-      const result = schema.safeParse(
-        (settings as Record<string, unknown>).autoMode,
-      )
-      if (result.success) {
-        if (result.data.allow) allow.push(...result.data.allow)
-        if (result.data.soft_deny) soft_deny.push(...result.data.soft_deny)
-        if (result.data.environment)
-          environment.push(...result.data.environment)
-      }
-    }
+/** Sources that live in the repository directory, and so are never trusted here. */
+export const AUTO_MODE_REPO_CONTROLLED_SOURCES = [
+  'projectSettings',
+  'localSettings',
+] as const satisfies readonly SettingSource[]
 
-    if (allow.length > 0 || soft_deny.length > 0 || environment.length > 0) {
-      return {
-        ...(allow.length > 0 && { allow }),
-        ...(soft_deny.length > 0 && { soft_deny }),
-        ...(environment.length > 0 && { environment }),
-      }
+const autoModeSchema = z.object({
+  allow: z.array(z.string()).optional(),
+  soft_deny: z.array(z.string()).optional(),
+  deny: z.array(z.string()).optional(),
+  environment: z.array(z.string()).optional(),
+})
+
+/**
+ * The reader-injected core of getAutoModeConfigWithNotes. Takes the settings
+ * lookup as a parameter so the source list and the sanitization can be tested
+ * without touching disk or mocking the settings module.
+ */
+export function collectAutoModeConfig(
+  readSource: (source: SettingSource) => SettingsJson | null,
+): AutoModeConfigNotes {
+  const allow: string[] = []
+  const soft_deny: string[] = []
+  const environment: string[] = []
+  const dropped: {
+    section: AutoModeSectionName
+    entry: string
+    reason: string
+  }[] = []
+
+  const collect = (
+    section: AutoModeSectionName,
+    target: string[],
+    entries: string[] | undefined,
+  ): void => {
+    if (!entries) return
+    const sanitized = sanitizeRuleEntries(entries)
+    target.push(...sanitized.entries)
+    for (const drop of sanitized.dropped) {
+      dropped.push({
+        section,
+        entry: drop.entry,
+        reason: describeDropReason(drop.reason),
+      })
     }
   }
-  return undefined
+
+  for (const source of AUTO_MODE_TRUSTED_SOURCES) {
+    const settings = readSource(source)
+    if (!settings) continue
+    const result = autoModeSchema.safeParse(
+      (settings as Record<string, unknown>).autoMode,
+    )
+    if (result.success) {
+      collect('allow', allow, result.data.allow)
+      collect('soft_deny', soft_deny, result.data.soft_deny)
+      collect('environment', environment, result.data.environment)
+    }
+  }
+
+  const ignoredSources: SettingSource[] = []
+  for (const source of AUTO_MODE_REPO_CONTROLLED_SOURCES) {
+    const settings = readSource(source)
+    if (!settings) continue
+    const autoMode = (settings as Record<string, unknown>).autoMode
+    if (autoMode && typeof autoMode === 'object') {
+      ignoredSources.push(source)
+    }
+  }
+
+  const hasRules =
+    allow.length > 0 || soft_deny.length > 0 || environment.length > 0
+  return {
+    config: hasRules
+      ? {
+          ...(allow.length > 0 && { allow }),
+          ...(soft_deny.length > 0 && { soft_deny }),
+          ...(environment.length > 0 && { environment }),
+        }
+      : undefined,
+    dropped,
+    ignoredSources,
+  }
 }
 
 export function rawSettingsContainsKey(key: string): boolean {

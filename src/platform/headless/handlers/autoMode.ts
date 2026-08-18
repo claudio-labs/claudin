@@ -14,7 +14,15 @@ import {
   getDefaultExternalAutoModeRules,
   isClassifierBundled,
 } from 'src/permissions/yoloClassifier.js'
-import { getAutoModeConfig } from 'src/platform/settings/settings.js'
+import {
+  getAutoModeConfig,
+  getAutoModeConfigWithNotes,
+  getRelativeSettingsFilePathForSource,
+} from 'src/platform/settings/settings.js'
+import {
+  expandDefaults,
+  hasDefaultsSentinel,
+} from 'src/permissions/autoModeRules.js'
 import { sideQuery } from 'src/agent/sideQuery.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 
@@ -38,27 +46,37 @@ export function autoModeDefaultsHandler(): void {
 
 /**
  * Dump the effective auto mode config: user settings where provided, external
- * defaults otherwise. Per-section REPLACE semantics — matches how
- * buildYoloSystemPrompt resolves the external template (a non-empty user
- * section replaces that section's defaults entirely; an empty/absent section
- * falls through to defaults).
+ * defaults otherwise. Resolution matches buildYoloSystemPrompt exactly: an
+ * empty section falls through to the defaults, a section carrying the
+ * `$defaults` sentinel splices them in at that position, and a section without
+ * it replaces them. Entries dropped by sanitization, and autoMode blocks
+ * ignored because they live in the repository, are reported after the JSON.
  */
 export function autoModeConfigHandler(): void {
   if (!isClassifierBundled()) {
     process.stdout.write(CLASSIFIER_NOT_BUNDLED_MSG)
     return
   }
-  const config = getAutoModeConfig()
+  const { config, dropped, ignoredSources } = getAutoModeConfigWithNotes()
   const defaults = getDefaultExternalAutoModeRules()
   writeRules({
-    allow: config?.allow?.length ? config.allow : defaults.allow,
-    soft_deny: config?.soft_deny?.length
-      ? config.soft_deny
-      : defaults.soft_deny,
-    environment: config?.environment?.length
-      ? config.environment
-      : defaults.environment,
+    allow: expandDefaults(config?.allow ?? [], defaults.allow),
+    soft_deny: expandDefaults(config?.soft_deny ?? [], defaults.soft_deny),
+    environment: expandDefaults(config?.environment ?? [], defaults.environment),
   })
+  for (const drop of dropped) {
+    process.stderr.write(
+      `note: dropped one ${drop.section} entry — ${drop.reason}\n`,
+    )
+  }
+  for (const source of ignoredSources) {
+    const file = getRelativeSettingsFilePathForSource(
+      source as 'projectSettings' | 'localSettings',
+    )
+    process.stderr.write(
+      `note: autoMode in ${file} was ignored — settings inside the repository cannot configure auto mode\n`,
+    )
+  }
 }
 
 const CRITIQUE_SYSTEM_PROMPT =
@@ -144,7 +162,9 @@ export async function autoModeCritiqueHandler(options: {
             '<classifier_system_prompt>\n' +
             classifierPrompt +
             '\n</classifier_system_prompt>\n\n' +
-            "Here are the user's custom rules that REPLACE the corresponding default sections:\n\n" +
+            "Here are the user's custom rules. A section listing `$defaults` " +
+            'keeps the shipped rules and adds to them; a section without it ' +
+            'replaces them entirely:\n\n' +
             userRulesSummary +
             '\nPlease critique these custom rules.',
         },
@@ -172,16 +192,19 @@ function formatRulesForCritique(
   defaultRules: string[],
 ): string {
   if (userRules.length === 0) return ''
+  const extendsDefaults = hasDefaultsSentinel(userRules)
   const customLines = userRules.map(r => '- ' + r).join('\n')
   const defaultLines = defaultRules.map(r => '- ' + r).join('\n')
   return (
     '## ' +
     section +
-    ' (custom rules replacing defaults)\n' +
+    (extendsDefaults
+      ? ' (custom rules, added to the defaults)\n'
+      : ' (custom rules REPLACING the defaults)\n') +
     'Custom:\n' +
     customLines +
     '\n\n' +
-    'Defaults being replaced:\n' +
+    (extendsDefaults ? 'Defaults kept:\n' : 'Defaults being replaced:\n') +
     defaultLines +
     '\n\n'
   )

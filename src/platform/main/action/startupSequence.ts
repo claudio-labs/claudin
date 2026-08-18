@@ -52,7 +52,7 @@ import { processSessionStartHooks } from 'src/sessions/sessionStart.js';
 import { prefetchCopilotModelCatalog } from 'src/providers/model/copilotModelCatalog.js';
 import { prefetchOllamaModels } from 'src/providers/model/ollamaModels.js';
 import { prefetchOpenAICompatibleModels } from 'src/providers/model/openaiModelDiscovery.js';
-import { getInitialSettings, getSettingsWithErrors } from 'src/platform/settings/settings.js';
+import { getAutoModeConfigWithNotes, getInitialSettings, getRelativeSettingsFilePathForSource, getSettingsWithErrors } from 'src/platform/settings/settings.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import { computeInitialTeamContext } from 'src/agent/coordinator/swarm/reconnection.js';
 import { shouldEnablePromptSuggestion } from 'src/terminal/prompt-suggestion/promptSuggestion.js';
@@ -534,6 +534,20 @@ export function runInteractiveStartupBlock(
       priority: 'high',
     });
   }
+  // An autoMode block in a repo-controlled settings file is read by nobody:
+  // getAutoModeConfig only trusts user/flag/policy settings. Say so, or editing
+  // the wrong file looks like a silent no-op.
+  const ignoredAutoModeSources = feature('TRANSCRIPT_CLASSIFIER') ? getAutoModeConfigWithNotes().ignoredSources : [];
+  if (ignoredAutoModeSources.length > 0) {
+    const files = ignoredAutoModeSources.map(source => getRelativeSettingsFilePathForSource(source as 'projectSettings' | 'localSettings')).join(', ');
+    const n = ignoredAutoModeSources.length;
+    initialNotifications.push({
+      key: 'ignored-auto-mode-settings',
+      text: `autoMode rules in ${files} ${plural(n, 'was', 'were')} ignored \u2014 settings inside the repository cannot configure auto mode. Run /auto-mode-setup to write them to your user settings.`,
+      color: 'warning',
+      priority: 'high',
+    });
+  }
   const effectiveToolPermissionContext = {
     ...toolPermissionContext,
     mode: isAgentSwarmsEnabled() && getTeammateUtils().isPlanModeRequired() ? ('plan' as const) : toolPermissionContext.mode,
@@ -690,4 +704,3 @@ export function runInteractiveStartupBlock(
     initialTools,
   };
 }
-
