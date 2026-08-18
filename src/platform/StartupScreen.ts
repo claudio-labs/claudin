@@ -10,9 +10,8 @@ import { gt } from 'src/shared/semver.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import { isLocalProviderUrl, resolveProviderRequest } from 'src/providers/presets/providerConfig.js'
 import { getLocalOpenAICompatibleProviderLabel } from 'src/providers/presets/providerDiscovery.js'
-import { parseUserSpecifiedModel } from 'src/providers/model/model.js'
-import { getDisplayedEffortLabel, getInitialEffortSetting, modelSupportsEffort, type AdaptiveEffort, type EffortLevel } from 'src/providers/effort/effort.js'
-import { effortLevelToSymbol } from 'src/providers/ui/EffortIndicator.js'
+import { parseUserSpecifiedModel, renderModelName } from 'src/providers/model/model.js'
+import { formatEffortSuffix, getDisplayedEffortLabel, getInitialEffortSetting, modelSupportsEffort, type AdaptiveEffort, type EffortLevel } from 'src/providers/effort/effort.js'
 
 const UNCONFIGURED_PLACEHOLDER = '—'
 
@@ -29,14 +28,14 @@ const rgb = (r: number, g: number, b: number) => `${ESC}38;2;${r};${g};${b}m`
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
-const PINK: RGB = [225, 95, 140]
-const PINK_DARK: RGB = [170, 65, 110]
+const BLUE: RGB = [79, 165, 252]
+const BLUE_DARK: RGB = [60, 113, 198]
 
 // ─── Pixel-art logo ───────────────────────────────────────────────────────────
 
 /**
- * 3-row pink pixel-art robot using half-block chars (█ ▜ ▝).
- * Each cell encodes two stacked pixel rows: foreground = pink,
+ * 3-row blue pixel-art robot using half-block chars (█ ▜ ▝).
+ * Each cell encodes two stacked pixel rows: foreground = blue,
  * terminal background fills eye/mouth holes.
  *
  * Rows are space-padded to the same width so the text column lines up.
@@ -48,7 +47,7 @@ const LOGO_LINES: string[] = [
   ' ▘▘ ▝▝ ',
 ]
 
-const LOGO_SHADES: RGB[] = [PINK, PINK, PINK, PINK_DARK]
+const LOGO_SHADES: RGB[] = [BLUE, BLUE, BLUE, BLUE_DARK]
 
 /**
  * Visible width of the logo block (ANSI-stripped). Each character in
@@ -169,7 +168,7 @@ export const STARTUP_BANNER_WIDTH = 80
 
 /**
  * Build the ANSI-escaped lines for the startup banner. Pure function.
- * Layout: 3-row pink pixel-art robot on the left, three info lines on the
+ * Layout: 3-row blue pixel-art robot on the left, three info lines on the
  * right — one per logo row, so the banner opens on its first painted row.
  */
 export type UpdateNotice = {
@@ -187,9 +186,10 @@ export function buildStartupBannerLines(
   const sep = `${DIM}·${RESET}`
 
   const headerLine = `${BOLD}Claudin${RESET} ${DIM}v${version}${RESET}`
-  const providerLine = p.effort
-    ? `${p.name} ${sep} ${p.model} ${sep} ${effortLevelToSymbol(p.effort)} ${p.effort}`
-    : `${p.name} ${sep} ${p.model}`
+  // Same display name the status bar shows (ProviderModelIndicator renders it
+  // through renderModelName) and the same effort wording as the Logo/Spinner,
+  // so the two surfaces name the model identically.
+  const providerLine = `${p.name} ${sep} ${renderModelName(p.model)}${p.effort ? formatEffortSuffix(p.effort) : ''}`
   const cwdLine = `${DIM}${formatCwd()}${RESET}`
 
   const textRows: (string | undefined)[] = [
@@ -200,7 +200,7 @@ export function buildStartupBannerLines(
   const GAP = '   '
 
   for (let i = 0; i < LOGO_LINES.length; i++) {
-    const logoCell = paint(LOGO_LINES[i], LOGO_SHADES[i] ?? PINK)
+    const logoCell = paint(LOGO_LINES[i], LOGO_SHADES[i] ?? BLUE)
     const text = textRows[i]
     out.push(text ? `${logoCell}${GAP}${text}` : logoCell)
   }

@@ -64,7 +64,9 @@ describe('buildStartupBannerLines', () => {
     expect(text).toContain('Claudin')
     expect(text).toContain('vtest-version')
     expect(text).toContain('Not configured')
-    expect(text).toContain('claude-sonnet-4-6')
+    // The banner shows the same display name as the status bar, not the id.
+    expect(text).toContain('Sonnet 4.6')
+    expect(text).not.toContain('claude-sonnet-4-6')
   })
 
   it('uses the em-dash placeholder for the model when nothing is configured', async () => {
@@ -91,10 +93,10 @@ describe('buildStartupBannerLines', () => {
     const text = stripAnsi(lines.join('\n'))
 
     expect(text).toContain('OpenAI')
-    expect(text).toContain('gpt-4o')
+    expect(text).toContain('GPT-4o')
   })
 
-  it('shows reasoning effort as a separate token when set', async () => {
+  it('appends the effort suffix when an effort is set', async () => {
     resolvedOverride = {
       transport: 'anthropic',
       baseUrl: 'https://api.anthropic.com',
@@ -111,8 +113,23 @@ describe('buildStartupBannerLines', () => {
     const text = stripAnsi(lines.join('\n'))
 
     expect(text).toContain('Anthropic')
-    expect(text).toContain('claude-sonnet-4-6')
-    expect(text).toContain('● high')
+    expect(text).toContain('Sonnet 4.6 with high effort')
+  })
+
+  it('omits the effort suffix when the provider reports no effort', async () => {
+    resolvedOverride = {
+      transport: 'openai_compat',
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-4o',
+      apiKey: 'test',
+      name: 'OpenAI',
+    }
+
+    const { buildStartupBannerLines } = await import('src/platform/StartupScreen.js')
+    const lines = buildStartupBannerLines()
+    const text = stripAnsi(lines.join('\n'))
+
+    expect(text).not.toContain('effort')
   })
 
   it('still resolves local providers without crashing', async () => {
@@ -209,7 +226,7 @@ describe('<StartupBanner />', () => {
 
     expect(output).toContain('Claudin')
     expect(output).toContain('Not configured')
-    expect(output).toContain('claude-sonnet-4-6')
+    expect(output).toContain('Sonnet 4.6')
   })
 
   it('calls subscribeLatestVersion on mount (kills "delete useEffect" mutation)', async () => {

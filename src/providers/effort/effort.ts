@@ -540,10 +540,19 @@ export function getEffortSuffix(
   effortValue: EffortValue | undefined,
 ): string {
   if (effortValue === undefined) return ''
-  if (isAdaptiveEffort(effortValue)) return ' with adaptive effort'
+  if (isAdaptiveEffort(effortValue)) return formatEffortSuffix(ADAPTIVE_EFFORT)
   const resolved = resolveAppliedEffort(model, effortValue)
   if (resolved === undefined) return ''
-  return ` with ${convertEffortValueToLevel(resolved)} effort`
+  return formatEffortSuffix(convertEffortValueToLevel(resolved))
+}
+
+/**
+ * Wording of the effort suffix, for callers that already hold a resolved
+ * label (the startup banner) rather than the raw setting. Keeps the Logo,
+ * the Spinner and the banner phrasing it the same way.
+ */
+export function formatEffortSuffix(label: EffortLevel | AdaptiveEffort): string {
+  return ` with ${label} effort`
 }
 
 export function isValidNumericEffort(value: number): boolean {
