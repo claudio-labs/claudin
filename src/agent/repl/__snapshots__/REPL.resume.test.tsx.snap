@@ -2,7 +2,7 @@
 
 exports[`<REPL> resume baseline resume props all empty (default) 1`] = `
 "▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-sonnet-4-6
+▐█████▌   Not configured · Sonnet 4.6
  ▘▘ ▝▝    ~/projects/claudin
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -14,7 +14,7 @@ exports[`<REPL> resume baseline resume props all empty (default) 1`] = `
 
 exports[`<REPL> resume baseline resume with agent context (name + color) 1`] = `
 "▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-sonnet-4-6
+▐█████▌   Not configured · Sonnet 4.6
  ▘▘ ▝▝    ~/projects/claudin
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────

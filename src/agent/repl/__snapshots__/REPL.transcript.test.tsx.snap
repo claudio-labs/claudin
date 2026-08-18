@@ -2,7 +2,7 @@
 
 exports[`<REPL> transcript baseline empty initialMessages (degenerate) 1`] = `
 "▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-sonnet-4-6
+▐█████▌   Not configured · Sonnet 4.6
  ▘▘ ▝▝    ~/projects/claudin
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -14,7 +14,7 @@ exports[`<REPL> transcript baseline empty initialMessages (degenerate) 1`] = `
 
 exports[`<REPL> transcript baseline initialAgentName + color set (resumed agent context) 1`] = `
 "▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-sonnet-4-6
+▐█████▌   Not configured · Sonnet 4.6
  ▘▘ ▝▝    ~/projects/claudin
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────

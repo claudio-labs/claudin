@@ -6,6 +6,8 @@ import stripAnsi from 'strip-ansi'
 import { createRoot } from 'src/terminal/ink.js'
 import { AppStateProvider } from 'src/terminal/state/AppState.js'
 import { renderToString } from 'src/terminal/render/staticRender.js'
+import { resetModelStringsForTestingOnly } from 'src/platform/bootstrap/state.js'
+import type { APIProvider } from 'src/providers/model/providers.js'
 
 // MACRO is a build-time replacement; in unit tests there's no bundler, so the
 // banner reads from globalThis.MACRO at runtime. Mirror what other tests do.
@@ -28,6 +30,25 @@ const realEffort = { ...(await import('src/providers/effort/effort.js')) }
 const realEffortSnapshot = { ...realEffort }
 let effortOverride: ReturnType<typeof realEffort.getInitialEffortSetting> | undefined
 
+// The banner names the model through renderModelName, which resolves the
+// display name from TWO process-global sources: getAPIProvider() and the
+// memoized model-strings table. Both are clobbered by sibling test files — a
+// leaked `getAPIProvider: () => 'bedrock'` stub, or a table another file
+// cached while pinning its own provider — and either one makes
+// getPublicModelDisplayName() fall through to the raw id, which is exactly
+// what the assertions below exist to rule out. So pin the provider tag per
+// test and drop the cached table, the way modelLabel.test.ts does.
+const realProviders = { ...(await import('src/providers/model/providers.js')) }
+let apiProviderOverride: APIProvider = 'firstParty'
+
+function pinModelRegistry(): void {
+  mock.module('src/providers/model/providers.js', () => ({
+    ...realProviders,
+    getAPIProvider: () => apiProviderOverride,
+  }))
+  resetModelStringsForTestingOnly()
+}
+
 mock.module('src/providers/presets/activeProvider.js', () => ({
   ...realActiveProviderSnapshot,
   tryGetActiveProvider: () => resolvedOverride,
@@ -43,12 +64,16 @@ afterAll(() => {
   mock.module('src/providers/presets/activeProvider.js', () => realActiveProviderSnapshot)
   mock.module('src/providers/effort/effort.js', () => realEffortSnapshot)
   mock.module('src/providers/effort/effort.js', () => realEffortSnapshot)
+  mock.module('src/providers/model/providers.js', () => realProviders)
+  resetModelStringsForTestingOnly()
 })
 
 describe('buildStartupBannerLines', () => {
   beforeEach(() => {
     resolvedOverride = null
     effortOverride = undefined
+    apiProviderOverride = 'firstParty'
+    pinModelRegistry()
   })
 
   afterEach(() => {
@@ -87,6 +112,7 @@ describe('buildStartupBannerLines', () => {
       apiKey: 'test',
       name: 'OpenAI',
     }
+    apiProviderOverride = 'openai'
 
     const { buildStartupBannerLines } = await import('src/platform/StartupScreen.js')
     const lines = buildStartupBannerLines()
@@ -124,6 +150,7 @@ describe('buildStartupBannerLines', () => {
       apiKey: 'test',
       name: 'OpenAI',
     }
+    apiProviderOverride = 'openai'
 
     const { buildStartupBannerLines } = await import('src/platform/StartupScreen.js')
     const lines = buildStartupBannerLines()
@@ -208,6 +235,8 @@ describe('<StartupBanner />', () => {
   beforeEach(() => {
     resolvedOverride = null
     effortOverride = undefined
+    apiProviderOverride = 'firstParty'
+    pinModelRegistry()
   })
 
   afterEach(() => {

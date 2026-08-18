@@ -2,7 +2,7 @@
 
 exports[`<REPL> smoke baseline default mount (prompt mode, empty conversation) 1`] = `
 "▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-sonnet-4-6
+▐█████▌   Not configured · Sonnet 4.6
  ▘▘ ▝▝    ~/projects/claudin
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -14,13 +14,13 @@ exports[`<REPL> smoke baseline default mount (prompt mode, empty conversation) 1
 
 exports[`<REPL> smoke baseline disabled prop (no prompt input) 1`] = `
 "▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-sonnet-4-6
+▐█████▌   Not configured · Sonnet 4.6
  ▘▘ ▝▝    ~/projects/claudin"
 `;
 
 exports[`<REPL> smoke baseline debug mode on 1`] = `
 "▐▛███▜▌   Claudin vtest-version
-▐█████▌   Not configured · claude-sonnet-4-6
+▐█████▌   Not configured · Sonnet 4.6
  ▘▘ ▝▝    ~/projects/claudin
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────
