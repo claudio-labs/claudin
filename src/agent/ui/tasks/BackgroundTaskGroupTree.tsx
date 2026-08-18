@@ -6,34 +6,24 @@ import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { truncate } from 'src/shared/text/format.js';
-import { footerTreeBaseIndex } from 'src/agent/ui/tasks/footerTaskGeometry.js';
+import { FOOTER_GROUP_LABELS, FOOTER_GROUP_ORDER, type FooterGroupKey, getFooterPanelLayout, matchGroupKey } from 'src/agent/ui/tasks/footerTaskGeometry.js';
 
 // Groups with >4 items start collapsed so the footer stays compact; the user can
 // expand with Enter on the header.
 const AUTO_COLLAPSE_THRESHOLD = 4;
 
-// Group order is the top-to-bottom render order AND the cursor navigation order.
-type GroupDef = {
-  key: string;
-  label: string;
-  match: (task: BackgroundTaskState) => boolean;
-};
-// NOTE: local_agent tasks are intentionally absent — they render in the
-// full-width agent panel (CoordinatorTaskPanel: `● main` + per-agent metric
-// lines) above the byline, not as a bare group here. Keeping them out also
-// keeps the unified footer cursor (coordinatorTaskIndex) single — agents are
-// the panel's rows, tree rows come after them in the same index space.
-const GROUP_ORDER: GroupDef[] = [
-  { key: 'shells', label: 'Shells', match: t => t.type === 'local_bash' && t.kind !== 'monitor' },
-  {
-    key: 'monitors',
-    label: 'Monitors',
-    match: t => (t.type === 'local_bash' && t.kind === 'monitor') || t.type === 'monitor_mcp',
-  },
-  { key: 'remote', label: 'Remote', match: t => t.type === 'remote_agent' },
-  { key: 'workflows', label: 'Workflows', match: t => t.type === 'local_workflow' },
-  { key: 'dreams', label: 'Dreams', match: t => t.type === 'dream' },
-];
+// Render order and labels come from footerTaskGeometry, and group membership
+// from its matchGroupKey. This file used to carry its own `match` predicates,
+// which meant the row COUNT (countFooterTaskRows) partitioned the same tasks
+// with a second, independent implementation and could silently disagree with
+// the rows painted here.
+//
+// The agents group is skipped: local_agent tasks render in the full-width agent
+// panel (CoordinatorTaskPanel: `● main` + per-agent metric lines) above the
+// byline, not as a bare group here. Keeping them out also keeps the unified
+// footer cursor (coordinatorTaskIndex) single — agents are the panel's rows,
+// and tree rows come after them in the same index space.
+const TREE_GROUPS: readonly FooterGroupKey[] = FOOTER_GROUP_ORDER.filter(key => key !== 'agents');
 
 // Short, single-line label per task — mirrors toListItem() in BackgroundTasksDialog.
 function labelFor(task: BackgroundTaskState): string {
@@ -58,7 +48,7 @@ function labelFor(task: BackgroundTaskState): string {
 }
 
 export type FooterTaskRow =
-  | { kind: 'header'; groupKey: string; label: string; count: number; collapsed: boolean }
+  | { kind: 'header'; groupKey: FooterGroupKey; label: string; count: number; collapsed: boolean }
   | { kind: 'item'; task: BackgroundTaskState; label: string; isLast: boolean };
 
 /**
@@ -94,12 +84,12 @@ export function buildFooterTaskRows(
 
   const rows: FooterTaskRow[] = [];
   const groupCounts = new Map<string, number>();
-  for (const group of GROUP_ORDER) {
-    const items = sorted.filter(group.match);
+  for (const groupKey of TREE_GROUPS) {
+    const items = sorted.filter(task => matchGroupKey(task) === groupKey);
     if (items.length === 0) continue;
-    groupCounts.set(group.key, items.length);
-    const isCollapsed = collapsed.has(group.key);
-    rows.push({ kind: 'header', groupKey: group.key, label: group.label, count: items.length, collapsed: isCollapsed });
+    groupCounts.set(groupKey, items.length);
+    const isCollapsed = collapsed.has(groupKey);
+    rows.push({ kind: 'header', groupKey, label: FOOTER_GROUP_LABELS[groupKey], count: items.length, collapsed: isCollapsed });
     if (!isCollapsed) {
       items.forEach((task, i) =>
         rows.push({ kind: 'item', task, label: labelFor(task), isLast: i === items.length - 1 }),
@@ -122,9 +112,9 @@ export function BackgroundTaskGroupTree(): React.ReactNode {
   // index — treeBase (after main + agents) + i — and the tasks pill is focused.
   const coordinatorTaskIndex = useAppState((s: AppState) => s.coordinatorTaskIndex);
   const tasksFocused = useAppState((s: AppState) => s.footerSelection === 'tasks');
-  // treeBase = the agent partition size (main + agent rows) the cursor must
-  // skip before it lands on the first tree row.
-  const treeBase = useAppState((s: AppState) => footerTreeBaseIndex(s.tasks));
+  // treeBase = the summary header + agent partition (main + agent rows) the
+  // cursor must skip before it lands on the first tree row.
+  const treeBase = useAppState((s: AppState) => getFooterPanelLayout(s.tasks).treeBase);
   const setAppState = useSetAppState();
   const { columns } = useTerminalSize();
 

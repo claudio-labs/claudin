@@ -577,6 +577,7 @@ export function runInteractiveStartupBlock(
     selectedIPAgentIndex: -1,
     collapsedTaskGroups: [],
     seededTaskGroups: [],
+    footerTasksCollapsed: true,
     coordinatorTaskIndex: -1,
     viewSelectionMode: 'none',
     footerSelection: null,

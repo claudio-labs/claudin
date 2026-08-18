@@ -1,9 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import type { TaskState } from 'src/agent/tasks/types.js';
 import {
+  countFinishedAgentTasks,
   countVisibleAgentTasks,
-  footerTreeBaseIndex,
   getAgentPanelRows,
+  getFooterPanelLayout,
   getVisibleAgentTasks,
 } from 'src/agent/ui/tasks/footerTaskGeometry.js';
 
@@ -160,26 +161,67 @@ describe('getAgentPanelRows — nesting', () => {
     );
     expect(countVisibleAgentTasks(tasks)).toBe(4);
     expect(getAgentPanelRows(tasks)).toHaveLength(4);
-    expect(footerTreeBaseIndex(tasks)).toBe(5);
+    expect(getFooterPanelLayout(tasks).treeBase).toBe(6);
   });
 });
 
-describe('footerTreeBaseIndex', () => {
+describe('getFooterPanelLayout', () => {
   // BackgroundTaskGroupTree.test.ts already covers the agents=0 and agents=N
   // cases for the tree-base offset. These tests pin the off-by-one *boundary*
-  // — the formula is base === A===0 ? 0 : A+1, so the seam at A=1 (where the
+  // — the base is summary + (A===0 ? 0 : A+1), so the seam at A=1 (where the
   // ● main row first appears) is the easiest place to silently regress.
-  test('one agent → tree starts at index 2 (pill + main + agent → tree)', () => {
-    expect(footerTreeBaseIndex(asRecord(panelAgent('a1', 1)))).toBe(2);
+  test('one agent → tree starts at index 3 (summary + main + agent → tree)', () => {
+    expect(getFooterPanelLayout(asRecord(panelAgent('a1', 1))).treeBase).toBe(3);
   });
 
   test('evicted agents do not contribute to the offset', () => {
-    // A=1 visible + 1 evicted should still report base=2, not 3 — eviction
+    // A=1 visible + 1 evicted should still report base=3, not 4 — eviction
     // is the only way the cursor stays put when the panel shrinks.
     const tasks = asRecord(
       panelAgent('a1', 1),
       panelAgent('a2', 2, { evictAfter: 0 }),
     );
-    expect(footerTreeBaseIndex(tasks)).toBe(2);
+    expect(getFooterPanelLayout(tasks).treeBase).toBe(3);
+  });
+});
+
+describe('countFinishedAgentTasks', () => {
+  test('counts only the terminal agents still inside their eviction window', () => {
+    const tasks = asRecord(
+      panelAgent('running', 1),
+      panelAgent('done', 2, { status: 'completed' }),
+      panelAgent('failed', 3, { status: 'failed' }),
+      panelAgent('gone', 4, { status: 'completed', evictAfter: 0 }),
+    );
+    // 3 visible (the evicted one is gone), 2 of them finished.
+    expect(countVisibleAgentTasks(tasks)).toBe(3);
+    expect(countFinishedAgentTasks(tasks)).toBe(2);
+  });
+
+  test('never exceeds the visible count — it is a subset, printed as (N/M)', () => {
+    // `(N/M)` reads as "M of the N finished", so M > N would be nonsense on
+    // screen. Pin both ends rather than an inequality that 0 ≤ 1 satisfies
+    // unconditionally.
+    const running = asRecord(panelAgent('a1', 1), shell('s1'));
+    expect(countVisibleAgentTasks(running)).toBe(1);
+    expect(countFinishedAgentTasks(running)).toBe(0);
+
+    const allFinished = asRecord(
+      panelAgent('a1', 1, { status: 'completed' }),
+      panelAgent('a2', 2, { status: 'killed' }),
+      shell('s1'),
+    );
+    expect(countVisibleAgentTasks(allFinished)).toBe(2);
+    expect(countFinishedAgentTasks(allFinished)).toBe(2);
+  });
+
+  test('a retained agent counts as finished even with no eviction deadline', () => {
+    // retain clears evictAfter entirely (the UI is holding the task open), so
+    // a deadline-only check would miss it and the summary would under-report.
+    const tasks = asRecord(
+      panelAgent('held', 1, { status: 'completed', retain: true }),
+    );
+    expect(countVisibleAgentTasks(tasks)).toBe(1);
+    expect(countFinishedAgentTasks(tasks)).toBe(1);
   });
 });

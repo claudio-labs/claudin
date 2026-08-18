@@ -15,7 +15,7 @@ import { isVimModeEnabled } from 'src/terminal/prompt-input/utils.js';
 import { useShortcutDisplay } from 'src/terminal/keybindings/useShortcutDisplay.js';
 import { isDefaultMode, permissionModeSymbol, permissionModeTitle, getModeColor } from 'src/permissions/PermissionMode.js';
 import { BackgroundTaskStatus } from 'src/agent/ui/tasks/BackgroundTaskStatus.js';
-import { footerTreeBaseIndex, getVisibleAgentTasks } from 'src/agent/ui/tasks/footerTaskGeometry.js';
+import { getFooterPanelLayout, getVisibleAgentTasks } from 'src/agent/ui/tasks/footerTaskGeometry.js';
 import { isPanelAgentTask } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
 import { isBackgroundTask } from 'src/agent/tasks/types.js';
 import { count } from 'src/shared/data/array.js';
@@ -273,8 +273,11 @@ function ModeIndicator({
     if (s_curkind.footerSelection !== 'tasks') return 'none' as const;
     const i = s_curkind.coordinatorTaskIndex;
     if (i < 0) return 'pill' as const;
-    const base = footerTreeBaseIndex(s_curkind.tasks);
-    if (i < base) return 'agent' as const;
+    const layout = getFooterPanelLayout(s_curkind.tasks);
+    // The summary header owns its own row in both states, and while collapsed
+    // it is the only row there is.
+    if (i === layout.summaryIndex || s_curkind.footerTasksCollapsed) return 'summary' as const;
+    if (i < layout.treeBase) return 'agent' as const;
     const row = resolveFooterTreeRow(s_curkind.tasks, s_curkind.foregroundedTaskId, s_curkind.collapsedTaskGroups, i);
     if (row?.kind === 'header') return 'tree-header' as const;
     if (row?.kind === 'item') return 'tree-item' as const;
@@ -496,6 +499,7 @@ function ModeIndicator({
   if ((showTasksTree || hasCoordinatorTasks) && showHint) {
     let hint: React.ReactElement;
     switch (cursorRowKind) {
+      case 'summary':
       case 'tree-header':
         hint = <KeyboardShortcutHint shortcut="enter" action="expand/collapse" />;
         break;
