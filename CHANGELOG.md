@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.1.17 — 2026-08-18
+
+### ✨ Features
+
+- feat(tui): fold the footer task panel into a one-line icon summary (#116) (b581ac5d)
+- feat(permissions): add /auto-mode-setup to generate auto mode rules (#115) (aac61054)
+
+### 🐛 Bug Fixes
+
+- fix(bridge): retry remote control session creation before failing (#120) (81cc5487)
+
+### ♻️ Refactoring
+
+- refactor(agents): remove the built-in Explore subagent (#119) (10dc4d18)
+- refactor(tui): drop the main row from the footer agent panel (#118) (d98c534d)
+
+### 🧪 Tests
+
+- test(providers): confirm the model-select is listening before Enter (#117) (4fcdd032)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.16 — 2026-08-18
 
 ### ✨ Features
