@@ -240,7 +240,7 @@ export function ConsoleOAuthFlow({
           state: 'success'
         });
         void sendNotification({
-          message: 'Claude Code login successful',
+          message: 'Claudin login successful',
           notificationType: 'auth_success'
         }, terminal);
       }
@@ -362,7 +362,7 @@ function OAuthStatusMessage({
     case 'idle': {
       const promptText =
         startingMessage ||
-        'Claude Code can be used with your Claude subscription or billed based on API usage through your Console account.'
+        'Claudin can be used with your Claude subscription or billed based on API usage through your Console account.'
 
       const loginOptions = [
         {

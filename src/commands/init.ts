@@ -1,7 +1,7 @@
 import type { Command } from 'src/commands/commands.js'
 import { maybeMarkProjectOnboardingComplete } from 'src/platform/projectOnboardingState.js'
 
-const INIT_PROMPT = `Set up a minimal AGENTS.md (and optionally CLAUDE.local.md, subagents, skills, hooks, and guardrails) for this repo. The root project instruction file is loaded into every Claude Code session, so it must be concise — only include what Claude would get wrong without it.
+const INIT_PROMPT = `Set up a minimal AGENTS.md (and optionally CLAUDE.local.md, subagents, skills, hooks, and guardrails) for this repo. The root project instruction file is loaded into every Claudin session, so it must be concise — only include what Claude would get wrong without it.
 
 ## Phase 1: Ask what to set up
 
@@ -112,7 +112,7 @@ Prefix the file with:
 \`\`\`
 # AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claudin when working with code in this repository.
 \`\`\`
 
 If AGENTS.md already exists: read it, propose specific changes as diffs, and explain why each change improves it. Do not silently overwrite.
@@ -352,7 +352,7 @@ Note: \`.claudin/settings.json\` (project-scoped guardrails written in Phase 7) 
 
 Recap what was set up — which files were written and the key points included in each. Remind the user these files are a starting point: they should review and tweak them, and can run \`/init\` again anytime to re-scan.
 
-Then tell the user that you'll be introducing a few more suggestions for optimizing their codebase and Claude Code setup based on what you found. Present these as a single, well-formatted to-do list where every item is relevant to this repo. Put the most impactful items first.
+Then tell the user that you'll be introducing a few more suggestions for optimizing their codebase and Claudin setup based on what you found. Present these as a single, well-formatted to-do list where every item is relevant to this repo. Put the most impactful items first.
 
 When building the list, work through these checks and include only what applies:
 - If frontend code was detected (React, Vue, Svelte, etc.): \`/plugin install frontend-design@claude-plugins-official\` gives Claude design principles and component patterns so it produces polished UI; \`/plugin install playwright@claude-plugins-official\` lets Claude launch a real browser, screenshot what it built, and fix visual bugs itself.

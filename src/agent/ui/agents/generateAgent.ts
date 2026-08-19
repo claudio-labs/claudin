@@ -68,11 +68,11 @@ When a user describes what they want an agent to do, you will:
       assistant: "Now let me use the test-runner agent to run the tests"
     </example>
     - <example>
-      Context: User is creating an agent for Claude Code product questions.
-      user: "How do I configure Claude Code hooks?"
+      Context: User is creating an agent for Claudin product questions.
+      user: "How do I configure Claudin hooks?"
       assistant: "I'm going to use the ${AGENT_TOOL_NAME} tool to launch the claudin-guide agent to answer the question"
       <commentary>
-      Since the user is asking how to use Claude Code, use the claudin-guide agent.
+      Since the user is asking how to use Claudin, use the claudin-guide agent.
       </commentary>
     </example>
   - If the user mentioned or implied that the agent should be used proactively, you should include examples of this.

@@ -44,9 +44,9 @@ Commands:
 === doctor ===
 Usage: claudin doctor [options]
 
-Check the health of your Claude Code auto-updater. Note: The workspace trust
-dialog is skipped and stdio servers from .mcp.json are spawned for health
-checks. Only use this command in directories you trust.
+Check the health of your Claudin auto-updater. Note: The workspace trust dialog
+is skipped and stdio servers from .mcp.json are spawned for health checks. Only
+use this command in directories you trust.
 
 Options:
   -h, --help  Display help for command
@@ -55,8 +55,8 @@ Options:
 === install ===
 Usage: claudin install [options] [target]
 
-Install Claude Code native build. Use [target] to specify version (stable,
-latest, or specific version)
+Install Claudin native build. Use [target] to specify version (stable, latest,
+or specific version)
 
 Options:
   --force     Force installation even if already installed
@@ -72,7 +72,7 @@ Options:
   -h, --help                                     Display help for command
 
 Commands:
-  add [options] <name> <commandOrUrl> [args...]  Add an MCP server to Claude Code.
+  add [options] <name> <commandOrUrl> [args...]  Add an MCP server to Claudin.
   
   Examples:
     # Add HTTP server:
@@ -94,13 +94,13 @@ Commands:
   list                                           List configured MCP servers. Note: The workspace trust dialog is skipped and stdio servers from .mcp.json are spawned for health checks. Only use this command in directories you trust.
   remove [options] <name>                        Remove an MCP server
   reset-project-choices                          Reset all approved and rejected project-scoped (.mcp.json) servers within this project
-  serve [options]                                Start the Claude Code MCP server
+  serve [options]                                Start the Claudin MCP server
 
 
 === plugin ===
 Usage: claudin plugin|plugins [options] [command]
 
-Manage Claude Code plugins
+Manage Claudin plugins
 
 Options:
   -h, --help                           Display help for command
@@ -113,7 +113,7 @@ Commands:
                                        marketplaces (use plugin@marketplace for
                                        specific marketplace)
   list [options]                       List installed plugins
-  marketplace                          Manage Claude Code marketplaces
+  marketplace                          Manage Claudin marketplaces
   uninstall|remove [options] <plugin>  Uninstall an installed plugin
   update [options] <plugin>            Update a plugin to the latest version
                                        (restart required to apply)
@@ -204,7 +204,7 @@ Options:
 === mcp add ===
 Usage: claudin mcp add [options] <name> <commandOrUrl> [args...]
 
-Add an MCP server to Claude Code.
+Add an MCP server to Claudin.
 
 Examples:
   # Add HTTP server:
@@ -322,7 +322,7 @@ Options:
 === mcp serve ===
 Usage: claudin mcp serve [options]
 
-Start the Claude Code MCP server
+Start the Claudin MCP server
 
 Options:
   -d, --debug  Enable debug mode
@@ -379,7 +379,7 @@ Options:
 === plugin marketplace ===
 Usage: claudin plugin marketplace [options] [command]
 
-Manage Claude Code marketplaces
+Manage Claudin marketplaces
 
 Options:
   -h, --help                  Display help for command

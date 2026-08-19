@@ -19,7 +19,7 @@ import { makeSecondaryModelPrompt } from 'src/tools/WebFetchTool/prompt.js'
 // Custom error classes for domain blocking
 class DomainBlockedError extends Error {
   constructor(domain: string) {
-    super(`Claude Code is unable to fetch from ${domain}`)
+    super(`Claudin is unable to fetch from ${domain}`)
     this.name = 'DomainBlockedError'
   }
 }

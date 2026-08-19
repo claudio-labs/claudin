@@ -21,7 +21,7 @@ import { truncateTranscriptForHookEvaluator } from 'src/platform/lifecycleHooks/
  * System prompt for the generic prompt-hook evaluator (every prompt hook
  * except the /goal stop-condition judge).
  */
-const GENERIC_HOOK_SYSTEM_PROMPT = `You are evaluating a hook in Claude Code.
+const GENERIC_HOOK_SYSTEM_PROMPT = `You are evaluating a hook in Claudin.
 
 Your response must be a JSON object matching one of the following schemas:
 1. If the condition is met, return: {"ok": true}
@@ -32,7 +32,7 @@ Your response must be a JSON object matching one of the following schemas:
  * branded by markStopConditionJudge (see stopConditionJudge.ts), never for
  * user-defined prompt Stop hooks. Verbatim from upstream Claude Code.
  */
-const STOP_CONDITION_SYSTEM_PROMPT = `You are evaluating a stop-condition hook in Claude Code. Read the conversation transcript carefully, then judge whether the user-provided condition is satisfied.
+const STOP_CONDITION_SYSTEM_PROMPT = `You are evaluating a stop-condition hook in Claudin. Read the conversation transcript carefully, then judge whether the user-provided condition is satisfied.
 
 Your response must be a JSON object with one of these shapes:
 - {"ok": true, "reason": "<quote evidence from the transcript that satisfies the condition>"}
