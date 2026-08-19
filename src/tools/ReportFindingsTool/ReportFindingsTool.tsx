@@ -86,13 +86,33 @@ function ReportFindingsResultMessage({ findings }: { findings: Finding[] }) {
       <Box flexDirection="column">
         {findings.map((f, i) => (
           <Box key={`${f.file}:${f.line ?? 0}:${i}`} flexDirection="column">
-            <Text color="inactive">
-              · {f.file}
-              {f.line != null ? `:${f.line}` : ''} — {f.summary}
-              {f.verdict ? ` (${f.verdict})` : ''}
-              {f.outcome ? ` [${f.outcome}]` : ''}
-            </Text>
-            <Text color="inactive">{'  '}↳ {f.failure_scenario}</Text>
+            {/* Marker in its own fixed column so a wrapped summary hangs
+                under the text rather than back at column 0. */}
+            <Box flexDirection="row">
+              <Box width={2} flexShrink={0}>
+                <Text color="inactive">{'· '}</Text>
+              </Box>
+              <Box flexGrow={1}>
+                {/* wrap-trim: plain "wrap" keeps the space it broke on, which
+                    would push every continuation one column past the indent. */}
+                <Text color="inactive" wrap="wrap-trim">
+                  {f.file}
+                  {f.line != null ? `:${f.line}` : ''} — {f.summary}
+                  {f.verdict ? ` (${f.verdict})` : ''}
+                  {f.outcome ? ` [${f.outcome}]` : ''}
+                </Text>
+              </Box>
+            </Box>
+            <Box flexDirection="row">
+              <Box width={4} flexShrink={0}>
+                <Text color="inactive">{'  ↳ '}</Text>
+              </Box>
+              <Box flexGrow={1}>
+                <Text color="inactive" wrap="wrap-trim">
+                  {f.failure_scenario}
+                </Text>
+              </Box>
+            </Box>
           </Box>
         ))}
       </Box>
