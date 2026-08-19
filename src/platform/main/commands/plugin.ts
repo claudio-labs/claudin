@@ -21,7 +21,7 @@ export function registerPluginCommands(program: Command): void {
   const coworkOption = () => new Option('--cowork', 'Use cowork_plugins directory').hideHelp()
 
   // Plugin validate command
-  const pluginCmd = program.command('plugin').alias('plugins').description('Manage Claude Code plugins').configureHelp(createSortedHelpConfig())
+  const pluginCmd = program.command('plugin').alias('plugins').description('Manage Claudin plugins').configureHelp(createSortedHelpConfig())
   pluginCmd.command('validate <path>').description('Validate a plugin or marketplace manifest').addOption(coworkOption()).action(async (manifestPath: string, options: {
     cowork?: boolean
   }) => {
@@ -44,7 +44,7 @@ export function registerPluginCommands(program: Command): void {
   })
 
   // Marketplace subcommands
-  const marketplaceCmd = pluginCmd.command('marketplace').description('Manage Claude Code marketplaces').configureHelp(createSortedHelpConfig())
+  const marketplaceCmd = pluginCmd.command('marketplace').description('Manage Claudin marketplaces').configureHelp(createSortedHelpConfig())
   marketplaceCmd.command('add <source>').description('Add a marketplace from a URL, path, or GitHub repo').addOption(coworkOption()).option('--sparse <paths...>', 'Limit checkout to specific directories via git sparse-checkout (for monorepos). Example: --sparse .claude-plugin plugins').option('--scope <scope>', 'Where to declare the marketplace: user (default), project, or local').action(async (source: string, options: {
     cowork?: boolean
     sparse?: string[]

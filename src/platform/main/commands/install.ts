@@ -5,7 +5,7 @@ import type { Command } from '@commander-js/extra-typings'
 
 export function registerInstallCommand(program: Command): void {
   // claude install
-  program.command('install [target]').description('Install Claude Code native build. Use [target] to specify version (stable, latest, or specific version)').option('--force', 'Force installation even if already installed').action(async (target: string | undefined, options: {
+  program.command('install [target]').description('Install Claudin native build. Use [target] to specify version (stable, latest, or specific version)').option('--force', 'Force installation even if already installed').action(async (target: string | undefined, options: {
     force?: boolean
   }) => {
     const {

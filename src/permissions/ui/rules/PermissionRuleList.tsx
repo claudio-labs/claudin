@@ -417,9 +417,9 @@ function PermissionRulesTab(t0: PermissionRulesTabProps) {
     let t8;
     if ($[10] === Symbol.for("react.memo_cache_sentinel")) {
       t8 = {
-        allow: "Claude Code won't ask before using allowed tools.",
-        ask: "Claude Code will always ask for confirmation before using these tools.",
-        deny: "Claude Code will always reject requests to use denied tools."
+        allow: "Claudin won't ask before using allowed tools.",
+        ask: "Claudin will always ask for confirmation before using these tools.",
+        deny: "Claudin will always reject requests to use denied tools."
       };
       $[10] = t8;
     } else {
@@ -1130,7 +1130,7 @@ export function PermissionRuleList(t0: Props) {
   }
   let t28;
   if ($[89] === Symbol.for("react.memo_cache_sentinel")) {
-    t28 = <Text>Claude Code can read files in the workspace, and make edits when auto-accept edits is on.</Text>;
+    t28 = <Text>Claudin can read files in the workspace, and make edits when auto-accept edits is on.</Text>;
     $[89] = t28;
   } else {
     t28 = $[89];

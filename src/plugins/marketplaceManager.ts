@@ -2146,7 +2146,7 @@ export const getMarketplace = memoize(
       throw new Error(
         `Marketplace "${name}" has a relative source path (${entry.source.path}) ` +
           `in known_marketplaces.json — this is stale state from an older ` +
-          `Claude Code version. Run 'claude marketplace remove ${name}' and ` +
+          `Claudin version. Run 'claudin marketplace remove ${name}' and ` +
           `re-add it from the original project directory.`,
       )
     }

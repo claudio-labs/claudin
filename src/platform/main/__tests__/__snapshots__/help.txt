@@ -59,10 +59,10 @@ Commands:
   agents [options]                                  List configured agents
   auth                                              Manage authentication
   auto-mode                                         Inspect auto mode classifier configuration
-  doctor                                            Check the health of your Claude Code auto-updater. Note: The workspace trust dialog is skipped and stdio servers from .mcp.json are spawned for health checks. Only use this command in directories you trust.
-  install [options] [target]                        Install Claude Code native build. Use [target] to specify version (stable, latest, or specific version)
+  doctor                                            Check the health of your Claudin auto-updater. Note: The workspace trust dialog is skipped and stdio servers from .mcp.json are spawned for health checks. Only use this command in directories you trust.
+  install [options] [target]                        Install Claudin native build. Use [target] to specify version (stable, latest, or specific version)
   mcp                                               Configure and manage MCP servers
-  plugin|plugins                                    Manage Claude Code plugins
+  plugin|plugins                                    Manage Claudin plugins
   setup-token                                       Set up a long-lived authentication token (requires Claude subscription)
   update|upgrade                                    Check for updates and install if available
   workflow                                          Self-hosted background agent: run or watch agent workflows
