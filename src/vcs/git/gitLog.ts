@@ -168,6 +168,34 @@ export async function fetchCommitFiles(
 }
 
 /**
+ * Diff hunks for one commit (`git show -p`), keyed by file path — the same
+ * shape `fetchGitDiffHunks`/`fetchStashDiff` return, so the reviewer renders a
+ * commit's file diff through the identical path. Forces a/ b/ prefixes because
+ * `parseGitDiff` keys on them and the user's `diff.mnemonicPrefix` would
+ * otherwise emit c/ w/. Fails open to an empty map.
+ */
+export async function fetchCommitDiff(
+  hash: string,
+  cwd?: string,
+): Promise<Map<string, StructuredPatchHunk[]>> {
+  if (!HASH_RE.test(hash)) return new Map()
+  const { stdout, code } = await runGit(
+    [
+      '--no-optional-locks',
+      'show',
+      '-p',
+      '--format=',
+      '--src-prefix=a/',
+      '--dst-prefix=b/',
+      hash,
+    ],
+    cwd,
+  )
+  if (code !== 0) return new Map()
+  return parseGitDiff(stdout)
+}
+
+/**
  * Parse `git stash list --format=<US-delimited>` output. Pure — unit-tested.
  */
 export function parseStashList(stdout: string): StashEntry[] {
