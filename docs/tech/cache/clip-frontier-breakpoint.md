@@ -420,6 +420,14 @@ behavior unknown); and the OpenAI shim sends a session-stable
 `prompt_cache_key` + `prompt_cache_retention: '24h'` on official-OpenAI
 requests only (third-party backends may reject unknown params).
 
+**Follow-up (2026-08-20):** this round had no xAI/Grok entry, and two of its
+OpenAI facts have since moved (cache writes now bill 1.25× on GPT-5.6+;
+`prompt_cache_retention` is superseded by `prompt_cache_options.ttl` on the
+newest models). See
+[`native-prompt-caching-by-provider.md`](native-prompt-caching-by-provider.md)
+— it also finds that Grok, on `openai_compat`, sends no cache routing hint at
+all because xAI's key travels as the `x-grok-conv-id` **header**.
+
 Bench note: claudin's stream-json emits assistant events before
 `message_delta` delivers final usage (the in-memory message is fixed up by
 mutation), so per-request usage on stdout is all zeros; the bench falls back
