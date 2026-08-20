@@ -56,3 +56,30 @@ describe('plan mode — interview path', () => {
     expect(src).not.toContain('agent type to parallelize complex searches')
   })
 })
+
+describe('plan mode — the no-op placeholder guard', () => {
+  test('the clause names the command, the cost, and the alternative', () => {
+    // Sonnet 5 emits Bash({command:'true'}) to buy itself another reasoning
+    // block — 33 times across 14 sessions. A bare "don't do that" would leave
+    // the model with no legal way to pause, which is what produced the no-op in
+    // the first place, so all three halves are load-bearing.
+    expect(src).toContain('Never emit a placeholder command')
+    expect(src).toContain('a full round-trip of the entire context')
+    expect(src).toContain('take it in the same message')
+  })
+
+  test('the sparse reminder carries the short form', () => {
+    // The full attachment is re-sent only every N human turns, and the no-ops
+    // cluster deep in long sessions — a clause that lives only in the full text
+    // is gone by the turn it is needed.
+    expect(src).toContain(
+      'Never emit a placeholder command to buy a reasoning pass.',
+    )
+  })
+
+  test('one killswitch gates both surfaces', () => {
+    // Two call sites, not one: CLAUDIN_PLAN_NOOP_GUARD=0 has to subtract the
+    // full clause AND the sparse form, or the A/B measures a half-removed arm.
+    expect(src.match(/isPlanNoopGuardEnabled\(\)/g)).toHaveLength(2)
+  })
+})
