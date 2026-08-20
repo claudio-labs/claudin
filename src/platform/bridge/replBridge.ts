@@ -64,6 +64,7 @@ import {
   retryWhileNull,
   SESSION_CREATE_BACKOFF,
 } from 'src/platform/bridge/retryWhileNull.js'
+import type { SessionCreateFailure } from 'src/platform/bridge/types.js'
 
 export type ReplBridgeHandle = {
   bridgeSessionId: string
@@ -120,6 +121,12 @@ export type BridgeCoreParams = {
     gitRepoUrl: string | null
     branch: string
     signal: AbortSignal
+    /**
+     * Why the attempt failed, so the retry loop can stop on a server contract
+     * error and the caller can surface the server's own message. Optional —
+     * the daemon wrapper ignores it.
+     */
+    onFailure?: (failure: SessionCreateFailure) => void
   }) => Promise<string | null>
   /**
    * POST /v1/sessions/{id}/archive. Same injection rationale. Best-effort;
@@ -245,6 +252,17 @@ const POLL_ERROR_GIVE_UP_MS = 15 * 60 * 1000
 
 // Monotonically increasing counter for distinguishing init calls in logs
 let initSequence = 0
+
+/**
+ * The server's message when there is one: it names the actual problem (an
+ * unreachable repository, an expired connection) far better than the generic
+ * fallback, and this is the string the user ends up reading.
+ */
+function sessionFailureDetail(
+  failure: SessionCreateFailure | undefined,
+): string {
+  return failure?.detail ?? 'Session creation failed'
+}
 
 /**
  * Bootstrap-free core: env registration → session creation → poll loop →
@@ -453,6 +471,10 @@ export async function initBridgeCore(
     // way a connect dies, and one failure used to be fatal. The 15s timeout
     // is rebuilt per attempt — an AbortSignal.timeout hoisted out of the
     // callback would already be spent by attempt 2.
+    // A 4xx stops the loop on the first answer instead: the server has stated
+    // a contract problem, and four more identical rejections only delay the
+    // failure and burn the caller's three-strike fuse.
+    let lastFailure: SessionCreateFailure | undefined
     const createdSessionId = await retryWhileNull(
       () =>
         createSession({
@@ -461,11 +483,15 @@ export async function initBridgeCore(
           gitRepoUrl,
           branch,
           signal: AbortSignal.timeout(15_000),
+          onFailure: failure => {
+            lastFailure = failure
+          },
         }),
       {
         ...SESSION_CREATE_BACKOFF,
         label: 'createSession',
         logPrefix: '[bridge:repl]',
+        isRetryable: () => lastFailure?.retryable !== false,
       },
     )
 
@@ -475,7 +501,7 @@ export async function initBridgeCore(
       )
       logEvent('tengu_bridge_repl_session_failed', {})
       await api.deregisterEnvironment(environmentId).catch(() => {})
-      onStateChange?.('failed', 'Session creation failed')
+      onStateChange?.('failed', sessionFailureDetail(lastFailure))
       return null
     }
 
@@ -771,6 +797,7 @@ export async function initBridgeCore(
     // attempt, so a single transient failure here burns one of the three
     // environment re-creations. Bound by pollController: teardown during
     // the backoff stops the loop instead of sleeping through it.
+    let lastReconnectFailure: SessionCreateFailure | undefined
     const newSessionId = await retryWhileNull(
       () =>
         createSession({
@@ -779,18 +806,22 @@ export async function initBridgeCore(
           gitRepoUrl,
           branch,
           signal: AbortSignal.timeout(15_000),
+          onFailure: failure => {
+            lastReconnectFailure = failure
+          },
         }),
       {
         ...SESSION_CREATE_BACKOFF,
         label: 'createSession (reconnect)',
         logPrefix: '[bridge:repl]',
         signal: pollController.signal,
+        isRetryable: () => lastReconnectFailure?.retryable !== false,
       },
     )
 
     if (!newSessionId) {
       logForDebugging(
-        '[bridge:repl] Session creation failed during reconnection',
+        `[bridge:repl] Session creation failed during reconnection: ${sessionFailureDetail(lastReconnectFailure)}`,
       )
       return false
     }
