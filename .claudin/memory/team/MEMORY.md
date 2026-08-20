@@ -69,6 +69,7 @@
 - [Shim-only body fields need a model-aware gate](shim-only-body-fields-model-aware-gate.md) — provider-quirk fields added to the openaiShim wire body 400 native Anthropic + Copilot-on-Claude unless gated on activeTransportUsesOpenAiShim(model)
 - [Codex strict schemas make the model send placeholder args](codex-strict-schema-placeholder-args.md) — every prop forced into `required` → `pages:""` looped Read 135×; widen optionals (enums too) + strip ""/null ONLY under the codex transport; widening unverified live
 - [Codex OAuth prompt-cache — retention REJECTED, key only](codex-oauth-prompt-cache-params.md) — Codex backend 400s on prompt_cache_retention (2026-07-21 fix: removed from codexShim+cache-probe); sends prompt_cache_key only; official-OpenAI still sends both
+- [Grok gets no cache hint — xAI's key is the x-grok-conv-id HEADER](grok-cache-hint-missing.md) — openai_compat sends nothing; xAI invalidates per whole message, not per 128-tok block; priced for cache reads but never measured; docs/tech/cache/
 - [Codex 403 HTML-block misread as "Please run /login"](codex-403-html-block-misclassified-as-login.md) — HTML-body 403 = OpenAI/Cloudflare edge block (IP/region/fingerprint), NOT a revoked token; generic errors.ts 401/403 branch wrongly suggests /login; improvement pending
 - [Claudin defaults to essential-traffic privacy level](anthropic-startup-traffic-disabled-default.md) — b2be87b5 (2026-06-06) flips default; 7→0 Anthropic startup requests; ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC=0 opts back in
 
