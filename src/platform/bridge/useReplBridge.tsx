@@ -497,6 +497,14 @@ export function useReplBridge(messages: Message[], setMessages: (action: React.S
             consecutiveFailuresRef.current++;
             logForDebugging(`[bridge:repl] Init returned null (precondition or session creation failed); consecutive failures: ${consecutiveFailuresRef.current}`);
             clearTimeout(failureTimeoutRef.current);
+            // handleStateChange has already recorded the reason — usually the
+            // server's own message. Until now it only reached a notification
+            // that clears itself, so every diagnosis of a failed connect
+            // started with /debug and a reproduction.
+            const failureReason = store.getState().replBridgeError;
+            if (!outboundOnly) {
+              setMessages(prev_20 => [...prev_20, createSystemMessage(`Remote Control failed to connect: ${failureReason ?? 'check debug logs for details'}`, 'warning')]);
+            }
             setAppState(prev_13 => ({
               ...prev_13,
               replBridgeError: prev_13.replBridgeError ?? 'check debug logs for details'
