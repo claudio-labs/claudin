@@ -18,7 +18,15 @@ mock.module('src/providers/model/model.js', () => ({
   getMainLoopModel: () => mainLoopModel,
 }))
 
+// Both mocks outlive this file unless afterAll re-installs the real modules —
+// `mock.restore()` does not undo `mock.module` (.claudin/rules/testing.md,
+// "Cross-file mock leaks"). The sideQuery stub below never reaches the network,
+// so leaving it installed makes every later classifier test pass vacuously.
+const realModelModule = { ...actualModel }
+const realSideQueryModule = { ...(await import('src/agent/sideQuery.js')) }
+
 mock.module('src/agent/sideQuery.js', () => ({
+  ...realSideQueryModule,
   sideQuery: (opts: Record<string, unknown>) => {
     capturedOpts.push(opts)
     // XML stage-1 allow verdict; the tool_use path treats this text-only
@@ -88,6 +96,8 @@ beforeAll(() => {
 
 afterAll(() => {
   __setClassifierPromptsForTests(null)
+  mock.module('src/providers/model/model.js', () => realModelModule)
+  mock.module('src/agent/sideQuery.js', () => realSideQueryModule)
 })
 
 beforeEach(() => {

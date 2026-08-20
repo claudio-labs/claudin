@@ -11,13 +11,30 @@ import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test'
 import { APIError } from '@anthropic-ai/sdk'
 import { enableConfigs } from 'src/platform/config/config.js'
 
-let thrown: unknown = new Error('not configured')
+// `mock.module` applies for the WHOLE `bun test` run and is not undone by
+// `mock.restore()` (see .claudin/rules/testing.md, "Cross-file mock leaks"), so
+// a stub that unconditionally throws would answer every OTHER file's sideQuery
+// too. Snapshot the real module first — as a plain-object copy, never the live
+// namespace — delegate to it whenever this file has not armed an error, and
+// re-install it in afterAll.
+const realSideQueryModule = { ...(await import('src/agent/sideQuery.js')) }
+const realSideQuery = realSideQueryModule.sideQuery
 
-mock.module('src/agent/sideQuery.js', () => ({
-  sideQuery: () => {
+/** Distinguishes "this file wants an error" from "some other file is calling". */
+const UNARMED = Symbol('unarmed')
+let thrown: unknown = UNARMED
+
+const stubModule = {
+  ...realSideQueryModule,
+  sideQuery: (...args: Parameters<typeof realSideQuery>) => {
+    if (thrown === UNARMED) {
+      return realSideQuery(...args)
+    }
     throw thrown
   },
-}))
+}
+
+mock.module('src/agent/sideQuery.js', () => stubModule)
 
 const {
   __setClassifierPromptsForTests,
@@ -87,6 +104,8 @@ beforeAll(() => {
 
 afterAll(() => {
   __setClassifierPromptsForTests(null)
+  thrown = UNARMED
+  mock.module('src/agent/sideQuery.js', () => realSideQueryModule)
 })
 
 describe('classifier deterministic-error degrade', () => {

@@ -22,12 +22,20 @@ import {
   test,
 } from 'bun:test'
 
+// `mock.module` applies for the WHOLE `bun test` run and is not undone by
+// `mock.restore()` (see .claudin/rules/testing.md, "Cross-file mock leaks").
+// Snapshot the real module as a plain-object copy and re-install it in
+// afterAll: without that, every LATER file's sideQuery kept answering with the
+// empty stub below, which is what silently defeated the stall-budget tests.
+const realSideQueryModule = { ...(await import('src/agent/sideQuery.js')) }
+
 const mockSideQuery = mock(async (_opts: unknown) => ({
   content: [],
   usage: { input_tokens: 0, output_tokens: 0 },
 })) as any
 
 mock.module('src/agent/sideQuery.js', () => ({
+  ...realSideQueryModule,
   sideQuery: mockSideQuery,
 }))
 
@@ -41,7 +49,10 @@ import {
 // preprocessing in `bun test`), which would short-circuit classifyBashCommand
 // before sideQuery. Force-enable so we exercise the real path.
 beforeAll(() => __setBashClassifierEnabledForTests(true))
-afterAll(() => __setBashClassifierEnabledForTests(undefined))
+afterAll(() => {
+  __setBashClassifierEnabledForTests(undefined)
+  mock.module('src/agent/sideQuery.js', () => realSideQueryModule)
+})
 
 afterEach(() => {
   mockSideQuery.mockReset()
