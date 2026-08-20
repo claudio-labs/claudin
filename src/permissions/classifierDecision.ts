@@ -5,6 +5,7 @@ import { EXIT_PLAN_MODE_TOOL_NAME } from 'src/tools/ExitPlanModeTool/constants.j
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
+import { GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js'
 import { LIST_MCP_RESOURCES_TOOL_NAME } from 'src/tools/ListMcpResourcesTool/prompt.js'
 import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
 import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js'
@@ -88,4 +89,43 @@ const SAFE_YOLO_ALLOWLISTED_TOOLS = new Set([
 
 export function isAutoModeAllowlistedTool(toolName: string): boolean {
   return SAFE_YOLO_ALLOWLISTED_TOOLS.has(toolName)
+}
+
+/**
+ * Tools that are safe only for their READ-ONLY inputs. The tool's own
+ * `isReadOnly(input)` decides per call, which is why this is an explicit
+ * opt-in list and not "any tool that answers read-only": `BashTool.isReadOnly`
+ * answers true for a read-only command too, and the classifier is precisely
+ * what guards Bash in auto mode.
+ *
+ * Git is here because the allowlist above is keyed by tool NAME, so it cannot
+ * express "only when this call reads" — and without that, `git status` pays a
+ * full classifier round-trip on the main-loop model before it runs, which is
+ * most of the latency a Git call shows in auto mode. Its predicate is the same
+ * `isReadOnlyGitBatch` that plan mode already trusts to let a batch through
+ * (`planModeHardDenyIfApplicable`), and it fails closed: every element must
+ * parse AND classify as a read, so an unrecognised subcommand counts as a
+ * mutation and still reaches the classifier.
+ */
+const READ_ONLY_INPUT_ALLOWLISTED_TOOLS: ReadonlySet<string> = new Set([
+  GIT_TOOL_NAME,
+])
+
+/**
+ * Whether this particular tool USE skips the classifier because it only reads.
+ *
+ * `isReadOnly` is a thunk so the caller owns parsing the input against the
+ * tool's schema. A thunk that throws counts as not read-only — the call then
+ * falls through to the classifier, which is the fail-closed direction.
+ */
+export function isAutoModeAllowlistedReadOnlyToolUse(
+  toolName: string,
+  isReadOnly: () => boolean,
+): boolean {
+  if (!READ_ONLY_INPUT_ALLOWLISTED_TOOLS.has(toolName)) return false
+  try {
+    return isReadOnly()
+  } catch {
+    return false
+  }
 }
