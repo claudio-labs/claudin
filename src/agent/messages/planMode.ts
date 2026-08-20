@@ -14,6 +14,7 @@ import {
   getPlanModeV2AgentCount,
   isPlanModeInterviewPhaseEnabled,
 } from 'src/agent/plans/planModeV2.js'
+import { isPlanNoopGuardEnabled } from 'src/agent/prompts/steeringToggles.js'
 import { createUserMessage } from 'src/agent/messages/factories.js'
 import { wrapMessagesInSystemReminder } from 'src/agent/messages/text.js'
 
@@ -203,6 +204,22 @@ export function getReadOnlyToolNames(): string {
   return filtered.join(', ')
 }
 
+// Sonnet 5 spends a whole round-trip on `Bash({command:'true'})` as a thinking
+// continuation: it reads a tool result, thinks, calls the no-op, gets nothing
+// back, thinks again, and only then makes the real search. Measured 33 times
+// across 14 sessions of this user's transcripts — all Sonnet 5, none on Opus,
+// at least 18 of them in plan mode. Every cheaper way to pause is closed to it
+// (the harness forbids text between tool calls; the workflow below forbids
+// ending the turn), so a tool call is its only legal emission and `true` is the
+// cheapest one. Rather than reopen either rule, name the cost and point at what
+// it can do instead. `CLAUDIN_PLAN_NOOP_GUARD=0` removes both forms.
+const NOOP_GUARD_CLAUSE = `Never emit a placeholder command (\`true\`, \`:\`, an echo of nothing) to buy yourself another reasoning pass — it costs a full round-trip of the entire context and returns nothing. If you need more reasoning before choosing the next search, take it in the same message and then make the real call.`
+
+// The full attachment is throttled to every N human turns, so a session long
+// enough to produce the no-op is seeing the sparse reminder by then — the short
+// form is what actually reaches the model where the behavior happens.
+const NOOP_GUARD_CLAUSE_SPARSE = `Never emit a placeholder command to buy a reasoning pass.`
+
 /**
  * Iterative interview-based plan mode workflow.
  * Instead of forcing Plan agents, this workflow has the model:
@@ -217,6 +234,7 @@ export function getPlanModeInterviewInstructions(attachment: {
   const planFileInfo = attachment.planExists
     ? `A plan file already exists at ${attachment.planFilePath}. You can read it and make incremental edits using the ${FileEditTool.name} tool.`
     : `No plan file exists yet. You should create your plan at ${attachment.planFilePath} using the ${FileWriteTool.name} tool.`
+  const noopGuard = isPlanNoopGuardEnabled() ? `\n\n${NOOP_GUARD_CLAUSE}` : ''
 
   const content = `Plan mode is active. The user indicated that they do not want you to execute yet -- you MUST NOT make any edits (with the exception of the plan file mentioned below), run any non-readonly tools (including changing configs or making commits), or otherwise make any changes to the system. This supercedes any other instructions you have received.
 
@@ -237,7 +255,7 @@ Repeat this cycle until the plan is complete:
 4. **Voice your own uncertainty** — If YOU are unsure or are assuming something the user didn't state, add it to **Open Questions** and resolve it (read the code, or surface it). Your doubts count as much as the user's.
 5. **Ask ONLY for genuine decisions** — Reserve ${ASK_USER_QUESTION_TOOL_NAME} for choices only the user can make and that you can't settle from the code (see "Surfacing Decisions Proactively" below). Default to surfacing findings and implications as statements, not questions. Then go back to step 1.
 
-When the user questions or pushes back on something you proposed: defend it with file:line evidence OR revise and update the ledger — never agree by reflex just to please (no sycophancy).
+When the user questions or pushes back on something you proposed: defend it with file:line evidence OR revise and update the ledger — never agree by reflex just to please (no sycophancy).${noopGuard}
 
 ### First Turn
 
@@ -305,8 +323,11 @@ export function getPlanModeV2SparseInstructions(attachment: {
   const workflowDescription = isPlanModeInterviewPhaseEnabled()
     ? 'Co-design with the user: explore, bring up the points you see (don\'t just quiz), track Agreed Decisions + Open Questions in the plan, and keep Open Questions empty before you exit.'
     : 'Follow 5-phase workflow.'
+  const noopGuard = isPlanNoopGuardEnabled()
+    ? ` ${NOOP_GUARD_CLAUSE_SPARSE}`
+    : ''
 
-  const content = `Plan mode still active (see full instructions earlier in conversation). Read-only except plan file (${attachment.planFilePath}). ${workflowDescription} End turns with ${ASK_USER_QUESTION_TOOL_NAME} (for clarifications) or ${ExitPlanModeV2Tool.name} (for plan approval). Never ask about plan approval via text or AskUserQuestion.`
+  const content = `Plan mode still active (see full instructions earlier in conversation). Read-only except plan file (${attachment.planFilePath}). ${workflowDescription} End turns with ${ASK_USER_QUESTION_TOOL_NAME} (for clarifications) or ${ExitPlanModeV2Tool.name} (for plan approval). Never ask about plan approval via text or AskUserQuestion.${noopGuard}`
 
   return wrapMessagesInSystemReminder([
     createUserMessage({ content, isMeta: true }),
