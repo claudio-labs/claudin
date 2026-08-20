@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.1.18 — 2026-08-20
+
+### ✨ Features
+
+- feat(diff): drill from a Log commit file into its per-file diff (#123) (a1289e76)
+
+### 🐛 Bug Fixes
+
+- fix(bridge): connect remote control in repos the GitHub App cannot see (#125) (1e323448)
+- fix(tui): keep wrapped ReportFindings lines under their marker (#122) (88f964b3)
+
+### ♻️ Refactoring
+
+- refactor(identity): rename the remaining Claude Code strings to Claudin (#121) (d6afd6e8)
+
+### 🧪 Tests
+
+- test(bench): census the Sonnet 5 no-op placeholder call and A/B a guard clause (#124) (eb9762f9)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+- <a href="https://github.com/caielealdev"><img src="https://github.com/caielealdev.png?size=40" width="20" height="20" alt="@caielealdev"></a> <a href="https://github.com/caielealdev">@caielealdev</a>
+
+
 ## v1.1.17 — 2026-08-18
 
 ### ✨ Features
