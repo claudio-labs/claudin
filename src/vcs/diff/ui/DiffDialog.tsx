@@ -4,6 +4,7 @@ import { resolve } from 'path'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import type { CommandResultDisplay } from 'src/commands/commands.js'
 import { useRegisterOverlay } from 'src/terminal/contexts/overlayContext.js'
+import { useCommitDiff } from 'src/vcs/diff/hooks/useCommitDiff.js'
 import { useCommitFiles } from 'src/vcs/diff/hooks/useCommitFiles.js'
 import type { DiffFile } from 'src/vcs/diff/hooks/useDiffData.js'
 import { useGitLog } from 'src/vcs/hooks/useGitLog.js'
@@ -188,7 +189,11 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
   const [revealed, setRevealed] = useState<Map<string, number>>(new Map())
   const [expandAll, setExpandAll] = useState(false)
   const [diffScroll, setDiffScroll] = useState(0)
-  const [logFilesScroll, setLogFilesScroll] = useState(0)
+  // Log tab, level 2 + 3: which file of the selected commit is highlighted,
+  // whether its diff is open, and that diff's scroll offset.
+  const [logFileIndex, setLogFileIndex] = useState(0)
+  const [logDiffOpen, setLogDiffOpen] = useState(false)
+  const [logDiffScroll, setLogDiffScroll] = useState(0)
   const [stashDetail, setStashDetail] = useState<{
     ref: string
     group: RepoGroup
@@ -438,19 +443,56 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
       : null
   const commitFiles = useCommitFiles(selectedHash, logRoot)
   const commitFileCount = commitFiles?.length ?? 0
-  const maxLogFilesScroll = Math.max(0, commitFileCount - bodyHeight)
-  const logFilesScrollClamped = Math.min(logFilesScroll, maxLogFilesScroll)
-  const logScrollLabel =
-    maxLogFilesScroll > 0
-      ? `${logFilesScrollClamped + 1}-${Math.min(
-          commitFileCount,
-          logFilesScrollClamped + bodyHeight,
-        )}/${commitFileCount}`
-      : ''
-  // Land back at the top of the file list when the selected commit changes.
+  // The file list is a SELECTION (like the Local tab's), not just a scroll
+  // offset — Enter/→ on the highlighted row opens that file's diff.
+  const logFileIndexClamped = Math.min(
+    logFileIndex,
+    Math.max(0, commitFileCount - 1),
+  )
+  const logSelectedFile = commitFiles?.[logFileIndexClamped] ?? null
+  const logFilesLabel =
+    commitFileCount > 0 ? `${logFileIndexClamped + 1}/${commitFileCount}` : ''
+  // Land back on the first file — and close any open diff — when the commit
+  // changes.
   useEffect(() => {
-    setLogFilesScroll(0)
+    setLogFileIndex(0)
+    setLogDiffOpen(false)
   }, [selectedHash])
+
+  // Level 3: the selected file's diff within that commit. `git show -p` runs
+  // only once the user drills in, so moving through the log stays one
+  // `--numstat` call per commit.
+  const commitHunks = useCommitDiff(selectedHash, logRoot, logDiffOpen)
+  const logHunks = useMemo<StructuredPatchHunk[]>(
+    () => (logSelectedFile ? (commitHunks?.get(logSelectedFile.path) ?? []) : []),
+    [commitHunks, logSelectedFile],
+  )
+  // No working-tree text exists for a historical commit, so gap collapsing is
+  // off (undefined content) and the hunks render verbatim, like `git show`.
+  const logDiffRows = useMemo(
+    () =>
+      renderDiffRows(buildDiffRenderModel(logHunks, undefined), {
+        filePath: logSelectedFile?.path ?? '',
+        firstLine: null,
+        width: diffWidth,
+        theme,
+      }),
+    [logHunks, logSelectedFile, diffWidth, theme],
+  )
+  const maxLogDiffScroll = Math.max(0, logDiffRows.length - bodyHeight)
+  const logDiffScrollClamped = Math.min(logDiffScroll, maxLogDiffScroll)
+  const logDiffScrollLabel =
+    maxLogDiffScroll > 0
+      ? `${logDiffScrollClamped + 1}-${Math.min(
+          logDiffRows.length,
+          logDiffScrollClamped + bodyHeight,
+        )}/${logDiffRows.length}`
+      : ''
+  // Back to the top of the diff whenever a different file (or commit) is shown.
+  useEffect(() => {
+    setLogDiffScroll(0)
+  }, [selectedHash, logSelectedFile?.path])
+
   const commitStats = useMemo(() => {
     if (!commitFiles || commitFiles.length === 0) return null
     let added = 0
@@ -507,6 +549,13 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
     }
   }
 
+  /** Move the Log file selection by `delta`, clamped to the commit's files. */
+  const moveLogFile = (delta: number): void =>
+    setLogFileIndex(i => {
+      const last = Math.max(0, commitFileCount - 1)
+      return Math.max(0, Math.min(last, Math.min(i, last) + delta))
+    })
+
   const refresh = (): void => {
     workspace.refresh()
     if (activeTab === 'log') gitLog.refresh()
@@ -520,11 +569,12 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
     setRevealed(new Map())
     setExpandAll(false)
     setDiffScroll(0)
-    setLogFilesScroll(0)
+    setLogDiffScroll(0)
   }
 
   const handleCancel = (): void => {
-    if (focus === 'content') setFocus('list')
+    if (activeTab === 'log' && logDiffOpen) setLogDiffOpen(false)
+    else if (focus === 'content') setFocus('list')
     else onDone('Diff dialog dismissed', { display: 'system' })
   }
 
@@ -538,6 +588,11 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
       },
       // ← : Diff/content pane → file list; on an expanded folder/group, collapse it.
       'diff:focusList': () => {
+        // Log tab: step back one level at a time (diff → files → commits).
+        if (activeTab === 'log' && logDiffOpen) {
+          setLogDiffOpen(false)
+          return
+        }
         if (focus === 'content') {
           setFocus('list')
           return
@@ -550,6 +605,12 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
       },
       // → : file list → Diff/content pane; on a collapsed folder/group, expand it.
       'diff:focusContent': () => {
+        // Log tab, files pane focused: → drills into the selected file's diff.
+        if (activeTab === 'log' && focus === 'content') {
+          if (logDiffOpen || !logSelectedFile) return false
+          setLogDiffOpen(true)
+          return
+        }
         if (focus !== 'list') return false
         if (activeTab === 'local' && collapsibleRow) {
           if (collapsibleRow.collapsed) toggleDir(collapsibleRow.key)
@@ -590,7 +651,11 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
             setDiffScroll(s => Math.max(0, s - 1))
             return
           }
-          setLogFilesScroll(s => Math.max(0, s - 1))
+          if (logDiffOpen) {
+            setLogDiffScroll(s => Math.max(0, s - 1))
+            return
+          }
+          moveLogFile(-1)
           return
         }
         if (activeTab === 'local') setSelectedIndex(i => Math.max(0, i - 1))
@@ -602,7 +667,11 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
             setDiffScroll(s => Math.min(maxDiffScroll, s + 1))
             return
           }
-          setLogFilesScroll(s => Math.min(maxLogFilesScroll, s + 1))
+          if (logDiffOpen) {
+            setLogDiffScroll(s => Math.min(maxLogDiffScroll, s + 1))
+            return
+          }
+          moveLogFile(1)
           return
         }
         if (activeTab === 'local') {
@@ -626,6 +695,11 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
         }
         if (activeTab === 'local') {
           expandNextGap()
+          return
+        }
+        // Log tab: Enter on a file opens its diff (the third level).
+        if (!logDiffOpen && logSelectedFile) {
+          setLogDiffOpen(true)
           return
         }
         return false
@@ -676,11 +750,18 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
       else setDiffScroll(maxDiffScroll)
       return
     }
-    if (up) setLogFilesScroll(s => Math.max(0, s - page))
-    else if (down)
-      setLogFilesScroll(s => Math.min(maxLogFilesScroll, s + page))
-    else if (home) setLogFilesScroll(0)
-    else setLogFilesScroll(maxLogFilesScroll)
+    if (logDiffOpen) {
+      if (up) setLogDiffScroll(s => Math.max(0, s - page))
+      else if (down)
+        setLogDiffScroll(s => Math.min(maxLogDiffScroll, s + page))
+      else if (home) setLogDiffScroll(0)
+      else setLogDiffScroll(maxLogDiffScroll)
+      return
+    }
+    if (up) moveLogFile(-page)
+    else if (down) moveLogFile(page)
+    else if (home) setLogFileIndex(0)
+    else setLogFileIndex(Math.max(0, commitFileCount - 1))
   })
 
   // ── render helpers ────────────────────────────────────────────────────────
@@ -728,7 +809,9 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
   const hints =
     activeTab === 'log'
       ? focus === 'content'
-        ? 'Tab tabs · ↑/↓ scroll · u/d page · g/G ends · ← commits · Esc close'
+        ? logDiffOpen
+          ? 'Tab tabs · ↑/↓ scroll · u/d page · g/G ends · ← files · Esc close'
+          : 'Tab tabs · ↑/↓ files · u/d page · Enter/→ diff · ← commits · Esc close'
         : `Tab tabs · ↑/↓ commits · u/d page · → files · ← back${
             logRepos.length > 1 ? ' · [ ] project' : ''
           } · r refresh · Esc close`
@@ -889,12 +972,37 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
       <CommitFileList
         files={commitFiles}
         maxVisible={bodyHeight}
-        scrollOffset={logFilesScrollClamped}
+        selectedIndex={logFileIndexClamped}
       />
     )
     const commitFilesTitle = selectedHash
       ? `Files in ${selectedHash.slice(0, 7)}`
       : 'Files'
+    // Level 3: the selected file's diff inside the commit. Same windowed
+    // DiffPane the Local tab uses; gaps aren't collapsible here (no file text).
+    const commitDiffEl = !logSelectedFile ? (
+      <Text dimColor>Select a file to view its diff</Text>
+    ) : logSelectedFile.isBinary ? (
+      <Text dimColor italic>Binary file - cannot display diff</Text>
+    ) : commitHunks === null ? (
+      <Text dimColor>Loading diff…</Text>
+    ) : logDiffRows.length === 0 && logSelectedFile.renamedFrom ? (
+      <Text dimColor italic>
+        {`renamed from ${logSelectedFile.renamedFrom}`}
+      </Text>
+    ) : (
+      <DiffPane
+        rows={logDiffRows}
+        scrollOffset={logDiffScrollClamped}
+        height={bodyHeight}
+        width={diffWidth}
+      />
+    )
+    const contentEl = logDiffOpen ? commitDiffEl : filesEl
+    const contentTitle = logDiffOpen
+      ? `Diff: ${logSelectedFile?.path ?? ''}`
+      : commitFilesTitle
+    const contentLabel = logDiffOpen ? logDiffScrollLabel : logFilesLabel
     body = split ? (
       <Box flexDirection="row" gap={1}>
         <Box
@@ -918,18 +1026,29 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
           borderStyle="round"
           borderText={(() => {
             const title = paneTitle(
-              `${commitFilesTitle}${
-                logScrollLabel ? `  ${logScrollLabel}` : ''
-              }`,
+              `${contentTitle}${contentLabel ? `  ${contentLabel}` : ''}`,
             )
-            // Commit-wide add/remove totals, right-aligned like the Local diff
-            // pane. Reuses statsBorderText via a synthetic stats-only file.
-            const stats = commitStats
+            // Right-aligned totals like the Local diff pane, reusing
+            // statsBorderText via a synthetic stats-only file: the selected
+            // file's counts while its diff is open, the commit-wide sums
+            // otherwise.
+            const counts = logDiffOpen
+              ? logSelectedFile && {
+                  added: logSelectedFile.added,
+                  removed: logSelectedFile.removed,
+                  binary: logSelectedFile.isBinary,
+                }
+              : commitStats && {
+                  added: commitStats.added,
+                  removed: commitStats.removed,
+                  binary: false,
+                }
+            const stats = counts
               ? statsBorderText({
                   path: '',
-                  linesAdded: commitStats.added,
-                  linesRemoved: commitStats.removed,
-                  isBinary: false,
+                  linesAdded: counts.added,
+                  linesRemoved: counts.removed,
+                  isBinary: counts.binary,
                   isLargeFile: false,
                   isTruncated: false,
                 })
@@ -937,7 +1056,7 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
             return stats ? [title, stats] : title
           })()}
         >
-          {filesEl}
+          {contentEl}
         </Box>
       </Box>
     ) : (
@@ -946,8 +1065,8 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
           graphEl
         ) : (
           <>
-            {stackedHeader(commitFilesTitle, logScrollLabel)}
-            {filesEl}
+            {stackedHeader(contentTitle, contentLabel)}
+            {contentEl}
           </>
         )}
       </Box>
