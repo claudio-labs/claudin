@@ -50,6 +50,25 @@ export type WorkSecret = {
   use_code_sessions?: boolean
 }
 
+/**
+ * Why a `POST /v1/sessions` attempt failed. Reported through
+ * `createBridgeSession`'s `onFailure` so the retry loop can tell a transient
+ * blip from a server contract error, and so the reason reaches the user
+ * instead of dying in the debug log.
+ */
+export type SessionCreateFailure = {
+  status?: number
+  /** The server's own message, when the response carried one. */
+  detail?: string
+  /**
+   * False for a response the server will repeat verbatim next time. Retrying
+   * those spends the caller's failure budget — three environment re-creations
+   * on the reconnect path, useReplBridge's three-strike fuse at init — on a
+   * decision that cannot change.
+   */
+  retryable: boolean
+}
+
 export type SessionDoneStatus = 'completed' | 'failed' | 'interrupted'
 
 export type SessionActivityType = 'tool_start' | 'text' | 'result' | 'error'

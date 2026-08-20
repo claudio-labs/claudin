@@ -3,6 +3,7 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { extractErrorDetail } from 'src/platform/bridge/debugUtils.js'
 import { toCompatSessionId } from 'src/platform/bridge/sessionIdCompat.js'
+import type { SessionCreateFailure } from 'src/platform/bridge/types.js'
 
 type GitSource = {
   type: 'git_repository'
@@ -13,6 +14,40 @@ type GitSource = {
 type GitOutcome = {
   type: 'git_repository'
   git_info: { type: 'github'; repo: string; branches: string[] }
+}
+
+/**
+ * Sticky once the server has rejected a body carrying git context: every later
+ * creation in this process skips the field instead of paying the same wasted
+ * round-trip. Process-lifetime and deliberately not persisted — a GitHub
+ * connection the user repairs is picked up on the next start.
+ */
+let gitContextRejected = false
+
+function isSuccessStatus(status: number): boolean {
+  return status === 200 || status === 201
+}
+
+/**
+ * Whether a failed creation is worth exactly one immediate retry with the git
+ * context stripped.
+ *
+ * `session_context.sources` is the only part of this body the server validates
+ * against state outside the request: the repository has to be visible to the
+ * account's Claude GitHub App. A private repo, one missing from the app's
+ * repository selection, or an expired GitHub connection turns the whole
+ * creation into a 400 — so Remote Control dies on a field that only decorates
+ * the session card on claude.ai.
+ *
+ * Keyed on the status rather than on the server's prose: that message is
+ * English, human-facing and free to change, while "we sent the one
+ * externally-validated field and got a 400" is the durable signal.
+ */
+export function shouldRetryWithoutGitContext(
+  status: number,
+  sentGitContext: boolean,
+): boolean {
+  return sentGitContext && status === 400
 }
 
 // Events must be wrapped in { type: 'event', data: <sdk_message> } for the
@@ -30,6 +65,8 @@ type SessionEvent = {
  * history).
  *
  * Returns the session ID on success, or null if creation fails (non-fatal).
+ * `onFailure` receives why — the caller decides whether to retry and what to
+ * show, which a bare null return cannot support.
  */
 export async function createBridgeSession({
   environmentId,
@@ -41,6 +78,7 @@ export async function createBridgeSession({
   baseUrl: baseUrlOverride,
   getAccessToken,
   permissionMode,
+  onFailure,
 }: {
   environmentId: string
   title?: string
@@ -51,6 +89,7 @@ export async function createBridgeSession({
   baseUrl?: string
   getAccessToken?: () => string | undefined
   permissionMode?: string
+  onFailure?: (failure: SessionCreateFailure) => void
 }): Promise<string | null> {
   const { getClaudeAIOAuthTokens } = await import('src/providers/auth/auth.js')
   const { getOrganizationUUID } = await import('src/providers/oauth/client.js')
@@ -65,12 +104,17 @@ export async function createBridgeSession({
     getAccessToken?.() ?? getClaudeAIOAuthTokens()?.accessToken
   if (!accessToken) {
     logForDebugging('[bridge] No access token for session creation')
+    onFailure?.({ retryable: false, detail: 'not signed in' })
     return null
   }
 
   const orgUUID = await getOrganizationUUID()
   if (!orgUUID) {
     logForDebugging('[bridge] No org UUID for session creation')
+    onFailure?.({
+      retryable: false,
+      detail: 'no organization for this account',
+    })
     return null
   }
 
@@ -122,18 +166,18 @@ export async function createBridgeSession({
     }
   }
 
-  const requestBody = {
+  const buildRequestBody = (includeGitContext: boolean) => ({
     ...(title !== undefined && { title }),
     events,
     session_context: {
-      sources: gitSource ? [gitSource] : [],
-      outcomes: gitOutcome ? [gitOutcome] : [],
+      sources: includeGitContext && gitSource ? [gitSource] : [],
+      outcomes: includeGitContext && gitOutcome ? [gitOutcome] : [],
       model: getMainLoopModel(),
     },
     environment_id: environmentId,
     source: 'remote-control',
     ...(permissionMode && { permission_mode: permissionMode }),
-  }
+  })
 
   const headers = {
     ...getOAuthHeaders(accessToken),
@@ -142,26 +186,58 @@ export async function createBridgeSession({
   }
 
   const url = `${baseUrlOverride ?? getOauthConfig().BASE_API_URL}/v1/sessions`
-  let response
-  try {
-    response = await axios.post(url, requestBody, {
-      headers,
-      signal,
-      validateStatus: s => s < 500,
-    })
-  } catch (err: unknown) {
-    logForDebugging(
-      `[bridge] Session creation request failed: ${errorMessage(err)}`,
-    )
+  const post = async (
+    includeGitContext: boolean,
+  ): Promise<{ status: number; data: unknown } | null> => {
+    try {
+      return await axios.post(url, buildRequestBody(includeGitContext), {
+        headers,
+        signal,
+        validateStatus: s => s < 500,
+      })
+    } catch (err: unknown) {
+      // validateStatus passes everything below 500 through, so what reaches
+      // here is a 5xx, a timeout or a dead socket — all worth another attempt.
+      logForDebugging(
+        `[bridge] Session creation request failed: ${errorMessage(err)}`,
+      )
+      onFailure?.({ retryable: true, detail: errorMessage(err) })
+      return null
+    }
+  }
+
+  const sentGitContext = gitSource !== null && !gitContextRejected
+  let response = await post(sentGitContext)
+  if (!response) {
     return null
   }
-  const isSuccess = response.status === 200 || response.status === 201
 
-  if (!isSuccess) {
+  if (
+    !isSuccessStatus(response.status) &&
+    shouldRetryWithoutGitContext(response.status, sentGitContext)
+  ) {
+    const rejectDetail = extractErrorDetail(response.data)
+    logForDebugging(
+      `[bridge] Session creation rejected with status ${response.status}${rejectDetail ? `: ${rejectDetail}` : ''} — retrying without the git context`,
+    )
+    gitContextRejected = true
+    response = await post(false)
+    if (!response) {
+      return null
+    }
+  }
+
+  if (!isSuccessStatus(response.status)) {
     const detail = extractErrorDetail(response.data)
     logForDebugging(
       `[bridge] Session creation failed with status ${response.status}${detail ? `: ${detail}` : ''}`,
     )
+    onFailure?.({
+      status: response.status,
+      detail,
+      // 429 is the one 4xx that answers differently on its own.
+      retryable: response.status === 429,
+    })
     return null
   }
 
@@ -173,6 +249,11 @@ export async function createBridgeSession({
     typeof sessionData.id !== 'string'
   ) {
     logForDebugging('[bridge] No session ID in response')
+    onFailure?.({
+      status: response.status,
+      detail: 'malformed session response',
+      retryable: false,
+    })
     return null
   }
 

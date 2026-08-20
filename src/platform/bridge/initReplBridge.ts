@@ -183,6 +183,10 @@ export async function initReplBridge(
       logForDebugging(
         `[bridge:repl] Skipping: cross-process backoff (dead token seen ${cfg.bridgeOauthDeadFailCount} times)`,
       )
+      // The only other early return that stayed silent: with no state change
+      // the REPL sits on "connecting…" and then quietly gives up, which is
+      // indistinguishable from the bridge never having been asked.
+      onStateChange?.('failed', 'sign-in expired — run /login')
       return null
     }
 

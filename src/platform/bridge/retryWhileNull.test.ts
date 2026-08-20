@@ -67,6 +67,32 @@ test('stops retrying once the signal aborts', async () => {
   expect(calls).toBe(2)
 })
 
+test('stops on the first attempt when isRetryable says the failure is permanent', async () => {
+  let calls = 0
+  const result = await retryWhileNull(
+    async () => {
+      calls++
+      return null
+    },
+    { ...NO_SLEEP, label: 'createSession', isRetryable: () => false },
+  )
+  expect(result).toBeNull()
+  expect(calls).toBe(1)
+})
+
+test('keeps retrying while isRetryable stays true', async () => {
+  let calls = 0
+  const result = await retryWhileNull(
+    async () => {
+      calls++
+      return calls < 3 ? null : 'session-1'
+    },
+    { ...NO_SLEEP, label: 'createSession', isRetryable: () => true },
+  )
+  expect(result).toBe('session-1')
+  expect(calls).toBe(3)
+})
+
 test('backs off exponentially and clamps at maxDelayMs', () => {
   // random() = 0.5 → zero jitter, so the raw exponential is observable.
   const noJitter = () => 0.5

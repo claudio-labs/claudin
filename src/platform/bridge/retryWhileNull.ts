@@ -43,6 +43,10 @@ export function retryDelayMs(
  * with exponential backoff between attempts. Returns null when every attempt
  * failed or when `signal` aborts (teardown) — the callers all treat null as
  * "give up", so the contract is unchanged from a single unretried call.
+ *
+ * `isRetryable` is consulted after each failed attempt: returning false stops
+ * the loop immediately. Without it a permanent server answer — a 4xx the
+ * server will repeat verbatim — costs the whole backoff before failing anyway.
  */
 export async function retryWhileNull<T>(
   fn: () => Promise<T | null>,
@@ -50,12 +54,19 @@ export async function retryWhileNull<T>(
     label: string
     logPrefix?: string
     signal?: AbortSignal
+    isRetryable?: () => boolean
   },
 ): Promise<T | null> {
-  const { label, logPrefix = '[bridge]', signal } = opts
+  const { label, logPrefix = '[bridge]', signal, isRetryable } = opts
   for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {
     const result = await fn()
     if (result !== null) return result
+    if (isRetryable && !isRetryable()) {
+      logForDebugging(
+        `${logPrefix} ${label} failed permanently on attempt ${attempt}/${opts.maxAttempts}, not retrying`,
+      )
+      return null
+    }
     if (signal?.aborted) {
       logForDebugging(
         `${logPrefix} ${label} aborted after attempt ${attempt}/${opts.maxAttempts}`,
