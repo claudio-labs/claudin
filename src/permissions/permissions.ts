@@ -820,27 +820,39 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
         // deterministic 4xx (malformed request, bad header, auth failure).
         // Skip iron_gate and fall back to normal prompting so the user can
         // approve/deny manually, rather than looping in fail-closed retries.
-        if (classifierResult.transcriptTooLong || classifierResult.deterministic) {
+        // A timeout joins them: the wait already happened, and denying with
+        // retry guidance would just spend it again.
+        if (
+          classifierResult.transcriptTooLong ||
+          classifierResult.deterministic ||
+          classifierResult.timedOut
+        ) {
           const cause = classifierResult.transcriptTooLong
             ? 'transcript exceeded context window'
-            : 'request failed with a deterministic error'
-          if (appState.toolPermissionContext.shouldAvoidPermissionPrompts) {
-            // Permanent condition — deny-retry-deny wastes tokens without ever
-            // hitting the denial-limit abort.
+            : classifierResult.deterministic
+              ? 'request failed with a deterministic error'
+              : 'exceeded its time budget'
+          if (!appState.toolPermissionContext.shouldAvoidPermissionPrompts) {
+            logForDebugging(
+              `Auto mode classifier ${cause}, falling back to normal permission handling`,
+              { level: 'warn' },
+            )
+            return {
+              ...result,
+              decisionReason: {
+                type: 'other',
+                reason: `Auto mode classifier ${cause} — falling back to manual approval`,
+              },
+            }
+          }
+          // Headless has no one to ask. The first two causes are permanent, and
+          // deny-retry-deny wastes tokens without ever hitting the denial-limit
+          // abort. A timeout is transient, so it falls through to the
+          // unavailable branch below and keeps its retry guidance.
+          if (!classifierResult.timedOut) {
             throw new AbortError(
               `Agent aborted: auto mode classifier ${cause} in headless mode`,
             )
-          }
-          logForDebugging(
-            `Auto mode classifier ${cause}, falling back to normal permission handling`,
-            { level: 'warn' },
-          )
-          return {
-            ...result,
-            decisionReason: {
-              type: 'other',
-              reason: `Auto mode classifier ${cause} — falling back to manual approval`,
-            },
           }
         }
         // When classifier is unavailable (API error), behavior depends on

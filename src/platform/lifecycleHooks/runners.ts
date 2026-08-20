@@ -388,6 +388,16 @@ export async function execCommandHook(
   // Track whether stdin has already been written (to avoid "write after end" errors)
   let stdinWritten = false
 
+  // The prompt protocol needs the hook's stdin to stay OPEN after the input
+  // JSON, so a response can be written back into it. That costs the hook its
+  // EOF — and the ordinary hook shape reads to EOF: `input=$(cat)`, a bare
+  // `jq`. Such a hook then blocks for its whole timeout (10 minutes by
+  // default) BEFORE the tool it gates ever runs, which is what a user sees as
+  // a Bash call sitting ~600 s behind a spinner with no dialog on screen.
+  // So the open stdin is opt-in per hook (`"interactive": true`); every other
+  // hook gets its EOF immediately after the input.
+  const promptChannel = hook.interactive === true ? requestPrompt : undefined
+
   if ((hook.async || hook.asyncRewake) && !forceSyncExecution) {
     const processId = `async_hook_${child.pid}`
     logForDebugging(
@@ -466,7 +476,7 @@ export async function execCommandHook(
     output += data
 
     // When requestPrompt is provided, parse stdout line-by-line for prompt requests
-    if (requestPrompt) {
+    if (promptChannel) {
       lineBuffer += data
       const lines = lineBuffer.split('\n')
       lineBuffer = lines.pop() ?? '' // last element is an incomplete line
@@ -485,7 +495,7 @@ export async function execCommandHook(
             )
             // Chain the async handling to serialize prompt responses
             const promptReq = validation.data
-            const reqPrompt = requestPrompt
+            const reqPrompt = promptChannel
             promptChain = promptChain.then(async () => {
               try {
                 const response = await reqPrompt(promptReq)
@@ -592,9 +602,9 @@ export async function execCommandHook(
     ? Promise.resolve()
     : new Promise<void>((resolve, reject) => {
         child.stdin.on('error', err => {
-          // When requestPrompt is provided, stdin stays open for prompt responses.
+          // Under the prompt protocol stdin stays open for prompt responses.
           // EPIPE errors from later writes (after process exits) are expected -- suppress them.
-          if (!requestPrompt) {
+          if (!promptChannel) {
             reject(err)
           } else {
             logForDebugging(
@@ -604,8 +614,9 @@ export async function execCommandHook(
         })
         // Explicitly specify UTF-8 encoding to ensure proper handling of Unicode characters
         child.stdin.write(jsonInput + '\n', 'utf8')
-        // When requestPrompt is provided, keep stdin open for prompt responses
-        if (!requestPrompt) {
+        // Only an opted-in interactive hook keeps stdin open for prompt
+        // responses; everything else needs the EOF to stop reading.
+        if (!promptChannel) {
           child.stdin.end()
         }
         resolve()

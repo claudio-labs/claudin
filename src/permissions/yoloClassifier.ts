@@ -1115,6 +1115,105 @@ async function classifyYoloActionXml(
 }
 
 /**
+ * Wall-clock budget for one classifier decision, retries included.
+ *
+ * Without it a classifier call inherits the main loop's per-request timeout
+ * (API_TIMEOUT_MS, 600s) multiplied by the SDK retry count
+ * (CLAUDIN_MAX_RETRIES, 10 → 11 attempts), so a stalled or rate-limited
+ * upstream can hold a single Bash call for ~110 minutes with nothing on
+ * screen but the spinner — permissions.ts awaits this decision before it
+ * queues any dialog, and the "checking permissions" row is disabled in auto
+ * mode. Set CLAUDIN_AUTO_MODE_CLASSIFIER_TIMEOUT_MS=0 for the old behavior.
+ */
+const DEFAULT_CLASSIFIER_TIMEOUT_MS = 60_000
+
+function getClassifierTimeoutMs(): number {
+  const raw = process.env.CLAUDIN_AUTO_MODE_CLASSIFIER_TIMEOUT_MS
+  if (raw === undefined || raw === '') {
+    return DEFAULT_CLASSIFIER_TIMEOUT_MS
+  }
+  const parsed = Number.parseInt(raw, 10)
+  return Number.isFinite(parsed) && parsed >= 0
+    ? parsed
+    : DEFAULT_CLASSIFIER_TIMEOUT_MS
+}
+
+/**
+ * Classify an agent action, bounded by getClassifierTimeoutMs().
+ *
+ * On expiry the in-flight request is aborted (leaving it open would let the
+ * SDK keep retrying behind an answer the caller already has) and the result
+ * carries `timedOut`, which permissions.ts turns into a normal permission
+ * prompt instead of a silent wait.
+ */
+export async function classifyYoloAction(
+  messages: Message[],
+  action: TranscriptEntry,
+  tools: Tools,
+  context: ToolPermissionContext,
+  signal: AbortSignal,
+): Promise<YoloClassifierResult> {
+  const timeoutMs = getClassifierTimeoutMs()
+  if (timeoutMs === 0) {
+    return classifyYoloActionUnbounded(messages, action, tools, context, signal)
+  }
+
+  const budget = new AbortController()
+  const abortBudget = () => budget.abort()
+  if (signal.aborted) {
+    budget.abort()
+  } else {
+    signal.addEventListener('abort', abortBudget, { once: true })
+  }
+
+  let timedOut = false
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeoutResult = (): YoloClassifierResult => ({
+    shouldBlock: true,
+    reason: `Classifier timed out after ${Math.round(timeoutMs / 1000)}s`,
+    model: getClassifierModel(),
+    unavailable: true,
+    timedOut: true,
+    durationMs: timeoutMs,
+  })
+
+  try {
+    return await Promise.race([
+      classifyYoloActionUnbounded(
+        messages,
+        action,
+        tools,
+        context,
+        budget.signal,
+      ).catch((error: unknown) => {
+        // The budget already answered — swallow whatever the aborted request
+        // settles with rather than raising an unhandled rejection.
+        if (timedOut) {
+          return timeoutResult()
+        }
+        throw error
+      }),
+      new Promise<YoloClassifierResult>(resolve => {
+        timer = setTimeout(() => {
+          timedOut = true
+          budget.abort()
+          logForDebugging(
+            `Auto mode classifier exceeded its ${timeoutMs}ms budget, falling back to manual approval`,
+            { level: 'warn' },
+          )
+          resolve(timeoutResult())
+        }, timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer)
+    }
+    signal.removeEventListener('abort', abortBudget)
+  }
+}
+
+/**
  * Use Opus to classify whether an agent action should be allowed or blocked.
  * Returns a YoloClassifierResult indicating the decision.
  *
@@ -1122,13 +1221,15 @@ async function classifyYoloActionXml(
  * can distinguish "classifier actively blocked" from "classifier couldn't respond".
  * Transient errors (429, 500) are retried by sideQuery internally (see getDefaultMaxRetries).
  *
+ * Unbounded on purpose: the caller-facing wrapper above owns the deadline.
+ *
  * @param messages - The conversation history
  * @param action - The action being evaluated (tool name + input)
  * @param tools - Tool registry for encoding tool inputs via toAutoClassifierInput
  * @param context - Tool permission context for extracting Bash(prompt:) rules
  * @param signal - Abort signal
  */
-export async function classifyYoloAction(
+async function classifyYoloActionUnbounded(
   messages: Message[],
   action: TranscriptEntry,
   tools: Tools,

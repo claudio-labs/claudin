@@ -360,6 +360,13 @@ export type YoloClassifierResult = {
    * the fail-closed retry-loop reserved for transient outages.
    */
   deterministic?: boolean
+  /**
+   * The decision exceeded its wall-clock budget and was abandoned (see
+   * CLAUDIN_AUTO_MODE_CLASSIFIER_TIMEOUT_MS). Transient — unlike
+   * transcriptTooLong/deterministic, a retry may well succeed — so callers
+   * fall back to asking the user rather than aborting the agent.
+   */
+  timedOut?: boolean
   /** The model used for this classifier call */
   model: string
   /** Token usage from the classifier API call (for overhead telemetry) */

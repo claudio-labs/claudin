@@ -62,6 +62,12 @@ function buildHookSchemas() {
       .describe(
         'If true, hook runs in background and wakes the model on exit code 2 (blocking error). Implies async.',
       ),
+    interactive: z
+      .boolean()
+      .optional()
+      .describe(
+        'If true, stdin stays open after the input JSON so the hook can ask the user a question (the prompt protocol). Leave it off for an ordinary hook: it reads its input to EOF, and an stdin left open blocks it until its timeout.',
+      ),
   })
 
   const PromptHookSchema = z.object({
