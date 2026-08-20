@@ -656,11 +656,26 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
 
       // Allowlisted tools are safe and don't need YOLO classification.
       // This uses the safe-tool allowlist to skip unnecessary classifier API calls.
-      if (classifierDecisionModule!.isAutoModeAllowlistedTool(tool.name)) {
+      // A tool may also be allowlisted for its READ-ONLY inputs only: a
+      // `git status` batch skips the classifier while `git checkout -b` still
+      // goes through it.
+      const onSafeAllowlist =
+        classifierDecisionModule!.isAutoModeAllowlistedTool(tool.name)
+      const readsOnly =
+        !onSafeAllowlist &&
+        classifierDecisionModule!.isAutoModeAllowlistedReadOnlyToolUse(
+          tool.name,
+          () => tool.isReadOnly(tool.inputSchema.parse(input)),
+        )
+      if (onSafeAllowlist || readsOnly) {
         const newDenialState = recordSuccess(denialState)
         persistDenialState(context, newDenialState)
         logForDebugging(
-          `Skipping auto mode classifier for ${tool.name}: tool is on the safe allowlist`,
+          `Skipping auto mode classifier for ${tool.name}: ${
+            onSafeAllowlist
+              ? 'tool is on the safe allowlist'
+              : 'this call only reads'
+          }`,
         )
         logEvent('tengu_auto_mode_decision', {
           decision:
@@ -670,8 +685,9 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
             .id as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
           confidence:
             'high' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          fastPath:
-            'allowlist' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
+          fastPath: (onSafeAllowlist
+            ? 'allowlist'
+            : 'readOnlyAllowlist') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
         })
         return {
           behavior: 'allow',
