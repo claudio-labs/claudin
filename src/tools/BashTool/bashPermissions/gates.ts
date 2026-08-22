@@ -1,12 +1,6 @@
 /**
  * The individual gates bashToolHasPermission runs a command through, plus the
  * normalized cd/git detectors those gates and the pipeline share.
- *
- * Relocated verbatim from bashPermissions.ts. Several of these carry a comment
- * saying they were extracted to keep bashToolHasPermission under Bun's
- * feature() DCE complexity threshold; that threshold is upstream's, not this
- * fork's (see the note above the const rebindings in bashPermissions.ts), but
- * the comments are left as found because this is a relocation, not a rewrite.
  */
 
 import type { z } from 'zod/v4'
@@ -223,9 +217,6 @@ export function checkSandboxAutoAllow(
 
 /**
  * Filter out `cd ${cwd}` prefix subcommands, keeping astCommands aligned.
- * Extracted to keep bashToolHasPermission under Bun's feature() DCE
- * complexity threshold — inlining this breaks pendingClassifierCheck
- * attachment in ~10 classifier tests.
  */
 export function filterCdCwdSubcommands(
   rawSubcommands: string[],
@@ -248,8 +239,7 @@ export function filterCdCwdSubcommands(
  * Early-exit deny enforcement for the AST too-complex and checkSemantics
  * paths. Returns the exact-match result if non-passthrough (deny/ask/allow),
  * then checks prefix/wildcard deny rules. Returns null if neither matched,
- * meaning the caller should fall through to ask. Extracted to keep
- * bashToolHasPermission under Bun's feature() DCE complexity threshold.
+ * meaning the caller should fall through to ask.
  */
 export function checkEarlyExitDeny(
   input: z.infer<typeof BashTool.inputSchema>,
