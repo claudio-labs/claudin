@@ -11,8 +11,8 @@
  * hoisted function declarations invoked at call time, never at module init.
  */
 
-import { bashCommandIsSafe_DEPRECATED } from 'src/tools/BashTool/bashSecurity.js'
 import { HEREDOC_IN_SUBSTITUTION } from 'src/tools/BashTool/bashSecurity/context.js'
+import { bashCommandIsSafe_DEPRECATED } from 'src/tools/BashTool/bashSecurity/dispatch.js'
 
 /**
  * Checks if a command is a "safe" heredoc-in-substitution pattern that can
