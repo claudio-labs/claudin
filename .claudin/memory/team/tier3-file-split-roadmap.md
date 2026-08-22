@@ -1,6 +1,6 @@
 ---
 name: tier3-file-split-roadmap
-description: The Tier-3 giant-file split roadmap (item 11a-11m) lives only in a DELETED ROADMAP.md — recover it with git show; every actionable item is DONE as of 2026-08-14, and the new top offenders are listed here
+description: The Tier-3 giant-file split roadmap lives only in a DELETED ROADMAP.md (recover with git show); every item is DONE, BashTool's two giants shipped 2026-08-22, and the DCE-cliff comments that blocked them were false — the fold gate is here
 type: project
 ---
 
@@ -34,10 +34,63 @@ memory listed them as open. All three are barrels now: `src/providers/shims/clau
 assets) stay won't-do. **The ROADMAP-11 list is exhausted** — measure the tree, do
 not work from it.
 
-## New top offenders, measured 2026-08-14 (lines × 6-month commits)
+## `src/tools/BashTool/` — DONE 2026-08-22 (PR #129)
 
-Ranked by size × churn, since a big file only costs when people edit it:
+`bashPermissions.ts` 2528 → a 68-line barrel over 7 modules, and `bashSecurity.ts`
+2588 → a 22-line barrel over 13 (`validators/` × 9 + context/checkIds/heredoc/
+dispatch). Both were #1 and #6 by size × churn.
 
+**The reason nobody had split bashPermissions was a false constraint.** Four
+comments (`bashPermissions.ts:80-88`, `:534-535`, `:1332-1333`,
+`pathValidation.ts:1155-1163`) said the file sat on Bun's `feature()` **DCE
+complexity cliff**, and that removing ~80 lines would silently fold
+`feature('BASH_CLASSIFIER')` to `false` and drop every `pendingClassifierCheck`
+spread — citing five upstream incidents (PR #21075 ×3, #21503 ×2) and a
+`bun-feature-dce-cliff.md` memory that **does not exist in this fork**. That
+constraint is upstream's: `preProcessSources`
+(`scripts/build/build.ts:137-164`) folds `feature()` with a **regex over the
+source text**, not Bun's native evaluator, because Bun ≥1.3.9 resolves
+`bun:bundle` in C++ before plugins. A regex has no per-function budget, so file
+size and import-alias count cannot affect the fold. Verified by deleting exactly
+the ~90 lines the comment named; the fold held. All four comments are corrected.
+
+**The fold gate, if you ever need to prove a fold went the right way:**
+
+    rm -rf dist/chunks && bun run build
+    grep -o 'pendingClassifierCheck:buildPendingClassifierCheck' dist/chunks/*.mjs | wc -l   # 8
+
+`grep -c` is WRONG here — it counts files-with-a-match and reports `1` on a
+healthy build. The `rm -rf` matters (3 generations are kept), and `dist/cli.mjs`
+is not the bundle. **No test can be this gate**: under `bun test` every flag
+reads `false`, so a test asserting the spread is present fails on a correct build.
+
+Two things this split taught that generalize:
+
+- **The untouched-suite proof works, and the build does not substitute for it.**
+  Both files had 134 lines of test between them, so the suites (764 lines, 78
+  tests, all break-and-restore verified) were written FIRST and kept
+  byte-identical across all 8 extraction commits. During one extraction the
+  parent's `checkPathConstraints` import was over-trimmed: `bun run build`
+  passed, typecheck passed, four characterization tests failed with
+  `ReferenceError`.
+- **`bashCommandIsSafeAsync_DEPRECATED`'s body never executes under `bun test`.**
+  `ParsedCommand.parse` returns no tree-sitter analysis in the runner, so it
+  always takes the `if (!tsAnalysis)` fallback — deleting a validator from the
+  async array changes no test outcome. Its ordered validator list was a verbatim
+  duplicate of the sync one; the three literals are now single shared consts, but
+  the two loops still are not, and nothing tests that path.
+
+## New top offenders, measured 2026-08-14, re-ranked 2026-08-22
+
+Ranked by size × churn, since a big file only costs when people edit it. With
+BashTool done, the live list is `src/commands/insights.ts` (2832 × 8, **no test
+file at all**), `src/commands/plugin/ManagePlugins.tsx` (2218 × 8, 2 exports, no
+test) and `src/tools/PowerShellTool/pathValidation.ts` (2055 × 7). Then
+`readOnlyValidation.ts` (1924 × 5) and `src/platform/bridge/replBridge.ts`
+(2402 × 4).
+
+0. ~~`src/tools/BashTool/bashPermissions.ts` 2528 × 10 and `bashSecurity.ts` 2588 × 4~~
+   — **DONE 2026-08-22**, see the section above.
 1. ~~`src/tools/shared/codeOutline/scanSymbols.ts` — 3911 lines~~ — **DONE 2026-08-14**,
    3911 → a 191-line barrel over 18 modules (`types` `detectLang` `internal`,
    `mask/{core,languages}`, `clike/{types,detectors,specs,scan}`, `langs/*` with

@@ -26,7 +26,7 @@
 - [memory_delta deleted 2026-08-07 — it was a second full copy, not a delta](memory-delta-removed-double-send.md) — re-sent every rule/CLAUDE.md body one turn after nested_memory (~57 KB/session); check the raw lane announces a hash before pairing a delta with it
 
 ## Roadmap & major features
-- [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — the ROADMAP-11 list is EXHAUSTED (11i/11j/11k done too); new top offenders measured by size×churn, led by scanSymbols.ts; two split-only traps
+- [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — ROADMAP-11 exhausted; BashTool's two giants shipped 2026-08-22 (PR #129) after the DCE-cliff comments were proven false; carries the feature() fold gate + live offender list
 - [Clip-pin A/B 2026-07-25 (dev vs stable, 30 turns)](clip-pin-cache-ab-2026-07-25.md) — STALE number, do NOT cite; kept for the three bench traps (auto-outline eats files ≥250 lines, --revisits does one pass, the 60s Read cache)
 - [Product roadmap 2026-07 (market-gap × codebase audit)](roadmap-2026-07.md) — R1 cost routing → R2 real sandbox backend → R3 self-hosted background agent ✅ IMPLEMENTED → R4 record&replay eval → R5 MCP Apps; replaces token-efficiency roadmap (all shipped)
 - [Repo map / generated project index — REJECTED on data 2026-08-07](repo-map-rejected-orientation-measured.md) — orientation is 32% of tool-result chars but Glob is 0.3% of it; 59.5% of read paths are one-offs; no task→location signal. Read (D3) is the real target
