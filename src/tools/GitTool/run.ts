@@ -253,7 +253,15 @@ export async function runGitBatch(
     const watch = isWatchGitCommand(command)
     // Tier B: keep the existing command-aware Bash filter, which already knows
     // how to strip git noise and rewrite `git log` → `git log --oneline`.
-    const plan = planBashFilter(command, full ? { allowRewrite: false } : undefined)
+    // `callerBudgets`: everything below this line is GitTool budgeting the same
+    // text — `budgetFilteredOutput` strips our marker and applies the diff/log
+    // budget, and `applyGitDelta` elides against what a previous read produced.
+    // The Bash filter's job here is noise removal only; a destructive cut would
+    // be spent twice and would leave the delta lane diffing text it never made.
+    const plan = planBashFilter(command, {
+      allowRewrite: !full,
+      callerBudgets: true,
+    })
 
     let outcome: GitCommandOutcome
     try {

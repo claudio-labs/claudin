@@ -352,13 +352,26 @@ describe('bash output filter — integration smoke', () => {
   test('ps aux output with filter enabled → wrapped with markers, not empty', () => {
     enableFilter()
 
-    // Fabricate a minimal ps aux header to trigger the ps-aux filter
-    const psOutput = [
-      'USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND',
-      'root           1  0.0  0.0 168928 11452 ?        Ss   00:00   0:01 /sbin/init',
-      'root           2  0.0  0.0      0     0 ?        S    00:00   0:00 [kthreadd]',
-      'user        1234  0.1  0.5 123456  5678 pts/0    S+   00:01   0:00 bash',
-    ].join('\n') + '\n'
+    // A realistic listing, not four rows. The marker is only emitted when it
+    // costs less than the filter saved, and `ps-aux` saves by stripping kthread
+    // rows and capping at 50 lines — so the fixture needs enough of both for the
+    // wrapper to pay for itself, or this asserts on the suppression path.
+    const psOutput =
+      [
+        'USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND',
+        'root           1  0.0  0.0 168928 11452 ?        Ss   00:00   0:01 /sbin/init',
+        'user        1234  0.1  0.5 123456  5678 pts/0    S+   00:01   0:00 bash',
+        ...Array.from(
+          { length: 20 },
+          (_, i) =>
+            `root      ${100 + i}  0.0  0.0      0     0 ?        S    00:00   0:00 [kworker/${i}:0H-events]`,
+        ),
+        ...Array.from(
+          { length: 60 },
+          (_, i) =>
+            `user   ${2000 + i}  0.0  0.3 987654  4321 ?        Sl   00:0${i % 10}   0:00 /usr/lib/some/long/path/worker-${i} --flag`,
+        ),
+      ].join('\n') + '\n'
 
     const result = makeResult({ stdout: psOutput })
     applyBashOutputFilter(result, 'ps aux')

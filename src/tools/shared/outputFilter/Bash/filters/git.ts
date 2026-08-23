@@ -11,6 +11,7 @@
 // Regex are declared at module level — see .claudin/rules/typescript-patterns.md #3.
 
 import type { FilterSpec } from 'src/tools/shared/outputFilter/Bash/types.js'
+import { renderDiff } from 'src/tools/GitTool/parsers/diff.js'
 
 // --- git log ---------------------------------------------------------------
 
@@ -170,11 +171,47 @@ const GIT_DIFF_STRIP_NOEOL = /^\\ No newline at end of file$/
 // lines). Safe to strip in both regular diffs and special-case diffs.
 const GIT_DIFF_STRIP_HEADER = /^diff --git\s+a\/\S+\s+b\/\S+$/
 
+// Where the diff proper starts inside a body that may have something else in
+// front of it. `git status --porcelain && git diff` resolves to THIS filter —
+// `--porcelain` opts the status half out, so the segments do not disagree — and
+// it is among the largest recorded results. Handing the whole body to
+// `renderDiff` would drop the porcelain lines silently, because
+// `summarizeDiffFiles` keeps only the sections that parse as files. So the
+// renderer is spliced: everything before the first diff header is put back
+// verbatim, and only the diff is budgeted.
+const DIFF_BODY_START_RE = /^(?:diff --git |@@ -\d)/m
+
+// ...and everything AFTER the last diff-shaped line, for the same reason and by
+// the same mechanism. `git diff && echo done` resolves here too (`echo` has no
+// spec of its own), and above the pivot `renderDiff` returns a stat summary
+// rebuilt from the parsed file list — so `done` was silently deleted, which a
+// review caught. Matching forward from the start of the diff rather than
+// backward from the end of the body, so that a trailing blank line stays with
+// the diff instead of ending it.
+const DIFF_LINE_RE =
+  /^(?:diff --git |index |--- |\+\+\+ |@@ |[ +-]|\\ No newline|Binary files |(?:new|deleted) file mode |(?:old|new) mode |(?:similarity|dissimilarity) index |(?:rename|copy) (?:from|to) |GIT binary patch|$)/
+
+/** `renderDiff` applied to the diff tail, with any preceding output preserved. */
+function renderDiffTail(body: string): string | null {
+  const start = DIFF_BODY_START_RE.exec(body)
+  if (!start) return null
+  const lines = body.slice(start.index).split('\n')
+  let end = lines.length
+  while (end > 0 && !DIFF_LINE_RE.test(lines[end - 1] ?? '')) end--
+  const rendered = renderDiff(lines.slice(0, end).join('\n'))
+  // `renderDiff` declines when the body is not a unified diff, or when nothing
+  // would be elided and re-rendering would only strip context the model wants.
+  if (rendered === null) return null
+  const suffix = lines.slice(end).join('\n')
+  return body.slice(0, start.index) + rendered + (suffix === '' ? '' : `\n${suffix}`)
+}
+
 export const gitDiff: FilterSpec = {
   name: 'git-diff',
   matchCommand: GIT_DIFF_MATCH,
   matchCommandReject: GIT_DIFF_REJECT,
   stripAnsi: true,
+  renderBody: renderDiffTail,
   stripLinesMatching: [GIT_DIFF_STRIP_HEADER, GIT_DIFF_STRIP_INDEX, GIT_DIFF_STRIP_NOEOL],
   matchOutput: [
     {
@@ -203,6 +240,9 @@ export const gitShow: FilterSpec = {
   matchCommand: GIT_SHOW_MATCH,
   matchCommandReject: GIT_SHOW_REJECT,
   stripAnsi: true,
+  // Same splice, and here the preserved prefix is the commit header — author,
+  // date and message all sit above the first `diff --git`.
+  renderBody: renderDiffTail,
   stripLinesMatching: [GIT_DIFF_STRIP_HEADER, GIT_DIFF_STRIP_INDEX, GIT_DIFF_STRIP_NOEOL],
   replace: [{ pattern: GIT_SHOW_AUTHOR_DATE_RE, replacement: 'Author: $1 ($2)' }],
 }

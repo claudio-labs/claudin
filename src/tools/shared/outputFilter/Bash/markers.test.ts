@@ -58,15 +58,20 @@ describe("wrapStdoutWithMarkers", () => {
       filter: { name: "npm", matchCommand: /^npm$/ },
       rewrite: null,
     };
+    // The attributes have to describe the two strings actually passed in: the
+    // wrapper is only emitted when it costs less than the filter saved, so a
+    // body LONGER than the raw input would (rightly) take the suppression path.
+    const raw = Array.from({ length: 40 }, (_, i) => `line ${i} of npm noise`).join("\n");
+    const body = raw.split("\n").slice(0, 8).join("\n");
     const pipelineResult: PipelineResult = {
-      body: "filtered output",
+      body,
       applied: ["stripAnsi"],
       shortCircuited: false,
       reductionPct: 50,
       originalLines: 40,
       bodyLines: 8,
     };
-    const result = wrapStdoutWithMarkers("raw output", plan, pipelineResult);
+    const result = wrapStdoutWithMarkers(raw, plan, pipelineResult);
     expect(result).toContain("<bash-output-filtered");
     expect(result).toContain('reduction="50%"');
     expect(result).toContain('lines="8/40"');
@@ -146,6 +151,64 @@ describe("wrapStdoutWithMarkers", () => {
     // Attribute should be truncated to ~200 chars + ellipsis
     expect(result).toContain("…");
   });
+
+  // A filter that trimmed less than the wrapper costs has nothing worth
+  // disclosing: the tag exists to tell the model the output was ALREADY trimmed
+  // so it does not pipe to head/tail, and that sentence is not worth paying for
+  // when almost nothing came off. Five specs shipped net-negative this way.
+  describe("a wrapper that costs more than the filter saved", () => {
+    const spec = { name: "tiny", matchCommand: /^tiny$/ };
+    const plan: PreExecPlan = {
+      effectiveCommand: "tiny",
+      filter: spec,
+      rewrite: null,
+    };
+    const resultFor = (body: string): PipelineResult => ({
+      body,
+      applied: ["stripLinesMatching"],
+      shortCircuited: false,
+      reductionPct: 1,
+      originalLines: 2,
+      bodyLines: 1,
+    });
+
+    test("is dropped, and the filtered body is returned bare", () => {
+      const raw = "keep me\ndrop me\n";
+      const out = wrapStdoutWithMarkers(raw, plan, resultFor("keep me\n"));
+      expect(out).toBe("keep me\n");
+      expect(out).not.toContain("<bash-output-filtered");
+    });
+
+    // The body, never the raw input. `replace` rules EDIT content rather than
+    // merely shorten it — one of them redacts a matched secret at equal length —
+    // so falling back to rawStdout to save bytes hands the secret back.
+    test("keeps an equal-length content edit that saved no bytes at all", () => {
+      const raw = "token=secret\n";
+      const out = wrapStdoutWithMarkers(raw, plan, resultFor("token=XXXXXX\n"));
+      expect(out).toBe("token=XXXXXX\n");
+      expect(out).not.toContain("secret");
+    });
+
+    test("is kept once the saving exceeds it", () => {
+      const raw = `keep me\n${"drop me\n".repeat(40)}`;
+      const out = wrapStdoutWithMarkers(raw, plan, resultFor("keep me\n"));
+      expect(out).toContain("<bash-output-filtered");
+      expect(out.length).toBeLessThan(raw.length);
+    });
+
+    // A rewrite marker names the command that actually RAN, which the model
+    // cannot infer from the output. That is not a trade against bytes.
+    test("does not apply to a rewrite marker, however small the output", () => {
+      const rewritePlan: PreExecPlan = {
+        effectiveCommand: "git log --oneline",
+        filter: null,
+        rewrite: { from: "git log", to: "git log --oneline" },
+      };
+      expect(wrapStdoutWithMarkers("a\n", rewritePlan, null)).toContain(
+        "<bash-output-rewritten",
+      );
+    });
+  });
 });
 
 describe("stripOutputMarkers", () => {
@@ -167,6 +230,11 @@ describe("stripOutputMarkers", () => {
     originalLines: 39,
     bodyLines: 39,
   };
+  /** A raw listing long enough that the wrapper pays for itself. */
+  const RAW_LISTING = Array.from(
+    { length: 39 },
+    (_, i) => `drwxr-xr-x 1 dev dev 680 May  5 14:2${i % 10} entry-${i}`,
+  ).join("\n");
 
   test("unwraps a bash-output-rewritten wrapper to its body", () => {
     const wrapped = wrapStdoutWithMarkers("## main...origin/main", REWRITE_PLAN, null);
@@ -175,7 +243,7 @@ describe("stripOutputMarkers", () => {
   });
 
   test("unwraps a bash-output-filtered wrapper to its body", () => {
-    const wrapped = wrapStdoutWithMarkers("[d] .", FILTER_PLAN, PIPELINE_RESULT);
+    const wrapped = wrapStdoutWithMarkers(RAW_LISTING, FILTER_PLAN, PIPELINE_RESULT);
     expect(wrapped).toContain("<bash-output-filtered");
     expect(stripOutputMarkers(wrapped)).toBe("[d] .");
   });

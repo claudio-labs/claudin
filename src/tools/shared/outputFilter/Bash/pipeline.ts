@@ -579,9 +579,14 @@ const PIPELINE_INPUT_MAX_BYTES = 8 * 1024 * 1024;
 export function applyPipeline(
   filter: FilterSpec,
   raw: string,
-  opts?: { allowShortCircuit?: boolean; capLines?: number | null },
+  opts?: {
+    allowShortCircuit?: boolean;
+    capLines?: number | null;
+    allowRenderBody?: boolean;
+  },
 ): PipelineResult {
   const allowShortCircuit = opts?.allowShortCircuit ?? true;
+  const allowRenderBody = opts?.allowRenderBody ?? true;
   const capLines = opts?.capLines ?? null;
   if (raw.length > PIPELINE_INPUT_MAX_BYTES) {
     debug("input exceeds cap, bypassing pipeline", {
@@ -627,6 +632,17 @@ export function applyPipeline(
   }
 
   if (!shortCircuited) {
+    // 2b. renderBody — the whole-body reshape, before the line-oriented stages
+    // get their hands on the text. Declining (null) is the normal outcome and
+    // leaves the body untouched, so nothing is recorded as applied.
+    if (filter.renderBody && allowRenderBody) {
+      const rendered = filter.renderBody(text);
+      if (rendered !== null && rendered !== text) {
+        text = rendered;
+        applied.push("renderBody");
+      }
+    }
+
     // 3. replace
     if (filter.replace) {
       for (const rule of filter.replace) {

@@ -386,6 +386,28 @@ export function Config({
       });
     }
   }, {
+    id: 'bashOutputFilterCapEnabled',
+    label: 'Bash output line cap',
+    value: globalConfig.bashOutputFilterCapEnabled !== false,
+    type: 'boolean' as const,
+    onChange(bashOutputFilterCapEnabled: boolean) {
+      // Narrows the head/tail cut only — the rest of the filter keeps running.
+      // A separate key rather than a mode of the toggle above because the cut is
+      // the one stage that can drop the line the user needed, and giving it up
+      // should not cost them the lossless stages as well.
+      saveGlobalConfig(current => ({
+        ...current,
+        bashOutputFilterCapEnabled
+      }));
+      setGlobalConfig({
+        ...getGlobalConfig(),
+        bashOutputFilterCapEnabled
+      });
+      logEvent('claudin_bash_output_filter_cap_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
+        enabled: bashOutputFilterCapEnabled
+      });
+    }
+  }, {
     id: 'autoBackgroundAgentsEnabled',
     label: 'Auto-background agents',
     value: globalConfig.autoBackgroundAgentsEnabled === true,
@@ -1392,6 +1414,9 @@ export function Config({
     }
     if (globalConfig.bashOutputFilterEnabled !== initialConfig.current.bashOutputFilterEnabled) {
       formattedChanges.push(`${globalConfig.bashOutputFilterEnabled !== false ? 'Enabled' : 'Disabled'} bash output filter`);
+    }
+    if (globalConfig.bashOutputFilterCapEnabled !== initialConfig.current.bashOutputFilterCapEnabled) {
+      formattedChanges.push(`${globalConfig.bashOutputFilterCapEnabled !== false ? 'Enabled' : 'Disabled'} bash output line cap`);
     }
     if (globalConfig.repeatedFailureHintEnabled !== initialConfig.current.repeatedFailureHintEnabled) {
       formattedChanges.push(`${globalConfig.repeatedFailureHintEnabled !== false ? 'Enabled' : 'Disabled'} repeated-failure hint`);
