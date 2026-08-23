@@ -9,6 +9,7 @@ import {
 import { getSmallFastModel } from 'src/providers/model/model.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { queryModelWithoutStreaming } from 'src/providers/shims/claude.js'
+import { stripThinkTags } from 'src/providers/shims/thinkTagSanitizer.js'
 import { getSessionMemoryContent } from 'src/memory/session/sessionMemoryUtils.js'
 
 // Recap only needs recent context — truncate to avoid "prompt too long" on
@@ -20,6 +21,22 @@ function buildAwaySummaryPrompt(memory: string | null): string {
     ? `Session memory (broader context):\n${memory}\n\n`
     : ''
   return `${memoryBlock}The user stepped away and is coming back. Write exactly 1-3 short sentences. Start by stating the high-level task — what they are building or debugging, not implementation details. Next: the concrete next step. Skip status reports and commit recaps.`
+}
+
+/**
+ * Strip inline chain-of-thought from the recap text.
+ *
+ * `thinkingConfig: { type: 'disabled' }` only turns off the provider's separate
+ * reasoning channel — a model is still free to write `<thinking>…</thinking>`
+ * into the text body, and several do. The away card renders whatever comes back
+ * verbatim and dimmed, so an unstripped leak is displayed as if it were the
+ * recap. Returning null when nothing but reasoning came back matches what the
+ * caller already does with a null summary: show no card.
+ */
+export function sanitizeAwaySummary(text: string | null): string | null {
+  if (text === null) return null
+  const stripped = stripThinkTags(text).trim()
+  return stripped.length > 0 ? stripped : null
 }
 
 /**
@@ -63,7 +80,7 @@ export async function generateAwaySummary(
       )
       return null
     }
-    return getAssistantMessageText(response)
+    return sanitizeAwaySummary(getAssistantMessageText(response))
   } catch (err) {
     if (isSdkApiUserAbortError(err) || signal.aborted) {
       return null
