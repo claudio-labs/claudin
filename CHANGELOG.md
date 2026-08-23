@@ -1,5 +1,32 @@
 # Changelog
 
+## v1.1.19 — 2026-08-23
+
+### ✨ Features
+
+- feat(bash-filter): claim docker compose and bun run, and the timeout execution prefix (#133) (da99d6c7)
+- feat(bash-filter): route compound commands and cap unmatched output (#132) (233e4b46)
+
+### 🐛 Bug Fixes
+
+- fix(agent): strip inline thinking tags from the away summary (#131) (f88020df)
+- fix(permissions): keep plan mode inside forks and across permission choices (#130) (2f930739)
+- fix: stop tool calls stalling with no dialog on screen (#128) (cdc87dc4)
+
+### ⚡ Performance
+
+- perf(permissions): skip the auto-mode classifier for read-only Git calls (#126) (f070c59e)
+
+### 📚 Documentation
+
+- docs(memory): record the BashTool split and the false DCE-cliff constraint (1e5f7b88)
+- docs(cache): research native prompt caching on xAI, Codex and OpenAI (#127) (d72d9301)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.18 — 2026-08-20
 
 ### ✨ Features
