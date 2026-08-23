@@ -17,7 +17,7 @@
  *     the same request bytes, or the prompt cache silently stops hitting.
  *   - stableStubState.stub-byte-stability — a compaction stub must be
  *     byte-identical across runs for the same reason.
- *   - phase12Report — the per-filter reduction report for the bash filter.
+ *   - reductionFloors — the per-filter reduction report for the bash filter.
  *
  * …plus the four build-system invariant suites in `scripts/`, which
  * .claudin/rules/testing.md already names as must-run when touching
@@ -53,7 +53,7 @@ type Floor = {
 const REQUIRED_SUITES = [
   'src/agent/compact/requestDeterminism.invariant.test.ts',
   'src/agent/compact/stableStubState.stub-byte-stability.test.ts',
-  'src/tools/shared/outputFilter/Bash/phase12Report.test.ts',
+  'src/tools/shared/outputFilter/Bash/reductionFloors.test.ts',
   'scripts/build/feature-flags-source-guard.test.ts',
   'scripts/bench/tokens/measure-tool-schemas.test.ts',
   'scripts/build/no-telemetry-growthbook-stub.test.ts',

@@ -1,4 +1,5 @@
-// Phase 13 — python-extras family (uv / poetry / basedpyright / ty).
+// linters family — the python type-checkers and installers
+// (uv / poetry / basedpyright / ty).
 import { describe, expect, test } from "bun:test";
 import { runFilterBody, routesTo } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/harness.js";
 import {
@@ -10,9 +11,9 @@ import {
   BASEDPYRIGHT_CLEAN,
   TY_ERR,
   TY_CLEAN,
-} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
+} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/lintersSamples.js";
 
-describe("phase 13 — uv", () => {
+describe("uv", () => {
   test("audited (up-to-date) collapses to sentinel", () => {
     expect(runFilterBody("uv", "uv sync", UV_OK).trim()).toBe("✓ uv: up to date");
   });
@@ -42,7 +43,7 @@ describe("phase 13 — uv", () => {
   });
 });
 
-describe("phase 13 — poetry", () => {
+describe("poetry", () => {
   test("no-op run collapses to sentinel", () => {
     expect(runFilterBody("poetry", "poetry install", POETRY_OK).trim()).toBe(
       "✓ poetry: up to date",
@@ -72,7 +73,7 @@ describe("phase 13 — poetry", () => {
   });
 });
 
-describe("phase 13 — basedpyright", () => {
+describe("basedpyright", () => {
   test("strips version/search banner, keeps diagnostics + summary", () => {
     const body = runFilterBody("basedpyright", "basedpyright", BASEDPYRIGHT_ERR);
     expect(body).toContain('error: "foo" is not defined (reportUndefinedVariable)');
@@ -100,9 +101,30 @@ describe("phase 13 — basedpyright", () => {
     expect(routesTo("basedpyright src")).toBe("basedpyright");
     expect(routesTo("basedpyright --outputjson")).not.toBe("basedpyright");
   });
+
+  // --- the bare `pyright` binary ------------------------------------------
+
+  test("bare `pyright` routes to the same spec", () => {
+    expect(routesTo("pyright src/")).toBe("basedpyright");
+    expect(routesTo("pyright")).toBe("basedpyright");
+    // The reject applies to both spellings, not just the one it was written for.
+    expect(routesTo("pyright --outputjson")).not.toBe("basedpyright");
+  });
+
+  test("`pyright` output is filtered like `basedpyright` output", () => {
+    const body = runFilterBody("basedpyright", "pyright src/", BASEDPYRIGHT_ERR);
+    expect(body).toContain("3 errors, 1 warning, 0 informations");
+    expect(body).not.toContain("Searching for source files");
+  });
+
+  test("negative — word boundary and lookalikes", () => {
+    // A config file name is not an invocation.
+    expect(routesTo("cat pyrightconfig.json")).not.toBe("basedpyright");
+    expect(routesTo("pyrightconfig --check")).not.toBe("basedpyright");
+  });
 });
 
-describe("phase 13 — ty", () => {
+describe("ty", () => {
   test("strips version/Checking banner, keeps diagnostics", () => {
     const body = runFilterBody("ty", "ty check", TY_ERR);
     expect(body).toContain("error[unresolved-reference]");

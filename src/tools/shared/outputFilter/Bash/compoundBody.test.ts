@@ -25,7 +25,7 @@
  * something, that is asserted as the cap working rather than quietly excluded —
  * see "the cap cuts the middle" below.
  *
- * Every `preserves` string is lifted from `phase12Report.test.ts`; none is
+ * Every `preserves` string is lifted from `reductionFloors.test.ts`; none is
  * invented here, since those were chosen as the critical content of each sample.
  */
 import { describe, expect, test } from "bun:test";
@@ -52,7 +52,7 @@ type Pair = {
   sampleA: string;
   commandB: string;
   sampleB: string;
-  /** From phase12Report's rows: segment A's, then segment B's. */
+  /** From the reduction-floor rows: segment A's, then segment B's. */
   preserves: string[];
 };
 

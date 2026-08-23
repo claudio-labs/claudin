@@ -81,6 +81,9 @@ export const SPEC_COMMANDS: Record<string, string> = {
   'docker-ps': 'docker ps',
   'docker-images': 'docker images',
   'docker-logs': 'docker logs myapp',
+  // The recorded shape: `-f` here is `--file`, not `--follow`, which is why the
+  // compose spec does not reject it.
+  'docker-compose': 'docker compose -f docker-compose.dev.yml up -d --build',
 
   // Network. The verbose spec is named `curl`, not `curl-v`.
   curl: 'curl -v https://example.com',
@@ -122,6 +125,7 @@ export const SPEC_COMMANDS: Record<string, string> = {
   'pnpm-install': 'pnpm install',
   'pnpm-run': 'pnpm run build',
   'yarn-install': 'yarn install',
+  'bun-run': 'bun run build',
   eslint: 'eslint src/',
   prettier: 'prettier --write src/',
   'prisma-generate': 'npx prisma generate',

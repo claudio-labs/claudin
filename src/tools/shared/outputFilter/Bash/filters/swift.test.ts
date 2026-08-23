@@ -1,4 +1,4 @@
-// Phase 13 — swift family (swift build / xcodebuild).
+// swift family (swift build / xcodebuild).
 import { describe, expect, test } from "bun:test";
 import { runFilterBody, routesTo } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/harness.js";
 import {
@@ -7,9 +7,9 @@ import {
   SWIFT_WARN,
   XCODE_OK,
   XCODE_FAIL,
-} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
+} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/swiftSamples.js";
 
-describe("phase 13 — swift build", () => {
+describe("swift build", () => {
   test("clean build collapses to sentinel", () => {
     expect(runFilterBody("swift-build", "swift build", SWIFT_OK).trim()).toBe(
       "✓ swift build: complete",
@@ -38,7 +38,7 @@ describe("phase 13 — swift build", () => {
   });
 });
 
-describe("phase 13 — xcodebuild", () => {
+describe("xcodebuild", () => {
   test("clean build strips phases, keeps BUILD SUCCEEDED", () => {
     const body = runFilterBody("xcodebuild", "xcodebuild -scheme App", XCODE_OK).trim();
     expect(body).toBe("** BUILD SUCCEEDED **");

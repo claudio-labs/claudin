@@ -284,6 +284,57 @@ describe("corner cases: prefix preservation", () => {
   });
 });
 
+describe("corner cases: the `timeout` prefix", () => {
+  // `timeout` is not `sudo`: the duration sits between the wrapper and the
+  // command, so consuming the word alone would promote the number to the verb.
+  test("plain duration resolves to the wrapped command's filter", () => {
+    expect(filterName("timeout 300 docker compose up")).toBe(
+      filterName("docker compose up"),
+    );
+    expect(filterName("timeout 60 pytest tests/")).toBe(filterName("pytest tests/"));
+  });
+
+  test("duration suffixes s/m/h/d and a fractional duration", () => {
+    for (const d of ["30s", "5m", "2h", "1d", "1.5h", "0.5s"]) {
+      expect(filterName(`timeout ${d} pytest tests/`)).toBe(
+        filterName("pytest tests/"),
+      );
+    }
+  });
+
+  test("flags before the duration are consumed with it", () => {
+    const want = filterName("pytest tests/");
+    expect(filterName("timeout -k 5s 60 pytest tests/")).toBe(want);
+    expect(filterName("timeout --kill-after=5s 60 pytest tests/")).toBe(want);
+    expect(filterName("timeout --preserve-status 30 pytest tests/")).toBe(want);
+    expect(filterName("timeout --foreground -s KILL 30 pytest tests/")).toBe(want);
+  });
+
+  test("prefix on a chained segment, and stacked with sudo/env", () => {
+    expect(filterName("cd src && timeout 60 pytest tests/")).toBe(
+      filterName("pytest tests/"),
+    );
+    expect(filterName("sudo timeout 30 docker compose up")).toBe(
+      filterName("docker compose up"),
+    );
+    expect(filterName("CI=1 timeout 30 bun run build")).toBe(
+      filterName("bun run build"),
+    );
+  });
+
+  test("negative: with no duration nothing is stripped", () => {
+    // The dangerous case. If the bare word were consumed, `--help` would be
+    // promoted to the verb and could match some unrelated spec.
+    expect(filterName("timeout --help")).toBeNull();
+    expect(parseBashCommand("timeout --help").verb).toBe("timeout");
+    expect(parseBashCommand("timeout").verb).toBe("timeout");
+  });
+
+  test("negative: word boundary — `timeoutctl` is a different program", () => {
+    expect(parseBashCommand("timeoutctl 30 status").verb).toBe("timeoutctl");
+  });
+});
+
 describe("corner cases: real-world agent commands", () => {
   test("typical 'navigate then run' pattern", () => {
     // No filter for `cd`, so should resolve to `ls` filter.
@@ -916,6 +967,70 @@ describe("review #4: extractCommandPrefix", () => {
 
   test("captures time prefix", () => {
     expect(extractCommandPrefix("time git log")).toBe("time ");
+  });
+
+  // --- `timeout` and the lockstep invariant --------------------------------
+  //
+  // This is the one place in the phase where being wrong changes BEHAVIOUR
+  // rather than formatting. `maybeRewrite` re-prepends whatever this returns
+  // onto the rewritten verb, so a prefix that came back short would execute the
+  // command with the timeout silently dropped.
+
+  test("captures timeout with its duration", () => {
+    expect(extractCommandPrefix("timeout 300 git status")).toBe("timeout 300 ");
+    expect(extractCommandPrefix("timeout 1.5h git status")).toBe("timeout 1.5h ");
+  });
+
+  test("captures timeout with its flags and duration", () => {
+    expect(extractCommandPrefix("timeout -k 5s 60 git status")).toBe(
+      "timeout -k 5s 60 ",
+    );
+    expect(extractCommandPrefix("timeout --preserve-status 30 git status")).toBe(
+      "timeout --preserve-status 30 ",
+    );
+  });
+
+  test("captures env + sudo + timeout stacked", () => {
+    expect(extractCommandPrefix("CI=1 sudo timeout 30 git status")).toBe(
+      "CI=1 sudo timeout 30 ",
+    );
+  });
+
+  test("captures nothing when timeout has no duration", () => {
+    expect(extractCommandPrefix("timeout --help")).toBe("");
+  });
+
+  test("lockstep: the prefix is always a real prefix of the command", () => {
+    // The property `consumeExecutionPrefix`'s two callers must agree on: what
+    // `extractCommandPrefix` hands back and what `parseBashCommand` calls the
+    // verb must join back into the original, so a rewrite cannot lose the
+    // wrapper.
+    //
+    // Named for what it pins, which is the STRUCTURE — it survives a
+    // `TIMEOUT_PREFIX_RE` that eats the wrong number of tokens, because the
+    // prefix and the verb still meet. The duration handling is pinned by the
+    // eight tests around it, verified by deleting the duration from the regex
+    // and watching them go red.
+    //
+    // It also holds only for commands with no line continuation: the prefix is
+    // sliced from the COLLAPSED string, so `"timeout \\\n 300 git status"`
+    // yields a prefix that is not a prefix of the input. That is pre-existing
+    // (see "collapses line continuation before scanning" above) and is why no
+    // continuation appears in this list.
+    for (const cmd of [
+      "timeout 300 git status",
+      "timeout -k 5s 60 git status",
+      "CI=1 sudo timeout 30 git status",
+      "timeout --help",
+    ]) {
+      const prefix = extractCommandPrefix(cmd);
+      expect(cmd.startsWith(prefix)).toBe(true);
+      // What the parser calls the verb is exactly what sits after the prefix,
+      // so `prefix + rewritten-verb` recreates the command the model approved.
+      expect(cmd.slice(prefix.length).startsWith(parseBashCommand(cmd).verb)).toBe(
+        true,
+      );
+    }
   });
 
   test("collapses line continuation before scanning", () => {

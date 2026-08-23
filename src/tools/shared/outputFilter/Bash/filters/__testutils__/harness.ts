@@ -1,11 +1,14 @@
-// Shared test harness for the Phase 13 per-family filter tests.
+// Shared test harness for the per-family filter tests.
 //
-// Phase ≤12 keeps its helpers inline in `bashFilter.test.ts`; this module
-// re-exports the same behavior so each `filters/<family>.test.ts` can drive a
-// single FilterSpec against real captured output without duplicating the
-// marker-stripping / reduction-measuring boilerplate.
+// The oldest specs keep their helpers inline in `bashFilter.test.ts`; this
+// module re-exports the same behavior so each `filters/<family>.test.ts` can
+// drive a single FilterSpec against real captured output without duplicating
+// the marker-stripping / reduction-measuring boilerplate.
 //
 // NOT a `.test` file — it exports helpers, it does not register tests.
+
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 import {
   applyBashFilterToStdout,
@@ -14,6 +17,14 @@ import {
 import { findFilterForCommand } from "src/tools/shared/outputFilter/Bash/registry.js";
 import { builtInFilters } from "src/tools/shared/outputFilter/Bash/filters/index.js";
 import type { FilterSpec } from "src/tools/shared/outputFilter/Bash/types.js";
+
+const SAMPLES_DIR = path.resolve(import.meta.dir, "../../__fixtures__/samples");
+
+/** Read one capture out of `__fixtures__/samples/`. Captures big enough to be
+ * unreadable inline live on disk, where the ROI bench reads the same file. */
+export function readSample(name: string): string {
+  return readFileSync(path.join(SAMPLES_DIR, name), "utf8");
+}
 
 /** Locate a registered built-in spec by its `name`. Throws if absent so a
  * typo in a test surfaces immediately rather than silently passing. */

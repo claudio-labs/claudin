@@ -15,7 +15,7 @@ Everything now reads this directory:
 | Consumer | What it does |
 |---|---|
 | `src/tools/shared/outputFilter/Bash/bashFilter.test.ts` | the ROI + safety harness (most of the assertions) |
-| `src/tools/shared/outputFilter/Bash/phase12Report.test.ts` | Phase 12 per-filter report |
+| `src/tools/shared/outputFilter/Bash/reductionFloors.test.ts` | the per-filter reduction floors + ROI table |
 | `scripts/bench/tokens/measure-bash-filter-roi.test.ts` | prints the ROI table; reads the whole dir, maps names via `FIXTURE_MAP` |
 | `scripts/bench/perf/bash-filter-gain.test.ts` | bench, opt-in with `CLAUDIN_BENCH=1` |
 | `docs/archive/discovery/bash-output-filter/validation/validate.ts` | the original discovery runner, kept as a research artifact |

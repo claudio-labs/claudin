@@ -169,6 +169,7 @@ const FIXTURE_MAP: Record<string, [string, string]> = {
   "pnpm-install": ["pnpm-install", cmd("pnpm-install")],
   "pnpm-run": ["pnpm-run", cmd("pnpm-run")],
   "yarn-install": ["yarn-install", cmd("yarn-install")],
+  "bun-run-smoke": ["bun-run", "bun run smoke"],
   "prisma-generate": ["prisma-generate", "prisma generate"],
   "prisma-migrate": ["prisma-migrate", "prisma migrate dev"],
 
@@ -197,6 +198,7 @@ const FIXTURE_MAP: Record<string, [string, string]> = {
   "docker-ps": ["docker-ps", cmd("docker-ps")],
   "docker-images": ["docker-images", cmd("docker-images")],
   "docker-logs": ["docker-logs", cmd("docker-logs")],
+  "docker-compose-up": ["docker-compose", cmd("docker-compose")],
 
   // --- network --------------------------------------------------------------
   // The spec is `curl`; this entry read `curl-v` and silently skipped.

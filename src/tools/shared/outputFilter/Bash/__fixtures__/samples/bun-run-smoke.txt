@@ -1,0 +1,10 @@
+$ bun run build && node dist/cli.mjs --version && node dist/cli.mjs --help >/dev/null
+$ bun run scripts/build/build.ts
+  🔇 no-telemetry: stubbed 21 modules
+🔗 103 unresolved import(s) stubbed to noop (all baselined — subsystems this fork never received)
+  🧹 chunks GC: pruned 906 file(s) from 1 old generation(s), kept mt0z7uc5, mt0z6rql, mt0yw0pw
+✓ Built claudin v1.1.18 → dist/cli.mjs
+  📄 captured --help → dist/help.txt (8537 bytes)
+  📄 captured 12 subcommand help snapshots (0 skipped)
+  🔄 source pre-processing: 470 files (restored)
+1.1.18 (Claudin)

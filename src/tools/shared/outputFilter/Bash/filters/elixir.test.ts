@@ -1,13 +1,13 @@
-// Phase 13 — elixir family (mix compile / format).
+// elixir family (mix compile / format).
 import { describe, expect, test } from "bun:test";
 import { runFilterBody, routesTo } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/harness.js";
 import {
   MIX_COMPILE_WARN,
   MIX_COMPILE_OK,
   MIX_FORMAT_FILES,
-} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
+} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/elixirSamples.js";
 
-describe("phase 13 — mix compile", () => {
+describe("mix compile", () => {
   test("strips Compiling/Generated, keeps the warning", () => {
     const body = runFilterBody("mix-compile", "mix compile", MIX_COMPILE_WARN).trim();
     expect(body).toBe('warning: variable "conn" is unused\n  lib/router.ex:42');
@@ -37,7 +37,7 @@ describe("phase 13 — mix compile", () => {
   });
 });
 
-describe("phase 13 — mix format", () => {
+describe("mix format", () => {
   test("--check-formatted file list passes through", () => {
     const body = runFilterBody(
       "mix-format",
