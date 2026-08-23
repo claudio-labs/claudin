@@ -36,9 +36,12 @@ function sample(name: string): string {
  * up -d --build legendarr` — 152 lines, 5,588 chars.
  *
  * Carries every shape the spec targets at once: BuildKit step headers, the
- * `#N <elapsed> ` prefix repeated over a whole `uv sync` (37 lines of it), the
- * per-step `DONE`/`CACHED` footers, layer digests, and the compose lifecycle
- * block at the end.
+ * `#N <elapsed> ` prefix (74 of the 151 lines), the per-step `DONE`/`CACHED`
+ * footers (21), layer digests, and the compose lifecycle block at the end.
+ *
+ * The char counts here are BYTES. The ROI floors divide JS `.length`, which is
+ * UTF-16 units — the two differ wherever a capture contains an emoji, so scrub
+ * a fixture against `.length`, not `wc -c`.
  */
 export const COMPOSE_UP = sample("docker-compose-up.txt");
 
@@ -60,11 +63,14 @@ failed to solve: process "/bin/sh -c uv sync --frozen --all-packages" did not co
 
 /** Nothing but intermediate lifecycle states, with a blank run in the middle.
  * Every line is strippable, so the body must reach `onEmpty` — and the blank run
- * must not survive `collapseRuns` as a bare ` (×2)` marker. */
+ * must not survive `collapseRuns` as a bare ` (×2)` marker.
+ *
+ * No `Created` line here: it is terminal for `create`/`up --no-start` and is
+ * deliberately kept, so including it would stop this reaching `onEmpty`. */
 export const COMPOSE_ALL_NOISE = ` Container app-db-1 Creating
 
 
- Container app-db-1 Created
+ Container app-db-1 Pulling
  Container app-db-1 Starting
 `;
 
@@ -73,17 +79,6 @@ export const COMPOSE_ALL_NOISE = ` Container app-db-1 Creating
 export const COMPOSE_LOGS = `legendarr-1  | 2026-08-01T10:00:00.123456789Z INFO  starting web worker
 db-1         | 2026-08-01 10:00:01.004 UTC [27] LOG:  database system is ready
 legendarr-1  | 2026-08-01T10:00:02.887654321Z INFO  listening on :8080
-`;
-
-// ───────────────────────────── docker exec ─────────────────────────────────
-
-/** Whatever the command inside the container printed. Deliberately a body that
- * LOOKS like docker output — nothing here may be touched. */
-export const EXEC_INNER = `CONTAINER ID   IMAGE     STATUS
-#1 DONE 0.0s
- Container app-1 Starting
-total 12
-drwxr-xr-x 1 root root 4096 Aug  1 10:00 app
 `;
 
 // ─────────────────────────────── bun run ───────────────────────────────────

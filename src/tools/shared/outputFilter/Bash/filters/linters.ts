@@ -305,9 +305,16 @@ export const basedpyright: FilterSpec = {
     BASEDPYRIGHT_VERSION,
   ],
   collapseRuns: true,
-  maxLines: 50,
   onEmpty: 'basedpyright: ok',
 }
+
+// No `maxLines` on either checker below, and it is not an omission. A matched
+// spec's cap runs unconditionally — `withGenericFloor` returns early for a
+// non-null spec, so `looksLikeDiagnostics` never gets to veto it — and the cut
+// is to head+tail = 30 lines, not to `maxLines`. A 300-line diagnostic dump
+// arrived as 31 lines. floor.ts calls a diagnostic list "precisely the output
+// where the line that mattered is as likely to be the 40th", which is the case
+// against capping it; these two specs print nothing else.
 
 // --- ty (Astral type checker) ----------------------------------------------
 const TY_MATCH = /^ty\b/
@@ -322,6 +329,5 @@ export const ty: FilterSpec = {
   stripAnsi: true,
   stripLinesMatching: [TY_CHECKING, TY_VERSION],
   collapseRuns: true,
-  maxLines: 50,
   onEmpty: 'ty: ok',
 }

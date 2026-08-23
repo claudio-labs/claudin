@@ -5,7 +5,9 @@
 // Phase 9     — system utilities (ping/rsync/tree/ssh/df/du/dmesg/stat/jq) + curl-plain.
 // Phase 10    — wget + find.
 // Phase 11    — Java build tools (gradle, mvn) + IAC (terraform).
-// Phase 14    — measured command gaps: docker compose/exec, bun run.
+// Phase 12    — JS extras + python packaging.
+// Phase 13    — language toolchains (cc/make/pio) + python extras.
+// Phase 14    — measured command gaps: docker compose, bun run.
 //
 // Order matters only insofar as more specific specs must come before
 // less specific ones when their matchCommand regex could overlap. We
@@ -77,7 +79,7 @@ import { springBoot } from 'src/tools/shared/outputFilter/Bash/filters/java-buil
 import { terraform } from 'src/tools/shared/outputFilter/Bash/filters/iac.js'
 import { cargoBuild, cargoCheck, cargoTest, cargoClippy, cargoRun, cargoFmt } from 'src/tools/shared/outputFilter/Bash/filters/cargo.js'
 import { goBuild, goVet, golangciLint } from 'src/tools/shared/outputFilter/Bash/filters/go.js'
-import { dockerPs, dockerImages, dockerLogs, dockerCompose, dockerExec } from 'src/tools/shared/outputFilter/Bash/filters/containers.js'
+import { dockerPs, dockerImages, dockerLogs, dockerCompose } from 'src/tools/shared/outputFilter/Bash/filters/containers.js'
 import { curlV, dig, curlPlain, wget } from 'src/tools/shared/outputFilter/Bash/filters/network.js'
 import {
   npmInstall,
@@ -95,7 +97,6 @@ import {
   oxlint,
   turbo,
   nx,
-  // Phase 14 — measured command gap.
   bunRun,
 } from 'src/tools/shared/outputFilter/Bash/filters/js-pkg.js'
 // Phase 13 — language toolchains (rtk gap-fill).
@@ -269,6 +270,5 @@ export const builtInFilters: FilterSpec[] = [
   // verb from `bun test` (claimed by `bunTest` above).
   // ======================================================================
   dockerCompose,
-  dockerExec,
   bunRun,
 ]

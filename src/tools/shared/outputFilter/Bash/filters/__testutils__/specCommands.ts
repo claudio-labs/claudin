@@ -84,7 +84,6 @@ export const SPEC_COMMANDS: Record<string, string> = {
   // The recorded shape: `-f` here is `--file`, not `--follow`, which is why the
   // compose spec does not reject it.
   'docker-compose': 'docker compose -f docker-compose.dev.yml up -d --build',
-  'docker-exec': 'docker exec api ls /app',
 
   // Network. The verbose spec is named `curl`, not `curl-v`.
   curl: 'curl -v https://example.com',

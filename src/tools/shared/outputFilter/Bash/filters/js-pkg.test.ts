@@ -164,6 +164,14 @@ describe("phase 14 — bun run", () => {
     expect(body).toContain("uploaded 412 files");
   });
 
+  test("the `bun run vX.Y.Z` banner is stripped", () => {
+    // No committed capture carries the banner (bun only prints it on some
+    // paths), so without this the regex is unexercised.
+    const raw = "bun run v1.1.18 (af24e281)\n$ tsc --noEmit\nok\n";
+    const body = runFilterBody("bun-run", "bun run typecheck", raw).trim();
+    expect(body).toBe("ok");
+  });
+
   test("regression: an all-echo body with a blank run leaves no ` (×N)` artifact", () => {
     const raw = "$ tsc --noEmit\n\n\n$ echo done\n";
     const body = runFilterBody("bun-run", "bun run typecheck", raw).trim();

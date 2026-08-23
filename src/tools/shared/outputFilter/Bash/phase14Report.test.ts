@@ -6,12 +6,9 @@
  * the sample is mostly signal, so only survival is checked — and (b) that the
  * `preserves[]` strings still make it through.
  *
- * Two rows carry a `null` floor for reasons worth stating, because a floor that
- * is absent for a bad reason is how a report starts lying:
+ * One row carries a `null` floor for a reason worth stating, because a floor
+ * that is absent for a bad reason is how a report starts lying:
  *
- *  - `docker-exec` has no line shape at all. The body is whatever ran inside the
- *    container, and the spec is `stripAnsi` + a line cap by design. There is no
- *    honest number to assert, so none is asserted.
  *  - `docker-compose × COMPOSE_FAIL` is a failed build: almost every line is the
  *    error or its recap. Reducing it further would be losing it.
  *
@@ -73,14 +70,6 @@ const ROWS: Row[] = [
     command: "docker compose logs",
     floor: 20,
     preserves: ["starting web worker", "database system is ready"],
-  },
-  {
-    phase: "14.1",
-    filter: "docker-exec",
-    sample: "EXEC_INNER",
-    command: "docker exec api ls -la /app",
-    floor: null,
-    preserves: ["drwxr-xr-x 1 root root", "#1 DONE 0.0s"],
   },
   // T2 — bun run
   {

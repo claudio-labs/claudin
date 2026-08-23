@@ -1011,6 +1011,12 @@ describe("review #4: extractCommandPrefix", () => {
     // prefix and the verb still meet. The duration handling is pinned by the
     // eight tests around it, verified by deleting the duration from the regex
     // and watching them go red.
+    //
+    // It also holds only for commands with no line continuation: the prefix is
+    // sliced from the COLLAPSED string, so `"timeout \\\n 300 git status"`
+    // yields a prefix that is not a prefix of the input. That is pre-existing
+    // (see "collapses line continuation before scanning" above) and is why no
+    // continuation appears in this list.
     for (const cmd of [
       "timeout 300 git status",
       "timeout -k 5s 60 git status",
