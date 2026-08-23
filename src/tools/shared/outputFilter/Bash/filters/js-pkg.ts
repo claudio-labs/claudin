@@ -59,6 +59,38 @@ export const npmRun: FilterSpec = {
   collapseRuns: true,
 }
 
+// --- bun run <script> --------------------------------------------------------
+
+// Bun echoes the script it is about to run as `$ <command>`, once per nesting
+// level — `bun run smoke` prints `$ bun run build && …` and then
+// `$ bun run scripts/build/build.ts`. Same ceremony as npm's `> `, same
+// treatment: strip the echo and let the underlying tool's own filter work on
+// what follows.
+//
+// A script NAME is required, so this never claims bare `bun run` (which lists
+// the scripts rather than running one). `bun test` and `bun install` are
+// different verbs and are not matched at all — `bunTest` owns the first.
+//
+// KNOWN GAP, shared with `npm-run` above: a script whose OWN output begins with
+// `$ ` loses that line. The stages are stateless per line, so "only the echo at
+// the top" is not expressible; `js-pkg.test.ts` pins the behaviour rather than
+// pretending it does not exist.
+const BUN_RUN_MATCH = /^bun\s+run\s+[\w:@./-]+/
+const BUN_RUN_PASSTHROUGH = /(?:^|\s)--silent\b/
+// `$ tsc --noEmit`, `$ bun run scripts/build/build.ts`.
+const BUN_SCRIPT_ECHO = /^\$\s+\S/
+// The version banner some bun versions print before the echo.
+const BUN_RUN_BANNER = /^bun run v\d+\.\d+/
+
+export const bunRun: FilterSpec = {
+  name: 'bun-run',
+  matchCommand: BUN_RUN_MATCH,
+  matchCommandReject: BUN_RUN_PASSTHROUGH,
+  stripAnsi: true,
+  stripLinesMatching: [BUN_RUN_BANNER, BUN_SCRIPT_ECHO],
+  collapseRuns: true,
+}
+
 // --- pnpm install / add / i --------------------------------------------------
 
 const PNPM_INSTALL_MATCH = /^pnpm\s+(install|i|add)\b/

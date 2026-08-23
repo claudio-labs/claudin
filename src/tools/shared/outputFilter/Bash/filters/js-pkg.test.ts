@@ -1,6 +1,11 @@
 // Phase 13 — js-extras family (next / biome / oxlint / turbo / nx).
+// Phase 14 — bun run.
 import { describe, expect, test } from "bun:test";
-import { runFilterBody, routesTo } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/harness.js";
+import { runFilterBody, reductionPct, routesTo } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/harness.js";
+import {
+  BUN_RUN_SMOKE,
+  BUN_RUN_ECHOING_SCRIPT,
+} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/phase14Samples.js";
 import {
   NEXT_BUILD_OK,
   NEXT_TYPE_ERR,
@@ -134,5 +139,51 @@ describe("phase 13 — nx", () => {
     expect(routesTo("nx build myapp")).toBe("nx");
     expect(routesTo("pnpm nx build myapp")).toBe("nx");
     expect(routesTo("npx nx run-many -t build")).toBe("nx");
+  });
+});
+
+describe("phase 14 — bun run", () => {
+  test("strips the `$ ` script echo, keeps what the script printed", () => {
+    const body = runFilterBody("bun-run", "bun run smoke", BUN_RUN_SMOKE);
+    // Both echo lines go — `smoke` nests into `build`, so bun prints two.
+    expect(body).not.toContain("$ bun run build &&");
+    expect(body).not.toContain("$ bun run scripts/build/build.ts");
+    // The build's own output survives, including its result line.
+    expect(body).toContain("✓ Built claudin v1.1.18 → dist/cli.mjs");
+    expect(body).toContain("1.1.18 (Claudin)");
+    expect(reductionPct(BUN_RUN_SMOKE, body)).toBeGreaterThan(15);
+  });
+
+  test("KNOWN GAP: a `$ ` line printed BY the script is stripped too", () => {
+    // The stages are stateless per line, so "only the echo at the top" is not
+    // expressible. `npm-run` has had the same exposure with `> ` since Phase 12;
+    // this pins the behaviour rather than leaving it to be discovered.
+    const body = runFilterBody("bun-run", "bun run deploy", BUN_RUN_ECHOING_SCRIPT);
+    expect(body).not.toContain("$ rsync -a dist/");
+    expect(body).toContain("preparing release 1.2.3");
+    expect(body).toContain("uploaded 412 files");
+  });
+
+  test("regression: an all-echo body with a blank run leaves no ` (×N)` artifact", () => {
+    const raw = "$ tsc --noEmit\n\n\n$ echo done\n";
+    const body = runFilterBody("bun-run", "bun run typecheck", raw).trim();
+    expect(body).not.toContain("(×");
+    expect(body).toBe("");
+  });
+
+  test("routes `bun run <script>`, never `bun test` or a bare `bun run`", () => {
+    expect(routesTo("bun run build")).toBe("bun-run");
+    expect(routesTo("bun run test:floor")).toBe("bun-run");
+    expect(routesTo("bun run scripts/build/build.ts")).toBe("bun-run");
+    // The only real overlap in this phase: `bunTest` owns `bun test`.
+    expect(routesTo("bun test")).toBe("bun-test");
+    // A bare `bun run` LISTS the scripts, it does not run one.
+    expect(routesTo("bun run")).not.toBe("bun-run");
+  });
+
+  test("negative: --silent rejected, sibling verbs untouched", () => {
+    expect(routesTo("bun run build --silent")).not.toBe("bun-run");
+    expect(routesTo("bun install")).not.toBe("bun-run");
+    expect(routesTo("bunx prettier --write .")).not.toBe("bun-run");
   });
 });

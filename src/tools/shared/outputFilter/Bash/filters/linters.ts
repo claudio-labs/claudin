@@ -277,7 +277,16 @@ export const poetry: FilterSpec = {
 }
 
 // --- basedpyright ----------------------------------------------------------
-const BASEDPYRIGHT_MATCH = /^basedpyright\b/
+// Both spellings: `basedpyright` is a fork of `pyright` and prints the same
+// shape — `BASEDPYRIGHT_VERSION` below already accepted either banner, so the
+// bare binary was a missing token rather than a design decision.
+//
+// The reach is small, and knowingly so: `pyright` as a Bash verb is claimed by
+// the Typecheck redirect (`src/tools/TypecheckTool/detect.ts` maps
+// /\bpyright\b/ to the pyright checker), so this spec only ever sees the
+// one-shot escape past it. Measured over the whole recorded session corpus:
+// two invocations, one of them refused.
+const BASEDPYRIGHT_MATCH = /^(?:based)?pyright\b/
 const BASEDPYRIGHT_REJECT = /(?:^|\s)--outputjson\b/
 const BASEDPYRIGHT_BLANK = /^\s*$/
 const BASEDPYRIGHT_SEARCHING = /^Searching for source files/

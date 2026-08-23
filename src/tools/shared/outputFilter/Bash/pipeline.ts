@@ -42,6 +42,21 @@ function debug(label: string, detail?: unknown): void {
 export const ENV_ASSIGNMENT_RE = /^[A-Za-z_][A-Za-z0-9_]*=/;
 export const LEADING_PREFIX_RE =
   /^(?:sudo\s+|time\s+|nice\s+|ionice\s+|chrt\s+|unshare\s+)+/;
+// `timeout` cannot join the list above, because unlike `sudo`/`time` it takes an
+// ARGUMENT: the duration sits between the wrapper and the command. Stripping the
+// bare word would promote the duration to the verb and the command would match
+// nothing (`timeout 300 docker compose up` → verb `300`).
+//
+// So the duration is part of the pattern, and that is also the safety property:
+// with no duration to consume there is no match and nothing is stripped, which
+// is what keeps `timeout --help` from having its flag promoted to a verb.
+//
+// GNU coreutils syntax: `timeout [OPTION] DURATION COMMAND [ARG]...`, where
+// DURATION is a floating point number with an optional s/m/h/d suffix. It is a
+// single number — `1h30m` is a `sleep`-ism that timeout rejects — so this does
+// not try to accept one.
+export const TIMEOUT_PREFIX_RE =
+  /^timeout\s+(?:(?:-[ks]\s+\S+|--(?:kill-after|signal)(?:=\S+|\s+\S+)|--preserve-status|--foreground|--verbose|-v)\s+)*\d+(?:\.\d+)?[smhd]?\s+/;
 // Runner prefixes whose argument IS the tool being invoked — stripping them
 // lets every filter registered for the bare tool match the runner-invoked form
 // (`poetry run pytest` → pytest, `npx eslint` → eslint, `pnpm dlx prettier` →
@@ -82,6 +97,11 @@ export function consumeExecutionPrefix(s: string): number {
     const lead = rest.match(LEADING_PREFIX_RE);
     if (lead) {
       i += lead[0].length;
+      continue;
+    }
+    const timeout = rest.match(TIMEOUT_PREFIX_RE);
+    if (timeout) {
+      i += timeout[0].length;
       continue;
     }
     const runner = rest.match(RUNNER_PREFIX_RE);
