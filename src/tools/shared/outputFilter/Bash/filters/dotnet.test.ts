@@ -1,4 +1,4 @@
-// Phase 13 — dotnet family (build / test / format).
+// dotnet family (build / test / format).
 import { describe, expect, test } from "bun:test";
 import { runFilterBody, routesTo } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/harness.js";
 import {
@@ -9,9 +9,9 @@ import {
   DOTNET_TEST_FAIL,
   DOTNET_FORMAT_OK,
   DOTNET_FORMAT_ERR,
-} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
+} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/dotnetSamples.js";
 
-describe("phase 13 — dotnet build", () => {
+describe("dotnet build", () => {
   test("clean 0/0 build collapses to sentinel", () => {
     expect(runFilterBody("dotnet-build", "dotnet build", DOTNET_BUILD_OK).trim()).toBe(
       "✓ dotnet build: succeeded",
@@ -41,7 +41,7 @@ describe("phase 13 — dotnet build", () => {
   });
 });
 
-describe("phase 13 — dotnet test", () => {
+describe("dotnet test", () => {
   test("all-pass / no-skip run collapses to sentinel", () => {
     expect(runFilterBody("dotnet-test", "dotnet test", DOTNET_TEST_OK).trim()).toBe(
       "✓ dotnet test: all passed",
@@ -69,7 +69,7 @@ describe("phase 13 — dotnet test", () => {
   });
 });
 
-describe("phase 13 — dotnet format", () => {
+describe("dotnet format", () => {
   test("clean format collapses to onEmpty sentinel", () => {
     expect(
       runFilterBody("dotnet-format", "dotnet format", DOTNET_FORMAT_OK).trim(),

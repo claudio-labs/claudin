@@ -1,9 +1,9 @@
-// Phase 13 — ruby family (rake).
+// ruby family (rake).
 import { describe, expect, test } from "bun:test";
 import { runFilterBody, routesTo } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/harness.js";
-import { RAKE_OK, RAKE_FAIL } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
+import { RAKE_OK, RAKE_FAIL } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/rubySamples.js";
 
-describe("phase 13 — rake", () => {
+describe("rake", () => {
   test("strips ANSI and collapses blank runs, keeps the summary", () => {
     const body = runFilterBody("rake", "rake test", RAKE_OK);
     expect(body).not.toContain("\x1b["); // ANSI stripped

@@ -2,9 +2,7 @@
 // images / logs / compose).
 //
 // Named for the filter family it serves, matching `filters/containers.ts`, so
-// the file says what it holds rather than when it was written. `phase13Samples`
-// beside it still carries five families under one schedule-shaped name and is
-// the remaining half of this cleanup.
+// the file says what it holds rather than when it was written.
 //
 // The big capture is READ FROM `__fixtures__/samples/`, not inlined: the same
 // file is already needed on disk by

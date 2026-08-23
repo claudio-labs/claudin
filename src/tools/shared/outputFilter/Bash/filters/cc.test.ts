@@ -1,5 +1,5 @@
-// Phase 13 — cc family (gcc/g++, make, pio run). Real captured output lives in
-// __testutils__/phase13Samples.ts; helpers in __testutils__/harness.ts.
+// cc family (gcc/g++, make, pio run). Real captured output lives in
+// __testutils__/ccSamples.ts; helpers in __testutils__/harness.ts.
 import { describe, expect, test } from "bun:test";
 import { runFilterBody, reductionPct, routesTo } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/harness.js";
 import {
@@ -11,9 +11,9 @@ import {
   PIO_ERR,
   PIO_OK,
   PIO_SIZE,
-} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
+} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/ccSamples.js";
 
-describe("phase 13 — gcc", () => {
+describe("gcc", () => {
   test("strips include chain + tallies, keeps diagnostics and carets", () => {
     const body = runFilterBody("gcc", "gcc -O2 main.c", GCC_ERR);
     expect(body).not.toContain("In file included from");
@@ -46,7 +46,7 @@ describe("phase 13 — gcc", () => {
   });
 });
 
-describe("phase 13 — make", () => {
+describe("make", () => {
   test("strips Entering/Leaving directory, keeps the recipe echo", () => {
     const body = runFilterBody("make", "make", MAKE_OK).trim();
     expect(body).toBe("gcc -O2 foo.c");
@@ -84,7 +84,7 @@ describe("phase 13 — make", () => {
   });
 });
 
-describe("phase 13 — pio run", () => {
+describe("pio run", () => {
   test("strips build ceremony, keeps the compiler error", () => {
     const body = runFilterBody("pio-run", "pio run", PIO_ERR).trim();
     expect(body).toBe("src/platform/main.cpp:10:3: error: 'LED_BUILTINN' was not declared");

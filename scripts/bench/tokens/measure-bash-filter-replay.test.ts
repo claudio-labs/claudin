@@ -9,7 +9,7 @@
  *
  * Runs as a Bun test so `src/...` imports resolve (same reason as the ROI
  * report). It ALWAYS PASSES — a report, not a gate. The regression floor lives
- * in `phase12Report.test.ts`, which is one of the seven invariant suites and
+ * in `reductionFloors.test.ts`, which is one of the seven invariant suites and
  * runs everywhere; a gate keyed on a corpus that exists on one machine would
  * fail for everyone else.
  *

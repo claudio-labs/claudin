@@ -4,8 +4,6 @@ import { runFilterBody, reductionPct, routesTo } from "src/tools/shared/outputFi
 import {
   BUN_RUN_SMOKE,
   BUN_RUN_ECHOING_SCRIPT,
-} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/jsPkgSamples.js";
-import {
   NEXT_BUILD_OK,
   NEXT_TYPE_ERR,
   NEXT_WEBPACK_ERR,
@@ -18,9 +16,9 @@ import {
   TURBO_CACHED,
   NX_OK,
   NX_ERR,
-} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
+} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/jsPkgSamples.js";
 
-describe("phase 13 — next build", () => {
+describe("next build", () => {
   test("clean build collapses to sentinel", () => {
     expect(runFilterBody("next-build", "next build", NEXT_BUILD_OK).trim()).toBe(
       "✓ next build: compiled successfully",
@@ -60,7 +58,7 @@ describe("phase 13 — next build", () => {
   });
 });
 
-describe("phase 13 — biome", () => {
+describe("biome", () => {
   test("clean check collapses to onEmpty", () => {
     expect(runFilterBody("biome", "biome check .", BIOME_CLEAN).trim()).toBe("biome: ok");
   });
@@ -79,7 +77,7 @@ describe("phase 13 — biome", () => {
   });
 });
 
-describe("phase 13 — oxlint", () => {
+describe("oxlint", () => {
   test("clean run collapses to onEmpty", () => {
     expect(runFilterBody("oxlint", "oxlint", OXLINT_CLEAN).trim()).toBe("oxlint: ok");
   });
@@ -98,7 +96,7 @@ describe("phase 13 — oxlint", () => {
   });
 });
 
-describe("phase 13 — turbo", () => {
+describe("turbo", () => {
   test("strips cache/scope/Tasks/Duration, keeps task output", () => {
     const body = runFilterBody("turbo", "turbo build", TURBO_OK).trim();
     expect(body).toBe("> myapp:build\nCompiled successfully.");
@@ -121,7 +119,7 @@ describe("phase 13 — turbo", () => {
   });
 });
 
-describe("phase 13 — nx", () => {
+describe("nx", () => {
   test("strips NX banners + separators, keeps build output", () => {
     const body = runFilterBody("nx", "nx build myapp", NX_OK).trim();
     expect(body).toBe("Compiled successfully.\nOutput: dist/apps/myapp");

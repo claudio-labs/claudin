@@ -1,9 +1,9 @@
-// Phase 13 — java-extras family (spring-boot) + the gradle/mvn overlap fix.
+// java-build family — spring-boot, plus the gradle/mvn overlap fix.
 import { describe, expect, test } from "bun:test";
 import { runFilterBody, routesTo } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/harness.js";
-import { SPRING_OK, SPRING_ERR } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/phase13Samples.js";
+import { SPRING_OK, SPRING_ERR } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/javaBuildSamples.js";
 
-describe("phase 13 — spring-boot", () => {
+describe("spring-boot", () => {
   test("startup keeps Tomcat/Started summary, drops banner + per-bean INFO", () => {
     const body = runFilterBody("spring-boot", "mvn spring-boot:run", SPRING_OK).trim();
     expect(body).toBe(
@@ -40,7 +40,7 @@ describe("phase 13 — spring-boot", () => {
   });
 });
 
-describe("phase 13 — gradle/mvn warning survival", () => {
+describe("gradle/mvn warning survival", () => {
   test("gradle: a BUILD SUCCESSFUL with a deprecation warning is NOT collapsed", () => {
     const raw =
       "> Task :compileJava\nDeprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.\n\nBUILD SUCCESSFUL in 4s\n3 actionable tasks: 3 executed\n";
@@ -68,7 +68,7 @@ describe("phase 13 — gradle/mvn warning survival", () => {
   });
 });
 
-describe("phase 13 — gradle/mvn clean collapse", () => {
+describe("gradle/mvn clean collapse", () => {
   test("gradle: a clean BUILD SUCCESSFUL collapses to the sentinel", () => {
     // No warning / deprecation / FAILED anywhere → the guard must NOT fire and
     // the sentinel must collapse the body. Guards against a future widening of
