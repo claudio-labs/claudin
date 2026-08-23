@@ -1,4 +1,4 @@
-// Phase 14 — containers family (docker compose / docker exec).
+// Containers family — docker compose, and the deliberate absence of docker exec.
 //
 // `docker ps` / `docker images` / `docker logs` predate this file and are still
 // covered only by their fixtures in the ROI bench. Backfilling them is worth
@@ -15,11 +15,11 @@ import {
   COMPOSE_FAIL,
   COMPOSE_ALL_NOISE,
   COMPOSE_LOGS,
-} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/phase14Samples.js";
+} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/containerSamples.js";
 
 const UP = "docker compose -f docker-compose.dev.yml up -d --build legendarr";
 
-describe("phase 14 — docker compose", () => {
+describe("docker compose", () => {
   test("strips step bookkeeping, keeps the step headers and the result", () => {
     const body = runFilterBody("docker-compose", UP, COMPOSE_UP);
 
@@ -171,7 +171,7 @@ describe("phase 14 — docker compose", () => {
   });
 });
 
-describe("phase 14 — docker exec is deliberately NOT claimed", () => {
+describe("docker exec is deliberately NOT claimed", () => {
   // A spec for it was written and removed: it could only set `stripAnsi` and
   // `collapseRuns`, which IS the generic floor, while its own `maxLines` would
   // cut unconditionally — the floor's body-shape vetoes do not run for a matched
@@ -200,7 +200,7 @@ describe("phase 14 — docker exec is deliberately NOT claimed", () => {
   });
 });
 
-describe("phase 14 — through the production plan, not a hand-built one", () => {
+describe("docker compose — through the production plan, not a hand-built one", () => {
   // `runFilterBody` names the spec it wants, which is what a per-family test
   // should do — but it means every assertion above runs against a plan that was
   // constructed by the test. These resolve the plan from the command string the

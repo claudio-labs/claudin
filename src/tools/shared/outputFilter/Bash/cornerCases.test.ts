@@ -284,7 +284,7 @@ describe("corner cases: prefix preservation", () => {
   });
 });
 
-describe("corner cases: the `timeout` prefix (Phase 14)", () => {
+describe("corner cases: the `timeout` prefix", () => {
   // `timeout` is not `sudo`: the duration sits between the wrapper and the
   // command, so consuming the word alone would promote the number to the verb.
   test("plain duration resolves to the wrapped command's filter", () => {
@@ -969,7 +969,7 @@ describe("review #4: extractCommandPrefix", () => {
     expect(extractCommandPrefix("time git log")).toBe("time ");
   });
 
-  // --- Phase 14: `timeout` and the lockstep invariant ----------------------
+  // --- `timeout` and the lockstep invariant --------------------------------
   //
   // This is the one place in the phase where being wrong changes BEHAVIOUR
   // rather than formatting. `maybeRewrite` re-prepends whatever this returns

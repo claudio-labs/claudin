@@ -1,11 +1,10 @@
-// Phase 13 — js-extras family (next / biome / oxlint / turbo / nx).
-// Phase 14 — bun run.
+// JS package-runner family — next / biome / oxlint / turbo / nx / bun run.
 import { describe, expect, test } from "bun:test";
 import { runFilterBody, reductionPct, routesTo } from "src/tools/shared/outputFilter/Bash/filters/__testutils__/harness.js";
 import {
   BUN_RUN_SMOKE,
   BUN_RUN_ECHOING_SCRIPT,
-} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/phase14Samples.js";
+} from "src/tools/shared/outputFilter/Bash/filters/__testutils__/jsPkgSamples.js";
 import {
   NEXT_BUILD_OK,
   NEXT_TYPE_ERR,
@@ -142,7 +141,7 @@ describe("phase 13 — nx", () => {
   });
 });
 
-describe("phase 14 — bun run", () => {
+describe("bun run", () => {
   test("strips the `$ ` script echo, keeps what the script printed", () => {
     const body = runFilterBody("bun-run", "bun run smoke", BUN_RUN_SMOKE);
     // Both echo lines go — `smoke` nests into `build`, so bun prints two.

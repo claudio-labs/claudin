@@ -101,22 +101,22 @@ describe("phase 13 — basedpyright", () => {
     expect(routesTo("basedpyright --outputjson")).not.toBe("basedpyright");
   });
 
-  // --- Phase 14: the bare `pyright` binary --------------------------------
+  // --- the bare `pyright` binary ------------------------------------------
 
-  test("phase 14: bare `pyright` routes to the same spec", () => {
+  test("bare `pyright` routes to the same spec", () => {
     expect(routesTo("pyright src/")).toBe("basedpyright");
     expect(routesTo("pyright")).toBe("basedpyright");
     // The reject applies to both spellings, not just the one it was written for.
     expect(routesTo("pyright --outputjson")).not.toBe("basedpyright");
   });
 
-  test("phase 14: `pyright` output is filtered like `basedpyright` output", () => {
+  test("`pyright` output is filtered like `basedpyright` output", () => {
     const body = runFilterBody("basedpyright", "pyright src/", BASEDPYRIGHT_ERR);
     expect(body).toContain("3 errors, 1 warning, 0 informations");
     expect(body).not.toContain("Searching for source files");
   });
 
-  test("phase 14: negative — word boundary and lookalikes", () => {
+  test("negative — word boundary and lookalikes", () => {
     // A config file name is not an invocation.
     expect(routesTo("cat pyrightconfig.json")).not.toBe("basedpyright");
     expect(routesTo("pyrightconfig --check")).not.toBe("basedpyright");
