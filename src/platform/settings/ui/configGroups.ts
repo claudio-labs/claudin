@@ -51,6 +51,7 @@ export const SETTING_GROUPS: readonly SettingGroup[] = [
       'defaultPermissionMode',
       'useAutoModeDuringPlan',
       'bashOutputFilterEnabled',
+      'bashOutputFilterCapEnabled',
       'toolResultSummarizerEnabled',
       'repeatedFailureHintEnabled',
       'fileCheckpointingEnabled',

@@ -140,7 +140,11 @@ describe("structural (Phase 1)", () => {
       keepLinesMatching: [/keep/],
     };
     const plan = { effectiveCommand: "demo", filter, rewrite: null };
-    const raw = ["keep 1", "drop a", "drop b", "keep 2", "drop c"].join("\n");
+    // The dropped lines are long on purpose: the marker is only emitted when it
+    // costs less than it saves, so a five-token input would be handed back bare
+    // and this would assert on the suppression path instead of the marker.
+    const noise = "drop".padEnd(70, " .");
+    const raw = ["keep 1", `${noise}a`, `${noise}b`, "keep 2", `${noise}c`].join("\n");
     const result = applyBashFilterToStdout(raw, false, plan);
     expect(result).toContain("<bash-output-filtered");
     // 5 input lines in, 2 kept → the model sees exactly how much was trimmed.
@@ -196,12 +200,114 @@ describe("structural (Phase 1)", () => {
     expect(result).toBe("error output");
   });
 
+  // Everywhere else the output is model-facing and an escape sequence is a
+  // display instruction for a terminal the model is not. An error string is
+  // printed VERBATIM to the user's screen, where the red on ERROR is doing its
+  // job — so the error floor deliberately omits stripAnsi even when the matched
+  // spec asks for it.
   test("error output preserves ANSI codes (not stripped)", () => {
     const filter = { name: "test", matchCommand: /^npm$/, stripAnsi: true };
     const plan = { effectiveCommand: "npm install", filter, rewrite: null };
     const ansiError = "\x1b[31mERROR\x1b[0m: something failed";
     const result = applyBashFilterToStdout(ansiError, true, plan);
     expect(result).toBe(ansiError);
+  });
+
+  // A failing build repeating one line hundreds of times is the shape this
+  // exists for. The first of the run survives verbatim, so the cause cannot be
+  // hidden by the collapse.
+  test("error output collapses a run of identical lines", () => {
+    const filter = { name: "test", matchCommand: /^make$/ };
+    const plan = { effectiveCommand: "make", filter, rewrite: null };
+    const raw = `${"warning: unused variable 'x'\n".repeat(200)}error: build failed\n`;
+    const result = applyBashFilterToStdout(raw, true, plan);
+    expect(result).toContain("warning: unused variable 'x' (×200)");
+    expect(result).toContain("error: build failed");
+    expect(result).not.toContain("<bash-output-");
+    expect(result.length).toBeLessThan(raw.length / 10);
+  });
+
+  // The matched spec is NOT consulted on the error path: its keepLinesMatching
+  // was written for a successful run and would drop the traceback.
+  test("error output ignores the matched spec's lossy stages", () => {
+    const filter = {
+      name: "test",
+      matchCommand: /^suite$/,
+      keepLinesMatching: [/^ok /],
+      maxLines: 2,
+      matchOutput: [{ pattern: /./, message: "✓ all good" }],
+    };
+    const plan = { effectiveCommand: "suite", filter, rewrite: null };
+    const raw = "ok one\nok two\nTraceback (most recent call last)\n  line 42\n";
+    const result = applyBashFilterToStdout(raw, true, plan);
+    expect(result).toBe(raw);
+  });
+
+  // `callerBudgets` exists so GitTool's own budget and delta lane are not fed
+  // text this filter already reshaped. Every lossy stage has to answer to it,
+  // and each is asserted separately — an audit found all three mutations of this
+  // flag passing, because nothing anywhere pinned it.
+  describe("callerBudgets suppresses every lossy stage", () => {
+    // Deliberately NOT `line ${i}`: those 200 lines are one digit template, so
+    // collapseDigitTemplates folds them to a single line and the cap never sees
+    // enough lines to fire. The suffix varies by letter instead.
+    const wide = `${Array.from(
+      { length: 200 },
+      (_, i) =>
+        `line ${String.fromCharCode(97 + (i % 26)).repeat(1 + (i % 7))} of plain output`,
+    ).join("\n")}\n`;
+
+    const plan = (callerBudgets: boolean) => ({
+      effectiveCommand: "some-unmatched-command",
+      filter: null,
+      rewrite: null,
+      callerBudgets,
+    });
+
+    test("the cap is applied without it and skipped with it", () => {
+      expect(applyBashFilterToStdout(wide, false, plan(false))).toContain(
+        "lines omitted",
+      );
+      expect(applyBashFilterToStdout(wide, false, plan(true))).toBe(wide);
+    });
+
+    test("the digit collapse is applied without it and skipped with it", () => {
+      const progress = `${Array.from({ length: 20 }, (_, i) => `Compiling crate v1.0.${i}`).join("\n")}\n`;
+      expect(applyBashFilterToStdout(progress, false, plan(false))).toContain(
+        "updates)",
+      );
+      expect(applyBashFilterToStdout(progress, false, plan(true))).toBe(progress);
+    });
+
+    test("match-line grouping is applied without it and skipped with it", () => {
+      const matches = "src/a.ts:1:x\nsrc/a.ts:2:y\nsrc/b.ts:3:z\n";
+      expect(applyBashFilterToStdout(matches, false, plan(false))).toContain(
+        "src/a.ts\n1:x",
+      );
+      expect(applyBashFilterToStdout(matches, false, plan(true))).toBe(matches);
+    });
+
+    test("planBashFilter records it, and defaults to off", () => {
+      expect(planBashFilter("ls -la", { callerBudgets: true }).callerBudgets).toBe(
+        true,
+      );
+      expect(planBashFilter("ls -la").callerBudgets).toBe(false);
+    });
+  });
+
+  // The structured fence, end to end rather than only as a unit on
+  // isCappableBody: an audit found that making it always return TRUE was caught
+  // by nothing outside its own file.
+  test("a structured body is not capped, however long it is", () => {
+    const json = `{\n${Array.from({ length: 200 }, (_, i) => `  "key_${i}": ${i},`).join("\n")}\n}`;
+    const plan = {
+      effectiveCommand: "some-unmatched-command",
+      filter: null,
+      rewrite: null,
+    };
+    const result = applyBashFilterToStdout(json, false, plan);
+    expect(result).toBe(json);
+    expect(result).toContain('"key_199": 199');
   });
 
   test("error output with rewrite discloses it as a note, never as a marker", () => {
@@ -2071,12 +2177,85 @@ describe("phase 6.2 — gitShow", () => {
     expect(findFilterForCommand("git show --no-patch")).toBeNull();
     expect(findFilterForCommand("git show -s HEAD")).toBeNull();
   });
-  test("commit subject + diff body are preserved", () => {
+
+  // `git status --porcelain && git diff` resolves to a git filter — `--porcelain`
+  // opts the status half out, so the two segments do not disagree — and it is
+  // among the largest recorded Bash results. The diff renderer only ever sees
+  // the text from the first diff header onwards, so the other segment's output
+  // is spliced back verbatim instead of being swallowed by a stat table.
+  test("a compound command keeps the segment that ran before the diff", () => {
+    const porcelain = [
+      " M src/tools/BashTool/BashTool.tsx",
+      "?? src/tools/shared/outputFilter/Bash/floor.ts",
+      "",
+    ].join("\n");
+    // Long enough to pass DIFF_PIVOT_CHARS, so the diff half really is replaced.
+    const hunks = Array.from({ length: 40 }, (_, i) =>
+      [
+        `diff --git a/src/f${i}.ts b/src/f${i}.ts`,
+        "index 1111111..2222222 100644",
+        `--- a/src/f${i}.ts`,
+        `+++ b/src/f${i}.ts`,
+        "@@ -1,4 +1,4 @@",
+        " const keep = true",
+        `-const value = ${i}`,
+        `+const value = ${i + 1}`,
+        " const tail = true",
+      ].join("\n"),
+    ).join("\n");
+    const raw = `${porcelain}${hunks}\n`;
+    const command = "git status --porcelain && git diff";
+    expect(findFilterForCommand(command)?.name).toBe("git-diff");
+    const body = runFilterBody("git-diff", command, raw);
+    expect(body).toContain(" M src/tools/BashTool/BashTool.tsx");
+    expect(body).toContain("?? src/tools/shared/outputFilter/Bash/floor.ts");
+    expect(body).toContain("src/f0.ts");
+    expect(body.length).toBeLessThan(raw.length);
+  });
+
+  test("a body with no diff in it is declined, not mangled", () => {
+    const raw = " M src/a.ts\n?? src/b.ts\n";
+    expect(runFilterBody("git-diff", "git diff", raw)).toBe(raw);
+  });
+  // The commit header is spliced back verbatim — it sits above the first
+  // `diff --git`, and renderDiff only ever sees the tail. What replaces the
+  // hunks depends on size: this sample is ~10 KB, past DIFF_PIVOT_CHARS, so it
+  // pivots to the stat table that names how to fetch a file's hunks back.
+  test("commit header survives; an over-pivot diff body becomes the stat table", () => {
     const raw = loadSample("git-show-full");
     const body = runFilterBody("git-show", "git show HEAD", raw);
     expect(body).toContain("commit a200d7d5");
     expect(body).toContain("retry transient 404s");
+    expect(body).not.toMatch(/^@@/m);
+    expect(body).toContain("git diff --");
+    expect(body.length).toBeLessThan(raw.length);
+  });
+
+  // Below the pivot, renderDiff declines rather than re-render: stripping
+  // context the model can simply read is not a saving. Hunks stay.
+  test("a diff small enough to read keeps its hunks", () => {
+    const raw = [
+      "commit deadbeef",
+      "Author: Dev <dev@example.com>",
+      "Date:   Mon Jan 1 00:00:00 2026 +0000",
+      "",
+      "    tweak one line",
+      "",
+      "diff --git a/src/a.ts b/src/a.ts",
+      "index 1111111..2222222 100644",
+      "--- a/src/a.ts",
+      "+++ b/src/a.ts",
+      "@@ -1,3 +1,3 @@",
+      " const a = 1",
+      "-const b = 2",
+      "+const b = 3",
+      " const c = 4",
+      "",
+    ].join("\n");
+    const body = runFilterBody("git-show", "git show HEAD", raw);
+    expect(body).toContain("commit deadbeef");
     expect(body).toMatch(/^@@/m);
+    expect(body).toContain("+const b = 3");
   });
   test("Author + Date pair is collapsed to single line", () => {
     const raw = loadSample("git-show-full");

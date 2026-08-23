@@ -7,7 +7,10 @@
 //
 // NOT a `.test` file — it exports helpers, it does not register tests.
 
-import { applyBashFilterToStdout } from "src/tools/shared/outputFilter/Bash/index.js";
+import {
+  applyBashFilterToStdout,
+  planBashFilter,
+} from "src/tools/shared/outputFilter/Bash/index.js";
 import { findFilterForCommand } from "src/tools/shared/outputFilter/Bash/registry.js";
 import { builtInFilters } from "src/tools/shared/outputFilter/Bash/filters/index.js";
 import type { FilterSpec } from "src/tools/shared/outputFilter/Bash/types.js";
@@ -52,6 +55,30 @@ export function runFilterBody(
   raw: string,
 ): string {
   return stripWrapper(runFilter(filterName, command, raw));
+}
+
+/**
+ * Run a command's output through the REAL plan, and return the filtered body.
+ *
+ * `runFilter` above builds its `PreExecPlan` by hand, which is what a per-family
+ * test wants — it names the spec it is exercising. The cost is that the plan is
+ * always a well-formed atomic one: `isCompound` is never set and `filter` is
+ * never null, so two decisions in `applyBashFilterToStdout` have no test
+ * coverage from that direction at all. Both matter now.
+ *
+ * `isCompound` gates `allowShortCircuit`: a `matchOutput` sentinel replaces the
+ * WHOLE body, so on `a && b` one segment's "✓ up to date" would delete the
+ * other's output. And `filter === null` is what admits the generic floor's lossy
+ * stages, which is the path most real commands now take, the registry bypassing
+ * every pipe and every chain whose segments disagree.
+ *
+ * So this one resolves the plan the way production does — from the command
+ * string alone — with rewrites off, since no command was executed here and a
+ * plan may not claim a rewrite that did not happen.
+ */
+export function runCompoundBody(command: string, raw: string): string {
+  const plan = planBashFilter(command, { allowRewrite: false });
+  return stripWrapper(applyBashFilterToStdout(raw, false, plan));
 }
 
 /** Byte-level reduction percentage of `body` vs `raw` (0–100). */

@@ -108,6 +108,25 @@ export function wrapStdoutWithMarkers(
     return `<bash-output-rewritten original="${original}" actual="${actual}"${exit}>${body}</bash-output-rewritten>`;
   }
 
-  // Filter only
-  return `<bash-output-filtered original="${original}"${lines} reduction="${reduction}%">${body}</bash-output-filtered>`;
+  // Filter only.
+  //
+  // The wrapper is not free, and here it is not load-bearing either: its whole
+  // job is to tell the model the output was ALREADY trimmed, so that piping to
+  // head/tail is redundant and would risk cutting the preserved error tail. A
+  // filter that trimmed less than the disclosure costs has nothing to disclose,
+  // and charging for the sentence anyway is a straight loss. Five specs shipped
+  // net-negative on their own fixtures this way — gh-run-list −42.9%,
+  // gh-issue-list −42.2%, ruff-clean −42.1%, git-status −38.9%, gh-pr-list
+  // −23.5%.
+  //
+  // Both rewrite branches above are deliberately exempt: those markers name the
+  // command that actually RAN, which the model cannot infer from the output and
+  // which is not a trade against bytes.
+  //
+  // What is dropped is the TAG, never the body. Falling back to `rawStdout`
+  // would be smaller still and is wrong: `replace` rules edit content rather
+  // than merely shorten it, and one of them redacts a matched secret at equal
+  // length. Trading that for bytes hands the secret back.
+  const wrapped = `<bash-output-filtered original="${original}"${lines} reduction="${reduction}%">${body}</bash-output-filtered>`;
+  return wrapped.length >= rawStdout.length ? body : wrapped;
 }

@@ -717,6 +717,11 @@ export type GlobalConfig = {
   bashOutputFilterEnabled?: boolean
   bashOutputFilterRewriteEnabled?: boolean
   bashOutputFilterUserEnabled?: boolean
+  // The floor's head/tail line cap, separately switchable because it is the one
+  // stage that can delete the line that mattered — everything else the filter
+  // does is either lossless or fenced to output it recognises. undefined → true.
+  // Env CLAUDIN_DISABLE_BASH_FILTER_CAP turns it off regardless.
+  bashOutputFilterCapEnabled?: boolean
 
   // Auto-background agents — when on, subagents launch directly in the
   // background (task-notification on completion) instead of running inline.
@@ -863,6 +868,7 @@ export const GLOBAL_CONFIG_KEYS = [
   'bashOutputFilterEnabled',
   'bashOutputFilterRewriteEnabled',
   'bashOutputFilterUserEnabled',
+  'bashOutputFilterCapEnabled',
   'autoBackgroundAgentsEnabled',
   'repeatedFailureHintEnabled',
   'workflowsDefaultBackground',

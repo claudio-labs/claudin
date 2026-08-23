@@ -12,6 +12,23 @@ export interface FilterSpec {
    * also why user filters (JSON) cannot define rewrites. */
   rewriteCommand?: (ctx: RewriteContext) => string | null | undefined;
   stripAnsi?: boolean;
+  /** Whole-body renderer, for a reshaping no declarative stage can express.
+   *
+   * The line-oriented stages are stateless per line, so a transform that has to
+   * see the whole body at once — parsing a unified diff into a stat table, say —
+   * has nowhere to live among them. This is that seam.
+   *
+   * Return `null` to DECLINE, which is the normal outcome: a renderer that
+   * cannot improve this particular body must say so rather than return it
+   * unchanged, or the pipeline records a stage as applied and pays for a marker
+   * that discloses nothing.
+   *
+   * It runs after `stripAnsi`/`matchOutput` and before `replace`, so it sees
+   * text close to what the command printed. Being a function, it is not
+   * expressible in the user-filter JSON — the same reason `rewriteCommand` is
+   * not, and here too that is the point: the pipeline's other stages are data,
+   * and arbitrary code from a config file is not something to eval. */
+  renderBody?: (body: string) => string | null;
   replace?: ReplaceRule[];
   collapseRuns?: boolean;
   collapseDigitTemplates?: boolean | { minRun?: number };
@@ -52,6 +69,25 @@ export interface PreExecPlan {
    * short-circuits are unsafe — a "✓ up to date" sentinel from one segment would
    * silently swallow the other segments' output. Optional: absent means atomic. */
   readonly isCompound?: boolean;
+  /** Set by a caller that budgets the result itself, so the filter must stop at
+   * noise removal and leave every destructive stage alone.
+   *
+   * `GitTool` is the case this exists for: `runGitBatch` calls
+   * `applyBashFilterToStdout` and then `budgetFilteredOutput`, which strips our
+   * marker and applies its own diff/log budget — with a re-read delta lane
+   * behind it that needs to see the same text every time. Letting the floor cap
+   * the body first would make the delta lane diff against something it did not
+   * produce, and would spend the cut twice.
+   *
+   * Called honestly, on the GitTool side this is DEFENSIVE rather than a fix for
+   * a reachable bug: today the double render happens to be idempotent, because
+   * the second `renderDiff` sees a stat table, finds no `diff --git` and no
+   * `@@`, and declines. So no assertion on GitTool's output can tell the two
+   * paths apart, and none pretends to. What it buys is that the property stops
+   * depending on that coincidence — the next renderer added to a git spec does
+   * not have to be idempotent for the delta lane to keep its baseline. The
+   * mechanism itself IS pinned, on the filter side, in `bashFilter.test.ts`. */
+  readonly callerBudgets?: boolean;
 }
 
 export interface DroppedReducer {
