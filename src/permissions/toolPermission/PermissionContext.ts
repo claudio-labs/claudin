@@ -99,7 +99,10 @@ function createPermissionContext(
   toolUseContext: ToolUseContext,
   assistantMessage: AssistantMessage,
   toolUseID: string,
-  setToolPermissionContext: (context: ToolPermissionContext) => void,
+  setToolPermissionContext: (
+    context: ToolPermissionContext,
+    options?: { preserveMode?: boolean },
+  ) => void,
   queueOps?: PermissionQueueOps,
 ) {
   const messageId = assistantMessage.message.id
@@ -140,8 +143,16 @@ function createPermissionContext(
       if (updates.length === 0) return false
       persistPermissionUpdates(updates)
       const appState = toolUseContext.getAppState()
+      // A sub-agent's getAppState() can report a mode of its own (runAgent.ts
+      // resolves it from the agent definition) while writing through the
+      // PARENT's setter, so echoing that mode back would replace the parent's
+      // — a permission choice inside a fork used to drop the session out of
+      // plan mode. Only an explicit setMode update may move it, which is the
+      // "yes, and allow all edits" path.
+      const hasModeUpdate = updates.some(update => update.type === 'setMode')
       setToolPermissionContext(
         applyPermissionUpdates(appState.toolPermissionContext, updates),
+        { preserveMode: !hasModeUpdate },
       )
       return updates.some(update => supportsPersistence(update.destination))
     },

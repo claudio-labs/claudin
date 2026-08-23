@@ -64,6 +64,7 @@ import {
 } from 'src/agent/planDossier.js'
 import type { ModelAlias } from 'src/providers/model/aliases.js'
 import { getPlan, getPlanSlug } from 'src/agent/plans/plans.js'
+import { resolveAgentPermissionMode } from 'src/tools/AgentTool/agentPermissionMode.js'
 import {
   clearAgentTranscriptSubdir,
   recordSidechainTranscript,
@@ -465,19 +466,16 @@ export async function* runAgent({
     const state = toolUseContext.getAppState()
     let toolPermissionContext = state.toolPermissionContext
 
-    // Override permission mode if agent defines one (unless parent is bypassPermissions, acceptEdits, or auto)
-    if (
-      agentPermissionMode &&
-      state.toolPermissionContext.mode !== 'bypassPermissions' &&
-      state.toolPermissionContext.mode !== 'acceptEdits' &&
-      !(
-        feature('TRANSCRIPT_CLASSIFIER') &&
-        state.toolPermissionContext.mode === 'auto'
-      )
-    ) {
+    // Override permission mode if the agent defines one — unless the parent's
+    // mode wins (bypassPermissions, acceptEdits, plan, auto).
+    const resolvedMode = resolveAgentPermissionMode(
+      toolPermissionContext.mode,
+      agentPermissionMode,
+    )
+    if (resolvedMode !== toolPermissionContext.mode) {
       toolPermissionContext = {
         ...toolPermissionContext,
-        mode: agentPermissionMode,
+        mode: resolvedMode,
       }
     }
 
