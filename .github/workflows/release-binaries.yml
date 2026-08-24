@@ -464,14 +464,36 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      # ── The AUR lane is OFF. Flip this to 'true' to turn it on. ───────────
+      # Off because AUR account registration has been closed since the
+      # 2026-06-12 malicious-package incident — still closed at the aurweb
+      # v6.5.0 deploy (2026-08-12), with package adoption disabled and no
+      # manual path around it, and no ETA. There is no account to push as and
+      # no `claudin-bin` to push to, so everything below is dead code for now.
+      #
+      # To enable, all three in this order — miss one and the job keeps
+      # skipping:
+      #   1. Register on aur.archlinux.org, add your SSH public key there.
+      #   2. Do the one-time manual first publish (see packaging/README.md);
+      #      this job updates an existing package, it cannot create one.
+      #   3. Add that key's private half as the AUR_SSH_PRIVATE_KEY repository
+      #      secret, then set this to 'true'.
+      #
+      # Reopening is announced on https://archlinux.org/feeds/news/ and on
+      # aur-general. Do not poll the registration page — it asks not to.
+      AUR_PUBLISH: 'false'
     steps:
-      - name: Is the AUR key configured?
+      - name: Should this release touch the AUR?
         id: gate
         env:
           KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
         run: |
-          if [ -z "$KEY" ]; then
-            echo "::notice::AUR_SSH_PRIVATE_KEY is not set — skipping the AUR push"
+          if [ "$AUR_PUBLISH" != "true" ]; then
+            echo "::notice::AUR_PUBLISH is '${AUR_PUBLISH}' — the AUR lane is off, skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ -z "$KEY" ]; then
+            echo "::warning::AUR_PUBLISH is on but AUR_SSH_PRIVATE_KEY is not set — skipping the AUR push"
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"

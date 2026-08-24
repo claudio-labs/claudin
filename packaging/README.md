@@ -38,10 +38,12 @@ are plain defaults — a user who exports either variable keeps their own value.
 
 ### Releasing
 
-The `aur` job runs after `publish` and needs one repository secret,
-`AUR_SSH_PRIVATE_KEY` (the private half of a key registered on
-aur.archlinux.org). **Without it the job no-ops** and the release still goes
-green, which is what makes the bootstrap below safe to do later.
+The `aur` job runs after `publish` and is gated twice: on the `AUR_PUBLISH`
+variable declared at the top of the job (currently `'false'`) and on the
+`AUR_SSH_PRIVATE_KEY` repository secret. **Miss either and the job no-ops**,
+leaving the release green — which is what makes the bootstrap below safe to do
+later. Turning it on means flipping the first and adding the second; the job's
+own comment carries the checklist.
 
 **Blocked as of 2026-08-23, and the bootstrap below cannot be done yet.** New
 AUR account registration has been closed since the 2026-06-12 malicious-package
