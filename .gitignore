@@ -21,3 +21,13 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 scripts/bench/repomap/importRanks.json
+
+# `makepkg -si` run in place (what README tells Arch users to do) drops its
+# build tree and downloads here. Ignored from the repo root on purpose, not from
+# a .gitignore inside the package dir: that directory is mirrored verbatim into
+# the AUR repository, so a file added there would be published.
+packaging/aur/claudin-bin/src/
+packaging/aur/claudin-bin/pkg/
+packaging/aur/claudin-bin/*.pkg.tar.*
+packaging/aur/claudin-bin/*.tar.gz
+packaging/aur/claudin-bin/LICENSE-*
