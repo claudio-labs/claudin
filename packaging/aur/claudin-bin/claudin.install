@@ -1,0 +1,38 @@
+# Warn when another claudin is going to win the PATH lookup.
+#
+# This scriptlet runs as root with a minimal PATH, so `command -v claudin`
+# would answer for root, not for the user doing the install. Probe explicit
+# locations instead: the system-wide one, plus the per-user prefixes that
+# `npm i -g` / `bun install -g` use, resolved through $SUDO_USER when present.
+#
+# The `npm i -g` case with prefix=/usr never reaches this: it owns
+# /usr/bin/claudin too, so pacman refuses the install as a file conflict first.
+
+_claudin_warn_shadowing() {
+  _home=""
+  if [ -n "$SUDO_USER" ]; then
+    _home=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+  fi
+
+  for _candidate in \
+    /usr/local/bin/claudin \
+    "${_home:+$_home/.bun/bin/claudin}" \
+    "${_home:+$_home/.local/bin/claudin}" \
+    "${_home:+$_home/.npm-global/bin/claudin}"
+  do
+    [ -n "$_candidate" ] && [ -e "$_candidate" ] || continue
+    cat <<EOF
+>> Another claudin is installed at $_candidate
+>> Depending on your PATH it may shadow /usr/bin/claudin. To remove it:
+>>   npm rm -g @claudiolabs/claudin    (or: bun rm -g @claudiolabs/claudin)
+EOF
+  done
+}
+
+post_install() {
+  _claudin_warn_shadowing
+}
+
+post_upgrade() {
+  _claudin_warn_shadowing
+}

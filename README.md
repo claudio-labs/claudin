@@ -31,6 +31,16 @@ Or install through npm (needs Node.js 22.12+):
 npm install -g @claudiolabs/claudin@latest
 ```
 
+On Arch Linux (and Omarchy), install the AUR package instead — it tracks every
+release and updates with the rest of the system:
+
+```bash
+yay -S claudin-bin        # or: omarchy pkg aur add claudin-bin
+```
+
+If you already have Claudin from npm or Bun, remove it first so the two do not
+fight over `$PATH`: `npm rm -g @claudiolabs/claudin`.
+
 ## Documentation
 
 Full documentation lives at **[claudiolabs.ai/docs](https://www.claudiolabs.ai/docs/)**.
