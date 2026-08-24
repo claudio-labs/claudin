@@ -168,7 +168,11 @@ Claudin supports multiple provider paths. If you change provider logic:
 built from the binaries a release already publishes. If you touch either, read
 [packaging/README.md](packaging/README.md) first — it explains why the binary is
 not installed in `/usr/bin`, how to test a PKGBUILD change with `makepkg`, and
-which repository secret the release lane needs.
+what has to be true before the release lane will push anything.
+
+Nothing is published to the AUR yet: new account registration there has been
+closed since June 2026, so the `aur` job ships switched off and Arch users build
+the package from the repo in the meantime.
 
 ## Community
 
