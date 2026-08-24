@@ -43,7 +43,18 @@ The `aur` job runs after `publish` and needs one repository secret,
 aur.archlinux.org). **Without it the job no-ops** and the release still goes
 green, which is what makes the bootstrap below safe to do later.
 
-First publication is manual, once:
+**Blocked as of 2026-08-23, and the bootstrap below cannot be done yet.** New
+AUR account registration has been closed since the 2026-06-12 malicious-package
+incident and was still closed at the aurweb v6.5.0 deploy (2026-08-12), with
+package adoption disabled too. There is no manual path around it — aur-general,
+2026-08-13: *"there's no break glass / manual process to register account in AUR
+for now"*, and account requests mailed to the list are ignored. No ETA has been
+given. Do not poll the registration page; it asks not to, and says the [Arch
+news feed](https://archlinux.org/feeds/news/) and aur-general announce it first.
+Until then, Arch users build the package straight from this directory
+(`makepkg -si`), which is what the README documents.
+
+Once registration reopens, the first publication is manual, once:
 
 ```bash
 bun run release:aur                 # point the PKGBUILD at the current release
