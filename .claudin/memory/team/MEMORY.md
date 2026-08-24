@@ -77,6 +77,7 @@
 ## Build, release & distribution
 - [Native-binary distribution (Bun --compile)](compile-binary-distribution.md) — 2026-07-14: per-platform binaries via npm (wrapper+optionalDependencies+install.cjs hardlink); ~409ms vs 727ms; ripgrep + sharp vendored beside execPath; strip breaks Bun binaries
 - [Binary release process — release-binaries.yml + npm OIDC gotchas](binary-release-rollout-state.md) — sole release path (OIDC, not NPM_TOKEN); rollout DONE (v1.0.1→v1.0.8+ live); durable gotchas: OIDC can't first-publish, confirm via `npm access list` not `npm view`, assemble hard-fails if any platform binary missing
+- [claudin-bin on the AUR + the Omarchy mirror](aur-omarchy-packaging.md) — PR #134, NOT live yet (AUR account + AUR_SSH_PRIVATE_KEY pending); the /usr/lib layout is what keeps the vendored rg+sharp resolving, and both fail silently
 - [Node engine floor raised to 22.12.0](node-engine-floor-22.md) — engines.node is >=22.12.0 (was >=20) since commander 15 is ESM-only; breaking for Node 20 consumers
 - [Incremental `bun install --frozen-lockfile` misses nested deps](incremental-bun-install-misses-nested-deps.md) — axios 1.19 nested https-proxy-agent@5 not materialized → build dies on "No matching export for default"; plain `bun install` fixes; CI unaffected
 - [Dependabot batch 2026-08-03 audited — no code changes](dependabot-bumps-2026-08-03-no-code-changes.md) — google-auth-library 11 = Node>=22 only; axios/MCP/firecrawl inert; firecrawl typecheck error is pre-existing; vertex-sdk gal v10 nesting now deduped via overrides
