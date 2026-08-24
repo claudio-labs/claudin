@@ -455,10 +455,10 @@ jobs:
 
   # ── 4. Point the AUR package at the release just published ───────────────
   # Runs after `publish` because the PKGBUILD checksums come from the
-  # SHA256SUMS.txt that job attaches. Until AUR_SSH_PRIVATE_KEY exists in the
-  # repository secrets this job no-ops instead of failing the release: the AUR
-  # side is bootstrapped by hand once (see CONTRIBUTING.md) and only then does
-  # this lane have anywhere to push.
+  # SHA256SUMS.txt that job attaches. It is gated twice — see AUR_PUBLISH below
+  # — and no-ops instead of failing the release while either gate is closed: the
+  # AUR side is bootstrapped by hand once (recipe in packaging/README.md) and
+  # only then does this lane have anywhere to push.
   aur:
     needs: [version, publish]
     runs-on: ubuntu-latest
