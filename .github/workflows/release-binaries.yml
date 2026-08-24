@@ -452,3 +452,92 @@ jobs:
             echo "- npm: https://www.npmjs.com/package/@claudiolabs/claudin"
             echo "- install: \`npm install -g @claudiolabs/claudin\`"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── 4. Point the AUR package at the release just published ───────────────
+  # Runs after `publish` because the PKGBUILD checksums come from the
+  # SHA256SUMS.txt that job attaches. Until AUR_SSH_PRIVATE_KEY exists in the
+  # repository secrets this job no-ops instead of failing the release: the AUR
+  # side is bootstrapped by hand once (see CONTRIBUTING.md) and only then does
+  # this lane have anywhere to push.
+  aur:
+    needs: [version, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      # ── The AUR lane is OFF. Flip this to 'true' to turn it on. ───────────
+      # Off because AUR account registration has been closed since the
+      # 2026-06-12 malicious-package incident — still closed at the aurweb
+      # v6.5.0 deploy (2026-08-12), with package adoption disabled and no
+      # manual path around it, and no ETA. There is no account to push as and
+      # no `claudin-bin` to push to, so everything below is dead code for now.
+      #
+      # To enable, all three in this order — miss one and the job keeps
+      # skipping:
+      #   1. Register on aur.archlinux.org, add your SSH public key there.
+      #   2. Do the one-time manual first publish (see packaging/README.md);
+      #      this job updates an existing package, it cannot create one.
+      #   3. Add that key's private half as the AUR_SSH_PRIVATE_KEY repository
+      #      secret, then set this to 'true'.
+      #
+      # Reopening is announced on https://archlinux.org/feeds/news/ and on
+      # aur-general. Do not poll the registration page — it asks not to.
+      AUR_PUBLISH: 'false'
+    steps:
+      - name: Should this release touch the AUR?
+        id: gate
+        env:
+          KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          if [ "$AUR_PUBLISH" != "true" ]; then
+            echo "::notice::AUR_PUBLISH is '${AUR_PUBLISH}' — the AUR lane is off, skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ -z "$KEY" ]; then
+            echo "::warning::AUR_PUBLISH is on but AUR_SSH_PRIVATE_KEY is not set — skipping the AUR push"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v7
+        if: steps.gate.outputs.skip == 'false'
+        with:
+          # main, not the tag: the last step commits the refreshed PKGBUILD back
+          # and a detached checkout cannot push. The two are the same commit here
+          # — `publish` sits between them and writes nothing to the repository.
+          ref: main
+          token: ${{ secrets.GH_CHANGELOG_TOKEN }}
+      - uses: oven-sh/setup-bun@v2
+        if: steps.gate.outputs.skip == 'false'
+        with:
+          bun-version-file: .bun-version
+      - name: Point the PKGBUILD at this release
+        if: steps.gate.outputs.skip == 'false'
+        run: bun run scripts/release/update-aur-pkgbuild.ts "${{ needs.version.outputs.version }}"
+      - name: Publish to the AUR
+        if: steps.gate.outputs.skip == 'false'
+        uses: KSXGitHub/github-actions-deploy-aur@v4.2.0
+        with:
+          pkgname: claudin-bin
+          # Mirrors the whole directory, so the AUR repo ends up with exactly
+          # PKGBUILD + claudin.sh + claudin.install. .SRCINFO is regenerated on
+          # the action's side, which is why this repo does not carry one.
+          asset_dir: packaging/aur/claudin-bin
+          # Builds the package before pushing: the only automated gate between a
+          # wrong checksum and a broken package on the AUR.
+          test: true
+          commit_username: claudin-release-bot
+          commit_email: release@claudin.local
+          commit_message: ${{ needs.version.outputs.tag }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+      - name: Commit the refreshed PKGBUILD back to main
+        if: steps.gate.outputs.skip == 'false'
+        run: |
+          git config user.name "claudin-release-bot"
+          git config user.email "release@claudin.local"
+          git add packaging/aur/claudin-bin/PKGBUILD
+          if git diff --cached --quiet; then
+            echo "PKGBUILD already matches the release"
+          else
+            git commit -m "chore(release): sync the AUR PKGBUILD to ${{ needs.version.outputs.tag }}"
+            git push origin HEAD:refs/heads/main
+          fi

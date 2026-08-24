@@ -1,0 +1,58 @@
+# Maintainer: Viudes <andersonvieiraviudes@gmail.com>
+#
+# pkgver and every sha256 below are rewritten by
+# `bun run release:aur` (scripts/release/update-aur-pkgbuild.ts) from the
+# SHA256SUMS.txt of the matching GitHub release. Edit those by hand only when
+# you are also changing what the release publishes.
+
+pkgname=claudin-bin
+_pkgname=claudin
+pkgver=1.1.18
+pkgrel=1
+pkgdesc="Terminal coding agent forked from Claude Code, opened to any LLM provider"
+arch=('x86_64' 'aarch64')
+url="https://github.com/claudio-labs/claudin"
+license=('MIT')
+depends=('glibc')
+optdepends=('git: git-aware tools, /diff and worktree agents'
+            'ripgrep: fallback search backend if the vendored rg is unusable')
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+# The binary is produced by `bun build --compile`; stripping it corrupts the
+# embedded module VFS and it no longer starts.
+options=('!strip' '!debug')
+install="$_pkgname.install"
+
+_tag="v$pkgver"
+_release="$url/releases/download/$_tag"
+
+source=("$_pkgname.sh"
+        "LICENSE-$pkgver::https://raw.githubusercontent.com/claudio-labs/claudin/$_tag/LICENSE")
+sha256sums=('7c35c58535d5c2b28a2e9fab14b78d33e70a7f702910ea498b8b8d375f53e108'
+            '691b7a151b5258ec1711afa3998400240e228544f96550ffbc9303479ff45767')
+
+# Arch is glibc; the -musl assets of the same release are not used here.
+source_x86_64=("$_pkgname-$pkgver-x86_64.tar.gz::$_release/claudin-$_tag-linux-x64.tar.gz")
+sha256sums_x86_64=('24fb5f3e2e8d8db38deeefe20f4a02813122b0fea34a6d40a4e5784c5eafc0cd')
+
+source_aarch64=("$_pkgname-$pkgver-aarch64.tar.gz::$_release/claudin-$_tag-linux-arm64.tar.gz")
+sha256sums_aarch64=('e2e6e7e41ac3901493453190783cc82e44233c030ba53e0b32dfb014bcfe724e')
+
+package() {
+  # The release tarball is flat: `claudin` and `vendor/` land in $srcdir.
+  #
+  # Both sidecar lookups resolve against dirname(realpath(process.execPath)) --
+  # src/shared/fs/ripgrep.ts and src/tools/FileReadTool/imageProcessor.ts -- so
+  # vendor/ has to sit beside the real binary, not beside the /usr/bin entry
+  # point. Without it Grep silently falls back to the system rg and pasting an
+  # image stops working.
+  install -Dm755 "$srcdir/$_pkgname" "$pkgdir/usr/lib/$_pkgname/$_pkgname"
+  cp -a "$srcdir/vendor" "$pkgdir/usr/lib/$_pkgname/vendor"
+  # /usr is read-only for the agent at runtime, so the vendored rg has to be
+  # executable already -- it cannot chmod itself the way it does under $HOME.
+  find "$pkgdir/usr/lib/$_pkgname/vendor" -name 'rg' -type f -exec chmod 755 {} +
+
+  install -Dm755 "$srcdir/$_pkgname.sh" "$pkgdir/usr/bin/$_pkgname"
+  install -Dm644 "$srcdir/LICENSE-$pkgver" \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

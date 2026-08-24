@@ -31,6 +31,21 @@ Or install through npm (needs Node.js 22.12+):
 npm install -g @claudiolabs/claudin@latest
 ```
 
+On Arch Linux (and Omarchy), there is a pacman package. It installs the same
+release binary — nothing is compiled from source:
+
+```bash
+git clone https://github.com/claudio-labs/claudin
+cd claudin/packaging/aur/claudin-bin && makepkg -si
+```
+
+It is **not on the AUR yet** — new AUR account registration has been closed
+since June 2026 — so `pacman -Syu` will not update it. Re-run `makepkg -si`
+after a release, or stay on npm until `claudin-bin` is published.
+
+If you already have Claudin from npm or Bun, remove it first so the two do not
+fight over `$PATH`: `npm rm -g @claudiolabs/claudin`.
+
 ## Documentation
 
 Full documentation lives at **[claudiolabs.ai/docs](https://www.claudiolabs.ai/docs/)**.

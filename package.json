@@ -56,6 +56,7 @@
     "vendor:ripgrep": "bun run scripts/build/vendor-ripgrep.ts",
     "vendor:sharp": "bun run scripts/build/vendor-sharp.ts",
     "build:packages": "bun run scripts/release/assemble-packages.ts",
+    "release:aur": "bun run scripts/release/update-aur-pkgbuild.ts",
     "test:provider": "bun test src/providers/ src/agent/context/context.test.ts",
     "profile": "bun run scripts/bench/perf/run-all.ts",
     "profile:streaming": "bun run scripts/bench/perf/streaming-bench.ts --compare",

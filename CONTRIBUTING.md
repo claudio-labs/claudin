@@ -162,6 +162,14 @@ Claudin supports multiple provider paths. If you change provider logic:
 - test the exact provider/model path you changed when possible
 - call out any limitations or follow-up work in the PR description
 
+## Distro Packages
+
+`packaging/` holds the Arch (AUR) package and the Omarchy mirror of it, both
+built from the binaries a release already publishes. If you touch either, read
+[packaging/README.md](packaging/README.md) first — it explains why the binary is
+not installed in `/usr/bin`, how to test a PKGBUILD change with `makepkg`, and
+which repository secret the release lane needs.
+
 ## Community
 
 Please be respectful and constructive with other contributors.
