@@ -454,13 +454,47 @@ function reducerLineCap(segment: string): number | null {
  *
  * Reuses the same quote-/escape-/redirection-aware scan as `splitTopLevelSegments` and bails
  * on every construct that function bails on. Unlike it, a *single* top-level `|` is captured
- * as a split point instead of aborting. Any other top-level operator (`&&`, `||`, `;`, newline,
- * background, a second `|`) disqualifies, keeping this strictly to the `BASE | REDUCER` shape.
+ * as a split point instead of aborting.
+ *
+ * ## Why a chain is allowed in front of it
+ *
+ * `&&`, `||`, `;` and newline START A NEW COMMAND rather than transforming output, and `|`
+ * binds tighter than all of them — bash reads `a && b | tail -5` as `a && (b | tail -5)`.
+ * So the reducer applies to the LAST command of the chain, and running `a && b` in its place
+ * is the same execution. Refusing the whole shape (which is what this did until the chain
+ * branches below were added) cost the registry every `cd X && CMD | tail -N`: the atomic
+ * `CMD | tail -N` resolved to CMD's spec while the same command behind a `cd` resolved to
+ * nothing, because `splitTopLevelSegments` bails on the `|` and this function bailed on the
+ * `&&` — each refusing for the reason the other exists.
+ *
+ * A separator only counts while no pipe has been seen yet. Past one, the pipe was not the
+ * trailing one (`a | tail -4 && b | tail -3`) and the shape is refused, as is a second pipe
+ * inside the same command (`a | b | tail -5`). Background, subshells and the rest still
+ * disqualify wherever they appear.
+ *
+ * That `pipeIndex >= 0` test in the three separator branches is DEFENCE IN DEPTH, not the
+ * thing currently doing the work, and a test written against it passes with it deleted.
+ * `reducer` is sliced to the END of the string, so a separator after the pipe always lands
+ * inside the reducer text and `isPureReducer` rejects it — `tail -4 && b` is not `tail -4`.
+ * It goes load-bearing the moment `isPureReducer` accepts anything laxer, which is exactly
+ * the kind of change this file invites (`head` has been proposed for it more than once), so
+ * the invariant stays local rather than borrowed from a function three screens away.
+ *
+ * One fidelity note, deliberately accepted: the returned `lines` cap is applied by the caller
+ * to the output of the WHOLE chain, where the shell applied it to the last command alone. For
+ * the `cd X &&` shape that dominates real traffic the prefix prints nothing, so the two agree;
+ * for `echo hi && cmd | tail -3` they do not.
+ *
+ * `base` and `reducer` are sliced out of the ORIGINAL string rather than rebuilt from the
+ * scanner's buffer: the buffer drops the backslash of an escaped character, so a rebuilt
+ * `echo a\&b | tail -5` came back as `echo a&b` — which bash then reads as backgrounding
+ * `echo a`, in a string this function's caller EXECUTES.
  */
 export function splitTrailingReducerPipe(
   command: string,
 ): { base: string; reducer: DroppedReducer } | null {
-  const segments: string[] = [];
+  // Offset of the single top-level `|` inside the last command of the chain.
+  let pipeIndex = -1;
   let buf = "";
   let inSingle = false;
   let inDouble = false;
@@ -509,15 +543,25 @@ export function splitTrailingReducerPipe(
     if (c === "[" && next === "[") return null;
     if (c === "(" && next === "(") return null;
     if (c === "|" && next === "&") return null;
-    if (c === "|" && next === "|") return null; // `||` is a separator, not the shape we want
+    if (c === "|" && next === "|") {
+      if (pipeIndex >= 0) return null; // the pipe was not the trailing one
+      buf = "";
+      i++;
+      continue;
+    }
     if (c === "|") {
-      // Top-level single pipe — a split point. A second one disqualifies.
-      if (segments.length > 0) return null;
-      segments.push(buf);
+      // Top-level single pipe — the split point. A second one disqualifies.
+      if (pipeIndex >= 0) return null;
+      pipeIndex = i;
       buf = "";
       continue;
     }
-    if (c === "&" && next === "&") return null;
+    if (c === "&" && next === "&") {
+      if (pipeIndex >= 0) return null;
+      buf = "";
+      i++;
+      continue;
+    }
     if (c === "&") {
       const lastBufChar = buf.length > 0 ? buf[buf.length - 1] : "";
       if (lastBufChar === ">" || next === ">") {
@@ -526,13 +570,17 @@ export function splitTrailingReducerPipe(
       }
       return null; // background
     }
-    if (c === ";" || c === "\n") return null;
+    if (c === ";" || c === "\n") {
+      if (pipeIndex >= 0) return null;
+      buf = "";
+      continue;
+    }
     buf += c;
   }
   if (inSingle || inDouble) return null;
-  if (segments.length !== 1) return null; // need exactly one top-level pipe
-  const base = segments[0]?.trim() ?? "";
-  const reducer = buf.trim();
+  if (pipeIndex < 0) return null; // need exactly one top-level pipe
+  const base = command.slice(0, pipeIndex).trim();
+  const reducer = command.slice(pipeIndex + 1).trim();
   if (base === "" || reducer === "") return null;
   if (!isPureReducer(reducer)) return null;
   return { base, reducer: { text: reducer, lines: reducerLineCap(reducer) } };

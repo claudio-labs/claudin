@@ -23,6 +23,7 @@ import { countCharInString } from 'src/shared/text/stringUtils.js';
 import { getTaskOutput } from 'src/agent/tasks/diskOutput.js';
 import { updateTaskState } from 'src/agent/tasks/framework.js';
 import { formatTaskOutput } from 'src/agent/tasks/outputFormatting.js';
+import { filterBashTaskOutput } from 'src/tools/TaskOutputTool/filterBashTaskOutput.js';
 import type { ThemeName } from 'src/terminal/theme/theme.js';
 import { AgentPromptDisplay, AgentResponseDisplay } from 'src/tools/AgentTool/UI.js';
 import BashToolResultMessage from 'src/tools/BashTool/BashToolResultMessage.js';
@@ -47,6 +48,11 @@ type TaskOutput = {
   // For agents
   prompt?: string;
   result?: string;
+  /** The shell command, for `local_bash` only. Carried so the model-facing
+   * mapper can resolve the Bash output filter's spec for it — a backgrounded
+   * run skips the filter at execution time (`shouldFilterOutput`), and this is
+   * the lane where its output finally reaches the model. */
+  command?: string;
 };
 type TaskOutputToolOutput = {
   retrieval_status: 'success' | 'timeout' | 'not_ready';
@@ -85,7 +91,8 @@ async function getTaskOutputData(task: TaskState): Promise<TaskOutput> {
     const bashTask = task as LocalShellTaskState;
     return {
       ...baseOutput,
-      exitCode: bashTask.result?.code ?? null
+      exitCode: bashTask.result?.code ?? null,
+      command: bashTask.command
     };
   }
   if (task.type === 'local_agent') {
@@ -291,9 +298,21 @@ export const TaskOutputTool: Tool<InputSchema, TaskOutputToolOutput> = buildTool
         parts.push(`<exit_code>${data.task.exitCode}</exit_code>`);
       }
       if (data.task.output?.trim()) {
+        // Backgrounded shell output skips the Bash filter at execution time —
+        // this read is where it reaches the model, so filter it here. Noise
+        // removal only; see filterBashTaskOutput. Runs BEFORE formatTaskOutput
+        // so the blind tail-truncate is spent on output already trimmed.
+        const output =
+          data.task.task_type === 'local_bash'
+            ? filterBashTaskOutput(
+                data.task.output,
+                data.task.command,
+                data.task.exitCode,
+              )
+            : data.task.output;
         const {
           content
-        } = formatTaskOutput(data.task.output, data.task.task_id);
+        } = formatTaskOutput(output, data.task.task_id);
         parts.push(`<output>\n${content.trimEnd()}\n</output>`);
       }
       if (data.task.error) {

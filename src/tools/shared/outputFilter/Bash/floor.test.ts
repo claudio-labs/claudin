@@ -5,6 +5,7 @@ import {
   planBashFilter,
 } from "src/tools/shared/outputFilter/Bash/index.js";
 import {
+  ERROR_FLOOR,
   FLOOR_CAP_LINES,
   GENERIC_FLOOR,
   isCappableBody,
@@ -86,6 +87,44 @@ describe("withGenericFloor", () => {
     for (const command of ["", " ", "generic-floor", "ls", "git status"]) {
       expect(findFilterForCommand(command)).not.toBe(GENERIC_FLOOR);
     }
+  });
+
+  // ERROR_FLOOR is `collapseRuns` and nothing else, and until 2026-08-24 that
+  // was a set of arguments with no number behind it. There is one now, from
+  // `scripts/bench/tokens/measure-bash-error-floor.test.ts` over 491 recorded
+  // failing commands (408,799 chars):
+  //
+  //   collapseRuns (today)       0.1%  — the control; it already ran in production
+  //   + collapseDigitTemplates   0.3%  — fenced as the success floor fences it
+  //   + stripAnsi                0.2%  — matches the figure its rejection cited
+  //   + cap 60                   8.1%  — 23 of 326 eligible entries, 33,176 chars
+  //
+  // Three of those four are settled by their own numbers. The cap is NOT: 8.1%
+  // of this lane is real, and the body fence already refuses the dangerous
+  // bodies (11 entries reading as diagnostics hold 101,241 chars and are
+  // vetoed). What keeps it out is not the measurement but the READER — an error
+  // string is printed verbatim to the USER's terminal by the error renderers,
+  // so a cap here removes the middle of what a human is reading to find out
+  // what broke, which is a different trade from the success lane. Changing that
+  // is a product decision; this test is what makes it a deliberate one.
+  test("the error floor carries collapseRuns and nothing else", () => {
+    expect(ERROR_FLOOR.collapseRuns).toBe(true);
+    expect(ERROR_FLOOR.stripAnsi).toBeUndefined();
+    expect(ERROR_FLOOR.collapseDigitTemplates).toBeUndefined();
+    expect(ERROR_FLOOR.maxLines).toBeUndefined();
+    expect(ERROR_FLOOR.headLines).toBeUndefined();
+    expect(ERROR_FLOOR.tailLines).toBeUndefined();
+    expect(ERROR_FLOOR.keepLinesMatching).toBeUndefined();
+    expect(ERROR_FLOOR.matchOutput).toBeUndefined();
+    expect(ERROR_FLOOR.renderBody).toBeUndefined();
+  });
+
+  // The two floors are separate objects on purpose: `withGenericFloor` merges
+  // GENERIC_FLOOR into every matched spec, and if the error lane read the same
+  // object it would inherit `stripAnsi` the moment one was added there.
+  test("the error floor is not the generic floor", () => {
+    expect(ERROR_FLOOR).not.toBe(GENERIC_FLOOR);
+    expect(builtInFilters).not.toContain(ERROR_FLOOR);
   });
 
   test("every registered spec survives the merge with its name intact", () => {
