@@ -272,13 +272,13 @@ function openaiTokens(d: ParsedImageDimensions): number {
 
 /**
  * Estimate the token cost a provider charges for a single image block.
- * Returns the legacy 2000-token fallback when the source is a URL (we cannot
- * inspect the bytes), the header is unparsable, or the provider has no
- * documented vision pricing — preserving prior auto-compact behavior on
- * those paths.
+ * Returns the legacy 2000-token fallback when the source carries no bytes we
+ * can inspect (a URL, or a Files API `file_id`), the header is unparsable, or
+ * the provider has no documented vision pricing — preserving prior
+ * auto-compact behavior on those paths.
  */
 export function estimateImageTokens(
-  source: Anthropic.Base64ImageSource | Anthropic.URLImageSource,
+  source: Anthropic.ImageBlockParam['source'],
   provider: APIProvider = getAPIProvider(),
 ): number {
   if (source.type !== 'base64') {
