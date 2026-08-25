@@ -68,6 +68,13 @@ const SHAPES: readonly Shape[] = [
     because: 'a non-reducer pipe transforms the output, so splitTopLevelSegments refuses to split',
   },
   {
+    id: 'cd X && CMD | tail -20',
+    wrap: command => `cd /tmp && ${command} | tail -20`,
+    resolves: name => name,
+    because:
+      'splitTrailingReducerPipe crosses the top-level && to reach the trailing reducer, then the chain resolves as the cd shape',
+  },
+  {
     id: 'CMD && ls -la',
     wrap: command => `${command} && ls -la`,
     resolves: name => (name === 'ls-la' ? 'ls-la' : null),

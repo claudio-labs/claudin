@@ -298,10 +298,6 @@ describe("splitTrailingReducerPipe", () => {
     expect(splitTrailingReducerPipe("a | b | tail -5")).toBeNull();
   });
 
-  test("returns null when && is present", () => {
-    expect(splitTrailingReducerPipe("cmd && other | tail -5")).toBeNull();
-  });
-
   test("returns null for a bare atomic command (no pipe)", () => {
     expect(splitTrailingReducerPipe("git log")).toBeNull();
   });
@@ -328,6 +324,93 @@ describe("splitTrailingReducerPipe", () => {
       text: "tail -c 200",
       lines: null,
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// splitTrailingReducerPipe — the chain in front of the reducer
+//
+// `|` binds tighter than `&&`/`||`/`;`, so `a && b | tail -5` is `a && (b | tail -5)`
+// and running `a && b` in its place is the same execution. Until these branches
+// existed the whole shape was refused, and that cost the registry every
+// `cd X && CMD | tail -N`: the atomic form resolved to CMD's spec, the same
+// command behind a `cd` resolved to nothing. `compoundRouting.test.ts` pins the
+// routing consequence for all 104 specs; this block pins the scanner.
+// ---------------------------------------------------------------------------
+
+describe("splitTrailingReducerPipe — chained base", () => {
+  test("strips the reducer off the last command of an && chain", () => {
+    expect(
+      splitTrailingReducerPipe("cd /repo && bun test src/x 2>&1 | tail -30"),
+    ).toEqual({
+      base: "cd /repo && bun test src/x 2>&1",
+      reducer: { text: "tail -30", lines: 30 },
+    });
+  });
+
+  test("works for ; and || chains too", () => {
+    expect(splitTrailingReducerPipe("cd /repo; make lint | cat")).toEqual({
+      base: "cd /repo; make lint",
+      reducer: { text: "cat", lines: null },
+    });
+    expect(splitTrailingReducerPipe("a || b | tail -5")).toEqual({
+      base: "a || b",
+      reducer: { text: "tail -5", lines: 5 },
+    });
+  });
+
+  test("keeps a three-segment prefix intact", () => {
+    expect(
+      splitTrailingReducerPipe("cd /repo && source .env && make lint | tail -20"),
+    ).toEqual({
+      base: "cd /repo && source .env && make lint",
+      reducer: { text: "tail -20", lines: 20 },
+    });
+  });
+
+  // Named for what it pins, not for the guard it looks like it pins. The
+  // `pipeIndex >= 0` test in the separator branches is defence in depth and
+  // this passes with it deleted: the first case is caught by the second-pipe
+  // check, and the second by `isPureReducer`, since `reducer` is sliced to the
+  // end of the string and `tail -4 && b` is not a pure reducer.
+  test("a pipe that is not the chain's trailing one never yields a base", () => {
+    expect(splitTrailingReducerPipe("a | tail -4 && b | tail -3")).toBeNull();
+    expect(splitTrailingReducerPipe("a | tail -4 && b")).toBeNull();
+    expect(splitTrailingReducerPipe("a | cat; b")).toBeNull();
+  });
+
+  test("refuses a second pipe inside the last command", () => {
+    expect(splitTrailingReducerPipe("cd /repo && a | b | tail -5")).toBeNull();
+  });
+
+  test("refuses a non-reducer sink even behind a chain", () => {
+    expect(splitTrailingReducerPipe("cd /repo && ls -R | head -50")).toBeNull();
+    expect(splitTrailingReducerPipe("cd /repo && ls -R | grep foo")).toBeNull();
+  });
+
+  test("a separator inside quotes does not start a new command", () => {
+    expect(splitTrailingReducerPipe("echo 'a && b' | tail -5")).toEqual({
+      base: "echo 'a && b'",
+      reducer: { text: "tail -5", lines: 5 },
+    });
+  });
+
+  test("still refuses background, subshell and heredoc in the prefix", () => {
+    expect(splitTrailingReducerPipe("a & b | tail -5")).toBeNull();
+    expect(splitTrailingReducerPipe("cd $(pwd) && ls | tail -5")).toBeNull();
+    expect(splitTrailingReducerPipe("cd /repo && echo `date` | tail -5")).toBeNull();
+  });
+
+  // The base is EXECUTED, so it has to be the string the user wrote. Rebuilding
+  // it from the scanner's buffer dropped the backslash of an escaped character,
+  // and `echo a&b` is not `echo a\&b` — bash backgrounds `echo a` and runs `b`.
+  test("the base is sliced from the original, not rebuilt from the scan buffer", () => {
+    expect(splitTrailingReducerPipe("echo a\\&b | tail -5")?.base).toBe(
+      "echo a\\&b",
+    );
+    expect(splitTrailingReducerPipe('echo "a\\"b" | tail -5')?.base).toBe(
+      'echo "a\\"b"',
+    );
   });
 });
 
