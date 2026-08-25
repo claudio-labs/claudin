@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.1.20 — 2026-08-25
+
+### ✨ Features
+
+- feat(packaging): publish claudin-bin to the AUR (#134) (2e3d8dae)
+
+### 🐛 Bug Fixes
+
+- fix(bash-filter): route a trailing reducer across a command chain, and filter background task output (#138) (5eaa6f5f)
+
+### 📦 Dependencies
+
+- chore(deps): bump the production-dependencies group with 7 updates (#137) (8d6978f7)
+- chore(deps): bump @​types/bun in the dev-dependencies group (#136) (c278a13b)
+
+### 📚 Documentation
+
+- docs(packaging): fix the AUR gate description left behind by AUR_PUBLISH (#135) (56e357cf)
+- docs(memory): record the AUR packaging state and why it is blocked (969b298c)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.19 — 2026-08-23
 
 ### ✨ Features
