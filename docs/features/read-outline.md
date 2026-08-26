@@ -29,11 +29,18 @@ Two optional `Read` parameters and one `Grep` mode, all over a single symbol-sca
 
 Precedence inside `Read` is `symbol` > `view` > `offset`/`limit`, honoured at any file size.
 
-And three automatic behaviors, so the model benefits even when it never asks:
+And four automatic behaviors, so the model benefits even when it never asks:
 
 1. **Over-cap pivot** — a plain `Read` that blows the size caps (256 KB / 2 000 lines / ~25k estimated tokens) on a code file returns the **outline instead of an error**. The dead end becomes a map.
 2. **Auto-outline on large reads** (`AUTO_OUTLINE_ON_ELISION`) — a vanilla full-file `Read` of a code file ≥ ~10 KB pivots to the outline with a footer explaining how to get more (`view='full'` forces the body, `symbol`/`offset` target a range). The ~10 KB floor is empirical: it is where the slice-walk re-read loop starts; returning the outline removes the stimulus entirely.
 3. **Helpful misses** — `symbol='foo'` on a file that has no `foo` doesn't just fail: the error lists the available symbol names and points at `view='outline'`. On a name collision, the shallowest (top-level) entry wins.
+4. **Nested outline for an oversized symbol** — `symbol='X'` on a symbol that is itself over the pivot threshold returns *its* structure instead of its body. `Read(REPL.tsx, symbol='REPL')` used to hand back 2 785 lines; it now hands back the handlers inside it, with their line ranges. `view='full'` alongside `symbol` is the escape back to the body.
+
+## What counts as a symbol
+
+The scanner emits top-level declarations, class and object-literal members — and, inside a **large** body, the substantial declarations nested in it. That last part is size-gated on both ends (`nestedLandmarks` in `src/tools/shared/codeOutline/clike/specs.ts`): the nested declaration's own body must be at least 20 lines and its container at least 100, so a small function keeps a clean outline while a 2 800-line React component gets an index. A one-line hook binding never qualifies; a 30-line `useCallback` handler does.
+
+The header states how much of the file the symbols actually cover — `56 symbols covering 91% of the lines; the largest spans 88% of the file` — because a symbol *count* does not say whether an outline is usable as an index. When the file is long but its body is small enough to send, the pivot also declines unless the outline averages at least one symbol per 100 lines; below that the body is both cheaper and more informative.
 
 ## Why it matters on huge-file projects
 

@@ -48,12 +48,15 @@ import {
   findSymbolEntry,
   formatSymbolList,
   makeOutlineData,
+  makeSymbolOutlineData,
   makeUnfoldData,
+  outlineIsWorthThePivot,
   READ_AUTO_OUTLINE_MIN_SYMBOLS,
   READ_AUTO_OUTLINE_THRESHOLD_CHARS,
   READ_AUTO_OUTLINE_THRESHOLD_LINES,
   refuseStructureOnLargeFile,
   scanFile,
+  symbolsInside,
 } from 'src/tools/FileReadTool/outlineView.js'
 import { markMemoryFileMtime } from 'src/tools/FileReadTool/resultContent.js'
 import type { Output } from 'src/tools/FileReadTool/schemas.js'
@@ -298,6 +301,28 @@ export async function callInner(
             `Call Read(file_path, view='outline') to see the full structure.`,
         )
       }
+      // A symbol big enough to trip the auto-pivot gets the same treatment the
+      // pivot gives a file: its own structure instead of its body. `REPL`
+      // spans 2,785 lines, and answering `symbol='REPL'` with all of them is
+      // the wall of text the pivot exists to avoid, reached through a
+      // different door. Only when the symbol actually HAS an index — below the
+      // symbol floor there is nothing to show and the body is the answer.
+      if (
+        view !== 'full' &&
+        entry.endLine - entry.startLine + 1 >= READ_AUTO_OUTLINE_THRESHOLD_LINES
+      ) {
+        const inner = symbolsInside(scanned.entries, entry)
+        if (inner.length >= READ_AUTO_OUTLINE_MIN_SYMBOLS) {
+          return makeSymbolOutlineData(
+            scanned,
+            entry,
+            inner,
+            file_path,
+            fullFilePath,
+            readFileState,
+          )
+        }
+      }
       return makeUnfoldData(
         scanned,
         entry,
@@ -395,8 +420,10 @@ export async function callInner(
   // (handled above), pinned a symbol, or the file is below both thresholds.
   //
   // Two triggers share one scan: the char trigger pivots on any symbol table;
-  // the line trigger additionally requires ≥ READ_AUTO_OUTLINE_MIN_SYMBOLS so
-  // a long single-function file still returns its body. The scan reuses the
+  // the line trigger additionally requires the outline to be a usable INDEX of
+  // the file (outlineIsWorthThePivot), so a long single-function file — or a
+  // 697-line one whose parser found three symbols — still returns its body,
+  // which at that size is the cheaper answer anyway. The scan reuses the
   // in-memory `content` (a full read, since offset===1 && limit===undefined)
   // to avoid a redundant disk read.
   if (
@@ -420,7 +447,7 @@ export async function callInner(
       if (
         scanned &&
         (charTrigger ||
-          scanned.entries.length >= READ_AUTO_OUTLINE_MIN_SYMBOLS)
+          outlineIsWorthThePivot(scanned.entries.length, totalLines))
       ) {
         return makeOutlineData(
           scanned,

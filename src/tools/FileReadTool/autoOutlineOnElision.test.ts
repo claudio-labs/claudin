@@ -387,4 +387,91 @@ describe('FileReadTool — line-count auto-pivot', () => {
     const { data } = await read(p)
     expect(data.type).toBe('text')
   })
+
+  test('a long file with too few symbols for its size stays a full read', async () => {
+    // The density gate. Four symbols clears the flat floor of three, but over
+    // 600 lines they index nothing — one landmark every 150 lines — and the
+    // body is still under the char threshold, so it is the cheaper answer.
+    const parts: string[] = []
+    for (let i = 0; i < 4; i++) {
+      parts.push(`def fn${i}`, '  x = 1', 'end', '')
+    }
+    while (parts.length < 610) parts.push('# n')
+    const body = parts.join('\n')
+    expect(body.length).toBeLessThan(10_000)
+
+    const p = writeFixture('sparse.rb', body)
+    const { data } = await read(p)
+
+    expect(data.type).toBe('text')
+  })
+})
+
+describe('FileReadTool — symbol= on an oversized symbol', () => {
+  // A TS component whose body is long enough to trip the pivot on its own and
+  // carries landmarks the nested outline can show.
+  function bigComponent(): string {
+    const filler = (n: number, indent: string) =>
+      Array.from({ length: n }, (_, i) => `${indent}doThing(${i})`).join('\n')
+    const handler = (n: number) =>
+      [
+        `  const handle${n} = useCallback(() => {`,
+        filler(30, '    '),
+        '  }, [])',
+      ].join('\n')
+    // Over READ_AUTO_OUTLINE_THRESHOLD_LINES (250) on its own, so the symbol
+    // itself trips the same gate a whole file would.
+    return [
+      'export function Component() {',
+      filler(90, '  '),
+      handler(1),
+      handler(2),
+      handler(3),
+      filler(90, '  '),
+      '  return null',
+      '}',
+      '',
+    ].join('\n')
+  }
+
+  test('returns the symbol’s own structure, not its body', async () => {
+    const p = writeFixture('component.tsx', bigComponent())
+    const { data } = await read(p, { symbol: 'Component' })
+
+    expect(data.type).toBe('outline')
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.content).toContain("Symbol 'Component'")
+    expect(data.file.content).toContain('handle1')
+    expect(data.file.content).toContain('handle3')
+    // The body itself must NOT be there — that is the whole point.
+    expect(data.file.content).not.toContain('doThing(0)')
+  })
+
+  test("view='full' beside symbol= still returns the body", async () => {
+    const p = writeFixture('component-full.tsx', bigComponent())
+    const { data } = await read(p, { symbol: 'Component', view: 'full' })
+
+    expect(data.type).toBe('text')
+    if (data.type !== 'text') throw new Error('expected text')
+    expect(data.file.content).toContain('doThing(0)')
+  })
+
+  test('a small symbol still comes back as its body', async () => {
+    const src = [
+      'export function small() {',
+      '  return 1',
+      '}',
+      '',
+      'export function other() {',
+      '  return 2',
+      '}',
+      '',
+    ].join('\n')
+    const p = writeFixture('small.ts', src)
+    const { data } = await read(p, { symbol: 'small' })
+
+    expect(data.type).toBe('text')
+    if (data.type !== 'text') throw new Error('expected text')
+    expect(data.file.content).toContain('return 1')
+  })
 })

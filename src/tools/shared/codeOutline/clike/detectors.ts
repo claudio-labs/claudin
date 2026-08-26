@@ -252,10 +252,46 @@ export function detectTsJs(trimmed: string, depth: number): CLikeDetection | nul
     if (m) return { name: m[1]!, kind: 'method', requiresBody: true }
     m = RE_METHOD.exec(trimmed)
     if (m && !isControlKeyword(m[1]!)) {
-      return { name: m[1]!, kind: 'method', requiresBody: true }
+      // The loosest pattern here — any line starting `ident(`, which a CALL
+      // satisfies as readily as a declaration. Shape-verified.
+      return { name: m[1]!, kind: 'method', requiresBody: true, declShape: true }
     }
     m = RE_METHOD_ARROW.exec(trimmed)
     if (m) return { name: m[1]!, kind: 'method', requiresBody: true }
+
+    // Nested declarations — landmarks inside a large body. Emitted here and
+    // then size-gated in scanCLike (see CLikeSpec.nestedLandmarks), so a small
+    // function keeps the clean outline the tests at "a function nested in
+    // another body is not emitted" pin. `requiresBody` does the first cut for
+    // free: a `const x = 2` binding or a one-line hook call never qualifies,
+    // which is what keeps a React component's 139 local bindings out.
+    m = RE_FUNCTION.exec(trimmed)
+    if (m) {
+      return {
+        name: m[1]!,
+        kind: 'function',
+        requiresBody: true,
+        bodyOnOwnLine: true,
+      }
+    }
+    m = RE_CLASS.exec(trimmed)
+    if (m) {
+      return {
+        name: m[1]!,
+        kind: 'class',
+        requiresBody: true,
+        bodyOnOwnLine: true,
+      }
+    }
+    m = RE_CONST.exec(trimmed)
+    if (m) {
+      return {
+        name: m[1]!,
+        kind: 'const',
+        requiresBody: true,
+        bodyOnOwnLine: true,
+      }
+    }
   }
   return null
 }
@@ -284,7 +320,8 @@ function detectJavaCsMethod(t: string): CLikeDetection | null {
   if (lastWord !== undefined && JAVA_CS_CONTROL_KEYWORDS.has(lastWord)) {
     return null
   }
-  return { name: m[1]!, kind: 'method', requiresBody: true }
+  // Same loose `ident(` shape as TS's RE_METHOD, and the same exposure.
+  return { name: m[1]!, kind: 'method', requiresBody: true, declShape: true }
 }
 
 export function detectJava(trimmed: string, depth: number): CLikeDetection | null {
