@@ -11,6 +11,7 @@ import {
   type SymbolEntry,
 } from 'src/tools/shared/codeOutline/scanSymbols.js'
 import { isAbortError } from 'src/shared/errors.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { readFileInRange } from 'src/shared/fs/readFileInRange.js'
 import { logError } from 'src/shared/log.js'
 import type { Output } from 'src/tools/FileReadTool/schemas.js'
@@ -60,6 +61,39 @@ export const READ_AUTO_OUTLINE_THRESHOLD_CHARS = 10_000
  */
 export const READ_AUTO_OUTLINE_THRESHOLD_LINES = 250
 export const READ_AUTO_OUTLINE_MIN_SYMBOLS = 3
+
+/**
+ * Refuses a structure request the file cannot answer — but only when the body
+ * is big enough that answering it with the body would be worse.
+ *
+ * `scanFile` returns null for a file whose symbol table is empty, and both the
+ * `view: 'outline'` and the `symbol=` arm then fell through to a plain read
+ * with nothing said. Measured over 33 sessions: three explicit
+ * `view: 'outline'` calls came back as ~52 KB of line-numbered body, one of
+ * them a 780-line test file. The caller asked for a skeleton and could not
+ * tell it had not got one.
+ *
+ * Below READ_AUTO_OUTLINE_THRESHOLD_CHARS the body IS the cheaper answer — an
+ * error there would spend a round trip to deliver less than the file — so the
+ * silent degrade stays for small files. `size` is bytes against a char
+ * threshold; the two only diverge on non-ASCII, and never near enough to the
+ * boundary to matter for a "is this file big" question.
+ */
+export async function refuseStructureOnLargeFile(
+  resolvedFilePath: string,
+  filePath: string,
+  asked: string,
+): Promise<void> {
+  const stats = await getFsImplementation().stat(resolvedFilePath)
+  if (stats.size < READ_AUTO_OUTLINE_THRESHOLD_CHARS) return
+  throw new Error(
+    `No symbol table could be built for ${filePath}, so ${asked} cannot be ` +
+      `answered. The file declares nothing at the top level — a file made of ` +
+      `calls reads this way, a \`describe\`/\`test\` suite being the common ` +
+      `case. Read it with offset/limit for a range, or view='full' for the ` +
+      `whole body.`,
+  )
+}
 
 /**
  * Single source of truth for the AUTO_OUTLINE_ON_ELISION gate. Tests can

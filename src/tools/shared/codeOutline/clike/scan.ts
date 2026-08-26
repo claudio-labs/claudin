@@ -6,6 +6,7 @@ import {
   nearestEnclosing,
   trimSignature,
 } from 'src/tools/shared/codeOutline/internal.js'
+import type { Interpolation } from 'src/tools/shared/codeOutline/mask/core.js'
 import type {
   Candidate,
   CLikeSpec,
@@ -29,9 +30,23 @@ function findBlockOpenLine(startLine: number, masked: string[]): number {
   return -1
 }
 
-export function scanCLike(source: string, spec: CLikeSpec): SymbolEntry[] {
+/**
+ * `interp` is not optional in spirit — pass the language's entry from
+ * INTERPOLATION. Without it a template literal that nests another one inside
+ * `${…}` terminates at the INNER backtick, and the tail of the outer literal
+ * is counted as code: one leaked `}` pops the top-level frame and the whole
+ * file fails open at the balance gate below. Measured on src/tools/GitTool/
+ * run.ts, whose masked copy carried 67 `{` against 66 `}` without it and
+ * 69/69 with it. The interpolation delimiters themselves are still blanked as
+ * punctuation (see maskLiteral), so brace-depth math is otherwise unchanged.
+ */
+export function scanCLike(
+  source: string,
+  spec: CLikeSpec,
+  interp?: Interpolation | null,
+): SymbolEntry[] {
   const lines = source.split('\n')
-  const masked = spec.mask(source).split('\n')
+  const masked = spec.mask(source, interp).split('\n')
 
   // Per-line brace depth: depth at line start, line end, and peak within line.
   const depthBefore: number[] = []

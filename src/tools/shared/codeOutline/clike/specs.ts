@@ -9,6 +9,7 @@ import {
   MASK_OPTS_JVM,
   MASK_OPTS_LEGACY,
   MASK_OPTS_PLAIN,
+  MASK_OPTS_TSJS,
 } from 'src/tools/shared/codeOutline/mask/core.js'
 import {
   maskBash,
@@ -107,6 +108,8 @@ const TERRAFORM_METHOD_CONTAINERS: ReadonlySet<SymbolKind> = new Set([
 
 const maskLegacy: CLikeSpec['mask'] = (s, interp) =>
   maskCLike(s, MASK_OPTS_LEGACY, interp)
+const maskTsJs: CLikeSpec['mask'] = (s, interp) =>
+  maskCLike(s, MASK_OPTS_TSJS, interp)
 const maskJvm: CLikeSpec['mask'] = (s, interp) =>
   maskCLike(s, MASK_OPTS_JVM, interp)
 const maskCSharp: CLikeSpec['mask'] = (s, interp) =>
@@ -119,7 +122,7 @@ const maskGroovy: CLikeSpec['mask'] = (s, interp) =>
   maskCLike(s, MASK_OPTS_GROOVY, interp)
 
 const TS_SPEC: CLikeSpec = {
-  mask: maskLegacy,
+  mask: maskTsJs,
   detectSource: 'raw',
   detect: detectTsJs,
   methodContainers: TS_METHOD_CONTAINERS,

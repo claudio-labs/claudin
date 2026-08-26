@@ -177,6 +177,36 @@ describe('scanFileForSites — mask', () => {
     expect(offsets.length).toBe(1)
   })
 
+  // JSX text is code to the masker, so an apostrophe in prose used to open a
+  // literal that ran to the next one anywhere later in the file — and every
+  // real site inside that span was counted as maskedOut and DROPPED from the
+  // rename. Not a cosmetic bug: these are sites the tool refused to touch.
+  test('an apostrophe in JSX prose does not swallow the sites after it', () => {
+    const src = [
+      'function Panel() {',
+      "  return <Text>Don't ask again</Text>",
+      '}',
+      'const a = cfg(1)',
+      'const b = cfg(2)',
+    ].join('\n')
+    const { offsets, maskedOut } = scanFileForSites(src, 'cfg', 'typescript')
+
+    expect(offsets.length).toBe(2)
+    expect(maskedOut).toBe(0)
+  })
+
+  // Same class, the other cause: a quote inside a regex inside `${…}`.
+  test('a regex in a substitution does not swallow the sites after it', () => {
+    const src = [
+      "const q = `'${v.replace(/'/g, 'x')}'`",
+      'const a = cfg(1)',
+    ].join('\n')
+    const { offsets, maskedOut } = scanFileForSites(src, 'cfg', 'typescript')
+
+    expect(offsets.length).toBe(1)
+    expect(maskedOut).toBe(0)
+  })
+
   test('a Go backtick string has no substitutions to unmask', () => {
     const src = 'q := `select ${cfg} from t`\nfoo(cfg)\n'
     const { offsets, maskedOut } = scanFileForSites(src, 'cfg', 'go')

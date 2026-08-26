@@ -670,6 +670,27 @@ function main(): void {
     `\ncompleted (sentinel): A ${A.filter(r => r.sawSentinel).length}/${reps}  B ${B.filter(r => r.sawSentinel).length}/${reps}`,
   )
   console.log(`exit codes         : A ${A.map(r => r.exitCode).join(',')}  B ${B.map(r => r.exitCode).join(',')}`)
+
+  // How the arm NAVIGATED after an outline, not just how much it spent. The
+  // shape is already in readSeq; it was only ever readable by opening the JSON,
+  // which is how "the model never uses symbol=" survived as folklore while this
+  // bench's own deep arm was using it heavily. A session corpus read the
+  // opposite way (26 pivots, zero symbol= follow-ups), so the two populations
+  // disagree and the number belongs where both get compared.
+  const navOf = (arr: ArmResult[]) => {
+    const t: Record<string, number> = {}
+    for (const r of arr) for (const s of r.readSeq) t[s.kind] = (t[s.kind] ?? 0) + 1
+    return t
+  }
+  const navLine = (arr: ArmResult[]) => {
+    const t = navOf(arr)
+    const total = Object.values(t).reduce((a, b) => a + b, 0)
+    const sym = t['symbol'] ?? 0
+    const pct = total > 0 ? ((sym / total) * 100).toFixed(0) : '0'
+    return `${JSON.stringify(t)}  symbol=${sym}/${total} (${pct}%)`
+  }
+  console.log(`read navigation    : A ${navLine(A)}`)
+  console.log(`                     B ${navLine(B)}`)
   console.log(`tool mix           : A ${JSON.stringify(A.map(r => r.toolMix))}`)
   console.log(`                     B ${JSON.stringify(B.map(r => r.toolMix))}`)
   const escaped = [...A, ...B].filter(r => r.escapeToolCalls > 0)

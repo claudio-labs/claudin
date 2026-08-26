@@ -278,6 +278,40 @@ describe('FileReadTool — Smart Code Navigation', () => {
     )
   })
 
+  // A file made only of calls has no symbol table, so neither `view: 'outline'`
+  // nor `symbol=` can be answered. Both used to fall through to a plain read
+  // with nothing said — which is how three explicit outline calls in the
+  // session corpus came back as ~52 KB of body.
+  const CALLS_ONLY = "describe('suite', () => {\n  test('x', () => {})\n})\n"
+
+  test('a small file with no symbols still returns its body', async () => {
+    const p = writeFixture('calls-small.test.ts', CALLS_ONLY)
+    const { data } = await read(p, { view: 'outline' })
+
+    if (data.type !== 'text') throw new Error('expected text')
+    expect(data.file.content).toContain("describe('suite'")
+  })
+
+  test("a large file with no symbols refuses view='outline' instead of dumping", async () => {
+    // Padded past READ_AUTO_OUTLINE_THRESHOLD_CHARS with more calls, so the
+    // table stays empty while the body becomes the expensive answer.
+    const big = CALLS_ONLY + 'noop()\n'.repeat(2000)
+    const p = writeFixture('calls-big.test.ts', big)
+
+    await expect(read(p, { view: 'outline' })).rejects.toThrow(
+      /No symbol table.*view: 'outline'.*offset\/limit.*view='full'/s,
+    )
+  })
+
+  test('a large file with no symbols refuses symbol= and names the symbol', async () => {
+    const big = CALLS_ONLY + 'noop()\n'.repeat(2000)
+    const p = writeFixture('calls-big-sym.test.ts', big)
+
+    await expect(read(p, { symbol: 'suite' })).rejects.toThrow(
+      /No symbol table.*symbol 'suite'/s,
+    )
+  })
+
   test('a code file over the byte cap auto-degrades to an outline', async () => {
     const p = writeFixture('overcap.ts', SAMPLE_TS)
     const ctx = makeContext({
