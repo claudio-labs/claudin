@@ -1,14 +1,16 @@
 ---
 name: outline-blind-to-nested-members
-description: The outline scanner's two measured defects and their fixes — phantom symbols that DELETE the declaration they sit on (840 across the bench corpus), and container blindness on top-level `function` bodies; both closed on branch feat/outline-landmarks, 2026-08-26
+description: The outline scanner's two measured defects and their fixes — phantom symbols that DELETE the declaration they sit on (840 across the bench corpus), and container blindness on top-level `function` bodies; both closed in PR #141, 2026-08-26
 type: project
 ---
 
 Two rounds of work on `scanSymbols`, both measured. Round 1 (2026-08-12) found
 the recall side; round 2 (2026-08-26) found a precision defect that was worse,
-and closed both. The A/B harness that produced every number below is
+and closed both (PR #141). The A/B harness that produced every number below is
 `scripts/bench/ab/outline-symbols-ab.ts` over a pinned 964-file, 12-language
 corpus (`scripts/bench/corpus/`, cached in `~/.cache/claudin-bench-corpus/`).
+Its report is committed at `scripts/bench/results/outline-symbols-ab.txt`; the
+1.2 MB baseline JSON beside it is gitignored and rebuilt with `--save`.
 
 ## Round 1 — recall (LANDED)
 
