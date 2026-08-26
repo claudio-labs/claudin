@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.1.21 — 2026-08-26
+
+### ✨ Features
+
+- feat(outline): surface nested members and drop phantom symbols (#141) (e051adcb)
+
+### 🐛 Bug Fixes
+
+- fix(outline): mask template interpolations, regexes and JSX contractions (#140) (dfe7f70a)
+- fix(tui): drop the zero side from the collapsed group's +/− badge (#139) (5b8dbb30)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.20 — 2026-08-25
 
 ### ✨ Features
