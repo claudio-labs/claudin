@@ -164,12 +164,25 @@ describe('CollapsedReadSearchContent — write lane', () => {
         '−4',
         'A /repo/two.ts',
         '+14',
-        '−0',
         'D /repo/three.ts',
-        '+0',
         '−3',
       ])
     }
+  })
+
+  test('a zero side is dropped from the badge and from the rows', async () => {
+    // "+146 −0" reads as noise; only the side that moved is shown.
+    const addOnly = flatten(
+      await render({ writeFileStats: [stats[1]!] }, true),
+    )
+    expect(addOnly).toContain('+14')
+    expect(addOnly).not.toContain('−0')
+
+    const delOnly = flatten(
+      await render({ writeFileStats: [stats[2]!] }, true),
+    )
+    expect(delOnly).toContain('−3')
+    expect(delOnly).not.toContain('+0')
   })
 
   test('the file list is capped and the remainder is counted', async () => {

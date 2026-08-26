@@ -522,8 +522,11 @@ export function CollapsedReadSearchContent({
               them, so a finished group reads as dim green/red. */}
           {hasWriteTotals && <Text key="write-totals">
               {'  '}
-              <Text color="diffAddedWord">+{writeAdditions}</Text>{' '}
-              <Text color="diffRemovedWord">−{writeDeletions}</Text>
+              {/* A zero side is dropped: "+146" alone reads better than
+                  "+146 −0", and a delete-only group shows just "−12". */}
+              {writeAdditions > 0 && <Text color="diffAddedWord">+{writeAdditions}</Text>}
+              {writeAdditions > 0 && writeDeletions > 0 && ' '}
+              {writeDeletions > 0 && <Text color="diffRemovedWord">−{writeDeletions}</Text>}
             </Text>} <CtrlOToExpand />
         </Text>
       </Box>
@@ -555,8 +558,9 @@ export function CollapsedReadSearchContent({
               {stat.kind} {getDisplayPath(stat.path).padEnd(writePathWidth)}
               {(stat.additions > 0 || stat.deletions > 0) && <Text>
                   {'  '}
-                  <Text color="diffAddedWord">+{stat.additions}</Text>{' '}
-                  <Text color="diffRemovedWord">−{stat.deletions}</Text>
+                  {stat.additions > 0 && <Text color="diffAddedWord">+{stat.additions}</Text>}
+                  {stat.additions > 0 && stat.deletions > 0 && ' '}
+                  {stat.deletions > 0 && <Text color="diffRemovedWord">−{stat.deletions}</Text>}
                 </Text>}
             </Text>
           </Box>
