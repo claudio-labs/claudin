@@ -52,6 +52,7 @@ import {
   READ_AUTO_OUTLINE_MIN_SYMBOLS,
   READ_AUTO_OUTLINE_THRESHOLD_CHARS,
   READ_AUTO_OUTLINE_THRESHOLD_LINES,
+  refuseStructureOnLargeFile,
   scanFile,
 } from 'src/tools/FileReadTool/outlineView.js'
 import { markMemoryFileMtime } from 'src/tools/FileReadTool/resultContent.js'
@@ -306,7 +307,14 @@ export async function callInner(
         context.toolUseId,
       )
     }
-    // scan empty — degrade to a normal read
+    // Scan empty. Small file: degrade to a normal read, which is the cheaper
+    // answer anyway. Large file: say so rather than answering `symbol=` with
+    // the entire body.
+    await refuseStructureOnLargeFile(
+      resolvedFilePath,
+      file_path,
+      `symbol '${symbol}'`,
+    )
   }
 
   if (outlineLang && view === 'outline') {
@@ -322,7 +330,12 @@ export async function callInner(
         'explicit',
       )
     }
-    // scan empty — degrade to a normal read
+    // Same rule as the symbol arm above.
+    await refuseStructureOnLargeFile(
+      resolvedFilePath,
+      file_path,
+      `view: 'outline'`,
+    )
   }
 
   // --- Text file (single async read via readFileInRange) ---

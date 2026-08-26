@@ -24,6 +24,7 @@
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — it means nothing IMPORTS it; needs a local-reference guard AND a grep guard, with `bun run build` as the gate — re-parsing is too weak
 - [Per-turn filesystem scans audited 2026-08-07](per-turn-fs-scan-audit.md) — CORRECTED: scanMemoryFiles is uncached but gated OFF per-turn (tengu_moth_copse) and benched at 0.014 ms/file; getMemoryFiles memo omits cwd; worktree-exit *dialog* leaks stale rule caches
 - [memory_delta deleted 2026-08-07 — it was a second full copy, not a delta](memory-delta-removed-double-send.md) — re-sent every rule/CLAUDE.md body one turn after nested_memory (~57 KB/session); check the raw lane announces a hash before pairing a delta with it
+- [Three mask desyncs blanked whole files from the symbol table — FIXED 2026-08-25](outline-mask-desync-zero-symbols.md) — 220→198 zero-symbol files, 0 regressions; also broke Read(symbol=), Grep symbols and Rename SITE SELECTION; two claims falsified (symbol= adoption, line trigger)
 
 ## Roadmap & major features
 - [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — ROADMAP-11 exhausted; BashTool's two giants shipped 2026-08-22 (PR #129) after the DCE-cliff comments were proven false; carries the feature() fold gate + live offender list

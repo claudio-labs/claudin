@@ -393,6 +393,110 @@ describe('scanSymbols — masking edge cases', () => {
     expect(scanSymbols(src, 'typescript')).toEqual([])
   })
 
+  // The three cases below all shipped as the SAME user-visible failure: the
+  // masked copy lost a brace, scanCLike hit its balance gate and returned [],
+  // and Read(view='outline') silently degraded to dumping the whole file. 220
+  // of 3,236 files in this repo were scanning to zero symbols when they were
+  // found; the fixes took that to 198, all of the remainder being files that
+  // genuinely declare nothing at top level.
+
+  test('a nested template literal inside ${…} does not swallow the outer one', () => {
+    // src/tools/GitTool/run.ts in miniature: a multi-line template whose
+    // interpolation spans lines and holds another template with escaped
+    // backticks. Without interpolation-aware masking the outer literal ends at
+    // the INNER backtick and the tail leaks a `}`, which pops the top-level
+    // frame — one extra enclosing block is enough to lose the whole file.
+    const src = [
+      'function report(result) {',
+      '  if (result.notRun.length > 0) {',
+      '    sections.push(',
+      '      `Stopped — not run: ${result.notRun',
+      '        .map(c => `\\`${oneLine(c)}\\``)',
+      "        .join(', ')}.`,",
+      '    )',
+      '  }',
+      '  return sections',
+      '}',
+      'function after() {',
+      '  return 0',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    expect(syms.map(s => s.name)).toEqual(['report', 'after'])
+    expect(syms[0]).toMatchObject({ startLine: 1, endLine: 10 })
+  })
+
+  test('a regex literal inside ${…} does not open a string on its quotes', () => {
+    // src/tools/TypecheckTool/run.ts in miniature. The `'` inside /'/g used to
+    // open a literal that ran to the next apostrophe ANYWHERE later in the
+    // file, blanking every brace in between.
+    const src = [
+      'function singleQuote(value) {',
+      "  return `'${value.replace(/'/g, `'\\\\''`)}'`",
+      '}',
+      'function tail(text) {',
+      '  return text',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    expect(syms.map(s => s.name)).toEqual(['singleQuote', 'tail'])
+    expect(syms[0]).toMatchObject({ startLine: 1, endLine: 3 })
+  })
+
+  test('an apostrophe in JSX prose is a contraction, not a string opener', () => {
+    // src/permissions/ui/SkillPermissionRequest.tsx in miniature. JSX text is
+    // scanned as code, so `don't` used to open a literal that swallowed the
+    // component's closing braces.
+    // One unpaired apostrophe is enough: the phantom literal it opens runs to
+    // the next one anywhere later in the file — here, to the end — blanking
+    // every brace after it. A fixture with two apostrophes on the same line
+    // would pair them up and prove nothing.
+    const src = [
+      'function Prompt() {',
+      '  return (',
+      '    <Box>',
+      "      <Text>Yes, and don't ask again for {name}</Text>",
+      '    </Box>',
+      '  )',
+      '}',
+      'function Other() {',
+      '  return null',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    expect(syms.map(s => s.name)).toEqual(['Prompt', 'Other'])
+    expect(syms[0]).toMatchObject({ startLine: 1, endLine: 7 })
+  })
+
+  test('the contraction guard leaves real single-quoted strings alone', () => {
+    // Every shape where a `'` legitimately opens a string keeps a separator or
+    // a keyword before it, which is exactly what the guard tests for. If any of
+    // these started reading as code, its unbalanced brace would show up here as
+    // an empty table.
+    const src = [
+      'function quotes(a, x) {',
+      "  const r = a > 'b'",
+      "  const k = x['a}']",
+      "  if (r) return '{'",
+      // No space before the quote — legal JS, and the only shape where the
+      // guard's keyword lookup is load-bearing. The brace inside each literal
+      // is what makes a wrong answer visible.
+      "  switch (a) { case'}': break }",
+      "  return typeof'{'",
+      '}',
+      'function next() {',
+      '  return 1',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    expect(syms.map(s => s.name)).toEqual(['quotes', 'next'])
+    expect(syms[0]).toMatchObject({ startLine: 1, endLine: 7 })
+  })
+
   test('empty source yields an empty table', () => {
     expect(scanSymbols('', 'typescript')).toEqual([])
   })

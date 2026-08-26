@@ -110,7 +110,7 @@ export function scanSymbols(source: string, lang: OutlineLang): SymbolEntry[] {
     // Mask-only languages: string/comment analysis without a symbol scanner.
     // Rename sites stay exact; they just carry no enclosing symbol.
     if (lang === 'elixir' || lang === 'powershell') return []
-    return scanCLike(source, CLIKE_SPECS[lang])
+    return scanCLike(source, CLIKE_SPECS[lang], INTERPOLATION[lang] ?? null)
   } catch (e) {
     logScanError(e)
     return []
@@ -188,4 +188,3 @@ export function maskSourceForLang(
     return null
   }
 }
-

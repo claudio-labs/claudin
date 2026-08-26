@@ -81,6 +81,13 @@ export type Interpolation = {
   /** The language has `//` + `/* *​/` comments, so an interpolation body can hold one. */
   slashComments?: boolean
   /**
+   * The language has regex literals, so an interpolation body can hold one.
+   * Without this a quote inside the pattern — `${v.replace(/'/g, x)}` — opens
+   * a literal that runs to the next quote anywhere in the file and derails
+   * every brace after it.
+   */
+  regexLiterals?: boolean
+  /**
    * Which literals interpolate, given the index of the opening quote and the
    * terminator that will close it. Defaults to every literal in the language.
    */
@@ -160,6 +167,16 @@ export const INTERPOLATION: Partial<Record<OutlineLang, Interpolation>> = {
   typescript: {
     braced: [{ open: '${', close: '}' }],
     slashComments: true,
+    regexLiterals: true,
+    appliesTo: (_s, _i, terminator) => terminator === '`',
+  },
+  // Same shape as TypeScript. Needed as its own entry because EXT_TO_LANG keeps
+  // .js/.jsx/.mjs/.cjs on 'javascript' — a lookup miss here silently drops
+  // interpolation handling for every JS file.
+  javascript: {
+    braced: [{ open: '${', close: '}' }],
+    slashComments: true,
+    regexLiterals: true,
     appliesTo: (_s, _i, terminator) => terminator === '`',
   },
   python: {
@@ -361,8 +378,10 @@ export function maskInterpolationAt(
 /**
  * Walks an interpolation body to its matching closer, masking the literals and
  * comments nested inside it and leaving the rest as code. A closer hidden in a
- * regex literal is not tracked and ends the body early; the tail then reads as
- * code, which surfaces as a listed candidate rather than a silent rewrite.
+ * regex literal is tracked when the language sets `regexLiterals` — without
+ * that, a `'` or `}` inside the pattern ends the body early and the tail reads
+ * as code, which is how `${v.replace(/'/g, …)}` used to blank every brace in
+ * the rest of the file.
  */
 function maskInterpolationBody(
   ctx: MaskCtx,
@@ -374,10 +393,14 @@ function maskInterpolationBody(
   const opener = NEST_OPENER[form.close] ?? ''
   let k = start
   let depth = 1
+  // Same regex-vs-division question as maskCLike, over the body only: a `/`
+  // opening the body (`${/re/.test(x)}`) has no predecessor and is a regex.
+  let prevCode: string | null = null
   while (k < n) {
     const ch = source[k]!
     if (ch === '"' || ch === "'" || ch === '`') {
       k = maskLiteral(ctx, k, { terminator: ch, escape: '\\', interp })
+      prevCode = '"'
       continue
     }
     if (interp.slashComments && ch === '/' && source[k + 1] === '/') {
@@ -394,6 +417,15 @@ function maskInterpolationBody(
       }
       continue
     }
+    if (
+      interp.regexLiterals &&
+      ch === '/' &&
+      regexAllowedAfter(prevCode, source, k)
+    ) {
+      k = maskRegexLiteral(ctx, k)
+      prevCode = '/'
+      continue
+    }
     if (source.startsWith(form.close, k)) {
       depth--
       if (depth === 0) {
@@ -401,13 +433,16 @@ function maskInterpolationBody(
         return k
       }
       k += form.close.length
+      prevCode = form.close
       continue
     }
     if (opener && source.startsWith(opener, k)) {
       depth++
       k += opener.length
+      prevCode = opener
       continue
     }
+    if (!/\s/.test(ch)) prevCode = ch
     k++
   }
   return k
@@ -437,9 +472,76 @@ function regexAllowedAfter(
   return false
 }
 
+/**
+ * Blanks one regex literal — the `/` at `start` through its closing unescaped
+ * `/` and any flags — and returns the index past it. A `/` inside a `[…]`
+ * character class does not close it. An unterminated pattern stops at the
+ * newline, leaving the rest of the line as code.
+ *
+ * Shared by maskCLike and maskInterpolationBody so a regex reads the same way
+ * at top level and inside `${…}`.
+ */
+function maskRegexLiteral(ctx: MaskCtx, start: number): number {
+  const { source, n, blank } = ctx
+  let i = start
+  blank(i++)
+  let inClass = false
+  let closed = false
+  while (i < n) {
+    const ch = source[i]
+    if (ch === '\n') break // unterminated — bail
+    if (ch === '\\') {
+      blank(i++)
+      if (i < n) blank(i++)
+      continue
+    }
+    if (ch === '[') inClass = true
+    else if (ch === ']') inClass = false
+    else if (ch === '/' && !inClass) {
+      blank(i++)
+      closed = true
+      break
+    }
+    blank(i++)
+  }
+  if (closed) {
+    while (i < n && /[a-z]/i.test(source[i]!)) blank(i++)
+  }
+  return i
+}
+
+/**
+ * True when the `'` at `quoteIdx` closes a word instead of opening a string.
+ *
+ * JSX prose is scanned as code, so `<Text>Yes, and don't ask again</Text>`
+ * otherwise opens a literal that runs to the next apostrophe anywhere in the
+ * file, blanking every brace in between — enough to unbalance the file and
+ * make the scan fail open with no symbols at all.
+ *
+ * Deliberately NOT `regexAllowedAfter`: that one skips whitespace and treats
+ * `>` as "not a literal position", which would turn `a > 'b'` into code. Here
+ * the identifier char must be IMMEDIATELY before the quote — `return 'x'`,
+ * `f('a')` and `a > 'b'` all keep their separator and stay strings — and must
+ * not spell a keyword, which covers the legal-but-never-written `case'a':`
+ * and `typeof'x'`.
+ */
+function isContractionApostrophe(source: string, quoteIdx: number): boolean {
+  const prev = source[quoteIdx - 1]
+  if (prev === undefined || !RE_IDENT_CHAR.test(prev)) return false
+  let j = quoteIdx - 1
+  while (j >= 0 && RE_IDENT_CHAR.test(source[j]!)) j--
+  return !REGEX_PREV_KEYWORDS.has(source.slice(j + 1, quoteIdx))
+}
+
 type CLikeMaskOptions = {
   /** JS regex-literal heuristic. On for TS/JS (and Go, legacy behavior). */
   regexLiterals: boolean
+  /**
+   * Treat `word'` as a contraction rather than a string opener. On for TS/JS,
+   * the only languages here that carry JSX; Go shares the legacy mask and gets
+   * no JSX prose, so it stays off there.
+   */
+  contractionApostrophes: boolean
   /**
    * Triple-quoted forms. `escapes: false` is a raw block (Java text block,
    * Kotlin and C# raw strings) where `\` is literal — a text block holding an
@@ -462,16 +564,31 @@ const ESCAPED_TRIPLE_BOTH: CLikeMaskOptions['tripleQuotes'] = [
 
 export const MASK_OPTS_LEGACY: CLikeMaskOptions = {
   regexLiterals: true,
+  contractionApostrophes: false,
+  tripleQuotes: NO_TRIPLE_QUOTES,
+  verbatimStrings: false,
+}
+// TS/JS: the legacy mask plus the JSX contraction guard. Go shares LEGACY and
+// keeps the guard off — not because a rune literal would break under it (the
+// guard needs an identifier char glued to the quote, and `ident'` is not valid
+// Go, so it can never fire there) but because the option should name the
+// languages that actually carry JSX. A regression test for Go was written and
+// then deleted: it passed with the flag forced ON, so it guarded nothing.
+export const MASK_OPTS_TSJS: CLikeMaskOptions = {
+  regexLiterals: true,
+  contractionApostrophes: true,
   tripleQuotes: NO_TRIPLE_QUOTES,
   verbatimStrings: false,
 }
 export const MASK_OPTS_JVM: CLikeMaskOptions = {
   regexLiterals: false,
+  contractionApostrophes: false,
   tripleQuotes: RAW_TRIPLE_DOUBLE,
   verbatimStrings: false,
 }
 export const MASK_OPTS_CSHARP: CLikeMaskOptions = {
   regexLiterals: false,
+  contractionApostrophes: false,
   tripleQuotes: RAW_TRIPLE_DOUBLE,
   verbatimStrings: true,
 }
@@ -480,11 +597,13 @@ export const MASK_OPTS_CSHARP: CLikeMaskOptions = {
 // triple-quote handling where relevant; C uses the plain variant).
 export const MASK_OPTS_PLAIN: CLikeMaskOptions = {
   regexLiterals: false,
+  contractionApostrophes: false,
   tripleQuotes: NO_TRIPLE_QUOTES,
   verbatimStrings: false,
 }
 export const MASK_OPTS_DART: CLikeMaskOptions = {
   regexLiterals: false,
+  contractionApostrophes: false,
   tripleQuotes: ESCAPED_TRIPLE_BOTH,
   verbatimStrings: false,
 }
@@ -492,6 +611,7 @@ export const MASK_OPTS_DART: CLikeMaskOptions = {
 // literal, so the same heuristic masks it.
 export const MASK_OPTS_GROOVY: CLikeMaskOptions = {
   regexLiterals: true,
+  contractionApostrophes: false,
   tripleQuotes: ESCAPED_TRIPLE_BOTH,
   verbatimStrings: false,
 }
@@ -559,37 +679,23 @@ export function maskCLike(
       continue
     }
     if (c === '"' || c === "'" || c === '`') {
+      if (
+        c === "'" &&
+        opts.contractionApostrophes &&
+        isContractionApostrophe(source, i)
+      ) {
+        // Not a delimiter — leave it as code and keep walking.
+        prevCode = c
+        i++
+        continue
+      }
       i = maskLiteral(ctx, i, { terminator: c, escape: '\\', interp })
       // A string/template is a value — a following `/` is division.
       prevCode = '"'
       continue
     }
     if (c === '/' && opts.regexLiterals && regexAllowedAfter(prevCode, source, i)) {
-      // Regex literal: blank through the closing unescaped `/` (a `/` inside
-      // a [...] char class does not close it), then its flags.
-      blank(i++)
-      let inClass = false
-      let closed = false
-      while (i < n) {
-        const ch = source[i]
-        if (ch === '\n') break // unterminated — bail
-        if (ch === '\\') {
-          blank(i++)
-          if (i < n) blank(i++)
-          continue
-        }
-        if (ch === '[') inClass = true
-        else if (ch === ']') inClass = false
-        else if (ch === '/' && !inClass) {
-          blank(i++)
-          closed = true
-          break
-        }
-        blank(i++)
-      }
-      if (closed) {
-        while (i < n && /[a-z]/i.test(source[i]!)) blank(i++)
-      }
+      i = maskRegexLiteral(ctx, i)
       prevCode = '/'
       continue
     }
