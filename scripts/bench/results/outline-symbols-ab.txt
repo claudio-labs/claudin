@@ -1,0 +1,87 @@
+corpus: local sources
+  local    typescript   3236 file(s)
+  local    python       9 file(s)
+  local    c            13 file(s)
+corpus: remote sources
+  cached   javascript-express-4.21.2
+  cached   javascript-axios-v1.7.9
+  cached   java-gson-gson-parent-2.11.0
+  cached   csharp-Newtonsoft.Json-13.0.3
+  cached   c-curl-curl-8_11_1
+  cached   go-gin-v1.10.0
+  cached   rust-serde-v1.0.215
+  cached   kotlin-kotlinx.coroutines-1.9.0
+  cached   swift-swift-argument-parser-1.5.0
+  cached   php-guzzle-7.9.2
+  cached   ruby-sinatra-v4.1.1
+  cached   python-requests-v2.32.3
+
+outline-symbols A/B — baseline → current
+
+lang        bucket               sym        cov%                 bytes     phantom
+----------------------------------------------------------------------------------
+c           <100                 2→2       72→70         382→420 (13%)        21→0
+c           100-500             10→9       70→69          763→748 (3%)        75→0
+c           500-1500           36→35       83→82        2327→2422 (5%)       203→0
+c           >1500            103→100       89→89        6613→6763 (5%)      541→33
+csharp      <100                 2→2       52→52          422→465 (9%)         0→0
+csharp      100-500              9→9       85→85         982→1055 (7%)         0→0
+csharp      500-1500           42→42       96→96        3073→3146 (2%)         0→0
+csharp      >1500              61→61       98→98        5861→5934 (1%)         0→0
+go          <100                 3→3       46→46          404→407 (0%)         0→0
+go          100-500            11→11       76→76          876→876 (0%)         0→0
+go          500-1500           37→37       90→90        2225→2297 (3%)         0→0
+go          >1500            154→154       91→91        9212→9285 (1%)         0→0
+java        <100                 1→1       37→37          395→417 (0%)         0→0
+java        100-500            10→10       77→77         958→1030 (7%)         0→0
+java        500-1500           38→38       92→92        2846→2919 (3%)         0→0
+java        >1500              46→46       89→89        3485→3558 (2%)         0→0
+javascript  <100                 1→1         7→7          339→359 (0%)         0→0
+javascript  100-500              3→3         6→6          394→414 (0%)         0→0
+javascript  500-1500           23→12       73→73       1533→945 (-14%)         0→0
+javascript  >1500              24→23         5→5        1829→1874 (2%)         0→0
+kotlin      <100                 4→4       74→74         534→604 (13%)         2→2
+kotlin      100-500            11→11       93→93        1014→1059 (5%)       12→12
+kotlin      500-1500           38→38       91→91        2710→2783 (2%)       27→27
+kotlin      >1500              98→98       98→98        7501→7575 (1%)         9→9
+php         <100                 1→1       66→66         369→408 (15%)         0→0
+php         100-500            10→10       91→91          912→985 (8%)         0→0
+php         500-1500           22→22       97→97        2168→2241 (3%)         0→0
+python      <100                 0→0         0→0              0→0 (0%)         0→0
+python      100-500              9→9       69→69          852→852 (0%)         0→0
+python      500-1500           43→43       91→91        2285→2358 (3%)         0→0
+ruby        <100                 4→4       80→80         415→487 (17%)         0→0
+ruby        100-500            10→10       94→94          679→752 (6%)         0→0
+ruby        >1500                0→0         0→0              0→0 (0%)         0→0
+rust        <100                 3→3       79→79          468→468 (0%)         0→0
+rust        100-500            13→13       84→84          839→898 (6%)         0→0
+rust        500-1500           93→93       95→95        5747→5819 (1%)         0→0
+rust        >1500            130→130       86→86        9383→9457 (1%)         0→0
+swift       <100                 5→5       70→70          551→592 (4%)         0→0
+swift       100-500            13→13       89→89        1078→1151 (4%)         0→0
+swift       500-1500           17→17       92→92        1276→1349 (6%)         0→0
+typescript  <100                 2→2       61→66          373→430 (0%)         0→0
+typescript  100-500              6→7       78→79          666→738 (6%)         4→0
+typescript  500-1500           20→19       81→83        1565→1390 (5%)         7→0
+  note: typescript/500-1500 p95 outline bytes +55% (tail growth is expected; the corpus total is the cost gate)
+typescript  >1500              36→38       85→85        2606→2739 (4%)         7→0
+  note: typescript/>1500 p95 outline bytes +60% (tail growth is expected; the corpus total is the cost gate)
+---------------------------------------------------------------------------
+
+removals: 820 phantom, 22 call-site, 168 hand-triaged, 0 unexplained, 0 top-level declaration(s)
+corpus totals: 17398 → 17113 symbols (-1.6%), 1309270 → 1358010 outline bytes (3.7%)
+
+dense files that grew but stayed below 25 symbols per 100 lines (observation, not a failure):
+  c-curl-curl-8_11_1/lib/vtls/gtls.c  124 → 145 symbols, 6.3 per 100 lines
+  src/mcp/auth.ts  50 → 59 symbols, 2.8 per 100 lines
+
+phantom witnesses (criterion 1 — hand-verified):
+  PASS  src/tools/GrepTool/GrepTool.ts                 3/3 bogus gone, 5/5 real kept, 0/0 restored
+  PASS  c-curl-curl-8_11_1/lib/http2.c                 2/2 bogus gone, 2/2 real kept, 2/2 restored
+
+anchor files (criterion 4):
+  PASS  src/agent/repl/REPL.tsx                        25 → 56 symbols, largest 88% → 88%
+  PASS  src/terminal/prompt-input/PromptInput.tsx      6 → 25 symbols, largest 91% → 91%
+
+GATE: PASS — all 5 criteria hold.
+

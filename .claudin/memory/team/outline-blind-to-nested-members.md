@@ -1,94 +1,137 @@
 ---
 name: outline-blind-to-nested-members
-description: Measured 2026-08-12 — scanSymbols emits only top-level declarations and class methods, so it hides MORE than it shows (26,336 nested/object-literal members vs 23,452 emitted, 72.6% of files), which silently degrades the default auto-outline Read path
+description: The outline scanner's two measured defects and their fixes — phantom symbols that DELETE the declaration they sit on (840 across the bench corpus), and container blindness on top-level `function` bodies; both closed in PR #141, 2026-08-26
 type: project
 ---
 
-Census of 528 transcripts / 280 sessions plus a scan of all 3,057 TS/TSX files in
-`src/`. This is the root defect behind "symbol search is weak"
-([[search-stack-measured]]) — and it is not a search problem, it is a **Read** problem.
+Two rounds of work on `scanSymbols`, both measured. Round 1 (2026-08-12) found
+the recall side; round 2 (2026-08-26) found a precision defect that was worse,
+and closed both (PR #141). The A/B harness that produced every number below is
+`scripts/bench/ab/outline-symbols-ab.ts` over a pinned 964-file, 12-language
+corpus (`scripts/bench/corpus/`, cached in `~/.cache/claudin-bench-corpus/`).
+Its report is committed at `scripts/bench/results/outline-symbols-ab.txt`; the
+1.2 MB baseline JSON beside it is gitignored and rebuilt with `--save`.
 
-**CORRECTION — the "112% hidden" figure was wrong.** A prototype (below) showed the
-regex I used to count "hidden members" was over-inclusive: it counted every
-`const x =` at any depth, so most of the 26,336 were **local variable bindings and
-React hook calls** (`const tasks = useAppState(…)`), which nobody wants in an
-outline. `src/terminal/prompt-input/PromptInput.tsx` has 139 such 2-space `const`
-bindings — that is the bulk of its "157 hidden". The repo's "body noise" policy is
-correct and deliberately tested. The genuine hidden API surface is **~1,030 symbols
-(+5%)**, not 26,336, and it is almost entirely one shape: object-literal members.
+## Round 1 — recall (LANDED)
 
-**The real blind spot.** `scanSymbols` emits at `depth === 0` plus class methods
-(`detectTsJs:1617-1644`), and `scanCLike:2215-2222` drops any method whose nearest
-enclosing symbol is not in `methodContainers` — which for TS is
-`new Set(['class'])` (`:1882`). So in `export const XTool = buildTool({ call() {} })`
-the parent is a `const` and every member is discarded. Verified examples:
+Variant A landed: `TS_METHOD_CONTAINERS` is `{class, const}`, so
+`export const XTool = buildTool({…})` emits its members. `GrepTool.ts` went
+13 → 33 symbols. **Variant B (emit all nested declarations) stayed rejected** —
+it fails `scanSymbols.test.ts:213`, which pins "inner/local/LocalClass are body
+noise".
 
-- `src/tools/GrepTool/GrepTool.ts` — 827 lines → **13 symbols**, and `GrepTool`
-  itself is one `const` spanning 224-827. `call`, `validateInput`, `isEnabled` are
-  all absent. Every tool in this repo is `export const XTool = buildTool({…})`, so
-  this is the shape of `src/tools/` entirely.
-- `src/terminal/prompt-input/PromptInput.tsx` — 2,566 lines → **5 symbols**,
-  157 members hidden.
+Two claims from round 1 that the census killed are still dead: a `scanSymbols`
+cache (the tool-result cache already covers it — only 5.5% of scans fall outside
+the 60 s TTL) and LSPTool as a definition-lookup surface (0 calls ever, and it
+is `shouldDefer`).
 
-**Why it bites by default.** `AUTO_OUTLINE_ON_ELISION` replaces a full-body Read at
-≥10,000 chars or ≥250 lines, gated only by `READ_AUTO_OUTLINE_MIN_SYMBOLS = 3`
-(`FileReadTool.ts:1450-1461`). Five symbols clears a gate of three, so a 2,566-line
-file is served as five signatures and the model has no way to know what it lost.
-The gate was written to protect a long single-function file; it does not protect a
-file whose members are merely invisible. A density test (symbols per line) would.
+## Round 2 — the precision defect nobody was looking for
 
-**What the census killed.** Both are dead ends — do not re-propose without new data:
-- *A scanSymbols cache.* The cache it would duplicate already exists one layer up:
-  `Read` is in the tool-result cache whitelist at a 60 s TTL with an `isFreshOnDisk`
-  check (`src/agent/tools/toolResultCache.ts:41,92-95`), so a repeat on an
-  unchanged file never reaches the scanner. Measured properly — counting the
-  **auto-pivot** path, not just explicit `view:"outline"` — there are 675
-  scan-triggering Reads of big code files; 174 repeat a file in-session, 145 with the
-  file unmodified, and only **37 (5.5%)** fall outside the 60 s TTL. At ~2 ms per
-  single-file scan that is ~74 ms across 280 sessions. Grep `output_mode:"symbols"`
-  (50 files/call, the only place the 188 ms figure applies) was used **6** times in
-  1,901 Grep calls; `Rename` **4** times.
-- *LSPTool as the surface for a definition lookup.* **0** LSP calls ever recorded,
-  and it is `shouldDefer: true` — behind ToolSearch, so the model never sees it.
-  Reach a definition feature through Grep (1,901 calls) or Read (4,597), not there.
+`RE_METHOD` (`clike/detectors.ts`) matches any line starting `ident(`, and
+`resolveCLikeBounds` accepted **any later brace** as that candidate's body. So a
+call argument, or the continuation line of a multi-line expression, became a
+symbol whose range is the next unrelated block.
 
-**The demand is real, though.** Of 1,901 Grep calls: **16.7%** carry a
-definition-shaped pattern (`export function X`, `const X =`) and **16.9%** are a bare
-identifier — 33.6% combined, and **256** of them are immediately followed by a Read.
-That is the grep→read→infer loop, ~0.9 times per session.
+The part that makes it more than noise: a body-requiring candidate **stops at
+the next candidate's line**, so a phantom sitting on a signature's continuation
+line DELETES the declaration it belongs to. In curl's `http2.c`,
+`static size_t populate_settings(nghttp2_settings_entry *iv,` was **absent**
+from the symbol table, replaced by a `struct Curl_easy` (its own second
+parameter) whose range covered the function body. 840 phantoms across 79 of 152
+sampled curl files; 18 in `src/`.
 
-**PROTOTYPE VALIDATED 2026-08-12 — the fix is ~8 lines, and it is additive.**
-Built in `/tmp/proto` (regenerable: copy the module, it is dependency-free apart from
-one deferred dynamic import). Variant **A** = add `'const'` to `TS_METHOD_CONTAINERS`
-plus one regex for `key: () =>` / `key: function` wired into the `depth >= 1` branch
-of `detectTsJs`. Measured over 2,489 files / 20.7 MB:
+Fixes, all in `clike/`:
 
-- **180/180 of the existing `scanSymbols.test.ts` pass unmodified.** Purely additive.
-- +1,030 symbols (+5%), outline bytes **+3.4%**, throughput 18.6 → 18.0 KB/ms (−3%).
-- Only **192 of 2,489 files change (7.7%)** — and the gains land exactly where the
-  census said: `FileEditTool` 3→26, `GlobTool` 7→23, `GrepTool` 13→33, `FileWriteTool`
-  7→29. `FileEditTool.ts` was serving **3 symbols for 697 lines**, one over the
-  auto-pivot's `MIN_SYMBOLS = 3` gate.
-- **No flooding.** The densest files (`outputFilter/Bash/filters/*`, generated types,
-  77-125 symbols) are completely unchanged by A — `requiresBody: true` keeps data
-  properties out. The new names are the tool interface, 51 tools deep:
-  `description×51 call×50 prompt×49 inputSchema×49 validateInput×26`.
+- `CLikeSpec.rejectInsideParens` — drop a candidate whose line BEGINS while the
+  innermost unclosed group is `(` or `[`. On for TS/JS, Java, C#, C.
+- `CLikeDetection.declShape` — for the loose `ident(` detectors, verify the body
+  `{` is reachable: parens must close, no `)` underflow, no `;`, and the brace
+  within 2 lines of the close. Set on TS `RE_METHOD`, `detectJavaCsMethod`,
+  `detectC`.
+- `CLikeDetection.bodyOnOwnLine` — a landmark's body is its initializer, so the
+  `{` must be on its own line. Without it `let escaped = false` adopted the next
+  block (240 lines in `bashSecurity.ts`).
+- `CLikeSpec.nestedLandmarks` `{minBodyLines: 20, minParentLines: 100}` on TS
+  only — the size-gated version of variant B, which is the product argument B
+  lacked.
 
-**Variant B (also emit nested function/class declarations) is REJECTED:** it fails
-`scanSymbols.test.ts:227`, a test that deliberately pins "inner/local/LocalClass are
-body noise". That is a design decision, so B needs a product argument, not a bug one.
+**Result:** corpus symbols −1.4%, outline bytes **+0.6%**; `REPL.tsx` 25 → 56
+**Result:** corpus symbols −1.6%, outline bytes **+3.7%**; `REPL.tsx` 25 → 56
+symbols, `PromptInput.tsx` 6 → 25, and curl's real functions come back. The
+scanner alone was +0.6% — the rest is the Read-layer coverage line below.
 
-**Two things A does NOT fix — do not claim it does.**
-1. *The definition lookup barely moves: 25/60 → **26/60**.* Reading what stays
-   unresolved explains why and kills my earlier claim that the scanner was the cause:
-   `claudindev`, `kimi`, `tokyo`, `CLAUDIN_CONFIG_DIR`, `stdout`, `effort`, `strict`
-   are env vars, string literals, tool names and prose — **there is no definition to
-   find**. Bare-identifier Grep is mostly not a definition lookup.
-2. *Thin outlines on big files stay thin:* of 698 files ≥250 lines, those served ≤8
-   symbols go 203 → 199. The residue is React components whose members are
-   hook-bound `const` arrows — i.e. the "body noise" case, by design.
+## Round 2, Read layer
 
-**How to apply:** land A (small, additive, tested). Then make the auto-outline gate
-density-aware — `MIN_SYMBOLS = 3` is what let a 697-line file through as 3 lines.
-Treat a definition-lookup feature as unjustified until someone re-measures demand
-against symbols that actually exist.
+Four changes ship with the scanner, all in `FileReadTool`/`renderOutline`:
+
+- A coverage line in the outline header (`N symbols covering X% of the lines;
+  the largest spans Y%`), so a thin outline announces itself instead of reading
+  as a complete table.
+- `symbol=` on a symbol too large to inline returns **that symbol's outline**,
+  with `view: 'full'` named as the way out. It used to return the whole body.
+- Outline truncation drops the DEEPEST entries first, so an over-cap file loses
+  nested members before top-level declarations.
+- The auto-outline pivot is density-aware: a long file whose symbols cover
+  almost none of it gets the body, not a table of three names.
+
+## Traps this round paid for — do not re-learn them
+
+- **A group-stack rule needs a fail-open.** A backtick inside a regex character
+  class starts a phantom template literal in the mask and blanks the rest of the
+  file (axios `AxiosHeaders.js:32`), leaving brackets unmatched. Without
+  `groupsBalanced`, `rejectInsideParens` dropped all 33 real declarations there.
+  Same contract as the existing `depth !== 0` brace check.
+- **TS/JS detect on the RAW line** (`detectSource: 'raw'`), and `RE_METHOD`
+  tolerates a leading `*` — so a doc comment saying `forceRedraw()` matched,
+  reached forward, adopted the NEXT method's body, and then filtered that real
+  method out for having a phantom parent. The masked line having no `(` is what
+  tells a comment from code.
+- **A comma is not a statement terminator in a declaration tail.** Treating one
+  at paren depth 0 as the end cost six real `JObject` members in
+  Newtonsoft.Json and every `throws A, B {` in Gson.
+- **Re-arming the body-search gap on every later `)` lets a RUN of call
+  statements chain** until something opens a brace; those phantoms are filtered
+  later but linger long enough to be found as a landmark's enclosing symbol.
+  Measure the gap from the FIRST close.
+- **Filter methods BEFORE landmarks.** A landmark's enclosing symbol must be one
+  that survives, or a discarded method between it and the real container is
+  measured as its parent.
+- **A header note is not free on a small outline.** The coverage line is ~80
+  bytes; on a 339-byte JavaScript outline that is +20%, which failed the byte
+  criterion on its own. It is emitted only for files ≥200 lines or where the
+  largest symbol spans ≥50% — the shape it exists to flag.
+
+## The bench's own lesson
+
+The fix and the phantom detector converge on the same signal, so
+"the rule finds nothing" would pass by construction. Criterion 1 is therefore
+stated over a **hand-verified witness list** (`PHANTOM_WITNESSES`) with three
+parts — bogus symbols that must vanish, real ones that must survive, real ones
+the fix must RESTORE — not over the detector's count, which is reported as an
+observation. Removals are explained by two independent tests plus a
+hand-triaged allowlist; anything left over fails the run with `file:line`.
+
+Also: compare bytes **per file against its own baseline**, not as a ratio of two
+cells' medians — the latter read +43% where the typical file grew 28%. And the
+baseline must be recorded on unmodified HEAD; a `git worktree` at the exact SHA
+is the non-destructive way (no stash, per `.claudin/rules/agent-safety.md`).
+
+And this repo **is** the TypeScript corpus, with the sample drawn per size
+bucket — so editing the scanner moves its own files across bucket boundaries and
+resamples the corpus. Every comparison is per file against its own baseline row
+and skips a label the baseline lacks, which keeps it apples-to-apples; the
+corpus totals just cover slightly fewer files than the run reports.
+
+## Still open
+
+- **33 C phantoms survive**, all in six curl files whose masked copy has
+  unbalanced brackets (`multi.c`, `url.c`, `openssl.c`, `gtls.c`, `mbedtls.c`,
+  `sectransp.c`), where `rejectInsideParens` fails open by design. The root
+  cause is the mask, not the gate — same class as
+  [[outline-mask-desync-zero-symbols]].
+- **Kotlin has ~50 phantoms** the gate does not reach — its detector was left
+  out of scope deliberately. Java and C# showed **zero** in this corpus, so
+  their opt-in is correctness insurance, not a measured win.
+- JavaScript coverage is the weakest cell by far: express/axios files median
+  **1-3 symbols and 5-7% line coverage**, because CommonJS `module.exports = {}`
+  and `exports.foo = function` match nothing. Untouched by this round.

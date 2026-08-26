@@ -285,6 +285,284 @@ describe('scanSymbols — TypeScript', () => {
     expect(syms.map(s => s.name)).toEqual(['Tool', 'call'])
   })
 
+  test('a call used as an argument is not a symbol', () => {
+    // GrepTool.ts:565 — `getCwd(),` sits on its own line inside a multi-line
+    // call. It matched the `ident(` method regex and adopted the brace of the
+    // NEXT block, so the outline reported a symbol `getCwd` spanning a `for`
+    // loop that has nothing to do with it.
+    const src = [
+      'export const Tool = {',
+      '  call() {',
+      '    const patterns = normalize(',
+      '      readPatterns(),',
+      '      getCwd(),',
+      '    )',
+      '    for (const p of patterns) {',
+      '      args.push(p)',
+      '    }',
+      '  },',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    expect(syms.map(s => s.name)).toEqual(['Tool', 'call'])
+  })
+
+  test('the last condition of a multi-line if is not a symbol', () => {
+    // GrepTool.ts:617. `if (` alone is caught by isControlKeyword, but its
+    // CONTINUATION lines carry no such marker, and the `) {` that closes the
+    // condition was read as the candidate's body.
+    const src = [
+      'export const Tool = {',
+      '  call() {',
+      '    if (',
+      '      results.length === 0 &&',
+      '      fallbackEnabled()',
+      '    ) {',
+      '      results = retry()',
+      '    }',
+      '  },',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    expect(syms.map(s => s.name)).toEqual(['Tool', 'call'])
+  })
+
+  test('a call statement that opens a block is not a symbol', () => {
+    // The shape the paren test cannot see: this line BEGINS inside a `{`, not
+    // inside a `(`, so only the forward declaration-shape scan rejects it. Its
+    // brace sits at paren depth 1, inside the argument list.
+    const src = [
+      'export const Tool = {',
+      '  call() {',
+      '    setExpandedKeys(prev => {',
+      '      return prev',
+      '    })',
+      '  },',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    expect(syms.map(s => s.name)).toEqual(['Tool', 'call'])
+  })
+
+  // --- nested landmarks -----------------------------------------------------
+  //
+  // TS_NESTED_LANDMARKS is { minBodyLines: 20, minParentLines: 100 }. These
+  // build their fixtures from those shapes rather than restating the numbers,
+  // so a deliberate re-tune moves one constant and these still describe the
+  // rule: a nested declaration is a landmark only inside a LARGE body, and only
+  // when it is itself substantial.
+  const filler = (n: number, indent = '  '): string[] =>
+    Array.from({ length: n }, (_, i) => `${indent}doThing(${i})`)
+
+  test('a substantial nested handler inside a large function is a landmark', () => {
+    const src = [
+      'export function Component() {',
+      ...filler(60),
+      '  const handleSubmit = useCallback(async () => {',
+      ...filler(30, '    '),
+      '  }, [])',
+      ...filler(40),
+      '  return null',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    expect(syms.map(s => s.name)).toEqual(['Component', 'handleSubmit'])
+    expect(syms[1]).toMatchObject({ kind: 'const', depth: 1 })
+  })
+
+  test('the same handler inside a small function stays body noise', () => {
+    const src = [
+      'export function Component() {',
+      '  const handleSubmit = useCallback(async () => {',
+      ...filler(30, '    '),
+      '  }, [])',
+      '  return null',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    expect(syms.map(s => s.name)).toEqual(['Component'])
+  })
+
+  test('a short nested declaration is not a landmark', () => {
+    const src = [
+      'export function Component() {',
+      ...filler(60),
+      '  const handleSubmit = useCallback(() => {',
+      '    send()',
+      '  }, [])',
+      ...filler(60),
+      '  return null',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    expect(syms.map(s => s.name)).toEqual(['Component'])
+  })
+
+  test('a local binding with no brace on its line is never a landmark', () => {
+    // bashSecurity.ts:1264 — `let escaped = false` matched the const pattern
+    // and, being body-requiring, adopted the next block that opened. The
+    // outline reported it as a symbol spanning 240 lines.
+    const src = [
+      'export function parse() {',
+      ...filler(60),
+      '  let escaped = false',
+      '  for (const ch of input) {',
+      ...filler(40, '    '),
+      '  }',
+      '  return escaped',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    expect(syms.map(s => s.name)).toEqual(['parse'])
+  })
+
+  test('landmarks are TypeScript-only — a Java inner class is untouched', () => {
+    // Java has no `nestedLandmarks`, so its nested types keep passing the
+    // filter on their own terms: this one is 3 lines inside a 5-line class and
+    // would fail both size gates.
+    const src = [
+      'public class Outer {',
+      '  static class Builder {',
+      '    int x;',
+      '  }',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'java')
+
+    expect(syms.map(s => s.name)).toEqual(['Outer', 'Builder'])
+  })
+
+  test('a file whose mask leaves brackets unbalanced keeps its declarations', () => {
+    // axios' AxiosHeaders.js:32. A backtick inside a regex character class
+    // starts a phantom template literal in the mask, which blanks the rest of
+    // the file and leaves a `[` unclosed. Every later line then looks like it
+    // sits inside an expression, so the paren filter would drop all 33 real
+    // declarations. It switches itself off instead.
+    const src = [
+      'const isValid = (s) => /^[-a-z`|~]+$/.test(s)',
+      '',
+      'function matchHeaderValue(context, value) {',
+      '  return value',
+      '}',
+      '',
+      'function formatHeader(header) {',
+      '  return header.trim()',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'javascript')
+
+    expect(syms.map(s => s.name)).toContain('matchHeaderValue')
+    expect(syms.map(s => s.name)).toContain('formatHeader')
+  })
+
+  test('a call statement does not adopt a later, unrelated block', () => {
+    // The bound that stops the forward scan from wandering. `useMountEffect()`
+    // closes its own parens and never opens a body; three lines later an `if`
+    // does, and without the gap limit that brace is read as its body.
+    //
+    // The component must be a `const` arrow for this to bite: inside a
+    // `call() {}` the statement's nearest enclosing symbol would be a method,
+    // which the methodContainers filter drops for an unrelated reason, and the
+    // test would pass with the bound deleted.
+    const src = [
+      'export const Component = () => {',
+      '  useMountEffect()',
+      '  const a = 1',
+      '  const b = 2',
+      '  if (a) {',
+      '    use(b)',
+      '  }',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    expect(syms.map(s => s.name)).toEqual(['Component'])
+  })
+
+  test('a method named in a doc comment is not a symbol', () => {
+    // TS/JS detect on the RAW line, and RE_METHOD tolerates a leading `*`, so
+    // `* forceRedraw() this does not …` matched. Reaching forward for a body,
+    // it adopted the NEXT method's — and then, being the deeper enclosing
+    // symbol, filtered that real method out of the table (ink.tsx).
+    const src = [
+      'class Ink {',
+      '  /**',
+      '   * forceRedraw() renders immediately; this does not — the reset',
+      '   * applies to the upcoming frame.',
+      '   */',
+      '  prepareFullRepaint(): void {',
+      '    this.repaint()',
+      '  }',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'typescript')
+
+    expect(syms.map(s => s.name)).toEqual(['Ink', 'prepareFullRepaint'])
+    expect(syms[1]).toMatchObject({ startLine: 6, endLine: 8 })
+  })
+
+  test('a parameter on a continuation line does not replace its function', () => {
+    // curl's http2.c:102-104, the densest form of the defect: `struct
+    // Curl_easy *data)` is the second parameter, read as a struct
+    // declaration. Because a body-requiring candidate stops at the next
+    // candidate's line, that phantom also DELETED `populate_settings` — the
+    // scanner reported the parameter and not the function.
+    const src = [
+      'static size_t populate_settings(nghttp2_settings_entry *iv,',
+      '                                struct Curl_easy *data)',
+      '{',
+      '  return 3;',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'c')
+
+    expect(syms.map(s => s.name)).toEqual(['populate_settings'])
+    expect(syms[0]).toMatchObject({ startLine: 1, endLine: 5 })
+  })
+
+  test('a Java throws clause on its own line still finds the body', () => {
+    // Gson.java:1197. The `,` between the thrown types sits at paren depth 0,
+    // after the parameter list has closed; treating it as a statement
+    // terminator cost every such method in Gson.
+    const src = [
+      'public class Gson {',
+      '  public <T> T fromJson(Reader json, Class<T> classOfT)',
+      '      throws JsonSyntaxException, JsonIOException {',
+      '    return null;',
+      '  }',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'java')
+
+    expect(syms.map(s => s.name)).toEqual(['Gson', 'fromJson'])
+    expect(syms[1]).toMatchObject({ startLine: 2, endLine: 5 })
+  })
+
+  test('a C# constructor initializer still finds the body', () => {
+    // BsonReader.cs:129. `: this(…)` opens one more paren group after the
+    // parameter list closed, and the body brace is two lines down.
+    const src = [
+      'public class BsonReader',
+      '{',
+      '    public BsonReader(Stream stream)',
+      '        : this(stream, false, DateTimeKind.Local)',
+      '    {',
+      '    }',
+      '}',
+    ].join('\n')
+    const syms = scanSymbols(src, 'csharp')
+
+    expect(syms.map(s => s.name)).toEqual(['BsonReader', 'BsonReader'])
+    expect(syms[1]).toMatchObject({ kind: 'method', startLine: 3, endLine: 6 })
+  })
+
   test('a member of a nested object literal is kept, at its own depth', () => {
     const src = [
       'export const handlers = {',

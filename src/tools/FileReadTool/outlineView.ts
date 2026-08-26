@@ -2,6 +2,7 @@ import { feature } from 'bun:bundle'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import {
   renderOutline,
+  renderOutlineBody,
   type OutlineReason,
 } from 'src/tools/shared/codeOutline/renderOutline.js'
 import {
@@ -61,6 +62,31 @@ export const READ_AUTO_OUTLINE_THRESHOLD_CHARS = 10_000
  */
 export const READ_AUTO_OUTLINE_THRESHOLD_LINES = 250
 export const READ_AUTO_OUTLINE_MIN_SYMBOLS = 3
+
+/**
+ * Lines per symbol the line-triggered pivot demands before it will withhold a
+ * body it could afford to send.
+ *
+ * `READ_AUTO_OUTLINE_MIN_SYMBOLS` alone is a flat floor, so a 697-line file
+ * with three symbols was answered with three lines — technically an outline,
+ * useless as a view of the file, and the body was under the char threshold
+ * anyway. Above `READ_AUTO_OUTLINE_THRESHOLD_CHARS` this does NOT apply: a
+ * thin outline of a genuinely large file still beats the body, and the header's
+ * coverage line says how thin it is.
+ */
+const PIVOT_MAX_LINES_PER_SYMBOL = 100
+
+/**
+ * Whether a line-triggered pivot (the file is long but its body is small
+ * enough to send) has an outline worth substituting for that body.
+ */
+export function outlineIsWorthThePivot(
+  symbolCount: number,
+  totalLines: number,
+): boolean {
+  if (symbolCount < READ_AUTO_OUTLINE_MIN_SYMBOLS) return false
+  return symbolCount >= Math.ceil(totalLines / PIVOT_MAX_LINES_PER_SYMBOL)
+}
 
 /**
  * Refuses a structure request the file cannot answer — but only when the body
@@ -252,6 +278,77 @@ export function makeOutlineData(
         totalLines: scanned.lines.length,
         symbolCount: scanned.entries.length,
         ...(reason === 'pivot' ? { autoPivot: true } : {}),
+      },
+    },
+  }
+}
+
+/**
+ * The symbols strictly inside `entry`'s range — its own index.
+ *
+ * `entry` itself is excluded; anything sharing its exact bounds is too, since a
+ * symbol and a wrapper spanning the same lines index nothing.
+ */
+export function symbolsInside(
+  entries: SymbolEntry[],
+  entry: SymbolEntry,
+): SymbolEntry[] {
+  return entries.filter(
+    e =>
+      e !== entry &&
+      e.startLine >= entry.startLine &&
+      e.endLine <= entry.endLine &&
+      !(e.startLine === entry.startLine && e.endLine === entry.endLine),
+  )
+}
+
+/**
+ * Builds the nested-outline result for `symbol=` on a symbol too large to hand
+ * back whole: the symbols INSIDE it, rendered as an outline.
+ *
+ * `makeUnfoldData` slices the entry's full range with no ceiling, so
+ * `Read(REPL.tsx, symbol='REPL')` returned 2,785 lines — the same wall of text
+ * the auto-pivot exists to avoid, reached through a different door. The
+ * `view: 'full'` escape hatch is honoured by the caller.
+ *
+ * Marked `isPartialView` for the same reason `makeOutlineData` is: the model has
+ * seen a skeleton, not the lines, so Edit/Write must require a fresh Read.
+ * Getting that wrong would silently unblock a write against unseen content.
+ */
+export function makeSymbolOutlineData(
+  scanned: ScannedFile,
+  entry: SymbolEntry,
+  inner: SymbolEntry[],
+  file_path: string,
+  fullFilePath: string,
+  readFileState: ToolUseContext['readFileState'],
+): { data: Output } {
+  const span = entry.endLine - entry.startLine + 1
+  const content =
+    `<system-reminder>\n` +
+    `Symbol '${entry.name}' in '${file_path}' spans lines ` +
+    `${entry.startLine}-${entry.endLine} (${span} lines) — showing its ` +
+    `structure instead of its body. Call ` +
+    `Read(file_path, symbol='${entry.name}', view='full') for the whole body, ` +
+    `or offset/limit for one part of it.\n` +
+    `</system-reminder>\n\n` +
+    renderOutlineBody(inner) +
+    '\n'
+  readFileState.set(fullFilePath, {
+    content: scanned.source,
+    timestamp: Math.floor(scanned.mtimeMs),
+    offset: undefined,
+    limit: undefined,
+    isPartialView: true,
+  })
+  return {
+    data: {
+      type: 'outline' as const,
+      file: {
+        filePath: file_path,
+        content,
+        totalLines: scanned.lines.length,
+        symbolCount: inner.length,
       },
     },
   }

@@ -18,6 +18,16 @@ import type { SymbolEntry } from 'src/tools/shared/codeOutline/scanSymbols.js'
 /** Token ceiling for the rendered outline body. */
 export const OUTLINE_MAX_TOKENS = 10_000
 
+/**
+ * Below this many lines the coverage line is not worth its ~20 tokens: a
+ * 60-line file's outline is small enough to take in whole, and on the bench
+ * corpus the note alone was +20% of a short JavaScript outline's bytes. It
+ * still prints for a short file whose single symbol dominates it, which is the
+ * shape the note exists to flag.
+ */
+const COVERAGE_NOTE_MIN_LINES = 200
+const COVERAGE_NOTE_DOMINANT_PCT = 50
+
 // Bytes per token. The auto-cap is an internal safety guard, not user-facing
 // precision — a coarse 4 bytes/token heuristic keeps this module free of the
 // provider/tokenizer dependency chain.
@@ -67,31 +77,104 @@ export function rangeLabel(entry: SymbolEntry): string {
   return `${entry.startLine}-${entry.endLine}`
 }
 
+/**
+ * How much of the file the symbol table actually accounts for: the share of
+ * lines inside at least one symbol range (a UNION — nested ranges must not
+ * count twice), and the share taken by the single largest symbol.
+ *
+ * Both numbers ride in the header because a symbol COUNT does not say whether
+ * an outline is a usable index. `PromptInput.tsx` was served as five
+ * signatures for 2,591 lines, one of them spanning 91% of the file: it clears
+ * any count-based gate and tells the reader nothing about where anything is.
+ * With the numbers stated, `offset/limit` is an informed choice instead of a
+ * guess.
+ */
+export function outlineCoverage(
+  entries: SymbolEntry[],
+  totalLines: number,
+): { coveredPct: number; largestPct: number } {
+  if (entries.length === 0 || totalLines <= 0) {
+    return { coveredPct: 0, largestPct: 0 }
+  }
+  const ranges = entries
+    .map(e => [e.startLine, e.endLine] as const)
+    .sort((a, b) => a[0] - b[0])
+  let covered = 0
+  let largest = 0
+  let curStart = ranges[0]![0]
+  let curEnd = ranges[0]![1]
+  for (const [s, e] of ranges) {
+    if (e - s + 1 > largest) largest = e - s + 1
+    if (s <= curEnd + 1) {
+      if (e > curEnd) curEnd = e
+      continue
+    }
+    covered += curEnd - curStart + 1
+    curStart = s
+    curEnd = e
+  }
+  covered += curEnd - curStart + 1
+  return {
+    coveredPct: Math.round((covered / totalLines) * 100),
+    largestPct: Math.round((largest / totalLines) * 100),
+  }
+}
+
 function renderBody(entries: SymbolEntry[]): {
   body: string
   shown: number
 } {
+  // Over budget, drop the DEEPEST rows first — nested landmarks before the
+  // top-level skeleton, and among equals the smallest body first. Truncating in
+  // document order instead would cut the END of the file off, which is the one
+  // part of a large file the reader cannot guess. Ties broken by line so the
+  // choice is deterministic.
+  const budgeted = fitToBudget(entries)
   // Align the range column to the widest range string for readability.
-  const widest = entries.reduce(
+  const widest = budgeted.reduce(
     (w, e) => Math.max(w, rangeLabel(e).length),
     0,
   )
   const lines: string[] = []
-  let estimate = 0
   let shown = 0
-  for (const entry of entries) {
+  for (const entry of budgeted) {
     const indent = '  '.repeat(entry.depth + 1)
     const range = rangeLabel(entry).padEnd(widest)
     const line = `${indent}${range}  ${entry.signature}`
-    const lineTokens = estimateTokens(line + '\n')
-    if (shown > 0 && estimate + lineTokens > OUTLINE_MAX_TOKENS) {
-      break
-    }
     lines.push(line)
-    estimate += lineTokens
     shown++
   }
   return { body: lines.join('\n'), shown }
+}
+
+/**
+ * The subset of `entries`, in document order, that fits under
+ * {@link OUTLINE_MAX_TOKENS}. Returns the input untouched when it already fits,
+ * which is the overwhelmingly common case.
+ */
+function fitToBudget(entries: SymbolEntry[]): SymbolEntry[] {
+  const rowTokens = (e: SymbolEntry): number =>
+    estimateTokens(`${'  '.repeat(e.depth + 1)}${rangeLabel(e)}  ${e.signature}\n`)
+  let total = 0
+  for (const e of entries) total += rowTokens(e)
+  if (total <= OUTLINE_MAX_TOKENS) return entries
+
+  const dropOrder = [...entries].sort(
+    (a, b) =>
+      b.depth - a.depth ||
+      a.endLine - a.startLine - (b.endLine - b.startLine) ||
+      a.startLine - b.startLine,
+  )
+  const dropped = new Set<SymbolEntry>()
+  for (const e of dropOrder) {
+    if (total <= OUTLINE_MAX_TOKENS) break
+    // Always leave at least one row, so a single oversized signature still
+    // renders something rather than an empty body.
+    if (dropped.size >= entries.length - 1) break
+    dropped.add(e)
+    total -= rowTokens(e)
+  }
+  return entries.filter(e => !dropped.has(e))
 }
 
 /**
@@ -150,9 +233,17 @@ export function renderOutline(
     ? `\nNOTE: the file exceeds the 10 MB scan cap; only the first ${totalLines} scanned lines are outlined — deeper symbols are not listed.`
     : ''
 
+  const { coveredPct, largestPct } = outlineCoverage(entries, totalLines)
+  const coverageNote =
+    totalLines >= COVERAGE_NOTE_MIN_LINES ||
+    largestPct >= COVERAGE_NOTE_DOMINANT_PCT
+      ? `\n${entries.length} symbol${entries.length === 1 ? '' : 's'} covering ` +
+        `${coveredPct}% of the lines; the largest spans ${largestPct}% of the file.`
+      : ''
+
   const header =
     `<system-reminder>\n` +
-    `${lead}${truncationNote}\n` +
+    `${lead}${coverageNote}${truncationNote}\n` +
     `Call Read(file_path, symbol='${firstSymbol}') to expand one symbol's ` +
     `body with real line numbers, or Read(file_path, offset=N, limit=M) ` +
     `for an arbitrary range.\n` +

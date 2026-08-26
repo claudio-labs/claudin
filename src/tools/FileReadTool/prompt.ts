@@ -100,7 +100,8 @@ Assume this tool is able to read all files on the machine. If the User provides 
 Reading strategy for code files (TS/JS, Python, Go, Java, Kotlin, C#, Rust, C/C++, PHP, Swift, Scala, Ruby, Lua, Bash, SQL, CSS/SCSS, HTML, Markdown, YAML, XML, .properties, .env, TOML, Dockerfile, Makefile, GraphQL, Terraform):
 Default to surgical reads — full-file reads waste tokens proportionally to file size, while targeted reads cost ~95% less. Follow this order:
 1. Unknown file → start with view='outline' (~5-10% of full-file tokens; typically 150-1500 depending on symbol count). Returns every function, class and object-literal member signature with line ranges.
-2. Need to inspect or modify a known function X → use symbol='X' (returns just that function body, not the whole file).
+1. Unknown file → start with view='outline' (~5-10% of full-file tokens; typically 150-1500 depending on symbol count). Returns every function, class and object-literal member signature with line ranges, plus the substantial handlers nested inside a large function. The header says how much of the file the symbols actually cover.
+2. Need to inspect or modify a known function X → use symbol='X' (returns just that function body, not the whole file). A symbol too large to send whole comes back as its own outline instead; add view='full' to get the body anyway.
 3. Need lines around a known location → use offset/limit (range read) instead of full file.
 4. Full file only when you genuinely need top-level imports, module-level constants, or the entire structure end-to-end.
 Example: to refactor 'login' in src/auth/index.ts, prefer view='outline' → symbol='login' over reading the whole file.

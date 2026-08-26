@@ -22,6 +22,12 @@ __pycache__/
 .ruff_cache/
 scripts/bench/repomap/importRanks.json
 
+# 1.2 MB of per-file symbol counts, regenerable and pinned to one SHA. The
+# committed artifact is the REPORT beside it (outline-symbols-ab.txt); rebuild
+# the baseline in a worktree at the SHA the report names:
+#   bun run scripts/bench/ab/outline-symbols-ab.ts --save <path>
+scripts/bench/results/outline-symbols-baseline.json
+
 # `makepkg -si` run in place (what README tells Arch users to do) drops its
 # build tree and downloads here. Ignored from the repo root on purpose, not from
 # a .gitignore inside the package dir: that directory is mirrored verbatim into

@@ -110,6 +110,12 @@ const maskLegacy: CLikeSpec['mask'] = (s, interp) =>
   maskCLike(s, MASK_OPTS_LEGACY, interp)
 const maskTsJs: CLikeSpec['mask'] = (s, interp) =>
   maskCLike(s, MASK_OPTS_TSJS, interp)
+
+/**
+ * Landmark thresholds for TS/JS, chosen from the A/B corpus rather than
+ * guessed — see scripts/bench/ab/outline-symbols-ab.ts.
+ */
+const TS_NESTED_LANDMARKS = { minBodyLines: 20, minParentLines: 100 }
 const maskJvm: CLikeSpec['mask'] = (s, interp) =>
   maskCLike(s, MASK_OPTS_JVM, interp)
 const maskCSharp: CLikeSpec['mask'] = (s, interp) =>
@@ -129,6 +135,8 @@ const TS_SPEC: CLikeSpec = {
   namespaceKinds: NO_KINDS,
   docPrefixes: [],
   strictMethodDepth: false,
+  rejectInsideParens: true,
+  nestedLandmarks: TS_NESTED_LANDMARKS,
 }
 
 export const CLIKE_SPECS: Record<
@@ -160,6 +168,7 @@ export const CLIKE_SPECS: Record<
     namespaceKinds: NO_KINDS,
     docPrefixes: ['@'],
     strictMethodDepth: true,
+    rejectInsideParens: true,
   },
   kotlin: {
     mask: maskJvm,
@@ -199,6 +208,7 @@ export const CLIKE_SPECS: Record<
     namespaceKinds: MODULE_KINDS,
     docPrefixes: ['['],
     strictMethodDepth: true,
+    rejectInsideParens: true,
   },
   rust: {
     mask: maskRust,
@@ -217,6 +227,7 @@ export const CLIKE_SPECS: Record<
     namespaceKinds: NO_KINDS,
     docPrefixes: [],
     strictMethodDepth: true,
+    rejectInsideParens: true,
   },
   php: {
     mask: maskPhp,
