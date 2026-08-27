@@ -440,6 +440,21 @@ export type Tool<
    * logged, and falls back to ordinary cache behavior.
    */
   bypassResultCache?(args: z.infer<Input>, context: ToolUseContext): boolean
+  /**
+   * Side effects a cache HIT must still perform, run instead of call() when
+   * the local tool-result cache answers. A hit short-circuits call() entirely,
+   * so a tool whose call() writes per-context state — not just the result it
+   * returns — silently stops writing it for the whole TTL, and only that state
+   * is missing: the model gets the same bytes either way, so nothing looks
+   * wrong until something else reads the state. Read is the case that bit:
+   * its call() records the file in readFileState, and a replayed body left the
+   * read-before-edit gate believing the file had never been read.
+   *
+   * Same contract as bypassResultCache: only consulted for cacheable tools,
+   * must be cheap, and a throw is caught and logged rather than failing the
+   * call — a hit that cannot re-seed still returns the cached result.
+   */
+  onCacheHit?(args: z.infer<Input>, context: ToolUseContext, data: Output): void
   description(
     input: z.infer<Input>,
     options: {
@@ -849,6 +864,7 @@ export function buildTool<D extends AnyToolDef>(def: D): BuiltTool<D> {
             def.name,
             def.call.bind(def),
             def.bypassResultCache?.bind(def),
+            def.onCacheHit?.bind(def),
           ),
         }
       : def
@@ -897,6 +913,8 @@ function wrapCallWithCache<
   origCall: Fn,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   bypass?: (input: any, context: any) => boolean,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onHit?: (input: any, context: any, data: any) => void,
 ): Fn {
   const wrapped = async (...args: Parameters<Fn>): Promise<ToolResult<unknown>> => {
     if (isCacheDisabled()) return origCall(...args)
@@ -924,6 +942,18 @@ function wrapCallWithCache<
     if (skipCache) return origCall(...args)
     const hit = getCached(toolName, input)
     if (hit) {
+      if (onHit) {
+        try {
+          onHit(input, args[1], hit.data)
+        } catch (e) {
+          logError(
+            new Error(
+              `${toolName}.onCacheHit threw; serving the cached result`,
+              { cause: e },
+            ),
+          )
+        }
+      }
       return { data: hit.data, mcpMeta: hit.mcpMeta }
     }
     const result = await origCall(...args)
