@@ -67,6 +67,22 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
   around the entry rather than deleting it, so it goes live again the moment the
   predicate stops firing. Anything that must not survive the TTL needs
   `invalidateForPath`, not a bypass.
+- **A cache HIT skips `call()`, and with it every side effect `call()` has.**
+  This is not only about the bytes returned: `readDispatch.ts` writes the
+  `readFileState` entry *inside* `call()`, so a replayed Read handed the model
+  the full body while the read-before-edit gate still said "has not been read
+  yet" — measured five times in one session, each cleared only by a second
+  identical Read (a REFUSED write does not invalidate, `toolExecution.ts` runs
+  `invalidateCacheForWrite` after a successful call; any Bash `invalidateAll`s).
+  The window is ordinary: `readFileState` holds 100 paths, the result cache 500
+  for 60 s, and the session touched 219. `bypassResultCache` cannot cover it —
+  the entry it would key on is exactly the one that went missing, which is
+  indistinguishable from a first read. **How to apply:** a cacheable tool whose
+  `call()` writes per-context state must implement `onCacheHit`
+  (`Tool.ts` → `wrapCallWithCache`) to re-seed that state on replay. Read's
+  seeds only when the context has NO entry: a partial view, an outline or a
+  sticky stand-down marker is state `call()` owns, and a replayed body must not
+  promote it.
   - The predicate itself must answer "is something in flight", never "did this
     ever happen". Read's asks `isPinShielding`, NOT `isPinRegistered`: the wide
     one also answers true for a *spent* id, and ids stay spent while their

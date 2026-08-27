@@ -33,6 +33,7 @@ import { getErrnoCode, isENOENT } from 'src/shared/errors.js'
 import {
   FILE_NOT_FOUND_CWD_NOTE,
   findSimilarFile,
+  getFileModificationTime,
   getFileModificationTimeAsync,
   suggestPathUnderCwd,
 } from 'src/shared/fs/file.js'
@@ -321,6 +322,53 @@ export const FileReadTool = buildTool({
       // Fail open: keep the ordinary cache behavior rather than blocking.
       logError(e)
       return false
+    }
+  },
+  /**
+   * Re-seed readFileState when the cache answers instead of call(). The body
+   * the model receives is the same either way; what a hit skips is
+   * readDispatch's `readFileState.set`, and that entry is the read-before-edit
+   * gate's whole evidence. Without this the model reads a file, gets its
+   * content, and is then told the file "has not been read yet" by
+   * Edit/apply_patch/Write — which is what a live session showed five times
+   * over, each one cleared only by an identical second Read (the refused write
+   * does not invalidate the entry, but any Bash does, and the re-read then
+   * reaches call()).
+   *
+   * The window is narrow but ordinary: readFileState holds 100 paths while the
+   * Read result cache holds 500 for 60s, so any session touching more files
+   * than that (219 in the one measured) can lose the entry while the cached
+   * body lives on. bypassResultCache cannot cover it — the entry it would key
+   * on is exactly the one that is gone, making it indistinguishable from a
+   * first read.
+   *
+   * Seeds ONLY when the context has no entry at all. A partial view, an
+   * outline or a sticky stand-down marker is state call() owns; overwriting it
+   * with a full body here would hand back precisely the content those arms
+   * concluded must not be served.
+   */
+  onCacheHit({ file_path, offset = 1, limit }, context, data) {
+    try {
+      if (data.type !== 'text') return
+      const fullFilePath = expandPath(file_path)
+      if (context.readFileState.has(fullFilePath)) return
+      context.readFileState.set(fullFilePath, {
+        content: data.file.content,
+        // getCached only serves a Read whose file has not been modified since
+        // it was stored, so the bytes above describe the file on disk now and
+        // this mtime is the one they belong to.
+        timestamp: getFileModificationTime(fullFilePath),
+        // Same normalization call() applies: offset 0 and 1 both start at the
+        // first line, and a 0 here would make the entry describe a range no
+        // Read can ask for again.
+        offset: offset === 0 ? 1 : offset,
+        limit,
+        toolUseId: context.toolUseId,
+      })
+    } catch (e) {
+      // Fail open: the cached body still goes to the model, the gate just
+      // stays where it was.
+      logError(e)
     }
   },
   async call(
