@@ -190,9 +190,38 @@ export function TaskListV2({
     }
     hiddenSummary = ` … +${parts.join(', ')}`;
   }
+
+  // Totals row, under the hidden-tasks summary. The standalone view already
+  // carries the same counts in its header, so it doesn't repeat them here.
+  // Each segment carries the same icon TaskItem uses for that status.
+  const allTotals: {
+    status: Task['status'];
+    count: number;
+    label: string;
+  }[] = [{
+    status: 'pending',
+    count: pendingCount,
+    label: 'to do'
+  }, {
+    status: 'in_progress',
+    count: inProgressCount,
+    label: 'doing'
+  }, {
+    status: 'completed',
+    count: completedCount,
+    label: 'done'
+  }];
+  const totals = allTotals.filter(total => total.count > 0);
   const content = <>
       {visibleTasks.map(task_0 => <TaskItem key={task_0.id} task={task_0} ownerColor={task_0.owner ? teammateColors[task_0.owner] : undefined} openBlockers={task_0.blockedBy.filter(id_3 => unresolvedTaskIds.has(id_3))} activity={task_0.owner ? teammateActivity[task_0.owner] : undefined} ownerActive={task_0.owner ? activeTeammates.has(task_0.owner) : false} columns={columns} />)}
       {maxDisplay > 0 && hiddenSummary && <FullWidthRow><Text dimColor>{hiddenSummary}</Text></FullWidthRow>}
+      {!isStandalone && totals.length > 0 && <FullWidthRow><Text dimColor>{'  '}{totals.map((total_0, i) => {
+      const {
+        icon,
+        color
+      } = getTaskIcon(total_0.status);
+      return <React.Fragment key={total_0.status}>{i > 0 ? ', ' : ''}{color ? <ThemedText color={color}>{icon}</ThemedText> : icon}{' '}<Text bold>{total_0.count}</Text>{` ${total_0.label}`}</React.Fragment>;
+    })}</Text></FullWidthRow>}
     </>;
   if (isStandalone) {
     return <Box flexDirection="column" marginTop={1} marginLeft={2} width="100%">
