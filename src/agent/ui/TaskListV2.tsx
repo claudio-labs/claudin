@@ -220,7 +220,7 @@ export function TaskListV2({
         icon,
         color
       } = getTaskIcon(total_0.status);
-      return <React.Fragment key={total_0.status}>{i > 0 ? ', ' : ''}{color ? <ThemedText color={color}>{icon}</ThemedText> : icon}{` ${total_0.count} ${total_0.label}`}</React.Fragment>;
+      return <React.Fragment key={total_0.status}>{i > 0 ? ', ' : ''}{color ? <ThemedText color={color}>{icon}</ThemedText> : icon}{' '}<Text bold>{total_0.count}</Text>{` ${total_0.label}`}</React.Fragment>;
     })}</Text></FullWidthRow>}
     </>;
   if (isStandalone) {
