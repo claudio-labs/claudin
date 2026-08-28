@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.1.22 — 2026-08-28
+
+### 🐛 Bug Fixes
+
+- fix(tools): re-seed readFileState when a Read is served from cache (#142) (f602749d)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.21 — 2026-08-26
 
 ### ✨ Features
