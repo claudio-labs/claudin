@@ -141,8 +141,22 @@ export const pnpmRun: FilterSpec = {
 // --- yarn install / add (v1 classic) ----------------------------------------
 
 // We match the bare `yarn` (defaults to install) and `yarn install|add|upgrade|remove`.
-const YARN_INSTALL_MATCH = /^yarn(?:\s+(install|add|upgrade|remove|i))?\b/
-const YARN_INSTALL_PASSTHROUGH = /(?:^|\s)(?:--json|--silent)\b/
+// The tail used to be optional — `(?:\s+(install|…))?\b` — which matched
+// `yarn <anything>`: `yarn jest`, `yarn build` and `yarn tsc` all resolved here.
+// Nothing broke only because jest/vitest/tsc are registered EARLIER in
+// `builtInFilters`, so registration order was silently load-bearing for
+// correctness while the registry comment claimed no spec overlaps.
+//
+// Tightening `matchCommand` alone does NOT fix it: `matchesAtomicCommand` tests
+// the pattern against the bare VERB as well as against the whole command
+// (`pipeline.ts`), so any spec that accepts a bare `yarn` accepts `yarn
+// <anything>` with it. Bare `yarn` IS install, so the subcommand test has to
+// live where the whole command is read — the reject. `yarn <script>` now
+// reaches no spec, the same place `npm run <script>` deliberately lands, and
+// gets the generic floor.
+const YARN_INSTALL_MATCH = /^yarn\b/
+const YARN_INSTALL_PASSTHROUGH =
+  /(?:^|\s)(?:--json|--silent)\b|^yarn\s+(?!(?:install|add|upgrade|remove|i)\b)/
 // `[1/4] Resolving packages...` through `[4/4] Building fresh packages...`
 const YARN_PHASE = /^\[\d+\/\d+\]\s/
 // `info ...` lines: noisy hints, not user signal.

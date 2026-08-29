@@ -14,7 +14,10 @@ import type { FilterSpec } from 'src/tools/shared/outputFilter/Bash/types.js'
 
 // --- docker ps -------------------------------------------------------------
 
-const DOCKER_PS_MATCH = /^docker\s+ps\b/
+// `podman` is a drop-in for every subcommand claimed in this file and prints the
+// same table and log shapes, so the specs are shared rather than duplicated.
+const CONTAINER_CLI = /(?:docker|podman)/.source
+const DOCKER_PS_MATCH = new RegExp(`^${CONTAINER_CLI}\\s+ps\\b`)
 // Passthrough when user already specified output format or wants IDs only.
 const DOCKER_PS_REJECT = /--format\b|--quiet\b|-q\b|--no-trunc\b/
 // 12-char hex CONTAINER ID column.
@@ -50,7 +53,7 @@ export const dockerPs: FilterSpec = {
 
 // --- docker images ---------------------------------------------------------
 
-const DOCKER_IMAGES_MATCH = /^docker\s+images\b/
+const DOCKER_IMAGES_MATCH = new RegExp(`^${CONTAINER_CLI}\\s+images\\b`)
 // Passthrough when user already specified output format or wants quiet (IDs only).
 const DOCKER_IMAGES_REJECT = /--format\b|--quiet\b|-q\b/
 // 12-char hex IMAGE ID column.
@@ -73,7 +76,7 @@ export const dockerImages: FilterSpec = {
 // and similar services that use "YYYY-MM-DD HH:MM:SS.mmm UTC [PID] " or
 // Docker's native ISO timestamp "YYYY-MM-DDTHH:MM:SS.mmmZ " format.
 
-const DOCKER_LOGS_MATCH = /^docker\s+logs\b/
+const DOCKER_LOGS_MATCH = new RegExp(`^${CONTAINER_CLI}\\s+logs\\b`)
 // Passthrough: -f streams live; --timestamps=false means user disabled them already.
 const DOCKER_LOGS_REJECT = /-f\b|--follow\b|--timestamps=false\b/
 // postgres-style: "2026-05-05 14:35:40.337 UTC [27] " → "14:35:40 "
@@ -131,7 +134,7 @@ const COMPOSE_LIFECYCLE_SUBCOMMAND =
   /(?:up|down|build|start|stop|restart|kill|pull|push|create|logs|watch|rm)/
     .source
 const DOCKER_COMPOSE_MATCH = new RegExp(
-  `^docker(?:\\s+compose|-compose)\\s+(?:(?:${COMPOSE_VALUE_FLAG}|--[\\w-]+)\\s+)*${COMPOSE_LIFECYCLE_SUBCOMMAND}\\b`,
+  `^${CONTAINER_CLI}(?:\\s+compose|-compose)\\s+(?:(?:${COMPOSE_VALUE_FLAG}|--[\\w-]+)\\s+)*${COMPOSE_LIFECYCLE_SUBCOMMAND}\\b`,
 )
 const DOCKER_COMPOSE_REJECT = /--format\b|--quiet\b|--json\b|--follow\b/
 // `#14 2.785 <text>` — the step number and elapsed seconds repeated on every

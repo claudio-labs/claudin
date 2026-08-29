@@ -24,7 +24,16 @@ import type { FilterSpec } from 'src/tools/shared/outputFilter/Bash/types.js'
 // would not match (`+` is non-word, so there's no boundary before a space), so
 // we anchor the end with a literal `(?:\s|$)`. `[\d.-]*` absorbs a version
 // suffix without a nested-optional quantifier (keeps the ReDoS scan happy).
-const GCC_MATCH = /^g(?:cc|\+\+)[\d.-]*(?:\s|$)/
+//
+// `clang`/`clang++` (and `clang-18`) share the arm because they share the
+// output: the `In file included from`, caret-row and `N warnings generated.`
+// shapes stripped below are clang's own — the tally line was copied from clang
+// in the first place.
+// `clang` is spelled as two flat alternatives rather than `clang(?:\+\+)?`: the
+// ReDoS scan's nested-optional heuristic (`scripts/verify/regex-redos-scan.test.ts`)
+// is textual, so an escaped `\+\+` inside an optional group reads to it as a
+// quantifier under `?` and the whole spec is rejected.
+const GCC_MATCH = /^(?:gcc|g\+\+|clang|clang\+\+)[\d.-]*(?:\s|$)/
 // `gcc -M`/`-MM` emit makefile dependency rules — machine-readable, keep raw.
 const GCC_REJECT = /(?:^|\s)-M{1,2}\b/
 // `In file included from a.h:1:` and its `                 from b.h:2:` continuations.

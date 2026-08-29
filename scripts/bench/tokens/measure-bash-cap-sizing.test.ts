@@ -226,4 +226,9 @@ test('bash filter floor and cap sizing', () => {
       `${rawGrepish} raw → ${afterShipped} after floor+cap → ${afterBoth} with grouping\n` +
       `  extra saving ${afterShipped - afterBoth} chars = ${pct(afterShipped - afterBoth, totalChars)} of the corpus`,
   )
-})
+  // Explicit timeout: the work here scales with whatever corpus the developer
+  // has on disk (16.7k entries / 14.8M chars at the time of writing, ~5.1s),
+  // and the runner's 5s default was close enough to turn a corpus refresh into
+  // a red suite. CI has no corpus and returns above, so this only ever binds
+  // locally.
+}, 60_000)
