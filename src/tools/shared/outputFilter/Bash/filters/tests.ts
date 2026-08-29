@@ -9,7 +9,10 @@ import type { FilterSpec } from 'src/tools/shared/outputFilter/Bash/types.js'
 
 // --- pytest --------------------------------------------------------------
 
-const PYTEST_MATCH = /^(pytest|python\s+-m\s+pytest|py\.test)\b/
+// `python3?` on the module form, matching how `mypy` and `pip` spell it in
+// linters.ts: `python3 -m pytest` is what a machine carrying both interpreters
+// actually runs, and it used to reach no filter at all.
+const PYTEST_MATCH = /^(pytest|python3?\s+-m\s+pytest|py\.test)\b/
 // Passthrough for compact output modes the user explicitly asked for.
 const PYTEST_PASSTHROUGH = /(?:^|\s)(?:--tb=(?:line|no)|--co|--collect-only|--lf|--last-failed|-x|--json-report)\b/
 const PYTEST_STRIP_WARNINGS = /^=+\s*warnings summary\s*=+$/

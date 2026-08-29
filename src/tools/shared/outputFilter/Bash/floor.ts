@@ -20,6 +20,19 @@
  * pick one segment's spec. The floor does not need to know. It is the answer to
  * "what can be said about output when nothing is known about the command".
  *
+ * Re-measured 2026-08-29 over a fresh 60-day corpus (18,310 calls, 20.4M
+ * chars) and the shape census barely moved: 50.7% of characters behind a
+ * non-reducer pipe, 10.2% behind a chain with disagreeing heads, 4.2% behind a
+ * subshell or `for`. Only 6.8% sits in `atomic, no filter registered` — the one
+ * bucket a MISSING SPEC can explain, and therefore the whole ceiling of any
+ * round that adds matching rules. Widening the execution-prefix layer
+ * (`pipeline.ts`) to cover `bundle exec`, `conda run`, container `exec` and
+ * path-prefixed binaries moved this corpus by +4 calls and +333 characters:
+ * the forms it adds belong to ecosystems this corpus does not contain. That is
+ * an argument for keeping the coverage and against expecting a number from it
+ * here — not a reason to go after the shape buckets, which stay out of reach
+ * for the attribution reason above.
+ *
  * ## Why these stages and not the others
  *
  * Every stage in the floor has to be safe on output nobody has looked at:

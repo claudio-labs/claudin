@@ -41,7 +41,17 @@ function debug(label: string, detail?: unknown): void {
 
 export const ENV_ASSIGNMENT_RE = /^[A-Za-z_][A-Za-z0-9_]*=/;
 export const LEADING_PREFIX_RE =
-  /^(?:sudo\s+|time\s+|nice\s+|ionice\s+|chrt\s+|unshare\s+)+/;
+  /^(?:sudo\s+|time\s+|nice\s+|ionice\s+|chrt\s+|unshare\s+|nohup\s+|setsid\s+|doas\s+|caffeinate\s+|exec\s+)+/;
+// Wrappers of the same class that take FLAGS before the command. They cannot
+// join the bare-word list above for the reason `timeout` cannot: the flag (and
+// sometimes its value) sits between the wrapper and the verb, so stripping the
+// word alone would promote a flag to the verb.
+// The `env` arm ends in a lookahead because bare `env` is also a COMMAND that
+// prints the environment: without it, `env | grep -i api` strips to `| grep …`
+// and the verb becomes `|`. Requiring a word character next means the wrapper
+// form is consumed and the reporting form is left alone.
+export const FLAGGED_WRAPPER_RE =
+  /^(?:env\s+(?:(?:-i|--ignore-environment)\s+|(?:-u\s+\S+|--unset=\S+)\s+)*(?=[\w./~-])|stdbuf\s+(?:-[ioe]\s*\S+\s+)+|taskset\s+(?:(?:-c|-p)\s+\S+\s+|0x[0-9a-fA-F]+\s+))/;
 // `timeout` cannot join the list above, because unlike `sudo`/`time` it takes an
 // ARGUMENT: the duration sits between the wrapper and the command. Stripping the
 // bare word would promote the duration to the verb and the command would match
@@ -65,8 +75,56 @@ export const TIMEOUT_PREFIX_RE =
 // name, not a tool, so the inner command is unknowable. Only zero-config flags
 // are consumed (`npx -y`, `bunx --bun`); any other flag stops the strip and the
 // command falls through to no-filter passthrough (fail-open).
+//
+// Same exclusion, same reason, for the task runners that look like wrappers but
+// name an environment rather than a tool: `tox -e py311`, `nox -s lint`,
+// `bazel run //x`, `corepack <pm>`. If one of those ever earns filtering it
+// earns a spec of its own, because only the spec knows the output format.
 export const RUNNER_PREFIX_RE =
-  /^(?:npx\s+(?:(?:-y|--yes|--no-install|-q|--quiet)\s+)*|bunx\s+(?:--bun\s+)?|(?:poetry|pipenv|uv|hatch)\s+run\s+|pnpm\s+(?:exec|dlx)\s+|yarn\s+dlx\s+)/;
+  /^(?:npx\s+(?:(?:-y|--yes|--no-install|-q|--quiet)\s+)*|bunx\s+(?:--bun\s+)?|(?:poetry|pipenv|uv|hatch|rye|pdm)\s+run\s+(?:(?:-p|--project)(?:=\S+|\s+\S+)\s+)*|pnpm\s+(?:exec|dlx)\s+|yarn\s+(?:dlx|exec)\s+|npm\s+exec\s+(?:(?:-y|--yes)\s+)*(?:--\s+)?|uvx\s+(?:(?:--from|--with|--python|-p)(?:=\S+|\s+\S+)\s+)*|pipx\s+run\s+(?:(?:--spec|--python)(?:=\S+|\s+\S+)\s+)*|(?:conda|micromamba)\s+run\s+(?:(?:-n|--name|-p|--prefix)(?:=\S+|\s+\S+)\s+|(?:--no-capture-output|--live-stream)\s+)*|(?:pyenv|rbenv|asdf)\s+exec\s+|bundle\s+exec\s+|composer\s+exec\s+(?:--\s+)?|dotnet\s+tool\s+run\s+|mise\s+(?:exec|x)\s+(?:[\w.@\/+-]+\s+)*--\s+)/;
+// Runners that carry a free-form token — a node version, a lock file, a
+// directory — before the command. Each bounds that token by SHAPE rather than
+// accepting any word: a version looks like a version, a lock file like a path.
+// A shape that does not fit consumes nothing, which is the fail-open the whole
+// prefix layer is built on. `flock -c "cmd"` is excluded by construction: `-c`
+// is not a path, so the lock-file arm cannot match it, and the quoted command
+// would have been unsplittable anyway.
+export const FREE_TOKEN_RUNNER_RE =
+  /^(?:nvm\s+exec\s+(?:--silent\s+)*(?:(?:v?\d[\w.-]*|lts\/\w+|system|stable)\s+)?|volta\s+run\s+(?:--(?:node|npm|pnpm|yarn|bundled-npm|no-bundled-npm)(?:=\S+|\s+\S+)\s+)*|fnm\s+exec\s+(?:--using(?:=\S+|\s+\S+)\s+)*(?:--\s+)?|flock\s+(?:(?:-w|-E|--wait|--timeout|--conflict-exit-code)\s+\S+\s+|(?:-s|-x|-n|-F|--shared|--exclusive|--nonblock|--no-fork)\s+)*(?:~?\/\S*|\.{1,2}\/\S*|\d+)\s+|direnv\s+exec\s+\S+\s+)/;
+// `docker exec web pytest -x` runs pytest; the spec that owns pytest's output
+// is the one that should see it. Note this is NOT the argument
+// `containers.ts` rejects `exec` for: that rejection keeps the docker-compose
+// SPEC (tuned for lifecycle output) off arbitrary inner output, and stripping
+// the prefix does the opposite — it routes to the inner tool's own spec. The
+// container name is consumed as a single bare token with no flags in it, so a
+// shape this does not recognise strips nothing.
+export const CONTAINER_EXEC_PREFIX_RE =
+  /^(?:(?:docker|podman|podman-compose)\s+(?:compose\s+(?:(?:-f|--file|-p|--project-name)(?:=\S+|\s+\S+)\s+)*)?exec\s+(?:(?:-[itdT]+|--interactive|--tty|--detach|--no-TTY|--privileged)\s+|(?:-u|--user|-w|--workdir|-e|--env|--index)(?:=\S+|\s+\S+)\s+)*[A-Za-z0-9][\w.-]*\s+|kubectl\s+exec\s+(?:(?:-[it]+|--stdin|--tty)\s+|(?:-n|--namespace|-c|--container)(?:=\S+|\s+\S+)\s+|[A-Za-z0-9][\w./-]*\s+)*--\s+)/;
+// A binary invoked by path is the same binary: `./node_modules/.bin/eslint`,
+// `vendor/bin/phpunit`, `/usr/bin/make`. Every `matchCommand` is anchored on a
+// bare verb, so without this they all resolve to nothing. Consuming only the
+// directory part leaves the basename as the verb, and the lookahead keeps it
+// from firing on something that is not a program name. The precedent is already
+// in the registry: `java-build` spells out `./gradlew` and `./mvnw` by hand.
+export const PATH_PREFIX_RE =
+  /^(?:(?:~|\.{1,2})?\/(?:[\w.@+-]+\/)*|(?:[\w.@+-]+\/)+)(?=[\w.@+-]*[A-Za-z])/;
+
+/** Every prefix arm `consumeExecutionPrefix` walks, in the order it tries them.
+ * A table rather than one alternation so each arm has a NAME: the routing
+ * matrix reports which arm consumed a command, and a new ecosystem is a row
+ * here instead of another branch in a regex nobody can read. */
+export const EXECUTION_PREFIXES: readonly {
+  readonly name: string;
+  readonly re: RegExp;
+}[] = [
+  { name: "wrapper", re: LEADING_PREFIX_RE },
+  { name: "flagged-wrapper", re: FLAGGED_WRAPPER_RE },
+  { name: "timeout", re: TIMEOUT_PREFIX_RE },
+  { name: "runner", re: RUNNER_PREFIX_RE },
+  { name: "free-token-runner", re: FREE_TOKEN_RUNNER_RE },
+  { name: "container-exec", re: CONTAINER_EXEC_PREFIX_RE },
+  { name: "path", re: PATH_PREFIX_RE },
+];
 // Bash treats `\<LF>` as line continuation (joins lines into a single command).
 // Used by `parseBashCommand` and `extractCommandPrefix` to collapse continuations
 // before tokenization. Module-level so it is compiled once.
@@ -94,22 +152,16 @@ export function consumeExecutionPrefix(s: string): number {
       i += end;
       continue;
     }
-    const lead = rest.match(LEADING_PREFIX_RE);
-    if (lead) {
-      i += lead[0].length;
-      continue;
+    let consumed = 0;
+    for (const { re } of EXECUTION_PREFIXES) {
+      const m = rest.match(re);
+      if (m && m[0].length > 0) {
+        consumed = m[0].length;
+        break;
+      }
     }
-    const timeout = rest.match(TIMEOUT_PREFIX_RE);
-    if (timeout) {
-      i += timeout[0].length;
-      continue;
-    }
-    const runner = rest.match(RUNNER_PREFIX_RE);
-    if (runner) {
-      i += runner[0].length;
-      continue;
-    }
-    return i;
+    if (consumed === 0) return i;
+    i += consumed;
   }
 }
 
