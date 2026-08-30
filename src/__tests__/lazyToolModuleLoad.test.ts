@@ -107,6 +107,7 @@ const CURRENT_BASELINE = [
   'BashTool',
   'BriefTool',
   'BuildTool',
+  'ContainerTool',
   'EnterPlanModeTool',
   'EnterWorktreeTool',
   'ExitPlanModeTool',
