@@ -39,6 +39,7 @@ const ALL_ATTACHMENT_TYPES = [
   'command_permissions',
   'agent_mention',
   'task_status',
+  'container_transition',
   'async_hook_response',
   'token_usage',
   'budget_usd',

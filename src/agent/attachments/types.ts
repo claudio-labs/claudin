@@ -351,6 +351,32 @@ export type Attachment =
       outputFilePath?: string
       command?: string
     }
+  /**
+   * Containers whose state moved since the last turn. Emitted ONLY on a
+   * transition — a stack that is simply up costs nothing, which is the whole
+   * cost model of the container panel.
+   *
+   * Every field is a fact that only changes when the container does. Nothing
+   * derived from a clock may go in here: a value that is recomputed each turn
+   * mutates bytes behind the prompt-cache marker and rebills the whole prefix
+   * (.claudin/rules/cache.md §1). That rules out docker's own `Status` string
+   * ("Up 2 hours"), which is why only the state WORD is carried.
+   */
+  | {
+      type: 'container_transition'
+      transitions: {
+        /** Container name with the compose project prefix dropped. */
+        name: string
+        /** State word before this change, or null on a first sighting. */
+        from: string | null
+        /** State word now. */
+        to: string
+        /** One-line diagnosis, when something is actually wrong. */
+        issue?: string
+      }[]
+      /** Containers that also changed but were dropped to bound the burst. */
+      elidedCount: number
+    }
   | AsyncHookResponseAttachment
   | {
       type: 'token_usage'

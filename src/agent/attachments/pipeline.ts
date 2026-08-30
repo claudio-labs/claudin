@@ -77,6 +77,7 @@ import {
   getTaskReminderAttachments,
   getUnifiedTaskAttachments,
   getActiveBackgroundTaskReminders,
+  getContainerTransitionAttachments,
   getVerifyPlanReminderAttachment,
   getCompactionReminderAttachment,
 } from 'src/agent/attachments/lifecycle.js'
@@ -363,6 +364,9 @@ export async function getAttachments(
         ),
         maybe('active_task_reminders', async () =>
           getActiveBackgroundTaskReminders(toolUseContext, messages),
+        ),
+        maybe('container_transitions', async () =>
+          getContainerTransitionAttachments(toolUseContext),
         ),
         maybe('async_hook_responses', async () =>
           getAsyncHookResponseAttachments(),
