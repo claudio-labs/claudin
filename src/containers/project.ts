@@ -4,7 +4,8 @@
 // a footer full of unrelated stacks. When nothing matches, the answer is an
 // empty list, never the unfiltered one.
 
-import { sep } from 'node:path'
+import { existsSync } from 'node:fs'
+import { join, sep } from 'node:path'
 import type { ContainerInfo } from 'src/containers/types.js'
 
 /** Compose derives a default project name from the directory basename:
@@ -62,4 +63,32 @@ export function projectsIn(containers: readonly ContainerInfo[]): string[] {
   const seen = new Set<string>()
   for (const c of containers) if (c.project) seen.add(c.project)
   return [...seen].sort()
+}
+
+/**
+ * Compose's own lookup order, plus the `.dev` variant this repo family uses.
+ * The `.dev`/`.override` entries come LAST so a project with both a canonical
+ * file and a dev one still gets the canonical one — picking the dev stack by
+ * default would silently target the wrong services.
+ */
+const COMPOSE_FILENAMES = [
+  'compose.yaml',
+  'compose.yml',
+  'docker-compose.yaml',
+  'docker-compose.yml',
+  'docker-compose.dev.yml',
+  'docker-compose.dev.yaml',
+] as const
+
+/**
+ * The compose file for a directory, or null. Only the directory itself is
+ * checked — walking upward would attach a subdirectory to a parent's stack,
+ * which is exactly the wrong answer inside a monorepo.
+ */
+export function findComposeFile(cwd: string): string | null {
+  for (const name of COMPOSE_FILENAMES) {
+    const candidate = join(cwd, name)
+    if (existsSync(candidate)) return candidate
+  }
+  return null
 }
