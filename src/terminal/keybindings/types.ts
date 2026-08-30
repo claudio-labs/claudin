@@ -188,6 +188,9 @@ export type KnownKeybindingAction =
   | 'select:previous'
   | 'select:accept'
   | 'select:cancel'
+  // Search + favorites, registered only by SearchableSelect
+  | 'select:search'
+  | 'select:toggleFavorite'
   // Plugin dialog actions
   | 'plugin:toggle'
   | 'plugin:install'

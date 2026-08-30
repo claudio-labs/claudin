@@ -350,6 +350,10 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       'ctrl+p': 'select:previous',
       enter: 'select:accept',
       escape: 'select:cancel',
+      // Only SearchableSelect registers handlers for these two, so a plain
+      // Select still sees '/' and ctrl+f as unhandled input.
+      '/': 'select:search',
+      'ctrl+f': 'select:toggleFavorite',
     },
   },
   // Plugin dialog actions (manage, browse, discover plugins)

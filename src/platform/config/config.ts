@@ -761,6 +761,14 @@ export type GlobalConfig = {
   // terminals; 'enable' is semantically auto with explicit intent; 'disable'
   // forces the legacy text/hyperlink fallback even on supported terminals.
   inlineImagesMode?: 'auto' | 'enable' | 'disable'
+
+  // Picker favorites — entries starred with ctrl+f in /model and /provider,
+  // pinned to the top of their list. Deliberately absent from
+  // GLOBAL_CONFIG_KEYS: they are set from the picker, not from
+  // `claudin config set`. Model ids and profile ids respectively; a profile
+  // deleted while starred leaves an orphan id, filtered on read.
+  favoriteModels?: string[]
+  favoriteProviderProfiles?: string[]
 }
 
 /**
