@@ -56,6 +56,23 @@ export type SpeculationResult = {
   timeSavedMs: number
 }
 
+/**
+ * A pending request to stop a container, raised by `x` on a container row and
+ * cleared by ContainerStopDialog.
+ *
+ * Every other footer row is a process this session spawned, so `x` kills it
+ * outright. A container can be the user's database — and may have been started
+ * in another terminal entirely — so the kill dispatch parks the request here
+ * instead of acting, and the dialog is what actually calls ContainerTask.kill.
+ */
+export type PendingContainerStop = {
+  taskId: string
+  /** Display name, already shortened for the row. */
+  name: string
+  /** False when the container was running before this session touched it. */
+  startedByUs: boolean
+}
+
 export type SpeculationState =
   | { status: 'idle' }
   | {
@@ -150,6 +167,9 @@ export type AppState = DeepImmutable<{
   // through PromptInput → PromptInputFooter.
   coordinatorTaskIndex: number
   viewSelectionMode: 'none' | 'selecting-agent' | 'viewing-agent'
+  // Set by `x` on a container row; ContainerStopDialog renders off it and
+  // clears it. Null whenever no confirmation is outstanding.
+  pendingContainerStop: PendingContainerStop | null
   // Which footer pill is focused (arrow-key navigation below the prompt).
   // Lives in AppState so pill components rendered outside PromptInput
   // (CompanionSprite in REPL.tsx) can read their own focused state.
@@ -535,6 +555,7 @@ export function getDefaultAppState(): AppState {
     footerTasksCollapsed: true,
     coordinatorTaskIndex: -1,
     viewSelectionMode: 'none',
+    pendingContainerStop: null,
     footerSelection: null,
     kairosEnabled: false,
     remoteSessionUrl: undefined,

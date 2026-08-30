@@ -9,6 +9,7 @@ import { LocalShellTask } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js
 import { MonitorMcpTask } from 'src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js';
 import { RemoteAgentTask } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import type { BackgroundTaskState } from 'src/agent/tasks/types.js';
+import { shortContainerName } from 'src/agent/ui/tasks/containerRowLabel.js';
 import { logForDebugging } from 'src/shared/debug.js';
 
 type SetAppState = (updater: (prev: AppState) => AppState) => void;
@@ -34,6 +35,21 @@ export function killBackgroundTask(
 ): void {
   if (task.status !== 'running') return;
   switch (task.type) {
+    case 'container':
+      // Deliberately does NOT stop anything. Every other arm here kills a
+      // process this session spawned; a container can be the user's database,
+      // and may predate the session entirely. Park the request and let
+      // ContainerStopDialog confirm — that keeps this the single dispatch
+      // point, so the `x` handler in PromptInput needs no container branch.
+      setAppState(prev => ({
+        ...prev,
+        pendingContainerStop: {
+          taskId: task.id,
+          name: shortContainerName(task.container),
+          startedByUs: task.startedByUs,
+        },
+      }));
+      return;
     case 'local_bash':
       void LocalShellTask.kill(task.id, setAppState);
       return;

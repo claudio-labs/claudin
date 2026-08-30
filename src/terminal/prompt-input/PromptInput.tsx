@@ -121,6 +121,7 @@ import { QuickOpenDialog } from 'src/terminal/QuickOpenDialog.js';
 import TextInput from 'src/terminal/text-input/TextInput.js';
 import { ThinkingToggle } from 'src/agent/ui/ThinkingToggle.js';
 import { BackgroundTasksDialog } from 'src/agent/ui/tasks/BackgroundTasksDialog.js';
+import { ContainerStopDialog } from 'src/agent/ui/tasks/ContainerStopDialog.js';
 import { WorkflowsMenuWithTabs } from 'src/agent/ui/workflows/WorkflowsMenuWithTabs.js';
 import { shouldHideTasksFooter } from 'src/agent/ui/tasks/taskStatusUtils.js';
 import { TeamsDialog } from 'src/platform/teams/TeamsDialog.js';
@@ -322,6 +323,9 @@ function PromptInput({
   const foregroundedTaskId = useAppState((s: AppState) => s.foregroundedTaskId);
   const collapsedTaskGroups = useAppState((s: AppState) => s.collapsedTaskGroups);
   const footerTasksCollapsed = useAppState((s: AppState) => s.footerTasksCollapsed);
+  // Raised by `x` on a container row (killBackgroundTask parks it rather than
+  // stopping); the dialog below owns clearing it.
+  const pendingContainerStop = useAppState((s: AppState) => s.pendingContainerStop);
   const replBridgeConnected = useAppState((s: AppState) => s.replBridgeConnected);
   const replBridgeExplicit = useAppState((s: AppState) => s.replBridgeExplicit);
   const replBridgeReconnecting = useAppState((s: AppState) => s.replBridgeReconnecting);
@@ -2341,6 +2345,9 @@ function PromptInput({
   // even when the user opens a different dialog between Ctrl+R toggles.
   if (showBashesDialog) {
     return <>{historyPickerEl}<BackgroundTasksDialog onDone={() => setShowBashesDialog(false)} toolUseContext={getToolUseContext(messages, [], new AbortController(), mainLoopModel)} initialDetailTaskId={typeof showBashesDialog === 'string' ? showBashesDialog : undefined} /></>;
+  }
+  if (pendingContainerStop) {
+    return <>{historyPickerEl}<ContainerStopDialog pending={pendingContainerStop} /></>;
   }
   if (feature('AGENT_WORKFLOWS') && showWorkflowsDialog) {
     return <>{historyPickerEl}<WorkflowsMenuWithTabs context={getToolUseContext(messages, [], new AbortController(), mainLoopModel)} onExit={() => setShowWorkflowsDialog(false)} initialTab="running" initialRunId={typeof showWorkflowsDialog === 'string' ? showWorkflowsDialog : undefined} /></>;
