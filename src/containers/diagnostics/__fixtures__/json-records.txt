@@ -1,0 +1,9 @@
+{"level":"info","ts":"2026-08-29T20:31:09Z","msg":"server started","port":8000}
+{
+  "level": "error",
+  "ts": "2026-08-29T20:31:12Z",
+  "msg": "sync failed",
+  "error": "connection refused",
+  "attempt": 3
+}
+{"level":"info","ts":"2026-08-29T20:31:13Z","msg":"retrying in 5s"}

@@ -11,6 +11,9 @@ export type TaskType =
   | 'local_workflow'
   | 'monitor_mcp'
   | 'dream'
+  // Not a process this session owns: a row synthesised from what docker
+  // reports, so a stack started in another terminal is visible too.
+  | 'container'
 
 export type TaskStatus =
   | 'pending'

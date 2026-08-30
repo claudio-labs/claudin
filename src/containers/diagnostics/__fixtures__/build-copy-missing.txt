@@ -1,0 +1,6 @@
+#8 [4/9] COPY requirements.txt /app/requirements.txt
+#8 ERROR: failed to calculate checksum of ref 9c1e0a44-3b21-4f2e-9d77-1a0b2c3d4e5f::x7k2m9: "/requirements.txt": not found
+------
+ > [4/9] COPY requirements.txt /app/requirements.txt:
+------
+failed to solve: failed to compute cache key: failed to calculate checksum of ref 9c1e0a44-3b21-4f2e-9d77-1a0b2c3d4e5f::x7k2m9: "/requirements.txt": not found

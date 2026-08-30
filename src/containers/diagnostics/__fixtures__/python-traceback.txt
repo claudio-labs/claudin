@@ -1,0 +1,11 @@
+2026-08-29T20:31:10.114293011Z INFO:     Started server process [1]
+2026-08-29T20:31:10.114512882Z INFO:     Waiting for application startup.
+2026-08-29T20:31:11.882014733Z ERROR:    Traceback (most recent call last):
+2026-08-29T20:31:11.882101441Z   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 693, in lifespan
+2026-08-29T20:31:11.882108772Z     async with self.lifespan_context(app) as maybe_state:
+2026-08-29T20:31:11.882114113Z   File "/app/src/legendarr/app.py", line 84, in lifespan
+2026-08-29T20:31:11.882119004Z     await init_db(settings.database_url)
+2026-08-29T20:31:11.882123555Z   File "/app/src/legendarr/db.py", line 31, in init_db
+2026-08-29T20:31:11.882128116Z     raise RuntimeError(f"database is not reachable: {url}")
+2026-08-29T20:31:11.882133447Z RuntimeError: database is not reachable: postgresql://db:5432/legendarr
+2026-08-29T20:31:11.883901002Z ERROR:    Application startup failed. Exiting.

@@ -1,0 +1,13 @@
+INFO  starting worker pool size=4
+ERROR failed to open cache file: permission denied
+INFO  falling back to in-memory cache
+ERROR sonarr sync failed: 502 Bad Gateway
+INFO  retrying in 5s
+Traceback (most recent call last):
+  File "/app/src/legendarr/sync.py", line 44, in run
+    self._pull()
+  File "/app/src/legendarr/sync.py", line 71, in _pull
+    raise TimeoutError("sonarr did not respond in 30s")
+TimeoutError: sonarr did not respond in 30s
+INFO  worker pool draining
+ERROR shutdown incomplete: 2 tasks still running

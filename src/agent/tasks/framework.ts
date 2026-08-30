@@ -13,7 +13,7 @@ import {
   type TaskStatus,
   type TaskType,
 } from 'src/agent/Task.js'
-import type { TaskState } from 'src/agent/tasks/types.js'
+import { taskSpoolsOutput, type TaskState } from 'src/agent/tasks/types.js'
 import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js'
 import { enqueueSdkEvent } from 'src/agent/sdkEventQueue.js'
 import { getTaskOutputDelta, getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
@@ -188,6 +188,9 @@ export async function generateTaskAttachments(state: AppState): Promise<{
     }
 
     if (taskState.status === 'running') {
+      // Skip the disk read for a task with no spool (container rows). Without
+      // this, every running container costs one read per turn to learn nothing.
+      if (!taskSpoolsOutput(taskState)) continue
       const delta = await getTaskOutputDelta(
         taskState.id,
         taskState.outputOffset,

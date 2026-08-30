@@ -175,6 +175,7 @@ import { resolveAgentTools } from 'src/tools/AgentTool/agentToolUtils.js';
 import { resumeAgentBackground } from 'src/tools/AgentTool/resumeAgent.js';
 import { useMainLoopModel } from 'src/agent/hooks/useMainLoopModel.js';
 import { useAppState, useSetAppState, useAppStateStore } from 'src/terminal/state/AppState.js';
+import { useContainerStatus } from 'src/containers/hooks/useContainerStatus.js';
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
 import type { PastedContent } from 'src/platform/config/config.js';
 import { copyPlanForFork, copyPlanForResume, getPlanSlug, setPlanSlug } from 'src/agent/plans/plans.js';
@@ -492,6 +493,11 @@ export function REPL({
   const store = useAppStateStore();
   const terminal = useTerminalNotification();
   const mainLoopModel = useMainLoopModel();
+  // Watches docker for this project and keeps the footer's `containers` group
+  // in AppState. Mounted here rather than in the footer because the watcher
+  // owns a long-lived child process — a component that unmounts and remounts
+  // would respawn `docker events` each time.
+  useContainerStatus();
 
   // Note: standaloneAgentContext is initialized in main.tsx (via initialState) or
   // ResumeConversation.tsx (via setAppState before rendering REPL) to avoid

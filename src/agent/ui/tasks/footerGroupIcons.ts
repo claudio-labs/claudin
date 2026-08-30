@@ -11,7 +11,7 @@ import {
   type FooterGroupKey,
 } from 'src/agent/ui/tasks/footerTaskGeometry.js'
 
-// All six are Material Design (nf-md-*, supplementary PUA). The Font Awesome
+// All seven are Material Design (nf-md-*, supplementary PUA). The Font Awesome
 // range was tried first and every nf-fa-* codepoint painted blank on a
 // JetBrainsMono Nerd Font that fontconfig reported as covering it — the
 // charset carries the codepoint without a glyph behind it. Prefer nf-md-* when
@@ -21,6 +21,7 @@ const GROUP_ICONS: Record<FooterGroupKey, string> = {
   agents: '\u{f06a9}', // nf-md-robot
   shells: '\u{f1183}', // nf-md-console_line
   monitors: '\u{f0379}', // nf-md-monitor
+  containers: '\u{f0868}', // nf-md-docker
   remote: '\u{f015f}', // nf-md-cloud
   workflows: '\u{f1049}', // nf-md-graph
   dreams: '\u{f04b2}', // nf-md-sleep

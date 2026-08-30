@@ -1,0 +1,10 @@
+20:31:08.221 [main] INFO  c.e.Bootstrap - starting
+20:31:08.994 [main] INFO  c.e.Bootstrap - reading configuration
+Exception in thread "main" java.lang.IllegalStateException: datasource url is not configured
+	at com.example.config.DataSourceFactory.create(DataSourceFactory.java:41)
+	at com.example.Bootstrap.start(Bootstrap.java:88)
+	at com.example.Bootstrap.main(Bootstrap.java:24)
+Caused by: java.lang.NullPointerException: Cannot invoke "String.trim()" because "url" is null
+	at com.example.config.DataSourceFactory.normalize(DataSourceFactory.java:57)
+	at com.example.config.DataSourceFactory.create(DataSourceFactory.java:38)
+	... 2 more
