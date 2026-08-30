@@ -12,7 +12,8 @@ import { convertEffortValueToLevel, type EffortLevel, getDefaultEffortForModel, 
 import { getCanonicalName, getDefaultMainLoopModel, type ModelSetting, modelDisplayString, parseUserSpecifiedModel } from 'src/providers/model/model.js';
 import { getModelOptions, type ModelOption } from 'src/providers/model/modelOptions.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
-import { Select } from 'src/terminal/custom-select/index.js';
+import { SearchableSelect } from 'src/terminal/custom-select/index.js';
+import { makeFavoritesAdapter } from 'src/providers/favorites/favorites.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 import { Pane } from 'src/terminal/design-system/Pane.js';
@@ -35,6 +36,11 @@ export type Props = {
   skipSettingsWrite?: boolean;
 };
 const NO_PREFERENCE = '__NO_PREFERENCE__';
+/** Module scope so the adapter identity is stable — this file is
+ *  React-Compiler output and cannot grow a useMemo for it. The
+ *  "no preference" row is not a model, so it cannot be starred. */
+const MODEL_FAVORITES = makeFavoritesAdapter<string>('model', value =>
+  value === NO_PREFERENCE ? null : value);
 /** A ModelOption after `null` has been folded into the NO_PREFERENCE sentinel. */
 type PickerOption = Omit<ModelOption, 'value'> & { value: string };
 type EffortLevelIndicatorProps = { effort: EffortLevel | undefined };
@@ -149,7 +155,11 @@ export function ModelPicker(t0: Props) {
   }
   const initialFocusValue = t6;
   const visibleCount = Math.min(10, selectOptions.length);
-  const hiddenCount = Math.max(0, selectOptions.length - visibleCount);
+  // SearchableSelect renders the "and N more…" line itself, against the
+  // FILTERED list — this one would go stale the moment a query is typed. The
+  // branch below is left in place (rather than deleted) because removing it
+  // would shift every React-Compiler cache slot after it.
+  const hiddenCount = 0;
   let t7;
   if ($[17] !== focusedValue || $[18] !== selectOptions) {
     t7 = selectOptions.find((opt_1: PickerOption) => opt_1.value === focusedValue)?.label;
@@ -307,7 +317,7 @@ export function ModelPicker(t0: Props) {
   const t20 = onCancel ?? _temp4;
   let t21;
   if ($[49] !== handleFocus || $[50] !== handleSelect || $[51] !== initialFocusValue || $[52] !== initialValue || $[53] !== selectOptions || $[54] !== t20 || $[55] !== visibleCount) {
-    t21 = <Box flexDirection="column"><Select defaultValue={initialValue} defaultFocusValue={initialFocusValue} options={selectOptions} onChange={handleSelect} onFocus={handleFocus} onCancel={t20} visibleOptionCount={visibleCount} /></Box>;
+    t21 = <Box flexDirection="column"><SearchableSelect defaultValue={initialValue} defaultFocusValue={initialFocusValue} options={selectOptions} onChange={handleSelect} onFocus={handleFocus} onCancel={t20} visibleOptionCount={visibleCount} favorites={MODEL_FAVORITES} searchPlaceholder="Search models…" showOverflowCount={true} /></Box>;
     $[49] = handleFocus;
     $[50] = handleSelect;
     $[51] = initialFocusValue;

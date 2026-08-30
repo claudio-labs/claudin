@@ -49,8 +49,10 @@ import {
 import { redactUrlForDisplay } from 'src/shared/urlRedaction.js'
 import {
   type OptionWithDescription,
+  SearchableSelect,
   Select,
 } from 'src/terminal/custom-select/index.js'
+import { makeFavoritesAdapter } from 'src/providers/favorites/favorites.js'
 import { Pane } from 'src/terminal/design-system/Pane.js'
 import { MigrationBanner } from 'src/platform/MigrationBanner.js'
 import TextInput from 'src/terminal/text-input/TextInput.js'
@@ -214,6 +216,12 @@ const XAI_OAUTH_PROVIDER_MODEL = 'grok-4'
 const KIMI_OAUTH_PROVIDER_NAME = 'Moonshot AI'
 const KIMI_OAUTH_PROVIDER_MODEL = KIMI_CODE_MODEL_LIST
 const KIMI_OAUTH_BASE_URL = 'https://api.kimi.com/coding/v1'
+
+/** A profile id is already the favorites key, so every row can be starred. */
+const PROFILE_FAVORITES = makeFavoritesAdapter<string>(
+  'providerProfile',
+  value => value,
+)
 
 function toDraft(profile: ProviderProfile): ProviderDraft {
   return {
@@ -2093,8 +2101,9 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         <Text dimColor>
           Pick a preset, then confirm base URL, model, and API key.
         </Text>
-        <Select
+        <SearchableSelect
           options={options}
+          searchPlaceholder="Search presets…"
           onChange={(value: string) => {
             if (value === 'skip') {
               closeWithCancelled('Provider setup skipped')
@@ -2636,8 +2645,10 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         <Text color="remember" bold>
           {title}
         </Text>
-        <Select
+        <SearchableSelect
           options={selectOptions}
+          favorites={PROFILE_FAVORITES}
+          searchPlaceholder="Search providers…"
           onChange={onSelect}
           onCancel={() => returnToMenu()}
           visibleOptionCount={Math.min(10, Math.max(2, selectOptions.length))}

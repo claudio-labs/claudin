@@ -50,11 +50,11 @@ file:line against current code before relying on an anchor.
   message stays a live fiber (wrapped in `OffscreenFreeze`), which is why async
   `setLines` (after sharp finishes) paints fine.
 
-## 3. Vacated cells leak stale glyphs — two distinct mechanisms
+## 3. Vacated cells leak stale glyphs — three distinct mechanisms
 
 Damage bounds are computed from cells **written** to the `next` frame, so cells
-`prev` had but `next` leaves empty can leak. There are TWO different causes; fix
-the right one.
+`prev` had but `next` leaves empty can leak. There are THREE different causes;
+fix the right one.
 
 - **(a) Damage-bounds miss (`src/terminal/ink/screen.ts` `diffEach`, model width == terminal
   width).** Row shrinks or a subtree unmounts with no new content reflowing into
@@ -63,6 +63,19 @@ the right one.
   `diffSameWidth(prev, next, 0, maxWidth, 0, maxHeight, cb)`. `findNextDiff` skips
   equal cells with integer compares, so full-screen scan stays sub-millisecond.
   Regressions live in `src/terminal/ink/screen.test.ts` (shrinking-row + orphan-row).
+- **(a2) A header that mounts/unmounts reflows the whole list under it.** Same
+  root cause as (a), but the trigger is a layout change rather than a shrink, so
+  it gets attributed to the wrong thing. Revealing a search box above a `Select`
+  pushes every row down AND moves the wrap point by a column; the reflowed rows
+  are repainted incompletely and single glyphs from the previous frame survive
+  *inside* words — `/model` rendered `Most cvpibae for complexOworkf` and
+  `✔ eNewer version available`, both of which persisted across a second
+  `capture-pane`, so it is the cell grid and not a capture artifact. Don't fix
+  it in the component's content; keep the header **always mounted** and change
+  only its focus styling, which is what `Config.tsx:1972` does and what
+  `custom-select/SearchableSelect.tsx` follows. The corruption is a
+  *substitution*, not a dropped character, so a frame diff reads as a typo and a
+  `toContain` on a word that happens to survive will not catch it.
 - **(b) Ambiguous-width drift (`stringWidth` model width ≠ terminal width).** With
   `ambiguousIsNarrow: true`, East-Asian-Ambiguous glyphs (`←→☒☐`) measure width 1
   but some terminals (Ghostty + Nerd Font) render them width 2. When a row is

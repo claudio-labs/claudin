@@ -166,6 +166,10 @@ export const KEYBINDING_ACTIONS = [
   'select:previous',
   'select:accept',
   'select:cancel',
+  // Search + favorites, registered only by SearchableSelect (see
+  // custom-select/SearchableSelect.tsx) — a plain Select leaves them unbound.
+  'select:search',
+  'select:toggleFavorite',
   // Plugin dialog actions
   'plugin:toggle',
   'plugin:install',
