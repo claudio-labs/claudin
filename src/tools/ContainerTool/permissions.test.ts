@@ -129,3 +129,50 @@ test('an argument containing a shell operator is quoted before the check', async
   )
   expect(result.behavior).toBe('allow')
 })
+
+test('a data-deleting flag smuggled through `args` still reaches the dialog', async () => {
+  // The gate reads the BUILT argv, not the input fields. `args` is appended
+  // verbatim, so each of these is byte-for-byte a command that deletes data —
+  // and each used to be auto-allowed by an ordinary `docker compose` rule.
+  const smuggledVolumes = await checkContainerPermission(
+    { op: 'down', composeFile: 'x.yml', args: ['-v'] },
+    contextWith({ allow: ['Bash(docker compose:*)'] }),
+  )
+  expect(smuggledVolumes.behavior).toBe('ask')
+
+  const smuggledImages = await checkContainerPermission(
+    { op: 'down', composeFile: 'x.yml', args: ['--rmi', 'all'] },
+    contextWith({ allow: ['Bash(docker compose:*)'] }),
+  )
+  expect(smuggledImages.behavior).toBe('ask')
+
+  const renewedAnonVolumes = await checkContainerPermission(
+    { op: 'up', composeFile: 'x.yml', args: ['--renew-anon-volumes'] },
+    contextWith({ allow: ['Bash(docker compose:*)'] }),
+  )
+  expect(renewedAnonVolumes.behavior).toBe('ask')
+})
+
+test('a short cluster and an =value form are read as the flags they carry', async () => {
+  const cluster = await checkContainerPermission(
+    { op: 'down', composeFile: 'x.yml', args: ['-tv'] },
+    contextWith({ allow: ['Bash(docker compose:*)'] }),
+  )
+  expect(cluster.behavior).toBe('ask')
+
+  const equals = await checkContainerPermission(
+    { op: 'down', composeFile: 'x.yml', args: ['--rmi=all'] },
+    contextWith({ allow: ['Bash(docker compose:*)'] }),
+  )
+  expect(equals.behavior).toBe('ask')
+})
+
+test('the same letter on an op where it is harmless still auto-allows', async () => {
+  // `-v` is a bind mount on `run`, not a volume wipe. The table is keyed by op
+  // precisely so this does not turn every mount into a dialog.
+  const result = await checkContainerPermission(
+    { op: 'run', service: 'api', args: ['-v', '/tmp:/tmp'], command: ['ls'] },
+    contextWith({ allow: ['Bash(docker run:*)'] }),
+  )
+  expect(result.behavior).toBe('allow')
+})

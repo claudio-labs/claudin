@@ -169,6 +169,11 @@ function takeNodeStack(payloads: string[], start: number): number {
  * return the end index plus the joined text so the caller can decide whether it
  * is an error record. The LINES are kept separate — a pretty-printed record is
  * never squashed onto one line.
+ *
+ * Two things keep a line that merely STARTS with `{` from swallowing the
+ * window: braces inside a string do not count, and a record that never
+ * balances consumes only its first line. Without either, a log line like
+ * `{"msg":"got { here"` ate the next 59 lines and every real error in them.
  */
 function takeJsonRecord(
   payloads: string[],
@@ -180,12 +185,35 @@ function takeJsonRecord(
   while (i < payloads.length && i - start < MAX_BLOCK_LINES) {
     const p = payloads[i] ?? ''
     parts.push(p)
+    // Reset per line: valid JSON never carries a raw newline inside a string,
+    // so an unterminated quote is a broken line rather than a continuation —
+    // and carrying the state on would poison every line after it.
+    let inString = false
+    let escaped = false
     for (const ch of p) {
+      if (escaped) {
+        escaped = false
+        continue
+      }
+      if (ch === '\\') {
+        escaped = true
+        continue
+      }
+      if (ch === '"') {
+        inString = !inString
+        continue
+      }
+      if (inString) continue
       if (ch === '{') depth++
       else if (ch === '}') depth--
     }
     i++
     if (depth <= 0) break
+  }
+  if (depth > 0) {
+    // Never balanced: this is prose that happens to open a brace, not a
+    // record. Give back the one line so the scan continues on the next.
+    return { end: start + 1, text: parts[0] ?? '' }
   }
   return { end: i, text: parts.join('\n') }
 }

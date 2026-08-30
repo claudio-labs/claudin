@@ -222,7 +222,7 @@ src/
 │   ├── repl/ (35)               ← REPL.tsx (main loop), controllers/, replLauncher
 │   ├── ui/ (133)                ← the loop's Ink components: messages/, tasks/, agents/ (→ ink-tui.md)
 │   ├── tools/ (29)              ← toolExecution, toolResultCache, toolResultSummarizer (→ cache.md)
-│   ├── tasks/ (28)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
+│   ├── tasks/ (32)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
 │   ├── coordinator/ (42)        ← multi-agent coordinator + swarm backends (COORDINATOR_MODE)
 │   ├── compact/ (23)            ← compaction: autoCompact, microCompact, stableStubState
 │   ├── cache/ (4)               ← prompt-cache policy + profiles (→ cache.md)
@@ -257,6 +257,7 @@ src/
 │   ├── AgentTool/               ← sub-agent spawning (built-in agents in built-in/)
 │   ├── TaskCreateTool/ …        ← task tool surface (runtime backends are src/agent/tasks/)
 │   ├── BuildTool/ RunTestsTool/ TypecheckTool/  ← build, test and typecheck runners
+│   ├── ContainerTool/ (14)      ← docker/compose ops; the domain logic is src/containers/
 │   ├── RenameTool/              ← project-wide identifier rename (findSites.ts is the matcher)
 │   ├── PowerShellTool/ (14)     ← the Windows shell, with its own permission and safety gates
 │   ├── WebFetchTool/ WebSearchTool/  ← Firecrawl or DuckDuckGo/raw
@@ -308,6 +309,12 @@ src/
 │   └── ui/                      ← one request component per tool + rules/ editor
 ├── mcp/ (65)                    ← client/ (10: connection, transport, callTool, authCache),
 │                                  mcpServerApproval trust dialog, ui/
+├── containers/ (18)             ← docker/compose domain: project discovery, state, diagnostics.
+│                                  The TOOL is tools/ContainerTool/ and the task backend is
+│                                  agent/tasks/ContainerTask/ — this slice is neither
+│   ├── diagnostics/ (4)         ← log-error extraction, exit-code and health diagnosis
+│   ├── docker/ (6)              ← CLI wrappers: ps/inspect, the `docker events` watcher
+│   └── build/ (2)               ← compose build parsing and progress
 ├── sessions/ (61)               ← persistence/, resume/, indexing/, conversationRecovery, ui/
 ├── vcs/ (59)                    ← git/ (wrapper, worktree, gh PR status) + diff/ (the /diff reviewer)
 ├── plugins/ (51)                ← plugin discovery, install, marketplace, dxt/

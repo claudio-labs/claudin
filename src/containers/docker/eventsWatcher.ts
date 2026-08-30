@@ -32,6 +32,9 @@ const RECONNECT_MAX_MS = 30_000
  */
 const SNAPSHOT_DEBOUNCE_MS = 150
 
+/** How much of the stream's stderr to keep for the log line when it dies. */
+const STDERR_TAIL_CHARS = 2_000
+
 export function isContainerPanelDisabled(): boolean {
   return process.env.CLAUDIN_DISABLE_CONTAINER_PANEL === '1'
 }
@@ -161,14 +164,27 @@ export function startContainerWatcher({
       backoff = RECONNECT_BASE_MS
     })
 
+    // Drained on purpose. An unconsumed stderr pipe fills at the OS buffer
+    // (~64 KB) and blocks the child FOREVER — the stream then never exits, so
+    // the reconnect below never fires and the panel silently freezes on a
+    // stale row with no error anywhere. Only the tail is kept.
+    let stderrTail = ''
+    proc.stderr?.setEncoding('utf8')
+    proc.stderr?.on('data', (chunk: string) => {
+      stderrTail = (stderrTail + chunk).slice(-STDERR_TAIL_CHARS)
+    })
+
     proc.on('error', e => {
       logError(new Error('docker events failed to spawn', { cause: e }))
       disable('the docker events stream could not be started')
     })
 
-    proc.on('exit', () => {
+    proc.on('exit', code => {
       if (stopped) return
       child = null
+      if (stderrTail.trim()) {
+        logForDebugging(`docker events exited ${code}: ${stderrTail.trim()}`)
+      }
       // The stream died — a daemon restart, or docker went away. Re-snapshot on
       // reconnect so a change that happened while we were disconnected is not
       // missed, which is the whole failure mode a stale row comes from.

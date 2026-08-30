@@ -16,17 +16,23 @@ import {
   ContainerCommandError,
   type BuildCommandContext,
 } from 'src/tools/ContainerTool/buildCommand.js'
-import { isAlwaysAskOp, type ContainerToolInput } from 'src/tools/ContainerTool/types.js'
+import {
+  isAlwaysAskCommand,
+  type BuiltCommand,
+  type ContainerToolInput,
+} from 'src/tools/ContainerTool/types.js'
 
 /**
  * Decide whether this op may run.
  *
  * Two rules on top of the delegation:
  *
- *  - `prune`, `rm`, `rmi` and `down --volumes` NEVER return `allow` on their
- *    own. They delete data that no `git checkout` brings back, so an
- *    always-allow rule must not be able to wave them through — the user sees
- *    the dialog every time.
+ *  - `prune`, `rm`, `rmi` and any command carrying a data-deleting flag NEVER
+ *    return `allow` on their own. They delete data that no `git checkout`
+ *    brings back, so an always-allow rule must not be able to wave them
+ *    through — the user sees the dialog every time. That decision reads the
+ *    BUILT argv, so a flag arriving through `args` counts exactly as much as
+ *    one arriving through `volumes`.
  *  - On allow we echo OUR OWN input. Bash's `updatedInput` is `{command}`-shaped
  *    and the harness applies it verbatim, which would replace our `op` with a
  *    `command` field the schema does not have. That is the bug that made
@@ -37,9 +43,9 @@ export async function checkContainerPermission(
   context: ToolUseContext,
   ctx: BuildCommandContext = {},
 ): Promise<PermissionResult> {
-  let command: string
+  let built: BuiltCommand
   try {
-    command = buildContainerCommand(input, ctx).commandString
+    built = buildContainerCommand(input, ctx)
   } catch (e) {
     if (e instanceof ContainerCommandError) {
       return {
@@ -50,12 +56,13 @@ export async function checkContainerPermission(
     }
     throw e
   }
+  const command = built.commandString
 
   const decision = await bashToolHasPermission({ command }, context)
 
   if (decision.behavior === 'deny') return decision
 
-  if (isAlwaysAskOp(input.op, input.volumes)) {
+  if (isAlwaysAskCommand(input.op, built.argv)) {
     // Downgrade an allow to an ask. A deny above still wins.
     if (decision.behavior !== 'allow') return decision
     return {

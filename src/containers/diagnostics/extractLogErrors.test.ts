@@ -111,6 +111,34 @@ describe('structured logs', () => {
     expect(text).not.toContain('server started')
     expect(text).not.toContain('retrying in 5s')
   })
+
+  test('a brace inside a JSON string does not extend the record', () => {
+    const raw = [
+      '{"level":"error","msg":"unbalanced { in payload"}',
+      'INFO next',
+    ].join('\n')
+    const out = extractLogErrors(raw)
+    if (out.kind !== 'errors') throw new Error('expected errors')
+    const record = out.blocks.find(b => b.kind === 'json-record')
+    expect(record?.lines).toEqual(['{"level":"error","msg":"unbalanced { in payload"}'])
+  })
+
+  test('a line that opens a brace it never closes swallows nothing after it', () => {
+    // The counter used to consume its whole 60-line window looking for a
+    // balance that never comes, dropping every real error inside it.
+    const raw = [
+      '{"level":"info","msg":"parsed { from the config"',
+      'INFO still fine',
+      'Traceback (most recent call last):',
+      '  File "/app/main.py", line 3, in <module>',
+      'ValueError: boom',
+    ].join('\n')
+    const out = extractLogErrors(raw)
+    if (out.kind !== 'errors') throw new Error('expected errors')
+    const text = out.blocks.map(b => b.lines.join('\n')).join('\n')
+    expect(text).toContain('Traceback (most recent call last):')
+    expect(text).toContain('ValueError: boom')
+  })
 })
 
 describe('caps and counts', () => {

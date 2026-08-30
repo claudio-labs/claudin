@@ -38,7 +38,11 @@ import {
   buildContainerCommand,
   type BuildCommandContext,
 } from 'src/tools/ContainerTool/buildCommand.js'
-import { runStreamingDocker } from 'src/tools/ContainerTool/buildProgress.js'
+import {
+  argvToShellCommand,
+  runStreamingDocker,
+  singleQuote,
+} from 'src/tools/ContainerTool/buildProgress.js'
 import {
   isReadOnlyOp,
   type BuiltCommand,
@@ -508,7 +512,7 @@ export async function runContainerOp(
     (input.op === 'build' && input.background === true) ||
     (input.op === 'logs' && input.follow === true)
   if (wantsBackground && opts.spawn && !getIsNonInteractiveSession()) {
-    return spawnBackground(input, opts, built.commandString, startedAt)
+    return spawnBackground(input, opts, built, cwd, startedAt)
   }
 
   // `build` and `up` need to be watched while they run, so they take the
@@ -604,21 +608,47 @@ export function formatLogs(
   }
 }
 
+/**
+ * The shell line a backgrounded op runs.
+ *
+ * Two things it is NOT: `BuiltCommand.commandString`, whose quoting exists for
+ * the permission check and is not execution-grade, and a bare command — `exec`
+ * has no cwd option and runs in the session's persistent shell, so without the
+ * `cd` a worktree sub-agent would build the MAIN checkout. Same pair
+ * `runStreamingDocker` assembles, exported so both are testable without
+ * spawning anything.
+ */
+export function backgroundShellCommand(
+  argv: readonly string[],
+  cwd: string,
+): string {
+  return `cd ${singleQuote(cwd)} && ${argvToShellCommand(argv)}`
+}
+
 async function spawnBackground(
   input: ContainerToolInput,
   opts: RunContainerOpOptions,
-  command: string,
+  built: BuiltCommand,
+  cwd: string,
   startedAt: number,
 ): Promise<ContainerToolOutput> {
   const spawnCtx = opts.spawn
   if (!spawnCtx) {
     throw new Error('spawnBackground called without spawn plumbing')
   }
+  // The readable form is for the UI and the model; the shell only ever sees
+  // the quoted one.
+  const command = built.commandString
   const shellCommand = await exec(
-    command,
+    backgroundShellCommand(built.argv, cwd),
     spawnCtx.abortController.signal,
     'bash',
-    { timeout: input.timeout ?? DEFAULT_WALL_TIMEOUT_MS },
+    {
+      timeout: input.timeout ?? DEFAULT_WALL_TIMEOUT_MS,
+      // The `cd` above is ours, not the user's — it must not move the
+      // session's shell out from under the next Bash call.
+      preventCwdChanges: true,
+    },
   )
   const handle = await spawnShellTask(
     {

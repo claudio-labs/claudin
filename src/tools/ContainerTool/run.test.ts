@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  backgroundShellCommand,
   buildFailureText,
   formatLogs,
   formatRows,
@@ -19,6 +20,7 @@ import type { ContainerInfo } from 'src/containers/types.js'
 import type { ContainerRow } from 'src/tools/ContainerTool/types.js'
 import type { ExecResult, ShellCommand } from 'src/shared/proc/ShellCommand.js'
 import type { ExecOptions } from 'src/shared/proc/Shell.js'
+import { AbortError } from 'src/shared/errors.js'
 
 function container(over: Partial<ContainerInfo> = {}): ContainerInfo {
   return {
@@ -251,6 +253,26 @@ describe('argvToShellCommand', () => {
       const out = Bun.spawnSync(['bash', '-c', `printf '%s' ${quoted}`])
       expect(out.stdout.toString()).toBe(nasty)
     }
+  })
+})
+
+describe('backgroundShellCommand', () => {
+  test('cds into the given cwd, so a backgrounded build cannot escape it', () => {
+    // `exec` has NO cwd option — it runs in the session's persistent shell.
+    expect(
+      backgroundShellCommand(
+        ['compose', '-f', 'my compose.yml', 'build'],
+        '/home/dev/worktrees/agent-1',
+      ),
+    ).toBe(
+      `cd '/home/dev/worktrees/agent-1' && 'docker' 'compose' '-f' 'my compose.yml' 'build'`,
+    )
+  })
+
+  test('the cwd is quoted too — a repo path with a space is not two words', () => {
+    expect(backgroundShellCommand(['ps'], '/home/dev/my repo')).toStartWith(
+      `cd '/home/dev/my repo' &&`,
+    )
   })
 })
 
@@ -502,5 +524,61 @@ describe('runStreamingDocker', () => {
     })
     expect(out.runError).toContain('no suitable shell')
     expect(out.exitCode).toBe(1)
+  })
+
+  test('a user cancellation is rethrown, never rendered as a failed build', async () => {
+    // An ESC reaches the same controller the watchdog uses. Swallowing it here
+    // turned a cancellation into a diagnosed failure.
+    const abort = new AbortController()
+    abort.abort()
+    const run = runStreamingDocker({
+      argv: ['compose', 'build'],
+      cwd: '/repo',
+      abortSignal: abort.signal,
+      timeoutMs: 1_000,
+      idleTimeoutMs: 1_000,
+      execImpl: async () => {
+        throw new AbortError()
+      },
+      readOutput: async () => '',
+    })
+    await expect(run).rejects.toThrow()
+  })
+
+  test('a watchdog abort that REJECTS still reports the stall, not a runError', async () => {
+    // The resolve-with-143 path has its own test above. This is the other one:
+    // when the shell rejects on abort, the stall report has to survive the
+    // catch or the "stopped after Ns silent" arm is unreachable.
+    let t = 0
+    let progress: ExecOptions['onProgress']
+    const run = runStreamingDocker({
+      argv: ['compose', 'build'],
+      cwd: '/repo',
+      timeoutMs: 600_000,
+      idleTimeoutMs: 1_000,
+      now: () => t,
+      execImpl: async (_cmd, signal, _shell, options) => {
+        progress = options?.onProgress
+        return {
+          result: new Promise<ExecResult>((_resolve, reject) => {
+            signal.addEventListener('abort', () => reject(new AbortError()))
+          }),
+          background: () => false,
+          kill: () => {},
+          status: 'running',
+          cleanup: () => {},
+        } as unknown as ShellCommand
+      },
+      readOutput: async () => '',
+    })
+    await settle()
+    progress?.('working', 'working', 0, 10, false)
+    t = 4_000
+    progress?.('working', 'working', 0, 10, false)
+
+    const out = await run
+    expect(out.stall?.reason).toBe('idle')
+    expect(out.stall?.silentMs).toBe(4_000)
+    expect(out.runError).toBeUndefined()
   })
 })

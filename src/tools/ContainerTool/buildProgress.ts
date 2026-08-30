@@ -14,6 +14,7 @@ import { readFullShellOutput } from 'src/platform/shell/fullOutput.js'
 import { exec, type ExecOptions } from 'src/shared/proc/Shell.js'
 import type { ExecResult, ShellCommand } from 'src/shared/proc/ShellCommand.js'
 import { logError } from 'src/shared/log.js'
+import { isAbortError } from 'src/shared/errors.js'
 import { dockerBin } from 'src/containers/docker/dockerCli.js'
 import { buildProgressLabel } from 'src/containers/build/parseBuildKit.js'
 import { lastNonEmptyLine } from 'src/tools/shared/progressTail.js'
@@ -269,6 +270,27 @@ ${argvToShellCommand(argv)}
 
     return { text, exitCode: result.code, interrupted: result.interrupted }
   } catch (e) {
+    // The idle watchdog aborts through the same controller a user's ESC
+    // reaches, so the two are told apart by whether the watchdog actually
+    // fired. Ours is the stall this module exists to report — reachable only
+    // from here when `exec` REJECTS on abort rather than resolving with 143.
+    const idleSilentMs = watcher.idleSilentMs()
+    if (idleSilentMs !== null) {
+      return {
+        text: '',
+        exitCode: SIGTERM_EXIT,
+        interrupted: false,
+        stall: {
+          reason: 'idle',
+          ranMs: now() - startedAt,
+          silentMs: idleSilentMs,
+          lastLine: '',
+        },
+      }
+    }
+    // Theirs is a cancellation, not a failure. Rethrowing is what keeps an ESC
+    // from being rendered as a diagnosed build error.
+    if (isAbortError(e)) throw e
     logError(new Error('container: streaming exec failed', { cause: e }))
     return {
       text: '',

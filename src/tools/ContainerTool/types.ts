@@ -75,12 +75,41 @@ export function isReadOnlyOp(op: ContainerOp): boolean {
 }
 
 /**
- * Ops that must always reach the permission dialog, whatever the user's rules
- * say. `down --volumes` joins them at call time — the flag is what makes it
- * destructive, not the op.
+ * Flags that make an otherwise ordinary op delete data, keyed by the op they
+ * belong to. Keyed rather than global because the same letter means different
+ * things per op: `-v` is a bind mount on `run` and a volume wipe on `down`.
  */
-export function isAlwaysAskOp(op: ContainerOp, volumes = false): boolean {
-  return DESTRUCTIVE_SET.has(op) || (op === 'down' && volumes)
+const DESTRUCTIVE_FLAGS: Partial<Record<ContainerOp, ReadonlySet<string>>> = {
+  down: new Set(['-v', '--volumes', '--rmi']),
+  up: new Set(['-V', '--renew-anon-volumes']),
+}
+
+/** One argv token as the flags it carries: `--rmi=all` → `--rmi`, `-tv` → `-t`, `-v`. */
+function flagsIn(token: string): string[] {
+  if (!token.startsWith('-')) return []
+  const name = token.split('=')[0] ?? ''
+  if (name.startsWith('--')) return [name]
+  return [...name.slice(1)].map(char => `-${char}`)
+}
+
+/**
+ * Whether this command must reach the permission dialog whatever the user's
+ * rules say.
+ *
+ * It reads the BUILT argv rather than the input fields, and that is the whole
+ * point: `args` is appended verbatim by `buildContainerCommand`, so
+ * `{op:'down', args:['-v']}` produces byte-for-byte the same volume wipe as
+ * `{op:'down', volumes:true}`. A check that read only `volumes` let the first
+ * form through an always-allow rule with no dialog at all.
+ */
+export function isAlwaysAskCommand(
+  op: ContainerOp,
+  argv: readonly string[],
+): boolean {
+  if (DESTRUCTIVE_SET.has(op)) return true
+  const flags = DESTRUCTIVE_FLAGS[op]
+  if (!flags) return false
+  return argv.some(token => flagsIn(token).some(flag => flags.has(flag)))
 }
 
 export type WaitUntil = 'healthy' | 'running' | 'exited'
