@@ -52,6 +52,18 @@ import {
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
 import type { LocalShellTaskState } from 'src/agent/tasks/LocalShellTask/guards.js'
 import type { LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
+import { isContainerTask } from 'src/agent/tasks/ContainerTask/types.js'
+import { containerSignature } from 'src/agent/tasks/ContainerTask/reconcile.js'
+import {
+  formatContainerState,
+  shortContainerName,
+} from 'src/containers/format.js'
+import { classifyContainer } from 'src/containers/diagnostics/classify.js'
+import type {
+  ContainerHealth,
+  ContainerInfo,
+  ContainerState,
+} from 'src/containers/types.js'
 import type { Attachment } from 'src/agent/attachments/types.js'
 import {
   PLAN_MODE_ATTACHMENT_CONFIG,
@@ -652,6 +664,193 @@ export async function getUnifiedTaskAttachments(
     outputFilePath: getTaskOutputPath(taskAttachment.taskId),
     command: taskAttachment.command,
   }))
+}
+
+// ---------------------------------------------------------------------------
+// Container transitions
+// ---------------------------------------------------------------------------
+
+/**
+ * How many container lines one turn may carry. `docker compose restart` on a
+ * ten-service stack moves ten rows at once, and ten reminders would reintroduce
+ * exactly the per-turn tax this attachment exists to avoid. The rest are
+ * counted, and their signatures are still recorded so they do not re-fire.
+ */
+const MAX_CONTAINER_TRANSITIONS_PER_TURN = 3
+
+const CONTAINER_STATES: ReadonlySet<string> = new Set<ContainerState>([
+  'created',
+  'restarting',
+  'running',
+  'removing',
+  'paused',
+  'exited',
+  'dead',
+])
+
+const CONTAINER_HEALTHS: ReadonlySet<string> = new Set<ContainerHealth>([
+  'healthy',
+  'unhealthy',
+  'starting',
+  'none',
+])
+
+/**
+ * Recover the three facts a signature carries, so the previous state can be
+ * spelled with the same formatter as the current one.
+ *
+ * Returns null for anything that is not a signature this build wrote — a
+ * resumed session may carry one from an older shape, and guessing at it would
+ * put a wrong "from" word in front of the model.
+ */
+function parseContainerSignature(
+  signature: string,
+): Pick<ContainerInfo, 'state' | 'health' | 'exitCode'> | null {
+  const parts = signature.split('/')
+  if (parts.length !== 3) return null
+  const [state, health, exitCode] = parts
+  if (state === undefined || !CONTAINER_STATES.has(state)) return null
+  if (health === undefined || !CONTAINER_HEALTHS.has(health)) return null
+  const parsedExit = exitCode === '' ? null : Number.parseInt(exitCode ?? '', 10)
+  if (parsedExit !== null && !Number.isFinite(parsedExit)) return null
+  return {
+    state: state as ContainerState,
+    health: health as ContainerHealth,
+    exitCode: parsedExit,
+  }
+}
+
+type PendingTransition = {
+  taskId: string
+  signature: string
+  name: string
+  from: string | null
+  to: string
+  issue?: string
+}
+
+/**
+ * Containers whose state moved since the model was last told about them.
+ *
+ * Silent in three cases, and the first is the one that matters: a container
+ * whose signature is unchanged produces nothing at all, so an idle session with
+ * a healthy stack pays zero tokens per turn. The second is a FIRST sighting of
+ * a container that is simply running — opening a session on a healthy
+ * three-service stack must not announce it, so the signature is seeded quietly
+ * instead. The third is a sub-agent thread, which never reaches this producer
+ * (pipeline.ts registers it main-thread only).
+ *
+ * A first sighting that is ALREADY broken — unhealthy, restarting, paused,
+ * exited non-zero — is reported, because that is news whether or not we watched
+ * it happen.
+ */
+export async function getContainerTransitionAttachments(
+  toolUseContext: ToolUseContext,
+): Promise<Attachment[]> {
+  const appState = toolUseContext.getAppState()
+  const tasks = Object.values(appState.tasks ?? {})
+
+  const pending: PendingTransition[] = []
+  const seedOnly: { taskId: string; signature: string }[] = []
+
+  for (const task of tasks) {
+    if (!isContainerTask(task)) continue
+    const container = task.container
+    const signature = containerSignature(container)
+    // Unchanged since the last report: the steady-state path, and the reason
+    // this costs nothing per turn.
+    if (task.lastNotifiedSignature === signature) continue
+
+    const diagnosis = classifyContainer(container, {
+      restartCount: task.restartCount,
+    })
+
+    if (task.lastNotifiedSignature === null && diagnosis === null) {
+      // First sighting of a container that is fine. Record it so the next
+      // real transition has something to compare against, and say nothing.
+      seedOnly.push({ taskId: task.id, signature })
+      continue
+    }
+
+    const previous =
+      task.lastNotifiedSignature === null
+        ? null
+        : parseContainerSignature(task.lastNotifiedSignature)
+
+    pending.push({
+      taskId: task.id,
+      signature,
+      name: shortContainerName(container),
+      from: previous ? formatContainerState({ ...container, ...previous }) : null,
+      to: formatContainerState(container, task.restartCount),
+      // `summary` only. `evidence` is docker's raw Status line, which carries
+      // "Up 2 hours" — a value that changes every turn.
+      ...(diagnosis ? { issue: diagnosis.summary } : {}),
+    })
+  }
+
+  if (pending.length === 0 && seedOnly.length === 0) return []
+
+  // A problem outranks a plain state change when the cap bites, so a `restart`
+  // that leaves one service unhealthy cannot hide it behind two healthy ones.
+  const ordered = [...pending].sort((a, b) => {
+    const aIssue = a.issue === undefined ? 1 : 0
+    const bIssue = b.issue === undefined ? 1 : 0
+    return aIssue - bIssue
+  })
+  const shown = ordered.slice(0, MAX_CONTAINER_TRANSITIONS_PER_TURN)
+  const elidedCount = ordered.length - shown.length
+
+  // Record every signature we consumed, including the elided ones — otherwise
+  // they would re-fire on the next turn and the cap would only defer the cost.
+  const consumed = new Map<string, string>()
+  for (const t of pending) consumed.set(t.taskId, t.signature)
+  for (const s of seedOnly) consumed.set(s.taskId, s.signature)
+  markContainersNotified(toolUseContext.setAppState, consumed)
+
+  if (shown.length === 0) return []
+
+  return [
+    {
+      type: 'container_transition',
+      transitions: shown.map(({ name, from, to, issue }) => ({
+        name,
+        from,
+        to,
+        ...(issue === undefined ? {} : { issue }),
+      })),
+      elidedCount,
+    },
+  ]
+}
+
+/**
+ * Write the reported signatures back in ONE state update.
+ *
+ * Batched rather than one `updateTaskState` per container: a ten-service
+ * restart would otherwise be ten store notifications, and the footer re-renders
+ * on each.
+ */
+function markContainersNotified(
+  setAppState: ToolUseContext['setAppState'],
+  signatures: ReadonlyMap<string, string>,
+): void {
+  if (signatures.size === 0) return
+  setAppState(prev => {
+    const tasks = prev.tasks ?? {}
+    let changed = false
+    const next: typeof tasks = { ...tasks }
+    for (const [taskId, signature] of signatures) {
+      const task = tasks[taskId]
+      // Re-checked against FRESH state: the snapshot this producer read may be
+      // one poll behind, and clobbering a newer container would lose it.
+      if (!task || !isContainerTask(task)) continue
+      if (task.lastNotifiedSignature === signature) continue
+      next[taskId] = { ...task, lastNotifiedSignature: signature }
+      changed = true
+    }
+    return changed ? { ...prev, tasks: next } : prev
+  })
 }
 
 const MAX_COMMAND_LEN_IN_REMINDER = 500

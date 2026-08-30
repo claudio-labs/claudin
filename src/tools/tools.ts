@@ -40,6 +40,8 @@ const getBuildTool = () =>
   require('src/tools/BuildTool/BuildTool.js').BuildTool as typeof import('src/tools/BuildTool/BuildTool.js').BuildTool
 const getGitTool = () =>
   require('src/tools/GitTool/GitTool.js').GitTool as typeof import('src/tools/GitTool/GitTool.js').GitTool
+const getContainerTool = () =>
+  require('src/tools/ContainerTool/ContainerTool.js').ContainerTool as typeof import('src/tools/ContainerTool/ContainerTool.js').ContainerTool
 const getRenameTool = () =>
   require('src/tools/RenameTool/RenameTool.js').RenameTool as typeof import('src/tools/RenameTool/RenameTool.js').RenameTool
 // Dead code elimination: conditional import for internal-only tools
@@ -281,6 +283,14 @@ export function getAllBaseTools(): Tools {
     // every request, so the killswitch has to remove the schema, not just the
     // behaviour. See src/tools/GitTool/GitTool.ts.
     ...(isEnvTruthy(process.env.CLAUDIN_DISABLE_GIT_TOOL) ? [] : [getGitTool()]),
+    // CLAUDIN_DISABLE_CONTAINER_TOOL=1 drops it entirely. Unlike the two above
+    // this one is `shouldDefer`, so its schema is not in the initial prompt and
+    // the killswitch is about the behaviour rather than the token cost. Its
+    // PRESENCE must stay unconditional either way: a tool that appears when a
+    // compose file does would bust the cached prefix the moment one shows up.
+    ...(isEnvTruthy(process.env.CLAUDIN_DISABLE_CONTAINER_TOOL)
+      ? []
+      : [getContainerTool()]),
     getEnterPlanModeTool(),
     ...(SuggestBackgroundPRTool ? [SuggestBackgroundPRTool] : []),
     ...(WebBrowserTool ? [WebBrowserTool] : []),

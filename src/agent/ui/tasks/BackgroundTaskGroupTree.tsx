@@ -7,6 +7,7 @@ import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { truncate } from 'src/shared/text/format.js';
 import { FOOTER_GROUP_LABELS, FOOTER_GROUP_ORDER, type FooterGroupKey, getFooterPanelLayout, matchGroupKey } from 'src/agent/ui/tasks/footerTaskGeometry.js';
+import { containerRowLabel } from 'src/agent/ui/tasks/containerRowLabel.js';
 
 // Groups with >4 items start collapsed so the footer stays compact; the user can
 // expand with Enter on the header.
@@ -42,6 +43,8 @@ function labelFor(task: BackgroundTaskState): string {
       return task.description;
     case 'in_process_teammate':
       return `@${task.identity.agentName}`;
+    case 'container':
+      return containerRowLabel(task);
     default:
       return '';
   }

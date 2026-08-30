@@ -1,0 +1,12 @@
+> legendarr-web@1.4.0 start
+> node dist/server.js
+
+listening on 0.0.0.0:3000
+Error: connect ECONNREFUSED 127.0.0.1:6379
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1609:16)
+    at Object.onceWrapper (node:events:634:26)
+    at TCP.done (node:_tls_wrap:657:7) {
+  errno: -111,
+  code: 'ECONNREFUSED',
+  syscall: 'connect'
+}

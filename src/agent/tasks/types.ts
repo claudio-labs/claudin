@@ -2,6 +2,7 @@
 // Use this for components that need to work with any task type
 
 import type { DreamTaskState } from 'src/agent/tasks/DreamTask/DreamTask.js'
+import type { ContainerTaskState } from 'src/agent/tasks/ContainerTask/types.js'
 import type { InProcessTeammateTaskState } from 'src/agent/tasks/InProcessTeammateTask/types.js'
 import type { LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import type { LocalShellTaskState } from 'src/agent/tasks/LocalShellTask/guards.js'
@@ -17,6 +18,7 @@ export type TaskState =
   | LocalWorkflowTaskState
   | MonitorMcpTaskState
   | DreamTaskState
+  | ContainerTaskState
 
 // Task types that can appear in the background tasks indicator
 export type BackgroundTaskState =
@@ -27,6 +29,7 @@ export type BackgroundTaskState =
   | LocalWorkflowTaskState
   | MonitorMcpTaskState
   | DreamTaskState
+  | ContainerTaskState
 
 /**
  * Check if a task should be shown in the background tasks indicator.
@@ -43,4 +46,17 @@ export function isBackgroundTask(task: TaskState): task is BackgroundTaskState {
     return false
   }
   return true
+}
+
+/**
+ * Whether a task spools its output to disk.
+ *
+ * `generateTaskAttachments` reads a delta for every running task on every turn;
+ * a container row has no spool (its logs are fetched on demand), so without
+ * this it would pay one disk read per container per turn for nothing. A
+ * capability predicate rather than a `type === 'container'` check, so the next
+ * spool-less task type is covered by construction.
+ */
+export function taskSpoolsOutput(task: TaskState): boolean {
+  return task.outputFile !== ''
 }

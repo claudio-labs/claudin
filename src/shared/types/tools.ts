@@ -35,6 +35,7 @@ import type {
 // `ToolDef<Input, Output, P>` constrains `P extends ToolProgressData` and each
 // of them passes its own type at that position.
 import type { BuildProgress } from 'src/tools/BuildTool/types.js'
+import type { ContainerProgress } from 'src/tools/ContainerTool/types.js'
 import type { GitProgress } from 'src/tools/GitTool/types.js'
 import type { TestProgress } from 'src/tools/RunTestsTool/types.js'
 import type { CheckProgress } from 'src/tools/TypecheckTool/types.js'
@@ -178,3 +179,4 @@ export type ToolProgressData =
   | TestProgress
   | CheckProgress
   | GitProgress
+  | ContainerProgress

@@ -1,0 +1,12 @@
+#6 [2/9] RUN apt-get update && apt-get install -y ffmpeg
+#6 0.412 Err:1 http://deb.debian.org/debian bookworm InRelease
+#6 0.412   Temporary failure resolving 'deb.debian.org'
+#6 20.31 Reading package lists...
+#6 20.44 E: Failed to fetch http://deb.debian.org/debian/dists/bookworm/InRelease  Temporary failure resolving 'deb.debian.org'
+#6 20.44 E: Some index files failed to download. They have been ignored, or old ones used instead.
+#6 ERROR: process "/bin/sh -c apt-get update && apt-get install -y ffmpeg" did not complete successfully: exit code: 100
+------
+ > [2/9] RUN apt-get update && apt-get install -y ffmpeg:
+20.44 E: Failed to fetch http://deb.debian.org/debian/dists/bookworm/InRelease  Temporary failure resolving 'deb.debian.org'
+------
+failed to solve: process "/bin/sh -c apt-get update && apt-get install -y ffmpeg" did not complete successfully: exit code: 100

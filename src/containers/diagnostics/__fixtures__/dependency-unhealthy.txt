@@ -1,0 +1,6 @@
+Container legendarr-sonarr-1  Created
+Container legendarr-sonarr-1  Starting
+Container legendarr-sonarr-1  Started
+Container legendarr-sonarr-1  Waiting
+Container legendarr-sonarr-1  Error
+dependency failed to start: container legendarr-sonarr-1 is unhealthy

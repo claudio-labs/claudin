@@ -1,0 +1,9 @@
+ sonarr Pulling 
+ sonarr Pulled 
+Container legendarr-sonarr-1  Creating
+Container legendarr-sonarr-1  Created
+Container legendarr-legendarr-1  Creating
+Container legendarr-legendarr-1  Created
+Container legendarr-sonarr-1  Starting
+Container legendarr-legendarr-1  Starting
+Error response from daemon: driver failed programming external connectivity on endpoint legendarr-legendarr-1 (a3f19c02d4be5c11f0aa9e78b1d2c4c7cf5e1a90b8d4e6f2c1a0b9d8e7f6a5b4): failed to bind host port for 0.0.0.0:8000:172.18.0.3:8000/tcp: address already in use

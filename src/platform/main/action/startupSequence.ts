@@ -580,6 +580,7 @@ export function runInteractiveStartupBlock(
     footerTasksCollapsed: true,
     coordinatorTaskIndex: -1,
     viewSelectionMode: 'none',
+    pendingContainerStop: null,
     footerSelection: null,
     toolPermissionContext: effectiveToolPermissionContext as AppState['toolPermissionContext'],
     agent: mainThreadAgentDefinition?.agentType,

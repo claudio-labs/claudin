@@ -22,6 +22,8 @@ import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
 import { TASK_CREATE_TOOL_NAME } from 'src/tools/TaskCreateTool/constants.js'
 import { TASK_OUTPUT_TOOL_NAME } from 'src/tools/TaskOutputTool/constants.js'
 import { TASK_STOP_TOOL_NAME } from 'src/tools/TaskStopTool/prompt.js'
+// prompt.ts is import-free, so naming the tool here costs nothing at load time.
+import { CONTAINER_TOOL_NAME } from 'src/tools/ContainerTool/prompt.js'
 import { TASK_UPDATE_TOOL_NAME } from 'src/tools/TaskUpdateTool/constants.js'
 import { buildTaskReconcileReminder } from 'src/agent/query/taskReconcile.js'
 import type {
@@ -663,6 +665,32 @@ You have exited auto mode. The user may now want to interact more directly. You 
       return [
         createUserMessage({
           content: wrapInSystemReminder(messageParts.join(' ')),
+          isMeta: true,
+        }),
+      ]
+    }
+    case 'container_transition': {
+      // One reminder for the whole burst, one line per container. Everything
+      // here is a state word or a diagnosis summary — no uptime, no relative
+      // time — so the bytes only move when a container actually does.
+      const lines = attachment.transitions.map(t => {
+        const change = t.from === null ? t.to : `${t.from} → ${t.to}`
+        return t.issue ? `- ${t.name}: ${change} — ${t.issue}` : `- ${t.name}: ${change}`
+      })
+      if (attachment.elidedCount > 0) {
+        lines.push(
+          `${attachment.elidedCount} other container${attachment.elidedCount === 1 ? '' : 's'} also changed state.`,
+        )
+      }
+      return [
+        createUserMessage({
+          content: wrapInSystemReminder(
+            [
+              'Container state changed since the last turn:',
+              ...lines,
+              `Use the ${CONTAINER_TOOL_NAME} tool for logs or details.`,
+            ].join('\n'),
+          ),
           isMeta: true,
         }),
       ]

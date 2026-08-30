@@ -12,6 +12,7 @@ export type FooterGroupKey =
   | 'agents'
   | 'shells'
   | 'monitors'
+  | 'containers'
   | 'remote'
   | 'workflows'
   | 'dreams'
@@ -24,6 +25,7 @@ export const FOOTER_GROUP_ORDER: readonly FooterGroupKey[] = [
   'agents',
   'shells',
   'monitors',
+  'containers',
   'remote',
   'workflows',
   'dreams',
@@ -35,6 +37,7 @@ export const FOOTER_GROUP_LABELS: Record<FooterGroupKey, string> = {
   agents: 'Agents',
   shells: 'Shells',
   monitors: 'Monitors',
+  containers: 'Containers',
   remote: 'Remote',
   workflows: 'Workflows',
   dreams: 'Dreams',
@@ -145,6 +148,8 @@ export function matchGroupKey(t: TaskState): FooterGroupKey | undefined {
       return t.kind === 'monitor' ? 'monitors' : 'shells'
     case 'monitor_mcp':
       return 'monitors'
+    case 'container':
+      return 'containers'
     case 'remote_agent':
       return 'remote'
     case 'local_workflow':
