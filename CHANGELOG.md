@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.1.23 — 2026-08-31
+
+### ✨ Features
+
+- feat(tui): add search and favorites to the model and provider pickers (#146) (c1cd427e)
+- feat(containers): add the Container tool and a docker panel in the footer (#145) (355b545b)
+- feat(bash-filter): match tools behind execution wrappers and path-prefixed binaries (#144) (2fa3be5c)
+- feat(tui): add a status totals row under the task list (#143) (9d7f3e04)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.22 — 2026-08-28
 
 ### 🐛 Bug Fixes
