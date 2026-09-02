@@ -209,15 +209,22 @@ export const CLAUDE_OPUS_5_CONFIG = {
   mistral: 'devstral-latest',
 } as const satisfies ModelConfig
 
-// Claude Fable 5 — frontier tier above Opus. 1M context by default, 128K max
-// output, new tokenizer (~30% more tokens than Opus-tier), thinking always on
-// (adaptive only — budget_tokens and explicit disabled both 400). Requires
-// 30-day data retention on the org (not available under ZDR).
-export const CLAUDE_FABLE_5_CONFIG = {
-  firstParty: 'claude-fable-5',
-  bedrock: 'anthropic.claude-fable-5',
-  vertex: 'claude-fable-5',
-  foundry: 'claude-fable-5',
+// Claude Fable 5.1 (2026-09-01) — frontier tier above Opus, replacing Fable 5.
+// 1M context by default, 128K max output, new tokenizer (~30% more tokens than
+// Opus-tier), thinking always on (adaptive only — budget_tokens and explicit
+// disabled both 400), default effort 'high'. Forced tool use is rejected, which
+// is why the auto-mode classifier routes Fable-class models through the XML
+// path. NOT eligible for the output-300k batch beta. Dateless ID is itself the
+// pinned snapshot; Bedrock uses the Messages-API endpoint id (no legacy ARN).
+//
+// Pricing carries the one irregularity in the whole table: cache reads are
+// 0.025x the base input price ($0.25/MTok), not the standard 0.1x every other
+// model uses. See COST_TIER_10_50 in src/providers/usage/modelCost.ts.
+export const CLAUDE_FABLE_5_1_CONFIG = {
+  firstParty: 'claude-fable-5-1',
+  bedrock: 'anthropic.claude-fable-5-1',
+  vertex: 'claude-fable-5-1',
+  foundry: 'claude-fable-5-1',
   openai: 'gpt-4o',
   gemini: 'gemini-2.5-pro',
   github: 'github:copilot',
@@ -278,7 +285,7 @@ export const ALL_MODEL_CONFIGS = {
   opus47: CLAUDE_OPUS_4_7_CONFIG,
   opus48: CLAUDE_OPUS_4_8_CONFIG,
   opus5: CLAUDE_OPUS_5_CONFIG,
-  fable5: CLAUDE_FABLE_5_CONFIG,
+  fable51: CLAUDE_FABLE_5_1_CONFIG,
 } as const satisfies Record<string, ModelConfig>
 
 export type ModelKey = keyof typeof ALL_MODEL_CONFIGS

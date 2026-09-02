@@ -7,7 +7,7 @@ import {
   CLAUDE_3_5_HAIKU_CONFIG,
   CLAUDE_3_5_V2_SONNET_CONFIG,
   CLAUDE_3_7_SONNET_CONFIG,
-  CLAUDE_FABLE_5_CONFIG,
+  CLAUDE_FABLE_5_1_CONFIG,
   CLAUDE_HAIKU_4_5_CONFIG,
   CLAUDE_OPUS_4_1_CONFIG,
   CLAUDE_OPUS_4_5_CONFIG,
@@ -40,6 +40,16 @@ export type ModelCosts = {
   webSearchRequests: number
 }
 
+// Pricing tier for Sonnet 5: $2 input / $10 output per Mtok
+export const COST_TIER_2_10 = {
+  inputTokens: 2,
+  outputTokens: 10,
+  promptCacheWriteTokens: 2.5,
+  promptCacheWrite1hTokens: 4,
+  promptCacheReadTokens: 0.2,
+  webSearchRequests: 0.01,
+} as const satisfies ModelCosts
+
 // Standard pricing tier for Sonnet models: $3 input / $15 output per Mtok
 export const COST_TIER_3_15 = {
   inputTokens: 3,
@@ -70,8 +80,23 @@ export const COST_TIER_5_25 = {
   webSearchRequests: 0.01,
 } as const satisfies ModelCosts
 
-// Pricing tier for Claude Fable 5: $10 input / $50 output per Mtok
+// Pricing tier for Claude Fable 5.1: $10 input / $50 output per Mtok.
+// The cache read is the one irregular number in the whole table: Fable 5.1 and
+// Mythos 5.1 price it at 0.025x the base input ($0.25), where every other model
+// uses the standard 0.1x. Do not "fix" it to $1 to match the pattern.
 export const COST_TIER_10_50 = {
+  inputTokens: 10,
+  outputTokens: 50,
+  promptCacheWriteTokens: 12.5,
+  promptCacheWrite1hTokens: 20,
+  promptCacheReadTokens: 0.25,
+  webSearchRequests: 0.01,
+} as const satisfies ModelCosts
+
+// Pricing tier for the retired Claude Fable 5: same $10/$50 as Fable 5.1, but
+// its cache read used the standard 0.1x multiplier. Reachable only through an
+// agent frontmatter pin — see the Fable 5 branch in firstPartyNameToCanonical.
+export const COST_TIER_10_50_FABLE_5 = {
   inputTokens: 10,
   outputTokens: 50,
   promptCacheWriteTokens: 12.5,
@@ -227,11 +252,10 @@ export const MODEL_COSTS: Record<ModelShortName, ModelCosts> = {
     COST_TIER_3_15,
   [firstPartyNameToCanonical(CLAUDE_SONNET_4_6_CONFIG.firstParty)]:
     COST_TIER_3_15,
-  // Sonnet 5 standard pricing $3/$15 (COST_TIER_3_15). Introductory pricing
-  // (through 2026-08-31) is $2/$10 — not modeled here (no date-based switchover),
-  // so /cost slightly over-estimates during the intro window.
+  // $2/$10 is Sonnet 5's STANDARD price, not an intro rate — the increase to
+  // $3/$15 once scheduled for 2026-09-01 was cancelled, per the pricing docs.
   [firstPartyNameToCanonical(CLAUDE_SONNET_5_CONFIG.firstParty)]:
-    COST_TIER_3_15,
+    COST_TIER_2_10,
   [firstPartyNameToCanonical(CLAUDE_OPUS_4_CONFIG.firstParty)]: COST_TIER_15_75,
   [firstPartyNameToCanonical(CLAUDE_OPUS_4_1_CONFIG.firstParty)]:
     COST_TIER_15_75,
@@ -247,8 +271,11 @@ export const MODEL_COSTS: Record<ModelShortName, ModelCosts> = {
   // the Opus 4.8 tier ($5/$25, COST_TIER_5_25). Verify and update once official
   // Opus 5 pricing lands.
   [firstPartyNameToCanonical(CLAUDE_OPUS_5_CONFIG.firstParty)]: COST_TIER_5_25,
-  [firstPartyNameToCanonical(CLAUDE_FABLE_5_CONFIG.firstParty)]:
+  [firstPartyNameToCanonical(CLAUDE_FABLE_5_1_CONFIG.firstParty)]:
     COST_TIER_10_50,
+  // Retired, and deliberately not derived from a config: Fable 5 is gone from
+  // ALL_MODEL_CONFIGS, but an agent frontmatter pin still canonicalizes here.
+  'claude-fable-5': COST_TIER_10_50_FABLE_5,
 }
 
 /**

@@ -100,6 +100,14 @@ test('Fable 5 defaults to high on Anthropic', async () => {
   expect(getDefaultEffortForModel('claude-fable-5')).toBe('high')
 })
 
+test('Fable 5.1 defaults to high on Anthropic', async () => {
+  // Matches the API's documented default effort for 5.1. It rides the same
+  // includes('fable-5') branch as Fable 5 — 'fable-5-1' contains it — so this
+  // pins that the substring keeps carrying the newer generation.
+  const { getDefaultEffortForModel } = await importFreshEffortModule({})
+  expect(getDefaultEffortForModel('claude-fable-5-1')).toBe('high')
+})
+
 test('Fable 5 high default overrides the ultrathink medium fallback', async () => {
   const { getDefaultEffortForModel } = await importFreshEffortModule({
     ultrathink: true,
