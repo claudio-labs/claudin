@@ -3,6 +3,7 @@
 // `mock.module('bun:bundle', …)` runs too late to override the preload.
 // FileReadTool exposes a test-only env-var override so we can exercise the
 // real gated branch end-to-end. Must be set before importing FileReadTool.
+const priorForceAutoOutline = process.env.CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION
 process.env.CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION = '1'
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
@@ -40,6 +41,11 @@ import {
 //   - explicit view='outline'            → neutral header, no footer
 // ---------------------------------------------------------------------------
 
+// Process-global and read per call, so this suite has to put them back or it
+// owns them for the rest of the run — bare mode leaking out of here makes
+// every credential save in a later file short-circuit to {success:false}.
+const priorSimple = process.env.CLAUDIN_SIMPLE
+const priorDisableToolResultCache = process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE
 process.env.CLAUDIN_SIMPLE = '1'
 process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE = '1'
 
@@ -51,7 +57,18 @@ beforeAll(() => {
 
 afterAll(() => {
   rmSync(dir, { recursive: true, force: true })
+  restoreEnv('CLAUDIN_FORCE_AUTO_OUTLINE_ON_ELISION', priorForceAutoOutline)
+  restoreEnv('CLAUDIN_SIMPLE', priorSimple)
+  restoreEnv('CLAUDIN_DISABLE_TOOL_RESULT_CACHE', priorDisableToolResultCache)
 })
+
+function restoreEnv(name: string, prior: string | undefined): void {
+  if (prior === undefined) {
+    delete process.env[name]
+  } else {
+    process.env[name] = prior
+  }
+}
 
 function writeFixture(name: string, content: string): string {
   const p = join(dir, name)
