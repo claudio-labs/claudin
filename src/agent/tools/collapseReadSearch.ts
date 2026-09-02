@@ -775,7 +775,15 @@ function getWriteTargetsFromMessage(
 
 // Delete beats create beats rename beats modify: a file created and then edited
 // in the same group is still a creation, and one deleted after that is a delete.
-const WRITE_KIND_RANK: Record<WriteKind, number> = { M: 0, R: 1, A: 2, D: 3 }
+// A symbol rename outranks a plain edit for the same reason — it is the more
+// specific thing that happened to the file.
+const WRITE_KIND_RANK: Record<WriteKind, number> = {
+  M: 0,
+  S: 1,
+  R: 2,
+  A: 3,
+  D: 4,
+}
 
 /**
  * Record one file touched by a write. Called twice per file: once from the
@@ -903,10 +911,11 @@ function applyWriteResult(
       if (out.type !== 'apply') break
       for (const file of out.files ?? []) {
         if (!file.absPath) continue
-        // 'M', not 'R': the tool renames a symbol, so every file it touches is
+        // 'S', not 'R': the tool renames a symbol, so every file it touches is
         // modified in place. 'R' is for a file that changed path, which only
-        // apply_patch's `Move to:` produces.
-        recordWriteFile(group, file.absPath, 'M', {
+        // apply_patch's `Move to:` produces. Both read as "renamed" in the
+        // summary; only the ⎿ rows distinguish them.
+        recordWriteFile(group, file.absPath, 'S', {
           additions: file.additions ?? 0,
           deletions: file.deletions ?? 0,
         })

@@ -305,9 +305,10 @@ describe('write collapse', () => {
         files: [{ absPath: '/repo/x.ts', additions: 3, deletions: 3 }],
       }),
     ])
-    // 'M', not 'R': Rename rewrites a symbol inside files that keep their path.
+    // 'S', not 'R': Rename rewrites a symbol inside files that keep their path,
+    // so the summary says "renamed" while the ⎿ row still reads as a modify.
     expect(group.writeFileStats).toEqual([
-      { path: '/repo/x.ts', kind: 'M', additions: 3, deletions: 3 },
+      { path: '/repo/x.ts', kind: 'S', additions: 3, deletions: 3 },
     ])
   })
 

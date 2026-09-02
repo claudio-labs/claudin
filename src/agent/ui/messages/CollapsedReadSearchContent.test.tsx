@@ -100,7 +100,7 @@ describe('CollapsedReadSearchContent — write lane', () => {
 
     // Writes lead the line, so the read part is no longer the capitalized one.
     expect(firstLine).toContain('Created 1 file')
-    expect(firstLine).toContain('edited 1 file')
+    expect(firstLine).toContain('updated 1 file')
     expect(firstLine).toContain('deleted 1 file')
     expect(firstLine).toContain('read 3 files')
     expect(firstLine).toContain('+42 −7')
@@ -111,7 +111,7 @@ describe('CollapsedReadSearchContent — write lane', () => {
     expect(out).not.toContain('one.ts')
   })
 
-  test('a moved file gets its own verb, not "edited"', async () => {
+  test('a moved file gets its own verb, not "updated"', async () => {
     // Only apply_patch's `Move to:` produces 'R', and it is the one kind no
     // other test reaches — the four verbs are a single array, so a wrong entry
     // would only ever show up here.
@@ -124,6 +124,36 @@ describe('CollapsedReadSearchContent — write lane', () => {
     expect(flatten(out)).toContain('Renamed 1 file')
   })
 
+  test('a symbol rename reads as a rename but keeps "M" on its row', async () => {
+    // The Rename tool rewrites a symbol inside files that keep their path, so
+    // the header says "renaming" while the row carries git's letter for a plain
+    // modification. Asserting only the header would pass with 'S' mapped to 'R'.
+    const out = await render(
+      {
+        writeFileStats: [
+          { path: '/repo/sym.ts', kind: 'S', additions: 3, deletions: 3 },
+        ],
+      },
+      true,
+    )
+
+    expect(flatten(out)).toContain('Renaming 1 file')
+    expect(out).toContain('M /repo/sym.ts')
+  })
+
+  test('a moved file and a symbol rename share one "renamed" part', async () => {
+    // Two kinds, one verb — the line must not read "Renamed 1 file, renamed 1
+    // file".
+    const out = await render({
+      writeFileStats: [
+        { path: '/repo/moved.ts', kind: 'R', additions: 0, deletions: 0 },
+        { path: '/repo/sym.ts', kind: 'S', additions: 3, deletions: 3 },
+      ],
+    })
+
+    expect(flatten(out)).toContain('Renamed 2 files')
+  })
+
   test('the badge keeps flowing as one line at any width', async () => {
     // 80 is the default and already overflows this badge; 46 forces two more
     // wraps. A column split scrambles the reading order at both.
@@ -131,7 +161,7 @@ describe('CollapsedReadSearchContent — write lane', () => {
       const flat = flatten(await render({ readCount: 3, writeFileStats: stats }, false, columns))
       expectInOrder(flat, [
         'Created 1 file',
-        'edited 1 file',
+        'updated 1 file',
         'deleted 1 file',
         'read 3 files',
         '+42',
@@ -144,7 +174,7 @@ describe('CollapsedReadSearchContent — write lane', () => {
   test('a running group lists the files it touched', async () => {
     const out = await render({ writeFileStats: stats }, true)
 
-    expect(out).toContain('editing 1 file')
+    expect(out).toContain('updating 1 file')
     expect(out).toContain('M /repo/one.ts')
     expect(out).toContain('A /repo/two.ts')
     expect(out).toContain('D /repo/three.ts')
@@ -206,6 +236,6 @@ describe('CollapsedReadSearchContent — write lane', () => {
       ],
     })
 
-    expect(out).toContain('Edited 1 file')
+    expect(out).toContain('Updated 1 file')
   })
 })

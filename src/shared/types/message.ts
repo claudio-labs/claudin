@@ -413,9 +413,11 @@ export type GroupedToolUseMessage = {
 
 /**
  * How a collapsed write touched a file, in the same vocabulary
- * `summarizeApplyPatch` uses: Added, Modified, Deleted, Renamed.
+ * `summarizeApplyPatch` uses: Added, Modified, Deleted, Renamed — plus 'S' for
+ * a symbol renamed in place, which reads as a rename in the summary but is a
+ * plain modification on disk.
  */
-export type WriteKind = 'A' | 'M' | 'D' | 'R'
+export type WriteKind = 'A' | 'M' | 'D' | 'R' | 'S'
 
 /** One file touched by a write inside a collapsed group. */
 export type WriteFileStat = {
