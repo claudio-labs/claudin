@@ -34,6 +34,7 @@ import installSlackApp from 'src/commands/install-slack-app/index.js'
 import breakCache from 'src/commands/break-cache/index.js'
 import cacheProbe from 'src/commands/cache-probe/index.js'
 import cacheStats from 'src/commands/cacheStats/index.js'
+import cd from 'src/commands/cd/index.js'
 import mcp from 'src/commands/mcp/index.js'
 import onboarding from 'src/commands/onboarding/index.js'
 import releaseNotes from 'src/commands/release-notes/index.js'
@@ -242,6 +243,7 @@ const COMMANDS = memoize((): Command[] => [
   btw,
   cacheProbe,
   cacheStats,
+  cd,
   clear,
   color,
   commit,

@@ -9,7 +9,7 @@ import {
   pathInWorkingPath,
 } from 'src/permissions/filesystem.js'
 
-export type AddDirectoryResult =
+export type ResolveDirectoryResult =
   | {
       resultType: 'success'
       absolutePath: string
@@ -22,16 +22,25 @@ export type AddDirectoryResult =
       directoryPath: string
       absolutePath: string
     }
+
+export type AddDirectoryResult =
+  | ResolveDirectoryResult
   | {
       resultType: 'alreadyInWorkingDirectory'
       directoryPath: string
       workingDir: string
     }
 
-export async function validateDirectoryForWorkspace(
+/**
+ * Resolve a user-supplied path to an existing directory.
+ *
+ * Shared by /add-dir and /cd. The "already inside a working directory" check
+ * sits on top of this in validateDirectoryForWorkspace() rather than here,
+ * because for /cd that is the normal case, not an error.
+ */
+export async function resolveExistingDirectory(
   directoryPath: string,
-  permissionContext: ToolPermissionContext,
-): Promise<AddDirectoryResult> {
+): Promise<ResolveDirectoryResult> {
   if (!directoryPath) {
     return {
       resultType: 'emptyPath',
@@ -72,12 +81,27 @@ export async function validateDirectoryForWorkspace(
     throw e
   }
 
+  return {
+    resultType: 'success',
+    absolutePath,
+  }
+}
+
+export async function validateDirectoryForWorkspace(
+  directoryPath: string,
+  permissionContext: ToolPermissionContext,
+): Promise<AddDirectoryResult> {
+  const resolved = await resolveExistingDirectory(directoryPath)
+  if (resolved.resultType !== 'success') {
+    return resolved
+  }
+
   // Get current permission context
   const currentWorkingDirs = allWorkingDirectories(permissionContext)
 
   // Check if already within an existing working directory
   for (const workingDir of currentWorkingDirs) {
-    if (pathInWorkingPath(absolutePath, workingDir)) {
+    if (pathInWorkingPath(resolved.absolutePath, workingDir)) {
       return {
         resultType: 'alreadyInWorkingDirectory',
         directoryPath,
@@ -86,10 +110,7 @@ export async function validateDirectoryForWorkspace(
     }
   }
 
-  return {
-    resultType: 'success',
-    absolutePath,
-  }
+  return resolved
 }
 
 export function addDirHelpMessage(result: AddDirectoryResult): string {
