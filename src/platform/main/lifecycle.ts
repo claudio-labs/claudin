@@ -21,6 +21,7 @@ import { loadAllPluginsCacheOnly } from 'src/plugins/pluginLoader.js';
 import { migrateAutoUpdatesToSettings } from 'src/platform/migrations/migrateAutoUpdatesToSettings.js';
 import { migrateBypassPermissionsAcceptedToSettings } from 'src/platform/migrations/migrateBypassPermissionsAcceptedToSettings.js';
 import { migrateEnableAllProjectMcpServersToSettings } from 'src/platform/migrations/migrateEnableAllProjectMcpServersToSettings.js';
+import { migrateFable5ToFable51 } from 'src/platform/migrations/migrateFable5ToFable51.js';
 import { migrateFennecToOpus } from 'src/platform/migrations/migrateFennecToOpus.js';
 import { migrateLegacyOpusToCurrent } from 'src/platform/migrations/migrateLegacyOpusToCurrent.js';
 import { migrateOpusToOpus1m } from 'src/platform/migrations/migrateOpusToOpus1m.js';
@@ -113,7 +114,7 @@ export async function logStartupTelemetry(): Promise<void> {
 
 // @[MODEL LAUNCH]: Consider any migrations you may need for model strings. See migrateSonnet1mToSonnet45.ts for an example.
 // Bump this when adding a new sync migration so existing users re-run the set.
-const CURRENT_MIGRATION_VERSION = 12;
+const CURRENT_MIGRATION_VERSION = 13;
 
 export function runMigrations(): void {
   if (getGlobalConfig().migrationVersion !== CURRENT_MIGRATION_VERSION) {
@@ -130,6 +131,9 @@ export function runMigrations(): void {
     migrateFennecToOpus();
     migrateOpusToOpus1m();
     migrateReplBridgeEnabledToRemoteControlAtStartup();
+    // Independent of the Opus/Sonnet chain above: rewrites the retired
+    // 'claude-fable-5' pin to 'claude-fable-5-1' wherever it is persisted.
+    migrateFable5ToFable51();
     if (feature('TRANSCRIPT_CLASSIFIER')) {
       resetAutoModeOptInForDefaultOffer();
     }

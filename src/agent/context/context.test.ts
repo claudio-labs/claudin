@@ -107,6 +107,22 @@ test('Opus 5 resolves to native 1M on first party (no [1m] suffix, no beta heade
   }
 })
 
+test('Fable 5.1 resolves to native 1M on first party (no [1m] suffix, no beta header)', () => {
+  // Fable 5.1 is 1M-native like Fable 5, and reaches the native branch through
+  // the same includes('fable-5') substring. Without it the window falls back to
+  // the 200k default and auto-compact fires while the picker advertises 1M.
+  const prevProfile = mockProviderProfile
+  mockProviderProfile = null
+  delete process.env.CLAUDIN_USE_OPENAI
+  invalidateActiveProviderCache()
+  try {
+    expect(getContextWindowForModel('claude-fable-5-1')).toBe(1_000_000)
+  } finally {
+    mockProviderProfile = prevProfile
+    invalidateActiveProviderCache()
+  }
+})
+
 test('deepseek-v4-flash uses provider-specific context and output caps', () => {
   process.env.CLAUDIN_USE_OPENAI = '1'
   delete process.env.CLAUDIN_MAX_OUTPUT_TOKENS

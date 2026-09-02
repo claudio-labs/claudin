@@ -136,4 +136,18 @@ describe('fable-class XML classifier routing', () => {
     const opts = capturedOpts[0]!
     expect(opts.tool_choice).toEqual({ type: 'tool', name: 'classify_result' })
   })
+
+  test('fable 5.1 routes to the XML path too', async () => {
+    // Fable 5.1 documents forced tool use as returning an error, so this
+    // routing is what keeps auto-mode working on it. It rides the same
+    // modelRequiresAdaptiveThinking substring branch as Fable 5.
+    mainLoopModel = 'claude-fable-5-1'
+    const result = await classify()
+
+    expect(capturedOpts.length).toBe(1)
+    const opts = capturedOpts[0]!
+    expect(opts.tool_choice).toBeUndefined()
+    expect(opts.tools).toBeUndefined()
+    expect(result.shouldBlock).toBe(false)
+  })
 })

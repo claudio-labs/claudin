@@ -191,16 +191,16 @@ function getOpus48Option(fastMode = false): ModelOption {
   }
 }
 
-// Claude Fable 5 — frontier tier above Opus. Pinned to the explicit model
+// Claude Fable 5.1 — frontier tier above Opus. Pinned to the explicit model
 // string (no alias). 1M context is the default, so there is no [1m] variant.
-function getFable5Option(): ModelOption {
+function getFable51Option(): ModelOption {
   const is3P = getAPIProvider() !== 'firstParty'
   return {
-    value: getModelStrings().fable5,
-    label: 'Fable 5',
-    description: `Fable 5 · Frontier reasoning, 1M context${is3P ? '' : ` · ${formatModelPricing(COST_TIER_10_50)}`}`,
+    value: getModelStrings().fable51,
+    label: 'Fable 5.1',
+    description: `Fable 5.1 · Frontier reasoning, 1M context${is3P ? '' : ` · ${formatModelPricing(COST_TIER_10_50)}`}`,
     descriptionForModel:
-      'Fable 5 - most capable frontier model for the hardest long-horizon work. 1M context by default. Higher cost than Opus.',
+      'Fable 5.1 - most capable frontier model for the hardest long-horizon work. 1M context by default. Higher cost than Opus.',
   }
 }
 
@@ -338,11 +338,11 @@ function getClaudeDualContextOptions(fastMode = false): ModelOption[] {
     label: 'Sonnet 5',
     description: `Sonnet 5 · Best for everyday tasks · 1M context${billing}${getAPIProvider() !== 'firstParty' ? '' : ` · ${formatModelPricing(COST_TIER_3_15)}`}`,
   })
-  // Fable 5 is 1M by default — single entry, no [1m] pair.
+  // Fable 5.1 is 1M by default — single entry, no [1m] pair.
   opts.push({
-    value: ms.fable5,
-    label: 'Fable 5',
-    description: `Fable 5 · Frontier reasoning · 1M context${billing}${getAPIProvider() !== 'firstParty' ? '' : ` · ${formatModelPricing(COST_TIER_10_50)}`}`,
+    value: ms.fable51,
+    label: 'Fable 5.1',
+    description: `Fable 5.1 · Frontier reasoning · 1M context${billing}${getAPIProvider() !== 'firstParty' ? '' : ` · ${formatModelPricing(COST_TIER_10_50)}`}`,
   })
   // Opus 5 is 1M by default — single entry, no [1m] pair (like Sonnet/Fable 5).
   // On 1P the 'opus' alias resolves to Opus 5; on 3P (where the default still
@@ -513,14 +513,14 @@ function getModelOptionsBase(fastMode = false): ModelOption[] {
     }
   }
 
-  // PAYG 1P API: Default (Sonnet 5) + Sonnet 5 + Fable 5 + Opus 5 + Haiku.
+  // PAYG 1P API: Default (Sonnet 5) + Sonnet 5 + Fable 5.1 + Opus 5 + Haiku.
   // Opus 5 is 1M-native (no [1m] variant). Only the newest of each family is
   // listed; legacy generations (Opus 4.6/4.7/4.8, Sonnet 4.5/4.6) remain
   // resolvable by explicit string but are hidden here.
   if (getAPIProvider() === 'firstParty') {
     const payg1POptions = [getDefaultOptionForUser(fastMode)]
     payg1POptions.push(getSonnet5Option())
-    payg1POptions.push(getFable5Option())
+    payg1POptions.push(getFable51Option())
     payg1POptions.push(getOpus5Option(fastMode))
     payg1POptions.push(getHaiku45Option())
     payg1POptions.push(...profileModelOptions)

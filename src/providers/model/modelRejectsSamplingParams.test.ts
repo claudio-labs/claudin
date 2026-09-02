@@ -10,6 +10,7 @@ test('rejects sampling params for Opus 4.7+ family', () => {
 })
 
 test('rejects sampling params for Fable 5, Sonnet 5 and Opus 5', () => {
+  expect(modelRejectsSamplingParams('claude-fable-5-1')).toBe(true)
   expect(modelRejectsSamplingParams('claude-fable-5')).toBe(true)
   expect(modelRejectsSamplingParams('claude-sonnet-5')).toBe(true)
   expect(modelRejectsSamplingParams('claude-opus-5')).toBe(true)
