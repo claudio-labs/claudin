@@ -43,6 +43,7 @@ exports[`Attachment union exhaustiveness snapshot of all attachment type discrim
   "mcp_instructions_delta",
   "mcp_resource",
   "nested_memory",
+  "nested_memory_batch",
   "opened_file_in_ide",
   "output_style",
   "output_token_usage",

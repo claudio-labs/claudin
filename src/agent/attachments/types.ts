@@ -227,6 +227,16 @@ export type Attachment =
       displayPath: string
     }
   | {
+      /**
+       * Render-only: a run of consecutive `nested_memory` attachments
+       * collapsed by `collapseNestedMemory`. It never reaches
+       * `normalizeAttachmentForAPI` — the individual `nested_memory`
+       * messages are what carry the file contents to the model.
+       */
+      type: 'nested_memory_batch'
+      files: { path: string; displayPath: string }[]
+    }
+  | {
       type: 'relevant_memories'
       memories: {
         path: string
