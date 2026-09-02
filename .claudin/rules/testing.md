@@ -425,7 +425,42 @@ So before blaming your change: run the same full suite on **main in the same
 directory** and compare failure NAMES. Only a name not in main's set is a
 regression signal. (Older list — `ProviderManager.test.tsx` Ollama/Vertex TTY
 timeouts, `memory-turn-by-turn-bench` RSS flake — no longer reproduces on
-2026-07 main; keep it in mind if they resurface.)
+2026-07 main; keep it in mind if they resurface.) **The ProviderManager half of
+that was never a TTY timeout** — see the next section; it resurfaced in
+2026-09 and the cause was a leaked env var.
+
+### Process-global state a test file must put back
+
+`bun test` runs every file in ONE process, in an order that shifts whenever a
+test file is added or renamed. So a file that sets process-global state and
+does not restore it owns that state for the rest of the run, and the failures
+land in whatever happens to sort after it — never in the file that caused them.
+Two of these went red on main in 2026-09 (#153) after #152 added one file:
+
+- **The cwd (`setCwdState`).** `LSPTool.readonly.regression.test.ts` pointed it
+  at a temp dir and deleted the dir in `afterAll` without restoring, so every
+  later file resolving a repo-relative path got a dead directory:
+  `Fixture missing: /tmp/lsp-regression-XXXX/src/providers/__fixtures__/vcr/…`
+  from `FileReadTool`, and `Path "/tmp/lsp-regression-XXXX" does not exist`
+  from `worktree.test.ts`.
+- **`CLAUDIN_SIMPLE` (bare mode).** `FileReadTool.test.ts` and
+  `autoOutlineOnElision.test.ts` set it at module load to skip skill discovery
+  and never restored it. Under bare mode `saveKimiCredentials` short-circuits
+  to `{success:false}` *before* it reaches the storage a test mocked — 11 kimi
+  assertions failed on `undefined` while the mock was working perfectly — and
+  ProviderManager's OAuth/preset flows never render, which is what the "TTY
+  timeout" above actually was.
+
+**How to apply:** snapshot in `beforeAll` (or at module load, beside the
+assignment) and restore in `afterAll`, restoring *before* any `rmSync` of a dir
+the state points at. Never `process.env.X = saved` when `saved` may be
+`undefined` — that stores the literal string `"undefined"`; delete the key
+instead. A suite whose subject reads one of these globals should also clear it
+in `beforeEach` rather than trusting the order, the way
+`oauthProviderAuth.test.ts` and `geminiCredentials.test.ts` already do.
+To reproduce an order-dependent failure locally, feed bun the CI file list in
+CI's order (`gh run view --log` prints it) — the local discovery order differs,
+so a plain `bun test` will not show it.
 
 That comparison has to be **in the same directory**, and it has to be the full
 suite, because a third class of failure hides between the two: a test that reads
