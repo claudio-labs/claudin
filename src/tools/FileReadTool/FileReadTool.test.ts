@@ -52,6 +52,12 @@ import {
 // ---------------------------------------------------------------------------
 
 // Skill discovery touches the real filesystem and is irrelevant here.
+// Both of these are process-global and read per call, so a suite that sets
+// them at module load owns them for the REST of the run unless it puts them
+// back — CLAUDIN_SIMPLE especially, since bare mode makes every credential
+// save in a later file short-circuit to {success:false}.
+const priorSimple = process.env.CLAUDIN_SIMPLE
+const priorDisableToolResultCache = process.env.CLAUDIN_DISABLE_TOOL_RESULT_CACHE
 process.env.CLAUDIN_SIMPLE = '1'
 // The tool-result cache short-circuits call() on identical inputs, which would
 // mask the in-call dedup path we want to exercise. Disable it for this suite.
@@ -71,7 +77,17 @@ beforeAll(() => {
 
 afterAll(() => {
   rmSync(dir, { recursive: true, force: true })
+  restoreEnv('CLAUDIN_SIMPLE', priorSimple)
+  restoreEnv('CLAUDIN_DISABLE_TOOL_RESULT_CACHE', priorDisableToolResultCache)
 })
+
+function restoreEnv(name: string, prior: string | undefined): void {
+  if (prior === undefined) {
+    delete process.env[name]
+  } else {
+    process.env[name] = prior
+  }
+}
 
 function writeFixture(name: string, content: string): string {
   const p = join(dir, name)

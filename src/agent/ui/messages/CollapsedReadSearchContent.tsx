@@ -7,7 +7,7 @@ import { Ansi, Box, Text, useTheme } from 'src/terminal/ink.js';
 import { findToolByName, type Tools } from 'src/tools/Tool.js';
 import { getReplPrimitiveTools } from 'src/tools/REPLTool/primitiveTools.js';
 import type { CollapsedReadSearchGroup, NormalizedAssistantMessage } from 'src/shared/types/message.js';
-import type { WriteFileStat } from 'src/shared/types/message.js';
+import type { WriteFileStat, WriteKind } from 'src/shared/types/message.js';
 import { uniq } from 'src/shared/data/array.js';
 import { getToolUseIdsFromCollapsedGroup } from 'src/agent/tools/collapseReadSearch.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
@@ -32,6 +32,16 @@ const MIN_HINT_DISPLAY_MS = 700;
 // A collapsed group that touched more files than this lists the first few and
 // counts the rest — past ~8 rows the badge stops being a summary.
 const MAX_WRITE_ROWS = 8;
+// The letter each ⎿ row carries. A symbol renamed in place ('S') is a plain
+// modification on disk, so it takes git's letter for that — the header above is
+// where it reads as a rename.
+const ROW_LETTER: Record<WriteKind, string> = {
+  A: 'A',
+  M: 'M',
+  D: 'D',
+  R: 'R',
+  S: 'M'
+};
 type Props = {
   message: CollapsedReadSearchGroup;
   inProgressToolUseIDs: Set<string>;
@@ -210,7 +220,8 @@ export function CollapsedReadSearchContent({
     A: 0,
     M: 0,
     D: 0,
-    R: 0
+    R: 0,
+    S: 0
   };
   let writeAdditions = 0;
   let writeDeletions = 0;
@@ -388,8 +399,11 @@ export function CollapsedReadSearchContent({
   }
   // Writes come next: like the git ops above, they're the outcome of the group,
   // not the lookups that led to it. One verb per kind, so a group that creates
-  // and deletes doesn't flatten into "edited".
-  const writeVerbs = [['A', writeCounts.A, isActiveGroup ? 'creating' : 'created'], ['M', writeCounts.M, isActiveGroup ? 'editing' : 'edited'], ['D', writeCounts.D, isActiveGroup ? 'deleting' : 'deleted'], ['R', writeCounts.R, isActiveGroup ? 'renaming' : 'renamed']] as const;
+  // and deletes doesn't flatten into "updated" — and the verbs are the tools'
+  // own words, so an Edit reads as "Updated" and a Rename as "Renamed". 'R' (a
+  // file that changed path) and 'S' (a symbol renamed in place) share that last
+  // row: both are a rename, and the ⎿ rows are what tell them apart.
+  const writeVerbs = [['A', writeCounts.A, isActiveGroup ? 'creating' : 'created'], ['M', writeCounts.M, isActiveGroup ? 'updating' : 'updated'], ['D', writeCounts.D, isActiveGroup ? 'deleting' : 'deleted'], ['R', writeCounts.R + writeCounts.S, isActiveGroup ? 'renaming' : 'renamed']] as const;
   for (const [kind, count, verb] of writeVerbs) {
     if (count === 0) continue;
     pushPart(`write-${kind}`, verb, <>
@@ -555,7 +569,7 @@ export function CollapsedReadSearchContent({
                 independently, which splits a long row in half — the same trap
                 the badge above hit (rules/ink-tui.md §10). */}
             <Text dimColor>
-              {stat.kind} {getDisplayPath(stat.path).padEnd(writePathWidth)}
+              {ROW_LETTER[stat.kind]} {getDisplayPath(stat.path).padEnd(writePathWidth)}
               {(stat.additions > 0 || stat.deletions > 0) && <Text>
                   {'  '}
                   {stat.additions > 0 && <Text color="diffAddedWord">+{stat.additions}</Text>}

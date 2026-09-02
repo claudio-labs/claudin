@@ -24,11 +24,21 @@ const SYNC_START = '\x1B[?2026h'
 const SYNC_END = '\x1B[?2026l'
 
 const ORIGINAL_ENV = {
-  CLAUDIN_SIMPLE: process.env.CLAUDIN_SIMPLE,
+  // Deliberately NOT snapshotted from the live env. A sibling file that leaves
+  // bare mode on would be captured here and then re-installed by the afterEach
+  // below after every test. Bare mode hides the OAuth and preset flows these
+  // tests drive, so the Ollama/Vertex/Moonshot cases sit waiting for a frame
+  // that can never render and time out. The one test that wants bare mode sets
+  // it itself.
+  CLAUDIN_SIMPLE: undefined as string | undefined,
   CLAUDIN_USE_GITHUB: process.env.CLAUDIN_USE_GITHUB,
   GITHUB_TOKEN: process.env.GITHUB_TOKEN,
   GH_TOKEN: process.env.GH_TOKEN,
 }
+
+// The afterEach only runs between tests, so clear a leak that is already here
+// before the first one mounts.
+delete process.env.CLAUDIN_SIMPLE
 
 function extractLastFrame(output: string): string {
   let lastFrame: string | null = null

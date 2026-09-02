@@ -43,9 +43,17 @@ const {
 } = await import('src/providers/oauth/kimiCredentials.js')
 
 const originalFetch = globalThis.fetch
+const originalArgv = [...process.argv]
 
 beforeEach(() => {
   storageState = {}
+  // A sibling test may leak bare mode (CLAUDIN_SIMPLE truthy or --bare in
+  // argv), which makes saveKimiCredentials short-circuit to {success: false}
+  // before it ever reaches the storage mocked above — every assertion here
+  // then fails on `undefined`. oauthProviderAuth.test.ts and
+  // geminiCredentials.test.ts already clear it for the same reason.
+  delete process.env.CLAUDIN_SIMPLE
+  process.argv = originalArgv.filter(arg => arg !== '--bare')
   // The credential cache is module-level; reset it so a fresh store isn't
   // shadowed by a blob cached in a previous test (TTL is 30s).
   invalidateKimiCredentialCache()

@@ -20,7 +20,7 @@ import { join } from 'path'
 import { pathToFileURL } from 'url'
 
 import type { ToolUseContext } from 'src/tools/Tool.js'
-import { setCwdState } from 'src/platform/bootstrap/state.js'
+import { getCwdState, setCwdState } from 'src/platform/bootstrap/state.js'
 
 // ---------------------------------------------------------------------------
 // Mock the LSP server manager + the execFile path used by gitignore filtering.
@@ -95,6 +95,7 @@ const { LSPTool } = await import('src/tools/LSPTool/LSPTool.js')
 let dir: string
 let filePath: string
 let fileUri: string
+let previousCwd: string
 
 beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), 'lsp-regression-'))
@@ -103,10 +104,19 @@ beforeAll(() => {
   fileUri = pathToFileURL(filePath).href
   // Force LSPTool's getCwd() to resolve to our temp dir so formatter output
   // uses relative paths (stable across machines).
+  previousCwd = getCwdState()
   setCwdState(dir)
 })
 
 afterAll(() => {
+  // Restore BEFORE the rmSync: the cwd state is process-global, so leaving it
+  // pointed at a directory this hook is about to delete breaks every later
+  // file that resolves a repo-relative path. It did — a run where this file
+  // happened to sort ahead of them failed FileReadTool's VCR lookup
+  // ("Fixture missing: /tmp/lsp-regression-XXXX/src/providers/__fixtures__/…")
+  // and worktree.test.ts's setCwd ("Path /tmp/lsp-regression-XXXX does not
+  // exist"), neither of which mentions LSP.
+  setCwdState(previousCwd)
   rmSync(dir, { recursive: true, force: true })
 })
 
