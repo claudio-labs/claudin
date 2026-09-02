@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.1.24 — 2026-09-02
+
+### ✨ Features
+
+- feat(tui): name updates and renames apart in the collapsed group (#153) (0e319b79)
+- feat(tui): collapse consecutive rule loads into one line (#152) (702a0a62)
+- feat(commands): add /import to bring config in from other coding agents (#151) (e86fb486)
+- feat(commands): add /cd to move the session to another directory (#150) (35689029)
+- feat(providers): add claude fable 5.1 and correct sonnet 5 pricing (#149) (dc5ea9a6)
+
+### 📦 Dependencies
+
+- chore(deps): bump the dev-dependencies group with 2 updates (#147) (10104dd5)
+- chore(deps): bump the production-dependencies group with 10 updates (#148) (fad55fbc)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.23 — 2026-08-31
 
 ### ✨ Features
