@@ -191,7 +191,8 @@ When something breaks, in order:
 # inside the REPL
 /provider             # list, edit, switch, add profiles
 /provider doctor      # health check active profile
-/provider migrate     # rerun legacy ~/.claude/ migration
+/provider migrate     # rerun legacy ~/.claude/ sign-in migration (tokens only)
+/import               # copy config in from another agent (never credentials)
 
 # from the shell
 claudin            # launch

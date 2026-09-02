@@ -51,17 +51,18 @@ After that, `claudin` boots straight into the REPL. To reconfigure later:
 
 - `/provider` — list, edit, switch, and add provider profiles
 - `/provider doctor` — health check the active profile (reachability, auth, model availability)
-- `/provider migrate` — rerun the legacy `~/.claude/` migration
+- `/provider migrate` — rerun the legacy `~/.claude/` sign-in migration
+- `/import` — copy config in from another AI coding agent
 
-## Migrating From Claude Code or Older Claudin
+## Migrating a Claude Code Sign-In
 
-If `~/.claude/` exists and `~/.claudin/` does not, the first `/provider` invocation shows a yellow banner offering to migrate:
+If `~/.claude/` exists and `~/.claudin/` does not, the first `/provider` invocation shows a yellow banner offering to copy your sign-in across. It carries **only** what is needed to be logged in:
 
 - Anthropic OAuth tokens (`.credentials.json`, `chmod 0600` after copy)
-- Whitelisted settings keys (`theme`, `model`, `customApiKeyResponses`, `permissions`, `verbose`, `editorMode`, `mcpServers`, `providerProfiles`, `activeProviderProfileId`)
-- User-level `CLAUDE.md`
-- Plugins directory
-- Keybindings
+- Three settings keys — `providerProfiles`, `activeProviderProfileId` and `customApiKeyResponses` (the record of which API keys you already approved)
+- The legacy global `~/.claude.json`, which holds the OAuth account identity
+
+Everything else — `CLAUDE.md`, skills, agents, slash commands, plugins, MCP servers, keybindings, theme and the rest of your settings — is left in `~/.claude/` for `/import` to pick up. See [Importing From Another Agent](#importing-from-another-agent) below; it reads Claude Code too, so a full move is this migration followed by one `/import`.
 
 The migration **copies** rather than moves — `~/.claude/` is left untouched. It is idempotent: running it again does not duplicate anything.
 
@@ -72,6 +73,17 @@ To rerun manually at any time:
 ```
 
 If you skip the banner, the choice is remembered and the banner is not shown again.
+
+## Importing From Another Agent
+
+`/import` is the general form, and it reads eight agents rather than only Claude Code: Claude Code, openclaude, OpenAI Codex, Gemini CLI, Qwen Code, opencode, Kimi CLI and Cursor. It finds the ones you have installed, shows what each can contribute — MCP servers, skills, subagents, slash commands, rules and instructions, settings — and lets you deselect anything before it writes.
+
+Two things it deliberately does **not** do, and this is the difference from the migration above:
+
+- **Credentials are never copied.** No `.credentials.json`, no `auth.json`. It names the file it found and points you at `/provider` to sign in. `/provider migrate` is the one path that does copy Claude Code's tokens.
+- **Nothing is overwritten by default.** Anything you already have is reported as a conflict and left alone; overwriting is a separate, explicit choice on the confirmation screen. Running `/import` twice is a no-op.
+
+Permissions and approval policies are counted and reported rather than translated — rule syntax differs between agents, and a wrong guess in a `deny` list is a permission silently granted.
 
 ## Multi-Profile Workflows
 

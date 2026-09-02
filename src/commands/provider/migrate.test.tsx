@@ -96,7 +96,7 @@ describe('runProviderMigrate', () => {
     mkdirSync(dirs.legacy, { recursive: true })
     writeFileSync(
       join(dirs.legacy, 'settings.json'),
-      JSON.stringify({ theme: 'dark' }),
+      JSON.stringify({ activeProviderProfileId: 'p1' }),
     )
 
     const message = await runProviderMigrate('', {
@@ -105,13 +105,14 @@ describe('runProviderMigrate', () => {
     })
     expect(message).toContain('1 settings key')
     expect(message).toContain('kept untouched')
+    expect(message).toContain('Run /import')
   })
 
   test('on second run reports nothing to do', async () => {
     mkdirSync(dirs.legacy, { recursive: true })
     writeFileSync(
       join(dirs.legacy, 'settings.json'),
-      JSON.stringify({ theme: 'dark' }),
+      JSON.stringify({ activeProviderProfileId: 'p1' }),
     )
 
     await runProviderMigrate('', { homeDir: dirs.home, newDir: dirs.next })
@@ -127,7 +128,7 @@ describe('runProviderMigrate', () => {
     mkdirSync(dirs.legacy, { recursive: true })
     writeFileSync(
       join(dirs.legacy, 'settings.json'),
-      JSON.stringify({ theme: 'dark' }),
+      JSON.stringify({ activeProviderProfileId: 'p1' }),
     )
 
     await runProviderMigrate('', { homeDir: dirs.home, newDir: dirs.next })

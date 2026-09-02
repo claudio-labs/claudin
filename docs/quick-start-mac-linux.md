@@ -29,7 +29,7 @@ claudin
 
 On first run with no saved profile, the `/provider` wizard opens automatically. Pick a preset (Anthropic, OpenAI, DeepSeek, Gemini, Mistral, Ollama, Codex, GitHub Copilot, Bedrock, Vertex, Foundry, or Custom), supply credentials when prompted, and Claudin saves it as the active profile.
 
-If you previously used Claude Code (or an older Claudin that lived under `~/.claude/`), the wizard offers to migrate tokens, settings, theme, plugins, and keybindings into `~/.claudin/`. Accept or skip — your choice is remembered.
+If you previously used Claude Code (or an older Claudin that lived under `~/.claude/`), the wizard offers to copy your sign-in — API tokens and provider profiles — into `~/.claudin/`. Accept or skip; your choice is remembered. Run `/import` afterwards for skills, MCP servers, agents and commands.
 
 ## 4. Reconfigure Later
 
@@ -37,7 +37,8 @@ Inside the REPL:
 
 - `/provider` — list, edit, switch, or add profiles
 - `/provider doctor` — health check the active profile
-- `/provider migrate` — rerun the legacy `~/.claude/` migration
+- `/provider migrate` — rerun the legacy `~/.claude/` sign-in migration (tokens and provider profiles only)
+- `/import` — copy MCP servers, skills, subagents and commands in from another agent (Claude Code, Codex, Gemini, Qwen, opencode, Kimi, Cursor). Never copies credentials — sign in with `/provider`.
 
 ## 5. Common Recipes
 

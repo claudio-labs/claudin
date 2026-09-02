@@ -1,13 +1,4 @@
-import {
-  chmodSync,
-  cpSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  statSync,
-  writeFileSync,
-} from 'fs'
+import { chmodSync, existsSync, readFileSync, writeFileSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
 
@@ -17,6 +8,9 @@ import {
   getGlobalConfig,
   saveGlobalConfig,
 } from 'src/platform/config/config.js'
+import type { JsonTable } from 'src/platform/import/translate/values.js'
+import { ensureDir } from 'src/platform/import/writers/files.js'
+import { mergeJsonFileNonDestructive } from 'src/platform/import/writers/settings.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import {
   addProviderProfile,
@@ -29,12 +23,6 @@ export type MigrationReport = {
   tokens: number
   settingsKeys: number
   globalConfigKeys: number
-  claudeMd: boolean
-  plugins: number
-  skills: number
-  agents: number
-  commands: number
-  keybindings: boolean
   anthropicProfileCreated: boolean
   errors: string[]
   warnings: string[]
@@ -44,47 +32,23 @@ export type MigrationReport = {
   migratedAt?: string
 }
 
-// settings.json keys we forward from ~/.claude/settings.json to ~/.claudin/settings.json.
-// agentRouting / agentModels are intentionally excluded — they're part of the
-// legacy single-provider routing system that the new providerProfiles[] flow
-// replaces.
+// settings.json keys we forward from ~/.claude/settings.json to
+// ~/.claudin/settings.json. All three are provider sign-in material: the saved
+// profiles and the pointer at the active one, plus the record of which API keys
+// the user already approved (without it they get re-prompted for a key they
+// just migrated). Everything this list used to carry — theme, model,
+// permissions, verbose, editorMode, mcpServers — is `/import`'s job now, along
+// with CLAUDE.md, skills, agents, commands and plugins. agentRouting /
+// agentModels were never forwarded: they belong to the legacy single-provider
+// routing system that providerProfiles[] replaces.
 const SETTINGS_WHITELIST = [
-  'theme',
-  'model',
   'customApiKeyResponses',
-  'permissions',
-  'verbose',
-  'editorMode',
-  'mcpServers',
   'providerProfiles',
   'activeProviderProfileId',
 ] as const
 
-type AnyJson = Record<string, unknown>
-
 function legacyClaudeDir(home: string): string {
   return join(home, '.claude')
-}
-
-function readJson(path: string): AnyJson | null {
-  try {
-    const raw = readFileSync(path, 'utf8')
-    const parsed = JSON.parse(raw)
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      return parsed as AnyJson
-    }
-    return null
-  } catch {
-    return null
-  }
-}
-
-function writeJson(path: string, data: AnyJson): void {
-  writeFileSync(path, JSON.stringify(data, null, 2), { encoding: 'utf8' })
-}
-
-function ensureDir(path: string): void {
-  mkdirSync(path, { recursive: true })
 }
 
 function copyCredentialsIfNeeded(
@@ -137,123 +101,22 @@ function countCredentialTokens(buf: Buffer): number {
   return 1
 }
 
-function copyClaudeMd(
-  legacyDir: string,
-  newDir: string,
-  errors: string[],
-): boolean {
-  const src = join(legacyDir, 'CLAUDE.md')
-  const dst = join(newDir, 'CLAUDE.md')
-  if (!existsSync(src)) return false
-  if (existsSync(dst)) return false
-  try {
-    ensureDir(newDir)
-    const buf = readFileSync(src)
-    writeFileSync(dst, buf)
-    return true
-  } catch (e: unknown) {
-    errors.push(
-      `failed to copy CLAUDE.md: ${e instanceof Error ? e.message : String(e)}`,
-    )
-    return false
-  }
-}
-
-function copyKeybindings(
-  legacyDir: string,
-  newDir: string,
-  errors: string[],
-): boolean {
-  const src = join(legacyDir, 'keybindings.json')
-  const dst = join(newDir, 'keybindings.json')
-  if (!existsSync(src)) return false
-  if (existsSync(dst)) return false
-  try {
-    ensureDir(newDir)
-    const buf = readFileSync(src)
-    writeFileSync(dst, buf)
-    return true
-  } catch (e: unknown) {
-    errors.push(
-      `failed to copy keybindings.json: ${e instanceof Error ? e.message : String(e)}`,
-    )
-    return false
-  }
-}
-
-function copyTopLevelDir(
-  legacyDir: string,
-  newDir: string,
-  name: string,
-  errors: string[],
-): number {
-  const src = join(legacyDir, name)
-  const dst = join(newDir, name)
-  if (!existsSync(src)) return 0
-  let copied = 0
-  try {
-    if (!statSync(src).isDirectory()) return 0
-    ensureDir(newDir)
-    cpSync(src, dst, { recursive: true, force: false, errorOnExist: false })
-    copied = countTopLevelEntries(dst)
-  } catch (e: unknown) {
-    errors.push(
-      `failed to copy ${name}/: ${e instanceof Error ? e.message : String(e)}`,
-    )
-  }
-  return copied
-}
-
-function countTopLevelEntries(dir: string): number {
-  try {
-    if (!existsSync(dir)) return 0
-    return readdirSync(dir).length
-  } catch {
-    return 0
-  }
-}
-
 function mergeSettings(
   legacyDir: string,
   newDir: string,
   errors: string[],
 ): number {
-  const src = join(legacyDir, 'settings.json')
-  if (!existsSync(src)) return 0
-
-  const legacy = readJson(src)
-  if (!legacy) {
+  const result = mergeJsonFileNonDestructive(
+    join(legacyDir, 'settings.json'),
+    join(newDir, 'settings.json'),
+    { keys: SETTINGS_WHITELIST },
+  )
+  if (result.outcome === 'unparseableSource') {
     errors.push('legacy settings.json could not be parsed; skipped')
-    return 0
+  } else if (result.outcome === 'writeFailed') {
+    errors.push(`failed to write settings.json: ${result.message}`)
   }
-
-  const dst = join(newDir, 'settings.json')
-  const existing = existsSync(dst) ? (readJson(dst) ?? {}) : {}
-
-  const merged: AnyJson = { ...existing }
-  let copiedKeys = 0
-  for (const key of SETTINGS_WHITELIST) {
-    if (!(key in legacy)) continue
-    if (key in existing) continue // non-destructive: existing wins
-    merged[key] = legacy[key]
-    copiedKeys += 1
-  }
-
-  if (copiedKeys === 0 && existsSync(dst)) {
-    return 0
-  }
-
-  try {
-    ensureDir(newDir)
-    writeJson(dst, merged)
-  } catch (e: unknown) {
-    errors.push(
-      `failed to write settings.json: ${e instanceof Error ? e.message : String(e)}`,
-    )
-    return 0
-  }
-
-  return copiedKeys
+  return result.copiedKeys
 }
 
 function legacyGlobalConfigPath(home: string): string {
@@ -270,44 +133,24 @@ function mergeGlobalConfigFile(
   warnings: string[],
 ): number {
   const src = legacyGlobalConfigPath(home)
-  if (!existsSync(src)) return 0
-
-  const legacy = readJson(src)
-  if (!legacy) {
+  const dst = newGlobalConfigPath(newDir)
+  const result = mergeJsonFileNonDestructive(src, dst)
+  if (result.outcome === 'unparseableSource') {
     warnings.push(`legacy ${src} could not be parsed; skipped`)
     return 0
   }
-
-  const dst = newGlobalConfigPath(newDir)
-  const existing = existsSync(dst) ? (readJson(dst) ?? {}) : {}
-
-  const merged: AnyJson = { ...existing }
-  let copiedKeys = 0
-  for (const key of Object.keys(legacy)) {
-    if (key in existing) continue
-    merged[key] = legacy[key]
-    copiedKeys += 1
-  }
-
-  if (copiedKeys === 0 && existsSync(dst)) {
+  if (result.outcome === 'writeFailed') {
+    warnings.push(`failed to write ${dst}: ${result.message}`)
     return 0
   }
-
-  try {
-    writeJson(dst, merged)
-  } catch (e: unknown) {
-    warnings.push(
-      `failed to write ${dst}: ${e instanceof Error ? e.message : String(e)}`,
-    )
-    return 0
-  }
+  if (result.outcome === 'noSource') return 0
 
   // Invalidate the in-memory globalConfig cache so the next read picks up
   // the freshly merged file (in particular, any providerProfiles imported
   // from the legacy global config land in saveGlobalConfig's lock-acquired
   // re-read instead of the stale defaults populated by isAlreadyMigrated).
   _setGlobalConfigCacheForTesting(null)
-  return copiedKeys
+  return result.copiedKeys
 }
 
 function isAlreadyMigrated(): { migrated: boolean; at?: string } {
@@ -342,12 +185,6 @@ export async function migrateLegacyClaudeDir(
     tokens: 0,
     settingsKeys: 0,
     globalConfigKeys: 0,
-    claudeMd: false,
-    plugins: 0,
-    skills: 0,
-    agents: 0,
-    commands: 0,
-    keybindings: false,
     anthropicProfileCreated: false,
     errors,
     warnings,
@@ -380,12 +217,6 @@ export async function migrateLegacyClaudeDir(
   if (existsSync(legacyDir)) {
     report.tokens = copyCredentialsIfNeeded(legacyDir, newDir, errors, warnings)
     report.settingsKeys = mergeSettings(legacyDir, newDir, errors)
-    report.claudeMd = copyClaudeMd(legacyDir, newDir, errors)
-    report.plugins = copyTopLevelDir(legacyDir, newDir, 'plugins', errors)
-    report.skills = copyTopLevelDir(legacyDir, newDir, 'skills', errors)
-    report.agents = copyTopLevelDir(legacyDir, newDir, 'agents', errors)
-    report.commands = copyTopLevelDir(legacyDir, newDir, 'commands', errors)
-    report.keybindings = copyKeybindings(legacyDir, newDir, errors)
   }
 
   report.globalConfigKeys = mergeGlobalConfigFile(home, newDir, warnings)
@@ -412,7 +243,7 @@ function ensureAnthropicProfileFromCredentials(
   if (tokensCopied <= 0) return false
 
   const credentialsPath = join(newDir, '.credentials.json')
-  let parsed: AnyJson | null
+  let parsed: JsonTable | null
   try {
     parsed = JSON.parse(readFileSync(credentialsPath, 'utf8'))
   } catch (e: unknown) {
@@ -422,8 +253,8 @@ function ensureAnthropicProfileFromCredentials(
     return false
   }
 
-  const claudeAiOauth = (parsed as AnyJson | null)?.claudeAiOauth as
-    | AnyJson
+  const claudeAiOauth = (parsed as JsonTable | null)?.claudeAiOauth as
+    | JsonTable
     | undefined
   const accessToken = claudeAiOauth?.accessToken
   if (typeof accessToken !== 'string' || accessToken.length === 0) {
@@ -472,19 +303,13 @@ export function formatMigrationReport(report: MigrationReport): string {
   parts.push(
     `${report.globalConfigKeys} global config key${report.globalConfigKeys === 1 ? '' : 's'}`,
   )
-  parts.push(`${report.claudeMd ? 1 : 0} CLAUDE.md`)
-  parts.push(`${report.plugins} plugin${report.plugins === 1 ? '' : 's'}`)
-  parts.push(`${report.skills} skill${report.skills === 1 ? '' : 's'}`)
-  parts.push(`${report.agents} agent${report.agents === 1 ? '' : 's'}`)
-  parts.push(`${report.commands} command${report.commands === 1 ? '' : 's'}`)
-  parts.push(`${report.keybindings ? 'keybindings copied' : 'no keybindings'}`)
   parts.push(
     report.anthropicProfileCreated
       ? 'anthropic profile created'
       : 'anthropic profile already present',
   )
   const head = parts.join(', ')
-  const suffix = `. ${report.legacyDir} kept untouched.`
+  const suffix = `. ${report.legacyDir} kept untouched. Run /import to bring skills, MCP servers, agents and commands.`
   let summary = `${head}${suffix}`
   if (report.warnings.length > 0) {
     summary += ` Warnings: ${report.warnings.join('; ')}`
