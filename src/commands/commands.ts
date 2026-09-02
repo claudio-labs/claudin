@@ -26,6 +26,7 @@ import knowledge from 'src/commands/knowledge/index.js'
 import memory from 'src/commands/memory/index.js'
 import help from 'src/commands/help/index.js'
 import ide from 'src/commands/ide/index.js'
+import importCommand from 'src/commands/import/index.js'
 import init from 'src/commands/init.js'
 import initVerifiers from 'src/commands/init-verifiers.js'
 import keybindings from 'src/commands/keybindings/index.js'
@@ -265,6 +266,7 @@ const COMMANDS = memoize((): Command[] => [
   heapDump,
   help,
   ide,
+  importCommand,
   init,
   keybindings,
   knowledge,

@@ -105,6 +105,28 @@ specifiers and 55 baselined ones that no longer existed, while a plain
 sets by module **basename** before trusting a re-capture — an identical set means
 paths moved, a new name means an import actually broke.
 
+### A lazy command chunk that fails to load is silently inert
+
+`load: () => import('src/commands/<name>/<name>.js')` puts each command in its
+own chunk. If that chunk throws while loading, nothing surfaces: the slash
+command is accepted, the prompt clears, and **no** UI, message or error appears
+— indistinguishable from a command that chose to render nothing. `/import`
+shipped that way and only the runtime walkthrough caught it.
+
+The cause was a **bare package specifier**: `from 'jsonc-parser'` resolves to an
+entry whose internal `require('./impl/format')` does not survive bundling, while
+`from 'jsonc-parser/lib/esm/main.js'` — what `src/shared/data/json.ts` already
+used — does. So prefer the deep specifier an existing importer proved, and when
+adding a dependency to a lazily-loaded command, load its built chunk once:
+
+```bash
+node -e "import('./dist/chunks/<name>-<hash>.mjs').then(m=>console.log('OK',Object.keys(m))).catch(e=>console.log('FAIL:',e.message))"
+```
+
+A working chunk prints its exports (`call`, …). This is the only cheap check —
+`bun run build` is green either way, the unit tests import source rather than
+the bundle, and `bun run smoke` only asserts `--version`.
+
 ### Two declaration files to keep current
 
 `src/globals.d.ts` declares the `MACRO.*` constants item 2 inlines: a member
