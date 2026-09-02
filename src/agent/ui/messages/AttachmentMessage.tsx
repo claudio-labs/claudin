@@ -24,6 +24,7 @@ import { BLACK_CIRCLE } from 'src/shared/constants/figures.js';
 import { TeammateMessageContent } from 'src/agent/ui/messages/UserTeammateMessage.js';
 import { isShutdownApproved } from 'src/agent/coordinator/teammateMailbox.js';
 import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
+import { nestedMemoryBatchNoun } from 'src/tools/shared/collapseNestedMemory.js';
 import FullWidthRow from 'src/terminal/design-system/FullWidthRow.js';
 import { FilePathLink } from 'src/terminal/FilePathLink.js';
 import { feature } from 'bun:bundle';
@@ -180,6 +181,28 @@ export function AttachmentMessage({
       return <Line>
           Loaded <Text bold>{attachment.displayPath}</Text>
         </Line>;
+    case 'nested_memory_batch':
+      {
+        // A run of nested_memory attachments (collapseNestedMemory.ts). One
+        // count line; the per-file "Loaded <path>" lines only under ctrl+o or
+        // /verbose, where they render exactly as an uncollapsed one would.
+        const files = attachment.files;
+        return <Box flexDirection="column" backgroundColor={bg}>
+          <Line>
+            Loaded{' '}
+            <Text bold>
+              {files.length} {nestedMemoryBatchNoun(files)}
+            </Text>
+            {!isTranscriptMode && <>
+                {' '}
+                <CtrlOToExpand />
+              </>}
+          </Line>
+          {(verbose || isTranscriptMode) && files.map(file => <Line key={file.path}>
+                Loaded <Text bold>{file.displayPath}</Text>
+              </Line>)}
+        </Box>;
+      }
     case 'relevant_memories':
       // Usually absorbed into a CollapsedReadSearchGroup (collapseReadSearch.ts)
       // so this only renders when the preceding tool was non-collapsible (Edit,

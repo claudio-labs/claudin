@@ -23,6 +23,7 @@ import type { Message as MessageType, NormalizedMessage, ProgressMessage as Prog
 import { type AdvisorBlock, isAdvisorBlock } from 'src/platform/doctor/advisor.js';
 import { collapseBackgroundBashNotifications } from 'src/tools/shared/collapseBackgroundBashNotifications.js';
 import { collapseHookSummaries } from 'src/tools/shared/collapseHookSummaries.js';
+import { collapseNestedMemory } from 'src/tools/shared/collapseNestedMemory.js';
 import { collapseReadSearchGroups } from 'src/agent/tools/collapseReadSearch.js';
 import { collapseTeammateShutdowns } from 'src/tools/shared/collapseTeammateShutdowns.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
@@ -528,7 +529,7 @@ const MessagesImpl = ({
     const {
       messages: groupedMessages
     } = applyGrouping(messagesToShow, tools, verbose);
-    const collapsed = collapseBackgroundBashNotifications(collapseHookSummaries(collapseTeammateShutdowns(collapseReadSearchGroups(groupedMessages, tools))), verbose);
+    const collapsed = collapseBackgroundBashNotifications(collapseHookSummaries(collapseTeammateShutdowns(collapseNestedMemory(collapseReadSearchGroups(groupedMessages, tools)))), verbose);
     const lookups = buildMessageLookups(normalizedMessages, messagesToShow);
     const hiddenMessageCount = messagesToShowNotTruncated.length - MAX_MESSAGES_TO_SHOW_IN_TRANSCRIPT_MODE;
     return {

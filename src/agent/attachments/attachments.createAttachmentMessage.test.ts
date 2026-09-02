@@ -20,6 +20,7 @@ const ALL_ATTACHMENT_TYPES = [
   'todo_reminder',
   'task_reminder',
   'nested_memory',
+  'nested_memory_batch',
   'relevant_memories',
   'dynamic_skill',
   'skill_listing',
