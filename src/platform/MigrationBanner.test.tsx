@@ -18,12 +18,6 @@ const migrateLegacyClaudeDirSpy = mock(async () => ({
   tokens: 1,
   settingsKeys: 0,
   globalConfigKeys: 0,
-  claudeMd: false,
-  plugins: 0,
-  skills: 0,
-  agents: 0,
-  commands: 0,
-  keybindings: false,
   anthropicProfileCreated: false,
   errors: [] as string[],
   warnings: [] as string[],
@@ -194,7 +188,7 @@ test("calls onDismiss with 'migrated' after successful migration", async () => {
       frame.includes('Found Claude Code config'),
     )
 
-    // First option ("Migrate now") is focused on mount; just press Enter.
+    // First option ("Copy my sign-in") is focused on mount; just press Enter.
     stdin.write('\r')
 
     await waitForCondition(() => outcomes.length > 0)

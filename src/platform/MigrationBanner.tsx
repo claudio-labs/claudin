@@ -39,9 +39,7 @@ export function MigrationBanner({
         <Text color="warning" bold>
           Migrating ~/.claude/ to ~/.claudin/...
         </Text>
-        <Text dimColor>
-          Copying tokens, settings, theme, MCP servers, skills, agents, slash commands, plugins, and keybindings.
-        </Text>
+        <Text dimColor>Copying API tokens and provider profiles.</Text>
       </Box>
     )
   }
@@ -56,6 +54,11 @@ export function MigrationBanner({
           {heading}
         </Text>
         <Text>{formatMigrationReport(phase.report)}</Text>
+        <Text dimColor>
+          Next: /import brings skills, MCP servers, agents and slash commands —
+          from Claude Code, and from Codex, Gemini CLI, Qwen Code, opencode,
+          Kimi CLI and Cursor.
+        </Text>
       </Box>
     )
   }
@@ -66,15 +69,15 @@ export function MigrationBanner({
         Found Claude Code config at ~/.claude/
       </Text>
       <Text>
-        Import API tokens, settings, theme, MCP servers, skills, agents, slash commands, plugins, and keybindings into ~/.claudin/?
+        Copy the Claude Code sign-in — API tokens and provider profiles — into
+        ~/.claudin/?
       </Text>
       <Select
         options={[
           {
             value: 'migrate',
-            label: 'Migrate now',
-            description:
-              'Copy tokens, settings, CLAUDE.md, skills, agents, commands, plugins, keybindings.',
+            label: 'Copy my sign-in',
+            description: 'Tokens only. Run /import for skills, MCP, agents.',
           },
           {
             value: 'skip',

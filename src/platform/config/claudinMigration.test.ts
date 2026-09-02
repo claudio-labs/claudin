@@ -157,7 +157,7 @@ describe('migrateLegacyClaudeDir', () => {
     }
   })
 
-  test('copies tokens, settings, CLAUDE.md, plugins, keybindings into ~/.claudin/', async () => {
+  test('copies the sign-in — tokens and provider profiles — into ~/.claudin/', async () => {
     mkdirSync(dirs.legacy, { recursive: true })
     writeFileSync(
       join(dirs.legacy, '.credentials.json'),
@@ -166,21 +166,20 @@ describe('migrateLegacyClaudeDir', () => {
     writeFileSync(
       join(dirs.legacy, 'settings.json'),
       JSON.stringify({
-        theme: 'dark',
-        mcpServers: { x: { type: 'stdio' } },
-        verbose: true,
+        providerProfiles: [
+          {
+            id: 'p1',
+            name: 'OpenAI',
+            provider: 'openai',
+            baseUrl: 'https://api.openai.com/v1',
+            model: 'gpt-5.4',
+          },
+        ],
+        activeProviderProfileId: 'p1',
         agentRouting: { foo: 'bar' },
         agentModels: { baz: 'qux' },
       }),
     )
-    writeFileSync(join(dirs.legacy, 'CLAUDE.md'), '# user instructions')
-    writeFileSync(join(dirs.legacy, 'keybindings.json'), '{}')
-    mkdirSync(join(dirs.legacy, 'plugins', 'plugin-a'), { recursive: true })
-    writeFileSync(
-      join(dirs.legacy, 'plugins', 'plugin-a', 'manifest.json'),
-      '{}',
-    )
-    mkdirSync(join(dirs.legacy, 'plugins', 'plugin-b'), { recursive: true })
 
     const report = await migrateLegacyClaudeDir({
       homeDir: dirs.home,
@@ -189,10 +188,7 @@ describe('migrateLegacyClaudeDir', () => {
 
     expect(report.errors).toEqual([])
     expect(report.tokens).toBeGreaterThan(0)
-    expect(report.settingsKeys).toBe(3) // theme, mcpServers, verbose
-    expect(report.claudeMd).toBe(true)
-    expect(report.keybindings).toBe(true)
-    expect(report.plugins).toBe(2)
+    expect(report.settingsKeys).toBe(2) // providerProfiles, activeProviderProfileId
 
     expect(existsSync(join(dirs.next, '.credentials.json'))).toBe(true)
     const credStat = statSync(join(dirs.next, '.credentials.json'))
@@ -201,19 +197,54 @@ describe('migrateLegacyClaudeDir', () => {
     const settings = JSON.parse(
       readFileSync(join(dirs.next, 'settings.json'), 'utf8'),
     )
-    expect(settings.theme).toBe('dark')
-    expect(settings.verbose).toBe(true)
-    expect(settings.mcpServers).toEqual({ x: { type: 'stdio' } })
+    expect(settings.activeProviderProfileId).toBe('p1')
+    expect(settings.providerProfiles).toHaveLength(1)
     // The whitelist must drop agentRouting / agentModels.
     expect(settings.agentRouting).toBeUndefined()
     expect(settings.agentModels).toBeUndefined()
+  })
 
-    expect(readFileSync(join(dirs.next, 'CLAUDE.md'), 'utf8')).toBe(
-      '# user instructions',
+  // The migration is sign-in only since /import took over config transfer.
+  // Content that ~/.claude/ carries must be left where it is, so that /import
+  // is the single thing deciding what lands in ~/.claudin/ and what conflicts.
+  test('leaves CLAUDE.md, skills, agents, commands, plugins and keybindings to /import', async () => {
+    mkdirSync(dirs.legacy, { recursive: true })
+    writeFileSync(
+      join(dirs.legacy, '.credentials.json'),
+      JSON.stringify({ access: 'a' }),
     )
-    expect(existsSync(join(dirs.next, 'plugins', 'plugin-a', 'manifest.json'))).toBe(
-      true,
-    )
+    writeFileSync(join(dirs.legacy, 'CLAUDE.md'), '# user instructions')
+    writeFileSync(join(dirs.legacy, 'keybindings.json'), '{}')
+    mkdirSync(join(dirs.legacy, 'skills', 'alpha'), { recursive: true })
+    writeFileSync(join(dirs.legacy, 'skills', 'alpha', 'SKILL.md'), '# alpha')
+    mkdirSync(join(dirs.legacy, 'agents'), { recursive: true })
+    writeFileSync(join(dirs.legacy, 'agents', 'reviewer.md'), '# reviewer')
+    mkdirSync(join(dirs.legacy, 'commands'), { recursive: true })
+    writeFileSync(join(dirs.legacy, 'commands', 'deploy.md'), '# deploy')
+    mkdirSync(join(dirs.legacy, 'plugins', 'plugin-a'), { recursive: true })
+    writeFileSync(join(dirs.legacy, 'plugins', 'plugin-a', 'manifest.json'), '{}')
+
+    const report = await migrateLegacyClaudeDir({
+      homeDir: dirs.home,
+      newDir: dirs.next,
+    })
+
+    expect(report.errors).toEqual([])
+    // The sign-in still crosses over, so this is not a no-op run.
+    expect(report.tokens).toBeGreaterThan(0)
+
+    for (const left of [
+      'CLAUDE.md',
+      'keybindings.json',
+      'skills',
+      'agents',
+      'commands',
+      'plugins',
+    ]) {
+      expect(existsSync(join(dirs.next, left))).toBe(false)
+      // …and the source is untouched, ready for /import to read.
+      expect(existsSync(join(dirs.legacy, left))).toBe(true)
+    }
   })
 
   test('records the new claudeToClaudinMigratedAt flag after migration', async () => {
@@ -240,10 +271,8 @@ describe('migrateLegacyClaudeDir', () => {
     )
     writeFileSync(
       join(dirs.legacy, 'settings.json'),
-      JSON.stringify({ theme: 'dark' }),
+      JSON.stringify({ activeProviderProfileId: 'p1' }),
     )
-    writeFileSync(join(dirs.legacy, 'CLAUDE.md'), '# x')
-    writeFileSync(join(dirs.legacy, 'keybindings.json'), '{}')
 
     const first = await migrateLegacyClaudeDir({
       homeDir: dirs.home,
@@ -261,8 +290,9 @@ describe('migrateLegacyClaudeDir', () => {
 
     // Files at destination remain untouched (single copy).
     expect(
-      JSON.parse(readFileSync(join(dirs.next, 'settings.json'), 'utf8')).theme,
-    ).toBe('dark')
+      JSON.parse(readFileSync(join(dirs.next, 'settings.json'), 'utf8'))
+        .activeProviderProfileId,
+    ).toBe('p1')
   })
 
   test('non-destructive merge into existing settings.json', async () => {
@@ -270,11 +300,14 @@ describe('migrateLegacyClaudeDir', () => {
     mkdirSync(dirs.next, { recursive: true })
     writeFileSync(
       join(dirs.legacy, 'settings.json'),
-      JSON.stringify({ theme: 'dark', verbose: true }),
+      JSON.stringify({
+        activeProviderProfileId: 'legacy',
+        customApiKeyResponses: { approved: ['sk-x'], rejected: [] },
+      }),
     )
     writeFileSync(
       join(dirs.next, 'settings.json'),
-      JSON.stringify({ theme: 'light', editorMode: 'normal' }),
+      JSON.stringify({ activeProviderProfileId: 'mine', editorMode: 'normal' }),
     )
 
     const report = await migrateLegacyClaudeDir({
@@ -287,10 +320,13 @@ describe('migrateLegacyClaudeDir', () => {
       readFileSync(join(dirs.next, 'settings.json'), 'utf8'),
     )
     // Existing keys win.
-    expect(settings.theme).toBe('light')
+    expect(settings.activeProviderProfileId).toBe('mine')
     expect(settings.editorMode).toBe('normal')
     // Missing key gets carried over.
-    expect(settings.verbose).toBe(true)
+    expect(settings.customApiKeyResponses).toEqual({
+      approved: ['sk-x'],
+      rejected: [],
+    })
   })
 
   test('does not overwrite an existing .credentials.json with different contents', async () => {
@@ -321,16 +357,10 @@ describe('migrateLegacyClaudeDir', () => {
     expect(report.tokens).toBe(0)
   })
 
-  test('round-trips every whitelisted settings key and drops non-whitelisted ones', async () => {
+  test('forwards only the provider sign-in keys out of settings.json', async () => {
     mkdirSync(dirs.legacy, { recursive: true })
     const legacySettings = {
-      theme: 'dark',
-      model: 'claude-sonnet-4-6',
       customApiKeyResponses: { approved: ['sk-x'], rejected: [] },
-      permissions: { allow: ['Bash(ls:*)'], deny: [] },
-      verbose: true,
-      editorMode: 'vim',
-      mcpServers: { x: { type: 'stdio' as const } },
       providerProfiles: [
         {
           id: 'p1',
@@ -341,7 +371,14 @@ describe('migrateLegacyClaudeDir', () => {
         },
       ],
       activeProviderProfileId: 'p1',
-      // Non-whitelisted: must NOT cross over.
+      // Preferences and content: /import's job, must NOT cross over here.
+      theme: 'dark',
+      model: 'claude-sonnet-4-6',
+      permissions: { allow: ['Bash(ls:*)'], deny: [] },
+      verbose: true,
+      editorMode: 'vim',
+      mcpServers: { x: { type: 'stdio' as const } },
+      // Legacy routing system: never forwarded.
       agentRouting: { foo: 'bar' },
       agentModels: { baz: 'qux' },
     }
@@ -356,28 +393,31 @@ describe('migrateLegacyClaudeDir', () => {
     })
 
     expect(report.errors).toEqual([])
-    // 9 whitelisted keys cross over.
-    expect(report.settingsKeys).toBe(9)
+    // Exactly the three sign-in keys cross over.
+    expect(report.settingsKeys).toBe(3)
 
     const settings = JSON.parse(
       readFileSync(join(dirs.next, 'settings.json'), 'utf8'),
     )
-    expect(settings.theme).toBe('dark')
-    expect(settings.model).toBe('claude-sonnet-4-6')
     expect(settings.customApiKeyResponses).toEqual({
       approved: ['sk-x'],
       rejected: [],
     })
-    expect(settings.permissions).toEqual({ allow: ['Bash(ls:*)'], deny: [] })
-    expect(settings.verbose).toBe(true)
-    expect(settings.editorMode).toBe('vim')
-    expect(settings.mcpServers).toEqual({ x: { type: 'stdio' } })
     expect(settings.providerProfiles).toEqual(legacySettings.providerProfiles)
     expect(settings.activeProviderProfileId).toBe('p1')
 
-    // Non-whitelisted keys must not appear at the destination.
-    expect(settings.agentRouting).toBeUndefined()
-    expect(settings.agentModels).toBeUndefined()
+    for (const notMine of [
+      'theme',
+      'model',
+      'permissions',
+      'verbose',
+      'editorMode',
+      'mcpServers',
+      'agentRouting',
+      'agentModels',
+    ]) {
+      expect(settings[notMine]).toBeUndefined()
+    }
   })
 
   test('returns unmodified report when ~/.claude/ is absent', async () => {
@@ -388,12 +428,7 @@ describe('migrateLegacyClaudeDir', () => {
     expect(report.tokens).toBe(0)
     expect(report.settingsKeys).toBe(0)
     expect(report.globalConfigKeys).toBe(0)
-    expect(report.claudeMd).toBe(false)
-    expect(report.plugins).toBe(0)
-    expect(report.skills).toBe(0)
-    expect(report.agents).toBe(0)
-    expect(report.commands).toBe(0)
-    expect(report.keybindings).toBe(false)
+    expect(report.anthropicProfileCreated).toBe(false)
     expect(report.errors).toEqual([])
   })
 
@@ -576,53 +611,6 @@ describe('migrateLegacyClaudeDir', () => {
     expect(existsSync(join(dirs.next, 'config.json'))).toBe(true)
   })
 
-  test('copies skills/, agents/, and commands/ directories', async () => {
-    mkdirSync(dirs.legacy, { recursive: true })
-    mkdirSync(join(dirs.legacy, 'skills', 'alpha'), { recursive: true })
-    writeFileSync(
-      join(dirs.legacy, 'skills', 'alpha', 'SKILL.md'),
-      '# alpha skill',
-    )
-    mkdirSync(join(dirs.legacy, 'skills', 'beta'), { recursive: true })
-
-    mkdirSync(join(dirs.legacy, 'agents'), { recursive: true })
-    writeFileSync(
-      join(dirs.legacy, 'agents', 'reviewer.md'),
-      '# reviewer agent',
-    )
-    writeFileSync(
-      join(dirs.legacy, 'agents', 'planner.md'),
-      '# planner agent',
-    )
-    writeFileSync(
-      join(dirs.legacy, 'agents', 'tester.md'),
-      '# tester agent',
-    )
-
-    mkdirSync(join(dirs.legacy, 'commands'), { recursive: true })
-    writeFileSync(join(dirs.legacy, 'commands', 'deploy.md'), '# deploy')
-
-    const report = await migrateLegacyClaudeDir({
-      homeDir: dirs.home,
-      newDir: dirs.next,
-    })
-
-    expect(report.errors).toEqual([])
-    expect(report.skills).toBe(2)
-    expect(report.agents).toBe(3)
-    expect(report.commands).toBe(1)
-
-    expect(
-      readFileSync(join(dirs.next, 'skills', 'alpha', 'SKILL.md'), 'utf8'),
-    ).toBe('# alpha skill')
-    expect(existsSync(join(dirs.next, 'skills', 'beta'))).toBe(true)
-    expect(
-      readFileSync(join(dirs.next, 'agents', 'reviewer.md'), 'utf8'),
-    ).toBe('# reviewer agent')
-    expect(
-      readFileSync(join(dirs.next, 'commands', 'deploy.md'), 'utf8'),
-    ).toBe('# deploy')
-  })
 })
 
 describe('shouldShowMigrationBanner', () => {
@@ -732,12 +720,6 @@ describe('formatMigrationReport', () => {
       tokens: 2,
       settingsKeys: 3,
       globalConfigKeys: 7,
-      claudeMd: true,
-      plugins: 4,
-      skills: 5,
-      agents: 2,
-      commands: 1,
-      keybindings: true,
       anthropicProfileCreated: true,
       errors: [],
       warnings: [],
@@ -749,14 +731,30 @@ describe('formatMigrationReport', () => {
     expect(summary).toContain('2 tokens')
     expect(summary).toContain('3 settings keys')
     expect(summary).toContain('7 global config keys')
-    expect(summary).toContain('1 CLAUDE.md')
-    expect(summary).toContain('4 plugins')
-    expect(summary).toContain('5 skills')
-    expect(summary).toContain('2 agents')
-    expect(summary).toContain('1 command')
-    expect(summary).toContain('keybindings copied')
     expect(summary).toContain('anthropic profile created')
     expect(summary).toContain('/home/x/.claude kept untouched')
+    // The summary is the only place a user is told where the rest went.
+    expect(summary).toContain(
+      'Run /import to bring skills, MCP servers, agents and commands.',
+    )
+  })
+
+  test('does not claim to have copied content', () => {
+    const summary = formatMigrationReport({
+      tokens: 1,
+      settingsKeys: 3,
+      globalConfigKeys: 0,
+      anthropicProfileCreated: true,
+      errors: [],
+      warnings: [],
+      alreadyMigrated: false,
+      legacyDir: '/home/x/.claude',
+      newDir: '/home/x/.claudin',
+      migratedAt: '2026-04-28T00:00:00Z',
+    })
+    for (const gone of ['CLAUDE.md', 'plugin', 'skill', 'agent', 'keybinding']) {
+      expect(summary.split('Run /import')[0]).not.toContain(gone)
+    }
   })
 
   test('summarises an idempotent re-run', () => {
@@ -764,12 +762,6 @@ describe('formatMigrationReport', () => {
       tokens: 0,
       settingsKeys: 0,
       globalConfigKeys: 0,
-      claudeMd: false,
-      plugins: 0,
-      skills: 0,
-      agents: 0,
-      commands: 0,
-      keybindings: false,
       anthropicProfileCreated: false,
       errors: [],
       warnings: [],
@@ -787,12 +779,6 @@ describe('formatMigrationReport', () => {
       tokens: 0,
       settingsKeys: 1,
       globalConfigKeys: 0,
-      claudeMd: false,
-      plugins: 0,
-      skills: 0,
-      agents: 0,
-      commands: 0,
-      keybindings: false,
       anthropicProfileCreated: false,
       errors: [],
       warnings: ['/home/x/.claudin/.credentials.json already exists with different content — kept new file untouched'],
@@ -810,12 +796,6 @@ describe('formatMigrationReport', () => {
       tokens: 1,
       settingsKeys: 0,
       globalConfigKeys: 0,
-      claudeMd: false,
-      plugins: 0,
-      skills: 0,
-      agents: 0,
-      commands: 0,
-      keybindings: false,
       anthropicProfileCreated: false,
       errors: [],
       warnings: [],

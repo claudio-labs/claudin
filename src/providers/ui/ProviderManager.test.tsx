@@ -1467,13 +1467,14 @@ test('ProviderManager Anthropic API-key path leads to form', async () => {
   await mounted.dispose()
 })
 
-test('ProviderManager menu shows Import from Claude Code when ~/.claude/ is unmigrated', async () => {
+test('the provider manager menu leaves importing to /import', async () => {
   delete process.env.CLAUDIN_USE_GITHUB
   delete process.env.GITHUB_TOKEN
   delete process.env.GH_TOKEN
 
   mockProviderManagerDependencies()
 
+  // An unmigrated ~/.claude/ used to add an "Import from Claude Code" row here.
   // Override only legacyClaudeDirExists; do NOT replace migrateLegacyClaudeDir
   // (binding leaks to commands/provider/migrate.test.tsx) and do NOT mock
   // config.js (that mock leaks into toolResultSummarizer.test.ts).
@@ -1485,33 +1486,10 @@ test('ProviderManager menu shows Import from Claude Code when ~/.claude/ is unmi
 
   const nonce = `${Date.now()}-${Math.random()}`
   const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
+  // Anchored on a row that IS expected, so the absence below cannot pass
+  // merely because the menu had not rendered yet.
   const output = await renderProviderManagerFrame(ProviderManager, {
-    waitForOutput: frame =>
-      frame.includes('Provider manager') &&
-      frame.includes('Import from Claude Code'),
-  })
-
-  expect(output).toContain('Provider manager')
-  expect(output).toContain('Import from Claude Code')
-})
-
-test('ProviderManager menu hides Import from Claude Code when ~/.claude/ is absent', async () => {
-  delete process.env.CLAUDIN_USE_GITHUB
-  delete process.env.GITHUB_TOKEN
-  delete process.env.GH_TOKEN
-
-  mockProviderManagerDependencies()
-
-  mock.module('src/platform/config/claudinMigration.js', () => ({
-    ...realClaudinMigrationForPm,
-    legacyClaudeDirExists: () => false,
-    shouldShowMigrationBanner: () => false,
-  }))
-
-  const nonce = `${Date.now()}-${Math.random()}`
-  const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
-  const output = await renderProviderManagerFrame(ProviderManager, {
-    waitForOutput: frame => frame.includes('Provider manager'),
+    waitForOutput: frame => frame.includes('Set active provider (Global)'),
   })
 
   expect(output).toContain('Provider manager')

@@ -824,16 +824,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         label: 'Add provider',
         description: 'Create a new provider profile',
       },
-      ...(canImportLegacyClaude
-        ? [
-            {
-              value: 'import-legacy',
-              label: 'Import from Claude Code',
-              description:
-                'Copy ~/.claude/ tokens, settings, skills, agents, plugins.',
-            },
-          ]
-        : []),
       {
         value: 'activate',
         label: 'Set active provider (Global)',
@@ -892,7 +882,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       hasSelectableProviders,
       hasProfiles,
       hasStoredCodexOAuthCredentials,
-      canImportLegacyClaude,
       globalActiveProfileId,
       projectActiveProfileId,
       profiles,
@@ -1918,9 +1907,9 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
         ? [
             {
               value: 'import-legacy',
-              label: 'Import from Claude Code',
+              label: 'Reuse Claude Code sign-in',
               description:
-                'Reuse ~/.claude/ tokens, settings, theme, MCP, skills, agents, plugins.',
+                'Copy ~/.claude/ API tokens and provider profiles. /import brings the rest.',
             },
           ]
         : []),
@@ -2503,19 +2492,6 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
               case 'add':
                 setScreen('select-preset')
                 break
-              case 'import-legacy': {
-                void (async () => {
-                  const report = await migrateLegacyClaudeDir({ force: true })
-                  setCanImportLegacyClaude(legacyClaudeDirExists())
-                  refreshProfiles()
-                  if (report.errors.length > 0) {
-                    setErrorMessage(formatMigrationReport(report))
-                  } else {
-                    setStatusMessage(formatMigrationReport(report))
-                  }
-                })()
-                break
-              }
               case 'activate':
                 if (hasSelectableProviders) {
                   setScreen('select-active')
