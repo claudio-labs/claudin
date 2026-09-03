@@ -213,7 +213,35 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
   bypass the gate — honor the flags explicitly or Plan/WebResearcher get
   full CLAUDE.md + rules re-injected per Read.
 
-## 5. Running cache perf experiments
+## 5. The `tools` array is part of the prefix — deferred tools included
+
+`streaming.ts` sends **every** deferred tool on every request with
+`defer_loading: true`. Do not reintroduce a "send only the discovered deferred
+tools" filter: adding a deferred tool to the array after a ToolSearch was
+measured to grow the cached system+tools block (+93 tokens for two tools) and
+rewrite the entire history (50–134k tokens per discovery in real sessions).
+The legacy filter lives behind `CLAUDIN_DEFERRED_TOOLS_DISCOVERED_ONLY=1`.
+Regression probe: `scripts/bench/ab/tool-search-cache-probe.ts` (exit 1 if the
+call after ToolSearch reads fewer cached tokens than the call before it).
+
+- The break detector hashes deferred tools by `{name, defer_loading}` — never
+  drop them from `toolsForCacheDetection` again; that is how this break hid as
+  "likely server-side (prompt unchanged)" for weeks.
+- A new tool whose result is disposable (read-only, re-runnable) sets
+  `clearableResult: true` on the Tool; `clear_tool_inputs` is derived from the
+  pool (`clearableToolNamesFromPool`). Don't add names to the fallback
+  constant `TOOLS_CLEARABLE_RESULTS` — the flag is the source of truth.
+- Anything that removes or rewrites messages behind the marker must call
+  `notifyCacheDeletion(source, agentId, reason)` **with a reason** and
+  `recordPrefixRewrite(reason)` (REPL post-turn path already does), so the
+  rewrite shows on the `[Cache: …]` line instead of surfacing as a mystery dip.
+- `CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=1` silently turns off the retain
+  profile's server-side `clear_tool_uses` (no `context-management` beta
+  header → no `context_management` body). Check the env before attributing a
+  context drop to the server; `docs/tech/cache/context-relief-policy.md` has the
+  full map of the client mechanisms that fire instead.
+
+## 6. Running cache perf experiments
 
 - Prototype as a `CLAUDIN_*` env toggle → A/B with
   `scripts/bench/ab/cache-ab-bench.ts` → promote to default only on a measured win.

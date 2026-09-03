@@ -43,6 +43,27 @@ export type CacheStatsEntry = {
   metrics: CacheMetrics
 }
 
+/**
+ * Server-side context_management clears (`clear_tool_uses`) applied during
+ * a turn. Each one is a deliberate prompt-prefix rewrite (the retain
+ * profile's near-ceiling context relief), so the REPL names it next to the
+ * cache line instead of letting it read as an unexplained hit-rate dip.
+ */
+export type ServerClearStats = {
+  /** Number of responses on which the server applied at least one clear. */
+  events: number
+  /** Tool uses cleared, summed over the turn. */
+  clearedToolUses: number
+  /** Input tokens cleared, summed over the turn. */
+  clearedInputTokens: number
+}
+
+const EMPTY_SERVER_CLEARS: ServerClearStats = {
+  events: 0,
+  clearedToolUses: 0,
+  clearedInputTokens: 0,
+}
+
 // Bound the per-session history. 500 requests ≈ a full day of active use;
 // any more than that is noise for a diagnostic command and starts costing
 // real memory (~100 bytes per entry with the labels).
@@ -59,6 +80,12 @@ const EMPTY_METRICS: CacheMetrics = {
 type TrackerState = {
   currentTurn: CacheMetrics
   session: CacheMetrics
+  currentTurnServerClears: ServerClearStats
+  sessionServerClears: ServerClearStats
+  /** Client-side prefix rewrites announced this turn (display-cap eviction,
+   *  byte-guard, stable-stub clip). They land on the NEXT request, so the
+   *  end-of-turn line names them as a forecast. */
+  currentTurnPrefixRewrites: string[]
   // Ring buffer: fixed-size array, `historyWriteIdx` points at the next
   // slot to overwrite. Once `historySize === historyMax`, each new push
   // drops the oldest entry by simply overwriting it — no shifting.
@@ -72,6 +99,9 @@ function createInitialState(max: number): TrackerState {
   return {
     currentTurn: EMPTY_METRICS,
     session: EMPTY_METRICS,
+    currentTurnServerClears: EMPTY_SERVER_CLEARS,
+    sessionServerClears: EMPTY_SERVER_CLEARS,
+    currentTurnPrefixRewrites: [],
     history: new Array(max),
     historyWriteIdx: 0,
     historySize: 0,
@@ -109,15 +139,49 @@ export function recordRequest(
   }
 }
 
+/**
+ * Record one response's server-side clear. Called from the streaming shim
+ * when `message_delta.context_management.applied_edits` reports cleared
+ * tokens — the only place the API tells us it edited the prompt.
+ */
+export function recordServerClear(edit: {
+  clearedToolUses: number
+  clearedInputTokens: number
+}): void {
+  const add = (s: ServerClearStats): ServerClearStats => ({
+    events: s.events + 1,
+    clearedToolUses: s.clearedToolUses + edit.clearedToolUses,
+    clearedInputTokens: s.clearedInputTokens + edit.clearedInputTokens,
+  })
+  state.currentTurnServerClears = add(state.currentTurnServerClears)
+  state.sessionServerClears = add(state.sessionServerClears)
+}
+
+/**
+ * Record a client-side mutation of the cached prefix (an eviction or clip
+ * that removes/rewrites messages behind the cache marker). Paired with
+ * `notifyCacheDeletion` on the detector side; this copy is what the REPL
+ * shows on the `[Cache: …]` line so the next turn's hit-rate dip is
+ * attributed up front.
+ */
+export function recordPrefixRewrite(label: string): void {
+  state.currentTurnPrefixRewrites = [...state.currentTurnPrefixRewrites, label]
+}
+
 /** Clear turn-level counters at the start of a new user turn. */
 export function resetCurrentTurn(): void {
   state.currentTurn = EMPTY_METRICS
+  state.currentTurnServerClears = EMPTY_SERVER_CLEARS
+  state.currentTurnPrefixRewrites = []
 }
 
 /** Clear all session state — used by `/clear`, `/compact`, tests. */
 export function resetSessionCacheStats(): void {
   state.currentTurn = EMPTY_METRICS
   state.session = EMPTY_METRICS
+  state.currentTurnServerClears = EMPTY_SERVER_CLEARS
+  state.sessionServerClears = EMPTY_SERVER_CLEARS
+  state.currentTurnPrefixRewrites = []
   // Rebuild the ring so any hold-over references can be GC'd. Slightly
   // more work than zeroing indices, but `/clear` is rare and this avoids
   // silently pinning old CacheStatsEntry objects in memory.
@@ -129,6 +193,21 @@ export function resetSessionCacheStats(): void {
 /** Snapshot of the current turn's aggregate. */
 export function getCurrentTurnCacheMetrics(): CacheMetrics {
   return state.currentTurn
+}
+
+/** Snapshot of the current turn's server-side clears. */
+export function getCurrentTurnServerClears(): ServerClearStats {
+  return state.currentTurnServerClears
+}
+
+/** Client-side prefix rewrites announced this turn (labels, in order). */
+export function getCurrentTurnPrefixRewrites(): readonly string[] {
+  return state.currentTurnPrefixRewrites
+}
+
+/** Snapshot of the session-wide server-side clears. */
+export function getSessionServerClears(): ServerClearStats {
+  return state.sessionServerClears
 }
 
 /** Snapshot of the session-wide aggregate. */

@@ -53,7 +53,7 @@ import { getScratchpadDir, isScratchpadEnabled } from 'src/permissions/filesyste
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { logEvent } from 'src/platform/analytics/index.js';
 import { handleMessageFromStream, type StreamingToolUse, type StreamingThinking, isCompactBoundaryMessage, getMessagesAfterCompactBoundary, getContentText, createTurnDurationMessage, createSystemMessage } from 'src/agent/messages/messages.js';
-import { getCurrentTurnCacheMetrics, resetCurrentTurn } from 'src/providers/cache/cacheStatsTracker.js';
+import { getCurrentTurnCacheMetrics, getCurrentTurnPrefixRewrites, getCurrentTurnServerClears, recordPrefixRewrite, resetCurrentTurn } from 'src/providers/cache/cacheStatsTracker.js';
 import { formatCacheMetricsCompact, formatCacheMetricsFull } from 'src/providers/cache/cacheMetrics.js';
 import { generateSessionTitle } from 'src/sessions/sessionTitle.js';
 import { BASH_INPUT_TAG, COMMAND_MESSAGE_TAG, COMMAND_NAME_TAG, LOCAL_COMMAND_STDOUT_TAG } from 'src/shared/constants/xml.js';
@@ -473,22 +473,40 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     // full results (the display array seeds the next turn's API view) and
     // bounds RSS with the byte-guard instead.
     const cacheProfile = getCacheProfile()
-    const stubbed = applyStableStubs(pruneToolResultsByBytes(
-      pruneOldToolResults(before, cacheProfile.keepTurns, cacheProfile.stubKeepHeadChars),
+    const aged = pruneOldToolResults(before, cacheProfile.keepTurns, cacheProfile.stubKeepHeadChars)
+    const byteGuarded = pruneToolResultsByBytes(
+      aged,
       cacheProfile.retainedHighWaterTokens,
       cacheProfile.retainedLowWaterTokens,
       undefined,
       cacheProfile.stubKeepHeadChars,
-    ))
+    )
+    const stubbed = applyStableStubs(byteGuarded)
     const evicted = evictOldStubbedMessages(stubbed, 2, EVICT_MIN_BATCH)
     const after = evictToMaxSize(evicted, MAX_DISPLAY_MESSAGES, EVICT_TRIGGER_AT)
     if (after !== before) {
       setMessages(() => after as MessageType[])
-      if (after !== stubbed && feature('PROMPT_CACHE_BREAK_DETECTION')) {
-        // Eviction removed messages from the next request's prefix — an
-        // intentional, amortized break. Tell the detector to expect the
-        // cache-read drop so it isn't reported as a regression.
-        notifyCacheDeletion(getQuerySourceForREPL())
+      // Each pass that changed the array mutates the NEXT request's prefix —
+      // an intentional, amortized break. Name the mechanism for the detector
+      // (so the drop isn't reported as a regression) and for the `[Cache: …]`
+      // line (so the user sees which knob fired). Age-prune is left out: it
+      // only rewrites under aggressive, where it is the every-turn steady
+      // state rather than an event. Under retain the byte-guard is the one
+      // that bites on 1M-window models — 250k→125k ESTIMATED tool-result
+      // tokens in a single step.
+      const reasons: string[] = []
+      if (byteGuarded !== aged) reasons.push('byte-guard stub')
+      if (evicted !== stubbed) {
+        reasons.push(`stub eviction (${stubbed.length - evicted.length} msgs)`)
+      }
+      if (after !== evicted) {
+        reasons.push(`display-cap eviction (${evicted.length - after.length} msgs)`)
+      }
+      if (reasons.length > 0) {
+        for (const r of reasons) recordPrefixRewrite(r)
+        if (feature('PROMPT_CACHE_BREAK_DETECTION')) {
+          notifyCacheDeletion(getQuerySourceForREPL(), undefined, reasons.join(' + '))
+        }
       }
     }
     // Prune orphaned contentReplacementState entries for IDs no longer
@@ -670,10 +688,15 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
           const mode = getGlobalConfig().showCacheStats ?? 'compact';
           if (mode !== 'off') {
             const turnMetrics = getCurrentTurnCacheMetrics();
+            // Server-side clear_tool_uses edits applied this turn (retain
+            // profile): each is a deliberate prefix rewrite, so name it on
+            // the line instead of leaving an unexplained hit-rate dip.
+            const turnClears = getCurrentTurnServerClears();
+            const turnRewrites = getCurrentTurnPrefixRewrites();
             // Skip rendering if the turn recorded no API activity at all —
             // avoids a spurious "[Cache: cold]" on local-only commands.
             if (turnMetrics.supported || turnMetrics.read > 0 || turnMetrics.total > 0) {
-              const line = mode === 'full' ? formatCacheMetricsFull(turnMetrics) : formatCacheMetricsCompact(turnMetrics);
+              const line = mode === 'full' ? formatCacheMetricsFull(turnMetrics, turnClears, turnRewrites) : formatCacheMetricsCompact(turnMetrics, turnClears, turnRewrites);
               setMessages(prev => [...prev, createSystemMessage(line, 'info')]);
             }
           }

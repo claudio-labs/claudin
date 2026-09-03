@@ -627,6 +627,40 @@ describe('formatCacheMetricsCompact — snapshot-stable output', () => {
     })
     expect(out).toBe('[Cache: 42 read • hit 42%]')
   })
+
+  test('server-side clears are named on the line; zero clears add nothing', () => {
+    const metrics = {
+      read: 2_100_000,
+      created: 60_000,
+      total: 2_300_000,
+      hitRate: 0.92,
+      supported: true,
+    }
+    expect(
+      formatCacheMetricsCompact(metrics, {
+        clearedToolUses: 14,
+        clearedInputTokens: 42_300,
+      }),
+    ).toBe('[Cache: 2.1m read • hit 92% • server cleared 14 tool results (-42.3k)]')
+    expect(
+      formatCacheMetricsCompact(metrics, {
+        clearedToolUses: 1,
+        clearedInputTokens: 900,
+      }),
+    ).toBe('[Cache: 2.1m read • hit 92% • server cleared 1 tool result (-900)]')
+    expect(
+      formatCacheMetricsCompact(metrics, {
+        clearedToolUses: 0,
+        clearedInputTokens: 0,
+      }),
+    ).toBe('[Cache: 2.1m read • hit 92%]')
+    expect(
+      formatCacheMetricsFull(metrics, {
+        clearedToolUses: 14,
+        clearedInputTokens: 42_300,
+      }),
+    ).toBe('[Cache: read=2.1m created=60k hit=92% server_cleared=14(-42.3k)]')
+  })
 })
 
 describe('formatCacheMetricsFull — snapshot-stable output', () => {

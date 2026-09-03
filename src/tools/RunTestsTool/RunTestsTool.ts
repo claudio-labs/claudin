@@ -215,6 +215,7 @@ export const RunTestsTool = buildTool({
   name: RUN_TESTS_TOOL_NAME,
   aliases: ['Test'],
   searchHint: 'run project unit tests structured failures',
+  clearableResult: true,
   maxResultSizeChars: 30_000,
   get inputSchema(): InputSchema {
     return inputSchema()

@@ -505,6 +505,8 @@ export function extractCacheMetrics(
  */
 export function formatCacheMetricsCompact(
   metrics: CacheMetrics | undefined | null,
+  serverClears?: ServerClearSummary,
+  prefixRewrites?: readonly string[],
 ): string {
   if (!metrics) return '[Cache: N/A]'
   if (!metrics.supported) return '[Cache: N/A]'
@@ -512,6 +514,11 @@ export function formatCacheMetricsCompact(
   const parts: string[] = [`${formatCompactNumber(metrics.read)} read`]
   if (metrics.hitRate !== null) {
     parts.push(`hit ${Math.round(metrics.hitRate * 100)}%`)
+  }
+  const clears = formatServerClears(serverClears)
+  if (clears) parts.push(clears)
+  if (prefixRewrites && prefixRewrites.length > 0) {
+    parts.push(`next turn rewrites prefix: ${prefixRewrites.join(', ')}`)
   }
   return `[Cache: ${parts.join(' • ')}]`
 }
@@ -528,6 +535,8 @@ export function formatCacheMetricsCompact(
  */
 export function formatCacheMetricsFull(
   metrics: CacheMetrics | undefined | null,
+  serverClears?: ServerClearSummary,
+  prefixRewrites?: readonly string[],
 ): string {
   if (!metrics) return '[Cache: N/A]'
   if (!metrics.supported) return '[Cache: N/A]'
@@ -540,7 +549,31 @@ export function formatCacheMetricsFull(
   } else {
     parts.push('hit=n/a')
   }
+  if (serverClears && serverClears.clearedInputTokens > 0) {
+    parts.push(
+      `server_cleared=${serverClears.clearedToolUses}(-${formatCompactNumber(serverClears.clearedInputTokens)})`,
+    )
+  }
+  if (prefixRewrites && prefixRewrites.length > 0) {
+    parts.push(`next_rewrite=${prefixRewrites.join('+')}`)
+  }
   return `[Cache: ${parts.join(' ')}]`
+}
+
+/**
+ * Server-side `clear_tool_uses` edits applied during the turn. Rendered
+ * only when something was cleared — the common case (no edit) adds
+ * nothing to the line. Example: "server cleared 14 tool results (-42k)".
+ */
+export type ServerClearSummary = {
+  clearedToolUses: number
+  clearedInputTokens: number
+}
+
+function formatServerClears(s: ServerClearSummary | undefined): string {
+  if (!s || s.clearedInputTokens === 0) return ''
+  const noun = s.clearedToolUses === 1 ? 'tool result' : 'tool results'
+  return `server cleared ${s.clearedToolUses} ${noun} (-${formatCompactNumber(s.clearedInputTokens)})`
 }
 
 // Compact 1.2k-style formatter. Duplicated here (not imported from

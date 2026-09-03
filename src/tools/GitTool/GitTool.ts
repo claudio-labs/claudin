@@ -131,6 +131,7 @@ export type Output = GitBatchResult
 export const GitTool = buildTool({
   name: GIT_TOOL_NAME,
   searchHint: 'git gh version control diff status log commit push pull request',
+  clearableResult: true,
   maxResultSizeChars: 30_000,
   get inputSchema(): InputSchema {
     return inputSchema()

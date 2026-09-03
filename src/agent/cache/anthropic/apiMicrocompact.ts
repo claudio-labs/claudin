@@ -18,7 +18,15 @@ import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
 const DEFAULT_MAX_INPUT_TOKENS = 180_000 // Typical warning threshold
 const DEFAULT_TARGET_INPUT_TOKENS = 40_000 // Keep last 40k tokens like client-side
 
-const TOOLS_CLEARABLE_RESULTS = [
+/**
+ * Fallback `clear_tool_inputs` list, used only when the caller doesn't hand
+ * over the pool-derived list. The live list comes from
+ * `clearableToolNamesFromPool` — tools opt in with `clearableResult: true`
+ * (`src/tools/Tool.ts`) so a new tool can't be forgotten here. This constant
+ * mirrors the pre-flag set so the shim paths that don't build a pool keep
+ * their previous behavior.
+ */
+export const TOOLS_CLEARABLE_RESULTS = [
   ...SHELL_TOOL_NAMES,
   GLOB_TOOL_NAME,
   GREP_TOOL_NAME,
@@ -26,6 +34,21 @@ const TOOLS_CLEARABLE_RESULTS = [
   WEB_FETCH_TOOL_NAME,
   WEB_SEARCH_TOOL_NAME,
 ]
+
+/**
+ * Derive the `clear_tool_inputs` list from the tools actually in the pool.
+ * Sorted so the list is byte-stable across requests regardless of pool
+ * order (context_management is not part of the cached prefix, but a
+ * stable body keeps request diffs readable).
+ */
+export function clearableToolNamesFromPool(
+  tools: ReadonlyArray<{ name: string; clearableResult?: boolean }>,
+): string[] {
+  return tools
+    .filter(t => t.clearableResult === true)
+    .map(t => t.name)
+    .sort()
+}
 
 const TOOLS_CLEARABLE_USES = [
   FILE_EDIT_TOOL_NAME,
@@ -68,11 +91,14 @@ export function getAPIContextManagement(options?: {
   hasThinking?: boolean
   isRedactThinkingActive?: boolean
   clearAllThinking?: boolean
+  /** Pool-derived `clear_tool_inputs` list; falls back to TOOLS_CLEARABLE_RESULTS. */
+  clearableToolNames?: string[]
 }): ContextManagementConfig | undefined {
   const {
     hasThinking = false,
     isRedactThinkingActive = false,
     clearAllThinking = false,
+    clearableToolNames,
   } = options ?? {}
 
   const strategies: ContextEditStrategy[] = []
@@ -155,7 +181,10 @@ export function getAPIContextManagement(options?: {
         type: 'input_tokens',
         value: triggerThreshold - keepTarget,
       },
-      clear_tool_inputs: TOOLS_CLEARABLE_RESULTS,
+      clear_tool_inputs:
+        clearableToolNames && clearableToolNames.length > 0
+          ? clearableToolNames
+          : TOOLS_CLEARABLE_RESULTS,
     }
 
     strategies.push(strategy)

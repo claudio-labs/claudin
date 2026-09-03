@@ -1,4 +1,7 @@
-import type { BetaToolUnion } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
+import type {
+  BetaContextManagementResponse,
+  BetaToolUnion,
+} from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import type { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { createPatch } from 'diff'
 import { mkdir, writeFile } from 'fs/promises'
@@ -63,6 +66,8 @@ type PreviousState = {
   /** Set when a compaction step legitimately drops the cached prefix
    *  (e.g. time-based microcompact). Next read drop is expected, not a break. */
   cacheDeletionsPending: boolean
+  /** Which client mechanism announced the pending drop (for the log line). */
+  cacheDeletionReason: string | null
   buildDiffableContent: () => string
 }
 
@@ -315,6 +320,7 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
         pendingChanges: null,
         prevCacheReadTokens: null,
         cacheDeletionsPending: false,
+        cacheDeletionReason: null,
         buildDiffableContent: lazyDiffableContent,
         perToolHashes: computeToolHashes(),
       })
@@ -420,6 +426,145 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
 }
 
 /**
+ * Summarize the server-side context_management edits applied to a response.
+ * Returns undefined when nothing was cleared, so a `{ applied_edits: [] }`
+ * envelope (the common case under the beta) reads as "no server edit".
+ */
+export function summarizeAppliedContextEdits(
+  contextManagement: BetaContextManagementResponse | null | undefined,
+): { clearedInputTokens: number; clearedToolUses: number } | undefined {
+  const edits = contextManagement?.applied_edits
+  if (!edits || edits.length === 0) return undefined
+  let clearedInputTokens = 0
+  let clearedToolUses = 0
+  for (const edit of edits) {
+    clearedInputTokens += edit.cleared_input_tokens ?? 0
+    if ('cleared_tool_uses' in edit) {
+      clearedToolUses += edit.cleared_tool_uses ?? 0
+    }
+  }
+  if (clearedInputTokens === 0 && clearedToolUses === 0) return undefined
+  return { clearedInputTokens, clearedToolUses }
+}
+
+/**
+ * Human-readable cause for a detected cache break. Pure — exported so the
+ * labeling can be pinned without driving the whole detector.
+ *
+ * Precedence: a server-side context edit we can SEE (the response reports
+ * cleared tokens) wins, then client-side prompt changes, then TTL guesses.
+ * Post PR #19823 BQ analysis (bq-queries/prompt-caching/cache_break_pr19823_analysis.sql):
+ * when all client-side flags are false and the gap is under TTL, ~90% of
+ * breaks are server-side routing/eviction or billed/inference disagreement —
+ * label accordingly instead of implying a CC bug hunt.
+ */
+export function buildCacheBreakReason(
+  changes: PendingChanges | null,
+  serverEdit: ReturnType<typeof summarizeAppliedContextEdits>,
+  timeSinceLastAssistantMsg: number | null,
+): string {
+  const parts: string[] = []
+  if (changes) {
+    if (changes.modelChanged) {
+      parts.push(
+        `model changed (${changes.previousModel} → ${changes.newModel})`,
+      )
+    }
+    if (changes.systemPromptChanged) {
+      const charDelta = changes.systemCharDelta
+      const charInfo =
+        charDelta === 0
+          ? ''
+          : charDelta > 0
+            ? ` (+${charDelta} chars)`
+            : ` (${charDelta} chars)`
+      parts.push(`system prompt changed${charInfo}`)
+    }
+    if (changes.toolSchemasChanged) {
+      // Name the moved tools (capped) — a deferred tool entering the
+      // array is the discovery-driven break, and the name says so.
+      const names = [
+        ...changes.addedTools.map(n => `+${n}`),
+        ...changes.removedTools.map(n => `-${n}`),
+      ]
+      const namesInfo =
+        names.length > 0
+          ? `: ${names.slice(0, 4).join(',')}${names.length > 4 ? ',…' : ''}`
+          : ''
+      const toolDiff =
+        changes.addedToolCount > 0 || changes.removedToolCount > 0
+          ? ` (+${changes.addedToolCount}/-${changes.removedToolCount} tools${namesInfo})`
+          : ' (tool prompt/schema changed, same tool set)'
+      parts.push(`tools changed${toolDiff}`)
+    }
+    if (changes.fastModeChanged) {
+      parts.push('fast mode toggled')
+    }
+    if (changes.globalCacheStrategyChanged) {
+      parts.push(
+        `global cache strategy changed (${changes.prevGlobalCacheStrategy || 'none'} → ${changes.newGlobalCacheStrategy || 'none'})`,
+      )
+    }
+    if (
+      changes.cacheControlChanged &&
+      !changes.globalCacheStrategyChanged &&
+      !changes.systemPromptChanged
+    ) {
+      // Only report as standalone cause if nothing else explains it —
+      // otherwise the scope/TTL flip is a consequence, not the root cause.
+      parts.push('cache_control changed (scope or TTL)')
+    }
+    if (changes.betasChanged) {
+      const added = changes.addedBetas.length
+        ? `+${changes.addedBetas.join(',')}`
+        : ''
+      const removed = changes.removedBetas.length
+        ? `-${changes.removedBetas.join(',')}`
+        : ''
+      const diff = [added, removed].filter(Boolean).join(' ')
+      parts.push(`betas changed${diff ? ` (${diff})` : ''}`)
+    }
+    if (changes.autoModeChanged) {
+      parts.push('auto mode toggled')
+    }
+    if (changes.overageChanged) {
+      parts.push('overage state changed (TTL latched, no flip)')
+    }
+    if (changes.effortChanged) {
+      parts.push(
+        `effort changed (${changes.prevEffortValue || 'default'} → ${changes.newEffortValue || 'default'})`,
+      )
+    }
+    if (changes.extraBodyChanged) {
+      parts.push('extra body params changed')
+    }
+  }
+
+  const lastAssistantMsgOver5minAgo =
+    timeSinceLastAssistantMsg !== null &&
+    timeSinceLastAssistantMsg > CACHE_TTL_5MIN_MS
+  const lastAssistantMsgOver1hAgo =
+    timeSinceLastAssistantMsg !== null &&
+    timeSinceLastAssistantMsg > CACHE_TTL_1HOUR_MS
+
+  // A server-side context_management edit is the one server cause we CAN
+  // see: the response says how much it cleared. Under the retain profile
+  // that is the expected clear_tool_uses trigger, not a regression.
+  if (serverEdit) {
+    const tokensK = Math.round(serverEdit.clearedInputTokens / 1000)
+    const base = `server clear_tool_uses (cleared ${serverEdit.clearedToolUses} tool uses, -${tokensK}k tokens, expected)`
+    return parts.length > 0 ? `${base}, also: ${parts.join(', ')}` : base
+  }
+  if (parts.length > 0) return parts.join(', ')
+  if (lastAssistantMsgOver1hAgo) return 'possible 1h TTL expiry (prompt unchanged)'
+  if (lastAssistantMsgOver5minAgo) return 'possible 5min TTL expiry (prompt unchanged)'
+  if (timeSinceLastAssistantMsg !== null) {
+    return 'likely server-side (prompt unchanged, <5min gap)'
+  }
+  return 'unknown cause'
+}
+
+/**
  * Phase 2 (post-call): Check the API response's cache tokens to determine
  * if a cache break actually occurred. If it did, use the pending changes
  * from phase 1 to explain why.
@@ -431,6 +576,7 @@ export async function checkResponseForCacheBreak(
   messages: Message[],
   agentId?: AgentId,
   requestId?: string | null,
+  contextManagement?: BetaContextManagementResponse | null,
 ): Promise<void> {
   try {
     const key = getTrackingKey(querySource, agentId)
@@ -462,8 +608,10 @@ export async function checkResponseForCacheBreak(
     // so we don't false-positive on the next call.
     if (state.cacheDeletionsPending) {
       state.cacheDeletionsPending = false
+      const why = state.cacheDeletionReason ?? 'client-side clip/eviction'
+      state.cacheDeletionReason = null
       logForDebugging(
-        `[PROMPT CACHE] cache deletion applied, cache read: ${prevCacheRead} → ${cacheReadTokens} (expected drop)`,
+        `[PROMPT CACHE] expected drop: ${why}, cache read: ${prevCacheRead} → ${cacheReadTokens}, creation: ${cacheCreationTokens}`,
       )
       // Don't flag as a break — the remaining state is still valid
       state.pendingChanges = null
@@ -481,74 +629,6 @@ export async function checkResponseForCacheBreak(
       return
     }
 
-    // Build explanation from pending changes (if any)
-    const parts: string[] = []
-    if (changes) {
-      if (changes.modelChanged) {
-        parts.push(
-          `model changed (${changes.previousModel} → ${changes.newModel})`,
-        )
-      }
-      if (changes.systemPromptChanged) {
-        const charDelta = changes.systemCharDelta
-        const charInfo =
-          charDelta === 0
-            ? ''
-            : charDelta > 0
-              ? ` (+${charDelta} chars)`
-              : ` (${charDelta} chars)`
-        parts.push(`system prompt changed${charInfo}`)
-      }
-      if (changes.toolSchemasChanged) {
-        const toolDiff =
-          changes.addedToolCount > 0 || changes.removedToolCount > 0
-            ? ` (+${changes.addedToolCount}/-${changes.removedToolCount} tools)`
-            : ' (tool prompt/schema changed, same tool set)'
-        parts.push(`tools changed${toolDiff}`)
-      }
-      if (changes.fastModeChanged) {
-        parts.push('fast mode toggled')
-      }
-      if (changes.globalCacheStrategyChanged) {
-        parts.push(
-          `global cache strategy changed (${changes.prevGlobalCacheStrategy || 'none'} → ${changes.newGlobalCacheStrategy || 'none'})`,
-        )
-      }
-      if (
-        changes.cacheControlChanged &&
-        !changes.globalCacheStrategyChanged &&
-        !changes.systemPromptChanged
-      ) {
-        // Only report as standalone cause if nothing else explains it —
-        // otherwise the scope/TTL flip is a consequence, not the root cause.
-        parts.push('cache_control changed (scope or TTL)')
-      }
-      if (changes.betasChanged) {
-        const added = changes.addedBetas.length
-          ? `+${changes.addedBetas.join(',')}`
-          : ''
-        const removed = changes.removedBetas.length
-          ? `-${changes.removedBetas.join(',')}`
-          : ''
-        const diff = [added, removed].filter(Boolean).join(' ')
-        parts.push(`betas changed${diff ? ` (${diff})` : ''}`)
-      }
-      if (changes.autoModeChanged) {
-        parts.push('auto mode toggled')
-      }
-      if (changes.overageChanged) {
-        parts.push('overage state changed (TTL latched, no flip)')
-      }
-      if (changes.effortChanged) {
-        parts.push(
-          `effort changed (${changes.prevEffortValue || 'default'} → ${changes.newEffortValue || 'default'})`,
-        )
-      }
-      if (changes.extraBodyChanged) {
-        parts.push('extra body params changed')
-      }
-    }
-
     // Check if time gap suggests TTL expiration
     const lastAssistantMsgOver5minAgo =
       timeSinceLastAssistantMsg !== null &&
@@ -557,22 +637,12 @@ export async function checkResponseForCacheBreak(
       timeSinceLastAssistantMsg !== null &&
       timeSinceLastAssistantMsg > CACHE_TTL_1HOUR_MS
 
-    // Post PR #19823 BQ analysis (bq-queries/prompt-caching/cache_break_pr19823_analysis.sql):
-    // when all client-side flags are false and the gap is under TTL, ~90% of breaks
-    // are server-side routing/eviction or billed/inference disagreement. Label
-    // accordingly instead of implying a CC bug hunt.
-    let reason: string
-    if (parts.length > 0) {
-      reason = parts.join(', ')
-    } else if (lastAssistantMsgOver1hAgo) {
-      reason = 'possible 1h TTL expiry (prompt unchanged)'
-    } else if (lastAssistantMsgOver5minAgo) {
-      reason = 'possible 5min TTL expiry (prompt unchanged)'
-    } else if (timeSinceLastAssistantMsg !== null) {
-      reason = 'likely server-side (prompt unchanged, <5min gap)'
-    } else {
-      reason = 'unknown cause'
-    }
+    const serverEdit = summarizeAppliedContextEdits(contextManagement)
+    const reason = buildCacheBreakReason(
+      changes,
+      serverEdit,
+      timeSinceLastAssistantMsg,
+    )
 
     logEvent('tengu_prompt_cache_break', {
       systemPromptChanged: changes?.systemPromptChanged ?? false,
@@ -625,6 +695,8 @@ export async function checkResponseForCacheBreak(
       timeSinceLastAssistantMsg: timeSinceLastAssistantMsg ?? -1,
       lastAssistantMsgOver5minAgo,
       lastAssistantMsgOver1hAgo,
+      serverClearedInputTokens: serverEdit?.clearedInputTokens ?? 0,
+      serverClearedToolUses: serverEdit?.clearedToolUses ?? 0,
       requestId: (requestId ??
         '') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
     })
@@ -654,16 +726,24 @@ export async function checkResponseForCacheBreak(
 /**
  * Call when a compaction step legitimately reduces the cached prefix.
  * The next API response will have lower cache read tokens — that's
- * expected, not a cache break.
+ * expected, not a cache break. `reason` names the mechanism (display-cap
+ * eviction, stable-stub clip, byte-guard, …) so the debug line can
+ * attribute the rewrite instead of logging an anonymous "expected drop".
  */
 export function notifyCacheDeletion(
   querySource: QuerySource,
   agentId?: AgentId,
+  reason?: string,
 ): void {
   const key = getTrackingKey(querySource, agentId)
   const state = key ? previousStateBySource.get(key) : undefined
   if (state) {
     state.cacheDeletionsPending = true
+    if (reason) {
+      state.cacheDeletionReason = state.cacheDeletionReason
+        ? `${state.cacheDeletionReason} + ${reason}`
+        : reason
+    }
   }
 }
 
