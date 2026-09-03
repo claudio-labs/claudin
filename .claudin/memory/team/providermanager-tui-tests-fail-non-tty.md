@@ -29,3 +29,19 @@ Codex/xAI, `mode==='first-run'` adds Skip, legacy-import may prepend one). Don't
 attribute it to the sandbox. Any PR that adds/reorders a preset must update
 `PRESET_ORDER` in lockstep. Fixed in commit on main 2026-07-08; full file now
 20 pass / 0 fail.
+
+**2026-09-02 — the same names came back, with a THIRD cause.** "first-run Ollama
+preset", "Vertex preset collects gcpProject and gcpRegion" and now "Moonshot AI
+preset shows OAuth vs API-key choice" failed on main with the same ~3s "Timed
+out waiting for ProviderManager test condition". Not non-TTY, not PRESET_ORDER
+drift: a sibling suite leaked `CLAUDIN_SIMPLE=1`, and under bare mode the OAuth
+and preset flows these tests drive never render, so the awaited frame never
+arrives. `ORIGINAL_ENV` snapshotted the leaked value at module load and the
+`afterEach` then re-installed it after every test, so the file could not recover
+on its own. Confirm this cause in seconds with
+`CLAUDIN_SIMPLE=1 bun test src/providers/ui/ProviderManager.test.tsx` — it
+reproduces exactly those three. See [[full-suite-in-ci-portability]].
+
+**So the triage order for a ProviderManager timeout is now:** (1) is bare mode
+leaked in — run the one-liner above; (2) has `PRESET_ORDER` drifted from the
+.tsx list; (3) only then look at the environment.

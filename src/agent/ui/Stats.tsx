@@ -1,28 +1,26 @@
 import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
-import { plot as asciichart } from 'asciichart';
 import chalk from 'chalk';
 import figures from 'figures';
 import React, { Suspense, use, useCallback, useEffect, useMemo, useState } from 'react';
 import stripAnsi from 'strip-ansi';
-import type { CommandResultDisplay } from 'src/commands/commands.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
+import { useIsInsideModal, useModalOrTerminalSize } from 'src/terminal/contexts/modalContext.js';
 import { applyColor } from 'src/terminal/ink/colorize.js';
 import { stringWidth as getStringWidth } from 'src/terminal/ink/stringWidth.js';
 import type { Color } from 'src/terminal/ink/styles.js';
 // eslint-disable-next-line custom-rules/prefer-use-keybindings -- raw j/k/arrow stats navigation
 import { Ansi, Box, type Key, Text, useInput } from 'src/terminal/ink.js';
-import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { formatDuration, formatNumber } from 'src/shared/text/format.js';
 import { generateHeatmap } from 'src/terminal/render/heatmap.js';
+import { renderLineChart } from 'src/terminal/render/lineChart.js';
 import { renderModelName } from 'src/providers/model/model.js';
 import { copyAnsiToClipboard } from 'src/platform/ide/screenshotClipboard.js';
 import { aggregateClaudeCodeStatsForRange, type ClaudeCodeStats, type DailyModelTokens, type StatsDateRange } from 'src/platform/stats.js';
 import type { ModelUsage } from 'src/platform/entrypoints/agentSdkTypes.js';
 import { resolveThemeSetting } from 'src/terminal/theme/systemTheme.js';
 import { getTheme, themeColorToAnsi } from 'src/terminal/theme/theme.js';
-import { Pane } from 'src/terminal/design-system/Pane.js';
 import { Tab, Tabs, useTabHeaderFocus } from 'src/terminal/design-system/Tabs.js';
 import { Spinner } from 'src/terminal/spinner/Spinner.js';
 function formatPeakDay(dateStr: string): string {
@@ -32,11 +30,6 @@ function formatPeakDay(dateStr: string): string {
     day: 'numeric'
   });
 }
-type Props = {
-  onClose: (result?: string, options?: {
-    display?: CommandResultDisplay;
-  }) => void;
-};
 type StatsResult = {
   type: 'success';
   data: ClaudeCodeStats;
@@ -63,10 +56,55 @@ type ModelsTabProps = {
   stats: ClaudeCodeStats;
   dateRange: StatsDateRange;
   isLoading: boolean;
+  /** Focus state of the Settings tab row, handed down by StatsBody. */
+  headerFocused: boolean;
+  /** Give focus back to the Settings tab row (↑ with the list at the top). */
+  onFocusHeader: () => void;
 };
 function getNextDateRange(current: StatsDateRange): StatsDateRange {
   const currentIndex = DATE_RANGE_ORDER.indexOf(current);
   return DATE_RANGE_ORDER[(currentIndex + 1) % DATE_RANGE_ORDER.length]!;
+}
+
+/**
+ * Usable width for the heatmap and the token chart. The hosting Pane pads by 2
+ * columns on each side (1 inside a modal) and the Tabs content box imposes no
+ * width of its own, so passing the raw terminal width wraps both at the border.
+ */
+function useContentWidth(): number {
+  const insideModal = useIsInsideModal();
+  const {
+    columns
+  } = useModalOrTerminalSize(useTerminalSize());
+  return Math.max(20, columns - (insideModal ? 2 : 4));
+}
+export type TokenBreakdown = {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+};
+
+/** Sums the four token counters over every model in a stats snapshot. */
+export function sumTokenBreakdown(modelUsage: ClaudeCodeStats['modelUsage']): TokenBreakdown {
+  const total: TokenBreakdown = {
+    input: 0,
+    output: 0,
+    cacheRead: 0,
+    cacheWrite: 0
+  };
+  for (const usage of Object.values(modelUsage)) {
+    total.input += usage.inputTokens;
+    total.output += usage.outputTokens;
+    total.cacheRead += usage.cacheReadInputTokens;
+    total.cacheWrite += usage.cacheCreationInputTokens;
+  }
+  return total;
+}
+
+/** Plain-text form of the breakdown, for the ctrl+s copy. */
+function formatTokenBreakdown(breakdown: TokenBreakdown): string {
+  return `Input ${formatNumber(breakdown.input)} · Output ${formatNumber(breakdown.output)} · Cache read ${formatNumber(breakdown.cacheRead)} · Cache write ${formatNumber(breakdown.cacheWrite)}`;
 }
 
 /**
@@ -92,11 +130,8 @@ function createAllTimeStatsPromise(): Promise<StatsResult> {
     };
   });
 }
-export function Stats(t0: Props) {
+export function Stats() {
   const $ = _c(4);
-  const {
-    onClose
-  } = t0;
   let t1;
   if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
     t1 = createAllTimeStatsPromise();
@@ -113,18 +148,16 @@ export function Stats(t0: Props) {
     t2 = $[1];
   }
   let t3;
-  if ($[2] !== onClose) {
-    t3 = <Suspense fallback={t2}><StatsContent allTimePromise={allTimePromise} onClose={onClose} /></Suspense>;
-    $[2] = onClose;
-    $[3] = t3;
+  if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
+    t3 = <Suspense fallback={t2}><StatsContent allTimePromise={allTimePromise} /></Suspense>;
+    $[2] = t3;
   } else {
-    t3 = $[3];
+    t3 = $[2];
   }
   return t3;
 }
 type StatsContentProps = {
   allTimePromise: Promise<StatsResult>;
-  onClose: Props['onClose'];
 };
 
 /**
@@ -134,8 +167,7 @@ type StatsContentProps = {
 function StatsContent(t0: StatsContentProps) {
   const $ = _c(34);
   const {
-    allTimePromise,
-    onClose
+    allTimePromise
   } = t0;
   const allTimeResult = use(allTimePromise);
   const [dateRange, setDateRange] = useState<StatsDateRange>("all");
@@ -191,40 +223,11 @@ function StatsContent(t0: StatsContentProps) {
   useEffect(t2, t3);
   const displayStats = dateRange === "all" ? allTimeResult.type === "success" ? allTimeResult.data : null : statsCache[dateRange] ?? (allTimeResult.type === "success" ? allTimeResult.data : null);
   const allTimeStats = allTimeResult.type === "success" ? allTimeResult.data : null;
-  let t4;
-  if ($[5] !== onClose) {
-    t4 = () => {
-      onClose("Stats dialog dismissed", {
-        display: "system"
-      });
-    };
-    $[5] = onClose;
-    $[6] = t4;
-  } else {
-    t4 = $[6];
-  }
-  const handleClose = t4;
-  let t5;
-  if ($[7] === Symbol.for("react.memo_cache_sentinel")) {
-    t5 = {
-      context: "Confirmation"
-    };
-    $[7] = t5;
-  } else {
-    t5 = $[7];
-  }
-  useKeybinding("confirm:no", handleClose, t5);
+  // Esc and ctrl+c/ctrl+d belong to the Settings dialog that hosts this tab
+  // (Settings.tsx:39,69). Slots $[5]-$[7] stay orphaned rather than renumbered.
   let t6;
-  if ($[8] !== activeTab || $[9] !== dateRange || $[10] !== displayStats || $[11] !== onClose) {
+  if ($[8] !== activeTab || $[9] !== dateRange || $[10] !== displayStats) {
     t6 = (input: string, key: Key) => {
-      if (key.ctrl && (input === "c" || input === "d")) {
-        onClose("Stats dialog dismissed", {
-          display: "system"
-        });
-      }
-      if (key.tab) {
-        setActiveTab(_temp);
-      }
       if (input === "r" && !key.ctrl && !key.meta) {
         setDateRange(getNextDateRange(dateRange));
       }
@@ -235,7 +238,6 @@ function StatsContent(t0: StatsContentProps) {
     $[8] = activeTab;
     $[9] = dateRange;
     $[10] = displayStats;
-    $[11] = onClose;
     $[12] = t6;
   } else {
     t6 = $[12];
@@ -272,58 +274,70 @@ function StatsContent(t0: StatsContentProps) {
     }
     return t7;
   }
-  let t7;
-  if ($[17] !== allTimeStats || $[18] !== dateRange || $[19] !== displayStats || $[20] !== isLoadingFiltered) {
-    t7 = <Tab title="Overview"><OverviewTab stats={displayStats} allTimeStats={allTimeStats} dateRange={dateRange} isLoading={isLoadingFiltered} /></Tab>;
-    $[17] = allTimeStats;
-    $[18] = dateRange;
-    $[19] = displayStats;
-    $[20] = isLoadingFiltered;
-    $[21] = t7;
-  } else {
-    t7 = $[21];
-  }
-  let t8;
-  if ($[22] !== dateRange || $[23] !== displayStats || $[24] !== isLoadingFiltered) {
-    t8 = <Tab title="Models"><ModelsTab stats={displayStats} dateRange={dateRange} isLoading={isLoadingFiltered} /></Tab>;
-    $[22] = dateRange;
-    $[23] = displayStats;
-    $[24] = isLoadingFiltered;
-    $[25] = t8;
-  } else {
-    t8 = $[25];
-  }
-  let t9;
-  if ($[26] !== t7 || $[27] !== t8) {
-    t9 = <Box flexDirection="row" gap={1} marginBottom={1}><Tabs title="" color="claude" defaultTab="Overview">{t7}{t8}</Tabs></Box>;
-    $[26] = t7;
-    $[27] = t8;
-    $[28] = t9;
-  } else {
-    t9 = $[28];
-  }
-  const t10 = copyStatus ? ` · ${copyStatus}` : "";
-  let t11;
-  if ($[29] !== t10) {
-    t11 = <Box paddingLeft={2}><Text dimColor={true}>Esc to cancel · r to cycle dates · ctrl+s to copy{t10}</Text></Box>;
-    $[29] = t10;
-    $[30] = t11;
-  } else {
-    t11 = $[30];
-  }
-  let t12;
-  if ($[31] !== t11 || $[32] !== t9) {
-    t12 = <Pane color="claude">{t9}{t11}</Pane>;
-    $[31] = t11;
-    $[32] = t9;
-    $[33] = t12;
-  } else {
-    t12 = $[33];
-  }
-  return t12;
+  // Slots $[17]-$[33] stay orphaned: the body moved to <StatsBody>, which is
+  // plain React so it can own the tab-header focus hook (see below).
+  return <StatsBody stats={displayStats} allTimeStats={allTimeStats} dateRange={dateRange} isLoading={isLoadingFiltered} activeTab={activeTab} onTabChange={setActiveTab} copyStatus={copyStatus} />;
 }
-function _temp(prev_0: StatsTab): StatsTab {
-  return prev_0 === "Overview" ? "Models" : "Overview";
+type StatsBodyProps = {
+  stats: ClaudeCodeStats;
+  allTimeStats: ClaudeCodeStats;
+  dateRange: StatsDateRange;
+  isLoading: boolean;
+  activeTab: StatsTab;
+  onTabChange: (tab: StatsTab) => void;
+  copyStatus: string | null;
+};
+
+/**
+ * The Stats body proper — split from StatsContent so `useTabHeaderFocus()` only
+ * mounts when there is real content. Registering its ↓-blurs-header opt-in above
+ * the error/empty/loading early returns would let ↓ blur the Settings tab row
+ * with nothing able to give the focus back (Tabs.tsx:302-305).
+ *
+ * The hook resolves the *Settings* Tabs, not the one rendered below: a context
+ * provider does not cover the component that renders it.
+ */
+function StatsBody({
+  stats,
+  allTimeStats,
+  dateRange,
+  isLoading,
+  activeTab,
+  onTabChange,
+  copyStatus
+}: StatsBodyProps): React.ReactNode {
+  const {
+    headerFocused,
+    focusHeader
+  } = useTabHeaderFocus();
+  useInput((_input, key) => {
+    if (key.upArrow) {
+      focusHeader();
+    }
+  }, {
+    isActive: !headerFocused && activeTab === 'Overview'
+  });
+  return <Box flexDirection="column">
+      <Box flexDirection="row" gap={1} marginBottom={1}>
+        {/* While the Settings tab row has focus it owns tab/←/→; once ↓ blurs
+            it, the outer Tabs stops listening (Tabs.tsx:135) and these keys
+            switch Overview/Models instead. */}
+        <Tabs title="" color="claude" selectedTab={activeTab} onTabChange={id => onTabChange(id === 'Models' ? 'Models' : 'Overview')} disableNavigation={headerFocused}>
+          <Tab title="Overview">
+            <OverviewTab stats={stats} allTimeStats={allTimeStats} dateRange={dateRange} isLoading={isLoading} />
+          </Tab>
+          <Tab title="Models">
+            <ModelsTab stats={stats} dateRange={dateRange} isLoading={isLoading} headerFocused={headerFocused} onFocusHeader={focusHeader} />
+          </Tab>
+        </Tabs>
+      </Box>
+      <Box paddingLeft={2}>
+        <Text dimColor>
+          ↑ tabs · r to cycle dates · ctrl+s to copy
+          {copyStatus ? ` · ${copyStatus}` : ''}
+        </Text>
+      </Box>
+    </Box>;
 }
 function DateRangeSelector(t0: DateRangeSelectorProps) {
   const $ = _c(9);
@@ -366,7 +380,7 @@ function DateRangeSelector(t0: DateRangeSelectorProps) {
   }
   return t4;
 }
-function OverviewTab({
+export function OverviewTab({
   stats,
   allTimeStats,
   dateRange,
@@ -377,14 +391,13 @@ function OverviewTab({
   dateRange: StatsDateRange;
   isLoading: boolean;
 }): React.ReactNode {
-  const {
-    columns: terminalWidth
-  } = useTerminalSize();
+  const contentWidth = useContentWidth();
 
   // Calculate favorite model and total tokens
   const modelEntries = Object.entries(stats.modelUsage).sort(([, a], [, b]) => b.inputTokens + b.outputTokens - (a.inputTokens + a.outputTokens));
   const favoriteModel = modelEntries[0];
   const totalTokens = modelEntries.reduce((sum, [, usage]) => sum + usage.inputTokens + usage.outputTokens, 0);
+  const breakdown = sumTokenBreakdown(stats.modelUsage);
 
   // Memoize the factoid so it doesn't change when switching tabs
   const factoid = useMemo(() => generateFunFactoid(stats, totalTokens), [stats, totalTokens]);
@@ -442,7 +455,7 @@ function OverviewTab({
       {allTimeStats.dailyActivity.length > 0 && <Box flexDirection="column" marginBottom={1}>
           <Ansi>
             {generateHeatmap(allTimeStats.dailyActivity, {
-          terminalWidth
+          terminalWidth: contentWidth
         })}
           </Ansi>
         </Box>}
@@ -522,6 +535,19 @@ function OverviewTab({
             {allTimeStats.streaks.currentStreak === 1 ? 'day' : 'days'}
           </Text>
         </Box>
+      </Box>
+
+      {/* Token breakdown across every model in range */}
+      <Box marginTop={1}>
+        <Text wrap="truncate">
+          Input <Text color="claude">{formatNumber(breakdown.input)}</Text>
+          <Text dimColor> · </Text>Output{' '}
+          <Text color="claude">{formatNumber(breakdown.output)}</Text>
+          <Text dimColor> · </Text>Cache read{' '}
+          <Text color="claude">{formatNumber(breakdown.cacheRead)}</Text>
+          <Text dimColor> · </Text>Cache write{' '}
+          <Text color="claude">{formatNumber(breakdown.cacheWrite)}</Text>
+        </Text>
       </Box>
 
       {/* Shot stats (internal-only) */}
@@ -719,16 +745,12 @@ function ModelsTab(t0: ModelsTabProps) {
   const {
     stats,
     dateRange,
-    isLoading
-  } = t0;
-  const {
+    isLoading,
     headerFocused,
-    focusHeader
-  } = useTabHeaderFocus();
+    onFocusHeader
+  } = t0;
   const [scrollOffset, setScrollOffset] = useState(0);
-  const {
-    columns: terminalWidth
-  } = useTerminalSize();
+  const contentWidth = useContentWidth();
   const modelEntries = Object.entries(stats.modelUsage).sort(_temp7);
   const t1 = !headerFocused;
   let t2;
@@ -749,7 +771,7 @@ function ModelsTab(t0: ModelsTabProps) {
       if (scrollOffset > 0) {
         setScrollOffset(_temp8);
       } else {
-        focusHeader();
+        onFocusHeader();
       }
     }
   }, t2);
@@ -764,7 +786,7 @@ function ModelsTab(t0: ModelsTabProps) {
     return t3;
   }
   const totalTokens = modelEntries.reduce(_temp9, 0);
-  const chartOutput = generateTokenChart(stats.dailyModelTokens, modelEntries.map(_temp0), terminalWidth);
+  const chartOutput = generateTokenChart(stats.dailyModelTokens, modelEntries.map(_temp0), contentWidth);
   const visibleModels = modelEntries.slice(scrollOffset, scrollOffset + 4);
   const midpoint = Math.ceil(visibleModels.length / 2);
   const leftModels = visibleModels.slice(0, midpoint);
@@ -799,7 +821,7 @@ function ModelsTab(t0: ModelsTabProps) {
   }
   let t10;
   if ($[9] !== canScrollDown || $[10] !== canScrollUp || $[11] !== modelEntries || $[12] !== scrollOffset || $[13] !== showScrollHint) {
-    t10 = showScrollHint && <Box marginTop={1}><Text color="subtle">{canScrollUp ? figures.arrowUp : " "}{" "}{canScrollDown ? figures.arrowDown : " "} {scrollOffset + 1}-{Math.min(scrollOffset + 4, modelEntries.length)} of{" "}{modelEntries.length} models (↑↓ to scroll)</Text></Box>;
+    t10 = showScrollHint && <Box marginTop={1}><Text color="subtle">{canScrollUp ? figures.arrowUp : " "}{" "}{canScrollDown ? figures.arrowDown : " "} {scrollOffset + 1}-{Math.min(scrollOffset + 4, modelEntries.length)} of{" "}{modelEntries.length} models (↑/↓ to scroll)</Text></Box>;
     $[9] = canScrollDown;
     $[10] = canScrollUp;
     $[11] = modelEntries;
@@ -993,9 +1015,10 @@ function generateTokenChart(dailyTokens: DailyModelTokens[], models: string[], t
   if (series.length === 0) {
     return null;
   }
-  const chart = asciichart(series, {
+  const chart = renderLineChart(series, {
     height: 8,
     colors: colors.slice(0, series.length),
+    labelWidth: yAxisWidth - 1,
     format: (x: number) => {
       let label: string;
       if (x >= 1_000_000) {
@@ -1005,7 +1028,7 @@ function generateTokenChart(dailyTokens: DailyModelTokens[], models: string[], t
       } else {
         label = x.toFixed(0);
       }
-      return label.padStart(6);
+      return label;
     }
   });
 
@@ -1150,6 +1173,9 @@ function renderOverviewToAnsi(stats: ClaudeCodeStats): string[] {
   const activeDaysVal = `${stats.activeDays}/${stats.totalDays}`;
   const peakHourVal = stats.peakActivityHour !== null ? `${stats.peakActivityHour}:00-${stats.peakActivityHour + 1}:00` : 'N/A';
   lines.push(row('Active days', activeDaysVal, 'Peak hour', peakHourVal));
+
+  // Token breakdown — mirrors the line the Overview tab renders.
+  lines.push(formatTokenBreakdown(sumTokenBreakdown(stats.modelUsage)));
 
   // Shot stats (internal-only)
   if (feature('SHOT_STATS') && stats.shotDistribution) {

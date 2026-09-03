@@ -1,6 +1,6 @@
 ---
 name: Running the full bun test suite in CI exposes env/order-dependent test bugs
-description: Since 2026-07-08 CI runs `bun test` (not just smoke); this unmasked ~42 pre-existing non-portable tests. Root causes + fixes catalogued here.
+description: Since 2026-07-08 CI runs `bun test` (not just smoke); this unmasked ~42 pre-existing non-portable tests, and a 2026-09-02 round showed a plain local full-suite run cannot reproduce an ordering leak at all. Root causes + repro recipes here.
 type: project
 ---
 
@@ -73,3 +73,46 @@ helper instead of re-deriving.
 getProjectTotals "folds last* from a different session" (bootstrap/state
 getSessionId fragmentation — user.test.ts partial-stubs it) and ProviderManager
 "discovers OpenAI-compatible models" (see providermanager-tui-tests memory).
+
+## 2026-09-02 — adding ONE test file turned main red (16 fails, 4 files)
+
+`#152` was a TUI-only change, but it added a test file, which reshuffled bun's
+file order and put two long-latent leakers ahead of their victims. No production
+behavior changed. Both leaks are the same shape: a suite mutates PROCESS-GLOBAL
+state at module load and never restores it, so the failures surface with the
+names of innocent suites.
+
+- **cwd** — `LSPTool.readonly.regression.test.ts` pointed the global cwd at a
+  mkdtemp dir and deleted that dir in `afterAll` without restoring, so every
+  later file resolving a repo-relative path got a dead directory. It reported as
+  `Fixture missing: /tmp/lsp-regression-XXXX/src/providers/__fixtures__/vcr/…`
+  (FileReadTool) and `Path "/tmp/lsp-regression-XXXX" does not exist`
+  (worktree.test.ts `setCwd`) — neither mentions LSP.
+- **bare mode** — `FileReadTool.test.ts` and `autoOutlineOnElision.test.ts` set
+  `CLAUDIN_SIMPLE=1` at module load and never restore it, leaving bare mode on
+  for the rest of the run. `isBareMode()` makes `saveKimiCredentials` return
+  `{success:false}` BEFORE it reaches the storage the kimi suite mocks (11
+  fails, all reading `undefined`), and hides ProviderManager's OAuth/preset
+  flows so they time out (3 fails). Fixed at the source, plus the two victims
+  now clear it in setup the way `oauthProviderAuth`/`geminiCredentials` do.
+
+**A plain local full-suite run is NOT a gate for this class.** `bun test` on the
+dev machine reproduced ZERO of the 16, before or after the fix — the local file
+order simply differs from CI's. What worked, cheapest first:
+
+1. `CLAUDIN_SIMPLE=1 bun test <victim file>` — for the bare-mode class this
+   reproduced kimi's 11 and ProviderManager's 3 by name in seconds, and proved
+   the guard afterwards (11 fail → 0, 3 fail → 0). Set the leaked global by hand
+   instead of trying to recreate the ordering that leaks it.
+2. `CI=1` is mandatory to see the VCR arm at all: `src/providers/vcr.ts` only
+   throws `Fixture missing` when `env.isCI || process.env.CI` and `VCR_RECORD`
+   is unset — locally it silently records/falls through, so the failure is
+   invisible.
+3. Replay CI's order: scrape the `src/**/*.test.ts` group headers out of
+   `gh run view <id> --log-failed` in order, then `CI=1 bun test $(that slice)`.
+   A 186-file window around the leaker reproduced the worktree failure and went
+   1 fail → 0 with the fix.
+
+**Before blaming your PR:** compare failure NAMES against main's own latest run
+(`gh run list --branch main`). Here main and the PR both had the identical 16,
+which said "pre-existing" in one command.
