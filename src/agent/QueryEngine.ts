@@ -18,7 +18,6 @@ import { accumulateUsage, updateUsage } from 'src/providers/shims/claude.js'
 import {
   applyStableStubs,
   pruneOldToolResults,
-  pruneToolResultsByBytes,
 } from 'src/agent/compact/stableStubState.js'
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
 import type { NonNullableUsage } from 'src/providers/transport/logging.js'
@@ -864,21 +863,19 @@ export class QueryEngine {
           {
             // keepTurns comes from the cache profile: 1 (aggressive, default)
             // clips per tool iteration; Infinity (retain — Anthropic-style
-            // pricing) disables age clipping and lets the RSS byte-guard
-            // bound memory instead. See services/cache/cacheProfile.ts.
+            // pricing) disables age clipping and lets the relief policy's
+            // rss lane bound memory instead (src/agent/cache/cacheProfile.ts).
+            // That lane decides pre-request (microCompact.ts) and only adds
+            // ids to the clipped set; applyStableStubs here is what frees
+            // the strings per iteration instead of waiting for the next
+            // submitMessage.
             const profile = getCacheProfile()
             let pruned = pruneOldToolResults(
               this.mutableMessages,
               profile.keepTurns,
               profile.stubKeepHeadChars,
             )
-            pruned = pruneToolResultsByBytes(
-              pruned,
-              profile.retainedHighWaterTokens,
-              profile.retainedLowWaterTokens,
-              undefined,
-              profile.stubKeepHeadChars,
-            )
+            pruned = applyStableStubs(pruned)
             if (pruned !== this.mutableMessages) {
               this.mutableMessages = pruned
             }

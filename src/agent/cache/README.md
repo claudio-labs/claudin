@@ -5,8 +5,8 @@ keep, clip, freeze, and when, per provider). Mechanisms it orchestrates live
 where their subsystems live — pointers below.
 
 Design doc + measured numbers: `docs/tech/cache/clip-frontier-breakpoint.md`.
-Context-relief mechanisms (clips, evictions, server clears), their cost model
-and the unified policy we don't have yet: `docs/tech/cache/context-relief-policy.md`.
+Context relief (the one client-side policy, its cost model, and the four
+mechanisms it replaced): `docs/tech/cache/context-relief-policy.md`.
 
 ## Layout
 
@@ -48,12 +48,14 @@ audit; integrated regression:
   its exact bytes and every later rewriter replays them, so views holding
   different content for the same id (budget preview vs full original)
   cannot flip the wire bytes.
-- **History deletions are amortized and announced**: the REPL's display
-  array seeds the next request, so `evictOldStubbedMessages` /
-  `evictToMaxSize` fire in batches (`EVICT_MIN_BATCH` = 24 evictable
-  messages; `EVICT_TRIGGER_AT` = 300 → cut back to 200), call
-  `notifyCacheDeletion`, and a free full sweep runs pre-query when the
-  idle gap says the server cache already expired.
+- **Nothing is ever deleted from the API view**: the REPL's display array
+  seeds the next request, so every context-relief action is a stable-stub
+  clip decided in ONE place (`src/agent/compact/reliefPolicy.ts` via
+  `microcompactMessages`, pre-request) on REAL usage, announced through
+  `notifyCacheDeletion` + `recordPrefixRewrite`. The display cap is a render
+  window in `REPL.tsx` (`MAX_DISPLAY_MESSAGES`), not a history bound. The
+  message evictions and the post-turn byte-guard that used to rewrite the
+  prefix from four uncoordinated places are gone.
 - **The tool pool never churns bytes gratuitously**: MCP updates replace
   in place and keep schemas across transient failures
   (`resolveUpdatedTools`), LSP `defer_loading` latches per session, and
@@ -74,12 +76,17 @@ audit; integrated regression:
 
 ## Pointers to the mechanisms
 
+- `src/agent/compact/reliefPolicy.ts` — the pure decision: `decideRelief`
+  (window lane: usage > `min(fraction × window, autocompact − margin)`,
+  target a band below; rss lane: retained full results > the profile's high
+  water) and `selectReliefIds` (oldest-first until the request is covered).
+  `CLAUDIN_DISABLE_RELIEF_POLICY=1` turns off the window lane only.
 - `src/agent/compact/stableStubState.ts` — stable stubs (`clippedIds`),
   first-write-wins stub byte registry (`perKeyStubText`), age prune
-  (`pruneOldToolResults`), RSS byte-guard (`pruneToolResultsByBytes`),
-  amortized display eviction (`evictOldStubbedMessages` /
-  `evictToMaxSize` + `EVICT_MIN_BATCH` / `EVICT_TRIGGER_AT`), display
-  stub, **`getClipFrontierIndex`**.
+  (`pruneOldToolResults`, aggressive only), the relief candidate walk
+  (`collectClearableCandidates`: cutoff window, pins, errors, images,
+  `MIN_STUB_TOKENS`, already-clipped ids), display stub,
+  **`getClipFrontierIndex`**.
 - `src/providers/shims/claude/paramBuilders.ts` — `addCacheBreakpoints`: defer-2048
   walk + frontier cap (`min(defer, frontier)`), head-pin fallback,
   skipCacheWrite fork handling, optional trailing marker on the last
@@ -94,12 +101,15 @@ audit; integrated regression:
   retain profile's server-side clear is inert there; see the relief doc).
   `clear_tool_inputs` is derived from the pool via `clearableResult: true`
   on each Tool (`clearableToolNamesFromPool`), not a hand-kept constant.
-- `src/agent/compact/microCompact.ts` — explicit clip set; size trigger is
-  profile-gated (0.5 aggressive / 0.75 retain); the time-based trigger
-  fires when the server cache already expired and PERSISTS through the
-  same clipped set (`addClippedIds`) — the post-idle "cleaned" prefix
-  keeps its hits on later turns, and pre-existing size-trigger ids
-  survive (no `resetClippedIds` on the time path).
+- `src/agent/compact/microCompact.ts` — the shell around the policy:
+  measures `tokenCountWithEstimation` over the stubbed view (so a request
+  between a clip and its response does not clip again), applies the
+  decision to the clipped set, gated on a `querySource` so `/context`,
+  `/compact` and `analyzeContext` never mutate it. The time-based trigger
+  runs first, fires when the server cache already expired, and PERSISTS
+  through the same clipped set (`addClippedIds`) — the post-idle "cleaned"
+  prefix keeps its hits on later turns, and pre-existing relief ids survive
+  (no `resetClippedIds` on the time path).
 - `src/mcp/useManageMCPConnections.ts` — `resolveUpdatedTools`:
   positional tool-pool replacement; schemas survive `failed` transitions
   ('disabled' still removes).
@@ -131,12 +141,14 @@ audit; integrated regression:
   deferred tool entering the array IS a prefix change); server edits from
   `applied_edits` label the break `server clear_tool_uses (…, expected)`;
   client mechanisms name themselves via `notifyCacheDeletion(source, agent,
-  reason)` → `[PROMPT CACHE] expected drop: display-cap eviction (112 msgs)`.
+  reason)` → `[PROMPT CACHE] expected drop: relief clip (12 tool results, ~45k
+  tokens, window lane)`.
   `buildCacheBreakReason` is the pure labeler (tested).
 - `src/providers/cache/cacheStatsTracker.ts` — per-turn/session cache
   metrics for the `[Cache: …]` line and `/cache-stats`, now including server
   clears (`recordServerClear`) and the client prefix rewrites announced this
-  turn (`recordPrefixRewrite`, shown as `next turn rewrites prefix: …`).
+  turn (`recordPrefixRewrite`, shown as `prefix rewritten: …` — the relief
+  clip is decided pre-request, so the rewrite lands on the turn it names).
 
 ## Bench
 

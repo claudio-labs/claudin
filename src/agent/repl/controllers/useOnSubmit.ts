@@ -42,8 +42,6 @@ import { handlePromptSubmit, type PromptInputHelpers } from 'src/agent/handlePro
 import type { Message as MessageType } from 'src/shared/types/message.js';
 import { getQuerySourceForREPL } from 'src/agent/promptCategory.js';
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
-import { evaluateTimeBasedTrigger } from 'src/agent/compact/microCompact.js';
-import { evictOldStubbedMessages, evictToMaxSize, MAX_DISPLAY_MESSAGES, type AnyMessage } from 'src/agent/compact/stableStubState.js';
 import { incrementPromptCount } from 'src/vcs/git/commitAttribution.js';
 import { recordAttributionSnapshot } from 'src/sessions/sessionStorage.js';
 import { type SetAppState } from 'src/agent/messageQueueManager.js';
@@ -560,43 +558,6 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
 
     // Ensure SessionStart hook context is available before the first API call.
     await awaitPendingHooks();
-    // Idle-gap opportunistic sweep: when the gap since the last assistant
-    // message exceeds the time-based microcompact threshold, the server-side
-    // cache has expired anyway — so the amortization gates above (post-turn
-    // EVICT_MIN_BATCH / EVICT_TRIGGER_AT) would be hoarding evictable
-    // messages for a break that is already free. Evict everything evictable
-    // now, before this submission seeds the request. The swept array is
-    // passed straight to handlePromptSubmit (messagesRef updates via
-    // setMessages are not synchronous).
-    //
-    // Guarded on no query in flight: on the queued-submit path (isLoading,
-    // e.g. a turn parked ≥60min at a permission prompt) the in-flight turn
-    // keeps using its own unswept array — sweeping the display here would
-    // diverge it from the request bytes and turn the next turn's "free"
-    // break into a full one. Queued submits skip the sweep; the next
-    // non-queued submit picks it up if the gap still qualifies.
-    const sweepSnapshot = messagesRef.current;
-    let messagesForSubmit = sweepSnapshot;
-    if (
-      !queryGuard.isActive &&
-      evaluateTimeBasedTrigger(sweepSnapshot, getQuerySourceForREPL())
-    ) {
-      const swept = evictToMaxSize(
-        evictOldStubbedMessages(sweepSnapshot as AnyMessage[], 2, 1),
-        MAX_DISPLAY_MESSAGES,
-        MAX_DISPLAY_MESSAGES,
-      ) as MessageType[];
-      if (swept !== sweepSnapshot) {
-        messagesForSubmit = swept;
-        // Preserve anything appended after the snapshot (same-tick races):
-        // appends are strictly additive, so re-attach the tail.
-        setMessages(prev =>
-          prev === sweepSnapshot
-            ? swept
-            : [...swept, ...prev.slice(sweepSnapshot.length)],
-        );
-      }
-    }
     await handlePromptSubmit({
       input,
       helpers,
@@ -608,7 +569,7 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
       setPastedContents,
       setToolJSX,
       getToolUseContext,
-      messages: messagesForSubmit,
+      messages: messagesRef.current,
       mainLoopModel,
       pastedContents,
       ideSelection,

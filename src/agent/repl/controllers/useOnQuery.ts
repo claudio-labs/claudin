@@ -53,7 +53,7 @@ import { getScratchpadDir, isScratchpadEnabled } from 'src/permissions/filesyste
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { logEvent } from 'src/platform/analytics/index.js';
 import { handleMessageFromStream, type StreamingToolUse, type StreamingThinking, isCompactBoundaryMessage, getMessagesAfterCompactBoundary, getContentText, createTurnDurationMessage, createSystemMessage } from 'src/agent/messages/messages.js';
-import { getCurrentTurnCacheMetrics, getCurrentTurnPrefixRewrites, getCurrentTurnServerClears, recordPrefixRewrite, resetCurrentTurn } from 'src/providers/cache/cacheStatsTracker.js';
+import { getCurrentTurnCacheMetrics, getCurrentTurnPrefixRewrites, getCurrentTurnServerClears, resetCurrentTurn } from 'src/providers/cache/cacheStatsTracker.js';
 import { formatCacheMetricsCompact, formatCacheMetricsFull } from 'src/providers/cache/cacheMetrics.js';
 import { generateSessionTitle } from 'src/sessions/sessionTitle.js';
 import { BASH_INPUT_TAG, COMMAND_MESSAGE_TAG, COMMAND_NAME_TAG, LOCAL_COMMAND_STDOUT_TAG } from 'src/shared/constants/xml.js';
@@ -67,8 +67,7 @@ import { randomUUID } from 'crypto';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.js';
 import { removeTranscriptMessage, isEphemeralToolProgress, isLoggableMessage } from 'src/sessions/sessionStorage.js';
-import { applyStableStubs, pruneOldToolResults, pruneToolResultsByBytes, evictOldStubbedMessages, evictToMaxSize, pruneContentReplacementState, stubToolResultForDisplay, EVICT_MIN_BATCH, EVICT_TRIGGER_AT, MAX_DISPLAY_MESSAGES, type AnyMessage } from 'src/agent/compact/stableStubState.js';
-import { notifyCacheDeletion } from 'src/providers/cache/promptCacheBreakDetection.js';
+import { applyStableStubs, pruneOldToolResults, pruneContentReplacementState, stubToolResultForDisplay, type AnyMessage } from 'src/agent/compact/stableStubState.js';
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { closeOpenDiffs, getConnectedIdeClient } from 'src/platform/ide/ide.js';
@@ -454,60 +453,23 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
       onQueryEvent(event);
     }
     // Free RSS from large tool_result payloads after each turn.
-    // pruneOldToolResults: stubs results outside the rolling window (every turn).
-    // applyStableStubs: stubs microcompact-marked blocks (fires at ≥50% context)
-    //   while preserving prompt-cache prefix stability.
-    // evictOldStubbedMessages: removes fully-stubbed message pairs.
-    // evictToMaxSize: caps total display messages to prevent unbounded growth.
+    // pruneOldToolResults: stubs results outside the rolling window (every
+    //   turn; a no-op under retain, where keepTurns is Infinity).
+    // applyStableStubs: writes the clipped set back into the display array
+    //   with the same bytes the wire already sent, so the strings the relief
+    //   policy (microCompact.ts) clipped pre-request become GC-eligible.
     // Applied before onTurnComplete so callers receive the pruned array.
     //
-    // The two eviction passes REMOVE messages from the array that seeds the
-    // next turn's API view — a prefix mutation behind the cache marker that
-    // invalidates the cached prefix. Both are therefore amortized
-    // (EVICT_MIN_BATCH batch floor / EVICT_TRIGGER_AT hysteresis band) so
-    // the break is paid once per accumulated batch, not once per turn, and
-    // the cache-break detector is notified when it happens. The idle-gap
-    // sweep in onSubmit handles the free case (cache already expired).
+    // Nothing here removes a message: this array seeds the next turn's API
+    // view, and dropping from it was a prefix rewrite that also lost content
+    // the model had read (docs/tech/cache/context-relief-policy.md). The
+    // display cap is applied at render time in REPL.tsx instead.
     const before = messagesRef.current as AnyMessage[]
-    // Profile-aware: aggressive clips by age (keepTurns=1); retain keeps
-    // full results (the display array seeds the next turn's API view) and
-    // bounds RSS with the byte-guard instead.
     const cacheProfile = getCacheProfile()
     const aged = pruneOldToolResults(before, cacheProfile.keepTurns, cacheProfile.stubKeepHeadChars)
-    const byteGuarded = pruneToolResultsByBytes(
-      aged,
-      cacheProfile.retainedHighWaterTokens,
-      cacheProfile.retainedLowWaterTokens,
-      undefined,
-      cacheProfile.stubKeepHeadChars,
-    )
-    const stubbed = applyStableStubs(byteGuarded)
-    const evicted = evictOldStubbedMessages(stubbed, 2, EVICT_MIN_BATCH)
-    const after = evictToMaxSize(evicted, MAX_DISPLAY_MESSAGES, EVICT_TRIGGER_AT)
+    const after = applyStableStubs(aged)
     if (after !== before) {
       setMessages(() => after as MessageType[])
-      // Each pass that changed the array mutates the NEXT request's prefix —
-      // an intentional, amortized break. Name the mechanism for the detector
-      // (so the drop isn't reported as a regression) and for the `[Cache: …]`
-      // line (so the user sees which knob fired). Age-prune is left out: it
-      // only rewrites under aggressive, where it is the every-turn steady
-      // state rather than an event. Under retain the byte-guard is the one
-      // that bites on 1M-window models — 250k→125k ESTIMATED tool-result
-      // tokens in a single step.
-      const reasons: string[] = []
-      if (byteGuarded !== aged) reasons.push('byte-guard stub')
-      if (evicted !== stubbed) {
-        reasons.push(`stub eviction (${stubbed.length - evicted.length} msgs)`)
-      }
-      if (after !== evicted) {
-        reasons.push(`display-cap eviction (${evicted.length - after.length} msgs)`)
-      }
-      if (reasons.length > 0) {
-        for (const r of reasons) recordPrefixRewrite(r)
-        if (feature('PROMPT_CACHE_BREAK_DETECTION')) {
-          notifyCacheDeletion(getQuerySourceForREPL(), undefined, reasons.join(' + '))
-        }
-      }
     }
     // Prune orphaned contentReplacementState entries for IDs no longer
     // in the display array. Run unconditionally — orphans can accumulate
@@ -515,7 +477,7 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     // resume). pruneContentReplacementState is idempotent and O(N) over
     // the display array plus the state Map, so the cost is microseconds
     // per turn. Without this, seenIds and replacements grow monotonically
-    // — evicted messages' preview strings (~2KB each) are never looked up
+    // — dropped messages' preview strings (~2KB each) are never looked up
     // again but never freed.
     // provisionContentReplacementState returns undefined when the
     // content-replacement feature flag is off — nothing to prune then.

@@ -54,12 +54,7 @@ const { microcompactMessages } = await import('src/agent/compact/microCompact.js
 const {
   _resetAllClippedIdsForTesting,
   applyStableStubs,
-  evictOldStubbedMessages,
-  evictToMaxSize,
   getClipFrontierIndex,
-  EVICT_MIN_BATCH,
-  EVICT_TRIGGER_AT,
-  MAX_DISPLAY_MESSAGES,
 } = await import('src/agent/compact/stableStubState.js')
 const { addCacheBreakpoints, _resetDeferCacheMarkerForTesting } = await import(
   'src/providers/shims/claude/paramBuilders.js'
@@ -166,13 +161,10 @@ describe('request determinism — message prefix', () => {
 
     const turnN = await renderTurn(history, state)
 
-    // Next turn: REPL post-turn pipeline runs (amortized eviction — no-op
-    // below thresholds) and a new exchange is appended.
-    const postTurn = evictToMaxSize(
-      evictOldStubbedMessages(applyStableStubs(history), 2, EVICT_MIN_BATCH),
-      MAX_DISPLAY_MESSAGES,
-      EVICT_TRIGGER_AT,
-    )
+    // Next turn: the REPL post-turn pipeline writes the clipped set back into
+    // the display array (nothing is ever evicted) and a new exchange is
+    // appended.
+    const postTurn = applyStableStubs(history)
     const nextHistory = [
       ...postTurn,
       ...exchange('toolu_next', 'fresh result', 0),

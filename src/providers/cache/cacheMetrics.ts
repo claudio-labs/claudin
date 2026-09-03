@@ -518,7 +518,7 @@ export function formatCacheMetricsCompact(
   const clears = formatServerClears(serverClears)
   if (clears) parts.push(clears)
   if (prefixRewrites && prefixRewrites.length > 0) {
-    parts.push(`next turn rewrites prefix: ${prefixRewrites.join(', ')}`)
+    parts.push(`prefix rewritten: ${prefixRewrites.join(', ')}`)
   }
   return `[Cache: ${parts.join(' • ')}]`
 }
@@ -555,7 +555,7 @@ export function formatCacheMetricsFull(
     )
   }
   if (prefixRewrites && prefixRewrites.length > 0) {
-    parts.push(`next_rewrite=${prefixRewrites.join('+')}`)
+    parts.push(`rewrite=${prefixRewrites.join('+')}`)
   }
   return `[Cache: ${parts.join(' ')}]`
 }

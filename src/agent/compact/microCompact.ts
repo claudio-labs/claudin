@@ -17,7 +17,9 @@ import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getMainLoopModel } from 'src/providers/model/model.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import { notifyCacheDeletion } from 'src/providers/cache/promptCacheBreakDetection.js'
+import { recordPrefixRewrite } from 'src/providers/cache/cacheStatsTracker.js'
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
+import { tokenCountWithEstimation } from 'src/agent/context/tokens.js'
 import { getAutoCompactThreshold, getEffectiveContextWindowSize, isAutoCompactEnabled } from 'src/agent/compact/autoCompact.js'
 import {
   clearCompactWarningSuppression,
@@ -26,10 +28,17 @@ import {
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import {
   addClippedIds,
+  applyStableStubs,
+  collectClearableCandidates,
   getClippedIds,
   resetClippedIds,
 } from 'src/agent/compact/stableStubState.js'
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
+import {
+  decideRelief,
+  isReliefWindowLaneEnabled,
+  selectReliefIds,
+} from 'src/agent/compact/reliefPolicy.js'
 import {
   getTimeBasedMCConfig,
   type TimeBasedMCConfig,
@@ -177,22 +186,12 @@ function isMainThreadSource(querySource: QuerySource | undefined): boolean {
   return !querySource || querySource.startsWith('repl_main_thread')
 }
 
-// Mirrors the time-based path's keepRecent default: keep the most recent two
-// compactable tool results untouched. The cache_control marker tail typically
-// sits on the last user message, so leaving the tail alone also avoids
-// invalidating the marker placement.
-const SIZE_BASED_KEEP_RECENT = 2
-
-// Fire the size-driven stable-stub trigger when estimated message tokens
-// exceed the profile's fraction of the effective context window
-// (cacheProfile.ts sizeStubThresholdFraction — aggressive 0.5, retain 0.75;
-// see the rationale there, including why retain's 0.85 was abandoned).
-// The trigger is additionally capped just below the autocompact threshold:
-// the fraction is relative while autocompact subtracts an ABSOLUTE 13k
-// buffer, so for effective windows ≤ ~52k (or CLAUDIN_AUTOCOMPACT_PCT_OVERRIDE
-// < the fraction) the uncapped fraction would sit ABOVE autocompact and the
-// cheap stub-clip could never pre-empt the expensive wipe-plus-re-reads.
-const STUB_TRIGGER_PREEMPT_MARGIN_TOKENS = 5_000
+// The relief candidate walk protects the last N user-role messages (turn
+// boundaries). In a tool loop each tool_result is its own user-role message,
+// so 2 keeps the most recent two results untouched — the tail the
+// cache_control marker typically sits on, so the clip never invalidates the
+// marker placement.
+const RELIEF_KEEP_RECENT_TURNS = 2
 
 export async function microcompactMessages(
   messages: Message[],
@@ -215,83 +214,16 @@ export async function microcompactMessages(
     return timeBasedResult
   }
 
-  // Size-driven stable-stub trigger. Once the conversation crosses the
-  // threshold, freeze old compactable tool_result ids into the per-session
-  // clipped set. From that point on every turn rewrites those blocks to the
-  // same deterministic stub bytes — prefix cache stays warm.
-  const estimatedTokens = estimateMessageTokens(messages)
-  const model = getMainLoopModel()
-  const effectiveWindow = getEffectiveContextWindowSize(model)
-  const fractionTrigger =
-    getCacheProfile().sizeStubThresholdFraction * effectiveWindow
-  // Cap only when meaningful: (a) with autocompact disabled there is
-  // nothing to pre-empt and capping would just clip earlier for no reason;
-  // (b) in degenerate tiny windows the autocompact threshold goes ≤ margin
-  // (or negative) and capping would disable the stub trigger entirely.
-  // Note the margin is heuristic: the trigger compares message-content
-  // estimates while autocompact anchors on real API usage that includes
-  // system+tools overhead, so the cap narrows but cannot fully close the
-  // race on small windows.
-  const preemptCap = isAutoCompactEnabled()
-    ? getAutoCompactThreshold(model) - STUB_TRIGGER_PREEMPT_MARGIN_TOKENS
-    : 0
-  const sizeTrigger =
-    preemptCap > 0 ? Math.min(fractionTrigger, preemptCap) : fractionTrigger
-  if (effectiveWindow > 0 && estimatedTokens > sizeTrigger) {
-    const compactableIds = collectCompactableToolIds(messages)
-    // Small-history dead zone fix: when threshold is breached but
-    // compactableIds.length <= SIZE_BASED_KEEP_RECENT, we'd otherwise leave
-    // candidateIds empty and sit on hands until autoCompact's hard 92% gate.
-    // Always leave at least one most-recent block intact, but allow clipping
-    // when there are >= 2 candidates total.
-    let candidateIds: string[] = []
-    if (compactableIds.length >= 2) {
-      const keepRecent = Math.max(
-        1,
-        Math.min(SIZE_BASED_KEEP_RECENT, compactableIds.length - 1),
-      )
-      candidateIds = compactableIds.slice(0, -keepRecent)
-    }
-    const clipped = getClippedIds()
-    const newOnes = candidateIds.filter(id => !clipped.has(id))
-
-    if (newOnes.length > 0) {
-      addClippedIds(newOnes)
-      // Release preview strings from ContentReplacementState.replacements
-      // for IDs that are now clipped. The stable stub has already replaced
-      // the content in the message array, so the replacement preview is no
-      // longer needed. Keep seenIds intact to prevent re-processing in
-      // enforceToolResultBudget.
-      const crs = toolUseContext?.contentReplacementState
-      if (crs) {
-        for (const id of newOnes) {
-          crs.replacements.delete(id)
-        }
-      }
-      logEvent('tengu_stable_stub_clip', {
-        added: newOnes.length,
-        totalClipped: getClippedIds().size,
-        estimatedTokens,
-        effectiveWindow,
-      })
-      // Notify the cache-break detector ONCE per clip event: the next
-      // turn's bytes diverge from the cached prefix at the clipped ids,
-      // which would otherwise be flagged as a regression. Gated to
-      // first-party transports (anthropic / bedrock / vertex) — the
-      // OpenAI/Codex shim paths don't feed the same detector state, so
-      // calling it there is a no-op write we'd rather skip.
-      if (
-        feature('PROMPT_CACHE_BREAK_DETECTION') &&
-        querySource &&
-        isFirstPartyTransport()
-      ) {
-        notifyCacheDeletion(
-          querySource,
-          undefined,
-          `stable-stub clip (${newOnes.length} tool results)`,
-        )
-      }
-    }
+  // Relief policy (reliefPolicy.ts): one decision on REAL usage, one action —
+  // freeze the oldest clearable tool_result ids into the per-session clipped
+  // set. From that point on every request rewrites those blocks to the same
+  // deterministic stub bytes, so the cache breaks once and stays warm.
+  //
+  // Gated on a querySource: /context, /compact and analyzeContext call this
+  // for analysis only and must not mutate the clipped set (the previous
+  // estimate-driven trigger did, so an analysis command could clip).
+  if (querySource) {
+    maybeReliefClip(messages, toolUseContext, querySource)
   }
 
   // applyStableStubs is NOT called here. The native (claude.ts) and shim
@@ -302,6 +234,86 @@ export async function microcompactMessages(
   // microcompactMessages (analyzeContext, /context, /compact) operate on
   // stub-free messages for analysis and don't need the rewrite.
   return { messages }
+}
+
+function maybeReliefClip(
+  messages: Message[],
+  toolUseContext: ToolUseContext | undefined,
+  querySource: QuerySource,
+): void {
+  const profile = getCacheProfile()
+  const { candidates, clearableTokens } = collectClearableCandidates(
+    messages,
+    RELIEF_KEEP_RECENT_TURNS,
+    profile.stubKeepHeadChars,
+    isCompactableTool,
+  )
+  // Nothing clearable: the decision would be moot, and deciding anyway
+  // would only log a clip that frees nothing.
+  if (candidates.length === 0) return
+
+  const model = getMainLoopModel()
+  const decision = decideRelief({
+    // Real usage: the previous response's counted tokens plus an estimate
+    // of what was appended since — the same unit autocompact anchors on.
+    // The clip decided here is applied at the wire on THIS request, so the
+    // next response's usage already reflects it; no latch needed. Measured
+    // over the stubbed view so the estimated part (the tail, or the whole
+    // history before any response has usage) also reflects the clipped
+    // set — otherwise a request between a clip and its response would
+    // count content the wire no longer sends and clip again.
+    usedTokens: tokenCountWithEstimation(applyStableStubs(messages)),
+    effectiveWindow: getEffectiveContextWindowSize(model),
+    autocompactThreshold: isAutoCompactEnabled()
+      ? getAutoCompactThreshold(model)
+      : null,
+    retainedFullResultTokens: clearableTokens,
+    profile,
+    windowLaneEnabled: isReliefWindowLaneEnabled(),
+  })
+  if (decision.kind === 'none') return
+
+  const { ids, savings } = selectReliefIds(candidates, decision.tokensToFree)
+  if (ids.length === 0) return
+
+  addClippedIds(ids)
+  // Release preview strings from ContentReplacementState.replacements for
+  // ids that are now clipped. The stable stub supersedes the preview; keep
+  // seenIds intact to prevent re-processing in enforceToolResultBudget.
+  const crs = toolUseContext?.contentReplacementState
+  if (crs) {
+    for (const id of ids) {
+      crs.replacements.delete(id)
+    }
+  }
+
+  logEvent('tengu_stable_stub_clip', {
+    rssLane: decision.lane === 'rss',
+    added: ids.length,
+    totalClipped: getClippedIds().size,
+    tokensToFree: Math.round(decision.tokensToFree),
+    tokensFreed: savings,
+    trigger: Math.round(decision.trigger),
+    target: Math.round(decision.target),
+  })
+  const reason = `relief clip (${ids.length} tool results, ~${Math.round(savings / 1000)}k tokens, ${decision.lane} lane)`
+  logForDebugging(
+    `[RELIEF] ${reason}: trigger ${Math.round(decision.trigger)} → target ${Math.round(decision.target)}`,
+  )
+
+  // Announce the rewrite ONCE per clip event: this request's bytes diverge
+  // from the cached prefix at the clipped ids, which would otherwise be
+  // flagged as a regression. Gated to first-party transports (anthropic /
+  // bedrock / vertex) — the OpenAI/Codex shim paths don't feed the same
+  // detector state, so calling it there is a no-op write we'd rather skip.
+  if (feature('PROMPT_CACHE_BREAK_DETECTION') && isFirstPartyTransport()) {
+    notifyCacheDeletion(querySource, undefined, reason)
+  }
+  // The `[Cache: …]` line names the knob that fired; sub-agents keep their
+  // clips out of the main thread's line.
+  if (isMainThreadSource(querySource)) {
+    recordPrefixRewrite(reason)
+  }
 }
 
 function isFirstPartyTransport(): boolean {

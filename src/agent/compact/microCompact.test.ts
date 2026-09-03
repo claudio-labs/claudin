@@ -147,18 +147,36 @@ mock.module('src/providers/model/model.js', () => ({
   getMainLoopModel: () => 'claude-sonnet-4',
 }))
 
-describe('size-driven stable-stub trigger', () => {
+describe('relief policy — window lane via microcompactMessages', () => {
+  const MAIN = 'repl_main_thread' as never
+  const savedKill = process.env.CLAUDIN_DISABLE_RELIEF_POLICY
+  const savedProfile = process.env.CLAUDIN_CACHE_PROFILE
+
   beforeEach(async () => {
     const { resetClippedIds } = await import('src/agent/compact/stableStubState.js')
+    const { _resetCacheProfileForTesting } = await import('src/agent/cache/cacheProfile.js')
     resetClippedIds()
     mockSizeState.effectiveWindow = 100_000
+    delete process.env.CLAUDIN_DISABLE_RELIEF_POLICY
+    // Pin the profile: `auto` resolves through the machine's active provider.
+    process.env.CLAUDIN_CACHE_PROFILE = 'retain'
+    _resetCacheProfileForTesting()
   })
 
   afterEach(async () => {
     const { resetClippedIds } = await import('src/agent/compact/stableStubState.js')
+    const { _resetCacheProfileForTesting } = await import('src/agent/cache/cacheProfile.js')
     resetClippedIds()
+    if (savedKill === undefined) delete process.env.CLAUDIN_DISABLE_RELIEF_POLICY
+    else process.env.CLAUDIN_DISABLE_RELIEF_POLICY = savedKill
+    if (savedProfile === undefined) delete process.env.CLAUDIN_CACHE_PROFILE
+    else process.env.CLAUDIN_CACHE_PROFILE = savedProfile
+    _resetCacheProfileForTesting()
   })
 
+  // No assistant carries usage here, so tokenCountWithEstimation falls back
+  // to the estimate of the (stubbed) history — the same number the policy
+  // sees on the first request of a resumed session.
   function buildHeavyHistory(numExchanges: number, perResultChars: number): Message[] {
     const out: Message[] = []
     for (let i = 0; i < numExchanges; i++) {
@@ -168,82 +186,100 @@ describe('size-driven stable-stub trigger', () => {
     return out
   }
 
-  test('below threshold: no new clipped ids', async () => {
+  function clippedInOrder(clipped: ReadonlySet<string>, total: number): string[] {
+    const ids: string[] = []
+    for (let i = 0; i < total; i++) if (clipped.has(`toolu_${i}`)) ids.push(`toolu_${i}`)
+    return ids
+  }
+
+  test('below the trigger: no new clipped ids', async () => {
     const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
     const { getClippedIds } = await import('src/agent/compact/stableStubState.js')
-    // Tiny conversation, far below 50% of 100k tokens
+    // Tiny conversation, far below 75% of 100k tokens
     const messages = buildHeavyHistory(2, 100)
-    await microcompactMessages(messages)
+    await microcompactMessages(messages, undefined, MAIN)
     expect(getClippedIds().size).toBe(0)
   })
 
-  test('above threshold: clips all but the last 2 compactable ids', async () => {
+  test('no querySource (analysis callers): never mutates the clipped set', async () => {
     const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
     const { getClippedIds } = await import('src/agent/compact/stableStubState.js')
-    // 10 exchanges × ~5k chars each → ~12k tokens (×4/3 padding ≈ 16k).
-    // Drop the window so we cross the 50% threshold easily.
     mockSizeState.effectiveWindow = 20_000
-    const messages = buildHeavyHistory(10, 5_000)
-    await microcompactMessages(messages)
-    const clipped = getClippedIds()
-    // 10 ids total minus the last 2 kept-recent
-    expect(clipped.size).toBe(8)
-    for (let i = 0; i < 8; i++) {
-      expect(clipped.has(`toolu_${i}`)).toBe(true)
-    }
-    expect(clipped.has('toolu_8')).toBe(false)
-    expect(clipped.has('toolu_9')).toBe(false)
+    await microcompactMessages(buildHeavyHistory(20, 5_000))
+    expect(getClippedIds().size).toBe(0)
   })
 
-  test('threshold met but everything already clipped: no change', async () => {
+  test('above the trigger: clips OLDEST first, only as much as the band asks, keeps the last 2 turns', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    const { getClippedIds } = await import('src/agent/compact/stableStubState.js')
+    // 20 exchanges × 5k chars ≈ 25-30k estimated tokens against a 40k
+    // window: trigger 30k (0.75 × 40k, below the autocompact cap), band
+    // min(60k, 30% × 30k) = 9k → target 21k → free a handful of results,
+    // each worth ~1.2k minus the retained 2k-char head.
+    mockSizeState.effectiveWindow = 40_000
+    const messages = buildHeavyHistory(24, 5_000)
+    await microcompactMessages(messages, undefined, MAIN)
+    const clipped = getClippedIds()
+    const ids = clippedInOrder(clipped, 24)
+    // A contiguous oldest-first prefix, not everything: the band bounds it.
+    expect(ids.length).toBeGreaterThan(0)
+    expect(ids.length).toBeLessThan(22)
+    expect(ids).toEqual(Array.from({ length: ids.length }, (_, i) => `toolu_${i}`))
+    expect(clipped.has('toolu_22')).toBe(false)
+    expect(clipped.has('toolu_23')).toBe(false)
+  })
+
+  test('a second request in the same state does not clip again (usage is measured over the stubbed view)', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    const { getClippedIds } = await import('src/agent/compact/stableStubState.js')
+    // Same partial-clip setup as above: the first pass leaves clearable
+    // results behind, so a second clip would be observable.
+    mockSizeState.effectiveWindow = 40_000
+    const messages = buildHeavyHistory(24, 5_000)
+    await microcompactMessages(messages, undefined, MAIN)
+    const after = getClippedIds().size
+    expect(after).toBeGreaterThan(0)
+    expect(after).toBeLessThan(22)
+    await microcompactMessages(messages, undefined, MAIN)
+    expect(getClippedIds().size).toBe(after)
+  })
+
+  test('candidates already in the clipped set are not counted or re-selected', async () => {
     const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
     const { addClippedIds, getClippedIds } = await import('src/agent/compact/stableStubState.js')
     mockSizeState.effectiveWindow = 20_000
-    const messages = buildHeavyHistory(10, 5_000)
-    // Pre-populate: keep-recent leaves out the last 2, so the candidate set is 0..7.
-    const preClipped = ['toolu_0', 'toolu_1', 'toolu_2', 'toolu_3', 'toolu_4', 'toolu_5', 'toolu_6', 'toolu_7']
-    addClippedIds(preClipped)
+    const messages = buildHeavyHistory(20, 5_000)
+    // Everything clearable is already clipped → the stubbed view sits under
+    // the trigger → no new ids.
+    addClippedIds(Array.from({ length: 18 }, (_, i) => `toolu_${i}`))
     const before = getClippedIds().size
-    await microcompactMessages(messages)
+    await microcompactMessages(messages, undefined, MAIN)
     expect(getClippedIds().size).toBe(before)
   })
 
-  test('small-history dead zone: 3 compactable ids → clips 1, keeps 2', async () => {
+  test('the protected window is never clipped even under pressure', async () => {
     const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
     const { getClippedIds } = await import('src/agent/compact/stableStubState.js')
-    // 3 huge results, threshold breached. Without the fix, candidateIds
-    // would be empty (3 > 2 → slice(0,-2) leaves [0]), so it actually clips
-    // 1. Test the EDGE case where ids count == keepRecent: 2 results.
+    // Two huge results, both inside the last 2 user-role messages.
     mockSizeState.effectiveWindow = 5_000
-    const messages = buildHeavyHistory(2, 5_000)
-    await microcompactMessages(messages)
-    const clipped = getClippedIds()
-    // 2 ids → keepRecent collapses to 1, candidate = [toolu_0]
-    expect(clipped.size).toBe(1)
-    expect(clipped.has('toolu_0')).toBe(true)
-    expect(clipped.has('toolu_1')).toBe(false)
-  })
-
-  test('single compactable id below dead zone: no clipping', async () => {
-    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
-    const { getClippedIds } = await import('src/agent/compact/stableStubState.js')
-    // Only 1 compactable id — keep at least 1 most-recent → 0 candidates.
-    mockSizeState.effectiveWindow = 5_000
-    const messages = buildHeavyHistory(1, 10_000)
-    await microcompactMessages(messages)
+    await microcompactMessages(buildHeavyHistory(2, 20_000), undefined, MAIN)
     expect(getClippedIds().size).toBe(0)
   })
 
   test('effective window 0: no clipping (degrades gracefully)', async () => {
     const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
     const { getClippedIds } = await import('src/agent/compact/stableStubState.js')
-    // Provider returns 0 / unknown context window — the size-driven
-    // trigger is gated behind `effectiveWindow > 0` so we should not
-    // clip even with a heavy history that would otherwise breach the
-    // threshold under any reasonable window.
     mockSizeState.effectiveWindow = 0
-    const messages = buildHeavyHistory(20, 10_000)
-    await microcompactMessages(messages)
+    await microcompactMessages(buildHeavyHistory(20, 10_000), undefined, MAIN)
+    expect(getClippedIds().size).toBe(0)
+  })
+
+  test('CLAUDIN_DISABLE_RELIEF_POLICY=1 turns the window lane off', async () => {
+    const { microcompactMessages } = await import('src/agent/compact/microCompact.js')
+    const { getClippedIds } = await import('src/agent/compact/stableStubState.js')
+    process.env.CLAUDIN_DISABLE_RELIEF_POLICY = '1'
+    mockSizeState.effectiveWindow = 20_000
+    await microcompactMessages(buildHeavyHistory(20, 5_000), undefined, MAIN)
     expect(getClippedIds().size).toBe(0)
   })
 
