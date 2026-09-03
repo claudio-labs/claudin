@@ -11,13 +11,14 @@ import { Tabs, Tab } from 'src/terminal/design-system/Tabs.js';
 import { Status, buildDiagnostics } from 'src/platform/settings/ui/Status.js';
 import { Config } from 'src/platform/settings/ui/Config.js';
 import { Usage } from 'src/platform/settings/ui/Usage.js';
+import { Stats } from 'src/agent/ui/Stats.js';
 import type { LocalJSXCommandContext, CommandResultDisplay } from 'src/commands/commands.js';
 type Props = {
   onClose: (result?: string, options?: {
     display?: CommandResultDisplay;
   }) => void;
   context: LocalJSXCommandContext;
-  defaultTab: 'Status' | 'Config' | 'Usage' | 'Session' | 'Gates';
+  defaultTab: 'Status' | 'Config' | 'Usage' | 'Session' | 'Stats' | 'Gates';
 };
 export function Settings(t0: Props) {
   const $ = _c(25);
@@ -88,7 +89,10 @@ export function Settings(t0: Props) {
   }
   let t6;
   if ($[12] === Symbol.for("react.memo_cache_sentinel")) {
-    t6 = [<Tab key="usage" title="Usage"><Usage view="global" /></Tab>, <Tab key="session" title="Session"><Usage view="session" /></Tab>];
+    // <Stats> only scans the session files once this tab is selected — Tab
+    // returns null while another tab is active (Tabs.tsx:273), so /config and
+    // /usage still open instantly.
+    t6 = [<Tab key="usage" title="Usage"><Usage view="global" /></Tab>, <Tab key="session" title="Session"><Usage view="session" /></Tab>, <Tab key="stats" title="Stats"><Stats /></Tab>];
     $[12] = t6;
   } else {
     t6 = $[12];
