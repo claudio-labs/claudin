@@ -196,6 +196,34 @@ async function waitFor(
   throw new Error(`Timed out waiting for ${label}. Last value:\n${read().slice(-1500)}`)
 }
 
+// Ink paints a frame from a microtask scheduled in `resetAfterCommit`
+// (ink/ink.tsx), but the commit's `useInput` handlers only subscribe to the
+// input emitter in a passive effect (ink/hooks/use-input.ts), and
+// `App.processInput` emits with no buffering — so a key written the instant a
+// frame appears is parsed and dropped when the subtree that would handle it has
+// not subscribed yet. Re-send the key until its effect shows instead of
+// one-shotting it; the per-press window is wide enough that a press which DID
+// land is always observed before the next one (which, with two tabs, would
+// switch back).
+async function pressUntil(
+  write: (sequence: string) => void,
+  sequence: string,
+  read: () => string,
+  predicate: (value: string) => boolean,
+  label: string,
+): Promise<void> {
+  const deadline = Date.now() + 6000
+  while (Date.now() < deadline) {
+    write(sequence)
+    const settle = Date.now() + 1000
+    while (Date.now() < settle) {
+      await Bun.sleep(20)
+      if (predicate(read())) return
+    }
+  }
+  throw new Error(`Timed out waiting for ${label}. Last value:\n${read().slice(-1500)}`)
+}
+
 describe('Stats keyboard handling', () => {
   test('ctrl+s copies the tab that ← switched to, not the one it started on', async () => {
     copiedText = ''
@@ -224,15 +252,21 @@ describe('Stats keyboard handling', () => {
 
       // ← switches the inner tabs without ever passing through the `tab` key,
       // which is exactly what used to leave activeTab pointing at Overview.
-      stdin.write('\x1b[D')
-      await waitFor(
+      await pressUntil(
+        sequence => stdin.write(sequence),
+        '\x1b[D',
         () => lastFrame(getOutput()),
         frame => frame.includes('Tokens per Day'),
         'the Models tab',
       )
 
-      stdin.write('\x13') // ctrl+s
-      await waitFor(() => copiedText, text => text.length > 0, 'the clipboard write')
+      await pressUntil(
+        sequence => stdin.write(sequence),
+        '\x13', // ctrl+s
+        () => copiedText,
+        text => text.length > 0,
+        'the clipboard write',
+      )
 
       const copied = stripAnsi(copiedText)
       expect(copied).toContain('Total:')
