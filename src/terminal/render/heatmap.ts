@@ -110,7 +110,7 @@ export function generateHeatmap(
   // Build output
   const lines: string[] = []
 
-  // Month labels - evenly spaced across the grid
+  // Month labels - one per month, over the column that month starts in
   if (showMonthLabels) {
     const monthNames = [
       'Jan',
@@ -127,15 +127,23 @@ export function generateHeatmap(
       'Dec',
     ]
 
-    // Build label line with fixed-width month labels
-    const uniqueMonths = monthStarts.map(m => m.month)
-    const labelWidth = Math.floor(width / Math.max(uniqueMonths.length, 1))
-    const monthLabels = uniqueMonths
-      .map(month => monthNames[month]!.padEnd(labelWidth))
-      .join('')
+    // Paint each name at the week its month starts in, skipping any that would
+    // run into the next month's column (or past the edge of the grid). Evenly
+    // spaced blocks only line up by coincidence at 52 weeks — they slide off
+    // their column on a narrower terminal.
+    const labelCells: string[] = Array(width).fill(' ')
+    for (let i = 0; i < monthStarts.length; i++) {
+      const { month, week } = monthStarts[i]!
+      const name = monthNames[month]!
+      const nextWeek = monthStarts[i + 1]?.week ?? width
+      if (week + name.length > Math.min(nextWeek, width)) continue
+      for (let c = 0; c < name.length; c++) {
+        labelCells[week + c] = name[c]!
+      }
+    }
 
     // 4 spaces for day label column prefix
-    lines.push('    ' + monthLabels)
+    lines.push(('    ' + labelCells.join('')).trimEnd())
   }
 
   // Day labels
