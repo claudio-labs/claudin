@@ -2,6 +2,7 @@ import {
   getCacheStatsHistory,
   getCurrentTurnCacheMetrics,
   getSessionCacheMetrics,
+  getSessionServerClears,
   type CacheStatsEntry,
 } from 'src/providers/cache/cacheStatsTracker.js'
 import {
@@ -49,6 +50,15 @@ export const call: LocalCommandCall = async () => {
   const lines: string[] = ['Cache stats', '']
   lines.push(summarize('Current turn:', turn))
   lines.push(summarize('Session total:', session))
+  // Server-side clear_tool_uses (retain profile) — each event is a
+  // deliberate prefix rewrite; show the tally so a long session's
+  // hit-rate dips can be attributed instead of guessed at.
+  const clears = getSessionServerClears()
+  if (clears.events > 0) {
+    lines.push(
+      `${'Server clears:'.padEnd(18)}${clears.events} event${clears.events === 1 ? '' : 's'}, ${clears.clearedToolUses} tool results, ${clears.clearedInputTokens.toLocaleString('en-US')} input tokens cleared`,
+    )
+  }
   lines.push('')
   lines.push(`Recent requests (${recent.length}${omitted > 0 ? ` of ${history.length}, ${omitted} older omitted` : ''}):`)
   lines.push(`  #     time      model                         cache`)

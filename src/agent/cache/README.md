@@ -5,6 +5,8 @@ keep, clip, freeze, and when, per provider). Mechanisms it orchestrates live
 where their subsystems live — pointers below.
 
 Design doc + measured numbers: `docs/tech/cache/clip-frontier-breakpoint.md`.
+Context-relief mechanisms (clips, evictions, server clears), their cost model
+and the unified policy we don't have yet: `docs/tech/cache/context-relief-policy.md`.
 
 ## Layout
 
@@ -59,6 +61,16 @@ audit; integrated regression:
   (`tengu_glacier_2xr` on in the open build) instead of an ephemeral
   `messages[0]` prepend — with a legacy-format latch for sessions resumed
   on a warm pre-flip cache (`maybeLatchLegacyDeferredAnnouncement`).
+- **Every deferred tool is in the `tools` array from the first request**,
+  flagged `defer_loading: true` (the documented tool-search contract). The
+  API keeps deferred definitions out of the cached prefix and expands a
+  discovered one at its `tool_reference`, so a ToolSearch discovery does not
+  change the array. The previous "send only discovered deferred tools"
+  filter mutated the array on every discovery and was measured to rewrite
+  the whole conversation (+93 prefix tokens, 50–134k tokens re-billed per
+  discovery in real sessions); it survives behind
+  `CLAUDIN_DEFERRED_TOOLS_DISCOVERED_ONLY=1` for pathological MCP pools.
+  Probe: `scripts/bench/ab/tool-search-cache-probe.ts`.
 
 ## Pointers to the mechanisms
 
@@ -78,9 +90,12 @@ audit; integrated regression:
 - `src/providers/shims/claude/streaming.ts` — wiring order:
   `ensureToolResultPairing → applyStableStubs → history redactions →
   frontier → addCacheBreakpoints`; also sends `context_management` when the
-  beta header is on.
+  beta header is on (NOT under `CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=1` — the
+  retain profile's server-side clear is inert there; see the relief doc).
+  `clear_tool_inputs` is derived from the pool via `clearableResult: true`
+  on each Tool (`clearableToolNamesFromPool`), not a hand-kept constant.
 - `src/agent/compact/microCompact.ts` — explicit clip set; size trigger is
-  profile-gated (0.5 aggressive / 0.85 retain); the time-based trigger
+  profile-gated (0.5 aggressive / 0.75 retain); the time-based trigger
   fires when the server cache already expired and PERSISTS through the
   same clipped set (`addClippedIds`) — the post-idle "cleaned" prefix
   keeps its hits on later turns, and pre-existing size-trigger ids
@@ -111,6 +126,17 @@ audit; integrated regression:
   (`context_management.applied_edits`) arrives on the `message_delta` stream
   event and is written back to the turn's last assistant message by
   `applyMessageDeltaToLastMessage` (`src/providers/shims/claude/streaming.ts`).
+- `src/providers/cache/promptCacheBreakDetection.ts` — the break detector.
+  Deferred tools contribute `{name, defer_loading}` to the tool hash (a
+  deferred tool entering the array IS a prefix change); server edits from
+  `applied_edits` label the break `server clear_tool_uses (…, expected)`;
+  client mechanisms name themselves via `notifyCacheDeletion(source, agent,
+  reason)` → `[PROMPT CACHE] expected drop: display-cap eviction (112 msgs)`.
+  `buildCacheBreakReason` is the pure labeler (tested).
+- `src/providers/cache/cacheStatsTracker.ts` — per-turn/session cache
+  metrics for the `[Cache: …]` line and `/cache-stats`, now including server
+  clears (`recordServerClear`) and the client prefix rewrites announced this
+  turn (`recordPrefixRewrite`, shown as `next turn rewrites prefix: …`).
 
 ## Bench
 

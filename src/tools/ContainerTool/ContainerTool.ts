@@ -194,6 +194,7 @@ export type Output = ContainerToolOutput
 export const ContainerTool = buildTool({
   name: CONTAINER_TOOL_NAME,
   searchHint: 'docker compose container image logs healthcheck build stack',
+  clearableResult: true,
   maxResultSizeChars: 30_000,
   // Constant. See the header: a conditional presence busts the prompt cache.
   shouldDefer: true,

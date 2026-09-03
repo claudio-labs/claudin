@@ -296,10 +296,13 @@ describe('S1 regression: REPL wiring', () => {
     )
     // Intentional evictions are announced to the cache-break detector —
     // call-shaped and line-anchored so neither the import line nor a
-    // commented-out call can satisfy the guard.
+    // commented-out call can satisfy the guard. The third argument names the
+    // mechanism (display-cap eviction, byte-guard, …) for the debug line.
     expect(onQuerySource).toMatch(
-      /^\s*notifyCacheDeletion\(getQuerySourceForREPL\(\)\)/m,
+      /^\s*notifyCacheDeletion\(getQuerySourceForREPL\(\), undefined, reasons\.join\(/m,
     )
+    // …and the same reasons feed the `[Cache: …]` line via the tracker.
+    expect(onQuerySource).toMatch(/^\s*for \(const r of reasons\) recordPrefixRewrite\(r\)/m)
   })
 
   test('onSubmit has the idle sweep', () => {

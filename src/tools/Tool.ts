@@ -520,6 +520,18 @@ export type Tool<
    */
   readonly alwaysLoad?: boolean
   /**
+   * When true, this tool's results are disposable once they age out of the
+   * working set: the server-side `clear_tool_uses` context edit (retain
+   * cache profile, `src/agent/cache/anthropic/apiMicrocompact.ts`) may wipe
+   * them to relieve context. Set it on read-only, re-runnable tools whose
+   * output can be regenerated (file reads, searches, builds, test runs).
+   * Leave it unset on tools whose result is the only record of a mutation
+   * (Edit/Write/apply_patch) or a sub-agent's report — those must survive.
+   * The list sent to the API is derived from the tool pool, so a new tool
+   * opts in here instead of in a hand-maintained constant.
+   */
+  readonly clearableResult?: boolean
+  /**
    * For MCP tools: the server and tool names as received from the MCP server (unnormalized).
    * Present on all MCP tools regardless of whether `name` is prefixed (mcp__server__tool)
    * or unprefixed (CLAUDE_AGENT_SDK_MCP_NO_PREFIX mode).

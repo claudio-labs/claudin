@@ -622,6 +622,7 @@ function hasNativeSearchFallback(): boolean {
 export const WebSearchTool = buildTool({
   name: WEB_SEARCH_TOOL_NAME,
   searchHint: 'search the web for current information',
+  clearableResult: true,
   maxResultSizeChars: 50_000,
   shouldDefer: true,
   async description(input) {

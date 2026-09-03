@@ -73,7 +73,10 @@ import {
   extractQuotaStatusFromError,
   extractQuotaStatusFromHeaders,
 } from "src/providers/claudeAiLimits.js";
-import { getAPIContextManagement } from "src/agent/cache/anthropic/apiMicrocompact.js";
+import {
+  clearableToolNamesFromPool,
+  getAPIContextManagement,
+} from "src/agent/cache/anthropic/apiMicrocompact.js";
 import {
   applyStableStubs,
   getClipFrontierIndex,
@@ -152,6 +155,7 @@ import {
 import {
   extractDiscoveredToolNames,
   isDeferredToolsDeltaActive,
+  isDeferredToolsDiscoveredOnly,
   isToolSearchEnabled,
   maybeLatchLegacyDeferredAnnouncement,
 } from "src/agent/tools/toolSearch.js";
@@ -206,7 +210,9 @@ import {
   CACHE_TTL_1HOUR_MS,
   checkResponseForCacheBreak,
   recordPromptState,
+  summarizeAppliedContextEdits,
 } from "src/providers/cache/promptCacheBreakDetection.js";
+import { recordServerClear } from "src/providers/cache/cacheStatsTracker.js";
 import {
   CannotRetryError,
   FallbackTriggeredError,
@@ -441,19 +447,33 @@ export async function* queryModel(
   let filteredTools: Tools;
 
   if (useToolSearch) {
-    // Dynamic tool loading: Only include deferred tools that have been discovered
-    // via tool_reference blocks in the message history. This eliminates the need
-    // to predeclare all deferred tools upfront and removes limits on tool quantity.
-    const discoveredToolNames = extractDiscoveredToolNames(messages);
+    if (isDeferredToolsDiscoveredOnly()) {
+      // Legacy dynamic loading: only send the deferred tools already discovered
+      // via tool_reference blocks in the message history. Keeps the `tools`
+      // array small for pathological MCP pools, at the cost of a full prompt
+      // cache rewrite on every discovery — see the default branch.
+      const discoveredToolNames = extractDiscoveredToolNames(messages);
 
-    filteredTools = tools.filter((tool) => {
-      // Always include non-deferred tools
-      if (!deferredToolNames.has(tool.name)) return true;
-      // Always include ToolSearchTool (so it can discover more tools)
-      if (toolMatchesName(tool, TOOL_SEARCH_TOOL_NAME)) return true;
-      // Only include deferred tools that have been discovered
-      return discoveredToolNames.has(tool.name);
-    });
+      filteredTools = tools.filter((tool) => {
+        // Always include non-deferred tools
+        if (!deferredToolNames.has(tool.name)) return true;
+        // Always include ToolSearchTool (so it can discover more tools)
+        if (toolMatchesName(tool, TOOL_SEARCH_TOOL_NAME)) return true;
+        // Only include deferred tools that have been discovered
+        return discoveredToolNames.has(tool.name);
+      });
+    } else {
+      // Send EVERY tool from the first request, deferred ones flagged
+      // `defer_loading: true` (see `willDefer` below). This is the documented
+      // tool-search contract: the API keeps deferred definitions out of the
+      // prompt prefix and expands a discovered tool at the position of the
+      // `tool_reference` block that loaded it — so the `tools` array is
+      // byte-stable across discoveries. Sending only the discovered subset
+      // (the legacy branch) mutates the array on each discovery, which was
+      // measured to grow the cached system+tools prefix and rewrite the whole
+      // conversation history (~50-134k tokens per discovery in real sessions).
+      filteredTools = tools;
+    }
   } else {
     filteredTools = tools.filter(
       (t) => !toolMatchesName(t, TOOL_SEARCH_TOOL_NAME),
@@ -743,12 +763,18 @@ export async function* queryModel(
   const includeShimEffortValue = activeTransportUsesOpenAiShim(options.model);
 
   if (feature("PROMPT_CACHE_BREAK_DETECTION")) {
-    // Exclude defer_loading tools from the hash -- the API strips them from the
-    // prompt, so they never affect the actual cache key. Including them creates
-    // false-positive "tool schemas changed" breaks when tools are discovered or
-    // MCP servers reconnect.
-    const toolsForCacheDetection = allTools.filter(
-      (t) => !("defer_loading" in t && t.defer_loading),
+    // defer_loading tools contribute only their NAME (plus the flag) to the
+    // hash, not their schema: the API keeps a deferred definition out of the
+    // prompt, but a deferred tool entering or leaving the `tools` array was
+    // measured to move the cached prefix (+93 tokens for two tools, and a
+    // full history rewrite). Dropping them entirely — the previous behavior —
+    // made every discovery-driven break read as "server-side, prompt
+    // unchanged". Full schemas would over-report: a deferred schema edit
+    // can't reach the prompt.
+    const toolsForCacheDetection = allTools.map((t) =>
+      "defer_loading" in t && t.defer_loading && "name" in t
+        ? ({ name: t.name, defer_loading: true } as typeof t)
+        : t,
     );
     // Capture everything that could affect the server-side cache key.
     // Pass latched header values (not live state) so break detection
@@ -950,6 +976,9 @@ export async function* queryModel(
       hasThinking,
       isRedactThinkingActive: betasParams.includes(REDACT_THINKING_BETA_HEADER),
       clearAllThinking: thinkingClearLatched,
+      // `clear_tool_inputs` derived from the pool: tools opt in with
+      // `clearableResult: true` (Tool.ts) instead of a hand-kept constant.
+      clearableToolNames: clearableToolNamesFromPool(tools),
     });
 
     const enablePromptCaching =
@@ -1143,6 +1172,10 @@ export async function* queryModel(
   let usage: NonNullableUsage = EMPTY_USAGE;
   let costUSD = 0;
   let stopReason: BetaStopReason | null = null;
+  // Server-side context_management edits applied to THIS request (only
+  // delivered on message_delta). Fed to the cache-break detector so a
+  // clear_tool_uses drop is labeled as such instead of "likely server-side".
+  let appliedContextEdits: BetaContextManagementResponse | null | undefined;
   let didFallBackToNonStreaming = false;
   let fallbackMessage: AssistantMessage | undefined;
   let maxOutputTokens = 0;
@@ -1595,6 +1628,16 @@ export async function* queryModel(
             const usageForSdk: BetaUsage = { ...usage, fallback_credit: null };
 
             stopReason = part.delta.stop_reason;
+            appliedContextEdits = part.context_management;
+            const serverClear = summarizeAppliedContextEdits(
+              part.context_management,
+            );
+            if (serverClear) {
+              recordServerClear(serverClear);
+              logForDebugging(
+                `[Cache] server clear_tool_uses applied: ${serverClear.clearedToolUses} tool uses, -${serverClear.clearedInputTokens} input tokens`,
+              );
+            }
             applyMessageDeltaToLastMessage(
               newMessages.at(-1),
               usageForSdk,
@@ -1742,6 +1785,7 @@ export async function* queryModel(
           messages,
           options.agentId,
           streamRequestId,
+          appliedContextEdits,
         );
       }
 

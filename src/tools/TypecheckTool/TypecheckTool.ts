@@ -148,6 +148,7 @@ export const TypecheckTool = buildTool({
   name: TYPECHECK_TOOL_NAME,
   aliases: ['Check'],
   searchHint: 'typecheck compile diagnostics new errors baseline',
+  clearableResult: true,
   maxResultSizeChars: 30_000,
   get inputSchema(): InputSchema {
     return inputSchema()

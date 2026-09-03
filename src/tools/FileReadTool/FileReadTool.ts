@@ -103,6 +103,7 @@ export { CYBER_RISK_MITIGATION_REMINDER } from 'src/tools/FileReadTool/resultCon
 export const FileReadTool = buildTool({
   name: FILE_READ_TOOL_NAME,
   searchHint: 'read files, images, PDFs, notebooks',
+  clearableResult: true,
   // Output is bounded by maxTokens (validateContentTokens). Persisting to a
   // file the model reads back with Read is circular — never persist.
   maxResultSizeChars: Infinity,

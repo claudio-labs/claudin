@@ -545,17 +545,35 @@ function isToolResultBlockWithContent(obj: unknown): obj is ToolResultBlock {
 }
 
 /**
+ * Killswitch for the legacy "discovered-only" tools array.
+ *
+ * By default every deferred tool is sent on every request with
+ * `defer_loading: true` — the documented tool-search contract, under which the
+ * API keeps deferred definitions out of the cached prefix and expands them at
+ * the `tool_reference` that loaded them, so a discovery never mutates the
+ * `tools` array. `CLAUDIN_DEFERRED_TOOLS_DISCOVERED_ONLY=1` restores the
+ * previous behavior (send only the deferred tools already discovered), which
+ * caps the array size for pathological MCP pools but pays a full prompt-cache
+ * rewrite of the conversation on every discovery.
+ */
+export function isDeferredToolsDiscoveredOnly(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_DEFERRED_TOOLS_DISCOVERED_ONLY)
+}
+
+/**
  * Extract tool names from tool_reference blocks in message history.
  *
- * When dynamic tool loading is enabled, MCP tools are not predeclared in the
- * tools array. Instead, they are discovered via ToolSearchTool which returns
- * tool_reference blocks. This function scans the message history to find all
- * tool names that have been referenced, so we can include only those tools
- * in subsequent API requests.
+ * Under `CLAUDIN_DEFERRED_TOOLS_DISCOVERED_ONLY=1`, deferred tools are not
+ * predeclared in the tools array. Instead, they are discovered via
+ * ToolSearchTool which returns tool_reference blocks. This function scans the
+ * message history to find all tool names that have been referenced, so we can
+ * include only those tools in subsequent API requests.
  *
- * This approach:
+ * That legacy approach:
  * - Eliminates the need to predeclare all MCP tools upfront
  * - Removes limits on total quantity of MCP tools
+ * - Rewrites the whole cached conversation on every discovery (why it is
+ *   no longer the default — see isDeferredToolsDiscoveredOnly)
  *
  * Compaction replaces tool_reference-bearing messages with a summary, so it
  * snapshots the discovered set onto compactMetadata.preCompactDiscoveredTools

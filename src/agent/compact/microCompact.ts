@@ -285,7 +285,11 @@ export async function microcompactMessages(
         querySource &&
         isFirstPartyTransport()
       ) {
-        notifyCacheDeletion(querySource)
+        notifyCacheDeletion(
+          querySource,
+          undefined,
+          `stable-stub clip (${newOnes.length} tool results)`,
+        )
       }
     }
   }
@@ -455,7 +459,11 @@ function maybeTimeBasedMicrocompact(
   // Pass the actual querySource: getTrackingKey returns the full source string
   // (e.g. 'repl_main_thread:outputStyle:custom'), not just the prefix.
   if (feature('PROMPT_CACHE_BREAK_DETECTION') && querySource) {
-    notifyCacheDeletion(querySource)
+    notifyCacheDeletion(
+      querySource,
+      undefined,
+      `idle-gap clip (${newOnes.length} tool results after ${Math.round(gapMinutes)}min)`,
+    )
   }
 
   // The view is returned unchanged — applyStableStubs at the request

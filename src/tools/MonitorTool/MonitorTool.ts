@@ -47,6 +47,7 @@ type Output = z.infer<OutputSchema>
 export const MonitorTool = buildTool({
   name: MONITOR_TOOL_NAME,
   searchHint: 'stream shell output as notifications',
+  clearableResult: true,
   maxResultSizeChars: 10_000,
   strict: true,
 
