@@ -1,6 +1,5 @@
 import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
-import { plot as asciichart } from 'asciichart';
 import chalk from 'chalk';
 import figures from 'figures';
 import React, { Suspense, use, useCallback, useEffect, useMemo, useState } from 'react';
@@ -16,6 +15,7 @@ import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { formatDuration, formatNumber } from 'src/shared/text/format.js';
 import { generateHeatmap } from 'src/terminal/render/heatmap.js';
+import { renderLineChart } from 'src/terminal/render/lineChart.js';
 import { renderModelName } from 'src/providers/model/model.js';
 import { copyAnsiToClipboard } from 'src/platform/ide/screenshotClipboard.js';
 import { aggregateClaudeCodeStatsForRange, type ClaudeCodeStats, type DailyModelTokens, type StatsDateRange } from 'src/platform/stats.js';
@@ -993,9 +993,10 @@ function generateTokenChart(dailyTokens: DailyModelTokens[], models: string[], t
   if (series.length === 0) {
     return null;
   }
-  const chart = asciichart(series, {
+  const chart = renderLineChart(series, {
     height: 8,
     colors: colors.slice(0, series.length),
+    labelWidth: yAxisWidth - 1,
     format: (x: number) => {
       let label: string;
       if (x >= 1_000_000) {
@@ -1005,7 +1006,7 @@ function generateTokenChart(dailyTokens: DailyModelTokens[], models: string[], t
       } else {
         label = x.toFixed(0);
       }
-      return label.padStart(6);
+      return label;
     }
   });
 

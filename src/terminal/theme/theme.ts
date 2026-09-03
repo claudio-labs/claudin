@@ -1234,7 +1234,7 @@ const chalkForChart =
     : chalk
 
 /**
- * Converts a theme color to an ANSI escape sequence for use with asciichart.
+ * Converts a theme color to an ANSI escape sequence for use with renderLineChart.
  * Uses chalk to generate the escape codes, with 256-color mode for Apple Terminal.
  */
 export function themeColorToAnsi(themeColor: string): string {

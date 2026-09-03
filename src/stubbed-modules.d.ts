@@ -100,10 +100,6 @@ declare module '@anthropic-ai/mcpb' {
   export type McpbUserConfigurationOption = any
 }
 
-declare module 'asciichart' {
-  export const plot: any
-}
-
 declare module 'plist'
 declare module 'cacache'
 
