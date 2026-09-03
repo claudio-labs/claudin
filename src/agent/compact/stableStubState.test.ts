@@ -7,8 +7,7 @@ import {
   addClippedIds,
   applyStableStubs,
   buildClipStub,
-  evictOldStubbedMessages,
-  evictToMaxSize,
+  collectClearableCandidates,
   getClipFrontierIndex,
   getClippedIds,
   isPinRegistered,
@@ -19,7 +18,6 @@ import {
   pruneOldToolResults,
   pruneOrphanClippedIds,
   pruneStaleClippedIds,
-  pruneToolResultsByBytes,
   resetClippedIds,
   stubToolResultForDisplay,
   unpinToolResult,
@@ -30,6 +28,8 @@ import {
   switchSession,
 } from 'src/platform/bootstrap/state.js'
 import type { SessionId } from 'src/shared/types/ids.js'
+import { _resetCacheProfileForTesting } from 'src/agent/cache/cacheProfile.js'
+import { decideRelief, selectReliefIds } from 'src/agent/compact/reliefPolicy.js'
 
 type Block = Record<string, unknown>
 type Msg = {
@@ -100,6 +100,58 @@ function assistantToolUse(id: string, name: string, input: unknown = {}): Msg {
       },
     ],
   }
+}
+
+/** Run `fn` with the profile's stub head pinned to `head` chars, so the
+ * candidate walk's savings and the wire stub agree on the head form. */
+function withHeadChars<T>(head: number, fn: () => T): T {
+  const saved = process.env.CLAUDIN_STUB_HEAD_CHARS
+  process.env.CLAUDIN_STUB_HEAD_CHARS = String(head)
+  _resetCacheProfileForTesting()
+  try {
+    return fn()
+  } finally {
+    if (saved === undefined) delete process.env.CLAUDIN_STUB_HEAD_CHARS
+    else process.env.CLAUDIN_STUB_HEAD_CHARS = saved
+    _resetCacheProfileForTesting()
+  }
+}
+
+/**
+ * The relief policy's rss lane end to end, as microCompact + the wire run
+ * it: candidate walk → decision → clipped set → applyStableStubs. Identity
+ * when the lane does not fire, like every other pass in this file.
+ */
+function rssClip(
+  msgs: Msg[],
+  highWaterTokens: number,
+  lowWaterTokens: number,
+  keepRecentTurns = 2,
+  head = 0,
+): Msg[] {
+  const { candidates, clearableTokens } = collectClearableCandidates(
+    msgs,
+    keepRecentTurns,
+    head,
+  )
+  const decision = decideRelief({
+    usedTokens: 0,
+    effectiveWindow: 0,
+    autocompactThreshold: null,
+    retainedFullResultTokens: clearableTokens,
+    profile: {
+      sizeStubThresholdFraction: 0.75,
+      reliefBandTokens: 60_000,
+      retainedHighWaterTokens: highWaterTokens,
+      retainedLowWaterTokens: lowWaterTokens,
+    },
+    windowLaneEnabled: false,
+  })
+  if (decision.kind === 'none') return msgs
+  const { ids } = selectReliefIds(candidates, decision.tokensToFree)
+  if (ids.length === 0) return msgs
+  addClippedIds(ids)
+  return withHeadChars(head, () => applyStableStubs(msgs))
 }
 
 test('applyStableStubs is a no-op when the clipped set is empty', () => {
@@ -876,334 +928,6 @@ describe('stubToolResultForDisplay', () => {
   })
 })
 
-describe('evictOldStubbedMessages', () => {
-  function stubContent(toolName: string, tokens: number): string {
-    return buildClipStub(toolName, tokens)
-  }
-
-  test('returns same reference when no messages can be evicted', () => {
-    const msgs: Msg[] = [
-      { role: 'assistant', content: [{ type: 'text', text: 'hello' }] },
-      { role: 'user', content: [{ type: 'text', text: 'hi' }] },
-    ]
-    const result = evictOldStubbedMessages(msgs, 1)
-    expect(result).toBe(msgs)
-  })
-
-  test('returns same reference when messages have fewer turns than keepTurns', () => {
-    const msgs: Msg[] = [
-      assistantToolUse('toolu_1', 'Bash'),
-      userToolResult('toolu_1', stubContent('Bash', 1000)),
-    ]
-    const result = evictOldStubbedMessages(msgs, 2)
-    expect(result).toBe(msgs)
-  })
-
-  test('evicts fully stubbed tool_use/tool_result pairs beyond keepTurns', () => {
-    const msgs: Msg[] = [
-      assistantToolUse('toolu_1', 'Grep'),
-      userToolResult('toolu_1', stubContent('Grep', 5000)),
-      assistantToolUse('toolu_2', 'Read'),
-      userToolResult('toolu_2', stubContent('Read', 3000)),
-      // Keep region: these survive
-      assistantToolUse('toolu_3', 'Bash'),
-      userToolResult('toolu_3', 'live output'),
-    ]
-    const result = evictOldStubbedMessages(msgs, 1)
-    // Should evict the first 4 messages (2 pairs), keep last 2
-    expect(result.length).toBe(2)
-    expect((result[0]!.content as Block[])[0]).toMatchObject({ type: 'tool_use', id: 'toolu_3' })
-    expect((result[1]!.content as Block[])[0]).toMatchObject({ type: 'tool_result', tool_use_id: 'toolu_3' })
-  })
-
-  test('preserves assistant messages with text alongside tool_use', () => {
-    const msgs: Msg[] = [
-      { role: 'assistant', content: [
-        { type: 'text', text: 'Let me search for that.' },
-        { type: 'tool_use', id: 'toolu_1', name: 'Grep', input: {} },
-      ] },
-      userToolResult('toolu_1', stubContent('Grep', 5000)),
-      // Keep region
-      assistantToolUse('toolu_2', 'Bash'),
-      userToolResult('toolu_2', 'live'),
-    ]
-    const result = evictOldStubbedMessages(msgs, 1)
-    // Assistant message has text — not evictable. User message stays too
-    // (its tool_use_id is in a non-evictable assistant message).
-    expect(result.length).toBe(4)
-  })
-
-  test('does not evict user messages with non-stub tool_results', () => {
-    const msgs: Msg[] = [
-      assistantToolUse('toolu_1', 'Grep'),
-      userToolResult('toolu_1', 'full content not yet stubbed'),
-      // Keep region
-      assistantToolUse('toolu_2', 'Bash'),
-      userToolResult('toolu_2', 'live'),
-    ]
-    const result = evictOldStubbedMessages(msgs, 1)
-    // tool_result has full content (not a stub) — can't evict
-    expect(result.length).toBe(4)
-  })
-
-  test('does not evict user messages with non-tool_result blocks', () => {
-    const msgs: Msg[] = [
-      assistantToolUse('toolu_1', 'Grep'),
-      { role: 'user', content: [
-        { type: 'tool_result', tool_use_id: 'toolu_1', content: stubContent('Grep', 5000) },
-        { type: 'text', text: 'also a text block' },
-      ] },
-      // Keep region
-      assistantToolUse('toolu_2', 'Bash'),
-      userToolResult('toolu_2', 'live'),
-    ]
-    const result = evictOldStubbedMessages(msgs, 1)
-    // User message has a text block alongside tool_result — can't evict
-    expect(result.length).toBe(4)
-  })
-
-  test('evicts only evictable pairs, leaves others intact', () => {
-    const msgs: Msg[] = [
-      // Evictable: pure tool_use + stubbed tool_result
-      assistantToolUse('toolu_1', 'Grep'),
-      userToolResult('toolu_1', stubContent('Grep', 5000)),
-      // Not evictable: assistant has text
-      { role: 'assistant', content: [
-        { type: 'text', text: 'Here is what I found:' },
-        { type: 'tool_use', id: 'toolu_2', name: 'Read', input: {} },
-      ] },
-      userToolResult('toolu_2', stubContent('Read', 3000)),
-      // Evictable
-      assistantToolUse('toolu_3', 'Bash'),
-      userToolResult('toolu_3', stubContent('Bash', 1000)),
-      // Keep region
-      assistantToolUse('toolu_4', 'Bash'),
-      userToolResult('toolu_4', 'live'),
-    ]
-    const result = evictOldStubbedMessages(msgs, 1)
-    // Should evict pairs 1 and 3, keep pair 2 (has text) and pair 4 (in keep region)
-    expect(result.length).toBe(4)
-    // Pair 2 (non-evictable assistant + its tool_result)
-    expect((result[0]!.content as Block[]).map((b: Block) => b.type)).toEqual(['text', 'tool_use'])
-    expect((result[1]!.content as Block[])[0]).toMatchObject({ type: 'tool_result', tool_use_id: 'toolu_2' })
-    // Pair 4 (keep region)
-    expect((result[2]!.content as Block[])[0]).toMatchObject({ type: 'tool_use', id: 'toolu_4' })
-    expect((result[3]!.content as Block[])[0]).toMatchObject({ type: 'tool_result', tool_use_id: 'toolu_4' })
-  })
-
-  test('handles empty messages array', () => {
-    const result = evictOldStubbedMessages([], 1)
-    expect(result).toEqual([])
-  })
-
-  test('RSS regression: 50 turns → much shorter array after stub+evict', () => {
-    const msgs: Msg[] = []
-    for (let i = 0; i < 50; i++) {
-      msgs.push(assistantToolUse(`toolu_${i}`, 'Bash'))
-      msgs.push(userToolResult(`toolu_${i}`, 'X'.repeat(50_000)))
-    }
-
-    // First stub old results
-    const stubbed = pruneOldToolResults(msgs, 1)
-    // Then evict fully-stubbed pairs
-    const result = evictOldStubbedMessages(stubbed, 1)
-
-    // Only the last turn's pair should survive
-    expect(result.length).toBe(2)
-    expect((result[0]!.content as Block[])[0]).toMatchObject({ type: 'tool_use', id: 'toolu_49' })
-  })
-})
-
-describe('evictToMaxSize', () => {
-  test('returns same reference when under limit', () => {
-    const msgs: Msg[] = [
-      { role: 'assistant', content: [{ type: 'text', text: 'hi' }] },
-      { role: 'user', content: [{ type: 'text', text: 'hello' }] },
-    ]
-    const result = evictToMaxSize(msgs, 10)
-    expect(result).toBe(msgs)
-  })
-
-  test('truncates messages from the front when over limit', () => {
-    const msgs: Msg[] = []
-    for (let i = 0; i < 20; i++) {
-      msgs.push({ role: 'assistant', content: [{ type: 'text', text: `msg_${i}` }] })
-    }
-    const result = evictToMaxSize(msgs, 10)
-    expect(result.length).toBe(10)
-    // Should keep the last 10 messages
-    expect((result[0]!.content as Block[])[0]).toMatchObject({ text: 'msg_10' })
-    expect((result[9]!.content as Block[])[0]).toMatchObject({ text: 'msg_19' })
-  })
-
-  test('preserves compact boundary message', () => {
-    const msgs: Msg[] = []
-    for (let i = 0; i < 5; i++) {
-      msgs.push({ role: 'assistant', content: [{ type: 'text', text: `old_${i}` }] })
-    }
-    // Compact boundary at index 5
-    msgs.push({ role: 'system', subtype: 'compact_boundary', content: [{ type: 'text', text: 'summary' }] } as Msg)
-    for (let i = 0; i < 15; i++) {
-      msgs.push({ role: 'assistant', content: [{ type: 'text', text: `new_${i}` }] })
-    }
-    // Total 21 messages, max 10
-    const result = evictToMaxSize(msgs, 10)
-    // Should not cut past the compact boundary
-    expect(result.some(m => (m as { subtype?: string }).subtype === 'compact_boundary')).toBe(true)
-  })
-
-  test('does not split tool_use/tool_result pairs', () => {
-    const msgs: Msg[] = []
-    for (let i = 0; i < 8; i++) {
-      msgs.push({ role: 'assistant', content: [{ type: 'text', text: `text_${i}` }] })
-      msgs.push({ role: 'user', content: [{ type: 'text', text: `reply_${i}` }] })
-    }
-    // Add a tool_use/tool_result pair near the cut point
-    msgs.push(assistantToolUse('toolu_1', 'Bash'))
-    msgs.push(userToolResult('toolu_1', 'output'))
-    msgs.push({ role: 'assistant', content: [{ type: 'text', text: 'final' }] })
-
-    const result = evictToMaxSize(msgs, 10)
-    // Should not have orphaned tool_use or tool_result
-    const toolUseIdx = result.findIndex(m => {
-      const content = (m as Msg).content as Block[] | undefined
-      return Array.isArray(content) && content.some(b => b.type === 'tool_use')
-    })
-    const toolResultIdx = result.findIndex(m => {
-      const content = (m as Msg).content as Block[] | undefined
-      return Array.isArray(content) && content.some(b => b.type === 'tool_result')
-    })
-    // If there's a tool_use, there must be a tool_result after it
-    if (toolUseIdx !== -1) {
-      expect(toolResultIdx).toBeGreaterThan(toolUseIdx)
-    }
-  })
-
-  test('returns same reference when exactly at limit', () => {
-    const msgs: Msg[] = Array.from({ length: 10 }, (_, i) => ({
-      role: 'assistant' as const,
-      content: [{ type: 'text' as const, text: `msg_${i}` }],
-    }))
-    const result = evictToMaxSize(msgs, 10)
-    expect(result).toBe(msgs)
-  })
-
-  test('handles very small max (2 messages)', () => {
-    const msgs: Msg[] = []
-    for (let i = 0; i < 20; i++) {
-      msgs.push({ role: 'assistant', content: [{ type: 'text', text: `msg_${i}` }] })
-    }
-    const result = evictToMaxSize(msgs, 2)
-    expect(result.length).toBeLessThanOrEqual(2)
-    expect(result.length).toBeGreaterThanOrEqual(1)
-  })
-
-  test('skips past tool_use when cut lands on it', () => {
-    // Cut point lands exactly on an assistant with tool_use —
-    // should skip past the pair, not include a partial/orphaned pair
-    const msgs: Msg[] = [
-      // indices 0-7: 8 text messages
-      ...Array.from({ length: 8 }, (_, i) => ({
-        role: 'assistant' as const,
-        content: [{ type: 'text' as const, text: `text_${i}` }],
-      })),
-      // index 8: assistant with tool_use (this is where cutAt would land)
-      assistantToolUse('toolu_cut', 'Bash'),
-      // index 9: tool_result
-      userToolResult('toolu_cut', 'output'),
-      // index 10-11: trailing messages
-      { role: 'assistant', content: [{ type: 'text', text: 'after' }] },
-      { role: 'user', content: [{ type: 'text', text: 'reply' }] },
-    ]
-    // 12 messages, max 4 → excess = 8, cutAt = 8 (lands on tool_use)
-    const result = evictToMaxSize(msgs, 4)
-    // Should skip past tool_use+tool_result pair → cutAt = 10
-    // Result: last 2 messages (indices 10, 11)
-    const toolUseIdx = result.findIndex(m => {
-      const content = (m as Msg).content as Block[] | undefined
-      return Array.isArray(content) && content.some(b => b.type === 'tool_use')
-    })
-    const toolResultIdx = result.findIndex(m => {
-      const content = (m as Msg).content as Block[] | undefined
-      return Array.isArray(content) && content.some(b => b.type === 'tool_result')
-    })
-    // No orphaned tool_use or tool_result
-    expect(toolUseIdx).toBe(-1)
-    expect(toolResultIdx).toBe(-1)
-  })
-
-  test('skips past orphaned tool_result when cut lands on it', () => {
-    // Cut point lands on a user message with tool_result —
-    // its preceding assistant was already cut, so skip past it
-    const msgs: Msg[] = [
-      // indices 0-7: 8 text messages
-      ...Array.from({ length: 8 }, (_, i) => ({
-        role: 'assistant' as const,
-        content: [{ type: 'text' as const, text: `text_${i}` }],
-      })),
-      // index 8: assistant with tool_use (will be cut)
-      assistantToolUse('toolu_orphan', 'Bash'),
-      // index 9: tool_result (cutAt would land here if max forces it)
-      userToolResult('toolu_orphan', 'output'),
-      // index 10: safe message
-      { role: 'assistant', content: [{ type: 'text', text: 'safe' }] },
-    ]
-    // 11 messages, max 2 → excess = 9, cutAt = 9 (lands on tool_result)
-    const result = evictToMaxSize(msgs, 2)
-    // Should skip past tool_result → cutAt = 10
-    // Result: only the last message
-    const toolResultIdx = result.findIndex(m => {
-      const content = (m as Msg).content as Block[] | undefined
-      return Array.isArray(content) && content.some(b => b.type === 'tool_result')
-    })
-    expect(toolResultIdx).toBe(-1)
-  })
-
-  test('skips multiple consecutive tool_use/tool_result pairs', () => {
-    // Cut point lands on a sequence of tool pairs —
-    // should skip past all of them
-    const msgs: Msg[] = [
-      // indices 0-5: 6 text messages
-      ...Array.from({ length: 6 }, (_, i) => ({
-        role: 'assistant' as const,
-        content: [{ type: 'text' as const, text: `text_${i}` }],
-      })),
-      // indices 6-9: two consecutive tool pairs
-      assistantToolUse('toolu_a', 'Bash'),
-      userToolResult('toolu_a', 'output_a'),
-      assistantToolUse('toolu_b', 'Grep'),
-      userToolResult('toolu_b', 'output_b'),
-      // index 10: safe message
-      { role: 'assistant', content: [{ type: 'text', text: 'safe' }] },
-    ]
-    // 11 messages, max 4 → excess = 7, cutAt = 7 (lands on tool_result of a)
-    const result = evictToMaxSize(msgs, 4)
-    // Should skip past all tool pairs → cutAt = 10
-    const toolUseIdx = result.findIndex(m => {
-      const content = (m as Msg).content as Block[] | undefined
-      return Array.isArray(content) && content.some(b => b.type === 'tool_use')
-    })
-    const toolResultIdx = result.findIndex(m => {
-      const content = (m as Msg).content as Block[] | undefined
-      return Array.isArray(content) && content.some(b => b.type === 'tool_result')
-    })
-    expect(toolUseIdx).toBe(-1)
-    expect(toolResultIdx).toBe(-1)
-    expect(result.length).toBe(1)
-  })
-
-  test('RSS regression: 500 messages → capped at 200', () => {
-    const msgs: Msg[] = []
-    for (let i = 0; i < 500; i++) {
-      msgs.push(assistantToolUse(`toolu_${i}`, 'Bash'))
-      msgs.push(userToolResult(`toolu_${i}`, 'output'))
-    }
-    // 1000 total messages
-    const result = evictToMaxSize(msgs, 200)
-    expect(result.length).toBeLessThanOrEqual(200)
-  })
-})
-
 describe('pruneContentReplacementState', () => {
   function makeState(ids: string[], replacementIds: string[] = ids) {
     return {
@@ -1288,7 +1012,7 @@ describe('pruneContentReplacementState', () => {
     expect(state.replacements).toBe(originalReplRef)
   })
 
-  test('full eviction pipeline: evictToMaxSize + pruneContentReplacementState', () => {
+  test('messages dropped from the array (compaction, rewind) → their state entries are pruned', () => {
     // Build 300 tool pairs → 600 messages total
     const msgs: Msg[] = []
     for (let i = 0; i < 300; i++) {
@@ -1304,16 +1028,15 @@ describe('pruneContentReplacementState', () => {
     expect(state.seenIds.size).toBe(300)
     expect(state.replacements.size).toBe(300)
 
-    // Evict to 200 messages
-    const after = evictToMaxSize(msgs, 200)
-    expect(after.length).toBeLessThanOrEqual(200)
+    // A compaction keeps only the last 200 messages (100 pairs)
+    const after = msgs.slice(-200)
 
     // Prune orphaned state entries
     pruneContentReplacementState(after, state)
 
     // seenIds and replacements should only contain IDs still in the array
-    expect(state.seenIds.size).toBeLessThanOrEqual(200)
-    expect(state.replacements.size).toBeLessThanOrEqual(200)
+    expect(state.seenIds.size).toBe(100)
+    expect(state.replacements.size).toBe(100)
 
     // Every remaining ID should be present in the surviving messages
     for (const id of state.seenIds) {
@@ -1325,47 +1048,6 @@ describe('pruneContentReplacementState', () => {
       })
       expect(inMessages).toBe(true)
     }
-  })
-
-  test('full eviction pipeline: evictOldStubbedMessages + pruneContentReplacementState', () => {
-    // Build messages with old stubbed tool pairs + recent ones
-    const stub = buildClipStub('Bash', 5000)
-    const msgs: Msg[] = [
-      // Old: fully stubbed pair (evictable)
-      assistantToolUse('old-1', 'Bash'),
-      userToolResult('old-1', stub),
-      assistantToolUse('old-2', 'Grep'),
-      userToolResult('old-2', stub),
-      // Recent: still has real content (kept)
-      assistantToolUse('keep-1', 'Bash'),
-      userToolResult('keep-1', 'real output'),
-      { role: 'user', content: [{ type: 'text', text: 'latest user message' }] },
-    ]
-
-    // Simulate contentReplacementState tracking all IDs
-    const state = makeState(
-      ['old-1', 'old-2', 'keep-1'],
-      ['old-1', 'old-2', 'keep-1'],
-    )
-
-    // Register old IDs as clipped so they're recognized as stubs
-    addClippedIds(['old-1', 'old-2'])
-
-    const after = evictOldStubbedMessages(msgs, 1)
-    expect(after.length).toBeLessThan(msgs.length)
-
-    // Prune orphaned state entries
-    pruneContentReplacementState(after, state)
-
-    // old-1 and old-2 should be gone
-    expect(state.seenIds.has('old-1')).toBe(false)
-    expect(state.seenIds.has('old-2')).toBe(false)
-    expect(state.replacements.has('old-1')).toBe(false)
-    expect(state.replacements.has('old-2')).toBe(false)
-
-    // keep-1 should still be present
-    expect(state.seenIds.has('keep-1')).toBe(true)
-    expect(state.replacements.has('keep-1')).toBe(true)
   })
 
   test('mixed messages: non-tool messages are ignored, tool IDs are pruned', () => {
@@ -1703,10 +1385,10 @@ describe('clip-frontier prefix invariant', () => {
 })
 
 // ---------------------------------------------------------------------------
-// RSS byte-guard prune (cache-profile 'retain', design doc Phase 5)
+// Relief policy rss lane (cache-profile 'retain'): the old RSS byte-guard
 // ---------------------------------------------------------------------------
 
-describe('pruneToolResultsByBytes', () => {
+describe('relief rss lane (collectClearableCandidates → clipped set)', () => {
   function conversation(fileTokens: number[], tailTurns = 2): Msg[] {
     // Builds: prompt, then per file: asst(tool_use) + user(tool_result full),
     // then `tailTurns` extra small user turns so the cutoff walk has room.
@@ -1721,18 +1403,18 @@ describe('pruneToolResultsByBytes', () => {
 
   test('identity under the high water', () => {
     const msgs = conversation([500, 500, 500])
-    expect(pruneToolResultsByBytes(msgs, 10_000, 5_000)).toBe(msgs)
+    expect(rssClip(msgs, 10_000, 5_000)).toBe(msgs)
   })
 
-  test('identity when guard disabled (Infinity)', () => {
+  test('identity when the lane is disabled (Infinity)', () => {
     const msgs = conversation([5_000, 5_000])
-    expect(pruneToolResultsByBytes(msgs, Infinity, Infinity)).toBe(msgs)
+    expect(rssClip(msgs, Infinity, Infinity)).toBe(msgs)
   })
 
   test('over the high water → stubs oldest-first down to the low water', () => {
     // Each block estimates to ~1143 tok (4000 chars / 3.5), total ~4572.
     const msgs = conversation([1_000, 1_000, 1_000, 1_000])
-    const out = pruneToolResultsByBytes(msgs, 3_000, 2_400)
+    const out = rssClip(msgs, 3_000, 2_400)
     expect(out).not.toBe(msgs)
     // Oldest results stubbed until remaining ≤ 2000: stub t0, t1 (4k→2k)
     const tr = (i: number) => ((out[2 + i * 2].content as Block[])[0] as { content: string }).content
@@ -1746,7 +1428,7 @@ describe('pruneToolResultsByBytes', () => {
     // Two huge results, no tail turns: the results themselves are the last
     // user messages — both inside the keep window of 2 → identity.
     const msgs = conversation([50_000, 50_000], 0)
-    expect(pruneToolResultsByBytes(msgs, 1_000, 500, 2)).toBe(msgs)
+    expect(rssClip(msgs, 1_000, 500, 2)).toBe(msgs)
   })
 
   test('skips errors, images, small results and existing stubs in the pressure count', () => {
@@ -1766,14 +1448,14 @@ describe('pruneToolResultsByBytes', () => {
       userText('tail 2'),
     ]
     // None of these count toward pressure → identity even with tiny high water
-    expect(pruneToolResultsByBytes(msgs, 100, 50)).toBe(msgs)
+    expect(rssClip(msgs, 100, 50)).toBe(msgs)
   })
 
   test('idempotent: second pass over the pruned output is identity', () => {
     const msgs = conversation([2_000, 2_000, 2_000])
-    const once = pruneToolResultsByBytes(msgs, 3_000, 1_500)
+    const once = rssClip(msgs, 3_000, 1_500)
     expect(once).not.toBe(msgs)
-    expect(pruneToolResultsByBytes(once, 3_000, 1_500)).toBe(once)
+    expect(rssClip(once, 3_000, 1_500)).toBe(once)
   })
 })
 
@@ -1880,7 +1562,7 @@ describe('head-preserving stubs', () => {
     expect(stubToolResultForDisplay(out, msgs, 2000, HEAD)).toBe(out)
   })
 
-  test('byte-guard applies heads and still drains below the low water', () => {
+  test('rss lane applies heads and still drains below the low water', () => {
     const msgs: Msg[] = [
       userText('prompt'),
       assistantToolUse('a', 'Read'),
@@ -1890,7 +1572,7 @@ describe('head-preserving stubs', () => {
       userText('tail 1'),
       userText('tail 2'),
     ]
-    const out = pruneToolResultsByBytes(msgs, 5_000, 1_000, 2, HEAD)
+    const out = rssClip(msgs, 5_000, 1_000, 2, HEAD)
     expect(out).not.toBe(msgs)
     const tr1 = (out[2].content as Block[])[0] as { content: string }
     expect(tr1.content).toMatch(/head preserved\]$/)
@@ -1941,7 +1623,7 @@ describe('review fixes', () => {
     expect(block.content.length).toBeLessThan(1000)
   })
 
-  test('byte-guard trigger counts only CLEARABLE (pre-cutoff) tokens', () => {
+  test('rss lane trigger counts only CLEARABLE (pre-cutoff) tokens', () => {
     // Huge results inside the protected window must NOT trip the guard
     const msgs: Msg[] = [
       userText('prompt'),
@@ -1952,7 +1634,7 @@ describe('review fixes', () => {
       assistantToolUse('big2', 'Read'),
       userToolResult('big2', bigText(100_000)), // protected
     ]
-    expect(pruneToolResultsByBytes(msgs, 50_000, 25_000, 2)).toBe(msgs)
+    expect(rssClip(msgs, 50_000, 25_000, 2)).toBe(msgs)
   })
 
   test('pruneOldToolResults short-circuits on keepTurns=Infinity', () => {
@@ -1975,22 +1657,6 @@ describe('review fixes', () => {
     ]
     expect(getClipFrontierIndex(msgs)).toBe(msgs.length - 1)
     expect(getClipFrontierIndex(msgs, { imagesAreMutable: true })).toBe(1)
-  })
-
-  test('evictOldStubbedMessages deliberately KEEPS pairs holding HEAD-form stubs', () => {
-    // Head-stubs carry content the model still uses, and eviction REMOVES
-    // messages from the array that seeds the next turn's API view — a
-    // prefix mutation the clip frontier cannot anticipate. Pure stubs only.
-    const headStub = 'some head\n[clipped: ~5000 tokens from Read — head preserved]'
-    const msgs: Msg[] = [
-      assistantToolUse('a', 'Read'),
-      userToolResult('a', headStub),
-      userText('turn 1'),
-      { role: 'assistant', content: [{ type: 'text', text: 'r1' }] },
-      userText('turn 2'),
-      { role: 'assistant', content: [{ type: 'text', text: 'r2' }] },
-    ]
-    expect(evictOldStubbedMessages(msgs, 2)).toBe(msgs)
   })
 
   test('CLAUDIN_STUB_HEAD_CHARS env override is clamped below the plausibility bound', () => {
@@ -2071,19 +1737,19 @@ describe('pinned tool_results', () => {
     expect(contentOf(result[1])).toMatch(/\[clipped: ~\d+ tokens from Read/)
   })
 
-  test('the RSS byte-guard skips a pinned result', () => {
+  test('the rss lane skips a pinned result', () => {
     const messages = twoTurns('toolu_pinned')
     pinToolResult('toolu_pinned')
     // keepRecentTurns=1: the cutoff lands after turn 1, so the fat result IS a
     // candidate. (With the default 2 the cutoff is index 0 and the guard bails
     // before looking at anything — which made an earlier version of this test
     // tautological: it passed with the pin check deleted.)
-    expect(pruneToolResultsByBytes(messages, 1, 0, 1)).toBe(messages)
+    expect(rssClip(messages, 1, 0, 1)).toBe(messages)
     expect(contentOf(messages[1])).toBe(bigContent)
 
     // Control: same call, no pin → the guard really does clip here.
     const unpinned = twoTurns('toolu_plain')
-    const clipped = pruneToolResultsByBytes(unpinned, 1, 0, 1)
+    const clipped = rssClip(unpinned, 1, 0, 1)
     expect(clipped).not.toBe(unpinned)
     expect(contentOf(clipped[1])).toMatch(/\[clipped: ~\d+ tokens from Read/)
   })
@@ -2295,24 +1961,24 @@ describe('pinned tool_results', () => {
     // EXACT, not a range. The count is what pins the tick to the START of a
     // pass: aging at the END would shield for one pass longer and land on
     // MAX_SHIELDED_PASSES + 1. Start-of-pass placement is the whole reason the
-    // byte guard's candidate filter and stubOneBlock can't disagree mid-pass.
+    // candidate walk and stubOneBlock can't disagree mid-pass.
     expect(clippedAt).toBe(MAX_SHIELDED_PASSES)
     // Expiry must not re-arm the loop: the id is spent, not forgotten.
     expect(_getPinnedToolResultsForTesting().has('toolu_aging')).toBe(false)
     expect(isPinRegistered('toolu_aging')).toBe(true)
   })
 
-  test('the byte guard ages pins too — retain never reaches the other two ticks', () => {
+  test('the candidate walk ages pins too — retain never reaches the other two ticks', () => {
     // retain sets keepTurns to Infinity (pruneOldToolResults returns before its
     // tick) and leaves the clipped set empty until microcompact (applyStableStubs
-    // returns before its tick), so pruneToolResultsByBytes is the ONLY pass that
+    // returns before its tick), so collectClearableCandidates is the ONLY pass that
     // can age a pin there — and retain is the one profile where this guard, the
     // thing the expiry protects, actually runs. Without a tick here a pin placed
     // under retain was permanently exempt from the RSS bound.
     pinToolResult('toolu_bytes_aging')
     let clippedAt = -1
     for (let pass = 1; pass <= MAX_SHIELDED_PASSES * 2; pass++) {
-      const out = pruneToolResultsByBytes(twoTurns('toolu_bytes_aging'), 1, 0, 1)
+      const out = rssClip(twoTurns('toolu_bytes_aging'), 1, 0, 1)
       if (/\[clipped: ~\d+ tokens from Read/.test(String(contentOf(out[1])))) {
         clippedAt = pass
         break
@@ -2358,18 +2024,18 @@ describe('pinned tool_results', () => {
     expect(_getSpentPinIdsForTesting().has('toolu_huge')).toBe(true)
   })
 
-  test('the byte guard and the age prune agree on the ceiling', () => {
+  test('the rss lane and the age prune agree on the ceiling', () => {
     // If the guard skipped an over-ceiling pin that stubOneBlock then clips,
     // `remaining` would be debited for bytes the guard never freed.
     const messages = twoTurnsHuge('toolu_huge')
     pinToolResult('toolu_huge')
 
-    const clipped = pruneToolResultsByBytes(messages, 1, 0, 1)
+    const clipped = rssClip(messages, 1, 0, 1)
     expect(clipped).not.toBe(messages)
     expect(contentOf(clipped[1])).toMatch(/\[clipped: ~\d+ tokens from Read/)
   })
 
-  test('shielded bytes are excluded from the byte guard trigger, not just its candidates', () => {
+  test('shielded bytes are excluded from the rss lane trigger, not just its candidates', () => {
     // The candidate filter `continue`s on a shielded block BEFORE
     // `clearableTokens += tokens`, so protected bytes must not count toward the
     // high-water decision either. If they did, the guard would fire on pressure
@@ -2405,7 +2071,7 @@ describe('pinned tool_results', () => {
 
     // Sanity: with nothing pinned, ~1500 clearable tokens trips a 800 high water.
     const before = build()
-    const unpinned = pruneToolResultsByBytes(before, 800, 100, 1)
+    const unpinned = rssClip(before, 800, 100, 1)
     expect(unpinned).not.toBe(before)
     expect(contentOf(unpinned[1])).toMatch(/\[clipped: ~\d+ tokens from Read/)
 
@@ -2415,7 +2081,7 @@ describe('pinned tool_results', () => {
     _resetAllClippedIdsForTesting()
     pinToolResult('toolu_shielded')
     const messages = build()
-    const pinned = pruneToolResultsByBytes(messages, 800, 100, 1)
+    const pinned = rssClip(messages, 800, 100, 1)
     expect(pinned).toBe(messages)
   })
 

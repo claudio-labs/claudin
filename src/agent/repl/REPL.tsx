@@ -299,6 +299,10 @@ const HISTORY_STUB = {
 // https://anthropic.slack.com/archives/C07VBSHV7EV/p1773545449871739
 const RECENT_SCROLL_REPIN_WINDOW_MS = 3000;
 
+// Most recent messages the Ink tree mounts. A render window, not a history
+// bound: the state array behind it is never cut (see displayedMessages).
+const MAX_DISPLAY_MESSAGES = 200;
+
 // Use LRU cache to prevent unbounded memory growth
 // 100 files should be sufficient for most coding sessions while preventing
 // memory issues when working across many files in large projects
@@ -2881,7 +2885,15 @@ export function REPL({
   const usesSyncMessages = showStreamingText || !isLoading;
   // When viewing an agent, never fall through to leader — empty until
   // bootstrap/stream fills. Closes the see-leader-type-agent footgun.
-  const displayedMessages = viewedAgentTask ? viewedAgentTask.messages ?? [] : usesSyncMessages ? messages : deferredMessages;
+  // The display cap bounds RENDERING only. `messages` is also the array that
+  // seeds the next turn's API view, so it is never cut — cutting it was a
+  // prompt-cache prefix rewrite that also dropped content the model had read
+  // (docs/tech/cache/context-relief-policy.md). Index-based consumers
+  // (useUnseenDivider, the transcript freeze, MessageSelector) keep reading
+  // the full array.
+  const fullDisplayedMessages = viewedAgentTask ? viewedAgentTask.messages ?? [] : usesSyncMessages ? messages : deferredMessages;
+  // Memoized so Messages' React.memo holds once the window is a fresh slice.
+  const displayedMessages = useMemo(() => fullDisplayedMessages.length > MAX_DISPLAY_MESSAGES ? fullDisplayedMessages.slice(-MAX_DISPLAY_MESSAGES) : fullDisplayedMessages, [fullDisplayedMessages]);
   // Show the placeholder until the real user message appears in
   // displayedMessages. userInputOnProcessing stays set for the whole turn
   // (cleared in resetLoadingState); this length check hides it once
@@ -2890,7 +2902,7 @@ export function REPL({
   // while deferredMessages lags behind messages. Suppressed when viewing an
   // agent — displayedMessages is a different array there, and onAgentSubmit
   // doesn't use the placeholder anyway.
-  const placeholderText = userInputOnProcessing && !viewedAgentTask && displayedMessages.length <= userInputBaselineRef.current ? userInputOnProcessing : undefined;
+  const placeholderText = userInputOnProcessing && !viewedAgentTask && fullDisplayedMessages.length <= userInputBaselineRef.current ? userInputOnProcessing : undefined;
   const toolPermissionOverlay = focusedInputDialog === 'tool-permission' ? <PermissionRequest key={toolUseConfirmQueue[0]?.toolUseID} onDone={() => setToolUseConfirmQueue(([_, ...tail]) => tail)} onReject={handleQueuedCommandOnCancel} toolUseConfirm={toolUseConfirmQueue[0]!} toolUseContext={getToolUseContext(messages, messages, abortController ?? createAbortController(), mainLoopModel)} verbose={verbose} workerBadge={toolUseConfirmQueue[0]?.workerBadge} setStickyFooter={isFullscreenEnvEnabled() ? setPermissionStickyFooter : undefined} /> : null;
 
   // Narrow terminals: companion collapses to a one-liner that REPL stacks

@@ -30,6 +30,7 @@ import { setPinReleaseHandler } from 'src/shared/fs/fileStateCache.js'
 import { estimateImageTokens } from 'src/agent/context/imageTokenEstimator.js'
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
 import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
+import type { ReliefCandidate } from 'src/agent/compact/reliefPolicy.js'
 
 /** Minimum token count for a tool_result to be immediately stubbed on display. */
 const IMMEDIATE_STUB_TOKEN_THRESHOLD = 2000
@@ -122,7 +123,8 @@ function recordStubText(toolUseId: string, stub: string): void {
 // A tool_result the model demonstrably still needs: it was clipped out of
 // context, the model re-requested the exact same thing, and the re-delivered
 // copy is what we pin. Every clip path funnels through stubOneBlock (age
-// prune, RSS byte-guard, applyStableStubs) plus the display stub, and all of
+// prune, applyStableStubs) plus the display stub, and the relief candidate
+// walk (collectClearableCandidates) skips pinned ids too — so all of
 // them skip a pinned id — so the re-send survives instead of being clipped
 // again on the next pass, which is what turned "clip → re-read → clip" into
 // an endless loop (see FileReadTool's clip-pin stand-down).
@@ -195,7 +197,7 @@ const MAX_SPENT_PIN_IDS = 64
  *
  * A "pass" is NOT a turn, and the conversion rate is not even stable. Three
  * functions tick agePinsForCurrent — applyStableStubs, pruneOldToolResults and
- * pruneToolResultsByBytes — reached from nine production call sites: every API
+ * collectClearableCandidates — reached from nine production call sites: every API
  * request on all three provider paths (claude/streaming.ts, openaiShim/
  * messagesClient.ts, codexShim.ts), every appended user message and compaction
  * in QueryEngine, and the REPL's own prune. So the tick rate depends on how
@@ -216,8 +218,8 @@ const MAX_SPENT_PIN_IDS = 64
  * anyway). Buying a stable unit means threading a turn counter through all nine
  * call sites; the spread does not currently justify it.
  *
- * Ticked at the START of a pass, never inside pinShieldsBlock: the byte guard's
- * `remaining` accounting is only honest while its candidate filter and
+ * Ticked at the START of a pass, never inside pinShieldsBlock: the relief
+ * policy's savings accounting is only honest while its candidate walk and
  * stubOneBlock agree on what is exempt, and a counter that tipped between those
  * two calls would break exactly that.
  */
@@ -395,7 +397,7 @@ export const MAX_PINNED_RESULT_TOKENS = 8_000
 /**
  * Whether a pin actually shields THIS block — registry membership AND size.
  * Every clip path must ask this one question rather than isPinRegistered: the
- * byte guard's accounting is only honest while its candidate filter and
+ * relief policy's accounting is only honest while its candidate walk and
  * stubOneBlock agree on what is exempt, and a registered-but-oversized pin is
  * deliberately not exempt.
  *
@@ -551,7 +553,7 @@ export function pruneStaleClippedIds(): void {
 export function pruneOrphanClippedIds(messages: AnyMessage[]): void {
   const ids = perKeyClippedIds.get(currentKey())
   // The stub-text registry can hold ids the clipped set doesn't (age-prune
-  // and byte-guard stubs record bytes too), so prune it independently.
+  // stubs record bytes too), so prune it independently.
   const stubText = perKeyStubText.get(currentKey())
   // Pins are checked against the SAME key's messages only: `messages` is one
   // agent's transcript, so it is not evidence about another agent's pins.
@@ -799,7 +801,7 @@ export function stubToolResultForDisplay<T extends AnyMessage>(
 ): T {
   // Retain profile passes Infinity: the display array seeds the next turn's
   // API view, so stubbing here would clip content out of the model's sight
-  // cross-turn. RSS is bounded by pruneToolResultsByBytes instead.
+  // cross-turn. RSS is bounded by the relief policy's rss lane instead.
   if (!Number.isFinite(thresholdTokens)) return message
   const inner = getInner(message)
   const role = inner.role ?? (message as AnyMessage).role
@@ -916,7 +918,7 @@ export function isClipStubContent(content: string): boolean {
 
 /** Whether `content` takes the head-preserving stub form for the given
  * headChars. Single source of truth — stubOneBlock, the display stub and
- * the byte-guard's savings accounting must agree byte-for-byte, or the
+ * the relief candidate walk's savings accounting must agree byte-for-byte, or the
  * same content could render different stub forms across paths (a wire
  * byte flip that breaks the prompt-cache prefix). */
 function headStubApplies(content: unknown, headChars: number): content is string {
@@ -1002,7 +1004,7 @@ function stubOneBlock(
   const toolUseId = (block as { tool_use_id?: string }).tool_use_id ?? ''
   // Pinned: the model already lost this content once and asked for it back.
   // Clipping it again is exactly what the pin exists to prevent — every clip
-  // path (age prune, byte guard, explicit clip) lands here, so this single
+  // path (age prune, explicit clip) lands here, so this single
   // check covers all of them.
   if (pinShieldsBlock(toolUseId, existing)) return block
   // First-write-wins replay: if this id was already stubbed in this session
@@ -1063,7 +1065,7 @@ export function applyStableStubs<T extends AnyMessage>(messages: T[]): T[] {
   agePinsForCurrent()
   const toolNames = indexToolUses(messages)
   let anyTouched = false
-  // Same head-preserving form as the age prune / byte guard: the explicit
+  // Same head-preserving form as the age prune: the explicit
   // clip path MUST produce identical bytes for a given content, or a block
   // can render as a pure stub on the wire (this per-request path) and as a
   // head-stub in engine state (prune) on the next request — a wire byte
@@ -1308,8 +1310,8 @@ export function getClipFrontierIndex(
 /**
  * Walk backwards to find the index of the (keepTurns)th-from-last user
  * message. "Turn boundary" = role: 'user'. Returns -1 when fewer turns
- * exist. Shared by the age prune, the byte guard and the display eviction
- * so all three protect the same window.
+ * exist. Shared by the age prune and the relief candidate walk so both
+ * protect the same window.
  */
 function findTurnCutoffIndex(
   messages: readonly AnyMessage[],
@@ -1388,62 +1390,60 @@ export function pruneOldToolResults<T extends AnyMessage>(
 }
 
 /**
- * RSS-pressure prune (cache-profile 'retain', design doc Phase 5).
+ * The clearable-candidate walk shared by the relief policy's two lanes
+ * (`reliefPolicy.ts`). Returns every full, stubable tool_result older than
+ * the protected `keepRecentTurns` window, OLDEST FIRST, with what stubbing
+ * each one frees, plus their total — the "retained full result tokens" the
+ * rss lane triggers on.
  *
- * Under the retain profile the age prune is disabled — full tool_results
- * stay in context so the provider cache serves them at the read multiplier
- * instead of re-billing clipped content at full price. This guard is what
- * bounds memory instead: when the estimated total tokens of full (stubable)
- * tool_results exceed `highWaterTokens`, stub OLDEST-FIRST until the total
- * drops to `lowWaterTokens`. The last `keepRecentTurns` user turns are never
- * touched (same cutoff walk as pruneOldToolResults).
+ * Only CLEARABLE pressure is counted: tokens inside the protected window
+ * cannot be reclaimed here, so counting them would let a couple of huge
+ * recent results trip the rss lane and mass-clip the ENTIRE older prefix
+ * without ever reaching its target — wiping the retained context the lane
+ * exists to protect, for negligible relief.
  *
- * Each firing is one deliberate clip event: bytes mutate inside the frozen
- * prefix, the cache breaks ONCE, then the stable stubs hold (the original
- * stable-stub contract). Identity-preserving when under the high water or
- * when nothing before the cutoff is stubable.
+ * Skipped (and not counted): stubs, empty/error/image-bearing results,
+ * blocks under `MIN_STUB_TOKENS`, pinned blocks (stubOneBlock would leave
+ * them intact, so counting them corrupts the accounting), ids already in the
+ * clipped set (pre-request the array still holds their full content — the
+ * wire rewrites them; counting them would re-fire the lane on the very next
+ * request), and tools the caller's `isClearableTool` rejects.
+ *
+ * `savings` mirrors stubOneBlock's branch exactly: head-stubs retain
+ * ~stubKeepHeadChars worth of tokens, but only for string content long
+ * enough to take the head form — array content and shorter strings get the
+ * pure stub (full savings).
  */
-export function pruneToolResultsByBytes<T extends AnyMessage>(
-  messages: T[],
-  highWaterTokens: number,
-  lowWaterTokens: number,
-  keepRecentTurns = 2,
-  stubKeepHeadChars = 0,
-): T[] {
-  if (!Number.isFinite(highWaterTokens) || messages.length === 0) return messages
-
-  // Cutoff first: only CLEARABLE pressure (pre-cutoff candidates) counts
-  // toward the trigger. Tokens living inside the protected keepRecentTurns
-  // window cannot be reclaimed here, so counting them would let a couple of
-  // huge recent results trip the guard and mass-stub the ENTIRE older
-  // prefix without ever reaching the low-water target — wiping the retained
-  // context the guard exists to protect, for negligible relief.
+export function collectClearableCandidates(
+  messages: readonly AnyMessage[],
+  keepRecentTurns: number,
+  stubKeepHeadChars: number,
+  isClearableTool: (toolName: string) => boolean = () => true,
+): { candidates: ReliefCandidate[]; clearableTokens: number } {
+  const none = { candidates: [], clearableTokens: 0 }
+  if (messages.length === 0) return none
   const cutoffIdx = findTurnCutoffIndex(messages, keepRecentTurns)
-  if (cutoffIdx <= 0) return messages
+  if (cutoffIdx <= 0) return none
 
   // One tick of the pin clock per real clip pass (see MAX_SHIELDED_PASSES),
   // taken before the candidate walk so pinShieldsBlock gives the same answer
-  // to the filter below and to stubOneBlock later in this pass.
+  // here and to stubOneBlock when the clip is applied.
   //
   // This tick is what makes expiry work AT ALL under the retain profile: retain
   // sets keepTurns to Infinity, so pruneOldToolResults returns before its tick,
   // and applyStableStubs returns early while the clipped set is empty. Without
   // this line a pin placed under retain never aged — and retain is the one
-  // profile where the byte guard the expiry protects actually runs, so up to
+  // profile where the rss lane the expiry protects actually runs, so up to
   // MAX_PINNED_TOOL_RESULTS × MAX_PINNED_RESULT_TOKENS would sit permanently
   // exempt from the RSS bound (and, because pinned blocks `continue` before
-  // `clearableTokens += tokens` below, invisible to the high-water trigger too).
+  // `clearableTokens += tokens` below, invisible to the trigger too).
   agePinsForCurrent()
 
-  // Pass 1: clearable pressure across pre-cutoff full stubable tool_results.
-  // `savings` is what stubbing actually frees: head-stubs retain
-  // ~stubKeepHeadChars worth of tokens, but only for string content long
-  // enough to take the head form — array content and shorter strings get
-  // the pure stub (full savings). Mirrors stubOneBlock's branch exactly.
-  type Candidate = { msgIdx: number; blockIdx: number; savings: number }
+  const clipped = getClippedIds()
+  const toolNames = indexToolUses(messages)
   const headTokensEstimate =
     stubKeepHeadChars > 0 ? Math.ceil(stubKeepHeadChars / 4) : 0
-  const candidates: Candidate[] = []
+  const candidates: ReliefCandidate[] = []
   let clearableTokens = 0
   for (let i = 0; i < cutoffIdx; i++) {
     const inner = getInner(messages[i]!)
@@ -1451,8 +1451,7 @@ export function pruneToolResultsByBytes<T extends AnyMessage>(
     if (role !== 'user') continue
     const content = inner.content
     if (!Array.isArray(content)) continue
-    for (let j = 0; j < content.length; j++) {
-      const block = (content as AnyContentBlock[])[j]!
+    for (const block of content as AnyContentBlock[]) {
       if (block?.type !== 'tool_result') continue
       const existing = (block as unknown as ToolResultBlockParam).content
       if (typeof existing === 'string' && isClipStubContent(existing)) continue
@@ -1460,398 +1459,30 @@ export function pruneToolResultsByBytes<T extends AnyMessage>(
       if (Array.isArray(existing) && existing.length === 0) continue
       if (arrayContainsImage(existing)) continue
       if ((block as unknown as ToolResultBlockParam).is_error) continue
-      // Pinned blocks are exempt in stubOneBlock, so counting them here would
-      // corrupt the accounting: `remaining` would drop for bytes we never
-      // actually free, and the guard would stop short of the low water while
-      // believing it got there. Skip them as candidates outright.
-      //
-      // Reachable under RETAIN only: AGGRESSIVE sets retainedHighWaterTokens
-      // to Infinity, so this whole function returns before here. The guard
-      // still belongs here — the profile is user-switchable at runtime.
-      const blockToolUseId = (block as { tool_use_id?: string }).tool_use_id
-      if (pinShieldsBlock(blockToolUseId ?? '', existing)) continue
+      const toolUseId = (block as { tool_use_id?: string }).tool_use_id
+      if (!toolUseId || clipped.has(toolUseId)) continue
+      if (!isClearableTool(toolNames.get(toolUseId) ?? '')) continue
+      if (pinShieldsBlock(toolUseId, existing)) continue
       const tokens = estimateToolResultTokens(existing)
       if (tokens < MIN_STUB_TOKENS) continue
       const savings = headStubApplies(existing, stubKeepHeadChars)
         ? Math.max(0, tokens - headTokensEstimate)
         : tokens
       clearableTokens += tokens
-      candidates.push({ msgIdx: i, blockIdx: j, savings })
+      candidates.push({ toolUseId, savings })
     }
   }
-  if (clearableTokens <= highWaterTokens) return messages
-
-  // Pass 2: stub oldest-first (candidates are already in array order) until
-  // the remaining clearable total reaches the low water.
-  const toStub = new Map<number, Set<number>>()
-  let remaining = clearableTokens
-  for (const c of candidates) {
-    if (remaining <= lowWaterTokens) break
-    let set = toStub.get(c.msgIdx)
-    if (!set) {
-      set = new Set()
-      toStub.set(c.msgIdx, set)
-    }
-    set.add(c.blockIdx)
-    remaining -= c.savings
-  }
-  if (toStub.size === 0) return messages
-
-  const toolNames = indexToolUses(messages)
-  const out = messages.map((msg, idx) => {
-    const blockIdxs = toStub.get(idx)
-    if (!blockIdxs) return msg
-    const inner = getInner(msg)
-    const content = inner.content as AnyContentBlock[]
-    const newContent = content.map((block, j) =>
-      blockIdxs.has(j) ? stubOneBlock(block, toolNames, stubKeepHeadChars) : block,
-    )
-    if (msg.message) {
-      return { ...msg, message: { ...msg.message, content: newContent } } as T
-    }
-    return { ...msg, content: newContent } as T
-  })
-  return out
-}
-
-/**
- * Evict old fully-stubbed message pairs from the display array.
- *
- * While pruneOldToolResults replaces tool_result content with stubs,
- * the message objects remain in the array. This function goes further:
- * it removes user messages that contain ONLY stubbed tool_results,
- * along with their corresponding assistant messages if those contain
- * ONLY tool_use blocks (no text, no thinking). This frees the wrapper
- * objects and any remaining string allocation overhead.
- *
- * NOT free for the prompt cache: in the REPL the display array seeds the
- * next turn's API view (messagesRef.current → handlePromptSubmit), so every
- * eviction removes messages from behind the cache marker — a prefix
- * mutation that invalidates the cached prefix from the first removed pair.
- * The REPL therefore amortizes the cost: it passes minEvictable
- * (EVICT_MIN_BATCH) so eviction fires once per accumulated batch instead
- * of once per turn, and notifies the cache-break detector when it does.
- * The idle-gap sweep passes minEvictable=1 — destruction is free when the
- * server-side cache has already expired.
- *
- * @param messages Display messages array
- * @param keepTurns Number of recent turns to preserve untouched (default 2)
- * @param minEvictable Minimum number of evictable messages required before
- *   anything is removed (default 1 = evict whenever possible)
- * @returns The same array reference if nothing was evicted, or a new shorter array
- */
-export function evictOldStubbedMessages<T extends AnyMessage>(
-  messages: T[],
-  keepTurns = 2,
-  minEvictable = 1,
-): T[] {
-  if (messages.length === 0) return messages
-
-  // Find cutoff: same algorithm as pruneOldToolResults but with a
-  // more conservative default (keepTurns=2 vs 1) because eviction
-  // is more destructive than stubbing
-  let cutoffIdx = -1
-  let turnsFound = 0
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const inner = getInner(messages[i]!)
-    const role = inner.role ?? (messages[i] as AnyMessage).role
-    if (role === 'user') {
-      turnsFound++
-      if (turnsFound >= keepTurns) {
-        cutoffIdx = i
-        break
-      }
-    }
-  }
-
-  if (cutoffIdx === -1) return messages
-  if (cutoffIdx === 0) return messages
-
-  // Step 1: Find assistant messages before cutoff that contain ONLY tool_use
-  // blocks (no text, thinking, or other content that the user needs to see).
-  // Collect the tool_use_ids from these purely-tool-use assistant messages.
-  const candidateToolUseIds = new Set<string>()
-  const candidateAssistantIndices = new Set<number>()
-
-  for (let i = 0; i < cutoffIdx; i++) {
-    const inner = getInner(messages[i]!)
-    const role = inner.role ?? (messages[i] as AnyMessage).role
-    if (role !== 'assistant') continue
-
-    const content = inner.content
-    if (!Array.isArray(content)) continue
-
-    let allToolUse = true
-    for (const block of content as AnyContentBlock[]) {
-      if (block?.type !== 'tool_use') {
-        allToolUse = false
-        break
-      }
-    }
-
-    if (!allToolUse) continue
-    candidateAssistantIndices.add(i)
-    for (const block of content as ToolUseBlock[]) {
-      if (block.id) candidateToolUseIds.add(block.id)
-    }
-  }
-
-  if (candidateToolUseIds.size === 0) return messages
-
-  // Step 2: Find user messages before cutoff whose tool_results are ALL
-  // stubbed AND whose tool_use_ids are ALL in candidateToolUseIds.
-  // Only evict the pair if both sides are cleanly removable.
-  const evictableUserMsgIndices = new Set<number>()
-  const evictedToolResultIds = new Set<string>()
-
-  for (let i = 0; i < cutoffIdx; i++) {
-    const inner = getInner(messages[i]!)
-    const role = inner.role ?? (messages[i] as AnyMessage).role
-    if (role !== 'user') continue
-
-    const content = inner.content
-    if (!Array.isArray(content)) continue
-
-    let allEvictable = true
-    let hasAnyBlock = false
-    for (const block of content as AnyContentBlock[]) {
-      hasAnyBlock = true
-      if (block?.type !== 'tool_result') {
-        allEvictable = false
-        break
-      }
-      const toolUseId = (block as { tool_use_id?: string }).tool_use_id ?? ''
-      if (!candidateToolUseIds.has(toolUseId)) {
-        allEvictable = false
-        break
-      }
-      // PURE stubs only, deliberately: head-preserving stubs carry content
-      // the model still uses (file headers, top grep hits), and this array
-      // seeds the next turn's API view in the REPL — evicting head-stub
-      // pairs would both destroy that retained context and REMOVE messages
-      // from the wire history (a prefix mutation the clip frontier cannot
-      // anticipate, breaking the cache every eviction). Display growth from
-      // retained head-stub pairs is bounded by evictToMaxSize.
-      const existing = (block as { content?: unknown }).content
-      if (typeof existing !== 'string' || !CLIP_STUB_PATTERN.test(existing)) {
-        allEvictable = false
-        break
-      }
-    }
-
-    if (hasAnyBlock && allEvictable) {
-      evictableUserMsgIndices.add(i)
-      for (const block of content as AnyContentBlock[]) {
-        const toolUseId = (block as { tool_use_id?: string }).tool_use_id ?? ''
-        if (toolUseId) evictedToolResultIds.add(toolUseId)
-      }
-    }
-  }
-
-  if (evictableUserMsgIndices.size === 0) return messages
-
-  // Step 3: Filter candidate assistant messages — only keep those whose
-  // tool_use_ids are ALL covered by evictable user messages.
-  const evictableAssistantIndices = new Set<number>()
-  for (const i of candidateAssistantIndices) {
-    const inner = getInner(messages[i]!)
-    const content = inner.content
-    if (!Array.isArray(content)) continue
-
-    let allCovered = true
-    for (const block of content as ToolUseBlock[]) {
-      if (!evictedToolResultIds.has(block.id ?? '')) {
-        allCovered = false
-        break
-      }
-    }
-
-    if (allCovered) evictableAssistantIndices.add(i)
-  }
-
-  // Build the new array without evicted messages
-  const evictSet = new Set([...evictableUserMsgIndices, ...evictableAssistantIndices])
-  if (evictSet.size === 0) return messages
-
-  // Amortization gate: each eviction event costs one prompt-cache prefix
-  // invalidation (see docstring), so don't pay it for a handful of pairs —
-  // wait until a batch has accumulated and remove them all in one break.
-  if (evictSet.size < minEvictable) return messages
-
-  const out = messages.filter((_, idx) => !evictSet.has(idx))
-  return out.length === messages.length ? messages : out
-}
-
-/** Maximum number of messages to keep in the display array. */
-export const MAX_DISPLAY_MESSAGES = 200
-
-/**
- * Hysteresis trigger for evictToMaxSize in the REPL: don't cut until the
- * array exceeds this, then cut back to MAX_DISPLAY_MESSAGES. Each cut is a
- * deliberate prompt-cache prefix invalidation (the display array seeds the
- * next request), so the band amortizes it to roughly one break per
- * (EVICT_TRIGGER_AT - MAX_DISPLAY_MESSAGES) messages instead of one per
- * turn once the session crosses the cap. The wider steady-state display
- * (up to 300 messages of mostly-stubbed content) is an accepted trade.
- */
-export const EVICT_TRIGGER_AT = 300
-
-/**
- * Batch floor for evictOldStubbedMessages in the REPL: accumulate at least
- * this many evictable messages (12 stub-only pairs) before paying the
- * eviction's cache break. Pure-stub pairs are ~100 bytes each, so holding
- * a partial batch costs almost nothing.
- */
-export const EVICT_MIN_BATCH = 24
-
-/**
- * Evict messages from the start of the display array when it exceeds
- * MAX_DISPLAY_MESSAGES. This prevents unbounded growth of the React
- * state array across very long sessions.
- *
- * Rules:
- * - Never evict the compact boundary message (system with subtype compact_boundary)
- * - Never evict the first system message (initial context)
- * - Always evict in complete user/assistant pairs to avoid orphaned tool_uses
- * - Preserve tool_use/tool_result pairing within evicted ranges
- *
- * The transcript on disk retains the full (cleaned) conversation for /resume.
- *
- * Like evictOldStubbedMessages, this is NOT free for the prompt cache in
- * the REPL (the display array seeds the next request) — cutting from the
- * front invalidates the whole cached prefix. Callers amortize via the
- * triggerAt hysteresis band: nothing happens until length > triggerAt,
- * then the array is cut back to maxMessages in one break.
- *
- * @param messages Display messages array
- * @param maxMessages Maximum messages to keep (default MAX_DISPLAY_MESSAGES)
- * @param triggerAt Length above which the cut fires (default maxMessages —
- *   i.e. no hysteresis; the REPL passes EVICT_TRIGGER_AT)
- * @returns The same array reference if under limit, or a truncated array
- */
-export function evictToMaxSize<T extends AnyMessage>(
-  messages: T[],
-  maxMessages = MAX_DISPLAY_MESSAGES,
-  triggerAt = maxMessages,
-): T[] {
-  if (messages.length <= Math.max(triggerAt, maxMessages)) return messages
-
-  // Find the compact boundary — we must keep it and everything after it
-  let boundaryIdx = -1
-  for (let i = 0; i < messages.length; i++) {
-    const inner = getInner(messages[i]!)
-    const role = inner.role ?? (messages[i] as AnyMessage).role
-    if (role === 'system') {
-      const subtype = (inner as { subtype?: string }).subtype
-      if (subtype === 'compact_boundary') {
-        boundaryIdx = i
-        break
-      }
-    }
-  }
-
-  // Calculate how many messages to drop from the front
-  const excess = messages.length - maxMessages
-
-  // Find a safe cut point: we need to cut at a position that doesn't
-  // leave orphaned tool_uses or tool_results
-  let cutAt = excess
-
-  // If there's a compact boundary, don't cut past it — cut right at it
-  // (everything before the boundary is already compacted/summarized)
-  if (boundaryIdx !== -1 && cutAt > boundaryIdx) {
-    cutAt = boundaryIdx
-  }
-
-  // Never cut past the first message (keep at least the system/initial message)
-  if (cutAt >= messages.length - 1) return messages
-
-  // Adjust cut point to avoid splitting tool_use/tool_result pairs.
-  // Walk forward from cutAt to find a safe message boundary (a message
-  // that is NOT in the middle of a tool_use/tool_result pair).
-  // Track the last safe cut point in case the array is all tool pairs.
-  let lastSafeCut = -1
-  for (let i = cutAt; i < messages.length; i++) {
-    const inner = getInner(messages[i]!)
-    const role = inner.role ?? (messages[i] as AnyMessage).role
-
-    // If we land on an assistant message that has tool_use blocks,
-    // we must skip past the entire pair (assistant + tool_result)
-    if (role === 'assistant') {
-      const content = inner.content
-      if (Array.isArray(content)) {
-        const hasToolUse = (content as AnyContentBlock[]).some(
-          b => b?.type === 'tool_use'
-        )
-        if (hasToolUse) {
-          // Skip past this assistant and its tool_result response
-          // (the next message should be the tool_result).
-          // Set i = cutAt - 1 so the for-loop's i++ lands on cutAt,
-          // avoiding a redundant re-scan of the tool_result message.
-          cutAt = i + 2
-          // The assistant+tool_result pair at [i, i+1] forms a complete
-          // unit — cutAt = i+2 is a safe boundary between pairs.
-          lastSafeCut = cutAt
-          i = cutAt - 1
-          continue
-        }
-      }
-      // Assistant without tool_use — safe to cut before it
-      cutAt = i
-      break
-    }
-
-    // If we land on a user message that is a tool_result response,
-    // we must also skip past it (its preceding assistant is already cut)
-    if (role === 'user') {
-      const content = inner.content
-      if (Array.isArray(content)) {
-        const hasToolResult = (content as AnyContentBlock[]).some(
-          b => b?.type === 'tool_result'
-        )
-        if (hasToolResult) {
-          // The pair ending at this tool_result is a complete unit.
-          // After skipping past it, cutAt = i+1 is a safe boundary
-          // (we're between pairs, not inside one).
-          lastSafeCut = i + 1
-          // Skip past this tool_result
-          cutAt = i + 1
-          continue
-        }
-      }
-      // User message without tool_result — safe to cut before it
-      cutAt = i
-      break
-    }
-
-    // System or other message — safe to cut before it
-    cutAt = i
-    break
-  }
-
-  if (cutAt <= 0) return messages
-
-  // If cutAt walked past the end (all messages from cutAt onward were
-  // tool_use/tool_result pairs with no text messages to break on), fall
-  // back to the last complete pair boundary we saw. This ensures we
-  // still evict messages even when the tail is all tool pairs.
-  if (cutAt >= messages.length) {
-    if (lastSafeCut <= 0) return messages
-    cutAt = lastSafeCut
-  }
-
-  const out = messages.slice(cutAt)
-  return out
+  return { candidates, clearableTokens }
 }
 
 /**
  * Remove contentReplacementState entries for tool_use_ids that no longer
- * exist in the current messages array. After evictToMaxSize or
- * evictOldStubbedMessages drop messages from the display array, the
- * corresponding seenIds and replacements entries become orphans — they hold
- * references to preview strings (up to ~2KB each) that will never be looked
- * up again. This function prunes them in-place, preserving the object
- * reference held by REPL's contentReplacementStateRef.
+ * exist in the current messages array. After /compact, a rewind or a resume
+ * drop messages from the display array, the corresponding seenIds and
+ * replacements entries become orphans — they hold references to preview
+ * strings (up to ~2KB each) that will never be looked up again. This
+ * function prunes them in-place, preserving the object reference held by
+ * REPL's contentReplacementStateRef.
  */
 export function pruneContentReplacementState(
   messages: AnyMessage[],

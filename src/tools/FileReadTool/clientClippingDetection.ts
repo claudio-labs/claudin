@@ -2,13 +2,15 @@
  * Detection of client-side tool_result clipping — the sibling of
  * serverClearingDetection.ts for the clip paths that run in-process.
  *
- * Four client-side rewriters replace old tool_results with stable clip stubs
+ * Three client-side rewriters replace old tool_results with stable clip stubs
  * without ever touching readFileState (see services/compact/stableStubState.ts):
  *   - the age prune (pruneOldToolResults, keepTurns=1 under the aggressive
  *     cache profile — any Read older than one user-role message is stubbed)
- *   - the RSS byte-guard (pruneToolResultsByBytes)
  *   - the time-based idle-gap clear
- *   - microCompact's size-based stable stubs (applyStableStubs)
+ *   - the relief policy's window and rss lanes (reliefPolicy.ts via
+ *     microCompact — the rss lane is what the old RSS byte-guard became)
+ * The last two only add ids to the clipped set; applyStableStubs is the
+ * rewriter for both.
  *
  * After any of them touches the prior Read's tool_result, the dedup's
  * FILE_UNCHANGED_STUB ("refer to the earlier Read tool_result") points at a
@@ -74,14 +76,15 @@ export function isPriorReadClippedOrMissing(
   // case where the clipping is most aggressive.
   //
   // But the registry records what the clip machinery DECIDED to clip, not what
-  // it managed to clip: microCompact adds candidate ids without consulting the
-  // pin registry, and stubOneBlock then skips the pinned ones. So a shielding
-  // id can sit in the clipped set with its bytes fully intact. Reporting that
-  // as "clipped" made the pin actively counterproductive — the model was sent
-  // to the outline fallback for content it still had verbatim, and the exit
-  // released the pin, so the block it had been protecting was stubbed on the
-  // very next pass. isPinShielding, not isPinRegistered: a SPENT id is no
-  // longer protecting anything, and its presence here is real evidence.
+  // it managed to clip: the idle-gap clear adds candidate ids without
+  // consulting the pin registry (the relief walk does skip pinned blocks),
+  // and stubOneBlock then skips the pinned ones. So a shielding id can sit in
+  // the clipped set with its bytes fully intact. Reporting that as "clipped"
+  // made the pin actively counterproductive — the model was sent to the
+  // outline fallback for content it still had verbatim, and the exit released
+  // the pin, so the block it had been protecting was stubbed on the very next
+  // pass. isPinShielding, not isPinRegistered: a SPENT id is no longer
+  // protecting anything, and its presence here is real evidence.
   if (getClippedIds().has(toolUseId) && !isPinShielding(toolUseId)) return true
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i] as MessageLike

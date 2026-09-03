@@ -233,8 +233,24 @@ call after ToolSearch reads fewer cached tokens than the call before it).
   constant `TOOLS_CLEARABLE_RESULTS` — the flag is the source of truth.
 - Anything that removes or rewrites messages behind the marker must call
   `notifyCacheDeletion(source, agentId, reason)` **with a reason** and
-  `recordPrefixRewrite(reason)` (REPL post-turn path already does), so the
-  rewrite shows on the `[Cache: …]` line instead of surfacing as a mystery dip.
+  `recordPrefixRewrite(reason)` (the relief clip in `microCompact.ts` does),
+  so the rewrite shows on the `[Cache: …]` line instead of surfacing as a
+  mystery dip.
+- **Context relief is ONE decision, and it never drops a message.**
+  `src/agent/compact/reliefPolicy.ts` (`decideRelief`, window + rss lanes)
+  is the only thing that decides to clip; it runs pre-request from
+  `microcompactMessages` on REAL usage (`tokenCountWithEstimation` over the
+  stubbed view), and the only action is `addClippedIds`. Do not add a new
+  post-turn pass that rewrites or evicts from the REPL's message array —
+  that array seeds the next request, so every such pass was a prefix
+  rewrite (`evictToMaxSize`, `evictOldStubbedMessages` and the post-turn
+  byte-guard were deleted for exactly that; the display cap is a render
+  slice in `REPL.tsx`). A new bound belongs as a lane in `decideRelief`, and
+  a new clearable-result rule belongs in `collectClearableCandidates`.
+  `docs/tech/cache/context-relief-policy.md` has the measurements and the
+  cost model (`B* ≈ 60k`; tuning the band buys nothing, dropping content
+  costs re-reads). `CLAUDIN_DISABLE_RELIEF_POLICY=1` turns off the window
+  lane only.
 - `CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=1` silently turns off the retain
   profile's server-side `clear_tool_uses` (no `context-management` beta
   header → no `context_management` body). Check the env before attributing a

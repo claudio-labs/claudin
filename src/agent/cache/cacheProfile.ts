@@ -44,12 +44,13 @@ export type CacheProfile = {
    * keeps full content in the display/seed array so the NEXT turn's API view
    * still has it — the display array seeds messagesIncludingNewMessages. */
   immediateStubTokens: number
-  /** RSS guard (pruneToolResultsByBytes): when the estimated total tokens of
-   * CLEARABLE full tool_results (older than the protected recent window)
-   * exceed the high water, stub oldest-first down to the low water. Pressure
-   * concentrated in the recent window is NOT counted — it cannot be cleared
-   * here, so this bounds old-history growth, not instantaneous RSS. Infinity
-   * disables the guard (age prune already bounds RSS in aggressive). */
+  /** RSS lane of the relief policy (reliefPolicy.ts): when the estimated
+   * total tokens of CLEARABLE full tool_results (older than the protected
+   * recent window) exceed the high water, clip oldest-first down to the low
+   * water. Pressure concentrated in the recent window is NOT counted — it
+   * cannot be cleared here, so this bounds old-history growth, not
+   * instantaneous RSS. Infinity disables the lane (age prune already bounds
+   * RSS in aggressive). */
   retainedHighWaterTokens: number
   retainedLowWaterTokens: number
   /** When stubbing, keep the first N chars of the original output above the
@@ -64,14 +65,19 @@ export type CacheProfile = {
   timeBasedClipEnabled: boolean
   timeBasedGapMinutes: number
   timeBasedKeepRecent: number
-  /** Fraction of the effective context window at which microCompact's
-   * size-driven stable-stub trigger starts clipping old tool_results
-   * (SIZE_BASED_THRESHOLD). Aggressive clips early (0.5) to save tokens on
+  /** Window lane of the relief policy (reliefPolicy.ts): fraction of the
+   * effective context window at which real usage starts clipping old
+   * tool_results. Aggressive clips early (0.5) to save tokens on
    * low-spread providers; retain clips at 0.75 — late enough to use the
-   * cheap cached window, early enough that the cheap clip (~30k re-write)
-   * pre-empts autoCompact's expensive wipe-plus-re-reads (bench: the 0.85
-   * setting fired too late and autocompact hit first). */
+   * cheap cached window, early enough that the cheap clip pre-empts
+   * autoCompact's expensive wipe-plus-re-reads (bench: the 0.85 setting
+   * fired too late and autocompact hit first). */
   sizeStubThresholdFraction: number
+  /** How far below the window trigger a relief clip aims (the band between
+   * two events). The cost-optimal band is sqrt(2·w·R·g / r) ≈ 60k at
+   * Anthropic prices and the curve is flat around it; the policy clamps it
+   * to 30% of the trigger on small windows. */
+  reliefBandTokens: number
   /** Whether the thinking/narration history redactions
    * (stripOldThinkingBlocks / stripOldNarrationBlocks) run at the API
    * boundary. Under retain they are strictly losing trades: their keep
@@ -99,6 +105,7 @@ export const AGGRESSIVE_PROFILE: CacheProfile = {
   retainedHighWaterTokens: Infinity,
   retainedLowWaterTokens: Infinity,
   sizeStubThresholdFraction: 0.5,
+  reliefBandTokens: 60_000,
   historyRedactionEnabled: true,
   serverToolClearEnabled: false,
   // ~250 tok per aged result. The bench's quality failure mode under this
@@ -126,6 +133,7 @@ export const RETAIN_PROFILE: CacheProfile = {
   retainedHighWaterTokens: 250_000,
   retainedLowWaterTokens: 125_000,
   sizeStubThresholdFraction: 0.75,
+  reliefBandTokens: 60_000,
   historyRedactionEnabled: false,
   serverToolClearEnabled: true,
   stubKeepHeadChars: 2000,

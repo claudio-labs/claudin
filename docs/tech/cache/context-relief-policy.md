@@ -1,10 +1,74 @@
-# Context relief — the mechanisms, what they cost, and the policy we don't have yet
+# Context relief — the mechanisms, what they cost, and the policy that replaced them
 
-Status: **design notes for a future round**, written 2026-09-03 alongside the
-instrumentation that makes this measurable
+Status: **implemented** (`perf(cache): unify context relief into one
+usage-driven policy`, 2026-09-03), on top of the measurements and
+instrumentation from the same day
 (`perf(cache): keep deferred tools in the prefix and surface server-side clears`).
-Nothing here is implemented as a unified policy. Read it before touching any
-of the four knobs below, because they don't know about each other.
+Sections "Where the numbers come from" through "The cost model" describe the
+four uncoordinated mechanisms as they were and why; "What shipped" at the end
+is the current design. The mechanism numbers (1–5) are kept so the
+instrumentation labels in old logs still resolve.
+
+## What shipped
+
+One decision, one source of truth, no message ever dropped from the API view:
+
+- **`src/agent/compact/reliefPolicy.ts`** — pure. `decideRelief` has two
+  lanes and one action:
+  - *window*: `usedTokens > T`, `T = min(fraction × effectiveWindow,
+    autocompactThreshold − margin)`, `margin = clamp(0.1 × window, 5k, 20k)`,
+    fraction 0.75 retain / 0.5 aggressive (the existing
+    `sizeStubThresholdFraction`). Target `T − B`, `B = reliefBandTokens`
+    (60k, new profile field) clamped to 30% of `T`. 200k → T≈135k, target
+    ≈94k; 1M → T≈735k, target 675k.
+  - *rss*: retained full clearable tool_result tokens > `retainedHighWaterTokens`
+    (250k retain) → target `retainedLowWaterTokens` (125k). This is the old
+    byte-guard, expressed as the same action.
+  - Both fired → one event sized by whichever asks for more.
+  - `selectReliefIds`: oldest first until the request is covered.
+- **`usedTokens` is real usage**: `tokenCountWithEstimation` (previous
+  response's counted tokens + estimate of the tail), measured over
+  `applyStableStubs(messages)` so the estimated part already reflects the
+  clipped set. That is what makes the policy stateless: the clip is applied
+  at the wire on the same request, the next response counts the stubs, and
+  a request in between sees the stubbed estimate — no latch.
+- **The action is the stable-stub clip** (`addClippedIds`), so the rewrite
+  is byte-stable and keeps the head (`stubKeepHeadChars`): the cache breaks
+  once per event and the model can still see the result existed.
+- **One call site**: `microcompactMessages` (`microCompact.ts`), pre-request,
+  REPL and headless alike. Gated on a `querySource` so `/context`, `/compact`
+  and `analyzeContext` never mutate the clipped set (the old estimate trigger
+  did). The time clip (mechanism 2) runs first, unchanged.
+- **Candidate walk** `collectClearableCandidates` (`stableStubState.ts`):
+  the old byte-guard's pass 1 — protected `keepRecentTurns`=2, pins, errors,
+  images, `MIN_STUB_TOKENS`, head-stub savings — plus two new skips: ids
+  already in the clipped set, and tools outside `isCompactableTool`.
+- **Deleted**: the estimate-driven size trigger, `pruneToolResultsByBytes`
+  (its pass 2), `evictOldStubbedMessages`, `evictToMaxSize`,
+  `EVICT_MIN_BATCH`, `EVICT_TRIGGER_AT`, the REPL post-turn `reasons[]`
+  block, the idle-gap sweep in `useOnSubmit`, and the per-iteration
+  byte-guard in `QueryEngine` (now `applyStableStubs`, which frees the
+  strings the pre-request clip marked). The REPL post-turn pipeline is
+  `pruneOldToolResults` (aggressive only) → `applyStableStubs`.
+- **Display cap is a render window**: `REPL.tsx` mounts the last
+  `MAX_DISPLAY_MESSAGES` (200) of the state array; the array itself is never
+  cut. Index-based consumers keep the full array.
+- **Killswitch** `CLAUDIN_DISABLE_RELIEF_POLICY=1` turns off the window lane
+  only; rss lane, time clip and autocompact remain. No legacy path is kept —
+  the flag leaves a safe state, not the pre-policy one.
+- **Instrumentation**: `[RELIEF] relief clip (N tool results, ~Xk tokens,
+  window|rss lane): trigger T → target …` in `--debug`, the same string as
+  the `notifyCacheDeletion` reason (`[PROMPT CACHE] expected drop: …`) and
+  on the `[Cache: … • prefix rewritten: …]` line (main thread only).
+
+Tests: `reliefPolicy.test.ts` (the decision table), `microCompact.test.ts`
+(the shell: oldest-first band, no re-clip on the next request, analysis
+callers, killswitch), `stableStubState.test.ts` (the candidate walk and the
+rss lane end to end, pins), `requestDeterminism.invariant.test.ts`
+(byte-stability of the new post-turn pipeline).
+
+Adoption bench: `scripts/bench/ab/context-relief-ab.ts` — see the section at
+the end.
 
 ## Where the numbers come from
 
@@ -40,11 +104,12 @@ None of the 8 "≥50%" drops is a compaction — zero `isCompactSummary` rows in
 those 8 transcripts. They and the 6+2 "shrank" drops are the client-side
 mechanisms below firing; which one is what the instrumentation now records.
 
-## The four mechanisms (plus one that is inert here)
+## The four mechanisms as they were (plus one that is inert here)
 
-All of these remove or rewrite bytes **behind** the cache marker, so each
-firing is one full rewrite of everything after the cut point. They are
-listed in the order they run.
+Historical — 1, 3 and 4 no longer exist in this form (see "What shipped").
+All of these removed or rewrote bytes **behind** the cache marker, so each
+firing was one full rewrite of everything after the cut point. They are
+listed in the order they ran.
 
 ### 1. Client size-driven stable-stub clip — `src/agent/compact/microCompact.ts`
 
@@ -124,12 +189,14 @@ loses is not dollars but *information*: mechanisms 3 and 4 drop full tool
 results with no summary, so the model re-reads (more calls) — a cost the
 token accounting does not attribute to the eviction.
 
-## What the instrumentation now records
+## What the instrumentation records
 
 - `[PROMPT CACHE] expected drop: <mechanism>` in `--debug` logs, naming
-  which client mechanism announced the rewrite (`display-cap eviction (112
-  msgs)`, `byte-guard stub`, `stable-stub clip (N tool results)`, `idle-gap
-  clip`, …) — via the `reason` argument of `notifyCacheDeletion`.
+  which client mechanism announced the rewrite (`relief clip (N tool
+  results, ~Xk tokens, window|rss lane)`, `idle-gap clip`; pre-policy logs
+  also carry `display-cap eviction (112 msgs)`, `byte-guard stub`,
+  `stable-stub clip (N tool results)`) — via the `reason` argument of
+  `notifyCacheDeletion`.
 - `[PROMPT CACHE BREAK] server clear_tool_uses (cleared N tool uses, -Xk
   tokens, expected)` when the response's `context_management.applied_edits`
   says the server edited the prompt; the summary is also stored on the
@@ -139,23 +206,26 @@ token accounting does not attribute to the eviction.
   so a discovery-driven array change is attributed instead of reading as
   "server-side (prompt unchanged)".
 - The per-turn `[Cache: … read • hit N% • server cleared N tool results (-Xk)
-  • next turn rewrites prefix: display-cap eviction (112 msgs)]` line and
+  • prefix rewritten: relief clip (…)]` line and
   `/cache-stats` (`Server clears:` tally) — `cacheStatsTracker.ts`.
 
-Collect a week of sessions with these on before designing the policy below.
+## The sketch the implementation followed
 
-## Sketch of the unified policy (not implemented)
-
-One decision, one source of truth, one hysteresis:
+One decision, one source of truth. Written before the implementation; kept
+for the reasoning, with what changed on the way marked inline.
 
 1. **Source of truth = the previous response's real `usage`** (`input +
    cache_read + cache_creation`), never the client estimate. Estimates drift
    30%+ on code and are what made retain's 0.85 fraction fire too late in
-   the bench.
+   the bench. *Shipped as `tokenCountWithEstimation` over the stubbed view.*
 2. **One trigger, relative to the effective window**, capped below the
    autocompact threshold — e.g. `min(0.7 × effectiveWindow, autocompact − 20k)`
    — replacing the fixed 140k, the 0.75 estimate, the 250k estimate and the
-   300-message count. On a 1M model that is ~690k; on 200k, ~135k.
+   300-message count. On a 1M model that is ~690k; on 200k, ~135k. *Shipped
+   with the profile's existing 0.75/0.5 fraction and a margin that scales
+   with the window (a fixed 20k swallowed small bench windows); the server's
+   140k and the 250k rss high water stay as their own lanes because they
+   bound different things (a different backend; process memory).*
 3. **One relief action, in this order of preference**, applied once per
    event: (a) server `clear_tool_uses` when the beta is on (exact, cheap,
    keeps the array), else (b) stable-stub clip of the oldest clearable
@@ -163,16 +233,52 @@ One decision, one source of truth, one hysteresis:
    byte-stable, so the rewrite happens once), never (c) raw message eviction
    — the display cap should bound *rendering*, not the API view; the two
    arrays must be decoupled first (`messagesForSubmit` vs what Ink mounts).
+   *Shipped: (a) is unchanged and fires first when its beta is on; (b) is
+   the only client action; (c) is deleted and the display cap is a render
+   slice.*
 4. **Replace, don't drop**: whatever is cleared leaves a one-line stub with
    the head (`stubKeepHeadChars`) so the model knows the result existed and
-   can re-read on demand instead of re-discovering.
+   can re-read on demand instead of re-discovering. *Shipped: the only
+   action is the head-preserving stable stub.*
 5. **The session-start `cache_read=0` on call 2** (MCP pool settling) is a
    separate fix: hold the first request until `hasPendingMcpServers` clears,
    or send the deferred pool up front (which this PR already does for
-   built-ins).
+   built-ins). *Not in this round.*
 
-Adoption gate: `scripts/bench/ab/cache-lockstep-bench.ts`, N≥3, on a
-long-session workload that crosses the trigger at least twice; compare
-`cache_creation`, re-read count (`Read` calls on already-read paths) and
-r:w against the current four-knob behavior. Don't ship on cost alone — the
-re-read count is where the current design leaks.
+## Adoption bench
+
+`scripts/bench/ab/context-relief-ab.ts`: two claudin binaries (this branch
+vs the v1.1.24 build, `19b5c673`), Sonnet 5 pinned on both, 3 reps with
+alternating arm order, a throwaway /tmp copy of `src/agent/compact/` +
+`src/agent/cache/`, 30 scripted turns in three phases — 10 Greps, 10 full
+Reads of the largest files, 10 Edits in those same files — graded by the
+marker comments that landed. `--window=140000` on both arms (native 1M
+never reaches a trigger in 30 turns), `CLAUDIN_DISABLE_EXPERIMENTAL_BETAS=true`
+on both so the server clear does not confound.
+
+Run 2026-09-03, median of 3 (ranges in brackets):
+
+| | v1.1.24 | this branch |
+|---|---|---|
+| cache write | 133k [115–136k] | 118k [114–164k] |
+| uncached input | 185k [155–189k] | **81k** [72–94k] |
+| prefix breaks / tokens rewritten | 2 / 45k | 2 / 30k |
+| peak context | 105k | **87k** |
+| lookups inside edit turns (Grep+Read) | 16 [9–16] | 16 [15–17] |
+| edits landed | 30/30 | 29/30 |
+| cost (CLI) | $2.00 [1.89–2.19] | **$1.49** [1.41–1.85] |
+| wall | 249s | 172s |
+
+Reading: the old build's estimate-driven trigger fired ~20k tokens late
+(peak 105k against a 90k trigger — the 30% estimate drift the doc predicted),
+so it carried a bigger prompt for the whole read phase; that is the whole
+uncached-input and cost gap, and the ranges are separated. The prefix-break
+count is equal by construction (both clip once past the trigger); the
+branch rewrites fewer tokens per event. **Information loss is the same**:
+in the edit phase both arms had already clipped the reads and both relocate
+every anchor — v1.1.24 with `Grep`, the branch with `Read(outline)` — so
+the Read-only `re-reads` column (8 vs 15) is a tool-choice artifact and the
+all-tools `edit-turn lookups` column is the one to cite. The 29/30 is one
+marker placed above a doc comment instead of directly above the export;
+not relief-related. `scripts/bench/ab/context-relief-ab.json` has the raw
+per-arm rows.
