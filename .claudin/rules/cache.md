@@ -131,6 +131,17 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
     optimization must require `!isPartialView` too. NotebookEdit and the
     attachment path each checked only presence, which the sticky marker turned
     into a blind-notebook-edit path and a suppressed `@`-mention.
+    One exception, and it is line-scoped only (2026-09-04): an entry the
+    harness seeded for an auto-injected CLAUDE.md/rule/MEMORY.md carries
+    `injectedView`, the stripped or truncated text the model was actually
+    shown, and `satisfiesLineScopedReadGate` lets Edit and an `apply_patch`
+    Update through on it — the coverage lane then checks the needle against
+    `injectedView` instead of `content`. Write, NotebookEdit and `Delete File`
+    stay on `satisfiesReadGate`: written back from a truncated view, the
+    file would lose its tail. 8 of 65 gate refusals in the 2026-08/09 corpus
+    were Edits of an injected file answered by a `view='full'` re-read of
+    MEMORY.md. A clip-pin marker never carries `injectedView`, and the
+    line-scoped gate refuses `standDownOutline` explicitly.
   - **Presence is not coverage** (2026-08-12). The gate answers "has the model
     seen this file", never "has it seen the lines it is changing": a range Read
     and a `symbol=` Read both write an entry with NO `isPartialView`
@@ -139,11 +150,15 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
     three token-sized re-Reads that lifted a refusal and changed nothing else.
     The second lane in `shared/readBeforeEditMessages.ts` closes it:
     `seenRegionCovers` requires a line-scoped write (an `apply_patch` Update
-    chunk's `oldLines`, Edit's `old_string`) to sit inside the bytes the entry
-    carries, and `needsWholeFileRead` requires a whole-file entry for a write
-    that replaces the file (`Delete File`, `FileWriteTool`). Matching is
-    line-anchored and per-line trimmed — never stricter than the callers' own
-    fuzzy matchers, or it refuses writes that would have applied. Killswitch
+    chunk's `oldLines`) to sit inside the bytes the entry carries,
+    `seenRegionCoversText` asks the same of Edit's `old_string`, and
+    `needsWholeFileRead` requires a whole-file entry for a write that replaces
+    the file (`Delete File`, `FileWriteTool`). Matching is per-line trimmed
+    and — for hunks — line-anchored; Edit's predicate keeps only the INNER
+    line anchors, because an `old_string` may start and end mid-line and the
+    outer sentinels refused text the model was holding (6 refusals, one file
+    twice, 2026-08/09). Never stricter than the callers' own fuzzy matchers,
+    or it refuses writes that would have applied. Killswitch
     `CLAUDIN_DISABLE_READ_COVERAGE_GATE=1`. Do NOT "simplify" this into marking
     range reads `isPartialView`: a symbol read IS a range read, and
     `makeUnfoldData` (`FileReadTool.ts:1868-1873`) keeps those editable on

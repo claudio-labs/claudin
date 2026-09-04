@@ -59,8 +59,8 @@ import {
   FILE_UNEXPECTEDLY_MODIFIED_ERROR,
 } from 'src/tools/FileEditTool/constants.js'
 import {
-  satisfiesReadGate,
-  seenRegionCovers,
+  satisfiesLineScopedReadGate,
+  seenRegionCoversText,
   unseenRegionMessage,
   writeFamilyReadGateError,
 } from 'src/tools/shared/readBeforeEditMessages.js'
@@ -286,7 +286,9 @@ export const FileEditTool = buildTool({
     }
 
     const readTimestamp = toolUseContext.readFileState.get(fullFilePath)
-    if (!satisfiesReadGate(readTimestamp)) {
+    // Line-scoped: an injected CLAUDE.md/MEMORY.md passes here and is held to
+    // the text the model saw by the coverage check below.
+    if (!satisfiesLineScopedReadGate(readTimestamp)) {
       return {
         result: false,
         behavior: 'ask',
@@ -325,8 +327,9 @@ export const FileEditTool = buildTool({
     const file = fileContent
 
     // Read-coverage: the entry proves the model saw the file, not that it saw
-    // the lines it is replacing (readBeforeEditMessages.ts, coverage lane).
-    if (!seenRegionCovers(readTimestamp, old_string.split('\n'))) {
+    // the text it is replacing (readBeforeEditMessages.ts, coverage lane).
+    // The substring predicate: `old_string` may start and end mid-line.
+    if (!seenRegionCoversText(readTimestamp, old_string)) {
       return {
         result: false,
         behavior: 'ask',

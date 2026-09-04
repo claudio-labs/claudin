@@ -21,6 +21,7 @@ import {
   needsWholeFileRead,
   readGateMessage,
   readGateReasonFor,
+  satisfiesLineScopedReadGate,
   satisfiesReadGate,
   seenRegionCovers,
   unseenRegionMessage,
@@ -170,8 +171,14 @@ export function validateApplyPatchInput(
 
     const readTimestamp = context.readFileState.get(absPath)
     // Shared with Edit / Write / NotebookEdit so all four agree about the same
-    // file state (.claudin/rules/cache.md's four-tool invariant).
-    if (!satisfiesReadGate(readTimestamp)) {
+    // file state (.claudin/rules/cache.md's four-tool invariant). An Update
+    // hunk is line-scoped, so an injected CLAUDE.md/MEMORY.md passes and is
+    // held to the text the model saw by the coverage check below; a Delete
+    // replaces the file and needs the strict gate.
+    if (
+      !satisfiesLineScopedReadGate(readTimestamp) ||
+      (hunk.type === 'delete' && !satisfiesReadGate(readTimestamp))
+    ) {
       note(
         `apply_patch: ${readGateMessage(readGateReasonFor(readTimestamp), rel, 'patching it')}`,
         2,

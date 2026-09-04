@@ -41,6 +41,26 @@ export function satisfiesReadGate(
   return state !== undefined && !state.isPartialView
 }
 
+/**
+ * The gate for a LINE-SCOPED write (Edit, an apply_patch Update hunk). Same
+ * as above, plus one entry the whole-file gate rightly refuses: a file the
+ * harness injected in stripped or truncated form (`injectedView`,
+ * fileStateCache.ts). The model has seen that text, so a write anchored
+ * inside it is not blind — the coverage lane below checks exactly that. A
+ * write that replaces the file stays on `satisfiesReadGate`: the unseen
+ * remainder would be dropped. The clip-pin marker is excluded explicitly so
+ * that a marker written over an injected entry can never reopen the gate.
+ */
+export function satisfiesLineScopedReadGate(
+  state: FileState | undefined,
+): state is FileState {
+  if (state === undefined) return false
+  if (!state.isPartialView) return true
+  return (
+    state.injectedView !== undefined && state.standDownOutline === undefined
+  )
+}
+
 /** Why the gate failed. Only meaningful once `satisfiesReadGate` returned false. */
 export function readGateReasonFor(
   state: FileState | undefined,
@@ -115,7 +135,9 @@ export function writeFamilyReadGateError(state: FileState | undefined): string {
 // So: a line-scoped write (an apply_patch Update hunk, Edit's `old_string`)
 // must land inside the bytes the entry actually carries, and a whole-file
 // write (apply_patch's Delete File, Write over an existing file) needs an
-// entry that stands for the whole file.
+// entry that stands for the whole file. The two line-scoped callers match
+// differently — a hunk is whole lines, an `old_string` is a substring — so
+// each has its own predicate below; see `seenRegionCoversText`.
 //
 // This is deliberately NOT implemented by marking range reads
 // `isPartialView`. A `symbol=` read IS a range read, and makeUnfoldData
@@ -156,11 +178,15 @@ export function needsWholeFileRead(state: FileState): boolean {
 // whitespace-tolerant (Edit re-indents a fuzzy match, patchFormat has a fuzzy
 // context pass), and this lane must never be the stricter of the two — its
 // question is "did you see this region", not "does this text apply".
-function lineBlock(text: string): string {
-  return `\n${text
+function trimLines(text: string): string {
+  return text
     .split('\n')
     .map(line => line.trim())
-    .join('\n')}\n`
+    .join('\n')
+}
+
+function lineBlock(text: string): string {
+  return `\n${trimLines(text)}\n`
 }
 
 /** The lines a slice holds, with the trailing newline's phantom line dropped. */
@@ -221,26 +247,61 @@ export function coveredSegments(state: FileState): SeenSegment[] {
 
 /**
  * Does what the model actually read contain this run of lines? `needed` is the
- * OLD side of the write: an Update chunk's context+removed lines, or Edit's
- * `old_string` split into lines.
+ * OLD side of an apply_patch Update chunk: its context + removed lines, each
+ * a whole line of the file.
  */
 export function seenRegionCovers(
   state: FileState,
   needed: string[],
 ): boolean {
   if (!coverageGateEnabled()) return true
+  if (needed.length === 0) return true
+  // Blank lines localize nothing; refusing on them would be noise.
+  if (needed.every(line => line.trim() === '')) return true
+  const block = lineBlock(needed.join('\n'))
+  // An injected entry's `content` is the raw file, which the model did not
+  // see; what it saw is `injectedView`, and that is the only text that counts.
+  if (state.injectedView !== undefined) {
+    return lineBlock(state.injectedView).includes(block)
+  }
   // A whole-file entry carries the file, so containment would pass anyway —
   // except for a read the byte cap truncated, or a needle Edit's quote
   // normalization rewrote. Short-circuit rather than turn either into a
   // refusal the model cannot act on.
   if (isWholeFileView(state)) return true
-  if (needed.length === 0) return true
-  // Blank lines localize nothing; refusing on them would be noise.
-  if (needed.every(line => line.trim() === '')) return true
-  const block = lineBlock(needed.join('\n'))
   // Per SEGMENT, never across two of them — see coveredSegments.
   return coveredSegments(state).some(segment =>
     lineBlock(segment.lines.join('\n')).includes(block),
+  )
+}
+
+/**
+ * The same question for Edit's `old_string`, which is a substring rather than
+ * a run of lines: it may begin and end mid-line ("beta" inside
+ * `const msg = "alpha beta"`). Through `seenRegionCovers` such a needle never
+ * matched a range entry — the outer sentinels demanded a whole line — and Edit
+ * was refused for text the model was holding: 6 refusals across 3 sessions in
+ * the 2026-08/09 corpus, one file refused twice after two overlapping reads.
+ * That made this lane stricter than Edit's own matcher, the one thing the
+ * trimming note above says it must never be.
+ *
+ * So the outer sentinels go. The needle's inner `\n` still anchors every
+ * middle line to a line boundary; only its first line may match as the tail
+ * of a seen line and its last as the head of one — exactly how Edit applies it.
+ */
+export function seenRegionCoversText(
+  state: FileState,
+  oldString: string,
+): boolean {
+  if (!coverageGateEnabled()) return true
+  const needle = trimLines(oldString)
+  if (needle.trim() === '') return true
+  if (state.injectedView !== undefined) {
+    return trimLines(state.injectedView).includes(needle)
+  }
+  if (isWholeFileView(state)) return true
+  return coveredSegments(state).some(segment =>
+    trimLines(segment.lines.join('\n')).includes(needle),
   )
 }
 
@@ -269,6 +330,11 @@ export function unseenRegionMessage(
   action: string,
   state: FileState,
 ): string {
+  // `seenRangeLabel` would describe the raw file here ("lines 1-400"), which
+  // is not what the model saw.
+  if (state.injectedView !== undefined) {
+    return `${subject} was injected into context with its frontmatter or HTML comments stripped, or truncated, and the lines you are changing are not in what you saw. Read it with view='full' before ${action}.`
+  }
   return `${subject} was only read in part (${seenRangeLabel(state)}), and the lines you are changing are not in what you read. Read the lines you are changing — or the whole file with view='full' — before ${action}.`
 }
 
