@@ -9,6 +9,8 @@ import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { runTools } from 'src/agent/tools/toolOrchestration.js'
 import { findToolByName, type Tool, type Tools } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
+import { parsePatch } from 'src/tools/ApplyPatchTool/patchFormat.js'
+import { APPLY_PATCH_TOOL_NAME } from 'src/tools/ApplyPatchTool/prompt.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import type { Input as FileReadInput } from 'src/tools/FileReadTool/FileReadTool.js'
 import {
@@ -26,6 +28,7 @@ import { readFileSyncWithMetadata } from 'src/shared/fs/fileRead.js'
 import {
   createFileStateCacheWithSizeLimit,
   type FileStateCache,
+  type FileState,
 } from 'src/shared/fs/fileStateCache.js'
 import { isNotEmptyMessage, normalizeMessages } from 'src/agent/messages/messages.js'
 import { expandPath } from 'src/shared/fs/path.js'
@@ -44,6 +47,64 @@ export type PermissionPromptTool = Tool<
 // Small cache size for ask operations which typically access few files
 // during permission prompts or limited tool operations
 const ASK_READ_FILE_STATE_CACHE_SIZE = 10
+
+// A rendered file line, as `addLineNumbers` (shared/fs/file.ts) writes it.
+// Kept in step with `stripLineNumberPrefix` there.
+const NUMBERED_LINE_RE = /^\s*(\d+)[\u2192\t](.*)$/
+
+/**
+ * The file bytes a Read tool_result put in front of the model, read back off
+ * its `N→` prefixes: the first number is the offset, the run of numbered
+ * lines the content. Null when there are none — an outline, the auto-outline
+ * pivot, an image, a "shorter than the offset" warning — since none of those
+ * showed the model any line it could edit. The run stops at the first
+ * unnumbered line so trailing notes are not taken for file content.
+ */
+function parseNumberedReadResult(
+  text: string,
+): { offset: number; content: string } | null {
+  const lines: string[] = []
+  let offset: number | undefined
+  for (const line of text.split('\n')) {
+    const match = NUMBERED_LINE_RE.exec(line)
+    if (!match) {
+      if (offset !== undefined) break
+      continue
+    }
+    if (offset === undefined) offset = Number(match[1])
+    lines.push(match[2]!)
+  }
+  if (offset === undefined) return null
+  return { offset, content: lines.join('\n') }
+}
+
+/** Every path an apply_patch call wrote or removed, from its own input. */
+function applyPatchTargets(
+  patchText: string,
+  cwd: string,
+): { written: string[]; deleted: string[] } {
+  const written: string[] = []
+  const deleted: string[] = []
+  let hunks
+  try {
+    hunks = parsePatch(patchText).hunks
+  } catch (e) {
+    // A patch the tool itself rejected as malformed wrote nothing.
+    logForDebugging(`resume: skipping unparseable apply_patch input: ${e}`)
+    return { written, deleted }
+  }
+  for (const hunk of hunks) {
+    if (hunk.type === 'delete') {
+      deleted.push(expandPath(hunk.path, cwd))
+    } else if (hunk.type === 'update' && hunk.movePath) {
+      deleted.push(expandPath(hunk.path, cwd))
+      written.push(expandPath(hunk.movePath, cwd))
+    } else {
+      written.push(expandPath(hunk.path, cwd))
+    }
+  }
+  return { written, deleted }
+}
 
 /**
  * Checks if the result should be considered successful based on the last message.
@@ -373,13 +434,20 @@ export function extractReadFilesFromMessages(
 ): FileStateCache {
   const cache = createFileStateCacheWithSizeLimit(maxSize)
 
-  // First pass: find all FileReadTool/FileWriteTool/FileEditTool uses in assistant messages
-  const fileReadToolUseIds = new Map<string, string>() // toolUseId -> filePath
+  // First pass: find all Read/Write/Edit/apply_patch uses in assistant messages
+  // toolUseId -> { filePath, ranged }. A ranged Read (offset/limit/symbol)
+  // is restored as the slice it showed, not skipped: a file range-read before
+  // a /resume used to come back "never read" (queryHelpers used to drop these).
+  const fileReadToolUseIds = new Map<
+    string,
+    { filePath: string; ranged: boolean }
+  >()
   const fileWriteToolUseIds = new Map<
     string,
     { filePath: string; content: string }
   >() // toolUseId -> { filePath, content }
   const fileEditToolUseIds = new Map<string, string>() // toolUseId -> filePath
+  const applyPatchToolUseIds = new Map<string, string>() // toolUseId -> patchText
 
   for (const message of messages) {
     if (
@@ -393,15 +461,17 @@ export function extractReadFilesFromMessages(
         ) {
           // Extract file_path from the tool use input
           const input = content.input as FileReadInput | undefined
-          // Ranged reads are not added to the cache.
-          if (
-            input?.file_path &&
-            input?.offset === undefined &&
-            input?.limit === undefined
-          ) {
+          // An outline shows structure, not bytes; nothing to restore.
+          if (input?.file_path && input.view !== 'outline') {
             // Normalize to absolute path for consistent cache lookups
             const absolutePath = expandPath(input.file_path, cwd)
-            fileReadToolUseIds.set(content.id, absolutePath)
+            fileReadToolUseIds.set(content.id, {
+              filePath: absolutePath,
+              ranged:
+                input.offset !== undefined ||
+                input.limit !== undefined ||
+                input.symbol !== undefined,
+            })
           }
         } else if (
           content.type === 'tool_use' &&
@@ -430,8 +500,43 @@ export function extractReadFilesFromMessages(
             const absolutePath = expandPath(input.file_path, cwd)
             fileEditToolUseIds.set(content.id, absolutePath)
           }
+        } else if (
+          content.type === 'tool_use' &&
+          content.name === APPLY_PATCH_TOOL_NAME
+        ) {
+          const input = content.input as { patchText?: string } | undefined
+          if (input?.patchText) {
+            applyPatchToolUseIds.set(content.id, input.patchText)
+          }
         }
       }
+    }
+  }
+
+  // Paths whose current entry came from a Read (not a write tool). Slices of
+  // one file accumulate through `FileStateCache.set` → `carrySeenRanges`,
+  // which only carries when the timestamps agree — in a live session that is
+  // the mtime, here it is the message time, so equalize it before the set. A
+  // write tool's entry is left alone: it stands for the whole post-write
+  // file, and a later slice must not be joined to bytes from before it.
+  const readAuthored = new Set<string>()
+
+  /** Post-write state of a file a write tool touched, read from disk now. */
+  function cacheFromDisk(filePath: string): void {
+    try {
+      const { content: diskContent } = readFileSyncWithMetadata(filePath)
+      cache.set(filePath, {
+        content: diskContent,
+        timestamp: getFileModificationTime(filePath),
+        offset: undefined,
+        limit: undefined,
+      })
+      readAuthored.delete(filePath)
+    } catch (e: unknown) {
+      if (!isFsInaccessible(e)) {
+        throw e
+      }
+      // File deleted or inaccessible since the write — skip
     }
   }
 
@@ -441,38 +546,55 @@ export function extractReadFilesFromMessages(
       for (const content of message.message.content) {
         if (content.type === 'tool_result' && content.tool_use_id) {
           // Handle Read tool results
-          const readFilePath = fileReadToolUseIds.get(content.tool_use_id)
+          const read = fileReadToolUseIds.get(content.tool_use_id)
           if (
-            readFilePath &&
+            read &&
             typeof content.content === 'string' &&
             // Dedup stubs contain no file content — the earlier real Read
             // already cached it. Chronological last-wins would otherwise
             // overwrite the real entry with stub text.
-            !content.content.startsWith(FILE_UNCHANGED_STUB)
+            !content.content.startsWith(FILE_UNCHANGED_STUB) &&
+            message.timestamp
           ) {
             // Remove system-reminder blocks from the content
             const processedContent = content.content.replace(
               /<system-reminder>[\s\S]*?<\/system-reminder>/g,
               '',
             )
-
-            // Extract the actual file content from the tool result
-            // Tool results for text files contain line numbers, we need to strip those
-            const fileContent = processedContent
-              .split('\n')
-              .map(stripLineNumberPrefix)
-              .join('\n')
-              .trim()
-
-            // Cache the file content with the message timestamp
-            if (message.timestamp) {
+            const parsed = parseNumberedReadResult(processedContent)
+            // No numbered lines: an outline, an image, an error. Caching
+            // that text as the file would let getChangedFiles diff against
+            // it and the write tools edit from it.
+            if (parsed) {
               const timestamp = new Date(message.timestamp).getTime()
-              cache.set(readFilePath, {
-                content: fileContent,
-                timestamp,
-                offset: undefined,
-                limit: undefined,
-              })
+              const { filePath } = read
+              const entry: FileState = read.ranged
+                ? {
+                    // The slice as shown — untrimmed, or a leading blank
+                    // line would shift every line number after it.
+                    content: parsed.content,
+                    timestamp,
+                    offset: parsed.offset,
+                    limit: parsed.content.split('\n').length,
+                  }
+                : {
+                    // Whole-file: the shape the write tools store, trimmed
+                    // as this path always has been.
+                    content: processedContent
+                      .split('\n')
+                      .map(stripLineNumberPrefix)
+                      .join('\n')
+                      .trim(),
+                    timestamp,
+                    offset: undefined,
+                    limit: undefined,
+                  }
+              const prev = cache.get(filePath)
+              if (prev && readAuthored.has(filePath)) {
+                prev.timestamp = timestamp
+              }
+              cache.set(filePath, entry)
+              readAuthored.add(filePath)
             }
           }
 
@@ -486,6 +608,7 @@ export function extractReadFilesFromMessages(
               offset: undefined,
               limit: undefined,
             })
+            readAuthored.delete(writeToolData.filePath)
           }
 
           // Handle Edit tool results — post-edit content isn't in the
@@ -499,20 +622,20 @@ export function extractReadFilesFromMessages(
           // last-wins semantics when Read/Write interleave (Edit→Read→Edit).
           const editFilePath = fileEditToolUseIds.get(content.tool_use_id)
           if (editFilePath && content.is_error !== true) {
-            try {
-              const { content: diskContent } =
-                readFileSyncWithMetadata(editFilePath)
-              cache.set(editFilePath, {
-                content: diskContent,
-                timestamp: getFileModificationTime(editFilePath),
-                offset: undefined,
-                limit: undefined,
-              })
-            } catch (e: unknown) {
-              if (!isFsInaccessible(e)) {
-                throw e
-              }
-              // File deleted or inaccessible since the Edit — skip
+            cacheFromDisk(editFilePath)
+          }
+
+          // apply_patch: same as Edit, for every file the patch named. Its
+          // result text is a per-file summary, so disk is the only source.
+          const patchText = applyPatchToolUseIds.get(content.tool_use_id)
+          if (patchText && content.is_error !== true) {
+            const { written, deleted } = applyPatchTargets(patchText, cwd)
+            for (const filePath of deleted) {
+              cache.delete(filePath)
+              readAuthored.delete(filePath)
+            }
+            for (const filePath of written) {
+              cacheFromDisk(filePath)
             }
           }
         }
