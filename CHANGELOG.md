@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.1.25 — 2026-09-04
+
+### ✨ Features
+
+- feat(tui): move /stats into the settings dialog as a tab (#154) (14867dc2)
+
+### 🐛 Bug Fixes
+
+- fix(test): gate the RSS bench ratio on the signed first-half slope (#158) (97952ad4)
+- fix(tools): stop three false read-before-edit refusals (#157) (91027707)
+
+### ⚡ Performance
+
+- perf(cache): unify context relief into one usage-driven policy (#156) (17161fff)
+- perf(cache): keep deferred tools in the prefix and name every context-relief mechanism (#155) (0300ee1d)
+
+### 📚 Documentation
+
+- docs(memory): record the unified context-relief A/B and its false re-reads column (27d82ed2)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.24 — 2026-09-02
 
 ### ✨ Features
