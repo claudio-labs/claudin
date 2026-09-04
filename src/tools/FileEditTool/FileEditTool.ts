@@ -60,7 +60,7 @@ import {
 } from 'src/tools/FileEditTool/constants.js'
 import {
   satisfiesReadGate,
-  seenRegionCovers,
+  seenRegionCoversText,
   unseenRegionMessage,
   writeFamilyReadGateError,
 } from 'src/tools/shared/readBeforeEditMessages.js'
@@ -325,8 +325,9 @@ export const FileEditTool = buildTool({
     const file = fileContent
 
     // Read-coverage: the entry proves the model saw the file, not that it saw
-    // the lines it is replacing (readBeforeEditMessages.ts, coverage lane).
-    if (!seenRegionCovers(readTimestamp, old_string.split('\n'))) {
+    // the text it is replacing (readBeforeEditMessages.ts, coverage lane).
+    // The substring predicate: `old_string` may start and end mid-line.
+    if (!seenRegionCoversText(readTimestamp, old_string)) {
       return {
         result: false,
         behavior: 'ask',

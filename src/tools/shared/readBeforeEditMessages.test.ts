@@ -13,6 +13,7 @@ import {
   satisfiesReadGate,
   seenRangeLabel,
   seenRegionCovers,
+  seenRegionCoversText,
   unseenRegionMessage,
   wholeFileRequiredMessage,
   writeFamilyReadGateError,
@@ -181,6 +182,63 @@ describe('seenRegionCovers', () => {
     try {
       expect(seenRegionCovers(RANGE, ['eight'])).toBe(true)
       expect(needsWholeFileRead(RANGE)).toBe(false)
+    } finally {
+      delete process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE
+    }
+  })
+})
+
+describe('seenRegionCoversText (Edit old_string)', () => {
+  /** Lines 10-12 of a file, read as a range. */
+  const SUBLINE = state({
+    content: 'a\n  const msg = "alpha beta"\nc',
+    offset: 10,
+    limit: 3,
+  })
+
+  test('a substring inside one seen line is covered', () => {
+    // The refusal this pins: effort.tsx line 220 was read (214-225) and again
+    // (200-239), and an Edit of a fragment of that line was refused both
+    // times because `seenRegionCovers` demanded a whole line.
+    expect(seenRegionCoversText(SUBLINE, 'beta')).toBe(true)
+    expect(seenRegionCoversText(SUBLINE, 'msg = "alpha')).toBe(true)
+  })
+
+  test('a needle starting and ending mid-line across seen lines is covered', () => {
+    expect(seenRegionCoversText(SUBLINE, 'beta"\nc')).toBe(true)
+    expect(seenRegionCoversText(SUBLINE, 'a\n  const')).toBe(true)
+  })
+
+  test('a needle on a line the model never saw is not', () => {
+    expect(seenRegionCoversText(SUBLINE, 'gamma')).toBe(false)
+    expect(seenRegionCoversText(RANGE, 'eight')).toBe(false)
+  })
+
+  test('middle lines stay line-anchored', () => {
+    // The inner newline is kept, so a needle that continues onto a line the
+    // model did not see is refused even though its first line was seen.
+    expect(seenRegionCoversText(SUBLINE, 'beta"\nzzz')).toBe(false)
+  })
+
+  test('a needle spanning the gap between two reads is refused', () => {
+    const entry = walked(slice(40, 6), slice(1, 10))
+    expect(seenRegionCoversText(entry, 'l10\nl40')).toBe(false)
+    expect(seenRegionCoversText(entry, '9\nl10')).toBe(true)
+  })
+
+  test('indentation drift and a blank-only needle are tolerated', () => {
+    expect(seenRegionCoversText(SUBLINE, '        const msg')).toBe(true)
+    expect(seenRegionCoversText(SUBLINE, '\n  \n')).toBe(true)
+  })
+
+  test('a whole-file entry covers anything', () => {
+    expect(seenRegionCoversText(state({ content: 'a\nb' }), 'zzz')).toBe(true)
+  })
+
+  test('the killswitch disables it', () => {
+    process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE = '1'
+    try {
+      expect(seenRegionCoversText(SUBLINE, 'gamma')).toBe(true)
     } finally {
       delete process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE
     }
@@ -392,7 +450,10 @@ describe('read-before-edit gate wiring (the four-tool invariant)', () => {
 describe('read-coverage wiring', () => {
   test('Edit checks the region its old_string lands in', () => {
     const src = readFileSync(CALL_SITES[0][1], 'utf8')
-    expect(src).toContain("seenRegionCovers(readTimestamp, old_string.split('\\n'))")
+    // The substring predicate, not the line one: an `old_string` that starts
+    // mid-line must not be refused for a line the model was shown.
+    expect(src).toContain('seenRegionCoversText(readTimestamp, old_string)')
+    expect(src).not.toContain("old_string.split('\\n')")
   })
 
   test('Write demands a whole-file read before overwriting', () => {
