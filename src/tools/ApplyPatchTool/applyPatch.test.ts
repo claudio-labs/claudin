@@ -104,6 +104,22 @@ function writeNumbered(absPath: string): void {
   )
 }
 
+/**
+ * A MEMORY.md the harness injected truncated to its first `seenLines` lines:
+ * the entry carries the raw file, the model saw only the head.
+ */
+function markInjected(absPath: string, seenLines: number): void {
+  const raw = readFileSync(absPath, 'utf8')
+  ctx.readFileState.set(absPath, {
+    content: raw,
+    timestamp: getFileModificationTime(absPath),
+    offset: undefined,
+    limit: undefined,
+    isPartialView: true,
+    injectedView: raw.split('\n').slice(0, seenLines).join('\n'),
+  })
+}
+
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), 'applypatch-'))
   ctx = makeContext()
@@ -647,6 +663,47 @@ describe('validateApplyPatchInput — read coverage', () => {
       ctx,
     )
     expect(r).toEqual({ result: true })
+    cleanup()
+  })
+
+  test('an injected file authorizes an Update inside what the model saw', () => {
+    const p = join(dir, 'injected-in.md')
+    writeNumbered(p)
+    markInjected(p, 3)
+    const r = validateApplyPatchInput(
+      { patchText: envelope(`*** Update File: ${p}\n@@\n-line2\n+LINE2`) },
+      ctx,
+    )
+    expect(r).toEqual({ result: true })
+    cleanup()
+  })
+
+  test('an injected file does NOT authorize an Update past the truncation', () => {
+    const p = join(dir, 'injected-out.md')
+    writeNumbered(p)
+    markInjected(p, 3)
+    const r = validateApplyPatchInput(
+      { patchText: envelope(`*** Update File: ${p}\n@@\n-line8\n+LINE8`) },
+      ctx,
+    )
+    expect(r).toMatchObject({ result: false })
+    if (!r.result) {
+      expect(r.message).toContain('injected')
+      expect(r.message).not.toContain('has not been read yet')
+    }
+    cleanup()
+  })
+
+  test('an injected file does NOT authorize a Delete', () => {
+    const p = join(dir, 'injected-del.md')
+    writeNumbered(p)
+    markInjected(p, 3)
+    const r = validateApplyPatchInput(
+      { patchText: envelope(`*** Delete File: ${p}`) },
+      ctx,
+    )
+    expect(r).toMatchObject({ result: false })
+    if (!r.result) expect(r.message).toContain('outline or a partial view')
     cleanup()
   })
 

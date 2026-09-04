@@ -10,6 +10,7 @@ import {
   needsWholeFileRead,
   readGateMessage,
   readGateReasonFor,
+  satisfiesLineScopedReadGate,
   satisfiesReadGate,
   seenRangeLabel,
   seenRegionCovers,
@@ -56,6 +57,40 @@ describe('satisfiesReadGate', () => {
 
   test('a clipped entry fails', () => {
     expect(satisfiesReadGate(CLIPPED)).toBe(false)
+  })
+})
+
+/** A CLAUDE.md the harness injected with its frontmatter stripped. */
+const INJECTED = state({
+  content: '---\npaths: src/**\n---\n# Rule\n\nDo the thing.\n',
+  isPartialView: true,
+  injectedView: '# Rule\n\nDo the thing.',
+} as Partial<FileState>)
+
+describe('satisfiesLineScopedReadGate', () => {
+  test('agrees with the whole-file gate on ordinary entries', () => {
+    expect(satisfiesLineScopedReadGate(state())).toBe(true)
+    expect(satisfiesLineScopedReadGate(undefined)).toBe(false)
+    expect(satisfiesLineScopedReadGate(state({ isPartialView: true }))).toBe(
+      false,
+    )
+    expect(satisfiesLineScopedReadGate(CLIPPED)).toBe(false)
+  })
+
+  test('opens for an injected entry, which the whole-file gate refuses', () => {
+    // 8 of 65 gate refusals in the corpus were Edits of an injected
+    // MEMORY.md/rule the model had just been shown. Write must still refuse:
+    // written back from a truncated view, the file would lose its tail.
+    expect(satisfiesLineScopedReadGate(INJECTED)).toBe(true)
+    expect(satisfiesReadGate(INJECTED)).toBe(false)
+  })
+
+  test('a clip-pin marker over an injected entry keeps it shut', () => {
+    const marked = state({
+      ...INJECTED,
+      standDownOutline: CLIPPED.standDownOutline,
+    } as Partial<FileState>)
+    expect(satisfiesLineScopedReadGate(marked)).toBe(false)
   })
 })
 
@@ -185,6 +220,32 @@ describe('seenRegionCovers', () => {
     } finally {
       delete process.env.CLAUDIN_DISABLE_READ_COVERAGE_GATE
     }
+  })
+})
+
+describe('coverage against an injected view', () => {
+  test('what the model saw covers; what was stripped does not', () => {
+    // The entry's `content` is the raw file and would cover the frontmatter;
+    // the model never saw it, so it must not.
+    expect(seenRegionCovers(INJECTED, ['Do the thing.'])).toBe(true)
+    expect(seenRegionCovers(INJECTED, ['paths: src/**'])).toBe(false)
+    expect(seenRegionCoversText(INJECTED, 'the thing')).toBe(true)
+    expect(seenRegionCoversText(INJECTED, 'paths:')).toBe(false)
+  })
+
+  test('the whole-file short-circuit does not apply to it', () => {
+    // offset/limit are undefined on an injected entry (getChangedFiles skips
+    // range entries), which reads as whole-file everywhere else.
+    expect(isWholeFileView(INJECTED)).toBe(true)
+    expect(seenRegionCoversText(INJECTED, 'zzz')).toBe(false)
+  })
+
+  test('the refusal says what happened instead of quoting raw line numbers', () => {
+    const m = unseenRegionMessage('File', 'editing it', INJECTED)
+    expect(m).toContain('injected')
+    expect(m).toContain("view='full'")
+    expect(m).toContain('editing it')
+    expect(m).not.toContain('lines 1-')
   })
 })
 
@@ -429,7 +490,17 @@ describe('read-before-edit gate wiring (the four-tool invariant)', () => {
   for (const [tool, url] of CALL_SITES) {
     test(`${tool} routes its refusal through the shared module`, () => {
       const src = readFileSync(url, 'utf8')
-      expect(src).toContain('satisfiesReadGate(readTimestamp)')
+      // Edit and an apply_patch Update are line-scoped and may take the
+      // injected-view exception; Write and NotebookEdit replace content the
+      // model may not have seen and must not.
+      expect(src).toContain(
+        tool === 'Edit' || tool === 'apply_patch'
+          ? 'satisfiesLineScopedReadGate(readTimestamp)'
+          : 'satisfiesReadGate(readTimestamp)',
+      )
+      if (tool === 'Write' || tool === 'NotebookEdit') {
+        expect(src).not.toContain('satisfiesLineScopedReadGate')
+      }
       expect(src).toContain('readBeforeEditMessages.js')
     })
 

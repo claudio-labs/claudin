@@ -18,6 +18,16 @@ export type FileState = {
   // Edit/Write must require an explicit Read first. `content` here holds the
   // RAW disk bytes (for getChangedFiles diffing), not what the model saw.
   isPartialView?: boolean
+  // What the model DID see, for the auto-injected case above: the stripped or
+  // truncated text that went into the system reminder. With it the line-scoped
+  // write tools (Edit, apply_patch Update) can check their needle against the
+  // text the model is holding instead of refusing the file outright — 8 of 65
+  // gate refusals in the 2026-08/09 corpus were Edits of an injected
+  // MEMORY.md or rule, each answered by a view='full' re-read of a file the
+  // model had just been shown. Whole-file writes (Write, Delete File) still
+  // need a real Read: a truncated MEMORY.md written back from the view would
+  // lose its tail. Never set by a Read tool call or a clip-pin marker.
+  injectedView?: string
   // tool_use id of the Read that carried this content to the model. The
   // dedup stand-down uses it to check whether that tool_result is still
   // intact in the transcript (client-side clip paths rewrite old results to
@@ -199,6 +209,9 @@ export function carrySeenRanges(
 /** Bytes an entry retains, including what it carries for the coverage lane. */
 function entryBytes(value: FileState): number {
   let bytes = Buffer.byteLength(value.content)
+  if (value.injectedView !== undefined) {
+    bytes += Buffer.byteLength(value.injectedView)
+  }
   for (const range of value.seenRanges ?? []) {
     bytes += Buffer.byteLength(range.content)
   }

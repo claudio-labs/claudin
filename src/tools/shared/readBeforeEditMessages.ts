@@ -41,6 +41,26 @@ export function satisfiesReadGate(
   return state !== undefined && !state.isPartialView
 }
 
+/**
+ * The gate for a LINE-SCOPED write (Edit, an apply_patch Update hunk). Same
+ * as above, plus one entry the whole-file gate rightly refuses: a file the
+ * harness injected in stripped or truncated form (`injectedView`,
+ * fileStateCache.ts). The model has seen that text, so a write anchored
+ * inside it is not blind — the coverage lane below checks exactly that. A
+ * write that replaces the file stays on `satisfiesReadGate`: the unseen
+ * remainder would be dropped. The clip-pin marker is excluded explicitly so
+ * that a marker written over an injected entry can never reopen the gate.
+ */
+export function satisfiesLineScopedReadGate(
+  state: FileState | undefined,
+): state is FileState {
+  if (state === undefined) return false
+  if (!state.isPartialView) return true
+  return (
+    state.injectedView !== undefined && state.standDownOutline === undefined
+  )
+}
+
 /** Why the gate failed. Only meaningful once `satisfiesReadGate` returned false. */
 export function readGateReasonFor(
   state: FileState | undefined,
@@ -235,15 +255,20 @@ export function seenRegionCovers(
   needed: string[],
 ): boolean {
   if (!coverageGateEnabled()) return true
+  if (needed.length === 0) return true
+  // Blank lines localize nothing; refusing on them would be noise.
+  if (needed.every(line => line.trim() === '')) return true
+  const block = lineBlock(needed.join('\n'))
+  // An injected entry's `content` is the raw file, which the model did not
+  // see; what it saw is `injectedView`, and that is the only text that counts.
+  if (state.injectedView !== undefined) {
+    return lineBlock(state.injectedView).includes(block)
+  }
   // A whole-file entry carries the file, so containment would pass anyway —
   // except for a read the byte cap truncated, or a needle Edit's quote
   // normalization rewrote. Short-circuit rather than turn either into a
   // refusal the model cannot act on.
   if (isWholeFileView(state)) return true
-  if (needed.length === 0) return true
-  // Blank lines localize nothing; refusing on them would be noise.
-  if (needed.every(line => line.trim() === '')) return true
-  const block = lineBlock(needed.join('\n'))
   // Per SEGMENT, never across two of them — see coveredSegments.
   return coveredSegments(state).some(segment =>
     lineBlock(segment.lines.join('\n')).includes(block),
@@ -269,9 +294,12 @@ export function seenRegionCoversText(
   oldString: string,
 ): boolean {
   if (!coverageGateEnabled()) return true
-  if (isWholeFileView(state)) return true
   const needle = trimLines(oldString)
   if (needle.trim() === '') return true
+  if (state.injectedView !== undefined) {
+    return trimLines(state.injectedView).includes(needle)
+  }
+  if (isWholeFileView(state)) return true
   return coveredSegments(state).some(segment =>
     trimLines(segment.lines.join('\n')).includes(needle),
   )
@@ -302,6 +330,11 @@ export function unseenRegionMessage(
   action: string,
   state: FileState,
 ): string {
+  // `seenRangeLabel` would describe the raw file here ("lines 1-400"), which
+  // is not what the model saw.
+  if (state.injectedView !== undefined) {
+    return `${subject} was injected into context with its frontmatter or HTML comments stripped, or truncated, and the lines you are changing are not in what you saw. Read it with view='full' before ${action}.`
+  }
   return `${subject} was only read in part (${seenRangeLabel(state)}), and the lines you are changing are not in what you read. Read the lines you are changing — or the whole file with view='full' — before ${action}.`
 }
 

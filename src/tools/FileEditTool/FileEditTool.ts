@@ -59,7 +59,7 @@ import {
   FILE_UNEXPECTEDLY_MODIFIED_ERROR,
 } from 'src/tools/FileEditTool/constants.js'
 import {
-  satisfiesReadGate,
+  satisfiesLineScopedReadGate,
   seenRegionCoversText,
   unseenRegionMessage,
   writeFamilyReadGateError,
@@ -286,7 +286,9 @@ export const FileEditTool = buildTool({
     }
 
     const readTimestamp = toolUseContext.readFileState.get(fullFilePath)
-    if (!satisfiesReadGate(readTimestamp)) {
+    // Line-scoped: an injected CLAUDE.md/MEMORY.md passes here and is held to
+    // the text the model saw by the coverage check below.
+    if (!satisfiesLineScopedReadGate(readTimestamp)) {
       return {
         result: false,
         behavior: 'ask',
