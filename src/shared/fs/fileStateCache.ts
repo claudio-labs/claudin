@@ -15,8 +15,9 @@ export type FileState = {
   // True when this entry was populated by auto-injection (e.g. CLAUDE.md) and
   // the injected content did not match disk (stripped HTML comments, stripped
   // frontmatter, truncated MEMORY.md). The model has only seen a partial view;
-  // Edit/Write must require an explicit Read first. `content` here holds the
-  // RAW disk bytes (for getChangedFiles diffing), not what the model saw.
+  // Write must require an explicit Read first, and so must Edit/apply_patch
+  // unless `injectedView` below says what the model saw. `content` here holds
+  // the RAW disk bytes (for getChangedFiles diffing), not what the model saw.
   isPartialView?: boolean
   // What the model DID see, for the auto-injected case above: the stripped or
   // truncated text that went into the system reminder. With it the line-scoped

@@ -237,9 +237,10 @@ export type MemoryFileInfo = {
   // True when auto-injection transformed `content` (stripped HTML comments,
   // stripped frontmatter, truncated MEMORY.md) such that it no longer matches
   // the bytes on disk. When set, `rawContent` holds the unmodified disk bytes
-  // so callers can cache a `isPartialView` readFileState entry — presence in
-  // cache provides dedup + change detection, but Edit/Write still require an
-  // explicit Read before proceeding.
+  // so callers can cache a `isPartialView` readFileState entry, with `content`
+  // beside it as `injectedView` — presence in cache provides dedup + change
+  // detection, Write still requires an explicit Read, and Edit/apply_patch
+  // are held to the injected text (readBeforeEditMessages.ts).
   contentDiffersFromDisk?: boolean
   rawContent?: string
 }
@@ -1430,4 +1431,3 @@ export function isMemoryFilePath(filePath: string): boolean {
 
   return false
 }
-
