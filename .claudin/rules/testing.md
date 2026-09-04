@@ -425,9 +425,19 @@ So before blaming your change: run the same full suite on **main in the same
 directory** and compare failure NAMES. Only a name not in main's set is a
 regression signal. (Older list — `ProviderManager.test.tsx` Ollama/Vertex TTY
 timeouts, `memory-turn-by-turn-bench` RSS flake — no longer reproduces on
-2026-07 main; keep it in mind if they resurface.) **The ProviderManager half of
-that was never a TTY timeout** — see the next section; it resurfaced in
-2026-09 and the cause was a leaked env var.
+2026-07 main; keep it in mind if they resurface.) **Neither of those was the
+flake it looked like.** The ProviderManager half was never a TTY timeout — see
+the next section; it resurfaced in 2026-09 and the cause was a leaked env var.
+The bench half was a broken assertion: `no late-session RSS blow-up` compared
+`second.slope < first.slope * 5` but gated the fallback on
+`Math.abs(first.slope)`, so a *negative* first-half slope — exactly what
+process-wide GC reclamation inside the shared worker produces — turned that
+ceiling into a lower bound and demanded the second half shrink five times
+faster than the first. It broke the release run on 2026-09-04 with
+`Expected: < -643993`. Fixed by gating on the signed slope, so a non-growing
+first half falls back to the absolute 1 MB/turn bound. **A ratio threshold
+needs a sign check**: any `toBeLessThan(y * k)` where `y` is measured rather
+than chosen inverts the moment `y` goes negative.
 
 ### Process-global state a test file must put back
 

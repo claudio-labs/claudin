@@ -53,8 +53,13 @@ describe('turn-by-turn memory bench', () => {
     const first = linearRegression(firstHalf.map(h => h.turn), firstHalf.map(h => h.rss))
     const second = linearRegression(secondHalf.map(h => h.turn), secondHalf.map(h => h.rss))
 
-    // If first-half slope is near zero, require absolute bound instead.
-    if (Math.abs(first.slope) < 100 * 1024) {
+    // The ratio only means anything when the first half actually grew. A
+    // first-half slope that is near zero — or negative, which is what
+    // process-wide GC reclamation inside the shared `bun test` worker
+    // produces — makes `first.slope * 5` a *lower* bound rather than a
+    // ceiling, so the assertion would demand the second half shrink five
+    // times faster than the first. Require the absolute bound instead.
+    if (first.slope < 100 * 1024) {
       // Absolute ceiling: 1 MB/turn RSS growth in second half is the
       // invariant we do NOT want to breach.
       expect(second.slope).toBeLessThan(1024 * 1024)
