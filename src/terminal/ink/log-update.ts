@@ -44,6 +44,19 @@ const NEWLINE = { type: 'stdout', content: '\n' } as const
 
 export class LogUpdate {
   private state: State
+  /**
+   * Set by Ink.repaint(): the frame buffers were zeroed, so the next render
+   * must repaint the viewport instead of taking the `growing` path. Without
+   * it, a prev height of 0 makes render() treat the whole frame as new rows
+   * and emit it with real LFs — scrolling every row the terminal already has
+   * back into scrollback as a second copy (ctrl+L used to duplicate the
+   * startup banner and the transcript head on every press).
+   *
+   * Not folded into reset(): the SIGCONT main-screen path resets the frames
+   * too, and there the append IS the point (the shell wrote to the terminal
+   * while we were suspended and its output must survive).
+   */
+  private pendingRepaint = false
 
   constructor(private readonly options: Options) {
     this.state = {
@@ -62,6 +75,11 @@ export class LogUpdate {
   // Called when process resumes from suspension (SIGCONT) to prevent clobbering terminal content
   reset(): void {
     this.state.previousOutput = ''
+  }
+
+  /** See `pendingRepaint`. Consumed by the next `render()`. */
+  markPendingRepaint(): void {
+    this.pendingRepaint = true
   }
 
   private renderFullFrame(frame: Frame): Diff {
@@ -135,6 +153,18 @@ export class LogUpdate {
 
     const startTime = performance.now()
     const stylePool = this.options.stylePool
+
+    // Ink.repaint() zeroed the frames. Repaint the viewport rather than
+    // letting the `growing` path below re-emit the whole frame from the
+    // current cursor — see `pendingRepaint`. Alt-screen never gets here
+    // (repaint() is only called from the main-screen branches), but consume
+    // the flag either way so it cannot leak into a later frame.
+    if (this.pendingRepaint) {
+      this.pendingRepaint = false
+      if (!altScreen) {
+        return fullResetSequence_CAUSES_FLICKER(next, 'clear', stylePool)
+      }
+    }
 
     // Since we assume the cursor is at the bottom on the screen, we only need
     // to clear when the viewport gets shorter (i.e. the cursor position drifts)
@@ -593,18 +623,31 @@ function fullResetSequence_CAUSES_FLICKER(
   stylePool: StylePool,
   debug?: { triggerY: number; prevLine: string; nextLine: string },
 ): Diff {
-  // After clearTerminal, cursor is at (0, 0)
-  const screen = new VirtualScreen({ x: 0, y: 0 }, frame.viewport.width)
-  renderFrame(screen, frame, stylePool)
+  // After clearTerminal, cursor is at (0, 0) — row 0 of the VIEWPORT, not of
+  // the frame. clearTerminal is ERASE_SCREEN + CURSOR_HOME with no CSI 3J, so
+  // scrollback survives (see clearTerminal.ts) and the rows above the viewport
+  // are still on the user's screen. Repainting the frame from row 0 would
+  // re-emit every one of them, and renderFrameSlice advances with real LFs —
+  // each LF scrolls another already-present row back into scrollback,
+  // depositing a second copy of the startup banner and the transcript head on
+  // every reset (the "banner repeats mid-session" bug).
+  //
+  // Only the tail fits: each rendered row ends with CR+LF, so N rows leave the
+  // cursor N rows down. Rendering viewport.height - 1 rows lands it on the
+  // last viewport row with nothing scrolled — which is exactly the state the
+  // incremental path assumes next frame, since its viewportY adds
+  // cursorRestoreScroll = 1 whenever the frame overflows (see the viewportY
+  // computation in render(); renderer.ts pins cursor.y = screen.height on the
+  // main screen, so cursorAtBottom always holds there).
+  //
+  // Alt-screen is unaffected: renderer.ts reports viewport.height =
+  // terminalRows + 1 against a screen exactly terminalRows tall, so startY is
+  // 0 and this renders the whole frame as before.
+  const usableRows = Math.max(1, frame.viewport.height - 1)
+  const startY = Math.max(0, frame.screen.height - usableRows)
+  const screen = new VirtualScreen({ x: 0, y: startY }, frame.viewport.width)
+  renderFrameSlice(screen, frame, startY, frame.screen.height, stylePool)
   return [{ type: 'clearTerminal', reason, debug }, ...screen.diff]
-}
-
-function renderFrame(
-  screen: VirtualScreen,
-  frame: Frame,
-  stylePool: StylePool,
-): void {
-  renderFrameSlice(screen, frame, 0, frame.screen.height, stylePool)
 }
 
 /**
