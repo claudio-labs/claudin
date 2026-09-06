@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.1.26 — 2026-09-06
+
+### 🐛 Bug Fixes
+
+- fix(tui): stop full repaints duplicating the frame head in scrollback (#160) (50a946dc)
+- fix(tui): stop a running container from crashing the tasks dialog (#159) (5473e354)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+- <a href="https://github.com/caielealdev"><img src="https://github.com/caielealdev.png?size=40" width="20" height="20" alt="@caielealdev"></a> <a href="https://github.com/caielealdev">@caielealdev</a>
+
+
 ## v1.1.25 — 2026-09-04
 
 ### ✨ Features
