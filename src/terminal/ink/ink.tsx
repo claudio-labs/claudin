@@ -835,6 +835,10 @@ export default class Ink {
     this.frontFrame = emptyFrame(this.frontFrame.viewport.height, this.frontFrame.viewport.width, this.stylePool, this.charPool, this.hyperlinkPool);
     this.backFrame = emptyFrame(this.backFrame.viewport.height, this.backFrame.viewport.width, this.stylePool, this.charPool, this.hyperlinkPool);
     this.log.reset();
+    // The frames are 0×0 now, so the next render would treat every row as a
+    // new one and append the whole frame below whatever is on screen. Tell
+    // log-update to repaint the viewport instead.
+    this.log.markPendingRepaint();
     // Physical cursor position is unknown after external terminal corruption.
     // Clear displayCursor so the cursor preamble doesn't emit a stale
     // relative move from where we last parked it.

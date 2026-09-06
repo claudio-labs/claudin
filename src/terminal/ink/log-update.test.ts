@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 
-import type { Frame } from 'src/terminal/ink/frame.ts'
+import { emptyFrame, type Frame } from 'src/terminal/ink/frame.ts'
 import { LogUpdate } from 'src/terminal/ink/log-update.ts'
 import {
   CellWidth,
@@ -299,4 +299,114 @@ test('vacated nav-bar row is cleared even when the terminal renders ambiguous gl
 
   const vacated = grid[28].join('').replace(/[\s\u0000]+/g, '')
   expect(vacated).toBe('')
+})
+
+// Regression: the startup banner (and the transcript head under it) reappeared
+// over and over in the scrollback of a long non-fullscreen session. Every full
+// reset repainted the frame from row 0, and renderFrameSlice advances with real
+// LFs — so each row above the viewport was pushed back into scrollback as a
+// second copy. clearTerminal only erases the viewport (no CSI 3J), so the old
+// copy stays too. A reset must repaint the visible tail and nothing else.
+function scrollbackFrame(
+  stylePool: StylePool,
+  charPool: CharPool,
+  hyperlinkPool: HyperlinkPool,
+  lines: string[],
+  viewportHeight: number,
+): Frame {
+  const frame = frameFromLines(stylePool, charPool, hyperlinkPool, lines)
+  return { ...frame, viewport: { ...frame.viewport, height: viewportHeight } }
+}
+
+// 20 equal-width rows so a width change can't turn this into a resize reset.
+const TALL_LINES = Array.from({ length: 20 }, (_, i) => `ROW${String(i).padStart(2, '0')}xxxxx`)
+const TALL_VIEWPORT = 10
+
+function countNewlines(stdout: string): number {
+  return stdout.split('\n').length - 1
+}
+
+test('a full reset repaints only the visible tail, never re-emitting scrolled-off rows', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  const nextLines = [...TALL_LINES]
+  // Row 0 is deep in scrollback (viewportY is 10) — changing it is what forces
+  // the reset, and it is also the row that must NOT be re-emitted.
+  nextLines[0] = 'ROW00yyyyy'
+
+  const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES, TALL_VIEWPORT)
+  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, nextLines, TALL_VIEWPORT)
+  const diff = log.render(prev, next, false, true, false)
+  const stdout = collectStdout(diff)
+
+  expect(diff.some(p => p.type === 'clearTerminal')).toBe(true)
+
+  // The tail that fits: rows 11..19 (the last row of the viewport belongs to
+  // the cursor, which renderFrameSlice's trailing CR+LF parks there).
+  expect(stdout).toContain('ROW11xxxxx')
+  expect(stdout).toContain('ROW19xxxxx')
+
+  // Everything above it is already on the user's screen — re-emitting any of
+  // it scrolls a duplicate into scrollback.
+  expect(stdout).not.toContain('ROW00')
+  expect(stdout).not.toContain('ROW10xxxxx')
+
+  // One LF per rendered row, and never more than the viewport can take
+  // without scrolling.
+  expect(countNewlines(stdout)).toBe(9)
+  expect(countNewlines(stdout)).toBeLessThanOrEqual(TALL_VIEWPORT - 1)
+})
+
+test('a full reset of a frame that fits the viewport still repaints every row', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  const lines = TALL_LINES.slice(0, 6)
+
+  // Viewport shrank 12 -> 10: log-update resets immediately (resize branch).
+  // The frame is 6 rows, so nothing is in scrollback and nothing may be sliced.
+  const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, lines, 12)
+  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, lines, 10)
+  const diff = log.render(prev, next, false, true, false)
+  const stdout = collectStdout(diff)
+
+  expect(diff.some(p => p.type === 'clearTerminal')).toBe(true)
+  expect(stdout).toContain('ROW00xxxxx')
+  expect(stdout).toContain('ROW05xxxxx')
+  expect(countNewlines(stdout)).toBe(6)
+})
+
+// Second half of the same bug: Ink.repaint() (ctrl+L, prepareFullRepaint,
+// exiting alt-screen) zeroes the frames, and a prev height of 0 sends render()
+// down the `growing` path — which emitted the whole frame with real LFs and
+// scrolled another copy of everything into scrollback. ctrl+L added one banner
+// per press.
+test('a repaint repaints the viewport instead of re-emitting the whole frame', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  const prev = emptyFrame(TALL_VIEWPORT, 10, stylePool, charPool, hyperlinkPool)
+  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES, TALL_VIEWPORT)
+
+  log.markPendingRepaint()
+  const diff = log.render(prev, next, false, true, false)
+  const stdout = collectStdout(diff)
+
+  expect(diff.some(p => p.type === 'clearTerminal')).toBe(true)
+  expect(stdout).not.toContain('ROW00')
+  expect(stdout).toContain('ROW11xxxxx')
+  expect(stdout).toContain('ROW19xxxxx')
+  expect(countNewlines(stdout)).toBe(9)
+})
+
+// The flag is what separates a repaint from the genuine first frame of a
+// session, where prev is also 0×0 and printing the whole transcript (a long
+// /resume, say) is exactly right.
+test('the first frame of a session still prints the whole frame', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  const prev = emptyFrame(TALL_VIEWPORT, 10, stylePool, charPool, hyperlinkPool)
+  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES, TALL_VIEWPORT)
+
+  const diff = log.render(prev, next, false, true, false)
+  const stdout = collectStdout(diff)
+
+  expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
+  expect(stdout).toContain('ROW00xxxxx')
+  expect(stdout).toContain('ROW19xxxxx')
+  expect(countNewlines(stdout)).toBe(20)
 })
