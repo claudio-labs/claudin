@@ -48,4 +48,22 @@ describe('ErrorBoundary', () => {
     const state = ErrorBoundary.getDerivedStateFromError()
     expect(state).toEqual({ hasError: true })
   })
+
+  it('chama onError com o erro, para o dono poder desmontar o boundary', () => {
+    // Sem isso um throw dentro de um dialog era terminal: o root do Ink troca a
+    // árvore inteira pela tela de erro e não reseta, então o REPL some. Quem
+    // monta o boundary usa este callback para fechar o dialog.
+    const onError = mock((_error: Error) => {})
+    const error = new Error('dialog crashed')
+    const instance = new ErrorBoundary({ children: null, onError })
+    instance.componentDidCatch(error)
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(onError.mock.calls[0]?.[0]).toBe(error)
+    expect(logErrorSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('não quebra quando onError não é passado', () => {
+    const instance = new ErrorBoundary({ children: null })
+    expect(() => instance.componentDidCatch(new Error('boom'))).not.toThrow()
+  })
 })

@@ -9,7 +9,9 @@ import { LocalShellTask } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js
 import { MonitorMcpTask } from 'src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js';
 import { RemoteAgentTask } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import type { BackgroundTaskState } from 'src/agent/tasks/types.js';
+import { isContainerStoppable } from 'src/agent/tasks/ContainerTask/types.js';
 import { shortContainerName } from 'src/agent/ui/tasks/containerRowLabel.js';
+import type { DeepImmutable } from 'src/shared/types/utils.js';
 import { logForDebugging } from 'src/shared/debug.js';
 
 type SetAppState = (updater: (prev: AppState) => AppState) => void;
@@ -30,7 +32,7 @@ const killWorkflowTask = workflowTaskModule?.killWorkflowTask ?? null;
  * lives in exactly one place. No-op if the task is not running.
  */
 export function killBackgroundTask(
-  task: BackgroundTaskState,
+  task: DeepImmutable<BackgroundTaskState>,
   setAppState: SetAppState,
 ): void {
   if (task.status !== 'running') return;
@@ -41,6 +43,10 @@ export function killBackgroundTask(
       // and may predate the session entirely. Park the request and let
       // ContainerStopDialog confirm — that keeps this the single dispatch
       // point, so the `x` handler in PromptInput needs no container branch.
+      //
+      // The status guard above is not enough here: the row keeps a `running`
+      // task status through the grace period after the container dies.
+      if (!isContainerStoppable(task)) return;
       setAppState(prev => ({
         ...prev,
         pendingContainerStop: {
@@ -80,7 +86,7 @@ export function killBackgroundTask(
       // in the footer tree. (Compile-time exhaustiveness `never` assignment
       // is bypassed because LocalWorkflowTaskState resolves to `any` in the
       // open build — see the require() above.)
-      logForDebugging(`killBackgroundTask: unhandled task type ${(task as BackgroundTaskState).type}`);
+      logForDebugging(`killBackgroundTask: unhandled task type ${String((task as { type?: unknown }).type)}`);
       return;
     }
   }

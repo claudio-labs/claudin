@@ -20,7 +20,11 @@ import { LocalShellTask } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js
 import type { LocalWorkflowTaskState } from 'src/agent/tasks/LocalWorkflowTask/LocalWorkflowTask.js';
 import type { MonitorMcpTaskState } from 'src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js';
 import { RemoteAgentTask, type RemoteAgentTaskState } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
+import type { ContainerTaskState } from 'src/agent/tasks/ContainerTask/types.js';
+import { isContainerStoppable } from 'src/agent/tasks/ContainerTask/types.js';
 import { type BackgroundTaskState, isBackgroundTask, type TaskState } from 'src/agent/tasks/types.js';
+import { taskRowLabel } from 'src/agent/ui/tasks/taskRowLabel.js';
+import { killBackgroundTask } from 'src/agent/ui/tasks/taskActions.js';
 import type { DeepImmutable } from 'src/shared/types/utils.js';
 import { intersperse } from 'src/shared/data/array.js';
 import { TEAM_LEAD_NAME } from 'src/agent/coordinator/swarm/constants.js';
@@ -38,6 +42,7 @@ import { Dialog } from 'src/terminal/design-system/Dialog.js';
 import { KeyboardShortcutHint } from 'src/terminal/design-system/KeyboardShortcutHint.js';
 import { AsyncAgentDetailDialog } from 'src/agent/ui/tasks/AsyncAgentDetailDialog.js';
 import { BackgroundTask as BackgroundTaskComponent } from 'src/agent/ui/tasks/BackgroundTask.js';
+import { ContainerLogsDialog } from 'src/agent/ui/tasks/ContainerLogsDialog.js';
 import { DreamDetailDialog } from 'src/agent/ui/tasks/DreamDetailDialog.js';
 import { InProcessTeammateDetailDialog } from 'src/agent/ui/tasks/InProcessTeammateDetailDialog.js';
 import { RemoteSessionDetailDialog } from 'src/agent/ui/tasks/RemoteSessionDetailDialog.js';
@@ -97,6 +102,12 @@ type ListItem = {
   label: string;
   status: string;
   task: DeepImmutable<DreamTaskState>;
+} | {
+  id: string;
+  type: 'container';
+  label: string;
+  status: string;
+  task: DeepImmutable<ContainerTaskState>;
 } | {
   id: string;
   type: 'leader';
@@ -180,6 +191,7 @@ export function BackgroundTasksDialog({
     teammateTasks,
     workflowTasks,
     mcpMonitors,
+    containerTasks,
     dreamTasks: dreamTasks_0,
     allSelectableItems
   } = useMemo(() => {
@@ -201,6 +213,7 @@ export function BackgroundTasksDialog({
     const agent = sorted.filter(item_1 => item_1.type === 'local_agent' && item_1.id !== foregroundedTaskId);
     const workflows = sorted.filter(item_2 => item_2.type === 'local_workflow');
     const monitorMcp = sorted.filter(item_3 => item_3.type === 'monitor_mcp');
+    const containers = sorted.filter(item_12 => item_12.type === 'container');
     const dreamTasks = sorted.filter(item_4 => item_4.type === 'dream');
     // In spinner-tree mode, exclude teammates from the dialog (they appear in the tree)
     const teammates = showSpinnerTree ? [] : sorted.filter(item_5 => item_5.type === 'in_process_teammate');
@@ -217,12 +230,15 @@ export function BackgroundTasksDialog({
       agentTasks: agent,
       workflowTasks: workflows,
       mcpMonitors: monitorMcp,
+      containerTasks: containers,
       dreamTasks,
       teammateTasks: [...leaderItem, ...teammates],
       // Order MUST match JSX render order (teammates \u2192 bash \u2192 monitorMcp \u2192
-      // remote \u2192 agent \u2192 workflows \u2192 dream) so \u2193/\u2191 navigation moves the cursor
-      // visually downward.
-      allSelectableItems: [...leaderItem, ...teammates, ...bash, ...monitorMcp, ...remote, ...agent, ...workflows, ...dreamTasks]
+      // containers \u2192 remote \u2192 agent \u2192 workflows \u2192 dream) so \u2193/\u2191 navigation
+      // moves the cursor visually downward. That order is also
+      // FOOTER_GROUP_ORDER's, so the cursor walks the same sequence here as in
+      // the inline footer tree.
+      allSelectableItems: [...leaderItem, ...teammates, ...bash, ...monitorMcp, ...containers, ...remote, ...agent, ...workflows, ...dreamTasks]
     };
   }, [typedTasks, foregroundedTaskId, showSpinnerTree]);
   const currentSelection = allSelectableItems[selectedIndex] ?? null;
@@ -272,24 +288,11 @@ export function BackgroundTasksDialog({
 
     if (e.key === 'x') {
       e.preventDefault();
-      if (currentSelection_0.type === 'local_bash' && currentSelection_0.status === 'running') {
-        void killShellTask(currentSelection_0.id);
-      } else if (currentSelection_0.type === 'local_agent' && currentSelection_0.status === 'running') {
-        void killAgentTask(currentSelection_0.id);
-      } else if (currentSelection_0.type === 'in_process_teammate' && currentSelection_0.status === 'running') {
-        void killTeammateTask(currentSelection_0.id);
-      } else if (currentSelection_0.type === 'local_workflow' && currentSelection_0.status === 'running' && killWorkflowTask) {
-        killWorkflowTask(currentSelection_0.id, setAppState);
-      } else if (currentSelection_0.type === 'monitor_mcp' && currentSelection_0.status === 'running' && killMonitorMcp) {
-        killMonitorMcp(currentSelection_0.id, setAppState);
-      } else if (currentSelection_0.type === 'dream' && currentSelection_0.status === 'running') {
-        void killDreamTask(currentSelection_0.id);
-      } else if (currentSelection_0.type === 'remote_agent' && currentSelection_0.status === 'running') {
-        if (currentSelection_0.task.isUltraplan) {
-          void stopUltraplan(currentSelection_0.id, currentSelection_0.task.sessionId, setAppState);
-        } else {
-          void killRemoteAgentTask(currentSelection_0.id);
-        }
+      // One dispatch point, shared with the inline footer tree, so a new task
+      // type gets `x` here for free. It also no-ops on a non-running task and
+      // parks a confirmation for a container instead of stopping it outright.
+      if (currentSelection_0.type !== 'leader') {
+        killBackgroundTask(currentSelection_0.task, setAppState);
       }
     }
     if (e.key === 'f') {
@@ -401,6 +404,10 @@ export function BackgroundTasksDialog({
         return <DreamDetailDialog task={task_0} onDone={() => onDone('Background tasks dialog dismissed', {
           display: 'system'
         })} onBack={goBackToList} onKill={task_0.status === 'running' ? () => void killDreamTask(task_0.id) : undefined} key={`dream-${task_0.id}`} />;
+      case 'container':
+        // `x` here parks the same confirmation the list does, and PromptInput
+        // renders it above this dialog — so cancelling returns to these logs.
+        return <ContainerLogsDialog task={task_0} onDone={onDone} onBack={goBackToList} onStop={isContainerStoppable(task_0) ? () => killBackgroundTask(task_0, setAppState) : undefined} key={`container-${task_0.id}`} />;
     }
   }
   const runningBashCount = count(bashTasks, _ => _.status === 'running');
@@ -416,7 +423,16 @@ export function BackgroundTasksDialog({
               {runningAgentCount}{' '}
               {runningAgentCount !== 1 ? 'active agents' : 'active agent'}
             </Text>] : [])], index => <Text key={`separator-${index}`}> · </Text>);
-  const actions = [<KeyboardShortcutHint key="upDown" shortcut="↑/↓" action="select" />, <KeyboardShortcutHint key="enter" shortcut="Enter" action="view" />, ...(currentSelection?.type === 'in_process_teammate' && currentSelection.status === 'running' ? [<KeyboardShortcutHint key="foreground" shortcut="f" action="foreground" />] : []), ...((currentSelection?.type === 'local_bash' || currentSelection?.type === 'local_agent' || currentSelection?.type === 'in_process_teammate' || currentSelection?.type === 'local_workflow' || currentSelection?.type === 'monitor_mcp' || currentSelection?.type === 'dream' || currentSelection?.type === 'remote_agent') && currentSelection.status === 'running' ? [<KeyboardShortcutHint key="kill" shortcut="x" action="stop" />] : []), ...(agentTasks.some(t => t.status === 'running') ? [<KeyboardShortcutHint key="kill-all" shortcut={killAgentsShortcut} action="stop all agents" />] : []), <KeyboardShortcutHint key="esc" shortcut="←/Esc" action="close" />];
+  // `x` now dispatches on every non-leader row through killBackgroundTask, so
+  // the hint is "a running task is selected" rather than a type list that could
+  // drift from the handler again. Enter reads `logs` on a container because
+  // that is what its detail view is.
+  //
+  // A container asks its own question: the row keeps a `running` task status
+  // through the grace period after the container dies, so `status` alone would
+  // offer `x` on one that already exited.
+  const canStopSelection = currentSelection !== null && currentSelection.type !== 'leader' && (currentSelection.type === 'container' ? isContainerStoppable(currentSelection.task) : currentSelection.status === 'running');
+  const actions = [<KeyboardShortcutHint key="upDown" shortcut="↑/↓" action="select" />, ...(currentSelection ? [<KeyboardShortcutHint key="enter" shortcut="Enter" action={currentSelection.type === 'container' ? 'logs' : 'view'} />] : []), ...(currentSelection?.type === 'in_process_teammate' && currentSelection.status === 'running' ? [<KeyboardShortcutHint key="foreground" shortcut="f" action="foreground" />] : []), ...(canStopSelection ? [<KeyboardShortcutHint key="kill" shortcut="x" action={currentSelection?.type === 'container' ? 'stop container' : 'stop'} />] : []), ...(agentTasks.some(t => t.status === 'running') ? [<KeyboardShortcutHint key="kill-all" shortcut={killAgentsShortcut} action="stop all agents" />] : []), <KeyboardShortcutHint key="esc" shortcut="←/Esc" action="close" />];
   const handleCancel = () => onDone('Background tasks dialog dismissed', {
     display: 'system'
   });
@@ -457,7 +473,16 @@ export function BackgroundTasksDialog({
                 </Box>
               </Box>}
 
-            {remoteSessions.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 ? 1 : 0}>
+            {containerTasks.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 ? 1 : 0}>
+                <Text dimColor>
+                  <Text bold>{'  '}Containers</Text> ({containerTasks.length})
+                </Text>
+                <Box flexDirection="column">
+                  {containerTasks.map(item_12 => <Item key={item_12.id} item={item_12} isSelected={item_12.id === currentSelection?.id} />)}
+                </Box>
+              </Box>}
+
+            {remoteSessions.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 || containerTasks.length > 0 ? 1 : 0}>
                 <Text dimColor>
                   <Text bold>{'  '}Remote agents</Text> ({remoteSessions.length}
                   )
@@ -467,7 +492,7 @@ export function BackgroundTasksDialog({
                 </Box>
               </Box>}
 
-            {agentTasks.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 || remoteSessions.length > 0 ? 1 : 0}>
+            {agentTasks.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 || containerTasks.length > 0 || remoteSessions.length > 0 ? 1 : 0}>
                 <Text dimColor>
                   <Text bold>{'  '}Local agents</Text> ({agentTasks.length})
                 </Text>
@@ -476,7 +501,7 @@ export function BackgroundTasksDialog({
                 </Box>
               </Box>}
 
-            {workflowTasks.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 || remoteSessions.length > 0 || agentTasks.length > 0 ? 1 : 0}>
+            {workflowTasks.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 || containerTasks.length > 0 || remoteSessions.length > 0 || agentTasks.length > 0 ? 1 : 0}>
                 <Text dimColor>
                   <Text bold>{'  '}Workflows</Text> ({workflowTasks.length})
                 </Text>
@@ -485,7 +510,7 @@ export function BackgroundTasksDialog({
                 </Box>
               </Box>}
 
-            {dreamTasks_0.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 || remoteSessions.length > 0 || agentTasks.length > 0 || workflowTasks.length > 0 ? 1 : 0}>
+            {dreamTasks_0.length > 0 && <Box flexDirection="column" marginTop={teammateTasks.length > 0 || bashTasks.length > 0 || mcpMonitors.length > 0 || containerTasks.length > 0 || remoteSessions.length > 0 || agentTasks.length > 0 || workflowTasks.length > 0 ? 1 : 0}>
                 <Box flexDirection="column">
                   {dreamTasks_0.map(item_11 => <Item key={item_11.id} item={item_11} isSelected={item_11.id === currentSelection?.id} />)}
                 </Box>
@@ -494,64 +519,28 @@ export function BackgroundTasksDialog({
       </Dialog>
     </Box>;
 }
-function toListItem(task: BackgroundTaskState): ListItem {
+export function toListItem(task: BackgroundTaskState): ListItem {
+  // One label switch for both this dialog and the inline footer tree — the two
+  // used to carry a copy each, and the copy here is what PR #145 missed when it
+  // added `container`, turning every route into this dialog into a crash.
+  const label = taskRowLabel(task);
   switch (task.type) {
     case 'local_bash':
-      return {
-        id: task.id,
-        type: 'local_bash',
-        label: task.kind === 'monitor' ? task.description : task.command,
-        status: task.status,
-        task
-      };
+      return { id: task.id, type: 'local_bash', label, status: task.status, task };
     case 'remote_agent':
-      return {
-        id: task.id,
-        type: 'remote_agent',
-        label: task.title,
-        status: task.status,
-        task
-      };
+      return { id: task.id, type: 'remote_agent', label, status: task.status, task };
     case 'local_agent':
-      return {
-        id: task.id,
-        type: 'local_agent',
-        label: task.description,
-        status: task.status,
-        task
-      };
+      return { id: task.id, type: 'local_agent', label, status: task.status, task };
     case 'in_process_teammate':
-      return {
-        id: task.id,
-        type: 'in_process_teammate',
-        label: `@${task.identity.agentName}`,
-        status: task.status,
-        task
-      };
+      return { id: task.id, type: 'in_process_teammate', label, status: task.status, task };
     case 'local_workflow':
-      return {
-        id: task.id,
-        type: 'local_workflow',
-        label: task.summary ?? task.description,
-        status: task.status,
-        task
-      };
+      return { id: task.id, type: 'local_workflow', label, status: task.status, task };
     case 'monitor_mcp':
-      return {
-        id: task.id,
-        type: 'monitor_mcp',
-        label: task.description,
-        status: task.status,
-        task
-      };
+      return { id: task.id, type: 'monitor_mcp', label, status: task.status, task };
     case 'dream':
-      return {
-        id: task.id,
-        type: 'dream',
-        label: task.description,
-        status: task.status,
-        task
-      };
+      return { id: task.id, type: 'dream', label, status: task.status, task };
+    case 'container':
+      return { id: task.id, type: 'container', label, status: task.status, task };
     default:
       // LocalWorkflowTaskState resolves to `any` via the LocalWorkflowTask
       // stub module (feature('AGENT_WORKFLOWS') source not mirrored in this

@@ -7,7 +7,7 @@ import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { truncate } from 'src/shared/text/format.js';
 import { FOOTER_GROUP_LABELS, FOOTER_GROUP_ORDER, type FooterGroupKey, getFooterPanelLayout, matchGroupKey } from 'src/agent/ui/tasks/footerTaskGeometry.js';
-import { containerRowLabel } from 'src/agent/ui/tasks/containerRowLabel.js';
+import { taskRowLabel } from 'src/agent/ui/tasks/taskRowLabel.js';
 
 // Groups with >4 items start collapsed so the footer stays compact; the user can
 // expand with Enter on the header.
@@ -25,30 +25,6 @@ const AUTO_COLLAPSE_THRESHOLD = 4;
 // footer cursor (coordinatorTaskIndex) single — agents are the panel's rows,
 // and tree rows come after them in the same index space.
 const TREE_GROUPS: readonly FooterGroupKey[] = FOOTER_GROUP_ORDER.filter(key => key !== 'agents');
-
-// Short, single-line label per task — mirrors toListItem() in BackgroundTasksDialog.
-function labelFor(task: BackgroundTaskState): string {
-  switch (task.type) {
-    case 'local_bash':
-      return task.kind === 'monitor' ? task.description : task.command;
-    case 'remote_agent':
-      return task.title;
-    case 'local_agent':
-      return task.description;
-    case 'local_workflow':
-      return task.summary ?? task.description;
-    case 'monitor_mcp':
-      return task.description;
-    case 'dream':
-      return task.description;
-    case 'in_process_teammate':
-      return `@${task.identity.agentName}`;
-    case 'container':
-      return containerRowLabel(task);
-    default:
-      return '';
-  }
-}
 
 export type FooterTaskRow =
   | { kind: 'header'; groupKey: FooterGroupKey; label: string; count: number; collapsed: boolean }
@@ -95,7 +71,7 @@ export function buildFooterTaskRows(
     rows.push({ kind: 'header', groupKey, label: FOOTER_GROUP_LABELS[groupKey], count: items.length, collapsed: isCollapsed });
     if (!isCollapsed) {
       items.forEach((task, i) =>
-        rows.push({ kind: 'item', task, label: labelFor(task), isLast: i === items.length - 1 }),
+        rows.push({ kind: 'item', task, label: taskRowLabel(task), isLast: i === items.length - 1 }),
       );
     }
   }

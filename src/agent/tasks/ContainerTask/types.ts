@@ -3,7 +3,8 @@
 // in the docker CLI or React.
 
 import type { TaskStateBase } from 'src/agent/Task.js'
-import type { ContainerInfo } from 'src/containers/types.js'
+import type { ContainerInfo, ContainerState } from 'src/containers/types.js'
+import type { DeepImmutable } from 'src/shared/types/utils.js'
 
 export type ContainerTaskState = TaskStateBase & {
   type: 'container'
@@ -32,4 +33,28 @@ export function isContainerTask(task: unknown): task is ContainerTaskState {
     'type' in task &&
     task.type === 'container'
   )
+}
+
+/** States in which `docker stop` has nothing to do. An exclusion set rather
+ * than a list of live states, so a docker state we have not seen defaults to
+ * stoppable — offering an action that no-ops is better than hiding one that
+ * works. */
+const NOT_STOPPABLE: ReadonlySet<ContainerState> = new Set([
+  'exited',
+  'dead',
+  'removing',
+])
+
+/**
+ * Whether stopping this row means anything.
+ *
+ * NOT the same question as `task.status === 'running'`, which is what every
+ * other task type answers with: a container row lingers for a grace period
+ * after the container dies (`diedAt`) and keeps a `running` TASK status
+ * throughout, so that check offers `x` on a container that already exited.
+ */
+export function isContainerStoppable(
+  task: DeepImmutable<ContainerTaskState>,
+): boolean {
+  return !NOT_STOPPABLE.has(task.container.state)
 }

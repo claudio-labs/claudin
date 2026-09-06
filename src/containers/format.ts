@@ -7,13 +7,19 @@
 // different things on one screen.
 
 import type { ContainerInfo } from 'src/containers/types.js'
+import type { DeepImmutable } from 'src/shared/types/utils.js'
+
+// The parameters are DeepImmutable so the footer row can format straight off
+// the immutable AppState view. A mutable ContainerInfo is assignable to it, so
+// the Container tool's renderer passes its own snapshots unchanged.
+type ReadonlyContainerInfo = DeepImmutable<ContainerInfo>
 
 /**
  * Compose names a container `<project>-<service>-<n>`. Dropping the project
  * prefix keeps a row short while still telling two replicas apart, which the
  * bare service name would not.
  */
-export function shortContainerName(c: ContainerInfo): string {
+export function shortContainerName(c: ReadonlyContainerInfo): string {
   if (c.project && c.name.startsWith(`${c.project}-`)) {
     return c.name.slice(c.project.length + 1)
   }
@@ -21,7 +27,7 @@ export function shortContainerName(c: ContainerInfo): string {
 }
 
 /** Published host ports as `:8000 :8989`. Empty when nothing is published. */
-export function portSummary(c: ContainerInfo): string {
+export function portSummary(c: ReadonlyContainerInfo): string {
   const published = c.ports
     .map(p => p.hostPort)
     .filter((p): p is number => p !== null)
@@ -38,7 +44,7 @@ export function portSummary(c: ContainerInfo): string {
  * thing this must not do.
  */
 export function formatContainerState(
-  c: ContainerInfo,
+  c: ReadonlyContainerInfo,
   restartCount = 0,
 ): string {
   switch (c.state) {
