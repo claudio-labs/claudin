@@ -20,6 +20,20 @@ import { logError } from 'src/shared/log.js'
 const STOP_TIMEOUT_S = 10
 
 /**
+ * argv for the stop, kept separate so the flag is pinned by a test.
+ *
+ * `-t`, never `--timeout`: the long form only exists from Docker 25, and on 24
+ * `docker stop --timeout 10 <id>` exits 125 with `unknown flag: --timeout`
+ * without touching the container. That failure was invisible in the TUI — the
+ * row correctly stays `up` when docker refuses a stop, so a refusal and a
+ * malformed command looked identical, and `x` silently did nothing on every
+ * Docker before 25. The short flag is accepted by both.
+ */
+export function stopArgs(containerId: string): string[] {
+  return ['stop', '-t', String(STOP_TIMEOUT_S), containerId]
+}
+
+/**
  * Apply a fresh snapshot to AppState. Returns the number of rows that changed,
  * so the caller can skip a re-render when nothing did.
  */
@@ -78,10 +92,9 @@ async function kill(taskId: string, setAppState: SetAppState): Promise<void> {
     return task
   })
   if (containerId === null) return
-  const result = await runDocker(
-    ['stop', '--timeout', String(STOP_TIMEOUT_S), containerId],
-    { timeout: (STOP_TIMEOUT_S + 5) * 1000 },
-  )
+  const result = await runDocker(stopArgs(containerId), {
+    timeout: (STOP_TIMEOUT_S + 5) * 1000,
+  })
   if (result.code !== 0) {
     logError(
       new Error(
