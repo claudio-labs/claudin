@@ -10,6 +10,7 @@ import { DIAMOND_FILLED, DIAMOND_OPEN } from 'src/shared/constants/figures.js';
 import { RemoteSessionProgress } from 'src/agent/ui/tasks/RemoteSessionProgress.js';
 import { ShellProgress, TaskStatusText } from 'src/agent/ui/tasks/ShellProgress.js';
 import { describeTeammateActivity } from 'src/agent/ui/tasks/taskStatusUtils.js';
+import { taskRowLabel } from 'src/agent/ui/tasks/taskRowLabel.js';
 type Props = {
   task: DeepImmutable<BackgroundTaskState>;
   maxActivityWidth?: number;
@@ -340,5 +341,12 @@ export function BackgroundTask(t0: Props) {
         }
         return t6;
       }
+    case "container":
+      // Deliberately unmemoized: this file is React-Compiler output, and a
+      // memoized subexpression here would need new `$` slots and a bumped
+      // `_c(92)`. The label is one string join over fields already in state.
+      // Its state word ("up", "exited (1)") is what the other arms spend a
+      // TaskStatusText on.
+      return <Text>{truncate(taskRowLabel(task), activityLimit, true)}</Text>;
   }
 }

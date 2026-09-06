@@ -7,6 +7,7 @@
 // that one, not a sibling.
 
 import type { ContainerTaskState } from 'src/agent/tasks/ContainerTask/types.js'
+import type { DeepImmutable } from 'src/shared/types/utils.js'
 import {
   formatContainerState,
   portSummary,
@@ -19,7 +20,7 @@ const SEP = ' · '
 // tool's result renderer spells a container the same way this row does.
 export { portSummary, shortContainerName }
 
-export function containerRowLabel(task: ContainerTaskState): string {
+export function containerRowLabel(task: DeepImmutable<ContainerTaskState>): string {
   const parts = [
     shortContainerName(task.container),
     formatContainerState(task.container, task.restartCount),
