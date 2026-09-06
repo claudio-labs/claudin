@@ -4,6 +4,13 @@ import { logError } from 'src/shared/log.js'
 interface Props {
   children: React.ReactNode
   fallback?: React.ReactNode
+  /**
+   * Called after the error is logged, so the owner can unmount this boundary
+   * — closing a dialog, say. There is no reset on the boundary itself: once
+   * `hasError` is set it renders the fallback for as long as it stays mounted,
+   * and the owner taking it down is what restores normal rendering.
+   */
+  onError?: (error: Error) => void
 }
 
 interface State {
@@ -22,6 +29,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   override componentDidCatch(error: Error): void {
     logError(error)
+    this.props.onError?.(error)
   }
 
   render(): React.ReactNode {

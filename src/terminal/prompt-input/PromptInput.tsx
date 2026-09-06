@@ -122,6 +122,7 @@ import TextInput from 'src/terminal/text-input/TextInput.js';
 import { ThinkingToggle } from 'src/agent/ui/ThinkingToggle.js';
 import { BackgroundTasksDialog } from 'src/agent/ui/tasks/BackgroundTasksDialog.js';
 import { ContainerStopDialog } from 'src/agent/ui/tasks/ContainerStopDialog.js';
+import { ErrorBoundary } from 'src/platform/ErrorBoundary.js';
 import { WorkflowsMenuWithTabs } from 'src/agent/ui/workflows/WorkflowsMenuWithTabs.js';
 import { shouldHideTasksFooter } from 'src/agent/ui/tasks/taskStatusUtils.js';
 import { TeamsDialog } from 'src/platform/teams/TeamsDialog.js';
@@ -2343,19 +2344,50 @@ function PromptInput({
   // at a stable tree position across all render paths, so React preserves
   // its mount (and therefore its internal state: query, focusedIndex, items)
   // even when the user opens a different dialog between Ctrl+R toggles.
-  if (showBashesDialog) {
-    return <>{historyPickerEl}<BackgroundTasksDialog onDone={() => setShowBashesDialog(false)} toolUseContext={getToolUseContext(messages, [], new AbortController(), mainLoopModel)} initialDetailTaskId={typeof showBashesDialog === 'string' ? showBashesDialog : undefined} /></>;
-  }
+  //
+  // They are also each wrapped in an ErrorBoundary. A render throw inside a
+  // modal used to end the session: Ink's root swaps the WHOLE tree for the
+  // error screen and never resets it (terminal/ink/components/App.tsx), so the
+  // REPL — and every key handler with it — was gone until the user killed the
+  // process. Closing the offending dialog unmounts the boundary, which puts the
+  // conversation back. Only the modals are guarded; doing this to the
+  // always-rendered prompt below would re-throw on the very next render.
+  //
+  // `key={name}` is load-bearing: every branch puts the boundary at the same
+  // position in the same Fragment, so without it React keeps ONE instance
+  // across dialogs — and its `hasError` with it. A crash in the container-stop
+  // confirmation would then blank the tasks dialog still open underneath it,
+  // which is the same dead end by another route.
+  const guardDialog = (dialog: React.ReactNode, close: () => void, name: string): React.ReactNode => <>{historyPickerEl}<ErrorBoundary key={name} onError={() => {
+    close();
+    addNotification({
+      key: 'dialog-crashed',
+      jsx: <Text color="error">{name} closed after an internal error — see the debug log</Text>,
+      priority: 'immediate',
+      timeoutMs: 5000
+    });
+  }}>{dialog}</ErrorBoundary></>;
+
+  // Checked before showBashesDialog so the confirmation is visible while the
+  // tasks dialog is open: `x` on a container row there parks the request
+  // instead of stopping anything, and a confirmation nothing renders would read
+  // as the key doing nothing at all.
   if (pendingContainerStop) {
-    return <>{historyPickerEl}<ContainerStopDialog pending={pendingContainerStop} /></>;
+    return guardDialog(<ContainerStopDialog pending={pendingContainerStop} />, () => setAppState(prev => ({
+      ...prev,
+      pendingContainerStop: null
+    })), 'Stop container');
+  }
+  if (showBashesDialog) {
+    return guardDialog(<BackgroundTasksDialog onDone={() => setShowBashesDialog(false)} toolUseContext={getToolUseContext(messages, [], new AbortController(), mainLoopModel)} initialDetailTaskId={typeof showBashesDialog === 'string' ? showBashesDialog : undefined} />, () => setShowBashesDialog(false), 'Background tasks');
   }
   if (feature('AGENT_WORKFLOWS') && showWorkflowsDialog) {
-    return <>{historyPickerEl}<WorkflowsMenuWithTabs context={getToolUseContext(messages, [], new AbortController(), mainLoopModel)} onExit={() => setShowWorkflowsDialog(false)} initialTab="running" initialRunId={typeof showWorkflowsDialog === 'string' ? showWorkflowsDialog : undefined} /></>;
+    return guardDialog(<WorkflowsMenuWithTabs context={getToolUseContext(messages, [], new AbortController(), mainLoopModel)} onExit={() => setShowWorkflowsDialog(false)} initialTab="running" initialRunId={typeof showWorkflowsDialog === 'string' ? showWorkflowsDialog : undefined} />, () => setShowWorkflowsDialog(false), 'Workflows');
   }
   if (isAgentSwarmsEnabled() && showTeamsDialog) {
-    return <>{historyPickerEl}<TeamsDialog initialTeams={cachedTeams} onDone={() => {
+    return guardDialog(<TeamsDialog initialTeams={cachedTeams} onDone={() => {
       setShowTeamsDialog(false);
-    }} /></>;
+    }} />, () => setShowTeamsDialog(false), 'Teams');
   }
   if (feature('QUICK_SEARCH')) {
     const insertWithSpacing = (text: string) => {
@@ -2363,10 +2395,10 @@ function PromptInput({
       insertTextAtCursor(/\s/.test(cursorChar) ? text : ` ${text}`);
     };
     if (showQuickOpen) {
-      return <>{historyPickerEl}<QuickOpenDialog onDone={() => setShowQuickOpen(false)} onInsert={insertWithSpacing} /></>;
+      return guardDialog(<QuickOpenDialog onDone={() => setShowQuickOpen(false)} onInsert={insertWithSpacing} />, () => setShowQuickOpen(false), 'Quick open');
     }
     if (showGlobalSearch) {
-      return <>{historyPickerEl}<GlobalSearchDialog onDone={() => setShowGlobalSearch(false)} onInsert={insertWithSpacing} /></>;
+      return guardDialog(<GlobalSearchDialog onDone={() => setShowGlobalSearch(false)} onInsert={insertWithSpacing} />, () => setShowGlobalSearch(false), 'Search');
     }
   }
   if (feature('HISTORY_PICKER') && showHistoryPicker) {
@@ -2385,10 +2417,13 @@ function PromptInput({
     return <>{historyPickerEl}{thinkingToggleElement}</>;
   }
   if (showBridgeDialog) {
-    return <>{historyPickerEl}<BridgeDialog onDone={() => {
+    return guardDialog(<BridgeDialog onDone={() => {
       setShowBridgeDialog(false);
       selectFooterItem(null);
-    }} /></>;
+    }} />, () => {
+      setShowBridgeDialog(false);
+      selectFooterItem(null);
+    }, 'Bridge');
   }
   const baseProps: BaseTextInputProps = {
     multiline: true,
