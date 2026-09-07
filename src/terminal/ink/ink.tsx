@@ -306,6 +306,11 @@ export default class Ink {
     if (!this.options.stdout.isTTY) {
       return;
     }
+    if (isDebugRepaintsEnabled()) {
+      logForDebugging(`[REPAINT] SIGCONT handleResume · altScreen=${this.altScreenActive}`, {
+        level: 'warn'
+      });
+    }
 
     // Alt screen: after SIGCONT, content is stale (shell may have written
     // to main screen, switching focus away) and mouse tracking was
@@ -616,6 +621,26 @@ export default class Ink {
     // doesn't implement DEC 2026, so SYNC_OUTPUT_SUPPORTED is false).
     SYNC_OUTPUT_SUPPORTED, rewriteMainScreen);
     const diffMs = performance.now() - tDiff;
+    // Diagnostic for the "banner repeats mid-scrollback" reports: the banner
+    // is frame row 0, so only a paint that starts there can re-emit it —
+    // either a full reset of a frame that fits the viewport, or the growing
+    // path over an empty prev frame (first frame, SIGCONT). Log heights for
+    // both so the culprit path can be read off the debug log.
+    if (isDebugRepaintsEnabled() && !this.altScreenActive) {
+      const prevH = prevFrame.screen.height;
+      const nextH = frame.screen.height;
+      const vp = frame.viewport.height;
+      const reset = diff.find(p => p.type === 'clearTerminal');
+      if (reset && reset.type === 'clearTerminal') {
+        logForDebugging(`[REPAINT] reset · ${reset.reason} · prevH=${prevH} nextH=${nextH} viewport=${vp} startY=${Math.max(0, nextH - Math.max(1, vp - 1))}${nextH <= vp - 1 ? ' · FRAME FITS VIEWPORT → row 0 painted' : ''}`, {
+          level: 'warn'
+        });
+      } else if (prevH === 0 && nextH > 0) {
+        logForDebugging(`[REPAINT] whole-frame append from empty prev · nextH=${nextH} viewport=${vp} prevCursorY=${prevFrame.cursor.y}`, {
+          level: 'warn'
+        });
+      }
+    }
     // Swap buffers
     this.backFrame = this.frontFrame;
     this.frontFrame = frame;
