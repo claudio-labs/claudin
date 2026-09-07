@@ -10,7 +10,6 @@ import {
   type Cell,
   CellWidth,
   cellAt,
-  charInCellAt,
   diffEach,
   type Hyperlink,
   isEmptyCellAt,
@@ -179,6 +178,35 @@ export class LogUpdate {
       return fullResetSequence_CAUSES_FLICKER(next, 'resize', stylePool)
     }
 
+    // Everything below assumes the physical cursor sits on the LAST viewport
+    // row whenever the frame overflows the viewport: viewportY (the rows in
+    // scrollback) is derived from the frame height alone, on the premise that
+    // the cursor-restore LFs scrolled the frame up until its cursor row hit the
+    // bottom. A frame that SHRINKS while overflowing breaks that premise:
+    // eraseLines cannot scroll, so the cursor ends linesToClear rows above the
+    // bottom and the physical viewport top stays where it was — while the next
+    // frame recomputes viewportY from the new, smaller height and believes
+    // rows are reachable that are in fact above the top. Its cursor-up moves
+    // then clamp at row 0 and every later write lands one row (or thirteen)
+    // off, interleaving two rows' glyphs. The tail repaint re-establishes the
+    // premise (its last row is the cursor row), so shrinking while overflowing
+    // always goes through it — the main-screen rewrite below included, which
+    // has the same eraseLines shape.
+    const cursorAtBottom = prev.cursor.y >= prev.screen.height
+    const isGrowing = next.screen.height > prev.screen.height
+    // When content fills the viewport exactly (height == viewport) and the
+    // cursor is at the bottom, the cursor-restore LF at the end of the
+    // previous frame scrolled 1 row into scrollback. Use >= to catch this.
+    const prevHadScrollback =
+      cursorAtBottom && prev.screen.height >= prev.viewport.height
+    const isShrinking = next.screen.height < prev.screen.height
+    if (!altScreen && prevHadScrollback && isShrinking) {
+      logForDebugging(
+        `Full reset (shrink while overflowing): prevHeight=${prev.screen.height}, nextHeight=${next.screen.height}, viewport=${prev.viewport.height}`,
+      )
+      return fullResetSequence_CAUSES_FLICKER(next, 'offscreen', stylePool)
+    }
+
     if (!altScreen && rewriteMainScreen) {
       const rewriteStartY = findMainScreenRewriteStart(prev.screen, next.screen)
       if (rewriteStartY !== null) {
@@ -231,61 +259,20 @@ export class LogUpdate {
     // the cursor restore at the end of the previous frame caused terminal scroll.
     // viewportY tells us how many rows are in scrollback from content overflow.
     // Additionally, the cursor-restore scroll pushes 1 more row into scrollback.
-    // We need fullReset if any changes are to rows that are now in scrollback.
     //
-    // This early full-reset check only applies in "steady state" (not growing).
-    // For growing, the viewportY calculation below (with cursorRestoreScroll)
-    // catches unreachable scrollback rows in the diff loop instead.
-    const cursorAtBottom = prev.cursor.y >= prev.screen.height
-    const isGrowing = next.screen.height > prev.screen.height
-    // When content fills the viewport exactly (height == viewport) and the
-    // cursor is at the bottom, the cursor-restore LF at the end of the
-    // previous frame scrolled 1 row into scrollback. Use >= to catch this.
-    const prevHadScrollback =
-      cursorAtBottom && prev.screen.height >= prev.viewport.height
-    const isShrinking = next.screen.height < prev.screen.height
-    const nextFitsViewport = next.screen.height <= prev.viewport.height
-
-    // When shrinking from above-viewport to at-or-below-viewport, content that
-    // was in scrollback should now be visible. Terminal clear operations can't
-    // bring scrollback content into view, so we need a full reset.
-    // Use <= (not <) because even when next height equals viewport height, the
-    // scrollback depth from the previous render differs from a fresh render.
-    if (prevHadScrollback && nextFitsViewport && isShrinking) {
-      logForDebugging(
-        `Full reset (shrink->below): prevHeight=${prev.screen.height}, nextHeight=${next.screen.height}, viewport=${prev.viewport.height}`,
-      )
-      return fullResetSequence_CAUSES_FLICKER(next, 'offscreen', stylePool)
-    }
-
-    if (
-      prev.screen.height >= prev.viewport.height &&
-      prev.screen.height > 0 &&
-      cursorAtBottom &&
-      !isGrowing
-    ) {
-      // viewportY = rows in scrollback from content overflow
-      // +1 for the row pushed by cursor-restore scroll
-      const viewportY = prev.screen.height - prev.viewport.height
-      const scrollbackRows = viewportY + 1
-
-      let scrollbackChangeY = -1
-      diffEach(prev.screen, next.screen, (_x, y) => {
-        if (y < scrollbackRows) {
-          scrollbackChangeY = y
-          return true // early exit
-        }
-      })
-      if (scrollbackChangeY >= 0) {
-        const prevLine = readLine(prev.screen, scrollbackChangeY)
-        const nextLine = readLine(next.screen, scrollbackChangeY)
-        return fullResetSequence_CAUSES_FLICKER(next, 'offscreen', stylePool, {
-          triggerY: scrollbackChangeY,
-          prevLine,
-          nextLine,
-        })
-      }
-    }
+    // A change to a row that already scrolled into scrollback used to force a
+    // full reset (here and in the diff loop below). That row is
+    // unreachable either way: clearTerminal keeps scrollback and the reset
+    // repaints only the reachable tail (see fullResetSequence_CAUSES_FLICKER),
+    // so the reset produced the exact rows the incremental diff produces —
+    // plus a blank-and-repaint of the whole viewport. In a long non-fullscreen
+    // session such changes are routine (a blinking in-progress dot in a
+    // collapsed group 80 rows up, a "still running" row flipping to
+    // "completed"), and each one repainted the screen. The diff loop now skips
+    // those cells instead; the row keeps its new content in prev.screen for
+    // the next diff, and it only reaches the terminal if a later reset that
+    // legitimately paints from row 0 (a frame that fits the viewport again)
+    // brings it back into reach.
 
     const screen = new VirtualScreen(prev.cursor, next.viewport.width)
 
@@ -300,14 +287,11 @@ export class LogUpdate {
       const linesToClear = prev.screen.height - next.screen.height
 
       // eraseLines only works within the viewport - it can't clear scrollback.
-      // If we need to clear more lines than fit in the viewport, some are in
-      // scrollback, so we need a full reset.
+      // (Unreachable on the main screen, where the overflow guard above already
+      // took the reset; kept for a caller whose cursor is not pinned at the
+      // bottom.)
       if (linesToClear > prev.viewport.height) {
-        return fullResetSequence_CAUSES_FLICKER(
-          next,
-          'offscreen',
-          this.options.stylePool,
-        )
+        return fullResetSequence_CAUSES_FLICKER(next, 'offscreen', stylePool)
       }
 
       // clear(N) moves cursor UP by N-1 lines and to column 0
@@ -343,8 +327,6 @@ export class LogUpdate {
     let currentHyperlink: Hyperlink = undefined
 
     // First pass: render changes to existing rows (rows < prev.screen.height)
-    let needsFullReset = false
-    let resetTriggerY = -1
     // Row whose vacated tail we already wiped with an end-of-line erase this
     // pass — skip its remaining vacated cells.
     let erasedToEolRow = -1
@@ -383,12 +365,11 @@ export class LogUpdate {
         return
       }
 
-      // If the cell outside the viewport range has changed, we need to reset
-      // because we can't move the cursor there to draw.
+      // The cell is in scrollback: the cursor cannot reach it, and a reset
+      // would not repaint it either (see the note above the viewportY
+      // computation). Leave it.
       if (y < viewportY) {
-        needsFullReset = true
-        resetTriggerY = y
-        return true // early exit
+        return
       }
 
       // Width-drift-robust tail clear. When prev had a glyph here but next is
@@ -451,14 +432,6 @@ export class LogUpdate {
         })
       }
     })
-    if (needsFullReset) {
-      return fullResetSequence_CAUSES_FLICKER(next, 'offscreen', stylePool, {
-        triggerY: resetTriggerY,
-        prevLine: readLine(prev.screen, resetTriggerY),
-        nextLine: readLine(next.screen, resetTriggerY),
-      })
-    }
-
     // Reset styles before rendering new rows (they'll set their own styles)
     currentStyleId = transitionStyle(
       screen.diff,
@@ -609,19 +582,10 @@ function transitionStyle(
   return targetId
 }
 
-function readLine(screen: Screen, y: number): string {
-  let line = ''
-  for (let x = 0; x < screen.width; x++) {
-    line += charInCellAt(screen, x, y) ?? ' '
-  }
-  return line.trimEnd()
-}
-
 function fullResetSequence_CAUSES_FLICKER(
   frame: Frame,
   reason: FlickerReason,
   stylePool: StylePool,
-  debug?: { triggerY: number; prevLine: string; nextLine: string },
 ): Diff {
   // After clearTerminal, cursor is at (0, 0) — row 0 of the VIEWPORT, not of
   // the frame. clearTerminal is ERASE_SCREEN + CURSOR_HOME with no CSI 3J, so
@@ -647,7 +611,7 @@ function fullResetSequence_CAUSES_FLICKER(
   const startY = Math.max(0, frame.screen.height - usableRows)
   const screen = new VirtualScreen({ x: 0, y: startY }, frame.viewport.width)
   renderFrameSlice(screen, frame, startY, frame.screen.height, stylePool)
-  return [{ type: 'clearTerminal', reason, debug }, ...screen.diff]
+  return [{ type: 'clearTerminal', reason }, ...screen.diff]
 }
 
 /**

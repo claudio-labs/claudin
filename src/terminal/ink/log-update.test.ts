@@ -326,11 +326,16 @@ function countNewlines(stdout: string): number {
   return stdout.split('\n').length - 1
 }
 
-test('a full reset repaints only the visible tail, never re-emitting scrolled-off rows', () => {
+// A row that already scrolled off is unreachable, and since the reset above
+// repaints only the tail it could not have shown the change either — it only
+// blanked and repainted the viewport. So a change up there is not a reset
+// trigger at all: a blinking in-progress dot in a collapsed group 80 rows up
+// used to clear the screen on every blink (11 resets in 15 minutes, all
+// `offscreen · row 61`, in one measured session).
+test('a change to a scrolled-off row is ignored instead of resetting the screen', () => {
   const { stylePool, charPool, hyperlinkPool, log } = createHarness()
   const nextLines = [...TALL_LINES]
-  // Row 0 is deep in scrollback (viewportY is 10) — changing it is what forces
-  // the reset, and it is also the row that must NOT be re-emitted.
+  // Row 0 is deep in scrollback (viewportY is 11).
   nextLines[0] = 'ROW00yyyyy'
 
   const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES, TALL_VIEWPORT)
@@ -338,22 +343,31 @@ test('a full reset repaints only the visible tail, never re-emitting scrolled-of
   const diff = log.render(prev, next, false, true, false)
   const stdout = collectStdout(diff)
 
-  expect(diff.some(p => p.type === 'clearTerminal')).toBe(true)
-
-  // The tail that fits: rows 11..19 (the last row of the viewport belongs to
-  // the cursor, which renderFrameSlice's trailing CR+LF parks there).
-  expect(stdout).toContain('ROW11xxxxx')
-  expect(stdout).toContain('ROW19xxxxx')
-
-  // Everything above it is already on the user's screen — re-emitting any of
-  // it scrolls a duplicate into scrollback.
+  expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
   expect(stdout).not.toContain('ROW00')
-  expect(stdout).not.toContain('ROW10xxxxx')
+  expect(countNewlines(stdout)).toBe(0)
+})
 
-  // One LF per rendered row, and never more than the viewport can take
-  // without scrolling.
-  expect(countNewlines(stdout)).toBe(9)
-  expect(countNewlines(stdout)).toBeLessThanOrEqual(TALL_VIEWPORT - 1)
+// The same frame with a change inside the viewport still goes through the
+// incremental diff — the scrolled-off change above it is simply not part of
+// the output.
+test('a scrolled-off change does not stop visible rows from being diffed in place', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  const nextLines = [...TALL_LINES]
+  nextLines[0] = 'ROW00yyyyy'
+  nextLines[15] = 'ROW15zzzzz'
+
+  const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES, TALL_VIEWPORT)
+  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, nextLines, TALL_VIEWPORT)
+  const diff = log.render(prev, next, false, true, false)
+  const stdout = collectStdout(diff)
+
+  expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
+  expect(stdout).toContain('zzzzz')
+  expect(stdout).not.toContain('yyyyy')
+  // Only the cursor restore's LFs (row 15 back down to the cursor row 20),
+  // all inside the viewport — nothing scrolls.
+  expect(countNewlines(stdout)).toBe(5)
 })
 
 test('a full reset of a frame that fits the viewport still repaints every row', () => {
@@ -371,6 +385,56 @@ test('a full reset of a frame that fits the viewport still repaints every row', 
   expect(stdout).toContain('ROW00xxxxx')
   expect(stdout).toContain('ROW05xxxxx')
   expect(countNewlines(stdout)).toBe(6)
+})
+
+// Shrinking while the frame overflows must go through the tail repaint, not
+// eraseLines. eraseLines cannot scroll, so after it the cursor would sit
+// linesToClear rows above the bottom while the next frame derives viewportY
+// from the new height as if the cursor were AT the bottom — its cursor-up
+// then clamps at row 0 and every later write lands rows off (measured: a
+// 13-row shrink followed by a frame whose UP 38 ran from row 26, which wove
+// "…echotdone"ncompletedl(exitpcodeb0)eath the input box" out of two rows).
+test('shrinking while overflowing repaints the tail instead of erasing lines', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  // 20 -> 17 rows, viewport 10: still overflowing after the shrink.
+  const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES, TALL_VIEWPORT)
+  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES.slice(0, 17), TALL_VIEWPORT)
+  const diff = log.render(prev, next, false, true, false)
+  const stdout = collectStdout(diff)
+
+  expect(diff.some(p => p.type === 'clearTerminal')).toBe(true)
+  expect(diff.some(p => p.type === 'clear')).toBe(false)
+  // Tail of the NEW frame: rows 8..16, cursor parked on the last viewport row.
+  expect(stdout).toContain('ROW08xxxxx')
+  expect(stdout).toContain('ROW16xxxxx')
+  expect(stdout).not.toContain('ROW07xxxxx')
+  expect(stdout).not.toContain('ROW17')
+  expect(countNewlines(stdout)).toBe(9)
+})
+
+// The Ghostty main-screen rewrite has the same eraseLines shape, so it must
+// not take a shrink while overflowing either.
+test('main-screen rewrite defers to the tail repaint when shrinking while overflowing', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES, TALL_VIEWPORT)
+  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES.slice(0, 18), TALL_VIEWPORT)
+  const diff = log.render(prev, next, false, true, true)
+
+  expect(diff.some(p => p.type === 'clearTerminal')).toBe(true)
+  expect(diff.some(p => p.type === 'clear')).toBe(false)
+})
+
+// A frame that fits the viewport keeps the cheap path: nothing is in
+// scrollback, so eraseLines leaves the cursor exactly where the next frame
+// expects it.
+test('shrinking a frame that fits the viewport still erases lines in place', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES.slice(0, 8), TALL_VIEWPORT)
+  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES.slice(0, 5), TALL_VIEWPORT)
+  const diff = log.render(prev, next, false, true, false)
+
+  expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
+  expect(diff.some(p => p.type === 'clear' && p.count === 3)).toBe(true)
 })
 
 // Second half of the same bug: Ink.repaint() (ctrl+L, prepareFullRepaint,
