@@ -220,7 +220,7 @@ src/
 │   │                              (accounting), terminal/contexts/ (React providers)
 │   ├── prompts/ (25)            ← prompts.ts (the system prompt), familyAddendums/, steeringToggles
 │   ├── repl/ (35)               ← REPL.tsx (main loop), controllers/, replLauncher
-│   ├── ui/ (133)                ← the loop's Ink components: messages/, tasks/, agents/ (→ ink-tui.md)
+│   ├── ui/ (152)                ← the loop's Ink components: messages/, tasks/, agents/ (→ ink-tui.md)
 │   ├── tools/ (29)              ← toolExecution, toolResultCache, toolResultSummarizer (→ cache.md)
 │   ├── tasks/ (32)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
 │   ├── coordinator/ (42)        ← multi-agent coordinator + swarm backends (COORDINATOR_MODE)
