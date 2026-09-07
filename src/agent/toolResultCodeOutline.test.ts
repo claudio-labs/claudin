@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { resetGlobalConfigForTests } from 'src/platform/config/config.js'
+import { getProjectDir } from 'src/sessions/pure/paths.js'
 
 const realAnalyticsMetadata = { ...(await import('src/platform/analytics/metadata.js')) }
 const realAnalyticsIndex = { ...(await import('src/platform/analytics/index.js')) }
@@ -216,6 +217,9 @@ describe('code-outline reversibility', () => {
     afterAll(() => {
       if (prevConfigDir === undefined) delete process.env.CLAUDIN_CONFIG_DIR
       else process.env.CLAUDIN_CONFIG_DIR = prevConfigDir
+      // The memoize key is only the cwd, so the entries computed under the temp
+      // CLAUDIN_CONFIG_DIR survive the env restore and leak into later files.
+      getProjectDir.cache.clear?.()
       if (existsSync(testConfigDir)) rmSync(testConfigDir, { recursive: true, force: true })
     })
 
