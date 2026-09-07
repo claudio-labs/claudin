@@ -13,6 +13,11 @@ const originalSimple = process.env.CLAUDIN_SIMPLE
 const sessionId = '00000000-0000-4000-8000-000000001999'
 const ts = '2026-04-02T00:00:00.000Z'
 
+// Plain-object copy of the real exports, taken before any mock.module below —
+// restoring an empty object instead leaves getAPIProvider() undefined for the
+// rest of the run (Bun never reverts a module mock on its own).
+const realProviders = { ...(await import('src/providers/model/providers.js')) }
+
 /**
  * Shape this test needs off the deserializer's output. The module is loaded
  * through a cache-busting dynamic `import()`, so its return type is not
@@ -56,8 +61,9 @@ async function writeJsonl(entry: unknown): Promise<string> {
 
 afterEach(async () => {
   mock.module('./sessionStart.js', () => ({}))
-  mock.module('src/providers/model/providers.js', () => ({}))
-  process.env.CLAUDIN_SIMPLE = originalSimple
+  mock.module('src/providers/model/providers.js', () => realProviders)
+  if (originalSimple === undefined) delete process.env.CLAUDIN_SIMPLE
+  else process.env.CLAUDIN_SIMPLE = originalSimple
   await Promise.all(tempDirs.splice(0).map(dir => rm(dir, { recursive: true, force: true })))
 })
 
