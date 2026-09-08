@@ -15,11 +15,29 @@ const realToolExecution = await import('src/agent/tools/toolExecution.js')
 mock.module('./toolExecution.js', () => ({
   ...realToolExecution,
   runToolUse: async function* (
-    _block: ToolUseBlock,
+    block: ToolUseBlock,
     _assistantMessage: AssistantMessage,
     _canUseTool: never,
     toolUseContext: ToolUseContext,
   ) {
+    // A second fake that finishes immediately with one result message, so a
+    // test can drive getCompletedResults. Keyed by name so the hanging fake —
+    // which every other test in this file depends on — is untouched.
+    if (block.name === 'FakeCompletingTool') {
+      yield {
+        message: {
+          type: 'user',
+          uuid: '00000000-0000-4000-8000-000000000002',
+          message: {
+            role: 'user',
+            content: [
+              { type: 'tool_result', tool_use_id: block.id, content: 'ok' },
+            ],
+          },
+        },
+      }
+      return
+    }
     capturedToolAbortController = toolUseContext.abortController
     await new Promise<void>(resolve => {
       if (toolUseContext.abortController.signal.aborted) return resolve()
@@ -49,6 +67,12 @@ const fakeTool = {
   isConcurrencySafe: () => true,
 } as unknown as Tool
 
+const fakeCompletingTool = {
+  name: 'FakeCompletingTool',
+  inputSchema: { safeParse: (data: unknown) => ({ success: true, data }) },
+  isConcurrencySafe: () => true,
+} as unknown as Tool
+
 function makeContext(abortController: AbortController): ToolUseContext {
   return {
     abortController,
@@ -58,11 +82,11 @@ function makeContext(abortController: AbortController): ToolUseContext {
   } as unknown as ToolUseContext
 }
 
-function makeToolUse(id: string): ToolUseBlock {
+function makeToolUse(id: string, name = 'FakeHangingTool'): ToolUseBlock {
   return {
     type: 'tool_use',
     id,
-    name: 'FakeHangingTool',
+    name,
     input: {},
     caller: { type: 'direct' },
   }
@@ -180,5 +204,48 @@ describe('StreamingToolExecutor bubble-up listener', () => {
     capturedToolAbortController!.abort('user_rejected')
     expect(queryAbortController.signal.aborted).toBe(true)
     expect(queryAbortController.signal.reason).toBe('user_rejected')
+  })
+})
+
+describe('StreamingToolExecutor.getCompletedResults', () => {
+  test('releases the id even when the result generator is abandoned mid-yield', async () => {
+    // getCompletedResults is a SYNC generator, and its consumer (query.ts)
+    // re-yields each message from the outer async generator. If that for…of is
+    // abandoned mid-yield — the consumer returns the query generator, or its
+    // body throws — the generator is closed after `status = 'yielded'` but
+    // before the id is released. hasUnfinishedTools() then skips the tool, so
+    // the getRemainingResults drain cannot repair it and the id renders as
+    // in-progress for the rest of the SESSION (nothing reconciles that set).
+    const inProgress = new Set<string>()
+    const executor = new StreamingToolExecutor(
+      [fakeCompletingTool] as unknown as Tools,
+      canUseToolStub,
+      {
+        abortController: new AbortController(),
+        options: { tools: [fakeCompletingTool] },
+        setInProgressToolUseIDs: (f: (prev: Set<string>) => Set<string>) => {
+          const next = f(inProgress)
+          inProgress.clear()
+          for (const id of next) inProgress.add(id)
+        },
+        setHasInterruptibleToolInProgress: () => {},
+      } as unknown as ToolUseContext,
+    )
+    executor.addTool(
+      makeToolUse('toolu_abandoned', 'FakeCompletingTool'),
+      makeAssistantMessage(),
+    )
+    expect(inProgress.has('toolu_abandoned')).toBe(true)
+
+    // Let collectResults finish so the tool reaches 'completed'.
+    await (
+      executor as unknown as { tools: { promise?: Promise<void> }[] }
+    ).tools[0]!.promise
+
+    const gen = executor.getCompletedResults()
+    expect(gen.next().done).toBe(false)
+    gen.return(undefined)
+
+    expect(inProgress.has('toolu_abandoned')).toBe(false)
   })
 })

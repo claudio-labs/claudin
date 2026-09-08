@@ -465,12 +465,20 @@ export class StreamingToolExecutor {
 
       if (tool.status === 'completed' && tool.results) {
         tool.status = 'yielded'
-
-        for (const message of tool.results) {
-          yield { message, newContext: this.toolUseContext }
+        // The release must survive an abandoned consumer. This is a sync
+        // generator whose caller (query.ts) re-yields from the outer async
+        // generator; if that for…of is exited mid-yield the generator is
+        // closed here, and `status` already reads 'yielded' so
+        // hasUnfinishedTools() skips the tool and the getRemainingResults
+        // drain can no longer repair it. A generator's finally runs on
+        // .return(), which is what the abandoned for…of triggers.
+        try {
+          for (const message of tool.results) {
+            yield { message, newContext: this.toolUseContext }
+          }
+        } finally {
+          markToolUseAsComplete(this.toolUseContext, tool.id)
         }
-
-        markToolUseAsComplete(this.toolUseContext, tool.id)
       } else if (tool.status === 'executing' && !tool.isConcurrencySafe) {
         break
       }

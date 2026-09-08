@@ -109,6 +109,7 @@ export {
   getSiblingToolUseIDsFromLookup,
   getProgressMessagesFromLookup,
   hasUnresolvedHooksFromLookup,
+  getLiveToolUseIDs,
   getToolUseIDs,
 } from 'src/agent/messages/lookups.js'
 
