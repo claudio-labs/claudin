@@ -2820,6 +2820,40 @@ export function REPL({
   useBackgroundTaskNavigation();
   // Auto-exit viewing mode when teammate completes or errors
   useTeammateViewAutoExit();
+  // Everything from here to `displayedMessages` sits ABOVE the transcript
+  // early return on purpose: the `useMemo` below is a hook, and a hook that
+  // only runs on the prompt-mode path makes REPL render one fewer hook the
+  // moment ctrl+o flips `screen` to 'transcript' — React then throws
+  // "Rendered fewer hooks than expected" and the whole TUI is replaced by a
+  // stack trace. Keep hooks above the return; the transcript branch does not
+  // read any of these values.
+
+  // Get viewed agent task (inlined from selectors for explicit data flow).
+  // viewedAgentTask: teammate OR local_agent — drives the boolean checks
+  // below. viewedTeammateTask: teammate-only narrowed, for teammate-specific
+  // field access (inProgressToolUseIDs).
+  const viewedTask = viewingAgentTaskId ? tasks[viewingAgentTaskId] : undefined;
+  const viewedTeammateTask = viewedTask && isInProcessTeammateTask(viewedTask) ? viewedTask : undefined;
+  const viewedAgentTask = viewedTeammateTask ?? (viewedTask && isLocalAgentTask(viewedTask) ? viewedTask : undefined);
+
+  // Bypass useDeferredValue when streaming text is showing so Messages renders
+  // the final message in the same frame streaming text clears. Also bypass when
+  // not loading — deferredMessages only matters during streaming (keeps input
+  // responsive); after the turn ends, showing messages immediately prevents a
+  // jitter gap where the spinner is gone but the answer hasn't appeared yet.
+  // Only reducedMotion users keep the deferred path during loading.
+  const usesSyncMessages = showStreamingText || !isLoading;
+  // When viewing an agent, never fall through to leader — empty until
+  // bootstrap/stream fills. Closes the see-leader-type-agent footgun.
+  // The display cap bounds RENDERING only. `messages` is also the array that
+  // seeds the next turn's API view, so it is never cut — cutting it was a
+  // prompt-cache prefix rewrite that also dropped content the model had read
+  // (docs/tech/cache/context-relief-policy.md). Index-based consumers
+  // (useUnseenDivider, the transcript freeze, MessageSelector) keep reading
+  // the full array.
+  const fullDisplayedMessages = viewedAgentTask ? viewedAgentTask.messages ?? [] : usesSyncMessages ? messages : deferredMessages;
+  // Memoized so Messages' React.memo holds once the window is a fresh slice.
+  const displayedMessages = useMemo(() => fullDisplayedMessages.length > MAX_DISPLAY_MESSAGES ? fullDisplayedMessages.slice(-MAX_DISPLAY_MESSAGES) : fullDisplayedMessages, [fullDisplayedMessages]);
   if (screen === 'transcript') {
     // Transcript-mode render is delegated to REPLTranscriptView (Etapa 5,
     // ROADMAP 11e). The same scrollRef and jumpRef instances flow through
@@ -2870,32 +2904,6 @@ export function REPL({
     />;
   }
 
-  // Get viewed agent task (inlined from selectors for explicit data flow).
-  // viewedAgentTask: teammate OR local_agent — drives the boolean checks
-  // below. viewedTeammateTask: teammate-only narrowed, for teammate-specific
-  // field access (inProgressToolUseIDs).
-  const viewedTask = viewingAgentTaskId ? tasks[viewingAgentTaskId] : undefined;
-  const viewedTeammateTask = viewedTask && isInProcessTeammateTask(viewedTask) ? viewedTask : undefined;
-  const viewedAgentTask = viewedTeammateTask ?? (viewedTask && isLocalAgentTask(viewedTask) ? viewedTask : undefined);
-
-  // Bypass useDeferredValue when streaming text is showing so Messages renders
-  // the final message in the same frame streaming text clears. Also bypass when
-  // not loading — deferredMessages only matters during streaming (keeps input
-  // responsive); after the turn ends, showing messages immediately prevents a
-  // jitter gap where the spinner is gone but the answer hasn't appeared yet.
-  // Only reducedMotion users keep the deferred path during loading.
-  const usesSyncMessages = showStreamingText || !isLoading;
-  // When viewing an agent, never fall through to leader — empty until
-  // bootstrap/stream fills. Closes the see-leader-type-agent footgun.
-  // The display cap bounds RENDERING only. `messages` is also the array that
-  // seeds the next turn's API view, so it is never cut — cutting it was a
-  // prompt-cache prefix rewrite that also dropped content the model had read
-  // (docs/tech/cache/context-relief-policy.md). Index-based consumers
-  // (useUnseenDivider, the transcript freeze, MessageSelector) keep reading
-  // the full array.
-  const fullDisplayedMessages = viewedAgentTask ? viewedAgentTask.messages ?? [] : usesSyncMessages ? messages : deferredMessages;
-  // Memoized so Messages' React.memo holds once the window is a fresh slice.
-  const displayedMessages = useMemo(() => fullDisplayedMessages.length > MAX_DISPLAY_MESSAGES ? fullDisplayedMessages.slice(-MAX_DISPLAY_MESSAGES) : fullDisplayedMessages, [fullDisplayedMessages]);
   // Show the placeholder until the real user message appears in
   // displayedMessages. userInputOnProcessing stays set for the whole turn
   // (cleared in resetLoadingState); this length check hides it once
