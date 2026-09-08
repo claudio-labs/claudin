@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.1.27 — 2026-09-08
+
+### 🐛 Bug Fixes
+
+- fix(tui): stop ctrl+o crashing the TUI with a React hook-order error (#168) (7f876cf5)
+- fix(tui): stop a finished collapsed read group blinking forever (#167) (e11bc927)
+- fix(test): stop two cross-file state leaks failing the full suite (#166) (28f76b6d)
+- fix(tui): stop resetting the screen for rows already in scrollback (#163) (4bd0ec2c)
+
+### 📦 Dependencies
+
+- chore(deps): bump the dev-dependencies group with 2 updates (#161) (61777350)
+- chore(deps): bump the production-dependencies group with 6 updates (#162) (d4a18bdc)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.26 — 2026-09-06
 
 ### 🐛 Bug Fixes
