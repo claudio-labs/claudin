@@ -7,6 +7,7 @@ import {
   buildMessageLookups,
   createAssistantMessage,
   createUserMessage,
+  getLiveToolUseIDs,
   getSiblingToolUseIDsFromLookup,
   getToolResultIDs,
   getToolUseIDs,
@@ -129,5 +130,38 @@ describe('getToolUseIDs / getToolResultIDs', () => {
     expect(Object.keys(resultMap).sort()).toEqual(['toolu_1', 'toolu_2'])
     expect(resultMap['toolu_1']).toBe(false)
     expect(resultMap['toolu_2']).toBe(true)
+  })
+})
+
+describe('getLiveToolUseIDs', () => {
+  test('drops an id whose tool_result already landed', () => {
+    const live = getLiveToolUseIDs(
+      new Set(['toolu_done', 'toolu_running']),
+      new Set(['toolu_done']),
+      null,
+    )
+    expect([...live].sort()).toEqual(['toolu_running'])
+  })
+
+  test('keeps an async-launched id that is resolved AND still running', () => {
+    // An async agent gets its tool_result the moment it launches, so the union
+    // has to come AFTER the subtraction. Reversed, its dot freezes on launch.
+    const live = getLiveToolUseIDs(
+      new Set(['toolu_agent']),
+      new Set(['toolu_agent']),
+      new Set(['toolu_agent']),
+    )
+    expect(live.has('toolu_agent')).toBe(true)
+  })
+
+  test('returns the input set itself when nothing changes', () => {
+    const inProgress = new Set(['toolu_running'])
+    expect(getLiveToolUseIDs(inProgress, new Set(), null)).toBe(inProgress)
+  })
+
+  test('never mutates the input set', () => {
+    const inProgress = new Set(['toolu_done'])
+    getLiveToolUseIDs(inProgress, new Set(['toolu_done']), new Set(['toolu_x']))
+    expect([...inProgress]).toEqual(['toolu_done'])
   })
 })

@@ -355,6 +355,44 @@ export const EMPTY_LOOKUPS: MessageLookups = {
 }
 
 /**
+ * The tool_use ids that are genuinely still running, for the renderer.
+ *
+ * Two sources disagree about this. `inProgressToolUseIDs` is a mutable Set the
+ * executor maintains by hand (`REPL.tsx`), and nothing reconciles it — one
+ * missed removal is permanent for the session. `resolvedToolUseIDs` is derived
+ * from the transcript on every render, so a tool that already has a tool_result
+ * is finished no matter what the mutable set still claims.
+ *
+ * The exception is why the ORDER matters: an async-launched agent gets its
+ * tool_result the moment it launches while the agent keeps running in the
+ * background, so its id is resolved AND live. The union must therefore come
+ * after the subtraction — reversed, the agent's dot freezes on launch.
+ *
+ * Returns the input set unchanged when nothing is subtracted or added, so the
+ * common case keeps its reference identity.
+ */
+export function getLiveToolUseIDs(
+  inProgressToolUseIDs: Set<string>,
+  resolvedToolUseIDs: Set<string>,
+  runningAsyncToolUseIDs: Set<string> | null,
+): Set<string> {
+  let live: Set<string> | undefined
+  for (const id of inProgressToolUseIDs) {
+    if (resolvedToolUseIDs.has(id)) {
+      // Copy lazily: most renders subtract nothing.
+      if (!live) live = new Set(inProgressToolUseIDs)
+      live.delete(id)
+    }
+  }
+  if (!runningAsyncToolUseIDs) {
+    return live ?? inProgressToolUseIDs
+  }
+  const merged = new Set(live ?? inProgressToolUseIDs)
+  for (const id of runningAsyncToolUseIDs) merged.add(id)
+  return merged
+}
+
+/**
  * Build lookups from subagent/skill progress messages so child tool uses
  * render with correct resolved/in-progress/queued state.
  *

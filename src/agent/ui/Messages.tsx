@@ -30,7 +30,7 @@ import { getGlobalConfig } from 'src/platform/config/config.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { applyGrouping } from 'src/agent/tools/groupToolUses.js';
-import { buildMessageLookups, createAssistantMessage, deriveUUID, getMessagesAfterCompactBoundary, getToolUseID, getToolUseIDs, hasUnresolvedHooksFromLookup, isNotEmptyMessage, normalizeMessages, reorderMessagesInUI, type StreamingThinking, type StreamingToolUse, shouldShowUserMessage } from 'src/agent/messages/messages.js';
+import { buildMessageLookups, createAssistantMessage, deriveUUID, getLiveToolUseIDs, getMessagesAfterCompactBoundary, getToolUseID, getToolUseIDs, hasUnresolvedHooksFromLookup, isNotEmptyMessage, normalizeMessages, reorderMessagesInUI, type StreamingThinking, type StreamingToolUse, shouldShowUserMessage } from 'src/agent/messages/messages.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import { renderableSearchText } from 'src/sessions/transcriptSearch.js';
 import { Divider } from 'src/terminal/design-system/Divider.js';
@@ -579,12 +579,13 @@ const MessagesImpl = ({
     }
     return out.size > 0 ? out : null;
   }, [tasks, asyncLaunchedToolUseIDs]);
-  const mergedInProgressToolUseIDs = useMemo(() => {
-    if (!runningAsyncToolUseIDs) return inProgressToolUseIDs;
-    const merged = new Set<string>(inProgressToolUseIDs);
-    for (const id of runningAsyncToolUseIDs) merged.add(id);
-    return merged;
-  }, [inProgressToolUseIDs, runningAsyncToolUseIDs]);
+  // Narrow the hand-maintained in-progress set against transcript truth HERE,
+  // at the one place the prop is produced, so every consumer downstream
+  // (MessageRow's active/animate gates, CollapsedReadSearchContent's per-row
+  // dot, shouldRenderStatically) inherits the same reconciled answer. See
+  // getLiveToolUseIDs for why the async-agent union comes last.
+  const resolvedToolUseIDs = lookups_0.resolvedToolUseIDs;
+  const mergedInProgressToolUseIDs = useMemo(() => getLiveToolUseIDs(inProgressToolUseIDs, resolvedToolUseIDs, runningAsyncToolUseIDs), [inProgressToolUseIDs, resolvedToolUseIDs, runningAsyncToolUseIDs]);
 
   // Divider insertion point: first renderableMessage whose uuid shares the
   // 24-char prefix with firstUnseenUuid (deriveUUID keeps the first 24
