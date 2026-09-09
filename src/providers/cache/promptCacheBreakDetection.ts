@@ -1,5 +1,6 @@
 import type {
   BetaContextManagementResponse,
+  BetaMessageParam,
   BetaToolUnion,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import type { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
@@ -14,6 +15,8 @@ import { logError } from 'src/shared/log.js'
 import { getClaudeTempDir } from 'src/permissions/filesystem.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
+import { formatCompactNumber } from 'src/providers/cache/cacheMetrics.js'
+import { recordCacheBreak } from 'src/providers/cache/cacheStatsTracker.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
@@ -69,6 +72,30 @@ type PreviousState = {
   /** Which client mechanism announced the pending drop (for the log line). */
   cacheDeletionReason: string | null
   buildDiffableContent: () => string
+  /** Per-message hash of the previous request's rendered `messages` array
+   *  (cache_control stripped). The system/tools hashes above cannot see a
+   *  byte changing INSIDE the history — a rewritten tool_result, a dropped
+   *  block — which is exactly the rewrite that read as "server-side, prompt
+   *  unchanged" for two 180k/250k re-bills in one session (2026-09-04). */
+  msgHashes: number[]
+  /** The rendered JSON behind each hash, kept so a mutation can be diffed
+   *  message-by-message. ~1 MB per tracked source at a 200k context. */
+  msgJson: string[]
+  pendingMessageMutation: MessageMutation | null
+}
+
+/** The first message whose rendered bytes changed behind the previous
+ *  request's tail — a client-side prefix rewrite, whatever caused it. */
+export type MessageMutation = {
+  /** 0-based index into the rendered `messages` array. */
+  index: number
+  /** Length of the PREVIOUS request's array (the prefix that was cached). */
+  total: number
+  role: string
+  /** Block types of the mutated message, e.g. `tool_result` or `text,tool_use`. */
+  blockTypes: string
+  prevJson: string
+  newJson: string
 }
 
 type PendingChanges = {
@@ -167,6 +194,28 @@ function stripCacheControl(
     const { cache_control: _, ...rest } = item
     return rest
   })
+}
+
+/** A message's wire bytes minus the `cache_control` markers, which move
+ *  every turn by design (defer-cache-marker) and are not a prefix change. */
+function stripMessageCacheControl(message: BetaMessageParam): unknown {
+  if (!Array.isArray(message.content)) return message
+  return {
+    ...message,
+    content: stripCacheControl(
+      message.content as unknown as ReadonlyArray<Record<string, unknown>>,
+    ),
+  }
+}
+
+function describeBlockTypes(message: BetaMessageParam): string {
+  if (!Array.isArray(message.content)) return 'text'
+  const seen: string[] = []
+  for (const block of message.content) {
+    const type = (block as { type?: string }).type ?? 'unknown'
+    if (!seen.includes(type)) seen.push(type)
+  }
+  return seen.join(',')
 }
 
 function computeHash(data: unknown): number {
@@ -323,6 +372,9 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
         cacheDeletionReason: null,
         buildDiffableContent: lazyDiffableContent,
         perToolHashes: computeToolHashes(),
+        msgHashes: [],
+        msgJson: [],
+        pendingMessageMutation: null,
       })
       return
     }
@@ -426,6 +478,63 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
 }
 
 /**
+ * Phase 1b (pre-call, after the wire render): remember each rendered message
+ * and find the first one whose bytes differ from the previous request's copy
+ * at the same index. Only indices the previous request already had can be a
+ * mutation — the tail is new by definition — so a pure append records
+ * nothing. Must run on the array that goes on the wire (after stable stubs
+ * and cache breakpoints), not on the REPL's message array.
+ */
+export function recordRenderedMessages(
+  querySource: QuerySource,
+  agentId: AgentId | undefined,
+  renderedMessages: readonly BetaMessageParam[],
+): void {
+  try {
+    const key = getTrackingKey(querySource, agentId)
+    if (!key) return
+    const state = previousStateBySource.get(key)
+    if (!state) return
+
+    const msgJson = renderedMessages.map(m =>
+      jsonStringify(stripMessageCacheControl(m)),
+    )
+    const msgHashes = msgJson.map(computeHash)
+
+    let mutation: MessageMutation | null = null
+    const comparable = Math.min(state.msgHashes.length, msgHashes.length)
+    for (let i = 0; i < comparable; i++) {
+      if (msgHashes[i] === state.msgHashes[i]) continue
+      const message = renderedMessages[i]!
+      mutation = {
+        index: i,
+        total: state.msgHashes.length,
+        role: message.role,
+        blockTypes: describeBlockTypes(message),
+        prevJson: state.msgJson[i] ?? '',
+        newJson: msgJson[i] ?? '',
+      }
+      break
+    }
+
+    state.pendingMessageMutation = mutation
+    state.msgHashes = msgHashes
+    state.msgJson = msgJson
+  } catch (e: unknown) {
+    logError(e)
+  }
+}
+
+export function _getPendingMessageMutationForTesting(
+  querySource: QuerySource,
+  agentId?: AgentId,
+): MessageMutation | null {
+  const key = getTrackingKey(querySource, agentId)
+  const state = key ? previousStateBySource.get(key) : undefined
+  return state?.pendingMessageMutation ?? null
+}
+
+/**
  * Summarize the server-side context_management edits applied to a response.
  * Returns undefined when nothing was cleared, so a `{ applied_edits: [] }`
  * envelope (the common case under the beta) reads as "no server edit".
@@ -462,6 +571,7 @@ export function buildCacheBreakReason(
   changes: PendingChanges | null,
   serverEdit: ReturnType<typeof summarizeAppliedContextEdits>,
   timeSinceLastAssistantMsg: number | null,
+  messageMutation: MessageMutation | null = null,
 ): string {
   const parts: string[] = []
   if (changes) {
@@ -555,6 +665,14 @@ export function buildCacheBreakReason(
     const base = `server clear_tool_uses (cleared ${serverEdit.clearedToolUses} tool uses, -${tokensK}k tokens, expected)`
     return parts.length > 0 ? `${base}, also: ${parts.join(', ')}` : base
   }
+  // A byte changing inside the message history is a client-side rewrite
+  // regardless of what the system/tools hashes say — name the message so
+  // the mechanism can be found, instead of falling through to "server-side".
+  if (messageMutation) {
+    parts.push(
+      `messages mutated at ${messageMutation.index}/${messageMutation.total} (${messageMutation.role}: ${messageMutation.blockTypes}) — client-side prefix rewrite`,
+    )
+  }
   if (parts.length > 0) return parts.join(', ')
   if (lastAssistantMsgOver1hAgo) return 'possible 1h TTL expiry (prompt unchanged)'
   if (lastAssistantMsgOver5minAgo) return 'possible 5min TTL expiry (prompt unchanged)'
@@ -602,6 +720,8 @@ export async function checkResponseForCacheBreak(
     if (prevCacheRead === null) return
 
     const changes = state.pendingChanges
+    const messageMutation = state.pendingMessageMutation
+    state.pendingMessageMutation = null
 
     // Cache deletions via cached microcompact intentionally reduce the cached
     // prefix. The drop in cache read tokens is expected — reset the baseline
@@ -642,6 +762,12 @@ export async function checkResponseForCacheBreak(
       changes,
       serverEdit,
       timeSinceLastAssistantMsg,
+      messageMutation,
+    )
+    // The `[Cache: …]` line is persisted to the transcript, so this is the
+    // record that survives a session without `--debug`.
+    recordCacheBreak(
+      `${reason} — read ${formatCompactNumber(prevCacheRead)}→${formatCompactNumber(cacheReadTokens)}, rewrote ${formatCompactNumber(cacheCreationTokens)}`,
     )
 
     logEvent('tengu_prompt_cache_break', {
@@ -709,6 +835,13 @@ export async function checkResponseForCacheBreak(
       diffPath = await writeCacheBreakDiff(
         changes.buildPrevDiffableContent(),
         state.buildDiffableContent(),
+      )
+    } else if (messageMutation) {
+      // Nothing in system/tools moved: diff the one message that did.
+      diffPath = await writeCacheBreakDiff(
+        messageMutation.prevJson,
+        messageMutation.newJson,
+        `messages[${messageMutation.index}]`,
       )
     }
 
@@ -778,12 +911,13 @@ export function _getSourceCountForTesting(): number {
 async function writeCacheBreakDiff(
   prevContent: string,
   newContent: string,
+  fileName = 'prompt-state',
 ): Promise<string | undefined> {
   try {
     const diffPath = getCacheBreakDiffPath()
     await mkdir(getClaudeTempDir(), { recursive: true })
     const patch = createPatch(
-      'prompt-state',
+      fileName,
       prevContent,
       newContent,
       'before',

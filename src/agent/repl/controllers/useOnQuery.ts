@@ -53,7 +53,7 @@ import { getScratchpadDir, isScratchpadEnabled } from 'src/permissions/filesyste
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { logEvent } from 'src/platform/analytics/index.js';
 import { handleMessageFromStream, type StreamingToolUse, type StreamingThinking, isCompactBoundaryMessage, getMessagesAfterCompactBoundary, getContentText, createTurnDurationMessage, createSystemMessage } from 'src/agent/messages/messages.js';
-import { getCurrentTurnCacheMetrics, getCurrentTurnPrefixRewrites, getCurrentTurnServerClears, resetCurrentTurn } from 'src/providers/cache/cacheStatsTracker.js';
+import { getCurrentTurnCacheBreaks, getCurrentTurnCacheMetrics, getCurrentTurnPrefixRewrites, getCurrentTurnServerClears, resetCurrentTurn } from 'src/providers/cache/cacheStatsTracker.js';
 import { formatCacheMetricsCompact, formatCacheMetricsFull } from 'src/providers/cache/cacheMetrics.js';
 import { generateSessionTitle } from 'src/sessions/sessionTitle.js';
 import { BASH_INPUT_TAG, COMMAND_MESSAGE_TAG, COMMAND_NAME_TAG, LOCAL_COMMAND_STDOUT_TAG } from 'src/shared/constants/xml.js';
@@ -655,10 +655,14 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
             // the line instead of leaving an unexplained hit-rate dip.
             const turnClears = getCurrentTurnServerClears();
             const turnRewrites = getCurrentTurnPrefixRewrites();
+            // Breaks the detector attributed on this turn's responses — the
+            // read drops no announced rewrite explains. Persisted with the
+            // line, so a session without --debug still records the cause.
+            const turnBreaks = getCurrentTurnCacheBreaks();
             // Skip rendering if the turn recorded no API activity at all —
             // avoids a spurious "[Cache: cold]" on local-only commands.
             if (turnMetrics.supported || turnMetrics.read > 0 || turnMetrics.total > 0) {
-              const line = mode === 'full' ? formatCacheMetricsFull(turnMetrics, turnClears, turnRewrites) : formatCacheMetricsCompact(turnMetrics, turnClears, turnRewrites);
+              const line = mode === 'full' ? formatCacheMetricsFull(turnMetrics, turnClears, turnRewrites, turnBreaks) : formatCacheMetricsCompact(turnMetrics, turnClears, turnRewrites, turnBreaks);
               setMessages(prev => [...prev, createSystemMessage(line, 'info')]);
             }
           }

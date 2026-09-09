@@ -2,8 +2,10 @@ import { beforeEach, expect, test, describe } from 'bun:test'
 import {
   _setHistoryCapForTesting,
   getCacheStatsHistory,
+  getCurrentTurnCacheBreaks,
   getCurrentTurnCacheMetrics,
   getSessionCacheMetrics,
+  recordCacheBreak,
   recordRequest,
   resetCurrentTurn,
   resetSessionCacheStats,
@@ -71,6 +73,20 @@ describe('cacheStatsTracker — aggregation', () => {
     expect(getCurrentTurnCacheMetrics().supported).toBe(false)
     expect(getSessionCacheMetrics().supported).toBe(false)
     expect(getCacheStatsHistory()).toEqual([])
+  })
+
+  test('cache breaks accumulate in order and clear with the turn', () => {
+    recordCacheBreak('tools changed (+2/-0 tools)')
+    recordCacheBreak('likely server-side')
+    expect(getCurrentTurnCacheBreaks()).toEqual([
+      'tools changed (+2/-0 tools)',
+      'likely server-side',
+    ])
+    resetCurrentTurn()
+    expect(getCurrentTurnCacheBreaks()).toEqual([])
+    recordCacheBreak('again')
+    resetSessionCacheStats()
+    expect(getCurrentTurnCacheBreaks()).toEqual([])
   })
 })
 

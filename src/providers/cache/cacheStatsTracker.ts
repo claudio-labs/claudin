@@ -86,6 +86,10 @@ type TrackerState = {
    *  byte-guard, stable-stub clip). They land on the NEXT request, so the
    *  end-of-turn line names them as a forecast. */
   currentTurnPrefixRewrites: string[]
+  /** Cache breaks the detector attributed this turn (a read drop that no
+   *  announced rewrite explains). Recorded post-response, so the line
+   *  reports what already happened rather than a forecast. */
+  currentTurnCacheBreaks: string[]
   // Ring buffer: fixed-size array, `historyWriteIdx` points at the next
   // slot to overwrite. Once `historySize === historyMax`, each new push
   // drops the oldest entry by simply overwriting it — no shifting.
@@ -102,6 +106,7 @@ function createInitialState(max: number): TrackerState {
     currentTurnServerClears: EMPTY_SERVER_CLEARS,
     sessionServerClears: EMPTY_SERVER_CLEARS,
     currentTurnPrefixRewrites: [],
+    currentTurnCacheBreaks: [],
     history: new Array(max),
     historyWriteIdx: 0,
     historySize: 0,
@@ -168,11 +173,22 @@ export function recordPrefixRewrite(label: string): void {
   state.currentTurnPrefixRewrites = [...state.currentTurnPrefixRewrites, label]
 }
 
+/**
+ * Record a cache break the detector attributed on a response. This is the
+ * copy the REPL shows on the `[Cache: …]` line — and since that line is
+ * persisted to the transcript, the only record of the break that survives
+ * a session run without `--debug`.
+ */
+export function recordCacheBreak(label: string): void {
+  state.currentTurnCacheBreaks = [...state.currentTurnCacheBreaks, label]
+}
+
 /** Clear turn-level counters at the start of a new user turn. */
 export function resetCurrentTurn(): void {
   state.currentTurn = EMPTY_METRICS
   state.currentTurnServerClears = EMPTY_SERVER_CLEARS
   state.currentTurnPrefixRewrites = []
+  state.currentTurnCacheBreaks = []
 }
 
 /** Clear all session state — used by `/clear`, `/compact`, tests. */
@@ -182,6 +198,7 @@ export function resetSessionCacheStats(): void {
   state.currentTurnServerClears = EMPTY_SERVER_CLEARS
   state.sessionServerClears = EMPTY_SERVER_CLEARS
   state.currentTurnPrefixRewrites = []
+  state.currentTurnCacheBreaks = []
   // Rebuild the ring so any hold-over references can be GC'd. Slightly
   // more work than zeroing indices, but `/clear` is rare and this avoids
   // silently pinning old CacheStatsEntry objects in memory.
@@ -203,6 +220,11 @@ export function getCurrentTurnServerClears(): ServerClearStats {
 /** Client-side prefix rewrites announced this turn (labels, in order). */
 export function getCurrentTurnPrefixRewrites(): readonly string[] {
   return state.currentTurnPrefixRewrites
+}
+
+/** Cache breaks attributed this turn (labels, in order). */
+export function getCurrentTurnCacheBreaks(): readonly string[] {
+  return state.currentTurnCacheBreaks
 }
 
 /** Snapshot of the session-wide server-side clears. */

@@ -50,6 +50,8 @@ import { BUILD_TOOL_NAME } from 'src/tools/BuildTool/prompt.js';
 import { renderBuildRedirect, shouldRedirectToBuild } from 'src/tools/BuildTool/redirect.js';
 import { GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js';
 import { renderGitRedirect, shouldRedirectToGit } from 'src/tools/GitTool/redirect.js';
+import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js';
+import { detectSleepPoll, renderWaitForRedirect, shouldRedirectSleepPoll } from 'src/tools/WaitForTool/redirect.js';
 import {
   applyBashFilterToStdout,
   exitCodeAfterRewrite,
@@ -534,6 +536,22 @@ export const BashTool = buildTool({
     return `Running ${desc}`;
   },
   async validateInput(input: BashToolInput, context: ToolUseContext): Promise<ValidationResult> {
+    // A `sleep N` segment followed by a check is a poll loop, and WaitFor does
+    // the polling in one call. Gated OFF until the adoption A/B passes
+    // (`CLAUDIN_ENABLE_WAITFOR_REDIRECT=1`), on the tool being in THIS agent's
+    // toolset, and never for a backgrounded run. One-shot per command; the
+    // fall-through keeps the leading-sleep refusal below byte-identical when
+    // the lane is off. See WaitForTool/redirect.ts.
+    if (!input.run_in_background && isEnvTruthy(process.env.CLAUDIN_ENABLE_WAITFOR_REDIRECT) && findToolByName(context?.options?.tools ?? [], WAITFOR_TOOL_NAME) !== undefined) {
+      const poll = detectSleepPoll(input.command);
+      if (poll !== null && shouldRedirectSleepPoll(input.command)) {
+        return {
+          result: false,
+          message: renderWaitForRedirect(poll),
+          errorCode: 16
+        };
+      }
+    }
     if (feature('MONITOR_TOOL') && !isBackgroundTasksDisabled && !input.run_in_background) {
       const sleepPattern = detectBlockedSleepPattern(input.command);
       if (sleepPattern !== null) {

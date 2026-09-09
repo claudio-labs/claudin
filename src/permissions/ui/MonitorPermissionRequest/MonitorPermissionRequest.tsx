@@ -25,6 +25,9 @@ export function MonitorPermissionRequest({
     command?: string
     description?: string
   }
+  // Shared by Monitor and WaitFor — both delegate to the Bash rules — so the
+  // label comes from the tool rather than a literal.
+  const label = toolUseConfirm.tool.userFacingName(toolUseConfirm.input)
 
   usePermissionRequestLogging(toolUseConfirm, {
     completion_type: 'tool_use_single',
@@ -109,7 +112,7 @@ export function MonitorPermissionRequest({
       label: (
         <Text>
           Yes, and don&apos;t ask again for{' '}
-          <Text bold>Monitor</Text> commands in{' '}
+          <Text bold>{label}</Text> commands in{' '}
           <Text bold>{originalCwd}</Text>
         </Text>
       ),
@@ -129,10 +132,10 @@ export function MonitorPermissionRequest({
   }
 
   return (
-    <PermissionDialog title="Monitor" workerBadge={workerBadge}>
+    <PermissionDialog title={label} workerBadge={workerBadge}>
       <Box flexDirection="column" paddingX={2} paddingY={1}>
         <Text>
-          Monitor({command ?? ''})
+          {label}({command ?? ''})
         </Text>
         {description ? (
           <Text dimColor>{description}</Text>

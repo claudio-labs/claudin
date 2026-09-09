@@ -210,6 +210,7 @@ import {
   CACHE_TTL_1HOUR_MS,
   checkResponseForCacheBreak,
   recordPromptState,
+  recordRenderedMessages,
   summarizeAppliedContextEdits,
 } from "src/providers/cache/promptCacheBreakDetection.js";
 import { recordServerClear } from "src/providers/cache/cacheStatsTracker.js";
@@ -1066,6 +1067,16 @@ export async function* queryModel(
       options.skipCacheWrite,
       clipFrontierIndex,
     );
+
+    if (feature("PROMPT_CACHE_BREAK_DETECTION")) {
+      // The wire render, not the REPL array: this is the byte sequence the
+      // server hashes, so a mutation found here is a real prefix rewrite.
+      recordRenderedMessages(
+        options.querySource,
+        options.agentId,
+        renderedMessages,
+      );
+    }
 
     // Opt-in wire-annotation dump (CLAUDIN_DUMP_CACHE_ANNOTATIONS=1): logs
     // where every cache_control landed and with which TTL. Diagnostic for
