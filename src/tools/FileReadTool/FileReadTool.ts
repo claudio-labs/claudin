@@ -72,6 +72,7 @@ import {
 import { callInner } from 'src/tools/FileReadTool/readDispatch.js'
 import {
   mapReadResultToToolResultBlock,
+  maybeFlagReadReminder,
   maybeFlagSerialReadNudge,
 } from 'src/tools/FileReadTool/resultContent.js'
 import {
@@ -949,6 +950,7 @@ export const FileReadTool = buildTool({
         }
       }
       maybeFlagSerialReadNudge(result?.data, context)
+      maybeFlagReadReminder(result?.data, context)
       if (standDownResend) {
         const resendToolUseId = context.toolUseId
         // callInner just overwrote the entry with a fresh FileState, which has
@@ -1012,6 +1014,7 @@ export const FileReadTool = buildTool({
               parentMessage?.message.id,
             )
             maybeFlagSerialReadNudge(altResult?.data, context)
+            maybeFlagReadReminder(altResult?.data, context)
             // No stand-down bookkeeping here, on purpose: the alt arm only
             // fires for `AM/PM.png` names, and image reads never write
             // readFileState (dedup is text/notebook-only, per the comment at

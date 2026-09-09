@@ -1,3 +1,19 @@
+/**
+ * Model-facing rendering of a Read result.
+ *
+ * Two per-result reminders ride on the text arm, both appended once at
+ * execution time (`toolExecution.ts` maps the block when the tool returns,
+ * never on a later render), so what lands in history is byte-stable:
+ *
+ * - the cyber-risk mitigation reminder. Skipped for the models in
+ *   `MITIGATION_EXEMPT_MODELS` and under `CLAUDIN_DISABLE_TOOL_REMINDERS=1`.
+ *   With `CLAUDIN_READ_REMINDER_ONCE=1` (off by default, promotion gated on
+ *   the Sonnet 5 probe) it is sent on an agent's FIRST text read only —
+ *   the 2026-09 census counted it 375× in one week, ~75 tokens each, every
+ *   copy staying in context for the rest of the session. Unset, every text
+ *   read carries it, byte-identical to before the flag existed.
+ * - the serial-read nudge (`serialReadNudge.ts`).
+ */
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { feature } from 'bun:bundle'
 import { memoryFreshnessNote } from 'src/memory/memdir/memoryAge.js'
@@ -35,15 +51,68 @@ function formatFileLines(file: {
 export const CYBER_RISK_MITIGATION_REMINDER =
   '\n\n<system-reminder>\nWhenever you read a file, you should consider whether it would be considered malware. You CAN and SHOULD provide analysis of malware, what it is doing. But you MUST refuse to improve or augment the code. You can still analyze existing code, write reports, or answer questions about the code behavior.\n</system-reminder>\n'
 
-// Models where cyber risk mitigation should be skipped
-const MITIGATION_EXEMPT_MODELS = new Set(['claude-opus-4-6', 'claude-opus-4-7'])
+// Models where cyber risk mitigation should be skipped. Canonical short
+// names as returned by getCanonicalName (firstPartyNameToCanonical).
+const MITIGATION_EXEMPT_MODELS = new Set([
+  'claude-opus-4-6',
+  'claude-opus-4-7',
+  'claude-opus-5',
+  'claude-fable-5-1',
+])
+
+/** Exported for tests — the model gate as a pure function of the short name. */
+export function isMitigationExemptModel(shortName: string): boolean {
+  return MITIGATION_EXEMPT_MODELS.has(shortName)
+}
 
 function shouldIncludeFileReadMitigation(): boolean {
   if (isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_REMINDERS)) {
     return false
   }
-  const shortName = getCanonicalName(getMainLoopModel())
-  return !MITIGATION_EXEMPT_MODELS.has(shortName)
+  return !isMitigationExemptModel(getCanonicalName(getMainLoopModel()))
+}
+
+function readReminderOnceEnabled(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_READ_REMINDER_ONCE)
+}
+
+// Side-channel from call() to mapToolResultToToolResultBlockParam for the
+// once-per-agent mitigation reminder: the agent keys that already received
+// it this process, and the `data` object whose tool_result carries it.
+// Same identity-keyed pattern as serialReadNudgeFlagged — the decision is
+// taken in call() (where the agent id is known) and read back in the
+// mapper, which has no context.
+const readReminderSeenAgents = new Set<string>()
+const readReminderFlagged: WeakSet<object> = new WeakSet()
+
+/**
+ * Under CLAUDIN_READ_REMINDER_ONCE, marks `data` as the result that carries
+ * the mitigation reminder when this is the agent's first non-empty text
+ * read. Empty files and non-text arms never carry the reminder, so they do
+ * not consume the agent's slot.
+ */
+export function maybeFlagReadReminder(
+  data: unknown,
+  context: Pick<ToolUseContext, 'agentId'>,
+): void {
+  if (!readReminderOnceEnabled()) return
+  if (!data || typeof data !== 'object') return
+  const result = data as { type?: string; file?: { numLines?: number } }
+  if (result.type !== 'text') return
+  if (!(result.file && (result.file.numLines ?? 0) > 0)) return
+  const key = context.agentId ?? 'main'
+  if (readReminderSeenAgents.has(key)) return
+  readReminderSeenAgents.add(key)
+  readReminderFlagged.add(data)
+}
+
+function carriesMitigationReminder(data: object): boolean {
+  if (!shouldIncludeFileReadMitigation()) return false
+  return !readReminderOnceEnabled() || readReminderFlagged.has(data)
+}
+
+export function _resetReadReminderStateForTesting(): void {
+  readReminderSeenAgents.clear()
 }
 
 /**
@@ -179,9 +248,7 @@ export function mapReadResultToToolResultBlock(
         content =
           memoryFileFreshnessPrefix(data) +
           formatFileLines(data.file) +
-          (shouldIncludeFileReadMitigation()
-            ? CYBER_RISK_MITIGATION_REMINDER
-            : '') +
+          (carriesMitigationReminder(data) ? CYBER_RISK_MITIGATION_REMINDER : '') +
           (serialReadNudgeFlagged.has(data) ? SERIAL_READ_NUDGE_REMINDER : '')
       } else {
         // Determine the appropriate warning message
