@@ -1,9 +1,9 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 
-import { setMainLoopModelOverride } from 'src/platform/bootstrap/state.js'
 import type { Output } from 'src/tools/FileReadTool/schemas.js'
 import {
   _resetReadReminderStateForTesting,
+  _setMitigationModelResolverForTesting,
   CYBER_RISK_MITIGATION_REMINDER,
   isMitigationExemptModel,
   mapReadResultToToolResultBlock,
@@ -11,11 +11,16 @@ import {
 } from 'src/tools/FileReadTool/resultContent.js'
 
 // The mitigation reminder is gated on the main-loop model and on two env
-// flags; the model is pinned through the bootstrap override (a real seam,
-// no module mock) and every env key touched here is put back, since both
-// are process-global and read per call.
+// flags; the model is pinned through the module's own resolver seam (no
+// module mock, and immune to the model/state mocks other files leak) and
+// every env key touched here is put back, since both are process-global and
+// read per call.
 const ENV_KEYS = ['CLAUDIN_DISABLE_TOOL_REMINDERS', 'CLAUDIN_DISABLE_READ_REMINDER_ONCE'] as const
 const savedEnv: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>> = {}
+
+function pinModel(shortName: string): void {
+  _setMitigationModelResolverForTesting(() => shortName)
+}
 
 function textResult(content: string): Output {
   return {
@@ -51,7 +56,7 @@ afterAll(() => {
     if (savedEnv[k] === undefined) delete process.env[k]
     else process.env[k] = savedEnv[k]
   }
-  setMainLoopModelOverride(undefined)
+  _setMitigationModelResolverForTesting(undefined)
 })
 
 beforeEach(() => {
@@ -61,7 +66,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  setMainLoopModelOverride(undefined)
+  _setMitigationModelResolverForTesting(undefined)
 })
 
 describe('isMitigationExemptModel', () => {
@@ -76,14 +81,14 @@ describe('isMitigationExemptModel', () => {
 
 describe('mitigation reminder — model gate', () => {
   test('an exempt model never carries the reminder', () => {
-    setMainLoopModelOverride('claude-opus-5')
+    pinModel('claude-opus-5')
     expect(reminderCount(render(textResult('a\nb')))).toBe(0)
-    setMainLoopModelOverride('claude-fable-5-1')
+    pinModel('claude-fable-5-1')
     expect(reminderCount(render(textResult('a\nb')))).toBe(0)
   })
 
   test('a non-exempt model carries it on every read under CLAUDIN_DISABLE_READ_REMINDER_ONCE', () => {
-    setMainLoopModelOverride('claude-sonnet-5')
+    pinModel('claude-sonnet-5')
     process.env.CLAUDIN_DISABLE_READ_REMINDER_ONCE = '1'
     const one = textResult('a')
     const two = textResult('b')
@@ -94,7 +99,7 @@ describe('mitigation reminder — model gate', () => {
   })
 
   test('CLAUDIN_DISABLE_TOOL_REMINDERS wins over everything', () => {
-    setMainLoopModelOverride('claude-sonnet-5')
+    pinModel('claude-sonnet-5')
     process.env.CLAUDIN_DISABLE_TOOL_REMINDERS = '1'
     const one = textResult('a')
     maybeFlagReadReminder(one, { agentId: undefined })
@@ -104,7 +109,7 @@ describe('mitigation reminder — model gate', () => {
 
 describe('mitigation reminder — once per agent (default)', () => {
   beforeEach(() => {
-    setMainLoopModelOverride('claude-sonnet-5')
+    pinModel('claude-sonnet-5')
   })
 
   test('the first text read of an agent carries it, the second does not', () => {
@@ -145,7 +150,7 @@ describe('mitigation reminder — once per agent (default)', () => {
   })
 
   test('an exempt model stays exempt', () => {
-    setMainLoopModelOverride('claude-opus-5')
+    pinModel('claude-opus-5')
     const one = textResult('a')
     maybeFlagReadReminder(one, { agentId: undefined })
     expect(reminderCount(render(one))).toBe(0)

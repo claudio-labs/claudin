@@ -32,6 +32,7 @@
 // Usage:
 //   bun run scripts/bench/ab/fork-clip-ab.ts --bin=claudindev --model=claude-sonnet-5 --reps=3
 
+import { randomBytes } from 'node:crypto'
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -175,7 +176,9 @@ function subagentTranscripts(cwd: string, sessionId: string): string[] {
 async function runArm(arm: Arm, rep: number, args: ReturnType<typeof parseArgs>): Promise<Row> {
   const cwd = mkdtempSync(join(tmpdir(), `fork-clip-ab-${arm}-`))
   mkdirSync(cwd, { recursive: true })
-  const secret = Array.from({ length: 4 }, () => Math.floor(Math.random() * 0xffff).toString(16).padStart(4, '0')).join('')
+  // Not a security value — a per-rep token so a cached answer from another
+  // rep cannot pass; randomBytes only because CodeQL flags Math.random here.
+  const secret = randomBytes(8).toString('hex')
   for (let i = 1; i <= FILES; i++) {
     writeFileSync(join(cwd, `f${i}.txt`), fixture(1000 * rep + i, i === 3 ? secret : undefined))
   }

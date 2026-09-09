@@ -66,11 +66,25 @@ export function isMitigationExemptModel(shortName: string): boolean {
   return MITIGATION_EXEMPT_MODELS.has(shortName)
 }
 
+// The model gate reads the main-loop model through this seam so the test can
+// pin a model without touching bootstrap state — several test files
+// `mock.module` the model/state modules and those mocks leak across the run
+// (testing.md: cross-file mock leaks), which made the override unreliable in CI.
+let mitigationModelShortName: () => string = () =>
+  getCanonicalName(getMainLoopModel())
+
+export function _setMitigationModelResolverForTesting(
+  resolver: (() => string) | undefined,
+): void {
+  mitigationModelShortName =
+    resolver ?? (() => getCanonicalName(getMainLoopModel()))
+}
+
 function shouldIncludeFileReadMitigation(): boolean {
   if (isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_REMINDERS)) {
     return false
   }
-  return !isMitigationExemptModel(getCanonicalName(getMainLoopModel()))
+  return !isMitigationExemptModel(mitigationModelShortName())
 }
 
 function readReminderOnceEnabled(): boolean {

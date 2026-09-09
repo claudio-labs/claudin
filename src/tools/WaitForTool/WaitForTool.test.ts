@@ -131,7 +131,11 @@ describe('WaitForTool', () => {
     )
     expect(data.reason).toBe('timeout')
     expect(data.output).toContain('never')
-    expect(data.elapsedMs).toBeGreaterThanOrEqual(900)
+    // The loop stops once less than MIN_POLL_BUDGET_MS (250ms) remains rather
+    // than launching a poll exec would kill — so "timeout" lands up to that
+    // much early, never with a "Command timed out" line as the output.
+    expect(data.elapsedMs).toBeGreaterThanOrEqual(700)
+    expect(data.output).not.toContain('Command timed out')
   })
 
   test('abort: stops polling and reports aborted', async () => {

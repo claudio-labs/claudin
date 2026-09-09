@@ -28,6 +28,10 @@ const DEFAULT_INTERVAL_S = 1
 const MIN_INTERVAL_S = 0.2
 const DEFAULT_TIMEOUT_S = 120
 const MAX_TIMEOUT_S = 600
+// Below this much remaining budget a poll is not started (see the loop).
+const MIN_POLL_BUDGET_MS = 250
+// ShellCommand's exit code for a command it killed on its own timeout.
+const EXIT_SIGTERM = 143
 
 const inputSchema = lazySchema(() =>
   z.strictObject({
@@ -96,11 +100,16 @@ async function runOnce(
   command: string,
   signal: AbortSignal,
   timeoutMs: number,
-): Promise<string> {
+): Promise<{ text: string; timedOut: boolean }> {
   const shell = await exec(command, signal, 'bash', { timeout: timeoutMs })
   const result = await shell.result
   const stderr = result.stderr.trim()
-  return stderr ? `${result.stdout}\n${stderr}` : result.stdout
+  return {
+    text: stderr ? `${result.stdout}\n${stderr}` : result.stdout,
+    // ShellCommand reports its own timeout as exit 143 (SIGTERM) with a
+    // "Command timed out" line prepended to stderr — not as `interrupted`.
+    timedOut: result.code === EXIT_SIGTERM,
+  }
 }
 
 function formatStatus(output: Output): string {
@@ -253,9 +262,14 @@ export const WaitForTool = buildTool({
 
     while (!signal.aborted) {
       const budget = remaining()
-      if (budget <= 0) break
-      const next = await runOnce(command, signal, budget)
+      // A poll launched with a sliver of budget is killed by exec's own
+      // timeout and would answer "Command timed out after 0.0s" in place of
+      // the last real capture — stop polling instead and return what we had.
+      if (budget < MIN_POLL_BUDGET_MS) break
+      const poll = await runOnce(command, signal, budget)
       polls++
+      if (poll.timedOut && polls > 1) break
+      const next = poll.text
       const now = Date.now()
       if (untilRe) {
         if (untilRe.test(next)) {

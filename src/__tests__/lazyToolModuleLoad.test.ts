@@ -148,6 +148,7 @@ const CURRENT_BASELINE = [
   'ToolSearchTool',
   'TypecheckTool',
   'VerifyPlanExecutionTool',
+  'WaitForTool',
   'WebFetchTool',
   'WebSearchTool',
   'WorkflowTool',
