@@ -366,7 +366,7 @@ When the conversation grows long, earlier context may be summarized; the summary
 
 function getAgentToolSection(): string {
   return isForkSubagentEnabled()
-    ? `Calling ${AGENT_TOOL_NAME} without a subagent_type creates a fork: the child inherits your context, shares your prompt cache, and keeps its intermediate tool output out of your context \u2014 you get back only the report. It runs **inline** by default, so you consume that report in the same turn; pass \`run_in_background: true\` when you'd rather keep working (or keep talking to the user) while it runs, and accept the report landing in a later turn. Reach for a fork when research or multi-step implementation work would otherwise fill your context with raw output you won't need again. **If you ARE the fork** \u2014 execute directly; do not re-delegate.`
+    ? `Calling ${AGENT_TOOL_NAME} without a subagent_type creates a fork: the child inherits your context and re-reads all of it on every call it makes. With a subagent_type (\`Code\` or a named agent) it starts from your prompt alone. Either way its intermediate tool output stays out of your context \u2014 you get back only the report. Default to a fresh agent with a complete brief; fork only when the child needs what is in this conversation and a paragraph cannot carry it. Agents run **inline** by default, so you consume the report in the same turn; pass \`run_in_background: true\` when you'd rather keep working (or keep talking to the user) while it runs, and accept the report landing in a later turn. **If you ARE a sub-agent** \u2014 execute directly; do not re-delegate.`
     : `Use the ${AGENT_TOOL_NAME} tool with specialized agents when the task at hand matches the agent's description. Subagents are valuable for parallelizing independent queries or for protecting the main context window from excessive results, but they should not be used excessively when not needed. Importantly, avoid duplicating work that subagents are already doing - if you delegate research to a subagent, do not also perform the same searches yourself.`
 }
 
@@ -433,10 +433,10 @@ function getSessionSpecificGuidanceSection(
         // (coordinator mode) omitting subagent_type spawns a FRESH agent, so
         // promising inherited context here would contradict the Agent tool's
         // own description in this same prompt.
-        `Use ${searchTools} directly for a directed lookup (a specific file, class or function). When the question needs more than ${MULTI_HOP_SEARCH_MIN_QUERIES} dependent searches — tracing a feature, mapping a subsystem, finding every call site — delegate instead${
+        `Use ${searchTools} directly for a directed lookup (a specific file, class or function). When the question needs more than ${MULTI_HOP_SEARCH_MIN_QUERIES} dependent searches — tracing a feature, mapping a subsystem, finding every call site — delegate instead (the ${AGENT_TOOL_NAME} tool)${
           isForkSubagentEnabled()
-            ? ` by forking (the ${AGENT_TOOL_NAME} tool with no subagent_type), which inherits your context`
-            : ` (the ${AGENT_TOOL_NAME} tool) — it starts fresh, so give it a self-contained task description`
+            ? `: a fresh \`Code\` agent with the question written out, or — only when the question is about this conversation — a fork (no subagent_type), which inherits your context and re-reads it on every call`
+            : ` — it starts fresh, so give it a self-contained task description`
         }: the fan-out of Grep and Read stays there and you get back only its report.`
       : null,
     hasSkills
