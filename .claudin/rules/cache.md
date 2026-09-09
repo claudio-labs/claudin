@@ -242,6 +242,20 @@ call after ToolSearch reads fewer cached tokens than the call before it).
 - The break detector hashes deferred tools by `{name, defer_loading}` — never
   drop them from `toolsForCacheDetection` again; that is how this break hid as
   "likely server-side (prompt unchanged)" for weeks.
+- The detector ALSO hashes every rendered message per request
+  (`recordRenderedMessages`, called right after `addCacheBreakpoints` in
+  `streaming.ts`): the first index whose hash differs inside the previous
+  request's length is named in the reason (`messages mutated at 17/230
+  (user: tool_result) — client-side prefix rewrite`) and that message's
+  before/after lands in a `cache-break-*.diff` under `getClaudeTempDir()`.
+  Before 2026-09-09 only `system` + `tools` were hashed, so a byte mutated
+  in history read as "prompt unchanged" — two 180k/250k rewrites in one
+  session went by under a `[Cache: 27.5m read • hit 96%]` line. The reason
+  now also reaches that line (`cache break: …`, via `recordCacheBreak` in
+  `cacheStatsTracker.ts`), which `useOnQuery` persists to the transcript —
+  so a rewrite is attributable after the fact without `--debug`. Headless
+  `-p` has no `[Cache:]` line; `scripts/bench/ab/cache-break-attribution-probe.ts`
+  checks the debug log + diff file instead, and the REPL line is the live gate.
 - A new tool whose result is disposable (read-only, re-runnable) sets
   `clearableResult: true` on the Tool; `clear_tool_inputs` is derived from the
   pool (`clearableToolNamesFromPool`). Don't add names to the fallback
