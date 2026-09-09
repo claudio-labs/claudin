@@ -12,6 +12,13 @@ import type {
 } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
+import {
+  buildClipStub,
+  buildClipStubWithHead,
+  isClipStubContent,
+} from 'src/agent/compact/stableStubState.js'
 import {
   WORKTREE_STASH_WARNING,
   WORKTREE_WRITE_SCOPE_NOTE,
@@ -232,4 +239,217 @@ export function buildWorktreeNotice(
  */
 export function buildAgentWorktreeNotice(worktreeCwd: string): string {
   return `You are operating in an isolated git worktree at ${worktreeCwd} — same repository as the parent, same relative file structure, separate working copy. Run all commands from this directory. ${WORKTREE_WRITE_SCOPE_NOTE} ${WORKTREE_STASH_WARNING}`
+}
+
+/**
+ * Fork history clipping — EXPERIMENT, OFF by default.
+ *
+ * `CLAUDIN_FORK_CLIP_HISTORY=1` makes a fork child inherit the parent's
+ * history with the old, clearable tool_results already rewritten to the
+ * stable clip stubs (`stableStubState.ts`), instead of the full bytes. The
+ * child's prefix then diverges from the parent's at the first clipped result:
+ * system, tools and the early turns are still shared, everything after is a
+ * one-time write of the smaller history.
+ *
+ * Why it is off: the 2026-09-04..08 census put forks at 156k average
+ * inherited context and $22 of cache reads for the week, but a 1h cache write
+ * costs 20× (Opus 5) to 80× (Fable 5.1) a cache read, so the clip only pays
+ * once the child makes ~20 (Opus) / ~80 (Fable) calls — census forks ran
+ * 5–51. `scripts/bench/ab/fork-clip-ab.ts` measures total (parent + child)
+ * cost per arm and decides; the flag stays as bench instrumentation until it
+ * shows a win.
+ *
+ * The rewrite happens on the child's OWN message array (a copy built by
+ * runAgent), never through the clipped-id registry: that registry is keyed on
+ * the session for a plain sub-agent (`stableStubState.ts::currentKey` only
+ * adds a teammate id), so `addClippedIds` from the child would clip the
+ * PARENT's next wire render too — a prefix rewrite the parent pays for, the
+ * exact invariant cache.md §1 forbids. Rewriting the child's copy leaves the
+ * parent's array, cache entry and registries untouched.
+ *
+ * Thresholds: `CLAUDIN_FORK_CLIP_MIN_PARENT_TOKENS` (default 100k — below it
+ * the shared prefix is worth more than the clip) and
+ * `CLAUDIN_FORK_CLIP_KEEP_TURNS` (default 4 — the newest turns are what the
+ * directive usually refers to).
+ */
+const FORK_CLIP_DEFAULT_MIN_PARENT_TOKENS = 100_000
+const FORK_CLIP_DEFAULT_KEEP_TURNS = 4
+// Mirrors stableStubState's private MIN_STUB_TOKENS / HEAD_STUB_MIN_SAVINGS_CHARS:
+// a stub only replaces content when it saves something, and the head form only
+// when it meaningfully truncates. Same numbers so the child's stubs take the
+// same shape the wire path would have produced for the same content.
+const FORK_CLIP_MIN_TOKENS = 100
+const FORK_CLIP_HEAD_MIN_SAVINGS_CHARS = 500
+
+export function isForkClipHistoryEnabled(): boolean {
+  return isEnvTruthy(process.env.CLAUDIN_FORK_CLIP_HISTORY)
+}
+
+function positiveIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name]
+  if (raw === undefined || raw.trim() === '') return fallback
+  const n = Number(raw)
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback
+}
+
+export function forkClipMinParentTokens(): number {
+  return positiveIntEnv(
+    'CLAUDIN_FORK_CLIP_MIN_PARENT_TOKENS',
+    FORK_CLIP_DEFAULT_MIN_PARENT_TOKENS,
+  )
+}
+
+export function forkClipKeepTurns(): number {
+  return positiveIntEnv(
+    'CLAUDIN_FORK_CLIP_KEEP_TURNS',
+    FORK_CLIP_DEFAULT_KEEP_TURNS,
+  )
+}
+
+type ForkClipToolResult = {
+  type: 'tool_result'
+  tool_use_id: string
+  content?: unknown
+  is_error?: boolean
+}
+
+function isToolResultBlock(block: unknown): block is ForkClipToolResult {
+  return (
+    typeof block === 'object' &&
+    block !== null &&
+    (block as { type?: unknown }).type === 'tool_result' &&
+    typeof (block as { tool_use_id?: unknown }).tool_use_id === 'string'
+  )
+}
+
+/** Index of the first message inside the protected window: the message
+ * holding the `keepTurns`-th assistant turn from the end. Everything before
+ * it is old enough to clip. 0 when the history is shorter than the window. */
+function forkClipCutoffIndex(
+  messages: readonly MessageType[],
+  keepTurns: number,
+): number {
+  let seen = 0
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i]!.type !== 'assistant') continue
+    seen++
+    if (seen >= keepTurns) return i
+  }
+  return 0
+}
+
+function toolResultTokens(content: unknown): number {
+  if (typeof content === 'string') return roughTokenCountEstimation(content)
+  if (!Array.isArray(content)) return 0
+  let total = 0
+  for (const item of content as Array<{ type?: string; text?: string }>) {
+    if (item && item.type === 'text' && typeof item.text === 'string') {
+      total += roughTokenCountEstimation(item.text)
+    }
+  }
+  return total
+}
+
+function containsImage(content: unknown): boolean {
+  return (
+    Array.isArray(content) &&
+    content.some(
+      item =>
+        item && typeof item === 'object' && (item as { type?: string }).type === 'image',
+    )
+  )
+}
+
+/**
+ * Pure: which tool_results in the inherited history a fork child should
+ * receive as stubs. Oldest first; only results older than the last
+ * `keepTurns` assistant turns, from tools `isClearableTool` accepts, that are
+ * non-empty, not errors, not image-bearing, not already stubs and worth at
+ * least `FORK_CLIP_MIN_TOKENS`.
+ */
+export function selectForkClipIds(
+  messages: readonly MessageType[],
+  keepTurns: number,
+  isClearableTool: (toolName: string) => boolean,
+): string[] {
+  const cutoff = forkClipCutoffIndex(messages, keepTurns)
+  if (cutoff <= 0) return []
+  const toolNames = new Map<string, string>()
+  for (const msg of messages) {
+    if (msg.type !== 'assistant') continue
+    for (const block of msg.message.content) {
+      if (block.type === 'tool_use') toolNames.set(block.id, block.name)
+    }
+  }
+  const ids: string[] = []
+  for (let i = 0; i < cutoff; i++) {
+    const msg = messages[i]!
+    if (msg.type !== 'user') continue
+    const content = msg.message.content
+    if (!Array.isArray(content)) continue
+    for (const block of content) {
+      if (!isToolResultBlock(block)) continue
+      const existing = block.content
+      if (existing == null || existing === '') continue
+      if (Array.isArray(existing) && existing.length === 0) continue
+      if (typeof existing === 'string' && isClipStubContent(existing)) continue
+      if (block.is_error) continue
+      if (containsImage(existing)) continue
+      if (!isClearableTool(toolNames.get(block.tool_use_id) ?? '')) continue
+      if (toolResultTokens(existing) < FORK_CLIP_MIN_TOKENS) continue
+      ids.push(block.tool_use_id)
+    }
+  }
+  return ids
+}
+
+/**
+ * Pure: the inherited history with the selected tool_results rewritten to
+ * clip stubs (head-preserving when `stubKeepHeadChars` > 0 and the content
+ * is long enough, pure otherwise — same shapes as the wire path). Every
+ * touched message and block is a NEW object; untouched ones keep their
+ * identity, and the input array is never mutated.
+ */
+export function clipForkHistory(
+  messages: readonly MessageType[],
+  ids: ReadonlySet<string>,
+  stubKeepHeadChars: number,
+): MessageType[] {
+  if (ids.size === 0) return [...messages]
+  const toolNames = new Map<string, string>()
+  for (const msg of messages) {
+    if (msg.type !== 'assistant') continue
+    for (const block of msg.message.content) {
+      if (block.type === 'tool_use') toolNames.set(block.id, block.name)
+    }
+  }
+  return messages.map(msg => {
+    if (msg.type !== 'user') return msg
+    const content = msg.message.content
+    if (!Array.isArray(content)) return msg
+    let touched = false
+    const newContent = content.map(block => {
+      if (!isToolResultBlock(block) || !ids.has(block.tool_use_id)) return block
+      const existing = block.content
+      const toolName = toolNames.get(block.tool_use_id) ?? 'tool'
+      const tokens = toolResultTokens(existing)
+      const stub =
+        stubKeepHeadChars > 0 &&
+        typeof existing === 'string' &&
+        existing.length > stubKeepHeadChars + FORK_CLIP_HEAD_MIN_SAVINGS_CHARS
+          ? buildClipStubWithHead(
+              toolName,
+              tokens,
+              existing.slice(0, stubKeepHeadChars),
+            )
+          : buildClipStub(toolName, tokens)
+      touched = true
+      return { ...block, content: stub }
+    })
+    if (!touched) return msg
+    return {
+      ...msg,
+      message: { ...msg.message, content: newContent },
+    } as MessageType
+  })
 }

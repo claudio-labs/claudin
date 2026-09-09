@@ -55,6 +55,16 @@ import { clearSessionHooks } from 'src/platform/lifecycleHooks/sessionHooks.js'
 import { executeSubagentStartHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import { getAgentModel } from 'src/providers/model/agent.js'
+import { getCacheProfile } from 'src/agent/cache/cacheProfile.js'
+import { isCompactableTool } from 'src/agent/compact/microCompact.js'
+import { tokenCountWithEstimation } from 'src/agent/context/tokens.js'
+import {
+  clipForkHistory,
+  forkClipKeepTurns,
+  forkClipMinParentTokens,
+  isForkClipHistoryEnabled,
+  selectForkClipIds,
+} from 'src/tools/AgentTool/forkSubagent.js'
 import {
   clearAgentPlanSlug,
   loadDossier,
@@ -381,9 +391,33 @@ export async function* runAgent({
 
   // Handle message forking for context sharing
   // Filter out incomplete tool calls from parent messages to avoid API errors
-  const contextMessages: Message[] = forkContextMessages
+  let contextMessages: Message[] = forkContextMessages
     ? filterIncompleteToolCalls(forkContextMessages)
     : []
+  // Fork history clipping experiment (OFF by default; see forkSubagent.ts).
+  // Rewrites the CHILD's copy of the inherited history — never the parent's
+  // array or the session-keyed clipped-id registry, which the parent's own
+  // wire render reads.
+  if (forkContextMessages && isForkClipHistoryEnabled()) {
+    const parentTokens = tokenCountWithEstimation(contextMessages)
+    if (parentTokens > forkClipMinParentTokens()) {
+      const ids = selectForkClipIds(
+        contextMessages,
+        forkClipKeepTurns(),
+        isCompactableTool,
+      )
+      if (ids.length > 0) {
+        contextMessages = clipForkHistory(
+          contextMessages,
+          new Set(ids),
+          getCacheProfile().stubKeepHeadChars,
+        )
+        logForDebugging(
+          `[FORK CLIP] parent≈${parentTokens} tokens, stubbed ${ids.length} tool_results in the child's inherited history`,
+        )
+      }
+    }
+  }
   const initialMessages: Message[] = [...contextMessages, ...promptMessages]
 
   // Plan dossier injection: when a parent session has an accepted plan,
