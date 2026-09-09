@@ -12,8 +12,13 @@ import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js'
  * answer "wait until X shows up", so the model varied the pipeline and kept
  * polling. WaitFor does the polling internally and returns one result.
  *
- * OFF by default until the Sonnet 5 adoption A/B passes:
- * `CLAUDIN_ENABLE_WAITFOR_REDIRECT=1` turns the lane on. With it off, BashTool's
+ * OFF by default: `CLAUDIN_ENABLE_WAITFOR_REDIRECT=1` turns the lane on. The
+ * 2026-09-09 A/B (`scripts/bench/ab/waitfor-adoption-ab.ts`, Sonnet 5, N=3)
+ * never exercised it — Sonnet 5 reached for WaitFor unprompted in 12/12 runs,
+ * so the refusal had nothing to redirect and its benefit is unmeasured. It
+ * stays opt-in until a model that keeps polling with the tool present shows
+ * up in a census (Opus 5 / Fable 5.1 were last week's pollers; the Opus 5
+ * re-run hit the usage limit). With it off, BashTool's
  * sleep handling is byte-identical to before this module existed (leading
  * sleep only, Monitor message). The refusal is ONE-SHOT per command — an
  * identical resend runs — so a genuine sleep is never walled off.

@@ -256,8 +256,12 @@ export function buildAgentWorktreeNotice(worktreeCwd: string): string {
  * costs 20× (Opus 5) to 80× (Fable 5.1) a cache read, so the clip only pays
  * once the child makes ~20 (Opus) / ~80 (Fable) calls — census forks ran
  * 5–51. `scripts/bench/ab/fork-clip-ab.ts` measures total (parent + child)
- * cost per arm and decides; the flag stays as bench instrumentation until it
- * shows a win.
+ * cost per arm. Measured 2026-09-09 (Sonnet 5, N=3, parent ≈204k, child 11
+ * calls): the clip landed (child first request 122k vs 204k) and answers
+ * stayed correct, but total cost ROSE $1.46 → $1.62 (+11%, ranges disjoint)
+ * — the ~90k diverged-prefix write outweighed ten turns of cheaper reads.
+ * The flag stays as bench instrumentation; re-run the A/B before promoting
+ * if fork call counts or cache prices change.
  *
  * The rewrite happens on the child's OWN message array (a copy built by
  * runAgent), never through the clipped-id registry: that registry is keyed on

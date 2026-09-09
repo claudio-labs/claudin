@@ -14,7 +14,7 @@ import {
 // flags; the model is pinned through the bootstrap override (a real seam,
 // no module mock) and every env key touched here is put back, since both
 // are process-global and read per call.
-const ENV_KEYS = ['CLAUDIN_DISABLE_TOOL_REMINDERS', 'CLAUDIN_READ_REMINDER_ONCE'] as const
+const ENV_KEYS = ['CLAUDIN_DISABLE_TOOL_REMINDERS', 'CLAUDIN_DISABLE_READ_REMINDER_ONCE'] as const
 const savedEnv: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>> = {}
 
 function textResult(content: string): Output {
@@ -56,7 +56,7 @@ afterAll(() => {
 
 beforeEach(() => {
   delete process.env.CLAUDIN_DISABLE_TOOL_REMINDERS
-  delete process.env.CLAUDIN_READ_REMINDER_ONCE
+  delete process.env.CLAUDIN_DISABLE_READ_REMINDER_ONCE
   _resetReadReminderStateForTesting()
 })
 
@@ -82,8 +82,9 @@ describe('mitigation reminder — model gate', () => {
     expect(reminderCount(render(textResult('a\nb')))).toBe(0)
   })
 
-  test('a non-exempt model carries it on every read with the flag off', () => {
+  test('a non-exempt model carries it on every read under CLAUDIN_DISABLE_READ_REMINDER_ONCE', () => {
     setMainLoopModelOverride('claude-sonnet-5')
+    process.env.CLAUDIN_DISABLE_READ_REMINDER_ONCE = '1'
     const one = textResult('a')
     const two = textResult('b')
     maybeFlagReadReminder(one, { agentId: undefined })
@@ -101,9 +102,8 @@ describe('mitigation reminder — model gate', () => {
   })
 })
 
-describe('mitigation reminder — CLAUDIN_READ_REMINDER_ONCE', () => {
+describe('mitigation reminder — once per agent (default)', () => {
   beforeEach(() => {
-    process.env.CLAUDIN_READ_REMINDER_ONCE = '1'
     setMainLoopModelOverride('claude-sonnet-5')
   })
 
@@ -144,7 +144,7 @@ describe('mitigation reminder — CLAUDIN_READ_REMINDER_ONCE', () => {
     expect(reminderCount(render(textResult('a')))).toBe(0)
   })
 
-  test('an exempt model stays exempt under the flag', () => {
+  test('an exempt model stays exempt', () => {
     setMainLoopModelOverride('claude-opus-5')
     const one = textResult('a')
     maybeFlagReadReminder(one, { agentId: undefined })

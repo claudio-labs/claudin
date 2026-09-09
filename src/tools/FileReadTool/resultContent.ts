@@ -7,11 +7,12 @@
  *
  * - the cyber-risk mitigation reminder. Skipped for the models in
  *   `MITIGATION_EXEMPT_MODELS` and under `CLAUDIN_DISABLE_TOOL_REMINDERS=1`.
- *   With `CLAUDIN_READ_REMINDER_ONCE=1` (off by default, promotion gated on
- *   the Sonnet 5 probe) it is sent on an agent's FIRST text read only —
- *   the 2026-09 census counted it 375× in one week, ~75 tokens each, every
- *   copy staying in context for the rest of the session. Unset, every text
- *   read carries it, byte-identical to before the flag existed.
+ *   It is sent on an agent's FIRST text read only — the 2026-09 census
+ *   counted it 375× in one week, ~75 tokens each, every copy staying in
+ *   context for the rest of the session. Promoted to default on 2026-09-09
+ *   after `scripts/bench/ab/read-reminder-probe.ts` (Sonnet 5, N=3) showed
+ *   3 reads → 1 reminder with the answer unchanged.
+ *   `CLAUDIN_DISABLE_READ_REMINDER_ONCE=1` restores the every-read behavior.
  * - the serial-read nudge (`serialReadNudge.ts`).
  */
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
@@ -73,7 +74,7 @@ function shouldIncludeFileReadMitigation(): boolean {
 }
 
 function readReminderOnceEnabled(): boolean {
-  return isEnvTruthy(process.env.CLAUDIN_READ_REMINDER_ONCE)
+  return !isEnvTruthy(process.env.CLAUDIN_DISABLE_READ_REMINDER_ONCE)
 }
 
 // Side-channel from call() to mapToolResultToToolResultBlockParam for the
@@ -86,10 +87,11 @@ const readReminderSeenAgents = new Set<string>()
 const readReminderFlagged: WeakSet<object> = new WeakSet()
 
 /**
- * Under CLAUDIN_READ_REMINDER_ONCE, marks `data` as the result that carries
- * the mitigation reminder when this is the agent's first non-empty text
- * read. Empty files and non-text arms never carry the reminder, so they do
- * not consume the agent's slot.
+ * Marks `data` as the result that carries the mitigation reminder when this
+ * is the agent's first non-empty text read (unless
+ * CLAUDIN_DISABLE_READ_REMINDER_ONCE restores the every-read behavior).
+ * Empty files and non-text arms never carry the reminder, so they do not
+ * consume the agent's slot.
  */
 export function maybeFlagReadReminder(
   data: unknown,
