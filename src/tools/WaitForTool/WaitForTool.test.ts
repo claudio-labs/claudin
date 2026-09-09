@@ -46,7 +46,8 @@ describe('WaitForTool', () => {
         .success,
     ).toBe(false)
     expect(WaitForTool.isConcurrencySafe?.()).toBe(true)
-    expect(WaitForTool.userFacingName()).toBe('WaitFor')
+    expect(WaitForTool.name).toBe('WaitFor')
+    expect(WaitForTool.userFacingName()).toBe('Wait')
   })
 
   test('validateInput rejects an invalid until regex', async () => {

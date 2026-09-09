@@ -193,7 +193,9 @@ export const WaitForTool = buildTool({
   },
 
   userFacingName() {
-    return WAITFOR_TOOL_NAME
+    // The wire name stays `WaitFor` (the redirect and the prompt name it); the
+    // header reads better as the bare verb, like Grep → "Search".
+    return 'Wait'
   },
 
   getToolUseSummary(input) {
