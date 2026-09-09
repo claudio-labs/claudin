@@ -661,6 +661,28 @@ describe('formatCacheMetricsCompact — snapshot-stable output', () => {
       }),
     ).toBe('[Cache: read=2.1m created=60k hit=92% server_cleared=14(-42.3k)]')
   })
+
+  test('attributed cache breaks are named on the line; none adds nothing', () => {
+    const metrics = {
+      read: 27_500_000,
+      created: 433_000,
+      total: 28_000_000,
+      hitRate: 0.96,
+      supported: true,
+    }
+    const breaks = [
+      'messages mutated at 17/230 (user: tool_result) — client-side prefix rewrite — read 205k→25.9k, rewrote 182.8k',
+    ]
+    expect(formatCacheMetricsCompact(metrics, undefined, undefined, breaks)).toBe(
+      '[Cache: 27.5m read • hit 96% • cache break: messages mutated at 17/230 (user: tool_result) — client-side prefix rewrite — read 205k→25.9k, rewrote 182.8k]',
+    )
+    expect(formatCacheMetricsFull(metrics, undefined, undefined, breaks)).toBe(
+      '[Cache: read=27.5m created=433k hit=96% break=messages mutated at 17/230 (user: tool_result) — client-side prefix rewrite — read 205k→25.9k, rewrote 182.8k]',
+    )
+    expect(formatCacheMetricsCompact(metrics, undefined, undefined, [])).toBe(
+      '[Cache: 27.5m read • hit 96%]',
+    )
+  })
 })
 
 describe('formatCacheMetricsFull — snapshot-stable output', () => {

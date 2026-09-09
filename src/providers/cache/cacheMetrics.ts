@@ -507,6 +507,7 @@ export function formatCacheMetricsCompact(
   metrics: CacheMetrics | undefined | null,
   serverClears?: ServerClearSummary,
   prefixRewrites?: readonly string[],
+  cacheBreaks?: readonly string[],
 ): string {
   if (!metrics) return '[Cache: N/A]'
   if (!metrics.supported) return '[Cache: N/A]'
@@ -519,6 +520,9 @@ export function formatCacheMetricsCompact(
   if (clears) parts.push(clears)
   if (prefixRewrites && prefixRewrites.length > 0) {
     parts.push(`prefix rewritten: ${prefixRewrites.join(', ')}`)
+  }
+  if (cacheBreaks && cacheBreaks.length > 0) {
+    parts.push(`cache break: ${cacheBreaks.join('; ')}`)
   }
   return `[Cache: ${parts.join(' • ')}]`
 }
@@ -537,6 +541,7 @@ export function formatCacheMetricsFull(
   metrics: CacheMetrics | undefined | null,
   serverClears?: ServerClearSummary,
   prefixRewrites?: readonly string[],
+  cacheBreaks?: readonly string[],
 ): string {
   if (!metrics) return '[Cache: N/A]'
   if (!metrics.supported) return '[Cache: N/A]'
@@ -556,6 +561,9 @@ export function formatCacheMetricsFull(
   }
   if (prefixRewrites && prefixRewrites.length > 0) {
     parts.push(`rewrite=${prefixRewrites.join('+')}`)
+  }
+  if (cacheBreaks && cacheBreaks.length > 0) {
+    parts.push(`break=${cacheBreaks.join('+')}`)
   }
   return `[Cache: ${parts.join(' ')}]`
 }
@@ -579,7 +587,9 @@ function formatServerClears(s: ServerClearSummary | undefined): string {
 // Compact 1.2k-style formatter. Duplicated here (not imported from
 // utils/format.ts) because this module should stay dependency-light and
 // deterministic — utils/format pulls Intl locale state which varies.
-function formatCompactNumber(n: number): string {
+// Exported so the cache-break label uses the same digits as the line it
+// lands on.
+export function formatCompactNumber(n: number): string {
   if (n < 1_000) return String(n)
   if (n < 1_000_000) return `${(n / 1_000).toFixed(1).replace(TRAILING_DOT_ZERO_RE, '')}k`
   return `${(n / 1_000_000).toFixed(1).replace(TRAILING_DOT_ZERO_RE, '')}m`
