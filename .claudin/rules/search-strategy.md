@@ -12,10 +12,13 @@ Efficient navigation patterns for Claudin's TypeScript codebase.
 1. **Grep** (exact symbol/string, fast) → for known function names, types, imports
 2. **Glob** (file discovery) → for finding modules by name or pattern
 3. **Read** (full file) → only after locating the right file
-4. **Fork** (`Agent` with no `subagent_type`) → for a question needing >3
-   dependent searches. The built-in `Explore` agent was removed on 2026-08-18;
-   a fork is what replaced it, and it inherits your context and prompt cache
-   instead of starting cold.
+4. **Delegate** (`Agent`) → for a question needing >3 dependent searches.
+   Write the question out for `subagent_type: "Code"`; fork (no
+   `subagent_type`) only when the question is about this conversation — a
+   fork inherits your context and re-reads it on every call, which measured
+   4× the child cost at 200k for the same answer (2026-09-09,
+   `scripts/bench/ab/fork-vs-fresh-ab.ts`). The built-in `Explore` agent was
+   removed on 2026-08-18.
 
 Never use Bash `find`/`grep` for code search — use dedicated Grep/Glob tools.
 

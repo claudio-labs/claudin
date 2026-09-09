@@ -8,32 +8,36 @@ import { readFileSync } from 'fs'
 const src = readFileSync(new URL('./prompt.ts', import.meta.url), 'utf8')
 
 describe('Agent tool prompt — proactive dispatch guidance', () => {
-  test('tells the model to fork for a multi-file question, naming no agent', () => {
+  test('tells the model to delegate a multi-file question, naming no agent', () => {
     // It used to say "Dispatch \`Explore\` autonomously", ungated — the bullet
-    // shipped whether or not that agent was registered. A fork is always
-    // spawnable, so the replacement has no such gap.
-    expect(src).toContain('- Fork autonomously for any "investigate across N files" intent')
+    // shipped whether or not that agent was registered. `Code` is always
+    // registered and a fork is always spawnable, so the replacement has no
+    // such gap.
+    expect(src).toContain('- Delegate autonomously for any "investigate across N files" intent')
     expect(src).not.toContain('Explore')
   })
 
-  test('the dispatch bullet is gated on fork being enabled', () => {
-    // Ungated it would advise forking on a build where `isForkSubagentEnabled()`
+  test('the fork-or-fresh tail of the bullet is gated on fork being enabled', () => {
+    // Ungated it would mention forking on a build where `isForkSubagentEnabled()`
     // is false and `subagent_type` is mandatory — the same defect the Explore
-    // bullet had, moved to a different agent. Gating alone is not enough
-    // either: see the next test.
-    const bullet = src.indexOf('- Fork autonomously for any')
-    const gate = src.lastIndexOf('forkEnabled', bullet)
+    // bullet had, moved to a different agent.
+    const tail = src.indexOf('fork only when the question is about this conversation')
+    expect(tail).toBeGreaterThan(-1)
+    const gate = src.lastIndexOf('forkEnabled ?', tail)
     expect(gate).toBeGreaterThan(-1)
-    // The gate must be the ternary immediately above it, not some earlier use.
-    expect(src.slice(gate, bullet)).not.toContain('\n-')
+    // The gate must be the ternary on this same line, not some earlier use.
+    expect(src.slice(gate, tail)).not.toContain('\n')
   })
 
   test('the fork-off build still gets the dispatch bullet', () => {
-    // First cut gated the bullet to `''`, so a build with fork disabled shipped
-    // NO "investigate across N files" guidance at all — a regression against the
-    // ungated Explore bullet it replaced. Delegation is right either way; only
-    // the context-inheritance wording is fork-specific.
-    expect(src).toContain('- Delegate autonomously for any "investigate across N files" intent')
+    // An earlier cut gated the whole bullet to `''`, so a build with fork
+    // disabled shipped NO "investigate across N files" guidance at all.
+    // Delegation is right either way; only the fork-or-fresh tail is gated,
+    // so the bullet's head must sit outside any `forkEnabled` ternary.
+    const bullet = src.indexOf('- Delegate autonomously for any')
+    const tail = src.indexOf('${forkEnabled ?', bullet)
+    expect(tail).toBeGreaterThan(bullet)
+    expect(src.slice(bullet, tail)).not.toContain('\n')
   })
 
   test('the bullet frames the win as context, not speed', () => {
@@ -44,8 +48,29 @@ describe('Agent tool prompt — proactive dispatch guidance', () => {
   })
 
   test('the fork section explains context inheritance', () => {
-    // Survives the Explore question either way: fork is the other lane, and if
-    // it becomes the recommended one this is the sentence that has to be true.
+    // Fork is the other lane; this is the sentence that has to stay true of it.
     expect(src).toContain('inherits your full conversation context')
+  })
+
+  test('the fork section states the per-call re-read and prefers a fresh agent', () => {
+    // "Forks are cheap because they share your prompt cache" was true of the
+    // first call only. fork-vs-fresh-ab.ts (Sonnet 5, N=3, 2026-09-09): same
+    // task, same 27 child calls, fork child 4× the fresh one. The section has
+    // to carry the cost and the default that follows from it, or the model
+    // goes back to forking implementation work under a 300k parent.
+    // The sentence survives in a comment as history; the template must not.
+    const section = src.slice(src.indexOf('## Fork or fresh agent'), src.indexOf('## Writing the prompt'))
+    expect(section).not.toContain('Forks are cheap')
+    expect(section).toContain('cheap on its first call only')
+    expect(src).toContain('re-reads all of it on every call')
+    expect(src).toContain('Default to a fresh agent with a complete brief')
+  })
+
+  test('the examples show both lanes, each with its reason', () => {
+    // A self-contained brief goes to a fresh Code agent; a task about the
+    // session itself is the fork. Without the fork example the model reads the
+    // section as "never fork"; without the Code one it reads it as before.
+    expect(src).toContain('subagent_type: "Code",\n  prompt: "Audit what\'s left')
+    expect(src).toContain('name: "footer-bisect"')
   })
 })
