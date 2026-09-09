@@ -18,6 +18,7 @@ import { NotebookEditTool } from 'src/tools/NotebookEditTool/NotebookEditTool.js
 import { PowerShellTool } from 'src/tools/PowerShellTool/PowerShellTool.js';
 import { SkillTool } from 'src/tools/SkillTool/SkillTool.js';
 import { WebFetchTool } from 'src/tools/WebFetchTool/WebFetchTool.js';
+import { WaitForTool } from 'src/tools/WaitForTool/WaitForTool.js';
 import type { AssistantMessage } from 'src/shared/types/message.js';
 import type { PermissionDecision } from 'src/permissions/PermissionResult.js';
 import { AskUserQuestionPermissionRequest } from 'src/permissions/ui/AskUserQuestionPermissionRequest/AskUserQuestionPermissionRequest.js';
@@ -33,6 +34,9 @@ import { NotebookEditPermissionRequest } from 'src/permissions/ui/NotebookEditPe
 import { PowerShellPermissionRequest } from 'src/permissions/ui/PowerShellPermissionRequest/PowerShellPermissionRequest.js';
 import { SkillPermissionRequest } from 'src/permissions/ui/SkillPermissionRequest/SkillPermissionRequest.js';
 import { WebFetchPermissionRequest } from 'src/permissions/ui/WebFetchPermissionRequest/WebFetchPermissionRequest.js';
+// WaitFor delegates its permission check to the Bash rules exactly like
+// Monitor, so it shares Monitor's dialog (which labels itself from the tool).
+import { MonitorPermissionRequest as ShellDelegatePermissionRequest } from 'src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.js';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const ReviewArtifactTool = feature('REVIEW_ARTIFACT') ? (require('../../tools/ReviewArtifactTool/ReviewArtifactTool.js') as typeof import('../../tools/ReviewArtifactTool/ReviewArtifactTool.js')).ReviewArtifactTool : null;
@@ -78,6 +82,8 @@ function permissionComponentForTool(tool: Tool): React.ComponentType<PermissionR
       return WorkflowPermissionRequest ?? FallbackPermissionRequest;
     case MonitorTool:
       return MonitorPermissionRequest ?? FallbackPermissionRequest;
+    case WaitForTool:
+      return ShellDelegatePermissionRequest;
     case GlobTool:
     case GrepTool:
     case FileReadTool:

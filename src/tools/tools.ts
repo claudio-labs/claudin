@@ -42,6 +42,8 @@ const getGitTool = () =>
   require('src/tools/GitTool/GitTool.js').GitTool as typeof import('src/tools/GitTool/GitTool.js').GitTool
 const getContainerTool = () =>
   require('src/tools/ContainerTool/ContainerTool.js').ContainerTool as typeof import('src/tools/ContainerTool/ContainerTool.js').ContainerTool
+const getWaitForTool = () =>
+  require('src/tools/WaitForTool/WaitForTool.js').WaitForTool as typeof import('src/tools/WaitForTool/WaitForTool.js').WaitForTool
 const getRenameTool = () =>
   require('src/tools/RenameTool/RenameTool.js').RenameTool as typeof import('src/tools/RenameTool/RenameTool.js').RenameTool
 // Dead code elimination: conditional import for internal-only tools
@@ -314,6 +316,10 @@ export function getAllBaseTools(): Tools {
     ...getCronTools(),
     ...(RemoteTriggerTool ? [RemoteTriggerTool] : []),
     ...(MonitorTool ? [MonitorTool] : []),
+    // Polls a command until a regex matches / the output settles — the
+    // one-call replacement for `sleep N && check` loops. Killswitch documented
+    // at the top of WaitForTool.ts.
+    ...(isEnvTruthy(process.env.CLAUDIN_DISABLE_WAITFOR_TOOL) ? [] : [getWaitForTool()]),
     getBriefTool(),
     ...(SendUserFileTool ? [SendUserFileTool] : []),
     ...(PushNotificationTool ? [PushNotificationTool] : []),
