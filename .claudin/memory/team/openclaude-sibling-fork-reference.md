@@ -381,4 +381,4 @@ Already HAS (convergence, do NOT port): dynamic model discovery, Copilot full ca
 
 BIG-EFFORT, skip as cherry-pick: detached daemon background SESSIONS (#1642) — needs reviving DAEMON/BG_SESSIONS flags, source not mirrored.
 
-IGNORE: openclaude's sponsor providers (Xiaomi MiMo, Atlas Cloud, Fireworks, NEAR AI, OpenGateway/Gitlawb, OpenCode Zen/Go); their `/bughunter` (claudin keeps it a deliberate disabled stub); their ~50-commit zero-tsc-errors cleanup (claudin baseline ~4320, cosmetic).
+IGNORE: openclaude's sponsor providers (Xiaomi MiMo, Atlas Cloud, Fireworks, NEAR AI, OpenGateway/Gitlawb, OpenCode Zen/Go); their `/bughunter` (claudin keeps it a deliberate disabled stub); their ~50-commit zero-tsc-errors cleanup — claudin reached zero independently on 2026-08-13, so nothing here is left to port, and the "claudin baseline ~4320, cosmetic" dismissal this line used to carry is doubly out of date (see [[typecheck-backlog-shape]]).

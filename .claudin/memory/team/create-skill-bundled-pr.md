@@ -13,7 +13,7 @@ message from before the GitHub move has the same problem, so resolve one by
 commit SHA rather than by asking `gh` for the number.
 
 Facts learned while building it (verified against loaders):
-- Agent markdown frontmatter does NOT support `model` (`parseAgentFromMarkdown`, loadAgentsDir.ts) — session model is inherited.
+- Agent markdown frontmatter **does** support `model` — `loadAgentsDir.ts:108` declares `model?: string`, and the Agent tool also takes a per-call `model` that overrides it, so the session model is only the fallback when both are absent. This line asserted the opposite until 2026-09-10: it was true when `/create` was written (2026-07-03) and quietly stopped being true. Re-read the loader before trusting any frontmatter claim of this age.
 - Skill `arguments` frontmatter must be a space-separated string or list of plain strings (`parseArgumentNames`) — a list of `{name, description}` objects is silently filtered and `$name` never substitutes. First E2E run produced exactly this bug; the skill prompt now warns about it.
 - Rules support only `paths` frontmatter (`parseFrontmatterPaths`), not Cursor's `alwaysApply`/`globs`.
 - Writes to `.claudin/**` are permission ask-gated even under headless `--permission-mode acceptEdits` and even with `--allowedTools "Write(.claudin/**)"` — headless E2E must stage elsewhere or the user approves interactively.

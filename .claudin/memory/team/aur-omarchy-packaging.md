@@ -19,7 +19,6 @@ the parts that are not in the tree.
    not script retries against the registration page — the 503 page asks not to,
    and says the Arch news feed / aur-general will announce it first. The names
    `claudin` and `claudin-bin` were both free, so nothing was lost by waiting.
-2. Add `AUR_SSH_PRIVATE_KEY` to the repository secrets. The `aur` job of
 2. Flip `AUR_PUBLISH` to `'true'` at the top of the `aur` job in
    `release-binaries.yml` **and** add the `AUR_SSH_PRIVATE_KEY` secret. The job
    is gated on both and **no-ops** if either is missing, on purpose: releases

@@ -55,10 +55,14 @@ Fixes, all in `clike/`:
   only — the size-gated version of variant B, which is the product argument B
   lacked.
 
-**Result:** corpus symbols −1.4%, outline bytes **+0.6%**; `REPL.tsx` 25 → 56
-**Result:** corpus symbols −1.6%, outline bytes **+3.7%**; `REPL.tsx` 25 → 56
-symbols, `PromptInput.tsx` 6 → 25, and curl's real functions come back. The
-scanner alone was +0.6% — the rest is the Read-layer coverage line below.
+**Result — scanner alone:** corpus symbols −1.4%, outline bytes **+0.6%**.
+**Result — scanner plus the Read-layer changes below:** corpus symbols −1.6%,
+outline bytes **+3.7%**; the extra bytes are the coverage line, not the scanner.
+Either way `REPL.tsx` goes 25 → 56 symbols, `PromptInput.tsx` 6 → 25, and curl's
+real functions come back. Cite the −1.6%/+3.7% pair for the shipped change — it
+is what PR #141 and the index line use. (A botched edit once left these as two
+consecutive `**Result:**` lines that read as a contradiction; they are two
+different measurements, not two answers to one.)
 
 ## Round 2, Read layer
 

@@ -6,7 +6,11 @@ type: project
 
 **The built-in `Explore` sub-agent no longer exists** (removed 2026-08-18, branch
 `refactor/remove-explore-agent`). `Plan` stayed. The replacement announced in the
-prompts is a **fork** — `Agent` with no `subagent_type`.
+prompts *was* a **fork** — `Agent` with no `subagent_type` — but that only held
+until 2026-09-09, when PR #170 (`b7e6913b`) made a **fresh `Code` agent** the
+default delegation target and demoted the fork to conversation-bound work. So the
+lane that stands in for Explore today is the one that does NOT inherit the
+parent's context. See [[fork-vs-fresh-ab-2026-09-09]].
 
 This file used to argue the opposite, and the argument was not refuted — it was
 overruled. Both halves are recorded here because the numbers still describe what
@@ -22,7 +26,9 @@ the removal costs.
   returned). Across the 77 organic calls, 6.53M chars (~1.63M tokens) never
   entered the parent's context.
 - A fork does NOT reproduce that: it **inherits** the parent's context. What it
-  keeps out is the fan-out it performs, not the parent's own prefix.
+  keeps out is the fan-out it performs, not the parent's own prefix. A fresh
+  `Code` agent keeps out both, which is what the 2026-09-09 A/B measured at −44%
+  total cost for equal answers.
 
 ## What actually prompted the removal, and what it was
 
