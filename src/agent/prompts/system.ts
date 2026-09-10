@@ -4,7 +4,10 @@ import { feature } from 'bun:bundle'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
-import { getAPIProvider } from 'src/providers/model/providers.js'
+import {
+  getAPIProvider,
+  isFirstPartyAnthropicBaseUrl,
+} from 'src/providers/model/providers.js'
 
 const DEFAULT_PREFIX =
   `You are Claudin, an open-source coding agent and CLI.`
@@ -59,6 +62,16 @@ function isAttributionHeaderEnabled(): boolean {
 }
 
 /**
+ * The one lane where this block is read: transport 'anthropic' against
+ * api.anthropic.com. Same predicate the identity HEADERS are scoped with
+ * (src/providers/transport/identityHeaders.ts, fed from client.ts) — the
+ * header and the prompt block must not disagree about who is calling.
+ */
+function isFirstPartyLane(): boolean {
+  return getAPIProvider() === 'firstParty' && isFirstPartyAnthropicBaseUrl()
+}
+
+/**
  * Get attribution header for API requests.
  * Returns a header string with cc_version (including fingerprint) and cc_entrypoint.
  * Enabled by default, can be disabled via env var or GrowthBook killswitch.
@@ -72,8 +85,20 @@ function isAttributionHeaderEnabled(): boolean {
  * We use a placeholder (instead of injecting from Zig) because same-length
  * replacement avoids Content-Length changes and buffer reallocation.
  */
-export function getAttributionHeader(fingerprint: string): string {
+export function getAttributionHeader(
+  fingerprint: string,
+  deps: { isFirstPartyLane?: () => boolean } = {},
+): string {
   if (!isAttributionHeaderEnabled()) {
+    return ''
+  }
+
+  // Only the first-party backend consumes this tag. On every other provider it
+  // is upstream identity leaking into a third-party wire body — the prompt half
+  // of the decision identityHeaders.ts already makes for the HTTP headers.
+  // Both call sites (streaming.ts's filter(Boolean), sideQuery.ts's ternary)
+  // drop the empty string, so the block simply does not exist off-lane.
+  if (!(deps.isFirstPartyLane ?? isFirstPartyLane)()) {
     return ''
   }
 
