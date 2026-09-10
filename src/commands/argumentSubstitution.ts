@@ -118,9 +118,12 @@ export function substituteArguments(
     // escapeRegExp: an argument name with regex metacharacters (e.g. an
     // unbalanced paren) would otherwise throw a SyntaxError on every
     // invocation of the command.
+    // Function replacer: as a replacement STRING, `$&`, `$\``, `$'`, `$$` and
+    // `$1` in the user's own argument text would be interpreted instead of
+    // inserted literally.
     content = content.replace(
       new RegExp(`\\$${escapeRegExp(name)}(?![\\[\\w])`, 'g'),
-      parsedArgs[i] ?? '',
+      () => parsedArgs[i] ?? '',
     )
   }
 
@@ -137,7 +140,8 @@ export function substituteArguments(
   })
 
   // Replace $ARGUMENTS with the full arguments string
-  content = content.replaceAll('$ARGUMENTS', args)
+  // Function replacer for the same reason as the named arguments above.
+  content = content.replaceAll('$ARGUMENTS', () => args)
 
   // If no placeholders were found and appendIfNoPlaceholder is true, append
   // But only if args is non-empty (empty string means command invoked with no args)
