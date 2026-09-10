@@ -111,7 +111,7 @@
 
 ## References (sibling repos, wire formats, archives)
 - [Public docs site claudiolabs.ai lives outside this repo](claudiolabs-docs-site.md) — no site/ dir tracked (README icon 404'd); URLs are extensionless; README links pages instead of duplicating features
-- [openclaude is a sibling fork to mine for features](openclaude-sibling-fork-reference.md) — Tier-1 gaps (integrations/ registry, compressToolHistory, doomLoop) + 2026-08-14 hash-diff: only 209/3366 files byte-identical, so cherry-picks never apply
+- [openclaude is a sibling fork to mine for BUGS, not features](openclaude-sibling-fork-reference.md) — 28 claims re-verified 2026-09-10: 17 real (nested heredoc, __proto__ voids settings, 3P attribution leak, worktree stale base), 11 falsified incl. 3 of the old top 8
 - [code-review-graph audited 2026-08-08 — graph REJECTED, 4 ideas kept](code-review-graph-evaluated-rejected.md) — 284 MB db on claudin, TS parser blind to `export const` (445/495), impact answer = 203k tokens; their own bench shows the graph losing to reading the diff
 - [Three code-graph siblings audited 2026-08-17](code-graph-siblings-audited.md) — none publishes an honest measured win (all three benchmarks are self-referential); kept edge-confidence tiers, clamp-with-provenance, deterministic truncation, churn×complexity
 - [opencode (SST) feature-gap reference](opencode-sst-feature-gap-reference.md) — ../opencode SST monorepo scout 2026-06-24; apply_patch since shipped; open gaps: auto-format, LSP-diagnostics-on-edit, ACP/Zed adapter, part-level revert; Share=skip (privacy)

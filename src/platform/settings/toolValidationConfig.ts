@@ -97,7 +97,14 @@ export function isBashPrefixTool(toolName: string): boolean {
   return TOOL_VALIDATION_CONFIG.bashPrefixTools.includes(toolName)
 }
 
-// Helper to get custom validation for a tool
+// Helper to get custom validation for a tool.
+// Object.hasOwn, not a bare index: a permission rule named `__proto__` would
+// otherwise resolve to Object.prototype (truthy, not callable), and the caller
+// in permissionValidation.ts invokes whatever it gets. That TypeError escapes
+// to parseSettingsFileUncached, whose catch discards the WHOLE settings file —
+// deny rules included — with no diagnostic.
 export function getCustomValidation(toolName: string) {
-  return TOOL_VALIDATION_CONFIG.customValidation[toolName]
+  return Object.hasOwn(TOOL_VALIDATION_CONFIG.customValidation, toolName)
+    ? TOOL_VALIDATION_CONFIG.customValidation[toolName]
+    : undefined
 }
