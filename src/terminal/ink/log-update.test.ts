@@ -1,7 +1,10 @@
 import { expect, test } from 'bun:test'
 
 import { emptyFrame, type Frame } from 'src/terminal/ink/frame.ts'
-import { LogUpdate } from 'src/terminal/ink/log-update.ts'
+import {
+  _resetLegacyFullResetCacheForTesting,
+  LogUpdate,
+} from 'src/terminal/ink/log-update.ts'
 import {
   CellWidth,
   CharPool,
@@ -370,7 +373,12 @@ test('a scrolled-off change does not stop visible rows from being diffed in plac
   expect(countNewlines(stdout)).toBe(5)
 })
 
-test('a full reset of a frame that fits the viewport still repaints every row', () => {
+// A reset of a frame that FITS the viewport still repaints every row — but it
+// bottom-anchors them. Top-anchoring put the block at viewport row 0, which
+// pulled the input box off the bottom of the terminal and, when startY reached
+// 0 or 1, repainted the startup banner (frame row 0) mid-session. The padding
+// LFs walk down to the anchor first; the rows themselves are unchanged.
+test('a full reset of a frame that fits the viewport repaints every row, anchored at the bottom', () => {
   const { stylePool, charPool, hyperlinkPool, log } = createHarness()
   const lines = TALL_LINES.slice(0, 6)
 
@@ -384,17 +392,25 @@ test('a full reset of a frame that fits the viewport still repaints every row', 
   expect(diff.some(p => p.type === 'clearTerminal')).toBe(true)
   expect(stdout).toContain('ROW00xxxxx')
   expect(stdout).toContain('ROW05xxxxx')
-  expect(countNewlines(stdout)).toBe(6)
+  // usableRows 9 - 6 painted = 3 padding rows, emitted BEFORE the first row.
+  expect(stdout.startsWith('\n\n\n')).toBe(true)
+  expect(stdout.indexOf('ROW00xxxxx')).toBeGreaterThan(2)
+  expect(countNewlines(stdout)).toBe(3 + 6)
 })
 
-// Shrinking while the frame overflows must go through the tail repaint, not
-// eraseLines. eraseLines cannot scroll, so after it the cursor would sit
-// linesToClear rows above the bottom while the next frame derives viewportY
-// from the new height as if the cursor were AT the bottom — its cursor-up
-// then clamps at row 0 and every later write lands rows off (measured: a
-// 13-row shrink followed by a frame whose UP 38 ran from row 26, which wove
-// "…echotdone"ncompletedl(exitpcodeb0)eath the input box" out of two rows).
-test('shrinking while overflowing repaints the tail instead of erasing lines', () => {
+// Shrinking while the frame overflows must not clear just the VACATED rows:
+// eraseLines cannot scroll, so the cursor would sit linesToClear rows above
+// the bottom while the next frame derives viewportY as if it were AT the
+// bottom — its cursor-up then clamps at row 0 and every later write lands rows
+// off (measured: a 13-row shrink followed by a frame whose UP 38 ran from row
+// 26, which wove "…echotdone"ncompletedl(exitpcodeb0)eath the input box" out
+// of two rows).
+//
+// repaintTailInPlace erases exactly as many rows as it repaints, so the cursor
+// ends where it started and the premise holds — without blanking the screen.
+// Measured 2026-09-09: this branch fired 35 times over 36 messages, so the
+// clearTerminal it used to emit was a full-screen repaint per turn.
+test('shrinking while overflowing repaints the tail in place, without clearing the screen', () => {
   const { stylePool, charPool, hyperlinkPool, log } = createHarness()
   // 20 -> 17 rows, viewport 10: still overflowing after the shrink.
   const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES, TALL_VIEWPORT)
@@ -402,8 +418,15 @@ test('shrinking while overflowing repaints the tail instead of erasing lines', (
   const diff = log.render(prev, next, false, true, false)
   const stdout = collectStdout(diff)
 
-  expect(diff.some(p => p.type === 'clearTerminal')).toBe(true)
-  expect(diff.some(p => p.type === 'clear')).toBe(false)
+  expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
+  // Erases the 9 reachable rows and repaints the same 9 — net zero movement.
+  expect(
+    diff.some(
+      p => p.type === 'clear' && p.count === 9 && p.repaintReason === 'offscreen',
+    ),
+  ).toBe(true)
+  // One step up onto the last row eraseLines will clear.
+  expect(diff.some(p => p.type === 'cursorMove' && p.y === -1)).toBe(true)
   // Tail of the NEW frame: rows 8..16, cursor parked on the last viewport row.
   expect(stdout).toContain('ROW08xxxxx')
   expect(stdout).toContain('ROW16xxxxx')
@@ -412,16 +435,74 @@ test('shrinking while overflowing repaints the tail instead of erasing lines', (
   expect(countNewlines(stdout)).toBe(9)
 })
 
-// The Ghostty main-screen rewrite has the same eraseLines shape, so it must
-// not take a shrink while overflowing either.
-test('main-screen rewrite defers to the tail repaint when shrinking while overflowing', () => {
+// The Ghostty main-screen rewrite computes its startY from firstChangedY,
+// which a shrink makes meaningless, so it must still defer to this branch.
+test('main-screen rewrite defers to the in-place tail repaint when shrinking while overflowing', () => {
   const { stylePool, charPool, hyperlinkPool, log } = createHarness()
   const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES, TALL_VIEWPORT)
   const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES.slice(0, 18), TALL_VIEWPORT)
   const diff = log.render(prev, next, false, true, true)
 
-  expect(diff.some(p => p.type === 'clearTerminal')).toBe(true)
-  expect(diff.some(p => p.type === 'clear')).toBe(false)
+  expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
+  expect(
+    diff.some(
+      p => p.type === 'clear' && p.count === 9 && p.repaintReason === 'offscreen',
+    ),
+  ).toBe(true)
+})
+
+// The reported bug: a frame that shrinks BELOW the viewport used to be
+// repainted from viewport row 0, which put frame row 0 — the startup banner —
+// at the top of the screen and pulled the input box up with it. Captured live
+// as `screenH=15 viewportH=18 startY=0`. Bottom-anchoring keeps the block on
+// the last rows; the rows above keep whatever history was there.
+test('a frame that shrinks below the viewport stays anchored at the bottom', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES, TALL_VIEWPORT)
+  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES.slice(0, 6), TALL_VIEWPORT)
+  const diff = log.render(prev, next, false, true, false)
+  const stdout = collectStdout(diff)
+
+  expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
+  // 6 rows erased and 6 repainted — NOT the 9 a viewport-filling repaint would
+  // touch, and no padding: the block already ends on the cursor row.
+  expect(
+    diff.some(
+      p => p.type === 'clear' && p.count === 6 && p.repaintReason === 'offscreen',
+    ),
+  ).toBe(true)
+  expect(diff.some(p => p.type === 'cursorMove' && p.y === -1)).toBe(true)
+  expect(stdout).toContain('ROW00xxxxx')
+  expect(stdout).toContain('ROW05xxxxx')
+  expect(countNewlines(stdout)).toBe(6)
+})
+
+// The killswitch has to revert BOTH halves: the path choice and the padding.
+// A short frame is the only shape where the two are visible at once.
+test('CLAUDIN_LEGACY_FULL_RESET restores the clearing, top-anchored reset', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  const saved = process.env.CLAUDIN_LEGACY_FULL_RESET
+  process.env.CLAUDIN_LEGACY_FULL_RESET = '1'
+  _resetLegacyFullResetCacheForTesting()
+  try {
+    const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES, TALL_VIEWPORT)
+    const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES.slice(0, 6), TALL_VIEWPORT)
+    const diff = log.render(prev, next, false, true, false)
+    const stdout = collectStdout(diff)
+
+    expect(diff.some(p => p.type === 'clearTerminal')).toBe(true)
+    expect(diff.some(p => p.type === 'clear')).toBe(false)
+    // Top-anchored: the frame starts at viewport row 0, no padding LFs.
+    expect(stdout.startsWith('\n')).toBe(false)
+    expect(countNewlines(stdout)).toBe(6)
+  } finally {
+    if (saved === undefined) {
+      delete process.env.CLAUDIN_LEGACY_FULL_RESET
+    } else {
+      process.env.CLAUDIN_LEGACY_FULL_RESET = saved
+    }
+    _resetLegacyFullResetCacheForTesting()
+  }
 })
 
 // A frame that fits the viewport keeps the cheap path: nothing is in

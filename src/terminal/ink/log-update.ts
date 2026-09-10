@@ -4,6 +4,7 @@ import {
   diffAnsiCodes,
 } from '@alcalzone/ansi-tokenize'
 import { logForDebugging } from 'src/shared/debug.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import type { Diff, FlickerReason, Frame } from 'src/terminal/ink/frame.js'
 import type { Point } from 'src/terminal/ink/layout/geometry.js'
 import {
@@ -40,6 +41,27 @@ type Options = {
 
 const CARRIAGE_RETURN = { type: 'carriageReturn' } as const
 const NEWLINE = { type: 'stdout', content: '\n' } as const
+
+/**
+ * CLAUDIN_LEGACY_FULL_RESET=1 restores the pre-bottom-anchor renderer: the
+ * shrink-while-overflowing branch goes back to blanking the screen with
+ * clearTerminal, and a repaint of a frame that fits the viewport goes back to
+ * starting at viewport row 0 (which is what used to repaint the startup banner
+ * mid-session and pull the input box off the bottom of the terminal).
+ * Read lazily and cached — render() is the hot path.
+ */
+let legacyFullReset: boolean | undefined
+function legacyFullResetEnabled(): boolean {
+  if (legacyFullReset === undefined) {
+    legacyFullReset = isEnvTruthy(process.env.CLAUDIN_LEGACY_FULL_RESET)
+  }
+  return legacyFullReset
+}
+
+/** Test-only: forget the cached CLAUDIN_LEGACY_FULL_RESET read. */
+export function _resetLegacyFullResetCacheForTesting(): void {
+  legacyFullReset = undefined
+}
 
 export class LogUpdate {
   private state: State
@@ -182,16 +204,25 @@ export class LogUpdate {
     // row whenever the frame overflows the viewport: viewportY (the rows in
     // scrollback) is derived from the frame height alone, on the premise that
     // the cursor-restore LFs scrolled the frame up until its cursor row hit the
-    // bottom. A frame that SHRINKS while overflowing breaks that premise:
-    // eraseLines cannot scroll, so the cursor ends linesToClear rows above the
-    // bottom and the physical viewport top stays where it was — while the next
-    // frame recomputes viewportY from the new, smaller height and believes
-    // rows are reachable that are in fact above the top. Its cursor-up moves
-    // then clamp at row 0 and every later write lands one row (or thirteen)
-    // off, interleaving two rows' glyphs. The tail repaint re-establishes the
-    // premise (its last row is the cursor row), so shrinking while overflowing
-    // always goes through it — the main-screen rewrite below included, which
-    // has the same eraseLines shape.
+    // bottom. A frame that SHRINKS while overflowing breaks that premise on
+    // its own: eraseLines cannot scroll, so clearing only the VACATED rows
+    // leaves the cursor linesToClear rows above the bottom while the next
+    // frame recomputes viewportY as if it were AT the bottom. Its cursor-up
+    // moves then clamp at row 0 and every later write lands one row (or
+    // thirteen) off, interleaving two rows' glyphs.
+    //
+    // repaintTailInPlace restores the premise by construction: it erases
+    // exactly as many rows as it repaints, so the cursor ends where it
+    // started. That is why it MAY use eraseLines where the old code could not,
+    // and why it needs no clearTerminal — do not "simplify" it back into a
+    // reset. Measured 2026-09-09 (tmux 100x18, 36 messages): this branch fired
+    // 35 times, every one of them a 2- or 3-row shrink of an 86-120 row frame
+    // — the spinner/status row going away at the end of a turn — and every one
+    // used to blank and repaint the whole viewport. On Ghostty each of those
+    // writes also snapped the viewport back to the bottom, which is what made
+    // scrolling up to read impossible. The main-screen rewrite below still
+    // defers to this branch: its startY comes from firstChangedY, which a
+    // shrink makes meaningless.
     const cursorAtBottom = prev.cursor.y >= prev.screen.height
     const isGrowing = next.screen.height > prev.screen.height
     // When content fills the viewport exactly (height == viewport) and the
@@ -201,6 +232,12 @@ export class LogUpdate {
       cursorAtBottom && prev.screen.height >= prev.viewport.height
     const isShrinking = next.screen.height < prev.screen.height
     if (!altScreen && prevHadScrollback && isShrinking) {
+      const inPlace = legacyFullResetEnabled()
+        ? null
+        : repaintTailInPlace(prev, next, stylePool)
+      if (inPlace) {
+        return inPlace
+      }
       logForDebugging(
         `Full reset (shrink while overflowing): prevHeight=${prev.screen.height}, nextHeight=${next.screen.height}, viewport=${prev.viewport.height}`,
       )
@@ -582,6 +619,86 @@ function transitionStyle(
   return targetId
 }
 
+/**
+ * Where a repainted block sits on the viewport. Every repaint path anchors the
+ * same way: the block ENDS on the second-to-last viewport row and the cursor
+ * lands on the last one. That is the state the incremental path assumes next
+ * frame, since its viewportY adds cursorRestoreScroll = 1 whenever the frame
+ * overflows (see the viewportY computation in render(); renderer.ts pins
+ * cursor.y = screen.height on the main screen, so cursorAtBottom always holds
+ * there).
+ *
+ * A frame TALLER than the viewport is sliced to its tail and padRows is 0 —
+ * byte-for-byte what this produced before bottom-anchoring existed. A frame
+ * that FITS leaves padRows blank rows above it instead of jumping to the top
+ * of the screen. Top-anchoring is what used to pull the input box off the
+ * bottom of the terminal, and — when the frame was short enough for startY to
+ * reach 0 or 1 — repaint the startup banner mid-session (frame row 0, see
+ * REPL.tsx). Measured live: screenH=120 viewportH=120 gave startY=1.
+ *
+ * Alt-screen never sees a difference: renderer.ts reports viewport.height =
+ * terminalRows + 1 against a screen exactly terminalRows tall, so rowsToPaint
+ * is the whole frame and padRows is 0.
+ */
+function anchorRows(frame: Frame): {
+  rowsToPaint: number
+  startY: number
+  padRows: number
+} {
+  const usableRows = Math.max(1, frame.viewport.height - 1)
+  const rowsToPaint = Math.min(frame.screen.height, usableRows)
+  return {
+    rowsToPaint,
+    startY: frame.screen.height - rowsToPaint,
+    padRows: legacyFullResetEnabled() ? 0 : usableRows - rowsToPaint,
+  }
+}
+
+/**
+ * Repaint the reachable tail WITHOUT clearing the screen.
+ *
+ * Precondition — exactly what `prevHadScrollback` asserts at the call site:
+ * the physical cursor sits on the LAST viewport row. From there this steps up
+ * one row, lets eraseLines(N) walk up blanking N rows (it ends at column 0 of
+ * the topmost one), and repaints those same N rows. Net vertical movement is
+ * ZERO, which is the whole point: nothing scrolls, so nothing is deposited in
+ * scrollback, the screen never goes blank, and the cursor ends back on the row
+ * the next frame expects it on — leaving restoreMainScreenCursor with nothing
+ * to do.
+ *
+ * The rows ABOVE the repainted block keep whatever was there. They are history
+ * in the same sense as the rows already in scrollback: the user saw them, and
+ * blanking them is what used to take eight messages off the screen (issue
+ * #165).
+ *
+ * Returns null when there is nothing to paint (an emptied frame), so the
+ * caller falls back to the reset.
+ */
+function repaintTailInPlace(
+  prev: Frame,
+  next: Frame,
+  stylePool: StylePool,
+): Diff | null {
+  const { rowsToPaint, startY } = anchorRows(next)
+  if (rowsToPaint <= 0) {
+    return null
+  }
+
+  // Step onto the last row eraseLines will clear. In PREV coordinates, since
+  // that is where the cursor currently is.
+  const mover = new VirtualScreen(prev.cursor, next.viewport.width)
+  moveCursorTo(mover, 0, prev.cursor.y - 1)
+
+  const screen = new VirtualScreen({ x: 0, y: startY }, next.viewport.width)
+  renderFrameSlice(screen, next, startY, next.screen.height, stylePool)
+
+  return [
+    ...mover.diff,
+    { type: 'clear', count: rowsToPaint, repaintReason: 'offscreen' },
+    ...screen.diff,
+  ]
+}
+
 function fullResetSequence_CAUSES_FLICKER(
   frame: Frame,
   reason: FlickerReason,
@@ -596,22 +713,24 @@ function fullResetSequence_CAUSES_FLICKER(
   // depositing a second copy of the startup banner and the transcript head on
   // every reset (the "banner repeats mid-session" bug).
   //
-  // Only the tail fits: each rendered row ends with CR+LF, so N rows leave the
-  // cursor N rows down. Rendering viewport.height - 1 rows lands it on the
-  // last viewport row with nothing scrolled — which is exactly the state the
-  // incremental path assumes next frame, since its viewportY adds
-  // cursorRestoreScroll = 1 whenever the frame overflows (see the viewportY
-  // computation in render(); renderer.ts pins cursor.y = screen.height on the
-  // main screen, so cursorAtBottom always holds there).
+  // Only the tail fits, and it is bottom-anchored: the padding LFs walk down
+  // to the anchor first so a frame that fits the viewport lands on the bottom
+  // rows instead of the top ones. See anchorRows for why that matters.
   //
-  // Alt-screen is unaffected: renderer.ts reports viewport.height =
-  // terminalRows + 1 against a screen exactly terminalRows tall, so startY is
-  // 0 and this renders the whole frame as before.
-  const usableRows = Math.max(1, frame.viewport.height - 1)
-  const startY = Math.max(0, frame.screen.height - usableRows)
+  // This is still the path for 'resize' (the terminal reflowed, so the cursor
+  // position is not trustworthy) and for 'clear' (ctrl+L asked for a clean
+  // screen). The per-turn shrink goes through repaintTailInPlace instead.
+  const { startY, padRows } = anchorRows(frame)
+  const pad: Diff = []
+  if (padRows > 0) {
+    pad.push(CARRIAGE_RETURN)
+    for (let i = 0; i < padRows; i++) {
+      pad.push(NEWLINE)
+    }
+  }
   const screen = new VirtualScreen({ x: 0, y: startY }, frame.viewport.width)
   renderFrameSlice(screen, frame, startY, frame.screen.height, stylePool)
-  return [{ type: 'clearTerminal', reason }, ...screen.diff]
+  return [{ type: 'clearTerminal', reason }, ...pad, ...screen.diff]
 }
 
 /**

@@ -72,7 +72,15 @@ export type FrameEvent = {
 
 export type Patch =
   | { type: 'stdout'; content: string }
-  | { type: 'clear'; count: number }
+  | {
+      type: 'clear'
+      count: number
+      // Set only by log-update's in-place tail repaint, so ink.tsx can log it
+      // under CLAUDIN_DEBUG_REPAINTS the way it logs a clearTerminal reset.
+      // That path emits no clearTerminal, and it is the one issue #165 needs
+      // to stay visible in the debug log.
+      repaintReason?: FlickerReason
+    }
   | {
       type: 'clearTerminal'
       reason: FlickerReason
