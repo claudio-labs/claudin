@@ -96,6 +96,7 @@
 - [PRs for this repo go to GitHub via gh](repo-prs-github-via-gh.md) — origin is github.com/claudio-labs/claudin; `gh` (andersonviudes) authed; push then `gh pr create --base main`; old git.viudescloud.uk+tea flow superseded (verify with `git remote -v`)
 
 ## TUI / diff / tooling
+- [Inline TUI full-reset per message — FIXED 2026-09-09](inline-fullreset-per-message.md) — 35 CSI 2J repaints/36 msgs → 0; carries the net-zero and bottom-anchor invariants the fix rests on, and the model half of #165 that is still open
 - [/diff reviewer has a living design doc (feature 8.1)](diff-reviewer-living-spec.md) — canonical spec at docs/features/8.1-diff-reviewer.md, kept in sync as features land (multi-repo discovery, etc.)
 - [Diff reviewer canonicalizes git worktrees to the main repo](diff-reviewer-worktree-canonicalization.md) — /diff groups collapse worktrees into their main checkout; visual features are group-agnostic; fix deferred 2026-06-18 on purpose
 - [parseGitDiff must not assume a/ b/ prefixes](gitdiff-mnemonic-prefix-parse.md) — diff.mnemonicPrefix emits c/ w/ → broke /diff hunk parse (all files "Large file"); forced prefixes + loose regex

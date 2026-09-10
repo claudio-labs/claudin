@@ -244,3 +244,47 @@ export function printStartupScreen(modelOverride?: string): void {
 // Logo width is exported for downstream consumers that want to render the
 // banner with consistent spacing.
 export { LOGO_WIDTH as STARTUP_LOGO_WIDTH }
+
+export type StartupBannerLatchInput = {
+  /** The latch already fired. It never un-fires. */
+  alreadyHidden: boolean
+  /** Alt-screen (flicker-free) mode is active. */
+  fullscreen: boolean
+  /** CLAUDIN_KEEP_STARTUP_BANNER=1 — the killswitch. */
+  keepBanner: boolean
+  /** The banner is still inside the terminal viewport. */
+  visible: boolean
+}
+
+/**
+ * Whether `<StartupBanner/>` should stop rendering, permanently.
+ *
+ * The banner is frame row 0 and it never leaves the frame on its own — it only
+ * scrolls out of the viewport. So any repaint that reaches row 0 puts it back
+ * on screen mid-session, which no amount of anchoring in the renderer can
+ * prevent while it is still part of the frame. Once it has scrolled away it is
+ * already in the user's scrollback and re-rendering it can only duplicate it,
+ * so the component drops out of the tree instead.
+ *
+ * `fullscreen` is not an optimization — it is required. There the banner lives
+ * inside the virtualized ScrollBox and "not visible" only means "scrolled past
+ * for now"; latching would delete it from a list the user can scroll back up.
+ *
+ * `/clear` un-latches by remounting: it already bumps `conversationId` for
+ * exactly this reason (see clearConversation), and REPL keys the component on
+ * it.
+ *
+ * Kept out of the .tsx on purpose: a module whose import chain reaches
+ * src/terminal/ink.js cannot be loaded by `bun test`, so the decision has to
+ * live where it can be tested.
+ */
+export function shouldLatchStartupBanner({
+  alreadyHidden,
+  fullscreen,
+  keepBanner,
+  visible,
+}: StartupBannerLatchInput): boolean {
+  if (alreadyHidden) return true
+  if (fullscreen || keepBanner) return false
+  return !visible
+}

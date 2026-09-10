@@ -2966,8 +2966,12 @@ export function REPL({
         {/* Render the startup banner inside Ink so it scrolls naturally
                   into scrollback as content grows (non-fullscreen) or commits
                   to the alt-screen (fullscreen). Writing it via stdout before
-                  Ink mounts caused fullReset to wipe it on the first keystroke. */}
-        <StartupBanner />
+                  Ink mounts caused fullReset to wipe it on the first keystroke.
+                  Keyed on conversationId so /clear remounts it: the banner
+                  unmounts itself once it scrolls out of the viewport, and a
+                  cleared conversation should open with it again.
+                  clearConversation already bumps the id for exactly this. */}
+        <StartupBanner key={conversationId} />
         <TeammateViewHeader />
         <Messages messages={displayedMessages} tools={tools} commands={renderCommands} verbose={verbose} toolJSX={toolJSX} toolUseConfirmQueue={toolUseConfirmQueue} inProgressToolUseIDs={viewedTeammateTask ? viewedTeammateTask.inProgressToolUseIDs ?? new Set() : inProgressToolUseIDs} isMessageSelectorVisible={isMessageSelectorVisible} conversationId={conversationId} screen={screen} streamingToolUses={streamingToolUses} showAllInTranscript={showAllInTranscript} agentDefinitions={agentDefinitions} onOpenRateLimitOptions={handleOpenRateLimitOptions} isLoading={isLoading} hasStreamingText={isLoading && !viewedAgentTask && hasVisibleStreamingText} isBriefOnly={viewedAgentTask ? false : isBriefOnly} unseenDivider={viewedAgentTask ? undefined : unseenDivider} scrollRef={isFullscreenEnvEnabled() ? scrollRef : undefined} trackStickyPrompt={isFullscreenEnvEnabled() ? true : undefined} cursor={cursor} setCursor={setCursor} cursorNavRef={cursorNavRef} />
         <AwsAuthStatusBox />

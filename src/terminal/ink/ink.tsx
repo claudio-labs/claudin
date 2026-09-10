@@ -631,8 +631,18 @@ export default class Ink {
       const nextH = frame.screen.height;
       const vp = frame.viewport.height;
       const reset = diff.find(p => p.type === 'clearTerminal');
+      // The in-place tail repaint emits no clearTerminal, so it would be
+      // invisible here — and it is now the path the per-turn shrink takes.
+      // Keep logging it: "FRAME FITS VIEWPORT" is the signal that the message
+      // list itself collapsed to the tail, which is the half of #165 the
+      // renderer does not fix.
+      const inPlace = diff.find(p => p.type === 'clear' && p.repaintReason !== undefined);
       if (reset && reset.type === 'clearTerminal') {
         logForDebugging(`[REPAINT] reset · ${reset.reason} · prevH=${prevH} nextH=${nextH} viewport=${vp} startY=${Math.max(0, nextH - Math.max(1, vp - 1))}${nextH <= vp - 1 ? ' · FRAME FITS VIEWPORT → row 0 painted' : ''}`, {
+          level: 'warn'
+        });
+      } else if (inPlace && inPlace.type === 'clear') {
+        logForDebugging(`[REPAINT] in-place · ${inPlace.repaintReason} · prevH=${prevH} nextH=${nextH} viewport=${vp} rows=${inPlace.count}${nextH <= vp - 1 ? ' · FRAME FITS VIEWPORT' : ''}`, {
           level: 'warn'
         });
       } else if (prevH === 0 && nextH > 0) {

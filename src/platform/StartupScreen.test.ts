@@ -17,7 +17,9 @@ mock.module('src/providers/presets/activeProvider.js', () => ({
 }))
 
 // Re-import after mock so detectProvider sees the patched module.
-const { detectProvider } = await import('src/platform/StartupScreen.js')
+const { detectProvider, shouldLatchStartupBanner } = await import(
+  'src/platform/StartupScreen.js'
+)
 
 afterAll(() => {
   mock.module('src/providers/presets/activeProvider.js', () => realActiveProviderSnapshot)
@@ -347,5 +349,55 @@ describe('detectProvider — no active profile', () => {
     const result = detectProvider(undefined)
     expect(result.name).toBe('Not configured')
     expect(result.model).toBe('—')
+  })
+})
+
+// The banner is frame row 0 and never leaves the frame on its own, so any
+// repaint that reaches row 0 puts it back mid-session. Dropping it from the
+// tree once it has scrolled away is the only thing that makes that
+// impossible — see shouldLatchStartupBanner's doc comment.
+describe('shouldLatchStartupBanner', () => {
+  const base = {
+    alreadyHidden: false,
+    fullscreen: false,
+    keepBanner: false,
+    visible: true,
+  }
+
+  test('latches once the banner has scrolled out of the viewport', () => {
+    expect(shouldLatchStartupBanner({ ...base, visible: false })).toBe(true)
+  })
+
+  test('does not latch while the banner is still on screen', () => {
+    expect(shouldLatchStartupBanner(base)).toBe(false)
+  })
+
+  test('never un-latches, whatever else changed', () => {
+    // A remount is the only way back (REPL keys the component on
+    // conversationId, which /clear bumps).
+    expect(
+      shouldLatchStartupBanner({
+        ...base,
+        alreadyHidden: true,
+        visible: true,
+        fullscreen: true,
+        keepBanner: true,
+      }),
+    ).toBe(true)
+  })
+
+  test('never latches in fullscreen', () => {
+    // There the banner is inside the virtualized ScrollBox, where "not
+    // visible" only means "scrolled past for now" — latching would delete it
+    // from a list the user can scroll back up.
+    expect(
+      shouldLatchStartupBanner({ ...base, fullscreen: true, visible: false }),
+    ).toBe(false)
+  })
+
+  test('CLAUDIN_KEEP_STARTUP_BANNER keeps it mounted', () => {
+    expect(
+      shouldLatchStartupBanner({ ...base, keepBanner: true, visible: false }),
+    ).toBe(false)
   })
 })

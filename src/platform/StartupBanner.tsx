@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { Box, RawAnsi } from 'src/terminal/ink.js'
 import { useMainLoopModel } from 'src/agent/hooks/useMainLoopModel.js'
 import { eagerParseCliFlag } from 'src/platform/cliArgs.js'
@@ -6,9 +6,13 @@ import { subscribeLatestVersion } from 'src/platform/install/latestVersionCache.
 import {
   buildStartupBannerLines,
   resolveUpdateNotice,
+  shouldLatchStartupBanner,
   STARTUP_BANNER_WIDTH,
   type UpdateNotice,
 } from 'src/platform/StartupScreen.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
+import { useTerminalViewport } from 'src/terminal/ink/hooks/use-terminal-viewport.js'
+import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js'
 
 type Props = {
   /**
@@ -27,6 +31,10 @@ type Props = {
  * when flicker-free mode is on. Without this, `printStartupScreen` writes to
  * the main buffer BEFORE <AlternateScreen> mounts and the banner is stranded
  * in scrollback that the user can't see until they exit the REPL.
+ *
+ * On the main screen it unmounts itself once it scrolls out of the viewport —
+ * see the latch below. `CLAUDIN_KEEP_STARTUP_BANNER=1` turns that off and
+ * keeps it in the frame for the whole session.
  *
  * Bypasses the <Ansi> roundtrip by going through <RawAnsi>: the lines are
  * already terminal-ready (ANSI escape codes inline, fixed width), so Yoga
@@ -64,8 +72,36 @@ export function StartupBanner({ modelOverride }: Props): React.ReactNode {
     const override = modelOverride ?? eagerParseCliFlag('--model') ?? liveModel
     return buildStartupBannerLines(override, notice)
   }, [modelOverride, liveModel, notice])
+  // Once the banner has scrolled out of the terminal viewport it is in the
+  // user's scrollback for good, and staying in the frame only gives a later
+  // repaint something to resurrect — it is frame row 0, so a repaint of a
+  // frame that fits the viewport starts on it. See shouldLatchStartupBanner
+  // for why fullscreen is excluded and how /clear brings it back.
+  //
+  // isVisibleNow() falls back to its previous value (initially true) while
+  // layout isn't ready, so this cannot fire before the first measurement. The
+  // setState is one-shot — guarded by `hidden`, which never goes back to
+  // false — so it cannot loop with the hook's own layout effect.
+  const [ref, , isVisibleNow] = useTerminalViewport()
+  const [hidden, setHidden] = useState(false)
+  useLayoutEffect(() => {
+    if (hidden) return
+    if (
+      shouldLatchStartupBanner({
+        alreadyHidden: false,
+        fullscreen: isFullscreenEnvEnabled(),
+        keepBanner: isEnvTruthy(process.env.CLAUDIN_KEEP_STARTUP_BANNER),
+        visible: isVisibleNow(),
+      })
+    ) {
+      setHidden(true)
+    }
+  })
+  if (hidden) {
+    return null
+  }
   return (
-    <Box flexDirection="column" flexShrink={0}>
+    <Box ref={ref} flexDirection="column" flexShrink={0}>
       <RawAnsi lines={lines} width={STARTUP_BANNER_WIDTH} />
     </Box>
   )
