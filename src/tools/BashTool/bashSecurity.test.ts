@@ -17,6 +17,21 @@ function askIsMisparsing(result: PermissionResult): boolean | undefined {
   return result.isBashSecurityCheckForMisparsing
 }
 
+/**
+ * A quoted outer delimiter makes the body literal text in bash, so the inner
+ * `$(cat <<'B'` is characters — but the raw-text regex matches both and
+ * produces two ranges, the second nested in the first.
+ */
+const NESTED_HEREDOC_COMMAND = [
+  "echo $(cat <<'A'",
+  "x $(cat <<'B'",
+  'y',
+  'B',
+  ')',
+  'A',
+  ') ; rm -rf /tmp/x',
+].join('\n')
+
 describe('bashCommandIsSafe_DEPRECATED', () => {
   test('passes an ordinary command through', () => {
     expect(bashCommandIsSafe_DEPRECATED('ls -la').behavior).toBe('passthrough')
@@ -70,5 +85,22 @@ describe('stripSafeHeredocSubstitutions', () => {
     expect(
       stripSafeHeredocSubstitutions("echo $(cat <<'EOF'\nbody never closed"),
     ).toBeNull()
+  })
+
+  // Regression: the strip walks its ranges in reverse so earlier indices stay
+  // valid, which only holds while no range sits INSIDE another. With a nested
+  // one the outer `end` is stale after the inner is removed, so `slice(end)`
+  // returned '' and everything after the outer heredoc disappeared before the
+  // validators ran. isSafeHeredoc has always rejected nesting for this exact
+  // reason; the strip did not.
+  test('refuses to strip nested heredoc substitutions', () => {
+    expect(stripSafeHeredocSubstitutions(NESTED_HEREDOC_COMMAND)).toBeNull()
+  })
+
+  test('never drops the text that follows the outer heredoc', () => {
+    const stripped = stripSafeHeredocSubstitutions(NESTED_HEREDOC_COMMAND)
+    // Refusing (null) is fine; returning "echo " is not — that is what let
+    // `; rm -rf /tmp/x` reach the caller as if it had never been typed.
+    expect(stripped ?? NESTED_HEREDOC_COMMAND).toContain('rm -rf /tmp/x')
   })
 })

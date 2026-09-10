@@ -436,25 +436,9 @@ function isSafeHeredoc(command: string): boolean {
     verified.push({ start, end: endPos })
   }
 
-  // SECURITY: Reject nested matches. The regex finds $(cat <<'X' patterns
-  // in RAW TEXT without understanding quoted-heredoc semantics. When the
-  // outer heredoc has a quoted delimiter (<<'A'), its body is LITERAL text
-  // in bash — any inner $(cat <<'B' is just characters, not a real heredoc.
-  // But our regex matches both, producing NESTED ranges. Stripping nested
-  // ranges corrupts indices: after stripping the inner range, the outer
-  // range's `end` is stale (points past the shrunken string), causing
-  // `remaining.slice(end)` to return '' and silently drop any suffix
-  // (e.g., `; rm -rf /`). Since all our matched heredocs have quoted/escaped
-  // delimiters, a nested match inside the body is ALWAYS literal text —
-  // no legitimate user writes this pattern. Bail to safe fallback.
-  for (const outer of verified) {
-    for (const inner of verified) {
-      if (inner === outer) continue
-      if (inner.start > outer.start && inner.start < outer.end) {
-        return false
-      }
-    }
-  }
+  // SECURITY: nested matches corrupt the reverse strip below — see
+  // hasNestedRange. Bail to safe fallback.
+  if (hasNestedRange(verified)) return false
 
   // Strip all verified heredocs from the command, building `remaining`.
   // Process in reverse order so earlier indices stay valid.
@@ -514,8 +498,38 @@ function isSafeHeredoc(command: string): boolean {
 }
 
 /**
+ * True when any matched range starts inside another one.
+ *
+ * SECURITY: the regex finds $(cat <<'X' patterns in RAW TEXT without
+ * understanding quoted-heredoc semantics. When the outer heredoc has a quoted
+ * delimiter (<<'A'), its body is LITERAL text in bash — any inner $(cat <<'B'
+ * is just characters, not a real heredoc. But our regex matches both,
+ * producing NESTED ranges. Stripping nested ranges corrupts indices: after
+ * stripping the inner range, the outer range's `end` is stale (points past the
+ * shrunken string), causing `slice(end)` to return '' and silently drop any
+ * suffix (e.g., `; rm -rf /`). Since all our matched heredocs have
+ * quoted/escaped delimiters, a nested match inside the body is ALWAYS literal
+ * text — no legitimate user writes this pattern, so both callers bail rather
+ * than strip.
+ */
+function hasNestedRange(
+  ranges: ReadonlyArray<{ start: number; end: number }>,
+): boolean {
+  for (const outer of ranges) {
+    for (const inner of ranges) {
+      if (inner === outer) continue
+      if (inner.start > outer.start && inner.start < outer.end) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
+/**
  * Detects well-formed $(cat <<'DELIM'...DELIM) heredoc substitution patterns.
- * Returns the command with matched heredocs stripped, or null if none found.
+ * Returns the command with matched heredocs stripped, or null when there is
+ * nothing to strip or the matches are nested (see hasNestedRange).
  * Used by the pre-split gate to strip safe heredocs and re-check the remainder.
  */
 export function stripSafeHeredocSubstitutions(command: string): string | null {
@@ -570,6 +584,12 @@ export function stripSafeHeredocSubstitutions(command: string): string | null {
     }
   }
   if (!found) return null
+  // SECURITY: same hazard isSafeHeredoc bails on — with a nested range the
+  // reverse strip leaves the outer `end` stale and drops everything after the
+  // outer heredoc, so a suffix like `; rm -rf /tmp/x` never reaches the
+  // validators below. null means "cannot strip safely"; the caller
+  // (bashPermissions) then keeps its misparsing ask.
+  if (hasNestedRange(ranges)) return null
   for (let i = ranges.length - 1; i >= 0; i--) {
     const r = ranges[i]!
     result = result.slice(0, r.start) + result.slice(r.end)
