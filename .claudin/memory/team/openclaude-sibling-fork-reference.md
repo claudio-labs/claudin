@@ -1,6 +1,6 @@
 ---
 name: openclaude is a sibling fork to mine for features
-description: openclaude (sibling Claude Code fork) lives at ../openclaude; feature-gap backlog vs claudin plus the measured structural divergence (2026-08-14, their v0.28.0 vs claudin v1.1.12)
+description: openclaude (sibling Claude Code fork) at ../openclaude; the value is their fix( stream over inherited code — 28 claims re-verified empirically 2026-09-10, 17 real / 11 falsified — not their feature list
 type: reference
 ---
 
@@ -9,6 +9,267 @@ type: reference
 **Why:** Both forks evolve the same upstream independently; openclaude moves fast on providers + context-mgmt and often lands features claudin lacks.
 
 **How to apply:** Cross-check any candidate against claudin's tree first — several things converged independently (claudin already HAS: `/goal`, reasoned-denial permission prompts, per-agent model routing in `/agents`, bypassPermissions mode, 5xx/HTML-overload retry).
+
+## 2026-09-10 audit (their v0.30.0 vs claudin v1.1.x @ 2365c9f6) — the value is BUGS, not features
+
+The feature backlog below is mostly stale or low-value. What actually pays is
+their `fix(` stream over **inherited upstream code**: ~369 fix commits, ~120
+triaged as inherited-path candidates. The first pass claimed "15 confirmed, all
+citations held" — that was a line-number match, **not a verification**. A second
+pass the same day re-ran the real regexes and functions, traced every consumer
+and folded every `feature()` gate across all 28 claims: **17 real, 11 dead**,
+and three of the original top 8 died. Read this verdict block before acting on
+any entry in the list below it.
+
+**FALSIFIED — do not open a PR for these** (numbers = the ranked list below):
+
+- **#1 `ENV_VAR_PATTERN` bypass** — the regex quirk is real (`FOO[$(cmd)]=v x`
+  → `x`), the bypass is not. `filterRulesByContentsMatchingInput` builds an
+  **additive** candidate list (`bashPermissions.ts:710-757`, matched with
+  `.some` at `:778`), so candidate #0 is always the original command; stripping
+  can only widen deny matching. Independently `COMMAND_SUBSTITUTION_PATTERNS`
+  (`bashSecurity.ts:16-31`) tests `/\$\(/` against the UNSTRIPPED command
+  (`bashPermissions.ts:1911,1996`) and forces `ask`. Residual: the subscript
+  form defeats `shouldUseSandbox.ts:99`'s `BINARY_HIJACK_VARS` (`PATH[0]` vs
+  `/PATH$/`), which `bashPermissions.ts:609` documents as not a boundary.
+- **#4 autocompact breaker** — does NOT latch.
+  `MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3` (`autoCompact.ts:81`), reset on
+  success (`:409`, `query.ts:577`), and the counter lives in
+  `State.autoCompactTracking` initialized per `queryLoop` (`query.ts:313`) — one
+  user turn, not the session. Esc ends the turn, so the abort-counts-as-failure
+  wart is inert.
+- **#8 stream abort** — `OpenAIShimStream.controller` is an identity TAG
+  (`streamParser.ts:15-17,706`). Real cancellation is `sdkSignal`
+  (`claude/streaming.ts:1206,1258`) → every fetch in `messagesClient.ts`
+  (`:285,331,646,887`) → the parser's abort listener (`streamParser.ts:195`);
+  the generator's `return()` also reaches `finally { reader.releaseLock() }`
+  (`:645`). Esc does stop OpenAI-compat/Codex streams.
+- **#6 write-path `expandPath`** — `matchingRuleForInput` expands internally
+  (`filesystem.ts:981`) and `backfillObservableInput` already absolutized the
+  path before the decision (`toolExecution.ts:969-978`). Residual: symlink
+  *target* enumeration for `NotebookEditTool` alone (the one write tool with no
+  backfill) — and it wrongly ALLOWS, not denies.
+- **#11 sandbox-toggle dropdown** — the throw is real (`SandboxManager` is the
+  build stub, `build.ts:413,430`), but the same stub makes `isSupportedPlatform()`
+  null, so `isHidden` is true and `commandSuggestions.ts:36` filters the command
+  out BEFORE reading `description` at `:42`. Unreachable in the shipped bundle.
+- **#15 argvPreparse** — dead code: `runSshArgvStash` returns at `:127` on
+  `!feature('SSH_REMOTE')` and `SSH_REMOTE` is absent from `build.ts`
+  featureFlags. Also not a security control — `:143` re-applies the very flag
+  the user typed.
+- **Unranked, falsified (5 of 12):** `commandSemantics.ts:98` (no doom-loop
+  consumer exists here — only the advisory hint at `toolExecution.ts:589`, which
+  blocks nothing); `openaiErrorClassification.ts:323` (misclassification is real
+  but `retryable` is read only by two `logForDebugging` lines —
+  `withRetry.ts:951` retries on `error.status >= 500`, so 5xx HTML DOES retry;
+  only the user-facing hint and the debug log lie); `effort.ts:75` (opt-in escape
+  hatch working as named — moving it below the exclusion block defeats its
+  purpose); `settings.ts:445-505` (`writeFileSyncAndFlush` IS atomic —
+  tmp+flush+rename at `shared/fs/file.ts:355-443`; only the unlocked
+  read-modify-write is real, and it is last-writer-wins, not corruption);
+  `App.tsx:338` (`rawModeEnabledCount` is unclamped but every path is balanced
+  and the field is per-instance, so a remount clears it).
+
+**CORRECTED — `BashTool.tsx:1030` timeout: the claim is INVERTED.** PowerShell
+CLAMPS (`PowerShellTool.tsx:660`, `Math.min(…, getMaxTimeoutMs())`); **Bash does
+not**, and the schema advertises the cap in prose only (`BashTool.tsx:219`), so a
+model-supplied `timeout: 86400000` runs unclamped on the Bash path.
+
+**CONFIRMED real and reachable — re-ranked by what the fix buys:**
+
+1. **#2 nested heredoc** (`bashSecurity.ts:521-578`) — the only genuine security
+   fail-open in the set. Verbatim run: `echo $(cat <<'A' … $(cat <<'B' … ) … ) ;
+   rm -rf /tmp/x` reduces to `"echo "`. LIVE in the shipped bundle: the sole call
+   site `bashPermissions.ts:2007` is gated on `astSubcommands === null`, and both
+   `TREE_SITTER_BASH*` flags are absent from `build.ts`, so `parseCommandRaw`
+   always returns null and the legacy gate is the ONLY gate. Fix = the
+   nested-range rejection already written in `isSafeHeredoc:450-457`.
+2. **`toolValidationConfig.ts:101` `__proto__`** — worse than filed: the
+   TypeError propagates to `parseSettingsFileUncached` (`settings.ts:222,232`),
+   which swallows it and returns `{settings:null}`, so ONE `"__proto__(x)"` rule
+   silently voids the entire settings file, deny rules included, with no
+   diagnostic. `Object.hasOwn` fixes it. `constructor`/`toString` are blocked by
+   the uppercase gate at `:138`; `__proto__` is the live one.
+3. **`system.ts:75-98` attribution block** — spread into the system prompt at
+   `claude/streaming.ts:669` with NO provider gate, kept as block 0 by
+   `api.ts:401` and joined into the third-party wire body by
+   `openaiShim/messageConverter.ts:87-100`. Leaks
+   `x-anthropic-billing-header: cc_version=…; cc_entrypoint=…` to every 3P
+   provider, ON by default — directly contradicts AGENTS.md's "one lane only".
+   Careful: block 0 is the prompt-cache byte anchor.
+4. **#14 `argumentSubstitution.ts:123,140`** — confirmed by running the call
+   shape: `$&` re-inserted the matched `$ARGUMENTS` text and `` $` `` spliced in
+   the preceding content. Live on every slash command, skill and hook
+   (`loadSkillsDir.ts:349`, `loadPluginCommands.ts:332`, `hookHelpers.ts:40`)
+   with no test pinning it; the indexed forms at `:128,134` already use function
+   replacers — copy them.
+5. **#7 worktree baseRef** — `AgentTool.tsx:592` → `createAgentWorktree(slug)` →
+   `getOrCreateWorktree` passes NO baseRef and the setting is global-only
+   (`settings/types.ts:426-432`), so every `isolation:"worktree"` sub-agent
+   audits `origin/<default>`. Root cause of agent-safety.md §2.
+6. **#9 marketplace hostPattern** — unanchored `new RegExp` + `.test`
+   (`marketplaceHelpers.ts:288`); `doesSourceMatchPathPattern` (`:315`) has the
+   same flaw. It IS an admin allowlist (policy settings, documented at `:478`).
+7. **#5 context-window pin** — reproduced: with
+   `CLAUDIN_OPENAI_CONTEXT_WINDOWS='{"gpt-4o":999999}'` and discovery at 32000
+   the resolver returns 32000. Only bites providers that emit `context_length`
+   (OpenRouter-class); OpenAI/DeepSeek/Azure populate nothing.
+8. **#13 `useTextInput.ts:542-560`** — verified that one read really carries
+   `"abc\x7f"` as a SINGLE key with `key.backspace === false`, so the early
+   `return` at `:559` drops "abc".
+9. **`gitDiff.ts:305-316`** — threshold is THREE chars: a removed line whose
+   content starts with `--` (so the line is `---…`) is dropped; a single `-`/`+`
+   survives. Feeds `/diff`, `gitLog.ts:195,238`, `GitTool/parsers/diff.ts:254`.
+10. **`fetchCapabilities.ts:110,376,410`** — zero occurrences of `cursor` in the
+    file and no loop; page 2+ is lost against a paginating MCP server.
+11. **#12 persist-before-throw** — `BashTool.tsx:794` throws inside the `try`
+    while the persist block sits at `:804-829`, after the `finally`. Identical
+    structure in `PowerShellTool.tsx:558-574` — fix both files.
+12. **`BashTool.tsx:1030` unclamped timeout** — see CORRECTED above.
+13. **`FileEditTool/utils.ts:522`** — real (`oldStart` with new-file content,
+    measured off by exactly the insertion delta), but the surface is NOT the edit
+    snippet: the sole caller is `agent/attachments/changedFile.ts:80`, the
+    model-facing "file changed externally" attachment.
+14. **#3 `hydrateRemoteSession`** — real unrecoverable truncation, narrow reach:
+    `getSessionLogs` returns null on failure and `|| []` at `:1114` turns that
+    into an empty overwrite at `:1125`; needs headless `-p --resume <URL>` AND
+    `ENABLE_SESSION_PERSISTENCE` (nothing in the repo sets it). CCR-v2 twin
+    `:1149-1177` blocks null at `:1165` but still writes `[]`.
+15. **#10 memory prefix** — real (`/work/myapp` loads `/work/myapp-backend`'s
+    CLAUDE.md as nested memory), but bounded by `pathInAllowedWorkingPath`
+    (`memory.ts:149`), which is itself correct — the sibling must already be an
+    added working dir.
+16. **`frontmatterParser.ts:242`** — nested brace globs emit a stray `}` and
+    match nothing; no shipped `.claudin/rules/` file uses them, but the parser
+    also serves `loadSkillsDir.ts:164` and `ruleFrontmatter.ts:60`.
+17. **`modelCost.ts:198`** — one `/\bglm/i` row for every GLM tier (Flash billed
+    as paid, Air over-billed ~2.5× on input, flat `promptCacheReadTokens: 0.50`
+    ignores Z.ai's ~80-90% cache discount). NOT GLM-specific though —
+    deepseek/qwen/minimax/moonshot are equally single-row and the table declares
+    itself a 2026-04 snapshot (`:140-153`). Minor, display-only.
+
+The original ranked list follows, kept for its citations. Ranked:
+
+1. `src/tools/BashTool/bashPermissions.ts:664` — `ENV_VAR_PATTERN`'s subscript
+   class `\[[^\]]*\]` accepts `$(…)`, so `FOO[$(cmd)]=v harmless` strips as an
+   env prefix and only `harmless` reaches the deny check. Their `4a98a4a2`;
+   fix = narrow the class to `[^\]$\`{(]*`. **Security.**
+2. `src/tools/BashTool/bashSecurity.ts:572` — `stripSafeHeredocSubstitutions`
+   strips ranges in reverse without rejecting NESTED ranges (`isSafeHeredoc`
+   does reject them), so text after the outer heredoc is dropped before
+   downstream validators see it. Their `ebc9c70b`. **Security.**
+3. `src/sessions/persistence/project.ts:1124` — `hydrateRemoteSession` writes
+   `remoteLogs` unconditionally; `|| []` at `:1114` means an empty/failed remote
+   response TRUNCATES the local transcript. CCR v2 twin at `:1177`. Their
+   `d834904e`. **Data loss, unrecoverable.**
+4. `src/agent/compact/autoCompact.ts:335-339` — the autocompact circuit breaker
+   latches forever (no cooldown, no half-open) and a user Esc counts as a
+   failure; `src/agent/query.ts:716` turns it into a hard "start a new session".
+   Their `11d59ecd`.
+5. `src/providers/model/openaiContextWindows.ts:482-489` — discovery wins over
+   the user's explicit `CLAUDIN_OPENAI_CONTEXT_WINDOWS` pin (`:413`), because
+   both the env override and the hardcoded fallback table sit behind ONE
+   `lookupByModel` AFTER the discovery return. The comment at `:476-481` argues
+   discovery-over-*table*, which is right; discovery-over-*user pin* is the bug.
+   Their `3451187a`.
+6. `src/permissions/filesystem.ts:1242` — write-permission check matches rules
+   against the raw `tool.getPath(input)`; the read path already calls
+   `expandPath` (`:1066`). Misfires when session cwd ≠ process cwd (worktree
+   agents). Their `4f971a13`.
+7. `src/vcs/git/worktree.ts:322` — `worktree.baseRef` defaults to `'fresh'` =
+   `origin/<default>`, so `isolation:"worktree"` sub-agents audit a stale base.
+   This is the ROOT CAUSE of the hazard `.claudin/rules/agent-safety.md` §2
+   documents a manual workaround for. claudin already HAS the `'head'` knob —
+   the fix is to default agent-isolation worktrees to it. Their `3fb718f4`.
+8. `src/providers/shims/openaiShim/streamParser.ts:706,714` — the stream's
+   `AbortController` is never wired to the SSE reader (the generator is
+   pre-built), so `stream.controller.abort()` at
+   `src/providers/shims/claude/streaming.ts:2389` cancels nothing. Every
+   OpenAI-compat/Codex user who presses Esc. Their `bb61d843`.
+9. `src/plugins/marketplaceHelpers.ts:288` — `new RegExp(pattern.hostPattern)`
+   unanchored, so a managed-settings `strictKnownMarketplaces` entry written as
+   `github\.corp\.com` also matches `github.corp.com.evil.io`. Their `5f1ab9b8`.
+10. `src/agent/attachments/memory.ts:50` — `currentDir.startsWith(originalCwd)`
+    is a string-prefix test, so cwd `/work/myapp` loads `/work/myapp-backend`'s
+    CLAUDE.md/AGENTS.md as project memory. Their `0ff1d1cb`.
+11. `src/commands/sandbox-toggle/index.ts:12` derefs a possibly-null
+    `checkDependencies()`; `src/terminal/suggestions/commandSuggestions.ts:42`
+    reads every command's `description` unguarded → one throw kills the WHOLE
+    slash-command dropdown. Their `00ff6de4`.
+12. `src/tools/BashTool/BashTool.tsx:794` — the non-zero-exit `throw` precedes
+    the rolled-output persist, so a failing large command loses its output file
+    path. Their `0c9b8149`.
+13. `src/terminal/hooks/useTextInput.ts:542-559` — DEL-coalesced chunk applies
+    the deletions and `return`s, discarding the text in the same read (SSH/tmux).
+    Their `1bf8076d`.
+14. `src/commands/argumentSubstitution.ts:123,140` — slash-command args are the
+    *replacement operand* of `replace`, so `$$`/`$&`/`` $` ``/`$n` in user text
+    are interpreted. Their `62d15d40`.
+15. `src/platform/main/argvPreparse.ts:141` — single `indexOf`+`splice` strips
+    only the FIRST `--dangerously-skip-permissions` on the `ssh` path. Their
+    `787f2a93`.
+
+Also listed, unranked — 7 of these 12 confirmed, 5 falsified (verdicts above):
+`src/vcs/git/gitDiff.ts:305` (hunk lines starting
+`--`/`++` dropped), `src/tools/FileEditTool/utils.ts:522` (snippet hunks
+numbered from the OLD file), `src/providers/shims/openaiErrorClassification.ts:323`
+(5xx HTML overload = non-retryable), `src/platform/settings/toolValidationConfig.ts:101`
+(`__proto__`-named permission rule aborts validation, `Object.hasOwn` fixes it),
+`src/shared/frontmatterParser.ts:242` (nested brace globs in `paths:`),
+`src/tools/BashTool/BashTool.tsx:1030` (`timeout` unclamped vs PowerShell),
+`src/tools/BashTool/commandSemantics.ts:98` (linter exit 1 = error → retry loop),
+`src/terminal/ink/components/App.tsx:338` (`rawModeEnabledCount` no `<=0` clamp),
+`src/mcp/client/fetchCapabilities.ts:110,376,410` (MCP list pagination
+`nextCursor` never sent → page 2+ dropped), `src/providers/effort/effort.ts:75`
+(`CLAUDIN_ALWAYS_ENABLE_EFFORT` returns before the model-exclusion block),
+`src/agent/prompts/system.ts:75-98` (Anthropic attribution prompt block
+prepended unconditionally — the HTTP headers ARE correctly scoped at
+`src/providers/transport/identityHeaders.ts:31-34`, the prompt block is not),
+`src/platform/settings/settings.ts:445-505` (settings read-merge-write with no
+lock and no atomic rename).
+
+**Their v0.28→v0.30 features are near-worthless to us.** 38 commits: 9 sponsor
+providers, 3 docs, 3 release-bot. The only real one is `09eba26d` custom
+`modelPricing` per model (claudin's `src/providers/usage/modelCost.ts:154-217`
+prices every GLM at one flat regex rate). `c461a036` (knowledge graph +
+conversation arc into memdir) is a TRAP: it flips `CONVERSATION_ARC` +
+`MULTI_TURN_CONTEXT` ON for everyone, adds Orama as a runtime dep and a regex
+fact-scraper that writes conversation content to disk — and three days later
+`31ac8a6e` had to retract part of it because the arc block emitted
+`Duration: Ns ago` + running token totals into the system prompt, rewriting the
+cached prefix EVERY request. claudin's copy of the arc
+(`src/agent/context/conversationArc.ts`) is dead because the flag is absent from
+`scripts/build/build.ts` and folds false — that deadness is currently a feature.
+
+**Their 8 "extra" top-level dirs are a LAYOUT ARTIFACT, not a feature gap.** All
+8 exist in claudin under feature slices: `vim/` identical LOC, `bootstrap/state.ts`
+and `upstreamproxy/` near-identical, claudin's `coordinator/` is 29× bigger, and
+`bridge/` is 12.8k LOC of DEAD code there (`BRIDGE_MODE:false`) while claudin
+ships it flag-ON. Only real gaps: `/lsp` (827 LOC command; claudin has the LSP
+*tool* but no command) and buddy's tool-call reaction layer.
+
+### Corrections to the sections below (verified 2026-09-10)
+
+- **memdir byte-truncation "bug" is FIXED in claudin** — `src/memory/memdir/memdir.ts:67,88,92,97-99`
+  uses `Buffer.byteLength` + newline-boundary + continuation-byte walk, and
+  `memdir.entrypointBytes.test.ts` exists. Strike it.
+- **The "DANGLING REQUIRE" is NOT a bug** — `memoryShapeTelemetry.d.ts` exists,
+  the specifier is relative so `build.ts` stubs it, and the flag folds false.
+  It is the fork's sanctioned missing-module shape. Strike it.
+- **`isLocalProviderUrl` is NOT display-only** — 5 behavioral call sites
+  (`providerValidation.ts:127`, `providerConfig.ts:395,446`,
+  `messagesClient.ts:396,402,413`). Only the fast-path TRIAD is missing.
+- **doomLoop's refinements are in a different file** — `#1927`/`#2048` live in
+  their `src/query/toolFailureLoopGuard.ts`, not `doomLoop.ts` (104 lines).
+- **The credential-mutex gap is NOT a port** — openclaude locks the same two
+  lanes claudin does (Anthropic + MCP) and races on Codex/Copilot/xAI
+  identically. It is an ORIGINAL fix if we want it.
+- **`integrations:check` is not a CI gate** — the drift check is a unit test,
+  `integrations/artifactGenerator.test.ts:69`. The registry IS real though: 146
+  files / 35.9k LOC / 14 vendors / 41 non-test importers, and it mutates the
+  wire body at `openaiShim/requestPreparation.ts:186-318`.
+- `smartModelRouting.ts` dead-code claim CONFIRMED — `routeModel()` at `:120`,
+  sole importer is its own test.
 
 ## Structural divergence measured 2026-08-14 (their v0.28.0 vs claudin v1.1.12)
 
