@@ -52,18 +52,34 @@ export type SearchableSelectProps<T> = SelectProps<T> & {
    * list can be filtered.
    */
   showOverflowCount?: boolean
+  /**
+   * Fires whenever search mode opens or closes. Search mode swallows every
+   * letter, so a caller that binds its own plain-letter shortcuts next to the
+   * list (`d`, `o`, …) has to know when to stand down — otherwise typing a
+   * query fires them.
+   */
+  onSearchModeChange?: (isSearchMode: boolean) => void
 }
 
 export function SearchableSelect<T = string>({
   favorites,
   searchPlaceholder = 'Search…',
   showOverflowCount = false,
+  onSearchModeChange,
   options,
   onFocus,
   visibleOptionCount = 5,
   ...selectProps
 }: SearchableSelectProps<T>): ReactNode {
-  const [isSearchMode, setIsSearchMode] = useState(false)
+  const [isSearchMode, setIsSearchModeRaw] = useState(false)
+
+  const setIsSearchMode = useCallback(
+    (active: boolean) => {
+      setIsSearchModeRaw(active)
+      onSearchModeChange?.(active)
+    },
+    [onSearchModeChange],
+  )
   const [favoriteIds, setFavoriteIds] = useState<string[]>(
     () => favorites?.list() ?? [],
   )

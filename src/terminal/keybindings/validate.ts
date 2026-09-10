@@ -76,6 +76,7 @@ const VALID_CONTEXTS: KeybindingContextName[] = [
   'ModelPicker',
   'Select',
   'Plugin',
+  'Memory',
 ]
 
 /**

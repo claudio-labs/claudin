@@ -9,8 +9,18 @@ import { resolveTidyTeamRoot } from 'src/commands/memory/tidyTeam.js'
  * src/terminal/ink.js, which cannot load under `bun test`.
  */
 
-export function parseMemorySubcommand(args: string): 'tidy' | null {
-  return args.trim() === 'tidy' ? 'tidy' : null
+export type MemorySubcommand = 'tidy' | 'private' | 'team'
+
+const SUBCOMMANDS: readonly MemorySubcommand[] = ['tidy', 'private', 'team']
+
+/**
+ * `private` and `team` open the dialog straight into that directory's browser;
+ * `tidy` skips the dialog entirely. Anything else falls through to the normal
+ * dialog rather than erroring — a typo should not cost the user their `/memory`.
+ */
+export function parseMemorySubcommand(args: string): MemorySubcommand | null {
+  const trimmed = args.trim()
+  return SUBCOMMANDS.find(name => name === trimmed) ?? null
 }
 
 /**

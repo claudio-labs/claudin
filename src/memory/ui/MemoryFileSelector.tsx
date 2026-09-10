@@ -1,7 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
 import chalk from 'chalk';
-import { mkdir } from 'fs/promises';
 import { basename, join } from 'path';
 import * as React from 'react';
 import { use, useEffect, useState } from 'react';
@@ -17,7 +16,6 @@ import { useAppState } from 'src/terminal/state/AppState.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import type { TaskState } from 'src/agent/tasks/types.js';
 import { getAgentMemoryDir } from 'src/tools/AgentTool/agentMemory.js';
-import { openPath } from 'src/shared/browser.js';
 import { getMemoryFiles, type MemoryFileInfo } from 'src/memory/instructions/claudemd.js';
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js';
 import { getDisplayPath } from 'src/shared/fs/file.js';
@@ -27,6 +25,7 @@ import { updateSettingsForSource } from 'src/platform/settings/settings.js';
 import { Select } from 'src/terminal/custom-select/index.js';
 import { ListItem } from 'src/terminal/design-system/ListItem.js';
 import { getProjectMemoryPathForSelector } from 'src/memory/ui/memoryFileSelectorPaths.js';
+import { encodeBrowseValue, TIDY_VALUE } from 'src/memory/ui/memoryDirRows.js';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const teamMemPaths = feature('TEAMMEM') ? require('src/memory/memdir/teamMemPaths.js') as typeof import('src/memory/memdir/teamMemPaths.js') : null;
@@ -39,16 +38,21 @@ interface ExtendedMemoryFileInfo extends MemoryFileInfo {
 
 // Remember last selected path
 let lastSelectedPath: string | undefined;
-const OPEN_FOLDER_PREFIX = '__open_folder__';
 type Props = {
   onSelect: (path: string) => void;
   onCancel: () => void;
+  /** Memory counts for the two browse rows, scanned before the dialog opens. */
+  dirCounts?: {
+    private: number;
+    team: number;
+  };
 };
 export function MemoryFileSelector(t0: Props) {
   const $ = _c(58);
   const {
     onSelect,
-    onCancel
+    onCancel,
+    dirCounts
   } = t0;
   const existingMemoryFiles = use(getMemoryFiles());
   const originalCwd = getOriginalCwd();
@@ -117,38 +121,48 @@ export function MemoryFileSelector(t0: Props) {
   const folderOptions = [];
   const agentDefinitions = useAppState(_temp3);
   if (isAutoMemoryEnabled()) {
-    let t1;
-    if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-      t1 = {
-        label: "Open auto-memory folder",
-        value: `${OPEN_FOLDER_PREFIX}${getAutoMemPath()}`,
-        description: ""
-      };
-      $[0] = t1;
-    } else {
-      t1 = $[0];
-    }
-    folderOptions.push(t1);
+    // Deliberately NOT memoized: memoryOptions above is rebuilt on every
+    // render anyway, so caching these literals in $ slots buys nothing — and
+    // the counts are props, which a memo_cache_sentinel branch would freeze at
+    // their first value. $[0] and $[1] are left unused on purpose; changing
+    // _c(58) or reusing an index is what breaks this file (ink-tui.md §6).
+    const autoMemPath = getAutoMemPath();
+    folderOptions.push({
+      label: `Private memory${dirCounts ? ` · ${dirCounts.private}` : ""}`,
+      value: encodeBrowseValue({
+        dir: autoMemPath,
+        title: "Private memory",
+        isTeamDir: false
+      }),
+      description: `Saved in ${getDisplayPath(autoMemPath)}`
+    });
     if (feature("TEAMMEM") && teamMemPaths?.isTeamMemoryEnabled()) {
-      let t2;
-      if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
-        t2 = {
-          label: "Open team memory folder",
-          value: `${OPEN_FOLDER_PREFIX}${teamMemPaths?.getTeamMemPath()}`,
-          description: ""
-        };
-        $[1] = t2;
-      } else {
-        t2 = $[1];
-      }
-      folderOptions.push(t2);
+      const teamMemPath = teamMemPaths.getTeamMemPath();
+      folderOptions.push({
+        label: `Team memory${dirCounts ? ` · ${dirCounts.team}` : ""}`,
+        value: encodeBrowseValue({
+          dir: teamMemPath,
+          title: "Team memory",
+          isTeamDir: true
+        }),
+        description: `Shared with the team, synced from ${getDisplayPath(teamMemPath)}`
+      });
     }
+    folderOptions.push({
+      label: "Tidy memories",
+      value: TIDY_VALUE,
+      description: "Merge duplicate memories and rebuild the index"
+    });
     for (const agent of agentDefinitions.activeAgents) {
       if (agent.memory) {
         const agentDir = getAgentMemoryDir(agent.agentType, agent.memory);
         folderOptions.push({
-          label: `Open ${chalk.bold(agent.agentType)} agent memory`,
-          value: `${OPEN_FOLDER_PREFIX}${agentDir}`,
+          label: `${chalk.bold(agent.agentType)} agent memory`,
+          value: encodeBrowseValue({
+            dir: agentDir,
+            title: `${agent.agentType} agent memory`,
+            isTeamDir: false
+          }),
           description: `${agent.memory} scope`
         });
       }
@@ -368,14 +382,11 @@ export function MemoryFileSelector(t0: Props) {
   let t20;
   if ($[44] !== onSelect) {
     t20 = (value: string) => {
-      if (value.startsWith(OPEN_FOLDER_PREFIX)) {
-        const folderPath = value.slice(OPEN_FOLDER_PREFIX.length);
-        mkdir(folderPath, {
-          recursive: true
-        }).catch(_temp8).then(() => openPath(folderPath));
-        return;
+      // Tidy is an action, not a destination — remembering it would land the
+      // cursor on it the next time /memory opens.
+      if (value !== TIDY_VALUE) {
+        lastSelectedPath = value;
       }
-      lastSelectedPath = value;
       onSelect(value);
     };
     $[44] = onSelect;
@@ -415,7 +426,6 @@ export function MemoryFileSelector(t0: Props) {
   }
   return t23;
 }
-function _temp8() {}
 function _temp7(prev_0: number | null) {
   return prev_0 !== null && prev_0 > 0 ? prev_0 - 1 : prev_0;
 }

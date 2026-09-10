@@ -74,6 +74,7 @@ export type KeybindingContextName =
   | 'ModelPicker'
   | 'Select'
   | 'Plugin'
+  | 'Memory'
   // Default-only contexts, absent from schema.ts:
   | 'Scroll'
   | 'MessageActions'
@@ -194,6 +195,9 @@ export type KnownKeybindingAction =
   // Plugin dialog actions
   | 'plugin:toggle'
   | 'plugin:install'
+  // Memory-directory browser actions
+  | 'memory:openFolder'
+  | 'memory:delete'
   // Permission dialog actions
   | 'permission:toggleDebug'
   // Settings config panel actions

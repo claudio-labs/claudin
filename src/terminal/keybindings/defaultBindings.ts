@@ -365,4 +365,14 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       i: 'plugin:install',
     },
   },
+  // Memory-directory browser actions (/memory → Private/Team memory)
+  // Navigation (select:*) uses the Select context above. Both are plain
+  // letters, so the browser stands them down while the search box has focus.
+  {
+    context: 'Memory',
+    bindings: {
+      o: 'memory:openFolder',
+      d: 'memory:delete',
+    },
+  },
 ]

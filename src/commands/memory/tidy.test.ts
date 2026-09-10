@@ -68,6 +68,16 @@ describe('parseMemorySubcommand', () => {
     expect(parseMemorySubcommand('tidy')).toBe('tidy')
     expect(parseMemorySubcommand('  tidy  ')).toBe('tidy')
   })
+
+  test('private and team open their browser directly', () => {
+    expect(parseMemorySubcommand('private')).toBe('private')
+    expect(parseMemorySubcommand('  team  ')).toBe('team')
+  })
+
+  test('a near miss still falls through to the dialog', () => {
+    expect(parseMemorySubcommand('teams')).toBeNull()
+    expect(parseMemorySubcommand('private memory')).toBeNull()
+  })
 })
 
 describe('runMemoryTidy', () => {
