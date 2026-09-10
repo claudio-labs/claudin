@@ -190,6 +190,25 @@ describe('SearchableSelect search mode', () => {
     }
   })
 
+  test('onSearchModeChange reports both edges, so a caller can stand its letter keys down', async () => {
+    const modeChanges: boolean[] = []
+    const ui = await mount({
+      onSearchModeChange: active => modeChanges.push(active),
+    })
+    try {
+      await ui.press('/')
+      expect(modeChanges).toEqual([true])
+
+      // Enter leaves search mode with the query intact — the same exit the
+      // browser's `d`/`o` bindings wait for.
+      await ui.press('hai')
+      await ui.press(ENTER)
+      expect(modeChanges).toEqual([true, false])
+    } finally {
+      await ui.dispose()
+    }
+  })
+
   test('a digit types into the query instead of selecting that row', async () => {
     const ui = await mount()
     try {
