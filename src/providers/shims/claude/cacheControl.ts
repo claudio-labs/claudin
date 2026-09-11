@@ -84,6 +84,16 @@ export function should1hCacheTTL(querySource?: QuerySource): boolean {
     return false;
   }
 
+  // EXPERIMENT (2026-09-10): the main thread at the 5m tier, paired with the
+  // keep-alive pings in src/agent/cache/anthropic/keepAlive.ts. On its own
+  // this only re-creates the pre-1h behaviour — every >5min pause rewrites
+  // the prefix — so it is meant to be set together with
+  // CLAUDIN_CACHE_KEEPALIVE=1. The bench that decides it:
+  // scripts/bench/ab/cache-keepalive-probe.ts.
+  if (process.env.CLAUDIN_MAIN_CACHE_TTL === "5m") {
+    return false;
+  }
+
   // Always use 1h on first-party/vertex (matches Claude Code). The previous
   // >8k *system-prompt* gate measured the wrong thing: claudin's system prompt
   // is ~3.4k so it never qualified, leaving 1h effectively dead and the cached
