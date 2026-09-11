@@ -4,6 +4,7 @@ import { resolveProviderRequest } from 'src/providers/presets/providerConfig.js'
 import type { LocalCommandCall } from 'src/shared/types/command.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { hydrateGithubModelsTokenFromSecureStorage } from 'src/providers/oauth/githubModelsCredentials.js'
+import { resolveOAuthProviderAuth } from 'src/providers/shims/openaiShim/oauthProviderAuth.js'
 import { getMainLoopModel } from 'src/providers/model/model.js'
 
 const COPILOT_HEADERS: Record<string, string> = {
@@ -181,6 +182,10 @@ function formatResult(r: ProbeResult): string {
 export const call: LocalCommandCall = async (args) => {
   const parts = (args ?? '').trim().split(/\s+/).filter(Boolean)
   const noKey = parts.includes('--no-key')
+  // xAI/Grok routes its prompt cache on the `x-grok-conv-id` HTTP header, not on
+  // a body field. Opt-in so the header can be A/B'd against a run without it;
+  // pair with --no-key to isolate header-only from header + body key.
+  const convId = parts.includes('--conv-id')
   const modelOverride = parts.find((p) => !p.startsWith('--')) || undefined
   const modelStr = modelOverride ?? getMainLoopModel()
   const request = resolveProviderRequest({ model: modelStr })
@@ -190,9 +195,15 @@ export const call: LocalCommandCall = async (args) => {
   // Resolve API key from the active profile, hydrating Copilot-secure storage
   // when needed (matches the openai shim's startup path).
   if (isGithub) hydrateGithubModelsTokenFromSecureStorage()
+  // OAuth-web providers on the openai_compat transport (xAI / Grok, Kimi Code)
+  // keep their rotated Bearer token in secure storage, not on the profile — the
+  // same helper the shim uses at messagesClient.ts, so the probe authenticates
+  // exactly like a real request does.
+  const oauthAuth = await resolveOAuthProviderAuth(profile)
   const apiKey =
     profile?.apiKey ??
     profile?.extras?.githubToken ??
+    oauthAuth.accessToken ??
     ''
 
   if (!apiKey) {
@@ -218,6 +229,15 @@ export const call: LocalCommandCall = async (args) => {
   }
   if (isGithub) {
     Object.assign(headers, COPILOT_HEADERS)
+  }
+  if (oauthAuth.userAgent) {
+    headers['User-Agent'] = oauthAuth.userAgent
+  }
+  if (oauthAuth.deviceHeaders) {
+    Object.assign(headers, oauthAuth.deviceHeaders)
+  }
+  if (convId) {
+    headers['x-grok-conv-id'] = cacheKey
   }
 
   let body: Record<string, unknown>
@@ -262,6 +282,7 @@ export const call: LocalCommandCall = async (args) => {
     `  transport: ${request.transport}`,
     `  endpoint: ${url}`,
     `  prompt_cache_key: ${noKey ? 'NOT SENT' : cacheKey}`,
+    `  x-grok-conv-id: ${convId ? cacheKey : 'NOT SENT'}`,
     `  store: ${noKey ? 'NOT SENT' : 'false'}`,
     `  system prompt: ~${Math.round(SYSTEM_PROMPT.length / 4)} tokens`,
     `  delay between calls: ${DELAY_MS}ms`,

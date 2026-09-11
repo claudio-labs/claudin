@@ -1,7 +1,9 @@
 # Native Prompt Caching — xAI/Grok vs Codex vs OpenAI
 
-**Status:** Research only (2026-08-20). Nothing shipped from this document.
-One actionable gap identified (§4) and one unmeasured hypothesis (§6).
+**Status:** Partly shipped (2026-09-11). The §4 gap is closed on the routing
+axis — Claudin now sends `x-grok-conv-id` on the xAI lane — but the *effect*
+is still **unmeasured**: no xAI account was available, so the change rests on
+xAI's documentation, not on a cache hit anyone has seen. §6 is what remains.
 **Scope:** `src/providers/shims/openaiShim/messagesClient.ts`,
 `src/providers/shims/codexShim.ts`, `src/agent/cache/cacheProfile.ts`,
 `src/providers/cache/cacheMetrics.ts`
@@ -42,9 +44,14 @@ OpenAI:
 - **The routing key is a header, not a body field.** On Chat Completions
   the key is `x-grok-conv-id`; on their Responses endpoint it is
   `prompt_cache_key` in the body; on gRPC it is conv-id metadata. xAI's own
-  troubleshooting page names a constantly-zero `cached_tokens` as the
-  symptom of not setting it, and their wording ("Always set…") is stronger
-  than OpenAI's, where the key is only a routing hint.
+  wording is "Always set…", but a re-read on 2026-09-11 shows the header is
+  **optional, not required**: caching is automatic on prefix match and the
+  header only makes the routing *sticky*, since "cache entries are stored
+  per-server". The "constantly-zero `cached_tokens`" line in the 2026-08-20
+  notes overstated it — the docs' actual wording is FAQ guidance to "verify
+  your conversation ID and message ordering" when hits stay at zero. The
+  practical conclusion is unchanged (send it), but the expected effect is a
+  hit-*rate* improvement, not caching on/off.
 - **No TTL, no retention parameter, and no guarantee.** xAI states entries
   can be evicted at any time under memory pressure or server restart, and
   that requests may land on a different server. Treat the lifetime as short
@@ -94,7 +101,7 @@ send it either.
 |---|---|---|
 | Transport | `openai_compat` (Chat Completions shim). `isXaiOAuthBaseUrl` only swaps the bearer for the OAuth token — the transport stays `openai_compat` (`src/providers/presets/providerConfig.ts:17`) | `codex_responses` (`src/providers/shims/codexShim.ts`) |
 | `prompt_cache_key` | **Not sent** — gated on `isOfficialOpenAIUrl` (host must be `api.openai.com`), `src/providers/shims/openaiShim/messagesClient.ts:99,375` (Copilot `/responses` fallback at `:843`) | Sent, `getSessionId()`, gated on `isCodexBaseUrl` — `src/providers/shims/codexShim.ts:516` |
-| `x-grok-conv-id` | **Not sent — zero occurrences in `src/`** | n/a |
+| `x-grok-conv-id` | **Sent since 2026-09-11** — `getSessionId()`, gated on the exact host `api.x.ai` via `isXaiOAuthBaseUrl`, in the shared header object of `_doOpenAIRequest`. Killswitch `CLAUDIN_DISABLE_XAI_CONV_ID=1`. Deliberately NOT mirrored into the body: `prompt_cache_key` is documented for xAI's Responses endpoint only, and Chat Completions' tolerance of unknown body fields is undocumented | n/a |
 | `prompt_cache_retention` | Not sent (same gate) | Deliberately never sent; the backend 400s with `Unsupported parameter` (test at `src/providers/shims/codexShim.test.ts:1138`) |
 | Cache profile | `AGGRESSIVE_PROFILE` — the "caching behavior unknown" default for generic OpenAI-compatible backends (`src/agent/cache/cacheProfile.ts:151`) | `RETAIN_PROFILE`, explicit branch (`cacheProfile.ts:162`) |
 | Usage parsed back | `prompt_tokens_details.cached_tokens` via `convertChunkUsage` (`src/providers/shims/openaiShim/streamParser.ts:54`); classified `'openai'` by the `mapProviderToCacheAware` fallthrough (`src/providers/cache/cacheMetrics.ts:279`), so an empty field reads as honest zeros, not N/A | `input_tokens_details.cached_tokens` via `makeUsage` (`codexShim.ts:87`); provider tag `'codex'` (`cacheMetrics.ts:263`) |
@@ -108,17 +115,16 @@ Codex and Copilot and has no xAI entry.
 
 ## 5. The gap
 
-Grok is **priced for cache reads** but sits on the aggressive clip profile
-and **sends no cache routing hint of any kind**. Since xAI documents
-`x-grok-conv-id` as the mechanism for landing on the same cache-holding
-server, and names a constantly-zero `cached_tokens` as the symptom of
-omitting it, the current gate (`host === api.openai.com`) excludes Grok by
-construction. Nothing in the repo has ever measured whether Grok gets a
-cache hit.
+Grok is **priced for cache reads** but sat on the aggressive clip profile and
+sent no cache routing hint of any kind: the `prompt_cache_key` gate
+(`host === api.openai.com`) excluded it by construction. Nothing in the repo
+has ever measured whether Grok gets a cache hit — that is still true.
 
-Two independent problems, and the second may dominate:
+Two independent problems, and **only the first is addressed**; the second may
+dominate:
 
-1. **No conv-id header** → requests are not sticky-routed.
+1. ~~**No conv-id header** → requests are not sticky-routed.~~ Closed on the
+   code axis 2026-09-11 (see §4), unverified on the effect axis.
 2. **Aggressive clipping + message-granular invalidation.** Even with the
    header, `pruneOldToolResults` rewrites old `tool_result` messages every
    tool iteration. On OpenAI that costs the suffix after the rewritten
@@ -129,19 +135,41 @@ Two independent problems, and the second may dominate:
 
 ## 6. Open questions
 
-- Measure first: run `src/commands/cache-probe/` against a Grok model, with
-  and without an `x-grok-conv-id` header, and read `cached_tokens` back.
-  Until that runs, "Grok never hits cache" is a hypothesis, not a finding.
+- **Measure. Nothing here has been measured.** `/cache-probe` carries the
+  instrumentation as of 2026-09-11 — a `--conv-id` flag that sends the header,
+  and OAuth-session support so an xAI web login authenticates the same way a
+  real request does. Three runs answer it, on a profile pointed at a Grok
+  model, reading `prompt_tokens_details.cached_tokens` off call 2:
+
+  | invocation | what it isolates |
+  |---|---|
+  | `/cache-probe --no-key` | baseline: implicit caching with no hint at all |
+  | `/cache-probe --no-key --conv-id` | header only — the shipped configuration |
+  | `/cache-probe --conv-id` | header + body `prompt_cache_key`, which also answers whether xAI's Chat Completions rejects unknown body fields |
+
+  Until that runs, both "Grok never hits cache" and "the header fixed it" are
+  hypotheses.
 - If the header helps, decide whether Grok moves off `AGGRESSIVE_PROFILE`.
   The answer depends on (2) above, not on the header.
+- Sub-agents share one conv id. `getSessionId()` is process-global, so every
+  parallel sub-agent pins to the same xAI server carrying a different large
+  prefix. That is the documented intent of the header (one server per
+  conversation), but concurrent distinct prefixes may evict one another.
+  Unmeasurable without access; noted rather than designed around.
 - Where does the xAI minimum prefix length sit? Undocumented; measurable
   with the same probe by bisecting prompt size.
-- **Correction candidate for the 2026-06-10 notes:** those say OpenAI has
-  "no write surcharge". Current OpenAI docs bill cache writes at 1.25×
-  input on GPT-5.6+, and newest models replace `prompt_cache_retention`
-  with `prompt_cache_options.ttl` fixed at `"30m"`. Verify against
-  platform docs before acting — our `prompt_cache_retention: '24h'` on the
-  official-OpenAI lane may now be a no-op or an error on the newest models.
+- **OpenAI lane follow-up (confirmed 2026-09-11, deliberately not acted on).**
+  The 2026-06-10 notes say OpenAI has "no write surcharge"; current docs bill
+  cache writes at **1.25× input on GPT-5.6+**. And OpenAI's API reference marks
+  `prompt_cache_retention` **deprecated** in favour of
+  `prompt_cache_options.ttl` (GPT-5.6+, whose only accepted value `30m` is also
+  the default), while their prompt-caching guide still frames the two as
+  model-specific rather than deprecated. Whether sending
+  `prompt_cache_retention: '24h'` to a 5.6+ model **errors or is silently
+  ignored is not documented** — so our official-OpenAI lane
+  (`messagesClient.ts:377,845`) may be carrying a dead parameter or a latent
+  400. This was left out of the xAI change on purpose: it touches a different
+  provider and needs its own probe against `api.openai.com`.
 - Unverified secondary reporting claims `prompt_cache_retention` now
   *defaults* to `24h` for non-ZDR orgs (May 2026). Not confirmed in
   OpenAI's own docs. Do not act on it.
