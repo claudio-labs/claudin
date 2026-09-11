@@ -150,7 +150,62 @@ describe('renderModuleTree', () => {
     const order = renderModuleTree(tracked)
       .map(line => /(\w+)\/ \(/.exec(line)?.[1])
       .filter((name): name is string => name !== undefined)
-    expect(order).toEqual(['docs', 'guide', 'src', 'agent', 'providers'])
+    expect(order).toEqual(['docs', 'guide', 'src', 'agent', 'ui', 'providers'])
+  })
+
+  test('descends past the immediate children when the lines are there', () => {
+    // `src/agent/ui/` is a grandchild of the root, and the connectors in front
+    // of it encode its whole ancestry: `src/` was the last top so its column is
+    // blank, `agent/` was not so its bar continues.
+    expect(renderModuleTree(tracked).join('\n')).toContain(
+      '    │   └── ui/ (8)',
+    )
+  })
+
+  test('stops descending when the next level would blow the budget', () => {
+    // Two levels always render; a third only when the whole tree still fits.
+    // 20 grandchildren is fine, 120 is a file nobody reads that every matching
+    // edit re-reads anyway.
+    const spec: Record<string, number> = {}
+    for (let top = 0; top < 10; top++) {
+      for (let mid = 0; mid < 6; mid++) {
+        for (let leaf = 0; leaf < 4; leaf++) {
+          spec[`top${top}/mid${mid}/leaf${leaf}`] = 3
+        }
+      }
+    }
+    const tree = renderModuleTree(repo(spec)).join('\n')
+    expect(tree).toContain('mid0/ (12)')
+    expect(tree).not.toContain('leaf0/')
+  })
+
+  test('never draws deeper than four levels, however deep the repo nests', () => {
+    const deep = repo({ 'a/b/c/d/e': 9 })
+    const tree = renderModuleTree(deep).join('\n')
+    expect(tree).toContain('d/ (9)')
+    expect(tree).not.toContain('e/')
+  })
+
+  test('lines the annotations up on one column when a deep name overruns it', () => {
+    // The fixed column is a floor, not a cap: a depth-4 entry with a long name
+    // pushes every `←` right rather than leaving its own annotation jammed
+    // against the count.
+    const long = repo({
+      'src/providers/transport/reallyLongDirectoryName': 5,
+      'src/agent': 4,
+    })
+    const columns = renderModuleTree(long).map(line => line.indexOf('←'))
+    expect(new Set(columns).size).toBe(1)
+    expect(columns[0]).toBeGreaterThan(34)
+  })
+
+  test('a deep entry resolves back to its full path for the parser', () => {
+    // Annotations and healing are both keyed by the path the claim parser
+    // reconstructs from the indentation, so a level the renderer can draw but
+    // the parser cannot walk silently loses every gloss under it.
+    const map = generateRuleMap(tracked)
+    const paths = extractRuleClaims(map).dirCounts.map(claim => claim.path)
+    expect(paths).toContain('src/agent/ui/')
   })
 
   test('carries annotations across a regeneration', () => {
@@ -204,6 +259,26 @@ describe('generateRuleMap', () => {
 })
 
 describe('syncRuleMap', () => {
+  test('keeps a level it already drew when the repo outgrows the budget', () => {
+    // Dropping a level takes every annotation on it along, which is worse than
+    // a map that is one level wider than the budget would have chosen today.
+    const content = generateRuleMap(repo({ 'src/a': 3, 'src/a/x': 3 }))
+      .split('\n')
+      .map(line =>
+        line.includes('x/ (3)') ? line.replace('TODO', 'the widget') : line,
+      )
+      .join('\n')
+
+    const grown: Record<string, number> = { 'src/a': 3, 'src/a/x': 3 }
+    for (let top = 0; top < 20; top++) {
+      for (let mid = 0; mid < 5; mid++) grown[`src/b${top}/m${mid}`] = 3
+    }
+
+    const next = syncRuleMap({ content, trackedFiles: repo(grown) })
+    expect(next).toContain('x/ (3)')
+    expect(next).toContain('← the widget')
+  })
+
   test('writes a map when the project has none', () => {
     const written = syncRuleMap({ content: '', trackedFiles: repo({ src: 40 }) })
     expect(written).toContain(MAP_MARKER)
