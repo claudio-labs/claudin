@@ -77,6 +77,22 @@ describe('the lane itself', () => {
     expect(delta).not.toContain('+const c = 2')
   })
 
+  test('the same command in another checkout (cwd) never elides against this one', () => {
+    expect(firstDelivery()).toBe(RUN_1)
+    // Identical text from a different repo: a delta here would tell the
+    // model that repo B's files are "unchanged" relative to repo A's.
+    const other = applyGitDelta(DIFF, RUN_2, {
+      full: false,
+      toolUseId: 'toolu_2',
+      cwd: '/somewhere/else',
+    })
+    expect(other).toBe(RUN_2)
+    // And the session-cwd baseline is still intact for its own re-run.
+    const again = applyGitDelta(DIFF, RUN_2, { full: false, toolUseId: 'toolu_3' })
+    expect(again).not.toBe(RUN_2)
+    expect(again).not.toContain('+const b = 2')
+  })
+
   test('declines when nothing is identical', () => {
     firstDelivery()
     const allNew = [

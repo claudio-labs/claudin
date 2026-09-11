@@ -1,5 +1,6 @@
 import { afterAll, describe, expect, test } from 'bun:test'
-import { mkdtempSync, rmSync } from 'fs'
+import { execFileSync } from 'child_process'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { runWithCwdOverride } from 'src/shared/fs/cwd.js'
@@ -80,6 +81,12 @@ describe('isReadOnly is the AND over the list', () => {
     expect(GitTool.isReadOnly({ commands: ['git status', 'git diff'] })).toBe(true)
   })
 
+  test('a cwd makes even a read batch non-read-only, like `git -C`', () => {
+    expect(
+      GitTool.isReadOnly({ commands: ['git status', 'git diff'], cwd: '/elsewhere' }),
+    ).toBe(false)
+  })
+
   test('one write makes the whole batch a write', () => {
     // The fail-closed direction: plan mode must refuse a mixed batch rather
     // than run the reads and stop halfway.
@@ -124,6 +131,56 @@ describe('validateInput', () => {
       commands: ['git commit -m "fix: thing"'],
     })
     expect(result?.result).toBe(true)
+  })
+
+  test('cwd must be an absolute path to an existing directory', async () => {
+    const relative = await GitTool.validateInput?.({ commands: ['git status'], cwd: 'sibling' })
+    expect(relative?.result).toBe(false)
+    const missing = await GitTool.validateInput?.({
+      commands: ['git status'],
+      cwd: join(scratch(), 'does-not-exist'),
+    })
+    expect(missing?.result).toBe(false)
+    const ok = await GitTool.validateInput?.({ commands: ['git status'], cwd: scratch() })
+    expect(ok?.result).toBe(true)
+  })
+})
+
+describe('cwd runs the batch in another checkout', () => {
+  test('the commands see the other repo', async () => {
+    // A real second repository with one commit, so `git log` has a subject
+    // the session cwd (a non-repo scratch dir) could never produce.
+    const other = scratch()
+    execFileSync('git', ['init', '-q'], { cwd: other })
+    writeFileSync(join(other, 'f.txt'), 'x\n')
+    execFileSync('git', ['add', 'f.txt'], { cwd: other })
+    execFileSync(
+      'git',
+      ['-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-m', 'other-repo-subject-7f3a'],
+      { cwd: other },
+    )
+    const home = scratch()
+    const result = await runWithCwdOverride(home, () =>
+      runGitBatch({
+        commands: ['git log --oneline -1'],
+        cwd: other,
+        abortSignal: new AbortController().signal,
+        timeoutMs: 30_000,
+      }),
+    )
+    expect(result.outcomes[0]?.exitCode).toBe(0)
+    expect(result.outcomes[0]?.output).toContain('other-repo-subject-7f3a')
+    // The `cd` is visible in what ran.
+    expect(result.outcomes[0]?.effectiveCommand).toContain(`cd ${other}`)
+  }, 60_000)
+
+  test('the cd never moves the session cwd (source-asserted)', () => {
+    // `exec()` moves the session cwd after any foreground command unless
+    // `preventCwdChanges` is set (Shell.ts). A runtime assertion here is
+    // tautological — `runWithCwdOverride` answers getCwd() from the override
+    // whatever exec did — so the flag is pinned where it is passed.
+    const src = readFileSync(new URL('./run.ts', import.meta.url), 'utf8')
+    expect(src).toContain('preventCwdChanges: opts.cwd !== undefined')
   })
 })
 

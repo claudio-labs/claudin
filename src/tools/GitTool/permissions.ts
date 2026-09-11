@@ -1,6 +1,7 @@
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { PermissionResult } from 'src/shared/types/permissions.js'
 import { bashToolHasPermission } from 'src/tools/BashTool/bashPermissions.js'
+import { quote } from 'src/platform/bash/shellQuote.js'
 
 /**
  * Permission delegation.
@@ -17,11 +18,18 @@ import { bashToolHasPermission } from 'src/tools/BashTool/bashPermissions.js'
  * the call outright rather than letting the earlier commands land first.
  */
 export async function checkGitBatchPermission(
-  input: { commands: string[] },
+  input: { commands: string[]; cwd?: string },
   context: ToolUseContext,
 ): Promise<PermissionResult> {
+  // With a `cwd` the command that runs is `cd <cwd> && git …`, so that is
+  // the command Bash's pipeline judges — its cd+git guard and path rules
+  // see the same shape a model typing it into Bash would have produced.
+  const shaped = (command: string): string =>
+    input.cwd === undefined ? command : `cd ${quote([input.cwd])} && ${command}`
   const decisions = await Promise.all(
-    input.commands.map(command => bashToolHasPermission({ command }, context)),
+    input.commands.map(command =>
+      bashToolHasPermission({ command: shaped(command) }, context),
+    ),
   )
 
   // Deny wins over ask wherever it appears in the list, not just first.

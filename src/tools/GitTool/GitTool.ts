@@ -1,7 +1,9 @@
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { z } from 'zod/v4'
+import { isAbsolute } from 'path'
 import { buildTool, type ToolCallProgress, type ToolDef } from 'src/tools/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
+import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { isReadOnlyGitBatch, parseGitCommand } from 'src/tools/GitTool/grammar.js'
 import { checkGitBatchPermission } from 'src/tools/GitTool/permissions.js'
 import { DESCRIPTION, GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js'
@@ -97,6 +99,12 @@ const inputSchema = lazySchema(() =>
       .describe(
         'Return the whole body: no summary, no rewrite, and no eliding of what an identical earlier call already delivered. Use it to get every hunk of a large diff.',
       ),
+    cwd: z
+      .string()
+      .optional()
+      .describe(
+        'Absolute path of another checkout to run the commands in (a sibling repo, a worktree). Defaults to the working directory; the commands still start with git or gh.',
+      ),
   }),
 )
 type InputSchema = ReturnType<typeof inputSchema>
@@ -147,7 +155,11 @@ export const GitTool = buildTool({
     return true
   },
   isReadOnly(input) {
-    return isReadOnlyGitBatch(input.commands)
+    // A `cwd` re-points git somewhere the session did not vet — the same
+    // reason `git -C` is never read-only in the grammar — so it asks like a
+    // write would. In plan mode that keeps another checkout's `git log`
+    // behind the gate; in bypass/auto it runs.
+    return input.cwd === undefined && isReadOnlyGitBatch(input.commands)
   },
   isConcurrencySafe() {
     // git serialises on .git/index anyway, and a batch may mutate.
@@ -170,6 +182,19 @@ export const GitTool = buildTool({
         return { result: false, message: parsed.reason, errorCode: 1 }
       }
     }
+    if (input.cwd !== undefined) {
+      if (!isAbsolute(input.cwd)) {
+        return { result: false, message: `cwd must be an absolute path: ${input.cwd}`, errorCode: 2 }
+      }
+      try {
+        const stats = await getFsImplementation().stat(input.cwd)
+        if (!stats.isDirectory()) {
+          return { result: false, message: `cwd is not a directory: ${input.cwd}`, errorCode: 2 }
+        }
+      } catch {
+        return { result: false, message: `cwd does not exist: ${input.cwd}`, errorCode: 2 }
+      }
+    }
     return { result: true }
   },
   async checkPermissions(input, context) {
@@ -188,6 +213,7 @@ export const GitTool = buildTool({
   ) {
     const result = await runGitBatch({
       commands: input.commands,
+      cwd: input.cwd,
       abortSignal: context.abortController.signal,
       // Left undefined on purpose: the default depends on the command, because
       // a watch needs minutes and everything else does not.
