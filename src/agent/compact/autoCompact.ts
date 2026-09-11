@@ -80,34 +80,48 @@ export const MANUAL_COMPACT_BUFFER_TOKENS = 3_000
 // in a single session, wasting ~250K API calls/day globally.
 const MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3
 
-// Heap-pressure backup trigger. Token-based autocompact is keyed on the model's
-// context window (e.g. ~967k for Opus 1M), but with React/Ink object overhead
-// + tool result strings + cached file contents, V8 heap can hit its limit
-// LONG before tokens reach that threshold — long Opus/Gemini sessions OOM at
-// 4 GB while still well under the model's context cap. Fire compact when heap
-// usage crosses HEAP_PRESSURE_RATIO of the V8 heap limit so the summary path
-// runs while there is still headroom for it.
-const DEFAULT_HEAP_PRESSURE_RATIO = 0.7
+// Heap-pressure trigger — OPT-IN, and off unless CLAUDIN_HEAP_PRESSURE_RATIO
+// names a ratio. It used to fire at 0.7 by default, which started a compaction
+// on the room the conversation happened to occupy in V8 rather than on the
+// context window: React/Ink object overhead, tool-result strings and cached
+// file contents push the heap long before tokens approach the cap. Clipping is
+// what answers that now — pruneOldToolResults + applyStableStubs stub old tool
+// results in place every turn WITHOUT dropping a message
+// (docs/tech/cache/context-relief-policy.md) — leaving compaction as the last
+// resort for the window alone. The trade is deliberate: a session that truly
+// exhausts the heap before the window now OOMs where it used to summarize.
+// Set the env var to put the old backstop back.
 // Don't trigger heap-based compaction on a fresh session: bundle parsing alone
 // can occupy hundreds of MB right after startup, before any conversation has
 // accumulated. The token-based path will handle short sessions correctly.
 const MIN_MESSAGES_FOR_HEAP_TRIGGER = 20
 
-function getHeapPressureRatio(): number {
+/** The configured ratio, or undefined when the trigger is off (the default). */
+function getHeapPressureRatio(): number | undefined {
   const override = process.env.CLAUDIN_HEAP_PRESSURE_RATIO
   if (override) {
     const parsed = parseFloat(override)
     if (!isNaN(parsed) && parsed > 0 && parsed < 1) return parsed
   }
-  return DEFAULT_HEAP_PRESSURE_RATIO
+  return undefined
 }
 
-function isAboveHeapPressureThreshold(messageCount: number): boolean {
+/**
+ * `readHeap` is injected so the test can state a heap that WOULD have tripped
+ * the old 0.7 default. Without it the assertion "off by default" only holds
+ * because the test process happens to be far below 70%, and it would pass with
+ * the default put back.
+ */
+export function isAboveHeapPressureThreshold(
+  messageCount: number,
+  readHeap: () => { used_heap_size: number; heap_size_limit: number } = getHeapStatistics,
+): boolean {
+  const ratio = getHeapPressureRatio()
+  if (ratio === undefined) return false
   if (messageCount < MIN_MESSAGES_FOR_HEAP_TRIGGER) return false
-  const stats = getHeapStatistics()
+  const stats = readHeap()
   if (!stats.heap_size_limit) return false
-  const ratio = stats.used_heap_size / stats.heap_size_limit
-  return ratio > getHeapPressureRatio()
+  return stats.used_heap_size / stats.heap_size_limit > ratio
 }
 
 export function getAutoCompactThreshold(model: string): number {
@@ -298,8 +312,10 @@ export async function shouldAutoCompact(
 
   if (isAboveAutoCompactThreshold) return true
 
-  // Backup: trigger compaction on V8 heap pressure even when tokens are
-  // under the model's context cap. See DEFAULT_HEAP_PRESSURE_RATIO note.
+  // Opt-in backstop: heap pressure while tokens are still under the model's
+  // context cap. Off unless CLAUDIN_HEAP_PRESSURE_RATIO is set — see the note
+  // on it above. Unset, this is always false and the context window is the
+  // only thing that can start a compaction.
   if (isAboveHeapPressureThreshold(messages.length)) {
     const stats = getHeapStatistics()
     const usedMB = Math.round(stats.used_heap_size / 1024 / 1024)

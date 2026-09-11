@@ -4,10 +4,79 @@ import {
   getAutoCompactThreshold,
   calculateTokenWarningState,
   isAutoCompactEnabled,
+  isAboveHeapPressureThreshold,
+  shouldAutoCompact,
   WARNING_THRESHOLD_BUFFER_TOKENS,
   ERROR_THRESHOLD_BUFFER_TOKENS,
 } from 'src/agent/compact/autoCompact.ts'
 import { getContextWindowForModel } from 'src/agent/context/context.ts'
+import { createUserMessage } from 'src/agent/messages/messages.ts'
+
+// Compaction starts on the model's context window and on nothing else. The
+// heap-pressure backstop used to fire at 0.7 of the V8 limit by default, which
+// made a long conversation compact for occupying memory rather than for
+// filling the window — the clipping policy (pruneOldToolResults +
+// applyStableStubs) is what answers memory now, and it drops no messages, so
+// the timeline survives where compaction would have cut it.
+describe('heap pressure is opt-in', () => {
+  const ENV = 'CLAUDIN_HEAP_PRESSURE_RATIO'
+  const saved = process.env[ENV]
+  const restore = () => {
+    if (saved === undefined) delete process.env[ENV]
+    else process.env[ENV] = saved
+  }
+
+  // 25 clears MIN_MESSAGES_FOR_HEAP_TRIGGER (20), so only the ratio decides.
+  const LONG_ENOUGH = 25
+  // 90% of the limit — comfortably past the 0.7 this used to default to, so
+  // "off by default" is a claim about the code and not about how much memory
+  // the test runner happens to be using.
+  const HEAP_AT_90 = () => ({ used_heap_size: 900, heap_size_limit: 1000 })
+
+  test('never fires with the env unset, even at 90% heap', () => {
+    delete process.env[ENV]
+    try {
+      expect(isAboveHeapPressureThreshold(LONG_ENOUGH, HEAP_AT_90)).toBe(false)
+      expect(isAboveHeapPressureThreshold(100_000, HEAP_AT_90)).toBe(false)
+    } finally {
+      restore()
+    }
+  })
+
+  test('setting the ratio opts the backstop back in, and it still compares', () => {
+    process.env[ENV] = '0.8'
+    try {
+      expect(isAboveHeapPressureThreshold(LONG_ENOUGH, HEAP_AT_90)).toBe(true)
+      // The fresh-session guard still holds above it.
+      expect(isAboveHeapPressureThreshold(1, HEAP_AT_90)).toBe(false)
+      // …and a ratio above the reading does not fire.
+      process.env[ENV] = '0.95'
+      expect(isAboveHeapPressureThreshold(LONG_ENOUGH, HEAP_AT_90)).toBe(false)
+    } finally {
+      restore()
+    }
+  })
+
+  test('an out-of-range ratio leaves it off rather than falling back to 0.7', () => {
+    for (const bad of ['0', '1', '1.5', '-0.2', 'nonsense']) {
+      process.env[ENV] = bad
+      expect(isAboveHeapPressureThreshold(LONG_ENOUGH, HEAP_AT_90)).toBe(false)
+    }
+    restore()
+  })
+
+  test('a short conversation under the window does not compact', async () => {
+    delete process.env[ENV]
+    try {
+      const messages = Array.from({ length: LONG_ENOUGH }, (_, i) =>
+        createUserMessage({ content: `message ${i}` }),
+      )
+      expect(await shouldAutoCompact(messages, 'claude-sonnet-4')).toBe(false)
+    } finally {
+      restore()
+    }
+  })
+})
 
 describe('getEffectiveContextWindowSize', () => {
   test('returns positive value for known models with large context windows', () => {
