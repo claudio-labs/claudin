@@ -48,7 +48,7 @@ export function TaskListV2({
   if (previousCompletedIdsRef.current === null) {
     previousCompletedIdsRef.current = new Set(tasks.filter(t => t.status === 'completed').map(t_0 => t_0.id));
   }
-  const maxDisplay = rows <= 10 ? 0 : Math.min(10, Math.max(3, rows - 14));
+  const maxDisplay = rows <= 10 ? 0 : Math.min(7, Math.max(3, rows - 14));
 
   // Update completion timestamps: reset when a task transitions to completed
   const currentCompletedIds = new Set(tasks.filter(t_1 => t_1.status === 'completed').map(t_2 => t_2.id));
