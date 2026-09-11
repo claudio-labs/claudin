@@ -329,6 +329,21 @@ function countNewlines(stdout: string): number {
   return stdout.split('\n').length - 1
 }
 
+// Net vertical movement of a diff, in rows: eraseLines(n) ends n-1 rows above
+// where it started, a cursorMove carries its own dy, and every LF is one row
+// down (at the bottom of the terminal an LF scrolls instead, which moves the
+// block up by the same amount — either way the block ends where this says).
+// Only meaningful for a diff with no clearTerminal, which positions absolutely.
+function netRowDelta(diff: ReturnType<LogUpdate['render']>): number {
+  let dy = 0
+  for (const p of diff) {
+    if (p.type === 'clear') dy -= Math.max(0, p.count - 1)
+    else if (p.type === 'cursorMove') dy += p.y
+    else if (p.type === 'stdout') dy += (p.content.match(/\n/g) ?? []).length
+  }
+  return dy
+}
+
 // A row that already scrolled off is unreachable, and since the reset above
 // repaints only the tail it could not have shown the change either — it only
 // blanked and repainted the viewport. So a change up there is not a reset
@@ -505,17 +520,83 @@ test('CLAUDIN_LEGACY_FULL_RESET restores the clearing, top-anchored reset', () =
   }
 })
 
-// A frame that fits the viewport keeps the cheap path: nothing is in
-// scrollback, so eraseLines leaves the cursor exactly where the next frame
-// expects it.
-test('shrinking a frame that fits the viewport still erases lines in place', () => {
+// A frame that fits the viewport takes the SAME in-place repaint. It used to
+// fall through to the incremental path, which clears only the vacated rows and
+// leaves the cursor that many rows higher — see the regression below.
+test('shrinking a frame that fits the viewport repaints the tail in place', () => {
   const { stylePool, charPool, hyperlinkPool, log } = createHarness()
   const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES.slice(0, 8), TALL_VIEWPORT)
   const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, TALL_LINES.slice(0, 5), TALL_VIEWPORT)
   const diff = log.render(prev, next, false, true, false)
 
   expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
-  expect(diff.some(p => p.type === 'clear' && p.count === 3)).toBe(true)
+  // 5 erased and 5 repainted, not the 3 vacated rows — net zero movement.
+  expect(
+    diff.some(
+      p => p.type === 'clear' && p.count === 5 && p.repaintReason === 'offscreen',
+    ),
+  ).toBe(true)
+  expect(netRowDelta(diff)).toBe(0)
+})
+
+// 45 rows in a 46-row viewport: one row short of prevHadScrollback, which is
+// the shape a long session lands in once a compaction drops the frame under
+// the viewport. The next big shrink — a tool block collapsing to
+// "… +16 lines (ctrl+o to see all)" — used to strand the block: the
+// incremental path erased the 30 vacated rows and left the cursor 30 rows
+// higher, so the block kept its top row and the rows it gave up stayed blank
+// BELOW it. Nothing re-anchored afterwards (every later repaint is relative),
+// so the whole TUI sat in the top fifth of the terminal until a resize or
+// ctrl+L. Reported as "a sessão colapsa e fica no topo".
+const NEAR_VIEWPORT = 46
+const NEAR_VIEWPORT_LINES = Array.from(
+  { length: 45 },
+  (_, i) => `ROW${String(i).padStart(2, '0')}xxxxx`,
+)
+test('a big shrink of a frame that FITS the viewport keeps the block where it was', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, NEAR_VIEWPORT_LINES, NEAR_VIEWPORT)
+  const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, NEAR_VIEWPORT_LINES.slice(0, 15), NEAR_VIEWPORT)
+  const diff = log.render(prev, next, false, true, false)
+  const stdout = collectStdout(diff)
+
+  expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
+  // The block's last row lands on the row the old block's last row held.
+  expect(netRowDelta(diff)).toBe(0)
+  expect(
+    diff.some(
+      p => p.type === 'clear' && p.count === 15 && p.repaintReason === 'offscreen',
+    ),
+  ).toBe(true)
+  expect(stdout).toContain('ROW00xxxxx')
+  expect(stdout).toContain('ROW14xxxxx')
+  expect(stdout).not.toContain('ROW15xxxxx')
+})
+
+// What the killswitch has to restore, and the measurement the fix is against:
+// the same shrink on the old path ends 30 rows above where it started.
+test('CLAUDIN_LEGACY_FULL_RESET puts the fits-the-viewport shrink back on the incremental path', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  const saved = process.env.CLAUDIN_LEGACY_FULL_RESET
+  process.env.CLAUDIN_LEGACY_FULL_RESET = '1'
+  _resetLegacyFullResetCacheForTesting()
+  try {
+    const prev = scrollbackFrame(stylePool, charPool, hyperlinkPool, NEAR_VIEWPORT_LINES, NEAR_VIEWPORT)
+    const next = scrollbackFrame(stylePool, charPool, hyperlinkPool, NEAR_VIEWPORT_LINES.slice(0, 15), NEAR_VIEWPORT)
+    const diff = log.render(prev, next, false, true, false)
+
+    expect(diff.some(p => p.type === 'clearTerminal')).toBe(false)
+    // Only the 30 vacated rows are cleared, and the cursor stays up there.
+    expect(diff.some(p => p.type === 'clear' && p.count === 30)).toBe(true)
+    expect(netRowDelta(diff)).toBe(-30)
+  } finally {
+    if (saved === undefined) {
+      delete process.env.CLAUDIN_LEGACY_FULL_RESET
+    } else {
+      process.env.CLAUDIN_LEGACY_FULL_RESET = saved
+    }
+    _resetLegacyFullResetCacheForTesting()
+  }
 })
 
 // Second half of the same bug: Ink.repaint() (ctrl+L, prepareFullRepaint,
