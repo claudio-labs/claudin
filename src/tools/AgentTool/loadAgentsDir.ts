@@ -123,6 +123,13 @@ export type BaseAgentDefinition = {
    * CLAUDE.md and interprets their output.
    * Kill-switch: tengu_slim_subagent_claudemd. */
   omitClaudeMd?: boolean
+  /** Keep CLAUDE.md/AGENTS.md and the rules but drop the two auto-memory
+   * INDEXES (`MEMORY.md` and `team/MEMORY.md`) from the agent's CLAUDE.md
+   * family. The indexes exist for the main thread's recall; a delegated
+   * agent arrives with a written brief and the team index alone was 8k
+   * tokens of every fresh Code agent's first tool call (2026-09-10 census).
+   * Kill-switch: CLAUDIN_DISABLE_SLIM_CODE_AGENT=1. */
+  omitMemoryIndexes?: boolean
   /** Omit the parent-session gitStatus blob (up to 40KB, often stale) from the
    * agent's systemContext. Useful for agents that either don't touch git
    * (WebResearcher) or can run `git status` themselves for fresh data

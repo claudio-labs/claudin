@@ -40,7 +40,7 @@ import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js';
 import { getParentSessionId, isTeammate } from 'src/agent/coordinator/teammate.js';
 import { isInProcessTeammate } from 'src/agent/coordinator/teammateContext.js';
 import { teleportToRemote } from 'src/platform/teleport/teleport.js';
-import { getAssistantMessageContentLength } from 'src/agent/context/tokens.js';
+import { getAssistantMessageContentLength, tokenCountWithEstimation } from 'src/agent/context/tokens.js';
 import { createAgentId } from 'src/shared/data/uuid.js';
 import { createAgentWorktree, hasWorktreeChanges, removeAgentWorktree } from 'src/vcs/git/worktree.js';
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
@@ -53,9 +53,11 @@ import { GENERAL_PURPOSE_AGENT } from 'src/tools/AgentTool/built-in/generalPurpo
 import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME, ONE_SHOT_BUILTIN_AGENT_TYPES } from 'src/tools/AgentTool/constants.js';
 import { allowsImplicitAutoBackground } from 'src/tools/AgentTool/autoBackground.js';
 import { buildAgentWorktreeNotice, buildForkedMessages, buildWorktreeNotice, FORK_AGENT, isForkSubagentEnabled, isInForkChild } from 'src/tools/AgentTool/forkSubagent.js';
+import { forkGateVerdict } from 'src/tools/AgentTool/forkGate.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { filterAgentsByMcpRequirements, hasRequiredMcpServers, isBuiltInAgent } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { getPrompt } from 'src/tools/AgentTool/prompt.js';
+import { applyReadOnly, READ_ONLY_INPUT_DESCRIPTION } from 'src/tools/AgentTool/readOnlyAgent.js';
 import { runAgent } from 'src/tools/AgentTool/runAgent.js';
 import { renderGroupedAgentToolUse, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseRejectedMessage, renderToolUseTag, userFacingName, userFacingNameBackgroundColor } from 'src/tools/AgentTool/UI.js';
 
@@ -102,7 +104,8 @@ const baseInputSchema = lazySchema(() => z.object({
   prompt: z.string().describe('The task for the agent to perform'),
   subagent_type: z.string().optional().describe('The type of specialized agent to use for this task'),
   model: z.enum(['sonnet', 'opus', 'haiku']).optional().describe("Optional model override for this agent. Takes precedence over the agent definition's model frontmatter. If omitted, uses the agent definition's model, or inherits from the parent."),
-  run_in_background: z.boolean().optional().describe('Set to true to run this agent in the background. You will be notified when it completes.')
+  run_in_background: z.boolean().optional().describe('Set to true to run this agent in the background. You will be notified when it completes.'),
+  readOnly: z.boolean().optional().describe(READ_ONLY_INPUT_DESCRIPTION)
 }));
 
 // Full schema combining base + multi-agent params + isolation
@@ -261,6 +264,7 @@ export const AgentTool = buildTool({
     description,
     model: modelParam,
     run_in_background,
+    readOnly,
     name,
     team_name,
     mode: spawnMode,
@@ -357,6 +361,13 @@ export const AgentTool = buildTool({
       if (toolUseContext.options.querySource === `agent:builtin:${FORK_AGENT.agentType}` || isInForkChild(toolUseContext.messages)) {
         throw new Error('Fork is not available inside a forked worker. Complete your task directly using your tools.');
       }
+      // Size gate: a fork at a large parent context re-reads it on every
+      // call. Refused once with the fresh-agent alternative; the identical
+      // re-send forks (see forkGate.ts).
+      const forkRefusal = forkGateVerdict(tokenCountWithEstimation(toolUseContext.messages), prompt);
+      if (forkRefusal !== null) {
+        throw new Error(forkRefusal);
+      }
       selectedAgent = FORK_AGENT;
     } else {
       // Filter agents to exclude those denied via Agent(AgentName) syntax
@@ -379,6 +390,9 @@ export const AgentTool = buildTool({
       }
       selectedAgent = found;
     }
+    // A read-only brief: Plan's omissions and denylist on top of whatever
+    // agent was picked. No-op for a fork (see readOnlyAgent.ts).
+    selectedAgent = applyReadOnly(selectedAgent, readOnly, isForkPath);
 
     // Same lifecycle constraint as the run_in_background guard above, but for
     // agent definitions that force background via `background: true`. Checked

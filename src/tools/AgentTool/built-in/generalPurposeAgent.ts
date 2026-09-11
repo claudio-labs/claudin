@@ -32,4 +32,13 @@ export const GENERAL_PURPOSE_AGENT: BuiltInAgentDefinition = {
   baseDir: 'built-in',
   // model is intentionally omitted - uses getDefaultSubagentModel().
   getSystemPrompt: getGeneralPurposeSystemPrompt,
+  // A fresh Code agent used to receive the whole CLAUDE.md family at its
+  // first tool call — AGENTS.md, the always-on rules, both memory indexes
+  // and the parent's git status, ~23k tokens carried by every later call
+  // (43% of everything a fresh agent read in the 2026-09-10 census). The
+  // conventions stay (this agent edits code); the memory indexes and the
+  // stale git snapshot go — it can Read a memory file or run `git status`
+  // itself. CLAUDIN_DISABLE_SLIM_CODE_AGENT=1 restores both.
+  omitMemoryIndexes: true,
+  omitGitStatus: true,
 }

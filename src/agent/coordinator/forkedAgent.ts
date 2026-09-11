@@ -300,6 +300,9 @@ export type SubagentContextOverrides = {
   /** Honor AgentDefinition.omitClaudeMd in the attachment pipeline
    * (suppresses claude_md_delta / nested_memory). */
   omitClaudeMdAttachments?: boolean
+  /** Honor AgentDefinition.omitMemoryIndexes in the attachment pipeline
+   * (claude_md_delta without the AutoMem/TeamMem indexes). */
+  omitMemoryIndexAttachments?: boolean
   /** Honor AgentDefinition.omitGitStatus in the attachment pipeline
    * (suppresses git_status_delta). */
   omitGitStatusAttachments?: boolean
@@ -471,6 +474,9 @@ export function createSubagentContext(
     omitClaudeMdAttachments:
       overrides?.omitClaudeMdAttachments ??
       parentContext.omitClaudeMdAttachments,
+    omitMemoryIndexAttachments:
+      overrides?.omitMemoryIndexAttachments ??
+      parentContext.omitMemoryIndexAttachments,
     omitGitStatusAttachments:
       overrides?.omitGitStatusAttachments ??
       parentContext.omitGitStatusAttachments,

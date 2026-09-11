@@ -135,6 +135,7 @@ export async function getAttachments(
   // without these gates they re-inject CLAUDE.md/rules/memory/gitStatus
   // that runAgent deliberately stripped from the subagent's userContext.
   const omitClaudeMd = toolUseContext.omitClaudeMdAttachments === true
+  const omitMemoryIndexes = toolUseContext.omitMemoryIndexAttachments === true
   const omitGitStatus = toolUseContext.omitGitStatusAttachments === true
 
   // Attachments which are added in response to on user input
@@ -236,7 +237,11 @@ export async function getAttachments(
     // swap-in wiring lives in api.ts.
     ...(omitClaudeMd
       ? []
-      : [maybe('claude_md_delta', () => getClaudeMdDeltaAttachment(messages))]),
+      : [
+          maybe('claude_md_delta', () =>
+            getClaudeMdDeltaAttachment(messages, { omitMemoryIndexes }),
+          ),
+        ]),
     ...(omitGitStatus
       ? []
       : [

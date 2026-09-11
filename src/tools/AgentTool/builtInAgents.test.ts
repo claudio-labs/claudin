@@ -51,6 +51,18 @@ describe('ungated registry (the shape bun test can observe)', () => {
   })
 })
 
+describe('the Code agent is slim, not blind', () => {
+  // 43% of everything a fresh Code agent read in the 2026-09-10 census was
+  // orientation injected at its first tool call. It keeps AGENTS.md and the
+  // rules — it edits code — and drops the two memory INDEXES plus the
+  // parent's git snapshot. `omitClaudeMd` would take the conventions too.
+  test('drops the memory indexes and git status, keeps CLAUDE.md', () => {
+    expect(GENERAL_PURPOSE_AGENT.omitMemoryIndexes).toBe(true)
+    expect(GENERAL_PURPOSE_AGENT.omitGitStatus).toBe(true)
+    expect(GENERAL_PURPOSE_AGENT.omitClaudeMd).toBeUndefined()
+  })
+})
+
 describe('the built-in agent gate (source-asserted)', () => {
   const src = readFileSync(new URL('./builtInAgents.ts', import.meta.url), 'utf8')
 
