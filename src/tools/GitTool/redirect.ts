@@ -38,7 +38,12 @@ export { MEMO_LIMIT }
  *  - The subcommand must be what the command STARTS with, so
  *    `grep -rn "git diff" src` is not read as a diff. Global options opt out
  *    too: `git -C /elsewhere diff` and `git --no-pager log` do not match, which
- *    is deliberate — they are rarer and a missed redirect costs nothing.
+ *    is deliberate — they are rarer and a missed redirect costs nothing. The
+ *    one composed shape that DOES redirect is `cd /abs/path && git <read>`:
+ *    the 2026-09-10 census counted 229 of them in two days (a cross-repo
+ *    audit, 415k chars of raw `git show`), and the tool's `cwd` parameter is
+ *    exactly that shape, so the refusal hands back `cwd` + `commands`.
+ *    Relative and `~` paths stay in Bash — `cwd` wants an absolute path.
  *  - **Reads only.** `git commit`/`git push` run fine through the tool, but
  *    refusing them in Bash would put a permission dialog between the model and
  *    a mutation it already had permission for, with no token payoff: measured
@@ -114,9 +119,27 @@ const REDIRECTABLE_RE =
  */
 const OPT_OUT_FLAG_RE = /\s(?:-i|--interactive|--web|--help|-h)(?:[\s=]|$)/
 
+/**
+ * `cd <abs-path> && <rest>` with exactly one `&&` before the git command.
+ * The path may be bare, single- or double-quoted; the quotes are stripped so
+ * `cwd` receives the path itself. Anything else composed stays in Bash.
+ */
+const CD_PREFIX_RE = /^cd\s+(?:"(\/[^"]*)"|'(\/[^']*)'|(\/\S+))\s*&&\s*(.+)$/s
+
+/** The `cd` half and the git half of a `cd /abs && git …`, or null. */
+export function splitCdPrefix(command: string): { cwd: string; rest: string } | null {
+  const m = CD_PREFIX_RE.exec(command.trim())
+  if (!m) return null
+  const cwd = m[1] ?? m[2] ?? m[3]
+  const rest = m[4]?.trim()
+  if (!cwd || !rest) return null
+  return { cwd, rest }
+}
+
 /** Pure predicate: would the Git tool run this command just as well? */
 export function isRedirectableGitCommand(command: string): boolean {
-  const cmd = stripOutputTrimTail(command.trim())
+  const split = splitCdPrefix(command)
+  const cmd = stripOutputTrimTail((split?.rest ?? command).trim())
   if (!cmd) return false
   if (OPT_OUT_FLAG_RE.test(cmd)) return false
   if (!REDIRECTABLE_RE.test(cmd)) return false
@@ -145,13 +168,17 @@ export function resetGitRedirectMemoForTesting(): void {
 
 export function renderGitRedirect(command: string): string {
   const cmd = command.trim()
-  const core = stripOutputTrimTail(cmd)
+  const split = splitCdPrefix(cmd)
+  const core = stripOutputTrimTail((split?.rest ?? cmd).trim())
+  const trimmed = split === null ? core === cmd : core === split.rest.trim()
   return [
     `Blocked: \`${cmd}\` reads the repository, and ${GIT_TOOL_NAME} is available.`,
     `Call ${GIT_TOOL_NAME} instead — it runs the same command and returns a budgeted result instead of the raw dump.`,
-    `Pass commands: [${JSON.stringify(core)}].`,
+    split === null
+      ? `Pass commands: [${JSON.stringify(core)}].`
+      : `Pass cwd: ${JSON.stringify(split.cwd)} and commands: [${JSON.stringify(core)}] — the tool runs the batch in that checkout, no cd needed.`,
     `${GIT_TOOL_NAME} takes a LIST, so send the whole burst in one call rather than one call each — e.g. commands: ["git status", "git diff", "git log -5"].`,
-    ...(core === cmd
+    ...(trimmed
       ? []
       : [
           `The output filter is dropped on purpose — ${GIT_TOOL_NAME} already caps what it returns, and its result carries stderr without \`2>&1\`.`,

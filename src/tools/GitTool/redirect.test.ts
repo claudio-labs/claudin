@@ -5,6 +5,7 @@ import {
   renderGitRedirect,
   resetGitRedirectMemoForTesting,
   shouldRedirectToGit,
+  splitCdPrefix,
   stripOutputTrimTail,
 } from 'src/tools/GitTool/redirect.js'
 
@@ -306,6 +307,49 @@ describe('renderGitRedirect', () => {
   })
 })
 
+describe('cd /abs/path && git <read> — the other-checkout shape', () => {
+  it('splits an absolute cd prefix, quoted or bare, and nothing else', () => {
+    expect(splitCdPrefix('cd /home/me/other && git show abc -- src/')).toEqual({
+      cwd: '/home/me/other',
+      rest: 'git show abc -- src/',
+    })
+    expect(splitCdPrefix('cd "/home/me/my repo" && git log -3')).toEqual({
+      cwd: '/home/me/my repo',
+      rest: 'git log -3',
+    })
+    expect(splitCdPrefix("cd '/tmp/x' && git status")).toEqual({ cwd: '/tmp/x', rest: 'git status' })
+    // `cwd` wants an absolute path; relative and ~ stay in Bash.
+    expect(splitCdPrefix('cd src && git log')).toBeNull()
+    expect(splitCdPrefix('cd ~/x && git log')).toBeNull()
+    expect(splitCdPrefix('git log')).toBeNull()
+  })
+
+  it('redirects a read behind an absolute cd and refuses the rest', () => {
+    expect(isRedirectableGitCommand('cd /home/me/other && git show abc -- src/')).toBe(true)
+    expect(isRedirectableGitCommand('cd /home/me/other && git diff --stat | head -20')).toBe(true)
+    // A mutation, a relative path, a second composition: all stay in Bash.
+    expect(isRedirectableGitCommand('cd /home/me/other && git add -A')).toBe(false)
+    expect(isRedirectableGitCommand('cd other && git log')).toBe(false)
+    expect(isRedirectableGitCommand('cd /x && git log && git status')).toBe(false)
+    expect(isRedirectableGitCommand('cd /x && git log; git status')).toBe(false)
+  })
+
+  it('the refusal hands back cwd + commands, without the cd', () => {
+    const msg = renderGitRedirect('cd /home/me/other && git show abc -- src/ | head -40')
+    expect(msg).toContain('cwd: "/home/me/other"')
+    expect(msg).toContain('commands: ["git show abc -- src/"]')
+    expect(msg).not.toContain('commands: ["cd')
+    expect(msg).toContain('output filter is dropped on purpose')
+    expect(renderGitRedirect('cd /x && git status')).not.toContain('output filter is dropped')
+  })
+
+  it('is one-shot on the whole command, cd included', () => {
+    const cmd = 'cd /home/me/other && git log -5'
+    expect(shouldRedirectToGit(cmd)).toBe(true)
+    expect(shouldRedirectToGit(cmd)).toBe(false)
+  })
+})
+
 /**
  * Real commands sampled from 1,608 distinct recorded Bash invocations
  * (`scripts/bench/perf/git-tool-baseline.ts --json`). Committed rather than read
@@ -362,6 +406,10 @@ const RECORDED_COMMANDS: readonly string[] = [
   'git push -u origin feat/git-tool',
   'git stash push -m wip',
   "git commit -q -F - <<'EOF'",
+  // The other-checkout shape (2026-09-10 cross-fork audit, 229 of them).
+  'cd /home/viudes/projects/openclaude && git show 787f2a93 -- src/utils/',
+  'cd /home/viudes/projects/openclaude && git show 3fb718f4 --stat && echo ---',
+  'cd /home/viudes/projects/openclaude && git log --oneline -20 | head -10',
 ]
 
 describe('deadlock invariant', () => {
@@ -378,8 +426,10 @@ describe('deadlock invariant', () => {
     const redirected = RECORDED_COMMANDS.filter(isRedirectableGitCommand)
     expect(redirected.length).toBeGreaterThan(15)
 
+    // What the refusal suggests is the command WITHOUT its cd prefix and
+    // without its trim tail — that is the string the tool has to accept.
     const violations = redirected.filter(
-      cmd => !acceptsGitCommand(stripOutputTrimTail(cmd)),
+      cmd => !acceptsGitCommand(stripOutputTrimTail(splitCdPrefix(cmd)?.rest ?? cmd)),
     )
     expect(violations).toEqual([])
   })
@@ -402,10 +452,11 @@ describe('deadlock invariant', () => {
   it('the suggested call is exactly what the tool would accept', () => {
     // The message must not hand back something the tool then rejects.
     for (const cmd of RECORDED_COMMANDS.filter(isRedirectableGitCommand)) {
-      const suggested = stripOutputTrimTail(cmd)
-      expect(renderGitRedirect(cmd)).toContain(
-        `commands: [${JSON.stringify(suggested)}]`,
-      )
+      const split = splitCdPrefix(cmd)
+      const suggested = stripOutputTrimTail((split?.rest ?? cmd).trim())
+      const msg = renderGitRedirect(cmd)
+      expect(msg).toContain(`commands: [${JSON.stringify(suggested)}]`)
+      if (split) expect(msg).toContain(`cwd: ${JSON.stringify(split.cwd)}`)
     }
   })
 })

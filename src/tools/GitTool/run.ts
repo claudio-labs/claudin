@@ -5,6 +5,7 @@ import {
 } from 'src/tools/shared/outputFilter/Bash/index.js'
 import { stripOutputMarkers } from 'src/tools/shared/outputFilter/Bash/markers.js'
 import { exec } from 'src/shared/proc/Shell.js'
+import { quote } from 'src/platform/bash/shellQuote.js'
 import { formatDuration } from 'src/shared/text/format.js'
 import { GIT_NO_PROMPT_ENV } from 'src/vcs/git/noPromptEnv.js'
 import { logError } from 'src/shared/log.js'
@@ -66,6 +67,13 @@ const GH_CHECKS_PENDING_EXIT = 8
 
 export type RunGitBatchOptions = {
   commands: readonly string[]
+  /**
+   * Another checkout to run in. `exec()` has no cwd option — it inherits the
+   * session's `pwd()` and moves it after a foreground command — so the
+   * command is prefixed with `cd <cwd> &&` and run with `preventCwdChanges`,
+   * which leaves the session where it was.
+   */
+  cwd?: string
   abortSignal: AbortSignal
   /**
    * Explicit per-command ceiling. Absent means the default for the command's
@@ -142,9 +150,10 @@ async function runOneCommand(params: {
   timeoutMs: number
   idleTimeoutMs: number
   abortSignal: AbortSignal
+  preventCwdChanges: boolean
   onTick?: (elapsedMs: number, silentMs: number) => void
 }): Promise<CommandRun> {
-  const { effectiveCommand, watch, timeoutMs, idleTimeoutMs, abortSignal, onTick } = params
+  const { effectiveCommand, watch, timeoutMs, idleTimeoutMs, abortSignal, preventCwdChanges, onTick } = params
 
   // A second controller, so the watchdog can stop the command without touching
   // the caller's signal: an abort of OURS is a stall report, an abort of THEIRS
@@ -187,6 +196,7 @@ async function runOneCommand(params: {
       timeout: timeoutMs,
       env: GIT_NO_PROMPT_ENV,
       onProgress: tick,
+      preventCwdChanges,
     })
 
     taskId = shellCommand.taskOutput.taskId
@@ -262,17 +272,22 @@ export async function runGitBatch(
       allowRewrite: !full,
       callerBudgets: true,
     })
+    const effectiveCommand =
+      opts.cwd === undefined
+        ? plan.effectiveCommand
+        : `cd ${quote([opts.cwd])} && ${plan.effectiveCommand}`
 
     let outcome: GitCommandOutcome
     try {
       const onProgress = opts.onProgress
       const run = await runOneCommand({
-        effectiveCommand: plan.effectiveCommand,
+        effectiveCommand,
         watch,
         timeoutMs:
           opts.timeoutMs ?? (watch ? WATCH_DEFAULT_TIMEOUT_MS : DEFAULT_TIMEOUT_MS),
         idleTimeoutMs: opts.idleTimeoutMs ?? WATCH_IDLE_TIMEOUT_MS,
         abortSignal: opts.abortSignal,
+        preventCwdChanges: opts.cwd !== undefined,
         onTick: onProgress
           ? (elapsedMs, silentMs) =>
               onProgress({
@@ -313,11 +328,11 @@ export async function runGitBatch(
         : applyGitDelta(
             command,
             full ? filtered : budgetFilteredOutput(command, filtered),
-            { full, toolUseId: opts.toolUseId },
+            { full, toolUseId: opts.toolUseId, cwd: opts.cwd },
           )
       outcome = {
         command,
-        effectiveCommand: plan.effectiveCommand,
+        effectiveCommand,
         exitCode: effectiveCode,
         output: rendered,
         interrupted: run.interrupted,

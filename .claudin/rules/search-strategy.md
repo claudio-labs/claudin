@@ -151,7 +151,11 @@ refused, since a dialog in front of a `git push` buys nothing. What counts as
 ONE command there is the grammar's own `acceptsGitCommand` (the quoting scan
 described below), not a ban on punctuation — so `git log --format='%h %s%n%b'`
 and `gh run view … --jq '…'` redirect, their `|` being inside quotes, while an
-operator outside quotes stays in Bash. The `gh` side is
+operator outside quotes stays in Bash — with one composed exception:
+`cd /abs/path && git <read>` redirects to `Git({cwd:"/abs/path", commands:[…]})`,
+the tool's own way of reading another checkout (a sibling repo, a worktree).
+`cwd` prefixes the batch with that `cd` and leaves the session cwd alone; it
+is never read-only, like `git -C`, so plan mode still gates it. The `gh` side is
 deliberately narrower than what the tool ACCEPTS (24 read-only command pairs,
 `grammar.ts`): only the shapes with a renderer behind them are refused, because
 a refusal costs a round-trip and the tool hands a table like `gh run list` back

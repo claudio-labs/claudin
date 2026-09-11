@@ -104,6 +104,12 @@ export type DeltaOptions = {
    * declines and returns everything.
    */
   toolUseId?: string
+  /**
+   * The checkout the command ran in, when it was not the session's. The same
+   * `git diff` in two repos must not elide against each other, so it is part
+   * of the key; absent means the session cwd, which the key already implies.
+   */
+  cwd?: string
 }
 
 type DiffSection = {
@@ -137,8 +143,8 @@ function currentKey(): string {
   return agentId ? `${sid}:${agentId}` : sid
 }
 
-function entryKey(command: string): string {
-  return `${currentKey()}\u0000${command.trim()}`
+function entryKey(command: string, cwd?: string): string {
+  return `${currentKey()}\u0000${cwd ?? ''}\u0000${command.trim()}`
 }
 
 function hash(text: string): string {
@@ -199,8 +205,9 @@ function remember(
   toolUseId: string,
   sections: readonly DiffSection[],
   consecutiveDeltas: number,
+  cwd?: string,
 ): void {
-  const key = entryKey(command)
+  const key = entryKey(command, cwd)
   if (!remembered.has(key) && remembered.size >= MAX_REMEMBERED_COMMANDS) {
     const oldest = remembered.keys().next().value
     if (oldest !== undefined) remembered.delete(oldest)
@@ -286,7 +293,7 @@ export function applyGitDelta(
     const split = splitDiffSections(output)
     if (!split) return output
 
-    const key = entryKey(command)
+    const key = entryKey(command, opts.cwd)
 
     // Rule 1, first half. Without an id there is no way to check later whether
     // this body survived, so nothing may be remembered against it either.
@@ -307,7 +314,7 @@ export function applyGitDelta(
       prior.consecutiveDeltas < MAX_CONSECUTIVE_DELTAS
 
     if (!canElide || prior === undefined) {
-      remember(command, toolUseId, split.sections, 0)
+      remember(command, toolUseId, split.sections, 0, opts.cwd)
       return output
     }
 
@@ -322,11 +329,11 @@ export function applyGitDelta(
 
     // A delta that is not meaningfully shorter is noise with a risk attached.
     if (rendered === null || rendered.length > output.length * DELTA_MAX_RATIO) {
-      remember(command, toolUseId, split.sections, 0)
+      remember(command, toolUseId, split.sections, 0, opts.cwd)
       return output
     }
 
-    remember(command, toolUseId, split.sections, prior.consecutiveDeltas + 1)
+    remember(command, toolUseId, split.sections, prior.consecutiveDeltas + 1, opts.cwd)
     return rendered
   } catch (e) {
     // Never block: a broken delta must degrade to the full output.
