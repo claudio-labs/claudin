@@ -17,7 +17,11 @@ Efficient navigation patterns for Claudin's TypeScript codebase.
    `subagent_type`) only when the question is about this conversation — a
    fork inherits your context and re-reads it on every call, which measured
    4× the child cost at 200k for the same answer (2026-09-09,
-   `scripts/bench/ab/fork-vs-fresh-ab.ts`). The built-in `Explore` agent was
+   `scripts/bench/ab/fork-vs-fresh-ab.ts`). Above 150k of parent context a
+   fork is refused once with that alternative (`forkGate.ts`,
+   `CLAUDIN_FORK_MAX_PARENT_TOKENS`, `0` disables); the identical re-send
+   forks. For research, pass `readOnly: true` — no write tools, no
+   CLAUDE.md/memory/git-status injection. The built-in `Explore` agent was
    removed on 2026-08-18.
 
 Never use Bash `find`/`grep` for code search — use dedicated Grep/Glob tools.
