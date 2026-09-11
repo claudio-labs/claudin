@@ -12,6 +12,7 @@ import {
   type SymbolEntry,
 } from 'src/tools/shared/codeOutline/scanSymbols.js'
 import { isAbortError } from 'src/shared/errors.js'
+import { addLineNumbers } from 'src/shared/fs/file.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { readFileInRange } from 'src/shared/fs/readFileInRange.js'
 import { logError } from 'src/shared/log.js'
@@ -62,6 +63,22 @@ export const READ_AUTO_OUTLINE_THRESHOLD_CHARS = 10_000
  */
 export const READ_AUTO_OUTLINE_THRESHOLD_LINES = 250
 export const READ_AUTO_OUTLINE_MIN_SYMBOLS = 3
+
+/**
+ * The plain-text sibling of the auto-outline pivot: a vanilla Read of a file
+ * with NO outline language (`.txt`, `.log`, a `/tmp` dump with no extension)
+ * at or above READ_AUTO_OUTLINE_THRESHOLD_CHARS returns its head and tail
+ * with the line count, instead of the whole body.
+ *
+ * The 2026-09-10 census found 57 such Reads over two days — 25% of every
+ * Read char that period, the largest a 47k-char `/tmp/fm.txt` — none of
+ * which the code pivot could touch because the language gate said null. The
+ * head is sized to hold a report's header and its first table; the tail, a
+ * log's last error. `view='full'` and `offset/limit` bypass it exactly as
+ * they bypass the code pivot.
+ */
+export const READ_TEXT_PREVIEW_HEAD_LINES = 60
+export const READ_TEXT_PREVIEW_TAIL_LINES = 20
 
 /**
  * Lines per symbol the line-triggered pivot demands before it will withhold a
@@ -300,6 +317,79 @@ export function symbolsInside(
       e.endLine <= entry.endLine &&
       !(e.startLine === entry.startLine && e.endLine === entry.endLine),
   )
+}
+
+/**
+ * Whether a plain-text body is big enough, and long enough, for the preview
+ * to beat it: below the char threshold the body is the cheaper answer, and a
+ * file the head and tail would cover between them has nothing to omit.
+ */
+export function textPreviewApplies(
+  chars: number,
+  totalLines: number,
+): boolean {
+  if (chars < READ_AUTO_OUTLINE_THRESHOLD_CHARS) return false
+  return (
+    totalLines > READ_TEXT_PREVIEW_HEAD_LINES + READ_TEXT_PREVIEW_TAIL_LINES
+  )
+}
+
+/**
+ * Builds the head+tail preview result for a large plain-text file. Rides the
+ * `outline` output type — pre-rendered, no cat -n pass downstream — with
+ * `preview` set so the UI names it and `symbolCount` 0 since nothing was
+ * scanned. The line prefixes are real line numbers, so an `offset` copied
+ * from the tail lands where the model expects.
+ *
+ * Marked partial in readFileState for the same reason an outline is: the
+ * model has not seen the middle, so Edit/Write must re-Read first.
+ */
+export function makeTextPreviewData(
+  content: string,
+  lines: string[],
+  totalBytes: number,
+  mtimeMs: number,
+  file_path: string,
+  fullFilePath: string,
+  readFileState: ToolUseContext['readFileState'],
+  options: { truncated?: boolean } = {},
+): { data: Output } {
+  const totalLines = lines.length
+  const head = lines.slice(0, READ_TEXT_PREVIEW_HEAD_LINES)
+  const tailStart = totalLines - READ_TEXT_PREVIEW_TAIL_LINES
+  const tail = lines.slice(tailStart)
+  const omitted = tailStart - head.length
+  const kb = (totalBytes / 1024).toFixed(totalBytes >= 10_240 ? 0 : 1)
+  // A byte-capped read saw only the head of the file: the count and the
+  // "tail" describe the part that was read, and the reminder says so rather
+  // than letting a partial tail pass as the end of the file.
+  const scope = options.truncated
+    ? `the first ${totalLines.toLocaleString('en-US')} lines of ${kb} KB (the read stopped at the byte cap)`
+    : `${totalLines.toLocaleString('en-US')} lines / ${kb} KB`
+  const rendered =
+    `<system-reminder>${file_path} is ${scope} of plain text with no outline language, so this vanilla Read returned a preview: lines 1-${head.length} and ${tailStart + 1}-${totalLines}. Pass offset/limit for a range, Grep for a pattern, or view='full' for the whole body.</system-reminder>\n\n` +
+    addLineNumbers({ content: head.join('\n'), startLine: 1 }) +
+    `\n\n… ${omitted.toLocaleString('en-US')} lines omitted …\n\n` +
+    addLineNumbers({ content: tail.join('\n'), startLine: tailStart + 1 })
+  readFileState.set(fullFilePath, {
+    content,
+    timestamp: Math.floor(mtimeMs),
+    offset: undefined,
+    limit: undefined,
+    isPartialView: true,
+  })
+  return {
+    data: {
+      type: 'outline' as const,
+      file: {
+        filePath: file_path,
+        content: rendered,
+        totalLines,
+        symbolCount: 0,
+        preview: true,
+      },
+    },
+  }
 }
 
 /**

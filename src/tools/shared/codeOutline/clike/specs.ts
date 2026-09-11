@@ -142,7 +142,7 @@ const TS_SPEC: CLikeSpec = {
 export const CLIKE_SPECS: Record<
   Exclude<
     OutlineLang,
-    'python' | 'markdown' | 'ruby' | 'lua' | 'sql' | 'css' | 'html' |
+    'python' | 'markdown' | 'diff' | 'ruby' | 'lua' | 'sql' | 'css' | 'html' |
     'yaml' | 'xml' | 'properties' | 'env' | 'toml' | 'dockerfile' | 'makefile' |
     // Mask-only: these have no symbol scanner, so no c-like spec either.
     'elixir' | 'powershell'

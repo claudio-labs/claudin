@@ -299,14 +299,18 @@ describe('FileReadTool — AUTO_OUTLINE_ON_ELISION', () => {
     expect(data.file.content).toBe(small)
   })
 
-  test('non-code large file does not auto-pivot (no outline language)', async () => {
-    // .txt has no outlineLang → the pivot guard skips and the full body is
-    // returned verbatim (the pivot only helps the code-file case, where we
-    // can produce an outline).
+  test('non-code large file gets the text preview, never a symbol outline', async () => {
+    // .txt has no outlineLang → the code pivot guard skips. The plain-text
+    // preview answers instead (see the dedicated describe below); what this
+    // pins is that a TS body under a .txt name is never scanned for symbols.
     const p = writeFixture('big.txt', BIG_TS)
     const { data } = await read(p)
 
-    expect(data.type).toBe('text')
+    expect(data.type).toBe('outline')
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.preview).toBe(true)
+    expect(data.file.symbolCount).toBe(0)
+    expect(data.file.autoPivot).toBeUndefined()
   })
 
   test('footer text is stable (exact-match)', () => {
@@ -490,5 +494,142 @@ describe('FileReadTool — symbol= on an oversized symbol', () => {
     expect(data.type).toBe('text')
     if (data.type !== 'text') throw new Error('expected text')
     expect(data.file.content).toContain('return 1')
+  })
+})
+
+// A ~20 KB plain-text body: 400 numbered lines, no outline language.
+function bigTextSource(): string {
+  const lines: string[] = []
+  for (let i = 1; i <= 400; i++) {
+    lines.push(`line ${String(i).padStart(4, '0')} ${'lorem ipsum '.repeat(4)}`)
+  }
+  return lines.join('\n') + '\n'
+}
+
+describe('FileReadTool — plain-text preview pivot', () => {
+  const BIG_TXT = bigTextSource()
+  if (BIG_TXT.length < 10_000) {
+    throw new Error(`bigTextSource() must exceed 10 KB; got ${BIG_TXT.length}`)
+  }
+
+  test('a vanilla Read of a large .txt returns head + tail with the line count', async () => {
+    const p = writeFixture('dump.txt', BIG_TXT)
+    const { data } = await read(p)
+
+    expect(data.type).toBe('outline')
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.preview).toBe(true)
+    expect(data.file.totalLines).toBe(400)
+    // No code pivot footer: this is not an outline of symbols, and the
+    // reminder inside the body already names view='full' and offset/limit.
+    expect(data.file.autoPivot).toBeUndefined()
+
+    const body = data.file.content
+    expect(body).toContain('is 400 lines')
+    expect(body).toContain('lines 1-60 and 381-400')
+    expect(body).toContain('line 0060')
+    expect(body).toContain('line 0381')
+    expect(body).toContain('… 320 lines omitted …')
+    // The middle is genuinely withheld, and the tail keeps real line numbers.
+    expect(body).not.toContain('line 0200')
+    expect(body).toMatch(/\n\s*381→line 0381/)
+    // It is a fraction of the body it replaced.
+    expect(body.length).toBeLessThan(BIG_TXT.length / 3)
+  })
+
+  test('over the token cap, a .txt gets the preview instead of the dead-end error', async () => {
+    // The census case: a 47k-char /tmp dump is ~14k tokens, and a bigger one
+    // used to answer "exceeds maximum allowed tokens" with nothing else. A
+    // 1 KB token cap forces that arm on the same fixture.
+    // validateContentTokens calls countTokensWithAPI, recorded by the VCR
+    // layer under src/providers/__fixtures__/vcr/token-count-*.json and
+    // keyed by this exact body — do not change bigTextSource() without
+    // re-recording via VCR_RECORD=1.
+    const p = writeFixture('dump-overcap.txt', BIG_TXT)
+    const { data } = await read(
+      p,
+      {},
+      makeContext({ maxSizeBytes: 10 * 1024 * 1024, maxTokens: 1000 }),
+    )
+    expect(data.type).toBe('outline')
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.preview).toBe(true)
+    expect(data.file.content).toContain('is 400 lines')
+    expect(data.file.content).toContain('line 0400')
+    // view='full' keeps the cap error, as it does for code files.
+    await expect(
+      read(p, { view: 'full' }, makeContext({ maxSizeBytes: 10 * 1024 * 1024, maxTokens: 1000 })),
+    ).rejects.toThrow(/exceeds maximum allowed tokens/)
+  })
+
+  test('over the byte cap, the preview is cut from a capped re-read and says so', async () => {
+    const p = writeFixture('dump-bytecap.txt', BIG_TXT)
+    const { data } = await read(
+      p,
+      {},
+      makeContext({ maxSizeBytes: 8 * 1024, maxTokens: 25_000 }),
+    )
+    expect(data.type).toBe('outline')
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.preview).toBe(true)
+    // The re-read runs under the 10 MB scan cap, so this 20 KB fixture is
+    // read whole and the count is the real one — the cap that tripped was
+    // the Read's own 8 KB, not the scan's.
+    expect(data.file.content).toContain('is 400 lines')
+    expect(data.file.content).not.toContain('stopped at the byte cap')
+  })
+
+  test("view='full', a range, or a small file still return the body", async () => {
+    const p = writeFixture('dump-full.txt', BIG_TXT)
+    const full = await read(p, { view: 'full' })
+    expect(full.data.type).toBe('text')
+
+    const ranged = await read(p, { offset: 100, limit: 5 })
+    expect(ranged.data.type).toBe('text')
+    if (ranged.data.type !== 'text') throw new Error('expected text')
+    expect(ranged.data.file.content).toContain('line 0100')
+
+    const small = writeFixture('small.txt', 'just a few\nlines\n')
+    const { data } = await read(small)
+    expect(data.type).toBe('text')
+  })
+
+  test('a large diff pivots to its files, and symbol=<path> unfolds one of them', async () => {
+    const hunk = (n: number) =>
+      [
+        `@@ -${n},3 +${n},4 @@`,
+        ' context line',
+        `-removed line ${n}`,
+        `+added line ${n}`,
+        `+another added line ${n} ${'x'.repeat(60)}`,
+      ].join('\n')
+    const file = (path: string, hunks: number) =>
+      [
+        `diff --git a/${path} b/${path}`,
+        'index 1111111..2222222 100644',
+        `--- a/${path}`,
+        `+++ b/${path}`,
+        ...Array.from({ length: hunks }, (_, i) => hunk(i * 10 + 1)),
+      ].join('\n')
+    const diff =
+      [file('src/one.ts', 30), file('src/two.ts', 30), file('docs/three.md', 5)].join('\n') +
+      '\n'
+    expect(diff.length).toBeGreaterThan(10_000)
+    const p = writeFixture('change.diff', diff)
+
+    const { data } = await read(p)
+    expect(data.type).toBe('outline')
+    if (data.type !== 'outline') throw new Error('expected outline')
+    expect(data.file.autoPivot).toBe(true)
+    expect(data.file.content).toContain('src/one.ts  +60/-30 (30 hunks)')
+    expect(data.file.content).toContain('docs/three.md  +10/-5 (5 hunks)')
+    expect(data.file.content).not.toContain('another added line')
+
+    // The small file section comes back whole under symbol=.
+    const one = await read(p, { symbol: 'docs/three.md' })
+    expect(one.data.type).toBe('text')
+    if (one.data.type !== 'text') throw new Error('expected text')
+    expect(one.data.file.content).toContain('+++ b/docs/three.md')
+    expect(one.data.file.content).not.toContain('src/two.ts')
   })
 })

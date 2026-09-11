@@ -28,6 +28,9 @@ export type SymbolKind =
   | 'element'
   // Config/markup keys (YAML, .properties, .env, TOML, Dockerfile).
   | 'key'
+  // Unified diff: one per file section, hunks nested under it.
+  | 'file'
+  | 'hunk'
 
 export type OutlineLang =
   | 'typescript'
@@ -39,6 +42,8 @@ export type OutlineLang =
   | 'csharp'
   | 'rust'
   | 'markdown'
+  // Unified diff (.diff/.patch): files as symbols, hunks nested.
+  | 'diff'
   // C-like batch (reuse CLIKE_SPECS): C/C++, PHP, Swift, Scala, Bash.
   | 'c'
   | 'php'

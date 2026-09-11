@@ -56,6 +56,7 @@ import { CLIKE_SPECS } from 'src/tools/shared/codeOutline/clike/specs.js'
 import { scanCLike } from 'src/tools/shared/codeOutline/clike/scan.js'
 import { scanPython } from 'src/tools/shared/codeOutline/langs/python.js'
 import { scanMarkdown } from 'src/tools/shared/codeOutline/langs/markdown.js'
+import { scanDiff } from 'src/tools/shared/codeOutline/langs/diff.js'
 import { maskRuby, scanRuby } from 'src/tools/shared/codeOutline/langs/ruby.js'
 import { maskLua, scanLua } from 'src/tools/shared/codeOutline/langs/lua.js'
 import { maskSql, scanSql } from 'src/tools/shared/codeOutline/langs/sql.js'
@@ -96,6 +97,7 @@ export function scanSymbols(source: string, lang: OutlineLang): SymbolEntry[] {
     if (!source) return []
     if (lang === 'python') return scanPython(source)
     if (lang === 'markdown') return scanMarkdown(source)
+    if (lang === 'diff') return scanDiff(source)
     if (lang === 'ruby') return scanRuby(source)
     if (lang === 'lua') return scanLua(source)
     if (lang === 'sql') return scanSql(source)
@@ -173,6 +175,7 @@ export function maskSourceForLang(
     if (lang === 'xml') return maskXml(source)
     if (
       lang === 'markdown' ||
+      lang === 'diff' ||
       lang === 'yaml' ||
       lang === 'toml' ||
       lang === 'properties' ||

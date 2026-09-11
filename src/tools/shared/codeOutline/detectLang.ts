@@ -22,6 +22,8 @@ const EXT_TO_LANG: Record<string, OutlineLang> = {
   rs: 'rust',
   md: 'markdown',
   markdown: 'markdown',
+  diff: 'diff',
+  patch: 'diff',
   // C / C++ — a single 'c' language covers both dialects.
   c: 'c',
   h: 'c',
