@@ -223,6 +223,12 @@ import {
 } from "src/providers/transport/withRetry.js";
 import { should1hCacheTTL } from "src/providers/shims/claude/cacheControl.js";
 import {
+  armKeepAlive,
+  isCacheKeepAliveEnabled,
+  noteRequestStarted,
+  type KeepAliveRequest,
+} from "src/agent/cache/anthropic/keepAlive.js";
+import {
   addCacheBreakpoints,
   buildSystemPromptBlocks,
   configureEffortParams,
@@ -1193,6 +1199,9 @@ export async function* queryModel(
   let responseHeaders: globalThis.Headers | undefined = undefined;
   let isFastModeRequest = isFastMode; // Keep separate state as it may change if falling back
   let isAdvisorInProgress = false;
+  // The last body sent, kept only under CLAUDIN_CACHE_KEEPALIVE so the
+  // finally block can arm a TTL-refreshing ping for it (keepAlive.ts).
+  let keepAliveCandidate: KeepAliveRequest | null = null;
 
   // Wrap external signal with a per-query combined signal so SDK abort listeners
   // are isolated to a controller we throw away after the query. The Anthropic
@@ -1229,6 +1238,17 @@ export async function* queryModel(
 
         const params = paramsFromContext(context);
         captureAPIRequest(params, options.querySource); // Capture for bug reports
+        if (isCacheKeepAliveEnabled()) {
+          const key = options.agentId ?? "main";
+          noteRequestStarted(key);
+          keepAliveCandidate = {
+            key,
+            client: anthropic,
+            params: params as unknown as Record<string, unknown>,
+            model: options.model,
+            shortTtl: !should1hCacheTTL(options.querySource),
+          };
+        }
 
         maxOutputTokens = params.max_tokens;
 
@@ -2265,6 +2285,11 @@ export async function* queryModel(
     }
   } finally {
     stopSessionActivity("api_call");
+    // Arm the keep-alive for the body that just ran, unless the caller
+    // aborted it — an aborted request's prefix may never have been written.
+    if (keepAliveCandidate && !signal.aborted) {
+      armKeepAlive(keepAliveCandidate);
+    }
     // Must be in the finally block: if the generator is terminated early
     // via .return() (e.g. consumer breaks out of for-await-of, or query.ts
     // encounters an abort), code after the try/finally never executes.

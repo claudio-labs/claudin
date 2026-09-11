@@ -222,6 +222,16 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
 - **How to apply:** a new one-shot utility querySource must be added to
   `SHORT_LIVED_QUERY_SOURCES` or it silently pays the 1h tier; anything that
   re-sends the main thread's prefix must NOT be added.
+- The 5m tier's "reads refresh the TTL for free within a run" fails the
+  moment a sub-agent WAITS: a fresh agent that spawns nested Agents and
+  blocks 4–8 min rewrites its whole prefix on the next request (6× in the
+  2026-09-10 census), and no TTL rule can help — the write that expires is
+  chosen before the response that blocks exists. The answer is a read, not
+  a write: `src/agent/cache/anthropic/keepAlive.ts` re-sends the last body
+  with `max_tokens: 1` at 4m30s while nothing else is in flight, EXPERIMENT
+  behind `CLAUDIN_CACHE_KEEPALIVE=1` (pair `CLAUDIN_MAIN_CACHE_TTL=5m` to
+  try the main thread at 5m). Not promoted: the subscription quota's
+  weighting of a ping is unmeasured — `docs/tech/cache/keep-alive.md`.
 - Slim-subagent: `omitClaudeMdAttachments`/`omitGitStatusAttachments` on
   ToolUseContext gate `claude_md_delta`/`nested_memory`/`git_status_delta` in
   `pipeline.ts`. New attachment producers read globals and
