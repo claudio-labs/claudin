@@ -1988,7 +1988,6 @@ export function REPL({
     setMessages,
     setAppState,
     setAbortController,
-    setConversationId,
     setLastQueryCompletionTime,
     resetLoadingState,
     resetTimingRefs,

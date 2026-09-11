@@ -1,71 +1,126 @@
 ---
 name: inline-fullreset-per-message
-description: FIXED — the inline TUI used to CSI 2J the screen on EVERY message and repaint from the banner whenever the frame fit the viewport; keeps the measurements and the two invariants the fix rests on
+description: FIXED 2026-09-11 — PR #172's bottom anchor covered ONLY the branch where the previous frame OVERFLOWS the viewport, so a frame that FITS stranded the whole UI in the top rows; keeps the mechanism, the probe numbers and the A/B that closed it
 type: project
 ---
 
-**Fixed on branch `fix/tui-bottom-anchor-repaint` (2026-09-09).** Kept for the
-numbers, and for the two invariants a future change here must not break.
+**Fixed on `fix/tui-anchor-fits-viewport` (2026-09-11).** PR #172 (`1ea4e2c3`,
+v1.1.28) had fixed only the *reset-path* half; GitHub #165 was closed COMPLETED
+on 2026-09-10 by the PR link firing, not by a verification, and the other half
+shipped. Reported by a user on 2026-09-11 (46x184, `flickerFreeMode: false`) and
+reproduced by probe. Kept for the mechanism and the numbers — the trap here is
+believing a closed issue.
 
-Measured 2026-09-09 in tmux 100x18, `TERM_PROGRAM=ghostty CLAUDIN_NO_FLICKER=0`,
-36 messages, probes in `log-update.ts`. Two facts, one root, both survive PR #160
-(which only fixed *where* the repaint starts, not *how often* it fires).
+**The fix**: the in-place tail repaint's entry condition is `cursorAtBottom`
+instead of `prevHadScrollback`, so a shrinking frame that FITS the viewport takes
+the same net-zero path as one that overflows. What `repaintTailInPlace` needs is
+a cursor just past the previous block's last row; requiring the overflow on top
+of that was the bug. `CLAUDIN_LEGACY_FULL_RESET` keeps the old, narrower
+condition.
 
-**1. One full-screen reset per message.** 35 `fullResetSequence_CAUSES_FLICKER`
-calls, all `reason='offscreen'` — the `prevHadScrollback && isShrinking` branch
-(`log-update.ts:203`). The existing `Full reset (shrink while overflowing)` log
-gives the magnitude: the shrink was **2 rows 31× and 3 rows 4×**, against frames
-86–120 rows tall. That is the spinner/status row disappearing when a turn ends.
-So a 2-row shrink at the *bottom* of the frame costs a `CSI 2J` erase of the whole
-visible screen plus a repaint of all `viewport.height - 1` rows, once per turn,
-in every long non-fullscreen session. `rewriteMainScreen` (Ghostty) fired 206×
-between them and is not the problem.
+## The claim that was wrong
 
-**2. The repaint starts at the banner whenever the frame is not taller than the
-viewport.** `startY = max(0, screen.height - (viewport.height - 1))`, so
-`screen.height <= viewport.height` gives `startY <= 1` — row 0/1 of the frame is
-`<StartupBanner/>` (`REPL.tsx:2970`, `LogoHeader` right after it). Captured live:
-`screenH=120 viewportH=120 startY=1` after resizing the pane, and the pane top
-then read `▐█████▌ Anthropic · Opus 4.8 …` with the whole transcript re-flowed
-under it. Also seen at `screenH=15 viewportH=18 startY=0`. Visually this is
-"the logo gets pinned to the top and the input jumps upward, bottom rows blank" —
-reachable in a *long* session too, since the reset uses the NEXT frame's height
-(after compaction, after a collapse, or in a tall window).
+The previous version of this memory said *"`anchorRows` bottom-anchors **every**
+repaint path"*. It does not. `anchorRows` has exactly **two** call sites
+(`src/terminal/ink/log-update.ts:682` in `repaintTailInPlace`, `:723` in
+`fullResetSequence_CAUSES_FLICKER`). The **incremental diff path never calls
+it**, and that is the path a shrink takes whenever the previous frame fits the
+viewport.
 
-Why it reads as a scroll bug on Ghostty: every one of those writes snaps the
-terminal viewport back to the bottom, so scrolling up to read is impossible the
-moment anything outputs — the exact reason `isFullscreenEnvEnabled()` force-enables
-alt-screen for Ghostty (`fullscreen.ts:144-149`). Users who pick
-`/config` → renderer = default (`flickerFreeMode: false`, which this reporter has)
-opt back into it.
+The guard that routes between them (`log-update.ts:231-232`):
 
-**How it was fixed, and the two invariants that hold it up.**
+```ts
+prevHadScrollback = cursorAtBottom && prev.screen.height >= prev.viewport.height
+```
 
-- `repaintTailInPlace` erases exactly as many rows as it repaints, so the net
-  vertical movement is ZERO and the cursor ends back on the last viewport row.
-  That is what lets it use `eraseLines` where the old code could not — the old
-  code cleared only the k *vacated* rows and left the cursor k rows high, which
-  is the desync the reset existed to avoid. Do not "simplify" it back into a
-  reset, and do not make it erase a different count than it paints.
-- `anchorRows` bottom-anchors **every** repaint path: the block ends on the
-  second-to-last viewport row, cursor on the last. When the frame overflows,
-  padRows is 0 and the output is byte-identical to the pre-fix code — that is
-  what keeps the two PR #160 guards green without touching them.
-- The banner additionally **unmounts itself** once it scrolls out of the
-  viewport (`shouldLatchStartupBanner`), because while it is frame row 0 no
-  anchoring can stop a repaint from resurrecting it. `/clear` remounts it via
-  `key={conversationId}`.
+A frame SHORTER than the viewport fails it and falls through to the incremental
+shrink at `log-update.ts:323-344`, which emits `clear(linesToClear)` +
+`cursorMove(y:-1)` — net **−linesToClear** rows. The block's top stays put and
+the freed rows stay blank **below** it.
 
-Verified live, same bench: resets **35 → 0** over 36 messages, 37 in-place
-repaints in their place. The shape that used to pin the banner
-(`prevH=124 nextH=13 viewport=120`) now logs
-`[REPAINT] in-place … FRAME FITS VIEWPORT` and paints the frame at rows
-106-120 with the banner where it belongs.
+## Measured (probe against the real `LogUpdate`, viewport 46)
 
-**Still open:** the *model* half of #165 — whatever shrinks
-`displayedMessages`/`renderableMessages` to the tail. The renderer no longer
-destroys the rows above, but they are still gone from the frame, so `ctrl+L`,
-a resize, `/export` and transcript mode can still lose them. The
-`FRAME FITS VIEWPORT` flag on the in-place line is the signal to watch.
+| prev height | next | net dy | outcome |
+|---|---|---|---|
+| 60 (overflows) | 15 | **0** | `repaintTailInPlace`, stays at bottom ✅ |
+| 46 (== viewport) | 15 | **0** | `>=` catches it ✅ |
+| **45 (fits)** | 15 | **−30** | stranded 30 rows above the bottom ❌ |
 
-See [[clip-pin-cache-ab-2026-07-25]] for the bench traps around this area.
+It never self-heals: `repaintTailInPlace` is net-zero and the incremental path is
+purely relative, so only an absolute `clearTerminal` repositions — reached for
+`'resize'` (`:196-201`) and `'clear'` (`:183-188`) and nothing else. Pre-#172 the
+per-turn reset accidentally re-anchored every turn; removing it removed the
+self-healing too.
+
+## The model half — also fixed, by deleting the policy
+
+`useOnQuery.ts` used to replace the array at a compact boundary — with
+`[newMessage]` inline, with one compact-interval in fullscreen — and
+`Messages.tsx:508` dropped everything before the last boundary again at render
+time for non-fullscreen, non-verbose. Both are gone: the boundary is appended
+like any other message and the timeline is never cut. Compaction is a CONTEXT
+operation (`query.ts:587` swaps the model-facing array) and that is all it is.
+The render cost stays bounded by `MAX_DISPLAY_MESSAGES = 200` (`REPL.tsx:304`,
+applied `:2856`), which is a count, not a boundary.
+
+Two things fell out of that. The `setConversationId(randomUUID())` on both
+compaction paths is gone — no row's content changes under an append, and the
+re-key was reprinting `<StartupBanner key={conversationId}>` in the middle of
+the timeline. And the manual `/compact` path, which had ALWAYS appended
+(`compact.ts` → `processSlashCommand.tsx:636-661` → the append in
+`useOnQuery`), finally agrees with the automatic one.
+
+**Why only long sessions.** Before the first compaction the frame permanently
+overflows the viewport, so the renderer's bad branch was unreachable. After it
+the transcript restarted short and lived in the "fits the viewport" band, where
+any large shrink — the next compaction, or a tool output collapsing to
+`… +N lines` — stranded the block at the top for good.
+
+## Reproducing it
+
+Build a prev/next `Frame` pair with a configurable `viewport.height` (the
+`frameFromLines` helper in `log-update.test.ts` hardcodes 10), call
+`log.render(prev, next, false, true, false)`, and sum the diff's vertical
+movement: `clear(n)` is `-(n-1)`, `cursorMove` is `y`, `stdout` is its LF count.
+Net 0 means bottom-anchored; negative is the stranding. Live equivalents:
+`CLAUDIN_DEBUG_REPAINTS` (`ink.tsx:629-652`) prints `prevH/nextH/viewport`, and
+from a stuck state a one-column width change snaps it back (reset `'resize'`).
+
+**Now covered** by three tests in `log-update.test.ts` built on a `netRowDelta`
+helper: the 45→15 stranding, the 8→5 shrink (rewritten — it used to assert
+`clear count === 3`, the vacated rows, and passed on the broken behavior), and
+the killswitch restoring the incremental path. Reverting the condition to
+`prevHadScrollback` fails exactly the two new ones.
+
+**Still uncovered**: a viewport height *increase*. `:196-201` only resets when
+the viewport gets SHORTER or narrower, so dragging the window taller still
+leaves the block anchored to the old bottom.
+
+## Escapes, if a variant of this ever shows up again
+
+`ctrl+L` (forces reset `'clear'`), a one-column resize, or `/config` →
+flicker-free renderer — alt-screen reports `viewport.height = rows + 1` against a
+screen exactly `rows` tall, so `padRows` is always 0 and the path cannot fire.
+
+## The live A/B that closed it
+
+tmux 184x46, same keystrokes on both binaries: grow the input past the viewport,
+clear it, regrow to ~40 rows (under the viewport), clear again. Released v1.1.28
+moved the footer from rows 44-45 to **rows 14-15** with 31 blank rows below; the
+rebuilt binary kept it on 44-45. That sequence is the cheapest live repro — it
+needs no model call.
+
+## Still true from the original 2026-09-09 bench
+
+tmux 100x18, `TERM_PROGRAM=ghostty CLAUDIN_NO_FLICKER=0`, 36 messages: full-screen
+resets **35 → 0**, 37 in-place repaints in their place, every original reset a 2-
+or 3-row shrink of an 86-120 row frame (the spinner/status row at end of turn).
+The two invariants `repaintTailInPlace` rests on also still hold: it erases
+exactly as many rows as it paints (do not "simplify" it back into a reset), and
+the banner unmounts itself once it scrolls out (`shouldLatchStartupBanner`),
+`/clear` remounting it via `key={conversationId}`.
+
+**Follow-up:** the renderer half of this belongs in
+[[coding-gotchas-go-in-rules-not-memory]] terms in `.claudin/rules/ink-tui.md` —
+`/dream` cannot write outside the memory dir, so it was not moved there.
+See [[clip-pin-cache-ab-2026-07-25]] for the bench traps in this area.

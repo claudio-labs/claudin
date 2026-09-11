@@ -26,7 +26,6 @@
 //     block deliberately sits OUTSIDE that check for the same reason.
 
 import { useCallback } from 'react';
-import type { UUID } from 'crypto';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { createCoalescedUpdater } from 'src/platform/install/coalescedUpdater.js';
 import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js';
@@ -63,7 +62,6 @@ import { query } from 'src/agent/query.js';
 import { mergeClients } from 'src/mcp/hooks/useMergedClients.js';
 import { getQuerySourceForREPL } from 'src/agent/promptCategory.js';
 import { maybeMarkProjectOnboardingComplete } from 'src/platform/projectOnboardingState.js';
-import { randomUUID } from 'crypto';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
 import type { ProcessUserInputContext } from 'src/agent/input/processUserInput.js';
 import { removeTranscriptMessage, isEphemeralToolProgress, isLoggableMessage } from 'src/sessions/sessionStorage.js';
@@ -77,7 +75,6 @@ import type { EffortValue } from 'src/providers/effort/effort.js';
 import { checkAndDisableBypassPermissionsIfNeeded, checkAndDisableAutoModeIfNeeded } from 'src/permissions/bypassPermissionsKillswitch.js';
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
 import { fireCompanionObserver } from 'src/terminal/buddy/observer.js';
-import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 
 // Mirrors the module-level bindings in REPL.tsx. `feature()` must sit DIRECTLY in
 // a ternary condition - the build folds it in place and any other form throws.
@@ -151,7 +148,6 @@ export interface UseOnQueryDeps {
   setMessages: (action: React.SetStateAction<MessageType[]>) => void;
   setAppState: SetAppState;
   setAbortController: React.Dispatch<React.SetStateAction<AbortController | null>>;
-  setConversationId: React.Dispatch<React.SetStateAction<UUID>>;
   setLastQueryCompletionTime: React.Dispatch<React.SetStateAction<number>>;
   resetLoadingState: () => void;
   resetTimingRefs: () => void;
@@ -210,7 +206,6 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     setMessages,
     setAppState,
     setAbortController,
-    setConversationId,
     setLastQueryCompletionTime,
     resetLoadingState,
     resetTimingRefs,
@@ -227,23 +222,26 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
       // paint is a second, independent net.
       coalescedStreamingToolUses.flush();
       if (isCompactBoundaryMessage(newMessage)) {
-        // Fullscreen: keep pre-compact messages for scrollback. query.ts
-        // slices at the boundary for API calls, Messages.tsx skips the
-        // boundary filter in fullscreen, and useLogMessages treats this
-        // as an incremental append (first uuid unchanged). Cap at one
-        // compact-interval of scrollback — normalizeMessages/applyGrouping
-        // are O(n) per render, so drop everything before the previous
-        // boundary to keep n bounded across multi-day sessions.
-        if (isFullscreenEnvEnabled()) {
-          setMessages(old => [...getMessagesAfterCompactBoundary(old, {
-            includeSnipped: true
-          }), newMessage]);
-        } else {
-          setMessages(() => [newMessage]);
-        }
-        // Bump conversationId so Messages.tsx row keys change and
-        // stale memoized rows remount with post-compact content.
-        setConversationId(randomUUID());
+        // Compaction is a CONTEXT operation, not a timeline operation: the
+        // boundary is appended like any other message and nothing before it is
+        // dropped. query.ts:587 already replaced the model-facing array, which
+        // is the only place the summary has to take effect.
+        //
+        // This used to replace the array — with `[newMessage]` on the main
+        // screen, with one compact-interval in fullscreen — so the transcript
+        // a user could scroll, export or rewind through ended at the last
+        // compaction. It is also what made the frame collapse mid-session.
+        // Appending matches what manual /compact has always done
+        // (processSlashCommand -> handlePromptSubmit -> the append below), so
+        // the two paths finally agree, and useLogMessages sees the incremental
+        // append it prefers (messages[0] unchanged).
+        //
+        // No conversationId bump: no existing row's content changes, so
+        // re-keying every row would only remount them — and it reprinted the
+        // startup banner in the middle of the timeline, since the banner is
+        // keyed on it (REPL.tsx:2974). /clear still bumps it; a compaction is
+        // not a new conversation.
+        setMessages(old => [...old, newMessage]);
         // Compaction succeeded — clear the context-blocked flag so ticks resume
         if (feature('PROACTIVE') || feature('KAIROS')) {
           proactiveModule?.setContextBlocked(false);
@@ -383,9 +381,11 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
       // handleMessageFromStream. Clear context-blocked if a compact boundary
       // is present so proactive ticks resume after compaction.
       if (newMessages.some(isCompactBoundaryMessage)) {
-        // Bump conversationId so Messages.tsx row keys change and
-        // stale memoized rows remount with post-compact content.
-        setConversationId(randomUUID());
+        // No conversationId bump here either — /compact appends its
+        // post-compact messages (processSlashCommand builds them, the append
+        // at the top of onQuery adds them), so no existing row's content
+        // changes and re-keying would only remount every row and reprint the
+        // startup banner mid-timeline. See the stream branch in onQueryEvent.
         if (feature('PROACTIVE') || feature('KAIROS')) {
           proactiveModule?.setContextBlocked(false);
         }

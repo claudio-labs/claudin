@@ -30,7 +30,7 @@ import { getGlobalConfig } from 'src/platform/config/config.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { applyGrouping } from 'src/agent/tools/groupToolUses.js';
-import { buildMessageLookups, createAssistantMessage, deriveUUID, getLiveToolUseIDs, getMessagesAfterCompactBoundary, getToolUseID, getToolUseIDs, hasUnresolvedHooksFromLookup, isNotEmptyMessage, normalizeMessages, reorderMessagesInUI, type StreamingThinking, type StreamingToolUse, shouldShowUserMessage } from 'src/agent/messages/messages.js';
+import { buildMessageLookups, createAssistantMessage, deriveUUID, getLiveToolUseIDs, getToolUseID, getToolUseIDs, hasUnresolvedHooksFromLookup, isNotEmptyMessage, normalizeMessages, reorderMessagesInUI, type StreamingThinking, type StreamingToolUse, shouldShowUserMessage } from 'src/agent/messages/messages.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import { renderableSearchText } from 'src/sessions/transcriptSearch.js';
 import { Divider } from 'src/terminal/design-system/Divider.js';
@@ -496,18 +496,24 @@ const MessagesImpl = ({
     hasTruncatedMessages: hasTruncatedMessages_0,
     hiddenMessageCount: hiddenMessageCount_0
   } = useMemo(() => {
-    // In fullscreen mode the alt buffer has no native scrollback, so the
-    // compact-boundary filter just hides history the ScrollBox could
-    // otherwise scroll to. Main-screen mode keeps the filter — pre-compact
-    // rows live above the viewport in native scrollback there, and
-    // re-rendering them triggers full resets.
-    // includeSnipped: UI rendering keeps snipped messages for scrollback
-    // (this PR's core goal — full history in UI, filter only for the model).
-    // Also avoids a UUID mismatch: normalizeMessages derives new UUIDs, so
-    // projectSnippedView's check against original removedUuids would fail.
-    const compactAwareMessages = verbose || isFullscreenEnvEnabled() ? normalizedMessages : getMessagesAfterCompactBoundary(normalizedMessages, {
-      includeSnipped: true
-    });
+    // The timeline is never cut at a compact boundary. Compaction is a context
+    // operation — query.ts:587 swaps the model-facing array and that is the
+    // whole of it; what the user scrolls, exports and rewinds through stays
+    // continuous across every compaction.
+    //
+    // The main screen used to slice here (fullscreen and verbose did not). The
+    // reason given was that pre-compact rows already live in the terminal's
+    // native scrollback and re-rendering them triggers full resets — the reset
+    // half stopped being true once every repaint path bottom-anchored
+    // (log-update.ts), and the scrollback half only holds until the first
+    // ctrl+L, resize or /export, each of which re-renders from this array.
+    // What it cost was the same three surfaces, permanently.
+    //
+    // Render cost stays bounded without it: REPL.tsx caps displayedMessages at
+    // MAX_DISPLAY_MESSAGES and computeSliceStart caps the non-virtualized path
+    // below, both by message count rather than by where a boundary happens to
+    // sit.
+    const compactAwareMessages = normalizedMessages;
     const messagesToShowNotTruncated = reorderMessagesInUI(compactAwareMessages.filter((msg_2): msg_2 is Exclude<NormalizedMessage, ProgressMessageType> => msg_2.type !== 'progress')
     // CC-724: drop attachment messages that AttachmentMessage renders as
     // null (hook_success, hook_additional_context, hook_cancelled, etc.)
