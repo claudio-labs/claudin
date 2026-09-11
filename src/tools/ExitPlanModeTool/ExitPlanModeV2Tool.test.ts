@@ -117,9 +117,9 @@ describe('ExitPlanModeV2Tool', () => {
     )
   })
 
-  test('mapToolResultToToolResultBlockParam includes plan body and edited label', () => {
+  test('mapToolResultToToolResultBlockParam echoes the plan body only when the user edited it', () => {
     const map = ExitPlanModeV2Tool.mapToolResultToToolResultBlockParam
-    const block = map?.(
+    const edited = map?.(
       {
         plan: 'PLAN CONTENT',
         isAgent: false,
@@ -128,8 +128,25 @@ describe('ExitPlanModeV2Tool', () => {
       },
       'u',
     )
-    expect(block?.content).toContain('Approved Plan (edited by user)')
-    expect(block?.content).toContain('PLAN CONTENT')
-    expect(block?.content).toContain('/tmp/plan.md')
+    expect(edited?.content).toContain('Approved Plan (edited by user)')
+    expect(edited?.content).toContain('PLAN CONTENT')
+    expect(edited?.content).toContain('/tmp/plan.md')
+
+    // Unedited: the model already holds the plan it wrote, so the result
+    // points at the file instead of re-sending the body.
+    const unedited = map?.(
+      {
+        plan: 'PLAN CONTENT',
+        isAgent: false,
+        filePath: '/tmp/plan.md',
+        planWasEdited: false,
+        tasksSeeded: 3,
+      },
+      'u',
+    )
+    expect(unedited?.content).not.toContain('PLAN CONTENT')
+    expect(unedited?.content).not.toContain('Approved Plan')
+    expect(unedited?.content).toContain('/tmp/plan.md')
+    expect(unedited?.content).toContain('3 step(s)')
   })
 })

@@ -142,6 +142,12 @@ export const outputSchema = lazySchema(() => {
           .describe(
             'True when this outline was produced by AUTO_OUTLINE_ON_ELISION because the vanilla full-body Read crossed the size threshold that induces slice-walk re-reads. Triggers an extra footer hint in the tool_result.',
           ),
+        preview: z
+          .boolean()
+          .optional()
+          .describe(
+            'True when the content is the head+tail preview of a large plain-text file (no outline language), not a symbol table.',
+          ),
       }),
     }),
     z.object({

@@ -15,7 +15,10 @@ import {
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
-import { detectOutlineLangFromPath } from 'src/tools/shared/codeOutline/scanSymbols.js'
+import {
+  detectOutlineLangFromPath,
+  SCAN_MAX_BYTES,
+} from 'src/tools/shared/codeOutline/scanSymbols.js'
 import { logFileOperation } from 'src/platform/fileOperationAnalytics.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { readNotebook } from 'src/shared/fs/notebook.js'
@@ -49,6 +52,7 @@ import {
   formatSymbolList,
   makeOutlineData,
   makeSymbolOutlineData,
+  makeTextPreviewData,
   makeUnfoldData,
   outlineIsWorthThePivot,
   READ_AUTO_OUTLINE_MIN_SYMBOLS,
@@ -57,6 +61,7 @@ import {
   refuseStructureOnLargeFile,
   scanFile,
   symbolsInside,
+  textPreviewApplies,
 } from 'src/tools/FileReadTool/outlineView.js'
 import { markMemoryFileMtime } from 'src/tools/FileReadTool/resultContent.js'
 import type { Output } from 'src/tools/FileReadTool/schemas.js'
@@ -366,7 +371,7 @@ export async function callInner(
   // --- Text file (single async read via readFileInRange) ---
   // offset is normalized to >= 1 in call() before reaching here.
   const lineOffset = offset - 1
-  let readResult: ReadFileRangeResult
+  let readResult: ReadFileRangeResult | undefined
   try {
     readResult = await readFileInRange(
       resolvedFilePath,
@@ -378,16 +383,13 @@ export async function callInner(
     )
     await validateContentTokens(readResult.content, ext, maxTokens)
   } catch (e) {
+    const overCap =
+      e instanceof FileTooLargeError ||
+      e instanceof MaxFileReadTokenExceededError
     // Over-cap auto-outline: a plain Read that blew the byte or token cap
     // becomes a structural outline instead of a dead-end error. Only when
     // no explicit view/symbol was requested and the file is a code file.
-    if (
-      outlineLang &&
-      symbol === undefined &&
-      view === undefined &&
-      (e instanceof FileTooLargeError ||
-        e instanceof MaxFileReadTokenExceededError)
-    ) {
+    if (outlineLang && symbol === undefined && view === undefined && overCap) {
       const scanned = await scanFile(resolvedFilePath, outlineLang, signal, {
         encoding,
       })
@@ -398,6 +400,39 @@ export async function callInner(
           fullFilePath,
           readFileState,
           'overcap',
+        )
+      }
+    }
+    // The plain-text sibling: over the cap, a `.txt`/`.log` used to be a
+    // dead end ("exceeds maximum allowed tokens") and the model's next move
+    // was `head`/`wc -l` in Bash. Serve the head+tail preview instead — from
+    // the body already read when only the TOKEN cap tripped, else from a
+    // byte-capped re-read (same cap the symbol scan uses).
+    if (
+      autoOutlineOnElisionEnabled() &&
+      !outlineLang &&
+      symbol === undefined &&
+      view === undefined &&
+      offset === 1 &&
+      limit === undefined &&
+      overCap
+    ) {
+      const preview = await readTextForPreview(
+        readResult,
+        resolvedFilePath,
+        signal,
+        encoding,
+      )
+      if (preview) {
+        return makeTextPreviewData(
+          preview.content,
+          preview.lines,
+          preview.totalBytes,
+          preview.mtimeMs,
+          file_path,
+          fullFilePath,
+          readFileState,
+          { truncated: preview.truncated },
         )
       }
     }
@@ -461,6 +496,32 @@ export async function callInner(
     }
   }
 
+  // The same policy for a file the language gate cannot outline: a vanilla
+  // Read of a large `.txt`/`.log`/extensionless body returns its head and
+  // tail with the line count. Same escapes as the code pivot — an explicit
+  // view, a symbol, or a range all mean the caller has already chosen.
+  if (
+    autoOutlineOnElisionEnabled() &&
+    !outlineLang &&
+    symbol === undefined &&
+    view === undefined &&
+    offset === 1 &&
+    limit === undefined &&
+    textPreviewApplies(content.length, totalLines)
+  ) {
+    const lines = content.split('\n')
+    if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop()
+    return makeTextPreviewData(
+      content,
+      lines,
+      totalBytes,
+      mtimeMs,
+      file_path,
+      fullFilePath,
+      readFileState,
+    )
+  }
+
   readFileState.set(fullFilePath, {
     content,
     timestamp: Math.floor(mtimeMs),
@@ -510,4 +571,50 @@ export async function callInner(
   })
 
   return { data }
+}
+
+/**
+ * The body a large plain-text preview is cut from. When the read itself
+ * succeeded and only the token cap tripped, that body is reused; when the
+ * byte cap tripped, the file is re-read under the scan's byte ceiling with
+ * truncation allowed, so the tail — and the line count — describe what was
+ * read, and the preview says so.
+ */
+async function readTextForPreview(
+  readResult: ReadFileRangeResult | undefined,
+  resolvedFilePath: string,
+  signal: AbortSignal,
+  encoding: string | undefined,
+): Promise<{
+  content: string
+  lines: string[]
+  totalBytes: number
+  mtimeMs: number
+  truncated: boolean
+} | null> {
+  let res = readResult
+  if (!res) {
+    try {
+      res = await readFileInRange(
+        resolvedFilePath,
+        0,
+        undefined,
+        SCAN_MAX_BYTES,
+        signal,
+        { truncateOnByteLimit: true, encoding },
+      )
+    } catch {
+      return null
+    }
+  }
+  const lines = res.content.split('\n')
+  if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop()
+  if (!textPreviewApplies(res.content.length, lines.length)) return null
+  return {
+    content: res.content,
+    lines,
+    totalBytes: res.totalBytes,
+    mtimeMs: res.mtimeMs,
+    truncated: res.truncatedByBytes ?? false,
+  }
 }

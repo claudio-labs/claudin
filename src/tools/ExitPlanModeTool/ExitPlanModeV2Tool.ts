@@ -531,27 +531,27 @@ Request ID: ${requestId}`,
       ? `\n\nIf this plan can be broken down into multiple independent tasks, consider using the ${TEAM_CREATE_TOOL_NAME} tool to create a team and parallelize the work.`
       : ''
 
-    // Always include the plan — extractApprovedPlan() in the Ultraplan CCR
-    // flow parses the tool_result to retrieve the plan text for the local CLI.
-    // Label edited plans so the model knows the user changed something.
-    const planLabel = planWasEdited
-      ? 'Approved Plan (edited by user)'
-      : 'Approved Plan'
-
     const todoHint =
       tasksSeeded && tasksSeeded > 0
         ? `The ${tasksSeeded} step(s) from your plan's Tasks section have been seeded into the task list. As you implement, use ${TASK_UPDATE_TOOL_NAME} to mark each task in_progress before starting it and completed when done.`
         : 'Start with updating your todo list if applicable'
+
+    // The model wrote the plan file itself, so echoing the body back is a
+    // second copy of ~4-7k tokens that every later call in the session
+    // re-reads (the 2026-09-10 census measured 67k chars over 10 approvals).
+    // Only an EDITED plan carries something the model has not seen. The
+    // Ultraplan CCR flow's `extractApprovedPlan` used to require the echo,
+    // but `feature('ULTRAPLAN')` is off in this fork's build.
+    const planEcho = planWasEdited
+      ? `\n\n## Approved Plan (edited by user):\n${plan}`
+      : ''
 
     return {
       type: 'tool_result',
       content: `User has approved your plan. You can now start coding. ${todoHint}
 
 Your plan has been saved to: ${filePath}
-You can refer back to it if needed during implementation.${teamHint}
-
-## ${planLabel}:
-${plan}`,
+You can refer back to it if needed during implementation.${teamHint}${planEcho}`,
       tool_use_id: toolUseID,
     }
   },

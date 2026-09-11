@@ -156,8 +156,17 @@ export function renderToolResultMessage(output: Output): React.ReactNode {
     case 'outline':
       {
         const {
-          symbolCount
+          symbolCount,
+          preview,
+          totalLines
         } = output.file;
+        if (preview) {
+          return <MessageResponse height={1}>
+            <Text>
+              Read preview (<Text bold>{totalLines}</Text> lines)
+            </Text>
+          </MessageResponse>;
+        }
         return <MessageResponse height={1}>
           <Text>
             Read outline (<Text bold>{symbolCount}</Text>{' '}
