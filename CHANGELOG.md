@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.1.28 — 2026-09-11
+
+### ✨ Features
+
+- feat(rules): draw the module map up to four directory levels deep (#181) (29cac8a6)
+- feat(tui): cap the task checklist at 7 visible rows (#180) (a1c2c3c1)
+- feat(cache): prompt-cache keep-alive pings behind CLAUDIN_CACHE_KEEPALIVE (#179) (8cf02450)
+- feat(agent): slim Code agent, readOnly briefs, fork gate at 150k (#177) (d6e49884)
+- feat(git): cwd parameter and the cd-and-git redirect (#178) (53823c7e)
+- feat(read): diff outline, plain-text preview, no plan echo (#176) (f6278e11)
+- feat(memory): browse, read and prune the memory dirs from /memory (#173) (2365c9f6)
+- feat(agent): default delegation to a fresh Code agent, fork only for conversation-bound work (#170) (b7e6913b)
+- feat(cache,tools): attribute cache breaks, add WaitFor, trim the Read reminder (#169) (be218f55)
+
+### 🐛 Bug Fixes
+
+- fix: four inherited-code defects found by a cross-fork audit (#174) (e58d3ead)
+- fix(tui): anchor every repaint at the bottom and stop resurrecting the banner (#172) (1ea4e2c3)
+- fix(tui): render the WaitFor tool header as "Wait" (#171) (313df3f0)
+
+### 📚 Documentation
+
+- docs(memory): correct the team memories the reorg and later PRs made wrong (286fcb90)
+
+### 🔧 Miscellaneous
+
+- chore(memory): merge three duplicate team memories into their survivors (#175) (2d2953fc)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.27 — 2026-09-08
 
 ### 🐛 Bug Fixes
