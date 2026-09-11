@@ -52,6 +52,12 @@ import {
 } from 'src/mcp/mcpInstructionsDelta.js'
 import type { MCPServerConnection } from 'src/mcp/types.js'
 import { getClaudeMdDelta } from 'src/memory/instructions/claudeMdDelta.js'
+import {
+  filterInjectedMemoryFiles,
+  getClaudeMds,
+  getMemoryFiles,
+} from 'src/memory/instructions/claudemd.js'
+import type { MemoryType } from 'src/memory/memdir/types.js'
 import { getGitStatusDelta } from 'src/vcs/git/gitStatusDelta.js'
 import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import {
@@ -262,12 +268,28 @@ export function getMcpInstructionsDeltaAttachment(
  * CLAUDE.md delta attachment — emits only the current CLAUDE.md body
  * if it changed since the last turn, or nothing on a no-op.
  * See src/memory/instructions/claudeMdDelta.ts for the diff logic.
+ *
+ * `omitMemoryIndexes` (a slim sub-agent, see AgentDefinition) announces the
+ * family WITHOUT the two auto-memory index files. The filter is applied here
+ * rather than on `getUserContext()` because that one is memoized with no
+ * arguments and shared with the main thread; `getMemoryFiles()` is memoized
+ * too, so the re-concatenation is a string join per turn.
  */
+const notMemoryIndex = (type: MemoryType): boolean =>
+  type !== 'AutoMem' && type !== 'TeamMem'
+
 export async function getClaudeMdDeltaAttachment(
   messages: Message[] | undefined,
+  options: { omitMemoryIndexes?: boolean } = {},
 ): Promise<Attachment[]> {
   const userContext = await getUserContext()
-  const current = userContext.claudeMd ?? ''
+  let current = userContext.claudeMd ?? ''
+  if (current && options.omitMemoryIndexes) {
+    current = getClaudeMds(
+      filterInjectedMemoryFiles(await getMemoryFiles()),
+      notMemoryIndex,
+    )
+  }
   const delta = getClaudeMdDelta(
     current,
     (messages ?? []) as Parameters<typeof getClaudeMdDelta>[1],

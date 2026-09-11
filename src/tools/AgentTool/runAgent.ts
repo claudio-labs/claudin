@@ -3,6 +3,7 @@ import type { UUID } from 'crypto'
 import { randomUUID } from 'crypto'
 import uniqBy from 'lodash-es/uniqBy.js'
 import { logForDebugging } from 'src/shared/debug.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getProjectRoot, getSessionId } from 'src/platform/bootstrap/state.js'
 import { getCommand, getSkillToolCommands, hasCommand } from 'src/commands/commands.js'
 import {
@@ -482,13 +483,30 @@ export async function* runAgent({
     ? userContextNoClaudeMd
     : baseUserContext
 
+  // The memory-index-only omission. claudeMd reaches the agent through the
+  // claude_md_delta attachment (prependUserContext filters the key out), so
+  // the flag only has to reach the pipeline — the producer applies the
+  // AutoMem/TeamMem filter itself. Moot when the whole family is omitted.
+  const shouldOmitMemoryIndexes =
+    !shouldOmitClaudeMd &&
+    agentDefinition.omitMemoryIndexes === true &&
+    !override?.userContext &&
+    !isEnvTruthy(process.env.CLAUDIN_DISABLE_SLIM_CODE_AGENT)
+
   // Agents that don't need stale gitStatus (up to 40KB) opt out via
   // omitGitStatus. Read-only search agents (Plan) can run
   // `git status` themselves for fresh data; web-only agents (WebResearcher)
-  // never touch git.
+  // never touch git. The Code agent opts out too, under the same
+  // kill-switch as its memory-index omission.
+  const shouldOmitGitStatus =
+    agentDefinition.omitGitStatus === true &&
+    !(
+      agentDefinition.omitMemoryIndexes === true &&
+      isEnvTruthy(process.env.CLAUDIN_DISABLE_SLIM_CODE_AGENT)
+    )
   const { gitStatus: _omittedGitStatus, ...systemContextNoGit } =
     baseSystemContext
-  const resolvedSystemContext = agentDefinition.omitGitStatus
+  const resolvedSystemContext = shouldOmitGitStatus
     ? systemContextNoGit
     : baseSystemContext
 
@@ -808,7 +826,8 @@ export async function* runAgent({
     // pipeline — claude_md_delta / nested_memory / git_status_delta read
     // global state and would re-inject the stripped content otherwise.
     omitClaudeMdAttachments: shouldOmitClaudeMd,
-    omitGitStatusAttachments: agentDefinition.omitGitStatus,
+    omitMemoryIndexAttachments: shouldOmitMemoryIndexes,
+    omitGitStatusAttachments: shouldOmitGitStatus,
   })
 
   // Preserve tool use results for subagents with viewable transcripts (in-process teammates)

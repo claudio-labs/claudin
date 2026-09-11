@@ -264,6 +264,10 @@ export type ToolUseContext = {
    * claude_md_delta / nested_memory read global state and
    * would re-inject it every turn without this flag. */
   omitClaudeMdAttachments?: boolean
+  /** Subagent-only: honor AgentDefinition.omitMemoryIndexes — the
+   * claude_md_delta producer drops the AutoMem/TeamMem index files from the
+   * body it announces. */
+  omitMemoryIndexAttachments?: boolean
   /** Subagent-only: honor AgentDefinition.omitGitStatus in the attachment
    * pipeline — suppresses git_status_delta for the same reason. */
   omitGitStatusAttachments?: boolean

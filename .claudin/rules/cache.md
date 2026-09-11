@@ -227,6 +227,17 @@ wrong directory. The Read mtime guard is NOT a backstop; Glob/Grep/LSP have none
   `pipeline.ts`. New attachment producers read globals and
   bypass the gate — honor the flags explicitly or Plan/WebResearcher get
   full CLAUDE.md + rules re-injected per Read.
+  Three degrees since 2026-09-10 (`src/tools/AgentTool/readOnlyAgent.ts`,
+  `runAgent.ts`): `omitClaudeMd` (Plan, WebResearcher — nothing);
+  `omitMemoryIndexes` (the `Code` agent — CLAUDE.md and rules stay, the two
+  `MEMORY.md` indexes go, applied by `getClaudeMdDeltaAttachment` because
+  `getUserContext()` is memoized without arguments); and `readOnly: true`
+  on the Agent input (Plan's omissions + write-tool denylist on any named
+  agent). The census behind it: the family plus the first `src/` Read's
+  rules were 43% of everything a fresh Code agent read. A fork keeps its
+  parent's tool pool untouched — the `tools` array is the cached prefix
+  (§5) — so `readOnly` is a no-op there. `CLAUDIN_DISABLE_SLIM_CODE_AGENT=1`
+  restores the full injection.
 
 ## 5. The `tools` array is part of the prefix — deferred tools included
 

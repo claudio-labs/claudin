@@ -14,7 +14,11 @@ import type { QueuedCommand } from 'src/shared/types/textInputTypes.js'
 // than the omit gate they mean to exercise. Pin a non-empty project doc via a
 // scoped getUserContext mock so the gate is what's under test, not the repo.
 const realContext = { ...(await import('src/agent/context.js')) }
+const realClaudemd = { ...(await import('src/memory/instructions/claudemd.js')) }
 const HERMETIC_CLAUDE_MD = '# Test project doc\nHermetic claude_md content.\n'
+// The family a slim sub-agent filters: one project doc, one team index.
+const PROJECT_DOC = 'PROJECT-DOC-BODY keep me'
+const TEAM_INDEX = 'TEAM-INDEX-BODY drop me'
 
 // Minimal context skeleton — the disabled path uses none of these fields,
 // they exist to satisfy the type at the call site.
@@ -100,17 +104,26 @@ describe('getAttachments — subagent context-omission gates', () => {
       ...realContext,
       getUserContext: async () => ({ claudeMd: HERMETIC_CLAUDE_MD }),
     }))
+    mock.module('src/memory/instructions/claudemd.js', () => ({
+      ...realClaudemd,
+      getMemoryFiles: async () => [
+        { path: '/repo/AGENTS.md', type: 'Project', content: PROJECT_DOC },
+        { path: '/repo/.claudin/memory/team/MEMORY.md', type: 'TeamMem', content: TEAM_INDEX },
+      ],
+    }))
   })
 
   afterAll(() => {
     // mock.module is process-global and mock.restore() does not revert it;
     // re-install the real module so the stub never bleeds into sibling files.
     mock.module('src/agent/context.js', () => realContext)
+    mock.module('src/memory/instructions/claudemd.js', () => realClaudemd)
   })
 
   function makeSubagentContext(
     omitClaudeMd: boolean,
     omitGitStatus: boolean = omitClaudeMd,
+    omitMemoryIndexes: boolean = false,
   ): ToolUseContext {
     return {
       ...makeContext(),
@@ -118,6 +131,7 @@ describe('getAttachments — subagent context-omission gates', () => {
       agentType: 'Plan',
       omitClaudeMdAttachments: omitClaudeMd,
       omitGitStatusAttachments: omitGitStatus,
+      omitMemoryIndexAttachments: omitMemoryIndexes,
     } as unknown as ToolUseContext
   }
 
@@ -147,6 +161,29 @@ describe('getAttachments — subagent context-omission gates', () => {
       [],
     )
     expect(out.map(a => a.type)).toContain('claude_md_delta')
+  })
+
+  test('omitMemoryIndexes announces the family without the memory index files', async () => {
+    // The slim Code agent: the delta is rebuilt from getMemoryFiles() with
+    // the AutoMem/TeamMem entries filtered, so the project doc arrives and
+    // the team index does not. Without the flag the announced body is the
+    // memoized getUserContext() string, untouched.
+    const slim = await getAttachments(
+      null,
+      makeSubagentContext(false, true, true),
+      null,
+      [],
+    )
+    const slimDelta = slim.find(a => a.type === 'claude_md_delta')
+    expect(slimDelta).toBeDefined()
+    if (slimDelta?.type !== 'claude_md_delta') throw new Error('expected delta')
+    expect(slimDelta.addedContent).toContain(PROJECT_DOC)
+    expect(slimDelta.addedContent).not.toContain(TEAM_INDEX)
+
+    const full = await getAttachments(null, makeSubagentContext(false), null, [])
+    const fullDelta = full.find(a => a.type === 'claude_md_delta')
+    if (fullDelta?.type !== 'claude_md_delta') throw new Error('expected delta')
+    expect(fullDelta.addedContent).toContain(HERMETIC_CLAUDE_MD.trim())
   })
 })
 
