@@ -129,6 +129,15 @@ audit; integrated regression:
   backends that may reject unknown params never see them). The Codex
   backend (`isCodexBaseUrl`) sends only `prompt_cache_key` — it rejects
   `prompt_cache_retention` with a `400 Unsupported parameter`.
+  xAI/Grok (`isXaiOAuthBaseUrl`, exact host `api.x.ai`) takes neither: its
+  routing key is the `x-grok-conv-id` **header**, `getSessionId()`, since
+  2026-09-11 — `prompt_cache_key` is documented for xAI's Responses
+  endpoint only and we ride Chat Completions. Killswitch
+  `CLAUDIN_DISABLE_XAI_CONV_ID=1`. Whether it actually raises
+  `cached_tokens` is **unmeasured** (no xAI account); xAI also invalidates
+  per whole message, so the aggressive profile's per-iteration rewrite of an
+  old `tool_result` may cost the prefix regardless —
+  `docs/tech/cache/native-prompt-caching-by-provider.md` §6.
 - `src/tools/FileReadTool/serverClearingDetection.ts` — Read's dedup
   (`file_unchanged` stub) stands down once a `clear_tool_uses` edit has been
   applied: the stub points at an earlier tool_result the server may have

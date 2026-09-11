@@ -62,6 +62,7 @@ import {
   getGithubEndpointType,
   getLocalProviderRetryBaseUrls,
   isLocalProviderUrl,
+  isXaiOAuthBaseUrl,
   resolveProviderRequest,
   resolveRuntimeCodexCredentials,
   shouldAttemptLocalToollessRetry,
@@ -569,6 +570,24 @@ class OpenAIShimMessages {
     } else if (isGithubModels) {
       headers['Accept'] = 'application/vnd.github+json'
       headers['X-GitHub-Api-Version'] = '2022-11-28'
+    }
+
+    // xAI / Grok: the prompt-cache routing key is an HTTP header, not a body
+    // field — `prompt_cache_key` is documented only for xAI's Responses
+    // endpoint, and we ride Chat Completions. xAI caches implicitly on prefix
+    // match; a session-stable `x-grok-conv-id` routes every request of one
+    // conversation to the same server, which is where that cache entry lives.
+    // `/clear` regenerates the session id (a new conversation, correctly routed
+    // elsewhere) and `/resume` restores the original, routing back to the
+    // server that may still hold the prefix. `isXaiOAuthBaseUrl` is an exact
+    // host check despite its name, so this covers the API-key profile too and
+    // reaches no other OpenAI-compatible backend.
+    // Killswitch: CLAUDIN_DISABLE_XAI_CONV_ID=1.
+    if (
+      isXaiOAuthBaseUrl(request.baseUrl) &&
+      !isEnvTruthy(process.env.CLAUDIN_DISABLE_XAI_CONV_ID)
+    ) {
+      headers['x-grok-conv-id'] = getSessionId()
     }
 
     const buildChatCompletionsUrl = (baseUrl: string): string => {

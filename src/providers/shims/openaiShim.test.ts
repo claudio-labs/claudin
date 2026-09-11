@@ -99,6 +99,7 @@ const originalEnv = {
   GEMINI_MODEL: process.env.GEMINI_MODEL,
   GOOGLE_CLOUD_PROJECT: process.env.GOOGLE_CLOUD_PROJECT,
   ANTHROPIC_CUSTOM_HEADERS: process.env.ANTHROPIC_CUSTOM_HEADERS,
+  CLAUDIN_DISABLE_XAI_CONV_ID: process.env.CLAUDIN_DISABLE_XAI_CONV_ID,
 }
 
 const originalFetch = globalThis.fetch
@@ -167,6 +168,7 @@ beforeEach(() => {
   delete process.env.GEMINI_MODEL
   delete process.env.GOOGLE_CLOUD_PROJECT
   delete process.env.ANTHROPIC_CUSTOM_HEADERS
+  delete process.env.CLAUDIN_DISABLE_XAI_CONV_ID
 })
 
 afterEach(() => {
@@ -186,6 +188,7 @@ afterEach(() => {
   restoreEnv('GEMINI_MODEL', originalEnv.GEMINI_MODEL)
   restoreEnv('GOOGLE_CLOUD_PROJECT', originalEnv.GOOGLE_CLOUD_PROJECT)
   restoreEnv('ANTHROPIC_CUSTOM_HEADERS', originalEnv.ANTHROPIC_CUSTOM_HEADERS)
+  restoreEnv('CLAUDIN_DISABLE_XAI_CONV_ID', originalEnv.CLAUDIN_DISABLE_XAI_CONV_ID)
   globalThis.fetch = originalFetch
 })
 
@@ -4631,4 +4634,61 @@ test('sends prompt_cache_key + retention to api.openai.com only', async () => {
 
   expect(capturedBodies[1]?.prompt_cache_key).toBeUndefined()
   expect(capturedBodies[1]?.prompt_cache_retention).toBeUndefined()
+})
+
+test('sends x-grok-conv-id to api.x.ai only, never in the body', async () => {
+  const capturedHeaders: Headers[] = []
+  const capturedBodies: Array<Record<string, unknown>> = []
+
+  globalThis.fetch = (async (_input, init) => {
+    capturedHeaders.push(new Headers(init?.headers))
+    capturedBodies.push(JSON.parse(init?.body as string) as Record<string, unknown>)
+
+    return new Response(
+      JSON.stringify({
+        id: 'chatcmpl-1',
+        model: 'grok-4.6',
+        choices: [
+          {
+            message: { role: 'assistant', content: 'ok' },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: { prompt_tokens: 8, completion_tokens: 3, total_tokens: 11 },
+      }),
+      { headers: { 'Content-Type': 'application/json' } },
+    )
+  }) as FetchType
+
+  const send = async (baseUrl: string): Promise<void> => {
+    process.env.OPENAI_BASE_URL = baseUrl
+    const client = createOpenAIShimClient({}) as OpenAIShimClient
+    await client.beta.messages.create({
+      model: 'grok-4.6',
+      messages: [{ role: 'user', content: 'hello' }],
+      max_tokens: 64,
+      stream: false,
+    })
+  }
+
+  // xAI → header present, and the routing key never rides the body (xAI
+  // documents prompt_cache_key for its Responses endpoint only).
+  await send('https://api.x.ai/v1')
+  expect(capturedHeaders[0]?.get('x-grok-conv-id')).toBe(getSessionId())
+  expect(capturedBodies[0]?.prompt_cache_key).toBeUndefined()
+
+  // Every other backend is untouched — a generic OpenAI-compatible URL, the
+  // official OpenAI lane, and a lookalike host the exact-host gate must reject.
+  await send('http://example.test/v1')
+  expect(capturedHeaders[1]?.get('x-grok-conv-id')).toBeNull()
+
+  await send('https://api.openai.com/v1')
+  expect(capturedHeaders[2]?.get('x-grok-conv-id')).toBeNull()
+
+  await send('https://evil.api.x.ai/v1')
+  expect(capturedHeaders[3]?.get('x-grok-conv-id')).toBeNull()
+
+  process.env.CLAUDIN_DISABLE_XAI_CONV_ID = '1'
+  await send('https://api.x.ai/v1')
+  expect(capturedHeaders[4]?.get('x-grok-conv-id')).toBeNull()
 })
