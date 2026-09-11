@@ -41,9 +41,20 @@ export const MAP_MARKER = '<!-- claudin:module-map -->'
 
 /** Directories holding fewer source files than this are noise in a map. */
 const MIN_DIR_FILES = 3
-/** How deep the generated tree goes below the repo root. */
-const MAX_DEPTH = 2
-/** The column the `←` annotations line up on. */
+/** The depth a generated tree always reaches, budget or not. */
+const MIN_DEPTH = 2
+/** How deep it may reach when there are lines left to spend. */
+const MAX_DEPTH = 4
+/**
+ * Entries a generated tree may hold before it stops descending.
+ *
+ * The file is `paths:`-scoped, so every line is re-read on every matching edit
+ * for the life of the project. Drawing this repo's own tree three levels deep
+ * costs 216 lines against 26 for two — past some width a map stops orienting
+ * anyone and just bills them, and the depth that fits is the honest answer.
+ */
+const MAX_TREE_ENTRIES = 80
+/** The column the `←` annotations line up on, unless a line needs more. */
 const ANNOTATION_COLUMN = 34
 /** What a generated entry says until someone explains the directory. */
 const TODO_ANNOTATION = 'TODO'
@@ -191,6 +202,77 @@ function directoryCounts(
   return counts
 }
 
+/** The directories one level under `parent` that are worth a line, sorted. */
+function childDirectories(
+  counts: ReadonlyMap<string, number>,
+  parent: string,
+  depth: number,
+): string[] {
+  const segments = depth + 2
+  return [...counts.keys()]
+    .filter(dir => dir.startsWith(parent) && dir.split('/').length === segments)
+    .filter(dir => (counts.get(dir) ?? 0) >= MIN_DIR_FILES)
+    .sort()
+}
+
+/**
+ * A directory to draw, with the "was last of its siblings" flag of every level
+ * from the root down to it. That trail is the whole of what the box-drawing
+ * needs: a level whose entry was last has no more siblings to connect to, so
+ * its column is blank rather than a continuation bar.
+ */
+type TreeEntry = { path: string; trail: boolean[] }
+
+/** Every directory a tree of `maxDepth` would name, in render order. */
+function treeEntries(
+  counts: ReadonlyMap<string, number>,
+  maxDepth: number,
+): TreeEntry[] {
+  const entries: TreeEntry[] = []
+  const walk = (parent: string, depth: number, trail: boolean[]): void => {
+    const children = childDirectories(counts, parent, depth)
+    children.forEach((child, index) => {
+      const next = [...trail, index === children.length - 1]
+      entries.push({ path: child, trail: next })
+      if (depth + 1 < maxDepth) walk(child, depth + 1, next)
+    })
+  }
+  walk('', 0, [])
+  return entries
+}
+
+/**
+ * How deep to draw: as deep as the budget allows, and never shallower than the
+ * map already is.
+ *
+ * The floor is what keeps a regenerate from gutting a tree somebody annotated.
+ * A repo that grows past the budget keeps the depth it had — dropping a level
+ * would take every `←` on it along, and a stale map beats a map missing the
+ * only part a human wrote.
+ */
+function chooseDepth(
+  counts: ReadonlyMap<string, number>,
+  floorDepth: number,
+): number {
+  const floor = Math.min(Math.max(floorDepth, MIN_DEPTH), MAX_DEPTH)
+  let chosen = floor
+  for (let depth = floor + 1; depth <= MAX_DEPTH; depth++) {
+    if (treeEntries(counts, depth).length > MAX_TREE_ENTRIES) break
+    chosen = depth
+  }
+  return chosen
+}
+
+/** How deep the tree in a file already goes, so a regenerate cannot shallow it. */
+function existingTreeDepth(content: string): number {
+  let deepest = MIN_DEPTH
+  for (const claim of extractRuleClaims(content).dirCounts) {
+    const depth = claim.path.split('/').filter(Boolean).length
+    if (depth > deepest) deepest = depth
+  }
+  return deepest
+}
+
 /**
  * The `←` gloss already written for each path, so it survives a regenerate.
  *
@@ -209,76 +291,53 @@ export function existingAnnotations(content: string): Map<string, string> {
   return annotations
 }
 
-function renderEntry(
-  isLast: boolean,
-  depth: number,
-  label: string,
-  annotation: string,
-): string {
-  const indent = depth === 1 ? '' : '│   '.repeat(depth - 1)
-  const body = `${indent}${isLast ? '└──' : '├──'} ${label}`
-  const padding = ' '.repeat(Math.max(1, ANNOTATION_COLUMN - body.length))
-  return `${body}${padding}← ${annotation}`
+/** The entry side of a tree line: the connectors, the name and the count. */
+function renderEntry(trail: readonly boolean[], label: string): string {
+  const prefix = trail
+    .slice(0, -1)
+    .map(ancestorWasLast => (ancestorWasLast ? '    ' : '│   '))
+    .join('')
+  const isLast = trail[trail.length - 1] === true
+  return `${prefix}${isLast ? '└──' : '├──'} ${label}`
 }
 
 /**
- * Renders the tree of a repo: its top-level source directories, and the
- * immediate children of each that hold enough files to be worth naming.
+ * Renders the tree of a repo: every source directory down to the depth the
+ * budget affords, skipping the ones too small to be worth naming.
  *
  * Alphabetical on purpose. Ranking by size reads better once and then churns
  * the diff every time two directories trade places, which is exactly the noise
  * that gets an auto-updating file reverted.
+ *
+ * The `←` column is widened past {@link ANNOTATION_COLUMN} only when a line
+ * needs it, so deepening a tree cannot shear the annotations off a level that
+ * already fitted.
  */
 export function renderModuleTree(
   trackedFiles: readonly string[],
   annotations: ReadonlyMap<string, string> = new Map(),
   retained: ReadonlyMap<string, number> = new Map(),
+  floorDepth: number = MIN_DEPTH,
 ): string[] {
   const extensions = dominantSourceExtensions(trackedFiles)
   const counts = directoryCounts(trackedFiles, extensions)
   const shown = (dir: string): number =>
     retained.get(dir) ?? counts.get(dir) ?? 0
 
-  const tops = [...counts.keys()]
-    .filter(dir => dir.split('/').length === 2)
-    .filter(dir => (counts.get(dir) ?? 0) >= MIN_DIR_FILES)
-    .sort()
+  const entries = treeEntries(counts, chooseDepth(counts, floorDepth))
+  const bodies = entries.map(({ path, trail }) =>
+    renderEntry(trail, `${lastSegment(path)} (${shown(path)})`),
+  )
+  const column = bodies.reduce(
+    (widest, body) => Math.max(widest, body.length + 2),
+    ANNOTATION_COLUMN,
+  )
 
-  const lines: string[] = []
-  tops.forEach((top, topIndex) => {
-    const isLastTop = topIndex === tops.length - 1
-    const name = top
-    lines.push(
-      renderEntry(
-        isLastTop,
-        1,
-        `${name}(${shown(top)})`.replace('/(', '/ ('),
-        annotations.get(name) ?? TODO_ANNOTATION,
-      ),
-    )
-
-    const children = [...counts.keys()]
-      .filter(dir => dir.startsWith(top) && dir.split('/').length === 3)
-      .filter(dir => (counts.get(dir) ?? 0) >= MIN_DIR_FILES)
-      .sort()
-
-    children.forEach((child, childIndex) => {
-      const childName = `${child.split('/')[1]}/`
-      const label = `${childName}(${shown(child)})`.replace(
-        '/(',
-        '/ (',
-      )
-      const prefix = isLastTop ? '    ' : '│   '
-      const connector =
-        childIndex === children.length - 1 ? '└──' : '├──'
-      const body = `${prefix}${connector} ${label}`
-      const padding = ' '.repeat(Math.max(1, ANNOTATION_COLUMN - body.length))
-      lines.push(
-        `${body}${padding}← ${annotations.get(child) ?? TODO_ANNOTATION}`,
-      )
-    })
+  return entries.map(({ path }, index) => {
+    const body = bodies[index] ?? ''
+    const padding = ' '.repeat(Math.max(1, column - body.length))
+    return `${body}${padding}← ${annotations.get(path) ?? TODO_ANNOTATION}`
   })
-  return lines
 }
 
 /** The `paths:` frontmatter that scopes a map to the code it describes. */
@@ -419,6 +478,7 @@ function regenerateGeneratedMap(
     trackedFiles,
     existingAnnotations(content),
     countsToRetain(content, trackedFiles),
+    existingTreeDepth(content),
   )
   return [
     ...lines.slice(0, fence.open + 1),
