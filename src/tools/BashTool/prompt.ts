@@ -12,7 +12,6 @@ import {
   getDefaultBashTimeoutMs,
   getMaxBashTimeoutMs,
 } from 'src/shared/timeouts.js'
-import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { BUILD_TOOL_NAME } from 'src/tools/BuildTool/prompt.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
@@ -21,7 +20,6 @@ import { GIT_TOOL_NAME } from 'src/tools/GitTool/prompt.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
-import { TodoWriteTool } from 'src/tools/TodoWriteTool/TodoWriteTool.js'
 import { TYPECHECK_TOOL_NAME } from 'src/tools/TypecheckTool/prompt.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 
@@ -74,72 +72,31 @@ export function getBashGitInstructionsBody(): string {
 
   return `# Committing changes with git
 
-Only create commits when requested by the user. If unclear, ask first. When the user asks you to create a new git commit, follow these steps carefully (run independent commands in parallel where possible):
+Only create commits when the user asks for one; if that is unclear, ask first. Never update the git config, and never push unless you were asked to.
 
-Git Safety Protocol:
-- NEVER update the git config
-- NEVER run destructive git commands (push --force, reset --hard, checkout ., restore ., clean -f, branch -D) unless the user explicitly requests these actions. Taking unauthorized destructive actions is unhelpful and can result in lost work, so it's best to ONLY run these commands when given direct instructions 
-- NEVER skip hooks (--no-verify, --no-gpg-sign, etc) unless the user explicitly requests it
-- NEVER run force push to main/master, warn the user if they request it
-- CRITICAL: Always create NEW commits rather than amending, unless the user explicitly requests a git amend. When a pre-commit hook fails, the commit did NOT happen — so --amend would modify the PREVIOUS commit, which may result in destroying work or losing previous changes. Instead, after hook failure, fix the issue, re-stage, and create a NEW commit
-- When staging files, prefer adding specific files by name rather than using "git add -A" or "git add .", which can accidentally include sensitive files (.env, credentials) or large binaries
-- NEVER commit changes unless the user explicitly asks you to. It is VERY IMPORTANT to only commit when explicitly asked, otherwise the user will feel that you are being too proactive
+Destructive commands — \`push --force\`, \`reset --hard\`, \`checkout .\`, \`restore .\`, \`clean -f\`, \`branch -D\` — and hook skips (\`--no-verify\`, \`--no-gpg-sign\`) need the user to ask for them by name; a force push to main/master gets a warning instead of a run. Never amend unless the user asks: when a pre-commit hook fails the commit did NOT happen, so \`--amend\` would rewrite the PREVIOUS commit and can destroy work. Fix the issue, re-stage, and create a NEW commit.
 
-1. Run the following in a SINGLE ${GIT_TOOL_NAME} call, passing all three as one \`commands\` list:
-  - A git status command to see all untracked files. IMPORTANT: Never use the -uall flag as it can cause memory issues on large repos.
-  - A git diff command to see both staged and unstaged changes that will be committed.
-  - A git log command to see recent commit messages, so that you can follow this repository's commit message style.
-2. Analyze all staged changes (both previously staged and newly added) and draft a commit message:
-  - Summarize the nature of the changes (eg. new feature, enhancement to an existing feature, bug fix, refactoring, test, docs, etc.). Ensure the message accurately reflects the changes and their purpose (i.e. "add" means a wholly new feature, "update" means an enhancement to an existing feature, "fix" means a bug fix, etc.).
-  - Do not commit files that likely contain secrets (.env, credentials.json, etc). Warn the user if they specifically request to commit those files
-  - Draft a concise (1-2 sentences) commit message that focuses on the "why" rather than the "what"
-  - Ensure it accurately reflects the changes and their purpose
-3. Run the following, in this order:
-   - Add relevant untracked files to the staging area.
-   - Create the commit with a message${commitAttribution ? ` ending with:\n   ${commitAttribution}` : '.'}
-   - Run git status after the commit completes to verify success.
-   These depend on each other and must run in order, which is exactly what one ${GIT_TOOL_NAME} call gives you: the list runs in order and stops at the first failure, so send all three as one \`commands\` list.
-4. If the commit fails due to pre-commit hook: fix the issue and create a NEW commit
+1. Read the repo in a SINGLE ${GIT_TOOL_NAME} call, passing the reads as one \`commands\` list: \`git status\` (never \`-uall\`, which can exhaust memory on large repos), \`git diff\` for staged and unstaged changes, and \`git log\` for this repository's commit-message style. Don't run anything beyond the git/gh commands this protocol calls for.
+2. Draft a concise (1-2 sentence) message in that style, saying WHY rather than what — "add" for a wholly new feature, "update" for an enhancement to an existing one, "fix" for a bug fix.
+3. Stage the files **by name** (never \`git add -A\` or \`git add .\`, which sweep in .env, credentials and large binaries — warn the user if they ask for a file that likely holds secrets), then commit and run \`git status\` to verify. All three go in one more ${GIT_TOOL_NAME} call: the list runs in order and stops at the first failure, which is what makes batching them safe. If there is nothing to commit, don't create an empty one.${commitAttribution ? `\n\nEvery commit message must end with this trailer, on its own line after a blank one:\n\n${commitAttribution}` : ''}
 
-Important notes:${commitAttribution ? '' : `\n- Do NOT append any AI attribution trailer to the commit message (e.g. "🤖 Generated with Claude Code", "Generated with Claude Code", "Co-Authored-By: Claude"). Write the message with no such footer.`}
-- NEVER run additional commands to read or explore code, besides the git/gh commands this protocol calls for
-- NEVER use the ${TodoWriteTool.name} or ${AGENT_TOOL_NAME} tools
-- DO NOT push to the remote repository unless the user explicitly asks you to do so
-- Never use git commands with the \`-i\` flag (rebase/add interactive) — they require TTY input. Also never use \`--no-edit\` with \`git rebase\` — it is not a valid rebase flag.
-- If there are no changes to commit, do not create an empty commit.
-- Pass the whole message — subject, blank line and body — as ONE quoted \`-m\` argument. Inside quotes a newline is literal, so the message keeps its formatting, e.g.:
 <example>
 ${GIT_TOOL_NAME}({commands: ["git add file-one.ts file-two.ts", "git commit -m \\"Commit subject here.\\n\\nBody line here.${commitAttribution ? `\\n\\n${commitAttribution}` : ''}\\"", "git status"]})
 </example>
-- Quote that argument with '…' instead of "…" when the message contains a backtick or a \`$\`, which bash would otherwise expand before git saw it — inside single quotes both are literal. Inside "…", put a backslash before every \`"\` and \`\\\` the message itself contains, and before each backtick and \`$\` too when an apostrophe rules single quotes out. Escaping always works, so no commit message needs ${BASH_TOOL_NAME}.
+
+Pass the whole message — subject, blank line and body — as ONE quoted \`-m\` argument: inside quotes a newline is literal, so the formatting survives. Quote that argument with '…' instead of "…" when the message contains a backtick or a \`$\`, which bash would otherwise expand before git saw it — inside single quotes both are literal. Inside "…", put a backslash before every \`"\` and \`\\\` the message itself contains, and before each backtick and \`$\` too when an apostrophe rules single quotes out. Escaping always works, so no commit message needs ${BASH_TOOL_NAME}. Never use \`-i\` (interactive rebase or add — it needs a TTY), nor \`--no-edit\` with \`git rebase\`, which is not a valid rebase flag.${commitAttribution ? '' : `\n\nDo not append an AI attribution trailer to the message (e.g. "🤖 Generated with Claude Code", "Generated with Claude Code", "Co-Authored-By: Claude") — write it with no such footer.`}
 
 # Creating pull requests
-Use gh for ALL GitHub-related tasks including working with issues, pull requests, checks, and releases — via the ${GIT_TOOL_NAME} tool, which runs gh as well as git. If given a Github URL use gh to get the information needed.
 
-IMPORTANT: When the user asks you to create a pull request, follow these steps carefully:
+Use \`gh\` for everything GitHub — issues, pull requests, checks, releases — through the ${GIT_TOOL_NAME} tool, which runs gh as well as git; given a GitHub URL, use gh to read it. A PR's review comments come back from \`gh api repos/foo/bar/pulls/123/comments\`.
 
-1. Run the following in a SINGLE ${GIT_TOOL_NAME} call, passing them as one \`commands\` list, in order to understand the current state of the branch since it diverged from the main branch:
-   - A git status command to see all untracked files (never use -uall flag)
-   - A git diff command to see both staged and unstaged changes that will be committed
-   - A check of whether the current branch tracks a remote branch and is up to date with it, so you know if you need to push to the remote
-   - A git log command and \`git diff [base-branch]...HEAD\` to understand the full commit history for the current branch (from the time it diverged from the base branch)
-2. Analyze all changes that will be included in the pull request, making sure to look at all relevant commits (NOT just the latest commit, but ALL commits that will be included in the pull request!!!), and draft a pull request title and summary:
-   - Keep the PR title short (under 70 characters)
-   - Use the description/body for details, not the title
-3. Run the following, in this order:
-   - Create new branch if needed
-   - Push to remote with -u flag if needed
-   - Create PR using gh pr create with the format below, through ${GIT_TOOL_NAME}. A PR body is markdown and normally holds backticks, so quote it with '…' — inside single quotes a backtick and a newline are both literal. If the body also holds an apostrophe, use "…" instead and backslash-escape each backtick, \`$\`, \`"\` and \`\\\` in it.
+Before opening one, read the whole branch rather than its last commit, again in a SINGLE ${GIT_TOOL_NAME} call: status, diff, whether the branch tracks a remote and is up to date with it, and \`git log\` plus \`git diff [base-branch]...HEAD\` for every commit since it diverged. Then create the branch and push with \`-u\` if needed, and open the PR with a title under 70 characters (details belong in the body), returning its URL when you're done.
+
 <example>
 ${GIT_TOOL_NAME}({commands: ["gh pr create --title 'the pr title' --body '## Summary\\n<1-3 bullet points>\\n\\n## Test plan\\n[Bulleted markdown checklist of TODOs for testing the pull request...]${prAttribution ? `\\n\\n${prAttribution}` : ''}'"]})
 </example>
 
-Important:${prAttribution ? '' : `\n- Do NOT append any AI attribution footer to the PR body (e.g. "🤖 Generated with Claude Code", "Generated with Claude Code", "Co-Authored-By: Claude"). Write the body with no such footer.`}
-- DO NOT use the ${TodoWriteTool.name} or ${AGENT_TOOL_NAME} tools
-- Return the PR URL when you're done, so the user can see it
-
-# Other common operations
-- View comments on a Github PR: \`gh api repos/foo/bar/pulls/123/comments\` (via ${GIT_TOOL_NAME})`
+A PR body is markdown and normally holds backticks, so quote it with '…' — inside single quotes a backtick and a newline are both literal. If the body also holds an apostrophe, use "…" instead and backslash-escape each backtick, \`$\`, \`"\` and \`\\\` in it.${prAttribution ? '' : `\n\nThe same goes for attribution: do not append an AI footer (e.g. "🤖 Generated with Claude Code", "Co-Authored-By: Claude") to the body.`}`
 }
 
 function getCommitAndPRInstructions(): string {
@@ -310,7 +267,7 @@ export function getSimplePrompt(leanOverride?: boolean): string {
           'If your command will create new directories or files, first use this tool to run `ls` to verify the parent directory exists and is the correct location.',
           'Always quote file paths that contain spaces with double quotes in your command (e.g., cd "path with spaces/file.txt")',
         ]),
-    'Try to maintain your current working directory throughout the session by using absolute paths and avoiding usage of `cd`. You may use `cd` if the User explicitly requests it.',
+    'Try to maintain your current working directory throughout the session by using absolute paths and avoiding usage of `cd` — a `cd` to anywhere but the directory you are already in is checked as its own subcommand, so it can turn a compound command into a permission prompt. You may use `cd` if the User explicitly requests it.',
     `You may specify an optional timeout in milliseconds (up to ${getMaxTimeoutMs()}ms / ${getMaxTimeoutMs() / 60000} minutes). By default, your command will timeout after ${getDefaultTimeoutMs()}ms (${getDefaultTimeoutMs() / 60000} minutes).`,
     ...(backgroundNote !== null ? [backgroundNote] : []),
     // git-specific safety rules are delivered via the bash_git_instructions
@@ -341,7 +298,8 @@ export function getSimplePrompt(leanOverride?: boolean): string {
   return [
     'Executes a given bash command and returns its output.',
     '',
-    "The working directory persists between commands, but shell state does not. The shell environment is initialized from the user's profile (bash or zsh).",
+    "The working directory persists between commands, but shell state (env vars, functions) does not. The shell environment is initialized from the user's profile (bash or zsh).",
+    'Command output is displayed to you, not reliably to the user — describe what you found rather than pointing at it.',
     '',
     `IMPORTANT: Avoid running ${avoidCommands} via this tool unless a dedicated tool cannot do the job. Prefer:`,
     '',

@@ -73,4 +73,14 @@ describe('Agent tool prompt — proactive dispatch guidance', () => {
     expect(src).toContain('subagent_type: "Code",\n  prompt: "Audit what\'s left')
     expect(src).toContain('name: "footer-bisect"')
   })
+
+  test('does not tell the model to trust what an agent reports', () => {
+    // `- The agent's outputs should generally be trusted` shipped in the same
+    // request as CORRECTIONS_SECTION's "don't always take them at face value"
+    // (prompts.ts). The system prompt owns that judgement, and it is the right
+    // owner: forks, named agents and workflow workers all report as plain text
+    // with no provenance, so a blanket trust line is the one claim the loop
+    // cannot check.
+    expect(src).not.toContain('outputs should generally be trusted')
+  })
 })

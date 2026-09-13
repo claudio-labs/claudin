@@ -1,5 +1,5 @@
 import { isPDFSupported } from 'src/shared/fs/pdfUtils.js'
-import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
+import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 
 // Use a string constant for tool names to avoid circular dependencies
 export const FILE_READ_TOOL_NAME = 'Read'
@@ -79,9 +79,16 @@ export const DESCRIPTION = 'Read a file from the local filesystem.'
 export const LINE_FORMAT_INSTRUCTION =
   '- Each result line is prefixed with its 1-indexed line number followed by an arrow (e.g. `42→content` is line 42 of the file); numbering starts at the requested offset'
 
-export const OFFSET_INSTRUCTION_DEFAULT =
-  "- You can optionally specify a line offset and limit (especially handy for long files), but it's recommended to read the whole file by not providing these parameters"
-
+/**
+ * The counterpart that used to sit beside this one — "it's recommended to read
+ * the whole file by not providing these parameters" — contradicted the
+ * surgical-read strategy ten lines above it, and it was the one that shipped:
+ * the choice between them hung on `targetedRangeNudge`, read from the
+ * `tengu_amber_wren` GrowthBook gate, which this fork stubs to always return
+ * its default. So the wrong wording rendered unconditionally and the right one
+ * was unreachable. Deleted rather than re-gated — there is no server here to
+ * flip it.
+ */
 export const OFFSET_INSTRUCTION_TARGETED =
   '- When you already know which part of the file you need, only read that part. This can be important for larger files.'
 
@@ -92,39 +99,29 @@ export const OFFSET_INSTRUCTION_TARGETED =
 export function renderPromptTemplate(
   lineFormat: string,
   maxSizeInstruction: string,
-  offsetInstruction: string,
 ): string {
-  return `Reads a file from the local filesystem. You can access any file directly by using this tool.
-Assume this tool is able to read all files on the machine. If the User provides a path to a file assume that path is valid. It is okay to read a file that does not exist; an error will be returned.
+  return `Reads a file from the local filesystem. You can access any file directly by using this tool: assume any path the user gives you is valid and readable, including a temporary path outside the project — try the read rather than verifying the path first.
 
 Reading strategy for code files (TS/JS, Python, Go, Java, Kotlin, C#, Rust, C/C++, PHP, Swift, Scala, Ruby, Lua, Bash, SQL, CSS/SCSS, HTML, Markdown, YAML, XML, .properties, .env, TOML, Dockerfile, Makefile, GraphQL, Terraform):
 Default to surgical reads — full-file reads waste tokens proportionally to file size, while targeted reads cost ~95% less. Follow this order:
-1. Unknown file → start with view='outline' (~5-10% of full-file tokens; typically 150-1500 depending on symbol count). Returns every function, class and object-literal member signature with line ranges.
 1. Unknown file → start with view='outline' (~5-10% of full-file tokens; typically 150-1500 depending on symbol count). Returns every function, class and object-literal member signature with line ranges, plus the substantial handlers nested inside a large function. The header says how much of the file the symbols actually cover.
 2. Need to inspect or modify a known function X → use symbol='X' (returns just that function body, not the whole file). A symbol too large to send whole comes back as its own outline instead; add view='full' to get the body anyway.
 3. Need lines around a known location → use offset/limit (range read) instead of full file.
 4. Full file only when you genuinely need top-level imports, module-level constants, or the entire structure end-to-end.
-Example: to refactor 'login' in src/auth/index.ts, prefer view='outline' → symbol='login' over reading the whole file.
+
+An outline is not always a symbol list: Markdown and HTML outline by heading, a unified diff (.diff/.patch) outlines by file and symbol='<path>' returns that file's hunks, and a large plain-text file (.txt, .log, no extension — outside the languages above) comes back as its head and tail with the line count. A file over the read cap outlines automatically, and so does a large Read that names no view (a large literal body in tool_result reliably induces a slice-walk re-read loop) — pass view='full' for the body, or offset/limit/symbol for one range.
 
 Usage:
 - The file_path parameter must be an absolute path, not a relative path
 - By default, it reads up to ${MAX_LINES_TO_READ} lines starting from the beginning of the file${maxSizeInstruction}
-${offsetInstruction}
+${OFFSET_INSTRUCTION_TARGETED}
 ${lineFormat}
+- Reading a directory, a file that does not exist, or an empty file returns an error or a system reminder rather than content; list a directory with the ${GLOB_TOOL_NAME} tool.
 - This tool allows Claudin to read images (eg PNG, JPG, etc). When reading an image file the contents are presented visually as Claudin is a multimodal LLM.${
     isPDFSupported()
       ? '\n- This tool can read PDF files (.pdf). For large PDFs (more than 10 pages), you MUST provide the pages parameter to read specific page ranges (e.g., pages: "1-5"). Reading a large PDF without the pages parameter will fail. Maximum 20 pages per request.'
       : ''
   }
 - This tool can read Jupyter notebooks (.ipynb files) and returns all cells with their outputs, combining code, text, and visualizations.
-- For large code files (TS/JS, Python, Go, Java, Kotlin, C#, Rust, C/C++, PHP, Swift, Scala, Ruby, Lua, Bash, SQL, CSS/SCSS, HTML, YAML, XML, .properties, .env, TOML, Dockerfile, Makefile, GraphQL, Terraform), pass view='outline' to read just the function/class signatures, then symbol='name' to expand one of them. Markdown and HTML files outline by heading the same way; a unified diff (.diff/.patch) outlines by file, and symbol='<path>' returns that file's hunks. A file that exceeds the read cap returns this outline automatically. A large plain-text file (.txt, .log, no extension) returns its head and tail with the line count instead — pass offset/limit or view='full' for the rest. Large-file Reads without an explicit view also auto-pivot to the outline by default (a large literal body in tool_result reliably induces a slice-walk re-read loop); pass view='full' to force the body, or use offset/limit/symbol to target a specific range.
-- This tool can only read files, not directories. To read a directory, use an ls command via the ${BASH_TOOL_NAME} tool.
-- You will regularly be asked to read screenshots. If the user provides a path to a screenshot, ALWAYS use this tool to view the file at the path. This tool will work with all temporary file paths.
-- If you read a file that exists but has empty contents you will receive a system reminder warning in place of file contents.
-- Do NOT re-read a file you just edited to verify the change — Edit/Write would have errored if it failed, and the harness tracks file state for you.
-
-Multi-file investigations. When the task spans more than ~2 files (tracing a feature, mapping a subsystem, finding call sites), prefer one of these over a serial chain of single Reads:
-- If the Agent tool is available, fork yourself (Agent with no subagent_type) and hand it the question — the fan-out of Grep and Read stays in the fork and you get back only its findings.
-- Otherwise, emit the Reads as parallel tool_use blocks in the same assistant message. Same-turn parallel Reads are first-class.
-A serial loop of Read → short comment → Read → short comment is the wrong shape.`
+- Do NOT re-read a file you just edited to verify the change — Edit/Write would have errored if it failed, and the harness tracks file state for you.`
 }

@@ -29,12 +29,20 @@ describe('measureToolSchemas', () => {
 
     const sample = rows[0]!
     const keys = Object.keys(sample).sort()
-    const expected = ['descriptionBytes', 'engine', 'name', 'schemaBytes', 'tokens']
+    const expected = [
+      'description',
+      'descriptionBytes',
+      'engine',
+      'name',
+      'schemaBytes',
+      'tokens',
+    ]
     for (const k of expected) {
       expect(keys.includes(k)).toBe(true)
     }
     expect(typeof sample.name).toBe('string')
     expect(sample.engine).toBe('anthropic')
+    expect(typeof sample.description).toBe('string')
     expect(typeof sample.descriptionBytes).toBe('number')
     expect(typeof sample.schemaBytes).toBe('number')
     expect(typeof sample.tokens).toBe('number')
@@ -159,5 +167,73 @@ describe('measureToolSchemas', () => {
         process.env.CLAUDIN_BASH_GIT_IN_MESSAGES = previous
       }
     }
+  })
+
+  test('no tool description says the same thing twice', async () => {
+    // A merge once left two copies of the Read tool's "1. Unknown file →
+    // start with view='outline'" bullet. They diverge only past ~200
+    // characters, and at a comma where the other has a period — so neither an
+    // equality check nor a prefix check would have caught them, and the list
+    // shipped reading 1, 1, 2, 3, 4 in every request until a prompt audit read
+    // the file. Read, Grep, Agent and apply_patch have no snapshot to diff, so
+    // nothing else was watching.
+    //
+    // The shape that does catch it is a shared-prefix ceiling. Measured across
+    // all 40 tools, the longest legitimate pair shares 27 characters
+    // (TaskUpdate's `{"taskId": "1", "status": …}` examples), so 60 clears
+    // every real pair by more than 2x while sitting far under the 200 the bug
+    // had. Raise it if a legitimate pair ever lands above — never silence a
+    // case.
+    //
+    // Limit worth knowing: feature() reads false under `bun test`, so this
+    // sees the ungated text plus the flag-OFF shape of the gated text. The bug
+    // it is named for lived in the ungated half.
+    const MAX_SHARED_PREFIX = 60
+    const { rows } = await measureToolSchemas({ engines: ['anthropic'] })
+    expect(rows.length).toBeGreaterThan(0)
+    // A row that failed to render carries description: '' and would pass every
+    // check below vacuously, so refuse the whole run instead.
+    expect(rows.filter(row => row.error !== undefined)).toEqual([])
+
+    const offenders: string[] = []
+    for (const row of rows) {
+      const substantial = row.description
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > MAX_SHARED_PREFIX)
+      // Exact repeats are checked at ANY length: the prefix ceiling below
+      // cannot see a duplicated short line, which is the cheapest form of the
+      // same bug. What legitimately repeats is *syntax*: blank lines, markup
+      // (`<example>`, `})`) and apply_patch's `*** Begin Patch` envelope, which
+      // appears once in its format spec and again in its example. So the check
+      // is scoped to lines that read as a sentence — five words or more — and
+      // a repeated sentence in a tool description is a duplication either way.
+      const seen = new Set<string>()
+      for (const line of row.description.split('\n').map(l => l.trim())) {
+        if (line.split(/\s+/).length < 5 || line.length < 24) continue
+        if (seen.has(line)) {
+          offenders.push(`${row.name}: exact repeat — ${line.slice(0, 80)}…`)
+        }
+        seen.add(line)
+      }
+      for (let i = 0; i < substantial.length; i++) {
+        for (let j = i + 1; j < substantial.length; j++) {
+          const a = substantial[i]!
+          const b = substantial[j]!
+          let shared = 0
+          while (
+            shared < a.length &&
+            shared < b.length &&
+            a[shared] === b[shared]
+          ) {
+            shared++
+          }
+          if (shared > MAX_SHARED_PREFIX) {
+            offenders.push(`${row.name}: ${shared} shared chars — ${a.slice(0, 80)}…`)
+          }
+        }
+      }
+    }
+    expect(offenders).toEqual([])
   })
 })

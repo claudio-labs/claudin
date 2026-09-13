@@ -7,6 +7,7 @@ import { isInProcessTeammate } from 'src/agent/coordinator/teammateContext.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
+import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { SEND_MESSAGE_TOOL_NAME } from 'src/tools/SendMessageTool/constants.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { isForkSubagentEnabled } from 'src/tools/AgentTool/forkSubagent.js'
@@ -240,11 +241,12 @@ ${
     ? '`find` via the Bash tool'
     : `the ${GLOB_TOOL_NAME} tool`
   // The "class Foo" example is about content search. Non-embedded stays Glob
-  // (original intent: find-the-file-containing). Embedded gets grep because
-  // find -name doesn't look at file contents.
+  // Content search is Grep on both lanes. It used to name Glob when not
+  // embedded, which rendered the bullet as "the Glob tool / the Glob tool" and
+  // pointed find-the-file-CONTAINING at a tool that only matches paths.
   const contentSearchHint = embedded
     ? '`grep` via the Bash tool'
-    : `the ${GLOB_TOOL_NAME} tool`
+    : `the ${GREP_TOOL_NAME} tool`
   const whenNotToUseSection = forkEnabled
     ? ''
     : `
@@ -280,7 +282,6 @@ Usage notes:
       : ''
   }
 - To continue a previously spawned agent, use ${SEND_MESSAGE_TOOL_NAME} with the agent's ID or name as the \`to\` field. The agent resumes with its full context preserved. ${forkEnabled ? 'Each fresh Agent invocation with a subagent_type starts without context — provide a complete task description.' : 'Each Agent invocation starts fresh — provide a complete task description.'}
-- The agent's outputs should generally be trusted
 - Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, web fetches, etc.)${forkEnabled ? '' : ", since it is not aware of the user's intent"}. For research, pass \`readOnly: true\` as well — it removes the write tools and the repo-convention injection a read-only brief pays for otherwise.
 - If the agent description mentions that it should be used proactively, then you should try your best to use it without the user having to ask for it first. Use your judgement.
 - If the user specifies that they want you to run agents "in parallel", you MUST send a single message with multiple ${AGENT_TOOL_NAME} tool use content blocks. For example, if you need to launch both a build-validator agent and a test-runner agent in parallel, send a single message with both tool calls.

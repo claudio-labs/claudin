@@ -63,8 +63,6 @@ import {
   DESCRIPTION,
   FILE_READ_TOOL_NAME,
   LINE_FORMAT_INSTRUCTION,
-  OFFSET_INSTRUCTION_DEFAULT,
-  OFFSET_INSTRUCTION_TARGETED,
   renderPromptTemplate,
   renderClipPinFallbackFooter,
   renderClipPinFallbackStub,
@@ -117,14 +115,7 @@ export const FileReadTool = buildTool({
     const maxSizeInstruction = limits.includeMaxSizeInPrompt
       ? `. Files larger than ${formatFileSize(limits.maxSizeBytes)} will return an error; use offset and limit for larger files`
       : ''
-    const offsetInstruction = limits.targetedRangeNudge
-      ? OFFSET_INSTRUCTION_TARGETED
-      : OFFSET_INSTRUCTION_DEFAULT
-    return renderPromptTemplate(
-      pickLineFormatInstruction(),
-      maxSizeInstruction,
-      offsetInstruction,
-    )
+    return renderPromptTemplate(pickLineFormatInstruction(), maxSizeInstruction)
   },
   get inputSchema(): InputSchema {
     return inputSchema()

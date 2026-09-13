@@ -196,9 +196,11 @@ export const ANTI_NARRATION_HARNESS_BULLETS: readonly string[] = [
 // Exported for snapshot testing — see prompts.test.ts.
 // Decision rule (dependency-based) is what makes this followable instead
 // of a vague "be efficient" appeal: known + independent → batch; unknown
-// → map first; dependent → serialize. The per-tool prompts (FileReadTool,
-// BashTool, AgentTool) and the glm/kimi family addendums carry related
-// guidance for their own scope — overlap is intentional reinforcement.
+// → map first; dependent → serialize. This bullet is the only place the
+// multi-file Read case is stated: FileReadTool's prompt used to repeat it
+// alongside a contradictory fork instruction, and both were removed rather
+// than re-synced. BashTool, AgentTool and the glm/kimi family addendums still
+// carry scoped guidance of their own — that overlap is intentional.
 export const TOOL_BATCHING_HARNESS_BULLET =
   `Batch independent tool calls in a single message — parallel tool_use blocks share one round-trip; one call per turn burns a full turn each. If you already know which files/searches/checks you need and none depends on another's result, issue them together. Default to batching: serializing requires an actual unread dependency you can name — caution or thoroughness is not a dependency. If you can't point to the specific prior result the next call needs, batch. When the target set is unknown, map first with glob/grep instead of opening files speculatively one by one.`
 
@@ -364,10 +366,34 @@ function getContextManagementSection(): string {
 When the conversation grows long, earlier context may be summarized; the summary, along with any remaining unsummarized context, carries into the next context window so work can continue. Don't wrap up early or hand off mid-task just because the session is long.`
 }
 
-function getAgentToolSection(): string {
-  return isForkSubagentEnabled()
+/**
+ * Both delegation lanes have to carry this: handing a search to an agent and
+ * then running it yourself is the same waste with or without fork. It used to
+ * live inside the non-fork arm of the ternary below, which is how it went
+ * missing from the product — FORK_SUBAGENT has been ungated since 2026-07-26,
+ * so the arm carrying it stopped rendering and a repo-wide grep for the rule
+ * returned a single hit, in the branch that never ships. Outside the ternary
+ * it cannot belong to one lane.
+ */
+const NO_DOUBLE_WORK_RULE =
+  'Once you delegate a search or an investigation, let it run — do not also perform the same searches yourself.'
+
+/**
+ * Pure seam over the two delegation lanes, in the same spirit as
+ * `buildHarnessItems` and `buildWorkContractSections`: `isForkSubagentEnabled()`
+ * folds to a build-time constant, so the shipping shape is unreachable through
+ * `getSystemPrompt` under `bun test` and only a parameterized builder lets a
+ * test assert that BOTH arms carry the no-double-work rule.
+ */
+export function buildAgentToolSection(forkEnabled: boolean): string {
+  const lane = forkEnabled
     ? `Calling ${AGENT_TOOL_NAME} without a subagent_type creates a fork: the child inherits your context and re-reads all of it on every call it makes. With a subagent_type (\`Code\` or a named agent) it starts from your prompt alone. Either way its intermediate tool output stays out of your context \u2014 you get back only the report. Default to a fresh agent with a complete brief; fork only when the child needs what is in this conversation and a paragraph cannot carry it. Agents run **inline** by default, so you consume the report in the same turn; pass \`run_in_background: true\` when you'd rather keep working (or keep talking to the user) while it runs, and accept the report landing in a later turn. **If you ARE a sub-agent** \u2014 execute directly; do not re-delegate.`
-    : `Use the ${AGENT_TOOL_NAME} tool with specialized agents when the task at hand matches the agent's description. Subagents are valuable for parallelizing independent queries or for protecting the main context window from excessive results, but they should not be used excessively when not needed. Importantly, avoid duplicating work that subagents are already doing - if you delegate research to a subagent, do not also perform the same searches yourself.`
+    : `Use the ${AGENT_TOOL_NAME} tool with specialized agents when the task at hand matches the agent's description. Subagents are valuable for parallelizing independent queries or for protecting the main context window from excessive results, but they should not be used excessively when not needed.`
+  return `${lane} ${NO_DOUBLE_WORK_RULE}`
+}
+
+function getAgentToolSection(): string {
+  return buildAgentToolSection(isForkSubagentEnabled())
 }
 
 /**
