@@ -91,6 +91,9 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       'ctrl+g': 'chat:openDiff',
       'ctrl+e': 'chat:openExplorer',
       'ctrl+s': 'chat:stash',
+      // Side panel only: step INTO the panel on the right. ctrl+g opens /diff,
+      // so overloading it to also mean "focus" made one key do two jobs.
+      'ctrl+right': 'chat:focusPanel',
       // Image paste shortcut (platform-specific key defined above)
       [IMAGE_PASTE_KEY]: 'chat:imagePaste',
       ...(feature('MESSAGE_ACTIONS')
@@ -328,6 +331,17 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       tab: 'diff:nextTab',
       r: 'diff:refresh',
       a: 'diff:expandAll',
+      // Side panel only: step back OUT to the chat prompt on the left, the
+      // mirror of the ctrl+right that stepped in.
+      'ctrl+left': 'diff:focusPrompt',
+      // The Local sections are stacked, so focus moves vertically too. Plain
+      // ↑/↓ are taken — they move the diff cursor, which is how a selection is
+      // extended — hence the modifier. (`ctrl+up`/`ctrl+down` are otherwise
+      // only bound under MessageSelector, a context that is never active here.)
+      'ctrl+up': 'diff:focusSectionUp',
+      'ctrl+down': 'diff:focusSectionDown',
+      // Start / clear a visual line selection in the diff pane.
+      v: 'diff:select',
     },
   },
   // Model picker effort cycling (internal-only)

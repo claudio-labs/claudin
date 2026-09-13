@@ -1,6 +1,7 @@
 import chalk from 'chalk'
+import { getTheme, themeColorToAnsi } from 'src/terminal/theme/theme.js'
 import type { StructuredPatchHunk } from 'diff'
-import { resolve } from 'path'
+import { basename, relative, resolve } from 'path'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import type { CommandResultDisplay } from 'src/commands/commands.js'
 import { useRegisterOverlay } from 'src/terminal/contexts/overlayContext.js'
@@ -12,7 +13,7 @@ import { useGitStashes } from 'src/vcs/hooks/useGitStashes.js'
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js'
 import { type TurnDiff, useTurnDiffs } from 'src/vcs/diff/hooks/useTurnDiffs.js'
 import { useWorkspaceDiff } from 'src/vcs/diff/hooks/useWorkspaceDiff.js'
-import { Box, Text, useInput, useTheme } from 'src/terminal/ink.js'
+import { Box, type DOMElement, Text, useInput, useTheme } from 'src/terminal/ink.js'
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js'
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js'
 import {
@@ -23,9 +24,15 @@ import {
 } from 'src/vcs/git/git.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { readFileSafe } from 'src/shared/fs/file.js'
-import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js'
+import { plural } from 'src/shared/text/stringUtils.js'
 import { buildAddedFileHunks } from 'src/vcs/git/gitDiff.js'
 import { Dialog } from 'src/terminal/design-system/Dialog.js'
+import {
+  useIsInsideModal,
+  useModalOrTerminalSize,
+} from 'src/terminal/contexts/modalContext.js'
+import { useSidePanel } from 'src/terminal/contexts/sidePanelContext.js'
+import { computeTakeoverLayout } from 'src/vcs/diff/ui/layout.js'
 import { buildDiffRenderModel } from 'src/vcs/diff/ui/collapse.js'
 import { CommitFileList } from 'src/vcs/diff/ui/CommitFileList.js'
 import { CommitGraph } from 'src/vcs/diff/ui/CommitGraph.js'
@@ -37,6 +44,8 @@ import {
   type TreeRow,
 } from 'src/vcs/diff/ui/DiffFileList.js'
 import { DiffPane, renderDiffRows } from 'src/vcs/diff/ui/DiffPane.js'
+import { buildRowLineIndex, selectionRange } from 'src/vcs/diff/ui/rowLines.js'
+import { useDiffSelectionMention } from 'src/vcs/diff/ui/useDiffSelectionMention.js'
 import type { DiffSegment, DiffSource, RepoGroup } from 'src/vcs/diff/ui/types.js'
 
 type Props = {
@@ -49,6 +58,26 @@ type Props = {
 
 type Tab = 'local' | 'log'
 type Focus = 'list' | 'content'
+
+/** Columns DiffPane reserves for its cursor / selection marker. */
+const DIFF_GUTTER_WIDTH = 2
+
+/**
+ * Join `parts` with ` · ` into at most `width` columns, dropping from the tail
+ * — they are ordered most-useful-first. `always` is appended even when the
+ * budget is already spent, so the closing key never disappears.
+ */
+function fitHints(parts: string[], width: number, always: string): string {
+  const tail = always ? ` · ${always}` : ''
+  const budget = Math.max(0, width - tail.length)
+  let out = ''
+  for (const part of parts) {
+    const next = out ? `${out} · ${part}` : part
+    if (next.length > budget) break
+    out = next
+  }
+  return out ? `${out}${tail}` : always
+}
 
 /** Wrap a plain label as a top-aligned border title. */
 function paneTitle(text: string): {
@@ -135,7 +164,15 @@ function pageCommitRow(
 
 export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
   const { columns, rows } = useTerminalSize()
-  useRegisterOverlay('diff-dialog', true)
+  // As a side panel the chat is still on screen and its prompt is typable, so
+  // the dialog only claims the keyboard while it holds focus: registering the
+  // overlay is what blanks `focus` on the prompt's TextInput (and with it every
+  // keystroke), and the same flag gates our keybindings below. Outside the
+  // split — inline, or the narrow-terminal takeover — useSidePanel() is null
+  // and this is unconditionally true, exactly as before.
+  const sidePanel = useSidePanel()
+  const hasFocus = sidePanel === null || sidePanel.focus === 'panel'
+  useRegisterOverlay('diff-dialog', hasFocus)
 
   // ── scope ───────────────────────────────────────────────────────────────
   // Resolve the repos in scope from app state (cwd repo + /add-dir roots).
@@ -189,6 +226,10 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
   const [revealed, setRevealed] = useState<Map<string, number>>(new Map())
   const [expandAll, setExpandAll] = useState(false)
   const [diffScroll, setDiffScroll] = useState(0)
+  // Local Changes, diff focused: the highlighted RENDERED row, and the row `v`
+  // anchored a visual line selection at (null = no selection).
+  const [cursorRow, setCursorRow] = useState(0)
+  const [visualAnchor, setVisualAnchor] = useState<number | null>(null)
   // Log tab, level 2 + 3: which file of the selected commit is highlighted,
   // whether its diff is open, and that diff's scroll offset.
   const [logFileIndex, setLogFileIndex] = useState(0)
@@ -206,36 +247,48 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
   } | null>(null)
   const [statusNonce, setStatusNonce] = useState(0)
   const [theme] = useTheme()
+  // The side panel paints its own background, and the pre-rendered diff rows
+  // have to carry it themselves — see DiffPane's `backgroundSgr`.
+  const panelBackground = getTheme(theme).sidePanelBackground
+  const panelBackgroundSgr = panelBackground
+    ? themeColorToAnsi(panelBackground, true)
+    : null
 
   // ── layout ──────────────────────────────────────────────────────────────
-  const split = isFullscreenEnvEnabled() && columns >= 100
-  const leftWidth = Math.max(30, Math.min(50, Math.round(columns * 0.3)))
+  // Inside the modal slot the dialog owns a full-height surface: the whole
+  // terminal under the takeover, or the right half as a side panel. That is
+  // also exactly the fullscreen case, since the REPL routes every local-jsx
+  // command to the modal slot there.
+  const takeover = useIsInsideModal()
+  // EVERY dimension comes from the modal context, never from the terminal: as
+  // a side panel the dialog is half a screen wide and stops above the
+  // full-width prompt, while useTerminalSize() still reports the whole
+  // terminal. Terminal-derived numbers render past the divider (clipped
+  // instead of wrapped) and past the bottom (the footer disappears). The
+  // fallbacks are what the inline path used before.
+  const usableSize = useModalOrTerminalSize({
+    columns: columns - 4,
+    rows,
+  })
+  const usableColumns = usableSize.columns
+  // Only the Log tab is side-by-side now: its left rail is the git graph, which
+  // needs the columns. Local Changes stacks the file list ON TOP of the diff,
+  // so it works at any width and drops the gate.
+  const split = takeover && activeTab === 'log' && usableColumns >= 96
+  const leftWidth = Math.max(30, Math.min(50, Math.round(usableColumns * 0.3)))
   // Dialog chrome costs 10 rows on the Local tab: Pane paddingTop+divider (2),
   // and the Dialog content column lays out [title, sourceLine, body, footer]
   // with gap={1} BETWEEN each (title + 3 gaps + sourceLine + footer = 6) plus
   // the pane border (2). Leave a 2-row bottom margin so the footer stays on
   // screen — without it a full-height overlay pushes its own top (and footer)
   // off-screen in inline / main-screen mode.
-  const contentHeight = Math.max(6, rows - 12)
+  // Under the takeover that margin is unnecessary (the pane is exactly `rows`
+  // tall and clipped) and the peek + divider are gone, so 3 rows come back.
+  const contentHeight = Math.max(6, usableSize.rows - (takeover ? 9 : 12))
   // Both panes are pinned to this height so the dialog frame is CONSTANT
   // regardless of the selected file's diff length (a short diff must not
   // shrink the frame, a long one must not grow it).
   const paneHeight = contentHeight + 2
-  // Side-by-side the body shares its row with the file list; stacked it spans
-  // the dialog's inner width (Pane's paddingX={2}).
-  const diffWidth = split
-    ? Math.max(20, columns - leftWidth - 10)
-    : Math.max(20, columns - 4)
-  // Reserve 2 rows for the file list's ↑/↓ "more" indicators so the list never
-  // overflows its (contentHeight-tall) inner area.
-  // Inline (no side pane) the list stands in for the diff body, which already
-  // uses the same budget — so it gets the same height instead of a fixed 15,
-  // which both wasted a tall terminal and overflowed a short one.
-  const listMaxVisible = Math.max(3, contentHeight - 2)
-  // Viewport height for the scrollable body. Stacked there is no pane border to
-  // carry the file name and scroll position, so a header row does — and that
-  // row comes out of the body's budget.
-  const bodyHeight = split ? contentHeight : Math.max(3, contentHeight - 1)
 
   // ── sources ─────────────────────────────────────────────────────────────
   const sources = useMemo<DiffSource[]>(
@@ -322,6 +375,37 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
     [selectedRow],
   )
 
+  // ── layout, part 2 (needs treeRows) ───────────────────────────────────────
+  // Local Changes under the takeover: the Files pane auto-fits the changed
+  // files (capped) and the Diff pane takes what's left.
+  const stacked = takeover && activeTab === 'local'
+  const takeoverLayout = computeTakeoverLayout(contentHeight, treeRows.length)
+  // Side-by-side the body shares its row with the file list; otherwise it spans
+  // the dialog's inner width. The Log split still pays for its pane border; the
+  // stacked sections are borderless, so they only give back Pane's paddingX and
+  // 2 columns of slack (the fullscreen indent bites width math).
+  const diffWidth = split
+    ? Math.max(20, usableColumns - leftWidth - 6)
+    : stacked
+      ? Math.max(20, usableColumns - 4)
+      : Math.max(20, usableColumns)
+  // Reserve 2 rows for the file list's ↑/↓ "more" indicators so the list never
+  // overflows its (contentHeight-tall) inner area.
+  // Inline (no side pane) the list stands in for the diff body, which already
+  // uses the same budget — so it gets the same height instead of a fixed 15,
+  // which both wasted a tall terminal and overflowed a short one.
+  const listMaxVisible = stacked
+    ? takeoverLayout.listMaxVisible
+    : Math.max(3, contentHeight - 2)
+  // Viewport height for the scrollable body. Stacked-inline there is no pane
+  // border to carry the file name and scroll position, so a header row does —
+  // and that row comes out of the body's budget.
+  const bodyHeight = split
+    ? contentHeight
+    : stacked
+      ? takeoverLayout.diffInner
+      : Math.max(3, contentHeight - 1)
+
   const toggleDir = (key: string): void =>
     setCollapsedDirs(prev => {
       const next = new Set(prev)
@@ -377,7 +461,9 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
         filePath: selected?.file.path ?? '',
         firstLine,
         fileContent,
-        width: diffWidth,
+        // Two columns are reserved for the cursor/selection gutter DiffPane
+        // prefixes, so wrapping has to happen two columns earlier.
+        width: Math.max(10, diffWidth - DIFF_GUTTER_WIDTH),
         theme,
       }),
     [segments, selected, firstLine, fileContent, diffWidth, theme],
@@ -391,6 +477,82 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
           diffScrollClamped + bodyHeight,
         )}/${diffRows.length}`
       : ''
+
+  // ── diff cursor + visual selection ────────────────────────────────────────
+  // The cursor indexes RENDERED rows (a wrapped source line spans several), and
+  // rowLineIndex maps those back to new-file line numbers for the @mention.
+  // null means the renderer and the segments disagreed — selection is then
+  // disabled for this file rather than attaching a range built on a guess.
+  const cursorRowClamped = Math.max(
+    0,
+    Math.min(cursorRow, Math.max(0, diffRows.length - 1)),
+  )
+  const rowLineIndex = useMemo(
+    () => buildRowLineIndex(segments, diffRows),
+    [segments, diffRows],
+  )
+  const canSelectLines = rowLineIndex !== null && sidePanel !== null
+  const visualRange =
+    visualAnchor === null
+      ? null
+      : {
+          from: Math.min(visualAnchor, cursorRowClamped),
+          to: Math.max(visualAnchor, cursorRowClamped),
+        }
+
+  /** Move the cursor by `delta` rows, scrolling the viewport to keep it in view. */
+  const moveCursor = (delta: number): void => {
+    const next = Math.max(
+      0,
+      Math.min(diffRows.length - 1, cursorRowClamped + delta),
+    )
+    setCursorRow(next)
+    if (next < diffScrollClamped) setDiffScroll(next)
+    else if (next >= diffScrollClamped + bodyHeight) {
+      setDiffScroll(Math.max(0, next - bodyHeight + 1))
+    }
+  }
+
+  /**
+   * Turn a line range into an `@path#La-Lb` mention at the prompt cursor and
+   * hand the keyboard back. The mention path is the one the agent's own
+   * @-mention parser reads, so nothing new has to reach the message pipeline.
+   * Shared by the keyboard (`v` + Enter) and the mouse path, so they cannot
+   * produce different text for the same lines.
+   */
+  const attachRange = (range: { start: number; end: number }): void => {
+    if (!selected || !sidePanel) return
+    const path = relative(getCwd(), resolve(selected.root || getCwd(), selected.file.path))
+    const suffix =
+      range.start === range.end ? `#L${range.start}` : `#L${range.start}-${range.end}`
+    sidePanel.insertText(`@${path}${suffix}`)
+    sidePanel.setFocus('prompt')
+  }
+
+  const confirmSelection = (): void => {
+    const range =
+      rowLineIndex && visualRange
+        ? selectionRange(rowLineIndex, visualRange.from, visualRange.to)
+        : null
+    setVisualAnchor(null)
+    if (range) attachRange(range)
+  }
+
+  // A finished mouse drag over the diff attaches its lines the same way — the
+  // move people reach for first, and before this it only copied.
+  const diffPaneRef = useRef<DOMElement | null>(null)
+  useDiffSelectionMention({
+    enabled: stacked && sidePanel !== null && selected !== null,
+    paneRef: diffPaneRef,
+    rowLineIndex,
+    scrollOffset: diffScrollClamped,
+    height: bodyHeight,
+    onRange: range => {
+      // Drop any open `v` selection so two highlights never compete.
+      setVisualAnchor(null)
+      attachRange(range)
+    },
+  })
 
   // ── selection housekeeping ────────────────────────────────────────────────
   // Land on the first file row when a source's files first arrive and again
@@ -417,12 +579,14 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
     }
   }, [treeRows, selectedIndex])
 
-  // Reset reveal + scroll to top when the selected file changes.
+  // Reset reveal, scroll, cursor and any open selection when the file changes.
   const selectedKey = `${sourceIndex}:${selected?.file.path ?? ''}`
   useEffect(() => {
     setRevealed(new Map())
     setExpandAll(false)
     setDiffScroll(0)
+    setCursorRow(0)
+    setVisualAnchor(null)
   }, [selectedKey])
 
   // Initialize / keep the log selection on a commit row.
@@ -573,6 +737,11 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
   }
 
   const handleCancel = (): void => {
+    // Esc peels one layer at a time; an active selection is the innermost.
+    if (visualAnchor !== null) {
+      setVisualAnchor(null)
+      return
+    }
     if (activeTab === 'log' && logDiffOpen) setLogDiffOpen(false)
     else if (focus === 'content') setFocus('list')
     else onDone('Diff dialog dismissed', { display: 'system' })
@@ -602,6 +771,18 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
           return
         }
         return false
+      },
+      // ctrl+↑ / ctrl+↓ : move between the stacked sections and nothing else.
+      // Deliberately NOT aliases of diff:focusList/focusContent — those also
+      // collapse and expand a folder row, which is not what a focus key should
+      // do. Returning false when there is nowhere to go leaves the key free.
+      'diff:focusSectionUp': () => {
+        if (focus !== 'content') return false
+        setFocus('list')
+      },
+      'diff:focusSectionDown': () => {
+        if (focus !== 'list') return false
+        setFocus('content')
       },
       // → : file list → Diff/content pane; on a collapsed folder/group, expand it.
       'diff:focusContent': () => {
@@ -645,10 +826,11 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
       },
       'diff:previousFile': () => {
         if (focus === 'content') {
-          // Content focused: ↑ scrolls the body, in BOTH layouts — the body is
+          // Content focused on Local: ↑ moves the cursor line (and extends the
+          // selection when one is open); the viewport follows it. The body is
           // windowed over pre-rendered rows and needs no alt-screen viewport.
           if (activeTab === 'local') {
-            setDiffScroll(s => Math.max(0, s - 1))
+            moveCursor(-1)
             return
           }
           if (logDiffOpen) {
@@ -664,7 +846,7 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
       'diff:nextFile': () => {
         if (focus === 'content') {
           if (activeTab === 'local') {
-            setDiffScroll(s => Math.min(maxDiffScroll, s + 1))
+            moveCursor(1)
             return
           }
           if (logDiffOpen) {
@@ -694,6 +876,11 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
           return
         }
         if (activeTab === 'local') {
+          // With a selection open, Enter confirms it instead of growing a gap.
+          if (visualAnchor !== null) {
+            confirmSelection()
+            return
+          }
           expandNextGap()
           return
         }
@@ -709,8 +896,20 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
         else return false
       },
       'diff:refresh': refresh,
+      // v: start / clear a visual line selection in the diff pane.
+      'diff:select': () => {
+        if (activeTab !== 'local' || focus !== 'content') return false
+        setVisualAnchor(a => (a === null ? cursorRowClamped : null))
+      },
+      // ctrl+← steps back out to the prompt. It needs its own action in the
+      // DiffDialog context: a `Chat` binding is unreachable from here, since
+      // nothing registers `Chat` as an *active* context.
+      'diff:focusPrompt': () => {
+        if (!sidePanel) return false
+        sidePanel.setFocus('prompt')
+      },
     },
-    { context: 'DiffDialog' },
+    { context: 'DiffDialog', isActive: hasFocus },
   )
 
   // Paging for whichever pane has focus, in BOTH layouts. Line-by-line ↑/↓ is
@@ -744,10 +943,12 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
     }
     const page = bodyHeight
     if (activeTab === 'local') {
-      if (up) setDiffScroll(s => Math.max(0, s - page))
-      else if (down) setDiffScroll(s => Math.min(maxDiffScroll, s + page))
-      else if (home) setDiffScroll(0)
-      else setDiffScroll(maxDiffScroll)
+      // Same unit as ↑/↓ here: the cursor moves and the viewport follows, so a
+      // selection can be extended a page at a time.
+      if (up) moveCursor(-page)
+      else if (down) moveCursor(page)
+      else if (home) moveCursor(-diffRows.length)
+      else moveCursor(diffRows.length)
       return
     }
     if (logDiffOpen) {
@@ -762,7 +963,7 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
     else if (down) moveLogFile(page)
     else if (home) setLogFileIndex(0)
     else setLogFileIndex(Math.max(0, commitFileCount - 1))
-  })
+  }, { isActive: hasFocus })
 
   // ── render helpers ────────────────────────────────────────────────────────
   // No repo at all only once the scan has settled with zero groups — a nested
@@ -806,24 +1007,63 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
         status.behind ? ` ↓${status.behind}` : ''
       } · ${status.dirty} changed`
     : ''
-  const hints =
-    activeTab === 'log'
-      ? focus === 'content'
-        ? logDiffOpen
-          ? 'Tab tabs · ↑/↓ scroll · u/d page · g/G ends · ← files · Esc close'
-          : 'Tab tabs · ↑/↓ files · u/d page · Enter/→ diff · ← commits · Esc close'
-        : `Tab tabs · ↑/↓ commits · u/d page · → files · ← back${
-            logRepos.length > 1 ? ' · [ ] project' : ''
-          } · r refresh · Esc close`
-      : focus === 'content'
-        ? 'Tab tabs · ↑/↓ scroll · u/d page · g/G ends · Enter expand gap · a expand all · ← files · Esc close'
-        : 'Tab tabs · ↑/↓ move · u/d page · ←/→ folder · Enter open · [ ] source · a expand · r refresh · Esc close'
+  // Hints in display order, most useful first — `fitHints` drops from the tail
+  // when the row is too narrow, which a half-width side panel always is. The
+  // closing key is appended last so it never gets dropped.
+  const hintParts: string[] =
+    !hasFocus
+      ? ['ctrl+→ panel', 'type to chat']
+      : visualAnchor !== null
+        ? ['↑/↓ extend', 'Enter send to prompt', 'v/Esc cancel']
+        : activeTab === 'log'
+          ? focus === 'content'
+            ? logDiffOpen
+              ? ['Tab tabs', '↑/↓ scroll', 'u/d page', 'g/G ends', '← files']
+              : ['Tab tabs', '↑/↓ files', 'Enter/→ diff', '← commits', 'u/d page']
+            : [
+                'Tab tabs',
+                '↑/↓ commits',
+                '→ files',
+                '← back',
+                ...(logRepos.length > 1 ? ['[ ] project'] : []),
+                'u/d page',
+                'r refresh',
+              ]
+          : focus === 'content'
+            ? [
+                'Tab tabs',
+                '↑/↓ move',
+                ...(canSelectLines ? ['v select'] : []),
+                ...(canSelectLines ? ['drag to attach'] : []),
+                'ctrl+↑ files',
+                ...(sidePanel ? ['ctrl+← chat'] : []),
+                'Enter expand gap',
+                'u/d page',
+                'a expand all',
+              ]
+            : [
+                'Tab tabs',
+                '↑/↓ move',
+                'ctrl+↓ diff',
+                ...(canSelectLines ? ['drag to attach'] : []),
+                ...(sidePanel ? ['ctrl+← chat'] : []),
+                '[ ] source',
+                '←/→ folder',
+                'u/d page',
+                'a expand',
+                'r refresh',
+              ]
+  // One <Text>, not two columns: siblings in a row Box lay out as independent
+  // flex items and wrap separately, which interleaved the status and the hints
+  // at panel width (ink-tui.md §10). Drop the status when both don't fit.
+  const footerWidth = Math.max(20, usableColumns - 2)
+  const closeHint = visualAnchor !== null || !hasFocus ? '' : 'Esc close'
+  const hints = fitHints(hintParts, footerWidth, closeHint)
+  const footerGap = footerWidth - statusText.length - hints.length
   const footer = (
-    <Box flexDirection="row">
-      <Text dimColor>{statusText}</Text>
-      <Box flexGrow={1} />
-      <Text dimColor>{hints}</Text>
-    </Box>
+    <Text dimColor wrap="truncate-end">
+      {footerGap >= 2 ? `${statusText}${' '.repeat(footerGap)}${hints}` : hints}
+    </Text>
   )
 
   const localEmptyMessage = workspace.loading
@@ -861,9 +1101,19 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
         scrollOffset={diffScrollClamped}
         height={height}
         width={diffWidth}
+        cursorRow={hasFocus && focus === 'content' ? cursorRowClamped : null}
+        selection={visualRange}
+        backgroundSgr={stacked ? panelBackgroundSgr : null}
       />
     )
   }
+
+  /**
+   * Border accent for a pane. Both panes go `subtle` when the keyboard is on
+   * the prompt side, so the split never shows two focused-looking halves.
+   */
+  const paneColor = (pane: Focus): 'permission' | 'subtle' =>
+    hasFocus && focus === pane ? 'permission' : 'subtle'
 
   /** Stands in for the pane border title in the stacked layout. */
   const stackedHeader = (title: string, label: string): React.ReactNode => (
@@ -890,51 +1140,88 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
           rows={treeRows}
           selectedIndex={selectedIndex}
           maxVisible={listMaxVisible}
-          width={split ? leftWidth - 2 : Math.min(columns - 4, INLINE_LIST_WIDTH)}
+          width={stacked ? diffWidth : Math.min(usableColumns, INLINE_LIST_WIDTH)}
         />
       )
-    body = split ? (
-      <Box flexDirection="row" gap={1}>
+    const filesTitle = `Files  ${allFiles.length} ${plural(
+      allFiles.length,
+      'file',
+    )} changed`
+    // Stats-only synthetic file — the same shape statsBorderText already takes.
+    const filesStatsFile: DiffFile = {
+      path: '',
+      ...allFiles.reduce(
+        (acc, f) => ({
+          linesAdded: acc.linesAdded + f.linesAdded,
+          linesRemoved: acc.linesRemoved + f.linesRemoved,
+        }),
+        { linesAdded: 0, linesRemoved: 0 },
+      ),
+      isBinary: false,
+      isLargeFile: false,
+      isTruncated: false,
+    }
+    // Basename only: the tree right above already shows the directory, so the
+    // full path spent a third of the rule repeating it. Stacked layout only —
+    // inline shows EITHER the list or the diff, never both, so the path there
+    // is the only context there is.
+    const diffTitle = selected
+      ? `Diff: ${basename(selected.file.path)}${
+          selected.file.isTruncated ? ' (truncated)' : ''
+        }${diffScrollLabel ? `  ${diffScrollLabel}` : ''}`
+      : 'Diff'
+    // Untracked files carry no git line counts; show the synthesized all-added
+    // count so the new-file diff still reports +N.
+    const diffStatsFile: DiffFile | undefined =
+      selected && isUntrackedFile && effectiveHunks.length > 0
+        ? {
+            ...selected.file,
+            linesAdded: effectiveHunks[0]!.newLines,
+            linesRemoved: 0,
+          }
+        : selected?.file
+    const filesBorderText = (() => {
+      const stats = statsBorderText(filesStatsFile)
+      return stats ? [paneTitle(filesTitle), stats] : paneTitle(filesTitle)
+    })()
+    const diffBorderText = (() => {
+      const stats = diffStatsFile ? statsBorderText(diffStatsFile) : null
+      return stats ? [paneTitle(diffTitle), stats] : paneTitle(diffTitle)
+    })()
+    // Takeover: the file list sits ON TOP of a full-width diff, both in fixed-
+    // height sections so the frame never moves with the selected file's length.
+    // Each section is a TOP BORDER ONLY: the rule carries the title and the
+    // +N −N the way a pane border used to, but without the vertical edges — so
+    // the text gets those two columns back, and the whole frame costs one row
+    // per section instead of two.
+    body = stacked ? (
+      <Box flexDirection="column">
         <Box
-          width={leftWidth}
+          height={takeoverLayout.listInner + 1}
           flexShrink={0}
-          height={paneHeight}
           overflow="hidden"
           flexDirection="column"
           borderStyle="round"
-          borderColor={focus === 'list' ? 'permission' : 'subtle'}
-          borderText={paneTitle('Files')}
+          borderBottom={false}
+          borderLeft={false}
+          borderRight={false}
+          borderColor={paneColor('list')}
+          borderText={filesBorderText}
         >
           {listEl}
         </Box>
         <Box
-          flexGrow={1}
-          height={paneHeight}
+          ref={diffPaneRef}
+          height={takeoverLayout.diffInner + 1}
+          flexShrink={0}
           overflow="hidden"
           flexDirection="column"
           borderStyle="round"
-          borderColor={focus === 'content' ? 'permission' : 'subtle'}
-          borderText={(() => {
-            const title = paneTitle(
-              selected
-                ? `Diff: ${selected.file.path}${
-                    selected.file.isTruncated ? ' (truncated)' : ''
-                  }${diffScrollLabel ? `  ${diffScrollLabel}` : ''}`
-                : 'Diff',
-            )
-            // Untracked files carry no git line counts; show the synthesized
-            // all-added count so the new-file diff still reports +N.
-            const statsFile =
-              selected && isUntrackedFile && effectiveHunks.length > 0
-                ? {
-                    ...selected.file,
-                    linesAdded: effectiveHunks[0]!.newLines,
-                    linesRemoved: 0,
-                  }
-                : selected?.file
-            const stats = statsFile ? statsBorderText(statsFile) : null
-            return stats ? [title, stats] : title
-          })()}
+          borderBottom={false}
+          borderLeft={false}
+          borderRight={false}
+          borderColor={paneColor('content')}
+          borderText={diffBorderText}
         >
           {renderDiffBody(bodyHeight)}
         </Box>
@@ -1012,7 +1299,7 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
           overflow="hidden"
           flexDirection="column"
           borderStyle="round"
-          borderColor={focus === 'list' ? 'permission' : 'subtle'}
+          borderColor={paneColor('list')}
           borderText={paneTitle('Log')}
         >
           {graphEl}
@@ -1022,7 +1309,7 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
           height={paneHeight}
           overflow="hidden"
           flexDirection="column"
-          borderColor={focus === 'content' ? 'permission' : 'subtle'}
+          borderColor={paneColor('content')}
           borderStyle="round"
           borderText={(() => {
             const title = paneTitle(
@@ -1077,8 +1364,8 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
     <Dialog
       title={tabBar}
       onCancel={handleCancel}
-      color="background"
       hideInputGuide
+      isCancelActive={hasFocus}
     >
       {sourceLine}
       {projectLine}

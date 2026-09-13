@@ -25,6 +25,7 @@ import { isUltrareviewEnabled } from 'src/commands/review/ultrareviewEnabled.js'
 import { getNativeCSIuTerminalDisplayName } from 'src/commands/terminalSetup/terminalSetup.js';
 import { type Command, hasCommand } from 'src/commands/commands.js';
 import { useIsModalOverlayActive } from 'src/terminal/contexts/overlayContext.js';
+import { useSidePanel } from 'src/terminal/contexts/sidePanelContext.js';
 import { useSetPromptOverlayDialog } from 'src/terminal/contexts/promptOverlayContext.js';
 import { formatImageRef, formatPastedTextRef, getPastedTextRefNumLines, parseReferences } from 'src/agent/history.js';
 import type { VerificationStatus } from 'src/providers/hooks/useApiKeyVerification.js';
@@ -263,6 +264,10 @@ function PromptInput({
   // shouldHidePromptInput: false. Those dialogs don't register in the overlay
   // system, so treat them as a modal overlay here to stop navigation keys from
   // leaking into TextInput/footer handlers and stacking a second dialog.
+  // A side panel (today /diff) keeps the prompt on screen and typable, so it is
+  // NOT a modal overlay from here — the panel registers its own only while it
+  // holds the keyboard, and hands it back through this context.
+  const sidePanel = useSidePanel();
   const isModalOverlayActive = useIsModalOverlayActive() || isLocalJSXCommandActive;
   const [isAutoUpdating, setIsAutoUpdating] = useState(false);
   const [exitMessage, setExitMessage] = useState<{
@@ -1776,11 +1781,25 @@ function PromptInput({
   // ctrl+g / ctrl+e open the /diff reviewer and the /explorer file tree
   // (replacing the old typed gg/ee chords). Clear the input first so a
   // quick-launch never carries stray text into the command.
+  // With the reviewer already open as a side panel there is nothing to open,
+  // so ctrl+g steps into it rather than re-submitting — and it must NOT clear
+  // the input the user is mid-way through typing. ctrl+right is the key that
+  // advertises this; ctrl+g just refuses to do something useless.
   const handleOpenDiff = useCallback(() => {
+    if (sidePanel?.open) {
+      sidePanel.setFocus("panel");
+      return;
+    }
     trackAndSetInput('');
     setCursorOffset(0);
     void onSubmit('/diff');
-  }, [trackAndSetInput, setCursorOffset, onSubmit]);
+  }, [sidePanel, trackAndSetInput, setCursorOffset, onSubmit]);
+  // ctrl+right: step into the side panel. Returns false when no panel is open
+  // so the key stays free for anything else that wants it.
+  const handleFocusPanel = useCallback(() => {
+    if (!sidePanel?.open) return false;
+    sidePanel.setFocus("panel");
+  }, [sidePanel]);
   const handleOpenExplorer = useCallback(() => {
     trackAndSetInput('');
     setCursorOffset(0);
@@ -1797,6 +1816,7 @@ function PromptInput({
     'chat:newline': handleNewline,
     'chat:externalEditor': handleExternalEditor,
     'chat:openDiff': handleOpenDiff,
+    'chat:focusPanel': handleFocusPanel,
     'chat:openExplorer': handleOpenExplorer,
     'chat:stash': handleStash,
     'chat:modelPicker': handleModelPicker,
@@ -1805,7 +1825,7 @@ function PromptInput({
     'chat:increaseEffort': () => handleCycleEffort('right'),
     'chat:decreaseEffort': () => handleCycleEffort('left'),
     'chat:imagePaste': handleImagePaste
-  }), [handleUndo, handleNewline, handleExternalEditor, handleOpenDiff, handleOpenExplorer, handleStash, handleModelPicker, handleThinkingToggle, handleCycleMode, handleCycleEffort, handleImagePaste]);
+  }), [handleUndo, handleNewline, handleExternalEditor, handleOpenDiff, handleFocusPanel, handleOpenExplorer, handleStash, handleModelPicker, handleThinkingToggle, handleCycleMode, handleCycleEffort, handleImagePaste]);
   useKeybindings(chatHandlers, {
     context: 'Chat',
     isActive: !isModalOverlayActive

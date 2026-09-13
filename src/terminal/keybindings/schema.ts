@@ -95,6 +95,7 @@ export const KEYBINDING_ACTIONS = [
   'chat:openDiff',
   'chat:openExplorer',
   'chat:stash',
+  'chat:focusPanel',
   'chat:imagePaste',
   'chat:messageActions',
   // Autocomplete menu actions
@@ -160,6 +161,10 @@ export const KEYBINDING_ACTIONS = [
   'diff:nextTab',
   'diff:refresh',
   'diff:expandAll',
+  'diff:focusPrompt',
+  'diff:select',
+  'diff:focusSectionUp',
+  'diff:focusSectionDown',
   // Model picker actions (internal-only)
   'modelPicker:decreaseEffort',
   'modelPicker:increaseEffort',

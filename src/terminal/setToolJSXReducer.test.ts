@@ -27,6 +27,18 @@ describe('setToolJSXReducer', () => {
     expect(next.generation).toBe(initialReducerState.generation + 1)
   })
 
+  test('R1b: set_local_jsx carries isFullscreenPanel through to state', () => {
+    // The reducer spreads the payload, so this only guards against a future
+    // rewrite that enumerates fields — /diff's panel is invisible to
+    // FullscreenLayout the moment the flag is dropped here.
+    const next = applyToolJSXAction(initialReducerState, {
+      type: 'set_local_jsx',
+      payload: { ...localPayload('diff'), isFullscreenPanel: true },
+      generation: 0,
+    })
+    expect(next.state?.isFullscreenPanel).toBe(true)
+  })
+
   test('R2: clear_local_jsx clears state and bumps generation', () => {
     const opened = applyToolJSXAction(initialReducerState, {
       type: 'set_local_jsx',

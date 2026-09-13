@@ -2,7 +2,8 @@ import { c as _c } from "react-compiler-runtime";
 import figures from 'figures';
 import React, { createContext, type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { fileURLToPath } from 'url';
-import { ModalContext } from 'src/terminal/contexts/modalContext.js';
+import { ModalSlot, type ModalMode } from 'src/terminal/ModalSlot.js';
+import { canSplit } from 'src/terminal/sidePanelLayout.js';
 import { PromptOverlayProvider, usePromptOverlay, usePromptOverlayDialog } from 'src/terminal/contexts/promptOverlayContext.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import ScrollBox, { type ScrollBoxHandle } from 'src/terminal/ink/components/ScrollBox.js';
@@ -15,9 +16,6 @@ import { plural } from 'src/shared/text/stringUtils.js';
 import { isNullRenderingAttachment } from 'src/agent/ui/messages/nullRenderingAttachments.js';
 import PromptInputFooterSuggestions from 'src/terminal/prompt-input/PromptInputFooterSuggestions.js';
 import type { StickyPrompt } from 'src/terminal/VirtualMessageList.js';
-
-/** Rows of transcript context kept visible above the modal pane's ▔ divider. */
-const MODAL_TRANSCRIPT_PEEK = 2;
 
 /** Context for scroll-derived chrome (sticky header, pill). StickyTracker
  *  in VirtualMessageList writes via this instead of threading a callback
@@ -49,6 +47,11 @@ type Props = {
   /** Ref passed via ModalContext so Tabs (or any scroll-owning descendant)
    *  can attach it to their own ScrollBox for tall content. */
   modalScrollRef?: React.RefObject<ScrollBoxHandle | null>;
+  /** Give the modal its own fullscreen surface instead of the bottom-anchored
+   *  pane: a side panel beside the chat when the terminal is wide enough, and
+   *  a full takeover (no transcript peek, no ▔ divider) when it is not.
+   *  Set from a command's `fullscreenPanel`. See ModalSlot for the shapes. */
+  modalPanel?: boolean;
   /** Ref to the scroll box for keyboard scrolling. RefObject (not Ref) so
    *  pillVisible's useSyncExternalStore can subscribe to scroll changes. */
   scrollRef?: RefObject<ScrollBoxHandle | null>;
@@ -276,7 +279,7 @@ export function computeUnseenDivider(messages: readonly Message[], dividerIndex:
  * so nothing can accidentally render outside it.
  */
 export function FullscreenLayout(t0: Props) {
-  const $ = _c(47);
+  const $ = _c(48);
   const {
     scrollable,
     bottom,
@@ -284,6 +287,7 @@ export function FullscreenLayout(t0: Props) {
     bottomFloat,
     modal,
     modalScrollRef,
+    modalPanel,
     scrollRef,
     dividerYRef,
     hidePill: t1,
@@ -426,31 +430,12 @@ export function FullscreenLayout(t0: Props) {
       t17 = $[32];
     }
     let t18;
-    if ($[33] !== columns || $[34] !== modal || $[35] !== modalScrollRef || $[36] !== terminalRows) {
-      t18 = modal != null && <ModalContext value={{
-        rows: terminalRows - MODAL_TRANSCRIPT_PEEK - 1,
-        columns: columns - 4,
-        scrollRef: modalScrollRef ?? null
-      }}><Box position="absolute" bottom={0} left={0} right={0} maxHeight={terminalRows - MODAL_TRANSCRIPT_PEEK} flexDirection="column" overflow="hidden" opaque={true}><Box flexShrink={0}><Text color="permission">{"\u2594".repeat(columns)}</Text></Box><Box flexDirection="column" paddingX={2} flexShrink={0} overflow="hidden">{modal}</Box></Box></ModalContext>;
-      $[33] = columns;
-      $[34] = modal;
-      $[35] = modalScrollRef;
-      $[36] = terminalRows;
-      $[37] = t18;
-    } else {
-      t18 = $[37];
-    }
-    let t19;
-    if ($[38] !== t14 || $[39] !== t17 || $[40] !== t18) {
-      t19 = <PromptOverlayProvider>{t14}{t17}{t18}</PromptOverlayProvider>;
-      $[38] = t14;
-      $[39] = t17;
-      $[40] = t18;
-      $[41] = t19;
-    } else {
-      t19 = $[41];
-    }
-    return t19;
+    // Deliberately NOT memoized: ModalSlot only re-parents already-memoized
+    // children (t14/t17 keep their identity, so React bails out on them), and
+    // hand-maintaining another $[] slot in compiler output costs more than it
+    // saves. Slots 33-41 are now unused; _c(48) simply over-allocates.
+    const mode: ModalMode = modalPanel !== true ? 'anchored' : canSplit(columns) ? 'split' : 'takeover';
+    return <PromptOverlayProvider><ModalSlot mode={mode} left={t14} bottom={t17} modal={modal} rows={terminalRows} columns={columns} scrollRef={modalScrollRef ?? null} /></PromptOverlayProvider>;
   }
   let t8;
   if ($[42] !== bottom || $[43] !== modal || $[44] !== overlay || $[45] !== scrollable) {

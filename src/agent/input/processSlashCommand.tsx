@@ -585,10 +585,14 @@ async function getMessagesForSlashCommand(commandName: string, args: string, set
               if (doneWasCalled) return;
               setToolJSX({
                 jsx,
-                shouldHidePromptInput: true,
+                // A side-panel command sits BESIDE the chat, so the prompt has
+                // to stay mounted and typable. Only in fullscreen: inline there
+                // is no panel, and the prompt would render under the dialog.
+                shouldHidePromptInput: !(command.fullscreenPanel === true && isFullscreenEnvEnabled()),
                 showSpinner: false,
                 isLocalJSXCommand: true,
                 isImmediate: command.immediate === true,
+                isFullscreenPanel: command.fullscreenPanel === true,
                 generation
               });
             }).catch(e => {
