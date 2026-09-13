@@ -13,6 +13,7 @@
 import { clamp } from 'src/terminal/ink/layout/geometry.js'
 import type { Screen, StylePool } from 'src/terminal/ink/screen.js'
 import { CellWidth, cellAt, cellAtIndex, setCellStyleId } from 'src/terminal/ink/screen.js'
+import type { ColumnBand } from 'src/terminal/ink/selectionBands.js'
 
 type Point = { col: number; row: number }
 
@@ -60,6 +61,16 @@ export type SelectionState = {
    *  were on, xterm.js would have consumed the event for native selection
    *  and we'd never receive it. Used by the footer to show the right hint. */
   lastPressHadAlt: boolean
+  /**
+   * Columns this selection may not cross, pinned at mouse-down from the
+   * band the press landed in (see selectionBands.ts). null ⇔ full width.
+   * Without it a multi-row selection inside the `/diff` side panel spans
+   * every column of the rows between its endpoints, so the highlight bleeds
+   * into the chat and the copy picks up text beside what was dragged over.
+   * Only `lo`/`hi` are read here — the band's row extent is what decided
+   * whether it applied at all, back at mouse-down.
+   */
+  colBand?: ColumnBand | null
 }
 
 export function createSelectionState(): SelectionState {
@@ -73,6 +84,7 @@ export function createSelectionState(): SelectionState {
     scrolledOffAboveSW: [],
     scrolledOffBelowSW: [],
     lastPressHadAlt: false,
+    colBand: null,
   }
 }
 
@@ -95,6 +107,8 @@ export function startSelection(
   s.virtualAnchorRow = undefined
   s.virtualFocusRow = undefined
   s.lastPressHadAlt = false
+  // The caller pins the band right after this (it knows the press column).
+  s.colBand = null
 }
 
 export function updateSelection(
@@ -131,6 +145,7 @@ export function clearSelection(s: SelectionState): void {
   s.virtualAnchorRow = undefined
   s.virtualFocusRow = undefined
   s.lastPressHadAlt = false
+  s.colBand = null
 }
 
 // Unicode-aware word character matcher: letters (any script), digits,
@@ -371,8 +386,13 @@ export function selectLineAt(
   row: number,
 ): void {
   if (row < 0 || row >= screen.height) return
-  const lo = { col: 0, row }
-  const hi = { col: screen.width - 1, row }
+  // A triple-click selects the whole row — of its own region when the screen
+  // is split, not of the terminal.
+  const lo = { col: s.colBand ? s.colBand.lo : 0, row }
+  const hi = {
+    col: s.colBand ? Math.min(s.colBand.hi, screen.width - 1) : screen.width - 1,
+    row,
+  }
   s.anchor = lo
   s.focus = hi
   s.isDragging = true
@@ -402,8 +422,11 @@ export function extendSelection(
     mHi = { col: b ? b.hi : col, row }
   } else {
     const r = clamp(row, 0, screen.height - 1)
-    mLo = { col: 0, row: r }
-    mHi = { col: screen.width - 1, row: r }
+    mLo = { col: s.colBand ? s.colBand.lo : 0, row: r }
+    mHi = {
+      col: s.colBand ? Math.min(s.colBand.hi, screen.width - 1) : screen.width - 1,
+      row: r,
+    }
   }
   if (comparePoints(mHi, span.lo) < 0) {
     // Mouse target ends before anchor span: extend backward.
@@ -678,6 +701,27 @@ export function hasSelection(s: SelectionState): boolean {
 }
 
 /**
+ * Column span of `row` within the selection, clamped to the selection's band.
+ * The one place the band is applied — the overlay, the copied text and the
+ * drag-to-scroll capture all go through it, so they can never disagree about
+ * where a selection ends.
+ */
+export function rowColBounds(
+  s: SelectionState,
+  start: { col: number; row: number },
+  end: { col: number; row: number },
+  row: number,
+  width: number,
+): { colStart: number; colEnd: number } {
+  const lo = s.colBand ? Math.max(0, s.colBand.lo) : 0
+  const hi = s.colBand ? Math.min(s.colBand.hi, width - 1) : width - 1
+  return {
+    colStart: Math.max(lo, row === start.row ? start.col : lo),
+    colEnd: Math.min(hi, row === end.row ? end.col : hi),
+  }
+}
+
+/**
  * Normalized selection bounds: start is always before end in reading order.
  * Returns null if no active selection.
  */
@@ -765,9 +809,8 @@ export function getSelectedText(s: SelectionState, screen: Screen): string {
   }
 
   for (let row = start.row; row <= end.row; row++) {
-    const rowStart = row === start.row ? start.col : 0
-    const rowEnd = row === end.row ? end.col : screen.width - 1
-    joinRows(lines, extractRowText(screen, row, rowStart, rowEnd), sw[row]! > 0)
+    const { colStart, colEnd } = rowColBounds(s, start, end, row, screen.width)
+    joinRows(lines, extractRowText(screen, row, colStart, colEnd), sw[row]! > 0)
   }
 
   for (let i = 0; i < s.scrolledOffBelow.length; i++) {
@@ -814,8 +857,7 @@ export function captureScrolledRows(
   const captured: string[] = []
   const capturedSW: boolean[] = []
   for (let row = lo; row <= hi; row++) {
-    const colStart = row === start.row ? start.col : 0
-    const colEnd = row === end.row ? end.col : width - 1
+    const { colStart, colEnd } = rowColBounds(s, start, end, row, width)
     captured.push(extractRowText(screen, row, colStart, colEnd))
     capturedSW.push(sw[row]! > 0)
   }
@@ -830,12 +872,15 @@ export function captureScrolledRows(
     // col constraint was applied to the captured row. Reset to col 0 so
     // the NEXT tick and the final getSelectedText read the full row.
     if (s.anchor && s.anchor.row === start.row && lo === start.row) {
-      s.anchor = { col: 0, row: s.anchor.row }
+      s.anchor = { col: s.colBand ? s.colBand.lo : 0, row: s.anchor.row }
       if (s.anchorSpan) {
         s.anchorSpan = {
           kind: s.anchorSpan.kind,
-          lo: { col: 0, row: s.anchorSpan.lo.row },
-          hi: { col: width - 1, row: s.anchorSpan.hi.row },
+          lo: { col: s.colBand ? s.colBand.lo : 0, row: s.anchorSpan.lo.row },
+          hi: {
+            col: s.colBand ? Math.min(s.colBand.hi, width - 1) : width - 1,
+            row: s.anchorSpan.hi.row,
+          },
         }
       }
     }
@@ -845,12 +890,18 @@ export function captureScrolledRows(
     s.scrolledOffBelow.unshift(...captured)
     s.scrolledOffBelowSW.unshift(...capturedSW)
     if (s.anchor && s.anchor.row === end.row && hi === end.row) {
-      s.anchor = { col: width - 1, row: s.anchor.row }
+      s.anchor = {
+        col: s.colBand ? Math.min(s.colBand.hi, width - 1) : width - 1,
+        row: s.anchor.row,
+      }
       if (s.anchorSpan) {
         s.anchorSpan = {
           kind: s.anchorSpan.kind,
-          lo: { col: 0, row: s.anchorSpan.lo.row },
-          hi: { col: width - 1, row: s.anchorSpan.hi.row },
+          lo: { col: s.colBand ? s.colBand.lo : 0, row: s.anchorSpan.lo.row },
+          hi: {
+            col: s.colBand ? Math.min(s.colBand.hi, width - 1) : width - 1,
+            row: s.anchorSpan.hi.row,
+          },
         }
       }
     }
@@ -884,8 +935,7 @@ export function applySelectionOverlay(
   const width = screen.width
   const noSelect = screen.noSelect
   for (let row = start.row; row <= end.row && row < screen.height; row++) {
-    const colStart = row === start.row ? start.col : 0
-    const colEnd = row === end.row ? Math.min(end.col, width - 1) : width - 1
+    const { colStart, colEnd } = rowColBounds(selection, start, end, row, width)
     const rowOff = row * width
     for (let col = colStart; col <= colEnd; col++) {
       const idx = rowOff + col

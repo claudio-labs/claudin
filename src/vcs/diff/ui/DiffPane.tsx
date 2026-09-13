@@ -66,6 +66,39 @@ type Props = {
   height: number
   /** Inner content width. */
   width: number
+  /**
+   * Index of the highlighted row, or null when the pane is not focused. The
+   * rows are opaque ANSI strings, so the marker is PREFIXED rather than drawn
+   * into them — which is why `renderDiffRows` must wrap two columns narrower
+   * (DIFF_GUTTER_WIDTH in DiffDialog).
+   */
+  cursorRow?: number | null
+  /** Inclusive range of rows covered by an open visual selection. */
+  selection?: { from: number; to: number } | null
+  /**
+   * Background the pane sits on, as an SGR sequence, or null for the
+   * terminal's own. A parent `Box`'s `backgroundColor` does NOT reach these
+   * rows: they are pre-rendered ANSI written straight to the screen buffer
+   * (`ink-raw-ansi` in render-node-to-output.ts), and every block that has no
+   * background of its own emits an explicit `\x1b[49m` — the terminal-default
+   * sentinel in `native-ts/color-diff` — which clobbers the parent's fill.
+   * So the rows have to carry the background themselves.
+   */
+  backgroundSgr?: string | null
+}
+
+const RESET = '\u001B[0m'
+const DEFAULT_BG = '\u001B[49m'
+
+/**
+ * Re-assert `bg` everywhere a row resets the background — after a full RESET,
+ * and in place of each explicit default-background code. Blocks that carry a
+ * real background (added/removed lines, word highlights) are untouched.
+ */
+function onBackground(row: string, bg: string): string {
+  return (
+    bg + row.split(RESET).join(RESET + bg).split(DEFAULT_BG).join(bg) + DEFAULT_BG
+  )
 }
 
 /**
@@ -78,10 +111,23 @@ export function DiffPane({
   scrollOffset,
   height,
   width,
+  cursorRow,
+  selection,
+  backgroundSgr,
 }: Props): React.ReactNode {
   if (rows.length === 0) return <Text dimColor>No diff content</Text>
   const start = Math.max(0, Math.min(scrollOffset, Math.max(0, rows.length - height)))
-  const visible = rows.slice(start, start + height)
+  const visible = rows.slice(start, start + height).map((row, i) => {
+    const index = start + i
+    const marker =
+      selection && index >= selection.from && index <= selection.to
+        ? '\u258C '
+        : cursorRow === index
+          ? '\u25B8 '
+          : '  '
+    const line = marker + row
+    return backgroundSgr ? onBackground(line, backgroundSgr) : line
+  })
   return (
     <Box flexDirection="column" width="100%">
       <RawAnsi lines={visible} width={width} />

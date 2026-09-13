@@ -6,24 +6,36 @@ type: project
 
 The `/diff` diff reviewer (feature "8.1") is an actively-developed Ink/TUI feature whose
 canonical spec is **`docs/features/8.1-diff-reviewer.md`** — a detailed living design doc updated
-in lockstep as each feature lands.
+in lockstep as each feature lands. It is the longest-running TUI thread in this repo and several
+team memories orbit it (fileTree, ScrollBox clipping, gitdiff prefix parsing, worktree grouping).
 
-As of 2026-06-18 it covers (recent additions this session):
-- **Multi-repo / nested-repo discovery** for monorepos of independent repos: `findNestedGitRoots`
-  in `src/vcs/git/git.ts` (bounded async scan — depth ≤3, ≤1500 dirs, skips node_modules/dot-dirs,
-  fail-open), wired through `useWorkspaceDiff(roots, scanBases)`; `noRepo` now means "scan settled
-  with zero groups", not "no explicit root".
-- **Per-repo group headers**: colored Nerd-Font square swatch (`entityColorByIndex`, siblings
-  never share a color) + name + bold change count + branch glyph (); children flatten at
-  baseDepth 0 (no extra indent under the header). Glyphs degrade gracefully on non-Nerd terminals.
-- **Log tab project selector** for monorepos: `[` / `]` cycle the repo whose `git log` is shown
-  (`logRepoIndex` over `workspace.groups`); `useGitLog` reloads when its `cwd` changes.
-- **Commit-node glyph**: Log graph swaps git's ASCII `*` for a green nerd dot (`commitIcon`).
-- Shared `src/vcs/diff/ui/entityColor.ts` palette used for both commit authors and repo groups.
+**How to apply:** before changing diff-reviewer behavior, read the doc; after changing it, update
+the doc to match. That convention has held across every round so far, and the doc is where the
+*reasoning* for each decision lives — not the commit messages.
 
-**Why:** the doc is the source of truth and several existing team memories already touch
-diff/ internals (fileTree, ScrollBox clipping, gitdiff prefix parsing) — they cohere around this
-one feature.
+## 2026-09-12/13 — the side-panel round (issue #187)
 
-**How to apply:** before changing diff-reviewer behavior, read `docs/features/8.1-diff-reviewer.md`;
-after changing it, update that doc to match — the established convention is to keep it current.
+Branch `feat/diff-fullscreen-takeover`, ~37 files in one commit. It sat uncommitted across
+several sessions first while the user validated each round by hand
+(see [[feedback-tui-feature-branch-uncommitted-rounds]]) — so the *reasoning* is in the spec
+doc, not in the commit history, which squashes to a single subject.
+
+What the round turned `/diff` into, in fullscreen:
+
+- A **side panel beside a live chat** (50/50 above 120 columns, full takeover below), with the
+  prompt spanning the full width under both columns. Three arrangements now live in a new
+  `src/terminal/ModalSlot.tsx`; a command opts in with `fullscreenPanel` on `CommandBase`.
+- **The prompt stays typable while the panel is open** — a first for this codebase. Exactly one
+  side owns the keyboard, arbitrated through `src/terminal/contexts/sidePanelContext.tsx`;
+  `ctrl+→`/`ctrl+←` step in and out, `ctrl+↑`/`ctrl+↓` move between the stacked sections.
+- **Selecting diff lines sends them with the prompt** — `v` visual mode or a plain mouse drag
+  inserts `@path#La-Lb` at the cursor, riding the existing @-mention path so nothing new reaches
+  the message pipeline.
+- Local Changes lost its left Files pane: file list stacked over the diff, each under a
+  **top-border-only titled rule** rather than a box.
+
+**Why it matters beyond /diff:** three of the mechanisms are general and the next feature that
+wants them should reuse rather than rebuild — `ModalSlot`'s three arrangements,
+`src/terminal/ink/selectionBands.ts` (mouse selection clamped to a screen region, which a split
+layout *requires*), and `src/terminal/promptMention.ts` (insert-or-rewrite a mention in the
+prompt). All three are documented in the spec doc with the traps that produced them.

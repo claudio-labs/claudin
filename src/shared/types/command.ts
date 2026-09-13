@@ -205,6 +205,14 @@ export type CommandBase = {
     | 'mcp' // Where the command was loaded from
   kind?: 'workflow' // Distinguishes workflow-backed commands (badged in autocomplete)
   immediate?: boolean // If true, command executes immediately without waiting for a stop point (bypasses queue)
+  /**
+   * If true, this command's local-JSX dialog asks for a dedicated fullscreen
+   * surface. `FullscreenLayout` then picks the arrangement from the width: a
+   * side panel beside the chat when there is room, and a full takeover (no
+   * transcript peek, no ▔ divider) when there is not. Ignored inline, where
+   * there is no modal slot to grow.
+   */
+  fullscreenPanel?: boolean
   isSensitive?: boolean // If true, args are redacted from the conversation history
   /** Defaults to `name`. Only override when the displayed name differs (e.g. plugin prefix stripping). */
   userFacingName?: () => string

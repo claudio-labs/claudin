@@ -22,6 +22,16 @@ export type Theme = {
   suggestion: string
   remember: string
   background: string
+  /**
+   * Fill behind a fullscreen side panel (`/diff`), so it reads as a surface
+   * separate from the chat beside it. Empty string = no tint, which is what
+   * the `terminal` and `ansi` themes use: they inherit the user's own palette,
+   * and a guessed rgb() would clash with it.
+   *
+   * Note `background` above is NOT a background — it is a bright accent
+   * foreground (`<Text color="background">`). The name is historical.
+   */
+  sidePanelBackground: string
   // Semantic colors
   success: string
   error: string
@@ -149,6 +159,7 @@ const lightTheme: Theme = {
   suggestion: 'rgb(87,105,247)', // Medium blue
   remember: 'rgb(0,0,255)', // Blue
   background: 'rgb(0,153,153)', // Cyan
+  sidePanelBackground: 'rgb(244,244,247)', // Barely-there grey off white
   success: 'rgb(44,122,57)', // Green
   error: 'rgb(171,43,63)', // Red
   spinnerStalled: DEFAULT_STALL_RED, // Stalled-spinner red
@@ -232,6 +243,7 @@ const lightAnsiTheme: Theme = {
   suggestion: 'ansi:blue',
   remember: 'ansi:blue',
   background: 'ansi:cyan',
+  sidePanelBackground: '', // Inherits the terminal palette — no guessed tint
   success: 'ansi:green',
   error: 'ansi:red',
   spinnerStalled: 'ansi:red', // Stalled-spinner (mirrors error for ANSI)
@@ -315,6 +327,7 @@ const darkAnsiTheme: Theme = {
   suggestion: 'ansi:blueBright',
   remember: 'ansi:blueBright',
   background: 'ansi:cyanBright',
+  sidePanelBackground: '', // Inherits the terminal palette — no guessed tint
   success: 'ansi:greenBright',
   error: 'ansi:redBright',
   warning: 'ansi:yellowBright',
@@ -396,6 +409,7 @@ const lightDaltonizedTheme: Theme = {
   suggestion: 'rgb(51,102,255)', // Bright blue
   remember: 'rgb(51,102,255)', // Bright blue
   background: 'rgb(0,153,153)', // Cyan (color-blind friendly)
+  sidePanelBackground: 'rgb(244,244,247)', // Barely-there grey off white
   success: 'rgb(0,102,153)', // Blue instead of green for deuteranopia
   error: 'rgb(204,0,0)', // Pure red for better distinction
   spinnerStalled: DEFAULT_STALL_RED, // Stalled-spinner red
@@ -478,6 +492,7 @@ const darkTheme: Theme = {
   suggestion: 'rgb(177,185,249)', // Light blue-purple
   remember: 'rgb(177,185,249)', // Light blue-purple
   background: 'rgb(0,204,204)', // Bright cyan
+  sidePanelBackground: 'rgb(26,28,36)', // Barely-there lift off black
   success: 'rgb(78,186,101)', // Bright green
   error: 'rgb(255,107,128)', // Bright red
   spinnerStalled: DEFAULT_STALL_RED, // Stalled-spinner red
@@ -560,6 +575,7 @@ const darkDaltonizedTheme: Theme = {
   suggestion: 'rgb(153,204,255)', // Light blue
   remember: 'rgb(153,204,255)', // Light blue
   background: 'rgb(0,204,204)', // Bright cyan (color-blind friendly)
+  sidePanelBackground: 'rgb(26,28,36)', // Barely-there lift off black
   success: 'rgb(51,153,255)', // Blue instead of green
   error: 'rgb(255,102,102)', // Bright red
   spinnerStalled: DEFAULT_STALL_RED, // Stalled-spinner red
@@ -647,6 +663,7 @@ const terminalTheme: Theme = {
   suggestion: 'ansi:blueBright',
   remember: 'ansi:blueBright',
   background: 'ansi:cyanBright',
+  sidePanelBackground: '', // Inherits the terminal palette — no guessed tint
   success: 'ansi:greenBright',
   error: 'ansi:redBright',
   warning: 'ansi:yellowBright',
@@ -728,6 +745,7 @@ const draculaTheme: Theme = {
   suggestion: 'rgb(189,147,249)', // Purple
   remember: 'rgb(189,147,249)', // Purple
   background: 'rgb(139,233,253)', // Cyan accent
+  sidePanelBackground: 'rgb(48,50,64)', // One step off Dracula's base
   success: 'rgb(80,250,123)', // Green
   error: 'rgb(255,85,85)', // Red
   spinnerStalled: DEFAULT_STALL_RED, // Stalled-spinner red
@@ -810,6 +828,7 @@ const catppuccinMochaTheme: Theme = {
   suggestion: 'rgb(180,190,254)', // Lavender
   remember: 'rgb(203,166,247)', // Mauve
   background: 'rgb(148,226,213)', // Teal accent
+  sidePanelBackground: 'rgb(38,38,56)', // One step off Mocha's base
   success: 'rgb(166,227,161)', // Green
   error: 'rgb(243,139,168)', // Red
   spinnerStalled: DEFAULT_STALL_RED, // Stalled-spinner red
@@ -892,6 +911,7 @@ const catppuccinLatteTheme: Theme = {
   suggestion: 'rgb(30,102,245)', // Blue
   remember: 'rgb(136,57,239)', // Mauve
   background: 'rgb(23,146,153)', // Teal accent
+  sidePanelBackground: 'rgb(230,233,239)', // Latte's mantle
   success: 'rgb(64,160,43)', // Green
   error: 'rgb(210,15,57)', // Red
   spinnerStalled: DEFAULT_STALL_RED, // Stalled-spinner red
@@ -974,6 +994,7 @@ const tokyoNightTheme: Theme = {
   suggestion: 'rgb(122,162,247)', // Blue
   remember: 'rgb(187,154,247)', // Magenta
   background: 'rgb(125,207,255)', // Cyan accent
+  sidePanelBackground: 'rgb(33,34,48)', // One step off Tokyo Night's base
   success: 'rgb(158,206,106)', // Green
   error: 'rgb(247,118,142)', // Red
   spinnerStalled: 'ansi:redBright', // Stalled-spinner (mirrors error for ANSI, like dark-ansi)
@@ -1056,6 +1077,7 @@ const nordTheme: Theme = {
   suggestion: 'rgb(129,161,193)', // Frost blue
   remember: 'rgb(180,142,173)', // Aurora purple
   background: 'rgb(136,192,208)', // Frost cyan accent
+  sidePanelBackground: 'rgb(54,60,74)', // Between nord0 and nord1
   success: 'rgb(163,190,140)', // Aurora green
   error: 'rgb(191,97,106)', // Aurora red
   spinnerStalled: DEFAULT_STALL_RED, // Stalled-spinner red
@@ -1138,6 +1160,7 @@ const gruvboxDarkTheme: Theme = {
   suggestion: 'rgb(131,165,152)', // Bright blue
   remember: 'rgb(211,134,155)', // Bright purple
   background: 'rgb(142,192,124)', // Bright aqua accent
+  sidePanelBackground: 'rgb(50,48,45)', // One step off Gruvbox's bg0
   success: 'rgb(184,187,38)', // Bright green
   error: 'rgb(251,73,52)', // Bright red
   spinnerStalled: DEFAULT_STALL_RED, // Stalled-spinner red
@@ -1236,8 +1259,12 @@ const chalkForChart =
 /**
  * Converts a theme color to an ANSI escape sequence for use with renderLineChart.
  * Uses chalk to generate the escape codes, with 256-color mode for Apple Terminal.
+ *
+ * `background: true` emits the background form instead — needed where a colour
+ * has to be baked into a pre-rendered ANSI string rather than set through a
+ * `<Text>` prop (the diff rows in the `/diff` side panel).
  */
-export function themeColorToAnsi(themeColor: string): string {
+export function themeColorToAnsi(themeColor: string, background = false): string {
   const rgbMatch = themeColor.match(/rgb\(\s?(\d+),\s?(\d+),\s?(\d+)\s?\)/)
   if (rgbMatch) {
     const r = parseInt(rgbMatch[1]!, 10)
@@ -1245,9 +1272,11 @@ export function themeColorToAnsi(themeColor: string): string {
     const b = parseInt(rgbMatch[3]!, 10)
     // Use chalk.rgb which auto-converts to 256 colors when level is 2
     // Extract just the opening escape sequence by using a marker
-    const colored = chalkForChart.rgb(r, g, b)('X')
+    const colored = background
+      ? chalkForChart.bgRgb(r, g, b)('X')
+      : chalkForChart.rgb(r, g, b)('X')
     return colored.slice(0, colored.indexOf('X'))
   }
-  // Fallback to magenta if parsing fails
-  return '\x1b[35m'
+  // Fallback: terminal default for a background, magenta for a foreground.
+  return background ? '\x1b[49m' : '\x1b[35m'
 }

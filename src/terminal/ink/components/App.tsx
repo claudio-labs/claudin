@@ -11,6 +11,7 @@ import { TerminalFocusEvent } from 'src/terminal/ink/events/terminal-focus-event
 import { INITIAL_STATE, type ParsedInput, type ParsedKey, type ParsedMouse, parseMultipleKeypresses } from 'src/terminal/ink/parse-keypress.js';
 import reconciler from 'src/terminal/ink/reconciler.js';
 import { finishSelection, hasSelection, type SelectionState, startSelection } from 'src/terminal/ink/selection.js';
+import { bandForColumn } from 'src/terminal/ink/selectionBands.js';
 import { isXtermJs, setXtversionName, supportsExtendedKeys } from 'src/terminal/ink/terminal.js';
 import { getTerminalFocused, setTerminalFocused } from 'src/terminal/ink/terminal-focus-state.js';
 import { TerminalQuerier, xtversion } from 'src/terminal/ink/terminal-querier.js';
@@ -689,6 +690,9 @@ export function handleMouseEvent(app: App, m: ParsedMouse): void {
       return;
     }
     startSelection(sel, col, row);
+    // Pin the region the press landed in, so a drag across several rows can
+    // never bleed into the pane beside it (see selectionBands.ts).
+    sel.colBand = bandForColumn(col, row);
     // SGR bit 0x08 = alt (xterm.js wires altKey here, not metaKey — see
     // comment at the hyperlink-open guard below). On macOS xterm.js,
     // receiving alt means macOptionClickForcesSelection is OFF (otherwise

@@ -115,6 +115,8 @@ export type SetToolJSXFn = (
     showSpinner?: boolean
     isLocalJSXCommand?: boolean
     isImmediate?: boolean
+    /** Mirrors the command's `fullscreenPanel` — see CommandBase. */
+    isFullscreenPanel?: boolean
     /** Set to true to clear a local JSX command (e.g., from its onDone callback) */
     clearLocalJSX?: boolean
     /**

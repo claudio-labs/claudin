@@ -116,6 +116,7 @@ export type KnownKeybindingAction =
   | 'chat:openDiff'
   | 'chat:openExplorer'
   | 'chat:stash'
+  | 'chat:focusPanel'
   | 'chat:imagePaste'
   | 'chat:messageActions'
   // Autocomplete menu actions
@@ -181,6 +182,10 @@ export type KnownKeybindingAction =
   | 'diff:nextTab'
   | 'diff:refresh'
   | 'diff:expandAll'
+  | 'diff:focusPrompt'
+  | 'diff:select'
+  | 'diff:focusSectionUp'
+  | 'diff:focusSectionDown'
   // Model picker actions (internal-only)
   | 'modelPicker:decreaseEffort'
   | 'modelPicker:increaseEffort'

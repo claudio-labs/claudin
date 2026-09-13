@@ -305,6 +305,7 @@ export async function handlePromptSubmit(
           shouldHidePromptInput: false,
           isLocalJSXCommand: true,
           isImmediate: true,
+          isFullscreenPanel: immediateCommand.fullscreenPanel === true,
           generation,
         })
       }

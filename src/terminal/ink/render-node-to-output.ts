@@ -1228,7 +1228,11 @@ function renderNodeToOutput(
       // Render border AFTER children to ensure it's not overwritten by child
       // clearing operations. When a child shrinks, it clears its old area,
       // which may overlap with where the parent's border now is.
-      renderBorder(x, y, node, output)
+      // The box's background goes with it: the border is written over the
+      // interior fill, so without this a bordered box with a backgroundColor
+      // draws its frame on the terminal default and the border row reads as a
+      // stripe of the wrong colour.
+      renderBorder(x, y, node, output, boxBackgroundColor)
     } else if (node.nodeName === 'ink-root') {
       renderChildren(
         node,

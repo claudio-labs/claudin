@@ -33,6 +33,7 @@ import createRenderer, { type Renderer } from 'src/terminal/ink/renderer.js';
 import { CellWidth, CharPool, cellAt, createScreen, HyperlinkPool, isEmptyCellAt, migrateScreenPools, StylePool } from 'src/terminal/ink/screen.js';
 import { applySearchHighlight } from 'src/terminal/ink/searchHighlight.js';
 import { applySelectionOverlay, captureScrolledRows, clearSelection, createSelectionState, extendSelection, type FocusMove, findPlainTextUrlAt, getSelectedText, hasSelection, moveFocus, type SelectionState, selectLineAt, selectWordAt, shiftAnchor, shiftSelection, shiftSelectionForFollow, startSelection, updateSelection } from 'src/terminal/ink/selection.js';
+import { bandForColumn } from 'src/terminal/ink/selectionBands.js';
 import { shouldSkipMainScreenSyncMarkers, shouldUseMainScreenRewrite, SYNC_OUTPUT_SUPPORTED, supportsExtendedKeys, type Terminal, writeDiffToTerminal } from 'src/terminal/ink/terminal.js';
 import { CURSOR_HOME, cursorMove, cursorPosition, DISABLE_KITTY_KEYBOARD, DISABLE_MODIFY_OTHER_KEYS, ENABLE_KITTY_KEYBOARD, ENABLE_MODIFY_OTHER_KEYS, ERASE_SCREEN } from 'src/terminal/ink/termio/csi.js';
 import { DBP, DFE, DISABLE_MOUSE_TRACKING, ENABLE_MOUSE_TRACKING, ENTER_ALT_SCREEN, EXIT_ALT_SCREEN, SHOW_CURSOR } from 'src/terminal/ink/termio/dec.js';
@@ -1423,6 +1424,9 @@ export default class Ink {
     // a char-mode selection so the press still starts a drag even if the
     // word/line scan finds nothing selectable.
     startSelection(this.selection, col, row);
+    // Pin the region before selectLineAt runs — it spans the whole row, which
+    // must mean the whole row OF THAT REGION when the screen is split.
+    this.selection.colBand = bandForColumn(col, row);
     if (count === 2) selectWordAt(this.selection, screen, col, row);else selectLineAt(this.selection, screen, row);
     // Ensure hasSelection is true so release doesn't re-dispatch onClickAt.
     // selectWordAt no-ops on noSelect; selectLineAt no-ops out-of-bounds.

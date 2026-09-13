@@ -1,6 +1,6 @@
 import chalk from 'chalk'
 import cliBoxes, { type Boxes, type BoxStyle } from 'cli-boxes'
-import { applyColor } from 'src/terminal/ink/colorize.js'
+import { applyColor, colorize } from 'src/terminal/ink/colorize.js'
 import type { DOMNode } from 'src/terminal/ink/dom.js'
 import type Output from 'src/terminal/ink/output.js'
 import { stringWidth } from 'src/terminal/ink/stringWidth.js'
@@ -177,6 +177,12 @@ const renderBorder = (
   y: number,
   node: DOMNode,
   output: Output,
+  /**
+   * The box's effective background. The border is written over the interior
+   * fill, so it has to carry the same background or the frame renders on the
+   * terminal default — a stripe of the wrong colour around a tinted box.
+   */
+  backgroundColor?: Color,
 ): void => {
   if (node.style.borderStyle) {
     const width = Math.floor(node.yogaNode!.getComputedWidth())
@@ -285,20 +291,27 @@ const renderBorder = (
 
     const offsetY = showTopBorder ? 1 : 0
 
+    // Wrap rather than thread: nothing inside a border line resets the
+    // background (chalk closes a foreground with 39 and dim with 22), so one
+    // outer background pair holds across the styled segments and any
+    // borderText content.
+    const onBackground = (line: string): string =>
+      backgroundColor ? colorize(line, backgroundColor, 'background') : line
+
     if (topBorder) {
-      output.write(x, y, topBorder)
+      output.write(x, y, onBackground(topBorder))
     }
 
     if (showLeftBorder) {
-      output.write(x, y + offsetY, leftBorder)
+      output.write(x, y + offsetY, onBackground(leftBorder))
     }
 
     if (showRightBorder) {
-      output.write(x + width - 1, y + offsetY, rightBorder)
+      output.write(x + width - 1, y + offsetY, onBackground(rightBorder))
     }
 
     if (bottomBorder) {
-      output.write(x, y + height - 1, bottomBorder)
+      output.write(x, y + height - 1, onBackground(bottomBorder))
     }
   }
 }

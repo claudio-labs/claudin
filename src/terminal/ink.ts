@@ -81,5 +81,9 @@ export { useTerminalFocus } from 'src/terminal/ink/hooks/use-terminal-focus.js'
 export { useTerminalTitle } from 'src/terminal/ink/hooks/use-terminal-title.js'
 export { useTerminalViewport } from 'src/terminal/ink/hooks/use-terminal-viewport.js'
 export { default as measureElement } from 'src/terminal/ink/measure-element.js'
+export {
+  type AbsoluteRect,
+  measureAbsoluteRect,
+} from 'src/terminal/ink/measure-element.js'
 export { supportsTabStatus } from 'src/terminal/ink/termio/osc.js'
 export { default as wrapText } from 'src/terminal/ink/wrap-text.js'
