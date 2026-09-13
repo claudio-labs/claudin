@@ -17,6 +17,7 @@ import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import { formatCompactNumber } from 'src/providers/cache/cacheMetrics.js'
 import { recordCacheBreak } from 'src/providers/cache/cacheStatsTracker.js'
+import { getCacheTrackingKey } from 'src/providers/cache/trackingKey.js'
 import {
   type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
   logEvent,
@@ -82,6 +83,9 @@ type PreviousState = {
    *  message-by-message. ~1 MB per tracked source at a 200k context. */
   msgJson: string[]
   pendingMessageMutation: MessageMutation | null
+  /** How far the message marker moved on this request, in the API's lookback
+   *  positions, and whether the lagging marker was placed to cover it. */
+  pendingMarkerAdvance: MarkerAdvance | null
 }
 
 /** The first message whose rendered bytes changed behind the previous
@@ -97,6 +101,25 @@ export type MessageMutation = {
   prevJson: string
   newJson: string
 }
+
+/**
+ * The marker placement of one request, as `addCacheBreakpoints` reports it.
+ * The API resolves a breakpoint by checking at most CACHE_LOOKBACK_POSITIONS
+ * positions behind it; a marker that advanced further than that past the
+ * previous request's write misses the entry and the history is rewritten
+ * from the system breakpoint — with every client-side hash unchanged. The
+ * lagging marker (`shims/claude/lagCacheMarker.ts`) exists to catch exactly
+ * that; when it was placed and the read still collapsed, the miss is the
+ * server's.
+ */
+export type MarkerAdvance = {
+  positions: number
+  lagPlaced: boolean
+}
+
+/** Mirrors CACHE_LOOKBACK_POSITIONS in lagCacheMarker.ts — the detector must
+ *  not import the renderer. */
+const LOOKBACK_POSITIONS = 20
 
 type PendingChanges = {
   systemPromptChanged: boolean
@@ -135,14 +158,6 @@ const previousStateBySource = new Map<string, PreviousState>()
 // agentId key) causes the map to grow indefinitely.
 const MAX_TRACKED_SOURCES = 10
 
-const TRACKED_SOURCE_PREFIXES = [
-  'repl_main_thread',
-  'sdk',
-  'agent:custom',
-  'agent:default',
-  'agent:builtin',
-]
-
 // Minimum absolute token drop required to trigger a cache break warning.
 // Small drops (e.g., a few thousand tokens) can happen due to normal variation
 // and aren't worth alerting on.
@@ -159,32 +174,9 @@ function isExcludedModel(model: string): boolean {
   return model.includes('haiku')
 }
 
-/**
- * Returns the tracking key for a querySource, or null if untracked.
- * Compact shares the same server-side cache as repl_main_thread
- * (same cacheSafeParams), so they share tracking state.
- *
- * For subagents with a tracked querySource, uses the unique agentId to
- * isolate tracking state. This prevents false positive cache break
- * notifications when multiple instances of the same agent type run
- * concurrently.
- *
- * Untracked sources (speculation, session_memory, prompt_suggestion, etc.)
- * are short-lived forked agents where cache break detection provides no
- * value — they run 1-3 turns with a fresh agentId each time, so there's
- * nothing meaningful to compare against. Their cache metrics are still
- * logged via tengu_api_success for analytics.
- */
-function getTrackingKey(
-  querySource: QuerySource,
-  agentId?: AgentId,
-): string | null {
-  if (querySource === 'compact') return 'repl_main_thread'
-  for (const prefix of TRACKED_SOURCE_PREFIXES) {
-    if (querySource.startsWith(prefix)) return agentId || querySource
-  }
-  return null
-}
+// The key is shared with the lagging marker so both agree on which requests
+// share one server-side prefix; see trackingKey.ts for the rules.
+const getTrackingKey = getCacheTrackingKey
 
 function stripCacheControl(
   items: ReadonlyArray<Record<string, unknown>>,
@@ -375,6 +367,7 @@ export function recordPromptState(snapshot: PromptStateSnapshot): void {
         msgHashes: [],
         msgJson: [],
         pendingMessageMutation: null,
+        pendingMarkerAdvance: null,
       })
       return
     }
@@ -535,6 +528,30 @@ export function _getPendingMessageMutationForTesting(
 }
 
 /**
+ * Phase 1c (pre-call, from `addCacheBreakpoints`): remember how far the
+ * message marker advanced on this request so a break with every hash
+ * unchanged can be named a lookback miss instead of "server-side".
+ */
+export function recordMarkerAdvance(
+  querySource: QuerySource,
+  agentId: AgentId | undefined,
+  advance: MarkerAdvance | null,
+): void {
+  const key = getTrackingKey(querySource, agentId)
+  const state = key ? previousStateBySource.get(key) : undefined
+  if (state) state.pendingMarkerAdvance = advance
+}
+
+export function _getPendingMarkerAdvanceForTesting(
+  querySource: QuerySource,
+  agentId?: AgentId,
+): MarkerAdvance | null {
+  const key = getTrackingKey(querySource, agentId)
+  const state = key ? previousStateBySource.get(key) : undefined
+  return state?.pendingMarkerAdvance ?? null
+}
+
+/**
  * Summarize the server-side context_management edits applied to a response.
  * Returns undefined when nothing was cleared, so a `{ applied_edits: [] }`
  * envelope (the common case under the beta) reads as "no server edit".
@@ -572,6 +589,7 @@ export function buildCacheBreakReason(
   serverEdit: ReturnType<typeof summarizeAppliedContextEdits>,
   timeSinceLastAssistantMsg: number | null,
   messageMutation: MessageMutation | null = null,
+  markerAdvance: MarkerAdvance | null = null,
 ): string {
   const parts: string[] = []
   if (changes) {
@@ -673,6 +691,21 @@ export function buildCacheBreakReason(
       `messages mutated at ${messageMutation.index}/${messageMutation.total} (${messageMutation.role}: ${messageMutation.blockTypes}) — client-side prefix rewrite`,
     )
   }
+  // Every hash unchanged and the marker moved past the lookback window: the
+  // server could not find the previous write from the new breakpoint. With
+  // the lag marker placed that path is covered, so a collapse there is a
+  // genuine server miss — say which.
+  if (
+    parts.length === 0 &&
+    markerAdvance &&
+    markerAdvance.positions >= LOOKBACK_POSITIONS
+  ) {
+    parts.push(
+      markerAdvance.lagPlaced
+        ? `marker advanced ${markerAdvance.positions} positions past the last write with the lag marker placed — server-side miss`
+        : `marker advanced ${markerAdvance.positions} positions past the last write (lookback window is ${LOOKBACK_POSITIONS}) — client-side placement`,
+    )
+  }
   if (parts.length > 0) return parts.join(', ')
   if (lastAssistantMsgOver1hAgo) return 'possible 1h TTL expiry (prompt unchanged)'
   if (lastAssistantMsgOver5minAgo) return 'possible 5min TTL expiry (prompt unchanged)'
@@ -722,6 +755,8 @@ export async function checkResponseForCacheBreak(
     const changes = state.pendingChanges
     const messageMutation = state.pendingMessageMutation
     state.pendingMessageMutation = null
+    const markerAdvance = state.pendingMarkerAdvance
+    state.pendingMarkerAdvance = null
 
     // Cache deletions via cached microcompact intentionally reduce the cached
     // prefix. The drop in cache read tokens is expected — reset the baseline
@@ -763,6 +798,7 @@ export async function checkResponseForCacheBreak(
       serverEdit,
       timeSinceLastAssistantMsg,
       messageMutation,
+      markerAdvance,
     )
     // The `[Cache: …]` line is persisted to the transcript, so this is the
     // record that survives a session without `--debug`.

@@ -17,6 +17,7 @@ import {
   _resetDeferCacheMarkerForTesting,
   addCacheBreakpoints,
 } from 'src/providers/shims/claude/paramBuilders.js'
+import { _resetLagMarkerStateForTesting } from 'src/providers/shims/claude/lagCacheMarker.js'
 
 type AnyMsg = {
   type: 'user' | 'assistant'
@@ -26,6 +27,7 @@ type AnyMsg = {
 const originalEnv = process.env.CLAUDIN_DEFER_CACHE_MARKER
 const originalTrailEnv = process.env.CLAUDIN_TRAIL_CACHE_MARKER
 const originalAnchorEnv = process.env.CLAUDIN_ANCHOR_CACHE_HEAD
+const originalLagEnv = process.env.CLAUDIN_DISABLE_LAG_CACHE_MARKER
 
 afterEach(() => {
   if (originalEnv === undefined) {
@@ -43,7 +45,13 @@ afterEach(() => {
   } else {
     process.env.CLAUDIN_ANCHOR_CACHE_HEAD = originalAnchorEnv
   }
+  if (originalLagEnv === undefined) {
+    delete process.env.CLAUDIN_DISABLE_LAG_CACHE_MARKER
+  } else {
+    process.env.CLAUDIN_DISABLE_LAG_CACHE_MARKER = originalLagEnv
+  }
   _resetDeferCacheMarkerForTesting()
+  _resetLagMarkerStateForTesting()
 })
 
 function makeUser(text: string): AnyMsg {
@@ -383,5 +391,132 @@ describe('addCacheBreakpoints — trailing marker (CLAUDIN_TRAIL_CACHE_MARKER)',
       2,
     )
     expect(markerIndices(out)).toEqual([2])
+  })
+})
+
+describe('addCacheBreakpoints — lagging marker (previous request\'s marker)', () => {
+  // The lag marker needs a tracked querySource and message uuids; the
+  // suites above pass neither, which is what keeps them single-marker.
+  const SOURCE = 'repl_main_thread' as const
+  let seq = 0
+  function withUuid(msg: AnyMsg): AnyMsg & { uuid: string } {
+    seq += 1
+    return { ...msg, uuid: `m-${seq}` }
+  }
+  function run(
+    msgs: AnyMsg[],
+    opts: { skipCacheWrite?: boolean; frontier?: number; source?: string } = {},
+  ): number[] {
+    return markerIndices(
+      addCacheBreakpoints(
+        msgs as Parameters<typeof addCacheBreakpoints>[0],
+        true,
+        (opts.source ?? SOURCE) as Parameters<typeof addCacheBreakpoints>[2],
+        opts.skipCacheWrite ?? false,
+        opts.frontier,
+      ),
+    )
+  }
+
+  test('the second request carries the previous marker as a second breakpoint', () => {
+    setThreshold('0') // main marker at length-1 every request
+    const first = [withUuid(makeUser('a')), withUuid(makeAssistant('b')), withUuid(makeUser('c'))]
+    expect(run(first)).toEqual([2])
+    const second = [...first, withUuid(makeAssistant('d')), withUuid(makeUser('e'))]
+    expect(run(second)).toEqual([2, 4])
+    const third = [...second, withUuid(makeAssistant('f')), withUuid(makeUser('g'))]
+    // Only the previous request's marker lags — never more than two markers.
+    expect(run(third)).toEqual([4, 6])
+  })
+
+  test('a retry of the same request keeps the lag where the previous request wrote', () => {
+    setThreshold('0')
+    const first = [withUuid(makeUser('a')), withUuid(makeAssistant('b')), withUuid(makeUser('c'))]
+    run(first)
+    const second = [...first, withUuid(makeAssistant('d')), withUuid(makeUser('e'))]
+    expect(run(second)).toEqual([2, 4])
+    expect(run(second)).toEqual([2, 4])
+  })
+
+  test('a marker that did not move coalesces into one', () => {
+    // Huge threshold pins the main marker at the head on every request.
+    setThreshold('1000000')
+    const first = [withUuid(makeUser('a')), withUuid(makeAssistant('b')), withUuid(makeUser('c'))]
+    expect(run(first)).toEqual([0])
+    const second = [...first, withUuid(makeAssistant('d')), withUuid(makeUser('e'))]
+    expect(run(second)).toEqual([0])
+  })
+
+  test('the lag follows the message uuid across a prepend', () => {
+    setThreshold('0')
+    const first = [withUuid(makeUser('a')), withUuid(makeAssistant('b')), withUuid(makeUser('c'))]
+    run(first)
+    const second = [withUuid(makeUser('announce')), ...first, withUuid(makeAssistant('d')), withUuid(makeUser('e'))]
+    expect(run(second)).toEqual([3, 5])
+  })
+
+  test('after a compaction the old marker is gone and only the main one is emitted', () => {
+    setThreshold('0')
+    run([withUuid(makeUser('a')), withUuid(makeAssistant('b')), withUuid(makeUser('c'))])
+    const compacted = [withUuid(makeUser('summary')), withUuid(makeUser('next'))]
+    expect(run(compacted)).toEqual([1])
+  })
+
+  test('the lag sits behind the clip-frontier cap, never past it', () => {
+    setThreshold('0')
+    const first = [withUuid(makeUser('a')), withUuid(makeAssistant('b')), withUuid(makeUser('c'))]
+    expect(run(first, { frontier: 1 })).toEqual([1])
+    const second = [...first, withUuid(makeAssistant('d')), withUuid(makeUser('e'))]
+    expect(run(second, { frontier: 3 })).toEqual([1, 3])
+  })
+
+  test('skipCacheWrite forks get no lag marker', () => {
+    setThreshold('0')
+    const first = [withUuid(makeUser('a')), withUuid(makeAssistant('b')), withUuid(makeUser('c'))]
+    run(first)
+    const second = [...first, withUuid(makeAssistant('d')), withUuid(makeUser('e'))]
+    expect(run(second, { skipCacheWrite: true })).toEqual([3])
+  })
+
+  test('an untracked querySource gets no lag marker', () => {
+    setThreshold('0')
+    const first = [withUuid(makeUser('a')), withUuid(makeAssistant('b')), withUuid(makeUser('c'))]
+    run(first, { source: 'speculation' })
+    const second = [...first, withUuid(makeAssistant('d')), withUuid(makeUser('e'))]
+    expect(run(second, { source: 'speculation' })).toEqual([4])
+  })
+
+  test('the experimental trailing / head markers suppress the lag (4-breakpoint budget)', () => {
+    setThreshold('1000000') // main pinned at head so trail actually adds one
+    const first = [withUuid(makeUser('a')), withUuid(makeAssistant('b')), withUuid(makeUser('c'))]
+    run(first)
+    const second = [...first, withUuid(makeAssistant('d')), withUuid(makeUser('e'))]
+    process.env.CLAUDIN_TRAIL_CACHE_MARKER = '1'
+    expect(run(second)).toEqual([0, 4])
+    delete process.env.CLAUDIN_TRAIL_CACHE_MARKER
+    process.env.CLAUDIN_ANCHOR_CACHE_HEAD = '1'
+    setThreshold('0')
+    const third = [...second, withUuid(makeAssistant('f')), withUuid(makeUser('g'))]
+    expect(run(third)).toEqual([0, 6])
+  })
+
+  test('the killswitch restores the single marker', () => {
+    setThreshold('0')
+    process.env.CLAUDIN_DISABLE_LAG_CACHE_MARKER = '1'
+    const first = [withUuid(makeUser('a')), withUuid(makeAssistant('b')), withUuid(makeUser('c'))]
+    run(first)
+    const second = [...first, withUuid(makeAssistant('d')), withUuid(makeUser('e'))]
+    expect(run(second)).toEqual([4])
+  })
+
+  test('no message ever carries more than two markers across a long tool loop', () => {
+    setThreshold('600')
+    let msgs = [withUuid(makeUser('x'.repeat(4096)))]
+    for (let turn = 0; turn < 30; turn += 1) {
+      msgs = [...msgs, withUuid(makeAssistant('t')), withUuid(makeUser(turn % 7 === 0 ? 'x'.repeat(4096) : 'r'))]
+      const markers = run(msgs)
+      expect(markers.length).toBeGreaterThanOrEqual(1)
+      expect(markers.length).toBeLessThanOrEqual(2)
+    }
   })
 })

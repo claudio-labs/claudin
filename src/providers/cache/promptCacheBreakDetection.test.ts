@@ -1,9 +1,11 @@
 import type { BetaMessageParam } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { beforeEach, describe, expect, test } from 'bun:test'
 import {
+  _getPendingMarkerAdvanceForTesting,
   _getPendingMessageMutationForTesting,
   buildCacheBreakReason,
   checkResponseForCacheBreak,
+  recordMarkerAdvance,
   recordPromptState,
   recordRenderedMessages,
   resetPromptCacheBreakDetection,
@@ -179,6 +181,49 @@ describe('buildCacheBreakReason', () => {
       'server clear_tool_uses (cleared 3 tool uses, -10k tokens, expected)',
     )
   })
+
+  test('a marker that advanced past the lookback window is a placement miss, not "server-side"', () => {
+    // Session ab1e69e8: every hash unchanged, cache_read fell to the system
+    // breakpoint, and the only thing that moved was the marker — 20+ positions
+    // past the previous write, which is further than the API looks back.
+    const reason = buildCacheBreakReason(null, undefined, 30_000, null, {
+      positions: 27,
+      lagPlaced: false,
+    })
+    expect(reason).toBe(
+      'marker advanced 27 positions past the last write (lookback window is 20) — client-side placement',
+    )
+  })
+
+  test('with the lag marker placed the same collapse is named a server miss', () => {
+    const reason = buildCacheBreakReason(null, undefined, 30_000, null, {
+      positions: 27,
+      lagPlaced: true,
+    })
+    expect(reason).toBe(
+      'marker advanced 27 positions past the last write with the lag marker placed — server-side miss',
+    )
+  })
+
+  test('an advance inside the window changes nothing', () => {
+    expect(
+      buildCacheBreakReason(null, undefined, 30_000, null, {
+        positions: 19,
+        lagPlaced: false,
+      }),
+    ).toBe('likely server-side (prompt unchanged, <5min gap)')
+  })
+
+  test('a client-side change still wins over the marker advance', () => {
+    const reason = buildCacheBreakReason(
+      changes({ effortChanged: true, prevEffortValue: 'low', newEffortValue: 'max' }),
+      undefined,
+      30_000,
+      null,
+      { positions: 40, lagPlaced: false },
+    )
+    expect(reason).toBe('effort changed (low → max)')
+  })
 })
 
 const SOURCE = 'repl_main_thread' as const
@@ -305,5 +350,35 @@ describe('recordRenderedMessages', () => {
     recordRenderedMessages(SOURCE, undefined, [user('a'), user('b')])
     await checkResponseForCacheBreak(SOURCE, 99_000, 1_000, [])
     expect(getCurrentTurnCacheBreaks()).toEqual([])
+  })
+})
+
+describe('recordMarkerAdvance', () => {
+  beforeEach(() => {
+    resetPromptCacheBreakDetection()
+    resetSessionCacheStats()
+  })
+
+  test('the advance reaches the turn line and is consumed by the response', async () => {
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a')])
+    await checkResponseForCacheBreak(SOURCE, 200_011, 0, [])
+    prime()
+    recordRenderedMessages(SOURCE, undefined, [user('a'), user('b')])
+    recordMarkerAdvance(SOURCE, undefined, { positions: 25, lagPlaced: false })
+    expect(_getPendingMarkerAdvanceForTesting(SOURCE)).toEqual({
+      positions: 25,
+      lagPlaced: false,
+    })
+    await checkResponseForCacheBreak(SOURCE, 27_532, 191_892, [])
+    expect(getCurrentTurnCacheBreaks()).toEqual([
+      'marker advanced 25 positions past the last write (lookback window is 20) — client-side placement — read 200k→27.5k, rewrote 191.9k',
+    ])
+    expect(_getPendingMarkerAdvanceForTesting(SOURCE)).toBeNull()
+  })
+
+  test('an untracked source records nothing', () => {
+    recordMarkerAdvance('speculation', undefined, { positions: 99, lagPlaced: false })
+    expect(_getPendingMarkerAdvanceForTesting('speculation')).toBeNull()
   })
 })

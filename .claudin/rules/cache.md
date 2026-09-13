@@ -41,6 +41,29 @@ the earliest index whose suffix sums to ≥ `DEFAULT_DEFER_CACHE_MARKER_TOKENS`
 - `skipCacheWrite` bypasses the defer logic (preserved). Tests memoize the
   threshold: call `_resetDeferCacheMarkerForTesting()` after flipping the env
   (`src/providers/shims/claude/__tests__/addCacheBreakpoints.test.ts`).
+- **The deferred marker is not alone: a LAGGING marker rides with it**
+  (`src/providers/shims/claude/lagCacheMarker.ts`, on by default,
+  `CLAUDIN_DISABLE_LAG_CACHE_MARKER=1` off). The API resolves a breakpoint by
+  checking at most **20 positions** behind it (a run of consecutive `tool_use`
+  blocks is one position, a `tool_result` run likewise); past that, checking
+  resumes at the next explicit breakpoint — the system prompt — and the whole
+  history is billed as a write again. A deferred marker that lingers through a
+  run of tiny tool calls and then jumps to the end (a pasted screenshot, a Read
+  that drags a rule file in) lands further than 20 positions from the last
+  write. Session ab1e69e8 (2026-09-13) paid seven of those: 3.06M of its 3.80M
+  cache-write tokens, every one labeled "likely server-side (prompt unchanged)"
+  — which was true. The lag marker sits on the message that carried the
+  PREVIOUS request's marker (found by `uuid`, so prepends, stubs and compaction
+  need no reset hook; a retry keeps the same tail uuid and does not rotate), so
+  the lookback resumes there. It is free — breakpoints on cached bytes cost
+  nothing. Budget: system emits ≤2, messages now 2 = the API's 4; the
+  experimental `CLAUDIN_TRAIL_CACHE_MARKER` / `CLAUDIN_ANCHOR_CACHE_HEAD`
+  suppress it. Never add a third message marker. The break detector now names
+  the case (`marker advanced N positions past the last write (lookback window
+  is 20) — client-side placement`, or `… with the lag marker placed —
+  server-side miss`). Probe: `scripts/bench/ab/lookback-miss-probe.ts` (arm A
+  reproduces the collapse, arm B keeps the prefix, 3/3 each on Sonnet 5);
+  census over real transcripts: `scripts/bench/tokens/lookback-miss-census.ts`.
 
 ## 3. toolResultCache keys omit cwd — invalidate on any chdir
 

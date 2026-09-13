@@ -62,6 +62,7 @@
 - [Outline scanner: phantoms that DELETE real declarations + container blindness](outline-blind-to-nested-members.md) — PR #141 (corpus symbols −1.6%, bytes +3.7%, REPL.tsx 25→56); 6 scanner traps, and why the A/B gate is witness-based not rule-based
 - [Graded cross-CLI A/B: search→edit→build (2026-08-12)](cli-search-edit-ab-bench.md) — claudin vs claude, 6/6 PASS, cost ranges separated ($0.247 vs $0.459); the gap is cache_read driven by turn count, not output
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — first run was +27% cost because the tool only built getCwd(); with `directory` it is −7.7% cost / −25% output (median of 3)
+- [Single deferred cache marker → full-history rewrites — FIXED 2026-09-13](single-marker-lookback-full-rewrites.md) — marker jumped ≥20 positions past the last write, server lookback missed: 38.6% of 30 days of cache writes; lagging marker on fix/cache-lag-marker; re-run the census after a week
 - [Git tool — D2, shipped 2026-08-04](git-tool-design.md) — Git({commands:[…]}) over all git+gh; permissions delegate to bashToolHasPermission; cost −11.5%, replay take 30.6%; the batching claim did NOT survive the A/B
 
 ## Providers & models
