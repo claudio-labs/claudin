@@ -80,17 +80,24 @@ export const LINE_FORMAT_INSTRUCTION =
   '- Each result line is prefixed with its 1-indexed line number followed by an arrow (e.g. `42→content` is line 42 of the file); numbering starts at the requested offset'
 
 /**
- * No "stop slicing after N" rule here, and that is a measured decision rather
- * than an omission. A draft of the ladder ended step 3 with "coming back for a
- * third slice means read it whole". Over 1,625 non-test files in `src/`, a
- * 40-line slice fits into one whole read a median of 4.3 times — but the median
- * hides the shape, and the shape is what matters: 1.6x under 100 lines, 9.4x at
- * 250-600, 22x at 600-1500, 45x past 1500. So the rule would have fired hardest
- * exactly where slicing pays most, telling a model to swallow 7k tokens rather
- * than spend a fourth round-trip on 350. It was written on a single A/B run
- * that showed +35% cost and did not survive three (scripts/bench/ab/
- * read-strategy-ab.ts, 2026-09-13: the arm that sliced MORE came back cheaper).
- * Re-measure before re-adding one.
+ * No "stop slicing after N" rule here, and that is deliberate. A draft of the
+ * ladder ended step 3 with "coming back for a third slice means read it whole",
+ * written on a single A/B run showing +35% cost that did not survive three
+ * reps. Two things sank it, and the second is the load-bearing one:
+ *
+ * - A 40-line slice fits into one whole read a median of 3.1 times over the
+ *   non-test `.ts` files in `src/`, but the median hides the shape: ~1.0x under
+ *   100 lines against 9.4x at 250-600 and 22x at 600-1500. A fixed ceiling of
+ *   three therefore bites hardest exactly where slicing pays most. (An earlier
+ *   note here said 4.3x and 1.6x — those came from silently dropping files
+ *   shorter than the slice, which is most of the small bucket.)
+ * - Past ~250 lines or 10k chars a no-view Read auto-outlines anyway
+ *   (AUTO_OUTLINE_ON_ELISION), so "read it whole" does not return a whole file
+ *   there. The rule was instructing the model to ask for something the tool
+ *   declines to serve.
+ *
+ * Do not re-add a ceiling from a session A/B alone: that bench cannot see reads
+ * a sub-agent made, which is enough on its own to invert its verdict.
  */
 
 /**

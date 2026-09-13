@@ -178,12 +178,20 @@ describe('measureToolSchemas', () => {
     // the file. Read, Grep, Agent and apply_patch have no snapshot to diff, so
     // nothing else was watching.
     //
-    // The shape that does catch it is a shared-prefix ceiling. Measured across
-    // all 40 tools, the longest legitimate pair shares 27 characters
-    // (TaskUpdate's `{"taskId": "1", "status": …}` examples), so 60 clears
-    // every real pair by more than 2x while sitting far under the 200 the bug
-    // had. Raise it if a legitimate pair ever lands above — never silence a
-    // case.
+    // The shape that does catch it is a shared-prefix ceiling. Among the lines
+    // this check actually examines — `substantial`, i.e. longer than the
+    // ceiling itself — the longest legitimate pair across all 40 tools shares
+    // 22 characters (SendMessage's `{"to": "researcher", …}` examples), so 60
+    // clears every real pair by nearly 3x while sitting far under the 200 the
+    // bug had. (A previous note cited TaskUpdate at 27; those lines are 38-40
+    // chars and never reach this comparison at all.) Raise it if a legitimate
+    // pair ever lands above — never silence a case.
+    //
+    // Known blind spots, measured by trying to defeat it: a duplicate whose
+    // copy was reformatted (`1. ` → `- `) shares no prefix, and one whose first
+    // words were paraphrased scores 0. It is also per-tool, so the same
+    // sentence living in two different tool descriptions is invisible to it —
+    // the cross-tool language list this change removed is exactly that case.
     //
     // Limit worth knowing: feature() reads false under `bun test`, so this
     // sees the ungated text plus the flag-OFF shape of the gated text. The bug
@@ -206,8 +214,10 @@ describe('measureToolSchemas', () => {
       // same bug. What legitimately repeats is *syntax*: blank lines, markup
       // (`<example>`, `})`) and apply_patch's `*** Begin Patch` envelope, which
       // appears once in its format spec and again in its example. So the check
-      // is scoped to lines that read as a sentence — five words or more — and
-      // a repeated sentence in a tool description is a duplication either way.
+      // is scoped to lines that read as a sentence — five words AND 24 chars,
+      // both floors, which together clear the envelope markers. The char floor
+      // is not redundant with the word one: `- do not re-read a file` is six
+      // words in 23 chars and is the kind of fragment that repeats innocently.
       const seen = new Set<string>()
       for (const line of row.description.split('\n').map(l => l.trim())) {
         if (line.split(/\s+/).length < 5 || line.length < 24) continue

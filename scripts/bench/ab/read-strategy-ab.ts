@@ -27,7 +27,13 @@
  */
 
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { REPO_ROOT } from '../../repoRoot'
@@ -145,15 +151,63 @@ type RunResult = {
   toolCounts: Record<string, number>
   readShapes: Record<ReadShape, number>
   grepModes: Record<string, number>
+  /** Transcript files read for this run: the session's plus each sub-agent's. */
+  transcripts: number
   answeredAll: boolean
 }
 
-const PATH_SEP_RE = /[/]/g
+/**
+ * Mirrors `sanitizePath` in src/sessions/sessionStoragePortable.ts:311. The
+ * obvious `replace(/[/]/g,'-')` is WRONG and fails silently: claudin replaces
+ * every non-alphanumeric character, so a cwd holding a `.`, `_`, space or
+ * non-ASCII resolves to a directory that does not exist, the counts come back
+ * all zeros, and the run still prints OK with `reads=0` — indistinguishable
+ * from a session that used no tools. It also honours CLAUDIN_CONFIG_DIR.
+ */
+const NON_ALNUM_RE = /[^a-zA-Z0-9]/g
+const MAX_SANITIZED_LENGTH = 200
+
+function projectDirFor(cwd: string): string {
+  const sanitized = cwd.replace(NON_ALNUM_RE, '-')
+  const name =
+    sanitized.length <= MAX_SANITIZED_LENGTH
+      ? sanitized
+      : `${sanitized.slice(0, MAX_SANITIZED_LENGTH)}-${Bun.hash(cwd).toString(36)}`
+  const configHome = process.env.CLAUDIN_CONFIG_DIR ?? join(homedir(), '.claudin')
+  return join(configHome, 'projects', name)
+}
+
+/**
+ * Every transcript one run produced: the session's own, plus one per sub-agent
+ * under `<sessionId>/subagents/` (src/sessions/pure/paths.ts:61-72).
+ *
+ * Counting only the parent is what made the first published result wrong. A
+ * baseline run delegated to three sub-agents that did 93 reads between them;
+ * invisible from the parent transcript, that arm read as though it had barely
+ * read at all. Whole-body came out 26%→21% where counting those reads gives
+ * 18%→21% — the opposite sign. The prompt now forbids delegating, but a bench
+ * that silently drops the work when the model disobeys is not a bench.
+ */
+function transcriptsFor(projectDir: string, sessionId: string): string[] {
+  const own = join(projectDir, `${sessionId}.jsonl`)
+  const found = existsSync(own) ? [own] : []
+  const walk = (dir: string): void => {
+    if (!existsSync(dir)) return
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) walk(full)
+      else if (entry.name.endsWith('.jsonl')) found.push(full)
+    }
+  }
+  walk(join(projectDir, sessionId, 'subagents'))
+  return found
+}
 
 function readSessionCounts(sessionId: string): {
   tools: Record<string, number>
   shapes: Record<ReadShape, number>
   grepModes: Record<string, number>
+  transcripts: number
 } {
   const shapes: Record<ReadShape, number> = {
     symbol: 0,
@@ -164,15 +218,11 @@ function readSessionCounts(sessionId: string): {
   }
   const tools: Record<string, number> = {}
   const grepModes: Record<string, number> = {}
-  const path = join(
-    homedir(),
-    '.claudin',
-    'projects',
-    TARGET_CWD.replace(PATH_SEP_RE, '-'),
-    `${sessionId}.jsonl`,
+  const paths = transcriptsFor(projectDirFor(TARGET_CWD), sessionId)
+  const lines = paths.flatMap(p =>
+    readFileSync(p, 'utf8').split('\n').filter(Boolean),
   )
-  if (!existsSync(path)) return { tools, shapes, grepModes }
-  for (const line of readFileSync(path, 'utf8').split('\n').filter(Boolean)) {
+  for (const line of lines) {
     let rec: { message?: { content?: unknown } }
     try {
       rec = JSON.parse(line)
@@ -194,7 +244,7 @@ function readSessionCounts(sessionId: string): {
       }
     }
   }
-  return { tools, shapes, grepModes }
+  return { tools, shapes, grepModes, transcripts: paths.length }
 }
 
 function runOnce(
@@ -226,19 +276,34 @@ function runOnce(
       }
       const ok = code === 0 && parsed?.subtype === 'success'
       const sessionId: string = parsed?.session_id ?? ''
-      const usage: Record<string, number> =
-        (Object.values(parsed?.modelUsage ?? {})[0] as Record<string, number>) ?? {}
-      const { tools, shapes, grepModes } = sessionId
+      // Sum EVERY model, not `Object.values(...)[0]`. A run that reaches a
+      // second model — a sub-agent on a different one, the small-fast model for
+      // a summary — bills under its own key, and taking the first entry drops
+      // it. One run in the first published set hid 8.19M cache-read tokens that
+      // way, in the arm that then looked cheapest.
+      const usage = { inputTokens: 0, outputTokens: 0, cacheReadInputTokens: 0 }
+      for (const perModel of Object.values(
+        (parsed?.modelUsage ?? {}) as Record<string, Record<string, number>>,
+      )) {
+        usage.inputTokens += perModel?.inputTokens ?? 0
+        usage.outputTokens += perModel?.outputTokens ?? 0
+        usage.cacheReadInputTokens += perModel?.cacheReadInputTokens ?? 0
+      }
+      const { tools, shapes, grepModes, transcripts } = sessionId
         ? readSessionCounts(sessionId)
         : {
             tools: {},
             shapes: { symbol: 0, outline: 0, range: 0, full: 0, default: 0 },
             grepModes: {},
+            transcripts: 0,
           }
       const reads = Object.values(shapes).reduce((a, b) => a + b, 0)
+      const answeredAllRun = String(parsed?.result ?? '').includes(SENTINEL)
+      // `transcripts=0` on an OK run means the session file was not found, not
+      // that the model used no tools — say so instead of printing a silent zero.
       process.stdout.write(
         ok
-          ? `OK ${(durationMs / 1000).toFixed(0)}s reads=${reads} default=${shapes.default} outline=${shapes.outline} symbol=${shapes.symbol} range=${shapes.range} grep-symbols=${grepModes.symbols ?? 0}\n`
+          ? `OK ${(durationMs / 1000).toFixed(0)}s reads=${reads} default=${shapes.default} outline=${shapes.outline} symbol=${shapes.symbol} range=${shapes.range} grep-symbols=${grepModes.symbols ?? 0} transcripts=${transcripts}${transcripts === 0 ? ' <-- NO TRANSCRIPT FOUND, counts are meaningless' : ''}${answeredAllRun ? '' : ' <-- sentinel missing, answered partially'}\n`
           : `FAIL (exit=${code})\n`,
       )
       resolvePromise({
@@ -255,7 +320,8 @@ function runOnce(
         toolCounts: tools,
         readShapes: shapes,
         grepModes,
-        answeredAll: String(parsed?.result ?? '').includes(SENTINEL),
+        transcripts,
+        answeredAll: answeredAllRun,
       })
     })
   })
@@ -312,9 +378,23 @@ async function main(): Promise<void> {
     results.push(await runOnce('B', FEATURE, runIdx))
   }
 
+  // A run only enters an arm if it succeeded, produced a transcript AND
+  // answered every question. Dropping a run silently changes what the arms
+  // mean: a session that answered 4 of 13 is `subtype:'success'`, and it
+  // carries fewer reads and less cost purely because it did less work.
+  const usable = (r: RunResult): boolean =>
+    r.ok && r.transcripts > 0 && r.answeredAll
   const arms = {
-    A: results.filter(r => r.variant === 'A' && r.ok),
-    B: results.filter(r => r.variant === 'B' && r.ok),
+    A: results.filter(r => r.variant === 'A' && usable(r)),
+    B: results.filter(r => r.variant === 'B' && usable(r)),
+  }
+  for (const variant of ['A', 'B'] as const) {
+    const dropped = results.filter(r => r.variant === variant && !usable(r))
+    if (dropped.length > 0) {
+      console.log(
+        `  ${variant}: ${dropped.length} run(s) excluded (failed, no transcript, or answered partially)`,
+      )
+    }
   }
 
   const ts = new Date().toISOString().replace(/[:.]/g, '-')
@@ -324,7 +404,10 @@ async function main(): Promise<void> {
 
   let md = `# Bench A/B — estrategia de leitura do Read\n\n`
   md += `- Timestamp: ${new Date().toISOString()}\n- Model: \`${MODEL}\`\n`
-  md += `- Baseline: \`${BASELINE}\`\n- Feature: \`${FEATURE}\`\n- Runs: ${RUNS}\n\n`
+  md += `- Baseline: \`${BASELINE}\`\n- Feature: \`${FEATURE}\`\n- Runs: ${RUNS}\n`
+  md += `- Runs usadas: A ${arms.A.length}/${RUNS}, B ${arms.B.length}/${RUNS} `
+  md += `(exclui falha, transcript ausente ou resposta parcial)\n`
+  md += `- Transcripts lidos por run: sessao + sub-agentes\n\n`
 
   md += `## Forma das leituras\n\n`
   md += `| arm | n | reads | default | outline | symbol | range | full |\n|---|--:|--:|--:|--:|--:|--:|--:|\n`

@@ -23,11 +23,18 @@ describe('Grep tool prompt — the symbols mode', () => {
     expect(prompt).not.toContain('Reach for "symbols" when')
   })
 
-  test('names the supported languages once, not per mode', () => {
-    // The 25-language list is already spelled out in the Read tool's reading
-    // strategy. A second copy here was the third on the prompt surface and the
-    // same duplication this change exists to remove — it also paid for the
-    // longer sentence above, so the bullet came out shorter than it went in.
+  test('does not promise coverage it cannot deliver', () => {
+    // Two wrong versions preceded this one. The 25-language list was wrong by
+    // omission (Dart and Groovy ARE scanned and were missing), and the "code
+    // files" that replaced it was wrong by over-promise: .ex, .exs and the
+    // PowerShell extensions resolve to a language but scanSymbols returns []
+    // for them, so every match renders "(matched outside any symbol)" with no
+    // line saying the scanner does not cover that file.
+    //
+    // Naming no scope at all is the only honest option available here — the
+    // capability sentence below is what carries the meaning, and a model that
+    // tries symbols on an unscanned file sees the empty map immediately.
     expect(prompt).not.toContain('TS/JS, Python, Go, Java')
+    expect(prompt).not.toContain('signature (code files)')
   })
 })
