@@ -47,11 +47,12 @@ type Props = {
   /** Ref passed via ModalContext so Tabs (or any scroll-owning descendant)
    *  can attach it to their own ScrollBox for tall content. */
   modalScrollRef?: React.RefObject<ScrollBoxHandle | null>;
-  /** Give the modal its own fullscreen surface instead of the bottom-anchored
-   *  pane: a side panel beside the chat when the terminal is wide enough, and
-   *  a full takeover (no transcript peek, no ▔ divider) when it is not.
-   *  Set from a command's `fullscreenPanel`. See ModalSlot for the shapes. */
-  modalPanel?: boolean;
+  /** The side panel: a long-lived reviewer (today `/diff`) that gets its own
+   *  fullscreen surface instead of the bottom-anchored pane — beside the chat
+   *  when the terminal is wide enough, a full takeover (no transcript peek, no
+   *  ▔ divider) when it is not. Its own slot, so it outlives any `modal` shown
+   *  beside it. See ModalSlot for the shapes. */
+  panel?: ReactNode;
   /** Ref to the scroll box for keyboard scrolling. RefObject (not Ref) so
    *  pillVisible's useSyncExternalStore can subscribe to scroll changes. */
   scrollRef?: RefObject<ScrollBoxHandle | null>;
@@ -287,7 +288,7 @@ export function FullscreenLayout(t0: Props) {
     bottomFloat,
     modal,
     modalScrollRef,
-    modalPanel,
+    panel,
     scrollRef,
     dividerYRef,
     hidePill: t1,
@@ -434,8 +435,8 @@ export function FullscreenLayout(t0: Props) {
     // children (t14/t17 keep their identity, so React bails out on them), and
     // hand-maintaining another $[] slot in compiler output costs more than it
     // saves. Slots 33-41 are now unused; _c(48) simply over-allocates.
-    const mode: ModalMode = modalPanel !== true ? 'anchored' : canSplit(columns) ? 'split' : 'takeover';
-    return <PromptOverlayProvider><ModalSlot mode={mode} left={t14} bottom={t17} modal={modal} rows={terminalRows} columns={columns} scrollRef={modalScrollRef ?? null} /></PromptOverlayProvider>;
+    const mode: ModalMode = panel == null ? 'anchored' : canSplit(columns) ? 'split' : 'takeover';
+    return <PromptOverlayProvider><ModalSlot mode={mode} left={t14} bottom={t17} modal={modal} panel={panel} rows={terminalRows} columns={columns} scrollRef={modalScrollRef ?? null} /></PromptOverlayProvider>;
   }
   let t8;
   if ($[42] !== bottom || $[43] !== modal || $[44] !== overlay || $[45] !== scrollable) {

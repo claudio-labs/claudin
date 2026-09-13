@@ -45,11 +45,26 @@ import {
 } from 'src/vcs/diff/ui/DiffFileList.js'
 import { DiffPane, renderDiffRows } from 'src/vcs/diff/ui/DiffPane.js'
 import { buildRowLineIndex, selectionRange } from 'src/vcs/diff/ui/rowLines.js'
+import {
+  reselect,
+  type SelectedFileKey,
+  selectedFileKey,
+} from 'src/vcs/diff/ui/reselect.js'
+import {
+  readDiffPanelMemory,
+  writeDiffPanelMemory,
+} from 'src/vcs/diff/panelMemory.js'
 import { useDiffSelectionMention } from 'src/vcs/diff/ui/useDiffSelectionMention.js'
 import type { DiffSegment, DiffSource, RepoGroup } from 'src/vcs/diff/ui/types.js'
 
 type Props = {
   messages: Parameters<typeof useTurnDiffs>[0]
+  /**
+   * Bumped by REPL when a turn ends, i.e. when the working tree may have moved
+   * under the reviewer. Absent in the inline/anchored arrangements, where the
+   * loop is paused for as long as the dialog is up and nothing can change.
+   */
+  changeNonce?: number
   onDone: (
     result?: string,
     options?: { display?: CommandResultDisplay },
@@ -162,7 +177,11 @@ function pageCommitRow(
   return back !== target ? back : from
 }
 
-export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
+export function DiffDialog({
+  messages,
+  changeNonce,
+  onDone,
+}: Props): React.ReactNode {
   const { columns, rows } = useTerminalSize()
   // As a side panel the chat is still on screen and its prompt is typable, so
   // the dialog only claims the keyboard while it holds focus: registering the
@@ -216,9 +235,13 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
   const stashes = useGitStashes(cwdRoot)
 
   // ── state ───────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<Tab>('local')
+  // Seeded from what the last open left behind (panelMemory.ts) — ctrl+g is a
+  // toggle, so remounting on every peek at the chat must not send the reader
+  // back to the first file of the working tree.
+  const initialMemory = useRef(readDiffPanelMemory()).current
+  const [activeTab, setActiveTab] = useState<Tab>(initialMemory.tab)
   const [focus, setFocus] = useState<Focus>('list')
-  const [sourceIndex, setSourceIndex] = useState(0)
+  const [sourceIndex, setSourceIndex] = useState(initialMemory.sourceIndex)
   const [selectedIndex, setSelectedIndex] = useState(0)
   // Keys (root\0relPath) of collapsed folders in the Local Changes tree.
   const [collapsedDirs, setCollapsedDirs] = useState<Set<string>>(new Set())
@@ -374,6 +397,86 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
         : null,
     [selectedRow],
   )
+
+  // ── auto-refresh (side panel only) ───────────────────────────────────────
+  // A turn ended beside the panel, so the working tree may have moved under the
+  // reader. Re-read it — and only it: a file edit does not move the log or the
+  // stashes, and `r` is still the full reset. Everything the reader set stays
+  // put, including the SELECTED FILE, which is re-found by path once the new
+  // data lands: the selection is an index, and a file created above it shifts
+  // every row below (see reselect.ts).
+  const pendingReselectRef = useRef<{
+    key: SelectedFileKey | null
+    groups: RepoGroup[]
+  } | null>(null)
+  // Declared here rather than beside its effect (selection housekeeping, below)
+  // because a restored selection has to claim the initial landing before that
+  // effect runs — see the `matched` branch.
+  const initRef = useRef<number | null>(null)
+  // The reopen case rides the same one-shot: the remembered file cannot be
+  // found on the first render (the fetch has not landed), so it waits for the
+  // same "groups changed identity" signal an auto-refresh does.
+  const memorySeededRef = useRef(false)
+  if (!memorySeededRef.current) {
+    memorySeededRef.current = true
+    if (initialMemory.selected !== null) {
+      pendingReselectRef.current = {
+        key: initialMemory.selected,
+        groups: currentGroups,
+      }
+    }
+  }
+  const lastChangeNonceRef = useRef(changeNonce)
+  useEffect(() => {
+    if (lastChangeNonceRef.current === changeNonce) return
+    lastChangeNonceRef.current = changeNonce
+    // Never clobber a restore that has not resolved yet. Typing `/diff` is a
+    // submit, so it ends a (zero-length) turn of its own: that falling edge
+    // arrives while the panel is still mounting with an empty tree, and
+    // capturing "the selection" there would record null and lose the file the
+    // reader had open.
+    if (pendingReselectRef.current === null) {
+      pendingReselectRef.current = {
+        key: selectedFileKey(treeRows, selectedIndex),
+        groups: currentGroups,
+      }
+    }
+    workspace.refresh()
+    setStatusNonce(n => n + 1)
+    // Reads this render's rows, on the nonce edge only. Listing them as deps
+    // would re-fire the whole refresh on every ↑/↓.
+  }, [changeNonce]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Consumed during RENDER, not from an effect: the reset below watches the
+  // selected file's PATH, so a commit where the index still pointed at the old
+  // row would wipe the reveal/scroll/cursor the refresh is trying to preserve,
+  // and a second commit would not bring it back. A render-phase adjustment
+  // never commits that intermediate state. Waiting on a new `currentGroups`
+  // identity (rather than on `workspace.loading`) is what keeps it from being
+  // consumed in the render that only bumped the fetch nonce.
+  const pendingReselect = pendingReselectRef.current
+  if (pendingReselect !== null && pendingReselect.groups !== currentGroups) {
+    pendingReselectRef.current = null
+    const next = reselect(treeRows, pendingReselect.key, selectedIndex)
+    if (next.index !== selectedIndex) setSelectedIndex(next.index)
+    // Claim the "land on the first file row" init below — we just landed, by
+    // identity. It runs on the same data and would otherwise overwrite this.
+    // Only on a real match: when the remembered file is gone, the default
+    // landing is better than row 0 (which is often a folder).
+    if (next.matched) initRef.current = sourceIndex
+  }
+  // What the next open starts from. Runs after any render-phase adjustment
+  // above, so it records the settled selection rather than the intermediate one
+  // — and never while the tree is empty, which every mount is for a frame or
+  // two: recording "no file" there would erase the previous open's memory
+  // before this one has anything to put in its place.
+  useEffect(() => {
+    if (treeRows.length === 0) return
+    writeDiffPanelMemory({
+      tab: activeTab,
+      sourceIndex,
+      selected: selectedFileKey(treeRows, selectedIndex),
+    })
+  }, [activeTab, sourceIndex, treeRows, selectedIndex])
 
   // ── layout, part 2 (needs treeRows) ───────────────────────────────────────
   // Local Changes under the takeover: the Files pane auto-fits the changed
@@ -558,8 +661,8 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
   // Land on the first file row when a source's files first arrive and again
   // whenever the source changes. Keyed on the resolved sourceIndex (not on
   // `rows`/`currentGroups` identity) so a background workspace re-poll never
-  // snaps the selection back while the user is navigating.
-  const initRef = useRef<number | null>(null)
+  // snaps the selection back while the user is navigating. `initRef` is
+  // declared further up: a selection restored from panelMemory claims it.
   useEffect(() => {
     if (allFiles.length === 0) return
     if (initRef.current === sourceIndex) return
@@ -896,6 +999,9 @@ export function DiffDialog({ messages, onDone }: Props): React.ReactNode {
         else return false
       },
       'diff:refresh': refresh,
+      // ctrl+g is a toggle, so from inside the panel it closes outright —
+      // Esc is the one that peels selection → focus → dialog.
+      'diff:close': () => onDone('Diff dialog dismissed', { display: 'system' }),
       // v: start / clear a visual line selection in the diff pane.
       'diff:select': () => {
         if (activeTab !== 'local' || focus !== 'content') return false

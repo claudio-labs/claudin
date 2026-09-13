@@ -238,7 +238,12 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
 
       // Find matching command - treat as immediate if:
       // 1. Command has `immediate: true`, OR
-      // 2. Command was triggered via keybinding (fromKeybinding option)
+      // 2. Command was triggered via keybinding (fromKeybinding option), OR
+      // 3. It opens a fullscreen side panel, which by definition sits BESIDE
+      //    the running turn rather than over it — queueing it until the turn
+      //    ends is the one thing a reviewer must not do. Guarded on fullscreen
+      //    so the inline arrangement (no panel surface, prompt hidden under the
+      //    dialog) keeps today's route.
       const matchingCommand = commands.find(cmd => isCommandEnabled(cmd) && (cmd.name === commandName || cmd.aliases?.includes(commandName) || getCommandName(cmd) === commandName));
       if (matchingCommand?.name === 'new' && idleHintShownRef.current) {
         logEvent('tengu_idle_return_action', {
@@ -250,7 +255,7 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
         });
         idleHintShownRef.current = false;
       }
-      const shouldTreatAsImmediate = queryGuard.isActive && (matchingCommand?.immediate || options?.fromKeybinding);
+      const shouldTreatAsImmediate = queryGuard.isActive && (matchingCommand?.immediate || options?.fromKeybinding || (matchingCommand?.fullscreenPanel === true && isFullscreenEnvEnabled()));
       if (matchingCommand && shouldTreatAsImmediate && matchingCommand.type === 'local-jsx') {
         // Only clear input if the submitted text matches what's in the prompt.
         // When a command keybinding fires, input is "/<command>" but the actual

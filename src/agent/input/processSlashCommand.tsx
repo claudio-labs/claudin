@@ -592,7 +592,6 @@ async function getMessagesForSlashCommand(commandName: string, args: string, set
                 showSpinner: false,
                 isLocalJSXCommand: true,
                 isImmediate: command.immediate === true,
-                isFullscreenPanel: command.fullscreenPanel === true,
                 generation
               });
             }).catch(e => {

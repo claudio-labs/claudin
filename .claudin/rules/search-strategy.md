@@ -327,7 +327,7 @@ src/
 │   ├── docker/ (6)              ← CLI wrappers: ps/inspect, the `docker events` watcher
 │   └── build/ (2)               ← compose build parsing and progress
 ├── sessions/ (61)               ← persistence/, resume/, indexing/, conversationRecovery, ui/
-├── vcs/ (59)                    ← git/ (wrapper, worktree, gh PR status) + diff/ (the /diff reviewer)
+├── vcs/ (69)                    ← git/ (wrapper, worktree, gh PR status) + diff/ (the /diff reviewer)
 ├── plugins/ (51)                ← plugin discovery, install, marketplace, dxt/
 ├── memory/ (56)                 ← auto-memory: memdir/ (project-local <repo>/.claudin/memory/),
 │                                  extract/, session/, teamSync/, ui/, and instructions/ —

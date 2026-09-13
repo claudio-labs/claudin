@@ -151,6 +151,7 @@ export const KEYBINDING_ACTIONS = [
   'messageSelector:select',
   // Diff dialog actions
   'diff:dismiss',
+  'diff:close',
   'diff:previousSource',
   'diff:nextSource',
   'diff:focusList',

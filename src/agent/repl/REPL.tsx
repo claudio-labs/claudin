@@ -10,6 +10,7 @@ import { useInput } from 'src/terminal/ink.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { SidePanelContext, type SidePanelCtx } from 'src/terminal/contexts/sidePanelContext.js';
 import { canSplit } from 'src/terminal/sidePanelLayout.js';
+import { closeSidePanel, getSidePanelSnapshot, subscribeSidePanel } from 'src/terminal/sidePanelStore.js';
 import { applyMention, type TrackedMention } from 'src/terminal/promptMention.js';
 import { useSearchHighlight } from 'src/terminal/ink/hooks/use-search-highlight.js';
 import type { JumpHandle } from 'src/terminal/VirtualMessageList.js';
@@ -840,7 +841,6 @@ export function REPL({
     showSpinner?: boolean;
     isLocalJSXCommand?: boolean;
     isImmediate?: boolean;
-    isFullscreenPanel?: boolean;
   } | null>(null);
 
   // toolJSXStore is a module singleton wrapping a pure reducer (see
@@ -871,7 +871,6 @@ export function REPL({
     showSpinner?: boolean;
     isLocalJSXCommand?: boolean;
     isImmediate?: boolean;
-    isFullscreenPanel?: boolean;
     clearLocalJSX?: boolean;
     generation?: number;
   } | null) => {
@@ -1134,18 +1133,29 @@ export function REPL({
     cursorOffset: number;
   } | null>(null);
 
-  // ── side panel (a `fullscreenPanel` command, today only /diff) ───────────
+  // ── side panel (a long-lived reviewer beside the chat, today only /diff) ──
+  // It lives in its own store, NOT in the toolJSX slot it used to share: the
+  // chat keeps running beside it, so the turn needs that slot back (a `!` bash
+  // render, a dialog opened over the panel). See src/terminal/sidePanelStore.ts.
+  // Nothing here reserves the query guard, which is what makes the reviewer a
+  // view rather than a command that freezes the loop.
+  const sidePanelState = React.useSyncExternalStore(subscribeSidePanel, getSidePanelSnapshot);
+  // Inline has no panel surface at all — there the reviewer is still a local-jsx
+  // command rendered in the scrollable region.
+  const panelOpen = sidePanelState !== null && isFullscreenEnvEnabled();
   // The panel and the prompt are both on screen, so exactly one of them owns
   // the keyboard. This state is the arbiter; see sidePanelContext.tsx. It sits
   // here because REPL also owns insertTextRef (the panel's way into the prompt
   // buffer) and gates ScrollKeybindingHandler on the same flag.
-  const [sidePanelFocus, setSidePanelFocus] = useState<'panel' | 'prompt'>('panel');
-  const panelCommandOpen = toolJSX?.isLocalJSXCommand === true && toolJSX?.isFullscreenPanel === true;
-  // Every open starts on the panel so ↑/↓ navigate files straight away.
+  const [sidePanelFocus, setSidePanelFocus] = useState<'panel' | 'prompt'>('prompt');
+  // Every open starts on the PROMPT: the reviewer is opened to look at, and the
+  // next thing you do with what you see is type about it. ctrl+→ steps in when
+  // you want to navigate files. (Below the split threshold there is no prompt on
+  // screen, so sidePanelCtx is null there and the panel keeps the keyboard.)
   const prevPanelOpenRef = useRef(false);
-  if (prevPanelOpenRef.current !== panelCommandOpen) {
-    prevPanelOpenRef.current = panelCommandOpen;
-    if (panelCommandOpen && sidePanelFocus !== 'panel') setSidePanelFocus('panel');
+  if (prevPanelOpenRef.current !== panelOpen) {
+    prevPanelOpenRef.current = panelOpen;
+    if (panelOpen && sidePanelFocus !== 'prompt') setSidePanelFocus('prompt');
   }
   const sidePanelColumns = useTerminalSize().columns;
   // What the panel's last mention insert left behind, so the next one can
@@ -1164,12 +1174,53 @@ export function REPL({
   }, []);
   // null below the split threshold too: in takeover mode no prompt is visible,
   // so there is nothing to hand focus to and the panel keeps the keyboard.
-  const sidePanelCtx = useMemo<SidePanelCtx | null>(() => panelCommandOpen && canSplit(sidePanelColumns) ? {
+  const sidePanelCtx = useMemo<SidePanelCtx | null>(() => panelOpen && canSplit(sidePanelColumns) ? {
     open: true,
     focus: sidePanelFocus,
     setFocus: setSidePanelFocus,
     insertText: sidePanelInsert
-  } : null, [panelCommandOpen, sidePanelColumns, sidePanelFocus, sidePanelInsert]);
+  } : null, [panelOpen, sidePanelColumns, sidePanelFocus, sidePanelInsert]);
+  // The panel follows the conversation without re-rendering on every streamed
+  // chunk: `messages` is re-snapshotted at each turn boundary, and the same
+  // edge bumps `changeNonce` so the reviewer re-reads git there. Both feed a
+  // MEMOIZED element, so React bails out of the subtree in between — a
+  // 1.3k-line dialog re-laying out per token is what that avoids.
+  const [panelSnapshot, setPanelSnapshot] = useState<{
+    messages: MessageType[];
+    changeNonce: number;
+  }>(() => ({
+    messages: [],
+    changeNonce: 0
+  }));
+  // Seed the snapshot when the panel opens; from then on the turn edge drives it.
+  useEffect(() => {
+    if (!panelOpen) return;
+    setPanelSnapshot(prev => ({
+      messages: messagesRef.current,
+      changeNonce: prev.changeNonce
+    }));
+  }, [panelOpen]);
+  const panelWasLoadingRef = useRef(false);
+  useEffect(() => {
+    if (panelWasLoadingRef.current === isLoading) return;
+    panelWasLoadingRef.current = isLoading;
+    // Only the falling edge: a turn that just finished is when the working tree
+    // has settled and that turn's own numbers are final.
+    if (isLoading) return;
+    setPanelSnapshot(prev => ({
+      messages: messagesRef.current,
+      changeNonce: prev.changeNonce + 1
+    }));
+  }, [isLoading]);
+  const closePanel = useCallback(() => closeSidePanel(), []);
+  const panelNode = useMemo(() => {
+    if (!panelOpen || sidePanelState === null) return null;
+    const Panel = sidePanelState.Component;
+    return <Panel messages={panelSnapshot.messages} changeNonce={panelSnapshot.changeNonce} onDone={closePanel} />;
+  }, [panelOpen, sidePanelState, panelSnapshot, closePanel]);
+  // Under the takeover the panel owns every row, so the prompt is hidden — the
+  // same shape the command path used to get from `shouldHidePromptInput`.
+  const panelTakeover = panelOpen && !canSplit(sidePanelColumns);
 
   // Wrap setInputValue to co-locate suppression state updates.
   // Both setState calls happen in the same synchronous context so React
@@ -2966,7 +3017,7 @@ export function REPL({
   // spriteWidth — divider stops short and dialog text wraps early. Don't
   // check footerSelection: pill FOCUS (arrow-down to tasks pill) must keep
   // the sprite visible so arrow-right can navigate to it.
-  const companionVisible = !toolJSX?.shouldHidePromptInput && !focusedInputDialog && !showBashesDialog;
+  const companionVisible = !toolJSX?.shouldHidePromptInput && !panelTakeover && !focusedInputDialog && !showBashesDialog;
 
   // In fullscreen, ALL local-jsx slash commands float in the modal slot —
   // FullscreenLayout wraps them in an absolute-positioned bottom-anchored
@@ -2977,11 +3028,10 @@ export function REPL({
   // /config, /theme, /diff, ...) both go here now.
   const toolJsxCentered = isFullscreenEnvEnabled() && toolJSX?.isLocalJSXCommand === true;
   const centeredModal: React.ReactNode = toolJsxCentered ? toolJSX!.jsx : null;
-  // A command marked `fullscreenPanel` (today only /diff) gets its own
-  // fullscreen surface instead of the bottom-anchored pane — a side panel
-  // beside the chat, or a full takeover when the terminal is too narrow to
-  // split. See ModalSlot.
-  const modalPanel = toolJsxCentered && toolJSX?.isFullscreenPanel === true;
+  // `panelNode` (built above) is the side panel's own slot: it sits BESIDE the
+  // chat, or takes every row when the terminal is too narrow to split, and a
+  // `centeredModal` opened over it still gets its bottom-anchored pane. See
+  // ModalSlot for the three shapes.
 
   // <AlternateScreen> at the root: everything below is inside its
   // <Box height={rows}>. Handlers/contexts are zero-height so ScrollBox's
@@ -3005,11 +3055,11 @@ export function REPL({
           (ctrl+g), which turns this back on. onScroll
           stays suppressed while a modal is showing so scroll doesn't
           stamp divider/pill state. */}
-    <ScrollKeybindingHandler scrollRef={scrollRef} isActive={isFullscreenEnvEnabled() && !(modalPanel && sidePanelFocus === 'panel') && (centeredModal != null || !focusedInputDialog || focusedInputDialog === 'tool-permission')} onScroll={centeredModal || toolPermissionOverlay || viewedAgentTask ? undefined : composedOnScroll} />
+    <ScrollKeybindingHandler scrollRef={scrollRef} isActive={isFullscreenEnvEnabled() && !(panelOpen && sidePanelFocus === 'panel') && (centeredModal != null || !focusedInputDialog || focusedInputDialog === 'tool-permission')} onScroll={centeredModal || toolPermissionOverlay || viewedAgentTask ? undefined : composedOnScroll} />
     {feature('MESSAGE_ACTIONS') && isFullscreenEnvEnabled() && !disableMessageActions ? <MessageActionsKeybindings handlers={messageActionHandlers} isActive={cursor !== null} /> : null}
     <CancelRequestHandler {...cancelRequestProps} />
     <MCPConnectionManager key={remountKey} dynamicMcpConfig={dynamicMcpConfig} isStrictMcpConfig={strictMcpConfig}>
-      <FullscreenLayout scrollRef={scrollRef} overlay={toolPermissionOverlay} bottomFloat={isBuddyEnabled() && companionVisible && !companionNarrow ? <CompanionFloatingBubble /> : undefined} modal={centeredModal} modalScrollRef={modalScrollRef} modalPanel={modalPanel} dividerYRef={dividerYRef} hidePill={!!viewedAgentTask} hideSticky={!!viewedTeammateTask} newMessageCount={unseenDivider?.count ?? 0} onPillClick={() => {
+      <FullscreenLayout scrollRef={scrollRef} overlay={toolPermissionOverlay} bottomFloat={isBuddyEnabled() && companionVisible && !companionNarrow ? <CompanionFloatingBubble /> : undefined} modal={centeredModal} modalScrollRef={modalScrollRef} panel={panelNode} dividerYRef={dividerYRef} hidePill={!!viewedAgentTask} hideSticky={!!viewedTeammateTask} newMessageCount={unseenDivider?.count ?? 0} onPillClick={() => {
         setCursor(null);
         jumpToNew(scrollRef.current);
       }} scrollable={<>
@@ -3131,14 +3181,14 @@ export function REPL({
 
           {mrRender()}
 
-          {!toolJSX?.shouldHidePromptInput && !focusedInputDialog && !isExiting && !disabled && !cursor && !isShuttingDown() && <>
+          {!toolJSX?.shouldHidePromptInput && !panelTakeover && !focusedInputDialog && !isExiting && !disabled && !cursor && !isShuttingDown() && <>
             {autoRunIssueReason && <AutoRunIssueNotification onRun={handleAutoRunIssue} onCancel={handleCancelAutoRunIssue} reason={getAutoRunIssueReasonText(autoRunIssueReason)} />}
             {postCompactSurvey.state !== 'closed' ? <FeedbackSurvey state={postCompactSurvey.state} lastResponse={postCompactSurvey.lastResponse} handleSelect={postCompactSurvey.handleSelect} inputValue={inputValue} setInputValue={setInputValue} onRequestFeedback={handleSurveyRequestFeedback} /> : memorySurvey.state !== 'closed' ? <FeedbackSurvey state={memorySurvey.state} lastResponse={memorySurvey.lastResponse} handleSelect={memorySurvey.handleSelect} handleTranscriptSelect={memorySurvey.handleTranscriptSelect} inputValue={inputValue} setInputValue={setInputValue} onRequestFeedback={handleSurveyRequestFeedback} message="How well did Claude use its memory? (optional)" /> : <FeedbackSurvey state={feedbackSurvey.state} lastResponse={feedbackSurvey.lastResponse} handleSelect={feedbackSurvey.handleSelect} handleTranscriptSelect={feedbackSurvey.handleTranscriptSelect} inputValue={inputValue} setInputValue={setInputValue} onRequestFeedback={didAutoRunIssueRef.current ? undefined : handleSurveyRequestFeedback} />}
             {/* Frustration-triggered transcript sharing prompt */}
             {frustrationDetection.state !== 'closed' && <FeedbackSurvey state={frustrationDetection.state} lastResponse={null} handleSelect={() => { }} handleTranscriptSelect={frustrationDetection.handleTranscriptSelect} inputValue={inputValue} setInputValue={setInputValue} />}
             {showIssueFlagBanner && <IssueFlagBanner />}
             { }
-            <PromptInput debug={debug} ideSelection={ideSelection} hasSuppressedDialogs={!!hasSuppressedDialogs} isLocalJSXCommandActive={isShowingLocalJSXCommand && sidePanelCtx == null} getToolUseContext={getToolUseContext} toolPermissionContext={toolPermissionContext} setToolPermissionContext={setToolPermissionContext} apiKeyStatus={apiKeyStatus} commands={renderCommands} agents={agentDefinitions.activeAgents} isLoading={isLoading} onExit={handleExit} verbose={verbose} messages={messages} onAutoUpdaterResult={setAutoUpdaterResult} autoUpdaterResult={autoUpdaterResult} input={inputValue} onInputChange={setInputValue} mode={inputMode} onModeChange={setInputMode} stashedPrompt={stashedPrompt} setStashedPrompt={setStashedPrompt} submitCount={submitCount} onShowMessageSelector={handleShowMessageSelector} onMessageActionsEnter={
+            <PromptInput debug={debug} ideSelection={ideSelection} hasSuppressedDialogs={!!hasSuppressedDialogs} isLocalJSXCommandActive={isShowingLocalJSXCommand} getToolUseContext={getToolUseContext} toolPermissionContext={toolPermissionContext} setToolPermissionContext={setToolPermissionContext} apiKeyStatus={apiKeyStatus} commands={renderCommands} agents={agentDefinitions.activeAgents} isLoading={isLoading} onExit={handleExit} verbose={verbose} messages={messages} onAutoUpdaterResult={setAutoUpdaterResult} autoUpdaterResult={autoUpdaterResult} input={inputValue} onInputChange={setInputValue} mode={inputMode} onModeChange={setInputMode} stashedPrompt={stashedPrompt} setStashedPrompt={setStashedPrompt} submitCount={submitCount} onShowMessageSelector={handleShowMessageSelector} onMessageActionsEnter={
               // Works during isLoading — edit cancels first; uuid selection survives appends.
               feature('MESSAGE_ACTIONS') && isFullscreenEnvEnabled() && !disableMessageActions ? enterMessageActions : undefined} mcpClients={mcpClients} pastedContents={pastedContents} setPastedContents={setPastedContents} vimMode={vimMode} setVimMode={setVimMode} showBashesDialog={showBashesDialog} setShowBashesDialog={setShowBashesDialog} showWorkflowsDialog={showWorkflowsDialog} setShowWorkflowsDialog={setShowWorkflowsDialog} onSubmit={onSubmit} onAgentSubmit={onAgentSubmit} isSearchingHistory={isSearchingHistory} setIsSearchingHistory={setIsSearchingHistory} helpOpen={isHelpOpen} setHelpOpen={setIsHelpOpen} insertTextRef={insertTextRef} voiceInterimRange={voice.interimRange} />
             <SessionBackgroundHint onBackgroundSession={handleBackgroundSession} isLoading={isLoading} />

@@ -34,6 +34,11 @@ type Props = {
   bottom: React.ReactNode
   /** Slash-command dialog content. null when nothing is showing. */
   modal: React.ReactNode
+  /**
+   * The side panel (a long-lived reviewer, today only `/diff`). Its own slot:
+   * it outlives any dialog beside it, and the two can be on screen together.
+   */
+  panel?: React.ReactNode
   rows: number
   columns: number
   scrollRef: React.RefObject<import('src/terminal/ink/components/ScrollBox.js').ScrollBoxHandle | null> | null
@@ -65,11 +70,12 @@ export function ModalSlot({
   left,
   bottom,
   modal,
+  panel,
   rows,
   columns,
   scrollRef,
 }: Props): React.ReactNode {
-  const split = modal != null && mode === 'split'
+  const split = panel != null && mode === 'split'
   // A tint that separates the panel from the chat beside it. Empty on the
   // terminal/ansi themes, which inherit the user's own palette.
   const [themeName] = useTheme()
@@ -106,7 +112,7 @@ export function ModalSlot({
     return () => setSelectionColumnBands(null)
   }, [split, columns, splitRows])
 
-  if (modal == null) {
+  if (modal == null && panel == null) {
     return (
       <>
         {left}
@@ -114,6 +120,54 @@ export function ModalSlot({
       </>
     )
   }
+
+  /**
+   * The absolute, bottom-anchored pane. `takeover` grows it to every row and
+   * drops the peek + ▔ divider. A dialog beside a split keeps the normal
+   * anchored shape AND its full width: it is transient, and clamping it to the
+   * chat column would need a width and an offset `Pane` has never had.
+   */
+  const anchoredPane = (
+    content: React.ReactNode,
+    takeover: boolean,
+  ): React.ReactNode => {
+    const peek = takeover ? 0 : MODAL_TRANSCRIPT_PEEK
+    const dividerRows = takeover ? 0 : 1
+    return (
+      <ModalContext
+        value={{
+          rows: rows - peek - dividerRows,
+          columns: columns - 4,
+          scrollRef,
+        }}
+      >
+        <Box
+          position="absolute"
+          bottom={0}
+          left={0}
+          right={0}
+          height={takeover ? rows : undefined}
+          maxHeight={rows - peek}
+          flexDirection="column"
+          overflow="hidden"
+          opaque={true}
+        >
+          {takeover ? null : (
+            <Box flexShrink={0}>
+              <Text color="permission">{'\u2594'.repeat(columns)}</Text>
+            </Box>
+          )}
+          <Box flexDirection="column" paddingX={2} flexShrink={0} overflow="hidden">
+            {content}
+          </Box>
+        </Box>
+      </ModalContext>
+    )
+  }
+
+  // Rendered last in every arrangement, so a dialog paints over the panel
+  // rather than under it.
+  const dialog = modal == null ? null : anchoredPane(modal, false)
 
   if (split) {
     const { leftCols, panelCols } = splitWidths(columns)
@@ -162,51 +216,23 @@ export function ModalSlot({
               backgroundColor={panelBackground ? (panelBackground as Color) : undefined}
             >
               <Box flexDirection="column" paddingX={1} flexShrink={0} overflow="hidden">
-                {modal}
+                {panel}
               </Box>
             </Box>
           </ModalContext>
         </Box>
         {bottom}
+        {dialog}
       </Box>
     )
   }
 
-  const takeover = mode === 'takeover'
-  const peek = takeover ? 0 : MODAL_TRANSCRIPT_PEEK
-  const dividerRows = takeover ? 0 : 1
   return (
     <>
       {left}
       {bottom}
-      <ModalContext
-        value={{
-          rows: rows - peek - dividerRows,
-          columns: columns - 4,
-          scrollRef,
-        }}
-      >
-        <Box
-          position="absolute"
-          bottom={0}
-          left={0}
-          right={0}
-          height={takeover ? rows : undefined}
-          maxHeight={rows - peek}
-          flexDirection="column"
-          overflow="hidden"
-          opaque={true}
-        >
-          {takeover ? null : (
-            <Box flexShrink={0}>
-              <Text color="permission">{'\u2594'.repeat(columns)}</Text>
-            </Box>
-          )}
-          <Box flexDirection="column" paddingX={2} flexShrink={0} overflow="hidden">
-            {modal}
-          </Box>
-        </Box>
-      </ModalContext>
+      {panel == null ? null : anchoredPane(panel, mode === 'takeover')}
+      {dialog}
     </>
   )
 }
