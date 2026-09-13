@@ -26,6 +26,8 @@ import { getNativeCSIuTerminalDisplayName } from 'src/commands/terminalSetup/ter
 import { type Command, hasCommand } from 'src/commands/commands.js';
 import { useIsModalOverlayActive } from 'src/terminal/contexts/overlayContext.js';
 import { useSidePanel } from 'src/terminal/contexts/sidePanelContext.js';
+import { closeSidePanel } from 'src/terminal/sidePanelStore.js';
+import { openDiffPanel } from 'src/vcs/diff/openDiffPanel.js';
 import { useSetPromptOverlayDialog } from 'src/terminal/contexts/promptOverlayContext.js';
 import { formatImageRef, formatPastedTextRef, getPastedTextRefNumLines, parseReferences } from 'src/agent/history.js';
 import type { VerificationStatus } from 'src/providers/hooks/useApiKeyVerification.js';
@@ -1781,18 +1783,24 @@ function PromptInput({
   // ctrl+g / ctrl+e open the /diff reviewer and the /explorer file tree
   // (replacing the old typed gg/ee chords). Clear the input first so a
   // quick-launch never carries stray text into the command.
-  // With the reviewer already open as a side panel there is nothing to open,
-  // so ctrl+g steps into it rather than re-submitting — and it must NOT clear
-  // the input the user is mid-way through typing. ctrl+right is the key that
-  // advertises this; ctrl+g just refuses to do something useless.
+  //
+  // ctrl+g is a plain on/off for the reviewer and does NOT go through onSubmit:
+  // opening a view is not a turn, so it leaves no `/diff` row, no history entry
+  // and no spinner, and it works while a response is streaming (the submit path
+  // would only queue it). Stepping into and out of the panel is ctrl+→/ctrl+←.
+  // Only the inline arrangement, which has no panel surface, still submits the
+  // command — `openDiffPanel` says so by returning false.
   const handleOpenDiff = useCallback(() => {
     if (sidePanel?.open) {
-      sidePanel.setFocus("panel");
+      closeSidePanel();
       return;
     }
-    trackAndSetInput('');
-    setCursorOffset(0);
-    void onSubmit('/diff');
+    void openDiffPanel().then(opened => {
+      if (opened) return;
+      trackAndSetInput('');
+      setCursorOffset(0);
+      void onSubmit('/diff');
+    });
   }, [sidePanel, trackAndSetInput, setCursorOffset, onSubmit]);
   // ctrl+right: step into the side panel. Returns false when no panel is open
   // so the key stays free for anything else that wants it.

@@ -88,11 +88,14 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       // (replacing the old typed gg/ee chords). These override readline's
       // end-of-line (ctrl+e — use the End key instead) and the single-key
       // external-editor shortcut — $EDITOR stays reachable on ctrl+x ctrl+e.
+      // ctrl+g is a toggle: with the reviewer already up it closes it (the
+      // mirror inside the panel is `diff:close`).
       'ctrl+g': 'chat:openDiff',
       'ctrl+e': 'chat:openExplorer',
       'ctrl+s': 'chat:stash',
-      // Side panel only: step INTO the panel on the right. ctrl+g opens /diff,
-      // so overloading it to also mean "focus" made one key do two jobs.
+      // Side panel only: step INTO the panel on the right. ctrl+g opens and
+      // closes the reviewer, so overloading it to mean "focus" as well would
+      // have one key doing two jobs.
       'ctrl+right': 'chat:focusPanel',
       // Image paste shortcut (platform-specific key defined above)
       [IMAGE_PASTE_KEY]: 'chat:imagePaste',
@@ -319,6 +322,12 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
     context: 'DiffDialog',
     bindings: {
       escape: 'diff:dismiss',
+      // The mirror of the Chat-context ctrl+g, which cannot be reached from
+      // inside the panel (the dialog resolves against DiffDialog/Global, and
+      // nothing registers Chat as active). Unlike Esc it closes outright rather
+      // than peeling selection → focus → dialog: a toggle that sometimes only
+      // dropped a selection would not read as a toggle.
+      'ctrl+g': 'diff:close',
       // ←/→ move focus between the list (Files/Log) and the diff/content pane;
       // [ / ] cycle the Local Changes source (working tree / turns / stashes).
       left: 'diff:focusList',

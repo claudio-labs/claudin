@@ -37,7 +37,6 @@ export type ToolJSXState = {
   showSpinner?: boolean
   isLocalJSXCommand?: boolean
   isImmediate?: boolean
-  isFullscreenPanel?: boolean
 } | null
 
 export type ToolJSXAction =

@@ -172,6 +172,7 @@ export type KnownKeybindingAction =
   | 'messageSelector:select'
   // Diff dialog actions
   | 'diff:dismiss'
+  | 'diff:close'
   | 'diff:previousSource'
   | 'diff:nextSource'
   | 'diff:focusList'
