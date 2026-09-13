@@ -73,6 +73,18 @@ audit; integrated regression:
   discovery in real sessions); it survives behind
   `CLAUDIN_DEFERRED_TOOLS_DISCOVERED_ONLY=1` for pathological MCP pools.
   Probe: `scripts/bench/ab/tool-search-cache-probe.ts`.
+- **The deferred marker is followed by a lagging one**
+  (`src/providers/shims/claude/lagCacheMarker.ts`): a second message-level
+  breakpoint on the message that carried the previous request's marker. The
+  API only looks 20 positions behind a breakpoint for an existing entry; a
+  marker that lingers through tiny tool turns and then jumps to the tail
+  lands past that, the lookup resumes at the system breakpoint, and the
+  whole history is re-billed (7 events / 3.06M tokens in one session,
+  38.6% of all cache writes over 30 days of transcripts). The lag marker is
+  where the lookup resumes instead; it costs nothing. Probe:
+  `scripts/bench/ab/lookback-miss-probe.ts`; census:
+  `scripts/bench/tokens/lookback-miss-census.ts`;
+  design: `docs/tech/cache/lookback-lag-marker.md`.
 
 ## Pointers to the mechanisms
 

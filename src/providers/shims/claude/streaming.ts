@@ -1072,6 +1072,7 @@ export async function* queryModel(
       options.querySource,
       options.skipCacheWrite,
       clipFrontierIndex,
+      options.agentId,
     );
 
     if (feature("PROMPT_CACHE_BREAK_DETECTION")) {

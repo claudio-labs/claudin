@@ -38,9 +38,16 @@ import {
 } from "src/providers/model/providers.js";
 import type { SystemPrompt } from "src/agent/systemPromptType.js";
 import { roughTokenCountEstimationForMessage } from "src/shared/tokenEstimation.js";
+import type { AgentId } from "src/shared/types/ids.js";
 import type { AssistantMessage, UserMessage } from "src/shared/types/message.js";
 import { logEvent } from "src/platform/analytics/index.js";
+import { recordMarkerAdvance } from "src/providers/cache/promptCacheBreakDetection.js";
+import { getCacheTrackingKey } from "src/providers/cache/trackingKey.js";
 import { getCacheControl } from "src/providers/shims/claude/cacheControl.js";
+import {
+  isLagMarkerEnabled,
+  resolveLagMarker,
+} from "src/providers/shims/claude/lagCacheMarker.js";
 import {
   assistantMessageToMessageParam,
   userMessageToMessageParam,
@@ -208,7 +215,8 @@ const LARGE_SYSTEM_PROMPT_TOKEN_THRESHOLD = 8000;
  *   higher     → checkpoint advances less often (longer tail recompute)
  *
  * See addCacheBreakpoints() for the placement logic and the comment block
- * about why we keep exactly one marker (Mycro KV-cache eviction).
+ * about the marker count (one deferred marker plus the lagging one that keeps
+ * it reachable — see lagCacheMarker.ts).
  *
  * Related: CLAUDIN_DEFER_HIGHLIGHT (similar runtime perf toggle precedent).
  */
@@ -322,6 +330,7 @@ export function addCacheBreakpoints(
   querySource?: QuerySource,
   skipCacheWrite = false,
   clipFrontierIndex?: number,
+  agentId?: AgentId,
 ): MessageParam[] {
   logEvent("tengu_api_cache_breakpoints", {
     totalMessageCount: messages.length,
@@ -329,7 +338,7 @@ export function addCacheBreakpoints(
     skipCacheWrite,
   });
 
-  // Exactly one message-level cache_control marker per request. Mycro's
+  // One ADVANCING message-level cache_control marker per request. Mycro's
   // turn-to-turn eviction (page_manager/index.rs: Index::insert) frees
   // local-attention KV pages at any cached prefix position NOT in
   // cache_store_int_token_boundaries. With two markers the second-to-last
@@ -340,6 +349,9 @@ export function addCacheBreakpoints(
   // point, so the write is a no-op merge on mycro (entry already exists)
   // and the fork doesn't leave its own tail in the KVCC. Dense pages are
   // refcounted and survive via the new hash either way.
+  // The lagging marker below is the one deliberate exception: it sits on
+  // the previous request's marker, which IS the position the next lookup
+  // resumes from when this one misses (lagCacheMarker.ts).
   const baseMarkerIndex = skipCacheWrite
     ? messages.length - 2
     : messages.length - 1;
@@ -432,10 +444,45 @@ export function addCacheBreakpoints(
     process.env.CLAUDIN_ANCHOR_CACHE_HEAD === '1' &&
     messages.length > 1 &&
     trailIndex === undefined;
+  // Lagging marker (lagCacheMarker.ts): a second marker on the message that
+  // carried the PREVIOUS request's marker. The API resolves a breakpoint by
+  // checking at most 20 positions behind it; a deferred marker that lingers
+  // through a run of tiny tool calls and then jumps to the end lands further
+  // than that from the last write, the lookup misses, and the whole history
+  // is re-billed from the system breakpoint (session ab1e69e8: 7 rewrites,
+  // 3.06M tokens). The lag marker is where the lookup resumes; it sits on
+  // cached bytes, so it costs nothing. Skipped for skipCacheWrite forks
+  // (own key, marker already at the shared frontier) and under the two
+  // experimental extra-marker flags: with the system prompt's 2 blocks a
+  // third message marker overflows the API's 4-breakpoint cap → 400.
+  let lagIndex: number | undefined;
+  const trackingKey =
+    enablePromptCaching &&
+    !skipCacheWrite &&
+    trailIndex === undefined &&
+    !anchorHead &&
+    querySource !== undefined &&
+    isLagMarkerEnabled()
+      ? getCacheTrackingKey(querySource, agentId)
+      : null;
+  if (trackingKey && querySource) {
+    const lag = resolveLagMarker(trackingKey, messages, markerIndex);
+    lagIndex = lag.lagIndex;
+    if (feature("PROMPT_CACHE_BREAK_DETECTION")) {
+      recordMarkerAdvance(
+        querySource,
+        agentId,
+        lag.advancedPositions === undefined
+          ? null
+          : { positions: lag.advancedPositions, lagPlaced: lagIndex !== undefined },
+      );
+    }
+  }
   const result = messages.map((msg, index) => {
     const addCache =
       index === markerIndex ||
       index === trailIndex ||
+      index === lagIndex ||
       (anchorHead && index === 0);
     if (msg.type === "user") {
       return userMessageToMessageParam(
