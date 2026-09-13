@@ -10,6 +10,7 @@
 ## Conventions
 - [Durable coding gotchas go in .claudin/rules/, not team memory](coding-gotchas-go-in-rules-not-memory.md) — path-scoped rules own renderer/cache/testing/agent-safety/build gotchas; memory is for state/decisions/refs; procedures → skills
 - [Appended <system-reminder> nudges benched at zero adoption](tool-result-nudges-benched-zero-adoption.md) — fix the friction/refusal message instead; land new nudges flag-OFF as bench instrumentation
+- [Rewriting the shouted emphasis out of tool prompts — DROPPED on data 2026-09-13](prompt-tone-rewrite-unmeasurable.md) — no over-compliance in 3,391 Bash calls (grep in 29.6%); empty thinking blocks make it unmeasurable from logs
 - [AGENTS.md documents the repo, never Claudin-only runtime behavior](agents-md-excludes-claudin-only-behavior.md) — other harnesses read that file too; redirects/killswitches go in the source module header + .claudin/rules/, not the toggle table
 - [Reminders that say "don't tell the user" get flagged as injection](model-flags-hidden-reminders-as-injection.md) — same for attachments stapled mid-turn; gate new producers on input !== null, never add a gag order
 - [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — headless resume is keyed by project dir; verify multi-turn behavior from a throwaway cwd, never `-c` in the repo
