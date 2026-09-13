@@ -21,7 +21,8 @@ import { readFileSyncWithMetadata } from 'src/shared/fs/fileRead.js'
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js'
 import { logError } from 'src/shared/log.js'
 import { hasNerdFontGlyphs } from 'src/terminal/terminalFont.js'
-import type { Theme } from 'src/terminal/theme/theme.js'
+import type { Color } from 'src/terminal/ink/styles.js'
+import { getTheme, type Theme, themeColorToAnsi } from 'src/terminal/theme/theme.js'
 import { Dialog } from 'src/terminal/design-system/Dialog.js'
 import { DiffFileList, INLINE_LIST_WIDTH } from 'src/vcs/diff/ui/DiffFileList.js'
 import { expectEditorHighlighter } from 'src/vcs/diff/structured/colorDiff.js'
@@ -128,13 +129,25 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
   // ── layout (mirrors DiffDialog) ───────────────────────────────────────────
   const split = isFullscreenEnvEnabled() && columns >= 100
   const leftWidth = Math.max(30, Math.min(50, Math.round(columns * 0.3)))
-  const contentHeight = Math.max(6, rows - 12)
-  const paneHeight = contentHeight + 2
-  const rightWidth = Math.max(20, columns - leftWidth - 10)
+  // Each pane's frame is a TOP RULE ONLY — no sides, no base — so it costs one
+  // row instead of two and two columns less of width. Both budgets below take
+  // that back as content, which keeps the dialog exactly as tall as before.
+  const contentHeight = Math.max(6, rows - 11)
+  const paneHeight = contentHeight + 1
+  const rightWidth = Math.max(20, columns - leftWidth - 8)
   // Inline (no side pane) the tree stands in for the editor pane, which already
   // uses the same budget — so it gets the same height instead of a fixed 15,
   // which both wasted a tall terminal and overflowed a short one.
   const listMaxVisible = Math.max(3, contentHeight - 2)
+  // Side by side, the open file reads as its own surface — the same tint the
+  // /diff side panel uses. Empty string on the `terminal` and `ansi` themes,
+  // which inherit the user's palette rather than guess an rgb(). Inline there
+  // is no second column to separate, so the tint stays off.
+  const paneBackground = split ? getTheme(theme).sidePanelBackground : ''
+  // FilePane's rows are pre-rendered ANSI, which the Box's fill does not reach.
+  const paneBackgroundSgr = paneBackground
+    ? themeColorToAnsi(paneBackground, true)
+    : null
 
   // ── state ─────────────────────────────────────────────────────────────────
   const [paths, setPaths] = useState<string[] | null>(null)
@@ -289,6 +302,9 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
         notice: 'File too large to edit (>2MB) — read-only',
       })
       setEditor(createEditorState(''))
+      // A file is open now, so whatever the tree last complained about no
+      // longer holds — the message is sticky until something replaces it.
+      setTreeMessage('')
       setFocus('editor')
       return
     }
@@ -316,6 +332,7 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
       notice: raw.includes('\u0000') ? 'Binary file — not editable' : null,
     })
     setEditor(createEditorState(raw))
+    setTreeMessage('')
     setFocus('editor')
   }
 
@@ -370,6 +387,16 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
       close()
       return
     }
+    // ctrl+→ steps into the open file. Checked before the plain-arrow chain
+    // below, which would otherwise read it as `l` (open / expand a row).
+    if (key.ctrl && key.rightArrow) {
+      if (open) setFocus('editor')
+      else setTreeMessage('Open a file first')
+      return
+    }
+    // The tree is already the leftmost pane, so ctrl+← has nowhere to go —
+    // swallow it rather than let it fall through to `h` (collapse a row).
+    if (key.ctrl && key.leftArrow) return
     const row = allRows[selectedIndex]
     // Paging. ctrl+d/ctrl+u are the advertised keys because they reach here in
     // every render mode; PgUp/PgDn only do inline, since in fullscreen the
@@ -535,6 +562,20 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
       close()
       return
     }
+    // ctrl+← steps back to the tree, the mirror of the ctrl+→ that stepped in.
+    // It works from every mode — insert and command are left first so the file
+    // isn't parked mid-edit — and is checked ahead of them so the keystroke is
+    // never swallowed as typed text or taken as a cursor move.
+    if (key.ctrl && key.leftArrow) {
+      if (editor.mode === 'insert') apply(leaveInsert)
+      else if (editor.mode === 'command')
+        setEditor(e => (e ? { ...e, mode: 'normal', command: '' } : e))
+      setFocus('tree')
+      return
+    }
+    // Rightmost pane already: swallow ctrl+→ so NORMAL mode doesn't take it as
+    // a plain cursor move.
+    if (key.ctrl && key.rightArrow) return
     if (editor.mode === 'command') {
       if (key.escape) {
         setEditor(e => (e ? { ...e, mode: 'normal', command: '' } : e))
@@ -757,7 +798,7 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
         rows={allRows}
         selectedIndex={selectedIndex}
         maxVisible={listMaxVisible}
-        width={split ? leftWidth - 2 : Math.min(columns - 4, INLINE_LIST_WIDTH)}
+        width={split ? leftWidth : Math.min(columns - 4, INLINE_LIST_WIDTH)}
         statusByPath={statusByPath}
         alignFiles
       />
@@ -773,6 +814,7 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
         height={contentHeight}
         width={rightWidth}
         readOnlyNotice={open.notice}
+        backgroundSgr={paneBackgroundSgr}
       />
     ) : (
       <Text dimColor>Select a file and press Enter to open it.</Text>
@@ -788,8 +830,10 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
     if (editor?.message) return editor.message
     if (treeMessage) return treeMessage
     if (focus === 'editor')
-      return 'NORMAL · i insert · ^d/^u page · / find · @ chat · :w save · :q quit · esc tree'
-    return 'j/k move · ^d/^u page · l/enter open · a new · d del · r ren · / find · @ chat · q close'
+      return 'NORMAL · i insert · ^d/^u page · / find · @ chat · :w save · :q quit · ^←/esc tree'
+    return `j/k move · ^d/^u page · l/enter open${
+      open ? ' · ^→ editor' : ''
+    } · a new · d del · r ren · / find · @ chat · q close`
   })()
 
   const editorTitle = open
@@ -828,13 +872,18 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
       : editorTitle
 
   // Indent the "Files" header to line up with the entry name column
-  // (lead 2 + caret 2 + icon 2 when Nerd glyphs render).
+  // (lead 2 + caret 2 + icon 2 when Nerd glyphs render), less the one column a
+  // start-aligned border title is always offset by: render-border.ts reserves it
+  // for the corner glyph, which a borderless left edge never draws.
   const filesTitle = {
-    content: `${' '.repeat(4 + (hasNerdFontGlyphs() ? 2 : 0))}Files `,
+    content: `${' '.repeat(3 + (hasNerdFontGlyphs() ? 2 : 0))}Files `,
     position: 'top' as const,
     align: 'start' as const,
   }
 
+  // Both panes are TOP BORDER ONLY: the rule carries the title the way a pane
+  // border used to, but without the vertical edges — the text gets those two
+  // columns back and the frame costs one row per pane instead of two.
   const body = split ? (
     <Box flexDirection="row" gap={1}>
       <Box
@@ -844,6 +893,9 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
         overflow="hidden"
         flexDirection="column"
         borderStyle="round"
+        borderBottom={false}
+        borderLeft={false}
+        borderRight={false}
         borderColor={focus === 'tree' ? 'permission' : 'subtle'}
         borderText={filesTitle}
       >
@@ -855,10 +907,14 @@ export function ExplorerDialog({ onDone, context }: Props): React.ReactNode {
         overflow="hidden"
         flexDirection="column"
         borderStyle="round"
+        borderBottom={false}
+        borderLeft={false}
+        borderRight={false}
         borderColor={
           prompt || fuzzy || focus === 'editor' ? 'permission' : 'subtle'
         }
         borderText={paneTitle(rightTitle)}
+        backgroundColor={paneBackground ? (paneBackground as Color) : undefined}
       >
         {rightContent}
       </Box>

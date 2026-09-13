@@ -1,6 +1,7 @@
 import React, { useRef } from 'react'
 import type { EditorHighlighter } from 'src/native-ts/color-diff/index.js'
 import { Box, RawAnsi, Text } from 'src/terminal/ink.js'
+import { onBackground } from 'src/terminal/ansiBackground.js'
 import type { Cursor } from 'src/terminal/explorer/editorState.js'
 
 const DIM = '\x1b[2m'
@@ -20,6 +21,13 @@ type Props = {
   width: number
   /** When set, the file isn't editable (binary / too large): show this notice. */
   readOnlyNotice?: string | null
+  /**
+   * Background the pane sits on, as an SGR sequence, or null for the
+   * terminal's own. A parent `Box`'s `backgroundColor` does NOT reach these
+   * rows — they are pre-rendered ANSI, so they carry it themselves; see
+   * `onBackground`.
+   */
+  backgroundSgr?: string | null
 }
 
 /** Tab width must match EDITOR_TAB_WIDTH in native-ts/color-diff. */
@@ -67,6 +75,7 @@ export function FilePane({
   height,
   width,
   readOnlyNotice,
+  backgroundSgr,
 }: Props): React.ReactNode {
   const scrollTopRef = useRef(0)
 
@@ -114,9 +123,13 @@ export function FilePane({
     rows.push(gutter + content)
   }
 
+  const visible = backgroundSgr
+    ? rows.map(row => onBackground(row, backgroundSgr))
+    : rows
+
   return (
     <Box flexDirection="column" width="100%">
-      <RawAnsi lines={rows} width={width} />
+      <RawAnsi lines={visible} width={width} />
     </Box>
   )
 }
