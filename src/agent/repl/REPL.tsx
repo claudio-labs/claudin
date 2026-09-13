@@ -286,6 +286,7 @@ import { AlternateScreen } from 'src/terminal/ink/components/AlternateScreen.js'
 import { ScrollKeybindingHandler } from 'src/terminal/ScrollKeybindingHandler.js';
 import { useMessageActions, MessageActionsKeybindings, MessageActionsBar, type MessageActionsState, type MessageActionsNav } from 'src/agent/ui/messageActions.js';
 import type { ScrollBoxHandle } from 'src/terminal/ink/components/ScrollBox.js';
+import { applyDisplayWindow } from 'src/agent/repl/displayWindow.js';
 
 // Stable empty array for hooks that accept MCPServerConnection[] — avoids
 // creating a new [] literal on every render in remote mode, which would
@@ -302,10 +303,6 @@ const HISTORY_STUB = {
 // up to read the start → start typing → before this fix, snapped to bottom.
 // https://anthropic.slack.com/archives/C07VBSHV7EV/p1773545449871739
 const RECENT_SCROLL_REPIN_WINDOW_MS = 3000;
-
-// Most recent messages the Ink tree mounts. A render window, not a history
-// bound: the state array behind it is never cut (see displayedMessages).
-const MAX_DISPLAY_MESSAGES = 200;
 
 // Use LRU cache to prevent unbounded memory growth
 // 100 files should be sufficient for most coding sessions while preventing
@@ -439,6 +436,9 @@ export function REPL({
   const titleDisabled = useMemo(() => isEnvTruthy(process.env.CLAUDIN_DISABLE_TERMINAL_TITLE), []);
   const moreRightEnabled = useMemo(() => false, []);
   const disableVirtualScroll = useMemo(() => isEnvTruthy(process.env.CLAUDIN_DISABLE_VIRTUAL_SCROLL), []);
+  // Restores the legacy count-based render window on both paths — see
+  // `displayWindow.ts` for why it is off by default.
+  const legacyDisplayWindow = useMemo(() => isEnvTruthy(process.env.CLAUDIN_DISABLE_MESSAGE_TIMELINE), []);
   const disableMessageActions = feature('MESSAGE_ACTIONS') ?
     // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
     useMemo(() => isEnvTruthy(process.env.CLAUDIN_DISABLE_MESSAGE_ACTIONS), []) : false;
@@ -2944,8 +2944,11 @@ export function REPL({
   // (useUnseenDivider, the transcript freeze, MessageSelector) keep reading
   // the full array.
   const fullDisplayedMessages = viewedAgentTask ? viewedAgentTask.messages ?? [] : usesSyncMessages ? messages : deferredMessages;
-  // Memoized so Messages' React.memo holds once the window is a fresh slice.
-  const displayedMessages = useMemo(() => fullDisplayedMessages.length > MAX_DISPLAY_MESSAGES ? fullDisplayedMessages.slice(-MAX_DISPLAY_MESSAGES) : fullDisplayedMessages, [fullDisplayedMessages]);
+  // The whole timeline reaches <Messages>: fullscreen mounts only the viewport
+  // through VirtualMessageList, and the inline path has its own anchored
+  // window one layer down (computeSliceStart). Memoized so Messages'
+  // React.memo holds when the killswitch does produce a slice.
+  const displayedMessages = useMemo(() => applyDisplayWindow(fullDisplayedMessages, legacyDisplayWindow), [fullDisplayedMessages, legacyDisplayWindow]);
   if (screen === 'transcript') {
     // Transcript-mode render is delegated to REPLTranscriptView (Etapa 5,
     // ROADMAP 11e). The same scrollRef and jumpRef instances flow through

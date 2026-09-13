@@ -51,8 +51,12 @@ One decision, one source of truth, no message ever dropped from the API view:
   strings the pre-request clip marked). The REPL post-turn pipeline is
   `pruneOldToolResults` (aggressive only) → `applyStableStubs`.
 - **Display cap is a render window**: `REPL.tsx` mounts the last
-  `MAX_DISPLAY_MESSAGES` (200) of the state array; the array itself is never
-  cut. Index-based consumers keep the full array.
+  `MAX_DISPLAY_MESSAGES` (200) of the state array only when
+  `CLAUDIN_DISABLE_MESSAGE_TIMELINE=1` restores that window
+  (`src/agent/repl/displayWindow.ts`); by default the whole array is rendered
+  and each path bounds itself (virtual list viewport in fullscreen,
+  `computeSliceStart` inline). The array itself is never cut either way, and
+  index-based consumers keep the full array.
 - **Killswitch** `CLAUDIN_DISABLE_RELIEF_POLICY=1` turns off the window lane
   only; rss lane, time clip and autocompact remain. No legacy path is kept —
   the flag leaves a safe state, not the pre-policy one.

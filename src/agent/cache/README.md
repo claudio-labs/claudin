@@ -53,9 +53,11 @@ audit; integrated regression:
   clip decided in ONE place (`src/agent/compact/reliefPolicy.ts` via
   `microcompactMessages`, pre-request) on REAL usage, announced through
   `notifyCacheDeletion` + `recordPrefixRewrite`. The display cap is a render
-  window in `REPL.tsx` (`MAX_DISPLAY_MESSAGES`), not a history bound. The
-  message evictions and the post-turn byte-guard that used to rewrite the
-  prefix from four uncoordinated places are gone.
+  window (`src/agent/repl/displayWindow.ts`), not a history bound — and it is
+  off by default now, each render path being bounded by its own layer (the
+  virtual list's mounted-item cap, `computeSliceStart` inline). The message
+  evictions and the post-turn byte-guard that used to rewrite the prefix from
+  four uncoordinated places are gone.
 - **The tool pool never churns bytes gratuitously**: MCP updates replace
   in place and keep schemas across transient failures
   (`resolveUpdatedTools`), LSP `defer_loading` latches per session, and
