@@ -80,6 +80,20 @@ export const LINE_FORMAT_INSTRUCTION =
   '- Each result line is prefixed with its 1-indexed line number followed by an arrow (e.g. `42→content` is line 42 of the file); numbering starts at the requested offset'
 
 /**
+ * No "stop slicing after N" rule here, and that is a measured decision rather
+ * than an omission. A draft of the ladder ended step 3 with "coming back for a
+ * third slice means read it whole". Over 1,625 non-test files in `src/`, a
+ * 40-line slice fits into one whole read a median of 4.3 times — but the median
+ * hides the shape, and the shape is what matters: 1.6x under 100 lines, 9.4x at
+ * 250-600, 22x at 600-1500, 45x past 1500. So the rule would have fired hardest
+ * exactly where slicing pays most, telling a model to swallow 7k tokens rather
+ * than spend a fourth round-trip on 350. It was written on a single A/B run
+ * that showed +35% cost and did not survive three (scripts/bench/ab/
+ * read-strategy-ab.ts, 2026-09-13: the arm that sliced MORE came back cheaper).
+ * Re-measure before re-adding one.
+ */
+
+/**
  * The counterpart that used to sit beside this one — "it's recommended to read
  * the whole file by not providing these parameters" — contradicted the
  * surgical-read strategy ten lines above it, and it was the one that shipped:
@@ -103,7 +117,7 @@ export function renderPromptTemplate(
   return `Reads a file from the local filesystem. You can access any file directly by using this tool: assume any path the user gives you is valid and readable, including a temporary path outside the project — try the read rather than verifying the path first.
 
 Reading strategy for code files (TS/JS, Python, Go, Java, Kotlin, C#, Rust, C/C++, PHP, Swift, Scala, Ruby, Lua, Bash, SQL, CSS/SCSS, HTML, Markdown, YAML, XML, .properties, .env, TOML, Dockerfile, Makefile, GraphQL, Terraform):
-Default to surgical reads — full-file reads waste tokens proportionally to file size, while targeted reads cost ~95% less. Follow this order:
+Default to surgical reads: a targeted read costs a fraction of the file. Each read also costs a turn, and a turn re-sends the conversation — so slice when you know where to look, not to explore. Follow this order:
 1. Unknown file → start with view='outline' (~5-10% of full-file tokens; typically 150-1500 depending on symbol count). Returns every function, class and object-literal member signature with line ranges, plus the substantial handlers nested inside a large function. The header says how much of the file the symbols actually cover.
 2. Need to inspect or modify a known function X → use symbol='X' (returns just that function body, not the whole file). A symbol too large to send whole comes back as its own outline instead; add view='full' to get the body anyway.
 3. Need lines around a known location → use offset/limit (range read) instead of full file.

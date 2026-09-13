@@ -83,6 +83,21 @@ const QUESTIONS: readonly { file: string; ask: string }[] = [
     file: 'src/shared/data/array.ts',
     ask: 'quais helpers esse modulo exporta',
   },
+  // As tres ultimas sao do tipo "quem chama X": a pergunta que `output_mode:
+  // "symbols"` responde em uma chamada e que `content` so consegue PARECER
+  // responder, porque a linha de match nao carrega a funcao que a envolve.
+  {
+    file: 'src/providers/presets/activeProvider.ts',
+    ask: 'quais funcoes chamam tryGetActiveProvider e o que elas fazem com o resultado',
+  },
+  {
+    file: 'src/shared/errors.ts',
+    ask: 'quais funcoes chamam isAbortError e o que muda quando ele e verdadeiro',
+  },
+  {
+    file: 'src/platform/config/config.ts',
+    ask: 'quais funcoes chamam getGlobalConfig fora do proprio modulo',
+  },
 ]
 
 function buildPrompt(): string {
@@ -93,6 +108,11 @@ function buildPrompt(): string {
     `Responda estas ${QUESTIONS.length} perguntas sobre ESTE repositorio, uma por vez,`,
     `ancorando cada resposta no codigo real (cite arquivo:linha).`,
     `Responda uma pergunta por mensagem, na ordem, com 2-4 frases cada.`,
+    // Sem isso o bench mede outra coisa: numa run o modelo delegou para 3
+    // sub-agentes e fez 4 leituras proprias, virando uma sessao de delegacao
+    // contra duas de leitura dentro do MESMO braco. A variavel sob teste e como
+    // ele le, entao delegar tem que sair do caminho.
+    `Responda voce mesmo: nao delegue para sub-agentes.`,
     `Perguntas:`,
     ...steps,
     ``,
@@ -124,14 +144,17 @@ type RunResult = {
   sessionId: string
   toolCounts: Record<string, number>
   readShapes: Record<ReadShape, number>
+  grepModes: Record<string, number>
   answeredAll: boolean
 }
 
 const PATH_SEP_RE = /[/]/g
 
-function readSessionCounts(
-  sessionId: string,
-): { tools: Record<string, number>; shapes: Record<ReadShape, number> } {
+function readSessionCounts(sessionId: string): {
+  tools: Record<string, number>
+  shapes: Record<ReadShape, number>
+  grepModes: Record<string, number>
+} {
   const shapes: Record<ReadShape, number> = {
     symbol: 0,
     outline: 0,
@@ -140,6 +163,7 @@ function readSessionCounts(
     default: 0,
   }
   const tools: Record<string, number> = {}
+  const grepModes: Record<string, number> = {}
   const path = join(
     homedir(),
     '.claudin',
@@ -147,7 +171,7 @@ function readSessionCounts(
     TARGET_CWD.replace(PATH_SEP_RE, '-'),
     `${sessionId}.jsonl`,
   )
-  if (!existsSync(path)) return { tools, shapes }
+  if (!existsSync(path)) return { tools, shapes, grepModes }
   for (const line of readFileSync(path, 'utf8').split('\n').filter(Boolean)) {
     let rec: { message?: { content?: unknown } }
     try {
@@ -163,9 +187,14 @@ function readSessionCounts(
       if (block.name === 'Read') {
         shapes[classifyRead(block.input as Record<string, unknown>)] += 1
       }
+      if (block.name === 'Grep') {
+        const input = block.input as Record<string, unknown> | undefined
+        const mode = (input?.output_mode as string) ?? 'files_with_matches'
+        grepModes[mode] = (grepModes[mode] ?? 0) + 1
+      }
     }
   }
-  return { tools, shapes }
+  return { tools, shapes, grepModes }
 }
 
 function runOnce(
@@ -199,13 +228,17 @@ function runOnce(
       const sessionId: string = parsed?.session_id ?? ''
       const usage: Record<string, number> =
         (Object.values(parsed?.modelUsage ?? {})[0] as Record<string, number>) ?? {}
-      const { tools, shapes } = sessionId
+      const { tools, shapes, grepModes } = sessionId
         ? readSessionCounts(sessionId)
-        : { tools: {}, shapes: { symbol: 0, outline: 0, range: 0, full: 0, default: 0 } }
+        : {
+            tools: {},
+            shapes: { symbol: 0, outline: 0, range: 0, full: 0, default: 0 },
+            grepModes: {},
+          }
       const reads = Object.values(shapes).reduce((a, b) => a + b, 0)
       process.stdout.write(
         ok
-          ? `OK ${(durationMs / 1000).toFixed(0)}s reads=${reads} default=${shapes.default} outline=${shapes.outline} symbol=${shapes.symbol} range=${shapes.range}\n`
+          ? `OK ${(durationMs / 1000).toFixed(0)}s reads=${reads} default=${shapes.default} outline=${shapes.outline} symbol=${shapes.symbol} range=${shapes.range} grep-symbols=${grepModes.symbols ?? 0}\n`
           : `FAIL (exit=${code})\n`,
       )
       resolvePromise({
@@ -221,6 +254,7 @@ function runOnce(
         sessionId,
         toolCounts: tools,
         readShapes: shapes,
+        grepModes,
         answeredAll: String(parsed?.result ?? '').includes(SENTINEL),
       })
     })
@@ -299,6 +333,29 @@ async function main(): Promise<void> {
     const reads = Object.values(t).reduce((a, b) => a + b, 0)
     md += `| ${label} | ${rows.length} | ${reads} | ${t.default} (${pct(t.default, reads)}) `
     md += `| ${t.outline} | ${t.symbol} | ${t.range} | ${t.full} |\n`
+  }
+
+  // Por run, nao so o agregado: uma unica run que se comporta de outro jeito
+  // (delegar em vez de ler) move o total inteiro, e a media esconde isso.
+  md += `\n## Por run\n\n`
+  md += `| arm | run | reads | corpo inteiro | turns | in | $ | wall |\n|---|--:|--:|--:|--:|--:|--:|--:|\n`
+  for (const r of results.filter(x => x.ok)) {
+    const whole = r.readShapes.default + r.readShapes.full
+    const reads = Object.values(r.readShapes).reduce((a, b) => a + b, 0)
+    md += `| ${r.variant} | ${r.runIdx + 1} | ${reads} | ${whole} | ${r.numTurns} `
+    md += `| ${r.inputTokens} | $${r.costUsd.toFixed(4)} | ${(r.durationMs / 1000).toFixed(0)}s |\n`
+  }
+
+  md += `\n## Modo do Grep\n\n`
+  md += `| arm | greps | symbols | content | files_with_matches | count |\n|---|--:|--:|--:|--:|--:|\n`
+  for (const [label, rows] of [['A (baseline)', arms.A], ['B (feature)', arms.B]] as const) {
+    const modes: Record<string, number> = {}
+    for (const r of rows) {
+      for (const [k, v] of Object.entries(r.grepModes)) modes[k] = (modes[k] ?? 0) + v
+    }
+    const greps = Object.values(modes).reduce((a, b) => a + b, 0)
+    md += `| ${label} | ${greps} | ${modes.symbols ?? 0} (${pct(modes.symbols ?? 0, greps)}) `
+    md += `| ${modes.content ?? 0} | ${modes.files_with_matches ?? 0} | ${modes.count ?? 0} |\n`
   }
 
   md += `\n## Custo\n\n`

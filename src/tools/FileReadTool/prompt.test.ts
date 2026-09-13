@@ -45,6 +45,30 @@ describe('Read tool prompt — the reading-strategy list', () => {
     expect(prompt).not.toContain('recommended to read the whole file')
     expect(prompt).toContain('only read that part')
   })
+
+  test('prices a read in turns, not just in bytes', () => {
+    // The first version of this line promised "targeted reads cost ~95% less".
+    // True per CALL and misleading per SESSION, which is the unit that gets
+    // billed: a targeted read also costs a turn, and a turn re-sends the whole
+    // conversation. Measured on Sonnet 5 over a 10-file session, obeying the
+    // old wording moved targeted reads from 61% to 78% of all reads and the
+    // session cost UP 35% — 23 reads against 18, 32 turns against 25. A ladder
+    // with no exit is what produced that: nothing said when to stop slicing.
+    expect(prompt).not.toContain('95% less')
+    expect(prompt).toContain('a turn re-sends the conversation')
+  })
+
+  test('sets no slice ceiling', () => {
+    // A draft closed step 3 with "coming back for a third slice means read it
+    // whole". Measured over 1,625 non-test files in src/, a 40-line slice fits
+    // into one whole read 1.6x under 100 lines but 9.4x at 250-600, 22x at
+    // 600-1500 and 45x past 1500 — so a fixed ceiling of three bites hardest on
+    // the files where slicing actually pays. The session A/B agreed: the arm
+    // that sliced more was the cheaper one over three reps. Any future ceiling
+    // has to come with its own measurement.
+    expect(prompt).not.toContain('third slice')
+    expect(prompt).not.toMatch(/read it whole instead/)
+  })
 })
 
 describe('Read tool prompt — delegation is not its subject', () => {
