@@ -1,5 +1,6 @@
 import React from 'react'
 import { Box, RawAnsi, Text } from 'src/terminal/ink.js'
+import { onBackground } from 'src/terminal/ansiBackground.js'
 import { plural } from 'src/shared/text/stringUtils.js'
 import { expectColorDiff } from 'src/vcs/diff/structured/colorDiff.js'
 import type { DiffSegment } from 'src/vcs/diff/ui/types.js'
@@ -78,27 +79,10 @@ type Props = {
   /**
    * Background the pane sits on, as an SGR sequence, or null for the
    * terminal's own. A parent `Box`'s `backgroundColor` does NOT reach these
-   * rows: they are pre-rendered ANSI written straight to the screen buffer
-   * (`ink-raw-ansi` in render-node-to-output.ts), and every block that has no
-   * background of its own emits an explicit `\x1b[49m` — the terminal-default
-   * sentinel in `native-ts/color-diff` — which clobbers the parent's fill.
-   * So the rows have to carry the background themselves.
+   * rows — they are pre-rendered ANSI, so they carry it themselves; see
+   * `onBackground`.
    */
   backgroundSgr?: string | null
-}
-
-const RESET = '\u001B[0m'
-const DEFAULT_BG = '\u001B[49m'
-
-/**
- * Re-assert `bg` everywhere a row resets the background — after a full RESET,
- * and in place of each explicit default-background code. Blocks that carry a
- * real background (added/removed lines, word highlights) are untouched.
- */
-function onBackground(row: string, bg: string): string {
-  return (
-    bg + row.split(RESET).join(RESET + bg).split(DEFAULT_BG).join(bg) + DEFAULT_BG
-  )
 }
 
 /**
