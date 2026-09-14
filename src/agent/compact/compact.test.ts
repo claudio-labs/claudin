@@ -1,6 +1,39 @@
 import { describe, expect, test } from 'bun:test'
 
-import { stripReinjectedAttachments } from 'src/agent/compact/compact.js'
+import {
+  isFailedSummary,
+  stripReinjectedAttachments,
+} from 'src/agent/compact/compact.js'
+
+describe('isFailedSummary', () => {
+  test('catches a rate-limit message that never says "API Error"', () => {
+    // The destructive case: worded for the user, so the prefix check misses it
+    // and the limit notice is stored as the conversation summary.
+    expect(
+      isFailedSummary(
+        { isApiErrorMessage: true },
+        'Rate limit reached · OpenAI · resets in 2h 14m',
+      ),
+    ).toBe(true)
+    expect(
+      isFailedSummary(
+        { isApiErrorMessage: true },
+        "You've hit your session limit · resets 3pm",
+      ),
+    ).toBe(true)
+  })
+
+  test('still catches an error known only by its text', () => {
+    expect(isFailedSummary({}, 'API Error: something went wrong')).toBe(true)
+  })
+
+  test('lets a real summary through', () => {
+    expect(
+      isFailedSummary({ isApiErrorMessage: false }, 'The user asked about X…'),
+    ).toBe(false)
+    expect(isFailedSummary({}, 'The user asked about X…')).toBe(false)
+  })
+})
 
 // `stripReinjectedAttachments` removes attachment types that
 // runPostCompactCleanup is responsible for re-emitting on the next turn, so

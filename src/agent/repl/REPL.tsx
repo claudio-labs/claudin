@@ -208,6 +208,7 @@ const useScheduledTasks = require('src/agent/hooks/useScheduledTasks.js').useSch
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { useTaskListWatcher } from 'src/agent/hooks/useTaskListWatcher.js';
+import { useRateLimitResume } from 'src/agent/hooks/useRateLimitResume.js';
 import type { NetworkHostPattern } from 'src/platform/sandbox/sandbox-adapter.js';
 import { type IDEExtensionInstallationStatus, type IdeType } from 'src/platform/ide/ide.js';
 import { useIDEIntegration } from 'src/platform/ide/useIDEIntegration.js';
@@ -2619,6 +2620,14 @@ export function REPL({
   useScheduledTasks({
     isLoading,
     assistantMode,
+    setMessages
+  });
+
+  // Picks the interrupted turn back up when a provider rate limit clears,
+  // if the session is still open and idle by then.
+  useRateLimitResume({
+    isLoading,
+    inputValueRef,
     setMessages
   });
 
