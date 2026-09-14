@@ -7,9 +7,7 @@ import type {
   MetricOptions,
   logs,
 } from 'src/vendor/otel.js'
-import { realpathSync } from 'fs'
 import sumBy from 'lodash-es/sumBy.js'
-import { cwd } from 'process'
 import type { HookEvent, ModelUsage } from 'src/platform/entrypoints/agentSdkTypes.js'
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
 // Indirection for browser-sdk build (package.json "browser" field swaps
@@ -23,12 +21,16 @@ import type { ModelStrings } from 'src/providers/model/modelStrings.js'
 import type { SettingSource } from 'src/platform/settings/constants.js'
 import { resetSettingsCache } from 'src/platform/settings/settingsCache.js'
 import { createSignal } from 'src/shared/signal.js'
+import {
+  getInitialState,
+  notifyRuntimeStateListeners,
+  STATE,
+} from 'src/platform/bootstrap/state/store.js'
 import type {
   AttributedCounter,
   ChannelEntry,
   InvokedSkillInfo,
   RegisteredHookMatcher,
-  RuntimeStateChangeListener,
   SessionCronTask,
   SessionWakeup,
   State,
@@ -43,199 +45,10 @@ export type {
   SessionCronTask,
   SessionWakeup,
 } from 'src/platform/bootstrap/state/types.js'
-
-// Listeners for runtime state changes that affect tool availability (e.g. isEnabled()).
-// Used by tools.ts to invalidate the isEnabled() cache without going through saveGlobalConfig.
-const runtimeStateChangeListeners = new Set<RuntimeStateChangeListener>()
-
-export function onRuntimeStateChange(
-  listener: RuntimeStateChangeListener,
-): () => void {
-  runtimeStateChangeListeners.add(listener)
-  return () => runtimeStateChangeListeners.delete(listener)
-}
-
-export function notifyRuntimeStateChange(): void {
-  notifyRuntimeStateListeners()
-}
-
-function notifyRuntimeStateListeners(): void {
-  for (const listener of runtimeStateChangeListeners) {
-    try {
-      listener()
-    } catch {
-      // listener errors must not block state mutations
-    }
-  }
-}
-
-// ALSO HERE - THINK THRICE BEFORE MODIFYING
-function getInitialState(): State {
-  // Resolve symlinks in cwd to match behavior of shell.ts setCwd
-  // This ensures consistency with how paths are sanitized for session storage
-  let resolvedCwd = ''
-  if (
-    typeof process !== 'undefined' &&
-    typeof process.cwd === 'function' &&
-    typeof realpathSync === 'function'
-  ) {
-    const rawCwd = cwd()
-    try {
-      resolvedCwd = realpathSync(rawCwd).normalize('NFC')
-    } catch {
-      // File Provider EPERM on CloudStorage mounts (lstat per path component).
-      resolvedCwd = rawCwd.normalize('NFC')
-    }
-  }
-  const state: State = {
-    originalCwd: resolvedCwd,
-    projectRoot: resolvedCwd,
-    totalCostUSD: 0,
-    totalAPIDuration: 0,
-    totalAPIDurationWithoutRetries: 0,
-    totalToolDuration: 0,
-    turnHookDurationMs: 0,
-    turnToolDurationMs: 0,
-    turnClassifierDurationMs: 0,
-    turnToolCount: 0,
-    turnHookCount: 0,
-    turnClassifierCount: 0,
-    startTime: Date.now(),
-    activeDurationMs: 0,
-    turnActiveSince: null,
-    lastInteractionTime: Date.now(),
-    totalLinesAdded: 0,
-    totalLinesRemoved: 0,
-    hasUnknownModelCost: false,
-    cwd: resolvedCwd,
-    modelUsage: {},
-    mainLoopModelOverride: undefined,
-    initialMainLoopModel: null,
-    modelStrings: null,
-    isInteractive: false,
-    kairosActive: false,
-    strictToolResultPairing: false,
-    sdkAgentProgressSummariesEnabled: false,
-    userMsgOptIn: false,
-    clientType: 'cli',
-    sessionSource: undefined,
-    questionPreviewFormat: undefined,
-    sessionIngressToken: undefined,
-    oauthTokenFromFd: undefined,
-    apiKeyFromFd: undefined,
-    flagSettingsPath: undefined,
-    flagSettingsInline: null,
-    allowedSettingSources: [
-      'userSettings',
-      'projectSettings',
-      'localSettings',
-      'flagSettings',
-      'policySettings',
-    ],
-    // Telemetry state
-    meter: null,
-    sessionCounter: null,
-    locCounter: null,
-    prCounter: null,
-    commitCounter: null,
-    costCounter: null,
-    tokenCounter: null,
-    codeEditToolDecisionCounter: null,
-    activeTimeCounter: null,
-    statsStore: null,
-    sessionId: randomUUID() as SessionId,
-    parentSessionId: undefined,
-    // Logger state
-    loggerProvider: null,
-    eventLogger: null,
-    // Meter provider state
-    meterProvider: null,
-    tracerProvider: null,
-    // Agent color state
-    agentColorMap: new Map(),
-    agentColorIndex: 0,
-    // Last API request for bug reports
-    lastAPIRequest: null,
-    lastAPIRequestMessages: null,
-    // Last auto-mode classifier request(s) for /share transcript
-    lastClassifierRequests: null,
-    cachedClaudeMdContent: null,
-    // In-memory error log for recent errors
-    inMemoryErrorLog: [],
-    // Session-only plugins from --plugin-dir flag
-    inlinePlugins: [],
-    // Use cowork_plugins directory instead of plugins
-    useCoworkPlugins: false,
-    // Session-only bypass permissions mode flag (not persisted)
-    sessionBypassPermissionsMode: false,
-    // Scheduled tasks disabled until flag or dialog enables them
-    scheduledTasksEnabled: false,
-    sessionCronTasks: [],
-    pendingSessionWakeup: null,
-    sessionCreatedTeams: new Set(),
-    // Session-only trust flag (not persisted to disk)
-    sessionTrustAccepted: false,
-    // Session-only flag to disable session persistence to disk
-    sessionPersistenceDisabled: false,
-    // Track if user has exited plan mode in this session
-    hasExitedPlanMode: false,
-    // Track if we need to show the plan mode exit attachment
-    needsPlanModeExitAttachment: false,
-    // Track if we need to show the auto mode exit attachment
-    needsAutoModeExitAttachment: false,
-    // SDK init event state
-    initJsonSchema: null,
-    registeredHooks: null,
-    // Cache for plan slugs
-    planSlugCache: new Map(),
-    // Track teleported session for reliability logging
-    teleportedSessionInfo: null,
-    // Track invoked skills for preservation across compaction
-    invokedSkills: new Map(),
-    // Track slow operations for dev bar display
-    slowOperations: [],
-    // SDK-provided betas
-    sdkBetas: undefined,
-    // Main thread agent type
-    mainThreadAgentType: undefined,
-    // Remote mode
-    isRemoteMode: false,
-    // Direct connect server URL
-    directConnectServerUrl: undefined,
-    // System prompt section cache state
-    systemPromptSectionCache: new Map(),
-    // Last date emitted to the model
-    lastEmittedDate: null,
-    // Additional directories from --add-dir flag (for CLAUDE.md loading)
-    additionalDirectoriesForClaudeMd: [],
-    // Channel server allowlist from --channels flag
-    allowedChannels: [],
-    hasDevChannels: false,
-    // Session project dir (null = derive from originalCwd)
-    sessionProjectDir: null,
-    // Large-system-prompt detection latch (null = not yet evaluated)
-    largeSystemPromptDetected: null,
-    // Beta header latches (null = not yet triggered)
-    afkModeHeaderLatched: null,
-    fastModeHeaderLatched: null,
-    thinkingClearLatched: null,
-    lspDeferLatchedTools: null,
-    deferredDeltaLegacySession: false,
-    // Session epoch anchors at process start (uptime-derived so a lazy
-    // STATE creation doesn't skew it); advanced on every session switch.
-    sessionEpochMs: Date.now() - process.uptime() * 1000,
-    // Current prompt ID
-    promptId: null,
-    lastMainRequestId: undefined,
-    lastApiCompletionTimestamp: null,
-    pendingPostCompaction: false,
-  }
-
-  return state
-}
-
-// AND ESPECIALLY HERE
-const STATE: State = getInitialState()
+export {
+  notifyRuntimeStateChange,
+  onRuntimeStateChange,
+} from 'src/platform/bootstrap/state/store.js'
 
 export function getSessionId(): SessionId {
   return STATE.sessionId
