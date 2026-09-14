@@ -12,7 +12,7 @@
   VERSION: '99.0.0',
   DISPLAY_VERSION: '0.0.0-test',
   BUILD_TIME: new Date().toISOString(),
-  ISSUES_EXPLAINER: 'report the issue at https://github.com/anthropics/claude-code/issues',
+  ISSUES_EXPLAINER: 'report the issue at https://github.com/claudio-labs/claudin/issues',
   PACKAGE_URL: '@claudiolabs/claudin',
   NATIVE_PACKAGE_URL: undefined,
 }

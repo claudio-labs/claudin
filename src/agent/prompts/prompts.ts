@@ -707,7 +707,7 @@ export async function computeSimpleEnvInfo(
     // `isolation:"worktree"` through buildWorktreeNotice /
     // buildAgentWorktreeNotice in src/tools/AgentTool/forkSubagent.ts.
     isWorktree ? WORKTREE_STASH_WARNING : null,
-    [`Is a git repository: ${isGit}`],
+    `Is a git repository: ${isGit}`,
     additionalWorkingDirectories && additionalWorkingDirectories.length > 0
       ? `Additional working directories:`
       : null,
@@ -753,7 +753,7 @@ function getKnowledgeCutoff(modelId: string): string | null {
   } else if (canonical.includes('claude-fable-5')) {
     return 'January 2026'
   } else if (canonical.includes('claude-opus-5')) {
-    return 'January 2026'
+    return 'May 2026'
   } else if (canonical.includes('claude-sonnet-5')) {
     return 'January 2026'
   } else if (canonical.includes('claude-sonnet-4-6')) {

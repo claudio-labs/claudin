@@ -6,9 +6,13 @@ import { isAntiNarrationEnabled } from 'src/agent/prompts/steeringToggles.js'
 // The universal harness (src/agent/prompts/prompts.ts) already carries the
 // transcript-shape invariant (gated on feature('ANTI_NARRATION')). This
 // addendum stacks the Opus-specific behavioral contract on top: explicit
-// numbered checkpoints, a selection rule for the final summary (what
-// changes the reader's next action — not a fixed bullet count), and a
-// failures-first carve-out. The overlap with the universal bullets is
+// numbered checkpoints and a selection rule for the final summary (what
+// changes the reader's next action — not a fixed bullet count). The
+// failures-first carve-out is NOT restated here — it lives in
+// ANTI_NARRATION_HARNESS_BULLETS, rides the same gate and reaches every
+// family, so this clause only back-references it. Restating it verbatim
+// shipped the same sentence twice in one prompt for Anthropic models.
+// The overlap with the universal bullets is
 // intentional — Opus 4.7/4.8 latch onto numbered-invariant framings far
 // longer than negative-only bullet lists, so restating the rule as
 // checkpoints reinforces it for Anthropic models without changing what
@@ -31,7 +35,7 @@ import { isAntiNarrationEnabled } from 'src/agent/prompts/steeringToggles.js'
 // preload (which stubs every feature flag to false), so tests can't reach
 // the live string through the addendum itself.
 export const ANTHROPIC_ANTI_NARRATION_ADDENDUM =
-  `Failures and unexpected results are reported immediately and succinctly; everything else waits for the summary. Speak only at four checkpoints: (1) task complete — lead with outcome, then \`file:line — what changed\` bullets selected for what changes the reader's next action, not an exhaustive list; (2) blocked and need a decision; (3) about to do something destructive — confirm first; (4) the user asked a question requiring a prose answer. Plan-mode output (EnterPlanMode/ExitPlanMode plans) is the deliverable, not narration — the checkpoint summary rules do not apply there.`
+  `Outside the failure cases above, speak only at four checkpoints: (1) task complete — lead with outcome, then \`file:line — what changed\` bullets selected for what changes the reader's next action, not an exhaustive list; (2) blocked and need a decision; (3) about to do something destructive — confirm first; (4) the user asked a question requiring a prose answer. Plan-mode output (EnterPlanMode/ExitPlanMode plans) is the deliverable, not narration — the checkpoint summary rules do not apply there.`
 
 // Exported for the same snapshot reason as the constant above.
 export const ANTHROPIC_BATCHED_EDITS_ADDENDUM =
