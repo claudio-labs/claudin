@@ -111,9 +111,15 @@ function buildPrompt(): string {
     (q, i) => `  ${i + 1}. Em \`${q.file}\`: ${q.ask}?`,
   )
   return [
-    `Responda estas ${QUESTIONS.length} perguntas sobre ESTE repositorio, uma por vez,`,
-    `ancorando cada resposta no codigo real (cite arquivo:linha).`,
-    `Responda uma pergunta por mensagem, na ordem, com 2-4 frases cada.`,
+    `Responda estas ${QUESTIONS.length} perguntas sobre ESTE repositorio,`,
+    `ancorando cada resposta no codigo real (cite arquivo:linha), 2-4 frases cada.`,
+    // Livre de ritmo de proposito, e isso NAO e estilo: `-p` e single-shot, nao
+    // existe turno de usuario, entao "uma pergunta por mensagem" nao cria turnos
+    // — so fragmenta o texto entre rodadas de tool call, e o sentinela se perde
+    // no meio. Com a instrucao de ritmo, 5 de 6 runs sairam sem sentinela e o
+    // bench inteiro se anulou; o cache-ab-bench ja documentava isso em
+    // buildProseWorkloadPrompt e eu escrevi este sem ler aquele.
+    `Pode se organizar como quiser — nao ha numero exigido de turnos.`,
     // Sem isso o bench mede outra coisa: numa run o modelo delegou para 3
     // sub-agentes e fez 4 leituras proprias, virando uma sessao de delegacao
     // contra duas de leitura dentro do MESMO braco. A variavel sob teste e como
@@ -122,7 +128,8 @@ function buildPrompt(): string {
     `Perguntas:`,
     ...steps,
     ``,
-    `Ao terminar a ultima, encerre a mensagem final com o token exato ${SENTINEL}.`,
+    `Quando tiver respondido todas as ${QUESTIONS.length}, encerre a mensagem final`,
+    `com o token exato ${SENTINEL}.`,
   ].join('\n')
 }
 

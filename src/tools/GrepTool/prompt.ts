@@ -1,6 +1,5 @@
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
-import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
 
 export const GREP_TOOL_NAME = 'Grep'
 
@@ -12,7 +11,6 @@ export function getDescription(): string {
   - Supports full regex syntax (e.g., "log.*Error", "function\\s+\\w+")
   - Filter files with glob parameter (e.g., "*.js", "**/*.tsx") or type parameter (e.g., "js", "py", "rust")
   - Output modes: "content" shows matching lines, "files_with_matches" shows only file paths (default), "count" shows match counts, "symbols" maps each match to the enclosing function/class signature
-  - A match line does not carry the function it sits in. For "which functions call this" or "what breaks if I change X", "content" can only look like an answer — the caller's name has to be guessed from the lines around the match. "symbols" is what answers it, in one call, and its signatures feed ${FILE_READ_TOOL_NAME}'s \`symbol=\`.
   - Use ${AGENT_TOOL_NAME} tool for open-ended searches requiring multiple rounds
   - Pattern syntax: Uses ripgrep (not grep) - literal braces need escaping (use \`interface\\{\\}\` to find \`interface{}\` in Go code)
   - Multiline matching: By default patterns match within single lines only. For cross-line patterns like \`struct \\{[\\s\\S]*?field\`, use \`multiline: true\`

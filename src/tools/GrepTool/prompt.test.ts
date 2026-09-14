@@ -4,36 +4,39 @@ import { getDescription } from 'src/tools/GrepTool/prompt.js'
 const prompt = getDescription()
 
 describe('Grep tool prompt — the symbols mode', () => {
-  test('states what content mode cannot do, not a preference', () => {
-    // The first version of this line said to "reach for symbols when you want
-    // to know WHERE something is used". Measured inert: across 3 runs of
-    // grep-rubric-ab on Sonnet 5 and a live session, `output_mode:"symbols"`
-    // was chosen ZERO times, including on a run that made 5 Grep calls. It
-    // lost because it was a preference competing with a declared default
-    // (files_with_matches), and a preference needs the model to already
-    // believe there is a problem with lines.
+  test('carries no sentence steering the model toward it', () => {
+    // Two were tried and both measured inert, which is why there is none now.
     //
-    // The cost is real and we watched it land: asked which functions call
-    // `buildReceipt`, the model used `content -C 2` and answered
-    // `checkoutOrder`. The function is called `checkout` — a match line does
-    // not carry its enclosing symbol, so the name had to be guessed. This
-    // asserts the capability framing survives a rewrite; the preference
-    // framing is what did not work.
-    expect(prompt).toContain('does not carry the function it sits in')
-    expect(prompt).not.toContain('Reach for "symbols" when')
+    // The first was a preference — "reach for symbols when you want to know
+    // WHERE something is used". Zero symbols calls across 3 runs of
+    // grep-rubric-ab and a live session. It lost to a declared default
+    // (files_with_matches), because a preference needs the model to already
+    // believe lines are a problem.
+    //
+    // The second stated the capability instead: a match line does not carry
+    // its enclosing function, so "which functions call this" cannot be answered
+    // from content mode — we had watched the model answer `checkoutOrder` for a
+    // function named `checkout`. Better writing, same result: 0 of 44 Grep
+    // calls in the feature arm against 0 of 43 in the baseline
+    // (read-strategy-ab, 2026-09-14, 3 reps per arm).
+    //
+    // Two forms, four measurements, no movement, and it cost 135 bytes on every
+    // request. The lane that DOES work here is behaviour, not instruction:
+    // GrepTool/autoPivot.ts already returns the symbol map on its own when a
+    // search is broad, measured over 5,109 recorded results. Widen that before
+    // writing a third sentence.
+    expect(prompt).not.toContain('symbols" when')
+    expect(prompt).not.toContain('does not carry the function it sits in')
   })
 
   test('does not promise coverage it cannot deliver', () => {
-    // Two wrong versions preceded this one. The 25-language list was wrong by
-    // omission (Dart and Groovy ARE scanned and were missing), and the "code
-    // files" that replaced it was wrong by over-promise: .ex, .exs and the
-    // PowerShell extensions resolve to a language but scanSymbols returns []
-    // for them, so every match renders "(matched outside any symbol)" with no
-    // line saying the scanner does not cover that file.
-    //
-    // Naming no scope at all is the only honest option available here — the
-    // capability sentence below is what carries the meaning, and a model that
-    // tries symbols on an unscanned file sees the empty map immediately.
+    // The 25-language list that used to qualify the modes bullet was wrong by
+    // omission — Dart and Groovy ARE scanned and were missing — and the "code
+    // files" that briefly replaced it was wrong by over-promise: .ex, .exs and
+    // the PowerShell extensions resolve to a language that scanSymbols returns
+    // nothing for, so every match renders "(matched outside any symbol)" with
+    // no line saying the scanner does not cover that file. Naming no scope is
+    // the only honest option that fits on the line.
     expect(prompt).not.toContain('TS/JS, Python, Go, Java')
     expect(prompt).not.toContain('signature (code files)')
   })

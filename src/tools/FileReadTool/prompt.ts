@@ -124,7 +124,7 @@ export function renderPromptTemplate(
   return `Reads a file from the local filesystem. You can access any file directly by using this tool: assume any path the user gives you is valid and readable, including a temporary path outside the project — try the read rather than verifying the path first.
 
 Reading strategy for code files (TS/JS, Python, Go, Java, Kotlin, C#, Rust, C/C++, PHP, Swift, Scala, Ruby, Lua, Bash, SQL, CSS/SCSS, HTML, Markdown, YAML, XML, .properties, .env, TOML, Dockerfile, Makefile, GraphQL, Terraform):
-Default to surgical reads: a targeted read costs a fraction of the file. Each read also costs a turn, and a turn re-sends the conversation — so slice when you know where to look, not to explore. Follow this order:
+Default to surgical reads: a targeted read costs a fraction of the file, and a read you did not need costs a turn on top of its bytes. Follow this order:
 1. Unknown file → start with view='outline' (~5-10% of full-file tokens; typically 150-1500 depending on symbol count). Returns every function, class and object-literal member signature with line ranges, plus the substantial handlers nested inside a large function. The header says how much of the file the symbols actually cover.
 2. Need to inspect or modify a known function X → use symbol='X' (returns just that function body, not the whole file). A symbol too large to send whole comes back as its own outline instead; add view='full' to get the body anyway.
 3. Need lines around a known location → use offset/limit (range read) instead of full file.

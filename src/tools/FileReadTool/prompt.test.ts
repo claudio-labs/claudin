@@ -55,7 +55,18 @@ describe('Read tool prompt — the reading-strategy list', () => {
     // session cost UP 35% — 23 reads against 18, 32 turns against 25. A ladder
     // with no exit is what produced that: nothing said when to stop slicing.
     expect(prompt).not.toContain('95% less')
-    expect(prompt).toContain('a turn re-sends the conversation')
+    expect(prompt).toContain('costs a turn on top of its bytes')
+  })
+
+  test('does not tell the model to avoid exploring', () => {
+    // A draft read "slice when you know where to look, not to explore", which
+    // contradicts step 1 — starting an unknown file at view='outline' IS
+    // exploring, and it is the step the ladder opens with. Measured, that
+    // clause moved whole-body reads from 32% to 40% of all reads across three
+    // reps per arm (read-strategy-ab, 2026-09-14) while the bill did not move
+    // at all: cache_read differed by 0.15% between the arms. So it pushed shape
+    // in the direction the ladder argues against and bought nothing for it.
+    expect(prompt).not.toContain('not to explore')
   })
 
   test('sets no slice ceiling', () => {
