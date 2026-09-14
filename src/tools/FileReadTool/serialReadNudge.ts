@@ -4,15 +4,21 @@
  * Detects the anti-pattern where the model serializes a multi-file
  * investigation into a chain of single-Read turns, each with a 1-line
  * narration text block in between. When triggered, FileReadTool appends a
- * <system-reminder> to the next Read's tool_result suggesting a fork or
+ * <system-reminder> to the next Read's tool_result suggesting delegation or
  * parallel Reads.
+ *
+ * The delegation half names a fresh `Code` agent, not a fork: this reminder
+ * lands at the exact moment the model is choosing a lane, so it has to agree
+ * with getAgentToolSection() and AgentTool/prompt.ts rather than undercut
+ * them. A fork measured 4x the child cost of a fresh agent at equal answers
+ * (scripts/bench/ab/fork-vs-fresh-ab.ts, 2026-09-09).
  *
  * Companion to FileReadTool.ts:CYBER_RISK_MITIGATION_REMINDER — same
  * injection surface (just-in-time tool_result append), proven non-inert.
  */
 
 export const SERIAL_READ_NUDGE_REMINDER =
-  '\n\n<system-reminder>\nYou\'ve made 3 sequential single-file Reads with narration between each. If you\'re investigating across multiple files, fork yourself in one call (Agent tool, no subagent_type), or emit the remaining Reads as parallel tool_use blocks in a single message. Skip the inter-read commentary — it bloats context without informing the user.\n</system-reminder>\n'
+  '\n\n<system-reminder>\nYou\'ve made 3 sequential single-file Reads with narration between each. If you\'re investigating across multiple files, hand the question to a fresh `Code` agent in one call, or emit the remaining Reads as parallel tool_use blocks in a single message. Skip the inter-read commentary — it bloats context without informing the user.\n</system-reminder>\n'
 
 /**
  * Minimal shape we care about for an assistant message in this detector.

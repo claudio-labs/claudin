@@ -12,6 +12,7 @@ import {
   buildSubagentNotes,
   buildWorkContractSections,
   buildHarnessItems,
+  buildAgentToolSection,
   getHarnessSection,
   isVerbositySteeringEnabled,
   prependBullets,
@@ -547,5 +548,20 @@ describe('multi-hop delegation guidance', () => {
     // replacement bullet meant a fork-off build got no multi-file advice at all.
     expect(src).toContain('which inherits your context')
     expect(src).toContain('it starts fresh, so give it a self-contained task description')
+  })
+
+  test('the no-double-work rule sits outside the fork ternary', () => {
+    // It shipped in the non-fork arm only. FORK_SUBAGENT is ungated, so that
+    // arm never renders and the rule was absent from the product: delegate a
+    // search, then run it yourself anyway, with nothing in the prompt saying
+    // not to. Both lanes have to carry it, which is a claim about the rendered
+    // text — so assert on both shapes through the builder rather than on the
+    // source, `isForkSubagentEnabled()` being a build-time constant that reads
+    // false here.
+    const rule = 'do not also perform the same searches yourself'
+    expect(buildAgentToolSection(true)).toContain(rule)
+    expect(buildAgentToolSection(false)).toContain(rule)
+    // ...and says it once, not once per lane.
+    expect(buildAgentToolSection(true).split(rule).length - 1).toBe(1)
   })
 })

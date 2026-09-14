@@ -160,6 +160,41 @@ describe('getBashGitInstructionsBody', () => {
       expect(bullet).toContain(char)
     }
   })
+
+  it('names every destructive command the model must not run unasked', () => {
+    // The trim that took this block from 7.4 KB to ~2.8 KB kept the deny list
+    // verbatim on purpose: it is the one part of the protocol where fewer
+    // tokens buy a worse outcome. A later pass that compresses the list into
+    // an adjective ("destructive git commands") drops the names, and the model
+    // is left guessing which ones those are.
+    delete process.env.USER_TYPE
+    const body = getBashGitInstructionsBody()
+    for (const command of [
+      'push --force',
+      'reset --hard',
+      'checkout .',
+      'restore .',
+      'clean -f',
+      'branch -D',
+      '--no-verify',
+      '--no-gpg-sign',
+      'git add -A',
+      'git add .',
+    ]) {
+      expect(body).toContain(command)
+    }
+  })
+
+  it('asks for one batched call, not for parallel commands', () => {
+    // The opener used to say "(run independent commands in parallel where
+    // possible)" two lines above "in a SINGLE Git call" — both instructions on
+    // the same screen, and only one of them is what the Git tool wants. The
+    // Bash→Git redirect refuses the parallel reading outright.
+    delete process.env.USER_TYPE
+    const body = getBashGitInstructionsBody()
+    expect(body).toContain(`SINGLE ${GIT_TOOL_NAME} call`)
+    expect(body).not.toContain('in parallel where possible')
+  })
 })
 
 describe('BashTool description vs git block injection', () => {

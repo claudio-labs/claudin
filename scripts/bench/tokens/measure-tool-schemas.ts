@@ -36,6 +36,13 @@ const ALL_ENGINES: readonly Engine[] = ['anthropic', 'openai', 'codex'] as const
 type Row = {
   name: string
   engine: Engine
+  /**
+   * The rendered description, not just its size. Carried so an invariant can
+   * read what the model actually receives without re-running the whole
+   * enableConfigs/NODE_ENV/schema-cache dance this module already does —
+   * see the near-duplicate check in measure-tool-schemas.test.ts.
+   */
+  description: string
   descriptionBytes: number
   schemaBytes: number
   tokens: number
@@ -122,6 +129,7 @@ async function measureTool(
     return {
       name: tool.name,
       engine,
+      description,
       descriptionBytes: Buffer.byteLength(description, 'utf8'),
       schemaBytes: Buffer.byteLength(serialized, 'utf8'),
       tokens: serialized ? roughTokenCountEstimation(serialized) : 0,
@@ -131,6 +139,7 @@ async function measureTool(
     return {
       name: tool.name,
       engine,
+      description: '',
       descriptionBytes: 0,
       schemaBytes: 0,
       tokens: 0,
@@ -384,7 +393,10 @@ async function main(): Promise<void> {
     process.stdout.write(
       JSON.stringify(
         {
-          rows: result.rows,
+          // `description` carries the whole rendered prompt; it exists for the
+          // near-duplicate invariant, not for the byte report, and emitting it
+          // would bury a size table under tens of KB of prose.
+          rows: result.rows.map(({ description: _description, ...row }) => row),
           totals,
           gitMode,
         },

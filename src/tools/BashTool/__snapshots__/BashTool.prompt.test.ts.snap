@@ -3,7 +3,8 @@
 exports[`getSimplePrompt family tiering verbose shape snapshot 1`] = `
 "Executes a given bash command and returns its output.
 
-The working directory persists between commands, but shell state does not. The shell environment is initialized from the user's profile (bash or zsh).
+The working directory persists between commands, but shell state (env vars, functions) does not. The shell environment is initialized from the user's profile (bash or zsh).
+Command output is displayed to you, not reliably to the user — describe what you found rather than pointing at it.
 
 IMPORTANT: Avoid running \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\`, \`awk\`, or \`echo\` via this tool unless a dedicated tool cannot do the job. Prefer:
 
@@ -21,7 +22,7 @@ IMPORTANT: Avoid running \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\
 # Instructions
  - If your command will create new directories or files, first use this tool to run \`ls\` to verify the parent directory exists and is the correct location.
  - Always quote file paths that contain spaces with double quotes in your command (e.g., cd "path with spaces/file.txt")
- - Try to maintain your current working directory throughout the session by using absolute paths and avoiding usage of \`cd\`. You may use \`cd\` if the User explicitly requests it.
+ - Try to maintain your current working directory throughout the session by using absolute paths and avoiding usage of \`cd\` — a \`cd\` to anywhere but the directory you are already in is checked as its own subcommand, so it can turn a compound command into a permission prompt. You may use \`cd\` if the User explicitly requests it.
  - You may specify an optional timeout in milliseconds (up to 600000ms / 10 minutes). By default, your command will timeout after 120000ms (2 minutes).
  - You can use the \`run_in_background\` parameter to run the command in the background. Only use this if you don't need the result immediately and are OK being notified when the command completes later. You do not need to check the output right away - you'll be notified when it finishes. You do not need to use '&' at the end of the command when using this parameter.
  - When issuing multiple commands:
@@ -42,7 +43,8 @@ IMPORTANT: Avoid running \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\
 exports[`getSimplePrompt family tiering lean shape snapshot 1`] = `
 "Executes a given bash command and returns its output.
 
-The working directory persists between commands, but shell state does not. The shell environment is initialized from the user's profile (bash or zsh).
+The working directory persists between commands, but shell state (env vars, functions) does not. The shell environment is initialized from the user's profile (bash or zsh).
+Command output is displayed to you, not reliably to the user — describe what you found rather than pointing at it.
 
 IMPORTANT: Avoid running \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\`, \`awk\`, or \`echo\` via this tool unless a dedicated tool cannot do the job. Prefer:
 
@@ -58,7 +60,7 @@ IMPORTANT: Avoid running \`find\`, \`grep\`, \`cat\`, \`head\`, \`tail\`, \`sed\
  - Communication: Output text directly (NOT echo/printf)
 
 # Instructions
- - Try to maintain your current working directory throughout the session by using absolute paths and avoiding usage of \`cd\`. You may use \`cd\` if the User explicitly requests it.
+ - Try to maintain your current working directory throughout the session by using absolute paths and avoiding usage of \`cd\` — a \`cd\` to anywhere but the directory you are already in is checked as its own subcommand, so it can turn a compound command into a permission prompt. You may use \`cd\` if the User explicitly requests it.
  - You may specify an optional timeout in milliseconds (up to 600000ms / 10 minutes). By default, your command will timeout after 120000ms (2 minutes).
  - You can use the \`run_in_background\` parameter to run the command in the background. Only use this if you don't need the result immediately and are OK being notified when the command completes later. You do not need to check the output right away - you'll be notified when it finishes. You do not need to use '&' at the end of the command when using this parameter.
  - When issuing multiple commands:
