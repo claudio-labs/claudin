@@ -10,6 +10,11 @@ import {
   resolveAppliedEffort,
 } from 'src/providers/effort/effort.js'
 import { registerBundledSkill } from 'src/skills/bundledSkills.js'
+import {
+  type ReviewScope,
+  formatReviewScope,
+  resolveReviewScope,
+} from 'src/skills/bundled/codeReviewScope.js'
 
 /**
  * Port of the upstream Claude Code `/code-review` skill (v2.1.173), minus the
@@ -17,9 +22,25 @@ import { registerBundledSkill } from 'src/skills/bundledSkills.js'
  * Claudin doesn't have, so `ultra` falls back to a local `max`-effort review.
  *
  * Levels mirror the effort enum: low → 1 inline diff pass; medium/high →
- * 3 correctness + 4 cleanup finder angles with a 1-vote verify; xhigh/max →
- * 5 correctness angles, recall mode, plus a gap sweep. All prompt bodies are
- * copied verbatim from upstream so findings behave identically.
+ * 3 correctness angles plus a cleanup angle; xhigh/max → a fourth correctness
+ * angle (wrapper/proxy), recall mode, plus a gap sweep.
+ *
+ * The angle bodies are upstream's, but the *shape* around them is not, and the
+ * three deliberate divergences are the reason this file is worth reading before
+ * editing:
+ *
+ * 1. **The scope is resolved in code** (`codeReviewScope.ts`), not by a fallback
+ *    chain the model walks, so every angle reviews the same range.
+ * 2. **Verification is batched by file**, not spawned per candidate — upstream's
+ *    one-agent-per-candidate fans out to dozens of sub-agents on a wide diff.
+ * 3. **Upstream's Angle D (language pitfalls) is folded into Angle A** and its
+ *    four cleanup angles into one, because each set shares a corpus and an
+ *    output shape; splitting them only multiplied re-reads of the same diff.
+ *
+ * Two upstream inconsistencies are also fixed here: `xhigh`/`max` now get the
+ * recall verdict ladder (upstream gives them the precision one plus an override,
+ * so the two highest levels refuted more aggressively than `high` did), and the
+ * "pass every candidate through" instruction reaches all multi-agent levels.
  */
 
 export type CodeReviewLevel = EffortLevel
@@ -128,26 +149,50 @@ export function resolveReviewLevel(
   return convertEffortValueToLevel(value)
 }
 
-// ─── Prompt fragments (verbatim from upstream) ───────────────────────────────
+// ─── Scope ───────────────────────────────────────────────────────────────────
 
-const PHASE0_GATHER_DIFF = `## Phase 0 — Gather the diff
+/** A `<target>` the user named: only the model can turn it into a diff. */
+const targetScopeBlock = (target: string): string => `## Scope
 
-Run \`git diff @{upstream}...HEAD\` (or \`git diff main...HEAD\` / \`git diff HEAD~1\`
-if there's no upstream) to get the unified diff under review. If there are
-uncommitted changes, or the range diff is empty, also run \`git diff HEAD\` and
-include the working-tree changes in scope — the review often runs before the
-commit. If a PR number, branch name, or file path was passed as an argument,
-review that target instead. Treat this diff as the review scope.
+Review target: \`${target}\`. Resolve it to a unified diff before anything else —
+\`gh pr diff <n>\` for a PR number, \`git diff <branch>...HEAD\` for a branch,
+\`git diff HEAD -- <path>\` for a path — and treat that diff as the review scope.
+Every angle below must use that same diff.
 `
 
-const ANGLE_A = `### Angle A — line-by-line diff scan
+/** No target and git could not answer: upstream's chain, as a last resort. */
+const UNRESOLVED_SCOPE_BLOCK = `## Scope
+
+Run \`git diff @{upstream}...HEAD\` (or \`git diff main...HEAD\` / \`git diff HEAD~1\`
+if there's no upstream) to get the unified diff under review, plus
+\`git diff HEAD\` for uncommitted changes. Treat the union as the review scope,
+and use the same range for every angle below.
+`
+
+function scopeBlockFor(
+  parsed: ParsedCodeReviewArgs,
+  scope: ReviewScope | null,
+): string {
+  if (parsed.target) return targetScopeBlock(parsed.target)
+  return scope ? formatReviewScope(scope) : UNRESOLVED_SCOPE_BLOCK
+}
+
+// ─── Finder angles ───────────────────────────────────────────────────────────
+
+// Upstream's Angle A and Angle D (language pitfalls) merged: D's list was a
+// relabelled subset of A's, and both start by reading the same hunks.
+const ANGLE_A = `### Angle A — line-by-line scan + language pitfalls
 
 Read every hunk in the diff, line by line. Then Read the enclosing function for
 each hunk — bugs in unchanged lines of a touched function are in scope (the PR
 re-exposes or fails to fix them). For every line ask: what input, state, timing,
-or platform makes this line wrong? Look for inverted/wrong conditions,
-off-by-one, null/undefined deref, missing \`await\`, falsy-zero checks,
-wrong-variable copy-paste, error swallowed in catch, unescaped regex metachars.
+or platform makes this line wrong? Cover the language-agnostic defects and the
+pitfalls specific to this diff's language/framework alike: inverted/wrong
+condition, off-by-one, null/undefined deref, missing \`await\`, falsy-zero check,
+wrong-variable copy-paste, error swallowed in a catch, unescaped regex
+metachars, \`==\` coercion, closure-captured loop var, mutable default arg,
+late-binding closure, nil-map write, range-var capture, SQL injection,
+timezone/DST drift, float equality.
 `
 
 const ANGLE_B = `### Angle B — removed-behavior auditor
@@ -166,15 +211,7 @@ return shape, a new exception, a timing/ordering dependency. Also check callees:
 does a parallel change in the same PR make a call unsafe?
 `
 
-const ANGLE_D = `### Angle D — language-pitfall specialist
-
-Scan for the classic pitfalls of the diff's language/framework — for example:
-JS falsy-zero, \`==\` coercion, closure-captured loop var; Python mutable default
-args, late-binding closures; Go nil-map write, range-var capture; SQL injection;
-timezone/DST drift; float equality. Flag any instance the diff introduces.
-`
-
-const ANGLE_E = `### Angle E — wrapper/proxy correctness
+const ANGLE_D = `### Angle D — wrapper/proxy correctness
 
 When the PR adds or modifies a type that wraps another (cache, proxy, decorator,
 adapter): check that every method routes to the wrapped instance and not back
@@ -184,55 +221,45 @@ through a registry/session/global — e.g. a caching provider holding a
 wrapper forwards all the methods the callers actually use.
 `
 
-const CORRECTNESS_ANGLES_3 = `${ANGLE_A}
-${ANGLE_B}
-${ANGLE_C}`
+// Upstream's four cleanup angles in one: they read the same diff and emit the
+// same shape, so four agents bought four re-reads and no extra lens. The axis
+// becomes the finding's `category`.
+const ANGLE_Z = `### Angle Z — cleanup pass (reuse, simplification, efficiency, altitude)
 
-const CORRECTNESS_ANGLES_5 = `${CORRECTNESS_ANGLES_3}
-${ANGLE_D}
-${ANGLE_E}`
+The angles above hunt for bugs; this one hunts for cleanup in the changed code.
+Cover four axes and tag each candidate with the axis it came from:
 
-const REUSE_SECTION = `### Reuse
+- **reuse** — new code that re-implements something the codebase already has.
+  Grep shared modules and files adjacent to the change, and name the existing
+  helper to call instead.
+- **simplification** — unnecessary complexity the diff adds: redundant or
+  derivable state, copy-paste with slight variation, deep nesting, dead code
+  left behind. Name the simpler form that does the same job.
+- **efficiency** — wasted work the diff introduces: redundant computation or
+  repeated I/O, independent operations run sequentially, blocking work added to
+  startup or a hot path. Also long-lived objects built from closures or captured
+  environments — they keep the entire enclosing scope alive for the object's
+  lifetime (a memory leak when that scope holds large values); prefer a
+  class/struct that copies only the fields it needs. Name the cheaper
+  alternative.
+- **altitude** — a change implemented at the wrong depth, as a fragile bandaid.
+  Special cases layered on shared infrastructure are a sign the fix isn't deep
+  enough; prefer generalizing the underlying mechanism over adding special cases.
 
-The angles above hunt for bugs; this one and the next two hunt for cleanup in
-the changed code. Flag new code that re-implements something the codebase
-already has — Grep shared/utility modules and files adjacent to the change,
-and name the existing helper to call instead.
-`
-
-const SIMPLIFICATION_SECTION = `### Simplification
-
-Flag unnecessary complexity the diff adds: redundant or derivable state,
-copy-paste with slight variation, deep nesting, dead code left behind. Name
-the simpler form that does the same job.
-`
-
-const EFFICIENCY_SECTION = `### Efficiency
-
-Flag wasted work the diff introduces: redundant computation or repeated I/O,
-independent operations run sequentially, blocking work added to startup or
-hot paths. Also flag long-lived objects built from closures or captured
-environments — they keep the entire enclosing scope alive for the object's
-lifetime (a memory leak when that scope holds large values); prefer a
-class/struct that copies only the fields it needs. Name the cheaper
-alternative.
-`
-
-const ALTITUDE_SECTION = `### Altitude
-
-Check that each change is implemented at the right depth, not as a fragile
-bandaid. Special cases layered on shared infrastructure are a sign the fix
-isn't deep enough — prefer generalizing the underlying mechanism over adding
-special cases.
-`
-
-const CLEANUP_PRECEDENCE = `Cleanup and altitude candidates use the same \`file\`/\`line\`/\`summary\` shape; in
+These use the same \`file\`/\`line\`/\`summary\` shape as the correctness angles; in
 \`failure_scenario\`, state the concrete cost (what is duplicated, wasted, or
-harder to maintain) instead of a crash. Correctness bugs always outrank
-cleanup and altitude findings when the output cap forces a cut.
+harder to maintain) instead of a crash. Correctness bugs always outrank cleanup
+findings when the output cap forces a cut.
 `
 
-const VERDICT_LADDER = `- **CONFIRMED** — can name the inputs/state that trigger it and the wrong
+const PASS_EVERY_CANDIDATE = `Pass every candidate with a nameable failure scenario through — finders that
+silently drop half-believed candidates bypass the verify step and are the
+dominant cause of misses.
+`
+
+// ─── Verify ──────────────────────────────────────────────────────────────────
+
+const VERDICT_LADDER_PRECISION = `- **CONFIRMED** — can name the inputs/state that trigger it and the wrong
   output or crash. Quote the line.
 - **PLAUSIBLE** — mechanism is real, trigger is uncertain (timing, env,
   config). State what would confirm it.
@@ -250,72 +277,149 @@ lost an anchor. These are PLAUSIBLE.
 actual line); provably impossible (type/constant/invariant — show it); already
 handled in this diff (cite the guard); or pure style with no observable effect.`
 
-const VERIFY_PRECISION = `## Phase 2 — Verify (1-vote, 3-state)
+// One verifier per FILE, not per candidate: upstream spawns an agent per
+// surviving candidate, which is ~40 sub-agents on a 7-angle run and makes every
+// one of them re-read the same file to judge one line.
+const verifySection = (recall: boolean): string => `## Phase 2 — Verify (batched by file)
 
-Dedup candidates that point at the same line/mechanism, keeping the one with
-the most concrete failure scenario. For each remaining candidate, run **one
-verifier** via the ${AGENT_TOOL_NAME} tool: give it the diff, the relevant
-file(s), and the candidate, and have it return exactly one of:
+Dedup candidates that point at the same line and mechanism, keeping the one with
+the most concrete failure scenario. Then group the survivors **by file** and run
+**one verifier per file** via the ${AGENT_TOOL_NAME} tool: give it that file, its hunks,
+and every candidate in it. It returns one verdict per candidate${
+  recall ? ', recall-biased' : ''
+}:
 
-${VERDICT_LADDER}
+${recall ? VERDICT_LADDER_RECALL : VERDICT_LADDER_PRECISION}
 
-Keep candidates where the vote is CONFIRMED or PLAUSIBLE.
+Keep CONFIRMED and PLAUSIBLE. Drop REFUTED.
 `
-
-const VERIFY_RECALL = `## Phase 2 — Verify (1-vote, recall-biased)
-
-Dedup near-duplicates (same defect, same location, same reason → keep one). For
-each remaining candidate, run **one verifier** via the ${AGENT_TOOL_NAME} tool:
-give it the diff, the relevant file(s), and the candidate; it returns exactly
-one of **CONFIRMED / PLAUSIBLE / REFUTED**.
-
-${VERDICT_LADDER_RECALL}
-
-Keep **CONFIRMED and PLAUSIBLE**. Drop REFUTED.
-`
-
-const SWEEP_GAP_FOCUS = `moved/extracted code that dropped a guard
-or anchor; second-tier footguns (dataclass default evaluated once, \`hash()\`
-non-determinism, lock-scope shrink, predicate methods with side effects);
-setup/teardown asymmetry in tests; config defaults flipped.`
 
 const SWEEP_SECTION = `## Phase 3 — Sweep for gaps
 
 Run **one more finder** as a fresh reviewer who has the verified list. Re-read
 the diff and enclosing functions looking ONLY for defects not already listed.
 Do not re-derive or re-confirm anything already there — the job is gaps. Focus
-on what the first pass tends to miss: ${SWEEP_GAP_FOCUS}
+on what the first pass tends to miss: moved/extracted code that dropped a guard
+or anchor; second-tier footguns (dataclass default evaluated once, \`hash()\`
+non-determinism, lock-scope shrink, predicate methods with side effects);
+setup/teardown asymmetry in tests; config defaults flipped.
 
 Surface **up to 8 additional candidates**, each naming a defect not already on
 the list. If nothing new, return an empty sweep — do not pad.
 `
 
+// The schema describes the fields (and says "most-severe first"), so restating
+// them here only created a second source of truth that could drift from
+// `findingSchema`. This section carries what the schema can't.
 const outputSection = (maxFindings: number): string => `## Output
 
 Report the findings with a **single ${REPORT_FINDINGS_TOOL_NAME} tool call** — do not
 also print them as text. ${REPORT_FINDINGS_TOOL_NAME} is a deferred tool: if it is
 not already in your tool list, load it first with ${TOOL_SEARCH_TOOL_NAME}
-(\`select:${REPORT_FINDINGS_TOOL_NAME}\`). Each finding is one object:
+(\`select:${REPORT_FINDINGS_TOOL_NAME}\`). Its schema names the fields; this is what
+the schema can't say:
 
-- \`file\` (required) — repo-relative path.
-- \`line\` — 1-indexed line the finding anchors to.
-- \`summary\` (required) — one-sentence statement of the bug.
-- \`failure_scenario\` (required) — concrete inputs/state → wrong output/crash.
-- \`verdict\` — \`CONFIRMED\` or \`PLAUSIBLE\` from the verify pass.
-- \`category\` — kebab-case slug (\`correctness\`, \`simplification\`, \`efficiency\`, …).
-
-Pass \`findings\` ranked most-severe first, and set \`level\` to the review effort.
-If more than ${maxFindings} survive, keep the ${maxFindings} most severe. If nothing
-survives verification, call ${REPORT_FINDINGS_TOOL_NAME} with an empty \`findings\` array.
+- Rank \`findings\` most-severe first, correctness before cleanup.
+- Set \`verdict\` from the verify pass, \`category\` to the angle's axis, and
+  \`level\` to the review effort.
+- Keep the ${maxFindings} most severe if more survive, and call it with an empty
+  \`findings\` array if nothing does.
 `
 
-const LOW_PROMPT = `\`low effort → 1 diff pass → no verify → ≤4 findings\`
+// ─── Level prompts ───────────────────────────────────────────────────────────
 
+type MultiAgentConfig = {
+  header: string
+  intro: string
+  angles: string[]
+  candidates: number
+  recall: boolean
+  sweep: boolean
+  maxFindings: number
+}
+
+const CORRECTNESS_ANGLES_3 = [ANGLE_A, ANGLE_B, ANGLE_C]
+const CORRECTNESS_ANGLES_4 = [...CORRECTNESS_ANGLES_3, ANGLE_D]
+
+const MULTI_AGENT_CONFIGS: Record<
+  Exclude<CodeReviewLevel, 'low'>,
+  MultiAgentConfig
+> = {
+  medium: {
+    header:
+      '`medium effort → 4 angles × 6 candidates → verify by file → ≤8 findings`',
+    intro: `You are reviewing for **precision** at medium effort: every finding you surface
+should be one a maintainer would act on.`,
+    angles: [...CORRECTNESS_ANGLES_3, ANGLE_Z],
+    candidates: 6,
+    recall: false,
+    sweep: false,
+    maxFindings: 8,
+  },
+  high: {
+    header:
+      '`high effort → 4 angles × 6 candidates → verify by file (recall) → ≤10 findings`',
+    intro: `You are reviewing for **recall** at high effort: catch every real bug a careful
+reviewer would catch in one sitting. At this level, catching real bugs matters
+more than avoiding false positives. Err on the side of surfacing.`,
+    angles: [...CORRECTNESS_ANGLES_3, ANGLE_Z],
+    candidates: 6,
+    recall: true,
+    sweep: false,
+    maxFindings: 10,
+  },
+  xhigh: {
+    header:
+      '`xhigh effort → 5 angles × 8 candidates → verify by file (recall) → sweep → ≤15 findings`',
+    intro: `You are reviewing for **recall** at extra-high effort: catch every real bug. At
+this level, catching real bugs matters more than avoiding false positives — a
+missed bug ships. Err on the side of surfacing.`,
+    angles: [...CORRECTNESS_ANGLES_4, ANGLE_Z],
+    candidates: 8,
+    recall: true,
+    sweep: true,
+    maxFindings: 15,
+  },
+  max: {
+    header:
+      '`max effort → 5 angles × 8 candidates → verify by file (recall) → sweep → ≤15 findings`',
+    intro: `You are reviewing for **recall** at maximum effort: catch every real bug. At
+this level, catching real bugs matters more than avoiding false positives — a
+missed bug ships. Err on the side of surfacing.`,
+    angles: [...CORRECTNESS_ANGLES_4, ANGLE_Z],
+    candidates: 8,
+    recall: true,
+    sweep: true,
+    maxFindings: 15,
+  },
+}
+
+function multiAgentPrompt(cfg: MultiAgentConfig, scopeBlock: string): string {
+  const correctnessCount = cfg.angles.length - 1
+  return `${cfg.header}
+
+${cfg.intro}
+
+${scopeBlock}
+## Phase 1 — Find candidates (${correctnessCount} correctness angles + 1 cleanup angle, up to ${cfg.candidates} each)
+
+Run **${cfg.angles.length} independent finder angles** via the ${AGENT_TOOL_NAME} tool. Each surfaces
+**up to ${cfg.candidates} candidate findings** with \`file\`, \`line\`, a one-line \`summary\`, and a
+concrete \`failure_scenario\`. Do NOT let one angle's conclusions suppress
+another's — if two angles flag the same line for different reasons, record both.
+
+${cfg.angles.join('\n')}
+${PASS_EVERY_CANDIDATE}
+${verifySection(cfg.recall)}${cfg.sweep ? `\n${SWEEP_SECTION}` : ''}
+${outputSection(cfg.maxFindings)}`
+}
+
+const lowPrompt = (scopeBlock: string): string => `\`low effort → 1 diff pass → no verify → ≤4 findings\`
+
+${scopeBlock}
 ## Turn 1 — read
 
-One tool call: read the unified diff (\`git diff @{upstream}...HEAD; git diff HEAD\`
-to cover both committed and uncommitted changes, or \`git diff main...HEAD\` /
-the target passed as an argument). Skip test/fixture
+One tool call: read the diff named in the Scope section above. Skip test/fixture
 hunks (\`test/\`, \`spec/\`, \`__tests__/\`, \`*_test.*\`, \`*.test.*\`,
 \`fixtures/\`, \`testdata/\`) — test-file changes are not reviewed at this level.
 No subagents, no full-file reads.
@@ -336,94 +440,6 @@ Output at most **4 findings**, most-severe first, one line each:
 \`path/to/file.ext:123 — what's wrong and the concrete failure\`. If nothing
 qualifies, output exactly \`(none)\`.
 `
-
-const MEDIUM_PROMPT = `\`medium effort → 3+4 angles × 6 candidates → 1-vote verify → ≤8 findings\`
-
-You are reviewing for **precision** at medium effort: every finding you surface
-should be one a maintainer would act on.
-
-${PHASE0_GATHER_DIFF}
-## Phase 1 — Find candidates (3 correctness angles + 3 cleanup angles + 1 altitude angle, up to 6 each)
-
-Run **7 independent finder angles** via the ${AGENT_TOOL_NAME} tool. Each
-surfaces **up to 6 candidate findings** with \`file\`, \`line\`, a one-line
-\`summary\`, and a concrete \`failure_scenario\`.
-
-${CORRECTNESS_ANGLES_3}
-${REUSE_SECTION}
-${SIMPLIFICATION_SECTION}
-${EFFICIENCY_SECTION}
-${ALTITUDE_SECTION}
-${CLEANUP_PRECEDENCE}
-Pass every candidate with a nameable failure scenario through — finders that
-silently drop half-believed candidates bypass the verify step and are the
-dominant cause of misses.
-
-${VERIFY_PRECISION}
-${outputSection(8)}`
-
-const HIGH_PROMPT = `\`high effort → 3+4 angles × 6 candidates → 1-vote verify (recall-biased) → ≤10 findings\`
-
-You are reviewing for **recall** at high effort: catch every real bug a careful
-reviewer would catch in one sitting. At this level, catching real bugs matters
-more than avoiding false positives. Err on the side of surfacing.
-
-${PHASE0_GATHER_DIFF}
-## Phase 1 — Find candidates (3 correctness angles + 3 cleanup angles + 1 altitude angle, up to 6 each)
-
-Run **7 independent finder angles** via the ${AGENT_TOOL_NAME} tool. Each
-surfaces **up to 6 candidate findings** with \`file\`, \`line\`, a one-line
-\`summary\`, and a concrete \`failure_scenario\`.
-
-${CORRECTNESS_ANGLES_3}
-${REUSE_SECTION}
-${SIMPLIFICATION_SECTION}
-${EFFICIENCY_SECTION}
-${ALTITUDE_SECTION}
-${CLEANUP_PRECEDENCE}
-Pass every candidate with a nameable failure scenario through — finders that
-silently drop half-believed candidates bypass the verify step and are the
-dominant cause of misses.
-
-${VERIFY_RECALL}
-${outputSection(10)}`
-
-const recallMaxPrompt = (
-  level: 'xhigh' | 'max',
-): string => `\`${level} effort → 5+4 angles × 8 candidates → 1-vote verify → sweep → ≤15 findings\`
-
-You are reviewing for **recall** at ${level === 'max' ? 'maximum' : 'extra-high'} effort: catch every real bug. At
-this level, catching real bugs matters more than avoiding false positives — a
-missed bug ships. Err on the side of surfacing.
-
-${PHASE0_GATHER_DIFF}
-## Phase 1 — Find candidates (5 correctness angles + 3 cleanup angles + 1 altitude angle, up to 8 each)
-
-Run **9 independent finder angles** via the ${AGENT_TOOL_NAME} tool. Each
-surfaces **up to 8 candidate findings**. Do NOT let one angle's conclusions
-suppress another's — if two angles flag the same line for different reasons,
-record both.
-
-${CORRECTNESS_ANGLES_5}
-${REUSE_SECTION}
-${SIMPLIFICATION_SECTION}
-${EFFICIENCY_SECTION}
-${ALTITUDE_SECTION}
-${CLEANUP_PRECEDENCE}
-${VERIFY_PRECISION}
-This is recall mode — a single non-REFUTED vote carries the finding. Do NOT
-drop on uncertainty.
-
-${SWEEP_SECTION}
-${outputSection(15)}`
-
-const LEVEL_PROMPTS: Record<CodeReviewLevel, string> = {
-  low: LOW_PROMPT,
-  medium: MEDIUM_PROMPT,
-  high: HIGH_PROMPT,
-  xhigh: recallMaxPrompt('xhigh'),
-  max: recallMaxPrompt('max'),
-}
 
 const COMMENT_ADDENDUM = `
 
@@ -464,27 +480,16 @@ const HEADLESS_ADDENDUM = `
 ## Headless output (non-interactive session)
 
 You are running non-interactively (\`-p\`), where the ${REPORT_FINDINGS_TOOL_NAME}
-render is not shown. In addition to the ${REPORT_FINDINGS_TOOL_NAME} call, also
-print the findings as a JSON array to stdout so text-mode consumers still
-receive them:
-
-\`\`\`json
-[
-  {
-    "file": "path/to/file.ext",
-    "line": 123,
-    "summary": "one-sentence statement of the bug",
-    "failure_scenario": "concrete inputs/state → wrong output/crash"
-  }
-]
-\`\`\`
-
-Ranked most-severe first; \`[]\` if nothing survived.
+render is not shown. After the tool call, print the same findings as a JSON array
+to stdout — one object per finding with the schema's fields (\`file\`, \`line\`,
+\`summary\`, \`failure_scenario\`), ranked most-severe first, \`[]\` if nothing
+survived — so text-mode consumers still receive them.
 `
 
 export function buildCodeReviewPrompt(
   parsed: ParsedCodeReviewArgs,
   context?: ToolUseContext,
+  scope?: ReviewScope | null,
 ): string {
   const level = resolveReviewLevel(parsed, context)
 
@@ -495,15 +500,17 @@ export function buildCodeReviewPrompt(
     note = `(Ignoring unrecognized effort "${parsed.unrecognizedLevel}"; valid: ${EFFORT_LEVELS.join(', ')}. Using ${level}.)\n`
   }
 
-  const targetLine = parsed.target
-    ? `Review target: \`${parsed.target}\`\n`
-    : ''
+  const scopeBlock = scopeBlockFor(parsed, scope ?? null)
+  const body =
+    level === 'low'
+      ? lowPrompt(scopeBlock)
+      : multiAgentPrompt(MULTI_AGENT_CONFIGS[level], scopeBlock)
 
   // Low effort already prints a text list, so it needs no headless fallback.
   const headless =
     level !== 'low' && getIsNonInteractiveSession() ? HEADLESS_ADDENDUM : ''
 
-  return `${note}${targetLine}${LEVEL_PROMPTS[level]}${parsed.comment ? COMMENT_ADDENDUM : ''}${parsed.fix ? FIX_ADDENDUM : ''}${headless}`
+  return `${note}${body}${parsed.comment ? COMMENT_ADDENDUM : ''}${parsed.fix ? FIX_ADDENDUM : ''}${headless}`
 }
 
 export function registerCodeReviewSkill(): void {
@@ -532,7 +539,12 @@ export function registerCodeReviewSkill(): void {
     ],
     async getPromptForCommand(args, context) {
       const parsed = parseCodeReviewArgs(args)
-      return [{ type: 'text', text: buildCodeReviewPrompt(parsed, context) }]
+      // A named target is the model's to resolve; only the default "review what
+      // changed here" path can be pinned to one range up front.
+      const scope = parsed.target ? null : await resolveReviewScope()
+      return [
+        { type: 'text', text: buildCodeReviewPrompt(parsed, context, scope) },
+      ]
     },
   })
 }
