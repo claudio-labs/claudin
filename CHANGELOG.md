@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.1.30 — 2026-09-14
+
+### ✨ Features
+
+- feat(providers): unify rate-limit messages, add countdown and resume (#200) (276f1c4b)
+- feat(tui): tint the Nerd Font file icons by file type (#194) (1fc06ffc)
+- feat(diff): open the reviewer with ctrl+g and keep the chat running beside it (#191) (e61bde32)
+- feat(explorer): borderless panes, tinted file side, ctrl+←/→ focus (#190) (645ef54e)
+- feat(diff): review in a side panel and attach lines to the prompt (#188) (d8e17604)
+
+### 🐛 Bug Fixes
+
+- fix(prompts): correct four defects in the assembled system prompt (#196) (fa101bb0)
+- fix(tui): stop the side-panel divider rendering as a checkerboard (#195) (14873939)
+- fix(prompts): remove four contradictions and trim the git protocol (#193) (b4caa4f2)
+- fix(repl): scroll the whole timeline instead of the last 200 messages (#192) (1f826b0a)
+- fix(cache): keep a lagging breakpoint so the lookback window finds the last write (#189) (5a82ccff)
+
+### ♻️ Refactoring
+
+- refactor(code-review): pin the review scope and batch verify by file (#199) (6652e08d)
+
+### 📦 Dependencies
+
+- chore(deps): bump the production-dependencies group across 1 directory with 11 updates (#198) (505251f4)
+- chore(deps): bump the dev-dependencies group with 3 updates (#197) (2d2fe70d)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+
+
 ## v1.1.29 — 2026-09-11
 
 ### ✨ Features
