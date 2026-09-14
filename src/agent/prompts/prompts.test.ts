@@ -94,10 +94,23 @@ describe('ANTHROPIC_ANTI_NARRATION_ADDENDUM', () => {
     expect(ANTHROPIC_ANTI_NARRATION_ADDENDUM).toMatchSnapshot()
   })
 
-  test('leads with the failures-immediately carve-out', () => {
+  test('back-references the failures carve-out instead of restating it', () => {
+    // The carve-out sentence lives in ANTI_NARRATION_HARNESS_BULLETS, which
+    // rides the same gate and reaches every family. This addendum used to
+    // open with a verbatim copy of it, so an Anthropic-family prompt carried
+    // the identical sentence twice on the cached prefix.
     expect(ANTHROPIC_ANTI_NARRATION_ADDENDUM.startsWith(
-      'Failures and unexpected results are reported immediately',
+      'Outside the failure cases above,',
     )).toBe(true)
+    expect(ANTHROPIC_ANTI_NARRATION_ADDENDUM).not.toContain(
+      'Failures and unexpected results are reported immediately',
+    )
+  })
+
+  test('does not restate any anti-narration harness bullet', () => {
+    for (const bullet of ANTI_NARRATION_HARNESS_BULLETS) {
+      expect(ANTHROPIC_ANTI_NARRATION_ADDENDUM).not.toContain(bullet)
+    }
   })
 
   test('carves out plan-mode from the checkpoint summary rules', () => {
