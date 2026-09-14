@@ -12,6 +12,7 @@ import { csi } from 'src/terminal/ink/termio/csi.js'
  */
 export const DEC = {
   CURSOR_VISIBLE: 25,
+  AUTO_WRAP: 7,
   ALT_SCREEN: 47,
   ALT_SCREEN_CLEAR: 1049,
   MOUSE_NORMAL: 1000,
@@ -42,6 +43,11 @@ export const EFE = decset(DEC.FOCUS_EVENTS)
 export const DFE = decreset(DEC.FOCUS_EVENTS)
 export const SHOW_CURSOR = decset(DEC.CURSOR_VISIBLE)
 export const HIDE_CURSOR = decreset(DEC.CURSOR_VISIBLE)
+// DECAWM. The renderer positions every cell itself and wraps its own text, so
+// an automatic wrap at the right margin is never something it asked for — see
+// writeDiffToTerminal for why one costs a whole row.
+export const ENABLE_AUTO_WRAP = decset(DEC.AUTO_WRAP)
+export const DISABLE_AUTO_WRAP = decreset(DEC.AUTO_WRAP)
 export const ENTER_ALT_SCREEN = decset(DEC.ALT_SCREEN_CLEAR)
 export const EXIT_ALT_SCREEN = decreset(DEC.ALT_SCREEN_CLEAR)
 // Mouse tracking: 1000 reports button press/release/wheel, 1002 adds drag

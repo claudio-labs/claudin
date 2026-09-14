@@ -44,9 +44,22 @@ checkout+`bun run build`+relaunch cycle is ~15s and settles the question.
   submits. The submitted turn renders correctly and the buffer keeps a live copy
   — typing appends to it, so it is real input state, not a vacated-cell ghost.
   An artifact of the burst-typed keys, not of the code under test.
+- **`send-keys -l '!ls …'` does NOT run local bash — it bills a model turn.**
+  The prompt input treats a burst of keys as a paste and escapes the leading
+  `!`, so the transcript shows `\!ls …` and the text is submitted as an ordinary
+  user message. Confirmed twice on 2026-09-13, each time spending tokens before
+  `Escape` cut it off. There is no known `send-keys` form that reaches bash
+  mode; to get tool-output rows (`●`, `⎿`) into the transcript cheaply, let the
+  model run the command and interrupt as soon as the rows appear.
 - **`/help`'s shortcut grid overlaps its middle column**: it renders
   `\⏎ for newlineggle tasks`, two entries written over the same cells. Present
   in shipped v1.1.8.
+
+To inspect what the app actually *emitted* rather than what tmux made of it, run
+the launcher under `script -qfc '<cmd>' /tmp/s.raw` inside the session and replay
+the raw stream through a VT sim — that is the only way to see a width-drift or
+cursor-desync bug, since `capture-pane` renders ambiguous glyphs narrow and so
+always shows the model. Worked example in [[ink-autowrap-eats-a-row]].
 
 Cheap surfaces worth driving after a broad refactor, all inline-mode: the trust
 dialog, `/status` and its Config/Usage tabs, `tmux resize-window` at 60/100/140

@@ -5,7 +5,14 @@ import { gte } from 'src/shared/semver.js'
 import { getClearTerminalSequence } from 'src/terminal/ink/clearTerminal.js'
 import type { Diff } from 'src/terminal/ink/frame.js'
 import { cursorMove, cursorTo, eraseLines } from 'src/terminal/ink/termio/csi.js'
-import { BSU, ESU, HIDE_CURSOR, SHOW_CURSOR } from 'src/terminal/ink/termio/dec.js'
+import {
+  BSU,
+  DISABLE_AUTO_WRAP,
+  ENABLE_AUTO_WRAP,
+  ESU,
+  HIDE_CURSOR,
+  SHOW_CURSOR,
+} from 'src/terminal/ink/termio/dec.js'
 import { link } from 'src/terminal/ink/termio/osc.js'
 
 export type Progress = {
@@ -294,7 +301,23 @@ export function writeDiffToTerminal(
   const useSync = !skipSyncMarkers
 
   // Buffer all writes into a single string to avoid multiple write calls
-  let buffer = useSync ? BSU : ''
+  // Auto-wrap off for the paint. Every row is positioned absolutely and the
+  // renderer does its own wrapping, so the margin is only ever reached by a
+  // row that fills the screen — and then ONE cell of width drift (a glyph the
+  // terminal renders wider than `stringWidth` says) pushes a character past
+  // it. With DECAWM on that character wraps, the terminal eats a row, and
+  // every later `moveCursorTo` in the frame — which steps rows RELATIVELY —
+  // paints one row too low: the side panel's one-glyph-per-row divider came
+  // out as a checkerboard. Off, the overflow is clamped to the last column
+  // and the damage stays on its own row. Restored inside the same write, so
+  // the terminal is never left without it.
+  //
+  // OUTSIDE the BSU/ESU pair on purpose: a mode change is not frame content,
+  // and thirteen test harnesses read "the last frame" as the bytes between
+  // those two markers and ask whether it is blank. `trim()` does not remove an
+  // escape sequence, so a toggle in there makes Ink's empty unmount frame look
+  // like content and they extract that instead of the render.
+  let buffer = DISABLE_AUTO_WRAP + (useSync ? BSU : '')
 
   for (const patch of diff) {
     switch (patch.type) {
@@ -335,5 +358,6 @@ export function writeDiffToTerminal(
 
   // Add synchronized update end and flush buffer
   if (useSync) buffer += ESU
+  buffer += ENABLE_AUTO_WRAP
   terminal.stdout.write(buffer)
 }

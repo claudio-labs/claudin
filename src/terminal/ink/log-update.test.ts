@@ -14,6 +14,7 @@ import {
   StylePool,
 } from 'src/terminal/ink/screen.ts'
 import { stringWidth } from 'src/terminal/ink/stringWidth.ts'
+import { type Terminal, writeDiffToTerminal } from 'src/terminal/ink/terminal.ts'
 import { cursorMove, cursorTo, eraseLines } from 'src/terminal/ink/termio/csi.ts'
 
 function collectStdout(diff: ReturnType<LogUpdate['render']>): string {
@@ -302,6 +303,133 @@ test('vacated nav-bar row is cleared even when the terminal renders ambiguous gl
 
   const vacated = grid[28].join('').replace(/[\s\u0000]+/g, '')
   expect(vacated).toBe('')
+})
+
+// Regression: the /diff side panel's divider rendered as a checkerboard — the
+// one-glyph-per-row left border showed on every OTHER row (pt-BR "quadriculada").
+// A split row is painted as ONE run that ends at the last column: the chat, the
+// `│`, then the panel's background fill out to the screen edge. If the terminal
+// renders any glyph in that run wider than our width model says — `│` itself is
+// East-Asian-Ambiguous, and so are `─ ● …` — the run overflows the margin, the
+// terminal auto-wraps, and it eats a row. moveCursorTo steps rows RELATIVELY
+// (CR + cursor-down), so from there every row of the frame paints one row too
+// low and the divider lands on half of them.
+//
+// The fix turns DECAWM off around the paint, so the overflow is clamped to the
+// last column instead of advancing a row. This replays the REAL serialization
+// (writeDiffToTerminal) through a VT that honours the wrap mode and renders `│`
+// wide, and asserts every row still gets its divider.
+function replayWithWrap(
+  ansi: string,
+  width: number,
+  height: number,
+  wideChars: Set<string>,
+): string[][] {
+  const grid = Array.from({ length: height }, () => Array<string>(width).fill(' '))
+  const cellWidth = (ch: string) => (wideChars.has(ch) ? 2 : Math.max(1, stringWidth(ch)))
+  let row = 0
+  let col = 0
+  let autoWrap = true
+  let i = 0
+  while (i < ansi.length) {
+    const c = ansi[i]
+    if (c === '\x1b' && ansi[i + 1] === '[') {
+      let j = i + 2
+      let priv = ''
+      while (j < ansi.length && ansi[j] === '?') priv += ansi[j++]
+      let num = ''
+      while (j < ansi.length && /[0-9;]/.test(ansi[j])) num += ansi[j++]
+      const cmd = ansi[j]
+      const n = parseInt(num || '1', 10)
+      if (priv === '?' && num === '7') autoWrap = cmd === 'h'
+      else if (cmd === 'A') row = Math.max(0, row - n)
+      else if (cmd === 'B') row = Math.min(height - 1, row + n)
+      else if (cmd === 'C') col += n
+      else if (cmd === 'D') col = Math.max(0, col - n)
+      else if (cmd === 'G') col = n - 1
+      else if (cmd === 'K') for (let x = col; x < width; x++) grid[row][x] = ' '
+      i = j + 1
+      continue
+    }
+    if (c === '\x1b') {
+      i++
+      if (ansi[i] === ']') while (i < ansi.length && ansi[i] !== '\x07') i++
+      i++
+      continue
+    }
+    if (c === '\r') {
+      col = 0
+      i++
+      continue
+    }
+    if (c === '\n') {
+      row = Math.min(height - 1, row + 1)
+      i++
+      continue
+    }
+    const ch = String.fromCodePoint(ansi.codePointAt(i)!)
+    if (col >= width) {
+      if (autoWrap) {
+        col = 0
+        row = Math.min(height - 1, row + 1)
+      } else {
+        col = width - 1
+      }
+    }
+    grid[row][col] = ch
+    const w = cellWidth(ch)
+    if (w === 2 && col + 1 < width) grid[row][col + 1] = ''
+    col += w
+    i += ch.length
+  }
+  return grid
+}
+
+test('side-panel divider survives on every row when the terminal renders the border glyph wide', () => {
+  const { stylePool, charPool, hyperlinkPool, log } = createHarness()
+  const W = 120
+  const DIVIDER_X = 60
+  const ROWS = 20
+
+  // Before the panel opens the chat owns the full width; after, each row is
+  // chat | divider | panel fill. The fill is the panel's tinted background
+  // (`sidePanelBackground`), so those cells are NOT empty — the end-of-line
+  // erase that would otherwise shorten the run does not apply, and the row is
+  // painted all the way to the last column.
+  const panelBg = stylePool.intern([
+    { type: 'ansi', code: '\u001b[48;2;40;44;62m', endCode: '\u001b[49m' },
+  ])
+  const prevLines = Array.from({ length: ROWS }, () => 'x'.repeat(W))
+  const prev = fixedWidthFrame(stylePool, charPool, hyperlinkPool, prevLines, W, ROWS)
+  const next = fixedWidthFrame(
+    stylePool,
+    charPool,
+    hyperlinkPool,
+    Array.from({ length: ROWS }, (_, y) => `chat row ${y}`.padEnd(DIVIDER_X)),
+    W,
+    ROWS,
+  )
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = DIVIDER_X; x < W; x++) {
+      setCellAt(next.screen, x, y, {
+        char: x === DIVIDER_X ? '\u2502' : ' ',
+        styleId: panelBg,
+        width: CellWidth.Narrow,
+        hyperlink: undefined,
+      })
+    }
+  }
+  const diff = log.render(prev, next, true, true, false)
+
+  let ansi = ''
+  writeDiffToTerminal(
+    { stdout: { write: (chunk: string) => void (ansi += chunk) }, stderr: { write: () => {} } } as unknown as Terminal,
+    diff,
+  )
+
+  const grid = replayWithWrap(ansi, W, ROWS, new Set(['\u2502']))
+  const dividerColumn = grid.map(r => r[DIVIDER_X]).join('')
+  expect(dividerColumn).toBe('\u2502'.repeat(ROWS))
 })
 
 // Regression: the startup banner (and the transcript head under it) reappeared

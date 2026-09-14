@@ -24,6 +24,7 @@ gone. The resolutions confirmed on 2026-09-10:
 | `src/components/ProviderManager.tsx` | `src/providers/ui/ProviderManager.tsx` |
 | `src/components/StartupScreen.ts` | `src/platform/StartupScreen.ts` |
 | `src/tools.ts` | `src/tools/tools.ts` |
+| `src/ink/*` | `src/terminal/ink/*` (confirmed 2026-09-13; 10 citations across 5 files) |
 | `scripts/profile/` | `scripts/bench/` (e.g. `scripts/bench/ab/cache-ab-bench.ts`) |
 | `docs/discovery/` | `docs/archive/discovery/` |
 | `src/utils/memoryDelta.ts` | genuinely gone — deleted 2026-08-07 |
@@ -39,6 +40,14 @@ place.** A new file under a new slug leaves the wrong one indexed and readable.
 The corollary for the tidy pass: two memory files that differ *only* in their
 paths are duplicates, and the survivor is the one whose paths resolve today —
 not the newer file, which in both those cases was the pre-reorg copy.
+
+The `src/ink/` row was added on 2026-09-13 after a renderer session kept landing
+on dead paths. Two of its five files were fixed in place then
+(`ink-ambiguous-width-vacate-ghost.md`); `ink-diff-damage-xbounds.md`,
+`ink-legacyroot-vestigial.md`, `ink-bordered-fillheight-panes-recipe.md` and
+`scrollbox-inline-no-clip.md` still carry it. None of the five is indexed —
+`.claudin/rules/ink-tui.md` carries the distilled version with current paths, so
+they are detail behind the rule, not orientation.
 
 Related: [[reorg-catch-all-dirs-retired]] for what the slices are and what
 enforces them, [[mechanical-rewrites-skip-producers]] for the same blind spot

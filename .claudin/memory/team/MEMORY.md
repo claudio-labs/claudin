@@ -94,9 +94,7 @@
 - [Incremental bun install misses nested deps](incremental-bun-install-misses-nested-deps.md) — build dies on "No matching export for default"; use `bun install --force`, plain install does NOT fix it; CI unaffected
 - [Dependabot batch 2026-09-07 audited — no code changes](dependabot-bumps-2026-09-07-audited.md) — zod 4.5's breaking validators/record-keys all miss us; undici 8.10.2 is an 11-GHSA release (keep it); ignore 7.0.8 changes pattern matching to match git
 - [Dependabot batch 2026-08-31 audited — no code changes](dependabot-bumps-2026-08-31-audited.md) — SDK 0.122 breakage all misses us; the one live change is bedrock env-creds now beating AWS_PROFILE
-- [Dependabot batch 2026-08-03 audited — no code changes](dependabot-bumps-2026-08-03-no-code-changes.md) — google-auth-library 11 = Node>=22 only; axios/MCP/firecrawl inert; firecrawl typecheck error is pre-existing; vertex-sdk gal v10 nesting now deduped via overrides
-- [Dependabot batch 2026-08-10 audited — no code changes](dependabot-bumps-2026-08-10-no-code-changes.md) — marked/undici/ws all inert; undici's top-level h2 knobs now deprecated for h2Options.*; the nested-manifest gap closed when vscode-extension/ was deleted
-- [Dependabot batch 2026-08-17 audited — no code changes](dependabot-bumps-2026-08-17-no-code-changes.md) — SDK 0.115→0.117.1: the hardcoded SDK User-Agent is inert (our defaultHeaders wins in buildHeaders)
+- Older dependabot audits, all "no code changes", kept for the per-dep reasoning: [08-03](dependabot-bumps-2026-08-03-no-code-changes.md) · [08-10](dependabot-bumps-2026-08-10-no-code-changes.md) · [08-17](dependabot-bumps-2026-08-17-no-code-changes.md)
 - [v8cache GC blocked process exit — fixed; startup deltas mislead](startup-v8cache-gc-blocked-exit.md) — 2026-07-13: in-process sweep added ~334ms/launch → detached child + daily stamp; also: profile checkpoint deltas over-attribute across awaits
 - [Launcher jemalloc LD_PRELOAD leak](launcher-jemalloc-ld-preload-leak.md) — heap-bump re-exec leaked jemalloc to all children; Chromium segfaults → OAuth browser never opened; fixed in bin/claudin 2026-06-11
 - [Plans dir moved project-local + hardened](plans-dir-project-local-hardening.md) — 2026-07-05: cwd-keyed memoize, symlink-escape realpath check, 0700 perms, global-gitignore, cleanup sweep; round-3 added plans.test.ts + cleanup.test.ts
@@ -104,6 +102,7 @@
 
 ## TUI / diff / tooling
 - [Inline TUI stranded the frame at the top — FIXED 2026-09-11](inline-fullreset-per-message.md) — #172 had anchored only the overflowing-prev branch; carries the probe table, the live A/B and why a closed issue lied
+- [Auto-wrap eats a row — the side-panel divider checkerboard](ink-autowrap-eats-a-row.md) — a row painted to the LAST column + 1 cell of drift wraps and shifts every later row; DECAWM off per paint; the test trap that hides it
 - [/diff reviewer has a living design doc (feature 8.1)](diff-reviewer-living-spec.md) — canonical spec at docs/features/8.1-diff-reviewer.md, kept in sync as features land (multi-repo discovery, etc.)
 - [Diff reviewer canonicalizes git worktrees to the main repo](diff-reviewer-worktree-canonicalization.md) — /diff groups collapse worktrees into their main checkout; visual features are group-agnostic; fix deferred 2026-06-18 on purpose
 - [parseGitDiff must not assume a/ b/ prefixes](gitdiff-mnemonic-prefix-parse.md) — diff.mnemonicPrefix emits c/ w/ → broke /diff hunk parse (all files "Large file"); forced prefixes + loose regex
