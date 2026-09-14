@@ -1,12 +1,8 @@
 import type { BetaMessageStreamParams } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import type { HookEvent } from 'src/platform/entrypoints/agentSdkTypes.js'
-import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js'
-import type { SettingSource } from 'src/platform/settings/constants.js'
-import { resetSettingsCache } from 'src/platform/settings/settingsCache.js'
 import { resetTurnTokenState } from 'src/platform/bootstrap/state/cost.js'
 import {
   getInitialState,
-  notifyRuntimeStateListeners,
   STATE,
 } from 'src/platform/bootstrap/state/store.js'
 import type {
@@ -163,6 +159,47 @@ export {
   setMeterProvider,
   setTracerProvider,
 } from 'src/platform/bootstrap/state/telemetry.js'
+export {
+  getAgentColorMap,
+  getAllowedSettingSources,
+  getApiKeyFromFd,
+  getClientType,
+  getFlagSettingsInline,
+  getFlagSettingsPath,
+  getInlinePlugins,
+  getIsInteractive,
+  getIsNonInteractiveSession,
+  getKairosActive,
+  getOauthTokenFromFd,
+  getQuestionPreviewFormat,
+  getScheduledTasksEnabled,
+  getSdkAgentProgressSummariesEnabled,
+  getSessionBypassPermissionsMode,
+  getSessionIngressToken,
+  getSessionSource,
+  getStrictToolResultPairing,
+  getUseCoworkPlugins,
+  getUserMsgOptIn,
+  preferThirdPartyAuthentication,
+  setAllowedSettingSources,
+  setApiKeyFromFd,
+  setClientType,
+  setFlagSettingsInline,
+  setFlagSettingsPath,
+  setInlinePlugins,
+  setIsInteractive,
+  setKairosActive,
+  setOauthTokenFromFd,
+  setQuestionPreviewFormat,
+  setScheduledTasksEnabled,
+  setSdkAgentProgressSummariesEnabled,
+  setSessionBypassPermissionsMode,
+  setSessionIngressToken,
+  setSessionSource,
+  setStrictToolResultPairing,
+  setUseCoworkPlugins,
+  setUserMsgOptIn,
+} from 'src/platform/bootstrap/state/sessionFlags.js'
 
 // Only used in tests
 export function resetStateForTests(): void {
@@ -181,125 +218,6 @@ export function resetStateForTests(): void {
   // against a dead signal, and whether it broke depended on whether the
   // module happened to load before this call. registerSession() drops its
   // own previous listener now, which is the leak the clear was really for.
-}
-
-export function getIsNonInteractiveSession(): boolean {
-  return !STATE.isInteractive
-}
-
-export function getIsInteractive(): boolean {
-  return STATE.isInteractive
-}
-
-export function setIsInteractive(value: boolean): void {
-  STATE.isInteractive = value
-}
-
-export function getClientType(): string {
-  return STATE.clientType
-}
-
-export function setClientType(type: string): void {
-  STATE.clientType = type
-}
-
-export function getSdkAgentProgressSummariesEnabled(): boolean {
-  return STATE.sdkAgentProgressSummariesEnabled
-}
-
-export function setSdkAgentProgressSummariesEnabled(value: boolean): void {
-  STATE.sdkAgentProgressSummariesEnabled = value
-}
-
-export function getKairosActive(): boolean {
-  return STATE.kairosActive
-}
-
-export function setKairosActive(value: boolean): void {
-  STATE.kairosActive = value
-  notifyRuntimeStateListeners()
-}
-
-export function getStrictToolResultPairing(): boolean {
-  return STATE.strictToolResultPairing
-}
-
-export function setStrictToolResultPairing(value: boolean): void {
-  STATE.strictToolResultPairing = value
-}
-
-// Field name 'userMsgOptIn' avoids excluded-string substrings ('BriefTool',
-// 'SendUserMessage' — case-insensitive). All callers are inside feature()
-// guards so these accessors don't need their own (matches getKairosActive).
-export function getUserMsgOptIn(): boolean {
-  return STATE.userMsgOptIn
-}
-
-export function setUserMsgOptIn(value: boolean): void {
-  STATE.userMsgOptIn = value
-  notifyRuntimeStateListeners()
-}
-
-export function getSessionSource(): string | undefined {
-  return STATE.sessionSource
-}
-
-export function setSessionSource(source: string): void {
-  STATE.sessionSource = source
-}
-
-export function getQuestionPreviewFormat(): 'markdown' | 'html' | undefined {
-  return STATE.questionPreviewFormat
-}
-
-export function setQuestionPreviewFormat(format: 'markdown' | 'html'): void {
-  STATE.questionPreviewFormat = format
-}
-
-export function getAgentColorMap(): Map<string, AgentColorName> {
-  return STATE.agentColorMap
-}
-
-export function getFlagSettingsPath(): string | undefined {
-  return STATE.flagSettingsPath
-}
-
-export function setFlagSettingsPath(path: string | undefined): void {
-  STATE.flagSettingsPath = path
-}
-
-export function getFlagSettingsInline(): Record<string, unknown> | null {
-  return STATE.flagSettingsInline
-}
-
-export function setFlagSettingsInline(
-  settings: Record<string, unknown> | null,
-): void {
-  STATE.flagSettingsInline = settings
-}
-
-export function getSessionIngressToken(): string | null | undefined {
-  return STATE.sessionIngressToken
-}
-
-export function setSessionIngressToken(token: string | null): void {
-  STATE.sessionIngressToken = token
-}
-
-export function getOauthTokenFromFd(): string | null | undefined {
-  return STATE.oauthTokenFromFd
-}
-
-export function setOauthTokenFromFd(token: string | null): void {
-  STATE.oauthTokenFromFd = token
-}
-
-export function getApiKeyFromFd(): string | null | undefined {
-  return STATE.apiKeyFromFd
-}
-
-export function setApiKeyFromFd(key: string | null): void {
-  STATE.apiKeyFromFd = key
 }
 
 export function setLastAPIRequest(
@@ -352,52 +270,6 @@ export function addToInMemoryErrorLog(errorInfo: {
     STATE.inMemoryErrorLog.shift() // Remove oldest error
   }
   STATE.inMemoryErrorLog.push(errorInfo)
-}
-
-export function getAllowedSettingSources(): SettingSource[] {
-  return STATE.allowedSettingSources
-}
-
-export function setAllowedSettingSources(sources: SettingSource[]): void {
-  STATE.allowedSettingSources = sources
-}
-
-export function preferThirdPartyAuthentication(): boolean {
-  // IDE extension should behave as 1P for authentication reasons.
-  return getIsNonInteractiveSession() && STATE.clientType !== 'claude-vscode'
-}
-
-export function setInlinePlugins(plugins: Array<string>): void {
-  STATE.inlinePlugins = plugins
-}
-
-export function getInlinePlugins(): Array<string> {
-  return STATE.inlinePlugins
-}
-
-export function setUseCoworkPlugins(value: boolean): void {
-  STATE.useCoworkPlugins = value
-  resetSettingsCache()
-}
-
-export function getUseCoworkPlugins(): boolean {
-  return STATE.useCoworkPlugins
-}
-
-export function setSessionBypassPermissionsMode(enabled: boolean): void {
-  STATE.sessionBypassPermissionsMode = enabled
-}
-
-export function getSessionBypassPermissionsMode(): boolean {
-  return STATE.sessionBypassPermissionsMode
-}
-
-export function setScheduledTasksEnabled(enabled: boolean): void {
-  STATE.scheduledTasksEnabled = enabled
-}
-
-export function getScheduledTasksEnabled(): boolean {
-  return STATE.scheduledTasksEnabled
 }
 
 export function getSessionCronTasks(): SessionCronTask[] {
