@@ -22,7 +22,7 @@ import type {
 import type {
   GLOBAL_CONFIG_KEYS,
   PROJECT_CONFIG_KEYS,
-} from 'src/platform/config/config.js'
+} from 'src/platform/config/config/defaults.js'
 
 // Image dimension info for coordinate mapping (only set when image was resized)
 export type PastedContent = {

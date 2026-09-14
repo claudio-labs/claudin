@@ -42,10 +42,8 @@ import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import type {
   AutoUpdaterDisabledReason,
   GlobalConfig,
-  GlobalConfigKey,
   InstallMethod,
   ProjectConfig,
-  ProjectConfigKey,
 } from 'src/platform/config/config/types.js'
 
 export type {
@@ -70,151 +68,29 @@ export type {
   ShowCacheStatsMode,
 } from 'src/platform/config/config/types.js'
 export { SHOW_CACHE_STATS_MODES } from 'src/platform/config/config/types.js'
+import {
+  createDefaultGlobalConfig,
+  DEFAULT_GLOBAL_CONFIG,
+  DEFAULT_PROJECT_CONFIG,
+} from 'src/platform/config/config/defaults.js'
+
+export {
+  DEFAULT_GLOBAL_CONFIG,
+  GLOBAL_CONFIG_KEYS,
+  isGlobalConfigKey,
+  isProjectConfigKey,
+  PROJECT_CONFIG_KEYS,
+} from 'src/platform/config/config/defaults.js'
 
 // Re-entrancy guard: prevents getConfig → logEvent → getGlobalConfig → getConfig
 // infinite recursion when the config file is corrupted. logEvent's sampling check
 // reads GrowthBook features from the global config, which calls getConfig again.
 let insideGetConfig = false
 
-const DEFAULT_PROJECT_CONFIG: ProjectConfig = {
-  allowedTools: [],
-  mcpContextUris: [],
-  mcpServers: {},
-  enabledMcpjsonServers: [],
-  disabledMcpjsonServers: [],
-  hasTrustDialogAccepted: false,
-  projectOnboardingSeenCount: 0,
-  hasClaudeMdExternalIncludesApproved: false,
-  hasClaudeMdExternalIncludesWarningShown: false,
-}
-
 export {
   EDITOR_MODES,
   NOTIFICATION_CHANNELS,
 } from 'src/platform/config/configConstants.js'
-
-/**
- * Factory for a fresh default GlobalConfig. Used instead of deep-cloning a
- * shared constant — the nested containers (arrays, records) are all empty, so
- * a factory gives fresh refs at zero clone cost.
- */
-function createDefaultGlobalConfig(): GlobalConfig {
-  const config: GlobalConfig = {
-    numStartups: 0,
-    installMethod: undefined,
-    autoUpdates: undefined,
-    theme: 'dark',
-    preferredNotifChannel: 'auto',
-    verbose: false,
-    editorMode: 'normal',
-    autoCompactEnabled: true,
-    collapseSubagentProgress: true,
-    summarizeSubagentResult: false,
-    thinkingHistoryRedactionEnabled: true,
-    narrationHistoryRedactionEnabled: true,
-    toolResultSummarizerEnabled: true,
-    showTurnDuration: true,
-    showCacheStats: 'compact',
-    hasSeenTasksHint: false,
-    hasUsedStash: false,
-    hasUsedBackgroundTask: false,
-    queuedCommandUpHintCount: 0,
-    diffTool: 'auto',
-    customApiKeyResponses: {
-      approved: [],
-      rejected: [],
-    },
-    env: {},
-    tipsHistory: {},
-    memoryUsageCount: 0,
-    promptQueueUseCount: 0,
-    btwUseCount: 0,
-    todoFeatureEnabled: true,
-    showExpandedTodos: false,
-    messageIdleNotifThresholdMs: 60000,
-    autoConnectIde: false,
-    autoInstallIdeExtension: true,
-    fileCheckpointingEnabled: true,
-    terminalProgressBarEnabled: true,
-    cachedStatsigGates: {},
-    cachedDynamicConfigs: {},
-    cachedGrowthBookFeatures: {},
-    respectGitignore: true,
-    copyFullResponse: false,
-    providerProfiles: [],
-    openaiAdditionalModelOptionsCacheByProfile: {},
-    knowledgeGraphEnabled: true,
-    inlineImagesMode: 'auto',
-    autoBackgroundAgentsEnabled: false,
-    workflowsDefaultBackground: false,
-  }
-  return config
-}
-
-export const DEFAULT_GLOBAL_CONFIG: GlobalConfig = createDefaultGlobalConfig()
-
-export const GLOBAL_CONFIG_KEYS = [
-  'apiKeyHelper',
-  'installMethod',
-  'autoUpdates',
-  'autoUpdatesProtectedForNative',
-  'theme',
-  'verbose',
-  'preferredNotifChannel',
-  'shiftEnterKeyBindingInstalled',
-  'editorMode',
-  'hasUsedBackslashReturn',
-  'autoCompactEnabled',
-  'thinkingHistoryRedactionEnabled',
-  'narrationHistoryRedactionEnabled',
-  'toolResultSummarizerEnabled',
-  'showTurnDuration',
-  'showCacheStats',
-  'diffTool',
-  'env',
-  'tipsHistory',
-  'todoFeatureEnabled',
-  'showExpandedTodos',
-  'messageIdleNotifThresholdMs',
-  'autoConnectIde',
-  'autoInstallIdeExtension',
-  'fileCheckpointingEnabled',
-  'terminalProgressBarEnabled',
-  'showStatusInTerminalTab',
-  'taskCompleteNotifEnabled',
-  'inputNeededNotifEnabled',
-  'agentPushNotifEnabled',
-  'respectGitignore',
-  'copyFullResponse',
-  'copyOnSelect',
-  'flickerFreeMode',
-  'renderFrameRate',
-  'permissionExplainerEnabled',
-  'prStatusFooterEnabled',
-  'prStatusHosts',
-  'remoteControlAtStartup',
-  'remoteDialogSeen',
-  'knowledgeGraphEnabled',
-  'bashOutputFilterEnabled',
-  'bashOutputFilterRewriteEnabled',
-  'bashOutputFilterUserEnabled',
-  'bashOutputFilterCapEnabled',
-  'autoBackgroundAgentsEnabled',
-  'repeatedFailureHintEnabled',
-  'workflowsDefaultBackground',
-  'oauthBrowser',
-  'inlineImagesMode',
-] as const
-
-export function isGlobalConfigKey(key: string): key is GlobalConfigKey {
-  return GLOBAL_CONFIG_KEYS.includes(key as GlobalConfigKey)
-}
-
-export const PROJECT_CONFIG_KEYS = [
-  'allowedTools',
-  'hasTrustDialogAccepted',
-  'hasCompletedProjectOnboarding',
-] as const
 
 /**
  * Check if the user has already accepted the trust dialog for the cwd.
@@ -357,10 +233,6 @@ export function resetProjectConfigForTests(): void {
     delete (TEST_PROJECT_CONFIG_FOR_TESTING as Record<string, unknown>)[key]
   }
   Object.assign(TEST_PROJECT_CONFIG_FOR_TESTING, DEFAULT_PROJECT_CONFIG)
-}
-
-export function isProjectConfigKey(key: string): key is ProjectConfigKey {
-  return PROJECT_CONFIG_KEYS.includes(key as ProjectConfigKey)
 }
 
 /**
