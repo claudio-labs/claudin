@@ -216,7 +216,7 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
       // Apply any frame-coalesced streamingToolUses updates queued before this
       // message (including the message_stop `() => []` reset) in the same task
       // as the setMessages below, so React auto-batches both into one commit
-      // (the LegacyRoot tag is vestigial — react-reconciler 0.33 runs every
+      // (the LegacyRoot tag is vestigial — react-reconciler 0.34 runs every
       // root in ConcurrentMode) and the streaming-preview → final-message
       // switch never paints an intermediate frame. Ink's throttled stdout
       // paint is a second, independent net.

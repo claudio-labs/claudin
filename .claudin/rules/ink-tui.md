@@ -105,10 +105,12 @@ fix the right one.
 
 ## 5. LegacyRoot is vestigial — assume ConcurrentMode + auto-batching
 
-- react-reconciler 0.33 (React 19) ignores the `LegacyRoot` tag Ink passes at
+- react-reconciler 0.34 (React 19) ignores the `LegacyRoot` tag Ink passes at
   `src/terminal/ink/ink.tsx` — roots run in ConcurrentMode (legacy mode compiled out). A
   `useSyncExternalStore` notify + a `setState` in the same task produce **1 render
   / 1 commit**, flushed async — normal auto-batching, NOT two sync commits.
+  Unchanged by the 0.34 bump: `FiberRootNode` ignores the `tag` argument it is
+  handed and assigns `this.tag = 1` (ConcurrentRoot) unconditionally.
 - When reasoning about commit/paint atomicity, assume ConcurrentMode +
   same-task auto-batching + Ink's throttled stdout paint as a second net. Don't
   cite `LegacyRoot` as a sync guarantee; the false premise in
@@ -242,3 +244,27 @@ fix the right one.
   whitespace-flattened output (`expectInOrder` in
   `CollapsedReadSearchContent.test.tsx`): a bare `toContain('+28')` passes on the
   mangled render, `'M /repo/one.ts'` does not.
+
+## 11. A reconciler bump can turn a discarded host-config read into a real call
+
+- `react-reconciler`'s built file touches every host-config property it knows
+  about, but the ones it does not yet use appear as a bare discarded statement
+  (`$$$config.suspendOnActiveViewTransition;`) while the ones it does are
+  destructured into a local (`name = $$$config.name`). A bump can move a property
+  from the first form to the second **without adding a property**, so diffing the
+  *set* of `$$$config.*` names across two versions answers "no new requirements"
+  and is wrong. 0.33 → 0.34 added 5 names and promoted **14** existing ones.
+- Diff the two forms instead, over `cjs/react-reconciler.development.js`: bare
+  `$$$config.X;` statements versus `name = $$$config.X` bindings. Then read the
+  GATE at each newly bound call site rather than stubbing all of them — only
+  `suspendOnActiveViewTransition` was reachable in 0.34, from
+  `completeRootWhenReady` on any commit whose lanes are all
+  transition/retry/deferred (`(lanes & 0x14000000) === lanes`, no
+  `<ViewTransition>` needed). The rest need a ViewTransition fiber (tag 30) or a
+  ref on a `<Fragment>` (React 19.3 Fragment Refs), and this tree has neither.
+- Nothing static catches a missing one: `@types/react-reconciler` stops at 0.33
+  and does not declare the ViewTransition surface, so `tsc` and `bun run build`
+  both pass and it ships as a runtime `TypeError: X is not a function` thrown
+  inside `completeRootWhenReady`. What caught it was `Stats.test.tsx` driving real
+  keypresses — a test that only renders never reaches a transition-lane commit,
+  so scope the post-bump check to the suites that press keys.

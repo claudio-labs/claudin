@@ -414,3 +414,40 @@ test('<Activity> toggles host display:none and preserves the same DOM node', asy
   }
 })
 
+test('commits an update scheduled inside startTransition', async () => {
+  // A commit whose lanes are ALL transition lanes takes react-reconciler 0.34's
+  // `isViewTransitionEligible` branch of `completeRootWhenReady`, which CALLS
+  // the host config's `suspendOnActiveViewTransition` — a method 0.33 only read
+  // and discarded. Without it the commit throws `TypeError:
+  // suspendOnActiveViewTransition is not a function` and the update never
+  // reaches the host node. Every other test in this file renders through
+  // `root.render`, whose commits carry a default lane, so this is the only arm
+  // that exercises that branch.
+  const harness = await createHarness()
+
+  try {
+    let promote: (() => void) | undefined
+
+    function Subject(): React.ReactElement {
+      const [tabIndex, setTabIndex] = React.useState(0)
+      promote = () => React.startTransition(() => setTabIndex(1))
+      return React.createElement('ink-box', { autoFocus: true, tabIndex })
+    }
+
+    harness.root.render(React.createElement(Subject))
+    await Bun.sleep(25)
+
+    const box = requireElement(harness.stdout, 'ink-box')
+    expect(box.attributes.tabIndex).toBe(0)
+
+    promote!()
+    await waitForCondition(
+      () => requireElement(harness.stdout, 'ink-box').attributes.tabIndex === 1,
+      'the transition-lane commit to reach the host node',
+    )
+
+    expect(requireElement(harness.stdout, 'ink-box')).toBe(box)
+  } finally {
+    await harness.dispose()
+  }
+})

@@ -227,6 +227,23 @@ export function resetProfileCounters(): void {
 }
 // --- END ---
 
+// react-reconciler 0.34 BINDS the ViewTransition half of the host config that
+// 0.33 only read and threw away, and calls this one from `completeRootWhenReady`
+// on every commit whose lanes are all transition/retry/deferred — no
+// `<ViewTransition>` element required. Omitting it is a runtime
+// `TypeError: suspendOnActiveViewTransition is not a function`. A terminal has no
+// running transition to wait on, so there is nothing to suspend. The other
+// methods 0.34 newly binds (applyViewTransitionName, startViewTransition,
+// measureInstance, createFragmentInstance, …) each sit behind a ViewTransition
+// fiber or a ref on a `<Fragment>`, and this tree has neither — see
+// ink-tui.md §11. It lives out here because `@types/react-reconciler` stops at
+// 0.33 and does not declare the property: in the literal below it is a TS2353,
+// while a spread is exempt from excess-property checking, which keeps every
+// other key checked.
+const viewTransitionConfig: { suspendOnActiveViewTransition(): void } = {
+  suspendOnActiveViewTransition() {},
+}
+
 const reconciler = createReconciler<
   ElementNames,
   Props,
@@ -502,6 +519,7 @@ const reconciler = createReconciler<
   waitForCommitToBeReady(): null {
     return null
   },
+  ...viewTransitionConfig,
   NotPendingTransition: null,
   HostTransitionContext: {
     $$typeof: Symbol.for('react.context'),
