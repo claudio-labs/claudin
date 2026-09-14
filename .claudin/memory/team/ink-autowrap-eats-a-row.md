@@ -51,9 +51,19 @@ Safe because the renderer never wants an implicit wrap: it positions every cell
 absolutely, wraps its own text (`wrap-text.ts`), advances rows with explicit
 `\r`+LF in `renderFrameSlice`, and `writeCellWithStyleStr` already refuses to
 write a wide char that would cross the viewport edge. Both sequences go in the
-**same `stdout.write`**, inside the BSU/ESU pair, so the terminal is never left
-with wrapping off — no exit-path change needed, and no killswitch was added.
+**same `stdout.write`**, so the terminal is never left with wrapping off — no
+exit-path change needed, and no killswitch was added.
 Once this lands, `ink-tui.md` §3 should gain it as mechanism **(c)**.
+
+**Put them OUTSIDE the BSU/ESU pair.** The first cut wrapped them inside it and
+turned `ConsoleOAuthFlow.test.tsx` red in CI with `Received: "\n"`. Thirteen
+`.tsx` test files define their own `extractLastFrame`, which slices the bytes
+between `\x1b[?2026h` and `\x1b[?2026l` and keeps the last slice whose
+`frame.trim()` is non-empty. `trim()` does not strip an escape sequence, so a
+mode toggle in there makes Ink's blank unmount frame look like content and the
+harness extracts *that* instead of the render. A mode change is not frame
+content — emit it before BSU and after ESU. Any future non-drawing sequence
+added to `writeDiffToTerminal` has the same trap waiting.
 
 ## Verification recipe (reusable for any cursor-desync suspicion)
 
