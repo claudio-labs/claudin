@@ -7,6 +7,8 @@ import {
   FOLDER_ICON,
   GENERIC_FILE_ICON,
   getFileTypeIcon,
+  getFileTypeIconColor,
+  ICON_COLORS,
 } from 'src/terminal/fileIcons.js'
 
 describe('getFileTypeIcon', () => {
@@ -69,5 +71,38 @@ describe('getFileTypeIcon', () => {
 
   test('uses basename, not the full path', () => {
     expect(getFileTypeIcon('a/b/c/helpers.tsx')).toBe(EXTENSION_ICONS['.tsx'])
+  })
+})
+
+describe('getFileTypeIconColor', () => {
+  test('a mapped type resolves to its glyph color', () => {
+    expect(getFileTypeIconColor('src/index.ts')).toBe(
+      ICON_COLORS[EXTENSION_ICONS['.ts']!]!,
+    )
+    expect(getFileTypeIconColor('package.json')).toBe(
+      ICON_COLORS[FILENAME_ICONS['package.json']!]!,
+    )
+  })
+
+  test('extensions sharing a glyph share its color', () => {
+    expect(getFileTypeIconColor('a.yaml')).toBe(getFileTypeIconColor('a.toml'))
+    expect(getFileTypeIconColor('a.png')).toBe(getFileTypeIconColor('a.svg'))
+  })
+
+  test('folders have no color of their own (they keep the theme)', () => {
+    expect(getFileTypeIconColor('src/')).toBeUndefined()
+    expect(getFileTypeIconColor('src' + path.sep)).toBeUndefined()
+  })
+
+  test('the generic fallback has no color either', () => {
+    expect(getFileTypeIcon('a.xyz')).toBe(GENERIC_FILE_ICON)
+    expect(getFileTypeIconColor('a.xyz')).toBeUndefined()
+    expect(getFileTypeIconColor('Makefile')).toBeUndefined()
+  })
+
+  test('every color is a hex value the Text component accepts', () => {
+    for (const color of Object.values(ICON_COLORS)) {
+      expect(color).toMatch(/^#[0-9a-f]{6}$/)
+    }
   })
 })

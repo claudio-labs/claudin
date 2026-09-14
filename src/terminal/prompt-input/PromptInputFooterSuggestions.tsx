@@ -3,7 +3,7 @@ import { memo, type ReactNode } from 'react'
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js'
 import { stringWidth } from 'src/terminal/ink/stringWidth.js'
 import { Box, Text } from 'src/terminal/ink.js'
-import { getFileTypeIcon } from 'src/terminal/fileIcons.js'
+import { getFileTypeIcon, getFileTypeIconColor } from 'src/terminal/fileIcons.js'
 import {
   truncatePathMiddle,
   truncateToWidth,
@@ -192,6 +192,13 @@ const SuggestionItemRow = memo(function SuggestionItemRow({
     const icon = getIcon(item.id, item.displayText, NERD)
     const dimColor = !isSelected
     const isFile = item.id.startsWith('file-')
+    // Tint the glyph by file type. Only with real Nerd glyphs (the ASCII
+    // fallback is a '+', not a type), and never on the selected row, where the
+    // highlight background owns the colors.
+    const iconColor =
+      NERD && isFile && !isSelected
+        ? getFileTypeIconColor(item.displayText)
+        : undefined
     const isMcpResource = item.id.startsWith('mcp-resource-')
     const iconWidth = 2
     const paddingWidth = 4
@@ -224,21 +231,32 @@ const SuggestionItemRow = memo(function SuggestionItemRow({
       separatorWidth -
       paddingWidth
 
-    let lineContent: string
+    let lineTail: string
     if (item.description) {
       const truncatedDesc = truncateToWidth(
         item.description.replace(/\s+/g, ' '),
         Math.max(0, availableWidth),
       )
-      lineContent = `${selectionPrefix}${icon} ${displayText} - ${truncatedDesc}`
+      lineTail = ` ${displayText} - ${truncatedDesc}`
     } else {
-      lineContent = `${selectionPrefix}${icon} ${displayText}`
+      lineTail = ` ${displayText}`
     }
 
+    // The glyph gets its own nested <Text> so it can carry a color the row
+    // does not. Nested, not a sibling: siblings in a row Box lay out as
+    // independent columns and would wrap apart from the name.
     return (
       <Box width="100%" opaque={true} backgroundColor={rowBackgroundColor}>
         <Text color={textColor} dimColor={dimColor} bold={isSelected} wrap="truncate">
-          {lineContent}
+          {selectionPrefix}
+          {iconColor ? (
+            <Text color={iconColor} dimColor={false}>
+              {icon}
+            </Text>
+          ) : (
+            icon
+          )}
+          {lineTail}
         </Text>
       </Box>
     )
@@ -247,24 +265,25 @@ const SuggestionItemRow = memo(function SuggestionItemRow({
   const { displayText, displayTextWidth, pathIcon, tagText, descriptionLines } =
     layoutCommandRow(item, columns, maxColumnWidth)
 
-  const paddedDisplayText =
-    selectionPrefix +
-    pathIcon +
+  const nameCell =
     displayText +
     ' '.repeat(Math.max(0, displayTextWidth - stringWidth(displayText)))
+  const paddedDisplayText = selectionPrefix + pathIcon + nameCell
   // Continuation rows keep the name column empty so the description reads as
   // one paragraph under its own column.
   const continuationIndent = ' '.repeat(
     stringWidth(paddedDisplayText) + stringWidth(tagText),
   )
-  const lines =
-    descriptionLines.length > 0
-      ? descriptionLines.map((line, index) =>
-          index === 0
-            ? `${paddedDisplayText}${tagText}${line}`
-            : `${continuationIndent}${line}`,
-        )
-      : [`${paddedDisplayText}${tagText}`]
+  // Path completions (`@../`, `/add-dir`) carry a file glyph too — tint it the
+  // same way, under the same two conditions.
+  const pathIconColor =
+    NERD && pathIcon !== '' && !isSelected
+      ? getFileTypeIconColor(item.displayText)
+      : undefined
+  const headLine = `${nameCell}${tagText}${descriptionLines[0] ?? ''}`
+  const continuationLines = descriptionLines
+    .slice(1)
+    .map(line => `${continuationIndent}${line}`)
 
   return (
     <Box
@@ -273,7 +292,23 @@ const SuggestionItemRow = memo(function SuggestionItemRow({
       opaque={true}
       backgroundColor={rowBackgroundColor}
     >
-      {lines.map((line, index) => (
+      <Text
+        color={textColor}
+        dimColor={!isSelected}
+        bold={isSelected}
+        wrap="truncate"
+      >
+        {selectionPrefix}
+        {pathIconColor ? (
+          <Text color={pathIconColor} dimColor={false}>
+            {pathIcon}
+          </Text>
+        ) : (
+          pathIcon
+        )}
+        {headLine}
+      </Text>
+      {continuationLines.map((line, index) => (
         <Text
           key={index}
           color={textColor}
