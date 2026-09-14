@@ -311,7 +311,13 @@ export function writeDiffToTerminal(
   // out as a checkerboard. Off, the overflow is clamped to the last column
   // and the damage stays on its own row. Restored inside the same write, so
   // the terminal is never left without it.
-  let buffer = (useSync ? BSU : '') + DISABLE_AUTO_WRAP
+  //
+  // OUTSIDE the BSU/ESU pair on purpose: a mode change is not frame content,
+  // and thirteen test harnesses read "the last frame" as the bytes between
+  // those two markers and ask whether it is blank. `trim()` does not remove an
+  // escape sequence, so a toggle in there makes Ink's empty unmount frame look
+  // like content and they extract that instead of the render.
+  let buffer = DISABLE_AUTO_WRAP + (useSync ? BSU : '')
 
   for (const patch of diff) {
     switch (patch.type) {
@@ -351,7 +357,7 @@ export function writeDiffToTerminal(
   }
 
   // Add synchronized update end and flush buffer
-  buffer += ENABLE_AUTO_WRAP
   if (useSync) buffer += ESU
+  buffer += ENABLE_AUTO_WRAP
   terminal.stdout.write(buffer)
 }
