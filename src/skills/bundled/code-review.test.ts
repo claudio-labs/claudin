@@ -25,7 +25,7 @@ describe('code-review skill registration', () => {
     expect(blocks.length).toBeGreaterThan(0)
     expect(blocks[0]).toMatchObject({ type: 'text' })
     const text = (blocks[0] as { text: string }).text
-    expect(text).toContain('Gather the diff')
+    expect(text).toContain('## Scope')
     expect(text).toContain('finder angles')
   })
 
@@ -126,42 +126,74 @@ describe('code-review prompt content by level', () => {
     expect(text).not.toContain('finder angles')
   })
 
-  test('medium runs 7 angles for precision with ≤8 findings', () => {
+  test('medium runs 4 angles for precision with ≤8 findings', () => {
     const text = promptFor('medium')
     expect(text).toContain('**precision** at medium effort')
-    expect(text).toContain('**7 independent finder angles**')
+    expect(text).toContain('**4 independent finder angles**')
     expect(text).toContain('single ReportFindings tool call')
-    expect(text).toContain('keep the 8 most severe')
+    expect(text).toContain('Keep the 8 most severe')
+    // The wrapper/proxy angle is xhigh+ only.
     expect(text).not.toContain('Angle D')
   })
 
-  test('high runs 7 angles for recall with ≤10 findings', () => {
+  test('high runs 4 angles for recall with ≤10 findings', () => {
     const text = promptFor('high')
     expect(text).toContain('**recall** at high effort')
-    expect(text).toContain('**7 independent finder angles**')
+    expect(text).toContain('**4 independent finder angles**')
     expect(text).toContain('recall-biased')
     expect(text).toContain('single ReportFindings tool call')
-    expect(text).toContain('keep the 10 most severe')
+    expect(text).toContain('Keep the 10 most severe')
   })
 
-  test('xhigh and max run 9 angles with a sweep and ≤15 findings', () => {
+  test('xhigh and max run 5 angles with a sweep and ≤15 findings', () => {
     for (const level of ['xhigh', 'max'] as const) {
       const text = promptFor(level)
-      expect(text).toContain('**9 independent finder angles**')
-      expect(text).toContain('Angle E')
+      expect(text).toContain('**5 independent finder angles**')
+      expect(text).toContain('Angle D — wrapper/proxy correctness')
       expect(text).toContain('Sweep for gaps')
       expect(text).toContain('single ReportFindings tool call')
-      expect(text).toContain('keep the 15 most severe')
+      expect(text).toContain('Keep the 15 most severe')
     }
   })
 
-  test('every multi-agent level includes the cleanup angles', () => {
+  test('every multi-agent level folds the cleanup axes into one angle', () => {
     for (const level of ['medium', 'high', 'xhigh', 'max'] as const) {
       const text = promptFor(level)
-      expect(text).toContain('### Reuse')
-      expect(text).toContain('### Simplification')
-      expect(text).toContain('### Efficiency')
-      expect(text).toContain('### Altitude')
+      expect(text).toContain('### Angle Z — cleanup pass')
+      for (const axis of [
+        '**reuse**',
+        '**simplification**',
+        '**efficiency**',
+        '**altitude**',
+      ]) {
+        expect(text).toContain(axis)
+      }
+    }
+  })
+
+  // Upstream hands xhigh/max the precision ladder plus a one-line override, so
+  // the two highest levels could refute a race as "speculative" while `high`
+  // could not. Every recall level gets the recall ladder here.
+  test('every recall level gets the recall verdict ladder', () => {
+    for (const level of ['high', 'xhigh', 'max'] as const) {
+      expect(promptFor(level)).toContain('**PLAUSIBLE by default**')
+    }
+    expect(promptFor('medium')).not.toContain('**PLAUSIBLE by default**')
+  })
+
+  test('verification is batched by file, not spawned per candidate', () => {
+    for (const level of ['medium', 'high', 'xhigh', 'max'] as const) {
+      const text = promptFor(level)
+      expect(text).toContain('Verify (batched by file)')
+      expect(text).toContain('**one verifier per file**')
+    }
+  })
+
+  test('every multi-agent level tells finders to pass candidates through', () => {
+    for (const level of ['medium', 'high', 'xhigh', 'max'] as const) {
+      expect(promptFor(level)).toContain(
+        'Pass every candidate with a nameable failure scenario through',
+      )
     }
   })
 
@@ -185,12 +217,65 @@ describe('code-review prompt content by level', () => {
   test('ultra prefixes the local-fallback note and uses the max prompt', () => {
     const text = promptFor('ultra')
     expect(text).toContain("ultra (cloud review) isn't available in Claudin")
-    expect(text).toContain('max effort → 5+4 angles')
+    expect(text).toContain('max effort → 5 angles')
   })
 
   test('an unrecognized level-like token prefixes a warning note', () => {
     const text = promptFor('maximum')
     expect(text).toContain('Ignoring unrecognized effort "maximum"')
+  })
+})
+
+describe('code-review scope block', () => {
+  const scope = {
+    range: 'origin/main...HEAD',
+    includesWorkingTree: true,
+    files: [
+      { path: 'src/a.ts', additions: 40, deletions: 2, binary: false, untracked: false },
+      { path: 'src/b.ts', additions: 1, deletions: 1, binary: false, untracked: false },
+    ],
+    totalAdditions: 41,
+    totalDeletions: 3,
+  }
+
+  test('a resolved scope pins one range for every angle', () => {
+    const text = buildCodeReviewPrompt(
+      parseCodeReviewArgs('high'),
+      undefined,
+      scope,
+    )
+    expect(text).toContain('git diff origin/main...HEAD')
+    expect(text).toContain('git diff HEAD')
+    expect(text).toContain('src/a.ts (+40 −2)')
+    expect(text).toContain('do not substitute another one')
+    // The model no longer picks the range, so the fallback chain is gone.
+    expect(text).not.toContain('@{upstream}')
+  })
+
+  test('an unresolved scope falls back to the range chain', () => {
+    const text = buildCodeReviewPrompt(parseCodeReviewArgs('high'), undefined, null)
+    expect(text).toContain('@{upstream}')
+    expect(text).toContain('use the same range for every angle')
+  })
+
+  test('a named target overrides a resolved scope', () => {
+    const text = buildCodeReviewPrompt(
+      parseCodeReviewArgs('high 123'),
+      undefined,
+      scope,
+    )
+    expect(text).toContain('Review target: `123`')
+    expect(text).not.toContain('src/a.ts (+40 −2)')
+  })
+
+  test('low reads the scope instead of restating the git commands', () => {
+    const text = buildCodeReviewPrompt(
+      parseCodeReviewArgs('low'),
+      undefined,
+      scope,
+    )
+    expect(text).toContain('read the diff named in the Scope section above')
+    expect(text).toContain('git diff origin/main...HEAD')
   })
 })
 
