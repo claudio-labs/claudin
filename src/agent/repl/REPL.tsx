@@ -1368,7 +1368,7 @@ export function REPL({
   // Cleared on message arrival (messages/streaming.ts) just before
   // onMessage's setMessages. Both updates land in the SAME task, so React
   // auto-batches them into one commit (Ink passes the LegacyRoot tag, but
-  // react-reconciler 0.33 / React 19 compiled legacy mode out — the root
+  // react-reconciler 0.34 / React 19 compiled legacy mode out — the root
   // runs in ConcurrentMode and flushes async, after the task) — the
   // streaming-text → final-message switch is atomic. See
   // useStreamingTextStore.ts for the full invariant.

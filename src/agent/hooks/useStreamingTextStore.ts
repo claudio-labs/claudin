@@ -19,7 +19,7 @@ import { FRAME_INTERVAL_MS } from 'src/terminal/ink/constants.js'
  *    the streaming row mounts immediately and — critically — the clear on
  *    final-message arrival lands in the same task as the subsequent
  *    setMessages. That makes the switch atomic via React batching: Ink
- *    passes the LegacyRoot tag, but react-reconciler 0.33 (React 19)
+ *    passes the LegacyRoot tag, but react-reconciler 0.34 (React 19)
  *    compiled legacy mode out, so the root runs in ConcurrentMode — a store
  *    notify and a setState issued in the same task auto-batch into ONE
  *    commit, flushed asynchronously after the task (verified empirically:

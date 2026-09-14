@@ -72,7 +72,7 @@ export function handleMessageFromStream(
       }
     }
     // Clear streaming text NOW, in the same task as onMessage's setMessages,
-    // so React auto-batches both into one commit (react-reconciler 0.33 runs
+    // so React auto-batches both into one commit (react-reconciler 0.34 runs
     // every root in ConcurrentMode — the LegacyRoot tag Ink passes is
     // vestigial) and no frame can show the gap or duplicated text — see
     // useStreamingTextStore.ts for the invariant.
