@@ -19,7 +19,7 @@ import { performance } from 'node:perf_hooks'
 
 const FILES = [
   'src/shared/errors.ts', 'src/shared/log.ts', 'src/shared/fs/path.ts', 'src/shared/envUtils.ts',
-  'src/shared/proc/Shell.ts', 'src/platform/config/config.ts', 'src/platform/bootstrap/state.ts', 'src/tools/Tool.ts',
+  'src/shared/proc/Shell.ts', 'src/platform/config/config/globalConfig.ts', 'src/platform/bootstrap/state.ts', 'src/tools/Tool.ts',
   'src/providers/model/model.ts', 'src/providers/presets/providerModels.ts', 'src/agent/context.ts', 'src/agent/query.ts',
 ]
 const MODEL = 'claude-sonnet-4-6'

@@ -46,7 +46,7 @@ const TEN_FILES = [
   'src/shared/fs/path.ts',
   'src/shared/envUtils.ts',
   'src/shared/proc/Shell.ts',
-  'src/platform/config/config.ts',
+  'src/platform/config/config/globalConfig.ts',
   'src/platform/bootstrap/state.ts',
   'src/tools/Tool.ts',
   'src/providers/model/model.ts',
