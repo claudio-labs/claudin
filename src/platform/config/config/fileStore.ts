@@ -20,11 +20,7 @@ import { basename, dirname, join } from 'path'
 import pickBy from 'lodash-es/pickBy.js'
 import { logEvent } from 'src/platform/analytics/index.js'
 import { createDefaultGlobalConfig } from 'src/platform/config/config/defaults.js'
-// Reached through the already-public alias rather than `wouldLoseAuthState`
-// itself: config.ts is still the public surface at this commit, and exporting
-// the raw name from it would widen that surface. Repointed at globalConfig.js
-// when that module lands.
-import { _wouldLoseAuthStateForTesting as wouldLoseAuthState } from 'src/platform/config/config.js'
+import { wouldLoseAuthState } from 'src/platform/config/config/globalConfig.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { getGlobalClaudeFile } from 'src/shared/env.js'
