@@ -1,4 +1,5 @@
 import path from 'node:path'
+import type { HexColor } from 'src/terminal/ink/styles.js'
 
 // Nerd Font file-type glyphs for the `@` mention autocomplete menu. Each entry
 // is a single private-use-area codepoint; callers MUST gate on
@@ -56,6 +57,35 @@ export const EXTENSION_ICONS: Record<string, string> = {
   '.lock': '\uf023', // nf-fa-lock
 }
 
+// Per-glyph colors, in the nvim-web-devicons palette the Nerd Font glyphs were
+// drawn for. Keyed by the GLYPH and not by the extension, so two extensions
+// sharing an icon (.yaml/.toml, .png/.svg) can never drift apart in color.
+//
+// Two families are deliberately ABSENT so they inherit the theme's text color:
+// the folder glyphs, and the generic file fallback — tinting those would fight
+// the theme on exactly the rows that carry no type information.
+export const ICON_COLORS: Record<string, HexColor> = {
+  '\ue628': '#519aba', // typescript
+  '\ue7ba': '#61dafb', // react (.tsx/.jsx)
+  '\ue781': '#cbcb41', // javascript
+  '\ue60b': '#cbcb41', // json
+  '\ue73e': '#519aba', // markdown
+  '\ue615': '#6d8086', // config (.toml/.yaml/.env)
+  '\ue606': '#ffbc03', // python
+  '\ue7a8': '#dea584', // rust
+  '\ue627': '#519aba', // go
+  '\uf489': '#89e051', // shell
+  '\ue749': '#563d7c', // css
+  '\ue74b': '#f55385', // sass
+  '\ue736': '#e34c26', // html
+  '\uf1c5': '#a074c4', // image
+  '\uf023': '#bbbbbb', // lock
+  '\ued0d': '#8bc34a', // node (package.json)
+  '\uf308': '#458ee6', // docker
+  '\ue702': '#f14c28', // git
+  '\uf718': '#d0bf41', // license
+}
+
 /**
  * Returns the Nerd Font glyph for a suggestion's display path. Directories are
  * detected by a trailing separator (file suggestions always append `path.sep`
@@ -76,4 +106,16 @@ export function getFileTypeIcon(displayText: string): string {
   if (filenameIcon) return filenameIcon
   const ext = path.extname(base)
   return EXTENSION_ICONS[ext] ?? GENERIC_FILE_ICON
+}
+
+/**
+ * Color for a path's file-type glyph, or `undefined` when its type has none —
+ * folders and unmapped files keep whatever color the row already has.
+ *
+ * Callers MUST skip the color on a selected row: those rows render `inverse`
+ * (or carry a highlight background), where a foreground hex comes back as the
+ * row's background instead of as the glyph.
+ */
+export function getFileTypeIconColor(displayText: string): HexColor | undefined {
+  return ICON_COLORS[getFileTypeIcon(displayText)]
 }

@@ -59,11 +59,21 @@ export function CommitFileList({
         const isSelected = start + i === selectedIndex
         const lead = isSelected ? `${glyphs.pointer} ` : '  '
         const icon = glyphs.fileIcon(file.path)
+        const iconPrefix = icon ? `${icon} ` : ''
+        // Per-type tint, skipped on the selected row: that <Text> is `inverse`,
+        // which would turn the glyph's foreground hex into its background.
+        const iconColor = isSelected ? undefined : glyphs.fileIconColor(file.path)
         return (
           <Box key={file.path} flexDirection="row">
             <Box flexShrink={1} overflow="hidden">
               <Text wrap="truncate" bold={isSelected} inverse={isSelected}>
-                {`${lead}${icon ? `${icon} ` : ''}${file.path}`}
+                {lead}
+                {iconColor ? (
+                  <Text color={iconColor}>{iconPrefix}</Text>
+                ) : (
+                  iconPrefix
+                )}
+                {file.path}
               </Text>
             </Box>
             <Box flexGrow={1} />

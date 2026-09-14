@@ -185,6 +185,9 @@ function TreeRowItem({
   // file row
   const icon = glyphs.fileIcon(row.file.path)
   const iconPrefix = icon ? `${icon} ` : ''
+  // Per-type tint for the glyph. Never on the selected row: that <Text> is
+  // `inverse`, so a foreground hex would come back as the row's background.
+  const iconColor = isSelected ? undefined : glyphs.fileIconColor(row.file.path)
   // Pad files by the folder caret width so their names line up under sibling
   // folder names (a real file tree). Off by default — /diff keeps files flush.
   const caretPad = alignFiles ? '  ' : ''
@@ -209,7 +212,7 @@ function TreeRowItem({
           {lead}
           <Text dimColor={!isSelected}>{guides}</Text>
           {caretPad}
-          {iconPrefix}
+          {iconColor ? <Text color={iconColor}>{iconPrefix}</Text> : iconPrefix}
           {statusColor && !isSelected ? (
             <Text color={statusColor}>{name}</Text>
           ) : (
