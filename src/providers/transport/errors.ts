@@ -53,6 +53,9 @@ import {
   extractOpenAICategoryMarker,
   type OpenAICompatibilityFailureCategory,
 } from 'src/providers/shims/openaiErrorClassification.js'
+import { extractRateLimitInfo } from 'src/providers/rateLimitInfo.js'
+import { formatProviderLimitMessage } from 'src/providers/rateLimitMessages.js'
+import { getActiveProviderLabel } from 'src/providers/providerLabel.js'
 
 export const API_ERROR_MESSAGE_PREFIX = 'API Error'
 
@@ -102,8 +105,14 @@ function mapOpenAICompatibilityFailureToAssistantMessage(options: {
       })
 
     case 'rate_limited':
+      // Reached only when a rate-limited failure arrives without the 429 the
+      // unified arm in getAssistantMessageFromError keys on. Same shape as
+      // every other provider's limit message, minus the reset we never saw.
       return createAssistantAPIErrorMessage({
-        content: `${API_ERROR_MESSAGE_PREFIX}: Provider rate limit reached. Retry in a few seconds.`,
+        content: formatProviderLimitMessage(
+          { kind: 'burst', source: 'none' },
+          getActiveProviderLabel(),
+        ),
         error: 'rate_limit',
       })
 
@@ -514,19 +523,6 @@ export function getAssistantMessageFromError(
     })
   }
 
-  // OpenAI-compatible transport and HTTP failures include structured category
-  // markers from openaiShim.ts for actionable end-user remediation.
-  if (isSdkApiError(error)) {
-    const openaiCategory = extractOpenAICategoryMarker(error.message)
-    if (openaiCategory) {
-      return mapOpenAICompatibilityFailureToAssistantMessage({
-        category: openaiCategory,
-        model,
-        rawMessage: error.message,
-      })
-    }
-  }
-
   // Check for emergency capacity off switch for Opus PAYG users
   if (
     error instanceof Error &&
@@ -538,12 +534,27 @@ export function getAssistantMessageFromError(
     })
   }
 
-  if (
-    isSdkApiError(error) &&
-    error.status === 429 &&
-    shouldProcessRateLimits(isClaudeAISubscriber())
-  ) {
-    // Check if this is the new API with multiple rate limit headers
+  // ── Rate limits: one arm for every provider ───────────────────────────────
+  // Ahead of the OpenAI-compatibility dispatch below on purpose. Every
+  // non-Anthropic provider reaches this function carrying a category marker,
+  // and that dispatch never sees the response headers — so a 429 taking that
+  // route came out as a flat "retry in a few seconds" with no provider name
+  // and no reset time.
+  if (isSdkApiError(error) && error.status === 429) {
+    // An entitlement rejection rather than a usage limit: nothing to wait for.
+    if (error.message.includes('Extra usage is required for long context')) {
+      const hint = getIsNonInteractiveSession()
+        ? 'enable extra usage at claude.ai/settings/usage, or use --model to switch to standard context'
+        : 'run /extra-usage to enable, or /model to switch to standard context'
+      return createAssistantAPIErrorMessage({
+        content: `${API_ERROR_MESSAGE_PREFIX}: Extra usage is required for 1M context · ${hint}`,
+        error: 'rate_limit',
+      })
+    }
+
+    // Anthropic's unified quota headers stay on the subscriber path, which
+    // knows about 5-hour vs weekly windows, the Opus/Sonnet claims, overage
+    // and the /rate-limit-options menu.
     const rateLimitType = error.headers?.get?.(
       'anthropic-ratelimit-unified-representative-claim',
     ) as 'five_hour' | 'seven_day' | 'seven_day_opus' | null
@@ -552,8 +563,10 @@ export function getAssistantMessageFromError(
       'anthropic-ratelimit-unified-overage-status',
     ) as 'allowed' | 'allowed_warning' | 'rejected' | null
 
-    // If we have the new headers, use the new message generation
-    if (rateLimitType || overageStatus) {
+    if (
+      (rateLimitType || overageStatus) &&
+      shouldProcessRateLimits(isClaudeAISubscriber())
+    ) {
       // Build limits object from error headers to determine the appropriate message
       const limits: ClaudeAILimits = {
         status: 'rejected',
@@ -610,31 +623,30 @@ export function getAssistantMessageFromError(
       })
     }
 
-    // No quota headers — this is NOT a quota limit. Surface what the API actually
-    // said instead of a generic "Rate limit reached". Entitlement rejections
-    // (e.g. 1M context without Extra Usage) and infra capacity 429s land here.
-    if (error.message.includes('Extra usage is required for long context')) {
-      const hint = getIsNonInteractiveSession()
-        ? 'enable extra usage at claude.ai/settings/usage, or use --model to switch to standard context'
-        : 'run /extra-usage to enable, or /model to switch to standard context'
+    // Everyone else, and any Anthropic 429 without those headers. The
+    // provider's own wording is kept as errorDetails rather than in the line,
+    // so an infra 429 and a quota 429 read the same on screen.
+    const info = extractRateLimitInfo(error)
+    if (info) {
       return createAssistantAPIErrorMessage({
-        content: `${API_ERROR_MESSAGE_PREFIX}: Extra usage is required for 1M context · ${hint}`,
+        content: formatProviderLimitMessage(info, getActiveProviderLabel()),
         error: 'rate_limit',
+        ...(info.detail === undefined ? {} : { errorDetails: info.detail }),
       })
     }
-    // SDK's APIError.makeMessage prepends "429 " and JSON-stringifies the body
-    // when there's no top-level .message — extract the inner error.message.
-    const stripped = error.message.replace(/^429\s+/, '')
-    const innerMessage = stripped.match(/"message"\s*:\s*"([^"]*)"/)?.[1]
-    const detail = innerMessage || stripped
-    const retryAfter = (error as APIError).headers?.get?.('retry-after')
-    const retryHint = retryAfter && !isNaN(Number(retryAfter))
-      ? `Try again in ${retryAfter} seconds.`
-      : 'Try again in a few seconds.'
-    return createAssistantAPIErrorMessage({
-      content: `${API_ERROR_MESSAGE_PREFIX}: Request rejected (429) · ${detail || 'this may be a temporary capacity issue'} — ${retryHint}`,
-      error: 'rate_limit',
-    })
+  }
+
+  // OpenAI-compatible transport and HTTP failures include structured category
+  // markers from openaiShim.ts for actionable end-user remediation.
+  if (isSdkApiError(error)) {
+    const openaiCategory = extractOpenAICategoryMarker(error.message)
+    if (openaiCategory) {
+      return mapOpenAICompatibilityFailureToAssistantMessage({
+        category: openaiCategory,
+        model,
+        rawMessage: error.message,
+      })
+    }
   }
 
   // Handle prompt too long errors (Vertex returns 413, direct API returns 400)

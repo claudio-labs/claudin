@@ -49,6 +49,31 @@ import {
 import { isMockRateLimitError } from 'src/providers/rateLimitMocking.js'
 import { REPEATED_529_ERROR_MESSAGE } from 'src/providers/transport/errors.js'
 import { extractConnectionErrorDetails } from 'src/providers/transport/errorUtils.js'
+import {
+  extractRateLimitInfo,
+  getRateLimitResetDelayMs,
+  getRetryAfterMs,
+  isLongRateLimit,
+  isQuotaExhaustedError,
+  parseOpenAIDuration,
+  parseRetryAfterValue,
+  RATE_LIMIT_RESET_CAP_MS,
+} from 'src/providers/rateLimitInfo.js'
+import {
+  clearProviderRateLimitForModel,
+  publishProviderRateLimit,
+} from 'src/providers/rateLimitState.js'
+import { getActiveProviderLabel } from 'src/providers/providerLabel.js'
+
+// Reset/Retry-After parsing moved to the provider-agnostic reader table in
+// rateLimitInfo.ts. Re-exported from here because this module has been their
+// home since upstream and several tests import them by this path.
+export {
+  getRateLimitResetDelayMs,
+  getRetryAfterMs,
+  parseOpenAIDuration,
+  parseRetryAfterValue,
+}
 
 const abortError = () => new APIUserAbortError()
 
@@ -59,10 +84,6 @@ export const BASE_DELAY_MS = 500
 // OpenAI-compat providers can return transient 404s (model loading, routing blip).
 // Retry these a limited number of times before treating as permanent.
 const MAX_OPENAI_COMPAT_404_RETRIES = 2
-
-// Numeric seconds/ms value used by Retry-After headers. Module-level so we
-// don't recompile on every retry parse.
-const NUMERIC_RETRY_AFTER_RE = /^\d+(?:\.\d+)?$/
 
 // Foreground query sources where the user IS blocking on the result — these
 // retry on 529. Everything else (summaries, titles, suggestions, classifiers)
@@ -103,7 +124,7 @@ function shouldRetry529(querySource: QuerySource | undefined): boolean {
 // TODO(ANT-344): the keep-alive via SystemAPIErrorMessage yields is a stopgap
 // until there's a dedicated keep-alive channel.
 const PERSISTENT_MAX_BACKOFF_MS = 5 * 60 * 1000
-const PERSISTENT_RESET_CAP_MS = 6 * 60 * 60 * 1000
+const PERSISTENT_RESET_CAP_MS = RATE_LIMIT_RESET_CAP_MS
 const HEARTBEAT_INTERVAL_MS = 30_000
 
 function isPersistentRetryEnabled(): boolean {
@@ -112,13 +133,20 @@ function isPersistentRetryEnabled(): boolean {
     : false
 }
 
-function isQuotaExhausted(error: any): boolean {
-  const msg = (error?.message || '').toLowerCase()
-
-  return (
-    error?.status === 429 &&
-    (msg.includes('limit: 0') || msg.includes('exceeded your current quota'))
-  )
+/**
+ * Record the limit for the session so the REPL can render the countdown and
+ * resume when it clears. The user-facing wording is built later, from the same
+ * error, by getAssistantMessageFromError.
+ */
+function noteRateLimit(error: unknown, model: string): void {
+  const info = extractRateLimitInfo(error)
+  if (!info) return
+  publishProviderRateLimit({
+    ...info,
+    providerLabel: getActiveProviderLabel(),
+    model,
+    observedAtMs: Date.now(),
+  })
 }
 
 function isTransientCapacityError(error: unknown): boolean {
@@ -331,7 +359,12 @@ export async function* withRetry<T>(
         client = await getClient()
       }
 
-      return await operation(client, attempt, retryContext)
+      const result = await operation(client, attempt, retryContext)
+      // A limit can lift before the reset the provider reported. Drop the
+      // recorded one on the first request of that model that gets through, so
+      // the countdown and the pending resume don't outlive it.
+      clearProviderRateLimitForModel(options.model)
+      return result
     } catch (error) {
       lastError = error
       logForDebugging(
@@ -341,17 +374,17 @@ export async function* withRetry<T>(
         if (error instanceof OAuthWebSessionExpiredError) {
           throw new CannotRetryError(error, retryContext)
         }
-        if (isQuotaExhausted(error)) {
-          throw new CannotRetryError(
-            new Error(
-              'API quota exhausted or not enabled.\n' +
-              'Fix:\n' +
-              '- Enable billing for your provider\n' +
-              '- Or switch provider via /provider',
-            ),
-            retryContext,
-          );
-      }
+        if (isSdkApiError(error) && error.status === 429) {
+          noteRateLimit(error, options.model)
+          // Billing exhaustion has no reset to wait for, so it never reaches
+          // the retry logic below. The original error is what propagates —
+          // wrapping it in a bare Error would drop the 429 that
+          // getAssistantMessageFromError keys on, and the message would come
+          // back as an unrouted "API Error: …" instead.
+          if (isQuotaExhaustedError(error)) {
+            throw new CannotRetryError(error, retryContext)
+          }
+        }
       // Fast mode fallback: on 429/529, either wait and retry (short delays)
       // or fall back to standard speed (long delays) to avoid cache thrashing.
       // Skip in persistent mode: the short-retry path below loops with fast
@@ -619,83 +652,6 @@ export async function* withRetry<T>(
   throw new CannotRetryError(lastError, retryContext)
 }
 
-function readHeader(error: unknown, name: string): string | null {
-  const headers = (error as { headers?: unknown }).headers
-  if (!headers) return null
-  // Headers can be either a plain object (some SDK error shapes) or a Fetch
-  // Headers instance. Try both forms — same strategy as the legacy reader.
-  const plain = (headers as Record<string, string | undefined>)[name]
-  if (typeof plain === 'string' && plain !== '') return plain
-  // eslint-disable-next-line eslint-plugin-n/no-unsupported-features/node-builtins
-  const got = (headers as Headers).get?.(name)
-  return typeof got === 'string' && got !== '' ? got : null
-}
-
-/**
- * Parse a Retry-After header value into milliseconds.
- *
- * Accepts:
- *   - integer seconds: "5" → 5000
- *   - decimal seconds: "0.5" → 500
- *   - HTTP-date (RFC 7231): "Wed, 21 Oct 2099 07:28:00 GMT" → ms until that
- *     instant (clamped at 0 for past dates)
- *
- * Returns null for empty/invalid input. Result is capped at
- * PERSISTENT_RESET_CAP_MS so a pathological server header can't pin us
- * waiting for hours.
- */
-export function parseRetryAfterValue(
-  value: string | null | undefined,
-): number | null {
-  if (value == null) return null
-  const trimmed = value.trim()
-  if (trimmed === '') return null
-
-  // Numeric path covers both integer and decimal seconds. parseFloat tolerates
-  // leading whitespace already trimmed; reject if any non-numeric tail.
-  if (NUMERIC_RETRY_AFTER_RE.test(trimmed)) {
-    const seconds = Number(trimmed)
-    if (!Number.isFinite(seconds) || seconds < 0) return null
-    return Math.min(Math.round(seconds * 1000), PERSISTENT_RESET_CAP_MS)
-  }
-
-  // HTTP-date fallback. Date.parse returns NaN for unrecognized formats.
-  const target = Date.parse(trimmed)
-  if (!Number.isFinite(target)) return null
-  const delta = target - Date.now()
-  if (delta <= 0) return 0
-  return Math.min(delta, PERSISTENT_RESET_CAP_MS)
-}
-
-/**
- * Parse the millisecond-precision `retry-after-ms` extension. Value is
- * already in ms — no second→ms conversion. Returns null for invalid input.
- */
-function parseRetryAfterMsValue(
-  value: string | null | undefined,
-): number | null {
-  if (value == null) return null
-  const trimmed = value.trim()
-  if (trimmed === '') return null
-  if (!NUMERIC_RETRY_AFTER_RE.test(trimmed)) return null
-  const ms = Number(trimmed)
-  if (!Number.isFinite(ms) || ms < 0) return null
-  return Math.min(Math.round(ms), PERSISTENT_RESET_CAP_MS)
-}
-
-/**
- * Read Retry-After hint from the error and return milliseconds.
- *
- * Prefers `retry-after-ms` (millisecond-precision extension used by
- * Anthropic and OpenAI) over `retry-after` (RFC 7231) when both are
- * present — the ms variant is more precise.
- */
-export function getRetryAfterMs(error: unknown): number | null {
-  const ms = parseRetryAfterMsValue(readHeader(error, 'retry-after-ms'))
-  if (ms !== null) return ms
-  return parseRetryAfterValue(readHeader(error, 'retry-after'))
-}
-
 export function getRetryDelay(
   attempt: number,
   retryAfterMs?: number | null,
@@ -859,7 +815,26 @@ function handleGcpCredentialError(error: unknown): boolean {
   return false
 }
 
-export function shouldRetry(error: APIError, attempt = 1): boolean {
+/**
+ * The two account questions `shouldRetry` asks. Injected so the policy can be
+ * exercised without reaching for the ambient credentials — and without
+ * mock.module on auth.js, which leaks across the whole test run.
+ */
+export type RetryAccountDeps = {
+  isSubscriber: () => boolean
+  isEnterprise: () => boolean
+}
+
+const DEFAULT_RETRY_ACCOUNT_DEPS: RetryAccountDeps = {
+  isSubscriber: isClaudeAISubscriber,
+  isEnterprise: isEnterpriseSubscriber,
+}
+
+export function shouldRetry(
+  error: APIError,
+  attempt = 1,
+  account: RetryAccountDeps = DEFAULT_RETRY_ACCOUNT_DEPS,
+): boolean {
   // Never retry mock errors - they're from /mock-limits command for testing
   if (isMockRateLimitError(error)) {
     return false
@@ -869,6 +844,16 @@ export function shouldRetry(error: APIError, attempt = 1): boolean {
   // x-should-retry header.
   if (isPersistentRetryEnabled() && isTransientCapacityError(error)) {
     return true
+  }
+
+  // A rate limit whose reset is minutes or hours out is not worth retrying —
+  // ten attempts of exponential backoff top out around a minute of waiting and
+  // then fail anyway. This sits above the x-should-retry handling below on
+  // purpose: that header says "true" for a Max/Pro window limit that clears in
+  // several hours, which is exactly the case worth refusing. The turn ends with
+  // the reset time instead, and the REPL resumes once the clock runs down.
+  if (isLongRateLimit(error)) {
+    return false
   }
 
   // CCR mode: auth is via infrastructure-provided JWTs, so a 401/403 is a
@@ -907,7 +892,7 @@ export function shouldRetry(error: APIError, attempt = 1): boolean {
   // Enterprise users can retry because they typically use PAYG instead of rate limits.
   if (
     shouldRetryHeader === 'true' &&
-    (!isClaudeAISubscriber() || isEnterpriseSubscriber())
+    (!account.isSubscriber() || account.isEnterprise())
   ) {
     return true
   }
@@ -931,8 +916,8 @@ export function shouldRetry(error: APIError, attempt = 1): boolean {
   // Retry on rate limits, but not for ClaudeAI Subscription users
   // Enterprise users can retry because they typically use PAYG instead of rate limits
   if (error.status === 429) {
-    if (isQuotaExhausted(error)) return false
-    return !isClaudeAISubscriber() || isEnterpriseSubscriber()
+    if (isQuotaExhaustedError(error)) return false
+    return !account.isSubscriber() || account.isEnterprise()
   }
 
   // Clear API key cache on 401 and allow retry.
@@ -977,50 +962,3 @@ function getMaxRetries(options: RetryOptions): number {
 const DEFAULT_FAST_MODE_FALLBACK_HOLD_MS = 30 * 60 * 1000 // 30 minutes
 const SHORT_RETRY_THRESHOLD_MS = 20 * 1000 // 20 seconds
 const MIN_COOLDOWN_MS = 10 * 60 * 1000 // 10 minutes
-
-/**
- * Parse OpenAI-style relative duration strings into milliseconds.
- * Formats: "1s", "6m0s", "1h30m0s", "500ms", "2m"
- * Returns null for unrecognized formats.
- */
-export function parseOpenAIDuration(s: string): number | null {
-  if (!s) return null
-  // Try matching hours/minutes/seconds/milliseconds components
-  const re = /^(?:(\d+)h)?(?:(\d+)m(?!s))?(?:(\d+)s)?(?:(\d+)ms)?$/
-  const m = re.exec(s)
-  if (!m || m[0] === '') return null
-  const h = parseInt(m[1] ?? '0', 10)
-  const min = parseInt(m[2] ?? '0', 10)
-  const sec = parseInt(m[3] ?? '0', 10)
-  const ms = parseInt(m[4] ?? '0', 10)
-  const total = h * 3_600_000 + min * 60_000 + sec * 1_000 + ms
-  return total > 0 ? total : null
-}
-
-export function getRateLimitResetDelayMs(error: APIError): number | null {
-  const provider = getAPIProvider()
-
-  if (provider === 'firstParty') {
-    const resetHeader = error.headers?.get?.('anthropic-ratelimit-unified-reset')
-    if (!resetHeader) return null
-    const resetUnixSec = Number(resetHeader)
-    if (!Number.isFinite(resetUnixSec)) return null
-    const delayMs = resetUnixSec * 1000 - Date.now()
-    if (delayMs <= 0) return null
-    return Math.min(delayMs, PERSISTENT_RESET_CAP_MS)
-  }
-
-  if (provider === 'openai' || provider === 'codex' || provider === 'github') {
-    const reqHeader = error.headers?.get?.('x-ratelimit-reset-requests')
-    const tokHeader = error.headers?.get?.('x-ratelimit-reset-tokens')
-    const reqMs = reqHeader ? parseOpenAIDuration(reqHeader) : null
-    const tokMs = tokHeader ? parseOpenAIDuration(tokHeader) : null
-    if (reqMs === null && tokMs === null) return null
-    // Use the larger delay so we don't retry before both limits reset
-    const delayMs = Math.max(reqMs ?? 0, tokMs ?? 0)
-    return Math.min(delayMs, PERSISTENT_RESET_CAP_MS)
-  }
-
-  // bedrock, vertex, foundry, gemini — no standard reset header
-  return null
-}

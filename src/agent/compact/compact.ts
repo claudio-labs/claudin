@@ -400,6 +400,23 @@ export function mergeHookInstructions(
  * Creates a compact version of a conversation by summarizing older messages
  * and preserving recent conversation history.
  */
+/**
+ * Whether what came back is really an API error wearing a summary's clothes.
+ *
+ * The text check alone is not enough, and the gap is destructive: a rate-limit
+ * message is worded for the user — `Rate limit reached · OpenAI · resets in
+ * 2h 14m`, `You've hit your session limit · resets 3pm` — and carries no
+ * "API Error" prefix, so it slipped the guard and was stored AS the summary,
+ * replacing the conversation with one line. The flag is what catches it; the
+ * prefix check stays for callers that only have the text.
+ */
+export function isFailedSummary(
+  response: { isApiErrorMessage?: boolean },
+  summary: string,
+): boolean {
+  return response.isApiErrorMessage === true || startsWithApiErrorPrefix(summary)
+}
+
 export async function compactConversation(
   messages: Message[],
   context: ToolUseContext,
@@ -519,7 +536,7 @@ export async function compactConversation(
       throw new Error(
         `Failed to generate conversation summary - response did not contain valid text content`,
       )
-    } else if (startsWithApiErrorPrefix(summary)) {
+    } else if (isFailedSummary(summaryResponse, summary)) {
       logEvent('tengu_compact_failed', {
         reason:
           'api_error' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
@@ -921,7 +938,7 @@ export async function partialCompactConversation(
       throw new Error(
         'Failed to generate conversation summary - response did not contain valid text content',
       )
-    } else if (startsWithApiErrorPrefix(summary)) {
+    } else if (isFailedSummary(summaryResponse, summary)) {
       logEvent('tengu_partial_compact_failed', {
         reason:
           'api_error' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,

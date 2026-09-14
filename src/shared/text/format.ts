@@ -299,6 +299,55 @@ export function formatResetText(
   return `${formatResetTime(Math.floor(dt.getTime() / 1000), showTimezone, showTime)}`
 }
 
+/**
+ * "Time remaining" for a reset — "3d 4h", "2h 15m", "45m", "7s". Rounds up, so
+ * it never sends anyone back early, and never reads as "0".
+ *
+ * Seconds are reported below a minute rather than rounded up to "1m": a
+ * seven-second throttle described as "back in 1m" contradicts the retry notice
+ * counting down beside it.
+ */
+export function formatCountdownDuration(ms: number): string {
+  if (ms < 60_000) {
+    return `${Math.max(1, Math.ceil(ms / 1_000))}s`
+  }
+  const totalMinutes = Math.max(1, Math.ceil(ms / 60_000))
+  const days = Math.floor(totalMinutes / 1_440)
+  const hours = Math.floor((totalMinutes % 1_440) / 60)
+  const minutes = totalMinutes % 60
+
+  if (days > 0) {
+    return hours > 0 ? `${days}d ${hours}h` : `${days}d`
+  }
+
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
+  }
+
+  return `${minutes}m`
+}
+
+/**
+ * "Resets in 2h 15m" for an ISO timestamp, or "Resetting now" once it passes.
+ * Returns undefined when there is no timestamp to count down to.
+ */
+export function formatResetCountdown(
+  resetsAt: string | undefined,
+  nowMs: number,
+): string | undefined {
+  if (!resetsAt) return undefined
+
+  const resetMs = Date.parse(resetsAt)
+  if (!Number.isFinite(resetMs)) return undefined
+
+  const remainingMs = resetMs - nowMs
+  if (remainingMs <= 0) {
+    return 'Resetting now'
+  }
+
+  return `Resets in ${formatCountdownDuration(remainingMs)}`
+}
+
 // Back-compat: truncate helpers moved to ./truncate.ts (needs ink/stringWidth)
 export {
   truncate,

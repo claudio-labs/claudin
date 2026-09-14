@@ -226,9 +226,22 @@ describe('getRateLimitResetDelayMs - OpenAI provider', () => {
       'x-ratelimit-reset-requests': '10s',
       'x-ratelimit-reset-tokens': '1m0s',
     })
-    // Should use the larger of the two so we don't retry before both reset
-    const delay = getRateLimitResetDelayMs(error)
-    expect(delay).toBe(60_000)
+    // The smaller of the two: OpenAI reports both buckets on every 429, so the
+    // larger value is usually the bucket that did NOT trip.
+    expect(getRateLimitResetDelayMs(error)).toBe(10_000)
+  })
+
+  test('uses the bucket the remaining counters say is spent', async () => {
+    process.env.CLAUDIN_USE_OPENAI = '1'
+    const { getRateLimitResetDelayMs } =
+      await importFreshWithRetryModule('openai')
+    const error = makeError({
+      'x-ratelimit-reset-requests': '10s',
+      'x-ratelimit-remaining-requests': '4900',
+      'x-ratelimit-reset-tokens': '1m0s',
+      'x-ratelimit-remaining-tokens': '0',
+    })
+    expect(getRateLimitResetDelayMs(error)).toBe(60_000)
   })
 
   test('returns null when no openai rate limit headers present', async () => {
@@ -249,13 +262,27 @@ describe('getRateLimitResetDelayMs - OpenAI provider', () => {
 })
 
 describe('getRateLimitResetDelayMs - providers without reset headers', () => {
-  test('returns null for bedrock', async () => {
+  test('returns null for bedrock, which reports no reset', async () => {
     process.env.CLAUDIN_USE_BEDROCK = '1'
     const { getRateLimitResetDelayMs } =
       await importFreshWithRetryModule('bedrock')
-    const error = makeError({ 'anthropic-ratelimit-unified-reset': String(Math.floor(Date.now() / 1000) + 60) })
-    // Bedrock doesn't use this header — should still return null
-    expect(getRateLimitResetDelayMs(error)).toBeNull()
+    expect(getRateLimitResetDelayMs(makeError({}))).toBeNull()
+  })
+
+  test('reads a reset header no matter which provider sent it', async () => {
+    // The readers are a table, not a switch on the provider tag: a gateway in
+    // front of Bedrock that forwards the header gets its reset honored rather
+    // than discarded because of the tag.
+    process.env.CLAUDIN_USE_BEDROCK = '1'
+    const { getRateLimitResetDelayMs } =
+      await importFreshWithRetryModule('bedrock')
+    const error = makeError({
+      'anthropic-ratelimit-unified-reset': String(Math.floor(Date.now() / 1000) + 60),
+    })
+    const delay = getRateLimitResetDelayMs(error)
+    expect(delay).not.toBeNull()
+    expect(delay!).toBeGreaterThan(50_000)
+    expect(delay!).toBeLessThanOrEqual(60_000)
   })
 
   test('returns null for vertex', async () => {
@@ -457,5 +484,200 @@ describe('shouldRetry', () => {
     const { shouldRetry } = await importFreshWithRetryModule()
     const error = make404Error('Not found')
     expect(shouldRetry(error, 1)).toBe(false)
+  })
+})
+
+// --- shouldRetry (429 stop threshold) ---
+describe('shouldRetry - a rate limit with a distant reset', () => {
+  // Pinned rather than ambient. isClaudeAISubscriber() reads the developer's
+  // own credentials AND is mock.module'd to `true` for the whole run by
+  // modelOptions.dualcontext.test.ts — under either, every 429 is already
+  // non-retryable and these assertions would pass with the new rule deleted.
+  const PAYG = { isSubscriber: () => false, isEnterprise: () => false }
+
+  test('is not retried, while a short one still is', async () => {
+    // Asserted as a pair on purpose: the second assertion is what proves the
+    // first one is the threshold talking and not a blanket "never retry".
+    const { shouldRetry } = await importFreshWithRetryModule('openai')
+    expect(shouldRetry(makeError({ 'retry-after': '7200' }), 1, PAYG)).toBe(false)
+    expect(shouldRetry(makeError({ 'retry-after': '3' }), 1, PAYG)).toBe(true)
+  })
+
+  test('a 429 with no reset signal keeps the existing backoff', async () => {
+    const { shouldRetry } = await importFreshWithRetryModule('openai')
+    expect(shouldRetry(makeError({}), 1, PAYG)).toBe(true)
+  })
+
+  test('overrides the server saying x-should-retry: true', async () => {
+    // Upstream's own comment: for Max and Pro that header is `true`, but the
+    // window clears in several hours. Before this rule the header won and the
+    // loop burned every attempt.
+    const { shouldRetry } = await importFreshWithRetryModule('openai')
+    const error = makeError({ 'retry-after': '7200', 'x-should-retry': 'true' })
+    expect(shouldRetry(error, 1, PAYG)).toBe(false)
+  })
+
+  test('leaves non-rate-limit errors alone', async () => {
+    const { shouldRetry } = await importFreshWithRetryModule('openai')
+    const serverError = {
+      headers: new Headers({ 'retry-after': '7200' }),
+      status: 503,
+      message: 'service unavailable',
+      name: 'APIError',
+      error: {},
+    } as unknown as APIError
+    expect(shouldRetry(serverError, 1, PAYG)).toBe(true)
+  })
+})
+
+// --- the loop records the limit for the session ---
+describe('withRetry - rate-limit bookkeeping', () => {
+  const noopThinking = { type: 'disabled' } as never
+
+  // The store is a process-wide singleton, so a failed assertion here would
+  // otherwise leave it published for the rest of the run and surface as a
+  // failure in whichever file happens to sort after this one.
+  afterEach(async () => {
+    const { clearProviderRateLimit } = await import(
+      'src/providers/rateLimitState.js'
+    )
+    clearProviderRateLimit()
+  })
+
+  async function runUntilSettled(error: unknown, provider = 'openai' as const) {
+    const { withRetry } = await importFreshWithRetryModule(provider)
+    const generator = withRetry(
+      async () => ({}) as never,
+      () => {
+        throw error
+      },
+      { model: 'gpt-5', thinkingConfig: noopThinking, maxRetries: 0 },
+    )
+    // Drain: the loop yields retry notices before it finally throws.
+    try {
+      for (;;) {
+        const next = await generator.next()
+        if (next.done) return
+      }
+    } catch {
+      // CannotRetryError — the turn ending is the point.
+    }
+  }
+
+  test('publishes the limit so the REPL can count down and resume', async () => {
+    const { getProviderRateLimit } = await import(
+      'src/providers/rateLimitState.js'
+    )
+    await runUntilSettled(
+      new APIError(429, undefined, 'rate limited', new Headers({ 'retry-after': '7200' })),
+    )
+
+    const limit = getProviderRateLimit()
+    expect(limit).not.toBeNull()
+    expect(limit!.kind).toBe('window')
+    expect(limit!.resetsAtMs! - Date.now()).toBeGreaterThan(7_000_000)
+    // Recorded against the model that was rejected, so a success on a
+    // different one does not clear it.
+    expect(limit!.model).toBe('gpt-5')
+  })
+
+  test('billing exhaustion is published as exhausted, with no reset', async () => {
+    const { getProviderRateLimit } = await import(
+      'src/providers/rateLimitState.js'
+    )
+    await runUntilSettled(
+      new APIError(
+        429,
+        undefined,
+        'You exceeded your current quota',
+        new Headers({ 'retry-after': '30' }),
+      ),
+    )
+
+    const limit = getProviderRateLimit()
+    expect(limit!.kind).toBe('exhausted')
+    expect(limit!.resetsAtMs).toBeUndefined()
+  })
+
+  test('the quota-exhausted failure still carries its 429', async () => {
+    // Wrapped in a bare Error instead, the status is lost and
+    // getAssistantMessageFromError falls through to "API Error: …", so the
+    // Quota exhausted wording never reaches the user.
+    const { withRetry, CannotRetryError } = await importFreshWithRetryModule('openai')
+    const generator = withRetry(
+      async () => ({}) as never,
+      () => {
+        throw new APIError(
+          429,
+          undefined,
+          'You exceeded your current quota',
+          new Headers(),
+        )
+      },
+      { model: 'gpt-5', thinkingConfig: noopThinking, maxRetries: 0 },
+    )
+
+    let thrown: unknown
+    try {
+      await generator.next()
+    } catch (error) {
+      thrown = error
+    }
+
+    expect(thrown).toBeInstanceOf(CannotRetryError)
+    expect(
+      (thrown as { originalError: { status?: number } }).originalError.status,
+    ).toBe(429)
+  })
+
+  test('a successful request clears a limit that lifted early', async () => {
+    const { getProviderRateLimit, publishProviderRateLimit } = await import(
+      'src/providers/rateLimitState.js'
+    )
+    publishProviderRateLimit({
+      kind: 'window',
+      source: 'retry-after',
+      resetsAtMs: Date.now() + 3_600_000,
+      providerLabel: 'OpenAI',
+      model: 'gpt-5',
+      observedAtMs: Date.now(),
+    })
+
+    const { withRetry } = await importFreshWithRetryModule('openai')
+    const generator = withRetry(
+      async () => ({}) as never,
+      async () => 'ok',
+      { model: 'gpt-5', thinkingConfig: noopThinking, maxRetries: 0 },
+    )
+    await generator.next()
+
+    expect(getProviderRateLimit()).toBeNull()
+  })
+
+  test('a success on another model leaves the limit standing', async () => {
+    // A title or a subagent runs on the small fast model. Clearing on its
+    // success cancelled the countdown and the pending resume for a limit the
+    // main loop was still under.
+    const { getProviderRateLimit, publishProviderRateLimit } = await import(
+      'src/providers/rateLimitState.js'
+    )
+    publishProviderRateLimit({
+      kind: 'window',
+      source: 'retry-after',
+      resetsAtMs: Date.now() + 3_600_000,
+      providerLabel: 'OpenAI',
+      model: 'gpt-5',
+      observedAtMs: Date.now(),
+    })
+
+    const { withRetry } = await importFreshWithRetryModule('openai')
+    const generator = withRetry(
+      async () => ({}) as never,
+      async () => 'ok',
+      { model: 'gpt-5-mini', thinkingConfig: noopThinking, maxRetries: 0 },
+    )
+    await generator.next()
+
+    expect(getProviderRateLimit()).not.toBeNull()
   })
 })

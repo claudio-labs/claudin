@@ -14,6 +14,7 @@ import { logError } from 'src/shared/log.js'
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js'
 import { Byline } from 'src/terminal/design-system/Byline.js'
 import { ProgressBar } from 'src/terminal/design-system/ProgressBar.js'
+import { formatResetCountdown } from 'src/shared/text/format.js'
 
 const RESET_COUNTDOWN_REFRESH_MS = 30_000
 const PROGRESS_BAR_WIDTH = 18
@@ -25,40 +26,6 @@ type MiniMaxUsageLimitBarProps = {
   extraSubtext?: string
   maxWidth: number
   nowMs: number
-}
-
-function formatCountdownDuration(ms: number): string {
-  const totalMinutes = Math.max(1, Math.ceil(ms / 60_000))
-  const days = Math.floor(totalMinutes / 1_440)
-  const hours = Math.floor((totalMinutes % 1_440) / 60)
-  const minutes = totalMinutes % 60
-
-  if (days > 0) {
-    return hours > 0 ? `${days}d ${hours}h` : `${days}d`
-  }
-
-  if (hours > 0) {
-    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
-  }
-
-  return `${minutes}m`
-}
-
-function formatResetCountdown(
-  resetsAt: string | undefined,
-  nowMs: number,
-): string | undefined {
-  if (!resetsAt) return undefined
-
-  const resetMs = Date.parse(resetsAt)
-  if (!Number.isFinite(resetMs)) return undefined
-
-  const remainingMs = resetMs - nowMs
-  if (remainingMs <= 0) {
-    return 'Resetting now'
-  }
-
-  return `Resets in ${formatCountdownDuration(remainingMs)}`
 }
 
 function MiniMaxUsageLimitBar({

@@ -24,7 +24,11 @@ export function SystemAPIErrorMessage(t0: Props) {
     retryInMs,
     maxRetries
   } = t1;
-  const hidden = true && retryAttempt < 4;
+  // Retries are normally silent until the fourth attempt, so a blip nobody
+  // needs to know about stays out of the transcript. A rate limit is the
+  // exception: the wait is the whole story, and the loop only gets here for a
+  // short one — anything longer ends the turn with the limit message instead.
+  const hidden = error.status === 429 ? false : retryAttempt < 4;
   const [countdownMs, setCountdownMs] = useState(0);
   const done = countdownMs >= retryInMs;
   let t2;

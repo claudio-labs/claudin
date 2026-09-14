@@ -15,7 +15,7 @@ import { InterruptedByUser } from 'src/agent/ui/InterruptedByUser.js';
 import { Markdown } from 'src/terminal/markdown/Markdown.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { MessageActionsSelectedContext } from 'src/agent/ui/messageActions.js';
-import { RateLimitMessage } from 'src/agent/ui/messages/RateLimitMessage.js';
+import { LimitMessage } from 'src/agent/ui/messages/ProviderLimitMessage.js';
 const MAX_API_ERROR_CHARS = 1000;
 type Props = {
   param: TextBlockParam;
@@ -63,7 +63,7 @@ export function AssistantTextMessage(t0: Props) {
   if (isRateLimitErrorMessage(text)) {
     let t2;
     if ($[0] !== onOpenRateLimitOptions || $[1] !== text) {
-      t2 = <RateLimitMessage text={text} onOpenRateLimitOptions={onOpenRateLimitOptions} />;
+      t2 = <LimitMessage text={text} onOpenRateLimitOptions={onOpenRateLimitOptions} />;
       $[0] = onOpenRateLimitOptions;
       $[1] = text;
       $[2] = t2;

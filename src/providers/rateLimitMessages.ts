@@ -9,8 +9,20 @@ import {
   isOverageProvisioningAllowed,
 } from 'src/providers/auth/auth.js'
 import { hasClaudeAiBillingAccess } from 'src/providers/usage/billing.js'
-import { formatResetTime } from 'src/shared/text/format.js'
+import {
+  formatCountdownDuration,
+  formatResetTime,
+} from 'src/shared/text/format.js'
 import type { ClaudeAILimits } from 'src/providers/claudeAiLimits.js'
+import type { RateLimitInfo } from 'src/providers/rateLimitInfo.js'
+
+/**
+ * Head of the provider-agnostic limit message. Exported so the renderer can
+ * tell whether the limit currently in force is the one a given transcript
+ * message is about.
+ */
+export const PROVIDER_LIMIT_PREFIX = 'Rate limit reached'
+export const QUOTA_EXHAUSTED_PREFIX = 'Quota exhausted'
 
 /**
  * All possible rate limit error message prefixes
@@ -22,6 +34,8 @@ export const RATE_LIMIT_ERROR_PREFIXES = [
   "You're now using extra usage",
   "You're close to",
   "You're out of extra usage",
+  PROVIDER_LIMIT_PREFIX,
+  QUOTA_EXHAUSTED_PREFIX,
 ] as const
 
 /**
@@ -29,6 +43,55 @@ export const RATE_LIMIT_ERROR_PREFIXES = [
  */
 export function isRateLimitErrorMessage(text: string): boolean {
   return RATE_LIMIT_ERROR_PREFIXES.some(prefix => text.startsWith(prefix))
+}
+
+/**
+ * `Rate limit reached · OpenAI` — everything before the part that changes as
+ * the clock runs down.
+ */
+export function formatProviderLimitHead(
+  info: RateLimitInfo,
+  providerLabel: string,
+): string {
+  const prefix =
+    info.kind === 'exhausted' ? QUOTA_EXHAUSTED_PREFIX : PROVIDER_LIMIT_PREFIX
+  return `${prefix} · ${providerLabel}`
+}
+
+/** The part that changes: the remaining time, or why there isn't one. */
+export function formatProviderLimitTail(
+  info: RateLimitInfo,
+  nowMs: number = Date.now(),
+): string {
+  if (info.kind === 'exhausted') {
+    return 'enable billing for this provider, or switch with /provider'
+  }
+  if (info.resetsAtMs === undefined) {
+    // With no clock to show, the provider's own wording is the only
+    // information there is — and `errorDetails` is not rendered anywhere, so
+    // putting it there would drop it on the floor. This is the case that used
+    // to read "Request rejected (429) · <detail>".
+    return info.detail === undefined
+      ? 'no reset time reported'
+      : `${info.detail} · no reset time reported`
+  }
+  const remainingMs = info.resetsAtMs - nowMs
+  if (remainingMs <= 0) {
+    return 'the limit should have cleared — try again'
+  }
+  return `resets in ${formatCountdownDuration(remainingMs)}`
+}
+
+/**
+ * The one message every provider gets when a request is rate limited:
+ * `Rate limit reached · OpenAI · resets in 2h 14m`.
+ */
+export function formatProviderLimitMessage(
+  info: RateLimitInfo,
+  providerLabel: string,
+  nowMs: number = Date.now(),
+): string {
+  return `${formatProviderLimitHead(info, providerLabel)} · ${formatProviderLimitTail(info, nowMs)}`
 }
 
 export type RateLimitMessage = {
@@ -140,28 +203,16 @@ export function getRateLimitWarning(
 
 function getLimitReachedText(limits: ClaudeAILimits, model: string): string {
   const resetsAt = limits.resetsAt
-  const resetTime = resetsAt ? formatResetTime(resetsAt, true) : undefined
-  const overageResetTime = limits.overageResetsAt
-    ? formatResetTime(limits.overageResetsAt, true)
-    : undefined
-  const resetMessage = resetTime ? ` · resets ${resetTime}` : ''
+  const resetMessage = formatResetSuffix(resetsAt)
 
   // if BOTH subscription (checked before this method) and overage are exhausted
   if (limits.overageStatus === 'rejected') {
     // Show the earliest reset time to indicate when user can resume
-    let overageResetMessage = ''
-    if (resetsAt && limits.overageResetsAt) {
-      // Both timestamps present - use the earlier one
-      if (resetsAt < limits.overageResetsAt) {
-        overageResetMessage = ` · resets ${resetTime}`
-      } else {
-        overageResetMessage = ` · resets ${overageResetTime}`
-      }
-    } else if (resetTime) {
-      overageResetMessage = ` · resets ${resetTime}`
-    } else if (overageResetTime) {
-      overageResetMessage = ` · resets ${overageResetTime}`
-    }
+    const earliestReset =
+      resetsAt && limits.overageResetsAt
+        ? Math.min(resetsAt, limits.overageResetsAt)
+        : (resetsAt ?? limits.overageResetsAt)
+    const overageResetMessage = formatResetSuffix(earliestReset)
 
     if (limits.overageDisabledReason === 'out_of_credits') {
       return `You're out of extra usage${overageResetMessage}`
@@ -334,4 +385,19 @@ function formatLimitReachedText(
   _model: string,
 ): string {
   return `You've hit your ${limit}${resetMessage}`
+}
+
+/**
+ * ` · resets 3pm (in 2h 14m)` for a reset in the future, ` · resets 3pm` once
+ * it has passed, and nothing at all when the API sent no timestamp. The
+ * remaining time is what makes a wall-clock reset actionable — "3pm" alone
+ * says nothing about how long that is from now.
+ */
+function formatResetSuffix(resetsAtSeconds: number | undefined): string {
+  if (!resetsAtSeconds) return ''
+  const resetTime = formatResetTime(resetsAtSeconds, true)
+  if (!resetTime) return ''
+  const remainingMs = resetsAtSeconds * 1000 - Date.now()
+  if (remainingMs <= 0) return ` · resets ${resetTime}`
+  return ` · resets ${resetTime} (in ${formatCountdownDuration(remainingMs)})`
 }
