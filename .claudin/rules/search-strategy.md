@@ -221,7 +221,7 @@ that owns that subsystem.
 
 ```
 src/
-├── agent/ (491)                 ← the agent loop and everything that renders it
+├── agent/ (543)                 ← the agent loop and everything that renders it
 │   ├── QueryEngine.ts           ← model drive, tool dispatch, streaming, compaction
 │   ├── query.ts + query/ (8)    ← query helpers, SDKMessage types; config.ts, deps.ts, tokenBudget.ts
 │   ├── context.ts               ← getSystemContext/getUserContext: the memoized system-prompt
@@ -233,7 +233,7 @@ src/
 │   ├── repl/ (35)               ← REPL.tsx (main loop), controllers/, replLauncher
 │   ├── ui/ (152)                ← the loop's Ink components: messages/, tasks/, agents/ (→ ink-tui.md)
 │   ├── tools/ (29)              ← toolExecution, toolResultCache, toolResultSummarizer (→ cache.md)
-│   ├── tasks/ (32)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
+│   ├── tasks/ (37)              ← task runtime backends: LocalAgentTask, MonitorMcpTask, DreamTask …
 │   ├── coordinator/ (42)        ← multi-agent coordinator + swarm backends (COORDINATOR_MODE)
 │   ├── compact/ (23)            ← compaction: autoCompact, microCompact, stableStubState
 │   ├── cache/ (4)               ← prompt-cache policy + profiles (→ cache.md)
