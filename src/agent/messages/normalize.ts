@@ -19,7 +19,6 @@ import type {
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import isObject from 'lodash-es/isObject.js'
 import last from 'lodash-es/last.js'
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type { AgentId } from 'src/shared/types/ids.js'
 import { NO_CONTENT_MESSAGE } from 'src/agent/prompts/messages.js'
 import {

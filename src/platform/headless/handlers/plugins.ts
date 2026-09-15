@@ -6,7 +6,6 @@
 import figures from 'figures'
 import { basename, dirname } from 'path'
 import { setUseCoworkPlugins } from 'src/platform/bootstrap/state.js'
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
 import {
   disableAllPlugins,
   disablePlugin,
@@ -497,12 +496,6 @@ export async function marketplaceAddHandler(
     saveMarketplaceToSettings(name, { source: resolvedSource }, settingSource)
 
     clearAllCaches()
-
-    let sourceType = marketplaceSource.source
-    if (marketplaceSource.source === 'github') {
-      sourceType =
-        marketplaceSource.repo as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    }
 
     cliOk(
       alreadyMaterialized

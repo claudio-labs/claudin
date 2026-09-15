@@ -19,18 +19,10 @@ import { isConnectorTextBlock } from 'src/shared/types/connectorText.js'
 import type { AssistantMessage } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logError } from 'src/shared/log.js'
-import { getAPIProviderForStatsig } from 'src/providers/model/providers.js'
 import type { PermissionMode } from 'src/permissions/PermissionMode.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import {
-  endLLMRequestSpan,
-  isBetaTracingEnabled,
-  type Span,
-} from 'src/platform/telemetry/sessionTracing.js'
 import type { NonNullableUsage } from 'src/platform/entrypoints/sdk/sdkUtilityTypes.js'
 import { consumeInvokingRequestId } from 'src/agent/coordinator/agentContext.js'
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import { EMPTY_USAGE } from 'src/providers/usage/emptyUsage.js'
 import { classifyAPIError } from 'src/providers/transport/errors.js'
 import { extractConnectionErrorDetails } from 'src/providers/transport/errorUtils.js'
@@ -40,14 +32,6 @@ export { EMPTY_USAGE }
 
 // Strategy used for global prompt caching
 export type GlobalCacheStrategy = 'tool_based' | 'system_prompt' | 'none'
-
-function getErrorMessage(error: unknown): string {
-  if (isSdkApiError(error)) {
-    const body = error.error as { error?: { message?: string } } | undefined
-    if (body?.error?.message) return body.error.message
-  }
-  return error instanceof Error ? error.message : String(error)
-}
 
 type KnownGateway =
   | 'litellm'
@@ -134,37 +118,6 @@ function detectGateway({
   return undefined
 }
 
-function getAnthropicEnvMetadata() {
-  const profile = tryGetActiveProvider()
-  const baseUrl = profile?.transport === 'anthropic' ? profile.baseUrl : undefined
-  const model = profile?.transport === 'anthropic' ? profile.model : undefined
-  return {
-    ...(baseUrl
-      ? {
-          baseUrl: baseUrl as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        }
-      : {}),
-    ...(model
-      ? {
-          envModel: model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        }
-      : {}),
-    ...(process.env.ANTHROPIC_SMALL_FAST_MODEL
-      ? {
-          envSmallFastModel: process.env
-            .ANTHROPIC_SMALL_FAST_MODEL as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        }
-      : {}),
-  }
-}
-
-function getBuildAgeMinutes(): number | undefined {
-  if (!MACRO.BUILD_TIME) return undefined
-  const buildTime = new Date(MACRO.BUILD_TIME).getTime()
-  if (isNaN(buildTime)) return undefined
-  return Math.floor((Date.now() - buildTime) / 60000)
-}
-
 export function logAPIError({
   error,
   model,
@@ -180,7 +133,6 @@ export function logAPIError({
   headers,
   queryTracking,
   querySource,
-  llmSpan,
   fastMode,
   previousRequestId,
 }: {
@@ -199,8 +151,6 @@ export function logAPIError({
   headers?: globalThis.Headers
   queryTracking?: QueryChainTracking
   querySource?: string
-  /** The span from startLLMRequestSpan - pass this to correctly match responses to requests */
-  llmSpan?: Span
   fastMode?: boolean
   previousRequestId?: string | null
 }): void {
@@ -210,8 +160,6 @@ export function logAPIError({
     baseUrl: tryGetActiveProvider()?.transport === 'anthropic' ? tryGetActiveProvider()?.baseUrl : undefined,
   })
 
-  const errStr = getErrorMessage(error)
-  const status = isSdkApiError(error) ? String(error.status) : undefined
   const errorType = classifyAPIError(error)
 
   // Log detailed connection error info to debug logs (visible via --debug)
@@ -234,15 +182,6 @@ export function logAPIError({
   }
 
   logError(error as Error)
-
-
-  // Pass the span to correctly match responses to requests when beta tracing is enabled
-  endLLMRequestSpan(llmSpan, {
-    success: false,
-    statusCode: status ? parseInt(status) : undefined,
-    error: errStr,
-    attempt,
-  })
 
   // Log first error for teleported sessions (reliability tracking)
   const teleportInfo = getTeleportedSessionInfo()
@@ -342,10 +281,7 @@ export function logAPISuccessAndDuration({
   queryTracking,
   permissionMode,
   newMessages,
-  llmSpan,
   globalCacheStrategy,
-  requestSetupMs,
-  attemptStartTimes,
   fastMode,
   previousRequestId,
   betas,
@@ -367,16 +303,12 @@ export function logAPISuccessAndDuration({
   costUSD: number
   queryTracking?: QueryChainTracking
   permissionMode?: PermissionMode
-  /** Assistant messages from the response - used to extract model_output and thinking_output
-   *  when beta tracing is enabled */
+  /** Assistant messages from the response — measured for the content-length fields */
   newMessages?: AssistantMessage[]
-  /** The span from startLLMRequestSpan - pass this to correctly match responses to requests */
-  llmSpan?: Span
   /** Strategy used for global prompt caching: 'tool_based', 'system_prompt', or 'none' */
   globalCacheStrategy?: GlobalCacheStrategy
-  /** Time spent in pre-request setup before the successful attempt */
+  /** Both are still accepted so existing call sites type-check; nothing reads them. */
   requestSetupMs?: number
-  /** Timestamps (Date.now()) of each attempt start — used for retry sub-spans in Perfetto */
   attemptStartTimes?: number[]
   fastMode?: boolean
   /** Request ID from the previous API call in this session */
@@ -414,9 +346,7 @@ export function logAPISuccessAndDuration({
           block.type === 'mcp_tool_use'
         ) {
           const inputLen = jsonStringify(block.input).length
-          const sanitizedName = sanitizeToolNameForAnalytics(block.name)
-          toolLengths[sanitizedName] =
-            (toolLengths[sanitizedName] ?? 0) + inputLen
+          toolLengths[block.name] = (toolLengths[block.name] ?? 0) + inputLen
           hasToolUse = true
         }
       }
@@ -458,44 +388,6 @@ export function logAPISuccessAndDuration({
     fastMode,
     previousRequestId,
     betas,
-  })
-
-  // Extract model output, thinking output, and tool call flag when beta tracing is enabled
-  let modelOutput: string | undefined
-  let thinkingOutput: string | undefined
-  let hasToolCall: boolean | undefined
-
-  if (isBetaTracingEnabled() && newMessages) {
-    // Model output - visible to all users
-    modelOutput =
-      newMessages
-        .flatMap(m =>
-          m.message.content
-            .filter(c => c.type === 'text')
-            .map(c => (c as { type: 'text'; text: string }).text),
-        )
-        .join('\n') || undefined
-
-    // Check if any tool_use blocks were in the output
-    hasToolCall = newMessages.some(m =>
-      m.message.content.some(c => c.type === 'tool_use'),
-    )
-  }
-
-  // Pass the span to correctly match responses to requests when beta tracing is enabled
-  endLLMRequestSpan(llmSpan, {
-    success: true,
-    inputTokens: usage.input_tokens,
-    outputTokens: usage.output_tokens,
-    cacheReadTokens: usage.cache_read_input_tokens,
-    cacheCreationTokens: usage.cache_creation_input_tokens,
-    attempt,
-    modelOutput,
-    thinkingOutput,
-    hasToolCall,
-    ttftMs: ttftMs ?? undefined,
-    requestSetupMs,
-    attemptStartTimes,
   })
 
   // Log first successful message for teleported sessions (reliability tracking)

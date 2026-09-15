@@ -16,7 +16,6 @@ import {
   getSettingsForSource,
   updateSettingsForSource,
 } from 'src/platform/settings/settings.js'
-import { buildPluginTelemetryFields } from 'src/platform/telemetry/pluginTelemetry.js'
 import { clearAllCaches } from 'src/plugins/cacheUtils.js'
 import {
   formatDependencyCountSuffix,
@@ -28,10 +27,8 @@ import {
   addInstalledPlugin,
   getGitCommitSha,
 } from 'src/plugins/installedPluginsManager.js'
-import { getManagedPluginNames } from 'src/plugins/managedPlugins.js'
 import { getMarketplaceCacheOnly, getPluginById } from 'src/plugins/marketplaceManager.js'
 import {
-  isOfficialMarketplaceName,
   parsePluginIdentifier,
   scopeToSettingSource,
 } from 'src/plugins/pluginIdentifier.js'

@@ -2,7 +2,6 @@ import * as path from 'path'
 import { PDF_MAX_PAGES_PER_READ } from 'src/shared/constants/apiLimits.js'
 import { hasBinaryExtension } from 'src/shared/constants/files.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { getFileExtensionForAnalytics } from 'src/platform/analytics/metadata.js'
 import {
   checkReadPermissionForTool,
   matchingRuleForInput,
@@ -538,11 +537,6 @@ export const FileReadTool = buildTool({
     // Skip dedup for outline/unfold requests: they share the default
     // offset/limit with a prior full Read, so they would wrongly dedup-match
     // and return a file_unchanged stub instead of the requested view.
-    // Set when this Read is a slice-walk candidate (see the else-if below);
-    // consumed after callInner succeeds.
-    let sliceWalkPrior:
-      | { timestamp: number; priorWasFullRead: boolean }
-      | undefined
     // Set when this Read is the re-send half of a clip-pin stand-down;
     // consumed after callInner succeeds.
     let standDownResend = false
@@ -651,7 +645,6 @@ export const FileReadTool = buildTool({
           try {
             const mtimeMs = await getFileModificationTimeAsync(fullFilePath)
             if (mtimeMs === existingState.timestamp) {
-              const analyticsExt = getFileExtensionForAnalytics(fullFilePath)
               return {
                 data: {
                   type: 'file_unchanged' as const,
@@ -728,7 +721,6 @@ export const FileReadTool = buildTool({
             clipPinEnabled() && exceedsPinnedResultCeiling(existingState.content)
           const strikes = (existingState.standDownStrikes ?? 0) + 1
           if (pinnedAndGone || overPinCeiling || strikes >= STAND_DOWN_STRIKES) {
-            const analyticsExt = getFileExtensionForAnalytics(fullFilePath)
             const outlineLang = detectOutlineLangFromPath(fullFilePath)
             const outline = outlineLang
               ? await scanFile(
@@ -746,12 +738,9 @@ export const FileReadTool = buildTool({
               outline && outline.entries.length >= READ_AUTO_OUTLINE_MIN_SYMBOLS
                 ? outline
                 : null
-            // Event name predates the rename from the re-read breaker; kept
-            // for dashboard continuity. The arm separates the two stand-downs:
-            // 'clipped' has positive evidence the pinned copy was removed,
-            // 'cleared' only knows the API cleared something, sometime. Sent
-            // as a boolean because LogEventMetadata takes no free-form strings
-            // (they leak code/filepaths) — see analytics/index.ts:128.
+            // The arm separates the two stand-downs: 'clipped' has positive
+            // evidence the pinned copy was removed, 'cleared' only knows the
+            // API cleared something, sometime.
             const arm = serverCleared ? 'cleared' : 'clipped'
             const message = scanned
               ? renderOutline(scanned.entries, file_path, scanned.lines.length, {
@@ -848,23 +837,6 @@ export const FileReadTool = buildTool({
           standDownResend = true
           standDownStrikes = strikes
         }
-      } else if (offset > 1 || limit !== undefined) {
-        // Slice-walk telemetry candidate (diagnostic only, no behavior
-        // change): an explicit-range Read of a file whose previous Read used
-        // a DIFFERENT range — the windowing pattern auto-outline cannot
-        // intercept (it only fires on vanilla full-file reads of code files)
-        // and the exact-range dedup cannot see. Measures how often the
-        // bypass happens in the field before designing any mitigation.
-        // The event is logged after callInner succeeds by comparing the
-        // fresh entry's mtime against this snapshot: no extra stat (the read
-        // fetches mtime anyway) and the unchanged-on-disk judgment spans the
-        // read itself. priorWasFullRead distinguishes re-slicing content the
-        // model already saw in full from walking a file window by window.
-        sliceWalkPrior = {
-          timestamp: existingState.timestamp,
-          priorWasFullRead:
-            existingState.offset === 1 && existingState.limit === undefined,
-        }
       }
     }
 
@@ -904,15 +876,6 @@ export const FileReadTool = buildTool({
         context,
         parentMessage?.message.id,
       )
-      if (sliceWalkPrior) {
-        // The read above refreshed the readFileState entry with the mtime it
-        // fetched; equal timestamps mean the file was unchanged across the
-        // prior read, this read, and everything in between.
-        const fresh = readFileState.get(fullFilePath)
-        if (fresh && fresh.timestamp === sliceWalkPrior.timestamp) {
-          const analyticsExt = getFileExtensionForAnalytics(fullFilePath)
-        }
-      }
       maybeFlagSerialReadNudge(result?.data, context)
       maybeFlagReadReminder(result?.data, context)
       if (standDownResend) {

@@ -5,7 +5,6 @@
  * This component renders nothing - it just registers the cancel keybinding handler.
  */
 import { useCallback, useRef } from 'react'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
 import {
   useAppState,
   useAppStateStore,
@@ -74,7 +73,6 @@ export function CancelRequestHandler(props: CancelRequestHandlerProps): null {
     isHelpOpen,
     inputMode,
     inputValue,
-    streamMode,
   } = props
   const store = useAppStateStore()
   const setAppState = useSetAppState()
@@ -84,13 +82,6 @@ export function CancelRequestHandler(props: CancelRequestHandlerProps): null {
   const viewSelectionMode = useAppState(s => s.viewSelectionMode)
 
   const handleCancel = useCallback(() => {
-    const cancelProps = {
-      source:
-        'escape' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      streamMode:
-        streamMode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    }
-
     // Priority 1: If there's an active task running, cancel it first
     // This takes precedence over queue management so users can always interrupt Claude
     if (abortSignal !== undefined && !abortSignal.aborted) {
@@ -114,7 +105,6 @@ export function CancelRequestHandler(props: CancelRequestHandlerProps): null {
     popCommandFromQueue,
     setToolUseConfirmQueue,
     onCancel,
-    streamMode,
   ])
 
   // Determine if this handler should be active

@@ -21,13 +21,11 @@ import { maybeNotifyIDEConnected } from 'src/platform/ide/ide.js'
 import { logMCPDebug, logMCPError } from 'src/shared/log.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { sleep } from 'src/shared/sleep.js'
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,
   ScopedMcpServerConfig,
 } from 'src/mcp/types.js'
-import { getLoggingSafeMcpBaseUrl } from 'src/mcp/utils.js'
 import { setMcpAuthCacheEntry } from 'src/mcp/client/authCache.js'
 import { isMcpSessionExpiredError } from 'src/mcp/client/errors.js'
 import { getConnectionTimeoutMs } from 'src/mcp/client/fetch.js'
@@ -87,26 +85,8 @@ export function getServerCacheKey(
 }
 
 /**
- * Spread-ready analytics field for the server's base URL. Calls
- * getLoggingSafeMcpBaseUrl once (not twice like the inline ternary it replaces).
- * Typed as AnalyticsMetadata since the URL is query-stripped and safe to log.
- */
-function mcpBaseUrlAnalytics(serverRef: ScopedMcpServerConfig): {
-  mcpServerBaseUrl?: AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-} {
-  const url = getLoggingSafeMcpBaseUrl(serverRef)
-  return url
-    ? {
-      mcpServerBaseUrl:
-        url as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    }
-    : {}
-}
-
-/**
  * Shared handler for sse/http/claudeai-proxy auth failures during connect:
- * emits tengu_mcp_server_needs_auth, caches the needs-auth entry, and returns
- * the needs-auth connection result.
+ * caches the needs-auth entry and returns the needs-auth connection result.
  */
 function handleRemoteAuthFailure(
   name: string,

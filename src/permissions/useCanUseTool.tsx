@@ -2,8 +2,6 @@ import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { useCallback } from 'react';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js';
 import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js';
 import { Text } from 'src/terminal/ink.js';
 import type { ToolPermissionContext, Tool as ToolType, ToolUseContext } from 'src/tools/Tool.js';

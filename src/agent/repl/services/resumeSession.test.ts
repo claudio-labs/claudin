@@ -55,7 +55,6 @@ const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all
     'src/agent/cost-tracker.js',
     'src/terminal/image/asciicast.js',
     'src/agent/tools/toolResultStorage.js',
-    'src/platform/analytics/index.js',
     'src/agent/messages/messages.js',
     'src/shared/types/ids.js',
   ].map(

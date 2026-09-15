@@ -3,7 +3,6 @@ import type { UUID } from 'crypto';
 import figures from 'figures';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js';
 import { useAppState, useAppStateStore, useSetAppState } from 'src/terminal/state/AppState.js';
 import { getSdkBetas, getSessionId, isSessionPersistenceDisabled, setHasExitedPlanMode, setNeedsAutoModeExitAttachment, setNeedsPlanModeExitAttachment } from 'src/platform/bootstrap/state.js';
 import { generateSessionName } from 'src/commands/rename/generateSessionName.js';
@@ -28,7 +27,7 @@ import { createPromptRuleContent, isClassifierPermissionsEnabled, PROMPT_PREFIX 
 import { type PermissionMode, toExternalPermissionMode } from 'src/permissions/PermissionMode.js';
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js';
 import { isAutoModeGateEnabled, restoreDangerousPermissions, stripDangerousPermissionsForAutoMode } from 'src/permissions/permissionSetup.js';
-import { getPewterLedgerVariant, isPlanModeInterviewPhaseEnabled } from 'src/agent/plans/planModeV2.js';
+import { isPlanModeInterviewPhaseEnabled } from 'src/agent/plans/planModeV2.js';
 import { getPlan, getPlanFilePath } from 'src/agent/plans/plans.js';
 import { editFileInEditor, editPromptInEditor } from 'src/terminal/input/promptEditor.js';
 import { getCurrentSessionTitle, getTranscriptPath, saveCustomTitle } from 'src/sessions/sessionStorage.js';
@@ -196,11 +195,6 @@ export function ExitPlanModePermissionRequest({
   const rawPlan = inputPlan ?? getPlan();
   const isEmpty = !rawPlan || rawPlan.trim() === '';
 
-  // Capture the variant once on mount. GrowthBook reads from a disk cache
-  // so the value is stable across a single planning session. undefined =
-  // control arm. The variant is a fixed 3-value enum of short literals,
-  // not user input.
-  const [planStructureVariant] = useState(() => (getPewterLedgerVariant() ?? undefined) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS);
   const [currentPlan, setCurrentPlan] = useState(() => {
     if (inputPlan) return inputPlan;
     const plan = getPlan();

@@ -5,7 +5,6 @@ import { mkdir, stat } from 'fs/promises'
 import memoize from 'lodash-es/memoize.js'
 import { join } from 'path'
 import { CLAUDE_AI_PROFILE_SCOPE } from 'src/shared/constants/oauth.js'
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
 import { getModelStrings } from 'src/providers/model/modelStrings.js'
 import { getAPIProvider } from 'src/providers/model/providers.js'
 import {
@@ -1206,8 +1205,6 @@ export function saveOAuthTokensIfNeeded(tokens: OAuthTokens): {
   }
 
   const secureStorage = getSecureStorage()
-  const storageBackend =
-    secureStorage.name as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
 
   try {
     const storageData = secureStorage.read() || {}

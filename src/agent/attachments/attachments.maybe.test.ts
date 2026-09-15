@@ -1,13 +1,4 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
-
-type LogCall = { eventName: string; metadata: Record<string, unknown> }
-const logCalls: LogCall[] = []
-
-mock.module('src/platform/analytics/index.js', () => ({
-  logEvent: (eventName: string, metadata: Record<string, unknown>) => {
-    logCalls.push({ eventName, metadata })
-  },
-}))
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 
 import { maybe } from 'src/agent/attachments/attachments.js'
 
@@ -15,7 +6,6 @@ describe('maybe wrapper', () => {
   const originalRandom = Math.random
 
   beforeEach(() => {
-    logCalls.length = 0
     Math.random = () => 0
   })
 

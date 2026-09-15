@@ -3,11 +3,9 @@ import { readdir, readFile as readFileAsync } from 'fs/promises'
 import * as path from 'path'
 import {
   PDF_AT_MENTION_INLINE_THRESHOLD,
-  PDF_EXTRACT_SIZE_THRESHOLD,
   PDF_MAX_PAGES_PER_READ,
 } from 'src/shared/constants/apiLimits.js'
 import { isAutoMemFile } from 'src/memory/memdir/memoryFileDetection.js'
-import { getFileExtensionForAnalytics } from 'src/platform/analytics/metadata.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
@@ -15,7 +13,6 @@ import {
   detectOutlineLangFromPath,
   SCAN_MAX_BYTES,
 } from 'src/tools/shared/codeOutline/scanSymbols.js'
-import { logFileOperation } from 'src/platform/fileOperationAnalytics.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { readNotebook } from 'src/shared/fs/notebook.js'
 import { extractPDFPages, getPDFPageCount, readPDF } from 'src/shared/fs/pdf.js'
@@ -36,7 +33,6 @@ import {
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 import {
-  detectSessionFileType,
   IMAGE_EXTENSIONS,
   MaxFileReadTokenExceededError,
   validateContentTokens,
@@ -120,13 +116,6 @@ export async function callInner(
       file: { filePath: file_path, cells },
     }
 
-    logFileOperation({
-      operation: 'read',
-      tool: 'FileReadTool',
-      filePath: fullFilePath,
-      content: cellsJson,
-    })
-
     return { data }
   }
 
@@ -136,13 +125,6 @@ export async function callInner(
     // don't apply the text maxSizeBytes cap.
     const data = await readImageWithTokenBudget(resolvedFilePath, maxTokens)
     context.nestedMemoryAttachmentTriggers?.add(fullFilePath)
-
-    logFileOperation({
-      operation: 'read',
-      tool: 'FileReadTool',
-      filePath: fullFilePath,
-      content: data.file.base64,
-    })
 
     const metadataText = data.file.dimensions
       ? createImageMetadataText(data.file.dimensions)
@@ -169,12 +151,6 @@ export async function callInner(
       if (!extractResult.success) {
         throw new Error(extractResult.error.message)
       }
-      logFileOperation({
-        operation: 'read',
-        tool: 'FileReadTool',
-        filePath: fullFilePath,
-        content: `PDF pages ${pages}`,
-      })
       const entries = await readdir(extractResult.data.file.outputDir)
       const imageFiles = entries.filter(f => f.endsWith('.jpg')).sort()
       const imageBlocks = await Promise.all(
@@ -216,15 +192,6 @@ export async function callInner(
       )
     }
 
-    const fs = getFsImplementation()
-    const stats = await fs.stat(resolvedFilePath)
-    const shouldExtractPages =
-      !isPDFSupported() || stats.size > PDF_EXTRACT_SIZE_THRESHOLD
-
-    if (shouldExtractPages) {
-      const extractResult = await extractPDFPages(resolvedFilePath)
-    }
-
     if (!isPDFSupported()) {
       throw new Error(
         'Reading full PDFs is not supported with this model. Use a newer model (Sonnet 3.5 v2 or later), ' +
@@ -238,12 +205,6 @@ export async function callInner(
       throw new Error(readResult.error.message)
     }
     const pdfData = readResult.data
-    logFileOperation({
-      operation: 'read',
-      tool: 'FileReadTool',
-      filePath: fullFilePath,
-      content: pdfData.file.base64,
-    })
 
     return {
       data: pdfData,
@@ -521,16 +482,6 @@ export async function callInner(
   if (isAutoMemFile(fullFilePath)) {
     markMemoryFileMtime(data, mtimeMs)
   }
-
-  logFileOperation({
-    operation: 'read',
-    tool: 'FileReadTool',
-    filePath: fullFilePath,
-    content,
-  })
-
-  const sessionFileType = detectSessionFileType(fullFilePath)
-  const analyticsExt = getFileExtensionForAnalytics(fullFilePath)
 
   return { data }
 }

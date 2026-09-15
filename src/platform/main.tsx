@@ -78,8 +78,6 @@ const getJsonParse = () => require('src/platform/slowOperations.js').jsonParse a
 const getCreateSystemMessage = () => require('src/agent/messages/messages.js').createSystemMessage as typeof import('src/agent/messages/messages.js').createSystemMessage
 const getBuildDeepLinkBanner = () => require('src/platform/deepLink/banner.js').buildDeepLinkBanner as typeof import('src/platform/deepLink/banner.js').buildDeepLinkBanner
 const getPermissionModes = () => require('src/permissions/PermissionMode.js').PERMISSION_MODES as typeof import('src/permissions/PermissionMode.js').PERMISSION_MODES
-const getLogEvent = () => require('src/platform/analytics/index.js').logEvent as typeof import('src/platform/analytics/index.js').logEvent
-type AnalyticsMetadata = import('src/platform/analytics/index.js').AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
 const getInitializeVersionedPlugins = () => require('src/plugins/installedPluginsManager.js').initializeVersionedPlugins as typeof import('src/plugins/installedPluginsManager.js').initializeVersionedPlugins
 const getCleanupOrphanedPluginVersionsInBackground = () => require('src/plugins/cacheUtils.js').cleanupOrphanedPluginVersionsInBackground as typeof import('src/plugins/cacheUtils.js').cleanupOrphanedPluginVersionsInBackground
 const getGlobExclusionsForPluginCacheFn = () => require('src/plugins/orphanedPluginFilter.js').getGlobExclusionsForPluginCache as typeof import('src/plugins/orphanedPluginFilter.js').getGlobExclusionsForPluginCache
@@ -417,13 +415,6 @@ async function run(): Promise<CommanderCommand> {
         // This tool is excluded from normal filtering (see tools.ts) because it's
         // an implementation detail for structured output, not a user-controlled tool.
         tools = [...tools, syntheticOutputResult.tool];
-        getLogEvent()('tengu_structured_output_enabled', {
-          schema_property_count: Object.keys(jsonSchema.properties as Record<string, unknown> || {}).length as AnalyticsMetadata,
-        });
-      } else {
-        getLogEvent()('tengu_structured_output_failure', {
-          error: 'Invalid JSON schema' as AnalyticsMetadata
-        });
       }
     }
 
@@ -760,10 +751,6 @@ async function run(): Promise<CommanderCommand> {
       let deepLinkBanner: ReturnType<ReturnType<typeof getCreateSystemMessage>> | null = null;
       if (feature('LODESTONE')) {
         if (options.deepLinkOrigin) {
-          getLogEvent()('tengu_deep_link_opened', {
-            has_prefill: Boolean(options.prefill),
-            has_repo: Boolean(options.deepLinkRepo)
-          });
           deepLinkBanner = getCreateSystemMessage()(getBuildDeepLinkBanner()({
             cwd: getCwd(),
             prefillLength: options.prefill?.length,

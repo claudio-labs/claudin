@@ -4,7 +4,6 @@ import { type FileHandle, mkdir, open, stat } from 'fs/promises'
 import memoize from 'lodash-es/memoize.js'
 import { isAbsolute, resolve } from 'path'
 import { join as posixJoin } from 'path/posix'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { getOriginalCwd, setCwdState } from 'src/platform/bootstrap/state.js'
 import { generateTaskId } from 'src/agent/Task.js'
 import { pwd } from 'src/shared/fs/cwd.js'
@@ -419,8 +418,11 @@ export async function exec(
             invalidateSessionEnvCache()
             void onCwdChangedForHooks(cwd, newCwd)
           }
-        } catch {
-          logEvent('tengu_shell_set_cwd', { success: false })
+        } catch (e) {
+          // Best-effort cwd tracking: the temp file is missing or unreadable
+          // when the command died before `pwd -P` ran. Swallowed so a failed
+          // cwd sync can never fail the shell command the user actually ran.
+          logError(e)
         }
       }
       // Clean up the temp file used for cwd tracking

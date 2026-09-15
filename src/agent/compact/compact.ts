@@ -90,7 +90,6 @@ import {
   isToolSearchEnabled,
 } from 'src/agent/tools/toolSearch.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
 import {
   getMaxOutputTokensForModel,
   queryModelWithStreaming,
@@ -788,13 +787,6 @@ export async function partialCompactConversation(
     const summaryRequest = createUserMessage({
       content: compactPrompt,
     })
-
-    const failureMetadata = {
-      preCompactTokenCount,
-      direction:
-        direction as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      messagesSummarized: messagesToSummarize.length,
-    }
 
     // 'up_to' prefix hits cache directly; 'from' sends all (tail wouldn't cache).
     // PTL retry breaks the cache prefix but unblocks the user (CC-1180).

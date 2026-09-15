@@ -49,9 +49,6 @@ export async function performLogout({
 }: {
   clearOnboarding?: boolean
 }): Promise<void> {
-  // Flush telemetry BEFORE clearing credentials to prevent org data leakage
-  const { flushTelemetry } = await import('src/platform/telemetry/instrumentation.js')
-  await flushTelemetry()
   await removeApiKey()
 
   // Wipe all secure storage data on logout

@@ -6,7 +6,6 @@ import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { z } from 'zod/v4';
 import { TOOL_SUMMARY_MAX_LENGTH } from 'src/tools/constants/toolLimits.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js';
 import type { SetToolJSXFn, Tool, ToolCallProgress, ValidationResult } from 'src/tools/Tool.js';
 import { buildTool, type ToolDef } from 'src/tools/Tool.js';
 import { backgroundExistingForegroundTask, markTaskNotified, registerForeground, spawnShellTask, unregisterForeground } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js';
@@ -265,17 +264,6 @@ type OutputSchema = ReturnType<typeof outputSchema>;
 export type Out = z.infer<OutputSchema>;
 import type { PowerShellProgress } from 'src/shared/types/tools.js';
 export type { PowerShellProgress } from 'src/shared/types/tools.js';
-const COMMON_BACKGROUND_COMMANDS = ['npm', 'yarn', 'pnpm', 'node', 'python', 'python3', 'go', 'cargo', 'make', 'docker', 'terraform', 'webpack', 'vite', 'jest', 'pytest', 'curl', 'Invoke-WebRequest', 'build', 'test', 'serve', 'watch', 'dev'] as const;
-function getCommandTypeForLogging(command: string): AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS {
-  const trimmed = command.trim();
-  const firstWord = trimmed.split(/\s+/)[0] || '';
-  for (const cmd of COMMON_BACKGROUND_COMMANDS) {
-    if (firstWord.toLowerCase() === cmd.toLowerCase()) {
-      return cmd as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-    }
-  }
-  return 'other' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-}
 export const PowerShellTool = buildTool({
   name: POWERSHELL_TOOL_NAME,
   searchHint: 'execute Windows PowerShell commands',

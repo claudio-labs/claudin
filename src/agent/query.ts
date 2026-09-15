@@ -16,7 +16,6 @@ const reactiveCompact = feature('REACTIVE_COMPACT')
   ? (require('./compact/reactiveCompact.js') as typeof import('./compact/reactiveCompact.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
 import { ImageSizeError } from 'src/terminal/image/imageValidation.js'
 import { ImageResizeError } from 'src/terminal/image/imageResizer.js'
 import { findToolByName, type ToolUseContext } from 'src/tools/Tool.js'
@@ -386,9 +385,6 @@ async function* queryLoop(
           chainId: deps.uuid(),
           depth: 0,
         }
-
-    const queryChainIdForAnalytics =
-      queryTracking.chainId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
 
     toolUseContext = {
       ...toolUseContext,

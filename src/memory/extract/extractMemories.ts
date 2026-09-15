@@ -55,7 +55,6 @@ import {
   createUserMessage,
 } from 'src/agent/messages/messages.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { detectRepeatedErrorLoop } from 'src/memory/extract/loopDetector.js'
 import {

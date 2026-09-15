@@ -3,8 +3,6 @@ import { randomUUID } from 'crypto'
 import { hostname, tmpdir } from 'os'
 import { basename, join, resolve } from 'path'
 import { getRemoteSessionUrl } from 'src/shared/constants/product.js'
-import { shutdownDatadog } from 'src/platform/analytics/datadog.js'
-import { shutdown1PEventLogging } from 'src/platform/analytics/firstPartyEventLogger.js'
 import { checkGate_CACHED_OR_BLOCKING } from 'src/platform/analytics/growthbook.js'
 import { isInBundledMode } from 'src/platform/install/bundledMode.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -1915,26 +1913,17 @@ export async function bridgeMain(args: string[]): Promise<void> {
   )
   enableConfigs()
 
-  // Initialize analytics and error reporting sinks. The bridge bypasses the
-  // setup() init flow, so we call initSinks() directly to attach sinks here.
+  // Initialize the error reporting sink. The bridge bypasses the setup() init
+  // flow, so we call initSinks() directly to attach the sink here.
   const { initSinks } = await import('src/shared/sinks.js')
   initSinks()
 
   // Gate-aware validation: --spawn / --capacity / --create-session-in-dir require
   // the multi-session gate. parseArgs has already validated flag combinations;
   // here we only check the gate since that requires an async GrowthBook call.
-  // Runs after enableConfigs() (GrowthBook cache reads global config) and after
-  // initSinks() so the denial event can be enqueued.
+  // Runs after enableConfigs() (GrowthBook cache reads global config).
   const multiSessionEnabled = await isMultiSessionSpawnEnabled()
   if (usedMultiSessionFeature && !multiSessionEnabled) {
-    // logEventAsync only enqueues — process.exit() discards buffered events.
-    // Flush explicitly, capped at 500ms to match gracefulShutdown.ts.
-    // (sleep() doesn't unref its timer, but process.exit() follows immediately
-    // so the ref'd timer can't delay shutdown.)
-    await Promise.race([
-      Promise.all([shutdown1PEventLogging(), shutdownDatadog()]),
-      sleep(500, undefined, { unref: true }),
-    ]).catch(() => {})
     // biome-ignore lint/suspicious/noConsole: intentional error output
     console.error(
       'Error: Multi-session Remote Control is not enabled for your account yet.',

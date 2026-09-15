@@ -56,7 +56,6 @@ import { WorkerPendingPermission } from 'src/permissions/ui/WorkerPendingPermiss
 import { injectUserMessageToTeammate, getAllInProcessTeammateTasks } from 'src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js';
 import { isLocalAgentTask, queuePendingMessage, appendMessageToLocalAgent, type LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
 import { registerLeaderToolUseConfirmQueue, unregisterLeaderToolUseConfirmQueue } from 'src/agent/coordinator/swarm/leaderPermissionBridge.js';
-import { endInteractionSpan } from 'src/platform/telemetry/sessionTracing.js';
 import { useLogMessages } from 'src/agent/hooks/useLogMessages.js';
 import { useReplBridge } from 'src/platform/bridge/useReplBridge.js';
 import { type Command, type ResumeEntrypoint } from 'src/commands/commands.js';
@@ -1437,7 +1436,6 @@ export function REPL({
     setSpinnerColor(null);
     setSpinnerShimmerColor(null);
     pickNewSpinnerTip();
-    endInteractionSpan();
     // Speculative bash classifier checks are only valid for the current
     // turn's commands — clear after each turn to avoid accumulating
     // Promise chains for unconsumed checks (denied/aborted paths).

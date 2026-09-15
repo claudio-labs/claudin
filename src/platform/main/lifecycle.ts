@@ -5,18 +5,9 @@
 import { feature } from 'bun:bundle';
 import { profileCheckpoint } from 'src/platform/startupProfiler.js';
 import { getSystemContext } from 'src/agent/context.js';
-import { isAnalyticsDisabled } from 'src/platform/analytics/config.js';
 import { checkHasTrustDialogAccepted, getGlobalConfig, isAutoUpdaterDisabled, saveGlobalConfig } from 'src/platform/config/config.js';
-import { getContextWindowForModel } from 'src/agent/context/context.js';
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js';
-import { hasNodeOption, isEnvTruthy } from 'src/shared/envUtils.js';
-import { getIsGit, getWorktreeCount } from 'src/vcs/git/git.js';
-import { getGhAuthStatus } from 'src/platform/github/ghAuthStatus.js';
-import { logError } from 'src/shared/log.js';
-import { getDefaultMainLoopModel, parseUserSpecifiedModel } from 'src/providers/model/model.js';
-import { getManagedPluginNames } from 'src/plugins/managedPlugins.js';
-import { getPluginSeedDirs } from 'src/plugins/pluginDirectories.js';
-import { loadAllPluginsCacheOnly } from 'src/plugins/pluginLoader.js';
+import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { migrateAutoUpdatesToSettings } from 'src/platform/migrations/migrateAutoUpdatesToSettings.js';
 import { migrateBypassPermissionsAcceptedToSettings } from 'src/platform/migrations/migrateBypassPermissionsAcceptedToSettings.js';
 import { migrateEnableAllProjectMcpServersToSettings } from 'src/platform/migrations/migrateEnableAllProjectMcpServersToSettings.js';
@@ -31,69 +22,10 @@ import { resetAutoModeOptInForDefaultOffer } from 'src/platform/migrations/reset
 import { resetProToOpusDefault } from 'src/platform/migrations/resetProToOpusDefault.js';
 import { migrateChangelogFromConfig } from 'src/platform/install/releaseNotes.js';
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';
-import { getInitialMainLoopModel, getIsNonInteractiveSession, getSdkBetas } from 'src/platform/bootstrap/state.js';
-import { getCwd } from 'src/shared/fs/cwd.js';
+import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js';
 import { eagerParseCliFlag } from 'src/platform/cliArgs.js';
-import { getInitialSettings, getManagedSettingsKeysForLogging, getSettingsForSource } from 'src/platform/settings/settings.js';
-import { logSkillsLoaded } from 'src/platform/telemetry/skillLoadedEvent.js';
-import { logPluginLoadErrors, logPluginsEnabledForSession } from 'src/platform/telemetry/pluginTelemetry.js';
+import { getInitialSettings } from 'src/platform/settings/settings.js';
 import { loadSettingSourcesFromFlag, loadSettingsFromFlag } from 'src/platform/main/helpers.js';
-
-/**
- * Log managed settings keys to Statsig for analytics.
- * This is called after init() completes to ensure settings are loaded
- * and environment variables are applied before model resolution.
- */
-export function logManagedSettings(): void {
-  try {
-    const policySettings = getSettingsForSource('policySettings');
-    if (policySettings) {
-      const allKeys = getManagedSettingsKeysForLogging(policySettings);
-    }
-  } catch {
-    // Silently ignore errors - this is just for analytics
-  }
-}
-
-/**
- * Per-session skill/plugin telemetry. Called from both the interactive path
- * and the headless -p path (before runHeadless) — both go through
- * main.tsx but branch before the interactive startup path, so it needs two
- * call sites here rather than one here + one in QueryEngine.
- */
-export function logSessionTelemetry(): void {
-  const model = parseUserSpecifiedModel(getInitialMainLoopModel() ?? getDefaultMainLoopModel());
-  void logSkillsLoaded(getCwd(), getContextWindowForModel(model, getSdkBetas()));
-  void loadAllPluginsCacheOnly()
-    .then(({ enabled, errors }) => {
-      const managedNames = getManagedPluginNames();
-      logPluginsEnabledForSession(enabled, managedNames, getPluginSeedDirs());
-      logPluginLoadErrors(errors, managedNames);
-    })
-    .catch(err => logError(err));
-}
-
-function getCertEnvVarTelemetry(): Record<string, boolean> {
-  const result: Record<string, boolean> = {};
-  if (process.env.NODE_EXTRA_CA_CERTS) {
-    result.has_node_extra_ca_certs = true;
-  }
-  if (process.env.CLAUDIN_CLIENT_CERT) {
-    result.has_client_cert = true;
-  }
-  if (hasNodeOption('--use-system-ca')) {
-    result.has_use_system_ca = true;
-  }
-  if (hasNodeOption('--use-openssl-ca')) {
-    result.has_use_openssl_ca = true;
-  }
-  return result;
-}
-
-export async function logStartupTelemetry(): Promise<void> {
-  if (isAnalyticsDisabled()) return;
-  const [isGit, worktreeCount, ghAuthStatus] = await Promise.all([getIsGit(), getWorktreeCount(), getGhAuthStatus()]);
-}
 
 // @[MODEL LAUNCH]: Consider any migrations you may need for model strings. See migrateSonnet1mToSonnet45.ts for an example.
 // Bump this when adding a new sync migration so existing users re-run the set.

@@ -176,12 +176,6 @@ import {
   startSessionActivity,
   stopSessionActivity,
 } from "src/sessions/sessionActivity.js";
-import { jsonStringify } from "src/platform/slowOperations.js";
-import {
-  isBetaTracingEnabled,
-  type LLMRequestNewContext,
-  startLLMRequestSpan,
-} from "src/platform/telemetry/sessionTracing.js";
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { getInitializationStatus } from "src/platform/lsp/manager.js";
 import { withStreamingVCR } from "src/providers/vcr.js";
@@ -786,23 +780,6 @@ export async function* queryModel(
       extraBodyParams: getExtraBodyParams(),
     });
   }
-
-  const newContext: LLMRequestNewContext | undefined = isBetaTracingEnabled()
-    ? {
-        systemPrompt: systemPrompt.join("\n\n"),
-        querySource: options.querySource,
-        tools: jsonStringify(allTools),
-      }
-    : undefined;
-
-  // Capture the span so we can pass it to endLLMRequestSpan later
-  // This ensures responses are matched to the correct request when multiple requests run in parallel
-  const llmSpan = startLLMRequestSpan(
-    options.model,
-    newContext,
-    messagesForAPI,
-    isFastMode,
-  );
 
   const startIncludingRetries = Date.now();
   let start = Date.now();
@@ -1956,7 +1933,6 @@ export async function* queryModel(
           didFallBackToNonStreaming,
           queryTracking: options.queryTracking,
           querySource: options.querySource,
-          llmSpan,
           fastMode: isFastModeRequest,
           previousRequestId,
         });
@@ -2012,7 +1988,6 @@ export async function* queryModel(
         didFallBackToNonStreaming,
         queryTracking: options.queryTracking,
         querySource: options.querySource,
-        llmSpan,
         fastMode: isFastModeRequest,
         previousRequestId,
       });
@@ -2129,10 +2104,7 @@ export async function* queryModel(
       costUSD,
       queryTracking: options.queryTracking,
       permissionMode: permissionContext.mode,
-      // Pass newMessages for beta tracing - extraction happens in logging.ts
-      // only when beta tracing is enabled
       newMessages,
-      llmSpan,
       globalCacheStrategy,
       requestSetupMs: start - startIncludingRetries,
       attemptStartTimes,

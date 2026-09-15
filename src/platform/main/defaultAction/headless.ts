@@ -7,7 +7,6 @@ import { feature } from 'bun:bundle';
 import pickBy from 'lodash-es/pickBy.js';
 import uniqBy from 'lodash-es/uniqBy.js';
 import { setSdkBetas, setSessionPersistenceDisabled } from 'src/platform/bootstrap/state.js';
-import { initializeTelemetryAfterTrust } from 'src/platform/entrypoints/init.js';
 import { clearServerCache, getMcpToolsCommandsAndResources } from 'src/mcp/client.js';
 import { dedupClaudeAiMcpServers, getMcpServerSignature } from 'src/mcp/config.js';
 import type { McpSdkServerConfig, ScopedMcpServerConfig } from 'src/mcp/types.js';
@@ -29,7 +28,6 @@ import { profileCheckpoint } from 'src/platform/startupProfiler.js';
 import type { ThinkingConfig } from 'src/agent/context/thinking.js';
 import { startDeferredPrefetches } from 'src/platform/main/deferredPrefetches.js';
 import { getMcpStartupTimeoutMs, raceConnectTimeout } from 'src/platform/main/defaultAction/mcpStartupWait.js';
-import { logSessionTelemetry } from 'src/platform/main/lifecycle.js';
 import type { BootContext } from 'src/platform/main/bootContext.js';
 import type { Command } from 'src/shared/types/command.js';
 import type { ToolPermissionContext, Tools } from 'src/tools/Tool.js';
@@ -99,10 +97,6 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
   // This includes potentially dangerous environment variables from untrusted sources
   // but print mode is considered trusted (as documented in help text)
   applyConfigEnvironmentVariables();
-
-  // Initialize telemetry after env vars are applied so OTEL endpoint env vars and
-  // otelHeadersHelper (which requires trust to execute) are available.
-  initializeTelemetryAfterTrust();
 
   // Kick SessionStart hooks now so the subprocess spawn overlaps with
   // MCP connect + plugin init + print.ts import below. loadInitialMessages
@@ -324,7 +318,6 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
     startDeferredPrefetches();
     void import('src/platform/backgroundHousekeeping.js').then(m => m.startBackgroundHousekeeping());
   }
-  logSessionTelemetry();
   profileCheckpoint('before_print_import');
   const {
     runHeadless

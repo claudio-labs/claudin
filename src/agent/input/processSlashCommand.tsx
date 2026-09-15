@@ -2,14 +2,13 @@ import { feature } from 'bun:bundle';
 import type { ContentBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resources';
 import { randomUUID } from 'crypto';
 import { setPromptId } from 'src/platform/bootstrap/state.js';
-import { builtInCommandNames, type Command, type CommandBase, findCommand, getCommand, getCommandName, hasCommand, type PromptCommand } from 'src/commands/commands.js';
+import { type Command, type CommandBase, findCommand, getCommand, getCommandName, hasCommand, type PromptCommand } from 'src/commands/commands.js';
 import { NO_CONTENT_MESSAGE } from 'src/agent/prompts/messages.js';
 import type { SetToolJSXFn, ToolUseContext } from 'src/tools/Tool.js';
 import type { AssistantMessage, AttachmentMessage, Message, NormalizedUserMessage, ProgressMessage, UserMessage } from 'src/shared/types/message.js';
 import { addInvokedSkill, getSessionId } from 'src/platform/bootstrap/state.js';
 import { COMMAND_MESSAGE_TAG, COMMAND_NAME_TAG } from 'src/shared/constants/xml.js';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED } from 'src/platform/analytics/index.js';
 import { buildPostCompactMessages } from 'src/agent/compact/compact.js';
 import { resetMicrocompactState } from 'src/agent/compact/microCompact.js';
 import type { Progress as AgentProgress } from 'src/tools/AgentTool/AgentTool.js';
@@ -32,12 +31,9 @@ import { createCommandInputMessage, createSyntheticUserCaveatMessage, createSyst
 import type { ModelAlias } from 'src/providers/model/aliases.js';
 import { parseToolListFromCLI } from 'src/permissions/permissionSetup.js';
 import { hasPermissionsToUseTool } from 'src/permissions/permissions.js';
-import { isOfficialMarketplaceName, parsePluginIdentifier } from 'src/plugins/pluginIdentifier.js';
 import { isRestrictedToPluginOnly, isSourceAdminTrusted } from 'src/platform/settings/pluginOnlyPolicy.js';
 import { parseSlashCommand } from 'src/commands/slashCommandParsing.js';
 import { recordSkillUsage } from 'src/terminal/suggestions/skillUsageTracking.js';
-import { redactIfDisabled } from 'src/platform/telemetry/events.js';
-import { buildPluginCommandTelemetryFields } from 'src/platform/telemetry/pluginTelemetry.js';
 import { getAssistantMessageContentLength } from 'src/agent/context/tokens.js';
 import { createAgentId } from 'src/shared/data/uuid.js';
 import type { ProcessUserInputBaseResult, ProcessUserInputContext } from 'src/agent/input/processUserInput.js';
@@ -50,7 +46,6 @@ type SlashCommandResult = ProcessUserInputBaseResult & {
  */
 async function executeForkedSlashCommand(command: CommandBase & PromptCommand, args: string, context: ProcessUserInputContext, precedingInputBlocks: ContentBlockParam[], setToolJSX: SetToolJSXFn, canUseTool: CanUseToolFn): Promise<SlashCommandResult> {
   const agentId = createAgentId();
-  const pluginMarketplace = command.pluginInfo ? parsePluginIdentifier(command.pluginInfo.repository).marketplace : undefined;
   const {
     skillContent,
     modifiedGetAppState,
@@ -201,10 +196,8 @@ export async function processSlashCommand(inputString: string, precedingInputBlo
   }
   const {
     commandName,
-    args: parsedArgs,
-    isMcp
+    args: parsedArgs
   } = parsed;
-  const sanitizedCommandName = isMcp ? 'mcp' : !builtInCommandNames().has(commandName) ? 'custom' : commandName;
 
   // Check if it's a real command before processing
   if (!hasCommand(commandName, context.options.commands)) {
@@ -247,15 +240,12 @@ export async function processSlashCommand(inputString: string, precedingInputBlo
     };
   }
 
-  // Track slash command usage for feature discovery
-
   const {
     messages: newMessages,
     shouldQuery: messageShouldQuery,
     allowedTools,
     model,
     effort,
-    command: returnedCommand,
     resultText,
     nextInput,
     submitNextInput
@@ -263,34 +253,6 @@ export async function processSlashCommand(inputString: string, precedingInputBlo
 
   // Local slash commands that skip messages
   if (newMessages.length === 0) {
-    const eventData: Record<string, boolean | number | undefined> = {
-      input: sanitizedCommandName as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    };
-
-    // Add plugin metadata if this is a plugin command
-    if (returnedCommand.type === 'prompt' && returnedCommand.pluginInfo) {
-      const {
-        pluginManifest,
-        repository
-      } = returnedCommand.pluginInfo;
-      const {
-        marketplace
-      } = parsePluginIdentifier(repository);
-      const isOfficial = isOfficialMarketplaceName(marketplace);
-      // _PROTO_* routes to PII-tagged plugin_name/marketplace_name BQ columns
-      // (unredacted, all users); plugin_name/plugin_repository stay in
-      // additional_metadata as redacted variants for general-access dashboards.
-      eventData._PROTO_plugin_name = pluginManifest.name as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED;
-      if (marketplace) {
-        eventData._PROTO_marketplace_name = marketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED;
-      }
-      eventData.plugin_repository = (isOfficial ? repository : 'third-party') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-      eventData.plugin_name = (isOfficial ? pluginManifest.name : 'third-party') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-      if (isOfficial && pluginManifest.version) {
-        eventData.plugin_version = pluginManifest.version as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-      }
-      Object.assign(eventData, buildPluginCommandTelemetryFields(returnedCommand.pluginInfo));
-    }
     return {
       messages: [],
       shouldQuery: false,
@@ -302,8 +264,6 @@ export async function processSlashCommand(inputString: string, precedingInputBlo
 
   // For invalid commands, preserve both the user message and error
   if (newMessages.length === 2 && newMessages[1]!.type === 'user' && typeof newMessages[1]!.message.content === 'string' && newMessages[1]!.message.content.startsWith('Unknown command:')) {
-    // Don't log as invalid if it looks like a common file path
-    const looksLikeFilePath = inputString.startsWith('/var') || inputString.startsWith('/tmp') || inputString.startsWith('/private');
     return {
       messages: [createSyntheticUserCaveatMessage(), ...newMessages],
       shouldQuery: messageShouldQuery,
@@ -313,32 +273,6 @@ export async function processSlashCommand(inputString: string, precedingInputBlo
   }
 
   // A valid command
-  const eventData: Record<string, boolean | number | undefined> = {
-    input: sanitizedCommandName as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-  };
-
-  // Add plugin metadata if this is a plugin command
-  if (returnedCommand.type === 'prompt' && returnedCommand.pluginInfo) {
-    const {
-      pluginManifest,
-      repository
-    } = returnedCommand.pluginInfo;
-    const {
-      marketplace
-    } = parsePluginIdentifier(repository);
-    const isOfficial = isOfficialMarketplaceName(marketplace);
-    eventData._PROTO_plugin_name = pluginManifest.name as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED;
-    if (marketplace) {
-      eventData._PROTO_marketplace_name = marketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED;
-    }
-    eventData.plugin_repository = (isOfficial ? repository : 'third-party') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-    eventData.plugin_name = (isOfficial ? pluginManifest.name : 'third-party') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-    if (isOfficial && pluginManifest.version) {
-      eventData.plugin_version = pluginManifest.version as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-    }
-    Object.assign(eventData, buildPluginCommandTelemetryFields(returnedCommand.pluginInfo));
-  }
-
   // Check if this is a compact result which handle their own synthetic caveat message ordering
   const isCompactResult = newMessages.length > 0 && newMessages[0] && isCompactBoundaryMessage(newMessages[0]);
   return {

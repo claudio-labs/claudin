@@ -3,7 +3,6 @@ import React, { useCallback, useMemo } from 'react';
 import { logError } from 'src/shared/log.js';
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js';
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js';
 import { SkillTool } from 'src/tools/SkillTool/SkillTool.js';
 import { shouldShowAlwaysAllowOptions } from 'src/permissions/permissionsLoader.js';
@@ -161,7 +160,7 @@ export function SkillPermissionRequest(props: PermissionRequestProps) {
   const options = t6;
   let t7;
   if ($[19] !== toolUseConfirm.tool.name) {
-    t7 = sanitizeToolNameForAnalytics(toolUseConfirm.tool.name);
+    t7 = toolUseConfirm.tool.name;
     $[19] = toolUseConfirm.tool.name;
     $[20] = t7;
   } else {

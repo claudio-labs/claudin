@@ -16,7 +16,6 @@ import { resolve } from 'path';
 import mapValues from 'lodash-es/mapValues.js';
 import { feature } from 'bun:bundle';
 import { setAdditionalDirectoriesForClaudeMd } from 'src/platform/bootstrap/state.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { fetchClaudeAIMcpConfigsIfEligible } from 'src/mcp/claudeai.js';
 import {
   areMcpConfigsAllowedWithEnterpriseMcpConfig,
@@ -190,9 +189,6 @@ export async function runMcpAndPerms(
       process.exit(1);
     }
     if (Object.keys(allConfigs).length > 0) {
-      // SDK hosts (Nest/Desktop) own their server naming and may reuse
-      // built-in names — skip reserved-name checks for type:'sdk'.
-      const nonSdkConfigNames = Object.entries(allConfigs).filter(([, config]) => config.type !== 'sdk').map(([name]) => name);
       const scopedConfigs = mapValues(allConfigs, config => ({
         ...config,
         scope: 'dynamic' as const,

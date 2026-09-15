@@ -27,7 +27,6 @@ import {
   fileHistoryEnabled,
   fileHistoryTrackEdit,
 } from 'src/shared/fs/fileHistory.js'
-import { logFileOperation } from 'src/platform/fileOperationAnalytics.js'
 import { readFileSyncWithMetadata } from 'src/shared/fs/fileRead.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {
@@ -402,13 +401,6 @@ export const FileWriteTool = buildTool({
       // Track lines added and removed for file updates, right before yielding result
       countLinesChanged(patch)
 
-      logFileOperation({
-        operation: 'write',
-        tool: 'FileWriteTool',
-        filePath: fullFilePath,
-        type: 'update',
-      })
-
       return {
         data,
         ...(diagnosticMessages.length > 0 && {
@@ -428,13 +420,6 @@ export const FileWriteTool = buildTool({
 
     // For creation of new files, count all lines as additions, right before yielding the result
     countLinesChanged([], content)
-
-    logFileOperation({
-      operation: 'write',
-      tool: 'FileWriteTool',
-      filePath: fullFilePath,
-      type: 'create',
-    })
 
     return {
       data,

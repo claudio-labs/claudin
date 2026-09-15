@@ -9,13 +9,12 @@
  *
  * Kills:
  *   - GrowthBook remote feature flags (api.anthropic.com)
- *   - Datadog event intake
- *   - 1P event logging (api.anthropic.com/api/event_logging/batch)
- *   - BigQuery metrics exporter (api.anthropic.com/api/claude_code/metrics)
- *   - Perfetto / OpenTelemetry session tracing
- *   - Auto-updater (storage.googleapis.com, npm registry)
- *   - Plugin fetch telemetry
- *   - Transcript / feedback sharing
+ *   - Internal employee logging
+ *   - Prompt dumping / undercover mode
+ *
+ * The analytics and telemetry modules this plugin used to stub (the sink,
+ * Datadog, 1P event logging, the BigQuery exporter, Perfetto/OTel session
+ * tracing) were deleted from the tree outright, so they need no stub.
  */
 
 import type { BunPlugin } from 'bun'
@@ -31,15 +30,7 @@ import type { BunPlugin } from 'bun'
 // phone-home path.
 const stubs: Record<string, string> = {
 
-	// ─── Analytics core ─────────────────────────────────────────────
-
-	'src/platform/analytics/index': `
-export function stripProtoFields(metadata) { return metadata; }
-export function attachAnalyticsSink() {}
-export function logEvent() {}
-export async function logEventAsync() {}
-export function _resetForTesting() {}
-`,
+	// ─── Remote feature flags ───────────────────────────────────────
 
 	'src/platform/analytics/growthbook': `
 import _fs from 'node:fs';
@@ -239,116 +230,6 @@ export async function getDynamicConfig_BLOCKS_ON_INIT(configName, defaultValue) 
 export function getDynamicConfig_CACHED_MAY_BE_STALE(configName, defaultValue) { return _getFlagValue(configName, defaultValue); }
 `,
 
-	'src/platform/analytics/sink': `
-export function initializeAnalyticsGates() {}
-export function initializeAnalyticsSink() {}
-`,
-
-	'src/platform/analytics/config': `
-export function isAnalyticsDisabled() { return true; }
-export function isFeedbackSurveyDisabled() { return true; }
-`,
-
-	'src/platform/analytics/datadog': `
-export const initializeDatadog = async () => false;
-export async function shutdownDatadog() {}
-export async function trackDatadogEvent() {}
-`,
-
-	'src/platform/analytics/firstPartyEventLogger': `
-export function getEventSamplingConfig() { return {}; }
-export function shouldSampleEvent() { return null; }
-export async function shutdown1PEventLogging() {}
-export function is1PEventLoggingEnabled() { return false; }
-export function logEventTo1P() {}
-export function logGrowthBookExperimentTo1P() {}
-export function initialize1PEventLogging() {}
-export async function reinitialize1PEventLoggingIfConfigChanged() {}
-`,
-
-	'src/platform/analytics/firstPartyEventLoggingExporter': `
-export class FirstPartyEventLoggingExporter {
-	constructor() {}
-	async export(logs, resultCallback) { resultCallback({ code: 0 }); }
-	async getQueuedEventCount() { return 0; }
-	async shutdown() {}
-	async forceFlush() {}
-}
-`,
-
-	'src/platform/analytics/metadata': `
-export function sanitizeToolNameForAnalytics(toolName) { return toolName; }
-export function isToolDetailsLoggingEnabled() { return false; }
-export function isAnalyticsToolDetailsLoggingEnabled() { return false; }
-export function mcpToolDetailsForAnalytics() { return {}; }
-export function extractMcpToolDetails() { return undefined; }
-export function extractSkillName() { return undefined; }
-export function extractToolInputForTelemetry() { return undefined; }
-export function getFileExtensionForAnalytics() { return undefined; }
-export function getFileExtensionsFromBashCommand() { return undefined; }
-export async function getEventMetadata() { return {}; }
-export function to1PEventFormat() { return {}; }
-`,
-
-	// ─── Telemetry subsystems ───────────────────────────────────────
-
-	'src/platform/telemetry/bigqueryExporter': `
-export class BigQueryMetricsExporter {
-	constructor() {}
-	async export(metrics, resultCallback) { resultCallback({ code: 0 }); }
-	async shutdown() {}
-	async forceFlush() {}
-	selectAggregationTemporality() { return 0; }
-}
-`,
-
-	'src/platform/telemetry/perfettoTracing': `
-export function initializePerfettoTracing() {}
-export function isPerfettoTracingEnabled() { return false; }
-export function registerAgent() {}
-export function unregisterAgent() {}
-export function startLLMRequestPerfettoSpan() { return ''; }
-export function endLLMRequestPerfettoSpan() {}
-export function startToolPerfettoSpan() { return ''; }
-export function endToolPerfettoSpan() {}
-export function startUserInputPerfettoSpan() { return ''; }
-export function endUserInputPerfettoSpan() {}
-export function emitPerfettoInstant() {}
-export function emitPerfettoCounter() {}
-export function startInteractionPerfettoSpan() { return ''; }
-export function endInteractionPerfettoSpan() {}
-export function getPerfettoEvents() { return []; }
-export function resetPerfettoTracer() {}
-export async function triggerPeriodicWriteForTesting() {}
-export function evictStaleSpansForTesting() {}
-export const MAX_EVENTS_FOR_TESTING = 0;
-export function evictOldestEventsForTesting() {}
-`,
-
-	'src/platform/telemetry/sessionTracing': `
-const noopSpan = {
-	end() {}, setAttribute() {}, setStatus() {},
-	recordException() {}, addEvent() {}, isRecording() { return false; },
-};
-export function isBetaTracingEnabled() { return false; }
-export function isEnhancedTelemetryEnabled() { return false; }
-export function startInteractionSpan() { return noopSpan; }
-export function endInteractionSpan() {}
-export function startLLMRequestSpan() { return noopSpan; }
-export function endLLMRequestSpan() {}
-export function startToolSpan() { return noopSpan; }
-export function startToolBlockedOnUserSpan() { return noopSpan; }
-export function endToolBlockedOnUserSpan() {}
-export function startToolExecutionSpan() { return noopSpan; }
-export function endToolExecutionSpan() {}
-export function endToolSpan() {}
-export function addToolContentEvent() {}
-export function getCurrentSpan() { return null; }
-export async function executeInSpan(spanName, fn) { return fn(noopSpan); }
-export function startHookSpan() { return noopSpan; }
-export function endHookSpan() {}
-`,
-
 	// ─── Internal employee logging (not needed in the external build) ─────
 	//
 	// Permanently inert: the module was deleted, and `src/services/` is one of
@@ -382,50 +263,6 @@ export function addApiRequestToCache() {}
 export function isUndercover() { return false; }
 export function getUndercoverInstructions() { return ''; }
 export function shouldShowUndercoverAutoNotice() { return false; }
-`,
-
-	'src/shared/types/generated/events_mono/claude_code/v1/claude_code_internal_event': `
-export const ClaudeCodeInternalEvent = {
-  fromJSON: value => value,
-  toJSON: value => value,
-  create: value => value ?? {},
-  fromPartial: value => value ?? {},
-};
-`,
-
-	'src/shared/types/generated/events_mono/growthbook/v1/growthbook_experiment_event': `
-export const GrowthbookExperimentEvent = {
-  fromJSON: value => value,
-  toJSON: value => value,
-  create: value => value ?? {},
-  fromPartial: value => value ?? {},
-};
-`,
-
-	'src/shared/types/generated/events_mono/common/v1/auth': `
-export const PublicApiAuth = {
-  fromJSON: value => value,
-  toJSON: value => value,
-  create: value => value ?? {},
-  fromPartial: value => value ?? {},
-};
-`,
-
-	'src/platform/telemetry/instrumentation': `
-export function bootstrapTelemetry() {}
-export function parseExporterTypes() { return []; }
-export function isTelemetryEnabled() { return false; }
-export async function initializeTelemetry() { return undefined; }
-export async function flushTelemetry() {}
-`,
-
-	'src/shared/types/generated/google/protobuf/timestamp': `
-export const Timestamp = {
-  fromJSON: value => value,
-  toJSON: value => value,
-  create: value => value ?? {},
-  fromPartial: value => value ?? {},
-};
 `,
 }
 

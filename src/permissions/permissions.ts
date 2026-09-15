@@ -72,7 +72,6 @@ import {
   getTotalOutputTokens,
 } from 'src/platform/bootstrap/state.js'
 import { getFeatureValue_CACHED_WITH_REFRESH } from 'src/platform/analytics/growthbook.js'
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import {
   clearClassifierChecking,
   setClassifierChecking,

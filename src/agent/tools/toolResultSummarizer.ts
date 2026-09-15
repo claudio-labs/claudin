@@ -16,7 +16,6 @@ import { detectCodeLang, stripLineNumberPrefix } from 'src/shared/fs/detectCodeL
 import { scanSymbols } from 'src/tools/shared/codeOutline/scanSymbols.js'
 import { renderOutlineBody } from 'src/tools/shared/codeOutline/renderOutline.js'
 import { recordBytesSaved } from 'src/agent/context/tokensSaved.js'
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'

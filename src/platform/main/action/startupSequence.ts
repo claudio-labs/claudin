@@ -32,7 +32,6 @@ import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';
 import { isAdvisorEnabled } from 'src/platform/doctor/advisor.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { logError } from 'src/shared/log.js';
-import { logContextMetrics } from 'src/providers/transport/api.js';
 import { uniq } from 'src/shared/data/array.js';
 import { countConcurrentSessions, registerSession, updateSessionName } from 'src/sessions/concurrentSessions.js';
 import { registerCleanup } from 'src/shared/cleanupRegistry.js';
@@ -43,7 +42,6 @@ import { getInitialEffortSetting, parseEffortValue } from 'src/providers/effort/
 import { getInitialFastModeSetting, prefetchFastModeStatus, resolveFastModeStatusFromCache } from 'src/providers/fastMode.js';
 import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js';
 import { isInBundledMode } from 'src/platform/install/bundledMode.js';
-import { logManagedSettings, logSessionTelemetry, logStartupTelemetry } from 'src/platform/main/lifecycle.js';
 import { createUserMessage } from 'src/agent/messages/messages.js';
 import { processSessionStartHooks } from 'src/sessions/sessionStart.js';
 import { prefetchCopilotModelCatalog } from 'src/providers/model/copilotModelCatalog.js';
@@ -350,10 +348,6 @@ export function runMcpHooksAndTelemetry(
     logForDiagnosticsNoPII('info', 'exited');
   });
 
-  // Log context metrics once at initialization
-  void logContextMetrics(regularMcpConfigs, toolPermissionContext as Parameters<typeof logContextMetrics>[1]);
-  logManagedSettings();
-
   // Register PID file for concurrent-session detection (~/.claudin/sessions/)
   // and fire multi-clauding telemetry. Lives here (not init.ts) so only the
   // REPL path registers — not subcommands like `claude doctor`. Chained:
@@ -632,10 +626,6 @@ export function runInteractiveStartupBlock(
     ...current,
     numStartups: (current.numStartups ?? 0) + 1,
   }));
-  setImmediate(() => {
-    void logStartupTelemetry();
-    logSessionTelemetry();
-  });
 
   return {
     initialState,

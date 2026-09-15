@@ -3,7 +3,6 @@ import React, { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { KeybindingAction } from 'src/terminal/keybindings/types.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js';
 import { useSetAppState } from 'src/terminal/state/AppState.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { type OptionWithDescription, Select } from 'src/terminal/custom-select/select.js';
@@ -40,7 +39,6 @@ const DEFAULT_PLACEHOLDERS: Record<FeedbackType, string> = {
  * - "Do you want to proceed?" question with optional Tab hint
  * - Feature flag check for feedback capability
  * - Input mode toggling (Tab to expand feedback input)
- * - Analytics events for feedback interactions
  * - Transforming options to Select-compatible format
  */
 export function PermissionPrompt<T extends string>(t0: PermissionPromptProps<T>) {
@@ -144,10 +142,6 @@ export function PermissionPrompt<T extends string>(t0: PermissionPromptProps<T>)
       const {
         type: type_0
       } = option.feedbackConfig;
-      const analyticsProps = {
-        toolName: toolAnalyticsContext?.toolName as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        isMcp: toolAnalyticsContext?.isMcp ?? false
-      };
       if (type_0 === "accept") {
         if (acceptInputMode) {
           setAcceptInputMode(false);

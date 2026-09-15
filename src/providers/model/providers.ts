@@ -1,4 +1,3 @@
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import type { Transport } from 'src/providers/presets/activeProvider.js'
 
@@ -123,8 +122,8 @@ export function activeTransportUsesOpenAiShim(resolvedModel?: string): boolean {
   return true
 }
 
-export function getAPIProviderForStatsig(): AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS {
-  return getAPIProvider() as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
+export function getAPIProviderForStatsig(): string {
+  return getAPIProvider()
 }
 
 /**

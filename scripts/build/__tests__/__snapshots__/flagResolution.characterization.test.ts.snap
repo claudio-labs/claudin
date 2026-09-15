@@ -618,14 +618,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 2,
     "stockValue": false,
   },
-  "tengu_trace_lantern": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
   "tengu_turtle_carbon": {
     "defaults": [
       "true",

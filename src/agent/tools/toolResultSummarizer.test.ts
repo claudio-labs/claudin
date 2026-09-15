@@ -1,39 +1,16 @@
-import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, expect, test } from 'bun:test'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { resetGlobalConfigForTests } from 'src/platform/config/config.js'
 
-const realAnalyticsMetadata = { ...(await import('src/platform/analytics/metadata.js')) }
-const realAnalyticsIndex = { ...(await import('src/platform/analytics/index.js')) }
-
 afterAll(() => {
-  mock.module('src/platform/analytics/metadata.js', () => realAnalyticsMetadata)
-  mock.module('src/platform/analytics/index.js', () => realAnalyticsIndex)
   resetGlobalConfigForTests()
 })
 
-// Mock analytics/metadata + index only (narrow surfaces, safe to replace).
 // Leave ./config.js as the real module — Bun test runner sets NODE_ENV=test,
 // so getGlobalConfig() returns TEST_GLOBAL_CONFIG_FOR_TESTING which starts with
 // DEFAULT_GLOBAL_CONFIG.toolResultSummarizerEnabled === true. Tests flip it via
 // saveGlobalConfig. This avoids mock.module pollution across test files in the
 // same run (config.js has 60+ exports; stubbing them all is fragile).
-mock.module('src/platform/analytics/metadata.js', () => ({
-  sanitizeToolNameForAnalytics: (name: string) =>
-    name.startsWith('mcp__') ? 'mcp_tool' : name,
-  // Stubs for transitive importers (firstPartyEventLoggingExporter etc.)
-  // that would otherwise fail to resolve against the mocked module.
-  isToolDetailsLoggingEnabled: () => false,
-  isAnalyticsToolDetailsLoggingEnabled: () => false,
-  mcpToolDetailsForAnalytics: () => ({}),
-  extractMcpToolDetails: () => ({}),
-  extractSkillName: () => undefined,
-  extractToolInputForTelemetry: () => ({}),
-  getFileExtensionForAnalytics: () => '',
-  getFileExtensionsFromBashCommand: () => [],
-  getEventMetadata: async () => ({}),
-  to1PEventFormat: () => ({}),
-}))
-
 const {
   maybeSummarizeToolResult,
   isSummarizedContent,

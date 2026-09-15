@@ -1,13 +1,10 @@
-// Centralized analytics/telemetry logging for tool permission decisions.
+// Centralized logging for tool permission decisions.
 // All permission approve/reject events flow through logPermissionDecision(),
-// which fans out to Statsig analytics, OTel telemetry, and code-edit metrics.
+// which fans out to code-edit metrics and the tool-use context decision store.
 import { feature } from 'bun:bundle'
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import { getCodeEditToolDecisionCounter } from 'src/platform/bootstrap/state.js'
 import type { Tool as ToolType, ToolUseContext } from 'src/tools/Tool.js'
 import { getLanguageName } from 'src/shared/text/cliHighlight.js'
-import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import type {
   PermissionApprovalSource,
   PermissionRejectionSource,
@@ -60,7 +57,8 @@ async function buildCodeEditToolAttributes(
   }
 }
 
-// Flattens structured source into a string label for analytics/OTel events
+// Flattens structured source into a string label for the decision store and
+// the code-edit OTel counter
 function sourceToString(
   source: PermissionApprovalSource | PermissionRejectionSource,
 ): string {
@@ -84,91 +82,18 @@ function sourceToString(
   }
 }
 
-function baseMetadata(
-  messageId: string,
-  toolName: string,
-  waitMs: number | undefined,
-): { [key: string]: boolean | number | undefined } {
-  return {
-    messageID:
-      messageId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    toolName: sanitizeToolNameForAnalytics(toolName),
-    sandboxEnabled: SandboxManager.isSandboxingEnabled(),
-    // Only include wait time when the user was actually prompted (not auto-approved)
-    ...(waitMs !== undefined && { waiting_for_user_permission_ms: waitMs }),
-  }
-}
-
-// Emits a distinct analytics event name per approval source for funnel analysis
-function logApprovalEvent(
-  tool: ToolType,
-  messageId: string,
-  source: PermissionApprovalSource | 'config',
-  waitMs: number | undefined,
-): void {
-  if (source === 'config') {
-    return
-  }
-  if (
-    (feature('BASH_CLASSIFIER') || feature('TRANSCRIPT_CLASSIFIER')) &&
-    source.type === 'classifier'
-  ) {
-    return
-  }
-  switch (source.type) {
-    case 'user':
-      break
-    case 'hook':
-      break
-    default:
-      break
-  }
-}
-
-// Rejections share a single event name, differentiated by metadata fields
-function logRejectionEvent(
-  tool: ToolType,
-  messageId: string,
-  source: PermissionRejectionSource | 'config',
-  waitMs: number | undefined,
-): void {
-  if (source === 'config') {
-    return
-  }
-}
-
 // Single entry point for all permission decision logging. Called by permission
-// handlers after every approve/reject. Fans out to: analytics events, OTel
-// telemetry, code-edit OTel counters, and toolUseContext decision storage.
+// handlers after every approve/reject. Fans out to the code-edit OTel counter
+// and to toolUseContext decision storage.
 function logPermissionDecision(
   ctx: PermissionLogContext,
   args: PermissionDecisionArgs,
+  // Unused: the prompt wait time only ever fed the removed analytics payload.
+  // Kept so the existing call sites still type-check.
   permissionPromptStartTimeMs?: number,
 ): void {
-  const { tool, input, toolUseContext, messageId, toolUseID } = ctx
+  const { tool, input, toolUseContext, toolUseID } = ctx
   const { decision, source } = args
-
-  const waiting_for_user_permission_ms =
-    permissionPromptStartTimeMs !== undefined
-      ? Date.now() - permissionPromptStartTimeMs
-      : undefined
-
-  // Log the analytics event
-  if (args.decision === 'accept') {
-    logApprovalEvent(
-      tool,
-      messageId,
-      args.source,
-      waiting_for_user_permission_ms,
-    )
-  } else {
-    logRejectionEvent(
-      tool,
-      messageId,
-      args.source,
-      waiting_for_user_permission_ms,
-    )
-  }
 
   const sourceString = source === 'config' ? 'config' : sourceToString(source)
 
@@ -188,7 +113,6 @@ function logPermissionDecision(
     decision,
     timestamp: Date.now(),
   })
-
 }
 
 export { isCodeEditingTool, buildCodeEditToolAttributes, logPermissionDecision }

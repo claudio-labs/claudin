@@ -1,4 +1,3 @@
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type z from 'zod/v4'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { AnyObject, Tool, ToolUseContext } from 'src/tools/Tool.js'

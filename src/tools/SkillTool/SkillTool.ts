@@ -32,7 +32,6 @@ import {
   isOfficialMarketplaceName,
   parsePluginIdentifier,
 } from 'src/plugins/pluginIdentifier.js'
-import { buildPluginCommandTelemetryFields } from 'src/platform/telemetry/pluginTelemetry.js'
 import { z } from 'zod/v4'
 import {
   addInvokedSkill,

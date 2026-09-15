@@ -92,7 +92,6 @@ import {
   readMailbox,
   writeToMailbox,
 } from 'src/agent/coordinator/teammateMailbox.js'
-import { unregisterAgent as unregisterPerfettoAgent } from 'src/platform/telemetry/perfettoTracing.js'
 import { createContentReplacementState } from 'src/agent/tools/toolResultStorage.js'
 import { TEAM_LEAD_NAME } from 'src/agent/coordinator/swarm/constants.js'
 import {
@@ -1442,8 +1441,6 @@ export async function runInProcessTeammate(
         summary: identity.agentId,
       })
     }
-
-    unregisterPerfettoAgent(identity.agentId)
     return { success: true, messages: allMessages }
   } catch (error) {
     const errorMessage =
@@ -1506,8 +1503,6 @@ export async function runInProcessTeammate(
         failureReason: errorMessage,
       },
     )
-
-    unregisterPerfettoAgent(identity.agentId)
     return {
       success: false,
       error: errorMessage,

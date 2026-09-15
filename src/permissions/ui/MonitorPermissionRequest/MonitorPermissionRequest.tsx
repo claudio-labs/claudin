@@ -1,7 +1,6 @@
 import React from 'react'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { Box, Text } from 'src/terminal/ink.js'
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import { shouldShowAlwaysAllowOptions } from 'src/permissions/permissionsLoader.js'
 import { usePermissionRequestLogging } from 'src/permissions/ui/hooks.js'
 import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js'
@@ -107,7 +106,7 @@ export function MonitorPermissionRequest({
   })
 
   const toolAnalyticsContext = {
-    toolName: sanitizeToolNameForAnalytics(toolUseConfirm.tool.name),
+    toolName: toolUseConfirm.tool.name,
     isMcp: toolUseConfirm.tool.isMcp ?? false,
   }
 

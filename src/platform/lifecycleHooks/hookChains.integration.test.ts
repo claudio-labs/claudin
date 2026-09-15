@@ -5,8 +5,6 @@ import { join } from 'node:path'
 
 const realTeammate = { ...(await import('src/agent/coordinator/teammate.js')) }
 const realTeammateMailbox = { ...(await import('src/agent/coordinator/teammateMailbox.js')) }
-const realAnalyticsIndex = { ...(await import('src/platform/analytics/index.js')) }
-const realTelemetryEvents = { ...(await import('src/platform/telemetry/events.js')) }
 const realPolicyLimits = { ...(await import('src/platform/policyLimits/index.js')) }
 const realTeamHelpers = { ...(await import('src/agent/coordinator/swarm/teamHelpers.js')) }
 const realReplBridgeHandle = { ...(await import('src/platform/bridge/replBridgeHandle.js')) }
@@ -70,15 +68,6 @@ async function importHookChainsHarness(
       return n === '1' || n === 'true' || n === 'yes' || n === 'on'
     },
     getClaudinConfigHomeDir: () => process.env.CLAUDIN_CONFIG_DIR ?? `${process.env.HOME ?? '~'}/.claudin`,
-  }))
-
-  mock.module('src/platform/analytics/index.js', () => ({
-    logEvent: () => {},
-    stripProtoFields: <T,>(m: T) => m,
-  }))
-
-  mock.module('src/platform/telemetry/events.js', () => ({
-    logOTelEvent: async () => {},
   }))
 
   mock.module('src/platform/policyLimits/index.js', () => ({
@@ -383,10 +372,6 @@ afterAll(() => {
   mock.module('src/agent/coordinator/teammateMailbox.js', () => realTeammateMailbox)
   mock.module('src/shared/envUtils.js', () => realEnvUtils)
   mock.module('src/shared/envUtils.js', () => realEnvUtils)
-  mock.module('src/platform/analytics/index.js', () => realAnalyticsIndex)
-  mock.module('src/platform/analytics/index.js', () => realAnalyticsIndex)
-  mock.module('src/platform/telemetry/events.js', () => realTelemetryEvents)
-  mock.module('src/platform/telemetry/events.js', () => realTelemetryEvents)
   mock.module('src/platform/policyLimits/index.js', () => realPolicyLimits)
   mock.module('src/platform/policyLimits/index.js', () => realPolicyLimits)
   mock.module('src/agent/coordinator/swarm/teamHelpers.js', () => realTeamHelpers)

@@ -1,6 +1,4 @@
 import { useState } from 'react'
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import { useSetAppState } from 'src/terminal/state/AppState.js'
 import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js'
 
@@ -47,12 +45,6 @@ export function useShellPermissionFeedback({
   function handleInputModeToggle(option: string) {
     // Notify that user is interacting with the dialog
     toolUseConfirm.onUserInteraction()
-    const analyticsProps = {
-      toolName: sanitizeToolNameForAnalytics(
-        toolUseConfirm.tool.name,
-      ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      isMcp: toolUseConfirm.tool.isMcp ?? false,
-    }
 
     if (option === 'yes') {
       if (yesInputMode) {

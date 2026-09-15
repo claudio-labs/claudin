@@ -24,7 +24,6 @@ import { _resetAllClippedIdsForTesting } from 'src/agent/compact/stableStubState
 
 // Capture real modules before mocking so afterAll can restore them
 const realGrowthbook = { ...(await import('src/platform/analytics/growthbook.js')) }
-const realAnalytics = { ...(await import('src/platform/analytics/index.js')) }
 const realDebug = { ...(await import('src/shared/debug.js')) }
 const realBootstrapState = { ...(await import('src/platform/bootstrap/state.js')) }
 const realEnvUtils = { ...(await import('src/shared/envUtils.js')) }
@@ -53,13 +52,6 @@ mock.module('src/platform/analytics/growthbook.js', () => ({
   getDynamicConfig_CACHED_MAY_BE_STALE: () => ({}),
   initializeGrowthBook: async () => null,
   getAllGrowthBookFeatures: () => ({}),
-}))
-mock.module('src/platform/analytics/index.js', () => ({
-  logEvent: () => {},
-  logEventAsync: async () => {},
-  attachAnalyticsSink: () => {},
-  stripProtoFields: <V,>(v: V) => v,
-  _resetForTesting: () => {},
 }))
 
 describe('cache bounds invariants', () => {
@@ -190,8 +182,6 @@ afterAll(() => {
   // _resetAllClippedIdsForTesting() syncs lastSeenSessionId below.
   mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
   mock.module('src/platform/analytics/growthbook.js', () => realGrowthbook)
-  mock.module('src/platform/analytics/index.js', () => realAnalytics)
-  mock.module('src/platform/analytics/index.js', () => realAnalytics)
   mock.module('src/shared/debug.js', () => realDebug)
   mock.module('src/shared/debug.js', () => realDebug)
   mock.module('src/platform/bootstrap/state.js', () => realBootstrapState)

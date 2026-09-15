@@ -25,10 +25,8 @@ import {
   describeRuleMapSync,
   syncProjectRuleMap,
 } from 'src/memory/instructions/ruleMapAutoSync.js'
-import { getCurrentProjectConfig, getGlobalConfig } from 'src/platform/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
-import { env } from 'src/shared/env.js'
-import { envDynamic } from 'src/shared/envDynamic.js'
 import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { findCanonicalGitRoot, findGitRoot, getIsGit } from 'src/vcs/git/git.js'
@@ -321,7 +319,7 @@ export async function setup(
   // bookkeeping for commit attribution + usage metrics — scripted calls don't
   // commit code, and the 49ms attribution hook stat check (measured) is pure
   // overhead. NOT an early-return: the --dangerously-skip-permissions safety
-  // gate, tengu_started beacon, and apiKeyHelper prefetch below must still run.
+  // gate and the apiKeyHelper prefetch below must still run.
   if (!isBareMode()) {
     void import('src/sessions/sessionFileAccessHooks.js').then(m =>
       m.registerSessionFileAccessHooks(),
@@ -340,7 +338,7 @@ export async function setup(
 
   // Wave 6 audit — split the +40ms total of action_after_setup vs +6ms of
   // setup_after_prefetch into: (a) release notes + recent activity I/O, and
-  // (b) permission-mode safety check + tengu_exit emit. Helps decide whether
+  // (b) the permission-mode safety check. Helps decide whether
   // to lazy-load checkForReleaseNotes / getRecentActivity in a later wave.
   // Pre-fetch data for Logo v2 - await to ensure it's ready before logo renders.
   // --bare / SIMPLE: skip — release notes are interactive-UI display data,
@@ -377,11 +375,4 @@ export async function setup(
     }
 
   }
-
-  if (process.env.NODE_ENV === 'test') {
-    return
-  }
-
-  // Log tengu_exit event from the last session?
-  const projectConfig = getCurrentProjectConfig()
 }

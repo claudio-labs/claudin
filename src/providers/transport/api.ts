@@ -5,13 +5,10 @@ import type {
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import { createHash } from 'crypto'
 import { SYSTEM_PROMPT_DYNAMIC_BOUNDARY } from 'src/agent/prompts/prompts.js'
-import { getSystemContext, getUserContext } from 'src/agent/context.js'
-import { isAnalyticsDisabled } from 'src/platform/analytics/config.js'
 import {
   checkStatsigFeatureGate_CACHED_MAY_BE_STALE,
   getFeatureValue_CACHED_MAY_BE_STALE,
 } from 'src/platform/analytics/growthbook.js'
-import { prefetchAllMcpResources } from 'src/mcp/client.js'
 import type { ScopedMcpServerConfig } from 'src/mcp/types.js'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
 import { FileEditTool } from 'src/tools/FileEditTool/FileEditTool.js'
@@ -20,11 +17,9 @@ import {
   stripTrailingWhitespace,
 } from 'src/tools/FileEditTool/utils.js'
 import { FileWriteTool } from 'src/tools/FileWriteTool/FileWriteTool.js'
-import { getTools } from 'src/tools/tools.js'
 import type { AgentId } from 'src/shared/types/ids.js'
 import type { z } from 'zod/v4'
 import { CLI_SYSPROMPT_PREFIXES } from 'src/agent/prompts/system.js'
-import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
 import type { Tool, ToolPermissionContext, Tools } from 'src/tools/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
@@ -47,16 +42,11 @@ import {
   isFirstPartyAnthropicBaseUrl,
 } from 'src/providers/model/providers.js'
 import {
-  getFileReadIgnorePatterns,
-  normalizePatternsToPath,
-} from 'src/permissions/filesystem.js'
-import {
   getPlan,
   getPlanFilePath,
   persistFileSnapshotIfRemote,
 } from 'src/agent/plans/plans.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
-import { countFilesRoundedRg } from 'src/shared/fs/ripgrep.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { SystemPrompt } from 'src/agent/systemPromptType.js'
 import { getToolSchemaCache } from 'src/agent/tools/toolSchemaCache.js'
@@ -539,84 +529,6 @@ function filterStaticDedupKeys(context: {
     out[key] = context[key]!
   }
   return out
-}
-
-/**
- * Log metrics about context and system prompt size
- */
-export async function logContextMetrics(
-  mcpConfigs: Record<string, ScopedMcpServerConfig>,
-  toolPermissionContext: ToolPermissionContext,
-): Promise<void> {
-  // Early return if logging is disabled
-  if (isAnalyticsDisabled()) {
-    return
-  }
-  const [{ tools: mcpTools }, tools, userContext, systemContext] =
-    await Promise.all([
-      prefetchAllMcpResources(mcpConfigs),
-      getTools(toolPermissionContext),
-      getUserContext(),
-      getSystemContext(),
-    ])
-  // Extract individual context sizes and calculate total
-  const gitStatusSize = systemContext.gitStatus?.length ?? 0
-  const claudeMdSize = userContext.claudeMd?.length ?? 0
-
-  // Calculate total context size
-  const totalContextSize = gitStatusSize + claudeMdSize
-
-  // Get file count using ripgrep (rounded to nearest power of 10 for privacy)
-  const currentDir = getCwd()
-  const ignorePatternsByRoot = getFileReadIgnorePatterns(toolPermissionContext)
-  const normalizedIgnorePatterns = normalizePatternsToPath(
-    ignorePatternsByRoot,
-    currentDir,
-  )
-  const fileCount = await countFilesRoundedRg(
-    currentDir,
-    AbortSignal.timeout(1000),
-    normalizedIgnorePatterns,
-  )
-
-  // Calculate tool metrics
-  let mcpToolsCount = 0
-  let mcpServersCount = 0
-  let mcpToolsTokens = 0
-  let nonMcpToolsCount = 0
-  let nonMcpToolsTokens = 0
-
-  const nonMcpTools = tools.filter(tool => !tool.isMcp)
-  mcpToolsCount = mcpTools.length
-  nonMcpToolsCount = nonMcpTools.length
-
-  // Extract unique server names from MCP tool names (format: mcp__servername__toolname)
-  const serverNames = new Set<string>()
-  for (const tool of mcpTools) {
-    const parts = tool.name.split('__')
-    if (parts.length >= 3 && parts[1]) {
-      serverNames.add(parts[1])
-    }
-  }
-  mcpServersCount = serverNames.size
-
-  // Estimate tool tokens locally for analytics (avoids N API calls per session)
-  // Use inputJSONSchema (plain JSON Schema) when available, otherwise convert Zod schema
-  for (const tool of mcpTools) {
-    const schema =
-      'inputJSONSchema' in tool && tool.inputJSONSchema
-        ? tool.inputJSONSchema
-        : zodToJsonSchema(tool.inputSchema)
-    mcpToolsTokens += roughTokenCountEstimation(jsonStringify(schema))
-  }
-  for (const tool of nonMcpTools) {
-    const schema =
-      'inputJSONSchema' in tool && tool.inputJSONSchema
-        ? tool.inputJSONSchema
-        : zodToJsonSchema(tool.inputSchema)
-    nonMcpToolsTokens += roughTokenCountEstimation(jsonStringify(schema))
-  }
-
 }
 
 // TODO: Generalize this to all tools

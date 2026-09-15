@@ -21,10 +21,6 @@ import {
   type GitHubActionsMetadata,
   getUserForGrowthBook,
 } from 'src/shared/user.js'
-import {
-  is1PEventLoggingEnabled,
-  logGrowthBookExperimentTo1P,
-} from 'src/platform/analytics/firstPartyEventLogger.js'
 
 /**
  * User attributes sent to GrowthBook for targeting.
@@ -188,8 +184,11 @@ function getConfigOverrides(): Record<string, unknown> | undefined {
 }
 
 /**
- * Log experiment exposure for a feature if it has experiment data.
- * Deduplicates within a session - each feature is logged at most once.
+ * Mark experiment exposure for a feature if it has experiment data.
+ * Deduplicates within a session - each feature is marked at most once.
+ *
+ * The exposure used to be emitted to 1P event logging; that sink is not part
+ * of this build, so this now only keeps the local dedup bookkeeping.
  */
 function logExposureForFeature(feature: string): void {
   // Skip if already logged this session (dedup)
@@ -200,14 +199,6 @@ function logExposureForFeature(feature: string): void {
   const expData = experimentDataByFeature.get(feature)
   if (expData) {
     loggedExposures.add(feature)
-    logGrowthBookExperimentTo1P({
-      experimentId: expData.experimentId,
-      variationId: expData.variationId,
-      userAttributes: getUserAttributes(),
-      experimentMetadata: {
-        feature_id: feature,
-      },
-    })
   }
 }
 
@@ -318,8 +309,11 @@ function syncRemoteEvalToDisk(): void {
  * Check if GrowthBook operations should be enabled
  */
 function isGrowthBookEnabled(): boolean {
-  // GrowthBook depends on 1P event logging.
-  return is1PEventLoggingEnabled()
+  // The remote GrowthBook client depended on 1P event logging, which this
+  // build does not ship. Flag resolution never goes through here — the build
+  // replaces this module with a stub that reads ~/.claudin/feature-flags.json
+  // — so the remote client stays off.
+  return false
 }
 
 /**

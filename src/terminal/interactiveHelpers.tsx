@@ -6,7 +6,6 @@ import { type ChannelEntry, setSessionTrustAccepted, setStatsStore } from 'src/p
 import type { Command } from 'src/commands/commands.js';
 import { createStatsStore, type StatsStore } from 'src/terminal/contexts/stats.js';
 import { getSystemContext } from 'src/agent/context.js';
-import { initializeTelemetryAfterTrust } from 'src/platform/entrypoints/init.js';
 import { isSynchronizedOutputSupported } from 'src/terminal/ink/terminal.js';
 import type { RenderOptions, Root, TextProps } from 'src/terminal/ink.js';
 import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js';
@@ -215,12 +214,6 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
   // This includes potentially dangerous environment variables from untrusted sources
   applyConfigEnvironmentVariables();
   profileCheckpoint('setupScreens_after_env_applied');
-
-  // Initialize telemetry after env vars are applied so OTEL endpoint env vars and
-  // otelHeadersHelper (which requires trust to execute) are available.
-  // Defer to next tick so the OTel dynamic import resolves after first render
-  // instead of during the pre-render microtask queue.
-  setImmediate(() => initializeTelemetryAfterTrust());
 
   // Check for a custom API key surfaced by the active Anthropic profile.
   {

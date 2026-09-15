@@ -15,7 +15,6 @@ import { resetPromptCacheBreakDetection } from 'src/providers/cache/promptCacheB
 import { clearAllSessions } from 'src/providers/transport/sessionIngress.js'
 import { diagnosticTracker } from 'src/platform/diagnosticTracking.js'
 import { clearSessionMessagesCache } from 'src/sessions/sessionStorage.js'
-import { clearBetaTracingState } from 'src/platform/telemetry/betaSessionTracing.js'
 import { resetMicrocompactState } from 'src/agent/compact/microCompact.js'
 import {
   bumpStandDownEpoch,
@@ -154,7 +153,6 @@ export function runPostCompactCleanup(
   if (isMainThreadCompact) {
     resetSentBashGitInstructions('')
   }
-  clearBetaTracingState()
   clearSessionMessagesCache()
 
   // Prompt-cache break detection holds diffable content hashes per source.

@@ -59,7 +59,15 @@ test('every no-telemetry stub key still resolves, or names nothing at all', asyn
     join(import.meta.dir, 'no-telemetry-plugin.ts'),
   ).text()
   const keys = stubKeys(plugin)
-  expect(keys.length).toBeGreaterThan(10)
+  // Sanity check that the regex above still finds the keys at all — a pattern
+  // that silently matched nothing would snapshot an empty list and guard
+  // nothing, which is the failure mode this whole file exists for.
+  //
+  // The floor used to be 10. Deleting the analytics and telemetry modules
+  // outright removed the 15 stubs that stood in for them, so the plugin is
+  // down to the four that still shim a module the fork keeps: growthbook,
+  // internalLogging, dumpPrompts and undercover.
+  expect(keys.length).toBeGreaterThanOrEqual(4)
 
   const disarmed: string[] = []
   const dead: string[] = []

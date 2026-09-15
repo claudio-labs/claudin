@@ -7,7 +7,7 @@
  *   - Flag off (via env) → neither summarize nor persist kicks in.
  *
  * Mock strategy: narrow local mocks of `./config.js` (only `getGlobalConfig`,
- * driven by `harnessState`) plus analytics stubs. Bun's `mock.module` is
+ * driven by `harnessState`). Bun's `mock.module` is
  * process-global, so OTHER tests running before this file can replace
  * `./config.js` with their own stubs that lack `toolResultSummarizerEnabled`.
  * Re-mocking it here guarantees the summarizer always sees the flag we set.
@@ -22,38 +22,12 @@ import {
   afterEach,
   beforeEach,
   expect,
-  mock,
   test,
 } from 'bun:test'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-
-const realAnalyticsMetadata = { ...(await import('src/platform/analytics/metadata.js')) }
-const realAnalyticsIndex = { ...(await import('src/platform/analytics/index.js')) }
-
-mock.module('src/platform/analytics/metadata.js', () => ({
-  sanitizeToolNameForAnalytics: (n: string) => n,
-  // Stubs for transitive importers (firstPartyEventLoggingExporter etc.)
-  isToolDetailsLoggingEnabled: () => false,
-  isAnalyticsToolDetailsLoggingEnabled: () => false,
-  mcpToolDetailsForAnalytics: () => ({}),
-  extractMcpToolDetails: () => ({}),
-  extractSkillName: () => undefined,
-  extractToolInputForTelemetry: () => ({}),
-  getFileExtensionForAnalytics: () => '',
-  getFileExtensionsFromBashCommand: () => [],
-  getEventMetadata: async () => ({}),
-  to1PEventFormat: () => ({}),
-}))
-
-mock.module('src/platform/analytics/index.js', () => ({
-  logEvent: () => {},
-  logEventAsync: () => Promise.resolve(),
-  stripProtoFields: <T,>(m: T) => m,
-  attachAnalyticsSink: () => {},
-}))
 
 const { processToolResultBlock, processPreMappedToolResultBlock } =
   await import('src/agent/tools/toolResultStorage.js')
@@ -71,11 +45,6 @@ const originalCwd = getOriginalCwd()
 afterAll(async () => {
   // Restore the original CWD so subsequent test files see a clean state.
   setOriginalCwd(originalCwd)
-  // Restore mocked modules.
-  mock.module('src/platform/analytics/metadata.js', () => realAnalyticsMetadata)
-  mock.module('src/platform/analytics/metadata.js', () => realAnalyticsMetadata)
-  mock.module('src/platform/analytics/index.js', () => realAnalyticsIndex)
-  mock.module('src/platform/analytics/index.js', () => realAnalyticsIndex)
   // Clean up every project dir we touched (one per test).
   for (const dir of createdProjectDirs) {
     await rm(dir, { recursive: true, force: true })

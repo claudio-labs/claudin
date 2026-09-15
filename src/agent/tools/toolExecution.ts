@@ -5,16 +5,6 @@ import type {
   ToolUseBlock,
 } from '@anthropic-ai/sdk/resources/index.mjs'
 import {
-  extractMcpToolDetails,
-  extractSkillName,
-  extractToolInputForTelemetry,
-  getFileExtensionForAnalytics,
-  getFileExtensionsFromBashCommand,
-  isToolDetailsLoggingEnabled,
-  mcpToolDetailsForAnalytics,
-  sanitizeToolNameForAnalytics,
-} from 'src/platform/analytics/metadata.js'
-import {
   addToToolDuration,
   getCodeEditToolDecisionCounter,
   getStatsStore,
@@ -34,14 +24,8 @@ import {
 import type { BashToolInput } from 'src/tools/BashTool/BashTool.js'
 import { startSpeculativeClassifierCheck } from 'src/tools/BashTool/bashPermissions.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
-import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
-import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
-import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
-import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
-import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import { invalidateCacheForWrite } from 'src/agent/tools/cacheInvalidation.js'
-import { parseGitCommitId } from 'src/tools/shared/gitOperationTracking.js'
 import {
   isDeferredTool,
   TOOL_SEARCH_TOOL_NAME,
@@ -96,20 +80,9 @@ import {
   startSessionActivity,
   stopSessionActivity,
 } from 'src/sessions/sessionActivity.js'
-import { jsonStringify } from 'src/platform/slowOperations.js'
 import { Stream } from 'src/shared/stream.js'
 import { stripPlaceholderOptionalFields } from 'src/agent/tools/toolInputPlaceholders.js'
 import { transportSendsStrictToolSchemas } from 'src/providers/presets/providerConfig.js'
-import {
-  addToolContentEvent,
-  endToolBlockedOnUserSpan,
-  endToolExecutionSpan,
-  endToolSpan,
-  isBetaTracingEnabled,
-  startToolBlockedOnUserSpan,
-  startToolExecutionSpan,
-  startToolSpan,
-} from 'src/platform/telemetry/sessionTracing.js'
 import {
   formatError,
   formatZodValidationError,
@@ -132,7 +105,6 @@ import { normalizeNameForMCP } from 'src/mcp/normalization.js'
 import type { MCPServerConnection } from 'src/mcp/types.js'
 import {
   getLoggingSafeMcpBaseUrl,
-  getMcpServerScopeFromToolName,
   isMcpTool,
 } from 'src/mcp/utils.js'
 import {
@@ -379,7 +351,6 @@ export async function* runToolUse(
 
   // Check if the tool exists
   if (!tool) {
-    const sanitizedToolName = sanitizeToolNameForAnalytics(toolName)
     logForDebugging(`Unknown tool ${toolName}: ${toolUse.id}`)
     yield {
       message: createUserMessage({
@@ -912,29 +883,6 @@ async function checkPermissionsAndCallTool(
     )
   }
 
-  const toolAttributes: Record<string, string | number | boolean> = {}
-  if (processedInput && typeof processedInput === 'object') {
-    if (tool.name === FILE_READ_TOOL_NAME && 'file_path' in processedInput) {
-      toolAttributes.file_path = String(processedInput.file_path)
-    } else if (
-      (tool.name === FILE_EDIT_TOOL_NAME ||
-        tool.name === FILE_WRITE_TOOL_NAME) &&
-      'file_path' in processedInput
-    ) {
-      toolAttributes.file_path = String(processedInput.file_path)
-    } else if (tool.name === BASH_TOOL_NAME && 'command' in processedInput) {
-      const bashInput = processedInput as BashToolInput
-      toolAttributes.full_command = bashInput.command
-    }
-  }
-
-  startToolSpan(
-    tool.name,
-    toolAttributes,
-    isBetaTracingEnabled() ? jsonStringify(processedInput) : undefined,
-  )
-  startToolBlockedOnUserSpan()
-
   // Check whether we have permission to use the tool,
   // and ask the user for permission if we don't
   const permissionMode = toolUseContext.getAppState().toolPermissionContext.mode
@@ -1011,9 +959,6 @@ async function checkPermissionsAndCallTool(
 
   if (permissionDecision.behavior !== 'allow') {
     logForDebugging(`${tool.name} tool permission denied`)
-    const decisionInfo = toolUseContext.toolDecisions?.get(toolUseID)
-    endToolBlockedOnUserSpan('reject', decisionInfo?.source || 'unknown')
-    endToolSpan()
 
     let errorMessage = permissionDecision.message
     // Only use generic "Execution stopped" message if we don't have a detailed hook message
@@ -1104,49 +1049,9 @@ async function checkPermissionsAndCallTool(
     processedInput = permissionDecision.updatedInput
   }
 
-  // Prepare tool parameters for logging in tool_result event.
-  // Gated by OTEL_LOG_TOOL_DETAILS — tool parameters can contain sensitive
-  // content (bash commands, MCP server names, etc.) so they're opt-in only.
-  const telemetryToolInput = extractToolInputForTelemetry(processedInput)
-  let toolParameters: Record<string, unknown> = {}
-  if (isToolDetailsLoggingEnabled()) {
-    if (tool.name === BASH_TOOL_NAME && 'command' in processedInput) {
-      const bashInput = processedInput as BashToolInput
-      const commandParts = bashInput.command.trim().split(/\s+/)
-      const bashCommand = commandParts[0] || ''
-
-      toolParameters = {
-        bash_command: bashCommand,
-        full_command: bashInput.command,
-        ...(bashInput.timeout !== undefined && {
-          timeout: bashInput.timeout,
-        }),
-        ...(bashInput.description !== undefined && {
-          description: bashInput.description,
-        }),
-        ...('dangerouslyDisableSandbox' in bashInput && {
-          dangerouslyDisableSandbox: bashInput.dangerouslyDisableSandbox,
-        }),
-      }
-    }
-
-    const mcpDetails = extractMcpToolDetails(tool.name)
-    if (mcpDetails) {
-      toolParameters.mcp_server_name = mcpDetails.serverName
-      toolParameters.mcp_tool_name = mcpDetails.mcpToolName
-    }
-    const skillName = extractSkillName(tool.name, processedInput)
-    if (skillName) {
-      toolParameters.skill_name = skillName
-    }
-  }
-
+  // Kept for the cleanup in the finally block below, which removes this tool
+  // call's decision entry from the per-turn map.
   const decisionInfo = toolUseContext.toolDecisions?.get(toolUseID)
-  endToolBlockedOnUserSpan(
-    decisionInfo?.decision || 'unknown',
-    decisionInfo?.source || 'unknown',
-  )
-  startToolExecutionSpan()
 
   const startTime = Date.now()
 
@@ -1205,51 +1110,6 @@ async function checkPermissionsAndCallTool(
     // stored when the model called those tools with the same path string.
     invalidateCacheForWrite(tool.name, callInput as Record<string, unknown>)
 
-    // Log tool content/output as span event if enabled
-    if (result.data && typeof result.data === 'object') {
-      const contentAttributes: Record<string, string | number | boolean> = {}
-
-      // Read tool: capture file_path and content
-      if (tool.name === FILE_READ_TOOL_NAME && 'content' in result.data) {
-        if ('file_path' in processedInput) {
-          contentAttributes.file_path = String(processedInput.file_path)
-        }
-        contentAttributes.content = String(result.data.content)
-      }
-
-      // Edit/Write tools: capture file_path and diff
-      if (
-        (tool.name === FILE_EDIT_TOOL_NAME ||
-          tool.name === FILE_WRITE_TOOL_NAME) &&
-        'file_path' in processedInput
-      ) {
-        contentAttributes.file_path = String(processedInput.file_path)
-
-        // For Edit, capture the actual changes made
-        if (tool.name === FILE_EDIT_TOOL_NAME && 'diff' in result.data) {
-          contentAttributes.diff = String(result.data.diff)
-        }
-        // For Write, capture the written content
-        if (tool.name === FILE_WRITE_TOOL_NAME && 'content' in processedInput) {
-          contentAttributes.content = String(processedInput.content)
-        }
-      }
-
-      // Bash tool: capture command
-      if (tool.name === BASH_TOOL_NAME && 'command' in processedInput) {
-        const bashInput = processedInput as BashToolInput
-        contentAttributes.bash_command = bashInput.command
-        // Also capture output if available
-        if ('output' in result.data) {
-          contentAttributes.output = String(result.data.output)
-        }
-      }
-
-      if (Object.keys(contentAttributes).length > 0) {
-        addToolContentEvent('tool.output', contentAttributes)
-      }
-    }
-
     // Capture structured output from tool result if present
     if (typeof result === 'object' && 'structured_output' in result) {
       // Store the structured output in an attachment message
@@ -1261,78 +1121,12 @@ async function checkPermissionsAndCallTool(
       })
     }
 
-    endToolExecutionSpan({ success: true })
-    // Pass tool result for new_context logging
-    const toolResultStr =
-      result.data && typeof result.data === 'object'
-        ? jsonStringify(result.data)
-        : String(result.data ?? '')
-    endToolSpan(toolResultStr)
-
     // Map the tool result to API format once and cache it. This block is reused
-    // by addToolResult (skipping the remap) and measured here for analytics.
+    // by addToolResult (skipping the remap).
     const mappedToolResultBlock = tool.mapToolResultToToolResultBlockParam(
       result.data,
       toolUseID,
     )
-    const mappedContent = mappedToolResultBlock.content
-    const toolResultSizeBytes = !mappedContent
-      ? 0
-      : typeof mappedContent === 'string'
-        ? mappedContent.length
-        : jsonStringify(mappedContent).length
-
-    // Extract file extension for file-related tools
-    let fileExtension: ReturnType<typeof getFileExtensionForAnalytics>
-    if (processedInput && typeof processedInput === 'object') {
-      if (
-        (tool.name === FILE_READ_TOOL_NAME ||
-          tool.name === FILE_EDIT_TOOL_NAME ||
-          tool.name === FILE_WRITE_TOOL_NAME) &&
-        'file_path' in processedInput
-      ) {
-        fileExtension = getFileExtensionForAnalytics(
-          String(processedInput.file_path),
-        )
-      } else if (
-        tool.name === NOTEBOOK_EDIT_TOOL_NAME &&
-        'notebook_path' in processedInput
-      ) {
-        fileExtension = getFileExtensionForAnalytics(
-          String(processedInput.notebook_path),
-        )
-      } else if (tool.name === BASH_TOOL_NAME && 'command' in processedInput) {
-        const bashInput = processedInput as BashToolInput
-        fileExtension = getFileExtensionsFromBashCommand(
-          bashInput.command,
-          bashInput._simulatedSedEdit?.filePath,
-        )
-      }
-    }
-
-
-    // Enrich tool parameters with git commit ID from successful git commit output
-    if (
-      isToolDetailsLoggingEnabled() &&
-      (tool.name === BASH_TOOL_NAME || tool.name === POWERSHELL_TOOL_NAME) &&
-      'command' in processedInput &&
-      typeof processedInput.command === 'string' &&
-      processedInput.command.match(/\bgit\s+commit\b/) &&
-      result.data &&
-      typeof result.data === 'object' &&
-      'stdout' in result.data
-    ) {
-      const gitCommitId = parseGitCommitId(String(result.data.stdout))
-      if (gitCommitId) {
-        toolParameters.git_commit_id = gitCommitId
-      }
-    }
-
-    // Log tool result event for OTLP with tool parameters and decision context
-    const mcpServerScope = isMcpTool(tool)
-      ? getMcpServerScopeFromToolName(tool.name)
-      : null
-
 
     // Run PostToolUse hooks
     let toolOutput = result.data
@@ -1516,12 +1310,6 @@ async function checkPermissionsAndCallTool(
     const durationMs = Date.now() - startTime
     addToToolDuration(durationMs)
 
-    endToolExecutionSpan({
-      success: false,
-      error: errorMessage(error),
-    })
-    endToolSpan()
-
     // Handle MCP auth errors by updating the client status to 'needs-auth'
     // This updates the /mcp display to show the server needs re-authorization
     if (error instanceof McpAuthError) {
@@ -1562,11 +1350,6 @@ async function checkPermissionsAndCallTool(
       if (!(error instanceof ShellError)) {
         logError(error)
       }
-      // Log tool result error event for OTLP with tool parameters and decision context
-      const mcpServerScope = isMcpTool(tool)
-        ? getMcpServerScopeFromToolName(tool.name)
-        : null
-
     }
     const content = formatError(error)
 
@@ -1633,7 +1416,7 @@ async function checkPermissionsAndCallTool(
     ]
   } finally {
     stopSessionActivity('tool_exec')
-    // Clean up decision info after logging
+    // Clean up this tool call's decision entry
     if (decisionInfo) {
       toolUseContext.toolDecisions?.delete(toolUseID)
     }
