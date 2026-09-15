@@ -12,7 +12,6 @@ import {
 } from 'src/permissions/ui/PermissionPrompt.js'
 import type { PermissionRequestProps } from 'src/permissions/ui/PermissionRequest.js'
 import { PermissionRuleExplanation } from 'src/permissions/ui/PermissionRuleExplanation.js'
-import { logUnaryPermissionEvent } from 'src/permissions/ui/utils.js'
 
 type OptionValue = 'yes' | 'yes-dont-ask-again' | 'no'
 
@@ -61,18 +60,11 @@ export function GitPermissionRequest({
   const handleSelect = (value: OptionValue, feedback?: string) => {
     switch (value) {
       case 'yes': {
-        logUnaryPermissionEvent(
-          'tool_use_single',
-          toolUseConfirm,
-          'accept',
-          Boolean(feedback),
-        )
         toolUseConfirm.onAllow(toolUseConfirm.input, [], feedback)
         onDone()
         break
       }
       case 'yes-dont-ask-again': {
-        logUnaryPermissionEvent('tool_use_single', toolUseConfirm, 'accept')
         const updates: PermissionUpdate[] =
           prefixes.length > 0
             ? [
@@ -92,12 +84,6 @@ export function GitPermissionRequest({
         break
       }
       case 'no': {
-        logUnaryPermissionEvent(
-          'tool_use_single',
-          toolUseConfirm,
-          'reject',
-          Boolean(feedback),
-        )
         toolUseConfirm.onReject(feedback)
         onReject()
         onDone()
@@ -107,7 +93,6 @@ export function GitPermissionRequest({
   }
 
   const handleCancel = () => {
-    logUnaryPermissionEvent('tool_use_single', toolUseConfirm, 'reject')
     toolUseConfirm.onReject()
     onReject()
     onDone()

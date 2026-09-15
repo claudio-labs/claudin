@@ -124,7 +124,6 @@ function handleInteractivePermission(
         })
         bridgeCallbacks.cancelRequest(bridgeRequestId)
       }
-      ctx.logCancelled()
       ctx.logDecision(
         { decision: 'reject', source: { type: 'user_abort' } },
         { permissionPromptStartTimeMs },

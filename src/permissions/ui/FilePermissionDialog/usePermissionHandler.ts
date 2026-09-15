@@ -1,41 +1,17 @@
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import {
   CLAUDE_FOLDER_PERMISSION_PATTERN,
   FILE_EDIT_TOOL_NAME,
   GLOBAL_CLAUDE_FOLDER_PERMISSION_PATTERN,
 } from 'src/tools/FileEditTool/constants.js'
-import { env } from 'src/shared/env.js'
 import { generateSuggestions } from 'src/permissions/filesystem.js'
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
-import {
-  type CompletionType,
-  logUnaryEvent,
-} from 'src/providers/transport/unaryLogging.js'
+import type { CompletionType } from 'src/providers/transport/unaryLogging.js'
 import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js'
 import type {
   FileOperationType,
   PermissionOption,
 } from 'src/permissions/ui/FilePermissionDialog/permissionOptions.js'
-
-function logPermissionEvent(
-  event: 'accept' | 'reject',
-  completionType: CompletionType,
-  languageName: string | Promise<string>,
-  messageId: string,
-  hasFeedback?: boolean,
-): void {
-  void logUnaryEvent({
-    completion_type: completionType,
-    event,
-    metadata: {
-      language_name: languageName,
-      message_id: messageId,
-      platform: env.platform,
-      hasFeedback: hasFeedback ?? false,
-    },
-  })
-}
 
 export type PermissionHandlerParams = {
   messageId: string
@@ -60,11 +36,7 @@ function handleAcceptOnce(
   params: PermissionHandlerParams,
   options?: PermissionHandlerOptions,
 ): void {
-  const { messageId, toolUseConfirm, onDone, completionType, languageName } =
-    params
-
-  logPermissionEvent('accept', completionType, languageName, messageId)
-
+  const { toolUseConfirm, onDone } = params
 
   onDone()
   toolUseConfirm.onAllow(toolUseConfirm.input, [], options?.feedback)
@@ -75,17 +47,12 @@ function handleAcceptSession(
   options?: PermissionHandlerOptions,
 ): void {
   const {
-    messageId,
     path,
     toolUseConfirm,
     toolPermissionContext,
     onDone,
-    completionType,
-    languageName,
     operationType,
   } = params
-
-  logPermissionEvent('accept', completionType, languageName, messageId)
 
   // For claude-folder scope, grant session-level access to all .claudin/ files
   if (
@@ -129,22 +96,10 @@ function handleReject(
   options?: PermissionHandlerOptions,
 ): void {
   const {
-    messageId,
     toolUseConfirm,
     onDone,
     onReject,
-    completionType,
-    languageName,
   } = params
-
-  logPermissionEvent(
-    'reject',
-    completionType,
-    languageName,
-    messageId,
-    options?.hasFeedback,
-  )
-
 
   onDone()
   onReject()

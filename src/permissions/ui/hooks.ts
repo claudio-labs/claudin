@@ -1,18 +1,15 @@
 import { feature } from 'bun:bundle'
 import { useEffect, useRef } from 'react'
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type {
   PermissionDecisionReason,
   PermissionResult,
 } from 'src/permissions/PermissionResult.js'
 import { extractRules } from 'src/permissions/PermissionUpdate.js'
 import { permissionRuleValueToString } from 'src/permissions/permissionRuleParser.js'
-import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js'
 import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js'
 import { useSetAppState } from 'src/terminal/state/AppState.js'
-import { env } from 'src/shared/env.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import { type CompletionType, logUnaryEvent } from 'src/providers/transport/unaryLogging.js'
+import type { CompletionType } from 'src/providers/transport/unaryLogging.js'
 
 export type UnaryEvent = {
   completion_type: CompletionType
@@ -118,16 +115,5 @@ export function usePermissionRequestLogging(
         permissionPromptCount: prev.attribution.permissionPromptCount + 1,
       },
     }))
-
-
-    void logUnaryEvent({
-      completion_type: unaryEvent.completion_type,
-      event: 'response',
-      metadata: {
-        language_name: unaryEvent.language_name,
-        message_id: toolUseConfirm.assistantMessage.message.id,
-        platform: env.platform,
-      },
-    })
   }, [toolUseConfirm, unaryEvent, setAppState])
 }

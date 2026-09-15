@@ -55,18 +55,6 @@ import { getLoggingSafeMcpBaseUrl } from 'src/mcp/utils.js'
 const AUTH_REQUEST_TIMEOUT_MS = 30000
 
 /**
- * Failure reasons for the `tengu_mcp_oauth_refresh_failure` event. Values
- * are emitted to analytics — keep them stable (do not rename; add new ones).
- */
-type MCPRefreshFailureReason =
-  | 'metadata_discovery_failed'
-  | 'no_client_info'
-  | 'no_tokens_returned'
-  | 'invalid_grant'
-  | 'transient_retries_exhausted'
-  | 'request_failed'
-
-/**
  * Failure reasons for the `tengu_mcp_oauth_flow_error` event. Values are
  * emitted to analytics for attribution in BigQuery. Keep stable (do not
  * rename; add new ones).
@@ -1795,34 +1783,6 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
   ): Promise<OAuthTokens | undefined> {
     const MAX_ATTEMPTS = 3
 
-    const mcpServerBaseUrl = getLoggingSafeMcpBaseUrl(this.serverConfig)
-    const emitRefreshEvent = (
-      outcome: 'success' | 'failure',
-      reason?: MCPRefreshFailureReason,
-    ): void => {
-      logEvent(
-        outcome === 'success'
-          ? 'tengu_mcp_oauth_refresh_success'
-          : 'tengu_mcp_oauth_refresh_failure',
-        {
-          transportType: this.serverConfig
-            .type as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          ...(mcpServerBaseUrl
-            ? {
-                mcpServerBaseUrl:
-                  mcpServerBaseUrl as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-              }
-            : {}),
-          ...(reason
-            ? {
-                reason:
-                  reason as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-              }
-            : {}),
-        },
-      )
-    }
-
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
         logMCPDebug(this.serverName, `Starting token refresh`)
@@ -1865,7 +1825,6 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
         }
         if (!metadata) {
           logMCPDebug(this.serverName, `Failed to discover OAuth metadata`)
-          emitRefreshEvent('failure', 'metadata_discovery_failed')
           return undefined
         }
         // Cache for future refreshes
@@ -1874,7 +1833,6 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
         const clientInfo = await this.clientInformation()
         if (!clientInfo) {
           logMCPDebug(this.serverName, `No client information available`)
-          emitRefreshEvent('failure', 'no_client_info')
           return undefined
         }
 
@@ -1892,12 +1850,10 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
         if (newTokens) {
           logMCPDebug(this.serverName, `Token refresh successful`)
           await this.saveTokens(newTokens)
-          emitRefreshEvent('success')
           return newTokens
         }
 
         logMCPDebug(this.serverName, `Token refresh returned no tokens`)
-        emitRefreshEvent('failure', 'no_tokens_returned')
         return undefined
       } catch (error) {
         // Invalid grant means the refresh token itself is invalid/revoked/expired.
@@ -1919,9 +1875,6 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
                 this.serverName,
                 `Another process refreshed tokens, using those`,
               )
-              // Not emitted as success: this process did not perform a
-              // refresh, and the winning process already emitted its own
-              // success event. Emitting here would double-count.
               return {
                 access_token: tokenData.accessToken,
                 refresh_token: tokenData.refreshToken,
@@ -1936,7 +1889,6 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
             `No valid tokens in storage, clearing stored tokens`,
           )
           await this.invalidateCredentials('tokens')
-          emitRefreshEvent('failure', 'invalid_grant')
           return undefined
         }
 
@@ -1954,10 +1906,6 @@ export class ClaudeAuthProvider implements OAuthClientProvider {
           logMCPDebug(
             this.serverName,
             `Token refresh failed: ${errorMessage(error)}`,
-          )
-          emitRefreshEvent(
-            'failure',
-            isRetryable ? 'transient_retries_exhausted' : 'request_failed',
           )
           return undefined
         }

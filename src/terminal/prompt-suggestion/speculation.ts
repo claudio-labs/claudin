@@ -41,10 +41,6 @@ import { extractReadFilesFromMessages } from 'src/agent/queryHelpers.js'
 import { getTranscriptPath } from 'src/sessions/sessionStorage.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
-import {
   generateSuggestion,
   getPromptVariant,
   getSuggestionSuppressReason,
@@ -118,37 +114,6 @@ export type ActiveSpeculationState = Extract<
   { status: 'active' }
 >
 
-function logSpeculation(
-  id: string,
-  outcome: 'accepted' | 'aborted' | 'error',
-  startTime: number,
-  suggestionLength: number,
-  messages: Message[],
-  boundary: CompletionBoundary | null,
-  extras?: Record<string, string | number | boolean | undefined>,
-): void {
-  logEvent('tengu_speculation', {
-    speculation_id:
-      id as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    outcome:
-      outcome as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    duration_ms: Date.now() - startTime,
-    suggestion_length: suggestionLength,
-    tools_executed: countToolsInMessages(messages),
-    completed: boundary !== null,
-    boundary_type: boundary?.type as
-      | AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      | undefined,
-    boundary_tool: getBoundaryTool(boundary) as
-      | AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      | undefined,
-    boundary_detail: getBoundaryDetail(boundary) as
-      | AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      | undefined,
-    ...extras,
-  })
-}
-
 function countToolsInMessages(messages: Message[]): number {
   const blocks = messages
     .filter(isUserMessageWithArrayContent)
@@ -158,37 +123,6 @@ function countToolsInMessages(messages: Message[]): number {
         typeof b === 'object' && b !== null && 'type' in b,
     )
   return count(blocks, b => b.type === 'tool_result' && !b.is_error)
-}
-
-function getBoundaryTool(
-  boundary: CompletionBoundary | null,
-): string | undefined {
-  if (!boundary) return undefined
-  switch (boundary.type) {
-    case 'bash':
-      return 'Bash'
-    case 'edit':
-    case 'denied_tool':
-      return boundary.toolName
-    case 'complete':
-      return undefined
-  }
-}
-
-function getBoundaryDetail(
-  boundary: CompletionBoundary | null,
-): string | undefined {
-  if (!boundary) return undefined
-  switch (boundary.type) {
-    case 'bash':
-      return boundary.command.slice(0, 200)
-    case 'edit':
-      return boundary.filePath
-    case 'denied_tool':
-      return boundary.detail
-    case 'complete':
-      return undefined
-  }
 }
 
 function isUserMessageWithArrayContent(
@@ -656,25 +590,6 @@ export async function startSpeculation(
     // eslint-disable-next-line no-restricted-syntax -- custom fallback message, not toError(e)
     logError(error instanceof Error ? error : new Error('Speculation failed'))
 
-    logSpeculation(
-      id,
-      'error',
-      startTime,
-      suggestionText.length,
-      messagesRef.current,
-      null,
-      {
-        error_type: error instanceof Error ? error.name : 'Unknown',
-        error_message: errorMessage(error).slice(
-          0,
-          200,
-        ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        error_phase:
-          'start' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        is_pipelined: isPipelined,
-      },
-    )
-
     resetSpeculationState(setAppState)
   }
 }
@@ -692,8 +607,6 @@ export async function acceptSpeculation(
     writtenPathsRef,
     abort,
     startTime,
-    suggestionLength,
-    isPipelined,
   } = state
   const messages = messagesRef.current
   const overlayPath = getOverlayPath(id)
@@ -732,20 +645,6 @@ export async function acceptSpeculation(
       : `[Speculation] Accept ${id}: already complete`,
   )
 
-  logSpeculation(
-    id,
-    'accepted',
-    startTime,
-    suggestionLength,
-    messages,
-    boundary,
-    {
-      message_count: messages.length,
-      time_saved_ms: timeSavedMs,
-      is_pipelined: isPipelined,
-    },
-  )
-
   if (timeSavedMs > 0) {
     const entry: SpeculationAcceptMessage = {
       type: 'speculation-accept',
@@ -771,24 +670,9 @@ export function abortSpeculation(setAppState: SetAppState): void {
     const {
       id,
       abort,
-      startTime,
-      boundary,
-      suggestionLength,
-      messagesRef,
-      isPipelined,
     } = prev.speculation
 
     logForDebugging(`[Speculation] Aborting ${id}`)
-
-    logSpeculation(
-      id,
-      'aborted',
-      startTime,
-      suggestionLength,
-      messagesRef.current,
-      boundary,
-      { abort_reason: 'user_typed', is_pipelined: isPipelined },
-    )
 
     abort()
     safeRemoveOverlay(getOverlayPath(id))
@@ -930,24 +814,6 @@ export async function handleSpeculationAccept(
         : new Error('handleSpeculationAccept failed'),
     )
     /* eslint-enable no-restricted-syntax */
-    logSpeculation(
-      speculationState.id,
-      'error',
-      speculationState.startTime,
-      speculationState.suggestionLength,
-      speculationState.messagesRef.current,
-      speculationState.boundary,
-      {
-        error_type: error instanceof Error ? error.name : 'Unknown',
-        error_message: errorMessage(error).slice(
-          0,
-          200,
-        ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        error_phase:
-          'accept' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        is_pipelined: speculationState.isPipelined,
-      },
-    )
     safeRemoveOverlay(getOverlayPath(speculationState.id))
     resetSpeculationState(setAppState)
     // Query required so user's message is processed normally (without speculated work)

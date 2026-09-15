@@ -139,7 +139,6 @@ async function handleSwarmWorkerPermission(
         () => {
           if (!claim()) return
           clearPendingRequest()
-          ctx.logCancelled()
           resolveOnce(ctx.cancelAndAbort(undefined, true))
         },
         { once: true },

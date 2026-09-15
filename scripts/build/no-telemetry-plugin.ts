@@ -349,13 +349,6 @@ export function startHookSpan() { return noopSpan; }
 export function endHookSpan() {}
 `,
 
-	// ─── Plugin fetch telemetry (not the marketplace itself) ───────
-
-	'src/plugins/fetchTelemetry': `
-export function logPluginFetch() {}
-export function classifyFetchError() { return 'disabled'; }
-`,
-
 	// ─── Internal employee logging (not needed in the external build) ─────
 	//
 	// Permanently inert: the module was deleted, and `src/services/` is one of

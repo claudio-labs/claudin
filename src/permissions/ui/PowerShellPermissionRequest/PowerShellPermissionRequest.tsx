@@ -2,8 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Text, useTheme } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js';
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js';
 import { getDestructiveCommandWarning } from 'src/tools/PowerShellTool/destructiveCommandWarning.js';
 import { PowerShellTool } from 'src/tools/PowerShellTool/PowerShellTool.js';
 import { isAllowlistedCommand } from 'src/tools/PowerShellTool/readOnlyValidation.js';
@@ -17,7 +15,6 @@ import { PermissionExplainerContent, usePermissionExplainerUI } from 'src/permis
 import type { PermissionRequestProps } from 'src/permissions/ui/PermissionRequest.js';
 import { PermissionRuleExplanation } from 'src/permissions/ui/PermissionRuleExplanation.js';
 import { useShellPermissionFeedback } from 'src/permissions/ui/useShellPermissionFeedback.js';
-import { logUnaryPermissionEvent } from 'src/permissions/ui/utils.js';
 import { powershellToolUseOptions } from 'src/permissions/ui/PowerShellPermissionRequest/powershellToolUseOptions.js';
 export function PowerShellPermissionRequest(props: PermissionRequestProps): React.ReactNode {
   const {
@@ -41,8 +38,6 @@ export function PowerShellPermissionRequest(props: PermissionRequestProps): Reac
   const {
     yesInputMode,
     noInputMode,
-    yesFeedbackModeEntered,
-    noFeedbackModeEntered,
     acceptFeedback,
     rejectFeedback,
     setAcceptFeedback,
@@ -115,17 +110,8 @@ export function PowerShellPermissionRequest(props: PermissionRequestProps): Reac
     context: 'Confirmation'
   });
   function onSelect(value: string) {
-    // Map options to numeric values for analytics (strings not allowed in logEvent)
-    const optionIndex: Record<string, number> = {
-      yes: 1,
-      'yes-apply-suggestions': 2,
-      'yes-prefix-edited': 2,
-      no: 3
-    };
-    const toolNameForAnalytics = sanitizeToolNameForAnalytics(toolUseConfirm.tool.name) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
     if (value === 'yes-prefix-edited') {
       const trimmedPrefix = (editablePrefix ?? '').trim();
-      logUnaryPermissionEvent('tool_use_single', toolUseConfirm, 'accept');
       if (!trimmedPrefix) {
         toolUseConfirm.onAllow(toolUseConfirm.input, []);
       } else {
@@ -147,14 +133,12 @@ export function PowerShellPermissionRequest(props: PermissionRequestProps): Reac
       case 'yes':
         {
           const trimmedFeedback = acceptFeedback.trim();
-          logUnaryPermissionEvent('tool_use_single', toolUseConfirm, 'accept');
           toolUseConfirm.onAllow(toolUseConfirm.input, [], trimmedFeedback || undefined);
           onDone();
           break;
         }
       case 'yes-apply-suggestions':
         {
-          logUnaryPermissionEvent('tool_use_single', toolUseConfirm, 'accept');
           // Extract suggestions if present (works for both 'ask' and 'passthrough' behaviors)
           const permissionUpdates = 'suggestions' in toolUseConfirm.permissionResult ? toolUseConfirm.permissionResult.suggestions || [] : [];
           toolUseConfirm.onAllow(toolUseConfirm.input, permissionUpdates);

@@ -3,7 +3,6 @@ import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 
 import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import { useSetAppState } from 'src/terminal/state/AppState.js'
 import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js'
-import { logUnaryPermissionEvent } from 'src/permissions/ui/utils.js'
 
 /**
  * Shared feedback-mode state + handlers for shell permission dialogs (Bash,
@@ -87,13 +86,6 @@ export function useShellPermissionFeedback({
         },
       }))
     }
-
-    logUnaryPermissionEvent(
-      'tool_use_single',
-      toolUseConfirm,
-      'reject',
-      hasFeedback,
-    )
 
     if (trimmedFeedback) {
       toolUseConfirm.onReject(trimmedFeedback)

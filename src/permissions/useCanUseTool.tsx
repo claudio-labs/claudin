@@ -172,7 +172,6 @@ function useCanUseTool(setToolUseConfirmQueue: React.Dispatch<React.SetStateActi
       }).catch(error => {
         if (error instanceof AbortError || isSdkApiUserAbortError(error)) {
           logForDebugging(`Permission check threw ${error.constructor.name} for tool=${tool.name}: ${error.message}`);
-          ctx.logCancelled();
           resolve(ctx.cancelAndAbort(undefined, true));
         } else {
           logError(error);

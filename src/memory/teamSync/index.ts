@@ -779,10 +779,8 @@ export async function pullTeamMemory(
   error?: string
 }> {
   const skipEtagCache = options?.skipEtagCache ?? false
-  const startTime = Date.now()
 
   if (!isUsingOAuth()) {
-    logPull(startTime, { success: false, errorType: 'no_oauth' })
     return {
       success: false,
       filesWritten: 0,
@@ -793,7 +791,6 @@ export async function pullTeamMemory(
 
   const repoSlug = await getGithubRepo()
   if (!repoSlug) {
-    logPull(startTime, { success: false, errorType: 'no_repo' })
     return {
       success: false,
       filesWritten: 0,
@@ -805,11 +802,6 @@ export async function pullTeamMemory(
   const etag = skipEtagCache ? null : state.lastKnownChecksum
   const result = await fetchTeamMemory(state, repoSlug, etag)
   if (!result.success) {
-    logPull(startTime, {
-      success: false,
-      errorType: result.errorType,
-      status: result.httpStatus,
-    })
     return {
       success: false,
       filesWritten: 0,
@@ -818,14 +810,12 @@ export async function pullTeamMemory(
     }
   }
   if (result.notModified) {
-    logPull(startTime, { success: true, notModified: true })
     return { success: true, filesWritten: 0, entryCount: 0, notModified: true }
   }
   if (result.isEmpty || !result.data) {
     // Server has no data — clear stale serverChecksums so the next push
     // doesn't skip entries it thinks the server already has.
     state.serverChecksums.clear()
-    logPull(startTime, { success: true })
     return { success: true, filesWritten: 0, entryCount: 0 }
   }
 
@@ -857,8 +847,6 @@ export async function pullTeamMemory(
     level: 'info',
   })
 
-  logPull(startTime, { success: true, filesWritten })
-
   return {
     success: true,
     filesWritten,
@@ -889,11 +877,7 @@ export async function pullTeamMemory(
 export async function pushTeamMemory(
   state: SyncState,
 ): Promise<TeamMemorySyncPushResult> {
-  const startTime = Date.now()
-  let conflictRetries = 0
-
   if (!isUsingOAuth()) {
-    logPush(startTime, { success: false, errorType: 'no_oauth' })
     return {
       success: false,
       filesUploaded: 0,
@@ -904,7 +888,6 @@ export async function pushTeamMemory(
 
   const repoSlug = await getGithubRepo()
   if (!repoSlug) {
-    logPush(startTime, { success: false, errorType: 'no_repo' })
     return {
       success: false,
       filesUploaded: 0,
@@ -951,8 +934,6 @@ export async function pushTeamMemory(
     localHashes.set(key, hashContent(content))
   }
 
-  let sawConflict = false
-
   for (
     let conflictAttempt = 0;
     conflictAttempt <= MAX_CONFLICT_RETRIES;
@@ -975,11 +956,6 @@ export async function pushTeamMemory(
       // Nothing to upload. This is the expected fast path after a fresh pull
       // with no local edits, and also the convergence point after a 412 where
       // the teammate's push was a strict superset of ours.
-      logPush(startTime, {
-        success: true,
-        conflict: sawConflict,
-        conflictRetries,
-      })
       return {
         success: true,
         filesUploaded: 0,
@@ -1028,13 +1004,6 @@ export async function pushTeamMemory(
           : `team-memory-sync: pushed ${filesUploaded} of ${localHashes.size} files (delta)`,
         { level: 'info' },
       )
-      logPush(startTime, {
-        success: true,
-        filesUploaded,
-        conflict: sawConflict,
-        conflictRetries,
-        putBatches: batches.length > 1 ? batches.length : undefined,
-      })
       return {
         success: true,
         filesUploaded,
@@ -1061,19 +1030,6 @@ export async function pushTeamMemory(
       // one failed. Those keys ARE on the server; the push is a failure
       // because it's incomplete, but we don't re-upload them on retry
       // (serverChecksums was updated).
-      logPush(startTime, {
-        success: false,
-        filesUploaded,
-        conflictRetries,
-        putBatches: batches.length > 1 ? batches.length : undefined,
-        errorType: result.errorType,
-        status: result.httpStatus,
-        // Datadog: filter @error_code:team_memory_too_many_entries to track
-        // too-many-files rejections distinct from gateway/unstructured 413s
-        errorCode: result.serverErrorCode,
-        serverMaxEntries: result.serverMaxEntries,
-        serverReceivedEntries: result.serverReceivedEntries,
-      })
       return {
         success: false,
         filesUploaded,
@@ -1084,18 +1040,11 @@ export async function pushTeamMemory(
     }
 
     // 412 conflict — refresh serverChecksums and retry with a tighter delta.
-    sawConflict = true
     if (conflictAttempt >= MAX_CONFLICT_RETRIES) {
       logForDebugging(
         `team-memory-sync: giving up after ${MAX_CONFLICT_RETRIES} conflict retries`,
         { level: 'warn' },
       )
-      logPush(startTime, {
-        success: false,
-        conflict: true,
-        conflictRetries,
-        errorType: 'conflict',
-      })
       return {
         success: false,
         filesUploaded: 0,
@@ -1103,8 +1052,6 @@ export async function pushTeamMemory(
         error: 'Conflict resolution failed after retries',
       }
     }
-
-    conflictRetries++
 
     logForDebugging(
       `team-memory-sync: conflict (412), probing server hashes (attempt ${conflictAttempt + 1}/${MAX_CONFLICT_RETRIES})`,
@@ -1118,12 +1065,6 @@ export async function pushTeamMemory(
     if (!probe.success || !probe.entryChecksums) {
       // Requires anthropic/anthropic#283027. A transient probe failure here is
       // fine: the push is failed and the watcher will retry on the next edit.
-      logPush(startTime, {
-        success: false,
-        conflict: true,
-        conflictRetries,
-        errorType: 'conflict',
-      })
       return {
         success: false,
         filesUploaded: 0,
@@ -1137,7 +1078,6 @@ export async function pushTeamMemory(
     }
   }
 
-  logPush(startTime, { success: false, conflictRetries })
   return {
     success: false,
     filesUploaded: 0,
@@ -1188,69 +1128,4 @@ export async function syncTeamMemory(state: SyncState): Promise<{
     filesPulled: pullResult.filesWritten,
     filesPushed: pushResult.filesUploaded,
   }
-}
-
-// ─── Telemetry helpers ───────────────────────────────────────
-
-function logPull(
-  startTime: number,
-  outcome: {
-    success: boolean
-    filesWritten?: number
-    notModified?: boolean
-    errorType?: string
-    status?: number
-  },
-): void {
-  logEvent('tengu_team_mem_sync_pull', {
-    success: outcome.success,
-    files_written: outcome.filesWritten ?? 0,
-    not_modified: outcome.notModified ?? false,
-    duration_ms: Date.now() - startTime,
-    ...(outcome.errorType && {
-      errorType:
-        outcome.errorType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    }),
-    ...(outcome.status && { status: outcome.status }),
-  })
-}
-
-function logPush(
-  startTime: number,
-  outcome: {
-    success: boolean
-    filesUploaded?: number
-    conflict?: boolean
-    conflictRetries?: number
-    errorType?: string
-    status?: number
-    putBatches?: number
-    errorCode?: string
-    serverMaxEntries?: number
-    serverReceivedEntries?: number
-  },
-): void {
-  logEvent('tengu_team_mem_sync_push', {
-    success: outcome.success,
-    files_uploaded: outcome.filesUploaded ?? 0,
-    conflict: outcome.conflict ?? false,
-    conflict_retries: outcome.conflictRetries ?? 0,
-    duration_ms: Date.now() - startTime,
-    ...(outcome.errorType && {
-      errorType:
-        outcome.errorType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    }),
-    ...(outcome.status && { status: outcome.status }),
-    ...(outcome.putBatches && { put_batches: outcome.putBatches }),
-    ...(outcome.errorCode && {
-      error_code:
-        outcome.errorCode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    }),
-    ...(outcome.serverMaxEntries !== undefined && {
-      server_max_entries: outcome.serverMaxEntries,
-    }),
-    ...(outcome.serverReceivedEntries !== undefined && {
-      server_received_entries: outcome.serverReceivedEntries,
-    }),
-  })
 }

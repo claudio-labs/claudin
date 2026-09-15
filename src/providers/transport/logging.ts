@@ -18,7 +18,6 @@ import type { QueryChainTracking } from 'src/tools/Tool.js'
 import { isConnectorTextBlock } from 'src/shared/types/connectorText.js'
 import type { AssistantMessage } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import type { EffortLevel } from 'src/providers/effort/effort.js'
 import { logError } from 'src/shared/log.js'
 import { getAPIProviderForStatsig } from 'src/providers/model/providers.js'
 import type { PermissionMode } from 'src/permissions/PermissionMode.js'
@@ -168,70 +167,6 @@ function getBuildAgeMinutes(): number | undefined {
   const buildTime = new Date(MACRO.BUILD_TIME).getTime()
   if (isNaN(buildTime)) return undefined
   return Math.floor((Date.now() - buildTime) / 60000)
-}
-
-export function logAPIQuery({
-  model,
-  messagesLength,
-  temperature,
-  betas,
-  permissionMode,
-  querySource,
-  queryTracking,
-  thinkingType,
-  effortValue,
-  fastMode,
-  previousRequestId,
-}: {
-  model: string
-  messagesLength: number
-  temperature: number
-  betas?: string[]
-  permissionMode?: PermissionMode
-  querySource: string
-  queryTracking?: QueryChainTracking
-  thinkingType?: 'adaptive' | 'enabled' | 'disabled'
-  effortValue?: EffortLevel | null
-  fastMode?: boolean
-  previousRequestId?: string | null
-}): void {
-  logEvent('tengu_api_query', {
-    model: model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    messagesLength,
-    temperature: temperature,
-    provider: getAPIProviderForStatsig(),
-    buildAgeMins: getBuildAgeMinutes(),
-    ...(betas?.length
-      ? {
-          betas: betas.join(
-            ',',
-          ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        }
-      : {}),
-    permissionMode:
-      permissionMode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    querySource:
-      querySource as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    ...(queryTracking
-      ? {
-          queryChainId:
-            queryTracking.chainId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          queryDepth: queryTracking.depth,
-        }
-      : {}),
-    thinkingType:
-      thinkingType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    effortValue:
-      effortValue as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    fastMode,
-    ...(previousRequestId
-      ? {
-          previousRequestId:
-            previousRequestId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        }
-      : {}),
-    ...getAnthropicEnvMetadata(),
-  })
 }
 
 export function logAPIError({

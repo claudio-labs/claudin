@@ -198,7 +198,6 @@ import {
   EMPTY_USAGE,
   type GlobalCacheStrategy,
   logAPIError,
-  logAPIQuery,
   logAPISuccessAndDuration,
   type NonNullableUsage,
 } from "src/providers/transport/logging.js";
@@ -1132,19 +1131,15 @@ export async function* queryModel(
     };
   };
 
-  // Compute log scalars synchronously so the fire-and-forget .then() closure
-  // captures only primitives instead of paramsFromContext's full closure scope
-  // (messagesForAPI, system, allTools, betas — the entire request-building
-  // context), which would otherwise be pinned until the promise resolves.
+  // Scoped so the params built purely for the debug line are not kept alive
+  // alongside paramsFromContext's full closure (messagesForAPI, system,
+  // allTools, betas — the entire request-building context).
   {
     const queryParams = paramsFromContext({
       model: options.model,
       thinkingConfig,
     });
-    const logMessagesLength = queryParams.messages.length;
-    const logBetas = useBetas ? (queryParams.betas ?? []) : [];
     const logThinkingType = queryParams.thinking?.type ?? "disabled";
-    const logEffortValue = queryParams.output_config?.effort;
     // Observability for the reasoning-channel: if Anthropic-native requests
     // ever stop opting into the `thinking` block, CoT can leak into visible
     // text. Mirroring the [OpenAIShim] log style so regressions show up in
@@ -1152,21 +1147,6 @@ export async function* queryModel(
     logForDebugging(
       `[Claude] thinking=${logThinkingType} model=${options.model}`,
     );
-    void options.getToolPermissionContext().then((permissionContext) => {
-      logAPIQuery({
-        model: options.model,
-        messagesLength: logMessagesLength,
-        temperature: options.temperatureOverride ?? 1,
-        betas: logBetas,
-        permissionMode: permissionContext.mode,
-        querySource: options.querySource,
-        queryTracking: options.queryTracking,
-        thinkingType: logThinkingType,
-        effortValue: logEffortValue,
-        fastMode: isFastMode,
-        previousRequestId,
-      });
-    });
   }
 
   const newMessages: AssistantMessage[] = [];
