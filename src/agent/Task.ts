@@ -14,6 +14,10 @@ export type TaskType =
   // Not a process this session owns: a row synthesised from what docker
   // reports, so a stack started in another terminal is visible too.
   | 'container'
+  // Also not a process this session owns: a row synthesised from the MCP
+  // connection state AppState already carries, so a server that fell over is
+  // visible without opening /mcp.
+  | 'mcp_server'
 
 export type TaskStatus =
   | 'pending'

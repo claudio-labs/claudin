@@ -7,6 +7,7 @@ import type { InProcessTeammateTaskState } from 'src/agent/tasks/InProcessTeamma
 import type { LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import type { LocalShellTaskState } from 'src/agent/tasks/LocalShellTask/guards.js'
 import type { LocalWorkflowTaskState } from './LocalWorkflowTask/LocalWorkflowTask.js'
+import type { McpServerTaskState } from 'src/agent/tasks/McpServerTask/types.js'
 import type { MonitorMcpTaskState } from 'src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js'
 import type { RemoteAgentTaskState } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js'
 
@@ -19,6 +20,7 @@ export type TaskState =
   | MonitorMcpTaskState
   | DreamTaskState
   | ContainerTaskState
+  | McpServerTaskState
 
 // Task types that can appear in the background tasks indicator
 export type BackgroundTaskState =
@@ -30,6 +32,7 @@ export type BackgroundTaskState =
   | MonitorMcpTaskState
   | DreamTaskState
   | ContainerTaskState
+  | McpServerTaskState
 
 /**
  * Check if a task should be shown in the background tasks indicator.

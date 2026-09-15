@@ -4,6 +4,8 @@ import { buildFooterTaskRows } from 'src/agent/ui/tasks/BackgroundTaskGroupTree.
 import {
   countFooterTaskRows,
   getFooterPanelLayout,
+  getMcpBucketCounts,
+  mcpBucketCollapseKey,
 } from 'src/agent/ui/tasks/footerTaskGeometry.js';
 import { resolveFooterTreeRow } from 'src/agent/ui/tasks/footerSelection.js';
 
@@ -42,6 +44,28 @@ function monitorMcp(id: string, description: string, startTime = 1): TaskState {
 
 function asRecord(...tasks: TaskState[]): Record<string, TaskState> {
   return Object.fromEntries(tasks.map(t => [t.id, t]));
+}
+function mcpServer(
+  id: string,
+  serverName: string,
+  connectionType: 'connected' | 'pending' | 'needs-auth' | 'failed' | 'disabled',
+  startTime = 1,
+): TaskState {
+  return {
+    id,
+    type: 'mcp_server',
+    status: 'running',
+    description: serverName,
+    startTime,
+    serverName,
+    connectionType,
+    transport: 'stdio',
+    scope: 'project',
+    toolCount: 0,
+    resourceCount: 0,
+    serverInfo: null,
+    error: null,
+  } as unknown as TaskState;
 }
 
 describe('buildFooterTaskRows', () => {
@@ -220,5 +244,112 @@ describe('countFooterTaskRows', () => {
     expect(countFooterTaskRows(tasks, undefined, [])).toBe(2);
     // Foregrounded shell vanishes → 0 rows.
     expect(countFooterTaskRows(tasks, 's1', [])).toBe(0);
+  });
+});
+
+describe('the MCP group nests by connection state', () => {
+  const tasks = asRecord(
+    mcpServer('mcp_github', 'github', 'connected'),
+    mcpServer('mcp_slack', 'slack', 'pending'),
+    mcpServer('mcp_linear', 'linear', 'needs-auth'),
+    mcpServer('mcp_sentry', 'sentry', 'failed'),
+  );
+
+  test('one group header, then a sub-header per non-empty bucket', () => {
+    const { rows } = buildFooterTaskRows(tasks, undefined, new Set());
+    expect(rows.filter(r => r.kind === 'header').map(r => r.kind === 'header' && r.label)).toEqual([
+      'MCP',
+      'Active',
+      'Inactive',
+      'Failed',
+    ]);
+    // The group header counts every server; each sub-header counts its own.
+    expect(rows[0]).toMatchObject({ kind: 'header', depth: 0, collapseKey: 'mcp', count: 4 });
+    expect(rows[1]).toMatchObject({ kind: 'header', depth: 1, collapseKey: 'mcp:active', count: 1 });
+    expect(rows[3]).toMatchObject({ kind: 'header', depth: 1, collapseKey: 'mcp:inactive', count: 2 });
+  });
+
+  test('an empty bucket produces no sub-header at all', () => {
+    const { rows } = buildFooterTaskRows(
+      asRecord(mcpServer('mcp_github', 'github', 'connected')),
+      undefined,
+      new Set(),
+    );
+    expect(rows.map(r => r.kind)).toEqual(['header', 'header', 'item']);
+  });
+
+  test('a disconnected server sits with the inactive ones, not the failed', () => {
+    const counts = getMcpBucketCounts(
+      asRecord(mcpServer('mcp_slack', 'slack', 'disabled')),
+      undefined,
+    );
+    expect(counts.get('inactive')).toBe(1);
+    expect(counts.get('failed')).toBe(0);
+  });
+
+  test('items carry a coloured accent the tree paints as a nested Text', () => {
+    const { rows } = buildFooterTaskRows(tasks, undefined, new Set());
+    const failed = rows.find(r => r.kind === 'item' && r.label.startsWith('sentry'));
+    expect(failed).toMatchObject({ kind: 'item', depth: 1, accent: { color: 'error' } });
+  });
+
+  test('collapsing one sub-group leaves its siblings open', () => {
+    const { rows } = buildFooterTaskRows(tasks, undefined, new Set(['mcp:inactive']));
+    const labels = rows.map(r => (r.kind === 'header' ? `#${r.label}` : r.label));
+    expect(labels).toEqual([
+      '#MCP',
+      '#Active',
+      'github · connected',
+      '#Inactive',
+      '#Failed',
+      'sentry · failed',
+    ]);
+  });
+
+  test('collapsing the group hides the sub-headers too', () => {
+    const { rows } = buildFooterTaskRows(tasks, undefined, new Set(['mcp']));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ kind: 'header', collapseKey: 'mcp', collapsed: true });
+  });
+
+  test('the sub-group counts always add up to the group count', () => {
+    const total = [...getMcpBucketCounts(tasks, undefined).values()].reduce((a, b) => a + b, 0);
+    const { groupCounts } = buildFooterTaskRows(tasks, undefined, new Set());
+    expect(total).toBe(groupCounts.get('mcp') ?? -1);
+  });
+
+  test('countFooterTaskRows matches the rows actually built, for every collapse state', () => {
+    // The two are independent implementations of the same partition — the exact
+    // drift the tree's own header comment warns about — and nesting is what
+    // makes the arithmetic stop being `1 + n`. Sweep the power set so a
+    // sub-group collapse cannot be the one combination nobody checked.
+    const withShell = { ...tasks, ...asRecord(shell('s1', 'echo hi')) };
+    const keys = [
+      'shells',
+      'mcp',
+      mcpBucketCollapseKey('active'),
+      mcpBucketCollapseKey('inactive'),
+      mcpBucketCollapseKey('failed'),
+    ];
+    for (let mask = 0; mask < 1 << keys.length; mask++) {
+      const collapsed = keys.filter((_, i) => (mask >> i) & 1);
+      const { rows } = buildFooterTaskRows(withShell, undefined, new Set(collapsed));
+      expect({ collapsed, n: countFooterTaskRows(withShell, undefined, collapsed) }).toEqual({
+        collapsed,
+        n: rows.length,
+      });
+    }
+  });
+
+  test('the footer cursor resolves a sub-header as a header row', () => {
+    // Layout with no agents: 0 = summary, 1 = MCP, 2 = Active, 3 = github…
+    expect(resolveFooterTreeRow(tasks, undefined, [], 2)).toMatchObject({
+      kind: 'header',
+      collapseKey: 'mcp:active',
+    });
+    expect(resolveFooterTreeRow(tasks, undefined, [], 3)).toMatchObject({
+      kind: 'item',
+      depth: 1,
+    });
   });
 });

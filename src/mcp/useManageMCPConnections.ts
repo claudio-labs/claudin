@@ -81,6 +81,11 @@ import {
 } from 'src/mcp/claudeai.js'
 import { registerElicitationHandler } from 'src/mcp/elicitationHandler.js'
 import { getMcpPrefix } from 'src/mcp/mcpStringUtils.js'
+import {
+  clearSessionDisconnected,
+  isSessionDisconnected,
+  markSessionDisconnected,
+} from 'src/mcp/sessionDisconnects.js'
 import { commandBelongsToServer, excludeStalePluginClients } from 'src/mcp/utils.js'
 import { asMcpSchema } from 'src/mcp/zodCompat.js'
 
@@ -405,7 +410,14 @@ export function useManageMCPConnections(
             // as to whether it was disconnected due to a disable, but appstate is stale at this
             // point. Getting a live reference to appstate feels a little hacky, so we'll just
             // check the disk state. We may want to refactor some of this.
-            if (isMcpServerDisabled(client.name)) {
+            // `isSessionDisconnected` is the in-memory half of the same
+            // question: the footer's `x` deliberately writes nothing to disk,
+            // so the disk check alone would dial the server straight back and
+            // make the keystroke look inert.
+            if (
+              isMcpServerDisabled(client.name) ||
+              isSessionDisconnected(client.name)
+            ) {
               logMCPDebug(
                 client.name,
                 `Server is disabled, skipping automatic reconnection`,
@@ -437,7 +449,10 @@ export function useManageMCPConnections(
                   attempt++
                 ) {
                   // Check if server was disabled while we were waiting
-                  if (isMcpServerDisabled(client.name)) {
+                  if (
+                    isMcpServerDisabled(client.name) ||
+                    isSessionDisconnected(client.name)
+                  ) {
                     logMCPDebug(
                       client.name,
                       `Server disabled during reconnection, stopping retry`,
@@ -1099,6 +1114,10 @@ export function useManageMCPConnections(
         reconnectTimersRef.current.delete(serverName)
       }
 
+      // Dialling on purpose takes back a session disconnect — otherwise the
+      // server comes up now and then never auto-reconnects again.
+      clearSessionDisconnected(serverName)
+
       const result = await reconnectMcpServerImpl(serverName, client.config)
 
       onConnectionAttempt(result)
@@ -1148,6 +1167,7 @@ export function useManageMCPConnections(
       } else {
         // Enabling: persist enabled state to disk first
         setMcpServerEnabled(serverName, true)
+        clearSessionDisconnected(serverName)
 
         // Mark as pending and reconnect
         updateServer({
@@ -1165,7 +1185,55 @@ export function useManageMCPConnections(
     [store, updateServer, onConnectionAttempt],
   )
 
-  return { reconnectMcpServer, toggleMcpServer }
+  /**
+   * Drop a server for the rest of THIS session, writing nothing to disk.
+   *
+   * `toggleMcpServer` above is the same sequence plus `setMcpServerEnabled` —
+   * and that one call is the whole difference between "disconnect" and
+   * "disable". Keeping them as two named functions rather than one with a
+   * `persist` flag means no caller can forget which one they are asking for.
+   *
+   * Reached from the footer's `x` key ONLY after a confirmation dialog: unlike
+   * the other task types, where `x` kills a process this session spawned, an
+   * MCP server is the user's own configuration.
+   */
+  const disconnectMcpServer = useCallback(
+    async (serverName: string): Promise<void> => {
+      const client = store
+        .getState()
+        .mcp.clients.find(c => c.name === serverName)
+      if (!client) {
+        throw new Error(`MCP server ${serverName} not found`)
+      }
+
+      // Mark BEFORE closing anything: clearServerCache trips the transport's
+      // `onclose`, which is where the reconnect loop decides whether to dial
+      // again, and it reads this synchronously.
+      markSessionDisconnected(serverName)
+
+      const existingTimer = reconnectTimersRef.current.get(serverName)
+      if (existingTimer) {
+        clearTimeout(existingTimer)
+        reconnectTimersRef.current.delete(serverName)
+      }
+
+      if (client.type === 'connected') {
+        await clearServerCache(serverName, client.config)
+      }
+
+      // `disabled` clears this server's tools, commands and resources from the
+      // pool, which is what stops the model from calling into a server that is
+      // no longer there.
+      updateServer({
+        name: serverName,
+        type: 'disabled',
+        config: client.config,
+      })
+    },
+    [store, updateServer],
+  )
+
+  return { reconnectMcpServer, toggleMcpServer, disconnectMcpServer }
 }
 
 function getTransportDisplayName(type: string): string {

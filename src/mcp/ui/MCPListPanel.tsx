@@ -6,6 +6,7 @@ import { Box, color, Link, Text, useTheme } from 'src/terminal/ink.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
 import type { ConfigScope } from 'src/mcp/types.js';
 import { describeMcpConfigFilePath } from 'src/mcp/utils.js';
+import { mcpStatusText } from 'src/mcp/serverStatus.js';
 import { isDebugMode } from 'src/shared/debug.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
@@ -303,33 +304,24 @@ export function MCPListPanel(t0: Props) {
       const index = getServerIndex(server_3);
       const isSelected = selectedIndex === index;
       let statusIcon;
-      let statusText;
+      // The wording is shared with the footer's MCP rows (src/mcp/serverStatus.ts)
+      // so the two surfaces cannot drift. The glyph and the colour stay here:
+      // the panel greys `pending` out as inactive where the footer shows it
+      // amber, and that disagreement is deliberate.
+      const statusText = mcpStatusText(server_3.client);
       if (server_3.client.type === "disabled") {
         statusIcon = color("inactive", theme)(figures.radioOff);
-        statusText = "disabled";
       } else {
         if (server_3.client.type === "connected") {
           statusIcon = color("success", theme)(figures.tick);
-          statusText = "connected";
         } else {
           if (server_3.client.type === "pending") {
             statusIcon = color("inactive", theme)(figures.radioOff);
-            const {
-              reconnectAttempt,
-              maxReconnectAttempts
-            } = server_3.client;
-            if (reconnectAttempt && maxReconnectAttempts) {
-              statusText = `reconnecting (${reconnectAttempt}/${maxReconnectAttempts})…`;
-            } else {
-              statusText = "connecting\u2026";
-            }
           } else {
             if (server_3.client.type === "needs-auth") {
               statusIcon = color("warning", theme)(figures.triangleUpOutline);
-              statusText = "needs authentication";
             } else {
               statusIcon = color("error", theme)(figures.cross);
-              statusText = "failed";
             }
           }
         }

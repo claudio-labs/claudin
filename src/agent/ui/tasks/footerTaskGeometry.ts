@@ -4,6 +4,8 @@
 import type { AppState } from 'src/terminal/state/AppStateStore.js'
 import { isPanelAgentTask, type LocalAgentTaskState } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js'
 import { isBackgroundTask, type TaskState } from 'src/agent/tasks/types.js'
+import { isMcpServerTask, mcpTaskStatusInput } from 'src/agent/tasks/McpServerTask/types.js'
+import { mcpBucket, type McpBucket } from 'src/mcp/serverStatus.js'
 import { isTerminalStatus } from 'src/agent/ui/tasks/taskStatusUtils.js'
 
 /** The groups the footer partitions background work into, top to bottom.
@@ -13,6 +15,7 @@ export type FooterGroupKey =
   | 'shells'
   | 'monitors'
   | 'containers'
+  | 'mcp'
   | 'remote'
   | 'workflows'
   | 'dreams'
@@ -26,6 +29,7 @@ export const FOOTER_GROUP_ORDER: readonly FooterGroupKey[] = [
   'shells',
   'monitors',
   'containers',
+  'mcp',
   'remote',
   'workflows',
   'dreams',
@@ -38,9 +42,33 @@ export const FOOTER_GROUP_LABELS: Record<FooterGroupKey, string> = {
   shells: 'Shells',
   monitors: 'Monitors',
   containers: 'Containers',
+  mcp: 'MCP',
   remote: 'Remote',
   workflows: 'Workflows',
   dreams: 'Dreams',
+}
+
+/** `mcp` is the one group that nests: its rows are partitioned again by
+ * connection state, each sub-group with its own header and its own collapse.
+ * Top to bottom, worst news last — a failed server is what the user came to
+ * the panel for, and it should not move when a healthy one reconnects. */
+export const MCP_BUCKET_ORDER: readonly McpBucket[] = [
+  'active',
+  'inactive',
+  'failed',
+]
+
+export const MCP_BUCKET_LABELS: Record<McpBucket, string> = {
+  active: 'Active',
+  inactive: 'Inactive',
+  failed: 'Failed',
+}
+
+/** Collapse key for one sub-group, namespaced under the group's own key so it
+ * can share `AppState.collapsedTaskGroups` with the top-level keys without ever
+ * colliding with a `FooterGroupKey`. */
+export function mcpBucketCollapseKey(bucket: McpBucket): string {
+  return `mcp:${bucket}`
 }
 
 /** One panel row: the agent plus the tree geometry needed to draw it. */
@@ -150,6 +178,8 @@ export function matchGroupKey(t: TaskState): FooterGroupKey | undefined {
       return 'monitors'
     case 'container':
       return 'containers'
+    case 'mcp_server':
+      return 'mcp'
     case 'remote_agent':
       return 'remote'
     case 'local_workflow':
@@ -182,6 +212,30 @@ export function getFooterGroupCounts(
 }
 
 /**
+ * Per-bucket counts inside the `mcp` group, in `MCP_BUCKET_ORDER`. Applies the
+ * same filter `getFooterGroupCounts` does, so `sum(values) === counts.get('mcp')`
+ * always holds — which is what lets the row counter below trust one against the
+ * other. A bucket with no servers is present with a zero rather than absent, so
+ * the order is stable for the caller to iterate.
+ */
+export function getMcpBucketCounts(
+  tasks: Record<string, TaskState> | undefined,
+  foregroundedTaskId: string | undefined,
+): Map<McpBucket, number> {
+  const counts = new Map<McpBucket, number>()
+  for (const bucket of MCP_BUCKET_ORDER) counts.set(bucket, 0)
+  if (!tasks) return counts
+  for (const t of Object.values(tasks)) {
+    if (!isBackgroundTask(t)) continue
+    if (t.id === foregroundedTaskId) continue
+    if (!isMcpServerTask(t)) continue
+    const bucket = mcpBucket(mcpTaskStatusInput(t))
+    counts.set(bucket, (counts.get(bucket) ?? 0) + 1)
+  }
+  return counts
+}
+
+/**
  * Cheap row-count for the footer's selection bounds: headers + visible items
  * per group, without allocating the row list. Shares `getFooterGroupCounts`
  * with the tree so the count cannot drift from what is painted — building and
@@ -196,7 +250,20 @@ export function countFooterTaskRows(
   let total = 0
   for (const [key, n] of getFooterGroupCounts(tasks, foregroundedTaskId)) {
     total += 1 // header
-    if (!collapsed.has(key)) total += n
+    if (collapsed.has(key)) continue
+    if (key !== 'mcp') {
+      total += n
+      continue
+    }
+    // The MCP group nests: a sub-header per non-empty bucket, its servers
+    // under it. So its contribution is NOT `n`, and this arm is the reason
+    // buildFooterTaskRows and this counter are pinned against each other by a
+    // test rather than trusted to agree.
+    for (const [bucket, count] of getMcpBucketCounts(tasks, foregroundedTaskId)) {
+      if (count === 0) continue
+      total += 1 // sub-header
+      if (!collapsed.has(mcpBucketCollapseKey(bucket))) total += count
+    }
   }
   return total
 }

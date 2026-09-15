@@ -180,6 +180,7 @@ import { resumeAgentBackground } from 'src/tools/AgentTool/resumeAgent.js';
 import { useMainLoopModel } from 'src/agent/hooks/useMainLoopModel.js';
 import { useAppState, useSetAppState, useAppStateStore } from 'src/terminal/state/AppState.js';
 import { useContainerStatus } from 'src/containers/hooks/useContainerStatus.js';
+import { useMcpPanelStatus } from 'src/mcp/hooks/useMcpPanelStatus.js';
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
 import type { PastedContent } from 'src/platform/config/config.js';
 import { copyPlanForFork, copyPlanForResume, getPlanSlug, setPlanSlug } from 'src/agent/plans/plans.js';
@@ -506,6 +507,10 @@ export function REPL({
   // owns a long-lived child process — a component that unmounts and remounts
   // would respawn `docker events` each time.
   useContainerStatus();
+  // Folds AppState.mcp into the footer's `mcp` group. No watcher and no
+  // subprocess — useManageMCPConnections already owns the connection state, so
+  // this only reshapes it into rows.
+  useMcpPanelStatus();
 
   // Note: standaloneAgentContext is initialized in main.tsx (via initialState) or
   // ResumeConversation.tsx (via setAppState before rendering REPL) to avoid
