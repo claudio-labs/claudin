@@ -115,7 +115,6 @@ export const IDLE_SPECULATION_STATE: SpeculationState = { status: 'idle' }
 export type FooterItem =
   | 'tasks'
   | 'tmux'
-  | 'bagel'
   | 'teams'
   | 'bridge'
   | 'companion'
@@ -335,12 +334,6 @@ export type AppState = DeepImmutable<{
   // pill stays in the footer (user can reopen) but the panel content doesn't take
   // screen space when idle. Cleared on next Tmux tool use or user toggle. NOT persisted.
   tungstenPanelAutoHidden?: boolean
-  // WebBrowser tool (codename bagel): pill visible in footer
-  bagelActive?: boolean
-  // WebBrowser tool: current page URL shown in pill label
-  bagelUrl?: string
-  // WebBrowser tool: sticky panel visibility toggle
-  bagelPanelVisible?: boolean
   // REPL tool VM context - persists across REPL calls for state sharing
   replContext?: {
     vmContext: import('vm').Context

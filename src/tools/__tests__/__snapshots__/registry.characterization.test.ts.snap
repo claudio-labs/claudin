@@ -57,9 +57,6 @@ exports[`tool registry — characterization the flag-gated tool table matches th
     "KAIROS",
     "KAIROS_PUSH_NOTIFICATION",
   ],
-  "RemoteTriggerTool": [
-    "AGENT_TRIGGERS_REMOTE",
-  ],
   "SendUserFileTool": [
     "KAIROS",
   ],
@@ -76,9 +73,6 @@ exports[`tool registry — characterization the flag-gated tool table matches th
   "TerminalCaptureTool": [
     "TERMINAL_PANEL",
   ],
-  "WebBrowserTool": [
-    "WEB_BROWSER_TOOL",
-  ],
   "WorkflowTool": [
     "WORKFLOW_SCRIPTS",
   ],
@@ -93,7 +87,6 @@ exports[`tool registry — characterization the flag-gated tool table matches th
 
 exports[`tool registry — characterization every gated tool names a flag that the build map knows about 1`] = `
 [
-  "AGENT_TRIGGERS_REMOTE",
   "HISTORY_SNIP",
   "KAIROS_GITHUB_WEBHOOKS",
   "KAIROS_PUSH_NOTIFICATION",

@@ -36,7 +36,6 @@ import { isMcpSessionExpiredError } from 'src/mcp/client/errors.js'
 import { getConnectionTimeoutMs } from 'src/mcp/client/fetch.js'
 import {
   fetchCommandsForClient,
-  fetchMcpSkillsForClient,
   fetchResourcesForClient,
   fetchToolsForClient,
 } from 'src/mcp/client/fetchCapabilities.js'
@@ -592,9 +591,6 @@ export const connectToServer = memoize(
         fetchToolsForClient.cache.delete(name)
         fetchResourcesForClient.cache.delete(name)
         fetchCommandsForClient.cache.delete(name)
-        if (feature('MCP_SKILLS')) {
-          fetchMcpSkillsForClient!.cache.delete(name)
-        }
 
         connectToServer.cache.delete(key)
         logMCPDebug(name, `Cleared connection cache for reconnection`)
@@ -870,9 +866,6 @@ export async function clearServerCache(
   fetchToolsForClient.cache.delete(name)
   fetchResourcesForClient.cache.delete(name)
   fetchCommandsForClient.cache.delete(name)
-  if (feature('MCP_SKILLS')) {
-    fetchMcpSkillsForClient!.cache.delete(name)
-  }
 }
 
 /**

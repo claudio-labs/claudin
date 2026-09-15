@@ -344,8 +344,6 @@ function PromptInput({
   // otherwise bridge becomes an invisible selection stop.
   const bridgeFooterVisible = replBridgeConnected && (replBridgeExplicit || replBridgeReconnecting);
   const tmuxFooterVisible = false;
-  // WebBrowser pill — visible when a browser is open
-  const bagelFooterVisible = useAppState((s: AppState) => false);
   const teamContext = useAppState((s: AppState) => s.teamContext);
   const queuedCommands = useCommandQueue();
   const promptSuggestionState = useAppState((s: AppState) => s.promptSuggestion);
@@ -514,7 +512,7 @@ function PromptInput({
   const footerLayout = useMemo(() => getFooterPanelLayout(tasks), [tasks]);
   const tasksFooterVisible = (runningTaskCount > 0 || hasPanelRows) && !shouldHideTasksFooter(tasks, showSpinnerTree);
   const teamsFooterVisible = cachedTeams.length > 0;
-  const footerItems = useMemo(() => [tasksFooterVisible && 'tasks', tmuxFooterVisible && 'tmux', bagelFooterVisible && 'bagel', teamsFooterVisible && 'teams', bridgeFooterVisible && 'bridge', companionFooterVisible && 'companion'].filter(Boolean) as FooterItem[], [tasksFooterVisible, tmuxFooterVisible, bagelFooterVisible, teamsFooterVisible, bridgeFooterVisible, companionFooterVisible]);
+  const footerItems = useMemo(() => [tasksFooterVisible && 'tasks', tmuxFooterVisible && 'tmux', teamsFooterVisible && 'teams', bridgeFooterVisible && 'bridge', companionFooterVisible && 'companion'].filter(Boolean) as FooterItem[], [tasksFooterVisible, tmuxFooterVisible, teamsFooterVisible, bridgeFooterVisible, companionFooterVisible]);
 
   // Effective selection: null if the selected pill stopped rendering (bridge
   // disconnected, task finished). The derivation makes the UI correct
@@ -532,7 +530,6 @@ function PromptInput({
   }, [rawFooterSelection, footerItemSelected, setAppState]);
   const tasksSelected = footerItemSelected === 'tasks';
   const tmuxSelected = footerItemSelected === 'tmux';
-  const bagelSelected = footerItemSelected === 'bagel';
   const teamsSelected = footerItemSelected === 'teams';
   const bridgeSelected = footerItemSelected === 'bridge';
   function selectFooterItem(item: FooterItem | null): void {
@@ -2027,8 +2024,6 @@ function PromptInput({
           }
           break;
         case 'tmux':
-          break;
-        case 'bagel':
           break;
         case 'teams':
           setShowTeamsDialog(true);

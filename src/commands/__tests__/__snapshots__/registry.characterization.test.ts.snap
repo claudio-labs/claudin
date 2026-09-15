@@ -60,7 +60,6 @@ exports[`slash-command registry — characterization the registered bindings mat
   "provider",
   "releaseNotes",
   "reloadPlugins",
-  "remoteControlServerCommand",
   "remoteEnv",
   "rename",
   "resume",
@@ -155,14 +154,6 @@ exports[`slash-command registry — characterization the flag-gated command tabl
       "KAIROS",
     ],
     "specifier": "./proactive.js",
-  },
-  {
-    "binding": "remoteControlServerCommand",
-    "flags": [
-      "DAEMON",
-      "BRIDGE_MODE",
-    ],
-    "specifier": "./remoteControlServer/index.js",
   },
   {
     "binding": "subscribePr",

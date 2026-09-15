@@ -63,9 +63,6 @@ const getCronTools = () => [
   require('src/tools/ScheduleWakeupTool/ScheduleWakeupTool.js')
     .ScheduleWakeupTool,
 ]
-const RemoteTriggerTool = feature('AGENT_TRIGGERS_REMOTE')
-  ? require('src/tools/RemoteTriggerTool/RemoteTriggerTool.js').RemoteTriggerTool
-  : null
 const MonitorTool = feature('MONITOR_TOOL')
   ? require('src/tools/MonitorTool/MonitorTool.js').MonitorTool
   : null
@@ -135,9 +132,6 @@ const OverflowTestTool = feature('OVERFLOW_TEST_TOOL')
 const TerminalCaptureTool = feature('TERMINAL_PANEL')
   ? require('./TerminalCaptureTool/TerminalCaptureTool.js')
       .TerminalCaptureTool
-  : null
-const WebBrowserTool = feature('WEB_BROWSER_TOOL')
-  ? require('./WebBrowserTool/WebBrowserTool.js').WebBrowserTool
   : null
 const coordinatorModeModule = feature('COORDINATOR_MODE')
   ? (require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js'))
@@ -292,7 +286,6 @@ export function getAllBaseTools(): Tools {
       : [getContainerTool()]),
     getEnterPlanModeTool(),
     ...(SuggestBackgroundPRTool ? [SuggestBackgroundPRTool] : []),
-    ...(WebBrowserTool ? [WebBrowserTool] : []),
     ...(isTodoV2Enabled()
       ? [getTaskCreateTool(), getTaskGetTool(), getTaskUpdateTool(), getTaskListTool()]
       : []),
@@ -310,7 +303,6 @@ export function getAllBaseTools(): Tools {
     ...(agentWorkflowTools ?? []),
     ...(SleepTool ? [SleepTool] : []),
     ...getCronTools(),
-    ...(RemoteTriggerTool ? [RemoteTriggerTool] : []),
     ...(MonitorTool ? [MonitorTool] : []),
     // Polls a command until a regex matches / the output settles — the
     // one-call replacement for `sleep N && check` loops. Killswitch documented

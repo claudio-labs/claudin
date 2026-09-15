@@ -72,10 +72,6 @@ const assistantCommand = feature('KAIROS')
 const bridge = feature('BRIDGE_MODE')
   ? require('src/commands/bridge/index.js').default
   : null
-const remoteControlServerCommand =
-  feature('DAEMON') && feature('BRIDGE_MODE')
-    ? require('./remoteControlServer/index.js').default
-    : null
 const forceSnip = feature('HISTORY_SNIP')
   ? require('./force-snip.js').default
   : null
@@ -293,7 +289,6 @@ const COMMANDS = memoize((): Command[] => [
   ...(briefCommand ? [briefCommand] : []),
   ...(assistantCommand ? [assistantCommand] : []),
   ...(bridge ? [bridge] : []),
-  ...(remoteControlServerCommand ? [remoteControlServerCommand] : []),
   thinkback,
   thinkbackPlay,
   permissions,
