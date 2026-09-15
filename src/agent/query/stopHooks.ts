@@ -161,22 +161,6 @@ export async function* handleStopHooks(
     }
   }
 
-  // chicago MCP: auto-unhide + lock release at turn end.
-  // Main thread only — the CU lock is a process-wide module-level variable,
-  // so a subagent's stopHooks releasing it leaves the main thread's cleanup
-  // seeing isLockHeldLocally()===false → no exit notification, and unhides
-  // mid-turn. Subagents don't start CU sessions so this is a pure skip.
-  if (feature('CHICAGO_MCP') && !toolUseContext.agentId) {
-    try {
-      const { cleanupComputerUseAfterTurn } = await import(
-        'src/platform/computerUse/cleanup.js'
-      )
-      await cleanupComputerUseAfterTurn(toolUseContext)
-    } catch {
-      // Failures are silent — this is dogfooding cleanup, not critical path
-    }
-  }
-
   try {
     const blockingErrors = []
     const appState = toolUseContext.getAppState()

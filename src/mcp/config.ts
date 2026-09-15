@@ -633,15 +633,6 @@ export async function addMcpConfig(
     )
   }
 
-  if (feature('CHICAGO_MCP')) {
-    const { isComputerUseMCPServer } = await import(
-      'src/platform/computerUse/common.js'
-    )
-    if (isComputerUseMCPServer(name)) {
-      throw new Error(`Cannot add MCP server "${name}": this name is reserved.`)
-    }
-  }
-
   // Block adding servers when enterprise MCP config exists (it has exclusive control)
   if (doesEnterpriseMcpConfigExist()) {
     throw new Error(
@@ -1498,21 +1489,11 @@ export function areMcpConfigsAllowedWithEnterpriseMcpConfig(
   )
 }
 
-/**
- * Built-in MCP server that defaults to disabled. Unlike user-configured servers
- * (opt-out via disabledMcpServers), this requires explicit opt-in via
- * enabledMcpServers. Shows up in /mcp as disabled until the user enables it.
- */
-/* eslint-disable @typescript-eslint/no-require-imports */
-const DEFAULT_DISABLED_BUILTIN = feature('CHICAGO_MCP')
-  ? (
-      require('src/platform/computerUse/common.js') as typeof import('src/platform/computerUse/common.js')
-    ).COMPUTER_USE_MCP_SERVER_NAME
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
-
-function isDefaultDisabledBuiltin(name: string): boolean {
-  return DEFAULT_DISABLED_BUILTIN !== null && name === DEFAULT_DISABLED_BUILTIN
+// Computer Use was the only default-disabled built-in MCP server, and it left
+// with CHICAGO_MCP. Kept as a predicate rather than inlined at the call sites
+// so the next built-in that wants opt-in semantics has somewhere to go.
+function isDefaultDisabledBuiltin(_name: string): boolean {
+  return false
 }
 
 /**

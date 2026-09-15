@@ -37,21 +37,6 @@ import {
   wrapFetchWithTimeout,
 } from 'src/mcp/client/fetch.js'
 
-/* eslint-disable @typescript-eslint/no-require-imports */
-// Lazy: wrapper.tsx → hostAdapter.ts → executor.ts pulls both native modules
-// (@ant/computer-use-input + @ant/computer-use-swift). Runtime-gated by
-// GrowthBook tengu_malort_pedway (see gates.ts).
-export const computerUseWrapper = feature('CHICAGO_MCP')
-  ? (): typeof import('src/platform/computerUse/wrapper.js') =>
-    require('src/platform/computerUse/wrapper.js')
-  : undefined
-export const isComputerUseMCPServer = feature('CHICAGO_MCP')
-  ? (
-    require('src/platform/computerUse/common.js') as typeof import('src/platform/computerUse/common.js')
-  ).isComputerUseMCPServer
-  : undefined
-/* eslint-enable @typescript-eslint/no-require-imports */
-
 // Minimal interface for WebSocket instances passed to mcpWebSocketTransport
 type WsClientLike = {
   readonly readyState: number
@@ -385,26 +370,6 @@ export async function createTransport(
       transportOptions,
     )
     logMCPDebug(name, `claude.ai proxy transport created successfully`)
-  } else if (
-    feature('CHICAGO_MCP') &&
-    (serverRef.type === 'stdio' || !serverRef.type) &&
-    isComputerUseMCPServer!(name)
-  ) {
-    // Run the Computer Use MCP server in-process — same rationale as
-    // Chrome above. The package's CallTool handler is a stub; real
-    // dispatch goes through wrapper.tsx's .call() override.
-    const { createComputerUseMcpServerForCli } = await import(
-      'src/platform/computerUse/mcpServer.js'
-    )
-    const { createLinkedTransportPair } = await import(
-      'src/mcp/InProcessTransport.js'
-    )
-    const inProcess = await createComputerUseMcpServerForCli()
-    inProcessServer = inProcess
-    const [clientTransport, serverTransport] = createLinkedTransportPair()
-    await inProcess.connect(serverTransport)
-    transport = clientTransport
-    logMCPDebug(name, `In-process Computer Use MCP server started`)
   } else if (serverRef.type === 'stdio' || !serverRef.type) {
     const finalCommand =
       process.env.CLAUDIN_SHELL_PREFIX || serverRef.command

@@ -292,15 +292,6 @@ async function main(): Promise<void> {
     console.log(prompt.join('\n'));
     return;
   }
-  if (feature('CHICAGO_MCP') && process.argv[2] === '--computer-use-mcp') {
-    profileCheckpoint('cli_computer_use_mcp_path');
-    const {
-      runComputerUseMcpServer
-    } = await import('src/platform/computerUse/mcpServer.js');
-    await runComputerUseMcpServer();
-    return;
-  }
-
   // Fast-path for `--daemon-worker=<kind>` (internal — supervisor spawns this).
   // Must come before the daemon subcommand check: spawned per-worker, so
   // perf-sensitive. No enableConfigs(), no analytics sinks at this layer —

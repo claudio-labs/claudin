@@ -2,8 +2,8 @@
 // Extracted from src/platform/main.tsx (ROADMAP 11g Fase 7c.2).
 //
 // Covers: initialPermissionModeFromCLI, autoModeFlagCli (TRANSCRIPT_CLASSIFIER),
-// --mcp-config parsing + policy filtering, enterprise MCP gate, CHICAGO_MCP
-// computerUse setup, --channels / dev-channels parsing, brief-tool opt-in,
+// --mcp-config parsing + policy filtering, enterprise MCP gate,
+// --channels / dev-channels parsing, brief-tool opt-in,
 // initializeToolPermissionContext + dangerous-permission warnings, mcp config
 // promises (claudeai + local), and format validation against sdkUrl / replay /
 // includePartialMessages / sessionPersistence.
@@ -77,10 +77,6 @@ export type McpAndPermsResult = {
 
 /**
  * Inputs from main.tsx (post Block A).
- *
- * `allowedTools` is mutated in place by the CHICAGO_MCP branch
- * (`allowedTools.push(...cuTools)`) — pass the same array reference used
- * downstream.
  */
 export type McpAndPermsInput = {
   options: ActionOptions;
@@ -198,20 +194,6 @@ export async function runMcpAndPerms(
       // SDK hosts (Nest/Desktop) own their server naming and may reuse
       // built-in names — skip reserved-name checks for type:'sdk'.
       const nonSdkConfigNames = Object.entries(allConfigs).filter(([, config]) => config.type !== 'sdk').map(([name]) => name);
-      let reservedNameError: string | null = null;
-      if (feature('CHICAGO_MCP')) {
-        const { isComputerUseMCPServer, COMPUTER_USE_MCP_SERVER_NAME } = await import('src/platform/computerUse/common.js');
-        if (nonSdkConfigNames.some(isComputerUseMCPServer)) {
-          reservedNameError = `Invalid MCP configuration: "${COMPUTER_USE_MCP_SERVER_NAME}" is a reserved MCP name.`;
-        }
-      }
-      if (reservedNameError) {
-        // stderr+exit(1) — a throw here becomes a silent unhandled
-        // rejection in stream-json mode (void main() in cli.tsx).
-        process.stderr.write(`Error: ${reservedNameError}\n`);
-        process.exit(1);
-      }
-
       const scopedConfigs = mapValues(allConfigs, config => ({
         ...config,
         scope: 'dynamic' as const,
@@ -241,24 +223,6 @@ export async function runMcpAndPerms(
     if (dynamicMcpConfig && !areMcpConfigsAllowedWithEnterpriseMcpConfig(dynamicMcpConfig)) {
       process.stderr.write(chalk.red('You cannot dynamically configure MCP servers when an enterprise MCP config is present'));
       process.exit(1);
-    }
-  }
-
-  // chicago MCP: guarded Computer Use.
-  if (feature('CHICAGO_MCP') && getPlatform() === 'macos' && !isNonInteractiveSession) {
-    try {
-      const { getChicagoEnabled } = await import('src/platform/computerUse/gates.js');
-      if (getChicagoEnabled()) {
-        const { setupComputerUseMCP } = await import('src/platform/computerUse/setup.js');
-        const { mcpConfig: cuMcpConfig, allowedTools: cuTools } = setupComputerUseMCP();
-        dynamicMcpConfig = {
-          ...dynamicMcpConfig,
-          ...cuMcpConfig,
-        };
-        allowedTools.push(...cuTools);
-      }
-    } catch (error) {
-      logForDebugging(`[Computer Use MCP] Setup failed: ${errorMessage(error)}`);
     }
   }
 

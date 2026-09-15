@@ -63,7 +63,6 @@ import {
   getRemoteMcpServerConnectionBatchSize,
 } from 'src/mcp/client/fetch.js'
 import { transformResultContent } from 'src/mcp/client/toolResult.js'
-import { computerUseWrapper, isComputerUseMCPServer } from 'src/mcp/client/transport.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 export const fetchMcpSkillsForClient = feature('MCP_SKILLS')
@@ -347,11 +346,6 @@ export const fetchToolsForClient = memoizeWithLRU(
               const displayName = tool.annotations?.title || tool.name
               return `${client.name} - ${displayName} (MCP)`
             },
-            ...(feature('CHICAGO_MCP') &&
-              (client.config.type === 'stdio' || !client.config.type) &&
-              isComputerUseMCPServer!(client.name)
-              ? computerUseWrapper!().getComputerUseMCPToolOverrides(tool.name)
-              : {}),
           }
         })
         .filter(isIncludedMcpTool)

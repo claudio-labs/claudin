@@ -1,29 +1,34 @@
 ---
 name: upsell-commands-missing-login
-description: /upgrade and /extra-usage render a <Login> component that does not exist in this fork, so both hang blank
+description: RESOLVED 2026-09-15 — /upgrade, /extra-usage and /rate-limit-options were deleted; kept as the record of why, and of the auto-open that made the third one worse than the other two
 type: project
 ---
 
-`src/commands/upgrade/upgrade.tsx:8` and `src/commands/extra-usage/extra-usage.tsx:4`
-both `import { Login } from '../login/login.js'`. **`src/commands/login/` does not
-exist in this fork.** The build's missing-module pre-scan stubs it to
-`export const Login = () => null`, so the returned `<Login …/>` renders nothing
-and its `onDone` never fires — the command sits in its running state showing a
-blank body until the user presses Ctrl-C.
+**Status: removed on `refactor/dead-code-tengu-cleanup`
+([[dead-code-cleanup-2026-09-15]]).** The product call this memory was waiting
+on since 2026-08-06 was made: they are Anthropic consumer-billing surfaces in a
+project that is not affiliated with Anthropic, and all three were a hang rather
+than a feature. Do not go looking for them.
 
-Both are reachable by default:
-- `/upgrade` — `availability: ['claude-ai']`, enabled unless
-  `DISABLE_UPGRADE_COMMAND` is set or the subscription is `enterprise`. It DOES
-  successfully open `https://claude.ai/upgrade/max` first; only the login step
-  that follows is dead.
-- `/extra-usage` — enabled when `isOverageProvisioningAllowed()` and the session
-  is interactive.
+What was wrong: `upgrade.tsx` and `extra-usage.tsx` both imported `Login` from
+`../login/login.js`, and `src/commands/login/` never existed in this fork. The
+build's missing-module pre-scan served `() => null`, so `<Login …/>` rendered
+nothing and its `onDone` never fired — the command sat in its running state with
+a blank body until Ctrl-C.
 
-Also stale: `upgrade.tsx:22` tells the user to "run `/login`", and there is no
-`/login` command in this fork — Anthropic sign-in lives in `/provider`.
+**The part that was not in the original note:** `/rate-limit-options` was the
+worst of the three, because nobody had to type it. `RateLimitMessage`
+auto-submitted the command from the transcript the moment a subscription limit
+was hit (`REPL.tsx`, `handleOpenRateLimitOptions`), and both of its menu actions
+routed into the same dead Login. So hitting a rate limit opened a dialog that
+could not be completed.
 
-Not fixed as of 2026-08-06 because the right answer is a product call, not a
-mechanical one: these are Anthropic-billing upsells in a project that is not
-affiliated with Anthropic. The options are to drop the login step and finish the
-command with a pointer to `/provider`, or to remove both commands. Found while
-reducing the typecheck backlog — see [[typecheck-backlog-shape]].
+Removed with them, because their only remaining job was to name those commands:
+`RateLimitMessage` and its upsell line, the `onOpenRateLimitOptions` prop drilled
+through six components, and the referral / guest-passes / overage-credit /
+`/passes` / desktop-upsell cluster around them.
+
+**What replaced the behaviour:** nothing for the upsell; the limit *message* is
+unchanged. `LimitMessage` (`src/agent/ui/messages/ProviderLimitMessage.tsx`)
+keeps the live countdown for a provider limit and renders anything else — the
+Anthropic subscription limit included — as recorded.
