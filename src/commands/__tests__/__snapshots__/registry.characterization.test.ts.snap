@@ -1,0 +1,216 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`slash-command registry — characterization the registered bindings match the snapshot 1`] = `
+[
+  "addDir",
+  "advisor",
+  "agentWorkflowsCmd",
+  "agents",
+  "assistantCommand",
+  "autoFix",
+  "autoModeSetup",
+  "autofixPr",
+  "branch",
+  "bridge",
+  "briefCommand",
+  "btw",
+  "buddy",
+  "cacheProbe",
+  "cacheStats",
+  "cd",
+  "clear",
+  "color",
+  "commit",
+  "compact",
+  "config",
+  "context",
+  "contextNonInteractive",
+  "copy",
+  "cost",
+  "desktop",
+  "diff",
+  "doctor",
+  "dream",
+  "effort",
+  "exit",
+  "explorer",
+  "exportCommand",
+  "extraUsage",
+  "extraUsageNonInteractive",
+  "fast",
+  "feedback",
+  "goal",
+  "heapDump",
+  "help",
+  "hooks",
+  "ide",
+  "importCommand",
+  "init",
+  "installGitHubApp",
+  "installSlackApp",
+  "keybindings",
+  "knowledge",
+  "mcp",
+  "memory",
+  "model",
+  "outputStyle",
+  "passes",
+  "peersCmd",
+  "permissions",
+  "plan",
+  "plugin",
+  "proactive",
+  "provider",
+  "rateLimitOptions",
+  "releaseNotes",
+  "reloadPlugins",
+  "remoteControlServerCommand",
+  "remoteEnv",
+  "rename",
+  "resume",
+  "review",
+  "rewind",
+  "sandboxToggle",
+  "securityReview",
+  "session",
+  "skills",
+  "stats",
+  "status",
+  "stickers",
+  "tasks",
+  "terminalSetup",
+  "theme",
+  "thinkback",
+  "thinkbackPlay",
+  "torch",
+  "ultrareview",
+  "upgrade",
+  "usage",
+  "usageReport",
+  "vim",
+  "voiceCommand",
+  "webCmd",
+  "wiki",
+  "workflowsCmd",
+]
+`;
+
+exports[`slash-command registry — characterization the flag-gated command table matches the snapshot 1`] = `
+[
+  {
+    "binding": "agentWorkflowsCmd",
+    "flags": [
+      "AGENT_WORKFLOWS",
+    ],
+    "specifier": "src/commands/workflows/index.js",
+  },
+  {
+    "binding": "assistantCommand",
+    "flags": [
+      "KAIROS",
+    ],
+    "specifier": "./assistant/index.js",
+  },
+  {
+    "binding": "bridge",
+    "flags": [
+      "BRIDGE_MODE",
+    ],
+    "specifier": "src/commands/bridge/index.js",
+  },
+  {
+    "binding": "briefCommand",
+    "flags": [
+      "KAIROS",
+      "KAIROS_BRIEF",
+    ],
+    "specifier": "src/commands/brief.js",
+  },
+  {
+    "binding": "clearSkillIndexCache",
+    "flags": [
+      "EXPERIMENTAL_SKILL_SEARCH",
+    ],
+    "specifier": "../skills/search/localSearch.js",
+  },
+  {
+    "binding": "forceSnip",
+    "flags": [
+      "HISTORY_SNIP",
+    ],
+    "specifier": "./force-snip.js",
+  },
+  {
+    "binding": "getWorkflowCommands",
+    "flags": [
+      "WORKFLOW_SCRIPTS",
+    ],
+    "specifier": "../tools/WorkflowTool/createWorkflowCommand.js",
+  },
+  {
+    "binding": "peersCmd",
+    "flags": [
+      "UDS_INBOX",
+    ],
+    "specifier": "./peers/index.js",
+  },
+  {
+    "binding": "proactive",
+    "flags": [
+      "PROACTIVE",
+      "KAIROS",
+    ],
+    "specifier": "./proactive.js",
+  },
+  {
+    "binding": "remoteControlServerCommand",
+    "flags": [
+      "DAEMON",
+      "BRIDGE_MODE",
+    ],
+    "specifier": "./remoteControlServer/index.js",
+  },
+  {
+    "binding": "subscribePr",
+    "flags": [
+      "KAIROS_GITHUB_WEBHOOKS",
+    ],
+    "specifier": "./subscribe-pr.js",
+  },
+  {
+    "binding": "torch",
+    "flags": [
+      "TORCH",
+    ],
+    "specifier": "./torch.js",
+  },
+  {
+    "binding": "ultraplan",
+    "flags": [
+      "ULTRAPLAN",
+    ],
+    "specifier": "src/commands/ultraplan.js",
+  },
+  {
+    "binding": "voiceCommand",
+    "flags": [
+      "VOICE_MODE",
+    ],
+    "specifier": "src/commands/voice/index.js",
+  },
+  {
+    "binding": "webCmd",
+    "flags": [
+      "CCR_REMOTE_SETUP",
+    ],
+    "specifier": "src/commands/remote-setup/index.js",
+  },
+  {
+    "binding": "workflowsCmd",
+    "flags": [
+      "WORKFLOW_SCRIPTS",
+    ],
+    "specifier": "src/commands/workflows/index.js",
+  },
+]
+`;

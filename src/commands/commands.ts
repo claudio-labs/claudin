@@ -119,11 +119,15 @@ const peersCmd = feature('UDS_INBOX')
       require('./peers/index.js') as typeof import('./peers/index.js')
     ).default
   : null
-const forkCmd = feature('FORK_SUBAGENT')
-  ? (
-      require('./fork/index.js') as typeof import('./fork/index.js')
-    ).default
-  : null
+// NOTE: there is deliberately no `forkCmd` here. `FORK_SUBAGENT` ships true
+// (it gates the Agent tool's fork-by-default behaviour), but this fork never
+// received `src/commands/fork/`, so the require resolved to the build's
+// missing-module stub — `const noop = () => null; export default noop`. That
+// value is TRUTHY, so the conditional spread below injected a bare arrow
+// function where a Command object belongs and the command list grew an entry
+// named `noop`. The flag stays on; only the phantom command is gone.
+// `src/commands/__tests__/registry.characterization.test.ts` fails if the
+// shape comes back, here or anywhere else in this table.
 const buddy = isBuddyEnabled()
   ? (
       require('src/commands/buddy/index.js') as typeof import('src/commands/buddy/index.js')
@@ -304,7 +308,6 @@ const COMMANDS = memoize((): Command[] => [
   vim,
   wiki,
   ...(webCmd ? [webCmd] : []),
-  ...(forkCmd ? [forkCmd] : []),
   ...(buddy ? [buddy] : []),
   ...(proactive ? [proactive] : []),
   ...(briefCommand ? [briefCommand] : []),
