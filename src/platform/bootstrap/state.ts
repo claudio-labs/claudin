@@ -1,3 +1,39 @@
+/**
+ * The process-wide session state — barrel over ./state/.
+ *
+ * ~360 call sites across the codebase keep importing from here; new code
+ * should prefer importing directly from the relevant submodule.
+ *
+ * Splitting layout:
+ *   types.ts            — every type, including the 239-line State shape.
+ *                         Values-free, so it can sit under everything else
+ *   store.ts            — getInitialState, the runtime-state listener Set and
+ *                         the STATE singleton itself. Imports nothing from its
+ *                         siblings; every other module reaches STATE from here
+ *   session.ts          — the session id, switchSession/regenerateSessionId and
+ *                         the sessionSwitched funnel both go through
+ *   cwd.ts              — originalCwd, projectRoot, cwd, direct-connect url
+ *   cost.ts             — durations, cost, tokens, turn counters, lines changed,
+ *                         request ids, scroll drain, model usage and strings
+ *   telemetry.ts        — the otel meter, its eight counters and the providers
+ *   sessionFlags.ts     — the write-once startup switches (interactivity, client
+ *                         type, settings sources, credential fds, plugin list)
+ *   sdkHooks.ts         — last API request, cached CLAUDE.md, error ring, init
+ *                         schema, registered hook callbacks
+ *   sessionArtifacts.ts — what a session accumulates and drops: cron tasks,
+ *                         pending wakeup, trust, plan/auto mode, skills, teams
+ *   latches.ts          — the sticky, cache-preserving bits: beta headers, LSP
+ *                         defer, large-prompt, section cache, channels
+ *   reset.ts            — resetStateForTests, the one writer that reaches every
+ *                         cluster at once
+ *
+ * The dependency graph is a DAG rooted at store.ts, with no cycles: latches.ts
+ * and sessionFlags.ts take the listener Set from it, session.ts takes
+ * clearBetaHeaderLatches from latches.ts, and reset.ts takes cost.ts's
+ * resetTurnTokenState. That hook and the internal types (State,
+ * RegisteredHookMatcher, RuntimeStateChangeListener) are deliberately NOT
+ * re-exported here — they were never part of this module's surface.
+ */
 export type {
   AttributedCounter,
   ChannelEntry,

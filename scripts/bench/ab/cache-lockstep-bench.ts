@@ -40,7 +40,7 @@ const ALL_FILES = [
   'src/shared/fs/path.ts',
   'src/shared/envUtils.ts',
   'src/shared/proc/Shell.ts',
-  'src/platform/bootstrap/state.ts',
+  'src/platform/bootstrap/state/cost.ts',
   'src/agent/prompts/messages.ts',
   'src/shared/constants/keys.ts',
   'src/terminal/ink/constants.ts',
