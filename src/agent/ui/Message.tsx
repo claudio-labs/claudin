@@ -243,9 +243,6 @@ function MessageImpl(t0: Props) {
           }
           return t2;
         }
-        if (message.subtype === "microcompact_boundary") {
-          return null;
-        }
         if (feature("HISTORY_SNIP")) {
           const {
             isSnipBoundaryMessage

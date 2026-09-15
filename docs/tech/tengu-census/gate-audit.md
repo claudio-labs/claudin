@@ -159,10 +159,19 @@ Everything else, with three subgroups that carry a condition:
    — which checks `Bun.embeddedFiles` — is false and the branch is live. Turning
    the key on makes first-party fast mode report "requires the native binary" in
    the build users actually run. Only `build:compile` closes that branch.
-3. **Two commands are orphaned by an absent flag, not by design.**
-   `tengu_ultraplan_model` and the remote-setup site of `tengu_cobalt_lantern`
-   depend on `ULTRAPLAN` and `CCR_REMOTE_SETUP`, neither of which exists in the
-   `featureFlags` map.
+3. **Two commands were orphaned by an absent flag, not by design — one is now
+   resolved.** `/web-setup` (the remote-setup site of `tengu_cobalt_lantern`)
+   hung on `CCR_REMOTE_SETUP`, absent from the `featureFlags` map, and has been
+   removed: 399 lines across three files plus `platform/github/ghAuthStatus.ts`,
+   whose only importer it was. That key now has one site instead of two.
+   `tengu_ultraplan_model` still hangs on `ULTRAPLAN`, which is absent for the
+   same reason, and that one is NOT a clean cut — `RemoteAgentTask.tsx` imports
+   `UltraplanPhase` from `agent/ultraplan/ccrSession.ts` and `pillLabel.ts`
+   renders its phase off the live remote-agent task state.
+
+   The general form is now pinned by
+   `scripts/build/feature-flags-source-guard.test.ts`, which enumerates every
+   `feature()` name off the map and fails on a new one.
 4. **`tengu_slate_thimble` is unobservable in the REPL.** `paths.ts:74-80`
    short-circuits on an interactive session, so the key only has an effect
    non-interactively — and there it depends on `tengu_passport_quail`, which this

@@ -12,20 +12,11 @@
   ],
   "project": ["src/**/*.{ts,tsx}", "scripts/**/*.ts"],
   "ignore": [
-    "src/platform/entrypoints/sdk/coreTypes.generated.ts",
-    "src/shared/constants/keys.ts",
-    "src/stubs/sandbox-runtime-stub.ts"
+    "src/shared/constants/keys.ts"
   ],
   "ignoreDependencies": [
     "@anthropic-ai/vertex-sdk",
     "@anthropic-ai/foundry-sdk"
   ],
-  "ignoreBinaries": [
-    "arecord",
-    "caffeinate",
-    "claudindev",
-    "rec",
-    "secret-tool",
-    "wslpath"
-  ]
+  "ignoreBinaries": []
 }

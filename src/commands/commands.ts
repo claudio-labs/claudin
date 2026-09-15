@@ -78,11 +78,6 @@ const agentWorkflowsCmd = feature('AGENT_WORKFLOWS')
       require('src/commands/workflows/index.js') as typeof import('src/commands/workflows/index.js')
     ).default
   : null
-const webCmd = feature('CCR_REMOTE_SETUP')
-  ? (
-      require('src/commands/remote-setup/index.js') as typeof import('src/commands/remote-setup/index.js')
-    ).default
-  : null
 const clearSkillIndexCache = feature('EXPERIMENTAL_SKILL_SEARCH')
   ? (
       require('../skills/search/localSearch.js') as typeof import('../skills/search/localSearch.js')
@@ -264,7 +259,6 @@ const COMMANDS = memoize((): Command[] => [
   usageReport,
   vim,
   wiki,
-  ...(webCmd ? [webCmd] : []),
   ...(buddy ? [buddy] : []),
   ...(bridge ? [bridge] : []),
   thinkback,

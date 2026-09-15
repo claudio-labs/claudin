@@ -78,7 +78,6 @@ exports[`slash-command registry — characterization the registered bindings mat
   "usage",
   "usageReport",
   "vim",
-  "webCmd",
   "wiki",
   "workflowsCmd",
 ]
@@ -134,13 +133,6 @@ exports[`slash-command registry — characterization the flag-gated command tabl
       "ULTRAPLAN",
     ],
     "specifier": "src/commands/ultraplan.js",
-  },
-  {
-    "binding": "webCmd",
-    "flags": [
-      "CCR_REMOTE_SETUP",
-    ],
-    "specifier": "src/commands/remote-setup/index.js",
   },
   {
     "binding": "workflowsCmd",
