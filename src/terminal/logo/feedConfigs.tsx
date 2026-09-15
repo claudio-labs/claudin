@@ -3,7 +3,6 @@ import { homedir } from 'os';
 import * as React from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { Step } from 'src/platform/projectOnboardingState.js';
-import { formatCreditAmount, getCachedReferrerReward } from 'src/providers/usage/referral.js';
 import type { LogOption } from 'src/shared/types/logs.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { formatRelativeTimeAgo } from 'src/shared/text/format.js';
@@ -58,23 +57,5 @@ export function createProjectOnboardingFeed(steps: Step[]): FeedConfig {
   return {
     title: 'Tips for getting started',
     lines
-  };
-}
-export function createGuestPassesFeed(): FeedConfig {
-  const reward = getCachedReferrerReward();
-  const subtitle = reward ? `Share Claudin and earn ${formatCreditAmount(reward)} of extra usage` : 'Share Claudin with friends';
-  return {
-    title: '3 guest passes',
-    lines: [],
-    customContent: {
-      content: <>
-          <Box marginY={1}>
-            <Text color="claude">[✻] [✻] [✻]</Text>
-          </Box>
-          <Text dimColor>{subtitle}</Text>
-        </>,
-      width: 48
-    },
-    footer: '/passes'
   };
 }

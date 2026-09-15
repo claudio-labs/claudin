@@ -56,7 +56,6 @@ export type REPLTranscriptViewProps = {
   agentDefinitions: unknown
   transcriptStreamingToolUses: unknown
   showAllInTranscript: boolean
-  handleOpenRateLimitOptions: () => void
   isLoading: boolean
   streamingThinking: unknown
   onSearchMatchesChange: (matches: unknown) => void
@@ -115,7 +114,6 @@ export function REPLTranscriptView(props: REPLTranscriptViewProps): React.ReactN
       agentDefinitions={props.agentDefinitions as never}
       streamingToolUses={props.transcriptStreamingToolUses as never}
       showAllInTranscript={props.showAllInTranscript}
-      onOpenRateLimitOptions={props.handleOpenRateLimitOptions}
       isLoading={props.isLoading}
       hidePastThinking={true}
       streamingThinking={props.streamingThinking as never}
@@ -245,4 +243,3 @@ export function REPLTranscriptView(props: REPLTranscriptViewProps): React.ReactN
   }
   return transcriptReturn
 }
-

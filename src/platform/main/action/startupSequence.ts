@@ -25,7 +25,6 @@ import { isBareMode } from 'src/shared/envUtils.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { checkQuotaStatus } from 'src/providers/claudeAiLimits.js';
 import { fetchBootstrapData } from 'src/providers/transport/bootstrap.js';
-import { prefetchPassesEligibility } from 'src/providers/usage/referral.js';
 import { isLspGloballyEnabled } from 'src/platform/lsp/userSettings.js';
 import { initializeLspServerManager } from 'src/platform/lsp/manager.js';
 import { prefetchAllMcpResources } from 'src/mcp/client.js';
@@ -150,7 +149,6 @@ export async function runPostHeadlessGuards(
     void fetchBootstrapData();
 
     // TODO: Consolidate other prefetches into a single bootstrap request.
-    void prefetchPassesEligibility();
     if (!getFeatureValue_CACHED_MAY_BE_STALE('tengu_miraculo_the_bard', false)) {
       void prefetchFastModeStatus();
     } else {

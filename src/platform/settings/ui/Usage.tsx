@@ -1,7 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useEffect, useReducer, useState } from 'react';
-import { extraUsage as extraUsageCommand } from 'src/commands/extra-usage/index.js';
 import { formatCost, getModelUsage, getProjectTotals, getTotalAPIDuration, getTotalCost, getTotalDuration, getTotalLinesAdded, getTotalLinesRemoved, hasUnknownModelCost } from 'src/agent/cost-tracker.js';
 import { getCanonicalName } from 'src/providers/model/model.js';
 import { formatDuration, formatNumber, formatTokens } from 'src/shared/text/format.js';
@@ -22,7 +21,6 @@ import { jsonStringify } from 'src/platform/slowOperations.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
 import { Byline } from 'src/terminal/design-system/Byline.js';
 import { ProgressBar } from 'src/terminal/design-system/ProgressBar.js';
-import { isEligibleForOverageCreditGrant, OverageCreditUpsell } from 'src/terminal/logo/OverageCreditUpsell.js';
 import { CodexUsage } from 'src/platform/settings/ui/CodexUsage.js';
 import { MiniMaxUsage } from 'src/platform/settings/ui/MiniMaxUsage.js';
 import { UnsupportedUsage } from 'src/platform/settings/ui/UnsupportedUsage.js';
@@ -280,8 +278,6 @@ function AnthropicUsage(): React.ReactNode {
     }) => limit_0 && <LimitBar key={title} title={title} limit={limit_0} maxWidth={maxWidth} />)}
 
       {utilization.extra_usage && <ExtraUsageSection extraUsage={utilization.extra_usage} maxWidth={maxWidth} />}
-
-      {isEligibleForOverageCreditGrant() && <OverageCreditUpsell maxWidth={maxWidth} />}
 
       <Text dimColor>
         <ConfigurableShortcutHint action="confirm:no" context="Settings" fallback="Esc" description="cancel" />
@@ -572,16 +568,10 @@ function ExtraUsageSection(t0: ExtraUsageSectionProps) {
     return false;
   }
   if (!extraUsage.is_enabled) {
-    if (extraUsageCommand.isEnabled()) {
-      let t1;
-      if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-        t1 = <Box flexDirection="column"><Text bold={true}>{EXTRA_USAGE_SECTION_TITLE}</Text><Text dimColor={true}>Extra usage not enabled · /extra-usage to enable</Text></Box>;
-        $[0] = t1;
-      } else {
-        t1 = $[0];
-      }
-      return t1;
-    }
+    // The "· /extra-usage to enable" line went with the command. Nothing in
+    // this build can turn extra usage on, so the section stays out of the way
+    // rather than naming a command that no longer exists. ($[0] is left
+    // allocated — React Compiler output, the slot numbering must not shift.)
     return null;
   }
   if (extraUsage.monthly_limit === null) {

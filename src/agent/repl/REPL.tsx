@@ -254,7 +254,6 @@ import { AUTO_MODE_DESCRIPTION } from 'src/permissions/ui/AutoModeOptInDialog.js
 import { useLspInitializationNotification } from 'src/platform/notifications/useLspInitializationNotification.js';
 import { useClaudeCodeHintRecommendation } from 'src/platform/useClaudeCodeHintRecommendation.js';
 import { PluginHintMenu } from 'src/platform/hints/PluginHintMenu.js';
-import { DesktopUpsellStartup, shouldShowDesktopUpsellStartup } from 'src/platform/billing/desktop-upsell/DesktopUpsellStartup.js';
 import { usePluginInstallationStatus } from 'src/platform/notifications/usePluginInstallationStatus.js';
 import { usePluginAutoupdateNotification } from 'src/platform/notifications/usePluginAutoupdateNotification.js';
 import { performStartupChecks } from 'src/plugins/performStartupChecks.js';
@@ -265,7 +264,6 @@ import { useDeprecationWarningNotification } from 'src/platform/notifications/us
 import { useNpmDeprecationNotification } from 'src/platform/notifications/useNpmDeprecationNotification.js';
 import { useIDEStatusIndicator } from 'src/platform/notifications/useIDEStatusIndicator.js';
 import { useModelMigrationNotifications } from 'src/platform/notifications/useModelMigrationNotifications.js';
-import { useCanSwitchToExistingSubscription } from 'src/platform/notifications/useCanSwitchToExistingSubscription.js';
 import { useTeammateLifecycleNotification } from 'src/platform/notifications/useTeammateShutdownNotification.js';
 import { useFastModeNotification } from 'src/platform/notifications/useFastModeNotification.js';
 import { AutoRunIssueNotification, shouldAutoRunIssue, getAutoRunIssueReasonText, getAutoRunCommand, type AutoRunIssueReason } from 'src/agent/ui/autoRunIssue.js';
@@ -574,10 +572,8 @@ export function REPL({
   const [showModelSwitchCallout, setShowModelSwitchCallout] = useState(() => false);
   const [showEffortCallout, setShowEffortCallout] = useState(() => shouldShowEffortCallout(mainLoopModel));
   const showRemoteCallout = useAppState(s => s.showRemoteCallout);
-  const [showDesktopUpsellStartup, setShowDesktopUpsellStartup] = useState(() => shouldShowDesktopUpsellStartup());
   // notifications
   useModelMigrationNotifications();
-  useCanSwitchToExistingSubscription();
   useIDEStatusIndicator({
     ideSelection,
     mcpClients,
@@ -1770,7 +1766,6 @@ export function REPL({
     showEffortCallout,
     showRemoteCallout,
     hintRecommendation,
-    showDesktopUpsellStartup,
     startupChecksStarted: startupChecksStartedRef.current,
   });
 
@@ -2310,19 +2305,11 @@ export function REPL({
   }, [onSubmit]);
 
   // onSubmit is unstable (deps include `messages` which changes every turn).
-  // `handleOpenRateLimitOptions` is prop-drilled to every MessageRow, and each
-  // MessageRow fiber pins the closure (and transitively the entire REPL render
-  // scope, ~1.8KB) at mount time. Using a ref keeps this callback stable so
-  // old REPL scopes can be GC'd — saves ~35MB over a 1000-turn session.
+  // The ref is what keeps a consumer's handle stable, so old REPL render
+  // scopes (~1.8KB each) can be GC'd instead of being pinned per fiber at mount
+  // time — measured at ~35MB over a 1000-turn session.
   const onSubmitRef = useRef(onSubmit);
   onSubmitRef.current = onSubmit;
-  const handleOpenRateLimitOptions = useCallback(() => {
-    void onSubmitRef.current('/rate-limit-options', {
-      setCursorOffset: () => { },
-      clearBuffer: () => { },
-      resetHistory: () => { }
-    });
-  }, []);
   // Exit state machine + failsafe live in useReplExit (called above, near the
   // other early `useState`s). The previous inline 60-line implementation was
   // moved verbatim — see src/agent/repl/hooks/useReplExit.tsx for the
@@ -2984,7 +2971,6 @@ export function REPL({
       agentDefinitions={agentDefinitions}
       transcriptStreamingToolUses={transcriptStreamingToolUses}
       showAllInTranscript={showAllInTranscript}
-      handleOpenRateLimitOptions={handleOpenRateLimitOptions}
       isLoading={isLoading}
       streamingThinking={streamingThinking}
       onSearchMatchesChange={onSearchMatchesChange as (m: unknown) => void}
@@ -3090,7 +3076,7 @@ export function REPL({
                   clearConversation already bumps the id for exactly this. */}
         <StartupBanner key={conversationId} />
         <TeammateViewHeader />
-        <Messages messages={displayedMessages} tools={tools} commands={renderCommands} verbose={verbose} toolJSX={toolJSX} toolUseConfirmQueue={toolUseConfirmQueue} inProgressToolUseIDs={viewedTeammateTask ? viewedTeammateTask.inProgressToolUseIDs ?? new Set() : inProgressToolUseIDs} isMessageSelectorVisible={isMessageSelectorVisible} conversationId={conversationId} screen={screen} streamingToolUses={streamingToolUses} showAllInTranscript={showAllInTranscript} agentDefinitions={agentDefinitions} onOpenRateLimitOptions={handleOpenRateLimitOptions} isLoading={isLoading} hasStreamingText={isLoading && !viewedAgentTask && hasVisibleStreamingText} isBriefOnly={viewedAgentTask ? false : isBriefOnly} unseenDivider={viewedAgentTask ? undefined : unseenDivider} scrollRef={isFullscreenEnvEnabled() ? scrollRef : undefined} trackStickyPrompt={isFullscreenEnvEnabled() ? true : undefined} cursor={cursor} setCursor={setCursor} cursorNavRef={cursorNavRef} />
+        <Messages messages={displayedMessages} tools={tools} commands={renderCommands} verbose={verbose} toolJSX={toolJSX} toolUseConfirmQueue={toolUseConfirmQueue} inProgressToolUseIDs={viewedTeammateTask ? viewedTeammateTask.inProgressToolUseIDs ?? new Set() : inProgressToolUseIDs} isMessageSelectorVisible={isMessageSelectorVisible} conversationId={conversationId} screen={screen} streamingToolUses={streamingToolUses} showAllInTranscript={showAllInTranscript} agentDefinitions={agentDefinitions} isLoading={isLoading} hasStreamingText={isLoading && !viewedAgentTask && hasVisibleStreamingText} isBriefOnly={viewedAgentTask ? false : isBriefOnly} unseenDivider={viewedAgentTask ? undefined : unseenDivider} scrollRef={isFullscreenEnvEnabled() ? scrollRef : undefined} trackStickyPrompt={isFullscreenEnvEnabled() ? true : undefined} cursor={cursor} setCursor={setCursor} cursorNavRef={cursorNavRef} />
         <AwsAuthStatusBox />
         {/* Hide the processing placeholder while a modal is showing —
                   it would sit at the last visible transcript row right above
@@ -3166,7 +3152,6 @@ export function REPL({
             exitFlow,
             hintRecommendation,
             handleHintResponse,
-            setShowDesktopUpsellStartup,
             ultraplanPendingChoice: ultraplanPendingChoice ?? null,
             ultraplanLaunchPending: ultraplanLaunchPending ?? null,
             queryGuard,
@@ -3187,7 +3172,6 @@ export function REPL({
             EffortCallout: EffortCallout as unknown as Parameters<typeof renderREPLDialogs>[1]['EffortCallout'],
             RemoteCallout,
             PluginHintMenu,
-            DesktopUpsellStartup,
             // ULTRAPLAN feature is disabled in the open build; both dialogs
             // are referenced symbolically (never imported) inside the
             // feature() ternary. Pass null so the slot type stays sound and

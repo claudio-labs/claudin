@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { useInterval } from 'usehooks-ts'
 
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js'
-import { RateLimitMessage } from 'src/agent/ui/messages/RateLimitMessage.js'
 import {
   formatProviderLimitHead,
   formatProviderLimitMessage,
@@ -19,21 +18,19 @@ import { Text } from 'src/terminal/ink.js'
  */
 const COUNTDOWN_TICK_MS = 30_000
 
-type Props = {
-  text: string
-  onOpenRateLimitOptions?: () => void
-}
-
 /**
  * Routes a rate-limit message to the renderer that owns it.
  *
- * `RateLimitMessage` carries the Anthropic subscription upsell (/upgrade,
- * /extra-usage) and the auto-opening options menu, so it stays responsible for
- * the messages the subscriber path produces. The provider-agnostic message —
- * the one every other provider now gets — is rendered here instead, with a
- * countdown that keeps running while the limit is in force.
+ * A provider limit gets the live countdown below. Anything else — the Anthropic
+ * subscription limit among them — is shown as recorded.
+ *
+ * There used to be a third path here: `RateLimitMessage`, which appended an
+ * upsell line (`/upgrade or /extra-usage to finish what you're working on`) and
+ * auto-opened the options menu. All three of those commands routed through a
+ * Login module this fork never received, so the upsell pointed at a hang. The
+ * commands are gone and so is the upsell; the limit text itself is unchanged.
  */
-export function LimitMessage({ text, onOpenRateLimitOptions }: Props) {
+export function LimitMessage({ text }: { text: string }) {
   if (
     text.startsWith(PROVIDER_LIMIT_PREFIX) ||
     text.startsWith(QUOTA_EXHAUSTED_PREFIX)
@@ -41,10 +38,9 @@ export function LimitMessage({ text, onOpenRateLimitOptions }: Props) {
     return <ProviderLimitMessage text={text} />
   }
   return (
-    <RateLimitMessage
-      text={text}
-      onOpenRateLimitOptions={onOpenRateLimitOptions}
-    />
+    <MessageResponse>
+      <Text color="error">{text}</Text>
+    </MessageResponse>
   )
 }
 

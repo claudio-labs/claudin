@@ -139,7 +139,6 @@ import thinkbackPlay from 'src/commands/thinkback-play/index.js'
 import permissions from 'src/commands/permissions/index.js'
 import plan from 'src/commands/plan/index.js'
 import fast from 'src/commands/fast/index.js'
-import passes from 'src/commands/passes/index.js'
 import provider from 'src/commands/provider/index.js'
 import hooks from 'src/commands/hooks/index.js'
 import branch from 'src/commands/branch/index.js'
@@ -188,12 +187,12 @@ import exportCommand from 'src/commands/export/index.js'
 import model from 'src/commands/model/index.js'
 import outputStyle from 'src/commands/output-style/index.js'
 import remoteEnv from 'src/commands/remote-env/index.js'
-import upgrade from 'src/commands/upgrade/index.js'
-import {
-  extraUsage,
-  extraUsageNonInteractive,
-} from 'src/commands/extra-usage/index.js'
-import rateLimitOptions from 'src/commands/rate-limit-options/index.js'
+// /upgrade, /extra-usage and /rate-limit-options are gone. They were the
+// Anthropic consumer-subscription billing surface, and all three routed through
+// `../login/login.js` — a module this fork never received, so the build served
+// them `() => null`. Every one of them hung: the Login component rendered
+// nothing and its onDone never fired. /rate-limit-options was the worst of the
+// three because the transcript opened it by itself when a limit was hit.
 import effort from 'src/commands/effort/index.js'
 import stats from 'src/commands/stats/index.js'
 // insights.ts is 113KB (3200 lines, includes diffLines/html rendering). Lazy
@@ -299,10 +298,6 @@ const COMMANDS = memoize((): Command[] => [
   rewind,
   securityReview,
   terminalSetup,
-  upgrade,
-  extraUsage,
-  extraUsageNonInteractive,
-  rateLimitOptions,
   usage,
   usageReport,
   vim,
@@ -322,7 +317,6 @@ const COMMANDS = memoize((): Command[] => [
   hooks,
   exportCommand,
   sandboxToggle,
-  passes,
   ...(peersCmd ? [peersCmd] : []),
   tasks,
   ...(workflowsCmd ? [workflowsCmd] : []),

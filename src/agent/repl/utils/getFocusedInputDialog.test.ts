@@ -28,7 +28,6 @@ function baseDeps(): FocusedInputDialogDeps {
     showEffortCallout: false,
     showRemoteCallout: false,
     hintRecommendation: null,
-    showDesktopUpsellStartup: false,
     startupChecksStarted: false,
   }
 }
@@ -135,7 +134,6 @@ describe('getFocusedInputDialog', () => {
     d.showEffortCallout = true
     d.showRemoteCallout = true
     d.hintRecommendation = {}
-    d.showDesktopUpsellStartup = true
     // startup gate off — low-priority dialogs suppressed
     expect(getFocusedInputDialog(d)).toBe('ide-onboarding')
 
@@ -146,13 +144,10 @@ describe('getFocusedInputDialog', () => {
     expect(getFocusedInputDialog(d)).toBe('remote-callout')
 
     d.showRemoteCallout = false
-    // lsp/hint/desktop still gated by startupChecksStarted
+    // lsp/hint still gated by startupChecksStarted
     expect(getFocusedInputDialog(d)).toBeUndefined()
 
     d.startupChecksStarted = true
     expect(getFocusedInputDialog(d)).toBe('plugin-hint')
-
-    d.hintRecommendation = null
-    expect(getFocusedInputDialog(d)).toBe('desktop-upsell')
   })
 })
