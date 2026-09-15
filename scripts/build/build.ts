@@ -28,6 +28,11 @@ const version = pkg.version
 // `featureFlags[name] ?? false`, so a `feature('X')` naming something missing
 // from this map is silently false, which is how seven satellite flags became
 // invisible dead code.
+//
+// `feature-flags-source-guard.test.ts` enumerates the 44 names currently in that
+// state and fails on a new one. Adding a key here is what takes a name OFF that
+// list — and the list is worth reading first, because four of the 44 are set by
+// the build target or the command line and break when treated as dead.
 const featureFlags: Record<string, boolean> = {
   // ── Enabled: upstream defaults ──────────────────────────────────────
   COORDINATOR_MODE: true,             // Multi-agent coordinator with worker delegation

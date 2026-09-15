@@ -228,14 +228,35 @@ moves, not before.
 
 ## Feature Flags
 
-Build-time flags live in `featureFlags` in `scripts/build/build.ts`. Most
-Anthropic-internal subsystems are **disabled** because their source isn't
-mirrored or they need Anthropic infrastructure: `VOICE_MODE`, `KAIROS`,
-`PROACTIVE`, `DAEMON`, `BG_SESSIONS`, `WEB_BROWSER_TOOL`, `MCP_SKILLS`, …
+Build-time flags live in `featureFlags` in `scripts/build/build.ts`. The
+"disabled" half of that map is **gone** — `VOICE_MODE`, `KAIROS`, `PROACTIVE`,
+`DAEMON`, `BG_SESSIONS`, `WEB_BROWSER_TOOL`, `MCP_SKILLS` and the rest were
+removed along with the branches behind them, because a flag folded to `false` is
+a branch nobody can reach and carrying its name only made it look like a switch.
+Two entries are still `false`, both A/B killswitches with a reason written
+beside them.
 
 Enabled flags drive real code paths in the open build: `COORDINATOR_MODE`,
 `BUILTIN_PLAN_AGENT`, `EXTRACT_MEMORIES`, `ULTRATHINK`, `TOKEN_BUDGET`,
 `HISTORY_PICKER`, `HOOK_PROMPTS`, `AGENT_WORKFLOWS`, …
+
+### A flag missing from the map is false by omission, not by decision
+
+`build.ts` folds `featureFlags[name] ?? false`, so `feature('X')` naming a key
+the map does not list is silently false. **44 names in `src/` are in that state**
+and nothing used to say so, which is how `src/commands/ultraplan.tsx` — 436 lines
+plus its prompt — became unreachable without anyone choosing it.
+
+`scripts/build/feature-flags-source-guard.test.ts` now enumerates the set and
+fails on a new one. Read the list before treating any of them as dead code: it
+is at least three different situations, and one of them BREAKS when removed.
+`ALLOW_TEST_VERSIONS` is how `bun run smoke` reaches the 99.99.x install path
+(`bun --feature=…`), and `IS_LIBC_MUSL`/`IS_LIBC_GLIBC` are compile-target pins
+that `envDynamic.ts` falls back to runtime detection without. Others gate a
+`require()` of a module this fork never received, so the branch is already a
+build stub. Only the third group — a flag over code that IS in this tree — is a
+removal candidate, and each needs its own trace: `conversationArc.ts` sits behind
+one and is *also* reached from `/knowledge`.
 
 `BRIDGE_MODE` is the one enabled flag whose subsystem still needs a credential
 the open build cannot mint on its own: it builds Remote Control in
