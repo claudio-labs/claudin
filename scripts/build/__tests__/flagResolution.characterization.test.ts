@@ -38,7 +38,18 @@ const GATE_FNS = [
   'getDynamicConfig_BLOCKS_ON_INIT',
 ] as const
 
-const CALL_RE = new RegExp(`\\b(${GATE_FNS.join('|')})\\(\\s*(['"\`])(tengu[A-Za-z0-9_]*)\\2`, 'g')
+/**
+ * An optional generic type argument between the gate function and its paren —
+ * `getFeatureValue_CACHED_MAY_BE_STALE<Partial<Config> | null>(…)`. Without it
+ * this table silently omitted 20 live keys, and so did the census's `--gates`
+ * work list. One nested level covers every call in this tree.
+ */
+const GENERIC_ARG = '(?:\\s*<[^<>]*(?:<[^<>]*>[^<>]*)*>)?'
+
+const CALL_RE = new RegExp(
+  `\\b(${GATE_FNS.join('|')})${GENERIC_ARG}\\(\\s*(['"\`])(tengu[A-Za-z0-9_]*)\\2`,
+  'g',
+)
 
 type GateSite = {
   key: string

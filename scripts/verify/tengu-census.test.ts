@@ -94,6 +94,24 @@ describe('censusFile', () => {
     })
   })
 
+  test('a gate read with a generic type argument is still a gate', () => {
+    // Missing this does not change the TOTAL — the key lands in `indirect` as a
+    // bare string — but it drops the key from `--gates`, which is the work list
+    // for the gate audit. Roughly 24 live keys were invisible that way.
+    const source = [
+      "getDynamicConfig_CACHED_MAY_BE_STALE<Partial<Config>>('tengu_sm_config', {})",
+      'const x = getFeatureValue_CACHED_MAY_BE_STALE<Partial<Limits> | null>(',
+      "  'tengu_amber_wren',",
+      '  {},',
+      ')',
+    ].join('\n')
+
+    expect(bucketsOf(source)).toEqual({
+      'tengu_sm_config@1': 'gate',
+      'tengu_amber_wren@3': 'gate',
+    })
+  })
+
   test('a template-literal event name still counts as an event', () => {
     // Five upstream call sites write the name as a backticked literal with no
     // interpolation; the build's rewrite handles them and so must the census.

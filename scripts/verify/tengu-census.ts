@@ -88,8 +88,20 @@ const GATE_FNS = [
   'hasGrowthBookEnvOverride',
 ] as const
 
+/**
+ * An optional generic type argument between the gate function's name and its
+ * paren — `getFeatureValue_CACHED_MAY_BE_STALE<Partial<Config> | null>(…)`.
+ *
+ * Leaving this out is not a miss in the TOTAL: the key still lands in the
+ * `indirect` bucket as a bare string literal. It is a miss in the BUCKET, which
+ * is worse, because `--gates` is the work list for the gate audit and those
+ * keys never appeared on it. One nested level is enough for every call in this
+ * tree; anything deeper stays `indirect` and shows up for review.
+ */
+const GENERIC_ARG = '(?:\\s*<[^<>]*(?:<[^<>]*>[^<>]*)*>)?'
+
 const GATE_RE = new RegExp(
-  `\\b(?:${GATE_FNS.join('|')})\\(\\s*(['"\`])tengu[A-Za-z0-9_]*\\1`,
+  `\\b(?:${GATE_FNS.join('|')})${GENERIC_ARG}\\(\\s*(['"\`])tengu[A-Za-z0-9_]*\\1`,
   'g',
 )
 
