@@ -47,9 +47,32 @@ const GATE_FNS = [
 const GENERIC_ARG = '(?:\\s*<[^<>]*(?:<[^<>]*>[^<>]*)*>)?'
 
 const CALL_RE = new RegExp(
-  `\\b(${GATE_FNS.join('|')})${GENERIC_ARG}\\(\\s*(['"\`])(tengu[A-Za-z0-9_]*)\\2`,
+  `\\b(${GATE_FNS.join('|')})${GENERIC_ARG}\\(\\s*(['"\`])(tengu[A-Za-z0-9_-]*)\\2`,
   'g',
 )
+
+/**
+ * Two keys are not snake_case — `tengu-off-switch` and `tengu-top-of-feed-tip` —
+ * so the hyphen belongs in the class above, and two more are handed to the
+ * accessor through a file-local `const` instead of as a literal:
+ *
+ *     const TRUSTED_DEVICE_GATE = 'tengu_sessions_elevated_auth_enforcement'
+ *     getFeatureValue_CACHED_MAY_BE_STALE(TRUSTED_DEVICE_GATE, false)
+ *
+ * Between them that is three live keys this table silently omitted, the same
+ * three the census missed. Resolving the binding is worth it here because the
+ * `defaultValue` this table exists to record still sits at the call site — only
+ * the key moved.
+ */
+const BINDING_RE =
+  /\bconst\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*(?::[^=\n]*)?=\s*(['"`])(tengu[A-Za-z0-9_-]*)\2/g
+
+function boundGateCallRe(name: string): RegExp {
+  return new RegExp(
+    `\\b(${GATE_FNS.join('|')})${GENERIC_ARG}\\(\\s*${name}\\b`,
+    'g',
+  )
+}
 
 type GateSite = {
   key: string
@@ -123,6 +146,24 @@ function scanGateSites(): GateSite[] {
           defaultSource: readDefaultArg(source, m.index + m[0].length),
           file: relative(REPO_ROOT, full),
         })
+      }
+
+      // Then the same calls reached through a file-local binding. The default
+      // is read from the call site exactly as above; only the key comes from
+      // the `const`.
+      BINDING_RE.lastIndex = 0
+      let b: RegExpExecArray | null
+      while ((b = BINDING_RE.exec(source)) !== null) {
+        const callRe = boundGateCallRe(b[1]!)
+        let c: RegExpExecArray | null
+        while ((c = callRe.exec(source)) !== null) {
+          out.push({
+            key: b[3]!,
+            fn: c[1]!,
+            defaultSource: readDefaultArg(source, c.index + c[0].length),
+            file: relative(REPO_ROOT, full),
+          })
+        }
       }
     }
   }

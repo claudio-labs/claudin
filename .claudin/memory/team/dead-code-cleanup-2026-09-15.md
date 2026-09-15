@@ -21,7 +21,57 @@ that line; `scripts/verify/tengu-census.ts` (new) enforces it by classifying
 Baseline 2026-09-15: 1654 → 1648 occurrences, events 1018 → 1000, 91 → 89
 distinct gate keys. Docs at `docs/tech/tengu-census/`.
 
-## State at the end of 2026-09-15 — 19 commits, ~330 files, roughly −25k/+4k
+## State at the end of 2026-09-15 — 39 commits, ~335 files, roughly −25k/+4k
+
+**Fases 0-4 are COMPLETE.** Census 1654 → ~556 occurrences; **zero live event
+names** (the 35 left are fixtures in two test files). Gate keys settled at
+**105** after a validation round found the audit had enumerated 103 of 106 and
+one of those was removable — details below.
+
+The last five commits came out of a validation pass (build/typecheck/full
+suite/privacy/deadcode all green, plus a tmux run of the real TUI), and what
+they fixed is what a green gate does NOT catch:
+
+- **A removed command still named in live strings.** The rate-limit footer read
+  `… · /upgrade to keep using Claudin`, observed in the TUI with
+  `ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC=0`. `getWarningUpsellText` is deleted;
+  three more `/extra-usage` strings now name `claude.ai/settings/usage`.
+- **`/feedback` was invisible in a stock install.** `isEnabled` gated on
+  `isEssentialTrafficOnly()`, and Claudin defaults to essential-traffic, so the
+  REPL fell through to skill resolution and said "Unknown skill: feedback". The
+  gate was right while the command POSTed to Anthropic; b82f2df9 removed the
+  upload and left it. Now `getExplicitEssentialTrafficOnlyReason()`.
+- **Dead event-name parameters outlived their call sites.** 15 non-gate `tengu`
+  tokens were still shipping in `dist/chunks`, every one an event name threaded
+  into a signature nothing reads: `respondToPendingRequest`'s `analyticsEvent`,
+  `startBackgrounding(eventName)` in both shells, a REQUIRED
+  `PrefixExtractorConfig.eventName`, `generateFileAttachment`'s two positional
+  names. Down to two, both wire-format names the closed VS Code extension
+  expects.
+- **The census under-reported a third time**, and the second time with its
+  `unclassified === 0` invariant green. Two blind spots: a key held in a
+  file-local `const` and passed by name (no literal between the parens), and a
+  token class with no hyphen (`tengu-off-switch`, `tengu-top-of-feed-tip` — the
+  first refuses every non-subscriber Opus request). **A count that adds up is
+  not a bucket that is right.**
+- **`mcp/channelPermissions.ts` deleted** (240 lines + an `AppState` field):
+  every export reachable only from inside the file, the one external reference a
+  TYPE on a field nothing wrote or read. knip is blind to that shape — the type
+  import is a real import of a real file.
+
+**Still open, and it is the big one: 44 of the 79 `feature('X')` names used in
+`src/` are absent from the `featureFlags` map**, so they fold to `false` and
+their branches are unreachable — ~134 sites. Biggest: `HISTORY_SNIP` (11 files),
+`EXPERIMENTAL_SKILL_SEARCH` (10), `WORKFLOW_SCRIPTS` (8), `ULTRAPLAN` (7),
+`DIRECT_CONNECT` (6), `TEMPLATES`/`LODESTONE`/`SSH_REMOTE` (5 each). None of the
+7 `feature(absent) ? require(…)` sites names a local module, so the dead code is
+branch-shaped inside LIVE files, not deletable modules. **ULTRAPLAN is not a
+clean cut**: `RemoteAgentTask.tsx` imports `UltraplanPhase` from
+`agent/ultraplan/ccrSession.ts` and `pillLabel.ts` renders `isUltraplan` /
+`ultraplanPhase` off the live remote-agent task state. Also `BUDDY: true` sits in
+the map with no `feature('BUDDY')` anywhere.
+
+## Where it stood after the first 19 commits
 
 **Fases 0, 1 and 2 are COMPLETE; Fase 3 is most of the way.** Census moved
 1654 → ~1100 occurrences, events 983 → 169 across 27 files. The flag map lost

@@ -2,6 +2,22 @@
 
 exports[`tengu gate keys — resolution in a stock install the per-key resolution table matches the snapshot 1`] = `
 {
+  "tengu-off-switch": {
+    "defaults": [
+      "{ activated: false, }",
+    ],
+    "fn": "getDynamicConfig_BLOCKS_ON_INIT",
+    "sites": 1,
+    "stockValue": "<unmeasured: default is an expression — { activated: false, }>",
+  },
+  "tengu-top-of-feed-tip": {
+    "defaults": [
+      "DEFAULT_TIP",
+    ],
+    "fn": "getDynamicConfig_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": "<unmeasured: default is an expression — DEFAULT_TIP>",
+  },
   "tengu_agent_list_attach": {
     "defaults": [
       "true",
@@ -348,14 +364,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 1,
     "stockValue": "<unmeasured: default is an expression — OPUS_DEFAULT_EFFORT_CONFIG_DEFAULT>",
   },
-  "tengu_harbor_permissions": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
   "tengu_hawthorn_steeple": {
     "defaults": [
       "false",
@@ -617,7 +625,7 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
       "{}",
     ],
     "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
+    "sites": 2,
     "stockValue": {},
   },
   "tengu_scratch": {
@@ -641,6 +649,15 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
       "false",
     ],
     "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": false,
+  },
+  "tengu_sessions_elevated_auth_enforcement": {
+    "defaults": [
+      "",
+      "false",
+    ],
+    "fn": "checkGate_CACHED_OR_BLOCKING | getFeatureValue_CACHED_MAY_BE_STALE",
     "sites": 2,
     "stockValue": false,
   },
