@@ -266,14 +266,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 1,
     "stockValue": false,
   },
-  "tengu_desktop_upsell": {
-    "defaults": [
-      "DESKTOP_UPSELL_DEFAULT",
-    ],
-    "fn": "getDynamicConfig_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": "<unmeasured: default is an expression — DESKTOP_UPSELL_DEFAULT>",
-  },
   "tengu_destructive_command_warning": {
     "defaults": [
       "false",
@@ -379,14 +371,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "fn": "getFeatureValue_CACHED_WITH_REFRESH",
     "sites": 1,
     "stockValue": true,
-  },
-  "tengu_jade_anvil_4": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
   },
   "tengu_kairos_brief": {
     "defaults": [
