@@ -36,7 +36,8 @@
 - ["Read it first" gate census 2026-09-04 — 3 false causes FIXED in PR #157](read-gate-false-refusals-census-2026-09.md) — 65 refusals/23 sessions; Edit mid-line, injected MEMORY.md, /resume ranges; headless -p still never seeds memory files
 
 ## Roadmap & major features
-- [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — ROADMAP-11 exhausted; BashTool's giants shipped in PR #129; carries the feature() fold gate + offender list
+- [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — ROADMAP-11 exhausted; six barrels live; the fold gate, the re-measured offender list and the 4 traps a split hits
+- [PR #129's code vanished from main after merging](pr-129-lost-to-force-push.md) — a non-fast-forward push dropped it from GitHub too; recover via refs/pull/N/head, never `gh pr diff`
 - [Unified context-relief policy A/B (PR #156, 2026-09-03)](context-relief-unified-policy-ab.md) — cost −25%, uncached input −56%, equal information loss; a Read-only "re-reads" column lied (Grep vs Read outline) — count every lookup tool
 - [Clip-pin A/B 2026-07-25 (dev vs stable, 30 turns)](clip-pin-cache-ab-2026-07-25.md) — STALE number, do NOT cite; kept for the three bench traps (auto-outline eats files ≥250 lines, --revisits does one pass, the 60s Read cache)
 - [Product roadmap 2026-07 (market-gap × codebase audit)](roadmap-2026-07.md) — R1 cost routing → R2 sandbox backend → R3 background agent ✅ → R4 record&replay eval → R5 MCP Apps

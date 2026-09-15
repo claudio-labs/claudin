@@ -1,60 +1,124 @@
 ---
 name: tier3-file-split-roadmap
-description: The Tier-3 giant-file split roadmap lives only in a DELETED ROADMAP.md (recover with git show); every item is DONE, BashTool's two giants shipped 2026-08-22, and the DCE-cliff comments that blocked them were false — the fold gate is here
+description: The giant-file split programme — ROADMAP-11 exhausted, six barrels now live (BashTool ×2, config, state, insights); carries the feature() fold gate, the re-measured offender list, and the four traps a split hits here
 type: project
 ---
 
-The plan that drove every `src/<area>/` barrel-plus-siblings cluster in this repo
-is **ROADMAP item 11**, and it is not in the working tree: `ROADMAP.md` was
-deleted in `367058c2`, and an unrelated token-efficiency ROADMAP.md briefly
-occupied the same path before that. Recover the real one with:
+The plan that drove every `src/<area>/` barrel-plus-siblings cluster in this
+repo is **ROADMAP item 11**, and it is not in the working tree: `ROADMAP.md` was
+deleted in `367058c2`. Recover it with `git show cbf3325d:ROADMAP.md` if you
+ever need the original grades. **The ROADMAP-11 list is exhausted — measure the
+tree, do not work from it.**
 
-    git show cbf3325d:ROADMAP.md      # Tier 3 section, items 11a-11m
+## What is a barrel today (2026-09-14)
 
-It is the only place the per-file suggestion, effort/risk grade and — critically —
-the **deferred remainder** of each split are written down. Two of those deferrals
-were worth more than the entries themselves:
+| barrel | was | now | siblings |
+|---|---|---|---|
+| `src/tools/shared/codeOutline/scanSymbols.ts` | 3911 | 191 | 18 |
+| `src/platform/headless/print/runHeadless.ts` | 4197 | 590 | 9 |
+| `src/providers/shims/claude.ts` | — | 66 | `claude/` |
+| `src/providers/shims/openaiShim.ts` | — | 51 | `openaiShim/` |
+| `src/mcp/client.ts` | — | 66 | `client/` |
+| `src/tools/BashTool/bashPermissions.ts` | 2528 | 68 | 7 |
+| `src/tools/BashTool/bashSecurity.ts` | 2608 | 22 | 13 |
+| `src/platform/config/config.ts` | 2276 | 101 | 7 |
+| `src/platform/bootstrap/state.ts` | 1896 | 278 | 11 |
+| `src/commands/insights.ts` | 2832 | 47 | 9 |
 
-- **11b** deferred "extração de `runHeadlessStreaming` em arquivo próprio com DI
-  explícita (`HeadlessStreamingDeps`)".
-- **11e** deferred "REPL.tsx mantém controllers (`onSubmit`/`onQuery*`) e
-  composição. Controllers ficam para um trabalho futuro."
+The bottom four landed on branch `refactor/split-giant-modules`, 2026-09-14.
+**The BashTool pair is a RE-land, not a first one** — PR #129 merged in August
+and its code was then dropped from `main` by a non-fast-forward push; see
+[[pr-129-lost-to-force-push]] for the detection recipe and the
+`refs/pull/N/head` recovery.
 
-**Both were executed 2026-08-07** — `runHeadless.ts` 4197→604 across 9 siblings in
-`src/platform/headless/print/`, `REPL.tsx` 4369→3145 across 5 hooks in
-`src/agent/repl/controllers/`. No non-test source file is above 4k any more; the
-largest remaining are `openaiShim.test.ts` (4618) and `bashFilter.test.ts` (3966),
-both tests.
+`src/agent/repl/` and `src/terminal/prompt-input/` are deliberately NOT on this
+list — see "two files that must not become barrels" below.
 
-**CORRECTION 2026-08-14: 11i/11j/11k are DONE too** — an earlier version of this
-memory listed them as open. All three are barrels now: `src/providers/shims/claude.ts`
-66 lines over `claude/` (`1b543a4d`), `src/providers/shims/openaiShim.ts` 51 over
-`openaiShim/` (`85c06f03`), `src/mcp/client.ts` 66 over `client/`
-(`9db88d9c`). 11l (bridgeMain, feature-gated off) and 11m (ansiToPng, base64
-assets) stay won't-do. **The ROADMAP-11 list is exhausted** — measure the tree, do
-not work from it.
+## The live offender list, re-measured 2026-09-14
 
-## `src/tools/BashTool/` — DONE 2026-08-22 (PR #129)
+Ranked by size × churn, since a big file only costs when people edit it.
 
-`bashPermissions.ts` 2528 → a 68-line barrel over 7 modules, and `bashSecurity.ts`
-2588 → a 22-line barrel over 13 (`validators/` × 9 + context/checkIds/heredoc/
-dispatch). Both were #1 and #6 by size × churn.
+1. `src/agent/repl/REPL.tsx` 3304 × **50** — highest churn in the repo.
+2. `src/terminal/prompt-input/PromptInput.tsx` 2661 × 38 — **no test of its own**.
+3. `src/platform/settings/ui/Config.tsx` 2154 × 28 — React-Compiler output
+   (`grep -c '_c('` before assuming hand-editable), and `configGroups.test.ts:167`
+   reads it as source text.
+4. `src/providers/ui/ProviderManager.tsx` 3101 × 17 — has a 1537-line test, which
+   is the best safety net of any remaining candidate. **Best next target.**
+5. `src/tools/BashTool/BashTool.tsx` 1443 × 24, `src/agent/compact/stableStubState.ts`
+   1529 × 21, `src/tools/AgentTool/AgentTool.tsx` 1467 × 21.
 
-**The reason nobody had split bashPermissions was a false constraint.** Four
-comments (`bashPermissions.ts:80-88`, `:534-535`, `:1332-1333`,
-`pathValidation.ts:1155-1163`) said the file sat on Bun's `feature()` **DCE
-complexity cliff**, and that removing ~80 lines would silently fold
-`feature('BASH_CLASSIFIER')` to `false` and drop every `pendingClassifierCheck`
-spread — citing five upstream incidents (PR #21075 ×3, #21503 ×2) and a
-`bun-feature-dce-cliff.md` memory that **does not exist in this fork**. That
-constraint is upstream's: `preProcessSources`
-(`scripts/build/build.ts:137-164`) folds `feature()` with a **regex over the
-source text**, not Bun's native evaluator, because Bun ≥1.3.9 resolves
-`bun:bundle` in C++ before plugins. A regex has no per-function budget, so file
-size and import-alias count cannot affect the fold. Verified by deleting exactly
-the ~90 lines the comment named; the fold held. All four comments are corrected.
+**Big but nearly frozen — low payoff, do NOT start here:** `pluginLoader.ts`
+3307 × 5, `bridgeMain.ts` 2974 × 6 (feature-gated off), `platform/bash/ast.ts`
+2679 × 4, `marketplaceManager.ts` 2648 × 6, `agent/messages/normalize.ts`
+2613 × 6, `native-ts/yoga-layout/index.ts` 2578 × 2 (a port that must mirror
+upstream).
 
-**The fold gate, if you ever need to prove a fold went the right way:**
+### Two files that must not become barrels
+
+`REPL.tsx` exports 3 symbols and `PromptInput.tsx` exports 1. A barrel exists
+for a WIDE surface (`claude.ts` re-exports ~20 names); what those two
+directories already use is **composition root + siblings**
+(`repl/controllers/`, `repl/hooks/`, the 23 flat files in `prompt-input/`), and
+that is what to continue. On top of that, `src/agent/repl/REPL.hooksOrder.test.ts:29`
+`readFileSync`s `REPL.tsx` and asserts the literal `"if (screen === 'transcript') {"`
+— a barrel fails that on its first assertion.
+
+### One file that is not a big file at all
+
+`src/providers/shims/claude/streaming.ts` is 2560 lines of which `queryModel`
+is **2093 (82%)**. There is no relocation available: only the four tail helpers
+(~155 lines) come out cleanly, and `shouldDeferLspTool` is what
+`lspDeferLatch.test.ts:53` reads as source text. Splitting it is a rewrite.
+
+## The four traps a split hits here that a normal refactor does not
+
+- **Some tests read source files as TEXT.** The full list as of 2026-09-14:
+  `REPL.hooksOrder.test.ts` → `REPL.tsx`; `autoBackground.test.ts` →
+  `config/defaults.ts`, `AgentTool.tsx`, `forkSubagent.ts`;
+  `lspDeferLatch.test.ts` → `streaming.ts`; `configGroups.test.ts` →
+  `Config.tsx`; `deferredToolsDelta.test.ts`; both `File{Edit,Write}Tool
+  .diagnostics.test.ts`; `exploreAgentRemoved.test.ts` → `scripts/build/build.ts`.
+  They stay green under a scoped run and break on the full one. Grep the
+  filename repo-wide before believing a scoped run.
+- **Benches use giants as "large file" fixtures, and a barrel makes them measure
+  nothing — silently.** Six named `config.ts` and one named `bashSecurity.ts`;
+  four named `state.ts`. No error, no empty result, just numbers for a file
+  that is 4% of what the bench thinks it is. Repoint them in the same commit
+  (`6c574def` is the worked example). `measure-outline-tokens.ts` samples by
+  size TIER, so it needs a same-tier replacement, not a rename — two of its
+  seven entries had already gone stale from the 2026-08 `runHeadless.ts` split.
+- **`verify:rules` goes yellow and the prose goes wrong.** Directory counts heal
+  with `bun run verify:rules --fix`, but the list of example barrels in
+  `code-design.md` and the module-map lines in `search-strategy.md` are prose
+  and do not. Update them in the branch (`b21c20b5`).
+- **The typecheck ratchet fingerprints include the file path**, so a split shows
+  as N new + N fixed. Prove it is a relocation (diff the *path-normalized
+  message multisets*) before refreshing. Since the backlog reached zero this is
+  usually moot — the Typecheck tool reports plain zero-new.
+
+## The recipe, as executed four times
+
+1. Grep the filename repo-wide (trap 1).
+2. **Write the characterization suite FIRST and keep it byte-identical** across
+   every extraction commit. Make one test pin the **exact export surface** —
+   that is the only thing that catches an over-trimmed barrel re-export, and it
+   is the failure the build and tsc both pass over. Break-and-restore every
+   assertion that guards a shared mutable.
+3. Move bodies and comments byte-identical; only import/export lines are new.
+4. Module-level `let`/Map/cache goes in exactly ONE module. Where two clusters
+   share one (`config`'s `lastReadFileStats` + `globalConfigWriteCount`,
+   `state`'s three turn-token vars), the owner exports a narrow accessor — that
+   is the only place new code is allowed.
+5. One commit per extraction, suite green at each.
+
+Worked proof that step 2 pays: during #129 an extraction over-trimmed a
+`checkPathConstraints` import — `bun run build` passed, typecheck passed, four
+characterization tests failed with `ReferenceError`.
+
+## The `feature()` fold gate
+
+If you need to prove a fold went the right way after moving `feature()` code:
 
     rm -rf dist/chunks && bun run build
     grep -o 'pendingClassifierCheck:buildPendingClassifierCheck' dist/chunks/*.mjs | wc -l   # 8
@@ -62,78 +126,23 @@ the ~90 lines the comment named; the fold held. All four comments are corrected.
 `grep -c` is WRONG here — it counts files-with-a-match and reports `1` on a
 healthy build. The `rm -rf` matters (3 generations are kept), and `dist/cli.mjs`
 is not the bundle. **No test can be this gate**: under `bun test` every flag
-reads `false`, so a test asserting the spread is present fails on a correct build.
+reads `false`.
 
-Two things this split taught that generalize:
+The old "DCE complexity cliff" constraint that blocked the BashTool split for
+months was **false and is disproven** — `preProcessSources`
+(`scripts/build/build.ts`) folds `feature()` with a regex over the source text,
+not Bun's evaluator, so file size and import count cannot affect the fold.
 
-- **The untouched-suite proof works, and the build does not substitute for it.**
-  Both files had 134 lines of test between them, so the suites (764 lines, 78
-  tests, all break-and-restore verified) were written FIRST and kept
-  byte-identical across all 8 extraction commits. During one extraction the
-  parent's `checkPathConstraints` import was over-trimmed: `bun run build`
-  passed, typecheck passed, four characterization tests failed with
-  `ReferenceError`.
+Two more things worth keeping from that split:
+
 - **`bashCommandIsSafeAsync_DEPRECATED`'s body never executes under `bun test`.**
   `ParsedCommand.parse` returns no tree-sitter analysis in the runner, so it
   always takes the `if (!tsAnalysis)` fallback — deleting a validator from the
-  async array changes no test outcome. Its ordered validator list was a verbatim
-  duplicate of the sync one; the three literals are now single shared consts, but
-  the two loops still are not, and nothing tests that path.
+  async array changes no test outcome.
+- **Prefer deleting a footgun over testing it.** A `replacesInputs?: boolean`
+  that defaulted to the leaking behavior had no test at any of its three call
+  sites; splitting it into `mergeReplacingLiveCache` removed the argument a
+  caller could forget.
 
-## New top offenders, measured 2026-08-14, re-ranked 2026-08-22
-
-Ranked by size × churn, since a big file only costs when people edit it. With
-BashTool done, the live list is `src/commands/insights.ts` (2832 × 8, **no test
-file at all**), `src/commands/plugin/ManagePlugins.tsx` (2218 × 8, 2 exports, no
-test) and `src/tools/PowerShellTool/pathValidation.ts` (2055 × 7). Then
-`readOnlyValidation.ts` (1924 × 5) and `src/platform/bridge/replBridge.ts`
-(2402 × 4).
-
-0. ~~`src/tools/BashTool/bashPermissions.ts` 2528 × 10 and `bashSecurity.ts` 2588 × 4~~
-   — **DONE 2026-08-22**, see the section above.
-1. ~~`src/tools/shared/codeOutline/scanSymbols.ts` — 3911 lines~~ — **DONE 2026-08-14**,
-   3911 → a 191-line barrel over 18 modules (`types` `detectLang` `internal`,
-   `mask/{core,languages}`, `clike/{types,detectors,specs,scan}`, `langs/*` with
-   css+html+xml grouped as `webMarkup.ts` and yaml/toml/properties+env/dockerfile/
-   makefile as `config.ts`). Largest module is now `mask/core.ts` at 600. Pure
-   relocation; `scanSymbols.test.ts` (2855 lines, one `describe` per language) was
-   **not touched** and stayed green — that untouched suite is what made a move this
-   size safe, and is the pattern to repeat. Two things the plan's range table got
-   wrong, both caught by a failing test: `BlockFrame` is shared by ruby AND lua (it
-   went to `internal.ts`, not `langs/ruby.ts`), and `findDocLineCLike` +
-   `RE_IDENT_START`/`RE_UPPER_START`/`RE_WORD_CHAR` needed wider export than
-   "C-like engine only" implied. This is also where the tree-sitter work in
-   [[symbol-parser-options-researched]] now lands — `langs/` is the seam for it.
-2. `src/agent/repl/REPL.tsx` 3160 × **36** — highest churn in the repo even after 11e took
-   it 4369→3145; the controllers came out, the composition did not.
-3. `src/terminal/prompt-input/PromptInput.tsx` 2568 × **30**, one export, NOT
-   React-Compiler output (so hand-splittable — check `grep -c '_c('` before assuming).
-4. `src/tools/FileReadTool/FileReadTool.ts` 2440 × 24 and
-   `src/providers/shims/claude/streaming.ts` 2479 × 21 — the two hot paths; streaming.ts is
-   the 11j leftover (65% of the split `claude/` dir).
-5. `src/providers/ui/ProviderManager.tsx` 3114 × 14.
-
-**Big but nearly frozen — low payoff, do NOT start here:** `src/plugins/pluginLoader.ts`
-3307, `src/platform/bash/ast.ts` 2679, `src/plugins/marketplaceManager.ts` 2648,
-`src/agent/messages/normalize.ts` 2613, `src/platform/config/config.ts` 2268 (56 exports)
-— all 1 commit in 6 months. `src/native-ts/yoga-layout/index.ts` 2578 is a port that
-must mirror upstream, and `src/platform/bridge/bridgeMain.ts` 2975 is still 11l.
-
-## Two traps a file split hits here that a normal refactor does not
-
-- **Some tests read source files as TEXT.** `stableStubState.eviction-cache-break.test.ts`
-  `readFileSync`s the production file and asserts on literal call strings, so
-  moving the code makes it fail even though behavior is identical — and it is
-  invisible to a test run scoped to the directory you edited. Grep the whole repo
-  for the filename you are splitting before believing a scoped run is green.
-- **The typecheck ratchet fingerprints include the file path**, so a split shows
-  up as N new + N fixed. That is the documented refresh case, but prove it is a
-  relocation before refreshing: capture `tsc` at HEAD (a worktree outside the
-  repo, `node_modules` symlinked) and diff the **path-normalized message
-  multisets**, not the counts. The 2026-08-07 split came back 2841→2837 with zero
-  new error kinds; the handful that looked new were the same mismatch printed with
-  a different union-member order or diagnostic code. (Those two figures are the
-  split branch pre-merge — `main` reads 2820 the same day. See
-  [[typecheck-backlog-shape]] before citing any absolute total.)
-
-See also [[coding-gotchas-go-in-rules-not-memory]], [[typecheck-backlog-shape]].
+See also [[coding-gotchas-go-in-rules-not-memory]], [[typecheck-backlog-shape]],
+[[pr-129-lost-to-force-push]].
