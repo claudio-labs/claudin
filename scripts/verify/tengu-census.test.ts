@@ -46,15 +46,34 @@ describe('scanRegions', () => {
     expect(regionAt(source, 'TAIL')).toBe(REGION_CODE)
   })
 
-  test('an apostrophe in prose does not swallow the rest of the file', () => {
-    // A single quote never spans a newline, so the bail must fire at the \n.
-    const source = ["const a = 1 // it's fine", 'const AFTER = 2'].join('\n')
-    expect(regionAt(source, 'AFTER')).toBe(REGION_CODE)
+  test('an apostrophe in JSX text does not swallow the rest of the file', () => {
+    // JSX text is code, not a string literal, so a bare apostrophe in it opens
+    // a quote the scanner will never see closed. A single quote cannot span a
+    // newline, so the scan has to bail at the \n — otherwise everything down to
+    // the next apostrophe anywhere in the file reads as one string literal.
+    //
+    // Deliberately NOT written as `// it's fine`: an apostrophe inside a line
+    // comment is consumed by the comment branch and never reaches the string
+    // branch at all, so that shape passes with the bail deleted.
+    const source = [
+      "const el = <Text>don't stop</Text>",
+      '// tengu_after_apostrophe',
+      "const another = 'x'",
+    ].join('\n')
+    expect(regionAt(source, 'tengu_after_apostrophe')).toBe(REGION_COMMENT)
   })
 
   test('a character class hides the terminating slash of a regex', () => {
-    const source = 'const re = /[/]x/g; const AFTER = 1'
-    expect(regionAt(source, 'AFTER')).toBe(REGION_CODE)
+    // `/[/]won't/` ends at the FOURTH slash, not the second. Terminate it early
+    // and the rest of the pattern is read as code, where the apostrophe opens a
+    // string that runs to the next quote — which is the one meant to OPEN the
+    // target literal. The token then lands outside any string.
+    //
+    // The token has to sit on the same line: a mis-parse that ends at the
+    // newline is absorbed by the string scanner's own bail, and the assertion
+    // passes with the class tracking deleted.
+    const source = "const re = /[/]won't/g; const x = 'tengu_target'"
+    expect(regionAt(source, 'tengu_target')).toBe(REGION_STRING)
   })
 })
 
