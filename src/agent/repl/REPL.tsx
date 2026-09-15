@@ -239,7 +239,6 @@ import { useModelMigrationNotifications } from 'src/platform/notifications/useMo
 import { useTeammateLifecycleNotification } from 'src/platform/notifications/useTeammateShutdownNotification.js';
 import { useFastModeNotification } from 'src/platform/notifications/useFastModeNotification.js';
 import type { HookProgress } from 'src/shared/types/hooks.js';
-import { TungstenLiveMonitor } from 'src/tools/TungstenTool/TungstenLiveMonitor.js';
 import { CompanionSprite, CompanionFloatingBubble, MIN_COLS_FOR_FULL_SPRITE } from 'src/terminal/buddy/CompanionSprite.js';
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js';
 // Session manager removed - using AppState now

@@ -549,9 +549,6 @@ export type GlobalConfig = {
   // Example: { "git.corp.com": "gitlab", "code.corp.com": "gitea" }
   prStatusHosts?: Record<string, 'github' | 'gitlab' | 'gitea' | 'none'>
 
-  // Tmux live panel visibility (internal-only, toggled via Enter on tmux pill)
-  tungstenPanelVisible?: boolean
-
   // Cached org-level fast mode status from the API.
   // Used to detect cross-session changes and notify users.
   penguinModeOrgEnabled?: boolean

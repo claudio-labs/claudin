@@ -166,37 +166,10 @@ export type AttributionState = {
   escapeCountAtLastCommit: number
 }
 
-/**
- * Summary of Claude's contribution for a commit.
- */
-export type AttributionSummary = {
-  claudePercent: number
-  claudeChars: number
-  humanChars: number
-  surfaces: string[]
-}
-
-/**
- * Per-file attribution details for git notes.
- */
-export type FileAttribution = {
-  claudeChars: number
-  humanChars: number
-  percent: number
-  surface: string
-}
-
-/**
- * Full attribution data for git notes JSON.
- */
-export type AttributionData = {
-  version: 1
-  summary: AttributionSummary
-  files: Record<string, FileAttribution>
-  surfaceBreakdown: Record<string, { claudeChars: number; percent: number }>
-  excludedGenerated: string[]
-  sessions: string[]
-}
+// The git-notes JSON shape — AttributionData, AttributionSummary and
+// FileAttribution — went with the writer that produced it. Nothing in this fork
+// writes a git note or reads one back; what survives here is the per-session
+// character accounting that the attribution TEXTS are derived from.
 
 /**
  * Get the current client surface from environment.

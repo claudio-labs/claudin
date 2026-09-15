@@ -317,45 +317,6 @@ export type AppState = DeepImmutable<{
   activeGoal?: ActiveGoalState
   // Outcome of the most recently cleared goal (drives the one-time notice).
   lastGoalResult?: GoalResultState
-  tungstenActiveSession?: {
-    sessionName: string
-    socketName: string
-    target: string // The tmux target (e.g., "session:window.pane")
-  }
-  tungstenLastCapturedTime?: number // Timestamp when frame was captured for model
-  tungstenLastCommand?: {
-    command: string // The command string to display (e.g., "Enter", "echo hello")
-    timestamp: number // When the command was sent
-  }
-  // Sticky tmux panel visibility — mirrors globalConfig.tungstenPanelVisible for reactivity.
-  tungstenPanelVisible?: boolean
-  // Transient auto-hide at turn end — separate from tungstenPanelVisible so the
-  // pill stays in the footer (user can reopen) but the panel content doesn't take
-  // screen space when idle. Cleared on next Tmux tool use or user toggle. NOT persisted.
-  tungstenPanelAutoHidden?: boolean
-  // REPL tool VM context - persists across REPL calls for state sharing
-  replContext?: {
-    vmContext: import('vm').Context
-    registeredTools: Map<
-      string,
-      {
-        name: string
-        description: string
-        schema: Record<string, unknown>
-        handler: (args: Record<string, unknown>) => Promise<unknown>
-      }
-    >
-    console: {
-      log: (...args: unknown[]) => void
-      error: (...args: unknown[]) => void
-      warn: (...args: unknown[]) => void
-      info: (...args: unknown[]) => void
-      debug: (...args: unknown[]) => void
-      getStdout: () => string
-      getStderr: () => string
-      clear: () => void
-    }
-  }
   teamContext?: {
     teamName: string
     teamFilePath: string

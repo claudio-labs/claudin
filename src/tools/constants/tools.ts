@@ -112,7 +112,6 @@ export const IN_PROCESS_TEAMMATE_ALLOWED_TOOLS = new Set([
  * - TaskOutputTool: Blocked to prevent recursion
  * - ExitPlanModeTool: Plan mode is a main thread abstraction.
  * - TaskStopTool: Requires access to main thread task state.
- * - TungstenTool: Uses singleton virtual terminal abstraction that conflicts between agents.
  *
  * ENABLE LATER (NEED WORK):
  * - MCPTool: TBD
