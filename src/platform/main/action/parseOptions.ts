@@ -259,9 +259,6 @@ export async function parseActionOptions(
 
   const agentsJson = options.agents;
   const agentCli = options.agent;
-  if (feature('BG_SESSIONS') && agentCli) {
-    process.env.CLAUDIN_AGENT = agentCli;
-  }
 
   let outputFormat = options.outputFormat;
   let inputFormat = options.inputFormat;

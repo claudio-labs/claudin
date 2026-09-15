@@ -74,11 +74,10 @@ export type RunActionSetupResult = {
 };
 
 export async function runActionSetup(input: RunActionSetupInput): Promise<RunActionSetupResult> {
-  const { options, ctx, permissionMode, allowDangerouslySkipPermissions, sessionId } = input;
+  const { ctx, permissionMode, allowDangerouslySkipPermissions, sessionId } = input;
   logForDebugging('[STARTUP] Running setup()...');
   const setupStart = Date.now();
   const { setup } = await import('src/platform/setup.js');
-  const messagingSocketPath = feature('UDS_INBOX') ? (options as { messagingSocketPath?: string }).messagingSocketPath : undefined;
   const preSetupCwd = getCwd();
   if (process.env.CLAUDE_CODE_ENTRYPOINT !== 'local-agent') {
     initBuiltinPlugins();
@@ -93,7 +92,6 @@ export async function runActionSetup(input: RunActionSetupInput): Promise<RunAct
     ctx.tmuxEnabled,
     sessionId ? validateUuid(sessionId) : undefined,
     ctx.worktreePRNumber,
-    messagingSocketPath,
   );
   const commandsPromise = ctx.worktreeEnabled ? null : getCommands(preSetupCwd);
   const agentDefsPromise = ctx.worktreeEnabled ? null : getAgentDefinitionsWithOverrides(preSetupCwd);
@@ -132,16 +130,9 @@ export type RunActionPostSetupResult = {
 };
 
 export async function runActionPostSetup(input: RunActionPostSetupInput): Promise<RunActionPostSetupResult> {
-  const { options, ctx, outputFormat, fallbackModel, preSetupCwd, commandsPromise, agentDefsPromise } = input;
+  const { options, ctx, fallbackModel, preSetupCwd, commandsPromise, agentDefsPromise } = input;
 
-  // Replay user messages into stream-json only when the socket was
-  // explicitly requested.
-  let effectiveReplayUserMessages = !!(options as { replayUserMessages?: boolean }).replayUserMessages;
-  if (feature('UDS_INBOX')) {
-    if (!effectiveReplayUserMessages && outputFormat === 'stream-json') {
-      effectiveReplayUserMessages = !!(options as { messagingSocketPath?: string }).messagingSocketPath;
-    }
-  }
+  const effectiveReplayUserMessages = !!(options as { replayUserMessages?: boolean }).replayUserMessages;
 
   if (getIsNonInteractiveSession()) {
     applyConfigEnvironmentVariables();

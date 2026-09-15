@@ -52,7 +52,6 @@ exports[`slash-command registry — characterization the registered bindings mat
   "memory",
   "model",
   "outputStyle",
-  "peersCmd",
   "permissions",
   "plan",
   "plugin",
@@ -139,13 +138,6 @@ exports[`slash-command registry — characterization the flag-gated command tabl
       "WORKFLOW_SCRIPTS",
     ],
     "specifier": "../tools/WorkflowTool/createWorkflowCommand.js",
-  },
-  {
-    "binding": "peersCmd",
-    "flags": [
-      "UDS_INBOX",
-    ],
-    "specifier": "./peers/index.js",
   },
   {
     "binding": "proactive",

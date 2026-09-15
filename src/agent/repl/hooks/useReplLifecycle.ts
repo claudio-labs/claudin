@@ -7,32 +7,26 @@
 //   1. Prevent macOS from sleeping while Claude is working (`startPreventSleep`/
 //      `stopPreventSleep`), keyed on `(isLoading, isWaitingForApproval,
 //      isShowingLocalJSXCommand)`.
-//   2. Push session activity to the PID file for `claude ps` (gated on
-//      `feature('BG_SESSIONS')`), keyed on the derived `(sessionStatus,
-//      waitingFor)` pair.
+//   2. Push session activity to the PID file for `claude ps`. Removed together
+//      with the background-sessions build flag it was gated on, which never
+//      opened in this fork.
 //
-// Both depend on the same upstream state (`isLoading`, `isWaitingForApproval`,
-// `isShowingLocalJSXCommand`, plus the permission/sandbox queues that feed
-// `waitingFor`). Collapsing them into one hook keeps the derivation of
-// `sessionStatus`/`waitingFor` adjacent to its only consumers, and the hook
-// returns those two values so REPL.tsx can still pass them to `useTabStatus`
-// and the spinner UI.
+// What remains is the sleep effect plus the derivation of `sessionStatus` /
+// `waitingFor`, which the hook returns so REPL.tsx can still pass them to
+// `useTabStatus` and the spinner UI.
 //
 // IMPORTANT — hook order: REPL.tsx invokes `useReplLifecycle(...)` at exactly
 // the same point in the component body where the original two effects lived
 // (between `titleIsAnimating` and `useTabStatus(...)`). React's Rules of Hooks
-// require a stable call order, so this single call replaces TWO effects — the
-// net change to the hook-call sequence is one fewer hook (-1). The startup-
-// checks gate (REPL.tsx ~line 1207) is intentionally NOT consolidated here:
+// require a stable call order, so this single call replaces TWO effects. The
+// startup-checks gate (REPL.tsx ~line 1207) is intentionally NOT consolidated here:
 // it lives much later, after dozens of other hooks (state, refs, callbacks)
 // declared between, so moving it would shift those hooks' relative position
 // and violate hook order.
 
 import { useEffect } from 'react';
 import type { TabStatusKind } from 'src/terminal/ink/hooks/use-tab-status.js';
-import { feature } from 'bun:bundle';
 import { startPreventSleep, stopPreventSleep } from 'src/platform/preventSleep.js';
-import { updateSessionActivity } from 'src/sessions/concurrentSessions.js';
 import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js';
 
 export interface UseReplLifecycleDeps {
@@ -90,17 +84,6 @@ export function useReplLifecycle(deps: UseReplLifecycleDeps): UseReplLifecycleRe
           : isShowingLocalJSXCommand
             ? 'dialog open'
             : 'input needed';
-
-  // Push status to the PID file for `claude ps`. Fire-and-forget; ps falls
-  // back to transcript-tail derivation when this is missing/stale.
-  useEffect(() => {
-    if (feature('BG_SESSIONS')) {
-      void updateSessionActivity({
-        status: sessionStatus,
-        waitingFor,
-      });
-    }
-  }, [sessionStatus, waitingFor]);
 
   return { sessionStatus, waitingFor };
 }

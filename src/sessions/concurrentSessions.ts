@@ -1,4 +1,3 @@
-import { feature } from 'bun:bundle'
 import { chmod, mkdir, readdir, readFile, unlink, writeFile } from 'fs/promises'
 import { join } from 'path'
 import {
@@ -16,33 +15,9 @@ import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { getAgentId } from 'src/agent/coordinator/teammate.js'
 
 export type SessionKind = 'interactive' | 'bg' | 'daemon' | 'daemon-worker'
-export type SessionStatus = 'busy' | 'idle' | 'waiting'
 
 function getSessionsDir(): string {
   return join(getClaudinConfigHomeDir(), 'sessions')
-}
-
-/**
- * Kind override from env. Set by the spawner (`claude --bg`, daemon
- * supervisor) so the child can register without the parent having to
- * write the file for it — cleanup-on-exit wiring then works for free.
- * Gated so the env-var string is DCE'd from external builds.
- */
-function envSessionKind(): SessionKind | undefined {
-  if (feature('BG_SESSIONS')) {
-    const k = process.env.CLAUDE_CODE_SESSION_KIND
-    if (k === 'bg' || k === 'daemon' || k === 'daemon-worker') return k
-  }
-  return undefined
-}
-
-/**
- * True when this REPL is running inside a `claude --bg` tmux session.
- * Exit paths (/exit, ctrl+c, ctrl+d) should detach the attached client
- * instead of killing the process.
- */
-export function isBgSession(): boolean {
-  return envSessionKind() === 'bg'
 }
 
 // registerSession() runs once per process in production but many times over a
@@ -56,8 +31,8 @@ let unsubscribeSessionSwitch: (() => void) | undefined
  * Write a PID file for this session and register cleanup.
  *
  * Registers all top-level sessions — interactive CLI, SDK (vscode, desktop,
- * typescript, python, -p), bg/daemon spawns — so `claude ps` sees everything
- * the user might be running. Skips only teammates/subagents, which would
+ * typescript, python, -p) — so concurrency counting sees everything the user
+ * might be running. Skips only teammates/subagents, which would
  * conflate swarm usage with genuine concurrency and pollute ps with noise.
  *
  * Returns true if registered, false if skipped.
@@ -66,7 +41,7 @@ let unsubscribeSessionSwitch: (() => void) | undefined
 export async function registerSession(): Promise<boolean> {
   if (getAgentId() != null) return false
 
-  const kind: SessionKind = envSessionKind() ?? 'interactive'
+  const kind: SessionKind = 'interactive'
   const dir = getSessionsDir()
   const pidFile = join(dir, `${process.pid}.json`)
 
@@ -90,16 +65,6 @@ export async function registerSession(): Promise<boolean> {
         startedAt: Date.now(),
         kind,
         entrypoint: process.env.CLAUDE_CODE_ENTRYPOINT,
-        ...(feature('UDS_INBOX')
-          ? { messagingSocketPath: process.env.CLAUDE_CODE_MESSAGING_SOCKET }
-          : {}),
-        ...(feature('BG_SESSIONS')
-          ? {
-              name: process.env.CLAUDIN_SESSION_NAME,
-              logPath: process.env.CLAUDIN_SESSION_LOG,
-              agent: process.env.CLAUDIN_AGENT,
-            }
-          : {}),
       }),
     )
     // --resume / /resume mutates getSessionId() via switchSession. Without
@@ -117,8 +82,8 @@ export async function registerSession(): Promise<boolean> {
 }
 
 /**
- * Update this session's name in its PID registry file so ListPeers
- * can surface it. Best-effort: silently no-op if name is falsy, the
+ * Update this session's name in its PID registry file. Best-effort:
+ * silently no-op if name is falsy, the
  * file doesn't exist (session not registered), or read/write fails.
  */
 async function updatePidFile(patch: Record<string, unknown>): Promise<void> {
@@ -153,19 +118,6 @@ export async function updateSessionBridgeId(
   bridgeSessionId: string | null,
 ): Promise<void> {
   await updatePidFile({ bridgeSessionId })
-}
-
-/**
- * Push live activity state for `claude ps`. Fire-and-forget from REPL's
- * status-change effect — a dropped write just means ps falls back to
- * transcript-tail derivation for one refresh.
- */
-export async function updateSessionActivity(patch: {
-  status?: SessionStatus
-  waitingFor?: string
-}): Promise<void> {
-  if (!feature('BG_SESSIONS')) return
-  await updatePidFile({ ...patch, updatedAt: Date.now() })
 }
 
 /**

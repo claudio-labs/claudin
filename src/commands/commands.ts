@@ -106,11 +106,6 @@ const ultraplan = feature('ULTRAPLAN')
   ? require('src/commands/ultraplan.js').default
   : null
 const torch = feature('TORCH') ? require('./torch.js').default : null
-const peersCmd = feature('UDS_INBOX')
-  ? (
-      require('./peers/index.js') as typeof import('./peers/index.js')
-    ).default
-  : null
 // NOTE: there is deliberately no `forkCmd` here. `FORK_SUBAGENT` ships true
 // (it gates the Agent tool's fork-by-default behaviour), but this fork never
 // received `src/commands/fork/`, so the require resolved to the build's
@@ -296,7 +291,6 @@ const COMMANDS = memoize((): Command[] => [
   hooks,
   exportCommand,
   sandboxToggle,
-  ...(peersCmd ? [peersCmd] : []),
   tasks,
   ...(workflowsCmd ? [workflowsCmd] : []),
   ...(agentWorkflowsCmd ? [agentWorkflowsCmd] : []),
