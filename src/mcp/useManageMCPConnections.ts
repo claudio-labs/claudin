@@ -32,10 +32,6 @@ import {
 import omit from 'lodash-es/omit.js'
 import reject from 'lodash-es/reject.js'
 import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
-import {
   dedupClaudeAiMcpServers,
   doesEnterpriseMcpConfigExist,
   filterMcpServersByPolicy,
@@ -489,35 +485,8 @@ export function useManageMCPConnections(
                   `Received tools/list_changed notification, refreshing tools`,
                 )
                 try {
-                  // Grab cached promise before invalidating to log previous count
-                  const previousToolsPromise = fetchToolsForClient.cache.get(
-                    client.name,
-                  )
                   fetchToolsForClient.cache.delete(client.name)
                   const newTools = await fetchToolsForClient(client)
-                  const newCount = newTools.length
-                  if (previousToolsPromise) {
-                    previousToolsPromise.then(
-                      (previousTools: Tool[]) => {
-                        logEvent('tengu_mcp_list_changed', {
-                          type: 'tools' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-                          previousCount: previousTools.length,
-                          newCount,
-                        })
-                      },
-                      () => {
-                        logEvent('tengu_mcp_list_changed', {
-                          type: 'tools' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-                          newCount,
-                        })
-                      },
-                    )
-                  } else {
-                    logEvent('tengu_mcp_list_changed', {
-                      type: 'tools' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-                      newCount,
-                    })
-                  }
                   updateServer({ ...client, tools: newTools })
                 } catch (error) {
                   logMCPError(
@@ -537,9 +506,6 @@ export function useManageMCPConnections(
                   client.name,
                   `Received prompts/list_changed notification, refreshing prompts`,
                 )
-                logEvent('tengu_mcp_list_changed', {
-                  type: 'prompts' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-                })
                 try {
                   fetchCommandsForClient.cache.delete(client.name)
                   const mcpPrompts = await fetchCommandsForClient(client)
@@ -565,9 +531,6 @@ export function useManageMCPConnections(
                   client.name,
                   `Received resources/list_changed notification, refreshing resources`,
                 )
-                logEvent('tengu_mcp_list_changed', {
-                  type: 'resources' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-                })
                 try {
                   fetchResourcesForClient.cache.delete(client.name)
                   const newResources = await fetchResourcesForClient(client)
@@ -813,9 +776,6 @@ export function useManageMCPConnections(
         else if (serverConfig.scope === 'dynamic') counts.plugin++
         else if (serverConfig.scope === 'claudeai') counts.claudeai++
       }
-      logEvent('tengu_mcp_servers', {
-        ...counts,
-      })
     }
 
     void loadAndConnectMcpConfigs()

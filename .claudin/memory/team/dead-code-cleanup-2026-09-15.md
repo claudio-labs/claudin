@@ -21,7 +21,35 @@ that line; `scripts/verify/tengu-census.ts` (new) enforces it by classifying
 Baseline 2026-09-15: 1654 → 1648 occurrences, events 1018 → 1000, 91 → 89
 distinct gate keys. Docs at `docs/tech/tengu-census/`.
 
-## Landed (9 commits, 105 files, −4212/+2522)
+## State at the end of 2026-09-15 — 19 commits, ~330 files, roughly −25k/+4k
+
+**Fases 0, 1 and 2 are COMPLETE; Fase 3 is most of the way.** Census moved
+1654 → ~1100 occurrences, events 983 → 169 across 27 files. The flag map lost
+`AGENT_TRIGGERS`, `KAIROS`, `PROACTIVE`, `UDS_INBOX`, `BG_SESSIONS` and
+`COMMIT_ATTRIBUTION`; eight names are still listed there awaiting the Fase 5
+sweep. `missing-imports-baseline.json` went 103 → 51, re-captured each round —
+**zero insertions is the signal that nothing broke**, deletions alone are fine.
+
+- **Fase 2** — CHICAGO_MCP (`computerUse/`, 15 files that only compiled because
+  DCE never walked into their `@ant/computer-use-*` imports), VOICE_MODE,
+  CONTEXT_COLLAPSE, WEB_BROWSER_TOOL, AGENT_TRIGGERS_REMOTE, MCP_SKILLS, DAEMON,
+  ABLATION_BASELINE, COWORKER_TYPE_TELEMETRY, UDS_INBOX, BG_SESSIONS,
+  KAIROS+PROACTIVE (the largest — 242 sites, two delegated passes),
+  COMMIT_ATTRIBUTION. Traps that held: `BriefTool/` is registered UNGATED and
+  serves live BRIDGE_MODE; `useInboxPoller.ts` was misfiled under
+  `terminal/voice/` and is the live swarm mailbox poller.
+- **Fase 3** — `scripts/migrations/strip-analytics/` (29 tests) removed ~815
+  call sites. See [[tests-observing-through-telemetry]] and
+  [[typescript-7-no-classic-compiler-api]].
+
+Still open: ~28 codemod refusals (try/catch bodies, `useEffect` bodies, the four
+member-calls inside `analytics/index.ts`), then deleting the `analytics/` (minus
+growthbook) and `telemetry/` slices **with their stub keys in the same commit**,
+then Fase 4a (audit the 84 surviving gate keys — a key being live is not the
+same as the branch it opens working), 4b (collapse growthbook, see
+[[growthbook-source-dead-stub-is-real]]) and 5 (rules, docs, baselines).
+
+## Originally landed (9 commits, 105 files, −4212/+2522)
 
 - **Fase 0** — the characterization net, all four suites validated by
   break-and-restore. See [[characterization-net-before-deletion]].

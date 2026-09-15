@@ -1,6 +1,4 @@
 import { c as _c } from "react-compiler-runtime";
-import React from 'react';
-import { logEvent } from 'src/platform/analytics/index.js';
 import { Box, Link, Text } from 'src/terminal/ink.js';
 import type { ExternalClaudeMdInclude } from 'src/memory/instructions/claudemd.js';
 import { saveCurrentProjectConfig } from 'src/platform/config/config.js';
@@ -18,22 +16,14 @@ export function ClaudeMdExternalIncludesDialog(t0: Props) {
     isStandaloneDialog,
     externalIncludes
   } = t0;
-  let t1: [];
-  if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t1 = [];
-    $[0] = t1;
-  } else {
-    t1 = $[0];
-  }
-  React.useEffect(_temp, t1);
+  // Slot $[0] held the removed mount-effect's dep array (analytics only). It
+  // stays allocated so _c(18) and every later $[i] keep their numbering.
   let t2;
   if ($[1] !== onDone) {
     t2 = (value: 'yes' | 'no') => {
       if (value === "no") {
-        logEvent("tengu_claude_md_external_includes_dialog_declined", {});
         saveCurrentProjectConfig(_temp2);
       } else {
-        logEvent("tengu_claude_md_external_includes_dialog_accepted", {});
         saveCurrentProjectConfig(_temp3);
       }
       onDone();
@@ -130,7 +120,4 @@ function _temp2(current: any) {
     hasClaudeMdExternalIncludesApproved: false,
     hasClaudeMdExternalIncludesWarningShown: true
   };
-}
-function _temp() {
-  logEvent("tengu_claude_md_includes_dialog_shown", {});
 }

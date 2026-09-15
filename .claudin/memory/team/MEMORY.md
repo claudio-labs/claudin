@@ -21,6 +21,9 @@
 - [Team memories still cite pre-reorg paths](memory-cites-pre-reorg-paths.md) — 23 files, 55 dead src/utils|services|components refs; Glob the basename, fix in place, don't clone the memory
 - [Harness "file modified" reminders can be stale mid-BUILD snapshots](stale-diagnostics-notifications.md) — they can quote the folded `feature()` tree and look like a killed build; grep one line before panicking
 - [Pin a feature from the BUNDLE before deleting it](characterization-net-before-deletion.md) — feature() is false outside the build; 2 of 4 new scanner tests were tautological; flip a shipped flag to prove the chain
+- [Removal passes take only what the build proves unreachable](removal-pass-only-provably-dead.md) — a reachable surface needs its own approval; leave type plumbing on live interfaces; one commit per phase
+- [Deleting telemetry hollows the tests that observed through it](tests-observing-through-telemetry.md) — sort into decision-record / redundant / telemetry-only; never leave an assertion proving nothing
+- [TypeScript 7 here has no classic compiler API](typescript-7-no-classic-compiler-api.md) — `ts.createSourceFile` is gone and it fails at RUNTIME; go lexical with refusals, or pay for typescript/unstable/sync
 
 ## Repo health
 - [De-fingerprinting round (feat/claudin-identity, 2026-08-15)](defingerprinting-branch-2026-08.md) — what shipped, the ONE lane that keeps upstream headers, and the two env clusters that must move as units, not piecemeal
@@ -39,7 +42,7 @@
 - ["Read it first" gate census 2026-09-04 — 3 false causes FIXED in PR #157](read-gate-false-refusals-census-2026-09.md) — 65 refusals/23 sessions; Edit mid-line, injected MEMORY.md, /resume ranges; headless -p still never seeds memory files
 
 ## Roadmap & major features
-- [Dead-code + tengu cleanup (branch, 2026-09-15)](dead-code-cleanup-2026-09-15.md) — Fases 0-1 landed (−4.2k lines); the census, the 5 phases left, and the 3 traps Fase 2 hits
+- [Dead-code + tengu cleanup (branch, 2026-09-15)](dead-code-cleanup-2026-09-15.md) — Fases 0-2 done + most of 3 (−25k lines, events 983→169); what is left, and the traps that held
 - [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — ROADMAP-11 exhausted; six barrels live; the fold gate, the re-measured offender list and the 4 traps a split hits
 - [PR #129's code vanished from main after merging](pr-129-lost-to-force-push.md) — a non-fast-forward push dropped it from GitHub too; recover via refs/pull/N/head, never `gh pr diff`
 - [Unified context-relief policy A/B (PR #156, 2026-09-03)](context-relief-unified-policy-ab.md) — cost −25%, uncached input −56%; a Read-only "re-reads" column lied — count every lookup tool

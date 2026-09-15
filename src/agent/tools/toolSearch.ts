@@ -14,10 +14,6 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import type { Tool } from 'src/tools/Tool.js'
 import {
   type ToolPermissionContext,
@@ -798,27 +794,6 @@ export function getDeferredToolsDelta(
 
   if (added.length === 0 && removed.length === 0) return null
 
-  // Diagnostic for the inc-4747 scan-finds-nothing bug. Round-1 fields
-  // (messagesLength/attachmentCount/dtdCount from #23167) showed 45.6% of
-  // events have attachments-but-no-DTD, but those numbers are confounded:
-  // subagent first-fires and compact-path scans have EXPECTED prior=0 and
-  // dominate the stat. callSite/querySource/attachmentTypesSeen split the
-  // buckets so the real main-thread cross-turn failure is isolable in BQ.
-  logEvent('tengu_deferred_tools_pool_change', {
-    addedCount: added.length,
-    removedCount: removed.length,
-    priorAnnouncedCount: announced.size,
-    messagesLength: messages.length,
-    attachmentCount,
-    dtdCount,
-    callSite: (scanContext?.callSite ??
-      'unknown') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    querySource: (scanContext?.querySource ??
-      'unknown') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    attachmentTypesSeen: [...attachmentTypesSeen]
-      .sort()
-      .join(',') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 
   return {
     addedNames: added.map(t => t.name).sort(),

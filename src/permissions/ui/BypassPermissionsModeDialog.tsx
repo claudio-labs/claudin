@@ -1,6 +1,4 @@
 import { c as _c } from "react-compiler-runtime";
-import React from 'react';
-import { logEvent } from 'src/platform/analytics/index.js';
 import { Box, Link, Newline, Text } from 'src/terminal/ink.js';
 import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js';
 import { updateSettingsForSource } from 'src/platform/settings/settings.js';
@@ -14,21 +12,14 @@ export function BypassPermissionsModeDialog(t0: Props) {
   const {
     onAccept
   } = t0;
-  let t1: [];
-  if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t1 = [];
-    $[0] = t1;
-  } else {
-    t1 = $[0];
-  }
-  React.useEffect(_temp, t1);
+  // Slot $[0] held the removed mount-effect's dep array (analytics only). It
+  // stays allocated so _c(7) and every later $[i] keep their numbering.
   let t2;
   if ($[1] !== onAccept) {
     t2 = function onChange(value: 'accept' | 'decline') {
       bb3: switch (value) {
         case "accept":
           {
-            logEvent("tengu_bypass_permissions_mode_dialog_accept", {});
             updateSettingsForSource("userSettings", {
               skipDangerousModePermissionPrompt: true
             });
@@ -80,7 +71,4 @@ export function BypassPermissionsModeDialog(t0: Props) {
 }
 function _temp2() {
   gracefulShutdownSync(0);
-}
-function _temp() {
-  logEvent("tengu_bypass_permissions_mode_dialog_shown", {});
 }

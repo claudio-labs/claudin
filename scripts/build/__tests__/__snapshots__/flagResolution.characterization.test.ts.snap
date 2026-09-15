@@ -324,12 +324,11 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
   },
   "tengu_herring_clock": {
     "defaults": [
-      "false",
       "true",
     ],
     "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 2,
-    "stockValue": false,
+    "sites": 1,
+    "stockValue": true,
   },
   "tengu_immediate_model_command": {
     "defaults": [

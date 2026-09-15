@@ -11,10 +11,6 @@ const teamMemPaths = feature('TEAMMEM')
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { isReplModeEnabled } from 'src/tools/REPLTool/constants.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -33,7 +29,6 @@ export const MAX_ENTRYPOINT_LINES = 200
 // ~125 chars/line at 200 lines. At p97 today; catches long-line indexes that
 // slip past the line cap (p100 observed: 197KB under 200 lines).
 export const MAX_ENTRYPOINT_BYTES = 25_000
-const AUTO_MEM_DISPLAY_NAME = 'auto memory'
 
 // UTF-8 byte constants for the byte-space cut below.
 const NEWLINE_BYTE = 0x0a
@@ -160,44 +155,6 @@ export async function ensureMemoryDirExists(memoryDir: string): Promise<void> {
       { level: 'debug' },
     )
   }
-}
-
-/**
- * Log memory directory file/subdir counts asynchronously.
- * Fire-and-forget — doesn't block prompt building.
- */
-function logMemoryDirCounts(
-  memoryDir: string,
-  baseMetadata: Record<
-    string,
-    | number
-    | boolean
-    | AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-  >,
-): void {
-  const fs = getFsImplementation()
-  void fs.readdir(memoryDir).then(
-    dirents => {
-      let fileCount = 0
-      let subdirCount = 0
-      for (const d of dirents) {
-        if (d.isFile()) {
-          fileCount++
-        } else if (d.isDirectory()) {
-          subdirCount++
-        }
-      }
-      logEvent('tengu_memdir_loaded', {
-        ...baseMetadata,
-        total_file_count: fileCount,
-        total_subdir_count: subdirCount,
-      })
-    },
-    () => {
-      // Directory unreadable — log without counts
-      logEvent('tengu_memdir_loaded', baseMetadata)
-    },
-  )
 }
 
 /**
@@ -362,15 +319,6 @@ export function buildMemoryPrompt(params: {
 
   if (entrypointContent.trim()) {
     const t = truncateEntrypointContent(entrypointContent)
-    const memoryType = displayName === AUTO_MEM_DISPLAY_NAME ? 'auto' : 'agent'
-    logMemoryDirCounts(memoryDir, {
-      content_length: t.byteCount,
-      line_count: t.lineCount,
-      was_truncated: t.wasLineTruncated,
-      was_byte_truncated: t.wasByteTruncated,
-      memory_type:
-        memoryType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
     lines.push(`## ${ENTRYPOINT_NAME}`, '', t.content)
   } else {
     lines.push(
@@ -448,7 +396,6 @@ export async function loadMemoryPrompt(): Promise<string | null> {
 
   if (feature('TEAMMEM')) {
     if (teamMemPaths!.isTeamMemoryEnabled()) {
-      const autoDir = getAutoMemPath()
       const teamDir = teamMemPaths!.getTeamMemPath()
       // Harness guarantees these directories exist so the model can write
       // without checking. The prompt text reflects this ("already exists").
@@ -458,14 +405,6 @@ export async function loadMemoryPrompt(): Promise<string | null> {
       // out from under the auto dir, add a second ensureMemoryDirExists call
       // for autoDir here.
       await ensureMemoryDirExists(teamDir)
-      logMemoryDirCounts(autoDir, {
-        memory_type:
-          'auto' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      })
-      logMemoryDirCounts(teamDir, {
-        memory_type:
-          'team' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      })
       return teamMemPrompts!.buildCombinedMemoryPrompt(
         extraGuidelines,
         skipIndex,
@@ -478,10 +417,6 @@ export async function loadMemoryPrompt(): Promise<string | null> {
     // Harness guarantees the directory exists so the model can write without
     // checking. The prompt text reflects this ("already exists").
     await ensureMemoryDirExists(autoDir)
-    logMemoryDirCounts(autoDir, {
-      memory_type:
-        'auto' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
     // Empty memory → compact stub (~400 tok) instead of the full taxonomy
     // (~3.7K). The full block loads automatically once the first memory exists.
     const build = hasExistingMemories(autoDir)
@@ -490,19 +425,5 @@ export async function loadMemoryPrompt(): Promise<string | null> {
     return build('auto memory', autoDir, extraGuidelines, skipIndex).join('\n')
   }
 
-  logEvent('tengu_memdir_disabled', {
-    disabled_by_env_var: isEnvTruthy(
-      process.env.CLAUDIN_DISABLE_AUTO_MEMORY,
-    ),
-    disabled_by_setting:
-      !isEnvTruthy(process.env.CLAUDIN_DISABLE_AUTO_MEMORY) &&
-      getInitialSettings().autoMemoryEnabled === false,
-  })
-  // Gate on the GB flag directly, not isTeamMemoryEnabled() — that function
-  // checks isAutoMemoryEnabled() first, which is definitionally false in this
-  // branch. We want "was this user in the team-memory cohort at all."
-  if (getFeatureValue_CACHED_MAY_BE_STALE('tengu_herring_clock', false)) {
-    logEvent('tengu_team_memdir_disabled', {})
-  }
   return null
 }

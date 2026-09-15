@@ -6,10 +6,6 @@
 import { feature } from 'bun:bundle'
 import { registerHookCallbacks } from 'src/platform/bootstrap/state.js'
 import type { HookInput, HookJSONOutput } from 'src/platform/entrypoints/agentSdkTypes.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { inputSchema as editInputSchema } from 'src/tools/FileEditTool/types.js'
 import { FileReadTool } from 'src/tools/FileReadTool/FileReadTool.js'
@@ -40,7 +36,6 @@ const memoryShapeTelemetry = feature('MEMORY_SHAPE_TELEMETRY')
   : null
 
 /* eslint-enable @typescript-eslint/no-require-imports */
-import { getSubagentLogName } from 'src/agent/coordinator/agentContext.js'
 
 /**
  * Extract the file path from a tool input for memdir detection.
@@ -150,57 +145,17 @@ async function handleSessionFileAccess(
 ): Promise<HookJSONOutput> {
   if (input.hook_event_name !== 'PostToolUse') return {}
 
-  const fileType = getSessionFileTypeFromInput(
-    input.tool_name,
-    input.tool_input,
-  )
-
-  const subagentName = getSubagentLogName()
-  const subagentProps = subagentName ? { subagent_name: subagentName } : {}
-
-  if (fileType === 'session_memory') {
-    logEvent('tengu_session_memory_accessed', { ...subagentProps })
-  } else if (fileType === 'session_transcript') {
-    logEvent('tengu_transcript_accessed', { ...subagentProps })
-  }
-
-  // Memdir access tracking
   const filePath = getFilePathFromInput(input.tool_name, input.tool_input)
-  if (filePath && isAutoMemFile(filePath)) {
-    logEvent('tengu_memdir_accessed', {
-      tool: input.tool_name as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      ...subagentProps,
-    })
 
-    switch (input.tool_name) {
-      case FILE_READ_TOOL_NAME:
-        logEvent('tengu_memdir_file_read', { ...subagentProps })
-        break
-      case FILE_EDIT_TOOL_NAME:
-        logEvent('tengu_memdir_file_edit', { ...subagentProps })
-        break
-      case FILE_WRITE_TOOL_NAME:
-        logEvent('tengu_memdir_file_write', { ...subagentProps })
-        break
-    }
-  }
-
-  // Team memory access tracking
+  // Team memory writes wake the watcher so a change made through the tools is
+  // picked up without waiting for the next poll. The read arm is gone: it only
+  // ever reported.
   if (feature('TEAMMEM') && filePath && teamMemPaths!.isTeamMemFile(filePath)) {
-    logEvent('tengu_team_mem_accessed', {
-      tool: input.tool_name as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      ...subagentProps,
-    })
-
-    switch (input.tool_name) {
-      case FILE_READ_TOOL_NAME:
-        break
-      case FILE_EDIT_TOOL_NAME:
-        teamMemWatcher?.notifyTeamMemoryWrite()
-        break
-      case FILE_WRITE_TOOL_NAME:
-        teamMemWatcher?.notifyTeamMemoryWrite()
-        break
+    if (
+      input.tool_name === FILE_EDIT_TOOL_NAME ||
+      input.tool_name === FILE_WRITE_TOOL_NAME
+    ) {
+      teamMemWatcher?.notifyTeamMemoryWrite()
     }
   }
 

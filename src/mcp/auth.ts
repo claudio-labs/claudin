@@ -43,8 +43,6 @@ import { clearKeychainCache } from 'src/platform/secureStorage/macOsKeychainHelp
 import type { SecureStorageData } from 'src/platform/secureStorage/index.js'
 import { sleep } from 'src/shared/sleep.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
-import { logEvent } from 'src/platform/analytics/index.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
 import { buildRedirectUri, findAvailablePort } from 'src/mcp/oauthPort.js'
 import type { McpHTTPServerConfig, McpSSEServerConfig } from 'src/mcp/types.js'
 import { getLoggingSafeMcpBaseUrl } from 'src/mcp/utils.js'
@@ -724,20 +722,6 @@ export async function performMCPOAuthFlow(
 
   const flowAttemptId = randomUUID()
 
-  logEvent('tengu_mcp_oauth_flow_start', {
-    flowAttemptId:
-      flowAttemptId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    isOAuthFlow: true,
-    transportType:
-      serverConfig.type as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    ...(getLoggingSafeMcpBaseUrl(serverConfig)
-      ? {
-          mcpServerBaseUrl: getLoggingSafeMcpBaseUrl(
-            serverConfig,
-          ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        }
-      : {}),
-  })
 
   // Track whether we reached the token-exchange phase so the catch block can
   // attribute the failure reason correctly.
@@ -1025,19 +1009,6 @@ export async function performMCPOAuthFlow(
         logMCPDebug(serverName, `Token expires_in: ${savedTokens.expires_in}`)
       }
 
-      logEvent('tengu_mcp_oauth_flow_success', {
-        flowAttemptId:
-          flowAttemptId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        transportType:
-          serverConfig.type as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        ...(getLoggingSafeMcpBaseUrl(serverConfig)
-          ? {
-              mcpServerBaseUrl: getLoggingSafeMcpBaseUrl(
-                serverConfig,
-              ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-            }
-          : {}),
-      })
     } else {
       throw new Error('Unexpected auth result: ' + result)
     }
@@ -1103,25 +1074,6 @@ export async function performMCPOAuthFlow(
       }
     }
 
-    logEvent('tengu_mcp_oauth_flow_error', {
-      flowAttemptId:
-        flowAttemptId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      reason:
-        reason as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      error_code:
-        oauthErrorCode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      http_status:
-        httpStatus?.toString() as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      transportType:
-        serverConfig.type as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      ...(getLoggingSafeMcpBaseUrl(serverConfig)
-        ? {
-            mcpServerBaseUrl: getLoggingSafeMcpBaseUrl(
-              serverConfig,
-            ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          }
-        : {}),
-    })
     throw error
   }
 }

@@ -473,13 +473,4 @@ export function setCwd(path: string, relativeTo?: string): void {
   }
 
   setCwdState(physicalPath)
-  if (process.env.NODE_ENV !== 'test') {
-    try {
-      logEvent('tengu_shell_set_cwd', {
-        success: true,
-      })
-    } catch (_error) {
-      // Ignore logging errors to prevent test failures
-    }
-  }
 }

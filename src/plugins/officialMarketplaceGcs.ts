@@ -12,13 +12,9 @@ import axios from 'axios'
 import { chmod, mkdir, readFile, rename, rm, writeFile } from 'fs/promises'
 import { dirname, join, resolve, sep } from 'path'
 import { waitForScrollIdle } from 'src/platform/bootstrap/state.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { parseZipModes, unzipFile } from 'src/plugins/dxt/zip.js'
 import { errorMessage, getErrnoCode } from 'src/shared/errors.js'
-
-type SafeString = AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
 
 // CDN-fronted domain for the public GCS bucket (same bucket the native
 // binary ships from — nativeInstaller/download.ts:24 uses the raw GCS URL).
@@ -69,11 +65,7 @@ export async function fetchOfficialMarketplaceFromGcs(
   // until scroll settles is invisible to the user.
   await waitForScrollIdle()
 
-  const start = performance.now()
-  let outcome: 'noop' | 'updated' | 'failed' = 'failed'
   let sha: string | undefined
-  let bytes: number | undefined
-  let errKind: string | undefined
 
   try {
     // 1. Latest pointer — ~40 bytes, backend sets Cache-Control: no-cache,
@@ -97,7 +89,6 @@ export async function fetchOfficialMarketplaceFromGcs(
       () => null, // ENOENT — first fetch, proceed to download
     )
     if (currentSha === sha) {
-      outcome = 'noop'
       return sha
     }
 
@@ -109,7 +100,6 @@ export async function fetchOfficialMarketplaceFromGcs(
       timeout: 60_000,
     })
     const zipBuf = Buffer.from(zipResp.data)
-    bytes = zipBuf.length
     const files = await unzipFile(zipBuf)
     // fflate doesn't surface external_attr, so parse the central directory
     // ourselves to recover exec bits. Without this, hooks/scripts extract as
@@ -143,29 +133,13 @@ export async function fetchOfficialMarketplaceFromGcs(
     await rm(installLocation, { recursive: true, force: true })
     await rename(staging, installLocation)
 
-    outcome = 'updated'
     return sha
   } catch (e) {
-    errKind = classifyGcsError(e)
     logForDebugging(
       `Official marketplace GCS fetch failed: ${errorMessage(e)}`,
       { level: 'warn' },
     )
     return null
-  } finally {
-    // tengu_plugin_remote_fetch schema shared with the telemetry PR
-    // (.daisy/inc-5046/index.md) — adds source:'marketplace_gcs'. All string
-    // values below are static enums or a git SHA — not code/filepaths/PII.
-    logEvent('tengu_plugin_remote_fetch', {
-      source: 'marketplace_gcs' as SafeString,
-      host: 'downloads.claude.ai' as SafeString,
-      is_official: true,
-      outcome: outcome as SafeString,
-      duration_ms: Math.round(performance.now() - start),
-      ...(bytes !== undefined && { bytes }),
-      ...(sha && { sha: sha as SafeString }),
-      ...(errKind && { error_kind: errKind as SafeString }),
-    })
   }
 }
 

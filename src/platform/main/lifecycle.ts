@@ -5,12 +5,11 @@
 import { feature } from 'bun:bundle';
 import { profileCheckpoint } from 'src/platform/startupProfiler.js';
 import { getSystemContext } from 'src/agent/context.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { isAnalyticsDisabled } from 'src/platform/analytics/config.js';
 import { checkHasTrustDialogAccepted, getGlobalConfig, isAutoUpdaterDisabled, saveGlobalConfig } from 'src/platform/config/config.js';
 import { getContextWindowForModel } from 'src/agent/context/context.js';
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js';
-import { hasNodeOption, isBareMode, isEnvTruthy } from 'src/shared/envUtils.js';
+import { hasNodeOption, isEnvTruthy } from 'src/shared/envUtils.js';
 import { getIsGit, getWorktreeCount } from 'src/vcs/git/git.js';
 import { getGhAuthStatus } from 'src/platform/github/ghAuthStatus.js';
 import { logError } from 'src/shared/log.js';
@@ -38,7 +37,6 @@ import { eagerParseCliFlag } from 'src/platform/cliArgs.js';
 import { getInitialSettings, getManagedSettingsKeysForLogging, getSettingsForSource } from 'src/platform/settings/settings.js';
 import { logSkillsLoaded } from 'src/platform/telemetry/skillLoadedEvent.js';
 import { logPluginLoadErrors, logPluginsEnabledForSession } from 'src/platform/telemetry/pluginTelemetry.js';
-import type { ThinkingConfig } from 'src/agent/context/thinking.js';
 import { loadSettingSourcesFromFlag, loadSettingsFromFlag } from 'src/platform/main/helpers.js';
 
 /**
@@ -51,10 +49,6 @@ export function logManagedSettings(): void {
     const policySettings = getSettingsForSource('policySettings');
     if (policySettings) {
       const allKeys = getManagedSettingsKeysForLogging(policySettings);
-      logEvent('tengu_managed_settings_loaded', {
-        keyCount: allKeys.length,
-        keys: allKeys.join(',') as unknown as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      });
     }
   } catch {
     // Silently ignore errors - this is just for analytics
@@ -99,17 +93,6 @@ function getCertEnvVarTelemetry(): Record<string, boolean> {
 export async function logStartupTelemetry(): Promise<void> {
   if (isAnalyticsDisabled()) return;
   const [isGit, worktreeCount, ghAuthStatus] = await Promise.all([getIsGit(), getWorktreeCount(), getGhAuthStatus()]);
-  logEvent('tengu_startup_telemetry', {
-    is_git: isGit,
-    worktree_count: worktreeCount,
-    gh_auth_status: ghAuthStatus as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    sandbox_enabled: SandboxManager.isSandboxingEnabled(),
-    are_unsandboxed_commands_allowed: SandboxManager.areUnsandboxedCommandsAllowed(),
-    is_auto_bash_allowed_if_sandbox_enabled: SandboxManager.isAutoAllowBashIfSandboxedEnabled(),
-    auto_updater_disabled: isAutoUpdaterDisabled(),
-    prefers_reduced_motion: getInitialSettings().prefersReducedMotion ?? false,
-    ...getCertEnvVarTelemetry(),
-  });
 }
 
 // @[MODEL LAUNCH]: Consider any migrations you may need for model strings. See migrateSonnet1mToSonnet45.ts for an example.
@@ -223,95 +206,4 @@ export function initializeEntrypoint(isNonInteractive: boolean): void {
 
   // Set based on interactive status
   process.env.CLAUDE_CODE_ENTRYPOINT = isNonInteractive ? 'sdk-cli' : 'cli';
-}
-
-export async function logTenguInit({
-  hasInitialPrompt,
-  hasStdin,
-  verbose,
-  debug,
-  debugToStderr,
-  print,
-  outputFormat,
-  inputFormat,
-  numAllowedTools,
-  numDisallowedTools,
-  mcpClientCount,
-  worktreeEnabled,
-  skipWebFetchPreflight,
-  githubActionInputs,
-  dangerouslySkipPermissionsPassed,
-  permissionMode,
-  modeIsBypass,
-  allowDangerouslySkipPermissionsPassed,
-  systemPromptFlag,
-  appendSystemPromptFlag,
-  thinkingConfig,
-  assistantActivationPath,
-  isCoordinator,
-}: {
-  hasInitialPrompt: boolean;
-  hasStdin: boolean;
-  verbose: boolean;
-  debug: boolean;
-  debugToStderr: boolean;
-  print: boolean;
-  outputFormat: string;
-  inputFormat: string;
-  numAllowedTools: number;
-  numDisallowedTools: number;
-  mcpClientCount: number;
-  worktreeEnabled: boolean;
-  skipWebFetchPreflight: boolean | undefined;
-  githubActionInputs: string | undefined;
-  dangerouslySkipPermissionsPassed: boolean;
-  permissionMode: string;
-  modeIsBypass: boolean;
-  allowDangerouslySkipPermissionsPassed: boolean;
-  systemPromptFlag: 'file' | 'flag' | undefined;
-  appendSystemPromptFlag: 'file' | 'flag' | undefined;
-  thinkingConfig: ThinkingConfig;
-  assistantActivationPath: string | undefined;
-  isCoordinator: boolean;
-}): Promise<void> {
-  try {
-    logEvent('tengu_init', {
-      entrypoint: 'claude' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      hasInitialPrompt,
-      hasStdin,
-      verbose,
-      debug,
-      debugToStderr,
-      print,
-      outputFormat: outputFormat as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      inputFormat: inputFormat as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      numAllowedTools,
-      numDisallowedTools,
-      mcpClientCount,
-      worktree: worktreeEnabled,
-      skipWebFetchPreflight,
-      ...(githubActionInputs && {
-        githubActionInputs: githubActionInputs as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      dangerouslySkipPermissionsPassed,
-      permissionMode: permissionMode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      modeIsBypass,
-      allowDangerouslySkipPermissionsPassed,
-      thinkingType: thinkingConfig.type as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      ...(systemPromptFlag && {
-        systemPromptFlag: systemPromptFlag as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      ...(appendSystemPromptFlag && {
-        appendSystemPromptFlag: appendSystemPromptFlag as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      is_simple: isBareMode() || undefined,
-      is_coordinator: isCoordinator || undefined,
-      ...(assistantActivationPath && {
-        assistantActivationPath: assistantActivationPath as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      autoUpdatesChannel: (getInitialSettings().autoUpdatesChannel ?? 'latest') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    });
-  } catch (error) {
-    logError(error);
-  }
 }

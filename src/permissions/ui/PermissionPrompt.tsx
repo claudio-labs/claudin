@@ -3,7 +3,7 @@ import React, { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { KeybindingAction } from 'src/terminal/keybindings/types.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js';
 import { useSetAppState } from 'src/terminal/state/AppState.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { type OptionWithDescription, Select } from 'src/terminal/custom-select/select.js';
@@ -151,21 +151,17 @@ export function PermissionPrompt<T extends string>(t0: PermissionPromptProps<T>)
       if (type_0 === "accept") {
         if (acceptInputMode) {
           setAcceptInputMode(false);
-          logEvent("tengu_accept_feedback_mode_collapsed", analyticsProps);
         } else {
           setAcceptInputMode(true);
           setAcceptFeedbackModeEntered(true);
-          logEvent("tengu_accept_feedback_mode_entered", analyticsProps);
         }
       } else {
         if (type_0 === "reject") {
           if (rejectInputMode) {
             setRejectInputMode(false);
-            logEvent("tengu_reject_feedback_mode_collapsed", analyticsProps);
           } else {
             setRejectInputMode(true);
             setRejectFeedbackModeEntered(true);
-            logEvent("tengu_reject_feedback_mode_entered", analyticsProps);
           }
         }
       }
@@ -193,20 +189,6 @@ export function PermissionPrompt<T extends string>(t0: PermissionPromptProps<T>)
         const trimmedFeedback = rawFeedback.trim();
         if (trimmedFeedback) {
           feedback = trimmedFeedback;
-        }
-        const analyticsProps_0 = {
-          toolName: toolAnalyticsContext?.toolName as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          isMcp: toolAnalyticsContext?.isMcp ?? false,
-          has_instructions: !!trimmedFeedback,
-          instructions_length: trimmedFeedback?.length ?? 0,
-          entered_feedback_mode: option_0.feedbackConfig.type === "accept" ? acceptFeedbackModeEntered : rejectFeedbackModeEntered
-        };
-        if (option_0.feedbackConfig.type === "accept") {
-          logEvent("tengu_accept_submitted", analyticsProps_0);
-        } else {
-          if (option_0.feedbackConfig.type === "reject") {
-            logEvent("tengu_reject_submitted", analyticsProps_0);
-          }
         }
       }
       onSelect(value_1, feedback);
@@ -252,7 +234,6 @@ export function PermissionPrompt<T extends string>(t0: PermissionPromptProps<T>)
   let t7;
   if ($[31] !== onCancel || $[32] !== setAppState) {
     t7 = () => {
-      logEvent("tengu_permission_request_escape", {});
       setAppState(_temp);
       onCancel?.();
     };

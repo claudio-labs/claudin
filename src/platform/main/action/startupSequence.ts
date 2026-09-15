@@ -43,7 +43,7 @@ import { getInitialEffortSetting, parseEffortValue } from 'src/providers/effort/
 import { getInitialFastModeSetting, prefetchFastModeStatus, resolveFastModeStatusFromCache } from 'src/providers/fastMode.js';
 import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js';
 import { isInBundledMode } from 'src/platform/install/bundledMode.js';
-import { logManagedSettings, logSessionTelemetry, logStartupTelemetry, logTenguInit } from 'src/platform/main/lifecycle.js';
+import { logManagedSettings, logSessionTelemetry, logStartupTelemetry } from 'src/platform/main/lifecycle.js';
 import { createUserMessage } from 'src/agent/messages/messages.js';
 import { processSessionStartHooks } from 'src/sessions/sessionStart.js';
 import { prefetchCopilotModelCatalog } from 'src/providers/model/copilotModelCatalog.js';
@@ -210,7 +210,8 @@ export type RunMcpHooksAndTelemetryInput = {
   initOnly: boolean | undefined;
   init: boolean | undefined;
   maintenance: boolean | undefined;
-  // logTenguInit inputs
+  // Boot inputs kept on the contract for callers, but no longer read here —
+  // the startup event they fed was removed with the analytics call sites.
   prompt: string | undefined;
   inputPrompt: string | AsyncIterable<string>;
   verbose: boolean | undefined;
@@ -265,26 +266,9 @@ export function runMcpHooksAndTelemetry(
     initOnly,
     init,
     maintenance,
-    prompt,
-    inputPrompt,
-    verbose,
-    debug,
-    debugToStderr,
-    print,
-    outputFormat,
-    inputFormat,
-    allowedTools,
-    disallowedTools,
-    allMcpConfigs,
-    dangerouslySkipPermissions,
-    permissionMode,
-    allowDangerouslySkipPermissions,
-    systemPrompt,
-    appendSystemPrompt,
     toolPermissionContext,
     sessionNameArg,
   } = input;
-  const { coordinatorModeModule } = deps;
 
   // Prefetch MCP resources after trust dialog (this is where execution happens).
   // Interactive mode only: print mode defers connects until headlessStore exists
@@ -364,31 +348,6 @@ export function runMcpHooksAndTelemetry(
   });
   registerCleanup(async () => {
     logForDiagnosticsNoPII('info', 'exited');
-  });
-  void logTenguInit({
-    hasInitialPrompt: Boolean(prompt),
-    hasStdin: Boolean(inputPrompt),
-    verbose: verbose as boolean,
-    debug: debug as boolean,
-    debugToStderr: debugToStderr as boolean,
-    print: print ?? false,
-    outputFormat: outputFormat ?? 'text',
-    inputFormat: inputFormat ?? 'text',
-    numAllowedTools: allowedTools.length,
-    numDisallowedTools: disallowedTools.length,
-    mcpClientCount: Object.keys(allMcpConfigs).length,
-    worktreeEnabled: ctx.worktreeEnabled,
-    skipWebFetchPreflight: getInitialSettings().skipWebFetchPreflight,
-    githubActionInputs: process.env.GITHUB_ACTION_INPUTS,
-    dangerouslySkipPermissionsPassed: dangerouslySkipPermissions ?? false,
-    permissionMode,
-    modeIsBypass: permissionMode === 'bypassPermissions',
-    allowDangerouslySkipPermissionsPassed: allowDangerouslySkipPermissions,
-    systemPromptFlag: systemPrompt ? ((options as { systemPromptFile?: string }).systemPromptFile ? 'file' : 'flag') : undefined,
-    appendSystemPromptFlag: appendSystemPrompt ? ((options as { appendSystemPromptFile?: string }).appendSystemPromptFile ? 'file' : 'flag') : undefined,
-    thinkingConfig,
-    assistantActivationPath: undefined,
-    isCoordinator: feature('COORDINATOR_MODE') && coordinatorModeModule?.isCoordinatorMode() === true,
   });
 
   // Log context metrics once at initialization

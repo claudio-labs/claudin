@@ -54,8 +54,6 @@ import {
 import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getClaudeCodeUserAgent } from 'src/providers/transport/userAgent.js'
-import { logEvent } from 'src/platform/analytics/index.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
 import { getRetryDelay } from 'src/providers/transport/withRetry.js'
 import { scanForSecrets } from 'src/memory/teamSync/secretScanner.js'
 import {
@@ -658,11 +656,6 @@ async function readLocalTeamMemory(maxEntries: number | null): Promise<{
       `team-memory-sync: ${keys.length} local entries exceeds server cap of ${maxEntries}; ${dropped.length} file(s) will NOT sync: ${dropped.join(', ')}. Consider consolidating or removing some team memory files.`,
       { level: 'warn' },
     )
-    logEvent('tengu_team_mem_entries_capped', {
-      total_entries: keys.length,
-      dropped_count: dropped.length,
-      max_entries: maxEntries,
-    })
     const truncated: Record<string, string> = {}
     for (const key of keys.slice(0, maxEntries)) {
       truncated[key] = entries[key]!
@@ -915,16 +908,6 @@ export async function pushTeamMemory(
       `team-memory-sync: ${skippedSecrets.length} file(s) skipped due to detected secrets: ${summary}. Remove the secret(s) to enable sync for these files.`,
       { level: 'warn' },
     )
-    logEvent('tengu_team_mem_secret_skipped', {
-      file_count: skippedSecrets.length,
-      // Only log gitleaks rule IDs (not values, not paths — paths could
-      // leak repo structure). Comma-joined for compact single-field analytics.
-      rule_ids: skippedSecrets
-        .map(s => s.ruleId)
-        .join(
-          ',',
-        ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
   }
 
   // Hash each local entry once. The loop recomputes the delta each iteration

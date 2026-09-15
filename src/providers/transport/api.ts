@@ -11,10 +11,6 @@ import {
   checkStatsigFeatureGate_CACHED_MAY_BE_STALE,
   getFeatureValue_CACHED_MAY_BE_STALE,
 } from 'src/platform/analytics/growthbook.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { prefetchAllMcpResources } from 'src/mcp/client.js'
 import type { ScopedMcpServerConfig } from 'src/mcp/types.js'
 import { BashTool } from 'src/tools/BashTool/BashTool.js'
@@ -343,16 +339,6 @@ function logStripOnce(stripped: string[]): void {
 export function logAPIPrefix(systemPrompt: SystemPrompt): void {
   const [firstSyspromptBlock] = splitSysPromptPrefix(systemPrompt)
   const firstSystemPrompt = firstSyspromptBlock?.text
-  logEvent('tengu_sysprompt_block', {
-    snippet: firstSystemPrompt?.slice(
-      0,
-      20,
-    ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    length: firstSystemPrompt?.length ?? 0,
-    hash: (firstSystemPrompt
-      ? createHash('sha256').update(firstSystemPrompt).digest('hex')
-      : '') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 }
 
 /**
@@ -386,9 +372,6 @@ export function splitSysPromptPrefix(
 ): SystemPromptBlock[] {
   const useGlobalCacheFeature = shouldUseGlobalCacheScope()
   if (useGlobalCacheFeature && options?.skipGlobalCacheForSystemPrompt) {
-    logEvent('tengu_sysprompt_using_tool_based_cache', {
-      promptBlockCount: systemPrompt.length,
-    })
 
     // Filter out boundary marker, return blocks without global scope
     let attributionHeader: string | undefined
@@ -457,17 +440,8 @@ export function splitSysPromptPrefix(
       const dynamicJoined = dynamicBlocks.join('\n\n')
       if (dynamicJoined) result.push({ text: dynamicJoined, cacheScope: null })
 
-      logEvent('tengu_sysprompt_boundary_found', {
-        blockCount: result.length,
-        staticBlockLength: staticJoined.length,
-        dynamicBlockLength: dynamicJoined.length,
-      })
 
       return result
-    } else {
-      logEvent('tengu_sysprompt_missing_boundary_marker', {
-        promptBlockCount: systemPrompt.length,
-      })
     }
   }
   let attributionHeader: string | undefined
@@ -643,17 +617,6 @@ export async function logContextMetrics(
     nonMcpToolsTokens += roughTokenCountEstimation(jsonStringify(schema))
   }
 
-  logEvent('tengu_context_size', {
-    git_status_size: gitStatusSize,
-    claude_md_size: claudeMdSize,
-    total_context_size: totalContextSize,
-    project_file_count_rounded: fileCount,
-    mcp_tools_count: mcpToolsCount,
-    mcp_servers_count: mcpServersCount,
-    mcp_tools_tokens: mcpToolsTokens,
-    non_mcp_tools_count: nonMcpToolsCount,
-    non_mcp_tools_tokens: nonMcpToolsTokens,
-  })
 }
 
 // TODO: Generalize this to all tools
@@ -688,10 +651,6 @@ export function normalizeToolInput<T extends Tool>(
       // Replace \\; with \; (commonly needed for find -exec commands)
       normalizedCommand = normalizedCommand.replace(/\\\\;/g, '\\;')
 
-      // Logging for commands that are only echoing a string. This is to help us understand how often  Claude talks via bash
-      if (/^echo\s+["']?[^|&;><]*["']?$/i.test(normalizedCommand.trim())) {
-        logEvent('tengu_bash_tool_simple_echo', {})
-      }
 
       // Check for run_in_background (may not exist in schema if CLAUDIN_DISABLE_BACKGROUND_TASKS is set)
       const run_in_background =

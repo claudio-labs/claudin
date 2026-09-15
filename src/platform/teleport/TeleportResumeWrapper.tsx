@@ -1,6 +1,4 @@
 import { c as _c } from "react-compiler-runtime";
-import React, { useEffect } from 'react';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import type { TeleportRemoteResponse } from 'src/sessions/conversationRecovery.js';
 import type { CodeSession } from 'src/platform/teleport/api.js';
 import { type TeleportSource, useTeleportResume } from 'src/sessions/hooks/useTeleportResume.js';
@@ -36,23 +34,8 @@ export function TeleportResumeWrapper(t0: TeleportResumeWrapperProps) {
     error,
     selectedSession
   } = useTeleportResume(source);
-  let t2;
-  let t3;
-  if ($[0] !== source) {
-    t2 = () => {
-      logEvent("tengu_teleport_started", {
-        source: source as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
-    };
-    t3 = [source];
-    $[0] = source;
-    $[1] = t2;
-    $[2] = t3;
-  } else {
-    t2 = $[1];
-    t3 = $[2];
-  }
-  useEffect(t2, t3);
+  // Slots $[0]-$[2] held the removed mount-effect (analytics only). They stay
+  // allocated so _c(25) and every later $[i] keep their numbering.
   let t4;
   if ($[3] !== error || $[4] !== onComplete || $[5] !== onError || $[6] !== resumeSession) {
     t4 = async (session: CodeSession) => {
@@ -79,7 +62,6 @@ export function TeleportResumeWrapper(t0: TeleportResumeWrapperProps) {
   let t5;
   if ($[8] !== onCancel) {
     t5 = () => {
-      logEvent("tengu_teleport_cancelled", {});
       onCancel();
     };
     $[8] = onCancel;

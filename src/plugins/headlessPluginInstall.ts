@@ -9,7 +9,6 @@
  * ZIP creation on install and extraction on load transparently.
  */
 
-import { logEvent } from 'src/platform/analytics/index.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { withDiagnosticsTiming } from 'src/shared/diagLogs.js'
@@ -74,11 +73,6 @@ export async function installPluginsForHeadless(): Promise<boolean> {
   // it in known_marketplaces.json, reconciler diff sees it as upToDate, no clone.
   const declaredCount = Object.keys(getDeclaredMarketplaces()).length
 
-  const metrics = {
-    marketplaces_installed: 0,
-    delisted_count: 0,
-  }
-
   // Initialize from seedChanged so the caller (print.ts) calls
   // refreshPluginState() → clearCommandsCache/clearAgentDefinitionsCache
   // when seed registration added marketplaces. Without this, the caller
@@ -137,8 +131,6 @@ export async function installPluginsForHeadless(): Promise<boolean> {
         clearPluginCache('headlessPluginInstall: marketplaces reconciled')
         pluginsChanged = true
       }
-
-      metrics.marketplaces_installed = marketplacesChanged
     }
 
     // Zip cache: save marketplace JSONs for offline access on ephemeral containers.
@@ -150,7 +142,6 @@ export async function installPluginsForHeadless(): Promise<boolean> {
 
     // Delisting enforcement
     const newlyDelisted = await detectAndUninstallDelistedPlugins()
-    metrics.delisted_count = newlyDelisted.length
     if (newlyDelisted.length > 0) {
       pluginsChanged = true
     }
@@ -168,7 +159,5 @@ export async function installPluginsForHeadless(): Promise<boolean> {
   } catch (error) {
     logError(error)
     return false
-  } finally {
-    logEvent('tengu_headless_plugin_install', metrics)
   }
 }
