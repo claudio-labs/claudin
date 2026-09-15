@@ -58,7 +58,10 @@ describe('loadShippedFeatureFlags', () => {
     expect(Object.keys(flags).length).toBeGreaterThan(20)
     // Presence, not value: the value is build.ts's call to make.
     expect(flags).toHaveProperty('DUMP_SYSTEM_PROMPT')
-    expect(flags).toHaveProperty('MCP_SKILLS')
+    // A false-valued flag, to prove the parser does not drop one arm. Was
+    // MCP_SKILLS until the dead-flag sweep removed every disabled entry that
+    // gated a branch; the two left are off by design rather than by absence.
+    expect(flags).toHaveProperty('SERIAL_READ_NUDGE')
     for (const value of Object.values(flags)) expect(typeof value).toBe('boolean')
     // Both arms are represented, so a parser that collapsed to one is caught.
     expect(Object.values(flags)).toContain(true)

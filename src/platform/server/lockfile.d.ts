@@ -5,9 +5,9 @@
 // `const noop = () => null` plus one `export const <name> = noop` per imported
 // binding. Reachability varies and is NOT uniform: some call sites are
 // type-only (erased at emit), most sit behind a `feature()` flag that is off
-// or inside an `await import()` on a gated path, but the eager imports in
-// `src/commands/commands.ts` DO hit the no-op stub at runtime -- which is why
-// /upgrade and /extra-usage hang on the Login stub.
+// or inside an `await import()` on a gated path. The ones that ARE reached get
+// the no-op instead of the real module, so a call that looks like it does
+// something returns null.
 //
 // Same two conventions as `src/stubbed-modules.d.ts`: every export is `any`
 // (that is what a no-op stands for), and the names are listed EXPLICITLY so a

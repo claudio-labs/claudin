@@ -474,22 +474,16 @@ export function clearCommandsCache(): void {
 }
 
 /**
- * Filter AppState.mcp.commands to MCP-provided skills (prompt-type,
- * model-invocable, loaded from MCP). These live outside getCommands() so
- * callers that need MCP skills in their skill index thread them through
- * separately.
+ * MCP-provided skills, filtered out of AppState.mcp.commands.
+ *
+ * Always empty: discovering skills from an MCP server needed
+ * `src/skills/mcpSkills.ts`, which this fork never received. Kept as a
+ * function because `skill-bash-gates.ts` threads the result into its skill
+ * index and reads better asking for the list than special-casing its absence.
  */
 export function getMcpSkillCommands(
-  mcpCommands: readonly Command[],
+  _mcpCommands: readonly Command[],
 ): readonly Command[] {
-  if (feature('MCP_SKILLS')) {
-    return mcpCommands.filter(
-      cmd =>
-        cmd.type === 'prompt' &&
-        cmd.loadedFrom === 'mcp' &&
-        !cmd.disableModelInvocation,
-    )
-  }
   return []
 }
 
