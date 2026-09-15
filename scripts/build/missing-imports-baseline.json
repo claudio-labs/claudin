@@ -1,5 +1,4 @@
 [
-  "../../agent/attributionHooks.js",
   "../../agent/compact/reactiveCompact.js",
   "../../platform/jobs/classifier.js",
   "../../server/backends/dangerousBackend.js",
@@ -21,8 +20,6 @@
   "../../tools/SnipTool/prompt.js",
   "../../tools/WorkflowTool/WorkflowPermissionRequest.js",
   "../../tools/WorkflowTool/WorkflowTool.js",
-  "../agent/attributionHooks.js",
-  "../attributionHooks.js",
   "../compact/snipProjection.js",
   "../environment-runner/main.js",
   "../headless/handlers/templateJobs.js",
@@ -50,7 +47,6 @@
   "./hunter.js",
   "./memoryShapeTelemetry.js",
   "./messages/SnipBoundaryMessage.js",
-  "./postCommitAttribution.js",
   "./runSkillGenerator.js",
   "./tasks/LocalWorkflowTask/LocalWorkflowTask.js",
   "./torch.js"

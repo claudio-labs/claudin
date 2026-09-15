@@ -439,18 +439,6 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
         resetTimingRefs();
       }
 
-      // Increment prompt count for attribution tracking and save snapshot
-      // The snapshot persists promptCount so it survives compaction
-      if (feature('COMMIT_ATTRIBUTION')) {
-        setAppState(prev => ({
-          ...prev,
-          attribution: incrementPromptCount(prev.attribution, snapshot => {
-            void recordAttributionSnapshot(snapshot).catch(error => {
-              logForDebugging(`Attribution: Failed to save snapshot: ${error}`);
-            });
-          })
-        }));
-      }
     }
 
     // Handle speculation acceptance

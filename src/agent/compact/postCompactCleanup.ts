@@ -155,11 +155,6 @@ export function runPostCompactCleanup(
     resetSentBashGitInstructions('')
   }
   clearBetaTracingState()
-  if (feature('COMMIT_ATTRIBUTION')) {
-    void import('../attributionHooks.js').then(m =>
-      m.sweepFileContentCache(),
-    )
-  }
   clearSessionMessagesCache()
 
   // Prompt-cache break detection holds diffable content hashes per source.

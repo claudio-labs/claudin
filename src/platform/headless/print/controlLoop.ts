@@ -131,16 +131,6 @@ export async function runControlLoop(
       // `set_proactive` branch below already uses.
       const requestSubtype: string = message.request.subtype
       if (message.request.subtype === 'interrupt') {
-        // Track escapes for attribution (internal-only feature)
-        if (feature('COMMIT_ATTRIBUTION')) {
-          setAppState(prev => ({
-            ...prev,
-            attribution: {
-              ...prev.attribution,
-              escapeCount: prev.attribution.escapeCount + 1,
-            },
-          }))
-        }
         if (ctx.abortController) {
           ctx.abortController.abort()
         }
@@ -476,18 +466,6 @@ export async function runControlLoop(
       uuid: message.uuid as UUID | undefined,
       priority: message.priority,
     })
-    // Increment prompt count for attribution tracking and save snapshot
-    // The snapshot persists promptCount so it survives compaction
-    if (feature('COMMIT_ATTRIBUTION')) {
-      setAppState(prev => ({
-        ...prev,
-        attribution: incrementPromptCount(prev.attribution, snapshot => {
-          void recordAttributionSnapshot(snapshot).catch(error => {
-            logForDebugging(`Attribution: Failed to save snapshot: ${error}`)
-          })
-        }),
-      }))
-    }
     void ctx.run()
   }
   ctx.inputClosed = true

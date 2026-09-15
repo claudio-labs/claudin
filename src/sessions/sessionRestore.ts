@@ -108,17 +108,6 @@ export function restoreSessionStateFromLog(
     })
   }
 
-  // Restore attribution state (internal-only feature)
-  if (
-    feature('COMMIT_ATTRIBUTION') &&
-    result.attributionSnapshots &&
-    result.attributionSnapshots.length > 0
-  ) {
-    attributionRestoreStateFromLog(result.attributionSnapshots, newState => {
-      setAppState(prev => ({ ...prev, attribution: newState }))
-    })
-  }
-
   // Restore TodoWrite state from transcript (SDK/non-interactive only).
   // Interactive mode uses file-backed v2 tasks, so AppState.todos is unused there.
   if (!isTodoV2Enabled() && result.messages && result.messages.length > 0) {
@@ -135,19 +124,14 @@ export function restoreSessionStateFromLog(
 
 /**
  * Compute restored attribution state from log snapshots.
- * Used for computing initial state before render (e.g., main.tsx --continue).
- * Returns undefined if attribution feature is disabled or no snapshots exist.
+ *
+ * Always undefined: restoring a snapshot was gated on COMMIT_ATTRIBUTION,
+ * which this build folds to false. Kept as an exported function because its
+ * callers thread the result into AppState, which still carries the field.
  */
 export function computeRestoredAttributionState(
-  result: ResumeResult,
+  _result: ResumeResult,
 ): AttributionState | undefined {
-  if (
-    feature('COMMIT_ATTRIBUTION') &&
-    result.attributionSnapshots &&
-    result.attributionSnapshots.length > 0
-  ) {
-    return restoreAttributionStateFromSnapshots(result.attributionSnapshots)
-  }
   return undefined
 }
 

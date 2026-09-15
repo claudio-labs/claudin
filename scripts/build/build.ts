@@ -25,7 +25,6 @@ const featureFlags: Record<string, boolean> = {
   DAEMON: false,                  // Background daemon process (stubbed in open build)
   ABLATION_BASELINE: false,       // A/B testing harness for eval experiments
   CONTEXT_COLLAPSE: false,        // Context collapsing optimization (stubbed)
-  COMMIT_ATTRIBUTION: false,      // Co-Authored-By metadata in git commits
   WEB_BROWSER_TOOL: false,        // Built-in browser automation (source not mirrored)
   CHICAGO_MCP: false,             // Computer-use MCP (native Swift modules stubbed)
   COWORKER_TYPE_TELEMETRY: false, // Telemetry for agent/coworker type classification
