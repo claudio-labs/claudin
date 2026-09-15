@@ -1,19 +1,11 @@
 /**
  * The shape of the session state — types only, no values, no state.
  *
- * `State` and the two listener/hook aliases are internal to ./state/; the five
- * public ones (ChannelEntry, AttributedCounter, SessionCronTask,
- * SessionWakeup, InvokedSkillInfo) are re-exported by the state.ts barrel.
+ * `State` and the two listener/hook aliases are internal to ./state/; the four
+ * public ones (ChannelEntry, SessionCronTask, SessionWakeup, InvokedSkillInfo)
+ * are re-exported by the state.ts barrel.
  */
 import type { BetaMessageStreamParams } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
-import type {
-  Attributes,
-  BasicTracerProvider,
-  LoggerProvider,
-  Meter,
-  MeterProvider,
-  logs,
-} from 'src/vendor/otel.js'
 import type {
   HookEvent,
   ModelUsage,
@@ -40,10 +32,6 @@ export type RuntimeStateChangeListener = () => void
 export type ChannelEntry =
   | { kind: 'plugin'; name: string; marketplace: string; dev?: boolean }
   | { kind: 'server'; name: string; dev?: boolean }
-
-export type AttributedCounter = {
-  add(value: number, additionalAttributes?: Attributes): void
-}
 
 export type State = {
   originalCwd: string
@@ -95,27 +83,10 @@ export type State = {
   sessionIngressToken: string | null | undefined
   oauthTokenFromFd: string | null | undefined
   apiKeyFromFd: string | null | undefined
-  // Telemetry state
-  meter: Meter | null
-  sessionCounter: AttributedCounter | null
-  locCounter: AttributedCounter | null
-  prCounter: AttributedCounter | null
-  commitCounter: AttributedCounter | null
-  costCounter: AttributedCounter | null
-  tokenCounter: AttributedCounter | null
-  codeEditToolDecisionCounter: AttributedCounter | null
-  activeTimeCounter: AttributedCounter | null
   statsStore: { observe(name: string, value: number): void } | null
   sessionId: SessionId
   // Parent session ID for tracking session lineage (e.g., plan mode -> implementation)
   parentSessionId: SessionId | undefined
-  // Logger state
-  loggerProvider: LoggerProvider | null
-  eventLogger: ReturnType<typeof logs.getLogger> | null
-  // Meter provider state
-  meterProvider: MeterProvider | null
-  // Tracer provider state
-  tracerProvider: BasicTracerProvider | null
   // Agent color state
   agentColorMap: Map<string, AgentColorName>
   agentColorIndex: number

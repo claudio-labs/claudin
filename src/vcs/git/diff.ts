@@ -1,5 +1,4 @@
 import { type StructuredPatchHunk, structuredPatch } from 'diff'
-import { getLocCounter } from 'src/platform/bootstrap/state.js'
 import { addToTotalLinesChanged } from 'src/agent/cost-tracker.js'
 import type { FileEdit } from 'src/tools/FileEditTool/types.js'
 import { count } from 'src/shared/data/array.js'
@@ -67,10 +66,6 @@ export function countLinesChanged(
   }
 
   addToTotalLinesChanged(numAdditions, numRemovals)
-
-  getLocCounter()?.add(numAdditions, { type: 'added' })
-  getLocCounter()?.add(numRemovals, { type: 'removed' })
-
 }
 
 export function getPatchFromContents({

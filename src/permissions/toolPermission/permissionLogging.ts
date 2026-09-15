@@ -1,10 +1,10 @@
 // Centralized logging for tool permission decisions.
-// All permission approve/reject events flow through logPermissionDecision(),
-// which fans out to code-edit metrics and the tool-use context decision store.
+// All permission approve/reject decisions flow through logPermissionDecision().
+// It used to fan out to a code-edit OTel counter as well; that counter had no
+// producer, so the only surviving consumer is the tool-use context decision
+// store, which the permission UI and the headless path both read back.
 import { feature } from 'bun:bundle'
-import { getCodeEditToolDecisionCounter } from 'src/platform/bootstrap/state.js'
 import type { Tool as ToolType, ToolUseContext } from 'src/tools/Tool.js'
-import { getLanguageName } from 'src/shared/text/cliHighlight.js'
 import type {
   PermissionApprovalSource,
   PermissionRejectionSource,
@@ -23,42 +23,7 @@ type PermissionDecisionArgs =
   | { decision: 'accept'; source: PermissionApprovalSource | 'config' }
   | { decision: 'reject'; source: PermissionRejectionSource | 'config' }
 
-const CODE_EDITING_TOOLS = ['Edit', 'Write', 'NotebookEdit']
-
-function isCodeEditingTool(toolName: string): boolean {
-  return CODE_EDITING_TOOLS.includes(toolName)
-}
-
-// Builds OTel counter attributes for code editing tools, enriching with
-// language when the tool's target file path can be extracted from input
-async function buildCodeEditToolAttributes(
-  tool: ToolType,
-  input: unknown,
-  decision: 'accept' | 'reject',
-  source: string,
-): Promise<Record<string, string>> {
-  // Derive language from file path if the tool exposes one (e.g., Edit, Write)
-  let language: string | undefined
-  if (tool.getPath && input) {
-    const parseResult = tool.inputSchema.safeParse(input)
-    if (parseResult.success) {
-      const filePath = tool.getPath(parseResult.data)
-      if (filePath) {
-        language = await getLanguageName(filePath)
-      }
-    }
-  }
-
-  return {
-    decision,
-    source,
-    tool_name: tool.name,
-    ...(language && { language }),
-  }
-}
-
-// Flattens structured source into a string label for the decision store and
-// the code-edit OTel counter
+// Flattens structured source into a string label for the decision store.
 function sourceToString(
   source: PermissionApprovalSource | PermissionRejectionSource,
 ): string {
@@ -83,8 +48,7 @@ function sourceToString(
 }
 
 // Single entry point for all permission decision logging. Called by permission
-// handlers after every approve/reject. Fans out to the code-edit OTel counter
-// and to toolUseContext decision storage.
+// handlers after every approve/reject; records the decision on the context.
 function logPermissionDecision(
   ctx: PermissionLogContext,
   args: PermissionDecisionArgs,
@@ -92,17 +56,10 @@ function logPermissionDecision(
   // Kept so the existing call sites still type-check.
   permissionPromptStartTimeMs?: number,
 ): void {
-  const { tool, input, toolUseContext, toolUseID } = ctx
+  const { toolUseContext, toolUseID } = ctx
   const { decision, source } = args
 
   const sourceString = source === 'config' ? 'config' : sourceToString(source)
-
-  // Track code editing tool metrics
-  if (isCodeEditingTool(tool.name)) {
-    void buildCodeEditToolAttributes(tool, input, decision, sourceString).then(
-      attributes => getCodeEditToolDecisionCounter()?.add(1, attributes),
-    )
-  }
 
   // Persist decision on the context so downstream code can inspect what happened
   if (!toolUseContext.toolDecisions) {
@@ -115,5 +72,5 @@ function logPermissionDecision(
   })
 }
 
-export { isCodeEditingTool, buildCodeEditToolAttributes, logPermissionDecision }
+export { logPermissionDecision }
 export type { PermissionLogContext, PermissionDecisionArgs }

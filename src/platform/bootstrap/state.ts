@@ -35,7 +35,6 @@
  * re-exported here — they were never part of this module's surface.
  */
 export type {
-  AttributedCounter,
   ChannelEntry,
   InvokedSkillInfo,
   SessionCronTask,
@@ -160,26 +159,6 @@ export {
   updateLastInteractionTime,
   waitForScrollIdle,
 } from 'src/platform/bootstrap/state/cost.js'
-export {
-  getActiveTimeCounter,
-  getCodeEditToolDecisionCounter,
-  getCommitCounter,
-  getCostCounter,
-  getEventLogger,
-  getLocCounter,
-  getLoggerProvider,
-  getMeter,
-  getMeterProvider,
-  getPrCounter,
-  getSessionCounter,
-  getTokenCounter,
-  getTracerProvider,
-  setEventLogger,
-  setLoggerProvider,
-  setMeter,
-  setMeterProvider,
-  setTracerProvider,
-} from 'src/platform/bootstrap/state/telemetry.js'
 export {
   getAgentColorMap,
   getAllowedSettingSources,

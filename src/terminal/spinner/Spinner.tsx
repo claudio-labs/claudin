@@ -9,7 +9,6 @@ import { count } from 'src/shared/data/array.js';
 import sample from 'lodash-es/sample.js';
 import { formatDuration, formatNumber, formatSecondsShort } from 'src/shared/text/format.js';
 import type { Theme } from 'src/terminal/theme/theme.js';
-import { activityManager } from 'src/agent/coordinator/activityManager.js';
 import { getSpinnerVerbs } from 'src/agent/prompts/spinnerVerbs.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { TaskListV2 } from 'src/agent/ui/TaskListV2.js';
@@ -155,14 +154,6 @@ function SpinnerWithVerbInner({
   const effectiveVerb = foregroundedTeammate && !foregroundedTeammate.isIdle ? foregroundedTeammate.spinnerVerb ?? randomVerb : leaderVerb;
   const message = effectiveVerb + '…';
 
-  // Track CLI activity when spinner is active
-  useEffect(() => {
-    const operationId = 'spinner-' + mode;
-    activityManager.startCLIActivity(operationId);
-    return () => {
-      activityManager.endCLIActivity(operationId);
-    };
-  }, [mode]);
   const effortValue = useAppState((s_4: AppState) => s_4.effortValue);
   // Adaptive effort is no longer surfaced in the UI but legacy settings may
   // still hold the value; treat it as unset so the pinned-level suffix path

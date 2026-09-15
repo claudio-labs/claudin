@@ -205,7 +205,6 @@ import { RemoteCallout } from 'src/platform/remote/RemoteCallout.js';
 import { getAPIProvider } from 'src/providers/model/providers.js';
 const AntModelSwitchCallout = null;
 const shouldShowAntModelSwitch = (): boolean => false;
-import { activityManager } from 'src/agent/coordinator/activityManager.js';
 import { createAbortController } from 'src/shared/abortController.js';
 import { MCPConnectionManager } from 'src/mcp/MCPConnectionManager.js';
 import { useInstallMessages } from 'src/platform/notifications/useInstallMessages.js';
@@ -2324,7 +2323,6 @@ export function REPL({
   // Update last interaction time when input changes.
   // Must be immediate because useEffect runs after the Ink render cycle flush.
   useEffect(() => {
-    activityManager.recordUserActivity();
     updateLastInteractionTime(true);
   }, [inputValue, submitCount]);
   useEffect(() => {

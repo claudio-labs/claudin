@@ -110,8 +110,12 @@ const USAGE = {
 // ───────────────────────────────────────────────────────────────────────────
 
 describe('the module export surface', () => {
-  test('still exports 217 runtime symbols', () => {
-    expect(Object.keys(stateModule)).toHaveLength(217)
+  // 217 until the OpenTelemetry cluster went: its eighteen accessors had no
+  // producer left — `setMeter` and the four other setters were called from the
+  // deleted telemetry slice — so every counter was permanently null and every
+  // reader a no-op.
+  test('still exports 199 runtime symbols', () => {
+    expect(Object.keys(stateModule)).toHaveLength(199)
   })
 
   test('exports at least one symbol from every planned cluster', () => {
@@ -121,7 +125,6 @@ describe('the module export surface', () => {
       'getSessionId', // session
       'getCwdState', // cwd
       'getTotalCostUSD', // cost
-      'getMeter', // telemetry
       'getIsNonInteractiveSession', // sessionFlags
       'getRegisteredHooks', // sdkHooks
       'getSessionCronTasks', // sessionArtifacts

@@ -18,8 +18,7 @@
   ],
   "ignoreDependencies": [
     "@anthropic-ai/vertex-sdk",
-    "@anthropic-ai/foundry-sdk",
-    "@opentelemetry/.+"
+    "@anthropic-ai/foundry-sdk"
   ],
   "ignoreBinaries": [
     "arecord",
