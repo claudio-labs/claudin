@@ -13,11 +13,7 @@
 
 import { createHash } from 'crypto'
 import { sep } from 'path'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-  logEvent,
-} from 'src/platform/analytics/index.js'
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
 import type {
   LoadedPlugin,
   PluginError,
@@ -181,30 +177,6 @@ export function logPluginsEnabledForSession(
   for (const plugin of plugins) {
     const { marketplace } = parsePluginIdentifier(plugin.repository)
 
-    logEvent('tengu_plugin_enabled_for_session', {
-      _PROTO_plugin_name:
-        plugin.name as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-      ...(marketplace && {
-        _PROTO_marketplace_name:
-          marketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-      }),
-      ...buildPluginTelemetryFields(plugin.name, marketplace, managedNames),
-      enabled_via: getEnabledVia(
-        plugin,
-        managedNames,
-        seedDirs,
-      ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      skill_path_count:
-        (plugin.skillsPath ? 1 : 0) + (plugin.skillsPaths?.length ?? 0),
-      command_path_count:
-        (plugin.commandsPath ? 1 : 0) + (plugin.commandsPaths?.length ?? 0),
-      has_mcp: plugin.manifest.mcpServers !== undefined,
-      has_hooks: plugin.hooksConfig !== undefined,
-      ...(plugin.manifest.version && {
-        version: plugin.manifest
-          .version as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-    })
   }
 }
 
@@ -259,16 +231,5 @@ export function logPluginLoadErrors(
     // some are marketplace-level). Use the 'plugin' property if present,
     // fall back to the name parsed from err.source.
     const pluginName = 'plugin' in err && err.plugin ? err.plugin : name
-    logEvent('tengu_plugin_load_failed', {
-      error_category:
-        err.type as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      _PROTO_plugin_name:
-        pluginName as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-      ...(marketplace && {
-        _PROTO_marketplace_name:
-          marketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-      }),
-      ...buildPluginTelemetryFields(pluginName, marketplace, managedNames),
-    })
   }
 }

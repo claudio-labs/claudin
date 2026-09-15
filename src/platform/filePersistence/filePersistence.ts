@@ -10,10 +10,6 @@
 import { feature } from 'bun:bundle'
 import { join, relative } from 'path'
 import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
-import {
   type FilesApiConfig,
   uploadSessionFiles,
 } from 'src/providers/transport/filesApi.js'
@@ -86,9 +82,6 @@ export async function runFilePersistence(
   }
 
   const startTime = Date.now()
-  logEvent('tengu_file_persistence_started', {
-    mode: environmentKind as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 
   try {
     let result: FilesPersistedEventData
@@ -109,12 +102,6 @@ export async function runFilePersistence(
     }
 
     const durationMs = Date.now() - startTime
-    logEvent('tengu_file_persistence_completed', {
-      success_count: result.files.length,
-      failure_count: result.failed.length,
-      duration_ms: durationMs,
-      mode: environmentKind as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
 
     return result
   } catch (error) {
@@ -122,14 +109,6 @@ export async function runFilePersistence(
     logDebug(`File persistence failed: ${error}`)
 
     const durationMs = Date.now() - startTime
-    logEvent('tengu_file_persistence_completed', {
-      success_count: 0,
-      failure_count: 0,
-      duration_ms: durationMs,
-      mode: environmentKind as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      error:
-        'exception' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
 
     return {
       files: [],
@@ -173,10 +152,6 @@ async function executeBYOCPersistence(
     logDebug(
       `File count limit exceeded: ${modifiedFiles.length} > ${FILE_COUNT_LIMIT}`,
     )
-    logEvent('tengu_file_persistence_limit_exceeded', {
-      file_count: modifiedFiles.length,
-      limit: FILE_COUNT_LIMIT,
-    })
     return {
       files: [],
       failed: [

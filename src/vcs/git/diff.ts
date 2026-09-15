@@ -1,5 +1,4 @@
 import { type StructuredPatchHunk, structuredPatch } from 'diff'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { getLocCounter } from 'src/platform/bootstrap/state.js'
 import { addToTotalLinesChanged } from 'src/agent/cost-tracker.js'
 import type { FileEdit } from 'src/tools/FileEditTool/types.js'
@@ -72,10 +71,6 @@ export function countLinesChanged(
   getLocCounter()?.add(numAdditions, { type: 'added' })
   getLocCounter()?.add(numRemovals, { type: 'removed' })
 
-  logEvent('tengu_file_changed', {
-    lines_added: numAdditions,
-    lines_removed: numRemovals,
-  })
 }
 
 export function getPatchFromContents({

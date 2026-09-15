@@ -1,5 +1,4 @@
 import chalk from 'chalk'
-import { logEvent } from 'src/platform/analytics/index.js'
 import {
   getLatestVersion,
   type InstallStatus,
@@ -29,7 +28,6 @@ import { gte } from 'src/shared/semver.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 
 export async function update() {
-  logEvent('tengu_update_check', {})
   writeToStdout(`Current version: ${MACRO.DISPLAY_VERSION}\n`)
 
   const channel = getInitialSettings()?.autoUpdatesChannel ?? 'latest'

@@ -2,7 +2,6 @@ import { c as _c } from "react-compiler-runtime";
 import React from 'react';
 import { handlePlanModeTransition } from 'src/platform/bootstrap/state.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
 import { isPlanModeInterviewPhaseEnabled } from 'src/agent/plans/planModeV2.js';
 import { Select } from 'src/terminal/custom-select/index.js';
@@ -21,10 +20,6 @@ export function EnterPlanModePermissionRequest(t0: PermissionRequestProps) {
   if ($[0] !== onDone || $[1] !== onReject || $[2] !== toolPermissionContextMode || $[3] !== toolUseConfirm) {
     t1 = function handleResponse(value: 'yes' | 'no') {
       if (value === "yes") {
-        logEvent("tengu_plan_enter", {
-          interviewPhaseEnabled: isPlanModeInterviewPhaseEnabled(),
-          entryMethod: "tool" as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-        });
         handlePlanModeTransition(toolPermissionContextMode, "plan");
         onDone();
         toolUseConfirm.onAllow({}, [{

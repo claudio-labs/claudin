@@ -1,10 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js'
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
 import type { CompletionType } from 'src/providers/transport/unaryLogging.js'
@@ -180,20 +177,16 @@ export function useFilePermissionDialog<T extends ToolInput>({
       if (value === 'yes') {
         if (yesInputMode) {
           setYesInputMode(false)
-          logEvent('tengu_accept_feedback_mode_collapsed', analyticsProps)
         } else {
           setYesInputMode(true)
           setYesFeedbackModeEntered(true)
-          logEvent('tengu_accept_feedback_mode_entered', analyticsProps)
         }
       } else if (value === 'no') {
         if (noInputMode) {
           setNoInputMode(false)
-          logEvent('tengu_reject_feedback_mode_collapsed', analyticsProps)
         } else {
           setNoInputMode(true)
           setNoFeedbackModeEntered(true)
-          logEvent('tengu_reject_feedback_mode_entered', analyticsProps)
         }
       }
     },

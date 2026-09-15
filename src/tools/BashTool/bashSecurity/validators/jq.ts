@@ -3,7 +3,6 @@
  * variables.
  */
 
-import { logEvent } from 'src/platform/analytics/index.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import { BASH_SECURITY_CHECK_IDS } from 'src/tools/BashTool/bashSecurity/checkIds.js'
 import type { ValidationContext } from 'src/tools/BashTool/bashSecurity/context.js'
@@ -16,10 +15,6 @@ export function validateJqCommand(context: ValidationContext): PermissionResult 
   }
 
   if (/\bsystem\s*\(/.test(originalCommand)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.JQ_SYSTEM_FUNCTION,
-      subId: 1,
-    })
     return {
       behavior: 'ask',
       message:
@@ -35,10 +30,6 @@ export function validateJqCommand(context: ValidationContext): PermissionResult 
       afterJq,
     )
   ) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.JQ_FILE_ARGUMENTS,
-      subId: 1,
-    })
     return {
       behavior: 'ask',
       message:

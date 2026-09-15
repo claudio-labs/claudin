@@ -1,7 +1,3 @@
-import {
-  logEvent,
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from 'src/platform/analytics/index.js'
 import { parse, relative } from 'path'
 import {
   FileReadTool,
@@ -44,11 +40,6 @@ export async function tryGetPDFReference(
     // Use page count if available, otherwise fall back to size heuristic (~100KB per page)
     const effectivePageCount = pageCount ?? Math.ceil(stats.size / (100 * 1024))
     if (effectivePageCount > PDF_AT_MENTION_INLINE_THRESHOLD) {
-      logEvent('tengu_pdf_reference_attachment', {
-        pageCount: effectivePageCount,
-        fileSize: stats.size,
-        hadPdfinfo: pageCount !== null,
-      } as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS)
       return {
         type: 'pdf_reference',
         filename,
@@ -100,10 +91,6 @@ export async function generateFileAttachment(
     if (!isPDFExtension(ext)) {
       try {
         const stats = await getFsImplementation().stat(filename)
-        logEvent('tengu_attachment_file_too_large', {
-          size_bytes: stats.size,
-          mode,
-        } as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS)
         return null
       } catch {
         // If we can't stat the file, proceed with normal reading (will fail later if file doesn't exist)
@@ -147,9 +134,6 @@ export async function generateFileAttachment(
         existingFileState.timestamp <= mtimeMs &&
         mtimeMs === existingFileState.timestamp
       ) {
-        // File hasn't been modified, return already_read_file attachment
-        // This tells the system the file is already in context and doesn't need to be sent to API
-        logEvent(successEventName, {})
         return {
           type: 'already_read_file',
           filename,
@@ -207,7 +191,6 @@ export async function generateFileAttachment(
           limit: MAX_LINES_TO_READ,
         }
         const result = await FileReadTool.call(truncatedInput, toolUseContext)
-        logEvent(successEventName, {})
 
         return {
           type: 'file' as const,
@@ -217,7 +200,6 @@ export async function generateFileAttachment(
           displayPath: relative(getCwd(), filename),
         }
       } catch {
-        logEvent(errorEventName, {})
         return null
       }
     }
@@ -230,7 +212,6 @@ export async function generateFileAttachment(
 
     try {
       const result = await FileReadTool.call(fileInput, toolUseContext)
-      logEvent(successEventName, {})
       return {
         type: 'file',
         filename,
@@ -247,7 +228,6 @@ export async function generateFileAttachment(
       throw error
     }
   } catch {
-    logEvent(errorEventName, {})
     return null
   }
 }

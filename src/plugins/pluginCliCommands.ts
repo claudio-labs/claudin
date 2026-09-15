@@ -18,11 +18,7 @@ import {
   buildPluginTelemetryFields,
   classifyPluginCommandError,
 } from 'src/platform/telemetry/pluginTelemetry.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-  logEvent,
-} from 'src/platform/analytics/index.js'
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED } from 'src/platform/analytics/index.js'
 import {
   disableAllPluginsOp,
   disablePluginOp,
@@ -83,14 +79,6 @@ function handlePluginCommandError(
         }
       })()
     : {}
-  logEvent('tengu_plugin_command_failed', {
-    command:
-      command as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    error_category: classifyPluginCommandError(
-      error,
-    ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    ...telemetryFields,
-  })
   // eslint-disable-next-line custom-rules/no-process-exit
   process.exit(1)
 }
@@ -124,19 +112,6 @@ export async function installPlugin(
     const { name, marketplace } = parsePluginIdentifier(
       result.pluginId || plugin,
     )
-    logEvent('tengu_plugin_installed_cli', {
-      _PROTO_plugin_name:
-        name as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-      ...(marketplace && {
-        _PROTO_marketplace_name:
-          marketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-      }),
-      scope: (result.scope ||
-        scope) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      install_source:
-        'cli-explicit' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      ...buildPluginTelemetryFields(name, marketplace, getManagedPluginNames()),
-    })
 
     // eslint-disable-next-line custom-rules/no-process-exit
     process.exit(0)
@@ -168,17 +143,6 @@ export async function uninstallPlugin(
     const { name, marketplace } = parsePluginIdentifier(
       result.pluginId || plugin,
     )
-    logEvent('tengu_plugin_uninstalled_cli', {
-      _PROTO_plugin_name:
-        name as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-      ...(marketplace && {
-        _PROTO_marketplace_name:
-          marketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-      }),
-      scope: (result.scope ||
-        scope) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      ...buildPluginTelemetryFields(name, marketplace, getManagedPluginNames()),
-    })
 
     // eslint-disable-next-line custom-rules/no-process-exit
     process.exit(0)
@@ -209,17 +173,6 @@ export async function enablePlugin(
     const { name, marketplace } = parsePluginIdentifier(
       result.pluginId || plugin,
     )
-    logEvent('tengu_plugin_enabled_cli', {
-      _PROTO_plugin_name:
-        name as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-      ...(marketplace && {
-        _PROTO_marketplace_name:
-          marketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-      }),
-      scope:
-        result.scope as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      ...buildPluginTelemetryFields(name, marketplace, getManagedPluginNames()),
-    })
 
     // eslint-disable-next-line custom-rules/no-process-exit
     process.exit(0)
@@ -250,17 +203,6 @@ export async function disablePlugin(
     const { name, marketplace } = parsePluginIdentifier(
       result.pluginId || plugin,
     )
-    logEvent('tengu_plugin_disabled_cli', {
-      _PROTO_plugin_name:
-        name as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-      ...(marketplace && {
-        _PROTO_marketplace_name:
-          marketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-      }),
-      scope:
-        result.scope as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      ...buildPluginTelemetryFields(name, marketplace, getManagedPluginNames()),
-    })
 
     // eslint-disable-next-line custom-rules/no-process-exit
     process.exit(0)
@@ -283,7 +225,6 @@ export async function disableAllPlugins(): Promise<void> {
     // biome-ignore lint/suspicious/noConsole:: intentional console output
     console.log(`${figures.tick} ${result.message}`)
 
-    logEvent('tengu_plugin_disabled_all_cli', {})
 
     // eslint-disable-next-line custom-rules/no-process-exit
     process.exit(0)
@@ -318,23 +259,6 @@ export async function updatePluginCli(
       const { name, marketplace } = parsePluginIdentifier(
         result.pluginId || plugin,
       )
-      logEvent('tengu_plugin_updated_cli', {
-        _PROTO_plugin_name:
-          name as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-        ...(marketplace && {
-          _PROTO_marketplace_name:
-            marketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-        }),
-        old_version: (result.oldVersion ||
-          'unknown') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        new_version: (result.newVersion ||
-          'unknown') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        ...buildPluginTelemetryFields(
-          name,
-          marketplace,
-          getManagedPluginNames(),
-        ),
-      })
     }
 
     await gracefulShutdown(0)

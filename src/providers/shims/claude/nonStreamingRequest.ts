@@ -10,10 +10,6 @@ import { isSdkApiUserAbortError } from 'src/shared/errors.js'
 import { isFastModeEnabled } from 'src/providers/fastMode.js'
 import { normalizeModelStringForAPI } from 'src/providers/model/model.js'
 import type { ThinkingConfig } from 'src/agent/context/thinking.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { getAnthropicClient } from 'src/providers/transport/client.js'
 import { getCachedAnthropicClient } from 'src/providers/transport/clientCache.js'
 import { type RetryContext, withRetry } from 'src/providers/transport/withRetry.js'
@@ -109,18 +105,6 @@ export async function* executeNonStreamingRequest(
         // timeouts). Lets us distinguish "fallback hung past container kill"
         // (no event) from "fallback hit the bounded timeout" (this event).
         logForDiagnosticsNoPII('error', 'cli_nonstreaming_fallback_error')
-        logEvent('tengu_nonstreaming_fallback_error', {
-          model:
-            clientOptions.model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          error:
-            err instanceof Error
-              ? (err.name as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS)
-              : ('unknown' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS),
-          attempt,
-          timeout_ms: fallbackTimeoutMs,
-          request_id: (originatingRequestId ??
-            'unknown') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        })
         throw err
       }
     },

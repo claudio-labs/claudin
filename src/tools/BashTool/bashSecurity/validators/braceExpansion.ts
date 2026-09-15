@@ -3,7 +3,6 @@
  * shell-quote and tree-sitter treat them as literal strings.
  */
 
-import { logEvent } from 'src/platform/analytics/index.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import { BASH_SECURITY_CHECK_IDS } from 'src/tools/BashTool/bashSecurity/checkIds.js'
 import type { ValidationContext } from 'src/tools/BashTool/bashSecurity/context.js'
@@ -76,10 +75,6 @@ export function validateBraceExpansion(context: ValidationContext): PermissionRe
   // (more `{` than `}`) is usually legitimate unclosed/escaped braces like
   // `{foo` or `{a,b\}` where bash doesn't expand anyway.
   if (unescapedOpenBraces > 0 && unescapedCloseBraces > unescapedOpenBraces) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.BRACE_EXPANSION,
-      subId: 2,
-    })
     return {
       behavior: 'ask',
       message:
@@ -103,10 +98,6 @@ export function validateBraceExpansion(context: ValidationContext): PermissionRe
     // Look for quoted single-brace patterns: '{', '}', "{",  "}"
     // These are the attack primitive — a brace char wrapped in quotes.
     if (/['"][{}]['"]/.test(orig)) {
-      logEvent('tengu_bash_security_check_triggered', {
-        checkId: BASH_SECURITY_CHECK_IDS.BRACE_EXPANSION,
-        subId: 3,
-      })
       return {
         behavior: 'ask',
         message:
@@ -157,10 +148,6 @@ export function validateBraceExpansion(context: ValidationContext): PermissionRe
           ch === ',' ||
           (ch === '.' && k + 1 < matchingClose && content[k + 1] === '.')
         ) {
-          logEvent('tengu_bash_security_check_triggered', {
-            checkId: BASH_SECURITY_CHECK_IDS.BRACE_EXPANSION,
-            subId: 1,
-          })
           return {
             behavior: 'ask',
             message:

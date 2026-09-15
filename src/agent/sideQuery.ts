@@ -10,8 +10,6 @@ import {
   getAttributionHeader,
   getCLISyspromptPrefix,
 } from 'src/agent/prompts/system.js'
-import { logEvent } from 'src/platform/analytics/index.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
 import { getAPIMetadata } from 'src/providers/shims/claude.js'
 import { getAnthropicClient } from 'src/providers/transport/client.js'
 import { getCachedAnthropicClient } from 'src/providers/transport/clientCache.js'
@@ -219,21 +217,6 @@ export async function sideQuery(opts: SideQueryOptions): Promise<BetaMessage> {
     (response as { _request_id?: string | null })._request_id ?? undefined
   const now = Date.now()
   const lastCompletion = getLastApiCompletionTimestamp()
-  logEvent('tengu_api_success', {
-    requestId:
-      requestId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    querySource:
-      opts.querySource as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    model:
-      normalizedModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    inputTokens: response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
-    cachedInputTokens: response.usage.cache_read_input_tokens ?? 0,
-    uncachedInputTokens: response.usage.cache_creation_input_tokens ?? 0,
-    durationMsIncludingRetries: now - start,
-    timeSinceLastApiCallMs:
-      lastCompletion !== null ? now - lastCompletion : undefined,
-  })
   setLastApiCompletionTimestamp(now)
 
   return response

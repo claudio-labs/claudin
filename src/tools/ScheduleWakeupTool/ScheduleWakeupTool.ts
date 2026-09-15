@@ -7,7 +7,6 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import type { ToolUseContext, ValidationResult } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { semanticBoolean } from 'src/shared/data/semanticBoolean.js'
 import { getTeammateContext } from 'src/agent/coordinator/teammateContext.js'
@@ -146,7 +145,6 @@ export const ScheduleWakeupTool = buildTool({
     if (cancel) {
       const hadPending = getPendingSessionWakeup() !== null
       clearPendingSessionWakeup()
-      logEvent('tengu_schedule_wakeup_cancelled', { hadPending })
       return { data: { action: 'cancelled' as const, hadPending } }
     }
     // validateInput guarantees these on the non-cancel path; the fallbacks
@@ -161,10 +159,6 @@ export const ScheduleWakeupTool = buildTool({
     // Start the scheduler tick loop if it isn't running yet — same flag
     // CronCreateTool flips; useScheduledTasks/runHeadless poll it.
     setScheduledTasksEnabled(true)
-    logEvent('tengu_schedule_wakeup_created', {
-      delaySeconds: clamped,
-      replaced,
-    })
     return {
       data: {
         action: 'scheduled' as const,

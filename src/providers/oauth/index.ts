@@ -1,4 +1,3 @@
-import { logEvent } from 'src/platform/analytics/index.js'
 import { openBrowser } from 'src/shared/browser.js'
 import { AuthCodeListener } from 'src/providers/oauth/auth-code-listener.js'
 import * as client from 'src/providers/oauth/client.js'
@@ -87,7 +86,6 @@ export class OAuthService {
 
     // Check if the automatic flow is still active (has a pending response)
     const isAutomaticFlow = this.authCodeListener?.hasPendingResponse() ?? false
-    logEvent('tengu_oauth_auth_code_received', { automatic: isAutomaticFlow })
 
     try {
       // Exchange authorization code for tokens

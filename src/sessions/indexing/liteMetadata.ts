@@ -13,7 +13,6 @@ import type { UUID } from 'crypto'
 import type { Dirent } from 'fs'
 import { readdir, readFile, stat } from 'fs/promises'
 import { basename, join } from 'path'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import type { AttributionSnapshotMessage } from 'src/shared/types/logs.js'
 import {
@@ -332,13 +331,6 @@ async function trackSessionBranchingAnalytics(
   const sessionsWithBranches = branchCounts.length
   const totalBranches = branchCounts.reduce((sum, count) => sum + count, 0)
 
-  logEvent('tengu_session_forked_branches_fetched', {
-    total_sessions: sessionIdCounts.size,
-    sessions_with_branches: sessionsWithBranches,
-    max_branches_per_session: Math.max(...branchCounts),
-    avg_branches_per_session: Math.round(totalBranches / sessionsWithBranches),
-    total_transcript_count: logs.length,
-  })
 }
 
 export async function fetchLogs(limit?: number): Promise<LogOption[]> {

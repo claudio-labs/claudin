@@ -10,10 +10,6 @@ import {
 } from 'src/agent/messages/messages.js'
 import type { ModelName } from 'src/providers/model/model.js'
 import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { jsonParse } from 'src/platform/slowOperations.js'
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 
@@ -184,10 +180,6 @@ export async function generateAgent(
     throw new Error('Invalid agent configuration generated')
   }
 
-  logEvent('tengu_agent_definition_generated', {
-    agent_identifier:
-      parsed.identifier as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 
   return {
     identifier: parsed.identifier,

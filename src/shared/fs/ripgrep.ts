@@ -5,7 +5,6 @@ import memoize from 'lodash-es/memoize.js'
 import { createRequire } from 'module'
 import { homedir } from 'os'
 import * as path from 'path'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { StringDecoder } from 'string_decoder'
 import { fileURLToPath } from 'url'
 import { isInBundledMode } from 'src/platform/install/bundledMode.js'
@@ -689,7 +688,6 @@ export async function ripGrepWithStatus(
         logForDebugging(
           `rg EAGAIN error detected, retrying with single-threaded mode (-j 1)`,
         )
-        logEvent('tengu_ripgrep_eagain_retry', {})
         ripGrepRaw(
           args,
           target,
@@ -925,11 +923,6 @@ const testRipgrepOnFirstUse = memoize(async (): Promise<void> => {
       `Ripgrep first use test: ${working ? 'PASSED' : 'FAILED'} (mode=${config.mode}, path=${config.command})`,
     )
 
-    // Log telemetry for actual ripgrep availability
-    logEvent('tengu_ripgrep_availability', {
-      working: working ? 1 : 0,
-      using_system: config.mode === 'system' ? 1 : 0,
-    })
   } catch (error) {
     ripgrepStatus = {
       working: false,

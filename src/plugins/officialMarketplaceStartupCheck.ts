@@ -10,7 +10,6 @@
 
 import { join } from 'path'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
@@ -171,11 +170,6 @@ export async function checkAndInstallOfficialMarketplace(): Promise<OfficialMark
         officialMarketplaceAutoInstalled: false,
         officialMarketplaceAutoInstallFailReason: 'policy_blocked',
       }))
-      logEvent('tengu_official_marketplace_auto_install', {
-        installed: false,
-        skipped: true,
-        policy_blocked: true,
-      })
       return { installed: false, skipped: true, reason: 'policy_blocked' }
     }
 
@@ -205,11 +199,6 @@ export async function checkAndInstallOfficialMarketplace(): Promise<OfficialMark
         officialMarketplaceAutoInstalled: false,
         officialMarketplaceAutoInstallFailReason: 'policy_blocked',
       }))
-      logEvent('tengu_official_marketplace_auto_install', {
-        installed: false,
-        skipped: true,
-        policy_blocked: true,
-      })
       return { installed: false, skipped: true, reason: 'policy_blocked' }
     }
 
@@ -242,11 +231,6 @@ export async function checkAndInstallOfficialMarketplace(): Promise<OfficialMark
         officialMarketplaceAutoInstallLastAttemptTime: undefined,
         officialMarketplaceAutoInstallNextRetryTime: undefined,
       }))
-      logEvent('tengu_official_marketplace_auto_install', {
-        installed: true,
-        skipped: false,
-        via_gcs: true,
-      })
       return { installed: true, skipped: false }
     }
     // GCS failed (404 until backend writes, or network). Fall through to git
@@ -275,12 +259,6 @@ export async function checkAndInstallOfficialMarketplace(): Promise<OfficialMark
         officialMarketplaceAutoInstallLastAttemptTime: now,
         officialMarketplaceAutoInstallNextRetryTime: nextRetryTime,
       }))
-      logEvent('tengu_official_marketplace_auto_install', {
-        installed: false,
-        skipped: true,
-        gcs_unavailable: true,
-        retry_count: retryCount,
-      })
       return { installed: false, skipped: true, reason: 'gcs_unavailable' }
     }
 
@@ -318,12 +296,6 @@ export async function checkAndInstallOfficialMarketplace(): Promise<OfficialMark
           { level: 'error' },
         )
       }
-      logEvent('tengu_official_marketplace_auto_install', {
-        installed: false,
-        skipped: true,
-        git_unavailable: true,
-        retry_count: retryCount,
-      })
       return {
         installed: false,
         skipped: true,
@@ -350,11 +322,6 @@ export async function checkAndInstallOfficialMarketplace(): Promise<OfficialMark
       officialMarketplaceAutoInstallLastAttemptTime: undefined,
       officialMarketplaceAutoInstallNextRetryTime: undefined,
     }))
-    logEvent('tengu_official_marketplace_auto_install', {
-      installed: true,
-      skipped: false,
-      retry_count: previousRetryCount,
-    })
     return { installed: true, skipped: false }
   } catch (error) {
     // Handle installation failure
@@ -372,12 +339,6 @@ export async function checkAndInstallOfficialMarketplace(): Promise<OfficialMark
       logForDebugging(
         'Official marketplace auto-install: git is a non-functional macOS xcrun shim, treating as git_unavailable',
       )
-      logEvent('tengu_official_marketplace_auto_install', {
-        installed: false,
-        skipped: true,
-        git_unavailable: true,
-        macos_xcrun_shim: true,
-      })
       return {
         installed: false,
         skipped: true,
@@ -422,12 +383,6 @@ export async function checkAndInstallOfficialMarketplace(): Promise<OfficialMark
       // Still return the failure result even if config save failed
       // This ensures we report the installation failure correctly
     }
-    logEvent('tengu_official_marketplace_auto_install', {
-      installed: false,
-      skipped: true,
-      failed: true,
-      retry_count: retryCount,
-    })
 
     return {
       installed: false,

@@ -6,7 +6,6 @@ import type {
 } from '@anthropic-ai/sdk/resources/messages.mjs'
 import { randomUUID } from 'crypto'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { getContentText } from 'src/agent/messages/messages.js'
 import {
   findCommand,
@@ -377,9 +376,6 @@ async function processUserInputBase(
           data: pastedImage.content,
         },
       }
-      logEvent('tengu_pasted_image_resize_attempt', {
-        original_size_bytes: pastedImage.content.length,
-      })
       const resized = await maybeResizeAndDownsampleImageBlock(imageBlock)
       return {
         resized,
@@ -478,7 +474,6 @@ async function processUserInputBase(
     !context.getAppState().ultraplanLaunching &&
     hasUltraplanKeyword(preExpansionInput ?? inputString)
   ) {
-    logEvent('tengu_ultraplan_keyword', {})
     const rewritten = replaceUltraplanKeyword(inputString).trim()
     const { processSlashCommand } = await import('src/agent/input/processSlashCommand.js')
     const slashResult = await processSlashCommand(
@@ -568,11 +563,6 @@ async function processUserInputBase(
       const isPrefix =
         trimmedInput.startsWith(agentMentionString) && !isSubagentOnly
 
-      // Log whenever users use @agent-<name> syntax
-      logEvent('tengu_subagent_at_mention', {
-        is_subagent_only: isSubagentOnly,
-        is_prefix: isPrefix,
-      })
     }
   }
 

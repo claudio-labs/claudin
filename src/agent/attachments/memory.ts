@@ -22,7 +22,6 @@ import {
 } from 'src/platform/lifecycleHooks/hooks.js'
 import { pathInAllowedWorkingPath } from 'src/permissions/filesystem.js'
 import { logError } from 'src/shared/log.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { isAbortError } from 'src/shared/errors.js'
 import { createChildAbortController } from 'src/shared/abortController.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
@@ -394,12 +393,6 @@ export function startRelevantMemoryPrefetch(
     consumedOnIteration: -1,
     [Symbol.dispose]() {
       controller.abort()
-      logEvent('tengu_memdir_prefetch_collected', {
-        hidden_by_first_iteration:
-          handle.settledAt !== null && handle.consumedOnIteration === 0,
-        consumed_on_iteration: handle.consumedOnIteration,
-        latency_ms: (handle.settledAt ?? Date.now()) - firedAt,
-      })
     },
   }
   void promise.finally(() => {

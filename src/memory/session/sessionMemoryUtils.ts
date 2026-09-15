@@ -7,7 +7,6 @@ import { isFsInaccessible } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import { getSessionMemoryPath } from 'src/permissions/filesystem.js'
 import { sleep } from 'src/shared/sleep.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 
 const EXTRACTION_WAIT_TIMEOUT_MS = 15000
 const EXTRACTION_STALE_THRESHOLD_MS = 60000 // 1 minute
@@ -114,9 +113,6 @@ export async function getSessionMemoryContent(): Promise<string | null> {
   try {
     const content = await fs.readFile(memoryPath, { encoding: 'utf-8' })
 
-    logEvent('tengu_session_memory_loaded', {
-      content_length: content.length,
-    })
 
     return content
   } catch (e: unknown) {

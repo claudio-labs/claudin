@@ -1,8 +1,4 @@
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import type {
   LocalJSXCommandContext,
@@ -83,11 +79,6 @@ export async function call(
 
     case 'clear': {
       const cleared = clearActiveGoal(context.setAppState, sessionId)
-      logEvent('tengu_goal_clear', {
-        had_goal: String(
-          cleared,
-        ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      })
       onDone(cleared ? 'Goal cleared.' : 'No active goal to clear.', {
         display: 'system',
       })
@@ -130,12 +121,6 @@ export async function call(
 
       const isReplacing = context.getAppState().activeGoal !== undefined
       setActiveGoal(context.setAppState, sessionId, parsed.condition)
-      logEvent('tengu_goal_set', {
-        replaced: String(
-          isReplacing,
-        ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        condition_length: parsed.condition.length,
-      })
       onDone(
         `${isReplacing ? 'Goal replaced' : 'Goal set'}: ${parsed.condition}\nThe assistant will keep working until the condition is met. /goal clear to stop early.`,
         {

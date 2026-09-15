@@ -33,7 +33,6 @@ import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js
 import type { AssistantMessage, UserMessage } from 'src/shared/types/message.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
-import { logOTelEvent } from 'src/platform/telemetry/events.js'
 
 // Message type for API calls (UserMessage or AssistantMessage)
 type APIMessage = UserMessage | AssistantMessage
@@ -268,12 +267,6 @@ export function addBetaLLMRequestAttributes(
         newContext.systemPrompt,
       )
 
-      void logOTelEvent('system_prompt', {
-        system_prompt_hash: promptHash,
-        system_prompt: truncatedPrompt,
-        system_prompt_length: String(newContext.systemPrompt.length),
-        ...(truncated && { system_prompt_truncated: 'true' }),
-      })
     }
   }
 
@@ -312,12 +305,6 @@ export function addBetaLLMRequestAttributes(
 
           const { content: truncatedTool, truncated } = truncateContent(json)
 
-          void logOTelEvent('tool', {
-            tool_name: sanitizeToolNameForAnalytics(name),
-            tool_hash: hash,
-            tool: truncatedTool,
-            ...(truncated && { tool_truncated: 'true' }),
-          })
         }
       }
     } catch {

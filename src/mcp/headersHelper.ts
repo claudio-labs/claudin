@@ -5,7 +5,6 @@ import { errorMessage } from 'src/shared/errors.js'
 import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
 import { logError, logMCPDebug, logMCPError } from 'src/shared/log.js'
 import { jsonParse } from 'src/platform/slowOperations.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import type {
   McpHTTPServerConfig,
   McpSSEServerConfig,
@@ -51,7 +50,6 @@ export async function getMcpHeadersFromHelper(
         `Security: headersHelper for MCP server '${serverName}' executed before workspace trust is confirmed. If you see this message, post in ${MACRO.FEEDBACK_CHANNEL}.`,
       )
       logAntError('MCP headersHelper invoked before trust check', error)
-      logEvent('tengu_mcp_headersHelper_missing_trust', {})
       return null
     }
   }

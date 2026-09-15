@@ -9,7 +9,6 @@
  */
 import { resolve } from 'path'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import {
   createDefaultGlobalConfig,
   DEFAULT_GLOBAL_CONFIG,
@@ -209,7 +208,6 @@ export function saveCurrentProjectConfig(
         'saveCurrentProjectConfig fallback: re-read config is missing auth that cache has; refusing to write. See GH #3117.',
         { level: 'error' },
       )
-      logEvent('tengu_config_auth_loss_prevented', {})
       return
     }
     const currentProjectConfig =

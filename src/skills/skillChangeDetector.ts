@@ -6,10 +6,6 @@ import {
   clearCommandsCache,
 } from 'src/commands/commands.js'
 import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
-import {
   clearSkillCaches,
   getSkillsPath,
   onDynamicSkillsLoaded,
@@ -236,10 +232,6 @@ async function getWatchablePaths(): Promise<string[]> {
 
 function handleChange(path: string): void {
   logForDebugging(`Detected skill change: ${path}`)
-  logEvent('tengu_skill_file_changed', {
-    source:
-      'chokidar' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 
   scheduleReload(path)
 }

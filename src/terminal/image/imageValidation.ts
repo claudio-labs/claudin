@@ -1,5 +1,4 @@
 import { API_IMAGE_MAX_BASE64_SIZE } from 'src/shared/constants/apiLimits.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { formatFileSize } from 'src/shared/text/format.js'
 
 /**
@@ -88,10 +87,6 @@ export function validateImagesForAPI(messages: unknown[]): void {
         // The API limit applies to the base64 payload size
         const base64Size = block.source.data.length
         if (base64Size > API_IMAGE_MAX_BASE64_SIZE) {
-          logEvent('tengu_image_api_validation_failed', {
-            base64_size_bytes: base64Size,
-            max_bytes: API_IMAGE_MAX_BASE64_SIZE,
-          })
           oversizedImages.push({ index: imageIndex, size: base64Size })
         }
       }

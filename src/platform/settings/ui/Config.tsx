@@ -15,7 +15,6 @@ import chalk from 'chalk';
 import { permissionModeTitle, permissionModeFromString, toExternalPermissionMode, isExternalPermissionMode, EXTERNAL_PERMISSION_MODES, PERMISSION_MODES, type ExternalPermissionMode, type PermissionMode } from 'src/permissions/PermissionMode.js';
 import { transitionPlanAutoMode } from 'src/permissions/permissionSetup.js';
 import { logError } from 'src/shared/log.js';
-import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js';
 import { isBridgeEnabled } from 'src/platform/bridge/bridgeEnabled.js';
 import { ThemePicker } from 'src/platform/ThemePicker.js';
 import { useAppState, useSetAppState, useAppStateStore } from 'src/terminal/state/AppState.js';
@@ -204,10 +203,6 @@ export function Config({
   const autoUpdaterDisabledReason = getAutoUpdaterDisabledReason();
   function onChangeMainModelConfig(value: string | null): void {
     const previousModel = mainLoopModel;
-    logEvent('tengu_config_model_changed', {
-      from_model: previousModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      to_model: value as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    });
     setAppState(prev => ({
       ...prev,
       mainLoopModel: value,
@@ -279,9 +274,6 @@ export function Config({
         ...getGlobalConfig(),
         autoCompactEnabled
       });
-      logEvent('tengu_auto_compact_setting_changed', {
-        enabled: autoCompactEnabled
-      });
     }
   }, {
     id: 'thinkingHistoryRedactionEnabled',
@@ -297,9 +289,6 @@ export function Config({
         ...getGlobalConfig(),
         thinkingHistoryRedactionEnabled
       });
-      logEvent('claudin_thinking_history_redaction_setting_changed', {
-        enabled: thinkingHistoryRedactionEnabled
-      });
     }
   }, {
     id: 'narrationHistoryRedactionEnabled',
@@ -314,9 +303,6 @@ export function Config({
       setGlobalConfig({
         ...getGlobalConfig(),
         narrationHistoryRedactionEnabled
-      });
-      logEvent('claudin_narration_history_redaction_setting_changed', {
-        enabled: narrationHistoryRedactionEnabled
       });
     }
   }, {
@@ -335,9 +321,6 @@ export function Config({
         ...getGlobalConfig(),
         showCacheStats
       });
-      logEvent('tengu_show_cache_stats_setting_changed', {
-        mode: showCacheStats as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
     }
   }, {
     id: 'toolResultSummarizerEnabled',
@@ -352,9 +335,6 @@ export function Config({
       setGlobalConfig({
         ...getGlobalConfig(),
         toolResultSummarizerEnabled
-      });
-      logEvent('claudin_tool_result_summarizer_setting_changed', {
-        enabled: toolResultSummarizerEnabled
       });
     }
   }, {
@@ -373,9 +353,6 @@ export function Config({
       setGlobalConfig({
         ...getGlobalConfig(),
         bashOutputFilterEnabled
-      });
-      logEvent('claudin_bash_output_filter_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
-        enabled: bashOutputFilterEnabled
       });
     }
   }, {
@@ -396,9 +373,6 @@ export function Config({
         ...getGlobalConfig(),
         bashOutputFilterCapEnabled
       });
-      logEvent('claudin_bash_output_filter_cap_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
-        enabled: bashOutputFilterCapEnabled
-      });
     }
   }, {
     id: 'autoBackgroundAgentsEnabled',
@@ -413,9 +387,6 @@ export function Config({
       setGlobalConfig({
         ...getGlobalConfig(),
         autoBackgroundAgentsEnabled
-      });
-      logEvent('claudin_auto_background_agents_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
-        enabled: autoBackgroundAgentsEnabled
       });
     }
   }, {
@@ -432,9 +403,6 @@ export function Config({
         ...getGlobalConfig(),
         repeatedFailureHintEnabled
       });
-      logEvent('claudin_repeated_failure_hint_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
-        enabled: repeatedFailureHintEnabled
-      });
     }
   }, {
     id: 'collapseFileWritesEnabled',
@@ -449,9 +417,6 @@ export function Config({
       setGlobalConfig({
         ...getGlobalConfig(),
         collapseFileWritesEnabled
-      });
-      logEvent('claudin_collapse_file_writes_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
-        enabled: collapseFileWritesEnabled
       });
     }
   }, {
@@ -485,9 +450,6 @@ export function Config({
         ...getGlobalConfig(),
         inlineImagesMode
       });
-      logEvent('claudin_inline_images_setting_changed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {
-        mode: inlineImagesMode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
     }
   }, {
     id: 'spinnerTipsEnabled',
@@ -503,9 +465,6 @@ export function Config({
         ...prev_3,
         spinnerTipsEnabled
       }));
-      logEvent('tengu_tips_setting_changed', {
-        enabled: spinnerTipsEnabled
-      });
     }
   }, {
     id: 'prefersReducedMotion',
@@ -528,9 +487,6 @@ export function Config({
           prefersReducedMotion
         }
       }));
-      logEvent('tengu_reduce_motion_setting_changed', {
-        enabled: prefersReducedMotion
-      });
     }
   }, {
     id: 'thinkingEnabled',
@@ -544,9 +500,6 @@ export function Config({
       }));
       updateSettingsForSource('userSettings', {
         alwaysThinkingEnabled: enabled ? undefined : false
-      });
-      logEvent('tengu_thinking_toggled', {
-        enabled
       });
     }
   },
@@ -613,9 +566,6 @@ export function Config({
         ...getGlobalConfig(),
         fileCheckpointingEnabled: enabled_3
       });
-      logEvent('tengu_file_history_snapshots_setting_changed', {
-        enabled: enabled_3
-      });
     }
   }] : []), {
     id: 'verbose',
@@ -637,9 +587,6 @@ export function Config({
         ...getGlobalConfig(),
         terminalProgressBarEnabled
       });
-      logEvent('tengu_terminal_progress_bar_setting_changed', {
-        enabled: terminalProgressBarEnabled
-      });
     }
   }, ...(getFeatureValue_CACHED_MAY_BE_STALE('tengu_terminal_sidebar', false) ? [{
     id: 'showStatusInTerminalTab',
@@ -655,9 +602,6 @@ export function Config({
         ...getGlobalConfig(),
         showStatusInTerminalTab
       });
-      logEvent('tengu_terminal_tab_status_setting_changed', {
-        enabled: showStatusInTerminalTab
-      });
     }
   }] : []), {
     id: 'showTurnDuration',
@@ -672,9 +616,6 @@ export function Config({
       setGlobalConfig({
         ...getGlobalConfig(),
         showTurnDuration
-      });
-      logEvent('tengu_show_turn_duration_setting_changed', {
-        enabled: showTurnDuration
       });
     }
   }, {
@@ -722,10 +663,6 @@ export function Config({
         ...prev_13,
         defaultPermissionMode: mode
       }));
-      logEvent('tengu_config_changed', {
-        setting: 'defaultPermissionMode' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        value: mode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
     }
   }, ...(feature('TRANSCRIPT_CLASSIFIER') ? [{
     id: 'useAutoModeDuringPlan',
@@ -772,9 +709,6 @@ export function Config({
         ...getGlobalConfig(),
         respectGitignore
       });
-      logEvent('tengu_respect_gitignore_setting_changed', {
-        enabled: respectGitignore
-      });
     }
   }, {
     id: 'copyFullResponse',
@@ -793,10 +727,6 @@ export function Config({
         ...getGlobalConfig(),
         copyFullResponse
       });
-      logEvent('tengu_config_changed', {
-        setting: 'copyFullResponse' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        value: String(copyFullResponse) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
     }
   },
   // Copy-on-select is only meaningful with in-app selection (fullscreen
@@ -814,10 +744,6 @@ export function Config({
       setGlobalConfig({
         ...getGlobalConfig(),
         copyOnSelect
-      });
-      logEvent('tengu_config_changed', {
-        setting: 'copyOnSelect' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        value: String(copyOnSelect) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
       });
     }
   }] : []), {
@@ -842,10 +768,6 @@ export function Config({
         ...getGlobalConfig(),
         flickerFreeMode
       });
-      logEvent('tengu_config_changed', {
-        setting: 'flickerFreeMode' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        value: String(flickerFreeMode) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
     }
   }, {
     id: 'frameRate',
@@ -865,10 +787,6 @@ export function Config({
       setGlobalConfig({
         ...getGlobalConfig(),
         renderFrameRate: renderFrameRate as FrameRateSetting
-      });
-      logEvent('tengu_config_changed', {
-        setting: 'renderFrameRate' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        value: String(renderFrameRate) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
       });
     }
   },
@@ -937,10 +855,6 @@ export function Config({
         ...getGlobalConfig(),
         editorMode: value_1 as GlobalConfig['editorMode']
       });
-      logEvent('tengu_editor_mode_changed', {
-        mode: value_1 as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        source: 'config_panel' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
     }
   }, {
     id: 'prStatusFooterEnabled',
@@ -958,9 +872,6 @@ export function Config({
       setGlobalConfig({
         ...getGlobalConfig(),
         prStatusFooterEnabled: enabled_4
-      });
-      logEvent('tengu_pr_status_footer_setting_changed', {
-        enabled: enabled_4
       });
     }
   }, {
@@ -984,10 +895,6 @@ export function Config({
         ...getGlobalConfig(),
         diffTool: diffTool as GlobalConfig['diffTool']
       });
-      logEvent('tengu_diff_tool_changed', {
-        tool: diffTool as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        source: 'config_panel' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
     }
   }] : []), ...(!isSupportedTerminal() ? [{
     id: 'autoConnectIde',
@@ -1003,10 +910,6 @@ export function Config({
         ...getGlobalConfig(),
         autoConnectIde
       });
-      logEvent('tengu_auto_connect_ide_changed', {
-        enabled: autoConnectIde,
-        source: 'config_panel' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
     }
   }] : []), ...(isSupportedTerminal() ? [{
     id: 'autoInstallIdeExtension',
@@ -1021,10 +924,6 @@ export function Config({
       setGlobalConfig({
         ...getGlobalConfig(),
         autoInstallIdeExtension
-      });
-      logEvent('tengu_auto_install_ide_extension_changed', {
-        enabled: autoInstallIdeExtension,
-        source: 'config_panel' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
       });
     }
   }] : []),
@@ -1051,9 +950,6 @@ export function Config({
         setGlobalConfig({
           ...getGlobalConfig(),
           teammateMode: mode_0
-        });
-        logEvent('tengu_teammate_mode_changed', {
-          mode: mode_0 as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
         });
       }
     }, {
@@ -1259,10 +1155,6 @@ export function Config({
     // Log any changes that were made
     // TODO: Make these proper messages
     const formattedChanges: string[] = Object.entries(changes).map(([key, value_2]) => {
-      logEvent('tengu_config_changed', {
-        key: key as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        value: value_2 as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
       return `Set ${key} to ${chalk.bold(value_2)}`;
     });
     // Check for API key changes.
@@ -1274,10 +1166,6 @@ export function Config({
     const currentUsingCustomKey = Boolean(effectiveApiKey && globalConfig.customApiKeyResponses?.approved?.includes(normalizeApiKeyForConfig(effectiveApiKey)));
     if (initialUsingCustomKey !== currentUsingCustomKey) {
       formattedChanges.push(`${currentUsingCustomKey ? 'Enabled' : 'Disabled'} custom API key`);
-      logEvent('tengu_config_changed', {
-        key: 'env.ANTHROPIC_API_KEY' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        value: currentUsingCustomKey as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
     }
     if (globalConfig.theme !== initialConfig.current.theme) {
       formattedChanges.push(`Set theme to ${chalk.bold(globalConfig.theme)}`);
@@ -1557,9 +1445,6 @@ export function Config({
           autoUpdatesChannel: 'latest',
           minimumVersion: undefined
         }));
-        logEvent('tengu_autoupdate_channel_changed', {
-          channel: 'latest' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-        });
       }
       return;
     }
@@ -1731,9 +1616,6 @@ export function Config({
           ...prev_25,
           teammateDefaultModel: teammateModelDisplayString(model_1)
         }));
-        logEvent('tengu_teammate_default_model_changed', {
-          model: model_1 as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-        });
       }} onCancel={() => {
         setShowSubmenu(null);
         setTabsHidden(false);
@@ -1766,11 +1648,6 @@ export function Config({
         updateSettingsForSource('localSettings', {
           outputStyle: style
         });
-        void logEvent('tengu_output_style_changed', {
-          style: (style ?? DEFAULT_OUTPUT_STYLE_NAME) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          source: 'config_panel' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          settings_source: 'localSettings' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-        });
       }} onCancel={() => {
         setShowSubmenu(null);
         setTabsHidden(false);
@@ -1791,10 +1668,6 @@ export function Config({
         // Save to user settings
         updateSettingsForSource('userSettings', {
           language
-        });
-        void logEvent('tengu_language_changed', {
-          language: (language ?? 'default') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          source: 'config_panel' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
         });
       }} onCancel={() => {
         setShowSubmenu(null);
@@ -1845,9 +1718,6 @@ export function Config({
           autoUpdatesChannel: channel as 'latest' | 'stable',
           minimumVersion: undefined
         }));
-        logEvent('tengu_autoupdate_enabled', {
-          channel: channel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-        });
       }} />}
         </Dialog> : showSubmenu === 'ChannelDowngrade' ? <ChannelDowngradeDialog currentVersion={MACRO.VERSION} onChoice={(choice: ChannelDowngradeChoice) => {
       setShowSubmenu(null);
@@ -1873,10 +1743,6 @@ export function Config({
         ...prev_27,
         ...newSettings
       }));
-      logEvent('tengu_autoupdate_channel_changed', {
-        channel: 'stable' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        minimum_version_set: choice === 'stay'
-      });
     }} /> : <Box flexDirection="column" gap={1} marginY={insideModal ? undefined : 1}>
           <SearchBox query={searchQuery} isFocused={isSearchMode && !headerFocused} isTerminalFocused={isTerminalFocused} cursorOffset={searchCursorOffset} placeholder="Search settings…" />
           <Box flexDirection="column">

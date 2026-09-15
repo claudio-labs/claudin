@@ -2,7 +2,6 @@ import { randomUUID, type UUID } from 'crypto'
 import { mkdir, readFile, writeFile } from 'fs/promises'
 import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js'
 import type { LocalJSXCommandContext } from 'src/commands/commands.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js'
 import type {
   ContentReplacementEntry,
@@ -251,10 +250,6 @@ export async function call(
     const effectiveTitle = await getUniqueForkName(baseName)
     await saveCustomTitle(sessionId, effectiveTitle, forkPath)
 
-    logEvent('tengu_conversation_forked', {
-      message_count: serializedMessages.length,
-      has_custom_title: !!title,
-    })
 
     const forkLog: LogOption = {
       date: now.toISOString().split('T')[0]!,

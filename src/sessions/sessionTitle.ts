@@ -14,7 +14,6 @@
 
 import { z } from 'zod/v4'
 import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { queryHaiku } from 'src/providers/shims/claude.js'
 import type { Message } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -116,14 +115,12 @@ export async function generateSessionTitle(
     const parsed = titleSchema().safeParse(safeParseJSON(text))
     const title = parsed.success ? parsed.data.title.trim() || null : null
 
-    logEvent('tengu_session_title_generated', { success: title !== null })
 
     return title
   } catch (error) {
     logForDebugging(`generateSessionTitle failed: ${error}`, {
       level: 'error',
     })
-    logEvent('tengu_session_title_generated', { success: false })
 
     // Fallback: When using 3P providers without a compatible schema,
     // default to the application name.

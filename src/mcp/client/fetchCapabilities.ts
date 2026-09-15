@@ -30,7 +30,6 @@ import { memoizeWithLRU } from 'src/shared/data/memoize.js'
 import { recursivelySanitizeUnicode } from 'src/shared/data/sanitization.js'
 import { clearKeychainCache } from 'src/platform/secureStorage/macOsKeychainHelpers.js'
 import { sleep } from 'src/shared/sleep.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { hasMcpDiscoveryButNoToken } from 'src/mcp/auth.js'
 import { markClaudeAiMcpConnected } from 'src/mcp/claudeai.js'
 import { getAllMcpConfigs, isMcpServerDisabled } from 'src/mcp/config.js'
@@ -769,11 +768,6 @@ export function prefetchAllMcpResources(
             (command.argumentHint ?? '').length
           return sum + commandMetadataLength
         }, 0)
-        logEvent('tengu_mcp_tools_commands_loaded', {
-          tools_count: tools.length,
-          commands_count: commands.length,
-          commands_metadata_length: commandsMetadataLength,
-        })
 
         void resolve({
           clients,

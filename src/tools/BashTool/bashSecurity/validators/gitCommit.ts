@@ -6,7 +6,6 @@
  * to 'passthrough' here is load-bearing, not defensive.
  */
 
-import { logEvent } from 'src/platform/analytics/index.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import { BASH_SECURITY_CHECK_IDS } from 'src/tools/BashTool/bashSecurity/checkIds.js'
 import type { ValidationContext } from 'src/tools/BashTool/bashSecurity/context.js'
@@ -51,10 +50,6 @@ export function validateGitCommit(context: ValidationContext): PermissionResult 
     const [, quote, messageContent, remainder] = messageMatch
 
     if (quote === '"' && messageContent && /\$\(|`|\$\{/.test(messageContent)) {
-      logEvent('tengu_bash_security_check_triggered', {
-        checkId: BASH_SECURITY_CHECK_IDS.GIT_COMMIT_SUBSTITUTION,
-        subId: 1,
-      })
       return {
         behavior: 'ask',
         message: 'Git commit message contains command substitution patterns',
@@ -118,10 +113,6 @@ export function validateGitCommit(context: ValidationContext): PermissionResult 
     // Security hardening: block messages starting with dash
     // This catches potential obfuscation patterns like git commit -m "---"
     if (messageContent && messageContent.startsWith('-')) {
-      logEvent('tengu_bash_security_check_triggered', {
-        checkId: BASH_SECURITY_CHECK_IDS.OBFUSCATED_FLAGS,
-        subId: 5,
-      })
       return {
         behavior: 'ask',
         message: 'Command contains quoted characters in flag names',

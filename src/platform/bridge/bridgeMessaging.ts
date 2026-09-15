@@ -17,7 +17,6 @@ import type {
   SDKControlResponse,
 } from 'src/platform/entrypoints/sdk/controlTypes.js'
 import type { SDKResultSuccess } from 'src/platform/entrypoints/sdk/coreTypes.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { EMPTY_USAGE } from 'src/providers/usage/emptyUsage.js'
 import type { Message } from 'src/shared/types/message.js'
 import { normalizeControlMessageKeys } from 'src/shared/controlMessageCompat.js'
@@ -190,9 +189,6 @@ export function handleIngressMessage(
 
     if (parsed.type === 'user') {
       if (uuid) recentInboundUUIDs.add(uuid)
-      logEvent('tengu_bridge_message_received', {
-        is_repl: true,
-      })
       // Fire-and-forget — handler may be async (attachment resolution).
       void onInboundMessage?.(parsed)
     } else {

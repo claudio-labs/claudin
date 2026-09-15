@@ -1,9 +1,5 @@
 import { feature } from 'bun:bundle'
 import { useEffect, useRef } from 'react'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type {
   PermissionDecisionReason,
@@ -123,16 +119,6 @@ export function usePermissionRequestLogging(
       },
     }))
 
-    // Log analytics event
-    logEvent('tengu_tool_use_show_permission_request', {
-      messageID: toolUseConfirm.assistantMessage.message
-        .id as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      toolName: sanitizeToolNameForAnalytics(toolUseConfirm.tool.name),
-      isMcp: toolUseConfirm.tool.isMcp ?? false,
-      decisionReasonType: toolUseConfirm.permissionResult.decisionReason
-        ?.type as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      sandboxEnabled: SandboxManager.isSandboxingEnabled(),
-    })
 
     void logUnaryEvent({
       completion_type: unaryEvent.completion_type,

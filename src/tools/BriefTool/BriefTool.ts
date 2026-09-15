@@ -1,5 +1,4 @@
 import { z } from 'zod/v4'
-import { logEvent } from 'src/platform/analytics/index.js'
 import type { ValidationResult } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
@@ -133,10 +132,6 @@ export const BriefTool = buildTool({
   renderToolResultMessage,
   async call({ message, attachments, status }, context) {
     const sentAt = new Date().toISOString()
-    logEvent('tengu_brief_send', {
-      proactive: status === 'proactive',
-      attachment_count: attachments?.length ?? 0,
-    })
     if (!attachments || attachments.length === 0) {
       return { data: { message, sentAt } }
     }

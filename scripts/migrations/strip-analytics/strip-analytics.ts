@@ -265,6 +265,31 @@ function inAnyRange(ranges: Range[], offset: number): boolean {
 }
 
 /**
+ * The source line that opens the block containing `range`, trimmed.
+ *
+ * This is what a reviewer needs to decide whether the enclosing statement can
+ * go too: `if (Math.random() < 0.05) {` is safe to drop whole, whereas
+ * `if (await claim()) {` is not, and only the text says which one it is.
+ */
+function blockHead(source: string, regions: Uint8Array, range: Range): string {
+  let depth = 0
+  for (let i = range.start - 1; i >= 0; i--) {
+    if (regions[i] !== REGION_CODE) continue
+    const c = source[i]
+    if (c === '}') depth++
+    else if (c === '{') {
+      if (depth === 0) {
+        let lineStart = i
+        while (lineStart > 0 && source[lineStart - 1] !== '\n') lineStart--
+        return source.slice(lineStart, i + 1).trim()
+      }
+      depth--
+    }
+  }
+  return '<top level>'
+}
+
+/**
  * Does the block containing `range` still hold code once every removal lands?
  * Finds the enclosing `{ … }` by balancing braces outward from the range.
  */
@@ -459,7 +484,10 @@ export function transform(fileName: string, source: string): FileResult {
         file: rel,
         line: lineAt(source, range.start),
         kind: 'empties-block',
-        detail: 'removing this leaves an empty block body',
+        // Carry the head verbatim. Whether the enclosing `if` can go too turns
+        // entirely on whether its condition has side effects, and that is a
+        // judgement to make by reading it, not by pattern-matching it.
+        detail: `empties \u2192 ${blockHead(source, regions, range)}`,
       })
     }
   }

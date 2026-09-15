@@ -5,7 +5,6 @@ import type { CommandResultDisplay } from 'src/commands/commands.js';
 import { ModelPicker } from 'src/providers/ui/ModelPicker.js';
 import { COMMON_HELP_ARGS, COMMON_INFO_ARGS } from 'src/shared/constants/xml.js';
 import { fetchBootstrapData } from 'src/providers/transport/bootstrap.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { LocalJSXCommandCall, LocalJSXCommandOnDone } from 'src/shared/types/command.js';
 import { getCurrentProjectConfig } from 'src/platform/config/config.js';
@@ -36,9 +35,6 @@ function ModelPickerWrapper(t0: {
   let t1;
   if ($[0] !== mainLoopModel || $[1] !== onDone) {
     t1 = function handleCancel() {
-      logEvent("tengu_model_command_menu", {
-        action: "cancel" as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
       const displayModel = renderModelLabel(mainLoopModel);
       onDone(`Kept model as ${chalk.bold(displayModel)}`, {
         display: "system"
@@ -54,11 +50,6 @@ function ModelPickerWrapper(t0: {
   let t2;
   if ($[3] !== isFastMode || $[4] !== mainLoopModel || $[5] !== onDone || $[6] !== setAppState) {
     t2 = function handleSelect(model: string | null, effort: EffortLevel | undefined) {
-      logEvent("tengu_model_command_menu", {
-        action: model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        from_model: mainLoopModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        to_model: model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
       setAppState(prev => ({
         ...prev,
         mainLoopModel: model,
@@ -324,9 +315,6 @@ async function refreshOpenAIModelOptionsCache(): Promise<void> {
 export const call: LocalJSXCommandCall = async (onDone, _context, args) => {
   args = args?.trim() || '';
   if (COMMON_INFO_ARGS.includes(args)) {
-    logEvent('tengu_model_command_inline_help', {
-      args: args as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    });
     return <ShowModelAndClose onDone={onDone} />;
   }
   if (COMMON_HELP_ARGS.includes(args)) {
@@ -336,9 +324,6 @@ export const call: LocalJSXCommandCall = async (onDone, _context, args) => {
     return;
   }
   if (args) {
-    logEvent('tengu_model_command_inline', {
-      args: args as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    });
     return <SetModelAndClose args={args} onDone={onDone} />;
   }
   if (getAdditionalModelOptionsCacheScope()?.startsWith('openai:')) {

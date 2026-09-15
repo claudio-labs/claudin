@@ -2,7 +2,6 @@ import { c as _c } from "react-compiler-runtime";
 import React, { Suspense, use, useState } from 'react';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
-import { logEvent } from 'src/platform/analytics/index.js';
 import type { Message } from 'src/shared/types/message.js';
 import { generatePermissionExplanation, isPermissionExplainerEnabled, type PermissionExplanation as PermissionExplanationType, type RiskLevel } from 'src/permissions/permissionExplainer.js';
 import { ShimmerChar } from 'src/terminal/spinner/ShimmerChar.js';
@@ -105,7 +104,6 @@ export function usePermissionExplainerUI(props: PermissionExplanationProps): Exp
   if ($[1] !== promise || $[2] !== props || $[3] !== visible) {
     t1 = () => {
       if (!visible) {
-        logEvent("tengu_permission_explainer_shortcut_used", {});
         if (!promise) {
           setPromise(createExplanationPromise(props));
         }

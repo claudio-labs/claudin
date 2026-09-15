@@ -13,7 +13,6 @@ import {
   MAX_TOOL_RESULTS_PER_MESSAGE_CHARS,
 } from 'src/tools/constants/toolLimits.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type { Message } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -438,9 +437,6 @@ async function maybePersistLargeToolResult(
   // shell commands, MCP servers returning content:[], REPL statements, etc.).
   // Inject a short marker so the model always has something to react to.
   if (isToolResultContentEmpty(content)) {
-    logEvent('tengu_tool_empty_result', {
-      toolName: sanitizeToolNameForAnalytics(toolName),
-    })
     return {
       ...toolResultBlock,
       content: `(${toolName} completed with no output)`,
@@ -475,15 +471,6 @@ async function maybePersistLargeToolResult(
 
   recordBytesSaved(result.originalSize, message.length)
 
-  // Log analytics
-  logEvent('tengu_tool_result_persisted', {
-    toolName: sanitizeToolNameForAnalytics(toolName),
-    originalSizeBytes: result.originalSize,
-    persistedSizeBytes: message.length,
-    estimatedOriginalTokens: Math.ceil(result.originalSize / BYTES_PER_TOKEN),
-    estimatedPersistedTokens: Math.ceil(message.length / BYTES_PER_TOKEN),
-    thresholdUsed: threshold,
-  })
 
   return { ...toolResultBlock, content: message }
 }
@@ -1058,16 +1045,6 @@ export async function enforceToolResultBudget(
       toolUseId: candidate.toolUseId,
       replacement: replacement.content,
     })
-    logEvent('tengu_tool_result_persisted_message_budget', {
-      originalSizeBytes: replacement.originalSize,
-      persistedSizeBytes: replacement.content.length,
-      estimatedOriginalTokens: Math.ceil(
-        replacement.originalSize / BYTES_PER_TOKEN,
-      ),
-      estimatedPersistedTokens: Math.ceil(
-        replacement.content.length / BYTES_PER_TOKEN,
-      ),
-    })
   }
 
   if (replacementMap.size === 0) {
@@ -1080,12 +1057,6 @@ export async function enforceToolResultBudget(
         `across ${messagesOverBudget} over-budget message(s), ` +
         `shed ~${formatFileSize(replacedSize)}, ${reappliedCount} re-applied`,
     )
-    logEvent('tengu_message_level_tool_result_budget_enforced', {
-      resultsPersisted: newlyReplaced.length,
-      messagesOverBudget,
-      replacedSizeBytes: replacedSize,
-      reapplied: reappliedCount,
-    })
   }
 
   return {

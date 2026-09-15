@@ -10,8 +10,6 @@ import { logError } from 'src/shared/log.js'
 import { getSmallFastModel } from 'src/providers/model/model.js'
 import { getAPIProvider } from 'src/providers/model/providers.js'
 import { isEssentialTrafficOnly } from 'src/platform/config/privacyLevel.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { getAPIMetadata } from 'src/providers/shims/claude.js'
 import { getAnthropicClient } from 'src/providers/transport/client.js'
 import { getCachedAnthropicClient } from 'src/providers/transport/clientCache.js'
@@ -188,12 +186,6 @@ export function emitStatusChange(limits: ClaudeAILimits) {
     (limits.resetsAt ? limits.resetsAt - Date.now() / 1000 : 0) / (60 * 60),
   )
 
-  logEvent('tengu_claudeai_limits_status_changed', {
-    status:
-      limits.status as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    unifiedRateLimitFallbackAvailable: limits.unifiedRateLimitFallbackAvailable,
-    hoursTillReset,
-  })
 }
 
 async function makeTestQuery() {

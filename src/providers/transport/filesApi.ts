@@ -18,10 +18,6 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
 import { sleep } from 'src/shared/sleep.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 
 // Files API is currently in beta. oauth-2025-04-20 enables Bearer OAuth
 // on public-api routes (auth.py: "oauth_auth" not in beta_versions → 404).
@@ -400,10 +396,6 @@ export async function uploadFile(
   try {
     content = await fs.readFile(filePath)
   } catch (error) {
-    logEvent('tengu_file_upload_failed', {
-      error_type:
-        'file_read' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
     return {
       path: relativePath,
       error: errorMessage(error),
@@ -414,10 +406,6 @@ export async function uploadFile(
   const fileSize = content.length
 
   if (fileSize > MAX_FILE_SIZE_BYTES) {
-    logEvent('tengu_file_upload_failed', {
-      error_type:
-        'file_too_large' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
     return {
       path: relativePath,
       error: `File exceeds maximum size of ${MAX_FILE_SIZE_BYTES} bytes (actual: ${fileSize})`,
@@ -493,28 +481,16 @@ export async function uploadFile(
 
         // Non-retriable errors - throw to exit retry loop
         if (response.status === 401) {
-          logEvent('tengu_file_upload_failed', {
-            error_type:
-              'auth' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          })
           throw new UploadNonRetriableError(
             'Authentication failed: invalid or missing API key',
           )
         }
 
         if (response.status === 403) {
-          logEvent('tengu_file_upload_failed', {
-            error_type:
-              'forbidden' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          })
           throw new UploadNonRetriableError('Access denied for upload')
         }
 
         if (response.status === 413) {
-          logEvent('tengu_file_upload_failed', {
-            error_type:
-              'size' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          })
           throw new UploadNonRetriableError('File too large for upload')
         }
 
@@ -542,10 +518,6 @@ export async function uploadFile(
         success: false,
       }
     }
-    logEvent('tengu_file_upload_failed', {
-      error_type:
-        'network' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
     return {
       path: relativePath,
       error: errorMessage(error),
@@ -658,17 +630,9 @@ export async function listFilesCreatedAfter(
           }
 
           if (response.status === 401) {
-            logEvent('tengu_file_list_failed', {
-              error_type:
-                'auth' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-            })
             throw new Error('Authentication failed: invalid or missing API key')
           }
           if (response.status === 403) {
-            logEvent('tengu_file_list_failed', {
-              error_type:
-                'forbidden' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-            })
             throw new Error('Access denied to list files')
           }
 
@@ -677,10 +641,6 @@ export async function listFilesCreatedAfter(
           if (!axios.isAxiosError(error)) {
             throw error
           }
-          logEvent('tengu_file_list_failed', {
-            error_type:
-              'network' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          })
           return { done: false, error: error.message }
         }
       },

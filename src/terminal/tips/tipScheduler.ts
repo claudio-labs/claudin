@@ -1,8 +1,4 @@
 import { getInitialSettings } from 'src/platform/settings/settings.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { getSessionsSinceLastShown, recordTipShown } from 'src/terminal/tips/tipHistory.js'
 import { getRelevantTips } from 'src/terminal/tips/tipRegistry.js'
 import type { Tip, TipContext } from 'src/terminal/tips/types.js'
@@ -49,10 +45,4 @@ export function recordShownTip(tip: Tip): void {
   // Record in history
   recordTipShown(tip.id)
 
-  // Log event for analytics
-  logEvent('tengu_tip_shown', {
-    tipIdLength:
-      tip.id as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    cooldownSessions: tip.cooldownSessions,
-  })
 }

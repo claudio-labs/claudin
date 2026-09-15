@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import type { Command } from 'src/commands/commands.js'
 import { useNotifications } from 'src/terminal/contexts/notifications.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { reinitializeLspServerManager } from 'src/platform/lsp/manager.js'
 import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js'
 import {
@@ -272,12 +271,6 @@ export function useManagePlugins({
         ...baseMetrics,
         has_custom_plugin_cache_dir: !!process.env.CLAUDIN_PLUGIN_CACHE_DIR,
       }
-      logEvent('tengu_plugins_loaded', {
-        ...allMetrics,
-        ...(ant_enabled_names !== undefined && {
-          enabled_names: ant_enabled_names,
-        }),
-      })
       logForDiagnosticsNoPII('info', 'tengu_plugins_loaded', allMetrics)
     })
   }, [initialPluginLoad, enabled])

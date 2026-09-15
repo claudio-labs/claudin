@@ -22,7 +22,6 @@
  * previously re-serialized every turn.
  */
 
-import { logEvent } from 'src/platform/analytics/index.js'
 
 /**
  * Key inside the system-context object (see `getSystemContext` in
@@ -68,10 +67,6 @@ export function getGitStatusDelta(
   // immutable by design (see getGitStatus in src/agent/context.ts).
   if (priorAttachmentCount > 0) return null
 
-  logEvent('claudin_git_status_delta', {
-    emitted: true,
-    contentLength: currentGitStatus.length,
-  })
 
   return { content: currentGitStatus }
 }

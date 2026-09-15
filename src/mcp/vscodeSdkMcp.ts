@@ -5,7 +5,6 @@ import {
   checkStatsigFeatureGate_CACHED_MAY_BE_STALE,
   getFeatureValue_CACHED_MAY_BE_STALE,
 } from 'src/platform/analytics/growthbook.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import type { ConnectedMCPServer, MCPServerConnection } from 'src/mcp/types.js'
 import { asMcpSchema } from 'src/mcp/zodCompat.js'
 
@@ -73,10 +72,6 @@ export function setupVscodeSdkMcp(sdkClients: MCPServerConnection[]): void {
       asMcpSchema(LogEventNotificationSchema()),
       async notification => {
         const { eventName, eventData } = notification.params
-        logEvent(
-          `tengu_vscode_${eventName}`,
-          eventData as { [key: string]: boolean | number | undefined },
-        )
       },
     )
 

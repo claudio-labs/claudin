@@ -30,10 +30,6 @@ import {
 } from 'fs/promises'
 import { dirname } from 'path'
 import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
-import {
   getOriginalCwd,
   getPlanSlugCache,
   getPromptId,
@@ -1034,7 +1030,6 @@ export class Project {
           },
         )
       } catch {
-        logEvent('tengu_session_persistence_failed', {})
         logForDebugging('Failed to write transcript as internal event')
       }
       return
@@ -1055,7 +1050,6 @@ export class Project {
     )
 
     if (!success) {
-      logEvent('tengu_session_persistence_failed', {})
       gracefulShutdownSync(1, 'other')
     }
   }

@@ -1,5 +1,4 @@
 import { sep } from 'path'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { execFileNoThrowWithCwd } from 'src/shared/proc/execFileNoThrow.js'
 import { gitExe } from 'src/vcs/git/git.js'
 
@@ -30,11 +29,6 @@ export async function getWorktreePaths(cwd: string): Promise<string[]> {
   const durationMs = Date.now() - startTime
 
   if (code !== 0) {
-    logEvent('tengu_worktree_detection', {
-      duration_ms: durationMs,
-      worktree_count: 0,
-      success: false,
-    })
     return []
   }
 
@@ -52,11 +46,6 @@ export async function getWorktreePaths(cwd: string): Promise<string[]> {
     .filter(line => line.startsWith('worktree '))
     .map(line => line.slice('worktree '.length).normalize('NFC'))
 
-  logEvent('tengu_worktree_detection', {
-    duration_ms: durationMs,
-    worktree_count: worktreePaths.length,
-    success: true,
-  })
 
   // Sort worktrees: current worktree first, then alphabetically
   const currentWorktree = worktreePaths.find(

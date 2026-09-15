@@ -6,7 +6,6 @@ import {
   setProjectRoot,
 } from 'src/platform/bootstrap/state.js'
 import { clearSystemPromptSections } from 'src/agent/prompts/systemPromptSections.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import type { Tool } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { count } from 'src/shared/data/array.js'
@@ -274,11 +273,6 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
       await keepWorktree()
       restoreSessionToOriginalCwd(originalCwd, projectRootIsWorktree)
 
-      logEvent('tengu_worktree_kept', {
-        mid_session: true,
-        commits,
-        changed_files: changedFiles,
-      })
 
       const tmuxNote = tmuxSessionName
         ? ` Tmux session ${tmuxSessionName} is still running; reattach with: tmux attach -t ${tmuxSessionName}`
@@ -306,11 +300,6 @@ export const ExitWorktreeTool: Tool<InputSchema, Output> = buildTool({
     await cleanupWorktree()
     restoreSessionToOriginalCwd(originalCwd, projectRootIsWorktree)
 
-    logEvent('tengu_worktree_removed', {
-      mid_session: true,
-      commits,
-      changed_files: changedFiles,
-    })
 
     const discardParts: string[] = []
     if (commits > 0) {

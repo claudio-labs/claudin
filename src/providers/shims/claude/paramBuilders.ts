@@ -40,7 +40,6 @@ import type { SystemPrompt } from "src/agent/systemPromptType.js";
 import { roughTokenCountEstimationForMessage } from "src/shared/tokenEstimation.js";
 import type { AgentId } from "src/shared/types/ids.js";
 import type { AssistantMessage, UserMessage } from "src/shared/types/message.js";
-import { logEvent } from "src/platform/analytics/index.js";
 import { recordMarkerAdvance } from "src/providers/cache/promptCacheBreakDetection.js";
 import { getCacheTrackingKey } from "src/providers/cache/trackingKey.js";
 import { getCacheControl } from "src/providers/shims/claude/cacheControl.js";
@@ -332,11 +331,6 @@ export function addCacheBreakpoints(
   clipFrontierIndex?: number,
   agentId?: AgentId,
 ): MessageParam[] {
-  logEvent("tengu_api_cache_breakpoints", {
-    totalMessageCount: messages.length,
-    cachingEnabled: enablePromptCaching,
-    skipCacheWrite,
-  });
 
   // One ADVANCING message-level cache_control marker per request. Mycro's
   // turn-to-turn eviction (page_manager/index.rs: Index::insert) frees

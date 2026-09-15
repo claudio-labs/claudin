@@ -13,10 +13,6 @@ import {
 } from 'src/platform/lifecycleHooks/hooks.js'
 import { logMCPDebug, logMCPError } from 'src/shared/log.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 
 /** Configuration for the waiting state shown after the user opens a URL. */
 export type ElicitationWaitingState = {
@@ -82,9 +78,6 @@ export function registerElicitationHandler(
 
       const mode = getElicitationMode(request.params)
 
-      logEvent('tengu_mcp_elicitation_shown', {
-        mode: mode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      })
 
       try {
         // Run elicitation hooks first - they can provide a response programmatically
@@ -98,11 +91,6 @@ export function registerElicitationHandler(
             serverName,
             `Elicitation resolved by hook: ${jsonStringify(hookResponse)}`,
           )
-          logEvent('tengu_mcp_elicitation_response', {
-            mode: mode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-            action:
-              hookResponse.action as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          })
           return hookResponse
         }
 
@@ -137,11 +125,6 @@ export function registerElicitationHandler(
                   waitingState,
                   respond: (result: ElicitResult) => {
                     extra.signal.removeEventListener('abort', onAbort)
-                    logEvent('tengu_mcp_elicitation_response', {
-                      mode: mode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-                      action:
-                        result.action as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-                    })
                     resolve(result)
                   },
                 },

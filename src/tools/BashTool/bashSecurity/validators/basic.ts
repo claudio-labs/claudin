@@ -8,7 +8,6 @@
  * rather than a looser pattern match.
  */
 
-import { logEvent } from 'src/platform/analytics/index.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import { BASH_SECURITY_CHECK_IDS } from 'src/tools/BashTool/bashSecurity/checkIds.js'
 import type { ValidationContext } from 'src/tools/BashTool/bashSecurity/context.js'
@@ -33,10 +32,6 @@ export function validateIncompleteCommands(
   const trimmed = originalCommand.trim()
 
   if (/^\s*\t/.test(originalCommand)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.INCOMPLETE_COMMANDS,
-      subId: 1,
-    })
     return {
       behavior: 'ask',
       message: 'Command appears to be an incomplete fragment (starts with tab)',
@@ -44,10 +39,6 @@ export function validateIncompleteCommands(
   }
 
   if (trimmed.startsWith('-')) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.INCOMPLETE_COMMANDS,
-      subId: 2,
-    })
     return {
       behavior: 'ask',
       message:
@@ -56,10 +47,6 @@ export function validateIncompleteCommands(
   }
 
   if (/^\s*(&&|\|\||;|>>?|<)/.test(originalCommand)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.INCOMPLETE_COMMANDS,
-      subId: 3,
-    })
     return {
       behavior: 'ask',
       message:

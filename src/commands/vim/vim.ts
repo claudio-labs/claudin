@@ -1,7 +1,3 @@
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import type { LocalCommandCall } from 'src/shared/types/command.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
 
@@ -21,11 +17,6 @@ export const call: LocalCommandCall = async () => {
     editorMode: newMode,
   }))
 
-  logEvent('tengu_editor_mode_changed', {
-    mode: newMode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    source:
-      'command' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 
   return {
     type: 'text',

@@ -1,5 +1,4 @@
 import { z } from 'zod/v4'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type { AssistantMessage, Message } from 'src/shared/types/message.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
@@ -206,11 +205,6 @@ Explain this command in context.`
           risk: result.data.risk,
         }
 
-        logEvent('tengu_permission_explainer_generated', {
-          tool_name: sanitizeToolNameForAnalytics(toolName),
-          risk_level: RISK_LEVEL_NUMERIC[explanation.riskLevel],
-          latency_ms: latencyMs,
-        })
         logForDebugging(
           `Permission explainer: ${explanation.riskLevel} risk for ${toolName} (${latencyMs}ms)`,
         )
@@ -218,12 +212,6 @@ Explain this command in context.`
       }
     }
 
-    // No valid JSON in response
-    logEvent('tengu_permission_explainer_error', {
-      tool_name: sanitizeToolNameForAnalytics(toolName),
-      error_type: ERROR_TYPE_PARSE,
-      latency_ms: latencyMs,
-    })
     logForDebugging(`Permission explainer: no parsed output in response`)
     return null
   } catch (error) {
@@ -237,14 +225,6 @@ Explain this command in context.`
 
     logForDebugging(`Permission explainer error: ${errorMessage(error)}`)
     logError(error)
-    logEvent('tengu_permission_explainer_error', {
-      tool_name: sanitizeToolNameForAnalytics(toolName),
-      error_type:
-        error instanceof Error && error.name === 'AbortError'
-          ? ERROR_TYPE_NETWORK
-          : ERROR_TYPE_UNKNOWN,
-      latency_ms: latencyMs,
-    })
     return null
   }
 }

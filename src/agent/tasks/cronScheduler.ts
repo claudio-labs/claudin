@@ -15,10 +15,6 @@ import {
   removeSessionCronTasks,
   setScheduledTasksEnabled,
 } from 'src/platform/bootstrap/state.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { cronToHuman } from 'src/agent/tasks/cron.js'
 import {
   type CronJitterConfig,
@@ -231,14 +227,6 @@ export function createCronScheduler(
         // removeCronTasks + chokidar reload chain is in progress.
         nextFireAt.set(t.id, Infinity)
       }
-      logEvent('tengu_scheduled_task_missed', {
-        count: missed.length,
-        taskIds: missed
-          .map(t => t.id)
-          .join(
-            ',',
-          ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      })
       if (onMissed) {
         onMissed(missed)
       } else {
@@ -314,11 +302,6 @@ export function createCronScheduler(
       logForDebugging(
         `[ScheduledTasks] firing ${t.id}${t.recurring ? ' (recurring)' : ''}`,
       )
-      logEvent('tengu_scheduled_task_fire', {
-        recurring: t.recurring ?? false,
-        taskId:
-          t.id as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      })
       // Sentinel-only /loop prompts are expanded at delivery time so the
       // long instruction text stays in the cached prefix: full instructions
       // on the first fire of the session (and whenever loop.md changed),
@@ -350,11 +333,6 @@ export function createCronScheduler(
         logForDebugging(
           `[ScheduledTasks] recurring task ${t.id} aged out (${ageHours}h since creation), deleting after final fire`,
         )
-        logEvent('tengu_scheduled_task_expired', {
-          taskId:
-            t.id as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          ageHours,
-        })
       }
 
       if (t.recurring && !aged) {
@@ -429,7 +407,6 @@ export function createCronScheduler(
       const wakeup = takeDueSessionWakeup(now)
       if (wakeup !== null) {
         logForDebugging('[ScheduledTasks] firing pending ScheduleWakeup')
-        logEvent('tengu_schedule_wakeup_fire', {})
         if (onWakeupFire) {
           onWakeupFire(wakeup.prompt, wakeup.reason)
         } else {

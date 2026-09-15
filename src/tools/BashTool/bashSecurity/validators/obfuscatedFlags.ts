@@ -4,7 +4,6 @@
  * pairs, split and chained quotes).
  */
 
-import { logEvent } from 'src/platform/analytics/index.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import { BASH_SECURITY_CHECK_IDS } from 'src/tools/BashTool/bashSecurity/checkIds.js'
 import type { ValidationContext } from 'src/tools/BashTool/bashSecurity/context.js'
@@ -35,10 +34,6 @@ export function validateObfuscatedFlags(context: ValidationContext): PermissionR
   // - Zero-width space and other invisible chars => match
   // The pattern requires $' followed by content (can be empty) followed by closing '
   if (/\$'[^']*'/.test(originalCommand)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.OBFUSCATED_FLAGS,
-      subId: 5,
-    })
     return {
       behavior: 'ask',
       message: 'Command contains ANSI-C quoting which can hide characters',
@@ -48,10 +43,6 @@ export function validateObfuscatedFlags(context: ValidationContext): PermissionR
   // 2. Block locale quoting ($"...")  - can also use escape sequences
   // Same simple pattern as ANSI-C quoting above
   if (/\$"[^"]*"/.test(originalCommand)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.OBFUSCATED_FLAGS,
-      subId: 6,
-    })
     return {
       behavior: 'ask',
       message: 'Command contains locale quoting which can hide characters',
@@ -61,10 +52,6 @@ export function validateObfuscatedFlags(context: ValidationContext): PermissionR
   // 3. Block empty ANSI-C or locale quotes followed by dash
   // $''-exec or $""-exec
   if (/\$['"]{2}\s*-/.test(originalCommand)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.OBFUSCATED_FLAGS,
-      subId: 9,
-    })
     return {
       behavior: 'ask',
       message:
@@ -76,10 +63,6 @@ export function validateObfuscatedFlags(context: ValidationContext): PermissionR
   // This catches: ''-  ""-  ''""-  ""''-  ''""''-  etc.
   // The pattern looks for one or more empty quote pairs followed by optional whitespace and dash
   if (/(?:^|\s)(?:''|"")+\s*-/.test(originalCommand)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.OBFUSCATED_FLAGS,
-      subId: 7,
-    })
     return {
       behavior: 'ask',
       message: 'Command contains empty quotes before dash (potential bypass)',
@@ -117,10 +100,6 @@ export function validateObfuscatedFlags(context: ValidationContext): PermissionR
   // FALSE POSITIVE: Matches `echo '"""-f" text'` (pattern inside single-quoted
   // string). Extremely rare (requires echoing the literal attack). Acceptable.
   if (/(?:""|'')+['"]-/.test(originalCommand)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.OBFUSCATED_FLAGS,
-      subId: 10,
-    })
     return {
       behavior: 'ask',
       message:
@@ -133,10 +112,6 @@ export function validateObfuscatedFlags(context: ValidationContext): PermissionR
   // not enumerated above (e.g., `"""x"-f` where content between quotes shifts
   // the dash position). Legitimate commands never need `"""x"` when `"x"` works.
   if (/(?:^|\s)['"]{3,}/.test(originalCommand)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.OBFUSCATED_FLAGS,
-      subId: 11,
-    })
     return {
       behavior: 'ask',
       message:
@@ -320,10 +295,6 @@ export function validateObfuscatedFlags(context: ValidationContext): PermissionR
           hasFlagCharsContinuing ||
           hasFlagCharsInNextQuote)
       ) {
-        logEvent('tengu_bash_security_check_triggered', {
-          checkId: BASH_SECURITY_CHECK_IDS.OBFUSCATED_FLAGS,
-          subId: 4,
-        })
         return {
           behavior: 'ask',
           message: 'Command contains quoted characters in flag names',
@@ -377,10 +348,6 @@ export function validateObfuscatedFlags(context: ValidationContext): PermissionR
       }
 
       if (flagContent.includes('"') || flagContent.includes("'")) {
-        logEvent('tengu_bash_security_check_triggered', {
-          checkId: BASH_SECURITY_CHECK_IDS.OBFUSCATED_FLAGS,
-          subId: 1,
-        })
         return {
           behavior: 'ask',
           message: 'Command contains quoted characters in flag names',
@@ -392,10 +359,6 @@ export function validateObfuscatedFlags(context: ValidationContext): PermissionR
   // Also handle flags that start with quotes: "--"output, '-'-output, etc.
   // Use fullyUnquotedContent to avoid false positives from legitimate quoted content like echo "---"
   if (/\s['"`]-/.test(context.fullyUnquotedContent)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.OBFUSCATED_FLAGS,
-      subId: 2,
-    })
     return {
       behavior: 'ask',
       message: 'Command contains quoted characters in flag names',
@@ -405,10 +368,6 @@ export function validateObfuscatedFlags(context: ValidationContext): PermissionR
   // Also handles cases like ""--output
   // Use fullyUnquotedContent to avoid false positives from legitimate quoted content
   if (/['"`]{2}-/.test(context.fullyUnquotedContent)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.OBFUSCATED_FLAGS,
-      subId: 3,
-    })
     return {
       behavior: 'ask',
       message: 'Command contains quoted characters in flag names',

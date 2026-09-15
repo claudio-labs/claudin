@@ -47,7 +47,6 @@ import { textForResubmit } from 'src/agent/messages/messages.js';
 import { resetMicrocompactState } from 'src/agent/compact/microCompact.js';
 import { fileHistoryHasAnyChanges } from 'src/shared/fs/fileHistory.js';
 import { setClipboard } from 'src/terminal/ink/termio/osc.js';
-import { logEvent } from 'src/platform/analytics/index.js';
 
 export interface UseMessageActionsControllerDeps {
   messages: MessageType[];
@@ -100,12 +99,6 @@ export function useMessageActionsController(
     const prev = messagesRef.current;
     const messageIndex = prev.lastIndexOf(message);
     if (messageIndex === -1) return;
-    logEvent('tengu_conversation_rewind', {
-      preRewindMessageCount: prev.length,
-      postRewindMessageCount: messageIndex,
-      messagesRemoved: prev.length - messageIndex,
-      rewindToMessageIndex: messageIndex
-    });
     setMessages(prev.slice(0, messageIndex));
     // Careful, this has to happen after setMessages
     setConversationId(randomUUID());

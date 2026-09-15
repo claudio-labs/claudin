@@ -1,5 +1,4 @@
 import { useEffect } from 'react'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { z } from 'zod/v4'
 import type { MCPServerConnection } from 'src/mcp/types.js'
 import { asMcpSchema } from 'src/mcp/zodCompat.js'
@@ -31,10 +30,6 @@ export function useIdeLogging(mcpClients: MCPServerConnection[]): void {
         asMcpSchema(LogEventSchema()),
         notification => {
           const { eventName, eventData } = notification.params
-          logEvent(
-            `tengu_ide_${eventName}`,
-            eventData as { [key: string]: boolean | number | undefined },
-          )
         },
       )
     }

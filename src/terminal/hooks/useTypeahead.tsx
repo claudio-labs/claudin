@@ -2,7 +2,6 @@ import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { Text } from 'src/terminal/ink.js';
-import { logEvent } from 'src/platform/analytics/index.js';
 import { useDebounceCallback } from 'usehooks-ts';
 import { type Command, getCommandName } from 'src/commands/commands.js';
 import { getModeFromInput, getValueFromInput } from 'src/terminal/prompt-input/inputModes.js';
@@ -233,8 +232,6 @@ async function generateBashSuggestions(input: string, cursorOffset: number): Pro
     const suggestions = await getShellCompletions(input, cursorOffset, currentShellCompletionAbortController.signal);
     return suggestions;
   } catch {
-    // Silent failure - don't break UX
-    logEvent('tengu_shell_completion_failed', {});
     return [];
   }
 }

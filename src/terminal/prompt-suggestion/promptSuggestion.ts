@@ -20,10 +20,6 @@ import {
 } from 'src/agent/messages/messages.js'
 import { getInitialSettings } from 'src/platform/settings/settings.js'
 import { isTeammate } from 'src/agent/coordinator/teammate.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { currentLimits } from 'src/providers/claudeAiLimits.js'
 import { endsWithFollowupOffer } from 'src/terminal/prompt-suggestion/followupOffer.js'
 import { isSpeculationEnabled, startSpeculation } from 'src/terminal/prompt-suggestion/speculation.js'
@@ -40,19 +36,9 @@ export function shouldEnablePromptSuggestion(): boolean {
   // Env var overrides everything (for testing)
   const envOverride = process.env.CLAUDIN_ENABLE_PROMPT_SUGGESTION
   if (isEnvDefinedFalsy(envOverride)) {
-    logEvent('tengu_prompt_suggestion_init', {
-      enabled: false,
-      source:
-        'env' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
     return false
   }
   if (isEnvTruthy(envOverride)) {
-    logEvent('tengu_prompt_suggestion_init', {
-      enabled: true,
-      source:
-        'env' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
     return true
   }
 
@@ -62,30 +48,15 @@ export function shouldEnablePromptSuggestion(): boolean {
 
   // Disable in non-interactive mode (print mode, piped input, SDK)
   if (getIsNonInteractiveSession()) {
-    logEvent('tengu_prompt_suggestion_init', {
-      enabled: false,
-      source:
-        'non_interactive' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
     return false
   }
 
   // Disable for swarm teammates (only leader should show suggestions)
   if (isAgentSwarmsEnabled() && isTeammate()) {
-    logEvent('tengu_prompt_suggestion_init', {
-      enabled: false,
-      source:
-        'swarm_teammate' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
     return false
   }
 
   const enabled = getInitialSettings()?.promptSuggestionEnabled !== false
-  logEvent('tengu_prompt_suggestion_init', {
-    enabled,
-    source:
-      'setting' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
   return enabled
 }
 
@@ -488,23 +459,6 @@ export function logSuggestionOutcome(
   const wasAccepted = userInput === suggestion
   const timeMs = Math.max(0, Date.now() - emittedAt)
 
-  logEvent('tengu_prompt_suggestion', {
-    source: 'sdk' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    outcome: (wasAccepted
-      ? 'accepted'
-      : 'ignored') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    prompt_id:
-      promptId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    ...(generationRequestId && {
-      generationRequestId:
-        generationRequestId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    }),
-    ...(wasAccepted && {
-      timeToAcceptMs: timeMs,
-    }),
-    ...(!wasAccepted && { timeToIgnoreMs: timeMs }),
-    similarity,
-  })
 }
 
 export function logSuggestionSuppressed(
@@ -517,16 +471,4 @@ export function logSuggestionSuppressed(
   logForDebugging(
     `[prompt-suggestion] suppressed: ${reason}${suggestion ? ` (length=${suggestion.length})` : ''}`,
   )
-  logEvent('tengu_prompt_suggestion', {
-    ...(source && {
-      source:
-        source as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    }),
-    outcome:
-      'suppressed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    reason:
-      reason as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    prompt_id:
-      resolvedPromptId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 }

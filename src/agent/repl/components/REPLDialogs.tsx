@@ -34,7 +34,6 @@
 import * as React from 'react'
 import { feature } from 'bun:bundle'
 import { saveGlobalConfig } from 'src/platform/config/config.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { logError } from 'src/shared/log.js'
 import { CostThresholdDialog } from 'src/permissions/ui/CostThresholdDialog.js'
 import { IdleReturnDialog } from 'src/platform/IdleReturnDialog.js'
@@ -318,17 +317,10 @@ export function renderREPLDialogs(deps: REPLDialogsDeps, slots: REPLDialogsSlots
         ...(current as object),
         hasAcknowledgedCostThreshold: true,
       }) as never)
-      logEvent('tengu_cost_threshold_acknowledged' as never, {})
     }} />}
     {deps.focusedInputDialog === 'idle-return' && deps.idleReturnPending && <IdleReturnDialog idleMinutes={deps.idleReturnPending.idleMinutes} totalInputTokens={deps.getTotalInputTokens()} onDone={async (action: unknown) => {
       const pending = deps.idleReturnPending!
       deps.setIdleReturnPending(null)
-      logEvent('tengu_idle_return_action' as never, {
-        action: action as never,
-        idleMinutes: Math.round(pending.idleMinutes),
-        messageCount: deps.messagesRef.current?.length ?? 0,
-        totalInputTokens: deps.getTotalInputTokens(),
-      })
       if (action === 'dismiss') {
         deps.setInputValue(pending.input)
         return

@@ -13,8 +13,6 @@ import { exitWithError, renderAndRun } from 'src/terminal/interactiveHelpers.js'
 import { createRemoteSessionConfig } from 'src/platform/remote/RemoteSessionManager.js';
 import { launchRepl } from 'src/agent/repl/replLauncher.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
-import { logEvent } from 'src/platform/analytics/index.js';
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import type { AgentColorName } from 'src/tools/AgentTool/agentColorManager.js';
 import { asSessionId } from 'src/shared/types/ids.js';
@@ -123,21 +121,12 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
     if (!isRemoteTuiEnabled && !hasInitialPrompt) {
       return await exitWithError(root, 'Error: --remote requires a description.\nUsage: claudin --remote "your task description"', () => gracefulShutdown(1));
     }
-    logEvent('tengu_remote_create_session', {
-      has_initial_prompt: String(hasInitialPrompt) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    });
 
     const currentBranch = await getBranch();
     const createdSession = await teleportToRemoteWithErrorHandling(root, hasInitialPrompt ? remote : null, new AbortController().signal, currentBranch || undefined);
     if (!createdSession) {
-      logEvent('tengu_remote_create_session_error', {
-        error: 'unable_to_create_session' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      });
       return await exitWithError(root, 'Error: Unable to create remote session', () => gracefulShutdown(1));
     }
-    logEvent('tengu_remote_create_session_success', {
-      session_id: createdSession.id as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    });
 
     if (!isRemoteTuiEnabled) {
       process.stdout.write(`Created remote session: ${createdSession.title}\n`);
@@ -193,7 +182,6 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
     return;
   } else if (teleport) {
     if (teleport === true || teleport === '') {
-      logEvent('tengu_teleport_interactive_mode', {});
       logForDebugging('selectAndResumeTeleportTask: Starting teleport flow...');
       const teleportResult = await launchTeleportResumeWrapper(root);
       if (!teleportResult) {
@@ -203,9 +191,6 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
       const { branchError } = await checkOutTeleportedSessionBranch(teleportResult.branch);
       messages = processMessagesForTeleportResume(teleportResult.log, branchError);
     } else if (typeof teleport === 'string') {
-      logEvent('tengu_teleport_resume_session', {
-        mode: 'direct' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      });
       try {
         const sessionData = await fetchSession(teleport);
         const repoValidation = await validateSessionRepository(sessionData);
@@ -259,10 +244,6 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
       const resumeStart = performance.now();
       const result = await loadConversationForResume(matchedLog ?? sessionId, undefined);
       if (!result) {
-        logEvent('tengu_session_resumed', {
-          entrypoint: 'cli_flag' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          success: false,
-        });
         return await exitWithError(root, `No conversation found with session ID: ${sessionId}`);
       }
       const fullPath = matchedLog?.fullPath ?? result.fullPath;
@@ -274,16 +255,7 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
       if (processedResume.restoredAgentDef) {
         mainThreadAgentDefinitionRef.current = processedResume.restoredAgentDef;
       }
-      logEvent('tengu_session_resumed', {
-        entrypoint: 'cli_flag' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        success: true,
-        resume_duration_ms: Math.round(performance.now() - resumeStart),
-      });
     } catch (error) {
-      logEvent('tengu_session_resumed', {
-        entrypoint: 'cli_flag' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        success: false,
-      });
       logError(error);
       await exitWithError(root, errorMessage(error));
     }

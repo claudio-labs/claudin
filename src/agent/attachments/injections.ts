@@ -6,9 +6,6 @@
 //
 // Extracted from src/agent/attachments/attachments.ts as part of the attachments split.
 import {
-  logEvent,
-} from 'src/platform/analytics/index.js'
-import {
   toolMatchesName,
   type Tools,
   type ToolUseContext,
@@ -109,7 +106,6 @@ export function getUltrathinkEffortAttachment(input: string | null): Attachment[
   if (!isUltrathinkEnabled() || !input || !hasUltrathinkKeyword(input)) {
     return []
   }
-  logEvent('tengu_ultrathink', {})
   return [{ type: 'ultrathink_effort', level: 'high' }]
 }
 

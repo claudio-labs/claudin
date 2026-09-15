@@ -15,7 +15,6 @@ import { estimateImageTokens } from 'src/agent/context/imageTokenEstimator.js'
 import { SHELL_TOOL_NAMES } from 'src/platform/shell/shellToolUtils.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getMainLoopModel } from 'src/providers/model/model.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { notifyCacheDeletion } from 'src/providers/cache/promptCacheBreakDetection.js'
 import { recordPrefixRewrite } from 'src/providers/cache/cacheStatsTracker.js'
 import { roughTokenCountEstimation } from 'src/shared/tokenEstimation.js'
@@ -287,15 +286,6 @@ function maybeReliefClip(
     }
   }
 
-  logEvent('tengu_stable_stub_clip', {
-    rssLane: decision.lane === 'rss',
-    added: ids.length,
-    totalClipped: getClippedIds().size,
-    tokensToFree: Math.round(decision.tokensToFree),
-    tokensFreed: savings,
-    trigger: Math.round(decision.trigger),
-    target: Math.round(decision.target),
-  })
   const reason = `relief clip (${ids.length} tool results, ~${Math.round(savings / 1000)}k tokens, ${decision.lane} lane)`
   logForDebugging(
     `[RELIEF] ${reason}: trigger ${Math.round(decision.trigger)} → target ${Math.round(decision.target)}`,
@@ -442,14 +432,6 @@ function maybeTimeBasedMicrocompact(
     }
   }
 
-  logEvent('tengu_time_based_microcompact', {
-    gapMinutes: Math.round(gapMinutes),
-    gapThresholdMinutes: config.gapThresholdMinutes,
-    toolsCleared: newOnes.length,
-    toolsKept: keepSet.size,
-    keepRecent: config.keepRecent,
-    tokensSaved,
-  })
 
   logForDebugging(
     `[TIME-BASED MC] gap ${Math.round(gapMinutes)}min > ${config.gapThresholdMinutes}min, clipped ${newOnes.length} tool results (~${tokensSaved} tokens), kept last ${keepSet.size}`,

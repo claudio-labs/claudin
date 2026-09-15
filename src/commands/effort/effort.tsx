@@ -1,7 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import * as React from 'react';
 import { useMainLoopModel } from 'src/agent/hooks/useMainLoopModel.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js';
 import { type EffortValue, clearProjectEffortPin, effortEnvOverrideConflictsWith, getDisplayedEffortLabel, getEffortEnvOverride, getEffortValueDescription, getInitialEffortSetting, getProjectEffortOrigin, isEffortLevel, isOpenAIEffortLevel, modelUsesOpenAIEffort, persistEffortForProject, pinProjectEffortAuto, toPersistableEffort } from 'src/providers/effort/effort.js';
@@ -21,9 +20,6 @@ function setEffortValue(effortValue: EffortValue): EffortCommandResult {
       message: `Failed to set effort level: ${result.error.message}`
     };
   }
-  logEvent('tengu_effort_command', {
-    effort: effortValue as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-  });
 
   // Env var wins at resolveAppliedEffort time. Only flag it when it actually
   // conflicts — compared by level bucket (shared with the Shift+arrow hotkey)
@@ -95,9 +91,6 @@ function unsetEffortLevel(): EffortCommandResult {
       message: `Failed to set effort level: ${result.error.message}`
     };
   }
-  logEvent('tengu_effort_command', {
-    effort: 'auto' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-  });
   // env=auto/unset (null) matches what /effort auto asks for, so only warn
   // when env is pinning a specific level that will keep overriding.
   const envOverride = getEffortEnvOverride();
@@ -131,9 +124,6 @@ function inheritEffortLevel(): EffortCommandResult {
   }
   // Read AFTER clearing: with no pin left this resolves the inherited value.
   const inherited = getInitialEffortSetting();
-  logEvent('tengu_effort_command', {
-    effort: 'inherit' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-  });
   return {
     message: inherited === undefined ? 'Cleared this project\u2019s effort pin — using the model default' : `Cleared this project\u2019s effort pin — now inheriting ${inherited} from global settings`,
     effortUpdate: {
@@ -244,9 +234,6 @@ function EffortPickerWrapper({ onDone }: { onDone: LocalJSXCommandOnDone }) {
     } else {
       persistEffortForProject(effort);
     }
-    logEvent('tengu_effort_command', {
-      effort: (effort ?? 'auto') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    });
     setAppState(prev => ({
       ...prev,
       effortValue: effort

@@ -4,7 +4,6 @@
  * malformed-token injection.
  */
 
-import { logEvent } from 'src/platform/analytics/index.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import { BASH_SECURITY_CHECK_IDS } from 'src/tools/BashTool/bashSecurity/checkIds.js'
 import type { ValidationContext } from 'src/tools/BashTool/bashSecurity/context.js'
@@ -93,10 +92,6 @@ export function validateShellMetacharacters(
     'Command contains shell metacharacters (;, |, or &) in arguments'
 
   if (/(?:^|\s)["'][^"']*[;&][^"']*["'](?:\s|$)/.test(unquotedContent)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.SHELL_METACHARACTERS,
-      subId: 1,
-    })
     return { behavior: 'ask', message }
   }
 
@@ -107,18 +102,10 @@ export function validateShellMetacharacters(
   ]
 
   if (globPatterns.some(p => p.test(unquotedContent))) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.SHELL_METACHARACTERS,
-      subId: 2,
-    })
     return { behavior: 'ask', message }
   }
 
   if (/-regex\s+["'][^"']*[;&][^"']*["']/.test(unquotedContent)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.SHELL_METACHARACTERS,
-      subId: 3,
-    })
     return { behavior: 'ask', message }
   }
 
@@ -134,10 +121,6 @@ export function validateDangerousVariables(
     /[<>|]\s*\$[A-Za-z_]/.test(fullyUnquotedContent) ||
     /\$[A-Za-z_][A-Za-z0-9_]*\s*[|<>]/.test(fullyUnquotedContent)
   ) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.DANGEROUS_VARIABLES,
-      subId: 1,
-    })
     return {
       behavior: 'ask',
       message:
@@ -165,11 +148,6 @@ export function validateDangerousPatterns(
   // Other command substitution checks (include double-quoted content)
   for (const { pattern, message } of COMMAND_SUBSTITUTION_PATTERNS) {
     if (pattern.test(unquotedContent)) {
-      logEvent('tengu_bash_security_check_triggered', {
-        checkId:
-          BASH_SECURITY_CHECK_IDS.DANGEROUS_PATTERNS_COMMAND_SUBSTITUTION,
-        subId: 1,
-      })
       return { behavior: 'ask', message: `Command contains ${message}` }
     }
   }
@@ -181,10 +159,6 @@ export function validateRedirections(context: ValidationContext): PermissionResu
   const { fullyUnquotedContent } = context
 
   if (/</.test(fullyUnquotedContent)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.DANGEROUS_PATTERNS_INPUT_REDIRECTION,
-      subId: 1,
-    })
     return {
       behavior: 'ask',
       message:
@@ -193,10 +167,6 @@ export function validateRedirections(context: ValidationContext): PermissionResu
   }
 
   if (/>/.test(fullyUnquotedContent)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.DANGEROUS_PATTERNS_OUTPUT_REDIRECTION,
-      subId: 1,
-    })
     return {
       behavior: 'ask',
       message:
@@ -214,10 +184,6 @@ export function validateIFSInjection(context: ValidationContext): PermissionResu
   // Check for $IFS and ${...IFS...} patterns (including parameter expansions like ${IFS:0:1}, ${#IFS}, etc.)
   // Using ${[^}]*IFS to catch all parameter expansion variations with IFS
   if (/\$IFS|\$\{[^}]*IFS/.test(originalCommand)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.IFS_INJECTION,
-      subId: 1,
-    })
     return {
       behavior: 'ask',
       message:
@@ -242,10 +208,6 @@ export function validateProcEnvironAccess(
   // - /proc/1/environ
   // - /proc/*/environ (with any PID)
   if (/\/proc\/.*\/environ/.test(originalCommand)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.PROC_ENVIRON_ACCESS,
-      subId: 1,
-    })
     return {
       behavior: 'ask',
       message:
@@ -303,10 +265,6 @@ export function validateMalformedTokenInjection(
 
   // Check for malformed tokens (unbalanced delimiters)
   if (hasMalformedTokens(originalCommand, parsed)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.MALFORMED_TOKEN_INJECTION,
-      subId: 1,
-    })
     return {
       behavior: 'ask',
       message:
