@@ -17,7 +17,6 @@
 
 import { feature } from 'bun:bundle';
 import { addToHistory } from 'src/agent/history.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { getSubscriptionType } from 'src/providers/auth/auth.js';
 import { getRemoteControlAtStartup, getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { logForDebugging } from 'src/shared/debug.js';
@@ -406,11 +405,6 @@ export function runMcpHooksAndTelemetry(
       void updateSessionName(sessionNameArg);
     }
     void countConcurrentSessions().then(count => {
-      if (count >= 2) {
-        logEvent('tengu_concurrent_sessions', {
-          num_sessions: count as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        });
-      }
     });
   });
 
@@ -484,14 +478,6 @@ export function runInteractiveStartupBlock(
   } = input;
   const { getTeammateUtils } = deps;
 
-  // Log model config at startup
-  logEvent('tengu_startup_manual_model_config', {
-    cli_flag: options.model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    env_var: tryGetActiveProvider()?.model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    settings_file: (getInitialSettings() || {}).model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    subscriptionType: getSubscriptionType() as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    agent: agentSetting as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  });
 
   // Get deprecation warning for the initial model (resolvedInitialModel computed earlier for hooks parallelization)
   const deprecationWarning = getModelDeprecationWarning(resolvedInitialModel);

@@ -41,7 +41,6 @@ import {
   sep,
 } from 'path'
 import picomatch from 'picomatch'
-import { logEvent } from 'src/platform/analytics/index.js'
 import {
   getAdditionalDirectoriesForClaudeMd,
   getOriginalCwd,
@@ -377,14 +376,6 @@ function handleMemoryFileReadError(error: unknown, filePath: string): void {
   // ENOENT = file doesn't exist, EISDIR = is a directory — both expected
   if (code === 'ENOENT' || code === 'EISDIR') {
     return
-  }
-  // Log permission errors (EACCES) as they're actionable
-  if (code === 'EACCES') {
-    // Don't log the full file path to avoid PII/security issues
-    logEvent('tengu_claude_md_permission_error', {
-      is_access_error: 1,
-      has_home_dir: filePath.includes(getClaudinConfigHomeDir()) ? 1 : 0,
-    })
   }
 }
 
@@ -749,12 +740,6 @@ export async function processMdRules({
 
     return result
   } catch (error) {
-    if (error instanceof Error && error.message.includes('EACCES')) {
-      logEvent('tengu_claude_rules_md_permission_error', {
-        is_access_error: 1,
-        has_home_dir: rulesDir.includes(getClaudinConfigHomeDir()) ? 1 : 0,
-      })
-    }
     return []
   }
 }
@@ -1002,19 +987,6 @@ export const getMemoryFiles = memoize(
 
     if (!hasLoggedInitialLoad) {
       hasLoggedInitialLoad = true
-      logEvent('tengu_claudemd__initial_load', {
-        file_count: result.length,
-        total_content_length: totalContentLength,
-        user_count: typeCounts['User'] ?? 0,
-        project_count: typeCounts['Project'] ?? 0,
-        local_count: typeCounts['Local'] ?? 0,
-        managed_count: typeCounts['Managed'] ?? 0,
-        automem_count: typeCounts['AutoMem'] ?? 0,
-        ...(feature('TEAMMEM')
-          ? { teammem_count: typeCounts['TeamMem'] ?? 0 }
-          : {}),
-        duration_ms: Date.now() - startTime,
-      })
     }
 
     // Fire InstructionsLoaded hook for each instruction file loaded

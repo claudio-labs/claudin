@@ -90,10 +90,7 @@ import {
   isToolSearchEnabled,
 } from 'src/agent/tools/toolSearch.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
 import {
   getMaxOutputTokensForModel,
   queryModelWithStreaming,
@@ -493,20 +490,8 @@ export async function compactConversation(
           ? truncateHeadForPTLRetry(messagesToSummarize, summaryResponse)
           : null
       if (!truncated) {
-        logEvent('tengu_compact_failed', {
-          reason:
-            'prompt_too_long' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          preCompactTokenCount,
-          promptCacheSharingEnabled,
-          ptlAttempts,
-        })
         throw new Error(ERROR_MESSAGE_PROMPT_TOO_LONG)
       }
-      logEvent('tengu_compact_ptl_retry', {
-        attempt: ptlAttempts,
-        droppedMessages: messagesToSummarize.length - truncated.length,
-        remainingMessages: truncated.length,
-      })
       messagesToSummarize = truncated
       // The forked-agent path reads from cacheSafeParams.forkContextMessages,
       // not the messages param — thread the truncated set through both paths.
@@ -521,22 +506,10 @@ export async function compactConversation(
         `Compact failed: no summary text in response. Response: ${jsonStringify(summaryResponse)}`,
         { level: 'error' },
       )
-      logEvent('tengu_compact_failed', {
-        reason:
-          'no_summary' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        preCompactTokenCount,
-        promptCacheSharingEnabled,
-      })
       throw new Error(
         `Failed to generate conversation summary - response did not contain valid text content`,
       )
     } else if (isFailedSummary(summaryResponse, summary)) {
-      logEvent('tengu_compact_failed', {
-        reason:
-          'api_error' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        preCompactTokenCount,
-        promptCacheSharingEnabled,
-      })
       throw new Error(summary)
     }
 
@@ -673,52 +646,6 @@ export async function compactConversation(
     const querySourceForEvent =
       recompactionInfo?.querySource ?? context.options.querySource ?? 'unknown'
 
-    logEvent('tengu_compact', {
-      preCompactTokenCount,
-      // Kept for continuity — semantically the compact API call's total usage
-      postCompactTokenCount: compactionCallTotalTokens,
-      truePostCompactTokenCount,
-      autoCompactThreshold: recompactionInfo?.autoCompactThreshold ?? -1,
-      willRetriggerNextTurn:
-        recompactionInfo !== undefined &&
-        truePostCompactTokenCount >= recompactionInfo.autoCompactThreshold,
-      isAutoCompact,
-      querySource:
-        querySourceForEvent as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      queryChainId: (context.queryTracking?.chainId ??
-        '') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      queryDepth: context.queryTracking?.depth ?? -1,
-      isRecompactionInChain: recompactionInfo?.isRecompactionInChain ?? false,
-      turnsSincePreviousCompact:
-        recompactionInfo?.turnsSincePreviousCompact ?? -1,
-      previousCompactTurnId: (recompactionInfo?.previousCompactTurnId ??
-        '') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      compactionInputTokens: compactionUsage?.input_tokens,
-      compactionOutputTokens: compactionUsage?.output_tokens,
-      compactionCacheReadTokens: compactionUsage?.cache_read_input_tokens ?? 0,
-      compactionCacheCreationTokens:
-        compactionUsage?.cache_creation_input_tokens ?? 0,
-      compactionTotalTokens: compactionUsage
-        ? compactionUsage.input_tokens +
-          (compactionUsage.cache_creation_input_tokens ?? 0) +
-          (compactionUsage.cache_read_input_tokens ?? 0) +
-          compactionUsage.output_tokens
-        : 0,
-      promptCacheSharingEnabled,
-      // analyzeContext walks every content block (~11ms on a 4.5K-message
-      // session) purely for this telemetry breakdown. Computed here, past
-      // the compaction-API await, so the sync walk doesn't starve the
-      // render loop before compaction even starts. Same deferral pattern
-      // as reactiveCompact.ts.
-      ...(() => {
-        try {
-          return tokenStatsToStatsigMetrics(analyzeContext(messages))
-        } catch (error) {
-          logError(error as Error)
-          return {}
-        }
-      })(),
-    })
 
     // Reset cache read baseline so the post-compact drop isn't flagged as a break
     if (feature('PROMPT_CACHE_BREAK_DETECTION')) {
@@ -897,20 +824,8 @@ export async function partialCompactConversation(
           ? truncateHeadForPTLRetry(apiMessages, summaryResponse)
           : null
       if (!truncated) {
-        logEvent('tengu_partial_compact_failed', {
-          reason:
-            'prompt_too_long' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          ...failureMetadata,
-          ptlAttempts,
-        })
         throw new Error(ERROR_MESSAGE_PROMPT_TOO_LONG)
       }
-      logEvent('tengu_compact_ptl_retry', {
-        attempt: ptlAttempts,
-        droppedMessages: apiMessages.length - truncated.length,
-        remainingMessages: truncated.length,
-        path: 'partial' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      })
       apiMessages = truncated
       retryCacheSafeParams = {
         ...retryCacheSafeParams,
@@ -918,20 +833,10 @@ export async function partialCompactConversation(
       }
     }
     if (!summary) {
-      logEvent('tengu_partial_compact_failed', {
-        reason:
-          'no_summary' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        ...failureMetadata,
-      })
       throw new Error(
         'Failed to generate conversation summary - response did not contain valid text content',
       )
     } else if (isFailedSummary(summaryResponse, summary)) {
-      logEvent('tengu_partial_compact_failed', {
-        reason:
-          'api_error' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        ...failureMetadata,
-      })
       throw new Error(summary)
     }
 
@@ -1007,22 +912,6 @@ export async function partialCompactConversation(
     ])
     const compactionUsage = getTokenUsage(summaryResponse)
 
-    logEvent('tengu_partial_compact', {
-      preCompactTokenCount,
-      postCompactTokenCount,
-      messagesKept: messagesToKeep.length,
-      messagesSummarized: messagesToSummarize.length,
-      direction:
-        direction as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      hasUserFeedback: !!userFeedback,
-      trigger:
-        'message_selector' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      compactionInputTokens: compactionUsage?.input_tokens,
-      compactionOutputTokens: compactionUsage?.output_tokens,
-      compactionCacheReadTokens: compactionUsage?.cache_read_input_tokens ?? 0,
-      compactionCacheCreationTokens:
-        compactionUsage?.cache_creation_input_tokens ?? 0,
-    })
 
     // Progress messages aren't loggable, so forkSessionImpl would null out
     // a logicalParentUuid pointing at one. Both directions skip them.
@@ -1222,42 +1111,14 @@ async function streamCompactSummary({
         // "Request was aborted." as the summary — the text doesn't start with
         // "API Error" so the caller's startsWithApiErrorPrefix guard misses it.
         if (assistantMsg && assistantText && !assistantMsg.isApiErrorMessage) {
-          // Skip success logging for PTL error text — it's returned so the
-          // caller's retry loop catches it, but it's not a successful summary.
-          if (!assistantText.startsWith(PROMPT_TOO_LONG_ERROR_MESSAGE)) {
-            logEvent('tengu_compact_cache_sharing_success', {
-              preCompactTokenCount,
-              outputTokens: result.totalUsage.output_tokens,
-              cacheReadInputTokens: result.totalUsage.cache_read_input_tokens,
-              cacheCreationInputTokens:
-                result.totalUsage.cache_creation_input_tokens,
-              cacheHitRate:
-                result.totalUsage.cache_read_input_tokens > 0
-                  ? result.totalUsage.cache_read_input_tokens /
-                    (result.totalUsage.cache_read_input_tokens +
-                      result.totalUsage.cache_creation_input_tokens +
-                      result.totalUsage.input_tokens)
-                  : 0,
-            })
-          }
           return assistantMsg
         }
         logForDebugging(
           `Compact cache sharing: no text in response, falling back. Response: ${jsonStringify(assistantMsg)}`,
           { level: 'warn' },
         )
-        logEvent('tengu_compact_cache_sharing_fallback', {
-          reason:
-            'no_text_response' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          preCompactTokenCount,
-        })
       } catch (error) {
         logError(error)
-        logEvent('tengu_compact_cache_sharing_fallback', {
-          reason:
-            'error' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          preCompactTokenCount,
-        })
       }
     }
 
@@ -1375,11 +1236,6 @@ async function streamCompactSummary({
       }
 
       if (attempt < maxAttempts) {
-        logEvent('tengu_compact_streaming_retry', {
-          attempt,
-          preCompactTokenCount,
-          hasStartedStreaming,
-        })
         await sleep(getRetryDelay(attempt), context.abortController.signal, {
           abortError: () => new APIUserAbortError(),
         })
@@ -1390,15 +1246,6 @@ async function streamCompactSummary({
         `Compact streaming failed after ${attempt} attempts. hasStartedStreaming=${hasStartedStreaming}`,
         { level: 'error' },
       )
-      logEvent('tengu_compact_failed', {
-        reason:
-          'no_streaming_response' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        preCompactTokenCount,
-        hasStartedStreaming,
-        retryEnabled,
-        attempts: attempt,
-        promptCacheSharingEnabled,
-      })
       throw new Error(ERROR_MESSAGE_INCOMPLETE_RESPONSE)
     }
 

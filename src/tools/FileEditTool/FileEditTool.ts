@@ -1,5 +1,4 @@
 import { dirname, isAbsolute, sep } from 'path'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { diagnosticTracker } from 'src/platform/diagnosticTracking.js'
 import {
@@ -592,13 +591,6 @@ export const FileEditTool = buildTool({
       limit: undefined,
     })
 
-    // 7. Log events
-    if (
-      absoluteFilePath.endsWith(`${sep}AGENTS.md`) ||
-      absoluteFilePath.endsWith(`${sep}CLAUDE.md`)
-    ) {
-      logEvent('tengu_write_claudemd', {})
-    }
     countLinesChanged(patch)
 
     logFileOperation({
@@ -607,11 +599,6 @@ export const FileEditTool = buildTool({
       filePath: absoluteFilePath,
     })
 
-    logEvent('tengu_edit_string_lengths', {
-      oldStringBytes: Buffer.byteLength(old_string, 'utf8'),
-      newStringBytes: Buffer.byteLength(new_string, 'utf8'),
-      replaceAll: replace_all,
-    })
 
     let gitDiff: ToolUseDiff | undefined
     if (
@@ -621,11 +608,6 @@ export const FileEditTool = buildTool({
       const startTime = Date.now()
       const diff = await fetchSingleFileGitDiff(absoluteFilePath)
       if (diff) gitDiff = diff
-      logEvent('tengu_tool_use_diff_computed', {
-        isEditTool: true,
-        durationMs: Date.now() - startTime,
-        hasDiff: !!diff,
-      })
     }
 
     // 8. Yield result

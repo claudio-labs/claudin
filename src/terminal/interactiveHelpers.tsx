@@ -1,7 +1,6 @@
 import { feature } from 'bun:bundle';
 import { appendFileSync } from 'fs';
 import React from 'react';
-import { logEvent } from 'src/platform/analytics/index.js';
 import { gracefulShutdown, gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js';
 import { type ChannelEntry, setSessionTrustAccepted, setStatsStore } from 'src/platform/bootstrap/state.js';
 import type { Command } from 'src/commands/commands.js';
@@ -276,10 +275,6 @@ export function getRenderContext(exitOnCtrlC: boolean): {
   let lastFlickerTime = 0;
   const baseOptions = getBaseRenderOptions(exitOnCtrlC);
 
-  // Log analytics event when stdin override is active
-  if (baseOptions.stdin) {
-    logEvent('tengu_stdin_interactive', {});
-  }
   const fpsTracker = new FpsTracker();
   const stats = createStatsStore();
   setStatsStore(stats);
@@ -322,13 +317,6 @@ export function getRenderContext(exitOnCtrlC: boolean): {
             continue;
           }
           const now = Date.now();
-          if (now - lastFlickerTime < 1000) {
-            logEvent('tengu_flicker', {
-              desiredHeight: flicker.desiredHeight,
-              actualHeight: flicker.availableHeight,
-              reason: flicker.reason
-            } as unknown as Record<string, boolean | number | undefined>);
-          }
           lastFlickerTime = now;
         }
       }

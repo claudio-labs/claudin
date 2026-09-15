@@ -8,7 +8,6 @@ import { useCommandQueue } from 'src/agent/hooks/useCommandQueue.js';
 import { type IDEAtMentioned, useIdeAtMentioned } from 'src/platform/ide/useIdeAtMentioned.js';
 import { useSessionDiffStat } from 'src/vcs/diff/hooks/useSessionDiffStat.js';
 import { useGitDiffStat } from 'src/vcs/diff/hooks/useGitDiffStat.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { type AppState, useAppState, useAppStateStore, useSetAppState } from 'src/terminal/state/AppState.js';
 
 /** One entry of AppState.teamContext.teammates. */
@@ -901,7 +900,6 @@ function PromptInput({
   });
   const onChange = useCallback((value: string) => {
     if (value === '?') {
-      logEvent('tengu_help_toggled', {});
       setHelpOpen(v => !v);
       return;
     }
@@ -1138,7 +1136,6 @@ function PromptInput({
     // Route input to viewed agent (in-process teammate or named local_agent).
     const activeAgent = getActiveAgentForInput(store.getState());
     if (activeAgent.type !== 'leader' && onAgentSubmit) {
-      logEvent('tengu_transcript_input_to_teammate', {});
       await onAgentSubmit(inputParam, activeAgent.task, {
         setCursorOffset,
         clearBuffer,
@@ -1204,7 +1201,6 @@ function PromptInput({
     }));
   }
   function onImagePaste(image: string, mediaType?: string, filename?: string, dimensions?: ImageDimensions, sourcePath?: string) {
-    logEvent('tengu_paste_image', {});
     onModeChange('prompt');
     const pasteId = nextPasteIdRef.current++;
     const newContent: PastedContent = {
@@ -1363,7 +1359,6 @@ function PromptInput({
   // Insert the at-mentioned reference (the file and, optionally, a line range) when
   // we receive an at-mentioned notification the IDE.
   const onIdeAtMentioned = function (atMentioned: IDEAtMentioned) {
-    logEvent('tengu_ext_at_mentioned', {});
     let atMentionedText: string;
     const relativePath = path.relative(getCwd(), atMentioned.filePath);
     if (atMentioned.lineStart && atMentioned.lineEnd) {
@@ -1401,7 +1396,6 @@ function PromptInput({
 
   // Handler for chat:externalEditor - edit in $EDITOR
   const handleExternalEditor = useCallback(async () => {
-    logEvent('tengu_external_editor_used', {});
     setIsExternalEditorActive(true);
     try {
       // Pass pastedContents to expand collapsed text references
@@ -1509,9 +1503,6 @@ function PromptInput({
         timeoutMs: 3000
       });
     }
-    logEvent('tengu_effort_command', {
-      effort: next as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    });
     // CLAUDIN_EFFORT_LEVEL wins at resolve time, so the footer indicator
     // won't move — warn once (only when env resolves to a different level) so
     // the key doesn't look dead.
@@ -1535,9 +1526,6 @@ function PromptInput({
       };
       // Pass undefined for teamContext (unused but kept for API compatibility)
       const nextMode = getNextPermissionMode(teammateContext, undefined);
-      logEvent('tengu_mode_cycle', {
-        to: nextMode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
       const teammateTaskId = viewingAgentTaskId;
       setAppState(prev => {
         const task = prev.tasks[teammateTaskId];
@@ -1618,9 +1606,6 @@ function PromptInput({
     // The dialog's own decline button (handleAutoModeOptInDecline) handles revert.
     if (feature('TRANSCRIPT_CLASSIFIER')) {
       if (showAutoModeOptIn || autoModeOptInTimeoutRef.current) {
-        if (showAutoModeOptIn) {
-          logEvent('tengu_auto_mode_opt_in_dialog_decline', {});
-        }
         setShowAutoModeOptIn(false);
         if (autoModeOptInTimeoutRef.current) {
           clearTimeout(autoModeOptInTimeoutRef.current);
@@ -1637,9 +1622,6 @@ function PromptInput({
     const {
       context: preparedContext
     } = cyclePermissionMode(toolPermissionContext, teamContext);
-    logEvent('tengu_mode_cycle', {
-      to: nextMode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    });
 
     // Track when user enters plan mode
     if (nextMode === 'plan') {
@@ -2261,9 +2243,6 @@ function PromptInput({
       priority: 'immediate',
       timeoutMs: 3000
     });
-    logEvent('tengu_model_picker_hotkey', {
-      model: model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    });
   }, [setAppState, addNotification, isFastMode]);
   const handleModelCancel = useCallback(() => {
     setShowModelPicker(false);
@@ -2304,9 +2283,6 @@ function PromptInput({
       thinkingEnabled: enabled
     }));
     setShowThinkingToggle(false);
-    logEvent('tengu_thinking_toggled_hotkey', {
-      enabled
-    });
     addNotification({
       key: 'thinking-toggled-hotkey',
       jsx: <Text color={enabled ? 'suggestion' : undefined} dimColor={!enabled}>

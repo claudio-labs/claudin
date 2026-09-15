@@ -35,41 +35,15 @@ describe('maybe wrapper', () => {
     expect(result).toEqual([])
   })
 
-  test('logs duration event with label on success (when sampled)', async () => {
-    await maybe('label-success', async () => [{ payload: 'x' }])
-    const event = logCalls.find(c => c.eventName === 'tengu_attachment_compute_duration')
-    expect(event).toBeDefined()
-    expect(event!.metadata.label).toBe('label-success')
-    expect(event!.metadata.attachment_count).toBe(1)
-    expect(typeof event!.metadata.duration_ms).toBe('number')
-    expect(typeof event!.metadata.attachment_size_bytes).toBe('number')
-    expect(event!.metadata.error).toBeUndefined()
-  })
-
-  test('logs duration event with error=true on failure (when sampled)', async () => {
-    await maybe('label-failure', async () => {
-      throw new Error('boom')
-    })
-    const event = logCalls.find(c => c.eventName === 'tengu_attachment_compute_duration')
-    expect(event).toBeDefined()
-    expect(event!.metadata.label).toBe('label-failure')
-    expect(event!.metadata.error).toBe(true)
-  })
-
-  test('does not log when sampling threshold not met', async () => {
-    Math.random = () => 1
-    await maybe('not-sampled', async () => [{ a: 1 }])
-    const event = logCalls.find(c => c.eventName === 'tengu_attachment_compute_duration')
-    expect(event).toBeUndefined()
-  })
-
-  test('skips undefined/null entries when computing attachment_size_bytes', async () => {
+  // Four tests lived here that asserted only on the sampled duration event —
+  // its label, its counts, and that sampling suppressed it. The event reached a
+  // function the build stubs to an empty body, so with it gone they had nothing
+  // left to observe. The one behavioural claim among them survives below:
+  // `maybe` passes holes through rather than compacting the array.
+  test('passes undefined and null entries through without compacting', async () => {
     const result = await maybe('with-holes', async () =>
       [{ a: 1 }, undefined, null, { a: 2 }] as unknown as Array<{ a: number }>,
     )
     expect(result).toHaveLength(4)
-    const event = logCalls.find(c => c.eventName === 'tengu_attachment_compute_duration')
-    expect(event).toBeDefined()
-    expect(event!.metadata.attachment_count).toBe(4)
   })
 })

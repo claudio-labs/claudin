@@ -15,7 +15,6 @@
  */
 import { feature } from 'bun:bundle'
 import { unwatchFile, watchFile } from 'fs'
-import { logEvent } from 'src/platform/analytics/index.js'
 import {
   createDefaultGlobalConfig,
   DEFAULT_GLOBAL_CONFIG,
@@ -179,7 +178,6 @@ export function saveGlobalConfig(
         'saveGlobalConfig fallback: re-read config is missing auth that cache has; refusing to write. See GH #3117.',
         { level: 'error' },
       )
-      logEvent('tengu_config_auth_loss_prevented', {})
       return
     }
     const config = updater(currentConfig)
@@ -208,13 +206,6 @@ export const CONFIG_WRITE_DISPLAY_THRESHOLD = 20
 
 function reportConfigCacheStats(): void {
   const total = configCacheHits + configCacheMisses
-  if (total > 0) {
-    logEvent('tengu_config_cache_stats', {
-      cache_hits: configCacheHits,
-      cache_misses: configCacheMisses,
-      hit_rate: configCacheHits / total,
-    })
-  }
   configCacheHits = 0
   configCacheMisses = 0
 }

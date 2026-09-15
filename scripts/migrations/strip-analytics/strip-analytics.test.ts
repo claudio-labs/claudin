@@ -1,9 +1,18 @@
 import { describe, expect, test } from 'bun:test'
-import { transform } from './strip-analytics'
+import { conditionOnlyReads, transform } from './strip-analytics'
 
 /** Run the codemod on a synthetic file and return its rewritten text. */
-function run(source: string, name = '/repo/src/sample.ts') {
-  return transform(name, source)
+function run(
+  source: string,
+  name = '/repo/src/sample.ts',
+  options: Parameters<typeof transform>[2] = {},
+) {
+  return transform(name, source, options)
+}
+
+/** Same, with the opt-in `if`-collapsing behaviour enabled. */
+function runCollapsing(source: string) {
+  return run(source, '/repo/src/sample.ts', { collapseEmptyIf: true })
 }
 
 describe('call-site removal', () => {
@@ -246,6 +255,134 @@ describe('statement boundaries that are not semicolons', () => {
     expect(out.refusals).toEqual([])
     expect(out.calls).toBe(1)
     expect(out.text).toContain('t.n++')
+  })
+})
+
+describe('collapsing an emptied if (opt-in)', () => {
+  test('drops the whole if when its condition only reads', () => {
+    const out = runCollapsing(
+      [
+        "import { logEvent } from 'src/x.js'",
+        'export function f(n: number) {',
+        '  if (n > 10) {',
+        "    logEvent('tengu_big', { n })",
+        '  }',
+        '  return n',
+        '}',
+      ].join('\n'),
+    )
+    expect(out.refusals).toEqual([])
+    expect(out.text).not.toContain('if (n > 10)')
+    expect(out.text).toContain('return n')
+  })
+
+  test('refuses when an else depends on the branch', () => {
+    // Dropping the head here would run the else unconditionally.
+    const out = runCollapsing(
+      [
+        "import { logEvent } from 'src/x.js'",
+        'export function f(n: number) {',
+        '  if (n > 10) {',
+        "    logEvent('tengu_big', { n })",
+        '  } else {',
+        '    record(n)',
+        '  }',
+        '}',
+      ].join('\n'),
+    )
+    expect(out.text).toBeNull()
+    expect(out.refusals.map(r => r.kind)).toEqual(['empties-block'])
+  })
+
+  test('refuses when the condition assigns', () => {
+    const out = runCollapsing(
+      [
+        "import { logEvent } from 'src/x.js'",
+        'export function f(m: Map<string, number>) {',
+        '  if ((cached = m.get(\'k\')) !== undefined) {',
+        "    logEvent('tengu_hit', {})",
+        '  }',
+        '}',
+      ].join('\n'),
+    )
+    expect(out.text).toBeNull()
+    expect(out.refusals.map(r => r.kind)).toEqual(['empties-block'])
+  })
+
+  test('refuses when the condition awaits', () => {
+    const out = runCollapsing(
+      [
+        "import { logEvent } from 'src/x.js'",
+        'export async function f() {',
+        '  if (await claim()) {',
+        "    logEvent('tengu_claimed', {})",
+        '  }',
+        '}',
+      ].join('\n'),
+    )
+    expect(out.text).toBeNull()
+    expect(out.refusals.map(r => r.kind)).toEqual(['empties-block'])
+  })
+
+  test('leaves a function body alone — that is the slice deletion\u2019s job', () => {
+    // Emptying a function body is legal but leaves a dead wrapper its callers
+    // still call. Collapsing an `if` is a local edit; removing a function is
+    // not, so this stays a refusal even with the flag on.
+    const out = runCollapsing(
+      [
+        "import { logEvent } from 'src/x.js'",
+        'export function logLoaded(n: number) {',
+        "  logEvent('tengu_loaded', { n })",
+        '}',
+      ].join('\n'),
+    )
+    expect(out.text).toBeNull()
+    expect(out.refusals.map(r => r.kind)).toEqual(['empties-block'])
+  })
+
+  test('is off by default', () => {
+    const out = run(
+      [
+        "import { logEvent } from 'src/x.js'",
+        'export function f(n: number) {',
+        '  if (n > 10) {',
+        "    logEvent('tengu_big', { n })",
+        '  }',
+        '}',
+      ].join('\n'),
+    )
+    expect(out.text).toBeNull()
+    expect(out.refusals.map(r => r.kind)).toEqual(['empties-block'])
+  })
+})
+
+describe('conditionOnlyReads', () => {
+  test('accepts the shapes the 68 real sites use', () => {
+    for (const c of [
+      'n > 10',
+      "tool === 'Bash'",
+      'Math.random() < 0.05',
+      "path.startsWith('/tmp')",
+      '/--amend\\b/.test(command)',
+      'a !== b && c <= d',
+      'e instanceof Error',
+      "getFeatureValue_CACHED_MAY_BE_STALE('tengu_x', false)",
+      'x => x.id === wanted',
+    ]) {
+      expect([c, conditionOnlyReads(c)]).toEqual([c, true])
+    }
+  })
+
+  test('rejects anything that could change state', () => {
+    for (const c of [
+      'await claim()',
+      'new Thing().ok',
+      '(cached = m.get(k)) !== undefined',
+      'count++ > 3',
+      'delete obj.k',
+    ]) {
+      expect([c, conditionOnlyReads(c)]).toEqual([c, false])
+    }
   })
 })
 

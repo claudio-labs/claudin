@@ -6,10 +6,9 @@ import type {
   SystemMessage,
   UserMessage,
 } from 'src/shared/types/message.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import type { PermissionMode } from 'src/shared/types/permissions.js'
 import { createUserMessage } from 'src/agent/messages/messages.js'
-import { logOTelEvent, redactIfDisabled } from 'src/platform/telemetry/events.js'
+import { redactIfDisabled } from 'src/platform/telemetry/events.js'
 import { startInteractionSpan } from 'src/platform/telemetry/sessionTracing.js'
 import {
   matchesKeepGoingKeyword,
@@ -48,20 +47,9 @@ export function processTextPrompt(
     typeof input === 'string'
       ? input
       : input.findLast(block => block.type === 'text')?.text || ''
-  if (otelPromptText) {
-    void logOTelEvent('user_prompt', {
-      prompt_length: String(otelPromptText.length),
-      prompt: redactIfDisabled(otelPromptText),
-      'prompt.id': promptId,
-    })
-  }
 
   const isNegative = matchesNegativeKeyword(userPromptText)
   const isKeepGoing = matchesKeepGoingKeyword(userPromptText)
-  logEvent('tengu_input_prompt', {
-    is_negative: isNegative,
-    is_keep_going: isKeepGoing,
-  })
 
   // If we have pasted images, create a message with image content
   if (imageContentBlocks.length > 0) {

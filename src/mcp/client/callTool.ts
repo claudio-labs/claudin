@@ -13,10 +13,6 @@ import { TelemetrySafeError_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src
 import { logMCPDebug, logMCPError } from 'src/shared/log.js'
 import type { MCPToolResult } from 'src/mcp/mcpValidation.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import type { MCPProgress } from 'src/tools/MCPTool/MCPTool.js'
 import {
   type ElicitationWaitingState,
@@ -424,14 +420,6 @@ export async function callMCPTool({
 
     // Log code indexing tool usage
     const codeIndexingTool = detectCodeIndexingFromMcpServerName(name)
-    if (codeIndexingTool) {
-      logEvent('tengu_code_indexing_tool_used', {
-        tool: codeIndexingTool as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        source:
-          'mcp' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        success: true,
-      })
-    }
 
     const content = await processMCPResult(result, tool, name)
     return {
@@ -465,7 +453,6 @@ export async function callMCPTool({
           name,
           `Tool call returned 401 Unauthorized - token may have expired`,
         )
-        logEvent('tengu_mcp_tool_call_auth_error', {})
         throw new McpAuthError(
           name,
           `MCP server "${name}" requires re-authorization (token expired)`,
@@ -490,7 +477,6 @@ export async function callMCPTool({
           name,
           `MCP session expired during tool call (${isSessionExpired ? '404/-32001' : 'connection closed'}), clearing connection cache for re-initialization`,
         )
-        logEvent('tengu_mcp_session_expired', {})
         await clearServerCache(name, config)
         throw new McpSessionExpiredError(name)
       }

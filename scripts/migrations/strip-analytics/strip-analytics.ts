@@ -274,6 +274,82 @@ function matchBracket(
 }
 
 /**
+ * A condition that only reads. Rejects anything that could change state, so an
+ * `if` whose body became empty can be dropped along with it.
+ *
+ * Deliberately syntactic and deliberately strict — it is the guard on a flag
+ * whose whole job is to delete a branch head, and every one of the 68 sites it
+ * was written for is a comparison, a property read, a regex test or a cached
+ * gate read.
+ */
+export function conditionOnlyReads(condition: string): boolean {
+  // Blank out string, comment and regex spans first. `--amend` inside a regex
+  // literal is not a decrement, and `= ` inside a string is not an assignment;
+  // reading the raw text rejected `/--amend\b/.test(command)`.
+  const regions = scanRegions(condition)
+  let code = ''
+  for (let i = 0; i < condition.length; i++) {
+    code += regions[i] === REGION_CODE ? condition[i] : ' '
+  }
+  if (/\bawait\b|\bnew\b|\byield\b|\bdelete\b/.test(code)) return false
+  if (/\+\+|--/.test(code)) return false
+  // An assignment, but not ==, ===, !=, !==, <=, >= or =>.
+  if (/[^=!<>+\-*/%&|^]=[^=>]/.test(code)) return false
+  return true
+}
+
+/**
+ * When `range` is the whole body of an `if` with no `else`, the range covering
+ * that entire `if` statement — otherwise null.
+ *
+ * Returns null when the condition does anything but read, and when an `else`
+ * follows: dropping either would change the program rather than remove a log.
+ */
+function enclosingCollapsibleIf(
+  source: string,
+  regions: Uint8Array,
+  range: Range,
+): Range | null {
+  let depth = 0
+  let open = -1
+  for (let i = range.start - 1; i >= 0; i--) {
+    if (regions[i] !== REGION_CODE) continue
+    const c = source[i]
+    if (c === '}') depth++
+    else if (c === '{') {
+      if (depth === 0) {
+        open = i
+        break
+      }
+      depth--
+    }
+  }
+  if (open < 0) return null
+
+  const close = matchBracket(source, regions, open)
+  if (close === null) return null
+
+  // The head must be exactly `if (…)`.
+  const beforeBrace = prevNonSpace(source, open - 1, regions)
+  if (beforeBrace < 0 || source[beforeBrace] !== ')') return null
+  const condOpen = matchBracketBackward(source, regions, beforeBrace)
+  if (condOpen < 0) return null
+  const ifStart = prevNonSpace(source, condOpen - 1, regions)
+  if (ifStart < 1) return null
+  if (source.slice(ifStart - 1, ifStart + 1) !== 'if') return null
+  const beforeIf = source[ifStart - 2]
+  if (beforeIf !== undefined && IDENT_RE.test(beforeIf)) return null
+
+  if (!conditionOnlyReads(source.slice(condOpen + 1, beforeBrace))) return null
+
+  // An `else` after the closing brace makes this branch load-bearing.
+  const afterClose = source.slice(close).match(/^\s*else\b/)
+  if (afterClose) return null
+
+  return widen(source, regions, ifStart - 1, close)
+}
+
+/**
  * Widen a statement range to take the comment block written directly above it
  * and the rest of its last line — otherwise a removed call strands its own
  * explanation over unrelated code.
@@ -474,7 +550,23 @@ function pruneImports(source: string): { text: string; dropped: number } {
   return { text: out, dropped }
 }
 
-export function transform(fileName: string, source: string): FileResult {
+export type TransformOptions = {
+  /**
+   * Also delete an `if` whose body the removal empties, when it has no `else`
+   * and its condition only reads.
+   *
+   * Opt-in because it deletes a branch head, not just a log line. Every site it
+   * was enabled for was read first: 59 distinct conditions, all comparisons,
+   * property reads, regex tests or cached gate reads.
+   */
+  collapseEmptyIf?: boolean
+}
+
+export function transform(
+  fileName: string,
+  source: string,
+  options: TransformOptions = {},
+): FileResult {
   const rel = relative(REPO_ROOT, fileName)
   const nothing: FileResult = {
     file: rel,
@@ -546,26 +638,39 @@ export function transform(fileName: string, source: string): FileResult {
     return refusals.length > 0 ? { ...nothing, refusals } : nothing
   }
 
+  // Built fresh rather than mutated: a collapsed `if` REPLACES the call range
+  // inside it. Keeping both would hand `applyRemovals` two overlapping ranges,
+  // and slicing those in sequence eats the code after the block.
+  const finalRemovals: Range[] = []
   for (const range of removals) {
-    if (!blockSurvives(source, regions, range, removals)) {
-      refusals.push({
-        file: rel,
-        line: lineAt(source, range.start),
-        kind: 'empties-block',
-        // Carry the head verbatim. Whether the enclosing `if` can go too turns
-        // entirely on whether its condition has side effects, and that is a
-        // judgement to make by reading it, not by pattern-matching it.
-        detail: `empties \u2192 ${blockHead(source, regions, range)}`,
-      })
+    if (blockSurvives(source, regions, range, removals)) {
+      finalRemovals.push(range)
+      continue
     }
+    const ifRange = options.collapseEmptyIf
+      ? enclosingCollapsibleIf(source, regions, range)
+      : null
+    if (ifRange) {
+      finalRemovals.push(ifRange)
+      continue
+    }
+    refusals.push({
+      file: rel,
+      line: lineAt(source, range.start),
+      kind: 'empties-block',
+      // Carry the head verbatim. Whether the enclosing `if` can go too turns
+      // entirely on whether its condition has side effects, and that is a
+      // judgement to make by reading it, not by pattern-matching it.
+      detail: `empties \u2192 ${blockHead(source, regions, range)}`,
+    })
   }
 
   if (refusals.length > 0) return { ...nothing, refusals }
 
-  const pruned = pruneImports(applyRemovals(source, removals))
+  const pruned = pruneImports(applyRemovals(source, finalRemovals))
   return {
     file: rel,
-    calls: removals.length,
+    calls: finalRemovals.length,
     specifiers: pruned.dropped,
     text: pruned.text,
     refusals: [],
@@ -590,6 +695,7 @@ function collectSourceFiles(dir: string, out: string[] = []): string[] {
 
 if (import.meta.main) {
   const dryRun = process.argv.includes('--dry-run')
+  const collapseEmptyIf = process.argv.includes('--collapse-empty-if')
   const files = collectSourceFiles(join(REPO_ROOT, 'src'))
   let calls = 0
   let specifiers = 0
@@ -598,7 +704,7 @@ if (import.meta.main) {
 
   for (const file of files) {
     const source = readFileSync(file, 'utf8')
-    const result = transform(file, source)
+    const result = transform(file, source, { collapseEmptyIf })
     refusals.push(...result.refusals)
     if (result.text === null) continue
     calls += result.calls

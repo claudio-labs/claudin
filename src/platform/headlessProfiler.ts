@@ -13,10 +13,6 @@
  */
 
 import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { getPerformance } from 'src/platform/profilerBase.js'
@@ -159,13 +155,6 @@ export function logHeadlessProfilerTurn(): void {
     metadata.entrypoint = process.env.CLAUDE_CODE_ENTRYPOINT
   }
 
-  // Log to Statsig if sampled
-  if (STATSIG_LOGGING_SAMPLED) {
-    logEvent(
-      'tengu_headless_latency',
-      metadata as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    )
-  }
 
   // Log detailed output if CLAUDIN_PROFILE_STARTUP=1
   if (DETAILED_PROFILING) {

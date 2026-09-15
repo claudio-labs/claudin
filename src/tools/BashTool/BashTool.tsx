@@ -6,7 +6,7 @@ import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { z } from 'zod/v4';
 import { TOOL_SUMMARY_MAX_LENGTH } from 'src/tools/constants/toolLimits.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js';
 import { logError } from 'src/shared/log.js';
 import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js';
 import type { SetToolJSXFn, ToolCallProgress, ToolUseContext, ValidationResult } from 'src/tools/Tool.js';
@@ -620,13 +620,6 @@ export const BashTool = buildTool({
     if (!input.run_in_background && !isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_REDIRECT)) {
       const toolRedirect = shouldRedirectToTools(input.command, getCwd(), name => findToolByName(context?.options?.tools ?? [], name) !== undefined);
       if (toolRedirect) {
-        logEvent('tengu_bash_tool_redirect', {
-          unitCount: toolRedirect.units.length,
-          callCount: toolRedirect.units.reduce((total, unit) => total + unit.calls.length, 0),
-          usesRead: toolRedirect.targets.includes('Read'),
-          usesGrep: toolRedirect.targets.includes('Grep'),
-          usesGlob: toolRedirect.targets.includes('Glob')
-        });
         return {
           result: false,
           message: renderToolRedirect(toolRedirect),
@@ -757,10 +750,6 @@ export const BashTool = buildTool({
       const verdictCode = exitCodeAfterRewrite(filterPlan, result.code);
       interpretationResult = interpretCommandResult(input.command, verdictCode, rawStdout, '');
 
-      // Check for git index.lock error (stderr is in stdout now)
-      if (rawStdout.includes(".git/index.lock': File exists")) {
-        logEvent('tengu_git_index_lock_error', {});
-      }
 
       // Filter last, with the semantic verdict folded in: output that either
       // the exit code or the interpreter deems an error skips the pipeline
@@ -827,23 +816,9 @@ export const BashTool = buildTool({
       }
     }
     const commandType = input.command.split(' ')[0];
-    logEvent('tengu_bash_tool_command_executed', {
-      command_type: commandType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      stdout_length: stdout.length,
-      stderr_length: 0,
-      exit_code: result.code,
-      interrupted: wasInterrupted
-    });
 
     // Log code indexing tool usage
     const codeIndexingTool = detectCodeIndexingFromCommand(input.command);
-    if (codeIndexingTool) {
-      logEvent('tengu_code_indexing_tool_used', {
-        tool: codeIndexingTool as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        source: 'cli' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        success: result.code === 0
-      });
-    }
     let strippedStdout = stripEmptyLines(stdout);
 
     // Claude Code hints protocol: CLIs/SDKs gated on CLAUDECODE=1 emit a
@@ -1135,9 +1110,6 @@ export async function* runShellCommand({
       }
       backgroundingInitiated = true;
       backgroundShellId = foregroundTaskId;
-      logEvent(eventName, {
-        command_type: getCommandTypeForLogging(command)
-      });
       backgroundFn?.(foregroundTaskId);
       return;
     }
@@ -1155,9 +1127,6 @@ export async function* runShellCommand({
       // and the process is hung on I/O, the race never resolves and the
       // generator deadlocks despite being backgrounded.
       wakeProgressSignal();
-      logEvent(eventName, {
-        command_type: getCommandTypeForLogging(command)
-      });
       if (backgroundFn) {
         backgroundFn(shellId);
       }
@@ -1192,9 +1161,6 @@ export async function* runShellCommand({
   // Skip if background tasks are disabled - run in foreground instead
   if (run_in_background === true && !isBackgroundTasksDisabled) {
     const shellId = await spawnBackgroundTask();
-    logEvent('tengu_bash_command_explicitly_backgrounded', {
-      command_type: getCommandTypeForLogging(command)
-    });
     return {
       stdout: '',
       stderr: '',

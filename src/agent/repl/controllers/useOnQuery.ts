@@ -50,7 +50,6 @@ import { getSystemContext, getUserContext } from 'src/agent/context.js';
 import { removeLastFromHistory } from 'src/agent/history.js';
 import { getScratchpadDir, isScratchpadEnabled } from 'src/permissions/filesystem.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
-import { logEvent } from 'src/platform/analytics/index.js';
 import { handleMessageFromStream, type StreamingToolUse, type StreamingThinking, isCompactBoundaryMessage, getMessagesAfterCompactBoundary, getContentText, createTurnDurationMessage, createSystemMessage } from 'src/agent/messages/messages.js';
 import { getCurrentTurnCacheBreaks, getCurrentTurnCacheMetrics, getCurrentTurnPrefixRewrites, getCurrentTurnServerClears, resetCurrentTurn } from 'src/providers/cache/cacheStatsTracker.js';
 import { formatCacheMetricsCompact, formatCacheMetricsFull } from 'src/providers/cache/cacheMetrics.js';
@@ -478,7 +477,6 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     // Returns null if already running — no separate check-then-set.
     const thisGeneration = queryGuard.tryStart();
     if (thisGeneration === null) {
-      logEvent('tengu_concurrent_onquery_detected', {});
 
       // Extract and enqueue user message text, skipping meta messages
       // (e.g. expanded skill content, tick prompts) that should not be
@@ -488,9 +486,6 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
           value: msg,
           mode: 'prompt'
         });
-        if (i === 0) {
-          logEvent('tengu_concurrent_onquery_enqueued', {});
-        }
       });
       return;
     }

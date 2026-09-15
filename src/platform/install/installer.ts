@@ -30,10 +30,6 @@ import {
 } from 'fs/promises'
 import { homedir } from 'os'
 import { basename, delimiter, dirname, join, resolve } from 'path'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { getMaxVersion, shouldSkipVersion } from 'src/platform/install/autoUpdater.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js'
@@ -212,11 +208,6 @@ async function tryWithVersionLock(
       )
 
       if (success) {
-        logEvent('tengu_version_lock_acquired', {
-          is_pid_based: true,
-          is_lifetime_lock: false,
-          attempts: attempts + 1,
-        })
         return true
       }
 
@@ -231,11 +222,6 @@ async function tryWithVersionLock(
       }
     }
 
-    logEvent('tengu_version_lock_failed', {
-      is_pid_based: true,
-      is_lifetime_lock: false,
-      attempts: maxAttempts,
-    })
     logLockAcquisitionError(
       versionFilePath,
       new Error('Lock held by another process'),
@@ -270,10 +256,6 @@ async function tryWithVersionLock(
         },
       })
     } catch (lockError) {
-      logEvent('tengu_version_lock_failed', {
-        is_pid_based: false,
-        is_lifetime_lock: false,
-      })
       logLockAcquisitionError(versionFilePath, lockError)
       return false
     }
@@ -281,10 +263,6 @@ async function tryWithVersionLock(
     // Operation phase - log errors but let them propagate
     try {
       await callback()
-      logEvent('tengu_version_lock_acquired', {
-        is_pid_based: false,
-        is_lifetime_lock: false,
-      })
       return true
     } catch (error) {
       logError(error)
@@ -338,10 +316,6 @@ async function installVersionFromPackage(
     )
 
     if (!nativePackage) {
-      logEvent('tengu_native_install_package_failure', {
-        stage_find_package: true,
-        error_package_not_found: true,
-      })
       const error = new Error('Could not find platform-specific native package')
       throw error
     }
@@ -351,10 +325,6 @@ async function installVersionFromPackage(
     try {
       await stat(stagedBinaryPath)
     } catch {
-      logEvent('tengu_native_install_package_failure', {
-        stage_binary_exists: true,
-        error_binary_not_found: true,
-      })
       const error = new Error('Native binary not found in staged package')
       throw error
     }
@@ -364,19 +334,9 @@ async function installVersionFromPackage(
     // Clean up staging directory
     await rm(stagingPath, { recursive: true, force: true })
 
-    logEvent('tengu_native_install_package_success', {})
   } catch (error) {
     // Log if not already logged above
     const msg = errorMessage(error)
-    if (
-      !msg.includes('Could not find platform-specific') &&
-      !msg.includes('Native binary not found')
-    ) {
-      logEvent('tengu_native_install_package_failure', {
-        stage_atomic_move: true,
-        error_move_failed: true,
-      })
-    }
     logError(toError(error))
     throw error
   }
@@ -395,10 +355,6 @@ async function installVersionFromBinary(
     try {
       await stat(stagedBinaryPath)
     } catch {
-      logEvent('tengu_native_install_binary_failure', {
-        stage_binary_exists: true,
-        error_binary_not_found: true,
-      })
       const error = new Error('Staged binary not found')
       throw error
     }
@@ -408,14 +364,7 @@ async function installVersionFromBinary(
     // Clean up staging directory
     await rm(stagingPath, { recursive: true, force: true })
 
-    logEvent('tengu_native_install_binary_success', {})
   } catch (error) {
-    if (!errorMessage(error).includes('Staged binary not found')) {
-      logEvent('tengu_native_install_binary_failure', {
-        stage_atomic_move: true,
-        error_move_failed: true,
-      })
-    }
     logError(toError(error))
     throw error
   }
@@ -519,13 +468,6 @@ async function updateLatest(
         logForDebugging(
           `Native installer: current version ${MACRO.VERSION} is already at or above maxVersion ${maxVersion}, skipping update`,
         )
-        logEvent('tengu_native_update_skipped_max_version', {
-          latency_ms: Date.now() - startTime,
-          max_version:
-            maxVersion as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          available_version:
-            version as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        })
         return { success: true, latestVersion: version }
       }
       version = maxVersion
@@ -542,22 +484,11 @@ async function updateLatest(
     (await isPossibleClaudeBinary(executablePath))
   ) {
     logForDebugging(`Found ${version} at ${executablePath}, skipping install`)
-    logEvent('tengu_native_update_complete', {
-      latency_ms: Date.now() - startTime,
-      was_new_install: false,
-      was_force_reinstall: false,
-      was_already_running: true,
-    })
     return { success: true, latestVersion: version }
   }
 
   // Check if this version should be skipped due to minimumVersion setting
   if (!forceReinstall && shouldSkipVersion(version)) {
-    logEvent('tengu_native_update_skipped_minimum_version', {
-      latency_ms: Date.now() - startTime,
-      target_version:
-        version as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
     return { success: true, latestVersion: version }
   }
 
@@ -597,10 +528,6 @@ async function updateLatest(
           lockHolderPid = readLockContent(lockfilePath)?.pid
         }
       }
-      logEvent('tengu_native_update_lock_failed', {
-        latency_ms: latencyMs,
-        lock_holder_pid: lockHolderPid,
-      })
       return {
         success: false,
         latestVersion: version,
@@ -610,11 +537,6 @@ async function updateLatest(
     }
   }
 
-  logEvent('tengu_native_update_complete', {
-    latency_ms: latencyMs,
-    was_new_install: wasNewInstall,
-    was_force_reinstall: forceReinstall,
-  })
   logForDebugging(`Successfully updated to version ${version}`)
   return { success: true, latestVersion: version }
 }
@@ -1070,10 +992,6 @@ export async function lockCurrentVersion(): Promise<void> {
       )
 
       if (!acquired) {
-        logEvent('tengu_version_lock_failed', {
-          is_pid_based: true,
-          is_lifetime_lock: true,
-        })
         logLockAcquisitionError(
           versionPath,
           new Error('Lock already held by another process'),
@@ -1081,10 +999,6 @@ export async function lockCurrentVersion(): Promise<void> {
         return
       }
 
-      logEvent('tengu_version_lock_acquired', {
-        is_pid_based: true,
-        is_lifetime_lock: true,
-      })
       logForDebugging(`Acquired PID lock on running version: ${versionPath}`)
     } else {
       // Acquire mtime-based lock and never release it (until process exits)
@@ -1106,10 +1020,6 @@ export async function lockCurrentVersion(): Promise<void> {
             )
           },
         })
-        logEvent('tengu_version_lock_acquired', {
-          is_pid_based: false,
-          is_lifetime_lock: true,
-        })
         logForDebugging(
           `Acquired mtime-based lock on running version: ${versionPath}`,
         )
@@ -1130,10 +1040,6 @@ export async function lockCurrentVersion(): Promise<void> {
           )
           return
         }
-        logEvent('tengu_version_lock_failed', {
-          is_pid_based: false,
-          is_lifetime_lock: true,
-        })
         logLockAcquisitionError(versionPath, lockError)
         return
       }
@@ -1241,9 +1147,6 @@ export async function cleanupOldVersions(): Promise<void> {
       logForDebugging(
         `Cleaned up ${stagingCleanedCount} orphaned staging directories`,
       )
-      logEvent('tengu_native_staging_cleanup', {
-        cleaned_count: stagingCleanedCount,
-      })
     }
   } catch (error) {
     if (!isENOENT(error)) {
@@ -1256,9 +1159,6 @@ export async function cleanupOldVersions(): Promise<void> {
     const staleLocksCleaned = cleanupStaleLocks(dirs.locks)
     if (staleLocksCleaned > 0) {
       logForDebugging(`Cleaned up ${staleLocksCleaned} stale version locks`)
-      logEvent('tengu_native_stale_locks_cleanup', {
-        cleaned_count: staleLocksCleaned,
-      })
     }
   }
 
@@ -1331,9 +1231,6 @@ export async function cleanupOldVersions(): Promise<void> {
     logForDebugging(
       `Cleaned up ${tempFilesCleanedCount} orphaned temp install files`,
     )
-    logEvent('tengu_native_temp_files_cleanup', {
-      cleaned_count: tempFilesCleanedCount,
-    })
   }
 
   if (versionFiles.length === 0) {
@@ -1385,14 +1282,6 @@ export async function cleanupOldVersions(): Promise<void> {
     const versionsToDelete = eligibleVersions.slice(VERSION_RETENTION_COUNT)
 
     if (versionsToDelete.length === 0) {
-      logEvent('tengu_native_version_cleanup', {
-        total_count: versionFiles.length,
-        deleted_count: 0,
-        protected_count: protectedVersions.size,
-        retained_count: VERSION_RETENTION_COUNT,
-        lock_failed_count: 0,
-        error_count: 0,
-      })
       return
     }
 
@@ -1423,14 +1312,6 @@ export async function cleanupOldVersions(): Promise<void> {
       }),
     )
 
-    logEvent('tengu_native_version_cleanup', {
-      total_count: versionFiles.length,
-      deleted_count: deletedCount,
-      protected_count: protectedVersions.size,
-      retained_count: VERSION_RETENTION_COUNT,
-      lock_failed_count: lockFailedCount,
-      error_count: errorCount,
-    })
   } catch (error) {
     if (!isENOENT(error)) {
       logError(new Error(`Version cleanup failed: ${error}`))

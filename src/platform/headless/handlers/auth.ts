@@ -1,10 +1,6 @@
 /* eslint-disable custom-rules/no-process-exit -- CLI subcommand handler intentionally exits */
 
 import { clearTrustedDeviceTokenCache } from 'src/platform/bridge/trustedDevice.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { refreshGrowthBookAfterAuthChange } from 'src/platform/analytics/growthbook.js'
 import { clearPolicyLimitsCache } from 'src/platform/policyLimits/index.js'
 import { clearRemoteManagedSettingsCache } from 'src/platform/remoteManagedSettings/index.js'
@@ -135,12 +131,6 @@ export async function installOAuthTokens(tokens: OAuthTokens): Promise<void> {
   const storageResult = saveOAuthTokensIfNeeded(tokens)
   clearOAuthTokenCache()
 
-  if (storageResult.warning) {
-    logEvent('tengu_oauth_storage_warning', {
-      warning:
-        storageResult.warning as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
-  }
 
   // Roles and first-token-date may fail for limited-scope tokens (e.g.
   // inference-only from setup-token). They're not required for core auth.
@@ -208,7 +198,6 @@ export async function authLogin({
     const scopes = envScopes.split(/\s+/).filter(Boolean)
 
     try {
-      logEvent('tengu_login_from_refresh_token', {})
 
       const tokens = await refreshOAuthToken(envRefreshToken, { scopes })
       await installOAuthTokens(tokens)
@@ -226,9 +215,6 @@ export async function authLogin({
         return { ...current, hasCompletedOnboarding: true }
       })
 
-      logEvent('tengu_oauth_success', {
-        loginWithClaudeAi: shouldUseClaudeAIAuth(tokens.scopes),
-      })
       process.stdout.write('Login successful.\n')
       process.exit(0)
     } catch (err) {
@@ -246,7 +232,6 @@ export async function authLogin({
   const oauthService = new OAuthService()
 
   try {
-    logEvent('tengu_oauth_flow_start', { loginWithClaudeAi })
 
     const result = await oauthService.startOAuthFlow(
       async url => {
@@ -269,7 +254,6 @@ export async function authLogin({
       process.exit(1)
     }
 
-    logEvent('tengu_oauth_success', { loginWithClaudeAi })
 
     process.stdout.write('Login successful.\n')
     process.exit(0)

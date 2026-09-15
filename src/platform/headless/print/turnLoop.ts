@@ -31,7 +31,6 @@ import { notifyCommandLifecycle } from 'src/commands/commandLifecycle.js'
 import { notifySessionStateChanged } from 'src/sessions/sessionState.js'
 import { getInMemoryErrors, logError } from 'src/shared/log.js'
 import { EMPTY_USAGE } from 'src/providers/transport/logging.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { mergeFileStateCaches } from 'src/shared/fs/fileStateCache.js'
 import { installLiveReadFileCache } from 'src/platform/headless/print/readFileCacheHandover.js'
@@ -149,9 +148,6 @@ export async function runTurnLoop(
             `CLAUDIN_SYNC_PLUGIN_INSTALL: plugin installation timed out after ${timeoutMs}ms`,
           ),
         )
-        logEvent('tengu_sync_plugin_install_timeout', {
-          timeout_ms: timeoutMs,
-        })
       }
     } else {
       await ctx.pluginInstallPromise
@@ -343,11 +339,6 @@ export async function runTurnLoop(
 
         const input = command.value
 
-        if (structuredIO instanceof RemoteIO && command.mode === 'prompt') {
-          logEvent('tengu_bridge_message_received', {
-            is_repl: false,
-          })
-        }
 
         // Abort any in-flight suggestion generation and track acceptance
         suggestionState.abortController?.abort()

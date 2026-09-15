@@ -21,10 +21,7 @@ import { maybeNotifyIDEConnected } from 'src/platform/ide/ide.js'
 import { logMCPDebug, logMCPError } from 'src/shared/log.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { sleep } from 'src/shared/sleep.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,
@@ -116,11 +113,6 @@ function handleRemoteAuthFailure(
   serverRef: ScopedMcpServerConfig,
   transportType: 'sse' | 'http' | 'claudeai-proxy',
 ): MCPServerConnection {
-  logEvent('tengu_mcp_server_needs_auth', {
-    transportType:
-      transportType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    ...mcpBaseUrlAnalytics(serverRef),
-  })
   const label: Record<typeof transportType, string> = {
     sse: 'SSE',
     http: 'HTTP',
@@ -337,15 +329,7 @@ export const connectToServer = memoize(
           if (errorCode === 401) {
             return handleRemoteAuthFailure(name, serverRef, 'claudeai-proxy')
           }
-        } else if (
-          serverRef.type === 'sse-ide' ||
-          serverRef.type === 'ws-ide'
-        ) {
-          logEvent('tengu_mcp_ide_server_connection_failed', {
-            connectionDurationMs: elapsed,
-          })
-        }
-        if (inProcessServer) {
+        } else         if (inProcessServer) {
           await cleanupFailedConnection(transport, inProcessServer)
         } else {
           await cleanupFailedConnection(transport)
@@ -400,11 +384,6 @@ export const connectToServer = memoize(
 
       if (serverRef.type === 'sse-ide' || serverRef.type === 'ws-ide') {
         const ideConnectionDurationMs = Date.now() - connectStartTime
-        logEvent('tengu_mcp_ide_server_connection_succeeded', {
-          connectionDurationMs: ideConnectionDurationMs,
-          serverVersion:
-            serverVersion as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        })
         try {
           void maybeNotifyIDEConnected(client)
         } catch (error) {
@@ -779,18 +758,6 @@ export const connectToServer = memoize(
       }
 
       const connectionDurationMs = Date.now() - connectStartTime
-      logEvent('tengu_mcp_server_connection_succeeded', {
-        connectionDurationMs,
-        transportType: (serverRef.type ??
-          'stdio') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        totalServers: serverStats?.totalServers,
-        stdioCount: serverStats?.stdioCount,
-        sseCount: serverStats?.sseCount,
-        httpCount: serverStats?.httpCount,
-        sseIdeCount: serverStats?.sseIdeCount,
-        wsIdeCount: serverStats?.wsIdeCount,
-        ...mcpBaseUrlAnalytics(serverRef),
-      })
       return {
         name,
         client,
@@ -803,22 +770,6 @@ export const connectToServer = memoize(
       }
     } catch (error) {
       const connectionDurationMs = Date.now() - connectStartTime
-      logEvent('tengu_mcp_server_connection_failed', {
-        connectionDurationMs,
-        totalServers: serverStats?.totalServers || 1,
-        stdioCount:
-          serverStats?.stdioCount || (serverRef.type === 'stdio' ? 1 : 0),
-        sseCount: serverStats?.sseCount || (serverRef.type === 'sse' ? 1 : 0),
-        httpCount:
-          serverStats?.httpCount || (serverRef.type === 'http' ? 1 : 0),
-        sseIdeCount:
-          serverStats?.sseIdeCount || (serverRef.type === 'sse-ide' ? 1 : 0),
-        wsIdeCount:
-          serverStats?.wsIdeCount || (serverRef.type === 'ws-ide' ? 1 : 0),
-        transportType: (serverRef.type ??
-          'stdio') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        ...mcpBaseUrlAnalytics(serverRef),
-      })
       logMCPDebug(
         name,
         `Connection failed after ${connectionDurationMs}ms: ${errorMessage(error)}`,

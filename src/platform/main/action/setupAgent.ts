@@ -20,7 +20,6 @@ import { getSystemContext, getUserContext } from 'src/agent/context.js';
 import { getActiveAgentsFromList, getAgentDefinitionsWithOverrides, isBuiltInAgent, parseAgentsFromJson } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { canUserConfigureAdvisor, getInitialAdvisorSetting, isAdvisorEnabled, isValidAdvisorModel, modelSupportsAdvisor } from 'src/platform/doctor/advisor.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { safeParseJSON } from 'src/shared/data/json.js';
@@ -249,14 +248,6 @@ export async function runActionAgentSetup(
 
   setMainThreadAgentType(mainThreadAgentDefinition?.agentType);
 
-  if (mainThreadAgentDefinition) {
-    logEvent('tengu_agent_flag', {
-      agentType: isBuiltInAgent(mainThreadAgentDefinition) ? (mainThreadAgentDefinition.agentType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS) : ('custom' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS),
-      ...(agentCli && {
-        source: 'cli' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-    });
-  }
 
   if (mainThreadAgentDefinition?.agentType) {
     saveAgentSetting(mainThreadAgentDefinition.agentType);
@@ -328,12 +319,6 @@ export async function runActionAgentSetup(
         customPrompt = customAgent.getSystemPrompt();
       }
 
-      if (customAgent.memory) {
-        logEvent('tengu_agent_memory_loaded', {
-          scope: customAgent.memory as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          source: 'teammate' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        });
-      }
       if (customPrompt) {
         const customInstructions = `\n# Custom Agent Instructions\n${customPrompt}`;
         appendSystemPrompt = appendSystemPrompt ? `${appendSystemPrompt}\n\n${customInstructions}` : customInstructions;

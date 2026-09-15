@@ -18,11 +18,6 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import { shouldAllowManagedHooksOnly } from 'src/platform/lifecycleHooks/hooksConfigSnapshot.js'
 import {
-  logEvent,
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from 'src/platform/analytics/index.js'
-import { logOTelEvent } from 'src/platform/telemetry/events.js'
-import {
   startHookSpan,
   endHookSpan,
   isBetaTracingEnabled,
@@ -157,19 +152,6 @@ export async function* executeHooks({
   if (userHooks.length > 0) {
     const pluginHookCounts = getPluginHookCounts(userHooks)
     const hookTypeCounts = getHookTypeCounts(userHooks)
-    logEvent(`tengu_run_hook`, {
-      hookName:
-        hookName as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      numCommands: userHooks.length,
-      hookTypeCounts: jsonStringify(
-        hookTypeCounts,
-      ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      ...(pluginHookCounts && {
-        pluginHookCounts: jsonStringify(
-          pluginHookCounts,
-        ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-    })
   } else {
     // Fast-path: all hooks are internal callbacks (sessionFileAccessHooks,
     // attributionHooks). These return {} and don't use the abort signal, so we
@@ -190,16 +172,6 @@ export async function* executeHooks({
     const totalDurationMs = Date.now() - batchStartTime
     getStatsStore()?.observe('hook_duration_ms', totalDurationMs)
     addToTurnHookDuration(totalDurationMs)
-    logEvent(`tengu_repl_hook_finished`, {
-      hookName:
-        hookName as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      numCommands: matchingHooks.length,
-      numSuccess: matchingHooks.length,
-      numBlocking: 0,
-      numNonBlockingError: 0,
-      numCancelled: 0,
-      totalDurationMs,
-    })
     return
   }
 
@@ -208,17 +180,6 @@ export async function* executeHooks({
     ? jsonStringify(getHookDefinitionsForTelemetry(matchingHooks))
     : '[]'
 
-  // Log hook execution start to OTEL (only for beta tracing)
-  if (isBetaTracingEnabled()) {
-    void logOTelEvent('hook_execution_start', {
-      hook_event: hookEvent,
-      hook_name: hookName,
-      num_hooks: String(matchingHooks.length),
-      managed_only: String(shouldAllowManagedHooksOnly()),
-      hook_definitions: hookDefinitionsJson,
-      hook_source: shouldAllowManagedHooksOnly() ? 'policySettings' : 'merged',
-    })
-  }
 
   // Start hook span for beta tracing
   const hookSpan = startHookSpan(
@@ -1074,34 +1035,12 @@ export async function* executeHooks({
   getStatsStore()?.observe('hook_duration_ms', totalDurationMs)
   addToTurnHookDuration(totalDurationMs)
 
-  logEvent(`tengu_repl_hook_finished`, {
-    hookName:
-      hookName as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    numCommands: matchingHooks.length,
-    numSuccess: outcomes.success,
-    numBlocking: outcomes.blocking,
-    numNonBlockingError: outcomes.non_blocking_error,
-    numCancelled: outcomes.cancelled,
-    totalDurationMs,
-  })
 
   // Log hook execution completion to OTEL (only for beta tracing)
   if (isBetaTracingEnabled()) {
     const hookDefinitionsComplete =
       getHookDefinitionsForTelemetry(matchingHooks)
 
-    void logOTelEvent('hook_execution_complete', {
-      hook_event: hookEvent,
-      hook_name: hookName,
-      num_hooks: String(matchingHooks.length),
-      num_success: String(outcomes.success),
-      num_blocking: String(outcomes.blocking),
-      num_non_blocking_error: String(outcomes.non_blocking_error),
-      num_cancelled: String(outcomes.cancelled),
-      managed_only: String(shouldAllowManagedHooksOnly()),
-      hook_definitions: jsonStringify(hookDefinitionsComplete),
-      hook_source: shouldAllowManagedHooksOnly() ? 'policySettings' : 'merged',
-    })
   }
 
   // End hook span for beta tracing

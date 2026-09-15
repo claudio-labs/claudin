@@ -35,10 +35,6 @@ import {
 } from 'src/platform/settings/types.js'
 import type { ValidationError } from 'src/platform/settings/validation.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { fetchClaudeAIMcpConfigsIfEligible } from 'src/mcp/claudeai.js'
 import { expandEnvVarsInString } from 'src/mcp/envExpansion.js'
 import { isClaudeAIMcpServerName } from 'src/mcp/normalization.js'
@@ -1553,11 +1549,4 @@ export function setMcpServerEnabled(name: string, enabled: boolean): void {
     return { ...current, disabledMcpServers: next }
   })
 
-  if (isBuiltinStateChange) {
-    logEvent('tengu_builtin_mcp_toggle', {
-      serverName:
-        name as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      enabled,
-    })
-  }
 }

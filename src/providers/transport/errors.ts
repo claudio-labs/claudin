@@ -39,10 +39,6 @@ import { formatFileSize } from 'src/shared/text/format.js'
 import { ImageResizeError } from 'src/terminal/image/imageResizer.js'
 import { ImageSizeError } from 'src/terminal/image/imageValidation.js'
 import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
-import {
   type ClaudeAILimits,
   getRateLimitErrorMessage,
   type OverageDisabledReason,
@@ -464,21 +460,6 @@ function logToolUseToolResultMismatch(
       }
     }
 
-    // Log to Statsig
-    logEvent('tengu_tool_use_tool_result_mismatch_error', {
-      toolUseId:
-        toolUseId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      normalizedSequence: normalizedSeq.join(
-        ', ',
-      ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      preNormalizedSequence: preNormalizedSeq.join(
-        ', ',
-      ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      normalizedMessageCount: messagesForAPI.length,
-      originalMessageCount: messages.length,
-      normalizedToolUseIndex: normalizedIndex,
-      originalToolUseIndex: originalIndex,
-    })
   } catch (_) {
     // Ignore errors in debug logging
   }
@@ -786,13 +767,6 @@ export function getAssistantMessageFromError(
     })
   }
 
-  if (
-    isSdkApiError(error) &&
-    error.status === 400 &&
-    error.message.includes('unexpected `tool_use_id` found in `tool_result`')
-  ) {
-    logEvent('tengu_unexpected_tool_result', {})
-  }
 
   // Duplicate tool_use IDs (CC-1212). ensureToolResultPairing strips these
   // before send, so hitting this means a new corruption path slipped through.
@@ -802,7 +776,6 @@ export function getAssistantMessageFromError(
     error.status === 400 &&
     error.message.includes('`tool_use` ids must be unique')
   ) {
-    logEvent('tengu_duplicate_tool_use_id', {})
     const rewindInstruction = getIsNonInteractiveSession()
       ? ''
       : ' Run /rewind to recover the conversation.'
@@ -1294,15 +1267,6 @@ export function getErrorMessageIfRefusal(
   // category arrives as 'cyber' | 'bio' | null; LogEventMetadata only accepts
   // boolean | number | undefined, so encode as discrete booleans.
   const category = stopDetails?.category ?? null
-  logEvent(
-    'tengu_refusal_api_response',
-    category === null
-      ? {}
-      : {
-          category_cyber: category === 'cyber',
-          category_bio: category === 'bio',
-        },
-  )
 
   const usagePolicyUrl =
     getAPIProvider() === 'firstParty'

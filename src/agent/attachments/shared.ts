@@ -1,7 +1,3 @@
-import {
-  logEvent,
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from 'src/platform/analytics/index.js'
 import { randomUUID } from 'crypto'
 import type { AttachmentMessage } from 'src/shared/types/message.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
@@ -27,24 +23,10 @@ export async function maybe<A>(
         .reduce((total, attachment) => {
           return total + jsonStringify(attachment).length
         }, 0)
-      logEvent('tengu_attachment_compute_duration', {
-        label,
-        duration_ms: duration,
-        attachment_size_bytes: attachmentSizeBytes,
-        attachment_count: result.length,
-      } as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS)
     }
     return result
   } catch (e) {
     const duration = Date.now() - startTime
-    // Log only 5% of events to reduce volume
-    if (Math.random() < 0.05) {
-      logEvent('tengu_attachment_compute_duration', {
-        label,
-        duration_ms: duration,
-        error: true,
-      } as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS)
-    }
     logError(e)
     // For Ant users, log the full error to help with debugging
     logAntError(`Attachment error in ${label}`, e)

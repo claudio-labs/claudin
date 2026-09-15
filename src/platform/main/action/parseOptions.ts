@@ -17,7 +17,6 @@ import { getOauthConfig } from 'src/shared/constants/oauth.js';
 import { getSessionId, getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js';
 import { downloadSessionFiles, type FilesApiConfig, parseFileSpecs } from 'src/providers/transport/filesApi.js';
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';
-import { logEvent } from 'src/platform/analytics/index.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { seedEarlyInput } from 'src/terminal/input/earlyInput.js';
@@ -165,18 +164,11 @@ export async function parseActionOptions(
 
   // Ignore "code" as a prompt - treat it the same as no prompt
   if (prompt === 'code') {
-    logEvent('tengu_code_prompt_ignored', {});
     // biome-ignore lint/suspicious/noConsole:: intentional console output
     console.warn(chalk.yellow('Tip: You can launch Claudin with just `claudin`'));
     prompt = undefined;
   }
 
-  // Log event for any single-word prompt
-  if (prompt && typeof prompt === 'string' && !/\s/.test(prompt) && prompt.length > 0) {
-    logEvent('tengu_single_word_prompt', {
-      length: prompt.length,
-    });
-  }
 
   const {
     debug = false,

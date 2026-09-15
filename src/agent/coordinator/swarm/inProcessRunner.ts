@@ -19,10 +19,6 @@ import {
   registerPermissionCallback,
   unregisterPermissionCallback,
 } from 'src/agent/coordinator/hooks/useSwarmPermissionPoller.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { getAutoCompactThreshold } from 'src/agent/compact/autoCompact.js'
 import {
   buildPostCompactMessages,
@@ -944,15 +940,6 @@ export async function runInProcessTeammate(
         systemPromptParts.push(`\n# Custom Agent Instructions\n${customPrompt}`)
       }
 
-      // Log agent memory loaded event for in-process teammates
-      if (agentDefinition.memory) {
-        logEvent('tengu_agent_memory_loaded', {
-          scope:
-            agentDefinition.memory as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          source:
-            'in-process-teammate' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        })
-      }
     }
 
     // Append mode: add provided system prompt after default
