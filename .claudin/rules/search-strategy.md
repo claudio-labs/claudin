@@ -239,7 +239,7 @@ src/
 │   ├── cache/ (4)               ← prompt-cache policy + profiles (→ cache.md)
 │   ├── messages/ attachments/   ← message normalization, attachment rendering
 │   ├── hooks/ (17)              ← React hooks for the loop (useCancelRequest, useTasksV2 …)
-│   └── plans/ goal/ autoFix/ ultraplan/ contextCollapse/  ← planning + self-correction
+│   └── plans/ goal/ autoFix/           ← planning + self-correction
 ├── providers/ (256)             ← provider abstraction (start here for provider issues)
 │   ├── presets/ (20)            ← activeProvider.ts (resolver), providerConfig.ts (presets, profile
 │   │                              schema), providerProfiles, discovery, validation
@@ -293,14 +293,16 @@ src/
 │   ├── lifecycleHooks/ (43)     ← Claude Code lifecycle hooks (PreToolUse …). React hooks live in
 │   │                              each slice's own hooks/ — these are the harness's
 │   ├── bash/ (32)               ← bash parsing, command splitting, shell snapshots
-│   ├── analytics/ (9)           ← GrowthBook, logEvent (telemetry stubbed at build time)
+│   ├── analytics/ (2)           ← feature-flag resolution ONLY, over
+│   │                              ~/.claudin/feature-flags.json. The analytics and
+│   │                              telemetry this was named for is deleted, not stubbed
 │   ├── bootstrap/state.ts       ← a BARREL over state/ — the STATE singleton lives in state/store.ts
 │   │                              and nowhere else; getSessionId, cwd helpers, cost, latches
-│   ├── lsp/ ide/ install/ shell/ computerUse/ notifications/ secureStorage/
+│   ├── lsp/ ide/ install/ shell/ notifications/ secureStorage/
 │   ├── migrations/ (11)         ← one-time settings/model migrations (migrateFennecToOpus …)
 │   ├── bridge/ (37)             ← bridge mode (BRIDGE_MODE flag; largely gated/stubbed)
-│   ├── server/ teleport/ feedback/  ← direct-connect sessions, remote environments, surveys
-│   └── billing/ teams/ telemetry/ policyLimits/ wiki/ github/  ← misc host services
+│   ├── server/ teleport/       ← direct-connect sessions, remote environments
+│   └── teams/ policyLimits/ wiki/ github/  ← misc host services
 ├── terminal/ (384)              ← the TUI shell: renderer, input, chrome (→ ink-tui.md)
 │   ├── ink/ (114)               ← the forked Ink renderer: screen.ts, log-update, stringWidth, ScrollBox
 │   ├── prompt-input/ (23)       ← the input box, its modes and suggestions. `input/` (8) is a
@@ -312,8 +314,8 @@ src/
 │   │                              TUI state only — system-prompt context is agent/context.ts
 │   ├── render/ (12)             ← fullscreen, render cadence, fpsTracker, streamJsonStdoutGuard
 │   ├── prompt-suggestion/ (11)  ← ghost text, file suggestions, speculation
-│   └── explorer/ voice/ vim/ wizard/ custom-select/ buddy/  ← dialogs and input modes
-├── commands/ (281)              ← slash commands (/provider, /review, /plan, /resume, /mcp …),
+│   └── explorer/ vim/ wizard/ custom-select/ buddy/  ← dialogs and input modes
+├── commands/ (248)              ← slash commands (/provider, /review, /plan, /resume, /mcp …),
 │                                  one dir or file per command; registry in commands/commands.ts.
 │                                  plugin/ (19) and install-github-app/ (17) are the big ones;
 │                                  insights.ts is a BARREL over insights/ and must keep re-exporting
@@ -406,10 +408,16 @@ Grep pattern="'openai_compat'\|'gemini'\|'mistral'" path="src/providers/shims/op
 Grep pattern="feature\('" path="scripts/build/build.ts"
 ```
 
-### "Where is analytics event X logged?"
+### "What does feature flag X gate, and can I flip it?"
 
 ```
-Grep pattern="logEvent\|_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS" type="ts"
+bun run scripts/verify/tengu-census.ts --gates   # every key with its call sites
+```
+
+`docs/tech/tengu-census/gate-audit.md` classifies all 103: which do something,
+which open a branch that is dead on arrival, which are inert. Flip one by
+writing `~/.claudin/feature-flags.json`. There is no analytics to grep for —
+`logEvent` and the modules behind it were removed.
 ```
 
 ### "Where is the Bash output filtered / a command rewritten?"

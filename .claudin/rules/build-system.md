@@ -29,16 +29,19 @@ not source.
    > should be.** Run `git diff` after any killed build. This preprocessing
    > exists because Bun ≥1.3.9 resolves `bun:bundle` natively before plugins can
    > intercept it.
-2. **`tengu_*` event-name stripping**, in that same pass. Telemetry is already a
-   no-op (see #5), but the ~1000 event-name literals survive minification as
-   arguments to the stubs, so they are blanked to `''`. Scope is **only the first
-   argument of `logEvent`/`logEventAsync`**: a `tengu_*` string handed to
-   `checkGate*`/`getFeatureValue*`/`getDynamicConfig*` is a feature-gate KEY, and
-   blanking one would silently change which default that gate resolves to. Names
-   reached through a variable are left alone for the same reason. Measured on a
-   clean `dist/chunks`: 832 distinct names → 205, all 54 gate keys among the
-   survivors. Verify with `rm -rf dist/chunks && bun run build`, never against a
-   stale generation (see #6).
+2. **There is no second rewrite pass any more.** One used to blank the `tengu_*`
+   name passed to `logEvent`/`logEventAsync`, because ~1000 event-name literals
+   survived minification as arguments. Both the call sites and the sink are gone,
+   so the bundle now holds **zero** `tengu` tokens — check with
+   `rm -rf dist/chunks && bun run build` and grep `dist/cli.mjs`.
+
+   The distinction that pass drew is still load-bearing, though: a `tengu_*`
+   string handed to `checkGate*`/`getFeatureValue*`/`getDynamicConfig*` is a
+   feature-flag **KEY**, not an event name. Those are live — they are the
+   contract with `~/.claudin/feature-flags.json` — and
+   `docs/tech/tengu-census/gate-audit.md` says what each of the 103 gates.
+   `bun run scripts/verify/tengu-census.ts` buckets every occurrence by role and
+   fails loudly if one cannot be placed.
 3. **`MACRO.*` constants** (`MACRO.VERSION`, `MACRO.DISPLAY_VERSION`,
    `MACRO.BUILD_TIME`, …) are inlined via `define`. `MACRO.VERSION` is pinned to
    `99.0.0` to pass first-party minimum-version guards; the **real** version is
@@ -51,10 +54,21 @@ not source.
    > A new top-level Anthropic-internal import still builds (the pre-scan stubs
    > it) but is a **no-op at runtime**. Gate it behind `feature()` so it only
    > loads when intentionally enabled.
-5. **`noTelemetryPlugin`** (`scripts/build/no-telemetry-plugin.ts`) replaces analytics,
-   GrowthBook, Datadog, BigQuery, OTel session tracing, the auto-updater, and
-   feedback/transcript sharing with stubs. `bun run verify:privacy` enforces this
-   on the bundle — run it for any build/telemetry/network change.
+5. **`noTelemetryPlugin`** (`scripts/build/no-telemetry-plugin.ts`) is down to
+   **three** stubs, from nineteen. It used to replace analytics, GrowthBook,
+   Datadog, BigQuery, OTel session tracing and transcript sharing; those modules
+   were deleted outright instead, and flag resolution was promoted from a stub
+   string to real source (`src/platform/analytics/growthbook.ts`). Two of the
+   three that remain name a module that no longer exists anywhere, which
+   `no-telemetry-stubs-resolve.test.ts` reports rather than fails on.
+
+   > Deleting a stubbed module means deleting its stub key **in the same
+   > change**. A key that stops matching does not fail loudly — the real module
+   > just gets bundled. That guard test exists because the 2026-08 reorg walked
+   > into exactly that.
+
+   `bun run verify:privacy` enforces the result on the bundle — run it for any
+   build/telemetry/network change.
 6. **Path alias.** `tsconfig.json` maps `src/*` → `./src/*`. Both `src/...` and
    relative imports work; prefer the `src/...` form.
 
@@ -68,8 +82,12 @@ received, and they resolve **for tsc and for nothing else**.
 walk into the caller and raise `TS2339` on properties the invention lacks — an
 earlier attempt measured worse than the diagnostic it was replacing. They buy
 **no** type safety (an unresolved import is already `any`), they only retire the
-error. Nor do they mean the code is unreachable: `src/commands/commands.ts`
-imports 19 of them eagerly and does hit the `() => null` stub at runtime.
+error. Nor do they mean the code is unreachable: a few are imported eagerly and
+do hit the `() => null` stub at runtime. That is not harmless — `FORK_SUBAGENT`
+shipped `true` against a missing `src/commands/fork/`, and because the stub's
+`default` is a truthy arrow function, a phantom command named `noop` appeared in
+the slash-command list. `src/commands/__tests__/registry.characterization.test.ts`
+fails if that shape comes back.
 
 The pre-scan in #4 is what keeps the build green over them, and it fires on
 exactly one shape: `scripts/build/build.ts:579` registers a module as missing when the
@@ -264,7 +282,7 @@ construct you render in a script or a test.
 ```bash
 bun test scripts/build/feature-flags-source-guard.test.ts    # feature() flag consistency
 bun test scripts/bench/tokens/measure-tool-schemas.test.ts   # tool schema size
-bun test scripts/build/no-telemetry-growthbook-stub.test.ts  # no phone-home
+bun test src/platform/analytics/growthbook.test.ts          # flag resolution
 bun test scripts/verify/pr-intent-scan.test.ts               # PR security scan
 bun run verify:privacy                                       # scan dist/ for phone-home
 ```
