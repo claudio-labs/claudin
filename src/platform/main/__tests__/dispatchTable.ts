@@ -57,7 +57,6 @@ export const DISPATCH_TABLE: readonly SubcommandSpec[] = [
     { name: 'critique', source: 'src/platform/main/commands/autoMode.ts' },
   ] },
   { name: 'remote-control', aliases: ['rc'], featureGate: 'BRIDGE_MODE', source: 'src/platform/main/commands/remoteControl.ts' },
-  { name: 'assistant', featureGate: 'KAIROS', source: 'src/platform/main/commands/assistant.ts' },
   { name: 'doctor', source: 'src/platform/main/commands/doctor.ts' },
   { name: 'update', aliases: ['upgrade'], source: 'src/platform/main/commands/update.ts' },
   { name: 'install', source: 'src/platform/main/commands/install.ts' },

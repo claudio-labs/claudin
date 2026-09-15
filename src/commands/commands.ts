@@ -58,17 +58,6 @@ import { feature } from 'bun:bundle'
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js'
 // Dead code elimination: conditional imports
 /* eslint-disable @typescript-eslint/no-require-imports */
-const proactive =
-  feature('PROACTIVE') || feature('KAIROS')
-    ? require('./proactive.js').default
-    : null
-const briefCommand =
-  feature('KAIROS') || feature('KAIROS_BRIEF')
-    ? require('src/commands/brief.js').default
-    : null
-const assistantCommand = feature('KAIROS')
-  ? require('./assistant/index.js').default
-  : null
 const bridge = feature('BRIDGE_MODE')
   ? require('src/commands/bridge/index.js').default
   : null
@@ -98,9 +87,6 @@ const clearSkillIndexCache = feature('EXPERIMENTAL_SKILL_SEARCH')
   ? (
       require('../skills/search/localSearch.js') as typeof import('../skills/search/localSearch.js')
     ).clearSkillIndexCache
-  : null
-const subscribePr = feature('KAIROS_GITHUB_WEBHOOKS')
-  ? require('./subscribe-pr.js').default
   : null
 const ultraplan = feature('ULTRAPLAN')
   ? require('src/commands/ultraplan.js').default
@@ -280,9 +266,6 @@ const COMMANDS = memoize((): Command[] => [
   wiki,
   ...(webCmd ? [webCmd] : []),
   ...(buddy ? [buddy] : []),
-  ...(proactive ? [proactive] : []),
-  ...(briefCommand ? [briefCommand] : []),
-  ...(assistantCommand ? [assistantCommand] : []),
   ...(bridge ? [bridge] : []),
   thinkback,
   thinkbackPlay,

@@ -28,12 +28,6 @@ export type PendingConnect = {
   dangerouslySkipPermissions: boolean;
 };
 
-/** Set by early argv processing when `claude assistant [sessionId]` is detected. */
-export type PendingAssistantChat = {
-  sessionId?: string;
-  discover: boolean;
-};
-
 /** Set by early argv processing when `claude ssh <host> [dir]` is detected. */
 export type PendingSSH = {
   host: string | undefined;
@@ -45,15 +39,6 @@ export type PendingSSH = {
   /** Extra CLI args to forward to the remote CLI on initial spawn (--resume, -c). */
   extraCliArgs: string[];
 };
-
-/**
- * Opaque type for the assistant-team context produced by
- * `assistantModule.initializeAssistantTeam()`. The `assistant` module is
- * build-time-stubbed in this fork, so we expose it as `unknown` and rely
- * on the caller (main.tsx) to keep the original typed handle locally
- * when needed.
- */
-export type AssistantTeamContext = unknown;
 
 /**
  * BootContext — shared state for the default action handler.
@@ -73,7 +58,6 @@ export type BootContext = {
    */
   pending: {
     connect: PendingConnect | undefined;
-    assistantChat: PendingAssistantChat | undefined;
     ssh: PendingSSH | undefined;
   };
 
@@ -93,7 +77,6 @@ export type BootContext = {
   // --- Wave B: teammate / kairos ---
 
   kairosEnabled: boolean;
-  assistantTeamContext: AssistantTeamContext | undefined;
   storedTeammateOpts: TeammateOptions | undefined;
 
   // --- Wave C (partial): SDK / streaming, files ---
@@ -108,7 +91,6 @@ export type BootContext = {
 export type BuildBootContextInput = {
   prompt: string | undefined;
   pendingConnect: PendingConnect | undefined;
-  pendingAssistantChat: PendingAssistantChat | undefined;
   pendingSSH: PendingSSH | undefined;
 };
 
@@ -125,7 +107,6 @@ export function buildBootContext(input: BuildBootContextInput): BootContext {
     prompt: input.prompt,
     pending: {
       connect: input.pendingConnect,
-      assistantChat: input.pendingAssistantChat,
       ssh: input.pendingSSH,
     },
 
@@ -142,7 +123,6 @@ export function buildBootContext(input: BuildBootContextInput): BootContext {
 
     // Wave B: teammate / kairos.
     kairosEnabled: false,
-    assistantTeamContext: undefined,
     storedTeammateOpts: undefined,
 
     // Wave C (partial): SDK / streaming, files.

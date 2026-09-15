@@ -54,28 +54,6 @@ import {
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import type { ContentReplacementRecord } from 'src/agent/tools/toolResultStorage.js'
 
-// Dead code elimination: internal-only tool names are conditionally required so
-// their strings don't leak into external builds. Static imports always bundle.
-/* eslint-disable @typescript-eslint/no-require-imports */
-const BRIEF_TOOL_NAME: string | null =
-  feature('KAIROS') || feature('KAIROS_BRIEF')
-    ? (
-        require('src/tools/BriefTool/prompt.js') as typeof import('src/tools/BriefTool/prompt.js')
-      ).BRIEF_TOOL_NAME
-    : null
-const LEGACY_BRIEF_TOOL_NAME: string | null =
-  feature('KAIROS') || feature('KAIROS_BRIEF')
-    ? (
-        require('src/tools/BriefTool/prompt.js') as typeof import('src/tools/BriefTool/prompt.js')
-      ).LEGACY_BRIEF_TOOL_NAME
-    : null
-const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS')
-  ? (
-      require('../tools/SendUserFileTool/prompt.js') as typeof import('../tools/SendUserFileTool/prompt.js')
-    ).SEND_USER_FILE_TOOL_NAME
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
-
 // Hard cap for reconstructed resume payloads before REPL boot. 8 MiB keeps
 // resume bounded well below the multi-GB failure mode we saw while leaving
 // enough room for normal compacted sessions plus resume hook context.
@@ -382,15 +360,6 @@ function detectTurnInterruption(
       return { kind: 'none' }
     }
     if (isToolUseResultMessage(lastMessage)) {
-      // Brief mode (#20467) drops the trailing assistant text block, so a
-      // completed brief-mode turn legitimately ends on SendUserMessage's
-      // tool_result. Without this check, resume misclassifies every
-      // brief-mode session as interrupted mid-turn and injects a phantom
-      // "Continue from where you left off." before the user's real next
-      // prompt. Look back one step for the originating tool_use.
-      if (isTerminalToolResult(lastMessage, messages, lastMessageIdx)) {
-        return { kind: 'none' }
-      }
       return { kind: 'interrupted_turn' }
     }
     // Plain text user prompt — CC hadn't started responding
@@ -404,46 +373,6 @@ function detectTurnInterruption(
   }
 
   return { kind: 'none' }
-}
-
-/**
- * Is this tool_result the output of a tool that legitimately terminates a
- * turn? SendUserMessage is the canonical case: in brief mode, calling it is
- * the turn's final act — there is no follow-up assistant text (#20467
- * removed it). A transcript ending here means the turn COMPLETED, not that
- * it was killed mid-tool.
- *
- * Walks back to find the assistant tool_use that this result belongs to and
- * checks its name. The matching tool_use is typically the immediately
- * preceding relevant message (filterUnresolvedToolUses has already dropped
- * unpaired ones), but we walk just in case system/progress noise is
- * interleaved.
- */
-function isTerminalToolResult(
-  result: NormalizedUserMessage,
-  messages: NormalizedMessage[],
-  resultIdx: number,
-): boolean {
-  const content = result.message.content
-  if (!Array.isArray(content)) return false
-  const block = content[0]
-  if (block?.type !== 'tool_result') return false
-  const toolUseId = block.tool_use_id
-
-  for (let i = resultIdx - 1; i >= 0; i--) {
-    const msg = messages[i]!
-    if (msg.type !== 'assistant') continue
-    for (const b of msg.message.content) {
-      if (b.type === 'tool_use' && b.id === toolUseId) {
-        return (
-          b.name === BRIEF_TOOL_NAME ||
-          b.name === LEGACY_BRIEF_TOOL_NAME ||
-          b.name === SEND_USER_FILE_TOOL_NAME
-        )
-      }
-    }
-  }
-  return false
 }
 
 /**

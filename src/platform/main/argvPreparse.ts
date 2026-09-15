@@ -13,7 +13,7 @@ import { feature } from 'bun:bundle';
 
 import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js';
 
-import type { PendingAssistantChat, PendingConnect, PendingSSH } from 'src/platform/main/bootContext.js';
+import type { PendingConnect, PendingSSH } from 'src/platform/main/bootContext.js';
 
 /**
  * Check argv for a `cc://` or `cc+unix://` URL and rewrite so the main command
@@ -87,33 +87,6 @@ export async function runDeepLinkArgvHandling(): Promise<void> {
     const urlSchemeResult = await handleUrlSchemeLaunch();
     process.exit(urlSchemeResult ?? 1);
   }
-}
-
-/**
- * `claude assistant [sessionId]` — stash and strip so the main command handles
- * it, giving the full interactive TUI. Position-0 only (matching the ssh
- * pattern) — indexOf would false-positive on `claude -p "explain assistant"`.
- *
- * No-op when KAIROS is gated off.
- */
-export function runAssistantArgvStash(
-  pendingAssistantChat: PendingAssistantChat | undefined,
-): void {
-  if (!feature('KAIROS') || !pendingAssistantChat) return;
-  const rawArgs = process.argv.slice(2);
-  if (rawArgs[0] !== 'assistant') return;
-
-  const nextArg = rawArgs[1];
-  if (nextArg && !nextArg.startsWith('-')) {
-    pendingAssistantChat.sessionId = nextArg;
-    rawArgs.splice(0, 2); // drop 'assistant' and sessionId
-    process.argv = [process.argv[0]!, process.argv[1]!, ...rawArgs];
-  } else if (!nextArg) {
-    pendingAssistantChat.discover = true;
-    rawArgs.splice(0, 1); // drop 'assistant'
-    process.argv = [process.argv[0]!, process.argv[1]!, ...rawArgs];
-  }
-  // else: `claude assistant --help` → fall through to stub
 }
 
 /**

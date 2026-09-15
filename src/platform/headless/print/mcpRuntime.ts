@@ -28,10 +28,6 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { withDiagnosticsTiming } from 'src/shared/diagLogs.js'
 import { logError, logMCPDebug } from 'src/shared/log.js'
 import type { MCPServerConnection } from 'src/mcp/types.js'
-import {
-  isChannelAllowlisted,
-  isChannelsEnabled,
-} from 'src/mcp/channelAllowlist.js'
 import type {
   McpServerConfigForProcessTransport,
   McpServerStatus,
@@ -457,28 +453,9 @@ export function buildMcpServerStatuses(
           }))
         : undefined
     // Capabilities passthrough with allowlist pre-filter. The IDE reads
-    // experimental['claude/channel'] to decide whether to show the
-    // Enable-channel prompt — only echo it if channel_enable would
-    // actually pass the allowlist. Not a security boundary (the
-    // handler re-runs the full gate); just avoids dead buttons.
-    let capabilities: { experimental?: Record<string, unknown> } | undefined
-    if (
-      (feature('KAIROS') || feature('KAIROS_CHANNELS')) &&
-      connection.type === 'connected' &&
-      connection.capabilities.experimental
-    ) {
-      const exp = { ...connection.capabilities.experimental }
-      if (
-        exp['claude/channel'] &&
-        (!isChannelsEnabled() ||
-          !isChannelAllowlisted(connection.config.pluginSource))
-      ) {
-        delete exp['claude/channel']
-      }
-      if (Object.keys(exp).length > 0) {
-        capabilities = { experimental: exp }
-      }
-    }
+    // was gated on the channels build flag, which this build does not ship.
+    const capabilities: { experimental?: Record<string, unknown> } | undefined =
+      undefined
     return {
       name: connection.name,
       status: connection.type,

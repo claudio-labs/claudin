@@ -98,7 +98,7 @@ const CANDIDATES: Candidate[] = [
   },
   {
     modulePath: 'src/tools/BriefTool/BriefTool',
-    current: ['src/commands/brief.ts'],
+    current: [],
     goal: ['src/tools/tools.ts'],
   },
   // AgentTool: only one cross-importer beyond tools.ts — REPLTool's

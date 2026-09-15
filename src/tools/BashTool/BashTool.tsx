@@ -5,7 +5,6 @@ import * as React from 'react';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { z } from 'zod/v4';
-import { getKairosActive } from 'src/platform/bootstrap/state.js';
 import { TOOL_SUMMARY_MAX_LENGTH } from 'src/tools/constants/toolLimits.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { logError } from 'src/shared/log.js';
@@ -70,7 +69,7 @@ import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
 import { renderToolRedirect, shouldRedirectToTools } from 'src/tools/BashTool/toolRedirect.js';
 import { BackgroundHint, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseQueuedMessage } from 'src/tools/BashTool/UI.js';
 import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from 'src/tools/BashTool/utils.js';
-import { ASSISTANT_BLOCKING_BUDGET_MS, mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
+import { mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
 const EOL = '\n';
 
 // Progress display constants
@@ -1033,7 +1032,9 @@ export async function* runShellCommand({
   let lastTotalLines = 0;
   let lastTotalBytes = 0;
   let backgroundShellId: string | undefined = undefined;
-  let assistantAutoBackgrounded = false;
+  // Assistant mode (build flag KAIROS) auto-backgrounded long blocking
+  // commands; that flag is off in this build, so nothing sets this.
+  const assistantAutoBackgrounded = false;
   let interruptBackgroundingStarted = false;
   // Single gate over startBackgrounding — covers timeout, interrupt, kairos,
   // and any future caller. Without this, a fast timeout (e.g.
@@ -1183,23 +1184,6 @@ export async function* runShellCommand({
     shellCommand.onTimeout(backgroundFn => {
       startBackgrounding('tengu_bash_command_timeout_backgrounded', backgroundFn);
     });
-  }
-
-  // In assistant mode, the main agent should stay responsive. Auto-background
-  // blocking commands after ASSISTANT_BLOCKING_BUDGET_MS so the agent can keep
-  // coordinating instead of waiting. The command keeps running — no state loss.
-  if (feature('KAIROS') && getKairosActive() && isMainThread && !isBackgroundTasksDisabled && run_in_background !== true) {
-    setTimeout(() => {
-      // Gate on !backgroundingInitiated too: if timeout/interrupt already
-      // started backgrounding, this kairos timer firing would set
-      // assistantAutoBackgrounded:true even though startBackgrounding's
-      // single-flight gate would no-op. The result returned later (via the
-      // backgroundShellId branch) would carry a falsely-true flag.
-      if (shellCommand.status === 'running' && backgroundShellId === undefined && !backgroundingInitiated) {
-        assistantAutoBackgrounded = true;
-        startBackgrounding('tengu_bash_command_assistant_auto_backgrounded');
-      }
-    }, ASSISTANT_BLOCKING_BUDGET_MS).unref();
   }
 
   // Handle Claude asking to run it in the background explicitly

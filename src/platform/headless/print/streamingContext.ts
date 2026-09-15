@@ -273,8 +273,6 @@ export type HeadlessStreamingContext = {
     message: { request_id: string },
     errorMessage: string,
   ) => void
-  /** Only defined under PROACTIVE/KAIROS; the call sites assert with `!`. */
-  scheduleProactiveTick: (() => void) | undefined
   /** Teardown shared by the two "input closed and idle" exits. */
   closeOutput: () => Promise<void>
 }

@@ -37,7 +37,6 @@ import { fetchSession, prepareApiRequest } from 'src/platform/teleport/api.js';
 import { checkOutTeleportedSessionBranch, processMessagesForTeleportResume, teleportToRemoteWithErrorHandling, validateGitState, validateSessionRepository } from 'src/platform/teleport/teleport.js';
 import { validateUuid } from 'src/shared/data/uuid.js';
 import { isPolicyAllowed, waitForPolicyLimitsToLoad } from 'src/platform/policyLimits/index.js';
-import { maybeActivateBrief, maybeActivateProactive } from 'src/platform/main/lifecycle.js';
 import type { BootContext } from 'src/platform/main/bootContext.js';
 import type { Props as REPLProps } from 'src/agent/repl/REPL.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
@@ -314,8 +313,6 @@ export async function runResumeBranch(deps: ResumeBranchDeps): Promise<void> {
     contentReplacements: undefined,
   } : undefined);
   if (resumeData) {
-    maybeActivateProactive(options);
-    maybeActivateBrief(options);
     await launchRepl(root, {
       getFpsMetrics,
       stats,

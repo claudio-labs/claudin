@@ -147,16 +147,6 @@ export async function runHeadlessBranch(deps: HeadlessBranchDeps): Promise<void>
     ...(isAdvisorEnabled() && advisorModel && {
       advisorModel
     }),
-    // kairosEnabled gates the async fire-and-forget path in
-    // executeForkedSlashCommand (processSlashCommand.tsx:132) and
-    // AgentTool's shouldRunAsync. The REPL initialState sets this at
-    // ~3459; headless was defaulting to false, so the daemon child's
-    // scheduled tasks and Agent-tool calls ran synchronously — N
-    // overdue cron tasks on spawn = N serial subagent turns blocking
-    // user input. Computed at :1620, well before this branch.
-    ...(feature('KAIROS') ? {
-      kairosEnabled: ctx.kairosEnabled
-    } : {})
   } as AppState;
 
   // Init app state

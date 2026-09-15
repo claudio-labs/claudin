@@ -10,19 +10,13 @@
 
 import { feature } from 'bun:bundle';
 
-import type { PendingAssistantChat, PendingConnect, PendingSSH } from 'src/platform/main/bootContext.js';
+import type { PendingConnect, PendingSSH } from 'src/platform/main/bootContext.js';
 
 /** Set by early argv processing when `claude` is invoked with a cc:// URL. */
 export const pendingConnect: PendingConnect | undefined = feature('DIRECT_CONNECT') ? {
   url: undefined,
   authToken: undefined,
   dangerouslySkipPermissions: false,
-} : undefined;
-
-/** Set by early argv processing when `claude assistant [sessionId]` is detected. */
-export const pendingAssistantChat: PendingAssistantChat | undefined = feature('KAIROS') ? {
-  sessionId: undefined,
-  discover: false,
 } : undefined;
 
 /** Set by early argv processing when `claude ssh <host> [dir]` is detected. */

@@ -61,10 +61,6 @@ import { applyReadOnly, READ_ONLY_INPUT_DESCRIPTION } from 'src/tools/AgentTool/
 import { runAgent } from 'src/tools/AgentTool/runAgent.js';
 import { renderGroupedAgentToolUse, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseRejectedMessage, renderToolUseTag, userFacingName, userFacingNameBackgroundColor } from 'src/tools/AgentTool/UI.js';
 
-/* eslint-disable @typescript-eslint/no-require-imports */
-const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../../platform/proactive/index.js') as typeof import('../../platform/proactive/index.js') : null;
-/* eslint-enable @typescript-eslint/no-require-imports */
-
 // Progress display constants (for showing background hint)
 const PROGRESS_THRESHOLD_MS = 2000; // Show background hint after 2 seconds
 
@@ -129,7 +125,7 @@ const fullInputSchema = lazySchema(() => {
 // type, but call() destructures via the explicit AgentToolInput type below
 // which always includes all optional fields.
 export const inputSchema = lazySchema(() => {
-  const schema = feature('KAIROS') ? fullInputSchema() : fullInputSchema().omit({
+  const schema = fullInputSchema().omit({
     cwd: true
   });
 
@@ -566,16 +562,7 @@ export const AgentTool = buildTool({
       implicitBackgroundAllowed &&
       isAutoBackgroundAgentsEnabled() &&
       !getIsNonInteractiveSession();
-
-    // Assistant mode: force all agents async. Synchronous subagents hold the
-    // main loop's turn open until they complete — the daemon's inputQueue
-    // backs up, and the first overdue cron catch-up on spawn becomes N
-    // serial subagent turns blocking all user input. Same gate as
-    // executeForkedSlashCommand's fire-and-forget path; the
-    // <task-notification> re-entry there is handled by the else branch
-    // below (registerAsyncAgentTask + notifyOnCompletion).
-    const assistantForceAsync = feature('KAIROS') ? appState.kairosEnabled : false;
-    const shouldRunAsync = (run_in_background === true || selectedAgent.background === true || isCoordinator || assistantForceAsync || autoBackgroundImplicit || (proactiveModule?.isProactiveActive() ?? false)) && !isBackgroundTasksDisabled;
+    const shouldRunAsync = (run_in_background === true || selectedAgent.background === true || isCoordinator || autoBackgroundImplicit) && !isBackgroundTasksDisabled;
     // Keep telemetry's isAsync truthful to how the agent actually ran.
     metadata.isAsync = shouldRunAsync;
     // Assemble the worker's tool pool independently of the parent's.

@@ -81,9 +81,7 @@ import { drainSdkEvents } from 'src/agent/sdkEventQueue.js'
 import { errorMessage, toError } from 'src/shared/errors.js'
 import { sleep } from 'src/shared/sleep.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
-import { reregisterChannelHandlerAfterReconnect } from 'src/platform/headless/print/controlHandlers.js'
 import { canBatchWith, joinPromptValues } from 'src/platform/headless/print/promptBatching.js'
-import { proactiveModule } from 'src/platform/headless/print/headlessOptionalModules.js'
 import type { HeadlessStreamingContext } from 'src/platform/headless/print/streamingContext.js'
 import type { StdoutMessage } from 'src/platform/entrypoints/sdk/controlTypes.js'
 
@@ -252,14 +250,6 @@ export async function runTurnLoop(
           ...ctx.dynamicMcpState.clients,
         ]
         ctx.registerElicitationHandlers(allMcpClients)
-        // Channel handlers for servers allowlisted via --channels at
-        // construction time (or enableChannel() mid-session). Runs every
-        // turn like registerElicitationHandlers — idempotent per-client
-        // (setNotificationHandler replaces, not stacks) and no-ops for
-        // non-allowlisted servers (one feature-flag check).
-        for (const client of allMcpClients) {
-          reregisterChannelHandlerAfterReconnect(client)
-        }
 
         const allTools = ctx.buildAllTools(appState)
 
@@ -804,17 +794,6 @@ export async function runTurnLoop(
   }
 
   // Proactive tick: if proactive is active and queue is empty, inject a tick
-  if (
-    (feature('PROACTIVE') || feature('KAIROS')) &&
-    proactiveModule?.isProactiveActive() &&
-    !proactiveModule.isProactivePaused()
-  ) {
-    if (peek(isMainThread) === undefined && !ctx.inputClosed) {
-      ctx.scheduleProactiveTick!()
-      return
-    }
-  }
-
   // Re-check the queue after releasing the mutex. A message may have
   // arrived (and called run()) between the last dequeue() returning
   // undefined and `running = false` above. In that case the caller

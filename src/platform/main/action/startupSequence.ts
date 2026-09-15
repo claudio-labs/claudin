@@ -35,7 +35,6 @@ import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.j
 import { logError } from 'src/shared/log.js';
 import { logContextMetrics } from 'src/providers/transport/api.js';
 import { uniq } from 'src/shared/data/array.js';
-import { getUserMsgOptIn } from 'src/platform/bootstrap/state.js';
 import { countConcurrentSessions, registerSession, updateSessionName } from 'src/sessions/concurrentSessions.js';
 import { registerCleanup } from 'src/shared/cleanupRegistry.js';
 import { createEmptyAttributionState } from 'src/vcs/git/commitAttribution.js';
@@ -236,7 +235,6 @@ export type RunMcpHooksAndTelemetryInput = {
 };
 
 export type RunMcpHooksAndTelemetryDeps = {
-  assistantModule: { getAssistantActivationPath: () => string } | null;
   coordinatorModeModule: { isCoordinatorMode: () => boolean } | null;
 };
 
@@ -287,7 +285,7 @@ export function runMcpHooksAndTelemetry(
     toolPermissionContext,
     sessionNameArg,
   } = input;
-  const { assistantModule, coordinatorModeModule } = deps;
+  const { coordinatorModeModule } = deps;
 
   // Prefetch MCP resources after trust dialog (this is where execution happens).
   // Interactive mode only: print mode defers connects until headlessStore exists
@@ -390,7 +388,7 @@ export function runMcpHooksAndTelemetry(
     systemPromptFlag: systemPrompt ? ((options as { systemPromptFile?: string }).systemPromptFile ? 'file' : 'flag') : undefined,
     appendSystemPromptFlag: appendSystemPrompt ? ((options as { appendSystemPromptFile?: string }).appendSystemPromptFile ? 'file' : 'flag') : undefined,
     thinkingConfig,
-    assistantActivationPath: feature('KAIROS') && ctx.kairosEnabled ? assistantModule?.getAssistantActivationPath() : undefined,
+    assistantActivationPath: undefined,
     isCoordinator: feature('COORDINATOR_MODE') && coordinatorModeModule?.isCoordinatorMode() === true,
   });
 
@@ -551,8 +549,8 @@ export function runInteractiveStartupBlock(
     mode: isAgentSwarmsEnabled() && getTeammateUtils().isPlanModeRequired() ? ('plan' as const) : toolPermissionContext.mode,
   };
   // All startup opt-in paths (--tools, --brief, defaultView) have fired
-  // above; initialIsBriefOnly just reads the resulting state.
-  const initialIsBriefOnly = feature('KAIROS') || feature('KAIROS_BRIEF') ? getUserMsgOptIn() : false;
+  // above. Brief mode shipped behind KAIROS/KAIROS_BRIEF, both off here.
+  const initialIsBriefOnly = false;
   const fullRemoteControl = remoteControl || getRemoteControlAtStartup() || ctx.kairosEnabled;
   let ccrMirrorEnabled = false;
   if (feature('CCR_MIRROR') && !fullRemoteControl) {
@@ -674,13 +672,7 @@ export function runInteractiveStartupBlock(
       advisorModel,
     }),
     // Compute teamContext synchronously to avoid useEffect setState during render.
-    // KAIROS: assistantTeamContext takes precedence — set earlier in the
-    // KAIROS block so Agent(name: "foo") can spawn in-process teammates
-    // without TeamCreate. computeInitialTeamContext() is for tmux-spawned
-    // teammates reading their own identity, not the assistant-mode leader.
-    teamContext: feature('KAIROS')
-      ? ((ctx.assistantTeamContext as ReturnType<NonNullable<typeof computeInitialTeamContext>> | undefined) ?? computeInitialTeamContext?.())
-      : computeInitialTeamContext?.(),
+    teamContext: computeInitialTeamContext?.(),
   };
 
   // Add CLI initial prompt to history

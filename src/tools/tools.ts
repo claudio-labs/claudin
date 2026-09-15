@@ -49,10 +49,6 @@ const getRenameTool = () =>
 // Dead code elimination: conditional import for internal-only tools
 const REPLTool = null
 const SuggestBackgroundPRTool = null
-const SleepTool =
-  feature('PROACTIVE') || feature('KAIROS')
-    ? require('./SleepTool/SleepTool.js').SleepTool
-    : null
 const getCronTools = () => [
   require('src/tools/ScheduleCronTool/CronCreateTool.js').CronCreateTool,
   require('src/tools/ScheduleCronTool/CronDeleteTool.js').CronDeleteTool,
@@ -65,17 +61,6 @@ const getCronTools = () => [
 ]
 const MonitorTool = feature('MONITOR_TOOL')
   ? require('src/tools/MonitorTool/MonitorTool.js').MonitorTool
-  : null
-const SendUserFileTool = feature('KAIROS')
-  ? require('./SendUserFileTool/SendUserFileTool.js').SendUserFileTool
-  : null
-const PushNotificationTool =
-  feature('KAIROS') || feature('KAIROS_PUSH_NOTIFICATION')
-    ? require('./PushNotificationTool/PushNotificationTool.js')
-        .PushNotificationTool
-    : null
-const SubscribePRTool = feature('KAIROS_GITHUB_WEBHOOKS')
-  ? require('./SubscribePRTool/SubscribePRTool.js').SubscribePRTool
   : null
 const getTaskOutputTool = () =>
   require('src/tools/TaskOutputTool/TaskOutputTool.js').TaskOutputTool as typeof import('src/tools/TaskOutputTool/TaskOutputTool.js').TaskOutputTool
@@ -297,7 +282,6 @@ export function getAllBaseTools(): Tools {
     ...(REPLTool ? [REPLTool] : []),
     ...(WorkflowTool ? [WorkflowTool] : []),
     ...(agentWorkflowTools ?? []),
-    ...(SleepTool ? [SleepTool] : []),
     ...getCronTools(),
     ...(MonitorTool ? [MonitorTool] : []),
     // Polls a command until a regex matches / the output settles — the
@@ -305,9 +289,6 @@ export function getAllBaseTools(): Tools {
     // at the top of WaitForTool.ts.
     ...(isEnvTruthy(process.env.CLAUDIN_DISABLE_WAITFOR_TOOL) ? [] : [getWaitForTool()]),
     getBriefTool(),
-    ...(SendUserFileTool ? [SendUserFileTool] : []),
-    ...(PushNotificationTool ? [PushNotificationTool] : []),
-    ...(SubscribePRTool ? [SubscribePRTool] : []),
     ...(getPowerShellTool() ? [getPowerShellTool()] : []),
     ...(SnipTool ? [SnipTool] : []),
     ...(process.env.NODE_ENV === 'test' ? [getTestingPermissionTool()] : []),

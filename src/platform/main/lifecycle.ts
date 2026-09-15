@@ -32,7 +32,7 @@ import { resetAutoModeOptInForDefaultOffer } from 'src/platform/migrations/reset
 import { resetProToOpusDefault } from 'src/platform/migrations/resetProToOpusDefault.js';
 import { migrateChangelogFromConfig } from 'src/platform/install/releaseNotes.js';
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';
-import { getInitialMainLoopModel, getIsNonInteractiveSession, getSdkBetas, setUserMsgOptIn } from 'src/platform/bootstrap/state.js';
+import { getInitialMainLoopModel, getIsNonInteractiveSession, getSdkBetas } from 'src/platform/bootstrap/state.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { eagerParseCliFlag } from 'src/platform/cliArgs.js';
 import { getInitialSettings, getManagedSettingsKeysForLogging, getSettingsForSource } from 'src/platform/settings/settings.js';
@@ -314,45 +314,4 @@ export async function logTenguInit({
   } catch (error) {
     logError(error);
   }
-}
-
-export function maybeActivateProactive(options: unknown): void {
-  if (
-    (feature('PROACTIVE') || feature('KAIROS')) &&
-    ((options as { proactive?: boolean }).proactive || isEnvTruthy(process.env.CLAUDIN_PROACTIVE))
-  ) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const proactiveModule = require('../proactive/index.js');
-    if (!proactiveModule.isProactiveActive()) {
-      proactiveModule.activateProactive('command');
-    }
-  }
-}
-
-export function maybeActivateBrief(options: unknown): void {
-  if (!(feature('KAIROS') || feature('KAIROS_BRIEF'))) return;
-  const briefFlag = (options as { brief?: boolean }).brief;
-  const briefEnv = isEnvTruthy(process.env.CLAUDE_CODE_BRIEF);
-  if (!briefFlag && !briefEnv) return;
-  // --brief / CLAUDE_CODE_BRIEF are explicit opt-ins: check entitlement,
-  // then set userMsgOptIn to activate the tool + prompt section. The env
-  // var also grants entitlement (isBriefEntitled() reads it), so setting
-  // CLAUDE_CODE_BRIEF=1 alone force-enables for dev/testing — no GB gate
-  // needed. initialIsBriefOnly reads getUserMsgOptIn() directly.
-  // Conditional require: static import would leak the tool name string
-  // into external builds via BriefTool.ts → prompt.ts.
-  /* eslint-disable @typescript-eslint/no-require-imports */
-  const { isBriefEntitled } = require('src/tools/BriefTool/BriefTool.js') as typeof import('src/tools/BriefTool/BriefTool.js');
-  /* eslint-enable @typescript-eslint/no-require-imports */
-  const entitled = isBriefEntitled();
-  if (entitled) {
-    setUserMsgOptIn(true);
-  }
-  // Fire unconditionally once intent is seen: enabled=false captures the
-  // "user tried but was gated" failure mode in Datadog.
-  logEvent('tengu_brief_mode_enabled', {
-    enabled: entitled,
-    gated: !entitled,
-    source: (briefEnv ? 'env' : 'flag') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  });
 }

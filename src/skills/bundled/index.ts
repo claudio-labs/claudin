@@ -39,12 +39,6 @@ export function initBundledSkills(): void {
   // Claudin-native: keeps .claudin/rules/ honest — reports the rule defects
   // that are invisible at runtime and proposes corrections from session history.
   registerRefreshRulesSkill()
-  if (feature('KAIROS') || feature('KAIROS_DREAM')) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const { registerDreamSkill } = require('./dream.js')
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    registerDreamSkill()
-  }
   if (feature('REVIEW_ARTIFACT')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const { registerHunterSkill } = require('./hunter.js')

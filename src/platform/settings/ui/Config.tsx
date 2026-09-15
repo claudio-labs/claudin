@@ -135,13 +135,6 @@ export function Config({
   const thinkingEnabled = useAppState(s_1 => s_1.thinkingEnabled);
   const isFastMode = useAppState(s_2 => isFastModeEnabled() ? s_2.fastMode : false);
   const promptSuggestionEnabled = useAppState(s_3 => s_3.promptSuggestionEnabled);
-// Chat/Transcript view picker is visible to entitled users (pass the GB
-  // gate) even if they haven't opted in this session — it IS the persistent
-  // opt-in. 'chat' written here is read at next startup by main.tsx which
-  // sets userMsgOptIn if still entitled.
-  /* eslint-disable @typescript-eslint/no-require-imports */
-  const showDefaultViewPicker = feature('KAIROS') || feature('KAIROS_BRIEF') ? (require('src/tools/BriefTool/BriefTool.js') as typeof import('src/tools/BriefTool/BriefTool.js')).isBriefEntitled() : false;
-  /* eslint-enable @typescript-eslint/no-require-imports */
   const setAppState = useSetAppState();
   const [changes, setChanges] = useState<{
     [key: string]: unknown;
@@ -902,7 +895,7 @@ export function Config({
     onChange: setTheme
   }, {
     id: 'notifChannel',
-    label: feature('KAIROS') || feature('KAIROS_PUSH_NOTIFICATION') ? 'Local notifications' : 'Notifications',
+    label: 'Notifications',
     value: globalConfig.preferredNotifChannel,
     options: ['auto', 'iterm2', 'terminal_bell', 'iterm2_with_bell', 'kitty', 'ghostty', 'os_native', 'notifications_disabled'],
     type: 'enum',
@@ -916,97 +909,13 @@ export function Config({
         preferredNotifChannel: notifChannel
       });
     }
-  }, ...(feature('KAIROS') || feature('KAIROS_PUSH_NOTIFICATION') ? [{
-    id: 'taskCompleteNotifEnabled',
-    label: 'Push when idle',
-    value: globalConfig.taskCompleteNotifEnabled ?? false,
-    type: 'boolean' as const,
-    onChange(taskCompleteNotifEnabled: boolean) {
-      saveGlobalConfig(current_10 => ({
-        ...current_10,
-        taskCompleteNotifEnabled
-      }));
-      setGlobalConfig({
-        ...getGlobalConfig(),
-        taskCompleteNotifEnabled
-      });
-    }
   }, {
-    id: 'inputNeededNotifEnabled',
-    label: 'Push when input needed',
-    value: globalConfig.inputNeededNotifEnabled ?? false,
-    type: 'boolean' as const,
-    onChange(inputNeededNotifEnabled: boolean) {
-      saveGlobalConfig(current_11 => ({
-        ...current_11,
-        inputNeededNotifEnabled
-      }));
-      setGlobalConfig({
-        ...getGlobalConfig(),
-        inputNeededNotifEnabled
-      });
-    }
-  }, {
-    id: 'agentPushNotifEnabled',
-    label: 'Push when Claude decides',
-    value: globalConfig.agentPushNotifEnabled ?? false,
-    type: 'boolean' as const,
-    onChange(agentPushNotifEnabled: boolean) {
-      saveGlobalConfig(current_12 => ({
-        ...current_12,
-        agentPushNotifEnabled
-      }));
-      setGlobalConfig({
-        ...getGlobalConfig(),
-        agentPushNotifEnabled
-      });
-    }
-  }] : []), {
     id: 'outputStyle',
     label: 'Output style',
     value: currentOutputStyle,
     type: 'managedEnum' as const,
     onChange: () => {} // handled by OutputStylePicker submenu
-  }, ...(showDefaultViewPicker ? [{
-    id: 'defaultView',
-    label: 'What you see by default',
-    // 'default' means the setting is unset — currently resolves to
-    // transcript (main.tsx falls through when defaultView !== 'chat').
-    // String() narrows the conditional-schema-spread union to string.
-    value: settingsData?.defaultView === undefined ? 'default' : String(settingsData.defaultView),
-    options: ['transcript', 'chat', 'default'],
-    type: 'enum' as const,
-    onChange(selected: string) {
-      const defaultView = selected === 'default' ? undefined : selected as 'chat' | 'transcript';
-      updateSettingsForSource('localSettings', {
-        defaultView
-      });
-      setSettingsData(prev_17 => ({
-        ...prev_17,
-        defaultView
-      }));
-      const nextBrief = defaultView === 'chat';
-      setAppState(prev_18 => {
-        if (prev_18.isBriefOnly === nextBrief) return prev_18;
-        return {
-          ...prev_18,
-          isBriefOnly: nextBrief
-        };
-      });
-      // Keep userMsgOptIn in sync so the tool list follows the view.
-      // Two-way now (same as /brief) — accepting a cache invalidation
-      // is better than leaving the tool on after switching away.
-      // Reverted on Escape via initialUserMsgOptIn snapshot.
-      setUserMsgOptIn(nextBrief);
-      setChanges(prev_19 => ({
-        ...prev_19,
-        'Default view': selected
-      }));
-      logEvent('tengu_default_view_setting_changed', {
-        value: (defaultView ?? 'unset') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
-    }
-  }] : []), {
+  }, {
     id: 'language',
     label: 'Language',
     value: currentLanguage ?? 'Default (English)',

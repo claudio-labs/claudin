@@ -5,7 +5,6 @@ import * as React from 'react';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { z } from 'zod/v4';
-import { getKairosActive } from 'src/platform/bootstrap/state.js';
 import { TOOL_SUMMARY_MAX_LENGTH } from 'src/tools/constants/toolLimits.js';
 import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import type { SetToolJSXFn, Tool, ToolCallProgress, ValidationResult } from 'src/tools/Tool.js';
@@ -36,7 +35,7 @@ import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js';
 import { BackgroundHint } from 'src/tools/BashTool/UI.js';
 import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from 'src/tools/BashTool/utils.js';
 import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js';
-import { ASSISTANT_BLOCKING_BUDGET_MS, mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
+import { mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
 import { interpretCommandResult } from 'src/tools/PowerShellTool/commandSemantics.js';
 import { powershellToolHasPermission } from 'src/tools/PowerShellTool/powershellPermissions.js';
 import { getDefaultTimeoutMs, getMaxTimeoutMs, getPrompt } from 'src/tools/PowerShellTool/prompt.js';
@@ -664,7 +663,9 @@ async function* runPowerShellCommand({
   let lastTotalBytes = 0;
   let backgroundShellId: string | undefined = undefined;
   let interruptBackgroundingStarted = false;
-  let assistantAutoBackgrounded = false;
+  // Assistant mode (build flag KAIROS) auto-backgrounded long blocking
+  // commands; that flag is off in this build, so nothing sets this.
+  const assistantAutoBackgrounded = false;
   // Single-flight gate over startBackgrounding — covers timeout, interrupt,
   // kairos. Closes the timeout+interrupt double-spawn race where two
   // .then handlers both call setAppState→registerTask with the same
@@ -815,21 +816,6 @@ async function* runPowerShellCommand({
     shellCommand.onTimeout(backgroundFn => {
       startBackgrounding('tengu_powershell_command_timeout_backgrounded', backgroundFn);
     });
-  }
-
-  // In assistant mode, the main agent should stay responsive. Auto-background
-  // blocking commands after ASSISTANT_BLOCKING_BUDGET_MS so the agent can keep
-  // coordinating instead of waiting. The command keeps running — no state loss.
-  if (feature('KAIROS') && getKairosActive() && isMainThread && !isBackgroundTasksDisabled && run_in_background !== true) {
-    setTimeout(() => {
-      // Gate on !backgroundingInitiated: avoid setting
-      // assistantAutoBackgrounded:true when startBackgrounding's
-      // single-flight gate will no-op. Matches BashTool.
-      if (shellCommand.status === 'running' && backgroundShellId === undefined && !backgroundingInitiated) {
-        assistantAutoBackgrounded = true;
-        startBackgrounding('tengu_powershell_command_assistant_auto_backgrounded');
-      }
-    }, ASSISTANT_BLOCKING_BUDGET_MS).unref();
   }
 
   // Handle Claude asking to run it in the background explicitly

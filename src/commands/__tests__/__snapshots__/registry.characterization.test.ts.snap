@@ -6,13 +6,11 @@ exports[`slash-command registry — characterization the registered bindings mat
   "advisor",
   "agentWorkflowsCmd",
   "agents",
-  "assistantCommand",
   "autoFix",
   "autoModeSetup",
   "autofixPr",
   "branch",
   "bridge",
-  "briefCommand",
   "btw",
   "buddy",
   "cacheProbe",
@@ -55,7 +53,6 @@ exports[`slash-command registry — characterization the registered bindings mat
   "permissions",
   "plan",
   "plugin",
-  "proactive",
   "provider",
   "releaseNotes",
   "reloadPlugins",
@@ -97,26 +94,11 @@ exports[`slash-command registry — characterization the flag-gated command tabl
     "specifier": "src/commands/workflows/index.js",
   },
   {
-    "binding": "assistantCommand",
-    "flags": [
-      "KAIROS",
-    ],
-    "specifier": "./assistant/index.js",
-  },
-  {
     "binding": "bridge",
     "flags": [
       "BRIDGE_MODE",
     ],
     "specifier": "src/commands/bridge/index.js",
-  },
-  {
-    "binding": "briefCommand",
-    "flags": [
-      "KAIROS",
-      "KAIROS_BRIEF",
-    ],
-    "specifier": "src/commands/brief.js",
   },
   {
     "binding": "clearSkillIndexCache",
@@ -138,21 +120,6 @@ exports[`slash-command registry — characterization the flag-gated command tabl
       "WORKFLOW_SCRIPTS",
     ],
     "specifier": "../tools/WorkflowTool/createWorkflowCommand.js",
-  },
-  {
-    "binding": "proactive",
-    "flags": [
-      "PROACTIVE",
-      "KAIROS",
-    ],
-    "specifier": "./proactive.js",
-  },
-  {
-    "binding": "subscribePr",
-    "flags": [
-      "KAIROS_GITHUB_WEBHOOKS",
-    ],
-    "specifier": "./subscribe-pr.js",
   },
   {
     "binding": "torch",

@@ -54,7 +54,6 @@ import type { SDKUserMessageReplay } from 'src/platform/entrypoints/agentSdkType
 import {
   handleRewindFiles,
   handleSetPermissionMode,
-  handleChannelEnable,
 } from 'src/platform/headless/print/controlHandlers.js'
 import { handleInitializeRequest } from 'src/platform/headless/print/initHandler.js'
 import {
@@ -91,7 +90,6 @@ import {
   type SideQuestionRequest,
   type RemoteControlRequest,
 } from 'src/platform/headless/print/settingsControlHandlers.js'
-import { proactiveModule } from 'src/platform/headless/print/headlessOptionalModules.js'
 import type { HeadlessStreamingContext } from 'src/platform/headless/print/streamingContext.js'
 
 export async function runControlLoop(
@@ -335,19 +333,6 @@ export async function runControlLoop(
         await handleMcpReconnect(ctx, message as unknown as McpServerNameRequest)
       } else if (message.request.subtype === 'mcp_toggle') {
         await handleMcpToggle(ctx, message as unknown as McpToggleRequest)
-      } else if (requestSubtype === 'channel_enable') {
-        const currentAppState = getAppState()
-        handleChannelEnable(
-          message.request_id,
-          (message.request as unknown as { serverName: string }).serverName,
-          // Pool spread matches mcp_status — all three client sources.
-          [
-            ...currentAppState.mcp.clients,
-            ...ctx.sdkClients,
-            ...ctx.dynamicMcpState.clients,
-          ],
-          output,
-        )
       } else if (requestSubtype === 'mcp_authenticate') {
         await handleMcpAuthenticate(ctx, message as unknown as McpServerNameRequest)
       } else if (requestSubtype === 'mcp_oauth_callback_url') {
@@ -395,23 +380,6 @@ export async function runControlLoop(
         )
       } else if (requestSubtype === 'side_question') {
         handleSideQuestion(ctx, message as unknown as SideQuestionRequest)
-      } else if (
-        (feature('PROACTIVE') || feature('KAIROS')) &&
-        requestSubtype === 'set_proactive'
-      ) {
-        const req = message.request as unknown as {
-          subtype: string
-          enabled: boolean
-        }
-        if (req.enabled) {
-          if (!proactiveModule!.isProactiveActive()) {
-            proactiveModule!.activateProactive('command')
-            ctx.scheduleProactiveTick!()
-          }
-        } else {
-          proactiveModule!.deactivateProactive()
-        }
-        ctx.sendControlResponseSuccess(message)
       } else if (requestSubtype === 'remote_control') {
         await handleRemoteControl(ctx, message as unknown as RemoteControlRequest)
       } else {

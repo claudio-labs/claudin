@@ -1,4 +1,3 @@
-import { feature } from 'bun:bundle'
 import type { UUID } from 'crypto'
 import type { Entry, TranscriptMessage } from 'src/shared/types/logs.js'
 import type { Message } from 'src/shared/types/message.js'
@@ -72,9 +71,6 @@ export const EPHEMERAL_PROGRESS_TYPES = new Set([
   'bash_progress',
   'powershell_progress',
   'mcp_progress',
-  ...(feature('PROACTIVE') || feature('KAIROS')
-    ? (['sleep_progress'] as const)
-    : []),
 ])
 
 export function isEphemeralToolProgress(dataType: unknown): boolean {

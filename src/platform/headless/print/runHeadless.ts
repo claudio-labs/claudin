@@ -70,7 +70,6 @@ import { getCanUseToolFn } from 'src/platform/headless/print/permissionGlue.js'
 import { handleRewindFiles } from 'src/platform/headless/print/controlHandlers.js'
 import { loadInitialMessages } from 'src/platform/headless/print/sessionLoad.js'
 import { getStructuredIO } from 'src/platform/headless/print/structuredIOFactory.js'
-import { proactiveModule } from 'src/platform/headless/print/headlessOptionalModules.js'
 import { runHeadlessStreaming } from 'src/platform/headless/print/runHeadlessStreaming.js'
 
 // Dead code elimination: conditional imports
@@ -139,18 +138,6 @@ export async function runHeadless(
   })
 
   // Proactive activation is now handled in main.tsx before getTools() so
-  // SleepTool passes isEnabled() filtering. This fallback covers the case
-  // where CLAUDIN_PROACTIVE is set but main.tsx's check didn't fire
-  // (e.g. env was injected by the SDK transport after argv parsing).
-  if (
-    (feature('PROACTIVE') || feature('KAIROS')) &&
-    proactiveModule &&
-    !proactiveModule.isProactiveActive() &&
-    isEnvTruthy(process.env.CLAUDIN_PROACTIVE)
-  ) {
-    proactiveModule.activateProactive('command')
-  }
-
   // Periodically force a full GC to keep memory usage in check
   if (typeof Bun !== 'undefined') {
     const gcTimer = setInterval(Bun.gc, 1000)

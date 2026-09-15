@@ -66,8 +66,15 @@ describe('tool registry — characterization', () => {
     // A regex that silently matches nothing turns both snapshots into a record
     // of an empty object, and the suite would stay green through the entire
     // cleanup while guarding nothing.
+    //
+    // The floor was 10 before the dead-flag cleanup and is 5 now: the table
+    // lost CtxInspectTool, ListPeersTool, PushNotificationTool, RemoteTrigger,
+    // SendUserFileTool, SleepTool, SubscribePRTool and WebBrowserTool with
+    // their flags. It exists to catch a regex that matches NOTHING, so any
+    // number comfortably above zero does the job — lower it again if a later
+    // pass legitimately takes the table below five.
     const gated = scanGatedTools()
-    expect(Object.keys(gated).length).toBeGreaterThan(10)
+    expect(Object.keys(gated).length).toBeGreaterThan(5)
     expect(gated).toHaveProperty('MonitorTool', ['MONITOR_TOOL'])
   })
 

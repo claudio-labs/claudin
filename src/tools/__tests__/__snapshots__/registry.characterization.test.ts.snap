@@ -50,22 +50,8 @@ exports[`tool registry — characterization the flag-gated tool table matches th
   "OverflowTestTool": [
     "OVERFLOW_TEST_TOOL",
   ],
-  "PushNotificationTool": [
-    "KAIROS",
-    "KAIROS_PUSH_NOTIFICATION",
-  ],
-  "SendUserFileTool": [
-    "KAIROS",
-  ],
-  "SleepTool": [
-    "PROACTIVE",
-    "KAIROS",
-  ],
   "SnipTool": [
     "HISTORY_SNIP",
-  ],
-  "SubscribePRTool": [
-    "KAIROS_GITHUB_WEBHOOKS",
   ],
   "TerminalCaptureTool": [
     "TERMINAL_PANEL",
@@ -85,8 +71,6 @@ exports[`tool registry — characterization the flag-gated tool table matches th
 exports[`tool registry — characterization every gated tool names a flag that the build map knows about 1`] = `
 [
   "HISTORY_SNIP",
-  "KAIROS_GITHUB_WEBHOOKS",
-  "KAIROS_PUSH_NOTIFICATION",
   "OVERFLOW_TEST_TOOL",
   "TERMINAL_PANEL",
   "WORKFLOW_SCRIPTS",

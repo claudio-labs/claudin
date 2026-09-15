@@ -360,8 +360,8 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "defaults": [
       "false",
     ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE | getFeatureValue_CACHED_WITH_REFRESH",
-    "sites": 3,
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
     "stockValue": false,
   },
   "tengu_kairos_cron_durable": {

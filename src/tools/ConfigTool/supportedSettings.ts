@@ -173,28 +173,6 @@ export const SUPPORTED_SETTINGS: Record<string, SettingConfig> = {
         },
       }
     : {}),
-  ...(feature('KAIROS') || feature('KAIROS_PUSH_NOTIFICATION')
-    ? {
-        taskCompleteNotifEnabled: {
-          source: 'global' as const,
-          type: 'boolean' as const,
-          description:
-            'Push to your mobile device when idle after Claude finishes (requires Remote Control)',
-        },
-        inputNeededNotifEnabled: {
-          source: 'global' as const,
-          type: 'boolean' as const,
-          description:
-            'Push to your mobile device when a permission prompt or question is waiting (requires Remote Control)',
-        },
-        agentPushNotifEnabled: {
-          source: 'global' as const,
-          type: 'boolean' as const,
-          description:
-            'Allow Claude to push to your mobile device when it deems it appropriate (requires Remote Control)',
-        },
-      }
-    : {}),
 }
 
 export function isSupported(key: string): boolean {

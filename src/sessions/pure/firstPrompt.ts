@@ -1,6 +1,5 @@
-import { feature } from 'bun:bundle'
 import { builtInCommandNames } from 'src/commands/commands.js'
-import { COMMAND_NAME_TAG, TICK_TAG } from 'src/shared/constants/xml.js'
+import { COMMAND_NAME_TAG } from 'src/shared/constants/xml.js'
 import type { TranscriptMessage } from 'src/shared/types/logs.js'
 import type { Message } from 'src/shared/types/message.js'
 import { extractTag } from 'src/agent/messages/messages.js'
@@ -110,7 +109,6 @@ export function getFirstMeaningfulUserMessageTextContent<T extends Message>(
  */
 export function extractFirstPromptFromChunk(chunk: string): string {
   let start = 0
-  let hasTickMessages = false
   let firstCommandFallback = ''
   while (start < chunk.length) {
     const newlineIdx = chunk.indexOf('\n', start)
@@ -180,11 +178,6 @@ export function extractFirstPromptFromChunk(chunk: string): string {
         if (bashInput) return `! ${bashInput}`
 
         if (SKIP_FIRST_PROMPT_PATTERN.test(result)) {
-          if (
-            (feature('PROACTIVE') || feature('KAIROS')) &&
-            result.startsWith(`<${TICK_TAG}>`)
-          )
-            hasTickMessages = true
           continue
         }
         if (result.length > 200) {
@@ -199,9 +192,5 @@ export function extractFirstPromptFromChunk(chunk: string): string {
   // Session started with a slash command but had no subsequent real message —
   // use the clean command name so the session still appears in the resume picker
   if (firstCommandFallback) return firstCommandFallback
-  // Proactive sessions have only tick messages — give them a synthetic prompt
-  // so they're not filtered out by enrichLogs
-  if ((feature('PROACTIVE') || feature('KAIROS')) && hasTickMessages)
-    return 'Proactive session'
   return ''
 }

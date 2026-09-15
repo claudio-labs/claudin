@@ -14,7 +14,6 @@ import { logEvent } from 'src/platform/analytics/index.js';
 import { loadConversationForResume } from 'src/sessions/conversationRecovery.js';
 import { processResumedConversation } from 'src/sessions/sessionRestore.js';
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';
-import { maybeActivateBrief, maybeActivateProactive } from 'src/platform/main/lifecycle.js';
 
 export type ContinueBranchDeps = {
   root: Root;
@@ -49,8 +48,6 @@ export async function runContinueBranch(deps: ContinueBranchDeps): Promise<void>
     if (loaded.restoredAgentDef) {
       mainThreadAgentDefinitionRef.current = loaded.restoredAgentDef;
     }
-    maybeActivateProactive(options);
-    maybeActivateBrief(options);
     logEvent('tengu_continue', {
       success: true,
       resume_duration_ms: Math.round(performance.now() - resumeStart),

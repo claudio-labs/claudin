@@ -30,9 +30,6 @@ import type { McpSdkServerConfig, ScopedMcpServerConfig } from 'src/mcp/types.js
 import type { ToolInputJSONSchema } from 'src/tools/Tool.js';
 import type * as ToolsMod from 'src/tools/tools.js';
 import type * as InitMod from 'src/platform/entrypoints/init.js';
-import type { AssistantHandles } from 'src/platform/main/action/parseOptions.js';
-import type { AssistantModule as SetupAgentAssistantModule } from 'src/platform/main/action/setupAgent.js';
-import type { RunMcpHooksAndTelemetryDeps } from 'src/platform/main/action/startupSequence.js';
 const getLaunchRepl = async (): Promise<typeof ReplLauncherMod.launchRepl> =>
   (await import('src/agent/repl/replLauncher.js')).launchRepl;
 const getSetPreloadedChunks = async (): Promise<typeof ReplLauncherMod.setPreloadedChunks> =>
@@ -55,10 +52,6 @@ const getTeammateModeSnapshot = () => require('src/agent/coordinator/swarm/backe
 /* eslint-disable @typescript-eslint/no-require-imports */
 const coordinatorModeModule = feature('COORDINATOR_MODE') ? require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js') : null;
 /* eslint-enable @typescript-eslint/no-require-imports */
-// Dead code elimination: conditional import for KAIROS (assistant mode)
-/* eslint-disable @typescript-eslint/no-require-imports */
-const assistantModule = feature('KAIROS') ? require('../sessions/assistant/index.js') as typeof import('../sessions/assistant/index.js') : null;
-const kairosGate = feature('KAIROS') ? require('../sessions/assistant/gate.js') as typeof import('../sessions/assistant/gate.js') : null;
 import { resolve } from 'path';
 import type { StatsStore } from 'src/terminal/contexts/stats.js';
 // renderAndRun is loaded lazily inside the default action — it pulls React,
@@ -110,8 +103,6 @@ import {
 import {
   eagerLoadSettings,
   initializeEntrypoint,
-  maybeActivateBrief,
-  maybeActivateProactive,
 } from 'src/platform/main/lifecycle.js';
 
 // eslint-disable-next-line custom-rules/no-top-level-side-effects
@@ -134,9 +125,8 @@ if (isBeingDebugged()) {
 import { startDeferredPrefetches } from 'src/platform/main/deferredPrefetches.js';
 export { startDeferredPrefetches };
 import { buildBootContext } from 'src/platform/main/bootContext.js';
-import { pendingAssistantChat, pendingConnect, pendingSSH } from 'src/platform/main/pendingSlots.js';
+import { pendingConnect, pendingSSH } from 'src/platform/main/pendingSlots.js';
 import {
-  runAssistantArgvStash,
   runDeepLinkArgvHandling,
   runDirectConnectArgvRewrite,
   runSshArgvStash,
@@ -186,7 +176,6 @@ export async function main() {
   // BootContext at the top of the default action).
   await runDirectConnectArgvRewrite(pendingConnect);
   await runDeepLinkArgvHandling();
-  runAssistantArgvStash(pendingAssistantChat);
   runSshArgvStash(pendingSSH);
 
   // Resolve clientType/previewFormat/sessionSource/isInteractive from env+argv.
@@ -322,7 +311,6 @@ async function run(): Promise<CommanderCommand> {
     const ctx = buildBootContext({
       prompt,
       pendingConnect,
-      pendingAssistantChat,
       pendingSSH,
     });
 
@@ -331,7 +319,6 @@ async function run(): Promise<CommanderCommand> {
     // and returns the locals needed by Blocks B/C/D/E.
     const actionOptions = await parseActionOptions(prompt, options as ActionOptions, ctx, {
       teammate: { getTeammateUtils, getTeammatePromptAddendum, getTeammateModeSnapshot },
-      assistant: { assistantModule: assistantModule as AssistantHandles['assistantModule'], kairosGate },
     });
     prompt = actionOptions.prompt;
     const {
@@ -406,10 +393,6 @@ async function run(): Promise<CommanderCommand> {
     let inputPrompt = await getInputPrompt(effectivePrompt, (inputFormat ?? 'text') as 'text' | 'stream-json');
     profileCheckpoint('action_after_input_prompt');
 
-    // Activate proactive mode BEFORE getTools() so SleepTool.isEnabled()
-    // (which returns isProactiveActive()) passes and Sleep is included.
-    // The later REPL-path maybeActivateProactive() calls are idempotent.
-    maybeActivateProactive(options);
     let tools = (await getGetTools())(toolPermissionContext);
 
     // Apply coordinator mode tool filtering for headless path
@@ -487,7 +470,7 @@ async function run(): Promise<CommanderCommand> {
         appendSystemPrompt,
         inputPrompt,
       },
-      { coordinatorModeModule, assistantModule: assistantModule as SetupAgentAssistantModule },
+      { coordinatorModeModule },
     );
     const {
       agentDefinitions,
@@ -592,7 +575,7 @@ async function run(): Promise<CommanderCommand> {
         toolPermissionContext,
         sessionNameArg,
       },
-      { assistantModule: assistantModule as RunMcpHooksAndTelemetryDeps['assistantModule'], coordinatorModeModule },
+      { coordinatorModeModule },
     );
     const {
       hooksPromise,
@@ -763,8 +746,6 @@ async function run(): Promise<CommanderCommand> {
     {
       const pendingHookMessages = hooksPromise && hookMessages.length === 0 ? hooksPromise : undefined;
       profileCheckpoint('action_after_hooks');
-      maybeActivateProactive(options);
-      maybeActivateBrief(options);
       // Persist the current mode for fresh sessions so future resumes know what mode was used
       if (feature('COORDINATOR_MODE')) {
         getSaveMode()(coordinatorModeModule?.isCoordinatorMode() ? 'coordinator' : 'normal');
@@ -842,5 +823,5 @@ async function run(): Promise<CommanderCommand> {
   profileReport();
   return program;
 }
-// logTenguInit, maybeActivateProactive, maybeActivateBrief moved to src/platform/main/lifecycle.ts (ROADMAP 11g Fase 2)
+// logTenguInit moved to src/platform/main/lifecycle.ts (ROADMAP 11g Fase 2)
 // resetCursor, TeammateOptions, extractTeammateOptions moved to src/platform/main/helpers.ts (ROADMAP 11g Fase 1)

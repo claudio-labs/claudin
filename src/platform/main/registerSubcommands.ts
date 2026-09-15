@@ -8,7 +8,6 @@ import type { Command as CommanderCommand } from '@commander-js/extra-typings';
 
 import type { PendingConnect } from 'src/platform/main/bootContext.js';
 import { registerAgentsCommand } from 'src/platform/main/commands/agents.js';
-import { registerAssistantCommand } from 'src/platform/main/commands/assistant.js';
 import { registerAuthCommands } from 'src/platform/main/commands/auth.js';
 import { registerAutoModeCommand } from 'src/platform/main/commands/autoMode.js';
 import { registerDoctorCommand } from 'src/platform/main/commands/doctor.js';
@@ -51,7 +50,6 @@ export function registerSubcommands(
   registerAgentsCommand(program);
   registerAutoModeCommand(program);
   registerRemoteControlCommand(program);
-  registerAssistantCommand(program);
 
   registerDoctorCommand(program);
   registerUpdateCommand(program);

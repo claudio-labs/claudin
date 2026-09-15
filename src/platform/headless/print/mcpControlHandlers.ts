@@ -34,7 +34,6 @@ import {
 } from 'src/mcp/auth.js'
 import { getMcpPrefix } from 'src/mcp/mcpStringUtils.js'
 import { commandBelongsToServer } from 'src/mcp/utils.js'
-import { reregisterChannelHandlerAfterReconnect } from 'src/platform/headless/print/controlHandlers.js'
 import type {
   HeadlessStreamingContext,
   ControlRequestWith,
@@ -122,7 +121,6 @@ export async function handleMcpReconnect(
     }
     if (result.client.type === 'connected') {
       ctx.registerElicitationHandlers([result.client])
-      reregisterChannelHandlerAfterReconnect(result.client)
       ctx.sendControlResponseSuccess(message)
     } else {
       const failureMessage =
@@ -218,7 +216,6 @@ export async function handleMcpToggle(
     }))
     if (result.client.type === 'connected') {
       ctx.registerElicitationHandlers([result.client])
-      reregisterChannelHandlerAfterReconnect(result.client)
       ctx.sendControlResponseSuccess(message)
     } else {
       const failureMessage =
