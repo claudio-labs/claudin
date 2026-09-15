@@ -64,10 +64,12 @@ test('every no-telemetry stub key still resolves, or names nothing at all', asyn
   // nothing, which is the failure mode this whole file exists for.
   //
   // The floor used to be 10. Deleting the analytics and telemetry modules
-  // outright removed the 15 stubs that stood in for them, so the plugin is
-  // down to the four that still shim a module the fork keeps: growthbook,
-  // internalLogging, dumpPrompts and undercover.
-  expect(keys.length).toBeGreaterThanOrEqual(4)
+  // removed the 15 stubs that stood in for them, and promoting the flag
+  // resolver to real source removed the growthbook one — so the plugin is down
+  // to three: internalLogging, dumpPrompts and undercover. Two of those three
+  // name a module that no longer exists anywhere, which the report below says
+  // out loud rather than failing on.
+  expect(keys.length).toBeGreaterThanOrEqual(3)
 
   const disarmed: string[] = []
   const dead: string[] = []

@@ -146,19 +146,19 @@ function literalDefault(source: string): { value: unknown } | null {
   return null
 }
 
-// ── The stub under test, extracted the same way the sibling suite does ──────
-
-const pluginSource = readFileSync(join(REPO_ROOT, 'scripts/build/no-telemetry-plugin.ts'), 'utf-8')
-const stubMatch = pluginSource.match(/'src\/platform\/analytics\/growthbook': `([\s\S]*?)`/)
-if (!stubMatch) throw new Error('Could not extract growthbook stub from no-telemetry-plugin.ts')
+// ── The resolver under test ────────────────────────────────────────────────
+//
+// This used to extract a stub out of `no-telemetry-plugin.ts` with a regex and
+// import it from a temp file, because the shipped resolution lived only as a
+// string inside the build script. It is source now, so the table is built
+// against the module the binary actually runs.
 
 const testDir = join(tmpdir(), `flag-resolution-test-${process.pid}`)
-const stubFile = join(testDir, 'growthbook-stub.mjs')
 const flagsFile = join(testDir, 'test-flags.json')
 mkdirSync(testDir, { recursive: true })
-writeFileSync(stubFile, stubMatch[1]!)
+// Read on first access, so it must be set before the import below.
 process.env.CLAUDE_FEATURE_FLAGS_FILE = flagsFile
-const stub = await import(stubFile)
+const stub = await import('src/platform/analytics/growthbook.js')
 
 type Resolution = {
   fn: string

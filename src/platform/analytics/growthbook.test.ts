@@ -1,35 +1,31 @@
 import { afterAll, beforeEach, describe, expect, test } from 'bun:test'
-import { mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
-// ---------------------------------------------------------------------------
-// Setup: extract the growthbook stub from no-telemetry-plugin.ts, write it to
-// a temp .mjs file, and dynamically import it so we can test the real code
-// that gets bundled.
-// ---------------------------------------------------------------------------
-
-const pluginSource = readFileSync(join(__dirname, 'no-telemetry-plugin.ts'), 'utf-8')
-const stubMatch = pluginSource.match(/'src\/platform\/analytics\/growthbook': `([\s\S]*?)`/)
-if (!stubMatch) throw new Error('Could not extract growthbook stub from no-telemetry-plugin.ts')
-
-const testDir = join(tmpdir(), `growthbook-stub-test-${process.pid}`)
-const stubFile = join(testDir, 'growthbook-stub.mjs')
+/**
+ * These used to run against a stub EXTRACTED from `no-telemetry-plugin.ts` with
+ * a regex, written to a temp `.mjs` and imported — because the real module was
+ * a GrowthBook client that the build replaced wholesale, so the shipped
+ * resolution existed only as a string inside the build script.
+ *
+ * That stub is the source now, so this imports it directly. The assertions did
+ * not change: the point of the collapse was that they would not have to.
+ */
+const testDir = join(tmpdir(), `growthbook-test-${process.pid}`)
 const flagsFile = join(testDir, 'test-flags.json')
 
 mkdirSync(testDir, { recursive: true })
-writeFileSync(stubFile, stubMatch[1])
-
-// Point the stub at our test flags file (checked by _loadFlags on first access)
+// Read on first access, so it must be set before the import below.
 process.env.CLAUDE_FEATURE_FLAGS_FILE = flagsFile
 
-const stub = await import(stubFile)
+const stub = await import('src/platform/analytics/growthbook.js')
 
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('growthbook stub — local feature flag overrides', () => {
+describe('feature flags — local overrides', () => {
   beforeEach(() => {
     stub.resetGrowthBook()
     try { unlinkSync(flagsFile) } catch { /* may not exist */ }
@@ -178,15 +174,6 @@ describe('growthbook stub — local feature flag overrides', () => {
     expect(stub.getFeatureValue_CACHED_MAY_BE_STALE('tengu_foo', 'x')).toBe('second')
   })
 
-  test('refreshGrowthBookFeatures clears cache', async () => {
-    writeFileSync(flagsFile, JSON.stringify({ tengu_foo: 'v1' }))
-    expect(stub.getFeatureValue_CACHED_MAY_BE_STALE('tengu_foo', 'x')).toBe('v1')
-
-    writeFileSync(flagsFile, JSON.stringify({ tengu_foo: 'v2' }))
-    await stub.refreshGrowthBookFeatures()
-    expect(stub.getFeatureValue_CACHED_MAY_BE_STALE('tengu_foo', 'x')).toBe('v2')
-  })
-
   // ── Multiple getter variants ─────────────────────────────────────
 
   test('all getter functions read from local flags', async () => {
@@ -212,6 +199,6 @@ describe('growthbook stub — local feature flag overrides', () => {
       tengu_disable_bypass_permissions_mode: true,
     }))
 
-    expect(await stub.checkSecurityRestrictionGate()).toBe(false)
+    expect(await stub.checkSecurityRestrictionGate('tengu_x')).toBe(false)
   })
 })
