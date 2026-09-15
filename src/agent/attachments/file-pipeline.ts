@@ -57,8 +57,6 @@ export async function tryGetPDFReference(
 export async function generateFileAttachment(
   filename: string,
   toolUseContext: ToolUseContext,
-  successEventName: string,
-  errorEventName: string,
   mode: 'compact' | 'at-mention',
   options?: {
     offset?: number

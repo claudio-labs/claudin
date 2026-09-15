@@ -126,7 +126,7 @@ export async function performBackgroundPluginInstallations(
     }
     logForDiagnosticsNoPII(
       'info',
-      'tengu_marketplace_background_install',
+      'marketplace_background_install',
       metrics,
     )
 

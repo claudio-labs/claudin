@@ -271,7 +271,7 @@ export function useManagePlugins({
         ...baseMetrics,
         has_custom_plugin_cache_dir: !!process.env.CLAUDIN_PLUGIN_CACHE_DIR,
       }
-      logForDiagnosticsNoPII('info', 'tengu_plugins_loaded', allMetrics)
+      logForDiagnosticsNoPII('info', 'plugins_loaded', allMetrics)
     })
   }, [initialPluginLoad, enabled])
 

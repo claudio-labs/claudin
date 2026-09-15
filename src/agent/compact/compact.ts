@@ -1294,8 +1294,6 @@ export async function createPostCompactFileAttachments(
             maxTokens: POST_COMPACT_MAX_TOKENS_PER_FILE,
           },
         },
-        'tengu_post_compact_file_restore_success',
-        'tengu_post_compact_file_restore_error',
         'compact',
       )
       return attachment ? createAttachmentMessage(attachment) : null

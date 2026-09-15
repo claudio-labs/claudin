@@ -1073,8 +1073,9 @@ export async function* runShellCommand({
     return handle.taskId;
   }
 
-  // Helper to start backgrounding with optional logging
-  function startBackgrounding(eventName: string, backgroundFn?: (shellId: string) => void): void {
+  // Helper to start backgrounding. Callers used to pass the event name they
+  // were backgrounding under; there is no sink to name, so they no longer do.
+  function startBackgrounding(backgroundFn?: (shellId: string) => void): void {
     // Single-flight: any prior caller (timeout / interrupt / kairos /
     // explicit) already kicked off backgrounding. The flag is set here, at
     // entry, so concurrent callers see it set even before either spawn path
@@ -1136,7 +1137,7 @@ export async function* runShellCommand({
   // Only background commands that are allowed to be auto-backgrounded (not sleep, etc.)
   if (shellCommand.onTimeout && shouldAutoBackground) {
     shellCommand.onTimeout(backgroundFn => {
-      startBackgrounding('tengu_bash_command_timeout_backgrounded', backgroundFn);
+      startBackgrounding(backgroundFn);
     });
   }
 
@@ -1303,7 +1304,7 @@ export async function* runShellCommand({
       if (abortController.signal.aborted && abortController.signal.reason === 'interrupt' && !interruptBackgroundingStarted) {
         interruptBackgroundingStarted = true;
         if (!isBackgroundTasksDisabled) {
-          startBackgrounding('tengu_bash_command_interrupt_backgrounded');
+          startBackgrounding();
           // Reloop so the backgroundShellId check above catches the sync
           // foregroundTaskId→background path. Without `continue`, we'd fall
           // through to the Ctrl+B check below, which matches

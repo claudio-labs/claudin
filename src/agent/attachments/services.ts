@@ -181,8 +181,6 @@ export async function processAtMentionedFiles(
         return await generateFileAttachment(
           absoluteFilename,
           toolUseContext,
-          'tengu_at_mention_extracting_filename_success',
-          'tengu_at_mention_extracting_filename_error',
           'at-mention',
           {
             offset: lineStart,

@@ -63,8 +63,6 @@ export type PrefixExtractorConfig = {
 
   /** The policy spec containing examples for Haiku */
   policySpec: string
-  /** Analytics event name for logging */
-  eventName: string
 
   /** Query source identifier for the API call */
   querySource: QuerySource
@@ -86,7 +84,7 @@ export type PrefixExtractorConfig = {
  * @returns A memoized async function that extracts command prefixes
  */
 export function createCommandPrefixExtractor(config: PrefixExtractorConfig) {
-  const { toolName, policySpec, eventName, querySource, preCheck } = config
+  const { toolName, policySpec, querySource, preCheck } = config
 
   const memoized = memoizeWithLRU(
     (
@@ -100,7 +98,6 @@ export function createCommandPrefixExtractor(config: PrefixExtractorConfig) {
         isNonInteractiveSession,
         toolName,
         policySpec,
-        eventName,
         querySource,
         preCheck,
       )
@@ -171,7 +168,6 @@ async function getCommandPrefixImpl(
   isNonInteractiveSession: boolean,
   toolName: string,
   policySpec: string,
-  eventName: string,
   querySource: QuerySource,
   preCheck?: (command: string) => CommandPrefixResult | null,
 ): Promise<CommandPrefixResult | null> {

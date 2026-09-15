@@ -739,8 +739,9 @@ async function* runPowerShellCommand({
     return handle.taskId;
   }
 
-  // Helper to start backgrounding with logging
-  function startBackgrounding(eventName: string, backgroundFn?: (shellId: string) => void): void {
+  // Helper to start backgrounding. Callers used to pass the event name they
+  // were backgrounding under; there is no sink to name, so they no longer do.
+  function startBackgrounding(backgroundFn?: (shellId: string) => void): void {
     // Single-flight: any prior caller already kicked off backgrounding.
     if (backgroundingInitiated) {
       return;
@@ -789,7 +790,7 @@ async function* runPowerShellCommand({
   // Set up auto-backgrounding on timeout if enabled
   if (shellCommand.onTimeout && shouldAutoBackground) {
     shellCommand.onTimeout(backgroundFn => {
-      startBackgrounding('tengu_powershell_command_timeout_backgrounded', backgroundFn);
+      startBackgrounding(backgroundFn);
     });
   }
 
@@ -903,7 +904,7 @@ async function* runPowerShellCommand({
       if (abortController.signal.aborted && abortController.signal.reason === 'interrupt' && !interruptBackgroundingStarted) {
         interruptBackgroundingStarted = true;
         if (!isBackgroundTasksDisabled) {
-          startBackgrounding('tengu_powershell_command_interrupt_backgrounded');
+          startBackgrounding();
           // Reloop so the backgroundShellId check (above) catches the sync
           // foregroundTaskId→background path. Without this, we fall through
           // to the Ctrl+B check below, which matches status==='backgrounded'
