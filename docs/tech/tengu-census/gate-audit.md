@@ -1,6 +1,6 @@
 # `tengu_*` gate keys — audit
 
-106 distinct keys across the tree. This is the Fase 4a deliverable: which of
+105 distinct keys across the tree. This is the Fase 4a deliverable: which of
 them still mean anything in this fork, and which are candidates for removal.
 
 Resolution order, from the stub in `scripts/build/no-telemetry-plugin.ts`:
@@ -108,11 +108,15 @@ closed VS Code extension (`vscodeSdkMcp.ts:79-106`): `tengu_vscode_review_upsell
 `tengu_vscode_onboarding`, `tengu_vscode_cc_auth`, `tengu_quiet_fern`. Nothing in
 `src/` reads their values.
 
-### INERTE (1)
+### INERTE (0) — was 1, and it is gone
 
-`tengu_harbor_permissions` — `isChannelPermissionRelayEnabled()`
-(`mcp/channelPermissions.ts:36`) has no importer; only the
-`ChannelPermissionCallbacks` type is used.
+`tengu_harbor_permissions` gated `isChannelPermissionRelayEnabled()` in
+`mcp/channelPermissions.ts`, the permission-prompts-over-Telegram relay. Every
+export in that file was reachable only from inside it; the single external
+reference was the `ChannelPermissionCallbacks` **type**, on an optional
+`AppState` field that nothing wrote and nothing read — its own comment claimed
+it was "constructed once in useManageMCPConnections", which had stopped being
+true. File and field deleted, which is why the count above is 105 and not 106.
 
 ### FUNCIONA (91)
 

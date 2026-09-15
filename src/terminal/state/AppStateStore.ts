@@ -2,7 +2,6 @@ import type { Notification } from 'src/terminal/contexts/notifications.js'
 import type { TodoList } from 'src/tools/TodoWriteTool/types.js'
 import type { BridgePermissionCallbacks } from 'src/platform/bridge/bridgePermissionCallbacks.js'
 import type { Command } from 'src/commands/commands.js'
-import type { ChannelPermissionCallbacks } from 'src/mcp/channelPermissions.js'
 import type { ElicitationRequestEvent } from 'src/mcp/elicitationHandler.js'
 import type {
   MCPServerConnection,
@@ -482,10 +481,6 @@ export type AppState = DeepImmutable<{
   isUltraplanMode?: boolean
   // Always-on bridge: permission callbacks for bidirectional permission checks
   replBridgePermissionCallbacks?: BridgePermissionCallbacks
-  // Channel permission callbacks — permission prompts over Telegram/iMessage/etc.
-  // Races against local UI + bridge + hooks + classifier via claim() in
-  // interactiveHandler.ts. Constructed once in useManageMCPConnections.
-  channelPermissionCallbacks?: ChannelPermissionCallbacks
 }
 
 export type AppStateStore = Store<AppState>
