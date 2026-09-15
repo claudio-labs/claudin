@@ -5,17 +5,31 @@ import { getGraphemeSegmenter } from 'src/shared/text/intl.js'
 
 const EMOJI_REGEX = emojiRegex()
 
+// Emoji PRESENTATION, which is a different question from "is this an emoji".
+// Tested against the START of a grapheme: U+FE0F and the enclosing keycap are
+// checked separately below, because they TRAIL the base character.
+const EMOJI_PRESENTATION_RE = /^\p{Emoji_Presentation}/u
+
 /**
- * Fallback JavaScript implementation of stringWidth when Bun.stringWidth is not available.
+ * Fallback JavaScript implementation of stringWidth when Bun.stringWidth is not
+ * available — which is every run under Node (`node dist/cli.mjs`), so this is
+ * not a rarely-taken branch. Exported for the test: `stringWidth` below binds to
+ * Bun's under `bun test`, and nothing would otherwise exercise this one.
  *
  * Get the display width of a string as it would appear in a terminal.
  *
- * This is a more accurate alternative to the string-width package that correctly handles
- * characters like ⚠ (U+26A0) which string-width incorrectly reports as width 2.
+ * Two rules do the work. Ambiguous-width characters are narrow
+ * (`ambiguousAsWide: false`), which is what the Unicode standard recommends for
+ * Western contexts. And a grapheme is 2 cells only when it is actually PAINTED
+ * as an emoji — `emoji-regex` matches text-presentation emoji too, and a
+ * terminal draws those in ONE cell. ⚠ (U+26A0) is the character this comment
+ * named as the fixed case while the code still returned 2 for it; ✔ (U+2714)
+ * and ▶ (U+25B6) are the two the TUI paints most.
  *
- * The implementation uses eastAsianWidth directly with ambiguousAsWide: false,
- * which correctly treats ambiguous-width characters as narrow (width 1) as
- * recommended by the Unicode standard for Western contexts.
+ * Over-measuring by one is not cosmetic: it puts the model a column to the right
+ * of the terminal for the rest of the row, and the next partial repaint writes
+ * that row's tail one cell over, duplicating a character at the seam
+ * (.claudin/rules/ink-tui.md §3(b)).
  */
 // Kitty Unicode Placeholder (U+10EEEE) carries 3 combining diacritics from a
 // 297-entry table; some entries fall outside the U+0305..U+036F range that
@@ -47,7 +61,7 @@ function extractKittyPlaceholders(str: string): {
   return { count, stripped }
 }
 
-function stringWidthJavaScript(str: string): number {
+export function stringWidthJavaScript(str: string): number {
   if (typeof str !== 'string' || str.length === 0) {
     return 0
   }
@@ -103,9 +117,12 @@ function stringWidthJavaScript(str: string): number {
   let width = 0
 
   for (const { segment: grapheme } of getGraphemeSegmenter().segment(str)) {
-    // Check for emoji first (most emoji sequences are width 2)
+    // Emoji first — but only the ones drawn AS emoji. Matching `EMOJI_REGEX`
+    // alone sends every text-presentation emoji down here too, and across the
+    // ranges `needsSegmentation` routes to this loop that was 175 codepoints
+    // measured at 2 which the terminal paints in 1.
     EMOJI_REGEX.lastIndex = 0
-    if (EMOJI_REGEX.test(grapheme)) {
+    if (EMOJI_REGEX.test(grapheme) && rendersAsEmoji(grapheme)) {
       width += getEmojiWidth(grapheme)
       continue
     }
@@ -135,6 +152,10 @@ function needsSegmentation(str: string): boolean {
     // Variation selectors, ZWJ
     if (cp >= 0xfe00 && cp <= 0xfe0f) return true
     if (cp === 0x200d) return true
+    // Combining enclosing keycap. Without this a bare `1⃣` (no VS16) skips the
+    // grapheme loop and measures 1, while the same keycap inside a string that
+    // does segment measures 2 — the mark is what makes it a keycap either way.
+    if (cp === 0x20e3) return true
   }
   return false
 }
@@ -160,6 +181,25 @@ function getEmojiWidth(grapheme: string): number {
   }
 
   return 2
+}
+
+/**
+ * Whether a grapheme `EMOJI_REGEX` matched is painted as an emoji (2 cells)
+ * rather than as text (1 cell).
+ *
+ * The two marks are looked for across the whole grapheme because they follow the
+ * base character: VS16 requests emoji presentation explicitly, and the combining
+ * enclosing keycap (U+20E3) makes a keycap out of a digit that carries no
+ * presentation of its own. `Emoji_Presentation` covers everything that LEADS
+ * with a presentation-default character, which is what flags, skin-tone
+ * sequences and ZWJ families all do.
+ */
+function rendersAsEmoji(grapheme: string): boolean {
+  return (
+    grapheme.includes('\uFE0F') ||
+    grapheme.includes('\u20E3') ||
+    EMOJI_PRESENTATION_RE.test(grapheme)
+  )
 }
 
 function isZeroWidth(codePoint: number): boolean {
