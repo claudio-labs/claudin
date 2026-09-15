@@ -9,7 +9,7 @@
  */
 
 import { trackDatadogEvent } from 'src/platform/analytics/datadog.js'
-import { logEventTo1P, shouldSampleEvent } from 'src/platform/analytics/firstPartyEventLogger.js'
+import { shouldSampleEvent } from 'src/platform/analytics/firstPartyEventLogger.js'
 import { checkStatsigFeatureGate_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { attachAnalyticsSink, stripProtoFields } from 'src/platform/analytics/index.js'
 import { isSinkKilled } from 'src/platform/analytics/sinkKillswitch.js'
@@ -66,9 +66,6 @@ function logEventImpl(eventName: string, metadata: LogEventMetadata): void {
     void trackDatadogEvent(eventName, stripProtoFields(metadataWithSampleRate))
   }
 
-  // 1P receives the full payload including _PROTO_* — the exporter
-  // destructures and routes those keys to proto fields itself.
-  logEventTo1P(eventName, metadataWithSampleRate)
 }
 
 /**

@@ -129,6 +129,38 @@ const CONTINUATION_KEYWORD =
 /** Heads whose unbraced body is a single statement we must not orphan. */
 const UNBRACED_HEAD = /(?:^|[^A-Za-z0-9_$])(if|while|for|switch|catch|with)$/
 
+/**
+ * Does the `:` at `colon` close a `case`/`default` label rather than split a
+ * ternary? A statement begins after the first; the second makes what follows a
+ * value. Walk back at depth zero to the previous statement boundary: a `?` on
+ * the way means ternary, and the slice starting with `case`/`default` means a
+ * label.
+ */
+function endsCaseLabel(
+  source: string,
+  regions: Uint8Array,
+  colon: number,
+): boolean {
+  let depth = 0
+  let i = colon - 1
+  for (; i >= 0; i--) {
+    if (regions[i] !== REGION_CODE) continue
+    const c = source[i]!
+    if (c === ')' || c === ']' || c === '}') depth++
+    else if (c === '(' || c === '[') depth--
+    else if (c === '{') {
+      if (depth === 0) break
+      depth--
+    } else if (depth === 0 && (c === ';' || c === ':')) break
+    else if (depth === 0 && c === '?') return false
+  }
+  // Match at the END of the slice, not the start: consecutive `case` arms mean
+  // the nearest boundary walking back is the PREVIOUS label's own colon, so
+  // the slice begins with that arm's body and only ends with this label.
+  const slice = source.slice(i + 1, colon)
+  return /(^|[\n;}])\s*(case\b[^:]*|default)$/.test(slice)
+}
+
 /** Index of the bracket opening the one that closes at `close`, or -1. */
 function matchBracketBackward(
   source: string,
@@ -159,6 +191,10 @@ function matchBracketBackward(
  * keyword like `return`. The subtle one is a closing `)`: it ends a call
  * statement, but it also ends `if (…)`, whose unbraced body must not be
  * orphaned, so the matching `(` is checked for a statement head.
+ *
+ * A `:` is the other ambiguous one — it ends a `case` label, after which a
+ * statement legitimately begins, and it also separates the arms of a ternary,
+ * where the call is a value. `endsCaseLabel` tells the two apart.
  */
 function statementStart(
   source: string,
@@ -181,6 +217,7 @@ function statementStart(
 
     const c = source[prev]!
     if (c === ';' || c === '{' || c === '}') return start
+    if (c === ':' && endsCaseLabel(source, regions, prev)) return start
 
     const newlineBetween = source.slice(prev + 1, start).includes('\n')
     if (!newlineBetween) return null
@@ -437,7 +474,10 @@ export function transform(fileName: string, source: string): FileResult {
       while (j < source.length && /\s/.test(source[j]!)) j++
       if (source[j] !== '(') continue // an import specifier or a bare reference
 
-      const before = prevNonSpace(source, ident - 1)
+      // `regions` is load-bearing here: without it the scan stops on a period
+      // that merely ended the comment line above the call, and a plain call
+      // gets reported as a property access.
+      const before = prevNonSpace(source, ident - 1, regions)
       if (before >= 0 && source[before] === '.') {
         refusals.push({
           file: rel,

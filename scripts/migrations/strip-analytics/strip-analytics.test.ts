@@ -86,6 +86,73 @@ describe('call-site removal', () => {
   })
 })
 
+describe('statement boundaries that are not semicolons', () => {
+  test('a call opening a switch case is a statement, not a ternary arm', () => {
+    // The `:` of `case 'a':` ends a label and a statement begins after it. The
+    // `:` of a ternary does not. Confusing the two refused six real sites in
+    // sessionFileAccessHooks.ts.
+    const out = run(
+      [
+        "import { logEvent } from 'src/x.js'",
+        'export function f(kind: string) {',
+        '  switch (kind) {',
+        "    case 'read':",
+        "      logEvent('tengu_read', {})",
+        '      break',
+        '    default:',
+        "      logEvent('tengu_other', {})",
+        '      break',
+        '  }',
+        '}',
+      ].join('\n'),
+    )
+    expect(out.refusals).toEqual([])
+    expect(out.calls).toBe(2)
+    expect(out.text).toContain("case 'read':")
+    expect(out.text).toContain('break')
+  })
+
+  test('a ternary arm is still refused', () => {
+    const out = run(
+      [
+        "import { logEvent } from 'src/x.js'",
+        "export const f = (b: boolean) => b ? logEvent('tengu_x', {}) : undefined",
+      ].join('\n'),
+    )
+    expect(out.text).toBeNull()
+    expect(out.refusals.map(r => r.kind)).toEqual(['expression-position'])
+  })
+
+  test('a comment ending in a period is not a property access', () => {
+    // `prevNonSpace` has to skip the comment; stopping on its final `.` made
+    // the codemod report a plain call as `m.logEvent(…)`.
+    const out = run(
+      [
+        "import { logEvent } from 'src/x.js'",
+        'export function f() {',
+        '  // Counted per host, see tengu_web_fetch_host.',
+        "  logEvent('tengu_x', {})",
+        '  return 1',
+        '}',
+      ].join('\n'),
+    )
+    expect(out.refusals).toEqual([])
+    expect(out.calls).toBe(1)
+  })
+
+  test('a real property access is still refused', () => {
+    const out = run(
+      [
+        'export function f(sink: { logEvent: (n: string) => void }) {',
+        "  sink.logEvent('tengu_x')",
+        '}',
+      ].join('\n'),
+    )
+    expect(out.text).toBeNull()
+    expect(out.refusals.map(r => r.kind)).toEqual(['member-call'])
+  })
+})
+
 describe('refusals', () => {
   test('refuses a call used as a value', () => {
     // `const p = logEventAsync(...)` is a value: deleting it changes what the

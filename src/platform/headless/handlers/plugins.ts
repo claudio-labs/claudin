@@ -6,11 +6,7 @@
 import figures from 'figures'
 import { basename, dirname } from 'path'
 import { setUseCoworkPlugins } from 'src/platform/bootstrap/state.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-  logEvent,
-} from 'src/platform/analytics/index.js'
+import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
 import {
   disableAllPlugins,
   disablePlugin,
@@ -160,7 +156,6 @@ export async function pluginListHandler(options: {
   cowork?: boolean
 }): Promise<void> {
   if (options.cowork) setUseCoworkPlugins(true)
-  logEvent('tengu_plugin_list_command', {})
 
   const installedData = loadInstalledPluginsV2()
   const { getPluginEditableScopes } = await import(
@@ -508,10 +503,6 @@ export async function marketplaceAddHandler(
       sourceType =
         marketplaceSource.repo as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
     }
-    logEvent('tengu_marketplace_added', {
-      source_type:
-        sourceType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
 
     cliOk(
       alreadyMaterialized
@@ -601,10 +592,6 @@ export async function marketplaceRemoveHandler(
     await removeMarketplaceSource(name)
     clearAllCaches()
 
-    logEvent('tengu_marketplace_removed', {
-      marketplace_name:
-        name as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
 
     cliOk(`${figures.tick} Successfully removed marketplace: ${name}`)
   } catch (error) {
@@ -630,10 +617,6 @@ export async function marketplaceUpdateHandler(
 
       clearAllCaches()
 
-      logEvent('tengu_marketplace_updated', {
-        marketplace_name:
-          name as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      })
 
       cliOk(`${figures.tick} Successfully updated marketplace: ${name}`)
     } else {
@@ -650,10 +633,6 @@ export async function marketplaceUpdateHandler(
       await refreshAllMarketplaces()
       clearAllCaches()
 
-      logEvent('tengu_marketplace_updated_all', {
-        count:
-          marketplaceNames.length as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      })
 
       cliOk(
         `${figures.tick} Successfully updated ${marketplaceNames.length} marketplace(s)`,
@@ -688,14 +667,6 @@ export async function pluginInstallHandler(
   // additional_metadata for all users — dropped in favor of the privileged
   // column route. marketplace may be undefined (fires before resolution).
   const { name, marketplace } = parsePluginIdentifier(plugin)
-  logEvent('tengu_plugin_install_command', {
-    _PROTO_plugin_name: name as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-    ...(marketplace && {
-      _PROTO_marketplace_name:
-        marketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-    }),
-    scope: scope as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 
   await installPlugin(plugin, scope as 'user' | 'project' | 'local')
 }
@@ -720,14 +691,6 @@ export async function pluginUninstallHandler(
     )
   }
   const { name, marketplace } = parsePluginIdentifier(plugin)
-  logEvent('tengu_plugin_uninstall_command', {
-    _PROTO_plugin_name: name as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-    ...(marketplace && {
-      _PROTO_marketplace_name:
-        marketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-    }),
-    scope: scope as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 
   await uninstallPlugin(
     plugin,
@@ -765,15 +728,6 @@ export async function pluginEnableHandler(
   }
 
   const { name, marketplace } = parsePluginIdentifier(plugin)
-  logEvent('tengu_plugin_enable_command', {
-    _PROTO_plugin_name: name as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-    ...(marketplace && {
-      _PROTO_marketplace_name:
-        marketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-    }),
-    scope: (scope ??
-      'auto') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 
   await enablePlugin(plugin, scope)
 }
@@ -798,9 +752,6 @@ export async function pluginDisableHandler(
       cliError('Cannot use --scope with --all')
     }
 
-    // No _PROTO_plugin_name here — --all disables all plugins.
-    // Distinguishable from the specific-plugin branch by plugin_name IS NULL.
-    logEvent('tengu_plugin_disable_command', {})
 
     await disableAllPlugins()
     return
@@ -829,15 +780,6 @@ export async function pluginDisableHandler(
   }
 
   const { name, marketplace } = parsePluginIdentifier(plugin!)
-  logEvent('tengu_plugin_disable_command', {
-    _PROTO_plugin_name: name as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-    ...(marketplace && {
-      _PROTO_marketplace_name:
-        marketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-    }),
-    scope: (scope ??
-      'auto') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 
   await disablePlugin(plugin!, scope)
 }
@@ -849,13 +791,6 @@ export async function pluginUpdateHandler(
 ): Promise<void> {
   if (options.cowork) setUseCoworkPlugins(true)
   const { name, marketplace } = parsePluginIdentifier(plugin)
-  logEvent('tengu_plugin_update_command', {
-    _PROTO_plugin_name: name as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-    ...(marketplace && {
-      _PROTO_marketplace_name:
-        marketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-    }),
-  })
 
   let scope: (typeof VALID_UPDATE_SCOPES)[number] = 'user'
   if (options.scope) {
