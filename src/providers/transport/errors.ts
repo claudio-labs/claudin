@@ -524,9 +524,12 @@ export function getAssistantMessageFromError(
   if (isSdkApiError(error) && error.status === 429) {
     // An entitlement rejection rather than a usage limit: nothing to wait for.
     if (error.message.includes('Extra usage is required for long context')) {
+      // There is no `/extra-usage` command in this fork — the entitlement is
+      // set on the web either way. The model switch IS local, and headless has
+      // no slash commands, so that is the only half still session-dependent.
       const hint = getIsNonInteractiveSession()
         ? 'enable extra usage at claude.ai/settings/usage, or use --model to switch to standard context'
-        : 'run /extra-usage to enable, or /model to switch to standard context'
+        : 'enable extra usage at claude.ai/settings/usage, or /model to switch to standard context'
       return createAssistantAPIErrorMessage({
         content: `${API_ERROR_MESSAGE_PREFIX}: Extra usage is required for 1M context · ${hint}`,
         error: 'rate_limit',
