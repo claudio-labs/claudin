@@ -109,12 +109,6 @@ import { isHumanTurn } from 'src/agent/messages/messagePredicates.js';
 import { logError } from 'src/shared/log.js';
 // Dead code elimination: conditional imports
 /* eslint-disable custom-rules/no-process-env-top-level, @typescript-eslint/no-require-imports */
-const useVoiceIntegration: typeof import('src/terminal/voice/useVoiceIntegration.js').useVoiceIntegration = feature('VOICE_MODE') ? require('src/terminal/voice/useVoiceIntegration.js').useVoiceIntegration : () => ({
-  stripTrailing: () => 0,
-  handleKeyEvent: () => { },
-  resetAnchor: () => { }
-});
-const VoiceKeybindingHandler: typeof import('src/terminal/voice/useVoiceIntegration.js').VoiceKeybindingHandler = feature('VOICE_MODE') ? require('src/terminal/voice/useVoiceIntegration.js').VoiceKeybindingHandler : () => null;
 // The real module behind this import was never carried into this fork (see the
 // .d.ts stub comments in its directory); `typeof import(...)` can't type it
 // since the stub exports a placeholder name, not the real one, so the shape is
@@ -189,7 +183,7 @@ import { computeStandaloneAgentContext, restoreAgentFromSession, restoreSessionS
 import { updateSessionName } from 'src/sessions/concurrentSessions.js';
 import { isInProcessTeammateTask, type InProcessTeammateTaskState } from 'src/agent/tasks/InProcessTeammateTask/types.js';
 import { restoreRemoteAgentTasks } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
-import { useInboxPoller } from 'src/terminal/voice/useInboxPoller.js';
+import { useInboxPoller } from 'src/agent/coordinator/useInboxPoller.js';
 // Dead code elimination: conditional import for loop mode
 /* eslint-disable @typescript-eslint/no-require-imports */
 const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../../platform/proactive/index.js') : null;
@@ -2500,19 +2494,6 @@ export function REPL({
     return true;
   }, [onQuery, mainLoopModel, store]);
 
-  // Voice input integration (VOICE_MODE builds only)
-  const voice = feature('VOICE_MODE') ?
-    // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-    useVoiceIntegration({
-      setInputValueRaw,
-      inputValueRef,
-      insertTextRef
-    }) : {
-      stripTrailing: () => 0,
-      handleKeyEvent: () => { },
-      resetAnchor: () => { },
-      interimRange: null
-    };
   useInboxPoller({
     enabled: isAgentSwarmsEnabled(),
     isLoading,
@@ -2873,8 +2854,6 @@ export function REPL({
     // ROADMAP 11e). The same scrollRef and jumpRef instances flow through
     // as props — never recreated — so the virtual-scroll branch keeps its
     // hold over the shared scroll position. REPL retains ownership of the
-    // feature('VOICE_MODE') gate; the resulting element is passed as a
-    // pre-built ReactNode so the view stays voice-subsystem-agnostic.
     return <REPLTranscriptView
       scrollRef={scrollRef as unknown as React.RefObject<unknown>}
       jumpRef={jumpRef}
@@ -2900,7 +2879,6 @@ export function REPL({
       titleDisabled={titleDisabled}
       showStatusInTerminalTab={showStatusInTerminalTab}
       globalKeybindingProps={globalKeybindingProps as unknown as Record<string, unknown>}
-      voiceKeybindingSlot={feature('VOICE_MODE') ? <VoiceKeybindingHandler voiceHandleKeyEvent={voice.handleKeyEvent} stripTrailing={voice.stripTrailing} resetAnchor={voice.resetAnchor} isActive={!toolJSX?.isLocalJSXCommand} /> : null}
       onSubmit={onSubmit as (...args: unknown[]) => unknown}
       cancelRequestProps={cancelRequestProps as unknown as Record<string, unknown>}
       focusedInputDialog={focusedInputDialog}
@@ -2962,7 +2940,6 @@ export function REPL({
   const mainReturn = <SidePanelContext value={sidePanelCtx}><KeybindingSetup>
     <AnimatedTerminalTitle isAnimating={titleIsAnimating} title={terminalTitle} disabled={titleDisabled} noPrefix={showStatusInTerminalTab} />
     <GlobalKeybindingHandlers {...globalKeybindingProps} />
-    {feature('VOICE_MODE') ? <VoiceKeybindingHandler voiceHandleKeyEvent={voice.handleKeyEvent} stripTrailing={voice.stripTrailing} resetAnchor={voice.resetAnchor} isActive={!toolJSX?.isLocalJSXCommand} /> : null}
     <CommandKeybindingHandlers onSubmit={onSubmit} isActive={!toolJSX?.isLocalJSXCommand} />
     {/* ScrollKeybindingHandler must mount before CancelRequestHandler so
           ctrl+c-with-selection copies instead of cancelling the active task.
@@ -3104,7 +3081,7 @@ export function REPL({
             { }
             <PromptInput debug={debug} ideSelection={ideSelection} hasSuppressedDialogs={!!hasSuppressedDialogs} isLocalJSXCommandActive={isShowingLocalJSXCommand} getToolUseContext={getToolUseContext} toolPermissionContext={toolPermissionContext} setToolPermissionContext={setToolPermissionContext} apiKeyStatus={apiKeyStatus} commands={renderCommands} agents={agentDefinitions.activeAgents} isLoading={isLoading} onExit={handleExit} verbose={verbose} messages={messages} onAutoUpdaterResult={setAutoUpdaterResult} autoUpdaterResult={autoUpdaterResult} input={inputValue} onInputChange={setInputValue} mode={inputMode} onModeChange={setInputMode} stashedPrompt={stashedPrompt} setStashedPrompt={setStashedPrompt} submitCount={submitCount} onShowMessageSelector={handleShowMessageSelector} onMessageActionsEnter={
               // Works during isLoading — edit cancels first; uuid selection survives appends.
-              feature('MESSAGE_ACTIONS') && isFullscreenEnvEnabled() && !disableMessageActions ? enterMessageActions : undefined} mcpClients={mcpClients} pastedContents={pastedContents} setPastedContents={setPastedContents} vimMode={vimMode} setVimMode={setVimMode} showBashesDialog={showBashesDialog} setShowBashesDialog={setShowBashesDialog} showWorkflowsDialog={showWorkflowsDialog} setShowWorkflowsDialog={setShowWorkflowsDialog} onSubmit={onSubmit} onAgentSubmit={onAgentSubmit} isSearchingHistory={isSearchingHistory} setIsSearchingHistory={setIsSearchingHistory} helpOpen={isHelpOpen} setHelpOpen={setIsHelpOpen} insertTextRef={insertTextRef} voiceInterimRange={voice.interimRange} />
+              feature('MESSAGE_ACTIONS') && isFullscreenEnvEnabled() && !disableMessageActions ? enterMessageActions : undefined} mcpClients={mcpClients} pastedContents={pastedContents} setPastedContents={setPastedContents} vimMode={vimMode} setVimMode={setVimMode} showBashesDialog={showBashesDialog} setShowBashesDialog={setShowBashesDialog} showWorkflowsDialog={showWorkflowsDialog} setShowWorkflowsDialog={setShowWorkflowsDialog} onSubmit={onSubmit} onAgentSubmit={onAgentSubmit} isSearchingHistory={isSearchingHistory} setIsSearchingHistory={setIsSearchingHistory} helpOpen={isHelpOpen} setHelpOpen={setIsHelpOpen} insertTextRef={insertTextRef} />
             <SessionBackgroundHint onBackgroundSession={handleBackgroundSession} isLoading={isLoading} />
           </>}
           {cursor &&

@@ -20,7 +20,6 @@ import { OffscreenFreeze } from 'src/terminal/render/OffscreenFreeze.js';
 import { checkForReleaseNotesSync } from 'src/platform/install/releaseNotes.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { EmergencyTip } from 'src/terminal/logo/EmergencyTip.js';
-import { VoiceModeNotice } from 'src/terminal/logo/VoiceModeNotice.js';
 import { Opus1mMergeNotice } from 'src/terminal/logo/Opus1mMergeNotice.js';
 import { feature } from 'bun:bundle';
 
@@ -150,7 +149,9 @@ export function LogoV2() {
     let t17;
     if ($[15] === Symbol.for("react.memo_cache_sentinel")) {
       t11 = <CondensedLogo />;
-      t12 = <VoiceModeNotice />;
+      // VoiceModeNotice lived here; its slot stays allocated (React Compiler
+      // output — the $[i] numbering below must not shift).
+      t12 = null;
       t13 = <Opus1mMergeNotice />;
       t14 = ChannelsNoticeModule && <ChannelsNoticeModule.ChannelsNotice />;
       t15 = isDebugMode() && <Box paddingLeft={2} flexDirection="column"><Text color="warning">Debug mode enabled</Text><Text dimColor={true}>Logging to: {isDebugToStdErr() ? "stderr" : getDebugLogPath()}</Text></Box>;
@@ -263,7 +264,7 @@ export function LogoV2() {
     let t15;
     let t16;
     if ($[37] === Symbol.for("react.memo_cache_sentinel")) {
-      t14 = <VoiceModeNotice />;
+      t14 = null;
       t15 = <Opus1mMergeNotice />;
       t16 = ChannelsNoticeModule && <ChannelsNoticeModule.ChannelsNotice />;
       $[37] = t14;
@@ -425,7 +426,7 @@ export function LogoV2() {
   let t33;
   let t34;
   if ($[75] === Symbol.for("react.memo_cache_sentinel")) {
-    t29 = <VoiceModeNotice />;
+    t29 = null;
     t30 = <Opus1mMergeNotice />;
     t31 = ChannelsNoticeModule && <ChannelsNoticeModule.ChannelsNotice />;
     t32 = isDebugMode() && <Box paddingLeft={2} flexDirection="column"><Text color="warning">Debug mode enabled</Text><Text dimColor={true}>Logging to: {isDebugToStdErr() ? "stderr" : getDebugLogPath()}</Text></Box>;

@@ -68,10 +68,6 @@ export type REPLTranscriptViewProps = {
   titleDisabled: boolean
   showStatusInTerminalTab: boolean
   globalKeybindingProps: Record<string, unknown>
-  // Pre-built voice keybinding element (or null). REPL owns the
-  // feature('VOICE_MODE') gate and constructs the element so this view
-  // never has to know about the voice subsystem's shape.
-  voiceKeybindingSlot: React.ReactNode
   onSubmit: (...args: unknown[]) => unknown
   cancelRequestProps: Record<string, unknown>
   focusedInputDialog: string | undefined
@@ -134,7 +130,6 @@ export function REPLTranscriptView(props: REPLTranscriptViewProps): React.ReactN
     <KeybindingSetup>
       <AnimatedTerminalTitle isAnimating={props.titleIsAnimating} title={props.terminalTitle} disabled={props.titleDisabled} noPrefix={props.showStatusInTerminalTab} />
       <GlobalKeybindingHandlers {...(props.globalKeybindingProps as React.ComponentProps<typeof GlobalKeybindingHandlers>)} />
-      {props.voiceKeybindingSlot}
       <CommandKeybindingHandlers onSubmit={props.onSubmit as never} isActive={!props.toolJSX?.isLocalJSXCommand} />
       {transcriptScrollRef ?
         // ScrollKeybindingHandler must mount before CancelRequestHandler so

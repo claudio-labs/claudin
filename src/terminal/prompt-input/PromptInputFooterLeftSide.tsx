@@ -39,9 +39,6 @@ import { Byline } from 'src/terminal/design-system/Byline.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { useTasksV2 } from 'src/agent/hooks/useTasksV2.js';
 import { formatDuration } from 'src/shared/text/format.js';
-import { VoiceWarmupHint } from 'src/terminal/prompt-input/VoiceIndicator.js';
-import { useVoiceEnabled } from 'src/terminal/voice/useVoiceEnabled.js';
-import { type VoiceState, useVoiceState } from 'src/terminal/contexts/voice.js';
 import { isFullscreenEnvEnabled } from 'src/terminal/render/fullscreen.js';
 import { isXtermJs } from 'src/terminal/ink/terminal.js';
 import { useHasSelection, useSelection } from 'src/terminal/ink/hooks/use-selection.js';
@@ -295,14 +292,6 @@ function ModeIndicator({
   const prStatus = usePrStatus(isLoading, isPrStatusEnabled());
   const hasTmuxSession = false;
   const nextTickAt = useSyncExternalStore(proactiveModule?.subscribeToProactiveChanges ?? NO_OP_SUBSCRIBE, proactiveModule?.getNextTickAt ?? NULL, NULL);
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  const voiceEnabled = feature('VOICE_MODE') ? useVoiceEnabled() : false;
-  const voiceState = feature('VOICE_MODE') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useVoiceState((s_5: VoiceState) => s_5.voiceState) : 'idle' as const;
-  const voiceWarmingUp = feature('VOICE_MODE') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useVoiceState((s_6: VoiceState) => s_6.voiceWarmingUp) : false;
   const hasSelection = useHasSelection();
   const selGetState = useSelection().getState;
   const hasNextTick = nextTickAt !== null;
@@ -316,34 +305,6 @@ function ModeIndicator({
   const escShortcut = useShortcutDisplay('chat:cancel', 'Chat', 'esc').toLowerCase();
   const todosShortcut = useShortcutDisplay('app:toggleTodos', 'Global', 'ctrl+t');
   const killAgentsShortcut = useShortcutDisplay('chat:killAgents', 'Chat', 'ctrl+x ctrl+k');
-  const voiceKeyShortcut = feature('VOICE_MODE') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useShortcutDisplay('voice:pushToTalk', 'Chat', 'Space') : '';
-  // Captured at mount so the hint doesn't flicker mid-session if another
-  // CC instance increments the counter. Incremented once via useEffect the
-  // first time voice is enabled in this session — approximates "hint was
-  // shown" without tracking the exact render-time condition (which depends
-  // on parts/hintParts computed after the early-return hooks boundary).
-  const [voiceHintUnderCap] = feature('VOICE_MODE') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useState(() => (getGlobalConfig().voiceFooterHintSeenCount ?? 0) < MAX_VOICE_HINT_SHOWS) : [false];
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  const voiceHintIncrementedRef = feature('VOICE_MODE') ? useRef(false) : null;
-  useEffect(() => {
-    if (feature('VOICE_MODE')) {
-      if (!voiceEnabled || !voiceHintUnderCap) return;
-      if (voiceHintIncrementedRef?.current) return;
-      if (voiceHintIncrementedRef) voiceHintIncrementedRef.current = true;
-      const newCount = (getGlobalConfig().voiceFooterHintSeenCount ?? 0) + 1;
-      saveGlobalConfig(prev => {
-        if ((prev.voiceFooterHintSeenCount ?? 0) >= newCount) return prev;
-        return {
-          ...prev,
-          voiceFooterHintSeenCount: newCount
-        };
-      });
-    }
-  }, [voiceEnabled, voiceHintUnderCap]);
   const isKillAgentsConfirmShowing = useAppState((s_7: AppState) => s_7.notifications.current?.key === 'kill-agents-confirm');
 
   // Derive team info from teamContext (no filesystem I/O needed)
@@ -467,11 +428,7 @@ function ModeIndicator({
   const copyOnSelect = getGlobalConfig().copyOnSelect ?? true;
   const selectionHintHasContent = hasSelection && (!copyOnSelect || isXtermJs());
 
-  // Warmup hint takes priority — when the user is actively holding
-  // the activation key, show feedback regardless of other hints.
-  if (feature('VOICE_MODE') && voiceEnabled && voiceWarmingUp) {
-    parts.push(<VoiceWarmupHint key="voice-warmup" />);
-  } else if (isFullscreenEnvEnabled() && selectionHintHasContent) {
+  if (isFullscreenEnvEnabled() && selectionHintHasContent) {
     // xterm.js (VS Code/Cursor/Windsurf) force-selection modifier is
     // platform-specific and gated on macOS (SelectionService.shouldForceSelection):
     //   macOS:     altKey && macOptionClickForcesSelection (VS Code default: false)
@@ -489,10 +446,6 @@ function ModeIndicator({
           {!copyOnSelect && <KeyboardShortcutHint shortcut="ctrl+c" action="copy" />}
           {isXtermJs() && (altClickFailed ? <Text>set macOptionClickForcesSelection in VS Code settings</Text> : <KeyboardShortcutHint shortcut={isMac ? 'option+click' : 'shift+click'} action="native select" />)}
         </Byline>
-      </Text>);
-  } else if (feature('VOICE_MODE') && parts.length > 0 && showHint && voiceEnabled && voiceState === 'idle' && hintParts.length === 0 && voiceHintUnderCap) {
-    parts.push(<Text dimColor key="voice-hint">
-        hold {voiceKeyShortcut} to speak
       </Text>);
   }
   // Tasks-tree nav hint. When the tree (or panel) has rows, surface the right

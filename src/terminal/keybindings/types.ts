@@ -212,8 +212,6 @@ export type KnownKeybindingAction =
   | 'settings:close'
   | 'settings:usageDay'
   | 'settings:usageWeek'
-  // Voice actions
-  | 'voice:pushToTalk'
   // Scroll + selection, default-only (ScrollKeybindingHandler.tsx)
   | 'scroll:lineUp'
   | 'scroll:lineDown'

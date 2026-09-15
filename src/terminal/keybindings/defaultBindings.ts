@@ -102,12 +102,6 @@ export const DEFAULT_BINDINGS: KeybindingBlock[] = [
       ...(feature('MESSAGE_ACTIONS')
         ? { 'shift+up': 'chat:messageActions' as const }
         : {}),
-      // Voice activation (hold-to-talk). Registered so getShortcutDisplay
-      // finds it without hitting the fallback analytics log. To rebind,
-      // add a voice:pushToTalk entry (last wins); to disable, use /voice
-      // — null-unbinding space hits a pre-existing useKeybinding.ts trap
-      // where 'unbound' swallows the event (space dead for typing).
-      ...(feature('VOICE_MODE') ? { space: 'voice:pushToTalk' } : {}),
     },
   },
   {

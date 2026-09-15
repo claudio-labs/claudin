@@ -83,7 +83,6 @@ exports[`slash-command registry — characterization the registered bindings mat
   "usage",
   "usageReport",
   "vim",
-  "voiceCommand",
   "webCmd",
   "wiki",
   "workflowsCmd",
@@ -185,13 +184,6 @@ exports[`slash-command registry — characterization the flag-gated command tabl
       "ULTRAPLAN",
     ],
     "specifier": "src/commands/ultraplan.js",
-  },
-  {
-    "binding": "voiceCommand",
-    "flags": [
-      "VOICE_MODE",
-    ],
-    "specifier": "src/commands/voice/index.js",
   },
   {
     "binding": "webCmd",

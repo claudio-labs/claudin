@@ -1,36 +1,13 @@
-import { feature } from 'bun:bundle';
 import chalk from 'chalk';
-import React, { useMemo, useRef } from 'react';
-import { type VoiceState, useVoiceState } from 'src/terminal/contexts/voice.js';
+import React, { useMemo } from 'react';
 import { useClipboardImageHint } from 'src/terminal/hooks/useClipboardImageHint.js';
 import { useSettings } from 'src/platform/useSettings.js';
 import { useTextInput } from 'src/terminal/hooks/useTextInput.js';
-import { Box, color, useAnimationFrame, useTerminalFocus, useTheme } from 'src/terminal/ink.js';
+import { Box, color, useTerminalFocus, useTheme } from 'src/terminal/ink.js';
 import type { BaseTextInputProps } from 'src/shared/types/textInputTypes.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import type { TextHighlight } from 'src/shared/text/textHighlighting.js';
 import { BaseTextInput } from 'src/terminal/text-input/BaseTextInput.js';
-import { hueToRgb } from 'src/terminal/spinner/utils.js';
-
-// Block characters for waveform bars: space (silent) + 8 rising block elements.
-const BARS = ' \u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588';
-
-// Mini waveform cursor width
-const CURSOR_WAVEFORM_WIDTH = 1;
-
-// Smoothing factor (0 = instant, 1 = frozen). Applied as EMA to
-// smooth both rises and falls for a steady, non-jittery bar.
-const SMOOTH = 0.7;
-
-// Boost factor for audio levels — computeLevel normalizes with a
-// conservative divisor (rms/2000), so normal speech sits around
-// 0.3-0.5. This multiplier lets the bar use the full range.
-const LEVEL_BOOST = 1.8;
-
-// Raw audio level threshold (pre-boost) below which the cursor is
-// grey. computeLevel returns sqrt(rms/2000), so ambient mic noise
-// typically sits at 0.05-0.15. Speech starts around 0.2+.
-const SILENCE_THRESHOLD = 0.15;
 export type Props = BaseTextInputProps & {
   highlights?: TextHighlight[];
 };
@@ -40,55 +17,17 @@ export default function TextInput(props: Props): React.ReactNode {
   // Hoisted to mount-time — this component re-renders on every keystroke.
   const accessibilityEnabled = useMemo(() => isEnvTruthy(process.env.CLAUDIN_ACCESSIBILITY), []);
   const settings = useSettings();
-  const reducedMotion = settings?.prefersReducedMotion ?? false;
-  const voiceState: VoiceState['voiceState'] = feature('VOICE_MODE') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useVoiceState((s: VoiceState) => s.voiceState) as VoiceState['voiceState'] : 'idle' as const;
-  const isVoiceRecording = voiceState === 'recording';
-  const audioLevels: VoiceState['voiceAudioLevels'] = feature('VOICE_MODE') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useVoiceState((s_0: VoiceState) => s_0.voiceAudioLevels) as VoiceState['voiceAudioLevels'] : [];
-  const smoothedRef = useRef<number[]>(new Array(CURSOR_WAVEFORM_WIDTH).fill(0));
-  const needsAnimation = isVoiceRecording && !reducedMotion;
-  const [animRef, animTime] = feature('VOICE_MODE') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useAnimationFrame(needsAnimation ? 50 : null) : [() => {}, 0];
 
   // Show hint when terminal regains focus and clipboard has an image
   useClipboardImageHint(isTerminalFocused, !!props.onImagePaste);
 
-  // Cursor invert function: mini waveform during voice recording,
-  // standard chalk.inverse otherwise. No warmup pulse — the ~120ms
-  // warmup window is too short for a 1s-period pulse to register, and
-  // driving TextInput re-renders at 50ms during warmup (while spaces
-  // are simultaneously arriving every 30-80ms) causes visible stutter.
+  // The cursor used to render a one-bar audio waveform while voice was
+  // recording, animated at 50ms. That went with VOICE_MODE, and with it the
+  // only reason this component subscribed to an animation frame at all.
   const canShowCursor = isTerminalFocused && !accessibilityEnabled;
-  let invert: (text: string) => string;
-  if (!canShowCursor) {
-    invert = (text: string) => text;
-  } else if (isVoiceRecording && !reducedMotion) {
-    // Single-bar waveform from the latest audio level
-    const smoothed = smoothedRef.current;
-    const raw = audioLevels.length > 0 ? audioLevels[audioLevels.length - 1] ?? 0 : 0;
-    const target = Math.min(raw * LEVEL_BOOST, 1);
-    smoothed[0] = (smoothed[0] ?? 0) * SMOOTH + target * (1 - SMOOTH);
-    const displayLevel = smoothed[0] ?? 0;
-    const barIndex = Math.max(1, Math.min(Math.round(displayLevel * (BARS.length - 1)), BARS.length - 1));
-    const isSilent = raw < SILENCE_THRESHOLD;
-    const hue = animTime / 1000 * 90 % 360;
-    const {
-      r,
-      g,
-      b
-    } = isSilent ? {
-      r: 128,
-      g: 128,
-      b: 128
-    } : hueToRgb(hue);
-    invert = () => chalk.rgb(r, g, b)(BARS[barIndex]!);
-  } else {
-    invert = chalk.inverse;
-  }
+  const invert: (text: string) => string = canShowCursor
+    ? chalk.inverse
+    : (text: string) => text;
   const textInputState = useTextInput({
     value: props.value,
     onChange: props.onChange,
@@ -117,7 +56,7 @@ export default function TextInput(props: Props): React.ReactNode {
     inlineGhostText: props.inlineGhostText,
     dim: chalk.dim
   });
-  return <Box ref={animRef}>
-      <BaseTextInput inputState={textInputState} terminalFocus={isTerminalFocused} highlights={props.highlights} invert={invert} hidePlaceholderText={isVoiceRecording} {...props} />
+  return <Box>
+      <BaseTextInput inputState={textInputState} terminalFocus={isTerminalFocused} highlights={props.highlights} invert={invert} hidePlaceholderText={false} {...props} />
     </Box>;
 }
