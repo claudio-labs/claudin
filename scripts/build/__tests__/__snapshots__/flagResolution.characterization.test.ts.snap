@@ -1,0 +1,736 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`tengu gate keys — resolution in a stock install the per-key resolution table matches the snapshot 1`] = `
+{
+  "tengu_agent_list_attach": {
+    "defaults": [
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": true,
+  },
+  "tengu_amber_flint": {
+    "defaults": [
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": true,
+  },
+  "tengu_amber_json_tools": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_amber_prism": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_amber_quartz_disabled": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_amber_stoat": {
+    "defaults": [
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": true,
+  },
+  "tengu_anti_distill_fake_tool_injection": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_attribution_header": {
+    "defaults": [
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": true,
+  },
+  "tengu_auto_background_agents": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_auto_mode_config": {
+    "defaults": [
+      "{} as AutoModeConfig",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 3,
+    "stockValue": "<unmeasured: default is an expression — {} as AutoModeConfig>",
+  },
+  "tengu_basalt_3kr": {
+    "defaults": [
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": true,
+  },
+  "tengu_birch_trellis": {
+    "defaults": [
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": true,
+  },
+  "tengu_bramble_lintel": {
+    "defaults": [
+      "null",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": 15,
+  },
+  "tengu_bridge_initial_history_cap": {
+    "defaults": [
+      "200",
+    ],
+    "fn": "getFeatureValue_CACHED_WITH_REFRESH",
+    "sites": 1,
+    "stockValue": 200,
+  },
+  "tengu_bridge_repl_v2": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_bridge_repl_v2_cse_shim_enabled": {
+    "defaults": [
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": true,
+  },
+  "tengu_bridge_system_init": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_ccr_bridge_multi_session": {
+    "defaults": [
+      "",
+    ],
+    "fn": "checkGate_CACHED_OR_BLOCKING",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_ccr_bundle_seed_enabled": {
+    "defaults": [
+      "",
+    ],
+    "fn": "checkGate_CACHED_OR_BLOCKING",
+    "sites": 2,
+    "stockValue": false,
+  },
+  "tengu_ccr_mirror": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_chair_sermon": {
+    "defaults": [
+      "",
+    ],
+    "fn": "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
+    "sites": 4,
+    "stockValue": false,
+  },
+  "tengu_cicada_nap_ms": {
+    "defaults": [
+      "0",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": 0,
+  },
+  "tengu_cobalt_frost": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_cobalt_harbor": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_cobalt_lantern": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 4,
+    "stockValue": false,
+  },
+  "tengu_cobalt_raccoon": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 3,
+    "stockValue": false,
+  },
+  "tengu_collage_kaleidoscope": {
+    "defaults": [
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": true,
+  },
+  "tengu_compact_cache_prefix": {
+    "defaults": [
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": true,
+  },
+  "tengu_compact_line_prefix_killswitch": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_compact_streaming_retry": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_copper_panda": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_coral_fern": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": true,
+  },
+  "tengu_cork_m4q": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_desktop_upsell": {
+    "defaults": [
+      "DESKTOP_UPSELL_DEFAULT",
+    ],
+    "fn": "getDynamicConfig_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": "<unmeasured: default is an expression — DESKTOP_UPSELL_DEFAULT>",
+  },
+  "tengu_destructive_command_warning": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": false,
+  },
+  "tengu_disable_bypass_permissions_mode": {
+    "defaults": [
+      "",
+    ],
+    "fn": "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
+    "sites": 3,
+    "stockValue": false,
+  },
+  "tengu_disable_keepalive_on_econnreset": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_disable_streaming_to_non_streaming_fallback": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_fgts": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_glacier_2xr": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": true,
+  },
+  "tengu_grey_step2": {
+    "defaults": [
+      "OPUS_DEFAULT_EFFORT_CONFIG_DEFAULT",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": "<unmeasured: default is an expression — OPUS_DEFAULT_EFFORT_CONFIG_DEFAULT>",
+  },
+  "tengu_harbor": {
+    "defaults": [
+      "",
+      "false",
+    ],
+    "fn": "checkGate_CACHED_OR_BLOCKING | getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": false,
+  },
+  "tengu_harbor_permissions": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_hawthorn_steeple": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_herring_clock": {
+    "defaults": [
+      "false",
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": false,
+  },
+  "tengu_immediate_model_command": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_iron_gate_closed": {
+    "defaults": [
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_WITH_REFRESH",
+    "sites": 1,
+    "stockValue": true,
+  },
+  "tengu_jade_anvil_4": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_kairos_brief": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE | getFeatureValue_CACHED_WITH_REFRESH",
+    "sites": 3,
+    "stockValue": false,
+  },
+  "tengu_kairos_cron_durable": {
+    "defaults": [
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_WITH_REFRESH",
+    "sites": 1,
+    "stockValue": true,
+  },
+  "tengu_keybinding_customization_release": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_lapis_finch": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_lodestone_enabled": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_marble_fox": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_marble_sandcastle": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_miraculo_the_bard": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_moth_copse": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 4,
+    "stockValue": false,
+  },
+  "tengu_otk_slot_v1": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": false,
+  },
+  "tengu_paper_halyard": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": false,
+  },
+  "tengu_passport_quail": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": true,
+  },
+  "tengu_pebble_leaf_prune": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_penguins_off": {
+    "defaults": [
+      "null",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": null,
+  },
+  "tengu_pid_based_version_locking": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_plan_mode_interview_phase": {
+    "defaults": [
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": true,
+  },
+  "tengu_plugin_official_mkt_git_fallback": {
+    "defaults": [
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 3,
+    "stockValue": true,
+  },
+  "tengu_plum_vx3": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_quartz_lantern": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": false,
+  },
+  "tengu_quiet_fern": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_read_dedup_killswitch": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_remote_backend": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_scratch": {
+    "defaults": [
+      "",
+    ],
+    "fn": "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": false,
+  },
+  "tengu_sedge_lantern": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": true,
+  },
+  "tengu_session_memory": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": false,
+  },
+  "tengu_slate_prism": {
+    "defaults": [
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": true,
+  },
+  "tengu_slate_thimble": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_slim_subagent_claudemd": {
+    "defaults": [
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": true,
+  },
+  "tengu_sm_compact": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_streaming_tool_execution2": {
+    "defaults": [
+      "",
+    ],
+    "fn": "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_surreal_dali": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": false,
+  },
+  "tengu_terminal_panel": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": false,
+  },
+  "tengu_terminal_sidebar": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": false,
+  },
+  "tengu_thinkback": {
+    "defaults": [
+      "",
+    ],
+    "fn": "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": false,
+  },
+  "tengu_tool_pear": {
+    "defaults": [
+      "",
+    ],
+    "fn": "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": false,
+  },
+  "tengu_toolref_defer_j8m": {
+    "defaults": [
+      "",
+    ],
+    "fn": "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": false,
+  },
+  "tengu_trace_lantern": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_turtle_carbon": {
+    "defaults": [
+      "true",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": true,
+  },
+  "tengu_ultraplan_model": {
+    "defaults": [
+      "ALL_MODEL_CONFIGS.opus46.firstParty",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": "<unmeasured: default is an expression — ALL_MODEL_CONFIGS.opus46.firstParty>",
+  },
+  "tengu_vscode_cc_auth": {
+    "defaults": [
+      "false",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_vscode_onboarding": {
+    "defaults": [
+      "",
+    ],
+    "fn": "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_vscode_review_upsell": {
+    "defaults": [
+      "",
+    ],
+    "fn": "checkStatsigFeatureGate_CACHED_MAY_BE_STALE",
+    "sites": 1,
+    "stockValue": false,
+  },
+  "tengu_willow_mode": {
+    "defaults": [
+      "'off'",
+    ],
+    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
+    "sites": 2,
+    "stockValue": "off",
+  },
+}
+`;
