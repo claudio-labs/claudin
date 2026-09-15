@@ -294,6 +294,44 @@ describe('collapsing an emptied if (opt-in)', () => {
     expect(out.refusals.map(r => r.kind)).toEqual(['empties-block'])
   })
 
+  test('takes both arms when the else is also nothing but a log', () => {
+    const out = runCollapsing(
+      [
+        "import { logEvent } from 'src/x.js'",
+        'export function f(n: number) {',
+        '  if (n > 10) {',
+        "    logEvent('tengu_big', { n })",
+        '  } else {',
+        "    logEvent('tengu_small', { n })",
+        '  }',
+        '  return n',
+        '}',
+      ].join('\n'),
+    )
+    expect(out.refusals).toEqual([])
+    expect(out.text).not.toContain('if (n > 10)')
+    expect(out.text).not.toContain('else')
+    expect(out.text).toContain('return n')
+  })
+
+  test('refuses an else-if chain even when every arm is a log', () => {
+    // Collapsing one link would re-route the rest of the chain.
+    const out = runCollapsing(
+      [
+        "import { logEvent } from 'src/x.js'",
+        'export function f(n: number) {',
+        '  if (n > 10) {',
+        "    logEvent('tengu_big', {})",
+        '  } else if (n > 5) {',
+        "    logEvent('tengu_mid', {})",
+        '  }',
+        '}',
+      ].join('\n'),
+    )
+    expect(out.text).toBeNull()
+    expect(out.refusals.map(r => r.kind)).toEqual(['empties-block'])
+  })
+
   test('refuses when the condition assigns', () => {
     const out = runCollapsing(
       [

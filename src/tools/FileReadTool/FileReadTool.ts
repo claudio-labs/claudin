@@ -2,7 +2,6 @@ import * as path from 'path'
 import { PDF_MAX_PAGES_PER_READ } from 'src/shared/constants/apiLimits.js'
 import { hasBinaryExtension } from 'src/shared/constants/files.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { getFileExtensionForAnalytics } from 'src/platform/analytics/metadata.js'
 import {
   checkReadPermissionForTool,
@@ -388,14 +387,6 @@ export const FileReadTool = buildTool({
       fileReadingLimits?.maxSizeBytes ?? defaults.maxSizeBytes
     const maxTokens = fileReadingLimits?.maxTokens ?? defaults.maxTokens
 
-    // Telemetry: track when callers override default read limits.
-    // Only fires on override (low volume) — event count = override frequency.
-    if (fileReadingLimits !== undefined) {
-      logEvent('tengu_file_read_limits_override', {
-        hasMaxTokens: fileReadingLimits.maxTokens !== undefined,
-        hasMaxSizeBytes: fileReadingLimits.maxSizeBytes !== undefined,
-      })
-    }
 
     const ext = path.extname(file_path).toLowerCase().slice(1)
     // Use expandPath for consistent path normalization with FileEditTool/FileWriteTool
@@ -661,9 +652,6 @@ export const FileReadTool = buildTool({
             const mtimeMs = await getFileModificationTimeAsync(fullFilePath)
             if (mtimeMs === existingState.timestamp) {
               const analyticsExt = getFileExtensionForAnalytics(fullFilePath)
-              logEvent('tengu_file_read_dedup', {
-                ...(analyticsExt !== undefined && { ext: analyticsExt }),
-              })
               return {
                 data: {
                   type: 'file_unchanged' as const,
@@ -680,12 +668,7 @@ export const FileReadTool = buildTool({
           } catch {
             // stat failed — fall through to full read
           }
-        } else if (serverCleared) {
-          logEvent('tengu_file_read_dedup_skip_server_clearing', {})
-        } else {
-          logEvent('tengu_file_read_dedup_skip_client_clipping', {})
-        }
-        // Clip-pin stand-down. A clipped/cleared stand-down re-sends the full
+        } else         // Clip-pin stand-down. A clipped/cleared stand-down re-sends the full
         // body — and whatever clipped the first copy (the age prune under the
         // aggressive profile, microcompact/byte-guard under retain) clips the
         // re-sent one too, so the model re-reads and we re-send forever.
@@ -770,11 +753,6 @@ export const FileReadTool = buildTool({
             // as a boolean because LogEventMetadata takes no free-form strings
             // (they leak code/filepaths) — see analytics/index.ts:128.
             const arm = serverCleared ? 'cleared' : 'clipped'
-            logEvent('tengu_file_read_rerun_breaker', {
-              ...(analyticsExt !== undefined && { ext: analyticsExt }),
-              servedOutline: scanned !== null,
-              armCleared: serverCleared,
-            })
             const message = scanned
               ? renderOutline(scanned.entries, file_path, scanned.lines.length, {
                   reason: 'explicit',
@@ -933,11 +911,6 @@ export const FileReadTool = buildTool({
         const fresh = readFileState.get(fullFilePath)
         if (fresh && fresh.timestamp === sliceWalkPrior.timestamp) {
           const analyticsExt = getFileExtensionForAnalytics(fullFilePath)
-          logEvent('tengu_file_read_slice_walk', {
-            ...(analyticsExt !== undefined && { ext: analyticsExt }),
-            isCode: detectOutlineLangFromPath(fullFilePath) != null,
-            priorWasFullRead: sliceWalkPrior.priorWasFullRead,
-          })
         }
       }
       maybeFlagSerialReadNudge(result?.data, context)

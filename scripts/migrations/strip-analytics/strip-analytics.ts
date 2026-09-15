@@ -299,16 +299,22 @@ export function conditionOnlyReads(condition: string): boolean {
 }
 
 /**
- * When `range` is the whole body of an `if` with no `else`, the range covering
- * that entire `if` statement — otherwise null.
+ * When `range` is the whole body of an `if`, the range covering that entire
+ * `if` statement — otherwise null.
  *
- * Returns null when the condition does anything but read, and when an `else`
- * follows: dropping either would change the program rather than remove a log.
+ * A plain `else { … }` is taken too, but ONLY when its block also empties under
+ * the same removals: `if (a) { log(X) } else { log(Y) }` is two logs and
+ * nothing else, whereas an else with surviving code makes the head
+ * load-bearing. An `else if` chain is refused outright — collapsing one link
+ * would re-route the rest.
+ *
+ * Returns null when the condition does anything but read.
  */
 function enclosingCollapsibleIf(
   source: string,
   regions: Uint8Array,
   range: Range,
+  removals: Range[],
 ): Range | null {
   let depth = 0
   let open = -1
@@ -342,11 +348,29 @@ function enclosingCollapsibleIf(
 
   if (!conditionOnlyReads(source.slice(condOpen + 1, beforeBrace))) return null
 
-  // An `else` after the closing brace makes this branch load-bearing.
   const afterClose = source.slice(close).match(/^\s*else\b/)
-  if (afterClose) return null
+  if (!afterClose) return widen(source, regions, ifStart - 1, close)
 
-  return widen(source, regions, ifStart - 1, close)
+  // `else if` re-routes the remaining links; never collapse one.
+  const elseKeywordEnd = close + afterClose[0].length
+  if (/^\s*if\b/.test(source.slice(elseKeywordEnd))) return null
+
+  const elseOpen = source.indexOf('{', elseKeywordEnd)
+  if (elseOpen < 0 || source.slice(elseKeywordEnd, elseOpen).trim() !== '') {
+    return null // an unbraced else body
+  }
+  const elseClose = matchBracket(source, regions, elseOpen)
+  if (elseClose === null) return null
+
+  // The else block must be emptied by the same pass, or its code would go.
+  for (let i = elseOpen + 1; i < elseClose - 1; i++) {
+    if (regions[i] !== REGION_CODE) continue
+    if (/\s/.test(source[i]!)) continue
+    if (inAnyRange(removals, i)) continue
+    return null
+  }
+
+  return widen(source, regions, ifStart - 1, elseClose)
 }
 
 /**
@@ -643,12 +667,15 @@ export function transform(
   // and slicing those in sequence eats the code after the block.
   const finalRemovals: Range[] = []
   for (const range of removals) {
+    // Already swallowed by a collapsed `if … else` added on an earlier pass —
+    // reporting it again would refuse a file that is in fact fully handled.
+    if (inAnyRange(finalRemovals, range.start)) continue
     if (blockSurvives(source, regions, range, removals)) {
       finalRemovals.push(range)
       continue
     }
     const ifRange = options.collapseEmptyIf
-      ? enclosingCollapsibleIf(source, regions, range)
+      ? enclosingCollapsibleIf(source, regions, range, removals)
       : null
     if (ifRange) {
       finalRemovals.push(ifRange)
