@@ -27,7 +27,6 @@ import { getLocalISODate } from 'src/shared/constants/common.js'
 import {
   getLastEmittedDate,
   setLastEmittedDate,
-  getKairosActive,
   getCurrentTurnTokenBudget,
   getTotalOutputTokens,
   getTurnOutputTokens,
@@ -74,12 +73,6 @@ import { feature } from 'bun:bundle'
 import type { Message } from 'src/shared/types/message.js'
 import type { Attachment } from 'src/agent/attachments/types.js'
 
-/* eslint-disable @typescript-eslint/no-require-imports */
-const sessionTranscriptModule = feature('KAIROS')
-  ? (require('../../sessions/transcript/sessionTranscript.js') as typeof import('../../sessions/transcript/sessionTranscript.js'))
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
-
 /**
  * Detects when the local date has changed since the last turn (user coding
  * past midnight) and emits an attachment to notify the model.
@@ -93,9 +86,7 @@ const sessionTranscriptModule = feature('KAIROS')
  *
  * Exported for testing — regression guard for the cache-clear removal.
  */
-export function getDateChangeAttachments(
-  messages: Message[] | undefined,
-): Attachment[] {
+export function getDateChangeAttachments(): Attachment[] {
   const currentDate = getLocalISODate()
   const lastDate = getLastEmittedDate()
 
@@ -110,16 +101,6 @@ export function getDateChangeAttachments(
   }
 
   setLastEmittedDate(currentDate)
-
-  // Assistant mode: flush yesterday's transcript to the per-day file so
-  // the /dream skill (1–5am local) finds it even if no compaction fires
-  // today. Fire-and-forget; writeSessionTranscriptSegment buckets by
-  // message timestamp so a multi-day gap flushes each day correctly.
-  if (feature('KAIROS')) {
-    if (getKairosActive() && messages !== undefined) {
-      sessionTranscriptModule?.flushOnDateChange(messages, currentDate)
-    }
-  }
 
   return [{ type: 'date_change', newDate: currentDate }]
 }

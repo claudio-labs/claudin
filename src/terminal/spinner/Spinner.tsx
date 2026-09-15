@@ -2,22 +2,18 @@ import { c as _c } from "react-compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { Box, Text } from 'src/terminal/ink.js';
 import * as React from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { computeGlimmerIndex, computeShimmerSegments, SHIMMER_INTERVAL_MS } from 'src/platform/bridge/bridgeStatusUtil.js';
 import { feature } from 'bun:bundle';
-import { getKairosActive, getUserMsgOptIn } from 'src/platform/bootstrap/state.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
-import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { count } from 'src/shared/data/array.js';
 import sample from 'lodash-es/sample.js';
-import { formatDuration, formatNumber, formatSecondsShort, truncateToWidth } from 'src/shared/text/format.js';
+import { formatDuration, formatNumber, formatSecondsShort } from 'src/shared/text/format.js';
 import type { Theme } from 'src/terminal/theme/theme.js';
 import { activityManager } from 'src/agent/coordinator/activityManager.js';
 import { getSpinnerVerbs } from 'src/agent/prompts/spinnerVerbs.js';
 import { MessageResponse } from 'src/agent/ui/MessageResponse.js';
 import { TaskListV2 } from 'src/agent/ui/TaskListV2.js';
 import { useTasksV2 } from 'src/agent/hooks/useTasksV2.js';
-import { useRampedNumber } from 'src/terminal/hooks/useRampedNumber.js';
 import type { Task } from 'src/agent/tasks/tasks.js';
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
@@ -26,7 +22,6 @@ import { getDefaultCharacters, isBoldSpinnerFrame, SPINNER_FRAME_MS, type Spinne
 import { SpinnerAnimationRow } from 'src/terminal/spinner/SpinnerAnimationRow.js';
 import { useSettings } from 'src/platform/useSettings.js';
 import { isInProcessTeammateTask } from 'src/agent/tasks/InProcessTeammateTask/types.js';
-import { describeTeammateActivity } from 'src/agent/ui/tasks/taskStatusUtils.js';
 import { isBackgroundTask } from 'src/agent/tasks/types.js';
 import { getAllInProcessTeammateTasks } from 'src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js';
 import { getEffortSuffix, isAdaptiveEffort } from 'src/providers/effort/effort.js';
@@ -42,7 +37,6 @@ export type { SpinnerMode } from 'src/terminal/spinner/index.js';
 const DEFAULT_CHARACTERS = getDefaultCharacters();
 // No mirroring: the orbit is a directional rotation (see getDefaultCharacters).
 const SPINNER_FRAMES = [...DEFAULT_CHARACTERS];
-const BRIEF_MINI_FRAMES = ['·', '✢', '✦'];
 type Props = {
   mode: SpinnerMode;
   loadingStartTimeRef: React.RefObject<number>;
@@ -61,28 +55,7 @@ type Props = {
 };
 
 // Thin wrapper: branches on isBriefOnly so the two variants have independent
-// hook call chains. Without this split, toggling /brief mid-render would
-// violate Rules of Hooks (the inner variant calls ~10 more hooks).
 export function SpinnerWithVerb(props: Props): React.ReactNode {
-  const isBriefOnly = useAppState((s: AppState) => s.isBriefOnly);
-  // REPL overrides isBriefOnly→false when viewing a teammate transcript
-  // (see isBriefOnly={viewedTeammateTask ? false : isBriefOnly}). That
-  // prop isn't threaded here, so replicate the gate from the store —
-  // teammate view needs the real spinner (which shows teammate status).
-  const viewingAgentTaskId = useAppState(
-    (s_0: AppState) => s_0.viewingAgentTaskId,
-  );
-  // Hoisted to mount-time — this component re-renders at animation framerate.
-  const briefEnvEnabled = feature('KAIROS') || feature('KAIROS_BRIEF') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useMemo(() => isEnvTruthy(process.env.CLAUDE_CODE_BRIEF), []) : false;
-
-  // Runtime gate mirrors isBriefEnabled() but inlined — importing from
-  // BriefTool.ts would leak tool-name strings into external builds. Single
-  // spinner instance → hooks stay unconditional (two subs, negligible).
-  if ((feature('KAIROS') || feature('KAIROS_BRIEF')) && (getKairosActive() || getUserMsgOptIn() && (briefEnvEnabled || getFeatureValue_CACHED_MAY_BE_STALE('tengu_kairos_brief', false))) && isBriefOnly && !viewingAgentTaskId) {
-    return <BriefSpinner mode={props.mode} overrideMessage={props.overrideMessage} />;
-  }
   return <SpinnerWithVerbInner {...props} />;
 }
 function SpinnerWithVerbInner({
@@ -307,161 +280,10 @@ function SpinnerWithVerbInner({
 }
 
 // Brief/assistant mode spinner: single status line. PromptInput drops its
-// own marginTop when isBriefOnly is active, so this component owns the
-// 2-row footprint between messages and input. Footprint is [blank, content]
-// — one blank row above (breathing room under the messages list), spinner
-// flush against the input bar. PromptInput's absolute-positioned
-// Notifications overlay compensates with marginTop=-2 in brief mode
-// (PromptInput.tsx:~2928) so it floats into the blank row above the
-// spinner, not over the spinner content. Paired with BriefIdleStatus which
-// keeps the same footprint when idle.
-type BriefSpinnerProps = {
-  mode: SpinnerMode;
-  overrideMessage?: string | null;
-};
-function BriefSpinner(t0: BriefSpinnerProps) {
-  const $ = _c(31);
-  const {
-    mode,
-    overrideMessage
-  } = t0;
-  const settings = useSettings();
-  const reducedMotion = settings.prefersReducedMotion ?? false;
-  const [randomVerb] = useState(_temp4);
-  const verb = overrideMessage ?? randomVerb;
-  const connStatus = useAppState(_temp5);
-  let t1;
-  let t2;
-  if ($[0] !== mode) {
-    t1 = () => {
-      const operationId = "spinner-" + mode;
-      activityManager.startCLIActivity(operationId);
-      return () => {
-        activityManager.endCLIActivity(operationId);
-      };
-    };
-    t2 = [mode];
-    $[0] = mode;
-    $[1] = t1;
-    $[2] = t2;
-  } else {
-    t1 = $[1];
-    t2 = $[2];
-  }
-  useEffect(t1, t2);
-  const [, time] = useAnimationFrame(reducedMotion ? null : 100);
-  const runningCount = useAppState(_temp6);
-  const bgTokenSum = useAppState(_tempBgTokens);
-  const bgActivity = useAppState(_tempBgActivity);
-  const bgIsRequesting = useAppState(_tempBgIsRequesting);
-  const displayedTokens = useRampedNumber(bgTokenSum);
-  const showConnWarning = connStatus === "reconnecting" || connStatus === "disconnected";
-  const connText = connStatus === "reconnecting" ? "Reconnecting" : "Disconnected";
-  const dotFrame = Math.floor(time / 300) % 3;
-  let t3;
-  if ($[3] !== dotFrame || $[4] !== reducedMotion) {
-    t3 = reducedMotion ? "\u2026  " : ".".repeat(dotFrame + 1).padEnd(3);
-    $[3] = dotFrame;
-    $[4] = reducedMotion;
-    $[5] = t3;
-  } else {
-    t3 = $[5];
-  }
-  const dots = t3;
-  let t4;
-  if ($[6] !== verb) {
-    t4 = stringWidth(verb);
-    $[6] = verb;
-    $[7] = t4;
-  } else {
-    t4 = $[7];
-  }
-  const verbWidth = t4;
-  let t5;
-  if ($[8] !== reducedMotion || $[9] !== showConnWarning || $[10] !== time || $[11] !== verb || $[12] !== verbWidth) {
-    const glimmerIndex = reducedMotion || showConnWarning ? -100 : computeGlimmerIndex(Math.floor(time / SHIMMER_INTERVAL_MS), verbWidth);
-    t5 = computeShimmerSegments(verb, glimmerIndex);
-    $[8] = reducedMotion;
-    $[9] = showConnWarning;
-    $[10] = time;
-    $[11] = verb;
-    $[12] = verbWidth;
-    $[13] = t5;
-  } else {
-    t5 = $[13];
-  }
-  const {
-    before,
-    shimmer,
-    after
-  } = t5;
-  const {
-    columns
-  } = useTerminalSize();
-  const miniSpin = reducedMotion ? '·' : (BRIEF_MINI_FRAMES[dotFrame] ?? '·');
-  const tokenText = displayedTokens > 0 ? ` · ${bgIsRequesting ? '↑' : '↓'}${formatNumber(displayedTokens)}` : '';
-  const _act = truncateToWidth(bgActivity ?? '', 20);
-  const activityPart = bgActivity && columns >= 80 ? ` · ${_act}` : '';
-  const rightText = runningCount > 0 ? `${runningCount} ${miniSpin} in background${activityPart}${tokenText}` : "";
-  let t6;
-  if ($[14] !== connText || $[15] !== showConnWarning || $[16] !== verbWidth) {
-    t6 = showConnWarning ? stringWidth(connText) : verbWidth;
-    $[14] = connText;
-    $[15] = showConnWarning;
-    $[16] = verbWidth;
-    $[17] = t6;
-  } else {
-    t6 = $[17];
-  }
-  const leftWidth = t6 + 3;
-  const pad = Math.max(1, columns - 2 - leftWidth - stringWidth(rightText));
-  let t7;
-  if ($[18] !== after || $[19] !== before || $[20] !== connText || $[21] !== dots || $[22] !== shimmer || $[23] !== showConnWarning) {
-    t7 = showConnWarning ? <Text color="error">{connText + dots}</Text> : <>{before ? <Text dimColor={true}>{before}</Text> : null}{shimmer ? <Text>{shimmer}</Text> : null}{after ? <Text dimColor={true}>{after}</Text> : null}<Text dimColor={true}>{dots}</Text></>;
-    $[18] = after;
-    $[19] = before;
-    $[20] = connText;
-    $[21] = dots;
-    $[22] = shimmer;
-    $[23] = showConnWarning;
-    $[24] = t7;
-  } else {
-    t7 = $[24];
-  }
-  let t8;
-  if ($[25] !== pad || $[26] !== rightText) {
-    t8 = rightText ? <><Text>{" ".repeat(pad)}</Text><Text color="subtle">{rightText}</Text></> : null;
-    $[25] = pad;
-    $[26] = rightText;
-    $[27] = t8;
-  } else {
-    t8 = $[27];
-  }
-  let t9;
-  if ($[28] !== t7 || $[29] !== t8) {
-    t9 = <Box flexDirection="row" width="100%" marginTop={1} paddingLeft={2}>{t7}{t8}</Box>;
-    $[28] = t7;
-    $[29] = t8;
-    $[30] = t9;
-  } else {
-    t9 = $[30];
-  }
-  return t9;
-}
-
 // Idle placeholder for brief mode. Same 2-row [blank, content] footprint
-// as BriefSpinner so the input bar never jumps when toggling between
-// working/idle/disconnected. See BriefSpinner's comment for the
-// Notifications overlay coupling.
-function _temp6(s_0: AppState) {
-  return count(Object.values(s_0.tasks), isBackgroundTask) + s_0.remoteBackgroundTaskCount;
-}
-function _temp5(s: AppState) {
-  return s.remoteConnectionStatus;
-}
-function _temp4() {
-  return sample(getSpinnerVerbs()) ?? "Working";
-}
+// as the working spinner so the input bar never jumps when toggling between
+// working/idle/disconnected. PromptInput's absolute-positioned Notifications
+// overlay compensates with marginTop=-2 in brief mode.
 export function BriefIdleStatus() {
   const $ = _c(9);
   const connStatus = useAppState(_temp7);
@@ -563,31 +385,6 @@ export function Spinner() {
     t2 = $[8];
   }
   return t2;
-}
-function _tempBgTokens(s: AppState) {
-  let sum = 0;
-  for (const t of Object.values(s.tasks)) {
-    if (isInProcessTeammateTask(t) && t.status === 'running') {
-      sum += t.progress?.tokenCount ?? 0;
-    }
-  }
-  return sum;
-}
-function _tempBgActivity(s: AppState) {
-  for (const t of Object.values(s.tasks)) {
-    if (isInProcessTeammateTask(t) && t.status === 'running' && !t.isIdle) {
-      return describeTeammateActivity(t);
-    }
-  }
-  return '';
-}
-function _tempBgIsRequesting(s: AppState) {
-  for (const t of Object.values(s.tasks)) {
-    if (isInProcessTeammateTask(t) && t.status === 'running' && !t.isIdle) {
-      return t.progress?.isRequesting ?? true;
-    }
-  }
-  return false;
 }
 function findNextPendingTask(tasks: Task[] | undefined): Task | undefined {
   if (!tasks) {

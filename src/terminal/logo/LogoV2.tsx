@@ -23,14 +23,6 @@ import { EmergencyTip } from 'src/terminal/logo/EmergencyTip.js';
 import { Opus1mMergeNotice } from 'src/terminal/logo/Opus1mMergeNotice.js';
 import { feature } from 'bun:bundle';
 
-// Conditional require so ChannelsNotice.tsx tree-shakes when both flags are
-// false. A module-scope helper component inside a feature() ternary does NOT
-// tree-shake (docs/feature-gating.md); the require pattern eliminates the
-// whole file. VoiceModeNotice uses the unsafe helper pattern but VOICE_MODE
-// is external: true so it's moot there.
-/* eslint-disable @typescript-eslint/no-require-imports */
-const ChannelsNoticeModule = feature('KAIROS') || feature('KAIROS_CHANNELS') ? require('src/terminal/logo/ChannelsNotice.js') as typeof import('src/terminal/logo/ChannelsNotice.js') : null;
-/* eslint-enable @typescript-eslint/no-require-imports */
 import { SandboxManager } from 'src/platform/sandbox/sandbox-adapter.js';
 import { plural } from 'src/shared/text/stringUtils.js';
 import { useAppState } from 'src/terminal/state/AppState.js';
@@ -153,7 +145,9 @@ export function LogoV2() {
       // output — the $[i] numbering below must not shift).
       t12 = null;
       t13 = <Opus1mMergeNotice />;
-      t14 = ChannelsNoticeModule && <ChannelsNoticeModule.ChannelsNotice />;
+      // ChannelsNotice lived here; its slot stays allocated (React Compiler
+      // output — the $[i] numbering below must not shift).
+      t14 = null;
       t15 = isDebugMode() && <Box paddingLeft={2} flexDirection="column"><Text color="warning">Debug mode enabled</Text><Text dimColor={true}>Logging to: {isDebugToStdErr() ? "stderr" : getDebugLogPath()}</Text></Box>;
       t16 = <EmergencyTip />;
       t17 = process.env.CLAUDIN_TMUX_SESSION && <Box paddingLeft={2} flexDirection="column"><Text dimColor={true}>tmux session: {process.env.CLAUDIN_TMUX_SESSION}</Text><Text dimColor={true}>{process.env.CLAUDIN_TMUX_PREFIX_CONFLICTS ? `Detach: ${process.env.CLAUDIN_TMUX_PREFIX} ${process.env.CLAUDIN_TMUX_PREFIX} d (press prefix twice - Claude uses ${process.env.CLAUDIN_TMUX_PREFIX})` : `Detach: ${process.env.CLAUDIN_TMUX_PREFIX} d`}</Text></Box>;
@@ -266,7 +260,8 @@ export function LogoV2() {
     if ($[37] === Symbol.for("react.memo_cache_sentinel")) {
       t14 = null;
       t15 = <Opus1mMergeNotice />;
-      t16 = ChannelsNoticeModule && <ChannelsNoticeModule.ChannelsNotice />;
+      // ChannelsNotice lived here; its slot stays allocated.
+      t16 = null;
       $[37] = t14;
       $[38] = t15;
       $[39] = t16;
@@ -428,7 +423,8 @@ export function LogoV2() {
   if ($[75] === Symbol.for("react.memo_cache_sentinel")) {
     t29 = null;
     t30 = <Opus1mMergeNotice />;
-    t31 = ChannelsNoticeModule && <ChannelsNoticeModule.ChannelsNotice />;
+    // ChannelsNotice lived here; its slot stays allocated.
+    t31 = null;
     t32 = isDebugMode() && <Box paddingLeft={2} flexDirection="column"><Text color="warning">Debug mode enabled</Text><Text dimColor={true}>Logging to: {isDebugToStdErr() ? "stderr" : getDebugLogPath()}</Text></Box>;
     t33 = <EmergencyTip />;
     t34 = process.env.CLAUDIN_TMUX_SESSION && <Box paddingLeft={2} flexDirection="column"><Text dimColor={true}>tmux session: {process.env.CLAUDIN_TMUX_SESSION}</Text><Text dimColor={true}>{process.env.CLAUDIN_TMUX_PREFIX_CONFLICTS ? `Detach: ${process.env.CLAUDIN_TMUX_PREFIX} ${process.env.CLAUDIN_TMUX_PREFIX} d (press prefix twice - Claude uses ${process.env.CLAUDIN_TMUX_PREFIX})` : `Detach: ${process.env.CLAUDIN_TMUX_PREFIX} d`}</Text></Box>;

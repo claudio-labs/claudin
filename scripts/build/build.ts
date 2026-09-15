@@ -22,10 +22,7 @@ const version = pkg.version
 const featureFlags: Record<string, boolean> = {
   // ── Disabled: require Anthropic infrastructure or missing source ─────
   VOICE_MODE: false,              // Push-to-talk STT via claude.ai OAuth endpoint
-  PROACTIVE: false,               // Autonomous agent mode (missing proactive/ module)
-  KAIROS: false,                  // Persistent assistant/session mode (cloud backend)
   DAEMON: false,                  // Background daemon process (stubbed in open build)
-  AGENT_TRIGGERS: false,          // Scheduled remote agent triggers
   ABLATION_BASELINE: false,       // A/B testing harness for eval experiments
   CONTEXT_COLLAPSE: false,        // Context collapsing optimization (stubbed)
   COMMIT_ATTRIBUTION: false,      // Co-Authored-By metadata in git commits

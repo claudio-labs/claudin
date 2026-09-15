@@ -63,12 +63,6 @@ import type { useSSHSession } from 'src/sessions/hooks/useSSHSession.js';
 import type { useNotifications } from 'src/terminal/contexts/notifications.js';
 import type { useDeferredHookMessages } from 'src/agent/hooks/useDeferredHookMessages.js';
 
-// Mirrors the module-level binding in REPL.tsx. `feature()` must sit DIRECTLY in
-// a ternary condition - the build folds it in place and any other form throws.
-/* eslint-disable @typescript-eslint/no-require-imports */
-const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../../../platform/proactive/index.js') : null;
-/* eslint-enable @typescript-eslint/no-require-imports */
-
 export type ActiveRemote =
   | ReturnType<typeof useSSHSession>
   | ReturnType<typeof useDirectConnect>
@@ -218,11 +212,6 @@ export function useOnSubmit(deps: UseOnSubmitDeps): OnSubmit {
     // Re-pin scroll to bottom on submit so the user always sees the new
     // exchange (matches OpenCode's auto-scroll behavior).
     repinScroll();
-
-    // Resume loop mode if paused
-    if (feature('PROACTIVE') || feature('KAIROS')) {
-      proactiveModule?.resumeProactive();
-    }
 
     // Handle immediate commands - these bypass the queue and execute right away
     // even while Claude is processing. Commands opt-in via `immediate: true`.

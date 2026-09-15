@@ -1,10 +1,7 @@
 [
-  "../../../platform/proactive/index.js",
   "../../agent/attributionHooks.js",
   "../../agent/compact/reactiveCompact.js",
   "../../platform/jobs/classifier.js",
-  "../../platform/proactive/index.js",
-  "../../platform/proactive/useProactive.js",
   "../../server/backends/dangerousBackend.js",
   "../../server/connectHeadless.js",
   "../../server/lockfile.js",
@@ -13,8 +10,6 @@
   "../../server/serverBanner.js",
   "../../server/serverLog.js",
   "../../server/sessionManager.js",
-  "../../sessions/assistant/index.js",
-  "../../sessions/transcript/sessionTranscript.js",
   "../../skills/search/featureCheck.js",
   "../../skills/search/prefetch.js",
   "../../skills/search/remoteSkillLoader.js",
@@ -23,7 +18,6 @@
   "../../ssh/createSSHSession.js",
   "../../tools/DiscoverSkillsTool/prompt.js",
   "../../tools/ReviewArtifactTool/ReviewArtifactTool.js",
-  "../../tools/SendUserFileTool/prompt.js",
   "../../tools/SnipTool/prompt.js",
   "../../tools/WorkflowTool/WorkflowPermissionRequest.js",
   "../../tools/WorkflowTool/WorkflowTool.js",
@@ -34,7 +28,6 @@
   "../headless/handlers/templateJobs.js",
   "../memory/memdir/memoryShapeTelemetry.js",
   "../platform/jobs/classifier.js",
-  "../platform/proactive/index.js",
   "../self-hosted-runner/main.js",
   "../server/parseConnectUrl.js",
   "../skills/search/localSearch.js",
@@ -48,7 +41,6 @@
   "./SnipTool/SnipTool.js",
   "./TerminalCaptureTool/TerminalCaptureTool.js",
   "./Transport.js",
-  "./UserGitHubWebhookMessage.js",
   "./WorkflowDetailDialog.js",
   "./WorkflowTool/WorkflowTool.js",
   "./WorkflowTool/bundled/index.js",
@@ -61,6 +53,5 @@
   "./postCommitAttribution.js",
   "./runSkillGenerator.js",
   "./tasks/LocalWorkflowTask/LocalWorkflowTask.js",
-  "./torch.js",
-  "./webhookSanitizer.js"
+  "./torch.js"
 ]

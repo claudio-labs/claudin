@@ -306,15 +306,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 1,
     "stockValue": "<unmeasured: default is an expression — OPUS_DEFAULT_EFFORT_CONFIG_DEFAULT>",
   },
-  "tengu_harbor": {
-    "defaults": [
-      "",
-      "false",
-    ],
-    "fn": "checkGate_CACHED_OR_BLOCKING | getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 2,
-    "stockValue": false,
-  },
   "tengu_harbor_permissions": {
     "defaults": [
       "false",
@@ -355,14 +346,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "fn": "getFeatureValue_CACHED_WITH_REFRESH",
     "sites": 1,
     "stockValue": true,
-  },
-  "tengu_kairos_brief": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 2,
-    "stockValue": false,
   },
   "tengu_kairos_cron_durable": {
     "defaults": [

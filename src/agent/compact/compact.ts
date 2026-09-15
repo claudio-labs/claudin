@@ -2,11 +2,6 @@ import { feature } from 'bun:bundle'
 import type { UUID } from 'crypto'
 import uniqBy from 'lodash-es/uniqBy.js'
 
-/* eslint-disable @typescript-eslint/no-require-imports */
-const sessionTranscriptModule = feature('KAIROS')
-  ? (require('../../sessions/transcript/sessionTranscript.js') as typeof import('../../sessions/transcript/sessionTranscript.js'))
-  : null
-
 import { APIUserAbortError } from '@anthropic-ai/sdk'
 import { markPostCompaction } from 'src/platform/bootstrap/state.js'
 import {
@@ -83,7 +78,6 @@ import {
 } from 'src/sessions/sessionStorage.js'
 import { sleep } from 'src/shared/sleep.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-/* eslint-enable @typescript-eslint/no-require-imports */
 import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
 import {
@@ -742,12 +736,6 @@ export async function compactConversation(
     // instead of the user-set session name.
     reAppendSessionMetadata()
 
-    // Write a reduced transcript segment for the pre-compaction messages
-    // (assistant mode only). Fire-and-forget — errors are logged internally.
-    if (feature('KAIROS')) {
-      void sessionTranscriptModule?.writeSessionTranscriptSegment(messages)
-    }
-
     context.onCompactProgress?.({
       type: 'hooks_start',
       hookType: 'post_compact',
@@ -1087,12 +1075,6 @@ export async function partialCompactConversation(
     // Re-append session metadata (custom title, tag) so it stays within
     // the 16KB tail window that readLiteMetadata reads for --resume display.
     reAppendSessionMetadata()
-
-    if (feature('KAIROS')) {
-      void sessionTranscriptModule?.writeSessionTranscriptSegment(
-        messagesToSummarize,
-      )
-    }
 
     context.onCompactProgress?.({
       type: 'hooks_start',

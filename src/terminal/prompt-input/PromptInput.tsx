@@ -360,14 +360,6 @@ function PromptInput({
     companionMuted: undefined
   };
   const companionFooterVisible = !!_companion && !companionMuted;
-  // Brief mode: BriefSpinner/BriefIdleStatus own the 2-row footprint above
-  // the input. Dropping marginTop here lets the spinner sit flush against
-  // the input bar. viewingAgentTaskId mirrors the gate on both (Spinner.tsx,
-  // REPL.tsx) — teammate view falls back to SpinnerWithVerbInner which has
-  // its own marginTop, so the gap stays even without ours.
-  const briefOwnsGap = feature('KAIROS') || feature('KAIROS_BRIEF') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useAppState((s: AppState) => s.isBriefOnly) && !viewingAgentTaskId : false;
   const mainLoopModel_ = useAppState((s: AppState) => s.mainLoopModel);
   const mainLoopModelForSession = useAppState((s: AppState) => s.mainLoopModelForSession);
   const thinkingEnabled = useAppState((s: AppState) => s.thinkingEnabled);
@@ -2193,7 +2185,7 @@ function PromptInput({
   // Suppressed in brief/assistant mode — the value reflects the local
   // client's effort, not the connected agent's.
   const [effortThemeName] = useTheme();
-  const effort = briefOwnsGap ? undefined : getEffortPill(effortValue, mainLoopModel, getTheme(effortThemeName));
+  const effort = getEffortPill(effortValue, mainLoopModel, getTheme(effortThemeName));
   // Diff readout on the prompt's top rule: this session's churn (free), plus
   // the git totals it can't see (work committed, work done before the session).
   const sessionDiff = useSessionDiffStat();
@@ -2553,7 +2545,7 @@ function PromptInput({
       </Box></>;
   }
   const textInputElement = isVimModeEnabled() ? <VimTextInput {...baseProps} initialMode={vimMode} onModeChange={setVimMode} /> : <TextInput {...baseProps} />;
-  return <>{historyPickerEl}<Box flexDirection="column" marginTop={briefOwnsGap ? 0 : 1}>
+  return <>{historyPickerEl}<Box flexDirection="column" marginTop={1}>
       {!isFullscreenEnvEnabled() && <PromptInputQueuedCommands />}
       {hasSuppressedDialogs && <Box marginTop={1} marginLeft={2}>
           <Text dimColor>Waiting for permission…</Text>
@@ -2618,10 +2610,7 @@ function PromptInput({
     // doesn't shift when a notification appears/disappears. Yoga
     // anchors absolute children at the parent's content-box origin;
     // marginTop=-1 pulls it into the marginTop=1 gap row above the
-    // prompt border. In brief mode there is no such gap (briefOwnsGap
-    // strips our marginTop) and BriefSpinner sits flush against the
-    // border — marginTop=-2 skips over the spinner content into
-    // BriefSpinner's own marginTop=1 blank row. height=1 +
+    // prompt border. height=1 +
     // overflow=hidden clips multi-line notifications to a single row.
     // flex-end anchors the bottom line so the visible row is always
     // the most recent. Suppressed while the slash overlay or
@@ -2630,7 +2619,7 @@ function PromptInput({
     // bottom row. Keeping Notifications mounted prevents AutoUpdater's
     // initial-check effect from re-firing on every slash-completion
     // toggle (PR#22413).
-    <Box position="absolute" marginTop={briefOwnsGap ? -2 : -1} height={suggestions.length === 0 && !showAutoModeOptIn ? 1 : 0} width="100%" paddingLeft={2} paddingRight={1} flexDirection="column" justifyContent="flex-end" overflow="hidden">
+    <Box position="absolute" marginTop={-1} height={suggestions.length === 0 && !showAutoModeOptIn ? 1 : 0} width="100%" paddingLeft={2} paddingRight={1} flexDirection="column" justifyContent="flex-end" overflow="hidden">
           <Notifications apiKeyStatus={apiKeyStatus} autoUpdaterResult={autoUpdaterResult} debug={debug} isAutoUpdating={isAutoUpdating} verbose={verbose} messages={messages} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={setIsAutoUpdating} ideSelection={ideSelection} mcpClients={mcpClients} isInputWrapped={isInputWrapped} />
         </Box> : null}
     </Box></>;

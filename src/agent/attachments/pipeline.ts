@@ -197,7 +197,7 @@ export async function getAttachments(
     // (removed from queue by removeFromQueue but never attached).
     maybe('queued_commands', () => getQueuedCommandAttachments(queuedCommands)),
     maybe('date_change', () =>
-      Promise.resolve(getDateChangeAttachments(messages)),
+      Promise.resolve(getDateChangeAttachments()),
     ),
     maybe('ultrathink_effort', () =>
       Promise.resolve(getUltrathinkEffortAttachment(input)),

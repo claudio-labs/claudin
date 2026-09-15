@@ -1,11 +1,6 @@
-import { feature } from 'bun:bundle';
 import type { TextBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import React, { useContext, useMemo } from 'react';
-import { getKairosActive, getUserMsgOptIn } from 'src/platform/bootstrap/state.js';
 import { Box } from 'src/terminal/ink.js';
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
-import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
-import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { logError } from 'src/shared/log.js';
 import { countCharInString } from 'src/shared/text/stringUtils.js';
 import { MessageActionsSelectedContext } from 'src/agent/ui/messageActions.js';
@@ -13,7 +8,9 @@ import { HighlightedThinkingText } from 'src/agent/ui/messages/HighlightedThinki
 type Props = {
   addMargin: boolean;
   param: TextBlockParam;
+  /** Unused: the brief layout it selected is compiled out. */
   isTranscriptMode?: boolean;
+  /** Unused: only rendered by the brief layout, which is compiled out. */
   timestamp?: string;
 };
 
@@ -32,34 +29,8 @@ export function UserPromptMessage({
   addMargin,
   param: {
     text
-  },
-  isTranscriptMode,
-  timestamp
+  }
 }: Props): React.ReactNode {
-  // REPL.tsx passes isBriefOnly={viewedTeammateTask ? false : isBriefOnly}
-  // but that prop isn't threaded this deep — replicate the override by
-  // reading viewingAgentTaskId directly. Computed here (not in the child)
-  // so the parent Box can drop its backgroundColor: in brief mode the
-  // child renders a label-style layout, and Box backgroundColor paints
-  // behind children unconditionally (they can't opt out).
-  //
-  // Hooks stay INSIDE feature() ternaries so external builds don't pay
-  // the per-scrollback-message store subscription (useSyncExternalStore
-  // bypasses React.memo). Runtime-gated like isBriefEnabled() but inlined
-  // to avoid pulling BriefTool.ts → prompt.ts tool-name strings into
-  // external builds.
-  const isBriefOnly = feature('KAIROS') || feature('KAIROS_BRIEF') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useAppState((s: AppState) => s.isBriefOnly) : false;
-  const viewingAgentTaskId = feature('KAIROS') || feature('KAIROS_BRIEF') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useAppState((s_0: AppState) => s_0.viewingAgentTaskId) : null;
-  // Hoisted to mount-time — per-message component, re-renders on every scroll.
-  const briefEnvEnabled = feature('KAIROS') || feature('KAIROS_BRIEF') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useMemo(() => isEnvTruthy(process.env.CLAUDE_CODE_BRIEF), []) : false;
-  const useBriefLayout = feature('KAIROS') || feature('KAIROS_BRIEF') ? (getKairosActive() || getUserMsgOptIn() && (briefEnvEnabled || getFeatureValue_CACHED_MAY_BE_STALE('tengu_kairos_brief', false))) && isBriefOnly && !isTranscriptMode && !viewingAgentTaskId : false;
-
   // Truncate before the early return so the hook order is stable.
   const displayText = useMemo(() => {
     if (text.length <= MAX_DISPLAY_CHARS) return text;
@@ -73,7 +44,7 @@ export function UserPromptMessage({
     logError(new Error('No content found in user prompt message'));
     return null;
   }
-  return <Box flexDirection="column" marginTop={addMargin ? 1 : 0} backgroundColor={isSelected ? 'messageActionsBackground' : useBriefLayout ? undefined : 'userMessageBackground'} paddingRight={useBriefLayout ? 0 : 1}>
-      <HighlightedThinkingText text={displayText} useBriefLayout={useBriefLayout} timestamp={useBriefLayout ? timestamp : undefined} />
+  return <Box flexDirection="column" marginTop={addMargin ? 1 : 0} backgroundColor={isSelected ? 'messageActionsBackground' : 'userMessageBackground'} paddingRight={1}>
+      <HighlightedThinkingText text={displayText} useBriefLayout={false} timestamp={undefined} />
     </Box>;
 }

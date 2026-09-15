@@ -90,7 +90,6 @@ export type KnownKeybindingAction =
   | 'app:exit'
   | 'app:toggleTodos'
   | 'app:toggleTranscript'
-  | 'app:toggleBrief'
   | 'app:toggleTeammatePreview'
   | 'app:toggleTerminal'
   | 'app:redraw'

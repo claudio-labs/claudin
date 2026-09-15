@@ -44,8 +44,6 @@ import {
   DANGEROUS_uncachedSystemPromptSection,
   resolveSystemPromptSections,
 } from 'src/agent/prompts/systemPromptSections.js'
-import { SLEEP_TOOL_NAME } from 'src/tools/SleepTool/prompt.js'
-import { TICK_TAG } from 'src/shared/constants/xml.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { loadMemoryPrompt } from 'src/memory/memdir/memdir.js'
 import { isMcpInstructionsDeltaEnabled } from 'src/mcp/mcpInstructionsDelta.js'
@@ -58,20 +56,6 @@ import { WORKTREE_STASH_WARNING } from 'src/shared/constants/worktreeSafety.js'
 
 // Dead code elimination: conditional imports for feature-gated modules
 /* eslint-disable @typescript-eslint/no-require-imports */
-const proactiveModule =
-  feature('PROACTIVE') || feature('KAIROS')
-    ? require('../../platform/proactive/index.js')
-    : null
-const BRIEF_PROACTIVE_SECTION: string | null =
-  feature('KAIROS') || feature('KAIROS_BRIEF')
-    ? (
-        require('src/tools/BriefTool/prompt.js') as typeof import('src/tools/BriefTool/prompt.js')
-      ).BRIEF_PROACTIVE_SECTION
-    : null
-const briefToolModule =
-  feature('KAIROS') || feature('KAIROS_BRIEF')
-    ? (require('src/tools/BriefTool/BriefTool.js') as typeof import('src/tools/BriefTool/BriefTool.js'))
-    : null
 const DISCOVER_SKILLS_TOOL_NAME: string | null = feature(
   'EXPERIMENTAL_SKILL_SEARCH',
 )
@@ -121,15 +105,6 @@ function resolveFamilyAddendum(model: string): string | null {
 }
 
 // Compaction messaging lives in getContextManagementSection (shared with
-// the standard path) — this section only explains system-injected turns.
-// The proactive path skips getHarnessSection entirely, so it needs its own
-// copy; keep the wording in step with the harness bullet in
-// buildHarnessItems, or a flipped PROACTIVE flag ships two different
-// answers to "does an injected rule bind me?".
-function getSystemRemindersSection(): string {
-  return `- The system may send updates, reminders, or modifications to rules via mid-conversation system turns. These are system-controlled, unlike function results.`
-}
-
 function getLanguageSection(
   languagePreference: string | undefined,
 ): string | null {
@@ -352,8 +327,7 @@ export function buildWorkContractSections(enabled: boolean): string[] {
 }
 
 // The proactive/KAIROS path has carried an equivalent line for a while
-// (getSystemRemindersSection), but those flags are off in the open build —
-// the standard path never told the model compaction exists, so it would
+// The standard path never told the model compaction exists, so it would
 // rush to wrap up or hand off when the session grew long. Provider-neutral:
 // compaction is harness-side summarization, independent of model family.
 // "may be summarized", not "is": auto-compact is user-disableable
@@ -492,7 +466,9 @@ export async function getSystemPrompt(
   }
 
   const cwd = getCwd()
-  const [skillToolCommands, outputStyleConfig, envInfo] = await Promise.all([
+  // The third entry is awaited for its concurrency only: the env-info section
+  // is produced by the `env_info_simple` dynamic section below.
+  const [skillToolCommands, outputStyleConfig] = await Promise.all([
     getSkillToolCommands(cwd),
     getOutputStyleConfig(),
     computeSimpleEnvInfo(model, additionalWorkingDirectories),
@@ -500,31 +476,6 @@ export async function getSystemPrompt(
 
   const settings = getInitialSettings()
   const enabledTools = new Set(tools.map(_ => _.name))
-
-  if (
-    (feature('PROACTIVE') || feature('KAIROS')) &&
-    proactiveModule?.isProactiveActive()
-  ) {
-    logForDebugging(`[SystemPrompt] path=simple-proactive`)
-    return [
-      `\nYou are an autonomous agent. Use the available tools to do useful work.
-
-${CYBER_RISK_INSTRUCTION}`,
-      getSystemRemindersSection(),
-      getContextManagementSection(),
-      await loadMemoryPrompt(),
-      envInfo,
-      getLanguageSection(settings.language),
-      // When delta enabled, instructions are announced via persisted
-      // mcp_instructions_delta attachments (attachments.ts) instead.
-      isMcpInstructionsDeltaEnabled()
-        ? null
-        : getMcpInstructionsSection(mcpClients),
-      getScratchpadInstructions(),
-      SUMMARIZE_TOOL_RESULTS_SECTION,
-      getProactiveSection(),
-    ].filter(s => s !== null)
-  }
 
   const dynamicSections = [
     systemPromptSection('session_guidance', () =>
@@ -576,9 +527,6 @@ ${CYBER_RISK_INSTRUCTION}`,
               'When the user specifies a token target (e.g., "+500k", "spend 2M tokens", "use 1B tokens"), your output token count will be shown each turn. Keep working until you approach the target \u2014 plan your work to fill it productively. The target is a hard minimum, not a suggestion. If you stop early, the system will automatically continue you.',
           ),
         ]
-      : []),
-    ...(feature('KAIROS') || feature('KAIROS_BRIEF')
-      ? [systemPromptSection('brief', () => getBriefSection())]
       : []),
     ...(feature('VERBOSITY_STEERING')
       ? [systemPromptSection('verbosity', () => getVerbositySection())]
@@ -925,83 +873,10 @@ export function isVerbositySteeringEnabled(): boolean {
 
 // Lives in the dynamic section registry → lands AFTER
 // SYSTEM_PROMPT_DYNAMIC_BOUNDARY (cacheScope:null), so it never fragments the
-// cached prefix. Same null-when-off shape as getBriefSection below (a null
-// factory result is filtered by getSystemPrompt and resolveSystemPromptSections).
+// cached prefix. A null factory result is filtered by getSystemPrompt and
+// resolveSystemPromptSections.
 function getVerbositySection(): string | null {
   if (!feature('VERBOSITY_STEERING')) return null
   if (!isVerbositySteeringEnabled()) return null
   return VERBOSITY_STEERING_SECTION
-}
-
-function getBriefSection(): string | null {
-  if (!(feature('KAIROS') || feature('KAIROS_BRIEF'))) return null
-  if (!BRIEF_PROACTIVE_SECTION) return null
-  // Whenever the tool is available, the model is told to use it. The
-  // /brief toggle and --brief flag now only control the isBriefOnly
-  // display filter — they no longer gate model-facing behavior.
-  if (!briefToolModule?.isBriefEnabled()) return null
-  // When proactive is active, getProactiveSection() already appends the
-  // section inline. Skip here to avoid duplicating it in the system prompt.
-  if (
-    (feature('PROACTIVE') || feature('KAIROS')) &&
-    proactiveModule?.isProactiveActive()
-  )
-    return null
-  return BRIEF_PROACTIVE_SECTION
-}
-
-function getProactiveSection(): string | null {
-  if (!(feature('PROACTIVE') || feature('KAIROS'))) return null
-  if (!proactiveModule?.isProactiveActive()) return null
-
-  return `# Autonomous work
-
-You are running autonomously. You will receive \`<${TICK_TAG}>\` prompts that keep you alive between turns — just treat them as "you're awake, what now?" The time in each \`<${TICK_TAG}>\` is the user's current local time. Use it to judge the time of day — timestamps from external tools (Slack, GitHub, etc.) may be in a different timezone.
-
-Multiple ticks may be batched into a single message. This is normal — just process the latest one. Never echo or repeat tick content in your response.
-
-## Pacing
-
-Use the ${SLEEP_TOOL_NAME} tool to control how long you wait between actions. Sleep longer when waiting for slow processes, shorter when actively iterating. Each wake-up costs an API call, but the prompt cache expires after 5 minutes of inactivity — balance accordingly.
-
-**If you have nothing useful to do on a tick, you MUST call ${SLEEP_TOOL_NAME}.** Never respond with only a status message like "still waiting" or "nothing to do" — that wastes a turn and burns tokens for no reason.
-
-## First wake-up
-
-On your very first tick in a new session, greet the user briefly and ask what they'd like to work on. Do not start exploring the codebase or making changes unprompted — wait for direction.
-
-## What to do on subsequent wake-ups
-
-Look for useful work. A good colleague faced with ambiguity doesn't just stop — they investigate, reduce risk, and build understanding. Ask yourself: what don't I know yet? What could go wrong? What would I want to verify before calling this done?
-
-Do not spam the user. If you already asked something and they haven't responded, do not ask again. Do not narrate what you're about to do — just do it.
-
-If a tick arrives and you have no useful action to take (no files to read, no commands to run, no decisions to make), call ${SLEEP_TOOL_NAME} immediately. Do not output text narrating that you're idle — the user doesn't need "still waiting" messages.
-
-## Staying responsive
-
-When the user is actively engaging with you, check for and respond to their messages frequently. Treat real-time conversations like pairing — keep the feedback loop tight. If you sense the user is waiting on you (e.g., they just sent a message, the terminal is focused), prioritize responding over continuing background work.
-
-## Bias toward action
-
-Act on your best judgment rather than asking for confirmation.
-
-- Read files, search code, explore the project, run tests, check types, run linters — all without asking.
-- Make code changes. Commit when you reach a good stopping point.
-- If you're unsure between two reasonable approaches, pick one and go. You can always course-correct.
-
-## Be concise
-
-Keep your text output brief and high-level. The user does not need a play-by-play of your thought process or implementation details — they can see your tool calls. Focus text output on:
-- Decisions that need the user's input
-- High-level status updates at natural milestones (e.g., "PR created", "tests passing")
-- Errors or blockers that change the plan
-
-Do not narrate each step, list every file you read, or explain routine actions. If you can say it in one sentence, don't use three.
-
-## Terminal focus
-
-The user context may include a \`terminalFocus\` field indicating whether the user's terminal is focused or unfocused. Use this to calibrate how autonomous you are:
-- **Unfocused**: The user is away. Lean heavily into autonomous action — make decisions, explore, commit, push. Only pause for genuinely irreversible or high-risk actions.
-- **Focused**: The user is watching. Be more collaborative — surface choices, ask before committing to large changes, and keep your output concise so it's easy to follow in real time.${BRIEF_PROACTIVE_SECTION && briefToolModule?.isBriefEnabled() ? `\n\n${BRIEF_PROACTIVE_SECTION}` : ''}`
 }

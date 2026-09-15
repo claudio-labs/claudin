@@ -79,7 +79,6 @@ import { fireCompanionObserver } from 'src/terminal/buddy/observer.js';
 // Mirrors the module-level bindings in REPL.tsx. `feature()` must sit DIRECTLY in
 // a ternary condition - the build folds it in place and any other form throws.
 /* eslint-disable @typescript-eslint/no-require-imports */
-const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../../../platform/proactive/index.js') : null;
 const getCoordinatorUserContext: (mcpClients: ReadonlyArray<{
   name: string;
 }>, scratchpadDir?: string) => {
@@ -138,12 +137,7 @@ export interface UseOnQueryDeps {
   totalPausedMsRef: React.RefObject<number>;
   swarmStartTimeRef: React.RefObject<number | null>;
   swarmBudgetInfoRef: React.RefObject<{ tokens: number; limit: number; nudges: number } | undefined>;
-  terminalFocusRef: React.RefObject<boolean>;
   skipIdleCheckRef: React.RefObject<boolean>;
-  // --- misc state
-  // `unknown` mirrors REPL.tsx: useSyncExternalStore over the untyped
-  // proactiveModule yields unknown, and the body only uses it in `!` position.
-  proactiveActive: unknown;
   // --- setters
   setMessages: (action: React.SetStateAction<MessageType[]>) => void;
   setAppState: SetAppState;
@@ -200,9 +194,7 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     totalPausedMsRef,
     swarmStartTimeRef,
     swarmBudgetInfoRef,
-    terminalFocusRef,
     skipIdleCheckRef,
-    proactiveActive,
     setMessages,
     setAppState,
     setAbortController,
@@ -242,10 +234,6 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
         // keyed on it (REPL.tsx:2974). /clear still bumps it; a compaction is
         // not a new conversation.
         setMessages(old => [...old, newMessage]);
-        // Compaction succeeded — clear the context-blocked flag so ticks resume
-        if (feature('PROACTIVE') || feature('KAIROS')) {
-          proactiveModule?.setContextBlocked(false);
-        }
       } else if (newMessage.type === 'progress' && isEphemeralToolProgress(newMessage.data.type)) {
         // Replace the previous ephemeral progress tick for the same tool
         // call instead of appending. Sleep/Bash emit a tick per second and
@@ -273,16 +261,6 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
         const displayProfile = getCacheProfile()
         const displayMessage = stubToolResultForDisplay(newMessage, messagesRef.current, displayProfile.immediateStubTokens, displayProfile.stubKeepHeadChars)
         setMessages(oldMessages => [...oldMessages, displayMessage]);
-      }
-      // Block ticks on API errors to prevent tick → error → tick
-      // runaway loops (e.g., auth failure, rate limit, blocking limit).
-      // Cleared on compact boundary (above) or successful response (below).
-      if (feature('PROACTIVE') || feature('KAIROS')) {
-        if (newMessage.type === 'assistant' && 'isApiErrorMessage' in newMessage && newMessage.isApiErrorMessage) {
-          proactiveModule?.setContextBlocked(true);
-        } else if (newMessage.type === 'assistant') {
-          proactiveModule?.setContextBlocked(false);
-        }
       }
     }, newContent => {
       // setResponseLength handles updating both responseLengthRef (for
@@ -377,19 +355,6 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     // The last message is an assistant message if the user input was a bash command,
     // or if the user input was an invalid slash command.
     if (!shouldQuery) {
-      // Manual /compact sets messages directly (shouldQuery=false) bypassing
-      // handleMessageFromStream. Clear context-blocked if a compact boundary
-      // is present so proactive ticks resume after compaction.
-      if (newMessages.some(isCompactBoundaryMessage)) {
-        // No conversationId bump here either — /compact appends its
-        // post-compact messages (processSlashCommand builds them, the append
-        // at the top of onQuery adds them), so no existing row's content
-        // changes and re-keying would only remount every row and reprint the
-        // startup banner mid-timeline. See the stream branch in onQueryEvent.
-        if (feature('PROACTIVE') || feature('KAIROS')) {
-          proactiveModule?.setContextBlocked(false);
-        }
-      }
       resetLoadingState();
       setAbortController(null);
       return;
@@ -424,9 +389,6 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
     const userContext = {
       ...baseUserContext,
       ...getCoordinatorUserContext(freshMcpClients, isScratchpadEnabled() ? getScratchpadDir() : undefined),
-      ...((feature('PROACTIVE') || feature('KAIROS')) && proactiveModule?.isProactiveActive() && !terminalFocusRef.current ? {
-        terminalFocus: 'The terminal is unfocused \u2014 the user is not actively watching.'
-      } : {})
     };
     queryCheckpoint('query_context_loading_end');
     const systemPrompt = buildEffectiveSystemPrompt({
@@ -617,7 +579,7 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
         // Skip if user aborted or if in loop mode (too noisy between ticks)
         // Defer if swarm teammates are still running (show when they finish)
         const turnDurationMs = Date.now() - loadingStartTimeRef.current - totalPausedMsRef.current;
-        if ((turnDurationMs > 30000 || budgetInfo !== undefined) && !abortController.signal.aborted && !proactiveActive) {
+        if ((turnDurationMs > 30000 || budgetInfo !== undefined) && !abortController.signal.aborted) {
           const hasRunningSwarmAgents = getAllInProcessTeammateTasks(store.getState().tasks).some(t => t.status === 'running');
           if (hasRunningSwarmAgents) {
             // Only record start time on the first deferred turn
@@ -636,9 +598,8 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
         // per-query read/hit stats using the provider-normalized metrics
         // from cacheStatsTracker. 'off' skips, 'compact' gives a one-liner,
         // 'full' gives a breakdown. Display is skipped when the user
-        // aborted or proactive mode is active — but the counter reset
-        // below still runs in those cases.
-        if (!abortController.signal.aborted && !proactiveActive) {
+        // aborted — but the counter reset below still runs in that case.
+        if (!abortController.signal.aborted) {
           // Defensive default: config layer already merges 'compact' from
           // DEFAULT_GLOBAL_CONFIG (see config.ts:1494) for configs that
           // predate this feature, so `mode` should always be defined.
