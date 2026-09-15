@@ -1,6 +1,6 @@
 # `tengu_*` gate keys — audit
 
-103 distinct keys across the tree. This is the Fase 4a deliverable: which of
+106 distinct keys across the tree. This is the Fase 4a deliverable: which of
 them still mean anything in this fork, and which are candidates for removal.
 
 Resolution order, from the stub in `scripts/build/no-telemetry-plugin.ts`:
@@ -33,6 +33,39 @@ because `--gates` is the work list and they were silently absent from it.
 Fixed in both the census and the resolution table: **83 → 103 keys**, 29
 occurrences moved from `indirect` to `gate`. Both carry a test that fails
 without the fix.
+
+It happened a second time, from the other side. A key held in a `const` and
+handed to the accessor by NAME —
+
+```ts
+const TRUSTED_DEVICE_GATE = 'tengu_sessions_elevated_auth_enforcement'
+getFeatureValue_CACHED_MAY_BE_STALE(TRUSTED_DEVICE_GATE, false)
+```
+
+— has no literal between the parens either, so `tengu_sessions_elevated_auth_enforcement`
+(`platform/bridge/trustedDevice.ts:33`) sat in `indirect` and was absent from all
+103. The census now resolves a **file-local** binding passed to a gate accessor,
+and `tengu_satin_quoll`'s const site joins the two literal ones it already had.
+Two tests pin it — one for the promotion, one control arm asserting a bare
+`const` (or one consumed by `logEvent`) stays `indirect`, which is what stops the
+pass from filing every event constant as a gate key.
+
+Then a third, from the token regex rather than the call shape. `tengu[A-Za-z0-9_]*`
+has no hyphen, and two keys are not snake_case: `tengu-off-switch`
+(`providers/shims/claude/streaming.ts:315`) and `tengu-top-of-feed-tip`
+(`terminal/logo/EmergencyTip.tsx:6`). The token stopped at a bare `tengu`, which
+no call-shape range could then cover, so both classified `indirect` — and the
+first is read on **every** non-subscriber Opus request. Widening the class moves
+no totals: a hyphenated mention in prose already counted once as `tengu`.
+
+**103 → 106 keys** across the three fixes. Still deliberately unresolved: a key
+imported from another module, or built by concatenation. Those stay in
+`indirect` for human eyes rather than being chased by a pass that would only
+work most of the time.
+
+This is now the third time the instrument under-reported and the second time it
+did so while its own "unclassified stays at zero" invariant was green. A count
+that adds up is not a bucket that is right.
 
 The lesson generalizes past this repo: an instrument that buckets things needs a
 test per bucket boundary, not just a total that adds up. The census's
@@ -81,7 +114,7 @@ closed VS Code extension (`vscodeSdkMcp.ts:79-106`): `tengu_vscode_review_upsell
 (`mcp/channelPermissions.ts:36`) has no importer; only the
 `ChannelPermissionCallbacks` type is used.
 
-### FUNCIONA (88)
+### FUNCIONA (91)
 
 Everything else, with three subgroups that carry a condition:
 
@@ -89,12 +122,16 @@ Everything else, with three subgroups that carry a condition:
   `tengu_passport_quail`, `tengu_coral_fern`, `tengu_bramble_lintel`,
   `tengu_glacier_2xr`. These are `_openBuildDefaults`, and the characterization
   table proves the override path runs.
-- **Only with a claude.ai credential (8):** the `tengu_bridge_*`, `tengu_ccr_*`
-  and `tengu_cobalt_lantern` keys. Live, but only for a user signed in.
-- **Only on the first-party provider (8):** `tengu_attribution_header`,
+- **Only with a claude.ai credential (9):** the `tengu_bridge_*`, `tengu_ccr_*`
+  and `tengu_cobalt_lantern` keys, plus
+  `tengu_sessions_elevated_auth_enforcement` — the CLI-side half of the
+  trusted-device rollout, which decides whether `X-Trusted-Device-Token` is sent
+  at all (`trustedDevice.ts`, read at three sites). Live, but only for a user
+  signed in.
+- **Only on the first-party provider (9):** `tengu_attribution_header`,
   `tengu_amber_json_tools`, `tengu_tool_pear`, `tengu_fgts`,
   `tengu_cicada_nap_ms`, `tengu_miraculo_the_bard`, `tengu_penguins_off`,
-  `tengu_marble_sandcastle`.
+  `tengu_marble_sandcastle`, `tengu-off-switch`.
 
 ## Findings worth acting on
 
@@ -126,6 +163,17 @@ Everything else, with three subgroups that carry a condition:
    short-circuits on an interactive session, so the key only has an effect
    non-interactively — and there it depends on `tengu_passport_quail`, which this
    fork already turns on.
+5. **`tengu-off-switch` is the bypass killswitch's twin, and is still settable.**
+   `streaming.ts:310-321` refuses the request outright when
+   `{"tengu-off-switch": {"activated": true}}` is set, for any non-subscriber on
+   a non-custom Opus model. Upstream that is an emergency capacity lever pulled
+   remotely; here the only thing that can pull it is the user's own flag file,
+   and what they get is `CUSTOM_OFF_SWITCH_MESSAGE` with nothing naming the
+   cause. That is the exact argument that put
+   `tengu_disable_bypass_permissions_mode` in `SECURITY_RESTRICTIONS`
+   (finding 1), so it is a candidate for the same treatment — left as a finding
+   rather than done here, because unlike the bypass mode this one is not a
+   feature the user explicitly asked for and the call is theirs.
 
 ## Unsettled
 

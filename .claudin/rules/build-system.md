@@ -32,14 +32,21 @@ not source.
 2. **There is no second rewrite pass any more.** One used to blank the `tengu_*`
    name passed to `logEvent`/`logEventAsync`, because ~1000 event-name literals
    survived minification as arguments. Both the call sites and the sink are gone,
-   so the bundle now holds **zero** `tengu` tokens — check with
-   `rm -rf dist/chunks && bun run build` and grep `dist/cli.mjs`.
+   so no **event name** reaches the bundle any more.
+
+   That is not the same as "zero `tengu` tokens", which an earlier revision of
+   this file claimed and prescribed a check for that cannot see them: `dist/` is
+   code-split (rule 5 below), so grepping `dist/cli.mjs` reads 0 while ~470
+   `tengu` tokens ship in `dist/chunks/`. They are the **gate keys**, and they
+   have to ship — a key blanked in the bundle is a key the user's
+   `feature-flags.json` can no longer name. The check that means something is
+   `bun run scripts/verify/tengu-census.ts`, on the source.
 
    The distinction that pass drew is still load-bearing, though: a `tengu_*`
    string handed to `checkGate*`/`getFeatureValue*`/`getDynamicConfig*` is a
    feature-flag **KEY**, not an event name. Those are live — they are the
    contract with `~/.claudin/feature-flags.json` — and
-   `docs/tech/tengu-census/gate-audit.md` says what each of the 103 gates.
+   `docs/tech/tengu-census/gate-audit.md` says what each of the 106 gates.
    `bun run scripts/verify/tengu-census.ts` buckets every occurrence by role and
    fails loudly if one cannot be placed.
 3. **`MACRO.*` constants** (`MACRO.VERSION`, `MACRO.DISPLAY_VERSION`,
@@ -106,7 +113,7 @@ it looks — the specifier silently stops naming the declaration and becomes a r
 before the move either (742 of them in PR #88, from a single directory move).
 
 `bun run build:strict` pins the set: `scripts/build/missing-imports-baseline.json`
-records the 103 specifiers this fork legitimately stubs, and the build fails on
+records the 51 specifiers this fork legitimately stubs, and the build fails on
 any new one, naming the file that referenced it. It is what tells a deliberate
 stub apart from an import that broke. A plain `bun run build` prints the count
 and, when it matches the baseline exactly, says so — that line is the expected

@@ -23,7 +23,9 @@
  *                in an array, used as an object key, written into a regex. The
  *                build's rewrite deliberately leaves these alone because it
  *                cannot tell an event constant from a gate constant. They need
- *                human eyes.
+ *                human eyes. One shape is resolved rather than left for them:
+ *                a file-local const passed straight to a gate accessor — see
+ *                `gateBindingRanges`.
  *   doc          inside a comment, or in a .md file. Documentation, not code.
  *   unclassified the scanner could not place the occurrence at all. Must stay at
  *                ZERO — a non-zero count means this script has a blind spot, not
@@ -68,13 +70,24 @@ const SCAN_FILES = ['AGENTS.md', 'README.md', 'CONTRIBUTING.md'] as const
 const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', 'coverage', '__snapshots__'])
 const SCAN_EXTS = /\.(ts|tsx|js|mjs|cjs|json|md|txt)$/
 
-const TOKEN_RE = /tengu[A-Za-z0-9_]*/g
+/**
+ * The hyphen is in the class on purpose. Every event name and almost every gate
+ * key is snake_case, but `tengu-off-switch`
+ * (`providers/shims/claude/streaming.ts`) is not — and with `-` excluded the
+ * token stopped at `tengu`, which no call-shape range could then cover, so a
+ * live dynamic-config key read on every non-subscriber Opus request classified
+ * as `indirect` and never reached `--gates`.
+ *
+ * Widening it does not move the totals: a hyphenated mention in prose already
+ * matched as a bare `tengu` and still counts once, just under a longer token.
+ */
+const TOKEN_RE = /tengu[A-Za-z0-9_-]*/g
 
 // Same shape the build uses (scripts/build/build.ts), so the two agree on what
 // an event name is. Backticks are in the quote class because a few call sites
 // use a template literal with no interpolation; \2 pins the closing quote to
 // the opening one so a mixed pair never matches.
-const EVENT_RE = /\blogEvent(?:Async)?\(\s*(['"`])tengu[A-Za-z0-9_]*\1/g
+const EVENT_RE = /\blogEvent(?:Async)?\(\s*(['"`])tengu[A-Za-z0-9_-]*\1/g
 
 const GATE_FNS = [
   'getFeatureValue_CACHED_MAY_BE_STALE',
@@ -101,9 +114,51 @@ const GATE_FNS = [
 const GENERIC_ARG = '(?:\\s*<[^<>]*(?:<[^<>]*>[^<>]*)*>)?'
 
 const GATE_RE = new RegExp(
-  `\\b(?:${GATE_FNS.join('|')})${GENERIC_ARG}\\(\\s*(['"\`])tengu[A-Za-z0-9_]*\\1`,
+  `\\b(?:${GATE_FNS.join('|')})${GENERIC_ARG}\\(\\s*(['"\`])tengu[A-Za-z0-9_-]*\\1`,
   'g',
 )
+
+/**
+ * A gate key held in a `const` and handed to the accessor by NAME:
+ *
+ *     const TRUSTED_DEVICE_GATE = 'tengu_sessions_elevated_auth_enforcement'
+ *     getFeatureValue_CACHED_MAY_BE_STALE(TRUSTED_DEVICE_GATE, false)
+ *
+ * `GATE_RE` only sees a literal between the parens, so the binding landed in
+ * `indirect` — and `--gates` is the work list the gate audit is built from, so
+ * the key was silently absent from it and from `gate-audit.md`, which claims to
+ * enumerate every one. That is the same failure the generic-argument fix above
+ * corrects, reached from the other side: not lost from the total, mis-bucketed,
+ * which is worse because only the total is invariant-checked.
+ *
+ * Deliberately narrow: ONE file-local binding, passed by name to a gate
+ * accessor somewhere in the same file. This is not const propagation. A key
+ * imported from another module, or built by concatenation, still lands in
+ * `indirect` and shows up for human eyes — which is the honest answer rather
+ * than a half-working chase that would make the bucket look trustworthy.
+ */
+const CONST_BINDING_RE =
+  /\bconst\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*(?::[^=\n]*)?=\s*(['"`])(tengu[A-Za-z0-9_-]*)\2/g
+
+function gateBindingRanges(source: string): Array<[number, number]> {
+  const ranges: Array<[number, number]> = []
+  CONST_BINDING_RE.lastIndex = 0
+  let m: RegExpExecArray | null
+  while ((m = CONST_BINDING_RE.exec(source)) !== null) {
+    const name = m[1]!
+    const literal = m[3]!
+    const passedToGate = new RegExp(
+      `\\b(?:${GATE_FNS.join('|')})${GENERIC_ARG}\\(\\s*${name}\\b`,
+    ).test(source)
+    if (!passedToGate) continue
+    // The literal alone, not the whole `const … =` prefix: TOKEN_RE matches at
+    // the token, and a wider range would also claim a `tengu` living inside the
+    // binding's own name.
+    const start = m.index + m[0].length - 1 - literal.length
+    ranges.push([start, start + literal.length])
+  }
+  return ranges
+}
 
 export const REGION_CODE = 0
 export const REGION_COMMENT = 1
@@ -282,7 +337,12 @@ export function censusFile(path: string, source: string): Occurrence[] {
   const starts = lineIndex(source)
   const regions = isMarkdown ? null : scanRegions(source)
   const eventRanges = matchRanges(source, EVENT_RE)
-  const gateRanges = matchRanges(source, GATE_RE)
+  // `inRanges` short-circuits on the first range that starts past the offset,
+  // so the merged list has to stay sorted.
+  const gateRanges = [
+    ...matchRanges(source, GATE_RE),
+    ...(regions ? gateBindingRanges(source) : []),
+  ].sort((a, b) => a[0] - b[0])
   const lines = source.split('\n')
 
   const out: Occurrence[] = []

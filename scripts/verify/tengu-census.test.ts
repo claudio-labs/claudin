@@ -139,6 +139,54 @@ describe('censusFile', () => {
     })
   })
 
+  test('a const handed to a gate accessor by name is a gate, not indirect', () => {
+    // Same class of miss as the generic-argument case above: the key is counted
+    // either way, but `--gates` is the work list the audit is built from, so a
+    // mis-bucketed key never reaches it. `tengu_sessions_elevated_auth_enforcement`
+    // (bridge/trustedDevice.ts) was absent from all 103 for this reason.
+    const source = [
+      "const TRUSTED_DEVICE_GATE = 'tengu_bound_gate'",
+      'function isOn(): boolean {',
+      '  return getFeatureValue_CACHED_MAY_BE_STALE(TRUSTED_DEVICE_GATE, false)',
+      '}',
+    ].join('\n')
+
+    expect(bucketsOf(source)).toEqual({ 'tengu_bound_gate@1': 'gate' })
+  })
+
+  test('the binding pass needs the accessor — a bare const stays indirect', () => {
+    // The control arm. Without it the test above would also pass if the pass
+    // promoted every `const X = 'tengu_…'` on sight, which would quietly file
+    // event constants and array members as gate keys to audit.
+    const source = [
+      "const NEVER_READ = 'tengu_orphan_const'",
+      "const USED_BY_LOG = 'tengu_event_const'",
+      'logEvent(USED_BY_LOG, {})',
+    ].join('\n')
+
+    expect(bucketsOf(source)).toEqual({
+      'tengu_orphan_const@1': 'indirect',
+      'tengu_event_const@2': 'indirect',
+    })
+  })
+
+  test('a hyphenated key is one token, not a bare `tengu` plus debris', () => {
+    // Almost every key is snake_case, so the token class excluded `-`. Two are
+    // not: `tengu-off-switch` (the Opus emergency killswitch, read on every
+    // non-subscriber request) and `tengu-top-of-feed-tip`. The token stopped at
+    // `tengu`, no call-shape range covered it, and both classified `indirect`.
+    const source = [
+      "await getDynamicConfig_BLOCKS_ON_INIT<{ activated: boolean }>('tengu-off-switch', { activated: false })",
+      "const CONFIG_NAME = 'tengu-top-of-feed-tip'",
+      'getDynamicConfig_CACHED_MAY_BE_STALE(CONFIG_NAME, {})',
+    ].join('\n')
+
+    expect(bucketsOf(source)).toEqual({
+      'tengu-off-switch@1': 'gate',
+      'tengu-top-of-feed-tip@2': 'gate',
+    })
+  })
+
   test('a mention in a comment is documentation, not a call', () => {
     const source = [
       '// tengu_in_line_comment is documented here',
