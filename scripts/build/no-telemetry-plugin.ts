@@ -184,6 +184,21 @@ const _openBuildDefaults = {
  *   tengu_strap_foyer              = false      Settings sync to cloud
  */
 
+/**
+ * Keys a user must NOT be able to set, with the value every reader gets.
+ *
+ * tengu_disable_bypass_permissions_mode is a remote killswitch upstream: set it
+ * and --dangerously-skip-permissions stops working. There is no remote here, so
+ * leaving it settable would only let someone lock themselves out of a mode they
+ * asked for, with no way to notice why.
+ *
+ * NOTE: no backticks in this block. It lives inside the stub's template
+ * literal, where a bare backtick ends the string.
+ */
+const _securityRestrictionDefaults = {
+  tengu_disable_bypass_permissions_mode: false,
+};
+
 function _loadFlags() {
   if (_flags !== undefined) return;
   try {
@@ -198,6 +213,16 @@ function _loadFlags() {
 
 function _getFlagValue(key, defaultValue) {
   _loadFlags();
+  // Security restrictions are NOT user-settable. The same key is read through
+  // more than one accessor (checkSecurityRestrictionGate AND
+  // checkStatsigFeatureGate_CACHED_MAY_BE_STALE), so blanking one accessor
+  // leaves the other honouring feature-flags.json — which is how
+  // tengu_disable_bypass_permissions_mode stayed settable after it was
+  // supposedly neutralized. The refusal belongs here, where every reader
+  // passes, not at one call site.
+  if (Object.hasOwn(_securityRestrictionDefaults, key)) {
+    return _securityRestrictionDefaults[key];
+  }
   if (_flags != null && Object.hasOwn(_flags, key)) return _flags[key];
   if (Object.hasOwn(_openBuildDefaults, key)) return _openBuildDefaults[key];
   return defaultValue;
@@ -216,9 +241,12 @@ export async function getFeatureValue_DEPRECATED(feature, defaultValue) { return
 export function getFeatureValue_CACHED_MAY_BE_STALE(feature, defaultValue) { return _getFlagValue(feature, defaultValue); }
 export function getFeatureValue_CACHED_WITH_REFRESH(feature, defaultValue) { return _getFlagValue(feature, defaultValue); }
 export function checkStatsigFeatureGate_CACHED_MAY_BE_STALE(gate) { return Boolean(_getFlagValue(gate, false)); }
-// Security killswitch — always false in the open build. Anthropic uses this
-// gate to remotely disable bypassPermissions mode; exposing it via local flags
-// would let users accidentally lock themselves out of --dangerously-skip-permissions.
+// Security killswitch — always false in the open build. Upstream uses this gate
+// to remotely disable bypassPermissions mode; exposing it via local flags would
+// let users accidentally lock themselves out of --dangerously-skip-permissions.
+// Blanking it HERE is not sufficient on its own: permissionSetup.ts reads the
+// same key through checkStatsigFeatureGate at three sites, so the real refusal
+// lives in _getFlagValue, which every accessor goes through.
 export async function checkSecurityRestrictionGate(gate) { return false; }
 export async function checkGate_CACHED_OR_BLOCKING(gate) { return Boolean(_getFlagValue(gate, false)); }
 export function refreshGrowthBookAfterAuthChange() {}

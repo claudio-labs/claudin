@@ -98,14 +98,20 @@ Everything else, with three subgroups that carry a condition:
 
 ## Findings worth acting on
 
-1. **The bypass-permissions killswitch is half-disarmed.** The stub neutralizes
-   `checkSecurityRestrictionGate` to `return false`
-   (`no-telemetry-plugin.ts:219-222`) precisely so a user cannot lock themselves
-   out of `--dangerously-skip-permissions`. But three other sites read the *same*
-   key through `checkStatsigFeatureGate_CACHED_MAY_BE_STALE`, which *does* honour
-   `feature-flags.json` (`permissionSetup.ts:663`, `:893`, `:1375`). Writing
-   `{"tengu_disable_bypass_permissions_mode": true}` still disables the mode. The
-   neutralization is incomplete.
+1. **The bypass-permissions killswitch was half-disarmed — FIXED.** The stub
+   neutralized `checkSecurityRestrictionGate` to `return false` precisely so a
+   user cannot lock themselves out of `--dangerously-skip-permissions`. But three
+   other sites read the *same* key through
+   `checkStatsigFeatureGate_CACHED_MAY_BE_STALE`, which *does* honour
+   `feature-flags.json` (`permissionSetup.ts:663`, `:893`, `:1375`), so writing
+   `{"tengu_disable_bypass_permissions_mode": true}` still disabled the mode.
+
+   Confirmed empirically, not by reading: with the guard removed from a COPY of
+   the stub and that key set in a flags file, `checkStatsigFeatureGate` returns
+   `true`; with it, `false`. The refusal now lives in `_getFlagValue`, which every
+   accessor passes through, and is pinned by two tests — one asserting all four
+   accessors, one asserting the refusal is scoped to that key rather than
+   ignoring the whole file.
 2. **`tengu_marble_sandcastle` inverted meaning in this fork.** Its comment treats
    it as legacy ("fast mode no longer needs the native binary"), but the default
    artifact is a Node bundle (`build.ts` targets `node`), so `isInBundledMode()`

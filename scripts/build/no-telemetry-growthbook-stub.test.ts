@@ -67,6 +67,60 @@ describe('growthbook stub — local feature flag overrides', () => {
     expect(stub.getFeatureValue_CACHED_MAY_BE_STALE('tengu_passport_quail', true)).toBe(false)
   })
 
+  // ── Security restrictions are not user-settable ─────────────────
+
+  test('a security-restriction key ignores the flags file on EVERY accessor', async () => {
+    // tengu_disable_bypass_permissions_mode is a remote killswitch upstream:
+    // set it and --dangerously-skip-permissions stops working. There is no
+    // remote here, so a user setting it would only lock themselves out of a
+    // mode they asked for, with nothing explaining why.
+    //
+    // checkSecurityRestrictionGate was blanked for exactly that reason — but
+    // src/permissions/permissionSetup.ts reads the SAME key through
+    // checkStatsigFeatureGate at three sites, so blanking one accessor left
+    // the other honouring the file. The refusal now lives in the shared
+    // lookup, which is why this asserts on every door rather than one.
+    writeFileSync(
+      flagsFile,
+      JSON.stringify({ tengu_disable_bypass_permissions_mode: true }),
+    )
+
+    expect(
+      await stub.checkSecurityRestrictionGate(
+        'tengu_disable_bypass_permissions_mode',
+      ),
+    ).toBe(false)
+    expect(
+      stub.checkStatsigFeatureGate_CACHED_MAY_BE_STALE(
+        'tengu_disable_bypass_permissions_mode',
+      ),
+    ).toBe(false)
+    expect(
+      stub.getFeatureValue_CACHED_MAY_BE_STALE(
+        'tengu_disable_bypass_permissions_mode',
+        false,
+      ),
+    ).toBe(false)
+    expect(
+      await stub.checkGate_CACHED_OR_BLOCKING(
+        'tengu_disable_bypass_permissions_mode',
+      ),
+    ).toBe(false)
+  })
+
+  test('the refusal is scoped to that key, not to the whole file', () => {
+    // A blanket "ignore the file" would be a worse bug than the one fixed.
+    writeFileSync(
+      flagsFile,
+      JSON.stringify({
+        tengu_disable_bypass_permissions_mode: true,
+        tengu_foo: true,
+      }),
+    )
+
+    expect(stub.getFeatureValue_CACHED_MAY_BE_STALE('tengu_foo', false)).toBe(true)
+  })
+
   // ── Valid JSON object ────────────────────────────────────────────
 
   test('loads and returns values from a valid JSON file', () => {
