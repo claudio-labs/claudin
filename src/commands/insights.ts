@@ -1,13 +1,6 @@
 import { execFileSync } from 'child_process'
 import { diffLines } from 'diff'
-import type { Dirent } from 'fs'
-import {
-  mkdir,
-  readdir,
-  readFile,
-  unlink,
-  writeFile,
-} from 'fs/promises'
+import { mkdir, writeFile } from 'fs/promises'
 import { extname, join } from 'path'
 import type { Command } from 'src/commands/commands.js'
 import { queryWithModel } from 'src/providers/shims/claude.js'
@@ -16,14 +9,11 @@ import {
   LEGACY_AGENT_TOOL_NAME,
 } from 'src/tools/AgentTool/constants.js'
 import type { LogOption } from 'src/shared/types/logs.js'
-import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { toError } from 'src/shared/errors.js'
 import { logError } from 'src/shared/log.js'
 import { extractTextContent } from 'src/agent/messages/messages.js'
 import { getDefaultOpusModel } from 'src/providers/model/model.js'
 import {
-  getProjectsDir,
-  getSessionFilesWithMtime,
   getSessionIdFromLog,
   loadAllLogsFromSessionFile,
 } from 'src/sessions/sessionStorage.js'
@@ -39,6 +29,15 @@ import {
   OUTCOME_ORDER,
   SATISFACTION_ORDER,
 } from 'src/commands/insights/constants.js'
+import {
+  getDataDir,
+  getFacetsDir,
+  loadCachedFacets,
+  loadCachedSessionMeta,
+  saveFacets,
+  saveSessionMeta,
+  scanAllSessions,
+} from 'src/commands/insights/store.js'
 import type {
   AggregatedData,
   InsightResults,
@@ -59,19 +58,6 @@ function getAnalysisModel(): string {
 // Model for narrative insights (Opus - best quality)
 function getInsightsModel(): string {
   return getDefaultOpusModel()
-}
-
-// Lazy getters: getClaudinConfigHomeDir() is memoized and reads process.env.
-// Calling it at module scope would populate the memoize cache before
-// entrypoints can set CLAUDIN_CONFIG_DIR, breaking all 150+ other callers.
-function getDataDir(): string {
-  return join(getClaudinConfigHomeDir(), 'usage-data')
-}
-function getFacetsDir(): string {
-  return join(getDataDir(), 'facets')
-}
-function getSessionMetaDir(): string {
-  return join(getDataDir(), 'session-meta')
 }
 
 const FACET_EXTRACTION_PROMPT = `Analyze this Claudin session and extract structured facets.
@@ -583,66 +569,6 @@ async function formatTranscriptWithSummarization(
   ].join('\n')
 
   return header + summaries.join('\n\n---\n\n')
-}
-
-async function loadCachedFacets(
-  sessionId: string,
-): Promise<SessionFacets | null> {
-  const facetPath = join(getFacetsDir(), `${sessionId}.json`)
-  try {
-    const content = await readFile(facetPath, { encoding: 'utf-8' })
-    const parsed: unknown = jsonParse(content)
-    if (!isValidSessionFacets(parsed)) {
-      // Delete corrupted cache file so it gets re-extracted next run
-      try {
-        await unlink(facetPath)
-      } catch {
-        // Ignore deletion errors
-      }
-      return null
-    }
-    return parsed
-  } catch {
-    return null
-  }
-}
-
-async function saveFacets(facets: SessionFacets): Promise<void> {
-  try {
-    await mkdir(getFacetsDir(), { recursive: true })
-  } catch {
-    // Directory may already exist
-  }
-  const facetPath = join(getFacetsDir(), `${facets.session_id}.json`)
-  await writeFile(facetPath, jsonStringify(facets, null, 2), {
-    encoding: 'utf-8',
-    mode: 0o600,
-  })
-}
-
-async function loadCachedSessionMeta(
-  sessionId: string,
-): Promise<SessionMeta | null> {
-  const metaPath = join(getSessionMetaDir(), `${sessionId}.json`)
-  try {
-    const content = await readFile(metaPath, { encoding: 'utf-8' })
-    return jsonParse(content)
-  } catch {
-    return null
-  }
-}
-
-async function saveSessionMeta(meta: SessionMeta): Promise<void> {
-  try {
-    await mkdir(getSessionMetaDir(), { recursive: true })
-  } catch {
-    // Directory may already exist
-  }
-  const metaPath = join(getSessionMetaDir(), `${meta.session_id}.json`)
-  await writeFile(metaPath, jsonStringify(meta, null, 2), {
-    encoding: 'utf-8',
-    mode: 0o600,
-  })
 }
 
 async function extractFacetsFromAPI(
@@ -2019,52 +1945,6 @@ export function buildExportData(
     insights,
     facets_summary,
   }
-}
-
-// ============================================================================
-// Lite Session Scanning
-// ============================================================================
-
-/**
- * Scans all project directories using filesystem metadata only (no JSONL parsing).
- * Returns a list of session file info sorted by mtime descending.
- * Yields to the event loop between project directories to keep the UI responsive.
- */
-async function scanAllSessions(): Promise<LiteSessionInfo[]> {
-  const projectsDir = getProjectsDir()
-
-  let dirents: Dirent[]
-  try {
-    dirents = await readdir(projectsDir, { withFileTypes: true })
-  } catch {
-    return []
-  }
-
-  const projectDirs = dirents
-    .filter(dirent => dirent.isDirectory())
-    .map(dirent => join(projectsDir, dirent.name))
-
-  const allSessions: LiteSessionInfo[] = []
-
-  for (let i = 0; i < projectDirs.length; i++) {
-    const sessionFiles = await getSessionFilesWithMtime(projectDirs[i]!)
-    for (const [sessionId, fileInfo] of sessionFiles) {
-      allSessions.push({
-        sessionId,
-        path: fileInfo.path,
-        mtime: fileInfo.mtime,
-        size: fileInfo.size,
-      })
-    }
-    // Yield to event loop every 10 project directories
-    if (i % 10 === 9) {
-      await new Promise<void>(resolve => setImmediate(resolve))
-    }
-  }
-
-  // Sort by mtime descending (most recent first)
-  allSessions.sort((a, b) => b.mtime - a.mtime)
-  return allSessions
 }
 
 // ============================================================================
