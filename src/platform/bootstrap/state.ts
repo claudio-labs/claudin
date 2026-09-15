@@ -1,10 +1,3 @@
-import { resetTurnTokenState } from 'src/platform/bootstrap/state/cost.js'
-import {
-  getInitialState,
-  STATE,
-} from 'src/platform/bootstrap/state/store.js'
-import type { State } from 'src/platform/bootstrap/state/types.js'
-
 export type {
   AttributedCounter,
   ChannelEntry,
@@ -246,22 +239,4 @@ export {
   setSessionTrustAccepted,
   setTeleportedSessionInfo,
 } from 'src/platform/bootstrap/state/sessionArtifacts.js'
-
-// Only used in tests
-export function resetStateForTests(): void {
-  if (process.env.NODE_ENV !== 'test') {
-    throw new Error('resetStateForTests can only be called in tests')
-  }
-  Object.entries(getInitialState()).forEach(([key, value]) => {
-    STATE[key as keyof State] = value as never
-  })
-  resetTurnTokenState()
-  // Deliberately NOT sessionSwitched.clear(). Its three subscribers —
-  // stableStubState's clipped-id map, loopSentinels' first-fire memory,
-  // concurrentSessions' PID file — subscribe at module load and never
-  // re-subscribe, so clearing here unsubscribed them for the REST of the
-  // process: every later file in the same runner then asserted eviction
-  // against a dead signal, and whether it broke depended on whether the
-  // module happened to load before this call. registerSession() drops its
-  // own previous listener now, which is the leak the clear was really for.
-}
+export { resetStateForTests } from 'src/platform/bootstrap/state/reset.js'
