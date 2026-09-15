@@ -132,9 +132,6 @@ const SYNTHETIC_OUTPUT_TOOL_NAME = 'StructuredOutput'
 const OverflowTestTool = feature('OVERFLOW_TEST_TOOL')
   ? require('./OverflowTestTool/OverflowTestTool.js').OverflowTestTool
   : null
-const CtxInspectTool = feature('CONTEXT_COLLAPSE')
-  ? require('./CtxInspectTool/CtxInspectTool.js').CtxInspectTool
-  : null
 const TerminalCaptureTool = feature('TERMINAL_PANEL')
   ? require('./TerminalCaptureTool/TerminalCaptureTool.js')
       .TerminalCaptureTool
@@ -300,7 +297,6 @@ export function getAllBaseTools(): Tools {
       ? [getTaskCreateTool(), getTaskGetTool(), getTaskUpdateTool(), getTaskListTool()]
       : []),
     ...(OverflowTestTool ? [OverflowTestTool] : []),
-    ...(CtxInspectTool ? [CtxInspectTool] : []),
     ...(TerminalCaptureTool ? [TerminalCaptureTool] : []),
     ...(isWorktreeModeEnabled() ? [getEnterWorktreeTool(), getExitWorktreeTool()] : []),
     getSendMessageTool(),

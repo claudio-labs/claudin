@@ -44,9 +44,6 @@ exports[`tool registry — characterization the unconditional tool list matches 
 
 exports[`tool registry — characterization the flag-gated tool table matches the snapshot 1`] = `
 {
-  "CtxInspectTool": [
-    "CONTEXT_COLLAPSE",
-  ],
   "ListPeersTool": [
     "UDS_INBOX",
   ],

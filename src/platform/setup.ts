@@ -312,13 +312,6 @@ export async function setup(
       // biome-ignore lint/suspicious/noConsole:: intentional console output
       console.error(chalk.dim(mapNotice))
     }
-    if (feature('CONTEXT_COLLAPSE')) {
-      /* eslint-disable @typescript-eslint/no-require-imports */
-      ;(
-        require('src/agent/contextCollapse/index.js') as typeof import('src/agent/contextCollapse/index.js')
-      ).initContextCollapse()
-      /* eslint-enable @typescript-eslint/no-require-imports */
-    }
   }
   void lockCurrentVersion() // Lock current version to prevent deletion by other processes
   logForDiagnosticsNoPII('info', 'setup_background_jobs_launched')

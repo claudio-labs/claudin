@@ -118,15 +118,6 @@ export function runPostCompactCleanup(
   if (messages && isMainThreadCompact) {
     pruneOrphanClippedIds(messages)
   }
-  if (feature('CONTEXT_COLLAPSE')) {
-    if (isMainThreadCompact) {
-      /* eslint-disable @typescript-eslint/no-require-imports */
-      ;(
-        require('src/agent/contextCollapse/index.js') as typeof import('src/agent/contextCollapse/index.js')
-      ).resetContextCollapse()
-      /* eslint-enable @typescript-eslint/no-require-imports */
-    }
-  }
   if (isMainThreadCompact) {
     // getUserContext is a memoized outer layer wrapping getClaudeMds() →
     // getMemoryFiles(). If only the inner getMemoryFiles cache is cleared,
