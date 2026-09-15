@@ -1,10 +1,15 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
+//
+// Seventeen Anthropic-internal commands used to be imported eagerly here and
+// never registered: ant-trace, backfill-sessions, break-cache, bughunter,
+// ctx_viz, debug-tool-call, env, good-claude, issue, mock-limits,
+// oauth-refresh, onboarding, perf-issue, reset-limits, share, summary and
+// teleport. Each resolved to a checked-in one-line stub
+// (`{ isEnabled: () => false, isHidden: true, name: 'stub' }`) and none of them
+// appeared in COMMANDS(), so the imports cost a module each and bought nothing.
 import addDir from 'src/commands/add-dir/index.js'
 import autofixPr from 'src/commands/autofix-pr/index.js'
-import backfillSessions from 'src/commands/backfill-sessions/index.js'
 import btw from 'src/commands/btw/index.js'
-import goodClaude from 'src/commands/good-claude/index.js'
-import issue from 'src/commands/issue/index.js'
 import feedback from 'src/commands/feedback/index.js'
 import clear from 'src/commands/clear/index.js'
 import color from 'src/commands/color/index.js'
@@ -20,7 +25,6 @@ import diff from 'src/commands/diff/index.js'
 import explorer from 'src/commands/explorer/index.js'
 import dream from 'src/commands/dream/index.js'
 import goal from 'src/commands/goal/index.js'
-import ctx_viz from 'src/commands/ctx_viz/index.js'
 import doctor from 'src/commands/doctor/index.js'
 import knowledge from 'src/commands/knowledge/index.js'
 import memory from 'src/commands/memory/index.js'
@@ -32,25 +36,20 @@ import initVerifiers from 'src/commands/init-verifiers.js'
 import keybindings from 'src/commands/keybindings/index.js'
 import installGitHubApp from 'src/commands/install-github-app/index.js'
 import installSlackApp from 'src/commands/install-slack-app/index.js'
-import breakCache from 'src/commands/break-cache/index.js'
 import cacheProbe from 'src/commands/cache-probe/index.js'
 import cacheStats from 'src/commands/cacheStats/index.js'
 import cd from 'src/commands/cd/index.js'
 import mcp from 'src/commands/mcp/index.js'
-import onboarding from 'src/commands/onboarding/index.js'
 import releaseNotes from 'src/commands/release-notes/index.js'
 import rename from 'src/commands/rename/index.js'
 import resume from 'src/commands/resume/index.js'
 import review, { ultrareview } from 'src/commands/review.js'
 import session from 'src/commands/session/index.js'
-import share from 'src/commands/share/index.js'
 import skills from 'src/commands/skills/index.js'
 import status from 'src/commands/status/index.js'
 import tasks from 'src/commands/tasks/index.js'
-import teleport from 'src/commands/teleport/index.js'
 const agentsPlatform = null
 import securityReview from 'src/commands/security-review.js'
-import bughunter from 'src/commands/bughunter/index.js'
 import terminalSetup from 'src/commands/terminalSetup/index.js'
 import usage from 'src/commands/usage/index.js'
 import theme from 'src/commands/theme/index.js'
@@ -149,16 +148,8 @@ import plugin from 'src/commands/plugin/index.js'
 import reloadPlugins from 'src/commands/reload-plugins/index.js'
 import rewind from 'src/commands/rewind/index.js'
 import heapDump from 'src/commands/heapdump/index.js'
-import mockLimits from 'src/commands/mock-limits/index.js'
 import version from 'src/commands/version.js'
 import wiki from 'src/commands/wiki/index.js'
-import summary from 'src/commands/summary/index.js'
-import {
-  resetLimits,
-  resetLimitsNonInteractive,
-} from 'src/commands/reset-limits/index.js'
-import antTrace from 'src/commands/ant-trace/index.js'
-import perfIssue from 'src/commands/perf-issue/index.js'
 import sandboxToggle from 'src/commands/sandbox-toggle/index.js'
 import stickers from 'src/commands/stickers/index.js'
 import advisor from 'src/commands/advisor.js'
@@ -181,7 +172,6 @@ import {
 import memoize from 'lodash-es/memoize.js'
 import { isUsing3PServices, isClaudeAISubscriber } from 'src/providers/auth/auth.js'
 import { isFirstPartyAnthropicBaseUrl } from 'src/providers/model/providers.js'
-import env from 'src/commands/env/index.js'
 import exit from 'src/commands/exit/index.js'
 import exportCommand from 'src/commands/export/index.js'
 import model from 'src/commands/model/index.js'
@@ -210,8 +200,6 @@ const usageReport: Command = {
     return real.getPromptForCommand(args, context)
   },
 }
-import oauthRefresh from 'src/commands/oauth-refresh/index.js'
-import debugToolCall from 'src/commands/debug-tool-call/index.js'
 import { getSettingSourceName } from 'src/platform/settings/constants.js'
 import {
   type Command,
@@ -630,7 +618,6 @@ export const BRIDGE_SAFE_COMMANDS: Set<Command> = new Set(
     compact, // Shrink context — useful mid-session from a phone
     clear, // Wipe transcript
     cost, // Show session cost
-    summary, // Summarize conversation
     releaseNotes, // Show changelog
   ].filter((c): c is Command => c !== null),
 )
