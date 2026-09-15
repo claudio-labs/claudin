@@ -15,6 +15,7 @@
 import type { BackgroundTaskState } from 'src/agent/tasks/types.js'
 import type { DeepImmutable } from 'src/shared/types/utils.js'
 import { containerRowLabel } from 'src/agent/ui/tasks/containerRowLabel.js'
+import { mcpRowLabel } from 'src/agent/ui/tasks/mcpRowLabel.js'
 
 export function taskRowLabel(task: DeepImmutable<BackgroundTaskState>): string {
   switch (task.type) {
@@ -34,6 +35,8 @@ export function taskRowLabel(task: DeepImmutable<BackgroundTaskState>): string {
       return `@${task.identity.agentName}`
     case 'container':
       return containerRowLabel(task)
+    case 'mcp_server':
+      return mcpRowLabel(task)
     default:
       // LocalWorkflowTaskState resolves to `any` through the stub module this
       // fork ships, which defeats switch exhaustiveness even though every real

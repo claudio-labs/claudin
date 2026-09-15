@@ -581,6 +581,7 @@ export function runInteractiveStartupBlock(
     coordinatorTaskIndex: -1,
     viewSelectionMode: 'none',
     pendingContainerStop: null,
+    pendingMcpDisconnect: null,
     footerSelection: null,
     toolPermissionContext: effectiveToolPermissionContext as AppState['toolPermissionContext'],
     agent: mainThreadAgentDefinition?.agentType,

@@ -348,5 +348,11 @@ export function BackgroundTask(t0: Props) {
       // Its state word ("up", "exited (1)") is what the other arms spend a
       // TaskStatusText on.
       return <Text>{truncate(taskRowLabel(task), activityLimit, true)}</Text>;
+    case "mcp_server":
+      // Same shape, same reason as `container` above. The label already carries
+      // the glyph and the connection state, so there is no TaskStatusText here
+      // either — the task status is `running` in every connection state and
+      // would say nothing.
+      return <Text>{truncate(taskRowLabel(task), activityLimit, true)}</Text>;
   }
 }

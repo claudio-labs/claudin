@@ -125,6 +125,7 @@ import TextInput from 'src/terminal/text-input/TextInput.js';
 import { ThinkingToggle } from 'src/agent/ui/ThinkingToggle.js';
 import { BackgroundTasksDialog } from 'src/agent/ui/tasks/BackgroundTasksDialog.js';
 import { ContainerStopDialog } from 'src/agent/ui/tasks/ContainerStopDialog.js';
+import { McpDisconnectDialog } from 'src/agent/ui/tasks/McpDisconnectDialog.js';
 import { ErrorBoundary } from 'src/platform/ErrorBoundary.js';
 import { WorkflowsMenuWithTabs } from 'src/agent/ui/workflows/WorkflowsMenuWithTabs.js';
 import { shouldHideTasksFooter } from 'src/agent/ui/tasks/taskStatusUtils.js';
@@ -334,6 +335,7 @@ function PromptInput({
   // Raised by `x` on a container row (killBackgroundTask parks it rather than
   // stopping); the dialog below owns clearing it.
   const pendingContainerStop = useAppState((s: AppState) => s.pendingContainerStop);
+  const pendingMcpDisconnect = useAppState((s: AppState) => s.pendingMcpDisconnect);
   const replBridgeConnected = useAppState((s: AppState) => s.replBridgeConnected);
   const replBridgeExplicit = useAppState((s: AppState) => s.replBridgeExplicit);
   const replBridgeReconnecting = useAppState((s: AppState) => s.replBridgeReconnecting);
@@ -2001,10 +2003,13 @@ function PromptInput({
             // full background-tasks dialog (the inline tree has no inline view).
             const row = resolveFooterTreeRow(tasks, foregroundedTaskId, collapsedTaskGroups, coordinatorTaskIndex);
             if (row?.kind === 'header') {
-              const groupKey = row.groupKey;
+              // collapseKey, not groupKey: a sub-group header shares its
+              // parent's groupKey, so toggling on that would fold the whole
+              // MCP group instead of the one bucket under the cursor.
+              const collapseKey = row.collapseKey;
               setAppState(prev => {
                 const set = new Set(prev.collapsedTaskGroups);
-                if (set.has(groupKey)) set.delete(groupKey); else set.add(groupKey);
+                if (set.has(collapseKey)) set.delete(collapseKey); else set.add(collapseKey);
                 return { ...prev, collapsedTaskGroups: [...set] };
               });
             } else {
@@ -2405,6 +2410,13 @@ function PromptInput({
       ...prev,
       pendingContainerStop: null
     })), 'Stop container');
+  }
+  // Same placement, same reason, for `x` on an MCP row.
+  if (pendingMcpDisconnect) {
+    return guardDialog(<McpDisconnectDialog pending={pendingMcpDisconnect} />, () => setAppState(prev => ({
+      ...prev,
+      pendingMcpDisconnect: null
+    })), 'Disconnect MCP server');
   }
   if (showBashesDialog) {
     return guardDialog(<BackgroundTasksDialog onDone={() => setShowBashesDialog(false)} toolUseContext={getToolUseContext(messages, [], new AbortController(), mainLoopModel)} initialDetailTaskId={typeof showBashesDialog === 'string' ? showBashesDialog : undefined} />, () => setShowBashesDialog(false), 'Background tasks');

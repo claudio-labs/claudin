@@ -22,6 +22,10 @@ const GROUP_ICONS: Record<FooterGroupKey, string> = {
   shells: '\u{f1183}', // nf-md-console_line
   monitors: '\u{f0379}', // nf-md-monitor
   containers: '\u{f0868}', // nf-md-docker
+  // Four codepoints from nf-md-robot above, so it comes from the same MDI
+  // batch as a glyph this font is known to paint — the adjacency is the only
+  // cheap evidence there is that a codepoint is backed by an outline.
+  mcp: '\u{f06a5}', // nf-md-power_plug
   remote: '\u{f015f}', // nf-md-cloud
   workflows: '\u{f1049}', // nf-md-graph
   dreams: '\u{f04b2}', // nf-md-sleep

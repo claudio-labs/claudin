@@ -6,7 +6,10 @@ import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { truncate } from 'src/shared/text/format.js';
-import { FOOTER_GROUP_LABELS, FOOTER_GROUP_ORDER, type FooterGroupKey, getFooterPanelLayout, matchGroupKey } from 'src/agent/ui/tasks/footerTaskGeometry.js';
+import { FOOTER_GROUP_LABELS, FOOTER_GROUP_ORDER, type FooterGroupKey, getFooterPanelLayout, matchGroupKey, MCP_BUCKET_LABELS, MCP_BUCKET_ORDER, mcpBucketCollapseKey } from 'src/agent/ui/tasks/footerTaskGeometry.js';
+import { isMcpServerTask, mcpTaskStatusInput, type McpServerTaskState } from 'src/agent/tasks/McpServerTask/types.js';
+import { mcpBucket, type McpBucket } from 'src/mcp/serverStatus.js';
+import { mcpRowBody, mcpRowGlyph, mcpRowTone, type McpRowTone } from 'src/agent/ui/tasks/mcpRowLabel.js';
 import { taskRowLabel } from 'src/agent/ui/tasks/taskRowLabel.js';
 
 // Groups with >4 items start collapsed so the footer stays compact; the user can
@@ -26,9 +29,83 @@ const AUTO_COLLAPSE_THRESHOLD = 4;
 // and tree rows come after them in the same index space.
 const TREE_GROUPS: readonly FooterGroupKey[] = FOOTER_GROUP_ORDER.filter(key => key !== 'agents');
 
+// One nesting level, two columns per step — enough to read as a tree without
+// eating the label width a narrow terminal has left.
+const INDENT = '  ';
+
 export type FooterTaskRow =
-  | { kind: 'header'; groupKey: FooterGroupKey; label: string; count: number; collapsed: boolean }
-  | { kind: 'item'; task: BackgroundTaskState; label: string; isLast: boolean };
+  | {
+      kind: 'header';
+      groupKey: FooterGroupKey;
+      /** What Enter toggles in AppState.collapsedTaskGroups — the group's own
+       * key for a top-level header, a namespaced one for a sub-group. Callers
+       * read this rather than `groupKey`, which a sub-header shares with its
+       * parent. */
+      collapseKey: string;
+      /** 0 = the group's own header, 1 = a sub-group inside it. */
+      depth: 0 | 1;
+      label: string;
+      count: number;
+      collapsed: boolean;
+    }
+  | {
+      kind: 'item';
+      task: BackgroundTaskState;
+      label: string;
+      isLast: boolean;
+      depth: 0 | 1;
+      /** A coloured prefix painted as a NESTED <Text> before the label. Not a
+       * sibling: siblings in a row Box wrap as independent columns
+       * (.claudin/rules/ink-tui.md §10). */
+      accent?: { text: string; color: McpRowTone };
+    };
+
+/**
+ * The MCP group is the only one that nests: its servers are partitioned again
+ * by connection state, each bucket with its own header and its own collapse, so
+ * "what is down" reads at a glance instead of having to be spotted among the
+ * healthy rows.
+ */
+function pushMcpRows(
+  rows: FooterTaskRow[],
+  items: readonly BackgroundTaskState[],
+  collapsed: ReadonlySet<string>,
+): void {
+  const byBucket = new Map<McpBucket, McpServerTaskState[]>();
+  for (const task of items) {
+    if (!isMcpServerTask(task)) continue;
+    const bucket = mcpBucket(mcpTaskStatusInput(task));
+    const list = byBucket.get(bucket);
+    if (list) list.push(task);
+    else byBucket.set(bucket, [task]);
+  }
+  for (const bucket of MCP_BUCKET_ORDER) {
+    const list = byBucket.get(bucket);
+    if (!list || list.length === 0) continue;
+    const collapseKey = mcpBucketCollapseKey(bucket);
+    const isCollapsed = collapsed.has(collapseKey);
+    rows.push({
+      kind: 'header',
+      groupKey: 'mcp',
+      collapseKey,
+      depth: 1,
+      label: MCP_BUCKET_LABELS[bucket],
+      count: list.length,
+      collapsed: isCollapsed,
+    });
+    if (isCollapsed) continue;
+    list.forEach((task, i) =>
+      rows.push({
+        kind: 'item',
+        task,
+        label: mcpRowBody(task),
+        isLast: i === list.length - 1,
+        depth: 1,
+        accent: { text: mcpRowGlyph(task), color: mcpRowTone(task) },
+      }),
+    );
+  }
+}
 
 /**
  * Pure builder: partitions non-teammate background tasks into typed groups and
@@ -68,12 +145,15 @@ export function buildFooterTaskRows(
     if (items.length === 0) continue;
     groupCounts.set(groupKey, items.length);
     const isCollapsed = collapsed.has(groupKey);
-    rows.push({ kind: 'header', groupKey, label: FOOTER_GROUP_LABELS[groupKey], count: items.length, collapsed: isCollapsed });
-    if (!isCollapsed) {
-      items.forEach((task, i) =>
-        rows.push({ kind: 'item', task, label: taskRowLabel(task), isLast: i === items.length - 1 }),
-      );
+    rows.push({ kind: 'header', groupKey, collapseKey: groupKey, depth: 0, label: FOOTER_GROUP_LABELS[groupKey], count: items.length, collapsed: isCollapsed });
+    if (isCollapsed) continue;
+    if (groupKey === 'mcp') {
+      pushMcpRows(rows, items, collapsed);
+      continue;
     }
+    items.forEach((task, i) =>
+      rows.push({ kind: 'item', task, label: taskRowLabel(task), isLast: i === items.length - 1, depth: 0 }),
+    );
   }
   return { rows, groupCounts };
 }
@@ -152,11 +232,14 @@ export function BackgroundTaskGroupTree(): React.ReactNode {
       {rows.map((row, i) => {
         const isSelected = tasksFocused && coordinatorTaskIndex === treeBase + i;
         const pointer = isSelected ? `${figures.pointer} ` : '  ';
+        const indent = row.depth === 1 ? INDENT : '';
         if (row.kind === 'header') {
           const chevron = row.collapsed ? figures.triangleRight : figures.triangleDown;
           return (
-            <Box key={`h-${row.groupKey}`} flexDirection="row">
-              <Text dimColor>{pointer}</Text>
+            // Keyed on collapseKey, not groupKey: a group's sub-headers share
+            // its groupKey, so keying on that collides four ways under `mcp`.
+            <Box key={`h-${row.collapseKey}`} flexDirection="row">
+              <Text dimColor>{pointer}{indent}</Text>
               <Text dimColor>{chevron} </Text>
               <Text bold color={isSelected ? 'suggestion' : undefined}>
                 {row.label}
@@ -166,13 +249,17 @@ export function BackgroundTaskGroupTree(): React.ReactNode {
           );
         }
         const running = row.task.status === 'running';
-        const label = truncate(row.label, labelWidth, true);
+        // The accent is painted inside the label's own <Text>, so it spends
+        // from the same width budget: its glyph plus the space after it.
+        const accentWidth = row.accent ? row.accent.text.length + 1 : 0;
+        const label = truncate(row.label, Math.max(8, labelWidth - indent.length - accentWidth), true);
         const connector = row.isLast ? '└─' : '├─';
         return (
           <Box key={`i-${row.task.id}`} flexDirection="row">
-            <Text dimColor>{pointer}</Text>
+            <Text dimColor>{pointer}{indent}</Text>
             <Text dimColor>{connector} </Text>
             <Text dimColor={!running} color={isSelected ? 'suggestion' : undefined}>
+              {row.accent ? <Text color={row.accent.color}>{row.accent.text} </Text> : null}
               {label}
             </Text>
           </Box>

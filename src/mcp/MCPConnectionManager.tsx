@@ -12,6 +12,7 @@ interface MCPConnectionContextValue {
     resources?: ServerResource[];
   }>;
   toggleMcpServer: (serverName: string) => Promise<void>;
+  disconnectMcpServer: (serverName: string) => Promise<void>;
 }
 const MCPConnectionContext = createContext<MCPConnectionContextValue | null>(null);
 export function useMcpReconnect() {
@@ -28,6 +29,13 @@ export function useMcpToggleEnabled() {
   }
   return context.toggleMcpServer;
 }
+export function useMcpDisconnect() {
+  const context = useContext(MCPConnectionContext);
+  if (!context) {
+    throw new Error("useMcpDisconnect must be used within MCPConnectionManager");
+  }
+  return context.disconnectMcpServer;
+}
 interface MCPConnectionManagerProps {
   children: ReactNode;
   dynamicMcpConfig: Record<string, ScopedMcpServerConfig> | undefined;
@@ -36,7 +44,10 @@ interface MCPConnectionManagerProps {
 
 // TODO (ollie): We may be able to get rid of this context by putting these function on app state
 export function MCPConnectionManager(t0: MCPConnectionManagerProps) {
-  const $ = _c(6);
+  // React-Compiler output: adding a third value to the context object costs two
+  // slots (one more dep, and the shift below), so the count and every index
+  // move together. See .claudin/rules/ink-tui.md §6.
+  const $ = _c(7);
   const {
     children,
     dynamicMcpConfig,
@@ -44,29 +55,32 @@ export function MCPConnectionManager(t0: MCPConnectionManagerProps) {
   } = t0;
   const {
     reconnectMcpServer,
-    toggleMcpServer
+    toggleMcpServer,
+    disconnectMcpServer
   } = useManageMCPConnections(dynamicMcpConfig, isStrictMcpConfig);
   let t1;
-  if ($[0] !== reconnectMcpServer || $[1] !== toggleMcpServer) {
+  if ($[0] !== reconnectMcpServer || $[1] !== toggleMcpServer || $[2] !== disconnectMcpServer) {
     t1 = {
       reconnectMcpServer,
-      toggleMcpServer
+      toggleMcpServer,
+      disconnectMcpServer
     };
     $[0] = reconnectMcpServer;
     $[1] = toggleMcpServer;
-    $[2] = t1;
+    $[2] = disconnectMcpServer;
+    $[3] = t1;
   } else {
-    t1 = $[2];
+    t1 = $[3];
   }
   const value = t1;
   let t2;
-  if ($[3] !== children || $[4] !== value) {
+  if ($[4] !== children || $[5] !== value) {
     t2 = <MCPConnectionContext.Provider value={value}>{children}</MCPConnectionContext.Provider>;
-    $[3] = children;
-    $[4] = value;
-    $[5] = t2;
+    $[4] = children;
+    $[5] = value;
+    $[6] = t2;
   } else {
-    t2 = $[5];
+    t2 = $[6];
   }
   return t2;
 }

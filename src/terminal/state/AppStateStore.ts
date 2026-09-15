@@ -73,6 +73,22 @@ export type PendingContainerStop = {
   startedByUs: boolean
 }
 
+/**
+ * A pending request to disconnect an MCP server, raised by `x` on an MCP row
+ * and cleared by McpDisconnectDialog.
+ *
+ * Parked rather than acted on for the same reason a container stop is: an MCP
+ * server is the user's own configuration, not a process this session spawned,
+ * and dropping one mid-conversation takes its tools away from the model.
+ */
+export type PendingMcpDisconnect = {
+  taskId: string
+  /** The server's name in the config — what the disconnect itself takes. */
+  serverName: string
+  /** How many tools go away with it, so the dialog can say so. */
+  toolCount: number
+}
+
 export type SpeculationState =
   | { status: 'idle' }
   | {
@@ -170,6 +186,8 @@ export type AppState = DeepImmutable<{
   // Set by `x` on a container row; ContainerStopDialog renders off it and
   // clears it. Null whenever no confirmation is outstanding.
   pendingContainerStop: PendingContainerStop | null
+  // The same, for `x` on an MCP row; McpDisconnectDialog renders off it.
+  pendingMcpDisconnect: PendingMcpDisconnect | null
   // Which footer pill is focused (arrow-key navigation below the prompt).
   // Lives in AppState so pill components rendered outside PromptInput
   // (CompanionSprite in REPL.tsx) can read their own focused state.
@@ -556,6 +574,7 @@ export function getDefaultAppState(): AppState {
     coordinatorTaskIndex: -1,
     viewSelectionMode: 'none',
     pendingContainerStop: null,
+    pendingMcpDisconnect: null,
     footerSelection: null,
     kairosEnabled: false,
     remoteSessionUrl: undefined,

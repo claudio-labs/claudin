@@ -11,6 +11,7 @@ import { RemoteAgentTask } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask
 import type { BackgroundTaskState } from 'src/agent/tasks/types.js';
 import { isContainerStoppable } from 'src/agent/tasks/ContainerTask/types.js';
 import { shortContainerName } from 'src/agent/ui/tasks/containerRowLabel.js';
+import { isMcpServerDisconnectable } from 'src/agent/tasks/McpServerTask/types.js';
 import type { DeepImmutable } from 'src/shared/types/utils.js';
 import { logForDebugging } from 'src/shared/debug.js';
 
@@ -53,6 +54,25 @@ export function killBackgroundTask(
           taskId: task.id,
           name: shortContainerName(task.container),
           startedByUs: task.startedByUs,
+        },
+      }));
+      return;
+    case 'mcp_server':
+      // Same reasoning as `container` above, and the same shape: an MCP server
+      // is the user's configuration rather than this session's subprocess, and
+      // dropping one takes its tools away from the model mid-conversation.
+      // McpDisconnectDialog is what actually disconnects.
+      //
+      // The status guard above is not enough here either: the row keeps a
+      // `running` task status in every connection state, so `x` would be
+      // offered on a server that is already disconnected or still dialling.
+      if (!isMcpServerDisconnectable(task)) return;
+      setAppState(prev => ({
+        ...prev,
+        pendingMcpDisconnect: {
+          taskId: task.id,
+          serverName: task.serverName,
+          toolCount: task.toolCount,
         },
       }));
       return;
