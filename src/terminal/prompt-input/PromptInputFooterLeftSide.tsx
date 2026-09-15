@@ -21,6 +21,7 @@ import { isBackgroundTask } from 'src/agent/tasks/types.js';
 import { count } from 'src/shared/data/array.js';
 import { shouldHideTasksFooter } from 'src/agent/ui/tasks/taskStatusUtils.js';
 import { resolveFooterTreeRow } from 'src/agent/ui/tasks/footerSelection.js';
+import { footerRowAction } from 'src/agent/ui/tasks/footerRowAction.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { TeamStatus } from 'src/platform/teams/TeamStatus.js';
 import { isInProcessEnabled } from 'src/agent/coordinator/swarm/backends/registry.js';
@@ -280,7 +281,14 @@ function ModeIndicator({
     if (i < layout.treeBase) return 'agent' as const;
     const row = resolveFooterTreeRow(s_curkind.tasks, s_curkind.foregroundedTaskId, s_curkind.collapsedTaskGroups, i);
     if (row?.kind === 'header') return 'tree-header' as const;
-    if (row?.kind === 'item') return 'tree-item' as const;
+    if (row?.kind === 'item') {
+      // The verb for what `x` would ACTUALLY do here, so the byline never names
+      // a key that no-ops: a failed MCP server, a container past its grace
+      // period and a finished shell all reach this row with nothing to act on.
+      // Enter still opens the dialog on every one of them, which is what the
+      // inert case offers instead.
+      return footerRowAction(row.task) ?? ('tree-item-inert' as const);
+    }
     return 'none' as const;
   });
   const showSpinnerTree = expandedView === 'teammates';
@@ -492,7 +500,9 @@ function ModeIndicator({
   //   - not engaged          → "↓ navigate"   (enter the tree)
   //   - on pill / agent      → "enter view · x dismiss"
   //   - on a group header    → "enter expand/collapse"
-  //   - on a tree item       → "x stop"
+  //   - on a tree item       → "x stop" / "x disconnect" (an MCP server is not
+  //                            stopped — the session drops its connection)
+  //   - on an inert item     → "enter view" (nothing left for x to act on)
   // We render the hint even with teammates present — the teammate row sits in
   // its own line above the byline, and the tasks tree needs a discoverable
   // entry path regardless.
@@ -503,8 +513,12 @@ function ModeIndicator({
       case 'tree-header':
         hint = <KeyboardShortcutHint shortcut="enter" action="expand/collapse" />;
         break;
-      case 'tree-item':
-        hint = <KeyboardShortcutHint shortcut="x" action="stop" />;
+      case 'stop':
+      case 'disconnect':
+        hint = <KeyboardShortcutHint shortcut="x" action={cursorRowKind} />;
+        break;
+      case 'tree-item-inert':
+        hint = <KeyboardShortcutHint shortcut="enter" action="view" />;
         break;
       case 'pill':
       case 'agent':

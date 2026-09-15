@@ -9,9 +9,8 @@ import { LocalShellTask } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js
 import { MonitorMcpTask } from 'src/agent/tasks/MonitorMcpTask/MonitorMcpTask.js';
 import { RemoteAgentTask } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import type { BackgroundTaskState } from 'src/agent/tasks/types.js';
-import { isContainerStoppable } from 'src/agent/tasks/ContainerTask/types.js';
 import { shortContainerName } from 'src/agent/ui/tasks/containerRowLabel.js';
-import { isMcpServerDisconnectable } from 'src/agent/tasks/McpServerTask/types.js';
+import { footerRowAction } from 'src/agent/ui/tasks/footerRowAction.js';
 import type { DeepImmutable } from 'src/shared/types/utils.js';
 import { logForDebugging } from 'src/shared/debug.js';
 
@@ -36,7 +35,12 @@ export function killBackgroundTask(
   task: DeepImmutable<BackgroundTaskState>,
   setAppState: SetAppState,
 ): void {
-  if (task.status !== 'running') return;
+  // ONE guard for the key and for the byline that advertises it:
+  // PromptInputFooterLeftSide asks `footerRowAction` the same question to decide
+  // whether to name `x` at all, so the two cannot drift into offering a key that
+  // no-ops. A plain `status === 'running'` is not enough — container and MCP
+  // rows both keep that status with nothing left to act on.
+  if (footerRowAction(task) === null) return;
   switch (task.type) {
     case 'container':
       // Deliberately does NOT stop anything. Every other arm here kills a
@@ -44,10 +48,6 @@ export function killBackgroundTask(
       // and may predate the session entirely. Park the request and let
       // ContainerStopDialog confirm — that keeps this the single dispatch
       // point, so the `x` handler in PromptInput needs no container branch.
-      //
-      // The status guard above is not enough here: the row keeps a `running`
-      // task status through the grace period after the container dies.
-      if (!isContainerStoppable(task)) return;
       setAppState(prev => ({
         ...prev,
         pendingContainerStop: {
@@ -62,11 +62,6 @@ export function killBackgroundTask(
       // is the user's configuration rather than this session's subprocess, and
       // dropping one takes its tools away from the model mid-conversation.
       // McpDisconnectDialog is what actually disconnects.
-      //
-      // The status guard above is not enough here either: the row keeps a
-      // `running` task status in every connection state, so `x` would be
-      // offered on a server that is already disconnected or still dialling.
-      if (!isMcpServerDisconnectable(task)) return;
       setAppState(prev => ({
         ...prev,
         pendingMcpDisconnect: {

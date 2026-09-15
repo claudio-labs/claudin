@@ -44,6 +44,7 @@ const RAW: Record<string, unknown> = {
   monitor_mcp: { id: 'm1', type: 'monitor_mcp', status: 'running', description: 'Tailing gateway', startTime: 1 },
   dream: { id: 'd1', type: 'dream', status: 'running', description: 'Reviewing sessions', phase: 'reading', filesTouched: [], sessionsReviewing: 2, startTime: 1 },
   container: { id: 'k1', type: 'container', status: 'running', container: containerInfo(), startedByUs: true, restartCount: 0, lastNotifiedSignature: null, diedAt: null, startTime: 1 },
+  mcp_server: { id: 'p1', type: 'mcp_server', status: 'running', serverName: 'context7', connectionType: 'connected', transport: 'stdio', scope: 'local', toolCount: 2, resourceCount: 0, serverInfo: { name: 'Context7', version: '4.1.1' }, error: null, startTime: 1 },
 }
 
 /** Every background task type, keyed by its `type` discriminant. */
