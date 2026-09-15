@@ -58,18 +58,55 @@ they fixed is what a green gate does NOT catch:
   every export reachable only from inside the file, the one external reference a
   TYPE on a field nothing wrote or read. knip is blind to that shape — the type
   import is a real import of a real file.
+- **The OpenTelemetry counter surface had no producer.** The slice that called
+  `setMeter` was deleted; the accessors were not. All five setters were defined
+  and called from nowhere, so eight counters and three providers stayed null and
+  14 `getXCounter()?.add(…)` sites were permanent no-ops — cost, tokens, commits,
+  PRs, lines changed, permission decisions. Gone with them: `vendor/otel.ts`
+  (a local no-op shim so tsc could resolve the annotations), `bootstrap/state/
+  telemetry.ts`, and `ActivityManager` entirely, whose three methods computed
+  durations for a counter while nothing read its state. **`statsStore` sits in
+  the same STATE block and looks identical — it is LIVE**, written from
+  `interactiveHelpers.tsx`.
+- **Tungsten**: `TungstenTool`/`TungstenLiveMonitor` are `= null` stubs and both
+  imports of them were unused; five `tungsten*` `AppState` fields and one config
+  field were declaration-only.
 
-**Still open, and it is the big one: 44 of the 79 `feature('X')` names used in
-`src/` are absent from the `featureFlags` map**, so they fold to `false` and
-their branches are unreachable — ~134 sites. Biggest: `HISTORY_SNIP` (11 files),
-`EXPERIMENTAL_SKILL_SEARCH` (10), `WORKFLOW_SCRIPTS` (8), `ULTRAPLAN` (7),
-`DIRECT_CONNECT` (6), `TEMPLATES`/`LODESTONE`/`SSH_REMOTE` (5 each). None of the
-7 `feature(absent) ? require(…)` sites names a local module, so the dead code is
-branch-shaped inside LIVE files, not deletable modules. **ULTRAPLAN is not a
+## The 44 off-map flags are NOT 44 dead branches — corrected 2026-09-15
+
+44 of the 79 `feature('X')` names used in `src/` are absent from the
+`featureFlags` map, so `featureFlags[name] ?? false` folds them to `false`.
+An earlier note here called that 134 sites of dead code. **That was too strong**,
+and a blanket sweep would have broken the build:
+
+- **toolchain (4, must NOT be removed)** — `ALLOW_TEST_VERSIONS` is how
+  `bun run smoke` reaches the 99.99.x install path (`bun --feature=…`);
+  `IS_LIBC_MUSL`/`IS_LIBC_GLIBC` are compile-target pins `envDynamic.ts` falls
+  back to runtime detection without; `HARD_FAIL` is a debug build option.
+- **absent module** — gates a `require()` of a module this fork never received;
+  the branch is already a build stub and costs a line.
+- **dead local** — the real candidates. Each still needs its own trace: a flag is
+  not proof, because a gated module can have a live side-door.
+  `conversationArc.ts` sits behind `CONVERSATION_ARC` **and** is imported
+  directly by `/knowledge`. `multiTurnContext.ts` (138 lines) has no such door
+  and is genuinely dead.
+
+`scripts/build/feature-flags-source-guard.test.ts` now enumerates the set and
+fails on a new name — the ratchet, not the removal. **ULTRAPLAN is still not a
 clean cut**: `RemoteAgentTask.tsx` imports `UltraplanPhase` from
 `agent/ultraplan/ccrSession.ts` and `pillLabel.ts` renders `isUltraplan` /
 `ultraplanPhase` off the live remote-agent task state. Also `BUDDY: true` sits in
-the map with no `feature('BUDDY')` anywhere.
+the map with no `feature('BUDDY')` anywhere in `src/`.
+
+**Zero orphan files remain.** All 3295 `.ts(x)` under `src/` were scanned for any
+reference anywhere — imports, dynamic imports, requires, `mock.module`, plus the
+bare path and basename in `scripts/` and the root configs. Every production file
+is referenced. What is left is inside live files, which is the class
+`deadcode:ci` (knip) cannot see.
+
+One lead not taken: `SystemMicrocompactBoundaryMessage` is in the persisted
+`Message` union and `Message.tsx` renders its subtype, but nothing constructs
+one and `microcompactMetadata` occurs exactly once in the tree.
 
 ## Where it stood after the first 19 commits
 
