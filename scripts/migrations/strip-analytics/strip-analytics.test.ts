@@ -151,6 +151,102 @@ describe('statement boundaries that are not semicolons', () => {
     expect(out.text).toBeNull()
     expect(out.refusals.map(r => r.kind)).toEqual(['member-call'])
   })
+
+  test('a statement ending in a string literal still ends a statement', () => {
+    // The closing quote lives in the STRING region, so reading "not code" as
+    // "not a boundary" refused the ordinary call beneath it — the shape found
+    // in compact.ts and FileReadTool.
+    const out = run(
+      [
+        "import { logEvent } from 'src/x.js'",
+        'export function f(cleared: boolean) {',
+        "  const arm = cleared ? 'cleared' : 'clipped'",
+        "  logEvent('tengu_x', { arm })",
+        '  return arm',
+        '}',
+      ].join('\n'),
+    )
+    expect(out.refusals).toEqual([])
+    expect(out.calls).toBe(1)
+    expect(out.text).toContain("const arm = cleared ? 'cleared' : 'clipped'")
+  })
+
+  test('a call on the same line as a string is still refused', () => {
+    // No newline means no ASI boundary: this one is an argument.
+    const out = run(
+      [
+        "import { logEvent } from 'src/x.js'",
+        "export const f = () => wrap('a', logEvent('tengu_x', {}))",
+      ].join('\n'),
+    )
+    expect(out.text).toBeNull()
+    expect(out.refusals.map(r => r.kind)).toEqual(['expression-position'])
+  })
+
+  test('a function declaration is not a call site', () => {
+    const out = run(
+      [
+        'export function logEvent(name: string): void {',
+        '  void name',
+        '}',
+      ].join('\n'),
+    )
+    expect(out.text).toBeNull()
+    expect(out.refusals).toEqual([])
+  })
+
+  test('a promise chain\u2019s .catch() is not a catch clause', () => {
+    // The unbraced-head check looks for `catch` before the paren. Without
+    // excluding a leading dot it matched `.catch(`, refusing every call that
+    // sat under a promise chain.
+    const out = run(
+      [
+        "import { logEvent } from 'src/x.js'",
+        'export function f() {',
+        '  void save().catch(e => {',
+        '    logError(e)',
+        '  })',
+        "  logEvent('tengu_x', {})",
+        '  return 1',
+        '}',
+      ].join('\n'),
+    )
+    expect(out.refusals).toEqual([])
+    expect(out.calls).toBe(1)
+    expect(out.text).toContain('logError(e)')
+  })
+
+  test('an unbraced if body is still refused', () => {
+    const out = run(
+      [
+        "import { logEvent } from 'src/x.js'",
+        'export function f(x: boolean) {',
+        '  if (x)',
+        "    logEvent('tengu_x', {})",
+        '}',
+      ].join('\n'),
+    )
+    expect(out.text).toBeNull()
+    expect(out.refusals.map(r => r.kind)).toEqual(['expression-position'])
+  })
+
+  test('a postfix increment ends the statement above a call', () => {
+    // `n++` terminates; a bare `+` would not. Reading only the last character
+    // refused the call under every counter bump.
+    const out = run(
+      [
+        "import { logEvent } from 'src/x.js'",
+        'export function f(t: { n: number }) {',
+        '  t.n++',
+        "  logEvent('tengu_x', { n: t.n })",
+        '  return t.n',
+        '}',
+      ].join('\n'),
+    )
+    expect(out.refusals).toEqual([])
+    expect(out.calls).toBe(1)
+    expect(out.text).toContain('t.n++')
+  })
 })
 
 describe('refusals', () => {

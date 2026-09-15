@@ -20,10 +20,6 @@ import { waitForRemoteManagedSettingsToLoad } from 'src/platform/remoteManagedSe
 import { assembleToolPool } from 'src/tools/tools.js'
 import { mergeAndFilterTools } from 'src/agent/tools/toolPool.js'
 import { toolMatchesName, type Tools } from 'src/tools/Tool.js'
-import {
-  logEvent,
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from 'src/platform/analytics/index.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { withDiagnosticsTiming } from 'src/shared/diagLogs.js'
 import { logError, logMCPDebug } from 'src/shared/log.js'
@@ -101,9 +97,6 @@ export function registerElicitationHandlers(
 
           const mode = request.params.mode === 'url' ? 'url' : 'form'
 
-          logEvent('tengu_mcp_elicitation_shown', {
-            mode: mode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          })
 
           // Run elicitation hooks first — they can provide a response programmatically
           const hookResponse = await runElicitationHooks(
@@ -116,11 +109,6 @@ export function registerElicitationHandlers(
               serverName,
               `Elicitation resolved by hook: ${jsonStringify(hookResponse)}`,
             )
-            logEvent('tengu_mcp_elicitation_response', {
-              mode: mode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-              action:
-                hookResponse.action as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-            })
             return hookResponse
           }
 
@@ -157,11 +145,6 @@ export function registerElicitationHandlers(
             elicitationId,
           )
 
-          logEvent('tengu_mcp_elicitation_response', {
-            mode: mode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-            action:
-              result.action as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          })
           return result
         },
       )

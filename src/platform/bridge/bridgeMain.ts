@@ -6,11 +6,6 @@ import { getRemoteSessionUrl } from 'src/shared/constants/product.js'
 import { shutdownDatadog } from 'src/platform/analytics/datadog.js'
 import { shutdown1PEventLogging } from 'src/platform/analytics/firstPartyEventLogger.js'
 import { checkGate_CACHED_OR_BLOCKING } from 'src/platform/analytics/growthbook.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-  logEventAsync,
-} from 'src/platform/analytics/index.js'
 import { isInBundledMode } from 'src/platform/install/bundledMode.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
@@ -219,13 +214,6 @@ export async function runBridgeLoop(
           `[bridge:heartbeat] Failed for sessionId=${sessionId} workId=${workId}: ${errorMessage(err)}`,
         )
         if (err instanceof BridgeFatalError) {
-          logEvent('tengu_bridge_heartbeat_error', {
-            status:
-              err.status as unknown as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-            error_type: (err.status === 401 || err.status === 403
-              ? 'auth_failed'
-              : 'fatal') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          })
           if (err.status === 401 || err.status === 403) {
             authFailedSessions.push(sessionId)
           } else {
@@ -461,11 +449,6 @@ export async function runBridgeLoop(
       logForDebugging(
         `[bridge:session] sessionId=${sessionId} workId=${workId ?? 'unknown'} exited status=${status} duration=${formatDuration(durationMs)}`,
       )
-      logEvent('tengu_bridge_session_done', {
-        status:
-          status as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        duration_ms: durationMs,
-      })
       logForDiagnosticsNoPII('info', 'bridge_session_done', {
         status,
         duration_ms: durationMs,
@@ -605,9 +588,6 @@ export async function runBridgeLoop(
         logForDebugging(
           `[bridge:poll] Reconnected after ${formatDuration(disconnectedMs)}`,
         )
-        logEvent('tengu_bridge_reconnected', {
-          disconnected_ms: disconnectedMs,
-        })
       }
 
       connBackoff = 0
@@ -632,11 +612,6 @@ export async function runBridgeLoop(
           //   - Capacity wake fires (session ended → poll for new work)
           //   - Loop aborted (shutdown)
           if (pollConfig.non_exclusive_heartbeat_interval_ms > 0) {
-            logEvent('tengu_bridge_heartbeat_mode_entered', {
-              active_sessions: activeSessions.size,
-              heartbeat_interval_ms:
-                pollConfig.non_exclusive_heartbeat_interval_ms,
-            })
             // Deadline computed once at entry — GB updates to atCapMs don't
             // shift an in-flight deadline (next entry picks up the new value).
             const pollDeadline = atCapMs > 0 ? Date.now() + atCapMs : null
@@ -681,12 +656,6 @@ export async function runBridgeLoop(
                     : pollDeadline !== null && Date.now() >= pollDeadline
                       ? 'poll_due'
                       : 'config_disabled'
-            logEvent('tengu_bridge_heartbeat_mode_exited', {
-              reason:
-                exitReason as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-              heartbeat_cycles: hbCycles,
-              active_sessions: activeSessions.size,
-            })
             if (exitReason === 'poll_due') {
               // bridgeApi throttles empty-poll logs (EMPTY_POLL_LOG_INTERVAL=100)
               // so the once-per-10min poll_due poll is invisible at counter=2.
@@ -777,7 +746,6 @@ export async function runBridgeLoop(
         logger.logError(
           `Failed to decode work secret for workId=${work.id}: ${errMsg}`,
         )
-        logEvent('tengu_bridge_work_secret_failed', {})
         // Can't ack (needs the JWT we failed to decode). stopWork uses OAuth,
         // so it's callable here — prevents XAUTOCLAIM from re-delivering this
         // poisoned item every reclaim_older_than_ms cycle.
@@ -1079,14 +1047,6 @@ export async function runBridgeLoop(
           const handle = spawnResult
 
           const spawnDurationMs = Date.now() - spawnStartTime
-          logEvent('tengu_bridge_session_started', {
-            active_sessions: activeSessions.size,
-            spawn_mode:
-              spawnModeAtDecision as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-            in_worktree: sessionWorktrees.has(sessionId),
-            spawn_duration_ms: spawnDurationMs,
-            worktree_create_ms: worktreeCreateMs,
-          })
           logForDiagnosticsNoPII('info', 'bridge_session_started', {
             spawn_mode: spawnModeAtDecision,
             in_worktree: sessionWorktrees.has(sessionId),
@@ -1235,11 +1195,6 @@ export async function runBridgeLoop(
           logger.logError(err.message)
           logError(err)
         }
-        logEvent('tengu_bridge_fatal_error', {
-          status: err.status,
-          error_type:
-            err.errorType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        })
         logForDiagnosticsNoPII(
           isExpiredErrorType(err.errorType) ? 'info' : 'error',
           'bridge_fatal_error',
@@ -1281,11 +1236,6 @@ export async function runBridgeLoop(
           logger.logError(
             `Server unreachable for ${Math.round(elapsed / 60_000)} minutes, giving up.`,
           )
-          logEvent('tengu_bridge_poll_give_up', {
-            error_type:
-              'connection' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-            elapsed_ms: elapsed,
-          })
           logForDiagnosticsNoPII('error', 'bridge_poll_give_up', {
             error_type: 'connection',
             elapsed_ms: elapsed,
@@ -1347,11 +1297,6 @@ export async function runBridgeLoop(
           logger.logError(
             `Persistent errors for ${Math.round(elapsed / 60_000)} minutes, giving up.`,
           )
-          logEvent('tengu_bridge_poll_give_up', {
-            error_type:
-              'general' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-            elapsed_ms: elapsed,
-          })
           logForDiagnosticsNoPII('error', 'bridge_poll_give_up', {
             error_type: 'general',
             elapsed_ms: elapsed,
@@ -1388,10 +1333,6 @@ export async function runBridgeLoop(
   logger.clearStatus()
 
   const loopDurationMs = Date.now() - loopStartTime
-  logEvent('tengu_bridge_shutdown', {
-    active_sessions: activeSessions.size,
-    loop_duration_ms: loopDurationMs,
-  })
   logForDiagnosticsNoPII('info', 'bridge_shutdown', {
     active_sessions: activeSessions.size,
     loop_duration_ms: loopDurationMs,
@@ -1643,9 +1584,6 @@ function onSessionTimeout(
   logForDebugging(
     `[bridge:session] sessionId=${sessionId} timed out after ${formatDuration(timeoutMs)}`,
   )
-  logEvent('tengu_bridge_session_timeout', {
-    timeout_ms: timeoutMs,
-  })
   logger.logSessionFailed(
     sessionId,
     `Session timed out after ${formatDuration(timeoutMs)}`,
@@ -1989,11 +1927,6 @@ export async function bridgeMain(args: string[]): Promise<void> {
   // initSinks() so the denial event can be enqueued.
   const multiSessionEnabled = await isMultiSessionSpawnEnabled()
   if (usedMultiSessionFeature && !multiSessionEnabled) {
-    await logEventAsync('tengu_bridge_multi_session_denied', {
-      used_spawn: parsedSpawnMode !== undefined,
-      used_capacity: parsedCapacity !== undefined,
-      used_create_session_in_dir: parsedCreateSessionInDir !== undefined,
-    })
     // logEventAsync only enqueues — process.exit() discards buffered events.
     // Flush explicitly, capped at 500ms to match gracefulShutdown.ts.
     // (sleep() doesn't unref its timer, but process.exit() follows immediately
@@ -2160,10 +2093,6 @@ export async function bridgeMain(args: string[]): Promise<void> {
     const chosen: 'same-dir' | 'worktree' =
       answer.trim() === '2' ? 'worktree' : 'same-dir'
     savedSpawnMode = chosen
-    logEvent('tengu_bridge_spawn_mode_chosen', {
-      spawn_mode:
-        chosen as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
     saveCurrentProjectConfig(current => {
       if (current.remoteControlSpawnMode === chosen) return current
       return { ...current, remoteControlSpawnMode: chosen }
@@ -2285,9 +2214,6 @@ export async function bridgeMain(args: string[]): Promise<void> {
     environmentId = reg.environment_id
     environmentSecret = reg.environment_secret
   } catch (err) {
-    logEvent('tengu_bridge_registration_failed', {
-      status: err instanceof BridgeFatalError ? err.status : undefined,
-    })
     // Registration failures are fatal — print a clean message instead of a stack trace.
     // biome-ignore lint/suspicious/noConsole:: intentional console output
     console.error(
@@ -2303,21 +2229,6 @@ export async function bridgeMain(args: string[]): Promise<void> {
     `[bridge:init] Registered, server environmentId=${environmentId}`,
   )
   const startupPollConfig = getPollIntervalConfig()
-  logEvent('tengu_bridge_started', {
-    max_sessions: config.maxSessions,
-    has_debug_file: !!config.debugFile,
-    sandbox: config.sandbox,
-    verbose: config.verbose,
-    heartbeat_interval_ms:
-      startupPollConfig.non_exclusive_heartbeat_interval_ms,
-    spawn_mode:
-      config.spawnMode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    spawn_mode_source:
-      spawnModeSource as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    multi_session_gate: multiSessionEnabled,
-    pre_create_session: preCreateSession,
-    worktree_available: worktreeAvailable,
-  })
   logForDiagnosticsNoPII('info', 'bridge_started', {
     max_sessions: config.maxSessions,
     sandbox: config.sandbox,
@@ -2378,10 +2289,6 @@ export async function bridgeMain(args: string[]): Promise<void> {
       const newMode: 'same-dir' | 'worktree' =
         config.spawnMode === 'same-dir' ? 'worktree' : 'same-dir'
       config.spawnMode = newMode
-      logEvent('tengu_bridge_spawn_mode_toggled', {
-        spawn_mode:
-          newMode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      })
       logger.logStatus(
         newMode === 'worktree'
           ? 'Spawn mode: worktree (new sessions get isolated git worktrees)'

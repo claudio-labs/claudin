@@ -194,14 +194,11 @@ async function handleSessionFileAccess(
 
     switch (input.tool_name) {
       case FILE_READ_TOOL_NAME:
-        logEvent('tengu_team_mem_file_read', { ...subagentProps })
         break
       case FILE_EDIT_TOOL_NAME:
-        logEvent('tengu_team_mem_file_edit', { ...subagentProps })
         teamMemWatcher?.notifyTeamMemoryWrite()
         break
       case FILE_WRITE_TOOL_NAME:
-        logEvent('tengu_team_mem_file_write', { ...subagentProps })
         teamMemWatcher?.notifyTeamMemoryWrite()
         break
     }

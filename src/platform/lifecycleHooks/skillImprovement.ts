@@ -1,11 +1,6 @@
 import { feature } from 'bun:bundle'
 import { getInvokedSkillsForAgent } from 'src/platform/bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { queryModelWithoutStreaming } from 'src/providers/shims/claude.js'
 import { getEmptyToolPermissionContext } from 'src/tools/Tool.js'
 import type { Message } from 'src/shared/types/message.js'
@@ -148,14 +143,6 @@ Output <updates>[]</updates> if no updates are needed.`,
         const projectSkill = findProjectSkill()
         const skillName = projectSkill?.skillName ?? 'unknown'
 
-        logEvent('tengu_skill_improvement_detected', {
-          updateCount: result.result
-            .length as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          uuid: result.uuid as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          // _PROTO_skill_name routes to the privileged skill_name BQ column.
-          _PROTO_skill_name:
-            skillName as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-        })
 
         context.toolUseContext.setAppState(prev => ({
           ...prev,

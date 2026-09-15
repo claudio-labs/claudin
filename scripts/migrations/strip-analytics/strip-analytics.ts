@@ -126,8 +126,14 @@ const CONTINUATION = new Set([
 const CONTINUATION_KEYWORD =
   /(?:^|[^A-Za-z0-9_$])(return|yield|throw|case|else|do|try|finally|new|typeof|in|of|instanceof|delete|export|extends|default)$/
 
-/** Heads whose unbraced body is a single statement we must not orphan. */
-const UNBRACED_HEAD = /(?:^|[^A-Za-z0-9_$])(if|while|for|switch|catch|with)$/
+/**
+ * Heads whose unbraced body is a single statement we must not orphan.
+ *
+ * The excluded prefix carries `.` on purpose: `.catch(…)` is a method call, and
+ * reading it as a `catch` clause refused every ordinary call that happened to
+ * sit under a promise chain.
+ */
+const UNBRACED_HEAD = /(?:^|[^A-Za-z0-9_$.])(if|while|for|switch|catch|with)$/
 
 /**
  * Does the `:` at `colon` close a `case`/`default` label rather than split a
@@ -205,15 +211,26 @@ function statementStart(
   for (;;) {
     const prev = prevNonSpace(source, start - 1, regions)
     if (prev < 0) return start
-    if (regions[prev] !== REGION_CODE) return null
+    // A statement that ends in a string or a regex literal ends on that
+    // literal's CLOSING character, which lives in the literal's own region —
+    // `const arm = serverCleared ? 'cleared' : 'clipped'` is the shape, and
+    // treating it as "not code" refused the perfectly ordinary call beneath it.
+    // Such a token ends a value, so only the newline rule below decides.
+    const endsValueLiteral = regions[prev] !== REGION_CODE
+    if (endsValueLiteral && !source.slice(prev + 1, start).includes('\n')) {
+      return null
+    }
 
     const lookback = source.slice(Math.max(0, prev - 12), prev + 1)
-    // `await f()` and `void f()` are still statements — step over the keyword.
-    const stepOver = /(?:^|[^A-Za-z0-9_$])(await|void)$/.exec(lookback)
-    if (stepOver) {
-      start = prev - stepOver[1]!.length + 1
-      continue
+    if (!endsValueLiteral) {
+      // `await f()` and `void f()` are still statements — step over the keyword.
+      const stepOver = /(?:^|[^A-Za-z0-9_$])(await|void)$/.exec(lookback)
+      if (stepOver) {
+        start = prev - stepOver[1]!.length + 1
+        continue
+      }
     }
+    if (endsValueLiteral) return start
 
     const c = source[prev]!
     if (c === ';' || c === '{' || c === '}') return start
@@ -221,6 +238,10 @@ function statementStart(
 
     const newlineBetween = source.slice(prev + 1, start).includes('\n')
     if (!newlineBetween) return null
+    // `count++` ends a statement; a lone `+` continues an expression. Without
+    // this the increment above a call refused it.
+    const postfix = source.slice(prev - 1, prev + 1)
+    if (postfix === '++' || postfix === '--') return start
     if (CONTINUATION.has(c)) return null
     if (IDENT_RE.test(c) && CONTINUATION_KEYWORD.test(lookback)) return null
     if (c === ')') {
@@ -473,6 +494,13 @@ export function transform(fileName: string, source: string): FileResult {
       let j = ident + sink.length
       while (j < source.length && /\s/.test(source[j]!)) j++
       if (source[j] !== '(') continue // an import specifier or a bare reference
+
+      // `export function logEvent(` is a declaration, not a call. Skipping it
+      // outright rather than refusing keeps the sinks' own modules off the
+      // review list — they are deleted wholesale, not rewritten.
+      if (/(?:^|[^A-Za-z0-9_$])function\s*$/.test(source.slice(Math.max(0, ident - 12), ident))) {
+        continue
+      }
 
       // `regions` is load-bearing here: without it the scan stops on a period
       // that merely ended the comment line above the call, and a plain call
