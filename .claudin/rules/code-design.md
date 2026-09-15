@@ -21,7 +21,10 @@ In this order, before the first edit:
 2. **Read the directory, not just the file.** A `<area>.ts` next to an `<area>/`
    directory is a **barrel** — the logic lives in the siblings
    (`src/tools/shared/codeOutline/`, `src/platform/headless/print/`,
-   `src/providers/shims/claude/`). Editing the barrel is almost always wrong.
+   `src/providers/shims/claude/`, `src/platform/config/config/`,
+   `src/platform/bootstrap/state/`, `src/commands/insights/`,
+   `src/tools/BashTool/bashPermissions/` and `bashSecurity/`). Editing the
+   barrel is almost always wrong.
 3. **Grep the callers before changing a signature.** Cross-slice imports use the
    `src/…` alias, so `Grep` on the symbol name finds every call site; there is no
    hidden dynamic wiring except MCP and plugins.

@@ -258,7 +258,7 @@ src/
 │   │                              itself is agent/cache/ (→ cache.md)
 │   ├── ui/ (21)                 ← ProviderManager, ModelPicker, EffortPicker, OAuth flows
 │   └── (adding a preset? use the /add-provider-preset skill)
-├── tools/ (582)                 ← built-in tools, one dir per tool; entry is <Name>Tool.ts(x)
+├── tools/ (656)                 ← built-in tools, one dir per tool; entry is <Name>Tool.ts(x)
 │   ├── Tool.ts                  ← central type system: Tool, Tools, ToolUseContext, buildTool()
 │   ├── tools.ts                 ← dynamic registry (sandbox/plan/coordinator/MCP-aware)
 │   ├── BashTool/                ← shell execution, permissions, sandbox
@@ -283,17 +283,19 @@ src/
 │   ├── constants/               ← toolLimits.ts, tools.ts (names/descriptions)
 │   └── shared/                  ← outputFilter/ (Bash noise stripping), diagnostics/ (shared
 │                                  Build+Typecheck parsers), codeOutline/ (scanSymbols), stagedWrite/
-├── platform/ (581)              ← the host: process, config, OS integration, telemetry
+├── platform/ (653)              ← the host: process, config, OS integration, telemetry
 │   ├── entrypoints/ (16)        ← cli.tsx: process entry — fast-paths --version, defers heavy imports
 │   ├── main/ (44)               ← boot sequence: bootContext, argvPreparse, action, commands
 │   ├── headless/ (54)           ← headless -p / print mode, ndjson, exit handling
-│   ├── config/ (14)             ← config.ts (getGlobalConfig/saveGlobalConfig), claudinMigration
+│   ├── config/ (22)             ← config.ts is a BARREL over config/ (types, defaults, fileStore,
+│   │                              globalConfig, projectConfig, trust, derived); claudinMigration
 │   ├── settings/ (33)           ← settings.json layers, precedence, remote-managed
 │   ├── lifecycleHooks/ (43)     ← Claude Code lifecycle hooks (PreToolUse …). React hooks live in
 │   │                              each slice's own hooks/ — these are the harness's
 │   ├── bash/ (32)               ← bash parsing, command splitting, shell snapshots
 │   ├── analytics/ (9)           ← GrowthBook, logEvent (telemetry stubbed at build time)
-│   ├── bootstrap/state.ts       ← getSessionId, getIsNonInteractiveSession, cwd helpers
+│   ├── bootstrap/state.ts       ← a BARREL over state/ — the STATE singleton lives in state/store.ts
+│   │                              and nowhere else; getSessionId, cwd helpers, cost, latches
 │   ├── lsp/ ide/ install/ shell/ computerUse/ notifications/ secureStorage/
 │   ├── migrations/ (11)         ← one-time settings/model migrations (migrateFennecToOpus …)
 │   ├── bridge/ (37)             ← bridge mode (BRIDGE_MODE flag; largely gated/stubbed)
@@ -311,9 +313,11 @@ src/
 │   ├── render/ (12)             ← fullscreen, render cadence, fpsTracker, streamJsonStdoutGuard
 │   ├── prompt-suggestion/ (11)  ← ghost text, file suggestions, speculation
 │   └── explorer/ voice/ vim/ wizard/ custom-select/ buddy/  ← dialogs and input modes
-├── commands/ (248)              ← slash commands (/provider, /review, /plan, /resume, /mcp …),
+├── commands/ (281)              ← slash commands (/provider, /review, /plan, /resume, /mcp …),
 │                                  one dir or file per command; registry in commands/commands.ts.
-│                                  plugin/ (19) and install-github-app/ (17) are the big ones
+│                                  plugin/ (19) and install-github-app/ (17) are the big ones;
+│                                  insights.ts is a BARREL over insights/ and must keep re-exporting
+│                                  `default` — commands.ts reaches it through a dynamic import
 ├── permissions/ (116)           ← rules, classifiers, always-allow, and every permission dialog
 │   ├── yoloClassifier.ts        ← the auto-mode classifier (prompts in yolo-classifier-prompts/)
 │   ├── toolPermission/          ← per-mode handlers (interactive, coordinator, swarm worker)

@@ -101,7 +101,7 @@ const QUESTIONS: readonly { file: string; ask: string }[] = [
     ask: 'quais funcoes chamam isAbortError e o que muda quando ele e verdadeiro',
   },
   {
-    file: 'src/platform/config/config.ts',
+    file: 'src/platform/config/config/globalConfig.ts',
     ask: 'quais funcoes chamam getGlobalConfig fora do proprio modulo',
   },
 ]

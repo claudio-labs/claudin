@@ -55,7 +55,7 @@ describe('auto-background is opt-in', () => {
   // `!== false` reads as a harmless cleanup — so pin the text.
   test('the config default is false', () => {
     const src = readFileSync(
-      join(import.meta.dir, '../../platform/config/config.ts'),
+      join(import.meta.dir, '../../platform/config/config/defaults.ts'),
       'utf8',
     )
     expect(src).toContain('autoBackgroundAgentsEnabled: false,')
