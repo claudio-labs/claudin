@@ -261,15 +261,6 @@ async function* queryLoop(
   | ToolUseSummaryMessage,
   Terminal
 > {
-  // Start a new turn for multi-turn context tracking
-  if (
-    feature('MULTI_TURN_CONTEXT') &&
-    getGlobalConfig().knowledgeGraphEnabled
-  ) {
-    const { startNewTurn } = await import('src/agent/context/multiTurnContext.js')
-    startNewTurn()
-  }
-
   // Defensive: clear any late-LSP armed files left over from a prior turn
   // that exited via an unhandled path (abort/throw). Process-global registry,
   // so a leak would surface diagnostics in an unrelated turn.
@@ -1432,28 +1423,6 @@ async function* queryLoop(
       }
     }
     queryCheckpoint('query_tool_execution_end')
-
-    // Track multi-turn context after tool execution
-    if (
-      feature('MULTI_TURN_CONTEXT') &&
-      getGlobalConfig().knowledgeGraphEnabled
-    ) {
-      const lastTurnAssistantMessage = assistantMessages.at(-1)
-      if (lastTurnAssistantMessage) {
-        const { addMessageToTurn, addToolCallToTurn } = await import(
-          'src/agent/context/multiTurnContext.js'
-        )
-        addMessageToTurn(lastTurnAssistantMessage)
-        for (const toolUse of toolUseBlocks) {
-          addToolCallToTurn({
-            id: toolUse.id,
-            name: toolUse.name,
-            input: toolUse.input as Record<string, unknown>,
-            timestamp: Date.now(),
-          })
-        }
-      }
-    }
 
     // Update conversation arc phase
     if (
