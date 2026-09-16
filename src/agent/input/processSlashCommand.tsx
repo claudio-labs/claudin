@@ -2,21 +2,19 @@ import { feature } from 'bun:bundle';
 import type { ContentBlockParam, TextBlockParam } from '@anthropic-ai/sdk/resources';
 import { randomUUID } from 'crypto';
 import { setPromptId } from 'src/platform/bootstrap/state.js';
-import { builtInCommandNames, type Command, type CommandBase, findCommand, getCommand, getCommandName, hasCommand, type PromptCommand } from 'src/commands/commands.js';
+import { type Command, type CommandBase, findCommand, getCommand, getCommandName, hasCommand, type PromptCommand } from 'src/commands/commands.js';
 import { NO_CONTENT_MESSAGE } from 'src/agent/prompts/messages.js';
 import type { SetToolJSXFn, ToolUseContext } from 'src/tools/Tool.js';
 import type { AssistantMessage, AttachmentMessage, Message, NormalizedUserMessage, ProgressMessage, UserMessage } from 'src/shared/types/message.js';
 import { addInvokedSkill, getSessionId } from 'src/platform/bootstrap/state.js';
 import { COMMAND_MESSAGE_TAG, COMMAND_NAME_TAG } from 'src/shared/constants/xml.js';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, type AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED, logEvent } from 'src/platform/analytics/index.js';
 import { buildPostCompactMessages } from 'src/agent/compact/compact.js';
 import { resetMicrocompactState } from 'src/agent/compact/microCompact.js';
 import type { Progress as AgentProgress } from 'src/tools/AgentTool/AgentTool.js';
 import { runAgent } from 'src/tools/AgentTool/runAgent.js';
 import { renderToolUseProgressMessage } from 'src/tools/AgentTool/UI.js';
 import type { CommandResultDisplay } from 'src/shared/types/command.js';
-import { createAbortController } from 'src/shared/abortController.js';
 import { getAgentContext } from 'src/agent/coordinator/agentContext.js';
 import { createAttachmentMessage, getAttachmentMessages } from 'src/agent/attachments/attachments.js';
 import { logForDebugging } from 'src/shared/debug.js';
@@ -29,18 +27,13 @@ import { toArray } from 'src/shared/generators.js';
 import { registerSkillHooks } from 'src/platform/lifecycleHooks/registerSkillHooks.js';
 import { logError } from 'src/shared/log.js';
 import { getCurrentLocalJSXGeneration } from 'src/terminal/toolJSXStore.js';
-import { enqueuePendingNotification } from 'src/agent/messageQueueManager.js';
 import { createCommandInputMessage, createSyntheticUserCaveatMessage, createSystemMessage, createUserInterruptionMessage, createUserMessage, formatCommandInputTags, isCompactBoundaryMessage, isSystemLocalCommandMessage, normalizeMessages, prepareUserContent } from 'src/agent/messages/messages.js';
 import type { ModelAlias } from 'src/providers/model/aliases.js';
 import { parseToolListFromCLI } from 'src/permissions/permissionSetup.js';
 import { hasPermissionsToUseTool } from 'src/permissions/permissions.js';
-import { isOfficialMarketplaceName, parsePluginIdentifier } from 'src/plugins/pluginIdentifier.js';
 import { isRestrictedToPluginOnly, isSourceAdminTrusted } from 'src/platform/settings/pluginOnlyPolicy.js';
 import { parseSlashCommand } from 'src/commands/slashCommandParsing.js';
-import { sleep } from 'src/shared/sleep.js';
 import { recordSkillUsage } from 'src/terminal/suggestions/skillUsageTracking.js';
-import { logOTelEvent, redactIfDisabled } from 'src/platform/telemetry/events.js';
-import { buildPluginCommandTelemetryFields } from 'src/platform/telemetry/pluginTelemetry.js';
 import { getAssistantMessageContentLength } from 'src/agent/context/tokens.js';
 import { createAgentId } from 'src/shared/data/uuid.js';
 import type { ProcessUserInputBaseResult, ProcessUserInputContext } from 'src/agent/input/processUserInput.js';
@@ -48,29 +41,11 @@ type SlashCommandResult = ProcessUserInputBaseResult & {
   command: Command;
 };
 
-// Poll interval and deadline for MCP settle before launching a background
-// forked subagent. MCP servers typically connect within 1-3s of startup;
-// 10s headroom covers slow SSE handshakes.
-const MCP_SETTLE_POLL_MS = 200;
-const MCP_SETTLE_TIMEOUT_MS = 10_000;
-
 /**
  * Executes a slash command with context: fork in a sub-agent.
  */
 async function executeForkedSlashCommand(command: CommandBase & PromptCommand, args: string, context: ProcessUserInputContext, precedingInputBlocks: ContentBlockParam[], setToolJSX: SetToolJSXFn, canUseTool: CanUseToolFn): Promise<SlashCommandResult> {
   const agentId = createAgentId();
-  const pluginMarketplace = command.pluginInfo ? parsePluginIdentifier(command.pluginInfo.repository).marketplace : undefined;
-  logEvent('tengu_slash_command_forked', {
-    command_name: command.name as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    invocation_trigger: 'user-slash' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    ...(command.pluginInfo && {
-      _PROTO_plugin_name: command.pluginInfo.pluginManifest.name as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED,
-      ...(pluginMarketplace && {
-        _PROTO_marketplace_name: pluginMarketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED
-      }),
-      ...buildPluginCommandTelemetryFields(command.pluginInfo)
-    })
-  });
   const {
     skillContent,
     modifiedGetAppState,
@@ -84,88 +59,6 @@ async function executeForkedSlashCommand(command: CommandBase & PromptCommand, a
     effort: command.effort
   } : baseAgent;
   logForDebugging(`Executing forked slash command /${command.name} with agent ${agentDefinition.agentType}`);
-
-  // Assistant mode: fire-and-forget. Launch subagent in background, return
-  // immediately, re-enqueue the result as an isMeta prompt when done.
-  // Without this, N scheduled tasks on startup = N serial (subagent + main
-  // agent turn) cycles blocking user input. With this, N subagents run in
-  // parallel and results trickle into the queue as they finish.
-  //
-  // Gated on kairosEnabled (not CLAUDE_CODE_BRIEF) because the closed loop
-  // depends on assistant-mode invariants: scheduled_tasks.json exists,
-  // the main agent knows to pipe results through SendUserMessage, and
-  // isMeta prompts are hidden. Outside assistant mode, context:fork commands
-  // are user-invoked skills (/commit etc.) that should run synchronously
-  // with the progress UI.
-  if (feature('KAIROS') && (await context.getAppState()).kairosEnabled) {
-    // Standalone abortController — background subagents survive main-thread
-    // ESC (same policy as AgentTool's async path). They're cron-driven; if
-    // killed mid-run they just re-fire on the next schedule.
-    const bgAbortController = createAbortController();
-    const commandName = getCommandName(command);
-
-    // Re-enter the queue as a hidden prompt. isMeta: hides from queue
-    // preview + placeholder + transcript. skipSlashCommands: prevents
-    // re-parsing if the result text happens to start with '/'. When
-    // drained, this triggers a main-agent turn that sees the result and
-    // decides whether to SendUserMessage.
-    const enqueueResult = (value: string): void => enqueuePendingNotification({
-      value,
-      mode: 'prompt',
-      priority: 'later',
-      isMeta: true,
-      skipSlashCommands: true
-    });
-    void (async () => {
-      // Wait for MCP servers to settle. Scheduled tasks fire at startup and
-      // all N drain within ~1ms (since we return immediately), capturing
-      // context.options.tools before MCP connects. The sync path
-      // accidentally avoided this — tasks serialized, so task N's drain
-      // happened after task N-1's 30s run, by which time MCP was up.
-      // Poll until no 'pending' clients remain, then refresh.
-      const deadline = Date.now() + MCP_SETTLE_TIMEOUT_MS;
-      while (Date.now() < deadline) {
-        const s = context.getAppState();
-        if (!s.mcp.clients.some(c => c.type === 'pending')) break;
-        await sleep(MCP_SETTLE_POLL_MS);
-      }
-      const freshTools = context.options.refreshTools?.() ?? context.options.tools;
-      const agentMessages: Message[] = [];
-      for await (const message of runAgent({
-        agentDefinition,
-        promptMessages,
-        toolUseContext: {
-          ...context,
-          getAppState: modifiedGetAppState,
-          abortController: bgAbortController
-        },
-        canUseTool,
-        isAsync: true,
-        querySource: 'agent:custom',
-        model: command.model as ModelAlias | undefined,
-        availableTools: freshTools,
-        override: {
-          agentId
-        }
-      })) {
-        agentMessages.push(message);
-      }
-      const resultText = extractResultText(agentMessages, 'Command completed');
-      logForDebugging(`Background forked command /${commandName} completed (agent ${agentId})`);
-      enqueueResult(`<scheduled-task-result command="/${commandName}">\n${resultText}\n</scheduled-task-result>`);
-    })().catch(err => {
-      logError(err);
-      enqueueResult(`<scheduled-task-result command="/${commandName}" status="failed">\n${err instanceof Error ? err.message : String(err)}\n</scheduled-task-result>`);
-    });
-
-    // Nothing to render, nothing to query — the background runner re-enters
-    // the queue on its own schedule.
-    return {
-      messages: [],
-      shouldQuery: false,
-      command
-    };
-  }
 
   // Collect messages from the forked agent
   const agentMessages: Message[] = [];
@@ -289,7 +182,6 @@ export function looksLikeCommand(commandName: string): boolean {
 export async function processSlashCommand(inputString: string, precedingInputBlocks: ContentBlockParam[], imageContentBlocks: ContentBlockParam[], attachmentMessages: AttachmentMessage[], context: ProcessUserInputContext, setToolJSX: SetToolJSXFn, uuid?: string, isAlreadyProcessing?: boolean, canUseTool?: CanUseToolFn): Promise<ProcessUserInputBaseResult> {
   const parsed = parseSlashCommand(inputString);
   if (!parsed) {
-    logEvent('tengu_input_slash_missing', {});
     const errorMessage = 'Commands are in the form `/command [args]`';
     return {
       messages: [createSyntheticUserCaveatMessage(), ...attachmentMessages, createUserMessage({
@@ -304,10 +196,8 @@ export async function processSlashCommand(inputString: string, precedingInputBlo
   }
   const {
     commandName,
-    args: parsedArgs,
-    isMcp
+    args: parsedArgs
   } = parsed;
-  const sanitizedCommandName = isMcp ? 'mcp' : !builtInCommandNames().has(commandName) ? 'custom' : commandName;
 
   // Check if it's a real command before processing
   if (!hasCommand(commandName, context.options.commands)) {
@@ -321,9 +211,6 @@ export async function processSlashCommand(inputString: string, precedingInputBlo
       // Not a file path — treat as command name
     }
     if (looksLikeCommand(commandName) && !isFilePath) {
-      logEvent('tengu_input_slash_invalid', {
-        input: commandName as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
       const unknownMessage = `Unknown skill: ${commandName}`;
       return {
         messages: [createSyntheticUserCaveatMessage(), ...attachmentMessages, createUserMessage({
@@ -341,13 +228,6 @@ export async function processSlashCommand(inputString: string, precedingInputBlo
     }
     const promptId = randomUUID();
     setPromptId(promptId);
-    logEvent('tengu_input_prompt', {});
-    // Log user prompt event for OTLP
-    void logOTelEvent('user_prompt', {
-      prompt_length: String(inputString.length),
-      prompt: redactIfDisabled(inputString),
-      'prompt.id': promptId
-    });
     return {
       messages: [createUserMessage({
         content: prepareUserContent({
@@ -360,15 +240,12 @@ export async function processSlashCommand(inputString: string, precedingInputBlo
     };
   }
 
-  // Track slash command usage for feature discovery
-
   const {
     messages: newMessages,
     shouldQuery: messageShouldQuery,
     allowedTools,
     model,
     effort,
-    command: returnedCommand,
     resultText,
     nextInput,
     submitNextInput
@@ -376,38 +253,6 @@ export async function processSlashCommand(inputString: string, precedingInputBlo
 
   // Local slash commands that skip messages
   if (newMessages.length === 0) {
-    const eventData: Record<string, boolean | number | undefined> = {
-      input: sanitizedCommandName as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    };
-
-    // Add plugin metadata if this is a plugin command
-    if (returnedCommand.type === 'prompt' && returnedCommand.pluginInfo) {
-      const {
-        pluginManifest,
-        repository
-      } = returnedCommand.pluginInfo;
-      const {
-        marketplace
-      } = parsePluginIdentifier(repository);
-      const isOfficial = isOfficialMarketplaceName(marketplace);
-      // _PROTO_* routes to PII-tagged plugin_name/marketplace_name BQ columns
-      // (unredacted, all users); plugin_name/plugin_repository stay in
-      // additional_metadata as redacted variants for general-access dashboards.
-      eventData._PROTO_plugin_name = pluginManifest.name as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED;
-      if (marketplace) {
-        eventData._PROTO_marketplace_name = marketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED;
-      }
-      eventData.plugin_repository = (isOfficial ? repository : 'third-party') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-      eventData.plugin_name = (isOfficial ? pluginManifest.name : 'third-party') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-      if (isOfficial && pluginManifest.version) {
-        eventData.plugin_version = pluginManifest.version as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-      }
-      Object.assign(eventData, buildPluginCommandTelemetryFields(returnedCommand.pluginInfo));
-    }
-    logEvent('tengu_input_command', {
-      ...eventData,
-      invocation_trigger: 'user-slash' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    });
     return {
       messages: [],
       shouldQuery: false,
@@ -419,13 +264,6 @@ export async function processSlashCommand(inputString: string, precedingInputBlo
 
   // For invalid commands, preserve both the user message and error
   if (newMessages.length === 2 && newMessages[1]!.type === 'user' && typeof newMessages[1]!.message.content === 'string' && newMessages[1]!.message.content.startsWith('Unknown command:')) {
-    // Don't log as invalid if it looks like a common file path
-    const looksLikeFilePath = inputString.startsWith('/var') || inputString.startsWith('/tmp') || inputString.startsWith('/private');
-    if (!looksLikeFilePath) {
-      logEvent('tengu_input_slash_invalid', {
-        input: commandName as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
-    }
     return {
       messages: [createSyntheticUserCaveatMessage(), ...newMessages],
       shouldQuery: messageShouldQuery,
@@ -435,36 +273,6 @@ export async function processSlashCommand(inputString: string, precedingInputBlo
   }
 
   // A valid command
-  const eventData: Record<string, boolean | number | undefined> = {
-    input: sanitizedCommandName as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-  };
-
-  // Add plugin metadata if this is a plugin command
-  if (returnedCommand.type === 'prompt' && returnedCommand.pluginInfo) {
-    const {
-      pluginManifest,
-      repository
-    } = returnedCommand.pluginInfo;
-    const {
-      marketplace
-    } = parsePluginIdentifier(repository);
-    const isOfficial = isOfficialMarketplaceName(marketplace);
-    eventData._PROTO_plugin_name = pluginManifest.name as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED;
-    if (marketplace) {
-      eventData._PROTO_marketplace_name = marketplace as AnalyticsMetadata_I_VERIFIED_THIS_IS_PII_TAGGED;
-    }
-    eventData.plugin_repository = (isOfficial ? repository : 'third-party') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-    eventData.plugin_name = (isOfficial ? pluginManifest.name : 'third-party') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-    if (isOfficial && pluginManifest.version) {
-      eventData.plugin_version = pluginManifest.version as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-    }
-    Object.assign(eventData, buildPluginCommandTelemetryFields(returnedCommand.pluginInfo));
-  }
-  logEvent('tengu_input_command', {
-    ...eventData,
-    invocation_trigger: 'user-slash' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-  });
-
   // Check if this is a compact result which handle their own synthetic caveat message ordering
   const isCompactResult = newMessages.length > 0 && newMessages[0] && isCompactBoundaryMessage(newMessages[0]);
   return {

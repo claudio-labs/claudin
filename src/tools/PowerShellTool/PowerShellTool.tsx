@@ -5,9 +5,7 @@ import * as React from 'react';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { z } from 'zod/v4';
-import { getKairosActive } from 'src/platform/bootstrap/state.js';
 import { TOOL_SUMMARY_MAX_LENGTH } from 'src/tools/constants/toolLimits.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import type { SetToolJSXFn, Tool, ToolCallProgress, ValidationResult } from 'src/tools/Tool.js';
 import { buildTool, type ToolDef } from 'src/tools/Tool.js';
 import { backgroundExistingForegroundTask, markTaskNotified, registerForeground, spawnShellTask, unregisterForeground } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js';
@@ -36,7 +34,7 @@ import { shouldUseSandbox } from 'src/tools/BashTool/shouldUseSandbox.js';
 import { BackgroundHint } from 'src/tools/BashTool/UI.js';
 import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from 'src/tools/BashTool/utils.js';
 import { trackGitOperations } from 'src/tools/shared/gitOperationTracking.js';
-import { ASSISTANT_BLOCKING_BUDGET_MS, mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
+import { mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
 import { interpretCommandResult } from 'src/tools/PowerShellTool/commandSemantics.js';
 import { powershellToolHasPermission } from 'src/tools/PowerShellTool/powershellPermissions.js';
 import { getDefaultTimeoutMs, getMaxTimeoutMs, getPrompt } from 'src/tools/PowerShellTool/prompt.js';
@@ -266,17 +264,6 @@ type OutputSchema = ReturnType<typeof outputSchema>;
 export type Out = z.infer<OutputSchema>;
 import type { PowerShellProgress } from 'src/shared/types/tools.js';
 export type { PowerShellProgress } from 'src/shared/types/tools.js';
-const COMMON_BACKGROUND_COMMANDS = ['npm', 'yarn', 'pnpm', 'node', 'python', 'python3', 'go', 'cargo', 'make', 'docker', 'terraform', 'webpack', 'vite', 'jest', 'pytest', 'curl', 'Invoke-WebRequest', 'build', 'test', 'serve', 'watch', 'dev'] as const;
-function getCommandTypeForLogging(command: string): AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS {
-  const trimmed = command.trim();
-  const firstWord = trimmed.split(/\s+/)[0] || '';
-  for (const cmd of COMMON_BACKGROUND_COMMANDS) {
-    if (firstWord.toLowerCase() === cmd.toLowerCase()) {
-      return cmd as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-    }
-  }
-  return 'other' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-}
 export const PowerShellTool = buildTool({
   name: POWERSHELL_TOOL_NAME,
   searchHint: 'execute Windows PowerShell commands',
@@ -595,13 +582,6 @@ export const PowerShellTool = buildTool({
         }
       }
       const finalStderr = [result.stderr || '', stderrForShellReset].filter(Boolean).join('\n');
-      logEvent('tengu_powershell_tool_command_executed', {
-        command_type: getCommandTypeForLogging(input.command),
-        stdout_length: compressedStdout.length,
-        stderr_length: finalStderr.length,
-        exit_code: result.code,
-        interrupted: result.interrupted
-      });
       return {
         data: {
           stdout: compressedStdout,
@@ -664,7 +644,9 @@ async function* runPowerShellCommand({
   let lastTotalBytes = 0;
   let backgroundShellId: string | undefined = undefined;
   let interruptBackgroundingStarted = false;
-  let assistantAutoBackgrounded = false;
+  // Assistant mode (build flag KAIROS) auto-backgrounded long blocking
+  // commands; that flag is off in this build, so nothing sets this.
+  const assistantAutoBackgrounded = false;
   // Single-flight gate over startBackgrounding — covers timeout, interrupt,
   // kairos. Closes the timeout+interrupt double-spawn race where two
   // .then handlers both call setAppState→registerTask with the same
@@ -757,8 +739,9 @@ async function* runPowerShellCommand({
     return handle.taskId;
   }
 
-  // Helper to start backgrounding with logging
-  function startBackgrounding(eventName: string, backgroundFn?: (shellId: string) => void): void {
+  // Helper to start backgrounding. Callers used to pass the event name they
+  // were backgrounding under; there is no sink to name, so they no longer do.
+  function startBackgrounding(backgroundFn?: (shellId: string) => void): void {
     // Single-flight: any prior caller already kicked off backgrounding.
     if (backgroundingInitiated) {
       return;
@@ -775,9 +758,6 @@ async function* runPowerShellCommand({
       }
       backgroundingInitiated = true;
       backgroundShellId = foregroundTaskId;
-      logEvent(eventName, {
-        command_type: getCommandTypeForLogging(command)
-      });
       backgroundFn?.(foregroundTaskId);
       return;
     }
@@ -792,9 +772,6 @@ async function* runPowerShellCommand({
       // Without this, the generator waits for the current setTimeout to fire
       // (up to ~1s) before noticing the backgrounding. Matches BashTool.
       wakeProgressSignal();
-      logEvent(eventName, {
-        command_type: getCommandTypeForLogging(command)
-      });
       if (backgroundFn) {
         backgroundFn(shellId);
       }
@@ -813,23 +790,8 @@ async function* runPowerShellCommand({
   // Set up auto-backgrounding on timeout if enabled
   if (shellCommand.onTimeout && shouldAutoBackground) {
     shellCommand.onTimeout(backgroundFn => {
-      startBackgrounding('tengu_powershell_command_timeout_backgrounded', backgroundFn);
+      startBackgrounding(backgroundFn);
     });
-  }
-
-  // In assistant mode, the main agent should stay responsive. Auto-background
-  // blocking commands after ASSISTANT_BLOCKING_BUDGET_MS so the agent can keep
-  // coordinating instead of waiting. The command keeps running — no state loss.
-  if (feature('KAIROS') && getKairosActive() && isMainThread && !isBackgroundTasksDisabled && run_in_background !== true) {
-    setTimeout(() => {
-      // Gate on !backgroundingInitiated: avoid setting
-      // assistantAutoBackgrounded:true when startBackgrounding's
-      // single-flight gate will no-op. Matches BashTool.
-      if (shellCommand.status === 'running' && backgroundShellId === undefined && !backgroundingInitiated) {
-        assistantAutoBackgrounded = true;
-        startBackgrounding('tengu_powershell_command_assistant_auto_backgrounded');
-      }
-    }, ASSISTANT_BLOCKING_BUDGET_MS).unref();
   }
 
   // Handle Claude asking to run it in the background explicitly
@@ -837,9 +799,6 @@ async function* runPowerShellCommand({
   // regardless of the command type (isAutobackgroundingAllowed only applies to automatic backgrounding)
   if (run_in_background === true && !isBackgroundTasksDisabled) {
     const shellId = await spawnBackgroundTask();
-    logEvent('tengu_powershell_command_explicitly_backgrounded', {
-      command_type: getCommandTypeForLogging(command)
-    });
     return {
       stdout: '',
       stderr: '',
@@ -945,7 +904,7 @@ async function* runPowerShellCommand({
       if (abortController.signal.aborted && abortController.signal.reason === 'interrupt' && !interruptBackgroundingStarted) {
         interruptBackgroundingStarted = true;
         if (!isBackgroundTasksDisabled) {
-          startBackgrounding('tengu_powershell_command_interrupt_backgrounded');
+          startBackgrounding();
           // Reloop so the backgroundShellId check (above) catches the sync
           // foregroundTaskId→background path. Without this, we fall through
           // to the Ctrl+B check below, which matches status==='backgrounded'

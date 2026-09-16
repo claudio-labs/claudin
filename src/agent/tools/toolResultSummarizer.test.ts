@@ -1,49 +1,16 @@
-import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, expect, test } from 'bun:test'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { resetGlobalConfigForTests } from 'src/platform/config/config.js'
 
-const realAnalyticsMetadata = { ...(await import('src/platform/analytics/metadata.js')) }
-const realAnalyticsIndex = { ...(await import('src/platform/analytics/index.js')) }
-
 afterAll(() => {
-  mock.module('src/platform/analytics/metadata.js', () => realAnalyticsMetadata)
-  mock.module('src/platform/analytics/index.js', () => realAnalyticsIndex)
   resetGlobalConfigForTests()
 })
 
-// Mock analytics/metadata + index only (narrow surfaces, safe to replace).
 // Leave ./config.js as the real module — Bun test runner sets NODE_ENV=test,
 // so getGlobalConfig() returns TEST_GLOBAL_CONFIG_FOR_TESTING which starts with
 // DEFAULT_GLOBAL_CONFIG.toolResultSummarizerEnabled === true. Tests flip it via
 // saveGlobalConfig. This avoids mock.module pollution across test files in the
 // same run (config.js has 60+ exports; stubbing them all is fragile).
-mock.module('src/platform/analytics/metadata.js', () => ({
-  sanitizeToolNameForAnalytics: (name: string) =>
-    name.startsWith('mcp__') ? 'mcp_tool' : name,
-  // Stubs for transitive importers (firstPartyEventLoggingExporter etc.)
-  // that would otherwise fail to resolve against the mocked module.
-  isToolDetailsLoggingEnabled: () => false,
-  isAnalyticsToolDetailsLoggingEnabled: () => false,
-  mcpToolDetailsForAnalytics: () => ({}),
-  extractMcpToolDetails: () => ({}),
-  extractSkillName: () => undefined,
-  extractToolInputForTelemetry: () => ({}),
-  getFileExtensionForAnalytics: () => '',
-  getFileExtensionsFromBashCommand: () => [],
-  getEventMetadata: async () => ({}),
-  to1PEventFormat: () => ({}),
-}))
-
-const loggedEvents: Array<{ name: string; metadata: Record<string, unknown> }> =
-  []
-mock.module('src/platform/analytics/index.js', () => ({
-  logEvent: (name: string, metadata: Record<string, unknown>) => {
-    loggedEvents.push({ name, metadata })
-  },
-  logEventAsync: () => Promise.resolve(),
-  stripProtoFields: <T,>(m: T) => m,
-}))
-
 const {
   maybeSummarizeToolResult,
   isSummarizedContent,
@@ -51,6 +18,8 @@ const {
   TOOL_RESULT_SUMMARY_CLOSING_TAG,
   collapseIdenticalRuns,
   collapseDigitTemplates,
+  getLastSummaryDecision,
+  resetLastSummaryDecision,
 } = await import('src/agent/tools/toolResultSummarizer.js')
 const { saveGlobalConfig } = await import('src/platform/config/config.js')
 const { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } = await import('src/tools/AgentTool/constants.js')
@@ -72,7 +41,8 @@ const originalEnv = process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER
 beforeEach(() => {
   mockState.enabled = true
   delete process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER
-  loggedEvents.length = 0
+  // Otherwise a test that summarizes nothing reads the previous test's record.
+  resetLastSummaryDecision()
 })
 
 afterEach(() => {
@@ -82,7 +52,7 @@ afterEach(() => {
   } else {
     process.env.CLAUDIN_DISABLE_TOOL_RESULT_SUMMARIZER = originalEnv
   }
-  loggedEvents.length = 0
+  resetLastSummaryDecision()
 })
 
 function bigText(n: number, filler = 'x'): string {
@@ -128,7 +98,7 @@ test('guard: passthrough when env var set truthy', () => {
   const block = makeBlock(bigText(20_000, 'abc\n'))
   const out = maybeSummarizeToolResult(block, 'Bash')
   expect(out).toBe(block)
-  expect(loggedEvents.length).toBe(0)
+  expect(getLastSummaryDecision()).toBeNull()
 })
 
 test('guard: passthrough when config flag disabled', () => {
@@ -136,7 +106,7 @@ test('guard: passthrough when config flag disabled', () => {
   const block = makeBlock(bigText(20_000, 'abc\n'))
   const out = maybeSummarizeToolResult(block, 'Bash')
   expect(out).toBe(block)
-  expect(loggedEvents.length).toBe(0)
+  expect(getLastSummaryDecision()).toBeNull()
 })
 
 test('guard: passthrough when content is null', () => {
@@ -230,10 +200,10 @@ test('bash: error window preserves Python Traceback', () => {
   expect(body).toContain('Traceback (most recent call last):')
   expect(body).toContain('ValueError: boom')
 
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
+  const evt = getLastSummaryDecision()
   expect(evt).toBeDefined()
-  expect(evt?.metadata.errorWindowPreserved).toBe(true)
-  expect(evt?.metadata.strategyId).toBe(1)
+  expect(evt?.errorWindowPreserved).toBe(true)
+  expect(evt?.strategyId).toBe(1)
 })
 
 test('bash: Node Error preserved', () => {
@@ -334,8 +304,8 @@ test('bash: cargo error[E0308] in middle preserved (case-insensitive `error:` + 
   const body = asString(out)
   expect(body).toContain('error[E0308]: mismatched types')
 
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.errorWindowPreserved).toBe(true)
+  const evt = getLastSummaryDecision()
+  expect(evt?.errorWindowPreserved).toBe(true)
 })
 
 test('bash: Rust runtime panic preserved (`panicked at`)', () => {
@@ -350,8 +320,8 @@ test('bash: Rust runtime panic preserved (`panicked at`)', () => {
   const body = asString(out)
   expect(body).toContain("panicked at 'assertion failed: x == y'")
 
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.errorWindowPreserved).toBe(true)
+  const evt = getLastSummaryDecision()
+  expect(evt?.errorWindowPreserved).toBe(true)
 })
 
 test('bash: Java FATAL level marker preserved (no colon, mixed levels)', () => {
@@ -374,8 +344,8 @@ test('bash: Java FATAL level marker preserved (no colon, mixed levels)', () => {
   const body = asString(out)
   expect(body).toContain('FATAL com.foo.Bar - JVM heap exhausted')
 
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.errorWindowPreserved).toBe(true)
+  const evt = getLastSummaryDecision()
+  expect(evt?.errorWindowPreserved).toBe(true)
 })
 
 test('bash: nginx-style ERROR (uppercase) preserved among 200-response noise', () => {
@@ -398,8 +368,8 @@ test('bash: nginx-style ERROR (uppercase) preserved among 200-response noise', (
   const body = asString(out)
   expect(body).toContain('ERROR: upstream timed out')
 
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.errorWindowPreserved).toBe(true)
+  const evt = getLastSummaryDecision()
+  expect(evt?.errorWindowPreserved).toBe(true)
 })
 
 test('bash: negative — `error`/`errors` without colon does NOT trigger window (FP guard)', () => {
@@ -421,10 +391,10 @@ test('bash: negative — `error`/`errors` without colon does NOT trigger window 
   expect(content.length).toBeGreaterThan(8_000)
 
   maybeSummarizeToolResult(makeBlock(content), 'Bash')
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
+  const evt = getLastSummaryDecision()
   expect(evt).toBeDefined()
   // Critical: NO error window should fire on these innocuous strings.
-  expect(evt?.metadata.errorWindowPreserved).toBe(false)
+  expect(evt?.errorWindowPreserved).toBe(false)
 })
 
 test('bash: head+tail without error emits omitted marker', () => {
@@ -449,8 +419,8 @@ test('bash: head+tail without error emits omitted marker', () => {
   // Middle is NOT in head/tail and no error — should be omitted.
   expect(body).not.toContain('row 250 payload')
 
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.errorWindowPreserved).toBe(false)
+  const evt = getLastSummaryDecision()
+  expect(evt?.errorWindowPreserved).toBe(false)
 })
 
 // ============================================================
@@ -489,8 +459,8 @@ test('grep: grouped by file with per-file cap', () => {
   // Exactly two counters in the whole body: a.ts and b.ts, not c.ts.
   expect([...body.matchAll(/\+\d+ more match/g)]).toHaveLength(2)
 
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.strategyId).toBe(2)
+  const evt = getLastSummaryDecision()
+  expect(evt?.strategyId).toBe(2)
 })
 
 test('grep: preserves exact totals in header (no silent cut)', () => {
@@ -556,8 +526,8 @@ test('webfetch: strips script/style for HTML-dense content', () => {
   expect(outStr).not.toContain('</script>')
   expect(outStr).not.toContain('<style>')
   expect(outStr).toContain('actual content')
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.strategyId).toBe(3)
+  const evt = getLastSummaryDecision()
+  expect(evt?.strategyId).toBe(3)
 })
 
 test('webfetch: markdown passthrough to head+tail strategy', () => {
@@ -570,8 +540,8 @@ test('webfetch: markdown passthrough to head+tail strategy', () => {
   expect(body).toMatch(/<omitted lines="\d+" bytes="[^"]+"\/>/)
   expect(body).not.toContain('webfetch content omitted')
   expect(body).toContain('paragraph with some content 0')
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.strategyId).toBe(4)
+  const evt = getLastSummaryDecision()
+  expect(evt?.strategyId).toBe(4)
 })
 
 test('webfetch: preserves markdown-style title in first 3 lines', () => {
@@ -639,8 +609,8 @@ test('glob: oversized (120 paths) → summarized with header + omission + strate
   // New metadata-shaped marker (was: "[…70 paths omitted…]").
   expect(body).toMatch(/<omitted paths="\d+"\/>/)
   expect(body).not.toContain('paths omitted…')
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.strategyId).toBe(6)
+  const evt = getLastSummaryDecision()
+  expect(evt?.strategyId).toBe(6)
 })
 
 test('glob: preserves (Results are truncated...) notice', () => {
@@ -693,9 +663,9 @@ test('json: gate on → bash JSON compressed with strategyId=9 + source-less mar
   expect(body).toContain('keys=[number,title,state]')
   expect(body).toContain('<omitted rows=')
   expect(body.length).toBeLessThan(bigJsonArray().length)
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.strategyId).toBe(9)
-  expect(evt?.metadata.salientPinned).toBe(0) // benign fixture → nothing pinned
+  const evt = getLastSummaryDecision()
+  expect(evt?.strategyId).toBe(9)
+  expect(evt?.salientPinned).toBe(0) // benign fixture → nothing pinned
 })
 
 test('json: a rare value buried in the dropped middle → salientPinned flows into analytics', () => {
@@ -710,8 +680,8 @@ test('json: a rare value buried in the dropped middle → salientPinned flows in
   const out = maybeSummarizeToolResult(makeBlock(JSON.stringify(arr)), 'Bash')
   const body = asString(out)
   expect(body).toContain('#101\t') // the rare row is pinned back into the grid
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.salientPinned).toBe(1)
+  const evt = getLastSummaryDecision()
+  expect(evt?.salientPinned).toBe(1)
 })
 
 test('json: gate on → MCP array-text JSON compressed', () => {
@@ -841,11 +811,11 @@ test('glob: analytics — strategyId=6 and errorWindowPreserved is undefined', (
     (_, i) => `src/components/module${i}/index.ts`,
   ).join('\n')
   maybeSummarizeToolResult(makeBlock(content), 'Glob')
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
+  const evt = getLastSummaryDecision()
   expect(evt).toBeDefined()
-  expect(evt?.metadata.strategyId).toBe(6)
+  expect(evt?.strategyId).toBe(6)
   // Glob has no error window concept — field must be absent, not a boolean
-  expect(evt?.metadata.errorWindowPreserved).toBeUndefined()
+  expect(evt?.errorWindowPreserved).toBeUndefined()
 })
 
 test('glob: idempotent (summarize∘summarize = summarize)', () => {
@@ -1007,15 +977,15 @@ test('isSummarizedContent: false for non-string', () => {
 })
 
 // ============================================================
-// Analytics event schema
+// Decision record shape
 // ============================================================
 
-test('analytics: event schema matches plan', () => {
+test('decision record: shape matches what the summarizer promises', () => {
   const content = Array.from({ length: 500 }, (_, i) => `${['alpha', 'beta', 'gamma', 'delta'][i % 4]} row ${i} ${'x'.repeat(20)}`).join('\n')
   maybeSummarizeToolResult(makeBlock(content), 'Bash')
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt).toBeDefined()
-  const m = evt!.metadata
+  const m = getLastSummaryDecision()
+  expect(m).not.toBeNull()
+  if (!m) return
   expect(typeof m.toolName).toBe('string')
   expect(typeof m.originalSizeBytes).toBe('number')
   expect(typeof m.summarizedSizeBytes).toBe('number')
@@ -1027,21 +997,17 @@ test('analytics: event schema matches plan', () => {
   expect(typeof m.errorWindowPreserved).toBe('boolean')
 })
 
-test('analytics: not emitted on passthrough (below threshold)', () => {
+test('decision record: not written on passthrough (below threshold)', () => {
   const block = makeBlock('small\n'.repeat(10))
   maybeSummarizeToolResult(block, 'Bash')
-  expect(
-    loggedEvents.some(e => e.name === 'claudin_tool_result_summarized'),
-  ).toBe(false)
+  expect(getLastSummaryDecision()).toBeNull()
 })
 
-test('analytics: not emitted when flag off', () => {
+test('decision record: not written when the summarizer is off', () => {
   mockState.enabled = false
   const block = makeBlock(bigText(20_000, 'abc\n'))
   maybeSummarizeToolResult(block, 'Bash')
-  expect(
-    loggedEvents.some(e => e.name === 'claudin_tool_result_summarized'),
-  ).toBe(false)
+  expect(getLastSummaryDecision()).toBeNull()
 })
 
 // ============================================================
@@ -1052,7 +1018,7 @@ test('agentTool: array below threshold → passthrough', () => {
   const block = makeArrayBlock([{ type: 'text', text: 'short output' }])
   const out = maybeSummarizeToolResult(block, AGENT_TOOL_NAME)
   expect(out).toBe(block)
-  expect(loggedEvents.length).toBe(0)
+  expect(getLastSummaryDecision()).toBeNull()
 })
 
 test('agentTool: array above threshold → summarized, content becomes string', () => {
@@ -1099,16 +1065,16 @@ test('agentTool: strategyId = 7', () => {
   const text = Array.from({ length: 300 }, (_, i) => `Line ${i}: ${'x'.repeat(40)}`).join('\n')
   const block = makeArrayBlock([{ type: 'text', text }])
   maybeSummarizeToolResult(block, AGENT_TOOL_NAME)
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.strategyId).toBe(7)
+  const evt = getLastSummaryDecision()
+  expect(evt?.strategyId).toBe(7)
 })
 
 test('agentTool: errorWindowPreserved absent (undefined)', () => {
   const text = Array.from({ length: 300 }, (_, i) => `Line ${i}: ${'x'.repeat(40)}`).join('\n')
   const block = makeArrayBlock([{ type: 'text', text }])
   maybeSummarizeToolResult(block, AGENT_TOOL_NAME)
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.errorWindowPreserved).toBeUndefined()
+  const evt = getLastSummaryDecision()
+  expect(evt?.errorWindowPreserved).toBeUndefined()
 })
 
 // ============================================================
@@ -1190,8 +1156,8 @@ test('mcpTool: array above threshold → summarized, strategyId = 8', () => {
   expect(typeof out.content).toBe('string')
   expect((out.content as string).startsWith(TOOL_RESULT_SUMMARY_TAG)).toBe(true)
 
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.strategyId).toBe(8)
+  const evt = getLastSummaryDecision()
+  expect(evt?.strategyId).toBe(8)
 })
 
 test('mcpTool: mixed image+text blocks → passthrough (images preserved)', () => {
@@ -1241,8 +1207,8 @@ test('mcpTool: string above threshold → summarized via dispatch', () => {
   expect(typeof out.content).toBe('string')
   expect((out.content as string).startsWith(TOOL_RESULT_SUMMARY_TAG)).toBe(true)
 
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.strategyId).toBe(8)
+  const evt = getLastSummaryDecision()
+  expect(evt?.strategyId).toBe(8)
 })
 
 test('mcpTool: string below threshold → passthrough', () => {
@@ -1264,14 +1230,14 @@ test('AgentTool savings: 20KB report → >50% reduction and correct omission mar
   const result = maybeSummarizeToolResult(block, AGENT_TOOL_NAME)
   const body = asString(result)
 
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.originalSizeBytes).toBe(text.length)
-  expect(evt?.metadata.summarizedSizeBytes).toBeLessThan(text.length)
-  expect(evt?.metadata.summarizedSizeBytes).toBe(body.length)
-  expect(evt?.metadata.reductionPct).toBeGreaterThan(50)
-  expect(evt?.metadata.estimatedOriginalTokens).toBeGreaterThan(1_000)
-  expect((evt?.metadata.estimatedSummarizedTokens as number)).toBeLessThan(
-    evt?.metadata.estimatedOriginalTokens as number,
+  const evt = getLastSummaryDecision()
+  expect(evt?.originalSizeBytes).toBe(text.length)
+  expect(evt?.summarizedSizeBytes).toBeLessThan(text.length)
+  expect(evt?.summarizedSizeBytes).toBe(body.length)
+  expect(evt?.reductionPct).toBeGreaterThan(50)
+  expect(evt?.estimatedOriginalTokens).toBeGreaterThan(1_000)
+  expect((evt?.estimatedSummarizedTokens as number)).toBeLessThan(
+    evt?.estimatedOriginalTokens as number,
   )
   // Metadata-shaped marker (was: "[…300 lines omitted…]").
   expect(body).toContain('<omitted lines="300"/>')
@@ -1292,10 +1258,10 @@ test('AgentTool savings: trailer preserved and size reflects all content', () =>
 
   expect(body).toContain(trailerText)
   expect(body).toMatch(/<omitted lines="\d+"\/>/)
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
+  const evt = getLastSummaryDecision()
   // originalSizeBytes = joinTextBlocks(all blocks) = mainText + '\n' + trailerText
-  expect(evt?.metadata.originalSizeBytes).toBe(mainText.length + trailerText.length + 1)
-  expect(evt?.metadata.reductionPct).toBeGreaterThan(0)
+  expect(evt?.originalSizeBytes).toBe(mainText.length + trailerText.length + 1)
+  expect(evt?.reductionPct).toBeGreaterThan(0)
 })
 
 test('MCPTool savings: 15KB array → bytes and tokens reduced', () => {
@@ -1305,11 +1271,11 @@ test('MCPTool savings: 15KB array → bytes and tokens reduced', () => {
   const block = makeArrayBlock([{ type: 'text', text }], 'mcp__files__read')
   const result = maybeSummarizeToolResult(block, 'mcp__files__read')
 
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.strategyId).toBe(8)
-  expect(evt?.metadata.originalSizeBytes).toBe(text.length)
-  expect(evt?.metadata.summarizedSizeBytes).toBeLessThan(text.length)
-  expect(evt?.metadata.reductionPct).toBeGreaterThan(0)
+  const evt = getLastSummaryDecision()
+  expect(evt?.strategyId).toBe(8)
+  expect(evt?.originalSizeBytes).toBe(text.length)
+  expect(evt?.summarizedSizeBytes).toBeLessThan(text.length)
+  expect(evt?.reductionPct).toBeGreaterThan(0)
 })
 
 test('MCPTool savings: 15KB string → reduced via dispatch', () => {
@@ -1319,11 +1285,11 @@ test('MCPTool savings: 15KB string → reduced via dispatch', () => {
   const block = makeBlock(text)
   const result = maybeSummarizeToolResult(block, 'mcp__search__query')
 
-  const evt = loggedEvents.find(e => e.name === 'claudin_tool_result_summarized')
-  expect(evt?.metadata.strategyId).toBe(8)
-  expect(evt?.metadata.originalSizeBytes).toBe(text.length)
-  expect(evt?.metadata.summarizedSizeBytes).toBeLessThan(text.length)
-  expect(evt?.metadata.reductionPct).toBeGreaterThan(0)
+  const evt = getLastSummaryDecision()
+  expect(evt?.strategyId).toBe(8)
+  expect(evt?.originalSizeBytes).toBe(text.length)
+  expect(evt?.summarizedSizeBytes).toBeLessThan(text.length)
+  expect(evt?.reductionPct).toBeGreaterThan(0)
 })
 
 // ============================================================

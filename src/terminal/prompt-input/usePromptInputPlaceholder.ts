@@ -1,16 +1,8 @@
-import { feature } from 'bun:bundle'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCommandQueue } from 'src/agent/hooks/useCommandQueue.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
 import { getExampleCommandPool } from 'src/commands/exampleCommands.js'
 import { isQueuedCommandEditable } from 'src/agent/messageQueueManager.js'
-
-// Dead code elimination: conditional import for proactive mode
-/* eslint-disable @typescript-eslint/no-require-imports */
-const proactiveModule =
-  feature('PROACTIVE') || feature('KAIROS')
-    ? require('../../platform/proactive/index.js')
-    : null
 
 type Props = {
   input: string
@@ -40,7 +32,6 @@ export function usePromptInputPlaceholder({
   // Cycle to next example every EXAMPLE_CYCLE_MS
   useEffect(() => {
     if (submitCount >= 1) return
-    if (proactiveModule?.isProactiveActive()) return
     pool.current = getExampleCommandPool(EXAMPLE_POOL_SIZE)
     // Start typing the first example immediately
     setTypedLength(0)
@@ -87,8 +78,8 @@ export function usePromptInputPlaceholder({
     }
 
     // Cycle through example command hints on first session start, with typing
-    // animation. Skip in proactive mode — the model drives the conversation.
-    if (submitCount < 1 && !proactiveModule?.isProactiveActive()) {
+    // animation.
+    if (submitCount < 1) {
       const full = pool.current[poolIndex] ?? pool.current[0] ?? ''
       return full.slice(0, typedLength)
     }

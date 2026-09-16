@@ -1,5 +1,5 @@
 /**
- * Agent context for analytics attribution using AsyncLocalStorage.
+ * Agent context for attribution using AsyncLocalStorage.
  *
  * This module provides a way to track agent identity across async operations
  * without parameter drilling. Supports two agent types:
@@ -22,7 +22,6 @@
  */
 
 import { AsyncLocalStorage } from 'async_hooks'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js'
 
 /**
@@ -128,26 +127,6 @@ export function isTeammateAgentContext(
     return context?.agentType === 'teammate'
   }
   return false
-}
-
-/**
- * Get the subagent name suitable for analytics logging.
- * Returns the agent type name for built-in agents, "user-defined" for custom agents,
- * or undefined if not running within a subagent context.
- *
- * Safe for analytics metadata: built-in agent names are code constants,
- * and custom agents are always mapped to the literal "user-defined".
- */
-export function getSubagentLogName():
-  | AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-  | undefined {
-  const context = getAgentContext()
-  if (!isSubagentContext(context) || !context.subagentName) {
-    return undefined
-  }
-  return (
-    context.isBuiltIn ? context.subagentName : 'user-defined'
-  ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
 }
 
 /**

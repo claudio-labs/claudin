@@ -1,10 +1,15 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
+//
+// Seventeen Anthropic-internal commands used to be imported eagerly here and
+// never registered: ant-trace, backfill-sessions, break-cache, bughunter,
+// ctx_viz, debug-tool-call, env, good-claude, issue, mock-limits,
+// oauth-refresh, onboarding, perf-issue, reset-limits, share, summary and
+// teleport. Each resolved to a checked-in one-line stub
+// (`{ isEnabled: () => false, isHidden: true, name: 'stub' }`) and none of them
+// appeared in COMMANDS(), so the imports cost a module each and bought nothing.
 import addDir from 'src/commands/add-dir/index.js'
 import autofixPr from 'src/commands/autofix-pr/index.js'
-import backfillSessions from 'src/commands/backfill-sessions/index.js'
 import btw from 'src/commands/btw/index.js'
-import goodClaude from 'src/commands/good-claude/index.js'
-import issue from 'src/commands/issue/index.js'
 import feedback from 'src/commands/feedback/index.js'
 import clear from 'src/commands/clear/index.js'
 import color from 'src/commands/color/index.js'
@@ -20,7 +25,6 @@ import diff from 'src/commands/diff/index.js'
 import explorer from 'src/commands/explorer/index.js'
 import dream from 'src/commands/dream/index.js'
 import goal from 'src/commands/goal/index.js'
-import ctx_viz from 'src/commands/ctx_viz/index.js'
 import doctor from 'src/commands/doctor/index.js'
 import knowledge from 'src/commands/knowledge/index.js'
 import memory from 'src/commands/memory/index.js'
@@ -32,25 +36,20 @@ import initVerifiers from 'src/commands/init-verifiers.js'
 import keybindings from 'src/commands/keybindings/index.js'
 import installGitHubApp from 'src/commands/install-github-app/index.js'
 import installSlackApp from 'src/commands/install-slack-app/index.js'
-import breakCache from 'src/commands/break-cache/index.js'
 import cacheProbe from 'src/commands/cache-probe/index.js'
 import cacheStats from 'src/commands/cacheStats/index.js'
 import cd from 'src/commands/cd/index.js'
 import mcp from 'src/commands/mcp/index.js'
-import onboarding from 'src/commands/onboarding/index.js'
 import releaseNotes from 'src/commands/release-notes/index.js'
 import rename from 'src/commands/rename/index.js'
 import resume from 'src/commands/resume/index.js'
 import review, { ultrareview } from 'src/commands/review.js'
 import session from 'src/commands/session/index.js'
-import share from 'src/commands/share/index.js'
 import skills from 'src/commands/skills/index.js'
 import status from 'src/commands/status/index.js'
 import tasks from 'src/commands/tasks/index.js'
-import teleport from 'src/commands/teleport/index.js'
 const agentsPlatform = null
 import securityReview from 'src/commands/security-review.js'
-import bughunter from 'src/commands/bughunter/index.js'
 import terminalSetup from 'src/commands/terminalSetup/index.js'
 import usage from 'src/commands/usage/index.js'
 import theme from 'src/commands/theme/index.js'
@@ -59,26 +58,8 @@ import { feature } from 'bun:bundle'
 import { isBuddyEnabled } from 'src/terminal/buddy/feature.js'
 // Dead code elimination: conditional imports
 /* eslint-disable @typescript-eslint/no-require-imports */
-const proactive =
-  feature('PROACTIVE') || feature('KAIROS')
-    ? require('./proactive.js').default
-    : null
-const briefCommand =
-  feature('KAIROS') || feature('KAIROS_BRIEF')
-    ? require('src/commands/brief.js').default
-    : null
-const assistantCommand = feature('KAIROS')
-  ? require('./assistant/index.js').default
-  : null
 const bridge = feature('BRIDGE_MODE')
   ? require('src/commands/bridge/index.js').default
-  : null
-const remoteControlServerCommand =
-  feature('DAEMON') && feature('BRIDGE_MODE')
-    ? require('./remoteControlServer/index.js').default
-    : null
-const voiceCommand = feature('VOICE_MODE')
-  ? require('src/commands/voice/index.js').default
   : null
 const forceSnip = feature('HISTORY_SNIP')
   ? require('./force-snip.js').default
@@ -97,33 +78,24 @@ const agentWorkflowsCmd = feature('AGENT_WORKFLOWS')
       require('src/commands/workflows/index.js') as typeof import('src/commands/workflows/index.js')
     ).default
   : null
-const webCmd = feature('CCR_REMOTE_SETUP')
-  ? (
-      require('src/commands/remote-setup/index.js') as typeof import('src/commands/remote-setup/index.js')
-    ).default
-  : null
 const clearSkillIndexCache = feature('EXPERIMENTAL_SKILL_SEARCH')
   ? (
       require('../skills/search/localSearch.js') as typeof import('../skills/search/localSearch.js')
     ).clearSkillIndexCache
   : null
-const subscribePr = feature('KAIROS_GITHUB_WEBHOOKS')
-  ? require('./subscribe-pr.js').default
-  : null
 const ultraplan = feature('ULTRAPLAN')
   ? require('src/commands/ultraplan.js').default
   : null
 const torch = feature('TORCH') ? require('./torch.js').default : null
-const peersCmd = feature('UDS_INBOX')
-  ? (
-      require('./peers/index.js') as typeof import('./peers/index.js')
-    ).default
-  : null
-const forkCmd = feature('FORK_SUBAGENT')
-  ? (
-      require('./fork/index.js') as typeof import('./fork/index.js')
-    ).default
-  : null
+// NOTE: there is deliberately no `forkCmd` here. `FORK_SUBAGENT` ships true
+// (it gates the Agent tool's fork-by-default behaviour), but this fork never
+// received `src/commands/fork/`, so the require resolved to the build's
+// missing-module stub — `const noop = () => null; export default noop`. That
+// value is TRUTHY, so the conditional spread below injected a bare arrow
+// function where a Command object belongs and the command list grew an entry
+// named `noop`. The flag stays on; only the phantom command is gone.
+// `src/commands/__tests__/registry.characterization.test.ts` fails if the
+// shape comes back, here or anywhere else in this table.
 const buddy = isBuddyEnabled()
   ? (
       require('src/commands/buddy/index.js') as typeof import('src/commands/buddy/index.js')
@@ -135,7 +107,6 @@ import thinkbackPlay from 'src/commands/thinkback-play/index.js'
 import permissions from 'src/commands/permissions/index.js'
 import plan from 'src/commands/plan/index.js'
 import fast from 'src/commands/fast/index.js'
-import passes from 'src/commands/passes/index.js'
 import provider from 'src/commands/provider/index.js'
 import hooks from 'src/commands/hooks/index.js'
 import branch from 'src/commands/branch/index.js'
@@ -146,16 +117,8 @@ import plugin from 'src/commands/plugin/index.js'
 import reloadPlugins from 'src/commands/reload-plugins/index.js'
 import rewind from 'src/commands/rewind/index.js'
 import heapDump from 'src/commands/heapdump/index.js'
-import mockLimits from 'src/commands/mock-limits/index.js'
 import version from 'src/commands/version.js'
 import wiki from 'src/commands/wiki/index.js'
-import summary from 'src/commands/summary/index.js'
-import {
-  resetLimits,
-  resetLimitsNonInteractive,
-} from 'src/commands/reset-limits/index.js'
-import antTrace from 'src/commands/ant-trace/index.js'
-import perfIssue from 'src/commands/perf-issue/index.js'
 import sandboxToggle from 'src/commands/sandbox-toggle/index.js'
 import stickers from 'src/commands/stickers/index.js'
 import advisor from 'src/commands/advisor.js'
@@ -178,18 +141,17 @@ import {
 import memoize from 'lodash-es/memoize.js'
 import { isUsing3PServices, isClaudeAISubscriber } from 'src/providers/auth/auth.js'
 import { isFirstPartyAnthropicBaseUrl } from 'src/providers/model/providers.js'
-import env from 'src/commands/env/index.js'
 import exit from 'src/commands/exit/index.js'
 import exportCommand from 'src/commands/export/index.js'
 import model from 'src/commands/model/index.js'
 import outputStyle from 'src/commands/output-style/index.js'
 import remoteEnv from 'src/commands/remote-env/index.js'
-import upgrade from 'src/commands/upgrade/index.js'
-import {
-  extraUsage,
-  extraUsageNonInteractive,
-} from 'src/commands/extra-usage/index.js'
-import rateLimitOptions from 'src/commands/rate-limit-options/index.js'
+// /upgrade, /extra-usage and /rate-limit-options are gone. They were the
+// Anthropic consumer-subscription billing surface, and all three routed through
+// `../login/login.js` — a module this fork never received, so the build served
+// them `() => null`. Every one of them hung: the Login component rendered
+// nothing and its onDone never fired. /rate-limit-options was the worst of the
+// three because the transcript opened it by itself when a limit was hit.
 import effort from 'src/commands/effort/index.js'
 import stats from 'src/commands/stats/index.js'
 // insights.ts is 113KB (3200 lines, includes diffLines/html rendering). Lazy
@@ -207,8 +169,6 @@ const usageReport: Command = {
     return real.getPromptForCommand(args, context)
   },
 }
-import oauthRefresh from 'src/commands/oauth-refresh/index.js'
-import debugToolCall from 'src/commands/debug-tool-call/index.js'
 import { getSettingSourceName } from 'src/platform/settings/constants.js'
 import {
   type Command,
@@ -295,23 +255,12 @@ const COMMANDS = memoize((): Command[] => [
   rewind,
   securityReview,
   terminalSetup,
-  upgrade,
-  extraUsage,
-  extraUsageNonInteractive,
-  rateLimitOptions,
   usage,
   usageReport,
   vim,
   wiki,
-  ...(webCmd ? [webCmd] : []),
-  ...(forkCmd ? [forkCmd] : []),
   ...(buddy ? [buddy] : []),
-  ...(proactive ? [proactive] : []),
-  ...(briefCommand ? [briefCommand] : []),
-  ...(assistantCommand ? [assistantCommand] : []),
   ...(bridge ? [bridge] : []),
-  ...(remoteControlServerCommand ? [remoteControlServerCommand] : []),
-  ...(voiceCommand ? [voiceCommand] : []),
   thinkback,
   thinkbackPlay,
   permissions,
@@ -319,8 +268,6 @@ const COMMANDS = memoize((): Command[] => [
   hooks,
   exportCommand,
   sandboxToggle,
-  passes,
-  ...(peersCmd ? [peersCmd] : []),
   tasks,
   ...(workflowsCmd ? [workflowsCmd] : []),
   ...(agentWorkflowsCmd ? [agentWorkflowsCmd] : []),
@@ -521,22 +468,16 @@ export function clearCommandsCache(): void {
 }
 
 /**
- * Filter AppState.mcp.commands to MCP-provided skills (prompt-type,
- * model-invocable, loaded from MCP). These live outside getCommands() so
- * callers that need MCP skills in their skill index thread them through
- * separately.
+ * MCP-provided skills, filtered out of AppState.mcp.commands.
+ *
+ * Always empty: discovering skills from an MCP server needed
+ * `src/skills/mcpSkills.ts`, which this fork never received. Kept as a
+ * function because `skill-bash-gates.ts` threads the result into its skill
+ * index and reads better asking for the list than special-casing its absence.
  */
 export function getMcpSkillCommands(
-  mcpCommands: readonly Command[],
+  _mcpCommands: readonly Command[],
 ): readonly Command[] {
-  if (feature('MCP_SKILLS')) {
-    return mcpCommands.filter(
-      cmd =>
-        cmd.type === 'prompt' &&
-        cmd.loadedFrom === 'mcp' &&
-        !cmd.disableModelInvocation,
-    )
-  }
   return []
 }
 
@@ -633,7 +574,6 @@ export const BRIDGE_SAFE_COMMANDS: Set<Command> = new Set(
     compact, // Shrink context — useful mid-session from a phone
     clear, // Wipe transcript
     cost, // Show session cost
-    summary, // Summarize conversation
     releaseNotes, // Show changelog
   ].filter((c): c is Command => c !== null),
 )

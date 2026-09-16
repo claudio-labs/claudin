@@ -2,7 +2,6 @@ import type { Notification } from 'src/terminal/contexts/notifications.js'
 import type { TodoList } from 'src/tools/TodoWriteTool/types.js'
 import type { BridgePermissionCallbacks } from 'src/platform/bridge/bridgePermissionCallbacks.js'
 import type { Command } from 'src/commands/commands.js'
-import type { ChannelPermissionCallbacks } from 'src/mcp/channelPermissions.js'
 import type { ElicitationRequestEvent } from 'src/mcp/elicitationHandler.js'
 import type {
   MCPServerConnection,
@@ -115,7 +114,6 @@ export const IDLE_SPECULATION_STATE: SpeculationState = { status: 'idle' }
 export type FooterItem =
   | 'tasks'
   | 'tmux'
-  | 'bagel'
   | 'teams'
   | 'bridge'
   | 'companion'
@@ -319,97 +317,6 @@ export type AppState = DeepImmutable<{
   activeGoal?: ActiveGoalState
   // Outcome of the most recently cleared goal (drives the one-time notice).
   lastGoalResult?: GoalResultState
-  tungstenActiveSession?: {
-    sessionName: string
-    socketName: string
-    target: string // The tmux target (e.g., "session:window.pane")
-  }
-  tungstenLastCapturedTime?: number // Timestamp when frame was captured for model
-  tungstenLastCommand?: {
-    command: string // The command string to display (e.g., "Enter", "echo hello")
-    timestamp: number // When the command was sent
-  }
-  // Sticky tmux panel visibility — mirrors globalConfig.tungstenPanelVisible for reactivity.
-  tungstenPanelVisible?: boolean
-  // Transient auto-hide at turn end — separate from tungstenPanelVisible so the
-  // pill stays in the footer (user can reopen) but the panel content doesn't take
-  // screen space when idle. Cleared on next Tmux tool use or user toggle. NOT persisted.
-  tungstenPanelAutoHidden?: boolean
-  // WebBrowser tool (codename bagel): pill visible in footer
-  bagelActive?: boolean
-  // WebBrowser tool: current page URL shown in pill label
-  bagelUrl?: string
-  // WebBrowser tool: sticky panel visibility toggle
-  bagelPanelVisible?: boolean
-  // chicago MCP session state. Types inlined (not imported from
-  // @ant/computer-use-mcp/types) so external typecheck passes without the
-  // ant-scoped dep resolved. Shapes match `AppGrant`/`CuGrantFlags`
-  // structurally — wrapper.tsx assigns via structural compatibility. Only
-  // populated when feature('CHICAGO_MCP') is active.
-  computerUseMcpState?: {
-    // Session-scoped app allowlist. NOT persisted across resume.
-    allowedApps?: readonly {
-      bundleId: string
-      displayName: string
-      grantedAt: number
-    }[]
-    // Clipboard/system-key grant flags (orthogonal to allowlist).
-    grantFlags?: {
-      clipboardRead: boolean
-      clipboardWrite: boolean
-      systemKeyCombos: boolean
-    }
-    // Dims-only (NOT the blob) for scaleCoord after compaction. The full
-    // `ScreenshotResult` including base64 is process-local in wrapper.tsx.
-    lastScreenshotDims?: {
-      width: number
-      height: number
-      displayWidth: number
-      displayHeight: number
-      displayId?: number
-      originX?: number
-      originY?: number
-    }
-    // Accumulated by onAppsHidden, cleared + unhidden at turn end.
-    hiddenDuringTurn?: ReadonlySet<string>
-    // Which display CU targets. Written back by the package's
-    // `autoTargetDisplay` resolver via `onResolvedDisplayUpdated`. Persisted
-    // across resume so clicks stay on the display the model last saw.
-    selectedDisplayId?: number
-    // True when the model explicitly picked a display via `switch_display`.
-    // Makes `handleScreenshot` skip the resolver chase chain and honor
-    // `selectedDisplayId` directly. Cleared on resolver writeback (pinned
-    // display unplugged → Swift fell back to main) and on
-    // `switch_display("auto")`.
-    displayPinnedByModel?: boolean
-    // Sorted comma-joined bundle-ID set the display was last auto-resolved
-    // for. `handleScreenshot` only re-resolves when the allowed set has
-    // changed since — keeps the resolver from yanking on every screenshot.
-    displayResolvedForApps?: string
-  }
-  // REPL tool VM context - persists across REPL calls for state sharing
-  replContext?: {
-    vmContext: import('vm').Context
-    registeredTools: Map<
-      string,
-      {
-        name: string
-        description: string
-        schema: Record<string, unknown>
-        handler: (args: Record<string, unknown>) => Promise<unknown>
-      }
-    >
-    console: {
-      log: (...args: unknown[]) => void
-      error: (...args: unknown[]) => void
-      warn: (...args: unknown[]) => void
-      info: (...args: unknown[]) => void
-      debug: (...args: unknown[]) => void
-      getStdout: () => string
-      getStderr: () => string
-      clear: () => void
-    }
-  }
   teamContext?: {
     teamName: string
     teamFilePath: string
@@ -481,12 +388,6 @@ export type AppState = DeepImmutable<{
   }
   speculation: SpeculationState
   speculationSessionTimeSavedMs: number
-  skillImprovement: {
-    suggestion: {
-      skillName: string
-      updates: { section: string; change: string; reason: string }[]
-    } | null
-  }
   // Auth version - incremented on login/logout to trigger re-fetching of auth-dependent data
   authVersion: number
   // Initial message to process (from CLI args or plan mode exit)
@@ -535,10 +436,6 @@ export type AppState = DeepImmutable<{
   isUltraplanMode?: boolean
   // Always-on bridge: permission callbacks for bidirectional permission checks
   replBridgePermissionCallbacks?: BridgePermissionCallbacks
-  // Channel permission callbacks — permission prompts over Telegram/iMessage/etc.
-  // Races against local UI + bridge + hooks + classifier via claim() in
-  // interactiveHandler.ts. Constructed once in useManageMCPConnections.
-  channelPermissionCallbacks?: ChannelPermissionCallbacks
 }
 
 export type AppStateStore = Store<AppState>
@@ -653,9 +550,6 @@ export function getDefaultAppState(): AppState {
     },
     speculation: IDLE_SPECULATION_STATE,
     speculationSessionTimeSavedMs: 0,
-    skillImprovement: {
-      suggestion: null,
-    },
     authVersion: 0,
     initialMessage: null,
     effortValue: undefined,

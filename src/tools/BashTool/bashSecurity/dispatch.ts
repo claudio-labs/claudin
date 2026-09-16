@@ -11,7 +11,6 @@
  * rewrite the deferral rule, which is the subtlest thing in this file.
  */
 
-import { logEvent } from 'src/platform/analytics/index.js'
 import { extractHeredocs } from 'src/platform/bash/heredoc.js'
 import { ParsedCommand } from 'src/platform/bash/ParsedCommand.js'
 import { hasShellQuoteSingleQuoteBug } from 'src/platform/bash/shellQuote.js'
@@ -119,9 +118,6 @@ export function bashCommandIsSafe_DEPRECATED(
   // and other non-printable chars are silently dropped by bash but confuse our
   // validators, allowing metacharacters adjacent to them to slip through.
   if (CONTROL_CHAR_RE.test(command)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.CONTROL_CHARACTERS,
-    })
     return {
       behavior: 'ask',
       message:
@@ -245,9 +241,6 @@ export async function bashCommandIsSafeAsync_DEPRECATED(
   // The early checks (control chars, shell-quote bug) don't benefit from
   // tree-sitter, so we run them identically.
   if (CONTROL_CHAR_RE.test(command)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.CONTROL_CHARACTERS,
-    })
     return {
       behavior: 'ask',
       message:
@@ -292,19 +285,15 @@ export async function bashCommandIsSafeAsync_DEPRECATED(
     treeSitter: tsAnalysis,
   }
 
-  // Log divergence between tree-sitter and regex quote extraction.
+  // Report divergence between tree-sitter and regex quote extraction.
   // Skip for heredoc commands: tree-sitter strips (quoted) heredoc bodies
   // to nothing while the regex path replaces them with placeholder strings
-  // (via extractHeredocs), so the two outputs can never match. Logging
+  // (via extractHeredocs), so the two outputs can never match. Reporting
   // divergence for every heredoc command would poison the signal.
   //
   // onDivergence callback: when called in a fanout loop (bashPermissions.ts
-  // Promise.all over subcommands), the caller batches divergences into a
-  // single logEvent instead of N separate calls. Each logEvent triggers
-  // getEventMetadata() → buildProcessMetrics() → process.memoryUsage() →
-  // /proc/self/stat read; with memoized metadata these resolve as microtasks
-  // and starve the event loop (CC-643). Single-command callers omit the
-  // callback and get the original per-call logEvent behavior.
+  // Promise.all over subcommands), the caller aggregates divergences instead
+  // of reacting per subcommand (CC-643). Single-command callers omit it.
   if (!tsAnalysis.dangerousPatterns.hasHeredoc) {
     const hasDivergence =
       tsQuote.fullyUnquoted !== regexQuote.fullyUnquoted ||
@@ -312,10 +301,6 @@ export async function bashCommandIsSafeAsync_DEPRECATED(
     if (hasDivergence) {
       if (onDivergence) {
         onDivergence()
-      } else {
-        logEvent('tengu_tree_sitter_security_divergence', {
-          quoteContextDivergence: true,
-        })
       }
     }
   }

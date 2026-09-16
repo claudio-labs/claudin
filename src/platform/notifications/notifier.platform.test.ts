@@ -18,7 +18,6 @@ const realExecFileNoThrow = { ...(await import('src/shared/proc/execFileNoThrow.
 const realWhich = { ...(await import('src/shared/proc/which.js')) }
 const realEnv = { ...(await import('src/shared/env.js')) }
 const realHooks = { ...(await import('src/platform/lifecycleHooks/hooks.js')) }
-const realAnalyticsIndex = { ...(await import('src/platform/analytics/index.js')) }
 const realLog = { ...(await import('src/shared/log.js')) }
 
 // -- Top-level mocks (must run before importing the SUT) --------------------
@@ -105,10 +104,6 @@ mock.module('src/platform/lifecycleHooks/hooks.js', () => ({
   executeInstructionsLoadedHooks: async () => ({ decision: 'allow' as const }),
 }))
 
-mock.module('src/platform/analytics/index.js', () => ({
-  logEvent: () => {},
-}))
-
 mock.module('src/shared/log.js', () => ({
   logError: () => {},
   logForDebugging: () => {},
@@ -161,8 +156,6 @@ afterAll(() => {
   mock.module('src/shared/env.js', () => realEnv)
   mock.module('src/platform/lifecycleHooks/hooks.js', () => realHooks)
   mock.module('src/platform/lifecycleHooks/hooks.js', () => realHooks)
-  mock.module('src/platform/analytics/index.js', () => realAnalyticsIndex)
-  mock.module('src/platform/analytics/index.js', () => realAnalyticsIndex)
   mock.module('src/shared/log.js', () => realLog)
   mock.module('src/shared/log.js', () => realLog)
 })

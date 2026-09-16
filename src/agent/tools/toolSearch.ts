@@ -14,10 +14,6 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import type { Tool } from 'src/tools/Tool.js'
 import {
   type ToolPermissionContext,
@@ -35,7 +31,6 @@ import {
   countToolDefinitionTokens,
   TOOL_TOKEN_COUNT_OVERHEAD,
 } from 'src/agent/context/analyzeContext.js'
-import { count } from 'src/shared/data/array.js'
 import { getMergedBetas } from 'src/providers/transport/betas.js'
 import { getContextWindowForModel } from 'src/agent/context/context.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -412,39 +407,12 @@ export async function isToolSearchEnabled(
   agents: AgentDefinition[],
   source?: string,
 ): Promise<boolean> {
-  const mcpToolCount = count(tools, t => t.isMcp)
-
-  // Helper to log the mode decision event
-  function logModeDecision(
-    enabled: boolean,
-    mode: ToolSearchMode,
-    reason: string,
-    extraProps?: Record<string, number>,
-  ): void {
-    logEvent('tengu_tool_search_mode_decision', {
-      enabled,
-      mode: mode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      reason:
-        reason as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      // Log the actual model being checked, not the session's main model.
-      // This is important for debugging subagent tool search decisions where
-      // the subagent model (e.g., haiku) differs from the session model (e.g., opus).
-      checkedModel:
-        model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      mcpToolCount,
-      userType:
-        'external' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      ...extraProps,
-    })
-  }
-
   // Check if model supports tool_reference
   if (!modelSupportsToolReference(model)) {
     logForDebugging(
       `Tool search disabled for model '${model}': model does not support tool_reference blocks. ` +
         `This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.`,
     )
-    logModeDecision(false, 'standard', 'model_unsupported')
     return false
   }
 
@@ -453,7 +421,6 @@ export async function isToolSearchEnabled(
     logForDebugging(
       `Tool search disabled: ToolSearchTool is not available (may have been disallowed via disallowedTools).`,
     )
-    logModeDecision(false, 'standard', 'mcp_search_unavailable')
     return false
   }
 
@@ -461,11 +428,10 @@ export async function isToolSearchEnabled(
 
   switch (mode) {
     case 'tst':
-      logModeDecision(true, mode, 'tst_enabled')
       return true
 
     case 'tst-auto': {
-      const { enabled, debugDescription, metrics } = await checkAutoThreshold(
+      const { enabled, debugDescription } = await checkAutoThreshold(
         tools,
         getToolPermissionContext,
         agents,
@@ -477,7 +443,6 @@ export async function isToolSearchEnabled(
           `Auto tool search enabled: ${debugDescription}` +
             (source ? ` [source: ${source}]` : ''),
         )
-        logModeDecision(true, mode, 'auto_above_threshold', metrics)
         return true
       }
 
@@ -485,12 +450,10 @@ export async function isToolSearchEnabled(
         `Auto tool search disabled: ${debugDescription}` +
           (source ? ` [source: ${source}]` : ''),
       )
-      logModeDecision(false, mode, 'auto_below_threshold', metrics)
       return false
     }
 
     case 'standard':
-      logModeDecision(false, mode, 'standard_mode')
       return false
   }
 }
@@ -831,27 +794,6 @@ export function getDeferredToolsDelta(
 
   if (added.length === 0 && removed.length === 0) return null
 
-  // Diagnostic for the inc-4747 scan-finds-nothing bug. Round-1 fields
-  // (messagesLength/attachmentCount/dtdCount from #23167) showed 45.6% of
-  // events have attachments-but-no-DTD, but those numbers are confounded:
-  // subagent first-fires and compact-path scans have EXPECTED prior=0 and
-  // dominate the stat. callSite/querySource/attachmentTypesSeen split the
-  // buckets so the real main-thread cross-turn failure is isolable in BQ.
-  logEvent('tengu_deferred_tools_pool_change', {
-    addedCount: added.length,
-    removedCount: removed.length,
-    priorAnnouncedCount: announced.size,
-    messagesLength: messages.length,
-    attachmentCount,
-    dtdCount,
-    callSite: (scanContext?.callSite ??
-      'unknown') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    querySource: (scanContext?.querySource ??
-      'unknown') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    attachmentTypesSeen: [...attachmentTypesSeen]
-      .sort()
-      .join(',') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 
   return {
     addedNames: added.map(t => t.name).sort(),

@@ -16,7 +16,6 @@ import {
 } from 'src/providers/auth/auth.js';
 import { countFilesRoundedRg } from 'src/shared/fs/ripgrep.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
-import { initializeAnalyticsGates } from 'src/platform/analytics/sink.js';
 import { prefetchOfficialMcpUrls } from 'src/mcp/officialRegistry.js';
 import { refreshModelCapabilities } from 'src/providers/model/modelCapabilities.js';
 import { settingsChangeDetector } from 'src/platform/settings/changeDetector.js';
@@ -60,8 +59,6 @@ export function startDeferredPrefetches(): void {
   }
   void countFilesRoundedRg(getCwd(), AbortSignal.timeout(3000), []);
 
-  // Analytics and feature flag initialization
-  void initializeAnalyticsGates();
   void prefetchOfficialMcpUrls();
   void refreshModelCapabilities();
 

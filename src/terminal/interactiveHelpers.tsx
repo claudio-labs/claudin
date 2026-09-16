@@ -1,18 +1,16 @@
 import { feature } from 'bun:bundle';
 import { appendFileSync } from 'fs';
 import React from 'react';
-import { logEvent } from 'src/platform/analytics/index.js';
 import { gracefulShutdown, gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js';
-import { type ChannelEntry, getAllowedChannels, setAllowedChannels, setHasDevChannels, setSessionTrustAccepted, setStatsStore } from 'src/platform/bootstrap/state.js';
+import { type ChannelEntry, setSessionTrustAccepted, setStatsStore } from 'src/platform/bootstrap/state.js';
 import type { Command } from 'src/commands/commands.js';
 import { createStatsStore, type StatsStore } from 'src/terminal/contexts/stats.js';
 import { getSystemContext } from 'src/agent/context.js';
-import { initializeTelemetryAfterTrust } from 'src/platform/entrypoints/init.js';
 import { isSynchronizedOutputSupported } from 'src/terminal/ink/terminal.js';
 import type { RenderOptions, Root, TextProps } from 'src/terminal/ink.js';
 import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js';
 import { startDeferredPrefetches } from 'src/platform/main/deferredPrefetches.js';
-import { checkGate_CACHED_OR_BLOCKING, initializeGrowthBook, resetGrowthBook } from 'src/platform/analytics/growthbook.js';
+import { initializeGrowthBook, resetGrowthBook } from 'src/platform/analytics/growthbook.js';
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';
 import { handleMcpjsonServerApprovals } from 'src/mcp/mcpServerApproval.js';
 import { AppStateProvider } from 'src/terminal/state/AppState.js';
@@ -217,12 +215,6 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
   applyConfigEnvironmentVariables();
   profileCheckpoint('setupScreens_after_env_applied');
 
-  // Initialize telemetry after env vars are applied so OTEL endpoint env vars and
-  // otelHeadersHelper (which requires trust to execute) are available.
-  // Defer to next tick so the OTel dynamic import resolves after first render
-  // instead of during the pre-render microtask queue.
-  setImmediate(() => initializeTelemetryAfterTrust());
-
   // Check for a custom API key surfaced by the active Anthropic profile.
   {
     const profile = tryGetActiveProvider();
@@ -262,60 +254,6 @@ export async function showSetupScreens(root: Root, permissionMode: PermissionMod
       await showSetupDialog(root, done => <AutoModeOptInDialog onAccept={done} onDecline={() => gracefulShutdownSync(1)} declineExits />);
     }
   }
-
-  // --dangerously-load-development-channels confirmation. On accept, append
-  // dev channels to any --channels list already set in main.tsx. Org policy
-  // is NOT bypassed — gateChannelServer() still runs; this flag only exists
-  // to sidestep the --channels approved-server allowlist.
-  if (feature('KAIROS') || feature('KAIROS_CHANNELS')) {
-    // gateChannelServer and ChannelsNotice read tengu_harbor after this
-    // function returns. A cold disk cache (fresh install, or first run after
-    // the flag was added server-side) defaults to false and silently drops
-    // channel notifications for the whole session — gh#37026.
-    // checkGate_CACHED_OR_BLOCKING returns immediately if disk already says
-    // true; only blocks on a cold/stale-false cache (awaits the same memoized
-    // initializeGrowthBook promise fired earlier). Also warms the
-    // isChannelsEnabled() check in the dev-channels dialog below.
-    if (getAllowedChannels().length > 0 || (devChannels?.length ?? 0) > 0) {
-      await checkGate_CACHED_OR_BLOCKING('tengu_harbor');
-    }
-    if (devChannels && devChannels.length > 0) {
-      const [{
-        isChannelsEnabled
-      }, {
-        getClaudeAIOAuthTokens
-      }] = await Promise.all([import('src/mcp/channelAllowlist.js'), import('src/providers/auth/auth.js')]);
-      // Skip the dialog when channels are blocked (tengu_harbor off or no
-      // OAuth) — accepting then immediately seeing "not available" in
-      // ChannelsNotice is worse than no dialog. Append entries anyway so
-      // ChannelsNotice renders the blocked branch with the dev entries
-      // named. dev:true here is for the flag label in ChannelsNotice
-      // (hasNonDev check); the allowlist bypass it also grants is moot
-      // since the gate blocks upstream.
-      if (!isChannelsEnabled() || !getClaudeAIOAuthTokens()?.accessToken) {
-        setAllowedChannels([...getAllowedChannels(), ...devChannels.map(c => ({
-          ...c,
-          dev: true
-        }))]);
-        setHasDevChannels(true);
-      } else {
-        const {
-          DevChannelsDialog
-        } = await import('src/platform/DevChannelsDialog.js');
-        await showSetupDialog(root, done => <DevChannelsDialog channels={devChannels} onAccept={() => {
-          // Mark dev entries per-entry so the allowlist bypass doesn't leak
-          // to --channels entries when both flags are passed.
-          setAllowedChannels([...getAllowedChannels(), ...devChannels.map(c => ({
-            ...c,
-            dev: true
-          }))]);
-          setHasDevChannels(true);
-          void done();
-        }} />);
-      }
-    }
-  }
-
   profileCheckpoint('setupScreens_end');
   return onboardingShown;
 }
@@ -330,10 +268,6 @@ export function getRenderContext(exitOnCtrlC: boolean): {
   let lastFlickerTime = 0;
   const baseOptions = getBaseRenderOptions(exitOnCtrlC);
 
-  // Log analytics event when stdin override is active
-  if (baseOptions.stdin) {
-    logEvent('tengu_stdin_interactive', {});
-  }
   const fpsTracker = new FpsTracker();
   const stats = createStatsStore();
   setStatsStore(stats);
@@ -376,13 +310,6 @@ export function getRenderContext(exitOnCtrlC: boolean): {
             continue;
           }
           const now = Date.now();
-          if (now - lastFlickerTime < 1000) {
-            logEvent('tengu_flicker', {
-              desiredHeight: flicker.desiredHeight,
-              actualHeight: flicker.availableHeight,
-              reason: flicker.reason
-            } as unknown as Record<string, boolean | number | undefined>);
-          }
           lastFlickerTime = now;
         }
       }

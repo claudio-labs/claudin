@@ -35,10 +35,6 @@ import {
 } from 'src/platform/settings/types.js'
 import type { ValidationError } from 'src/platform/settings/validation.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { fetchClaudeAIMcpConfigsIfEligible } from 'src/mcp/claudeai.js'
 import { expandEnvVarsInString } from 'src/mcp/envExpansion.js'
 import { isClaudeAIMcpServerName } from 'src/mcp/normalization.js'
@@ -631,15 +627,6 @@ export async function addMcpConfig(
     throw new Error(
       `Invalid name ${name}. Names can only contain letters, numbers, hyphens, and underscores.`,
     )
-  }
-
-  if (feature('CHICAGO_MCP')) {
-    const { isComputerUseMCPServer } = await import(
-      'src/platform/computerUse/common.js'
-    )
-    if (isComputerUseMCPServer(name)) {
-      throw new Error(`Cannot add MCP server "${name}": this name is reserved.`)
-    }
   }
 
   // Block adding servers when enterprise MCP config exists (it has exclusive control)
@@ -1498,21 +1485,11 @@ export function areMcpConfigsAllowedWithEnterpriseMcpConfig(
   )
 }
 
-/**
- * Built-in MCP server that defaults to disabled. Unlike user-configured servers
- * (opt-out via disabledMcpServers), this requires explicit opt-in via
- * enabledMcpServers. Shows up in /mcp as disabled until the user enables it.
- */
-/* eslint-disable @typescript-eslint/no-require-imports */
-const DEFAULT_DISABLED_BUILTIN = feature('CHICAGO_MCP')
-  ? (
-      require('src/platform/computerUse/common.js') as typeof import('src/platform/computerUse/common.js')
-    ).COMPUTER_USE_MCP_SERVER_NAME
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
-
-function isDefaultDisabledBuiltin(name: string): boolean {
-  return DEFAULT_DISABLED_BUILTIN !== null && name === DEFAULT_DISABLED_BUILTIN
+// Computer Use was the only default-disabled built-in MCP server, and it left
+// with CHICAGO_MCP. Kept as a predicate rather than inlined at the call sites
+// so the next built-in that wants opt-in semantics has somewhere to go.
+function isDefaultDisabledBuiltin(_name: string): boolean {
+  return false
 }
 
 /**
@@ -1572,11 +1549,4 @@ export function setMcpServerEnabled(name: string, enabled: boolean): void {
     return { ...current, disabledMcpServers: next }
   })
 
-  if (isBuiltinStateChange) {
-    logEvent('tengu_builtin_mcp_toggle', {
-      serverName:
-        name as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      enabled,
-    })
-  }
 }

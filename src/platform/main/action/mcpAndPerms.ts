@@ -2,8 +2,8 @@
 // Extracted from src/platform/main.tsx (ROADMAP 11g Fase 7c.2).
 //
 // Covers: initialPermissionModeFromCLI, autoModeFlagCli (TRANSCRIPT_CLASSIFIER),
-// --mcp-config parsing + policy filtering, enterprise MCP gate, CHICAGO_MCP
-// computerUse setup, --channels / dev-channels parsing, brief-tool opt-in,
+// --mcp-config parsing + policy filtering, enterprise MCP gate,
+// --channels / dev-channels parsing, brief-tool opt-in,
 // initializeToolPermissionContext + dangerous-permission warnings, mcp config
 // promises (claudeai + local), and format validation against sdkUrl / replay /
 // includePartialMessages / sessionPersistence.
@@ -16,7 +16,6 @@ import { resolve } from 'path';
 import mapValues from 'lodash-es/mapValues.js';
 import { feature } from 'bun:bundle';
 import { setAdditionalDirectoriesForClaudeMd } from 'src/platform/bootstrap/state.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { fetchClaudeAIMcpConfigsIfEligible } from 'src/mcp/claudeai.js';
 import {
   areMcpConfigsAllowedWithEnterpriseMcpConfig,
@@ -27,7 +26,7 @@ import {
   parseMcpConfigFromFilePath,
 } from 'src/mcp/config.js';
 import type { McpServerConfig, ScopedMcpServerConfig } from 'src/mcp/types.js';
-import { type ChannelEntry, setAllowedChannels, setUserMsgOptIn } from 'src/platform/bootstrap/state.js';
+import type { ChannelEntry } from 'src/platform/bootstrap/state.js';
 import { assertMinVersion } from 'src/platform/install/autoUpdater.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { isBareMode } from 'src/shared/envUtils.js';
@@ -37,7 +36,6 @@ import {
   initializeToolPermissionContext,
   initialPermissionModeFromCLI,
   isDefaultPermissionModeAuto,
-  parseToolListFromCLI,
   stripDangerousPermissionsForAutoMode,
 } from 'src/permissions/permissionSetup.js';
 import { getPlatform } from 'src/shared/proc/platform.js';
@@ -77,10 +75,6 @@ export type McpAndPermsResult = {
 
 /**
  * Inputs from main.tsx (post Block A).
- *
- * `allowedTools` is mutated in place by the CHICAGO_MCP branch
- * (`allowedTools.push(...cuTools)`) — pass the same array reference used
- * downstream.
  */
 export type McpAndPermsInput = {
   options: ActionOptions;
@@ -195,23 +189,6 @@ export async function runMcpAndPerms(
       process.exit(1);
     }
     if (Object.keys(allConfigs).length > 0) {
-      // SDK hosts (Nest/Desktop) own their server naming and may reuse
-      // built-in names — skip reserved-name checks for type:'sdk'.
-      const nonSdkConfigNames = Object.entries(allConfigs).filter(([, config]) => config.type !== 'sdk').map(([name]) => name);
-      let reservedNameError: string | null = null;
-      if (feature('CHICAGO_MCP')) {
-        const { isComputerUseMCPServer, COMPUTER_USE_MCP_SERVER_NAME } = await import('src/platform/computerUse/common.js');
-        if (nonSdkConfigNames.some(isComputerUseMCPServer)) {
-          reservedNameError = `Invalid MCP configuration: "${COMPUTER_USE_MCP_SERVER_NAME}" is a reserved MCP name.`;
-        }
-      }
-      if (reservedNameError) {
-        // stderr+exit(1) — a throw here becomes a silent unhandled
-        // rejection in stream-json mode (void main() in cli.tsx).
-        process.stderr.write(`Error: ${reservedNameError}\n`);
-        process.exit(1);
-      }
-
       const scopedConfigs = mapValues(allConfigs, config => ({
         ...config,
         scope: 'dynamic' as const,
@@ -244,102 +221,16 @@ export async function runMcpAndPerms(
     }
   }
 
-  // chicago MCP: guarded Computer Use.
-  if (feature('CHICAGO_MCP') && getPlatform() === 'macos' && !isNonInteractiveSession) {
-    try {
-      const { getChicagoEnabled } = await import('src/platform/computerUse/gates.js');
-      if (getChicagoEnabled()) {
-        const { setupComputerUseMCP } = await import('src/platform/computerUse/setup.js');
-        const { mcpConfig: cuMcpConfig, allowedTools: cuTools } = setupComputerUseMCP();
-        dynamicMcpConfig = {
-          ...dynamicMcpConfig,
-          ...cuMcpConfig,
-        };
-        allowedTools.push(...cuTools);
-      }
-    } catch (error) {
-      logForDebugging(`[Computer Use MCP] Setup failed: ${errorMessage(error)}`);
-    }
-  }
-
   // Store additional directories for CLAUDE.md loading
   setAdditionalDirectoriesForClaudeMd(addDir);
 
   // Channel server allowlist from --channels flag.
-  let devChannels: ChannelEntry[] | undefined;
-  if (feature('KAIROS') || feature('KAIROS_CHANNELS')) {
-    const parseChannelEntries = (raw: string[], flag: string): ChannelEntry[] => {
-      const entries: ChannelEntry[] = [];
-      const bad: string[] = [];
-      for (const c of raw) {
-        if (c.startsWith('plugin:')) {
-          const rest = c.slice(7);
-          const at = rest.indexOf('@');
-          if (at <= 0 || at === rest.length - 1) {
-            bad.push(c);
-          } else {
-            entries.push({
-              kind: 'plugin',
-              name: rest.slice(0, at),
-              marketplace: rest.slice(at + 1),
-            });
-          }
-        } else if (c.startsWith('server:') && c.length > 7) {
-          entries.push({
-            kind: 'server',
-            name: c.slice(7),
-          });
-        } else {
-          bad.push(c);
-        }
-      }
-      if (bad.length > 0) {
-        process.stderr.write(chalk.red(`${flag} entries must be tagged: ${bad.join(', ')}\n` + `  plugin:<name>@<marketplace>  — plugin-provided channel (allowlist enforced)\n` + `  server:<name>                — manually configured MCP server\n`));
-        process.exit(1);
-      }
-      return entries;
-    };
-    const channelOpts = options as {
-      channels?: string[];
-      dangerouslyLoadDevelopmentChannels?: string[];
-    };
-    const rawChannels = channelOpts.channels;
-    const rawDev = channelOpts.dangerouslyLoadDevelopmentChannels;
-    let channelEntries: ChannelEntry[] = [];
-    if (rawChannels && rawChannels.length > 0) {
-      channelEntries = parseChannelEntries(rawChannels, '--channels');
-      setAllowedChannels(channelEntries);
-    }
-    if (!isNonInteractiveSession) {
-      if (rawDev && rawDev.length > 0) {
-        devChannels = parseChannelEntries(rawDev, '--dangerously-load-development-channels');
-      }
-    }
-    if (channelEntries.length > 0 || (devChannels?.length ?? 0) > 0) {
-      const joinPluginIds = (entries: ChannelEntry[]) => {
-        const ids = entries.flatMap(e => e.kind === 'plugin' ? [`${e.name}@${e.marketplace}`] : []);
-        return ids.length > 0 ? (ids.sort().join(',') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS) : undefined;
-      };
-      logEvent('tengu_mcp_channel_flags', {
-        channels_count: channelEntries.length,
-        dev_count: devChannels?.length ?? 0,
-        plugins: joinPluginIds(channelEntries),
-        dev_plugins: joinPluginIds(devChannels ?? []),
-      });
-    }
-  }
+  // --channels / --dangerously-load-development-channels shipped behind the
+  // KAIROS/KAIROS_CHANNELS build flags; neither is on here, so the options
+  // are never registered and nothing can populate this.
+  const devChannels: ChannelEntry[] | undefined = undefined;
 
   // SDK opt-in for SendUserMessage via --tools.
-  if ((feature('KAIROS') || feature('KAIROS_BRIEF')) && baseTools.length > 0) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const { BRIEF_TOOL_NAME, LEGACY_BRIEF_TOOL_NAME } = require('src/tools/BriefTool/prompt.js') as typeof import('src/tools/BriefTool/prompt.js');
-    const { isBriefEntitled } = require('src/tools/BriefTool/BriefTool.js') as typeof import('src/tools/BriefTool/BriefTool.js');
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    const parsedTools = parseToolListFromCLI(baseTools);
-    if ((parsedTools.includes(BRIEF_TOOL_NAME) || parsedTools.includes(LEGACY_BRIEF_TOOL_NAME)) && isBriefEntitled()) {
-      setUserMsgOptIn(true);
-    }
-  }
 
   const initResult = await initializeToolPermissionContext({
     allowedToolsCli: allowedTools,

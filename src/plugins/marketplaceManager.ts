@@ -53,7 +53,6 @@ import {
   getAddDirExtraMarketplaces,
 } from 'src/plugins/addDirPluginSettings.js'
 import { markPluginVersionOrphaned } from 'src/plugins/cacheUtils.js'
-import { classifyFetchError, logPluginFetch } from 'src/plugins/fetchTelemetry.js'
 import { removeAllPluginsForMarketplace } from 'src/plugins/installedPluginsManager.js'
 import {
   extractHostFromSource,
@@ -1110,18 +1109,10 @@ async function cacheMarketplaceFromGit(
   // to the rm+clone fallback.
   const reconcileResult = await reconcileSparseCheckout(cachePath, sparsePaths)
   if (reconcileResult.code === 0) {
-    const pullStarted = performance.now()
     const pullResult = await gitPull(cachePath, ref, {
       disableCredentialHelper: options?.disableCredentialHelper,
       sparsePaths,
     })
-    logPluginFetch(
-      'marketplace_pull',
-      gitUrl,
-      pullResult.code === 0 ? 'success' : 'failure',
-      performance.now() - pullStarted,
-      pullResult.code === 0 ? undefined : classifyFetchError(pullResult.stderr),
-    )
     if (pullResult.code === 0) return
     logForDebugging(`git pull failed, will re-clone: ${pullResult.stderr}`, {
       level: 'warn',
@@ -1159,15 +1150,7 @@ async function cacheMarketplaceFromGit(
     onProgress,
     `Cloning repository (timeout: ${timeoutSec}s): ${redactUrlCredentials(gitUrl)}${refMessage}`,
   )
-  const cloneStarted = performance.now()
   const result = await gitClone(gitUrl, cachePath, ref, sparsePaths)
-  logPluginFetch(
-    'marketplace_clone',
-    gitUrl,
-    result.code === 0 ? 'success' : 'failure',
-    performance.now() - cloneStarted,
-    result.code === 0 ? undefined : classifyFetchError(result.stderr),
-  )
   if (result.code !== 0) {
     // Clean up any partial directory created by the failed clone so the next
     // attempt starts fresh. Best-effort: if this fails, the stale dir will be
@@ -1282,20 +1265,12 @@ async function cacheMarketplaceFromUrl(
   }
 
   let response
-  const fetchStarted = performance.now()
   try {
     response = await axios.get(url, {
       timeout: 10000,
       headers,
     })
   } catch (error) {
-    logPluginFetch(
-      'marketplace_url',
-      url,
-      'failure',
-      performance.now() - fetchStarted,
-      classifyFetchError(error),
-    )
     if (axios.isAxiosError(error)) {
       if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
         throw new Error(
@@ -1322,25 +1297,12 @@ async function cacheMarketplaceFromUrl(
   // Validate the response is a valid marketplace
   const result = PluginMarketplaceSchema().safeParse(response.data)
   if (!result.success) {
-    logPluginFetch(
-      'marketplace_url',
-      url,
-      'failure',
-      performance.now() - fetchStarted,
-      'invalid_schema',
-    )
     throw new ConfigParseError(
       `Invalid marketplace schema from URL: ${result.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')}`,
       redactedUrl,
       response.data,
     )
   }
-  logPluginFetch(
-    'marketplace_url',
-    url,
-    'success',
-    performance.now() - fetchStarted,
-  )
 
   safeCallProgress(onProgress, 'Saving marketplace to cache')
   // Ensure cache directory exists

@@ -1,11 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js'
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
 import type { CompletionType } from 'src/providers/transport/unaryLogging.js'
 import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js'
@@ -170,34 +165,23 @@ export function useFilePermissionDialog<T extends ToolInput>({
   // Handle Tab key toggling input mode for Yes/No options
   const handleInputModeToggle = useCallback(
     (value: string) => {
-      const analyticsProps = {
-        toolName: sanitizeToolNameForAnalytics(
-          toolUseConfirm.tool.name,
-        ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        isMcp: toolUseConfirm.tool.isMcp ?? false,
-      }
-
       if (value === 'yes') {
         if (yesInputMode) {
           setYesInputMode(false)
-          logEvent('tengu_accept_feedback_mode_collapsed', analyticsProps)
         } else {
           setYesInputMode(true)
           setYesFeedbackModeEntered(true)
-          logEvent('tengu_accept_feedback_mode_entered', analyticsProps)
         }
       } else if (value === 'no') {
         if (noInputMode) {
           setNoInputMode(false)
-          logEvent('tengu_reject_feedback_mode_collapsed', analyticsProps)
         } else {
           setNoInputMode(true)
           setNoFeedbackModeEntered(true)
-          logEvent('tengu_reject_feedback_mode_entered', analyticsProps)
         }
       }
     },
-    [yesInputMode, noInputMode, toolUseConfirm],
+    [yesInputMode, noInputMode],
   )
 
   return {

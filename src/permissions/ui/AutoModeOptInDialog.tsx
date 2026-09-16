@@ -1,6 +1,4 @@
 import { c as _c } from "react-compiler-runtime";
-import React from 'react';
-import { logEvent } from 'src/platform/analytics/index.js';
 import { Box, Link, Text } from 'src/terminal/ink.js';
 import { updateSettingsForSource } from 'src/platform/settings/settings.js';
 import { Select } from 'src/terminal/custom-select/index.js';
@@ -21,21 +19,14 @@ export function AutoModeOptInDialog(t0: Props) {
     onDecline,
     declineExits
   } = t0;
-  let t1: [];
-  if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t1 = [];
-    $[0] = t1;
-  } else {
-    t1 = $[0];
-  }
-  React.useEffect(_temp, t1);
+  // Slot $[0] held the removed mount-effect's dep array (analytics only). It
+  // stays allocated so _c(18) and every later $[i] keep their numbering.
   let t2;
   if ($[1] !== onAccept || $[2] !== onDecline) {
     t2 = function onChange(value: 'accept' | 'accept-default' | 'decline') {
       bb3: switch (value) {
         case "accept":
           {
-            logEvent("tengu_auto_mode_opt_in_dialog_accept", {});
             updateSettingsForSource("userSettings", {
               skipAutoPermissionPrompt: true
             });
@@ -44,7 +35,6 @@ export function AutoModeOptInDialog(t0: Props) {
           }
         case "accept-default":
           {
-            logEvent("tengu_auto_mode_opt_in_dialog_accept_default", {});
             updateSettingsForSource("userSettings", {
               skipAutoPermissionPrompt: true,
               permissions: {
@@ -56,7 +46,6 @@ export function AutoModeOptInDialog(t0: Props) {
           }
         case "decline":
           {
-            logEvent("tengu_auto_mode_opt_in_dialog_decline", {});
             onDecline();
           }
       }
@@ -135,7 +124,4 @@ export function AutoModeOptInDialog(t0: Props) {
     t10 = $[17];
   }
   return t10;
-}
-function _temp() {
-  logEvent("tengu_auto_mode_opt_in_dialog_shown", {});
 }

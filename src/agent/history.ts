@@ -409,8 +409,9 @@ async function addToPromptHistory(
 }
 
 export function addToHistory(command: HistoryEntry | string): void {
-  // Skip history when running in a tmux session spawned by Claude Code's Tungsten tool.
-  // This prevents verification/test sessions from polluting the user's real command history.
+  // Skip history inside a tmux session started on our own socket — tmuxSocket.ts
+  // sets this in the server's global env. Keeps verification and test sessions
+  // from polluting the user's real command history.
   if (isEnvTruthy(process.env.CLAUDIN_SKIP_PROMPT_HISTORY)) {
     return
   }

@@ -47,7 +47,6 @@ export type Props = {
   width?: number | string;
   isTranscriptMode: boolean;
   isStatic: boolean;
-  onOpenRateLimitOptions?: () => void;
   isActiveCollapsedGroup?: boolean;
   isUserContinuation?: boolean;
   /** ID of the last thinking block (uuid:index) to show, used for hiding past thinking in transcript mode */
@@ -72,7 +71,6 @@ function MessageImpl(t0: Props) {
     style,
     width,
     isTranscriptMode,
-    onOpenRateLimitOptions,
     isActiveCollapsedGroup,
     isUserContinuation: t1,
     lastThinkingBlockId,
@@ -99,10 +97,14 @@ function MessageImpl(t0: Props) {
       {
         const t2 = containerWidth ?? "100%";
         let t3;
-        if ($[5] !== addMargin || $[6] !== commands || $[7] !== inProgressToolUseIDs || $[8] !== isTranscriptMode || $[9] !== lastThinkingBlockId || $[10] !== lookups || $[11] !== message.advisorModel || $[12] !== message.message.content || $[13] !== message.uuid || $[14] !== onOpenRateLimitOptions || $[15] !== progressMessagesForMessage || $[16] !== shouldAnimate || $[17] !== shouldShowDot || $[18] !== tools || $[19] !== verbose || $[20] !== width) {
+        // NOTE: $[14] and $[30] below stay allocated but unused. This file is
+        // React Compiler output, so `_c(94)` and every `$[i]` are its
+        // bookkeeping — dropping a comparison and its write is safe,
+        // renumbering the slots is not.
+        if ($[5] !== addMargin || $[6] !== commands || $[7] !== inProgressToolUseIDs || $[8] !== isTranscriptMode || $[9] !== lastThinkingBlockId || $[10] !== lookups || $[11] !== message.advisorModel || $[12] !== message.message.content || $[13] !== message.uuid || $[15] !== progressMessagesForMessage || $[16] !== shouldAnimate || $[17] !== shouldShowDot || $[18] !== tools || $[19] !== verbose || $[20] !== width) {
           let t4;
-          if ($[22] !== addMargin || $[23] !== commands || $[24] !== inProgressToolUseIDs || $[25] !== isTranscriptMode || $[26] !== lastThinkingBlockId || $[27] !== lookups || $[28] !== message.advisorModel || $[29] !== message.uuid || $[30] !== onOpenRateLimitOptions || $[31] !== progressMessagesForMessage || $[32] !== shouldAnimate || $[33] !== shouldShowDot || $[34] !== tools || $[35] !== verbose || $[36] !== width) {
-            t4 = (_: BetaContentBlock | ConnectorTextBlock, index_0: number) => <AssistantMessageBlock key={index_0} param={_} addMargin={addMargin} tools={tools} commands={commands} verbose={verbose} inProgressToolUseIDs={inProgressToolUseIDs} progressMessagesForMessage={progressMessagesForMessage} shouldAnimate={shouldAnimate} shouldShowDot={shouldShowDot} width={width} inProgressToolCallCount={inProgressToolUseIDs.size} isTranscriptMode={isTranscriptMode} lookups={lookups} onOpenRateLimitOptions={onOpenRateLimitOptions} thinkingBlockId={`${message.uuid}:${index_0}`} lastThinkingBlockId={lastThinkingBlockId} advisorModel={message.advisorModel} />;
+          if ($[22] !== addMargin || $[23] !== commands || $[24] !== inProgressToolUseIDs || $[25] !== isTranscriptMode || $[26] !== lastThinkingBlockId || $[27] !== lookups || $[28] !== message.advisorModel || $[29] !== message.uuid || $[31] !== progressMessagesForMessage || $[32] !== shouldAnimate || $[33] !== shouldShowDot || $[34] !== tools || $[35] !== verbose || $[36] !== width) {
+            t4 = (_: BetaContentBlock | ConnectorTextBlock, index_0: number) => <AssistantMessageBlock key={index_0} param={_} addMargin={addMargin} tools={tools} commands={commands} verbose={verbose} inProgressToolUseIDs={inProgressToolUseIDs} progressMessagesForMessage={progressMessagesForMessage} shouldAnimate={shouldAnimate} shouldShowDot={shouldShowDot} width={width} inProgressToolCallCount={inProgressToolUseIDs.size} isTranscriptMode={isTranscriptMode} lookups={lookups} thinkingBlockId={`${message.uuid}:${index_0}`} lastThinkingBlockId={lastThinkingBlockId} advisorModel={message.advisorModel} />;
             $[22] = addMargin;
             $[23] = commands;
             $[24] = inProgressToolUseIDs;
@@ -111,7 +113,6 @@ function MessageImpl(t0: Props) {
             $[27] = lookups;
             $[28] = message.advisorModel;
             $[29] = message.uuid;
-            $[30] = onOpenRateLimitOptions;
             $[31] = progressMessagesForMessage;
             $[32] = shouldAnimate;
             $[33] = shouldShowDot;
@@ -132,7 +133,6 @@ function MessageImpl(t0: Props) {
           $[11] = message.advisorModel;
           $[12] = message.message.content;
           $[13] = message.uuid;
-          $[14] = onOpenRateLimitOptions;
           $[15] = progressMessagesForMessage;
           $[16] = shouldAnimate;
           $[17] = shouldShowDot;
@@ -242,9 +242,6 @@ function MessageImpl(t0: Props) {
             t2 = $[64];
           }
           return t2;
-        }
-        if (message.subtype === "microcompact_boundary") {
-          return null;
         }
         if (feature("HISTORY_SNIP")) {
           const {
@@ -457,7 +454,6 @@ type AssistantMessageBlockProps = {
   inProgressToolCallCount: number;
   isTranscriptMode: boolean;
   lookups: ReturnType<typeof buildMessageLookups>;
-  onOpenRateLimitOptions?: () => void;
   thinkingBlockId: string;
   lastThinkingBlockId?: string | null;
   advisorModel?: string;
@@ -478,7 +474,6 @@ function AssistantMessageBlock(t0: AssistantMessageBlockProps) {
     inProgressToolCallCount,
     isTranscriptMode,
     lookups,
-    onOpenRateLimitOptions,
     thinkingBlockId,
     lastThinkingBlockId,
     advisorModel
@@ -497,10 +492,11 @@ function AssistantMessageBlock(t0: AssistantMessageBlockProps) {
         t1 = $[1];
       }
       let t2;
-      if ($[2] !== addMargin || $[3] !== onOpenRateLimitOptions || $[4] !== shouldShowDot || $[5] !== t1 || $[6] !== verbose || $[7] !== width) {
-        t2 = <AssistantTextMessage param={t1} addMargin={addMargin} shouldShowDot={shouldShowDot} verbose={verbose} width={width} onOpenRateLimitOptions={onOpenRateLimitOptions} />;
+      // NOTE: $[3] and $[23] below stay allocated but unused — React Compiler
+      // output, so the slot numbering is load-bearing and must not shift.
+      if ($[2] !== addMargin || $[4] !== shouldShowDot || $[5] !== t1 || $[6] !== verbose || $[7] !== width) {
+        t2 = <AssistantTextMessage param={t1} addMargin={addMargin} shouldShowDot={shouldShowDot} verbose={verbose} width={width} />;
         $[2] = addMargin;
-        $[3] = onOpenRateLimitOptions;
         $[4] = shouldShowDot;
         $[5] = t1;
         $[6] = verbose;
@@ -539,10 +535,9 @@ function AssistantMessageBlock(t0: AssistantMessageBlockProps) {
     case "text":
       {
         let t1;
-        if ($[22] !== addMargin || $[23] !== onOpenRateLimitOptions || $[24] !== param || $[25] !== shouldShowDot || $[26] !== verbose || $[27] !== width) {
-          t1 = <AssistantTextMessage param={param} addMargin={addMargin} shouldShowDot={shouldShowDot} verbose={verbose} width={width} onOpenRateLimitOptions={onOpenRateLimitOptions} />;
+        if ($[22] !== addMargin || $[24] !== param || $[25] !== shouldShowDot || $[26] !== verbose || $[27] !== width) {
+          t1 = <AssistantTextMessage param={param} addMargin={addMargin} shouldShowDot={shouldShowDot} verbose={verbose} width={width} />;
           $[22] = addMargin;
-          $[23] = onOpenRateLimitOptions;
           $[24] = param;
           $[25] = shouldShowDot;
           $[26] = verbose;

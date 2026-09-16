@@ -1,0 +1,78 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`tool registry — characterization the unconditional tool list matches the snapshot 1`] = `
+[
+  "Agent",
+  "TaskOutput",
+  "Bash",
+  "Glob",
+  "Grep",
+  "ExitPlanMode",
+  "Read",
+  "Edit",
+  "Write",
+  "apply_patch",
+  "Rename",
+  "NotebookEdit",
+  "WebFetch",
+  "TodoWrite",
+  "WebSearch",
+  "TaskStop",
+  "AskUserQuestion",
+  "ReportFindings",
+  "Skill",
+  "LSP",
+  "RunTests",
+  "Typecheck",
+  "Build",
+  "Git",
+  "Container",
+  "EnterPlanMode",
+  "EnterWorktree",
+  "ExitWorktree",
+  "SendMessage",
+  "CronCreate",
+  "CronDelete",
+  "CronList",
+  "ScheduleWakeup",
+  "WaitFor",
+  "SendUserMessage",
+  "TestingPermission",
+  "ToolSearch",
+]
+`;
+
+exports[`tool registry — characterization the flag-gated tool table matches the snapshot 1`] = `
+{
+  "MonitorTool": [
+    "MONITOR_TOOL",
+  ],
+  "OverflowTestTool": [
+    "OVERFLOW_TEST_TOOL",
+  ],
+  "SnipTool": [
+    "HISTORY_SNIP",
+  ],
+  "TerminalCaptureTool": [
+    "TERMINAL_PANEL",
+  ],
+  "WorkflowTool": [
+    "WORKFLOW_SCRIPTS",
+  ],
+  "agentWorkflowTools": [
+    "AGENT_WORKFLOWS",
+  ],
+  "coordinatorModeModule": [
+    "COORDINATOR_MODE",
+  ],
+}
+`;
+
+exports[`tool registry — characterization every gated tool names a flag that the build map knows about 1`] = `
+[
+  "HISTORY_SNIP",
+  "OVERFLOW_TEST_TOOL",
+  "TERMINAL_PANEL",
+  "WORKFLOW_SCRIPTS",
+]
+`;

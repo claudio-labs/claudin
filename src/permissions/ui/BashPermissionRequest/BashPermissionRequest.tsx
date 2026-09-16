@@ -5,8 +5,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Text, useTheme } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js';
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
 import { BashTool } from 'src/tools/BashTool/BashTool.js';
 import { getFirstWordPrefix, getSimpleCommandPrefix } from 'src/tools/BashTool/bashPermissions.js';
@@ -29,7 +27,6 @@ import type { PermissionRequestProps } from 'src/permissions/ui/PermissionReques
 import { PermissionRuleExplanation } from 'src/permissions/ui/PermissionRuleExplanation.js';
 import { SedEditPermissionRequest } from 'src/permissions/ui/SedEditPermissionRequest/SedEditPermissionRequest.js';
 import { useShellPermissionFeedback } from 'src/permissions/ui/useShellPermissionFeedback.js';
-import { logUnaryPermissionEvent } from 'src/permissions/ui/utils.js';
 import { bashToolUseOptions } from 'src/permissions/ui/BashPermissionRequest/bashToolUseOptions.js';
 const CHECKING_TEXT = 'Attempting to auto-approve\u2026';
 
@@ -157,8 +154,6 @@ function BashPermissionRequestInner({
   const {
     yesInputMode,
     noInputMode,
-    yesFeedbackModeEntered,
-    noFeedbackModeEntered,
     acceptFeedback,
     rejectFeedback,
     setAcceptFeedback,
@@ -318,30 +313,8 @@ function BashPermissionRequestInner({
     isActive: feature('BASH_CLASSIFIER') ? !!toolUseConfirm.classifierAutoApproved : false
   });
   function onSelect(value_0: string) {
-    // Map options to numeric values for analytics (strings not allowed in logEvent)
-    let optionIndex: Record<string, number> = {
-      yes: 1,
-      'yes-apply-suggestions': 2,
-      'yes-prefix-edited': 2,
-      no: 3
-    };
-    if (feature('BASH_CLASSIFIER')) {
-      optionIndex = {
-        yes: 1,
-        'yes-apply-suggestions': 2,
-        'yes-prefix-edited': 2,
-        'yes-classifier-reviewed': 3,
-        no: 4
-      };
-    }
-    logEvent('tengu_permission_request_option_selected', {
-      option_index: optionIndex[value_0],
-      explainer_visible: explainerState.visible
-    });
-    const toolNameForAnalytics = sanitizeToolNameForAnalytics(toolUseConfirm.tool.name) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
     if (value_0 === 'yes-prefix-edited') {
       const trimmedPrefix = (editablePrefix ?? '').trim();
-      logUnaryPermissionEvent('tool_use_single', toolUseConfirm, 'accept');
       if (!trimmedPrefix) {
         toolUseConfirm.onAllow(toolUseConfirm.input, []);
       } else {
@@ -361,7 +334,6 @@ function BashPermissionRequestInner({
     }
     if (feature('BASH_CLASSIFIER') && value_0 === 'yes-classifier-reviewed') {
       const trimmedDescription = classifierDescription.trim();
-      logUnaryPermissionEvent('tool_use_single', toolUseConfirm, 'accept');
       if (!trimmedDescription) {
         toolUseConfirm.onAllow(toolUseConfirm.input, []);
       } else {
@@ -383,22 +355,12 @@ function BashPermissionRequestInner({
       case 'yes':
         {
           const trimmedFeedback_0 = acceptFeedback.trim();
-          logUnaryPermissionEvent('tool_use_single', toolUseConfirm, 'accept');
-          // Log accept submission with feedback context
-          logEvent('tengu_accept_submitted', {
-            toolName: toolNameForAnalytics,
-            isMcp: toolUseConfirm.tool.isMcp ?? false,
-            has_instructions: !!trimmedFeedback_0,
-            instructions_length: trimmedFeedback_0.length,
-            entered_feedback_mode: yesFeedbackModeEntered
-          });
           toolUseConfirm.onAllow(toolUseConfirm.input, [], trimmedFeedback_0 || undefined);
           onDone();
           break;
         }
       case 'yes-apply-suggestions':
         {
-          logUnaryPermissionEvent('tool_use_single', toolUseConfirm, 'accept');
           // Extract suggestions if present (works for both 'ask' and 'passthrough' behaviors)
           const permissionUpdates_0 = 'suggestions' in toolUseConfirm.permissionResult ? toolUseConfirm.permissionResult.suggestions || [] : [];
           toolUseConfirm.onAllow(toolUseConfirm.input, permissionUpdates_0);
@@ -409,14 +371,6 @@ function BashPermissionRequestInner({
         {
           const trimmedFeedback = rejectFeedback.trim();
 
-          // Log reject submission with feedback context
-          logEvent('tengu_reject_submitted', {
-            toolName: toolNameForAnalytics,
-            isMcp: toolUseConfirm.tool.isMcp ?? false,
-            has_instructions: !!trimmedFeedback,
-            instructions_length: trimmedFeedback.length,
-            entered_feedback_mode: noFeedbackModeEntered
-          });
 
           // Process rejection (with or without feedback)
           handleReject(trimmedFeedback || undefined);

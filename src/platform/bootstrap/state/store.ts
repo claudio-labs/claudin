@@ -112,25 +112,9 @@ export function getInitialState(): State {
       'flagSettings',
       'policySettings',
     ],
-    // Telemetry state
-    meter: null,
-    sessionCounter: null,
-    locCounter: null,
-    prCounter: null,
-    commitCounter: null,
-    costCounter: null,
-    tokenCounter: null,
-    codeEditToolDecisionCounter: null,
-    activeTimeCounter: null,
     statsStore: null,
     sessionId: randomUUID() as SessionId,
     parentSessionId: undefined,
-    // Logger state
-    loggerProvider: null,
-    eventLogger: null,
-    // Meter provider state
-    meterProvider: null,
-    tracerProvider: null,
     // Agent color state
     agentColorMap: new Map(),
     agentColorIndex: 0,

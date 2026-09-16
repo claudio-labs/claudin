@@ -180,15 +180,6 @@ export function shouldShowUserMessage(
 ): boolean {
   if (message.type !== 'user') return true
   if (message.isMeta) {
-    // Channel messages stay isMeta (for snip-tag/turn-boundary/brief-mode
-    // semantics) but render in the default transcript — the keyboard user
-    // should see what arrived. The <channel> tag in UserTextMessage handles
-    // the actual rendering.
-    if (
-      (feature('KAIROS') || feature('KAIROS_CHANNELS')) &&
-      message.origin?.kind === 'channel'
-    )
-      return true
     return false
   }
   if (message.isVisibleInTranscriptOnly && !isTranscriptMode) return false

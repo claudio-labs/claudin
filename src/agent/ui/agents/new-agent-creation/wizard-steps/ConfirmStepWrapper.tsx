@@ -1,7 +1,6 @@
 import chalk from 'chalk';
 import { dirname } from 'path';
 import React, { type ReactNode, useCallback, useState } from 'react';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { useSetAppState } from 'src/terminal/state/AppState.js';
 import type { Tools } from 'src/tools/Tool.js';
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js';
@@ -58,19 +57,6 @@ export function ConfirmStepWrapper({
         });
         await editFileInEditor(filePath);
       }
-      logEvent('tengu_agent_created', {
-        agent_type: wizardData.finalAgent.agentType,
-        generation_method: wizardData.wasGenerated ? 'generated' : 'manual',
-        source: wizardData.location!,
-        tool_count: wizardData.finalAgent.tools?.length ?? 'all',
-        has_custom_model: !!wizardData.finalAgent.model,
-        has_custom_color: !!wizardData.finalAgent.color,
-        has_memory: !!wizardData.finalAgent.memory,
-        memory_scope: wizardData.finalAgent.memory ?? 'none',
-        ...(openInEditor ? {
-          opened_in_editor: true
-        } : {})
-      } as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS);
       const message = openInEditor ? `Created agent: ${chalk.bold(wizardData.finalAgent.agentType)} and opened in editor. ` + `If you made edits, restart to load the latest version.` : `Created agent: ${chalk.bold(wizardData.finalAgent.agentType)}`;
       onComplete(message);
     } catch (err) {

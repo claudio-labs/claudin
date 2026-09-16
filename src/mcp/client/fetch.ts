@@ -4,10 +4,6 @@ import {
   getClaudeAIOAuthTokens,
   handleOAuth401Error,
 } from 'src/providers/auth/auth.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 
 /**
  * Fetch wrapper for claude.ai proxy connections. Attaches the OAuth bearer
@@ -50,10 +46,6 @@ export function createClaudeAiProxyFetch(innerFetch: FetchLike): FetchLike {
     // downstream service genuinely needs auth (the common case: 30+ servers
     // with "MCP server requires authentication but no OAuth token configured").
     const tokenChanged = await handleOAuth401Error(sentToken).catch(() => false)
-    logEvent('tengu_mcp_claudeai_proxy_401', {
-      tokenChanged:
-        tokenChanged as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
     if (!tokenChanged) {
       // ELOCKED contention: another connector may have won the lockfile and refreshed — check if token changed underneath us
       const now = getClaudeAIOAuthTokens()?.accessToken

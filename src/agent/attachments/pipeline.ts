@@ -4,10 +4,6 @@
 // abort fence, and parallel main-thread / shared-thread fan-out.
 //
 // Extracted from src/agent/attachments/attachments.ts as the final step of the split.
-import {
-  logEvent,
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from 'src/platform/analytics/index.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { createAbortController } from 'src/shared/abortController.js'
 import type { IDESelection } from 'src/platform/ide/useIdeSelection.js'
@@ -197,7 +193,7 @@ export async function getAttachments(
     // (removed from queue by removeFromQueue but never attached).
     maybe('queued_commands', () => getQueuedCommandAttachments(queuedCommands)),
     maybe('date_change', () =>
-      Promise.resolve(getDateChangeAttachments(messages)),
+      Promise.resolve(getDateChangeAttachments()),
     ),
     maybe('ultrathink_effort', () =>
       Promise.resolve(getUltrathinkEffortAttachment(input)),
@@ -537,11 +533,6 @@ export async function* getAttachmentMessages(
     return
   }
 
-  logEvent('tengu_attachments', {
-    attachment_types: attachments.map(
-      _ => _.type,
-    ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 
   for (const attachment of attachments) {
     yield createAttachmentMessage(attachment)

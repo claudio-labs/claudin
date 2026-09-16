@@ -11,7 +11,6 @@ import {
   type TurnInterruptionState,
 } from 'src/sessions/conversationRecovery.js'
 import { externalMetadataToAppState } from 'src/terminal/state/onChangeAppState.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { logError } from 'src/shared/log.js'
 import { isPolicyAllowed } from 'src/platform/policyLimits/index.js'
 import { parseSessionIdentifier } from 'src/sessions/sessionUrl.js'
@@ -97,7 +96,6 @@ export async function loadInitialMessages(
   // Handle continue in print mode
   if (options.continue) {
     try {
-      logEvent('tengu_continue_print', {})
 
       const result = await loadConversationForResume(
         undefined /* sessionId */,
@@ -184,7 +182,6 @@ export async function loadInitialMessages(
         )
       }
 
-      logEvent('tengu_teleport_print', {})
 
       if (typeof options.teleport !== 'string') {
         throw new Error('No session ID provided for teleport')
@@ -218,7 +215,6 @@ export async function loadInitialMessages(
   // URLs are [internal-only]
   if (options.resume) {
     try {
-      logEvent('tengu_resume_print', {})
 
       // In print mode - we require a valid session ID, JSONL file or URL
       const parsedSessionId = parseSessionIdentifier(

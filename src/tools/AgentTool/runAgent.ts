@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto'
 import uniqBy from 'lodash-es/uniqBy.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
-import { getProjectRoot, getSessionId } from 'src/platform/bootstrap/state.js'
+import { getProjectRoot } from 'src/platform/bootstrap/state.js'
 import { getCommand, getSkillToolCommands, hasCommand } from 'src/commands/commands.js'
 import {
   DEFAULT_AGENT_PROMPT,
@@ -90,11 +90,6 @@ import {
   asSystemPrompt,
   type SystemPrompt,
 } from 'src/agent/systemPromptType.js'
-import {
-  isPerfettoTracingEnabled,
-  registerAgent as registerPerfettoAgent,
-  unregisterAgent as unregisterPerfettoAgent,
-} from 'src/platform/telemetry/perfettoTracing.js'
 import type { ContentReplacementState } from 'src/agent/tools/toolResultStorage.js'
 import { createAgentId } from 'src/shared/data/uuid.js'
 import { hintGc } from 'src/shared/proc/gc.js'
@@ -382,12 +377,6 @@ export async function* runAgent({
   // (e.g. workflow subagents write to subagents/workflows/<runId>/).
   if (transcriptSubdir) {
     setAgentTranscriptSubdir(agentId, transcriptSubdir)
-  }
-
-  // Register agent in Perfetto trace for hierarchy visualization
-  if (isPerfettoTracingEnabled()) {
-    const parentId = toolUseContext.agentId ?? getSessionId()
-    registerPerfettoAgent(agentId, agentDefinition.agentType, parentId)
   }
 
   // Handle message forking for context sharing
@@ -945,8 +934,6 @@ export async function* runAgent({
     agentToolUseContext.readFileState.clear()
     // Release the cloned fork context messages
     initialMessages.length = 0
-    // Release perfetto agent registry entry
-    unregisterPerfettoAgent(agentId)
     // Release transcript subdir mapping
     clearAgentTranscriptSubdir(agentId)
     clearAgentPlanSlug(agentId)

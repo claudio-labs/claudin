@@ -2,8 +2,6 @@ import { c as _c } from "react-compiler-runtime";
 import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { useCallback } from 'react';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js';
 import type { ToolUseConfirm } from 'src/permissions/ui/PermissionRequest.js';
 import { Text } from 'src/terminal/ink.js';
 import type { ToolPermissionContext, Tool as ToolType, ToolUseContext } from 'src/tools/Tool.js';
@@ -164,8 +162,7 @@ function useCanUseTool(setToolUseConfirmQueue: React.Dispatch<React.SetStateActi
                 description,
                 result,
                 awaitAutomatedChecksBeforeDialog: appState.toolPermissionContext.awaitAutomatedChecksBeforeDialog,
-                bridgeCallbacks: feature("BRIDGE_MODE") ? appState.replBridgePermissionCallbacks : undefined,
-                channelCallbacks: feature("KAIROS") || feature("KAIROS_CHANNELS") ? appState.channelPermissionCallbacks : undefined
+                bridgeCallbacks: feature("BRIDGE_MODE") ? appState.replBridgePermissionCallbacks : undefined
               }, resolve);
               return;
             }
@@ -173,7 +170,6 @@ function useCanUseTool(setToolUseConfirmQueue: React.Dispatch<React.SetStateActi
       }).catch(error => {
         if (error instanceof AbortError || isSdkApiUserAbortError(error)) {
           logForDebugging(`Permission check threw ${error.constructor.name} for tool=${tool.name}: ${error.message}`);
-          ctx.logCancelled();
           resolve(ctx.cancelAndAbort(undefined, true));
         } else {
           logError(error);

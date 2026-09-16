@@ -3,10 +3,6 @@ import { statSync } from 'fs'
 import { join, resolve } from 'path'
 import { HOOK_EVENTS } from 'src/platform/entrypoints/agentSdkTypes.js'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { isPolicyAllowed } from 'src/platform/policyLimits/index.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
@@ -17,7 +13,6 @@ import { safeParseJSON } from 'src/shared/data/json.js'
 import { readTeamFileAsync } from 'src/agent/coordinator/swarm/teamHelpers.js'
 import { getAgentName, getTeamName, getTeammateColor } from 'src/agent/coordinator/teammate.js'
 import { writeToMailbox } from 'src/agent/coordinator/teammateMailbox.js'
-import { logOTelEvent } from 'src/platform/telemetry/events.js'
 import { z } from 'zod/v4'
 
 type HookEvent = (typeof HOOK_EVENTS)[number]
@@ -270,11 +265,6 @@ function getRuleCooldownKey(
   event?: { payload?: { session_id?: string | null } | null } | null,
 ): string {
   return `${getHookChainScopeKey(runtime, event)}:${ruleId}`
-}
-function asAnalyticsString(
-  value: string,
-): AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS {
-  return value as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
 }
 
 function cloneConfig(config: HookChainsConfig): HookChainsConfig {
@@ -1087,109 +1077,6 @@ export async function executeWarmRemoteCapacityAction(args: {
   }
 }
 
-export function emitHookChainRuleMatched(data: {
-  ruleId: string
-  eventName: HookEvent
-  outcome: HookChainOutcome
-  chainDepth: number
-}): void {
-  logEvent('chain_rule_matched', {
-    rule_id: asAnalyticsString(data.ruleId),
-    hook_event_name: asAnalyticsString(data.eventName),
-    outcome: asAnalyticsString(data.outcome),
-    chain_depth: data.chainDepth,
-  })
-
-  void logOTelEvent('chain_rule_matched', {
-    rule_id: data.ruleId,
-    hook_event_name: data.eventName,
-    outcome: data.outcome,
-    chain_depth: String(data.chainDepth),
-  })
-}
-
-export function emitHookChainActionExecuted(data: {
-  ruleId: string
-  actionType: HookChainAction['type']
-  actionId?: string
-  eventName: HookEvent
-  outcome: HookChainOutcome
-  detail?: string
-}): void {
-  logEvent('chain_action_executed', {
-    rule_id: asAnalyticsString(data.ruleId),
-    action_type: asAnalyticsString(data.actionType),
-    action_id: data.actionId ? asAnalyticsString(data.actionId) : undefined,
-    hook_event_name: asAnalyticsString(data.eventName),
-    outcome: asAnalyticsString(data.outcome),
-  })
-
-  void logOTelEvent('chain_action_executed', {
-    rule_id: data.ruleId,
-    action_type: data.actionType,
-    action_id: data.actionId,
-    hook_event_name: data.eventName,
-    outcome: data.outcome,
-    detail: data.detail,
-  })
-}
-
-export function emitHookChainActionSkipped(data: {
-  ruleId: string
-  actionType: HookChainAction['type']
-  actionId?: string
-  eventName: HookEvent
-  outcome: HookChainOutcome
-  reason: string
-}): void {
-  const reasonCategory = categorizeReason(data.reason)
-  logEvent('chain_action_skipped', {
-    rule_id: asAnalyticsString(data.ruleId),
-    action_type: asAnalyticsString(data.actionType),
-    action_id: data.actionId ? asAnalyticsString(data.actionId) : undefined,
-    hook_event_name: asAnalyticsString(data.eventName),
-    outcome: asAnalyticsString(data.outcome),
-    reason_category: asAnalyticsString(reasonCategory),
-  })
-
-  void logOTelEvent('chain_action_skipped', {
-    rule_id: data.ruleId,
-    action_type: data.actionType,
-    action_id: data.actionId,
-    hook_event_name: data.eventName,
-    outcome: data.outcome,
-    reason: data.reason,
-  })
-}
-
-export function emitHookChainActionFailed(data: {
-  ruleId: string
-  actionType: HookChainAction['type']
-  actionId?: string
-  eventName: HookEvent
-  outcome: HookChainOutcome
-  reason: string
-}): void {
-  const reasonCategory = categorizeReason(data.reason)
-  logEvent('chain_action_failed', {
-    rule_id: asAnalyticsString(data.ruleId),
-    action_type: asAnalyticsString(data.actionType),
-    action_id: data.actionId ? asAnalyticsString(data.actionId) : undefined,
-    hook_event_name: asAnalyticsString(data.eventName),
-    outcome: asAnalyticsString(data.outcome),
-    reason_category: asAnalyticsString(reasonCategory),
-  })
-
-  void logOTelEvent('chain_action_failed', {
-    rule_id: data.ruleId,
-    action_type: data.actionType,
-    action_id: data.actionId,
-    hook_event_name: data.eventName,
-    outcome: data.outcome,
-    reason: data.reason,
-  })
-}
-
 async function executeHookChainAction(args: {
   action: HookChainAction
   rule: HookChainRule
@@ -1323,14 +1210,6 @@ export async function dispatchHookChainsForEvent(args: {
           reason: `rule maxDepth reached (${chainDepth}/${rule.maxDepth})`,
         }
         actionResults.push(result)
-        emitHookChainActionSkipped({
-          ruleId: rule.id,
-          actionType: action.type,
-          actionId: action.id,
-          eventName: event.eventName,
-          outcome: event.outcome,
-          reason: result.reason ?? 'rule depth guard',
-        })
       }
       continue
     }
@@ -1348,26 +1227,11 @@ export async function dispatchHookChainsForEvent(args: {
           reason,
         }
         actionResults.push(result)
-        emitHookChainActionSkipped({
-          ruleId: rule.id,
-          actionType: action.type,
-          actionId: action.id,
-          eventName: event.eventName,
-          outcome: event.outcome,
-          reason,
-        })
       }
       continue
     }
 
     ruleCooldownUntil.set(rule.id, now + cooldownMs)
-
-    emitHookChainRuleMatched({
-      ruleId: rule.id,
-      eventName: event.eventName,
-      outcome: event.outcome,
-      chainDepth,
-    })
 
     for (let actionIndex = 0; actionIndex < rule.actions.length; actionIndex++) {
       const action = rule.actions[actionIndex]
@@ -1382,14 +1246,6 @@ export async function dispatchHookChainsForEvent(args: {
           reason: 'aborted',
         }
         actionResults.push(result)
-        emitHookChainActionSkipped({
-          ruleId: rule.id,
-          actionType: action.type,
-          actionId: action.id,
-          eventName: event.eventName,
-          outcome: event.outcome,
-          reason: 'aborted',
-        })
         continue
       }
 
@@ -1413,14 +1269,6 @@ export async function dispatchHookChainsForEvent(args: {
           reason,
         }
         actionResults.push(result)
-        emitHookChainActionSkipped({
-          ruleId: rule.id,
-          actionType: action.type,
-          actionId: action.id,
-          eventName: event.eventName,
-          outcome: event.outcome,
-          reason,
-        })
         continue
       }
 
@@ -1444,35 +1292,6 @@ export async function dispatchHookChainsForEvent(args: {
         detail: executed.detail,
       }
       actionResults.push(result)
-
-      if (executed.status === 'executed') {
-        emitHookChainActionExecuted({
-          ruleId: rule.id,
-          actionType: action.type,
-          actionId: action.id,
-          eventName: event.eventName,
-          outcome: event.outcome,
-          detail: executed.detail,
-        })
-      } else if (executed.status === 'skipped') {
-        emitHookChainActionSkipped({
-          ruleId: rule.id,
-          actionType: action.type,
-          actionId: action.id,
-          eventName: event.eventName,
-          outcome: event.outcome,
-          reason: executed.reason ?? 'skipped',
-        })
-      } else {
-        emitHookChainActionFailed({
-          ruleId: rule.id,
-          actionType: action.type,
-          actionId: action.id,
-          eventName: event.eventName,
-          outcome: event.outcome,
-          reason: executed.reason ?? 'failed',
-        })
-      }
     }
   }
 
@@ -1497,17 +1316,4 @@ export async function dispatchHookChainsForEvent(args: {
     matchedRuleIds: matches.map(match => match.rule.id),
     actionResults,
   }
-}
-
-
-function categorizeReason(reason: string): string {
-  const normalized = reason.toLowerCase()
-  if (normalized.includes('aborted')) return 'aborted'
-  if (normalized.includes('cooldown')) return 'cooldown'
-  if (normalized.includes('dedup')) return 'dedup'
-  if (normalized.includes('policy')) return 'policy'
-  if (normalized.includes('context')) return 'context_missing'
-  if (normalized.includes('precondition')) return 'precondition'
-  if (normalized.includes('disabled')) return 'disabled'
-  return 'other'
 }

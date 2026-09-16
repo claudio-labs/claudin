@@ -24,10 +24,6 @@ import {
   shouldAllowManagedHooksOnly,
   shouldDisableAllHooksIncludingManaged,
 } from 'src/platform/lifecycleHooks/hooksConfigSnapshot.js'
-import {
-  logEvent,
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from 'src/platform/analytics/index.js'
 import { ALLOWED_OFFICIAL_MARKETPLACE_NAMES } from 'src/plugins/schemas.js'
 import {
   isAsyncHookJSONOutput,
@@ -182,19 +178,6 @@ export async function executeHooksOutsideREPL({
   if (userHooks.length > 0) {
     const pluginHookCounts = getPluginHookCounts(userHooks)
     const hookTypeCounts = getHookTypeCounts(userHooks)
-    logEvent(`tengu_run_hook`, {
-      hookName:
-        hookName as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      numCommands: userHooks.length,
-      hookTypeCounts: jsonStringify(
-        hookTypeCounts,
-      ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      ...(pluginHookCounts && {
-        pluginHookCounts: jsonStringify(
-          pluginHookCounts,
-        ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-    })
   }
 
   // Validate and stringify the hook input

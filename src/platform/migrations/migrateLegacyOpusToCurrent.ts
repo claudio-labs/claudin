@@ -1,7 +1,3 @@
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { saveGlobalConfig } from 'src/platform/config/config.js'
 import { isLegacyModelRemapEnabled } from 'src/providers/model/model.js'
 import { getAPIProvider } from 'src/providers/model/providers.js'
@@ -50,8 +46,4 @@ export function migrateLegacyOpusToCurrent(): void {
     ...current,
     legacyOpusMigrationTimestamp: Date.now(),
   }))
-  logEvent('tengu_legacy_opus_migration', {
-    from_model:
-      model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 }

@@ -5,7 +5,6 @@
  * re-parse of its output sees a command structure bash never had.
  */
 
-import { logEvent } from 'src/platform/analytics/index.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import { BASH_SECURITY_CHECK_IDS } from 'src/tools/BashTool/bashSecurity/checkIds.js'
 import type { ValidationContext } from 'src/tools/BashTool/bashSecurity/context.js'
@@ -58,9 +57,6 @@ export function validateBackslashEscapedWhitespace(
   context: ValidationContext,
 ): PermissionResult {
   if (hasBackslashEscapedWhitespace(context.originalCommand)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.BACKSLASH_ESCAPED_WHITESPACE,
-    })
     return {
       behavior: 'ask',
       message:
@@ -178,9 +174,6 @@ export function validateBackslashEscapedOperators(
   }
 
   if (hasBackslashEscapedOperator(context.originalCommand)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.BACKSLASH_ESCAPED_OPERATORS,
-    })
     return {
       behavior: 'ask',
       message:

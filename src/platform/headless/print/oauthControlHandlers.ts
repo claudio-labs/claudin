@@ -15,7 +15,6 @@
 //     only resolve via a future `claude_oauth_callback` arriving on stdin,
 //     which cannot be read while we are parked on it.
 
-import { logEvent } from 'src/platform/analytics/index.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { OAuthService } from 'src/providers/oauth/index.js'
@@ -56,9 +55,6 @@ export async function handleClaudeAuthenticate(
   // is GC'd — no fd or port is held.
   ctx.claudeOAuth?.service.cleanup()
 
-  logEvent('tengu_oauth_flow_start', {
-    loginWithClaudeAi: loginWithClaudeAi ?? true,
-  })
 
   const service = new OAuthService()
   let urlResolver!: (urls: {
@@ -91,9 +87,6 @@ export async function handleClaudeAuthenticate(
       // getClaudeAIOAuthTokens in this process is invalidated; the
       // next API call re-reads keychain/file and works. No respawn.
       await installOAuthTokens(tokens)
-      logEvent('tengu_oauth_success', {
-        loginWithClaudeAi: loginWithClaudeAi ?? true,
-      })
     })
     .finally(() => {
       service.cleanup()

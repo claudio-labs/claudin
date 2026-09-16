@@ -49,10 +49,6 @@ const getRenameTool = () =>
 // Dead code elimination: conditional import for internal-only tools
 const REPLTool = null
 const SuggestBackgroundPRTool = null
-const SleepTool =
-  feature('PROACTIVE') || feature('KAIROS')
-    ? require('./SleepTool/SleepTool.js').SleepTool
-    : null
 const getCronTools = () => [
   require('src/tools/ScheduleCronTool/CronCreateTool.js').CronCreateTool,
   require('src/tools/ScheduleCronTool/CronDeleteTool.js').CronDeleteTool,
@@ -63,22 +59,8 @@ const getCronTools = () => [
   require('src/tools/ScheduleWakeupTool/ScheduleWakeupTool.js')
     .ScheduleWakeupTool,
 ]
-const RemoteTriggerTool = feature('AGENT_TRIGGERS_REMOTE')
-  ? require('src/tools/RemoteTriggerTool/RemoteTriggerTool.js').RemoteTriggerTool
-  : null
 const MonitorTool = feature('MONITOR_TOOL')
   ? require('src/tools/MonitorTool/MonitorTool.js').MonitorTool
-  : null
-const SendUserFileTool = feature('KAIROS')
-  ? require('./SendUserFileTool/SendUserFileTool.js').SendUserFileTool
-  : null
-const PushNotificationTool =
-  feature('KAIROS') || feature('KAIROS_PUSH_NOTIFICATION')
-    ? require('./PushNotificationTool/PushNotificationTool.js')
-        .PushNotificationTool
-    : null
-const SubscribePRTool = feature('KAIROS_GITHUB_WEBHOOKS')
-  ? require('./SubscribePRTool/SubscribePRTool.js').SubscribePRTool
   : null
 const getTaskOutputTool = () =>
   require('src/tools/TaskOutputTool/TaskOutputTool.js').TaskOutputTool as typeof import('src/tools/TaskOutputTool/TaskOutputTool.js').TaskOutputTool
@@ -132,24 +114,15 @@ const SYNTHETIC_OUTPUT_TOOL_NAME = 'StructuredOutput'
 const OverflowTestTool = feature('OVERFLOW_TEST_TOOL')
   ? require('./OverflowTestTool/OverflowTestTool.js').OverflowTestTool
   : null
-const CtxInspectTool = feature('CONTEXT_COLLAPSE')
-  ? require('./CtxInspectTool/CtxInspectTool.js').CtxInspectTool
-  : null
 const TerminalCaptureTool = feature('TERMINAL_PANEL')
   ? require('./TerminalCaptureTool/TerminalCaptureTool.js')
       .TerminalCaptureTool
-  : null
-const WebBrowserTool = feature('WEB_BROWSER_TOOL')
-  ? require('./WebBrowserTool/WebBrowserTool.js').WebBrowserTool
   : null
 const coordinatorModeModule = feature('COORDINATOR_MODE')
   ? (require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js'))
   : null
 const SnipTool = feature('HISTORY_SNIP')
   ? require('./SnipTool/SnipTool.js').SnipTool
-  : null
-const ListPeersTool = feature('UDS_INBOX')
-  ? require('./ListPeersTool/ListPeersTool.js').ListPeersTool
   : null
 const WorkflowTool = feature('WORKFLOW_SCRIPTS')
   ? (() => {
@@ -295,16 +268,13 @@ export function getAllBaseTools(): Tools {
       : [getContainerTool()]),
     getEnterPlanModeTool(),
     ...(SuggestBackgroundPRTool ? [SuggestBackgroundPRTool] : []),
-    ...(WebBrowserTool ? [WebBrowserTool] : []),
     ...(isTodoV2Enabled()
       ? [getTaskCreateTool(), getTaskGetTool(), getTaskUpdateTool(), getTaskListTool()]
       : []),
     ...(OverflowTestTool ? [OverflowTestTool] : []),
-    ...(CtxInspectTool ? [CtxInspectTool] : []),
     ...(TerminalCaptureTool ? [TerminalCaptureTool] : []),
     ...(isWorktreeModeEnabled() ? [getEnterWorktreeTool(), getExitWorktreeTool()] : []),
     getSendMessageTool(),
-    ...(ListPeersTool ? [ListPeersTool] : []),
     ...(isAgentSwarmsEnabled()
       ? [getTeamCreateTool(), getTeamDeleteTool()]
       : []),
@@ -312,18 +282,13 @@ export function getAllBaseTools(): Tools {
     ...(REPLTool ? [REPLTool] : []),
     ...(WorkflowTool ? [WorkflowTool] : []),
     ...(agentWorkflowTools ?? []),
-    ...(SleepTool ? [SleepTool] : []),
     ...getCronTools(),
-    ...(RemoteTriggerTool ? [RemoteTriggerTool] : []),
     ...(MonitorTool ? [MonitorTool] : []),
     // Polls a command until a regex matches / the output settles — the
     // one-call replacement for `sleep N && check` loops. Killswitch documented
     // at the top of WaitForTool.ts.
     ...(isEnvTruthy(process.env.CLAUDIN_DISABLE_WAITFOR_TOOL) ? [] : [getWaitForTool()]),
     getBriefTool(),
-    ...(SendUserFileTool ? [SendUserFileTool] : []),
-    ...(PushNotificationTool ? [PushNotificationTool] : []),
-    ...(SubscribePRTool ? [SubscribePRTool] : []),
     ...(getPowerShellTool() ? [getPowerShellTool()] : []),
     ...(SnipTool ? [SnipTool] : []),
     ...(process.env.NODE_ENV === 'test' ? [getTestingPermissionTool()] : []),

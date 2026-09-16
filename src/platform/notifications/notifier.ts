@@ -6,10 +6,6 @@ import { executeNotificationHooks } from 'src/platform/lifecycleHooks/hooks.js'
 import { logError } from 'src/shared/log.js'
 import { which } from 'src/shared/proc/which.js'
 import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
-import {
   appleScriptString,
   buildWindowsToastScript,
   makeDebouncer,
@@ -47,13 +43,6 @@ export async function sendNotification(
 
   const methodUsed = await sendToChannel(channel, notif, terminal)
 
-  logEvent('tengu_notification_method_used', {
-    configured_channel:
-      channel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    method_used:
-      methodUsed as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    term: env.terminal as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 }
 
 async function sendToChannel(

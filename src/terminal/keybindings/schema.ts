@@ -69,7 +69,6 @@ export const KEYBINDING_ACTIONS = [
   'app:exit',
   'app:toggleTodos',
   'app:toggleTranscript',
-  'app:toggleBrief',
   'app:toggleTeammatePreview',
   'app:toggleTerminal',
   'app:redraw',

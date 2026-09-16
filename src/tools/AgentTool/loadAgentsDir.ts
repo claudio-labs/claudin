@@ -5,10 +5,6 @@ import type { SettingSource } from 'src/platform/settings/constants.js'
 import { z } from 'zod/v4'
 import { isAutoMemoryEnabled } from 'src/memory/memdir/paths.js'
 import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
-import {
   type McpServerConfig,
   McpServerConfigSchema,
 } from 'src/mcp/types.js'
@@ -336,12 +332,6 @@ export const getAgentDefinitionsWithOverrides = memoize(
             logForDebugging(
               `Failed to parse agent from ${filePath}: ${errorMsg}`,
             )
-            logEvent('tengu_agent_parse_error', {
-              error:
-                errorMsg as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-              location:
-                source as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-            })
             return null
           }
           return agent

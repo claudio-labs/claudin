@@ -8,13 +8,9 @@ const teamMemPaths = feature('TEAMMEM')
   ? (require('src/memory/memdir/teamMemPaths.js') as typeof import('src/memory/memdir/teamMemPaths.js'))
   : null
 
-import { getKairosActive, getOriginalCwd } from 'src/platform/bootstrap/state.js'
+import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 /* eslint-enable @typescript-eslint/no-require-imports */
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
 import { isReplModeEnabled } from 'src/tools/REPLTool/constants.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -33,7 +29,6 @@ export const MAX_ENTRYPOINT_LINES = 200
 // ~125 chars/line at 200 lines. At p97 today; catches long-line indexes that
 // slip past the line cap (p100 observed: 197KB under 200 lines).
 export const MAX_ENTRYPOINT_BYTES = 25_000
-const AUTO_MEM_DISPLAY_NAME = 'auto memory'
 
 // UTF-8 byte constants for the byte-space cut below.
 const NEWLINE_BYTE = 0x0a
@@ -160,44 +155,6 @@ export async function ensureMemoryDirExists(memoryDir: string): Promise<void> {
       { level: 'debug' },
     )
   }
-}
-
-/**
- * Log memory directory file/subdir counts asynchronously.
- * Fire-and-forget — doesn't block prompt building.
- */
-function logMemoryDirCounts(
-  memoryDir: string,
-  baseMetadata: Record<
-    string,
-    | number
-    | boolean
-    | AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-  >,
-): void {
-  const fs = getFsImplementation()
-  void fs.readdir(memoryDir).then(
-    dirents => {
-      let fileCount = 0
-      let subdirCount = 0
-      for (const d of dirents) {
-        if (d.isFile()) {
-          fileCount++
-        } else if (d.isDirectory()) {
-          subdirCount++
-        }
-      }
-      logEvent('tengu_memdir_loaded', {
-        ...baseMetadata,
-        total_file_count: fileCount,
-        total_subdir_count: subdirCount,
-      })
-    },
-    () => {
-      // Directory unreadable — log without counts
-      logEvent('tengu_memdir_loaded', baseMetadata)
-    },
-  )
 }
 
 /**
@@ -362,15 +319,6 @@ export function buildMemoryPrompt(params: {
 
   if (entrypointContent.trim()) {
     const t = truncateEntrypointContent(entrypointContent)
-    const memoryType = displayName === AUTO_MEM_DISPLAY_NAME ? 'auto' : 'agent'
-    logMemoryDirCounts(memoryDir, {
-      content_length: t.byteCount,
-      line_count: t.lineCount,
-      was_truncated: t.wasLineTruncated,
-      was_byte_truncated: t.wasByteTruncated,
-      memory_type:
-        memoryType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
     lines.push(`## ${ENTRYPOINT_NAME}`, '', t.content)
   } else {
     lines.push(
@@ -379,60 +327,6 @@ export function buildMemoryPrompt(params: {
       `Your ${ENTRYPOINT_NAME} is currently empty. When you save new memories, they will appear here.`,
     )
   }
-
-  return lines.join('\n')
-}
-
-/**
- * Assistant-mode daily-log prompt. Gated behind feature('KAIROS').
- *
- * Assistant sessions are effectively perpetual, so the agent writes memories
- * append-only to a date-named log file rather than maintaining MEMORY.md as
- * a live index. A separate nightly /dream skill distills logs into topic
- * files + MEMORY.md. MEMORY.md is still loaded into context (via claudemd.ts)
- * as the distilled index — this prompt only changes where NEW memories go.
- */
-function buildAssistantDailyLogPrompt(skipIndex = false): string {
-  const memoryDir = getAutoMemPath()
-  // Describe the path as a pattern rather than inlining today's literal path:
-  // this prompt is cached by systemPromptSection('memory', ...) and NOT
-  // invalidated on date change. The model derives the current date from the
-  // date_change attachment (appended at the tail on midnight rollover) rather
-  // than the user-context message — the latter is intentionally left stale to
-  // preserve the prompt cache prefix across midnight.
-  const logPathPattern = join(memoryDir, 'logs', 'YYYY', 'MM', 'YYYY-MM-DD.md')
-
-  const lines: string[] = [
-    '# auto memory',
-    '',
-    `You have a persistent, file-based memory system found at: \`${memoryDir}\``,
-    '',
-    "This session is long-lived. As you work, record anything worth remembering by **appending** to today's daily log file:",
-    '',
-    `\`${logPathPattern}\``,
-    '',
-    "Substitute today's date (from `currentDate` in your context) for `YYYY-MM-DD`. When the date rolls over mid-session, start appending to the new day's file.",
-    '',
-    'Write each entry as a short timestamped bullet. Create the file (and parent directories) on first write if it does not exist. Do not rewrite or reorganize the log — it is append-only. A separate nightly process distills these logs into `MEMORY.md` and topic files.',
-    '',
-    '## What to log',
-    '- User corrections and preferences ("use bun, not npm"; "stop summarizing diffs")',
-    '- Facts about the user, their role, or their goals',
-    '- Project context that is not derivable from the code (deadlines, incidents, decisions and their rationale)',
-    '- Pointers to external systems (dashboards, Linear projects, Slack channels)',
-    '- Anything the user explicitly asks you to remember',
-    '',
-    ...WHAT_NOT_TO_SAVE_SECTION,
-    '',
-    ...(skipIndex
-      ? []
-      : [
-          `## ${ENTRYPOINT_NAME}`,
-          `\`${ENTRYPOINT_NAME}\` is the distilled index (maintained nightly from your logs) and is loaded into your context automatically. Read it for orientation, but do not edit it directly — record new information in today's log instead.`,
-          '',
-        ]),
-    ...buildSearchingPastContextSection(memoryDir),
-  ]
 
   return lines.join('\n')
 }
@@ -492,19 +386,6 @@ export async function loadMemoryPrompt(): Promise<string | null> {
     false,
   )
 
-  // KAIROS daily-log mode takes precedence over TEAMMEM: the append-only
-  // log paradigm does not compose with team sync (which expects a shared
-  // MEMORY.md that both sides read + write). Gating on `autoEnabled` here
-  // means the !autoEnabled case falls through to the tengu_memdir_disabled
-  // telemetry block below, matching the non-KAIROS path.
-  if (feature('KAIROS') && autoEnabled && getKairosActive()) {
-    logMemoryDirCounts(getAutoMemPath(), {
-      memory_type:
-        'auto' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
-    return buildAssistantDailyLogPrompt(skipIndex)
-  }
-
   // Cowork injects memory-policy text via env var; thread into all builders.
   const coworkExtraGuidelines =
     process.env.CLAUDE_COWORK_MEMORY_EXTRA_GUIDELINES
@@ -515,7 +396,6 @@ export async function loadMemoryPrompt(): Promise<string | null> {
 
   if (feature('TEAMMEM')) {
     if (teamMemPaths!.isTeamMemoryEnabled()) {
-      const autoDir = getAutoMemPath()
       const teamDir = teamMemPaths!.getTeamMemPath()
       // Harness guarantees these directories exist so the model can write
       // without checking. The prompt text reflects this ("already exists").
@@ -525,14 +405,6 @@ export async function loadMemoryPrompt(): Promise<string | null> {
       // out from under the auto dir, add a second ensureMemoryDirExists call
       // for autoDir here.
       await ensureMemoryDirExists(teamDir)
-      logMemoryDirCounts(autoDir, {
-        memory_type:
-          'auto' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      })
-      logMemoryDirCounts(teamDir, {
-        memory_type:
-          'team' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      })
       return teamMemPrompts!.buildCombinedMemoryPrompt(
         extraGuidelines,
         skipIndex,
@@ -545,10 +417,6 @@ export async function loadMemoryPrompt(): Promise<string | null> {
     // Harness guarantees the directory exists so the model can write without
     // checking. The prompt text reflects this ("already exists").
     await ensureMemoryDirExists(autoDir)
-    logMemoryDirCounts(autoDir, {
-      memory_type:
-        'auto' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
     // Empty memory → compact stub (~400 tok) instead of the full taxonomy
     // (~3.7K). The full block loads automatically once the first memory exists.
     const build = hasExistingMemories(autoDir)
@@ -557,19 +425,5 @@ export async function loadMemoryPrompt(): Promise<string | null> {
     return build('auto memory', autoDir, extraGuidelines, skipIndex).join('\n')
   }
 
-  logEvent('tengu_memdir_disabled', {
-    disabled_by_env_var: isEnvTruthy(
-      process.env.CLAUDIN_DISABLE_AUTO_MEMORY,
-    ),
-    disabled_by_setting:
-      !isEnvTruthy(process.env.CLAUDIN_DISABLE_AUTO_MEMORY) &&
-      getInitialSettings().autoMemoryEnabled === false,
-  })
-  // Gate on the GB flag directly, not isTeamMemoryEnabled() — that function
-  // checks isAutoMemoryEnabled() first, which is definitionally false in this
-  // branch. We want "was this user in the team-memory cohort at all."
-  if (getFeatureValue_CACHED_MAY_BE_STALE('tengu_herring_clock', false)) {
-    logEvent('tengu_team_memdir_disabled', {})
-  }
   return null
 }

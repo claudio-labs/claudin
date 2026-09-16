@@ -6,10 +6,6 @@
 import type { Command } from '@commander-js/extra-typings'
 import { cliError, cliOk } from 'src/platform/headless/exit.js'
 import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
-import {
   readClientSecret,
   saveMcpClientSecret,
 } from 'src/mcp/auth.js'
@@ -101,17 +97,6 @@ export function registerMcpAddCommand(mcp: Command): void {
           actualCommand.endsWith('/sse') ||
           actualCommand.endsWith('/mcp')
 
-        logEvent('tengu_mcp_add', {
-          type: transport as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          scope:
-            scope as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          source:
-            'command' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          transport:
-            transport as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          transportExplicit: transportExplicit,
-          looksLikeUrl: looksLikeUrl,
-        })
 
         if (transport === 'sse') {
           if (!actualCommand) {

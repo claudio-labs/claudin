@@ -38,7 +38,6 @@
 //     messageOps.ts            interrupted-message removal
 //     orphanPermission.ts      unexpected permission-response recovery
 //     readFileCacheHandover.ts the readFileState pin-transfer invariant
-//     headlessOptionalModules.ts  feature()-gated module handles
 //
 // External consumers (src/platform/main/defaultAction/headless.ts) import from
 // 'src/platform/headless/print.js'; keeping this file as a re-export shim avoids touching

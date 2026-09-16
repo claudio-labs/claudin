@@ -12,14 +12,12 @@ import { useManagePlugins } from 'src/platform/useManagePlugins.js';
 import type { Root } from 'src/terminal/ink.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js';
-import { logEvent } from 'src/platform/analytics/index.js';
 import { MCPConnectionManager } from 'src/mcp/MCPConnectionManager.js';
 import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import { onChangeAppState } from 'src/terminal/state/onChangeAppState.js';
 import { isAnthropicAuthEnabled } from 'src/providers/auth/auth.js';
 import type { CommandResultDisplay } from 'src/shared/types/command.js';
 export async function setupTokenHandler(root: Root): Promise<void> {
-  logEvent('tengu_setup_token_command', {});
   const showAuthWarning = !isAnthropicAuthEnabled();
   const {
     ConsoleOAuthFlow
@@ -76,7 +74,6 @@ function DoctorWithPlugins(t0: DoctorWithPluginsProps) {
   return t1;
 }
 export async function doctorHandler(root: Root): Promise<void> {
-  logEvent('tengu_doctor_command', {});
   await new Promise<void>(resolve => {
     root.render(<AppStateProvider>
         <KeybindingSetup>

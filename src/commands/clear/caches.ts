@@ -13,7 +13,6 @@ import {
   getGitStatus,
   getSystemContext,
   getUserContext,
-  setSystemPromptInjection,
 } from 'src/agent/context.js'
 import { clearFileSuggestionCaches } from 'src/terminal/prompt-suggestion/fileSuggestions.js'
 import { clearAllPendingCallbacks } from 'src/agent/coordinator/hooks/useSwarmPermissionPoller.js'
@@ -63,9 +62,6 @@ export function clearSessionCaches(
   // Clear prompt cache break detection state
   if (!hasPreserved) resetPromptCacheBreakDetection()
 
-  // Clear system prompt injection (cache breaker)
-  setSystemPromptInjection(null)
-
   // Clear last emitted date so it's re-detected on next turn
   setLastEmittedDate(null)
 
@@ -98,13 +94,6 @@ export function clearSessionCaches(
   // Clear swarm permission pending callbacks
   if (!hasPreserved) clearAllPendingCallbacks()
 
-  // Clear attribution caches (file content cache, pending bash states)
-  // Dynamic import to preserve dead code elimination for COMMIT_ATTRIBUTION feature flag
-  if (feature('COMMIT_ATTRIBUTION')) {
-    void import('../../agent/attributionHooks.js').then(
-      ({ clearAttributionCaches }) => clearAttributionCaches(),
-    )
-  }
   // Clear repository detection caches
   clearRepositoryCaches()
   // Clear bash command prefix caches (Haiku-extracted prefixes)

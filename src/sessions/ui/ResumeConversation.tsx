@@ -11,7 +11,6 @@ import { restoreCostStateForSession } from 'src/agent/cost-tracker.js';
 import { setClipboard } from 'src/terminal/ink/termio/osc.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybinding } from 'src/terminal/keybindings/useKeybinding.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import type { MCPServerConnection, ScopedMcpServerConfig } from 'src/mcp/types.js';
 import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { Tool } from 'src/tools/Tool.js';
@@ -264,17 +263,6 @@ export function ResumeConversation({
           adoptResumedSessionFile();
         }
       }
-      if (feature('CONTEXT_COLLAPSE')) {
-        /* eslint-disable @typescript-eslint/no-require-imports */
-        ;
-        (require('../../agent/contextCollapse/persist.js') as typeof import('../../agent/contextCollapse/persist.js')).restoreFromEntries(result_3.contextCollapseCommits ?? [], result_3.contextCollapseSnapshot);
-        /* eslint-enable @typescript-eslint/no-require-imports */
-      }
-      logEvent('tengu_session_resumed', {
-        entrypoint: 'picker' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        success: true,
-        resume_duration_ms: Math.round(performance.now() - resumeStart)
-      });
       setLogs([]);
       setResumeData({
         messages: result_3.messages,
@@ -285,10 +273,6 @@ export function ResumeConversation({
         mainThreadAgentDefinition: resolvedAgentDef
       });
     } catch (e) {
-      logEvent('tengu_session_resumed', {
-        entrypoint: 'picker' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        success: false
-      });
       logError(e as Error);
       setResumeError(errorMessage(e));
       setResuming(false);

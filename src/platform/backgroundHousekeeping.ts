@@ -1,7 +1,6 @@
 import { feature } from 'bun:bundle'
 import { initAutoDream } from 'src/memory/autoDream/autoDream.js'
 import { initMagicDocs } from 'src/platform/MagicDocs/magicDocs.js'
-import { initSkillImprovement } from 'src/platform/lifecycleHooks/skillImprovement.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const extractMemoriesModule = feature('EXTRACT_MEMORIES')
@@ -23,7 +22,6 @@ const DELAY_VERY_SLOW_OPERATIONS_THAT_HAPPEN_EVERY_SESSION = 10 * 60 * 1000
 
 export function startBackgroundHousekeeping(): void {
   void initMagicDocs()
-  void initSkillImprovement()
   if (feature('EXTRACT_MEMORIES')) {
     extractMemoriesModule!.initExtractMemories()
   }

@@ -47,7 +47,6 @@ import { textForResubmit } from 'src/agent/messages/messages.js';
 import { resetMicrocompactState } from 'src/agent/compact/microCompact.js';
 import { fileHistoryHasAnyChanges } from 'src/shared/fs/fileHistory.js';
 import { setClipboard } from 'src/terminal/ink/termio/osc.js';
-import { logEvent } from 'src/platform/analytics/index.js';
 
 export interface UseMessageActionsControllerDeps {
   messages: MessageType[];
@@ -100,30 +99,12 @@ export function useMessageActionsController(
     const prev = messagesRef.current;
     const messageIndex = prev.lastIndexOf(message);
     if (messageIndex === -1) return;
-    logEvent('tengu_conversation_rewind', {
-      preRewindMessageCount: prev.length,
-      postRewindMessageCount: messageIndex,
-      messagesRemoved: prev.length - messageIndex,
-      rewindToMessageIndex: messageIndex
-    });
     setMessages(prev.slice(0, messageIndex));
     // Careful, this has to happen after setMessages
     setConversationId(randomUUID());
     // Reset cached microcompact state so stale pinned cache edits
     // don't reference tool_use_ids from truncated messages
     resetMicrocompactState();
-    if (feature('CONTEXT_COLLAPSE')) {
-      // Rewind truncates the REPL array. Commits whose archived span
-      // was past the rewind point can't be projected anymore
-      // (projectView silently skips them) but the staged queue and ID
-      // maps reference stale uuids. Simplest safe reset: drop
-      // everything. The ctx-agent will re-stage on the next
-      // threshold crossing.
-      /* eslint-disable @typescript-eslint/no-require-imports */
-      ;
-      (require('src/agent/contextCollapse/index.js') as typeof import('src/agent/contextCollapse/index.js')).resetContextCollapse();
-      /* eslint-enable @typescript-eslint/no-require-imports */
-    }
 
     // Restore state from the message we're rewinding to
     setAppState(prev => ({

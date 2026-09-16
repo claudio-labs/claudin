@@ -22,10 +22,6 @@ import type { UUID } from 'crypto'
 import { readFile, stat } from 'fs/promises'
 import { join } from 'path'
 
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   getOriginalCwd,
@@ -396,9 +392,6 @@ export async function loadTranscriptFile(
     }
   }
 
-  if (hasCycle) {
-    logEvent('tengu_transcript_parent_cycle', {})
-  }
 
   return {
     messages,

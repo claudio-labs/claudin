@@ -8,10 +8,6 @@ import {
   IN_PROCESS_TEAMMATE_ALLOWED_TOOLS,
 } from 'src/tools/constants/tools.js'
 import { startAgentSummarization } from 'src/agent/summary/agentSummary.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { clearDumpState } from 'src/providers/transport/dumpPrompts.js'
 import type { AppState } from 'src/terminal/state/AppState.js'
 import type {
@@ -353,31 +349,9 @@ export function finalizeAgentTool(
   const totalTokens = getTokenCountFromUsage(lastAssistantMessage.message.usage)
   const totalToolUseCount = countToolUses(agentMessages)
 
-  logEvent('tengu_agent_tool_completed', {
-    agent_type:
-      agentType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    model:
-      resolvedAgentModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    prompt_char_count: prompt.length,
-    response_char_count: content.length,
-    assistant_message_count: agentMessages.length,
-    total_tool_uses: totalToolUseCount,
-    duration_ms: Date.now() - startTime,
-    total_tokens: totalTokens,
-    is_built_in_agent: isBuiltInAgent,
-    is_async: isAsync,
-  })
 
   // Signal to inference that this subagent's cache chain can be evicted.
   const lastRequestId = lastAssistantMessage.requestId
-  if (lastRequestId) {
-    logEvent('tengu_cache_eviction_hint', {
-      scope:
-        'subagent_end' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      last_request_id:
-        lastRequestId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
-  }
 
   return {
     agentId,
@@ -462,34 +436,6 @@ export async function classifyHandoffIfNeeded({
       : classifierResult.shouldBlock
         ? 'blocked'
         : 'allowed'
-    logEvent('tengu_auto_mode_decision', {
-      decision:
-        handoffDecision as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      toolName:
-        // Use legacy name for analytics continuity across the Task→Agent rename
-        LEGACY_AGENT_TOOL_NAME as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      classifierModel:
-        classifierResult.model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      agentType:
-        subagentType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      toolUseCount: totalToolUseCount,
-      isHandoff: true,
-      // For handoff, the relevant agent completion is the subagent's final
-      // assistant message — the last thing the classifier transcript shows
-      // before the handoff review prompt.
-      agentMsgId: getLastAssistantMessage(agentMessages)?.message
-        .id as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      classifierStage:
-        classifierResult.stage as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      classifierStage1RequestId:
-        classifierResult.stage1RequestId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      classifierStage1MsgId:
-        classifierResult.stage1MsgId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      classifierStage2RequestId:
-        classifierResult.stage2RequestId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      classifierStage2MsgId:
-        classifierResult.stage2MsgId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
 
     if (classifierResult.shouldBlock) {
       // When classifier is unavailable, still propagate the sub-agent's
@@ -676,17 +622,6 @@ export async function runAsyncAgentLifecycle({
       // must fire unconditionally. Transition status BEFORE worktree cleanup
       // so TaskOutput unblocks even if git hangs (gh-20236).
       killAsyncAgent(taskId, rootSetAppState)
-      logEvent('tengu_agent_tool_terminated', {
-        agent_type:
-          metadata.agentType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        model:
-          metadata.resolvedAgentModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        duration_ms: Date.now() - metadata.startTime,
-        is_async: true,
-        is_built_in_agent: metadata.isBuiltInAgent,
-        reason:
-          'user_kill_async' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      })
       const worktreeResult = await getWorktreeResult()
       const partialResult = extractPartialResult(agentMessages)
       enqueueAgentNotification({

@@ -57,10 +57,6 @@ import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { retryWhileNull } from 'src/platform/bridge/retryWhileNull.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import type { ReplBridgeHandle, BridgeState } from 'src/platform/bridge/replBridge.js'
 import type { Message } from 'src/shared/types/message.js'
 import type { SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js'
@@ -293,18 +289,12 @@ export async function initEnvLessBridgeCore(
   let connectCause: ConnectCause = 'initial'
 
   // Deadline for onConnect after transport.connect(). Cleared by onConnect
-  // (connected) and onClose (got a close — not silent). If neither fires
-  // before cfg.connect_timeout_ms, onConnectTimeout emits — the only
-  // signal for the `started → (silence)` gap.
+  // (connected) and onClose (got a close — not silent). It fired only the
+  // `started → (silence)` telemetry event, so onConnectTimeout is inert now
+  // that the event is gone; the timer wiring is left for the bridge pass.
   let connectDeadline: ReturnType<typeof setTimeout> | undefined
   function onConnectTimeout(cause: ConnectCause): void {
     if (tornDown) return
-    logEvent('tengu_bridge_repl_connect_timeout', {
-      v2: true,
-      elapsed_ms: cfg.connect_timeout_ms,
-      cause:
-        cause as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
   }
 
   // ── 5. JWT refresh scheduler ────────────────────────────────────────────
@@ -381,11 +371,6 @@ export async function initEnvLessBridgeCore(
       clearTimeout(connectDeadline)
       logForDebugging('[remote-bridge] v2 transport connected')
       logForDiagnosticsNoPII('info', 'bridge_repl_v2_transport_connected')
-      logEvent('tengu_bridge_repl_ws_connected', {
-        v2: true,
-        cause:
-          connectCause as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      })
 
       if (!initialFlushDone && initialMessages && initialMessages.length > 0) {
         initialFlushDone = true
@@ -450,7 +435,6 @@ export async function initEnvLessBridgeCore(
       clearTimeout(connectDeadline)
       if (tornDown) return
       logForDebugging(`[remote-bridge] v2 transport closed (code=${code})`)
-      logEvent('tengu_bridge_repl_ws_closed', { code, v2: true })
       // onClose fires only for TERMINAL failures: 401 (JWT invalid),
       // 4090 (CCR epoch mismatch), 4091 (CCR init failed), or SSE 10-min
       // reconnect budget exhausted. Transient disconnects are handled
@@ -727,35 +711,9 @@ export async function initEnvLessBridgeCore(
 
     logForDebugging(`[remote-bridge] Torn down (archive=${status})`)
     logForDiagnosticsNoPII('info', 'bridge_repl_v2_teardown')
-    logEvent(
-      feature('CCR_MIRROR') && outboundOnly
-        ? 'tengu_ccr_mirror_teardown'
-        : 'tengu_bridge_repl_teardown',
-      {
-        v2: true,
-        archive_status:
-          archiveStatus as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        archive_ok: typeof status === 'number' && status < 400,
-        archive_http_status: typeof status === 'number' ? status : undefined,
-        archive_timeout: status === 'timeout',
-        archive_no_token: status === 'no_token',
-      },
-    )
   }
   const unregister = registerCleanup(teardown)
 
-  if (feature('CCR_MIRROR') && outboundOnly) {
-    logEvent('tengu_ccr_mirror_started', {
-      v2: true,
-      expires_in_s: credentials.expires_in,
-    })
-  } else {
-    logEvent('tengu_bridge_repl_started', {
-      has_initial_messages: !!(initialMessages && initialMessages.length > 0),
-      v2: true,
-      expires_in_s: credentials.expires_in,
-    })
-  }
 
   // ── 10. Handle ──────────────────────────────────────────────────────────
   return {

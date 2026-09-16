@@ -8,7 +8,6 @@ import { AppStateProvider } from 'src/terminal/state/AppState.js';
 import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js';
 import { getBaseRenderOptions } from 'src/terminal/render/renderOptions.js';
 import type { SettingsJson } from 'src/platform/settings/types.js';
-import { logEvent } from 'src/platform/analytics/index.js';
 export type SecurityCheckResult = 'approved' | 'rejected' | 'no_check_needed';
 
 /**
@@ -35,8 +34,6 @@ export async function checkManagedSettingsSecurity(cachedSettings: SettingsJson 
     return 'no_check_needed';
   }
 
-  // Log that dialog is being shown
-  logEvent('tengu_managed_settings_security_dialog_shown', {});
 
   // Show blocking dialog
   return new Promise<SecurityCheckResult>(resolve => {
@@ -46,11 +43,9 @@ export async function checkManagedSettingsSecurity(cachedSettings: SettingsJson 
       } = await render(<AppStateProvider>
           <KeybindingSetup>
             <ManagedSettingsSecurityDialog settings={newSettings} onAccept={() => {
-            logEvent('tengu_managed_settings_security_dialog_accepted', {});
             unmount();
             void resolve('approved');
           }} onReject={() => {
-            logEvent('tengu_managed_settings_security_dialog_rejected', {});
             unmount();
             void resolve('rejected');
           }} />

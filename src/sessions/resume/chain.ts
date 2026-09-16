@@ -13,10 +13,6 @@
  */
 import type { UUID } from 'crypto'
 
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import type {
   SystemCompactBoundaryMessage,
   Message,
@@ -69,7 +65,6 @@ export function buildConversationChain(
           `Cycle detected in parentUuid chain at message ${currentMsg.uuid}. Returning partial transcript.`,
         ),
       )
-      logEvent('tengu_chain_parent_cycle', {})
       break
     }
     seen.add(currentMsg.uuid)
@@ -181,9 +176,6 @@ export function recoverOrphanedParallelToolResults(
   }
 
   if (recoveredCount === 0) return chain
-  logEvent('tengu_chain_parallel_tr_recovered', {
-    recovered_count: recoveredCount,
-  })
 
   const result: TranscriptMessage[] = []
   for (const m of chain) {
@@ -295,24 +287,6 @@ export function applyPreservedSegmentRelinks(
       // loading the full pre-compact history on resume.
       relinkFailed = true
       preservedUuids.clear()
-      logEvent('tengu_relink_walk_broken', {
-        failureKind:
-          failureKind as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        tailInTranscript,
-        headInTranscript,
-        anchorInTranscript,
-        walkSteps: walkSeen.size,
-        transcriptSize: messages.size,
-        tailIndex: entryIndex.get(lastSeg.tailUuid),
-        headIndex: entryIndex.get(lastSeg.headUuid),
-        anchorIndex: entryIndex.get(lastSeg.anchorUuid),
-        lastSeenType:
-          lastSeenType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        breakParentInTranscript: Boolean(
-          breakParentUuid && messages.has(breakParentUuid),
-        ),
-        breakParentIsNull: breakParentUuid === null,
-      })
       logForDiagnosticsNoPII('warn', 'relink_walk_broken', {
         failureKind,
         tailInTranscript,
@@ -460,10 +434,6 @@ export function applySnipRemovals(
     relinkedCount++
   }
 
-  logEvent('tengu_snip_resume_filtered', {
-    removed_count: removedCount,
-    relinked_count: relinkedCount,
-  })
 }
 
 /**
@@ -492,13 +462,6 @@ export function checkResumeConsistency(chain: Message[]): void {
     // The checkpoint was appended AFTER messageCount messages, so its own
     // position should be messageCount (i.e., i === expected).
     const actual = i
-    logEvent('tengu_resume_consistency_delta', {
-      expected,
-      actual,
-      delta: actual - expected,
-      chain_length: chain.length,
-      checkpoint_age_entries: chain.length - 1 - i,
-    })
     return
   }
 }

@@ -1,7 +1,6 @@
 import React from 'react'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { Box, Text } from 'src/terminal/ink.js'
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import { shouldShowAlwaysAllowOptions } from 'src/permissions/permissionsLoader.js'
 import { usePermissionRequestLogging } from 'src/permissions/ui/hooks.js'
 import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js'
@@ -11,7 +10,6 @@ import {
 } from 'src/permissions/ui/PermissionPrompt.js'
 import type { PermissionRequestProps } from 'src/permissions/ui/PermissionRequest.js'
 import { PermissionRuleExplanation } from 'src/permissions/ui/PermissionRuleExplanation.js'
-import { logUnaryPermissionEvent } from 'src/permissions/ui/utils.js'
 
 type OptionValue = 'yes' | 'yes-dont-ask-again' | 'no'
 
@@ -40,23 +38,11 @@ export function MonitorPermissionRequest({
   ) => {
     switch (value) {
       case 'yes': {
-        logUnaryPermissionEvent(
-          'tool_use_single',
-          toolUseConfirm,
-          'accept',
-          !!feedback,
-        )
         toolUseConfirm.onAllow(toolUseConfirm.input, [], feedback)
         onDone()
         break
       }
       case 'yes-dont-ask-again': {
-        logUnaryPermissionEvent(
-          'tool_use_single',
-          toolUseConfirm,
-          'accept',
-          !!feedback,
-        )
         // Save the rule under 'Bash' toolName because checkPermissions
         // delegates to bashToolHasPermission which matches rules against
         // BashTool. Using 'Monitor' here would create a rule that's never
@@ -75,12 +61,6 @@ export function MonitorPermissionRequest({
         break
       }
       case 'no': {
-        logUnaryPermissionEvent(
-          'tool_use_single',
-          toolUseConfirm,
-          'reject',
-          !!feedback,
-        )
         toolUseConfirm.onReject(feedback)
         onReject()
         onDone()
@@ -90,7 +70,6 @@ export function MonitorPermissionRequest({
   }
 
   const handleCancel = () => {
-    logUnaryPermissionEvent('tool_use_single', toolUseConfirm, 'reject')
     toolUseConfirm.onReject()
     onReject()
     onDone()
@@ -127,7 +106,7 @@ export function MonitorPermissionRequest({
   })
 
   const toolAnalyticsContext = {
-    toolName: sanitizeToolNameForAnalytics(toolUseConfirm.tool.name),
+    toolName: toolUseConfirm.tool.name,
     isMcp: toolUseConfirm.tool.isMcp ?? false,
   }
 

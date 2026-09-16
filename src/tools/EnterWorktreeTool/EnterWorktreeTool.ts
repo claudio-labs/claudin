@@ -1,7 +1,6 @@
 import { z } from 'zod/v4'
 import { getSessionId, setOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { clearSystemPromptSections } from 'src/agent/prompts/systemPromptSections.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import type { Tool } from 'src/tools/Tool.js'
 import { buildTool, type ToolDef } from 'src/tools/Tool.js'
 import { clearMemoryFileCaches } from 'src/memory/instructions/claudemd.js'
@@ -124,9 +123,6 @@ export const EnterWorktreeTool: Tool<InputSchema, Output> = buildTool({
     clearMemoryFileCaches()
     getPlansDirectory.cache.clear?.()
 
-    logEvent('tengu_worktree_created', {
-      mid_session: true,
-    })
 
     const branchInfo = worktreeSession.worktreeBranch
       ? ` on branch ${worktreeSession.worktreeBranch}`

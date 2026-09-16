@@ -27,22 +27,6 @@ export function registerRootOptions(program: CommanderCommand<any, any, any>): C
   if (feature('TRANSCRIPT_CLASSIFIER')) {
     program.addOption(new Option('--enable-auto-mode', 'Opt in to auto mode').hideHelp());
   }
-  if (feature('PROACTIVE') || feature('KAIROS')) {
-    program.addOption(new Option('--proactive', 'Start in proactive autonomous mode'));
-  }
-  if (feature('UDS_INBOX')) {
-    program.addOption(new Option('--messaging-socket-path <path>', 'Unix domain socket path for the UDS messaging server (defaults to a tmp path)'));
-  }
-  if (feature('KAIROS') || feature('KAIROS_BRIEF')) {
-    program.addOption(new Option('--brief', 'Enable SendUserMessage tool for agent-to-user communication'));
-  }
-  if (feature('KAIROS')) {
-    program.addOption(new Option('--assistant', 'Force assistant mode (Agent SDK daemon use)').hideHelp());
-  }
-  if (feature('KAIROS') || feature('KAIROS_CHANNELS')) {
-    program.addOption(new Option('--channels <servers...>', 'MCP servers whose channel notifications (inbound push) should register this session. Space-separated server names.').hideHelp());
-    program.addOption(new Option('--dangerously-load-development-channels <servers...>', 'Load channel servers not on the approved allowlist. For local channel development only. Shows a confirmation dialog at startup.').hideHelp());
-  }
 
   // Teammate identity options (set by leader when spawning tmux teammates)
   // These replace the CLAUDE_CODE_* environment variables

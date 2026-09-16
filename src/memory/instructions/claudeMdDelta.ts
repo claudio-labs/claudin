@@ -28,7 +28,6 @@
  * idea — the content lives in the transcript once, not N times).
  */
 
-import { logEvent } from 'src/platform/analytics/index.js'
 import { djb2Hash } from 'src/shared/data/hash.js'
 
 /**
@@ -99,13 +98,6 @@ export function getClaudeMdDelta(
   // Unchanged from last announcement — copy elision.
   if (lastAnnouncedHash === currentHash) return null
 
-  logEvent('claudin_claude_md_delta', {
-    changed: true,
-    priorAnnounced: lastAnnouncedHash !== null,
-    currentLength: normalized.length,
-    attachmentCount: totalAttachmentCount,
-    cmdCount: priorClaudeMdDeltaCount,
-  })
 
   return {
     addedContent: normalized,

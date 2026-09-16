@@ -85,7 +85,6 @@ import { SettingsSchema } from 'src/platform/settings/types.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
 import { getAddDirEnabledPlugins } from 'src/plugins/addDirPluginSettings.js'
 import { verifyAndDemote } from 'src/plugins/dependencyResolver.js'
-import { classifyFetchError, logPluginFetch } from 'src/plugins/fetchTelemetry.js'
 import { checkGitAvailable } from 'src/plugins/gitAvailability.js'
 import { getInMemoryInstalledPlugins } from 'src/plugins/installedPluginsManager.js'
 import { getManagedPluginNames } from 'src/plugins/managedPlugins.js'
@@ -524,18 +523,9 @@ export async function gitClone(
   }
 
   args.push(gitUrl, targetPath)
-
-  const cloneStarted = performance.now()
   const cloneResult = await execFileNoThrow(gitExe(), args)
 
   if (cloneResult.code !== 0) {
-    logPluginFetch(
-      'plugin_clone',
-      gitUrl,
-      'failure',
-      performance.now() - cloneStarted,
-      classifyFetchError(cloneResult.stderr),
-    )
     throw new Error(`Failed to clone repository: ${cloneResult.stderr}`)
   }
 
@@ -561,13 +551,6 @@ export async function gitClone(
       )
 
       if (unshallowResult.code !== 0) {
-        logPluginFetch(
-          'plugin_clone',
-          gitUrl,
-          'failure',
-          performance.now() - cloneStarted,
-          classifyFetchError(unshallowResult.stderr),
-        )
         throw new Error(
           `Failed to fetch commit ${sha}: ${unshallowResult.stderr}`,
         )
@@ -582,27 +565,11 @@ export async function gitClone(
     )
 
     if (checkoutResult.code !== 0) {
-      logPluginFetch(
-        'plugin_clone',
-        gitUrl,
-        'failure',
-        performance.now() - cloneStarted,
-        classifyFetchError(checkoutResult.stderr),
-      )
       throw new Error(
         `Failed to checkout commit ${sha}: ${checkoutResult.stderr}`,
       )
     }
   }
-
-  // Fire success only after ALL network ops (clone + optional SHA fetch)
-  // complete — same telemetry-scope discipline as mcpb and marketplace_url.
-  logPluginFetch(
-    'plugin_clone',
-    gitUrl,
-    'success',
-    performance.now() - cloneStarted,
-  )
 }
 
 /**

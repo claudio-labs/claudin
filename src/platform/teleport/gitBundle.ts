@@ -10,10 +10,6 @@
  */
 
 import { stat, unlink } from 'fs/promises'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { type FilesApiConfig, uploadFile } from 'src/providers/transport/filesApi.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
@@ -177,10 +173,6 @@ export async function createAndUploadGitBundle(
     { cwd: gitRoot },
   )
   if (refCheck.code === 0 && refCheck.stdout.trim() === '') {
-    logEvent('tengu_ccr_bundle_upload', {
-      outcome:
-        'empty_repo' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
     return {
       success: false,
       error: 'Repository has no commits yet',
@@ -232,11 +224,6 @@ export async function createAndUploadGitBundle(
 
     if (!bundle.ok) {
       logForDebugging(`[gitBundle] ${bundle.error}`)
-      logEvent('tengu_ccr_bundle_upload', {
-        outcome:
-          bundle.failReason as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        max_bytes: maxBytes,
-      })
       return {
         success: false,
         error: bundle.error,
@@ -250,24 +237,12 @@ export async function createAndUploadGitBundle(
     })
 
     if (!upload.success) {
-      logEvent('tengu_ccr_bundle_upload', {
-        outcome:
-          'failed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      })
       return { success: false, error: upload.error }
     }
 
     logForDebugging(
       `[gitBundle] Uploaded ${upload.size} bytes as file_id ${upload.fileId}`,
     )
-    logEvent('tengu_ccr_bundle_upload', {
-      outcome:
-        'success' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      size_bytes: upload.size,
-      scope:
-        bundle.scope as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      has_wip: hasWip,
-    })
     return {
       success: true,
       fileId: upload.fileId,

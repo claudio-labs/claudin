@@ -23,7 +23,6 @@ type Props = {
   shouldShowDot: boolean;
   verbose: boolean;
   width?: number | string;
-  onOpenRateLimitOptions?: () => void;
 };
 function InvalidApiKeyMessage() {
   const $ = _c(2);
@@ -50,8 +49,7 @@ export function AssistantTextMessage(t0: Props) {
     param: t1,
     addMargin,
     shouldShowDot,
-    verbose,
-    onOpenRateLimitOptions
+    verbose
   } = t0;
   const {
     text
@@ -62,9 +60,11 @@ export function AssistantTextMessage(t0: Props) {
   }
   if (isRateLimitErrorMessage(text)) {
     let t2;
-    if ($[0] !== onOpenRateLimitOptions || $[1] !== text) {
-      t2 = <LimitMessage text={text} onOpenRateLimitOptions={onOpenRateLimitOptions} />;
-      $[0] = onOpenRateLimitOptions;
+    // NOTE: $[0] is left allocated but unused. The React Compiler emitted this
+    // file, so the slot count in `_c(34)` and every `$[i]` below are its
+    // bookkeeping — dropping a comparison is safe, renumbering is not.
+    if ($[1] !== text) {
+      t2 = <LimitMessage text={text} />;
       $[1] = text;
       $[2] = t2;
     } else {

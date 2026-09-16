@@ -8,10 +8,6 @@
  */
 import type { UUID } from 'crypto'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import type { SessionId } from 'src/shared/types/ids.js'
 import type { PersistedWorktreeSession } from 'src/shared/types/logs.js'
 import { updateSessionName } from 'src/sessions/concurrentSessions.js'
@@ -36,10 +32,6 @@ export async function saveCustomTitle(
   if (sessionId === getSessionId()) {
     getProject().currentSessionTitle = customTitle
   }
-  logEvent('tengu_session_renamed', {
-    source:
-      source as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 }
 
 /**
@@ -100,7 +92,6 @@ export async function saveTag(sessionId: UUID, tag: string, fullPath?: string) {
   if (sessionId === getSessionId()) {
     getProject().currentSessionTag = tag
   }
-  logEvent('tengu_session_tagged', {})
 }
 
 /**
@@ -130,7 +121,6 @@ export async function linkSessionToPR(
     project.currentSessionPrUrl = prUrl
     project.currentSessionPrRepository = prRepository
   }
-  logEvent('tengu_session_linked_to_pr', { prNumber })
 }
 
 export function getCurrentSessionTag(sessionId: UUID): string | undefined {
@@ -234,10 +224,6 @@ export async function saveAgentName(
     getProject().currentSessionAgentName = agentName
     void updateSessionName(agentName)
   }
-  logEvent('tengu_agent_name_set', {
-    source:
-      source as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
 }
 
 export async function saveAgentColor(
@@ -255,7 +241,6 @@ export async function saveAgentColor(
   if (sessionId === getSessionId()) {
     getProject().currentSessionAgentColor = agentColor
   }
-  logEvent('tengu_agent_color_set', {})
 }
 
 /**

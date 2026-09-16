@@ -19,23 +19,21 @@ const version = pkg.version
 // Feature flags for the open build.
 // Most Anthropic-internal features stay off; open-build features can be
 // selectively enabled here when their full source exists in the mirror.
+//
+// The "disabled" half used to hold fourteen entries. Every one of them is gone
+// now, along with the branches behind it — a flag that folds to `false` is a
+// branch nobody can reach, and carrying the name in this map only made it look
+// like a switch someone could flip. Two things follow from that: a flag here is
+// a real choice, and the absence of a flag is NOT a decision. `build.ts` folds
+// `featureFlags[name] ?? false`, so a `feature('X')` naming something missing
+// from this map is silently false, which is how seven satellite flags became
+// invisible dead code.
+//
+// `feature-flags-source-guard.test.ts` enumerates the 44 names currently in that
+// state and fails on a new one. Adding a key here is what takes a name OFF that
+// list — and the list is worth reading first, because four of the 44 are set by
+// the build target or the command line and break when treated as dead.
 const featureFlags: Record<string, boolean> = {
-  // ── Disabled: require Anthropic infrastructure or missing source ─────
-  VOICE_MODE: false,              // Push-to-talk STT via claude.ai OAuth endpoint
-  PROACTIVE: false,               // Autonomous agent mode (missing proactive/ module)
-  KAIROS: false,                  // Persistent assistant/session mode (cloud backend)
-  DAEMON: false,                  // Background daemon process (stubbed in open build)
-  AGENT_TRIGGERS: false,          // Scheduled remote agent triggers
-  ABLATION_BASELINE: false,       // A/B testing harness for eval experiments
-  CONTEXT_COLLAPSE: false,        // Context collapsing optimization (stubbed)
-  COMMIT_ATTRIBUTION: false,      // Co-Authored-By metadata in git commits
-  UDS_INBOX: false,               // Unix Domain Socket inter-session messaging
-  BG_SESSIONS: false,             // Background sessions via tmux (stubbed)
-  WEB_BROWSER_TOOL: false,        // Built-in browser automation (source not mirrored)
-  CHICAGO_MCP: false,             // Computer-use MCP (native Swift modules stubbed)
-  COWORKER_TYPE_TELEMETRY: false, // Telemetry for agent/coworker type classification
-  MCP_SKILLS: false,              // Dynamic MCP skill discovery (src/skills/mcpSkills.ts not mirrored; enabling this causes "fetchMcpSkillsForClient is not a function" when MCP servers with resources connect — see #856)
-
   // ── Enabled: upstream defaults ──────────────────────────────────────
   COORDINATOR_MODE: true,             // Multi-agent coordinator with worker delegation
   BUILTIN_PLAN_AGENT: true,           // Built-in Plan specialized subagent
@@ -116,22 +114,16 @@ function checkAutoModeClassifierPrompts(): void {
 const featureCallRe = /\bfeature\(\s*['"](\w+)['"][,\s]*\)/gs
 const featureImportRe = /import\s*\{[^}]*\bfeature\b[^}]*\}\s*from\s*['"]bun:bundle['"];?\s*\n?/g
 
-// Zero out upstream's `tengu_*` analytics vocabulary. Telemetry is already a
-// no-op (noTelemetryPlugin stubs logEvent/logEventAsync to empty functions),
-// but the ~1000 event-name literals survive minification as arguments and are
-// the single loudest upstream fingerprint left in the bundle.
+// A second rewrite used to live here, blanking the `tengu_*` name passed to
+// logEvent/logEventAsync — ~1000 event-name literals that survived minification
+// as arguments and were the loudest upstream fingerprint in the bundle. Both
+// the call sites and the sink are gone now, so it has nothing to match.
 //
-// Scope is deliberately narrow: ONLY the first argument of logEvent /
-// logEventAsync. A `tengu_*` string passed to checkGate*/getFeatureValue*/
-// getDynamicConfig* is a feature-gate KEY, not an event name — blanking one
-// would silently change which default a gate resolves to. Names reached
-// through a variable are left alone for the same reason: the regex cannot
-// tell an event constant from a gate constant.
-//
-// Backticks are in the quote class because five call sites use a template
-// literal with no interpolation (`tengu_run_hook`); \2 pins the closing quote
-// to the opening one so a mixed pair never matches.
-const tenguEventNameRe = /\b(logEvent(?:Async)?)\(\s*(['"`])tengu_[A-Za-z0-9_]*\2/g
+// What it never touched, and what is still true: a `tengu_*` string passed to
+// checkGate*/getFeatureValue*/getDynamicConfig* is a feature-flag KEY, not an
+// event name. Those are live, they are the contract with
+// ~/.claudin/feature-flags.json, and `docs/tech/tengu-census/gate-audit.md`
+// says what each one gates.
 const modifiedFiles = new Map<string, string>() // path → original content
 
 function preProcessSources(dir: string) {
@@ -142,8 +134,7 @@ function preProcessSources(dir: string) {
 
     const raw = readFileSync(full, 'utf-8')
     const hasFeature = raw.includes('feature(')
-    const hasTenguEvent = raw.includes('tengu_')
-    if (!hasFeature && !hasTenguEvent) continue
+    if (!hasFeature) continue
 
     let contents = raw
     if (hasFeature) {
@@ -151,9 +142,6 @@ function preProcessSources(dir: string) {
       contents = contents.replace(featureCallRe, (_match, name) =>
         String((featureFlags as Record<string, boolean>)[name] ?? false),
       )
-    }
-    if (hasTenguEvent) {
-      contents = contents.replace(tenguEventNameRe, (_m, fn) => `${fn}(''`)
     }
 
     if (contents !== raw) {

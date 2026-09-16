@@ -2,10 +2,6 @@
 
 import { feature } from 'bun:bundle'
 import chalk from 'chalk'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { checkForReleaseNotes } from 'src/platform/install/releaseNotes.js'
 import { setCwd } from 'src/shared/proc/Shell.js'
@@ -29,10 +25,8 @@ import {
   describeRuleMapSync,
   syncProjectRuleMap,
 } from 'src/memory/instructions/ruleMapAutoSync.js'
-import { getCurrentProjectConfig, getGlobalConfig } from 'src/platform/config/config.js'
+import { getGlobalConfig } from 'src/platform/config/config.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
-import { env } from 'src/shared/env.js'
-import { envDynamic } from 'src/shared/envDynamic.js'
 import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js'
 import { errorMessage } from 'src/shared/errors.js'
 import { findCanonicalGitRoot, findGitRoot, getIsGit } from 'src/vcs/git/git.js'
@@ -66,7 +60,6 @@ export async function setup(
   tmuxEnabled: boolean,
   customSessionId?: string | null,
   worktreePRNumber?: number,
-  messagingSocketPath?: string,
 ): Promise<void> {
   logForDiagnosticsNoPII('info', 'setup_started')
 
@@ -85,24 +78,6 @@ export async function setup(
   // Set custom session ID if provided
   if (customSessionId) {
     switchSession(asSessionId(customSessionId))
-  }
-
-  // --bare / SIMPLE: skip UDS messaging server and teammate snapshot.
-  // Scripted calls don't receive injected messages and don't use swarm teammates.
-  // Explicit --messaging-socket-path is the escape hatch (per #23222 gate pattern).
-  if (!isBareMode() || messagingSocketPath !== undefined) {
-    // Start UDS messaging server (Mac/Linux only).
-    // Enabled by default for ants — creates a socket in tmpdir if no
-    // --messaging-socket-path is passed. Awaited so the server is bound
-    // and $CLAUDE_CODE_MESSAGING_SOCKET is exported before any hook
-    // (SessionStart in particular) can spawn and snapshot process.env.
-    if (feature('UDS_INBOX')) {
-      const m = await import('./udsMessaging.js')
-      await m.startUdsMessaging(
-        messagingSocketPath ?? m.getDefaultUdsSocketPath(),
-        { isExplicit: messagingSocketPath !== undefined },
-      )
-    }
   }
 
   // Teammate snapshot — SIMPLE-only gate (no escape hatch, swarm not used in bare)
@@ -247,7 +222,6 @@ export async function setup(
       process.exit(1)
     }
 
-    logEvent('tengu_worktree_created', { tmux_enabled: tmuxEnabled })
 
     // Create tmux session for the worktree if enabled
     if (tmuxEnabled && tmuxSessionName) {
@@ -312,13 +286,6 @@ export async function setup(
       // biome-ignore lint/suspicious/noConsole:: intentional console output
       console.error(chalk.dim(mapNotice))
     }
-    if (feature('CONTEXT_COLLAPSE')) {
-      /* eslint-disable @typescript-eslint/no-require-imports */
-      ;(
-        require('src/agent/contextCollapse/index.js') as typeof import('src/agent/contextCollapse/index.js')
-      ).initContextCollapse()
-      /* eslint-enable @typescript-eslint/no-require-imports */
-    }
   }
   void lockCurrentVersion() // Lock current version to prevent deletion by other processes
   logForDiagnosticsNoPII('info', 'setup_background_jobs_launched')
@@ -352,20 +319,8 @@ export async function setup(
   // bookkeeping for commit attribution + usage metrics — scripted calls don't
   // commit code, and the 49ms attribution hook stat check (measured) is pure
   // overhead. NOT an early-return: the --dangerously-skip-permissions safety
-  // gate, tengu_started beacon, and apiKeyHelper prefetch below must still run.
+  // gate and the apiKeyHelper prefetch below must still run.
   if (!isBareMode()) {
-    if (feature('COMMIT_ATTRIBUTION')) {
-      // Dynamic import to enable dead code elimination (module contains excluded strings).
-      // Defer to next tick so the git subprocess spawn runs after first render
-      // rather than during the setup() microtask window.
-      setImmediate(() => {
-        void import('../agent/attributionHooks.js').then(
-          ({ registerAttributionHooks }) => {
-            registerAttributionHooks() // Register attribution tracking hooks (internal-only feature)
-          },
-        )
-      })
-    }
     void import('src/sessions/sessionFileAccessHooks.js').then(m =>
       m.registerSessionFileAccessHooks(),
     ) // Register session file access analytics hooks
@@ -377,19 +332,13 @@ export async function setup(
   }
   initSinks() // Attach error log + analytics sinks and drain queued events
 
-  // Session-success-rate denominator. Emit immediately after the analytics
-  // sink is attached — before any parsing, fetching, or I/O that could throw.
-  // inc-3694 (P0 CHANGELOG crash) threw at checkForReleaseNotes below; every
-  // event after this point was dead. This beacon is the earliest reliable
-  // "process started" signal for release health monitoring.
-  logEvent('tengu_started', {})
 
   void prefetchApiKeyFromApiKeyHelperIfSafe(getIsNonInteractiveSession()) // Prefetch safely - only executes if trust already confirmed
   profileCheckpoint('setup_after_prefetch')
 
   // Wave 6 audit — split the +40ms total of action_after_setup vs +6ms of
   // setup_after_prefetch into: (a) release notes + recent activity I/O, and
-  // (b) permission-mode safety check + tengu_exit emit. Helps decide whether
+  // (b) the permission-mode safety check. Helps decide whether
   // to lazy-load checkForReleaseNotes / getRecentActivity in a later wave.
   // Pre-fetch data for Logo v2 - await to ensure it's ready before logo renders.
   // --bare / SIMPLE: skip — release notes are interactive-UI display data,
@@ -425,39 +374,5 @@ export async function setup(
       process.exit(1)
     }
 
-  }
-
-  if (process.env.NODE_ENV === 'test') {
-    return
-  }
-
-  // Log tengu_exit event from the last session?
-  const projectConfig = getCurrentProjectConfig()
-  if (
-    projectConfig.lastCost !== undefined &&
-    projectConfig.lastDuration !== undefined
-  ) {
-    logEvent('tengu_exit', {
-      last_session_cost: projectConfig.lastCost,
-      last_session_api_duration: projectConfig.lastAPIDuration,
-      last_session_tool_duration: projectConfig.lastToolDuration,
-      last_session_duration: projectConfig.lastDuration,
-      last_session_lines_added: projectConfig.lastLinesAdded,
-      last_session_lines_removed: projectConfig.lastLinesRemoved,
-      last_session_total_input_tokens: projectConfig.lastTotalInputTokens,
-      last_session_total_output_tokens: projectConfig.lastTotalOutputTokens,
-      last_session_total_cache_creation_input_tokens:
-        projectConfig.lastTotalCacheCreationInputTokens,
-      last_session_total_cache_read_input_tokens:
-        projectConfig.lastTotalCacheReadInputTokens,
-      last_session_fps_average: projectConfig.lastFpsAverage,
-      last_session_fps_low_1_pct: projectConfig.lastFpsLow1Pct,
-      last_session_id:
-        projectConfig.lastSessionId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      ...projectConfig.lastSessionMetrics,
-    })
-    // Note: We intentionally don't clear these values after logging.
-    // They're needed for cost restoration when resuming sessions.
-    // The values will be overwritten when the next session exits.
   }
 }

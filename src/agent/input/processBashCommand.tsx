@@ -6,7 +6,6 @@ import type { SetToolJSXFn } from 'src/tools/Tool.js';
 import { BashTool } from 'src/tools/BashTool/BashTool.js';
 import type { AttachmentMessage, SystemMessage, UserMessage } from 'src/shared/types/message.js';
 import type { ShellProgress } from 'src/shared/types/tools.js';
-import { logEvent } from 'src/platform/analytics/index.js';
 import { errorMessage, ShellError } from 'src/shared/errors.js';
 import { createSyntheticUserCaveatMessage, createUserInterruptionMessage, createUserMessage, prepareUserContent } from 'src/agent/messages/messages.js';
 import { resolveDefaultShell } from 'src/platform/shell/resolveDefaultShell.js';
@@ -24,9 +23,6 @@ export async function processBashCommand(inputString: string, precedingInputBloc
   // tool-list visibility. Computed up front so telemetry records the
   // actual shell, not the raw setting.
   const usePowerShell = isPowerShellToolEnabled() && resolveDefaultShell() === 'powershell';
-  logEvent('tengu_input_bash', {
-    powershell: usePowerShell
-  });
   const userMessage = createUserMessage({
     content: prepareUserContent({
       inputString: `<bash-input>${inputString}</bash-input>`,

@@ -11,10 +11,6 @@
 
 import { dirname, join } from 'path'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
@@ -194,8 +190,4 @@ export function logStartupPerf(): void {
   // Add checkpoint count for debugging
   metadata.checkpoint_count = marks.length
 
-  logEvent(
-    'tengu_startup_perf',
-    metadata as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  )
 }

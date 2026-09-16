@@ -13,30 +13,26 @@
 //
 // Each helper performs no checkpointing.
 
-import { feature } from 'bun:bundle';
 import chalk from 'chalk';
-import { getInitialMainLoopModel, setInitialMainLoopModel, setMainLoopModelOverride, setMainThreadAgentType, setUserMsgOptIn } from 'src/platform/bootstrap/state.js';
+import { getInitialMainLoopModel, setInitialMainLoopModel, setMainLoopModelOverride, setMainThreadAgentType } from 'src/platform/bootstrap/state.js';
 import { getCommands } from 'src/commands/commands.js';
 import { getSystemContext, getUserContext } from 'src/agent/context.js';
 import { getActiveAgentsFromList, getAgentDefinitionsWithOverrides, isBuiltInAgent, parseAgentsFromJson } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { canUserConfigureAdvisor, getInitialAdvisorSetting, isAdvisorEnabled, isValidAdvisorModel, modelSupportsAdvisor } from 'src/platform/doctor/advisor.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { getCwd } from 'src/shared/fs/cwd.js';
 import { logForDebugging } from 'src/shared/debug.js';
-import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { safeParseJSON } from 'src/shared/data/json.js';
 import { logError } from 'src/shared/log.js';
 import { applyConfigEnvironmentVariables } from 'src/platform/config/managedEnv.js';
 import { getDefaultMainLoopModel, getUserSpecifiedModelSetting, normalizeModelStringForAPI, parseUserSpecifiedModel } from 'src/providers/model/model.js';
 import { ensureModelStringsInitialized } from 'src/providers/model/modelStrings.js';
-import { getIsNonInteractiveSession, getUserMsgOptIn } from 'src/platform/bootstrap/state.js';
+import { getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js';
 import { cacheSessionTitle, saveAgentSetting } from 'src/sessions/sessionStorage.js';
 import { getInitialSettings } from 'src/platform/settings/settings.js';
 import { validateUuid } from 'src/shared/data/uuid.js';
 import { initBuiltinPlugins } from 'src/plugins/bundled/index.js';
 import { initBundledSkills } from 'src/skills/bundled/index.js';
-import { maybeActivateBrief } from 'src/platform/main/lifecycle.js';
 import type { InternalPermissionMode } from 'src/shared/types/permissions.js';
 import type { BootContext } from 'src/platform/main/bootContext.js';
 import type { ActionOptions } from 'src/platform/main/action/parseOptions.js';
@@ -47,11 +43,6 @@ import type { ActionOptions } from 'src/platform/main/action/parseOptions.js';
  */
 export type CoordinatorModeModule = {
   isCoordinatorMode: () => boolean;
-} | null;
-
-/** KAIROS assistant module handle (re-used from parseOptions). */
-export type AssistantModule = {
-  getAssistantSystemPromptAddendum: () => string;
 } | null;
 
 // =============================================================================
@@ -74,11 +65,10 @@ export type RunActionSetupResult = {
 };
 
 export async function runActionSetup(input: RunActionSetupInput): Promise<RunActionSetupResult> {
-  const { options, ctx, permissionMode, allowDangerouslySkipPermissions, sessionId } = input;
+  const { ctx, permissionMode, allowDangerouslySkipPermissions, sessionId } = input;
   logForDebugging('[STARTUP] Running setup()...');
   const setupStart = Date.now();
   const { setup } = await import('src/platform/setup.js');
-  const messagingSocketPath = feature('UDS_INBOX') ? (options as { messagingSocketPath?: string }).messagingSocketPath : undefined;
   const preSetupCwd = getCwd();
   if (process.env.CLAUDE_CODE_ENTRYPOINT !== 'local-agent') {
     initBuiltinPlugins();
@@ -93,7 +83,6 @@ export async function runActionSetup(input: RunActionSetupInput): Promise<RunAct
     ctx.tmuxEnabled,
     sessionId ? validateUuid(sessionId) : undefined,
     ctx.worktreePRNumber,
-    messagingSocketPath,
   );
   const commandsPromise = ctx.worktreeEnabled ? null : getCommands(preSetupCwd);
   const agentDefsPromise = ctx.worktreeEnabled ? null : getAgentDefinitionsWithOverrides(preSetupCwd);
@@ -132,16 +121,9 @@ export type RunActionPostSetupResult = {
 };
 
 export async function runActionPostSetup(input: RunActionPostSetupInput): Promise<RunActionPostSetupResult> {
-  const { options, ctx, outputFormat, fallbackModel, preSetupCwd, commandsPromise, agentDefsPromise } = input;
+  const { options, ctx, fallbackModel, preSetupCwd, commandsPromise, agentDefsPromise } = input;
 
-  // Replay user messages into stream-json only when the socket was
-  // explicitly requested.
-  let effectiveReplayUserMessages = !!(options as { replayUserMessages?: boolean }).replayUserMessages;
-  if (feature('UDS_INBOX')) {
-    if (!effectiveReplayUserMessages && outputFormat === 'stream-json') {
-      effectiveReplayUserMessages = !!(options as { messagingSocketPath?: string }).messagingSocketPath;
-    }
-  }
+  const effectiveReplayUserMessages = !!(options as { replayUserMessages?: boolean }).replayUserMessages;
 
   if (getIsNonInteractiveSession()) {
     applyConfigEnvironmentVariables();
@@ -220,7 +202,6 @@ export type RunActionAgentSetupResult = {
 
 export type RunActionAgentSetupDeps = {
   coordinatorModeModule: CoordinatorModeModule;
-  assistantModule: AssistantModule;
 };
 
 export async function runActionAgentSetup(
@@ -232,7 +213,7 @@ export async function runActionAgentSetup(
     userSpecifiedModel, agentDefinitionsResult,
   } = input;
   let { systemPrompt, appendSystemPrompt, inputPrompt } = input;
-  const { coordinatorModeModule, assistantModule } = deps;
+  void deps;
 
   // Parse CLI agents if provided via --agents flag.
   let cliAgents: typeof agentDefinitionsResult.activeAgents = [];
@@ -267,14 +248,6 @@ export async function runActionAgentSetup(
 
   setMainThreadAgentType(mainThreadAgentDefinition?.agentType);
 
-  if (mainThreadAgentDefinition) {
-    logEvent('tengu_agent_flag', {
-      agentType: isBuiltInAgent(mainThreadAgentDefinition) ? (mainThreadAgentDefinition.agentType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS) : ('custom' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS),
-      ...(agentCli && {
-        source: 'cli' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-    });
-  }
 
   if (mainThreadAgentDefinition?.agentType) {
     saveAgentSetting(mainThreadAgentDefinition.agentType);
@@ -346,12 +319,6 @@ export async function runActionAgentSetup(
         customPrompt = customAgent.getSystemPrompt();
       }
 
-      if (customAgent.memory) {
-        logEvent('tengu_agent_memory_loaded', {
-          scope: customAgent.memory as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          source: 'teammate' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        });
-      }
       if (customPrompt) {
         const customInstructions = `\n# Custom Agent Instructions\n${customPrompt}`;
         appendSystemPrompt = appendSystemPrompt ? `${appendSystemPrompt}\n\n${customInstructions}` : customInstructions;
@@ -359,37 +326,6 @@ export async function runActionAgentSetup(
     } else {
       logForDebugging(`[teammate] Custom agent ${ctx.storedTeammateOpts.agentType} not found in available agents`);
     }
-  }
-
-  maybeActivateBrief(options);
-  // defaultView: 'chat' is a persisted opt-in.
-  if ((feature('KAIROS') || feature('KAIROS_BRIEF')) && !getIsNonInteractiveSession() && !getUserMsgOptIn() && getInitialSettings().defaultView === 'chat') {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const { isBriefEntitled } = require('src/tools/BriefTool/BriefTool.js') as typeof import('src/tools/BriefTool/BriefTool.js');
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    if (isBriefEntitled()) {
-      setUserMsgOptIn(true);
-    }
-  }
-  // Coordinator mode has its own system prompt.
-  if (
-    (feature('PROACTIVE') || feature('KAIROS')) &&
-    ((options as { proactive?: boolean }).proactive || isEnvTruthy(process.env.CLAUDIN_PROACTIVE)) &&
-    !coordinatorModeModule?.isCoordinatorMode()
-  ) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const briefVisibility = feature('KAIROS') || feature('KAIROS_BRIEF')
-      ? (require('src/tools/BriefTool/BriefTool.js') as typeof import('src/tools/BriefTool/BriefTool.js')).isBriefEnabled()
-        ? 'Call SendUserMessage at checkpoints to mark where things stand.'
-        : 'The user will see any text you output.'
-      : 'The user will see any text you output.';
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    const proactivePrompt = `\n# Proactive Mode\n\nYou are in proactive mode. Take initiative — explore, act, and make progress without waiting for instructions.\n\nStart by briefly greeting the user.\n\nYou will receive periodic <tick> prompts. These are check-ins. Do whatever seems most useful, or call Sleep if there's nothing to do. ${briefVisibility}`;
-    appendSystemPrompt = appendSystemPrompt ? `${appendSystemPrompt}\n\n${proactivePrompt}` : proactivePrompt;
-  }
-  if (feature('KAIROS') && ctx.kairosEnabled && assistantModule) {
-    const assistantAddendum = assistantModule.getAssistantSystemPromptAddendum();
-    appendSystemPrompt = appendSystemPrompt ? `${appendSystemPrompt}\n\n${assistantAddendum}` : assistantAddendum;
   }
 
   return {

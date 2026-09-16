@@ -1,7 +1,6 @@
 import * as fs from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { CACHE_PATHS } from 'src/shared/fs/cachePaths.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
@@ -542,7 +541,4 @@ export async function cleanupOldMessageFilesInBackground(): Promise<void> {
   await cleanupOldImageCaches()
   await cleanupOldPastes(getCutoffDate())
   const removedWorktrees = await cleanupStaleAgentWorktrees(getCutoffDate())
-  if (removedWorktrees > 0) {
-    logEvent('tengu_worktree_cleanup', { removed: removedWorktrees })
-  }
 }

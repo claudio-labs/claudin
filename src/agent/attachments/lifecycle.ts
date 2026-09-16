@@ -74,12 +74,6 @@ import {
 import { hasToolResultContent } from 'src/agent/attachments/shared.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-const BRIEF_TOOL_NAME: string | null =
-  feature('KAIROS') || feature('KAIROS_BRIEF')
-    ? (
-        require('src/tools/BriefTool/prompt.js') as typeof import('src/tools/BriefTool/prompt.js')
-      ).BRIEF_TOOL_NAME
-    : null
 const autoModeStateModule = feature('TRANSCRIPT_CLASSIFIER')
   ? (require('src/permissions/autoModeState.js') as typeof import('src/permissions/autoModeState.js'))
   : null
@@ -446,18 +440,6 @@ export async function getTodoReminderAttachments(
     return []
   }
 
-  // When SendUserMessage is in the toolkit, it's the primary communication
-  // channel and the model is always told to use it (#20467). TodoWrite
-  // becomes a side channel — nudging the model about it conflicts with the
-  // brief workflow. The tool itself stays available; this only gates the
-  // "you haven't used it in a while" nag.
-  if (
-    BRIEF_TOOL_NAME &&
-    toolUseContext.options.tools.some(t => toolMatchesName(t, BRIEF_TOOL_NAME))
-  ) {
-    return []
-  }
-
   // Skip if no messages provided
   if (!messages || messages.length === 0) {
     return []
@@ -565,17 +547,6 @@ export async function getTaskReminderAttachments(
   toolUseContext: ToolUseContext,
 ): Promise<Attachment[]> {
   if (!isTodoV2Enabled()) {
-    return []
-  }
-
-  // When SendUserMessage is in the toolkit, it's the primary communication
-  // channel and the model is always told to use it (#20467). TaskUpdate
-  // becomes a side channel — nudging the model about it conflicts with the
-  // brief workflow. The tool itself stays available; this only gates the nag.
-  if (
-    BRIEF_TOOL_NAME &&
-    toolUseContext.options.tools.some(t => toolMatchesName(t, BRIEF_TOOL_NAME))
-  ) {
     return []
   }
 

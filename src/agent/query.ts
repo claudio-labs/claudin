@@ -15,14 +15,7 @@ import { buildPostCompactMessages } from 'src/agent/compact/compact.js'
 const reactiveCompact = feature('REACTIVE_COMPACT')
   ? (require('./compact/reactiveCompact.js') as typeof import('./compact/reactiveCompact.js'))
   : null
-const contextCollapse = feature('CONTEXT_COLLAPSE')
-  ? (require('src/agent/contextCollapse/index.js') as typeof import('src/agent/contextCollapse/index.js'))
-  : null
 /* eslint-enable @typescript-eslint/no-require-imports */
-import {
-  logEvent,
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from 'src/platform/analytics/index.js'
 import { ImageSizeError } from 'src/terminal/image/imageValidation.js'
 import { ImageResizeError } from 'src/terminal/image/imageResizer.js'
 import { findToolByName, type ToolUseContext } from 'src/tools/Tool.js'
@@ -127,9 +120,6 @@ import { count } from 'src/shared/data/array.js'
 /* eslint-disable @typescript-eslint/no-require-imports */
 const snipModule = feature('HISTORY_SNIP')
   ? (require('src/agent/compact/snipCompact.js') as typeof import('src/agent/compact/snipCompact.js'))
-  : null
-const taskSummaryModule = feature('BG_SESSIONS')
-  ? (require('./taskSummary.js') as typeof import('./taskSummary.js'))
   : null
 /* eslint-enable @typescript-eslint/no-require-imports */
 
@@ -271,15 +261,6 @@ async function* queryLoop(
   | ToolUseSummaryMessage,
   Terminal
 > {
-  // Start a new turn for multi-turn context tracking
-  if (
-    feature('MULTI_TURN_CONTEXT') &&
-    getGlobalConfig().knowledgeGraphEnabled
-  ) {
-    const { startNewTurn } = await import('src/agent/context/multiTurnContext.js')
-    startNewTurn()
-  }
-
   // Defensive: clear any late-LSP armed files left over from a prior turn
   // that exited via an unhandled path (abort/throw). Process-global registry,
   // so a leak would surface diagnostics in an unrelated turn.
@@ -396,9 +377,6 @@ async function* queryLoop(
           depth: 0,
         }
 
-    const queryChainIdForAnalytics =
-      queryTracking.chainId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-
     toolUseContext = {
       ...toolUseContext,
       queryTracking,
@@ -477,27 +455,6 @@ async function* queryLoop(
     messagesForQuery = microcompactResult.messages
     queryCheckpoint('query_microcompact_end')
 
-    // Project the collapsed context view and maybe commit more collapses.
-    // Runs BEFORE autocompact so that if collapse gets us under the
-    // autocompact threshold, autocompact is a no-op and we keep granular
-    // context instead of a single summary.
-    //
-    // Nothing is yielded — the collapsed view is a read-time projection
-    // over the REPL's full history. Summary messages live in the collapse
-    // store, not the REPL array. This is what makes collapses persist
-    // across turns: projectView() replays the commit log on every entry.
-    // Within a turn, the view flows forward via state.messages at the
-    // continue site (query.ts:1192), and the next projectView() no-ops
-    // because the archived messages are already gone from its input.
-    if (feature('CONTEXT_COLLAPSE') && contextCollapse) {
-      const collapseResult = await contextCollapse.applyCollapsesIfNeeded(
-        messagesForQuery,
-        toolUseContext,
-        querySource,
-      )
-      messagesForQuery = collapseResult.messages
-    }
-
     const fullSystemPrompt = asSystemPrompt(
       appendSystemContext(systemPrompt, systemContext),
     )
@@ -527,31 +484,6 @@ async function* queryLoop(
         compactionUsage,
       } = compactionResult
 
-      logEvent('tengu_auto_compact_succeeded', {
-        originalMessageCount: messages.length,
-        compactedMessageCount:
-          compactionResult.summaryMessages.length +
-          compactionResult.attachments.length +
-          compactionResult.hookResults.length,
-        preCompactTokenCount,
-        postCompactTokenCount,
-        truePostCompactTokenCount,
-        compactionInputTokens: compactionUsage?.input_tokens,
-        compactionOutputTokens: compactionUsage?.output_tokens,
-        compactionCacheReadTokens:
-          compactionUsage?.cache_read_input_tokens ?? 0,
-        compactionCacheCreationTokens:
-          compactionUsage?.cache_creation_input_tokens ?? 0,
-        compactionTotalTokens: compactionUsage
-          ? compactionUsage.input_tokens +
-            (compactionUsage.cache_creation_input_tokens ?? 0) +
-            (compactionUsage.cache_read_input_tokens ?? 0) +
-            compactionUsage.output_tokens
-          : 0,
-
-        queryChainId: queryChainIdForAnalytics,
-        queryDepth: queryTracking.depth,
-      })
 
       // task_budget: capture pre-compact final context window before
       // messagesForQuery is replaced with postCompactMessages below.
@@ -665,18 +597,7 @@ async function* queryLoop(
     // so reactive compact would never see a prompt-too-long to react to.
     // Widened to walrus so RC can act as fallback when proactive fails.
     //
-    // Same skip for context-collapse: its recoverFromOverflow drains
-    // staged collapses on a REAL API 413, then falls through to
-    // reactiveCompact. A synthetic preempt here would return before the
-    // API call and starve both recovery paths. The isAutoCompactEnabled()
-    // conjunct preserves the user's explicit "no automatic anything"
-    // config — if they set DISABLE_AUTO_COMPACT, they get the preempt.
-    let collapseOwnsIt = false
-    if (feature('CONTEXT_COLLAPSE')) {
-      collapseOwnsIt =
-        (contextCollapse?.isContextCollapseEnabled() ?? false) &&
-        isAutoCompactEnabled()
-    }
+    const collapseOwnsIt = false
     // Hoist media-recovery gate once per turn. Withholding (inside the
     // stream loop) and recovery (after) must agree; CACHED_MAY_BE_STALE can
     // flip during the 5-30s stream, and withhold-without-recover would eat
@@ -804,11 +725,6 @@ async function* queryLoop(
               for (const msg of assistantMessages) {
                 yield { type: 'tombstone' as const, message: msg }
               }
-              logEvent('tengu_orphaned_messages_tombstoned', {
-                orphanedMessageCount: assistantMessages.length,
-                queryChainId: queryChainIdForAnalytics,
-                queryDepth: queryTracking.depth,
-              })
 
               assistantMessages.length = 0
               toolResults.length = 0
@@ -891,23 +807,7 @@ async function* queryLoop(
             // Either subsystem's withhold is sufficient — they're
             // independent so turning one off doesn't break the other's
             // recovery path.
-            //
-            // feature() only works in if/ternary conditions (bun:bundle
-            // tree-shaking constraint), so the collapse check is nested
-            // rather than composed.
             let withheld = false
-            if (feature('CONTEXT_COLLAPSE')) {
-              if (
-                message.type === 'assistant' &&
-                contextCollapse?.isWithheldPromptTooLong(
-                  message,
-                  isPromptTooLongMessage,
-                  querySource,
-                )
-              ) {
-                withheld = true
-              }
-            }
             if (reactiveCompact?.isWithheldPromptTooLong(message)) {
               withheld = true
             }
@@ -997,17 +897,6 @@ async function* queryLoop(
             // block (e.g. capybara) to an unprotected fallback (e.g. opus) 400s.
             // Strip before retry so the fallback model gets clean history.
 
-            // Log the fallback event
-            logEvent('tengu_model_fallback_triggered', {
-              original_model:
-                innerError.originalModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-              fallback_model:
-                fallbackModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-              entrypoint:
-                'cli' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-              queryChainId: queryChainIdForAnalytics,
-              queryDepth: queryTracking.depth,
-            })
 
             // Yield system message about fallback — use 'warning' level so
             // users see the notification without needing verbose mode
@@ -1025,15 +914,6 @@ async function* queryLoop(
       logError(error)
       const errorMessage =
         error instanceof Error ? error.message : String(error)
-      logEvent('tengu_query_error', {
-        assistantMessages: assistantMessages.length,
-        toolUses: assistantMessages.flatMap(_ =>
-          _.message.content.filter(content => content.type === 'tool_use'),
-        ).length,
-
-        queryChainId: queryChainIdForAnalytics,
-        queryDepth: queryTracking.depth,
-      })
 
       // Handle image size/resize errors with user-friendly messages
       if (
@@ -1096,20 +976,6 @@ async function* queryLoop(
           'Interrupted by user',
         )
       }
-      // chicago MCP: auto-unhide + lock release on interrupt. Same cleanup
-      // as the natural turn-end path in stopHooks.ts. Main thread only —
-      // see stopHooks.ts for the subagent-releasing-main's-lock rationale.
-      if (feature('CHICAGO_MCP') && !toolUseContext.agentId) {
-        try {
-          const { cleanupComputerUseAfterTurn } = await import(
-            'src/platform/computerUse/cleanup.js'
-          )
-          await cleanupComputerUseAfterTurn(toolUseContext)
-        } catch {
-          // Failures are silent — this is dogfooding cleanup, not critical path
-        }
-      }
-
       // Skip the interruption message for submit-interrupts — the queued
       // user message that follows provides sufficient context.
       if (toolUseContext.abortController.signal.reason !== 'interrupt') {
@@ -1152,39 +1018,6 @@ async function* queryLoop(
         mediaRecoveryEnabled &&
         reactiveCompact?.isWithheldMediaSizeError(lastMessage)
       if (isWithheld413) {
-        // First: drain all staged context-collapses. Gated on the PREVIOUS
-        // transition not being collapse_drain_retry — if we already drained
-        // and the retry still 413'd, fall through to reactive compact.
-        if (
-          feature('CONTEXT_COLLAPSE') &&
-          contextCollapse &&
-          state.transition?.reason !== 'collapse_drain_retry'
-        ) {
-          const drained = contextCollapse.recoverFromOverflow(
-            messagesForQuery,
-            querySource,
-          )
-          if (drained.committed > 0) {
-            const next: State = {
-              messages: drained.messages,
-              toolUseContext,
-              autoCompactTracking: tracking,
-              maxOutputTokensRecoveryCount,
-              hasAttemptedReactiveCompact,
-              maxOutputTokensOverride: undefined,
-              pendingToolUseSummary: undefined,
-              stopHookActive: undefined,
-              turnCount,
-              continuationNudgeCount: state.continuationNudgeCount,
-              transition: {
-                reason: 'collapse_drain_retry',
-                committed: drained.committed,
-              },
-            }
-            state = next
-            continue
-          }
-        }
       }
       if ((isWithheld413 || isWithheldMedia) && reactiveCompact && lastMessage) {
         const compacted = await reactiveCompact.tryReactiveCompact({
@@ -1244,13 +1077,6 @@ async function* queryLoop(
         yield lastMessage
         void executeStopFailureHooks(lastMessage, toolUseContext)
         return { reason: isWithheldMedia ? 'image_error' : 'prompt_too_long' }
-      } else if (feature('CONTEXT_COLLAPSE') && isWithheld413) {
-        // reactiveCompact compiled out but contextCollapse withheld and
-        // couldn't recover (staged queue empty/stale). Surface. Same
-        // early-return rationale — don't fall through to stop hooks.
-        yield lastMessage
-        void executeStopFailureHooks(lastMessage, toolUseContext)
-        return { reason: 'prompt_too_long' }
       }
 
       // Check for max_output_tokens and inject recovery message. The error
@@ -1272,9 +1098,6 @@ async function* queryLoop(
           maxOutputTokensOverride === undefined &&
           !process.env.CLAUDIN_MAX_OUTPUT_TOKENS
         ) {
-          logEvent('tengu_max_tokens_escalate', {
-            escalatedTo: ESCALATED_MAX_TOKENS,
-          })
           const next: State = {
             messages: messagesForQuery,
             toolUseContext,
@@ -1422,11 +1245,6 @@ async function* queryLoop(
               `Token budget early stop: diminishing returns at ${decision.completionEvent.pct}%`,
             )
           }
-          logEvent('tengu_token_budget_completed', {
-            ...decision.completionEvent,
-            queryChainId: queryChainIdForAnalytics,
-            queryDepth: queryTracking.depth,
-          })
         }
       }
 
@@ -1574,19 +1392,6 @@ async function* queryLoop(
     queryCheckpoint('query_tool_execution_start')
 
 
-    if (streamingToolExecutor) {
-      logEvent('tengu_streaming_tool_execution_used', {
-        tool_count: toolUseBlocks.length,
-        queryChainId: queryChainIdForAnalytics,
-        queryDepth: queryTracking.depth,
-      })
-    } else {
-      logEvent('tengu_streaming_tool_execution_not_used', {
-        tool_count: toolUseBlocks.length,
-        queryChainId: queryChainIdForAnalytics,
-        queryDepth: queryTracking.depth,
-      })
-    }
 
     const toolUpdates = streamingToolExecutor
       ? streamingToolExecutor.getRemainingResults()
@@ -1618,28 +1423,6 @@ async function* queryLoop(
       }
     }
     queryCheckpoint('query_tool_execution_end')
-
-    // Track multi-turn context after tool execution
-    if (
-      feature('MULTI_TURN_CONTEXT') &&
-      getGlobalConfig().knowledgeGraphEnabled
-    ) {
-      const lastTurnAssistantMessage = assistantMessages.at(-1)
-      if (lastTurnAssistantMessage) {
-        const { addMessageToTurn, addToolCallToTurn } = await import(
-          'src/agent/context/multiTurnContext.js'
-        )
-        addMessageToTurn(lastTurnAssistantMessage)
-        for (const toolUse of toolUseBlocks) {
-          addToolCallToTurn({
-            id: toolUse.id,
-            name: toolUse.name,
-            input: toolUse.input as Record<string, unknown>,
-            timestamp: Date.now(),
-          })
-        }
-      }
-    }
 
     // Update conversation arc phase
     if (
@@ -1725,19 +1508,6 @@ async function* queryLoop(
 
     // We were aborted during tool calls
     if (toolUseContext.abortController.signal.aborted) {
-      // chicago MCP: auto-unhide + lock release when aborted mid-tool-call.
-      // This is the most likely Ctrl+C path for CU (e.g. slow screenshot).
-      // Main thread only — see stopHooks.ts for the subagent rationale.
-      if (feature('CHICAGO_MCP') && !toolUseContext.agentId) {
-        try {
-          const { cleanupComputerUseAfterTurn } = await import(
-            'src/platform/computerUse/cleanup.js'
-          )
-          await cleanupComputerUseAfterTurn(toolUseContext)
-        } catch {
-          // Failures are silent — this is dogfooding cleanup, not critical path
-        }
-      }
       // Skip the interruption message for submit-interrupts — the queued
       // user message that follows provides sufficient context.
       if (toolUseContext.abortController.signal.reason !== 'interrupt') {
@@ -1764,27 +1534,11 @@ async function* queryLoop(
 
     if (tracking?.compacted) {
       tracking.turnCounter++
-      logEvent('tengu_post_autocompact_turn', {
-        turnId:
-          tracking.turnId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        turnCounter: tracking.turnCounter,
-
-        queryChainId: queryChainIdForAnalytics,
-        queryDepth: queryTracking.depth,
-      })
     }
 
     // Be careful to do this after tool calls are done, because the API
     // will error if we interleave tool_result messages with regular user messages.
 
-    // Instrumentation: Track message count before attachments
-    logEvent('tengu_query_before_attachments', {
-      messagesForQueryCount: messagesForQuery.length,
-      assistantMessagesCount: assistantMessages.length,
-      toolResultsCount: toolResults.length,
-      queryChainId: queryChainIdForAnalytics,
-      queryDepth: queryTracking.depth,
-    })
 
     // Get queued commands snapshot before processing attachments.
     // These will be sent as attachments so Claude can respond to them in the current turn.
@@ -1891,12 +1645,6 @@ async function* queryLoop(
         tr.type === 'attachment' && tr.attachment.type === 'edited_text_file',
     )
 
-    logEvent('tengu_query_after_attachments', {
-      totalToolResultsCount: toolResults.length,
-      fileChangeAttachmentCount,
-      queryChainId: queryChainIdForAnalytics,
-      queryDepth: queryTracking.depth,
-    })
 
     // Refresh tools between turns so newly-connected MCP servers become available
     if (updatedToolUseContext.options.refreshTools) {
@@ -1919,29 +1667,6 @@ async function* queryLoop(
 
     // Each time we have tool results and are about to recurse, that's a turn
     const nextTurnCount = turnCount + 1
-
-    // Periodic task summary for `claude ps` — fires mid-turn so a
-    // long-running agent still refreshes what it's working on. Gated
-    // only on !agentId so every top-level conversation (REPL, SDK, HFI,
-    // remote) generates summaries; subagents/forks don't.
-    if (feature('BG_SESSIONS')) {
-      if (
-        !toolUseContext.agentId &&
-        taskSummaryModule!.shouldGenerateTaskSummary()
-      ) {
-        taskSummaryModule!.maybeGenerateTaskSummary({
-          systemPrompt,
-          userContext,
-          systemContext,
-          toolUseContext,
-          forkContextMessages: [
-            ...messagesForQuery,
-            ...assistantMessages,
-            ...toolResults,
-          ],
-        })
-      }
-    }
 
     // Check if we've reached the max turns limit
     if (maxTurns && nextTurnCount > maxTurns) {

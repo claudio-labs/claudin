@@ -17,7 +17,7 @@ These override general TypeScript conventions:
 4. **Fallback pattern** — If a tool/filter fails, return the raw result unchanged. Never block the user.
 5. **No hardcoded model names** — Always use `getPrimaryModel()` / `getSmallFastModel()` from `src/providers/model/`.
 6. **No hardcoded provider logic** — Always use `tryGetActiveProvider()` from `src/providers/presets/activeProvider.ts`.
-7. **Privacy enforcement** — Any analytics event name containing code/paths must use the `_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS` suffix. Run `bun run verify:privacy` before every PR.
+7. **Privacy enforcement** — There is no analytics sink to leak into; do not add one back. Run `bun run verify:privacy` before every PR.
 8. **Feature flags over conditionals** — New Anthropic-internal features go behind `feature('FLAG')` in `scripts/build/build.ts`. Never use runtime env vars for build-time feature gating.
 
 ## Error Handling
@@ -203,16 +203,28 @@ module.
 
 ## Privacy — No Phone-Home
 
-```typescript
-// ✅ Correct — suffix proves manual review
-import { logEvent } from 'src/platform/analytics/index.js'
-logEvent('tool_executed' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, {})
+This fork has **no analytics**. `logEvent`, `logEventAsync`, `logEventTo1P` and
+`logOTelEvent` are gone, and so are the analytics modules and the whole
+telemetry slice that used to sit beside them. The
+`AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS` marker went with
+them — it existed to certify that an event name carried no code or paths, and
+there is no longer an event to certify.
 
-// ❌ Wrong — could leak user code/paths
-logEvent('tool_executed', { command: userCommand })
-```
+Two rules for new code:
 
-Run `bun run verify:privacy` to catch violations before push.
+- **Do not reintroduce a sink.** To see what the agent did, use `logForDebugging`
+  (`src/shared/debug.js`) — local, and only under `--debug`. When a *test* needs
+  to see an internal decision, give the code a decision record instead of an
+  event: `getLastSummaryDecision()` in `toolResultSummarizer.ts` is the worked
+  example. A test observing through telemetry is reading a channel that exists
+  only because the test itself mocked it.
+- **Run `bun run verify:privacy`** before pushing. It scans `dist/cli.mjs` for
+  banned phone-home patterns, so run it after `rm -rf dist/chunks && bun run
+  build`, never against a stale generation.
+
+What lives under the analytics path now is flag resolution alone
+(`src/platform/analytics/growthbook.ts`): a local reader over
+`~/.claudin/feature-flags.json`. It reaches no network.
 
 ## Build System
 

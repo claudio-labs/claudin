@@ -5,7 +5,6 @@ import type {
 } from '@anthropic-ai/sdk/resources/index.mjs'
 import { readFile, stat } from 'fs/promises'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { pathInAllowedWorkingPath } from 'src/permissions/filesystem.js'
@@ -184,7 +183,6 @@ export function resetCwdIfOutsideProject(
     // Reset to original directory if maintaining project dir OR outside allowed working directory
     setCwd(originalCwd)
     if (!shouldMaintain) {
-      logEvent('tengu_bash_tool_reset_to_original_dir', {})
       return true
     }
   }

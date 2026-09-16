@@ -7,7 +7,6 @@ import { FastIcon, getFastIconString } from 'src/terminal/FastIcon.js';
 import type { ExitState } from 'src/terminal/hooks/useExitOnCtrlCDWithKeybindings.js';
 import { Box, Link, Text } from 'src/terminal/ink.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { LocalJSXCommandOnDone } from 'src/shared/types/command.js';
 import { clearFastModeCooldown, FAST_MODE_MODEL_DISPLAY, getFastModeModel, getFastModeRuntimeState, getFastModeUnavailableReason, isFastModeEnabled, isFastModeSupportedByModel, prefetchFastModeStatus } from 'src/providers/fastMode.js';
@@ -77,10 +76,6 @@ export function FastModePicker(t0: {
         return;
       }
       applyFastMode(enableFastMode, setAppState);
-      logEvent("tengu_fast_mode_toggled", {
-        enabled: enableFastMode,
-        source: "picker" as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
       if (enableFastMode) {
         const fastIcon = getFastIconString(enableFastMode);
         const modelUpdated = !isFastModeSupportedByModel(model) ? ` · model set to ${FAST_MODE_MODEL_DISPLAY}` : "";
@@ -236,10 +231,6 @@ async function handleFastModeShortcut(enable: boolean, getAppState: () => AppSta
     mainLoopModel
   } = getAppState();
   applyFastMode(enable, setAppState);
-  logEvent('tengu_fast_mode_toggled', {
-    enabled: enable,
-    source: 'shortcut' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-  });
   if (enable) {
     const fastIcon = getFastIconString(true);
     const modelUpdated = !isFastModeSupportedByModel(mainLoopModel) ? ` · model set to ${FAST_MODE_MODEL_DISPLAY}` : '';
@@ -265,8 +256,5 @@ export async function call(onDone: LocalJSXCommandOnDone, context: LocalJSXComma
     return null;
   }
   const unavailableReason = getFastModeUnavailableReason();
-  logEvent('tengu_fast_mode_picker_shown', {
-    unavailable_reason: (unavailableReason ?? '') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-  });
   return <FastModePicker onDone={onDone} unavailableReason={unavailableReason} />;
 }

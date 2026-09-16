@@ -10,7 +10,6 @@ const realConfigForFastMode = { ...(await import('src/platform/config/config.js'
 const realAuthForFastMode = { ...(await import('src/providers/auth/auth.js')) }
 const realDebugForFastMode = { ...(await import('src/shared/debug.js')) }
 const realBootstrapStateForFastMode = { ...(await import('src/platform/bootstrap/state.js')) }
-const realAnalyticsForFastMode = { ...(await import('src/platform/analytics/index.js')) }
 const realGrowthbookForFastMode = { ...(await import('src/platform/analytics/growthbook.js')) }
 const realBundledModeForFastMode = { ...(await import('src/platform/install/bundledMode.js')) }
 const realModelForFastMode = { ...(await import('src/providers/model/model.js')) }
@@ -55,10 +54,6 @@ function installCommonMocks(options?: {
     getIsNonInteractiveSession: () => false,
     getKairosActive: () => false,
     preferThirdPartyAuthentication: () => false,
-  }))
-
-  mock.module('src/platform/analytics/index.js', () => ({
-    logEvent: () => {},
   }))
 
   mock.module('src/providers/auth/auth.js', () => ({
@@ -135,7 +130,6 @@ afterAll(() => {
   mock.module('src/providers/auth/auth.js', () => realAuthForFastMode)
   mock.module('src/shared/debug.js', () => realDebugForFastMode)
   mock.module('src/platform/bootstrap/state.js', () => realBootstrapStateForFastMode)
-  mock.module('src/platform/analytics/index.js', () => realAnalyticsForFastMode)
   mock.module('src/platform/analytics/growthbook.js', () => realGrowthbookForFastMode)
   mock.module('src/platform/install/bundledMode.js', () => realBundledModeForFastMode)
   mock.module('./model/model.js', () => realModelForFastMode)

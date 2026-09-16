@@ -3,7 +3,6 @@ import type { UUID } from 'crypto';
 import figures from 'figures';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { useAppState, useAppStateStore, useSetAppState } from 'src/terminal/state/AppState.js';
 import { getSdkBetas, getSessionId, isSessionPersistenceDisabled, setHasExitedPlanMode, setNeedsAutoModeExitAttachment, setNeedsPlanModeExitAttachment } from 'src/platform/bootstrap/state.js';
 import { generateSessionName } from 'src/commands/rename/generateSessionName.js';
@@ -28,7 +27,7 @@ import { createPromptRuleContent, isClassifierPermissionsEnabled, PROMPT_PREFIX 
 import { type PermissionMode, toExternalPermissionMode } from 'src/permissions/PermissionMode.js';
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js';
 import { isAutoModeGateEnabled, restoreDangerousPermissions, stripDangerousPermissionsForAutoMode } from 'src/permissions/permissionSetup.js';
-import { getPewterLedgerVariant, isPlanModeInterviewPhaseEnabled } from 'src/agent/plans/planModeV2.js';
+import { isPlanModeInterviewPhaseEnabled } from 'src/agent/plans/planModeV2.js';
 import { getPlan, getPlanFilePath } from 'src/agent/plans/plans.js';
 import { editFileInEditor, editPromptInEditor } from 'src/terminal/input/promptEditor.js';
 import { getCurrentSessionTitle, getTranscriptPath, saveCustomTitle } from 'src/sessions/sessionStorage.js';
@@ -196,11 +195,6 @@ export function ExitPlanModePermissionRequest({
   const rawPlan = inputPlan ?? getPlan();
   const isEmpty = !rawPlan || rawPlan.trim() === '';
 
-  // Capture the variant once on mount. GrowthBook reads from a disk cache
-  // so the value is stable across a single planning session. undefined =
-  // control arm. The variant is a fixed 3-value enum of short literals,
-  // not user input.
-  const [planStructureVariant] = useState(() => (getPewterLedgerVariant() ?? undefined) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS);
   const [currentPlan, setCurrentPlan] = useState(() => {
     if (inputPlan) return inputPlan;
     const plan = getPlan();
@@ -224,7 +218,6 @@ export function ExitPlanModePermissionRequest({
   const handleKeyDown = (e: KeyboardEvent): void => {
     if (e.ctrl && e.key === 'g') {
       e.preventDefault();
-      logEvent('tengu_plan_external_editor_used', {});
       void (async () => {
         if (isV2 && planFilePath) {
           const result = await editFileInEditor(planFilePath);
@@ -275,12 +268,6 @@ export function ExitPlanModePermissionRequest({
     // Dialog dismisses immediately so the query loop unblocks; the teleport
     // runs detached and its launch message lands via the command queue.
     if (value === 'ultraplan') {
-      logEvent('tengu_plan_exit', {
-        planLengthChars: currentPlan.length,
-        outcome: 'ultraplan' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        interviewPhaseEnabled: isPlanModeInterviewPhaseEnabled(),
-        planStructureVariant
-      });
       onDone();
       onReject();
       toolUseConfirm.onReject('Plan being refined via Ultraplan — please wait for the result.');
@@ -347,15 +334,6 @@ export function ExitPlanModePermissionRequest({
         autoModeStateModule?.setAutoModeActive(true);
       }
 
-      // Log plan exit event
-      logEvent('tengu_plan_exit', {
-        planLengthChars: currentPlan.length,
-        outcome: value as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        clearContext: true,
-        interviewPhaseEnabled: isPlanModeInterviewPhaseEnabled(),
-        planStructureVariant,
-        hasFeedback: !!acceptFeedback
-      });
 
       // Set initial message - REPL will handle context clear and fresh query
       // Add verification instruction if the feature is enabled
@@ -394,14 +372,6 @@ export function ExitPlanModePermissionRequest({
     // buildPermissionUpdates maps auto to 'default' via toExternalPermissionMode.
     // We set the mode directly via setAppState and sync the bootstrap state.
     if (feature('TRANSCRIPT_CLASSIFIER') && value === 'yes-resume-auto-mode' && isAutoModeGateEnabled()) {
-      logEvent('tengu_plan_exit', {
-        planLengthChars: currentPlan.length,
-        outcome: value as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        clearContext: false,
-        interviewPhaseEnabled: isPlanModeInterviewPhaseEnabled(),
-        planStructureVariant,
-        hasFeedback: !!acceptFeedback
-      });
       setHasExitedPlanMode(true);
       setNeedsPlanModeExitAttachment(true);
       autoModeStateModule?.setAutoModeActive(true);
@@ -432,14 +402,6 @@ export function ExitPlanModePermissionRequest({
     };
     const keepContextMode = keepContextModes[value];
     if (keepContextMode) {
-      logEvent('tengu_plan_exit', {
-        planLengthChars: currentPlan.length,
-        outcome: value as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        clearContext: false,
-        interviewPhaseEnabled: isPlanModeInterviewPhaseEnabled(),
-        planStructureVariant,
-        hasFeedback: !!acceptFeedback
-      });
       setHasExitedPlanMode(true);
       setNeedsPlanModeExitAttachment(true);
       onDone();
@@ -454,13 +416,6 @@ export function ExitPlanModePermissionRequest({
     };
     const standardMode = standardModes[value];
     if (standardMode) {
-      logEvent('tengu_plan_exit', {
-        planLengthChars: currentPlan.length,
-        outcome: value as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        interviewPhaseEnabled: isPlanModeInterviewPhaseEnabled(),
-        planStructureVariant,
-        hasFeedback: !!acceptFeedback
-      });
       setHasExitedPlanMode(true);
       setNeedsPlanModeExitAttachment(true);
       onDone();
@@ -474,12 +429,6 @@ export function ExitPlanModePermissionRequest({
         // No feedback yet - user is still on the input field
         return;
       }
-      logEvent('tengu_plan_exit', {
-        planLengthChars: currentPlan.length,
-        outcome: 'no' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        interviewPhaseEnabled: isPlanModeInterviewPhaseEnabled(),
-        planStructureVariant
-      });
 
       // Convert pasted images to ImageBlockParam[] with resizing
       let imageBlocks: ImageBlockParam[] | undefined;
@@ -515,12 +464,6 @@ export function ExitPlanModePermissionRequest({
   handleResponseRef.current = handleResponse;
   const handleCancelRef = useRef<() => void>(undefined);
   handleCancelRef.current = () => {
-    logEvent('tengu_plan_exit', {
-      planLengthChars: currentPlan.length,
-      outcome: 'no' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      interviewPhaseEnabled: isPlanModeInterviewPhaseEnabled(),
-      planStructureVariant
-    });
     onDone();
     onReject();
     toolUseConfirm.onReject();
@@ -568,12 +511,6 @@ export function ExitPlanModePermissionRequest({
   if (isEmpty) {
     function handleEmptyPlanResponse(value: 'yes' | 'no'): void {
       if (value === 'yes') {
-        logEvent('tengu_plan_exit', {
-          planLengthChars: 0,
-          outcome: 'yes-default' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          interviewPhaseEnabled: isPlanModeInterviewPhaseEnabled(),
-          planStructureVariant
-        });
         if (feature('TRANSCRIPT_CLASSIFIER')) {
           const autoWasUsedDuringPlan = autoModeStateModule?.isAutoModeActive() ?? false;
           if (autoWasUsedDuringPlan) {
@@ -597,12 +534,6 @@ export function ExitPlanModePermissionRequest({
           destination: 'session'
         }]);
       } else {
-        logEvent('tengu_plan_exit', {
-          planLengthChars: 0,
-          outcome: 'no' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          interviewPhaseEnabled: isPlanModeInterviewPhaseEnabled(),
-          planStructureVariant
-        });
         onDone();
         onReject();
         toolUseConfirm.onReject();
@@ -619,12 +550,6 @@ export function ExitPlanModePermissionRequest({
             label: 'No',
             value: 'no' as const
           }]} onChange={handleEmptyPlanResponse} onCancel={() => {
-            logEvent('tengu_plan_exit', {
-              planLengthChars: 0,
-              outcome: 'no' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-              interviewPhaseEnabled: isPlanModeInterviewPhaseEnabled(),
-              planStructureVariant
-            });
             onDone();
             onReject();
             toolUseConfirm.onReject();

@@ -6,10 +6,6 @@
 //
 // Extracted from src/agent/attachments/attachments.ts as part of the attachments split.
 import {
-  logEvent,
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from 'src/platform/analytics/index.js'
-import {
   toolMatchesName,
   type ToolUseContext,
 } from 'src/tools/Tool.js'
@@ -167,7 +163,6 @@ export async function processAtMentionedFiles(
                 )
               }
               const stdout = names.join('\n')
-              logEvent('tengu_at_mention_extracting_directory_success', {})
 
               return {
                 type: 'directory' as const,
@@ -186,16 +181,17 @@ export async function processAtMentionedFiles(
         return await generateFileAttachment(
           absoluteFilename,
           toolUseContext,
-          'tengu_at_mention_extracting_filename_success',
-          'tengu_at_mention_extracting_filename_error',
           'at-mention',
           {
             offset: lineStart,
             limit: lineEnd && lineStart ? lineEnd - lineStart + 1 : undefined,
           },
         )
-      } catch {
-        logEvent('tengu_at_mention_extracting_filename_error', {})
+      } catch (e) {
+        // Swallowed on purpose: one unreadable @-mention must not fail the
+        // whole batch — the others still resolve and this file is simply
+        // left unattached.
+        logError(e)
       }
     }),
   )
@@ -214,11 +210,8 @@ export function processAgentMentions(
     const agentDef = agents.find(def => def.agentType === agentType)
 
     if (!agentDef) {
-      logEvent('tengu_at_mention_agent_not_found', {})
       return null
     }
-
-    logEvent('tengu_at_mention_agent_success', {})
 
     return {
       type: 'agent_mention' as const,
@@ -247,14 +240,12 @@ export async function processMcpResourceAttachments(
         const uri = uriParts.join(':') // Rejoin in case URI contains colons
 
         if (!serverName || !uri) {
-          logEvent('tengu_at_mention_mcp_resource_error', {})
           return null
         }
 
         // Find the MCP client
         const client = mcpClients.find(c => c.name === serverName)
         if (!client || client.type !== 'connected') {
-          logEvent('tengu_at_mention_mcp_resource_error', {})
           return null
         }
 
@@ -263,7 +254,6 @@ export async function processMcpResourceAttachments(
           toolUseContext.options.mcpResources?.[serverName] || []
         const resourceInfo = serverResources.find(r => r.uri === uri)
         if (!resourceInfo) {
-          logEvent('tengu_at_mention_mcp_resource_error', {})
           return null
         }
 
@@ -271,8 +261,6 @@ export async function processMcpResourceAttachments(
           const result = await client.client.readResource({
             uri,
           })
-
-          logEvent('tengu_at_mention_mcp_resource_success', {})
 
           return {
             type: 'mcp_resource' as const,
@@ -283,12 +271,13 @@ export async function processMcpResourceAttachments(
             content: result,
           }
         } catch (error) {
-          logEvent('tengu_at_mention_mcp_resource_error', {})
           logError(error)
           return null
         }
-      } catch {
-        logEvent('tengu_at_mention_mcp_resource_error', {})
+      } catch (e) {
+        // Swallowed on purpose: a malformed mention or an MCP server that
+        // cannot answer must not fail the whole batch.
+        logError(e)
         return null
       }
     }),

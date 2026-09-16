@@ -1,7 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import { useCallback, useState } from 'react';
 import { setTeleportedSessionInfo } from 'src/platform/bootstrap/state.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import type { TeleportRemoteResponse } from 'src/sessions/conversationRecovery.js';
 import type { CodeSession } from 'src/platform/teleport/api.js';
 import { errorMessage, TeleportOperationError } from 'src/shared/errors.js';
@@ -24,10 +23,6 @@ export function useTeleportResume(source: TeleportSource) {
       setIsResuming(true);
       setError(null);
       setSelectedSession(session);
-      logEvent("tengu_teleport_resume_session", {
-        source: source as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        session_id: session.id as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
       ;
       try {
         const result = await teleportResumeCodeSession(session.id);

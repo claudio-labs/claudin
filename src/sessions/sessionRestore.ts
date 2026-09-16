@@ -108,34 +108,6 @@ export function restoreSessionStateFromLog(
     })
   }
 
-  // Restore attribution state (internal-only feature)
-  if (
-    feature('COMMIT_ATTRIBUTION') &&
-    result.attributionSnapshots &&
-    result.attributionSnapshots.length > 0
-  ) {
-    attributionRestoreStateFromLog(result.attributionSnapshots, newState => {
-      setAppState(prev => ({ ...prev, attribution: newState }))
-    })
-  }
-
-  // Restore context-collapse commit log + staged snapshot. Must run before
-  // the first query() so projectView() can rebuild the collapsed view from
-  // the resumed Message[]. Called unconditionally (even with
-  // undefined/empty entries) because restoreFromEntries resets the store
-  // first — without that, an in-session /resume into a session with no
-  // commits would leave the prior session's stale commit log intact.
-  if (feature('CONTEXT_COLLAPSE')) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    ;(
-      require('../agent/contextCollapse/persist.js') as typeof import('../agent/contextCollapse/persist.js')
-    ).restoreFromEntries(
-      result.contextCollapseCommits ?? [],
-      result.contextCollapseSnapshot,
-    )
-    /* eslint-enable @typescript-eslint/no-require-imports */
-  }
-
   // Restore TodoWrite state from transcript (SDK/non-interactive only).
   // Interactive mode uses file-backed v2 tasks, so AppState.todos is unused there.
   if (!isTodoV2Enabled() && result.messages && result.messages.length > 0) {
@@ -152,19 +124,14 @@ export function restoreSessionStateFromLog(
 
 /**
  * Compute restored attribution state from log snapshots.
- * Used for computing initial state before render (e.g., main.tsx --continue).
- * Returns undefined if attribution feature is disabled or no snapshots exist.
+ *
+ * Always undefined: restoring a snapshot was gated on COMMIT_ATTRIBUTION,
+ * which this build folds to false. Kept as an exported function because its
+ * callers thread the result into AppState, which still carries the field.
  */
 export function computeRestoredAttributionState(
-  result: ResumeResult,
+  _result: ResumeResult,
 ): AttributionState | undefined {
-  if (
-    feature('COMMIT_ATTRIBUTION') &&
-    result.attributionSnapshots &&
-    result.attributionSnapshots.length > 0
-  ) {
-    return restoreAttributionStateFromSnapshots(result.attributionSnapshots)
-  }
   return undefined
 }
 
@@ -498,21 +465,6 @@ export async function processResumedConversation(
     // useLogMessages populates a *new* file via recordTranscript on REPL
     // mount; the normal lazy-materialize path is correct there.
     adoptResumedSessionFile()
-  }
-
-  // Restore context-collapse commit log + staged snapshot. The interactive
-  // /resume path goes through restoreSessionStateFromLog (REPL.tsx); CLI
-  // --continue/--resume goes through here instead. Called unconditionally
-  // — see the restoreSessionStateFromLog callsite above for why.
-  if (feature('CONTEXT_COLLAPSE')) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    ;(
-      require('../agent/contextCollapse/persist.js') as typeof import('../agent/contextCollapse/persist.js')
-    ).restoreFromEntries(
-      result.contextCollapseCommits ?? [],
-      result.contextCollapseSnapshot,
-    )
-    /* eslint-enable @typescript-eslint/no-require-imports */
   }
 
   // Restore agent setting from resumed session

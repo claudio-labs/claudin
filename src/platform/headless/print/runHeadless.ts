@@ -16,7 +16,6 @@
 
 import { feature } from 'bun:bundle'
 import type { Command } from 'src/commands/commands.js'
-import { createStreamlinedTransformer } from 'src/agent/tools/streamlinedTransform.js'
 import { installStreamJsonStdoutGuard } from 'src/terminal/render/streamJsonStdoutGuard.js'
 import type { ThinkingConfig } from 'src/agent/context/thinking.js'
 import { filterToolsByDenyRules } from 'src/tools/tools.js'
@@ -70,7 +69,6 @@ import { getCanUseToolFn } from 'src/platform/headless/print/permissionGlue.js'
 import { handleRewindFiles } from 'src/platform/headless/print/controlHandlers.js'
 import { loadInitialMessages } from 'src/platform/headless/print/sessionLoad.js'
 import { getStructuredIO } from 'src/platform/headless/print/structuredIOFactory.js'
-import { proactiveModule } from 'src/platform/headless/print/headlessOptionalModules.js'
 import { runHeadlessStreaming } from 'src/platform/headless/print/runHeadlessStreaming.js'
 
 // Dead code elimination: conditional imports
@@ -139,18 +137,6 @@ export async function runHeadless(
   })
 
   // Proactive activation is now handled in main.tsx before getTools() so
-  // SleepTool passes isEnabled() filtering. This fallback covers the case
-  // where CLAUDIN_PROACTIVE is set but main.tsx's check didn't fire
-  // (e.g. env was injected by the SDK transport after argv parsing).
-  if (
-    (feature('PROACTIVE') || feature('KAIROS')) &&
-    proactiveModule &&
-    !proactiveModule.isProactiveActive() &&
-    isEnvTruthy(process.env.CLAUDIN_PROACTIVE)
-  ) {
-    proactiveModule.activateProactive('command')
-  }
-
   // Periodically force a full GC to keep memory usage in check
   if (typeof Bun !== 'undefined') {
     const gcTimer = setInterval(Bun.gc, 1000)
@@ -413,15 +399,6 @@ export async function runHeadless(
 
   // Callback for when a permission prompt is shown
   const onPermissionPrompt = (details: RequiresActionDetails) => {
-    if (feature('COMMIT_ATTRIBUTION')) {
-      setAppState(prev => ({
-        ...prev,
-        attribution: {
-          ...prev.attribution,
-          permissionPromptCount: prev.attribution.permissionPromptCount + 1,
-        },
-      }))
-    }
     notifySessionStateChanged('requires_action', details)
   }
 
@@ -458,14 +435,6 @@ export async function runHeadless(
   const needsFullArray = options.outputFormat === 'json' && options.verbose
   const messages: SDKMessage[] = []
   let lastMessage: SDKMessage | undefined
-  // Streamlined mode transforms messages when CLAUDIN_STREAMLINED_OUTPUT=true and using stream-json
-  // Build flag gates this out of external builds; env var is the runtime opt-in for ant builds
-  const transformToStreamlined =
-    feature('STREAMLINED_OUTPUT') &&
-    isEnvTruthy(process.env.CLAUDIN_STREAMLINED_OUTPUT) &&
-    options.outputFormat === 'stream-json'
-      ? createStreamlinedTransformer()
-      : null
 
   headlessProfilerCheckpoint('before_runHeadlessStreaming')
   for await (const message of runHeadlessStreaming(
@@ -482,13 +451,7 @@ export async function runHeadless(
     options,
     turnInterruptionState,
   )) {
-    if (transformToStreamlined) {
-      // Streamlined mode: transform messages and stream immediately
-      const transformed = transformToStreamlined(message)
-      if (transformed) {
-        await structuredIO.write(transformed)
-      }
-    } else if (options.outputFormat === 'stream-json' && options.verbose) {
+    if (options.outputFormat === 'stream-json' && options.verbose) {
       await structuredIO.write(message)
     }
     // Should not be getting control messages or stream events in non-stream mode.

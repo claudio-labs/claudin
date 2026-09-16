@@ -1121,12 +1121,6 @@ describe('BashTool wiring', () => {
     )
   })
 
-  test('records a disparo so adoption is measurable, without paths', () => {
-    expect(src).toContain("logEvent('tengu_bash_tool_redirect'")
-    // Analytics metadata is numbers and booleans only — no command, no paths.
-    expect(src).not.toContain('command: input.command')
-  })
-
   test('never for a backgrounded run, and honors the killswitch', () => {
     expect(src).toContain('CLAUDIN_DISABLE_TOOL_REDIRECT')
     expect(src).toContain(

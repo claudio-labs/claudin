@@ -1,7 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
-import { logEvent } from 'src/platform/analytics/index.js';
 import { Spinner } from 'src/terminal/spinner/Spinner.js';
 import { getOauthConfig } from 'src/shared/constants/oauth.js';
 import { useTimeout } from 'src/terminal/hooks/useTimeout.js';
@@ -59,24 +58,12 @@ async function checkEndpoints(): Promise<PreflightCheckResult> {
     };
     const results = await Promise.all(endpoints.map(checkEndpoint));
     const failedResult = results.find(result => !result.success);
-    if (failedResult) {
-      // Log failure to Statsig
-      logEvent('tengu_preflight_check_failed', {
-        isConnectivityError: false,
-        hasErrorMessage: !!failedResult.error,
-        isSSLError: !!failedResult.sslHint
-      });
-    }
     return failedResult || {
       success: true
     };
   } catch (error) {
     logError(error as Error);
 
-    // Log to Statsig
-    logEvent('tengu_preflight_check_failed', {
-      isConnectivityError: true
-    });
     return {
       success: false,
       error: `Connectivity check error: ${error instanceof Error ? (error as ErrnoException).code || error.message : String(error)}`

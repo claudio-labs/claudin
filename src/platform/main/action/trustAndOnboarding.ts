@@ -14,7 +14,6 @@
 import { feature } from 'bun:bundle';
 import chalk from 'chalk';
 import React from 'react';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { refreshGrowthBookAfterAuthChange } from 'src/platform/analytics/growthbook.js';
 import { refreshPolicyLimits } from 'src/platform/policyLimits/index.js';
 import { refreshRemoteManagedSettings } from 'src/platform/remoteManagedSettings/index.js';
@@ -80,14 +79,6 @@ export async function runTrustAndOnboarding(
   const root = await createRoot(renderCtx.renderOptions);
   profileCheckpoint('trust_ink_root_created');
 
-  // Log startup time now, before any blocking dialog renders. Logging
-  // from REPL's first render (the old location) included however long
-  // the user sat on trust/OAuth/onboarding/resume-picker — p99 was ~70s
-  // dominated by dialog-wait time, not code-path startup.
-  logEvent('tengu_timer', {
-    event: 'startup' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    durationMs: Math.round(process.uptime() * 1000),
-  });
   const onboardingShown = await showSetupScreens(
     root,
     permissionMode,

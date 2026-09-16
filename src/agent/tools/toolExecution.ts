@@ -5,28 +5,9 @@ import type {
   ToolUseBlock,
 } from '@anthropic-ai/sdk/resources/index.mjs'
 import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
-import {
-  extractMcpToolDetails,
-  extractSkillName,
-  extractToolInputForTelemetry,
-  getFileExtensionForAnalytics,
-  getFileExtensionsFromBashCommand,
-  isToolDetailsLoggingEnabled,
-  mcpToolDetailsForAnalytics,
-  sanitizeToolNameForAnalytics,
-} from 'src/platform/analytics/metadata.js'
-import {
   addToToolDuration,
-  getCodeEditToolDecisionCounter,
   getStatsStore,
 } from 'src/platform/bootstrap/state.js'
-import {
-  buildCodeEditToolAttributes,
-  isCodeEditingTool,
-} from 'src/permissions/toolPermission/permissionLogging.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import {
   findToolByName,
@@ -38,14 +19,8 @@ import {
 import type { BashToolInput } from 'src/tools/BashTool/BashTool.js'
 import { startSpeculativeClassifierCheck } from 'src/tools/BashTool/bashPermissions.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
-import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
-import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
-import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
-import { NOTEBOOK_EDIT_TOOL_NAME } from 'src/tools/NotebookEditTool/constants.js'
-import { POWERSHELL_TOOL_NAME } from 'src/tools/PowerShellTool/toolName.js'
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js'
 import { invalidateCacheForWrite } from 'src/agent/tools/cacheInvalidation.js'
-import { parseGitCommitId } from 'src/tools/shared/gitOperationTracking.js'
 import {
   isDeferredTool,
   TOOL_SEARCH_TOOL_NAME,
@@ -100,21 +75,9 @@ import {
   startSessionActivity,
   stopSessionActivity,
 } from 'src/sessions/sessionActivity.js'
-import { jsonStringify } from 'src/platform/slowOperations.js'
 import { Stream } from 'src/shared/stream.js'
 import { stripPlaceholderOptionalFields } from 'src/agent/tools/toolInputPlaceholders.js'
 import { transportSendsStrictToolSchemas } from 'src/providers/presets/providerConfig.js'
-import { logOTelEvent } from 'src/platform/telemetry/events.js'
-import {
-  addToolContentEvent,
-  endToolBlockedOnUserSpan,
-  endToolExecutionSpan,
-  endToolSpan,
-  isBetaTracingEnabled,
-  startToolBlockedOnUserSpan,
-  startToolExecutionSpan,
-  startToolSpan,
-} from 'src/platform/telemetry/sessionTracing.js'
 import {
   formatError,
   formatZodValidationError,
@@ -137,7 +100,6 @@ import { normalizeNameForMCP } from 'src/mcp/normalization.js'
 import type { MCPServerConnection } from 'src/mcp/types.js'
 import {
   getLoggingSafeMcpBaseUrl,
-  getMcpServerScopeFromToolName,
   isMcpTool,
 } from 'src/mcp/utils.js'
 import {
@@ -185,85 +147,6 @@ export function classifyToolError(error: unknown): string {
     return 'Error'
   }
   return 'UnknownError'
-}
-
-/**
- * Map a rule's origin to the documented OTel `source` vocabulary, matching
- * the interactive path's semantics (permissionLogging.ts:81): session-scoped
- * grants are temporary, on-disk grants are permanent, and user-authored
- * denies are user_reject regardless of persistence. Everything the user
- * didn't write (cliArg, policySettings, projectSettings, flagSettings) is
- * config.
- */
-function ruleSourceToOTelSource(
-  ruleSource: string,
-  behavior: 'allow' | 'deny',
-): string {
-  switch (ruleSource) {
-    case 'session':
-      return behavior === 'allow' ? 'user_temporary' : 'user_reject'
-    case 'localSettings':
-    case 'userSettings':
-      return behavior === 'allow' ? 'user_permanent' : 'user_reject'
-    default:
-      return 'config'
-  }
-}
-
-/**
- * Map a PermissionDecisionReason to the OTel `source` label for the
- * non-interactive tool_decision path, staying within the documented
- * vocabulary (config, hook, user_permanent, user_temporary, user_reject).
- *
- * For permissionPromptTool, the SDK host may set decisionClassification on
- * the PermissionResult to tell us exactly what happened (once vs always vs
- * cache hit — the host knows, we can't tell from {behavior:'allow'} alone).
- * Without it, we fall back conservatively: allow → user_temporary,
- * deny → user_reject.
- */
-function decisionReasonToOTelSource(
-  reason: PermissionDecisionReason | undefined,
-  behavior: 'allow' | 'deny',
-): string {
-  if (!reason) {
-    return 'config'
-  }
-  switch (reason.type) {
-    case 'permissionPromptTool': {
-      // toolResult is typed `unknown` on PermissionDecisionReason but carries
-      // the parsed Output from PermissionPromptToolResultSchema. Narrow at
-      // runtime rather than widen the cross-file type.
-      const toolResult = reason.toolResult as
-        | { decisionClassification?: string }
-        | undefined
-      const classified = toolResult?.decisionClassification
-      if (
-        classified === 'user_temporary' ||
-        classified === 'user_permanent' ||
-        classified === 'user_reject'
-      ) {
-        return classified
-      }
-      return behavior === 'allow' ? 'user_temporary' : 'user_reject'
-    }
-    case 'rule':
-      return ruleSourceToOTelSource(reason.rule.source, behavior)
-    case 'hook':
-      return 'hook'
-    case 'mode':
-    case 'classifier':
-    case 'subcommandResults':
-    case 'asyncAgent':
-    case 'sandboxOverride':
-    case 'workingDir':
-    case 'safetyCheck':
-    case 'other':
-      return 'config'
-    default: {
-      const _exhaustive: never = reason
-      return 'config'
-    }
-  }
 }
 
 function getNextImagePasteId(messages: Message[]): number {
@@ -384,32 +267,7 @@ export async function* runToolUse(
 
   // Check if the tool exists
   if (!tool) {
-    const sanitizedToolName = sanitizeToolNameForAnalytics(toolName)
     logForDebugging(`Unknown tool ${toolName}: ${toolUse.id}`)
-    logEvent('tengu_tool_use_error', {
-      error:
-        `No such tool available: ${sanitizedToolName}` as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      toolName: sanitizedToolName,
-      toolUseID:
-        toolUse.id as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      isMcp: toolName.startsWith('mcp__'),
-      queryChainId: toolUseContext.queryTracking
-        ?.chainId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      queryDepth: toolUseContext.queryTracking?.depth,
-      ...(mcpServerType && {
-        mcpServerType:
-          mcpServerType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      ...(mcpServerBaseUrl && {
-        mcpServerBaseUrl:
-          mcpServerBaseUrl as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      ...(requestId && {
-        requestId:
-          requestId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      ...mcpToolDetailsForAnalytics(toolName, mcpServerType, mcpServerBaseUrl),
-    })
     yield {
       message: createUserMessage({
         content: [
@@ -448,33 +306,6 @@ export async function* runToolUse(
     }
 
     if (toolUseContext.abortController.signal.aborted) {
-      logEvent('tengu_tool_use_cancelled', {
-        toolName: sanitizeToolNameForAnalytics(tool.name),
-        toolUseID:
-          toolUse.id as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        isMcp: tool.isMcp ?? false,
-
-        queryChainId: toolUseContext.queryTracking
-          ?.chainId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        queryDepth: toolUseContext.queryTracking?.depth,
-        ...(mcpServerType && {
-          mcpServerType:
-            mcpServerType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        }),
-        ...(mcpServerBaseUrl && {
-          mcpServerBaseUrl:
-            mcpServerBaseUrl as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        }),
-        ...(requestId && {
-          requestId:
-            requestId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        }),
-        ...mcpToolDetailsForAnalytics(
-          tool.name,
-          mcpServerType,
-          mcpServerBaseUrl,
-        ),
-      })
       const content = createToolResultStopMessage(toolUse.id)
       content.content = withMemoryCorrectionHint(CANCEL_MESSAGE)
       yield {
@@ -663,33 +494,6 @@ function streamedCheckPermissionsAndCallTool(
     mcpServerType,
     mcpServerBaseUrl,
     progress => {
-      logEvent('tengu_tool_use_progress', {
-        messageID:
-          messageId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        toolName: sanitizeToolNameForAnalytics(tool.name),
-        isMcp: tool.isMcp ?? false,
-
-        queryChainId: toolUseContext.queryTracking
-          ?.chainId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        queryDepth: toolUseContext.queryTracking?.depth,
-        ...(mcpServerType && {
-          mcpServerType:
-            mcpServerType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        }),
-        ...(mcpServerBaseUrl && {
-          mcpServerBaseUrl:
-            mcpServerBaseUrl as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        }),
-        ...(requestId && {
-          requestId:
-            requestId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        }),
-        ...mcpToolDetailsForAnalytics(
-          tool.name,
-          mcpServerType,
-          mcpServerBaseUrl,
-        ),
-      })
       stream.enqueue({
         message: createProgressMessage({
           toolUseID: progress.toolUseID,
@@ -793,45 +597,12 @@ async function checkPermissionsAndCallTool(
       toolUseContext.options.tools,
     )
     if (schemaHint) {
-      logEvent('tengu_deferred_tool_schema_not_sent', {
-        toolName: sanitizeToolNameForAnalytics(tool.name),
-        isMcp: tool.isMcp ?? false,
-      })
       errorContent += schemaHint
     }
 
     logForDebugging(
       `${tool.name} tool input error: ${errorContent.slice(0, 200)}`,
     )
-    logEvent('tengu_tool_use_error', {
-      error:
-        'InputValidationError' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      errorDetails: errorContent.slice(
-        0,
-        2000,
-      ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      messageID:
-        messageId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      toolName: sanitizeToolNameForAnalytics(tool.name),
-      isMcp: tool.isMcp ?? false,
-
-      queryChainId: toolUseContext.queryTracking
-        ?.chainId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      queryDepth: toolUseContext.queryTracking?.depth,
-      ...(mcpServerType && {
-        mcpServerType:
-          mcpServerType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      ...(mcpServerBaseUrl && {
-        mcpServerBaseUrl:
-          mcpServerBaseUrl as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      ...(requestId && {
-        requestId:
-          requestId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      ...mcpToolDetailsForAnalytics(tool.name, mcpServerType, mcpServerBaseUrl),
-    })
     return [
       {
         message: createUserMessage({
@@ -868,32 +639,6 @@ async function checkPermissionsAndCallTool(
     logForDebugging(
       `${tool.name} tool validation error: ${isValidCall.message?.slice(0, 200)}`,
     )
-    logEvent('tengu_tool_use_error', {
-      messageID:
-        messageId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      toolName: sanitizeToolNameForAnalytics(tool.name),
-      error:
-        isValidCall.message as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      errorCode: isValidCall.errorCode,
-      isMcp: tool.isMcp ?? false,
-
-      queryChainId: toolUseContext.queryTracking
-        ?.chainId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      queryDepth: toolUseContext.queryTracking?.depth,
-      ...(mcpServerType && {
-        mcpServerType:
-          mcpServerType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      ...(mcpServerBaseUrl && {
-        mcpServerBaseUrl:
-          mcpServerBaseUrl as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      ...(requestId && {
-        requestId:
-          requestId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      ...mcpToolDetailsForAnalytics(tool.name, mcpServerType, mcpServerBaseUrl),
-    })
     return [
       {
         message: createUserMessage({
@@ -1054,29 +799,6 @@ async function checkPermissionsAndCallTool(
     )
   }
 
-  const toolAttributes: Record<string, string | number | boolean> = {}
-  if (processedInput && typeof processedInput === 'object') {
-    if (tool.name === FILE_READ_TOOL_NAME && 'file_path' in processedInput) {
-      toolAttributes.file_path = String(processedInput.file_path)
-    } else if (
-      (tool.name === FILE_EDIT_TOOL_NAME ||
-        tool.name === FILE_WRITE_TOOL_NAME) &&
-      'file_path' in processedInput
-    ) {
-      toolAttributes.file_path = String(processedInput.file_path)
-    } else if (tool.name === BASH_TOOL_NAME && 'command' in processedInput) {
-      const bashInput = processedInput as BashToolInput
-      toolAttributes.full_command = bashInput.command
-    }
-  }
-
-  startToolSpan(
-    tool.name,
-    toolAttributes,
-    isBetaTracingEnabled() ? jsonStringify(processedInput) : undefined,
-  )
-  startToolBlockedOnUserSpan()
-
   // Check whether we have permission to use the tool,
   // and ask the user for permission if we don't
   const permissionMode = toolUseContext.getAppState().toolPermissionContext.mode
@@ -1109,37 +831,6 @@ async function checkPermissionsAndCallTool(
     )
   }
 
-  // Emit tool_decision OTel event and code-edit counter if the interactive
-  // permission path didn't already log it (headless mode bypasses permission
-  // logging, so we need to emit both the generic event and the code-edit
-  // counter here)
-  if (
-    permissionDecision.behavior !== 'ask' &&
-    !toolUseContext.toolDecisions?.has(toolUseID)
-  ) {
-    const decision =
-      permissionDecision.behavior === 'allow' ? 'accept' : 'reject'
-    const source = decisionReasonToOTelSource(
-      permissionDecision.decisionReason,
-      permissionDecision.behavior,
-    )
-    void logOTelEvent('tool_decision', {
-      decision,
-      source,
-      tool_name: sanitizeToolNameForAnalytics(tool.name),
-    })
-
-    // Increment code-edit tool decision counter for headless mode
-    if (isCodeEditingTool(tool.name)) {
-      void buildCodeEditToolAttributes(
-        tool,
-        processedInput,
-        decision,
-        source,
-      ).then(attributes => getCodeEditToolDecisionCounter()?.add(1, attributes))
-    }
-  }
-
   // Add message if permission was granted/denied by PermissionRequest hook
   if (
     permissionDecision.decisionReason?.type === 'hook' &&
@@ -1158,32 +849,7 @@ async function checkPermissionsAndCallTool(
 
   if (permissionDecision.behavior !== 'allow') {
     logForDebugging(`${tool.name} tool permission denied`)
-    const decisionInfo = toolUseContext.toolDecisions?.get(toolUseID)
-    endToolBlockedOnUserSpan('reject', decisionInfo?.source || 'unknown')
-    endToolSpan()
 
-    logEvent('tengu_tool_use_can_use_tool_rejected', {
-      messageID:
-        messageId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      toolName: sanitizeToolNameForAnalytics(tool.name),
-
-      queryChainId: toolUseContext.queryTracking
-        ?.chainId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      queryDepth: toolUseContext.queryTracking?.depth,
-      ...(mcpServerType && {
-        mcpServerType:
-          mcpServerType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      ...(mcpServerBaseUrl && {
-        mcpServerBaseUrl:
-          mcpServerBaseUrl as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      ...(requestId && {
-        requestId:
-          requestId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      ...mcpToolDetailsForAnalytics(tool.name, mcpServerType, mcpServerBaseUrl),
-    })
     let errorMessage = permissionDecision.message
     // Only use generic "Execution stopped" message if we don't have a detailed hook message
     if (shouldPreventContinuation && !errorMessage) {
@@ -1266,28 +932,6 @@ async function checkPermissionsAndCallTool(
 
     return resultingMessages
   }
-  logEvent('tengu_tool_use_can_use_tool_allowed', {
-    messageID:
-      messageId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    toolName: sanitizeToolNameForAnalytics(tool.name),
-
-    queryChainId: toolUseContext.queryTracking
-      ?.chainId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    queryDepth: toolUseContext.queryTracking?.depth,
-    ...(mcpServerType && {
-      mcpServerType:
-        mcpServerType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    }),
-    ...(mcpServerBaseUrl && {
-      mcpServerBaseUrl:
-        mcpServerBaseUrl as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    }),
-    ...(requestId && {
-      requestId:
-        requestId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    }),
-    ...mcpToolDetailsForAnalytics(tool.name, mcpServerType, mcpServerBaseUrl),
-  })
 
   // Use the updated input from permissions if provided
   // (Don't overwrite if undefined - processedInput may have been modified by passthrough hooks)
@@ -1295,49 +939,9 @@ async function checkPermissionsAndCallTool(
     processedInput = permissionDecision.updatedInput
   }
 
-  // Prepare tool parameters for logging in tool_result event.
-  // Gated by OTEL_LOG_TOOL_DETAILS — tool parameters can contain sensitive
-  // content (bash commands, MCP server names, etc.) so they're opt-in only.
-  const telemetryToolInput = extractToolInputForTelemetry(processedInput)
-  let toolParameters: Record<string, unknown> = {}
-  if (isToolDetailsLoggingEnabled()) {
-    if (tool.name === BASH_TOOL_NAME && 'command' in processedInput) {
-      const bashInput = processedInput as BashToolInput
-      const commandParts = bashInput.command.trim().split(/\s+/)
-      const bashCommand = commandParts[0] || ''
-
-      toolParameters = {
-        bash_command: bashCommand,
-        full_command: bashInput.command,
-        ...(bashInput.timeout !== undefined && {
-          timeout: bashInput.timeout,
-        }),
-        ...(bashInput.description !== undefined && {
-          description: bashInput.description,
-        }),
-        ...('dangerouslyDisableSandbox' in bashInput && {
-          dangerouslyDisableSandbox: bashInput.dangerouslyDisableSandbox,
-        }),
-      }
-    }
-
-    const mcpDetails = extractMcpToolDetails(tool.name)
-    if (mcpDetails) {
-      toolParameters.mcp_server_name = mcpDetails.serverName
-      toolParameters.mcp_tool_name = mcpDetails.mcpToolName
-    }
-    const skillName = extractSkillName(tool.name, processedInput)
-    if (skillName) {
-      toolParameters.skill_name = skillName
-    }
-  }
-
+  // Kept for the cleanup in the finally block below, which removes this tool
+  // call's decision entry from the per-turn map.
   const decisionInfo = toolUseContext.toolDecisions?.get(toolUseID)
-  endToolBlockedOnUserSpan(
-    decisionInfo?.decision || 'unknown',
-    decisionInfo?.source || 'unknown',
-  )
-  startToolExecutionSpan()
 
   const startTime = Date.now()
 
@@ -1396,51 +1000,6 @@ async function checkPermissionsAndCallTool(
     // stored when the model called those tools with the same path string.
     invalidateCacheForWrite(tool.name, callInput as Record<string, unknown>)
 
-    // Log tool content/output as span event if enabled
-    if (result.data && typeof result.data === 'object') {
-      const contentAttributes: Record<string, string | number | boolean> = {}
-
-      // Read tool: capture file_path and content
-      if (tool.name === FILE_READ_TOOL_NAME && 'content' in result.data) {
-        if ('file_path' in processedInput) {
-          contentAttributes.file_path = String(processedInput.file_path)
-        }
-        contentAttributes.content = String(result.data.content)
-      }
-
-      // Edit/Write tools: capture file_path and diff
-      if (
-        (tool.name === FILE_EDIT_TOOL_NAME ||
-          tool.name === FILE_WRITE_TOOL_NAME) &&
-        'file_path' in processedInput
-      ) {
-        contentAttributes.file_path = String(processedInput.file_path)
-
-        // For Edit, capture the actual changes made
-        if (tool.name === FILE_EDIT_TOOL_NAME && 'diff' in result.data) {
-          contentAttributes.diff = String(result.data.diff)
-        }
-        // For Write, capture the written content
-        if (tool.name === FILE_WRITE_TOOL_NAME && 'content' in processedInput) {
-          contentAttributes.content = String(processedInput.content)
-        }
-      }
-
-      // Bash tool: capture command
-      if (tool.name === BASH_TOOL_NAME && 'command' in processedInput) {
-        const bashInput = processedInput as BashToolInput
-        contentAttributes.bash_command = bashInput.command
-        // Also capture output if available
-        if ('output' in result.data) {
-          contentAttributes.output = String(result.data.output)
-        }
-      }
-
-      if (Object.keys(contentAttributes).length > 0) {
-        addToolContentEvent('tool.output', contentAttributes)
-      }
-    }
-
     // Capture structured output from tool result if present
     if (typeof result === 'object' && 'structured_output' in result) {
       // Store the structured output in an attachment message
@@ -1452,120 +1011,12 @@ async function checkPermissionsAndCallTool(
       })
     }
 
-    endToolExecutionSpan({ success: true })
-    // Pass tool result for new_context logging
-    const toolResultStr =
-      result.data && typeof result.data === 'object'
-        ? jsonStringify(result.data)
-        : String(result.data ?? '')
-    endToolSpan(toolResultStr)
-
     // Map the tool result to API format once and cache it. This block is reused
-    // by addToolResult (skipping the remap) and measured here for analytics.
+    // by addToolResult (skipping the remap).
     const mappedToolResultBlock = tool.mapToolResultToToolResultBlockParam(
       result.data,
       toolUseID,
     )
-    const mappedContent = mappedToolResultBlock.content
-    const toolResultSizeBytes = !mappedContent
-      ? 0
-      : typeof mappedContent === 'string'
-        ? mappedContent.length
-        : jsonStringify(mappedContent).length
-
-    // Extract file extension for file-related tools
-    let fileExtension: ReturnType<typeof getFileExtensionForAnalytics>
-    if (processedInput && typeof processedInput === 'object') {
-      if (
-        (tool.name === FILE_READ_TOOL_NAME ||
-          tool.name === FILE_EDIT_TOOL_NAME ||
-          tool.name === FILE_WRITE_TOOL_NAME) &&
-        'file_path' in processedInput
-      ) {
-        fileExtension = getFileExtensionForAnalytics(
-          String(processedInput.file_path),
-        )
-      } else if (
-        tool.name === NOTEBOOK_EDIT_TOOL_NAME &&
-        'notebook_path' in processedInput
-      ) {
-        fileExtension = getFileExtensionForAnalytics(
-          String(processedInput.notebook_path),
-        )
-      } else if (tool.name === BASH_TOOL_NAME && 'command' in processedInput) {
-        const bashInput = processedInput as BashToolInput
-        fileExtension = getFileExtensionsFromBashCommand(
-          bashInput.command,
-          bashInput._simulatedSedEdit?.filePath,
-        )
-      }
-    }
-
-    logEvent('tengu_tool_use_success', {
-      messageID:
-        messageId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      toolName: sanitizeToolNameForAnalytics(tool.name),
-      isMcp: tool.isMcp ?? false,
-      durationMs,
-      preToolHookDurationMs,
-      toolResultSizeBytes,
-      ...(fileExtension !== undefined && { fileExtension }),
-
-      queryChainId: toolUseContext.queryTracking
-        ?.chainId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      queryDepth: toolUseContext.queryTracking?.depth,
-      ...(mcpServerType && {
-        mcpServerType:
-          mcpServerType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      ...(mcpServerBaseUrl && {
-        mcpServerBaseUrl:
-          mcpServerBaseUrl as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      ...(requestId && {
-        requestId:
-          requestId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      }),
-      ...mcpToolDetailsForAnalytics(tool.name, mcpServerType, mcpServerBaseUrl),
-    })
-
-    // Enrich tool parameters with git commit ID from successful git commit output
-    if (
-      isToolDetailsLoggingEnabled() &&
-      (tool.name === BASH_TOOL_NAME || tool.name === POWERSHELL_TOOL_NAME) &&
-      'command' in processedInput &&
-      typeof processedInput.command === 'string' &&
-      processedInput.command.match(/\bgit\s+commit\b/) &&
-      result.data &&
-      typeof result.data === 'object' &&
-      'stdout' in result.data
-    ) {
-      const gitCommitId = parseGitCommitId(String(result.data.stdout))
-      if (gitCommitId) {
-        toolParameters.git_commit_id = gitCommitId
-      }
-    }
-
-    // Log tool result event for OTLP with tool parameters and decision context
-    const mcpServerScope = isMcpTool(tool)
-      ? getMcpServerScopeFromToolName(tool.name)
-      : null
-
-    void logOTelEvent('tool_result', {
-      tool_name: sanitizeToolNameForAnalytics(tool.name),
-      success: 'true',
-      duration_ms: String(durationMs),
-      ...(Object.keys(toolParameters).length > 0 && {
-        tool_parameters: jsonStringify(toolParameters),
-      }),
-      ...(telemetryToolInput && { tool_input: telemetryToolInput }),
-      tool_result_size_bytes: String(toolResultSizeBytes),
-      ...(decisionInfo && {
-        decision_source: decisionInfo.source,
-        decision_type: decisionInfo.decision,
-      }),
-      ...(mcpServerScope && { mcp_server_scope: mcpServerScope }),
-    })
 
     // Run PostToolUse hooks
     let toolOutput = result.data
@@ -1749,12 +1200,6 @@ async function checkPermissionsAndCallTool(
     const durationMs = Date.now() - startTime
     addToToolDuration(durationMs)
 
-    endToolExecutionSpan({
-      success: false,
-      error: errorMessage(error),
-    })
-    endToolSpan()
-
     // Handle MCP auth errors by updating the client status to 'needs-auth'
     // This updates the /mcp display to show the server needs re-authorization
     if (error instanceof McpAuthError) {
@@ -1795,57 +1240,6 @@ async function checkPermissionsAndCallTool(
       if (!(error instanceof ShellError)) {
         logError(error)
       }
-      logEvent('tengu_tool_use_error', {
-        messageID:
-          messageId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        toolName: sanitizeToolNameForAnalytics(tool.name),
-        error: classifyToolError(
-          error,
-        ) as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        isMcp: tool.isMcp ?? false,
-
-        queryChainId: toolUseContext.queryTracking
-          ?.chainId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        queryDepth: toolUseContext.queryTracking?.depth,
-        ...(mcpServerType && {
-          mcpServerType:
-            mcpServerType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        }),
-        ...(mcpServerBaseUrl && {
-          mcpServerBaseUrl:
-            mcpServerBaseUrl as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        }),
-        ...(requestId && {
-          requestId:
-            requestId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        }),
-        ...mcpToolDetailsForAnalytics(
-          tool.name,
-          mcpServerType,
-          mcpServerBaseUrl,
-        ),
-      })
-      // Log tool result error event for OTLP with tool parameters and decision context
-      const mcpServerScope = isMcpTool(tool)
-        ? getMcpServerScopeFromToolName(tool.name)
-        : null
-
-      void logOTelEvent('tool_result', {
-        tool_name: sanitizeToolNameForAnalytics(tool.name),
-        use_id: toolUseID,
-        success: 'false',
-        duration_ms: String(durationMs),
-        error: errorMessage(error),
-        ...(Object.keys(toolParameters).length > 0 && {
-          tool_parameters: jsonStringify(toolParameters),
-        }),
-        ...(telemetryToolInput && { tool_input: telemetryToolInput }),
-        ...(decisionInfo && {
-          decision_source: decisionInfo.source,
-          decision_type: decisionInfo.decision,
-        }),
-        ...(mcpServerScope && { mcp_server_scope: mcpServerScope }),
-      })
     }
     const content = formatError(error)
 
@@ -1912,7 +1306,7 @@ async function checkPermissionsAndCallTool(
     ]
   } finally {
     stopSessionActivity('tool_exec')
-    // Clean up decision info after logging
+    // Clean up this tool call's decision entry
     if (decisionInfo) {
       toolUseContext.toolDecisions?.delete(toolUseID)
     }

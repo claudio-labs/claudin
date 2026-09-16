@@ -2,7 +2,7 @@
 // Extracted from src/platform/main.tsx (ROADMAP 11g Fase 7c.1).
 //
 // Covers: bootContext seed (post-build mutations), bare/code prompt
-// handling, KAIROS assistant gate, options destructuring, worktree/tmux
+// handling, options destructuring, worktree/tmux
 // validation, teammate identity, sdkUrl/file downloads, sessionId
 // validation, fallback model validation, system prompt + append prompts.
 //
@@ -14,12 +14,11 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { feature } from 'bun:bundle';
 import { getOauthConfig } from 'src/shared/constants/oauth.js';
-import { getSessionId, getIsNonInteractiveSession, setKairosActive } from 'src/platform/bootstrap/state.js';
+import { getSessionId, getIsNonInteractiveSession } from 'src/platform/bootstrap/state.js';
 import { downloadSessionFiles, type FilesApiConfig, parseFileSpecs } from 'src/providers/transport/filesApi.js';
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';
-import { logEvent } from 'src/platform/analytics/index.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
-import { checkHasTrustDialogAccepted, getGlobalConfig } from 'src/platform/config/config.js';
+import { getGlobalConfig } from 'src/platform/config/config.js';
 import { seedEarlyInput } from 'src/terminal/input/earlyInput.js';
 import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { errorMessage, getErrnoCode } from 'src/shared/errors.js';
@@ -40,28 +39,9 @@ export type TeammateAccessors = {
   getTeammateModeSnapshot: () => typeof import('src/agent/coordinator/swarm/backends/teammateModeSnapshot.js');
 };
 
-/**
- * KAIROS assistant module + gate handles (feature-gated).
- * Stubbed in the open build; typed loosely so TS doesn't resolve them.
- */
-export type AssistantModule = {
-  markAssistantForced: () => void;
-  isAssistantMode: () => boolean;
-  isAssistantForced: () => boolean;
-  initializeAssistantTeam: () => Promise<unknown>;
-};
-export type KairosGate = {
-  isKairosEnabled: () => Promise<boolean>;
-};
-export type AssistantHandles = {
-  assistantModule: AssistantModule | null;
-  kairosGate: KairosGate | null;
-};
-
 /** Inputs the helper needs from main.tsx. */
 export type ParseActionOptionsDeps = {
   teammate: TeammateAccessors;
-  assistant: AssistantHandles;
 };
 
 /**
@@ -172,7 +152,7 @@ export async function parseActionOptions(
   ctx: BootContext,
   deps: ParseActionOptionsDeps,
 ): Promise<ParsedActionOptions> {
-  const { teammate, assistant } = deps;
+  const { teammate } = deps;
   let prompt = promptArg;
 
   // --bare = one-switch minimal mode. Sets SIMPLE so all the existing
@@ -184,55 +164,11 @@ export async function parseActionOptions(
 
   // Ignore "code" as a prompt - treat it the same as no prompt
   if (prompt === 'code') {
-    logEvent('tengu_code_prompt_ignored', {});
     // biome-ignore lint/suspicious/noConsole:: intentional console output
     console.warn(chalk.yellow('Tip: You can launch Claudin with just `claudin`'));
     prompt = undefined;
   }
 
-  // Log event for any single-word prompt
-  if (prompt && typeof prompt === 'string' && !/\s/.test(prompt) && prompt.length > 0) {
-    logEvent('tengu_single_word_prompt', {
-      length: prompt.length,
-    });
-  }
-
-  // Assistant mode: when .claudin/settings.json has assistant: true AND
-  // the tengu_kairos GrowthBook gate is on, force brief on. Permission
-  // mode is left to the user — settings defaultMode or --permission-mode
-  // apply as normal. REPL-typed messages already default to 'next'
-  // priority (messageQueueManager.enqueue) so they drain mid-turn between
-  // tool calls. SendUserMessage (BriefTool) is enabled via the brief env
-  // var. SleepTool stays disabled (its isEnabled() gates on proactive).
-  // kairosEnabled is computed once here and reused at the
-  // getAssistantSystemPromptAddendum() call site further down.
-  //
-  // Trust gate: .claudin/settings.json is attacker-controllable in an
-  // untrusted clone. We run ~1000 lines before showSetupScreens() shows
-  // the trust dialog, and by then we've already appended
-  // .claudin/agents/assistant.md to the system prompt. Refuse to activate
-  // until the directory has been explicitly trusted.
-  if (feature('KAIROS') && options.assistant && assistant.assistantModule) {
-    assistant.assistantModule.markAssistantForced();
-  }
-  if (
-    feature('KAIROS') &&
-    assistant.assistantModule?.isAssistantMode() &&
-    !(options as { agentId?: unknown }).agentId &&
-    assistant.kairosGate
-  ) {
-    if (!checkHasTrustDialogAccepted()) {
-      // biome-ignore lint/suspicious/noConsole:: intentional console output
-      console.warn(chalk.yellow('Assistant mode disabled: directory is not trusted. Accept the trust dialog and restart.'));
-    } else {
-      ctx.kairosEnabled = assistant.assistantModule.isAssistantForced() || (await assistant.kairosGate.isKairosEnabled());
-      if (ctx.kairosEnabled) {
-        (options as { brief?: boolean }).brief = true;
-        setKairosActive(true);
-        ctx.assistantTeamContext = await assistant.assistantModule.initializeAssistantTeam();
-      }
-    }
-  }
 
   const {
     debug = false,
@@ -259,9 +195,6 @@ export async function parseActionOptions(
 
   const agentsJson = options.agents;
   const agentCli = options.agent;
-  if (feature('BG_SESSIONS') && agentCli) {
-    process.env.CLAUDIN_AGENT = agentCli;
-  }
 
   let outputFormat = options.outputFormat;
   let inputFormat = options.inputFormat;

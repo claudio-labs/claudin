@@ -7,10 +7,7 @@
  * directions, so the cycle is erased before it reaches the bundler.
  */
 import type { McpServerConfig } from 'src/mcp/types.js'
-import type {
-  BillingType,
-  ReferralEligibilityResponse,
-} from 'src/providers/oauth/types.js'
+import type { BillingType } from 'src/providers/oauth/types.js'
 import type { ImageDimensions } from 'src/terminal/image/imageResizer.js'
 import type { ModelOption } from 'src/providers/model/modelOptions.js'
 import type { ThemeSetting } from 'src/terminal/theme/theme.js'
@@ -354,42 +351,6 @@ export type GlobalConfig = {
     { hasAccess: boolean; hasAccessNotAsDefault?: boolean; timestamp: number }
   >
 
-  // Guest passes eligibility cache per org - key is org ID
-  passesEligibilityCache?: Record<
-    string,
-    ReferralEligibilityResponse & { timestamp: number }
-  >
-
-  // Guest passes upsell tracking
-  passesUpsellSeenCount?: number // Number of times the guest passes upsell has been shown
-  hasVisitedPasses?: boolean // Whether the user has visited /passes command
-  passesLastSeenRemaining?: number // Last seen remaining_passes count — reset upsell when it increases
-
-  // Overage credit grant upsell tracking (keyed by org UUID — multi-org users).
-  // Inlined shape (not import()) because config.ts is in the SDK build surface
-  // and the SDK bundler can't resolve CLI service modules.
-  overageCreditGrantCache?: Record<
-    string,
-    {
-      info: {
-        available: boolean
-        eligible: boolean
-        granted: boolean
-        amount_minor_units: number | null
-        currency: string | null
-      }
-      timestamp: number
-    }
-  >
-  overageCreditUpsellSeenCount?: number // Number of times the overage credit upsell has been shown
-  hasVisitedExtraUsage?: boolean // Whether the user has visited /extra-usage — hides credit upsells
-
-  // Voice mode notice tracking
-  voiceNoticeSeenCount?: number // Number of times the voice-mode-available notice has been shown
-  voiceLangHintShownCount?: number // Number of times the /voice dictation-language hint has been shown
-  voiceLangHintLastLanguage?: string // Resolved STT language code when the hint was last shown — reset count when it changes
-  voiceFooterHintSeenCount?: number // Number of sessions the "hold X to speak" footer hint has been shown
-
   // Opus 1M merge notice tracking
   opus1mMergeNoticeSeenCount?: number // Number of times the opus-1m-merge notice has been shown
 
@@ -587,9 +548,6 @@ export type GlobalConfig = {
   // everything else→github). Use 'none' to silence the pill for a host.
   // Example: { "git.corp.com": "gitlab", "code.corp.com": "gitea" }
   prStatusHosts?: Record<string, 'github' | 'gitlab' | 'gitea' | 'none'>
-
-  // Tmux live panel visibility (internal-only, toggled via Enter on tmux pill)
-  tungstenPanelVisible?: boolean
 
   // Cached org-level fast mode status from the API.
   // Used to detect cross-session changes and notify users.

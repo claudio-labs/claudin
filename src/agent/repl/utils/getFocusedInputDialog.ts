@@ -29,7 +29,6 @@ export type FocusedInputDialog =
   | 'effort-callout'
   | 'remote-callout'
   | 'plugin-hint'
-  | 'desktop-upsell'
   | 'ultraplan-choice'
   | 'ultraplan-launch'
 
@@ -65,7 +64,6 @@ export type FocusedInputDialogDeps = {
   showEffortCallout: boolean
   showRemoteCallout: boolean
   hintRecommendation: unknown
-  showDesktopUpsellStartup: boolean
   // Startup gate for the low-priority suggestion dialogs (issue #363).
   startupChecksStarted: boolean
 }
@@ -107,8 +105,5 @@ export function getFocusedInputDialog(
   // Plugin hint from CLI/SDK stderr.
   // Suppress during startup window to prevent stealing focus from the prompt (issue #363).
   if (allowDialogsWithAnimation && d.hintRecommendation && d.startupChecksStarted) return 'plugin-hint'
-
-  // Desktop app upsell (max 3 launches, lowest priority).
-  if (allowDialogsWithAnimation && d.showDesktopUpsellStartup && d.startupChecksStarted) return 'desktop-upsell'
   return undefined
 }

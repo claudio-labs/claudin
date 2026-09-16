@@ -1,8 +1,4 @@
 import { feature } from 'bun:bundle'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { AgentDefinition } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { isBuiltInAgent } from 'src/tools/AgentTool/loadAgentsDir.js'
@@ -11,28 +7,12 @@ import { asSystemPrompt, type SystemPrompt } from 'src/agent/systemPromptType.js
 
 export { asSystemPrompt, type SystemPrompt } from 'src/agent/systemPromptType.js'
 
-// Dead code elimination: conditional import for proactive mode.
-// Same pattern as prompts.ts — lazy require to avoid pulling the module
-// into non-proactive builds.
-/* eslint-disable @typescript-eslint/no-require-imports */
-const proactiveModule =
-  feature('PROACTIVE') || feature('KAIROS')
-    ? (require('../platform/proactive/index.js') as typeof import('../platform/proactive/index.js'))
-    : null
-/* eslint-enable @typescript-eslint/no-require-imports */
-
-function isProactiveActive_SAFE_TO_CALL_ANYWHERE(): boolean {
-  return proactiveModule?.isProactiveActive() ?? false
-}
-
 /**
  * Builds the effective system prompt array based on priority:
  * 0. Override system prompt (if set, e.g., via loop mode - REPLACES all other prompts)
  * 1. Coordinator system prompt (if coordinator mode is active)
  * 2. Agent system prompt (if mainThreadAgentDefinition is set)
- *    - In proactive mode: agent prompt is APPENDED to default (agent adds domain
- *      instructions on top of the autonomous agent prompt, like teammates do)
- *    - Otherwise: agent prompt REPLACES default
+ *    - Agent prompt REPLACES default
  * 3. Custom system prompt (if specified via --system-prompt)
  * 4. Default system prompt (the standard Claude Code prompt)
  *
@@ -82,31 +62,6 @@ export function buildEffectiveSystemPrompt({
       : mainThreadAgentDefinition.getSystemPrompt()
     : undefined
 
-  // Log agent memory loaded event for main loop agents
-  if (mainThreadAgentDefinition?.memory) {
-    logEvent('tengu_agent_memory_loaded', {
-      scope:
-        mainThreadAgentDefinition.memory as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      source:
-        'main-thread' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
-  }
-
-  // In proactive mode, agent instructions are appended to the default prompt
-  // rather than replacing it. The proactive default prompt is already lean
-  // (autonomous agent identity + memory + env + proactive section), and agents
-  // add domain-specific behavior on top — same pattern as teammates.
-  if (
-    agentSystemPrompt &&
-    (feature('PROACTIVE') || feature('KAIROS')) &&
-    isProactiveActive_SAFE_TO_CALL_ANYWHERE()
-  ) {
-    return asSystemPrompt([
-      ...defaultSystemPrompt,
-      `\n# Custom Agent Instructions\n${agentSystemPrompt}`,
-      ...(appendSystemPrompt ? [appendSystemPrompt] : []),
-    ])
-  }
 
   return asSystemPrompt([
     ...(agentSystemPrompt

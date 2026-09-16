@@ -26,6 +26,16 @@ first-party Anthropic OAuth, where the backend inspects them. Gate on
 `isFirstPartyAnthropicBaseUrl()`, never on a provider tag — see
 [[provider-tag-not-anthropic-includes-cloud]].
 
+**Still upstream-spelled on the MCP wire (found 2026-09-15, NOT fixed).**
+`src/mcp/client/connection.ts:189` and `sdkClients.ts:38` announce
+`name: 'claude-code'`, `description: "Anthropic's agentic coding tool"` and a
+`websiteUrl` of claude.com to **every third-party MCP server** — only `title` says
+Claudin. It is a half-done rename, not a deliberate lane like the OAuth one
+above, but changing `name` could break a server that allowlists clients, so it
+needs a decision rather than a sweep. The server side was fixed in the same
+round: `mcp serve` used to introduce itself as `claude/tengu`
+(`src/platform/entrypoints/mcp.ts:87`).
+
 **Deleted outright, do not go looking for them:** `platform/privacy/grove.ts`
 plus the `/privacy-settings` command, `platform/settingsSync/`, `mcp/xaa.ts` +
 `xaaIdpLogin.ts`, and the homespace/protected-namespace helpers. Grove mattered

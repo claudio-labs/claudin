@@ -31,7 +31,6 @@ import { notifyCommandLifecycle } from 'src/commands/commandLifecycle.js'
 import { notifySessionStateChanged } from 'src/sessions/sessionState.js'
 import { getInMemoryErrors, logError } from 'src/shared/log.js'
 import { EMPTY_USAGE } from 'src/providers/transport/logging.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { mergeFileStateCaches } from 'src/shared/fs/fileStateCache.js'
 import { installLiveReadFileCache } from 'src/platform/headless/print/readFileCacheHandover.js'
@@ -81,9 +80,7 @@ import { drainSdkEvents } from 'src/agent/sdkEventQueue.js'
 import { errorMessage, toError } from 'src/shared/errors.js'
 import { sleep } from 'src/shared/sleep.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
-import { reregisterChannelHandlerAfterReconnect } from 'src/platform/headless/print/controlHandlers.js'
 import { canBatchWith, joinPromptValues } from 'src/platform/headless/print/promptBatching.js'
-import { proactiveModule } from 'src/platform/headless/print/headlessOptionalModules.js'
 import type { HeadlessStreamingContext } from 'src/platform/headless/print/streamingContext.js'
 import type { StdoutMessage } from 'src/platform/entrypoints/sdk/controlTypes.js'
 
@@ -151,9 +148,6 @@ export async function runTurnLoop(
             `CLAUDIN_SYNC_PLUGIN_INSTALL: plugin installation timed out after ${timeoutMs}ms`,
           ),
         )
-        logEvent('tengu_sync_plugin_install_timeout', {
-          timeout_ms: timeoutMs,
-        })
       }
     } else {
       await ctx.pluginInstallPromise
@@ -252,14 +246,6 @@ export async function runTurnLoop(
           ...ctx.dynamicMcpState.clients,
         ]
         ctx.registerElicitationHandlers(allMcpClients)
-        // Channel handlers for servers allowlisted via --channels at
-        // construction time (or enableChannel() mid-session). Runs every
-        // turn like registerElicitationHandlers — idempotent per-client
-        // (setNotificationHandler replaces, not stacks) and no-ops for
-        // non-allowlisted servers (one feature-flag check).
-        for (const client of allMcpClients) {
-          reregisterChannelHandlerAfterReconnect(client)
-        }
 
         const allTools = ctx.buildAllTools(appState)
 
@@ -353,11 +339,6 @@ export async function runTurnLoop(
 
         const input = command.value
 
-        if (structuredIO instanceof RemoteIO && command.mode === 'prompt') {
-          logEvent('tengu_bridge_message_received', {
-            is_repl: false,
-          })
-        }
 
         // Abort any in-flight suggestion generation and track acceptance
         suggestionState.abortController?.abort()
@@ -804,17 +785,6 @@ export async function runTurnLoop(
   }
 
   // Proactive tick: if proactive is active and queue is empty, inject a tick
-  if (
-    (feature('PROACTIVE') || feature('KAIROS')) &&
-    proactiveModule?.isProactiveActive() &&
-    !proactiveModule.isProactivePaused()
-  ) {
-    if (peek(isMainThread) === undefined && !ctx.inputClosed) {
-      ctx.scheduleProactiveTick!()
-      return
-    }
-  }
-
   // Re-check the queue after releasing the mutex. A message may have
   // arrived (and called run()) between the last dequeue() returning
   // undefined and `running = false` above. In that case the caller

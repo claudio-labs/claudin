@@ -23,7 +23,6 @@
  * decides how to present it.
  */
 
-import { logEvent } from 'src/platform/analytics/index.js'
 
 /** A normalized todo/task snapshot item, provider-agnostic. */
 export type TodoSnapshotItem = {
@@ -144,13 +143,6 @@ export function getTodoReminderDelta(
     .map(item => ({ id: item.id, status: item.status }))
     .sort((a, b) => a.id.localeCompare(b.id))
 
-  logEvent('claudin_todo_reminder_delta', {
-    addedCount: added.length,
-    statusChangedCount: statusChanged.length,
-    removedCount: removedIds.length,
-    priorAnnouncedCount: announcedStatusById.size,
-    isInitial: !hasPriorDelta,
-  })
 
   return {
     added,

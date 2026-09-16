@@ -32,7 +32,6 @@ import type {
   SystemLocalCommandMessage,
   SystemMemorySavedMessage,
   SystemMessageLevel,
-  SystemMicrocompactBoundaryMessage,
   SystemPermissionRetryMessage,
   SystemScheduledTaskFireMessage,
   SystemStopHookSummaryMessage,

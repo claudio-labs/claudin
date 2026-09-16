@@ -4,7 +4,6 @@ import { randomUUID } from 'crypto';
 import React from 'react';
 import { getOriginalCwd, getSessionId } from 'src/platform/bootstrap/state.js';
 import { checkGate_CACHED_OR_BLOCKING } from 'src/platform/analytics/growthbook.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { isPolicyAllowed } from 'src/platform/policyLimits/index.js';
 import { z } from 'zod/v4';
 import { getTeleportErrors, TeleportError, type TeleportLocalErrorType } from 'src/platform/teleport/TeleportError.js';
@@ -174,7 +173,6 @@ export async function validateGitState(): Promise<void> {
     ignoreUntracked: true
   });
   if (!isClean) {
-    logEvent('tengu_teleport_error_git_not_clean', {});
     const error = new TeleportOperationError('Git working directory is not clean. Please commit or stash your changes before using --teleport.', chalk.red('Error: Git working directory is not clean. Please commit or stash your changes before using --teleport.\n'));
     throw error;
   }
@@ -273,7 +271,6 @@ async function checkoutBranch(branchName: string): Promise<void> {
     }
   }
   if (checkoutCode !== 0) {
-    logEvent('tengu_teleport_error_branch_checkout_failed', {});
     throw new TeleportOperationError(`Failed to checkout branch '${branchName}': ${checkoutStderr}`, chalk.red(`Failed to checkout branch '${branchName}'\n`));
   }
 
@@ -435,18 +432,12 @@ export async function teleportResumeCodeSession(sessionId: string, onProgress?: 
   try {
     const accessToken = getClaudeAIOAuthTokens()?.accessToken;
     if (!accessToken) {
-      logEvent('tengu_teleport_resume_error', {
-        error_type: 'no_access_token' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
       throw new Error('Claude Code web sessions require authentication with a Claude.ai account. API key authentication is not sufficient. Please run /login to authenticate, or check your authentication status with /status.');
     }
 
     // Get organization UUID
     const orgUUID = await getOrganizationUUID();
     if (!orgUUID) {
-      logEvent('tengu_teleport_resume_error', {
-        error_type: 'no_org_uuid' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
       throw new Error('Unable to get organization UUID for constructing session URL');
     }
 
@@ -461,18 +452,12 @@ export async function teleportResumeCodeSession(sessionId: string, onProgress?: 
         break;
       case 'not_in_repo':
         {
-          logEvent('tengu_teleport_error_repo_not_in_git_dir_sessions_api', {
-            sessionId: sessionId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-          });
           // Include host for GHE users so they know which instance the repo is on
           const notInRepoDisplay = repoValidation.sessionHost && repoValidation.sessionHost.toLowerCase() !== 'github.com' ? `${repoValidation.sessionHost}/${repoValidation.sessionRepo}` : repoValidation.sessionRepo;
           throw new TeleportOperationError(`You must run claude --teleport ${sessionId} from a checkout of ${notInRepoDisplay}.`, chalk.red(`You must run claude --teleport ${sessionId} from a checkout of ${chalk.bold(notInRepoDisplay)}.\n`));
         }
       case 'mismatch':
         {
-          logEvent('tengu_teleport_error_repo_mismatch_sessions_api', {
-            sessionId: sessionId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-          });
           // Only include host prefix when hosts actually differ to disambiguate
           // cross-instance mismatches; for same-host mismatches the host is noise.
           const hostsDiffer = repoValidation.sessionHost && repoValidation.currentHost && repoValidation.sessionHost.replace(/:\d+$/, '').toLowerCase() !== repoValidation.currentHost.replace(/:\d+$/, '').toLowerCase();
@@ -495,9 +480,6 @@ export async function teleportResumeCodeSession(sessionId: string, onProgress?: 
     }
     const err = toError(error);
     logError(err);
-    logEvent('tengu_teleport_resume_error', {
-      error_type: 'resume_session_id_catch' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    });
     throw new TeleportOperationError(err.message, chalk.red(`Error: ${err.message}\n`));
   }
 }
@@ -509,21 +491,12 @@ export async function teleportResumeCodeSession(sessionId: string, onProgress?: 
 async function handleTeleportPrerequisites(root: Root, errorsToIgnore?: Set<TeleportLocalErrorType>): Promise<void> {
   const errors = await getTeleportErrors();
   if (errors.size > 0) {
-    // Log teleport errors detected
-    logEvent('tengu_teleport_errors_detected', {
-      error_types: Array.from(errors).join(',') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      errors_ignored: Array.from(errorsToIgnore || []).join(',') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    });
 
     // Show TeleportError dialog for user interaction
     await new Promise<void>(resolve => {
       root.render(<AppStateProvider>
           <KeybindingSetup>
             <TeleportError errorsToIgnore={errorsToIgnore} onComplete={() => {
-            // Log when errors are resolved
-            logEvent('tengu_teleport_errors_resolved', {
-              error_types: Array.from(errors).join(',') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-            });
             void resolve();
           }} />
           </KeybindingSetup>
@@ -605,9 +578,6 @@ export async function teleportFromSessionsAPI(sessionId: string, orgUUID: string
 
     // Handle 404 specifically
     if (axios.isAxiosError(error) && error.response?.status === 404) {
-      logEvent('tengu_teleport_error_session_not_found_404', {
-        sessionId: sessionId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
       throw new TeleportOperationError(`${sessionId} not found.`, `${sessionId} not found.\n${chalk.dim('Run /status in Claude Code to check your account.')}`);
     }
     logError(err);
@@ -848,12 +818,6 @@ export async function teleportToRemote(options: {
           return null;
         }
         seedBundleFileId = bundle.fileId;
-        logEvent('tengu_teleport_bundle_mode', {
-          size_bytes: bundle.bundleSizeBytes,
-          scope: bundle.scope as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          has_wip: bundle.hasWip,
-          reason: 'explicit_env_bundle' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-        });
       } else {
         const repoInfo = await detectCurrentRepositoryWithHost();
         if (repoInfo) {
@@ -1036,17 +1000,7 @@ export async function teleportToRemote(options: {
         return null;
       }
       seedBundleFileId = bundle.fileId;
-      logEvent('tengu_teleport_bundle_mode', {
-        size_bytes: bundle.bundleSizeBytes,
-        scope: bundle.scope as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        has_wip: bundle.hasWip,
-        reason: sourceReason as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
     }
-    logEvent('tengu_teleport_source_decision', {
-      reason: sourceReason as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      path: (gitSource ? 'github' : seedBundleFileId ? 'bundle' : 'empty') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    });
     if (!gitSource && !seedBundleFileId) {
       logForDebugging('[teleportToRemote] No repository detected — session will have an empty sandbox');
     }

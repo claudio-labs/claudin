@@ -1,5 +1,4 @@
 import { c as _c } from "react-compiler-runtime";
-import { feature } from 'bun:bundle';
 import { toString as qrToString } from 'qrcode';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
@@ -13,7 +12,6 @@ import { shouldShowRemoteCallout } from 'src/platform/remote/RemoteCallout.js';
 import { useRegisterOverlay } from 'src/terminal/contexts/overlayContext.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useKeybindings } from 'src/terminal/keybindings/useKeybinding.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { ToolUseContext } from 'src/tools/Tool.js';
 import type { LocalJSXCommandContext, LocalJSXCommandOnDone } from 'src/shared/types/command.js';
@@ -60,9 +58,6 @@ function BridgeToggle(t0: Props) {
           return;
         }
         if (error) {
-          logEvent("tengu_bridge_command", {
-            action: "preflight_failed" as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-          });
           onDone(error, {
             display: "system"
           });
@@ -84,9 +79,6 @@ function BridgeToggle(t0: Props) {
           });
           return;
         }
-        logEvent("tengu_bridge_command", {
-          action: "connect" as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-        });
         setAppState(prev_0 => {
           if (prev_0.replBridgeEnabled && !prev_0.replBridgeOutboundOnly) {
             return prev_0;
@@ -193,9 +185,6 @@ function BridgeDisconnectDialog(t0: Pick<Props, 'onDone'>) {
   if ($[4] !== onDone || $[5] !== setAppState) {
     t3 = function handleDisconnect() {
       setAppState(_temp7);
-      logEvent("tengu_bridge_command", {
-        action: "disconnect" as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
       onDone(REMOTE_CONTROL_DISCONNECTED_MSG, {
         display: "system"
       });
@@ -479,18 +468,8 @@ async function checkBridgePrerequisites(): Promise<string | null> {
   }
 
   // Mirror the v1/v2 branching logic in initReplBridge: env-less (v2) is used
-  // only when the flag is on AND the session is not perpetual.  In assistant
-  // mode (KAIROS) useReplBridge sets perpetual=true, which forces
-  // initReplBridge onto the v1 path — so the prerequisite check must match.
-  let useV2 = isEnvLessBridgeEnabled();
-  if (feature('KAIROS') && useV2) {
-    const {
-      isAssistantMode
-    } = await import('../../sessions/assistant/index.js');
-    if (isAssistantMode()) {
-      useV2 = false;
-    }
-  }
+  // only when the flag is on AND the session is not perpetual.
+  const useV2 = isEnvLessBridgeEnabled();
   const versionError = useV2 ? await checkEnvLessBridgeMinVersion() : checkBridgeMinVersion();
   if (versionError) {
     return versionError;

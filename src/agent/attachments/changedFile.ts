@@ -26,10 +26,6 @@
 // `view: 'full'` fixes both, and skips two mechanisms that have no business
 // firing on an internal re-read: the clip-pin sticky replay and the dedup stub
 // (FileReadTool.ts) both require `view === undefined`.
-import {
-  logEvent,
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-} from 'src/platform/analytics/index.js'
 import type { Attachment } from 'src/agent/attachments/types.js'
 import { getSnippetForTwoFileDiff } from 'src/tools/FileEditTool/utils.js'
 import {
@@ -119,9 +115,6 @@ export async function refreshChangedFile(
         }
       } catch (compressionError) {
         logError(compressionError)
-        logEvent('tengu_watched_file_compression_failed', {
-          file: normalizedPath,
-        } as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS)
         return null
       }
     }

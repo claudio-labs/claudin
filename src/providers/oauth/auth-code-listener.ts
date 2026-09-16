@@ -1,7 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'http'
 import { createServer, type Server } from 'http'
 import type { AddressInfo } from 'net'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { getOauthConfig } from 'src/shared/constants/oauth.js'
 import { logError } from 'src/shared/log.js'
 import { shouldUseClaudeAIAuth } from 'src/providers/oauth/client.js'
@@ -75,10 +74,6 @@ export class AuthCodeListener {
 
   private respondToPendingRequest(options: {
     handler: (res: ServerResponse) => void
-    analyticsEvent:
-      | 'tengu_oauth_automatic_redirect'
-      | 'tengu_oauth_automatic_redirect_error'
-    analyticsMetadata?: Record<string, boolean>
   }): void {
     if (!this.pendingResponse) return
 
@@ -90,7 +85,6 @@ export class AuthCodeListener {
         response.end()
       }
 
-      logEvent(options.analyticsEvent, options.analyticsMetadata ?? {})
     } catch (error) {
       logError(error)
 
@@ -127,8 +121,6 @@ export class AuthCodeListener {
         handler: res => {
           customHandler(res, scopes)
         },
-        analyticsEvent: 'tengu_oauth_automatic_redirect',
-        analyticsMetadata: { custom_handler: true },
       })
       return
     }
@@ -144,7 +136,6 @@ export class AuthCodeListener {
         res.writeHead(302, { Location: successUrl })
         res.end()
       },
-      analyticsEvent: 'tengu_oauth_automatic_redirect',
     })
   }
 
@@ -158,8 +149,6 @@ export class AuthCodeListener {
     if (customHandler) {
       this.respondToPendingRequest({
         handler: customHandler,
-        analyticsEvent: 'tengu_oauth_automatic_redirect_error',
-        analyticsMetadata: { custom_handler: true },
       })
       return
     }
@@ -172,7 +161,6 @@ export class AuthCodeListener {
         res.writeHead(302, { Location: errorUrl })
         res.end()
       },
-      analyticsEvent: 'tengu_oauth_automatic_redirect_error',
     })
   }
 

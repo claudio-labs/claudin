@@ -162,15 +162,6 @@ export const SUPPORTED_SETTINGS: Record<string, SettingConfig> = {
       'How to spawn teammates: "tmux" for traditional tmux, "in-process" for same process, "auto" to choose automatically',
     options: TEAMMATE_MODES,
   },
-  ...(feature('VOICE_MODE')
-    ? {
-        voiceEnabled: {
-          source: 'settings' as const,
-          type: 'boolean' as const,
-          description: 'Enable voice dictation (hold-to-talk)',
-        },
-      }
-    : {}),
   ...(feature('BRIDGE_MODE')
     ? {
         remoteControlAtStartup: {
@@ -179,28 +170,6 @@ export const SUPPORTED_SETTINGS: Record<string, SettingConfig> = {
           description:
             'Enable Remote Control for all sessions (true | false | default)',
           formatOnRead: () => getRemoteControlAtStartup(),
-        },
-      }
-    : {}),
-  ...(feature('KAIROS') || feature('KAIROS_PUSH_NOTIFICATION')
-    ? {
-        taskCompleteNotifEnabled: {
-          source: 'global' as const,
-          type: 'boolean' as const,
-          description:
-            'Push to your mobile device when idle after Claude finishes (requires Remote Control)',
-        },
-        inputNeededNotifEnabled: {
-          source: 'global' as const,
-          type: 'boolean' as const,
-          description:
-            'Push to your mobile device when a permission prompt or question is waiting (requires Remote Control)',
-        },
-        agentPushNotifEnabled: {
-          source: 'global' as const,
-          type: 'boolean' as const,
-          description:
-            'Allow Claude to push to your mobile device when it deems it appropriate (requires Remote Control)',
         },
       }
     : {}),

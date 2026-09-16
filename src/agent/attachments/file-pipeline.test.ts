@@ -90,8 +90,6 @@ describe('generateFileAttachment — the already-read optimization', () => {
     const attachment = await generateFileAttachment(
       p,
       ctx,
-      'ev_success',
-      'ev_error',
       'at-mention',
     )
     expect(attachment?.type).toBe('file')
@@ -116,8 +114,6 @@ describe('generateFileAttachment — the already-read optimization', () => {
     const attachment = await generateFileAttachment(
       p,
       ctx,
-      'ev_success',
-      'ev_error',
       'at-mention',
     )
     expect(attachment?.type).toBe('already_read_file')

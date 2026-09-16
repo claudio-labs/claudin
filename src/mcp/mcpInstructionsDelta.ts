@@ -1,5 +1,4 @@
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,
@@ -106,17 +105,6 @@ export function getMcpInstructionsDelta(
 
   if (added.length === 0 && removed.length === 0) return null
 
-  // Same diagnostic fields as tengu_deferred_tools_pool_change — same
-  // scan-fails-in-prod bug, same attachment persistence path.
-  logEvent('tengu_mcp_instructions_pool_change', {
-    addedCount: added.length,
-    removedCount: removed.length,
-    priorAnnouncedCount: announced.size,
-    clientSideCount: clientSideInstructions.length,
-    messagesLength: messages.length,
-    attachmentCount,
-    midCount,
-  })
 
   added.sort((a, b) => a.name.localeCompare(b.name))
   return {

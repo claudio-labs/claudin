@@ -90,7 +90,6 @@ import { getRunningTasks } from 'src/agent/tasks/framework.js'
 import { isBackgroundTask } from 'src/agent/tasks/types.js'
 import { removeInterruptedMessage } from 'src/platform/headless/print/messageOps.js'
 import { handleOrphanedPermissionResponse } from 'src/platform/headless/print/orphanPermission.js'
-import { proactiveModule } from 'src/platform/headless/print/headlessOptionalModules.js'
 import {
   registerElicitationHandlers,
   updateSdkMcp,
@@ -364,32 +363,6 @@ export function runHeadlessStreaming(
         },
       })
     },
-    // Proactive mode: schedule a tick to keep the model looping autonomously.
-    // setTimeout(0) yields to the event loop so pending stdin messages
-    // (interrupts, user messages) are processed before the tick fires.
-    scheduleProactiveTick:
-      feature('PROACTIVE') || feature('KAIROS')
-        ? () => {
-            setTimeout(() => {
-              if (
-                !proactiveModule?.isProactiveActive() ||
-                proactiveModule.isProactivePaused() ||
-                ctx.inputClosed
-              ) {
-                return
-              }
-              const tickContent = `<${TICK_TAG}>${new Date().toLocaleTimeString()}</${TICK_TAG}>`
-              enqueue({
-                mode: 'prompt' as const,
-                value: tickContent,
-                uuid: randomUUID(),
-                priority: 'later',
-                isMeta: true,
-              })
-              void ctx.run()
-            }, 0)
-          }
-        : undefined,
     closeOutput: () =>
       closeHeadlessOutput(ctx, unsubscribeSkillChanges, unsubscribeAuthStatus, () =>
         statusListeners.delete(rateLimitListener),
@@ -519,19 +492,6 @@ export function runHeadlessStreaming(
       ctx.abortController.abort('interrupt')
     }
   })
-
-  // Set up UDS inbox callback so the query loop is kicked off
-  // when a message arrives via the UDS socket in headless mode.
-  if (feature('UDS_INBOX')) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const { setOnEnqueue } = require('../../udsMessaging.js')
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    setOnEnqueue(() => {
-      if (!ctx.inputClosed) {
-        void ctx.run()
-      }
-    })
-  }
 
   // Cron scheduler: runs scheduled_tasks.json tasks in SDK/-p mode.
   // Mirrors REPL's useScheduledTasks hook. Fired prompts enqueue + kick

@@ -39,12 +39,6 @@ export function initBundledSkills(): void {
   // Claudin-native: keeps .claudin/rules/ honest — reports the rule defects
   // that are invisible at runtime and proposes corrections from session history.
   registerRefreshRulesSkill()
-  if (feature('KAIROS') || feature('KAIROS_DREAM')) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const { registerDreamSkill } = require('./dream.js')
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    registerDreamSkill()
-  }
   if (feature('REVIEW_ARTIFACT')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const { registerHunterSkill } = require('./hunter.js')
@@ -55,20 +49,6 @@ export function initBundledSkills(): void {
   // unconditionally so the static import is bundled; visibility is gated
   // at runtime by the isEnabled callback.
   registerLoopSkill()
-  if (feature('AGENT_TRIGGERS_REMOTE')) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const {
-      registerScheduleRemoteAgentsSkill,
-    } = require('src/skills/bundled/scheduleRemoteAgents.js')
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    registerScheduleRemoteAgentsSkill()
-  }
-  if (feature('BUILDING_CLAUDE_APPS')) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const { registerClaudeApiSkill } = require('src/skills/bundled/claudeApi.js')
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    registerClaudeApiSkill()
-  }
   if (feature('RUN_SKILL_GENERATOR')) {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const { registerRunSkillGeneratorSkill } = require('./runSkillGenerator.js')

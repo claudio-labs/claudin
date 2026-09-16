@@ -14,7 +14,6 @@ import { readFileSync } from 'fs'
 import { readFile, stat } from 'fs/promises'
 import { dirname, join } from 'path'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { registerCleanup } from 'src/shared/cleanupRegistry.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
@@ -84,9 +83,6 @@ function logCustomBindingsLoadedOncePerDay(userBindingCount: number): void {
   const today = new Date().toISOString().slice(0, 10)
   if (lastCustomBindingsLogDate === today) return
   lastCustomBindingsLogDate = today
-  logEvent('tengu_custom_keybindings_loaded', {
-    user_binding_count: userBindingCount,
-  })
 }
 
 /**

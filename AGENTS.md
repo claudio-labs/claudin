@@ -28,7 +28,7 @@ Skills in `.claudin/skills/` (invoke with `/<name>`):
 
 Claudin is an open-source coding-agent CLI, forked from Anthropic's Claude Code and retargeted to work across many model providers (Anthropic, OpenAI-compatible, Gemini, Mistral, GitHub Copilot, Codex OAuth, xAI/Grok, Ollama, Bedrock, Vertex, Foundry, etc.). The runtime is that same agent loop (tools, MCP, slash commands, streaming, sub-agents) but provider selection and credentials are managed entirely from inside the REPL via `/provider`, with profiles persisted under `~/.claudin/settings.json`.
 
-The project is **not affiliated with Anthropic**, and the fork does not present itself as upstream: telemetry and phone-home paths are replaced with no-op stubs at build time (see `scripts/build/no-telemetry-plugin.ts`, enforced on the bundle by `bun run verify:privacy`), the `tengu_*` event vocabulary is stripped from the bundle by `scripts/build/build.ts`, and the wire identity sent to third-party providers is Claudin's own. The upstream User-Agent and session headers survive on **one** lane only — first-party Anthropic OAuth, where the backend inspects them.
+The project is **not affiliated with Anthropic**, and does not present itself as upstream. Analytics and telemetry are **deleted**, not stubbed: no `logEvent`, no tracing, no event vocabulary, and zero `tengu` tokens in the bundle — enforced by `bun run verify:privacy`. Feature-flag resolution survives under that path: a local reader over `~/.claudin/feature-flags.json` (keys: `docs/tech/tengu-census/gate-audit.md`). The wire identity sent to third-party providers is Claudin's own; upstream User-Agent and session headers survive on **one** lane — first-party Anthropic OAuth, where the backend inspects them.
 
 ## Repo Etiquette
 

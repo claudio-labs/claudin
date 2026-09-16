@@ -19,34 +19,41 @@
 - [claudin -c hijacks the session you are working in](headless-c-resumes-current-session.md) — headless resume is keyed by project dir; verify multi-turn behavior from a throwaway cwd, never `-c` in the repo
 - [A tree-wide rewrite updates artifacts, not their producers](mechanical-rewrites-skip-producers.md) — the 2026-08 reorg disarmed a telemetry stub and broke verify:sdk-types; grep generators after a move
 - [Team memories still cite pre-reorg paths](memory-cites-pre-reorg-paths.md) — 23 files, 55 dead src/utils|services|components refs; Glob the basename, fix in place, don't clone the memory
-- [<new-diagnostics> reminders can be stale mid-edit snapshots](stale-diagnostics-notifications.md) — verify the cited line before chasing it; the tsc baseline is ZERO now, not ~4320
+- [Harness "file modified" reminders can be stale mid-BUILD snapshots](stale-diagnostics-notifications.md) — they can quote the folded `feature()` tree and look like a killed build; grep one line before panicking
+- [Pin a feature from the BUNDLE before deleting it](characterization-net-before-deletion.md) — feature() is false outside the build; 2 of 4 new scanner tests were tautological; flip a shipped flag to prove the chain
+- [Removal passes take only what the build proves unreachable](removal-pass-only-provably-dead.md) — a reachable surface needs its own approval; leave type plumbing on live interfaces; one commit per phase
+- [Deleting telemetry hollows the tests that observed through it](tests-observing-through-telemetry.md) — sort into decision-record / redundant / telemetry-only; never leave an assertion proving nothing
+- [TypeScript 7 here has no classic compiler API](typescript-7-no-classic-compiler-api.md) — `ts.createSourceFile` is gone and it fails at RUNTIME; go lexical with refusals, or pay for typescript/unstable/sync
 
 ## Repo health
 - [De-fingerprinting round (feat/claudin-identity, 2026-08-15)](defingerprinting-branch-2026-08.md) — what shipped, the ONE lane that keeps upstream headers, and the two env clusters that must move as units, not piecemeal
 - [The seven catch-all dirs are retired — 18 feature slices](reorg-catch-all-dirs-retired.md) — moduleBoundaries.test.ts is the only thing keeping them gone; `src/shared/` is explicitly NOT a clean leaf layer (~169 upward imports, unpinned on purpose)
 - [tsc --noEmit reached ZERO on 2026-08-13](typecheck-backlog-shape.md) — the ratchet, the absolute-path fingerprint trap, and TWO corrections: "cannot be hand-fixed" and "never reaches zero" were both disproven
-- [/upgrade and /extra-usage hang on a Login component that does not exist](upsell-commands-missing-login.md) — stubbed to `() => null`, onDone never fires; product call, not fixed
+- [/upgrade, /extra-usage, /rate-limit-options — REMOVED 2026-09-15](upsell-commands-missing-login.md) — all three hung on the absent Login stub; the third auto-opened itself on a rate limit
+- [The missing-module stub's default is TRUTHY](missing-module-stub-makes-dead-things-look-alive.md) — `feature(TRUE) ? require(absent) : null` registered a phantom `noop` command; `claudin install` + `mcp serve tools/list` are broken
+- [growthbook.ts never runs — the build stub is the real one](growthbook-source-dead-stub-is-real.md) — 986 dead lines vs a ~200-line stub with different resolution order; `bun test` exercises the dead one
 - [CLAUDIN_SYNC_PLUGIN_INSTALL hung headless -p](headless-sync-plugin-install-broken-import.md) — FIXED in PR #57; kept for the 2-question test that tells a real TS2307 from the fork's ~107 expected ones
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — it means nothing IMPORTS it; needs a local-reference guard AND a grep guard, with `bun run build` as the gate — re-parsing is too weak
 - [Token census 2026-09-09..10 — the transcript is blind to rule/CLAUDE.md injections](token-census-2026-09-10-hidden-injections.md) — ~19% of context is non-persisted attachments; keep-alive $3 vs $15
 - [Weekly token census 2026-09-04..08 + what it fixed](weekly-token-census-2026-09-08.md) — $170/1,044 calls, reads 45%; fork-clip LOST the A/B (+11%); sleep redirect stays opt-in
 - [Per-turn filesystem scans audited 2026-08-07](per-turn-fs-scan-audit.md) — CORRECTED: scanMemoryFiles is gated OFF per-turn and benched at 0.014 ms/file; worktree-exit dialog leaks rule caches
-- [memory_delta deleted 2026-08-07 — it was a second full copy, not a delta](memory-delta-removed-double-send.md) — re-sent every rule/CLAUDE.md body one turn after nested_memory (~57 KB/session); check the raw lane announces a hash before pairing a delta with it
+- [memory_delta deleted 2026-08-07 — a second full copy, not a delta](memory-delta-removed-double-send.md) — ~57 KB/session; check the raw lane announces a hash before pairing a delta with it
 - [Three mask desyncs blanked whole files from the symbol table — FIXED 2026-08-25](outline-mask-desync-zero-symbols.md) — 220→198 zero-symbol files; also broke Read(symbol=), Grep symbols and Rename site selection
 - ["Read it first" gate census 2026-09-04 — 3 false causes FIXED in PR #157](read-gate-false-refusals-census-2026-09.md) — 65 refusals/23 sessions; Edit mid-line, injected MEMORY.md, /resume ranges; headless -p still never seeds memory files
 
 ## Roadmap & major features
+- [Dead-code + tengu cleanup (branch, 2026-09-15)](dead-code-cleanup-2026-09-15.md) — Fases 0-2 done + most of 3 (−25k lines, events 983→169); what is left, and the traps that held
 - [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — ROADMAP-11 exhausted; six barrels live; the fold gate, the re-measured offender list and the 4 traps a split hits
 - [PR #129's code vanished from main after merging](pr-129-lost-to-force-push.md) — a non-fast-forward push dropped it from GitHub too; recover via refs/pull/N/head, never `gh pr diff`
-- [Unified context-relief policy A/B (PR #156, 2026-09-03)](context-relief-unified-policy-ab.md) — cost −25%, uncached input −56%, equal information loss; a Read-only "re-reads" column lied (Grep vs Read outline) — count every lookup tool
-- [Clip-pin A/B 2026-07-25 (dev vs stable, 30 turns)](clip-pin-cache-ab-2026-07-25.md) — STALE number, do NOT cite; kept for the three bench traps (auto-outline eats files ≥250 lines, --revisits does one pass, the 60s Read cache)
+- [Unified context-relief policy A/B (PR #156, 2026-09-03)](context-relief-unified-policy-ab.md) — cost −25%, uncached input −56%; a Read-only "re-reads" column lied — count every lookup tool
+- [Clip-pin A/B 2026-07-25 (dev vs stable, 30 turns)](clip-pin-cache-ab-2026-07-25.md) — STALE number, do NOT cite; kept only for its three bench traps
 - [Product roadmap 2026-07 (market-gap × codebase audit)](roadmap-2026-07.md) — R1 cost routing → R2 sandbox backend → R3 background agent ✅ → R4 record&replay eval → R5 MCP Apps
 - [Repo map / generated project index — REJECTED on data 2026-08-07](repo-map-rejected-orientation-measured.md) — 59.5% of read paths are one-offs, no task→location signal; Read (D3) is the real target
 - [No repo index of ANY shape works here — CLOSED 2026-08-17](repo-map-graph-topology-degenerate.md) — Gate 1 over 96 real sessions: fwd d2 recalls 0% median and loses to one `ls`; what works is Glob + Grep; docs/tech/repo-map/
-- [Rule files have FOUR silent failure modes](rule-files-four-silent-failure-modes.md) — inert `paths:`, unconditional `globs:`, wrong facts in a fence, and a curated map drifting under a green verify:rules; SHIPPED + audited 2026-08-17
+- [Rule files have FOUR silent failure modes](rule-files-four-silent-failure-modes.md) — inert `paths:`, unconditional `globs:`, wrong facts in a fence, a map drifting under a green verify:rules
 - [Dev-tooling token roadmap 2026-08 (measured)](dev-tooling-token-roadmap.md) — Read is 59.7% of tool-result chars but D3's honest ceiling is 9.5% of ALL (re-sized 2026-08-07); D1 ✅ D2 ✅ → **D3** → D4 widen redirects → D5 build wrapper
-- [A grep census over the session corpus overcounts ~3x](session-corpus-census-inflation.md) — subagent mirroring + self-reference inflate hits; a redirected command never reaches the filter, so pair tool_use↔tool_result and report calls/blocked/ran
-- [Bash-as-file-reader census + redirect reach (2026-08-09, re-measured 08-15 and 08-16)](bash-file-read-census-and-redirect-reach.md) — refusal converts 84.7%; SIZE an arm before building it; reach 940→1,112, `cd &&` measured at ZERO
+- [A grep census over the session corpus overcounts ~3x](session-corpus-census-inflation.md) — subagent mirroring inflates hits; pair tool_use↔tool_result and report calls/blocked/ran
+- [Bash-as-file-reader census + redirect reach (2026-08-09, re-measured 08-16)](bash-file-read-census-and-redirect-reach.md) — refusal converts 84.7%; SIZE an arm before building it; `cd &&` measured at ZERO
 - [Auto-outline pivot claimed a cap it never hit (2026-08-09)](auto-outline-pivot-false-cap-claim.md) — 1,809 is an UPPER bound, success is the RANGE 40.8-68.3%; PR #67 closed on this data
 - [Token-bench measurement traps (2026-08-09)](token-bench-measurement-traps.md) — `--allowedTools` does NOT remove tools; alternate arm order; check range OVERLAP, not just the median
 - [R3 self-hosted background agent — IMPLEMENTED 2026-07-17](r3-background-agent-implemented.md) — workflow run|watch; TriggerSource (github/url/command + --match), headless runWorkflow, worktree+PR; docs/tech/background-agent/
@@ -54,20 +61,20 @@
 - [LSPTool reintroduced 2026-06-17 (cache-safe, plugin-only)](lsp-tool-reintroduced-plugin-only.md) — was dropped (0 usage) then re-added: read-only 9 ops, always-present+fixed msg (not isLsp), built-in servers + install UI removed
 - [The built-in Explore agent was REMOVED 2026-08-18](explore-agent-removed.md) — a fresh Code agent replaces it since #170; measured worth (93.5% multi-hop, 13.2x) and the summarizer misfire behind the re-reads
 - [Fork vs fresh A/B 2026-09-09 + parallel-forks probe](fork-vs-fresh-ab-2026-09-09.md) — fresh Code agent −44% at equal answers; 3 parallel forks PASS 9/9; count_tokens stalls big Reads 2.5–4.5 min
-- [Fork-subagent-by-default initiative](fork-subagent-by-default.md) — FORK_SUBAGENT shipped 2026-06-04: default spawn forks (inherits context+cache), named agent stays fresh; 2026-07-26 ungated fork + flipped auto-background to opt-in
+- [Fork-subagent-by-default initiative](fork-subagent-by-default.md) — default spawn forks, named agent stays fresh; 2026-07-26 ungated it and flipped auto-background to opt-in
 - [Typecheck tool — baseline design + the traps it hides](typecheck-tool-baseline-design.md) — clean-tree baseline keyed by HEAD, line-independent fingerprints; worktree reconstruction for the first dirty check; exec() caps stdout at 30k
 - [typecheck ratchet phantom "new" errors — fixed 2026-08-07](typecheck-baseline-message-fingerprint-fragile.md) — tsc's union elaboration used to shift the hash on any added file; elideTruncatedUnion fixes it, triage step kept
 - [React Compiler's t0 param is the root of ~1400 TS7006](react-compiler-props-param-typing.md) — count sites (403) not errors (1710); the props type is already in the file; grade every guess with the compiler
-- [The 107 TS2307 are the fork's shape, not a backlog](missing-subsystems-retired-by-all-any-declarations.md) — CORRECTED: all-`any` .d.ts retire them (concrete shapes cannot — TS2339); buys zero type safety; 19 call sites DO hit the stub eagerly
+- [The 107 TS2307 are the fork's shape, not a backlog](missing-subsystems-retired-by-all-any-declarations.md) — all-`any` .d.ts retire them (concrete shapes cannot — TS2339); buys zero type safety
 - [Typecheck A/B bench — what to cite and what is noise](typecheck-ab-bench-fixture-flaw.md) — cost −16/−18% and payload −80% hold across 5 runs; context swings −13%→−1%; fixture backlog must overlap the edited files
 - [RunTestsTool still has the 3 shell/env bugs Typecheck fixed](runtests-tool-shell-env-bugs.md) — ignores its cwd (worktree sub-agent tests main), FORCE_COLOR=0 enables colour, env-prefix breaks compound commands
 - [RunTestsTool language coverage + reporter constraints](runtests-tool-language-coverage.md) — 23 runners; JUnit/JSON vs heuristic-only tier; catch2/doctest are override-only (enum+case+DESCRIPTION)
 - [Search stack measured 2026-08-12](search-stack-measured.md) — text/file search is optimal ripgrep (14× over grep on nested quantifiers); symbol search is the weak axis. CORRECTED same day, read the next line first
 - [Symbol-parser options researched 2026-08-12](symbol-parser-options-researched.md) — tree-sitter IS shippable under bun --compile; the blocker is the SYNC scanSymbols call in toolResultSummarizer, not size
-- [Outline scanner: phantoms that DELETE real declarations + container blindness](outline-blind-to-nested-members.md) — PR #141 (corpus symbols −1.6%, bytes +3.7%, REPL.tsx 25→56); 6 scanner traps, and why the A/B gate is witness-based not rule-based
+- [Outline scanner: phantoms that DELETE real declarations](outline-blind-to-nested-members.md) — PR #141; 6 scanner traps, and why the A/B gate is witness-based not rule-based
 - [Graded cross-CLI A/B: search→edit→build (2026-08-12)](cli-search-edit-ab-bench.md) — claudin vs claude, 6/6 PASS, cost ranges separated ($0.247 vs $0.459); the gap is cache_read driven by turn count, not output
 - [Build tool A/B — the `directory` gap](build-tool-ab-directory-gap.md) — first run was +27% cost because the tool only built getCwd(); with `directory` it is −7.7% cost / −25% output (median of 3)
-- [Single deferred cache marker → full-history rewrites — FIXED 2026-09-13](single-marker-lookback-full-rewrites.md) — marker jumped ≥20 positions past the last write, server lookback missed: 38.6% of 30 days of cache writes; lagging marker on fix/cache-lag-marker; re-run the census after a week
+- [Single deferred cache marker → full-history rewrites — FIXED 2026-09-13](single-marker-lookback-full-rewrites.md) — lost 38.6% of 30 days of cache writes; lagging marker on fix/cache-lag-marker
 - [Git tool — D2, shipped 2026-08-04](git-tool-design.md) — Git({commands:[…]}) over all git+gh; permissions delegate to bashToolHasPermission; cost −11.5%, replay take 30.6%; the batching claim did NOT survive the A/B
 
 ## Providers & models
@@ -84,13 +91,13 @@
 - [Shim-only body fields need a model-aware gate](shim-only-body-fields-model-aware-gate.md) — provider-quirk fields added to the openaiShim wire body 400 native Anthropic + Copilot-on-Claude unless gated on activeTransportUsesOpenAiShim(model)
 - [Codex strict schemas make the model send placeholder args](codex-strict-schema-placeholder-args.md) — every prop forced into `required` → `pages:""` looped Read 135×; strip ""/null under the codex transport only
 - [Codex OAuth prompt-cache — retention REJECTED, key only](codex-oauth-prompt-cache-params.md) — Codex backend 400s on prompt_cache_retention (2026-07-21 fix: removed from codexShim+cache-probe); sends prompt_cache_key only; official-OpenAI still sends both
-- [Grok's cache hint — x-grok-conv-id HEADER, shipped but UNMEASURED](grok-cache-hint-missing.md) — sent since 2026-09-11 on host api.x.ai; no xAI account to measure with; xAI invalidates per whole message, so AGGRESSIVE clipping may eat it anyway
+- [Grok's cache hint — x-grok-conv-id HEADER, shipped but UNMEASURED](grok-cache-hint-missing.md) — no xAI account to measure with; AGGRESSIVE clipping may eat it anyway
 - [Codex 403 HTML-block misread as "Please run /login"](codex-403-html-block-misclassified-as-login.md) — HTML-body 403 = Cloudflare edge block, NOT a revoked token; errors.ts still wrongly suggests /login
 - [Claudin defaults to essential-traffic privacy level](anthropic-startup-traffic-disabled-default.md) — b2be87b5 (2026-06-06) flips default; 7→0 Anthropic startup requests; ANTHROPIC_DISABLE_NONESSENTIAL_TRAFFIC=0 opts back in
 - [xAI / Grok OAuth provider — shipped and merged](xai-oauth-provider-shipped.md) — on main as of 2026-09-10; loopback PKCE + pinned port 56121; device-code flow still not ported
 
 ## Build, release & distribution
-- [Native-binary distribution (Bun --compile)](compile-binary-distribution.md) — 2026-07-14: per-platform binaries via npm (wrapper+optionalDependencies+install.cjs hardlink); ~409ms vs 727ms; ripgrep + sharp vendored beside execPath; strip breaks Bun binaries
+- [Native-binary distribution (Bun --compile)](compile-binary-distribution.md) — per-platform binaries via npm, ~409ms vs 727ms; rg+sharp vendored beside execPath; strip breaks Bun binaries
 - [Binary release process — release-binaries.yml + npm OIDC gotchas](binary-release-rollout-state.md) — sole release path (OIDC, not NPM_TOKEN); rollout DONE; OIDC can't first-publish, verify with `npm access list` not `npm view`
 - [claudin-bin on the AUR + the Omarchy mirror](aur-omarchy-packaging.md) — PR #134, NOT live yet (AUR account + AUR_SSH_PRIVATE_KEY pending); the /usr/lib layout is what keeps the vendored rg+sharp resolving, and both fail silently
 - [Node engine floor raised to 22.12.0](node-engine-floor-22.md) — engines.node is >=22.12.0 (was >=20) since commander 15 is ESM-only; breaking for Node 20 consumers
@@ -101,7 +108,7 @@
 - [v8cache GC blocked process exit — fixed; startup deltas mislead](startup-v8cache-gc-blocked-exit.md) — 2026-07-13: in-process sweep added ~334ms/launch → detached child + daily stamp; also: profile checkpoint deltas over-attribute across awaits
 - [Launcher jemalloc LD_PRELOAD leak](launcher-jemalloc-ld-preload-leak.md) — heap-bump re-exec leaked jemalloc to all children; Chromium segfaults → OAuth browser never opened; fixed in bin/claudin 2026-06-11
 - [Plans dir moved project-local + hardened](plans-dir-project-local-hardening.md) — 2026-07-05: cwd-keyed memoize, symlink-escape realpath check, 0700 perms, global-gitignore, cleanup sweep; round-3 added plans.test.ts + cleanup.test.ts
-- [PRs for this repo go to GitHub via gh](repo-prs-github-via-gh.md) — origin is github.com/claudio-labs/claudin; `gh` (andersonviudes) authed; push then `gh pr create --base main`; old git.viudescloud.uk+tea flow superseded (verify with `git remote -v`)
+- [PRs for this repo go to GitHub via gh](repo-prs-github-via-gh.md) — origin is claudio-labs/claudin, `gh` authed; the old git.viudescloud.uk+tea flow is superseded
 
 ## TUI / diff / tooling
 - [Inline TUI stranded the frame at the top — FIXED 2026-09-11](inline-fullreset-per-message.md) — #172 had anchored only the overflowing-prev branch; carries the probe table, the live A/B and why a closed issue lied
@@ -120,10 +127,10 @@
 
 ## References (sibling repos, wire formats, archives)
 - [Public docs site claudiolabs.ai lives outside this repo](claudiolabs-docs-site.md) — no site/ dir tracked (README icon 404'd); URLs are extensionless; README links pages instead of duplicating features
-- [openclaude is a sibling fork to mine for BUGS, not features](openclaude-sibling-fork-reference.md) — 28 claims re-verified 2026-09-10: 17 real (nested heredoc, __proto__ voids settings, 3P attribution leak, worktree stale base), 11 falsified incl. 3 of the old top 8
-- [code-review-graph audited 2026-08-08 — graph REJECTED, 4 ideas kept](code-review-graph-evaluated-rejected.md) — 284 MB db on claudin, TS parser blind to `export const` (445/495), impact answer = 203k tokens; their own bench shows the graph losing to reading the diff
-- [Three code-graph siblings audited 2026-08-17](code-graph-siblings-audited.md) — none publishes an honest measured win (all three benchmarks are self-referential); kept edge-confidence tiers, clamp-with-provenance, deterministic truncation, churn×complexity
+- [openclaude is a sibling fork to mine for BUGS, not features](openclaude-sibling-fork-reference.md) — 28 claims re-verified 2026-09-10: 17 real, 11 falsified incl. 3 of the old top 8
+- [code-review-graph audited 2026-08-08 — graph REJECTED, 4 ideas kept](code-review-graph-evaluated-rejected.md) — 284 MB db, impact answer = 203k tokens; their own bench loses to reading the diff
+- [Three code-graph siblings audited 2026-08-17](code-graph-siblings-audited.md) — no honest measured win in any of them; 4 ideas kept (edge-confidence tiers, churn×complexity, …)
 - [opencode (SST) feature-gap reference](opencode-sst-feature-gap-reference.md) — ../opencode SST monorepo scout 2026-06-24; apply_patch since shipped; open gaps: auto-format, LSP-diagnostics-on-edit, ACP/Zed adapter, part-level revert; Share=skip (privacy)
 - [Windsurf upstream reference repo](windsurf-upstream-reference.md) — opencode-windsurf-auth has the wire format + OAuth flow; no provider in src/, but a port branch died on the old Gitea remote
 - [mitmproxy recipe for Rust agent CLIs](mitmproxy-rust-binary-recipe.md) — SSL_CERT_FILE+NODE_EXTRA_CA_CERTS+REQUESTS_CA_BUNDLE bundle trick verified against Devin Rust binary
-- [Devin provider port — ARCHIVED to docs](../../../docs/tech/devin-provider/README.md) — abandoned 2026-06-12 (f31 per-request sealed attestation is the hard gate); RE archive at docs/tech/devin-provider/; branch on the retired remote, unreachable from origin
+- [Devin provider port — ARCHIVED to docs](../../../docs/tech/devin-provider/README.md) — abandoned 2026-06-12 on f31 sealed attestation; branch lived on the retired remote, unreachable now

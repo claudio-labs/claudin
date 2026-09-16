@@ -1,16 +1,12 @@
 import { c as _c } from "react-compiler-runtime";
-import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { type Notification, useNotifications } from 'src/terminal/contexts/notifications.js';
-import { logEvent } from 'src/platform/analytics/index.js';
 import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
-import { type VoiceState, useVoiceState } from 'src/terminal/contexts/voice.js';
 import type { VerificationStatus } from 'src/providers/hooks/useApiKeyVerification.js';
 import { useIdeConnectionStatus } from 'src/platform/ide/useIdeConnectionStatus.js';
 import type { IDESelection } from 'src/platform/ide/useIdeSelection.js';
 import { useMainLoopModel } from 'src/agent/hooks/useMainLoopModel.js';
-import { useVoiceEnabled } from 'src/terminal/voice/useVoiceEnabled.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import { useClaudeAiLimits } from 'src/providers/claudeAiLimitsHook.js';
 import { calculateTokenWarningState } from 'src/agent/compact/autoCompact.js';
@@ -31,10 +27,6 @@ import { SessionTokensIndicator } from 'src/providers/ui/SessionTokensIndicator.
 import { SentryErrorBoundary } from 'src/platform/SentryErrorBoundary.js';
 import { TokenWarning } from 'src/agent/ui/TokenWarning.js';
 import { SandboxPromptFooterHint } from 'src/terminal/prompt-input/SandboxPromptFooterHint.js';
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const VoiceIndicator: typeof import('src/terminal/prompt-input/VoiceIndicator.js').VoiceIndicator = feature('VOICE_MODE') ? require('src/terminal/prompt-input/VoiceIndicator.js').VoiceIndicator : () => null;
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 export const FOOTER_TEMPORARY_STATUS_TIMEOUT = 5000;
 type Props = {
@@ -149,7 +141,6 @@ export function Notifications(t0: Props) {
   if ($[10] !== addNotification || $[11] !== removeNotification || $[12] !== shouldShowExternalEditorHint) {
     t9 = () => {
       if (shouldShowExternalEditorHint && editor) {
-        logEvent("tengu_external_editor_hint_shown", {});
         addNotification({
           key: "external-editor-hint",
           jsx: <Text dimColor={true}><ConfigurableShortcutHint action="chat:externalEditor" context="Chat" fallback="ctrl+g" description={`edit in ${toIDEDisplayName(editor)}`} /></Text>,
@@ -264,24 +255,6 @@ function NotificationContent({
     return () => clearInterval(interval);
   }, []);
 
-  // Voice state (VOICE_MODE builds only, runtime-gated by GrowthBook)
-  const voiceState = feature('VOICE_MODE') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useVoiceState((s: VoiceState) => s.voiceState) : 'idle' as const;
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  const voiceEnabled = feature('VOICE_MODE') ? useVoiceEnabled() : false;
-  const voiceError = feature('VOICE_MODE') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useVoiceState((s_0: VoiceState) => s_0.voiceError) as VoiceState['voiceError'] : null;
-  const isBriefOnly = feature('KAIROS') || feature('KAIROS_BRIEF') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useAppState((s_1: AppState) => s_1.isBriefOnly) : false;
-
-  // When voice is actively recording or processing, replace all
-  // notifications with just the voice indicator.
-  if (feature('VOICE_MODE') && voiceEnabled && (voiceState === 'recording' || voiceState === 'processing')) {
-    return <VoiceIndicator voiceState={voiceState} />;
-  }
   return <>
       <IdeStatusIndicator ideSelection={ideSelection} mcpClients={mcpClients} />
       {notifications.current && ('jsx' in notifications.current ? <Text wrap="truncate" key={notifications.current.key}>
@@ -317,12 +290,7 @@ function NotificationContent({
             {tokenUsage} tokens
           </Text>
         </Box>}
-      {!isBriefOnly && <TokenWarning tokenUsage={tokenUsage} model={mainLoopModel} />}
-      {feature('VOICE_MODE') ? voiceEnabled && voiceError && <Box>
-              <Text color="error" wrap="truncate">
-                {voiceError}
-              </Text>
-            </Box> : null}
+      <TokenWarning tokenUsage={tokenUsage} model={mainLoopModel} />
       <SandboxPromptFooterHint />
     </>;
 }

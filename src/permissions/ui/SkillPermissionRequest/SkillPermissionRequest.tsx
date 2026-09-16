@@ -3,12 +3,9 @@ import React, { useCallback, useMemo } from 'react';
 import { logError } from 'src/shared/log.js';
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js';
 import { Box, Text } from 'src/terminal/ink.js';
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js';
 import { SKILL_TOOL_NAME } from 'src/tools/SkillTool/constants.js';
 import { SkillTool } from 'src/tools/SkillTool/SkillTool.js';
-import { env } from 'src/shared/env.js';
 import { shouldShowAlwaysAllowOptions } from 'src/permissions/permissionsLoader.js';
-import { logUnaryEvent } from 'src/providers/transport/unaryLogging.js';
 import { type UnaryEvent, usePermissionRequestLogging } from 'src/permissions/ui/hooks.js';
 import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js';
 import { PermissionPrompt, type PermissionPromptOption, type ToolAnalyticsContext } from 'src/permissions/ui/PermissionPrompt.js';
@@ -163,7 +160,7 @@ export function SkillPermissionRequest(props: PermissionRequestProps) {
   const options = t6;
   let t7;
   if ($[19] !== toolUseConfirm.tool.name) {
-    t7 = sanitizeToolNameForAnalytics(toolUseConfirm.tool.name);
+    t7 = toolUseConfirm.tool.name;
     $[19] = toolUseConfirm.tool.name;
     $[20] = t7;
   } else {
@@ -189,30 +186,12 @@ export function SkillPermissionRequest(props: PermissionRequestProps) {
       bb33: switch (value) {
         case "yes":
           {
-            logUnaryEvent({
-              completion_type: "tool_use_single",
-              event: "accept",
-              metadata: {
-                language_name: "none",
-                message_id: toolUseConfirm.assistantMessage.message.id,
-                platform: env.platform
-              }
-            });
             toolUseConfirm.onAllow(toolUseConfirm.input, [], feedback);
             onDone();
             break bb33;
           }
         case "yes-exact":
           {
-            logUnaryEvent({
-              completion_type: "tool_use_single",
-              event: "accept",
-              metadata: {
-                language_name: "none",
-                message_id: toolUseConfirm.assistantMessage.message.id,
-                platform: env.platform
-              }
-            });
             toolUseConfirm.onAllow(toolUseConfirm.input, [{
               type: "addRules",
               rules: [{
@@ -227,15 +206,6 @@ export function SkillPermissionRequest(props: PermissionRequestProps) {
           }
         case "yes-prefix":
           {
-            logUnaryEvent({
-              completion_type: "tool_use_single",
-              event: "accept",
-              metadata: {
-                language_name: "none",
-                message_id: toolUseConfirm.assistantMessage.message.id,
-                platform: env.platform
-              }
-            });
             const spaceIndex_0 = skill.indexOf(" ");
             const commandPrefix_0 = spaceIndex_0 > 0 ? skill.substring(0, spaceIndex_0) : skill;
             toolUseConfirm.onAllow(toolUseConfirm.input, [{
@@ -252,15 +222,6 @@ export function SkillPermissionRequest(props: PermissionRequestProps) {
           }
         case "no":
           {
-            logUnaryEvent({
-              completion_type: "tool_use_single",
-              event: "reject",
-              metadata: {
-                language_name: "none",
-                message_id: toolUseConfirm.assistantMessage.message.id,
-                platform: env.platform
-              }
-            });
             toolUseConfirm.onReject(feedback);
             onReject();
             onDone();
@@ -279,15 +240,6 @@ export function SkillPermissionRequest(props: PermissionRequestProps) {
   let t11;
   if ($[29] !== onDone || $[30] !== onReject || $[31] !== toolUseConfirm) {
     t11 = () => {
-      logUnaryEvent({
-        completion_type: "tool_use_single",
-        event: "reject",
-        metadata: {
-          language_name: "none",
-          message_id: toolUseConfirm.assistantMessage.message.id,
-          platform: env.platform
-        }
-      });
       toolUseConfirm.onReject();
       onReject();
       onDone();

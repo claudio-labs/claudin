@@ -55,8 +55,6 @@ import {
   createUserMessage,
 } from 'src/agent/messages/messages.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import { logEvent } from 'src/platform/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 import { detectRepeatedErrorLoop } from 'src/memory/extract/loopDetector.js'
 import {
@@ -169,9 +167,6 @@ function hasMemoryWritesSince(
 
 function denyAutoMemTool(tool: Tool, reason: string) {
   logForDebugging(`[autoMem] denied ${tool.name}: ${reason}`)
-  logEvent('tengu_auto_mem_tool_denied', {
-    tool_name: sanitizeToolNameForAnalytics(tool.name),
-  })
   return {
     behavior: 'deny' as const,
     message: reason,
@@ -372,9 +367,6 @@ export function initExtractMemories(): void {
       if (lastMessage?.uuid) {
         lastMemoryMessageUuid = lastMessage.uuid
       }
-      logEvent('tengu_extract_memories_skipped_direct_write', {
-        message_count: newMessageCount,
-      })
       return
     }
 
@@ -401,9 +393,6 @@ export function initExtractMemories(): void {
       logForDebugging(
         `[extractMemories] repeated-error loop on ${loop!.toolName} (${loop!.repeatCount}×) — forcing extraction`,
       )
-      logEvent('tengu_extract_memories_loop_trigger', {
-        tool_name: sanitizeToolNameForAnalytics(loop!.toolName),
-      })
     }
 
     const teamMemoryEnabled = feature('TEAMMEM')
@@ -520,20 +509,6 @@ export function initExtractMemories(): void {
         ? count(memoryPaths, teamMemPaths!.isTeamMemPath)
         : 0
 
-      // Log extraction event with usage from the forked agent
-      logEvent('tengu_extract_memories_extraction', {
-        input_tokens: result.totalUsage.input_tokens,
-        output_tokens: result.totalUsage.output_tokens,
-        cache_read_input_tokens: result.totalUsage.cache_read_input_tokens,
-        cache_creation_input_tokens:
-          result.totalUsage.cache_creation_input_tokens,
-        message_count: newMessageCount,
-        turn_count: turnCount,
-        files_written: writtenPaths.length,
-        memories_saved: memoryPaths.length,
-        team_memories_saved: teamCount,
-        duration_ms: Date.now() - startTime,
-      })
 
       logForDebugging(
         `[extractMemories] writtenPaths=${writtenPaths.length} memoryPaths=${memoryPaths.length} appendSystemMessage defined=${appendSystemMessage != null}`,
@@ -551,9 +526,6 @@ export function initExtractMemories(): void {
     } catch (error) {
       // Extraction is best-effort — log but don't notify on error
       logForDebugging(`[extractMemories] error: ${error}`)
-      logEvent('tengu_extract_memories_error', {
-        duration_ms: Date.now() - startTime,
-      })
     } finally {
       inProgress = false
 
@@ -608,7 +580,6 @@ export function initExtractMemories(): void {
       logForDebugging(
         '[extractMemories] extraction in progress — stashing for trailing run',
       )
-      logEvent('tengu_extract_memories_coalesced', {})
       pendingContext = { context, appendSystemMessage }
       return
     }

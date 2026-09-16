@@ -23,7 +23,6 @@ import type { AppStateStore } from 'src/terminal/state/AppStateStore.js'
 import type { SetAppState } from 'src/agent/messageQueueManager.js'
 import type { Message as MessageType } from 'src/shared/types/message.js'
 
-import { logEvent, type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/index.js'
 import { deserializeMessages } from 'src/sessions/conversationRecovery.js'
 import { createSystemMessage } from 'src/agent/messages/messages.js'
 import { processSessionStartHooks } from 'src/sessions/sessionStart.js'
@@ -345,16 +344,7 @@ export async function resumeSession(
 
     // Clear input to ensure no residual state
     setInputValue('')
-    logEvent('tengu_session_resumed', {
-      entrypoint: entrypoint as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      success: true,
-      resume_duration_ms: Math.round(performance.now() - resumeStart),
-    })
   } catch (error) {
-    logEvent('tengu_session_resumed', {
-      entrypoint: entrypoint as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      success: false,
-    })
     throw error
   }
 }

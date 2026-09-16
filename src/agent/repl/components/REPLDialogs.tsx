@@ -34,7 +34,6 @@
 import * as React from 'react'
 import { feature } from 'bun:bundle'
 import { saveGlobalConfig } from 'src/platform/config/config.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { logError } from 'src/shared/log.js'
 import { CostThresholdDialog } from 'src/permissions/ui/CostThresholdDialog.js'
 import { IdleReturnDialog } from 'src/platform/IdleReturnDialog.js'
@@ -126,7 +125,6 @@ export type REPLDialogsDeps = {
     sourceCommand: string
   } | null
   handleHintResponse: (response: unknown) => void
-  setShowDesktopUpsellStartup: (v: boolean) => void
   // ultraplan
   ultraplanPendingChoice: {
     plan: unknown
@@ -152,8 +150,7 @@ export type REPLDialogsDeps = {
   // ultraplan-launch optional ultraplanSessionUrl read via store.getState()
 }
 
-// PluginHintMenu / DesktopUpsellStartup /
-// EffortCallout / RemoteCallout / IdeOnboardingDialog /
+// PluginHintMenu / EffortCallout / RemoteCallout / IdeOnboardingDialog /
 // SandboxPermissionRequest / UltraplanChoiceDialog / UltraplanLaunchDialog
 // are imported lazily by REPL when feature flags require — to keep the
 // extracted block faithful we accept the rendered slot as a ReactNode
@@ -180,7 +177,6 @@ export type REPLDialogsSlots = {
     sourceCommand: string
     onResponse: (r: unknown) => void
   }>
-  DesktopUpsellStartup: React.ComponentType<{ onDone: () => void }>
   UltraplanChoiceDialog: React.ComponentType<{
     plan: unknown
     sessionId: string
@@ -198,7 +194,7 @@ export type REPLDialogsSlots = {
 type NetworkHostPattern = { host: string; port?: number }
 
 export function renderREPLDialogs(deps: REPLDialogsDeps, slots: REPLDialogsSlots): React.ReactNode {
-  const { SandboxPermissionRequest, IdeOnboardingDialog, EffortCallout, RemoteCallout, PluginHintMenu, DesktopUpsellStartup, UltraplanChoiceDialog, UltraplanLaunchDialog } = slots
+  const { SandboxPermissionRequest, IdeOnboardingDialog, EffortCallout, RemoteCallout, PluginHintMenu, UltraplanChoiceDialog, UltraplanLaunchDialog } = slots
   return <>
     {deps.focusedInputDialog === 'sandbox-permission' && <SandboxPermissionRequest key={deps.sandboxPermissionRequestQueue[0]!.hostPattern.host} hostPattern={deps.sandboxPermissionRequestQueue[0]!.hostPattern} onUserResponse={(response: { allow: boolean; persistToSettings: boolean }) => {
       const { allow, persistToSettings } = response
@@ -321,17 +317,10 @@ export function renderREPLDialogs(deps: REPLDialogsDeps, slots: REPLDialogsSlots
         ...(current as object),
         hasAcknowledgedCostThreshold: true,
       }) as never)
-      logEvent('tengu_cost_threshold_acknowledged' as never, {})
     }} />}
     {deps.focusedInputDialog === 'idle-return' && deps.idleReturnPending && <IdleReturnDialog idleMinutes={deps.idleReturnPending.idleMinutes} totalInputTokens={deps.getTotalInputTokens()} onDone={async (action: unknown) => {
       const pending = deps.idleReturnPending!
       deps.setIdleReturnPending(null)
-      logEvent('tengu_idle_return_action' as never, {
-        action: action as never,
-        idleMinutes: Math.round(pending.idleMinutes),
-        messageCount: deps.messagesRef.current?.length ?? 0,
-        totalInputTokens: deps.getTotalInputTokens(),
-      })
       if (action === 'dismiss') {
         deps.setInputValue(pending.input)
         return
@@ -399,8 +388,6 @@ export function renderREPLDialogs(deps: REPLDialogsDeps, slots: REPLDialogsSlots
 
     {deps.focusedInputDialog === 'plugin-hint' && deps.hintRecommendation && <PluginHintMenu pluginName={deps.hintRecommendation.pluginName} pluginDescription={deps.hintRecommendation.pluginDescription} marketplaceName={deps.hintRecommendation.marketplaceName} sourceCommand={deps.hintRecommendation.sourceCommand} onResponse={deps.handleHintResponse} />}
 
-    {deps.focusedInputDialog === 'desktop-upsell' && <DesktopUpsellStartup onDone={() => deps.setShowDesktopUpsellStartup(false)} />}
-
     {feature('ULTRAPLAN') && UltraplanChoiceDialog ? deps.focusedInputDialog === 'ultraplan-choice' && deps.ultraplanPendingChoice && <UltraplanChoiceDialog plan={deps.ultraplanPendingChoice.plan} sessionId={deps.ultraplanPendingChoice.sessionId} taskId={deps.ultraplanPendingChoice.taskId} setMessages={deps.setMessages} readFileState={deps.readFileState.current} getAppState={() => deps.store.getState()} setConversationId={deps.setConversationId} /> : null}
 
     {feature('ULTRAPLAN') && UltraplanLaunchDialog ? deps.focusedInputDialog === 'ultraplan-launch' && deps.ultraplanLaunchPending && <UltraplanLaunchDialog onChoice={(choice: string, opts?: { disconnectedBridge?: unknown }) => {
@@ -443,4 +430,3 @@ export function renderREPLDialogs(deps: REPLDialogsDeps, slots: REPLDialogsSlots
     }} /> : null}
   </>
 }
-

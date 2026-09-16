@@ -13,8 +13,6 @@
 import { afterAll, afterEach, beforeEach, expect, mock, test } from 'bun:test'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 
-const realAnalyticsMetadata = { ...(await import('src/platform/analytics/metadata.js')) }
-const realAnalyticsIndex = { ...(await import('src/platform/analytics/index.js')) }
 const realConfig = { ...(await import('src/platform/config/config.js')) }
 
 // Guard 2 of maybeSummarizeToolResult reads
@@ -35,33 +33,11 @@ const forceSummarizerOn = () => ({
 mock.module('src/platform/config/config.js', forceSummarizerOn)
 mock.module('src/platform/config/config.js', forceSummarizerOn)
 
-mock.module('src/platform/analytics/metadata.js', () => ({
-  sanitizeToolNameForAnalytics: (name: string) =>
-    name.startsWith('mcp__') ? 'mcp_tool' : name,
-  isToolDetailsLoggingEnabled: () => false,
-  isAnalyticsToolDetailsLoggingEnabled: () => false,
-  mcpToolDetailsForAnalytics: () => ({}),
-  extractMcpToolDetails: () => ({}),
-  extractSkillName: () => undefined,
-  extractToolInputForTelemetry: () => ({}),
-  getFileExtensionForAnalytics: () => '',
-  getFileExtensionsFromBashCommand: () => [],
-  getEventMetadata: async () => ({}),
-  to1PEventFormat: () => ({}),
-}))
-mock.module('src/platform/analytics/index.js', () => ({
-  logEvent: () => {},
-  logEventAsync: () => Promise.resolve(),
-  stripProtoFields: <T,>(m: T) => m,
-}))
-
 const { maybeSummarizeToolResult, isSummarizedContent, TOOL_RESULT_SUMMARY_TAG } =
   await import('src/agent/tools/toolResultSummarizer.js')
 const { injectEnvelopeAttr } = await import('src/agent/tools/toolResultStorage.js')
 
 afterAll(() => {
-  mock.module('src/platform/analytics/metadata.js', () => realAnalyticsMetadata)
-  mock.module('src/platform/analytics/index.js', () => realAnalyticsIndex)
   mock.module('src/platform/config/config.js', () => realConfig)
   mock.module('src/platform/config/config.js', () => realConfig)
 })

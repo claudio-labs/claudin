@@ -30,7 +30,6 @@ import { memoizeWithLRU } from 'src/shared/data/memoize.js'
 import { recursivelySanitizeUnicode } from 'src/shared/data/sanitization.js'
 import { clearKeychainCache } from 'src/platform/secureStorage/macOsKeychainHelpers.js'
 import { sleep } from 'src/shared/sleep.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { hasMcpDiscoveryButNoToken } from 'src/mcp/auth.js'
 import { markClaudeAiMcpConnected } from 'src/mcp/claudeai.js'
 import { getAllMcpConfigs, isMcpServerDisabled } from 'src/mcp/config.js'
@@ -63,15 +62,6 @@ import {
   getRemoteMcpServerConnectionBatchSize,
 } from 'src/mcp/client/fetch.js'
 import { transformResultContent } from 'src/mcp/client/toolResult.js'
-import { computerUseWrapper, isComputerUseMCPServer } from 'src/mcp/client/transport.js'
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-export const fetchMcpSkillsForClient = feature('MCP_SKILLS')
-  ? (
-    require('../../skills/mcpSkills.js') as typeof import('../../skills/mcpSkills.js')
-  ).fetchMcpSkillsForClient
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 // Max cache size for fetch* caches. Keyed by server name (stable across
 // reconnects), bounded to prevent unbounded growth with many MCP servers.
@@ -347,11 +337,6 @@ export const fetchToolsForClient = memoizeWithLRU(
               const displayName = tool.annotations?.title || tool.name
               return `${client.name} - ${displayName} (MCP)`
             },
-            ...(feature('CHICAGO_MCP') &&
-              (client.config.type === 'stdio' || !client.config.type) &&
-              isComputerUseMCPServer!(client.name)
-              ? computerUseWrapper!().getComputerUseMCPToolOverrides(tool.name)
-              : {}),
           }
         })
         .filter(isIncludedMcpTool)
@@ -513,15 +498,12 @@ export async function reconnectMcpServerImpl(
 
     const supportsResources = !!client.capabilities?.resources
 
-    const [tools, mcpCommands, mcpSkills, resources] = await Promise.all([
+    const [tools, mcpCommands, resources] = await Promise.all([
       fetchToolsForClient(client),
       fetchCommandsForClient(client),
-      feature('MCP_SKILLS') && supportsResources
-        ? fetchMcpSkillsForClient!(client)
-        : Promise.resolve([]),
       supportsResources ? fetchResourcesForClient(client) : Promise.resolve([]),
     ])
-    const commands = [...mcpCommands, ...mcpSkills]
+    const commands = [...mcpCommands]
 
     // Check if we need to add resource tools
     const resourceTools: Tool[] = []
@@ -686,19 +668,15 @@ export async function getMcpToolsCommandsAndResources(
 
       const supportsResources = !!client.capabilities?.resources
 
-      const [tools, mcpCommands, mcpSkills, resources] = await Promise.all([
+      const [tools, mcpCommands, resources] = await Promise.all([
         fetchToolsForClient(client),
         fetchCommandsForClient(client),
-        // Discover skills from skill:// resources
-        feature('MCP_SKILLS') && supportsResources
-          ? fetchMcpSkillsForClient!(client)
-          : Promise.resolve([]),
         // Fetch resources if supported
         supportsResources
           ? fetchResourcesForClient(client)
           : Promise.resolve([]),
       ])
-      const commands = [...mcpCommands, ...mcpSkills]
+      const commands = [...mcpCommands]
 
       // If this server resources and we haven't added resource tools yet,
       // include our resource tools with this client's tools
@@ -790,11 +768,6 @@ export function prefetchAllMcpResources(
             (command.argumentHint ?? '').length
           return sum + commandMetadataLength
         }, 0)
-        logEvent('tengu_mcp_tools_commands_loaded', {
-          tools_count: tools.length,
-          commands_count: commands.length,
-          commands_metadata_length: commandsMetadataLength,
-        })
 
         void resolve({
           clients,

@@ -42,10 +42,6 @@ import { disableKeepAlive } from 'src/providers/transport/proxy.js'
 import { sleep } from 'src/shared/sleep.js'
 import type { ThinkingConfig } from 'src/agent/context/thinking.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { isMockRateLimitError } from 'src/providers/rateLimitMocking.js'
 import { REPEATED_529_ERROR_MESSAGE } from 'src/providers/transport/errors.js'
 import { extractConnectionErrorDetails } from 'src/providers/transport/errorUtils.js'
@@ -443,10 +439,6 @@ export async function* withRetry<T>(
       // Non-foreground sources bail immediately on 529 — no retry amplification
       // during capacity cascades. User never sees these fail.
       if (is529Error(error) && !shouldRetry529(options.querySource)) {
-        logEvent('tengu_api_529_background_dropped', {
-          query_source:
-            options.querySource as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        })
         throw new CannotRetryError(error, retryContext)
       }
 
@@ -462,13 +454,6 @@ export async function* withRetry<T>(
         if (consecutive529Errors >= MAX_529_RETRIES) {
           // Check if fallback model is specified
           if (options.fallbackModel) {
-            logEvent('tengu_api_opus_fallback_triggered', {
-              original_model:
-                options.model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-              fallback_model:
-                options.fallbackModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-              provider: getAPIProviderForStatsig(),
-            })
 
             // Throw special error to indicate fallback was triggered
             throw new FallbackTriggeredError(
@@ -478,7 +463,6 @@ export async function* withRetry<T>(
           }
 
           if (!process.env.IS_SANDBOX && !isPersistentRetryEnabled()) {
-            logEvent('tengu_api_custom_529_overloaded_error', {})
             throw new CannotRetryError(
               new Error(REPEATED_529_ERROR_MESSAGE),
               retryContext,
@@ -513,7 +497,6 @@ export async function* withRetry<T>(
         !retryContext.stripThinkingFromHistory
       ) {
         retryContext.stripThinkingFromHistory = true
-        logEvent('tengu_api_thinking_mismatch_recovery', {})
         continue
       }
 
@@ -551,12 +534,6 @@ export async function* withRetry<T>(
           )
           retryContext.maxTokensOverride = adjustedMaxTokens
 
-          logEvent('tengu_max_tokens_context_overflow_adjustment', {
-            inputTokens,
-            contextLimit,
-            adjustedMaxTokens,
-            attempt,
-          })
 
           continue
         }
@@ -601,24 +578,8 @@ export async function* withRetry<T>(
       // In persistent mode the for-loop `attempt` is clamped at maxRetries+1;
       // use persistentAttempt for telemetry/yields so they show the true count.
       const reportedAttempt = persistent ? persistentAttempt : attempt
-      logEvent('tengu_api_retry', {
-        attempt: reportedAttempt,
-        delayMs: delayMs,
-        error: (error as APIError)
-          .message as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        status: (error as APIError).status,
-        provider: getAPIProviderForStatsig(),
-      })
 
       if (persistent) {
-        if (delayMs > 60_000) {
-          logEvent('tengu_api_persistent_retry_wait', {
-            status: (error as APIError).status,
-            delayMs,
-            attempt: reportedAttempt,
-            provider: getAPIProviderForStatsig(),
-          })
-        }
         // Chunk long sleeps so the host sees periodic stdout activity and
         // does not mark the session idle. Each yield surfaces as
         // {type:'system', subtype:'api_retry'} on stdout via QueryEngine.

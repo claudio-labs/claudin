@@ -18,7 +18,6 @@
  */
 import { basename, dirname, join } from 'path'
 import pickBy from 'lodash-es/pickBy.js'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { createDefaultGlobalConfig } from 'src/platform/config/config/defaults.js'
 import { wouldLoseAuthState } from 'src/platform/config/config/globalConfig.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -122,9 +121,6 @@ export function saveConfigWithLock<A extends object>(
       logForDebugging(
         'Lock acquisition took longer than expected - another Claude instance may be running',
       )
-      logEvent('tengu_config_lock_contention', {
-        lock_time_ms: lockTime,
-      })
     }
 
     // Check for stale write - file changed since we last read it
@@ -132,17 +128,6 @@ export function saveConfigWithLock<A extends object>(
     if (lastReadFileStats && file === getGlobalClaudeFile()) {
       try {
         const currentStats = fs.statSync(file)
-        if (
-          currentStats.mtimeMs !== lastReadFileStats.mtime ||
-          currentStats.size !== lastReadFileStats.size
-        ) {
-          logEvent('tengu_config_stale_write', {
-            read_mtime: lastReadFileStats.mtime,
-            write_mtime: currentStats.mtimeMs,
-            read_size: lastReadFileStats.size,
-            write_size: currentStats.size,
-          })
-        }
       } catch (e) {
         const code = getErrnoCode(e)
         if (code !== 'ENOENT') {
@@ -161,7 +146,6 @@ export function saveConfigWithLock<A extends object>(
         'saveConfigWithLock: re-read config is missing auth that cache has; refusing to write to avoid wiping ~/.claudin/config.json. See GH #3117.',
         { level: 'error' },
       )
-      logEvent('tengu_config_auth_loss_prevented', {})
       return false
     }
 
@@ -502,9 +486,6 @@ export function getConfig<A>(
           } catch {
             // No backup
           }
-          logEvent('tengu_config_parse_error', {
-            has_backup: hasBackup,
-          })
         } finally {
           insideGetConfig = false
         }

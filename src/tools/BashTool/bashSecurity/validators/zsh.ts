@@ -2,7 +2,6 @@
  * Zsh-specific dangerous commands, plus `fc -e`.
  */
 
-import { logEvent } from 'src/platform/analytics/index.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import { BASH_SECURITY_CHECK_IDS } from 'src/tools/BashTool/bashSecurity/checkIds.js'
 import type { ValidationContext } from 'src/tools/BashTool/bashSecurity/context.js'
@@ -76,10 +75,6 @@ export function validateZshDangerousCommands(
   }
 
   if (ZSH_DANGEROUS_COMMANDS.has(baseCmd)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.ZSH_DANGEROUS_COMMANDS,
-      subId: 1,
-    })
     return {
       behavior: 'ask',
       message: `Command uses Zsh-specific '${baseCmd}' which can bypass security checks`,
@@ -90,10 +85,6 @@ export function validateZshDangerousCommands(
   // fc without -e is safe (just lists history), but -e specifies an editor
   // to run on the command, effectively an eval
   if (baseCmd === 'fc' && /\s-\S*e/.test(trimmed)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.ZSH_DANGEROUS_COMMANDS,
-      subId: 2,
-    })
     return {
       behavior: 'ask',
       message:

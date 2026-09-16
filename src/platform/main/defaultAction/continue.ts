@@ -10,11 +10,9 @@ import { exitWithError, renderAndRun } from 'src/terminal/interactiveHelpers.js'
 import { launchRepl } from 'src/agent/repl/replLauncher.js';
 import { logError } from 'src/shared/log.js';
 import { errorMessage } from 'src/shared/errors.js';
-import { logEvent } from 'src/platform/analytics/index.js';
 import { loadConversationForResume } from 'src/sessions/conversationRecovery.js';
 import { processResumedConversation } from 'src/sessions/sessionRestore.js';
 import { gracefulShutdown } from 'src/shared/proc/gracefulShutdown.js';
-import { maybeActivateBrief, maybeActivateProactive } from 'src/platform/main/lifecycle.js';
 
 export type ContinueBranchDeps = {
   root: Root;
@@ -38,7 +36,6 @@ export async function runContinueBranch(deps: ContinueBranchDeps): Promise<void>
     clearSessionCaches();
     const result = await loadConversationForResume(undefined /* sessionId */, undefined /* sourceFile */);
     if (!result) {
-      logEvent('tengu_continue', { success: false });
       return await exitWithError(root, 'No conversation found to continue');
     }
     const loaded = await processResumedConversation(result, {
@@ -49,12 +46,6 @@ export async function runContinueBranch(deps: ContinueBranchDeps): Promise<void>
     if (loaded.restoredAgentDef) {
       mainThreadAgentDefinitionRef.current = loaded.restoredAgentDef;
     }
-    maybeActivateProactive(options);
-    maybeActivateBrief(options);
-    logEvent('tengu_continue', {
-      success: true,
-      resume_duration_ms: Math.round(performance.now() - resumeStart),
-    });
     resumeSucceeded = true;
     await launchRepl(root, {
       getFpsMetrics,
@@ -70,9 +61,6 @@ export async function runContinueBranch(deps: ContinueBranchDeps): Promise<void>
       initialAgentColor: loaded.agentColor,
     } as Parameters<typeof launchRepl>[2], renderAndRun);
   } catch (error) {
-    if (!resumeSucceeded) {
-      logEvent('tengu_continue', { success: false });
-    }
     logError(error);
     return await exitWithError(root, errorMessage(error), () => gracefulShutdown(1));
   }

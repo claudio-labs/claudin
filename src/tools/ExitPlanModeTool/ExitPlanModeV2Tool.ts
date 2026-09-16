@@ -2,14 +2,11 @@ import { feature } from 'bun:bundle'
 import { writeFile } from 'fs/promises'
 import { z } from 'zod/v4'
 import {
-  getAllowedChannels,
   hasExitedPlanModeInSession,
   setHasExitedPlanMode,
   setNeedsAutoModeExitAttachment,
   setNeedsPlanModeExitAttachment,
 } from 'src/platform/bootstrap/state.js'
-import { logEvent } from 'src/platform/analytics/index.js'
-import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from 'src/platform/analytics/metadata.js'
 import {
   buildDossierFromMessages,
   serializeDossier,
@@ -184,15 +181,6 @@ export const ExitPlanModeV2Tool: Tool<InputSchema, Output> = buildTool({
   },
   shouldDefer: true,
   isEnabled() {
-    // When --channels is active the user is likely on Telegram/Discord, not
-    // watching the TUI. The plan-approval dialog would hang. Paired with the
-    // same gate on EnterPlanMode so plan mode isn't a trap.
-    if (
-      (feature('KAIROS') || feature('KAIROS_CHANNELS')) &&
-      getAllowedChannels().length > 0
-    ) {
-      return false
-    }
     return true
   },
   isConcurrencySafe() {
@@ -222,12 +210,6 @@ export const ExitPlanModeV2Tool: Tool<InputSchema, Output> = buildTool({
     // Reject before checkPermissions to avoid showing the approval dialog.
     const mode = getAppState().toolPermissionContext.mode
     if (mode !== 'plan') {
-      logEvent('tengu_exit_plan_mode_called_outside_plan', {
-        model:
-          options.mainLoopModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        mode: mode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        hasExitedPlanModeInSession: hasExitedPlanModeInSession(),
-      })
       return {
         result: false,
         message:

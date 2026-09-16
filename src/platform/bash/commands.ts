@@ -502,7 +502,6 @@ ONLY return the prefix. Do not return any other text, markdown markers, or other
 const getCommandPrefix = createCommandPrefixExtractor({
   toolName: 'Bash',
   policySpec: BASH_POLICY_SPEC,
-  eventName: 'tengu_bash_prefix',
   querySource: 'bash_extract_prefix',
   preCheck: command =>
     isHelpCommand(command) ? { commandPrefix: command } : null,

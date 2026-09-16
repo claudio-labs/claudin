@@ -1,10 +1,9 @@
 import { feature } from 'bun:bundle';
 import * as React from 'react';
 import { memo, useCallback, useEffect, useRef } from 'react';
-import { logEvent } from 'src/platform/analytics/index.js';
 import { type AppState, useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import type { PermissionMode } from 'src/permissions/PermissionMode.js';
-import { getIsRemoteMode, getKairosActive, getMainThreadAgentType, getOriginalCwd, getSdkBetas, getSessionId } from 'src/platform/bootstrap/state.js';
+import { getIsRemoteMode, getMainThreadAgentType, getOriginalCwd, getSdkBetas, getSessionId } from 'src/platform/bootstrap/state.js';
 import { DEFAULT_OUTPUT_STYLE_NAME } from 'src/shared/constants/outputStyles.js';
 import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { getTotalAPIDuration, getTotalCost, getTotalDuration, getTotalInputTokens, getTotalLinesAdded, getTotalLinesRemoved, getTotalOutputTokens } from 'src/agent/cost-tracker.js';
@@ -28,9 +27,6 @@ import { doesMostRecentAssistantMessageExceed200k, getCurrentUsage } from 'src/a
 import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js';
 import { isVimModeEnabled } from 'src/terminal/prompt-input/utils.js';
 export function statusLineShouldDisplay(settings: ReadonlySettings): boolean {
-  // Assistant mode: statusline fields (model, permission mode, cwd) reflect the
-  // REPL/daemon process, not what the agent child is actually running. Hide it.
-  if (feature('KAIROS') && getKairosActive()) return false;
   return settings?.statusLine !== undefined;
 }
 function buildStatusLineCommandInput(permissionMode: PermissionMode, exceeds200kTokens: boolean, settings: ReadonlySettings, messages: Message[], addedDirs: string[], mainLoopModel: ModelName, vimMode?: VimMode): StatusLineCommandInput {
@@ -265,10 +261,6 @@ function StatusLineInner({
   useEffect(() => {
     const statusLine = settings?.statusLine;
     if (statusLine) {
-      logEvent('tengu_status_line_mount', {
-        command_length: statusLine.command.length,
-        padding: statusLine.padding
-      });
       // Log if status line is configured but disabled by disableAllHooks
       if (settings.disableAllHooks === true) {
         logForDebugging('Status line is configured but disableAllHooks is true', {

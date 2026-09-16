@@ -30,10 +30,6 @@ import {
 } from 'fs/promises'
 import { dirname } from 'path'
 import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
-import {
   getOriginalCwd,
   getPlanSlugCache,
   getPromptId,
@@ -670,8 +666,8 @@ export class Project {
    * True when test env / cleanupPeriodDays=0 / --no-session-persistence /
    * CLAUDIN_SKIP_PROMPT_HISTORY should suppress all transcript writes.
    * Shared guard for appendEntry and materializeSessionFile so both skip
-   * consistently. The env var is set by tmuxSocket.ts so Tungsten-spawned
-   * test sessions don't pollute the user's --resume list.
+   * consistently. The env var is set by tmuxSocket.ts so sessions started on
+   * our own tmux socket don't pollute the user's --resume list.
    */
   private shouldSkipPersistence(): boolean {
     const allowTestPersistence = isEnvTruthy(
@@ -1034,7 +1030,6 @@ export class Project {
           },
         )
       } catch {
-        logEvent('tengu_session_persistence_failed', {})
         logForDebugging('Failed to write transcript as internal event')
       }
       return
@@ -1055,7 +1050,6 @@ export class Project {
     )
 
     if (!success) {
-      logEvent('tengu_session_persistence_failed', {})
       gracefulShutdownSync(1, 'other')
     }
   }

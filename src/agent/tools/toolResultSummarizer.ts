@@ -16,8 +16,6 @@ import { detectCodeLang, stripLineNumberPrefix } from 'src/shared/fs/detectCodeL
 import { scanSymbols } from 'src/tools/shared/codeOutline/scanSymbols.js'
 import { renderOutlineBody } from 'src/tools/shared/codeOutline/renderOutline.js'
 import { recordBytesSaved } from 'src/agent/context/tokensSaved.js'
-import { logEvent } from 'src/platform/analytics/index.js'
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { GLOB_TOOL_NAME } from 'src/tools/GlobTool/prompt.js'
 import { GREP_TOOL_NAME } from 'src/tools/GrepTool/prompt.js'
@@ -104,8 +102,8 @@ export function isToolResultCodeOutlineEnabled(): boolean {
   return false
 }
 
-// Strategy enum numeric IDs (analytics payloads only accept boolean|number).
-// id 5 ('read-head-tail') was retired; do not reuse — analytics continuity.
+// Strategy enum numeric IDs. id 5 ('read-head-tail') was retired; do not reuse
+// — the numbering is quoted in benches and in the tests below.
 const STRATEGY_ID: Record<StrategyName, number> = {
   'head-tail-errors': 1,
   'grep-grouped': 2,
@@ -116,6 +114,55 @@ const STRATEGY_ID: Record<StrategyName, number> = {
   'mcp-head-tail': 8,
   'json-structural': 9,
   'code-outline': 10,
+}
+
+/**
+ * What the last summarization decided.
+ *
+ * Which strategy fired, whether an error window or a salient line survived and
+ * how much was saved are decisions made deep inside `dispatch`, and the wrapped
+ * string alone does not show them. They used to be observable only because they
+ * were also shipped as an analytics event; that event reached a function the
+ * build stubs to an empty body, so the tests were reading a channel that did
+ * not exist outside the test process.
+ *
+ * This is that channel, made real and local. Overwritten on every call — it is
+ * a last-write record for tests and for `--debug`, not a log.
+ */
+export type SummaryDecision = {
+  toolName: string
+  originalSizeBytes: number
+  summarizedSizeBytes: number
+  estimatedOriginalTokens: number
+  estimatedSummarizedTokens: number
+  strategyId: number
+  /**
+   * Absent — not `false` — for a strategy with no error-window concept (glob,
+   * the AgentTool array path). The tests assert on that distinction.
+   */
+  errorWindowPreserved?: boolean
+  /**
+   * How many salient lines were pinned. `dispatch` reports a count, which the
+   * old analytics payload flattened to a boolean — keep the count, it says
+   * strictly more.
+   */
+  salientPinned?: number
+  reductionPct: number
+}
+
+let lastDecision: SummaryDecision | null = null
+
+function recordDecision(decision: SummaryDecision): void {
+  lastDecision = decision
+}
+
+export function getLastSummaryDecision(): SummaryDecision | null {
+  return lastDecision
+}
+
+/** Drop the record so one test cannot read the previous test's decision. */
+export function resetLastSummaryDecision(): void {
+  lastDecision = null
 }
 
 type StrategyName =
@@ -242,9 +289,8 @@ export function maybeSummarizeToolResult(
 
     const summarizedSizeBytes = wrapped.length
     recordBytesSaved(originalSizeBytes, summarizedSizeBytes)
-
-    logEvent('claudin_tool_result_summarized', {
-      toolName: sanitizeToolNameForAnalytics(toolName),
+    recordDecision({
+      toolName,
       originalSizeBytes,
       summarizedSizeBytes,
       estimatedOriginalTokens: Math.ceil(originalSizeBytes / BYTES_PER_TOKEN),
@@ -425,9 +471,8 @@ function maybeSummarizeArrayContent(
   if (wrapped.length >= originalSizeBytes) return block
 
   recordBytesSaved(originalSizeBytes, wrapped.length)
-
-  logEvent('claudin_tool_result_summarized', {
-    toolName: sanitizeToolNameForAnalytics(toolName),
+  recordDecision({
+    toolName,
     originalSizeBytes,
     summarizedSizeBytes: wrapped.length,
     estimatedOriginalTokens: Math.ceil(originalSizeBytes / BYTES_PER_TOKEN),

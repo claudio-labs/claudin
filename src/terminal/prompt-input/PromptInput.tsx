@@ -8,7 +8,6 @@ import { useCommandQueue } from 'src/agent/hooks/useCommandQueue.js';
 import { type IDEAtMentioned, useIdeAtMentioned } from 'src/platform/ide/useIdeAtMentioned.js';
 import { useSessionDiffStat } from 'src/vcs/diff/hooks/useSessionDiffStat.js';
 import { useGitDiffStat } from 'src/vcs/diff/hooks/useGitDiffStat.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { type AppState, useAppState, useAppStateStore, useSetAppState } from 'src/terminal/state/AppState.js';
 
 /** One entry of AppState.teamContext.teammates. */
@@ -344,8 +343,6 @@ function PromptInput({
   // otherwise bridge becomes an invisible selection stop.
   const bridgeFooterVisible = replBridgeConnected && (replBridgeExplicit || replBridgeReconnecting);
   const tmuxFooterVisible = false;
-  // WebBrowser pill — visible when a browser is open
-  const bagelFooterVisible = useAppState((s: AppState) => false);
   const teamContext = useAppState((s: AppState) => s.teamContext);
   const queuedCommands = useCommandQueue();
   const promptSuggestionState = useAppState((s: AppState) => s.promptSuggestion);
@@ -362,14 +359,6 @@ function PromptInput({
     companionMuted: undefined
   };
   const companionFooterVisible = !!_companion && !companionMuted;
-  // Brief mode: BriefSpinner/BriefIdleStatus own the 2-row footprint above
-  // the input. Dropping marginTop here lets the spinner sit flush against
-  // the input bar. viewingAgentTaskId mirrors the gate on both (Spinner.tsx,
-  // REPL.tsx) — teammate view falls back to SpinnerWithVerbInner which has
-  // its own marginTop, so the gap stays even without ours.
-  const briefOwnsGap = feature('KAIROS') || feature('KAIROS_BRIEF') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useAppState((s: AppState) => s.isBriefOnly) && !viewingAgentTaskId : false;
   const mainLoopModel_ = useAppState((s: AppState) => s.mainLoopModel);
   const mainLoopModelForSession = useAppState((s: AppState) => s.mainLoopModelForSession);
   const thinkingEnabled = useAppState((s: AppState) => s.thinkingEnabled);
@@ -514,7 +503,7 @@ function PromptInput({
   const footerLayout = useMemo(() => getFooterPanelLayout(tasks), [tasks]);
   const tasksFooterVisible = (runningTaskCount > 0 || hasPanelRows) && !shouldHideTasksFooter(tasks, showSpinnerTree);
   const teamsFooterVisible = cachedTeams.length > 0;
-  const footerItems = useMemo(() => [tasksFooterVisible && 'tasks', tmuxFooterVisible && 'tmux', bagelFooterVisible && 'bagel', teamsFooterVisible && 'teams', bridgeFooterVisible && 'bridge', companionFooterVisible && 'companion'].filter(Boolean) as FooterItem[], [tasksFooterVisible, tmuxFooterVisible, bagelFooterVisible, teamsFooterVisible, bridgeFooterVisible, companionFooterVisible]);
+  const footerItems = useMemo(() => [tasksFooterVisible && 'tasks', tmuxFooterVisible && 'tmux', teamsFooterVisible && 'teams', bridgeFooterVisible && 'bridge', companionFooterVisible && 'companion'].filter(Boolean) as FooterItem[], [tasksFooterVisible, tmuxFooterVisible, teamsFooterVisible, bridgeFooterVisible, companionFooterVisible]);
 
   // Effective selection: null if the selected pill stopped rendering (bridge
   // disconnected, task finished). The derivation makes the UI correct
@@ -532,7 +521,6 @@ function PromptInput({
   }, [rawFooterSelection, footerItemSelected, setAppState]);
   const tasksSelected = footerItemSelected === 'tasks';
   const tmuxSelected = footerItemSelected === 'tmux';
-  const bagelSelected = footerItemSelected === 'bagel';
   const teamsSelected = footerItemSelected === 'teams';
   const bridgeSelected = footerItemSelected === 'bridge';
   function selectFooterItem(item: FooterItem | null): void {
@@ -912,7 +900,6 @@ function PromptInput({
   });
   const onChange = useCallback((value: string) => {
     if (value === '?') {
-      logEvent('tengu_help_toggled', {});
       setHelpOpen(v => !v);
       return;
     }
@@ -1149,7 +1136,6 @@ function PromptInput({
     // Route input to viewed agent (in-process teammate or named local_agent).
     const activeAgent = getActiveAgentForInput(store.getState());
     if (activeAgent.type !== 'leader' && onAgentSubmit) {
-      logEvent('tengu_transcript_input_to_teammate', {});
       await onAgentSubmit(inputParam, activeAgent.task, {
         setCursorOffset,
         clearBuffer,
@@ -1215,7 +1201,6 @@ function PromptInput({
     }));
   }
   function onImagePaste(image: string, mediaType?: string, filename?: string, dimensions?: ImageDimensions, sourcePath?: string) {
-    logEvent('tengu_paste_image', {});
     onModeChange('prompt');
     const pasteId = nextPasteIdRef.current++;
     const newContent: PastedContent = {
@@ -1374,7 +1359,6 @@ function PromptInput({
   // Insert the at-mentioned reference (the file and, optionally, a line range) when
   // we receive an at-mentioned notification the IDE.
   const onIdeAtMentioned = function (atMentioned: IDEAtMentioned) {
-    logEvent('tengu_ext_at_mentioned', {});
     let atMentionedText: string;
     const relativePath = path.relative(getCwd(), atMentioned.filePath);
     if (atMentioned.lineStart && atMentioned.lineEnd) {
@@ -1412,7 +1396,6 @@ function PromptInput({
 
   // Handler for chat:externalEditor - edit in $EDITOR
   const handleExternalEditor = useCallback(async () => {
-    logEvent('tengu_external_editor_used', {});
     setIsExternalEditorActive(true);
     try {
       // Pass pastedContents to expand collapsed text references
@@ -1520,9 +1503,6 @@ function PromptInput({
         timeoutMs: 3000
       });
     }
-    logEvent('tengu_effort_command', {
-      effort: next as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    });
     // CLAUDIN_EFFORT_LEVEL wins at resolve time, so the footer indicator
     // won't move — warn once (only when env resolves to a different level) so
     // the key doesn't look dead.
@@ -1546,9 +1526,6 @@ function PromptInput({
       };
       // Pass undefined for teamContext (unused but kept for API compatibility)
       const nextMode = getNextPermissionMode(teammateContext, undefined);
-      logEvent('tengu_mode_cycle', {
-        to: nextMode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
       const teammateTaskId = viewingAgentTaskId;
       setAppState(prev => {
         const task = prev.tasks[teammateTaskId];
@@ -1629,9 +1606,6 @@ function PromptInput({
     // The dialog's own decline button (handleAutoModeOptInDecline) handles revert.
     if (feature('TRANSCRIPT_CLASSIFIER')) {
       if (showAutoModeOptIn || autoModeOptInTimeoutRef.current) {
-        if (showAutoModeOptIn) {
-          logEvent('tengu_auto_mode_opt_in_dialog_decline', {});
-        }
         setShowAutoModeOptIn(false);
         if (autoModeOptInTimeoutRef.current) {
           clearTimeout(autoModeOptInTimeoutRef.current);
@@ -1648,9 +1622,6 @@ function PromptInput({
     const {
       context: preparedContext
     } = cyclePermissionMode(toolPermissionContext, teamContext);
-    logEvent('tengu_mode_cycle', {
-      to: nextMode as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    });
 
     // Track when user enters plan mode
     if (nextMode === 'plan') {
@@ -2028,8 +1999,6 @@ function PromptInput({
           break;
         case 'tmux':
           break;
-        case 'bagel':
-          break;
         case 'teams':
           setShowTeamsDialog(true);
           selectFooterItem(null);
@@ -2198,7 +2167,7 @@ function PromptInput({
   // Suppressed in brief/assistant mode — the value reflects the local
   // client's effort, not the connected agent's.
   const [effortThemeName] = useTheme();
-  const effort = briefOwnsGap ? undefined : getEffortPill(effortValue, mainLoopModel, getTheme(effortThemeName));
+  const effort = getEffortPill(effortValue, mainLoopModel, getTheme(effortThemeName));
   // Diff readout on the prompt's top rule: this session's churn (free), plus
   // the git totals it can't see (work committed, work done before the session).
   const sessionDiff = useSessionDiffStat();
@@ -2274,9 +2243,6 @@ function PromptInput({
       priority: 'immediate',
       timeoutMs: 3000
     });
-    logEvent('tengu_model_picker_hotkey', {
-      model: model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-    });
   }, [setAppState, addNotification, isFastMode]);
   const handleModelCancel = useCallback(() => {
     setShowModelPicker(false);
@@ -2317,9 +2283,6 @@ function PromptInput({
       thinkingEnabled: enabled
     }));
     setShowThinkingToggle(false);
-    logEvent('tengu_thinking_toggled_hotkey', {
-      enabled
-    });
     addNotification({
       key: 'thinking-toggled-hotkey',
       jsx: <Text color={enabled ? 'suggestion' : undefined} dimColor={!enabled}>
@@ -2558,7 +2521,7 @@ function PromptInput({
       </Box></>;
   }
   const textInputElement = isVimModeEnabled() ? <VimTextInput {...baseProps} initialMode={vimMode} onModeChange={setVimMode} /> : <TextInput {...baseProps} />;
-  return <>{historyPickerEl}<Box flexDirection="column" marginTop={briefOwnsGap ? 0 : 1}>
+  return <>{historyPickerEl}<Box flexDirection="column" marginTop={1}>
       {!isFullscreenEnvEnabled() && <PromptInputQueuedCommands />}
       {hasSuppressedDialogs && <Box marginTop={1} marginLeft={2}>
           <Text dimColor>Waiting for permission…</Text>
@@ -2623,10 +2586,7 @@ function PromptInput({
     // doesn't shift when a notification appears/disappears. Yoga
     // anchors absolute children at the parent's content-box origin;
     // marginTop=-1 pulls it into the marginTop=1 gap row above the
-    // prompt border. In brief mode there is no such gap (briefOwnsGap
-    // strips our marginTop) and BriefSpinner sits flush against the
-    // border — marginTop=-2 skips over the spinner content into
-    // BriefSpinner's own marginTop=1 blank row. height=1 +
+    // prompt border. height=1 +
     // overflow=hidden clips multi-line notifications to a single row.
     // flex-end anchors the bottom line so the visible row is always
     // the most recent. Suppressed while the slash overlay or
@@ -2635,7 +2595,7 @@ function PromptInput({
     // bottom row. Keeping Notifications mounted prevents AutoUpdater's
     // initial-check effect from re-firing on every slash-completion
     // toggle (PR#22413).
-    <Box position="absolute" marginTop={briefOwnsGap ? -2 : -1} height={suggestions.length === 0 && !showAutoModeOptIn ? 1 : 0} width="100%" paddingLeft={2} paddingRight={1} flexDirection="column" justifyContent="flex-end" overflow="hidden">
+    <Box position="absolute" marginTop={-1} height={suggestions.length === 0 && !showAutoModeOptIn ? 1 : 0} width="100%" paddingLeft={2} paddingRight={1} flexDirection="column" justifyContent="flex-end" overflow="hidden">
           <Notifications apiKeyStatus={apiKeyStatus} autoUpdaterResult={autoUpdaterResult} debug={debug} isAutoUpdating={isAutoUpdating} verbose={verbose} messages={messages} onAutoUpdaterResult={onAutoUpdaterResult} onChangeIsUpdating={setIsAutoUpdating} ideSelection={ideSelection} mcpClients={mcpClients} isInputWrapped={isInputWrapped} />
         </Box> : null}
     </Box></>;

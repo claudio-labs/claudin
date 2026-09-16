@@ -7,7 +7,6 @@
  * nonMisparsingValidators — the rest carry the misparsing flag.
  */
 
-import { logEvent } from 'src/platform/analytics/index.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import { BASH_SECURITY_CHECK_IDS } from 'src/tools/BashTool/bashSecurity/checkIds.js'
 import type { ValidationContext } from 'src/tools/BashTool/bashSecurity/context.js'
@@ -33,10 +32,6 @@ export function validateNewlines(context: ValidationContext): PermissionResult {
   // eslint-disable-next-line custom-rules/no-lookbehind-regex -- .test() + gated by /[\n\r]/.test() above
   const looksLikeCommand = /(?<![\s]\\)[\n\r]\s*\S/.test(fullyUnquotedPreStrip)
   if (looksLikeCommand) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.NEWLINES,
-      subId: 1,
-    })
     return {
       behavior: 'ask',
       message:
@@ -109,10 +104,6 @@ export function validateCarriageReturn(context: ValidationContext): PermissionRe
       continue
     }
     if (c === '\r' && !inDoubleQuote) {
-      logEvent('tengu_bash_security_check_triggered', {
-        checkId: BASH_SECURITY_CHECK_IDS.NEWLINES,
-        subId: 2,
-      })
       return {
         behavior: 'ask',
         message:
@@ -137,9 +128,6 @@ export function validateUnicodeWhitespace(
 ): PermissionResult {
   const { originalCommand } = context
   if (UNICODE_WS_RE.test(originalCommand)) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.UNICODE_WHITESPACE,
-    })
     return {
       behavior: 'ask',
       message:
@@ -182,9 +170,6 @@ export function validateMidWordHash(context: ValidationContext): PermissionResul
     // eslint-disable-next-line custom-rules/no-lookbehind-regex -- same as above
     /\S(?<!\$\{)#/.test(joined)
   ) {
-    logEvent('tengu_bash_security_check_triggered', {
-      checkId: BASH_SECURITY_CHECK_IDS.MID_WORD_HASH,
-    })
     return {
       behavior: 'ask',
       message:
@@ -288,9 +273,6 @@ export function validateCommentQuoteDesync(
         lineEnd === -1 ? originalCommand.length : lineEnd,
       )
       if (/['"]/.test(commentText)) {
-        logEvent('tengu_bash_security_check_triggered', {
-          checkId: BASH_SECURITY_CHECK_IDS.COMMENT_QUOTE_DESYNC,
-        })
         return {
           behavior: 'ask',
           message:
@@ -392,9 +374,6 @@ export function validateQuotedNewline(context: ValidationContext): PermissionRes
       const lineEnd = nextNewline === -1 ? originalCommand.length : nextNewline
       const nextLine = originalCommand.slice(lineStart, lineEnd)
       if (nextLine.trim().startsWith('#')) {
-        logEvent('tengu_bash_security_check_triggered', {
-          checkId: BASH_SECURITY_CHECK_IDS.QUOTED_NEWLINE,
-        })
         return {
           behavior: 'ask',
           message:

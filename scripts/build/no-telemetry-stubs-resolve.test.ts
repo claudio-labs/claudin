@@ -59,7 +59,17 @@ test('every no-telemetry stub key still resolves, or names nothing at all', asyn
     join(import.meta.dir, 'no-telemetry-plugin.ts'),
   ).text()
   const keys = stubKeys(plugin)
-  expect(keys.length).toBeGreaterThan(10)
+  // Sanity check that the regex above still finds the keys at all — a pattern
+  // that silently matched nothing would snapshot an empty list and guard
+  // nothing, which is the failure mode this whole file exists for.
+  //
+  // The floor used to be 10. Deleting the analytics and telemetry modules
+  // removed the 15 stubs that stood in for them, and promoting the flag
+  // resolver to real source removed the growthbook one — so the plugin is down
+  // to three: internalLogging, dumpPrompts and undercover. Two of those three
+  // name a module that no longer exists anywhere, which the report below says
+  // out loud rather than failing on.
+  expect(keys.length).toBeGreaterThanOrEqual(3)
 
   const disarmed: string[] = []
   const dead: string[] = []

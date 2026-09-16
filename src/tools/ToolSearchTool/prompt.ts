@@ -1,27 +1,8 @@
 import { feature } from 'bun:bundle'
-import {
-  getDeferredDeltaLegacySession,
-  isReplBridgeActive,
-} from 'src/platform/bootstrap/state.js'
+import { getDeferredDeltaLegacySession } from 'src/platform/bootstrap/state.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import type { Tool } from 'src/tools/Tool.js'
 import { AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js'
-
-// Dead code elimination: Brief tool name only needed when KAIROS or KAIROS_BRIEF is on
-/* eslint-disable @typescript-eslint/no-require-imports */
-const BRIEF_TOOL_NAME: string | null =
-  feature('KAIROS') || feature('KAIROS_BRIEF')
-    ? (
-        require('src/tools/BriefTool/prompt.js') as typeof import('src/tools/BriefTool/prompt.js')
-      ).BRIEF_TOOL_NAME
-    : null
-const SEND_USER_FILE_TOOL_NAME: string | null = feature('KAIROS')
-  ? (
-      require('../SendUserFileTool/prompt.js') as typeof import('../SendUserFileTool/prompt.js')
-    ).SEND_USER_FILE_TOOL_NAME
-  : null
-
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 export { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/constants.js'
 
@@ -86,30 +67,6 @@ export function isDeferredTool(tool: Tool): boolean {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const m = require('src/tools/AgentTool/forkSubagent.js') as ForkMod
     if (m.isForkSubagentEnabled()) return false
-  }
-
-  // Brief is the primary communication channel whenever the tool is present.
-  // Its prompt contains the text-visibility contract, which the model must
-  // see without a ToolSearch round-trip. No runtime gate needed here: this
-  // tool's isEnabled() IS isBriefEnabled(), so being asked about its deferral
-  // status implies the gate already passed.
-  if (
-    (feature('KAIROS') || feature('KAIROS_BRIEF')) &&
-    BRIEF_TOOL_NAME &&
-    tool.name === BRIEF_TOOL_NAME
-  ) {
-    return false
-  }
-
-  // SendUserFile is a file-delivery communication channel (sibling of Brief).
-  // Must be immediately available without a ToolSearch round-trip.
-  if (
-    feature('KAIROS') &&
-    SEND_USER_FILE_TOOL_NAME &&
-    tool.name === SEND_USER_FILE_TOOL_NAME &&
-    isReplBridgeActive()
-  ) {
-    return false
   }
 
   return tool.shouldDefer === true

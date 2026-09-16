@@ -12,7 +12,7 @@
 // State machine (preserved verbatim from the original):
 //   idle      → requested : first press; arm 10s failsafe + run shutdown
 //   requested → forced    : second press; SIGKILL immediately
-//   requested → idle      : user backed out (worktree cancel, bg detach)
+//   requested → idle      : user backed out (worktree cancel)
 //   * → forced (timer)    : failsafe fired after 10s of stalled cleanup
 //
 // PromptInput's TextInput hook and useExitOnCtrlCDWithKeybindings both fire
@@ -22,9 +22,6 @@
 
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
-import { spawnSync } from 'child_process'
-import { feature } from 'bun:bundle'
-import { isBgSession } from 'src/sessions/concurrentSessions.js'
 import { getCurrentWorktreeSession } from 'src/vcs/git/worktree.js'
 import { ExitFlow } from 'src/platform/ExitFlow.js'
 import exit from 'src/commands/exit/index.js'
@@ -80,18 +77,6 @@ export function useReplExit(): UseReplExitResult {
       process.kill(process.pid, 'SIGKILL')
     }, EXIT_FAILSAFE_MS)
     setIsExiting(true)
-    // In bg sessions, always detach instead of kill — even when a worktree is
-    // active. Without this guard, the worktree branch below short-circuits into
-    // ExitFlow (which calls gracefulShutdown) before exit.tsx is ever loaded.
-    if (feature('BG_SESSIONS') && isBgSession()) {
-      spawnSync('tmux', ['detach-client'], {
-        stdio: 'ignore',
-      })
-      clearExitFailsafe()
-      exitStateRef.current = 'idle'
-      setIsExiting(false)
-      return
-    }
     const showWorktree = getCurrentWorktreeSession() !== null
     if (showWorktree) {
       setExitFlow(
@@ -111,9 +96,9 @@ export function useReplExit(): UseReplExitResult {
     const exitMod = await exit.load()
     const exitFlowResult = await exitMod.call(() => {})
     setExitFlow(exitFlowResult)
-    // If call() returned without killing the process (bg session detach),
-    // clear isExiting so the UI is usable on reattach. No-op on the normal
-    // path — gracefulShutdown's process.exit() means we never get here.
+    // If call() returned without killing the process, clear isExiting so the
+    // UI stays usable. No-op on the normal path — gracefulShutdown's
+    // process.exit() means we never get here.
     if (exitFlowResult === null) {
       clearExitFailsafe()
       exitStateRef.current = 'idle'

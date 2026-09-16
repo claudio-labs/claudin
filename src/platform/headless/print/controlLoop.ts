@@ -54,7 +54,6 @@ import type { SDKUserMessageReplay } from 'src/platform/entrypoints/agentSdkType
 import {
   handleRewindFiles,
   handleSetPermissionMode,
-  handleChannelEnable,
 } from 'src/platform/headless/print/controlHandlers.js'
 import { handleInitializeRequest } from 'src/platform/headless/print/initHandler.js'
 import {
@@ -91,7 +90,6 @@ import {
   type SideQuestionRequest,
   type RemoteControlRequest,
 } from 'src/platform/headless/print/settingsControlHandlers.js'
-import { proactiveModule } from 'src/platform/headless/print/headlessOptionalModules.js'
 import type { HeadlessStreamingContext } from 'src/platform/headless/print/streamingContext.js'
 
 export async function runControlLoop(
@@ -133,16 +131,6 @@ export async function runControlLoop(
       // `set_proactive` branch below already uses.
       const requestSubtype: string = message.request.subtype
       if (message.request.subtype === 'interrupt') {
-        // Track escapes for attribution (internal-only feature)
-        if (feature('COMMIT_ATTRIBUTION')) {
-          setAppState(prev => ({
-            ...prev,
-            attribution: {
-              ...prev.attribution,
-              escapeCount: prev.attribution.escapeCount + 1,
-            },
-          }))
-        }
         if (ctx.abortController) {
           ctx.abortController.abort()
         }
@@ -335,19 +323,6 @@ export async function runControlLoop(
         await handleMcpReconnect(ctx, message as unknown as McpServerNameRequest)
       } else if (message.request.subtype === 'mcp_toggle') {
         await handleMcpToggle(ctx, message as unknown as McpToggleRequest)
-      } else if (requestSubtype === 'channel_enable') {
-        const currentAppState = getAppState()
-        handleChannelEnable(
-          message.request_id,
-          (message.request as unknown as { serverName: string }).serverName,
-          // Pool spread matches mcp_status — all three client sources.
-          [
-            ...currentAppState.mcp.clients,
-            ...ctx.sdkClients,
-            ...ctx.dynamicMcpState.clients,
-          ],
-          output,
-        )
       } else if (requestSubtype === 'mcp_authenticate') {
         await handleMcpAuthenticate(ctx, message as unknown as McpServerNameRequest)
       } else if (requestSubtype === 'mcp_oauth_callback_url') {
@@ -395,23 +370,6 @@ export async function runControlLoop(
         )
       } else if (requestSubtype === 'side_question') {
         handleSideQuestion(ctx, message as unknown as SideQuestionRequest)
-      } else if (
-        (feature('PROACTIVE') || feature('KAIROS')) &&
-        requestSubtype === 'set_proactive'
-      ) {
-        const req = message.request as unknown as {
-          subtype: string
-          enabled: boolean
-        }
-        if (req.enabled) {
-          if (!proactiveModule!.isProactiveActive()) {
-            proactiveModule!.activateProactive('command')
-            ctx.scheduleProactiveTick!()
-          }
-        } else {
-          proactiveModule!.deactivateProactive()
-        }
-        ctx.sendControlResponseSuccess(message)
       } else if (requestSubtype === 'remote_control') {
         await handleRemoteControl(ctx, message as unknown as RemoteControlRequest)
       } else {
@@ -508,18 +466,6 @@ export async function runControlLoop(
       uuid: message.uuid as UUID | undefined,
       priority: message.priority,
     })
-    // Increment prompt count for attribution tracking and save snapshot
-    // The snapshot persists promptCount so it survives compaction
-    if (feature('COMMIT_ATTRIBUTION')) {
-      setAppState(prev => ({
-        ...prev,
-        attribution: incrementPromptCount(prev.attribution, snapshot => {
-          void recordAttributionSnapshot(snapshot).catch(error => {
-            logForDebugging(`Attribution: Failed to save snapshot: ${error}`)
-          })
-        }),
-      }))
-    }
     void ctx.run()
   }
   ctx.inputClosed = true

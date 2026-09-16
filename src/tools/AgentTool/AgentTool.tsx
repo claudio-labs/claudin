@@ -12,7 +12,6 @@ import { isCoordinatorMode } from 'src/agent/coordinator/coordinatorMode.js';
 import { startAgentSummarization, summarizeAgentResult } from 'src/agent/summary/agentSummary.js';
 import { getGlobalConfig } from 'src/platform/config/config.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { clearDumpState } from 'src/providers/transport/dumpPrompts.js';
 import { completeAgentTask as completeAsyncAgent, createActivityDescriptionResolver, createProgressTracker, enqueueAgentNotification, failAgentTask as failAsyncAgent, getProgressUpdate, getTokenCountFromTracker, isLocalAgentTask, killAsyncAgent, registerAgentForeground, registerAsyncAgent, unregisterAgentForeground, updateAgentProgress as updateAsyncAgentProgress, updateProgressFromMessage } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
 import { checkRemoteAgentEligibility, formatPreconditionError, getRemoteTaskSessionUrl, registerRemoteAgentTask } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
@@ -60,10 +59,6 @@ import { getPrompt } from 'src/tools/AgentTool/prompt.js';
 import { applyReadOnly, READ_ONLY_INPUT_DESCRIPTION } from 'src/tools/AgentTool/readOnlyAgent.js';
 import { runAgent } from 'src/tools/AgentTool/runAgent.js';
 import { renderGroupedAgentToolUse, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseRejectedMessage, renderToolUseTag, userFacingName, userFacingNameBackgroundColor } from 'src/tools/AgentTool/UI.js';
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const proactiveModule = feature('PROACTIVE') || feature('KAIROS') ? require('../../platform/proactive/index.js') as typeof import('../../platform/proactive/index.js') : null;
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 // Progress display constants (for showing background hint)
 const PROGRESS_THRESHOLD_MS = 2000; // Show background hint after 2 seconds
@@ -129,7 +124,7 @@ const fullInputSchema = lazySchema(() => {
 // type, but call() destructures via the explicit AgentToolInput type below
 // which always includes all optional fields.
 export const inputSchema = lazySchema(() => {
-  const schema = feature('KAIROS') ? fullInputSchema() : fullInputSchema().omit({
+  const schema = fullInputSchema().omit({
     cwd: true
   });
 
@@ -455,16 +450,6 @@ export const AgentTool = buildTool({
 
     // Resolve agent params for logging (these are already resolved in runAgent)
     const resolvedAgentModel = getAgentModel(selectedAgent.model, toolUseContext.options.mainLoopModel, isForkPath ? undefined : model, permissionMode);
-    logEvent('tengu_agent_tool_selected', {
-      agent_type: selectedAgent.agentType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      model: resolvedAgentModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      source: selectedAgent.source as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      color: selectedAgent.color as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      is_built_in_agent: isBuiltInAgent(selectedAgent),
-      is_resume: false,
-      is_async: (run_in_background === true || selectedAgent.background === true) && !isBackgroundTasksDisabled,
-      is_fork: isForkPath
-    });
 
     // Resolve effective isolation mode (explicit param overrides agent def)
     const effectiveIsolation = isolation ?? selectedAgent.isolation;
@@ -513,13 +498,6 @@ export const AgentTool = buildTool({
           toolUseContext
         });
 
-        // Log agent memory loaded event for subagents
-        if (selectedAgent.memory) {
-          logEvent('tengu_agent_memory_loaded', {
-            scope: selectedAgent.memory as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-            source: 'subagent' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-          });
-        }
 
         // Apply environment details enhancement
         enhancedSystemPrompt = await enhanceSystemPromptWithEnvDetails([agentPrompt], resolvedAgentModel, additionalWorkingDirectories);
@@ -566,16 +544,7 @@ export const AgentTool = buildTool({
       implicitBackgroundAllowed &&
       isAutoBackgroundAgentsEnabled() &&
       !getIsNonInteractiveSession();
-
-    // Assistant mode: force all agents async. Synchronous subagents hold the
-    // main loop's turn open until they complete — the daemon's inputQueue
-    // backs up, and the first overdue cron catch-up on spawn becomes N
-    // serial subagent turns blocking all user input. Same gate as
-    // executeForkedSlashCommand's fire-and-forget path; the
-    // <task-notification> re-entry there is handled by the else branch
-    // below (registerAsyncAgentTask + notifyOnCompletion).
-    const assistantForceAsync = feature('KAIROS') ? appState.kairosEnabled : false;
-    const shouldRunAsync = (run_in_background === true || selectedAgent.background === true || isCoordinator || assistantForceAsync || autoBackgroundImplicit || (proactiveModule?.isProactiveActive() ?? false)) && !isBackgroundTasksDisabled;
+    const shouldRunAsync = (run_in_background === true || selectedAgent.background === true || isCoordinator || autoBackgroundImplicit) && !isBackgroundTasksDisabled;
     // Keep telemetry's isAsync truthful to how the agent actually ran.
     metadata.isAsync = shouldRunAsync;
     // Assemble the worker's tool pool independently of the parent's.
@@ -1059,14 +1028,6 @@ export const AgentTool = buildTool({
                       // Transition status BEFORE worktree cleanup so
                       // TaskOutput unblocks even if git hangs (gh-20236).
                       killAsyncAgent(backgroundedTaskId, rootSetAppState);
-                      logEvent('tengu_agent_tool_terminated', {
-                        agent_type: metadata.agentType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-                        model: metadata.resolvedAgentModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-                        duration_ms: Date.now() - metadata.startTime,
-                        is_async: true,
-                        is_built_in_agent: metadata.isBuiltInAgent,
-                        reason: 'user_cancel_background' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-                      });
                       const worktreeResult = await cleanupWorktreeIfNeeded();
                       const partialResult = extractPartialResult(agentMessages);
                       enqueueAgentNotification({
@@ -1196,14 +1157,6 @@ export const AgentTool = buildTool({
           // AbortError should be re-thrown for proper interruption handling
           if (error instanceof AbortError) {
             wasAborted = true;
-            logEvent('tengu_agent_tool_terminated', {
-              agent_type: metadata.agentType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-              model: metadata.resolvedAgentModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-              duration_ms: Date.now() - metadata.startTime,
-              is_async: false,
-              is_built_in_agent: metadata.isBuiltInAgent,
-              reason: 'user_cancel_sync' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-            });
             throw error;
           }
 
@@ -1273,14 +1226,6 @@ export const AgentTool = buildTool({
         // TODO: Find a cleaner way to express this
         const lastMessage = agentMessages.findLast(_ => _.type !== 'system' && _.type !== 'progress');
         if (lastMessage && isSyntheticMessage(lastMessage)) {
-          logEvent('tengu_agent_tool_terminated', {
-            agent_type: metadata.agentType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-            model: metadata.resolvedAgentModel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-            duration_ms: Date.now() - metadata.startTime,
-            is_async: false,
-            is_built_in_agent: metadata.isBuiltInAgent,
-            reason: 'user_cancel_sync' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-          });
           throw new AbortError();
         }
 

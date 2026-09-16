@@ -7,7 +7,6 @@ import {
 } from 'src/platform/settings/settings.js'
 import { shouldOfferTerminalSetup } from 'src/commands/terminalSetup/terminalSetup.js'
 import { color } from 'src/terminal/design-system/color.js'
-import { shouldShowOverageCreditUpsell } from 'src/terminal/logo/OverageCreditUpsell.js'
 import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js'
 import { isKairosCronEnabled } from 'src/tools/ScheduleCronTool/prompt.js'
 import { is1PApiCustomer } from 'src/providers/auth/auth.js'
@@ -43,15 +42,6 @@ import {
   isCustomTitleEnabled,
 } from 'src/sessions/sessionStorage.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import {
-  formatGrantAmount,
-  getCachedOverageCreditGrant,
-} from 'src/providers/usage/overageCreditGrant.js'
-import {
-  checkCachedPassesEligibility,
-  formatCreditAmount,
-  getCachedReferrerReward,
-} from 'src/providers/usage/referral.js'
 import { getSessionsSinceLastShown } from 'src/terminal/tips/tipHistory.js'
 import type { Tip, TipContext } from 'src/terminal/tips/types.js'
 
@@ -604,38 +594,6 @@ const externalTips: Tip[] = [
         ) !== 'off'
       )
     },
-  },
-  {
-    id: 'guest-passes',
-    content: async ctx => {
-      const claude = color('claude', ctx.theme)
-      const reward = getCachedReferrerReward()
-      return reward
-        ? `Share Claudin and earn ${claude(formatCreditAmount(reward))} of extra usage · ${claude('/passes')}`
-        : `You have free guest passes to share · ${claude('/passes')}`
-    },
-    cooldownSessions: 3,
-    isRelevant: async () => {
-      const config = getGlobalConfig()
-      if (config.hasVisitedPasses) {
-        return false
-      }
-      const { eligible } = checkCachedPassesEligibility()
-      return eligible
-    },
-  },
-  {
-    id: 'overage-credit',
-    content: async ctx => {
-      const claude = color('claude', ctx.theme)
-      const info = getCachedOverageCreditGrant()
-      const amount = info ? formatGrantAmount(info) : null
-      if (!amount) return ''
-      // Copy from "OC & Bulk Overages copy" doc (#5 — CLI Rotating tip)
-      return `${claude(`${amount} in extra usage, on us`)} · third-party apps · ${claude('/extra-usage')}`
-    },
-    cooldownSessions: 3,
-    isRelevant: async () => shouldShowOverageCreditUpsell(),
   },
   {
     id: 'feedback-command',

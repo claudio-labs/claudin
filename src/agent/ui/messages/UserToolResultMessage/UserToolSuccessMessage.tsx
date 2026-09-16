@@ -3,7 +3,6 @@ import figures from 'figures';
 import * as React from 'react';
 import { SentryErrorBoundary } from 'src/platform/SentryErrorBoundary.js';
 import { Box, Text, useTheme } from 'src/terminal/ink.js';
-import { type AppState, useAppState } from 'src/terminal/state/AppState.js';
 import { filterToolProgressMessages, type Tool, type Tools } from 'src/tools/Tool.js';
 import type { NormalizedUserMessage, ProgressMessage } from 'src/shared/types/message.js';
 import { deleteClassifierApproval, getClassifierApproval, getYoloClassifierApproval } from 'src/permissions/classifierApprovals.js';
@@ -35,12 +34,6 @@ export function UserToolSuccessMessage({
   isTranscriptMode
 }: Props): React.ReactNode {
   const [theme] = useTheme();
-  // Hook stays inside feature() ternary so external builds don't pay a
-  // per-scrollback-message store subscription — same pattern as
-  // UserPromptMessage.tsx.
-  const isBriefOnly = feature('KAIROS') || feature('KAIROS_BRIEF') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useAppState((s: AppState) => s.isBriefOnly) : false;
 
   // Capture classifier approval once on mount, then delete from Map to prevent linear growth.
   // useState lazy initializer ensures the value persists across re-renders.
@@ -111,7 +104,6 @@ export function UserToolSuccessMessage({
     tools,
     verbose,
     isTranscriptMode,
-    isBriefOnly,
     input: lookups.toolUseByToolUseID.get(toolUseID)?.input
   }) ?? null;
 

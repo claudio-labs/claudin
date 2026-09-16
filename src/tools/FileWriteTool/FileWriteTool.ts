@@ -1,5 +1,4 @@
 import { dirname, sep } from 'path'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { z } from 'zod/v4'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { diagnosticTracker } from 'src/platform/diagnosticTracking.js'
@@ -28,7 +27,6 @@ import {
   fileHistoryEnabled,
   fileHistoryTrackEdit,
 } from 'src/shared/fs/fileHistory.js'
-import { logFileOperation } from 'src/platform/fileOperationAnalytics.js'
 import { readFileSyncWithMetadata } from 'src/shared/fs/fileRead.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
 import {
@@ -359,13 +357,6 @@ export const FileWriteTool = buildTool({
       limit: undefined,
     })
 
-    // Log when writing to the root project instruction file
-    if (
-      fullFilePath.endsWith(`${sep}AGENTS.md`) ||
-      fullFilePath.endsWith(`${sep}CLAUDE.md`)
-    ) {
-      logEvent('tengu_write_claudemd', {})
-    }
 
     let gitDiff: ToolUseDiff | undefined
     if (
@@ -375,11 +366,6 @@ export const FileWriteTool = buildTool({
       const startTime = Date.now()
       const diff = await fetchSingleFileGitDiff(fullFilePath)
       if (diff) gitDiff = diff
-      logEvent('tengu_tool_use_diff_computed', {
-        isWriteTool: true,
-        durationMs: Date.now() - startTime,
-        hasDiff: !!diff,
-      })
     }
 
     // Per-edit LSP diagnostic injection: wait briefly for the LSP server to
@@ -415,13 +401,6 @@ export const FileWriteTool = buildTool({
       // Track lines added and removed for file updates, right before yielding result
       countLinesChanged(patch)
 
-      logFileOperation({
-        operation: 'write',
-        tool: 'FileWriteTool',
-        filePath: fullFilePath,
-        type: 'update',
-      })
-
       return {
         data,
         ...(diagnosticMessages.length > 0 && {
@@ -441,13 +420,6 @@ export const FileWriteTool = buildTool({
 
     // For creation of new files, count all lines as additions, right before yielding the result
     countLinesChanged([], content)
-
-    logFileOperation({
-      operation: 'write',
-      tool: 'FileWriteTool',
-      filePath: fullFilePath,
-      type: 'create',
-    })
 
     return {
       data,

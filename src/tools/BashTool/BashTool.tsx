@@ -5,9 +5,7 @@ import * as React from 'react';
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js';
 import type { AppState } from 'src/terminal/state/AppState.js';
 import { z } from 'zod/v4';
-import { getKairosActive } from 'src/platform/bootstrap/state.js';
 import { TOOL_SUMMARY_MAX_LENGTH } from 'src/tools/constants/toolLimits.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { logError } from 'src/shared/log.js';
 import { notifyVscodeFileUpdated } from 'src/mcp/vscodeSdkMcp.js';
 import type { SetToolJSXFn, ToolCallProgress, ToolUseContext, ValidationResult } from 'src/tools/Tool.js';
@@ -70,7 +68,7 @@ import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js';
 import { renderToolRedirect, shouldRedirectToTools } from 'src/tools/BashTool/toolRedirect.js';
 import { BackgroundHint, renderToolResultMessage, renderToolUseErrorMessage, renderToolUseMessage, renderToolUseProgressMessage, renderToolUseQueuedMessage } from 'src/tools/BashTool/UI.js';
 import { isImageOutput, resetCwdIfOutsideProject, resizeShellImageOutput, stdErrAppendShellResetMessage, stripEmptyLines } from 'src/tools/BashTool/utils.js';
-import { ASSISTANT_BLOCKING_BUDGET_MS, mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
+import { mapShellResultToToolResultBlockParam } from 'src/tools/shellToolResultMappers.js';
 const EOL = '\n';
 
 // Progress display constants
@@ -274,20 +272,6 @@ export function safeAnnotateStderrWithSandboxFailures(
 ): string {
   const annotated = SandboxManager.annotateStderrWithSandboxFailures(command, rawOutput);
   return typeof annotated === 'string' ? annotated : rawOutput;
-}
-const COMMON_BACKGROUND_COMMANDS = ['npm', 'yarn', 'pnpm', 'node', 'python', 'python3', 'go', 'cargo', 'make', 'docker', 'terraform', 'webpack', 'vite', 'jest', 'pytest', 'curl', 'wget', 'build', 'test', 'serve', 'watch', 'dev'] as const;
-function getCommandTypeForLogging(command: string): AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS {
-  const parts = splitCommand_DEPRECATED(command);
-  if (parts.length === 0) return 'other' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-
-  // Check each part of the command to see if any match common background commands
-  for (const part of parts) {
-    const baseCommand = part.split(' ')[0] || '';
-    if (COMMON_BACKGROUND_COMMANDS.includes(baseCommand as (typeof COMMON_BACKGROUND_COMMANDS)[number])) {
-      return baseCommand as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
-    }
-  }
-  return 'other' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS;
 }
 const outputSchema = lazySchema(() => z.object({
   stdout: z.string().describe('The standard output of the command'),
@@ -621,13 +605,6 @@ export const BashTool = buildTool({
     if (!input.run_in_background && !isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_REDIRECT)) {
       const toolRedirect = shouldRedirectToTools(input.command, getCwd(), name => findToolByName(context?.options?.tools ?? [], name) !== undefined);
       if (toolRedirect) {
-        logEvent('tengu_bash_tool_redirect', {
-          unitCount: toolRedirect.units.length,
-          callCount: toolRedirect.units.reduce((total, unit) => total + unit.calls.length, 0),
-          usesRead: toolRedirect.targets.includes('Read'),
-          usesGrep: toolRedirect.targets.includes('Grep'),
-          usesGlob: toolRedirect.targets.includes('Glob')
-        });
         return {
           result: false,
           message: renderToolRedirect(toolRedirect),
@@ -758,10 +735,6 @@ export const BashTool = buildTool({
       const verdictCode = exitCodeAfterRewrite(filterPlan, result.code);
       interpretationResult = interpretCommandResult(input.command, verdictCode, rawStdout, '');
 
-      // Check for git index.lock error (stderr is in stdout now)
-      if (rawStdout.includes(".git/index.lock': File exists")) {
-        logEvent('tengu_git_index_lock_error', {});
-      }
 
       // Filter last, with the semantic verdict folded in: output that either
       // the exit code or the interpreter deems an error skips the pipeline
@@ -828,23 +801,9 @@ export const BashTool = buildTool({
       }
     }
     const commandType = input.command.split(' ')[0];
-    logEvent('tengu_bash_tool_command_executed', {
-      command_type: commandType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      stdout_length: stdout.length,
-      stderr_length: 0,
-      exit_code: result.code,
-      interrupted: wasInterrupted
-    });
 
     // Log code indexing tool usage
     const codeIndexingTool = detectCodeIndexingFromCommand(input.command);
-    if (codeIndexingTool) {
-      logEvent('tengu_code_indexing_tool_used', {
-        tool: codeIndexingTool as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        source: 'cli' as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        success: result.code === 0
-      });
-    }
     let strippedStdout = stripEmptyLines(stdout);
 
     // Claude Code hints protocol: CLIs/SDKs gated on CLAUDECODE=1 emit a
@@ -1033,7 +992,9 @@ export async function* runShellCommand({
   let lastTotalLines = 0;
   let lastTotalBytes = 0;
   let backgroundShellId: string | undefined = undefined;
-  let assistantAutoBackgrounded = false;
+  // Assistant mode (build flag KAIROS) auto-backgrounded long blocking
+  // commands; that flag is off in this build, so nothing sets this.
+  const assistantAutoBackgrounded = false;
   let interruptBackgroundingStarted = false;
   // Single gate over startBackgrounding — covers timeout, interrupt, kairos,
   // and any future caller. Without this, a fast timeout (e.g.
@@ -1112,8 +1073,9 @@ export async function* runShellCommand({
     return handle.taskId;
   }
 
-  // Helper to start backgrounding with optional logging
-  function startBackgrounding(eventName: string, backgroundFn?: (shellId: string) => void): void {
+  // Helper to start backgrounding. Callers used to pass the event name they
+  // were backgrounding under; there is no sink to name, so they no longer do.
+  function startBackgrounding(backgroundFn?: (shellId: string) => void): void {
     // Single-flight: any prior caller (timeout / interrupt / kairos /
     // explicit) already kicked off backgrounding. The flag is set here, at
     // entry, so concurrent callers see it set even before either spawn path
@@ -1134,9 +1096,6 @@ export async function* runShellCommand({
       }
       backgroundingInitiated = true;
       backgroundShellId = foregroundTaskId;
-      logEvent(eventName, {
-        command_type: getCommandTypeForLogging(command)
-      });
       backgroundFn?.(foregroundTaskId);
       return;
     }
@@ -1154,9 +1113,6 @@ export async function* runShellCommand({
       // and the process is hung on I/O, the race never resolves and the
       // generator deadlocks despite being backgrounded.
       wakeProgressSignal();
-      logEvent(eventName, {
-        command_type: getCommandTypeForLogging(command)
-      });
       if (backgroundFn) {
         backgroundFn(shellId);
       }
@@ -1181,25 +1137,8 @@ export async function* runShellCommand({
   // Only background commands that are allowed to be auto-backgrounded (not sleep, etc.)
   if (shellCommand.onTimeout && shouldAutoBackground) {
     shellCommand.onTimeout(backgroundFn => {
-      startBackgrounding('tengu_bash_command_timeout_backgrounded', backgroundFn);
+      startBackgrounding(backgroundFn);
     });
-  }
-
-  // In assistant mode, the main agent should stay responsive. Auto-background
-  // blocking commands after ASSISTANT_BLOCKING_BUDGET_MS so the agent can keep
-  // coordinating instead of waiting. The command keeps running — no state loss.
-  if (feature('KAIROS') && getKairosActive() && isMainThread && !isBackgroundTasksDisabled && run_in_background !== true) {
-    setTimeout(() => {
-      // Gate on !backgroundingInitiated too: if timeout/interrupt already
-      // started backgrounding, this kairos timer firing would set
-      // assistantAutoBackgrounded:true even though startBackgrounding's
-      // single-flight gate would no-op. The result returned later (via the
-      // backgroundShellId branch) would carry a falsely-true flag.
-      if (shellCommand.status === 'running' && backgroundShellId === undefined && !backgroundingInitiated) {
-        assistantAutoBackgrounded = true;
-        startBackgrounding('tengu_bash_command_assistant_auto_backgrounded');
-      }
-    }, ASSISTANT_BLOCKING_BUDGET_MS).unref();
   }
 
   // Handle Claude asking to run it in the background explicitly
@@ -1208,9 +1147,6 @@ export async function* runShellCommand({
   // Skip if background tasks are disabled - run in foreground instead
   if (run_in_background === true && !isBackgroundTasksDisabled) {
     const shellId = await spawnBackgroundTask();
-    logEvent('tengu_bash_command_explicitly_backgrounded', {
-      command_type: getCommandTypeForLogging(command)
-    });
     return {
       stdout: '',
       stderr: '',
@@ -1368,7 +1304,7 @@ export async function* runShellCommand({
       if (abortController.signal.aborted && abortController.signal.reason === 'interrupt' && !interruptBackgroundingStarted) {
         interruptBackgroundingStarted = true;
         if (!isBackgroundTasksDisabled) {
-          startBackgrounding('tengu_bash_command_interrupt_backgrounded');
+          startBackgrounding();
           // Reloop so the backgroundShellId check above catches the sync
           // foregroundTaskId→background path. Without `continue`, we'd fall
           // through to the Ctrl+B check below, which matches

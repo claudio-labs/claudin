@@ -302,19 +302,6 @@ export type SystemCompactBoundaryMessage = SystemMessageBase & {
   logicalParentUuid?: UUID
 }
 
-export type SystemMicrocompactBoundaryMessage = SystemMessageBase & {
-  subtype: 'microcompact_boundary'
-  content: string
-  level: SystemMessageLevel
-  microcompactMetadata: {
-    trigger: 'auto'
-    preTokens: number
-    tokensSaved: number
-    compactedToolIds: string[]
-    clearedAttachmentUUIDs: string[]
-  }
-}
-
 export type SystemAPIErrorMessage = SystemMessageBase & {
   subtype: 'api_error'
   level: 'error'
@@ -357,7 +344,6 @@ export type SystemMessage =
   | SystemAgentsKilledMessage
   | SystemApiMetricsMessage
   | SystemCompactBoundaryMessage
-  | SystemMicrocompactBoundaryMessage
   | SystemAPIErrorMessage
   | SystemFileSnapshotMessage
   | SystemThinkingMessage

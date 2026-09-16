@@ -1,10 +1,6 @@
 import { feature } from 'bun:bundle'
 import { getShortcutDisplay } from 'src/terminal/keybindings/shortcutFormat.js'
 import { isExtractModeActive } from 'src/memory/memdir/paths.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import type { HookProgress } from 'src/shared/types/hooks.js'
 import type {
@@ -158,22 +154,6 @@ export async function* handleStopHooks(
     }
     if (!toolUseContext.agentId) {
       void executeAutoDream(stopHookContext, toolUseContext.appendSystemMessage)
-    }
-  }
-
-  // chicago MCP: auto-unhide + lock release at turn end.
-  // Main thread only — the CU lock is a process-wide module-level variable,
-  // so a subagent's stopHooks releasing it leaves the main thread's cleanup
-  // seeing isLockHeldLocally()===false → no exit notification, and unhides
-  // mid-turn. Subagents don't start CU sessions so this is a pure skip.
-  if (feature('CHICAGO_MCP') && !toolUseContext.agentId) {
-    try {
-      const { cleanupComputerUseAfterTurn } = await import(
-        'src/platform/computerUse/cleanup.js'
-      )
-      await cleanupComputerUseAfterTurn(toolUseContext)
-    } catch {
-      // Failures are silent — this is dogfooding cleanup, not critical path
     }
   }
 
@@ -333,12 +313,6 @@ export async function* handleStopHooks(
 
       // Check if we were aborted during hook execution
       if (toolUseContext.abortController.signal.aborted) {
-        logEvent('tengu_pre_stop_hooks_cancelled', {
-          queryChainId: toolUseContext.queryTracking
-            ?.chainId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-
-          queryDepth: toolUseContext.queryTracking?.depth,
-        })
         yield createUserInterruptionMessage({
           toolUse: false,
         })
@@ -562,13 +536,6 @@ export async function* handleStopHooks(
     return { blockingErrors: [], preventContinuation: false }
   } catch (error) {
     const durationMs = Date.now() - hookStartTime
-    logEvent('tengu_stop_hook_error', {
-      duration: durationMs,
-
-      queryChainId: toolUseContext.queryTracking
-        ?.chainId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      queryDepth: toolUseContext.queryTracking?.depth,
-    })
     // Yield a system message that is not visible to the model for the user
     // to debug their hook.
     yield createSystemMessage(

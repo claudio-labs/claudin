@@ -145,7 +145,7 @@ These tests in `scripts/` enforce build correctness — always run when touching
 ```bash
 bun test scripts/build/feature-flags-source-guard.test.ts    # feature() flag consistency
 bun test scripts/bench/tokens/measure-tool-schemas.test.ts   # tool schema size
-bun test scripts/build/no-telemetry-growthbook-stub.test.ts  # no phone-home
+bun test src/platform/analytics/growthbook.test.ts          # flag resolution
 bun test scripts/verify/pr-intent-scan.test.ts               # PR security scan
 ```
 
@@ -201,16 +201,23 @@ when A executes first, regardless of `--max-concurrency=1`.
   re-evaluates it → duplicate instances, so restore fully.
 - Bisecting a leak: halve the file list with the victim run last; some leaks are
   2-file (a loader + a re-eval trigger).
-- **A mocked `logEvent` collects the whole process, not your unit.** Asserting
-  `toEqual([...])` over everything the analytics mock captured passes only while
-  no other module happens to log inside that window — and several log
-  fire-and-forget from a promise the file that started them never awaited
-  (`logMemoryDirCounts` in `src/memory/memdir/memdir.ts` is the one that has bitten:
-  its `readdir` callback lands in whichever file is running when it resolves).
-  Nothing about the victim file has to change for it to start failing; adding
-  tests anywhere upstream is enough to move the timing. Select the events you
-  are asserting on by name (`events.filter(e => e.name.startsWith('tengu_oauth'))`),
-  which keeps "logged nothing" meaningful instead of merely lucky.
+- **Do not observe behaviour through an event.** Analytics is gone from this
+  fork, and the flake it used to cause is the reason to keep the lesson: a
+  mocked `logEvent` collected the WHOLE process, so asserting `toEqual([...])`
+  over the captured list passed only while no other module logged inside that
+  window — and several logged fire-and-forget from a promise nobody awaited.
+  Adding tests anywhere upstream was enough to move the timing and break a file
+  that had not changed.
+
+  The deeper problem outlived the flake. A test asserting on a captured event is
+  observing a channel that exists **only because the test mocked it** — in the
+  binary that call reached an empty function. Delete the event and the assertion
+  does not go red, it goes vacuous. When a test needs to see an internal
+  decision, give the code a decision record and read that:
+  `getLastSummaryDecision()` in `toolResultSummarizer.ts` is the worked example,
+  and converting it kept two facts the event had flattened (a field stays
+  *absent* rather than false where the concept does not apply; a count stays a
+  count).
 
 ### A reset that clears a signal disarms production wiring for the rest of the run
 
@@ -305,7 +312,7 @@ src/agent/compact/stableStubState.stub-byte-stability.test.ts
 src/tools/shared/outputFilter/Bash/phase12Report.test.ts
 scripts/build/feature-flags-source-guard.test.ts
 scripts/bench/tokens/measure-tool-schemas.test.ts
-scripts/build/no-telemetry-growthbook-stub.test.ts
+src/platform/analytics/growthbook.test.ts
 scripts/verify/pr-intent-scan.test.ts
 ```
 
@@ -366,10 +373,12 @@ resolves ~30 module names to stubs in `scripts/build/build.ts` and carries 138 i
 of files the fork never received, so in this repo "undeclared" is overwhelmingly
 the intended state; gating on it would mean 30 hand-maintained ignores that
 silently drift from build.ts. Two narrower blind spots ARE configured around:
-knip does not read `bunfig.toml`, so the `[alias]` targets
-(`src/stubs/growthbook-stub.ts`, `src/stubs/sandbox-runtime-stub.ts`) are listed
-in `ignore` by hand, and the external CLI tools the code shells out to
-(`rec`, `wslpath`, `secret-tool`, …) are in `ignoreBinaries`.
+knip does not read `bunfig.toml`, so the `[alias]` target
+(`src/stubs/sandbox-runtime-stub.ts`) is listed in `ignore` by hand, and the
+external CLI tools the code shells out to (`rec`, `wslpath`, `secret-tool`, …)
+are in `ignoreBinaries`. A file referenced by PATH rather than imported needs
+the same treatment — `src/shared/constants/keys.ts` is read as a fixture by the
+cache benches, and knip calls it unused.
 
 ## What NOT to Test
 
@@ -394,8 +403,8 @@ at BOTH ends: the producer (`getTaskReminderAttachments` and friends in
 counters, and the renderer (`normalizeAttachmentForAPI` in
 `src/agent/messages/attachments.ts`) to capture the literal text the model
 receives. Log the bail reason per branch, not just the success case — that is
-what tells you *which* gate closed. `logEvent` is useless here: telemetry is
-stubbed out at build time in this fork.
+what tells you *which* gate closed. There is no `logEvent` to reach for: the
+analytics sink was removed from this fork entirely.
 
 Drive it under tmux with `claudindev` (see the mouse-verification note for the
 session recipe); a turn's worth of counters lands in the file in seconds.

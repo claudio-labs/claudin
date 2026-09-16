@@ -7,10 +7,6 @@ import {
   preferThirdPartyAuthentication,
 } from 'src/platform/bootstrap/state.js'
 import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
-import {
   getAnthropicApiKey,
   getClaudeAIOAuthTokens,
   handleOAuth401Error,
@@ -66,7 +62,7 @@ function getDisabledReasonMessage(
       return 'Fast mode has been disabled by your organization'
     case 'extra_usage_disabled':
       // Only OAuth users can have extra_usage_disabled; console users don't have this concept
-      return 'Fast mode requires extra usage billing · /extra-usage to enable'
+      return 'Fast mode requires extra usage billing · enable it at claude.ai/settings/usage'
     case 'network_error':
       return 'Fast mode unavailable due to network connectivity issues'
     case 'unknown':
@@ -236,11 +232,6 @@ export function triggerFastModeCooldown(
   logForDebugging(
     `Fast mode cooldown triggered (${reason}), duration ${Math.round(cooldownDurationMs / 1000)}s`,
   )
-  logEvent('tengu_fast_mode_fallback_triggered', {
-    cooldown_duration_ms: cooldownDurationMs,
-    cooldown_reason:
-      reason as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
   cooldownTriggered.emit(resetTimestamp, reason)
 }
 
@@ -289,7 +280,7 @@ function getOverageDisabledMessage(reason: string | null): string {
       return 'Fast mode disabled · extra usage not available for your plan'
     case 'overage_not_provisioned':
     case 'no_limits_configured':
-      return 'Fast mode requires extra usage billing · /extra-usage to enable'
+      return 'Fast mode requires extra usage billing · enable it at claude.ai/settings/usage'
     default:
       return 'Fast mode disabled · extra usage not available'
   }
@@ -309,10 +300,6 @@ export function handleFastModeOverageRejection(reason: string | null): void {
   logForDebugging(
     `Fast mode overage rejection: ${reason ?? 'unknown'} — ${message}`,
   )
-  logEvent('tengu_fast_mode_overage_rejected', {
-    overage_disabled_reason: (reason ??
-      'unknown') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  })
   // Disable fast mode permanently unless the user has ran out of credits
   if (!isOutOfCreditsReason(reason)) {
     updateSettingsForSource('userSettings', { fastMode: undefined })
@@ -530,7 +517,6 @@ export async function prefetchFastModeStatus(): Promise<void> {
         `Failed to fetch org fast mode status, defaulting to ${orgStatus.status === 'enabled' ? 'enabled (cached)' : 'disabled (network_error)'}: ${err}`,
         { level: 'error' },
       )
-      logEvent('tengu_org_penguin_mode_fetch_failed', {})
     } finally {
       inflightPrefetch = null
     }

@@ -8,7 +8,6 @@ import { type UnaryEvent, usePermissionRequestLogging } from 'src/permissions/ui
 import { PermissionDialog } from 'src/permissions/ui/PermissionDialog.js';
 import type { PermissionRequestProps } from 'src/permissions/ui/PermissionRequest.js';
 import { PermissionRuleExplanation } from 'src/permissions/ui/PermissionRuleExplanation.js';
-import { logUnaryPermissionEvent } from 'src/permissions/ui/utils.js';
 type WebFetchOptionValue = 'yes' | 'yes-dont-ask-again-domain' | 'no';
 function inputToPermissionRuleContent(input: {
   [k: string]: unknown;
@@ -122,14 +121,12 @@ export function WebFetchPermissionRequest(t0: PermissionRequestProps) {
       bb8: switch (newValue) {
         case "yes":
           {
-            logUnaryPermissionEvent("tool_use_single", toolUseConfirm, "accept");
             toolUseConfirm.onAllow(toolUseConfirm.input, []);
             onDone();
             break bb8;
           }
         case "yes-dont-ask-again-domain":
           {
-            logUnaryPermissionEvent("tool_use_single", toolUseConfirm, "accept");
             const ruleContent = inputToPermissionRuleContent(toolUseConfirm.input);
             const ruleValue = {
               toolName: toolUseConfirm.tool.name,
@@ -146,7 +143,6 @@ export function WebFetchPermissionRequest(t0: PermissionRequestProps) {
           }
         case "no":
           {
-            logUnaryPermissionEvent("tool_use_single", toolUseConfirm, "reject");
             toolUseConfirm.onReject();
             onReject();
             onDone();

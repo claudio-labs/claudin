@@ -6,7 +6,6 @@
 import {
   getOauthAccountInfo,
   getSubscriptionType,
-  isOverageProvisioningAllowed,
 } from 'src/providers/auth/auth.js'
 import { hasClaudeAiBillingAccess } from 'src/providers/usage/billing.js'
 import {
@@ -275,17 +274,12 @@ function getEarlyWarningText(limits: ClaudeAILimits): string | null {
     ? formatResetTime(limits.resetsAt, true)
     : undefined
 
-  // Get upsell command based on subscription type and limit type
-  const upsell = getWarningUpsellText(limits.rateLimitType)
-
   if (used && resetTime) {
-    const base = `You've used ${used}% of your ${limitName} · resets ${resetTime}`
-    return upsell ? `${base} · ${upsell}` : base
+    return `You've used ${used}% of your ${limitName} · resets ${resetTime}`
   }
 
   if (used) {
-    const base = `You've used ${used}% of your ${limitName}`
-    return upsell ? `${base} · ${upsell}` : base
+    return `You've used ${used}% of your ${limitName}`
   }
 
   if (limits.rateLimitType === 'overage') {
@@ -294,56 +288,18 @@ function getEarlyWarningText(limits: ClaudeAILimits): string | null {
   }
 
   if (resetTime) {
-    const base = `Approaching ${limitName} · resets ${resetTime}`
-    return upsell ? `${base} · ${upsell}` : base
+    return `Approaching ${limitName} · resets ${resetTime}`
   }
 
-  const base = `Approaching ${limitName}`
-  return upsell ? `${base} · ${upsell}` : base
+  return `Approaching ${limitName}`
 }
 
-/**
- * Get the upsell command text for warning messages based on subscription and limit type.
- * Returns null if no upsell should be shown.
- * Only used for warnings because actual rate limit hits will see an interactive menu of options.
- */
-function getWarningUpsellText(
-  rateLimitType: ClaudeAILimits['rateLimitType'],
-): string | null {
-  const subscriptionType = getSubscriptionType()
-  const hasExtraUsageEnabled =
-    getOauthAccountInfo()?.hasExtraUsageEnabled === true
-
-  // 5-hour session limit warning
-  if (rateLimitType === 'five_hour') {
-    // Teams/Enterprise with overages disabled: prompt to request extra usage
-    // Only show if overage provisioning is allowed for this org type (e.g., not AWS marketplace)
-    if (subscriptionType === 'team' || subscriptionType === 'enterprise') {
-      if (!hasExtraUsageEnabled && isOverageProvisioningAllowed()) {
-        return '/extra-usage to request more'
-      }
-      // Teams/Enterprise with overages enabled or unsupported billing type don't need upsell
-      return null
-    }
-
-    // Pro/Max users: prompt to upgrade
-    if (subscriptionType === 'pro' || subscriptionType === 'max') {
-      return '/upgrade to keep using Claudin'
-    }
-  }
-
-  // Overage warning (approaching spending limit)
-  if (rateLimitType === 'overage') {
-    if (subscriptionType === 'team' || subscriptionType === 'enterprise') {
-      if (!hasExtraUsageEnabled && isOverageProvisioningAllowed()) {
-        return '/extra-usage to request more'
-      }
-    }
-  }
-
-  // Weekly limit warnings don't show upsell per spec
-  return null
-}
+// The early-warning line used to carry an upsell suffix — `/upgrade to keep
+// using Claudin` for Pro/Max, `/extra-usage to request more` for
+// Team/Enterprise. Both commands were removed with the consumer-billing
+// surfaces, so every branch of that helper named something a user cannot run.
+// It went with them rather than being repointed: neither action has a terminal
+// equivalent here, and the warning itself is still the useful half.
 
 /**
  * Get notification text for overage mode transitions

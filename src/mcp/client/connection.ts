@@ -21,22 +21,16 @@ import { maybeNotifyIDEConnected } from 'src/platform/ide/ide.js'
 import { logMCPDebug, logMCPError } from 'src/shared/log.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { sleep } from 'src/shared/sleep.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import type {
   ConnectedMCPServer,
   MCPServerConnection,
   ScopedMcpServerConfig,
 } from 'src/mcp/types.js'
-import { getLoggingSafeMcpBaseUrl } from 'src/mcp/utils.js'
 import { setMcpAuthCacheEntry } from 'src/mcp/client/authCache.js'
 import { isMcpSessionExpiredError } from 'src/mcp/client/errors.js'
 import { getConnectionTimeoutMs } from 'src/mcp/client/fetch.js'
 import {
   fetchCommandsForClient,
-  fetchMcpSkillsForClient,
   fetchResourcesForClient,
   fetchToolsForClient,
 } from 'src/mcp/client/fetchCapabilities.js'
@@ -91,37 +85,14 @@ export function getServerCacheKey(
 }
 
 /**
- * Spread-ready analytics field for the server's base URL. Calls
- * getLoggingSafeMcpBaseUrl once (not twice like the inline ternary it replaces).
- * Typed as AnalyticsMetadata since the URL is query-stripped and safe to log.
- */
-function mcpBaseUrlAnalytics(serverRef: ScopedMcpServerConfig): {
-  mcpServerBaseUrl?: AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-} {
-  const url = getLoggingSafeMcpBaseUrl(serverRef)
-  return url
-    ? {
-      mcpServerBaseUrl:
-        url as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    }
-    : {}
-}
-
-/**
  * Shared handler for sse/http/claudeai-proxy auth failures during connect:
- * emits tengu_mcp_server_needs_auth, caches the needs-auth entry, and returns
- * the needs-auth connection result.
+ * caches the needs-auth entry and returns the needs-auth connection result.
  */
 function handleRemoteAuthFailure(
   name: string,
   serverRef: ScopedMcpServerConfig,
   transportType: 'sse' | 'http' | 'claudeai-proxy',
 ): MCPServerConnection {
-  logEvent('tengu_mcp_server_needs_auth', {
-    transportType:
-      transportType as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    ...mcpBaseUrlAnalytics(serverRef),
-  })
   const label: Record<typeof transportType, string> = {
     sse: 'SSE',
     http: 'HTTP',
@@ -338,15 +309,7 @@ export const connectToServer = memoize(
           if (errorCode === 401) {
             return handleRemoteAuthFailure(name, serverRef, 'claudeai-proxy')
           }
-        } else if (
-          serverRef.type === 'sse-ide' ||
-          serverRef.type === 'ws-ide'
-        ) {
-          logEvent('tengu_mcp_ide_server_connection_failed', {
-            connectionDurationMs: elapsed,
-          })
-        }
-        if (inProcessServer) {
+        } else         if (inProcessServer) {
           await cleanupFailedConnection(transport, inProcessServer)
         } else {
           await cleanupFailedConnection(transport)
@@ -401,11 +364,6 @@ export const connectToServer = memoize(
 
       if (serverRef.type === 'sse-ide' || serverRef.type === 'ws-ide') {
         const ideConnectionDurationMs = Date.now() - connectStartTime
-        logEvent('tengu_mcp_ide_server_connection_succeeded', {
-          connectionDurationMs: ideConnectionDurationMs,
-          serverVersion:
-            serverVersion as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        })
         try {
           void maybeNotifyIDEConnected(client)
         } catch (error) {
@@ -592,9 +550,6 @@ export const connectToServer = memoize(
         fetchToolsForClient.cache.delete(name)
         fetchResourcesForClient.cache.delete(name)
         fetchCommandsForClient.cache.delete(name)
-        if (feature('MCP_SKILLS')) {
-          fetchMcpSkillsForClient!.cache.delete(name)
-        }
 
         connectToServer.cache.delete(key)
         logMCPDebug(name, `Cleared connection cache for reconnection`)
@@ -783,18 +738,6 @@ export const connectToServer = memoize(
       }
 
       const connectionDurationMs = Date.now() - connectStartTime
-      logEvent('tengu_mcp_server_connection_succeeded', {
-        connectionDurationMs,
-        transportType: (serverRef.type ??
-          'stdio') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        totalServers: serverStats?.totalServers,
-        stdioCount: serverStats?.stdioCount,
-        sseCount: serverStats?.sseCount,
-        httpCount: serverStats?.httpCount,
-        sseIdeCount: serverStats?.sseIdeCount,
-        wsIdeCount: serverStats?.wsIdeCount,
-        ...mcpBaseUrlAnalytics(serverRef),
-      })
       return {
         name,
         client,
@@ -807,22 +750,6 @@ export const connectToServer = memoize(
       }
     } catch (error) {
       const connectionDurationMs = Date.now() - connectStartTime
-      logEvent('tengu_mcp_server_connection_failed', {
-        connectionDurationMs,
-        totalServers: serverStats?.totalServers || 1,
-        stdioCount:
-          serverStats?.stdioCount || (serverRef.type === 'stdio' ? 1 : 0),
-        sseCount: serverStats?.sseCount || (serverRef.type === 'sse' ? 1 : 0),
-        httpCount:
-          serverStats?.httpCount || (serverRef.type === 'http' ? 1 : 0),
-        sseIdeCount:
-          serverStats?.sseIdeCount || (serverRef.type === 'sse-ide' ? 1 : 0),
-        wsIdeCount:
-          serverStats?.wsIdeCount || (serverRef.type === 'ws-ide' ? 1 : 0),
-        transportType: (serverRef.type ??
-          'stdio') as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        ...mcpBaseUrlAnalytics(serverRef),
-      })
       logMCPDebug(
         name,
         `Connection failed after ${connectionDurationMs}ms: ${errorMessage(error)}`,
@@ -870,9 +797,6 @@ export async function clearServerCache(
   fetchToolsForClient.cache.delete(name)
   fetchResourcesForClient.cache.delete(name)
   fetchCommandsForClient.cache.delete(name)
-  if (feature('MCP_SKILLS')) {
-    fetchMcpSkillsForClient!.cache.delete(name)
-  }
 }
 
 /**

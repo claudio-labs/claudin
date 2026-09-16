@@ -21,15 +21,6 @@ async function importHookChainsModule(options?: {
 }): Promise<HookChainsModule> {
   const allowRemoteSessions = options?.allowRemoteSessions ?? true
 
-  mock.module('src/platform/analytics/index.js', () => ({
-    logEvent: () => {},
-    stripProtoFields: <T,>(m: T) => m,
-  }))
-
-  mock.module('src/platform/telemetry/events.js', () => ({
-    logOTelEvent: async () => {},
-  }))
-
   mock.module('src/platform/policyLimits/index.js', () => ({
     isPolicyAllowed: () => allowRemoteSessions,
   }))
@@ -42,8 +33,6 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
-  mock.module('src/platform/analytics/index.js', () => ({}))
-  mock.module('src/platform/telemetry/events.js', () => ({}))
   mock.module('src/platform/policyLimits/index.js', () => ({}))
 
   if (originalHookChainsEnabled === undefined) {

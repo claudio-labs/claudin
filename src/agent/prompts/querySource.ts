@@ -65,11 +65,6 @@ type InternalQuerySource =
   | 'session_memory'
   | 'session_search'
   | 'side_question'
-  // The analysis pass and the apply pass are separate sources: the first is
-  // the `ApiQueryHookConfig.name` in `utils/hooks/skillImprovement.ts`, the
-  // second tags the query that writes the change.
-  | 'skill_improvement'
-  | 'skill_improvement_apply'
   | 'speculation'
   | 'teleport_generate_title'
   | 'tool_use_summary_generation'

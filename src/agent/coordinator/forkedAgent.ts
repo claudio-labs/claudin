@@ -14,10 +14,6 @@ import type { PromptCommand } from 'src/commands/commands.js'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { query } from 'src/agent/query.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { accumulateUsage, updateUsage } from 'src/providers/shims/claude.js'
 import { EMPTY_USAGE, type NonNullableUsage } from 'src/providers/transport/logging.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
@@ -675,37 +671,4 @@ function logForkAgentQueryEvent({
       ? totalUsage.cache_read_input_tokens / totalInputTokens
       : 0
 
-  logEvent('tengu_fork_agent_query', {
-    // Metadata
-    forkLabel:
-      forkLabel as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    querySource:
-      querySource as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    durationMs,
-    messageCount,
-
-    // NonNullableUsage fields
-    inputTokens: totalUsage.input_tokens,
-    outputTokens: totalUsage.output_tokens,
-    cacheReadInputTokens: totalUsage.cache_read_input_tokens,
-    cacheCreationInputTokens: totalUsage.cache_creation_input_tokens,
-    serviceTier:
-      totalUsage.service_tier as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    cacheCreationEphemeral1hTokens:
-      totalUsage.cache_creation.ephemeral_1h_input_tokens,
-    cacheCreationEphemeral5mTokens:
-      totalUsage.cache_creation.ephemeral_5m_input_tokens,
-
-    // Derived metrics
-    cacheHitRate,
-
-    // Query tracking
-    ...(queryTracking
-      ? {
-          queryChainId:
-            queryTracking.chainId as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-          queryDepth: queryTracking.depth,
-        }
-      : {}),
-  })
 }

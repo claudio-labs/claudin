@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -6,35 +6,9 @@ import { join } from 'node:path'
 import { resetGlobalConfigForTests } from 'src/platform/config/config.js'
 import { getProjectDir } from 'src/sessions/pure/paths.js'
 
-const realAnalyticsMetadata = { ...(await import('src/platform/analytics/metadata.js')) }
-const realAnalyticsIndex = { ...(await import('src/platform/analytics/index.js')) }
-
 afterAll(() => {
-  mock.module('src/platform/analytics/metadata.js', () => realAnalyticsMetadata)
-  mock.module('src/platform/analytics/index.js', () => realAnalyticsIndex)
   resetGlobalConfigForTests()
 })
-
-mock.module('src/platform/analytics/metadata.js', () => ({
-  sanitizeToolNameForAnalytics: (name: string) =>
-    name.startsWith('mcp__') ? 'mcp_tool' : name,
-  isToolDetailsLoggingEnabled: () => false,
-  isAnalyticsToolDetailsLoggingEnabled: () => false,
-  mcpToolDetailsForAnalytics: () => ({}),
-  extractMcpToolDetails: () => ({}),
-  extractSkillName: () => undefined,
-  extractToolInputForTelemetry: () => ({}),
-  getFileExtensionForAnalytics: () => '',
-  getFileExtensionsFromBashCommand: () => [],
-  getEventMetadata: async () => ({}),
-  to1PEventFormat: () => ({}),
-}))
-
-mock.module('src/platform/analytics/index.js', () => ({
-  logEvent: () => {},
-  logEventAsync: () => Promise.resolve(),
-  stripProtoFields: <T,>(m: T) => m,
-}))
 
 const { maybeSummarizeToolResult, isSummarizedContent } = await import(
   'src/agent/tools/toolResultSummarizer.js'

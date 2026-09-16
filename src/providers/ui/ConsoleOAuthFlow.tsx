@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { installOAuthTokens } from 'src/platform/headless/handlers/auth.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
 import { setClipboard } from 'src/terminal/ink/termio/osc.js';
@@ -98,15 +97,6 @@ export function ConsoleOAuthFlow({
   const [urlCopied, setUrlCopied] = useState(false);
   const textInputColumns = useTerminalSize().columns - PASTE_HERE_MSG.length - 1;
 
-  // Log forced login method on mount
-  useEffect(() => {
-    if (forceLoginMethod === 'claudeai') {
-      logEvent('tengu_oauth_claudeai_forced', {});
-    } else if (forceLoginMethod === 'console') {
-      logEvent('tengu_oauth_console_forced', {});
-    }
-  }, [forceLoginMethod]);
-
   // Retry logic
   useEffect(() => {
     if (oauthStatus.state === 'about_to_retry') {
@@ -117,9 +107,6 @@ export function ConsoleOAuthFlow({
 
   // Handle Enter to continue on success state
   useKeybinding('confirm:yes', () => {
-    logEvent('tengu_oauth_success', {
-      loginWithClaudeAi
-    });
     onDone({
       type: 'oauth'
     });
@@ -167,8 +154,6 @@ export function ConsoleOAuthFlow({
         return;
       }
 
-      // Track which path the user is taking (manual code entry)
-      logEvent('tengu_oauth_manual_entry', {});
       oauthService.handleManualAuthCodeInput({
         authorizationCode,
         state
@@ -187,9 +172,6 @@ export function ConsoleOAuthFlow({
   }
   const startOAuth = useCallback(async () => {
     try {
-      logEvent('tengu_oauth_flow_start', {
-        loginWithClaudeAi
-      });
       const result = await oauthService.startOAuthFlow(async url_0 => {
         setOAuthStatus({
           state: 'waiting_for_login',
@@ -216,10 +198,6 @@ export function ConsoleOAuthFlow({
           } : {
             state: 'idle'
           }
-        });
-        logEvent('tengu_oauth_token_exchange_error', {
-          error: err_1.message,
-          ssl_error: sslHint_0 !== null
         });
         throw err_1;
       });
@@ -254,10 +232,6 @@ export function ConsoleOAuthFlow({
           state: mode === 'setup-token' ? 'ready_to_start' : 'idle'
         }
       });
-      logEvent('tengu_oauth_error', {
-        error: errorMessage as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        ssl_error: sslHint !== null
-      });
     }
   }, [oauthService, setShowPastePrompt, loginWithClaudeAi, mode, orgUUID]);
   const pendingOAuthStartRef = useRef(false);
@@ -276,9 +250,6 @@ export function ConsoleOAuthFlow({
     if (mode === 'setup-token' && oauthStatus.state === 'success') {
       // Delay to ensure static content is fully rendered before exiting
       const timer_0 = setTimeout((loginWithClaudeAi_0, onDone_0) => {
-        logEvent('tengu_oauth_success', {
-          loginWithClaudeAi: loginWithClaudeAi_0
-        });
         // Don't clear terminal so the token remains visible
         onDone_0();
       }, 500, loginWithClaudeAi, onDone);
@@ -397,10 +368,8 @@ function OAuthStatusMessage({
               onChange={(value: 'claudeai' | 'console') => {
                 setOAuthStatus({ state: 'ready_to_start' })
                 if (value === 'claudeai') {
-                  logEvent('tengu_oauth_claudeai_selected', {})
                   setLoginWithClaudeAi(true)
                 } else {
-                  logEvent('tengu_oauth_console_selected', {})
                   setLoginWithClaudeAi(false)
                 }
               }}

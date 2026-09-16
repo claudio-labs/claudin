@@ -55,7 +55,6 @@ const REAL_MODULES: Array<[string, Record<string, unknown>]> = await Promise.all
     'src/agent/cost-tracker.js',
     'src/terminal/image/asciicast.js',
     'src/agent/tools/toolResultStorage.js',
-    'src/platform/analytics/index.js',
     'src/agent/messages/messages.js',
     'src/shared/types/ids.js',
   ].map(
@@ -190,12 +189,6 @@ mock.module('src/agent/tools/toolResultStorage.js', () => ({
   provisionContentReplacementState: () => undefined,
 }))
 
-mock.module('src/platform/analytics/index.js', () => ({
-  logEvent: mock((evt: string, payload: Record<string, unknown>) => {
-    calls.push(`logEvent:${evt}:${payload.success}`)
-  }),
-}))
-
 mock.module('src/agent/messages/messages.js', () => ({
   createSystemMessage: (text: string) => ({ type: 'system', text }),
 }))
@@ -319,7 +312,6 @@ describe('resumeSession', () => {
     expect(calls).toContain('setMessages')
     expect(calls).toContain('setToolJSX')
     expect(calls).toContain('setInputValue')
-    expect(calls).toContain('logEvent:tengu_session_resumed:true')
 
     // Resume must not call fork-only branches.
     expect(calls).not.toContain('saveWorktreeState')
@@ -344,10 +336,9 @@ describe('resumeSession', () => {
 
     // Fork branch still hydrates message state.
     expect(calls).toContain('setMessages')
-    expect(calls).toContain('logEvent:tengu_session_resumed:true')
   })
 
-  test('errors are logged with success:false and re-thrown', async () => {
+  test('an error inside the pipeline is re-thrown, not swallowed', async () => {
     calls.length = 0
     const deps = makeDeps({
       setMessages: () => {
@@ -356,6 +347,5 @@ describe('resumeSession', () => {
     })
 
     await expect(resumeSession(SESSION_ID, makeLog(), 'cli_flag', deps)).rejects.toThrow('boom')
-    expect(calls).toContain('logEvent:tengu_session_resumed:false')
   })
 })

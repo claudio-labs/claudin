@@ -29,16 +29,26 @@ not source.
    > should be.** Run `git diff` after any killed build. This preprocessing
    > exists because Bun ≥1.3.9 resolves `bun:bundle` natively before plugins can
    > intercept it.
-2. **`tengu_*` event-name stripping**, in that same pass. Telemetry is already a
-   no-op (see #5), but the ~1000 event-name literals survive minification as
-   arguments to the stubs, so they are blanked to `''`. Scope is **only the first
-   argument of `logEvent`/`logEventAsync`**: a `tengu_*` string handed to
-   `checkGate*`/`getFeatureValue*`/`getDynamicConfig*` is a feature-gate KEY, and
-   blanking one would silently change which default that gate resolves to. Names
-   reached through a variable are left alone for the same reason. Measured on a
-   clean `dist/chunks`: 832 distinct names → 205, all 54 gate keys among the
-   survivors. Verify with `rm -rf dist/chunks && bun run build`, never against a
-   stale generation (see #6).
+2. **There is no second rewrite pass any more.** One used to blank the `tengu_*`
+   name passed to `logEvent`/`logEventAsync`, because ~1000 event-name literals
+   survived minification as arguments. Both the call sites and the sink are gone,
+   so no **event name** reaches the bundle any more.
+
+   That is not the same as "zero `tengu` tokens", which an earlier revision of
+   this file claimed and prescribed a check for that cannot see them: `dist/` is
+   code-split (rule 5 below), so grepping `dist/cli.mjs` reads 0 while ~470
+   `tengu` tokens ship in `dist/chunks/`. They are the **gate keys**, and they
+   have to ship — a key blanked in the bundle is a key the user's
+   `feature-flags.json` can no longer name. The check that means something is
+   `bun run scripts/verify/tengu-census.ts`, on the source.
+
+   The distinction that pass drew is still load-bearing, though: a `tengu_*`
+   string handed to `checkGate*`/`getFeatureValue*`/`getDynamicConfig*` is a
+   feature-flag **KEY**, not an event name. Those are live — they are the
+   contract with `~/.claudin/feature-flags.json` — and
+   `docs/tech/tengu-census/gate-audit.md` says what each of the 104 gates.
+   `bun run scripts/verify/tengu-census.ts` buckets every occurrence by role and
+   fails loudly if one cannot be placed.
 3. **`MACRO.*` constants** (`MACRO.VERSION`, `MACRO.DISPLAY_VERSION`,
    `MACRO.BUILD_TIME`, …) are inlined via `define`. `MACRO.VERSION` is pinned to
    `99.0.0` to pass first-party minimum-version guards; the **real** version is
@@ -51,10 +61,21 @@ not source.
    > A new top-level Anthropic-internal import still builds (the pre-scan stubs
    > it) but is a **no-op at runtime**. Gate it behind `feature()` so it only
    > loads when intentionally enabled.
-5. **`noTelemetryPlugin`** (`scripts/build/no-telemetry-plugin.ts`) replaces analytics,
-   GrowthBook, Datadog, BigQuery, OTel session tracing, the auto-updater, and
-   feedback/transcript sharing with stubs. `bun run verify:privacy` enforces this
-   on the bundle — run it for any build/telemetry/network change.
+5. **`noTelemetryPlugin`** (`scripts/build/no-telemetry-plugin.ts`) is down to
+   **three** stubs, from nineteen. It used to replace analytics, GrowthBook,
+   Datadog, BigQuery, OTel session tracing and transcript sharing; those modules
+   were deleted outright instead, and flag resolution was promoted from a stub
+   string to real source (`src/platform/analytics/growthbook.ts`). Two of the
+   three that remain name a module that no longer exists anywhere, which
+   `no-telemetry-stubs-resolve.test.ts` reports rather than fails on.
+
+   > Deleting a stubbed module means deleting its stub key **in the same
+   > change**. A key that stops matching does not fail loudly — the real module
+   > just gets bundled. That guard test exists because the 2026-08 reorg walked
+   > into exactly that.
+
+   `bun run verify:privacy` enforces the result on the bundle — run it for any
+   build/telemetry/network change.
 6. **Path alias.** `tsconfig.json` maps `src/*` → `./src/*`. Both `src/...` and
    relative imports work; prefer the `src/...` form.
 
@@ -68,8 +89,12 @@ received, and they resolve **for tsc and for nothing else**.
 walk into the caller and raise `TS2339` on properties the invention lacks — an
 earlier attempt measured worse than the diagnostic it was replacing. They buy
 **no** type safety (an unresolved import is already `any`), they only retire the
-error. Nor do they mean the code is unreachable: `src/commands/commands.ts`
-imports 19 of them eagerly and does hit the `() => null` stub at runtime.
+error. Nor do they mean the code is unreachable: a few are imported eagerly and
+do hit the `() => null` stub at runtime. That is not harmless — `FORK_SUBAGENT`
+shipped `true` against a missing `src/commands/fork/`, and because the stub's
+`default` is a truthy arrow function, a phantom command named `noop` appeared in
+the slash-command list. `src/commands/__tests__/registry.characterization.test.ts`
+fails if that shape comes back.
 
 The pre-scan in #4 is what keeps the build green over them, and it fires on
 exactly one shape: `scripts/build/build.ts:579` registers a module as missing when the
@@ -88,7 +113,7 @@ it looks — the specifier silently stops naming the declaration and becomes a r
 before the move either (742 of them in PR #88, from a single directory move).
 
 `bun run build:strict` pins the set: `scripts/build/missing-imports-baseline.json`
-records the 103 specifiers this fork legitimately stubs, and the build fails on
+records the 51 specifiers this fork legitimately stubs, and the build fails on
 any new one, naming the file that referenced it. It is what tells a deliberate
 stub apart from an import that broke. A plain `bun run build` prints the count
 and, when it matches the baseline exactly, says so — that line is the expected
@@ -203,14 +228,35 @@ moves, not before.
 
 ## Feature Flags
 
-Build-time flags live in `featureFlags` in `scripts/build/build.ts`. Most
-Anthropic-internal subsystems are **disabled** because their source isn't
-mirrored or they need Anthropic infrastructure: `VOICE_MODE`, `KAIROS`,
-`PROACTIVE`, `DAEMON`, `BG_SESSIONS`, `WEB_BROWSER_TOOL`, `MCP_SKILLS`, …
+Build-time flags live in `featureFlags` in `scripts/build/build.ts`. The
+"disabled" half of that map is **gone** — `VOICE_MODE`, `KAIROS`, `PROACTIVE`,
+`DAEMON`, `BG_SESSIONS`, `WEB_BROWSER_TOOL`, `MCP_SKILLS` and the rest were
+removed along with the branches behind them, because a flag folded to `false` is
+a branch nobody can reach and carrying its name only made it look like a switch.
+Two entries are still `false`, both A/B killswitches with a reason written
+beside them.
 
 Enabled flags drive real code paths in the open build: `COORDINATOR_MODE`,
 `BUILTIN_PLAN_AGENT`, `EXTRACT_MEMORIES`, `ULTRATHINK`, `TOKEN_BUDGET`,
 `HISTORY_PICKER`, `HOOK_PROMPTS`, `AGENT_WORKFLOWS`, …
+
+### A flag missing from the map is false by omission, not by decision
+
+`build.ts` folds `featureFlags[name] ?? false`, so `feature('X')` naming a key
+the map does not list is silently false. **44 names in `src/` are in that state**
+and nothing used to say so, which is how `src/commands/ultraplan.tsx` — 436 lines
+plus its prompt — became unreachable without anyone choosing it.
+
+`scripts/build/feature-flags-source-guard.test.ts` now enumerates the set and
+fails on a new one. Read the list before treating any of them as dead code: it
+is at least three different situations, and one of them BREAKS when removed.
+`ALLOW_TEST_VERSIONS` is how `bun run smoke` reaches the 99.99.x install path
+(`bun --feature=…`), and `IS_LIBC_MUSL`/`IS_LIBC_GLIBC` are compile-target pins
+that `envDynamic.ts` falls back to runtime detection without. Others gate a
+`require()` of a module this fork never received, so the branch is already a
+build stub. Only the third group — a flag over code that IS in this tree — is a
+removal candidate, and each needs its own trace: `conversationArc.ts` sits behind
+one and is *also* reached from `/knowledge`.
 
 `BRIDGE_MODE` is the one enabled flag whose subsystem still needs a credential
 the open build cannot mint on its own: it builds Remote Control in
@@ -264,7 +310,7 @@ construct you render in a script or a test.
 ```bash
 bun test scripts/build/feature-flags-source-guard.test.ts    # feature() flag consistency
 bun test scripts/bench/tokens/measure-tool-schemas.test.ts   # tool schema size
-bun test scripts/build/no-telemetry-growthbook-stub.test.ts  # no phone-home
+bun test src/platform/analytics/growthbook.test.ts          # flag resolution
 bun test scripts/verify/pr-intent-scan.test.ts               # PR security scan
 bun run verify:privacy                                       # scan dist/ for phone-home
 ```

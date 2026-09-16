@@ -1,6 +1,5 @@
 import { c as _c } from "react-compiler-runtime";
 import React from 'react';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { getInitialSettings, updateSettingsForSource } from 'src/platform/settings/settings.js';
 import { Select } from 'src/terminal/custom-select/index.js';
 import { Dialog } from 'src/terminal/design-system/Dialog.js';
@@ -18,9 +17,6 @@ export function MCPServerApprovalDialog(t0: Props) {
   let t1;
   if ($[0] !== onDone || $[1] !== serverName) {
     t1 = function onChange(value: 'yes_all' | 'yes' | 'no') {
-      logEvent("tengu_mcp_dialog_choice", {
-        choice: value as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS
-      });
       bb2: switch (value) {
         case "yes":
         case "yes_all":

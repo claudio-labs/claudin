@@ -13,11 +13,9 @@ import { getAPIProvider, isGithubNativeAnthropicMode } from 'src/providers/model
 import {
   addToTotalCostState,
   addToTotalLinesChanged,
-  getCostCounter,
   getModelUsage,
   getSdkBetas,
   getSessionId,
-  getTokenCounter,
   getTotalAPIDuration,
   getTotalAPIDurationWithoutRetries,
   getTotalCacheCreationInputTokens,
@@ -38,10 +36,6 @@ import {
   setHasUnknownModelCost,
 } from 'src/platform/bootstrap/state.js'
 import type { ModelUsage } from 'src/platform/entrypoints/agentSdkTypes.js'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { getAdvisorUsage } from 'src/platform/doctor/advisor.js'
 import {
   getCurrentProjectConfig,
@@ -51,7 +45,6 @@ import {
   getContextWindowForModel,
   getModelMaxOutputTokens,
 } from 'src/agent/context/context.js'
-import { isFastModeEnabled } from 'src/providers/fastMode.js'
 import { formatDuration, formatNumber } from 'src/shared/text/format.js'
 import { resetBytesSaved } from 'src/agent/context/tokensSaved.js'
 import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js'
@@ -580,36 +573,9 @@ export function addToTotalSessionCost(
     )
   }
 
-  const attrs =
-    isFastModeEnabled() && usage.speed === 'fast'
-      ? { model, speed: 'fast' }
-      : { model }
-
-  getCostCounter()?.add(cost, attrs)
-  getTokenCounter()?.add(usage.input_tokens, { ...attrs, type: 'input' })
-  getTokenCounter()?.add(usage.output_tokens, { ...attrs, type: 'output' })
-  getTokenCounter()?.add(usage.cache_read_input_tokens ?? 0, {
-    ...attrs,
-    type: 'cacheRead',
-  })
-  getTokenCounter()?.add(usage.cache_creation_input_tokens ?? 0, {
-    ...attrs,
-    type: 'cacheCreation',
-  })
-
   let totalCost = cost
   for (const advisorUsage of getAdvisorUsage(usage)) {
     const advisorCost = calculateUSDCost(advisorUsage.model, advisorUsage)
-    logEvent('tengu_advisor_tool_token_usage', {
-      advisor_model:
-        advisorUsage.model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      input_tokens: advisorUsage.input_tokens,
-      output_tokens: advisorUsage.output_tokens,
-      cache_read_input_tokens: advisorUsage.cache_read_input_tokens ?? 0,
-      cache_creation_input_tokens:
-        advisorUsage.cache_creation_input_tokens ?? 0,
-      cost_usd_micros: Math.round(advisorCost * 1_000_000),
-    })
     totalCost += addToTotalSessionCost(
       advisorCost,
       advisorUsage,

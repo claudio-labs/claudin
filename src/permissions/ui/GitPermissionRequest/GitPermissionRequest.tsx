@@ -1,7 +1,6 @@
 import React from 'react'
 import { getOriginalCwd } from 'src/platform/bootstrap/state.js'
 import { Box, Text } from 'src/terminal/ink.js'
-import { sanitizeToolNameForAnalytics } from 'src/platform/analytics/metadata.js'
 import { shouldShowAlwaysAllowOptions } from 'src/permissions/permissionsLoader.js'
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
 import { usePermissionRequestLogging } from 'src/permissions/ui/hooks.js'
@@ -12,7 +11,6 @@ import {
 } from 'src/permissions/ui/PermissionPrompt.js'
 import type { PermissionRequestProps } from 'src/permissions/ui/PermissionRequest.js'
 import { PermissionRuleExplanation } from 'src/permissions/ui/PermissionRuleExplanation.js'
-import { logUnaryPermissionEvent } from 'src/permissions/ui/utils.js'
 
 type OptionValue = 'yes' | 'yes-dont-ask-again' | 'no'
 
@@ -61,18 +59,11 @@ export function GitPermissionRequest({
   const handleSelect = (value: OptionValue, feedback?: string) => {
     switch (value) {
       case 'yes': {
-        logUnaryPermissionEvent(
-          'tool_use_single',
-          toolUseConfirm,
-          'accept',
-          Boolean(feedback),
-        )
         toolUseConfirm.onAllow(toolUseConfirm.input, [], feedback)
         onDone()
         break
       }
       case 'yes-dont-ask-again': {
-        logUnaryPermissionEvent('tool_use_single', toolUseConfirm, 'accept')
         const updates: PermissionUpdate[] =
           prefixes.length > 0
             ? [
@@ -92,12 +83,6 @@ export function GitPermissionRequest({
         break
       }
       case 'no': {
-        logUnaryPermissionEvent(
-          'tool_use_single',
-          toolUseConfirm,
-          'reject',
-          Boolean(feedback),
-        )
         toolUseConfirm.onReject(feedback)
         onReject()
         onDone()
@@ -107,7 +92,6 @@ export function GitPermissionRequest({
   }
 
   const handleCancel = () => {
-    logUnaryPermissionEvent('tool_use_single', toolUseConfirm, 'reject')
     toolUseConfirm.onReject()
     onReject()
     onDone()
@@ -149,7 +133,7 @@ export function GitPermissionRequest({
           onSelect={handleSelect}
           onCancel={handleCancel}
           toolAnalyticsContext={{
-            toolName: sanitizeToolNameForAnalytics(toolUseConfirm.tool.name),
+            toolName: toolUseConfirm.tool.name,
             isMcp: toolUseConfirm.tool.isMcp ?? false,
           }}
         />

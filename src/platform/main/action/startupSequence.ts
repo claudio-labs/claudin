@@ -17,7 +17,6 @@
 
 import { feature } from 'bun:bundle';
 import { addToHistory } from 'src/agent/history.js';
-import { type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS, logEvent } from 'src/platform/analytics/index.js';
 import { getSubscriptionType } from 'src/providers/auth/auth.js';
 import { getRemoteControlAtStartup, getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { logForDebugging } from 'src/shared/debug.js';
@@ -25,7 +24,6 @@ import { isBareMode } from 'src/shared/envUtils.js';
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js';
 import { checkQuotaStatus } from 'src/providers/claudeAiLimits.js';
 import { fetchBootstrapData } from 'src/providers/transport/bootstrap.js';
-import { prefetchPassesEligibility } from 'src/providers/usage/referral.js';
 import { isLspGloballyEnabled } from 'src/platform/lsp/userSettings.js';
 import { initializeLspServerManager } from 'src/platform/lsp/manager.js';
 import { prefetchAllMcpResources } from 'src/mcp/client.js';
@@ -34,9 +32,7 @@ import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';
 import { isAdvisorEnabled } from 'src/platform/doctor/advisor.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { logError } from 'src/shared/log.js';
-import { logContextMetrics } from 'src/providers/transport/api.js';
 import { uniq } from 'src/shared/data/array.js';
-import { getUserMsgOptIn } from 'src/platform/bootstrap/state.js';
 import { countConcurrentSessions, registerSession, updateSessionName } from 'src/sessions/concurrentSessions.js';
 import { registerCleanup } from 'src/shared/cleanupRegistry.js';
 import { createEmptyAttributionState } from 'src/vcs/git/commitAttribution.js';
@@ -46,7 +42,6 @@ import { getInitialEffortSetting, parseEffortValue } from 'src/providers/effort/
 import { getInitialFastModeSetting, prefetchFastModeStatus, resolveFastModeStatusFromCache } from 'src/providers/fastMode.js';
 import { gracefulShutdownSync } from 'src/shared/proc/gracefulShutdown.js';
 import { isInBundledMode } from 'src/platform/install/bundledMode.js';
-import { logManagedSettings, logSessionTelemetry, logStartupTelemetry, logTenguInit } from 'src/platform/main/lifecycle.js';
 import { createUserMessage } from 'src/agent/messages/messages.js';
 import { processSessionStartHooks } from 'src/sessions/sessionStart.js';
 import { prefetchCopilotModelCatalog } from 'src/providers/model/copilotModelCatalog.js';
@@ -150,7 +145,6 @@ export async function runPostHeadlessGuards(
     void fetchBootstrapData();
 
     // TODO: Consolidate other prefetches into a single bootstrap request.
-    void prefetchPassesEligibility();
     if (!getFeatureValue_CACHED_MAY_BE_STALE('tengu_miraculo_the_bard', false)) {
       void prefetchFastModeStatus();
     } else {
@@ -214,7 +208,8 @@ export type RunMcpHooksAndTelemetryInput = {
   initOnly: boolean | undefined;
   init: boolean | undefined;
   maintenance: boolean | undefined;
-  // logTenguInit inputs
+  // Boot inputs kept on the contract for callers, but no longer read here —
+  // the startup event they fed was removed with the analytics call sites.
   prompt: string | undefined;
   inputPrompt: string | AsyncIterable<string>;
   verbose: boolean | undefined;
@@ -238,7 +233,6 @@ export type RunMcpHooksAndTelemetryInput = {
 };
 
 export type RunMcpHooksAndTelemetryDeps = {
-  assistantModule: { getAssistantActivationPath: () => string } | null;
   coordinatorModeModule: { isCoordinatorMode: () => boolean } | null;
 };
 
@@ -270,26 +264,9 @@ export function runMcpHooksAndTelemetry(
     initOnly,
     init,
     maintenance,
-    prompt,
-    inputPrompt,
-    verbose,
-    debug,
-    debugToStderr,
-    print,
-    outputFormat,
-    inputFormat,
-    allowedTools,
-    disallowedTools,
-    allMcpConfigs,
-    dangerouslySkipPermissions,
-    permissionMode,
-    allowDangerouslySkipPermissions,
-    systemPrompt,
-    appendSystemPrompt,
     toolPermissionContext,
     sessionNameArg,
   } = input;
-  const { assistantModule, coordinatorModeModule } = deps;
 
   // Prefetch MCP resources after trust dialog (this is where execution happens).
   // Interactive mode only: print mode defers connects until headlessStore exists
@@ -370,35 +347,6 @@ export function runMcpHooksAndTelemetry(
   registerCleanup(async () => {
     logForDiagnosticsNoPII('info', 'exited');
   });
-  void logTenguInit({
-    hasInitialPrompt: Boolean(prompt),
-    hasStdin: Boolean(inputPrompt),
-    verbose: verbose as boolean,
-    debug: debug as boolean,
-    debugToStderr: debugToStderr as boolean,
-    print: print ?? false,
-    outputFormat: outputFormat ?? 'text',
-    inputFormat: inputFormat ?? 'text',
-    numAllowedTools: allowedTools.length,
-    numDisallowedTools: disallowedTools.length,
-    mcpClientCount: Object.keys(allMcpConfigs).length,
-    worktreeEnabled: ctx.worktreeEnabled,
-    skipWebFetchPreflight: getInitialSettings().skipWebFetchPreflight,
-    githubActionInputs: process.env.GITHUB_ACTION_INPUTS,
-    dangerouslySkipPermissionsPassed: dangerouslySkipPermissions ?? false,
-    permissionMode,
-    modeIsBypass: permissionMode === 'bypassPermissions',
-    allowDangerouslySkipPermissionsPassed: allowDangerouslySkipPermissions,
-    systemPromptFlag: systemPrompt ? ((options as { systemPromptFile?: string }).systemPromptFile ? 'file' : 'flag') : undefined,
-    appendSystemPromptFlag: appendSystemPrompt ? ((options as { appendSystemPromptFile?: string }).appendSystemPromptFile ? 'file' : 'flag') : undefined,
-    thinkingConfig,
-    assistantActivationPath: feature('KAIROS') && ctx.kairosEnabled ? assistantModule?.getAssistantActivationPath() : undefined,
-    isCoordinator: feature('COORDINATOR_MODE') && coordinatorModeModule?.isCoordinatorMode() === true,
-  });
-
-  // Log context metrics once at initialization
-  void logContextMetrics(regularMcpConfigs, toolPermissionContext as Parameters<typeof logContextMetrics>[1]);
-  logManagedSettings();
 
   // Register PID file for concurrent-session detection (~/.claudin/sessions/)
   // and fire multi-clauding telemetry. Lives here (not init.ts) so only the
@@ -410,11 +358,6 @@ export function runMcpHooksAndTelemetry(
       void updateSessionName(sessionNameArg);
     }
     void countConcurrentSessions().then(count => {
-      if (count >= 2) {
-        logEvent('tengu_concurrent_sessions', {
-          num_sessions: count as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-        });
-      }
     });
   });
 
@@ -488,14 +431,6 @@ export function runInteractiveStartupBlock(
   } = input;
   const { getTeammateUtils } = deps;
 
-  // Log model config at startup
-  logEvent('tengu_startup_manual_model_config', {
-    cli_flag: options.model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    env_var: tryGetActiveProvider()?.model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    settings_file: (getInitialSettings() || {}).model as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    subscriptionType: getSubscriptionType() as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    agent: agentSetting as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  });
 
   // Get deprecation warning for the initial model (resolvedInitialModel computed earlier for hooks parallelization)
   const deprecationWarning = getModelDeprecationWarning(resolvedInitialModel);
@@ -553,8 +488,8 @@ export function runInteractiveStartupBlock(
     mode: isAgentSwarmsEnabled() && getTeammateUtils().isPlanModeRequired() ? ('plan' as const) : toolPermissionContext.mode,
   };
   // All startup opt-in paths (--tools, --brief, defaultView) have fired
-  // above; initialIsBriefOnly just reads the resulting state.
-  const initialIsBriefOnly = feature('KAIROS') || feature('KAIROS_BRIEF') ? getUserMsgOptIn() : false;
+  // above. Brief mode shipped behind KAIROS/KAIROS_BRIEF, both off here.
+  const initialIsBriefOnly = false;
   const fullRemoteControl = remoteControl || getRemoteControlAtStartup() || ctx.kairosEnabled;
   let ccrMirrorEnabled = false;
   if (feature('CCR_MIRROR') && !fullRemoteControl) {
@@ -652,9 +587,6 @@ export function runInteractiveStartupBlock(
     },
     speculation: IDLE_SPECULATION_STATE,
     speculationSessionTimeSavedMs: 0,
-    skillImprovement: {
-      suggestion: null,
-    },
     workerSandboxPermissions: {
       queue: [],
       selectedIndex: 0,
@@ -676,13 +608,7 @@ export function runInteractiveStartupBlock(
       advisorModel,
     }),
     // Compute teamContext synchronously to avoid useEffect setState during render.
-    // KAIROS: assistantTeamContext takes precedence — set earlier in the
-    // KAIROS block so Agent(name: "foo") can spawn in-process teammates
-    // without TeamCreate. computeInitialTeamContext() is for tmux-spawned
-    // teammates reading their own identity, not the assistant-mode leader.
-    teamContext: feature('KAIROS')
-      ? ((ctx.assistantTeamContext as ReturnType<NonNullable<typeof computeInitialTeamContext>> | undefined) ?? computeInitialTeamContext?.())
-      : computeInitialTeamContext?.(),
+    teamContext: computeInitialTeamContext?.(),
   };
 
   // Add CLI initial prompt to history
@@ -697,10 +623,6 @@ export function runInteractiveStartupBlock(
     ...current,
     numStartups: (current.numStartups ?? 0) + 1,
   }));
-  setImmediate(() => {
-    void logStartupTelemetry();
-    logSessionTelemetry();
-  });
 
   return {
     initialState,

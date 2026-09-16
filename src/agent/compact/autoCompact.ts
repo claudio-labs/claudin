@@ -246,17 +246,6 @@ export async function shouldAutoCompact(
   if (querySource === 'session_memory' || querySource === 'compact') {
     return false
   }
-  // marble_origami is the ctx-agent — if ITS context blows up and
-  // autocompact fires, runPostCompactCleanup calls resetContextCollapse()
-  // which destroys the MAIN thread's committed log (module-level state
-  // shared across forks). Inside feature() so the string DCEs from
-  // external builds (it's in excluded-strings.txt).
-  if (feature('CONTEXT_COLLAPSE')) {
-    if (querySource === 'marble_origami') {
-      return false
-    }
-  }
-
   if (!isAutoCompactEnabled()) {
     return false
   }
@@ -282,20 +271,6 @@ export async function shouldAutoCompact(
   // than in isAutoCompactEnabled() keeps reactiveCompact alive as the 413
   // fallback (it consults isAutoCompactEnabled directly) and leaves
   // sessionMemory + manual /compact working.
-  //
-  // Consult isContextCollapseEnabled (not the raw gate) so the
-  // CLAUDE_CONTEXT_COLLAPSE env override is honored here too. require()
-  // inside the block breaks the init-time cycle (this file exports
-  // getEffectiveContextWindowSize which collapse's index imports).
-  if (feature('CONTEXT_COLLAPSE')) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const { isContextCollapseEnabled } =
-      require('src/agent/contextCollapse/index.js') as typeof import('src/agent/contextCollapse/index.js')
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    if (isContextCollapseEnabled()) {
-      return false
-    }
-  }
 
   const tokenCount = tokenCountWithEstimation(messages) - snipTokensFreed
   const threshold = getAutoCompactThreshold(model)

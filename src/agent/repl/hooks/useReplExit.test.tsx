@@ -9,7 +9,6 @@ type Mocks = {
   killCalls: Array<{ pid: number; signal: NodeJS.Signals | number }>
   spawnSyncCalls: Array<unknown[]>
   currentWorktreeSession: unknown
-  isBgSessionResult: boolean
   exitCallResult: React.ReactNode
 }
 
@@ -17,7 +16,6 @@ const mocks: Mocks = {
   killCalls: [],
   spawnSyncCalls: [],
   currentWorktreeSession: null,
-  isBgSessionResult: false,
   exitCallResult: null,
 }
 
@@ -67,9 +65,7 @@ beforeAll(() => {
     },
   }))
   mock.module('src/sessions/concurrentSessions.js', () => ({
-    isBgSession: () => mocks.isBgSessionResult,
     updateSessionName: () => {},
-    updateSessionActivity: () => {},
   }))
   mock.module('src/vcs/git/worktree.js', () => ({
     getCurrentWorktreeSession: () => mocks.currentWorktreeSession,
@@ -141,7 +137,6 @@ function resetMocks(): void {
   mocks.killCalls = []
   mocks.spawnSyncCalls = []
   mocks.currentWorktreeSession = null
-  mocks.isBgSessionResult = false
   mocks.exitCallResult = null
 }
 
@@ -176,9 +171,9 @@ describe('useReplExit', () => {
     }
   })
 
-  test('exit completes when call() returns null (bg detach style)', async () => {
+  test('exit completes when call() returns null', async () => {
     resetMocks()
-    // No worktree, no bg — falls through to exit.load().call().
+    // No worktree — falls through to exit.load().call().
     mocks.exitCallResult = null
     const h = await mountHarness()
     try {
@@ -204,24 +199,6 @@ describe('useReplExit', () => {
       const p2 = h.getResult().handleExit()
       await Promise.all([p1, p2])
       await new Promise<void>((r) => setTimeout(r, 10))
-      expect(mocks.killCalls.length).toBe(0)
-    } finally {
-      h.unmount()
-    }
-  })
-
-  test('bg session path: detaches via tmux and clears state', async () => {
-    resetMocks()
-    mocks.isBgSessionResult = true
-    const h = await mountHarness()
-    try {
-      await h.getResult().handleExit()
-      await new Promise<void>((r) => setTimeout(r, 10))
-      // BG_SESSIONS is a feature flag; this branch only runs if the flag is
-      // truthy at build time. In test we can't predict the flag, so we just
-      // assert the state remains consistent (either path settles isExiting).
-      const r = h.getResult()
-      expect(typeof r.isExiting).toBe('boolean')
       expect(mocks.killCalls.length).toBe(0)
     } finally {
       h.unmount()

@@ -12,7 +12,6 @@ import {
   resolve,
   sep,
 } from 'path'
-import { logEvent } from 'src/platform/analytics/index.js'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -445,7 +444,6 @@ export function writeFileSyncAndFlush(
     logForDebugging(`Failed to write file atomically: ${atomicError}`, {
       level: 'error',
     })
-    logEvent('tengu_atomic_write_error', {})
 
     // Clean up temp file on error
     try {

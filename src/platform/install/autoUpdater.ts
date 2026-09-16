@@ -2,10 +2,6 @@ import { constants as fsConstants } from 'fs'
 import { access, readFile, stat, writeFile } from 'fs/promises'
 import { homedir } from 'os'
 import { join } from 'path'
-import {
-  type AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-  logEvent,
-} from 'src/platform/analytics/index.js'
 import { getLauncherPath } from 'src/platform/install/bundledMode.js'
 import { type ReleaseChannel, saveGlobalConfig } from 'src/platform/config/config.js'
 import { logForDebugging } from 'src/shared/debug.js'
@@ -611,12 +607,6 @@ export async function installGlobalPackage(
     logError(
       new AutoUpdaterError('Another process is currently installing an update'),
     )
-    // Log the lock contention
-    logEvent('tengu_auto_updater_lock_contention', {
-      pid: process.pid,
-      currentVersion:
-        MACRO.VERSION as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-    })
     return 'in_progress'
   }
 
@@ -627,10 +617,6 @@ export async function installGlobalPackage(
     // Check if we're using npm from Windows path in WSL
     if (packageManager === 'npm' && env.isNpmFromWindowsPath()) {
       logError(new Error('Windows NPM detected in WSL environment'))
-      logEvent('tengu_auto_updater_windows_npm_in_wsl', {
-        currentVersion:
-          MACRO.VERSION as AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS,
-      })
       // biome-ignore lint/suspicious/noConsole:: intentional console output
       console.error(`
 Error: Windows NPM detected in WSL

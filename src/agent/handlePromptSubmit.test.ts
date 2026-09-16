@@ -1,22 +1,13 @@
-import { afterAll, afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { getCommandQueue, resetCommandQueue } from 'src/agent/messageQueueManager.js'
-
-const realAnalytics = await import('src/platform/analytics/index.js')
 
 describe('handlePromptSubmit', () => {
   beforeEach(() => {
     resetCommandQueue()
-    mock.module('src/platform/analytics/index.js', () => ({
-      logEvent: () => {},
-    }))
   })
 
   afterEach(() => {
     resetCommandQueue()
-  })
-
-  afterAll(() => {
-    mock.module('src/platform/analytics/index.js', () => realAnalytics)
   })
 
   it('queues prompt submissions during generation without interrupting the current turn', async () => {

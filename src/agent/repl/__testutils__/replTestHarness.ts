@@ -341,10 +341,6 @@ export function setupReplMocks(): void {
     () => ({ useModelMigrationNotifications: noopHook }),
   )
   mock.module(
-    'src/platform/notifications/useCanSwitchToExistingSubscription.js',
-    () => ({ useCanSwitchToExistingSubscription: noopHook }),
-  )
-  mock.module(
     'src/platform/notifications/useTeammateShutdownNotification.js',
     () => ({ useTeammateLifecycleNotification: noopHook }),
   )
