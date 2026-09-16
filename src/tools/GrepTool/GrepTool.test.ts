@@ -137,6 +137,18 @@ describe('GrepTool — baseline regression', () => {
     expect(data.numFiles).toBe(5)
   })
 
+  test('count mode totals are search-wide, not the truncated page', async () => {
+    // The regression this pins: the footer used to sum the post-head_limit
+    // slice, so "Found N occurrences across M files" silently counted only the
+    // first page. Totals must stay search-wide however small the page is.
+    const data = await grep({ output_mode: 'count', head_limit: 2 })
+
+    expect(data.numFiles).toBe(5)
+    expect(data.numMatches).toBeGreaterThanOrEqual(4)
+    expect(data.appliedLimit).toBe(2)
+    expect((data.content ?? '').split('\n').filter(Boolean).length).toBe(2)
+  })
+
   test('glob filters the file set', async () => {
     const data = await grep({ glob: '*.py' })
 
@@ -200,6 +212,113 @@ describe('GrepTool — files_with_matches ranking', () => {
       'mike.ts',
       'alpha.ts',
     ])
+  })
+})
+
+describe('GrepTool — count mode ranking', () => {
+  let countDir: string
+
+  // Match counts ascend with the alphabet (alpha 1 → zulu 3), so rg's walk
+  // order and a filename sort are both the exact inverse of the expected
+  // count-desc ranking — an unsorted passthrough cannot pass these by accident.
+  // bravo.ts ties mike.ts at 2 to pin the path-asc tiebreak.
+  beforeAll(() => {
+    countDir = mkdtempSync(join(tmpdir(), 'grep-count-rank-'))
+    const files: Array<[string, number]> = [
+      ['alpha.ts', 1],
+      ['bravo.ts', 2],
+      ['mike.ts', 2],
+      ['zulu.ts', 3],
+    ]
+    for (const [name, matches] of files) {
+      writeFileSync(
+        join(countDir, name),
+        Array.from({ length: matches }, (_, i) => `const needle${i} = 1`).join(
+          '\n',
+        ) + '\n',
+      )
+    }
+  })
+
+  afterAll(() => {
+    rmSync(countDir, { recursive: true, force: true })
+  })
+
+  async function countGrep(
+    input: Record<string, unknown> = {},
+  ): Promise<GrepData> {
+    const { data } = await GrepTool.call(
+      {
+        pattern: 'needle',
+        path: countDir,
+        output_mode: 'count',
+        ...input,
+      } as never,
+      makeContext(),
+    )
+    return data as GrepData
+  }
+
+  function names(content: string | undefined): string[] {
+    return (content ?? '')
+      .split('\n')
+      .filter(Boolean)
+      .map(l => basename(l.substring(0, l.lastIndexOf(':'))))
+  }
+
+  test('lists the biggest counts first, ties by path', async () => {
+    const data = await countGrep()
+
+    expect(names(data.content)).toEqual([
+      'zulu.ts',
+      'bravo.ts',
+      'mike.ts',
+      'alpha.ts',
+    ])
+    expect(data.numMatches).toBe(8)
+    expect(data.numFiles).toBe(4)
+  })
+
+  test('head_limit keeps the biggest counts and pages the sorted list', async () => {
+    const page = await countGrep({ head_limit: 2 })
+    expect(names(page.content)).toEqual(['zulu.ts', 'bravo.ts'])
+    expect(page.appliedLimit).toBe(2)
+    // Totals stay search-wide even though the page is smaller.
+    expect(page.numMatches).toBe(8)
+    expect(page.numFiles).toBe(4)
+
+    const next = await countGrep({ head_limit: 2, offset: 2 })
+    expect(names(next.content)).toEqual(['mike.ts', 'alpha.ts'])
+    expect(next.appliedOffset).toBe(2)
+    expect(next.numMatches).toBe(8)
+    expect(next.numFiles).toBe(4)
+  })
+
+  test('head_limit 0 keeps every entry, still sorted', async () => {
+    const data = await countGrep({ head_limit: 0 })
+
+    expect(names(data.content)).toEqual([
+      'zulu.ts',
+      'bravo.ts',
+      'mike.ts',
+      'alpha.ts',
+    ])
+    expect(data.appliedLimit).toBeUndefined()
+    expect(data.numMatches).toBe(8)
+    expect(data.numFiles).toBe(4)
+  })
+
+  test('the rendered footer reports search-wide totals past the page', async () => {
+    const data = await countGrep({ head_limit: 1 })
+    const block = GrepTool.mapToolResultToToolResultBlockParam!(
+      data as never,
+      'tool-use-1',
+    )
+    const text = typeof block.content === 'string' ? block.content : ''
+
+    expect(text).toContain('Found 8 total occurrences across 4 files')
+    expect(text).toContain('pagination = limit: 1')
+    expect(text.split('\n').filter(l => /^\S+:\d+$/.test(l)).length).toBe(1)
   })
 })
 
