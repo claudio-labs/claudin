@@ -728,10 +728,41 @@ export const GrepTool = buildTool({
     }
 
     if (output_mode === 'count') {
-      // For count mode, pass through raw ripgrep output (filename:count format)
-      // Apply head_limit first to avoid relativizing entries that will be discarded.
+      // rg -c emits `path:count` lines in walk order. Sort by count desc (path
+      // asc tiebreak) so the biggest matches lead and pagination pages the
+      // sorted list — the same ranking idiom files_with_matches uses below.
+      const parsed = results.map(line => {
+        const colonIndex = line.lastIndexOf(':')
+        const count =
+          colonIndex > 0
+            ? parseInt(line.substring(colonIndex + 1), 10)
+            : NaN
+        return { line, count }
+      })
+      parsed.sort((a, b) => {
+        const ca = Number.isNaN(a.count) ? 0 : a.count
+        const cb = Number.isNaN(b.count) ? 0 : b.count
+        if (cb !== ca) return cb - ca
+        return a.line.localeCompare(b.line)
+      })
+
+      // Totals describe the WHOLE search, not the page shown: summing the
+      // post-head_limit slice made a census over a wide tree report "Found N
+      // occurrences across M files" counting only the first page (silently
+      // undercounted past the 250-line default).
+      let totalMatches = 0
+      let fileCount = 0
+      for (const { count } of parsed) {
+        if (!Number.isNaN(count)) {
+          totalMatches += count
+          fileCount += 1
+        }
+      }
+
+      // Apply head_limit after sorting to avoid relativizing entries that will
+      // be discarded.
       const { items: limitedResults, appliedLimit } = applyHeadLimit(
-        results,
+        parsed.map(p => p.line),
         head_limit,
         offset,
       )
@@ -747,21 +778,6 @@ export const GrepTool = buildTool({
         }
         return line
       })
-
-      // Parse count output to extract total matches and file count
-      let totalMatches = 0
-      let fileCount = 0
-      for (const line of finalCountLines) {
-        const colonIndex = line.lastIndexOf(':')
-        if (colonIndex > 0) {
-          const countStr = line.substring(colonIndex + 1)
-          const count = parseInt(countStr, 10)
-          if (!isNaN(count)) {
-            totalMatches += count
-            fileCount += 1
-          }
-        }
-      }
 
       const output = {
         mode: 'count' as const,
