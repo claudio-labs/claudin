@@ -100,6 +100,7 @@ const originalEnv = {
   GOOGLE_CLOUD_PROJECT: process.env.GOOGLE_CLOUD_PROJECT,
   ANTHROPIC_CUSTOM_HEADERS: process.env.ANTHROPIC_CUSTOM_HEADERS,
   CLAUDIN_DISABLE_XAI_CONV_ID: process.env.CLAUDIN_DISABLE_XAI_CONV_ID,
+  CLAUDIN_DISABLE_OPENCODE_SESSION_ID: process.env.CLAUDIN_DISABLE_OPENCODE_SESSION_ID,
 }
 
 const originalFetch = globalThis.fetch
@@ -169,6 +170,7 @@ beforeEach(() => {
   delete process.env.GOOGLE_CLOUD_PROJECT
   delete process.env.ANTHROPIC_CUSTOM_HEADERS
   delete process.env.CLAUDIN_DISABLE_XAI_CONV_ID
+  delete process.env.CLAUDIN_DISABLE_OPENCODE_SESSION_ID
 })
 
 afterEach(() => {
@@ -189,6 +191,7 @@ afterEach(() => {
   restoreEnv('GOOGLE_CLOUD_PROJECT', originalEnv.GOOGLE_CLOUD_PROJECT)
   restoreEnv('ANTHROPIC_CUSTOM_HEADERS', originalEnv.ANTHROPIC_CUSTOM_HEADERS)
   restoreEnv('CLAUDIN_DISABLE_XAI_CONV_ID', originalEnv.CLAUDIN_DISABLE_XAI_CONV_ID)
+  restoreEnv('CLAUDIN_DISABLE_OPENCODE_SESSION_ID', originalEnv.CLAUDIN_DISABLE_OPENCODE_SESSION_ID)
   globalThis.fetch = originalFetch
 })
 
@@ -4691,4 +4694,63 @@ test('sends x-grok-conv-id to api.x.ai only, never in the body', async () => {
   process.env.CLAUDIN_DISABLE_XAI_CONV_ID = '1'
   await send('https://api.x.ai/v1')
   expect(capturedHeaders[4]?.get('x-grok-conv-id')).toBeNull()
+})
+
+test('sends x-opencode-session to opencode.ai/zen (zen and go lanes) only', async () => {
+  const capturedHeaders: Headers[] = []
+
+  globalThis.fetch = (async (_input, init) => {
+    capturedHeaders.push(new Headers(init?.headers))
+
+    return new Response(
+      JSON.stringify({
+        id: 'chatcmpl-1',
+        model: 'glm-5.3',
+        choices: [
+          {
+            message: { role: 'assistant', content: 'ok' },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: { prompt_tokens: 8, completion_tokens: 3, total_tokens: 11 },
+      }),
+      { headers: { 'Content-Type': 'application/json' } },
+    )
+  }) as FetchType
+
+  const send = async (baseUrl: string): Promise<void> => {
+    process.env.OPENAI_BASE_URL = baseUrl
+    const client = createOpenAIShimClient({}) as OpenAIShimClient
+    await client.beta.messages.create({
+      model: 'glm-5.3',
+      messages: [{ role: 'user', content: 'hello' }],
+      max_tokens: 64,
+      stream: false,
+    })
+  }
+
+  // OpenCode Zen lane → header present, carrying the session-stable id
+  // (the gateway uses it for routing + prompt caching).
+  await send('https://opencode.ai/zen/v1')
+  expect(capturedHeaders[0]?.get('x-opencode-session')).toBe(getSessionId())
+
+  // OpenCode GO lane → same header, same stable id (same gateway).
+  await send('https://opencode.ai/zen/go/v1')
+  expect(capturedHeaders[1]?.get('x-opencode-session')).toBe(getSessionId())
+
+  // Every other backend is untouched — a generic OpenAI-compatible URL,
+  // a non-/zen path on opencode.ai, and a lookalike host the exact-host
+  // gate must reject.
+  await send('http://example.test/v1')
+  expect(capturedHeaders[2]?.get('x-opencode-session')).toBeNull()
+
+  await send('https://opencode.ai/api/v1')
+  expect(capturedHeaders[3]?.get('x-opencode-session')).toBeNull()
+
+  await send('https://evil-opencode.ai/zen/v1')
+  expect(capturedHeaders[4]?.get('x-opencode-session')).toBeNull()
+
+  process.env.CLAUDIN_DISABLE_OPENCODE_SESSION_ID = '1'
+  await send('https://opencode.ai/zen/v1')
+  expect(capturedHeaders[5]?.get('x-opencode-session')).toBeNull()
 })
