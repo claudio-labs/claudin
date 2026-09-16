@@ -31,11 +31,17 @@ const GITHUB_DEFAULT_BASE_URL = 'https://api.githubcopilot.com'
 // non-Copilot profile is active would otherwise create a duplicate. Refreshing
 // in place also keeps `extras.githubToken` (consumed by the shim) in sync with
 // the secure-storage token after a token refresh.
+// `activate` controls whether saving also repoints the global active profile.
+// The /provider menu passes false — signing in there must not hijack the
+// active provider; activation stays an explicit menu action. Defaults to true
+// so the standalone onboarding path keeps its historical behavior.
 export function persistCopilotProfile(
   token: string,
   model: string = GITHUB_DEFAULT_MODEL,
   baseUrl?: string,
+  options?: { activate?: boolean },
 ): { mode: 'updated' | 'created' | 'failed' } {
+  const activate = options?.activate ?? true
   const existing = getProviderProfiles().find(
     profile =>
       profile.provider === 'openai' &&
@@ -58,7 +64,7 @@ export function persistCopilotProfile(
     // A rejected save must not be reported as success — the caller shows an
     // error and the profile stays as-is rather than silently half-configured.
     if (!saved) return { mode: 'failed' }
-    setActiveProviderProfile(existing.id)
+    if (activate) setActiveProviderProfile(existing.id)
     return { mode: 'updated' }
   }
   const saved = addProviderProfile(
@@ -72,7 +78,7 @@ export function persistCopilotProfile(
         githubToken: token,
       },
     },
-    { makeActive: true },
+    { makeActive: activate },
   )
   if (!saved) return { mode: 'failed' }
   return { mode: 'created' }
@@ -89,12 +95,17 @@ type Props = {
   onDone: LocalJSXCommandOnDone
   onBack?: () => void
   onChangeAPIKey?: () => void
+  // When false, completing the flow saves the profile WITHOUT repointing the
+  // global active provider (the /provider menu case). Defaults to true for the
+  // standalone onboarding path.
+  activateOnSave?: boolean
 }
 
 export function GithubDeviceFlowStep({
   onDone,
   onBack,
   onChangeAPIKey,
+  activateOnSave = true,
 }: Props): React.ReactNode {
   const initialStep: Step = readGithubModelsToken()?.trim() ? 'already-authed' : 'menu'
   const [step, setStep] = useState<Step>(initialStep)
@@ -123,21 +134,27 @@ export function GithubDeviceFlowStep({
         setStep('error')
         return
       }
-      const persisted = persistCopilotProfile(token, model, options?.baseUrl)
+      const persisted = persistCopilotProfile(token, model, options?.baseUrl, {
+        activate: activateOnSave,
+      })
       if (persisted.mode === 'failed') {
         setErrorMsg('Could not save the GitHub Copilot provider profile.')
         setStep('error')
         return
       }
       // Warm the live model catalog now that the Copilot profile is active.
+      // No-op when the active provider is unchanged (prefetch self-gates on
+      // the active profile being a Copilot one).
       prefetchCopilotModelCatalog()
       onChangeAPIKey?.()
       onDone(
-        'GitHub Copilot onboard complete. Copilot token stored in secure storage and as the active /provider profile.',
+        activateOnSave
+          ? 'GitHub Copilot onboard complete. Copilot token stored in secure storage and as the active /provider profile.'
+          : 'GitHub Copilot sign-in complete. Copilot token stored in secure storage; the profile was saved without changing the active provider — activate it from "Set active provider".',
         { display: 'user' },
       )
     },
-    [onChangeAPIKey, onDone],
+    [activateOnSave, onChangeAPIKey, onDone],
   )
 
   const runDeviceFlow = useCallback(

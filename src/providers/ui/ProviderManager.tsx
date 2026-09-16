@@ -1457,9 +1457,12 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
       extras: builtExtras,
     }
 
+    // Adding from the /provider menu must not hijack the global active
+    // pointer — only the first-run wizard (nothing configured yet) activates
+    // what it creates. Activation stays an explicit menu action.
     const saved = editingProfileId
       ? updateProviderProfile(editingProfileId, payload)
-      : addProviderProfile(payload, { makeActive: true })
+      : addProviderProfile(payload, { makeActive: mode === 'first-run' })
 
     if (!saved) {
       setErrorMessage('Could not save provider. Fill all required fields.')
@@ -1490,17 +1493,22 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
 
     refreshProfiles()
     const overrideMaskingNew =
+      mode === 'first-run' &&
       !editingProfileId &&
       hasProjectProviderProfileOverride() &&
       !isActiveSavedProfile
     const overrideTargetName = overrideMaskingNew
       ? (getActiveProviderProfile()?.name ?? 'override target')
       : null
+    const addedMessage =
+      mode === 'first-run'
+        ? `Added provider: ${saved.name} (now active)`
+        : `Added provider: ${saved.name} (active provider unchanged)`
     const successMessage = editingProfileId
       ? `Updated provider: ${saved.name}`
       : overrideMaskingNew
         ? `Added provider: ${saved.name} (now global default — project keeps using ${overrideTargetName}; use "Clear project provider override" to apply here)`
-        : `Added provider: ${saved.name} (now active)`
+        : addedMessage
     setStatusMessage(
       settingsOverrideError
         ? `${successMessage}. Warning: could not clear startup provider override (${settingsOverrideError}).`
@@ -2280,9 +2288,12 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
               getProviderProfiles(),
               defaults.baseUrl,
             )
+            // Adding from the /provider menu must not hijack the global active
+            // pointer — only the first-run wizard activates what it creates.
+            const activateOnSave = mode === 'first-run'
             const saved = existing
               ? updateProviderProfile(existing.id, payload)
-              : addProviderProfile(payload, { makeActive: true })
+              : addProviderProfile(payload, { makeActive: activateOnSave })
             if (!saved) {
               setErrorMessage(
                 'OAuth completed, but the Anthropic profile could not be saved.',
@@ -2291,9 +2302,10 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
               return
             }
             // updateProviderProfile keeps the current active pointer, so make the
-            // (re-)configured Anthropic profile active explicitly when it isn't.
+            // (re-)configured Anthropic profile active explicitly when it isn't —
+            // but only when this flow is allowed to activate.
             const active =
-              existing && activeProfileId !== saved.id
+              activateOnSave && existing && activeProfileId !== saved.id
                 ? setActiveProviderProfile(saved.id)
                 : saved
             if (!active) {
@@ -2665,9 +2677,12 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
               getProviderProfiles(),
               storedCodexOAuthProfileId,
             )
+            // Adding from the /provider menu must not hijack the global active
+            // pointer — only the first-run wizard activates what it creates.
+            const activateOnSave = mode === 'first-run'
             const saved = existing
               ? updateProviderProfile(existing.id, payload)
-              : addProviderProfile(payload, { makeActive: true })
+              : addProviderProfile(payload, { makeActive: activateOnSave })
 
             if (!saved) {
               setErrorMessage(
@@ -2678,7 +2693,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
             }
 
             const active =
-              existing && activeProfileId !== saved.id
+              activateOnSave && existing && activeProfileId !== saved.id
                 ? setActiveProviderProfile(saved.id)
                 : saved
             if (!active) {
@@ -2690,23 +2705,30 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
             }
 
             persistCredentials({ profileId: saved.id })
-            const settingsOverrideError =
-              clearStartupProviderOverrideFromUserSettings()
-            const activationWarning = await activateCodexOAuthSession(tokens)
             setHasStoredCodexOAuthCredentials(true)
             setStoredCodexOAuthProfileId(saved.id)
             refreshProfiles()
-            const warnings = [
-              activationWarning,
-              settingsOverrideError
-                ? `could not clear startup provider override (${settingsOverrideError})`
-                : null,
-            ].filter((warning): warning is string => Boolean(warning))
-            const message = buildCodexOAuthActivationMessage({
-              prefix: 'Codex OAuth configured',
-              activationWarning,
-              warnings,
-            })
+            let message: string
+            if (!activateOnSave) {
+              // Manage mode saved the profile without activating it — no
+              // session switch happened, so don't claim one.
+              message = `Codex OAuth configured: ${saved.name} (active provider unchanged — activate it from "Set active provider")`
+            } else {
+              const settingsOverrideError =
+                clearStartupProviderOverrideFromUserSettings()
+              const activationWarning = await activateCodexOAuthSession(tokens)
+              const warnings = [
+                activationWarning,
+                settingsOverrideError
+                  ? `could not clear startup provider override (${settingsOverrideError})`
+                  : null,
+              ].filter((warning): warning is string => Boolean(warning))
+              message = buildCodexOAuthActivationMessage({
+                prefix: 'Codex OAuth configured',
+                activationWarning,
+                warnings,
+              })
+            }
 
             if (mode === 'first-run') {
               onDone({
@@ -2743,9 +2765,12 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
               getProviderProfiles(),
               readXaiCredentials()?.profileId,
             )
+            // Adding from the /provider menu must not hijack the global active
+            // pointer — only the first-run wizard activates what it creates.
+            const activateOnSave = mode === 'first-run'
             const saved = existing
               ? updateProviderProfile(existing.id, payload)
-              : addProviderProfile(payload, { makeActive: true })
+              : addProviderProfile(payload, { makeActive: activateOnSave })
 
             if (!saved) {
               setErrorMessage(
@@ -2756,9 +2781,10 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
             }
 
             // updateProviderProfile keeps the current active pointer, so make the
-            // (re-)configured xAI profile active explicitly when it isn't already.
+            // (re-)configured xAI profile active explicitly when it isn't
+            // already — but only when this flow is allowed to activate.
             const active =
-              existing && activeProfileId !== saved.id
+              activateOnSave && existing && activeProfileId !== saved.id
                 ? setActiveProviderProfile(saved.id)
                 : saved
             if (!active) {
@@ -2782,7 +2808,9 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
             // Refresh menu state so the new profile shows up and becomes
             // selectable as the active one.
             refreshProfiles()
-            const message = `xAI / Grok configured. Claudin switched to it for this session.`
+            const message = activateOnSave
+              ? `xAI / Grok configured. Claudin switched to it for this session.`
+              : `xAI / Grok configured: ${saved.name} (active provider unchanged — activate it from "Set active provider")`
 
             if (mode === 'first-run') {
               onDone({
@@ -2822,9 +2850,12 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
               getProviderProfiles(),
               readKimiCredentials()?.profileId,
             )
+            // Adding from the /provider menu must not hijack the global active
+            // pointer — only the first-run wizard activates what it creates.
+            const activateOnSave = mode === 'first-run'
             const saved = existing
               ? updateProviderProfile(existing.id, payload)
-              : addProviderProfile(payload, { makeActive: true })
+              : addProviderProfile(payload, { makeActive: activateOnSave })
 
             if (!saved) {
               setErrorMessage(
@@ -2835,9 +2866,10 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
             }
 
             // updateProviderProfile keeps the current active pointer, so make the
-            // (re-)configured Kimi profile active explicitly when it isn't already.
+            // (re-)configured Kimi profile active explicitly when it isn't
+            // already — but only when this flow is allowed to activate.
             const active =
-              existing && activeProfileId !== saved.id
+              activateOnSave && existing && activeProfileId !== saved.id
                 ? setActiveProviderProfile(saved.id)
                 : saved
             if (!active) {
@@ -2859,7 +2891,9 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
             }
 
             refreshProfiles()
-            const message = `Kimi Code configured. Claudin switched to it for this session.`
+            const message = activateOnSave
+              ? `Kimi Code configured. Claudin switched to it for this session.`
+              : `Kimi Code configured: ${saved.name} (active provider unchanged — activate it from "Set active provider")`
 
             if (mode === 'first-run') {
               onDone({
@@ -2880,6 +2914,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     case 'github-onboard':
       content = (
         <GithubDeviceFlowStep
+          activateOnSave={mode === 'first-run'}
           onDone={message => {
             if (message) {
               setStatusMessage(message)

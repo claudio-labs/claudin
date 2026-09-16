@@ -306,6 +306,62 @@ test('persistCopilotProfile creates a new Copilot profile when none exists', asy
   })
 })
 
+test('persistCopilotProfile does not touch the active pointer when activate is false', async () => {
+  const copilotProfile = {
+    id: 'profile_copilot',
+    name: 'GitHub Copilot',
+    provider: 'openai' as const,
+    baseUrl: 'https://api.githubcopilot.com',
+    model: 'github:copilot',
+    apiKey: 'old-token',
+    extras: { githubToken: 'old-token' },
+  }
+  const anthropicProfile = {
+    id: 'profile_anthropic',
+    name: 'Anthropic',
+    provider: 'anthropic' as const,
+    baseUrl: 'https://api.anthropic.com',
+    model: 'claude-sonnet-4-6',
+  }
+  const mocks = mockProviderProfilesForFinalize({
+    profiles: [anthropicProfile, copilotProfile],
+  })
+
+  const { persistCopilotProfile } = await import(
+    // @ts-expect-error cache-busting
+    './GithubDeviceFlowStep.js?finalize-no-activate-update'
+  )
+
+  // Update path: refreshes the token in place but leaves the active pointer.
+  const updated = persistCopilotProfile('new-token', 'github:copilot', undefined, {
+    activate: false,
+  })
+
+  expect(updated).toEqual({ mode: 'updated' })
+  expect(mocks.updateProviderProfile).toHaveBeenCalledTimes(1)
+  expect(mocks.setActiveProviderProfile).not.toHaveBeenCalled()
+
+  // Create path: saves without makeActive, and never repoints.
+  const createMocks = mockProviderProfilesForFinalize({
+    profiles: [anthropicProfile],
+  })
+  const { persistCopilotProfile: persistCreate } = await import(
+    // @ts-expect-error cache-busting
+    './GithubDeviceFlowStep.js?finalize-no-activate-create'
+  )
+
+  const created = persistCreate('fresh-token', 'github:copilot', undefined, {
+    activate: false,
+  })
+
+  expect(created).toEqual({ mode: 'created' })
+  expect(createMocks.addProviderProfile).toHaveBeenCalledTimes(1)
+  expect(createMocks.addProviderProfile.mock.calls[0]?.[1]).toEqual({
+    makeActive: false,
+  })
+  expect(createMocks.setActiveProviderProfile).not.toHaveBeenCalled()
+})
+
 test('persistCopilotProfile reports failure when the profile cannot be saved', async () => {
   const addProviderProfile = mock(() => null)
   const updateProviderProfile = mock(() => null)

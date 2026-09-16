@@ -704,6 +704,92 @@ test('ProviderManager first-run Ollama preset auto-detects installed models', as
   await mounted.dispose()
 })
 
+test('ProviderManager manage-mode add keeps the active provider unchanged', async () => {
+  delete process.env.CLAUDIN_SIMPLE
+  delete process.env.CLAUDIN_USE_GITHUB
+  delete process.env.GITHUB_TOKEN
+  delete process.env.GH_TOKEN
+
+  const activeProfile = {
+    id: 'provider_active',
+    provider: 'openai',
+    name: 'Already Active',
+    baseUrl: 'https://api.openai.com/v1',
+    model: 'gpt-5.4',
+    apiKey: 'sk-test',
+  }
+
+  const addProviderProfile = mock((payload: {
+    provider: string
+    name: string
+    baseUrl: string
+    model: string
+    apiKey?: string
+  }) => ({
+    id: 'provider_ollama_new',
+    provider: payload.provider,
+    name: payload.name,
+    baseUrl: payload.baseUrl,
+    model: payload.model,
+    apiKey: payload.apiKey,
+  }))
+  const setActiveProviderProfile = mock(() => activeProfile)
+
+  mockProviderManagerDependencies({
+    addProviderProfile,
+    setActiveProviderProfile,
+    getActiveProviderProfile: () => activeProfile,
+    getProviderProfiles: () => [activeProfile],
+    probeOllamaGenerationReadiness: async () => ({
+      state: 'ready',
+      models: [{ name: 'gemma4:31b-cloud', family: 'gemma', parameterSize: '31b' }],
+      probeModel: 'gemma4:31b-cloud',
+    }),
+  })
+
+  const nonce = `${Date.now()}-${Math.random()}`
+  const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
+  // Default mode is 'manage'.
+  const mounted = await mountProviderManager(ProviderManager, {})
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Provider manager') && frame.includes('Add provider'),
+  )
+
+  // Menu starts focused on "Add provider"; confirm to open the preset picker.
+  mounted.stdin.write('\r')
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Choose provider preset'),
+  )
+
+  await navigateToPreset(mounted.stdin, 'Ollama')
+  mounted.stdin.write('\r')
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Choose an Ollama model') && frame.includes('gemma4:31b-cloud'),
+  )
+  await Bun.sleep(25)
+  mounted.stdin.write('\r')
+
+  await waitForCondition(() => addProviderProfile.mock.calls.length > 0)
+  // Adding from the menu must NOT repoint the global active provider.
+  expect(addProviderProfile.mock.calls[0]?.[1]).toEqual({ makeActive: false })
+  expect(setActiveProviderProfile).not.toHaveBeenCalled()
+
+  // And the menu reports that the active provider is unchanged.
+  const menuFrame = await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('active provider unchanged'),
+  )
+  expect(menuFrame).toContain('Added provider: Ollama')
+
+  await mounted.dispose()
+})
+
 test('ProviderManager activating a multi-model provider sets the session model to the primary model', async () => {
   delete process.env.CLAUDIN_SIMPLE
   delete process.env.CLAUDIN_USE_GITHUB
