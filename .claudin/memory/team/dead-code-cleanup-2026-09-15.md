@@ -98,15 +98,43 @@ clean cut**: `RemoteAgentTask.tsx` imports `UltraplanPhase` from
 `ultraplanPhase` off the live remote-agent task state. Also `BUDDY: true` sits in
 the map with no `feature('BUDDY')` anywhere in `src/`.
 
+Six came off the list by removal: `BUILDING_CLAUDE_APPS` (the /claude-api skill —
+its 26 `.md` files are not in this fork, so enabling the flag would have
+registered an empty prompt), `MULTI_TURN_CONTEXT`, `CCR_REMOTE_SETUP`
+(`/web-setup`, which WOULD have worked if enabled — delete was the call, matching
+what the branch already decided for the claude.ai consumer surfaces),
+`SKILL_IMPROVEMENT` (a Haiku call writing to an `AppState` field no UI reads),
+`STREAMLINED_OUTPUT`, `BREAK_CACHE_COMMAND`. **Now 38 off-map: 4 toolchain,
+3 absent-module, 31 dead-local across 139 sites.**
+
+Three left that are deliberately NOT taken, each for its own reason:
+
+- **`HOOK_CHAINS` → `lifecycleHooks/hookChains.ts`, 1319 lines with 849 lines of
+  tests.** Complete and tested, unreachable only because the flag is off the map.
+  Enable-or-delete is a product call, not a cleanup one.
+- **`UNATTENDED_RETRY` → the persistent-retry path in `withRetry.ts`.**
+  `isPersistentRetryEnabled()` always returns false and is read at five sites,
+  three of them inverted. Collapsing them touches backoff and keep-alive on the
+  hot request path — worth doing, worth doing on its own.
+- **`SLOW_OPERATION_LOGGING` → `AntSlowLogger` in `slowOperations.ts`.** Doubly
+  dead: the flag gates the logger AND its sink is already a stub
+  (`sessionArtifacts.ts`'s `addSlowOperation` has an empty body,
+  `getSlowOperations` returns a frozen empty array).
+
+The pattern worth keeping: **removing one flag exposes the next layer.** Deleting
+`skillImprovement.ts` left `apiQueryHookHelper.ts` (141 lines) unreferenced, and
+`deadcode:ci` caught it one commit later. Run the gate after every flag, not once
+at the end of the batch.
+
 **Zero orphan files remain.** All 3295 `.ts(x)` under `src/` were scanned for any
 reference anywhere — imports, dynamic imports, requires, `mock.module`, plus the
 bare path and basename in `scripts/` and the root configs. Every production file
 is referenced. What is left is inside live files, which is the class
 `deadcode:ci` (knip) cannot see.
 
-One lead not taken: `SystemMicrocompactBoundaryMessage` is in the persisted
-`Message` union and `Message.tsx` renders its subtype, but nothing constructs
-one and `microcompactMetadata` occurs exactly once in the tree.
+`SystemMicrocompactBoundaryMessage` was the last orphaned type: in the persisted
+`Message` union with a render branch, never constructed. Removed — microcompact
+itself is untouched.
 
 ## Where it stood after the first 19 commits
 
