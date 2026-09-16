@@ -719,24 +719,32 @@ test('ProviderManager manage-mode add keeps the active provider unchanged', asyn
     apiKey: 'sk-test',
   }
 
-  const addProviderProfile = mock((payload: {
-    provider: string
-    name: string
-    baseUrl: string
-    model: string
-    apiKey?: string
-  }) => ({
-    id: 'provider_ollama_new',
-    provider: payload.provider,
-    name: payload.name,
-    baseUrl: payload.baseUrl,
-    model: payload.model,
-    apiKey: payload.apiKey,
-  }))
+  const addProviderProfile = mock(
+    (
+      payload: {
+        provider: string
+        name: string
+        baseUrl: string
+        model: string
+        apiKey?: string
+      },
+      options?: { makeActive?: boolean },
+    ) => ({
+      id: 'provider_ollama_new',
+      provider: payload.provider,
+      name: payload.name,
+      baseUrl: payload.baseUrl,
+      model: payload.model,
+      apiKey: payload.apiKey,
+      options,
+    }),
+  )
   const setActiveProviderProfile = mock(() => activeProfile)
 
   mockProviderManagerDependencies({
-    addProviderProfile,
+    addProviderProfile: addProviderProfile as unknown as (
+      ...args: unknown[]
+    ) => unknown,
     setActiveProviderProfile,
     getActiveProviderProfile: () => activeProfile,
     getProviderProfiles: () => [activeProfile],
