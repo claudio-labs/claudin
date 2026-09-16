@@ -89,6 +89,7 @@ import {
   isGlmCompatibleBaseUrl,
   isMistralMode,
   isMoonshotCompatibleBaseUrl,
+  isOpencodeZenBaseUrl,
   normalizeDeepSeekReasoningEffort,
 } from 'src/providers/shims/openaiShim/providerModes.js'
 import { extractReasoningMessage } from 'src/providers/shims/openaiShim/reasoningNormalizer.js'
@@ -588,6 +589,26 @@ class OpenAIShimMessages {
       !isEnvTruthy(process.env.CLAUDIN_DISABLE_XAI_CONV_ID)
     ) {
       headers['x-grok-conv-id'] = getSessionId()
+    }
+
+    // OpenCode Zen / GO (`opencode.ai/zen/...`): the gateway asks external
+    // clients to identify each conversation with a session-stable
+    // `x-opencode-session` header so it can optimize routing and prompt
+    // caching (opencode's Go docs list it as a client requirement, next to
+    // "identify yourself with your own user agent" — which the
+    // `getClaudinUserAgent()` override above already satisfies). Same
+    // session semantics as `x-grok-conv-id`: `/clear` regenerates the id
+    // (a new conversation, correctly routed elsewhere) and `/resume`
+    // restores the original, routing back to the server that may still
+    // hold the prefix. `isOpencodeZenBaseUrl` is an exact host + `/zen`
+    // path check, so it covers both the `opencode-zen` and `opencode-go`
+    // presets and reaches no other OpenAI-compatible backend.
+    // Killswitch: CLAUDIN_DISABLE_OPENCODE_SESSION_ID=1.
+    if (
+      isOpencodeZenBaseUrl(request.baseUrl) &&
+      !isEnvTruthy(process.env.CLAUDIN_DISABLE_OPENCODE_SESSION_ID)
+    ) {
+      headers['x-opencode-session'] = getSessionId()
     }
 
     const buildChatCompletionsUrl = (baseUrl: string): string => {

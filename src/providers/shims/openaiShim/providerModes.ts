@@ -21,6 +21,7 @@ import {
   GLM_API_HOSTS,
   KIMI_CODE_API_HOST,
   MOONSHOT_API_HOSTS,
+  OPENCODE_API_HOST,
 } from 'src/providers/shims/openaiShim/constants.js'
 
 export function isGithubModelsMode(): boolean {
@@ -75,6 +76,30 @@ export function isDeepSeekBaseUrl(baseUrl: string | undefined): boolean {
   if (!baseUrl) return false
   try {
     return DEEPSEEK_API_HOSTS.has(new URL(baseUrl).hostname.toLowerCase())
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Detects whether a profile baseUrl points at the OpenCode Zen gateway
+ * (`https://opencode.ai/zen/v1`, the `opencode-zen` preset) or its Go lane
+ * (`https://opencode.ai/zen/go/v1`, the `opencode-go` preset). The gateway
+ * asks external clients to send a session-stable `x-opencode-session`
+ * header (routing + prompt caching) — this gate is what scopes that header
+ * in `openaiShim/messagesClient.ts`. Exact host (a lookalike
+ * `evil-opencode.ai` must not match) plus `/zen` path prefix: both presets
+ * and any custom profile aimed at the gateway, never the rest of
+ * `opencode.ai`.
+ */
+export function isOpencodeZenBaseUrl(baseUrl: string | undefined): boolean {
+  if (!baseUrl) return false
+  try {
+    const parsed = new URL(baseUrl)
+    return (
+      parsed.hostname.toLowerCase() === OPENCODE_API_HOST &&
+      parsed.pathname.toLowerCase().startsWith('/zen')
+    )
   } catch {
     return false
   }

@@ -12,6 +12,8 @@ export const MOONSHOT_API_HOSTS = new Set([
 
 export const KIMI_CODE_API_HOST = 'api.kimi.com'
 
+export const OPENCODE_API_HOST = 'opencode.ai'
+
 export const GLM_API_HOSTS = new Set([
   'api.z.ai',
   'open.bigmodel.cn',

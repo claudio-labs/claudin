@@ -33,6 +33,7 @@ import {
   isDeepSeekBaseUrl,
   isGlmCompatibleBaseUrl,
   isMoonshotCompatibleBaseUrl,
+  isOpencodeZenBaseUrl,
   normalizeDeepSeekReasoningEffort,
 } from 'src/providers/shims/openaiShim/providerModes.js'
 import {
@@ -197,6 +198,18 @@ describe('providerModes — URL-driven detectors', () => {
     expect(normalizeDeepSeekReasoningEffort('medium')).toBe('high')
     expect(normalizeDeepSeekReasoningEffort('high')).toBe('high')
     expect(normalizeDeepSeekReasoningEffort('xhigh')).toBe('max')
+  })
+
+  test('isOpencodeZenBaseUrl matches opencode.ai/zen (both zen and go lanes) only', () => {
+    expect(isOpencodeZenBaseUrl('https://opencode.ai/zen/v1')).toBe(true)
+    expect(isOpencodeZenBaseUrl('https://opencode.ai/zen/go/v1')).toBe(true)
+    // Any other path on opencode.ai does not trigger the session header
+    expect(isOpencodeZenBaseUrl('https://opencode.ai/api/v1')).toBe(false)
+    // Lookalike hosts must not match (exact-host gate)
+    expect(isOpencodeZenBaseUrl('https://evil-opencode.ai/zen/v1')).toBe(false)
+    expect(isOpencodeZenBaseUrl('https://api.openai.com/v1')).toBe(false)
+    expect(isOpencodeZenBaseUrl(undefined)).toBe(false)
+    expect(isOpencodeZenBaseUrl('not-a-url')).toBe(false)
   })
 })
 
