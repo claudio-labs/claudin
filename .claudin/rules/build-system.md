@@ -46,7 +46,7 @@ not source.
    string handed to `checkGate*`/`getFeatureValue*`/`getDynamicConfig*` is a
    feature-flag **KEY**, not an event name. Those are live — they are the
    contract with `~/.claudin/feature-flags.json` — and
-   `docs/tech/tengu-census/gate-audit.md` says what each of the 105 gates.
+   `docs/tech/tengu-census/gate-audit.md` says what each of the 104 gates.
    `bun run scripts/verify/tengu-census.ts` buckets every occurrence by role and
    fails loudly if one cannot be placed.
 3. **`MACRO.*` constants** (`MACRO.VERSION`, `MACRO.DISPLAY_VERSION`,

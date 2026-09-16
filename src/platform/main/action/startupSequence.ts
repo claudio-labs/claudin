@@ -587,9 +587,6 @@ export function runInteractiveStartupBlock(
     },
     speculation: IDLE_SPECULATION_STATE,
     speculationSessionTimeSavedMs: 0,
-    skillImprovement: {
-      suggestion: null,
-    },
     workerSandboxPermissions: {
       queue: [],
       selectedIndex: 0,

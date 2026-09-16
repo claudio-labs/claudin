@@ -414,7 +414,7 @@ Grep pattern="feature\('" path="scripts/build/build.ts"
 bun run scripts/verify/tengu-census.ts --gates   # every key with its call sites
 ```
 
-`docs/tech/tengu-census/gate-audit.md` classifies all 105: which do something,
+`docs/tech/tengu-census/gate-audit.md` classifies all 104: which do something,
 which open a branch that is dead on arrival, which are inert. Flip one by
 writing `~/.claudin/feature-flags.json`. There is no analytics to grep for —
 `logEvent` and the modules behind it were removed.

@@ -42,7 +42,6 @@ const SHORT_LIVED_QUERY_SOURCES: ReadonlySet<string> = new Set([
   "tool_use_summary_generation",
   "web_search_tool",
   "agent_creation",
-  "skill_improvement_apply",
   "hook_prompt",
   "hook_agent",
   "bash_extract_prefix",

@@ -1,6 +1,6 @@
 # `tengu_*` gate keys — audit
 
-105 distinct keys across the tree. This is the Fase 4a deliverable: which of
+104 distinct keys across the tree. This is the Fase 4a deliverable: which of
 them still mean anything in this fork, and which are candidates for removal.
 
 Resolution order, from the stub in `scripts/build/no-telemetry-plugin.ts`:
@@ -80,9 +80,9 @@ works here. **QUEBRA** — the branch is dead on arrival: it sits under a
 received. **INERTE** — read, but both outcomes are equivalent or the value is
 never used.
 
-### QUEBRA (14) — removal candidates
+### QUEBRA (13) — removal candidates
 
-Ten are gated by a build flag that folds to `false`, so the read never runs and
+Nine are gated by a build flag that folds to `false`, so the read never runs and
 flipping the key does nothing. The branch goes with the flag, not with the key:
 
 | key | blocked by | site |
@@ -93,7 +93,6 @@ flipping the key does nothing. The branch goes with the flag, not with the key:
 | `tengu_cobalt_harbor` | `CCR_AUTO_CONNECT` (absent) | `bridgeEnabled.ts:151` |
 | `tengu_cobalt_raccoon` | `REACTIVE_COMPACT` (absent) | `autoCompact.ts:270` and two more |
 | `tengu_collage_kaleidoscope` | `NATIVE_CLIPBOARD_IMAGE` (absent) | `terminal/image/imagePaste.ts:125` |
-| `tengu_copper_panda` | `SKILL_IMPROVEMENT` (absent) | `lifecycleHooks/skillImprovement.ts:164` |
 | `tengu_terminal_panel` | `TERMINAL_PANEL` (absent) | `useGlobalKeybindings.tsx:134` |
 | `tengu_lodestone_enabled` | folded flag | — |
 | `tengu_ultraplan_model` | `ULTRAPLAN` (absent) | `commands/ultraplan.tsx:31` |
@@ -102,6 +101,11 @@ Note what "absent" means: `build.ts` folds `featureFlags[name] ?? false`, so a
 flag missing from the map is false **by omission, not by decision**. That is how
 `src/commands/ultraplan.tsx` — ~300 lines plus its prompt — became unreachable
 without anyone choosing it.
+
+`tengu_copper_panda` was the tenth, gating the skill-improvement post-sampling
+hook behind `SKILL_IMPROVEMENT`. Both are gone: the hook wrote its suggestion to
+an `AppState` field no UI ever read, so the whole chain — 171 lines, the field
+and its two initializers — went with the key.
 
 Four more only compose the `experiment_gates` payload handed to Anthropic's
 closed VS Code extension (`vscodeSdkMcp.ts:79-106`): `tengu_vscode_review_upsell`,

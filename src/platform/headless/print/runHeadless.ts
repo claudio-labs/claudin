@@ -16,7 +16,6 @@
 
 import { feature } from 'bun:bundle'
 import type { Command } from 'src/commands/commands.js'
-import { createStreamlinedTransformer } from 'src/agent/tools/streamlinedTransform.js'
 import { installStreamJsonStdoutGuard } from 'src/terminal/render/streamJsonStdoutGuard.js'
 import type { ThinkingConfig } from 'src/agent/context/thinking.js'
 import { filterToolsByDenyRules } from 'src/tools/tools.js'
@@ -436,14 +435,6 @@ export async function runHeadless(
   const needsFullArray = options.outputFormat === 'json' && options.verbose
   const messages: SDKMessage[] = []
   let lastMessage: SDKMessage | undefined
-  // Streamlined mode transforms messages when CLAUDIN_STREAMLINED_OUTPUT=true and using stream-json
-  // Build flag gates this out of external builds; env var is the runtime opt-in for ant builds
-  const transformToStreamlined =
-    feature('STREAMLINED_OUTPUT') &&
-    isEnvTruthy(process.env.CLAUDIN_STREAMLINED_OUTPUT) &&
-    options.outputFormat === 'stream-json'
-      ? createStreamlinedTransformer()
-      : null
 
   headlessProfilerCheckpoint('before_runHeadlessStreaming')
   for await (const message of runHeadlessStreaming(
@@ -460,13 +451,7 @@ export async function runHeadless(
     options,
     turnInterruptionState,
   )) {
-    if (transformToStreamlined) {
-      // Streamlined mode: transform messages and stream immediately
-      const transformed = transformToStreamlined(message)
-      if (transformed) {
-        await structuredIO.write(transformed)
-      }
-    } else if (options.outputFormat === 'stream-json' && options.verbose) {
+    if (options.outputFormat === 'stream-json' && options.verbose) {
       await structuredIO.write(message)
     }
     // Should not be getting control messages or stream events in non-stream mode.
