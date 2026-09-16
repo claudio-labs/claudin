@@ -80,7 +80,7 @@ Grep with pattern="<search term>" path="<REPO_ROOT>/.claudin/memory/" glob="*.md
 ```
 2. Session transcript logs (last resort — large files, slow):
 ```
-Grep with pattern="<search term>" path="<HOME>/.claudin/projects/-home-viudes-projects-claudin/" glob="*.jsonl"
+Grep with pattern="<search term>" path="<HOME>/.claudin/projects/<PROJECT_SLUG>/" glob="*.jsonl"
 ```
 Use narrow search terms (error messages, file paths, function names) rather than broad keywords.
 

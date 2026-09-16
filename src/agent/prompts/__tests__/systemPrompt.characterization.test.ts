@@ -28,23 +28,49 @@ const BUNDLE = join(REPO_ROOT, 'dist', 'cli.mjs')
 const SNAPSHOT_DIR = join(__dirname, '__snapshots__')
 const MODEL = 'claude-opus-5'
 
+// ~/.claudin/projects/<slug>: sanitizePath() turns every non-alphanumeric byte
+// of the cwd into a hyphen, so the checkout path is encoded a SECOND time — in
+// a form neither of the two path substitutions below can see. The memory
+// section names that directory, so without this the snapshot carries whichever
+// absolute path it was generated from.
+const PROJECT_SLUG = REPO_ROOT.replace(/[^a-zA-Z0-9]/g, '-')
+
+// The main prompt's Environment block prefixes every line with " - "; the
+// sub-agent's <env> block does not, and words two of the keys differently.
+// Both render the same machine-specific values, so both need blanking.
+const ENV_VALUE_RES: ReadonlyArray<readonly [RegExp, string]> = [
+  [/^( - )?(Platform: ).*$/gm, '$1$2<PLATFORM>'],
+  [/^( - )?(Shell: ).*$/gm, '$1$2<SHELL>'],
+  [/^( - )?(OS Version: ).*$/gm, '$1$2<OS_VERSION>'],
+  [/^( - )?(Is a git repository: ).*$/gm, '$1$2<IS_GIT_REPO>'],
+  [/^(Is directory a git repo: ).*$/gm, '$1<IS_GIT_REPO>'],
+]
+
 /**
  * Blank out what varies by machine, and nothing else.
  *
  * The KEYS stay in the text, so a deleted Environment line still fails the
  * comparison — only the values are replaced. Over-normalizing here would turn
  * the snapshot into a test of its own normalizer.
+ *
+ * Every substitution is anchored on the exact string this machine produced —
+ * its checkout path, its home dir, its project slug — rather than on a pattern
+ * that blanks whatever sits in that position. A wildcard would also swallow the
+ * prompt naming the WRONG directory, which is a thing this snapshot exists to
+ * catch.
  */
 function normalize(prompt: string): string {
-  return prompt
+  let out = prompt
     .split(REPO_ROOT)
     .join('<REPO_ROOT>')
     .split(homedir())
     .join('<HOME>')
-    .replace(/^( - Platform: ).*$/m, '$1<PLATFORM>')
-    .replace(/^( - Shell: ).*$/m, '$1<SHELL>')
-    .replace(/^( - OS Version: ).*$/m, '$1<OS_VERSION>')
-    .replace(/^( - Is a git repository: ).*$/m, '$1<IS_GIT_REPO>')
+    .split(PROJECT_SLUG)
+    .join('<PROJECT_SLUG>')
+  for (const [re, replacement] of ENV_VALUE_RES) {
+    out = out.replace(re, replacement)
+  }
+  return out
 }
 
 function dump(extraArgs: readonly string[]): string {
