@@ -270,7 +270,7 @@ export async function listOpenAICompatibleModelsDetailed(options?: {
 }): Promise<OpenAIModelDiscoveryResult> {
   const baseUrl = getOpenAICompatibleModelsBaseUrl(options?.baseUrl)
   const isBankr = baseUrl.toLowerCase().includes('bankr')
-  const headers = options?.apiKey
+  const headers: Record<string, string> | undefined = options?.apiKey
     ? isBankr
       ? { 'X-API-Key': options.apiKey }
       : { Authorization: `Bearer ${options.apiKey}` }
