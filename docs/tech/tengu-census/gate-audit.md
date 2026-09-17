@@ -95,12 +95,12 @@ flipping the key does nothing. The branch goes with the flag, not with the key:
 | `tengu_collage_kaleidoscope` | `NATIVE_CLIPBOARD_IMAGE` (absent) | `terminal/image/imagePaste.ts:125` |
 | `tengu_terminal_panel` | `TERMINAL_PANEL` (absent) | `useGlobalKeybindings.tsx:134` |
 | `tengu_lodestone_enabled` | folded flag | — |
-| `tengu_ultraplan_model` | `ULTRAPLAN` (absent) | `commands/ultraplan.tsx:31` |
 
 Note what "absent" means: `build.ts` folds `featureFlags[name] ?? false`, so a
 flag missing from the map is false **by omission, not by decision**. That is how
 `src/commands/ultraplan.tsx` — ~300 lines plus its prompt — became unreachable
-without anyone choosing it.
+without anyone choosing it; the whole ULTRAPLAN cluster (launch path, session
+display and the SDK wire field) has since been deleted 2026-09-17.
 
 `tengu_copper_panda` was the tenth, gating the skill-improvement post-sampling
 hook behind `SKILL_IMPROVEMENT`. Both are gone: the hook wrote its suggestion to
