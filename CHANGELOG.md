@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.1.31 — 2026-09-17
+
+### ✨ Features
+
+- feat(tui): show 6 rows in the suggestion menu (#208) (8a3e9114)
+- feat(providers): send x-opencode-session to the opencode zen gateway (#205) (9243cecd)
+- feat(mcp): show servers in the footer panel with per-state groups (#201) (4c34040c)
+
+### 🐛 Bug Fixes
+
+- fix(providers): adding a provider no longer changes the active one (#207) (d1737aab)
+- fix(grep): report search-wide totals and sort count mode (#206) (2a8d91ff)
+- fix(tui): correct emoji cell width and the footer dead x hint (#203) (099b1469)
+
+### ♻️ Refactoring
+
+- refactor(deadcode): remove the analytics stack and dead-flag code (#204) (6d46ec9c)
+- refactor(arch): split five giant modules into barrels over siblings (#202) (cb28ca9f)
+
+### 👥 Contributors
+
+- <a href="https://github.com/andersonviudes"><img src="https://github.com/andersonviudes.png?size=40" width="20" height="20" alt="@andersonviudes"></a> <a href="https://github.com/andersonviudes">@andersonviudes</a>
+- <a href="https://github.com/caielealdev"><img src="https://github.com/caielealdev.png?size=40" width="20" height="20" alt="@caielealdev"></a> <a href="https://github.com/caielealdev">@caielealdev</a>
+
+
 ## v1.1.30 — 2026-09-14
 
 ### ✨ Features
