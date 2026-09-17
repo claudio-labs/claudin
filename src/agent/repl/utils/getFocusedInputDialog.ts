@@ -12,8 +12,6 @@
 // Not a React hook: this function has no state of its own and is intentionally
 // callable mid-render (it reads the current snapshot to decide what to show).
 
-import { feature } from 'bun:bundle'
-
 export type FocusedInputDialog =
   | 'message-selector'
   | 'sandbox-permission'
@@ -29,8 +27,6 @@ export type FocusedInputDialog =
   | 'effort-callout'
   | 'remote-callout'
   | 'plugin-hint'
-  | 'ultraplan-choice'
-  | 'ultraplan-launch'
 
 // Minimal shape for `toolJSX`. Only the focus-arbitration flag matters here;
 // REPL.tsx's full type carries additional render fields we don't need.
@@ -57,8 +53,6 @@ export type FocusedInputDialogDeps = {
   elicitation: { queue: ReadonlyArray<unknown> }
   showingCostDialog: boolean
   idleReturnPending: unknown
-  ultraplanPendingChoice: unknown
-  ultraplanLaunchPending: unknown
   isLoading: boolean
   showIdeOnboarding: boolean
   showEffortCallout: boolean
@@ -90,8 +84,6 @@ export function getFocusedInputDialog(
   if (allowDialogsWithAnimation && d.elicitation.queue[0]) return 'elicitation'
   if (allowDialogsWithAnimation && d.showingCostDialog) return 'cost'
   if (allowDialogsWithAnimation && d.idleReturnPending) return 'idle-return'
-  if (feature('ULTRAPLAN') && allowDialogsWithAnimation && !d.isLoading && d.ultraplanPendingChoice) return 'ultraplan-choice'
-  if (feature('ULTRAPLAN') && allowDialogsWithAnimation && !d.isLoading && d.ultraplanLaunchPending) return 'ultraplan-launch'
 
   // Onboarding dialogs (special conditions).
   if (allowDialogsWithAnimation && d.showIdeOnboarding) return 'ide-onboarding'

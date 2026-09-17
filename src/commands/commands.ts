@@ -83,9 +83,6 @@ const clearSkillIndexCache = feature('EXPERIMENTAL_SKILL_SEARCH')
       require('../skills/search/localSearch.js') as typeof import('../skills/search/localSearch.js')
     ).clearSkillIndexCache
   : null
-const ultraplan = feature('ULTRAPLAN')
-  ? require('src/commands/ultraplan.js').default
-  : null
 const torch = feature('TORCH') ? require('./torch.js').default : null
 // NOTE: there is deliberately no `forkCmd` here. `FORK_SUBAGENT` ships true
 // (it gates the Agent tool's fork-by-default behaviour), but this fork never

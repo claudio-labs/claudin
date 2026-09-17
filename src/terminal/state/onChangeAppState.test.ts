@@ -97,7 +97,6 @@ function buildAppState(
     mainLoopModel: null,
     mainLoopModelForSession: null,
     toolPermissionContext: getEmptyToolPermissionContext(),
-    isUltraplanMode: false,
     expandedView: 'none',
     verbose: false,
     ...overrides,

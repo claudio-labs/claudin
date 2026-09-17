@@ -349,9 +349,9 @@ async function getMessagesForSlashCommand(commandName: string, args: string, set
               // to the model), so skipping them doesn't affect model context.
               // Outside fullscreen keep them so scrollback shows what ran.
               // Only skip "<Name> dismissed" modal-close notifications —
-              // commands that early-exit before showing a modal (/ultraplan
-              // usage, /rename, /proactive) use display:system for actual
-              // output that must reach the transcript.
+              // commands that early-exit before showing a modal (/rename,
+              // /proactive) use display:system for actual output that must
+              // reach the transcript.
               const skipTranscript = isFullscreenEnvEnabled() && typeof result === 'string' && result.endsWith(' dismissed');
               void resolve({
                 messages: options?.display === 'system' ? skipTranscript ? metaMessages : [createCommandInputMessage(formatCommandInput(command, args)), createCommandInputMessage(`<local-command-stdout>${result}</local-command-stdout>`), ...metaMessages] : [createUserMessage({

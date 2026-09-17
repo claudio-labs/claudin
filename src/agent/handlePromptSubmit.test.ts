@@ -77,7 +77,6 @@ describe('handlePromptSubmit', () => {
     expect(getCommandQueue()).toMatchObject([
       {
         value: 'use another library',
-        preExpansionValue: 'use another library',
         mode: 'prompt',
       },
     ])

@@ -6,7 +6,6 @@ import { useNotifications } from 'src/terminal/contexts/notifications.js';
 import { useAppState, useAppStateStore, useSetAppState } from 'src/terminal/state/AppState.js';
 import { getSdkBetas, getSessionId, isSessionPersistenceDisabled, setHasExitedPlanMode, setNeedsAutoModeExitAttachment, setNeedsPlanModeExitAttachment } from 'src/platform/bootstrap/state.js';
 import { generateSessionName } from 'src/commands/rename/generateSessionName.js';
-import { launchUltraplan } from 'src/commands/ultraplan.js';
 import type { KeyboardEvent } from 'src/terminal/ink/events/keyboard-event.js';
 import { Box, Text } from 'src/terminal/ink.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
@@ -48,7 +47,7 @@ import { maybeResizeAndDownsampleImageBlock } from 'src/terminal/image/imageResi
 import { cacheImagePath, storeImage } from 'src/terminal/image/imageStore.js';
 import type { BorderTextOptions } from 'src/terminal/ink/render-border.js';
 import { useCwdBranchSegment } from 'src/vcs/hooks/useCwdBranchSegment.js';
-type ResponseValue ='yes-bypass-permissions' | 'yes-accept-edits' | 'yes-accept-edits-keep-context' | 'yes-default-keep-context' | 'yes-resume-auto-mode' | 'yes-auto-clear-context' | 'ultraplan' | 'no';
+type ResponseValue ='yes-bypass-permissions' | 'yes-accept-edits' | 'yes-accept-edits-keep-context' | 'yes-default-keep-context' | 'yes-resume-auto-mode' | 'yes-auto-clear-context' | 'no';
 
 /**
  * Build permission updates for plan approval, including prompt-based rules if provided.
@@ -130,13 +129,6 @@ export function ExitPlanModePermissionRequest({
   const [pastedContents, setPastedContents] = useState<Record<number, PastedContent>>({});
   const nextPasteIdRef = useRef(0);
   const showClearContext = useAppState((s: AppState) => s.settings.showClearContextOnPlanAccept) ?? false;
-  const ultraplanSessionUrl = useAppState((s: AppState) => s.ultraplanSessionUrl);
-  const ultraplanLaunching = useAppState((s: AppState) => s.ultraplanLaunching);
-  // Hide the Ultraplan button while a session is active or launching —
-  // selecting it would dismiss the dialog and reject locally before
-  // launchUltraplan can notice the session exists and return "already polling".
-  // feature() must sit directly in an if/ternary (bun:bundle DCE constraint).
-  const showUltraplan = feature('ULTRAPLAN') ? !ultraplanSessionUrl && !ultraplanLaunching : false;
   const usage = toolUseConfirm.assistantMessage.message.usage;
   const {
     mode,
@@ -145,12 +137,11 @@ export function ExitPlanModePermissionRequest({
   } = toolPermissionContext;
   const options = useMemo(() => buildPlanApprovalOptions({
     showClearContext,
-    showUltraplan,
     usedPercent: showClearContext ? getContextUsedPercent(usage, mode) : null,
     isAutoModeAvailable,
     isBypassPermissionsModeAvailable,
     onFeedbackChange: setPlanFeedback
-  }), [showClearContext, showUltraplan, usage, mode, isAutoModeAvailable, isBypassPermissionsModeAvailable]);
+  }), [showClearContext, usage, mode, isAutoModeAvailable, isBypassPermissionsModeAvailable]);
   function onImagePaste(base64Image: string, mediaType?: string, filename?: string, dimensions?: ImageDimensions, _sourcePath?: string) {
     const pasteId = nextPasteIdRef.current++;
     const newContent: PastedContent = {
@@ -263,26 +254,6 @@ export function ExitPlanModePermissionRequest({
   async function handleResponse(value: ResponseValue): Promise<void> {
     const trimmedFeedback = planFeedback.trim();
     const acceptFeedback = trimmedFeedback || undefined;
-
-    // Ultraplan: reject locally, teleport the plan to CCR as a seed draft.
-    // Dialog dismisses immediately so the query loop unblocks; the teleport
-    // runs detached and its launch message lands via the command queue.
-    if (value === 'ultraplan') {
-      onDone();
-      onReject();
-      toolUseConfirm.onReject('Plan being refined via Ultraplan — please wait for the result.');
-      void launchUltraplan({
-        blurb: '',
-        seedPlan: currentPlan,
-        getAppState: store.getState,
-        setAppState: store.setState,
-        signal: new AbortController().signal
-      }).then(msg => enqueuePendingNotification({
-        value: msg,
-        mode: 'task-notification'
-      })).catch(logError);
-      return;
-    }
 
     // V1: pass plan in input. V2: plan is on disk, but if the user edited it
     // via Ctrl+G we pass it through so the tool echoes the edit in tool_result
@@ -606,14 +577,12 @@ export function ExitPlanModePermissionRequest({
 /** @internal Exported for testing. */
 export function buildPlanApprovalOptions({
   showClearContext,
-  showUltraplan,
   usedPercent,
   isAutoModeAvailable,
   isBypassPermissionsModeAvailable,
   onFeedbackChange
 }: {
   showClearContext: boolean;
-  showUltraplan: boolean;
   usedPercent: number | null;
   isAutoModeAvailable: boolean | undefined;
   isBypassPermissionsModeAvailable: boolean | undefined;
@@ -661,12 +630,6 @@ export function buildPlanApprovalOptions({
     label: 'Yes, manually approve edits',
     value: 'yes-default-keep-context'
   });
-  if (showUltraplan) {
-    options.push({
-      label: 'No, refine with Ultraplan on Claude Code on the web',
-      value: 'ultraplan'
-    });
-  }
   options.push({
     type: 'input',
     label: 'No, keep planning',

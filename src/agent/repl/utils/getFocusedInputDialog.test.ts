@@ -21,8 +21,6 @@ function baseDeps(): FocusedInputDialogDeps {
     elicitation: { queue: [] },
     showingCostDialog: false,
     idleReturnPending: null,
-    ultraplanPendingChoice: null,
-    ultraplanLaunchPending: null,
     isLoading: false,
     showIdeOnboarding: false,
     showEffortCallout: false,

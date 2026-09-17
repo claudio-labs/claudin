@@ -34,7 +34,6 @@
 import * as React from 'react'
 import { feature } from 'bun:bundle'
 import { saveGlobalConfig } from 'src/platform/config/config.js'
-import { logError } from 'src/shared/log.js'
 import { CostThresholdDialog } from 'src/permissions/ui/CostThresholdDialog.js'
 import { IdleReturnDialog } from 'src/platform/IdleReturnDialog.js'
 import { ElicitationDialog } from 'src/mcp/ui/ElicitationDialog.js'
@@ -125,33 +124,10 @@ export type REPLDialogsDeps = {
     sourceCommand: string
   } | null
   handleHintResponse: (response: unknown) => void
-  // ultraplan
-  ultraplanPendingChoice: {
-    plan: unknown
-    sessionId: string
-    taskId: string
-  } | null
-  ultraplanLaunchPending: { blurb: string } | null
-  queryGuard: { isActive: boolean; subscribe: (cb: () => void) => () => void }
-  createAbortController: () => AbortController
-  // Ultraplan launch helpers
-  createCommandInputMessage: (text: string) => unknown
-  formatCommandInputTags: (cmd: string, blurb: string) => string
-  escapeXml: (s: string) => string
-  LOCAL_COMMAND_STDOUT_TAG: string
-  launchUltraplan: (opts: {
-    blurb: string
-    getAppState: () => unknown
-    setAppState: (updater: (prev: unknown) => unknown) => void
-    signal: AbortSignal
-    disconnectedBridge: unknown
-    onSessionReady: (msg: string) => void
-  }) => Promise<string>
-  // ultraplan-launch optional ultraplanSessionUrl read via store.getState()
 }
 
 // PluginHintMenu / EffortCallout / RemoteCallout / IdeOnboardingDialog /
-// SandboxPermissionRequest / UltraplanChoiceDialog / UltraplanLaunchDialog
+// SandboxPermissionRequest
 // are imported lazily by REPL when feature flags require — to keep the
 // extracted block faithful we accept the rendered slot as a ReactNode
 // or accept the components themselves via the deps. We import the
@@ -177,24 +153,12 @@ export type REPLDialogsSlots = {
     sourceCommand: string
     onResponse: (r: unknown) => void
   }>
-  UltraplanChoiceDialog: React.ComponentType<{
-    plan: unknown
-    sessionId: string
-    taskId: string
-    setMessages: (m: unknown) => void
-    readFileState: unknown
-    getAppState: () => unknown
-    setConversationId: (id: string) => void
-  }> | null
-  UltraplanLaunchDialog: React.ComponentType<{
-    onChoice: (choice: string, opts?: { disconnectedBridge?: unknown }) => void
-  }> | null
 }
 
 type NetworkHostPattern = { host: string; port?: number }
 
 export function renderREPLDialogs(deps: REPLDialogsDeps, slots: REPLDialogsSlots): React.ReactNode {
-  const { SandboxPermissionRequest, IdeOnboardingDialog, EffortCallout, RemoteCallout, PluginHintMenu, UltraplanChoiceDialog, UltraplanLaunchDialog } = slots
+  const { SandboxPermissionRequest, IdeOnboardingDialog, EffortCallout, RemoteCallout, PluginHintMenu } = slots
   return <>
     {deps.focusedInputDialog === 'sandbox-permission' && <SandboxPermissionRequest key={deps.sandboxPermissionRequestQueue[0]!.hostPattern.host} hostPattern={deps.sandboxPermissionRequestQueue[0]!.hostPattern} onUserResponse={(response: { allow: boolean; persistToSettings: boolean }) => {
       const { allow, persistToSettings } = response
@@ -387,46 +351,5 @@ export function renderREPLDialogs(deps: REPLDialogsDeps, slots: REPLDialogsSlots
     {deps.exitFlow}
 
     {deps.focusedInputDialog === 'plugin-hint' && deps.hintRecommendation && <PluginHintMenu pluginName={deps.hintRecommendation.pluginName} pluginDescription={deps.hintRecommendation.pluginDescription} marketplaceName={deps.hintRecommendation.marketplaceName} sourceCommand={deps.hintRecommendation.sourceCommand} onResponse={deps.handleHintResponse} />}
-
-    {feature('ULTRAPLAN') && UltraplanChoiceDialog ? deps.focusedInputDialog === 'ultraplan-choice' && deps.ultraplanPendingChoice && <UltraplanChoiceDialog plan={deps.ultraplanPendingChoice.plan} sessionId={deps.ultraplanPendingChoice.sessionId} taskId={deps.ultraplanPendingChoice.taskId} setMessages={deps.setMessages} readFileState={deps.readFileState.current} getAppState={() => deps.store.getState()} setConversationId={deps.setConversationId} /> : null}
-
-    {feature('ULTRAPLAN') && UltraplanLaunchDialog ? deps.focusedInputDialog === 'ultraplan-launch' && deps.ultraplanLaunchPending && <UltraplanLaunchDialog onChoice={(choice: string, opts?: { disconnectedBridge?: unknown }) => {
-      const blurb = deps.ultraplanLaunchPending!.blurb
-      deps.setAppState((prev: unknown) => {
-        const p = prev as { ultraplanLaunchPending?: unknown }
-        return p.ultraplanLaunchPending ? { ...p, ultraplanLaunchPending: undefined } : prev
-      })
-      if (choice === 'cancel') return
-      // Command's onDone used display:'skip', so add the echo here —
-      // gives immediate feedback before the ~5s teleportToRemote resolves.
-      deps.setMessages((prev: unknown) => [...(prev as unknown[]), deps.createCommandInputMessage(deps.formatCommandInputTags('ultraplan', blurb))] as unknown)
-      const appendStdout = (msg: string) => deps.setMessages((prev: unknown) => [...(prev as unknown[]), deps.createCommandInputMessage(`<${deps.LOCAL_COMMAND_STDOUT_TAG}>${deps.escapeXml(msg)}</${deps.LOCAL_COMMAND_STDOUT_TAG}>`)] as unknown)
-      // Defer the second message if a query is mid-turn so it lands
-      // after the assistant reply, not between the user's prompt and
-      // the reply.
-      const appendWhenIdle = (msg: string) => {
-        if (!deps.queryGuard.isActive) {
-          appendStdout(msg)
-          return
-        }
-        const unsub = deps.queryGuard.subscribe(() => {
-          if (deps.queryGuard.isActive) return
-          unsub()
-          // Skip if the user stopped ultraplan while we were waiting —
-          // avoids a stale "Monitoring <url>" message for a session
-          // that's gone.
-          if (!(deps.store.getState() as { ultraplanSessionUrl?: string }).ultraplanSessionUrl) return
-          appendStdout(msg)
-        })
-      }
-      void deps.launchUltraplan({
-        blurb,
-        getAppState: () => deps.store.getState(),
-        setAppState: deps.setAppState,
-        signal: deps.createAbortController().signal,
-        disconnectedBridge: opts?.disconnectedBridge,
-        onSessionReady: appendWhenIdle,
-      }).then(appendStdout).catch(logError)
-    }} /> : null}
   </>
 }
