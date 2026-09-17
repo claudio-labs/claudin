@@ -59,6 +59,190 @@ test('returns null when a local openai-compatible /models request fails', async 
   ).resolves.toBeNull()
 })
 
+test('detailed discovery returns the ids on 200', async () => {
+  const { listOpenAICompatibleModelsDetailed } =
+    await loadProviderDiscoveryModule()
+
+  globalThis.fetch = mock(() =>
+    Promise.resolve(
+      new Response(JSON.stringify({ data: [{ id: 'a' }, { id: 'b' }] }), {
+        status: 200,
+      }),
+    ),
+  ) as unknown as typeof globalThis.fetch
+
+  await expect(
+    listOpenAICompatibleModelsDetailed({
+      baseUrl: 'http://localhost:1234/v1',
+      apiKey: 'k',
+    }),
+  ).resolves.toEqual({ ok: true, ids: ['a', 'b'] })
+})
+
+test('detailed discovery stops at the first URL on 401 — a different path cannot fix auth', async () => {
+  const { listOpenAICompatibleModelsDetailed } =
+    await loadProviderDiscoveryModule()
+
+  const calledUrls: string[] = []
+  globalThis.fetch = mock(input => {
+    const url = typeof input === 'string' ? input : input.url
+    calledUrls.push(url)
+    return Promise.resolve(new Response('denied', { status: 401 }))
+  }) as unknown as typeof globalThis.fetch
+
+  await expect(
+    listOpenAICompatibleModelsDetailed({ baseUrl: 'http://localhost:1234' }),
+  ).resolves.toEqual({ ok: false, reason: 'unauthorized', status: 401 })
+  expect(calledUrls).toEqual(['http://localhost:1234/v1/models'])
+})
+
+test('detailed discovery reports 403 as forbidden', async () => {
+  const { listOpenAICompatibleModelsDetailed } =
+    await loadProviderDiscoveryModule()
+
+  globalThis.fetch = mock(() =>
+    Promise.resolve(new Response('no', { status: 403 })),
+  ) as unknown as typeof globalThis.fetch
+
+  await expect(
+    listOpenAICompatibleModelsDetailed({ baseUrl: 'http://localhost:1234/v1' }),
+  ).resolves.toEqual({ ok: false, reason: 'forbidden', status: 403 })
+})
+
+test('detailed discovery walks both URLs on 404 and reports not_found', async () => {
+  const { listOpenAICompatibleModelsDetailed } =
+    await loadProviderDiscoveryModule()
+
+  const calledUrls: string[] = []
+  globalThis.fetch = mock(input => {
+    const url = typeof input === 'string' ? input : input.url
+    calledUrls.push(url)
+    return Promise.resolve(new Response('nope', { status: 404 }))
+  }) as unknown as typeof globalThis.fetch
+
+  await expect(
+    listOpenAICompatibleModelsDetailed({ baseUrl: 'http://localhost:1234' }),
+  ).resolves.toEqual({ ok: false, reason: 'not_found', status: 404 })
+  expect(calledUrls).toEqual([
+    'http://localhost:1234/v1/models',
+    'http://localhost:1234/models',
+  ])
+})
+
+test('detailed discovery recovers on the secondary URL when primary is 404', async () => {
+  const { listOpenAICompatibleModelsDetailed } =
+    await loadProviderDiscoveryModule()
+
+  globalThis.fetch = mock(input => {
+    const url = typeof input === 'string' ? input : input.url
+    if (url === 'http://localhost:1234/v1/models') {
+      return Promise.resolve(new Response('nope', { status: 404 }))
+    }
+    return Promise.resolve(
+      new Response(JSON.stringify({ data: [{ id: 'm1' }] }), { status: 200 }),
+    )
+  }) as unknown as typeof globalThis.fetch
+
+  await expect(
+    listOpenAICompatibleModelsDetailed({ baseUrl: 'http://localhost:1234' }),
+  ).resolves.toEqual({ ok: true, ids: ['m1'] })
+})
+
+test('detailed discovery reports a bare-base /v1 URL skipping the primary candidate', async () => {
+  const { listOpenAICompatibleModelsDetailed } =
+    await loadProviderDiscoveryModule()
+
+  const calledUrls: string[] = []
+  globalThis.fetch = mock(input => {
+    const url = typeof input === 'string' ? input : input.url
+    calledUrls.push(url)
+    return Promise.resolve(
+      new Response(JSON.stringify({ data: [{ id: 'm1' }] }), { status: 200 }),
+    )
+  }) as unknown as typeof globalThis.fetch
+
+  await expect(
+    listOpenAICompatibleModelsDetailed({ baseUrl: 'https://api.deepseek.com' }),
+  ).resolves.toEqual({ ok: true, ids: ['m1'] })
+  expect(calledUrls).toEqual(['https://api.deepseek.com/v1/models'])
+})
+
+test('detailed discovery reports 5xx as server_error with the status', async () => {
+  const { listOpenAICompatibleModelsDetailed } =
+    await loadProviderDiscoveryModule()
+
+  globalThis.fetch = mock(() =>
+    Promise.resolve(new Response('boom', { status: 502 })),
+  ) as unknown as typeof globalThis.fetch
+
+  await expect(
+    listOpenAICompatibleModelsDetailed({ baseUrl: 'http://localhost:1234/v1' }),
+  ).resolves.toEqual({ ok: false, reason: 'server_error', status: 502 })
+})
+
+test('detailed discovery reports a 200 without usable ids as invalid_response', async () => {
+  const { listOpenAICompatibleModelsDetailed } =
+    await loadProviderDiscoveryModule()
+
+  globalThis.fetch = mock(() =>
+    Promise.resolve(
+      new Response(JSON.stringify({ data: [{ nope: true }] }), { status: 200 }),
+    ),
+  ) as unknown as typeof globalThis.fetch
+
+  await expect(
+    listOpenAICompatibleModelsDetailed({ baseUrl: 'http://localhost:1234/v1' }),
+  ).resolves.toEqual({ ok: false, reason: 'invalid_response' })
+})
+
+test('detailed discovery reports a connection failure as network', async () => {
+  const { listOpenAICompatibleModelsDetailed } =
+    await loadProviderDiscoveryModule()
+
+  globalThis.fetch = mock(() =>
+    Promise.reject(new TypeError('fetch failed')),
+  ) as unknown as typeof globalThis.fetch
+
+  await expect(
+    listOpenAICompatibleModelsDetailed({ baseUrl: 'http://localhost:1234/v1' }),
+  ).resolves.toEqual({ ok: false, reason: 'network' })
+})
+
+test('detailed discovery keeps the Bankr X-API-Key header variant', async () => {
+  const { listOpenAICompatibleModelsDetailed } =
+    await loadProviderDiscoveryModule()
+
+  let seenHeaders: unknown
+  globalThis.fetch = mock((_input, init) => {
+    seenHeaders = init?.headers
+    return Promise.resolve(
+      new Response(JSON.stringify({ data: [{ id: 'm1' }] }), { status: 200 }),
+    )
+  }) as unknown as typeof globalThis.fetch
+
+  await expect(
+    listOpenAICompatibleModelsDetailed({
+      baseUrl: 'https://llm.bankr.bot/v1',
+      apiKey: 'bk',
+    }),
+  ).resolves.toEqual({ ok: true, ids: ['m1'] })
+  expect(seenHeaders).toEqual({ 'X-API-Key': 'bk' })
+})
+
+test('describeDiscoveryFailure names the API key on 401 and the base URL on 404', async () => {
+  const { describeDiscoveryFailure } = await loadProviderDiscoveryModule()
+
+  expect(describeDiscoveryFailure({ ok: false, reason: 'unauthorized', status: 401 })).toContain(
+    'rejected the API key',
+  )
+  expect(describeDiscoveryFailure({ ok: false, reason: 'not_found', status: 404 })).toContain(
+    '/v1 suffix',
+  )
+  expect(describeDiscoveryFailure({ ok: false, reason: 'network' })).toContain(
+    'network error or timeout',
+  )
+})
+
 test('buildDiscoveredModelOptions dedupes and sorts case-insensitively', async () => {
   const { buildDiscoveredModelOptions } = await loadProviderDiscoveryModule()
 

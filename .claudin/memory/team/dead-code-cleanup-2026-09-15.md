@@ -1,13 +1,21 @@
 ---
 name: dead-code-cleanup-2026-09-15
-description: State of the refactor/dead-code-tengu-cleanup branch — what landed, the census that drives it, and the six phases still to run
+description: The dead-code + tengu cleanup MERGED to main as PR #204 on 2026-09-16 (6d46ec9c) — what landed, the census that survives, and the phases deliberately left behind
 type: project
 ---
 
-Branch `refactor/dead-code-tengu-cleanup`, opened 2026-09-15 off `main` at
-`099b1469`. One PR at the end, one commit per category (the user chose the
-single PR over the 5-PR split after hearing the bisect argument). Plan file:
-`.claudin/plans/wild-wishing-wilkinson.md`.
+**MERGED 2026-09-16 as PR #204** (`6d46ec9c refactor(deadcode): remove the
+analytics stack and dead-flag code (#204)`), after a same-day CI rescue: the
+first run failed only on the two system-prompt characterization snapshots (the
+prompt had drifted on the branch), which were re-snapshotted and pushed. The
+branch lived one day — opened 2026-09-15 off `main` at `099b1469`, ~39+
+commits, ~335 files, roughly −25k/+4k. `src/analytics/` and `src/telemetry/`
+are GONE; `src/platform/analytics/` is down to `growthbook.ts` + its test.
+Post-merge `tengu` census: **326 occurrences across 158 files** (was 1654) —
+the survivors are gate keys, wire-format names the VS Code extension expects,
+and test fixtures. One PR at the end, one commit per category (the user chose
+the single PR over the 5-PR split after hearing the bisect argument). Plan
+file: `.claudin/plans/wild-wishing-wilkinson.md`.
 
 ## The distinction the whole plan turns on
 
@@ -157,12 +165,11 @@ sweep. `missing-imports-baseline.json` went 103 → 51, re-captured each round �
   call sites. See [[tests-observing-through-telemetry]] and
   [[typescript-7-no-classic-compiler-api]].
 
-Still open: ~28 codemod refusals (try/catch bodies, `useEffect` bodies, the four
-member-calls inside `analytics/index.ts`), then deleting the `analytics/` (minus
-growthbook) and `telemetry/` slices **with their stub keys in the same commit**,
-then Fase 4a (audit the 84 surviving gate keys — a key being live is not the
-same as the branch it opens working), 4b (collapse growthbook, see
-[[growthbook-source-dead-stub-is-real]]) and 5 (rules, docs, baselines).
+Still open at that checkpoint: ~28 codemod refusals (try/catch bodies,
+`useEffect` bodies, the four member-calls inside `analytics/index.ts`), then
+deleting the `analytics/` (minus growthbook) and `telemetry/` slices **with
+their stub keys in the same commit**. **All of this landed before the merge** —
+the slices are gone from main today.
 
 ## Originally landed (9 commits, 105 files, −4212/+2522)
 
@@ -178,31 +185,25 @@ same as the branch it opens working), 4b (collapse growthbook, see
 Gates green: build, smoke, typecheck zero, `verify:privacy`, `deadcode:ci`,
 `test:floor` 22.95%.
 
-## Left to do
+## Left to do (post-merge, open follow-ups)
 
-- **Fase 1 remainder** — blocked on `claudin install`, see
-  [[missing-module-stub-makes-dead-things-look-alive]].
-- **Fase 2** — ~40 files behind the 14 false `featureFlags` (computerUse 15,
-  voice 5 of 8, contextCollapse, RemoteTriggerTool, the KAIROS assistant chain,
-  WebBrowserTool) plus ~300 `feature('FALSE')` call sites and the flags
-  themselves. **Traps:** `BriefTool` is registered UNGATED and serves live
-  BRIDGE_MODE; `terminal/voice/useInboxPoller.ts` is the swarm mailbox poller
-  misfiled in that directory; `voiceModeEnabled.ts:20` is `return feature(…)`,
-  the form that throws under `bun test`.
-- **Fase 3** — a TypeScript-compiler-API codemod for the 1000 `logEvent` sites
-  (all are statement position today — zero expression-position matches) plus the
-  `analytics/` and `telemetry/` slices, ~6.7k LOC. Needs an AST-equivalence
-  proof: it is the only possible guard for the Ink `.tsx` (`Config.tsx` alone has
-  40 sites) that `bun test` cannot import.
-- **Fase 4a** — audit all 89 gate keys empirically (FUNCIONA / QUEBRA / INERTE)
-  by flipping each in a throwaway `CLAUDIN_CONFIG_DIR`. **Never in the real
-  `~/.claudin`.**
+- **Fase 4a** — audit the surviving gate keys empirically (FUNCIONA / QUEBRA /
+  INERTE) by flipping each in a throwaway `CLAUDIN_CONFIG_DIR`. **Never in the
+  real `~/.claudin`.** The keys are now the live surface — 105 settled at
+  branch end.
 - **Fase 4b** — collapse growthbook, see [[growthbook-source-dead-stub-is-real]].
+  `src/platform/analytics/` is down to just `growthbook.ts` + test, so this is
+  the last file standing between the branch and a deleted slice.
 - **Fase 5** — rules and docs. `.claudin/rules/typescript-patterns.md` rule 7
-  mandates the `_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS` suffix, which Fase 3
-  deletes; `search-strategy.md` teaches grepping `logEvent`; `testing.md`
-  describes the `logEvent` mock leak. Also 65 `.d.ts` carry a boilerplate
-  comment still naming `/upgrade` and `/extra-usage`.
+  mandates the `_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS` suffix, which the
+  codemod deleted; `search-strategy.md` teaches grepping `logEvent`;
+  `testing.md` describes the `logEvent` mock leak. Also 65 `.d.ts` carry a
+  boilerplate comment still naming `/upgrade` and `/extra-usage`.
+- **38 off-map flags remain**: 4 toolchain, 3 absent-module, 31 dead-local
+  across 139 sites — the ratchet (`feature-flags-source-guard.test.ts`) pins
+  the set, removal is per-flag with its own trace. Three are deliberately
+  parked: `HOOK_CHAINS` (enable-or-delete is a product call), `UNATTENDED_RETRY`
+  (touches the hot request path), `SLOW_OPERATION_LOGGING` (doubly dead).
 
 ## Out of scope, decided
 

@@ -38,6 +38,13 @@ NPM_TOKEN.**
 - **Release validation gates the `version` job, not `publish`** — `version` commits
   a bump, pushes a tag and opens the GitHub release, so a suite that only ran at
   publish time would still leave a tag for a version that never shipped.
+- **OIDC wiring details** (verified against release-binaries.yml 2026-09-16): the
+  workflow needs `permissions: id-token: write`; the Trusted Publisher entry's
+  **"environment" field must stay blank** (release-binaries.yml uses no GitHub
+  Environment — setting one makes npm 404 the OIDC token) and its fields are
+  case-sensitive; package.json's repository/homepage/bugs URLs must keep pointing
+  at github.com/claudio-labs/claudin to match the Trusted Publisher (needed for
+  provenance). No NODE_AUTH_TOKEN/NPM_TOKEN step anywhere — do not re-add one.
 - **npm OIDC cannot do a package's FIRST publish** — npmjs.com requires the package
   to exist before a Trusted Publisher can be configured (unlike PyPI). New platform
   packages must be bootstrapped with a placeholder publish

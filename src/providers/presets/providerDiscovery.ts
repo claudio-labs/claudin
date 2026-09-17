@@ -233,45 +233,142 @@ export async function listOllamaModels(
   return models
 }
 
+export type OpenAIModelDiscoveryResult =
+  | { ok: true; ids: string[] }
+  | {
+      ok: false
+      reason:
+        | 'unauthorized'
+        | 'forbidden'
+        | 'not_found'
+        | 'server_error'
+        | 'invalid_response'
+        | 'network'
+      status?: number
+    }
+
+function getOpenAIModelListCandidates(baseUrl: string): string[] {
+  const trimmed = trimTrailingSlash(baseUrl)
+  // Mirror the boot-prefetch URL candidates (openaiModelDiscovery
+  // getModelListUrls): a base that already ends in /v1 only needs /models;
+  // a bare base tries /v1/models first, then /models.
+  if (trimmed.endsWith('/v1')) {
+    return [`${trimmed}/models`]
+  }
+  return [`${trimmed}/v1/models`, `${trimmed}/models`]
+}
+
+/**
+ * Fetch the model list from an OpenAI-compatible provider AND report WHY the
+ * fetch failed, so the /provider wizard can point at the API key vs the base
+ * URL instead of a generic failure. Auth failures stop the URL walk — retrying
+ * with a different path cannot fix a 401.
+ */
+export async function listOpenAICompatibleModelsDetailed(options?: {
+  baseUrl?: string
+  apiKey?: string
+}): Promise<OpenAIModelDiscoveryResult> {
+  const baseUrl = getOpenAICompatibleModelsBaseUrl(options?.baseUrl)
+  const isBankr = baseUrl.toLowerCase().includes('bankr')
+  const headers: Record<string, string> | undefined = options?.apiKey
+    ? isBankr
+      ? { 'X-API-Key': options.apiKey }
+      : { Authorization: `Bearer ${options.apiKey}` }
+    : undefined
+
+  let lastStatus: number | undefined
+  let sawNotFound = false
+
+  for (const url of getOpenAIModelListCandidates(baseUrl)) {
+    const { signal, clear } = withTimeoutSignal(5000)
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        signal,
+      })
+      if (!response.ok) {
+        lastStatus = response.status
+        if (response.status === 401 || response.status === 403) {
+          return {
+            ok: false,
+            reason:
+              response.status === 401 ? 'unauthorized' : 'forbidden',
+            status: response.status,
+          }
+        }
+        if (response.status === 404) {
+          sawNotFound = true
+          continue
+        }
+        continue
+      }
+
+      const data = (await response.json()) as {
+        data?: Array<{ id?: string }>
+      }
+
+      const ids = Array.from(
+        new Set(
+          (data.data ?? [])
+            .filter(model => Boolean(model.id))
+            .map(model => model.id!),
+        ),
+      )
+      if (ids.length === 0) {
+        return { ok: false, reason: 'invalid_response' }
+      }
+      return { ok: true, ids }
+    } catch {
+      lastStatus = undefined
+      continue
+    } finally {
+      clear()
+    }
+  }
+
+  if (sawNotFound) {
+    return { ok: false, reason: 'not_found', status: lastStatus ?? 404 }
+  }
+  if (lastStatus !== undefined) {
+    return { ok: false, reason: 'server_error', status: lastStatus }
+  }
+  return { ok: false, reason: 'network' }
+}
+
 export async function listOpenAICompatibleModels(options?: {
   baseUrl?: string
   apiKey?: string
 }): Promise<string[] | null> {
-  const { signal, clear } = withTimeoutSignal(5000)
-  try {
-    const baseUrl = getOpenAICompatibleModelsBaseUrl(options?.baseUrl)
-    const isBankr = baseUrl.toLowerCase().includes('bankr')
-    const response = await fetch(
-      `${baseUrl}/models`,
-      {
-        method: 'GET',
-        headers: options?.apiKey
-          ? isBankr
-            ? { 'X-API-Key': options.apiKey }
-            : { Authorization: `Bearer ${options.apiKey}` }
-          : undefined,
-        signal,
-      },
-    )
-    if (!response.ok) {
-      return null
-    }
+  const result = await listOpenAICompatibleModelsDetailed(options)
+  return result.ok ? result.ids : null
+}
 
-    const data = (await response.json()) as {
-      data?: Array<{ id?: string }>
-    }
+type DiscoveryFailure = Extract<
+  OpenAIModelDiscoveryResult,
+  { ok: false }
+>
 
-    return Array.from(
-      new Set(
-        (data.data ?? [])
-          .filter(model => Boolean(model.id))
-          .map(model => model.id!),
-      ),
-    )
-  } catch {
-    return null
-  } finally {
-    clear()
+/**
+ * Turn a failed discovery into one line the user can act on. Pure — no ink
+ * imports — so it stays unit-testable like buildDiscoveredModelOptions.
+ */
+export function describeDiscoveryFailure(result: DiscoveryFailure): string {
+  const retryHint =
+    'Enter the model id manually, or go back to check the base URL and API key.'
+  switch (result.reason) {
+    case 'unauthorized':
+      return `The provider rejected the API key (HTTP 401). ${retryHint}`
+    case 'forbidden':
+      return `The provider refused access for this API key (HTTP 403). ${retryHint}`
+    case 'not_found':
+      return `No /models endpoint at this base URL (HTTP 404). If your base URL is missing a /v1 suffix, add it and try again. ${retryHint}`
+    case 'server_error':
+      return `The provider's model list is failing server-side (HTTP ${result.status ?? 5}). ${retryHint}`
+    case 'invalid_response':
+      return `The provider answered, but returned no usable model list. ${retryHint}`
+    case 'network':
+      return `Could not reach the provider (network error or timeout). ${retryHint}`
   }
 }
 

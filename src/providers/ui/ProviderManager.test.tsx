@@ -269,10 +269,12 @@ function mockProviderManagerDependencies(
     clearCodexCredentials?: () => { success: boolean; warning?: string }
     getActiveProviderProfile?: () => unknown
     getProviderProfiles?: () => unknown[]
-    listOpenAICompatibleModels?: (options?: {
+    listOpenAICompatibleModelsDetailed?: (options?: {
       baseUrl?: string
       apiKey?: string
-    }) => Promise<string[] | null>
+    }) => Promise<
+      { ok: true; ids: string[] } | { ok: false; reason: string; status?: number }
+    >
     probeOllamaGenerationReadiness?: () => Promise<{
       state: 'ready' | 'unreachable' | 'no_models' | 'generation_failed'
       models: Array<
@@ -326,10 +328,11 @@ function mockProviderManagerDependencies(
         models: [],
       })),
     // Keep the OpenAI-compatible model-discovery screen off the network by
-    // default: `null` renders the "unavailable" state instantly. Tests that
-    // exercise the discovered-model list can override this.
-    listOpenAICompatibleModels:
-      options?.listOpenAICompatibleModels ?? (async () => null),
+    // default: a not_found failure renders the "unavailable" state instantly.
+    // Tests that exercise the discovered-model list can override this.
+    listOpenAICompatibleModelsDetailed:
+      options?.listOpenAICompatibleModelsDetailed ??
+      (async () => ({ ok: false as const, reason: 'not_found' as const })),
   }))
 
   mock.module('src/providers/oauth/githubModelsCredentials.js', () => ({
@@ -1126,7 +1129,10 @@ test('ProviderManager discovers OpenAI-compatible models and saves the picked on
     updateProviderProfile,
     // Return the list out of order to also prove alphabetical sorting; the
     // current model (gpt-5.4) is an exact match so it starts focused.
-    listOpenAICompatibleModels: async () => ['gpt-5.4-mini', 'gpt-5.4'],
+    listOpenAICompatibleModelsDetailed: async () => ({
+      ok: true,
+      ids: ['gpt-5.4-mini', 'gpt-5.4'],
+    }),
   })
 
   const nonce = `${Date.now()}-${Math.random()}`
@@ -1194,6 +1200,204 @@ test('ProviderManager discovers OpenAI-compatible models and saves the picked on
     'provider_openai_discovery',
     expect.objectContaining({ model: 'gpt-5.4-mini' }),
   )
+
+  await mounted.dispose()
+})
+
+test('ProviderManager shows the API-key reason when discovery is unauthorized', async () => {
+  delete process.env.CLAUDIN_SIMPLE
+  delete process.env.CLAUDIN_USE_GITHUB
+  delete process.env.GITHUB_TOKEN
+  delete process.env.GH_TOKEN
+
+  const profile = {
+    id: 'provider_openai_401',
+    provider: 'openai',
+    name: 'Unauthorized Provider',
+    baseUrl: 'https://api.openai.com/v1',
+    model: 'gpt-5.4',
+    apiKey: 'sk-bad',
+  }
+
+  mockProviderManagerDependencies({
+    getActiveProviderProfile: () => profile,
+    getProviderProfiles: () => [profile],
+    updateProviderProfile: () => profile,
+    listOpenAICompatibleModelsDetailed: async () => ({
+      ok: false,
+      reason: 'unauthorized',
+      status: 401,
+    }),
+  })
+
+  const nonce = `${Date.now()}-${Math.random()}`
+  const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
+  const mounted = await mountProviderManager(ProviderManager, {})
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Provider manager') && frame.includes('Edit provider'),
+  )
+
+  await pressUntilFocused(mounted.stdin, mounted.getOutput, 'j', 'Edit provider')
+  mounted.stdin.write('\r')
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Edit provider') && frame.includes('Unauthorized Provider'),
+  )
+  await Bun.sleep(25)
+  mounted.stdin.write('\r')
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Edit provider profile') && frame.includes('Step 1 of 4'),
+  )
+
+  mounted.stdin.write('\r') // name
+  await waitForFrameOutput(mounted.getOutput, frame => frame.includes('Step 2 of 4'))
+  mounted.stdin.write('\r') // baseUrl
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Step 3 of 4') && frame.includes('API key'),
+  )
+
+  // Submitting the API key opens the discovery screen, which must NAME the
+  // rejected key (HTTP 401) instead of the old generic failure line.
+  mounted.stdin.write('\r')
+  const failureFrame = await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Choose a model') && frame.includes('HTTP 401'),
+  )
+  expect(failureFrame).toContain('rejected the API key')
+
+  await mounted.dispose()
+})
+
+test('ProviderManager manual model step starts empty from a preset, keeps the value when editing', async () => {
+  delete process.env.CLAUDIN_SIMPLE
+  delete process.env.CLAUDIN_USE_GITHUB
+  delete process.env.GITHUB_TOKEN
+  delete process.env.GH_TOKEN
+
+  const activeProfile = {
+    id: 'provider_edit_keep',
+    provider: 'openai',
+    name: 'Edit Keep Provider',
+    baseUrl: 'https://api.openai.com/v1',
+    model: 'saved-model-id',
+    apiKey: 'sk-test',
+  }
+
+  mockProviderManagerDependencies({
+    getActiveProviderProfile: () => activeProfile,
+    getProviderProfiles: () => [activeProfile],
+    updateProviderProfile: () => activeProfile,
+  })
+
+  const nonce = `${Date.now()}-${Math.random()}`
+  const { ProviderManager } = await import(`./ProviderManager.js?ts=${nonce}`)
+  const mounted = await mountProviderManager(ProviderManager, {})
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Provider manager') && frame.includes('Add provider'),
+  )
+
+  // EDIT path first: editing an existing profile keeps its saved model when
+  // falling back to the manual model step.
+  await pressUntilFocused(mounted.stdin, mounted.getOutput, 'j', 'Edit provider')
+  mounted.stdin.write('\r')
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Edit provider') && frame.includes('Edit Keep Provider'),
+  )
+  await Bun.sleep(25)
+  mounted.stdin.write('\r')
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Edit provider profile') && frame.includes('Step 1 of 4'),
+  )
+
+  mounted.stdin.write('\r') // name
+  await waitForFrameOutput(mounted.getOutput, frame => frame.includes('Step 2 of 4'))
+  mounted.stdin.write('\r') // baseUrl
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Step 3 of 4') && frame.includes('API key'),
+  )
+  mounted.stdin.write('\r') // apiKey -> discovery fails (default not_found mock)
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Choose a model') && frame.includes('Enter manually'),
+  )
+
+  // Pick "Enter manually": the edit keeps the saved value.
+  await pressUntilFocused(mounted.stdin, mounted.getOutput, 'j', 'Enter manually')
+  mounted.stdin.write('\r')
+  const editManualFrame = await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Step 4 of 4'),
+  )
+  expect(editManualFrame).toContain('saved-model-id')
+
+  // CREATE path: add from a preset whose default was NOT confirmed by the
+  // provider — the manual step must start EMPTY, not with the preset default.
+  // Walk back out of the form: model → apiKey → baseUrl → name → menu (4 Escs;
+  // a 5th would hit the menu's own Esc handler).
+  mounted.stdin.write('\x1b')
+  await Bun.sleep(50)
+  mounted.stdin.write('\x1b')
+  await Bun.sleep(50)
+  mounted.stdin.write('\x1b')
+  await Bun.sleep(50)
+  mounted.stdin.write('\x1b')
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Provider manager') && frame.includes('Add provider'),
+  )
+  // Focus may be preserved on 'Edit provider' after returning to the menu;
+  // walk up to 'Add provider' (a no-op when it is already focused) before
+  // confirming.
+  await pressUntilFocused(mounted.stdin, mounted.getOutput, 'k', 'Add provider')
+  mounted.stdin.write('\r')
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Choose provider preset'),
+  )
+  await navigateToPreset(mounted.stdin, 'Z.AI (GLM Coding Plan)')
+  mounted.stdin.write('\r')
+
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Create provider profile') && frame.includes('Step 1 of 4'),
+  )
+
+  mounted.stdin.write('\r') // name
+  await waitForFrameOutput(mounted.getOutput, frame => frame.includes('Step 2 of 4'))
+  mounted.stdin.write('\r') // baseUrl
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Step 3 of 4') && frame.includes('API key'),
+  )
+  mounted.stdin.write('\r') // apiKey -> discovery fails
+  await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Choose a model') && frame.includes('Enter manually'),
+  )
+
+  await pressUntilFocused(mounted.stdin, mounted.getOutput, 'j', 'Enter manually')
+  mounted.stdin.write('\r')
+  const createManualFrame = await waitForFrameOutput(
+    mounted.getOutput,
+    frame => frame.includes('Step 4 of 4'),
+  )
+  // The Z.AI preset default (glm-5.2) must NOT be pre-filled here.
+  expect(createManualFrame).not.toContain('glm-5.2')
 
   await mounted.dispose()
 })
