@@ -1,6 +1,5 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
 import { feature } from 'bun:bundle';
-import { stopUltraplan } from 'src/commands/ultraplan.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import { DreamTask } from 'src/agent/tasks/DreamTask/DreamTask.js';
 import { InProcessTeammateTask } from 'src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js';
@@ -90,11 +89,7 @@ export function killBackgroundTask(
       void DreamTask.kill(task.id, setAppState);
       return;
     case 'remote_agent':
-      if (task.isUltraplan) {
-        void stopUltraplan(task.id, task.sessionId, setAppState);
-      } else {
-        void RemoteAgentTask.kill(task.id, setAppState);
-      }
+      void RemoteAgentTask.kill(task.id, setAppState);
       return;
     default: {
       // Surface unhandled task types instead of silently no-op'ing the x key

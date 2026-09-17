@@ -10,7 +10,7 @@ export const BRIDGE_LOGIN_ERROR =
   'Error: You must be logged in to use Remote Control.\n\n' +
   BRIDGE_LOGIN_INSTRUCTION
 
-/** Shown when the user disconnects Remote Control (via /remote-control or ultraplan launch). */
+/** Shown when the user disconnects Remote Control (via /remote-control). */
 export const REMOTE_CONTROL_DISCONNECTED_MSG = 'Remote Control disconnected.'
 
 // --- Protocol types for the environments API ---

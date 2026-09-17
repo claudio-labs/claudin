@@ -1,6 +1,6 @@
 import type { ToolUseBlock } from '@anthropic-ai/sdk/resources';
 import { getRemoteSessionUrl } from 'src/shared/constants/product.js';
-import { OUTPUT_FILE_TAG, REMOTE_REVIEW_PROGRESS_TAG, REMOTE_REVIEW_TAG, STATUS_TAG, SUMMARY_TAG, TASK_ID_TAG, TASK_NOTIFICATION_TAG, TASK_TYPE_TAG, TOOL_USE_ID_TAG, ULTRAPLAN_TAG } from 'src/shared/constants/xml.js';
+import { OUTPUT_FILE_TAG, REMOTE_REVIEW_PROGRESS_TAG, REMOTE_REVIEW_TAG, STATUS_TAG, SUMMARY_TAG, TASK_ID_TAG, TASK_NOTIFICATION_TAG, TASK_TYPE_TAG, TOOL_USE_ID_TAG } from 'src/shared/constants/xml.js';
 import type { SDKAssistantMessage, SDKMessage } from 'src/platform/entrypoints/agentSdkTypes.js';
 import type { SetAppState, Task, TaskContext, TaskStateBase } from 'src/agent/Task.js';
 import { createTaskStateBase, generateTaskId } from 'src/agent/Task.js';
@@ -18,7 +18,6 @@ import { registerTask, updateTaskState } from 'src/agent/tasks/framework.js';
 import { fetchSession } from 'src/platform/teleport/api.js';
 import { archiveRemoteSession, pollRemoteSessionEvents } from 'src/platform/teleport/teleport.js';
 import type { TodoList } from 'src/tools/TodoWriteTool/types.js';
-import type { UltraplanPhase } from 'src/agent/ultraplan/ccrSession.js';
 export type RemoteAgentTaskState = TaskStateBase & {
   type: 'remote_agent';
   remoteTaskType: RemoteTaskType;
@@ -48,16 +47,8 @@ export type RemoteAgentTaskState = TaskStateBase & {
     bugsVerified: number;
     bugsRefuted: number;
   };
-  isUltraplan?: boolean;
-  /**
-   * Scanner-derived pill state. Undefined = running. `needs_input` when the
-   * remote asked a clarifying question and is idle; `plan_ready` when
-   * ExitPlanMode is awaiting browser approval. Surfaced in the pill badge
-   * and detail dialog status line.
-   */
-  ultraplanPhase?: Exclude<UltraplanPhase, 'running'>;
 };
-const REMOTE_TASK_TYPES = ['remote-agent', 'ultraplan', 'ultrareview', 'autofix-pr', 'background-pr'] as const;
+const REMOTE_TASK_TYPES = ['remote-agent', 'ultrareview', 'autofix-pr', 'background-pr'] as const;
 export type RemoteTaskType = (typeof REMOTE_TASK_TYPES)[number];
 function isRemoteTaskType(v: string | undefined): v is RemoteTaskType {
   return (REMOTE_TASK_TYPES as readonly string[]).includes(v ?? '');
@@ -199,43 +190,6 @@ function markTaskNotified(taskId: string, setAppState: SetAppState): boolean {
     };
   });
   return shouldEnqueue;
-}
-
-/**
- * Extract the plan content from the remote session log.
- * Searches all assistant messages for <ultraplan>...</ultraplan> tags.
- */
-export function extractPlanFromLog(log: SDKMessage[]): string | null {
-  // Walk backwards through assistant messages to find <ultraplan> content
-  for (let i = log.length - 1; i >= 0; i--) {
-    const msg = log[i];
-    if (msg?.type !== 'assistant') continue;
-    const fullText = extractTextContent(msg.message.content, '\n');
-    const plan = extractTag(fullText, ULTRAPLAN_TAG);
-    if (plan?.trim()) return plan.trim();
-  }
-  return null;
-}
-
-/**
- * Enqueue an ultraplan-specific failure notification. Unlike enqueueRemoteNotification
- * this does NOT instruct the model to read the raw output file (a JSONL dump that is
- * useless for plan extraction).
- */
-export function enqueueUltraplanFailureNotification(taskId: string, sessionId: string, reason: string, setAppState: SetAppState): void {
-  if (!markTaskNotified(taskId, setAppState)) return;
-  const sessionUrl = getRemoteTaskSessionUrl(sessionId);
-  const message = `<${TASK_NOTIFICATION_TAG}>
-<${TASK_ID_TAG}>${taskId}</${TASK_ID_TAG}>
-<${TASK_TYPE_TAG}>remote_agent</${TASK_TYPE_TAG}>
-<${STATUS_TAG}>failed</${STATUS_TAG}>
-<${SUMMARY_TAG}>Ultraplan failed: ${reason}</${SUMMARY_TAG}>
-</${TASK_NOTIFICATION_TAG}>
-The remote Ultraplan session did not produce a plan (${reason}). Inspect the session at ${sessionUrl} and tell the user to retry locally with plan mode.`;
-  enqueuePendingNotification({
-    value: message,
-    mode: 'task-notification'
-  });
 }
 
 /**
@@ -393,7 +347,6 @@ export function registerRemoteAgentTask(options: {
   context: TaskContext;
   toolUseId?: string;
   isRemoteReview?: boolean;
-  isUltraplan?: boolean;
   isLongRunning?: boolean;
   remoteTaskMetadata?: RemoteTaskMetadata;
 }): {
@@ -408,7 +361,6 @@ export function registerRemoteAgentTask(options: {
     context,
     toolUseId,
     isRemoteReview,
-    isUltraplan,
     isLongRunning,
     remoteTaskMetadata
   } = options;
@@ -429,7 +381,6 @@ export function registerRemoteAgentTask(options: {
     todoList: [],
     log: [],
     isRemoteReview,
-    isUltraplan,
     isLongRunning,
     pollStartedAt: Date.now(),
     remoteTaskMetadata
@@ -447,16 +398,13 @@ export function registerRemoteAgentTask(options: {
     command,
     spawnedAt: Date.now(),
     toolUseId,
-    isUltraplan,
     isRemoteReview,
     isLongRunning,
     remoteTaskMetadata
   });
 
-  // Ultraplan lifecycle is owned by startDetachedPoll in ultraplan.tsx. Generic
-  // polling still runs so session.log populates for the detail view's progress
-  // counts; the result-lookup guard below prevents early completion.
-  // TODO(#23985): fold ExitPlanModeScanner into this poller, drop startDetachedPoll.
+  // Generic polling still runs so session.log populates for the detail view's
+  // progress counts; the result-lookup guard below prevents early completion.
   const stopPolling = startRemoteSessionPolling(taskId, context);
   return {
     taskId,
@@ -519,7 +467,6 @@ async function restoreRemoteAgentTasksImpl(context: TaskContext): Promise<void> 
       todoList: [],
       log: [],
       isRemoteReview: meta.isRemoteReview,
-      isUltraplan: meta.isUltraplan,
       isLongRunning: meta.isLongRunning,
       startTime: meta.spawnedAt,
       pollStartedAt: Date.now(),
@@ -603,11 +550,9 @@ function startRemoteSessionPolling(taskId: string, context: TaskContext): () => 
         }
       }
 
-      // Ultraplan: result(success) fires after every CCR turn, so it must not
-      // drive completion — startDetachedPoll owns that via ExitPlanMode scan.
-      // Long-running monitors (autofix-pr) emit result per notification cycle,
-      // so the same skip applies.
-      const result = task.isUltraplan || task.isLongRunning ? undefined : accumulatedLog.findLast(msg => msg.type === 'result');
+      // Long-running monitors (autofix-pr) emit result per notification
+      // cycle, so don't let result drive completion.
+      const result = task.isLongRunning ? undefined : accumulatedLog.findLast(msg => msg.type === 'result');
 
       // For remote-review: <remote-review> in hook_progress stdout is the
       // bughunter path's completion signal. Scan only the delta to stay O(new);
