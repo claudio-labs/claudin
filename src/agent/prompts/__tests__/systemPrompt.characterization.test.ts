@@ -17,13 +17,16 @@
 // (FAMILY_PROMPT_ADDENDUMS) and names the model in its Environment block, so an
 // unpinned dump would snapshot whichever profile the developer had active.
 
-import { describe, expect, test } from 'bun:test'
+import { afterAll, describe, expect, test } from 'bun:test'
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { homedir } from 'node:os'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const REPO_ROOT = join(__dirname, '..', '..', '..', '..')
+// Empty stand-in config dir for the spawned bundle (see dump() below).
+const DATA_DIR = mkdtempSync(join(tmpdir(), 'claudin-snapshot-'))
+afterAll(() => rmSync(DATA_DIR, { recursive: true, force: true }))
 const BUNDLE = join(REPO_ROOT, 'dist', 'cli.mjs')
 const SNAPSHOT_DIR = join(__dirname, '__snapshots__')
 const MODEL = 'claude-opus-5'
@@ -63,6 +66,8 @@ function normalize(prompt: string): string {
   let out = prompt
     .split(REPO_ROOT)
     .join('<REPO_ROOT>')
+    .split(DATA_DIR)
+    .join('<DATA_DIR>')
     .split(homedir())
     .join('<HOME>')
     .split(PROJECT_SLUG)
@@ -79,7 +84,17 @@ function dump(extraArgs: readonly string[]): string {
     encoding: 'utf8',
     timeout: 120_000,
     cwd: REPO_ROOT,
-    env: { ...process.env, NODE_DISABLE_COMPILE_CACHE: '1' },
+    env: {
+      ...process.env,
+      // The addendum family resolves from the ACTIVE PROVIDER
+      // (getFamilyAddendum → getAPIProvider), not from the pinned --model.
+      // Pin the config dir to an empty stand-in so a developer profile — the
+      // glm preset, say — cannot decide which addendum the dump carries; the
+      // profile-less default is firstParty → anthropic, which is what CI and
+      // a fresh checkout produce too.
+      CLAUDIN_CONFIG_DIR: join(DATA_DIR, 'claude-config'),
+      NODE_DISABLE_COMPILE_CACHE: '1',
+    },
   })
   if (res.error) throw res.error
   // Same guard bootSnapshot.test.ts carries: a leaked child_process module mock

@@ -7,7 +7,7 @@ import { stringWidth } from 'src/terminal/ink/stringWidth.js';
 import { useAppState, useSetAppState } from 'src/terminal/state/AppState.js';
 import { enterTeammateView, exitTeammateView } from 'src/terminal/state/teammateViewHelpers.js';
 import { isPanelAgentTask } from 'src/agent/tasks/LocalAgentTask/LocalAgentTask.js';
-import { getPillLabel, pillNeedsCta } from 'src/agent/tasks/pillLabel.js';
+import { getPillLabel } from 'src/agent/tasks/pillLabel.js';
 import { type BackgroundTaskState, isBackgroundTask, type TaskState } from 'src/agent/tasks/types.js';
 import type { InProcessTeammateTaskState } from 'src/agent/tasks/InProcessTeammateTask/types.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
@@ -232,24 +232,8 @@ export function BackgroundTaskStatus(t0: Props) {
   } else {
     t9 = $[42];
   }
-  let t10;
-  if ($[43] !== runningTasks) {
-    t10 = pillNeedsCta(runningTasks) && <Text dimColor={true}> · {figures.arrowDown} to view</Text>;
-    $[43] = runningTasks;
-    $[44] = t10;
-  } else {
-    t10 = $[44];
-  }
-  let t11;
-  if ($[45] !== t10 || $[46] !== t9) {
-    t11 = <>{t9}{t10}</>;
-    $[45] = t10;
-    $[46] = t9;
-    $[47] = t11;
-  } else {
-    t11 = $[47];
-  }
-  return t11;
+  let t10 = <>{t9}</>;
+  return t10;
 }
 function _temp1(pill_0: IndexedFooterPill, i_0: number) {
   const pillText = `@${pill_0.name}`;

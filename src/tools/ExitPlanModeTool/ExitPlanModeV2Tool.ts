@@ -521,9 +521,7 @@ Request ID: ${requestId}`,
     // The model wrote the plan file itself, so echoing the body back is a
     // second copy of ~4-7k tokens that every later call in the session
     // re-reads (the 2026-09-10 census measured 67k chars over 10 approvals).
-    // Only an EDITED plan carries something the model has not seen. The
-    // Ultraplan CCR flow's `extractApprovedPlan` used to require the echo,
-    // but `feature('ULTRAPLAN')` is off in this fork's build.
+    // Only an EDITED plan carries something the model has not seen.
     const planEcho = planWasEdited
       ? `\n\n## Approved Plan (edited by user):\n${plan}`
       : ''

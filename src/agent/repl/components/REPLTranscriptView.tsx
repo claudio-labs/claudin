@@ -138,11 +138,9 @@ export function REPLTranscriptView(props: REPLTranscriptViewProps): React.ReactN
         // exists — without one, ctrl+c falls through to CancelRequestHandler.
         <ScrollKeybindingHandler
           scrollRef={props.scrollRef as never}
-          // Yield wheel/ctrl+u/d to UltraplanChoiceDialog's own scroll
-          // handler while the modal is showing.
-          isActive={props.focusedInputDialog !== 'ultraplan-choice'}
           // g/G/j/k/ctrl+u/ctrl+d would eat keystrokes the search bar
           // wants. Off while searching.
+          isActive
           isModal={!props.searchOpen}
           // Manual scroll exits the search context — clear the yellow
           // current-match marker. Positions are (msg, rowOffset)-keyed;

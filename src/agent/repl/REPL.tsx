@@ -422,8 +422,6 @@ export function REPL({
   const tasks = useAppState(s => s.tasks);
   const workerSandboxPermissions = useAppState(s => s.workerSandboxPermissions);
   const elicitation = useAppState(s => s.elicitation);
-  const ultraplanPendingChoice = useAppState(s => s.ultraplanPendingChoice);
-  const ultraplanLaunchPending = useAppState(s => s.ultraplanLaunchPending);
   const viewingAgentTaskId = useAppState(s => s.viewingAgentTaskId);
   const setAppState = useSetAppState();
 
@@ -1365,17 +1363,6 @@ export function REPL({
   const [showWorkflowsDialog, setShowWorkflowsDialog] = useState<string | boolean>(false);
   const [isSearchingHistory, setIsSearchingHistory] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-
-  // showBashesDialog is REPL-level so it survives PromptInput unmounting.
-  // When ultraplan approval fires while the pill dialog is open, PromptInput
-  // unmounts (focusedInputDialog → 'ultraplan-choice') but this stays true;
-  // after accepting, PromptInput remounts into an empty "No tasks" dialog
-  // (the completed ultraplan task has been filtered out). Close it here.
-  useEffect(() => {
-    if (ultraplanPendingChoice && showBashesDialog) {
-      setShowBashesDialog(false);
-    }
-  }, [ultraplanPendingChoice, showBashesDialog]);
   const [theme] = useTheme();
 
   // resetLoadingState runs twice per turn (onQueryImpl tail + onQuery finally).
@@ -1657,8 +1644,6 @@ export function REPL({
     elicitation,
     showingCostDialog,
     idleReturnPending,
-    ultraplanPendingChoice,
-    ultraplanLaunchPending,
     isLoading,
     showIdeOnboarding,
     showEffortCallout,
@@ -2987,32 +2972,12 @@ export function REPL({
             exitFlow,
             hintRecommendation,
             handleHintResponse,
-            ultraplanPendingChoice: ultraplanPendingChoice ?? null,
-            ultraplanLaunchPending: ultraplanLaunchPending ?? null,
-            queryGuard,
-            createAbortController,
-            createCommandInputMessage,
-            formatCommandInputTags,
-            escapeXml,
-            LOCAL_COMMAND_STDOUT_TAG,
-            // ULTRAPLAN is dead in the open build (feature flag off); the
-            // identifier `launchUltraplan` is never imported here, so a
-            // direct reference would ReferenceError at unbundled (test) eval
-            // time. The matching slot below is `null`, so the renderer's
-            // feature() gate short-circuits before this is ever called.
-            launchUltraplan: (() => Promise.resolve('')) as unknown as Parameters<typeof renderREPLDialogs>[0]['launchUltraplan'],
           }, {
             SandboxPermissionRequest,
             IdeOnboardingDialog: IdeOnboardingDialog as unknown as Parameters<typeof renderREPLDialogs>[1]['IdeOnboardingDialog'],
             EffortCallout: EffortCallout as unknown as Parameters<typeof renderREPLDialogs>[1]['EffortCallout'],
             RemoteCallout,
             PluginHintMenu,
-            // ULTRAPLAN feature is disabled in the open build; both dialogs
-            // are referenced symbolically (never imported) inside the
-            // feature() ternary. Pass null so the slot type stays sound and
-            // the render function's feature gate short-circuits identically.
-            UltraplanChoiceDialog: null,
-            UltraplanLaunchDialog: null,
           })}
 
           {mrRender()}

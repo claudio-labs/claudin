@@ -128,13 +128,6 @@ exports[`slash-command registry — characterization the flag-gated command tabl
     "specifier": "./torch.js",
   },
   {
-    "binding": "ultraplan",
-    "flags": [
-      "ULTRAPLAN",
-    ],
-    "specifier": "src/commands/ultraplan.js",
-  },
-  {
     "binding": "workflowsCmd",
     "flags": [
       "WORKFLOW_SCRIPTS",

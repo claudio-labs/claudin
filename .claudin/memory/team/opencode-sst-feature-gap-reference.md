@@ -10,6 +10,7 @@ type: reference
 
 **Shipped since this scout (were real gaps on 2026-06-24, verified present 2026-08-07):**
 - **apply_patch** — `src/tools/ApplyPatchTool/` exists and is the batched multi-file editor. Do not re-port it; see [[checkbatchwrite-updatedinput-clobbers-input]] for the permission bug it hit.
+- **LSP diagnostics on edit — CLOSED**, verified 2026-09-17: `src/tools/FileEditTool/...` arms `buildPostEditDiagnosticsMessages`/`armFileForLateDiagnostics` from `src/platform/lsp/diagnosticsForToolResult.*` post-edit. Only formatter-on-edit remains from the original top gaps.
 
 **Real port candidates (claudin genuinely lacks):**
 - **Auto-format on edit/write** `format/` (wired at `edit.ts:156`/`write.ts:65`) — prettier/gofmt/ruff detection. claudin has NO auto-format. Low effort, isolated.

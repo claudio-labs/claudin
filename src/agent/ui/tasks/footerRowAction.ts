@@ -3,9 +3,9 @@
 //
 // Split out of `taskActions.ts` rather than living there, because that module
 // cannot be imported by a unit test — its dispatch arms reach the task backends
-// and, through `stopUltraplan`, the command layer. This one imports two type
-// guards and nothing else, so the byline can ask the question without paying for
-// the machinery that answers it.
+// and kill subprocesses. This one imports two type guards and nothing else, so
+// the byline can ask the question without paying for the machinery that
+// answers it.
 
 import { isContainerStoppable } from 'src/agent/tasks/ContainerTask/types.js'
 import { isMcpServerDisconnectable } from 'src/agent/tasks/McpServerTask/types.js'

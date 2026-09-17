@@ -797,14 +797,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 1,
     "stockValue": true,
   },
-  "tengu_ultraplan_model": {
-    "defaults": [
-      "ALL_MODEL_CONFIGS.opus46.firstParty",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": "<unmeasured: default is an expression — ALL_MODEL_CONFIGS.opus46.firstParty>",
-  },
   "tengu_vscode_cc_auth": {
     "defaults": [
       "false",

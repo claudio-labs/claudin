@@ -18,7 +18,6 @@ const teammateKill = mock(() => Promise.resolve());
 const monitorMcpKill = mock(() => Promise.resolve());
 const dreamKill = mock(() => Promise.resolve());
 const remoteAgentKill = mock(() => Promise.resolve());
-const stopUltraplanMock = mock(() => Promise.resolve());
 const debugMock = mock((_msg: string) => {});
 
 mock.module('src/agent/tasks/LocalShellTask/LocalShellTask.js', () => ({
@@ -41,9 +40,6 @@ mock.module('src/agent/tasks/DreamTask/DreamTask.js', () => ({
 }));
 mock.module('src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js', () => ({
   RemoteAgentTask: { kill: remoteAgentKill },
-}));
-mock.module('src/commands/ultraplan.js', () => ({
-  stopUltraplan: stopUltraplanMock,
 }));
 mock.module('src/shared/debug.js', () => ({
   logForDebugging: debugMock,
@@ -79,7 +75,6 @@ describe('killBackgroundTask', () => {
     monitorMcpKill.mockClear();
     dreamKill.mockClear();
     remoteAgentKill.mockClear();
-    stopUltraplanMock.mockClear();
     debugMock.mockClear();
     setAppState.mockClear();
   });
@@ -123,26 +118,10 @@ describe('killBackgroundTask', () => {
     expect(dreamKill).toHaveBeenCalledTimes(1);
   });
 
-  test('remote_agent (non-ultraplan) routes to RemoteAgentTask.kill', () => {
-    const task = makeTask('remote_agent', { isUltraplan: false });
+  test('remote_agent routes to RemoteAgentTask.kill', () => {
+    const task = makeTask('remote_agent', {});
     killBackgroundTask(task, setAppState);
     expect(remoteAgentKill).toHaveBeenCalledTimes(1);
-    expect(stopUltraplanMock).not.toHaveBeenCalled();
-  });
-
-  test('remote_agent (ultraplan) routes to stopUltraplan with sessionId', () => {
-    const task = makeTask('remote_agent', {
-      isUltraplan: true,
-      sessionId: 'sess-42',
-    });
-    killBackgroundTask(task, setAppState);
-    expect(stopUltraplanMock).toHaveBeenCalledTimes(1);
-    expect(stopUltraplanMock).toHaveBeenCalledWith(
-      task.id,
-      'sess-42',
-      setAppState,
-    );
-    expect(remoteAgentKill).not.toHaveBeenCalled();
   });
 
   test('unknown task type logs via logForDebugging instead of silently no-op', () => {

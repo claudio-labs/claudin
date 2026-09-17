@@ -279,7 +279,7 @@ function ModeIndicator({
 
   // In remote mode (`claude assistant`, --teleport) the agent runs elsewhere;
   // the local permission mode shown here doesn't reflect the agent's state.
-  // Rendered before the tasks pill so a long pill label (e.g. ultraplan URL)
+  // Rendered before the tasks pill so a long pill label
   // doesn't push the mode indicator off-screen.
   const modePart = currentMode && hasActiveMode && !getIsRemoteMode() ? <Text color={getModeColor(currentMode)} key="mode">
         {permissionModeSymbol(currentMode)}{' '}

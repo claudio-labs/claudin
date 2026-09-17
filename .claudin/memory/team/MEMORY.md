@@ -33,6 +33,7 @@
 - [The missing-module stub's default is TRUTHY](missing-module-stub-makes-dead-things-look-alive.md) — `feature(TRUE) ? require(absent)` registered a phantom `noop`; `claudin install` + `mcp serve tools/list` broken
 - [growthbook.ts never runs — the build stub is the real one](growthbook-source-dead-stub-is-real.md) — 986 dead lines vs a ~200-line stub with different resolution order; `bun test` exercises the dead one
 - [CLAUDIN_SYNC_PLUGIN_INSTALL hung headless -p](headless-sync-plugin-install-broken-import.md) — FIXED in PR #57; kept for the 2-question test telling a real TS2307 from the fork's ~107 expected
+- [systemPrompt.main.txt regen captured harness-injected text](systemprompt-snapshot-harness-drift.md) — snapshot covers "Notes for this model" etc., injected by the harness; diff regen vs source before committing
 - [knip's "unused export" is not "unused"](knip-unused-export-is-not-unused.md) — means nothing IMPORTS it; needs local-reference + grep guards, `bun run build` as the gate
 - [Token census 2026-09-09..10 — the transcript is blind to rule/CLAUDE.md injections](token-census-2026-09-10-hidden-injections.md) — ~19% of context is non-persisted attachments; keep-alive $3 vs $15
 - [Weekly token census 2026-09-04..08 + what it fixed](weekly-token-census-2026-09-08.md) — $170/1,044 calls, reads 45%; fork-clip LOST the A/B (+11%); sleep redirect stays opt-in

@@ -103,7 +103,7 @@ import type { TextHighlight } from 'src/shared/text/textHighlighting.js';
 import { getTheme, type Theme } from 'src/terminal/theme/theme.js';
 import { findThinkingTriggerPositions, getRainbowColor, isUltrathinkEnabled } from 'src/agent/context/thinking.js';
 import { findTokenBudgetPositions } from 'src/agent/context/tokenBudget.js';
-import { findUltraplanTriggerPositions, findUltrareviewTriggerPositions } from 'src/agent/ultraplan/keyword.js';
+import { findUltrareviewTriggerPositions } from 'src/agent/ultraplan/keyword.js';
 import { AutoModeOptInDialog } from 'src/permissions/ui/AutoModeOptInDialog.js';
 import { BridgeDialog } from 'src/platform/bridge/BridgeDialog.js';
 import { ConfigurableShortcutHint } from 'src/terminal/ConfigurableShortcutHint.js';
@@ -564,9 +564,6 @@ function PromptInput({
   });
   const displayedValue = useMemo(() => isSearchingHistory && historyMatch ? getValueFromInput(typeof historyMatch === 'string' ? historyMatch : historyMatch.display) : input, [isSearchingHistory, historyMatch, input]);
   const thinkTriggers = useMemo(() => findThinkingTriggerPositions(displayedValue), [displayedValue]);
-  const ultraplanSessionUrl = useAppState((s: AppState) => s.ultraplanSessionUrl);
-  const ultraplanLaunching = useAppState((s: AppState) => s.ultraplanLaunching);
-  const ultraplanTriggers = useMemo(() => feature('ULTRAPLAN') && !ultraplanSessionUrl && !ultraplanLaunching ? findUltraplanTriggerPositions(displayedValue) : [], [displayedValue, ultraplanSessionUrl, ultraplanLaunching]);
   const ultrareviewTriggers = useMemo(() => isUltrareviewEnabled() ? findUltrareviewTriggerPositions(displayedValue) : [], [displayedValue]);
   const btwTriggers = useMemo(() => findBtwTriggerPositions(displayedValue), [displayedValue]);
   const buddyTriggers = useMemo(() => findBuddyTriggerPositions(displayedValue), [displayedValue]);
@@ -744,21 +741,6 @@ function PromptInput({
       }
     }
 
-    // Same rainbow treatment for the ultraplan keyword
-    if (feature('ULTRAPLAN')) {
-      for (const trigger of ultraplanTriggers) {
-        for (let i = trigger.start; i < trigger.end; i++) {
-          highlights.push({
-            start: i,
-            end: i + 1,
-            color: getRainbowColor(i - trigger.start),
-            shimmerColor: getRainbowColor(i - trigger.start, true),
-            priority: 10
-          });
-        }
-      }
-    }
-
     // Same rainbow treatment for the ultrareview keyword
     for (const trigger of ultrareviewTriggers) {
       for (let i = trigger.start; i < trigger.end; i++) {
@@ -785,7 +767,7 @@ function PromptInput({
       }
     }
     return highlights;
-  }, [isSearchingHistory, historyQuery, historyMatch, historyFailedMatch, cursorOffset, btwTriggers, imageRefPositions, memberMentionHighlights, slashCommandTriggers, tokenBudgetTriggers, slackChannelTriggers, displayedValue, voiceInterimRange, thinkTriggers, ultraplanTriggers, ultrareviewTriggers, buddyTriggers]);
+  }, [isSearchingHistory, historyQuery, historyMatch, historyFailedMatch, cursorOffset, btwTriggers, imageRefPositions, memberMentionHighlights, slashCommandTriggers, tokenBudgetTriggers, slackChannelTriggers, displayedValue, voiceInterimRange, thinkTriggers, ultrareviewTriggers, buddyTriggers]);
   const {
     addNotification,
     removeNotification
@@ -804,18 +786,6 @@ function PromptInput({
       removeNotification('ultrathink-active');
     }
   }, [addNotification, removeNotification, thinkTriggers.length]);
-  useEffect(() => {
-    if (feature('ULTRAPLAN') && ultraplanTriggers.length) {
-      addNotification({
-        key: 'ultraplan-active',
-        text: 'This prompt will launch an ultraplan session in Claude Code on the web',
-        priority: 'immediate',
-        timeoutMs: 5000
-      });
-    } else {
-      removeNotification('ultraplan-active');
-    }
-  }, [addNotification, removeNotification, ultraplanTriggers.length]);
   useEffect(() => {
     if (isUltrareviewEnabled() && ultrareviewTriggers.length) {
       addNotification({
