@@ -36,7 +36,8 @@ import {
 import { clearGithubModelsToken } from 'src/providers/oauth/githubModelsCredentials.js'
 import {
   buildDiscoveredModelOptions,
-  listOpenAICompatibleModels,
+  describeDiscoveryFailure,
+  listOpenAICompatibleModelsDetailed,
   probeAtomicChatReadiness,
   probeOllamaGenerationReadiness,
   type AtomicChatReadiness,
@@ -1013,24 +1014,23 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     setOpenAiModelSelection({ state: 'loading' })
 
     void (async () => {
-      const ids = await listOpenAICompatibleModels({
+      const result = await listOpenAICompatibleModelsDetailed({
         baseUrl: draft.baseUrl,
         apiKey: draft.apiKey || undefined,
       })
       if (cancelled) {
         return
       }
-      if (!ids || ids.length === 0) {
+      if (!result.ok) {
         setOpenAiModelSelection({
           state: 'unavailable',
-          message:
-            "Couldn't list models from this provider. Enter the model id manually, or go back to check the base URL and API key.",
+          message: describeDiscoveryFailure(result),
         })
         return
       }
 
       const { options, defaultValue } = buildDiscoveredModelOptions(
-        ids,
+        result.ids,
         draft.model,
       )
       setOpenAiModelSelection({ state: 'ready', options, defaultValue })
@@ -1695,6 +1695,26 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
     setScreen('form')
   }
 
+  // Fall back to the free-text model step. When creating from a preset, the
+  // draft model still holds the preset's hardcoded default — a value the
+  // provider's /models endpoint just failed to confirm, so keeping it invites
+  // saving a model that may not exist. Clear it; an edit of an existing
+  // profile (or a preset-less draft) keeps its value.
+  function goToManualModelStep(): void {
+    if (
+      !editingProfileId &&
+      pendingPreset &&
+      draft.model === presetToDraft(pendingPreset).model
+    ) {
+      const cleared = { ...draft, model: '' }
+      setDraft(cleared)
+      goToFormStep('model')
+      setCursorOffset(0)
+      return
+    }
+    goToFormStep('model')
+  }
+
   function renderOpenAiModelSelection(): React.ReactNode {
     if (
       openAiModelSelection.state === 'loading' ||
@@ -1735,7 +1755,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
             ]}
             onChange={(value: string) => {
               if (value === 'manual') {
-                goToFormStep('model')
+                goToManualModelStep()
                 return
               }
               goToFormStep('apiKey')
@@ -1772,7 +1792,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
           visibleOptionCount={Math.min(8, options.length)}
           onChange={(value: string) => {
             if (value === MANUAL_MODEL_OPTION_VALUE) {
-              goToFormStep('model')
+              goToManualModelStep()
               return
             }
             const nextDraft = { ...draft, model: value }
@@ -1865,7 +1885,7 @@ export function ProviderManager({ mode, onDone }: Props): React.ReactNode {
   // handle it here: an impatient user jumps straight to typing the model id
   // instead of waiting out the discovery timeout. Once loaded, the Select's own
   // onCancel handles Esc (back to the API key step).
-  useKeybinding('confirm:no', () => goToFormStep('model'), {
+  useKeybinding('confirm:no', () => goToManualModelStep(), {
     context: 'Settings',
     isActive:
       screen === 'select-openai-model' &&
