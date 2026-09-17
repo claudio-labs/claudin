@@ -630,7 +630,7 @@ function createFileSuggestionItem(
  * Find matching files and folders for a given query using the TS file index
  */
 // Upper bound on how many file/dir entries enter the suggestion list. The menu
-// only renders a sliding window of ~15 rows at a time (see MAX_VISIBLE_ITEMS in
+// only renders a sliding window of ~6 rows at a time (see MAX_VISIBLE_ITEMS in
 // PromptInputFooterSuggestions), so this larger cap is what the user actually
 // scrolls through — keep it above the visible window so up/down reveal more.
 const MAX_SUGGESTIONS = 100

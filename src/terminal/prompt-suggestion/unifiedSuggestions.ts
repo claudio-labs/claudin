@@ -68,7 +68,7 @@ function createSuggestionFromSource(source: SuggestionSource): SuggestionItem {
 }
 
 // Final cap on the @-mention list (files + MCP resources + agents). The menu
-// renders a sliding window of ~15 rows (MAX_VISIBLE_ITEMS in
+// renders a sliding window of ~6 rows (MAX_VISIBLE_ITEMS in
 // PromptInputFooterSuggestions); this larger cap is the pool the user scrolls
 // through with up/down, so keep it above the visible window.
 const MAX_UNIFIED_SUGGESTIONS = 100
