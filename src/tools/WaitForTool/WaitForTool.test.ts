@@ -5,7 +5,6 @@ import { join } from 'path'
 import { spawn } from 'child_process'
 
 import type { ToolUseContext } from 'src/tools/Tool.js'
-import { parseForSecurity } from 'src/platform/bash/ast.js'
 import { WaitForTool } from 'src/tools/WaitForTool/WaitForTool.js'
 import {
   detectSleepPoll,
@@ -164,7 +163,11 @@ describe('WaitForTool', () => {
     expect(block.content).toBe('hi\n[WaitFor: match after 4.2s, 5 polls]')
   })
 
-  test('permission matcher covers setup and poll subcommands', async () => {
+  // The matcher is permissive by construction: the per-subcommand version it
+  // used to build needed argv from a parser that has never produced a tree, and
+  // matching.ts treats a MISSING matcher as "no match" — so returning true is
+  // what keeps an `if`-conditioned hook firing at all.
+  test('permission matcher matches every if condition', async () => {
     const matches = await WaitForTool.preparePermissionMatcher?.({
       setup: 'tmux send-keys -t s Enter',
       command: 'tmux capture-pane -t s -p',
@@ -172,13 +175,7 @@ describe('WaitForTool', () => {
     } as never)
     expect(matches?.('tmux send-keys:*')).toBe(true)
     expect(matches?.('tmux capture-pane:*')).toBe(true)
-    // Without the tree-sitter parser (parse-unavailable) the matcher is
-    // permissive by design, same as Monitor's — only assert the negative when
-    // the parser actually ran.
-    const parsed = await parseForSecurity('tmux capture-pane -t s -p')
-    if (parsed.kind === 'simple') {
-      expect(matches?.('rm:*')).toBe(false)
-    }
+    expect(matches?.('rm:*')).toBe(true)
   })
 })
 

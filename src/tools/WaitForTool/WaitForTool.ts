@@ -17,10 +17,7 @@ import { lazySchema } from 'src/shared/data/lazySchema.js'
 import { exec } from 'src/shared/proc/Shell.js'
 import {
   bashToolHasPermission,
-  matchWildcardPattern,
-  permissionRuleExtractPrefix,
 } from 'src/tools/BashTool/bashPermissions.js'
-import { parseForSecurity } from 'src/platform/bash/ast.js'
 import { WAITFOR_TOOL_NAME } from 'src/tools/WaitForTool/toolName.js'
 
 const DEFAULT_SETTLE_S = 3
@@ -132,26 +129,14 @@ export const WaitForTool = buildTool({
     return input.setup ? `${input.setup} && ${input.command}` : input.command
   },
 
-  async preparePermissionMatcher({ command, setup }) {
-    // Setup and poll are parsed separately: joined with `&&` they would read
-    // as a compound command and lose the per-subcommand prefix matching.
-    const subcommands: string[] = []
-    for (const part of setup ? [setup, command] : [command]) {
-      const parsed = await parseForSecurity(part)
-      if (parsed.kind !== 'simple') {
-        return () => true
-      }
-      subcommands.push(...parsed.commands.map(c => c.argv.join(' ')))
-    }
-    return (pattern: string) => {
-      const prefix = permissionRuleExtractPrefix(pattern)
-      return subcommands.some(cmd => {
-        if (prefix !== null) {
-          return cmd === prefix || cmd.startsWith(`${prefix} `)
-        }
-        return matchWildcardPattern(pattern, cmd)
-      })
-    }
+  // Every `if` condition on a WaitFor hook matches, covering both the setup and
+  // the poll command. The per-subcommand matcher this used to build needed argv
+  // from parseForSecurity, which has answered parse-unavailable in every shipped
+  // bundle, so the permissive arm is the only one that has ever run. It is also
+  // the fail-safe direction — matching.ts treats a MISSING matcher as "no
+  // match", so the method has to stay and return true rather than be removed.
+  async preparePermissionMatcher(_input) {
+    return (_pattern: string) => true
   },
 
   async checkPermissions(input, context) {
