@@ -543,7 +543,6 @@ export function runInteractiveStartupBlock(
       queue: [],
     },
     todos: {},
-    remoteAgentTaskSuggestions: [],
     fileHistory: {
       snapshots: [],
       trackedFiles: new Set(),

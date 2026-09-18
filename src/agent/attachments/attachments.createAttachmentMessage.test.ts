@@ -58,7 +58,6 @@ const ALL_ATTACHMENT_TYPES = [
   'hook_system_message',
   'hook_permission_decision',
   'invoked_skills',
-  'verify_plan_reminder',
   'max_turns_reached',
   'current_session_memory',
   'teammate_shutdown_batch',

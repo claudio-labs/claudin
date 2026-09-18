@@ -69,7 +69,6 @@ import {
   PLAN_MODE_ATTACHMENT_CONFIG,
   AUTO_MODE_ATTACHMENT_CONFIG,
   TODO_REMINDER_CONFIG,
-  VERIFY_PLAN_REMINDER_CONFIG,
 } from 'src/agent/attachments/config.js'
 import { hasToolResultContent } from 'src/agent/attachments/shared.js'
 
@@ -1019,62 +1018,6 @@ export async function getActiveBackgroundTaskReminders(
     }
   }
   return out
-}
-
-export function getVerifyPlanReminderTurnCount(messages: Message[]): number {
-  let turnCount = 0
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i]
-    if (message && isHumanTurn(message)) {
-      turnCount++
-    }
-    // Stop counting at plan_mode_exit attachment (marks when implementation started)
-    if (
-      message?.type === 'attachment' &&
-      message.attachment.type === 'plan_mode_exit'
-    ) {
-      return turnCount
-    }
-  }
-  // No plan_mode_exit found
-  return 0
-}
-
-/**
- * Get verify plan reminder attachment if the model hasn't called VerifyPlanExecution yet.
- */
-export async function getVerifyPlanReminderAttachment(
-  messages: Message[] | undefined,
-  toolUseContext: ToolUseContext,
-): Promise<Attachment[]> {
-  if (!isEnvTruthy(process.env.CLAUDIN_VERIFY_PLAN)) {
-    return []
-  }
-
-  const appState = toolUseContext.getAppState()
-  const pending = appState.pendingPlanVerification
-
-  // Only remind if plan exists and verification not started or completed
-  if (
-    !pending ||
-    pending.verificationStarted ||
-    pending.verificationCompleted
-  ) {
-    return []
-  }
-
-  // Only remind every N turns
-  if (messages && messages.length > 0) {
-    const turnCount = getVerifyPlanReminderTurnCount(messages)
-    if (
-      turnCount === 0 ||
-      turnCount % VERIFY_PLAN_REMINDER_CONFIG.TURNS_BETWEEN_REMINDERS !== 0
-    ) {
-      return []
-    }
-  }
-
-  return [{ type: 'verify_plan_reminder' }]
 }
 
 export function getCompactionReminderAttachment(

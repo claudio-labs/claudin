@@ -302,7 +302,6 @@ export type AppState = DeepImmutable<{
   fileHistory: FileHistoryState
   attribution: AttributionState
   todos: { [agentId: string]: TodoList }
-  remoteAgentTaskSuggestions: { summary: string; task: string }[]
   notifications: {
     current: Notification | null
     queue: Notification[]
@@ -397,13 +396,6 @@ export type AppState = DeepImmutable<{
     // Session-scoped permission rules from plan mode (e.g., "run tests", "install dependencies")
     allowedPrompts?: AllowedPrompt[]
   } | null
-  // Pending plan verification state (set when exiting plan mode)
-  // Used by VerifyPlanExecution tool to trigger background verification
-  pendingPlanVerification?: {
-    plan: string
-    verificationStarted: boolean
-    verificationCompleted: boolean
-  }
   // Denial tracking for classifier modes (YOLO, headless, etc.) - falls back to prompting when limits exceeded
   denialTracking?: DenialTrackingState
   // Active overlays (Select dialogs, etc.) for Escape key coordination
@@ -501,7 +493,6 @@ export function getDefaultAppState(): AppState {
       needsRefresh: false,
     },
     todos: {},
-    remoteAgentTaskSuggestions: [],
     notifications: {
       current: null,
       queue: [],

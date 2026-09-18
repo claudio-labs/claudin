@@ -20,10 +20,6 @@ import { TODO_WRITE_TOOL_NAME } from 'src/tools/TodoWriteTool/constants.js'
 import { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/prompt.js'
 import { YOLO_CLASSIFIER_TOOL_NAME } from 'src/permissions/yoloClassifier.js'
 
-// VerifyPlanExecution has no name constant in this fork — the tool itself is
-// env-gated in tools.ts (CLAUDIN_VERIFY_PLAN), so the spread below is a no-op.
-const VERIFY_PLAN_EXECUTION_TOOL_NAME = null
-
 /**
  * Tools that are safe and don't need any classifier checking.
  * Used by the auto mode classifier to skip unnecessary API calls.
@@ -59,7 +55,6 @@ const SAFE_YOLO_ALLOWLISTED_TOOLS = new Set([
   SEND_MESSAGE_TOOL_NAME,
   // Misc safe
   SLEEP_TOOL_NAME,
-  ...(VERIFY_PLAN_EXECUTION_TOOL_NAME ? [VERIFY_PLAN_EXECUTION_TOOL_NAME] : []),
   // Internal classifier tool
   YOLO_CLASSIFIER_TOOL_NAME,
 ])

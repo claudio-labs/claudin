@@ -422,9 +422,6 @@ export type Attachment =
       }>
     }
   | {
-      type: 'verify_plan_reminder'
-    }
-  | {
       type: 'max_turns_reached'
       maxTurns: number
       turnCount: number

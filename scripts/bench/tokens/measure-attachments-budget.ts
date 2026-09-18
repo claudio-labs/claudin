@@ -313,10 +313,6 @@ function fixtures(profile: Profile): Attachment[] {
   })
 
   result.push({
-    type: 'verify_plan_reminder',
-  })
-
-  result.push({
     type: 'deferred_tools_delta',
     addedNames: Array.from({ length: fileN }, (_, i) => `Tool${i}`),
     addedLines: Array.from(

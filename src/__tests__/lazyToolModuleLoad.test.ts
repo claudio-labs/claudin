@@ -147,7 +147,6 @@ const CURRENT_BASELINE = [
   'TodoWriteTool',
   'ToolSearchTool',
   'TypecheckTool',
-  'VerifyPlanExecutionTool',
   'WaitForTool',
   'WebFetchTool',
   'WebSearchTool',

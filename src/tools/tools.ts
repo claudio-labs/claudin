@@ -101,12 +101,6 @@ const getTaskUpdateTool = () =>
   require('src/tools/TaskUpdateTool/TaskUpdateTool.js').TaskUpdateTool as typeof import('src/tools/TaskUpdateTool/TaskUpdateTool.js').TaskUpdateTool
 const getTaskListTool = () =>
   require('src/tools/TaskListTool/TaskListTool.js').TaskListTool as typeof import('src/tools/TaskListTool/TaskListTool.js').TaskListTool
-// Dead code elimination: conditional import for CLAUDIN_VERIFY_PLAN
-const VerifyPlanExecutionTool =
-  process.env.CLAUDIN_VERIFY_PLAN === 'true'
-    ? require('src/tools/VerifyPlanExecutionTool/VerifyPlanExecutionTool.js')
-        .VerifyPlanExecutionTool
-    : null
 const SYNTHETIC_OUTPUT_TOOL_NAME = 'StructuredOutput'
 const coordinatorModeModule = feature('COORDINATOR_MODE')
   ? (require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js'))
@@ -250,7 +244,6 @@ export function getAllBaseTools(): Tools {
     ...(isAgentSwarmsEnabled()
       ? [getTeamCreateTool(), getTeamDeleteTool()]
       : []),
-    ...(VerifyPlanExecutionTool ? [VerifyPlanExecutionTool] : []),
     ...(agentWorkflowTools ?? []),
     ...getCronTools(),
     ...(MonitorTool ? [MonitorTool] : []),
