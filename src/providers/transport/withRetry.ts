@@ -53,7 +53,6 @@ import {
   isQuotaExhaustedError,
   parseOpenAIDuration,
   parseRetryAfterValue,
-  RATE_LIMIT_RESET_CAP_MS,
 } from 'src/providers/rateLimitInfo.js'
 import {
   clearProviderRateLimitForModel,
@@ -114,21 +113,6 @@ function shouldRetry529(querySource: QuerySource | undefined): boolean {
   )
 }
 
-// CLAUDIN_UNATTENDED_RETRY: for unattended sessions (internal-only). Retries 429/529
-// indefinitely with higher backoff and periodic keep-alive yields so the host
-// environment does not mark the session idle mid-wait.
-// TODO(ANT-344): the keep-alive via SystemAPIErrorMessage yields is a stopgap
-// until there's a dedicated keep-alive channel.
-const PERSISTENT_MAX_BACKOFF_MS = 5 * 60 * 1000
-const PERSISTENT_RESET_CAP_MS = RATE_LIMIT_RESET_CAP_MS
-const HEARTBEAT_INTERVAL_MS = 30_000
-
-function isPersistentRetryEnabled(): boolean {
-  return feature('UNATTENDED_RETRY')
-    ? isEnvTruthy(process.env.CLAUDIN_UNATTENDED_RETRY)
-    : false
-}
-
 /**
  * Record the limit for the session so the REPL can render the countdown and
  * resume when it clears. The user-facing wording is built later, from the same
@@ -143,12 +127,6 @@ function noteRateLimit(error: unknown, model: string): void {
     model,
     observedAtMs: Date.now(),
   })
-}
-
-function isTransientCapacityError(error: unknown): boolean {
-  return (
-    is529Error(error) || (isSdkApiError(error) && error.status === 429)
-  )
 }
 
 function isStaleConnectionError(error: unknown): boolean {
@@ -272,7 +250,6 @@ export async function* withRetry<T>(
   let client: Anthropic | null = null
   let consecutive529Errors = options.initialConsecutive529Errors ?? 0
   let lastError: unknown
-  let persistentAttempt = 0
   for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
     if (options.signal?.aborted) {
       throw new APIUserAbortError()
@@ -383,13 +360,8 @@ export async function* withRetry<T>(
         }
       // Fast mode fallback: on 429/529, either wait and retry (short delays)
       // or fall back to standard speed (long delays) to avoid cache thrashing.
-      // Skip in persistent mode: the short-retry path below loops with fast
-      // mode still active, so its `continue` never reaches the attempt clamp
-      // and the for-loop terminates. Persistent sessions want the chunked
-      // keep-alive path instead of fast-mode cache-preservation anyway.
       if (
         wasFastModeActive &&
-        !isPersistentRetryEnabled() &&
         isSdkApiError(error) &&
         (error.status === 429 || is529Error(error))
       ) {
@@ -462,7 +434,7 @@ export async function* withRetry<T>(
             )
           }
 
-          if (!process.env.IS_SANDBOX && !isPersistentRetryEnabled()) {
+          if (!process.env.IS_SANDBOX) {
             throw new CannotRetryError(
               new Error(REPEATED_529_ERROR_MESSAGE),
               retryContext,
@@ -472,9 +444,7 @@ export async function* withRetry<T>(
       }
 
       // Only retry if the error indicates we should
-      const persistent =
-        isPersistentRetryEnabled() && isTransientCapacityError(error)
-      if (attempt > maxRetries && !persistent) {
+      if (attempt > maxRetries) {
         throw new CannotRetryError(error, retryContext)
       }
 
@@ -542,71 +512,12 @@ export async function* withRetry<T>(
       // For other errors, proceed with normal retry logic
       // Get retry-after hint (ms) if available
       const retryAfterMs = getRetryAfterMs(error)
-      let delayMs: number
-      if (persistent && isSdkApiError(error) && error.status === 429) {
-        persistentAttempt++
-        // Window-based limits (e.g. 5hr Max/Pro) include a reset timestamp.
-        // Wait until reset rather than polling every 5 min uselessly.
-        const resetDelay = getRateLimitResetDelayMs(error)
-        delayMs =
-          resetDelay ??
-          Math.min(
-            getRetryDelay(
-              persistentAttempt,
-              retryAfterMs,
-              PERSISTENT_MAX_BACKOFF_MS,
-            ),
-            PERSISTENT_RESET_CAP_MS,
-          )
-      } else if (persistent) {
-        persistentAttempt++
-        // Retry-After is a server directive and bypasses maxDelayMs inside
-        // getRetryDelay (intentional — honoring it is correct). Cap at the
-        // 6hr reset-cap here so a pathological header can't wait unbounded.
-        delayMs = Math.min(
-          getRetryDelay(
-            persistentAttempt,
-            retryAfterMs,
-            PERSISTENT_MAX_BACKOFF_MS,
-          ),
-          PERSISTENT_RESET_CAP_MS,
-        )
-      } else {
-        delayMs = getRetryDelay(attempt, retryAfterMs)
-      }
+      const delayMs = getRetryDelay(attempt, retryAfterMs)
 
-      // In persistent mode the for-loop `attempt` is clamped at maxRetries+1;
-      // use persistentAttempt for telemetry/yields so they show the true count.
-      const reportedAttempt = persistent ? persistentAttempt : attempt
-
-      if (persistent) {
-        // Chunk long sleeps so the host sees periodic stdout activity and
-        // does not mark the session idle. Each yield surfaces as
-        // {type:'system', subtype:'api_retry'} on stdout via QueryEngine.
-        let remaining = delayMs
-        while (remaining > 0) {
-          if (options.signal?.aborted) throw new APIUserAbortError()
-          if (isSdkApiError(error)) {
-            yield createSystemAPIErrorMessage(
-              error,
-              remaining,
-              reportedAttempt,
-              maxRetries,
-            )
-          }
-          const chunk = Math.min(remaining, HEARTBEAT_INTERVAL_MS)
-          await sleep(chunk, options.signal, { abortError })
-          remaining -= chunk
-        }
-        // Clamp so the for-loop never terminates. Backoff uses the separate
-        // persistentAttempt counter which keeps growing to the 5-min cap.
-        if (attempt >= maxRetries) attempt = maxRetries
-      } else {
-        if (isSdkApiError(error)) {
-          yield createSystemAPIErrorMessage(error, delayMs, attempt, maxRetries)
-        }
-        await sleep(delayMs, options.signal, { abortError })
+      if (isSdkApiError(error)) {
+        yield createSystemAPIErrorMessage(error, delayMs, attempt, maxRetries)
       }
+      await sleep(delayMs, options.signal, { abortError })
     }
   }
 
@@ -799,12 +710,6 @@ export function shouldRetry(
   // Never retry mock errors - they're from /mock-limits command for testing
   if (isMockRateLimitError(error)) {
     return false
-  }
-
-  // Persistent mode: 429/529 always retryable, bypass subscriber gates and
-  // x-should-retry header.
-  if (isPersistentRetryEnabled() && isTransientCapacityError(error)) {
-    return true
   }
 
   // A rate limit whose reset is minutes or hours out is not worth retrying —

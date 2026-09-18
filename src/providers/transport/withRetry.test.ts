@@ -349,7 +349,7 @@ describe('parseRetryAfterValue', () => {
     expect(result === null || result === 0).toBe(true)
   })
 
-  test('caps absurd values at PERSISTENT_RESET_CAP_MS (6h)', async () => {
+  test('caps absurd values at RATE_LIMIT_RESET_CAP_MS (6h)', async () => {
     const { parseRetryAfterValue } = await importFreshWithRetryModule()
     const SIX_HOURS = 6 * 60 * 60 * 1000
     // 99999999999 seconds → would be ~3170 years; must be clamped.

@@ -116,7 +116,6 @@ const OFF_MAP_FLAGS = [
   'REACTIVE_COMPACT',
   'SSH_REMOTE',
   'TERMINAL_PANEL',
-  'UNATTENDED_RETRY',
 ]
 
 // Mirrors `featureCallRe` in build.ts: BOTH quote styles, optional whitespace
