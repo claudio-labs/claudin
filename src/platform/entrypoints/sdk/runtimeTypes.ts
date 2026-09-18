@@ -352,10 +352,30 @@ export type SDKSession = {
 // ---------------------------------------------------------------------------
 
 /**
- * Re-exported rather than redeclared: `utils/listSessionsImpl.ts` owns the real
- * definition and `listSessionsImpl()` is typed against it.
+ * Declared here rather than re-exported: the implementation this used to be
+ * borrowed from (`listSessionsImpl()`) was unreachable and is gone, so the SDK
+ * surface owns its own option shape.
  */
-export type { ListSessionsOptions } from 'src/sessions/listSessionsImpl.js'
+export type ListSessionsOptions = {
+  /**
+   * Directory to list sessions for. When provided, returns sessions for
+   * this project directory (and optionally its git worktrees). When omitted,
+   * returns sessions across all projects.
+   */
+  dir?: string
+  /** Maximum number of sessions to return. */
+  limit?: number
+  /**
+   * Number of sessions to skip from the start of the sorted result set.
+   * Use with `limit` for pagination. Defaults to 0.
+   */
+  offset?: number
+  /**
+   * When `dir` is provided and the directory is inside a git repository,
+   * include sessions from all git worktree paths. Defaults to `true`.
+   */
+  includeWorktrees?: boolean
+}
 
 /** Options for `getSessionInfo()`. Its docstring documents exactly `{ dir? }`. */
 export type GetSessionInfoOptions = {
