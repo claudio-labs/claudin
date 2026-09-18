@@ -13,7 +13,6 @@ import { buildTool, findToolByName, type ToolDef } from 'src/tools/Tool.js';
 import { backgroundExistingForegroundTask, markTaskNotified, registerForeground, spawnShellTask, unregisterForeground } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js';
 import type { AgentId } from 'src/shared/types/ids.js';
 import type { AssistantMessage } from 'src/shared/types/message.js';
-import { parseForSecurity } from 'src/platform/bash/ast.js';
 import { splitCommand_DEPRECATED, splitCommandWithOperators } from 'src/platform/bash/commands.js';
 import { SEMANTIC_NEUTRAL_COMMANDS, walkCommandSegments } from 'src/platform/bash/segments.js';
 import { extractClaudeCodeHints } from 'src/platform/claudeCodeHints.js';

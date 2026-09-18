@@ -45,7 +45,6 @@ export {
   checkCommandAndSuggestRules,
   checkEarlyExitDeny,
   checkSandboxAutoAllow,
-  checkSemanticsDeny,
   commandHasAnyCd,
   filterCdCwdSubcommands,
   isNormalizedCdCommand,
