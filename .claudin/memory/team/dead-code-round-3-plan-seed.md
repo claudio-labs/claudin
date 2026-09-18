@@ -1,8 +1,15 @@
 ---
 name: dead-code-round-3-plan-seed
-description: Ranked seed for the NEXT dead-code plan after PR #211 — ~12k lines still unreachable, split by decision type (mechanical vs product vs bug vs gate), with the sequencing constraint that makes the order matter
+description: SPENT — the seed round 3 consumed. Groups A, C and D are done (see dead-code-round-3-2026-09-18); what survives here is group B, the ~9k lines that need a product decision, and the three claims re-verification proved wrong
 type: project
 ---
+
+> **Status 2026-09-18: groups A, C and D are DONE**, in the branch recorded at
+> [[dead-code-round-3-2026-09-18]] — and three of the cluster claims below were
+> WRONG when re-checked against the live tree (`permissionSync` is test-pinned,
+> `generatedFiles` is dead for a different reason, `tmuxSocket` is inert
+> end-to-end). Read that note before reusing any line item here. **Group B is
+> the part still standing**, and it is the input to round 4.
 
 Written 2026-09-18, right after PR #211 ([[dead-code-round-2-2026-09-18]]) went
 up. **This is the input to the next plan, not the plan.** The findings live in
