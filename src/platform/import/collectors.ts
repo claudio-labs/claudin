@@ -356,10 +356,6 @@ export function reportUnimportablePermissions(
   return plan
 }
 
-export function directoryHasEntries(dir: string): boolean {
-  return countTopLevelEntries(dir) > 0
-}
-
 /**
  * Claude Code and openclaude write our own file formats, so their commands and
  * agents cross over byte for byte. Doing this as per-file artifacts rather than

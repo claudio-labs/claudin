@@ -371,47 +371,6 @@ export function isOverlyBroadPowerShellAllowRule(
 }
 
 /**
- * Finds all overly broad Bash allow rules from settings and CLI arguments.
- * An overly broad rule allows ALL bash commands (e.g., Bash or Bash(*)),
- * which is effectively equivalent to YOLO/bypass-permissions mode.
- */
-export function findOverlyBroadBashPermissions(
-  rules: PermissionRule[],
-  cliAllowedTools: string[],
-): DangerousPermissionInfo[] {
-  const overlyBroad: DangerousPermissionInfo[] = []
-
-  for (const rule of rules) {
-    if (
-      rule.ruleBehavior === 'allow' &&
-      isOverlyBroadBashAllowRule(rule.ruleValue)
-    ) {
-      overlyBroad.push({
-        ruleValue: rule.ruleValue,
-        source: rule.source,
-        ruleDisplay: `${BASH_TOOL_NAME}(*)`,
-        sourceDisplay: formatPermissionSource(rule.source),
-      })
-    }
-  }
-
-  for (const toolSpec of cliAllowedTools) {
-    const parsed = permissionRuleValueFromString(toolSpec)
-    if (isOverlyBroadBashAllowRule(parsed)) {
-      overlyBroad.push({
-        ruleValue: parsed,
-        source: 'cliArg',
-        ruleDisplay: `${BASH_TOOL_NAME}(*)`,
-        sourceDisplay: '--allowed-tools',
-      })
-    }
-  }
-
-  return overlyBroad
-}
-
-
-/**
  * Type guard to check if a PermissionRuleSource is a valid PermissionUpdateDestination.
  * Sources like 'flagSettings', 'policySettings', and 'command' are not valid destinations.
  */

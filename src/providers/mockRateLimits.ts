@@ -42,46 +42,6 @@ type MockHeaders = {
   'anthropic-ratelimit-unified-overage-surpassed-threshold'?: string
 }
 
-export type MockHeaderKey =
-  | 'status'
-  | 'reset'
-  | 'claim'
-  | 'overage-status'
-  | 'overage-reset'
-  | 'overage-disabled-reason'
-  | 'fallback'
-  | 'fallback-percentage'
-  | 'retry-after'
-  | '5h-utilization'
-  | '5h-reset'
-  | '5h-surpassed-threshold'
-  | '7d-utilization'
-  | '7d-reset'
-  | '7d-surpassed-threshold'
-
-export type MockScenario =
-  | 'normal'
-  | 'session-limit-reached'
-  | 'approaching-weekly-limit'
-  | 'weekly-limit-reached'
-  | 'overage-active'
-  | 'overage-warning'
-  | 'overage-exhausted'
-  | 'out-of-credits'
-  | 'org-zero-credit-limit'
-  | 'org-spend-cap-hit'
-  | 'member-zero-credit-limit'
-  | 'seat-tier-zero-credit-limit'
-  | 'opus-limit'
-  | 'opus-warning'
-  | 'sonnet-limit'
-  | 'sonnet-warning'
-  | 'fast-mode-limit'
-  | 'fast-mode-short-limit'
-  | 'extra-usage-required'
-  | 'clear'
-
-
 export function getMockHeaderless429Message(): string | null {
   return null
 }

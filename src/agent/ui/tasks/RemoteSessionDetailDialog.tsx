@@ -13,7 +13,6 @@ import { Box, Link, Text } from 'src/terminal/ink.js';
 import type { RemoteAgentTaskState } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import { getRemoteTaskSessionUrl } from 'src/agent/tasks/RemoteAgentTask/RemoteAgentTask.js';
 import { AGENT_TOOL_NAME, LEGACY_AGENT_TOOL_NAME } from 'src/tools/AgentTool/constants.js';
-import { ASK_USER_QUESTION_TOOL_NAME } from 'src/tools/AskUserQuestionTool/prompt.js';
 import { openBrowser } from 'src/shared/browser.js';
 import { errorMessage } from 'src/shared/errors.js';
 import { formatDuration, truncateToWidth } from 'src/shared/text/format.js';
@@ -38,35 +37,6 @@ type Props = {
 };
 type SessionDetailProps = Omit<Props, 'toolUseContext'>;
 
-// Compact one-line summary: tool name + first meaningful string arg.
-// Lighter than tool.renderToolUseMessage (no registry lookup / schema parse).
-// Collapses whitespace so multi-line inputs (e.g. Bash command text)
-// render on one line.
-export function formatToolUseSummary(name: string, input: unknown): string {
-  if (!input || typeof input !== 'object') return name;
-  // AskUserQuestion: show the question text as a CTA, not the tool name.
-  // Input shape is {questions: [{question, header, options}]}.
-  if (name === ASK_USER_QUESTION_TOOL_NAME && 'questions' in input) {
-    const qs = input.questions;
-    if (Array.isArray(qs) && qs[0] && typeof qs[0] === 'object') {
-      // Prefer question (full text) over header (max-12-char tag). header
-      // is a required schema field so checking it first would make the
-      // question fallback dead code.
-      const q = 'question' in qs[0] && typeof qs[0].question === 'string' && qs[0].question ? qs[0].question : 'header' in qs[0] && typeof qs[0].header === 'string' ? qs[0].header : null;
-      if (q) {
-        const oneLine = q.replace(/\s+/g, ' ').trim();
-        return `Answer in browser: ${truncateToWidth(oneLine, 50)}`;
-      }
-    }
-  }
-  for (const v of Object.values(input)) {
-    if (typeof v === 'string' && v.trim()) {
-      const oneLine = v.replace(/\s+/g, ' ').trim();
-      return `${name} ${truncateToWidth(oneLine, 60)}`;
-    }
-  }
-  return name;
-}
 const STAGES = ['finding', 'verifying', 'synthesizing'] as const;
 const STAGE_LABELS: Record<(typeof STAGES)[number], string> = {
   finding: 'Find',
@@ -562,4 +532,3 @@ export function RemoteSessionDetailDialog({
       </Dialog>
     </Box>;
 }
-

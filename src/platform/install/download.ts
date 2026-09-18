@@ -28,9 +28,6 @@ import { getBinaryName, getPlatform } from 'src/platform/install/installer.js'
 // GCS download path must therefore NEVER run — an empty URL makes downloadVersion
 // throw a clear error instead of ever fetching Anthropic's binaries.
 const GCS_BUCKET_URL = ''
-export const ARTIFACTORY_REGISTRY_URL =
-  process.env.CLAUDE_CODE_INTERNAL_ARTIFACTORY_REGISTRY_URL ?? ''
-
 
 export async function getLatestVersionFromBinaryRepo(
   channel: ReleaseChannel = 'latest',
@@ -332,5 +329,4 @@ export async function downloadVersion(
 
 // Exported for testing
 export { StallTimeoutError, MAX_DOWNLOAD_RETRIES }
-
 

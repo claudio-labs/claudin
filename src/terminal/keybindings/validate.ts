@@ -427,18 +427,3 @@ export function validateBindings(
     return true
   })
 }
-
-/**
- * Format a warning for display to the user.
- */
-export function formatWarning(warning: KeybindingWarning): string {
-  const icon = warning.severity === 'error' ? '✗' : '⚠'
-  let msg = `${icon} Keybinding ${warning.severity}: ${warning.message}`
-
-  if (warning.suggestion) {
-    msg += `\n  ${warning.suggestion}`
-  }
-
-  return msg
-}
-

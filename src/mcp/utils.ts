@@ -14,7 +14,6 @@ import {
 } from 'src/platform/settings/settings.js'
 import { jsonStringify } from 'src/platform/slowOperations.js'
 import { getEnterpriseMcpFilePath, getMcpConfigByName } from 'src/mcp/config.js'
-import { mcpInfoFromString } from 'src/mcp/mcpStringUtils.js'
 import { normalizeNameForMCP } from 'src/mcp/normalization.js'
 import {
   type ConfigScope,
@@ -358,36 +357,6 @@ export function getProjectMcpServerStatus(
   }
 
   return 'pending'
-}
-
-/**
- * Get the scope/settings source for an MCP server from a tool name
- * @param toolName MCP tool name (format: mcp__serverName__toolName)
- * @returns ConfigScope or null if not an MCP tool or server not found
- */
-export function getMcpServerScopeFromToolName(
-  toolName: string,
-): ConfigScope | null {
-  if (!isMcpTool({ name: toolName } as Tool)) {
-    return null
-  }
-
-  // Extract server name from tool name (format: mcp__serverName__toolName)
-  const mcpInfo = mcpInfoFromString(toolName)
-  if (!mcpInfo) {
-    return null
-  }
-
-  // Look up server config
-  const serverConfig = getMcpConfigByName(mcpInfo.serverName)
-
-  // Fallback: claude.ai servers have normalized names starting with "claude_ai_"
-  // but aren't in getMcpConfigByName (they're fetched async separately)
-  if (!serverConfig && mcpInfo.serverName.startsWith('claude_ai_')) {
-    return 'claudeai'
-  }
-
-  return serverConfig?.scope ?? null
 }
 
 // Type guards for MCP server config types

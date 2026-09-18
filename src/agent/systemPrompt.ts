@@ -5,7 +5,7 @@ import { isBuiltInAgent } from 'src/tools/AgentTool/loadAgentsDir.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { asSystemPrompt, type SystemPrompt } from 'src/agent/systemPromptType.js'
 
-export { asSystemPrompt, type SystemPrompt } from 'src/agent/systemPromptType.js'
+export { type SystemPrompt } from 'src/agent/systemPromptType.js'
 
 /**
  * Builds the effective system prompt array based on priority:

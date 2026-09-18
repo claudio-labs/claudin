@@ -15,7 +15,3 @@ export function markContainersStartedByUs(ids: readonly string[]): void {
 export function getContainersStartedByUs(): ReadonlySet<string> {
   return startedByUs
 }
-
-export function __resetStartedByUsForTests(): void {
-  startedByUs.clear()
-}

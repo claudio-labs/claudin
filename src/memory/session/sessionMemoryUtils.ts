@@ -190,14 +190,3 @@ export function hasMetUpdateThreshold(currentTokenCount: number): boolean {
 export function getToolCallsBetweenUpdates(): number {
   return sessionMemoryConfig.toolCallsBetweenUpdates
 }
-
-/**
- * Reset session memory state (useful for testing)
- */
-export function resetSessionMemoryState(): void {
-  sessionMemoryConfig = { ...DEFAULT_SESSION_MEMORY_CONFIG }
-  tokensAtLastExtraction = 0
-  sessionMemoryInitialized = false
-  lastSummarizedMessageId = undefined
-  extractionStartedAt = undefined
-}

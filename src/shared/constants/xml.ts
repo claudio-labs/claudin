@@ -41,10 +41,6 @@ export const REMOTE_REVIEW_PROGRESS_TAG = 'remote-review-progress'
 // XML tag name for teammate messages (swarm inter-agent communication)
 export const TEAMMATE_MESSAGE_TAG = 'teammate-message'
 
-// XML tag name for external channel messages
-
-export const CHANNEL_TAG = 'channel'
-
 // XML tag name for cross-session UDS messages (another Claude session's inbox)
 
 

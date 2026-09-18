@@ -891,9 +891,6 @@ export function clearSkillCaches() {
   activatedConditionalSkillNames.clear()
 }
 
-// Backwards-compatible aliases for tests
-export { getSkillDirCommands as getCommandDirCommands }
-export { clearSkillCaches as clearCommandCaches }
 export { transformSkillFiles }
 
 // --- Dynamic skill discovery ---

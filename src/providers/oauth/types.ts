@@ -102,19 +102,3 @@ export type ReferrerRewardInfo = {
   /** ISO 4217 code; `formatCreditAmount` maps it to a symbol. */
   currency: string
 }
-
-export type ReferralEligibilityResponse = {
-  eligible: boolean
-  referrer_reward?: ReferrerRewardInfo | null
-  remaining_passes?: number | null
-  referral_code_details?: {
-    campaign?: ReferralCampaign
-    referral_link?: string
-  } | null
-}
-
-export type ReferralRedemptionsResponse = {
-  redemptions?: Array<{ redeemed_at?: string }> | null
-  /** How many passes the campaign grants; defaults to 3 when absent. */
-  limit?: number | null
-}
