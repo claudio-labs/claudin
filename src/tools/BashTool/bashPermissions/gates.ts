@@ -5,7 +5,6 @@
 
 import type { z } from 'zod/v4'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
-import type { SimpleCommand } from 'src/platform/bash/ast.js'
 import {
   type CommandPrefixResult,
   splitCommand_DEPRECATED,
@@ -216,23 +215,20 @@ export function checkSandboxAutoAllow(
 }
 
 /**
- * Filter out `cd ${cwd}` prefix subcommands, keeping astCommands aligned.
+ * Filter out `cd ${cwd}` prefix subcommands.
+ *
+ * It used to carry a parallel array of AST commands and keep the two aligned
+ * by index; that array was always undefined, since the parse that would have
+ * produced it never succeeded.
  */
 export function filterCdCwdSubcommands(
   rawSubcommands: string[],
-  astCommands: SimpleCommand[] | undefined,
   cwd: string,
   cwdMingw: string,
-): { subcommands: string[]; astCommandsByIdx: (SimpleCommand | undefined)[] } {
-  const subcommands: string[] = []
-  const astCommandsByIdx: (SimpleCommand | undefined)[] = []
-  for (let i = 0; i < rawSubcommands.length; i++) {
-    const cmd = rawSubcommands[i]!
-    if (cmd === `cd ${cwd}` || cmd === `cd ${cwdMingw}`) continue
-    subcommands.push(cmd)
-    astCommandsByIdx.push(astCommands?.[i])
-  }
-  return { subcommands, astCommandsByIdx }
+): string[] {
+  return rawSubcommands.filter(
+    cmd => cmd !== `cd ${cwd}` && cmd !== `cd ${cwdMingw}`,
+  )
 }
 
 /**
@@ -262,39 +258,6 @@ export function checkEarlyExitDeny(
       behavior: 'deny',
       message: `Permission to use ${BashTool.name} with command ${input.command} has been denied.`,
       decisionReason: { type: 'rule', rule: denyMatch },
-    }
-  }
-  return null
-}
-
-/**
- * checkSemantics-path deny enforcement. Calls checkEarlyExitDeny (exact-match
- * + full-command prefix deny), then checks each individual SimpleCommand .text
- * span against prefix deny rules. The per-subcommand check is needed because
- * filterRulesByContentsMatchingInput has a compound-command guard
- * (splitCommand().length > 1 → prefix rules return false) that defeats
- * `Bash(eval:*)` matching against a full pipeline like `echo foo | eval rm`.
- * Each SimpleCommand span is a single command, so the guard doesn't fire.
- */
-export function checkSemanticsDeny(
-  input: z.infer<typeof BashTool.inputSchema>,
-  toolPermissionContext: ToolPermissionContext,
-  commands: readonly { text: string }[],
-): PermissionResult | null {
-  const fullCmd = checkEarlyExitDeny(input, toolPermissionContext)
-  if (fullCmd !== null) return fullCmd
-  for (const cmd of commands) {
-    const subDeny = matchingRulesForInput(
-      { ...input, command: cmd.text },
-      toolPermissionContext,
-      'prefix',
-    ).matchingDenyRules[0]
-    if (subDeny !== undefined) {
-      return {
-        behavior: 'deny',
-        message: `Permission to use ${BashTool.name} with command ${input.command} has been denied.`,
-        decisionReason: { type: 'rule', rule: subDeny },
-      }
     }
   }
   return null

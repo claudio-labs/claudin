@@ -208,18 +208,9 @@ export function validateMidWordHash(context: ValidationContext): PermissionResul
 export function validateCommentQuoteDesync(
   context: ValidationContext,
 ): PermissionResult {
-  // Tree-sitter path: tree-sitter correctly identifies comment nodes and
-  // quoted content. The desync concern is about regex quote tracking being
-  // confused by quote characters inside comments. When tree-sitter provides
-  // the quote context, this desync cannot happen — the AST is authoritative
-  // regardless of whether the command contains a comment.
-  if (context.treeSitter) {
-    return {
-      behavior: 'passthrough',
-      message: 'Tree-sitter quote context is authoritative',
-    }
-  }
-
+  // A tree-sitter short-circuit used to sit here: with an AST quote context the
+  // desync cannot happen, so the check was skipped. The context never carried
+  // one, so the character walk below is what has always run.
   const { originalCommand } = context
 
   // Track quote state character-by-character using the same (correct) logic

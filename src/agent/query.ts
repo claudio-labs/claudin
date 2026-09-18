@@ -343,16 +343,6 @@ async function* queryLoop(
 
     let messagesForQuery = [...getMessagesAfterCompactBoundary(messages)]
 
-    // Extract facts and update phase from the latest message (user input or tool result)
-    if (
-      feature('CONVERSATION_ARC') &&
-      getGlobalConfig().knowledgeGraphEnabled &&
-      messagesForQuery.length > 0
-    ) {
-      const { updateArcPhase } = await import('src/agent/context/conversationArc.js')
-      updateArcPhase([messagesForQuery[messagesForQuery.length - 1]])
-    }
-
     let tracking = autoCompactTracking
 
     // Enforce per-message budget on aggregate tool result size. Runs BEFORE
@@ -1240,15 +1230,6 @@ async function* queryLoop(
       }
     }
     queryCheckpoint('query_tool_execution_end')
-
-    // Update conversation arc phase
-    if (
-      feature('CONVERSATION_ARC') &&
-      getGlobalConfig().knowledgeGraphEnabled
-    ) {
-      const { updateArcPhase } = await import('src/agent/context/conversationArc.js')
-      updateArcPhase(assistantMessages)
-    }
 
     // Generate tool use summary after tool batch completes — passed to next recursive call
     let nextPendingToolUseSummary:

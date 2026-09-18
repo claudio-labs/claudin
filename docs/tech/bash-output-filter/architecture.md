@@ -541,17 +541,16 @@ No new GrowthBook flags. Future opt-out is the env var or config (§12).
 **Precedence (highest first):**
 
 1. `CLAUDIN_DISABLE_BASH_OUTPUT_FILTER=1` — global kill switch (rewrite + pipeline both off). Hot-path test: `isEnvTruthy(process.env.CLAUDIN_DISABLE_BASH_OUTPUT_FILTER)`.
-2. `CLAUDIN_DISABLE_REWRITE=1` — pipeline still runs, rewrite suppressed.
-3. `CLAUDIN_BASH_FILTER_DEBUG=1` — emits `logForDebugging` for every filter decision. Debug-only.
-4. Per-call: `is_error: true` skips pipeline (always; not configurable).
-5. Global config (cached via `getGlobalConfig()`):
+2. `CLAUDIN_BASH_FILTER_DEBUG=1` — emits `logForDebugging` for every filter decision. Debug-only.
+3. Per-call: `is_error: true` skips pipeline (always; not configurable).
+4. Global config (cached via `getGlobalConfig()`):
    ```ts
    bashOutputFilterEnabled: boolean         // default true
    bashOutputFilterRewriteEnabled: boolean  // default true
    bashOutputFilterUserEnabled: boolean     // default true (reads ~/.claudin/filters.json)
    ```
-   **Flat keys**, matching the existing `toolResultSummarizerEnabled` precedent. Every config field in `GLOBAL_CONFIG_KEYS` (`config.ts:705`) is flat. Nested objects break the convention.
-6. Built-in filter set (always available unless `enabled: false`).
+   **Flat keys**, matching the existing `toolResultSummarizerEnabled` precedent. Every config field in `GLOBAL_CONFIG_KEYS` (`config.ts:705`) is flat. Nested objects break the convention. `bashOutputFilterRewriteEnabled: false` is the granular opt-out that keeps the pipeline and suppresses only the rewrite — there is no env var for it.
+5. Built-in filter set (always available unless `enabled: false`).
 
 **Phase 0 step:** register the three new keys in `GLOBAL_CONFIG_KEYS` at `config.ts:705+`. Without this, the new fields aren't recognized by `/config`.
 

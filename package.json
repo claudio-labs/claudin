@@ -41,6 +41,8 @@
     "deadcode": "knip --include files,dependencies",
     "deadcode:ci": "knip --include files,dependencies,devDependencies --no-config-hints",
     "deadcode:prod": "knip --production --include files --no-config-hints",
+    "deadcode:exports": "bun run scripts/verify/deadcode-ci.ts",
+    "deadcode:baseline": "bun run scripts/verify/deadcode-ci.ts --update",
     "typecheck": "tsc --noEmit",
     "typecheck:ci": "bun run scripts/verify/typecheck-ci.ts",
     "typecheck:baseline": "bun run scripts/verify/typecheck-ci.ts --update",

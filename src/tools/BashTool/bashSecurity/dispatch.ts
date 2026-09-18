@@ -1,18 +1,15 @@
 /**
- * The two legacy security dispatchers and the ordered validator lists they run.
+ * The two security dispatchers and the ordered validator lists they run.
  *
  * The lists are module-level consts shared by both dispatchers. They used to be
- * declared twice — once per function, byte-identical — and the async body never
- * executes under `bun test` (ParsedCommand.parse returns no tree-sitter
- * analysis, so it always takes the fallback below), which made a drifting second
- * copy of the ORDER invisible to every test. One declaration removes that.
- *
- * The two loops below are still duplicated on purpose: unifying them would
- * rewrite the deferral rule, which is the subtlest thing in this file.
+ * declared twice — once per function, byte-identical — which made a drifting
+ * second copy of the ORDER invisible to every test, because the async body ran
+ * only when tree-sitter produced an analysis and it never did. That whole
+ * second body is gone now: the async entry point is a one-line delegation, and
+ * there is exactly one loop.
  */
 
 import { extractHeredocs } from 'src/platform/bash/heredoc.js'
-import { ParsedCommand } from 'src/platform/bash/ParsedCommand.js'
 import { hasShellQuoteSingleQuoteBug } from 'src/platform/bash/shellQuote.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import { BASH_SECURITY_CHECK_IDS } from 'src/tools/BashTool/bashSecurity/checkIds.js'
@@ -33,6 +30,7 @@ import {
   validateBackslashEscapedWhitespace,
 } from 'src/tools/BashTool/bashSecurity/validators/escaping.js'
 import { validateGitCommit } from 'src/tools/BashTool/bashSecurity/validators/gitCommit.js'
+import { validateEvalLikeBuiltins } from 'src/tools/BashTool/bashSecurity/validators/evalLike.js'
 import {
   validateDangerousPatterns,
   validateDangerousVariables,
@@ -102,14 +100,20 @@ const validators = [
   validateMidWordHash,
   validateBraceExpansion,
   validateZshDangerousCommands,
+  // Ordered beside the zsh builtin check because they answer the same question
+  // from the other side: that one covers names a zsh module provides, this one
+  // the POSIX/bash builtins that run a code string. Neither is in
+  // nonMisparsingValidators, so a broad allow rule cannot clear either.
+  validateEvalLikeBuiltins,
   // Run malformed token check last - other validators should catch specific patterns first
   // (e.g., $() substitution, backticks, etc.) since they have more precise error messages
   validateMalformedTokenInjection,
 ]
 
 /**
- * @deprecated Legacy regex/shell-quote path. Only used when tree-sitter is
- * unavailable. The primary gate is parseForSecurity (ast.ts).
+ * @deprecated in name only — the suffix marked this as the fallback for when
+ * tree-sitter was unavailable, and tree-sitter was never available, so this IS
+ * the gate every Bash command goes through.
  */
 export function bashCommandIsSafe_DEPRECATED(
   command: string,
@@ -214,135 +218,18 @@ export function bashCommandIsSafe_DEPRECATED(
 }
 
 /**
- * @deprecated Legacy regex/shell-quote path. Only used when tree-sitter is
- * unavailable. The primary gate is parseForSecurity (ast.ts).
+ * The async entry point, for callers that already await
+ * (bashPermissions, bashCommandHelpers). Sync callers — readOnlyValidation.ts
+ * cannot await — use `bashCommandIsSafe_DEPRECATED` directly.
  *
- * Async version of bashCommandIsSafe that uses tree-sitter when available
- * for more accurate parsing. Falls back to the sync regex version when
- * tree-sitter is not available.
- *
- * This should be used by async callers (bashPermissions.ts, bashCommandHelpers.ts).
- * Sync callers (readOnlyValidation.ts) should continue using bashCommandIsSafe().
+ * Its body used to re-run the whole validator chain against a quote context
+ * derived from tree-sitter, and report where that context diverged from the
+ * regex one. `ParsedCommand.parse` never returned an analysis, so the delegation
+ * below is the only line that ever executed. The `onDivergence` callback went
+ * with it: there is no second extraction left to diverge from.
  */
 export async function bashCommandIsSafeAsync_DEPRECATED(
   command: string,
-  onDivergence?: () => void,
 ): Promise<PermissionResult> {
-  // Try to get tree-sitter analysis
-  const parsed = await ParsedCommand.parse(command)
-  const tsAnalysis = parsed?.getTreeSitterAnalysis() ?? null
-
-  // If no tree-sitter, fall back to sync version
-  if (!tsAnalysis) {
-    return bashCommandIsSafe_DEPRECATED(command)
-  }
-
-  // Run the same security checks but with tree-sitter enriched context.
-  // The early checks (control chars, shell-quote bug) don't benefit from
-  // tree-sitter, so we run them identically.
-  if (CONTROL_CHAR_RE.test(command)) {
-    return {
-      behavior: 'ask',
-      message:
-        'Command contains non-printable control characters that could be used to bypass security checks',
-      isBashSecurityCheckForMisparsing: true,
-    }
-  }
-
-  if (hasShellQuoteSingleQuoteBug(command)) {
-    return {
-      behavior: 'ask',
-      message:
-        'Command contains single-quoted backslash pattern that could bypass security checks',
-      isBashSecurityCheckForMisparsing: true,
-    }
-  }
-
-  const { processedCommand } = extractHeredocs(command, { quotedOnly: true })
-
-  const baseCommand = command.split(' ')[0] || ''
-
-  // Use tree-sitter quote context for more accurate analysis
-  const tsQuote = tsAnalysis.quoteContext
-  const regexQuote = extractQuotedContent(
-    processedCommand,
-    baseCommand === 'jq',
-  )
-
-  // Use tree-sitter quote context as primary, but keep regex as reference
-  // for divergence logging
-  const withDoubleQuotes = tsQuote.withDoubleQuotes
-  const fullyUnquoted = tsQuote.fullyUnquoted
-  const unquotedKeepQuoteChars = tsQuote.unquotedKeepQuoteChars
-
-  const context: ValidationContext = {
-    originalCommand: command,
-    baseCommand,
-    unquotedContent: withDoubleQuotes,
-    fullyUnquotedContent: stripSafeRedirections(fullyUnquoted),
-    fullyUnquotedPreStrip: fullyUnquoted,
-    unquotedKeepQuoteChars,
-    treeSitter: tsAnalysis,
-  }
-
-  // Report divergence between tree-sitter and regex quote extraction.
-  // Skip for heredoc commands: tree-sitter strips (quoted) heredoc bodies
-  // to nothing while the regex path replaces them with placeholder strings
-  // (via extractHeredocs), so the two outputs can never match. Reporting
-  // divergence for every heredoc command would poison the signal.
-  //
-  // onDivergence callback: when called in a fanout loop (bashPermissions.ts
-  // Promise.all over subcommands), the caller aggregates divergences instead
-  // of reacting per subcommand (CC-643). Single-command callers omit it.
-  if (!tsAnalysis.dangerousPatterns.hasHeredoc) {
-    const hasDivergence =
-      tsQuote.fullyUnquoted !== regexQuote.fullyUnquoted ||
-      tsQuote.withDoubleQuotes !== regexQuote.withDoubleQuotes
-    if (hasDivergence) {
-      if (onDivergence) {
-        onDivergence()
-      }
-    }
-  }
-
-  for (const validator of earlyValidators) {
-    const result = validator(context)
-    if (result.behavior === 'allow') {
-      return {
-        behavior: 'passthrough',
-        message:
-          result.decisionReason?.type === 'other' ||
-          result.decisionReason?.type === 'safetyCheck'
-            ? result.decisionReason.reason
-            : 'Command allowed',
-      }
-    }
-    if (result.behavior !== 'passthrough') {
-      return result.behavior === 'ask'
-        ? { ...result, isBashSecurityCheckForMisparsing: true as const }
-        : result
-    }
-  }
-
-  let deferredNonMisparsingResult: PermissionResult | null = null
-  for (const validator of validators) {
-    const result = validator(context)
-    if (result.behavior === 'ask') {
-      if (nonMisparsingValidators.has(validator)) {
-        if (deferredNonMisparsingResult === null) {
-          deferredNonMisparsingResult = result
-        }
-        continue
-      }
-      return { ...result, isBashSecurityCheckForMisparsing: true as const }
-    }
-  }
-  if (deferredNonMisparsingResult !== null) {
-    return deferredNonMisparsingResult
-  }
-
-  return {
-    behavior: 'passthrough',
-    message: 'Command passed all security checks',
-  }
+  return bashCommandIsSafe_DEPRECATED(command)
 }

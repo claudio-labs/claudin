@@ -1,5 +1,5 @@
 /**
- * Wire-level integration test for CLAUDIN_STATIC_DEDUP.
+ * Wire-level integration test for static context dedup.
  *
  * WHY this file exists beyond `src/agent/staticDedup.integration.test.ts`:
  * the tests in that file assert the deltas + injection functions in
@@ -14,12 +14,15 @@
  * in place, so the captured body reflects exactly what a provider
  * would see.
  *
- * The test toggles `CLAUDIN_STATIC_DEDUP` and compares wire sizes
- * for two otherwise-identical requests. If `filterStaticDedupKeys` or
- * the delta scanners regress, the wire byte counts stop moving and
- * the test fails.
+ * It does NOT toggle a flag: static dedup is permanently on and the old
+ * `CLAUDIN_STATIC_DEDUP` gate is gone (`memory/instructions/claudeMdDelta.ts`
+ * records that). What it compares is two hand-built system prompts — one
+ * carrying the static context inline, one shaped the way `appendSystemContext`
+ * leaves it once the keys are stripped — through each of the three request
+ * body builders. If a builder stops shrinking proportionally, the byte counts
+ * stop moving and the test fails.
  */
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test'
+import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from 'bun:test'
 
 ;(globalThis as Record<string, unknown>).MACRO = {
   VERSION: '99.0.0',
@@ -36,7 +39,6 @@ const originalEnv = {
   OPENAI_BASE_URL: process.env.OPENAI_BASE_URL,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   OPENAI_MODEL: process.env.OPENAI_MODEL,
-  CLAUDIN_STATIC_DEDUP: process.env.CLAUDIN_STATIC_DEDUP,
 }
 
 // Keep the shim path deterministic — no compression noise.
@@ -124,15 +126,8 @@ afterAll(() => {
   else process.env.OPENAI_API_KEY = originalEnv.OPENAI_API_KEY
   if (originalEnv.OPENAI_MODEL === undefined) delete process.env.OPENAI_MODEL
   else process.env.OPENAI_MODEL = originalEnv.OPENAI_MODEL
-  if (originalEnv.CLAUDIN_STATIC_DEDUP === undefined)
-    delete process.env.CLAUDIN_STATIC_DEDUP
-  else process.env.CLAUDIN_STATIC_DEDUP = originalEnv.CLAUDIN_STATIC_DEDUP
   mock.module('src/platform/config/config.js', () => realConfig_staticDedup)
   mock.module('src/agent/compact/autoCompact.js', () => realAutoCompact_staticDedup)
-})
-
-beforeEach(() => {
-  delete process.env.CLAUDIN_STATIC_DEDUP
 })
 
 afterEach(() => {
@@ -141,10 +136,11 @@ afterEach(() => {
 
 // The system prompt here stands in for what production emits after
 // `appendSystemContext` runs — `claudeMd` + `gitStatus` concatenated
-// into the system string. With dedup OFF these bytes ride the wire;
-// with dedup ON `appendSystemContext` strips the two keys upstream so
-// the caller would pass a much smaller system string. We approximate
-// that difference by measuring two request bodies here.
+// into the system string. `appendSystemContext` strips those two keys
+// upstream once they have been announced, so the caller passes a much
+// smaller system string from turn 2 on. Both shapes are built by hand
+// here: this measures what each body builder does with them, not the
+// stripping itself.
 const LARGE_CLAUDE_MD = repeat(15_000)
 const LARGE_GIT_STATUS = repeat(2_000)
 const baselineSystemPrompt =

@@ -2,7 +2,6 @@ import { homedir } from 'os'
 import { isAbsolute, resolve } from 'path'
 import type { z } from 'zod/v4'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
-import type { Redirect, SimpleCommand } from 'src/platform/bash/ast.js'
 import {
   extractOutputRedirections,
   splitCommand_DEPRECATED,
@@ -879,48 +878,6 @@ function validateSinglePathCommand(
   return pathChecker(args, cwd, toolPermissionContext, compoundCommandHasCd)
 }
 
-/**
- * Like validateSinglePathCommand but operates on AST-derived argv directly
- * instead of re-parsing the command string with shell-quote. Avoids the
- * shell-quote single-quote backslash bug that causes parseCommandArguments
- * to silently return [] and skip path validation.
- */
-function validateSinglePathCommandArgv(
-  cmd: SimpleCommand,
-  cwd: string,
-  toolPermissionContext: ToolPermissionContext,
-  compoundCommandHasCd?: boolean,
-): PermissionResult {
-  const argv = stripWrappersFromArgv(cmd.argv)
-  if (argv.length === 0) {
-    return {
-      behavior: 'passthrough',
-      message: 'Empty command - no paths to validate',
-    }
-  }
-  const [baseCmd, ...args] = argv
-  if (!baseCmd || !SUPPORTED_PATH_COMMANDS.includes(baseCmd as PathCommand)) {
-    return {
-      behavior: 'passthrough',
-      message: `Command '${baseCmd}' is not a path-restricted command`,
-    }
-  }
-  // sed read-only override: use .text for the allowlist check since
-  // sedCommandIsAllowedByAllowlist takes a string. argv is already
-  // wrapper-stripped but .text is raw tree-sitter span (includes
-  // `timeout 5 ` prefix), so strip here too.
-  const operationTypeOverride =
-    baseCmd === 'sed' &&
-    sedCommandIsAllowedByAllowlist(stripSafeWrappers(cmd.text))
-      ? ('read' as FileOperationType)
-      : undefined
-  const pathChecker = createPathChecker(
-    baseCmd as PathCommand,
-    operationTypeOverride,
-  )
-  return pathChecker(args, cwd, toolPermissionContext, compoundCommandHasCd)
-}
-
 function validateOutputRedirections(
   redirections: Array<{ target: string; operator: '>' | '>>' }>,
   cwd: string,
@@ -1015,17 +972,16 @@ export function checkPathConstraints(
   cwd: string,
   toolPermissionContext: ToolPermissionContext,
   compoundCommandHasCd?: boolean,
-  astRedirects?: Redirect[],
-  astCommands?: SimpleCommand[],
 ): PermissionResult {
   // SECURITY: Process substitution >(cmd) can execute commands that write to files
   // without those files appearing as redirect targets. For example:
   //   echo secret > >(tee .git/config)
   // The tee command writes to .git/config but it's not detected as a redirect.
   // Require explicit approval for any command containing process substitution.
-  // Skip on AST path — process_substitution is in DANGEROUS_TYPES and
-  // already returned too-complex before reaching here.
-  if (!astCommands && />>\s*>\s*\(|>\s*>\s*\(|<\s*\(/.test(input.command)) {
+  // This used to be skipped when the caller supplied AST-derived commands,
+  // because process substitution would already have failed that parse. No
+  // caller ever supplied them.
+  if (/>>\s*>\s*\(|>\s*>\s*\(|<\s*\(/.test(input.command)) {
     return {
       behavior: 'ask',
       message:
@@ -1037,15 +993,9 @@ export function checkPathConstraints(
     }
   }
 
-  // SECURITY: When AST-derived redirects are available, use them directly
-  // instead of re-parsing with shell-quote. shell-quote has a known
-  // single-quote backslash bug that silently merges redirect operators into
-  // garbled tokens on a successful parse (not a parse failure, so the
-  // fail-closed guard doesn't help). The AST already resolved targets
-  // correctly and checkSemantics validated them.
-  const { redirections, hasDangerousRedirection } = astRedirects
-    ? astRedirectsToOutputRedirections(astRedirects)
-    : extractOutputRedirections(input.command)
+  const { redirections, hasDangerousRedirection } = extractOutputRedirections(
+    input.command,
+  )
 
   // SECURITY: If we found a redirection operator with a target containing shell expansion
   // syntax ($VAR or %VAR%), require manual approval since the target can't be safely validated.
@@ -1069,35 +1019,15 @@ export function checkPathConstraints(
     return redirectionResult
   }
 
-  // SECURITY: When AST-derived commands are available, iterate them with
-  // pre-parsed argv instead of re-parsing via splitCommand_DEPRECATED + shell-quote.
-  // shell-quote has a single-quote backslash bug that causes
-  // parseCommandArguments to silently return [] and skip path validation
-  // (isDangerousRemovalPath etc). The AST already resolved argv correctly.
-  if (astCommands) {
-    for (const cmd of astCommands) {
-      const result = validateSinglePathCommandArgv(
-        cmd,
-        cwd,
-        toolPermissionContext,
-        compoundCommandHasCd,
-      )
-      if (result.behavior === 'ask' || result.behavior === 'deny') {
-        return result
-      }
-    }
-  } else {
-    const commands = splitCommand_DEPRECATED(input.command)
-    for (const cmd of commands) {
-      const result = validateSinglePathCommand(
-        cmd,
-        cwd,
-        toolPermissionContext,
-        compoundCommandHasCd,
-      )
-      if (result.behavior === 'ask' || result.behavior === 'deny') {
-        return result
-      }
+  for (const cmd of splitCommand_DEPRECATED(input.command)) {
+    const result = validateSinglePathCommand(
+      cmd,
+      cwd,
+      toolPermissionContext,
+      compoundCommandHasCd,
+    )
+    if (result.behavior === 'ask' || result.behavior === 'deny') {
+      return result
     }
   }
 
@@ -1105,199 +1035,5 @@ export function checkPathConstraints(
   return {
     behavior: 'passthrough',
     message: 'All path commands validated successfully',
-  }
-}
-
-/**
- * Convert AST-derived Redirect[] to the format expected by
- * validateOutputRedirections. Filters to output-only redirects (excluding
- * fd duplications like 2>&1) and maps operators to '>' | '>>'.
- */
-function astRedirectsToOutputRedirections(redirects: Redirect[]): {
-  redirections: Array<{ target: string; operator: '>' | '>>' }>
-  hasDangerousRedirection: boolean
-} {
-  const redirections: Array<{ target: string; operator: '>' | '>>' }> = []
-  for (const r of redirects) {
-    switch (r.op) {
-      case '>':
-      case '>|':
-      case '&>':
-        redirections.push({ target: r.target, operator: '>' })
-        break
-      case '>>':
-      case '&>>':
-        redirections.push({ target: r.target, operator: '>>' })
-        break
-      case '>&':
-        // >&N (digits only) is fd duplication (e.g. 2>&1, >&10), not a file
-        // write. >&file is the deprecated form of &>file (redirect to file).
-        if (!/^\d+$/.test(r.target)) {
-          redirections.push({ target: r.target, operator: '>' })
-        }
-        break
-      case '<':
-      case '<<':
-      case '<&':
-      case '<<<':
-        // input redirects — skip
-        break
-    }
-  }
-  // AST targets are fully resolved (no shell expansion) — checkSemantics
-  // already validated them. No dangerous redirections are possible.
-  return { redirections, hasDangerousRedirection: false }
-}
-
-// ───────────────────────────────────────────────────────────────────────────
-// Argv-level safe-wrapper stripping (timeout, nice, stdbuf, env, time, nohup)
-//
-// This is the ONLY stripWrappersFromArgv. bashPermissions.ts used to export an
-// older, narrower copy (timeout/nice-n-N only) with no prod consumer, kept
-// deliberately because deleting it was said to push bashPermissions.ts off
-// Bun's feature() DCE complexity cliff and silently fold
-// feature('BASH_CLASSIFIER') to false. That constraint is upstream's, not this
-// fork's: scripts/build/build.ts:137-164 folds feature() with a regex over the
-// source text, which has no per-function complexity budget. The dead copy was
-// removed and the fold verified unchanged at 8 pendingClassifierCheck spreads
-// in dist/chunks.
-//
-// KEEP IN SYNC with:
-//   - SAFE_WRAPPER_PATTERNS in bashPermissions.ts (text-based stripSafeWrappers)
-//   - the wrapper-stripping loop in checkSemantics (src/platform/bash/ast.ts ~1860)
-// If you add a wrapper in either, add it here too. Asymmetry means
-// checkSemantics exposes the wrapped command to semantic checks but path
-// validation sees the wrapper name → passthrough → wrapped paths never
-// validated (PR #21503 review comment 2907319120).
-// ───────────────────────────────────────────────────────────────────────────
-
-// SECURITY: allowlist for timeout flag VALUES (signals are TERM/KILL/9,
-// durations are 5/5s/10.5). Rejects $ ( ) ` | ; & and newlines that
-// previously matched via [^ \t]+ — `timeout -k$(id) 10 ls` must NOT strip.
-const TIMEOUT_FLAG_VALUE_RE = /^[A-Za-z0-9_.+-]+$/
-
-/**
- * Parse timeout's GNU flags (long + short, fused + space-separated) and
- * return the argv index of the DURATION token, or -1 if flags are unparseable.
- */
-function skipTimeoutFlags(a: readonly string[]): number {
-  let i = 1
-  while (i < a.length) {
-    const arg = a[i]!
-    const next = a[i + 1]
-    if (
-      arg === '--foreground' ||
-      arg === '--preserve-status' ||
-      arg === '--verbose'
-    )
-      i++
-    else if (/^--(?:kill-after|signal)=[A-Za-z0-9_.+-]+$/.test(arg)) i++
-    else if (
-      (arg === '--kill-after' || arg === '--signal') &&
-      next &&
-      TIMEOUT_FLAG_VALUE_RE.test(next)
-    )
-      i += 2
-    else if (arg === '--') {
-      i++
-      break
-    } // end-of-options marker
-    else if (arg.startsWith('--')) return -1
-    else if (arg === '-v') i++
-    else if (
-      (arg === '-k' || arg === '-s') &&
-      next &&
-      TIMEOUT_FLAG_VALUE_RE.test(next)
-    )
-      i += 2
-    else if (/^-[ks][A-Za-z0-9_.+-]+$/.test(arg)) i++
-    else if (arg.startsWith('-')) return -1
-    else break
-  }
-  return i
-}
-
-/**
- * Parse stdbuf's flags (-i/-o/-e in fused/space-separated/long-= forms).
- * Returns argv index of wrapped COMMAND, or -1 if unparseable or no flags
- * consumed (stdbuf without flags is inert). Mirrors checkSemantics (ast.ts).
- */
-function skipStdbufFlags(a: readonly string[]): number {
-  let i = 1
-  while (i < a.length) {
-    const arg = a[i]!
-    if (/^-[ioe]$/.test(arg) && a[i + 1]) i += 2
-    else if (/^-[ioe]./.test(arg)) i++
-    else if (/^--(input|output|error)=/.test(arg)) i++
-    else if (arg.startsWith('-'))
-      return -1 // unknown flag: fail closed
-    else break
-  }
-  return i > 1 && i < a.length ? i : -1
-}
-
-/**
- * Parse env's VAR=val and safe flags (-i/-0/-v/-u NAME). Returns argv index
- * of wrapped COMMAND, or -1 if unparseable/no wrapped cmd. Rejects -S (argv
- * splitter), -C/-P (altwd/altpath). Mirrors checkSemantics (ast.ts).
- */
-function skipEnvFlags(a: readonly string[]): number {
-  let i = 1
-  while (i < a.length) {
-    const arg = a[i]!
-    if (arg.includes('=') && !arg.startsWith('-')) i++
-    else if (arg === '-i' || arg === '-0' || arg === '-v') i++
-    else if (arg === '-u' && a[i + 1]) i += 2
-    else if (arg.startsWith('-'))
-      return -1 // -S/-C/-P/unknown: fail closed
-    else break
-  }
-  return i < a.length ? i : -1
-}
-
-/**
- * Argv-level counterpart to stripSafeWrappers (bashPermissions.ts). Strips
- * wrapper commands from AST-derived argv. Env vars are already separated
- * into SimpleCommand.envVars so no env-var stripping here.
- */
-export function stripWrappersFromArgv(argv: string[]): string[] {
-  let a = argv
-  for (;;) {
-    if (a[0] === 'time' || a[0] === 'nohup') {
-      a = a.slice(a[1] === '--' ? 2 : 1)
-    } else if (a[0] === 'timeout') {
-      const i = skipTimeoutFlags(a)
-      // SECURITY (PR #21503 round 3): unrecognized duration (`.5`, `+5`,
-      // `inf` — strtod formats GNU timeout accepts) → return a unchanged.
-      // Safe because checkSemantics (ast.ts) fails CLOSED on the same input
-      // and runs first in bashToolHasPermission, so we never reach here.
-      if (i < 0 || !a[i] || !/^\d+(?:\.\d+)?[smhd]?$/.test(a[i]!)) return a
-      a = a.slice(i + 1)
-    } else if (a[0] === 'nice') {
-      // SECURITY (PR #21503 round 3): mirror checkSemantics — handle bare
-      // `nice cmd` and legacy `nice -N cmd`, not just `nice -n N cmd`.
-      // Previously only `-n N` was stripped: `nice rm /outside` →
-      // baseCmd='nice' → passthrough → /outside never path-validated.
-      if (a[1] === '-n' && a[2] && /^-?\d+$/.test(a[2]))
-        a = a.slice(a[3] === '--' ? 4 : 3)
-      else if (a[1] && /^-\d+$/.test(a[1])) a = a.slice(a[2] === '--' ? 3 : 2)
-      else a = a.slice(a[1] === '--' ? 2 : 1)
-    } else if (a[0] === 'stdbuf') {
-      // SECURITY (PR #21503 round 3): PR-WIDENED. Pre-PR, `stdbuf -o0 -eL rm`
-      // was rejected by fragment check (old checkSemantics slice(2) left
-      // name='-eL'). Post-PR, checkSemantics strips both flags → name='rm'
-      // → passes. But stripWrappersFromArgv returned unchanged →
-      // baseCmd='stdbuf' → not in SUPPORTED_PATH_COMMANDS → passthrough.
-      const i = skipStdbufFlags(a)
-      if (i < 0) return a
-      a = a.slice(i)
-    } else if (a[0] === 'env') {
-      // Same asymmetry: checkSemantics strips env, we didn't.
-      const i = skipEnvFlags(a)
-      if (i < 0) return a
-      a = a.slice(i)
-    } else {
-      return a
-    }
   }
 }

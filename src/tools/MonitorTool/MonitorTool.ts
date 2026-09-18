@@ -8,10 +8,7 @@ import { exec } from 'src/shared/proc/Shell.js'
 import { getTaskOutputPath } from 'src/agent/tasks/diskOutput.js'
 import {
   bashToolHasPermission,
-  matchWildcardPattern,
-  permissionRuleExtractPrefix,
 } from 'src/tools/BashTool/bashPermissions.js'
-import { parseForSecurity } from 'src/platform/bash/ast.js'
 import { MONITOR_TOOL_NAME } from 'src/tools/MonitorTool/toolName.js'
 
 const MONITOR_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
@@ -59,21 +56,15 @@ export const MonitorTool = buildTool({
     return input.command
   },
 
-  async preparePermissionMatcher({ command }) {
-    const parsed = await parseForSecurity(command)
-    if (parsed.kind !== 'simple') {
-      return () => true
-    }
-    const subcommands = parsed.commands.map(c => c.argv.join(' '))
-    return (pattern: string) => {
-      const prefix = permissionRuleExtractPrefix(pattern)
-      return subcommands.some(cmd => {
-        if (prefix !== null) {
-          return cmd === prefix || cmd.startsWith(`${prefix} `)
-        }
-        return matchWildcardPattern(pattern, cmd)
-      })
-    }
+  // Every `if` condition on a Monitor hook matches. The per-subcommand matcher
+  // this used to build needed argv from parseForSecurity, which has answered
+  // parse-unavailable in every shipped bundle, so the permissive arm is the only
+  // one that has ever run. It is also the fail-safe direction — matching.ts
+  // treats a MISSING matcher as "no match", so the method has to stay and return
+  // true rather than be removed. Restoring real filtering would silently stop
+  // hooks that fire today, which is a separate decision from removing dead code.
+  async preparePermissionMatcher(_input) {
+    return (_pattern: string) => true
   },
 
   async checkPermissions(input, context) {

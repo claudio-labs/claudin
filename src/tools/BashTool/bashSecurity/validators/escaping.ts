@@ -166,13 +166,9 @@ export function hasBackslashEscapedOperator(command: string): boolean {
 export function validateBackslashEscapedOperators(
   context: ValidationContext,
 ): PermissionResult {
-  // Tree-sitter path: if tree-sitter confirms no actual operator nodes exist
-  // in the AST, then any \; is just an escaped character in a word argument
-  // (e.g., `find . -exec cmd {} \;`). Skip the expensive regex check.
-  if (context.treeSitter && !context.treeSitter.hasActualOperatorNodes) {
-    return { behavior: 'passthrough', message: 'No operator nodes in AST' }
-  }
-
+  // A tree-sitter short-circuit used to sit here, skipping the regex when the
+  // AST showed no operator nodes. The context never carried an analysis, so
+  // the regex below is what has always decided this.
   if (hasBackslashEscapedOperator(context.originalCommand)) {
     return {
       behavior: 'ask',

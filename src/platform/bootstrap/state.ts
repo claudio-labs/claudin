@@ -221,7 +221,6 @@ export {
 export {
   addInvokedSkill,
   addSessionCronTask,
-  addSlowOperation,
   clearInvokedSkills,
   clearInvokedSkillsForAgent,
   clearPendingSessionWakeup,
@@ -234,7 +233,6 @@ export {
   getSessionCreatedTeams,
   getSessionCronTasks,
   getSessionTrustAccepted,
-  getSlowOperations,
   getTeleportedSessionInfo,
   handleAutoModeTransition,
   handlePlanModeTransition,

@@ -45,7 +45,6 @@ exports[`slash-command registry — characterization the registered bindings mat
   "installGitHubApp",
   "installSlackApp",
   "keybindings",
-  "knowledge",
   "mcp",
   "memory",
   "model",

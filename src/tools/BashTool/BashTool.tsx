@@ -13,7 +13,6 @@ import { buildTool, findToolByName, type ToolDef } from 'src/tools/Tool.js';
 import { backgroundExistingForegroundTask, markTaskNotified, registerForeground, spawnShellTask, unregisterForeground } from 'src/agent/tasks/LocalShellTask/LocalShellTask.js';
 import type { AgentId } from 'src/shared/types/ids.js';
 import type { AssistantMessage } from 'src/shared/types/message.js';
-import { parseForSecurity } from 'src/platform/bash/ast.js';
 import { splitCommand_DEPRECATED, splitCommandWithOperators } from 'src/platform/bash/commands.js';
 import { SEMANTIC_NEUTRAL_COMMANDS, walkCommandSegments } from 'src/platform/bash/segments.js';
 import { extractClaudeCodeHints } from 'src/platform/claudeCodeHints.js';
@@ -440,29 +439,17 @@ export const BashTool = buildTool({
   toAutoClassifierInput(input) {
     return input.command;
   },
-  async preparePermissionMatcher({
-    command
-  }) {
-    // Hook `if` filtering is "no match → skip hook" (deny-like semantics), so
-    // compound commands must fire the hook if ANY subcommand matches. Without
-    // splitting, `ls && git push` would bypass a `Bash(git *)` security hook.
-    const parsed = await parseForSecurity(command);
-    if (parsed.kind !== 'simple') {
-      // parse-unavailable / too-complex: fail safe by running the hook.
-      return () => true;
-    }
-    // Match on argv (strips leading VAR=val) so `FOO=bar git push` still
-    // matches `Bash(git *)`.
-    const subcommands = parsed.commands.map(c => c.argv.join(' '));
-    return pattern => {
-      const prefix = permissionRuleExtractPrefix(pattern);
-      return subcommands.some(cmd => {
-        if (prefix !== null) {
-          return cmd === prefix || cmd.startsWith(`${prefix} `);
-        }
-        return matchWildcardPattern(pattern, cmd);
-      });
-    };
+  // Every `if` condition on a Bash hook matches. Hook `if` filtering is "no
+  // match → skip hook" (deny-like semantics), and the per-subcommand matcher
+  // this used to build needed argv from parseForSecurity, which has answered
+  // parse-unavailable in every shipped bundle — so the permissive arm is the
+  // only one that has ever run, and it is the fail-safe direction. The method
+  // has to stay: matching.ts:132 treats a MISSING matcher as "no match", so
+  // removing it would stop every `if`-conditioned Bash hook instead. Restoring
+  // real filtering is a behaviour change for hook configs that exist today and
+  // belongs in its own decision, not in a dead-code removal.
+  async preparePermissionMatcher(_input) {
+    return (_pattern: string) => true;
   },
   isSearchOrReadCommand(input) {
     const parsed = inputSchema().safeParse(input);

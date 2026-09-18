@@ -110,14 +110,10 @@ const OFF_MAP_FLAGS = [
   'ANTI_DISTILLATION_CC',
   'AUTO_THEME',
   'CONNECTOR_TEXT',
-  'CONVERSATION_ARC',
   'HISTORY_SNIP',
-  'HOOK_CHAINS',
   'REACTIVE_COMPACT',
-  'SLOW_OPERATION_LOGGING',
   'SSH_REMOTE',
   'TERMINAL_PANEL',
-  'UNATTENDED_RETRY',
 ]
 
 // Mirrors `featureCallRe` in build.ts: BOTH quote styles, optional whitespace

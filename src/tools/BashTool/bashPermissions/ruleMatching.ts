@@ -7,7 +7,6 @@
 
 import type { z } from 'zod/v4'
 import type { ToolPermissionContext } from 'src/tools/Tool.js'
-import type { SimpleCommand } from 'src/platform/bash/ast.js'
 import {
   extractOutputRedirections,
   splitCommand_DEPRECATED,
@@ -311,7 +310,6 @@ export const bashToolCheckPermission = (
   input: z.infer<typeof BashTool.inputSchema>,
   toolPermissionContext: ToolPermissionContext,
   compoundCommandHasCd?: boolean,
-  astCommand?: SimpleCommand,
 ): PermissionResult => {
   const command = input.command.trim()
 
@@ -332,12 +330,10 @@ export const bashToolCheckPermission = (
   // 2. Find all matching rules (prefix or exact)
   // SECURITY FIX: Check Bash deny/ask rules BEFORE path constraints to prevent bypass
   // via absolute paths outside the project directory (HackerOne report)
-  // When AST-parsed, the subcommand is already atomic — skip the legacy
-  // splitCommand re-check that misparses mid-word # as compound.
+  // The compound re-check used to be skipped when the caller had an AST-parsed
+  // subcommand, which is already atomic; no caller ever had one.
   const { matchingDenyRules, matchingAskRules, matchingAllowRules } =
-    matchingRulesForInput(input, toolPermissionContext, 'prefix', {
-      skipCompoundCheck: astCommand !== undefined,
-    })
+    matchingRulesForInput(input, toolPermissionContext, 'prefix')
 
   // 2a. Deny if command has a deny rule
   if (matchingDenyRules[0] !== undefined) {
@@ -365,17 +361,11 @@ export const bashToolCheckPermission = (
 
   // 3. Check path constraints
   // This check comes after deny/ask rules so explicit rules take precedence.
-  // SECURITY: When AST-derived argv is available for this subcommand, pass
-  // it through so checkPathConstraints uses it directly instead of re-parsing
-  // with shell-quote (which has a single-quote backslash bug that causes
-  // parseCommandArguments to return [] and silently skip path validation).
   const pathResult = checkPathConstraints(
     input,
     getCwd(),
     toolPermissionContext,
     compoundCommandHasCd,
-    astCommand?.redirects,
-    astCommand ? [astCommand] : undefined,
   )
   if (pathResult.behavior !== 'passthrough') {
     return pathResult

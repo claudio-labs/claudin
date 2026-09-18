@@ -21,7 +21,6 @@ import { resetPromptCacheBreakDetection } from 'src/providers/cache/promptCacheB
 import { clearAllSessions } from 'src/providers/transport/sessionIngress.js'
 import { runPostCompactCleanup } from 'src/agent/compact/postCompactCleanup.js'
 import { resetAllLSPDiagnosticState } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
-import { clearTrackedMagicDocs } from 'src/platform/MagicDocs/magicDocs.js'
 import { clearDynamicSkills } from 'src/skills/loadSkillsDir.js'
 import { resetSentSkillNames } from 'src/agent/attachments/attachments.js'
 import { clearCommandPrefixCaches } from 'src/platform/bash/commands.js'
@@ -108,8 +107,6 @@ export function clearSessionCaches(
   clearDynamicSkills()
   // Clear LSP diagnostic tracking state
   resetAllLSPDiagnosticState()
-  // Clear tracked magic docs
-  clearTrackedMagicDocs()
   // Clear session environment variables
   clearSessionEnvVars()
   // Clear WebFetch URL cache (up to 50MB of cached page content)

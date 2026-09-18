@@ -4,11 +4,9 @@ import {
   splitCommand_DEPRECATED,
 } from 'src/platform/bash/commands.js'
 import {
-  buildParsedCommandFromRoot,
   type IParsedCommand,
   ParsedCommand,
 } from 'src/platform/bash/ParsedCommand.js'
-import { type Node, PARSE_ABORTED } from 'src/platform/bash/parser.js'
 import type { PermissionResult } from 'src/permissions/PermissionResult.js'
 import type { PermissionUpdate } from 'src/permissions/PermissionUpdateSchema.js'
 import { createPermissionRequestMessage } from 'src/permissions/permissions.js'
@@ -174,9 +172,12 @@ async function buildSegmentWithoutRedirections(
 }
 
 /**
- * Wrapper that resolves an IParsedCommand (from a pre-parsed AST root if
- * available, else via ParsedCommand.parse) and delegates to
+ * Wrapper that resolves an IParsedCommand and delegates to
  * bashToolCheckCommandOperatorPermissions.
+ *
+ * It used to take a pre-parsed AST root and build the parsed command from it,
+ * skipping a redundant parse. That root was always null — the parser behind it
+ * never loaded — so the ParsedCommand.parse arm is the only one that ever ran.
  */
 export async function checkCommandOperatorPermissions(
   input: z.infer<typeof BashTool.inputSchema>,
@@ -184,12 +185,8 @@ export async function checkCommandOperatorPermissions(
     input: z.infer<typeof BashTool.inputSchema>,
   ) => Promise<PermissionResult>,
   checkers: CommandIdentityCheckers,
-  astRoot: Node | null | typeof PARSE_ABORTED,
 ): Promise<PermissionResult> {
-  const parsed =
-    astRoot && astRoot !== PARSE_ABORTED
-      ? buildParsedCommandFromRoot(input.command, astRoot)
-      : await ParsedCommand.parse(input.command)
+  const parsed = await ParsedCommand.parse(input.command)
   if (!parsed) {
     return { behavior: 'passthrough', message: 'Failed to parse command' }
   }
@@ -214,11 +211,10 @@ async function bashToolCheckCommandOperatorPermissions(
   parsed: IParsedCommand,
 ): Promise<PermissionResult> {
   // 1. Check for unsafe compound commands (subshells, command groups).
-  const tsAnalysis = parsed.getTreeSitterAnalysis()
-  const isUnsafeCompound = tsAnalysis
-    ? tsAnalysis.compoundStructure.hasSubshell ||
-      tsAnalysis.compoundStructure.hasCommandGroup
-    : isUnsafeCompoundCommand_DEPRECATED(input.command)
+  // The AST branch that read compoundStructure off a tree-sitter analysis is
+  // gone with the parser that never produced one; this regex check is what has
+  // always decided it.
+  const isUnsafeCompound = isUnsafeCompoundCommand_DEPRECATED(input.command)
   if (isUnsafeCompound) {
     // This command contains an operator like `>` that we don't support as a subcommand separator
     // Check if bashCommandIsSafe_DEPRECATED has a more specific message

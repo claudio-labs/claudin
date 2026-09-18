@@ -7,8 +7,6 @@
  * only ever reads plain properties.
  */
 
-import type { TreeSitterAnalysis } from 'src/platform/bash/treeSitterAnalysis.js'
-
 export const HEREDOC_IN_SUBSTITUTION = /\$\(.*<</
 
 // Matches non-printable control characters that have no legitimate use in shell
@@ -31,9 +29,6 @@ export type ValidationContext = {
   /** Like fullyUnquotedPreStrip but preserves quote characters ('/"): e.g.,
    * echo 'x'# → echo ''# (the quote chars remain, revealing adjacency to #) */
   unquotedKeepQuoteChars: string
-  /** Tree-sitter analysis data, if available. Validators can use this for
-   * more accurate analysis when present, falling back to regex otherwise. */
-  treeSitter?: TreeSitterAnalysis | null
 }
 
 export type QuoteExtraction = {

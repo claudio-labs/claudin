@@ -6,7 +6,6 @@ import {
   checkDangerousRemovalPaths,
   checkPathConstraints,
   PATH_EXTRACTORS,
-  stripWrappersFromArgv,
 } from 'src/tools/BashTool/pathValidation.js'
 
 // `checkDangerousRemovalPaths` resolves relative paths against this cwd, so the
@@ -21,99 +20,10 @@ function askMessage(result: PermissionResult): string {
   return result.message
 }
 
-describe('stripWrappersFromArgv', () => {
-  test('strips timeout, nice, stdbuf, env, time and nohup', () => {
-    expect(stripWrappersFromArgv(['timeout', '5', 'rm', 'x'])).toEqual([
-      'rm',
-      'x',
-    ])
-    expect(stripWrappersFromArgv(['timeout', '-k', '9', '5', 'ls'])).toEqual([
-      'ls',
-    ])
-    expect(stripWrappersFromArgv(['nice', '-n', '10', 'rm', 'x'])).toEqual([
-      'rm',
-      'x',
-    ])
-    expect(stripWrappersFromArgv(['stdbuf', '-o0', '-eL', 'rm', 'x'])).toEqual([
-      'rm',
-      'x',
-    ])
-    expect(stripWrappersFromArgv(['env', 'FOO=bar', 'rm', 'x'])).toEqual([
-      'rm',
-      'x',
-    ])
-    expect(stripWrappersFromArgv(['time', 'rm', 'x'])).toEqual(['rm', 'x'])
-    expect(stripWrappersFromArgv(['nohup', 'rm', 'x'])).toEqual(['rm', 'x'])
-  })
-
-  test('strips nested wrappers until the real command is exposed', () => {
-    expect(
-      stripWrappersFromArgv(['timeout', '5', 'nice', '-n', '10', 'rm', 'x']),
-    ).toEqual(['rm', 'x'])
-  })
-
-  // The regression this guards: `nice rm /outside` used to leave baseCmd='nice',
-  // which is not a supported path command, so `/outside` was never validated.
-  test('strips the legacy `nice cmd` and `nice -N cmd` forms', () => {
-    expect(stripWrappersFromArgv(['nice', 'rm', '/outside'])).toEqual([
-      'rm',
-      '/outside',
-    ])
-    expect(stripWrappersFromArgv(['nice', '-5', 'rm', '/outside'])).toEqual([
-      'rm',
-      '/outside',
-    ])
-  })
-
-  // `$(id)` is not a safe flag value, so the wrapper must not be stripped —
-  // stripping it would hand `ls` to the path checker while bash still runs the
-  // substitution.
-  test('leaves argv untouched when a timeout flag value is not a safe token', () => {
-    // Fused form.
-    expect(stripWrappersFromArgv(['timeout', '-k$(id)', '10', 'ls'])).toEqual([
-      'timeout',
-      '-k$(id)',
-      '10',
-      'ls',
-    ])
-    // Space-separated form, which is checked by a different pattern.
-    expect(
-      stripWrappersFromArgv(['timeout', '-k', '$(id)', '10', 'ls']),
-    ).toEqual(['timeout', '-k', '$(id)', '10', 'ls'])
-    expect(
-      stripWrappersFromArgv(['timeout', '--signal', 'a;id', '10', 'ls']),
-    ).toEqual(['timeout', '--signal', 'a;id', '10', 'ls'])
-  })
-
-  test('leaves argv untouched when the timeout duration is not recognized', () => {
-    // `.5` and `inf` are durations GNU timeout accepts and we do not.
-    expect(stripWrappersFromArgv(['timeout', '.5', 'ls'])).toEqual([
-      'timeout',
-      '.5',
-      'ls',
-    ])
-    expect(stripWrappersFromArgv(['timeout', 'inf', 'ls'])).toEqual([
-      'timeout',
-      'inf',
-      'ls',
-    ])
-  })
-
-  test('fails closed on env flags that re-split argv or move the cwd', () => {
-    for (const flag of ['-S', '-C', '-P']) {
-      expect(stripWrappersFromArgv(['env', flag, 'rm', 'x'])).toEqual([
-        'env',
-        flag,
-        'rm',
-        'x',
-      ])
-    }
-  })
-
-  test('leaves a non-wrapper command alone', () => {
-    expect(stripWrappersFromArgv(['ls', '-la'])).toEqual(['ls', '-la'])
-  })
-})
+// `stripWrappersFromArgv` and its suite went with the AST layer: it consumed
+// argv that only a tree-sitter parse produced, and that parse never ran. The
+// text-based `stripSafeWrappers` is what strips a wrapper on the live path, and
+// the `checkPathConstraints` block below exercises it end to end.
 
 describe('PATH_EXTRACTORS', () => {
   // Without `--` handling a path starting with `-` is dropped by the naive
@@ -262,5 +172,35 @@ describe('checkPathConstraints', () => {
     expect(
       checkPathConstraints({ command: 'ls' }, CWD, allowingCwd()).behavior,
     ).toBe('passthrough')
+  })
+
+  // acceptEdits so a write inside the working directory would pass: what is
+  // being proved is that the redirect TARGET is resolved and checked, not that
+  // writes ask in general. The `>>` arm matters on its own — appending was
+  // never exercised, and it takes a different branch of the extractor.
+  test('asks for a redirect whose target lies outside the working directories', () => {
+    const allowed = allowingCwd('acceptEdits')
+    expect(
+      askMessage(
+        checkPathConstraints({ command: 'echo x > /etc/pwned' }, CWD, allowed),
+      ),
+    ).toContain('was blocked')
+    expect(
+      askMessage(
+        checkPathConstraints({ command: 'echo x >> /etc/pwned' }, CWD, allowed),
+      ),
+    ).toContain('was blocked')
+  })
+
+  // Without stripSafeWrappers (pathValidation.ts:845) the base command reads as
+  // `timeout`, which is not path-restricted, so the whole path check is skipped
+  // and the removal underneath it is never seen.
+  test('unwraps a wrapper before validating the command it hides', () => {
+    const result = checkPathConstraints(
+      { command: 'timeout 5 rm -rf /etc' },
+      CWD,
+      allowingCwd('acceptEdits'),
+    )
+    expect(askMessage(result)).toContain('Dangerous rm operation')
   })
 })
