@@ -33,6 +33,7 @@ import {
   validateBackslashEscapedWhitespace,
 } from 'src/tools/BashTool/bashSecurity/validators/escaping.js'
 import { validateGitCommit } from 'src/tools/BashTool/bashSecurity/validators/gitCommit.js'
+import { validateEvalLikeBuiltins } from 'src/tools/BashTool/bashSecurity/validators/evalLike.js'
 import {
   validateDangerousPatterns,
   validateDangerousVariables,
@@ -102,6 +103,11 @@ const validators = [
   validateMidWordHash,
   validateBraceExpansion,
   validateZshDangerousCommands,
+  // Ordered beside the zsh builtin check because they answer the same question
+  // from the other side: that one covers names a zsh module provides, this one
+  // the POSIX/bash builtins that run a code string. Neither is in
+  // nonMisparsingValidators, so a broad allow rule cannot clear either.
+  validateEvalLikeBuiltins,
   // Run malformed token check last - other validators should catch specific patterns first
   // (e.g., $() substitution, backticks, etc.) since they have more precise error messages
   validateMalformedTokenInjection,
