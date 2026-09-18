@@ -68,6 +68,15 @@ jobs:
       - name: Dead code (production reachability)
         run: bun run deadcode:prod
 
+      # The third dimension, and the one neither gate above has ever looked at:
+      # `--include` is an allowlist, so `exports` and `types` were simply absent
+      # from CI, which is how ~1300 unused exports accumulated behind a green
+      # gate. The starting number is four figures, so this one is a ratchet
+      # against knip-baseline.json rather than a hard zero — it fails a PR only
+      # for what it ADDS. See scripts/verify/deadcode-ci.ts.
+      - name: Dead code (new unused exports only)
+        run: bun run deadcode:exports
+
       - name: Smoke check
         run: bun run smoke
 

@@ -352,13 +352,14 @@ never nullable passes with the whole mapping deleted, which is how three of the
 first five in `sdkUtilityTypes.types.test.ts` shipped guarding nothing. Break
 the production line and watch the assertion fail before believing it.
 
-### Dead code (`bun run deadcode`, gated by `deadcode:ci` + `deadcode:prod`)
+### Dead code (`bun run deadcode`, gated by `deadcode:ci` + `:prod` + `:exports`)
 
-`knip`, configured in `knip.json`, in three forms — the first two run in
-`pr-checks.yml`, take ~2s each and need no build:
+`knip`, configured in `knip.json`, in four forms — the first three run in
+`pr-checks.yml` and none of them needs a build:
 
 - `bun run deadcode:ci` — the **gate**, in the Pre-PR checklist. Covers unused
-  FILES and declared dependencies nothing imports. Both were cleared on
+  FILES and declared dependencies nothing imports, and **nothing else** —
+  `--include` is an ALLOWLIST, so it has never looked at an export. Both were cleared on
   2026-08-07 — three dependencies (`code-excerpt`, `stack-utils`, `tsx`) and
   nineteen files — so the gate starts from zero and any new finding is yours.
 - `bun run deadcode:prod` — the **second** gate, `knip --production`. Default
@@ -370,6 +371,18 @@ the production line and watch the assertion fail before believing it.
   suffixes in `knip.json` are load-bearing**: without them this run analyzes
   zero files and reports all 57 dependencies unused. Default mode strips the
   suffixes (`removeProductionSuffix`), so `deadcode:ci` is unaffected by them.
+- `bun run deadcode:exports` — the **third** gate, and the only one that sees
+  exports and exported types. Because turning them on starts at four figures
+  (1334 on 2026-09-18), this one is a **ratchet** against `knip-baseline.json`
+  rather than a hard zero: it fails a PR only for findings it ADDS, exactly as
+  `typecheck:ci` does, and shares that script's multiset comparison. Identity is
+  `<kind> <file>#<name>` with line and column excluded, so moving a declaration
+  is not a new finding; refresh with `bun run deadcode:baseline` when a change
+  legitimately moves existing ones. Verified by probe: two new unused exports
+  fail it by name, while a comment inserted above a baselined export does not.
+  Note knip's view is partial — it reports nothing for some heavily-imported
+  modules (`src/shared/envUtils.ts` has zero entries) — so a green run is not
+  proof that a new export is reachable.
 - `bun run deadcode` — the wider report, which additionally surfaces
   `unlisted`/`unresolved`.
 
@@ -537,6 +550,7 @@ confirm a cited diagnostic with the tool (`path:` filters the report) first.
 - [ ] Focused test passes (RunTests tool, scoped with `path`)
 - [ ] `bun run test:floor` holds (7/7 invariant suites, ratio within 0.5pp)
 - [ ] `bun run deadcode:ci` is clean (no declared dependency left unimported)
+- [ ] `bun run deadcode:exports` reports no NEW unused exports
 - [ ] If touching `src/providers/*`: `bun run test:provider`
 - [ ] If touching build/telemetry/network: `bun run verify:privacy`
 - [ ] If touching output format: snapshots reviewed and updated
