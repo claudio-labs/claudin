@@ -3,27 +3,12 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
-import { isBareMode } from 'src/shared/envUtils.js'
 import { memoizeWithTTLAsync } from 'src/shared/data/memoize.js'
-import { getSecureStorage } from 'src/platform/secureStorage/index.js'
-
-function readGeminiAccessTokenFromSecureStorage(): string | undefined {
-  if (isBareMode()) return undefined
-  try {
-    const data = getSecureStorage().read() as
-      | ({ gemini?: { accessToken?: string } } & Record<string, unknown>)
-      | null
-    const t = data?.gemini?.accessToken?.trim()
-    return t || undefined
-  } catch {
-    return undefined
-  }
-}
 
 const GEMINI_ADC_SCOPE = 'https://www.googleapis.com/auth/cloud-platform'
 const GEMINI_ADC_CACHE_TTL_MS = 5 * 60 * 1000
 
-export type GeminiAuthMode = 'api-key' | 'access-token' | 'adc'
+export type GeminiAuthMode = 'api-key' | 'adc'
 
 type GoogleAccessTokenResult =
   | string
@@ -48,7 +33,7 @@ export type GeminiResolvedCredential =
       credential: string
     }
   | {
-      kind: 'access-token' | 'adc'
+      kind: 'adc'
       credential: string
       projectId?: string
     }
@@ -79,11 +64,7 @@ export function getGeminiAuthMode(
   env: NodeJS.ProcessEnv = process.env,
 ): GeminiAuthMode | undefined {
   const normalized = sanitizeCredential(env.GEMINI_AUTH_MODE)?.toLowerCase()
-  if (
-    normalized === 'api-key' ||
-    normalized === 'access-token' ||
-    normalized === 'adc'
-  ) {
+  if (normalized === 'api-key' || normalized === 'adc') {
     return normalized
   }
   return undefined
@@ -134,7 +115,7 @@ async function createDefaultGoogleAuth(): Promise<GoogleAuthLike> {
 async function resolveGeminiAdcCredentialUncached(
   env: NodeJS.ProcessEnv,
   deps: ResolveGeminiCredentialDeps,
-): Promise<Exclude<GeminiResolvedCredential, { kind: 'none' | 'api-key' | 'access-token' }> | { kind: 'none' }> {
+): Promise<Exclude<GeminiResolvedCredential, { kind: 'none' | 'api-key' }> | { kind: 'none' }> {
   if (!mayHaveGeminiAdcCredentials(env)) {
     return { kind: 'none' }
   }
@@ -193,10 +174,7 @@ export async function resolveGeminiCredential(
   const profile = tryGetActiveProvider()
   const profileApiKey =
     profile?.transport === 'gemini' ? sanitizeCredential(profile.apiKey) : undefined
-  const apiKey =
-    authMode === 'access-token' || authMode === 'adc'
-      ? undefined
-      : profileApiKey
+  const apiKey = authMode === 'adc' ? undefined : profileApiKey
   if (apiKey && (authMode === undefined || authMode === 'api-key')) {
     return {
       kind: 'api-key',
@@ -204,20 +182,10 @@ export async function resolveGeminiCredential(
     }
   }
 
-  const accessToken =
-    authMode === 'api-key' || authMode === 'adc'
-      ? undefined
-      : sanitizeCredential(readGeminiAccessTokenFromSecureStorage())
-  if (accessToken && (authMode === undefined || authMode === 'access-token')) {
-    const projectId = getGeminiProjectIdHint(env)
-    return {
-      kind: 'access-token',
-      credential: accessToken,
-      ...(projectId ? { projectId } : {}),
-    }
-  }
-
-  if (authMode === 'api-key' || authMode === 'access-token') {
+  // An explicit api-key mode never falls back to ADC: a user who named the
+  // source wants to hear that it is missing, not to be silently authenticated
+  // as whatever gcloud account happens to be on the machine.
+  if (authMode === 'api-key') {
     return { kind: 'none' }
   }
 
