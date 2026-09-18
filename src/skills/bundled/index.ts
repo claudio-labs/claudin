@@ -1,4 +1,3 @@
-import { feature } from 'bun:bundle'
 import { registerBatchSkill } from 'src/skills/bundled/batch.js'
 import { registerCodeReviewSkill } from 'src/skills/bundled/code-review.js'
 import { registerCreateSkill } from 'src/skills/bundled/create.js'
@@ -39,20 +38,8 @@ export function initBundledSkills(): void {
   // Claudin-native: keeps .claudin/rules/ honest — reports the rule defects
   // that are invisible at runtime and proposes corrections from session history.
   registerRefreshRulesSkill()
-  if (feature('REVIEW_ARTIFACT')) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const { registerHunterSkill } = require('./hunter.js')
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    registerHunterSkill()
-  }
   // /loop's isEnabled delegates to isKairosCronEnabled() — registered
   // unconditionally so the static import is bundled; visibility is gated
   // at runtime by the isEnabled callback.
   registerLoopSkill()
-  if (feature('RUN_SKILL_GENERATOR')) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const { registerRunSkillGeneratorSkill } = require('./runSkillGenerator.js')
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    registerRunSkillGeneratorSkill()
-  }
 }

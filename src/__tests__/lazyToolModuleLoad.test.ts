@@ -151,7 +151,6 @@ const CURRENT_BASELINE = [
   'WaitForTool',
   'WebFetchTool',
   'WebSearchTool',
-  'WorkflowTool',
 ]
 
 describe('tool registry module-load measurement', () => {

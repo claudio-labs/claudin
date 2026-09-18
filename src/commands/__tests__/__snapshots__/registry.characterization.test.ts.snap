@@ -73,13 +73,11 @@ exports[`slash-command registry — characterization the registered bindings mat
   "theme",
   "thinkback",
   "thinkbackPlay",
-  "torch",
   "ultrareview",
   "usage",
   "usageReport",
   "vim",
   "wiki",
-  "workflowsCmd",
 ]
 `;
 
@@ -112,27 +110,6 @@ exports[`slash-command registry — characterization the flag-gated command tabl
       "HISTORY_SNIP",
     ],
     "specifier": "./force-snip.js",
-  },
-  {
-    "binding": "getWorkflowCommands",
-    "flags": [
-      "WORKFLOW_SCRIPTS",
-    ],
-    "specifier": "../tools/WorkflowTool/createWorkflowCommand.js",
-  },
-  {
-    "binding": "torch",
-    "flags": [
-      "TORCH",
-    ],
-    "specifier": "./torch.js",
-  },
-  {
-    "binding": "workflowsCmd",
-    "flags": [
-      "WORKFLOW_SCRIPTS",
-    ],
-    "specifier": "src/commands/workflows/index.js",
   },
 ]
 `;

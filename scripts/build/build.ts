@@ -29,10 +29,13 @@ const version = pkg.version
 // from this map is silently false, which is how seven satellite flags became
 // invisible dead code.
 //
-// `feature-flags-source-guard.test.ts` enumerates the 44 names currently in that
+// `feature-flags-source-guard.test.ts` enumerates the 17 names currently in that
 // state and fails on a new one. Adding a key here is what takes a name OFF that
-// list — and the list is worth reading first, because four of the 44 are set by
-// the build target or the command line and break when treated as dead.
+// list — and the list is worth reading first, because four of the 17 are set by
+// the build target or the command line and break when treated as dead. It scans
+// for BOTH quote styles, the same as `featureCallRe` below: a single-quote-only
+// scan is what once hid `ANTI_DISTILLATION_CC` and every double-quoted call in
+// the committed React-Compiler `.tsx` output.
 const featureFlags: Record<string, boolean> = {
   // ── Enabled: upstream defaults ──────────────────────────────────────
   COORDINATOR_MODE: true,             // Multi-agent coordinator with worker delegation

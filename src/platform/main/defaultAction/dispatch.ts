@@ -11,7 +11,6 @@
 import { feature } from 'bun:bundle';
 import { runContinueBranch } from 'src/platform/main/defaultAction/continue.js';
 import { runDirectConnectBranch } from 'src/platform/main/defaultAction/directConnect.js';
-import { runSshRemoteBranch } from 'src/platform/main/defaultAction/sshRemote.js';
 import { runResumeBranch } from 'src/platform/main/defaultAction/resume.js';
 import type { Root } from 'src/terminal/ink.js';
 import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
@@ -209,22 +208,6 @@ export async function runDefaultActionDispatch(
       getFpsMetrics,
       stats,
       initialState: initialState as Parameters<typeof runDirectConnectBranch>[0]['initialState'],
-    });
-    return { handled: true, mainThreadAgentDefinition, sessionConfig };
-  }
-  if (feature('SSH_REMOTE') && ctx.pending.ssh?.host) {
-    await runSshRemoteBranch({
-      root,
-      ctx,
-      debug: debugBool,
-      debugToStderr: debugToStderrBool,
-      commands: commands as Parameters<typeof runSshRemoteBranch>[0]['commands'],
-      ide,
-      mainThreadAgentDefinition: mainThreadAgentDefinition as Parameters<typeof runSshRemoteBranch>[0]['mainThreadAgentDefinition'],
-      thinkingConfig,
-      getFpsMetrics,
-      stats,
-      initialState: initialState as Parameters<typeof runSshRemoteBranch>[0]['initialState'],
     });
     return { handled: true, mainThreadAgentDefinition, sessionConfig };
   }

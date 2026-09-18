@@ -34,8 +34,10 @@ import {
  *
  * Under `bun test` every feature() flag reads false (src/stubs/test-preload.ts
  * documents why its mock is inert), so the BASH_CLASSIFIER / TRANSCRIPT_CLASSIFIER
- * / TREE_SITTER_BASH_SHADOW branches are unreachable here. They are covered by
- * the bundle fold gate instead, not by this file.
+ * branches are unreachable here. They are covered by the bundle fold gate
+ * instead, not by this file. (The TREE_SITTER_BASH_SHADOW arm that used to be
+ * listed here is gone — the flag was never in `featureFlags`, so the shadow
+ * branch was dead in every bundle and has been deleted.)
  */
 
 beforeAll(stubMacroVersion)

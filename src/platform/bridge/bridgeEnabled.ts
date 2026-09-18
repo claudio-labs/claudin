@@ -9,7 +9,6 @@ import {
 // deferral, but require() hits a CJS cache that diverges from the ESM
 // namespace after mock.module() (daemon/auth.test.ts), breaking spyOn.
 import * as authModule from 'src/providers/auth/auth.js'
-import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { lt } from 'src/shared/semver.js'
 
 /**
@@ -135,33 +134,4 @@ export function checkBridgeMinVersion(): string | null {
     }
   }
   return null
-}
-
-/**
- * Default for remoteControlAtStartup when the user hasn't explicitly set it.
- * When the CCR_AUTO_CONNECT build flag is present (internal-only) and the
- * tengu_cobalt_harbor GrowthBook gate is on, all sessions connect to CCR by
- * default — the user can still opt out by setting remoteControlAtStartup=false
- * in config (explicit settings always win over this default).
- *
- * Defined here rather than in config.ts to avoid a direct
- * config.ts → growthbook.ts import cycle (growthbook.ts → user.ts → config.ts).
- */
-export function getCcrAutoConnectDefault(): boolean {
-  return feature('CCR_AUTO_CONNECT')
-    ? getFeatureValue_CACHED_MAY_BE_STALE('tengu_cobalt_harbor', false)
-    : false
-}
-
-/**
- * Opt-in CCR mirror mode — every local session spawns an outbound-only
- * Remote Control session that receives forwarded events. Separate from
- * getCcrAutoConnectDefault (bidirectional Remote Control). Env var wins for
- * local opt-in; GrowthBook controls rollout.
- */
-export function isCcrMirrorEnabled(): boolean {
-  return feature('CCR_MIRROR')
-    ? isEnvTruthy(process.env.CLAUDE_CODE_CCR_MIRROR) ||
-        getFeatureValue_CACHED_MAY_BE_STALE('tengu_ccr_mirror', false)
-    : false
 }

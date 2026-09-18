@@ -58,6 +58,10 @@ test('build feature flags are not enabled without their source files', () => {
 // grew to 44 unseen, and at the call site an off-map flag is indistinguishable
 // from one deliberately shipped off.
 //
+// Down to 17 as of the dead-code rounds: 25 flags had their branches removed
+// outright, and five of those 25 kept an entry here because a call site
+// survives for a reason recorded below.
+//
 // This is a ratchet, not a hit list. "Off-map" turned out to be at least three
 // different things, which is exactly why a blanket sweep is the wrong tool:
 //
@@ -73,6 +77,15 @@ test('build feature flags are not enabled without their source files', () => {
 //                live side-door (`conversationArc.ts` is reached from /knowledge
 //                as well as from behind CONVERSATION_ARC).
 //
+// The five that survived a removal pass, so the next one does not re-litigate
+// them: SSH_REMOTE (the gate IS `registerSshCommand`'s body, so emptying it
+// pushes the edit into the 14-registrar subcommand hub), AUTO_THEME (gates the
+// user-visible "Auto (match terminal)" row in the theme picker), TERMINAL_PANEL
+// (`app:toggleTerminal` stays bindable from the keybinding schema and the help
+// menu, so removing the handler would leave a bindable action with no handler),
+// and REACTIVE_COMPACT + CONNECTOR_TEXT (their last sites are inside committed
+// React-Compiler output, where the `$[n]` slot bookkeeping is load-bearing).
+//
 // A NEW name here fails this test: add it to the map if it is a real switch, or
 // list it below with which of the three it is. Removing the last call site of a
 // listed flag also fails — drop the entry in the same change.
@@ -87,41 +100,28 @@ const TOOLCHAIN_FLAGS = new Set([
 
 const OFF_MAP_FLAGS = [
   ...TOOLCHAIN_FLAGS,
-  'AGENT_MEMORY_SNAPSHOT',
+  'ANTI_DISTILLATION_CC',
   'AUTO_THEME',
-  'BYOC_ENVIRONMENT_RUNNER',
-  'CCR_AUTO_CONNECT',
-  'CCR_MIRROR',
-  'COMPACTION_REMINDERS',
   'CONNECTOR_TEXT',
   'CONVERSATION_ARC',
   'DIRECT_CONNECT',
   'EXPERIMENTAL_SKILL_SEARCH',
   'HISTORY_SNIP',
   'HOOK_CHAINS',
-  'LODESTONE',
-  'MCP_RICH_OUTPUT',
-  'MEMORY_SHAPE_TELEMETRY',
-  'NATIVE_CLIENT_ATTESTATION',
-  'NATIVE_CLIPBOARD_IMAGE',
-  'OVERFLOW_TEST_TOOL',
-  'POWERSHELL_AUTO_MODE',
   'REACTIVE_COMPACT',
-  'REVIEW_ARTIFACT',
-  'RUN_SKILL_GENERATOR',
-  'SELF_HOSTED_RUNNER',
   'SLOW_OPERATION_LOGGING',
   'SSH_REMOTE',
-  'TEMPLATES',
   'TERMINAL_PANEL',
-  'TORCH',
-  'TREE_SITTER_BASH',
-  'TREE_SITTER_BASH_SHADOW',
   'UNATTENDED_RETRY',
-  'WORKFLOW_SCRIPTS',
 ]
 
-const FEATURE_CALL_RE = /\bfeature\('([A-Z0-9_]+)'\)/g
+// Mirrors `featureCallRe` in build.ts: BOTH quote styles, optional whitespace
+// and a trailing comma, so the set below is exactly what the build folds.
+// A single-quote-only regex here — paired with an `includes("feature('")`
+// fast path that skipped a file outright — is how `ANTI_DISTILLATION_CC` and
+// the double-quoted survivors in React-Compiler `.tsx` output stayed off this
+// list while being folded false like everything else.
+const FEATURE_CALL_RE = /\bfeature\(\s*['"]([A-Z0-9_]+)['"][,\s]*\)/g
 
 /** Every flag name a shipped `src/` file passes to `feature()`. */
 function scanFeatureNames(): Set<string> {
@@ -138,7 +138,7 @@ function scanFeatureNames(): Set<string> {
       // skips them: a fixture string is indistinguishable from a real call.
       if (!/\.tsx?$/.test(ent.name) || /\.test\.tsx?$/.test(ent.name)) continue
       const source = readFileSync(full, 'utf8')
-      if (!source.includes("feature('")) continue
+      if (!source.includes('feature(')) continue
       FEATURE_CALL_RE.lastIndex = 0
       let m: RegExpExecArray | null
       while ((m = FEATURE_CALL_RE.exec(source)) !== null) names.add(m[1]!)

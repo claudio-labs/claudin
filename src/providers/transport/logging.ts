@@ -1,4 +1,3 @@
-import { feature } from 'bun:bundle'
 import { isSdkApiError } from 'src/shared/errors.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import type {
@@ -15,7 +14,6 @@ import {
   setLastApiCompletionTimestamp,
 } from 'src/platform/bootstrap/state.js'
 import type { QueryChainTracking } from 'src/tools/Tool.js'
-import { isConnectorTextBlock } from 'src/shared/types/connectorText.js'
 import type { AssistantMessage } from 'src/shared/types/message.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logError } from 'src/shared/log.js'
@@ -212,7 +210,6 @@ function logAPISuccess({
   textContentLength,
   thinkingContentLength,
   toolUseContentLengths,
-  connectorTextBlockCount,
   fastMode,
   previousRequestId,
   betas,
@@ -241,7 +238,6 @@ function logAPISuccess({
   textContentLength?: number
   thinkingContentLength?: number
   toolUseContentLengths?: Record<string, number>
-  connectorTextBlockCount?: number
   fastMode?: boolean
   previousRequestId?: string | null
   betas?: string[]
@@ -323,21 +319,17 @@ export function logAPISuccessAndDuration({
   let textContentLength: number | undefined
   let thinkingContentLength: number | undefined
   let toolUseContentLengths: Record<string, number> | undefined
-  let connectorTextBlockCount: number | undefined
 
   if (newMessages) {
     let textLen = 0
     let thinkingLen = 0
     let hasToolUse = false
     const toolLengths: Record<string, number> = {}
-    let connectorCount = 0
 
     for (const msg of newMessages) {
       for (const block of msg.message.content) {
         if (block.type === 'text') {
           textLen += block.text.length
-        } else if (feature('CONNECTOR_TEXT') && isConnectorTextBlock(block)) {
-          connectorCount++
         } else if (block.type === 'thinking') {
           thinkingLen += block.thinking.length
         } else if (
@@ -355,7 +347,6 @@ export function logAPISuccessAndDuration({
     textContentLength = textLen
     thinkingContentLength = thinkingLen > 0 ? thinkingLen : undefined
     toolUseContentLengths = hasToolUse ? toolLengths : undefined
-    connectorTextBlockCount = connectorCount > 0 ? connectorCount : undefined
   }
 
   const durationMs = Date.now() - start
@@ -384,7 +375,6 @@ export function logAPISuccessAndDuration({
     textContentLength,
     thinkingContentLength,
     toolUseContentLengths,
-    connectorTextBlockCount,
     fastMode,
     previousRequestId,
     betas,

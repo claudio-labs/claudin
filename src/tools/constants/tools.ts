@@ -27,7 +27,6 @@ import { TOOL_SEARCH_TOOL_NAME } from 'src/tools/ToolSearchTool/prompt.js'
 import { SYNTHETIC_OUTPUT_TOOL_NAME } from 'src/tools/SyntheticOutputTool/SyntheticOutputTool.js'
 import { ENTER_WORKTREE_TOOL_NAME } from 'src/tools/EnterWorktreeTool/constants.js'
 import { EXIT_WORKTREE_TOOL_NAME } from 'src/tools/ExitWorktreeTool/constants.js'
-import { WORKFLOW_TOOL_NAME } from 'src/tools/WorkflowTool/constants.js'
 import { WORKFLOW_RUN_TOOL_NAME } from 'src/tools/AgentWorkflow/constants.js'
 import { RUN_TESTS_TOOL_NAME } from 'src/tools/RunTestsTool/prompt.js'
 import { TYPECHECK_TOOL_NAME } from 'src/tools/TypecheckTool/prompt.js'
@@ -45,7 +44,6 @@ export const ALL_AGENT_DISALLOWED_TOOLS = new Set([
   ASK_USER_QUESTION_TOOL_NAME,
   TASK_STOP_TOOL_NAME,
   // Prevent recursive workflow execution inside subagents.
-  ...(feature('WORKFLOW_SCRIPTS') ? [WORKFLOW_TOOL_NAME] : []),
   ...(feature('AGENT_WORKFLOWS') ? [WORKFLOW_RUN_TOOL_NAME] : []),
 ])
 

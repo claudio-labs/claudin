@@ -75,7 +75,6 @@ import {
   getActiveBackgroundTaskReminders,
   getContainerTransitionAttachments,
   getVerifyPlanReminderAttachment,
-  getCompactionReminderAttachment,
 } from 'src/agent/attachments/lifecycle.js'
 import { getNestedMemoryAttachments } from 'src/agent/attachments/memory.js'
 import {
@@ -321,18 +320,6 @@ export async function getAttachments(
     maybe('critical_system_reminder', () =>
       Promise.resolve(getCriticalSystemReminderAttachment(toolUseContext)),
     ),
-    ...(feature('COMPACTION_REMINDERS')
-      ? [
-          maybe('compaction_reminder', () =>
-            Promise.resolve(
-              getCompactionReminderAttachment(
-                messages ?? [],
-                toolUseContext.options.mainLoopModel,
-              ),
-            ),
-          ),
-        ]
-      : []),
     ...(feature('HISTORY_SNIP')
       ? [
           maybe('context_efficiency', () =>

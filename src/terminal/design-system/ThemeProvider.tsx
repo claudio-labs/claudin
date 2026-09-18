@@ -1,7 +1,5 @@
 import { c as _c } from "react-compiler-runtime";
-import { feature } from 'bun:bundle';
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import useStdin from 'src/terminal/ink/hooks/use-stdin.js';
+import React, { createContext, useContext, useMemo, useState } from 'react';
 import { getGlobalConfig, saveGlobalConfig } from 'src/platform/config/config.js';
 import { getSystemThemeName, type SystemTheme } from 'src/terminal/theme/systemTheme.js';
 import type { ThemeName, ThemeSetting } from 'src/terminal/theme/theme.js';
@@ -54,39 +52,14 @@ export function ThemeProvider({
 
   // The setting currently in effect (preview wins while picker is open)
   const activeSetting = previewTheme ?? themeSetting;
-  const {
-    internal_querier
-  } = useStdin();
-
-  // Watch for live terminal theme changes while 'auto' is active.
-  // Positive feature() pattern so the watcher import is dead-code-eliminated
-  // in external builds.
-  useEffect(() => {
-    if (feature('AUTO_THEME')) {
-      if (activeSetting !== 'auto' || !internal_querier) return;
-      let cleanup: (() => void) | undefined;
-      let cancelled = false;
-      void import('src/terminal/theme/systemThemeWatcher.js').then(({
-        watchSystemTheme
-      }) => {
-        if (cancelled) return;
-        cleanup = watchSystemTheme(internal_querier, setSystemTheme);
-      });
-      return () => {
-        cancelled = true;
-        cleanup?.();
-      };
-    }
-  }, [activeSetting, internal_querier]);
   const currentTheme: ThemeName = activeSetting === 'auto' ? systemTheme : activeSetting;
   const value = useMemo<ThemeContextValue>(() => ({
     themeSetting,
     setThemeSetting: (newSetting: ThemeSetting) => {
       setThemeSetting(newSetting);
       setPreviewTheme(null);
-      // Switching to 'auto' restarts the watcher (activeSetting dep), whose
-      // first poll fires immediately. Seed from the cache so the OSC
-      // round-trip doesn't flash the wrong palette.
+      // Seed from the cached terminal appearance so switching to 'auto'
+      // resolves right away instead of flashing the wrong palette.
       if (newSetting === 'auto') {
         setSystemTheme(getSystemThemeName());
       }

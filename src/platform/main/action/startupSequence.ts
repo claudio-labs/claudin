@@ -491,13 +491,6 @@ export function runInteractiveStartupBlock(
   // above. Brief mode shipped behind KAIROS/KAIROS_BRIEF, both off here.
   const initialIsBriefOnly = false;
   const fullRemoteControl = remoteControl || getRemoteControlAtStartup() || ctx.kairosEnabled;
-  let ccrMirrorEnabled = false;
-  if (feature('CCR_MIRROR') && !fullRemoteControl) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const { isCcrMirrorEnabled } = require('src/platform/bridge/bridgeEnabled.js') as typeof import('src/platform/bridge/bridgeEnabled.js');
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    ccrMirrorEnabled = isCcrMirrorEnabled();
-  }
   const initialState: AppState = {
     settings: getInitialSettings(),
     tasks: {},
@@ -544,9 +537,9 @@ export function runInteractiveStartupBlock(
     remoteSessionUrl: undefined,
     remoteConnectionStatus: 'connecting',
     remoteBackgroundTaskCount: 0,
-    replBridgeEnabled: fullRemoteControl || ccrMirrorEnabled,
+    replBridgeEnabled: fullRemoteControl,
     replBridgeExplicit: remoteControl,
-    replBridgeOutboundOnly: ccrMirrorEnabled,
+    replBridgeOutboundOnly: false,
     replBridgeConnected: false,
     replBridgeSessionActive: false,
     replBridgeReconnecting: false,

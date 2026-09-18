@@ -111,24 +111,11 @@ const VerifyPlanExecutionTool =
         .VerifyPlanExecutionTool
     : null
 const SYNTHETIC_OUTPUT_TOOL_NAME = 'StructuredOutput'
-const OverflowTestTool = feature('OVERFLOW_TEST_TOOL')
-  ? require('./OverflowTestTool/OverflowTestTool.js').OverflowTestTool
-  : null
-const TerminalCaptureTool = feature('TERMINAL_PANEL')
-  ? require('./TerminalCaptureTool/TerminalCaptureTool.js')
-      .TerminalCaptureTool
-  : null
 const coordinatorModeModule = feature('COORDINATOR_MODE')
   ? (require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js'))
   : null
 const SnipTool = feature('HISTORY_SNIP')
   ? require('./SnipTool/SnipTool.js').SnipTool
-  : null
-const WorkflowTool = feature('WORKFLOW_SCRIPTS')
-  ? (() => {
-      require('./WorkflowTool/bundled/index.js').initBundledWorkflows()
-      return require('./WorkflowTool/WorkflowTool.js').WorkflowTool
-    })()
   : null
 const agentWorkflowTools = feature('AGENT_WORKFLOWS')
   ? (
@@ -271,8 +258,6 @@ export function getAllBaseTools(): Tools {
     ...(isTodoV2Enabled()
       ? [getTaskCreateTool(), getTaskGetTool(), getTaskUpdateTool(), getTaskListTool()]
       : []),
-    ...(OverflowTestTool ? [OverflowTestTool] : []),
-    ...(TerminalCaptureTool ? [TerminalCaptureTool] : []),
     ...(isWorktreeModeEnabled() ? [getEnterWorktreeTool(), getExitWorktreeTool()] : []),
     getSendMessageTool(),
     ...(isAgentSwarmsEnabled()
@@ -280,7 +265,6 @@ export function getAllBaseTools(): Tools {
       : []),
     ...(VerifyPlanExecutionTool ? [VerifyPlanExecutionTool] : []),
     ...(REPLTool ? [REPLTool] : []),
-    ...(WorkflowTool ? [WorkflowTool] : []),
     ...(agentWorkflowTools ?? []),
     ...getCronTools(),
     ...(MonitorTool ? [MonitorTool] : []),

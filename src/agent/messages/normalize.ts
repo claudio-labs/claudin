@@ -49,7 +49,6 @@ import type {
 } from 'src/shared/types/message.js'
 import type { HookAttachment } from 'src/agent/attachments/attachments.js'
 import { isAdvisorBlock } from 'src/platform/doctor/advisor.js'
-import { isConnectorTextBlock } from 'src/shared/types/connectorText.js'
 import { normalizeToolInput, normalizeToolInputForAPI } from 'src/providers/transport/api.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { validateImagesForAPI } from 'src/terminal/image/imageValidation.js'
@@ -1949,8 +1948,8 @@ export function filterOrphanedThinkingOnlyMessages(
 }
 
 /**
- * Strip signature-bearing blocks (thinking, redacted_thinking, connector_text)
- * from all assistant messages. Their signatures are bound to the API key that
+ * Strip signature-bearing blocks (thinking, redacted_thinking) from all
+ * assistant messages. Their signatures are bound to the API key that
  * generated them; after a credential change (e.g. /login) they're invalid and
  * the API rejects them with a 400.
  */
@@ -1964,9 +1963,6 @@ export function stripSignatureBlocks(messages: Message[]): Message[] {
 
     const filtered = content.filter(block => {
       if (isThinkingBlock(block)) return false
-      if (feature('CONNECTOR_TEXT')) {
-        if (isConnectorTextBlock(block)) return false
-      }
       return true
     })
     if (filtered.length === content.length) return msg

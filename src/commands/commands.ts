@@ -64,15 +64,8 @@ const bridge = feature('BRIDGE_MODE')
 const forceSnip = feature('HISTORY_SNIP')
   ? require('./force-snip.js').default
   : null
-const workflowsCmd = feature('WORKFLOW_SCRIPTS')
-  ? (
-      require('src/commands/workflows/index.js') as typeof import('src/commands/workflows/index.js')
-    ).default
-  : null
-// NOTE: shares the ./commands/workflows/index.js module (and the 'workflows'
-// name) with the WORKFLOW_SCRIPTS `workflowsCmd` above. Only one of the two
-// flags is ever enabled (WORKFLOW_SCRIPTS is off in the open build), so at most
-// one 'workflows' command registers. If both are ever enabled, dedupe here.
+// The '/workflows' command. `src/commands/workflows/` is live source, and this
+// is its only registration.
 const agentWorkflowsCmd = feature('AGENT_WORKFLOWS')
   ? (
       require('src/commands/workflows/index.js') as typeof import('src/commands/workflows/index.js')
@@ -83,7 +76,6 @@ const clearSkillIndexCache = feature('EXPERIMENTAL_SKILL_SEARCH')
       require('../skills/search/localSearch.js') as typeof import('../skills/search/localSearch.js')
     ).clearSkillIndexCache
   : null
-const torch = feature('TORCH') ? require('./torch.js').default : null
 // NOTE: there is deliberately no `forkCmd` here. `FORK_SUBAGENT` ships true
 // (it gates the Agent tool's fork-by-default behaviour), but this fork never
 // received `src/commands/fork/`, so the require resolved to the build's
@@ -266,9 +258,7 @@ const COMMANDS = memoize((): Command[] => [
   exportCommand,
   sandboxToggle,
   tasks,
-  ...(workflowsCmd ? [workflowsCmd] : []),
   ...(agentWorkflowsCmd ? [agentWorkflowsCmd] : []),
-  ...(torch ? [torch] : []),
 ])
 
 export const builtInCommandNames = memoize(
@@ -323,14 +313,6 @@ async function getSkills(cwd: string): Promise<{
   }
 }
 
-/* eslint-disable @typescript-eslint/no-require-imports */
-const getWorkflowCommands = feature('WORKFLOW_SCRIPTS')
-  ? (
-      require('../tools/WorkflowTool/createWorkflowCommand.js') as typeof import('../tools/WorkflowTool/createWorkflowCommand.js')
-    ).getWorkflowCommands
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
-
 /**
  * Filters commands by their declared `availability` (auth/provider requirement).
  * Commands without `availability` are treated as universal.
@@ -369,25 +351,22 @@ export function meetsAvailabilityRequirement(cmd: Command): boolean {
 }
 
 /**
- * Loads all command sources (skills, plugins, workflows). Memoized by cwd
- * because loading is expensive (disk I/O, dynamic imports).
+ * Loads all command sources (skills, plugins). Memoized by cwd because
+ * loading is expensive (disk I/O, dynamic imports).
  */
 const loadAllCommands = memoize(async (cwd: string): Promise<Command[]> => {
   const [
     { skillDirCommands, pluginSkills, bundledSkills, builtinPluginSkills },
     pluginCommands,
-    workflowCommands,
   ] = await Promise.all([
     getSkills(cwd),
     getPluginCommands(),
-    getWorkflowCommands ? getWorkflowCommands(cwd) : Promise.resolve([]),
   ])
 
   return [
     ...bundledSkills,
     ...builtinPluginSkills,
     ...skillDirCommands,
-    ...workflowCommands,
     ...pluginCommands,
     ...pluginSkills,
     ...COMMANDS(),

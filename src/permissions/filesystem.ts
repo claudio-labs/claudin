@@ -1,4 +1,3 @@
-import { feature } from 'bun:bundle'
 import { randomBytes } from 'crypto'
 import ignore from 'ignore'
 import memoize from 'lodash-es/memoize.js'
@@ -1631,48 +1630,6 @@ export function checkEditableInternalPath(
         type: 'other',
         reason: 'Scratchpad files for current session are allowed for writing',
       },
-    }
-  }
-
-  // Template job's own directory. Env key hardcoded (vs importing JOB_ENV_KEY
-  // from jobs/state) so tree-shaking eliminates the string from external
-  // builds — spawn.test.ts asserts the string matches. Hijack guard: the env
-  // var value must itself resolve under ~/.claude/jobs/. Symlink guard: every
-  // resolved form of the target (lexical + symlink chain) must fall under some
-  // resolved form of the job dir, so a symlink inside the job dir pointing at
-  // e.g. ~/.ssh/authorized_keys does not get a free write. Resolving both
-  // sides handles the macOS /tmp → /private/tmp case where the config dir
-  // lives under a symlinked root.
-  if (feature('TEMPLATES')) {
-    const jobDir = process.env.CLAUDE_JOB_DIR
-    if (jobDir) {
-      const jobsRoot = join(getClaudinConfigHomeDir(), 'jobs')
-      const jobDirForms = getPathsForPermissionCheck(jobDir).map(normalize)
-      const jobsRootForms = getPathsForPermissionCheck(jobsRoot).map(normalize)
-      // Hijack guard: every resolved form of the job dir must sit under
-      // some resolved form of the jobs root. Resolving both sides handles
-      // the case where ~/.claudin is a symlink (e.g. to /data/claudin-config).
-      const isUnderJobsRoot = jobDirForms.every(jd =>
-        jobsRootForms.some(jr => jd.startsWith(jr + sep)),
-      )
-      if (isUnderJobsRoot) {
-        const targetForms = getPathsForPermissionCheck(absolutePath)
-        const allInsideJobDir = targetForms.every(p => {
-          const np = normalize(p)
-          return jobDirForms.some(jd => np === jd || np.startsWith(jd + sep))
-        })
-        if (allInsideJobDir) {
-          return {
-            behavior: 'allow',
-            updatedInput: input,
-            decisionReason: {
-              type: 'other',
-              reason:
-                'Job directory files for current job are allowed for writing',
-            },
-          }
-        }
-      }
     }
   }
 

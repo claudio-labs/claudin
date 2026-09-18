@@ -812,16 +812,6 @@ export const SettingsSchema = lazySchema(() =>
         .enum(['latest', 'stable'])
         .optional()
         .describe('Release channel for auto-updates (latest or stable)'),
-      ...(feature('LODESTONE')
-        ? {
-            disableDeepLinkRegistration: z
-              .enum(['disable'])
-              .optional()
-              .describe(
-                'Prevent claude-cli:// protocol handler registration with the OS',
-              ),
-          }
-        : {}),
       minimumVersion: z
         .string()
         .optional()

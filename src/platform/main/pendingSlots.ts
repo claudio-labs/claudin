@@ -19,12 +19,10 @@ export const pendingConnect: PendingConnect | undefined = feature('DIRECT_CONNEC
   dangerouslySkipPermissions: false,
 } : undefined;
 
-/** Set by early argv processing when `claude ssh <host> [dir]` is detected. */
-export const pendingSSH: PendingSSH | undefined = feature('SSH_REMOTE') ? {
-  host: undefined,
-  cwd: undefined,
-  permissionMode: undefined,
-  dangerouslySkipPermissions: false,
-  local: false,
-  extraCliArgs: [],
-} : undefined;
+/**
+ * `claude ssh <host> [dir]` lived behind SSH_REMOTE, which is absent from
+ * `featureFlags` in scripts/build/build.ts — so the slot was already always
+ * empty and the branch reading it is gone. Kept as the seam
+ * `BootContext.pending.ssh` still declares.
+ */
+export const pendingSSH: PendingSSH | undefined = undefined;
