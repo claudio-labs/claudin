@@ -13,10 +13,6 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js'
 import {
-  getMockSubscriptionType,
-  shouldUseMockSubscription,
-} from 'src/providers/mockRateLimits.js'
-import {
   isOAuthTokenExpired,
   refreshOAuthToken,
   shouldUseClaudeAIAuth,
@@ -1559,15 +1555,6 @@ export function getOauthAccountInfo(): AccountInfo | undefined {
 }
 
 export function getSubscriptionType(): SubscriptionType | null {
-  // Check for mock subscription type first (ANT-only testing)
-  if (shouldUseMockSubscription()) {
-    // getMockSubscriptionType is the internal-only ANT scenario simulator;
-    // the OSS build keeps it as an always-`null` stub (see mockRateLimits.ts)
-    // whose local SubscriptionType alias is just `string`, wider than the
-    // real oauth SubscriptionType literal union.
-    return getMockSubscriptionType() as SubscriptionType | null
-  }
-
   if (!isAnthropicAuthEnabled()) {
     return null
   }

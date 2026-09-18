@@ -43,7 +43,6 @@ import {
   getRateLimitErrorMessage,
   type OverageDisabledReason,
 } from 'src/providers/claudeAiLimits.js'
-import { shouldProcessRateLimits } from 'src/providers/rateLimitMocking.js' // Used for /mock-limits command
 import { extractConnectionErrorDetails, formatAPIError } from 'src/providers/transport/errorUtils.js'
 import {
   extractOpenAICategoryMarker,
@@ -549,7 +548,7 @@ export function getAssistantMessageFromError(
 
     if (
       (rateLimitType || overageStatus) &&
-      shouldProcessRateLimits(isClaudeAISubscriber())
+      isClaudeAISubscriber()
     ) {
       // Build limits object from error headers to determine the appropriate message
       const limits: ClaudeAILimits = {
