@@ -1,10 +1,63 @@
 import { buildPrefix } from 'src/platform/shell/specPrefix.js'
 import { splitCommand_DEPRECATED } from 'src/platform/bash/commands.js'
-import { extractCommandArguments, parseCommand } from 'src/platform/bash/parser.js'
+import { tryParseShellCommand } from 'src/platform/bash/shellQuote.js'
 import { getCommandSpec } from 'src/platform/bash/registry.js'
 
 const NUMERIC = /^\d+$/
 const ENV_VAR = /^[A-Za-z_][A-Za-z0-9_]*=/
+
+/**
+ * Leading `VAR=value` assignments and the argv that follows, from the live
+ * shell-quote path.
+ *
+ * This used to come from `parseCommand`, on the tree-sitter parser — which has
+ * returned null in every shipped bundle, so `getCommandPrefixStatic` always
+ * answered null and the permission dialog's "don't ask again for: ___" field
+ * came up empty. The PowerShell twin of this file
+ * (`shell/powershell/staticPrefix.ts`) never had that problem: it feeds its own
+ * parser's name/args into the same `buildPrefix` walker, which is shell-agnostic
+ * because the specs describe CLIs, not shells.
+ *
+ * Parsing stops at the first operator so a compound command handed straight to
+ * `getCommandPrefixStatic` yields the prefix of its FIRST command, which is what
+ * the AST's `commandNode` gave. `getCompoundCommandPrefixesStatic` splits before
+ * calling, so that only matters on the direct-call path.
+ */
+function parseSimpleCommand(
+  command: string,
+): { envVars: string[]; argv: string[] } | null {
+  // The env callback keeps `$VAR` as literal text rather than expanding it to
+  // the empty string, so a prefix built from it still reads as the user typed it.
+  const parsed = tryParseShellCommand(command, env => `$${env}`)
+  if (!parsed.success) return null
+
+  const envVars: string[] = []
+  const argv: string[] = []
+  for (const token of parsed.tokens) {
+    let text: string
+    if (typeof token === 'string') {
+      text = token
+    } else if (
+      typeof token === 'object' &&
+      token !== null &&
+      'op' in token &&
+      token.op === 'glob' &&
+      'pattern' in token
+    ) {
+      // shell-quote hands back a glob as an object; the walker wants the text.
+      text = String(token.pattern)
+    } else {
+      // An operator (`&&`, `|`, `;`, a redirect) ends the first command.
+      break
+    }
+    if (argv.length === 0 && ENV_VAR.test(text)) {
+      envVars.push(text)
+      continue
+    }
+    argv.push(text)
+  }
+  return { envVars, argv }
+}
 
 // Wrapper commands with complex option handling that can't be expressed in specs
 const WRAPPER_COMMANDS = new Set([
@@ -32,16 +85,14 @@ export async function getCommandPrefixStatic(
 ): Promise<{ commandPrefix: string | null } | null> {
   if (wrapperCount > 2 || recursionDepth > 10) return null
 
-  const parsed = await parseCommand(command)
+  const parsed = parseSimpleCommand(command)
   if (!parsed) return null
-  if (!parsed.commandNode) {
+  if (parsed.argv.length === 0) {
     return { commandPrefix: null }
   }
 
-  const { envVars, commandNode } = parsed
-  const cmdArgs = extractCommandArguments(commandNode)
-
-  const [cmd, ...args] = cmdArgs
+  const { envVars, argv } = parsed
+  const [cmd, ...args] = argv
   if (!cmd) return { commandPrefix: null }
 
   // Check if this is a wrapper command by looking at its spec

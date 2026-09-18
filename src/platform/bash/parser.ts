@@ -9,21 +9,6 @@ export interface ParsedCommandData {
   originalCommand: string
 }
 
-const DECLARATION_COMMANDS = new Set([
-  'export',
-  'declare',
-  'typeset',
-  'readonly',
-  'local',
-  'unset',
-  'unsetenv',
-])
-const ARGUMENT_TYPES = new Set(['word', 'string', 'raw_string', 'number'])
-const SUBSTITUTION_TYPES = new Set([
-  'command_substitution',
-  'process_substitution',
-])
-
 /**
  * The tree-sitter path lived behind the TREE_SITTER_BASH build flag, which is
  * absent from `featureFlags` in scripts/build/build.ts — so this has always
@@ -63,47 +48,4 @@ export async function parseCommandRaw(
   _command: string,
 ): Promise<Node | null | typeof PARSE_ABORTED> {
   return null
-}
-
-export function extractCommandArguments(commandNode: Node): string[] {
-  // Declaration commands
-  if (commandNode.type === 'declaration_command') {
-    const firstChild = commandNode.children[0]
-    return firstChild && DECLARATION_COMMANDS.has(firstChild.text)
-      ? [firstChild.text]
-      : []
-  }
-
-  const args: string[] = []
-  let foundCommandName = false
-
-  for (const child of commandNode.children) {
-    if (child.type === 'variable_assignment') continue
-
-    // Command name
-    if (
-      child.type === 'command_name' ||
-      (!foundCommandName && child.type === 'word')
-    ) {
-      foundCommandName = true
-      args.push(child.text)
-      continue
-    }
-
-    // Arguments
-    if (ARGUMENT_TYPES.has(child.type)) {
-      args.push(stripQuotes(child.text))
-    } else if (SUBSTITUTION_TYPES.has(child.type)) {
-      break
-    }
-  }
-  return args
-}
-
-function stripQuotes(text: string): string {
-  return text.length >= 2 &&
-    ((text[0] === '"' && text.at(-1) === '"') ||
-      (text[0] === "'" && text.at(-1) === "'"))
-    ? text.slice(1, -1)
-    : text
 }
