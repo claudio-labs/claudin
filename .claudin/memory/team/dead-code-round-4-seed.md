@@ -4,6 +4,11 @@ description: What is still dead or inert on main after rounds 1-3 (HEAD 76a61870
 type: project
 ---
 
+> **SPENT 2026-09-18** — every item here was taken, on branch
+> `chore/dead-code-round-4`. Read [[dead-code-round-4-2026-09-18]] first: the AST
+> layer turned out to be twice the size estimated below, and three of the entries
+> were bugs rather than rot.
+
 Re-verified 2026-09-18 against `main` at 76a61870, after PR #210/#211/#212.
 Supersedes the table in [[unreachable-clusters-inventory-2026-09-18]] (rows 3,
 4, 6, 7, 9, 10, 12 are now deleted) and spends what was left of
