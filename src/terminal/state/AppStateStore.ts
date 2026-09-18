@@ -388,8 +388,6 @@ export type AppState = DeepImmutable<{
   }
   speculation: SpeculationState
   speculationSessionTimeSavedMs: number
-  // Auth version - incremented on login/logout to trigger re-fetching of auth-dependent data
-  authVersion: number
   // Initial message to process (from CLI args or plan mode exit)
   // When set, REPL will process the message and trigger a query
   initialMessage: {
@@ -532,7 +530,6 @@ export function getDefaultAppState(): AppState {
     },
     speculation: IDLE_SPECULATION_STATE,
     speculationSessionTimeSavedMs: 0,
-    authVersion: 0,
     initialMessage: null,
     effortValue: undefined,
     activeOverlays: new Set<string>(),

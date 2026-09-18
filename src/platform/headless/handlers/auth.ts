@@ -43,6 +43,7 @@ import {
   buildAccountProperties,
   buildAPIProviderProperties,
 } from 'src/platform/status/status.js'
+import { emitAuthChanged } from 'src/providers/auth/authChanged.js'
 
 export async function performLogout({
   clearOnboarding = false,
@@ -90,6 +91,12 @@ export async function clearAuthRelatedCaches(): Promise<void> {
 
   // Clear policy limits cache
   await clearPolicyLimitsCache()
+
+  // Announce it. Caches keyed on the account cannot invalidate themselves —
+  // the claude.ai MCP connector list is fetched with the account token, so the
+  // MCP manager has to re-run its effect or the user keeps the pre-login
+  // server list until they restart.
+  emitAuthChanged()
 }
 
 /**

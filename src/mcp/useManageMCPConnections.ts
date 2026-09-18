@@ -1,5 +1,9 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
+import {
+  getAuthVersion,
+  onAuthChange,
+} from 'src/providers/auth/authChanged.js'
 import type { Command } from 'src/commands/commands.js'
 import type { Tool } from 'src/tools/Tool.js'
 import {
@@ -175,7 +179,12 @@ export function useManageMCPConnections(
   isStrictMcpConfig = false,
 ) {
   const store = useAppStateStore()
-  const _authVersion = useAppState(s => s.authVersion)
+  // Bumped by clearAuthRelatedCaches() on login/logout, so the config-loading
+  // effect below re-runs and refetches the claude.ai connector list with the
+  // new token. It is a module signal rather than AppState because the funnel
+  // that knows about the change is plain platform code with no setAppState in
+  // scope — which is why the AppState field this replaces never had a writer.
+  const _authVersion = useSyncExternalStore(onAuthChange, getAuthVersion)
   // Incremented by /reload-plugins (refreshActivePlugins) to pick up newly
   // enabled plugin MCP servers. getClaudeCodeMcpConfigs() reads loadAllPlugins()
   // which has been cleared by refreshActivePlugins, so the effects below see

@@ -571,7 +571,6 @@ export function runInteractiveStartupBlock(
     },
     pendingWorkerRequest: null,
     pendingSandboxRequest: null,
-    authVersion: 0,
     initialMessage: inputPrompt
       ? {
           message: createUserMessage({
