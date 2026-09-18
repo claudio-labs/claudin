@@ -124,16 +124,6 @@ const getCoordinatorUserContext: (
   : () => ({})
 /* eslint-enable @typescript-eslint/no-require-imports */
 
-// Dead code elimination: conditional import for snip compaction
-/* eslint-disable @typescript-eslint/no-require-imports */
-const snipModule = feature('HISTORY_SNIP')
-  ? (require('src/agent/compact/snipCompact.js') as typeof import('src/agent/compact/snipCompact.js'))
-  : null
-const snipProjection = feature('HISTORY_SNIP')
-  ? (require('./compact/snipProjection.js') as typeof import('./compact/snipProjection.js'))
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
-
 /**
  * Remove the message matching `uuid` from an in-memory history, in place.
  * Used by the tombstone case in submitMessage: query.ts emits tombstones when
@@ -1381,24 +1371,6 @@ export async function* ask({
     setSDKStatus,
     abortController,
     orphanedPermission,
-    ...(feature('HISTORY_SNIP')
-      ? {
-          snipReplay: (yielded: Message, store: Message[]) => {
-            if (!snipProjection!.isSnipBoundaryMessage(yielded))
-              return undefined
-            // snipCompactIfNeeded's shape (messages/tokensFreed/boundaryMessage)
-            // is fixed by query.ts's usage; adapt it to the
-            // messages/executed shape QueryEngineConfig.snipReplay expects.
-            const result = snipModule!.snipCompactIfNeeded(store, {
-              force: true,
-            })
-            return {
-              messages: result.messages,
-              executed: result.tokensFreed > 0,
-            }
-          },
-        }
-      : {}),
   })
 
   try {

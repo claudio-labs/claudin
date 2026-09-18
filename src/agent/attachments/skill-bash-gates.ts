@@ -28,17 +28,7 @@ import { formatCommandsWithinBudget } from 'src/tools/SkillTool/prompt.js'
 import { getContextWindowForModel } from 'src/agent/context/context.js'
 import { getSdkBetas } from 'src/platform/bootstrap/state.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { feature } from 'bun:bundle'
 import type { Attachment } from 'src/agent/attachments/types.js'
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const skillSearchModules = feature('EXPERIMENTAL_SKILL_SEARCH')
-  ? {
-      featureCheck:
-        require('../../skills/search/featureCheck.js') as typeof import('../../skills/search/featureCheck.js'),
-    }
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 // Track which skills have been sent to avoid re-sending. Keyed by agentId
 // (empty string = main thread) so subagents get their own turn-0 listing —
@@ -146,24 +136,10 @@ export async function getSkillListingAttachments(
   const mcpSkills = getMcpSkillCommands(
     toolUseContext.getAppState().mcp.commands,
   )
-  let allCommands =
+  const allCommands =
     mcpSkills.length > 0
       ? uniqBy([...localCommands, ...mcpSkills], 'name')
       : localCommands
-
-  // When skill search is active, filter to bundled + MCP instead of full
-  // suppression. Resolves the turn-0 gap: main thread gets turn-0 discovery
-  // via getTurnZeroSkillDiscovery (blocking), but subagents use the async
-  // subagent_spawn signal (collected post-tools, visible turn 1). Bundled +
-  // MCP are small and intent-signaled; user/project/plugin skills go through
-  // discovery. feature() first for DCE — the property-access string leaks
-  // otherwise even with ?. on null.
-  if (
-    feature('EXPERIMENTAL_SKILL_SEARCH') &&
-    skillSearchModules?.featureCheck.isSkillSearchEnabled()
-  ) {
-    allCommands = filterToBundledAndMcp(allCommands)
-  }
 
   const agentKey = toolUseContext.agentId ?? ''
   let sent = sentSkillNames.get(agentKey)

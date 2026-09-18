@@ -120,7 +120,6 @@ import { startDeferredPrefetches } from 'src/platform/main/deferredPrefetches.js
 export { startDeferredPrefetches };
 import { buildBootContext } from 'src/platform/main/bootContext.js';
 import { pendingConnect, pendingSSH } from 'src/platform/main/pendingSlots.js';
-import { runDirectConnectArgvRewrite } from 'src/platform/main/argvPreparse.js';
 import { applyClientType, resolveClientType } from 'src/platform/main/clientType.js';
 // All three registrars touch heavy graphs (preActionHook pulls policyLimits +
 // remoteManagedSettings; registerSubcommands pulls every command's transitive
@@ -143,10 +142,10 @@ import type { ActionOptions } from 'src/platform/main/action/parseOptions.js';
 // loadSettingsFromFlag, loadSettingSourcesFromFlag moved to src/platform/main/helpers.ts (ROADMAP 11g Fase 1)
 // eagerLoadSettings, initializeEntrypoint moved to src/platform/main/lifecycle.ts (ROADMAP 11g Fase 2)
 
-// Pending slots (DIRECT_CONNECT / KAIROS / SSH_REMOTE) moved to
-// src/platform/main/pendingSlots.ts (ROADMAP 11g Fase 7 margin #1). They're imported
-// above; argv pre-parsing in main() mutates them by reference BEFORE the
-// default action runs, then they're copied into ctx.pending.
+// Pending slots moved to src/platform/main/pendingSlots.ts (ROADMAP 11g Fase 7
+// margin #1). They're imported above and copied into ctx.pending; both are
+// permanently `undefined` now that the argv pre-parsers that used to mutate
+// them are gone.
 export async function main() {
   profileCheckpoint('main_function_start');
 
@@ -159,12 +158,6 @@ export async function main() {
   // Extracted to src/platform/main/lifecycleHandlers.ts (ROADMAP 11g Fase 6).
   installLifecycleHandlers();
   profileCheckpoint('main_warning_handler_initialized');
-
-  // Argv pre-parse helpers extracted to src/platform/main/argvPreparse.ts (ROADMAP 11g Fase 7a).
-  // Each helper inspects/mutates process.argv before commander runs and stashes
-  // state into the corresponding _pending* slot (later copied into the
-  // BootContext at the top of the default action).
-  await runDirectConnectArgvRewrite(pendingConnect);
 
   // Resolve clientType/previewFormat/sessionSource/isInteractive from env+argv.
   // Extracted to src/platform/main/clientType.ts (ROADMAP 11g Fase 7a). Apply via setters
@@ -290,9 +283,9 @@ async function run(): Promise<CommanderCommand> {
       runDefaultActionDispatch,
     } = await import('src/platform/main/defaultActionDeps.js');
 
-    // BootContext seam (ROADMAP 11g Fase 4). Currently only carries the three
-    // pending slots (DIRECT_CONNECT / KAIROS / SSH_REMOTE) populated by argv
-    // pre-parsing in main(). Subsequent waves will migrate more fields here.
+    // BootContext seam (ROADMAP 11g Fase 4). Currently only carries the two
+    // remaining pending slots, both permanently empty. Subsequent waves will
+    // migrate more fields here.
     const ctx = buildBootContext({
       prompt,
       pendingConnect,
@@ -765,7 +758,7 @@ async function run(): Promise<CommanderCommand> {
   }
 
   // Subcommand registration extracted to src/platform/main/registerSubcommands.ts (ROADMAP 11g Fase 7b).
-  (await getRegisterSubcommands())(program, { pendingConnect });
+  (await getRegisterSubcommands())(program);
 
   profileCheckpoint('run_before_parse');
   await program.parseAsync(process.argv);

@@ -1,23 +1,22 @@
-// Pending slots populated by argv pre-parsing in main() before run() begins.
+// Pending slots read by the default action handler through the BootContext.
 //
-// Each slot is `undefined` when the corresponding feature flag is off. The
-// slots are mutable: argv pre-parse helpers (src/platform/main/argvPreparse.ts) write
-// into them by reference, then they're copied into the BootContext at the
-// top of the default action handler.
+// Both are now permanently `undefined`: each was populated by an argv
+// pre-parse helper, and both helpers went with the branches that read them.
+// They survive as the seam `BootContext.pending` still declares.
 //
 // Extracted from src/platform/main.tsx (ROADMAP 11g Fase 7 margin #1) to keep main.tsx
 // focused on orchestration.
 
-import { feature } from 'bun:bundle';
-
 import type { PendingConnect, PendingSSH } from 'src/platform/main/bootContext.js';
 
-/** Set by early argv processing when `claude` is invoked with a cc:// URL. */
-export const pendingConnect: PendingConnect | undefined = feature('DIRECT_CONNECT') ? {
-  url: undefined,
-  authToken: undefined,
-  dangerouslySkipPermissions: false,
-} : undefined;
+/**
+ * `claudin open cc://…` and `claudin server` lived behind DIRECT_CONNECT, which
+ * is absent from `featureFlags` in scripts/build/build.ts — so the slot was
+ * already always empty, and the argv rewrite, the two subcommands and the
+ * interactive branch that read it are gone. Kept as the seam
+ * `BootContext.pending.connect` still declares.
+ */
+export const pendingConnect: PendingConnect | undefined = undefined;
 
 /**
  * `claude ssh <host> [dir]` lived behind SSH_REMOTE, which is absent from

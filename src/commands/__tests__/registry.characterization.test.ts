@@ -110,13 +110,16 @@ describe('slash-command registry — characterization', () => {
     // A regex that matches nothing would snapshot an empty array and stay green
     // through the whole cleanup while guarding exactly nothing.
     //
-    // The gated floor was 5 and is 2 now: the dead-flag cleanup took
+    // The gated floor was 5, then 2, and is 1 now: the dead-flag cleanup took
     // `torch` (TORCH) and both WORKFLOW_SCRIPTS bindings (`workflowsCmd`,
-    // `getWorkflowCommands`) out, leaving four. `agentWorkflowsCmd` still
-    // requires the same `src/commands/workflows/index.js` that `workflowsCmd`
-    // did, behind the live AGENT_WORKFLOWS flag — the module is NOT dead.
+    // `getWorkflowCommands`) out, then `clearSkillIndexCache`
+    // (EXPERIMENTAL_SKILL_SEARCH) and `forceSnip` (HISTORY_SNIP) — two
+    // entries left, `agentWorkflowsCmd` and `bridge`, both behind flags the
+    // map ships true. `agentWorkflowsCmd` still requires the same
+    // `src/commands/workflows/index.js` that `workflowsCmd` did, behind the
+    // live AGENT_WORKFLOWS flag — the module is NOT dead.
     expect(scanRegisteredBindings().length).toBeGreaterThan(50)
-    expect(scanGatedCommands().length).toBeGreaterThan(2)
+    expect(scanGatedCommands().length).toBeGreaterThan(1)
   })
 
   test('no command is registered behind a true flag with no implementation', () => {

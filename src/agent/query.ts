@@ -58,11 +58,6 @@ import {
 } from 'src/platform/lsp/diagnosticsForToolResult.js'
 import { markDiagnosticsAsDelivered } from 'src/platform/lsp/LSPDiagnosticRegistry.js'
 import { getGlobalConfig } from 'src/platform/config/config.js'
-/* eslint-disable @typescript-eslint/no-require-imports */
-const skillPrefetch = feature('EXPERIMENTAL_SKILL_SEARCH')
-  ? (require('../skills/search/prefetch.js') as typeof import('../skills/search/prefetch.js'))
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
 import {
   remove as removeFromQueue,
   getCommandsByMaxPriority,
@@ -105,12 +100,6 @@ import {
 } from 'src/platform/bootstrap/state.js'
 import { createBudgetTracker, checkTokenBudget } from 'src/agent/query/tokenBudget.js'
 import { count } from 'src/shared/data/array.js'
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const snipModule = feature('HISTORY_SNIP')
-  ? (require('src/agent/compact/snipCompact.js') as typeof import('src/agent/compact/snipCompact.js'))
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 function* yieldMissingToolResultBlocks(
   assistantMessages: AssistantMessage[],
@@ -327,20 +316,6 @@ async function* queryLoop(
       turnCount,
     } = state
 
-    // Skill discovery prefetch — per-iteration (uses findWritePivot guard
-    // that returns early on non-write iterations). Discovery runs while the
-    // model streams and tools execute; awaited post-tools alongside the
-    // memory prefetch consume. Replaces the blocking assistant_turn path
-    // that ran inside getAttachmentMessages (97% of those calls found
-    // nothing in prod). Turn-0 user-input discovery still blocks in
-    // userInputAttachments — that's the one signal where there's no prior
-    // work to hide under.
-    const pendingSkillPrefetch = skillPrefetch?.startSkillDiscoveryPrefetch(
-      null,
-      messages,
-      toolUseContext,
-    )
-
     yield { type: 'stream_request_start' }
 
     queryCheckpoint('query_fn_entry')
@@ -413,22 +388,6 @@ async function* queryLoop(
       )
     }
 
-    // Apply snip before microcompact (both may run — they are not mutually exclusive).
-    // snipTokensFreed is plumbed to autocompact so its threshold check reflects
-    // what snip removed; tokenCountWithEstimation alone can't see it (reads usage
-    // from the protected-tail assistant, which survives snip unchanged).
-    let snipTokensFreed = 0
-    if (feature('HISTORY_SNIP')) {
-      queryCheckpoint('query_snip_start')
-      const snipResult = snipModule!.snipCompactIfNeeded(messagesForQuery)
-      messagesForQuery = snipResult.messages
-      snipTokensFreed = snipResult.tokensFreed
-      if (snipResult.boundaryMessage) {
-        yield snipResult.boundaryMessage
-      }
-      queryCheckpoint('query_snip_end')
-    }
-
     // Apply microcompact before autocompact
     queryCheckpoint('query_microcompact_start')
     const microcompactResult = await deps.microcompact(
@@ -456,7 +415,6 @@ async function* queryLoop(
       },
       querySource,
       tracking,
-      snipTokensFreed,
     )
     queryCheckpoint('query_autocompact_end')
 
@@ -569,10 +527,6 @@ async function* queryLoop(
     // Skip this check if compaction just happened - the compaction result is already
     // validated to be under the threshold, and tokenCountWithEstimation would use
     // stale input_tokens from kept messages that reflect pre-compaction context size.
-    // Same staleness applies to snip: subtract snipTokensFreed (otherwise we'd
-    // falsely block in the window where snip brought us under autocompact threshold
-    // but the stale usage is still above blocking limit — before this PR that
-    // window never existed because autocompact always fired on the stale count).
     // Also skip for compact/session_memory queries — these are forked agents that
     // inherit the full conversation and would deadlock if blocked here (the compact
     // agent needs to run to REDUCE the token count).
@@ -584,7 +538,7 @@ async function* queryLoop(
       !collapseOwnsIt
     ) {
       const { isAtBlockingLimit } = calculateTokenWarningState(
-        tokenCountWithEstimation(messagesForQuery) - snipTokensFreed,
+        tokenCountWithEstimation(messagesForQuery),
         toolUseContext.options.mainLoopModel,
       )
       if (isAtBlockingLimit) {
@@ -607,7 +561,7 @@ async function* queryLoop(
       isAutoCompactEnabled()
     ) {
       const model = toolUseContext.options.mainLoopModel
-      const tokenUsage = tokenCountWithEstimation(messagesForQuery) - snipTokensFreed
+      const tokenUsage = tokenCountWithEstimation(messagesForQuery)
       const { isAboveAutoCompactThreshold } = calculateTokenWarningState(
         tokenUsage,
         model,
@@ -1470,20 +1424,6 @@ async function* queryLoop(
         toolResults.push(msg)
       }
       pendingMemoryPrefetch.consumedOnIteration = turnCount - 1
-    }
-
-
-    // Inject prefetched skill discovery. collectSkillDiscoveryPrefetch emits
-    // hidden_by_main_turn — true when the prefetch resolved before this point
-    // (should be >98% at AKI@250ms / Haiku@573ms vs turn durations of 2-30s).
-    if (skillPrefetch && pendingSkillPrefetch) {
-      const skillAttachments =
-        await skillPrefetch.collectSkillDiscoveryPrefetch(pendingSkillPrefetch)
-      for (const att of skillAttachments) {
-        const msg = createAttachmentMessage(att)
-        yield msg
-        toolResults.push(msg)
-      }
     }
 
     // Remove only commands that were actually consumed as attachments.

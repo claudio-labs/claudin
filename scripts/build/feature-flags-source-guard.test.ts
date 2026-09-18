@@ -58,8 +58,8 @@ test('build feature flags are not enabled without their source files', () => {
 // grew to 44 unseen, and at the call site an off-map flag is indistinguishable
 // from one deliberately shipped off.
 //
-// Down to 17 as of the dead-code rounds: 25 flags had their branches removed
-// outright, and five of those 25 kept an entry here because a call site
+// Down to 15 as of the dead-code rounds: 27 flags had their branches removed
+// outright, and six of those 27 kept an entry here because a call site
 // survives for a reason recorded below.
 //
 // This is a ratchet, not a hit list. "Off-map" turned out to be at least three
@@ -77,14 +77,21 @@ test('build feature flags are not enabled without their source files', () => {
 //                live side-door (`conversationArc.ts` is reached from /knowledge
 //                as well as from behind CONVERSATION_ARC).
 //
-// The five that survived a removal pass, so the next one does not re-litigate
+// The six that survived a removal pass, so the next one does not re-litigate
 // them: SSH_REMOTE (the gate IS `registerSshCommand`'s body, so emptying it
 // pushes the edit into the 14-registrar subcommand hub), AUTO_THEME (gates the
 // user-visible "Auto (match terminal)" row in the theme picker), TERMINAL_PANEL
 // (`app:toggleTerminal` stays bindable from the keybinding schema and the help
 // menu, so removing the handler would leave a bindable action with no handler),
-// and REACTIVE_COMPACT + CONNECTOR_TEXT (their last sites are inside committed
-// React-Compiler output, where the `$[n]` slot bookkeeping is load-bearing).
+// and REACTIVE_COMPACT + CONNECTOR_TEXT + HISTORY_SNIP (their last sites are
+// inside committed React-Compiler output, where the `$[n]` slot bookkeeping is
+// load-bearing). HISTORY_SNIP lost fifteen of its sixteen sites; the survivor
+// is the snip-boundary/snip-marker arm of `src/agent/ui/Message.tsx`, which
+// spends three `$[n]` slots inside the gated block. That arm is also the only
+// reason `src/agent/compact/snipCompact.ts` and two `.d.ts` beside it are
+// still here: it reaches snipCompact through the `src/…` ALIAS form, which
+// `build.ts` never scans for missing modules, so deleting the module would
+// trade a green build for a resolver failure rather than a noop stub.
 //
 // A NEW name here fails this test: add it to the map if it is a real switch, or
 // list it below with which of the three it is. Removing the last call site of a
@@ -104,8 +111,6 @@ const OFF_MAP_FLAGS = [
   'AUTO_THEME',
   'CONNECTOR_TEXT',
   'CONVERSATION_ARC',
-  'DIRECT_CONNECT',
-  'EXPERIMENTAL_SKILL_SEARCH',
   'HISTORY_SNIP',
   'HOOK_CHAINS',
   'REACTIVE_COMPACT',

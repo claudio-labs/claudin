@@ -1,5 +1,5 @@
 // Default-action dispatch — sessionConfig/resumeContext construction +
-// dispatch to {continue, direct-connect, ssh, assistant-chat, resume}
+// dispatch to {continue, ssh, assistant-chat, resume}
 // branches (Block I). Extracted from src/platform/main.tsx (ROADMAP 11g Fase 7c.6).
 //
 // The REPL branch (else clause) stays inline in main.tsx because the
@@ -8,9 +8,7 @@
 // `{ handled: false }` for the REPL case; main.tsx falls through to the
 // inline REPL launcher.
 
-import { feature } from 'bun:bundle';
 import { runContinueBranch } from 'src/platform/main/defaultAction/continue.js';
-import { runDirectConnectBranch } from 'src/platform/main/defaultAction/directConnect.js';
 import { runResumeBranch } from 'src/platform/main/defaultAction/resume.js';
 import type { Root } from 'src/terminal/ink.js';
 import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
@@ -195,22 +193,6 @@ export async function runDefaultActionDispatch(
   }
   const debugBool = debug as boolean;
   const debugToStderrBool = debugToStderr as boolean;
-  if (feature('DIRECT_CONNECT') && ctx.pending.connect?.url) {
-    await runDirectConnectBranch({
-      root,
-      ctx,
-      debug: debugBool,
-      debugToStderr: debugToStderrBool,
-      commands: commands as Parameters<typeof runDirectConnectBranch>[0]['commands'],
-      ide,
-      mainThreadAgentDefinition: mainThreadAgentDefinition as Parameters<typeof runDirectConnectBranch>[0]['mainThreadAgentDefinition'],
-      thinkingConfig,
-      getFpsMetrics,
-      stats,
-      initialState: initialState as Parameters<typeof runDirectConnectBranch>[0]['initialState'],
-    });
-    return { handled: true, mainThreadAgentDefinition, sessionConfig };
-  }
   if (options.resume || options.fromPr || teleport || remote !== null) {
     const agentRef = { current: mainThreadAgentDefinition };
     await runResumeBranch({

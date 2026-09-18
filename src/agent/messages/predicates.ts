@@ -1,4 +1,3 @@
-import { feature } from 'bun:bundle'
 import type {
   ToolResultBlockParam,
   ToolUseBlock,
@@ -151,11 +150,10 @@ export function findLastCompactBoundaryIndex<
  * Returns messages from the last compact boundary onward (including the boundary).
  * If no boundary exists, returns all messages.
  *
- * Also filters snipped messages by default (when HISTORY_SNIP is enabled) —
- * the REPL keeps full history for UI scrollback, so model-facing paths need
- * both compact-slice AND snip-filter applied. Pass `{ includeSnipped: true }`
- * to opt out (e.g., REPL.tsx fullscreen compact handler which preserves
- * snipped messages in scrollback).
+ * The `includeSnipped` option is inert. The snip projection it opted out of
+ * sat behind a build flag absent from `featureFlags` in scripts/build/build.ts,
+ * so nothing ever filtered snipped messages here. Kept because callers still
+ * pass it.
  *
  * Note: The boundary itself is a system message and will be filtered by normalizeMessagesForAPI.
  */
@@ -163,15 +161,7 @@ export function getMessagesAfterCompactBoundary<
   T extends Message | NormalizedMessage,
 >(messages: T[], options?: { includeSnipped?: boolean }): T[] {
   const boundaryIndex = findLastCompactBoundaryIndex(messages)
-  const sliced = boundaryIndex === -1 ? messages : messages.slice(boundaryIndex)
-  if (!options?.includeSnipped && feature('HISTORY_SNIP')) {
-    /* eslint-disable @typescript-eslint/no-require-imports */
-    const { projectSnippedView } =
-      require('../compact/snipProjection.js') as typeof import('../compact/snipProjection.js')
-    /* eslint-enable @typescript-eslint/no-require-imports */
-    return projectSnippedView(sliced as Message[]) as T[]
-  }
-  return sliced
+  return boundaryIndex === -1 ? messages : messages.slice(boundaryIndex)
 }
 
 export function shouldShowUserMessage(

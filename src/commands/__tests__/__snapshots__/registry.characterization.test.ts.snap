@@ -97,19 +97,5 @@ exports[`slash-command registry — characterization the flag-gated command tabl
     ],
     "specifier": "src/commands/bridge/index.js",
   },
-  {
-    "binding": "clearSkillIndexCache",
-    "flags": [
-      "EXPERIMENTAL_SKILL_SEARCH",
-    ],
-    "specifier": "../skills/search/localSearch.js",
-  },
-  {
-    "binding": "forceSnip",
-    "flags": [
-      "HISTORY_SNIP",
-    ],
-    "specifier": "./force-snip.js",
-  },
 ]
 `;

@@ -47,9 +47,6 @@ exports[`tool registry — characterization the flag-gated tool table matches th
   "MonitorTool": [
     "MONITOR_TOOL",
   ],
-  "SnipTool": [
-    "HISTORY_SNIP",
-  ],
   "agentWorkflowTools": [
     "AGENT_WORKFLOWS",
   ],
@@ -59,8 +56,4 @@ exports[`tool registry — characterization the flag-gated tool table matches th
 }
 `;
 
-exports[`tool registry — characterization every gated tool names a flag that the build map knows about 1`] = `
-[
-  "HISTORY_SNIP",
-]
-`;
+exports[`tool registry — characterization every gated tool names a flag that the build map knows about 1`] = `[]`;

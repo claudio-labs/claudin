@@ -114,9 +114,6 @@ const SYNTHETIC_OUTPUT_TOOL_NAME = 'StructuredOutput'
 const coordinatorModeModule = feature('COORDINATOR_MODE')
   ? (require('src/agent/coordinator/coordinatorMode.js') as typeof import('src/agent/coordinator/coordinatorMode.js'))
   : null
-const SnipTool = feature('HISTORY_SNIP')
-  ? require('./SnipTool/SnipTool.js').SnipTool
-  : null
 const agentWorkflowTools = feature('AGENT_WORKFLOWS')
   ? (
       require('src/tools/AgentWorkflow/tools.js') as typeof import('src/tools/AgentWorkflow/tools.js')
@@ -274,7 +271,6 @@ export function getAllBaseTools(): Tools {
     ...(isEnvTruthy(process.env.CLAUDIN_DISABLE_WAITFOR_TOOL) ? [] : [getWaitForTool()]),
     getBriefTool(),
     ...(getPowerShellTool() ? [getPowerShellTool()] : []),
-    ...(SnipTool ? [SnipTool] : []),
     ...(process.env.NODE_ENV === 'test' ? [getTestingPermissionTool()] : []),
     // MCP resource tools are added conditionally by fetchCapabilities.ts
     // when an MCP server supports resources — not via getAllBaseTools().

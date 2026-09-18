@@ -61,20 +61,12 @@ import { isBuddyEnabled } from 'src/terminal/buddy/feature.js'
 const bridge = feature('BRIDGE_MODE')
   ? require('src/commands/bridge/index.js').default
   : null
-const forceSnip = feature('HISTORY_SNIP')
-  ? require('./force-snip.js').default
-  : null
 // The '/workflows' command. `src/commands/workflows/` is live source, and this
 // is its only registration.
 const agentWorkflowsCmd = feature('AGENT_WORKFLOWS')
   ? (
       require('src/commands/workflows/index.js') as typeof import('src/commands/workflows/index.js')
     ).default
-  : null
-const clearSkillIndexCache = feature('EXPERIMENTAL_SKILL_SEARCH')
-  ? (
-      require('../skills/search/localSearch.js') as typeof import('../skills/search/localSearch.js')
-    ).clearSkillIndexCache
   : null
 // NOTE: there is deliberately no `forkCmd` here. `FORK_SUBAGENT` ships true
 // (it gates the Agent tool's fork-by-default behaviour), but this fork never
@@ -429,11 +421,6 @@ export function clearCommandMemoizationCaches(): void {
   loadAllCommands.cache?.clear?.()
   getSkillToolCommands.cache?.clear?.()
   getSlashCommandToolSkills.cache?.clear?.()
-  // getSkillIndex in skillSearch/localSearch.ts is a separate memoization layer
-  // built ON TOP of getSkillToolCommands/getCommands. Clearing only the inner
-  // caches is a no-op for the outer — lodash memoize returns the cached result
-  // without ever reaching the cleared inners. Must clear it explicitly.
-  clearSkillIndexCache?.()
 }
 
 export function clearCommandsCache(): void {
