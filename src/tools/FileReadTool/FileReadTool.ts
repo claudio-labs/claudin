@@ -69,7 +69,6 @@ import { callInner } from 'src/tools/FileReadTool/readDispatch.js'
 import {
   mapReadResultToToolResultBlock,
   maybeFlagReadReminder,
-  maybeFlagSerialReadNudge,
 } from 'src/tools/FileReadTool/resultContent.js'
 import {
   inputSchema,
@@ -875,7 +874,6 @@ export const FileReadTool = buildTool({
         context,
         parentMessage?.message.id,
       )
-      maybeFlagSerialReadNudge(result?.data, context)
       maybeFlagReadReminder(result?.data, context)
       if (standDownResend) {
         const resendToolUseId = context.toolUseId
@@ -939,7 +937,6 @@ export const FileReadTool = buildTool({
               context,
               parentMessage?.message.id,
             )
-            maybeFlagSerialReadNudge(altResult?.data, context)
             maybeFlagReadReminder(altResult?.data, context)
             // No stand-down bookkeeping here, on purpose: the alt arm only
             // fires for `AM/PM.png` names, and image reads never write

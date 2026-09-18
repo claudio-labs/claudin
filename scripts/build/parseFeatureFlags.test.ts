@@ -60,8 +60,10 @@ describe('loadShippedFeatureFlags', () => {
     expect(flags).toHaveProperty('DUMP_SYSTEM_PROMPT')
     // A false-valued flag, to prove the parser does not drop one arm. Was
     // MCP_SKILLS until the dead-flag sweep removed every disabled entry that
-    // gated a branch; the two left are off by design rather than by absence.
-    expect(flags).toHaveProperty('SERIAL_READ_NUDGE')
+    // gated a branch, then SERIAL_READ_NUDGE until that experiment was deleted
+    // outright. This is now the ONLY false entry in the map, so the
+    // both-arms-represented assertion below rests on it alone.
+    expect(flags).toHaveProperty('SERIAL_EDIT_NUDGE')
     for (const value of Object.values(flags)) expect(typeof value).toBe('boolean')
     // Both arms are represented, so a parser that collapsed to one is caught.
     expect(Object.values(flags)).toContain(true)

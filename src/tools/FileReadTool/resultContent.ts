@@ -1,22 +1,18 @@
 /**
  * Model-facing rendering of a Read result.
  *
- * Two per-result reminders ride on the text arm, both appended once at
- * execution time (`toolExecution.ts` maps the block when the tool returns,
- * never on a later render), so what lands in history is byte-stable:
- *
- * - the cyber-risk mitigation reminder. Skipped for the models in
- *   `MITIGATION_EXEMPT_MODELS` and under `CLAUDIN_DISABLE_TOOL_REMINDERS=1`.
- *   It is sent on an agent's FIRST text read only — the 2026-09 census
- *   counted it 375× in one week, ~75 tokens each, every copy staying in
- *   context for the rest of the session. Promoted to default on 2026-09-09
- *   after `scripts/bench/ab/read-reminder-probe.ts` (Sonnet 5, N=3) showed
- *   3 reads → 1 reminder with the answer unchanged.
- *   `CLAUDIN_DISABLE_READ_REMINDER_ONCE=1` restores the every-read behavior.
- * - the serial-read nudge (`serialReadNudge.ts`).
+ * One per-result reminder rides on the text arm, appended once at execution
+ * time (`toolExecution.ts` maps the block when the tool returns, never on a
+ * later render), so what lands in history is byte-stable: the cyber-risk
+ * mitigation reminder. It is skipped for the models in
+ * `MITIGATION_EXEMPT_MODELS` and under `CLAUDIN_DISABLE_TOOL_REMINDERS=1`, and
+ * is sent on an agent's FIRST text read only — the 2026-09 census counted it
+ * 375× in one week, ~75 tokens each, every copy staying in context for the
+ * rest of the session. Promoted to default on 2026-09-09 after a probe
+ * (Sonnet 5, N=3) showed 3 reads → 1 reminder with the answer unchanged.
+ * `CLAUDIN_DISABLE_READ_REMINDER_ONCE=1` restores the every-read behavior.
  */
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
-import { feature } from 'bun:bundle'
 import { memoryFreshnessNote } from 'src/memory/memdir/memoryAge.js'
 import type { ToolUseContext } from 'src/tools/Tool.js'
 import { isEnvTruthy } from 'src/shared/envUtils.js'
@@ -27,11 +23,6 @@ import { formatFileSize } from 'src/shared/text/format.js'
 import { AUTO_OUTLINE_PIVOT_FOOTER } from 'src/tools/FileReadTool/outlineView.js'
 import { FILE_UNCHANGED_STUB } from 'src/tools/FileReadTool/prompt.js'
 import type { Output } from 'src/tools/FileReadTool/schemas.js'
-import {
-  detectSerialReadPattern,
-  markFiredAndCheck,
-  SERIAL_READ_NUDGE_REMINDER,
-} from 'src/tools/FileReadTool/serialReadNudge.js'
 
 /** Format file content with line numbers. */
 function formatFileLines(file: {
@@ -94,9 +85,9 @@ function readReminderOnceEnabled(): boolean {
 // Side-channel from call() to mapToolResultToToolResultBlockParam for the
 // once-per-agent mitigation reminder: the agent keys that already received
 // it this process, and the `data` object whose tool_result carries it.
-// Same identity-keyed pattern as serialReadNudgeFlagged — the decision is
-// taken in call() (where the agent id is known) and read back in the
-// mapper, which has no context.
+// Identity-keyed on the result object: the decision is taken in call()
+// (where the agent id is known) and read back in the mapper, which has no
+// context.
 const readReminderSeenAgents = new Set<string>()
 const readReminderFlagged: WeakSet<object> = new WeakSet()
 
@@ -144,45 +135,6 @@ function memoryFileFreshnessPrefix(data: object): string {
   const mtimeMs = memoryFileMtimes.get(data)
   if (mtimeMs === undefined) return ''
   return memoryFreshnessNote(mtimeMs)
-}
-
-// Side-channel from call() to mapToolResultToToolResultBlockParam: flag the
-// `data` object whose tool_result should carry the serial-read nudge.
-// Same pattern as memoryFileMtimes — keyed on data identity, GCs naturally.
-const serialReadNudgeFlagged: WeakSet<object> = new WeakSet()
-
-function shouldEmitSerialReadNudge(): boolean {
-  if (isEnvTruthy(process.env.CLAUDIN_DISABLE_TOOL_REMINDERS)) return false
-  // feature() from bun:bundle must appear directly in if/ternary; the build
-  // preprocessor replaces it with a boolean literal before bundling.
-  return feature('SERIAL_READ_NUDGE') ? true : false
-}
-
-/**
- * Inspects the recent assistant history on context.messages and, if the
- * serial-Read narration pattern is present and we haven't already fired
- * this turn, marks the data object so the mapper appends the nudge.
- *
- * Only applies to plain `text` reads — that's the path that carries the
- * narration cost in practice. Outline/image/PDF/notebook/file_unchanged
- * results stay clean.
- */
-export function maybeFlagSerialReadNudge(
-  data: unknown,
-  context: ToolUseContext,
-): void {
-  if (!shouldEmitSerialReadNudge()) return
-  if (!data || typeof data !== 'object') return
-  // Limit injection to the standard text read result; the nudge talks about
-  // "sequential single-file Reads", so attaching it to an outline/image/PDF
-  // would be off-message.
-  const type = (data as { type?: string }).type
-  if (type !== 'text') return
-  const messages = context.messages
-  if (!Array.isArray(messages)) return
-  if (!detectSerialReadPattern(messages)) return
-  if (!markFiredAndCheck(messages)) return
-  serialReadNudgeFlagged.add(data as object)
 }
 
 /**
@@ -264,8 +216,7 @@ export function mapReadResultToToolResultBlock(
         content =
           memoryFileFreshnessPrefix(data) +
           formatFileLines(data.file) +
-          (carriesMitigationReminder(data) ? CYBER_RISK_MITIGATION_REMINDER : '') +
-          (serialReadNudgeFlagged.has(data) ? SERIAL_READ_NUDGE_REMINDER : '')
+          (carriesMitigationReminder(data) ? CYBER_RISK_MITIGATION_REMINDER : '')
       } else {
         // Determine the appropriate warning message
         content =

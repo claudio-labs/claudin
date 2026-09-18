@@ -43,8 +43,8 @@ interface AssistantMessageLike {
  * Positive results latched by messages-array identity: the per-query
  * Message[] is appended in place, so once evidence is found, later Reads in
  * the same query skip the scan entirely. Negative results are never cached —
- * new clearing evidence can land mid-query. Same WeakSet-on-the-array
- * pattern as serialReadNudge.ts markFiredAndCheck; GCs with the query.
+ * new clearing evidence can land mid-query. A WeakSet on the array GCs with
+ * the query, so nothing leaks between them.
  */
 const KNOWN_CLEARED: WeakSet<object> = new WeakSet()
 
