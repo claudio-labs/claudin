@@ -263,4 +263,34 @@ describe('checkPathConstraints', () => {
       checkPathConstraints({ command: 'ls' }, CWD, allowingCwd()).behavior,
     ).toBe('passthrough')
   })
+
+  // acceptEdits so a write inside the working directory would pass: what is
+  // being proved is that the redirect TARGET is resolved and checked, not that
+  // writes ask in general. The `>>` arm matters on its own — appending was
+  // never exercised, and it takes a different branch of the extractor.
+  test('asks for a redirect whose target lies outside the working directories', () => {
+    const allowed = allowingCwd('acceptEdits')
+    expect(
+      askMessage(
+        checkPathConstraints({ command: 'echo x > /etc/pwned' }, CWD, allowed),
+      ),
+    ).toContain('was blocked')
+    expect(
+      askMessage(
+        checkPathConstraints({ command: 'echo x >> /etc/pwned' }, CWD, allowed),
+      ),
+    ).toContain('was blocked')
+  })
+
+  // Without stripSafeWrappers (pathValidation.ts:845) the base command reads as
+  // `timeout`, which is not path-restricted, so the whole path check is skipped
+  // and the removal underneath it is never seen.
+  test('unwraps a wrapper before validating the command it hides', () => {
+    const result = checkPathConstraints(
+      { command: 'timeout 5 rm -rf /etc' },
+      CWD,
+      allowingCwd('acceptEdits'),
+    )
+    expect(askMessage(result)).toContain('Dangerous rm operation')
+  })
 })
