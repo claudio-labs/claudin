@@ -409,9 +409,9 @@ async function addToPromptHistory(
 }
 
 export function addToHistory(command: HistoryEntry | string): void {
-  // Skip history inside a tmux session started on our own socket — tmuxSocket.ts
-  // sets this in the server's global env. Keeps verification and test sessions
-  // from polluting the user's real command history.
+  // Opt-out for scripted sessions: nothing in this build sets it, so it is the
+  // env var a verification or test harness exports to keep its commands out of
+  // the user's real history.
   if (isEnvTruthy(process.env.CLAUDIN_SKIP_PROMPT_HISTORY)) {
     return
   }

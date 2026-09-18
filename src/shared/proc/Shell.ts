@@ -290,7 +290,7 @@ export async function exec(
   const shellArgs = isSandboxedPowerShell
     ? ['-c', commandString]
     : provider.getSpawnArgs(commandString)
-  const envOverrides = await provider.getEnvironmentOverrides(command)
+  const envOverrides = await provider.getEnvironmentOverrides()
 
   // When onStdout is provided, use pipe mode: stdout flows through
   // StreamWrapper → TaskOutput in-memory buffer instead of a file fd.
