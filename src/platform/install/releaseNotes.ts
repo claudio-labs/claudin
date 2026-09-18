@@ -305,20 +305,3 @@ export async function checkForReleaseNotes(
     releaseNotes,
   }
 }
-
-/**
- * Synchronous variant of checkForReleaseNotes for React render paths.
- * Reads only from the in-memory cache populated by the async version.
- * setup.ts awaits checkForReleaseNotes() before first render, so this
- * returns accurate results in component render bodies.
- */
-export function checkForReleaseNotesSync(
-  lastSeenVersion: string | null | undefined,
-  currentVersion: string = MACRO.VERSION,
-): { hasReleaseNotes: boolean; releaseNotes: string[] } {
-  const releaseNotes = getRecentReleaseNotes(currentVersion, lastSeenVersion)
-  return {
-    hasReleaseNotes: releaseNotes.length > 0,
-    releaseNotes,
-  }
-}

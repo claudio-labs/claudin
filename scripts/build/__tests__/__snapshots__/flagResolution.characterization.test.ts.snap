@@ -10,14 +10,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 1,
     "stockValue": "<unmeasured: default is an expression — { activated: false, }>",
   },
-  "tengu-top-of-feed-tip": {
-    "defaults": [
-      "DEFAULT_TIP",
-    ],
-    "fn": "getDynamicConfig_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": "<unmeasured: default is an expression — DEFAULT_TIP>",
-  },
   "tengu_agent_list_attach": {
     "defaults": [
       "true",

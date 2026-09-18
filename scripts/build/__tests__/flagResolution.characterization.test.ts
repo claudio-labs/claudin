@@ -52,8 +52,10 @@ const CALL_RE = new RegExp(
 )
 
 /**
- * Two keys are not snake_case — `tengu-off-switch` and `tengu-top-of-feed-tip` —
- * so the hyphen belongs in the class above, and two more are handed to the
+ * Not every key is snake_case — `tengu-off-switch` still is not — so the hyphen
+ * belongs in the class above. (`tengu-top-of-feed-tip` was the other one; its
+ * only site was `terminal/logo/EmergencyTip.tsx`, deleted with the unreachable
+ * logo subtree, so the key left the table with it.) Two more are handed to the
  * accessor through a file-local `const` instead of as a literal:
  *
  *     const TRUSTED_DEVICE_GATE = 'tengu_sessions_elevated_auth_enforcement'
