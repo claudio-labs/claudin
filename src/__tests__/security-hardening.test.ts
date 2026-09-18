@@ -156,28 +156,33 @@ describe('Swarm permission file polling removed', () => {
     expect(content).not.toContain('permissionSync')
   })
 
-  test('file-based permission functions are marked deprecated', async () => {
+  test('file-based permission functions no longer exist', async () => {
     const content = await file(
       'src/agent/coordinator/swarm/permissionSync.ts',
     ).text()
-    // All file-based functions must have @deprecated JSDoc
-    const deprecatedFns = [
+    // These read and wrote teams/<team>/permissions/{pending,resolved}, an
+    // unauthenticated directory any local process could forge approvals in.
+    // They were deprecated first and kept for compatibility; nothing called
+    // them, so they are now removed outright. Assert absence, not a JSDoc tag:
+    // a @deprecated function still ships, and still runs if anything calls it.
+    const removedFns = [
       'writePermissionRequest',
       'readPendingPermissions',
       'readResolvedPermission',
       'resolvePermission',
       'pollForResponse',
       'removeWorkerResponse',
+      'deleteResolvedPermission',
     ]
-    for (const fn of deprecatedFns) {
-      // Find the function and check that @deprecated appears before it.
-      // Assert it was found rather than skipping: a `continue` here turns any
-      // rename or async-to-sync change into a silently unguarded function.
-      const fnIndex = content.indexOf(`export async function ${fn}(`)
-      expect(fnIndex).not.toBe(-1)
-      const preceding = content.slice(Math.max(0, fnIndex - 500), fnIndex)
-      expect(preceding).toContain('@deprecated')
+    for (const fn of removedFns) {
+      expect(content).not.toContain(`function ${fn}(`)
     }
+    // The directory tree they used must not be reconstructed either — this is
+    // what catches a reimplementation under a different set of names. Anchor
+    // on the path segment and on filesystem access, NOT on the word "pending":
+    // that is also a request *status* in the live mailbox schema.
+    expect(content).not.toContain("'permissions'")
+    expect(content).not.toContain("from 'fs/promises'")
   })
 
   test('mailbox-based functions are NOT deprecated', async () => {
