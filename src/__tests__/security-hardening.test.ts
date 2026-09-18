@@ -173,6 +173,7 @@ describe('Swarm permission file polling removed', () => {
       'pollForResponse',
       'removeWorkerResponse',
       'deleteResolvedPermission',
+      'getPermissionDir',
     ]
     for (const fn of removedFns) {
       expect(content).not.toContain(`function ${fn}(`)
@@ -180,9 +181,11 @@ describe('Swarm permission file polling removed', () => {
     // The directory tree they used must not be reconstructed either — this is
     // what catches a reimplementation under a different set of names. Anchor
     // on the path segment and on filesystem access, NOT on the word "pending":
-    // that is also a request *status* in the live mailbox schema.
+    // that is also a request *status* in the live mailbox schema. The fs
+    // anchor matches any spelling of the import, since a rewrite reaching for
+    // `node:fs/promises` or sync `fs` would otherwise walk past it.
     expect(content).not.toContain("'permissions'")
-    expect(content).not.toContain("from 'fs/promises'")
+    expect(content).not.toMatch(/from '(node:)?fs(\/promises)?'/)
   })
 
   test('mailbox-based functions are NOT deprecated', async () => {
