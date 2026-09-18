@@ -1,4 +1,4 @@
-import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
 
 // Runtime opt-outs for the two static steering blocks with enough mass in the
 // cacheable prefix to be worth measuring: the WORK_CONTRACT sections (~885
@@ -12,8 +12,8 @@ import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 // but `feature()` folds to a literal at build time, so reaching both arms of
 // an A/B means building twice and comparing two bundles — the mistake that
 // made the clip-pin A/B uncitable (see the header of
-// scripts/bench/perf/lean-tool-prompts-ab.ts). Every other A/B in
-// scripts/bench/perf/ flips ONE killswitch on ONE build; this is that killswitch
+// scripts/bench/ab/lean-tool-prompts-ab.ts). Every other A/B in
+// scripts/bench/ab/ flips ONE killswitch on ONE build; this is that killswitch
 // for the steering lane, and `CLAUDIN_TOOL_PROMPT_TIER` in toolPromptTier.ts
 // is the precedent.
 //
@@ -53,32 +53,4 @@ export function isAntiNarrationEnabled(): boolean {
  */
 export function isSubagentNotesEnabled(): boolean {
   return !isEnvDefinedFalsy(process.env.CLAUDIN_SUBAGENT_NOTES)
-}
-
-/**
- * The anti-placeholder clause in the plan-mode instructions
- * (`src/agent/messages/planMode.ts`) — `CLAUDIN_PLAN_NOOP_GUARD=1` adds it to
- * both the full interview text and the sparse reminder.
- *
- * OPT-IN, unlike every other toggle in this file, and the inversion is the
- * measurement rather than an oversight. The A/B on 2026-08-19
- * (`scripts/bench/ab/plan-noop-narration-ab.ts`, Sonnet 5, plan mode, 4
- * exploration prompts, one build, both arms set explicitly) counted 1 no-op in
- * 94 tool turns WITHOUT the clause against 3 in 85 turns WITH it: no benefit,
- * overlapping ranges, and if anything a nudge toward the behavior it names. The
- * base rate is ~2 no-ops per 100 tool turns at ~$0.09 per turn, so separating
- * the arms costs more than the phenomenon does — the clause stays in the tree as
- * bench instrumentation, off by default, which is where SERIAL_READ_NUDGE
- * landed for the same reason.
- *
- * No `feature()` twin, like `isSubagentNotesEnabled` above and unlike the two
- * at the top of this file: the clause is ~40 tokens inside a plan-mode
- * ATTACHMENT, not in the `cacheScope:'global'` prefix, so folding it out at
- * build time saves nothing worth a build flag. Leaving the env var as the whole
- * gate is also what lets ONE build serve both arms of the A/B — `feature()`
- * folds to a literal, so a flag would mean two bundles to compare, which is the
- * mistake the header of this file is about.
- */
-export function isPlanNoopGuardEnabled(): boolean {
-  return isEnvTruthy(process.env.CLAUDIN_PLAN_NOOP_GUARD)
 }
