@@ -1,18 +1,23 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
-    "src/platform/entrypoints/cli.tsx",
-    "src/platform/entrypoints/mcp.ts",
-    "src/platform/entrypoints/init.ts",
-    "src/platform/main.tsx",
-    "scripts/**/*.{ts,mjs}",
-    "bin/claudin",
+    "src/platform/entrypoints/cli.tsx!",
+    "src/platform/entrypoints/mcp.ts!",
+    "src/platform/entrypoints/init.ts!",
+    "src/platform/main.tsx!",
+    "scripts/**/*.{ts,mjs}!",
+    "bin/claudin!",
     "src/**/*.test.{ts,tsx}",
     "src/**/__tests__/**/*.{ts,tsx}"
   ],
-  "project": ["src/**/*.{ts,tsx}", "scripts/**/*.ts"],
+  "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts!"],
   "ignore": [
-    "src/shared/constants/keys.ts"
+    "src/shared/constants/keys.ts",
+    "src/shared/types/typeAssertions.ts",
+    "**/__testutils__/**",
+    "**/__fixtures__/**",
+    "**/__test-helpers__/**",
+    "src/stubs/test-preload.ts"
   ],
   "ignoreDependencies": [
     "@anthropic-ai/vertex-sdk",
