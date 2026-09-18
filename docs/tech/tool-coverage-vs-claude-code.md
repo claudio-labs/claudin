@@ -94,7 +94,7 @@ harness; a few are claudin- or environment-specific. Not coverage gaps for claud
 | `PowerShellTool` | Linux session |
 | `SendMessageTool` | referenced by `Agent` here ("use SendMessage with the agent's ID") but not a standalone listed tool |
 | `REPLTool` | not surfaced |
-| `ConfigTool`, `BriefTool`, `SuggestBackgroundPRTool`, `SyntheticOutputTool`, `SleepTool`, `TeamCreateTool`, `TeamDeleteTool`, `TungstenTool`, `VerifyPlanExecutionTool` | harness/coordinator-specific; not in this session's registry |
+| `BriefTool`, `SuggestBackgroundPRTool`, `SyntheticOutputTool`, `SleepTool`, `TeamCreateTool`, `TeamDeleteTool`, `TungstenTool`, `VerifyPlanExecutionTool` | harness/coordinator-specific; not in this session's registry |
 
 Note: claudin's `SleepTool` overlaps conceptually with Claude Code's
 `ScheduleWakeup` but is a passive blocking sleep, not a model-paced resume scheduler.
