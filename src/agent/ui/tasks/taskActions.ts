@@ -1,5 +1,4 @@
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
-import { feature } from 'bun:bundle';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import { DreamTask } from 'src/agent/tasks/DreamTask/DreamTask.js';
 import { InProcessTeammateTask } from 'src/agent/tasks/InProcessTeammateTask/InProcessTeammateTask.js';
@@ -14,16 +13,6 @@ import type { DeepImmutable } from 'src/shared/types/utils.js';
 import { logForDebugging } from 'src/shared/debug.js';
 
 type SetAppState = (updater: (prev: AppState) => AppState) => void;
-
-// WORKFLOW_SCRIPTS is internal-only (build_flags.yaml) and its module isn't
-// mirrored in the open build. Gate the kill helper behind feature() + require so
-// external builds dead-code-eliminate it (mirrors BackgroundTasksDialog.tsx).
-/* eslint-disable @typescript-eslint/no-require-imports */
-const workflowTaskModule = feature('WORKFLOW_SCRIPTS')
-  ? (require('src/agent/tasks/LocalWorkflowTask/LocalWorkflowTask.js') as typeof import('src/agent/tasks/LocalWorkflowTask/LocalWorkflowTask.js'))
-  : null;
-const killWorkflowTask = workflowTaskModule?.killWorkflowTask ?? null;
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 /**
  * Stop a running background task, dispatching on its type. Shared by
@@ -79,9 +68,6 @@ export function killBackgroundTask(
     case 'in_process_teammate':
       void InProcessTeammateTask.kill(task.id, setAppState);
       return;
-    case 'local_workflow':
-      killWorkflowTask?.(task.id, setAppState);
-      return;
     case 'monitor_mcp':
       void MonitorMcpTask.kill(task.id, setAppState);
       return;
@@ -94,8 +80,8 @@ export function killBackgroundTask(
     default: {
       // Surface unhandled task types instead of silently no-op'ing the x key
       // in the footer tree. (Compile-time exhaustiveness `never` assignment
-      // is bypassed because LocalWorkflowTaskState resolves to `any` in the
-      // open build — see the require() above.)
+      // is bypassed because LocalWorkflowTaskState resolves to `any` in this
+      // fork — see src/agent/tasks/LocalWorkflowTask/LocalWorkflowTask.d.ts.)
       logForDebugging(`killBackgroundTask: unhandled task type ${String((task as { type?: unknown }).type)}`);
       return;
     }

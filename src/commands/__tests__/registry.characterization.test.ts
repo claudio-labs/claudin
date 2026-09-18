@@ -109,8 +109,23 @@ describe('slash-command registry — characterization', () => {
   test('the scans actually found something', () => {
     // A regex that matches nothing would snapshot an empty array and stay green
     // through the whole cleanup while guarding exactly nothing.
+    //
+    // The gated floor was 5, then 2, and is 1 now: the dead-flag cleanup took
+    // `torch` (TORCH) and both WORKFLOW_SCRIPTS bindings (`workflowsCmd`,
+    // `getWorkflowCommands`) out, then `clearSkillIndexCache`
+    // (EXPERIMENTAL_SKILL_SEARCH) and `forceSnip` (HISTORY_SNIP) — two
+    // entries left, `agentWorkflowsCmd` and `bridge`, both behind flags the
+    // map ships true. `agentWorkflowsCmd` still requires the same
+    // `src/commands/workflows/index.js` that `workflowsCmd` did, behind the
+    // live AGENT_WORKFLOWS flag — the module is NOT dead.
     expect(scanRegisteredBindings().length).toBeGreaterThan(50)
-    expect(scanGatedCommands().length).toBeGreaterThan(5)
+    expect(scanGatedCommands().length).toBeGreaterThan(1)
+    // The floor alone only catches a regex that matches NOTHING — verified by
+    // breaking GATED_COMMAND_RE, which fails this line and the snapshot above.
+    // What it cannot catch is a regex that matches the WRONG two things, since
+    // any two spurious hits clear it and a snapshot can be re-recorded. So pin
+    // a name: `bridge` is gated on BRIDGE_MODE, which the map ships true.
+    expect(scanGatedCommands().map(c => c.binding)).toContain('bridge')
   })
 
   test('no command is registered behind a true flag with no implementation', () => {

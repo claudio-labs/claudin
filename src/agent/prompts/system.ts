@@ -1,6 +1,5 @@
 // Critical system constants extracted to break circular dependencies
 
-import { feature } from 'bun:bundle'
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isEnvDefinedFalsy } from 'src/shared/envUtils.js'
@@ -75,15 +74,6 @@ function isFirstPartyLane(): boolean {
  * Get attribution header for API requests.
  * Returns a header string with cc_version (including fingerprint) and cc_entrypoint.
  * Enabled by default, can be disabled via env var or GrowthBook killswitch.
- *
- * When NATIVE_CLIENT_ATTESTATION is enabled, includes a `cch=00000` placeholder.
- * Before the request is sent, Bun's native HTTP stack finds this placeholder
- * in the request body and overwrites the zeros with a computed hash. The
- * server verifies this token to confirm the request came from a real Claude
- * Code client. See bun-anthropic/src/http/Attestation.zig for implementation.
- *
- * We use a placeholder (instead of injecting from Zig) because same-length
- * replacement avoids Content-Length changes and buffer reallocation.
  */
 export function getAttributionHeader(
   fingerprint: string,
@@ -105,8 +95,6 @@ export function getAttributionHeader(
   const version = `${MACRO.VERSION}.${fingerprint}`
   const entrypoint = process.env.CLAUDE_CODE_ENTRYPOINT ?? 'unknown'
 
-  // cch=00000 placeholder is overwritten by Bun's HTTP stack with attestation token
-  const cch = feature('NATIVE_CLIENT_ATTESTATION') ? ' cch=00000;' : ''
   // NOTE: this header is block 0 of the system prompt array
   // (claude.ts:1348) and result[0] of splitSysPromptPrefix
   // (utils/api.ts:399-485) — the literal-byte anchor of Anthropic's
@@ -116,7 +104,7 @@ export function getAttributionHeader(
   // turns) was removed for that reason — do not re-add per-turn data
   // here without first moving it past every downstream cache_control
   // breakpoint.
-  const header = `x-anthropic-billing-header: cc_version=${version}; cc_entrypoint=${entrypoint};${cch}`
+  const header = `x-anthropic-billing-header: cc_version=${version}; cc_entrypoint=${entrypoint};`
 
   logForDebugging(`attribution header ${header}`)
   return header

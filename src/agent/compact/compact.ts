@@ -202,30 +202,15 @@ export function stripImagesFromMessages(messages: Message[]): Message[] {
  * next turn after resetSentBashGitInstructions() runs in
  * runPostCompactCleanup. Always-on (no feature gate) since the attachment
  * type exists in every build.
- *
- * `feature()` from `bun:bundle` requires direct use in an if/ternary so
- * the bundler can DCE the branch — that's why this function double-filters
- * instead of composing the predicates.
  */
 export function stripReinjectedAttachments(messages: Message[]): Message[] {
-  let result = messages.filter(
+  return messages.filter(
     m =>
       !(
         m.type === 'attachment' &&
         m.attachment.type === 'bash_git_instructions'
       ),
   )
-  if (feature('EXPERIMENTAL_SKILL_SEARCH')) {
-    result = result.filter(
-      m =>
-        !(
-          m.type === 'attachment' &&
-          (m.attachment.type === 'skill_discovery' ||
-            m.attachment.type === 'skill_listing')
-        ),
-    )
-  }
-  return result
 }
 
 export const ERROR_MESSAGE_NOT_ENOUGH_MESSAGES =
@@ -522,9 +507,7 @@ export async function compactConversation(
     // Intentionally NOT resetting sentSkillNames: re-injecting the full
     // skill_listing (~4K tokens) post-compact is pure cache_creation with
     // marginal benefit. The model still has SkillTool in its schema and
-    // invoked_skills attachment (below) preserves used-skill content. Ants
-    // with EXPERIMENTAL_SKILL_SEARCH already skip re-injection via the
-    // early-return in getSkillListingAttachments.
+    // invoked_skills attachment (below) preserves used-skill content.
 
     // Run async attachment generation in parallel
     const [fileAttachments, asyncAgentAttachments] = await Promise.all([

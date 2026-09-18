@@ -123,7 +123,3 @@ export async function getDockerAvailability(): Promise<DockerAvailability> {
   }
   return cachedAvailability
 }
-
-export function __resetDockerAvailabilityForTests(): void {
-  cachedAvailability = null
-}

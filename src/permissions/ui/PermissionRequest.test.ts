@@ -138,9 +138,9 @@ describe('permission component routing parity', () => {
   test('routing table covers all tools currently in the identity switch', () => {
     // The 13 tools listed below match the cases in
     // permissionComponentForTool() in PermissionRequest.tsx (excluding
-    // feature-gated tools: ReviewArtifact, Workflow, Monitor — those go
-    // through `case` arms guarded at module init by `feature(...)` and
-    // fall back to FallbackPermissionRequest when the flag is off).
+    // the feature-gated Monitor tool: it goes through a `case` arm guarded
+    // at module init by `feature(...)` and falls back to
+    // FallbackPermissionRequest when the flag is off).
     const expected = [
       'FileEditTool', 'FileWriteTool', 'BashTool', 'PowerShellTool',
       'WebFetchTool', 'NotebookEditTool', 'ExitPlanModeV2Tool',

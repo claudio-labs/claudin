@@ -37,13 +37,3 @@ export const SidePanelContext = createContext<SidePanelCtx | null>(null)
 export function useSidePanel(): SidePanelCtx | null {
   return useContext(SidePanelContext)
 }
-
-/**
- * Whether a component inside the panel currently owns the keyboard. True when
- * there is no side panel at all, so the takeover and inline paths keep today's
- * behavior without a special case at every call site.
- */
-export function usePanelHasFocus(): boolean {
-  const ctx = useContext(SidePanelContext)
-  return ctx === null || ctx.focus === 'panel'
-}

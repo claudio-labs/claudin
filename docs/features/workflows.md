@@ -1,9 +1,11 @@
 # Workflows (`/workflows`, the `Workflow` tool)
 
-**Status: not yet in claudin.** `src/tools/WorkflowTool/constants.ts` is an explicit stub
-(`// Stub — WorkflowTool not included in source snapshot`) — only the tool name exists, there
-is no engine, no prompt, no `/workflows` command, and no `WORKFLOW_SCRIPTS` flag in
-`scripts/build/build.ts`. This doc specifies the feature as it ships in the upstream Claude Code
+**Status: not in claudin, and no longer even stubbed.** `src/tools/WorkflowTool/` used to hold
+four declaration-only `.d.ts` files plus a `constants.ts` carrying nothing but the tool name; all
+five were deleted in the 2026-09-18 dead-code round (`275c7558`), along with the rest of the
+`WORKFLOW_SCRIPTS` scaffolding — that flag is absent from `featureFlags`, so the build folded
+every gate on it to `false`. There is no engine, no prompt and no `/workflows` command for this
+tool. This doc specifies the feature as it ships in the upstream Claude Code
 2.1.201 reference, so it can be ported. Where it names a file, that path is **proposed**, not
 present.
 
@@ -183,6 +185,7 @@ resume, so pass timestamps via `args` and vary randomness by index. No filesyste
   registration in `src/tools/tools.ts` (`getAllBaseTools`) behind it, matching the existing
   `feature()`-gated tools.
 - **Tool.** Flesh out `src/tools/WorkflowTool/` (currently the stub `constants.ts`): the tool
+- **Tool.** Create `src/tools/WorkflowTool/` (the directory no longer exists): the tool
   schema (`script` / `scriptPath` / `name` / `args` / `resumeFromRunId`), the prompt (this
   catalog), and the engine that evaluates the script with the `agent`/`pipeline`/`parallel`/
   `phase`/`log`/`budget`/`workflow` hooks bound to claudin's existing `AgentTool` runner.
@@ -197,6 +200,9 @@ resume, so pass timestamps via `args` and vary randomness by index. No filesyste
 
 - Upstream reference: Claude Code 2.1.201 `Workflow` tool (schema + prompt).
 - claudin building blocks: `src/agent/coordinator/coordinatorMode.ts`, `src/tools/AgentTool/`,
-  `src/tools/WorkflowTool/constants.ts` (stub), `scripts/build/build.ts` (`featureFlags`).
+  `scripts/build/build.ts` (`featureFlags`). Note the separate and LIVE
+  `src/tools/AgentWorkflow/` — claudin's own staged-agent `/workflows`, behind the
+  `AGENT_WORKFLOWS` flag — which is a different feature from the upstream fan-out tool
+  specified here, and is not affected by any of the above.
 - Related: `docs/features/report-findings.md` (a structured verifier output that pairs with the
   review/verify workflow shape).

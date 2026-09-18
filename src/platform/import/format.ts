@@ -162,10 +162,6 @@ export function groupArtifacts(
   return groups
 }
 
-export function planIsEmpty(plan: ImportPlan): boolean {
-  return plan.artifacts.length === 0
-}
-
 export function formatImportReport(
   report: ImportReport,
   homeDir?: string,

@@ -108,14 +108,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 1,
     "stockValue": true,
   },
-  "tengu_birch_trellis": {
-    "defaults": [
-      "true",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": true,
-  },
   "tengu_bramble_lintel": {
     "defaults": [
       "null",
@@ -204,14 +196,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 2,
     "stockValue": false,
   },
-  "tengu_ccr_mirror": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
   "tengu_chair_sermon": {
     "defaults": [
       "",
@@ -228,14 +212,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "sites": 1,
     "stockValue": 0,
   },
-  "tengu_cobalt_harbor": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
   "tengu_cobalt_lantern": {
     "defaults": [
       "false",
@@ -249,16 +225,8 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
       "false",
     ],
     "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 3,
+    "sites": 1,
     "stockValue": false,
-  },
-  "tengu_collage_kaleidoscope": {
-    "defaults": [
-      "true",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 2,
-    "stockValue": true,
   },
   "tengu_compact_cache_prefix": {
     "defaults": [
@@ -421,14 +389,6 @@ exports[`tengu gate keys — resolution in a stock install the per-key resolutio
     "stockValue": false,
   },
   "tengu_lapis_finch": {
-    "defaults": [
-      "false",
-    ],
-    "fn": "getFeatureValue_CACHED_MAY_BE_STALE",
-    "sites": 1,
-    "stockValue": false,
-  },
-  "tengu_lodestone_enabled": {
     "defaults": [
       "false",
     ],

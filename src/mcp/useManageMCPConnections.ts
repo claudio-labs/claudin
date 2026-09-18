@@ -1,4 +1,3 @@
-import { feature } from 'bun:bundle'
 import { useCallback, useEffect, useRef } from 'react'
 import { getSessionId } from 'src/platform/bootstrap/state.js'
 import type { Command } from 'src/commands/commands.js'
@@ -16,13 +15,6 @@ import type {
   ScopedMcpServerConfig,
   ServerResource,
 } from 'src/mcp/types.js'
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const clearSkillIndexCache = feature('EXPERIMENTAL_SKILL_SEARCH')
-  ? (
-      require('../skills/search/localSearch.js') as typeof import('../skills/search/localSearch.js')
-    ).clearSkillIndexCache
-  : null
 
 import {
   PromptListChangedNotificationSchema,
@@ -48,7 +40,6 @@ import {
   useSetAppState,
 } from 'src/terminal/state/AppState.js'
 import { errorMessage } from 'src/shared/errors.js'
-/* eslint-enable @typescript-eslint/no-require-imports */
 import { logMCPDebug, logMCPError } from 'src/shared/log.js'
 import {
   clearClaudeAIMcpConfigsCache,

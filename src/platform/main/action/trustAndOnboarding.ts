@@ -17,7 +17,6 @@ import React from 'react';
 import { refreshGrowthBookAfterAuthChange } from 'src/platform/analytics/growthbook.js';
 import { refreshPolicyLimits } from 'src/platform/policyLimits/index.js';
 import { refreshRemoteManagedSettings } from 'src/platform/remoteManagedSettings/index.js';
-import { isCustomAgent } from 'src/tools/AgentTool/loadAgentsDir.js';
 import { validateForceLoginOrg } from 'src/providers/auth/auth.js';
 import { logForDebugging } from 'src/shared/debug.js';
 import { resetUserCache } from 'src/shared/user.js';
@@ -26,7 +25,6 @@ import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
 import type { StatsStore } from 'src/terminal/contexts/stats.js';
 import type { ChannelEntry } from 'src/platform/bootstrap/state.js';
 import type { InternalPermissionMode } from 'src/shared/types/permissions.js';
-import { launchSnapshotUpdateDialog } from 'src/terminal/dialogLaunchers.js';
 import { exitWithError, getRenderContext, showSetupScreens } from 'src/terminal/interactiveHelpers.js';
 import { profileCheckpoint } from 'src/platform/startupProfiler.js';
 import type { AgentDefinitionsBundle } from 'src/platform/main/action/setupAgent.js';
@@ -64,10 +62,9 @@ export async function runTrustAndOnboarding(
     commands,
     devChannels,
     remoteControlOption,
-    mainThreadAgentDefinition,
   } = input;
   let prompt = input.prompt;
-  let inputPrompt = input.inputPrompt;
+  const inputPrompt = input.inputPrompt;
 
   profileCheckpoint('trust_onboarding_start');
   const renderCtx = getRenderContext(false);
@@ -98,34 +95,6 @@ export async function runTrustAndOnboarding(
     if (disabledReason) {
       process.stderr.write(chalk.yellow(`${disabledReason}\n--rc flag ignored.\n`));
     }
-  }
-
-  // Check for pending agent memory snapshot updates (only for --agent mode, internal-only).
-  // AGENT_MEMORY_SNAPSHOT is dead-code-eliminated and SnapshotUpdateDialog is
-  // build-time stubbed in this fork, but the typed control flow is preserved.
-  if (
-    feature('AGENT_MEMORY_SNAPSHOT') &&
-    mainThreadAgentDefinition &&
-    isCustomAgent(mainThreadAgentDefinition) &&
-    mainThreadAgentDefinition.memory &&
-    mainThreadAgentDefinition.pendingSnapshotUpdate
-  ) {
-    const agentDef = mainThreadAgentDefinition;
-    const choice = await launchSnapshotUpdateDialog(root, {
-      agentType: agentDef.agentType,
-      scope: agentDef.memory!,
-      snapshotTimestamp: agentDef.pendingSnapshotUpdate!.snapshotTimestamp,
-    });
-    if (choice === 'merge') {
-      // SnapshotUpdateDialog is build-time stubbed in this fork; the real
-      // module (upstream) exports buildMergePrompt, so we look it up dynamically.
-      const mod = (await import('src/agent/ui/agents/SnapshotUpdateDialog.js')) as {
-        buildMergePrompt?: (agentType: string, memory: typeof agentDef.memory) => string;
-      };
-      const mergePrompt = mod.buildMergePrompt?.(agentDef.agentType, agentDef.memory) ?? '';
-      inputPrompt = inputPrompt ? `${mergePrompt}\n\n${inputPrompt}` : mergePrompt;
-    }
-    agentDef.pendingSnapshotUpdate = undefined;
   }
 
   // Skip executing /login if we just completed onboarding for it

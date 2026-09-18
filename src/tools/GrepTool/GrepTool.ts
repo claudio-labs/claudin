@@ -189,7 +189,7 @@ function formatLimitInfo(
   return parts.join(', ')
 }
 
-export { RG_LINE_RE, RG_PREFIX_RE, relativizeRgLine } from 'src/tools/GrepTool/relativize.js'
+export { RG_LINE_RE, relativizeRgLine } from 'src/tools/GrepTool/relativize.js'
 
 const outputSchema = lazySchema(() =>
   z.object({

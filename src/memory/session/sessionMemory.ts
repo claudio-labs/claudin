@@ -7,8 +7,6 @@
 import { writeFile } from 'fs/promises'
 import memoize from 'lodash-es/memoize.js'
 import { getIsRemoteMode } from 'src/platform/bootstrap/state.js'
-import { getSystemPrompt } from 'src/agent/prompts/prompts.js'
-import { getSystemContext, getUserContext } from 'src/agent/context.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import type { Tool, ToolUseContext } from 'src/tools/Tool.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
@@ -37,7 +35,6 @@ import {
   getSessionMemoryPath,
 } from 'src/permissions/filesystem.js'
 import { sequential } from 'src/shared/sequential.js'
-import { asSystemPrompt } from 'src/agent/systemPromptType.js'
 import { getTokenUsage, tokenCountWithEstimation } from 'src/agent/context/tokens.js'
 import { isAutoCompactEnabled } from 'src/agent/compact/autoCompact.js'
 import {
@@ -66,7 +63,7 @@ import {
 // These functions return cached values from disk immediately without blocking
 // on GrowthBook initialization. Values may be stale but are updated in background.
 
-import { errorMessage, getErrnoCode } from 'src/shared/errors.js'
+import { getErrnoCode } from 'src/shared/errors.js'
 import {
   getDynamicConfig_CACHED_MAY_BE_STALE,
   getFeatureValue_CACHED_MAY_BE_STALE,
@@ -96,13 +93,6 @@ function getSessionMemoryRemoteConfig(): Partial<SessionMemoryConfig> {
 // ============================================================================
 
 let lastMemoryMessageUuid: string | undefined
-
-/**
- * Reset the last memory message UUID (for testing)
- */
-export function resetLastMemoryMessageUuid(): void {
-  lastMemoryMessageUuid = undefined
-}
 
 function countToolCallsSince(
   messages: Message[],
@@ -343,82 +333,6 @@ export function initSessionMemory(): void {
 
   // Register hook unconditionally - gate check happens lazily when hook runs
   registerPostSamplingHook(extractSessionMemory)
-}
-
-export type ManualExtractionResult = {
-  success: boolean
-  memoryPath?: string
-  error?: string
-}
-
-/**
- * Manually trigger session memory extraction, bypassing threshold checks.
- * Used by the /summary command.
- */
-export async function manuallyExtractSessionMemory(
-  messages: Message[],
-  toolUseContext: ToolUseContext,
-): Promise<ManualExtractionResult> {
-  if (messages.length === 0) {
-    return { success: false, error: 'No messages to summarize' }
-  }
-  markExtractionStarted()
-
-  try {
-    // Create isolated context for setup to avoid polluting parent's cache
-    const setupContext = createSubagentContext(toolUseContext)
-
-    // Set up file system and read current state with isolated context
-    const { memoryPath, currentMemory } =
-      await setupSessionMemoryFile(setupContext)
-
-    // Create extraction message
-    const userPrompt = await buildSessionMemoryUpdatePrompt(
-      currentMemory,
-      memoryPath,
-    )
-
-    // Get system prompt for cache-safe params
-    const { tools, mainLoopModel } = toolUseContext.options
-    const [rawSystemPrompt, userContext, systemContext] = await Promise.all([
-      getSystemPrompt(tools, mainLoopModel),
-      getUserContext(),
-      getSystemContext(),
-    ])
-    const systemPrompt = asSystemPrompt(rawSystemPrompt)
-
-    // Run session memory extraction using runForkedAgent
-    await runForkedAgent({
-      promptMessages: [createUserMessage({ content: userPrompt })],
-      cacheSafeParams: {
-        systemPrompt,
-        userContext,
-        systemContext,
-        toolUseContext: setupContext,
-        forkContextMessages: messages,
-      },
-      canUseTool: createMemoryFileCanUseTool(memoryPath),
-      querySource: 'session_memory',
-      forkLabel: 'session_memory_manual',
-      overrides: { readFileState: setupContext.readFileState },
-    })
-
-
-    // Record the context size at extraction for tracking minimumTokensBetweenUpdate
-    recordExtractionTokenCount(tokenCountWithEstimation(messages))
-
-    // Update lastSummarizedMessageId after successful completion
-    updateLastSummarizedMessageIdIfSafe(messages)
-
-    return { success: true, memoryPath }
-  } catch (error) {
-    return {
-      success: false,
-      error: errorMessage(error),
-    }
-  } finally {
-    markExtractionCompleted()
-  }
 }
 
 // Helper functions

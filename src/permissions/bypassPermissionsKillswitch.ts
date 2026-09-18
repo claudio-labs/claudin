@@ -46,14 +46,6 @@ export async function checkAndDisableBypassPermissionsIfNeeded(
   })
 }
 
-/**
- * Reset the run-once flag for checkAndDisableBypassPermissionsIfNeeded.
- * Call this after /login so the gate check re-runs with the new org.
- */
-export function resetBypassPermissionsCheck(): void {
-  bypassPermissionsCheckRan = false
-}
-
 export function useKickOffCheckAndDisableBypassPermissionsIfNeeded(): void {
   const toolPermissionContext = useAppState(s => s.toolPermissionContext)
   const setAppState = useSetAppState()

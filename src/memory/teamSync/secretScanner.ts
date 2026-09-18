@@ -295,14 +295,6 @@ export function scanForSecrets(content: string): SecretMatch[] {
 }
 
 /**
- * Get a human-readable label for a gitleaks rule ID.
- * Falls back to kebab-to-Title conversion for unknown IDs.
- */
-export function getSecretLabel(ruleId: string): string {
-  return ruleIdToLabel(ruleId)
-}
-
-/**
  * Redact any matched secrets in-place with [REDACTED].
  * Unlike scanForSecrets, this returns the content with spans replaced
  * so the surrounding text can still be written to disk safely.

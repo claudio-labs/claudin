@@ -3,20 +3,12 @@ import { dirname, join } from 'path'
 import { z } from 'zod/v4'
 import { logForDebugging } from 'src/shared/debug.js'
 import { isENOENT } from 'src/shared/errors.js'
-import { getWorktreePathsPortable } from 'src/vcs/git/getWorktreePathsPortable.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import {
   getProjectsDir,
   sanitizePath,
 } from 'src/sessions/sessionStoragePortable.js'
 import { jsonParse, jsonStringify } from 'src/platform/slowOperations.js'
-
-/**
- * Upper bound on worktree fanout. git worktree list is naturally bounded
- * (50 is a LOT), but this caps the parallel stat() burst and guards against
- * pathological setups. Above this, --continue falls back to current-dir-only.
- */
-const MAX_WORKTREE_FANOUT = 50
 
 /**
  * Crash-recovery pointer for Remote Control sessions.
@@ -110,77 +102,6 @@ export async function readBridgePointer(
   }
 
   return { ...parsed.data, ageMs }
-}
-
-/**
- * Worktree-aware read for `--continue`. The REPL bridge writes its pointer
- * to `getOriginalCwd()` which EnterWorktreeTool/activeWorktreeSession can
- * mutate to a worktree path — but `claude remote-control --continue` runs
- * with `resolve('.')` = shell CWD. This fans out across git worktree
- * siblings to find the freshest pointer, matching /resume's semantics.
- *
- * Fast path: checks `dir` first. Only shells out to `git worktree list` if
- * that misses — the common case (pointer in launch dir) is one stat, zero
- * exec. Fanout reads run in parallel; capped at MAX_WORKTREE_FANOUT.
- *
- * Returns the pointer AND the dir it was found in, so the caller can clear
- * the right file on resume failure.
- */
-export async function readBridgePointerAcrossWorktrees(
-  dir: string,
-): Promise<{ pointer: BridgePointer & { ageMs: number }; dir: string } | null> {
-  // Fast path: current dir. Covers standalone bridge (always matches) and
-  // REPL bridge when no worktree mutation happened.
-  const here = await readBridgePointer(dir)
-  if (here) {
-    return { pointer: here, dir }
-  }
-
-  // Fanout: scan worktree siblings. getWorktreePathsPortable has a 5s
-  // timeout and returns [] on any error (not a git repo, git not installed).
-  const worktrees = await getWorktreePathsPortable(dir)
-  if (worktrees.length <= 1) return null
-  if (worktrees.length > MAX_WORKTREE_FANOUT) {
-    logForDebugging(
-      `[bridge:pointer] ${worktrees.length} worktrees exceeds fanout cap ${MAX_WORKTREE_FANOUT}, skipping`,
-    )
-    return null
-  }
-
-  // Dedupe against `dir` so we don't re-stat it. sanitizePath normalizes
-  // case/separators so worktree-list output matches our fast-path key even
-  // on Windows where git may emit C:/ vs stored c:/.
-  const dirKey = sanitizePath(dir)
-  const candidates = worktrees.filter(wt => sanitizePath(wt) !== dirKey)
-
-  // Parallel stat+read. Each readBridgePointer is a stat() that ENOENTs
-  // for worktrees with no pointer (cheap) plus a ~100-byte read for the
-  // rare ones that have one. Promise.all → latency ≈ slowest single stat.
-  const results = await Promise.all(
-    candidates.map(async wt => {
-      const p = await readBridgePointer(wt)
-      return p ? { pointer: p, dir: wt } : null
-    }),
-  )
-
-  // Pick freshest (lowest ageMs). The pointer stores environmentId so
-  // resume reconnects to the right env regardless of which worktree
-  // --continue was invoked from.
-  let freshest: {
-    pointer: BridgePointer & { ageMs: number }
-    dir: string
-  } | null = null
-  for (const r of results) {
-    if (r && (!freshest || r.pointer.ageMs < freshest.pointer.ageMs)) {
-      freshest = r
-    }
-  }
-  if (freshest) {
-    logForDebugging(
-      `[bridge:pointer] fanout found pointer in worktree ${freshest.dir} (ageMs=${freshest.pointer.ageMs})`,
-    )
-  }
-  return freshest
 }
 
 /**

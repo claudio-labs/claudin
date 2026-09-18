@@ -67,14 +67,19 @@ describe('tool registry — characterization', () => {
     // of an empty object, and the suite would stay green through the entire
     // cleanup while guarding nothing.
     //
-    // The floor was 10 before the dead-flag cleanup and is 5 now: the table
+    // The floor was 10 before the dead-flag cleanup, then 5, then 2: the table
     // lost CtxInspectTool, ListPeersTool, PushNotificationTool, RemoteTrigger,
-    // SendUserFileTool, SleepTool, SubscribePRTool and WebBrowserTool with
-    // their flags. It exists to catch a regex that matches NOTHING, so any
-    // number comfortably above zero does the job — lower it again if a later
-    // pass legitimately takes the table below five.
+    // SendUserFileTool, SleepTool, SubscribePRTool and WebBrowserTool in the
+    // first round, then OverflowTestTool (OVERFLOW_TEST_TOOL),
+    // TerminalCaptureTool (TERMINAL_PANEL) and WorkflowTool
+    // (WORKFLOW_SCRIPTS) in the second, and SnipTool (HISTORY_SNIP) in the
+    // third — three entries left, all behind flags the map ships true. It
+    // exists to catch a regex that matches NOTHING, so any number comfortably
+    // above zero does the job — lower it again if a later pass legitimately
+    // takes the table below two. The `toHaveProperty` below is the real guard:
+    // it pins one known binding to its flag, which a broken regex cannot fake.
     const gated = scanGatedTools()
-    expect(Object.keys(gated).length).toBeGreaterThan(5)
+    expect(Object.keys(gated).length).toBeGreaterThan(2)
     expect(gated).toHaveProperty('MonitorTool', ['MONITOR_TOOL'])
   })
 

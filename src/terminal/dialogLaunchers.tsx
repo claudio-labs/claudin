@@ -12,7 +12,6 @@ import type { Root } from 'src/terminal/ink.js';
 import { renderAndRun, showSetupDialog } from 'src/terminal/interactiveHelpers.js';
 import { KeybindingSetup } from 'src/terminal/keybindings/KeybindingProviderSetup.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
-import type { AgentMemoryScope } from 'src/tools/AgentTool/agentMemory.js';
 import type { TeleportRemoteResponse } from 'src/sessions/conversationRecovery.js';
 import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
 import type { ValidationError } from 'src/platform/settings/validation.js';
@@ -20,31 +19,6 @@ import type { ValidationError } from 'src/platform/settings/validation.js';
 // Type-only access to ResumeConversation's Props via the module type.
 // No runtime cost - erased at compile time.
 type ResumeConversationProps = React.ComponentProps<typeof import('src/sessions/ui/ResumeConversation.js').ResumeConversation>;
-
-/**
- * Site ~3173: SnapshotUpdateDialog (agent memory snapshot update prompt).
- * Original callback wiring: onComplete={done}, onCancel={() => done('keep')}.
- */
-export async function launchSnapshotUpdateDialog(root: Root, props: {
-  agentType: string;
-  scope: AgentMemoryScope;
-  snapshotTimestamp: string;
-}): Promise<'merge' | 'keep' | 'replace'> {
-  const {
-    SnapshotUpdateDialog
-  } = await import('src/agent/ui/agents/SnapshotUpdateDialog.js');
-  // SnapshotUpdateDialog.tsx is a stub (`(_props: unknown) => null`) — cast
-  // to the real props shape its call site (and the original inline JSX)
-  // expects.
-  const Dialog = SnapshotUpdateDialog as React.ComponentType<{
-    agentType: string;
-    scope: AgentMemoryScope;
-    snapshotTimestamp: string;
-    onComplete: (result: 'merge' | 'keep' | 'replace') => void;
-    onCancel: () => void;
-  }>;
-  return showSetupDialog<'merge' | 'keep' | 'replace'>(root, done => <Dialog agentType={props.agentType} scope={props.scope} snapshotTimestamp={props.snapshotTimestamp} onComplete={done} onCancel={() => done('keep')} />);
-}
 
 /**
  * Site ~3250: InvalidSettingsDialog (settings validation errors).

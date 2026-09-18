@@ -1,7 +1,5 @@
-import { feature } from 'bun:bundle'
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import uniqBy from 'lodash-es/uniqBy.js'
-import { dirname } from 'path'
 import { getProjectRoot } from 'src/platform/bootstrap/state.js'
 import {
   builtInCommandNames,
@@ -33,22 +31,16 @@ import {
   parsePluginIdentifier,
 } from 'src/plugins/pluginIdentifier.js'
 import { z } from 'zod/v4'
-import {
-  addInvokedSkill,
-  clearInvokedSkillsForAgent,
-  getSessionId,
-} from 'src/platform/bootstrap/state.js'
+import { clearInvokedSkillsForAgent } from 'src/platform/bootstrap/state.js'
 import { COMMAND_MESSAGE_TAG } from 'src/shared/constants/xml.js'
 import type { CanUseToolFn } from 'src/permissions/useCanUseTool.js'
 import { getAgentContext } from 'src/agent/coordinator/agentContext.js'
-import { errorMessage } from 'src/shared/errors.js'
 import {
   extractResultText,
   prepareForkedCommandContext,
 } from 'src/agent/coordinator/forkedAgent.js'
-import { parseFrontmatter } from 'src/shared/frontmatterParser.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
-import { createUserMessage, normalizeMessages } from 'src/agent/messages/messages.js'
+import { normalizeMessages } from 'src/agent/messages/messages.js'
 import type { ModelAlias } from 'src/providers/model/aliases.js'
 import { resolveSkillModelOverride } from 'src/providers/model/model.js'
 import { recordSkillUsage } from 'src/terminal/suggestions/skillUsageTracking.js'
@@ -92,23 +84,6 @@ export type { SkillToolProgress as Progress } from 'src/shared/types/tools.js'
 
 import type { SkillToolProgress as Progress } from 'src/shared/types/tools.js'
 
-// Conditional require for remote skill modules — static imports here would
-// pull in akiBackend.ts (via remoteSkillLoader → akiBackend), which has
-// module-level memoize()/lazySchema() consts that survive tree-shaking as
-// side-effecting initializers. All usages are inside
-// feature('EXPERIMENTAL_SKILL_SEARCH') guards, so remoteSkillModules is
-// non-null at every call site.
-/* eslint-disable @typescript-eslint/no-require-imports */
-const remoteSkillModules = feature('EXPERIMENTAL_SKILL_SEARCH')
-  ? {
-      ...(require('../../skills/search/remoteSkillState.js') as typeof import('../../skills/search/remoteSkillState.js')),
-      ...(require('../../skills/search/remoteSkillLoader.js') as typeof import('../../skills/search/remoteSkillLoader.js')),
-      ...(require('../../skills/search/telemetry.js') as typeof import('../../skills/search/telemetry.js')),
-      ...(require('../../skills/search/featureCheck.js') as typeof import('../../skills/search/featureCheck.js')),
-    }
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
-
 /**
  * Executes a skill in a forked sub-agent context.
  * This runs the skill prompt in an isolated agent with its own token budget.
@@ -129,15 +104,6 @@ async function executeForkedSkill(
   const isBundled = command.source === 'bundled'
   const forkedSanitizedName =
     isBuiltIn || isBundled || isOfficialSkill ? commandName : 'custom'
-
-  const wasDiscoveredField =
-    feature('EXPERIMENTAL_SKILL_SEARCH') &&
-    remoteSkillModules!.isSkillSearchEnabled()
-      ? {
-          was_discovered:
-            context.discoveredSkillNames?.has(commandName) ?? false,
-        }
-      : {}
   const pluginMarketplace = command.pluginInfo
     ? parsePluginIdentifier(command.pluginInfo.repository).marketplace
     : undefined
@@ -320,27 +286,6 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
       ? trimmed.substring(1)
       : trimmed
 
-    // Remote canonical skill handling (internal-only experimental). Intercept
-    // `_canonical_<slug>` names before local command lookup since remote
-    // skills are not in the local command registry.
-    if (feature('EXPERIMENTAL_SKILL_SEARCH')) {
-      const slug = remoteSkillModules!.stripCanonicalPrefix(
-        normalizedCommandName,
-      )
-      if (slug !== null) {
-        const meta = remoteSkillModules!.getDiscoveredRemoteSkill(slug)
-        if (!meta) {
-          return {
-            result: false,
-            message: `Remote skill ${slug} was not discovered in this session. Use DiscoverSkills to find remote skills first.`,
-            errorCode: 6,
-          }
-        }
-        // Discovered remote skill — valid. Loading happens in call().
-        return { result: true }
-      }
-    }
-
     // Get available commands (including MCP skills)
     const commands = await getAllCommands(context)
 
@@ -427,21 +372,6 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
             type: 'rule',
             rule,
           },
-        }
-      }
-    }
-
-    // Remote canonical skills are internal-only experimental — auto-grant.
-    // Placed AFTER the deny loop so a user-configured Skill(_canonical_:*)
-    // deny rule is honored (same pattern as safe-properties auto-allow below).
-    // The skill content itself is canonical/curated, not user-authored.
-    if (feature('EXPERIMENTAL_SKILL_SEARCH')) {
-      const slug = remoteSkillModules!.stripCanonicalPrefix(commandName)
-      if (slug !== null) {
-        return {
-          behavior: 'allow',
-          updatedInput: { skill, args },
-          decisionReason: undefined,
         }
       }
     }
@@ -540,18 +470,6 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
     // Remove leading slash if present (for compatibility)
     const commandName = trimmed.startsWith('/') ? trimmed.substring(1) : trimmed
 
-    // Remote canonical skill execution (internal-only experimental). Intercepts
-    // `_canonical_<slug>` before local command lookup — loads SKILL.md from
-    // AKI/GCS (with local cache), injects content directly as a user message.
-    // Remote skills are declarative markdown so no slash-command expansion
-    // (no !command substitution, no $ARGUMENTS interpolation) is needed.
-    if (feature('EXPERIMENTAL_SKILL_SEARCH')) {
-      const slug = remoteSkillModules!.stripCanonicalPrefix(commandName)
-      if (slug !== null) {
-        return executeRemoteSkill(slug, commandName, parentMessage, context)
-      }
-    }
-
     const commands = await getAllCommands(context)
     const command = findCommand(commandName, commands)
 
@@ -597,15 +515,6 @@ export const SkillTool: Tool<InputSchema, Output, Progress> = buildTool({
       command?.type === 'prompt' && isOfficialMarketplaceSkill(command)
     const sanitizedCommandName =
       isBuiltIn || isBundled || isOfficialSkill ? commandName : 'custom'
-
-    const wasDiscoveredField =
-      feature('EXPERIMENTAL_SKILL_SEARCH') &&
-      remoteSkillModules!.isSkillSearchEnabled()
-        ? {
-            was_discovered:
-              context.discoveredSkillNames?.has(commandName) ?? false,
-          }
-        : {}
     const pluginMarketplace =
       command?.type === 'prompt' && command.pluginInfo
         ? parsePluginIdentifier(command.pluginInfo.repository).marketplace
@@ -827,141 +736,4 @@ function isOfficialMarketplaceSkill(command: PromptCommand): boolean {
   return isOfficialMarketplaceName(
     parsePluginIdentifier(command.pluginInfo.repository).marketplace,
   )
-}
-
-/**
- * Extract URL scheme for telemetry. Defaults to 'gs' for unrecognized schemes
- * since the AKI backend is the only production path and the loader throws on
- * unknown schemes before we reach telemetry anyway.
- */
-function extractUrlScheme(url: string): 'gs' | 'http' | 'https' | 's3' {
-  if (url.startsWith('gs://')) return 'gs'
-  if (url.startsWith('https://')) return 'https'
-  if (url.startsWith('http://')) return 'http'
-  if (url.startsWith('s3://')) return 's3'
-  return 'gs'
-}
-
-/**
- * Load a remote canonical skill and inject its SKILL.md content into the
- * conversation. Unlike local skills (which go through processPromptSlashCommand
- * for !command / $ARGUMENTS expansion), remote skills are declarative markdown
- * — we wrap the content directly in a user message.
- *
- * The skill is also registered with addInvokedSkill so it survives compaction
- * (same as local skills).
- *
- * Only called from within a feature('EXPERIMENTAL_SKILL_SEARCH') guard in
- * call() — remoteSkillModules is non-null here.
- */
-async function executeRemoteSkill(
-  slug: string,
-  commandName: string,
-  parentMessage: AssistantMessage,
-  context: ToolUseContext,
-): Promise<ToolResult<Output>> {
-  const { getDiscoveredRemoteSkill, loadRemoteSkill, logRemoteSkillLoaded } =
-    remoteSkillModules!
-
-  // validateInput already confirmed this slug is in session state, but we
-  // re-fetch here to get the URL. If it's somehow gone (e.g., state cleared
-  // mid-session), fail with a clear error rather than crashing.
-  const meta = getDiscoveredRemoteSkill(slug)
-  if (!meta) {
-    throw new Error(
-      `Remote skill ${slug} was not discovered in this session. Use DiscoverSkills to find remote skills first.`,
-    )
-  }
-
-  const urlScheme = extractUrlScheme(meta.url)
-  let loadResult
-  try {
-    loadResult = await loadRemoteSkill(slug, meta.url)
-  } catch (e) {
-    const msg = errorMessage(e)
-    logRemoteSkillLoaded({
-      slug,
-      cacheHit: false,
-      latencyMs: 0,
-      urlScheme,
-      error: msg,
-    })
-    throw new Error(`Failed to load remote skill ${slug}: ${msg}`)
-  }
-
-  const {
-    cacheHit,
-    latencyMs,
-    skillPath,
-    content,
-    fileCount,
-    totalBytes,
-    fetchMethod,
-  } = loadResult
-
-  logRemoteSkillLoaded({
-    slug,
-    cacheHit,
-    latencyMs,
-    urlScheme,
-    fileCount,
-    totalBytes,
-    fetchMethod,
-  })
-
-  // Remote skills are always model-discovered (never in static skill_listing),
-  // so was_discovered is always true. is_remote lets BQ queries separate
-  // remote from local invocations without joining on skill name prefixes.
-  const queryDepth = context.queryTracking?.depth ?? 0
-  const parentAgentId = getAgentContext()?.agentId
-
-  recordSkillUsage(commandName)
-
-  logForDebugging(
-    `SkillTool loaded remote skill ${slug} (cacheHit=${cacheHit}, ${latencyMs}ms, ${content.length} chars)`,
-  )
-
-  // Strip YAML frontmatter (---\nname: x\n---) before prepending the header
-  // (matches loadSkillsDir.ts:333). parseFrontmatter returns the original
-  // content unchanged if no frontmatter is present.
-  const { content: bodyContent } = parseFrontmatter(content, skillPath)
-
-  // Inject base directory header + ${CLAUDIN_SKILL_DIR}/${CLAUDIN_SESSION_ID}
-  // substitution (matches loadSkillsDir.ts) so the model can resolve relative
-  // refs like ./schemas/foo.json against the cache dir.
-  const skillDir = dirname(skillPath)
-  const normalizedDir =
-    process.platform === 'win32' ? skillDir.replace(/\\/g, '/') : skillDir
-  let finalContent = `Base directory for this skill: ${normalizedDir}\n\n${bodyContent}`
-  finalContent = finalContent.replace(/\$\{CLAUDIN_SKILL_DIR\}/g, normalizedDir)
-  finalContent = finalContent.replace(
-    /\$\{CLAUDIN_SESSION_ID\}/g,
-    getSessionId(),
-  )
-
-  // Register with compaction-preservation state. Use the cached file path so
-  // post-compact restoration knows where the content came from. Must use
-  // finalContent (not raw content) so the base directory header and
-  // ${CLAUDIN_SKILL_DIR} substitutions survive compaction — matches how local
-  // skills store their already-transformed content via processSlashCommand.
-  addInvokedSkill(
-    commandName,
-    skillPath,
-    finalContent,
-    getAgentContext()?.agentId ?? null,
-  )
-
-  // Direct injection — wrap SKILL.md content in a meta user message. Matches
-  // the shape of what processPromptSlashCommand produces for simple skills.
-  const toolUseID = getToolUseIDFromParentMessage(
-    parentMessage,
-    SKILL_TOOL_NAME,
-  )
-  return {
-    data: { success: true, commandName, status: 'inline' },
-    newMessages: tagMessagesWithToolUseID(
-      [createUserMessage({ content: finalContent, isMeta: true })],
-      toolUseID,
-    ),
-  }
 }

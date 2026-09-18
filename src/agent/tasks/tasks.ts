@@ -715,17 +715,6 @@ export type TeamMember = {
 }
 
 /**
- * Agent status based on task ownership
- */
-export type AgentStatus = {
-  agentId: string
-  name: string
-  agentType?: string
-  status: 'idle' | 'busy'
-  currentTasks: string[] // task IDs the agent owns
-}
-
-/**
  * Sanitizes a name for use in file paths
  */
 function sanitizeName(name: string): string {

@@ -69,14 +69,6 @@ export type RemoteTaskCompletionChecker = (remoteTaskMetadata: RemoteTaskMetadat
 const completionCheckers = new Map<RemoteTaskType, RemoteTaskCompletionChecker>();
 
 /**
- * Register a completion checker for a remote task type. Invoked on every poll
- * tick; survives --resume via the sidecar's remoteTaskType + remoteTaskMetadata.
- */
-export function registerCompletionChecker(remoteTaskType: RemoteTaskType, checker: RemoteTaskCompletionChecker): void {
-  completionCheckers.set(remoteTaskType, checker);
-}
-
-/**
  * Persist a remote-agent metadata entry to the session sidecar.
  * Fire-and-forget — persistence failures must not block task registration.
  */

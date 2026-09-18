@@ -1943,16 +1943,6 @@ export function clearMcpClientConfig(
   }
 }
 
-export function getMcpClientConfig(
-  serverName: string,
-  serverConfig: McpSSEServerConfig | McpHTTPServerConfig,
-): { clientSecret?: string } | undefined {
-  const storage = getSecureStorage()
-  const data = storage.read()
-  const serverKey = getServerKey(serverName, serverConfig)
-  return data?.mcpOAuthClientConfig?.[serverKey]
-}
-
 /**
  * Safely extracts scope information from AuthorizationServerMetadata.
  * The metadata can be either OAuthMetadata or OpenIdProviderDiscoveryMetadata,

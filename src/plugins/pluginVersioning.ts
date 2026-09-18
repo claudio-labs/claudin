@@ -115,35 +115,3 @@ export function getGitCommitSha(dirPath: string): Promise<string | null> {
   return getHeadForDir(dirPath)
 }
 
-/**
- * Extract version from a versioned cache path.
- *
- * Given a path like `~/.claude/plugins/cache/marketplace/plugin/1.0.0`,
- * extracts and returns `1.0.0`.
- *
- * @param installPath - Full path to plugin installation
- * @returns Version string from path, or null if not a versioned path
- */
-export function getVersionFromPath(installPath: string): string | null {
-  // Versioned paths have format: .../plugins/cache/marketplace/plugin/version/
-  const parts = installPath.split('/').filter(Boolean)
-
-  // Find 'cache' index to determine depth
-  const cacheIndex = parts.findIndex(
-    (part, i) => part === 'cache' && parts[i - 1] === 'plugins',
-  )
-
-  if (cacheIndex === -1) {
-    return null
-  }
-
-  // Versioned path has 3 components after 'cache': marketplace/plugin/version
-  const componentsAfterCache = parts.slice(cacheIndex + 1)
-  if (componentsAfterCache.length >= 3) {
-    return componentsAfterCache[2] || null
-  }
-
-  return null
-}
-
-

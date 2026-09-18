@@ -226,7 +226,7 @@ src/
 │   ├── query.ts + query/ (8)    ← query helpers, SDKMessage types; config.ts, deps.ts, tokenBudget.ts
 │   ├── context.ts               ← getSystemContext/getUserContext: the memoized system-prompt
 │   │                              context blocks (git status, dir structure)
-│   ├── context/ (22)            ← token accounting + context-window math. Three things carry
+│   ├── context/ (16)            ← token accounting + context-window math. Three things carry
 │   │                              this name: agent/context.ts (prompt blocks), agent/context/
 │   │                              (accounting), terminal/contexts/ (React providers)
 │   ├── prompts/ (25)            ← prompts.ts (the system prompt), familyAddendums/, steeringToggles
@@ -276,16 +276,16 @@ src/
 │   ├── EnterPlanModeTool/ ExitPlanModeTool/  ← planning
 │   ├── AgentWorkflow/ (24)      ← the workflow ENGINE and the three tools that front it
 │   │                              (WorkflowTool.ts, ListWorkflowsTool, WorkflowStatusTool).
-│   │                              `tools/WorkflowTool/` is three .d.ts stubs plus a
-│   │                              constants.ts — it is not where the code lives
+│   │                              `tools/WorkflowTool/` is gone — it was four .d.ts
+│   │                              stubs plus a constants.ts behind WORKFLOW_SCRIPTS
 │   ├── SkillTool/ MonitorTool/ ScheduleCronTool/  ← skills, log monitors, cron
 │   ├── EnterWorktreeTool/ ExitWorktreeTool/  ← worktree (safety → agent-safety.md)
 │   ├── constants/               ← toolLimits.ts, tools.ts (names/descriptions)
 │   └── shared/                  ← outputFilter/ (Bash noise stripping), diagnostics/ (shared
 │                                  Build+Typecheck parsers), codeOutline/ (scanSymbols), stagedWrite/
-├── platform/ (653)              ← the host: process, config, OS integration, telemetry
+├── platform/ (564)              ← the host: process, config, OS integration, telemetry
 │   ├── entrypoints/ (16)        ← cli.tsx: process entry — fast-paths --version, defers heavy imports
-│   ├── main/ (44)               ← boot sequence: bootContext, argvPreparse, action, commands
+│   ├── main/ (41)               ← boot sequence: bootContext, action, commands, dispatch
 │   ├── headless/ (54)           ← headless -p / print mode, ndjson, exit handling
 │   ├── config/ (22)             ← config.ts is a BARREL over config/ (types, defaults, fileStore,
 │   │                              globalConfig, projectConfig, trust, derived); claudinMigration
@@ -301,7 +301,9 @@ src/
 │   ├── lsp/ ide/ install/ shell/ notifications/ secureStorage/
 │   ├── migrations/ (11)         ← one-time settings/model migrations (migrateFennecToOpus …)
 │   ├── bridge/ (37)             ← bridge mode (BRIDGE_MODE flag; largely gated/stubbed)
-│   ├── server/ teleport/       ← direct-connect sessions, remote environments
+│   ├── teleport/ (10)           ← remote environments. `server/` is down to
+│   │                              directConnectManager.ts: DIRECT_CONNECT was folded
+│   │                              false, so its entry points and stubs are deleted
 │   └── teams/ policyLimits/ wiki/ github/  ← misc host services
 ├── terminal/ (384)              ← the TUI shell: renderer, input, chrome (→ ink-tui.md)
 │   ├── ink/ (114)               ← the forked Ink renderer: screen.ts, log-update, stringWidth, ScrollBox
@@ -340,7 +342,7 @@ src/
 │                                  claudemd.ts loads AGENTS.md/CLAUDE.md + .claudin/rules/*.md,
 │                                  rulesClaims/rulesMapSync/ruleMapAutoSync verify and refresh
 │                                  THIS file's tree and counts at session start
-├── skills/ (35)                 ← user-invocable skills (/<name>); bundled/ + /create authoring
+├── skills/ (27)                 ← user-invocable skills (/<name>); bundled/ + /create authoring
 ├── shared/ (177)                ← cross-cutting primitives ONLY — a subsystem here is a bug
 │   ├── fs/ (35)                 ← path.ts, glob.ts, ripgrep.ts, textEncoding.ts, file IO
 │   ├── data/ proc/ text/        ← pure data helpers, Shell.ts/execFileNoThrow, string/format

@@ -106,13 +106,6 @@ export function setClaudeSocketInfo(path: string, pid: number): void {
 }
 
 /**
- * Returns whether the socket has been initialized.
- */
-export function isSocketInitialized(): boolean {
-  return socketPath !== null && serverPid !== null
-}
-
-/**
  * Gets the TMUX environment variable value for Claude's isolated socket.
  *
  * CRITICAL: This value is used by Shell.ts to override the TMUX env var

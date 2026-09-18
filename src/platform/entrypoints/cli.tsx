@@ -336,42 +336,6 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Fast-path for template job commands.
-  if (feature('TEMPLATES') && (args[0] === 'new' || args[0] === 'list' || args[0] === 'reply')) {
-    profileCheckpoint('cli_templates_path');
-    const {
-      templatesMain
-    } = await import('../headless/handlers/templateJobs.js');
-    await templatesMain(args);
-    // process.exit (not return) — mountFleetView's Ink TUI can leave event
-    // loop handles that prevent natural exit.
-    // eslint-disable-next-line custom-rules/no-process-exit
-    process.exit(0);
-  }
-
-  // Fast-path for `claude environment-runner`: headless BYOC runner.
-  // feature() must stay inline for build-time dead code elimination.
-  if (feature('BYOC_ENVIRONMENT_RUNNER') && args[0] === 'environment-runner') {
-    profileCheckpoint('cli_environment_runner_path');
-    const {
-      environmentRunnerMain
-    } = await import('../environment-runner/main.js');
-    await environmentRunnerMain(args.slice(1));
-    return;
-  }
-
-  // Fast-path for `claude self-hosted-runner`: headless self-hosted-runner
-  // targeting the SelfHostedRunnerWorkerService API (register + poll; poll IS
-  // heartbeat). feature() must stay inline for build-time dead code elimination.
-  if (feature('SELF_HOSTED_RUNNER') && args[0] === 'self-hosted-runner') {
-    profileCheckpoint('cli_self_hosted_runner_path');
-    const {
-      selfHostedRunnerMain
-    } = await import('../self-hosted-runner/main.js');
-    await selfHostedRunnerMain(args.slice(1));
-    return;
-  }
-
   // Fast-path for --worktree --tmux: exec into tmux before loading full CLI
   const hasTmuxFlag = args.includes('--tmux') || args.includes('--tmux=classic');
   if (hasTmuxFlag && (args.includes('-w') || args.includes('--worktree') || args.some(a => a.startsWith('--worktree=')))) {

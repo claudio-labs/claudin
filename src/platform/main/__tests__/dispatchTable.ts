@@ -26,9 +26,7 @@ export const DISPATCH_TABLE: readonly SubcommandSpec[] = [
     { name: 'add-from-claude-desktop', source: 'src/platform/main/commands/mcp.ts' },
     { name: 'reset-project-choices', source: 'src/platform/main/commands/mcp.ts' },
   ] },
-  { name: 'server', featureGate: 'DIRECT_CONNECT', source: 'src/platform/main/commands/server.ts' },
   { name: 'ssh', featureGate: 'SSH_REMOTE', source: 'src/platform/main/commands/ssh.ts' },
-  { name: 'open', featureGate: 'DIRECT_CONNECT', source: 'src/platform/main/commands/open.ts' },
   { name: 'auth', source: 'src/platform/main/commands/auth.ts', children: [
     { name: 'login', source: 'src/platform/main/commands/auth.ts' },
     { name: 'status', source: 'src/platform/main/commands/auth.ts' },

@@ -664,16 +664,6 @@ function cellAtCI(screen: Screen, ci: number, out: Cell): void {
   out.hyperlink = hid === 0 ? undefined : screen.hyperlinkPool.get(hid)
 }
 
-export function charInCellAt(
-  screen: Screen,
-  x: number,
-  y: number,
-): string | undefined {
-  if (x < 0 || y < 0 || x >= screen.width || y >= screen.height)
-    return undefined
-  const ci = (y * screen.width + x) << 1
-  return screen.charPool.get(screen.cells[ci]!)
-}
 /**
  * Set a cell, optionally creating a spacer for wide characters.
  *

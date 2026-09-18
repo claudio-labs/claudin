@@ -13,7 +13,6 @@
  * and nothing here touches fileStore at module-init, so the cycle resolves the
  * same way bashSecurity/heredoc.ts ↔ dispatch.ts does.
  */
-import { feature } from 'bun:bundle'
 import { unwatchFile, watchFile } from 'fs'
 import {
   createDefaultGlobalConfig,
@@ -37,13 +36,6 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { getGlobalClaudeFile } from 'src/shared/env.js'
 import { getErrnoCode } from 'src/shared/errors.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const ccrAutoConnect = feature('CCR_AUTO_CONNECT')
-  ? (require('src/platform/bridge/bridgeEnabled.js') as typeof import('src/platform/bridge/bridgeEnabled.js'))
-  : null
-
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 // We have to put this test code here because Jest doesn't support mocking ES modules :O
 const TEST_GLOBAL_CONFIG_FOR_TESTING: GlobalConfig = {
@@ -399,15 +391,11 @@ export function getGlobalConfig(): GlobalConfig {
 /**
  * Returns the effective value of remoteControlAtStartup. Precedence:
  *   1. User's explicit config value (always wins — honors opt-out)
- *   2. CCR auto-connect default (internal-only build, GrowthBook-gated)
- *   3. false (Remote Control must be explicitly opted into)
+ *   2. false (Remote Control must be explicitly opted into)
  */
 export function getRemoteControlAtStartup(): boolean {
   const explicit = getGlobalConfig().remoteControlAtStartup
   if (explicit !== undefined) return explicit
-  if (feature('CCR_AUTO_CONNECT')) {
-    if (ccrAutoConnect?.getCcrAutoConnectDefault()) return true
-  }
   return false
 }
 

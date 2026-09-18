@@ -20,7 +20,6 @@ export const PAUSE_ICON = '\u23f8' // ⏸
 
 // MCP subscription indicators
 export const REFRESH_ARROW = '\u21bb' // ↻ - used for resource update indicator
-export const CHANNEL_ARROW = '\u2190' // ← - inbound channel message indicator
  // → - cross-session injected message indicator
  // ⑂ - fork directive indicator
 

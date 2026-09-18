@@ -95,7 +95,6 @@ export { MaxFileReadTokenExceededError } from 'src/tools/FileReadTool/guards.js'
 export { readImageWithTokenBudget } from 'src/tools/FileReadTool/imageRead.js'
 export { STAND_DOWN_STRIKES, STICKY_REPLAY_BUDGET } from 'src/tools/FileReadTool/clipPin.js'
 export { AUTO_OUTLINE_PIVOT_FOOTER, scanFile } from 'src/tools/FileReadTool/outlineView.js'
-export { CYBER_RISK_MITIGATION_REMINDER } from 'src/tools/FileReadTool/resultContent.js'
 
 export const FileReadTool = buildTool({
   name: FILE_READ_TOOL_NAME,

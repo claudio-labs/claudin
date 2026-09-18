@@ -1,9 +1,7 @@
 import type {
   BetaMessageParam as MessageParam,
 } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
-import { feature } from 'bun:bundle'
 import type { QuerySource } from 'src/agent/prompts/querySource.js'
-import { isConnectorTextBlock } from 'src/shared/types/connectorText.js'
 import type {
   AssistantMessage,
   Message,
@@ -82,8 +80,7 @@ export function assistantMessageToMessageParam(
           ..._,
           ...(i === message.message.content.length - 1 &&
           _.type !== 'thinking' &&
-          _.type !== 'redacted_thinking' &&
-          (feature('CONNECTOR_TEXT') ? !isConnectorTextBlock(_) : true)
+          _.type !== 'redacted_thinking'
             ? enablePromptCaching
               ? { cache_control: getCacheControl({ querySource }) }
               : {}

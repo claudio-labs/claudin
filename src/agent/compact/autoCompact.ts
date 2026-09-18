@@ -13,7 +13,6 @@ import { hasExactErrorMessage } from 'src/shared/errors.js'
 import type { CacheSafeParams } from 'src/agent/coordinator/forkedAgent.js'
 import { logError } from 'src/shared/log.js'
 import { tokenCountWithEstimation } from 'src/agent/context/tokens.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getMaxOutputTokensForModel } from 'src/providers/shims/claude.js'
 import { notifyCompaction } from 'src/providers/cache/promptCacheBreakDetection.js'
 import { setLastSummarizedMessageId } from 'src/memory/session/sessionMemoryUtils.js'
@@ -248,18 +247,6 @@ export async function shouldAutoCompact(
   }
   if (!isAutoCompactEnabled()) {
     return false
-  }
-
-  // Reactive-only mode: suppress proactive autocompact, let reactive compact
-  // catch the API's prompt-too-long. feature() wrapper keeps the flag string
-  // out of external builds (REACTIVE_COMPACT is internal-only).
-  // Note: returning false here also means autoCompactIfNeeded never reaches
-  // trySessionMemoryCompaction in the query loop — the /compact call site
-  // still tries session memory first. Revisit if reactive-only graduates.
-  if (feature('REACTIVE_COMPACT')) {
-    if (getFeatureValue_CACHED_MAY_BE_STALE('tengu_cobalt_raccoon', false)) {
-      return false
-    }
   }
 
   // Context-collapse mode: same suppression. Collapse IS the context

@@ -1,4 +1,3 @@
-import { feature } from 'bun:bundle'
 import type { Anthropic } from '@anthropic-ai/sdk'
 import {
   getSystemPrompt,
@@ -8,7 +7,6 @@ import { microcompactMessages } from 'src/agent/compact/microCompact.js'
 import { getSdkBetas } from 'src/platform/bootstrap/state.js'
 import { getCommandName } from 'src/commands/commands.js'
 import { getSystemContext } from 'src/agent/context.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import {
   AUTOCOMPACT_BUFFER_TOKENS,
   getEffectiveContextWindowSize,
@@ -1087,23 +1085,8 @@ export async function analyzeContextUsage(
   )
 
   // Reserved space after messages (not counted in actualUsage shown to user).
-  // Under reactive-only mode (cobalt_raccoon), proactive autocompact never
-  // fires and the reserved buffer is a lie — skip it entirely and let Free
-  // space fill the grid. feature() guard keeps the flag string out of
-  // external builds. Same for context-collapse (marble_origami) — collapse
-  // owns the threshold ladder and autocompact is suppressed in
-  // shouldAutoCompact, so the 33k buffer shown here would be a lie too.
   let reservedTokens = 0
-  let skipReservedBuffer = false
-  if (feature('REACTIVE_COMPACT')) {
-    if (getFeatureValue_CACHED_MAY_BE_STALE('tengu_cobalt_raccoon', false)) {
-      skipReservedBuffer = true
-    }
-  }
-  if (skipReservedBuffer) {
-    // No buffer category pushed — reactive compaction is transparent and
-    // doesn't need a visible reservation in the grid.
-  } else if (isAutoCompact && autoCompactThreshold !== undefined) {
+  if (isAutoCompact && autoCompactThreshold !== undefined) {
     // Autocompact buffer (from effective context)
     reservedTokens = contextWindow - autoCompactThreshold
     cats.push({

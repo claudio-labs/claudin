@@ -199,11 +199,3 @@ export async function getSlackChannelSuggestions(
       displayText: `#${c}`,
     }))
 }
-
-export function clearSlackChannelCache(): void {
-  cache.clear()
-  knownChannels.clear()
-  knownChannelsVersion = 0
-  inflightQuery = null
-  inflightPromise = null
-}

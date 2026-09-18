@@ -27,9 +27,6 @@ export const MAX_ENTRIES_PER_SECTION = 200
 /** Characters kept per entry; longer entries are dropped whole. */
 export const MAX_ENTRY_CHARS = 10_000
 
-/** Total bytes past which a config is worth warning about. */
-export const CONFIG_SIZE_WARN_BYTES = 50_000
-
 export type AutoModeSectionName = 'allow' | 'soft_deny' | 'environment'
 
 export type RuleDropReason =

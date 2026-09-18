@@ -32,8 +32,3 @@ export function readDiffPanelMemory(): DiffPanelMemory {
 export function writeDiffPanelMemory(next: DiffPanelMemory): void {
   memory = next
 }
-
-// Test-only.
-export function __resetDiffPanelMemoryForTests(): void {
-  memory = INITIAL
-}

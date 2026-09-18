@@ -2325,11 +2325,3 @@ async function startWorkPollLoop({
     `[bridge:repl] Work poll loop ended (aborted=${signal.aborted}) env=${getCredentials().environmentId}`,
   )
 }
-
-// Exported for testing only
-export {
-  startWorkPollLoop as _startWorkPollLoopForTesting,
-  POLL_ERROR_INITIAL_DELAY_MS as _POLL_ERROR_INITIAL_DELAY_MS_ForTesting,
-  POLL_ERROR_MAX_DELAY_MS as _POLL_ERROR_MAX_DELAY_MS_ForTesting,
-  POLL_ERROR_GIVE_UP_MS as _POLL_ERROR_GIVE_UP_MS_ForTesting,
-}

@@ -72,10 +72,6 @@ const outputSchema = lazySchema(() => z.object({
 }));
 type OutputSchema = ReturnType<typeof outputSchema>;
 
-// SDK schemas are identical to internal schemas now that `preview` and
-// `annotations` are public (configurable via `toolConfig.askUserQuestion`).
-export const _sdkInputSchema = inputSchema;
-export const _sdkOutputSchema = outputSchema;
 export type Question = z.infer<ReturnType<typeof questionSchema>>;
 export type QuestionOption = z.infer<ReturnType<typeof questionOptionSchema>>;
 export type Output = z.infer<OutputSchema>;

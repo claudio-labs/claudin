@@ -6,9 +6,6 @@ import { initMagicDocs } from 'src/platform/MagicDocs/magicDocs.js'
 const extractMemoriesModule = feature('EXTRACT_MEMORIES')
   ? (require('src/memory/extract/extractMemories.js') as typeof import('src/memory/extract/extractMemories.js'))
   : null
-const registerProtocolModule = feature('LODESTONE')
-  ? (require('src/platform/deepLink/registerProtocol.js') as typeof import('src/platform/deepLink/registerProtocol.js'))
-  : null
 
 /* eslint-enable @typescript-eslint/no-require-imports */
 
@@ -27,9 +24,6 @@ export function startBackgroundHousekeeping(): void {
   }
   initAutoDream()
   void autoUpdateMarketplacesAndPluginsInBackground()
-  if (feature('LODESTONE') && getIsInteractive()) {
-    void registerProtocolModule!.ensureDeepLinkProtocolRegistered()
-  }
 
   let needsCleanup = true
   async function runVerySlowOps(): Promise<void> {

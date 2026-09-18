@@ -62,7 +62,6 @@ import {
   getTokenUsageAttachment,
   getOutputTokenUsageAttachment,
   getMaxBudgetUsdAttachment,
-  getContextEfficiencyAttachment,
 } from 'src/agent/attachments/injections.js'
 import {
   getPlanModeAttachments,
@@ -75,22 +74,12 @@ import {
   getActiveBackgroundTaskReminders,
   getContainerTransitionAttachments,
   getVerifyPlanReminderAttachment,
-  getCompactionReminderAttachment,
 } from 'src/agent/attachments/lifecycle.js'
 import { getNestedMemoryAttachments } from 'src/agent/attachments/memory.js'
 import {
   getSkillListingAttachments,
   getBashGitInstructionsAttachment,
 } from 'src/agent/attachments/skill-bash-gates.js'
-
-/* eslint-disable @typescript-eslint/no-require-imports */
-const skillSearchModules = feature('EXPERIMENTAL_SKILL_SEARCH')
-  ? {
-      prefetch:
-        require('../../skills/search/prefetch.js') as typeof import('../../skills/search/prefetch.js'),
-    }
-  : null
-/* eslint-enable @typescript-eslint/no-require-imports */
 
 /**
  * This is janky
@@ -151,31 +140,6 @@ export async function getAttachments(
             ),
           ),
         ),
-        // Skill discovery on turn 0 (user input as signal). Inter-turn
-        // discovery runs via startSkillDiscoveryPrefetch in query.ts,
-        // gated on write-pivot detection — see skillSearch/prefetch.ts.
-        // feature() here lets DCE drop the 'skill_discovery' string (and the
-        // function it calls) from external builds.
-        //
-        // skipSkillDiscovery gates out the SKILL.md-expansion path
-        // (getMessagesForPromptSlashCommand). When a skill is invoked, its
-        // SKILL.md content is passed as `input` here to extract @-mentions —
-        // but that content is NOT user intent and must not trigger discovery.
-        // Without this gate, a 110KB SKILL.md fires ~3.3s of chunked AKI
-        // queries on every skill invocation (session 13a9afae).
-        ...(feature('EXPERIMENTAL_SKILL_SEARCH') &&
-        skillSearchModules &&
-        !options?.skipSkillDiscovery
-          ? [
-              maybe('skill_discovery', () =>
-                skillSearchModules.prefetch.getTurnZeroSkillDiscovery(
-                  input,
-                  messages ?? [],
-                  context,
-                ),
-              ),
-            ]
-          : []),
       ]
     : []
 
@@ -321,25 +285,6 @@ export async function getAttachments(
     maybe('critical_system_reminder', () =>
       Promise.resolve(getCriticalSystemReminderAttachment(toolUseContext)),
     ),
-    ...(feature('COMPACTION_REMINDERS')
-      ? [
-          maybe('compaction_reminder', () =>
-            Promise.resolve(
-              getCompactionReminderAttachment(
-                messages ?? [],
-                toolUseContext.options.mainLoopModel,
-              ),
-            ),
-          ),
-        ]
-      : []),
-    ...(feature('HISTORY_SNIP')
-      ? [
-          maybe('context_efficiency', () =>
-            Promise.resolve(getContextEfficiencyAttachment(messages ?? [])),
-          ),
-        ]
-      : []),
   ]
 
   // Attachments which are semantically only for the main conversation or don't have concurrency-safe implementations

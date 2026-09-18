@@ -1,7 +1,5 @@
-import { feature } from 'bun:bundle'
 import type { BetaToolUseBlock } from '@anthropic-ai/sdk/resources/beta/messages/messages.mjs'
 import type { SpinnerMode } from 'src/terminal/spinner/Spinner.js'
-import { isConnectorTextBlock } from 'src/shared/types/connectorText.js'
 import type {
   Message,
   RequestStartEvent,
@@ -101,13 +99,6 @@ export function handleMessageFromStream(
   switch (message.event.type) {
     case 'content_block_start':
       onStreamingText?.(() => null)
-      if (
-        feature('CONNECTOR_TEXT') &&
-        isConnectorTextBlock(message.event.content_block)
-      ) {
-        onSetStreamMode('responding')
-        return
-      }
       switch (message.event.content_block.type) {
         case 'thinking':
         case 'redacted_thinking':

@@ -99,24 +99,6 @@ const inputSchema = lazySchema(() =>
 )
 type InputSchema = ReturnType<typeof inputSchema>
 
-/**
- * SDK-facing input schema - includes fields injected by normalizeToolInput.
- * The internal inputSchema doesn't have these fields because plan is read from disk,
- * but the SDK/hooks see the normalized version with plan and file path included.
- */
-export const _sdkInputSchema = lazySchema(() =>
-  inputSchema().extend({
-    plan: z
-      .string()
-      .optional()
-      .describe('The plan content (injected by normalizeToolInput from disk)'),
-    planFilePath: z
-      .string()
-      .optional()
-      .describe('The plan file path (injected by normalizeToolInput)'),
-  }),
-)
-
 export const outputSchema = lazySchema(() =>
   z.object({
     plan: z

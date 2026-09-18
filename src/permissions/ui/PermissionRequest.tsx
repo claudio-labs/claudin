@@ -39,10 +39,6 @@ import { WebFetchPermissionRequest } from 'src/permissions/ui/WebFetchPermission
 import { MonitorPermissionRequest as ShellDelegatePermissionRequest } from 'src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.js';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
-const ReviewArtifactTool = feature('REVIEW_ARTIFACT') ? (require('../../tools/ReviewArtifactTool/ReviewArtifactTool.js') as typeof import('../../tools/ReviewArtifactTool/ReviewArtifactTool.js')).ReviewArtifactTool : null;
-const ReviewArtifactPermissionRequest = feature('REVIEW_ARTIFACT') ? (require('./ReviewArtifactPermissionRequest/ReviewArtifactPermissionRequest.js') as typeof import('./ReviewArtifactPermissionRequest/ReviewArtifactPermissionRequest.js')).ReviewArtifactPermissionRequest : null;
-const WorkflowTool = feature('WORKFLOW_SCRIPTS') ? (require('../../tools/WorkflowTool/WorkflowTool.js') as typeof import('../../tools/WorkflowTool/WorkflowTool.js')).WorkflowTool : null;
-const WorkflowPermissionRequest = feature('WORKFLOW_SCRIPTS') ? (require('../../tools/WorkflowTool/WorkflowPermissionRequest.js') as typeof import('../../tools/WorkflowTool/WorkflowPermissionRequest.js')).WorkflowPermissionRequest : null;
 const MonitorTool = feature('MONITOR_TOOL') ? (require('src/tools/MonitorTool/MonitorTool.js') as typeof import('src/tools/MonitorTool/MonitorTool.js')).MonitorTool : null;
 const MonitorPermissionRequest = feature('MONITOR_TOOL') ? (require('src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.js') as typeof import('src/permissions/ui/MonitorPermissionRequest/MonitorPermissionRequest.js')).MonitorPermissionRequest : null;
 import type { ContentBlockParam } from '@anthropic-ai/sdk/resources/messages.mjs';
@@ -64,8 +60,6 @@ function permissionComponentForTool(tool: Tool): React.ComponentType<PermissionR
     // grant, and this tool's permissions are checked as `Bash(...)` rules.
     case GitTool:
       return GitPermissionRequest;
-    case ReviewArtifactTool:
-      return ReviewArtifactPermissionRequest ?? FallbackPermissionRequest;
     case WebFetchTool:
       return WebFetchPermissionRequest;
     case NotebookEditTool:
@@ -78,8 +72,6 @@ function permissionComponentForTool(tool: Tool): React.ComponentType<PermissionR
       return SkillPermissionRequest;
     case AskUserQuestionTool:
       return AskUserQuestionPermissionRequest;
-    case WorkflowTool:
-      return WorkflowPermissionRequest ?? FallbackPermissionRequest;
     case MonitorTool:
       return MonitorPermissionRequest ?? FallbackPermissionRequest;
     case WaitForTool:
@@ -144,9 +136,6 @@ function getNotificationMessage(toolUseConfirm: ToolUseConfirm): string {
   }
   if (toolUseConfirm.tool === EnterPlanModeTool) {
     return 'Claudin wants to enter plan mode';
-  }
-  if (feature('REVIEW_ARTIFACT') && toolUseConfirm.tool === ReviewArtifactTool) {
-    return 'Claude needs your approval for a review artifact';
   }
   if (!toolName || toolName.trim() === '') {
     return 'Claudin needs your attention';

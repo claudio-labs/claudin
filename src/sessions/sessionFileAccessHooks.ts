@@ -21,7 +21,6 @@ import {
   detectSessionFileType,
   detectSessionPatternType,
   isAutoMemFile,
-  memoryScopeForPath,
 } from 'src/memory/memdir/memoryFileDetection.js'
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -30,9 +29,6 @@ const teamMemPaths = feature('TEAMMEM')
   : null
 const teamMemWatcher = feature('TEAMMEM')
   ? (require('src/memory/teamSync/watcher.js') as typeof import('src/memory/teamSync/watcher.js'))
-  : null
-const memoryShapeTelemetry = feature('MEMORY_SHAPE_TELEMETRY')
-  ? (require('../memory/memdir/memoryShapeTelemetry.js') as typeof import('../memory/memdir/memoryShapeTelemetry.js'))
   : null
 
 /* eslint-enable @typescript-eslint/no-require-imports */
@@ -156,22 +152,6 @@ async function handleSessionFileAccess(
       input.tool_name === FILE_WRITE_TOOL_NAME
     ) {
       teamMemWatcher?.notifyTeamMemoryWrite()
-    }
-  }
-
-  if (feature('MEMORY_SHAPE_TELEMETRY') && filePath) {
-    const scope = memoryScopeForPath(filePath)
-    if (
-      scope !== null &&
-      (input.tool_name === FILE_EDIT_TOOL_NAME ||
-        input.tool_name === FILE_WRITE_TOOL_NAME)
-    ) {
-      memoryShapeTelemetry!.logMemoryWriteShape(
-        input.tool_name,
-        input.tool_input,
-        filePath,
-        scope,
-      )
     }
   }
 

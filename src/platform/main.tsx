@@ -66,8 +66,6 @@ import { isBareMode, isEnvTruthy } from 'src/shared/envUtils.js';
 import type { FpsMetrics } from 'src/terminal/render/fpsTracker.js';
 // Plugin startup checks are now handled non-blockingly in REPL.tsx
 
-import { getCwd } from 'src/shared/fs/cwd.js';
-
 // Action-handler-only imports: these are needed after commander parse and action
 // dispatch, not during module evaluation. Lazy-loading them defers their
 // dependency chains until the REPL is ready to mount.
@@ -75,8 +73,6 @@ import { getCwd } from 'src/shared/fs/cwd.js';
 const getCreateSyntheticOutputTool = () => require('src/tools/SyntheticOutputTool/SyntheticOutputTool.js').createSyntheticOutputTool as typeof import('src/tools/SyntheticOutputTool/SyntheticOutputTool.js').createSyntheticOutputTool
 const getIsSyntheticOutputToolEnabled = () => require('src/tools/SyntheticOutputTool/SyntheticOutputTool.js').isSyntheticOutputToolEnabled as typeof import('src/tools/SyntheticOutputTool/SyntheticOutputTool.js').isSyntheticOutputToolEnabled
 const getJsonParse = () => require('src/platform/slowOperations.js').jsonParse as typeof import('src/platform/slowOperations.js').jsonParse
-const getCreateSystemMessage = () => require('src/agent/messages/messages.js').createSystemMessage as typeof import('src/agent/messages/messages.js').createSystemMessage
-const getBuildDeepLinkBanner = () => require('src/platform/deepLink/banner.js').buildDeepLinkBanner as typeof import('src/platform/deepLink/banner.js').buildDeepLinkBanner
 const getPermissionModes = () => require('src/permissions/PermissionMode.js').PERMISSION_MODES as typeof import('src/permissions/PermissionMode.js').PERMISSION_MODES
 const getInitializeVersionedPlugins = () => require('src/plugins/installedPluginsManager.js').initializeVersionedPlugins as typeof import('src/plugins/installedPluginsManager.js').initializeVersionedPlugins
 const getCleanupOrphanedPluginVersionsInBackground = () => require('src/plugins/cacheUtils.js').cleanupOrphanedPluginVersionsInBackground as typeof import('src/plugins/cacheUtils.js').cleanupOrphanedPluginVersionsInBackground
@@ -124,11 +120,6 @@ import { startDeferredPrefetches } from 'src/platform/main/deferredPrefetches.js
 export { startDeferredPrefetches };
 import { buildBootContext } from 'src/platform/main/bootContext.js';
 import { pendingConnect, pendingSSH } from 'src/platform/main/pendingSlots.js';
-import {
-  runDeepLinkArgvHandling,
-  runDirectConnectArgvRewrite,
-  runSshArgvStash,
-} from 'src/platform/main/argvPreparse.js';
 import { applyClientType, resolveClientType } from 'src/platform/main/clientType.js';
 // All three registrars touch heavy graphs (preActionHook pulls policyLimits +
 // remoteManagedSettings; registerSubcommands pulls every command's transitive
@@ -151,10 +142,10 @@ import type { ActionOptions } from 'src/platform/main/action/parseOptions.js';
 // loadSettingsFromFlag, loadSettingSourcesFromFlag moved to src/platform/main/helpers.ts (ROADMAP 11g Fase 1)
 // eagerLoadSettings, initializeEntrypoint moved to src/platform/main/lifecycle.ts (ROADMAP 11g Fase 2)
 
-// Pending slots (DIRECT_CONNECT / KAIROS / SSH_REMOTE) moved to
-// src/platform/main/pendingSlots.ts (ROADMAP 11g Fase 7 margin #1). They're imported
-// above; argv pre-parsing in main() mutates them by reference BEFORE the
-// default action runs, then they're copied into ctx.pending.
+// Pending slots moved to src/platform/main/pendingSlots.ts (ROADMAP 11g Fase 7
+// margin #1). They're imported above and copied into ctx.pending; both are
+// permanently `undefined` now that the argv pre-parsers that used to mutate
+// them are gone.
 export async function main() {
   profileCheckpoint('main_function_start');
 
@@ -167,14 +158,6 @@ export async function main() {
   // Extracted to src/platform/main/lifecycleHandlers.ts (ROADMAP 11g Fase 6).
   installLifecycleHandlers();
   profileCheckpoint('main_warning_handler_initialized');
-
-  // Argv pre-parse helpers extracted to src/platform/main/argvPreparse.ts (ROADMAP 11g Fase 7a).
-  // Each helper inspects/mutates process.argv before commander runs and stashes
-  // state into the corresponding _pending* slot (later copied into the
-  // BootContext at the top of the default action).
-  await runDirectConnectArgvRewrite(pendingConnect);
-  await runDeepLinkArgvHandling();
-  runSshArgvStash(pendingSSH);
 
   // Resolve clientType/previewFormat/sessionSource/isInteractive from env+argv.
   // Extracted to src/platform/main/clientType.ts (ROADMAP 11g Fase 7a). Apply via setters
@@ -265,10 +248,7 @@ async function run(): Promise<CommanderCommand> {
       throw new Error('--task-budget must be a positive integer');
     }
     return tokens;
-  }).hideHelp()).option('--replay-user-messages', 'Re-emit user messages from stdin back on stdout for acknowledgment (only works with --input-format=stream-json and --output-format=stream-json)', () => true).addOption(new Option('--enable-auth-status', 'Enable auth status messages in SDK mode').default(false).hideHelp()).option('--allowedTools, --allowed-tools <tools...>', 'Comma or space-separated list of tool names to allow (e.g. "Bash(git:*) Edit")').option('--tools <tools...>', 'Specify the list of available tools from the built-in set. Use "" to disable all tools, "default" to use all tools, or specify tool names (e.g. "Bash,Edit,Read").').option('--disallowedTools, --disallowed-tools <tools...>', 'Comma or space-separated list of tool names to deny (e.g. "Bash(git:*) Edit")').option('--mcp-config <configs...>', 'Load MCP servers from JSON files or strings (space-separated)').addOption(new Option('--permission-prompt-tool <tool>', 'MCP tool to use for permission prompts (only works with --print)').argParser(String).hideHelp()).addOption(new Option('--system-prompt <prompt>', 'System prompt to use for the session').argParser(String)).addOption(new Option('--system-prompt-file <file>', 'Read system prompt from a file').argParser(String).hideHelp()).addOption(new Option('--append-system-prompt <prompt>', 'Append a system prompt to the default system prompt').argParser(String)).addOption(new Option('--append-system-prompt-file <file>', 'Read system prompt from a file and append to the default system prompt').argParser(String).hideHelp()).addOption(new Option('--permission-mode <mode>', 'Permission mode to use for the session').argParser(String).choices(getPermissionModes())).option('-c, --continue', 'Continue the most recent conversation in the current directory', () => true).option('-r, --resume [value]', 'Resume a conversation by session ID, or open interactive picker with optional search term', value => value || true).option('--fork-session', 'When resuming, create a new session ID instead of reusing the original (use with --resume or --continue)', () => true).addOption(new Option('--prefill <text>', 'Pre-fill the prompt input with text without submitting it').hideHelp()).addOption(new Option('--deep-link-origin', 'Signal that this session was launched from a deep link').hideHelp()).addOption(new Option('--deep-link-repo <slug>', 'Repo slug the deep link ?repo= parameter resolved to the current cwd').hideHelp()).addOption(new Option('--deep-link-last-fetch <ms>', 'FETCH_HEAD mtime in epoch ms, precomputed by the deep link trampoline').argParser(v => {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : undefined;
-  }).hideHelp()).option('--from-pr [value]', 'Resume a session linked to a PR by PR number/URL, or open interactive picker with optional search term', value => value || true).option('--no-session-persistence', 'Disable session persistence - sessions will not be saved to disk and cannot be resumed (only works with --print)').addOption(new Option('--resume-session-at <message id>', 'When resuming, only messages up to and including the assistant message with <message.id> (use with --resume in print mode)').argParser(String).hideHelp()).addOption(new Option('--rewind-files <user-message-id>', 'Restore files to state at the specified user message and exit (requires --resume)').hideHelp())
+  }).hideHelp()).option('--replay-user-messages', 'Re-emit user messages from stdin back on stdout for acknowledgment (only works with --input-format=stream-json and --output-format=stream-json)', () => true).addOption(new Option('--enable-auth-status', 'Enable auth status messages in SDK mode').default(false).hideHelp()).option('--allowedTools, --allowed-tools <tools...>', 'Comma or space-separated list of tool names to allow (e.g. "Bash(git:*) Edit")').option('--tools <tools...>', 'Specify the list of available tools from the built-in set. Use "" to disable all tools, "default" to use all tools, or specify tool names (e.g. "Bash,Edit,Read").').option('--disallowedTools, --disallowed-tools <tools...>', 'Comma or space-separated list of tool names to deny (e.g. "Bash(git:*) Edit")').option('--mcp-config <configs...>', 'Load MCP servers from JSON files or strings (space-separated)').addOption(new Option('--permission-prompt-tool <tool>', 'MCP tool to use for permission prompts (only works with --print)').argParser(String).hideHelp()).addOption(new Option('--system-prompt <prompt>', 'System prompt to use for the session').argParser(String)).addOption(new Option('--system-prompt-file <file>', 'Read system prompt from a file').argParser(String).hideHelp()).addOption(new Option('--append-system-prompt <prompt>', 'Append a system prompt to the default system prompt').argParser(String)).addOption(new Option('--append-system-prompt-file <file>', 'Read system prompt from a file and append to the default system prompt').argParser(String).hideHelp()).addOption(new Option('--permission-mode <mode>', 'Permission mode to use for the session').argParser(String).choices(getPermissionModes())).option('-c, --continue', 'Continue the most recent conversation in the current directory', () => true).option('-r, --resume [value]', 'Resume a conversation by session ID, or open interactive picker with optional search term', value => value || true).option('--fork-session', 'When resuming, create a new session ID instead of reusing the original (use with --resume or --continue)', () => true).addOption(new Option('--prefill <text>', 'Pre-fill the prompt input with text without submitting it').hideHelp()).option('--from-pr [value]', 'Resume a session linked to a PR by PR number/URL, or open interactive picker with optional search term', value => value || true).option('--no-session-persistence', 'Disable session persistence - sessions will not be saved to disk and cannot be resumed (only works with --print)').addOption(new Option('--resume-session-at <message id>', 'When resuming, only messages up to and including the assistant message with <message.id> (use with --resume in print mode)').argParser(String).hideHelp()).addOption(new Option('--rewind-files <user-message-id>', 'Restore files to state at the specified user message and exit (requires --resume)').hideHelp())
   // @[MODEL LAUNCH]: Update the example model ID in the --model help text.
   .option('--model <model>', `Model for the current session. Provide an alias for the latest model (e.g. 'sonnet' or 'opus') or a model's full name (e.g. 'claude-sonnet-5').`).addOption(new Option('--effort <level>', `Effort level for the current session (low, medium, high, max)`).argParser((rawValue: string) => {
     const value = rawValue.toLowerCase();
@@ -303,9 +283,9 @@ async function run(): Promise<CommanderCommand> {
       runDefaultActionDispatch,
     } = await import('src/platform/main/defaultActionDeps.js');
 
-    // BootContext seam (ROADMAP 11g Fase 4). Currently only carries the three
-    // pending slots (DIRECT_CONNECT / KAIROS / SSH_REMOTE) populated by argv
-    // pre-parsing in main(). Subsequent waves will migrate more fields here.
+    // BootContext seam (ROADMAP 11g Fase 4). Currently only carries the two
+    // remaining pending slots, both permanently empty. Subsequent waves will
+    // migrate more fields here.
     const ctx = buildBootContext({
       prompt,
       pendingConnect,
@@ -742,26 +722,7 @@ async function run(): Promise<CommanderCommand> {
         getSaveMode()(coordinatorModeModule?.isCoordinatorMode() ? 'coordinator' : 'normal');
       }
 
-      // If launched via a deep link, show a provenance banner so the user
-      // knows the session originated externally. Linux xdg-open and
-      // browsers with "always allow" set dispatch the link with no OS-level
-      // confirmation, so this is the only signal the user gets that the
-      // prompt — and the working directory / CLAUDE.md it implies — came
-      // from an external source rather than something they typed.
-      let deepLinkBanner: ReturnType<ReturnType<typeof getCreateSystemMessage>> | null = null;
-      if (feature('LODESTONE')) {
-        if (options.deepLinkOrigin) {
-          deepLinkBanner = getCreateSystemMessage()(getBuildDeepLinkBanner()({
-            cwd: getCwd(),
-            prefillLength: options.prefill?.length,
-            repo: options.deepLinkRepo,
-            lastFetch: options.deepLinkLastFetch !== undefined ? new Date(options.deepLinkLastFetch) : undefined
-          }), 'warning');
-        } else if (options.prefill) {
-          deepLinkBanner = getCreateSystemMessage()('Launched with a pre-filled prompt — review it before pressing Enter.', 'warning');
-        }
-      }
-      const initialMessages = deepLinkBanner ? [deepLinkBanner, ...hookMessages] : hookMessages.length > 0 ? hookMessages : undefined;
+      const initialMessages = hookMessages.length > 0 ? hookMessages : undefined;
       const launchRepl = await getLaunchRepl();
       await launchRepl(root, {
         getFpsMetrics,
@@ -797,7 +758,7 @@ async function run(): Promise<CommanderCommand> {
   }
 
   // Subcommand registration extracted to src/platform/main/registerSubcommands.ts (ROADMAP 11g Fase 7b).
-  (await getRegisterSubcommands())(program, { pendingConnect });
+  (await getRegisterSubcommands())(program);
 
   profileCheckpoint('run_before_parse');
   await program.parseAsync(process.argv);

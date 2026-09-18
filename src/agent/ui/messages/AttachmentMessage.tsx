@@ -1,6 +1,6 @@
 import { c as _c } from "react-compiler-runtime";
 // biome-ignore-all assist/source/organizeImports: internal-only import markers must not be reordered
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Ansi, Box, Text } from 'src/terminal/ink.js';
 import type { Attachment } from 'src/agent/attachments/attachments.js';
 import type { NullRenderingAttachmentType } from 'src/agent/ui/messages/nullRenderingAttachments.js';
@@ -17,7 +17,6 @@ import { UserImageMessage } from 'src/agent/ui/messages/UserImageMessage.js';
 import { toInkColor } from 'src/terminal/render/ink.js';
 import { jsonParse } from 'src/platform/slowOperations.js';
 import { plural } from 'src/shared/text/stringUtils.js';
-import { isEnvTruthy } from 'src/shared/envUtils.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { tryRenderPlanApprovalMessage, formatTeammateMessageContent } from 'src/agent/ui/messages/PlanApprovalMessage.js';
 import { BLACK_CIRCLE } from 'src/shared/constants/figures.js';
@@ -27,7 +26,6 @@ import { CtrlOToExpand } from 'src/terminal/CtrlOToExpand.js';
 import { nestedMemoryBatchNoun } from 'src/tools/shared/collapseNestedMemory.js';
 import FullWidthRow from 'src/terminal/design-system/FullWidthRow.js';
 import { FilePathLink } from 'src/terminal/FilePathLink.js';
-import { feature } from 'bun:bundle';
 import { useSelectedMessageBg } from 'src/agent/ui/messageActions.js';
 import type { AppState } from 'src/terminal/state/AppStateStore.js';
 import type { Color } from 'src/terminal/ink/styles.js';
@@ -45,10 +43,6 @@ export function AttachmentMessage({
   isTranscriptMode
 }: Props): React.ReactNode {
   const bg = useSelectedMessageBg();
-  // Hoisted to mount-time — per-message component, re-renders on every scroll.
-  const isDemoEnv = feature('EXPERIMENTAL_SKILL_SEARCH') ?
-  // biome-ignore lint/correctness/useHookAtTopLevel: feature() is a compile-time constant
-  useMemo(() => isEnvTruthy(process.env.IS_DEMO), []) : false;
   // Handle teammate_mailbox BEFORE switch
   if (isAgentSwarmsEnabled() && attachment.type === 'teammate_mailbox') {
     // Filter out idle notifications BEFORE counting - they are hidden in the UI
@@ -105,20 +99,6 @@ export function AttachmentMessage({
         return <TeammateMessageContent key={idx} displayName={msg_0.from} inkColor={inkColor} content={formattedContent} summary={msg_0.summary} isTranscriptMode={isTranscriptMode} />;
       })}
       </Box>;
-  }
-
-  // skill_discovery rendered here (not in the switch) so the 'skill_discovery'
-  // string literal stays inside a feature()-guarded block. A case label can't
-  // be conditionally eliminated; an if-body can.
-  if (feature('EXPERIMENTAL_SKILL_SEARCH')) {
-    if (attachment.type === 'skill_discovery') {
-      if (attachment.skills.length === 0) return null;
-      const names = attachment.skills.map(s => s.shortId ? `${s.name} [${s.shortId}]` : s.name).join(', ');
-      return <Line>
-          <Text bold>{attachment.skills.length}</Text> relevant{' '}
-          {plural(attachment.skills.length, 'skill')}: {names}
-        </Line>;
-    }
   }
 
   // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check -- teammate_mailbox/skill_discovery handled before switch

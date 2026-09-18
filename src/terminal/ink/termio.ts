@@ -28,4 +28,3 @@ export type {
   NamedColor,
   TextStyle,
 } from 'src/terminal/ink/termio/types.js'
-export { colorsEqual, defaultStyle, stylesEqual } from 'src/terminal/ink/termio/types.js'

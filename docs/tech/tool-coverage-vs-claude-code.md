@@ -94,7 +94,16 @@ harness; a few are claudin- or environment-specific. Not coverage gaps for claud
 | `PowerShellTool` | Linux session |
 | `SendMessageTool` | referenced by `Agent` here ("use SendMessage with the agent's ID") but not a standalone listed tool |
 | `REPLTool` | not surfaced |
-| `ConfigTool`, `BriefTool`, `SuggestBackgroundPRTool`, `SyntheticOutputTool`, `SleepTool`, `TeamCreateTool`, `TeamDeleteTool`, `TungstenTool`, `VerifyPlanExecutionTool` | harness/coordinator-specific; not in this session's registry |
+| `BriefTool`, `SuggestBackgroundPRTool`, `SyntheticOutputTool`, `SleepTool`, `TeamCreateTool`, `TeamDeleteTool`, `TungstenTool`, `VerifyPlanExecutionTool` | harness/coordinator-specific; not in this session's registry |
+
+`ConfigTool` used to head that row and no longer belongs in this document at
+all: claudin carried 798 lines of it — schema, prompt, permission check, result
+renderer and a 198-entry settings table — that `src/tools/tools.ts` never
+mentioned, not even as the explicit `null` the registry uses for `REPLTool` and
+`SuggestBackgroundPRTool`. So it was never "not surfaced in this session", it
+was unreachable in every session, and it was deleted in the 2026-09-18 dead-code
+round (`618c6a69`). Upstream still has the tool; `/config` is the surface
+claudin gives users for the same job.
 
 Note: claudin's `SleepTool` overlaps conceptually with Claude Code's
 `ScheduleWakeup` but is a passive blocking sleep, not a model-paced resume scheduler.
