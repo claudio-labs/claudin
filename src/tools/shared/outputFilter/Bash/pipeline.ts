@@ -27,7 +27,7 @@ function dedupGlobal(lines: string[]): string[] {
 }
 
 function debug(label: string, detail?: unknown): void {
-  if (!isEnvTruthy("CLAUDIN_BASH_FILTER_DEBUG")) return;
+  if (!isEnvTruthy(process.env.CLAUDIN_BASH_FILTER_DEBUG)) return;
   const payload =
     detail === undefined
       ? `bash-output-filter: ${label}`
