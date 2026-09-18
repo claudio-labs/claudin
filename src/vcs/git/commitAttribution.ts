@@ -54,6 +54,23 @@ export function sanitizeModelName(shortName: string): string {
 
 /**
  * Attribution state for tracking Claude's contributions to files.
+ *
+ * `fileStates` and `sessionBaselines` are always EMPTY at runtime, and were
+ * already empty before the 2026-09-18 dead-code round. Their only writer was
+ * `trackFileModification`, which had no caller at any point in this fork's
+ * history — the Edit/Write post-hook that upstream calls it from was never
+ * wired here — so it was removed as a dead export. The rest of the pipeline is
+ * live: `incrementPromptCount` fires from `useOnSubmit` and the headless
+ * `controlLoop` on every prompt, `stateToSnapshotMessage` persists the
+ * snapshot, and `src/sessions/indexing/liteMetadata.ts` builds a chain from it
+ * for the resume index. So the COUNT fields work and the per-file
+ * contributions do not.
+ *
+ * Two honest options, both product decisions rather than cleanup: wire a
+ * writer back (`git show fee88d27^:src/vcs/git/commitAttribution.ts` has the
+ * deleted implementation), or drop the two map fields and the
+ * `FileAttributionState` plumbing under them. Until one is taken, do not read
+ * a populated `fileStates` into any new feature.
  */
 export type AttributionState = {
   // File states keyed by relative path (from cwd)
