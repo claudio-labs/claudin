@@ -38,7 +38,6 @@ import {
 import { hasWorktreeCreateHook } from 'src/platform/lifecycleHooks/hooks.js'
 import { checkAndRestoreITerm2Backup } from 'src/platform/ide/iTermBackup.js'
 import { logError } from 'src/shared/log.js'
-import { getRecentActivity } from 'src/terminal/logoV2Utils.js'
 import { lockCurrentVersion } from 'src/platform/install/index.js'
 import type { PermissionMode } from 'src/permissions/PermissionMode.js'
 import { getPlanSlug } from 'src/agent/plans/plans.js'
@@ -336,20 +335,13 @@ export async function setup(
   void prefetchApiKeyFromApiKeyHelperIfSafe(getIsNonInteractiveSession()) // Prefetch safely - only executes if trust already confirmed
   profileCheckpoint('setup_after_prefetch')
 
-  // Wave 6 audit — split the +40ms total of action_after_setup vs +6ms of
-  // setup_after_prefetch into: (a) release notes + recent activity I/O, and
-  // (b) the permission-mode safety check. Helps decide whether
-  // to lazy-load checkForReleaseNotes / getRecentActivity in a later wave.
-  // Pre-fetch data for Logo v2 - await to ensure it's ready before logo renders.
-  // --bare / SIMPLE: skip — release notes are interactive-UI display data,
-  // and getRecentActivity() reads up to 10 session JSONL files.
+  // Kept for its side effect, not its return: it populates the in-memory
+  // changelog cache and kicks off a background fetch when the version moved,
+  // which is what `/release-notes` reads. The recent-activity prefetch that
+  // used to follow it fed only Logo v2's sync cache and went with it.
+  // --bare / SIMPLE: skip — this is interactive-UI display data.
   if (!isBareMode()) {
-    const { hasReleaseNotes } = await checkForReleaseNotes(
-      getGlobalConfig().lastReleaseNotesSeen,
-    )
-    if (hasReleaseNotes) {
-      await getRecentActivity()
-    }
+    await checkForReleaseNotes(getGlobalConfig().lastReleaseNotesSeen)
   }
   profileCheckpoint('setup_after_release_notes')
 

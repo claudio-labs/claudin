@@ -305,7 +305,7 @@ src/
 │   │                              directConnectManager.ts: DIRECT_CONNECT was folded
 │   │                              false, so its entry points and stubs are deleted
 │   └── teams/ policyLimits/ wiki/ github/  ← misc host services
-├── terminal/ (384)              ← the TUI shell: renderer, input, chrome (→ ink-tui.md)
+├── terminal/ (373)              ← the TUI shell: renderer, input, chrome (→ ink-tui.md)
 │   ├── ink/ (114)               ← the forked Ink renderer: screen.ts, log-update, stringWidth, ScrollBox
 │   ├── prompt-input/ (23)       ← the input box, its modes and suggestions. `input/` (8) is a
 │   │                              different thing: Cursor, keyboardShortcuts, pasteStore

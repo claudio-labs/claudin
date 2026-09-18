@@ -66,7 +66,6 @@ export type McpAndPermsResult = {
   strictMcpConfig: boolean;
   devChannels: ChannelEntry[] | undefined;
   toolPermissionContext: Awaited<ReturnType<typeof initializeToolPermissionContext>>['toolPermissionContext'];
-  overlyBroadBashPermissions: Awaited<ReturnType<typeof initializeToolPermissionContext>>['overlyBroadBashPermissions'];
   claudeaiConfigPromise: Promise<Record<string, ScopedMcpServerConfig>>;
   mcpConfigPromise: ReturnType<typeof getClaudeCodeMcpConfigs>;
   /** Ref to the ms duration; populated when mcpConfigPromise resolves. */
@@ -241,7 +240,7 @@ export async function runMcpAndPerms(
     addDirs: addDir,
   });
   let toolPermissionContext = initResult.toolPermissionContext;
-  const { warnings, dangerousPermissions, overlyBroadBashPermissions } = initResult;
+  const { warnings, dangerousPermissions } = initResult;
 
   if (feature('TRANSCRIPT_CLASSIFIER') && dangerousPermissions.length > 0) {
     toolPermissionContext = stripDangerousPermissionsForAutoMode(toolPermissionContext);
@@ -330,7 +329,6 @@ export async function runMcpAndPerms(
     strictMcpConfig,
     devChannels,
     toolPermissionContext,
-    overlyBroadBashPermissions,
     claudeaiConfigPromise,
     mcpConfigPromise,
     mcpConfigResolvedRef,

@@ -362,7 +362,6 @@ async function run(): Promise<CommanderCommand> {
       claudeaiConfigPromise,
       mcpConfigPromise,
       mcpConfigResolvedRef,
-      overlyBroadBashPermissions,
     } = mcpAndPerms;
     let dynamicMcpConfig = mcpAndPerms.dynamicMcpConfig;
     let toolPermissionContext = mcpAndPerms.toolPermissionContext;
@@ -658,7 +657,6 @@ async function run(): Promise<CommanderCommand> {
         agentSetting,
         resolvedInitialModel,
         permissionModeNotification,
-        overlyBroadBashPermissions,
         toolPermissionContext,
         initialMainLoopModel,
         agentDefinitions,

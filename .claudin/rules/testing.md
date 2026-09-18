@@ -352,14 +352,24 @@ never nullable passes with the whole mapping deleted, which is how three of the
 first five in `sdkUtilityTypes.types.test.ts` shipped guarding nothing. Break
 the production line and watch the assertion fail before believing it.
 
-### Dead code (`bun run deadcode`, gated by `deadcode:ci`)
+### Dead code (`bun run deadcode`, gated by `deadcode:ci` + `deadcode:prod`)
 
-`knip`, configured in `knip.json`, in two forms:
+`knip`, configured in `knip.json`, in three forms — the first two run in
+`pr-checks.yml`, take ~2s each and need no build:
 
 - `bun run deadcode:ci` — the **gate**, in the Pre-PR checklist. Covers unused
   FILES and declared dependencies nothing imports. Both were cleared on
   2026-08-07 — three dependencies (`code-excerpt`, `stack-utils`, `tsx`) and
   nineteen files — so the gate starts from zero and any new finding is yours.
+- `bun run deadcode:prod` — the **second** gate, `knip --production`. Default
+  mode treats every `*.test.ts` as an entry, so a module whose only importer is
+  its own test counts as USED; that blind spot is how `thinkingTokenExtractor`,
+  `tokenAnalytics`, `modelCache`, `clamp` and `smartModelRouting` survived until
+  PR #211 found them by hand. Production mode keeps only the entry patterns
+  ending in `!` and *negates* project patterns lacking one, so **the `!`
+  suffixes in `knip.json` are load-bearing**: without them this run analyzes
+  zero files and reports all 57 dependencies unused. Default mode strips the
+  suffixes (`removeProductionSuffix`), so `deadcode:ci` is unaffected by them.
 - `bun run deadcode` — the wider report, which additionally surfaces
   `unlisted`/`unresolved`.
 
@@ -368,17 +378,28 @@ only one of eleven startup migrations never wired into `lifecycle.ts`. Treat a
 knip file finding as a question, not a verdict — "nothing imports this" and
 "this should not exist" are different claims.
 
+The production gate needs four `ignore` entries it would otherwise drown in:
+`**/__testutils__/**`, `**/__fixtures__/**`, `**/__test-helpers__/**` and
+`src/stubs/test-preload.ts` are test infrastructure with no production
+importer, and 22 of the run's 24 findings were exactly those. The fifth,
+`src/shared/types/typeAssertions.ts`, is a **permanent** false positive —
+`Equal`/`Expect` exist only for the `*.types.test.ts` files (see above), so it
+is ignored by name rather than re-litigated each round. With those, the gate
+sits at zero and any finding is real.
+
 `unlisted` and `unresolved` are deliberately outside the gate. This fork
 resolves ~30 module names to stubs in `scripts/build/build.ts` and carries 138 imports
 of files the fork never received, so in this repo "undeclared" is overwhelmingly
 the intended state; gating on it would mean 30 hand-maintained ignores that
-silently drift from build.ts. Two narrower blind spots ARE configured around:
-knip does not read `bunfig.toml`, so the `[alias]` target
-(`src/stubs/sandbox-runtime-stub.ts`) is listed in `ignore` by hand, and the
+silently drift from build.ts. One narrower blind spot IS configured around: the
 external CLI tools the code shells out to (`rec`, `wslpath`, `secret-tool`, …)
-are in `ignoreBinaries`. A file referenced by PATH rather than imported needs
-the same treatment — `src/shared/constants/keys.ts` is read as a fixture by the
-cache benches, and knip calls it unused.
+are in `ignoreBinaries`, and a file referenced by PATH rather than imported
+needs the same treatment in `ignore` — `src/shared/constants/keys.ts` is read as
+a fixture by the cache benches, and knip calls it unused. knip does not read
+`bunfig.toml` either, but the `[alias]` target
+(`src/stubs/sandbox-runtime-stub.ts`) needs no entry: two benches import it
+directly (`scripts/bench/perf/turn-cpu-bench.ts`, `streaming-bench.ts`), which
+is what makes it reachable.
 
 ## What NOT to Test
 

@@ -462,9 +462,6 @@ export type GlobalConfig = {
   // Checked after env-var overrides but before the real resolved value.
   growthBookOverrides?: { [featureName: string]: unknown }
 
-  // Emergency tip tracking - stores the last shown tip to prevent re-showing
-  lastShownEmergencyTip?: string
-
   // File picker gitignore behavior
   respectGitignore: boolean // Whether file picker should respect .gitignore files (default: true). Note: .ignore files are always respected
 

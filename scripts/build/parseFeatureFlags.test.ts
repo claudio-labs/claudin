@@ -58,13 +58,12 @@ describe('loadShippedFeatureFlags', () => {
     expect(Object.keys(flags).length).toBeGreaterThan(20)
     // Presence, not value: the value is build.ts's call to make.
     expect(flags).toHaveProperty('DUMP_SYSTEM_PROMPT')
-    // A false-valued flag, to prove the parser does not drop one arm. Was
-    // MCP_SKILLS until the dead-flag sweep removed every disabled entry that
-    // gated a branch; the two left are off by design rather than by absence.
-    expect(flags).toHaveProperty('SERIAL_READ_NUDGE')
     for (const value of Object.values(flags)) expect(typeof value).toBe('boolean')
-    // Both arms are represented, so a parser that collapsed to one is caught.
-    expect(Object.values(flags)).toContain(true)
-    expect(Object.values(flags)).toContain(false)
+    // A parser that collapsed to one arm is caught by the SAMPLE fixture
+    // above, which owns both values. Deliberately NOT re-asserted here: the
+    // shipped map is down to a single `false` entry (SERIAL_EDIT_NUDGE), whose
+    // own comment invites a developer to flip it ON to run its bench — so a
+    // both-arms assertion over the real map would turn that into a failure of
+    // a build-script parser test for a reason unrelated to the parser.
   })
 })

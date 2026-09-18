@@ -371,7 +371,7 @@ export function useOnQuery(deps: UseOnQueryDeps): { onQuery: OnQuery } {
 
     // Scope the skill's effort override to this turn's context only —
     // wrapping getAppState keeps the override out of the global store so
-    // background agents and UI subscribers (Spinner, LogoV2) never see it.
+    // background agents and UI subscribers (the Spinner) never see it.
     if (effort !== undefined) {
       const previousGetAppState = toolUseContext.getAppState;
       toolUseContext.getAppState = () => ({

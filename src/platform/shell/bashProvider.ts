@@ -16,7 +16,6 @@ import { logForDebugging } from 'src/shared/debug.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 import { getSessionEnvironmentScript } from 'src/sessions/sessionEnvironment.js'
 import { getSessionEnvVars } from 'src/sessions/sessionEnvVars.js'
-import { getClaudeTmuxEnv } from 'src/shared/proc/tmuxSocket.js'
 import { windowsPathToPosixPath } from 'src/shared/fs/windowsPaths.js'
 import type { ShellProvider } from 'src/platform/shell/shellProvider.js'
 
@@ -187,26 +186,8 @@ export async function createBashShellProvider(
       return ['-c', ...(skipLoginShell ? [] : ['-l']), commandString]
     },
 
-    async getEnvironmentOverrides(
-      command: string,
-    ): Promise<Record<string, string>> {
-      // TMUX SOCKET ISOLATION (DEFERRED):
-      // We initialize Claude's tmux socket ONLY AFTER the Tmux tool has been used
-      // at least once, OR if the current command appears to use tmux.
-      // This defers the startup cost until tmux is actually needed.
-      //
-      // Once the Tmux tool is used (or a tmux command runs), all subsequent Bash
-      // commands will use Claude's isolated socket via the TMUX env var override.
-      //
-      // See tmuxSocket.ts for the full isolation architecture documentation.
-      const claudeTmuxEnv = getClaudeTmuxEnv()
+    async getEnvironmentOverrides(): Promise<Record<string, string>> {
       const env: Record<string, string> = {}
-      // CRITICAL: Override TMUX to isolate ALL tmux commands to Claude's socket.
-      // This is NOT the user's TMUX value - it points to Claude's isolated socket.
-      // When null (before socket initializes), user's TMUX is preserved.
-      if (claudeTmuxEnv) {
-        env.TMUX = claudeTmuxEnv
-      }
       if (currentSandboxTmpDir) {
         let posixTmpDir = currentSandboxTmpDir
         if (getPlatform() === 'windows') {

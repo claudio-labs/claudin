@@ -38,10 +38,6 @@ import {
 } from 'src/agent/attachments/attachments.js'
 import { getMemoryPath } from 'src/platform/config/config.js'
 import { COMPACT_MAX_OUTPUT_TOKENS } from 'src/agent/context/context.js'
-import {
-  analyzeContext,
-  tokenStatsToStatsigMetrics,
-} from 'src/agent/context/contextAnalysis.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { hasExactErrorMessage } from 'src/shared/errors.js'
 import { cacheToObject } from 'src/shared/fs/fileStateCache.js'

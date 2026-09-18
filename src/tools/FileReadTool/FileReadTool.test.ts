@@ -502,7 +502,7 @@ describe('FileReadTool — line numbering and counting', () => {
 
   beforeAll(() => {
     // Make mapToolResultToToolResultBlockParam output deterministic: no
-    // model-dependent mitigation reminder, no serial-read nudge.
+    // model-dependent mitigation reminder.
     savedDisableReminders = process.env.CLAUDIN_DISABLE_TOOL_REMINDERS
     process.env.CLAUDIN_DISABLE_TOOL_REMINDERS = '1'
   })

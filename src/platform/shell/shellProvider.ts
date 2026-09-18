@@ -27,7 +27,8 @@ export type ShellProvider = {
 
   /**
    * Extra env vars for this shell type.
-   * May perform async initialization (e.g., tmux socket setup for bash).
+   * Async because a provider may have to resolve them (the sandbox tmp dir
+   * is stashed during prepare and read back here).
    */
-  getEnvironmentOverrides(command: string): Promise<Record<string, string>>
+  getEnvironmentOverrides(): Promise<Record<string, string>>
 }

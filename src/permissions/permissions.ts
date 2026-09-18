@@ -557,10 +557,16 @@ export const hasPermissionsToUseTool: CanUseToolFn = async (
       // below.
       // Note: this runs inside the behavior === 'ask' branch, so allow rules
       // that fire earlier (step 2b toolAlwaysAllowedRule, PS prefix allow)
-      // return before reaching here. Allow-rule protection is handled by
-      // permissionSetup.ts: isOverlyBroadPowerShellAllowRule strips PowerShell(*)
-      // and isDangerousPowerShellPermission strips iex/pwsh/Start-Process
-      // prefix rules for ant users and auto mode entry.
+      // return before reaching here. Allow-rule protection on auto-mode entry
+      // is stripDangerousPermissionsForAutoMode (permissionSetup.ts), whose
+      // findDangerousClassifierPermissions covers PowerShell(*) along with the
+      // iex/pwsh/Start-Process prefix rules. It runs on every auto-mode entry
+      // (REPL toggle, ExitPlanMode, the setAutoModeActive paths); the STARTUP
+      // call in mcpAndPerms.ts is additionally gated on
+      // feature('TRANSCRIPT_CLASSIFIER'). An earlier pair of
+      // isOverlyBroad*AllowRule predicates named here never had a caller: they
+      // fed a warning list that was built empty, so they protected nothing and
+      // are gone.
       if (tool.name === POWERSHELL_TOOL_NAME) {
         if (appState.toolPermissionContext.shouldAvoidPermissionPrompts) {
           return {

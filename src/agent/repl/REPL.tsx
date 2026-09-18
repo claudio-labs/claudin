@@ -186,7 +186,6 @@ const SUGGEST_BG_PR_NOOP = (_p: string, _n: string): boolean => false;
 const useScheduledTasks = require('src/agent/hooks/useScheduledTasks.js').useScheduledTasks;
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
-import { useTaskListWatcher } from 'src/agent/hooks/useTaskListWatcher.js';
 import { useRateLimitResume } from 'src/agent/hooks/useRateLimitResume.js';
 import type { NetworkHostPattern } from 'src/platform/sandbox/sandbox-adapter.js';
 import { type IDEExtensionInstallationStatus, type IdeType } from 'src/platform/ide/ide.js';

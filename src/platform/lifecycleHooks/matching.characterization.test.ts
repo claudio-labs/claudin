@@ -18,8 +18,8 @@ import { describe, expect, mock, test, beforeAll } from 'bun:test'
 import type {
   HookEvent,
   HookInput,
-  HookMatcher,
-} from 'src/shared/types/hookEvents.js'
+} from 'src/platform/entrypoints/agentSdkTypes.js'
+import type { HookMatcher } from 'src/shared/schemas/hooks.js'
 
 type Hooks = typeof import('src/platform/lifecycleHooks/hooks.js')
 

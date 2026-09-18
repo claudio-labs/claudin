@@ -10,12 +10,12 @@ import {
   maybeFlagReadReminder,
 } from 'src/tools/FileReadTool/resultContent.js'
 
-// The mitigation reminder is gated on the main-loop model and on two env
-// flags; the model is pinned through the module's own resolver seam (no
-// module mock, and immune to the model/state mocks other files leak) and
-// every env key touched here is put back, since both are process-global and
-// read per call.
-const ENV_KEYS = ['CLAUDIN_DISABLE_TOOL_REMINDERS', 'CLAUDIN_DISABLE_READ_REMINDER_ONCE'] as const
+// The mitigation reminder is gated on the main-loop model and on one env
+// flag; the model is pinned through the module's own resolver seam (no
+// module mock, and immune to the model/state mocks other files leak) and the
+// env key touched here is put back, since both are process-global and read
+// per call.
+const ENV_KEYS = ['CLAUDIN_DISABLE_TOOL_REMINDERS'] as const
 const savedEnv: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>> = {}
 
 function pinModel(shortName: string): void {
@@ -61,7 +61,6 @@ afterAll(() => {
 
 beforeEach(() => {
   delete process.env.CLAUDIN_DISABLE_TOOL_REMINDERS
-  delete process.env.CLAUDIN_DISABLE_READ_REMINDER_ONCE
   _resetReadReminderStateForTesting()
 })
 
@@ -85,17 +84,6 @@ describe('mitigation reminder — model gate', () => {
     expect(reminderCount(render(textResult('a\nb')))).toBe(0)
     pinModel('claude-fable-5-1')
     expect(reminderCount(render(textResult('a\nb')))).toBe(0)
-  })
-
-  test('a non-exempt model carries it on every read under CLAUDIN_DISABLE_READ_REMINDER_ONCE', () => {
-    pinModel('claude-sonnet-5')
-    process.env.CLAUDIN_DISABLE_READ_REMINDER_ONCE = '1'
-    const one = textResult('a')
-    const two = textResult('b')
-    maybeFlagReadReminder(one, { agentId: undefined })
-    maybeFlagReadReminder(two, { agentId: undefined })
-    expect(reminderCount(render(one))).toBe(1)
-    expect(reminderCount(render(two))).toBe(1)
   })
 
   test('CLAUDIN_DISABLE_TOOL_REMINDERS wins over everything', () => {

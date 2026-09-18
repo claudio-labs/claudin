@@ -34,7 +34,6 @@ import { plural } from 'src/shared/text/stringUtils.js';
 import { renderableSearchText } from 'src/sessions/transcriptSearch.js';
 import { Divider } from 'src/terminal/design-system/Divider.js';
 import type { UnseenDivider } from 'src/terminal/FullscreenLayout.js';
-import { LogoV2 } from 'src/terminal/logo/LogoV2.js';
 import { StreamingMarkdown } from 'src/terminal/markdown/Markdown.js';
 import { useStreamingTextValue } from 'src/agent/hooks/useStreamingTextStore.js';
 import { hasContentAfterIndex, MessageRow } from 'src/agent/ui/MessageRow.js';
@@ -58,8 +57,11 @@ type LogoHeaderProps = {
 // ALL subsequent siblings — every MessageRow re-writes from scratch instead
 // of blitting. In long sessions (~2800 messages) this is 150K+ writes/frame
 // and pegs CPU at 100%. Memo on agentDefinitions so a new messages array
-// doesn't invalidate the logo subtree. LogoV2/StatusNotices internally
-// subscribe to useAppState/useSettings for their own updates.
+// doesn't invalidate this subtree. StatusNotices internally subscribes to
+// useAppState/useSettings for its own updates. The first slot below is the
+// logo's, and it has been a constant `null` since the compiler output nulled
+// it — the components behind it were deleted; the slot stays so the `_c(3)`
+// bookkeeping is untouched.
 const LogoHeader = React.memo(function LogoHeader(t0: LogoHeaderProps) {
   const $ = _c(3);
   const {

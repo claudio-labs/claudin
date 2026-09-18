@@ -4,13 +4,15 @@
  * of putting every file section into one atomic patch. When triggered,
  * toolExecution appends a <system-reminder> to the successful tool_result.
  *
- * Companion to FileReadTool/serialReadNudge.ts — same injection surface, same
- * shape of detector. Two deliberate differences:
+ * Modeled on the serial-READ nudge that used to live in FileReadTool (deleted
+ * once its A/B came back at -6.3% narration against a -30% bar, adoption zero)
+ * — same injection surface, same shape of detector. Two deliberate
+ * differences from it:
  *
  *  - It spans three tools, so the injection lives at the single shared success
  *    site (toolExecution.ts:addToolResult) rather than inside each tool.
- *  - It is NOT one-shot per query. serialReadNudge fires once because the cost
- *    it targets is narration (cosmetic); here each ignored turn costs a real
+ *  - It is NOT one-shot per query. That one fired once because the cost it
+ *    targeted is narration (cosmetic); here each ignored turn costs a real
  *    round-trip plus a re-authored patch, so the reminder repeats for as long as
  *    the streak stands.
  */
@@ -23,7 +25,7 @@ import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/constants.js'
 export const SERIAL_EDIT_THRESHOLD = 3
 
 /**
- * Assistant messages scanned, newest first. Wider than serialReadNudge's 4
+ * Assistant messages scanned, newest first. Wider than the read nudge's 4
  * because read-only turns are transparent here (see TRANSPARENT_TOOL_NAMES), so
  * the pattern this targets — patch → read → patch → read → patch — needs room.
  */
@@ -49,7 +51,7 @@ export const EDIT_TOOL_NAMES: ReadonlySet<string> = new Set([
  * make the detector blind to it. Anything else (Bash, RunTests, Agent, …) does
  * break it: serializing edits around a build or a test run is legitimate.
  *
- * Matched by wire name, like serialReadNudge's `block.name === 'Read'`.
+ * Matched by wire name (`block.name === 'Read'`), not by tool identity.
  */
 export const TRANSPARENT_TOOL_NAMES: ReadonlySet<string> = new Set([
   'Read',
@@ -66,9 +68,8 @@ export const TRANSPARENT_TOOL_NAMES: ReadonlySet<string> = new Set([
 const PATCH_FILE_HEADER_RE = /^\*\*\* (?:Add|Update|Delete) File: (.+)$/gm
 
 /**
- * Minimal shape we care about for an assistant message. Mirrors
- * serialReadNudge.ts:AssistantMessageLike, plus the tool_use `input` this
- * detector needs to tell which file a call targets.
+ * Minimal shape we care about for an assistant message, plus the tool_use
+ * `input` this detector needs to tell which file a call targets.
  */
 export interface EditMessageLike {
   type?: string

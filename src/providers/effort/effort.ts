@@ -222,31 +222,6 @@ export function getModelDefaultEffortLevel(model: string): EffortLevel {
   return def !== undefined ? convertEffortValueToLevel(def) : 'high'
 }
 
-export function getEffortLevelLabel(level: EffortLevel | OpenAIEffortLevel): string {
-  // Anthropic ("xhigh") and Codex ("xhigh") share the same wire value; label by provider.
-  // On firstParty/Bedrock/Vertex/Foundry we render "Extra" (matches claude.ai UI for Opus 4.7/4.8).
-  // On OpenAI/Codex we keep "Extra High" to avoid breaking the existing label.
-  if (level === 'xhigh') {
-    const provider = getAPIProvider()
-    return provider === 'openai' || provider === 'codex' ? 'Extra High' : 'Extra'
-  }
-  if (level === 'max') return 'Max'
-  return capitalize(level)
-}
-
-export function openAIEffortToStandard(level: OpenAIEffortLevel): EffortLevel {
-  if (level === 'xhigh') return 'max'
-  return level
-}
-
-export function standardEffortToOpenAI(level: EffortLevel): OpenAIEffortLevel {
-  if (level === 'max') return 'xhigh'
-  return level as OpenAIEffortLevel
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1)
-}
 
 export function parseEffortValue(value: unknown): EffortValue | undefined {
   if (value === undefined || value === null || value === '') {

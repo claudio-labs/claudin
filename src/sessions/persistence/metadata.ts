@@ -51,10 +51,10 @@ export async function saveCustomTitle(
  * - Metrics: `tengu_session_renamed` is not fired for AI titles.
  *
  * Because the entry is never re-appended, it scrolls out of the 64KB tail
- * window once enough messages accumulate. Readers (`readLiteMetadata`,
- * `listSessionsImpl`, VS Code `fetchSessions`) fall back to scanning the
- * head buffer for `aiTitle` in that case. Both head and tail reads are
- * bounded (64KB each via `extractLastJsonStringField`), never a full scan.
+ * window once enough messages accumulate. Readers (`readLiteMetadata` and
+ * VS Code's `fetchSessions`) fall back to scanning the head buffer for
+ * `aiTitle` in that case. Both head and tail reads are bounded (64KB each
+ * via `extractLastJsonStringField`), never a full scan.
  *
  * Callers with a stale-write guard (e.g., VS Code client) should prefer
  * passing `persist: false` to the SDK control request and persisting

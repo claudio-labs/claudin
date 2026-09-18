@@ -96,9 +96,6 @@ const PROMPT_FILES = [
   'src/agent/messages/planMode.ts',
   'src/tools/AgentTool/prompt.ts',
   'src/tools/FileReadTool/prompt.ts',
-  // The serial-Read nudge told the model to "dispatch the Explore agent …
-  // subagent_type=Explore" from a module whose name says nothing about prompts.
-  'src/tools/FileReadTool/serialReadNudge.ts',
   'src/tools/AgentTool/built-in/webResearcherAgent.ts',
   'src/tools/AgentTool/built-in/webResearcherManagerAgent.ts',
   'src/tools/TeamCreateTool/prompt.ts',

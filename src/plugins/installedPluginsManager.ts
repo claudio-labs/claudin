@@ -910,7 +910,7 @@ function getPluginVersionFromManifest(
  * Being present in enabledPlugins (whether true or false) indicates the plugin
  * has been installed. The enabled/disabled state remains in settings.json.
  */
-export async function migrateFromEnabledPlugins(): Promise<void> {
+async function migrateFromEnabledPlugins(): Promise<void> {
   // Use merged settings for shouldSkipSync check
   const settings = getInitialSettings()
   const enabledPlugins = settings.enabledPlugins || {}

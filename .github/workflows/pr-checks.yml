@@ -56,6 +56,18 @@ jobs:
       - name: Verify rule files
         run: bun run verify:rules
 
+      # Two gates, because default-mode knip counts a module imported only by
+      # its own *.test.ts as USED — which is how five dead modules survived the
+      # gate until PR #211 found them by hand. Production mode drops the test
+      # entries and reports them. It depends on the `!` production suffixes in
+      # knip.json: without them it analyzes zero files and calls all 57
+      # dependencies unused. Both run in ~2s and need no build.
+      - name: Dead code
+        run: bun run deadcode:ci
+
+      - name: Dead code (production reachability)
+        run: bun run deadcode:prod
+
       - name: Smoke check
         run: bun run smoke
 

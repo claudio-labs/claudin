@@ -10,10 +10,6 @@
 // child. `loadSession` reads the parent first, collects its ids, and keeps only
 // the ids a child file adds. Each assistant record repeats once per content
 // block; the copy with the highest `output_tokens` is the final usage.
-//
-// `fork-clip-ab.ts` predates this module and carries its own copy of the
-// fixture generator and the Sonnet price line; it was left untouched so its
-// published numbers stay reproducible from the file that produced them.
 
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'

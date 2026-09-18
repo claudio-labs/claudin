@@ -8,7 +8,6 @@ import type {
 } from 'src/shared/types/logs.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { getFsImplementation } from 'src/shared/fs/fsOperations.js'
-import { isGeneratedFile } from 'src/shared/fs/generatedFiles.js'
 import { resolveGitDir } from 'src/vcs/git/gitFilesystem.js'
 import { findGitRoot } from 'src/vcs/git/git.js'
 import { getCanonicalName, type ModelName } from 'src/providers/model/model.js'

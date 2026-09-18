@@ -178,9 +178,11 @@ at compile time. So no self-contained binary, no distribution simplification,
 
 - **Wave 8 (LogoV2 prefetch)**: defer or prefetch the changelog + session
   JSONL reads. Conceptually a 54 ms win in setup() — but `repl_first_paint`
-  doesn't move because LogoV2 renders ~400 ms later inside REPL, well
+  didn't move because LogoV2 rendered ~400 ms later inside REPL, well
   after the prefetch could possibly have settled either way. The 54 ms
-  was already absorbed by natural parallelism with downstream awaits.
+  was already absorbed by natural parallelism with downstream awaits. (The
+  whole LogoV2 subtree, and the prefetch with it, were deleted once the
+  compiler output was found to null the slot — so this wave is moot.)
 - **Wave 9 (parallel chunk imports)**: V8's module loader already
   overlaps independent dynamic imports at the microtask level. Manually
   starting all four in parallel and awaiting sequentially gave no

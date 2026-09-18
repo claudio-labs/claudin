@@ -203,7 +203,7 @@ const TOTAL_BYTES_GROWTH_MAX = 0.15
  *   resolve             `resolve({fields, files});` — a promise callback
  *   the rest            call statements in this repo, each read at its line:
  *                       `clipPinEnabled() && …`, `addSkillDirectories(…).catch()`,
- *                       `maybeFlagSerialReadNudge(result?.data, context)`,
+ *                       `maybeFlagReadReminder(result?.data, context)`,
  *                       `setExpandedKeys(prev => {`
  */
 const ACCEPTED_REMOVAL_NAMES: ReadonlySet<string> = new Set([
@@ -217,7 +217,7 @@ const ACCEPTED_REMOVAL_NAMES: ReadonlySet<string> = new Set([
   'resolve',
   'clipPinEnabled',
   'addSkillDirectories',
-  'maybeFlagSerialReadNudge',
+  'maybeFlagReadReminder',
   'setExpandedKeys',
 ])
 

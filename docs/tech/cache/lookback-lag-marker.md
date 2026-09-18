@@ -77,8 +77,9 @@ free; only writes and reads bill).
   lag into the main marker and lose the protection on the attempt that needs
   it.
 - Budget: the system prompt emits up to 2 breakpoints, messages now 2, total
-  the API's 4. The experimental `CLAUDIN_TRAIL_CACHE_MARKER` and
-  `CLAUDIN_ANCHOR_CACHE_HEAD` would make 5 → 400, so they suppress the lag.
+  the API's 4. A third message marker would make 5 → 400, which is why the two
+  experimental extra markers that used to suppress this one were removed rather
+  than kept alongside it.
 - `skipCacheWrite` forks are untouched (own tracking key; marker already at
   the shared frontier). Untracked sources (speculation, session_memory, …)
   get no lag — nothing to lag to.
@@ -93,7 +94,8 @@ server-side miss`.
 Alternatives considered: the API's **automatic caching** (top-level
 `cache_control`) is a server-side trailing marker — it prevents the miss but
 writes the mutating tail every turn, which the fork measured at +31% cost on the
-1h tier (`paramBuilders.ts`, `CLAUDIN_TRAIL_CACHE_MARKER` notes). Capping the
+1h tier (the client-side trailing-marker experiment, `docs/features/cache-policy.md`).
+Capping the
 per-request advance below 20 positions needs the same state and leaves the
 tail uncached a turn longer. The **cache diagnostics beta**
 (`cache-diagnosis-2026-04-07`) reports where the request *bytes* diverged; it

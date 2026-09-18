@@ -53,7 +53,9 @@ pass from filing every event constant as a gate key.
 Then a third, from the token regex rather than the call shape. `tengu[A-Za-z0-9_]*`
 has no hyphen, and two keys are not snake_case: `tengu-off-switch`
 (`providers/shims/claude/streaming.ts:315`) and `tengu-top-of-feed-tip`
-(`terminal/logo/EmergencyTip.tsx:6`). The token stopped at a bare `tengu`, which
+(`terminal/logo/EmergencyTip.tsx:6`, since deleted — the logo subtree it lived in
+could not be reached, so that key is gone from the table). The token stopped at a
+bare `tengu`, which
 no call-shape range could then cover, so both classified `indirect` — and the
 first is read on **every** non-subscriber Opus request. Widening the class moves
 no totals: a hyphenated mention in prose already counted once as `tengu`.
