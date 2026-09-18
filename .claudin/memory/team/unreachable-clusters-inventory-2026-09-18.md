@@ -4,6 +4,12 @@ description: Ranked inventory of ~8k lines that ship but no execution path can r
 type: project
 ---
 
+> **Status after round 3 (same day, PR #212): rows 3, 4, 6, 7, 9, 10 and 12 are
+> DELETED, and row 5's file-based half is gone. What is still standing is rows
+> 1, 2, 8, 11 — the product-decision group — re-measured in
+> [[dead-code-round-4-seed]], which supersedes this table. Row 2's headline
+> claim is WRONG: the SDK schemas are partly live.**
+
 Measured 2026-09-18 by a reachability walk from `src/platform/entrypoints/cli.tsx`,
 as validation of [[dead-code-round-2-2026-09-18]]. **All of these predate that
 branch** — `git diff main...HEAD` touches only two of the files, and neither
