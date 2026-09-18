@@ -114,8 +114,12 @@ describe('the module export surface', () => {
   // producer left — `setMeter` and the four other setters were called from the
   // deleted telemetry slice — so every counter was permanently null and every
   // reader a no-op.
-  test('still exports 199 runtime symbols', () => {
-    expect(Object.keys(stateModule)).toHaveLength(199)
+  //
+  // 199 until `addSlowOperation` and `getSlowOperations` went the same way: the
+  // sink was already a no-op writing nowhere and a frozen empty array, and its
+  // only caller was the timing path behind the off-map SLOW_OPERATION_LOGGING.
+  test('still exports 197 runtime symbols', () => {
+    expect(Object.keys(stateModule)).toHaveLength(197)
   })
 
   test('exports at least one symbol from every planned cluster', () => {

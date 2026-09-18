@@ -229,28 +229,6 @@ export function clearInvokedSkillsForAgent(agentId: string): void {
   }
 }
 
-// Slow operations tracking removed (was internal-only).
-// Functions kept as no-ops to avoid breaking callers.
-
-const EMPTY_SLOW_OPERATIONS: ReadonlyArray<{
-  operation: string
-  durationMs: number
-  timestamp: number
-}> = []
-
-export function addSlowOperation(
-  _operation: string,
-  _durationMs: number,
-): void {}
-
-export function getSlowOperations(): ReadonlyArray<{
-  operation: string
-  durationMs: number
-  timestamp: number
-}> {
-  return EMPTY_SLOW_OPERATIONS
-}
-
 export function getMainThreadAgentType(): string | undefined {
   return STATE.mainThreadAgentType
 }
