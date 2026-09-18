@@ -105,4 +105,16 @@ describe('tool registry — characterization', () => {
     ].sort()
     expect(absent).toMatchSnapshot()
   })
+
+  test('no tool binding is a null placeholder', () => {
+    // `const X = null` spread as `...(X ? [X] : [])` registers nothing, ever,
+    // while every `name === X_TOOL_NAME` check downstream reads as live code.
+    // REPLTool and SuggestBackgroundPRTool sat here, and the REPL one kept
+    // ~220 lines across six files alive on paper.
+    const source = readFileSync(TOOLS_SOURCE, 'utf8')
+    const nullBindings = [
+      ...source.matchAll(/^const (\w+)\s*=\s*null\s*$/gm),
+    ].map(m => m[1]!)
+    expect(nullBindings).toEqual([])
+  })
 })

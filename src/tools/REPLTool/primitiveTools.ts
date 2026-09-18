@@ -11,11 +11,10 @@ import { NotebookEditTool } from 'src/tools/NotebookEditTool/NotebookEditTool.js
 let _primitiveTools: readonly Tool[] | undefined
 
 /**
- * Primitive tools hidden from direct model use when REPL mode is on
- * (REPL_ONLY_TOOLS) but still accessible inside the REPL VM context.
- * Exported so display-side code (collapseReadSearch, renderers) can
- * classify/render virtual messages for these tools even when they're
- * absent from the filtered execution tools list.
+ * The primitive tools, as a list display-side code can classify against when a
+ * tool is absent from the filtered execution list — which happens whenever
+ * hasEmbeddedSearchTools() drops Glob/Grep from the pool. Without it those
+ * messages return isCollapsible: false and vanish from the summary line.
  *
  * Lazy getter — the import chain collapseReadSearch.ts → primitiveTools.ts
  * → FileReadTool.tsx → ... loops back through the tool registry, so a

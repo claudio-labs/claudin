@@ -10,7 +10,6 @@ import { BASH_TOOL_NAME } from 'src/tools/BashTool/toolName.js'
 import { FILE_EDIT_TOOL_NAME } from 'src/tools/FileEditTool/constants.js'
 import { FILE_WRITE_TOOL_NAME } from 'src/tools/FileWriteTool/prompt.js'
 import { RENAME_TOOL_NAME } from 'src/tools/RenameTool/prompt.js'
-import { REPL_TOOL_NAME } from 'src/tools/REPLTool/constants.js'
 import { getReplPrimitiveTools } from 'src/tools/REPLTool/primitiveTools.js'
 import {
   type BranchAction,
@@ -55,7 +54,6 @@ export type SearchOrReadResult = {
   isSearch: boolean
   isRead: boolean
   isList: boolean
-  isREPL: boolean
   /** True if this is a Write/Edit targeting a memory file */
   isMemoryWrite: boolean
   /**
@@ -273,23 +271,6 @@ export function getToolSearchOrReadInfo(
   toolInput: unknown,
   tools: Tools,
 ): SearchOrReadResult {
-  // REPL is absorbed silently — its inner tool calls are emitted as virtual
-  // messages (isVirtual: true) via newMessages and flow through this function
-  // as regular Read/Grep/Bash messages. The REPL wrapper itself contributes
-  // no counts and doesn't break the group, so consecutive REPL calls merge.
-  if (toolName === REPL_TOOL_NAME) {
-    return {
-      isCollapsible: true,
-      isSearch: false,
-      isRead: false,
-      isList: false,
-      isREPL: true,
-      isMemoryWrite: false,
-      isAbsorbedSilently: true,
-      isWrite: false,
-    }
-  }
-
   // Memory file writes/edits are collapsible
   if (isMemoryWriteOrEdit(toolName, toolInput)) {
     return {
@@ -297,7 +278,6 @@ export function getToolSearchOrReadInfo(
       isSearch: false,
       isRead: false,
       isList: false,
-      isREPL: false,
       isMemoryWrite: true,
       isAbsorbedSilently: false,
       isWrite: false,
@@ -313,7 +293,6 @@ export function getToolSearchOrReadInfo(
       isSearch: false,
       isRead: false,
       isList: false,
-      isREPL: false,
       isMemoryWrite: false,
       isAbsorbedSilently: true,
       isWrite: false,
@@ -329,17 +308,16 @@ export function getToolSearchOrReadInfo(
       isSearch: false,
       isRead: false,
       isList: false,
-      isREPL: false,
       isMemoryWrite: false,
       isAbsorbedSilently: false,
       isWrite: true,
     }
   }
 
-  // Fallback to REPL primitives: in REPL mode, Bash/Read/Grep/etc. are
-  // stripped from the execution tools list, but REPL emits them as virtual
-  // messages. Without the fallback they'd return isCollapsible: false and
-  // vanish from the summary line.
+  // Fallback to the primitive list: hasEmbeddedSearchTools() strips Glob/Grep
+  // from the execution tools list, but their messages still render. Without
+  // the fallback they'd return isCollapsible: false and vanish from the
+  // summary line.
   const tool =
     findToolByName(tools, toolName) ??
     findToolByName(getReplPrimitiveTools(), toolName)
@@ -349,7 +327,6 @@ export function getToolSearchOrReadInfo(
       isSearch: false,
       isRead: false,
       isList: false,
-      isREPL: false,
       isMemoryWrite: false,
       isAbsorbedSilently: false,
       isWrite: false,
@@ -372,7 +349,6 @@ export function getToolSearchOrReadInfo(
     isSearch: result.isSearch,
     isRead: result.isRead,
     isList,
-    isREPL: false,
     isMemoryWrite: false,
     isAbsorbedSilently: false,
     isWrite: false,
@@ -385,7 +361,7 @@ export function getToolSearchOrReadInfo(
 
 /**
  * Check if a tool_use content block is a search/read operation.
- * Returns { isSearch, isRead, isREPL } if it's a collapsible search/read, null otherwise.
+ * Returns { isSearch, isRead, … } if it's a collapsible search/read, null otherwise.
  */
 export function getSearchOrReadFromContent(
   content: { type: string; name?: string; input?: unknown } | undefined,
@@ -394,7 +370,6 @@ export function getSearchOrReadFromContent(
   isSearch: boolean
   isRead: boolean
   isList: boolean
-  isREPL: boolean
   isMemoryWrite: boolean
   isAbsorbedSilently: boolean
   mcpServerName?: string
@@ -403,12 +378,11 @@ export function getSearchOrReadFromContent(
 } | null {
   if (content?.type === 'tool_use' && content.name) {
     const info = getToolSearchOrReadInfo(content.name, content.input, tools)
-    if (info.isCollapsible || info.isREPL) {
+    if (info.isCollapsible) {
       return {
         isSearch: info.isSearch,
         isRead: info.isRead,
         isList: info.isList,
-        isREPL: info.isREPL,
         isMemoryWrite: info.isMemoryWrite,
         isAbsorbedSilently: info.isAbsorbedSilently,
         mcpServerName: info.mcpServerName,
@@ -444,7 +418,6 @@ function getCollapsibleToolInfo(
   isSearch: boolean
   isRead: boolean
   isList: boolean
-  isREPL: boolean
   isMemoryWrite: boolean
   isAbsorbedSilently: boolean
   mcpServerName?: string
