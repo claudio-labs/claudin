@@ -9,8 +9,8 @@
  * is sent on an agent's FIRST text read only — the 2026-09 census counted it
  * 375× in one week, ~75 tokens each, every copy staying in context for the
  * rest of the session. Promoted to default on 2026-09-09 after a probe
- * (Sonnet 5, N=3) showed 3 reads → 1 reminder with the answer unchanged.
- * `CLAUDIN_DISABLE_READ_REMINDER_ONCE=1` restores the every-read behavior.
+ * (Sonnet 5, N=3) showed 3 reads → 1 reminder with the answer unchanged; the
+ * every-read arm it was measured against has since been removed.
  */
 import type { ToolResultBlockParam } from '@anthropic-ai/sdk/resources/index.mjs'
 import { memoryFreshnessNote } from 'src/memory/memdir/memoryAge.js'
@@ -78,10 +78,6 @@ function shouldIncludeFileReadMitigation(): boolean {
   return !isMitigationExemptModel(mitigationModelShortName())
 }
 
-function readReminderOnceEnabled(): boolean {
-  return !isEnvTruthy(process.env.CLAUDIN_DISABLE_READ_REMINDER_ONCE)
-}
-
 // Side-channel from call() to mapToolResultToToolResultBlockParam for the
 // once-per-agent mitigation reminder: the agent keys that already received
 // it this process, and the `data` object whose tool_result carries it.
@@ -93,16 +89,13 @@ const readReminderFlagged: WeakSet<object> = new WeakSet()
 
 /**
  * Marks `data` as the result that carries the mitigation reminder when this
- * is the agent's first non-empty text read (unless
- * CLAUDIN_DISABLE_READ_REMINDER_ONCE restores the every-read behavior).
- * Empty files and non-text arms never carry the reminder, so they do not
- * consume the agent's slot.
+ * is the agent's first non-empty text read. Empty files and non-text arms
+ * never carry the reminder, so they do not consume the agent's slot.
  */
 export function maybeFlagReadReminder(
   data: unknown,
   context: Pick<ToolUseContext, 'agentId'>,
 ): void {
-  if (!readReminderOnceEnabled()) return
   if (!data || typeof data !== 'object') return
   const result = data as { type?: string; file?: { numLines?: number } }
   if (result.type !== 'text') return
@@ -115,7 +108,7 @@ export function maybeFlagReadReminder(
 
 function carriesMitigationReminder(data: object): boolean {
   if (!shouldIncludeFileReadMitigation()) return false
-  return !readReminderOnceEnabled() || readReminderFlagged.has(data)
+  return readReminderFlagged.has(data)
 }
 
 export function _resetReadReminderStateForTesting(): void {

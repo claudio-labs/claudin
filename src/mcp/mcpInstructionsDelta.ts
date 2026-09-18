@@ -4,7 +4,6 @@ import type {
   MCPServerConnection,
 } from 'src/mcp/types.js'
 import type { Message } from 'src/shared/types/message.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
 
 export type McpInstructionsDelta = {
   /** Server names — for stateless-scan reconstruction. */
@@ -30,12 +29,11 @@ export type ClientSideInstruction = {
  * False → prompts.ts keeps its DANGEROUS_uncachedSystemPromptSection
  * (rebuilt every turn; cache-busts on late connect).
  *
- * Env override for local testing: CLAUDIN_MCP_INSTR_DELTA=true/false
- * wins over both ant bypass and the GrowthBook gate.
+ * Flip it by naming the gate key in ~/.claudin/feature-flags.json; the
+ * CLAUDIN_MCP_INSTR_DELTA env override that used to shadow it was testing
+ * scaffolding with no caller and is gone.
  */
 export function isMcpInstructionsDeltaEnabled(): boolean {
-  if (isEnvTruthy(process.env.CLAUDIN_MCP_INSTR_DELTA)) return true
-  if (isEnvDefinedFalsy(process.env.CLAUDIN_MCP_INSTR_DELTA)) return false
   return getFeatureValue_CACHED_MAY_BE_STALE('tengu_basalt_3kr', true)
 }
 

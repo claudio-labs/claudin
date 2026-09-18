@@ -1,7 +1,7 @@
 import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
 import { getSubscriptionType } from 'src/providers/auth/auth.js'
 import { hasEmbeddedSearchTools } from 'src/agent/tools/embeddedTools.js'
-import { isEnvDefinedFalsy, isEnvTruthy } from 'src/shared/envUtils.js'
+import { isEnvTruthy } from 'src/shared/envUtils.js'
 import { isTeammate } from 'src/agent/coordinator/teammate.js'
 import { isInProcessTeammate } from 'src/agent/coordinator/teammateContext.js'
 import { FILE_READ_TOOL_NAME } from 'src/tools/FileReadTool/prompt.js'
@@ -55,12 +55,11 @@ export function formatAgentLine(agent: AgentDefinition): string {
  * connect, /reload-plugins, or permission-mode changes mutate the list →
  * description changes → full tool-schema cache bust.
  *
- * Override with CLAUDIN_AGENT_LIST_IN_MESSAGES=true/false for testing.
+ * Flip it by naming the gate key in ~/.claudin/feature-flags.json; the
+ * CLAUDIN_AGENT_LIST_IN_MESSAGES env override that used to shadow it was
+ * testing scaffolding with no caller and is gone.
  */
 export function shouldInjectAgentListInMessages(): boolean {
-  if (isEnvTruthy(process.env.CLAUDIN_AGENT_LIST_IN_MESSAGES)) return true
-  if (isEnvDefinedFalsy(process.env.CLAUDIN_AGENT_LIST_IN_MESSAGES))
-    return false
   return getFeatureValue_CACHED_MAY_BE_STALE('tengu_agent_list_attach', true)
 }
 
