@@ -25,8 +25,6 @@ type AnyMsg = {
 }
 
 const originalEnv = process.env.CLAUDIN_DEFER_CACHE_MARKER
-const originalTrailEnv = process.env.CLAUDIN_TRAIL_CACHE_MARKER
-const originalAnchorEnv = process.env.CLAUDIN_ANCHOR_CACHE_HEAD
 const originalLagEnv = process.env.CLAUDIN_DISABLE_LAG_CACHE_MARKER
 
 afterEach(() => {
@@ -34,16 +32,6 @@ afterEach(() => {
     delete process.env.CLAUDIN_DEFER_CACHE_MARKER
   } else {
     process.env.CLAUDIN_DEFER_CACHE_MARKER = originalEnv
-  }
-  if (originalTrailEnv === undefined) {
-    delete process.env.CLAUDIN_TRAIL_CACHE_MARKER
-  } else {
-    process.env.CLAUDIN_TRAIL_CACHE_MARKER = originalTrailEnv
-  }
-  if (originalAnchorEnv === undefined) {
-    delete process.env.CLAUDIN_ANCHOR_CACHE_HEAD
-  } else {
-    process.env.CLAUDIN_ANCHOR_CACHE_HEAD = originalAnchorEnv
   }
   if (originalLagEnv === undefined) {
     delete process.env.CLAUDIN_DISABLE_LAG_CACHE_MARKER
@@ -283,117 +271,6 @@ describe('addCacheBreakpoints — clip-frontier cap (5th param)', () => {
   })
 })
 
-describe('addCacheBreakpoints — trailing marker (CLAUDIN_TRAIL_CACHE_MARKER)', () => {
-  function setTrail(on: boolean): void {
-    if (on) process.env.CLAUDIN_TRAIL_CACHE_MARKER = '1'
-    else delete process.env.CLAUDIN_TRAIL_CACHE_MARKER
-  }
-
-  test('flag on + frontier cap → markers at [frontier, length-1]', () => {
-    setThreshold('0')
-    setTrail(true)
-    const msgs = [
-      makeUser('a'),
-      makeAssistant('b'),
-      makeUser('c'),
-      makeAssistant('d'),
-      makeUser('e'),
-    ]
-    const out = addCacheBreakpoints(
-      msgs as Parameters<typeof addCacheBreakpoints>[0],
-      true,
-      undefined,
-      false,
-      2,
-    )
-    expect(markerIndices(out)).toEqual([2, msgs.length - 1])
-  })
-
-  test('flag on + main marker already at length-1 → coalesces to one marker', () => {
-    setThreshold('0') // baseline puts the main marker at length-1
-    setTrail(true)
-    const msgs = [makeUser('a'), makeAssistant('b'), makeUser('c')]
-    const out = addCacheBreakpoints(
-      msgs as Parameters<typeof addCacheBreakpoints>[0],
-      true,
-    )
-    expect(markerIndices(out)).toEqual([msgs.length - 1])
-  })
-
-  test('flag on + deferred marker behind the end → adds the trailing marker', () => {
-    // Huge threshold pins the main marker to head; trail covers the window.
-    setThreshold('1000000')
-    setTrail(true)
-    const msgs = [makeUser('a'), makeAssistant('b'), makeUser('c')]
-    const out = addCacheBreakpoints(
-      msgs as Parameters<typeof addCacheBreakpoints>[0],
-      true,
-    )
-    expect(markerIndices(out)).toEqual([0, msgs.length - 1])
-  })
-
-  test('flag on + skipCacheWrite → no trailing marker (fork path untouched)', () => {
-    setThreshold('0')
-    setTrail(true)
-    const msgs = [
-      makeUser('a'),
-      makeAssistant('b'),
-      makeUser('c'),
-      makeAssistant('d'),
-      makeUser('e'),
-    ]
-    const out = addCacheBreakpoints(
-      msgs as Parameters<typeof addCacheBreakpoints>[0],
-      true,
-      undefined,
-      true,
-    )
-    expect(markerIndices(out)).toEqual([msgs.length - 2])
-  })
-
-  test('flag on suppresses CLAUDIN_ANCHOR_CACHE_HEAD (4-block budget)', () => {
-    setThreshold('0')
-    setTrail(true)
-    process.env.CLAUDIN_ANCHOR_CACHE_HEAD = '1'
-    const msgs = [
-      makeUser('a'),
-      makeAssistant('b'),
-      makeUser('c'),
-      makeAssistant('d'),
-      makeUser('e'),
-    ]
-    const out = addCacheBreakpoints(
-      msgs as Parameters<typeof addCacheBreakpoints>[0],
-      true,
-      undefined,
-      false,
-      2,
-    )
-    // head anchor suppressed: only frontier + trail, never 3 message markers
-    expect(markerIndices(out)).toEqual([2, msgs.length - 1])
-  })
-
-  test('flag off (default) keeps single-marker behavior with frontier cap', () => {
-    setThreshold('0')
-    setTrail(false)
-    const msgs = [
-      makeUser('a'),
-      makeAssistant('b'),
-      makeUser('c'),
-      makeAssistant('d'),
-      makeUser('e'),
-    ]
-    const out = addCacheBreakpoints(
-      msgs as Parameters<typeof addCacheBreakpoints>[0],
-      true,
-      undefined,
-      false,
-      2,
-    )
-    expect(markerIndices(out)).toEqual([2])
-  })
-})
-
 describe('addCacheBreakpoints — lagging marker (previous request\'s marker)', () => {
   // The lag marker needs a tracked querySource and message uuids; the
   // suites above pass neither, which is what keeps them single-marker.
@@ -484,20 +361,6 @@ describe('addCacheBreakpoints — lagging marker (previous request\'s marker)', 
     run(first, { source: 'speculation' })
     const second = [...first, withUuid(makeAssistant('d')), withUuid(makeUser('e'))]
     expect(run(second, { source: 'speculation' })).toEqual([4])
-  })
-
-  test('the experimental trailing / head markers suppress the lag (4-breakpoint budget)', () => {
-    setThreshold('1000000') // main pinned at head so trail actually adds one
-    const first = [withUuid(makeUser('a')), withUuid(makeAssistant('b')), withUuid(makeUser('c'))]
-    run(first)
-    const second = [...first, withUuid(makeAssistant('d')), withUuid(makeUser('e'))]
-    process.env.CLAUDIN_TRAIL_CACHE_MARKER = '1'
-    expect(run(second)).toEqual([0, 4])
-    delete process.env.CLAUDIN_TRAIL_CACHE_MARKER
-    process.env.CLAUDIN_ANCHOR_CACHE_HEAD = '1'
-    setThreshold('0')
-    const third = [...second, withUuid(makeAssistant('f')), withUuid(makeUser('g'))]
-    expect(run(third)).toEqual([0, 6])
   })
 
   test('the killswitch restores the single marker', () => {

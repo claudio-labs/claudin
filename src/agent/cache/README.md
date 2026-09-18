@@ -103,10 +103,7 @@ audit; integrated regression:
   **`getClipFrontierIndex`**.
 - `src/providers/shims/claude/paramBuilders.ts` — `addCacheBreakpoints`: defer-2048
   walk + frontier cap (`min(defer, frontier)`), head-pin fallback,
-  skipCacheWrite fork handling, optional trailing marker on the last
-  message (`CLAUDIN_TRAIL_CACHE_MARKER=1`, experimental — caches the
-  defer/frontier tail window instead of re-sending it as 1× input;
-  mutually exclusive with `CLAUDIN_ANCHOR_CACHE_HEAD`).
+  skipCacheWrite fork handling.
 - `src/providers/shims/claude/cacheControl.ts` — ephemeral 5m/1h TTL selection.
 - `src/providers/shims/claude/streaming.ts` — wiring order:
   `ensureToolResultPairing → applyStableStubs → history redactions →

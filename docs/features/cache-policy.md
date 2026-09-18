@@ -136,7 +136,16 @@ Everything is on by default. Overrides, per knob:
 | `CLAUDIN_CLIP_FRONTIER=0` | revert to uncapped (defer-walk-only) marker placement |
 | `CLAUDIN_CACHE_PROFILE=aggressive\|retain` | force a profile instead of `auto` per-provider resolution |
 | `CLAUDIN_STUB_HEAD_CHARS=<n\|0>` | head-preserved chars per stub (`0` = pure stubs) |
-| `CLAUDIN_TRAIL_CACHE_MARKER=1` | (off by default — measured regression, see below) second breakpoint on the last message — converts the defer/frontier tail window from repeated 1× input into cache write + reads; suppresses `CLAUDIN_ANCHOR_CACHE_HEAD` to stay within the 4-breakpoint API budget. Lockstep bench 2026-07-05 (Sonnet 5, 30 turns, 1 run each): uncached input dropped 72.7k → 138 as designed, but total cost rose $3.10 → $4.06 — on 1h-TTL providers (firstParty/vertex) cache writes bill at 2× base, so rewriting the mutating tail every turn costs more than re-sending it as 1× input (cW +96k, plus 1 reset and +6 requests of run variance). Keep off on Anthropic-style pricing; may be worth re-testing on 5m-TTL (1.25×) providers |
+
+A second breakpoint on the last message (`CLAUDIN_TRAIL_CACHE_MARKER`) and one
+pinned to `messages[0]` (`CLAUDIN_ANCHOR_CACHE_HEAD`) were both tried and
+**removed**. The lockstep bench of 2026-07-05 (Sonnet 5, 30 turns, 1 run each)
+is why: uncached input dropped 72.7k → 138 as designed, but total cost rose
+$3.10 → $4.06, because on 1h-TTL providers (firstParty/vertex) cache writes
+bill at 2× base and rewriting the mutating tail every turn costs more than
+re-sending it as 1× input. They also had to suppress the lag marker to stay
+inside the API's 4-breakpoint budget. Re-testing the idea on a 5m-TTL (1.25×)
+provider means writing it again, on purpose, rather than flipping a flag.
 
 ## Detailed docs
 

@@ -370,9 +370,10 @@ Takeaways:
 ### Sonnet 5 lockstep + trailing-marker experiment (2026-07-05)
 
 Same lockstep harness, 30 turns (22 files + 8 revisits), `claude-sonnet-5`,
-1 run per side. Third row is the `CLAUDIN_TRAIL_CACHE_MARKER=1` experiment:
-a second breakpoint on the last message, converting the defer/frontier tail
-window (~1–2k tokens re-sent as 1× input every turn) into cache write+read.
+1 run per side. Third row is the trailing-marker experiment (then behind
+`CLAUDIN_TRAIL_CACHE_MARKER=1`, since removed): a second breakpoint on the last
+message, converting the defer/frontier tail window (~1–2k tokens re-sent as 1×
+input every turn) into cache write+read.
 
 | side | api reqs | in | out | cR | cW | r:w | resets | cost |
 |---|---|---|---|---|---|---|---|---|

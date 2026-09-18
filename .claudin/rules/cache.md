@@ -56,9 +56,8 @@ the earliest index whose suffix sums to ≥ `DEFAULT_DEFER_CACHE_MARKER_TOKENS`
   PREVIOUS request's marker (found by `uuid`, so prepends, stubs and compaction
   need no reset hook; a retry keeps the same tail uuid and does not rotate), so
   the lookback resumes there. It is free — breakpoints on cached bytes cost
-  nothing. Budget: system emits ≤2, messages now 2 = the API's 4; the
-  experimental `CLAUDIN_TRAIL_CACHE_MARKER` / `CLAUDIN_ANCHOR_CACHE_HEAD`
-  suppress it. Never add a third message marker. The break detector now names
+  nothing. Budget: system emits ≤2, messages 2 = the API's 4. Never add a
+  third message marker. The break detector now names
   the case (`marker advanced N positions past the last write (lookback window
   is 20) — client-side placement`, or `… with the lag marker placed —
   server-side miss`). Probe: `scripts/bench/ab/lookback-miss-probe.ts` (arm A

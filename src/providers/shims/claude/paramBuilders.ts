@@ -403,41 +403,6 @@ export function addCacheBreakpoints(
   ) {
     markerIndex = clipFrontierIndex;
   }
-  // Optional trailing marker on the last message (CLAUDIN_TRAIL_CACHE_MARKER,
-  // experimental, OFF by default). The defer threshold + frontier cap leave a
-  // tail window of up to ~2k tokens that is re-sent as uncached 1x input every
-  // turn until it passes behind the main marker. A second marker at the end
-  // converts that window into cache write + 0.1x reads while it stays
-  // byte-stable; if the tail mutates, lookup just falls back to the
-  // main-marker prefix — nothing behind it is invalidated. No trailing marker
-  // for skipCacheWrite forks (same rationale as baseMarkerIndex above), and it
-  // coalesces away when the main marker already sits on the last message.
-  //
-  // Measured (2026-07-05 lockstep bench, Sonnet 5, 30 turns): uncached input
-  // fell 72.7k → 138, but total cost rose $3.10 → $4.06. On 1h-TTL providers
-  // (should1hCacheTTL: firstParty/vertex) cache writes bill at 2x base — so
-  // rewriting the mutating tail every turn (2x) loses to re-sending it as 1x
-  // input; break-even needs the tail stable for ~2+ turns, which the defer
-  // window rarely is. Keep off on Anthropic-style pricing; potentially viable
-  // on 5m-TTL (1.25x write) providers. See docs/features/cache-policy.md.
-  const trailIndex =
-    process.env.CLAUDIN_TRAIL_CACHE_MARKER === '1' &&
-    !skipCacheWrite &&
-    messages.length - 1 > markerIndex
-      ? messages.length - 1
-      : undefined;
-  // Optional second marker pinned to messages[0]. If the deferred marker
-  // happens to also walk back to index 0, the two coalesce silently — that's
-  // fine, it's still one marker on the wire.
-  //
-  // Mutually exclusive with the trailing marker: the API caps cache_control
-  // at 4 blocks per request and the system prompt can already emit 2, so
-  // main + trail + head would overflow to 5 → 400. Trail wins when both
-  // flags are set.
-  const anchorHead =
-    process.env.CLAUDIN_ANCHOR_CACHE_HEAD === '1' &&
-    messages.length > 1 &&
-    trailIndex === undefined;
   // Lagging marker (lagCacheMarker.ts): a second marker on the message that
   // carried the PREVIOUS request's marker. The API resolves a breakpoint by
   // checking at most 20 positions behind it; a deferred marker that lingers
@@ -446,15 +411,13 @@ export function addCacheBreakpoints(
   // is re-billed from the system breakpoint (session ab1e69e8: 7 rewrites,
   // 3.06M tokens). The lag marker is where the lookup resumes; it sits on
   // cached bytes, so it costs nothing. Skipped for skipCacheWrite forks
-  // (own key, marker already at the shared frontier) and under the two
-  // experimental extra-marker flags: with the system prompt's 2 blocks a
-  // third message marker overflows the API's 4-breakpoint cap → 400.
+  // (own key, marker already at the shared frontier). With the system
+  // prompt's 2 blocks this is the 4-breakpoint cap: never add a third
+  // message marker.
   let lagIndex: number | undefined;
   const trackingKey =
     enablePromptCaching &&
     !skipCacheWrite &&
-    trailIndex === undefined &&
-    !anchorHead &&
     querySource !== undefined &&
     isLagMarkerEnabled()
       ? getCacheTrackingKey(querySource, agentId)
@@ -473,11 +436,7 @@ export function addCacheBreakpoints(
     }
   }
   const result = messages.map((msg, index) => {
-    const addCache =
-      index === markerIndex ||
-      index === trailIndex ||
-      index === lagIndex ||
-      (anchorHead && index === 0);
+    const addCache = index === markerIndex || index === lagIndex;
     if (msg.type === "user") {
       return userMessageToMessageParam(
         msg,
