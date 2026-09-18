@@ -1,9 +1,7 @@
-import { createHash } from 'crypto'
 import { readFileSync, realpathSync, statSync } from 'fs'
-import { open, readdir, readFile, realpath, stat } from 'fs/promises'
+import { readdir, stat } from 'fs/promises'
 import memoize from 'lodash-es/memoize.js'
 import { basename, dirname, join, resolve, sep } from 'path'
-import { hasBinaryExtension, isBinaryContent } from 'src/shared/constants/files.js'
 import { getCwd } from 'src/shared/fs/cwd.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { logForDiagnosticsNoPII } from 'src/shared/diagLogs.js'
@@ -15,7 +13,6 @@ import {
   getCachedHead,
   getCachedRemoteUrl,
   getWorktreeCountFromFs,
-  isShallowClone as isShallowCloneFs,
   resolveGitDir,
 } from 'src/vcs/git/gitFilesystem.js'
 import { logError } from 'src/shared/log.js'
@@ -343,24 +340,6 @@ export function getGitDir(cwd: string): Promise<string | null> {
   return resolveGitDir(cwd)
 }
 
-export async function isAtGitRoot(): Promise<boolean> {
-  const cwd = getCwd()
-  const gitRoot = findGitRoot(cwd)
-  if (!gitRoot) {
-    return false
-  }
-  // Resolve symlinks for accurate comparison
-  try {
-    const [resolvedCwd, resolvedGitRoot] = await Promise.all([
-      realpath(cwd),
-      realpath(gitRoot),
-    ])
-    return resolvedCwd === resolvedGitRoot
-  } catch {
-    return cwd === gitRoot
-  }
-}
-
 export const dirIsInGitRepo = async (cwd: string): Promise<boolean> => {
   return findGitRoot(cwd) !== null
 }
@@ -391,88 +370,12 @@ export const getRemoteUrl = async (): Promise<string | null> => {
   return getCachedRemoteUrl()
 }
 
-/**
- * Normalizes a git remote URL to a canonical form for hashing.
- * Converts SSH and HTTPS URLs to the same format: host/owner/repo (lowercase, no .git)
- *
- * Examples:
- * - git@github.com:owner/repo.git -> github.com/owner/repo
- * - https://github.com/owner/repo.git -> github.com/owner/repo
- * - ssh://git@github.com/owner/repo -> github.com/owner/repo
- * - http://local_proxy@127.0.0.1:16583/git/owner/repo -> github.com/owner/repo
- */
-export function normalizeGitRemoteUrl(url: string): string | null {
-  const trimmed = url.trim()
-  if (!trimmed) return null
-
-  // Handle SSH format: git@host:owner/repo.git
-  const sshMatch = trimmed.match(/^git@([^:]+):(.+?)(?:\.git)?$/)
-  if (sshMatch && sshMatch[1] && sshMatch[2]) {
-    return `${sshMatch[1]}/${sshMatch[2]}`.toLowerCase()
-  }
-
-  // Handle HTTPS/SSH URL format: https://host/owner/repo.git or ssh://git@host/owner/repo
-  const urlMatch = trimmed.match(
-    /^(?:https?|ssh):\/\/(?:[^@]+@)?([^/]+)\/(.+?)(?:\.git)?$/,
-  )
-  if (urlMatch && urlMatch[1] && urlMatch[2]) {
-    const host = urlMatch[1]
-    const path = urlMatch[2]
-
-    // CCR git proxy URLs use format:
-    //   Legacy:  http://...@127.0.0.1:PORT/git/owner/repo       (github.com assumed)
-    //   GHE:     http://...@127.0.0.1:PORT/git/ghe.host/owner/repo (host encoded in path)
-    // Strip the /git/ prefix. If the first segment contains a dot, it's a
-    // hostname (GitHub org names cannot contain dots). Otherwise assume github.com.
-    if (isLocalHost(host) && path.startsWith('git/')) {
-      const proxyPath = path.slice(4) // Remove "git/" prefix
-      const segments = proxyPath.split('/')
-      // 3+ segments where first contains a dot → host/owner/repo (GHE format)
-      if (segments.length >= 3 && segments[0]!.includes('.')) {
-        return proxyPath.toLowerCase()
-      }
-      // 2 segments → owner/repo (legacy format, assume github.com)
-      return `github.com/${proxyPath}`.toLowerCase()
-    }
-
-    return `${host}/${path}`.toLowerCase()
-  }
-
-  return null
-}
-
-/**
- * Returns a SHA256 hash (first 16 chars) of the normalized git remote URL.
- * This provides a globally unique identifier for the repository that:
- * - Is the same regardless of SSH vs HTTPS clone
- * - Does not expose the actual repository name in logs
- */
-export async function getRepoRemoteHash(): Promise<string | null> {
-  const remoteUrl = await getRemoteUrl()
-  if (!remoteUrl) return null
-
-  const normalized = normalizeGitRemoteUrl(remoteUrl)
-  if (!normalized) return null
-
-  const hash = createHash('sha256').update(normalized).digest('hex')
-  return hash.substring(0, 16)
-}
-
 export const getIsHeadOnRemote = async (): Promise<boolean> => {
   const { code } = await execFileNoThrow(gitExe(), ['--no-optional-locks', 'rev-parse', '@{u}'], {
     preserveOutputOnError: false,
     useCwd: true,
   })
   return code === 0
-}
-
-export const hasUnpushedCommits = async (): Promise<boolean> => {
-  const { stdout, code } = await execFileNoThrow(
-    gitExe(),
-    ['--no-optional-locks', 'rev-list', '--count', '@{u}..HEAD'],
-    { preserveOutputOnError: false, useCwd: true },
-  )
-  return code === 0 && parseInt(stdout.trim(), 10) > 0
 }
 
 /**
@@ -687,41 +590,6 @@ export async function getGithubRepo(): Promise<string | null> {
 }
 
 /**
- * Preserved git state for issue submission.
- * Uses remote base (e.g., origin/main) which is rarely force-pushed,
- * unlike local commits that can be GC'd after force push.
- */
-export type PreservedGitState = {
-  /** The SHA of the merge-base with the remote branch */
-  remote_base_sha: string | null
-  /** The remote branch used (e.g., "origin/main") */
-  remote_base: string | null
-  /** Patch from merge-base to current state (includes uncommitted changes) */
-  patch: string
-  /** Untracked files with their contents */
-  untracked_files: Array<{ path: string; content: string }>
-  /** git format-patch output for committed changes between merge-base and HEAD.
-   *  Used to reconstruct the actual commit chain (author, date, message) in
-   *  replay containers. null when there are no commits between merge-base and HEAD. */
-  format_patch: string | null
-  /** The current HEAD SHA (tip of the feature branch) */
-  head_sha: string | null
-  /** The current branch name (e.g., "feat/my-feature") */
-  branch_name: string | null
-}
-
-// Size limits for untracked file capture
-const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024 // 500MB per file
-const MAX_TOTAL_SIZE_BYTES = 5 * 1024 * 1024 * 1024 // 5GB total
-const MAX_FILE_COUNT = 20000
-
-// Initial read buffer for binary detection + content reuse. 64KB covers
-// most source files in a single read; isBinaryContent() internally scans
-// only its first 8KB for the binary heuristic, so the extra bytes are
-// purely for avoiding a second read when the file turns out to be text.
-const SNIFF_BUFFER_SIZE = 64 * 1024
-
-/**
  * Find the best remote branch to use as a base.
  * Priority: tracking branch > origin/main > origin/staging > origin/master
  */
@@ -766,256 +634,6 @@ export async function findRemoteBase(): Promise<string | null> {
   }
 
   return null
-}
-
-/**
- * Check if we're in a shallow clone by looking for <gitDir>/shallow.
- */
-function isShallowClone(): Promise<boolean> {
-  return isShallowCloneFs()
-}
-
-/**
- * Capture untracked files (git diff doesn't include them).
- * Respects size limits and skips binary files.
- */
-async function captureUntrackedFiles(): Promise<
-  Array<{ path: string; content: string }>
-> {
-  const { stdout, code } = await execFileNoThrow(
-    gitExe(),
-    ['ls-files', '--others', '--exclude-standard'],
-    { preserveOutputOnError: false },
-  )
-
-  const trimmed = stdout.trim()
-  if (code !== 0 || !trimmed) {
-    return []
-  }
-
-  const files = trimmed.split('\n').filter(Boolean)
-  const result: Array<{ path: string; content: string }> = []
-  let totalSize = 0
-
-  for (const filePath of files) {
-    // Check file count limit
-    if (result.length >= MAX_FILE_COUNT) {
-      logForDebugging(
-        `Untracked file capture: reached max file count (${MAX_FILE_COUNT})`,
-      )
-      break
-    }
-
-    // Skip binary files by extension - zero I/O
-    if (hasBinaryExtension(filePath)) {
-      continue
-    }
-
-    try {
-      const stats = await stat(filePath)
-      const fileSize = stats.size
-
-      // Skip files exceeding per-file limit
-      if (fileSize > MAX_FILE_SIZE_BYTES) {
-        logForDebugging(
-          `Untracked file capture: skipping ${filePath} (exceeds ${MAX_FILE_SIZE_BYTES} bytes)`,
-        )
-        continue
-      }
-
-      // Check total size limit
-      if (totalSize + fileSize > MAX_TOTAL_SIZE_BYTES) {
-        logForDebugging(
-          `Untracked file capture: reached total size limit (${MAX_TOTAL_SIZE_BYTES} bytes)`,
-        )
-        break
-      }
-
-      // Empty file - no need to open
-      if (fileSize === 0) {
-        result.push({ path: filePath, content: '' })
-        continue
-      }
-
-      // Binary sniff on up to SNIFF_BUFFER_SIZE bytes. Caps binary-file reads
-      // at SNIFF_BUFFER_SIZE even though MAX_FILE_SIZE_BYTES allows up to 500MB.
-      // If the file fits in the sniff buffer we reuse it as the content; for
-      // larger text files we fall back to readFile with encoding so the runtime
-      // decodes to a string without materializing a full-size Buffer in JS.
-      const sniffSize = Math.min(SNIFF_BUFFER_SIZE, fileSize)
-      const fd = await open(filePath, 'r')
-      try {
-        const sniffBuf = Buffer.alloc(sniffSize)
-        const { bytesRead } = await fd.read(sniffBuf, 0, sniffSize, 0)
-        const sniff = sniffBuf.subarray(0, bytesRead)
-
-        if (isBinaryContent(sniff)) {
-          continue
-        }
-
-        let content: string
-        if (fileSize <= sniffSize) {
-          // Sniff already covers the whole file
-          content = sniff.toString('utf-8')
-        } else {
-          // readFile with encoding decodes to string directly, avoiding a
-          // full-size Buffer living alongside the decoded string. The extra
-          // open/close is cheaper than doubling peak memory for large files.
-          content = await readFile(filePath, 'utf-8')
-        }
-
-        result.push({ path: filePath, content })
-        totalSize += fileSize
-      } finally {
-        await fd.close()
-      }
-    } catch (err) {
-      // Skip files we can't read
-      logForDebugging(`Failed to read untracked file ${filePath}: ${err}`)
-    }
-  }
-
-  return result
-}
-
-/**
- * Preserve git state for issue submission.
- * Uses remote base for more stable replay capability.
- *
- * Edge cases handled:
- * - Detached HEAD: falls back to merge-base with default branch directly
- * - No remote: returns null for remote fields, uses HEAD-only mode
- * - Shallow clone: falls back to HEAD-only mode
- */
-export async function preserveGitStateForIssue(): Promise<PreservedGitState | null> {
-  try {
-    const isGit = await getIsGit()
-    if (!isGit) {
-      return null
-    }
-
-    // Check for shallow clone - fall back to simpler mode
-    if (await isShallowClone()) {
-      logForDebugging('Shallow clone detected, using HEAD-only mode for issue')
-      const [{ stdout: patch }, untrackedFiles] = await Promise.all([
-        execFileNoThrow(gitExe(), ['diff', 'HEAD']),
-        captureUntrackedFiles(),
-      ])
-      return {
-        remote_base_sha: null,
-        remote_base: null,
-        patch: patch || '',
-        untracked_files: untrackedFiles,
-        format_patch: null,
-        head_sha: null,
-        branch_name: null,
-      }
-    }
-
-    // Find the best remote base
-    const remoteBase = await findRemoteBase()
-
-    if (!remoteBase) {
-      // No remote found - use HEAD-only mode
-      logForDebugging('No remote found, using HEAD-only mode for issue')
-      const [{ stdout: patch }, untrackedFiles] = await Promise.all([
-        execFileNoThrow(gitExe(), ['diff', 'HEAD']),
-        captureUntrackedFiles(),
-      ])
-      return {
-        remote_base_sha: null,
-        remote_base: null,
-        patch: patch || '',
-        untracked_files: untrackedFiles,
-        format_patch: null,
-        head_sha: null,
-        branch_name: null,
-      }
-    }
-
-    // Get the merge-base with remote
-    const { stdout: mergeBase, code: mergeBaseCode } = await execFileNoThrow(
-      gitExe(),
-      ['merge-base', 'HEAD', remoteBase],
-      { preserveOutputOnError: false },
-    )
-
-    if (mergeBaseCode !== 0 || !mergeBase.trim()) {
-      // Merge-base failed - fall back to HEAD-only
-      logForDebugging('Merge-base failed, using HEAD-only mode for issue')
-      const [{ stdout: patch }, untrackedFiles] = await Promise.all([
-        execFileNoThrow(gitExe(), ['diff', 'HEAD']),
-        captureUntrackedFiles(),
-      ])
-      return {
-        remote_base_sha: null,
-        remote_base: null,
-        patch: patch || '',
-        untracked_files: untrackedFiles,
-        format_patch: null,
-        head_sha: null,
-        branch_name: null,
-      }
-    }
-
-    const remoteBaseSha = mergeBase.trim()
-
-    // All 5 commands below depend only on remoteBaseSha — run them in parallel.
-    // ~5×90ms serial → ~90ms parallel on Bun native (used by /issue and /share).
-    const [
-      { stdout: patch },
-      untrackedFiles,
-      { stdout: formatPatchOut, code: formatPatchCode },
-      { stdout: headSha },
-      { stdout: branchName },
-    ] = await Promise.all([
-      // Patch from merge-base to current state (including staged changes)
-      execFileNoThrow(gitExe(), ['diff', remoteBaseSha]),
-      // Untracked files captured separately
-      captureUntrackedFiles(),
-      // format-patch for committed changes between merge-base and HEAD.
-      // Preserves the actual commit chain (author, date, message) so replay
-      // containers can reconstruct the branch with real commits instead of a
-      // squashed diff. Uses --stdout to emit all patches as a single text stream.
-      execFileNoThrow(gitExe(), [
-        'format-patch',
-        `${remoteBaseSha}..HEAD`,
-        '--stdout',
-      ]),
-      // HEAD SHA for replay
-      execFileNoThrow(gitExe(), ['rev-parse', 'HEAD']),
-      // Branch name for replay
-      execFileNoThrow(gitExe(), ['rev-parse', '--abbrev-ref', 'HEAD']),
-    ])
-
-    let formatPatch: string | null = null
-    if (formatPatchCode === 0 && formatPatchOut && formatPatchOut.trim()) {
-      formatPatch = formatPatchOut
-    }
-
-    const trimmedBranch = branchName?.trim()
-    return {
-      remote_base_sha: remoteBaseSha,
-      remote_base: remoteBase,
-      patch: patch || '',
-      untracked_files: untrackedFiles,
-      format_patch: formatPatch,
-      head_sha: headSha?.trim() || null,
-      branch_name:
-        trimmedBranch && trimmedBranch !== 'HEAD' ? trimmedBranch : null,
-    }
-  } catch (err) {
-    logError(err)
-    return null
-  }
-}
-
-function isLocalHost(host: string): boolean {
-  const hostWithoutPort = host.split(':')[0] ?? ''
-  return (
-    hostWithoutPort === 'localhost' ||
-    /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostWithoutPort)
-  )
 }
 
 /**

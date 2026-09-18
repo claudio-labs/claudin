@@ -118,10 +118,6 @@ export function getOllamaApiBaseUrl(baseUrl?: string): string {
   return trimTrailingSlash(parsed.toString())
 }
 
-export function getOllamaChatBaseUrl(baseUrl?: string): string {
-  return `${getOllamaApiBaseUrl(baseUrl)}/v1`
-}
-
 export function getAtomicChatApiBaseUrl(baseUrl?: string): string {
   const parsed = new URL(
     baseUrl || process.env.ATOMIC_CHAT_BASE_URL || DEFAULT_ATOMIC_CHAT_BASE_URL,
@@ -219,18 +215,6 @@ export function getLocalOpenAICompatibleProviderLabel(baseUrl?: string): string 
   }
 
   return 'Local OpenAI-compatible'
-}
-
-export async function hasLocalOllama(baseUrl?: string): Promise<boolean> {
-  const { reachable } = await fetchOllamaModelsProbe(baseUrl, 1200)
-  return reachable
-}
-
-export async function listOllamaModels(
-  baseUrl?: string,
-): Promise<OllamaModelDescriptor[]> {
-  const { models } = await fetchOllamaModelsProbe(baseUrl, 5000)
-  return models
 }
 
 export type OpenAIModelDiscoveryResult =
@@ -461,41 +445,6 @@ export async function probeAtomicChatReadiness(options?: {
     return { state: 'no_models' }
   }
   return { state: 'ready', models }
-}
-
-export async function benchmarkOllamaModel(
-  modelName: string,
-  baseUrl?: string,
-): Promise<number | null> {
-  const start = Date.now()
-  const { signal, clear } = withTimeoutSignal(20000)
-  try {
-    const response = await fetch(`${getOllamaApiBaseUrl(baseUrl)}/api/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      signal,
-      body: JSON.stringify({
-        model: modelName,
-        stream: false,
-        messages: [{ role: 'user', content: 'Reply with OK.' }],
-        options: {
-          temperature: 0,
-          num_predict: 8,
-        },
-      }),
-    })
-    if (!response.ok) {
-      return null
-    }
-    await response.json()
-    return Date.now() - start
-  } catch {
-    return null
-  } finally {
-    clear()
-  }
 }
 
 export async function probeOllamaGenerationReadiness(options?: {
