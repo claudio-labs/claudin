@@ -341,36 +341,6 @@ export function findDangerousClassifierPermissions(
 }
 
 /**
- * Checks if a Bash allow rule is overly broad (equivalent to YOLO mode).
- * Returns true for tool-level Bash allow rules with no content restriction,
- * which auto-allow every bash command.
- *
- * Matches: Bash, Bash(*), Bash() — all parse to { toolName: 'Bash' } with no ruleContent.
- */
-export function isOverlyBroadBashAllowRule(
-  ruleValue: PermissionRuleValue,
-): boolean {
-  return (
-    ruleValue.toolName === BASH_TOOL_NAME && ruleValue.ruleContent === undefined
-  )
-}
-
-/**
- * PowerShell equivalent of isOverlyBroadBashAllowRule.
- *
- * Matches: PowerShell, PowerShell(*), PowerShell() — all parse to
- * { toolName: 'PowerShell' } with no ruleContent.
- */
-export function isOverlyBroadPowerShellAllowRule(
-  ruleValue: PermissionRuleValue,
-): boolean {
-  return (
-    ruleValue.toolName === POWERSHELL_TOOL_NAME &&
-    ruleValue.ruleContent === undefined
-  )
-}
-
-/**
  * Type guard to check if a PermissionRuleSource is a valid PermissionUpdateDestination.
  * Sources like 'flagSettings', 'policySettings', and 'command' are not valid destinations.
  */
@@ -805,7 +775,6 @@ export async function initializeToolPermissionContext({
   toolPermissionContext: ToolPermissionContext
   warnings: string[]
   dangerousPermissions: DangerousPermissionInfo[]
-  overlyBroadBashPermissions: DangerousPermissionInfo[]
 }> {
   // Parse comma-separated allowed and disallowed tools if provided
   // Normalize legacy tool names (e.g., 'Task' → 'Agent') so that in-memory
@@ -864,12 +833,6 @@ export async function initializeToolPermissionContext({
 
   // Load all permission rules from disk
   const rulesFromDisk = loadAllPermissionRulesFromDisk()
-
-  // Ant-only: Detect overly broad shell allow rules for all modes.
-  // Bash(*) or PowerShell(*) are equivalent to YOLO mode for that shell.
-  // Skip in CCR/BYOC where --allowed-tools is the intended pre-approval mechanism.
-  // Variable name kept for return-field compat; contains both shells.
-  const overlyBroadBashPermissions: DangerousPermissionInfo[] = []
 
   // Ant-only: Detect dangerous shell permissions for auto mode
   // Dangerous permissions (like Bash(*), Bash(python:*), PowerShell(iex:*)) would auto-allow
@@ -935,7 +898,6 @@ export async function initializeToolPermissionContext({
     toolPermissionContext,
     warnings,
     dangerousPermissions,
-    overlyBroadBashPermissions,
   }
 }
 

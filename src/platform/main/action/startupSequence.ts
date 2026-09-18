@@ -32,7 +32,6 @@ import { tryGetActiveProvider } from 'src/providers/presets/activeProvider.js';
 import { isAdvisorEnabled } from 'src/platform/doctor/advisor.js';
 import { isAgentSwarmsEnabled } from 'src/agent/coordinator/agentSwarmsEnabled.js';
 import { logError } from 'src/shared/log.js';
-import { uniq } from 'src/shared/data/array.js';
 import { countConcurrentSessions, registerSession, updateSessionName } from 'src/sessions/concurrentSessions.js';
 import { registerCleanup } from 'src/shared/cleanupRegistry.js';
 import { createEmptyAttributionState } from 'src/vcs/git/commitAttribution.js';
@@ -386,7 +385,6 @@ export type RunInteractiveStartupBlockInput = {
   resolvedInitialModel: string;
   // notifications
   permissionModeNotification: string | undefined;
-  overlyBroadBashPermissions: Array<{ ruleDisplay: string; sourceDisplay: string }>;
   // initialState fields
   toolPermissionContext: { mode?: unknown } & Record<string, unknown>;
   initialMainLoopModel: string | null;
@@ -416,7 +414,6 @@ export function runInteractiveStartupBlock(
     agentSetting,
     resolvedInitialModel,
     permissionModeNotification,
-    overlyBroadBashPermissions,
     toolPermissionContext,
     initialMainLoopModel,
     agentDefinitions,
@@ -453,18 +450,6 @@ export function runInteractiveStartupBlock(
     initialNotifications.push({
       key: 'model-deprecation-warning',
       text: deprecationWarning,
-      color: 'warning',
-      priority: 'high',
-    });
-  }
-  if (overlyBroadBashPermissions.length > 0) {
-    const displayList = uniq(overlyBroadBashPermissions.map(p => p.ruleDisplay));
-    const displays = displayList.join(', ');
-    const sources = uniq(overlyBroadBashPermissions.map(p => p.sourceDisplay)).join(', ');
-    const n = displayList.length;
-    initialNotifications.push({
-      key: 'overly-broad-bash-notification',
-      text: `${displays} allow ${plural(n, 'rule')} from ${sources} ${plural(n, 'was', 'were')} ignored \u2014 not available for Ants, please use auto-mode instead`,
       color: 'warning',
       priority: 'high',
     });
