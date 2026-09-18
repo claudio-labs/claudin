@@ -45,6 +45,8 @@
 
 ## Roadmap & major features
 - [Dead-code + tengu cleanup — MERGED as PR #204 (2026-09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines on main; analytics/telemetry GONE; tengu 1654→326; left: gate-key audit, growthbook collapse, rules sweep
+- [Dead-code round 2 (2026-09-18, branch chore/dead-code-round-2)](dead-code-round-2-2026-09-18.md) — 8 commits, −9324 lines; off-map flags 38→15 with each survivor's reason recorded; the single-quote scanner hole
+- [The TS bash parser ships and cannot run](bash-parser-unreachable-behind-tree-sitter-flag.md) — ~4.5k lines behind the off-map TREE_SITTER_BASH flags; enable/delete/leave is a security-path decision, not rot
 - [Tier-3 giant-file split roadmap (item 11)](tier3-file-split-roadmap.md) — ROADMAP-11 exhausted; six barrels live; the fold gate, the re-measured offender list, the 4 split traps
 - [PR #129's code vanished from main after merging](pr-129-lost-to-force-push.md) — a non-fast-forward push dropped it from GitHub too; recover via refs/pull/N/head, never `gh pr diff`
 - [Unified context-relief policy A/B (PR #156, 2026-09-03)](context-relief-unified-policy-ab.md) — cost −25%, uncached input −56%; a Read-only "re-reads" column lied — count every lookup tool
