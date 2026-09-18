@@ -26,7 +26,6 @@ import explorer from 'src/commands/explorer/index.js'
 import dream from 'src/commands/dream/index.js'
 import goal from 'src/commands/goal/index.js'
 import doctor from 'src/commands/doctor/index.js'
-import knowledge from 'src/commands/knowledge/index.js'
 import memory from 'src/commands/memory/index.js'
 import help from 'src/commands/help/index.js'
 import ide from 'src/commands/ide/index.js'
@@ -210,7 +209,6 @@ const COMMANDS = memoize((): Command[] => [
   importCommand,
   init,
   keybindings,
-  knowledge,
   installGitHubApp,
   installSlackApp,
   mcp,
