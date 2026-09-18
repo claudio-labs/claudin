@@ -56,7 +56,6 @@ import {
   TOOL_HOOK_EXECUTION_TIMEOUT_MS,
   shouldSkipHookDueToTrust,
   createBaseHookInput,
-  dispatchHookChainFromHookRuntime,
 } from 'src/platform/lifecycleHooks/shared.js'
 import { hasHookForEvent } from 'src/platform/lifecycleHooks/matching.js'
 import { execCommandHook } from 'src/platform/lifecycleHooks/runners.js'
@@ -266,18 +265,6 @@ export async function* executePostToolUseFailureHooks<ToolInput>(
       yield result
     }
   }
-
-  await dispatchHookChainFromHookRuntime({
-    eventName: 'PostToolUseFailure',
-    outcome: 'failed',
-    payload: {
-      ...hookInput,
-      hook_blocking_error_count: blockingHookCount,
-      hook_execution_skipped: !hasPostToolFailureHooks,
-    },
-    signal,
-    toolUseContext,
-  })
 }
 
 export async function* executePermissionDeniedHooks<ToolInput>(
@@ -515,19 +502,6 @@ export async function* executeTaskCompletedHooks(
     }
     yield result
   }
-
-  await dispatchHookChainFromHookRuntime({
-    eventName: 'TaskCompleted',
-    outcome:
-      blockingHookCount > 0 || preventedContinuation ? 'failed' : 'success',
-    payload: {
-      ...hookInput,
-      hook_blocking_error_count: blockingHookCount,
-      hook_prevented_continuation: preventedContinuation,
-    },
-    signal,
-    toolUseContext,
-  })
 }
 
 /**

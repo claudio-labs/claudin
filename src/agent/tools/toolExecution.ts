@@ -977,7 +977,6 @@ async function checkPermissionsAndCallTool(
       {
         ...toolUseContext,
         toolUseId: toolUseID,
-        hookChainsCanUseTool: canUseTool,
         userModified: permissionDecision.userModified ?? false,
       },
       canUseTool,
@@ -1250,29 +1249,19 @@ async function checkPermissionsAndCallTool(
     const hookMessages: MessageUpdateLazy<
       AttachmentMessage | ProgressMessage<HookProgress>
     >[] = []
-    const hookChainsContext = toolUseContext as ToolUseContext & {
-      hookChainsCanUseTool?: CanUseToolFn
-    }
-    hookChainsContext.hookChainsCanUseTool = canUseTool
-    try {
-      for await (const hookResult of runPostToolUseFailureHooks(
-        toolUseContext,
-        tool,
-        toolUseID,
-        messageId,
-        processedInput,
-        content,
-        isInterrupt,
-        requestId,
-        mcpServerType,
-        mcpServerBaseUrl,
-      )) {
-        hookMessages.push(hookResult)
-      }
-    } finally {
-      if (hookChainsContext.hookChainsCanUseTool === canUseTool) {
-        delete hookChainsContext.hookChainsCanUseTool
-      }
+    for await (const hookResult of runPostToolUseFailureHooks(
+      toolUseContext,
+      tool,
+      toolUseID,
+      messageId,
+      processedInput,
+      content,
+      isInterrupt,
+      requestId,
+      mcpServerType,
+      mcpServerBaseUrl,
+    )) {
+      hookMessages.push(hookResult)
     }
 
     return [
