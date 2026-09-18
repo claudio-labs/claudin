@@ -34,7 +34,6 @@ import { EMPTY_USAGE } from 'src/providers/transport/logging.js'
 import { logForDebugging } from 'src/shared/debug.js'
 import { mergeFileStateCaches } from 'src/shared/fs/fileStateCache.js'
 import { installLiveReadFileCache } from 'src/platform/headless/print/readFileCacheHandover.js'
-import { executeFilePersistence } from 'src/platform/filePersistence/filePersistence.js'
 import { finalizePendingAsyncHooks } from 'src/platform/lifecycleHooks/AsyncHookRegistry.js'
 import {
   gracefulShutdownSync,
@@ -371,7 +370,6 @@ export async function runTurnLoop(
 
         ctx.abortController = createAbortController()
         const abortController = ctx.abortController
-        const turnStartTime = feature('FILE_PERSISTENCE') ? Date.now() : undefined
 
         headlessProfilerCheckpoint('before_ask')
         startQueryProfile()
@@ -573,28 +571,6 @@ export async function runTurnLoop(
         // Forward messages to bridge after each turn
         ctx.forwardMessagesToBridge()
         ctx.bridgeHandle?.sendResult()
-
-        if (feature('FILE_PERSISTENCE') && turnStartTime !== undefined) {
-          void executeFilePersistence(
-            turnStartTime,
-            abortController.signal,
-            result => {
-              output.enqueue({
-                type: 'system' as const,
-                subtype: 'files_persisted' as const,
-                // Every entry in `result.files` came from a successful
-                // upload (see executeBYOCPersistence), where fileId is
-                // always set — PersistedFile's `file_id?` is just looser
-                // than that guarantee.
-                files: result.files as { filename: string; file_id: string }[],
-                failed: result.failed,
-                processed_at: new Date().toISOString(),
-                uuid: randomUUID(),
-                session_id: getSessionId(),
-              })
-            },
-          )
-        }
 
         // Generate and emit prompt suggestion for SDK consumers
         if (
