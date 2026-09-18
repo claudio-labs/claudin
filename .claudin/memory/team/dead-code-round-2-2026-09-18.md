@@ -1,12 +1,13 @@
 ---
 name: dead-code-round-2-2026-09-18
-description: Second dead-code round on branch chore/dead-code-round-2 — 8 commits, 202 files, −9324 lines; what shipped, the six flags that kept a ratchet entry and why, and the decisions left open
+description: Second dead-code round, PR #211 — 12 commits, 210 files, −9370 lines; what shipped, the six flags that kept a ratchet entry and why, and what the three-agent validation round found
 type: project
 ---
 
-Branch `chore/dead-code-round-2`, cut from `main` at 2dedbdab on 2026-09-18.
-**202 files, +204 / −9324.** Not merged at time of writing. Follows
+Branch `chore/dead-code-round-2`, cut from `main` at 2dedbdab on 2026-09-18,
+opened as **PR #211**. **210 files, +561 / −9370**, 12 commits. Follows
 [[dead-code-cleanup-2026-09-15]] (PR #204) and its ULTRAPLAN follow-up (#210).
+What to do next is [[dead-code-round-3-plan-seed]].
 
 The round started from a broken tree: `main` carried an uncommitted **staged
 deletion** of `filePersistence.ts` while `turnLoop.ts:37` still imported
@@ -65,7 +66,35 @@ mention — write the flag name in prose.
   live paths.
 - **`deadcode:prod`** (`knip --production`) is still not wired into
   `pr-checks.yml`, and `deadcode:ci` has "ci" in its name while no workflow runs
-  it. That is why a module imported only by its own test is invisible to the gate.
+  it. That is why a module imported only by its own test is invisible to the
+  gate — and as proposed it is a **no-op**, see
+  [[deadcode-gate-include-allowlist-hole]].
+
+## What the validation round found
+
+Three read-only agents audited the branch on independent angles (reachability
+from the entrypoint, what the gate structurally cannot see, adversarial review
+of the 12 commits). **No regression and no functional loss.** Both security
+verdicts came back clean: `!feature('POWERSHELL_AUTO_MODE')` folds TRUE so that
+guard correctly survives as `tool.name === POWERSHELL_TOOL_NAME`, and the
+`PARSE_ABORTED` fail-closed contract is intact at `bash/ast.ts:444`.
+
+Three findings were worth acting on, all in `82654577`:
+
+- **The gated-command floor guarded less than it looked.** Breaking
+  `GATED_COMMAND_RE` does fail it, so it catches a regex matching NOTHING — but
+  any two spurious matches clear it and a snapshot can be re-recorded. A
+  name-pinned anchor (`toContain('bridge')`) closes that, verified with a probe
+  that captures one character of each binding name: it clears the floor and
+  fails only the anchor.
+- **`trackFileModification` was a bug, not rot** — but deleting it changed
+  nothing, because it had no caller at `main` either. `fileStates` has always
+  been empty. Group C of [[dead-code-round-3-plan-seed]].
+- **Two commit messages overstated their diffs.** `618c6a69` claimed to correct
+  the tool-coverage row and only deleted it; `8ae3d431` did not disclose a floor
+  it lowered, a class the *previous* commit had disclosed. Both now fixed in the
+  docs they describe. Worth remembering: an audit that reads commit messages
+  against the diff catches this, and nothing else does.
 
 ## Method notes that paid off
 

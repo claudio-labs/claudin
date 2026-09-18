@@ -46,6 +46,8 @@
 ## Roadmap & major features
 - [Dead-code + tengu cleanup — MERGED as PR #204 (2026-09-16)](dead-code-cleanup-2026-09-15.md) — −25k lines on main; analytics/telemetry GONE; tengu 1654→326; left: gate-key audit, growthbook collapse, rules sweep
 - [Dead-code round 2 (2026-09-18, branch chore/dead-code-round-2)](dead-code-round-2-2026-09-18.md) — 8 commits, −9324 lines; off-map flags 38→15 with each survivor's reason recorded; the single-quote scanner hole
+- [**Seed for the next dead-code plan**](dead-code-round-3-plan-seed.md) — ~12k lines still unreachable, split into mechanical / product / bug / gate work, and why the gate fix has to land first
+- [Dead-code round 2 — PR #211 (2026-09-18)](dead-code-round-2-2026-09-18.md) — 12 commits, −9370 lines; off-map flags 38→15 with each survivor's reason recorded; the single-quote scanner hole
 - [The TS bash parser ships and cannot run](bash-parser-unreachable-behind-tree-sitter-flag.md) — ~4.5k lines behind the off-map TREE_SITTER_BASH flags; enable/delete/leave is a security-path decision, not rot
 - [~8k more lines that ship and cannot run — ranked inventory](unreachable-clusters-inventory-2026-09-18.md) — 12 PRE-EXISTING clusters (hookChains, the SDK surface, terminal/logo, conversationArc…) + the 6 false-positive classes
 - [deadcode:ci has never checked an export, and deadcode:prod is a no-op](deadcode-gate-include-allowlist-hole.md) — --include is an allowlist; knip production mode needs `!` suffixes knip.json lacks; what it takes to be useful
