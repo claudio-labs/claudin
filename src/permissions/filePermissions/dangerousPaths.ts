@@ -1,6 +1,8 @@
 import { sep } from 'path'
 import { normalizeCaseForComparison } from 'src/permissions/filePermissions/pathCase.js'
+import { isClaudeConfigFilePath } from 'src/permissions/filePermissions/internalPaths.js'
 import { containsVulnerableUncPath } from 'src/platform/shell/readOnlyCommandValidation.js'
+import { getPathsForPermissionCheck } from 'src/shared/fs/fsOperations.js'
 import { expandPath } from 'src/shared/fs/path.js'
 import { getPlatform } from 'src/shared/proc/platform.js'
 
@@ -42,7 +44,7 @@ const DANGEROUS_DIRECTORIES = [
  * - Shell configuration files (to prevent shell startup script manipulation)
  * - UNC paths (to prevent network file access and WebDAV attacks)
  */
-export function isDangerousFilePathToAutoEdit(path: string): boolean {
+function isDangerousFilePathToAutoEdit(path: string): boolean {
   const absolutePath = expandPath(path)
   const pathSegments = absolutePath.split(sep)
   const fileName = pathSegments.at(-1)
@@ -209,4 +211,67 @@ export function hasSuspiciousWindowsPathPattern(path: string): boolean {
   }
 
   return false
+}
+
+/**
+ * Checks if a path is safe for auto-editing (acceptEdits mode).
+ * Returns information about why the path is unsafe, or null if all checks pass.
+ *
+ * This function performs comprehensive safety checks including:
+ * - Suspicious Windows path patterns (NTFS streams, 8.3 names, long path prefixes, etc.)
+ * - Claudin config files (.claudin/settings.json, .claudin/commands/, .claudin/agents/)
+ * - MCP CLI state files (managed internally by Claudin)
+ * - Dangerous files (.bashrc, .gitconfig, .git/, .vscode/, .idea/, etc.)
+ *
+ * IMPORTANT: This function checks BOTH the original path AND resolved symlink paths
+ * to prevent bypasses via symlinks pointing to protected files.
+ *
+ * @param path The path to check for safety
+ * @returns Object with safe=false and message if unsafe, or { safe: true } if all checks pass
+ */
+export function checkPathSafetyForAutoEdit(
+  path: string,
+  precomputedPathsToCheck?: readonly string[],
+):
+  | { safe: true }
+  | { safe: false; message: string; classifierApprovable: boolean } {
+  // Get all paths to check (original + symlink resolved paths)
+  const pathsToCheck =
+    precomputedPathsToCheck ?? getPathsForPermissionCheck(path)
+
+  // Check for suspicious Windows path patterns on all paths
+  for (const pathToCheck of pathsToCheck) {
+    if (hasSuspiciousWindowsPathPattern(pathToCheck)) {
+      return {
+        safe: false,
+        message: `Claude requested permissions to write to ${path}, which contains a suspicious Windows path pattern that requires manual approval.`,
+        classifierApprovable: false,
+      }
+    }
+  }
+
+  // Check for Claude config files on all paths
+  for (const pathToCheck of pathsToCheck) {
+    if (isClaudeConfigFilePath(pathToCheck)) {
+      return {
+        safe: false,
+        message: `Claude requested permissions to write to ${path}, but you haven't granted it yet.`,
+        classifierApprovable: true,
+      }
+    }
+  }
+
+  // Check for dangerous files on all paths
+  for (const pathToCheck of pathsToCheck) {
+    if (isDangerousFilePathToAutoEdit(pathToCheck)) {
+      return {
+        safe: false,
+        message: `Claude requested permissions to edit ${path} which is a sensitive file.`,
+        classifierApprovable: true,
+      }
+    }
+  }
+
+  // All safety checks passed
+  return { safe: true }
 }
