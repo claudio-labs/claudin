@@ -259,13 +259,6 @@ export type AutoUpdaterResult = {
   notifications?: string[]
 }
 
-export type MaxVersionConfig = {
-  external?: string
-  ant?: string
-  external_message?: string
-  ant_message?: string
-}
-
 /**
  * Checks if the current version meets the minimum required version from Statsig config
  * Terminates the process with an error message if the version is too old
@@ -557,46 +550,6 @@ export async function getLatestVersionFromGcs(
 
 export async function getGcsDistTags(): Promise<NpmDistTags> {
   return { latest: null, stable: null }
-}
-
-/**
- * Get version history from npm registry (internal-only feature)
- * Returns versions sorted newest-first, limited to the specified count
- *
- * Uses NATIVE_PACKAGE_URL when available because:
- * 1. Native installation is the primary installation method for ant users
- * 2. Not all JS package versions have corresponding native packages
- * 3. This prevents rollback from listing versions that don't have native binaries
- */
-export async function getVersionHistory(limit: number): Promise<string[]> {
-  // Use native package URL when available to ensure we only show versions
-  // that have native binaries (not all JS package versions have native builds)
-  const packageUrl = MACRO.NATIVE_PACKAGE_URL ?? MACRO.PACKAGE_URL
-
-  // Run from home directory to avoid reading project-level .npmrc
-  const result = await execFileNoThrowWithCwd(
-    'npm',
-    ['view', packageUrl, 'versions', '--json', '--prefer-online'],
-    // Longer timeout for version list
-    { abortSignal: AbortSignal.timeout(30000), cwd: homedir() },
-  )
-
-  if (result.code !== 0) {
-    logForDebugging(`npm view versions failed with code ${result.code}`)
-    if (result.stderr) {
-      logForDebugging(`npm stderr: ${result.stderr.trim()}`)
-    }
-    return []
-  }
-
-  try {
-    const versions = jsonParse(result.stdout.trim()) as string[]
-    // Take last N versions, then reverse to get newest first
-    return versions.slice(-limit).reverse()
-  } catch (error) {
-    logForDebugging(`Failed to parse version history: ${error}`)
-    return []
-  }
 }
 
 export async function installGlobalPackage(

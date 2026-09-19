@@ -30,21 +30,6 @@ export const InProcessTeammateTask: Task = {
 };
 
 /**
- * Request shutdown for a teammate.
- */
-export function requestTeammateShutdown(taskId: string, setAppState: SetAppState): void {
-  updateTaskState<InProcessTeammateTaskState>(taskId, setAppState, task => {
-    if (task.status !== 'running' || task.shutdownRequested) {
-      return task;
-    }
-    return {
-      ...task,
-      shutdownRequested: true
-    };
-  });
-}
-
-/**
  * Append a message to a teammate's conversation history.
  * Used for zoomed view to show the teammate's conversation.
  */

@@ -258,42 +258,6 @@ export function isTeamMemPath(filePath: string): boolean {
 }
 
 /**
- * Validate that an absolute file path is safe for writing to the team memory directory.
- * Returns the resolved absolute path if valid.
- * Throws PathTraversalError if the path contains injection vectors, escapes the
- * directory via .. segments, or escapes via a symlink (PSR M22186).
- */
-export async function validateTeamMemWritePath(
-  filePath: string,
-): Promise<string> {
-  if (filePath.includes('\0')) {
-    throw new PathTraversalError(`Null byte in path: "${filePath}"`)
-  }
-  // First pass: normalize .. segments and check string-level containment.
-  // This is a fast rejection for obvious traversal attempts before we touch
-  // the filesystem.
-  const resolvedPath = resolve(filePath)
-  const teamDir = getTeamMemPath()
-  // Prefix attack protection: teamDir already ends with sep (from getTeamMemPath),
-  // so "team-evil/" won't match "team/"
-  if (!resolvedPath.startsWith(teamDir)) {
-    throw new PathTraversalError(
-      `Path escapes team memory directory: "${filePath}"`,
-    )
-  }
-  // Second pass: resolve symlinks on the deepest existing ancestor and verify
-  // the real path is still within the real team dir. This catches symlink-based
-  // escapes that path.resolve() alone cannot detect.
-  const realPath = await realpathDeepestExisting(resolvedPath)
-  if (!(await isRealPathWithinTeamDir(realPath))) {
-    throw new PathTraversalError(
-      `Path escapes team memory directory via symlink: "${filePath}"`,
-    )
-  }
-  return resolvedPath
-}
-
-/**
  * Validate a relative path key from the server against the team memory directory.
  * Sanitizes the key, joins with the team dir, resolves symlinks on the deepest
  * existing ancestor, and verifies containment against the real team dir.

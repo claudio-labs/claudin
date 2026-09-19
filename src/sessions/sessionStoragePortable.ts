@@ -7,7 +7,7 @@
  */
 
 import type { UUID } from 'crypto'
-import { open as fsOpen, readdir, realpath, stat } from 'fs/promises'
+import { open as fsOpen, stat } from 'fs/promises'
 import { join } from 'path'
 import { getClaudinConfigHomeDir } from 'src/shared/envUtils.js'
 import { getWorktreePathsPortable } from 'src/vcs/git/getWorktreePathsPortable.js'
@@ -111,97 +111,6 @@ export function extractLastJsonStringField(
 }
 
 // ---------------------------------------------------------------------------
-// First prompt extraction from head chunk
-// ---------------------------------------------------------------------------
-
-/**
- * Pattern matching auto-generated or system messages that should be skipped
- * when looking for the first meaningful user prompt. Matches anything that
- * starts with a lowercase XML-like tag (IDE context, hook output, task
- * notifications, channel messages, etc.) or a synthetic interrupt marker.
- */
-const SKIP_FIRST_PROMPT_PATTERN =
-  /^(?:\s*<[a-z][\w-]*[\s>]|\[Request interrupted by user[^\]]*\])/
-
-const COMMAND_NAME_RE = /<command-name>(.*?)<\/command-name>/
-
-/**
- * Extracts the first meaningful user prompt from a JSONL head chunk.
- *
- * Skips tool_result messages, isMeta, isCompactSummary, command-name messages,
- * and auto-generated patterns (session hooks, tick, IDE metadata, etc.).
- * Truncates to 200 chars.
- */
-export function extractFirstPromptFromHead(head: string): string {
-  let start = 0
-  let commandFallback = ''
-  while (start < head.length) {
-    const newlineIdx = head.indexOf('\n', start)
-    const line =
-      newlineIdx >= 0 ? head.slice(start, newlineIdx) : head.slice(start)
-    start = newlineIdx >= 0 ? newlineIdx + 1 : head.length
-
-    if (!line.includes('"type":"user"') && !line.includes('"type": "user"'))
-      continue
-    if (line.includes('"tool_result"')) continue
-    if (line.includes('"isMeta":true') || line.includes('"isMeta": true'))
-      continue
-    if (
-      line.includes('"isCompactSummary":true') ||
-      line.includes('"isCompactSummary": true')
-    )
-      continue
-
-    try {
-      const entry = JSON.parse(line) as Record<string, unknown>
-      if (entry.type !== 'user') continue
-
-      const message = entry.message as Record<string, unknown> | undefined
-      if (!message) continue
-
-      const content = message.content
-      const texts: string[] = []
-      if (typeof content === 'string') {
-        texts.push(content)
-      } else if (Array.isArray(content)) {
-        for (const block of content as Record<string, unknown>[]) {
-          if (block.type === 'text' && typeof block.text === 'string') {
-            texts.push(block.text as string)
-          }
-        }
-      }
-
-      for (const raw of texts) {
-        let result = raw.replace(/\n/g, ' ').trim()
-        if (!result) continue
-
-        // Skip slash-command messages but remember first as fallback
-        const cmdMatch = COMMAND_NAME_RE.exec(result)
-        if (cmdMatch) {
-          if (!commandFallback) commandFallback = cmdMatch[1]!
-          continue
-        }
-
-        // Format bash input with ! prefix before the generic XML skip
-        const bashMatch = /<bash-input>([\s\S]*?)<\/bash-input>/.exec(result)
-        if (bashMatch) return `! ${bashMatch[1]!.trim()}`
-
-        if (SKIP_FIRST_PROMPT_PATTERN.test(result)) continue
-
-        if (result.length > 200) {
-          result = result.slice(0, 200).trim() + '\u2026'
-        }
-        return result
-      }
-    } catch {
-      continue
-    }
-  }
-  if (commandFallback) return commandFallback
-  return ''
-}
-
-// ---------------------------------------------------------------------------
 // File I/O — read head and tail of a file
 // ---------------------------------------------------------------------------
 
@@ -238,46 +147,6 @@ export async function readHeadAndTail(
     }
   } catch {
     return { head: '', tail: '' }
-  }
-}
-
-export type LiteSessionFile = {
-  mtime: number
-  size: number
-  head: string
-  tail: string
-}
-
-/**
- * Opens a single session file, stats it, and reads head + tail in one fd.
- * Allocates its own buffer — safe for concurrent use with Promise.all.
- * Returns null on any error.
- */
-export async function readSessionLite(
-  filePath: string,
-): Promise<LiteSessionFile | null> {
-  try {
-    const fh = await fsOpen(filePath, 'r')
-    try {
-      const stat = await fh.stat()
-      const buf = Buffer.allocUnsafe(LITE_READ_BUF_SIZE)
-      const headResult = await fh.read(buf, 0, LITE_READ_BUF_SIZE, 0)
-      if (headResult.bytesRead === 0) return null
-
-      const head = buf.toString('utf8', 0, headResult.bytesRead)
-      const tailOffset = Math.max(0, stat.size - LITE_READ_BUF_SIZE)
-      let tail = head
-      if (tailOffset > 0) {
-        const tailResult = await fh.read(buf, 0, LITE_READ_BUF_SIZE, tailOffset)
-        tail = buf.toString('utf8', 0, tailResult.bytesRead)
-      }
-
-      return { mtime: stat.mtime.getTime(), size: stat.size, head, tail }
-    } finally {
-      await fh.close()
-    }
-  } catch {
-    return null
   }
 }
 
@@ -328,55 +197,6 @@ export function getProjectsDir(): string {
 
 export function getProjectDir(projectDir: string): string {
   return join(getProjectsDir(), sanitizePath(projectDir))
-}
-
-/**
- * Resolves a directory path to its canonical form using realpath + NFC
- * normalization. Falls back to NFC-only if realpath fails (e.g., the
- * directory doesn't exist yet). Ensures symlinked paths (e.g.,
- * /tmp → /private/tmp on macOS) resolve to the same project directory.
- */
-export async function canonicalizePath(dir: string): Promise<string> {
-  try {
-    return (await realpath(dir)).normalize('NFC')
-  } catch {
-    return dir.normalize('NFC')
-  }
-}
-
-/**
- * Finds the project directory for a given path, tolerating hash mismatches
- * for long paths (>200 chars). The CLI uses Bun.hash while the SDK under
- * Node.js uses simpleHash — for paths that exceed MAX_SANITIZED_LENGTH,
- * these produce different directory suffixes. This function falls back to
- * prefix-based scanning when the exact match doesn't exist.
- */
-export async function findProjectDir(
-  projectPath: string,
-): Promise<string | undefined> {
-  const exact = getProjectDir(projectPath)
-  try {
-    await readdir(exact)
-    return exact
-  } catch {
-    // Exact match failed — for short paths this means no sessions exist.
-    // For long paths, try prefix matching to handle hash mismatches.
-    const sanitized = sanitizePath(projectPath)
-    if (sanitized.length <= MAX_SANITIZED_LENGTH) {
-      return undefined
-    }
-    const prefix = sanitized.slice(0, MAX_SANITIZED_LENGTH)
-    const projectsDir = getProjectsDir()
-    try {
-      const dirents = await readdir(projectsDir, { withFileTypes: true })
-      const match = dirents.find(
-        d => d.isDirectory() && d.name.startsWith(prefix + '-'),
-      )
-      return match ? join(projectsDir, match.name) : undefined
-    } catch {
-      return undefined
-    }
-  }
 }
 
 

@@ -26,7 +26,6 @@ import {
   needsAutoModeExitAttachment,
   setNeedsAutoModeExitAttachment,
   getSessionId,
-  getSdkBetas,
 } from 'src/platform/bootstrap/state.js'
 import { isHumanTurn } from 'src/agent/messages/messagePredicates.js'
 import { isThinkingMessage } from 'src/agent/messages/messages.js'
@@ -38,13 +37,6 @@ import {
   getTodoReminderDelta,
   type TodoSnapshotItem,
 } from 'src/agent/todoReminderDelta.js'
-import { getContextWindowForModel } from 'src/agent/context/context.js'
-import { getFeatureValue_CACHED_MAY_BE_STALE } from 'src/platform/analytics/growthbook.js'
-import {
-  getEffectiveContextWindowSize,
-  isAutoCompactEnabled,
-} from 'src/agent/compact/autoCompact.js'
-import { tokenCountWithEstimation } from 'src/agent/context/tokens.js'
 import {
   generateTaskAttachments,
   applyTaskOffsetsAndEvictions,
@@ -1018,30 +1010,4 @@ export async function getActiveBackgroundTaskReminders(
     }
   }
   return out
-}
-
-export function getCompactionReminderAttachment(
-  messages: Message[],
-  model: string,
-): Attachment[] {
-  if (!getFeatureValue_CACHED_MAY_BE_STALE('tengu_marble_fox', false)) {
-    return []
-  }
-
-  if (!isAutoCompactEnabled()) {
-    return []
-  }
-
-  const contextWindow = getContextWindowForModel(model, getSdkBetas())
-  if (contextWindow < 1_000_000) {
-    return []
-  }
-
-  const effectiveWindow = getEffectiveContextWindowSize(model)
-  const usedTokens = tokenCountWithEstimation(messages)
-  if (usedTokens < effectiveWindow * 0.25) {
-    return []
-  }
-
-  return [{ type: 'compaction_reminder' }]
 }

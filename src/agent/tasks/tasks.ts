@@ -4,7 +4,7 @@ import { z } from 'zod/v4'
 import { getIsNonInteractiveSession, getSessionId } from 'src/platform/bootstrap/state.js'
 import { uniq } from 'src/shared/data/array.js'
 import { logForDebugging } from 'src/shared/debug.js'
-import { getClaudinConfigHomeDir, getTeamsDir, isEnvTruthy } from 'src/shared/envUtils.js'
+import { getClaudinConfigHomeDir, isEnvTruthy } from 'src/shared/envUtils.js'
 import { errorMessage, getErrnoCode } from 'src/shared/errors.js'
 import { lazySchema } from 'src/shared/data/lazySchema.js'
 import * as lockfile from 'src/shared/fs/lockfile.js'
@@ -706,57 +706,6 @@ async function claimTaskWithBusyCheck(
 }
 
 /**
- * Team member info (subset of TeamFile member structure)
- */
-export type TeamMember = {
-  agentId: string
-  name: string
-  agentType?: string
-}
-
-/**
- * Sanitizes a name for use in file paths
- */
-function sanitizeName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()
-}
-
-/**
- * Reads team members from the team file
- */
-async function readTeamMembers(
-  teamName: string,
-): Promise<{ leadAgentId: string; members: TeamMember[] } | null> {
-  const teamsDir = getTeamsDir()
-  const teamFilePath = join(teamsDir, sanitizeName(teamName), 'config.json')
-  try {
-    const content = await readFile(teamFilePath, 'utf-8')
-    const teamFile = jsonParse(content) as {
-      leadAgentId: string
-      members: TeamMember[]
-    }
-    return {
-      leadAgentId: teamFile.leadAgentId,
-      members: teamFile.members.map(m => ({
-        agentId: m.agentId,
-        name: m.name,
-        agentType: m.agentType,
-      })),
-    }
-  } catch (e) {
-    const code = getErrnoCode(e)
-    if (code === 'ENOENT') {
-      return null
-    }
-    logForDebugging(
-      `[Tasks] Failed to read team file for ${teamName}: ${errorMessage(e)}`,
-    )
-    return null
-  }
-}
-
-
-/**
  * Result of unassigning tasks from a teammate
  */
 export type UnassignTasksResult = {
@@ -817,5 +766,3 @@ export async function unassignTeammateTasks(
     notificationMessage,
   }
 }
-
-export const DEFAULT_TASKS_MODE_TASK_LIST_ID = 'tasklist'

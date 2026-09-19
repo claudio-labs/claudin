@@ -16,7 +16,7 @@ const teamMemSaved = feature('TEAMMEM') ? require('src/agent/ui/messages/teamMem
 /* eslint-enable @typescript-eslint/no-require-imports */
 import { TURN_COMPLETION_VERBS } from 'src/agent/prompts/turnCompletionVerbs.js';
 import { useTerminalSize } from 'src/terminal/hooks/useTerminalSize.js';
-import type { SystemMessage, SystemStopHookSummaryMessage, SystemBridgeStatusMessage, SystemTurnDurationMessage, SystemThinkingMessage, SystemMemorySavedMessage } from 'src/shared/types/message.js';
+import type { SystemMessage, SystemStopHookSummaryMessage, SystemBridgeStatusMessage, SystemTurnDurationMessage, SystemMemorySavedMessage } from 'src/shared/types/message.js';
 import type { StopHookInfo } from 'src/shared/types/message.js';
 import { SystemAPIErrorMessage } from 'src/agent/ui/messages/SystemAPIErrorMessage.js';
 import { formatDuration, formatNumber, formatSecondsShort } from 'src/shared/text/format.js';
@@ -120,9 +120,6 @@ export function SystemTextMessage(t0: Props) {
       t4 = $[17];
     }
     return t4;
-  }
-  if (message.subtype === "thinking") {
-    return null;
   }
   if (message.subtype === "bridge_status") {
     let t1;
@@ -744,41 +741,6 @@ function MemoryFileRow(t0: { path: string }) {
     t8 = $[15];
   }
   return t8;
-}
-function ThinkingMessage(t0: { message: SystemThinkingMessage; addMargin: boolean }) {
-  const $ = _c(7);
-  const {
-    message,
-    addMargin
-  } = t0;
-  const bg = useSelectedMessageBg();
-  const t1 = addMargin ? 1 : 0;
-  let t2;
-  if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-    t2 = <Box minWidth={2}><Text dimColor={true}>{TEARDROP_ASTERISK}</Text></Box>;
-    $[0] = t2;
-  } else {
-    t2 = $[0];
-  }
-  let t3;
-  if ($[1] !== message.content) {
-    t3 = <Text dimColor={true}>{message.content}</Text>;
-    $[1] = message.content;
-    $[2] = t3;
-  } else {
-    t3 = $[2];
-  }
-  let t4;
-  if ($[3] !== bg || $[4] !== t1 || $[5] !== t3) {
-    t4 = <Box flexDirection="row" marginTop={t1} backgroundColor={bg} width="100%">{t2}{t3}</Box>;
-    $[3] = bg;
-    $[4] = t1;
-    $[5] = t3;
-    $[6] = t4;
-  } else {
-    t4 = $[6];
-  }
-  return t4;
 }
 function BridgeStatusMessage(t0: { message: SystemBridgeStatusMessage; addMargin: boolean }) {
   const $ = _c(13);
